@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261008110500_a_field_pools_a_posting_seen_again_after_a_dark_batch_once.sql'));

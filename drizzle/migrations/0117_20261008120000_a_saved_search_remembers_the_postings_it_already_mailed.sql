@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261008120000_a_saved_search_remembers_the_postings_it_already_mailed.sql'));

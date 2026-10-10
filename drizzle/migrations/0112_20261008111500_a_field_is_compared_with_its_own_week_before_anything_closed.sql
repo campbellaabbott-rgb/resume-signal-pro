@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261008111500_a_field_is_compared_with_its_own_week_before_anything_closed.sql'));
