@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { codeOf } from "./helpers/strip-comments";
 import {
   LANDER_OPENINGS_READS,
+  companiesLlmsLine,
   companyLanderPage,
   duplicateSkeletons,
   landerFacts,
@@ -204,5 +205,21 @@ describe("the bake reads the listings inside the build cap and keeps them for th
     expect(bake).toMatch(/openingsBudget\.take\(\)/);
     expect(bake).toMatch(/openingsToRead\(\{ tokens: listedTokens, cache: landerOpeningsCache, today: TODAY \}\)/);
     expect(bake).toMatch(/openings: landerOpeningsCache,/);
+  });
+});
+
+describe("llms-full says what /companies lists", () => {
+  // Reviewer, 2026-10-10 (register L4-11): llms.txt was fixed but llms-full
+  // still told answer engines /companies listed "every employer with open
+  // roles", while the page lists the ~470 with a page of their own.
+  it("counts the employers with a page of their own and says the board carries more", () => {
+    const line = companiesLlmsLine({ site: SITE, count: 471 });
+    expect(line).toContain("the 471 employers this site gives a page");
+    expect(line).toContain("far more employers");
+    expect(line).not.toMatch(/every employer/i);
+    expect(companiesLlmsLine({ site: SITE, count: null }), "no number when the bake counted none").not.toMatch(/\d+ employers/);
+  });
+  it("the bake writes that line into llms-full", () => {
+    expect(codeOf(readFileSync(resolve(__dirname, "../../scripts/prerender-seo.mjs"), "utf8"))).toMatch(/lines\.push\(companiesLlmsLine\(\{ site: SITE, count: COMPANY_PAGE_COUNT \}\)\);/);
   });
 });

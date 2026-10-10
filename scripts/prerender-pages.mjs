@@ -371,6 +371,14 @@ export function duplicateSkeletons(items) {
 }
 
 /**
+ * What llms-full.txt says /companies is: the employers this bake gave a page
+ * of their own, counted, never "every employer with open roles" (about 470
+ * of some 31,000 boards; register L4-11).
+ */
+export const companiesLlmsLine = ({ site, count }) =>
+  `- Companies with a page of their own: ${site}/companies — ${typeof count === "number" ? `the ${count.toLocaleString("en-US")} employers` : "the employers"} this site gives a page, A–Z, each linked with the open-role count measured when the index was built. The board itself carries far more employers, every one searchable at ${site}/jobs.`;
+
+/**
  * One company page. `robots` is decided by the caller (landerRobots); a page
  * that is not its employer's primary board canonicalises to the primary.
  *
