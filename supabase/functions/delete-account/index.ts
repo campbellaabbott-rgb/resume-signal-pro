@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-09T13:00Z
+// deploy-stamp: 2026-10-09T18:00Z
 // GDPR account deletion: verifies the caller's JWT and deletes their auth
 // user. user_scans / user_profiles / user_applications rows cascade via FK.
 // Email-keyed purchase records are retained (legal/accounting basis), but the
@@ -9,9 +9,14 @@
 //          longer had a session to reach the billing portal with;
 //   L3-13  the CV files under resumes/{user id}/ stayed in storage forever,
 //          and the owner-only policies meant nobody could remove them after.
-// Both are done FIRST, and either failing stops the delete with nothing
-// deleted: an account must not vanish while its card is still charged or
-// its CV is still kept.
+// Both are done before the user is deleted, and either failing stops the
+// delete: an account must not vanish while its card is still charged or its
+// CV is still kept. THE ORDER (wave 3 review): the plans are READ first (a
+// failure changes nothing), the files are removed next (removing them again
+// on a retry is harmless), and the plans are cancelled LAST, just before the
+// user goes, because a cancel cannot be undone. A refusal after a cancel says
+// how many went (subscriptionsCancelled), so the page never says nothing
+// changed when something did.
 //
 // WHICH SUBSCRIPTIONS IT MAY CANCEL. While sign-ups are auto-confirmed anyone
 // can register a subscriber's address, so the address alone does not make a
@@ -30,7 +35,7 @@ import { bearerOf } from "../_shared/service-caller.ts";
 
 // Provable from outside without deleting anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "delete-account.2026-10-09.1";
+const FN_BUILD = "delete-account.2026-10-09.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -65,20 +70,22 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
 
-    // 1. The plans this account pays for: cancelled now, or the delete stops.
+    // 1. The plans this account pays for: read, not yet cancelled.
     const email = String(user.email ?? "").trim().toLowerCase();
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    const cancelled: string[] = [];
+    let stripe: Stripe | null = null;
+    const mine: Stripe.Subscription[] = [];
     if (email.includes("@") && stripeKey) {
       try {
-        const stripe = new Stripe(stripeKey, { apiVersion: "2025-12-15.clover" });
-        const customers = await listAll<Stripe.Customer>((after) => stripe.customers.list({ email, limit: 100, ...(after ? { starting_after: after } : {}) }));
+        stripe = new Stripe(stripeKey, { apiVersion: "2025-12-15.clover" });
+        const client = stripe;
+        const customers = await listAll<Stripe.Customer>((after) => client.customers.list({ email, limit: 100, ...(after ? { starting_after: after } : {}) }));
         const live: Stripe.Subscription[] = [];
         for (const c of customers) {
-          const subs = await listAll<Stripe.Subscription>((after) => stripe.subscriptions.list({ customer: c.id, status: "all", limit: 100, ...(after ? { starting_after: after } : {}) }));
+          const subs = await listAll<Stripe.Subscription>((after) => client.subscriptions.list({ customer: c.id, status: "all", limit: 100, ...(after ? { starting_after: after } : {}) }));
           live.push(...subs.filter((s) => BILLABLE.has(s.status)));
         }
-        const mine = live.filter((s) => subscriptionBuyer(s) === user.id);
+        mine.push(...live.filter((s) => subscriptionBuyer(s) === user.id));
         const unbound = live.filter((s) => !subscriptionBuyer(s));
         if (unbound.length) {
           const proven = await provenMailbox(user, bearerOf(req.headers) ?? "", {
@@ -97,13 +104,9 @@ Deno.serve(async (req) => {
           }
           mine.push(...unbound);
         }
-        for (const s of mine) {
-          await stripe.subscriptions.cancel(s.id);
-          cancelled.push(s.id);
-        }
       } catch (e) {
-        console.error("[DELETE-ACCOUNT] Stripe:", e instanceof Error ? e.message : e);
-        return json({ error: "We couldn't cancel your subscription, so nothing was deleted. Please try again in a minute.", code: "subscription_cancel_failed" }, 503);
+        console.error("[DELETE-ACCOUNT] Stripe read:", e instanceof Error ? e.message : e);
+        return json({ error: "We couldn't read your subscription, so nothing was changed. Please try again in a minute.", code: "billing_unreadable" }, 503);
       }
     } else if (email.includes("@") && !stripeKey) {
       console.error("[DELETE-ACCOUNT] STRIPE_SECRET_KEY is not set; refusing rather than leaving a plan billing");
@@ -125,10 +128,27 @@ Deno.serve(async (req) => {
     } catch (e) {
       console.error("[DELETE-ACCOUNT] Storage:", e instanceof Error ? e.message : e);
       return json({
-        error: "We couldn't delete your stored CV, so the account was not deleted. Please try again in a minute.",
+        error: "We couldn't delete your stored CV, so no plan was cancelled and the account was not deleted. Please try again in a minute.",
         code: "files_not_deleted",
-        ...(cancelled.length ? { subscriptionsCancelled: cancelled.length } : {}),
       }, 503);
+    }
+
+    // 3. The plans, last: a cancel cannot be undone.
+    const cancelled: string[] = [];
+    if (stripe) {
+      try {
+        for (const s of mine) {
+          await stripe.subscriptions.cancel(s.id);
+          cancelled.push(s.id);
+        }
+      } catch (e) {
+        console.error("[DELETE-ACCOUNT] Stripe cancel:", e instanceof Error ? e.message : e);
+        return json({
+          error: "We couldn't cancel your subscription, so the account was not deleted. Please try again in a minute.",
+          code: "subscription_cancel_failed",
+          ...(cancelled.length ? { subscriptionsCancelled: cancelled.length } : {}),
+        }, 503);
+      }
     }
 
     const { error: delErr } = await admin.auth.admin.deleteUser(user.id);

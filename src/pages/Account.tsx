@@ -47,6 +47,7 @@ import { ProSubscriptionCard } from "@/components/ProSubscriptionCard";
 import { CreditsAndPurchases, type AccountPass } from "@/components/account/CreditsAndPurchases";
 import { WithdrawalPanel } from "@/components/account/WithdrawalPanel";
 import { collectAccountExport, type ExportClient } from "@/lib/account-export";
+import { deleteRefusalKey, type DeleteRefusal } from "@/lib/account-delete";
 import { trackedEmployerChip } from "@/lib/tracked-employer-chip";
 
 interface FixItem { step: string; done: boolean }
@@ -668,20 +669,17 @@ export default function Account() {
       navigate("/");
       return;
     }
-    // The function refuses before deleting anything when a plan could not be
-    // cancelled or the CV could not be removed (L6-30, L3-13): say which.
-    let code = "";
+    // The function refuses when a plan could not be read or cancelled or the
+    // CV could not be removed (L6-30, L3-13), and says when a plan was already
+    // cancelled: the message follows its answer (lib/account-delete).
+    let refusal: DeleteRefusal = null;
     try {
       const ctx = (error as { context?: { clone?: () => { json: () => Promise<unknown> } } } | null)?.context;
-      code = String(((await ctx?.clone?.().json()) as { code?: string } | null)?.code ?? "");
+      refusal = ((await ctx?.clone?.().json()) as DeleteRefusal) ?? null;
     } catch { /* body unreadable */ }
     setDeleting(false);
     setConfirmDelete(false);
-    alert(code === "subscription_unlinked"
-      ? t("accountPage.deleteUnlinkedPlan")
-      : /^(subscription_cancel_failed|billing_unreadable|files_not_deleted)$/.test(code)
-        ? t("accountPage.deleteRetry")
-        : t("accountPage.deleteFailed"));
+    alert(t(deleteRefusalKey(refusal)));
   };
 
   if (loading || !session) {

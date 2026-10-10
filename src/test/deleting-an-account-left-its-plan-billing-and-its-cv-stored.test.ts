@@ -12,7 +12,7 @@
  *
  * WHAT HOLDS NOW, against the shipped handler with Stripe, storage and auth
  * faked: the account's plans are cancelled and its files removed BEFORE the
- * user is deleted, and if either cannot be done nothing is deleted; a plan on
+ * user is deleted, and if either cannot be done the user is not deleted; a plan on
  * the address that names no account is cancelled only for a proven mailbox
  * (anyone can register a subscriber's address while sign-ups auto-confirm),
  * and a plan that names another account is never touched.
@@ -116,7 +116,9 @@ describe("deleting an account", () => {
     expect(state.removed.sort()).toEqual([`${USER_ID}/Jane_CV.pdf`, `${USER_ID}/Jane_CV_2026.pdf`]);
     expect(state.files, "another account's file was touched").toEqual([`${OTHER_ID}/Someone_else.pdf`]);
     expect(state.deleted).toEqual([USER_ID]);
-    expect(state.order).toEqual(["cancel", "remove", "deleteUser"]);
+    // Files first (a retry is harmless), plans last (a cancel is final):
+    // a-refused-delete-had-already-cancelled-the-plan-and-said-nothing-changed.test.ts.
+    expect(state.order).toEqual(["remove", "cancel", "deleteUser"]);
   });
 
   it("deletes nothing when Stripe cannot be read, so no plan is left billing a deleted account", async () => {
