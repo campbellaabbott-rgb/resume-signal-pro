@@ -4610,7 +4610,15 @@
     "deleteUnlinkedPlan": "This address has a subscription that isn't linked to this account. Cancel it from Stripe's billing page first, then delete the account. Nothing was deleted.",
     "deleteRetry": "Nothing was deleted: we couldn't finish cancelling your subscription or removing your files. Please try again in a minute.",
     "deleteFailed": "Account deletion failed. Please contact support.",
-    "lifecycleGoingDown": "Our last check did not find this posting on the employer's board. We'll date it once it is confirmed down."
+    "lifecycleGoingDown": "Our last check did not find this posting on the employer's board. We'll date it once it is confirmed down.",
+    "getMoreCredits": "Get more credits →",
+    "purchasesEmpty": "No purchases yet. Reports and tools bought with this email, and Agent Passes bought on this account, show up here.",
+    "passRow": "Agent Pass",
+    "passState": {
+      "unactivated": "not started yet",
+      "live": "running",
+      "closed": "ended"
+    }
   },
   "applyAgent": {
     "badge": "Your AI apply agent",

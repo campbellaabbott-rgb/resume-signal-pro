@@ -4610,7 +4610,15 @@
     "deleteUnlinkedPlan": "Für diese Adresse besteht ein Abonnement, das nicht mit diesem Konto verknüpft ist. Kündigen Sie es zuerst auf der Abrechnungsseite von Stripe und löschen Sie dann das Konto. Es wurde nichts gelöscht.",
     "deleteRetry": "Es wurde nichts gelöscht: Wir konnten Ihr Abonnement nicht kündigen oder Ihre Dateien nicht entfernen. Bitte versuchen Sie es in einer Minute erneut.",
     "deleteFailed": "Das Löschen des Kontos ist fehlgeschlagen. Bitte wenden Sie sich an den Support.",
-    "lifecycleGoingDown": "Bei unserer letzten Prüfung war diese Stelle nicht mehr auf der Karriereseite des Arbeitgebers. Ein Datum nennen wir erst, wenn feststeht, dass sie entfernt wurde."
+    "lifecycleGoingDown": "Bei unserer letzten Prüfung war diese Stelle nicht mehr auf der Karriereseite des Arbeitgebers. Ein Datum nennen wir erst, wenn feststeht, dass sie entfernt wurde.",
+    "getMoreCredits": "Mehr Credits holen →",
+    "purchasesEmpty": "Noch keine Käufe. Berichte und Tools, die mit dieser E-Mail-Adresse gekauft wurden, und Agent Passes, die mit diesem Konto gekauft wurden, erscheinen hier.",
+    "passRow": "Agent Pass",
+    "passState": {
+      "unactivated": "noch nicht gestartet",
+      "live": "läuft",
+      "closed": "beendet"
+    }
   },
   "applyAgent": {
     "badge": "Ihr KI-Bewerbungsagent",

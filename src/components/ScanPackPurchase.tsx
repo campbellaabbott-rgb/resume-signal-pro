@@ -20,13 +20,15 @@ export interface ScanPackPurchaseProps {
   className?: string;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** The receipt address to start from, e.g. the signed-in account's. */
+  defaultEmail?: string;
 }
 
 const PRESET_AMOUNTS = [5, 10, 20, 50];
 
-export function ScanPackPurchase({ onClose, className, open, onOpenChange }: ScanPackPurchaseProps) {
+export function ScanPackPurchase({ onClose, className, open, onOpenChange, defaultEmail }: ScanPackPurchaseProps) {
   const { t } = useTranslation();
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(defaultEmail ?? "");
   const [creditAmount, setCreditAmount] = useState(10);
   const { purchaseCredits, isLoading, pricePerCredit } = useScanCredits();
   const { trackButtonClick } = useConversionTracking();

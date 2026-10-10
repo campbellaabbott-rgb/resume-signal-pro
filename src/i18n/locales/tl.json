@@ -4610,7 +4610,15 @@
     "deleteUnlinkedPlan": "May subscription ang address na ito na hindi naka-link sa account na ito. Kanselahin muna ito sa billing page ng Stripe, saka burahin ang account. Walang nabura.",
     "deleteRetry": "Walang nabura: hindi namin natapos ang pagkansela ng iyong subscription o ang pag-alis ng iyong mga file. Pakisubukang muli makalipas ang isang minuto.",
     "deleteFailed": "Nabigo ang pagbura ng account. Makipag-ugnayan sa support.",
-    "lifecycleGoingDown": "Sa huli naming pagsusuri, wala na ang posting na ito sa board ng employer. Lalagyan namin ito ng petsa kapag nakumpirmang tinanggal na."
+    "lifecycleGoingDown": "Sa huli naming pagsusuri, wala na ang posting na ito sa board ng employer. Lalagyan namin ito ng petsa kapag nakumpirmang tinanggal na.",
+    "getMoreCredits": "Kumuha ng mas maraming credit →",
+    "purchasesEmpty": "Wala pang binili. Lalabas dito ang mga report at tool na binili gamit ang email na ito, at ang mga Agent Pass na binili sa account na ito.",
+    "passRow": "Agent Pass",
+    "passState": {
+      "unactivated": "hindi pa nagsisimula",
+      "live": "tumatakbo",
+      "closed": "tapos na"
+    }
   },
   "applyAgent": {
     "badge": "Ang iyong AI apply agent",

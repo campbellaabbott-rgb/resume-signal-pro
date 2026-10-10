@@ -4610,7 +4610,15 @@
     "deleteUnlinkedPlan": "Cette adresse a un abonnement qui n'est pas lié à ce compte. Résiliez-le d'abord depuis la page de facturation de Stripe, puis supprimez le compte. Rien n'a été supprimé.",
     "deleteRetry": "Rien n'a été supprimé : nous n'avons pas pu résilier votre abonnement ou retirer vos fichiers. Réessayez dans une minute.",
     "deleteFailed": "La suppression du compte a échoué. Contactez l'assistance.",
-    "lifecycleGoingDown": "Lors de notre dernière vérification, cette offre n'était plus sur le site carrières de l'employeur. Nous la daterons quand son retrait sera confirmé."
+    "lifecycleGoingDown": "Lors de notre dernière vérification, cette offre n'était plus sur le site carrières de l'employeur. Nous la daterons quand son retrait sera confirmé.",
+    "getMoreCredits": "Obtenir plus de crédits →",
+    "purchasesEmpty": "Aucun achat pour l'instant. Les rapports et outils achetés avec cette adresse e-mail, et les Agent Pass achetés sur ce compte, apparaissent ici.",
+    "passRow": "Agent Pass",
+    "passState": {
+      "unactivated": "pas encore commencé",
+      "live": "en cours",
+      "closed": "terminé"
+    }
   },
   "applyAgent": {
     "badge": "Votre agent IA de candidature",

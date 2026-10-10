@@ -4610,7 +4610,15 @@
     "deleteUnlinkedPlan": "Este endereço tem uma assinatura que não está ligada a esta conta. Cancele-a primeiro na página de faturação da Stripe e depois exclua a conta. Nada foi excluído.",
     "deleteRetry": "Nada foi excluído: não conseguimos terminar de cancelar a sua assinatura ou remover os seus ficheiros. Tente novamente daqui a um minuto.",
     "deleteFailed": "A exclusão da conta falhou. Contacte o suporte.",
-    "lifecycleGoingDown": "Na nossa última verificação, esta vaga já não estava no site da empresa. Vamos datá-la quando for confirmado que foi retirada."
+    "lifecycleGoingDown": "Na nossa última verificação, esta vaga já não estava no site da empresa. Vamos datá-la quando for confirmado que foi retirada.",
+    "getMoreCredits": "Obter mais créditos →",
+    "purchasesEmpty": "Nenhuma compra ainda. Relatórios e ferramentas comprados com este e-mail, e Agent Passes comprados nesta conta, aparecem aqui.",
+    "passRow": "Agent Pass",
+    "passState": {
+      "unactivated": "ainda não iniciado",
+      "live": "em andamento",
+      "closed": "encerrado"
+    }
   },
   "applyAgent": {
     "badge": "Seu agente de IA para candidaturas",

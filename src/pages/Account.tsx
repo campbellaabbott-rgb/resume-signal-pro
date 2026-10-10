@@ -10,7 +10,7 @@ import { useTranslation } from "react-i18next";
 // where a comma is a separator. Same reason mandateProposal strips them.
 import { toMandateField } from "@/lib/mandateProposal";
 import {
-  TrendingUp, Coins, ShoppingBag, LogOut, Loader2, ScanSearch, Target,
+  TrendingUp, LogOut, Loader2, ScanSearch, Target,
   ListChecks, GitCompare, Briefcase, Plus, Trash2, AlertTriangle, ExternalLink, Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -44,6 +44,8 @@ import { useProSubscription } from "@/hooks/use-pro-subscription";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { ProSubscriptionCard } from "@/components/ProSubscriptionCard";
+import { CreditsAndPurchases, type AccountPass } from "@/components/account/CreditsAndPurchases";
+import { collectAccountExport, type ExportClient } from "@/lib/account-export";
 import { trackedEmployerChip } from "@/lib/tracked-employer-chip";
 
 interface FixItem { step: string; done: boolean }
@@ -158,6 +160,8 @@ const versionName = (s: UserScan) =>
 interface AccountData {
   credits: number;
   purchases: Array<{ product: string; date: string }>;
+  /** The account's Agent Passes, which are never purchased_content rows (L6-12). */
+  passes: AccountPass[];
   /** False while this sign-in has not proven the account's mailbox (get-account-data). */
   mailboxProven?: boolean;
 }
@@ -440,8 +444,13 @@ export default function Account() {
     const prof = profileRes.data as { target_score?: number; matching_scan_id?: string | null; matching_resume_text?: string | null } | null;
     setTargetScore(prof?.target_score ?? null);
     setMatching({ scanId: prof?.matching_scan_id ?? null, text: prof?.matching_resume_text ?? null });
-    const acc = (accountRes as { data?: { credits?: number; purchases?: AccountData["purchases"]; mailboxProven?: boolean } }).data;
-    setAccount({ credits: acc?.credits ?? 0, purchases: acc?.purchases ?? [], mailboxProven: acc?.mailboxProven !== false });
+    const acc = (accountRes as { data?: { credits?: number; purchases?: AccountData["purchases"]; passes?: AccountData["passes"]; mailboxProven?: boolean } }).data;
+    setAccount({
+      credits: acc?.credits ?? 0,
+      purchases: acc?.purchases ?? [],
+      passes: Array.isArray(acc?.passes) ? acc!.passes : [],
+      mailboxProven: acc?.mailboxProven !== false,
+    });
     setFetching(false);
     void checkPostingFreshness(apps);
   }, [session]);
@@ -621,25 +630,16 @@ export default function Account() {
   };
 
   const exportData = async () => {
-    // "All my data" must mean all of it (audit: searches, mandate, queue,
-    // and the pinned matching resume were missing from the export).
+    // "All my data" must mean all of it: every table the account can read by
+    // its own id, all rows, and the stored CV files (L3-14; lib/account-export).
     const uid = user?.id ?? "";
-    const [searches, mandates, queue, profile] = await Promise.all([
-      supabase.from("user_job_searches").select("*").eq("user_id", uid).then((r) => r.data ?? []),
-      supabase.from("agent_mandates").select("*").eq("user_id", uid).then((r) => r.data ?? []),
-      supabase.from("agent_queue").select("*").eq("user_id", uid).then((r) => r.data ?? []),
-      supabase.from("user_profiles").select("matching_resume_text").eq("user_id", uid).maybeSingle().then((r) => r.data ?? null),
-    ]);
+    if (!uid) return;
+    const records = await collectAccountExport(supabase as unknown as ExportClient, uid);
     const payload = {
       exportedAt: new Date().toISOString(),
       account: { email: user?.email, memberSince: user?.created_at },
       targetScore,
-      scans,
-      applications,
-      savedSearches: searches,
-      agentMandates: mandates,
-      agentQueue: queue,
-      matchingResume: profile?.matching_resume_text ?? null,
+      ...records,
       credits: account?.credits ?? 0,
       purchases: account?.purchases ?? [],
     };
@@ -1850,48 +1850,8 @@ export default function Account() {
           <ProSubscriptionCard compact />
         </div>
 
-        {/* Credits + purchases */}
-        <div className="grid sm:grid-cols-2 gap-4 mb-6">
-          <div className="rounded-2xl border border-border bg-card p-5">
-            <div className="flex items-center gap-2 mb-2">
-              <Coins className="w-4 h-4 text-warning" />
-              <h2 className="font-semibold text-foreground text-sm">{t("accountPage.credits", "Scan credits")}</h2>
-            </div>
-            <p className="text-3xl font-bold text-foreground mb-1">{fetching ? "…" : account?.credits ?? 0}</p>
-            <p className="text-xs text-muted-foreground mb-3">
-              {account?.mailboxProven === false
-                ? "Credits bought in a browser where you're signed in follow your account and never expire. Credits under your email address count here once it's confirmed: sign in with Google using it."
-                : "Credits are linked to your email and never expire."}
-            </p>
-            <Link to="/pricing" className="inline-block px-3.5 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors">
-              Get more credits →
-            </Link>
-          </div>
-          <div className="rounded-2xl border border-border bg-card p-5">
-            <div className="flex items-center gap-2 mb-2">
-              <ShoppingBag className="w-4 h-4 text-primary" />
-              <h2 className="font-semibold text-foreground text-sm">{t("accountPage.purchases", "Purchases")}</h2>
-            </div>
-            {fetching ? (
-              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-            ) : (account?.purchases.length ?? 0) === 0 ? (
-              <p className="text-xs text-muted-foreground">
-                {account?.mailboxProven === false
-                  ? "Purchases made under your email address show here once this sign-in confirms the address: sign in with Google using it."
-                  : "No purchases yet. Anything you buy with this email shows up here."}
-              </p>
-            ) : (
-              <div className="space-y-1.5 max-h-40 overflow-y-auto">
-                {account!.purchases.map((p, i) => (
-                  <div key={i} className="flex items-center justify-between text-xs border border-border/50 rounded-lg px-2.5 py-1.5">
-                    <span className="text-foreground truncate">{p.product}</span>
-                    <span className="text-muted-foreground shrink-0 ml-2">{new Date(p.date).toLocaleDateString()}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+        {/* Credits + purchases (L3-22, L6-12) */}
+        <CreditsAndPurchases fetching={fetching} account={account} email={user?.email ?? ""} />
 
         {/* Cross-link: the employer-side product */}
         <div className="rounded-2xl border border-border bg-gradient-to-r from-primary/5 to-transparent p-5 mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-3">

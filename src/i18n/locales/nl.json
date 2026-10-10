@@ -4610,7 +4610,15 @@
     "deleteUnlinkedPlan": "Dit adres heeft een abonnement dat niet aan dit account is gekoppeld. Zeg het eerst op via de factuurpagina van Stripe en verwijder daarna het account. Er is niets verwijderd.",
     "deleteRetry": "Er is niets verwijderd: we konden je abonnement niet opzeggen of je bestanden niet verwijderen. Probeer het over een minuut opnieuw.",
     "deleteFailed": "Het verwijderen van het account is mislukt. Neem contact op met support.",
-    "lifecycleGoingDown": "Bij onze laatste controle stond deze vacature niet meer op de site van de werkgever. We geven een datum zodra vaststaat dat ze is verwijderd."
+    "lifecycleGoingDown": "Bij onze laatste controle stond deze vacature niet meer op de site van de werkgever. We geven een datum zodra vaststaat dat ze is verwijderd.",
+    "getMoreCredits": "Meer credits krijgen →",
+    "purchasesEmpty": "Nog geen aankopen. Rapporten en tools die met dit e-mailadres zijn gekocht, en Agent Passes die op dit account zijn gekocht, verschijnen hier.",
+    "passRow": "Agent Pass",
+    "passState": {
+      "unactivated": "nog niet gestart",
+      "live": "loopt",
+      "closed": "afgelopen"
+    }
   },
   "applyAgent": {
     "badge": "Je AI-sollicitatieagent",
