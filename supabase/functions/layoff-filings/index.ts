@@ -3,6 +3,8 @@
 //   POST { action: "edgar" }                      hourly: the EDGAR latest-filings Atom channel
 //   POST { action: "edgar_audit" }                daily: full-text search completeness audit
 //   POST { action: "edgar_backfill", from, index } once, chunked, self-kicking
+//   POST { action: "edgar_reread", after }       once, by hand: re-reads stored 8-K rows the
+//                                                 old build got wrong (S8-026, S8-108)
 //   POST { action: "warn", cursor }               nightly: state WARN notices, slice-chained
 //   POST { action: "matches" }                    layoff_matches_rebuild(), the matcher log line
 //   POST { action: "partition" }                  refresh_layoff_partition(), the Ghost-Index writer
@@ -33,6 +35,7 @@ import { Http } from "./http.ts";
 import {
   atomPageUrl, fetchFiling, ftsUrl, keep205, parseAtom, parseFtsHits,
 } from "./edgar.ts";
+import { isStatusUpdate } from "./parse205.ts";
 import type { AtomEntry, FtsHit } from "./edgar.ts";
 import { addDays, todayIso } from "./normalize.ts";
 import type { WarnRecord } from "./normalize.ts";
@@ -53,7 +56,8 @@ import {
 } from "./lca-payload.ts";
 
 // .1 mirror; .1 of this date carries the certified H-1B wage cells, the action that loads them, the
-// measured coverage span they are labelled by, and the staged swap that replaces a period whole.
+// measured coverage span they are labelled by, and the staged swap that replaces a period whole;
+// wave 3 adds the Oregon/Illinois/Massachusetts map fixes, S8-026/S8-108 and edgar_reread.
 export const BUILD_VERSION = "2026-10-09.1";
 
 // ── mirror constants (src/config/layoffs.ts names this file) ──────────────
@@ -406,6 +410,72 @@ async function runEdgarBackfill(client: SupabaseLike, body: Record<string, unkno
   });
   if (ok && next) selfKick(next);
   return json({ ok, kind: "edgar_backfill", from, index, next, ...tally, ms, version: BUILD_VERSION }, ok ? 200 : 500);
+}
+
+// ── EDGAR: one re-read of rows an older build stored wrong ─────────────────
+
+const PLACEHOLDER_SECTION = "(document not read)";
+
+/** Stored rows worth reading again: a placeholder, or a workforce event whose own text is a status update. */
+function rereadCandidates(rows: Array<Record<string, unknown>>, after: string): Array<Record<string, unknown>> {
+  return rows
+    .filter((r) => String(r.filing_id) > after)
+    .filter((r) =>
+      (Number(r.parse_confidence) === 0 && r.section_text === PLACEHOLDER_SECTION) ||
+      (r.is_workforce_event === true && isStatusUpdate(typeof r.section_text === "string" ? r.section_text : null)))
+    .sort((a, b) => String(a.filing_id).localeCompare(String(b.filing_id)));
+}
+
+// Every ingest path skips a filing_id it holds, so a row an older build wrote
+// is never re-evaluated: a status update stays a workforce event (S8-026) and
+// a throttled read stays "(document not read)" (S8-108). Active rows inside
+// the display window only; a re-read replaces a row only when it read the
+// document, so a good row is never overwritten by a failed read.
+async function runEdgarReread(client: SupabaseLike, body: Record<string, unknown>, selfKick: (b: Record<string, unknown>) => void): Promise<Response> {
+  const t0 = Date.now();
+  const deadline = t0 + WALL_CLOCK_MS;
+  const readAt = new Date();
+  const http = secHttp(500);
+  const after = typeof body.after === "string" ? body.after : "";
+  const floor = addDays(todayIso(readAt), -LAYOFF_DISPLAY_MAX_AGE_DAYS);
+  const tally = { candidates: 0, read: 0, replaced: 0, flipped: 0, unread: 0, notes: [] as string[] };
+  let ok = true;
+  let next: Record<string, unknown> | null = null;
+  try {
+    const { data, error } = await client.from("layoff_filings")
+      .select("filing_id,cik,adsh,filer_raw,section_text,parse_confidence,is_workforce_event")
+      .eq("source", "sec_8k_205").eq("status", "active").gte("event_date", floor)
+      .order("filing_id", { ascending: true }).limit(2000);
+    if (error) throw new Error(`layoff_filings select: ${error.message}`);
+    const todo = rereadCandidates(Array.isArray(data) ? data : [], after);
+    tally.candidates = todo.length;
+    for (const r of todo) {
+      if (Date.now() > deadline) {
+        if (tally.read > 0) next = { action: "edgar_reread", after: String(todo[tally.read - 1].filing_id) };
+        break;
+      }
+      tally.read += 1;
+      const f = await fetchFiling(http, Number(r.cik), String(r.adsh), readAt, String(r.filer_raw ?? ""));
+      if (!f.row || !(Number(f.row.parse_confidence) > 0)) { tally.unread += 1; tally.notes.push(`${r.adsh}:${f.note ?? "unread"}`); continue; }
+      const up = await upsertRows(client, [f.row]);
+      tally.replaced += up.inserted + up.updated;
+      if (r.is_workforce_event === true && f.row.is_workforce_event === false) tally.flipped += 1;
+      if (up.refused > 0) tally.notes.push(...up.reasons);
+    }
+    if (tally.replaced > 0) await rebuildMatches(client);
+  } catch (e) {
+    ok = false;
+    tally.notes.push(`error:${(e as Error).message}`);
+  }
+  const ms = Date.now() - t0;
+  console.log(`[layoff-filings] kind=edgar_reread after=${after || "-"} candidates=${tally.candidates} read=${tally.read} replaced=${tally.replaced} flipped=${tally.flipped} unread=${tally.unread} ms=${ms} ok=${ok}` + (next ? ` next=${JSON.stringify(next)}` : " next=none"));
+  // Logged under the backfill kind: the read log's kind check admits no new kind without a migration.
+  await readLog(client, "edgar_backfill", {
+    fetched: tally.read, kept: tally.candidates, newRows: 0, ok, ms,
+    note: [`reread after=${after || "-"}`, `replaced=${tally.replaced}`, `flipped=${tally.flipped}`, `unread=${tally.unread}`, next ? `next=${next.after}` : "done", ...tally.notes.slice(0, 4)].join("; "),
+  });
+  if (ok && next) selfKick(next);
+  return json({ ok, kind: "edgar_reread", after, next, ...tally, ms, version: BUILD_VERSION }, ok ? 200 : 500);
 }
 
 // ── WARN: the nightly slice chain ──────────────────────────────────────────
@@ -863,6 +933,7 @@ serve(async (req) => {
       case "edgar": return await runEdgar(client);
       case "edgar_audit": return await runEdgarAudit(client);
       case "edgar_backfill": return await runEdgarBackfill(client, body, selfKick);
+      case "edgar_reread": return await runEdgarReread(client, body, selfKick);
       case "warn": return await runWarn(client, body, selfKick);
       case "matches": return json({ ok: true, line: await rebuildMatches(client), version: BUILD_VERSION });
       case "partition": return json({ ok: true, line: await refreshPartition(client), version: BUILD_VERSION });
