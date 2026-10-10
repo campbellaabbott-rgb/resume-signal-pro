@@ -13,6 +13,14 @@
     {
       "stamp": "20261008128000",
       "until": "wave 2 step 1 verified: check-error-spikes serving"
+    },
+    {
+      "stamp": "20261009100300",
+      "until": "wave 3 step 1 verified: job-board's OPTIONS answers x-fn-build job-board.2026-09-09.92 (status.version 2026-09-09.92) AND status.sliceStats carries build 2026-09-09.92 and a buildSince (section 71 prints both). Applied earlier it marks the old bundle's closures only up to its ceiling and must be re-run once buildSince exists"
+    },
+    {
+      "stamp": "20261009160100",
+      "until": "wave 3 step 1 verified: layoff-filings' OPTIONS answers x-fn-build layoff-filings.2026-10-09.3 (its GET answers version 2026-10-09.3), ideally after one nightly WARN run of that build. Applied earlier, the old build re-upserts the misdated Illinois ids as active on its next nightly read"
     }
   ],
   "reservations": {
