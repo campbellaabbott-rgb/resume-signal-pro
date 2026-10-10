@@ -813,6 +813,13 @@
       "when": 1791672561659,
       "tag": "0115_20261008113000_the_exit_rollup_rolls_its_ended_months_when_nothing_is_pruned",
       "breakpoints": true
+    },
+    {
+      "idx": 116,
+      "version": "7",
+      "when": 1791672570236,
+      "tag": "0116_20261008113500_a_filing_month_is_rolled_whole_and_counted_once",
+      "breakpoints": true
     }
   ]
 }
