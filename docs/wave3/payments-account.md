@@ -15,11 +15,11 @@ The verifier is `scripts/verify-deploy.d/74-wave3-payments-account.sh`.
 
 | Register | Commit | What changes |
 | --- | --- | --- |
-| S8-060, S8-059; items 1, 11, 12, 14; affiliate line | 49b9ac8d | **One policy.** Seven functions create Stripe sessions, and they now share one rule (`_shared/checkout-policy.ts`). **Return address.** Stripe sends the buyer back only to our own hosts, localhost, or an exact origin listed in `CHECKOUT_EXTRA_ORIGINS`. It used to send them to any Origin, and three functions fell back to lovable.dev. **Receipt.** Every one-time payment names `receipt_email`. **Renewal terms.** Pro and the agent show their renewal terms next to Stripe's pay button. The agent's terms state the trial only when the session carries one. **Terms version and referral.** Every checkout records the Terms version and the referral code on the Stripe session and on `checkout_starts`. Five of the six checkouts used to drop the referral. A referral on a checkout outside the catalogue is recorded at $0 (`referral_commission: "none"`), so the affiliate page stays true. **Tax.** Stripe Tax, billing address and tax ID turn on only with `EU_UK_SALES=on`. **Anonymous scan packs.** A scan pack bought without signing in no longer attaches to the typed address's Stripe customer. |
+| S8-060, S8-059; items 1, 11, 12, 14; affiliate line | 49b9ac8d | **One policy.** Seven functions create Stripe sessions, and they now share one rule (`_shared/checkout-policy.ts`). **Return address.** Stripe sends the buyer back only to our own hosts, localhost, or an exact origin listed in `CHECKOUT_EXTRA_ORIGINS`. It used to send them to any Origin, and three functions fell back to lovable.dev. **Receipt.** A one-time payment names `receipt_email` when the buyer's address is known: signed in, or typed into the product or scan-pack form. An anonymous $5 Full Analysis buyer (most of them) has no address until Stripe's page, so their receipt depends on the dashboard's **Successful payments** switch (owner step 1). **Renewal terms.** Pro and the agent show their renewal terms next to Stripe's pay button. The agent's terms state the trial only when the session carries one. **Terms version and referral.** Every checkout records the Terms version and the referral code on the Stripe session and on `checkout_starts`. Five of the six checkouts used to drop the referral. A referral on a checkout outside the catalogue is recorded at $0 (`referral_commission: "none"`), so the affiliate page stays true. **Tax.** Stripe Tax, billing address and tax ID turn on only with `EU_UK_SALES=on`. **Anonymous scan packs.** A scan pack bought without signing in no longer attaches to the typed address's Stripe customer. |
 | Items 11, 12; S8-055; L3-20; S8-058 | 78e31329 | **Above every buy and sign-up button.** The button now carries "By continuing you agree to the Terms of Service and the Privacy Policy" (`PurchaseTerms`). Pro's button says it renews monthly until you cancel. The agent's button names the trial, says only first-time subscribers get it, and says how to avoid being charged. With the EU/UK switch on, the button also carries the withdrawal-waiver or service-start box. **Sign-up.** A password or magic-link sign-up stores `terms_version` and `terms_accepted_at` on the account. **Terms date.** /terms prints the Terms version date. It used to print today's date. **New Pro subscribers (S8-055).** They are confirmed live from the Stripe session and never offered Go Pro again. **Sign-in (L3-20).** An expired session is no longer reported as a sign-out. /agent, /shortlist and /account send a signed-out visitor to `/auth?next=`. "Resend confirmation" keeps `?next`. **Credits (S8-058).** The copy says credits follow the browser and the signed-in account. Nine locales. |
 | S8-014, S8-119, S8-120 | e5804452 | **Back from Stripe.** Pressing Back from Stripe resets the checkout overlay, which now offers Close. **Credit upsell.** It is a real dialog and prints the server's reset hours. **Funnel.** The $5 Full Analysis records `product_clicked` and `checkout_started`. |
 | Item 11 (Cal. B&P 17602) | 04a0d284 | **Confirmation mail.** A new subscription gets a confirmation: the price, that it renews until cancelled, the trial's end and first charge, what cancelling does, and how to cancel. **Trial reminder.** A trial gets a reminder 3 days before it ends. The webhook queues both through the transactional queue (`enqueue_email_delayed`). Each is claimed once in `subscription_notices`. No refund is promised. |
-| L6-30, L3-13 | c9fe513e | **Account deletion.** Deleting an account first cancels its plans and removes its CV files. If either step fails, nothing is deleted. **Unlinked plans.** A plan on the address that names no account is cancelled only for a proven mailbox. Otherwise the user gets 409 with Stripe's emailed portal login. **Replaced CV.** A new upload removes the old CV file. |
+| L6-30, L3-13 | c9fe513e | **Account deletion.** Deleting an account cancels its plans and removes its CV files before the user is deleted (the order is fixed in 852405e8, below). **Unlinked plans.** A plan on the address that names no account is cancelled only for a proven mailbox. Otherwise the user gets 409 with Stripe's emailed portal login. **Replaced CV.** A new upload removes the old CV file, once the mandate names the new one (d501fb07, below). |
 | S8-053, S8-054 | 7060b711 | **100%-off sessions.** A comped ($0) Full Analysis or scan pack is delivered. **Scan-pack balance.** verify-scan-pack-purchase answers only that purchase's credits, never the address's whole balance. |
 | S8-009, S8-015, S8-016, S8-074; wave-2 handoff | 23310733 | **Success page.** It shows the saved copy, bound to the résumé the purchase was made for. **Purchase mails.** They say "Ready" only when content exists. They link `/product-success?session_id=…` and print the session ID. **Freelance Boost.** The purchase gets a link mail and can be recovered. A returning buyer is not sold it again. **Recovery language.** Recovery keeps the buyer's language. **`pro_` grants.** A `pro_` grant is no longer recorded as a full-price sale. |
 | S8-018, L13-14, L11-08, S8-103 | 933f8f55 | **Closure log.** It is metered per account per day: 1,000 distinct ids a day, and an id already answered that day is free. A tracker row's `job_id` cannot be rewritten by a client. **Closure outcomes.** A suspect or superseded closure is not a takedown. A posting stamped missing reads `going_down`, not "still posted". **Row caps.** Owner tables get row caps and length bounds. |
@@ -27,12 +27,27 @@ The verifier is `scripts/verify-deploy.d/74-wave3-payments-account.sh`.
 | S8-104 | 6a5a1ee8 | **Blocked storage.** A browser that blocks site storage now gets a working page with in-memory storage. It used to get a blank page. |
 | L3-17 | 54af8be0 | **Interviews card.** It counts calendar days. Tomorrow is "Tomorrow" all day, and today's interview stays listed until local midnight. |
 | L3-11, L3-12 | 274f020a | **Résumé builder.** The builder never saves an empty draft. It offers a newer scan once over a real draft. Each report rewrite replaces one bullet, the right one. |
-| L6-12, L3-22, L3-14 | 8de03049 | **Purchases.** The list includes the account's Agent Passes. **Get more credits.** It opens the credit pack dialog. **Download all my data.** It reads every table the account owns: 16 tables, all rows, plus the CV file list. |
+| L6-12, L3-22, L3-14 | 8de03049 | **Purchases.** The list includes the account's Agent Passes. **Get more credits.** It opens the credit pack dialog. **Download all my data.** It reads every table the account owns: 16 tables, all rows, plus each stored CV with a signed link to it (a078e830, below). |
 | Item 11 (FAQ) | 51f2abb2 | **FAQ.** "Is this a subscription?" says both plans renew until cancelled and that the trial becomes the paid plan. Nine locales. The prerender reads it from en.json. |
 | Item 12 | 16672c29 | **Data API key form and connector consent.** /data-api's key form and /oauth/consent's Allow carry the Terms line. A key request stores the Terms version on its `api_key_requests` row. |
-| Decision 3; item 14 | 662a3940 | **EU/UK withdrawal.** withdraw-subscription and the account page's "Withdraw within 14 days" panel. **Off by default.** They answer 404 and render nothing until the switch is on. **With the switch on:** paid invoices are refunded less the days provided, the plan is cancelled at once, and the withdrawal is acknowledged by mail once. |
+| Decision 3; item 14 | 662a3940 | **EU/UK withdrawal.** withdraw-subscription and the account page's "Withdraw within 14 days" panel. **Off by default.** They answer 404 and render nothing until the switch is on. **With the switch on:** for a plan billed in the EU, the EEA or the UK (b6e1f02a, below), paid invoices are refunded less the days provided, the plan is cancelled at once, and the withdrawal is acknowledged by mail once. |
 | Item 10; owner instruction | 994da17a | **Seller identity.** `SELLER` (src/config/seller.ts and `_shared/seller.ts`) is empty and renders nothing. Once it is set, it appears in the footer, on /terms, on /privacy, beside every buy button, and in the footer of the digest, the pulse and the fix-plan drip. |
 | (integration) | 1b7db82f | **Locale files.** The new locale namespaces moved out of the files' tail, so trial merges with the three other wave-3 branches are clean. |
+
+### Review fixes (2026-10-09)
+
+| Review finding | Commit | What changes |
+| --- | --- | --- |
+| Legal notices dropped for drip unsubscribers (major) | 97553011 | **Notices the law requires.** The subscription confirmation, the trial reminder and the withdrawal acknowledgement carry `legal_notice: true`. process-email-queue sends a payload that sets it and names one of those three labels past an `unsubscribe` suppression. A bounce or a complaint still suppresses it, and no other label can claim the flag. |
+| Withdrawal offered to every country (major) | b6e1f02a | **Only where the law gives it.** withdraw-subscription refunds and cancels only a plan billed in the EU, the EEA or the UK. The newest paid invoice's address decides, then the customer's billing address; no country read means no right assumed (`outside_territory`). `{ preview: true }` answers the eligible count and changes nothing, and the account panel shows only when a plan qualifies. The confirmation's 14-day paragraph goes only to a checkout whose billing country is in the territory. New copy `accountPage.withdraw.outsideTerritory`, nine locales. |
+| /agents/pass bought with no Terms line or waiver box | 5a42e461 | The pass page renders `PurchaseTerms` above "Buy a pass", so the call carries the Terms version and, with the switch on, the waiver box is there. |
+| Replaced CV deleted before the mandate was saved | d501fb07 | The old CV files go only after the mandate names the new file. A failed save or a closed tab leaves the old file in place. |
+| Delete cancelled plans, then refused, then said nothing changed | 852405e8 | delete-account reads the plans, removes the files, then cancels the plans last, just before deleting the user. A partial cancel reports `subscriptionsCancelled`, and the page then says a subscription was cancelled but the account was not deleted (`accountPage.deletePlanCancelled`). `deleteRetry` now says the account was not deleted, never "nothing was deleted". Nine locales. |
+| free-keyword-scan bundles the changed scan-credits.ts | 08bf6191 | Its build moves to `free-keyword-scan.2026-10-09.1`, and it is in the deploy table. It is the first function to resolve a held pack, so its old bundle refuses a $0 comped pack. |
+| S8-014 wiring untested | c7167985 | Test only: the whole homepage is mounted with the checkout overlay up, and a back/forward restore closes it. |
+| CV missing from the data export (L3-14) | a078e830 | Each stored CV carries `downloadUrl`, signed by the member's own session for a day, with `downloadUrlExpiresAt`. A file storage would not sign carries `downloadError`. |
+| Renewal terms in English for every buyer | b0a58e6f | The subscribe buttons send the page's language. The sentence beside Stripe's pay button is in that language (nine), and the session's `locale` matches where Stripe has it: pt is pt-BR, tl is fil, and Hindi keeps Stripe's own choice. A body with no language stays English with no locale, as before. |
+| Receipt claim in this note | (this note) | Corrected above and in owner step 1: anonymous one-time buyers need the dashboard switch. |
 
 ## Already fixed on main, or not done
 
@@ -81,31 +96,34 @@ Each migration checks itself with a DO block (it RAISEs if the change did not la
 | --- | --- | --- |
 | create-checkout | `create-checkout.2026-10-09.1` | The checkout policy: origin, receipt, Terms version, referral, tax switch |
 | create-product-checkout | `create-product-checkout.2026-10-09.1` | The same (the one commissioned checkout) |
-| create-subscription-checkout | `create-subscription-checkout.2026-10-09.1` | The same, plus renewal terms and `{CHECKOUT_SESSION_ID}` on success (S8-055) |
-| create-agent-checkout | `create-agent-checkout.2026-10-09.1` | The same, plus trial and renewal terms beside the pay button |
+| create-subscription-checkout | `create-subscription-checkout.2026-10-09.2` | The same, plus renewal terms in the buyer's language, the session locale, and `{CHECKOUT_SESSION_ID}` on success (S8-055) |
+| create-agent-checkout | `create-agent-checkout.2026-10-09.2` | The same, plus trial and renewal terms beside the pay button, in the buyer's language |
 | create-pass-checkout | `create-pass-checkout.2026-10-09.1` | The checkout policy |
 | create-scan-pack-checkout | `create-scan-pack-checkout.2026-10-09.1` | The checkout policy; no attach to the typed address's customer (S8-059) |
 | create-test-checkout | `create-test-checkout.2026-10-09.1` | First build stamp; the policy. A dev page only, so deploying it is optional |
 | create-portal-session | `create-portal-session.2026-10-09.1` | The return address is one of our hosts (S8-060) |
-| stripe-webhook | `stripe-webhook.2026-10-09.1` | Subscriber confirmation and trial reminder; Boost link mail at payment; `pro_` grants are not sales; referral conversions at $0 outside the catalogue |
+| stripe-webhook | `stripe-webhook.2026-10-09.2` | Subscriber confirmation and trial reminder, marked legal notices; the 14-day paragraph only for EU/EEA/UK billing; Boost link mail at payment; `pro_` grants are not sales; referral conversions at $0 outside the catalogue |
 | verify-product-purchase | `verify-product-purchase.2026-10-09.1` | Saved copy for every generated product; inProgress; no "Ready" mail without content (S8-009); $0 referral record |
 | send-product-email | `send-product-email.2026-10-09.1` | Session link and ID in the mail (S8-015) |
 | retry-failed-deliveries | `retry-failed-deliveries.2026-10-09.1` | Passes the session ID to the mail |
 | analyze-resume | `analyze-resume.2026-10-09.1` | Accepts a comped $0 session (S8-053) |
 | scan-credits | `scan-credits.2026-10-09.1` | A comped pack's grant (S8-053) |
 | verify-scan-pack-purchase | `verify-scan-pack-purchase.2026-10-09.1` | This purchase's credits only (S8-054) |
-| delete-account | `delete-account.2026-10-09.1` | First build stamp; cancels plans, removes CVs (L6-30, L3-13) |
+| delete-account | `delete-account.2026-10-09.2` | First build stamp; removes CVs, then cancels plans, then deletes (L6-30, L3-13); says how many plans a refusal had cancelled |
 | get-account-data | `get-account-data.2026-10-09.1` | The account's passes (L6-12) |
 | api-key-request | `api-key-request.2026-10-09.1` | Stores the Terms version (item 12) |
-| withdraw-subscription | `withdraw-subscription.2026-10-09.1` | **New.** EU/UK withdrawal; 404 while `EU_UK_SALES` is off. `verify_jwt = false` in config.toml (it checks the token itself) |
+| withdraw-subscription | `withdraw-subscription.2026-10-09.2` | **New.** EU/UK withdrawal, for plans billed in the EU, the EEA or the UK only; `{ preview: true }`; the acknowledgement marked a legal notice; 404 while `EU_UK_SALES` is off. `verify_jwt = false` in config.toml (it checks the token itself) |
 | send-search-digest | `send-search-digest.2026-10-09.1` | Seller footer line (empty until set) |
 | send-market-pulse | `send-market-pulse.2026-10-09.1` | Seller footer line (empty until set) |
 | send-scan-report | `send-scan-report.2026-10-09.1` | Seller footer line (empty until set) |
+| process-email-queue | `process-email-queue.2026-10-09.1` | A legal notice (`legal_notice` and one of the three notice labels) passes an unsubscribe suppression; a bounce or a complaint still stops it |
+| free-keyword-scan | `free-keyword-scan.2026-10-09.1` | Bundles the changed `scan-credits.ts`: a comped $0 scan pack the browser holds now pays for a scan (S8-053) |
 
 **Shared modules changed.** `checkout-policy.ts` (new), `subscription-notice.ts` (new), `withdrawal.ts` (new), `seller.ts` (new), `purchase-link.ts` (new), `full-analysis.ts`, and `scan-credits.ts`.
 
-- free-keyword-scan imports `scan-credits.ts` but uses none of what changed, so redeploying it is optional.
+- free-keyword-scan imports `scan-credits.ts` and resolves a held pack through the changed `grantFromStripe`, so it is in the table. Its old bundle refuses a $0 comped pack.
 - create-checkout, retry-failed-deliveries and stripe-webhook import `full-analysis.ts`. All three are in the table.
+- Every importer of `checkout-policy.ts` and `withdrawal.ts` is in the table (both modules are new in this branch).
 
 **Deploy the frontend with the same commit.** It carries:
 
@@ -122,8 +140,8 @@ Each migration checks itself with a DO block (it RAISEs if the change did not la
 
 | Name | Where | Effect |
 | --- | --- | --- |
-| `EU_UK_SALES` = `on` | function secret | Stripe Tax, billing address and tax ID on every session; the waiver or service-start box is required; the confirmation's 14-day paragraph; withdraw-subscription answers |
-| `VITE_EU_UK_SALES` = `on` | frontend build | The box above every buy button, and the account's withdrawal panel. Turn it on together with `EU_UK_SALES` |
+| `EU_UK_SALES` = `on` | function secret | Stripe Tax, billing address and tax ID on every session; the waiver or service-start box is required; the confirmation's 14-day paragraph for EU/EEA/UK billing addresses; withdraw-subscription answers, for plans billed there only |
+| `VITE_EU_UK_SALES` = `on` | frontend build | The box above every buy button, and the account's withdrawal panel (shown only when the function's preview finds a qualifying plan). Turn it on together with `EU_UK_SALES` |
 | `STRIPE_TERMS_CONSENT` = `on` | function secret | Stripe's own required Terms checkbox (`consent_collection`). Needs the Terms URL in the Stripe dashboard first, or Stripe refuses every session |
 | `CHECKOUT_EXTRA_ORIGINS` | function secret | A comma-separated list of exact https origins (for example the Lovable preview) that Stripe may return to |
 | `STRIPE_PORTAL_LOGIN_URL` | function secret | Stripe's emailed portal sign-in (`https://billing.stripe.com/...`), named in the notices and in delete-account's 409 |
@@ -132,9 +150,10 @@ Each migration checks itself with a DO block (it RAISEs if the change did not la
 ## Owner steps
 
 1. **Receipts (item 1).**
-   - One-time products now pass `receipt_email`, which Stripe honours whatever the dashboard says.
-   - For plan renewals, in the Stripe Dashboard go to Settings, then Customer emails:
-     - turn on **Successful payments**;
+   - A one-time checkout passes `receipt_email` only when the buyer's address is known when the session is made: a signed-in buyer, or one who typed an address (the product and scan-pack forms). Stripe honours it whatever the dashboard says.
+   - **An anonymous $5 Full Analysis buyer, most of them, gets no receipt unless Successful payments is on.** Plan renewals need the same switch.
+   - In the Stripe Dashboard go to Settings, then Customer emails:
+     - turn on **Successful payments** (anonymous one-time buyers and renewals);
      - under Subscriptions and invoices, turn on **Send finalized invoices and credit notes to customers**.
    - Code cannot check these switches.
 2. **Trial reminder (item 11).** Add `customer.subscription.trial_will_end` to the stripe-webhook endpoint's events. The confirmation needs nothing new.
@@ -156,7 +175,7 @@ Each migration checks itself with a DO block (it RAISEs if the change did not la
 
 ## Rollback
 
-- **Functions.** Redeploy each function from main at 12a37285, or from the build production serves now. withdraw-subscription is new: delete it, or leave it, since it answers 404 while the switch is off.
+- **Functions.** Redeploy each function from main at 12a37285, or from the build production serves now (process-email-queue and free-keyword-scan included). withdraw-subscription is new: delete it, or leave it, since it answers 404 while the switch is off.
 - **Frontend.** Redeploy the previous build.
 - **Migrations, newest first, each after its functions have been rolled back.**
   - 133000:
@@ -194,12 +213,15 @@ Each migration checks itself with a DO block (it RAISEs if the change did not la
   - `termsVersion` is present for buttons that showed the line, and null for the free report's button (see the handoffs).
   - `referral` is true for referred visitors on all six checkouts.
   - `affiliate_conversions` gets $0 rows for non-catalogue referred sales.
-- **Stripe:** one-time charges show a receipt sent to the buyer's address.
+- **Stripe:** a signed-in or typed-address one-time charge shows a receipt sent to that address; an anonymous Full Analysis charge shows one only once Successful payments is on.
+- **Legal notices:** a `subscription-confirmation`, `trial-ending` or `subscription-withdrawal` to an address in `suppressed_emails` with reason `unsubscribe` logs `sent`, not `suppressed` (the verifier prints the query).
 - **Lifecycle:** `lifecycle_reads` rows per account per day stay at or under 1,000. No member is refused on reload. `user_applications` updates that change `job_id` fail (no page does this).
-- **Accounts:** get-account-data returns `passes` for a pass buyer. One owner-run test account shows that delete-account cancels the plan and empties `resumes/{id}/`.
+- **Accounts:** get-account-data returns `passes` for a pass buyer. One owner-run test account shows that delete-account empties `resumes/{id}/`, then cancels the plan, then deletes. The account page's export carries a working `downloadUrl` for each stored CV.
 - **Withdrawal:** withdraw-subscription answers 404 `not_available` until the switch is on (the verifier checks this).
 
 ## Handoffs to the integrator and other groups
+
+- **Shared build stamps.** This branch now bumps `process-email-queue` (wave 2 email-ops' function) and `free-keyword-scan` (wave3/scan-ai changes it too). If both branches bump the same function, keep the higher build and both changes; the verifier asks for 2026-10-09.1 or later of each.
 
 - **wave3/scan-ai (FreeKeywordResults).**
   - Their rewrite of the free report (94778203) leaves two upgrade buttons: the $5 Full Analysis and Pro. Neither has the Terms line yet.
