@@ -12,8 +12,11 @@
  * part that closes a hole this project has actually fallen into.
  */
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { tmpdir } from "node:os";
+import { execFileSync } from "node:child_process";
+import { parseDocument } from "yaml";
 
 const wf = readFileSync(resolve(__dirname, "../../.github/workflows/deploy.yml"), "utf8");
 
@@ -25,21 +28,79 @@ describe("verification is not optional", () => {
     expect(wf).toMatch(/needs: deploy\s*\n\s*if: always\(\)/);
   });
 
-  it("compares the LIVE version against the repo, and fails on mismatch", () => {
-    expect(wf).toMatch(/EXPECTED=\$\(grep -m1 -oE 'BUILD_VERSION/);
-    expect(wf).toMatch(/if \[ "\$LIVE" != "\$EXPECTED" \]; then/);
-    expect(wf).toMatch(/exit 1/);
-  });
-
   it("waits before reading, so propagation is not mistaken for a stale deploy", () => {
     expect(wf).toMatch(/sleep 45/);
   });
+});
 
-  it("degrades to a warning when it cannot measure, rather than a false pass", () => {
-    // No credentials means UNKNOWN, not OK. But it must not fail the run
-    // either — an unconfigured pipeline that is permanently red teaches people
-    // to ignore red.
-    expect(wf).toMatch(/cannot verify what is live/);
+/**
+ * THE VERIFY STEP, RUN (L12-08). It read SUPABASE_URL / SUPABASE_ANON_KEY from
+ * repo secrets that were never set, printed a warning and exited 0 on every
+ * push since it was written: a green "verify" that had compared nothing. This
+ * runs the step as GitHub does (bash -eo pipefail) against a fake curl, a
+ * fixture .env and a fixture job-board BUILD_VERSION, and reads its exit code.
+ */
+describe("the verify step compares, and cannot pass without comparing", () => {
+  type Step = { name?: string; run?: string };
+  const steps = ((parseDocument(wf).toJS() as { jobs?: { verify?: { steps?: Step[] } } }).jobs?.verify?.steps ?? []);
+  const step = steps.find((s) => /BUILD_VERSION/.test(s.run ?? ""));
+  const ENV = 'VITE_SUPABASE_PUBLISHABLE_KEY="pk_test"\nVITE_SUPABASE_URL="https://p.supabase.co"\n';
+
+  function verify(o: { env?: string; repo?: string; live?: string }): { code: number; out: string } {
+    if (!step?.run) throw new Error("no BUILD_VERSION comparison step in the verify job");
+    const dir = mkdtempSync(join(tmpdir(), "deploy-verify-"));
+    mkdirSync(join(dir, "bin"));
+    mkdirSync(join(dir, "supabase/functions/job-board"), { recursive: true });
+    writeFileSync(join(dir, ".env"), o.env ?? ENV);
+    writeFileSync(join(dir, "supabase/functions/job-board/index.ts"), `const BUILD_VERSION = "${o.repo ?? "2026-09-09.92"}";\n`);
+    writeFileSync(join(dir, "status.json"), o.live ?? "");
+    writeFileSync(join(dir, "bin", "curl"), `#!/bin/bash\ncat "${dir}/status.json"\n`);
+    chmodSync(join(dir, "bin", "curl"), 0o755);
+    try {
+      const out = execFileSync("bash", ["--noprofile", "--norc", "-eo", "pipefail", "-c", step.run], { cwd: dir, encoding: "utf8", stdio: "pipe", env: { PATH: `${join(dir, "bin")}:${process.env.PATH}` } });
+      return { code: 0, out };
+    } catch (e) {
+      const err = e as { status?: number; stdout?: string; stderr?: string };
+      return { code: err.status ?? 1, out: `${err.stdout ?? ""}${err.stderr ?? ""}` };
+    }
+  }
+  const live = (v: string) => JSON.stringify({ version: v, lastSliceAgeMin: 0 });
+
+  it("positive control: production serving this commit's build passes", () => {
+    const r = verify({ live: live("2026-09-09.92") });
+    expect(r.code, r.out).toBe(0);
+    expect(r.out).toMatch(/Deploy verified/);
+  });
+
+  it("a later build in production passes too: this build or later", () => {
+    expect(verify({ live: live("2026-09-09.100") }).code).toBe(0);
+    expect(verify({ live: live("2026-10-12.1") }).code).toBe(0);
+  });
+
+  it("an older build in production fails, naming both builds", () => {
+    const r = verify({ live: live("2026-09-09.90") });
+    expect(r.code).not.toBe(0);
+    expect(r.out).toMatch(/2026-09-09\.90/);
+    expect(r.out).toMatch(/2026-09-09\.92/);
+    expect(verify({ live: live("2026-09-09.9") }).code, "compared as text, .9 would sort after .92").not.toBe(0);
+  });
+
+  it("with no URL or key to read, it fails: nothing compared is not verified", () => {
+    const r = verify({ env: "OTHER=1\n", live: live("2026-09-09.92") });
+    expect(r.code, r.out).not.toBe(0);
+    expect(r.out).toMatch(/nothing was compared/);
+  });
+
+  it("a status that answers no version, or no JSON, fails", () => {
+    expect(verify({ live: "<html>502</html>" }).code).not.toBe(0);
+    expect(verify({ live: JSON.stringify({ lastSliceAgeMin: 0 }) }).code).not.toBe(0);
+    expect(verify({ live: "" }).code).not.toBe(0);
+  });
+
+  it("the committed .env carries the pair the step reads", () => {
+    const dotenv = readFileSync(resolve(__dirname, "../../.env"), "utf8");
+    expect(dotenv).toMatch(/^VITE_SUPABASE_URL=\S+/m);
+    expect(dotenv).toMatch(/^VITE_SUPABASE_PUBLISHABLE_KEY=\S+/m);
   });
 });
 
