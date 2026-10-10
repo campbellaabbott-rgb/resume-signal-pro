@@ -128,6 +128,21 @@ export function postingStubPage({ path, id, state, since, title, company, compan
 }
 
 /**
+ * The ledger entry for a posting URL that keeps a noindex page, and the
+ * names that page prints: this bake's answer over the previous ledger's
+ * entry. The employer is named by its own name (F1): a gone payload and an
+ * older ledger carry the stored name ("Ms"), which the page and its meta
+ * description printed. A state that holds keeps its first date.
+ */
+export function postingStubEntry({ stub, prior, today, first = null, employerName, tokenOf }) {
+  const p = prior && typeof prior === "object" ? prior : {};
+  const since = p.state === stub.state && typeof p.since === "string" ? p.since : today;
+  const token = stub.job?.token ?? p.token ?? tokenOf(stub.id) ?? null;
+  const company = employerName(token, stub.company ?? p.company ?? null) || null;
+  return { state: stub.state, since, first: p.first ?? first ?? today, title: stub.title ?? p.title ?? null, company, token };
+}
+
+/**
  * The employer boards that get a page this bake, ranked and gated on OPEN
  * roles (the count /jobs/company/{token} serves), each with the token of its
  * employer's indexable board: one employer running several boards gets one

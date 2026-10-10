@@ -10,7 +10,7 @@ import {
   type PostingRow,
 } from "@/components/jobs/posting-page";
 import { boardName, employerName, isCodeShapedName, possessive } from "@/lib/company-display";
-import { bakeLanders, landerRobots, postingRowEligible } from "../../scripts/prerender-pages.mjs";
+import { bakeLanders, landerRobots, postingRowEligible, postingStubEntry, postingStubPage } from "../../scripts/prerender-pages.mjs";
 
 /**
  * WHAT WAS WRONG, measured 2026-10-08 with a Googlebot user-agent (SEO report,
@@ -153,5 +153,28 @@ describe("the bake applies the tenant-code rule to company pages and posting pag
     expect(postingRowEligible({ ...shm, token: null }, D), "the token is read from the id when the row has none").toBe(false);
     expect(postingRowEligible(row(), D), "Morgan Stanley's posting is eligible").toBe(true);
     expect(postingRowEligible(row({ agency: true } as Partial<PostingRow>), D), "a staffing agency's row is not").toBe(false);
+  });
+});
+
+describe("a posting's noindex page names the employer too", () => {
+  // Reviewer, 2026-10-10: the "no longer listed", "retired" and "unchecked"
+  // pages took the raw stored name from the detail's gone payload (and the
+  // ledger kept it), so they said "Performance Analyst at Ms is no longer
+  // listed" and linked "Ms' open roles".
+  const esc = (x: string) => String(x).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  const tokenOf = (id: string) => postingPathParts(id)?.token ?? null;
+  const id = "workday:ms~wd5~external:JR014245";
+
+  it("the gone payload's stored name is printed as Morgan Stanley, and the ledger keeps that", () => {
+    const e = postingStubEntry({ stub: { id, state: "gone", title: "Performance Analyst", company: "Ms" }, prior: {}, today: "2026-10-10", employerName, tokenOf });
+    expect(e.company).toBe("Morgan Stanley");
+    const page = postingStubPage({ path: "/x", id, state: "gone", since: e.since, title: e.title, company: e.company, companyLink: "", windowDays: 30, esc });
+    expect(page.content).toContain("Performance Analyst at Morgan Stanley is no longer listed");
+    expect(page.description).not.toMatch(/\bMs\b/);
+  });
+
+  it("an older ledger's stored name is renamed too, and a held state keeps its date", () => {
+    const e = postingStubEntry({ stub: { id, state: "gone", title: null, company: null }, prior: { state: "gone", since: "2026-10-01", first: "2026-09-20", title: "Analyst", company: "Ms", token: "ms~wd5~external" }, today: "2026-10-10", employerName, tokenOf });
+    expect(e).toMatchObject({ company: "Morgan Stanley", since: "2026-10-01", first: "2026-09-20", title: "Analyst" });
   });
 });

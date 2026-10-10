@@ -25,7 +25,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 import {
   PRERENDER_LEDGER_PATH, POSTING_STUB_KEEP_DAYS, callBudget, companyLanderPage, contentFingerprint, landerFacts, landerHasOwnContent, landerRobots, landerThinBreaker,
-  bakeLanders, carrySitemaps, pageLastmod, postingCarryBase, postingCheckState, postingRowEligible, postingStubPage,
+  bakeLanders, carrySitemaps, pageLastmod, postingCarryBase, postingCheckState, postingRowEligible, postingStubEntry, postingStubPage,
 } from "./prerender-pages.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -2134,17 +2134,16 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       const priorOf = (path) => (ledgerIn && ledgerIn.postings && ledgerIn.postings[path]) || {};
       const writeStub = (s) => {
         if (!s.path) return;
-        const prior = priorOf(s.path);
-        const since = prior.state === s.state && typeof prior.since === "string" ? prior.since : TODAY;
-        const title = s.title ?? prior.title ?? null;
-        const company = s.company ?? prior.company ?? null;
-        const token = s.job?.token ?? prior.token ?? (D.postingPathParts?.(s.id)?.token ?? null);
+        const e = postingStubEntry({
+          stub: s, prior: priorOf(s.path), today: TODAY, first: carryBase.recheck.get(s.path),
+          employerName: D.employerName, tokenOf: (id) => D.postingPathParts(id)?.token ?? null,
+        });
         write(postingStubPage({
-          path: s.path, id: s.id, state: s.state, since: s.state === "gone" ? since : null,
-          title, company, windowDays: D.BOARD_FRESH_WINDOW_DAYS, duplicateOf: s.duplicateOf ?? null, esc,
-          companyLink: token ? companyLinkHtml(token, company || "this employer") : "",
+          path: s.path, id: s.id, state: s.state, since: s.state === "gone" ? e.since : null,
+          title: e.title, company: e.company, windowDays: D.BOARD_FRESH_WINDOW_DAYS, duplicateOf: s.duplicateOf ?? null, esc,
+          companyLink: e.token ? companyLinkHtml(e.token, e.company || "this employer") : "",
         }));
-        postingLedger[s.path] = { state: s.state, since, first: prior.first ?? carryBase.recheck.get(s.path) ?? TODAY, title, company, token };
+        postingLedger[s.path] = e;
       };
       for (const s of stubs) writeStub(s);
       for (const [path, e] of carryBase.stubs) {
