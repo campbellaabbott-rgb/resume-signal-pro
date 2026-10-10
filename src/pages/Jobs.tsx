@@ -1509,6 +1509,10 @@ interface BoardResponse {
   relatedTotal?: number;
   relatedCapped?: boolean;
   countUnavailable?: boolean;
+  /** A pay-ordered first page with nothing on it, and why: no match states pay,
+   *  or the pay read failed. Either way the matches exist, so "nothing matches"
+   *  would be false. */
+  sortUnavailable?: "no-stated-pay" | "unavailable";
   /** Proven floor when the exact total is unknowable (fuzzy tier at its cap):
    *  "at least this many match". Render as "M+", never as a total. */
   totalAtLeast?: number;
@@ -2752,6 +2756,10 @@ function JobsBoard({ boardId }: { boardId: string }) {
   const BOARD_COUNT_CAP = 10_000;
   const fmtFacet = (n: number) => (n === BOARD_COUNT_CAP ? `${n.toLocaleString()}+` : n.toLocaleString());
   const [filteredCats, setFilteredCats] = useState<Record<string, number> | null>(null);
+  // The server refused to count fields for this text search (facetSource
+  // "withheld": its counter is not the list's matcher), so the chips carry no
+  // numbers and the rail has to say why rather than look broken.
+  const [facetWithheld, setFacetWithheld] = useState(false);
   const catFacetSeq = useRef(0);
   // THE LAST UNFILTERED FACET, KEPT. The list reply carries the whole
   // board-wide categories facet only while nothing is bound; once a field is
@@ -3431,6 +3439,17 @@ function JobsBoard({ boardId }: { boardId: string }) {
     [filterState],
   );
   /**
+   * THE UNDO FOR A LIFTED PHRASE. The server reads "remote", "part time",
+   * "entry level" in the search box as filters and names them in
+   * intentFilters; the reader who meant the words as title text says so here,
+   * and every request for THAT query is sent with noIntent:true. Keyed to the
+   * query it was given for, so a new search starts lifting again on its own.
+   * Not a filter (never in boardFilterBody, no chip): it changes how the
+   * words are read, and the disclosure line is where it is shown and undone.
+   */
+  const [intentUndone, setIntentUndone] = useState<{ q: string; phrases: string[] } | null>(null);
+  const noIntent = !!q.trim() && intentUndone?.q === q.trim();
+  /**
    * THE EXACT PER-FIELD COUNTS THIS PAGE MAY PRINT. Under any other filter
    * the list reply's own facet (one entry, the active field) is all there is
    * and the counted probe fills the rest; in the field-only state the kept
@@ -3872,7 +3891,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
     // The bump retires a probe still in flight: clearing "nurse" before its
     // probe answered let that reply pass the seq check and paint the nurse
     // counts over the unfiltered board's chips.
-    if (!activeFilters) { ++catFacetSeq.current; setFilteredCats(null); return; } // unfiltered: the cached board-wide facet is correct
+    if (!activeFilters) { ++catFacetSeq.current; setFilteredCats(null); setFacetWithheld(false); return; } // unfiltered: the cached board-wide facet is correct
     const seq = ++catFacetSeq.current;
     const timer = setTimeout(async () => {
       try {
@@ -3882,14 +3901,17 @@ function JobsBoard({ boardId }: { boardId: string }) {
           // The facet answers "how many in each field", so it must not be
           // pre-narrowed to one field.
           category: undefined, includeUncategorised: undefined,
+          // The same words the list searched: an undone lift counts them as text too.
+          noIntent: noIntent || undefined,
         }, { retry: false });
         if (seq !== catFacetSeq.current) return; // a newer filter set superseded this
         const c = (res as { categories?: Record<string, number> } | null)?.categories;
         setFilteredCats(c && Object.keys(c).length ? c : null);
+        setFacetWithheld((res as { facetSource?: string } | null)?.facetSource === "withheld");
       } catch { /* counts are an enhancement — the dropdown works without them */ }
     }, 400);
     return () => clearTimeout(timer);
-  }, [q, filterState, categoryOnly]);
+  }, [q, filterState, categoryOnly, noIntent]);
 
   /**
    * A fit-ranked BROWSE is the one case where the rows on screen were chosen
@@ -3958,6 +3980,9 @@ function JobsBoard({ boardId }: { boardId: string }) {
           // "is this board filtered" from that body — counting it there would
           // put a chip on screen the reader never set and cannot clear.
           hasDescription: fitBrowseNeedsDescriptions || undefined,
+          // The reader undid the board's reading of their words as filters
+          // (the Undo beside intentFilters): every word is search text (L8-06).
+          noIntent: noIntent || undefined,
           // Searches default to relevance ranking; the toggle bypasses it.
           // THE ORDER ON SCREEN IS THE ORDER IN THE BODY, and for the most
           // common request on this board it was not.
@@ -4124,7 +4149,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
         }
       }
     },
-    [filterState, q, sortMode, searchNewestFirst, fitBrowseNeedsDescriptions, discoveredView],
+    [filterState, q, sortMode, searchNewestFirst, fitBrowseNeedsDescriptions, discoveredView, noIntent],
   );
 
   // THE SURVIVING HISTORY ENTRY CAN BE STALE. Opening the detail panel pushes
@@ -6909,6 +6934,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
             // Compound keys hit their exact per-value entry above; the family
             // prefix stays as the fallback for any key left unspecialized.
             ...boardFilterBody({ ...filterState, ...(RELAX[c.key] ?? RELAX[c.key.split(":")[0]] ?? {}) }),
+            noIntent: noIntent || undefined,
           });
           // A FAILED PROBE IS NOT A MEASUREMENT OF ZERO — it is the absence of
           // a measurement, and it must leave the sample rather than join it as
@@ -6949,7 +6975,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
     // values than the zero path did, and a suppressed dep list that no longer
     // covers what the effect reads is how a probe goes on describing the
     // previous filter set.
-  }, [loading, refreshing, error, data, activeFilters, filterState, endTarget, jobs.length, pageTotalCount]);
+  }, [loading, refreshing, error, data, activeFilters, filterState, endTarget, jobs.length, pageTotalCount, noIntent]);
 
   /**
    * DID THE SERVER ITSELF SAY THE PAGING IS OVER?
@@ -7113,6 +7139,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
           // count a denominator that is still hiding the postings this line
           // exists to count.
           ...boardFilterBody({ ...filterState, ...patch }),
+          noIntent: noIntent || undefined,
         });
         // THE WORK-MODE SENTENCE COUNTS WHAT IT SAYS IT COUNTS.
         //
@@ -7190,7 +7217,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
     })();
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, refreshing, error, data, salaryFloor, salaryCeiling, payBasis, statedPayOnly, workMode, remoteOnly, filterState]);
+  }, [loading, refreshing, error, data, salaryFloor, salaryCeiling, payBasis, statedPayOnly, workMode, remoteOnly, filterState, noIntent]);
 
   // Inline keyword highlighting: the posting's own text with the fit
   // keywords marked in place — green for terms the resume covers, amber for
@@ -8410,6 +8437,10 @@ function JobsBoard({ boardId }: { boardId: string }) {
             ? t("jobsPage.a11yLoading", "Loading openings…")
             : error
             ? t("jobsPage.a11yError", "Could not load openings. Try again.")
+            : shownCount === 0 && data?.sortUnavailable === "no-stated-pay"
+            ? t("jobsPage.sortNoStatedPayTitle", "None of these matches states its pay, so there is nothing to sort by pay")
+            : shownCount === 0 && data?.sortUnavailable
+            ? t("jobsPage.sortPayFailedTitle", "We couldn't read pay for this search just now")
             : shownCount === 0
             ? t("jobsPage.a11yNoResults", "No openings match these filters.")
             : t("jobsPage.a11yResults", "{{count}} openings shown.", { count: shownCount })}
@@ -9714,6 +9745,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
               // designing for, and a toggle that expands nothing is noise.
               const worthToggling = cats.length > 6;
               return (
+            <>
             <div className="basis-full min-w-0 w-full flex items-start gap-2">
               {/* SWIPE ON TOUCH, EXPANDER ON DESKTOP — the same split this
                   file already uses for the disclosure row above.
@@ -9772,6 +9804,15 @@ function JobsBoard({ boardId }: { boardId: string }) {
                 </button>
               )}
             </div>
+            {/* facetSource "withheld": the server would count these fields with
+                a different matcher than the list it serves, so it sends no
+                numbers for a text search, and the rail says so (L13-24). */}
+            {facetWithheld && q.trim() && (
+              <p className="basis-full text-[11px] text-muted-foreground" data-facet-withheld="">
+                {t("jobsPage.facetWithheld", "No counts beside the fields for a text search: we would count them a different way from the list, so they would not match it.")}
+              </p>
+            )}
+            </>
               );
             })()}
             {/* For you | All jobs — the board's differentiator as a first-class
@@ -10711,11 +10752,34 @@ function JobsBoard({ boardId }: { boardId: string }) {
                     );
                   })()}
                   {/* We rewrote their query. Say so. */}
-                  {Array.isArray(data?.intentFilters) && data.intentFilters.length > 0 && (
+                  {!noIntent && Array.isArray(data?.intentFilters) && data.intentFilters.length > 0 && (
                     <p className="text-xs text-muted-foreground mb-2">
                       {t("jobsPage.intentFilters", "Read {{phrases}} as a filter and applied it, rather than searching for those words.", {
                         phrases: data.intentFilters.map((p) => `“${p}”`).join(", "),
-                      })}
+                      })}{" "}
+                      {/* The undo the disclosure promised: the same query again,
+                          every word searched as text (noIntent). */}
+                      <button
+                        type="button"
+                        className="underline underline-offset-2 hover:text-foreground"
+                        onClick={() => setIntentUndone({ q: q.trim(), phrases: data.intentFilters! })}
+                      >
+                        {t("jobsPage.intentUndo", "Search those words as text instead")}
+                      </button>
+                    </p>
+                  )}
+                  {noIntent && intentUndone && (
+                    <p className="text-xs text-muted-foreground mb-2">
+                      {t("jobsPage.intentUndone", "Searched for {{phrases}} as words, not as a filter.", {
+                        phrases: intentUndone.phrases.map((p) => `“${p}”`).join(", "),
+                      })}{" "}
+                      <button
+                        type="button"
+                        className="underline underline-offset-2 hover:text-foreground"
+                        onClick={() => setIntentUndone(null)}
+                      >
+                        {t("jobsPage.intentRedo", "Apply them as filters again")}
+                      </button>
                     </p>
                   )}
                   {/* And when we removed results on their behalf. "engineer not
@@ -10953,6 +11017,34 @@ function JobsBoard({ boardId }: { boardId: string }) {
                   {t("jobsPage.clearSearch", "Clear the search")}
                 </Button>
               )}
+            </div>
+          ) : jobs.length === 0 && data?.sortUnavailable ? (
+            /* THE PAY ORDER HAD NOTHING TO ORDER, WHICH IS NOT "NOTHING MATCHES".
+               The salary branch serves only postings with a comparable figure,
+               so an empty first page there means none of the matches states
+               pay (or the pay read failed): the matches exist, and the remedy
+               is the order, not a filter. */
+            <div className="rounded-2xl border border-border bg-card p-6 text-center my-4" data-sort-unavailable={data.sortUnavailable}>
+              <p className="font-semibold text-foreground mb-1">
+                {data.sortUnavailable === "no-stated-pay"
+                  ? t("jobsPage.sortNoStatedPayTitle", "None of these matches states its pay, so there is nothing to sort by pay")
+                  : t("jobsPage.sortPayFailedTitle", "We couldn't read pay for this search just now")}
+              </p>
+              <p className="text-sm text-muted-foreground mb-3">
+                {data.sortUnavailable === "no-stated-pay"
+                  ? t("jobsPage.sortNoStatedPayBody", "Sorting by pay shows only postings with a figure we can compare. The matches are still there under another order.")
+                  : t("jobsPage.sortPayFailedBody", "The pay order did not answer this time. The matches are still there under another order, or try again in a moment.")}
+              </p>
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button size="sm" variant="default" onClick={() => { setSortMode("newest"); if (q.trim()) setSearchNewestFirst(true); }}>
+                  {t("jobsPage.sortShowNewest", "Show them newest first")}
+                </Button>
+                {data.sortUnavailable === "unavailable" && (
+                  <Button size="sm" variant="outline" onClick={() => fetchJobs(0)}>
+                    {t("jobsPage.retry", "Try again")}
+                  </Button>
+                )}
+              </div>
             </div>
           ) : jobs.length === 0 ? (
             /* Server-zero: an actionable exit, never a dead end. Each button is
