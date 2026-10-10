@@ -4,8 +4,8 @@
 #
 # Ships: a frontend build (board, header, posting page, Ghost Index, layoff
 # lines, skip link, visit recorder); layoff-filings 2026-10-09.1; agent-runner,
-# public-api, send-search-digest and agent-mcp rebuilt for the fit clamp
-# (2026-10-09.1); four migrations 20261009160000 .. 160300; and job-board
+# public-api, send-search-digest, agent-mcp, job-fit and application-fit
+# rebuilt for the fit clamp (2026-10-09.1); four migrations 20261009160000 .. 160300; and job-board
 # parser changes that ride the job-board group's .92 build (judged INFO here,
 # their verifier is the job-board group's).
 #
@@ -16,11 +16,12 @@
 # x-rb-budget: probe. Nothing is written, sent or triggered.
 # PRE-DEPLOY (2026-10-10, run from this branch): every build line FAILs, the
 # bundle literal lines FAIL, eu~lookers and eu~rubyhotels answer identical
-# intel, sigmasoftware2 answers a TX wage cell, lf_workforce is absent.
+# intel, sigmasoftware2 answers a TX wage cell, lf_workforce is absent;
+# job-fit/application-fit carry no x-fn-build; the peso line PASSes (0 of 47).
 echo "== 77. wave 3 board-data-ingest: board explanations, phone header, layoff filings, landers, wage cells, parsers =="
 
 # ── function builds ─────────────────────────────────────────────────────────
-for PAIR in "agent-runner|2026-10-09|1" "public-api|2026-10-09|1" "send-search-digest|2026-10-09|1" "agent-mcp|2026-10-09|1"; do
+for PAIR in "agent-runner|2026-10-09|1" "public-api|2026-10-09|1" "send-search-digest|2026-10-09|1" "agent-mcp|2026-10-09|1" "job-fit|2026-10-09|1" "application-fit|2026-10-09|1"; do
   W77_FN=${PAIR%%|*}; W77_REST=${PAIR#*|}; W77_D=${W77_REST%%|*}; W77_N=${W77_REST#*|}
   W77_H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$W77_FN" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
   if [ -z "$W77_H" ]; then echo "FAIL  $W77_FN preflight carries no x-fn-build (not deployed, or the previous bundle is serving)"
@@ -83,5 +84,11 @@ const get=async(u)=>{try{const r=await fetch(u);return r.ok?await r.text():""}ca
   info("job-board status.version = "+st.version+": the parser changes (pay currencies, up-to ceilings, per-figure periods, Recruitee/Lever pay, country, seniority, non-Latin cards) serve from the job-board group build that carries this branch (.92 or later)");
   const lst=await (await fetch(B+"/functions/v1/job-board",{method:"POST",headers:{"content-type":"application/json","x-rb-budget":"probe",apikey:K,authorization:"Bearer "+K},body:JSON.stringify({action:"list",location:"Bangalore",groupSimilar:false,limit:60})})).json().catch(()=>({}));
   if(Array.isArray(lst.jobs)){const us=lst.jobs.filter(j=>/, IN$/.test(String(j.location||""))&&j.country==="US").length;info("location Bangalore: "+us+" of "+lst.jobs.length+" rows end \", IN\" and are stored US (falls as boards are re-read after the job-board build: L7-14)")}
+  // A bare "$" in Colombia/Argentina is the peso only at a million a year or more (review of L13-19):
+  // remote US-dollar jobs placed there must keep USD after the v10 salary re-read.
+  let peso=0,seen=0;
+  for(const c of ["CO","AR"]){const r=await (await fetch(B+"/functions/v1/job-board",{method:"POST",headers:{"content-type":"application/json","x-rb-budget":"probe",apikey:K,authorization:"Bearer "+K},body:JSON.stringify({action:"list",country:c,hasStatedPay:true,limit:100})})).json().catch(()=>({}));
+    for(const j of (r.jobs||[])){const s=String(j.salary||"");if(!/^\$/.test(s)||/million|\bM\b/i.test(s))continue;const big=(s.match(/[\d][\d,.]*/g)||[]).some(x=>Number(x.replace(/[,.]/g,""))>=1e6);if(big)continue;seen++;if(["COP","ARS"].includes(j.salaryCurrency))peso++}}
+  ok(peso===0,"bare-$ CO/AR pay under a million is not labelled in pesos ("+peso+" of "+seen+" rows; Bogota \"$75,000-$100,000\" is US dollars)");
 })();
 '

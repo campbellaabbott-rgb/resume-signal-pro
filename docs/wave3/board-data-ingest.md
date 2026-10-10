@@ -18,7 +18,8 @@ score on job pages, a phone menu, the first job above the fold).
 | public-api | `public-api.2026-10-09.1` | any time (fit clamp) |
 | send-search-digest | `send-search-digest.2026-10-09.1` | any time (fit clamp) |
 | agent-mcp | `agent-mcp.2026-10-09.1` | any time (fit clamp) |
-| job-fit, application-fit | no build constant; redeploy so they carry the fit clamp | any time |
+| job-fit | `job-fit.2026-10-09.1` (new marker, review 2026-10-10) | any time (fit clamp) |
+| application-fit | `application-fit.2026-10-09.1` (new marker) | any time (fit clamp) |
 | job-board | **no bump here**: rides the job-board group's `.92` (see "Paste into the .92 section") | the job-board group's order |
 
 `_shared/fit-score.ts` changed, so every importer above is rebuilt. If another
@@ -84,7 +85,7 @@ signature and the same grants, two definitions are rewritten from the catalogue.
 | Item | Fix |
 |---|---|
 | S8-021 | migration 160200 + `src/lib/employer-group.ts` for the two client caches (getEmployerCtx, compare drawer) |
-| S8-026 | migration 160000; the page prints an exit-cost 8-K as "filed an 8-K under Item 2.05 (costs of exiting or disposing of an activity)" with a neutral chip; layoff-filings marks a progress report on a previously announced plan as no workforce event (narrow: none of the 28 saved filings flips) |
+| S8-026 | migration 160000; the page prints an exit-cost 8-K as "filed an 8-K under Item 2.05 (costs of exiting or disposing of an activity)" with a neutral chip; layoff-filings marks a progress report on a previously announced plan as no workforce event (narrow: none of the 28 saved filings flips), but never a section that commits to new, additional, expanded or second-phase reductions ("an expansion of the previously announced plan ... 300 additional employees" stays a workforce event with its headcount; review 2026-10-10). A headcount alone does not make a section new: a progress report restates the cut it reports on. Stored rows: `edgar_reread` (owner step) |
 | S8-096 | the Ghost Index says "State agencies stamp a notice a median N days after its notice date ...; when it reaches us after that is not measured" (nine locales) |
 
 ### Ingest: layoff-filings 2026-10-09.1
@@ -92,25 +93,26 @@ signature and the same grants, two definitions are rewritten from the catalogue.
 | Item | Fix |
 |---|---|
 | S8-025 | Illinois' notice is the earliest date in "Notification Date(s)"; any state's notice date later than its stamp is refused as a notice date (`notice_after_stamp=N` in the feed note); migration 160100 for stored rows |
-| S8-106 | Oregon map pinned to the live header (WARN#, Company Name, Location, Layoff Date, Laid Off, Layoff Type, Received Date; read 2026-10-10, 1,374 rows) and lines folded by WARN#; an unverified map whose count resolves to nothing is refused |
+| S8-106 | Oregon map pinned to the live header (WARN#, Company Name, Location, Layoff Date, Laid Off, Layoff Type, Received Date; read 2026-10-10, 1,374 rows, saved as `scripts/data/layoff-samples/bln-raw-or.csv` and tested); lines fold only where WARN# AND Location agree (9556 is 105 at New York, not 106; 9509's five sites stay five), because the card says "N positions at SITE" against a single-site bar; "Company - Site" filers match on the company (Amentum, PacificSource, Wells Fargo); an unverified map whose count resolves to nothing is refused. **Counts only**: Oregon names many notices by facility ("Medford Delivery Facility" 170, "Portland Truck Manufacturing Facility" 387, "Tualatin Oregon Facility" 87, "Lombard Street Facility" 80); those now carry their counts but match no board until a facility-to-employer alias exists, so the two notices the register named still reach no card |
 | S8-107 | a validator is stored only for an ok read; a feed whose last read was refused is fetched without If-None-Match |
-| S8-108 | a primary-document GET that answers 429/408/425/5xx/nothing stores no row (`document_<status>_retry`), so the next run reads it; 404/410 stored as before |
+| S8-108 | a primary-document GET that answers 429/408/425/5xx/nothing stores no row (`document_<status>_retry`), so the next run reads it; 404/410 stored as before. Stored placeholders: `edgar_reread` |
+| S8-026 + S8-108, rows already stored | `POST {action:"edgar_reread"}` (one-shot, cron key): re-reads active `sec_8k_205` rows inside the 90-day window that are a "(document not read)" placeholder, or a workforce event whose stored section is a status update; replaces a row only when the document was read (a failed read never overwrites a good row); chunked by filing_id with a self-kick; logged under the `edgar_backfill` read-log kind (`reread ... replaced= flipped= unread=`), because the kind check admits no new kind without a migration |
 | S8-109 | Massachusetts' "*Updated* <employer>" is an amendment (affix wrapped in punctuation) |
 | S8-024 | lca_wages refuses the rejected-pair ledger (`LCA_REFUSED_TOKENS`: socialfinance, sigmasoftware2); migration 160300 (a live US posting); scripts/load-oflc-lca.mjs refuses a name two filers stand behind (two legal forms or two EMPLOYER_FEIN values, `two_filers_one_name=`) |
-| S8-105 | lca_wages posts no cell for a token the catalogue carries under two vendors (139 tokens; 4 carry cells: sunday, echo, roadrunner, lockwood). Over the embedded payload: 5,534 cells, 5,460 posted (65 ledger, 9 twin) |
+| S8-105 (wage side only) | lca_wages posts no cell for a token the catalogue carries under two vendors (139 tokens; 4 carry cells: sunday, echo, roadrunner, lockwood). Over the embedded payload: 5,534 cells, 5,460 posted (65 ledger, 9 twin). **The layoff side is still open**: `layoff_matches_rebuild` (SQL) does not refuse twin tokens, so a filing matched to one (sunday, echo) would print on both vendors' boards. Latent today; see "Not fixed here" |
 
 ### Ingest: job-board parsers (ride `.92`)
 
 | Item | Fix |
 |---|---|
-| L13-19 | NT$/AR$/CL$/COL$/RD$/$U, and a bare $ in TW/AR/CL/CO/DO/UY, are those currencies; a figure in millions/billions is no wage. These six currencies have no `salary_rank_usd` arm, so they rank NULL (out of the pay order and floors) instead of ranking as US dollars at ~30x; the arms are the same column rewrite HKD waits for |
+| L13-19 | NT$/AR$/CL$/COL$/RD$/$U are those currencies and a bare $ in Taiwan is TWD. A bare $ in AR/CL/CO/DO/UY is the peso only when, read as dollars, it would pay a million a year or more (figure x period multiplier, the top of a range); otherwise USD, because most bare-$ pay placed there is a remote job paid in dollars (review 2026-10-10: the first cut moved 20 of 34 CO and 27 of 32 AR stated-pay rows to a peso, e.g. LawnStarter "$75,000–$100,000" in Bogotá; now 0 of the dollar-magnitude rows, and AR "$900,000 - $1,000,000" is ARS). A figure in millions/billions is no wage. These six currencies have no `salary_rank_usd` arm, so they rank NULL instead of ranking as US dollars at ~30x; the arms are the same column rewrite HKD waits for. Known residue: a DOP/UYU monthly wage of 35,000-83,000 written with a bare $ reads as USD, and the parity cap then refuses its annual figure (no false rank, a wrong label) |
 | L7-06 | "Up to $X" alone sets no floor; the miner keeps the qualifier |
 | L7-07 | a period after each figure keeps the whole range (miner and parser) |
 | L7-04 | Recruitee pay reads `salary.period` |
 | L7-05 | Lever pay keeps exact figures (statedPayText); a one-time payment is not a rate |
-| L7-14 | a trailing ", XX" that is the leading city's own country wins; an upper-case trailing state code beats a country word earlier in the string; COUNTRY_MAP_VERSION 7 -> 8 |
+| L7-14 | a trailing ", XX" that is the leading city's own country wins; an upper-case trailing state code beats a country word earlier in the string, unless that word names the same code ("India, IN", "Remote (Canada), CA", "Frankfurt am Main, Germany, DE" keep their country; review 2026-10-10); COUNTRY_MAP_VERSION 7 -> 8 |
 | L7-15 | iCIMS' country_code gives way to a location that plainly names another country |
-| L7-08 / L7-09 / L8-15 | staff/lead/partner rungs only where they are rungs; company-age and minimum-age sentences are not requirements; nothing above 20 years is one |
+| L7-08 / L7-09 / L8-15 | staff/lead/partner rungs only where they are rungs; a minimum age is not a requirement wherever "of age", "old" or "older" sits between the number and the experience word, and "to work" is availability, not experience ("Must be 18 years or older and able to work weekends"); a company's age is refused only in a company clause ("for over 15 years, Acme has been", "we've been ... for nearly 10 years"), so "Over 10 years of experience" reads 10; a version number between the years and the word ("Python 3", "Office 365", "HTML5") no longer drops the requirement, only a second "<n> years" does; nothing above 20 years is one |
 | L13-22 | clusterKey keeps letters and digits of every script |
 | L8-13 | fit precision capped at 1, the score at 100 (`_shared/fit-score.ts`) |
 
@@ -122,7 +124,8 @@ signature and the same grants, two definitions are rewritten from the catalogue.
 | L7-12 (14 boards named "Jobs"/"Job Board") | each name has to be read from the employer's own page, then RENAMED_TOKENS + NAME_SYNC_VERSION in job-board/index.ts; the job-board group's catalogue lane |
 | L7-16 (six vendors without a drift canary, UKG/Paylocity raw counts 0, oversize canaries) | needs live in-budget board picks per vendor and the UKG/Paylocity raw shapes; job-board's health lane |
 | S8-024, per-cell state check | `region_code` is not stated on enough postings to tell "no posting in that state" from "the location named no state" |
-| S8-105, (vendor, token) keys | schema work on oflc_lca_wages and layoff_matches; the twin-token refusal stands in |
+| S8-105, (vendor, token) keys, and the layoff side of the twin refusal | schema work on oflc_lca_wages and layoff_matches; the twin-token refusal stands in for wage cells only. Refusing twin tokens in `layoff_matches_rebuild` needs a rewrite of that SQL function (layoff_board_names carries vendor, so the rule is expressible) and a live check of what it un-matches; not safe without production access. Latent: measured 2026-10-10, `get_employer_layoff_filings` (anon) over all 139 twin tokens answers 0 filings |
+| Oregon facility-named filers | need a facility-to-employer alias table (e.g. "Portland Truck Manufacturing Facility" to its employer); nothing here invents one |
 | L7-08/09, L8-15 on stored rows | backfill-experience fills NULL bands only; a re-derive sweep for title-only rows and min_years > 20 or age sentences is a job-board handoff. New rows are right from `.92` |
 | the lifted pay figure's undo | needs a server flag (above) |
 
@@ -140,8 +143,12 @@ signature and the same grants, two definitions are rewritten from the catalogue.
 > first build after one full cold rotation of .92**, until then a genuine pay
 > edit on those two vendors is patched without a field-change row; iCIMS
 > country; seniority words and year sentences (new rows only); clusterKey in
-> every script; fit capped at 100. Source +10,465 bytes (job-board + _shared
-> .ts 4,112,395 -> 4,122,860).
+> every script; fit capped at 100. Review fixes (2026-10-10): a bare $ in
+> AR/CL/CO/DO/UY is the peso only at a million a year or more; age sentences
+> and "to work" are not experience, "over 10 years of experience" and
+> "Python 3 experience" read again; a country word beats its own code read as
+> a state. Source +11,777 bytes (job-board + _shared .ts 4,112,395 ->
+> 4,124,172).
 
 ## Owner steps
 
@@ -151,6 +158,13 @@ signature and the same grants, two definitions are rewritten from the catalogue.
   answers cells (section 77 prints them, INFO). Migration 160300 already hides
   sigmasoftware2 (no live US posting).
 - Apply 160100 only after the new layoff-filings serves (above).
+- After layoff-filings 2026-10-09.1 serves (and ideally after 160000, whose
+  readers print the flag it corrects): run `POST {action:"edgar_reread"}`
+  once with the cron key. It self-kicks until done; read the
+  `edgar_backfill` read-log rows whose note starts `reread`. Expect
+  `flipped` to count stored status updates (Freshworks 2026-08-04 if its
+  section is one) and `replaced` to include every placeholder SEC now
+  serves; `unread` rows keep their old reading.
 - In the job-board build after `.92` has done one cold rotation: delete
   `OUR_PAY_REWRITE` (job-board/index.ts).
 - Nothing in Stripe, nothing in auth settings.
@@ -182,7 +196,10 @@ signature and the same grants, two definitions are rewritten from the catalogue.
   2026-09-25.1), every bundle literal FAIL, eu~lookers / eu~rubyhotels both
   usd_n 249, sigmasoftware2 TX 105976-134971, no lf_workforce; the stamp lag
   0 (PASS); job-board serving .90; "Bangalore" list 2 of 60 rows ", IN"
-  stored US.
+  stored US. Re-run after the review fixes (2026-10-10): job-fit and
+  application-fit FAIL (no x-fn-build yet), the peso line PASS (0 of 47
+  bare-$ CO/AR rows under a million labelled in pesos; production labels
+  every bare $ USD until v10).
 - Analytics: `job_page/score_against_job` over `job_page/posting_view`; the
   funnel's referred landings should rise from the floor of 37/month now that
   job pages, data pages, /agents and /r/ record (read in the owner's SQL
@@ -191,4 +208,7 @@ signature and the same grants, two definitions are rewritten from the catalogue.
   should NOT spike (OUR_PAY_REWRITE); country=US rows ending ", IN"/", DE"
   should fall as boards are re-read.
 - layoff_feed_health for OR: rows_last_run > 0 with workers; IA/MD/GA/AZ/VA
-  keep their header notes on 304 nights.
+  keep their header notes on 304 nights. OR filers with "Facility" in the
+  name stay unmatched (expected; no alias).
+- Section 77's peso line: bare-$ CO/AR pay under a million labelled COP/ARS
+  must stay 0 after the v10 re-read (it is 0 before, when every bare $ is USD).

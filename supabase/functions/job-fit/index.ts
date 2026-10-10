@@ -32,10 +32,14 @@ import { computeFit, resumeRoleTerms, scanResume } from "../_shared/fit-score.ts
 
 // x-rb-bucket is deliberately NOT in Allow-Headers: a browser cannot send it,
 // and a server caller does not preflight.
+// Provable from outside: every response, the preflight included, carries it.
+// 2026-10-09.1: the fit score is capped at 100 (_shared/fit-score.ts, L8-13).
+const FN_BUILD = "job-fit.2026-10-09.1";
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "x-fn-build": FN_BUILD,
 };
 const json = (b: unknown, status = 200, extra: Record<string, string> = {}) =>
   new Response(JSON.stringify(b), { status, headers: { "Content-Type": "application/json", ...cors, ...extra } });

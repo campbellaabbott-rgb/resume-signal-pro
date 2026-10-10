@@ -7,9 +7,14 @@
 import { computeFit } from "../_shared/fit-score.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// Provable from outside: every response, the preflight included, carries it.
+// 2026-10-09.1: the fit score is capped at 100 (_shared/fit-score.ts, L8-13).
+const FN_BUILD = "application-fit.2026-10-09.1";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "x-fn-build": FN_BUILD,
 };
 
 Deno.serve(async (req) => {
