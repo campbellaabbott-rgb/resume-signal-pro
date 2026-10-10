@@ -338,7 +338,7 @@ describe("failure state is kept per board on a shared token (L13-49)", () => {
 
   it("index.ts folds, skips and prunes by board key, and prunes a board's own vendor only", () => {
     expect(CODE).toMatch(/okTokens: okKeys,/);
-    expect(CODE).toMatch(/if \(skipTokens\.has\(boardKeyOf\(s\)\)\) continue;/);
+    expect(CODE).toMatch(/if \(skipTokens\.has\(boardKeyOf\(s\)\)\) \{ baseConsumed\.add\(boardKeyOf\(s\)\); continue; \}/);
     expect(CODE).toMatch(/retryBoards = dueKeys\s*\.map\(boardByKey\)/);
     expect(CODE).toMatch(/await pruneWholeBoard\(client, tk, "board_dormant", board\?\.source \?\? keySource\(key\)\)/);
     expect(CODE).toMatch(/\}, SHARED_TOKENS\)\.state;/);

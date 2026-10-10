@@ -10259,3 +10259,29 @@ already sends those queries to the simple tier for that reason (R3). The pay
 order took the alias expansion already (wave 2, L8-02). ftsQuery's variant is
 now quoted, a phrase 'x' <-> 's', which still matches "Domino's" (stored as
 'domino' 's') in the simple tiers that use it.
+
+## n446-the-cold-cursor-passes-a-prefix
+
+Above: `baseConsumed`, rotation.ts `baseConsumedPrefix`, the post-loop
+`advanceProgress` call.
+
+Sweep S8-087. The post-loop write moved the cold cursor by the number of base
+boards started (baseAttempted, n059). That equals the boards read only while
+the starts are a prefix of the base slice, and two things break the prefix: a
+dormant board not due for recheck is skipped before it is counted (the cursor
+fell one short per skip and the next slice read the last started board again:
+~505 dormant of ~44k cold boards on 2026-10-08, ~1% duplicate fetches), and a
+board the reservation wait gave up on (YIELD_SPIN_LIMIT) is deferred while a
+later board still starts once the in-flight boards land (the count put the
+cursor past the deferred board, which then waited a rotation, and a started
+board was read twice).
+
+Now the cursor passes the prefix of the base slice whose boards were started
+or skipped as dormant (board keys, so a shared token's other vendor cannot
+stand in). A slice the posting, board, wall or heap budget stops in order
+moves exactly as before. A deferral ahead of later starts now costs a re-read
+of those starts instead of a rotation for the deferred board; it cannot stall
+the rotation on one board, because the reservation gate is fetched + in-flight
+against the budget, the same for every board, not a board's own size. The
+pre-loop optimistic write and slice_stats.cursorStep (n434; `started` is still
+baseAttempted) are unchanged.

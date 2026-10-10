@@ -81,7 +81,7 @@ import { boardKey, classifyDormancy, dropBareSharedKeys, keySource, keyToken, re
 import { STALE_LANE_MIN_AGE_H, STALE_PER_SLICE, bumpStaleTries, classifyStale, countByClass, keysOf, readStaleTries, selectStaleLane, staleExclusion, unresolvedTokens, writeStaleTries, type StaleClass, type StaleRow, type StaleVerdict } from "./stale-lane.ts";
 import { tokenMapFromRecord, tokenMapToRecord } from "./token-map.ts";
 import { decideRekick } from "./chain-watchdog.ts";
-import { advanceProgress, isPassDone, type RefreshProgress } from "./rotation.ts";
+import { advanceProgress, baseConsumedPrefix, isPassDone, type RefreshProgress } from "./rotation.ts";
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
 import { detectExperience, isExperienceBand } from "./experience.ts";
 import { categoryParam, extraFilterParams, filterViolations, isUnfiltered, normalizeFilters, payParams, rpcBlindFilters, rescueVendorsParam, SALARIED_PERIODS, sendableSourcesParam, splitPage, salaryFromQueryText, salaryTokenInQuery, WIDENING_FILTERS } from "./filters.ts";
@@ -3817,6 +3817,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   // past it marks it verified when nothing verified it.
   const baseTokens = new Set(baseSlice.map((b) => b.token));
   let baseAttempted = 0;
+  // Board keys started or skipped as dormant: the cursor passes a prefix of these (n446).
+  const baseConsumed = new Set<string>();
   // A yield is a wait for somebody else to finish. Counted per board so a
   // wait that cannot end becomes a deferral instead of a spin.
   const yieldsByToken = new Map<string, number>();
@@ -3857,7 +3859,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         if (!s) return;
         // Dormant, not due for recheck: skip the dead fetch (no postings to gain,
         // ~20s of FETCH_TIMEOUT to lose). Not counted as attempted below.
-        if (skipTokens.has(boardKeyOf(s))) continue;
+        if (skipTokens.has(boardKeyOf(s))) { baseConsumed.add(boardKeyOf(s)); continue; }
         // Checked before STARTING a board: landed postings, board count, wall and heap defer it; a full reservation waits.
         const gate = canStart(true);
         // Rationale: docs/job-board-index-notes.md#n076-fetchedinslice-inflightreserve-slic
@@ -3884,6 +3886,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         // Rationale: docs/job-board-index-notes.md#n078-reserve
         const reserve = inHotPhase || deepTokens.has(s.token) || CAPPED_VISIT_VENDORS.has(s.source) || !!s.pages ? MAX_POSTINGS_PER_VISIT : COLD_BOARD_RESERVE;
         if (baseTokens.has(s.token)) baseAttempted++;
+        baseConsumed.add(boardKeyOf(s));
         inFlightReserve += reserve;
         let r: Awaited<ReturnType<typeof fetchBoard>>;
         try { r = await fetchBoard(s, (m) => { failReason = m; }, deepCursors.get(s.token) ?? 0); }
@@ -5249,7 +5252,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   const { next: progressAfter, wrapped } = advanceProgress({
     prev: { ...progressBefore, failedAcc, failedTotal },
     ...advanceArgs,
-    baseSliceLen: baseAttempted,
+    baseSliceLen: baseConsumedPrefix(baseSlice.map(boardKeyOf), baseConsumed),
   });
   hot = progressAfter.hot;
   // Admitted at +base, written back at +started: a "step back" a poll sees is this correction (n434).
