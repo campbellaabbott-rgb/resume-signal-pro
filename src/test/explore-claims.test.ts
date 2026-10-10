@@ -885,7 +885,13 @@ describe("Explore offers a choice instead of forty screens", () => {
   // existed.
 
   it("the escape to /jobs sits with the chips, not at the bottom", () => {
-    const head = CODE.slice(0, CODE.indexOf('hidden={intent !== "hiring"}'));
+    // ANCHORED ON THE FIRST ANSWER PANEL, WHICHEVER INTENT IT IS. It was
+    // anchored on the hiring panel, deleted with the leaderboards on
+    // 2026-09-09: indexOf answered -1, slice(0, -1) was the whole file, and a
+    // /jobs link anywhere on the page passed.
+    const firstPanel = CODE.indexOf('role="tabpanel"');
+    expect(firstPanel, "no answer panel found — re-anchor, do not delete").toBeGreaterThan(-1);
+    const head = CODE.slice(0, firstPanel);
     expect(head, "the /jobs link must be above the answers").toMatch(/to="\/jobs"/);
     expect(CODE, "the old bottom CTA card should be gone").not.toMatch(/explore\.ctaLine/);
   });
@@ -1187,12 +1193,13 @@ describe("every per-answer action lands on a filter Jobs actually applies", () =
     }
   });
 
-  it("no action carries a count it cannot stand behind", () => {
-    // The collection holds 12 rows, which is not the size of the population a
-    // number would imply, and only a live aggregate could state the real one.
-    const block = CODE.slice(CODE.indexOf("const ACTION"), CODE.indexOf("const INTENT_LABEL"));
-    expect(block).not.toMatch(/\{\{n\}\}|\{\{count\}\}|\{\{total\}\}/);
-  });
+  // REMOVED WITH THE THING IT MEASURED. "no action carries a count it cannot
+  // stand behind" sliced the per-intent action map, which went with the
+  // twelve-employer leaderboards on 2026-09-09 (5b80c3a5). Its start anchor
+  // then answered -1, slice(-1, n) was "", and the assertion passed on nothing
+  // for a month. The counts the page still prints beside a link (the closure
+  // slice's "Open this slice at those {{n}} employers") are computed from the
+  // tokens the link carries, and the closure-link test above bounds that slice.
 });
 
 describe("the transparent-pay list is winnable by a recognisable employer", () => {

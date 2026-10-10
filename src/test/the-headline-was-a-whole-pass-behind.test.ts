@@ -94,7 +94,16 @@ describe("the headline was a whole pass behind", () => {
     // The maintenance-kick starvation class: any watcher that kicks and RETURNS
     // every cycle starves the ladder below it. This one issues no chain and
     // takes no kick stamp at all.
-    const block = CODE.slice(CODE.indexOf("const openAge"), CODE.indexOf("Country backfill runs as an INDEPENDENT track") + 60);
+    // BOTH ENDS ARE CODE, AND BOTH ARE CHECKED. The end anchor used to be a
+    // sentence from a comment that was later deleted: indexOf answered -1, the
+    // slice was "", and both assertions below passed for any code at all.
+    const start = CODE.indexOf("const openAge");
+    expect(start, "the headline track moved — re-anchor, do not delete").toBeGreaterThan(-1);
+    const end = CODE.indexOf('alive("country_backfill")', start);
+    expect(end, "the next track's anchor is gone — re-anchor, do not widen").toBeGreaterThan(start);
+    const block = CODE.slice(start, end);
+    expect(block, "the slice no longer holds the headline refresh it is about").toMatch(/refresh_headline_open/);
+    expect(block.length, "the slice is implausibly long — an anchor drifted").toBeLessThan(2000);
     expect(block, "the headline track returns instead of falling through").not.toMatch(/\breturn\b/);
     expect(block, "the headline track consumes the maintenance kick stamp").not.toMatch(/maintenance_kick/);
   });
