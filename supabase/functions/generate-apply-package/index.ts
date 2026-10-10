@@ -12,11 +12,11 @@ import { clientAddressOr } from "../_shared/client-address.ts";
 import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
 import { accountProStanding } from "../_shared/pro.ts";
 import { REFUNDED_PURCHASE_MESSAGE, sessionWasRefunded } from "../_shared/payment-revocation.ts";
-import { purchaseSpendGate } from "../_shared/model-spend-gate.ts";
+import { purchaseSpendGate, spendRefusal } from "../_shared/model-spend-gate.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-apply-package.2026-10-09.2";
+const FN_BUILD = "generate-apply-package.2026-10-09.3";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -29,6 +29,26 @@ const corsHeaders = {
 // lasting a day (20261009110000) this bucket capped Pro at 40.
 const RATE_LIMIT = 40;
 const RATE_WINDOW_MINUTES = 1440;
+// Unlimited kits a day is not unlimited gemini-2.5-pro calls an hour: every
+// signed-in account has its own hourly bucket, counted before its plan is
+// read, and Pro accounts together share one hourly ceiling.
+const KITS_PER_ACCOUNT_HOUR = 60;
+const PRO_KITS_PER_HOUR = 600;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** A signed-in session's token, by its unverified claims: the publishable key is a JWT whose role is anon, and is never looked up. */
+function signedInToken(authHeader: string): string | null {
+  const jwt = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+  const parts = jwt.length <= 4096 ? jwt.split(".") : [];
+  if (parts.length !== 3) return null;
+  try {
+    const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const claims = JSON.parse(atob(b64 + "=".repeat((4 - (b64.length % 4)) % 4)));
+    return claims?.role === "authenticated" && claims?.is_anonymous !== true ? jwt : null;
+  } catch {
+    return null;
+  }
+}
 /** Kits one purchase (a checkout session or a Pro grant) may generate in a day. A Pro account's own plan is unlimited and not counted here. */
 const KITS_PER_PURCHASE_DAY = 10;
 
@@ -89,35 +109,55 @@ serve(async (req) => {
         { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    // check_rate_limit's answer, or null for anything that is not one (a limiter that fails open is off).
+    const counted = async (bucket: string, max: number, minutes: number): Promise<boolean | null> => {
+      try {
+        const { data, error } = await supabase.rpc('check_rate_limit', {
+          p_ip: bucket, p_function: 'generate-apply-package', p_max_requests: max, p_window_minutes: minutes,
+        });
+        if (error) console.error("[GENERATE-APPLY-PACKAGE] Rate limit check error:", error);
+        return error || typeof data !== "boolean" ? null : data;
+      } catch (e) {
+        console.error("[GENERATE-APPLY-PACKAGE] Rate limit check threw:", String(e).slice(0, 120));
+        return null;
+      }
+    };
     // THE ONE RULE (L6-08, L6-29): the verified account's plan, both caches,
     // by its user id -- never its address. Batch prep is an ongoing feature
     // of the plan, so a trial unlocks it. Decided first, so a Pro account's
-    // kits are never counted in the address's day.
+    // kits are never counted in the address's day; the account's own hour
+    // is counted before the plan is read (review of S8-063).
     let proAccount = false;
-    {
-      const authHeader = req.headers.get("Authorization") ?? "";
-      if (authHeader.startsWith("Bearer ")) {
+    const token = signedInToken(req.headers.get("Authorization") ?? "");
+    if (token) {
+      let userId: string | null = null;
+      try {
+        const authed = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
+          global: { headers: { Authorization: `Bearer ${token}` } },
+        });
+        const { data: { user } } = await authed.auth.getUser();
+        if (typeof user?.id === "string" && UUID_RE.test(user.id)) userId = user.id.toLowerCase();
+      } catch (e) {
+        console.warn("[GENERATE-APPLY-PACKAGE] account check failed:", String(e).slice(0, 120));
+      }
+      if (userId) {
+        const mine = await counted(`user:${userId}`, KITS_PER_ACCOUNT_HOUR, 60);
+        if (mine === null) return spendRefusal("limiter_unavailable", null, corsHeaders);
+        if (!mine) return spendRefusal("rate_limited_function", KITS_PER_ACCOUNT_HOUR, corsHeaders);
         try {
-          const authed = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
-            global: { headers: { Authorization: authHeader } },
-          });
-          const { data: { user } } = await authed.auth.getUser();
-          if (user?.id) proAccount = (await accountProStanding(supabase, user.id)).pro;
+          proAccount = (await accountProStanding(supabase, userId)).pro;
         } catch (e) {
           console.warn("[GENERATE-APPLY-PACKAGE] pro check failed:", String(e).slice(0, 120));
         }
       }
     }
-    if (!proAccount) {
-      const { data: allowed, error: rlError } = await supabase.rpc('check_rate_limit', {
-        p_ip: clientIp,
-        p_function: 'generate-apply-package',
-        p_max_requests: RATE_LIMIT,
-        p_window_minutes: RATE_WINDOW_MINUTES
-      });
-
-      if (rlError) {
-        console.error("[GENERATE-APPLY-PACKAGE] Rate limit check error:", rlError);
+    if (proAccount) {
+      const all = await counted("pro", PRO_KITS_PER_HOUR, 60);
+      if (all === null) return spendRefusal("limiter_unavailable", null, corsHeaders);
+      if (!all) return spendRefusal("rate_limited_global", PRO_KITS_PER_HOUR, corsHeaders);
+    } else {
+      const allowed = await counted(clientIp, RATE_LIMIT, RATE_WINDOW_MINUTES);
+      if (allowed === null) {
         return new Response(
           JSON.stringify({ error: 'Service temporarily unavailable. Please try again shortly.' }),
           { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -227,7 +267,7 @@ serve(async (req) => {
     }
     // One purchase buys a day of kits, not unlimited gemini-2.5-pro runs from
     // a pool of addresses (sweep S8-063). A Pro account keeps its unlimited
-    // kits; it is not a purchase session and is not counted here.
+    // day; its hour was counted above.
     if (entitledByPurchase) {
       const purchaseRefused = await purchaseSpendGate(supabase, 'generate-apply-package', sessionId, KITS_PER_PURCHASE_DAY, corsHeaders);
       if (purchaseRefused) return purchaseRefused;

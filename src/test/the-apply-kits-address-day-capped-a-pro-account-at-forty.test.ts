@@ -29,8 +29,12 @@ let handler: EdgeHandler;
 
 const SERVE = "export function serve(h) { globalThis.__edgeHandler = h; }";
 const STRIPE = "export default class Stripe { constructor() { this.checkout = { sessions: { retrieve: (id) => globalThis.__kitStripe(id) } }; } }";
-const SUPABASE = "export function createClient(_u, _k, o) { const h = o?.global?.headers?.Authorization ?? ''; return { auth: { getUser: async () => ({ data: { user: h === 'Bearer pro_user_jwt' ? { id: 'user-pro' } : null }, error: null }) } }; }";
-const PRO = "export async function accountProStanding(_db, userId) { return { pro: userId === 'user-pro' }; }";
+// A signed-in session's token: a JWT whose role is authenticated.
+const PRO_USER = "6f1d2c3b-4a5e-4f60-8a7b-9c0d1e2f3a4b";
+const jwt = (claims: Record<string, unknown>) => `h.${Buffer.from(JSON.stringify(claims)).toString("base64url")}.s`;
+const PRO_JWT = jwt({ role: "authenticated", sub: PRO_USER });
+const SUPABASE = `export function createClient(_u, _k, o) { const h = o?.global?.headers?.Authorization ?? ''; return { auth: { getUser: async () => ({ data: { user: h === 'Bearer ${PRO_JWT}' ? { id: '${PRO_USER}' } : null }, error: null }) } }; }`;
+const PRO = `export async function accountProStanding(_db, userId) { return { pro: userId === '${PRO_USER}' }; }`;
 
 beforeAll(async () => {
   const g = globalThis as Record<string, unknown>;
@@ -86,7 +90,7 @@ const ask = (auth: string, sessionId?: string) => handler(new Request("https://h
 describe("the Apply kit's day per address", () => {
   it("never refuses a Pro account's kits, past forty in a day from one address", async () => {
     const statuses: number[] = [];
-    for (let i = 0; i < 45; i++) statuses.push((await ask("Bearer pro_user_jwt")).status);
+    for (let i = 0; i < 45; i++) statuses.push((await ask(`Bearer ${PRO_JWT}`)).status);
     expect(statuses.filter((s) => s === 429)).toEqual([]);
     expect(statuses.filter((s) => s === 402)).toEqual([]);
   });
