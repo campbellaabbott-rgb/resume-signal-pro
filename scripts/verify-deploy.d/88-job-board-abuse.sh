@@ -11,7 +11,7 @@ echo "== 88. job-board abuse guards (.88) =="
 J '{"action":"status"}' > /tmp/vd_88_status.json
 curl -s -m 30 -o /dev/null -D /tmp/vd_88_preflight.txt -X OPTIONS "$B/functions/v1/job-board" -H "x-rb-budget: probe" \
   -H "Origin: https://resumebooster.work" -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: content-type"
-VD88=$(node -e 'try{const v=String(JSON.parse(require("fs").readFileSync("/tmp/vd_88_status.json","utf8")).version||"");const m=/^2026-09-09\.(\d+)$/.exec(v);console.log(m&&Number(m[1])>=88?"yes":"no")}catch{console.log("no")}')
+VD88=$(node -e 'try{const v=String(JSON.parse(require("fs").readFileSync("/tmp/vd_88_status.json","utf8")).version||"");const m=/^(\d{4}-\d{2}-\d{2})\.(\d+)$/.exec(v);console.log(m&&(m[1]>"2026-09-09"||(m[1]==="2026-09-09"&&Number(m[2])>=88))?"yes":"no")}catch{console.log("no")}')
 if [ "$VD88" = "yes" ]; then
   # A BROWSER-SHAPED read, ON PURPOSE (as 7j makes one): the page's ceiling is
   # what is being proven. 'browser' is no tooling kind -- only build and probe
@@ -42,10 +42,10 @@ node -e '
 const fs=require("fs");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);const info=(m)=>console.log("INFO  "+m);
 const rd=(f)=>{try{return fs.readFileSync(f,"utf8")}catch{return ""}};const js=(f)=>{try{return JSON.parse(rd(f))}catch{return null}};
 const st=js("/tmp/vd_88_status.json")||{};
-const n=/^2026-09-09\.(\d+)$/.exec(String(st.version));const v88=!!n&&Number(n[1])>=88;
+const n=/^(\d{4}-\d{2}-\d{2})\.(\d+)$/.exec(String(st.version));const v88=!!n&&(n[1]>"2026-09-09"||(n[1]==="2026-09-09"&&Number(n[2])>=88));
 ok(v88,"status.version = "+st.version+" (want 2026-09-09.88 or later; .87 = the bundle did not deploy, and none of the lines below can pass)");
 const fb=(/^x-fn-build:\s*(\S+)/im.exec(rd("/tmp/vd_88_preflight.txt"))||[])[1]||"";
-ok(/^job-board\.2026-09-09\.(\d+)$/.test(fb)&&Number(fb.split(".").pop())>=88,"the preflight names the build: x-fn-build = "+(fb||"absent")+" (want job-board.2026-09-09.88 or later)");
+ok(((x)=>{const q=/^job-board\.(\d{4}-\d{2}-\d{2})\.(\d+)$/.exec(x);return !!q&&(q[1]>"2026-09-09"||(q[1]==="2026-09-09"&&Number(q[2])>=88))})(fb),"the preflight names the build: x-fn-build = "+(fb||"absent")+" (want job-board.2026-09-09.88 or later)");
 const dl=st.demandLane;
 ok(!!dl&&dl.perSlice===1&&dl.perHour===12&&dl.cooldownMin===180,"status.demandLane rules = "+JSON.stringify(dl&&{perSlice:dl.perSlice,perHour:dl.perHour,cooldownMin:dl.cooldownMin})+" (want one board a slice, twelve an hour, 180 min cooldown; absent = .88 not serving)");
 if(dl){ok(typeof dl.servedLastHour==="number"&&dl.servedLastHour<=12,"demand boards served in the last hour = "+dl.servedLastHour+" (at most 12; more = a second writer of the served row demand_served)");info("demand lane: "+dl.queued+" waiting, "+dl.cooling+" cooling");}

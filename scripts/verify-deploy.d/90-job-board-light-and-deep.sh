@@ -98,8 +98,11 @@ if(shape){
   const lh=(Date.now()-atLr)/3600000;
   if(lh<24)info("lightReread covers "+lh.toFixed(1)+"h; the 24h reading (enrolled >= 1, ok == reread, deferred near 0) is due at "+new Date(atLr+86400000).toISOString());
   else console.log((lr.enrolled>=1?"PASS":"INFO")+"  lightReread.enrolled = "+lr.enrolled+" over "+lh.toFixed(0)+"h"+(lr.enrolled>=1?"":" (no greenhouse board crossed the byte bound: the path is unexercised, not broken)"));
-  console.log((lr.ok===lr.reread?"PASS":"INFO")+"  lightReread.ok = reread ("+lr.ok+" of "+lr.reread+")"+(lr.ok===lr.reread?": every light re-read landed":": "+(lr.reread-lr.ok)+" light re-read(s) did not land -- by design when the light list is itself over the bound and the streamed read lands the board; "+(ghNew.length?"the greenhouse entries registered on a .90 visit are judged below":"no greenhouse board is registered from a .90 visit, so each left oversizeBoards")+" (logs `streamed read of greenhouse:`)"));
-  console.log((lr.deferred===0?"PASS":"INFO")+"  lightReread.deferred = "+lr.deferred+(lr.deferred===0?"":" (the start gate refused the re-read; each such board reads light on its next visit, a rotation later. Regularly above 0 = .91 adds a one-shot re-offer lane)"));
+  // Nothing re-read is nothing landed: 0 of 0 was a PASS (S8-127).
+  if(lr.reread===0)info("lightReread.ok = reread = 0: no light re-read has happened since "+lr.since+", so whether one lands is not yet observed");
+  else console.log((lr.ok===lr.reread?"PASS":"INFO")+"  lightReread.ok = reread ("+lr.ok+" of "+lr.reread+")"+(lr.ok===lr.reread?": every light re-read landed":": "+(lr.reread-lr.ok)+" light re-read(s) did not land -- by design when the light list is itself over the bound and the streamed read lands the board; "+(ghNew.length?"the greenhouse entries registered on a .90 visit are judged below":"no greenhouse board is registered from a .90 visit, so each left oversizeBoards")+" (logs `streamed read of greenhouse:`)"));
+  if(lr.enrolled===0)info("lightReread.deferred = 0 with nothing enrolled: the start gate has had nothing to refuse");
+  else console.log((lr.deferred===0?"PASS":"INFO")+"  lightReread.deferred = "+lr.deferred+(lr.deferred===0?"":" (the start gate refused the re-read; each such board reads light on its next visit, a rotation later. Regularly above 0 = .91 adds a one-shot re-offer lane)"));
 }
 const LS=ss.lightSet,LC=ss.lightCap;
 ok(typeof LS==="number"&&typeof LC==="number"&&LS<=LC&&LC===500,"sliceStats.lightSet = "+LS+" of lightCap "+LC+" (cap stays 500)");

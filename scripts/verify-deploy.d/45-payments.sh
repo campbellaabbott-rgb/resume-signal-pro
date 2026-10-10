@@ -42,7 +42,6 @@ done
 WH45=$(vd45_build stripe-webhook GET)
 if vd45_new stripe-webhook "$WH45"; then echo "PASS  stripe-webhook GET x-fn-build = $WH45 (2026-10-05 or later)"
 else echo "FAIL  stripe-webhook GET x-fn-build = '${WH45}' (want stripe-webhook.2026-10-05.N or later)"; fi
-echo "INFO  section 7a pins the checkouts at .2026-09-27.2; after this wave it prints FAIL for create-checkout, create-product-checkout, create-subscription-checkout, create-agent-checkout and create-scan-pack-checkout -- judge them here"
 
 # The review of this wave (2026-10-05) rides build .2 of three functions; a .1
 # build passes the date check above without it: check-subscription caches

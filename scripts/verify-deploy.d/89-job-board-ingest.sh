@@ -67,10 +67,10 @@ VD89_AT="$VD89_AT" node -e '
 const fs=require("fs");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);const info=(m)=>console.log("INFO  "+m);
 const rd=(f)=>{try{return fs.readFileSync(f,"utf8")}catch{return ""}};const js=(s)=>{try{return JSON.parse(s)}catch{return null}};
 const st=js(rd("/tmp/vd_89_status.json"))||{};
-const n=/^2026-09-09\.(\d+)$/.exec(String(st.version));const v89=!!n&&Number(n[1])>=89;
+const n=/^(\d{4}-\d{2}-\d{2})\.(\d+)$/.exec(String(st.version));const v89=!!n&&(n[1]>"2026-09-09"||(n[1]==="2026-09-09"&&Number(n[2])>=89));
 ok(v89,"status.version = "+st.version+" (want 2026-09-09.89 or later; .87/.88 = the bundle did not deploy, and the lines below describe the old one)");
 const fb=(/^x-fn-build:\s*(\S+)/im.exec(rd("/tmp/vd_89_preflight.txt"))||[])[1]||"";
-ok(/^job-board\.2026-09-09\.(\d+)$/.test(fb)&&Number(fb.split(".").pop())>=89,"the preflight names the build: x-fn-build = "+(fb||"absent")+" (want job-board.2026-09-09.89 or later)");
+ok(((x)=>{const q=/^job-board\.(\d{4}-\d{2}-\d{2})\.(\d+)$/.exec(x);return !!q&&(q[1]>"2026-09-09"||(q[1]==="2026-09-09"&&Number(q[2])>=89))})(fb),"the preflight names the build: x-fn-build = "+(fb||"absent")+" (want job-board.2026-09-09.89 or later)");
 // L1-01: a mid-feed zero no longer lands on the stamp.
 const stamps=[0,1000,2000,3000,4000].map((o)=>js(rd("/tmp/vd_89_wd_"+o+".json"))).filter(Array.isArray).flat();
 const zero=stamps.filter((x)=>x.feed_total===0).length;

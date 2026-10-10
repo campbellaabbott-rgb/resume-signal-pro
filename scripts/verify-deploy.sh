@@ -22,8 +22,18 @@ MC() { curl -s -m 60 -X POST "$B/functions/v1/agent-mcp" -H "Content-Type: appli
 # Table probes select `*`: a named column that the table lacks answers 400 before
 # the permission check runs, which reads as anything but the 401 it should be.
 # A refusal probe: 42501 = revoked by name (good); PGRST202 = wrong argument names, NOT absence.
-probe() { local out; out=$(R "$1" "$2"); local code; code=$(printf '%s' "$out" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const j=JSON.parse(s);console.log(Array.isArray(j)?"ROWS:"+j.length:(j.code||"NOCODE"))}catch{console.log("NONJSON")}})')
-  case "$code" in 42501) echo "PASS  $1 as anon -> 42501 (revoked by name)";; PGRST202) echo "INFO  $1 -> PGRST202 (argument names differ from the migration, or not applied)";; *) echo "FAIL  $1 as anon -> $code  $(printf '%s' "$out" | head -c 200)";; esac; }
+# A GET, NEVER A POST. Many probed functions WRITE (promote_category,
+# record_checkout_start, job_board_anon_check, agent_pass_grant ...), and they
+# were POSTed with real arguments: had a revoke regressed, every run of this
+# script would have written (S8-125). PostgREST runs a GET in a READ ONLY
+# transaction, so a function that is callable after all can only fail with
+# 25006 here, never commit. Arguments go in the query string, so they must be
+# typed values: a GET cannot carry null, and a value that does not cast fails
+# (22P02) before the permission check can answer.
+probe() { local qs; qs=$(node -e 'const a=JSON.parse(process.argv[1]||"{}");const el=(x)=>typeof x==="string"?JSON.stringify(x):String(x);const enc=(v)=>Array.isArray(v)?"{"+v.map(el).join(",")+"}":(v!==null&&typeof v==="object")?JSON.stringify(v):String(v);if(Object.values(a).some((v)=>v===null)){console.log("NULL");process.exit(0)}process.stdout.write(Object.entries(a).map(([k,v])=>encodeURIComponent(k)+"="+encodeURIComponent(enc(v))).join("&"))' "${2:-}")
+  [ "$qs" = "NULL" ] && { echo "FAIL  $1 probe passes a null argument, which a GET cannot carry: give it a typed value"; return; }
+  local out; out=$(curl -s -m 60 "$B/rest/v1/rpc/$1${qs:+?$qs}" -H "apikey: $K" -H "Authorization: Bearer $K"); local code; code=$(printf '%s' "$out" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const j=JSON.parse(s);console.log(Array.isArray(j)?"ROWS:"+j.length:(j.code||"NOCODE"))}catch{console.log("NONJSON")}})')
+  case "$code" in 42501) echo "PASS  $1 as anon -> 42501 (revoked by name)";; PGRST202) echo "INFO  $1 -> PGRST202 (argument names differ from the migration, or not applied)";; 25006) echo "FAIL  $1 is CALLABLE as anon: it tried to write and only this read-only GET stopped it  $(printf '%s' "$out" | head -c 160)";; *) echo "FAIL  $1 as anon -> $code  $(printf '%s' "$out" | head -c 200)";; esac; }
 title() { curl -s -m 30 -A "$UA" "$SITE$1" | grep -oE "<title>[^<]*</title>" | head -1; }
 # build_ge FN HEADER DATE MIN: the header names FN, built on a day after DATE,
 # or on DATE with a suffix >= MIN (numeric) / equal to MIN (a named build). A
@@ -36,13 +46,39 @@ build_ge() {
   [ "$d" = "$3" ] || return 1
   case "$n$4" in *[!0-9]*) [ "$n" = "$4" ];; *) [ "$n" -ge "$4" ];; esac
 }
+# ONE RUN AT A TIME. Every section writes fixed /tmp/vd_* files and later
+# sections read earlier ones, so two overlapping runs printed each other's
+# answers (L1-06). A lock rather than a per-run directory, because the tests
+# cut sections out of this file and point their /tmp/ at a directory of
+# their own. A lock whose owner is gone is taken over.
+VD_LOCK=/tmp/vd_verify_deploy.lock.d
+if ! mkdir "$VD_LOCK" 2>/dev/null; then
+  VD_OTHER=$(cat "$VD_LOCK/pid" 2>/dev/null)
+  if [ -n "$VD_OTHER" ] && kill -0 "$VD_OTHER" 2>/dev/null; then
+    echo "FAIL  another verify-deploy run (pid $VD_OTHER) is writing the same /tmp/vd_* files, so both would print mixed answers: wait for it to finish"
+    exit 1
+  fi
+  echo "INFO  took over a lock left by an interrupted run (pid ${VD_OTHER:-unknown})"
+  rm -rf "$VD_LOCK"; mkdir "$VD_LOCK"
+fi
+echo $$ > "$VD_LOCK/pid"
+trap 'rm -rf "$VD_LOCK"' EXIT
 
 echo "== 1. job-board bundle =="
 J '{"action":"status"}' > /tmp/vd_status.json
-node -e '
+# The catalogue size is the one THIS checkout holds, counted by the same parser
+# the build-version guard uses -- it was a literal, true for one deploy.
+VD_REPO_BUILD=$(grep -m1 -oE 'BUILD_VERSION = "[^"]+"' supabase/functions/job-board/index.ts | sed 's/.*"\(.*\)"/\1/')
+VD_REPO_CATALOG=$(npx --no-install tsx -e 'import("./src/test/helpers/catalog.ts").then((m)=>console.log(m.CATALOG.length)).catch(()=>console.log(""))' 2>/dev/null)
+VD_REPO_BUILD="$VD_REPO_BUILD" VD_REPO_CATALOG="$VD_REPO_CATALOG" node -e '
 const j=require("/tmp/vd_status.json");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);
-ok(/^2026-09-09\.7[3-9]$|^2026-09-09\.[89]|^2026-09-1/.test(String(j.version)),"status.version = "+j.version+" (want .73 or later)");
-ok(j.catalogSize===44519,"catalogSize = "+j.catalogSize+" (want 44519)");
+// THIS BUILD OR LATER, by number: the pattern here read FAIL from .100 on.
+const ge=(v,d,n)=>{const m=/^(\d{4}-\d\d-\d\d)\.(\d+)$/.exec(String(v));return !!m&&(m[1]>d||(m[1]===d&&Number(m[2])>=n))};
+ok(ge(j.version,"2026-09-09",73),"status.version = "+j.version+" (want 2026-09-09.73 or later)");
+const rb=process.env.VD_REPO_BUILD,rc=Number(process.env.VD_REPO_CATALOG);
+if(!rc)console.log("INFO  catalogSize = "+j.catalogSize+" (this checkout could not count its own catalogue: npx tsx unavailable)");
+else if(j.version!==rb)console.log("INFO  catalogSize = "+j.catalogSize+": production serves "+j.version+" and this checkout is "+rb+", so its catalogue ("+rc+") is not the deployed one");
+else ok(j.catalogSize===rc,"catalogSize = "+j.catalogSize+" (want "+rc+", the catalogue of "+rb+" in this checkout)");
 ok(j.orphanPruneBlocked===false,"orphanPruneBlocked = "+j.orphanPruneBlocked+" (want false)");
 const hw=j.catalogHighwater; ok(typeof hw==="number"?hw<=j.catalogSize:true,"catalogHighwater = "+JSON.stringify(hw)+" (want <= catalogSize)");
 const f=j.freshness||{}; console.log("INFO  freshness p50="+f.p50_min+" p95="+f.p95_min+" max="+f.max_min+" (SLA claims 480 / 1,440)");
@@ -154,14 +190,35 @@ echo "== 4c. the board that opened the defect is refused, by its own published c
 # p_tokens is PLURAL; p_token singular answers nothing. dominos published
 # still_open_30=1.0000 with a zero-width interval and sufficient_30 true on
 # 21,708 observations before this change.
+# A REFUSAL NAMES ITS REASON, AND SOMETHING MUST BE ADMITTED (S8-127). This
+# printed PASS for any row that was not sufficient -- all-null rows included --
+# and its "control" was printed as INFO, so a gate that refused every board
+# passed. Now a refusal must carry insufficient_reason_30, and the refusals
+# count only beside a board the same function calls sufficient, found among
+# the largest boards in calls of ten (fifty timed out at its 25s header on
+# 2026-10-10; on that day 1 of the top 150 was sufficient).
+J '{"action":"list","limit":1,"includeFacets":true}' > /tmp/vd_4c_facets.json
+node -e 'let t=[];try{t=(JSON.parse(require("fs").readFileSync("/tmp/vd_4c_facets.json","utf8")).companies||[]).map((c)=>c&&c.token).filter((x)=>typeof x==="string").slice(0,150)}catch{}require("fs").writeFileSync("/tmp/vd_4c_tokens.json",JSON.stringify(t))'
+: > /tmp/vd_4c_control.json
+i4c=0
+while [ "$i4c" -lt 15 ]; do
+  VD4C_ARG=$(node -e 'const t=JSON.parse(require("fs").readFileSync("/tmp/vd_4c_tokens.json","utf8")).slice(Number(process.argv[1])*10,Number(process.argv[1])*10+10);process.stdout.write(t.length?JSON.stringify({p_tokens:t}):"")' "$i4c")
+  [ -z "$VD4C_ARG" ] && break
+  R get_company_fill_curve "$VD4C_ARG" > /tmp/vd_4c_chunk.json
+  if node -e 'let j=null;try{j=JSON.parse(require("fs").readFileSync("/tmp/vd_4c_chunk.json","utf8"))}catch{}const c=Array.isArray(j)?j.find((r)=>r&&r.sufficient_30===true&&Number(r.events_30)>=5&&r.still_open_30!==null&&r.still_open_30!==undefined):null;if(!c)process.exit(1);require("fs").writeFileSync("/tmp/vd_4c_control.json",JSON.stringify(c))'; then break; fi
+  i4c=$((i4c+1))
+done
 R get_company_fill_curve '{"p_tokens":["dominos","oreillyauto~wd1~oreilly","workday~wd5~Workday"]}' | node -e '
 let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("FAIL  non-JSON")}
 if(!Array.isArray(j))return console.log("FAIL  "+JSON.stringify(j).slice(0,160));
+let c=null;try{c=JSON.parse(require("fs").readFileSync("/tmp/vd_4c_control.json","utf8"))}catch{}
+if(c)console.log("PASS  positive control: "+c.company_token+" is sufficient (S30="+c.still_open_30+" events_30="+c.events_30+"), so the gate admits a board that earns it");
+else console.log("INFO  no board among the largest 150 is sufficient right now, so the refusals below cannot be told from a gate that refuses everything");
 for(const r of j){
-  const t=r.company_token, ev=r.events_30, suf=r.sufficient_30, s30=r.still_open_30;
-  if(t==="workday~wd5~Workday"){console.log("INFO  "+t+" (the control): S30="+s30+" events_30="+ev+" sufficient_30="+suf);continue;}
-  const ok = suf!==true;
-  console.log((ok?"PASS":"FAIL")+"  "+t+" refused: S30="+s30+" events_30="+ev+" sufficient_30="+suf);
+  const t=r.company_token, ev=r.events_30, suf=r.sufficient_30, s30=r.still_open_30, why=r.insufficient_reason_30;
+  if(t==="workday~wd5~Workday"){console.log("INFO  "+t+": S30="+s30+" events_30="+ev+" sufficient_30="+suf+" reason="+why);continue;}
+  const named=typeof why==="string"&&why.length>0;
+  console.log((suf===true||!named?"FAIL":c?"PASS":"INFO")+"  "+t+" refused"+(named?" for its named reason "+why:" WITHOUT a reason (a refusal must say why)")+": S30="+s30+" events_30="+ev+" sufficient_30="+suf);
 }})'
 
 echo "== 4d. the coverage the new pool leaves, per field, and how much of it is one board =="
@@ -293,7 +350,7 @@ echo "== 5m. .72: the pay-widening disclosure =="
 J '{"action":"list","limit":1,"salaryFloor":100000,"hasStatedPay":true,"includeUnstatedPay":true}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);const ig=(j.ignoredFilters||[]).map(x=>typeof x==="string"?x:(x.key||x.name||JSON.stringify(x)));console.log((ig.some(n=>/includeUnstatedPay/.test(n))?"PASS":"FAIL")+"  ignoredFilters names includeUnstatedPay: "+JSON.stringify(ig))})'
 
 echo "== 5n/5q. agent-mcp: version, tiers, prompts, resources, the unkeyed tier, the sign-in state =="
-MC -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"verify-deploy","version":"0"}}}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("INFO  initialize non-JSON")}const r=j.result||{};const v=r.serverInfo&&r.serverInfo.version;const c=r.capabilities||{};const ins=String(r.instructions||"");const si=(r._meta||{})["work.resumebooster/sign-in"]||{};console.log((/^2026-09-04\.(10|1[1-9]|[2-9][0-9])$|^2026-09-[1-3]/.test(String(v))?"PASS":"FAIL")+"  serverInfo.version = "+v+" (want .10 or later)");console.log((c.prompts&&c.resources?"PASS":"FAIL")+"  capabilities: prompts="+!!c.prompts+" resources="+!!c.resources);console.log((/^Live job search/.test(ins)?"PASS":"FAIL")+"  instructions open with the plan head; bytes="+ins.length+(ins.length>2048?" FAIL >2048":""));console.log((/\/jobs\?job=/.test(ins)?"PASS":"FAIL")+"  instructions carry the URL->id sentence");console.log("INFO  sign-in state="+si.state+(si.reason?" reason="+si.reason:"")+" (off = the owner has not enabled the Supabase OAuth server; the server says so in words)")})'
+MC -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"verify-deploy","version":"0"}}}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("INFO  initialize non-JSON")}const r=j.result||{};const v=r.serverInfo&&r.serverInfo.version;const c=r.capabilities||{};const ins=String(r.instructions||"");const si=(r._meta||{})["work.resumebooster/sign-in"]||{};const m=/^(\d{4}-\d\d-\d\d)\.(\d+)$/.exec(String(v));console.log((!!m&&(m[1]>"2026-09-04"||(m[1]==="2026-09-04"&&Number(m[2])>=10))?"PASS":"FAIL")+"  serverInfo.version = "+v+" (want 2026-09-04.10 or later)");console.log((c.prompts&&c.resources?"PASS":"FAIL")+"  capabilities: prompts="+!!c.prompts+" resources="+!!c.resources);console.log((/^Live job search/.test(ins)?"PASS":"FAIL")+"  instructions open with the plan head; bytes="+ins.length+(ins.length>2048?" FAIL >2048":""));console.log((/\/jobs\?job=/.test(ins)?"PASS":"FAIL")+"  instructions carry the URL->id sentence");console.log("INFO  sign-in state="+si.state+(si.reason?" reason="+si.reason:"")+" (off = the owner has not enabled the Supabase OAuth server; the server says so in words)")})'
 MC -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const t=((JSON.parse(s).result||{}).tools)||[];const miss=t.filter(x=>!x.outputSchema).map(x=>x.name);console.log("INFO  tools/list: "+t.length+" tools");console.log((miss.length===0?"PASS":"FAIL")+"  every tool declares outputSchema (missing: "+JSON.stringify(miss)+")");for(const n of ["employer_hiring_record","employer_growth","search","fetch"])console.log((t.some(x=>x.name===n)?"PASS":"FAIL")+"  tool present: "+n)})'
 MC -d '{"jsonrpc":"2.0","id":3,"method":"prompts/list","params":{}}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const p=((JSON.parse(s).result||{}).prompts)||[];console.log((p.length===3?"PASS":"FAIL")+"  prompts/list -> "+p.length+": "+p.map(x=>x.name).join(","))})'
 MC -d '{"jsonrpc":"2.0","id":4,"method":"resources/list","params":{}}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const r=((JSON.parse(s).result||{}).resources)||[];console.log((r.length===3?"PASS":"FAIL")+"  resources/list -> "+r.length)})'
@@ -391,10 +448,26 @@ else
 fi
 
 echo "== 5u. the Ontario reader quotes a posting and never judges it =="
-ONT=$(J '{"action":"list","country":"CA","location":"ontario","limit":1}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);const r=(j.jobs||[])[0];console.log(r?r.id:"")})')
-if [ -n "$ONT" ]; then
-  R get_ontario_posting_disclosures "{\"p_id\":\"$ONT\"}" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("INFO  ontario reader non-JSON")}if(!Array.isArray(j))return console.log("FAIL  ontario reader: "+JSON.stringify(j).slice(0,180));console.log((j.length===1?"PASS":"FAIL")+"  one row for the asked posting ("+j.length+")");const r=j[0]||{};const keys=["od_pay_evidence","od_pay_basis","od_vacancy_evidence","od_ai_evidence","od_canadian_experience_evidence"];console.log((keys.every(k=>k in r)?"PASS":"FAIL")+"  five evidence fields present");console.log((("od_verdict" in r)||("od_compliant" in r)||("od_score" in r)?"FAIL":"PASS")+"  no verdict, no score -- evidence only");console.log("INFO  pay="+JSON.stringify(r.od_pay_evidence)+" basis="+r.od_pay_basis+" vacancy="+JSON.stringify(r.od_vacancy_evidence)+" ai="+JSON.stringify(r.od_ai_evidence)+" canexp="+JSON.stringify(r.od_canadian_experience_evidence))})'
-else echo "INFO  no Ontario posting returned to ask about"; fi
+# THE READER'S OWN SCOPE, NOT THE NEWEST ROW (S8-128). It asked only about the
+# newest CA/ontario posting, and the reader excludes remote postings (and pay
+# over its exemption) by design (20260923191713), so on a remote newest row it
+# answered [] and this printed two FAILs and a "no verdict" PASS read off an
+# empty object. Now it asks about up to 20 non-remote postings in turn and
+# judges the first row that comes back; none answering is the FAIL.
+J '{"action":"list","country":"CA","location":"ontario","groupSimilar":false,"limit":20}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j={};try{j=JSON.parse(s)}catch{}console.log((j.jobs||[]).filter((r)=>r&&r.remote!==true).map((r)=>r.id).join("\n"))})' > /tmp/vd_5u_ids.txt
+VD5U_N=0; VD5U_HIT=""
+: > /tmp/vd_5u_row.json
+while read -r ONT; do
+  [ -z "$ONT" ] && continue
+  VD5U_N=$((VD5U_N+1))
+  R get_ontario_posting_disclosures "$(node -e 'process.stdout.write(JSON.stringify({p_id:process.argv[1]}))' "$ONT")" > /tmp/vd_5u_row.json
+  if node -e 'let j=null;try{j=JSON.parse(require("fs").readFileSync("/tmp/vd_5u_row.json","utf8"))}catch{}process.exit(Array.isArray(j)&&j.length>0?0:1)'; then VD5U_HIT="$ONT"; break; fi
+done < /tmp/vd_5u_ids.txt
+if [ "$VD5U_N" -eq 0 ]; then echo "INFO  no non-remote CA/ontario posting listed to ask about"
+elif [ -z "$VD5U_HIT" ]; then echo "FAIL  the Ontario reader answered no row for any of $VD5U_N non-remote CA/ontario postings ($(head -c 160 /tmp/vd_5u_row.json))"
+else
+  VD5U_N="$VD5U_N" VD5U_HIT="$VD5U_HIT" node -e 'const j=JSON.parse(require("fs").readFileSync("/tmp/vd_5u_row.json","utf8"));console.log((j.length===1?"PASS":"FAIL")+"  one row for the asked posting "+process.env.VD5U_HIT+" ("+j.length+"; posting "+process.env.VD5U_N+" of those asked)");const r=j[0];const keys=["od_pay_evidence","od_pay_basis","od_vacancy_evidence","od_ai_evidence","od_canadian_experience_evidence"];console.log((keys.every(k=>k in r)?"PASS":"FAIL")+"  five evidence fields present");console.log((("od_verdict" in r)||("od_compliant" in r)||("od_score" in r)?"FAIL":"PASS")+"  no verdict, no score -- evidence only, read on a returned row");console.log("INFO  pay="+JSON.stringify(r.od_pay_evidence)+" basis="+r.od_pay_basis+" vacancy="+JSON.stringify(r.od_vacancy_evidence)+" ai="+JSON.stringify(r.od_ai_evidence)+" canexp="+JSON.stringify(r.od_canadian_experience_evidence))'
+fi
 R get_ontario_posting_disclosures '{"p_id":"zz-not-a-posting"}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("INFO  non-JSON")}console.log((Array.isArray(j)&&j.length===0?"PASS":"INFO")+"  a posting outside Ontario/unknown answers no row ("+(Array.isArray(j)?j.length:"?")+")")})'
 
 echo "== 5v. a posting is addressable, and the sitemap advertises only pages that exist =="
@@ -595,7 +668,7 @@ CSCODE=$(node -e 'try{const j=require("/tmp/vd_cs.json");console.log(Array.isArr
 case "$CSCODE" in 42501) echo "PASS  anon GET checkout_starts -> HTTP $CS code 42501 (revoked by name)";; PGRST205) echo "FAIL  checkout_starts does not exist (migration 20260927211436 not applied)";; ROWS:*) echo "FAIL  anon GET checkout_starts -> HTTP $CS $CSCODE (readable: the REVOKE did not land)";; *) echo "FAIL  anon GET checkout_starts -> HTTP $CS $CSCODE";; esac
 NC=$(curl -s -m 30 -o /dev/null -w '%{http_code}' "$B/rest/v1/checkout_starts_never_existed?select=*&limit=1" -H "apikey: $K" -H "Authorization: Bearer $K")
 [ "$NC" = "404" ] && echo "PASS  negative control checkout_starts_never_existed -> 404" || echo "FAIL  negative control -> HTTP $NC (the 42501 above cannot be read as presence)"
-probe record_checkout_start '{"p_stripe_session_id":"cs_probe_anon_denied_000","p_checkout_function":"verify-deploy","p_product_type":"probe","p_product_id":null,"p_visitor_id":null,"p_amount_cents":null,"p_currency":null,"p_origin_path":"/","p_mode":null,"p_metadata":{}}'
+probe record_checkout_start '{"p_stripe_session_id":"cs_probe_anon_denied_000","p_checkout_function":"verify-deploy","p_product_type":"probe","p_product_id":"verify-probe","p_visitor_id":"verify-probe","p_amount_cents":0,"p_currency":"usd","p_origin_path":"/","p_mode":"payment","p_metadata":{}}'
 
 echo "== 7c. the writer's key names the variant: later funnel stages leave zero (a day of traffic after deploy) =="
 R get_funnel_cohort_stats '{"p_cohort_dimension":"trafficSource","p_days_back":1}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("FAIL  cohort reader non-JSON: "+s.slice(0,120))}if(!Array.isArray(j))return console.log("FAIL  cohort reader: "+JSON.stringify(j).slice(0,160));const sum=k=>j.reduce((a,r)=>a+Number(r[k]||0),0);const later=["upload_started","scan_started","results_viewed","product_clicked","checkout_started","purchase_completed"];const t={};for(const k of ["landing_view",...later])t[k]=sum(k);console.log("INFO  24h stages: "+JSON.stringify(t)+" (baseline 2026-09-27: landing 136,048/30d, every later stage 0)");const any=later.some(k=>t[k]>0);console.log((any?"PASS":"INFO")+"  a later stage is non-zero"+(any?"":" -- not yet: judge this a day after deploy, not on the hour"))})'
@@ -816,7 +889,9 @@ else{const ok=a.sufficient_30===true&&a.insufficient_reason_30===null&&typeof a.
 # that morning (pre-fix, read-only). Every chunk that answers anything but an
 # array prints FAIL with its error code, and so does a facet list that names
 # no company: a check that could not run is not a check that passed.
-CHUNK7H=50
+# Ten a call since 2026-10-10: fifty answered 57014 at the 25s header that
+# day, ten took 1.7s to 6.7s, so every claim below went unevaluated.
+CHUNK7H=10
 export CHUNK7H
 J '{"action":"list","limit":1,"includeFacets":true}' > /tmp/vd_7h_facets.json
 node -e 'let t=[];try{const j=JSON.parse(require("fs").readFileSync("/tmp/vd_7h_facets.json","utf8"));t=(j.companies||[]).map(c=>c&&c.token).filter(x=>typeof x==="string").slice(0,150)}catch{}
@@ -892,7 +967,15 @@ console.log("INFO  largest-boards day-30 verdicts: "+JSON.stringify(tally)+" (be
 # leave it only if the old pool had drifted about 0.09 past every reading on
 # record -- and is INFO otherwise: below POOLED_HI is consistent with the
 # floor, and is not proof of it.
-DAY30_APPLIED_AT="${DAY30_APPLIED_AT:-}"
+# UNSET, IT IS READ FROM THE RECORD (L1-06): the staged runner's journal
+# (drizzle/migrations/meta/_journal.json) stamps each file it applied, and the
+# latest of the three is the moment both chains were safe. It had no default,
+# so three dating lines read FAIL on every run. Set it to override; set it
+# EMPTY to see the fail-closed lines.
+if [ -z "${DAY30_APPLIED_AT+x}" ]; then
+  DAY30_APPLIED_AT=$(node -e 'try{const j=JSON.parse(require("fs").readFileSync(process.env.DAY30_JOURNAL||"drizzle/migrations/meta/_journal.json","utf8"));const want=[/reading_it_in_full$/,/whole_thirty_days_we_could_see$/,/layoff_arms_get_the_same_watch_floor/];const w=want.map((re)=>(j.entries||[]).filter((e)=>re.test(String(e.tag))).map((e)=>Number(e.when)).filter(Number.isFinite).sort((a,b)=>b-a)[0]);if(w.every(Number.isFinite))console.log(new Date(Math.ceil(Math.max(...w)/1000)*1000).toISOString())}catch{}')
+  [ -n "$DAY30_APPLIED_AT" ] && echo "INFO  DAY30_APPLIED_AT = $DAY30_APPLIED_AT, read from the staged runner's journal (the last of the three day-30 files to apply)"
+fi
 export DAY30_APPLIED_AT
 R get_explore_cache '{}' > /tmp/vd_7h_explore.json
 node -e '(()=>{const fs=require("fs");const rd=f=>{try{return fs.readFileSync(f,"utf8")}catch{return ""}};
@@ -1004,7 +1087,8 @@ J '{"action":"status"}' > /tmp/vd_7i_status.json
 node -e '
 const fs=require("fs");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);
 const j=JSON.parse(fs.readFileSync("/tmp/vd_7i_status.json","utf8"));
-ok(/^2026-09-09\.(\d+)$/.test(String(j.version))&&Number(String(j.version).split(".").pop())>=84,"status.version = "+j.version+" (want 2026-09-09.84 or later, which carry .84; .81 means the bundle did not deploy)");
+const ge=(v,d,n)=>{const m=/^(\d{4}-\d\d-\d\d)\.(\d+)$/.exec(String(v));return !!m&&(m[1]>d||(m[1]===d&&Number(m[2])>=n))};
+ok(ge(j.version,"2026-09-09",84),"status.version = "+j.version+" (want 2026-09-09.84 or later, which carry .84; .81 means the bundle did not deploy)");
 const ss=j.sliceStats||{};
 const LS=ss.lightSet,LC=ss.lightCap;
 ok(typeof LS==="number"&&typeof LC==="number"&&LS<LC,"sliceStats.lightSet = "+LS+" of lightCap "+LC+" (want both present and set < cap: not saturated; judged now)");
@@ -1036,13 +1120,17 @@ for VT in greenhouse:anthropic greenhouse:databricks greenhouse:cloudflare green
     lever) U="https://api.lever.co/v0/postings/$T?mode=json";;
   esac
   curl -s --compressed -m 120 "$U" -o /tmp/vd_7i_feed.json
-  J "{\"action\":\"list\",\"companies\":[\"$T\"],\"vendors\":[\"$V\"],\"groupSimilar\":false,\"limit\":1}" > /tmp/vd_7i_list.json
+  J "{\"action\":\"list\",\"companies\":[\"$T\"],\"vendor\":[\"$V\"],\"groupSimilar\":false,\"limit\":1}" > /tmp/vd_7i_list.json
   node -e '(()=>{
 const fs=require("fs");const [V,T]=process.argv.slice(1);const cut=Date.now()-30*86400000;
 let feed;try{feed=JSON.parse(fs.readFileSync("/tmp/vd_7i_feed.json","utf8"))}catch{return console.log("INFO  "+V+":"+T+" vendor feed unreadable — cannot judge")}
 const t=(x)=>{const n=typeof x==="number"?x:Date.parse(String(x??""));return Number.isFinite(n)&&n>=cut};
 const want=V==="greenhouse"?(feed.jobs||[]).filter(x=>t(x.first_published)).length:V==="ashby"?(feed.jobs||[]).filter(x=>x.isListed!==false&&t(x.publishedAt)).length:(Array.isArray(feed)?feed:[]).filter(x=>t(x.createdAt)).length;
 let l;try{l=JSON.parse(fs.readFileSync("/tmp/vd_7i_list.json","utf8"))}catch{return console.log("FAIL  "+V+":"+T+" list non-JSON")}
+// THE SINGULAR KEY. This sent `vendors`, which job-board ignores and names in
+// ignoredFilters, so every line judged the token across all vendors (S8-129).
+const dropped=(Array.isArray(l.ignoredFilters)?l.ignoredFilters:[]).map((x)=>typeof x==="string"?x:(x&&(x.key||x.name))||"").filter((k)=>["companies","vendor","groupSimilar","limit"].includes(k));
+if(dropped.length)return console.log("FAIL  "+V+":"+T+" the board ignored a filter this line sent ("+dropped.join(",")+"), so its count is not about this board");
 const got=Number(l.total);const tol=Math.max(2,Math.round(want*0.1));
 const pass=got>0&&Math.abs(got-want)<=tol;
 console.log((pass?"PASS":"FAIL")+"  "+V+":"+T+" serves "+got+" vs "+want+" in-window on its own feed (want within +/-"+tol+")"+(got===0?" — still dark; judge only after "+(V==="greenhouse"?"two cold rotations":"one cold rotation")+" since the deploy":""));})();' "$V" "$T"
@@ -1050,12 +1138,12 @@ done
 # The flapping. The 03:41 UTC sweep zeroed boards that went 48 h unread; re-run
 # this line on each of the next two mornings AFTER 03:41 UTC.
 for T in okta anthropic axon; do
-  J "{\"action\":\"list\",\"companies\":[\"$T\"],\"vendors\":[\"greenhouse\"],\"groupSimilar\":false,\"limit\":1}" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("FAIL  list non-JSON")}const n=Number(j.total);console.log((n>0?"PASS":"FAIL")+"  greenhouse:'"$T"' total = "+n+" (must not return to 0 after a 03:41 UTC sweep; repeat on the next two mornings)")})'
+  J "{\"action\":\"list\",\"companies\":[\"$T\"],\"vendor\":[\"greenhouse\"],\"groupSimilar\":false,\"limit\":1}" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("FAIL  list non-JSON")}const ig=(Array.isArray(j.ignoredFilters)?j.ignoredFilters:[]).map((x)=>typeof x==="string"?x:(x&&(x.key||x.name))||"");if(ig.includes("vendor")||ig.includes("companies"))return console.log("FAIL  greenhouse:'"$T"' the board ignored a filter this line sent ("+ig.join(",")+")");const n=Number(j.total);console.log((n>0?"PASS":"FAIL")+"  greenhouse:'"$T"' total = "+n+" (must not return to 0 after a 03:41 UTC sweep; repeat on the next two mornings)")})'
 done
 # Streamed descriptions arrive with the read (lever/ashby have no filler): the
 # share of openai rows holding stored text, read through the list filter.
-OA=$(J '{"action":"list","companies":["openai"],"vendors":["ashby"],"groupSimilar":false,"limit":1}')
-OD=$(J '{"action":"list","companies":["openai"],"vendors":["ashby"],"groupSimilar":false,"hasDescription":true,"limit":1}')
+OA=$(J '{"action":"list","companies":["openai"],"vendor":["ashby"],"groupSimilar":false,"limit":1}')
+OD=$(J '{"action":"list","companies":["openai"],"vendor":["ashby"],"groupSimilar":false,"hasDescription":true,"limit":1}')
 node -e 'const a=JSON.parse(process.argv[1]||"{}"),d=JSON.parse(process.argv[2]||"{}");const n=Number(a.total),k=Number(d.total);console.log((n>0&&k>=0.9*n?"PASS":"FAIL")+"  ashby:openai rows with a stored description: "+k+" of "+n+" (want >= 90%; 4 of 281 were the oldest, dropped by the retention ceiling, on 2026-10-01)")' "$OA" "$OD"
 
 echo "== 7j. .85: the anonymous board budget -- counted per address, observed first, our servers exempt =="
@@ -1102,7 +1190,8 @@ node -e '
 const fs=require("fs");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);const info=(m)=>console.log("INFO  "+m);
 const rd=(f)=>{try{return fs.readFileSync(f,"utf8")}catch{return ""}};const js=(f)=>{try{return JSON.parse(rd(f))}catch{return null}};
 const st=js("/tmp/vd_7j_status.json")||{};
-ok(/^2026-09-09\.(\d+)$/.test(String(st.version))&&Number(String(st.version).split(".").pop())>=85,"status.version = "+st.version+" (want 2026-09-09.85 or later, which carry it)");
+const ge=(v,d,n)=>{const m=/^(\d{4}-\d\d-\d\d)\.(\d+)$/.exec(String(v));return !!m&&(m[1]>d||(m[1]===d&&Number(m[2])>=n))};
+ok(ge(st.version,"2026-09-09",85),"status.version = "+st.version+" (want 2026-09-09.85 or later, which carry it)");
 const ab=st.anonBudget;
 ok(!!ab&&typeof ab==="object","status.anonBudget present"+(ab?"":" -- the .85 bundle is not serving"));
 if(ab){
@@ -1114,7 +1203,7 @@ if(ab){
   if(ab.overrides&&Object.keys(ab.overrides).length)info("cap overrides in the setting row: "+JSON.stringify(ab.overrides));
 }
 const init=js("/tmp/vd_7j_mcp_init.json")||{};const mv=((init.result||{}).serverInfo||{}).version;
-ok(mv==="2026-09-04.11","agent-mcp serverInfo.version = "+mv+" (want exactly 2026-09-04.11: the build that sends the reader proof)");
+ok(ge(mv,"2026-09-04",11),"agent-mcp serverInfo.version = "+mv+" (want 2026-09-04.11 or later: .11 is the build that began sending the reader proof)");
 const kv={};for(const l of rd("/tmp/vd_7j_trace.txt").split("\n")){const i=l.indexOf("=");if(i>0)kv[l.slice(0,i)]=l.slice(i+1).trim()}
 const plain=js("/tmp/vd_7j_echo_plain.json")||{},probe=js("/tmp/vd_7j_echo_probe.json")||{},mcp=js("/tmp/vd_7j_echo_mcp.json")||{};
 ok(plain.source==="cf"||plain.source==="xff","budget-echo source = "+plain.source+" (want cf or xff; none = the platform hands the function no client address, so everyone is unknown_address)");
@@ -1191,7 +1280,8 @@ node -e '
 const fs=require("fs");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);const info=(m)=>console.log("INFO  "+m);
 const js=(f)=>{try{return JSON.parse(fs.readFileSync(f,"utf8"))}catch{return null}};
 const st=js("/tmp/vd_7j_status.json")||{};const e=js("/tmp/vd_7j_echo_plain.json")||{};const rows=js("/tmp/vd_7j_after.json");
-ok(/^2026-09-09\.(\d+)$/.test(String(st.version))&&Number(String(st.version).split(".").pop())>=86,"status.version = "+st.version+" (want 2026-09-09.86 or later, which carry it)");
+const ge=(v,d,n)=>{const m=/^(\d{4}-\d\d-\d\d)\.(\d+)$/.exec(String(v));return !!m&&(m[1]>d||(m[1]===d&&Number(m[2])>=n))};
+ok(ge(st.version,"2026-09-09",86),"status.version = "+st.version+" (want 2026-09-09.86 or later, which carry it)");
 ok(["cf","registry","none"].includes(e.countrySource),"budget-echo names where its country came from: countrySource = "+e.countrySource+" (absent = the .86 bundle is not serving)");
 if(Array.isArray(rows)){const cn=rows.filter((r)=>r.bh_kind==="address"&&r.bh_country==="CN");
   if(cn.length)for(const r of cn)info(String(r.bh_hour).slice(0,13)+"h CN: "+r.bh_requests+" requests, "+r.bh_addresses+" addresses, "+r.bh_over_cap+" over the cap");
@@ -1216,7 +1306,7 @@ node -e '
 const fs=require("fs");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);const info=(m)=>console.log("INFO  "+m);
 const rd=(f)=>{try{return fs.readFileSync(f,"utf8")}catch{return ""}};const js=(f)=>{try{return JSON.parse(rd(f))}catch{return null}};
 const st=js("/tmp/vd_7j_status.json")||{};const e=js("/tmp/vd_7l_echo.json")||{};const ab=st.anonBudget||{};
-const v87=/^2026-09-09\.(\d+)$/.test(String(st.version))&&Number(String(st.version).split(".").pop())>=87;
+const v87=((v)=>{const m=/^(\d{4}-\d\d-\d\d)\.(\d+)$/.exec(String(v));return !!m&&(m[1]>"2026-09-09"||(m[1]==="2026-09-09"&&Number(m[2])>=87))})(st.version);
 ok(v87,"status.version = "+st.version+" (want 2026-09-09.87 or later)");
 const k=String(e.addressKey||"");const v4=/^(\d+)\.(\d+)\.(\d+)\.\d+$/.exec(k);const v6=/^([0-9a-f]+):([0-9a-f]+):([0-9a-f]+):[0-9a-f]+::\/64$/.exec(k);
 const wantNet=v4?v4[1]+"."+v4[2]+"."+v4[3]+".0/24":v6?v6[1]+":"+v6[2]+":"+v6[3]+"::/48":null;
