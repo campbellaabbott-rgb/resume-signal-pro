@@ -395,7 +395,7 @@
       },
       "subscription": {
         "question": "Ist das ein Abo?",
-        "answer": "Beide Optionen gibt es, und du entscheidest. Jeder Bericht und jedes Tool ist eine einmalige Zahlung, die sich nie automatisch verlängert. Separat gibt es zwei optionale monatliche Pläne: Pro für ${{proPrice}}/Monat mit unbegrenzten Scans und allen Tools, sowie die Morning Queue für ${{agentPrice}}/Monat, bei der der Bewerbungs-Agent über Nacht eine Vorauswahl für dich vorbereitet. Der Lebenslauf-Scan und die Jobbörse bleiben in jedem Fall kostenlos, und nichts stuft dich automatisch hoch."
+        "answer": "Beide Optionen gibt es, und du entscheidest. Jeder Bericht und jedes Tool ist eine einmalige Zahlung, die sich nie automatisch verlängert. Separat gibt es zwei optionale monatliche Pläne: Pro für ${{proPrice}}/Monat mit unbegrenzten Scans und allen Tools, sowie die Morning Queue für ${{agentPrice}}/Monat, bei der der Bewerbungs-Agent über Nacht eine Vorauswahl für dich vorbereitet. Der Lebenslauf-Scan und die Jobbörse bleiben in jedem Fall kostenlos. Beide Pläne verlängern sich jeden Monat, bis du kündigst, und die kostenlose Testphase der Morning Queue für Erstabonnenten geht an ihrem Ende in den bezahlten Plan über, wenn du nicht vorher kündigst. Sonst stuft dich nichts automatisch hoch."
       },
       "share": {
         "question": "Kann ich meine Analyse teilen?",

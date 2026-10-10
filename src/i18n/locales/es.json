@@ -395,7 +395,7 @@
       },
       "subscription": {
         "question": "¿Es una suscripción?",
-        "answer": "Existen ambas opciones y tú eliges. Cada informe y herramienta es un pago único que nunca se renueva. Por separado, hay dos planes mensuales opcionales disponibles: Pro por ${{proPrice}}/mes, que incluye análisis ilimitados y todas las herramientas, y Morning Queue por ${{agentPrice}}/mes, donde el agente de postulación prepara una preselección para ti durante la noche. El análisis de currículum y el portal de empleo siguen siendo gratuitos en ambos casos, y nada te actualiza de forma automática."
+        "answer": "Existen ambas opciones y tú eliges. Cada informe y herramienta es un pago único que nunca se renueva. Por separado, hay dos planes mensuales opcionales disponibles: Pro por ${{proPrice}}/mes, que incluye análisis ilimitados y todas las herramientas, y Morning Queue por ${{agentPrice}}/mes, donde el agente de postulación prepara una preselección para ti durante la noche. El análisis de currículum y el portal de empleo siguen siendo gratuitos en ambos casos. Ambos planes se renuevan cada mes hasta que los canceles, y la prueba gratuita de Morning Queue para nuevos suscriptores pasa al plan de pago cuando termina, salvo que la canceles antes. Nada más te actualiza de forma automática."
       },
       "share": {
         "question": "¿Puedo compartir mi análisis con otros?",
