@@ -4628,6 +4628,7 @@
       "doneNoRefund": "Na-withdraw na. Kanselado na ang plan; walang siningil para dito, kaya walang ibabalik.",
       "none": "Walang plan sa account na ito na nagsimula sa nakaraang {{days}} araw.",
       "notLinked": "May plan sa email address mo na hindi naka-link sa account na ito. Sumulat sa amin at kami ang bahala sa pag-withdraw.",
+      "outsideTerritory": "Ang {{days}}-araw na pag-withdraw ay para sa mga plan na sinisingil sa address sa EU, EEA o UK, at sa ibang lugar sinisingil ang plan na ito. Maaari mo pa rin itong kanselahin anumang oras.",
       "failed": "Hindi natuloy ang pag-withdraw. Pakisubukan ulit pagkalipas ng isang minuto."
     }
   },

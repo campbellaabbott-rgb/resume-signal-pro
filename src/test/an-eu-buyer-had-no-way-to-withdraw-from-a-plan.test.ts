@@ -47,7 +47,7 @@ export default class Stripe {
     const w = () => globalThis.__wdWorld;
     const hit = () => { w().stripeCalls++; };
     const page = (data) => ({ data, has_more: false });
-    this.customers = { list: async () => { hit(); return page([{ id: "cus_1" }]); } };
+    this.customers = { list: async () => { hit(); return page([{ id: "cus_1", address: { country: "DE" } }]); } };
     this.subscriptions = {
       list: async () => { hit(); return page(w().subs); },
       cancel: async (id) => { hit(); w().cancelled.push(id); const s = w().subs.find((x) => x.id === id); if (s) s.status = "canceled"; return s; },

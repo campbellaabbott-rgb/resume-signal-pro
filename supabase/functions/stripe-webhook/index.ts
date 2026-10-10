@@ -29,6 +29,7 @@ import { checkProByEmail, PRO_PRODUCT_NAME } from "../_shared/pro.ts";
 // The mail a new subscriber is owed: terms, cancellation, the trial's end.
 import { NOTICE_FROM, NOTICE_SENDER_DOMAIN, noticeKey, noticeMail, WITHDRAWAL_DAYS, type NoticeKind } from "../_shared/subscription-notice.ts";
 import { euUkSalesOn } from "../_shared/checkout-policy.ts";
+import { inWithdrawalTerritory } from "../_shared/withdrawal.ts";
 // Who paid, as Stripe recorded it: customer_details first (anonymous buyers).
 import { buyerEmailOf } from "../_shared/buyer-email.ts";
 // The full analysis is delivered by analyze-resume on the success page; the
@@ -331,6 +332,8 @@ async function sendSubscriptionNotice(
   kind: NoticeKind,
   sub: Stripe.Subscription,
   email: string | null,
+  /** The billing country the checkout collected: the 14-day paragraph is for EU/EEA/UK buyers only. */
+  buyerCountry: string | null = null,
 ): Promise<"queued" | "already" | "skipped"> {
   const price = sub.items?.data?.[0]?.price;
   if (!email || !price || typeof price.unit_amount !== "number") return "skipped";
@@ -346,7 +349,7 @@ async function sendSubscriptionNotice(
     trialEnd,
     accountUrl: "https://resumebooster.work/account",
     portalLoginUrl: /^https:\/\/billing\.stripe\.com\//.test(loginUrl) ? loginUrl : null,
-    withdrawal: kind === "confirmation" && euUkSalesOn(env)
+    withdrawal: kind === "confirmation" && euUkSalesOn(env) && inWithdrawalTerritory(buyerCountry)
       ? { until: new Date(Date.now() + WITHDRAWAL_DAYS * 86_400_000).toISOString(), contact: env("SUPPORT_EMAIL") ?? "resumeboostersupp@gmail.com" }
       : null,
   });
@@ -1015,7 +1018,7 @@ serve(async (req) => {
           if (subId) {
             try {
               const sub = await stripe.subscriptions.retrieve(subId);
-              await sendSubscriptionNotice(supabase, "confirmation", sub, buyerEmailOf(session));
+              await sendSubscriptionNotice(supabase, "confirmation", sub, buyerEmailOf(session), session.customer_details?.address?.country ?? null);
             } catch (err) {
               processingError = String(err).slice(0, 500);
               mustRetry = true;

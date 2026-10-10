@@ -7,8 +7,10 @@
 // Stripe.
 //
 // With it on, for the signed-in account (the verified token, never a body
-// address), every plan that names this account (metadata.user_id) and began
-// in the last 14 days:
+// address), every plan that names this account (metadata.user_id), began in
+// the last 14 days, and was billed to an address in the EU, the EEA or the UK
+// (the latest paid invoice's address, else the customer's; no country read
+// means no right assumed, _shared/withdrawal.ts):
 //   1. each paid invoice is refunded but for the share of its period already
 //      provided (the buyer asked for the service to start inside the period);
 //   2. the plan is cancelled at once;
@@ -20,6 +22,9 @@
 // plan on the address that names no account is not touched: the answer says
 // to write to support. A full refund also reaches stripe-webhook's
 // charge.refunded, which revokes what the payment bought.
+//
+// { preview: true } answers how many plans are eligible and changes nothing:
+// the account page shows the panel only to a buyer it applies to.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@18.5.0";
@@ -28,7 +33,7 @@ import { listAll } from "../_shared/stripe-paging.ts";
 import { bearerOf } from "../_shared/service-caller.ts";
 import { euUkSalesOn } from "../_shared/checkout-policy.ts";
 import { NOTICE_FROM, NOTICE_SENDER_DOMAIN, noticeKey, withdrawalMail } from "../_shared/subscription-notice.ts";
-import { withdrawalRefundCents, withinWithdrawalPeriod } from "../_shared/withdrawal.ts";
+import { buyerCountryOf, inWithdrawalTerritory, withdrawalRefundCents, withinWithdrawalPeriod } from "../_shared/withdrawal.ts";
 
 const FN_BUILD = "withdraw-subscription.2026-10-09.2";
 const PRO_PRODUCT_NAME = "Resume Booster Pro";
@@ -56,6 +61,8 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
   try {
+    const body = await req.json().catch(() => ({})) as { preview?: unknown } | null;
+    const preview = body?.preview === true;
     const admin = createClient(env("SUPABASE_URL") ?? "", env("SUPABASE_SERVICE_ROLE_KEY") ?? "", { auth: { persistSession: false } });
     const token = bearerOf(req.headers) ?? "";
     const { data: userData } = token && token !== (env("SUPABASE_ANON_KEY") ?? "")
@@ -71,24 +78,34 @@ Deno.serve(async (req) => {
 
     const nowSec = Math.floor(Date.now() / 1000);
     const customers = await listAll<Stripe.Customer>((after) => stripe.customers.list({ email, limit: 100, ...(after ? { starting_after: after } : {}) }));
+    const customerCountry = new Map(customers.map((c) => [c.id, c.address?.country ?? null]));
     const live: Stripe.Subscription[] = [];
     for (const c of customers) {
       const subs = await listAll<Stripe.Subscription>((after) => stripe.subscriptions.list({ customer: c.id, status: "all", limit: 100, ...(after ? { starting_after: after } : {}) }));
       live.push(...subs.filter((s) => LIVE.has(s.status)));
     }
     const uid = user.id.toLowerCase();
-    const eligible = live.filter((s) => subscriptionBuyer(s) === uid && withinWithdrawalPeriod(Number(s.start_date ?? s.created), nowSec));
-    const unlinked = live.some((s) => !subscriptionBuyer(s) && withinWithdrawalPeriod(Number(s.start_date ?? s.created), nowSec));
-    if (!eligible.length) {
-      return json({ withdrawn: [], reason: unlinked ? "plan_not_linked" : "none_eligible" });
+    const inPeriod = (s: Stripe.Subscription) => withinWithdrawalPeriod(Number(s.start_date ?? s.created), nowSec);
+    const eligible: Array<{ s: Stripe.Subscription; invoices: Stripe.Invoice[] }> = [];
+    let outside = false;
+    for (const s of live) {
+      if (subscriptionBuyer(s) !== uid || !inPeriod(s)) continue;
+      const invoices = await listAll<Stripe.Invoice>((after) => stripe.invoices.list({ subscription: s.id, status: "paid", limit: 100, ...(after ? { starting_after: after } : {}) }));
+      // Newest invoice first: the address it was billed (and taxed) at, then the customer's.
+      const country = buyerCountryOf(...invoices.map((i) => i.customer_address?.country), customerCountry.get(refId(s.customer) ?? ""));
+      if (inWithdrawalTerritory(country)) eligible.push({ s, invoices });
+      else outside = true;
     }
+    const unlinked = live.some((s) => !subscriptionBuyer(s) && inPeriod(s) && inWithdrawalTerritory(customerCountry.get(refId(s.customer) ?? "")));
+    const reason = eligible.length ? null : unlinked ? "plan_not_linked" : outside ? "outside_territory" : "none_eligible";
+    if (preview) return json({ eligible: eligible.length, ...(reason ? { reason } : {}) });
+    if (!eligible.length) return json({ withdrawn: [], reason });
 
     const withdrawn: Array<{ subscription: string; refunded: number; currency: string }> = [];
-    for (const s of eligible) {
+    for (const { s, invoices } of eligible) {
       // 1. Refund each paid invoice but for the days already provided.
       let refunded = 0;
       let currency = s.currency ?? "usd";
-      const invoices = await listAll<Stripe.Invoice>((after) => stripe.invoices.list({ subscription: s.id, status: "paid", limit: 100, ...(after ? { starting_after: after } : {}) }));
       for (const inv of invoices) {
         const line = inv.lines?.data?.[0] as { period?: { start?: number; end?: number } } | undefined;
         const amount = withdrawalRefundCents(inv.amount_paid ?? 0, Number(line?.period?.start ?? inv.period_start), Number(line?.period?.end ?? inv.period_end), nowSec);

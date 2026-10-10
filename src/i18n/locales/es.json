@@ -4628,6 +4628,7 @@
       "doneNoRefund": "Desistimiento hecho. El plan está cancelado; no se cobró nada por él, así que no hay nada que reembolsar.",
       "none": "Ningún plan de esta cuenta empezó en los últimos {{days}} días.",
       "notLinked": "Hay un plan con tu correo que no está vinculado a esta cuenta. Escríbenos y gestionaremos el desistimiento.",
+      "outsideTerritory": "El desistimiento de {{days}} días se aplica a los planes facturados a una dirección de la UE, el EEE o el Reino Unido, y este plan se facturó en otro lugar. Puedes cancelarlo cuando quieras.",
       "failed": "El desistimiento no se completó. Inténtalo de nuevo en un minuto."
     }
   },

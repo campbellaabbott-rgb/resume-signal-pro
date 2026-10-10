@@ -4628,6 +4628,7 @@
       "doneNoRefund": "Widerrufen. Der Plan ist beendet; dafür wurde nichts berechnet, also gibt es nichts zu erstatten.",
       "none": "Kein Plan dieses Kontos hat in den letzten {{days}} Tagen begonnen.",
       "notLinked": "Ein Plan unter deiner E-Mail-Adresse ist nicht mit diesem Konto verknüpft. Schreib uns, und wir kümmern uns um den Widerruf.",
+      "outsideTerritory": "Der Widerruf innerhalb von {{days}} Tagen gilt für Pläne, die an eine Adresse in der EU, im EWR oder im Vereinigten Königreich abgerechnet werden, und dieser Plan wurde anderswo abgerechnet. Du kannst ihn trotzdem jederzeit kündigen.",
       "failed": "Der Widerruf hat nicht geklappt. Bitte versuche es in einer Minute erneut."
     }
   },

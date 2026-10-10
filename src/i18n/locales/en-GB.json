@@ -4628,6 +4628,7 @@
       "doneNoRefund": "Withdrawn. The plan is cancelled; nothing was charged for it, so there is nothing to refund.",
       "none": "No plan on this account began in the last {{days}} days.",
       "notLinked": "A plan on your email address is not linked to this account. Write to us and we will handle the withdrawal.",
+      "outsideTerritory": "The {{days}}-day withdrawal applies to plans billed to an address in the EU, the EEA or the UK, and this plan was billed elsewhere. You can still cancel it at any time.",
       "failed": "The withdrawal did not go through. Please try again in a minute."
     }
   },

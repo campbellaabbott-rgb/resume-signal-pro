@@ -4628,6 +4628,7 @@
       "doneNoRefund": "Rétractation effectuée. La formule est résiliée ; rien n'a été facturé, il n'y a donc rien à rembourser.",
       "none": "Aucune formule de ce compte n'a commencé au cours des {{days}} derniers jours.",
       "notLinked": "Une formule liée à votre adresse e-mail n'est pas rattachée à ce compte. Écrivez-nous et nous traiterons la rétractation.",
+      "outsideTerritory": "La rétractation sous {{days}} jours s'applique aux formules facturées à une adresse dans l'UE, l'EEE ou au Royaume-Uni, et cette formule a été facturée ailleurs. Vous pouvez toujours la résilier à tout moment.",
       "failed": "La rétractation n'a pas abouti. Réessayez dans une minute."
     }
   },

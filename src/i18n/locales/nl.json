@@ -4628,6 +4628,7 @@
       "doneNoRefund": "Herroepen. Het abonnement is gestopt; er is niets voor in rekening gebracht, dus er valt niets terug te betalen.",
       "none": "Geen abonnement op dit account is in de afgelopen {{days}} dagen begonnen.",
       "notLinked": "Een abonnement op je e-mailadres is niet aan dit account gekoppeld. Schrijf ons en we regelen de herroeping.",
+      "outsideTerritory": "De herroeping binnen {{days}} dagen geldt voor abonnementen die naar een adres in de EU, de EER of het VK worden gefactureerd, en dit abonnement is elders gefactureerd. Je kunt het altijd nog opzeggen.",
       "failed": "De herroeping is niet gelukt. Probeer het over een minuut opnieuw."
     }
   },
