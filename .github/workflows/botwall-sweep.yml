@@ -67,20 +67,39 @@ jobs:
         working-directory: worker
         run: npx playwright install --with-deps chromium
 
+      # THE BOARD'S PUBLIC URL AND KEY COME FROM THE COMMITTED .env, as
+      # board-health reads them. They were read from repo secrets that were
+      # never set (the only secret is APPLY_WORKER_SECRET), so every scheduled
+      # run before the lockfile broke exited 2 on "SUPABASE_URL / SUPABASE_ANON_KEY
+      # not set". They are the pair the browser bundle ships to every visitor:
+      # nothing secret, and a missing .env line fails loudly here rather than
+      # reading as a sweep. The broker URL is the same project's function, so
+      # it is derived rather than configured.
+      - name: Read the board's public URL and key from .env
+        run: |
+          set -u
+          URL=$(grep -m1 '^VITE_SUPABASE_URL=' .env 2>/dev/null | cut -d= -f2- | tr -d '"' || true)
+          KEY=$(grep -m1 '^VITE_SUPABASE_PUBLISHABLE_KEY=' .env 2>/dev/null | cut -d= -f2- | tr -d '"' || true)
+          if [ -z "$URL" ] || [ -z "$KEY" ]; then
+            echo "::error title=Bot-wall sweep misconfigured::could not read VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY from .env"
+            exit 1
+          fi
+          {
+            echo "SUPABASE_URL=$URL"
+            echo "SUPABASE_ANON_KEY=$KEY"
+            echo "APPLY_BROKER_URL=${URL%/}/functions/v1/apply-broker"
+          } >> "$GITHUB_ENV"
+
       - name: Sweep
         working-directory: worker
         env:
-          # The publishable anon key and URL — the same pair the browser bundle
-          # ships. Read-only board access; the sweep only lists apply_urls.
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          # Wall-observation persistence, via the broker's authenticated `wall`
-          # action (the worker deliberately holds no service key). Optional:
-          # when these repo secrets are unset the sweep prints a labelled DRY
-          # RUN line and persists nothing — measurement still happens, the
-          # write is what's gated. APPLY_BROKER_URL is the apply-broker
-          # function URL; APPLY_WORKER_SECRET matches the edge secret.
-          APPLY_BROKER_URL: ${{ secrets.APPLY_BROKER_URL }}
+          # SUPABASE_URL, SUPABASE_ANON_KEY and APPLY_BROKER_URL arrive from the
+          # step above (GITHUB_ENV); naming them here as well would override
+          # them. Wall-observation persistence goes through the broker's
+          # authenticated `wall` action (the worker deliberately holds no
+          # service key); without APPLY_WORKER_SECRET the sweep prints a
+          # labelled DRY RUN line and persists nothing -- measurement still
+          # happens, the write is what's gated.
           APPLY_WORKER_SECRET: ${{ secrets.APPLY_WORKER_SECRET }}
         # The script exits 2 when those are missing rather than reporting a
         # sweep that measured nothing — an empty result must not read as clean.

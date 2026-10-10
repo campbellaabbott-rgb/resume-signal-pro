@@ -158,7 +158,9 @@ describe("a paused board says so, and never calls a live posting closed", () => 
     mount("/jobs?job=greenhouse:acme:6666");
     // A 404 with no closure recorded is "no longer listed on this board" (2026-10-08).
     await waitFor(() => expect(screen.getByText(/no longer listed on this board/)).toBeInTheDocument(), SLOW);
-    expect(noindex(), "a real dead link is still marked for crawlers").not.toBeNull();
+    // The robots tag is written by a passive effect AFTER that text renders:
+    // read once, it raced the effect and failed on CI (L12-04). Wait for it.
+    await waitFor(() => expect(noindex(), "a real dead link is still marked for crawlers").not.toBeNull(), SLOW);
     expect(screen.queryByText(PAUSED)).toBeNull();
   });
 

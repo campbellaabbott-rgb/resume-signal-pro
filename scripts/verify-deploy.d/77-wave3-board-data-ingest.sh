@@ -29,8 +29,8 @@ for PAIR in "agent-runner|2026-10-09|1" "public-api|2026-10-09|1" "send-search-d
   else echo "FAIL  $W77_FN x-fn-build = $W77_H (want $W77_FN.$W77_D.$W77_N or later: a fit score can still read 140)"; fi
 done
 W77_LF=$(curl -s -m 30 "$B/functions/v1/layoff-filings" -H "apikey: $K" -H "Authorization: Bearer $K" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{console.log(JSON.parse(s).version||"none")}catch{console.log("unparsed")}})')
-if build_ge "lf" "lf.$W77_LF" "2026-10-09" "1"; then echo "PASS  layoff-filings version = $W77_LF (IL earliest notice date, OR counts, refused feeds re-read, SEC retries, MA updates, lca refusals)"
-else echo "FAIL  layoff-filings version = $W77_LF (want 2026-10-09.1 or later; 2026-09-25.1 = the previous build)"; fi
+if build_ge "lf" "lf.$W77_LF" "2026-10-09" "3"; then echo "PASS  layoff-filings version = $W77_LF (IL earliest notice date, OR counts, refused feeds re-read, SEC retries, MA updates, lca refusals)"
+else echo "FAIL  layoff-filings version = $W77_LF (want 2026-10-09.3 or later: the integration build carrying board-data-ingest and tests-ci; 2026-09-25.1 = the previous build)"; fi
 
 B="$B" K="$K" SITE="$SITE" node -e '
 const B=process.env.B,K=process.env.K,SITE=process.env.SITE;

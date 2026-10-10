@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
+import { skipWithoutDist } from "./helpers/built-output";
 
 /**
  * EVERY URL WE SUBMIT FOR INDEXING MUST SERVE ITS OWN HTML.
@@ -190,7 +191,7 @@ const servedFile = (path: string): string | null => {
 
 const built = existsSync(FALLBACK_FILE);
 
-describe.skipIf(!built)("sitemap URLs serve their own prerendered HTML", () => {
+describe.skipIf(skipWithoutDist(built))("sitemap URLs serve their own prerendered HTML", () => {
   it("has a built sitemap to check", () => {
     expect(sitemapPaths().length, "sitemap.xml declared no URLs").toBeGreaterThan(10);
   });

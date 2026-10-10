@@ -24,7 +24,7 @@
  * the analysis exists leaves the session redeemable; and nothing the
  * redemption records can be presented as a purchase of another product.
  */
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { assertPaidSession } from "../../supabase/functions/_shared/paid-session";
 import { analyzeResumeHarness, fullAnalysisSession, RESUME, type Harness } from "./helpers/analyze-resume-harness";
 
@@ -135,8 +135,17 @@ describe("one session, one analysis", () => {
     h.aiPlan.push(gate, gate);
     const a = h.call({ resumeText: RESUME, sessionId: id });
     const b = h.call({ resumeText: `${RESUME} second tab`, sessionId: id });
-    for (let i = 0; i < 200 && h.aiCalls() < 2; i++) await new Promise((r) => setImmediate(r));
-    expect(h.aiCalls(), "both requests must be inside the AI call at once for this to be a race").toBe(2);
+    // A WALL-CLOCK budget. It was 200 event-loop turns, which is no time at
+    // all on a loaded runner: CI run 37207688995 saw 0 calls, and the gate it
+    // never opened left both requests hanging into the next case (3 AI calls
+    // where 1 was asserted). The gate is released whatever happens here.
+    try {
+      await vi.waitFor(() => expect(h.aiCalls(), "both requests must be inside the AI call at once for this to be a race").toBe(2), { timeout: 3_000, interval: 5 });
+    } catch (e) {
+      open();
+      await Promise.allSettled([a, b]);
+      throw e;
+    }
     open();
     const [ra, rb] = await Promise.all([a, b]);
     expect([ra.status, rb.status]).toEqual([200, 200]);

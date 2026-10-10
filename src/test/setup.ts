@@ -17,7 +17,7 @@ if (typeof window !== "undefined") {
   };
   Object.defineProperty(window, "localStorage", { value: localStorageMock, writable: true });
 }
-import { readdirSync, unlinkSync } from "fs";
+import { strayPdfSweeper } from "./helpers/stray-test-pdfs";
 
 // Initialize i18n with the bundled English resources so components using
 // useTranslation() render real English text in tests instead of raw keys.
@@ -47,16 +47,10 @@ if (typeof window !== "undefined" && !window.matchMedia) {
 // individual export test files. They got committed once before this was
 // caught (see git history). Belt-and-suspenders cleanup here, independent of
 // whatever the exact mechanism turns out to be, plus a /*.pdf .gitignore
-// entry as a second safety net if cleanup itself ever fails.
-function cleanupStrayTestPdfs() {
-  try {
-    for (const file of readdirSync(".")) {
-      if (file.endsWith(".pdf")) unlinkSync(file);
-    }
-  } catch {
-    // Best-effort — never let cleanup itself fail a test run.
-  }
-}
+// entry as a second safety net if cleanup itself ever fails. It deletes only
+// PDFs that appeared after this file loaded: a PDF someone keeps in the
+// project root is theirs (helpers/stray-test-pdfs.ts).
+const cleanupStrayTestPdfs = strayPdfSweeper(".");
 
 afterEach(cleanupStrayTestPdfs);
 afterAll(cleanupStrayTestPdfs);

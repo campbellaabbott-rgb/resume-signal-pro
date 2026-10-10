@@ -17,10 +17,10 @@
 #   - the owner steps that no read can prove are named as INFO.
 #
 # READ-ONLY. OPTIONS preflights and the webhook's GET (405) run no function
-# logic. The RPC probes call the new functions as anon with arguments that
-# would write nothing even if a revoke had not landed (an empty payment
-# intent raises before any write; a zero uuid matches no pass or account),
-# and expect 42501. The table probe reads `*` as anon and expects a refusal.
+# logic. The RPC probes go through the shared `probe`, a GET that PostgREST
+# runs in a read-only transaction, and expect 42501: three of the four are
+# writers (payment_revoke, payment_revoke_credits, agent_pass_settle), so a
+# regressed revoke can only fail (25006) here, never write. The table probe reads `*` as anon and expects a refusal.
 # No checkout, scan, analysis or webhook POST is made: each would count an
 # address, mint a Stripe session or need a signature.
 echo "== 65. wave 2 entitlements: one Pro rule by account, Full Analysis in Pro, one trial, refunds revoke, a closed pass gives back, one mailbox switch =="
@@ -49,14 +49,12 @@ if build_ge stripe-webhook "$WH65" "2026-10-08" 2; then echo "PASS  stripe-webho
 else echo "FAIL  stripe-webhook GET x-fn-build = '${WH65}' (want stripe-webhook.2026-10-08.2 or later: refunds still revoke nothing)"; fi
 
 # The migrations: present (not PGRST202) and refused by name (42501).
-vd65_probe() { # $1 fn, $2 args, $3 what it proves
-  local out code
-  out=$(R "$1" "$2")
-  code=$(printf '%s' "$out" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const j=JSON.parse(s);console.log(Array.isArray(j)?"ROWS":(j.code||"NOCODE"))}catch{console.log("NONJSON")}})')
-  case "$code" in
-    42501) echo "PASS  $1 exists and refuses anon by name (42501): $3";;
-    PGRST202) echo "FAIL  $1 not found (PGRST202): its migration has not applied -- $3";;
-    *) echo "FAIL  $1 as anon -> $code $(printf '%s' "$out" | head -c 160) (want 42501)";;
+vd65_probe() { # $1 fn, $2 args (typed, no null), $3 what it proves
+  local line; line=$(probe "$1" "$2")
+  case "$line" in
+    "PASS  $1 as anon -> 42501"*) echo "PASS  $1 exists and refuses anon by name (42501): $3";;
+    "INFO  $1 -> PGRST202"*) echo "FAIL  $1 not found (PGRST202): its migration has not applied -- $3";;
+    *) echo "$line (want 42501) -- $3";;
   esac
 }
 vd65_probe pro_entitlement_rows '{"p_user_id":"00000000-0000-0000-0000-000000000000"}' "20261008130000, the one Pro rule's read by account"

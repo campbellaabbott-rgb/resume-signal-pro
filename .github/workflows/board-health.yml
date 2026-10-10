@@ -10,13 +10,14 @@
 # WHAT IT CHECKS (deliberately minimal, so it cannot flap):
 #   1. The board serves: one thin page query answers 200 with a numeric total
 #      inside 25s. This is the user-facing contract.
-#   2. The pipeline breathes: the status action answers, and its last refresh
-#      slice ran within 6 hours (lastSliceAgeMin). A dead scheduler shows up
-#      here long before any data page looks wrong.
+#   2. The pipeline breathes: the status action answers, its last refresh
+#      slice was admitted within 6 hours (lastSliceAgeMin) and the last slice
+#      to finish its work did so within 6 hours (sliceStats.workAt). A dead
+#      scheduler shows up here long before any data page looks wrong.
 #
 # WHAT IT DOES ON FAILURE: opens a GitHub issue labeled `board-health` (or
 # comments on the existing open one, so a long outage is one thread rather
-# than an issue per tick). Closing the issue re-arms clean alerting; the
+# than an issue per tick), and fails the run so GitHub mails the owner. Closing the issue re-arms clean alerting; the
 # workflow never closes it itself, because "it came back" is a human judgment
 # after today — recovery at 13:07 followed three separate false dawns.
 #
@@ -65,6 +66,13 @@ jobs:
 
       - name: Probe the board
         id: probe
+        # jq, not inline python. The python here started its try:/except lines
+        # at column 0, which ended the `run: |` block early: the file did not
+        # parse, GitHub never read the schedule, and from 2026-08-12 to
+        # 2026-10-08 this alarm ran zero times (561 push-triggered 0-second
+        # failures, zero scheduled runs). Every line of a block scalar stays
+        # indented under it; src/test/an-outage-alarm-that-does-not-parse-
+        # has-never-run.test.ts parses this file and runs this script.
         run: |
           set -u
           FAILS=""
@@ -72,7 +80,7 @@ jobs:
           # The anon key from the repo's own .env (see the header note). A
           # missing key must read as "monitor misconfigured" — loud, never
           # silent, and never mistaken for a board failure.
-          SB_ANON=$(grep -m1 '^VITE_SUPABASE_PUBLISHABLE_KEY=' .env | cut -d= -f2- | tr -d '"' || echo "")
+          SB_ANON=$(grep -m1 '^VITE_SUPABASE_PUBLISHABLE_KEY=' .env 2>/dev/null | cut -d= -f2- | tr -d '"' || echo "")
           if [ -z "$SB_ANON" ]; then
             echo "note=could not read VITE_SUPABASE_PUBLISHABLE_KEY from .env — the monitor cannot probe" >> "$GITHUB_OUTPUT"
             echo "failed=config" >> "$GITHUB_OUTPUT"
@@ -86,33 +94,40 @@ jobs:
             -H "apikey: $SB_ANON" -H "Authorization: Bearer $SB_ANON" \
             -H "Content-Type: application/json" -H "x-rb-budget: probe" \
             -d '{"limit":1,"page":1}' || echo "")
-          TOTAL=$(printf '%s' "$BODY" | python3 -c "import sys,json
-try: print(json.load(sys.stdin).get('total') or '')
-except Exception: print('')")
-          if [ -z "$TOTAL" ]; then
-            FAILS="board query returned no total (timeout, error, or non-JSON)"
-          fi
+          TOTAL=$(printf '%s' "$BODY" | jq -r '.total // empty' 2>/dev/null || echo "")
+          case "$TOTAL" in
+            ''|*[!0-9]*) FAILS="board query returned no numeric total (timeout, error, or non-JSON)";;
+            0) FAILS="the board answered with a total of zero postings";;
+          esac
 
-          # 2. The pipeline breathes: a refresh slice within 6 hours.
+          # 2. The pipeline breathes. Two stamps, and BOTH must be inside 6h:
+          # lastSliceAgeMin is written when a slice is ADMITTED, so a slice
+          # admitted and then killed still reads young; sliceStats.workAt is
+          # written when a slice FINISHES its work. A field that is missing
+          # or not a number is a failure, never a pass: `[ None -gt 360 ]`
+          # is an error that used to read as healthy.
           ST=$(curl -sS -m 25 -X POST "$SB_URL/functions/v1/job-board" \
             -H "apikey: $SB_ANON" -H "Authorization: Bearer $SB_ANON" \
             -H "Content-Type: application/json" -H "x-rb-budget: probe" \
             -d '{"action":"status"}' || echo "")
-          SLICE=$(printf '%s' "$ST" | python3 -c "import sys,json
-try: print(json.load(sys.stdin).get('lastSliceAgeMin', ''))
-except Exception: print('')")
-          if [ -z "$SLICE" ]; then
-            FAILS="${FAILS:+$FAILS; }status action unreachable"
-          elif [ "$(printf '%s' "$SLICE" | cut -d. -f1)" -gt 360 ] 2>/dev/null; then
-            FAILS="${FAILS:+$FAILS; }last refresh slice was ${SLICE} minutes ago (>6h: scheduler or worker likely dead)"
-          fi
+          SLICE=$(printf '%s' "$ST" | jq -r '.lastSliceAgeMin // empty' 2>/dev/null || echo "")
+          WORK=$(printf '%s' "$ST" | jq -r '(.sliceStats.workAt // empty) | sub("\\.[0-9]+"; "") | sub("\\+00:00$"; "Z") | fromdateiso8601 | (now - .) / 60 | floor' 2>/dev/null || echo "")
+          SLICE_MIN=${SLICE%%.*}
+          case "$SLICE_MIN" in
+            ''|*[!0-9]*) FAILS="${FAILS:+$FAILS; }status answered no slice age (lastSliceAgeMin = '${SLICE:-missing}'): unreachable, degraded, or the field moved";;
+            *) if [ "$SLICE_MIN" -gt 360 ]; then FAILS="${FAILS:+$FAILS; }last refresh slice was admitted ${SLICE} minutes ago (>6h: scheduler or worker likely dead)"; fi;;
+          esac
+          case "$WORK" in
+            ''|*[!0-9-]*) FAILS="${FAILS:+$FAILS; }status answered no slice work stamp (sliceStats.workAt = '${WORK:-missing}')";;
+            *) if [ "$WORK" -gt 360 ]; then FAILS="${FAILS:+$FAILS; }the last slice to finish its work did so ${WORK} minutes ago (>6h: slices are admitted and dying)"; fi;;
+          esac
 
           if [ -n "$FAILS" ]; then
             echo "note=$FAILS" >> "$GITHUB_OUTPUT"
             echo "failed=probe" >> "$GITHUB_OUTPUT"
           else
             echo "failed=" >> "$GITHUB_OUTPUT"
-            echo "board OK: total=$TOTAL, lastSliceAgeMin=$SLICE"
+            echo "board OK: total=$TOTAL, lastSliceAgeMin=$SLICE, last slice work ${WORK} min ago"
           fi
 
       - name: Raise or update the alarm
@@ -122,6 +137,10 @@ except Exception: print('')")
           NOTE: ${{ steps.probe.outputs.note }}
         run: |
           set -u
+          # The label first: `gh issue create --label` fails outright when the
+          # label does not exist, and nothing ever created this one.
+          gh label create board-health --repo "$GITHUB_REPOSITORY" --color B60205 \
+            --description "Opened by the board-health outage monitor" --force >/dev/null 2>&1 || true
           EXISTING=$(gh issue list --repo "$GITHUB_REPOSITORY" --label board-health --state open --json number --jq '.[0].number' || echo "")
           STAMP="$(date -u +'%Y-%m-%d %H:%M UTC')"
           if [ -n "$EXISTING" ]; then
@@ -132,5 +151,15 @@ except Exception: print('')")
               --label board-health \
               --body "$STAMP — $NOTE
 
-This issue was opened by .github/workflows/board-health.yml, which probes the live board every 10 minutes from outside the database. Close it once the board is verified healthy; the monitor comments here instead of opening duplicates while it stays open."
+          This issue was opened by .github/workflows/board-health.yml, which probes the live board every 30 minutes from outside the database. Close it once the board is verified healthy; the monitor comments here instead of opening duplicates while it stays open."
           fi
+
+      # A FAILING PROBE FAILS THE RUN. The issue is the thread; a red scheduled
+      # run is what makes GitHub mail the owner, which reaches a phone.
+      - name: Fail the run while the board is failing
+        if: steps.probe.outputs.failed != ''
+        env:
+          NOTE: ${{ steps.probe.outputs.note }}
+        run: |
+          echo "::error title=Board health::$NOTE"
+          exit 1

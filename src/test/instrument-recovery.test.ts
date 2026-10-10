@@ -17,6 +17,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { parseDocument } from "yaml";
 
 const MIG = resolve(__dirname, "../../supabase/migrations");
 // Strips BOTH comment forms: a guard satisfied by a /* */-commented-out
@@ -229,7 +230,13 @@ describe("the external monitor watches from outside the blast radius", () => {
     // faster than the outage it watches. Its own threshold is "no refresh
     // slice in 6 hours", so anything up to hourly is comfortably an alarm; a
     // cadence finer than the threshold buys precision nothing consumes.
-    const m = /cron: "(\S+) (\S+) \* \* \*"/.exec(wf);
+    // READ FROM THE PARSED FILE, not the raw text: this regex matched for 53
+    // days while a column-0 line made the YAML unreadable and GitHub never
+    // saw the schedule at all (an-outage-alarm-that-does-not-parse-...).
+    const doc = parseDocument(wf);
+    expect(doc.errors.map((e) => e.message), "board-health.yml does not parse").toEqual([]);
+    const cron = String((doc.toJS() as { on?: { schedule?: Array<{ cron?: string }> } }).on?.schedule?.[0]?.cron ?? "");
+    const m = /^(\S+) (\S+) \* \* \*$/.exec(cron);
     expect(m, "board-health has no minute/hour cron").not.toBeNull();
     const [, minute, hour] = m!;
     expect(hour, "must run every hour, not on selected hours").toBe("*");

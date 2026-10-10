@@ -51,6 +51,7 @@ import { deployMirrorRows } from "./mirror-catalogue.ts";
 import type { MirrorRow } from "./mirror-rows.ts";
 import { decodeLcaCells, LCA_CHUNK_ROWS, newLcaTally, planLcaChunks, postLcaChunks, refuseLcaCells, twinVendorTokens } from "./lca-cells.ts";
 import { JOB_SOURCES } from "./board-sources.ts";
+import { stamped } from "../_shared/fn-build.ts";
 import {
   LCA_CELL_COUNT, LCA_COVERAGE_FROM, LCA_COVERAGE_TO, LCA_FISCAL_QUARTER, LCA_PUBLISHED_ON, LCA_TOKEN_COUNT,
 } from "./lca-payload.ts";
@@ -58,7 +59,9 @@ import {
 // .1 mirror; .1 of this date carries the certified H-1B wage cells, the action that loads them, the
 // measured coverage span they are labelled by, and the staged swap that replaces a period whole;
 // wave 3 adds the Oregon/Illinois/Massachusetts map fixes, S8-026/S8-108 and edgar_reread.
-export const BUILD_VERSION = "2026-10-09.1";
+// .3 (wave 3 integration): board-data-ingest stamped .1 and tests-ci .2 (the x-fn-build header via
+// _shared/fn-build.ts stamped()); the merged function carries both, so a build neither shipped alone.
+export const BUILD_VERSION = "2026-10-09.3";
 
 // ── mirror constants (src/config/layoffs.ts names this file) ──────────────
 export const LAYOFF_LOOKBACK_DAYS = 90;
@@ -901,7 +904,7 @@ async function runLcaWages(client: SupabaseLike): Promise<Response> {
 
 // ── the handler ────────────────────────────────────────────────────────────
 
-serve(async (req) => {
+serve(stamped(`layoff-filings.${BUILD_VERSION}`, async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   if (req.method === "GET") return json({ ok: true, function: "layoff-filings", version: BUILD_VERSION, parser: "parse205_v2_ts" });
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
@@ -945,4 +948,4 @@ serve(async (req) => {
     console.error("[layoff-filings] unhandled:", e);
     return json({ error: (e as Error).message ?? String(e) }, 500);
   }
-});
+}));

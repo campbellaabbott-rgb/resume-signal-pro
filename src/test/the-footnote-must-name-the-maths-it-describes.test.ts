@@ -3,6 +3,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { PERIOD_MULTIPLIER, detectPartTime, parseSalaryStructured } from "../../supabase/functions/_shared/salary-extract";
 import { codeOf } from "./helpers/strip-comments";
+import { skipWithoutDist } from "./helpers/built-output";
 
 /**
  * TWO CLAIMS THAT WENT FALSE THE MOMENT THE CODE BEHIND THEM MOVED.
@@ -126,7 +127,7 @@ describe("the skip link has a target in the bytes actually served", () => {
   // Only meaningful after a build. Skipped rather than failed on a clean tree —
   // the shell assertion above already holds the contract.
   const built = resolve(ROOT, "dist/jobs/index.html");
-  it.skipIf(!existsSync(built))("the built page's skip link resolves to a real element", () => {
+  it.skipIf(skipWithoutDist(existsSync(built)))("the built page's skip link resolves to a real element", () => {
     const html = readFileSync(built, "utf8");
     const href = /href="#([^"]+)"/.exec(html)?.[1];
     expect(href, "no fragment link found in the built page").toBeTruthy();

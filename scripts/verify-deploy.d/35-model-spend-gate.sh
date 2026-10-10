@@ -39,11 +39,12 @@ for FN in generate-summary generate-interview-coach generate-career-path generat
   MSG_H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$FN" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r')
   MSG_S=$(printf '%s' "$MSG_H" | head -1 | awk '{print $2}')
   MSG_V=$(printf '%s' "$MSG_H" | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//')
-  case "$MSG_V" in
-    "$FN.2026-10-04.1") echo "PASS  $FN preflight x-fn-build = $MSG_V";;
-    "") echo "FAIL  $FN preflight (HTTP $MSG_S) carries no x-fn-build: the previous bundle is still serving (baseline 2026-10-04: none on all 24)";;
-    *) echo "INFO  $FN preflight x-fn-build = $MSG_V (want $FN.2026-10-04.1 or a later build of this gate)";;
-  esac
+  # THIS BUILD OR LATER. It PASSed only the exact 2026-10-04.1 string and
+  # printed every later build as INFO, so the line could never pass again
+  # once a function was rebuilt, nor fail on an older one (S8-124).
+  if [ -z "$MSG_V" ]; then echo "FAIL  $FN preflight (HTTP $MSG_S) carries no x-fn-build: the previous bundle is still serving (baseline 2026-10-04: none on all 24)"
+  elif build_ge "$FN" "$MSG_V" 2026-10-04 1; then echo "PASS  $FN preflight x-fn-build = $MSG_V ($FN.2026-10-04.1 or later)"
+  else echo "FAIL  $FN preflight x-fn-build = $MSG_V (want $FN.2026-10-04.1 or later: an older bundle is serving)"; fi
 done
 echo "INFO  the refusal paths (429 rate_limited_function / rate_limited_session / rate_limited_global, 503 limiter_unavailable, 410 retired) are proved in tests, not here: a live probe would spend from the limiter it measures"
 echo "INFO  the server deliveries' service-role key ships inside stripe-webhook, verify-product-purchase and retry-failed-deliveries, whose x-fn-build strings other 2026-10-04 branches bump; a build of theirs deployed from main after claude/sec-ai-spend merged carries it"

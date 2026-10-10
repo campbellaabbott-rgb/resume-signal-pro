@@ -9,6 +9,7 @@ import {
   postingPagePath,
   postingPathParts,
 } from "@/components/jobs/posting-page";
+import { skipWithoutDist } from "./helpers/built-output";
 
 /**
  * A POSTING HAS AN ADDRESS, AND THAT ADDRESS SERVES THE POSTING.
@@ -236,7 +237,7 @@ describe("the route and the generator agree about where a posting lives", () => 
 const DIST = resolve(ROOT, "dist/index.html");
 const built = existsSync(DIST);
 
-describe.skipIf(!built)("every posting URL in the built sitemap serves the posting", () => {
+describe.skipIf(skipWithoutDist(built))("every posting URL in the built sitemap serves the posting", () => {
   const xml = readFileSync(
     existsSync(resolve(ROOT, "dist/sitemap.xml")) ? resolve(ROOT, "dist/sitemap.xml") : resolve(ROOT, "public/sitemap.xml"),
     "utf8",

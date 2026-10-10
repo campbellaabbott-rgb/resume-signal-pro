@@ -81,6 +81,11 @@ function section7h(script: string): string {
   return script.slice(open.index, next ? open.index + 1 + next.index : undefined);
 }
 const SECTION = section7h(SCRIPT);
+/** The section's own chunk size (ten since 2026-10-10: fifty timed out at the function's 25s header). */
+const CHUNK = Number(/^CHUNK7H=(\d+)$/m.exec(SECTION)?.[1]);
+const NCHUNK = Math.ceil(150 / CHUNK);
+/** The 1-based chunk that holds token index i. */
+const chunkOf = (i: number) => Math.floor(i / CHUNK) + 1;
 /** The script's cached-rows helper, carried into the harness so a section that uses it runs as it would in the script. */
 const CAT_HELPER = /^CAT\(\) \{[^\n]*\}$/m.exec(SCRIPT)?.[0] ?? "";
 
@@ -117,7 +122,7 @@ const fieldCurves = (over: Record<string, Row> = {}) =>
 type ChunkMode = "rows" | "timeout" | "html";
 interface Fixture {
   facets: unknown;
-  /** How the largest-boards chunks answer: one mode for every chunk, or one per chunk of fifty in token order. */
+  /** How the largest-boards chunks answer: one mode for every call, or one per THIRD of the 150 tokens (50 each) in token order, whatever the section's chunk size. */
   largest: ChunkMode | ChunkMode[];
   /** Per-token overrides on the largest boards' rows, for a row that breaks one claim. */
   boardOver?: Record<string, Row>;
@@ -128,6 +133,8 @@ interface Fixture {
   statsRows?: unknown;
   layoff: unknown;
   applied?: string;
+  /** A staged-runner journal to read the apply time from when `applied` is unset. */
+  journal?: unknown;
 }
 
 const base = (): Fixture => ({
@@ -191,7 +198,9 @@ MAX_CACHE_MS=2000; MAX_CURVE_AGE_H=3; export MAX_CACHE_MS MAX_CURVE_AGE_H
   writeFileSync(join(dir, "run.sh"), prelude + body);
   const env: NodeJS.ProcessEnv = { ...process.env, PATH: `${dirname(process.execPath)}:${process.env.PATH ?? ""}` };
   delete env.DAY30_APPLIED_AT;
+  delete env.DAY30_JOURNAL;
   if (fx.applied !== undefined) env.DAY30_APPLIED_AT = fx.applied;
+  if (fx.journal !== undefined) { put("journal.json", fx.journal); env.DAY30_JOURNAL = join(dir, "journal.json"); }
   const out = execFileSync("bash", [join(dir, "run.sh")], { env, encoding: "utf8", timeout: 50_000 });
   const log = existsSync(join(dir, "calls.log")) ? readFileSync(join(dir, "calls.log"), "utf8") : "";
   const calls = log.split("\n").filter(Boolean).map((l) => { const [fn, ...rest] = l.split("\t"); return { fn, arg: rest.join("\t") }; });
@@ -202,14 +211,16 @@ const has = (lines: string[], status: "PASS" | "FAIL" | "INFO", re: RegExp) => l
 const show = (lines: string[]) => `\n${lines.join("\n")}`;
 
 describe("the largest boards: read in chunks, and a read that errs is a FAIL", () => {
-  it("reads the 150 facet boards in calls of at most fifty tokens, every board once", () => {
+  it("reads the 150 facet boards in calls of at most the section's chunk size, every board once", () => {
     const { lines, calls } = run(base());
     const chunks = calls
       .filter((c) => c.fn === "get_company_fill_curve")
       .map((c) => JSON.parse(c.arg).p_tokens as string[])
       .filter((t) => t[0] !== NAMED[0]);
     expect(chunks.length, show(lines)).toBeGreaterThanOrEqual(3);
-    for (const t of chunks) expect(t.length).toBeLessThanOrEqual(50);
+    expect(CHUNK, "no CHUNK7H in section 7h").toBeGreaterThan(0);
+    expect(CHUNK, "fifty a call answered 57014 at the 25s header on 2026-10-10").toBeLessThanOrEqual(10);
+    for (const t of chunks) expect(t.length).toBeLessThanOrEqual(CHUNK);
     expect(chunks.flat().sort()).toEqual([...TOKENS].sort());
     expect(has(lines, "PASS", /no sufficient_30 row is lap_proven or lacks a floor before cohort_to \(150 of 150 boards\)/), show(lines)).toBe(true);
     expect(has(lines, "PASS", /every lap_proven board among them reads reason lap/), show(lines)).toBe(true);
@@ -218,7 +229,7 @@ describe("the largest boards: read in chunks, and a read that errs is a FAIL", (
 
   it("a statement timeout on the largest boards is a FAIL naming 57014, never an informational 'no rows'", () => {
     const { lines } = run({ ...base(), largest: "timeout" });
-    expect(has(lines, "FAIL", /largest boards, chunk 1 of 3: error 57014/), show(lines)).toBe(true);
+    expect(has(lines, "FAIL", new RegExp(`largest boards, chunk 1 of ${NCHUNK}: error 57014`)), show(lines)).toBe(true);
     expect(has(lines, "FAIL", /no chunk answered with rows, so none of the three claims was evaluated/), show(lines)).toBe(true);
     expect(lines.some((l) => /^INFO .*largest/i.test(l) && /no rows/.test(l)), show(lines)).toBe(false);
     expect(lines.some((l) => l.startsWith("PASS") && /largest boards|lap_proven board among them|names its reason/.test(l)), show(lines)).toBe(false);
@@ -226,7 +237,7 @@ describe("the largest boards: read in chunks, and a read that errs is a FAIL", (
 
   it("an answer that is not JSON at all is a FAIL too", () => {
     const { lines } = run({ ...base(), largest: "html" });
-    expect(has(lines, "FAIL", /largest boards, chunk 1 of 3: no JSON/), show(lines)).toBe(true);
+    expect(has(lines, "FAIL", new RegExp(`largest boards, chunk 1 of ${NCHUNK}: no JSON`)), show(lines)).toBe(true);
     expect(lines.some((l) => l.startsWith("PASS") && /largest boards/.test(l)), show(lines)).toBe(false);
   });
 
@@ -273,9 +284,47 @@ describe("the field rows: read from the explore cache, and dated against the app
   });
 
   it("without the apply time the rows cannot be dated, and that is a FAIL, not a pass on presence", () => {
-    const { lines } = run({ ...base(), applied: undefined });
+    // EMPTY, not unset: unset reads the staged runner's journal (below).
+    const { lines } = run({ ...base(), applied: "" });
     expect(has(lines, "FAIL", /cannot be dated against the apply: set DAY30_APPLIED_AT/), show(lines)).toBe(true);
     expect(lines.some((l) => l.startsWith("PASS") && /explore cache field_curves .*(after the apply|below its highest)/.test(l)), show(lines)).toBe(false);
+  });
+
+  /**
+   * UNSET, THE APPLY TIME IS THE RECORD'S (L1-06). DAY30_APPLIED_AT had no
+   * default, so the three dating lines read FAIL on every run, which is how a
+   * verifier teaches its reader to skip FAIL lines. The staged runner's
+   * journal stamps each file it applied; the latest of the three is the time.
+   */
+  const journalOf = (minutesAgo: number[], tags = [
+    "0085_a_board_is_judged_at_day_thirty_only_on_roles_posted_while_we_were_reading_it_in_full",
+    "0086_a_field_pools_only_the_roles_whose_whole_thirty_days_we_could_see",
+    "0087_the_layoff_arms_get_the_same_watch_floor_as_the_field_table_beside_them",
+  ]) => ({ entries: tags.map((tag, i) => ({ idx: 85 + i, tag, when: NOW - minutesAgo[i] * 60_000 })) });
+
+  it("unset, the apply time is read from the staged runner's journal, and the rows are dated against the LAST of the three", () => {
+    const { lines } = run({ ...base(), applied: undefined, journal: journalOf([62, 61, 60]) });
+    const at = new Date(Math.ceil((NOW - 60 * 60_000) / 1000) * 1000).toISOString();
+    expect(has(lines, "INFO", new RegExp(`DAY30_APPLIED_AT = ${at.replace(/[.]/g, "\\.")}, read from the staged runner's journal`)), show(lines)).toBe(true);
+    expect(has(lines, "PASS", /explore cache field_curves \(18 fields\) computed_at=\S+ is dated at or after the apply/), show(lines)).toBe(true);
+    expect(lines.some((l) => /cannot be dated against the apply/.test(l)), show(lines)).toBe(false);
+    // The latest of the three, not the first: rows computed between the first
+    // and the last apply may have come from the old definition.
+    const between = run({ ...base(), applied: undefined, journal: journalOf([30, 20, 5]) });
+    expect(has(between.lines, "FAIL", /computed_at=\S+ is BEFORE the apply/), show(between.lines)).toBe(true);
+  });
+
+  it("a journal that does not record all three files leaves the time unset, and the dating lines FAIL closed", () => {
+    const { lines } = run({ ...base(), applied: undefined, journal: journalOf([62, 61], ["0085_a_board_is_judged_at_day_thirty_only_on_roles_posted_while_we_were_reading_it_in_full", "0086_a_field_pools_only_the_roles_whose_whole_thirty_days_we_could_see"]) });
+    expect(has(lines, "FAIL", /cannot be dated against the apply: set DAY30_APPLIED_AT/), show(lines)).toBe(true);
+    expect(lines.some((l) => /read from the staged runner's journal/.test(l)), show(lines)).toBe(false);
+  });
+
+  it("the repository's own journal records all three day-30 files", () => {
+    const j = JSON.parse(readFileSync(resolve(ROOT, "drizzle/migrations/meta/_journal.json"), "utf8")) as { entries: Array<{ tag: string; when: number }> };
+    for (const re of [/reading_it_in_full$/, /whole_thirty_days_we_could_see$/, /layoff_arms_get_the_same_watch_floor/]) {
+      expect(j.entries.some((e) => re.test(e.tag) && Number.isFinite(e.when)), `${re} is not in the journal`).toBe(true);
+    }
   });
 
   it("a field that kept its pre-fix gate share is named as corroboration, never failed on one field's drift", () => {
@@ -294,7 +343,7 @@ describe("the field rows: read from the explore cache, and dated against the app
     // at the old level outweighs seventeen small ones that fell.
     const heavy = run({ ...base(), explore: { ...(base().explore as Row), field_curves: fieldCurves({ healthcare: { gate_share_30: 0.9, dated_cohort_n_30: 2_000_000 } }) } });
     expect(has(heavy.lines, "FAIL", /gate_share_30 pooled over 2170000 dated roles = 0\.8452/), show(heavy.lines)).toBe(true);
-    const undated = run({ ...base(), applied: undefined, explore: { ...(base().explore as Row), field_curves: fieldCurves(Object.fromEntries(FIELDS.map((f) => [f, { gate_share_30: hi }]))) } });
+    const undated = run({ ...base(), applied: "", explore: { ...(base().explore as Row), field_curves: fieldCurves(Object.fromEntries(FIELDS.map((f) => [f, { gate_share_30: hi }]))) } });
     expect(has(undated.lines, "INFO", /gate_share_30 pooled over .* not graded/), show(undated.lines)).toBe(true);
   });
 
@@ -417,11 +466,11 @@ const MUTE_LINE = /a refused row always names its reason and a sufficient row ne
 describe("every claim 7h makes is fed a row that breaks it", () => {
   it("one chunk of three timing out leaves no invariant PASS, though the other two answered clean rows", () => {
     const { lines } = run({ ...base(), largest: ["rows", "timeout", "rows"] });
-    expect(has(lines, "FAIL", /largest boards, chunk 2 of 3: error 57014/), show(lines)).toBe(true);
+    expect(has(lines, "FAIL", new RegExp(`largest boards, chunk ${chunkOf(50)} of ${NCHUNK}: error 57014`)), show(lines)).toBe(true);
     for (const re of [SUFF_LINE, LAP_LINE, MUTE_LINE]) {
       const l = lineFor(lines, re);
       expect(l.startsWith("FAIL  "), `${re}: ${show(lines)}`).toBe(true);
-      expect(l, "the line says how much it covered and that a chunk failed").toMatch(/\(100 of 150 boards; 1 chunk\(s\) failed above\)/);
+      expect(l, "the line says how much it covered and that a chunk failed").toMatch(new RegExp(`\\(100 of 150 boards; ${50 / CHUNK} chunk\\(s\\) failed above\\)`));
     }
   });
 
@@ -486,7 +535,7 @@ describe("every claim 7h makes is fed a row that breaks it", () => {
     const { lines } = run({ ...base(), layoff: arms(0.717, 40) });
     expect(has(lines, "FAIL", /layoff control arm stored BEFORE the apply .* and not withheld/), show(lines)).toBe(true);
     expect(lines.some((l) => l.startsWith("PASS") && /control arm/.test(l)), show(lines)).toBe(false);
-    const undated = run({ ...base(), applied: undefined, layoff: arms(0.717, 40) });
+    const undated = run({ ...base(), applied: "", layoff: arms(0.717, 40) });
     expect(has(undated.lines, "FAIL", /layoff control arm recomputed but cannot be dated against the apply/), show(undated.lines)).toBe(true);
     expect(undated.lines.some((l) => l.startsWith("PASS") && /control arm/.test(l)), show(undated.lines)).toBe(false);
   });
