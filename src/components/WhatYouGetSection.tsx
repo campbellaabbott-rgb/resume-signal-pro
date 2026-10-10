@@ -1,5 +1,6 @@
 import { ScanSearch, FileSearch, ListChecks, Users, MessageSquare, ShieldCheck, BarChart3, GitCompare, Globe2 } from "lucide-react";
 import { TEMP_RESUME_HOURS } from "@/lib/resume-retention";
+import { LANGUAGE_COUNT } from "@/i18n";
 
 // Pre-scan expectation setter: exactly what the free report contains, shown
 // before anyone uploads. Every item here must correspond to a real report
@@ -43,10 +44,10 @@ export function WhatYouGetSection() {
         <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
           <span className="flex items-center gap-1.5">
             <Globe2 className="w-3.5 h-3.5 text-primary" />
-            59 industries covered — from software to skilled trades
+            Industry-specific checks — from software to skilled trades
           </span>
           <span>·</span>
-          <span>10 languages</span>
+          <span>{LANGUAGE_COUNT} languages</span>
           <span>·</span>
           <span>Career-change and new-grad aware</span>
           <span>·</span>

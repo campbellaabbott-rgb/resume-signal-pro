@@ -1453,9 +1453,10 @@
       "doNotApply": "✗ Schlechte Eignung — Andere Stellen in Betracht ziehen"
     },
     "atsBanner": {
-      "require60": "Die meisten ATS-Systeme erfordern 60+ zum Bestehen",
-      "require75": "75+ erhöht die Rückrufquote",
-      "targetScore": "75+"
+      "belowMedian": "Unter dem Median von {{median}} bei {{n}} hier gescannten Lebensläufen aus {{industry}}. Kein ATS lehnt anhand dieser Zahl ab, aber die Korrekturen unten erhöhen sie.",
+      "belowTopQuarter": "Über dem Median von {{median}}; das oberste Viertel der {{n}} hier gescannten Lebensläufe aus {{industry}} erreicht {{p75}} oder mehr.",
+      "noPassMark": "Das ist keine Bestehensgrenze: Kein ATS lehnt einen Lebenslauf anhand einer Punktzahl ab. Die Korrekturen unten erhöhen sie.",
+      "topQuarter": "Oberstes Viertel: {{p75}}+"
     },
     "eliteSignals": {
       "title": "Recruiter-anziehende Signale"
@@ -4428,7 +4429,7 @@
     "setupTrack": "Erste Stelle speichern oder bewerben",
     "setupDismiss": "Schließen",
     "bridgeTitle": "Deine Morning Queue",
-    "bridgeBlurb": "Der Apply Agent prüft nachts tausende frische Anzeigen und wählt die aus, die deinen Morgen wert sind — Wiederausschreiber aussortiert, echte Einsteller zuerst, jede mit Begründung. Absenden tust immer du.",
+    "bridgeBlurb": "Der Apply Agent prüft nachts tausende frische Anzeigen und wählt die aus, die deinen Morgen wert sind — Wiederausschreiber aussortiert, echte Einsteller zuerst, jede mit Begründung. Im Prüfmodus, der Voreinstellung, geht nichts raus, bevor du es freigibst.",
     "bridgeGap": "Er kennt auch deine aktuelle größte Lücke ({{gap}}) und gewichtet sie.",
     "bridgeCta": "Queue öffnen ↓",
     "notifTitle": "E-Mails & Alerts",
@@ -4538,7 +4539,7 @@
     "f3Body": "Der Agent erfindet nie Erfahrung, die Sie nicht haben. Jede Aussage wird gegen Ihren Lebenslauf geprüft, bevor Sie den Entwurf sehen.",
     "f4Title": "Bereitet vor, verfolgt, erinnert",
     "f4Body": "Interview-Vorbereitung je Bewerbung, eine Pipeline, die sagt, was als Nächstes ansteht, und eine Erinnerung, wenn eine Nachfrage fällig ist.",
-    "control": "Sie behalten die Kontrolle: der Agent entwirft, Sie geben frei und senden auf der Website des Unternehmens selbst.",
+    "control": "Sie behalten die Kontrolle: Im Prüfmodus, der Voreinstellung, entwirft der Agent und nichts geht raus, bevor Sie es freigeben. Den Automodus, der für Sie absendet, schalten Sie selbst ein.",
     "cta": "Wählen Sie einen Job und sehen Sie ihn arbeiten"
   },
   "boardHero": {

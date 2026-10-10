@@ -1453,9 +1453,10 @@
       "doNotApply": "✗ Poor Fit — Consider Other Roles"
     },
     "atsBanner": {
-      "require60": "Most ATS require 60+ to pass",
-      "require75": "75+ increases callback rate",
-      "targetScore": "75+"
+      "belowMedian": "Below the median of {{median}} among {{n}} {{industry}} CVs scanned here. No ATS rejects on this number, but the fixes below raise it.",
+      "belowTopQuarter": "Above the median of {{median}}; the top quarter of the {{n}} {{industry}} CVs scanned here score {{p75}} or more.",
+      "noPassMark": "This is not a pass mark: no ATS rejects a CV on a score. The fixes below raise it.",
+      "topQuarter": "Top quarter: {{p75}}+"
     },
     "eliteSignals": {
       "title": "Recruiter-Attracting Signals"
@@ -4428,7 +4429,7 @@
     "setupTrack": "Save or apply to your first role",
     "setupDismiss": "Dismiss",
     "bridgeTitle": "Your Morning Queue",
-    "bridgeBlurb": "The Apply Agent reviews thousands of fresh postings overnight and shortlists the ones worth your morning — churny companies skipped, genuine hirers first, each with its reasons. You always press send.",
+    "bridgeBlurb": "The Apply Agent reviews thousands of fresh postings overnight and shortlists the ones worth your morning — churny companies skipped, genuine hirers first, each with its reasons. In review mode, the default, nothing is sent until you approve it.",
     "bridgeGap": "It also knows your current top gap ({{gap}}) and weighs it.",
     "bridgeCta": "Open the queue ↓",
     "notifTitle": "Emails & alerts",
@@ -4538,7 +4539,7 @@
     "f3Body": "The agent never invents experience you don't have. Every claim it writes is checked against your CV before you ever see the draft.",
     "f4Title": "Preps you, tracks it, nudges you",
     "f4Body": "Interview prep for each application, a pipeline that tells you what to do next, and a quiet-application reminder when it's time to follow up.",
-    "control": "You stay in control: the agent drafts, you approve, and you press send on the company's own site.",
+    "control": "You stay in control: in review mode, the default, the agent drafts and nothing goes out until you approve it. Auto mode, which submits for you, is a switch you turn on.",
     "cta": "Pick a job and watch it work"
   },
   "boardHero": {

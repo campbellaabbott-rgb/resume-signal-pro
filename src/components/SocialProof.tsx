@@ -1,4 +1,5 @@
 import { Scale, ShieldCheck, FileSearch, Globe2 } from "lucide-react";
+import { LANGUAGE_COUNT } from "@/i18n";
 
 // Credibility section. Every claim here is verifiable inside the product
 // itself — no invented testimonials, no unsourced percentages. If a claim
@@ -21,7 +22,10 @@ const TRUST_POINTS = [
   },
   {
     icon: Globe2,
-    title: "59 industries, 10 languages",
+    // L4-09: was "59 industries, 10 languages" over a table of 58 and eight
+    // languages. The language count is derived; the industry count lives on
+    // /industries, which renders it from the table.
+    title: `Industry-specific checks, ${LANGUAGE_COUNT} languages`,
     body: "From software to skilled trades, with detection tested against a pinned regression suite that runs on every change — including the hard cases most tools misread.",
   },
 ];

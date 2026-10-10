@@ -1453,9 +1453,10 @@
       "doNotApply": "✗ Mauvaise adéquation — Considérez d'autres rôles"
     },
     "atsBanner": {
-      "require60": "La plupart des ATS nécessitent 60+ pour passer",
-      "require75": "75+ augmente le taux de rappel",
-      "targetScore": "75+"
+      "belowMedian": "Sous la médiane de {{median}} parmi {{n}} CV du secteur {{industry}} analysés ici. Aucun ATS ne rejette sur ce chiffre, mais les corrections ci-dessous le font monter.",
+      "belowTopQuarter": "Au-dessus de la médiane de {{median}} ; le quart supérieur des {{n}} CV du secteur {{industry}} analysés ici obtient {{p75}} ou plus.",
+      "noPassMark": "Ce n'est pas une note éliminatoire : aucun ATS ne rejette un CV sur un score. Les corrections ci-dessous le font monter.",
+      "topQuarter": "Quart supérieur : {{p75}}+"
     },
     "eliteSignals": {
       "title": "Signaux attractifs pour les recruteurs"
@@ -4428,7 +4429,7 @@
     "setupTrack": "Enregistrez ou candidatez à un premier poste",
     "setupDismiss": "Fermer",
     "bridgeTitle": "Votre file du matin",
-    "bridgeBlurb": "L'Agent passe en revue des milliers d'offres fraîches chaque nuit et présélectionne celles qui valent votre matinée — entreprises qui republient écartées, vrais recruteurs d'abord, chacune avec ses raisons. C'est toujours vous qui envoyez.",
+    "bridgeBlurb": "L'Agent passe en revue des milliers d'offres fraîches chaque nuit et présélectionne celles qui valent votre matinée — entreprises qui republient écartées, vrais recruteurs d'abord, chacune avec ses raisons. En mode révision, le mode par défaut, rien n'est envoyé avant votre accord.",
     "bridgeGap": "Il connaît aussi votre principale lacune actuelle ({{gap}}) et la pondère.",
     "bridgeCta": "Ouvrir la file ↓",
     "notifTitle": "E-mails et alertes",
@@ -4538,7 +4539,7 @@
     "f3Body": "L'agent n'invente jamais une expérience que vous n'avez pas. Chaque affirmation est vérifiée contre votre CV avant que vous ne voyiez le brouillon.",
     "f4Title": "Vous prépare, suit et vous relance",
     "f4Body": "Préparation d'entretien par candidature, un pipeline qui vous dit quoi faire ensuite, et un rappel quand il est temps de relancer.",
-    "control": "Vous gardez le contrôle : l'agent rédige, vous validez, et vous envoyez depuis le site de l'entreprise elle-même.",
+    "control": "Vous gardez le contrôle : en mode révision, le mode par défaut, l'agent rédige et rien ne part avant votre accord. Le mode automatique, qui envoie à votre place, est un réglage que vous activez vous-même.",
     "cta": "Choisissez une offre et regardez-le travailler"
   },
   "boardHero": {

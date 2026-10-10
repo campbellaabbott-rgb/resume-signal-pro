@@ -1,3 +1,4 @@
+import { BANNER_MIN_SAMPLE, scoreBannerLine } from "@/lib/score-banner";
 import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useProductCheckout } from "@/hooks/use-product-checkout";
@@ -2572,11 +2573,18 @@ export function FreeKeywordResults({
                   {atsScoreEstimate < 60 ? t('freeResults.atRiskOrNeedsImprovement.atRisk') : t('freeResults.atRiskOrNeedsImprovement.needsImprovement')}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {atsScoreEstimate < 60 ? t('freeResults.atsBanner.require60') : t('freeResults.atsBanner.require75')}
+                  {/* L4-06: "Most ATS require 60+ to pass" told about half of all
+                      users (median 58) something the site's own guides call a
+                      myth. The line now places the score in this industry's
+                      own scanned distribution, or says plainly it is no pass
+                      mark when that distribution is not on hand. */}
+                  {(() => { const line = scoreBannerLine(atsScoreEstimate, realBenchmark); return t(line.key, line.vars); })()}
                 </p>
               </div>
             </div>
-            <span className="text-lg font-bold text-success shrink-0">{t('freeResults.atsBanner.targetScore')}</span>
+            {realBenchmark && realBenchmark.n >= BANNER_MIN_SAMPLE && (
+              <span className="text-sm font-bold text-success shrink-0">{t('freeResults.atsBanner.topQuarter', { p75: Math.round(realBenchmark.p75) })}</span>
+            )}
           </div>
         </div>
       )}

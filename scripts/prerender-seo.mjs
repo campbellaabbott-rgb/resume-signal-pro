@@ -246,7 +246,10 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
   // migration constants, and false for a pass holder. Every sentence
   // below that states the free key's limits reads this, and the pass clause
   // rides with it because the row is what api_key_check enforces.
-  const FREE_KEY_RATE_SENTENCE = `${D.FREE_KEY_RATE_PER_MIN} requests a minute and ${D.MCP_FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} calls a day per key; a live pass raises both for its hours`;
+  // L9-11: a live pass raises the limits on the MCP server only, for an
+  // account-linked key (api_key_check's overlay reads /mcp/ endpoints), never
+  // on /v1, where both of these sentences are printed.
+  const FREE_KEY_RATE_SENTENCE = `${D.FREE_KEY_RATE_PER_MIN} requests a minute and ${D.MCP_FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} calls a day per key; on the MCP server, a live Agent Pass on an account-linked key raises both for its hours, and it never raises them on /v1`;
 
   // ---- Live benchmark numbers for llms-full.txt (GEO: AI engines cite
   // numbers with provenance). Graceful skip offline/CI — the build never
@@ -2726,18 +2729,18 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
     const agentTrialDays = D.SUBSCRIPTIONS.agent.trialDays;
     write({
       path: "/agent",
-      title: `Apply Agent — $${agentMonthly}/mo, Applications Sent For You`,
+      title: `Apply Agent — $${agentMonthly}/mo, Applications Prepared For You`,
       // The vendor count is RENDERED from the sendable mirror (pinned to the
       // Deno list by the-page-says-six guard), never typed: this line said
       // "four" for weeks while the list held five (project_claim_drift). The
       // board share is not on hand at bake time (no per-vendor facet here),
       // so it is absent rather than a stale figure — the SPA derives it live.
-      description: `The agent matches fresh postings to your resume and submits real applications on ${D.SENDABLE_VENDOR_LABELS.length} hiring systems. $${agentMonthly}/mo; ${agentTrialDays} days free for first-time subscribers. It never solves CAPTCHAs.`,
+      description: `The agent prepares an application for each matching posting; you approve before it sends unless you turn on auto. $${agentMonthly}/mo; ${agentTrialDays} days free for first-time subscribers.`,
       jsonLd: [breadcrumbLd([{ name: "Home", path: "/" }, { name: "Apply Agent", path: "/agent" }])],
       content: `
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Apply Agent" }])}
         <h1 class="text-3xl font-bold mb-3">The agent applies. You interview.</h1>
-        <p class="text-muted-foreground mb-8">Tell it the roles you want and it watches the board for you — every morning it queues fresh, matching postings and submits real applications with your resume and answers, on the hiring systems it can drive end to end. You review what it sent, not what it plans to send.</p>
+        <p class="text-muted-foreground mb-8">Tell it the roles you want and it watches the board for you — every morning it queues fresh, matching postings with your resume and answers prepared. In review mode, the default, nothing is sent until you approve it. Switch on auto mode and it submits for you on the hiring systems it can drive end to end, holding your first releases for review.</p>
         <section class="mb-8"><h2 class="text-xl font-bold mb-3">What it costs, and what you get</h2>
           <div class="rounded-xl border border-border bg-card p-4 mb-2"><p class="text-sm font-semibold text-foreground mb-1">$${agentMonthly}/month; ${agentTrialDays} days free for first-time subscribers</p><p class="text-xs text-muted-foreground">Cancel any time. The trial runs the same pipeline as the paid plan — real applications, not samples. A returning subscriber is charged from the first day.</p></div>
           <div class="rounded-xl border border-border bg-card p-4"><p class="text-sm font-semibold text-foreground mb-1">A morning queue, not a spray</p><p class="text-xs text-muted-foreground">Matches come from the same live board the site serves — fresh postings only, matched against your resume, deduplicated against everything already sent.</p></div>

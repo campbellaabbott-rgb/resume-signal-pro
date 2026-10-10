@@ -1453,9 +1453,10 @@
       "doNotApply": "✗ Mahinang Angkop — Isaalang-alang ang Iba pang mga Papel"
     },
     "atsBanner": {
-      "require60": "Karamihan sa ATS ay nangangailangan ng 60+ para pumasa",
-      "require75": "Ang 75+ ay nagpapataas ng callback rate",
-      "targetScore": "75+"
+      "belowMedian": "Mas mababa sa median na {{median}} sa {{n}} resume sa {{industry}} na na-scan dito. Walang ATS na tumatanggi dahil sa numerong ito, pero itinataas ito ng mga ayos sa ibaba.",
+      "belowTopQuarter": "Mas mataas sa median na {{median}}; ang nangungunang ikaapat ng {{n}} resume sa {{industry}} na na-scan dito ay may score na {{p75}} o higit pa.",
+      "noPassMark": "Hindi ito pasadong marka: walang ATS na tumatanggi sa resume dahil sa score. Itinataas ito ng mga ayos sa ibaba.",
+      "topQuarter": "Nangungunang ikaapat: {{p75}}+"
     },
     "eliteSignals": {
       "title": "Mga Senyales na Nakakaakit ng mga Recruiter"
@@ -4428,7 +4429,7 @@
     "setupTrack": "I-save o mag-apply sa unang posisyon",
     "setupDismiss": "Isara",
     "bridgeTitle": "Ang iyong Morning Queue",
-    "bridgeBlurb": "Sinusuri ng Apply Agent ang libu-libong bagong posting magdamag at pinipili ang karapat-dapat sa iyong umaga — laktawan ang mga kumpanyang paulit-ulit magre-relist, unahin ang tunay na kumukuha, bawat isa may dahilan. Ikaw pa rin ang laging magpapadala.",
+    "bridgeBlurb": "Sinusuri ng Apply Agent ang libu-libong bagong posting magdamag at pinipili ang karapat-dapat sa iyong umaga — laktawan ang mga kumpanyang paulit-ulit magre-relist, unahin ang tunay na kumukuha, bawat isa may dahilan. Sa review mode, ang default, walang ipinapadala hangga't hindi mo inaaprubahan.",
     "bridgeGap": "Alam din nito ang iyong kasalukuyang pinakamalaking kakulangan ({{gap}}) at tinitimbang ito.",
     "bridgeCta": "Buksan ang queue ↓",
     "notifTitle": "Mga email at alerto",
@@ -4538,7 +4539,7 @@
     "f3Body": "Hindi kailanman nag-iimbento ang agent ng karanasang wala ka. Bawat pahayag ay sinusuri laban sa resume mo bago mo pa makita ang draft.",
     "f4Title": "Naghahanda, sumusubaybay, nagpapaalala",
     "f4Body": "Paghahanda sa interview kada aplikasyon, pipeline na nagsasabi ng susunod na hakbang, at paalala kapag oras na para mag-follow-up.",
-    "control": "Ikaw ang may kontrol: nagdadraft ang agent, ikaw ang nag-aapruba, at ikaw ang nagpapadala sa sariling site ng kumpanya.",
+    "control": "Ikaw ang may kontrol: sa review mode, ang default, nagdadraft ang agent at walang lumalabas hangga't hindi mo inaaprubahan. Ang auto mode, na nagsusumite para sa iyo, ay switch na ikaw ang nagbubukas.",
     "cta": "Pumili ng trabaho at panoorin itong gumana"
   },
   "boardHero": {

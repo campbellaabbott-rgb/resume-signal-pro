@@ -21,6 +21,9 @@ export const languages = [
   { code: 'pt', name: 'Português', flag: '🇵🇹' },
 ];
 
+/** Distinct interface languages (en-GB and fr-CA are regional variants): the number copy may print. */
+export const LANGUAGE_COUNT = new Set(languages.map((l) => l.code.split("-")[0])).size;
+
 // Get supported language codes
 const supportedLanguages = languages.map(l => l.code);
 

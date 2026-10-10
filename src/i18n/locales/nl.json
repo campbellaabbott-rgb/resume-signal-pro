@@ -1453,9 +1453,10 @@
       "doNotApply": "✗ Slechte fit — Overweeg andere rollen"
     },
     "atsBanner": {
-      "require60": "De meeste ATS-systemen vereisen 60+ om door te komen",
-      "require75": "75+ verhoogt de terugbelratio",
-      "targetScore": "75+"
+      "belowMedian": "Onder de mediaan van {{median}} bij {{n}} hier gescande cv's uit {{industry}}. Geen ATS wijst af op dit getal, maar de verbeteringen hieronder verhogen het.",
+      "belowTopQuarter": "Boven de mediaan van {{median}}; het bovenste kwart van de {{n}} hier gescande cv's uit {{industry}} scoort {{p75}} of meer.",
+      "noPassMark": "Dit is geen voldoende-grens: geen ATS wijst een cv af op een score. De verbeteringen hieronder verhogen hem.",
+      "topQuarter": "Bovenste kwart: {{p75}}+"
     },
     "eliteSignals": {
       "title": "Signalen die recruiters aantrekken"
@@ -4428,7 +4429,7 @@
     "setupTrack": "Sla je eerste rol op of solliciteer",
     "setupDismiss": "Sluiten",
     "bridgeTitle": "Jouw Morning Queue",
-    "bridgeBlurb": "De Apply Agent bekijkt 's nachts duizenden verse vacatures en selecteert wat je ochtend waard is — herplaatsers overgeslagen, echte aannemers eerst, elk met redenen. Versturen doe jij altijd.",
+    "bridgeBlurb": "De Apply Agent bekijkt 's nachts duizenden verse vacatures en selecteert wat je ochtend waard is — herplaatsers overgeslagen, echte aannemers eerst, elk met redenen. In beoordelingsmodus, de standaard, gaat er niets uit voordat jij het goedkeurt.",
     "bridgeGap": "Hij kent ook je huidige grootste hiaat ({{gap}}) en weegt die mee.",
     "bridgeCta": "Open de wachtrij ↓",
     "notifTitle": "E-mails & meldingen",
@@ -4538,7 +4539,7 @@
     "f3Body": "De agent verzint nooit ervaring die je niet hebt. Elke bewering wordt tegen je cv gecontroleerd voordat je het concept ziet.",
     "f4Title": "Bereidt voor, volgt op, herinnert je",
     "f4Body": "Interviewvoorbereiding per sollicitatie, een pipeline die zegt wat je nu moet doen, en een herinnering wanneer het tijd is voor een follow-up.",
-    "control": "Jij houdt de regie: de agent schrijft, jij keurt goed en verstuurt op de site van het bedrijf zelf.",
+    "control": "Jij houdt de regie: in beoordelingsmodus, de standaard, schrijft de agent en gaat er niets uit voordat jij het goedkeurt. De automatische modus, die voor je verstuurt, zet je zelf aan.",
     "cta": "Kies een vacature en zie hem aan het werk"
   },
   "boardHero": {

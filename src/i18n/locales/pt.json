@@ -1453,9 +1453,10 @@
       "doNotApply": "✗ Má adequação — Considere outros cargos"
     },
     "atsBanner": {
-      "require60": "A maioria dos ATS exige 60+ para passar",
-      "require75": "75+ aumenta a taxa de retorno de ligações",
-      "targetScore": "75+"
+      "belowMedian": "Abaixo da mediana de {{median}} entre {{n}} currículos de {{industry}} analisados aqui. Nenhum ATS rejeita por este número, mas as correções abaixo aumentam-no.",
+      "belowTopQuarter": "Acima da mediana de {{median}}; o quartil superior dos {{n}} currículos de {{industry}} analisados aqui pontua {{p75}} ou mais.",
+      "noPassMark": "Não é uma nota de aprovação: nenhum ATS rejeita um currículo por uma pontuação. As correções abaixo aumentam-na.",
+      "topQuarter": "Quartil superior: {{p75}}+"
     },
     "eliteSignals": {
       "title": "Sinais que atraem recrutadores"
@@ -4428,7 +4429,7 @@
     "setupTrack": "Salve ou candidate-se à primeira vaga",
     "setupDismiss": "Dispensar",
     "bridgeTitle": "Sua Fila da Manhã",
-    "bridgeBlurb": "O Agente revisa milhares de vagas novas durante a noite e pré-seleciona as que valem sua manhã — empresas que republicam descartadas, contratantes genuínos primeiro, cada uma com suas razões. Você sempre aperta enviar.",
+    "bridgeBlurb": "O Agente revisa milhares de vagas novas durante a noite e pré-seleciona as que valem sua manhã — empresas que republicam descartadas, contratantes genuínos primeiro, cada uma com suas razões. No modo de revisão, o padrão, nada é enviado até você aprovar.",
     "bridgeGap": "Ele também conhece sua principal lacuna atual ({{gap}}) e a pondera.",
     "bridgeCta": "Abrir a fila ↓",
     "notifTitle": "E-mails e alertas",
@@ -4538,7 +4539,7 @@
     "f3Body": "O agente nunca inventa experiência que você não tem. Cada afirmação é verificada contra o seu currículo antes de você ver o rascunho.",
     "f4Title": "Prepara, acompanha e lembra você",
     "f4Body": "Preparação de entrevista por candidatura, um pipeline que diz o próximo passo e um lembrete quando é hora do follow-up.",
-    "control": "Você no controle: o agente rascunha, você aprova e envia no site da própria empresa.",
+    "control": "Você no controle: no modo de revisão, o padrão, o agente rascunha e nada sai até você aprovar. O modo automático, que envia por você, é uma opção que você liga.",
     "cta": "Escolha uma vaga e veja-o trabalhar"
   },
   "boardHero": {

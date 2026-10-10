@@ -1453,9 +1453,10 @@
       "doNotApply": "✗ Mala compatibilidad — Considera otros puestos"
     },
     "atsBanner": {
-      "require60": "La mayoría de los ATS requieren 60+ para pasar",
-      "require75": "75+ aumenta la tasa de devolución de llamada",
-      "targetScore": "75+"
+      "belowMedian": "Por debajo de la mediana de {{median}} entre {{n}} currículums de {{industry}} escaneados aquí. Ningún ATS rechaza por esta cifra, pero las correcciones de abajo la suben.",
+      "belowTopQuarter": "Por encima de la mediana de {{median}}; el cuartil superior de los {{n}} currículums de {{industry}} escaneados aquí puntúa {{p75}} o más.",
+      "noPassMark": "No es una nota de aprobado: ningún ATS rechaza un currículum por una puntuación. Las correcciones de abajo la suben.",
+      "topQuarter": "Cuartil superior: {{p75}}+"
     },
     "eliteSignals": {
       "title": "Señales que atraen a reclutadores"
@@ -4428,7 +4429,7 @@
     "setupTrack": "Guarda o postula a tu primer puesto",
     "setupDismiss": "Descartar",
     "bridgeTitle": "Tu Cola Matutina",
-    "bridgeBlurb": "El Agente revisa miles de anuncios nuevos cada noche y preselecciona los que valen tu mañana — empresas que republican descartadas, contratadores genuinos primero, cada uno con sus razones. Tú siempre pulsas enviar.",
+    "bridgeBlurb": "El Agente revisa miles de anuncios nuevos cada noche y preselecciona los que valen tu mañana — empresas que republican descartadas, contratadores genuinos primero, cada uno con sus razones. En modo revisión, el predeterminado, no se envía nada hasta que lo apruebas.",
     "bridgeGap": "También conoce tu mayor carencia actual ({{gap}}) y la pondera.",
     "bridgeCta": "Abrir la cola ↓",
     "notifTitle": "Correos y alertas",
@@ -4538,7 +4539,7 @@
     "f3Body": "El agente nunca inventa experiencia que no tienes. Cada afirmación se verifica contra tu currículum antes de que veas el borrador.",
     "f4Title": "Te prepara, hace seguimiento y te avisa",
     "f4Body": "Preparación de entrevista por candidatura, un pipeline que te dice qué hacer y un recordatorio cuando toca dar seguimiento.",
-    "control": "Tú tienes el control: el agente redacta, tú apruebas y envías desde el sitio de la propia empresa.",
+    "control": "Tú tienes el control: en modo revisión, el predeterminado, el agente redacta y no sale nada hasta que lo apruebas. El modo automático, que envía por ti, es un interruptor que activas tú.",
     "cta": "Elige un empleo y míralo en acción"
   },
   "boardHero": {
