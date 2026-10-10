@@ -117,9 +117,12 @@ const REAL_TENANT_NAMES = new Set([
 /**
  * True when the name a page would print for a board is still the vendor's
  * tenant code: a compound token (tenant~dc~site, Workday and Oracle) whose
- * name is just that tenant code with a capital letter ("Ms", "Pg", "Rmit",
- * "Uoflhealth") and no override names it. A single-segment token is the board
- * name the employer chose on its vendor, and is not judged here.
+ * name is just that tenant code in any letter case ("Ms", "Rmit",
+ * "Uoflhealth", and "SHM" or "PFG", which companyDisplayName uppercased from
+ * "Shm" and "Pfg") and no override names it. Case only: a name with a space
+ * or punctuation was written by someone ("Driven Brands" for drivenbrands).
+ * A single-segment token is the board name the employer chose on its vendor,
+ * and is not judged here.
  */
 export function isCodeShapedName(token: string | null | undefined, name: string | null | undefined): boolean {
   const t = String(token ?? "").trim();
@@ -129,7 +132,7 @@ export function isCodeShapedName(token: string | null | undefined, name: string 
   if (employerNameOverride(t) !== null) return false;
   const slug = t.split("~")[0].toLowerCase();
   if (!slug || REAL_TENANT_NAMES.has(slug)) return false;
-  return n === slug.charAt(0).toUpperCase() + slug.slice(1);
+  return n.toLowerCase() === slug;
 }
 
 // Feeds occasionally double-escape HTML ("Bob's Auto &amp; Towing") — the

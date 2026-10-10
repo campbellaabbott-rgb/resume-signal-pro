@@ -25,7 +25,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 import {
   PRERENDER_LEDGER_PATH, POSTING_STUB_KEEP_DAYS, callBudget, companyLanderPage, contentFingerprint, landerFacts, landerHasOwnContent, landerRobots, landerThinBreaker,
-  carrySitemaps, pageLastmod, postingCarryBase, postingCheckState, postingStubPage, selectLanders,
+  bakeLanders, carrySitemaps, pageLastmod, postingCarryBase, postingCheckState, postingRowEligible, postingStubPage,
 } from "./prerender-pages.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -1812,11 +1812,7 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
   // company_name_overrides mirror), and a board whose name is still its vendor
   // tenant code ("Uoflhealth") gets a page but never an indexable one, until
   // the job-board group's override table names it.
-  const LANDERS = selectLanders(Array.isArray(boardFacets?.companiesFacet) ? boardFacets.companiesFacet : [], {
-    openOf: openRolesOf,
-    displayName: (c) => D.boardName(c.token, c.name),
-    unreadable: (c, name) => D.isCodeShapedName(c.token, name),
-  });
+  const LANDERS = bakeLanders(Array.isArray(boardFacets?.companiesFacet) ? boardFacets.companiesFacet : [], { D, openOf: openRolesOf });
   const landerByToken = new Map(LANDERS.map((c) => [c.token, c]));
   /** The indexable employer page for a board token, when this bake writes one. */
   const landerFor = (token) => {
@@ -1945,31 +1941,12 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
     try {
       if (!supaUrl5 || !supaKey5) throw new Error("no board credentials — posting pages skipped");
 
-      // Rule 1 — eligibility on the fields the list and the detail both carry.
-      // The description gate needs the detail action and is applied after the
-      // fetch, because the list does not return one.
-      //
-      // A STAFFING AGENCY IS NOT ELIGIBLE, because this page family states
-      // outright that the posting came from the employer's own hiring system
-      // and never an aggregator or a repost, and names the row's company as the
-      // hiring organisation in its markup. For an agency row both are false:
-      // the board carries `agency` NOT NULL on every posting, discloses it with
-      // a badge, and offers a documented opt-out filter — nothing here read it.
-      // One predicate, and consistent with rule 1's "nothing is invented to
-      // qualify". Latent rather than live today: 0 of the 200 newest rows
-      // probed carried the flag, and the filtered count comes back capped at
-      // 10,000, which is not a number to state.
-      const eligibleRow = (j) => !!(j
-        && typeof j.id === "string"
-        && D.postingPagePath(j.id)
-        && typeof j.title === "string" && j.title.trim()
-        && typeof j.company === "string" && j.company.trim()
-        // F1: a page states the employer by its own name or is not written.
-        && !D.isCodeShapedName(j.token, D.postingEmployer(j))
-        && j.agency !== true
-        && j.country
-        && (j.workMode === "remote" || j.location)
-        && D.isPostingLive(j));
+      // Rule 1 — eligibility on the fields the list and the detail both carry
+      // (postingRowEligible: F1, no staffing agency, a place, still live). The
+      // description gate needs the detail action and is applied after the
+      // fetch, because the list does not return one. The agency flag is latent
+      // today: 0 of the 200 newest rows probed carried it.
+      const eligibleRow = (j) => postingRowEligible(j, D);
       const describedEnough = (text) => D.jdParagraphs(text).join("\n").length >= POSTING_MIN_DESCRIPTION;
 
       // One detail read per item, at a concurrency measured against this board

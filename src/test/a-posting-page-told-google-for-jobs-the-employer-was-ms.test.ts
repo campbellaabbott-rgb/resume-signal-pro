@@ -1,12 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
+  isPostingLive,
   postingEmployer,
   postingJsonLd,
   postingPageDescription,
+  postingPagePath,
   postingPageTitle,
+  postingPathParts,
   type PostingRow,
 } from "@/components/jobs/posting-page";
 import { boardName, employerName, isCodeShapedName, possessive } from "@/lib/company-display";
+import { bakeLanders, landerRobots, postingRowEligible } from "../../scripts/prerender-pages.mjs";
 
 /**
  * WHAT WAS WRONG, measured 2026-10-08 with a Googlebot user-agent (SEO report,
@@ -92,5 +96,62 @@ describe("a name that is still a tenant code is recognisable as one", () => {
     expect(isCodeShapedName("nike~wd1~nke", "Nike")).toBe(false);
     expect(isCodeShapedName("carvana", "Carvana")).toBe(false);
     expect(isCodeShapedName("ms~wd5~external", employerName("ms~wd5~external", "Ms"))).toBe(false);
+  });
+});
+
+describe("a tenant code the display name uppercased is still a tenant code", () => {
+  // Reviewer, 2026-10-10: the check compared the PRINTED name to
+  // Capitalize(slug), case-sensitively, after companyDisplayName had already
+  // uppercased a vowelless code. "Shm" printed as "SHM" and "Pfg" as "PFG",
+  // both passed as real names, and both had indexable company pages and
+  // posting pages naming the code as hiringOrganization (225 and 230 open
+  // roles in the committed facets snapshot).
+  it("SHM, PFG and BCBS are flagged on the name a page would print", () => {
+    expect(employerName("shm~wd5~Summit_CityMD", "Shm")).toBe("SHM");
+    expect(isCodeShapedName("shm~wd5~Summit_CityMD", employerName("shm~wd5~Summit_CityMD", "Shm"))).toBe(true);
+    expect(isCodeShapedName("pfg~wd3~SaveonfoodsCareers", employerName("pfg~wd3~SaveonfoodsCareers", "Pfg"))).toBe(true);
+    expect(isCodeShapedName("bcbs~wd1~External", employerName("bcbs~wd1~External", "Bcbs"))).toBe(true);
+  });
+
+  it("a name someone wrote, with a space, is not a code even when it folds to one", () => {
+    expect(isCodeShapedName("drivenbrands~wd1~External", "Driven Brands")).toBe(false);
+  });
+});
+
+describe("the bake applies the tenant-code rule to company pages and posting pages", () => {
+  // The two places the bake judges F1 were inline: deleting either left the
+  // whole suite green while Uoflhealth got an indexable page. They now run
+  // through these two functions, called here with the app's own modules,
+  // the bundle the bake builds.
+  const NOW2 = new Date("2026-10-09T12:00:00Z");
+  const D = {
+    boardName, employerName, isCodeShapedName, postingEmployer, postingPagePath, postingPathParts,
+    isPostingLive: (j: PostingRow) => isPostingLive(j, NOW2),
+  };
+  const facet = [
+    { token: "shm~wd5~Summit_CityMD", name: "Shm", open: 225, count: 300 },
+    { token: "uoflhealth~wd1~UofLHealthCareers", name: "Uoflhealth", open: 120, count: 130 },
+    { token: "ms~wd5~external", name: "Ms", open: 400, count: 420 },
+    { token: "target~wd5~targetcareers", name: "Target", open: 260, count: 270 },
+  ];
+  const landers = bakeLanders(facet, { D, openOf: (c: { open: number }) => c.open });
+  const by = Object.fromEntries(landers.map((c: { token: string }) => [c.token, c]));
+
+  it("a code-named board gets a page that is never indexable; a named one keeps its index", () => {
+    for (const t of ["shm~wd5~Summit_CityMD", "uoflhealth~wd1~UofLHealthCareers"]) {
+      expect(by[t].unreadable, t).toBe(true);
+      expect(landerRobots({ isPrimary: true, unreadable: by[t].unreadable, answered: true, ownContent: true }), t).toBe("noindex, follow");
+    }
+    expect(by["ms~wd5~external"].name).toBe("Morgan Stanley");
+    expect(by["ms~wd5~external"].unreadable).toBe(false);
+    expect(by["target~wd5~targetcareers"].unreadable).toBe(false);
+  });
+
+  it("a posting on a code-named board gets no page; the same posting under a real name does", () => {
+    const shm = row({ id: "workday:shm~wd5~Summit_CityMD:JR9", token: "shm~wd5~Summit_CityMD", company: "Shm" });
+    expect(postingRowEligible(shm, D)).toBe(false);
+    expect(postingRowEligible({ ...shm, token: null }, D), "the token is read from the id when the row has none").toBe(false);
+    expect(postingRowEligible(row(), D), "Morgan Stanley's posting is eligible").toBe(true);
+    expect(postingRowEligible(row({ agency: true } as Partial<PostingRow>), D), "a staffing agency's row is not").toBe(false);
   });
 });

@@ -162,6 +162,39 @@ export function selectLanders(companyFacet, { openOf, displayName = (c) => c.nam
 }
 
 /**
+ * The employer pages a bake writes, named and judged as the bake does: `D` is
+ * the bake's bundle of the app's own modules. F1: the name is D.boardName's,
+ * and a board whose printed name is still its tenant code gets a page that is
+ * never indexable.
+ */
+export const bakeLanders = (companyFacet, { D, openOf, max, min }) => selectLanders(companyFacet, {
+  openOf,
+  displayName: (c) => D.boardName(c.token, c.name),
+  unreadable: (c, name) => D.isCodeShapedName(c.token, name),
+  ...(max ? { max } : {}),
+  ...(min ? { min } : {}),
+});
+
+/**
+ * Rule 1 of the posting rule: a row may get a page of its own only when it
+ * carries everything the page must state, under its employer's own name (F1),
+ * from the employer itself (a staffing agency's row is not: the page says the
+ * posting came from the employer's own system and names the row's company as
+ * the hiring organisation), with a place, and still live. The description
+ * gate needs the detail read and is applied after it.
+ */
+export const postingRowEligible = (j, D) => !!(j
+  && typeof j.id === "string"
+  && D.postingPagePath(j.id)
+  && typeof j.title === "string" && j.title.trim()
+  && typeof j.company === "string" && j.company.trim()
+  && !D.isCodeShapedName(j.token ?? D.postingPathParts(j.id)?.token ?? null, D.postingEmployer(j))
+  && j.agency !== true
+  && j.country
+  && (j.workMode === "remote" || j.location)
+  && D.isPostingLive(j));
+
+/**
  * A fixed number of board reads for one bake. Every read takes one; once it
  * is spent, take() answers false and the caller treats the read as not made.
  * The build server's address has one day row at the board's build cap, so a
