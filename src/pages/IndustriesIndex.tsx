@@ -1,4 +1,4 @@
-// Index for the 59 programmatic industry pages — a real directory, generated
+// Index for the programmatic industry pages — a real directory, generated
 // from the scanner's live detection tables.
 
 import { Link } from "react-router-dom";
@@ -15,8 +15,8 @@ export default function IndustriesIndex() {
   return (
     <div className="min-h-screen bg-background">
       <SEO
-        title="Resume Keywords by Industry — 59 Fields Covered"
-        description="ATS keywords, recognized job titles, and expected certifications for 59 industries — straight from the detection engine of a real resume scanner. Nursing to software to skilled trades."
+        title={`Resume Keywords by Industry — ${slugs.length} Fields Covered`}
+        description={`ATS keywords, recognized job titles, and expected certifications for ${slugs.length} industries — straight from the detection engine of a real resume scanner. Nursing to software to skilled trades.`}
         path="/industries"
       />
       <Header />

@@ -94,10 +94,12 @@ describe("every caller that reads the board names its budget", () => {
     for (const l of nodeJs) expect(l).toMatch(/"x-rb-budget":"probe"/);
   });
 
-  it("the bake says build at both of its fetch sites, and nothing else says build", () => {
+  it("the bake says build at all three of its fetch sites, and nothing else says build", () => {
+    // Three since 2026-10-10: the facets head, the posting block, and the
+    // company pages' listings (SEO report S1).
     const bake = CALLERS.find((c) => c.rel === "scripts/prerender-seo.mjs")!;
-    expect((bake.code.match(/functions\/v1\/job-board/g) ?? []).length, "the bake's fetch sites moved — re-count").toBe(2);
-    expect((bake.code.match(/"x-rb-budget": "build"/g) ?? []).length).toBe(2);
+    expect((bake.code.match(/functions\/v1\/job-board/g) ?? []).length, "the bake's fetch sites moved — re-count").toBe(3);
+    expect((bake.code.match(/"x-rb-budget": "build"/g) ?? []).length).toBe(3);
     expect(bake.code).not.toMatch(/x-rb-budget"?:?\s*"?probe/);
     for (const c of CALLERS.filter((x) => x.rel !== "scripts/prerender-seo.mjs")) {
       expect(c.code, `${c.rel} must declare probe`).toMatch(/x-rb-budget"?\s*[:=]\s*"?probe|x-rb-budget: probe/);
@@ -112,11 +114,23 @@ describe("every caller that reads the board names its budget", () => {
       expect(all.length, `${name} not found in prerender-seo.mjs`).toBeGreaterThan(0);
       return Math.max(...all);
     };
-    const perBake = 1 + num("POSTING_LIST_PAGES") + num("POSTING_PAGE_CARRY_MAX") + num("POSTING_PAGE_CAP");
-    // 721 since job-board .88: the board gives no caller without a secret more
-    // than 60 rows a call, so the bake's posting pool is twenty pages of 60
-    // where it was eight of 200 (it stops at 1,200 rows either way).
-    expect(perBake, "the bake's own call ceiling (facets head + list pages + carried + fresh details)").toBe(721);
+    // The bake's calls are no longer the sum of its constants: since the carry
+    // cap went (every published posting URL is re-checked, L13-36) the count
+    // is held by one counted budget every board read takes from, and a read
+    // the budget refuses is "unchecked", never made. 721 is the old sum it
+    // replaces (facets head 1 + 20 list pages + 700 details).
+    const perBake = num("BAKE_BOARD_CALL_BUDGET");
+    expect(perBake, "the bake's own call ceiling").toBe(721);
+    // Two shares of that one ceiling: the posting block's and the company
+    // pages' listings', so together they never exceed it.
+    expect(bake).toMatch(/const boardBudget = callBudget\(BAKE_BOARD_CALL_BUDGET - LANDER_OPENINGS_READS\);/);
+    expect(bake).toMatch(/const openingsBudget = callBudget\(LANDER_OPENINGS_READS\);/);
+    // Every fetch of the board function in the bake is behind a take().
+    const sites = [...bake.matchAll(/fetch\(`\$\{supaUrl\d?\}\/functions\/v1\/job-board`/g)].map((m) => m.index!);
+    expect(sites.length, "the bake reads the board somewhere").toBeGreaterThan(0);
+    for (const at of sites) {
+      expect(bake.slice(Math.max(0, at - 400), at), "a board read that is not counted").toMatch(/(?:boardBudget|openingsBudget)\.take\(\)/);
+    }
     // Pushes to main per UTC day since the frontend began publishing from
     // main (2026-09-16): the busiest was 10, on 2026-09-27. The command is in
     // the .85 deploy note; the live answer is kind build in the telemetry.

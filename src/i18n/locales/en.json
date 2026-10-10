@@ -62,8 +62,7 @@
     "freeScanReveals": "Your free scan reveals:",
     "headline": {
       "get": "The job board with",
-      "recruiterGrade": "zero ghost jobs",
-      "feedback": "— 550,000+ verified openings, matched to your resume",
+      "recruiterGrade": "live jobs straight from employers' own hiring systems",
       "feedbackLive": "— {{n}}+ verified openings, matched to your resume",
       "feedbackPlain": "— every opening verified, matched to your resume"
     },
@@ -144,12 +143,10 @@
     "testimonialQuote": "Fixed my resume in 10 minutes. Got 3 interview calls the same week.",
     "testimonialAuthorName": "— Sarah K., Software Engineer",
     "transparentScoring": "transparent AI scoring, no black box",
-    "factGdpr": "GDPR compliant",
     "factAutoDelete": "Resume deleted within 7 days",
     "factNoStorage": "Never sold",
     "measureStrip": "Measurements, not opinions · Every quote verified · A score that shows its work",
     "jobsCta": "Live job board — check your fit before you apply →",
-    "browseJobs": "Browse 550,000+ verified jobs",
     "browseJobsLive": "Browse {{n}}+ verified jobs",
     "browseJobsPlain": "Browse the verified job board"
   },
@@ -461,8 +458,7 @@
         "quote": "Service is super helpful and useful.",
         "role": "Reddit User • Paid Customer"
       }
-    },
-    "trustMessage": "Join thousands of job seekers who've improved their resumes with honest, recruiter-grade feedback."
+    }
   },
   "trustIndicators": {
     "badges": {
@@ -472,15 +468,11 @@
       },
       "ssl": {
         "label": "256-bit SSL",
-        "description": "Bank-level encryption"
+        "description": "Encrypted in transit"
       },
       "autoDelete": {
         "label": "Deleted in 7 days",
         "description": "Your data, your control"
-      },
-      "gdpr": {
-        "label": "GDPR Compliant",
-        "description": "Privacy first"
       },
       "zeroStorage": {
         "label": "Never Sold",
@@ -518,7 +510,7 @@
     "actionPlan": "Action Plan",
     "redFlags": "Red Flags",
     "linkedinAnalysis": "LinkedIn Analysis",
-    "includedFree": "Included Free",
+    "includedInFullAnalysis": "In the Full Analysis",
     "strength": "strength",
     "suggestedHeadline": "Suggested Headline",
     "aboutSection": "About Section",
@@ -1414,8 +1406,7 @@
       "aiRewrittenResume": "AI-rewritten resume",
       "customCoverLetter": "Custom cover letter",
       "beforeAfterComparison": "Before/after comparison",
-      "keywordOptimization": "Keyword optimization",
-      "priorityProcessing": "Priority processing"
+      "keywordOptimization": "Keyword optimization"
     },
     "keywordFixFeatures": {
       "fullAtsBreakdown": "Full ATS score breakdown",
@@ -1474,9 +1465,10 @@
       "doNotApply": "✗ Poor Fit — Consider Other Roles"
     },
     "atsBanner": {
-      "require60": "Most ATS require 60+ to pass",
-      "require75": "75+ increases callback rate",
-      "targetScore": "75+"
+      "belowMedian": "Below the median of {{median}} among {{n}} {{industry}} resumes scanned here. Major ATS platforms do not reject on this number, but the fixes below raise it.",
+      "belowTopQuarter": "Above the median of {{median}}; the top quarter of the {{n}} {{industry}} resumes scanned here score {{p75}} or more.",
+      "noPassMark": "This is not a pass mark: major ATS platforms do not reject a resume on a score. The fixes below raise it.",
+      "topQuarter": "Top quarter: {{p75}}+"
     },
     "eliteSignals": {
       "title": "Recruiter-Attracting Signals"
@@ -1561,10 +1553,14 @@
       "bulletWithData1": "• From your resume: \"{{bullet}}\" — no measurable impact stated",
       "bulletWithData2": "• {{weak}} of your {{total}} bullet points lack quantification",
       "bulletWithData3": "• Get each one rewritten with metrics and a stronger power verb",
-      "kwHard": "• {{count}} critical hard skill{{plural}} missing from your resume",
-      "kwCerts": "• {{count}} industry certification{{plural}} to mention (even in progress)",
-      "kwTools": "• {{count}} tool{{plural}} commonly listed in your field that you're missing",
-      "kwMethodology": "• {{count}} methodology keyword{{plural}} your competitors are using",
+      "kwHard_one": "• {{count}} critical hard skill missing from your resume",
+      "kwHard_other": "• {{count}} critical hard skills missing from your resume",
+      "kwCerts_one": "• {{count}} industry certification to mention (even in progress)",
+      "kwCerts_other": "• {{count}} industry certifications to mention (even in progress)",
+      "kwTools_one": "• {{count}} tool commonly listed in your field that you're missing",
+      "kwTools_other": "• {{count}} tools commonly listed in your field that you're missing",
+      "kwMethodology_one": "• {{count}} methodology keyword your competitors are using",
+      "kwMethodology_other": "• {{count}} methodology keywords your competitors are using",
       "kwPlacement": "• Where to place your strongest keywords for maximum ATS weight",
       "kwVerbs": "• Action verbs that outperform your current word choices",
       "kwDensity": "• How your keyword density compares to top resumes in your field",
@@ -2519,22 +2515,19 @@
     "privacyMatters": "Your Privacy Matters",
     "titlePrefix": "Your Resume Is",
     "titleHighlight": "Safe With Us",
-    "heroSubtitle": "We built Resume Booster with security-first principles. Your career documents deserve bank-level protection, and that's exactly what we provide.",
+    "heroSubtitle": "What we keep, for how long, who it goes to, and how to have it deleted — written down, so you can check it.",
     "badges": {
       "ssl": "256-bit SSL",
-      "retention": "Published Retention",
-      "gdpr": "GDPR Compliant"
+      "retention": "Published Retention"
     },
     "stats": {
       "resumesAnalyzed": "Resumes Analyzed",
-      "betterResults": "Report Better Results",
-      "avgDelivery": "Average Delivery Time",
-      "dataBreaches": "Data Breaches"
+      "betterResults": "Report Better Results"
     },
     "security": {
       "ssl": {
         "title": "256-bit SSL Encryption",
-        "description": "Your resume is protected with bank-level encryption during upload and processing. We use the same security standard as major financial institutions."
+        "description": "Your resume travels to us and to the services that process it over encrypted connections (HTTPS/TLS)."
       },
       "freeScan": {
         "title": "What the Free Scan Keeps",
@@ -2545,8 +2538,8 @@
         "description": "Deletion jobs run every 15 minutes for the temporary store and every hour for the report cache, the AI cache and paid analyses, so none of those outlives its stated time by more than an hour."
       },
       "gdpr": {
-        "title": "GDPR Compliant",
-        "description": "We follow strict European data protection standards. You can request deletion of any data at any time."
+        "title": "Your Data Rights",
+        "description": "Wherever you live, you can ask for a copy of the data we hold about you, or for its deletion, at any time."
       },
       "neverSold": {
         "title": "Never Sold",
@@ -2647,7 +2640,7 @@
     "trustedByTitle": "Trusted by Job Seekers at Top Companies",
     "trustedBySubtitle": "Professionals from leading companies use Resume Booster to land their dream roles.",
     "ctaTitle": "Ready to Boost Your Resume?",
-    "ctaSubtitle": "Join thousands of job seekers who've improved their resumes with our AI-powered analysis.",
+    "ctaSubtitle": "Free scan, no sign-up. Every quoted line in the report is checked against your own resume.",
     "ctaButton": "Get Your Free Scan",
     "dataFence": {
       "badge": "Data independence",
@@ -2664,20 +2657,18 @@
     "transparentResearchBased": "Transparent & Research-Based",
     "titlePrefix": "Our ATS Analysis",
     "titleHighlight": "Methodology",
-    "heroSubtitle": "We've reverse-engineered how 50+ Applicant Tracking Systems parse and score resumes. Here's exactly how our analysis works.",
-    "platformsAnalyzed": "50+ ATS platforms analyzed",
+    "heroSubtitle": "How a scan turns your resume into a score, written down from the code that computes it.",
     "resumesProcessed": "{{total}} resumes processed",
-    "updatedMonthly": "Updated monthly",
     "howAnalysisWorks": "How Our Analysis Works",
     "step": "STEP {{number}}",
     "steps": {
       "parsing": {
         "title": "Document Parsing",
-        "description": "We extract text while preserving structure, handling PDFs and DOCX files with the same parsing logic used by major ATS platforms."
+        "description": "We extract the text from your PDF or DOCX and keep its structure: sections, dates and bullets."
       },
       "aiAnalysis": {
         "title": "AI Analysis",
-        "description": "Our AI simulates how each ATS reads your resume, identifying sections, keywords, and formatting that may cause parsing failures."
+        "description": "Our AI reads the resume the way a parser would, looking for sections, keywords and formatting that can break a parse."
       },
       "keywordMatching": {
         "title": "Keyword Matching",
@@ -2685,101 +2676,47 @@
       },
       "scoringAlgorithm": {
         "title": "Scoring Algorithm",
-        "description": "Your ATS score is calculated based on 50+ factors including keyword density, formatting, section completeness, and red flags."
-      }
-    },
-    "atsPlatforms": {
-      "0": {
-        "description": "Section header parsing, keyword extraction, date format validation",
-        "marketShare": "Major enterprise"
-      },
-      "1": {
-        "description": "Skills matching algorithms, experience level scoring, cultural fit indicators",
-        "marketShare": "Tech & startups"
-      },
-      "2": {
-        "description": "Contact info validation, formatting consistency, section organization",
-        "marketShare": "Mid-market"
-      },
-      "3": {
-        "description": "Keyword density analysis, job title matching, qualification scoring",
-        "marketShare": "Fortune 500"
-      },
-      "4": {
-        "description": "Education parsing, certification detection, skills taxonomy matching",
-        "marketShare": "Healthcare & retail"
-      },
-      "5": {
-        "description": "Resume structure analysis, experience timeline validation",
-        "marketShare": "SMB"
-      },
-      "6": {
-        "description": "Keyword optimization, applicant ranking algorithms",
-        "marketShare": "Small business"
-      },
-      "7": {
-        "description": "Social profile integration, referral tracking, skills assessment",
-        "marketShare": "Enterprise"
-      },
-      "8": {
-        "description": "AI-powered matching, diversity indicators, global compliance",
-        "marketShare": "Global enterprise"
-      },
-      "9": {
-        "description": "Staffing-specific parsing, contractor detection, availability scoring",
-        "marketShare": "Staffing agencies"
+        "description": "The AI scores the resume with weights for your industry, and its score is held within {{band}} points of a rule-based score computed from the same document. The audit trail then splits the result into the four parts below."
       }
     },
     "atsPlatformsTitle": "ATS Platforms We Analyze Against",
-    "atsPlatformsSubtitle": "Our analysis is based on parsing rules and scoring algorithms from these major ATS platforms, covering over 90% of the job market.",
-    "moreAtsPlatforms": "+ 40 more regional and industry-specific ATS platforms",
+    "atsPlatformsSubtitle": "The scan rates how each of these {{count}} systems is likely to read your resume. These are the systems it names; nothing here claims a share of the job market.",
     "scoreCalculatedTitle": "How Your ATS Score Is Calculated",
-    "scoreCalculatedSubtitle": "Your score is a weighted combination of multiple factors that determine how well your resume will perform in ATS systems.",
-    "scoringFactors": {
-      "keywordOptimization": {
-        "factor": "Keyword Optimization",
-        "description": "Industry-relevant keywords and skills mentioned"
-      },
-      "formatCompatibility": {
-        "factor": "Format Compatibility",
-        "description": "Clean structure that ATS can parse correctly"
-      },
-      "sectionCompleteness": {
-        "factor": "Section Completeness",
-        "description": "All expected sections present and properly labeled"
-      },
-      "experienceClarity": {
-        "factor": "Experience Clarity",
-        "description": "Clear job titles, dates, and achievements"
-      },
-      "actionVerbUsage": {
-        "factor": "Action Verb Usage",
-        "description": "Strong action verbs that demonstrate impact"
-      },
-      "quantifiedAchievements": {
-        "factor": "Quantified Achievements",
-        "description": "Numbers and metrics that prove results"
-      },
-      "redFlagAbsence": {
-        "factor": "Red Flag Absence",
-        "description": "No formatting issues or content problems"
-      }
-    },
+    "scoreCalculatedSubtitle": "Every report's \"Why this score\" splits the score into these four parts, out of 100 points.",
     "continuousResearchTitle": "Continuous Research",
-    "continuousResearchSubtitle": "We continuously analyze job postings, ATS updates, and hiring trends to keep our analysis accurate and up-to-date.",
+    "continuousResearchSubtitle": "The keyword tables and the rules change as we learn, and every change is dated in the public changelog.",
     "continuousResearch": {
-      "monthlyUpdates": "Monthly algorithm updates",
-      "keywordDatabases": "Industry-specific keyword databases",
-      "recruiterFeedback": "Real recruiter feedback integration"
+      "monthlyUpdates": "Rule changes dated in the changelog",
+      "keywordDatabases": "Industry-specific keyword databases"
     },
-    "validatedByResultsTitle": "Validated by Results",
-    "validatedByResultsSubtitle": "Our methodology is validated by real outcomes from thousands of job seekers who improved their resumes using our analysis.",
+    "validatedByResultsTitle": "What this page does not claim",
+    "validatedByResultsSubtitle": "There is no outcome survey, so no interview rate is claimed here. What is measured is how many resumes the scanner has read.",
     "validatedByResults": {
       "resumesAnalyzed": "{{total}} resumes analyzed"
     },
     "ctaTitle": "Ready to See Your ATS Score?",
-    "ctaSubtitle": "Get a free analysis of your resume using our proven methodology.",
-    "ctaButton": "Analyze My Resume Free"
+    "ctaSubtitle": "Get a free analysis of your resume using the method this page describes.",
+    "ctaButton": "Analyze My Resume Free",
+    "atsCount": "{{count}} ATS systems checked by name",
+    "pointsOf": "{{points}} of 100 points",
+    "audit": {
+      "keywords": {
+        "label": "Keyword coverage",
+        "description": "The expected keywords for your industry that the resume carries"
+      },
+      "format": {
+        "label": "Format & parseability",
+        "description": "Whether a parser can read the structure without losing sections"
+      },
+      "impact": {
+        "label": "Quantified impact",
+        "description": "How many of your bullets carry a number"
+      },
+      "content": {
+        "label": "Content signals",
+        "description": "Verbs, structure and section depth, weighed against red flags"
+      }
+    }
   },
   "pricingPage": {
     "metaTitle": "Pricing — Resume Booster",
@@ -2787,7 +2724,7 @@
     "noSubscriptions": "One-time payments • Never auto-renew",
     "titlePrefix": "Choose Your",
     "titleHighlight": "Resume Boost",
-    "subtitle": "From quick fixes to complete career packages. Pay once, use forever.",
+    "subtitle": "From quick fixes to complete career packages. One-time products are paid once; Pro and the Agent plan renew monthly until you cancel.",
     "secureCheckout": "Secure checkout",
     "instantAccess": "Instant access",
     "stripeProtected": "Stripe protected",
@@ -3629,9 +3566,9 @@
     "fitLoadedDesc": "{{title}} at {{company}} — upload or paste your resume and the scan will check fit against this posting.",
     "allFields": "All fields",
     "companySeoTitle": "{{company}} Jobs — Real, Verified Openings",
-    "companySeoDescription": "Browse {{company}}'s open roles, pulled straight from {{company}}'s own job board and re-verified all day — no aggregators, no reposts. Check your resume's fit against any role free, then apply on {{company}}'s own site.",
+    "companySeoDescription": "Browse {{companyPossessive}} open roles, pulled straight from {{companyPossessive}} own job board and re-verified all day — no aggregators, no reposts. Check your resume's fit against any role free, then apply on {{companyPossessive}} own site.",
     "companyH1": "Open roles at {{company}}",
-    "companySubtitle": "Every {{company}} opening here comes straight from {{company}}'s own careers system — verified, still open, and re-checked the moment you apply.",
+    "companySubtitle": "Every {{company}} opening here comes straight from {{companyPossessive}} own careers system — verified, still open, and re-checked the moment you apply.",
     "companyResultsSummary": "Showing {{shown}} of {{total}} open roles at {{company}}",
     "openRoles": "{{count}} open roles",
     "openRolesTip": "This company has {{count}} verified openings live on the board right now — a real, active hiring signal.",
@@ -3981,10 +3918,10 @@
     "tailorLimitTitle": "Hourly limit reached",
     "tailorLimit": "You’ve used this hour’s résumé-tailoring runs — they reset within the hour. Everything you’ve generated is saved.",
     "savedMilestone": "That's {{n}} jobs in your pipeline",
-    "savedMilestoneDesc": "The Apply Agent can prep tailored answers for all of them in one batch — a {{trialDays}}-day free trial for first-time subscribers, and you always hit send yourself.",
+    "savedMilestoneDesc": "The Apply Agent can prep tailored answers for all of them in one batch — a {{trialDays}}-day free trial for first-time subscribers. In review mode, the default, nothing is sent until you approve it.",
     "sortRelevance": "Relevance",
     "companyNotHiring": "Not right now — {{company}} has no open roles on their job board at the moment. Watch the company below and we'll email you when new roles appear.",
-    "companyYesHiringCapped": "Yes — {{n}}+ verified open roles right now, straight from {{company}}'s own job board.",
+    "companyYesHiringCapped": "Yes — {{n}}+ verified open roles right now, straight from {{companyPossessive}} own job board.",
     "postingClosedTitle": "That posting just closed",
     "postingClosedBody": "{{company}} took this one down. It's off the board now — the openings below are still live.",
     "reportCheckedTitle": "We just re-checked it",
@@ -4033,7 +3970,7 @@
     "hlMissing": "missing from it",
     "detailNoDesc": "This company's feed doesn't publish the full description — the complete posting is on their own site via Apply.",
     "detailSimilar": "Similar openings on the board",
-    "companyYesHiring": "Yes — {{count}} verified open {{roleWord}} right now, straight from {{company}}'s own job board.",
+    "companyYesHiring": "Yes — {{count}} verified open {{roleWord}} right now, straight from {{companyPossessive}} own job board.",
     "countLine": "{{total}} live openings from {{companyFeeds}} company feeds — every one straight from the company's own hiring system.",
     "subtitleShort": "Every job straight from the company's own careers system — verified, fresh, re-checked when you apply.",
     "badgeOfficial": "Official feeds only",
@@ -4107,7 +4044,6 @@
     "benchmarkTip": "Median of the annualized lower bounds companies publish themselves (hourly and monthly rates annualized), computed over this field's dominant stated currency only — never converted, never mixed. Live from this board — not a survey or an estimate.",
     "benchmarkLine": "Advertised pay in this field: median floor {{symbol}}{{median}} ({{currency}}) — from {{n}} postings here that state pay",
     "seenLastVisit": "posted before your last visit",
-    "urgencyTipFills": "Based on {{n}} genuine fills in our tracking (roles that stayed posted a week or more, then closed within 30 days of posting), a typical role here closes in about {{d}} days — worth applying early.",
     "urgencyChip": "Typically fills in ~{{d}}d",
     "repostTipTracked": "This company relisted the same role title {{n}} times during our tracking. That can mean routine reposting or roles that keep reopening — worth knowing before you invest in an application.",
     "repostChipTracked": "Relists roles often ({{n}}×)",
@@ -4466,7 +4402,7 @@
     "deleteAccount": "Delete account",
     "welcome": "Welcome! Let's get your first score 🎯",
     "trackerEmpty": "Track where you've applied — status, dates, and the score you applied with, all in one place.",
-    "trackerEmptyCta": "Browse 550,000+ verified openings — saving one starts your tracker",
+    "trackerEmptyCta": "Browse verified openings — saving one starts your tracker",
     "status": {
       "saved": "Saved",
       "applied": "Applied",
@@ -4507,7 +4443,7 @@
     "setupTrack": "Save or apply to your first role",
     "setupDismiss": "Dismiss",
     "bridgeTitle": "Your Morning Queue",
-    "bridgeBlurb": "The Apply Agent reviews thousands of fresh postings overnight and shortlists the ones worth your morning — churny companies skipped, genuine hirers first, each with its reasons. You always press send.",
+    "bridgeBlurb": "The Apply Agent reviews thousands of fresh postings overnight and shortlists the ones worth your morning — churny companies skipped, genuine hirers first, each with its reasons. In review mode, the default, nothing is sent until you approve it.",
     "bridgeGap": "It also knows your current top gap ({{gap}}) and weighs it.",
     "bridgeCta": "Open the queue ↓",
     "notifTitle": "Emails & alerts",
@@ -4645,7 +4581,7 @@
     "f3Body": "The agent never invents experience you don't have. Every claim it writes is checked against your resume before you ever see the draft.",
     "f4Title": "Preps you, tracks it, nudges you",
     "f4Body": "Interview prep for each application, a pipeline that tells you what to do next, and a quiet-application reminder when it's time to follow up.",
-    "control": "You stay in control: the agent drafts, you approve, and you press send on the company's own site.",
+    "control": "You stay in control: in review mode, the default, the agent drafts and nothing goes out until you approve it. Auto mode, which submits for you, is a switch you turn on.",
     "cta": "Pick a job and watch it work"
   },
   "boardHero": {
@@ -5053,9 +4989,9 @@
   },
   "homeHero": {
     "badge": "Live job board + AI apply agent",
-    "headlinePre": "Every job here is real.",
+    "headlinePre": "Live jobs, straight from employers' own hiring systems.",
     "headlineHighlight": "The agent applies for you.",
-    "sub": "Openings pulled straight from companies' own hiring systems — never scraped, re-checked all day. Upload your CV and the agent ranks every one against it, writes each application honestly, and submits where employers allow.",
+    "sub": "Openings read from companies' own hiring systems and re-checked all day. Upload your CV and the agent ranks every one against it, writes each application honestly, and submits where employers allow.",
     "statOpenings": "verified openings",
     "statCompanies": "companies",
     "statSendable": "the agent can submit for you",
@@ -5245,14 +5181,15 @@
     "payLabel": "Pay",
     "payValue": "{{salary}} — the employer's own words, not converted or estimated",
     "noPayFound": "We found no pay figure on this posting. That is our reading, not a statement by the employer — the description may still name one.",
-    "applyCta": "Apply on {{company}}'s own site",
+    "applyCta": "Apply on {{companyPossessive}} own site",
     "applyCtaPlain": "Apply on the employer's own site",
     "applyNote": "The application happens on the employer's own hiring system. This board never reposts a job or stands between you and them.",
     "scoreCta": "Score my résumé against this job (free)",
     "scoreNote": "Opens the free scanner with this posting's description already filled in.",
     "descHeading": "The employer's own description",
-    "sourceNote": "Pulled straight from {{company}}'s own hiring system — never an aggregator, never a repost. A dated posting is served for at most {{days}} days and is dropped the moment the employer's feed stops serving it.",
-    "theEmployer": "the employer"
+    "sourceNote": "Pulled straight from {{companyPossessive}} own hiring system — never an aggregator, never a repost. A dated posting is served for at most {{days}} days from the date the employer states, and the board re-checks a posting when you open it.",
+    "theEmployer": "the employer",
+    "theEmployerPossessive": "the employer's"
   },
   "pulseConfirm": {
     "title": "Confirm your monthly market pulse",
@@ -5304,6 +5241,7 @@
   },
   "seller": {
     "soldBy": "Sold by {{name}}, {{address}}.",
+    "termsParty": "These Terms are an agreement between you and {{name}}, {{address}}.",
     "terms": "These Terms are an agreement between you and {{name}}, {{address}}.",
     "controller": "The controller of your personal data is {{name}}, {{address}}."
   },

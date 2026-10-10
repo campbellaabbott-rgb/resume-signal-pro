@@ -62,8 +62,7 @@
     "freeScanReveals": "Ihr kostenloser Scan zeigt:",
     "headline": {
       "get": "Die Jobbörse mit",
-      "recruiterGrade": "null Geisterjobs",
-      "feedback": "— über 550.000 verifizierte Stellen, abgeglichen mit Ihrem Lebenslauf",
+      "recruiterGrade": "Live-Stellen direkt aus den Bewerbungssystemen der Arbeitgeber",
       "feedbackLive": "— {{n}}+ verifizierte Stellen, passend zu Ihrem Lebenslauf",
       "feedbackPlain": "— jede Stelle verifiziert, passend zu Ihrem Lebenslauf"
     },
@@ -144,12 +143,10 @@
     "testimonialQuote": "Habe meinen Lebenslauf in 10 Minuten korrigiert. Hatte in derselben Woche 3 Vorstellungsgespräche.",
     "testimonialAuthorName": "— Sarah K., Softwareentwicklerin",
     "transparentScoring": "transparente KI-Bewertung, keine Blackbox",
-    "factGdpr": "DSGVO-konform",
     "factAutoDelete": "Lebenslauf nach spätestens 7 Tagen gelöscht",
     "factNoStorage": "Nie verkauft",
     "measureStrip": "Messungen statt Meinungen · Jedes Zitat verifiziert · Ein Score, der seine Arbeit zeigt",
     "jobsCta": "Live-Jobbörse — Passung prüfen, bevor Sie sich bewerben →",
-    "browseJobs": "550.000+ verifizierte Jobs ansehen",
     "browseJobsLive": "{{n}}+ geprüfte Stellen durchsuchen",
     "browseJobsPlain": "Geprüftes Stellenboard durchsuchen"
   },
@@ -461,8 +458,7 @@
         "quote": "Der Service ist super hilfreich und nützlich.",
         "role": "Reddit-Nutzer • Zahlender Kunde"
       }
-    },
-    "trustMessage": "Schließen Sie sich Tausenden an, die ihre Lebensläufe mit ehrlichem Recruiter-Feedback verbessert haben."
+    }
   },
   "trustIndicators": {
     "badges": {
@@ -472,15 +468,11 @@
       },
       "ssl": {
         "label": "256-Bit SSL",
-        "description": "Bankniveau-Verschlüsselung"
+        "description": "Verschlüsselte Übertragung"
       },
       "autoDelete": {
         "label": "Löschung in 7 Tagen",
         "description": "Ihre Daten, Ihre Kontrolle"
-      },
-      "gdpr": {
-        "label": "DSGVO-konform",
-        "description": "Datenschutz zuerst"
       },
       "zeroStorage": {
         "label": "Nie verkauft",
@@ -518,7 +510,7 @@
     "actionPlan": "Aktionsplan",
     "redFlags": "Red Flags",
     "linkedinAnalysis": "LinkedIn-Analyse",
-    "includedFree": "Kostenlos inklusive",
+    "includedInFullAnalysis": "In der Vollanalyse",
     "strength": "Stärke",
     "suggestedHeadline": "Vorgeschlagene Headline",
     "aboutSection": "About-Abschnitt",
@@ -1414,8 +1406,7 @@
       "aiRewrittenResume": "KI-umgeschriebener Lebenslauf",
       "customCoverLetter": "Individuelles Anschreiben",
       "beforeAfterComparison": "Vorher/Nachher-Vergleich",
-      "keywordOptimization": "Keyword-Optimierung",
-      "priorityProcessing": "Bevorzugte Bearbeitung"
+      "keywordOptimization": "Keyword-Optimierung"
     },
     "keywordFixFeatures": {
       "fullAtsBreakdown": "Vollständige ATS-Score-Aufschlüsselung",
@@ -1474,9 +1465,10 @@
       "doNotApply": "✗ Schlechte Eignung — Andere Stellen in Betracht ziehen"
     },
     "atsBanner": {
-      "require60": "Die meisten ATS-Systeme erfordern 60+ zum Bestehen",
-      "require75": "75+ erhöht die Rückrufquote",
-      "targetScore": "75+"
+      "belowMedian": "Unter dem Median von {{median}} bei {{n}} hier gescannten Lebensläufen aus {{industry}}. Die großen ATS-Plattformen lehnen nicht anhand dieser Zahl ab, aber die Korrekturen unten erhöhen sie.",
+      "belowTopQuarter": "Über dem Median von {{median}}; das oberste Viertel der {{n}} hier gescannten Lebensläufe aus {{industry}} erreicht {{p75}} oder mehr.",
+      "noPassMark": "Das ist keine Bestehensgrenze: Die großen ATS-Plattformen lehnen einen Lebenslauf nicht anhand einer Punktzahl ab. Die Korrekturen unten erhöhen sie.",
+      "topQuarter": "Oberstes Viertel: {{p75}}+"
     },
     "eliteSignals": {
       "title": "Recruiter-anziehende Signale"
@@ -1561,10 +1553,14 @@
       "bulletWithData1": "• Aus deinem Lebenslauf: \"{{bullet}}\" — kein messbarer Einfluss angegeben",
       "bulletWithData2": "• {{weak}} von deinen {{total}} Stichpunkten fehlt Quantifizierung",
       "bulletWithData3": "• Lass jeden einzelnen mit Kennzahlen und einem stärkeren Kraftverb neu schreiben",
-      "kwHard": "• {{count}} kritische Hard Skill{{plural}} fehlen in deinem Lebenslauf",
-      "kwCerts": "• {{count}} Branchenzertifizierung{{plural}} zu erwähnen (auch in Bearbeitung)",
-      "kwTools": "• {{count}} Tool{{plural}}, die in deinem Bereich häufig aufgeführt werden, fehlen",
-      "kwMethodology": "• {{count}} Methodik-Keyword{{plural}}, die deine Konkurrenten verwenden",
+      "kwHard_one": "• {{count}} kritischer Hard Skill fehlt in deinem Lebenslauf",
+      "kwHard_other": "• {{count}} kritische Hard Skills fehlen in deinem Lebenslauf",
+      "kwCerts_one": "• {{count}} Branchenzertifizierung zu erwähnen (auch in Bearbeitung)",
+      "kwCerts_other": "• {{count}} Branchenzertifizierungen zu erwähnen (auch in Bearbeitung)",
+      "kwTools_one": "• {{count}} Tool, das in deinem Bereich häufig aufgeführt wird, fehlt",
+      "kwTools_other": "• {{count}} Tools, die in deinem Bereich häufig aufgeführt werden, fehlen",
+      "kwMethodology_one": "• {{count}} Methodik-Keyword, das deine Konkurrenten verwenden",
+      "kwMethodology_other": "• {{count}} Methodik-Keywords, die deine Konkurrenten verwenden",
       "kwPlacement": "• Wo du deine stärksten Keywords für maximales ATS-Gewicht platzierst",
       "kwVerbs": "• Aktionsverben, die deine aktuellen Wortentscheidungen übertreffen",
       "kwDensity": "• Wie deine Keyword-Dichte mit Top-Lebensläufen in deinem Bereich verglichen wird",
@@ -2519,22 +2515,19 @@
     "privacyMatters": "Deine Privatsphäre ist uns wichtig",
     "titlePrefix": "Dein Lebenslauf ist",
     "titleHighlight": "bei uns sicher",
-    "heroSubtitle": "Wir haben Resume Booster nach dem Prinzip „Sicherheit zuerst“ entwickelt. Deine Karrieredokumente verdienen Schutz auf Bankniveau – genau das bieten wir.",
+    "heroSubtitle": "Was wir speichern, wie lange, an wen es geht und wie Sie es löschen lassen — schriftlich, damit Sie es nachprüfen können.",
     "badges": {
       "ssl": "256-Bit-SSL",
-      "retention": "Offengelegte Fristen",
-      "gdpr": "DSGVO-konform"
+      "retention": "Offengelegte Fristen"
     },
     "stats": {
       "resumesAnalyzed": "Analysierte Lebensläufe",
-      "betterResults": "Berichten von besseren Ergebnissen",
-      "avgDelivery": "Durchschnittliche Lieferzeit",
-      "dataBreaches": "Datenschutzverletzungen"
+      "betterResults": "Berichten von besseren Ergebnissen"
     },
     "security": {
       "ssl": {
         "title": "256-Bit-SSL-Verschlüsselung",
-        "description": "Dein Lebenslauf wird während des Uploads und der Verarbeitung mit Verschlüsselung auf Bankniveau geschützt. Wir nutzen den gleichen Sicherheitsstandard wie große Finanzinstitute."
+        "description": "Ihr Lebenslauf wird über verschlüsselte Verbindungen (HTTPS/TLS) zu uns und zu den Diensten übertragen, die ihn verarbeiten."
       },
       "freeScan": {
         "title": "Was der Gratis-Scan aufbewahrt",
@@ -2545,8 +2538,8 @@
         "description": "Löschjobs laufen alle 15 Minuten für den Zwischenspeicher und stündlich für den Bericht-Cache, den KI-Cache und bezahlte Analysen, sodass keines davon seine angegebene Frist um mehr als eine Stunde überschreitet."
       },
       "gdpr": {
-        "title": "DSGVO-konform",
-        "description": "Wir halten uns an strenge europäische Datenschutzstandards. Du kannst jederzeit die Löschung deiner Daten beantragen."
+        "title": "Ihre Datenrechte",
+        "description": "Egal, wo Sie wohnen: Sie können jederzeit eine Kopie der Daten anfordern, die wir über Sie speichern, oder deren Löschung verlangen."
       },
       "neverSold": {
         "title": "Nie verkauft",
@@ -2647,7 +2640,7 @@
     "trustedByTitle": "Vertraut von Bewerbern bei Top-Unternehmen",
     "trustedBySubtitle": "Fachkräfte führender Unternehmen nutzen Resume Booster, um ihre Traumjobs zu bekommen.",
     "ctaTitle": "Bereit, deinen Lebenslauf zu verbessern?",
-    "ctaSubtitle": "Schließe dich Tausenden von Bewerbern an, die ihre Lebensläufe mit unserer KI-gestützten Analyse verbessert haben.",
+    "ctaSubtitle": "Kostenloser Scan, keine Anmeldung. Jede zitierte Zeile im Bericht wird mit Ihrem eigenen Lebenslauf abgeglichen.",
     "ctaButton": "Hol dir deinen kostenlosen Scan",
     "dataFence": {
       "badge": "Datenunabhängigkeit",
@@ -2664,20 +2657,18 @@
     "transparentResearchBased": "Transparent & forschungsbasiert",
     "titlePrefix": "Unsere ATS-Analyse-",
     "titleHighlight": "Methodik",
-    "heroSubtitle": "Wir haben zurückentwickelt, wie über 50 Bewerbermanagementsysteme (ATS) Lebensläufe analysieren und bewerten. So funktioniert unsere Analyse genau.",
-    "platformsAnalyzed": "50+ ATS-Plattformen analysiert",
+    "heroSubtitle": "Wie ein Scan aus Ihrem Lebenslauf eine Punktzahl macht, aufgeschrieben aus dem Code, der sie berechnet.",
     "resumesProcessed": "{{total}} Lebensläufe verarbeitet",
-    "updatedMonthly": "Monatlich aktualisiert",
     "howAnalysisWorks": "Wie unsere Analyse funktioniert",
     "step": "SCHRITT {{number}}",
     "steps": {
       "parsing": {
         "title": "Dokumentenanalyse",
-        "description": "Wir extrahieren Text unter Beibehaltung der Struktur und verarbeiten PDF- und DOCX-Dateien mit der gleichen Parsing-Logik, die große ATS-Plattformen verwenden."
+        "description": "Wir lesen den Text aus Ihrer PDF- oder DOCX-Datei und behalten die Struktur bei: Abschnitte, Daten und Aufzählungspunkte."
       },
       "aiAnalysis": {
         "title": "KI-Analyse",
-        "description": "Unsere KI simuliert, wie jedes ATS deinen Lebenslauf liest, und identifiziert Abschnitte, Schlüsselwörter und Formatierungen, die zu Parsing-Fehlern führen könnten."
+        "description": "Unsere KI liest den Lebenslauf wie ein Parser und sucht nach Abschnitten, Schlüsselwörtern und Formatierungen, die das Auslesen stören können."
       },
       "keywordMatching": {
         "title": "Schlüsselwort-Abgleich",
@@ -2685,101 +2676,47 @@
       },
       "scoringAlgorithm": {
         "title": "Bewertungsalgorithmus",
-        "description": "Dein ATS-Score wird basierend auf über 50 Faktoren berechnet, darunter Schlüsselwortdichte, Formatierung, Vollständigkeit der Abschnitte und Warnsignale."
-      }
-    },
-    "atsPlatforms": {
-      "0": {
-        "description": "Analyse von Abschnittsüberschriften, Schlüsselwortextraktion, Validierung des Datumsformats",
-        "marketShare": "Große Unternehmen"
-      },
-      "1": {
-        "description": "Algorithmen zum Skill-Abgleich, Bewertung der Erfahrungsstufe, Indikatoren für kulturelle Passung",
-        "marketShare": "Tech & Start-ups"
-      },
-      "2": {
-        "description": "Validierung der Kontaktdaten, Formatierungskonsistenz, Abschnittsorganisation",
-        "marketShare": "Mittelstand"
-      },
-      "3": {
-        "description": "Analyse der Schlüsselwortdichte, Abgleich der Jobtitel, Bewertung der Qualifikationen",
-        "marketShare": "Fortune 500"
-      },
-      "4": {
-        "description": "Analyse von Bildungsangaben, Zertifikatserkennung, Abgleich der Skill-Taxonomie",
-        "marketShare": "Gesundheitswesen & Einzelhandel"
-      },
-      "5": {
-        "description": "Analyse der Lebenslaufstruktur, Validierung der Erfahrungschronologie",
-        "marketShare": "KMU"
-      },
-      "6": {
-        "description": "Schlüsselwortoptimierung, Algorithmen zur Bewerber-Rangfolge",
-        "marketShare": "Kleinunternehmen"
-      },
-      "7": {
-        "description": "Integration von Social-Profilen, Empfehlungs-Tracking, Skill-Bewertung",
-        "marketShare": "Großunternehmen"
-      },
-      "8": {
-        "description": "KI-gestützter Abgleich, Diversitätsindikatoren, globale Compliance",
-        "marketShare": "Globale Großunternehmen"
-      },
-      "9": {
-        "description": "Personalvermittlungsspezifische Analyse, Erkennung von Auftragnehmern, Verfügbarkeitsbewertung",
-        "marketShare": "Personalvermittlungsagenturen"
+        "description": "Die KI bewertet den Lebenslauf mit Gewichtungen für Ihre Branche, und ihre Punktzahl bleibt innerhalb von {{band}} Punkten einer regelbasierten Punktzahl aus demselben Dokument. Der Prüfpfad teilt das Ergebnis dann in die vier Teile unten auf."
       }
     },
     "atsPlatformsTitle": "ATS-Plattformen, gegen die wir analysieren",
-    "atsPlatformsSubtitle": "Unsere Analyse basiert auf den Parsing-Regeln und Bewertungsalgorithmen dieser großen ATS-Plattformen, die über 90 % des Arbeitsmarkts abdecken.",
-    "moreAtsPlatforms": "+ 40 weitere regionale und branchenspezifische ATS-Plattformen",
+    "atsPlatformsSubtitle": "Der Scan bewertet, wie jedes dieser {{count}} Systeme Ihren Lebenslauf wahrscheinlich liest. Es sind die Systeme, die er nennt; hier wird kein Marktanteil behauptet.",
     "scoreCalculatedTitle": "Wie dein ATS-Score berechnet wird",
-    "scoreCalculatedSubtitle": "Dein Score ist eine gewichtete Kombination mehrerer Faktoren, die bestimmen, wie gut dein Lebenslauf in ATS-Systemen abschneidet.",
-    "scoringFactors": {
-      "keywordOptimization": {
-        "factor": "Schlüsselwortoptimierung",
-        "description": "Erwähnte branchenrelevante Schlüsselwörter und Fähigkeiten"
-      },
-      "formatCompatibility": {
-        "factor": "Formatkompatibilität",
-        "description": "Saubere Struktur, die ATS korrekt analysieren kann"
-      },
-      "sectionCompleteness": {
-        "factor": "Vollständigkeit der Abschnitte",
-        "description": "Alle erwarteten Abschnitte vorhanden und korrekt benannt"
-      },
-      "experienceClarity": {
-        "factor": "Klarheit der Erfahrung",
-        "description": "Klare Jobtitel, Daten und Erfolge"
-      },
-      "actionVerbUsage": {
-        "factor": "Verwendung von Aktionsverben",
-        "description": "Starke Aktionsverben, die Wirkung zeigen"
-      },
-      "quantifiedAchievements": {
-        "factor": "Quantifizierte Erfolge",
-        "description": "Zahlen und Kennzahlen, die Ergebnisse belegen"
-      },
-      "redFlagAbsence": {
-        "factor": "Abwesenheit von Warnsignalen",
-        "description": "Keine Formatierungs- oder Inhaltsprobleme"
-      }
-    },
+    "scoreCalculatedSubtitle": "Das „Warum diese Punktzahl“ jedes Berichts teilt die Punktzahl in diese vier Teile auf, von 100 Punkten.",
     "continuousResearchTitle": "Kontinuierliche Forschung",
-    "continuousResearchSubtitle": "Wir analysieren kontinuierlich Stellenausschreibungen, ATS-Updates und Einstellungstrends, um unsere Analyse genau und aktuell zu halten.",
+    "continuousResearchSubtitle": "Die Schlüsselworttabellen und Regeln ändern sich, während wir lernen, und jede Änderung ist im öffentlichen Changelog datiert.",
     "continuousResearch": {
-      "monthlyUpdates": "Monatliche Algorithmus-Updates",
-      "keywordDatabases": "Branchenspezifische Schlüsselwort-Datenbanken",
-      "recruiterFeedback": "Integration von echtem Recruiter-Feedback"
+      "monthlyUpdates": "Regeländerungen im Changelog datiert",
+      "keywordDatabases": "Branchenspezifische Schlüsselwort-Datenbanken"
     },
-    "validatedByResultsTitle": "Durch Ergebnisse validiert",
-    "validatedByResultsSubtitle": "Unsere Methodik wird durch echte Ergebnisse von Tausenden von Bewerbern validiert, die ihre Lebensläufe mit unserer Analyse verbessert haben.",
+    "validatedByResultsTitle": "Was diese Seite nicht behauptet",
+    "validatedByResultsSubtitle": "Es gibt keine Ergebnisumfrage, daher wird hier keine Interviewquote behauptet. Gemessen wird, wie viele Lebensläufe der Scanner gelesen hat.",
     "validatedByResults": {
       "resumesAnalyzed": "{{total}} Lebensläufe analysiert"
     },
     "ctaTitle": "Bereit, deinen ATS-Score zu sehen?",
-    "ctaSubtitle": "Erhalte eine kostenlose Analyse deines Lebenslaufs mit unserer bewährten Methodik.",
-    "ctaButton": "Meinen Lebenslauf kostenlos analysieren"
+    "ctaSubtitle": "Erhalte eine kostenlose Analyse deines Lebenslaufs nach der Methode, die diese Seite beschreibt.",
+    "ctaButton": "Meinen Lebenslauf kostenlos analysieren",
+    "atsCount": "{{count}} ATS-Systeme namentlich geprüft",
+    "pointsOf": "{{points}} von 100 Punkten",
+    "audit": {
+      "keywords": {
+        "label": "Schlüsselwortabdeckung",
+        "description": "Die für Ihre Branche erwarteten Schlüsselwörter, die der Lebenslauf enthält"
+      },
+      "format": {
+        "label": "Format & Auslesbarkeit",
+        "description": "Ob ein Parser die Struktur lesen kann, ohne Abschnitte zu verlieren"
+      },
+      "impact": {
+        "label": "Messbare Wirkung",
+        "description": "Wie viele Ihrer Aufzählungspunkte eine Zahl enthalten"
+      },
+      "content": {
+        "label": "Inhaltssignale",
+        "description": "Verben, Struktur und Abschnittstiefe, abgewogen gegen Warnsignale"
+      }
+    }
   },
   "pricingPage": {
     "metaTitle": "Preise — Resume Booster",
@@ -2787,7 +2724,7 @@
     "noSubscriptions": "Einmalzahlungen • Verlängern sich nie automatisch",
     "titlePrefix": "Wähle deinen",
     "titleHighlight": "Lebenslauf-Boost",
-    "subtitle": "Von schnellen Korrekturen bis zu kompletten Karrierepaketen. Einmal zahlen, für immer nutzen.",
+    "subtitle": "Von schnellen Korrekturen bis zu kompletten Karrierepaketen. Einmalprodukte zahlen Sie einmal; Pro und der Agent-Plan verlängern sich monatlich, bis Sie kündigen.",
     "secureCheckout": "Sicherer Checkout",
     "instantAccess": "Sofortiger Zugang",
     "stripeProtected": "Durch Stripe geschützt",
@@ -3981,7 +3918,7 @@
     "tailorLimitTitle": "Stundenlimit erreicht",
     "tailorLimit": "Die Lebenslauf-Anpassungen dieser Stunde sind aufgebraucht — sie werden innerhalb der Stunde zurückgesetzt. Alles Erstellte bleibt gespeichert.",
     "savedMilestone": "Das sind {{n}} Jobs in deiner Pipeline",
-    "savedMilestoneDesc": "Der Apply Agent kann für alle auf einmal maßgeschneiderte Antworten vorbereiten — {{trialDays}} Tage kostenlos testen für Neukunden, abgeschickt wird immer von dir.",
+    "savedMilestoneDesc": "Der Apply Agent kann für alle auf einmal maßgeschneiderte Antworten vorbereiten — {{trialDays}} Tage kostenlos testen für Neukunden. Im Prüfmodus, der Voreinstellung, geht nichts raus, bevor du es freigibst.",
     "sortRelevance": "Relevanz",
     "companyNotHiring": "Gerade nicht — {{company}} hat aktuell keine offenen Stellen auf dem eigenen Jobportal. Beobachte das Unternehmen unten und wir mailen dir, sobald neue Stellen erscheinen.",
     "companyYesHiringCapped": "Ja — über {{n}} verifizierte offene Stellen, direkt vom Jobportal von {{company}}.",
@@ -4107,7 +4044,6 @@
     "benchmarkTip": "Median der aufs Jahr gerechneten Untergrenzen, die Unternehmen selbst veröffentlichen (Stunden- und Monatssätze annualisiert), berechnet nur über die dominierende angegebene Währung dieses Berufsfelds — nie umgerechnet, nie gemischt. Live von diesem Board — keine Umfrage, keine Schätzung.",
     "benchmarkLine": "Ausgeschriebene Gehälter in diesem Berufsfeld: Median-Untergrenze {{symbol}}{{median}} ({{currency}}) — aus {{n}} Anzeigen hier mit Gehaltsangabe",
     "seenLastVisit": "vor deinem letzten Besuch veröffentlicht",
-    "urgencyTipFills": "Basierend auf {{n}} echten Besetzungen in unserem Tracking (Stellen, die mindestens eine Woche ausgeschrieben waren und dann innerhalb von 30 Tagen nach Veröffentlichung schlossen) schließt eine typische Stelle hier in etwa {{d}} Tagen — früh bewerben lohnt sich.",
     "urgencyChip": "Meist in ~{{d}} Tagen besetzt",
     "repostTipTracked": "Dieses Unternehmen hat denselben Stellentitel in unserem Tracking {{n}}-mal neu ausgeschrieben. Das kann routinemäßiges Reposting bedeuten oder Stellen, die immer wieder neu aufgehen — gut zu wissen, bevor du Zeit in eine Bewerbung steckst.",
     "repostChipTracked": "Schreibt Stellen oft neu aus ({{n}}×)",
@@ -4466,7 +4402,7 @@
     "deleteAccount": "Konto löschen",
     "welcome": "Willkommen! Holen wir Ihren ersten Score 🎯",
     "trackerEmpty": "Verfolgen Sie Ihre Bewerbungen — Status, Daten und der gesendete Score an einem Ort.",
-    "trackerEmptyCta": "Über 550.000 verifizierte Stellen durchsuchen — eine zu speichern startet Ihren Tracker",
+    "trackerEmptyCta": "Verifizierte Stellen durchsuchen — eine zu speichern startet Ihren Tracker",
     "status": {
       "saved": "Gespeichert",
       "applied": "Beworben",
@@ -4507,7 +4443,7 @@
     "setupTrack": "Erste Stelle speichern oder bewerben",
     "setupDismiss": "Schließen",
     "bridgeTitle": "Deine Morning Queue",
-    "bridgeBlurb": "Der Apply Agent prüft nachts tausende frische Anzeigen und wählt die aus, die deinen Morgen wert sind — Wiederausschreiber aussortiert, echte Einsteller zuerst, jede mit Begründung. Absenden tust immer du.",
+    "bridgeBlurb": "Der Apply Agent prüft nachts tausende frische Anzeigen und wählt die aus, die deinen Morgen wert sind — Wiederausschreiber aussortiert, echte Einsteller zuerst, jede mit Begründung. Im Prüfmodus, der Voreinstellung, geht nichts raus, bevor du es freigibst.",
     "bridgeGap": "Er kennt auch deine aktuelle größte Lücke ({{gap}}) und gewichtet sie.",
     "bridgeCta": "Queue öffnen ↓",
     "notifTitle": "E-Mails & Alerts",
@@ -4645,7 +4581,7 @@
     "f3Body": "Der Agent erfindet nie Erfahrung, die Sie nicht haben. Jede Aussage wird gegen Ihren Lebenslauf geprüft, bevor Sie den Entwurf sehen.",
     "f4Title": "Bereitet vor, verfolgt, erinnert",
     "f4Body": "Interview-Vorbereitung je Bewerbung, eine Pipeline, die sagt, was als Nächstes ansteht, und eine Erinnerung, wenn eine Nachfrage fällig ist.",
-    "control": "Sie behalten die Kontrolle: der Agent entwirft, Sie geben frei und senden auf der Website des Unternehmens selbst.",
+    "control": "Sie behalten die Kontrolle: Im Prüfmodus, der Voreinstellung, entwirft der Agent und nichts geht raus, bevor Sie es freigeben. Den Automodus, der für Sie absendet, schalten Sie selbst ein.",
     "cta": "Wählen Sie einen Job und sehen Sie ihn arbeiten"
   },
   "boardHero": {
@@ -5053,9 +4989,9 @@
   },
   "homeHero": {
     "badge": "Live-Stellenboard + KI-Bewerbungsagent",
-    "headlinePre": "Jede Stelle hier ist echt.",
+    "headlinePre": "Live-Stellen, direkt aus den Bewerbungssystemen der Arbeitgeber.",
     "headlineHighlight": "Der Agent bewirbt sich für Sie.",
-    "sub": "Stellen direkt aus den Bewerbersystemen der Unternehmen — nie gescrapt, den ganzen Tag neu geprüft. Laden Sie Ihren Lebenslauf hoch: der Agent bewertet jede Stelle, schreibt jede Bewerbung ehrlich und reicht ein, wo Arbeitgeber es zulassen.",
+    "sub": "Stellen, gelesen aus den eigenen Bewerbersystemen der Unternehmen und den ganzen Tag neu geprüft. Laden Sie Ihren Lebenslauf hoch: der Agent bewertet jede Stelle, schreibt jede Bewerbung ehrlich und reicht ein, wo Arbeitgeber es zulassen.",
     "statOpenings": "verifizierte Stellen",
     "statCompanies": "Unternehmen",
     "statSendable": "kann der Agent für Sie einreichen",
@@ -5251,8 +5187,9 @@
     "scoreCta": "Meinen Lebenslauf mit dieser Stelle abgleichen (kostenlos)",
     "scoreNote": "Öffnet den kostenlosen Scanner mit der bereits eingefügten Beschreibung dieser Stelle.",
     "descHeading": "Die Beschreibung des Arbeitgebers",
-    "sourceNote": "Direkt aus dem eigenen Bewerbersystem von {{company}} — nie ein Aggregator, nie eine Zweitveröffentlichung. Eine datierte Anzeige wird höchstens {{days}} Tage ausgespielt und verschwindet, sobald der Feed des Arbeitgebers sie nicht mehr enthält.",
-    "theEmployer": "dem Arbeitgeber"
+    "sourceNote": "Direkt aus dem eigenen Bewerbersystem von {{company}} — nie ein Aggregator, nie eine Zweitveröffentlichung. Eine datierte Anzeige wird höchstens {{days}} Tage ab dem vom Arbeitgeber angegebenen Datum ausgespielt, und das Board prüft eine Anzeige erneut, wenn du sie öffnest.",
+    "theEmployer": "dem Arbeitgeber",
+    "theEmployerPossessive": "des Arbeitgebers"
   },
   "pulseConfirm": {
     "title": "Bestätigen Sie Ihren monatlichen Markt-Puls",
@@ -5304,6 +5241,7 @@
   },
   "seller": {
     "soldBy": "Verkauft von {{name}}, {{address}}.",
+    "termsParty": "Diese Bedingungen sind eine Vereinbarung zwischen Ihnen und {{name}}, {{address}}.",
     "terms": "Diese Bedingungen sind eine Vereinbarung zwischen dir und {{name}}, {{address}}.",
     "controller": "Verantwortlicher für deine personenbezogenen Daten ist {{name}}, {{address}}."
   },

@@ -6,6 +6,7 @@
 import { useParams, Link, Navigate } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
+import { useDocumentLang } from "@/hooks/use-document-lang";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { INDUSTRY_KEYWORDS } from "../../supabase/functions/free-keyword-scan/industry-detection";
@@ -15,6 +16,8 @@ import { INDUSTRY_TO_CATEGORY } from "@/lib/job-board-categories";
 
 export default function IndustryKeywordsEs() {
   const { slug } = useParams();
+  // L4-15: Spanish content keeps lang="es" after the app runs.
+  useDocumentLang("es");
   const name = slug ? ES_INDUSTRIES[slug] : undefined;
   const data = slug ? INDUSTRY_KEYWORDS[slug] : undefined;
   if (!slug || !name || !data) return <Navigate to="/industries" replace />;

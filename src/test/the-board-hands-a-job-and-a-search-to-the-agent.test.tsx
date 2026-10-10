@@ -561,7 +561,10 @@ describe("3. no typed rate or quota remains on the pages this lane touched", () 
     expect(page).toMatch(/\{\{ratePerMin\}\} requests a minute and \{\{dailyQuota\}\} calls a day; a live pass raises both/);
     expect(page).not.toMatch(/Both (kinds )?meter identically/);
     const bake = strip(read("scripts/prerender-seo.mjs"));
-    expect(bake).toMatch(/const FREE_KEY_RATE_SENTENCE = `\$\{D\.FREE_KEY_RATE_PER_MIN\} requests a minute and \$\{D\.MCP_FREE_KEY_DAILY_QUOTA\.toLocaleString\("en-US"\)\} calls a day per key; a live pass raises both for its hours`;/);
+    // L9-11 (wave 3): the bake prints this sentence on /data-api and in the
+    // llms-full /v1 line, where a pass raises nothing: it is scoped to the
+    // MCP server, the only place the pass overlay applies.
+    expect(bake).toMatch(/const FREE_KEY_RATE_SENTENCE = `\$\{D\.FREE_KEY_RATE_PER_MIN\} requests a minute and \$\{D\.MCP_FREE_KEY_DAILY_QUOTA\.toLocaleString\("en-US"\)\} calls a day per key; on the MCP server, a live Agent Pass on an account-linked key raises both for its hours, and it never raises them on \/v1`;/);
     expect(bake.match(/\$\{FREE_KEY_RATE_SENTENCE\}/g)?.length).toBe(3);
     expect(bake).not.toMatch(/meter identically/);
     // The data entry the bake bundles exports both mirrors.

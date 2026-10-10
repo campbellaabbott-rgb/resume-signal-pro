@@ -5,6 +5,7 @@
 import { useParams, Link, Navigate } from "react-router-dom";
 import { ArrowRight, Camera, FileText, Ruler, User, Landmark } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
+import { useDocumentLang } from "@/hooks/use-document-lang";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,8 @@ export default function CvStandards({ locale }: CvStandardsProps) {
   const { country } = useParams<{ country: string }>();
 
   const cfg = locale ? CV_LOCALES[locale] : null;
+  // L4-15: the page's own language, not the visitor's UI language.
+  useDocumentLang(cfg?.htmlLang ?? "en");
   const iso = locale
     ? Object.entries(cfg?.slugs ?? {}).find(([, s]) => s === country)?.[0] ?? null
     : isoFromSlug(country ?? "");

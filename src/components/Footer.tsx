@@ -57,7 +57,11 @@ export function Footer() {
         </nav>
 
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground px-2 sm:px-0">
-          <p>{t('footer.copyright', { year: new Date().getFullYear() })}</p>
+          <div>
+            <p>{t('footer.copyright', { year: new Date().getFullYear() })}</p>
+            {/* Who sells: nothing until src/config/seller.ts is filled in (one line; wave 3 had placed two). */}
+            <SellerIdentity variant="footer" className="text-xs mt-1" />
+          </div>
           <nav className="flex items-center gap-4 sm:gap-6 flex-wrap justify-center" aria-label={t('footer.navAriaLabel')}>
             <Link
               to="/pricing"
@@ -92,8 +96,6 @@ export function Footer() {
             <LanguageSwitcher variant="compact" />
           </nav>
         </div>
-        {/* Who sells: nothing until src/config/seller.ts is filled in. */}
-        <SellerIdentity variant="soldBy" className="mt-4 text-center text-xs text-muted-foreground" />
       </div>
     </footer>
   );

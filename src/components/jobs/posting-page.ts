@@ -15,6 +15,8 @@
  * entry; src/pages/JobPosting.tsx imports it directly.
  */
 
+import { employerName, possessive } from "../../lib/company-display";
+
 /**
  * THE BOARD'S OWN SERVING WINDOW, MIRRORED — and the mirror is the point.
  *
@@ -26,6 +28,18 @@
  * silence, so a test reads that file and fails when the two disagree.
  */
 export const BOARD_FRESH_WINDOW_DAYS = 30;
+
+/**
+ * THE EMPLOYER, BY THE NAME IT USES. The board stores some Workday tenants by
+ * their system code ("Ms" for Morgan Stanley, "Rmit"), and every place a page
+ * names the employer (title, meta description, hiringOrganization) used to
+ * print that code straight into Google for Jobs (SEO report 2026-10-08, F1:
+ * 292 of 399 posting pages). One function names it for every reader.
+ */
+export function postingEmployer(job: Pick<PostingRow, "id" | "token" | "company">): string {
+  const token = job.token ?? postingPathParts(job.id)?.token ?? null;
+  return employerName(token, job.company);
+}
 
 /** The path prefix every posting page lives under. */
 export const POSTING_PATH_PREFIX = "/jobs/posting";
@@ -539,6 +553,7 @@ export function postingJsonLd(
   if (!remote && !job.location) return null;
   const validThrough = postingValidThrough(job);
   if (!validThrough) return null;
+  const employer = postingEmployer(job);
 
   const ld: Record<string, unknown> = {
     "@context": "https://schema.org",
@@ -562,7 +577,7 @@ export function postingJsonLd(
     // through its last day shipped markup saying it had already expired while
     // the same file said it was live. The window closes when that day ends.
     validThrough: `${validThrough}T23:59:59+00:00`,
-    hiringOrganization: { "@type": "Organization", name: job.company },
+    hiringOrganization: { "@type": "Organization", name: employer },
     url: `${opts.site}${path}`,
     // The application happens on the employer's own system, not here.
     directApply: false,
@@ -571,7 +586,7 @@ export function postingJsonLd(
     // this property asks for.
     identifier: {
       "@type": "PropertyValue",
-      name: job.company,
+      name: employer,
       value: postingPathParts(job.id)!.key,
     },
   };
@@ -665,7 +680,7 @@ function clip(s: string, n: number): string {
  */
 export function postingPageTitle(job: PostingRow): string {
   const title = (job.title ?? "").trim();
-  const company = (job.company ?? "").trim();
+  const company = job.company ? postingEmployer(job) : "";
   const place = (job.location ?? "").trim();
   const key = postingPathParts(job.id)?.key ?? "";
   for (const tail of [place && company ? `${company}, ${place}` : "", place, company]) {
@@ -712,7 +727,7 @@ function servedLength(s: string): number {
  */
 export function postingPageDescription(job: PostingRow): string {
   const title = (job.title ?? "").trim();
-  const company = (job.company ?? "").trim();
+  const company = job.company ? postingEmployer(job) : "";
   const place = (job.location ?? "").trim();
   let out = place ? `${title} at ${company}, ${place}.` : `${title} at ${company}.`;
   if (servedLength(out) > DESCRIPTION_BUDGET) out = `${title} at ${company}.`;
@@ -721,7 +736,7 @@ export function postingPageDescription(job: PostingRow): string {
     if (servedLength(out + clause) <= DESCRIPTION_BUDGET) out += clause;
   };
   if (job.salary) add(` Pay as stated by the employer: ${String(job.salary).trim()}.`);
-  add(` Straight from ${company}'s own job board.`);
+  add(` Straight from ${possessive(company)} own job board.`);
   add(" Check your resume against it before you apply.");
   return out;
 }

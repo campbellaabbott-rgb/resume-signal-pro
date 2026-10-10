@@ -298,11 +298,6 @@ export default function Pricing() {
                     <div className="flex items-baseline gap-2">
                       <span className="text-4xl font-bold">${product.priceUsd}</span>
                       <span className="text-muted-foreground">{t('pricingPage.oneTime')}</span>
-                      {'savings' in product && product.savings && (
-                        <Badge variant="secondary" className="ml-auto">
-                          {product.savings}
-                        </Badge>
-                      )}
                     </div>
                     {isLocalCurrency && (
                       <p className="text-sm text-muted-foreground mt-1">

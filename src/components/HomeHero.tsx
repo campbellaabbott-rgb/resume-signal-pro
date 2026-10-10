@@ -101,14 +101,14 @@ export function HomeHero({ agentOffer }: { agentOffer?: ReactNode } = {}) {
             id="home-hero-heading"
             className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.08] mb-4"
           >
-            {t("homeHero.headlinePre", "Every job here is real.")}{" "}
+            {t("homeHero.headlinePre", "Live jobs, straight from employers' own hiring systems.")}{" "}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-primary to-success">
               {t("homeHero.headlineHighlight", "The agent applies for you.")}
             </span>
           </h1>
 
           <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed mb-5">
-            {t("homeHero.sub", "Openings pulled straight from companies' own hiring systems — never scraped, re-checked all day. Upload your CV and the agent ranks every one against it, writes each application honestly, and submits where employers allow.")}
+            {t("homeHero.sub", "Openings read from companies' own hiring systems and re-checked all day. Upload your CV and the agent ranks every one against it, writes each application honestly, and submits where employers allow.")}
           </p>
 
           {/* THE THREE NUMBERS THAT MATTER, and only once measured. Reserved

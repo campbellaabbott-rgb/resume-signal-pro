@@ -50,8 +50,10 @@ import {
   postingPageDescription,
   postingPagePath,
   postingPageTitle,
+  postingEmployer,
   type PostingRow,
 } from "@/components/jobs/posting-page";
+import { possessive } from "@/lib/company-display";
 
 const SITE = "https://resumebooster.work";
 
@@ -238,7 +240,9 @@ export default function JobPosting() {
 
   const paragraphs = description ? jdParagraphs(description) : [];
   const path = postingPagePath(id) ?? "/jobs";
-  const company = (job?.company ?? "").trim();
+  // The employer by the name it uses, not its vendor tenant code (F1).
+  const company = job?.company ? postingEmployer(job) : "";
+  const companyPossessive = company ? possessive(company) : "";
   // THE SCANNER ALREADY READS A HAND-OFF (Index.tsx, the board's "Check my
   // fit"): this page holds the description, so it hands it over directly.
   const canScore = live && canHandOff(description);
@@ -389,7 +393,7 @@ export default function JobPosting() {
                       <Button asChild size="lg">
                         <a href={job.applyUrl} target="_blank" rel="noopener noreferrer nofollow">
                           {company
-                            ? t("jobPostingPage.applyCta", { defaultValue: "Apply on {{company}}'s own site", company })
+                            ? t("jobPostingPage.applyCta", { defaultValue: "Apply on {{companyPossessive}} own site", company, companyPossessive })
                             : t("jobPostingPage.applyCtaPlain", "Apply on the employer's own site")}
                           <ExternalLink className="w-4 h-4 ml-1.5" />
                         </a>
@@ -442,8 +446,9 @@ export default function JobPosting() {
                 <p className="text-xs text-muted-foreground mt-10">
                   {t("jobPostingPage.sourceNote", {
                     defaultValue:
-                      "Pulled straight from {{company}}'s own hiring system — never an aggregator, never a repost. A dated posting is served for at most {{days}} days and is dropped the moment the employer's feed stops serving it.",
+                      "Pulled straight from {{companyPossessive}} own hiring system — never an aggregator, never a repost. A dated posting is served for at most {{days}} days from the date the employer states, and the board re-checks a posting when you open it.",
                     company: company || t("jobPostingPage.theEmployer", "the employer"),
+                    companyPossessive: companyPossessive || t("jobPostingPage.theEmployerPossessive", "the employer's"),
                     days: BOARD_FRESH_WINDOW_DAYS,
                   })}
                 </p>

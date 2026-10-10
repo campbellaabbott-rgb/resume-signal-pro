@@ -460,16 +460,16 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
   // one.
   const homeTotals = useBoardTotals();
   const homeTitle = homeTotals
-    // Mirrors prerender-seo.mjs:818 — the two must not drift (claim-drift
-    // rule). 61 chars; "Live Job Board: " was cut when the 76-char version
-    // truncated in the SERP at "Zero Ghost…".
-    ? `Resume Booster — ${roundedFloor(homeTotals.jobs).toLocaleString()}+ Verified Openings, Zero Ghost Jobs`
-    : "Resume Booster — Verified Openings, Zero Ghost Jobs";
+    // Mirrors the homepage write() in prerender-seo.mjs — the two must not
+    // drift (claim-drift rule). Owner decision 2026-10-08: the headline says
+    // where the jobs come from, never an absolute about them.
+    ? `Resume Booster — ${roundedFloor(homeTotals.jobs).toLocaleString()}+ Live Jobs Straight From Employers`
+    : "Resume Booster — Live Jobs Straight From Employers";
   const homeDescription = homeTotals
-    ? `A live job board with zero ghost jobs: ${roundedFloor(homeTotals.jobs).toLocaleString()}+ openings pulled straight from companies' own career systems, re-verified all day${
+    ? `Live jobs straight from employers' own hiring systems: ${roundedFloor(homeTotals.jobs).toLocaleString()}+ openings, re-verified all day${
         homeTotals.tracked ? `, and ${roundedFloor(homeTotals.tracked).toLocaleString()}+ roles tracked including ones we have watched close` : ""
       }. Scan your resume free and see your match score on every posting.`
-    : "A live job board with zero ghost jobs: openings pulled straight from companies' own career systems, re-verified all day. Scan your resume free and see your match score on every posting.";
+    : "Live jobs straight from employers' own hiring systems, re-verified all day. Scan your resume free and see your match score on every posting.";
 
   // Spanish landing routes flip the whole app chrome to Spanish — the visitor
   // searched in Spanish; showing an English page under a Spanish URL would be

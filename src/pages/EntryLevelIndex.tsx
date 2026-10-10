@@ -142,8 +142,8 @@ export default function EntryLevelIndex() {
               the same defect, which is that this sentence held its own copy of
               a list. It interpolates now, and what it interpolates is the
               serving set, so neither direction can come back. */}
-          Counted from employers' <b>official</b> job boards ({SERVING_SOURCE_LIST}) — never an aggregator
-          or a scrape, and no dated posting older than 30 days.
+          Counted from employers' <b>official</b> job boards ({SERVING_SOURCE_LIST}) — never an aggregator,
+          and no dated posting older than 30 days.
         </p>
         {basis?.kind === "cache" && basis.at && (
           <p className="text-xs text-muted-foreground -mt-6 mb-8" data-basis="cache">

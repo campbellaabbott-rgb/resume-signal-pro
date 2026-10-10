@@ -79,7 +79,7 @@ import { writeJdHandoff } from "@/lib/jd-handoff";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { searchName, searchToQuery } from "@/lib/job-search-params";
-import { companyDisplayName, cleanJobTitle, decodeNameEntities } from "@/lib/company-display";
+import { boardName, companyDisplayName, cleanJobTitle, decodeNameEntities, possessive } from "@/lib/company-display";
 import { displaySalary } from "@/lib/salary-display";
 import { adjacentRoles } from "@/lib/role-adjacency";
 import { accentFor } from "@/lib/category-accent";
@@ -3655,7 +3655,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
     if (!isPro && (savedCount === 5 || savedCount === 12)) {
       toast({
         title: t("jobsPage.savedMilestone", "That's {{n}} jobs in your pipeline", { n: savedCount }),
-        description: t("jobsPage.savedMilestoneDesc", "The Apply Agent can prep tailored answers for all of them in one batch — a {{trialDays}}-day free trial for first-time subscribers, and you always hit send yourself.", { trialDays: SUBSCRIPTIONS.agent.trialDays }),
+        description: t("jobsPage.savedMilestoneDesc", "The Apply Agent can prep tailored answers for all of them in one batch — a {{trialDays}}-day free trial for first-time subscribers. In review mode, the default, nothing is sent until you approve it.", { trialDays: SUBSCRIPTIONS.agent.trialDays }),
       });
     } else {
       toast({ title: t("jobsPage.jobSaved", "Saved to your application tracker") });
@@ -6271,11 +6271,14 @@ function JobsBoard({ boardId }: { boardId: string }) {
 
   // Display name for a company landing page: the real name from a loaded posting
   // (or the facet), falling back to the prettified token until data arrives.
+  // The board's own name (boardName: the override table's name for a tenant
+  // code, USAJOBS for the federal feed), the same name the baked page prints;
+  // a stored row name alone told Google "Is Ms hiring?" once React loaded.
   const landerCompanyName = useMemo(() => {
     if (!landerCompany) return undefined;
-    return jobs.find((j) => j.token === landerCompany)?.company
+    return boardName(landerCompany, jobs.find((j) => j.token === landerCompany)?.company
       ?? data?.companies?.find((c) => c.token === landerCompany)?.name
-      ?? prettyToken(landerCompany);
+      ?? prettyToken(landerCompany));
   }, [landerCompany, jobs, data]);
 
   // Company-page fill curve: one lifecycle-derived lookup per company page.
@@ -8450,7 +8453,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
         description={landerCategory
           ? t("jobsPage.landerSeoDescription", "Live {{category}} openings pulled straight from companies' own official job boards — no aggregators, no reposts, re-verified all day. Check your resume's fit free, then apply on the company's own site.", { category: t(`jobsPage.categories.${landerCategory}`, landerCategory) })
           : landerCompany
-          ? t("jobsPage.companySeoDescription", "Is {{company}} hiring right now? See {{company}}'s verified open roles, pulled straight from their own job board and re-checked today — no aggregators, no ghost postings. Check your resume's fit against any role free, then apply on {{company}}'s own site.", { company: landerCompanyName })
+          ? t("jobsPage.companySeoDescription", "Browse {{companyPossessive}} open roles, pulled straight from {{companyPossessive}} own job board and re-verified all day — no aggregators, no reposts. Check your resume's fit against any role free, then apply on {{companyPossessive}} own site.", { company: landerCompanyName, companyPossessive: possessive(landerCompanyName ?? "") })
           : t("jobsPage.seoDescription", "Real openings pulled straight from thousands of companies' own official job boards — no aggregators, no reposts, re-verified all day and checked live when you apply. See how your resume fits any posting free, then apply on the company's own site.")}
         path={landerCompany ? companyLanderPath(landerCompany) : landerCategory ? `/jobs/field/${landerCategory}` : "/jobs"}
         canonicalPath={landerCompany && bakedPrimary ? companyLanderPath(bakedPrimary) : undefined}
@@ -8524,14 +8527,16 @@ function JobsBoard({ boardId }: { boardId: string }) {
               {data.countCapped
                 // Past the count cap the true figure is HIGHER — "10,000+" is
                 // the honest rendering; the exact-looking bare number was not.
-                ? t("jobsPage.companyYesHiringCapped", "Yes — {{n}}+ verified open roles right now, straight from {{company}}'s own job board.", {
+                ? t("jobsPage.companyYesHiringCapped", "Yes — {{n}}+ verified open roles right now, straight from {{companyPossessive}} own job board.", {
                     n: data.total.toLocaleString(),
                     company: landerCompanyName,
+                    companyPossessive: possessive(landerCompanyName ?? ""),
                   })
-                : t("jobsPage.companyYesHiring", "Yes — {{count}} verified open {{roleWord}} right now, straight from {{company}}'s own job board.", {
+                : t("jobsPage.companyYesHiring", "Yes — {{count}} verified open {{roleWord}} right now, straight from {{companyPossessive}} own job board.", {
                     count: data.total,
                     roleWord: data.total === 1 ? "role" : "roles",
                     company: landerCompanyName,
+                    companyPossessive: possessive(landerCompanyName ?? ""),
                   })}
             </p>
           )}
@@ -8555,7 +8560,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
           )}
           <p className="text-sm text-muted-foreground mb-2">
             {landerCompany
-              ? t("jobsPage.companySubtitle", "Every {{company}} opening here comes straight from {{company}}'s own careers system — verified, still open, and re-checked the moment you apply.", { company: landerCompanyName })
+              ? t("jobsPage.companySubtitle", "Every {{company}} opening here comes straight from {{companyPossessive}} own careers system — verified, still open, and re-checked the moment you apply.", { company: landerCompanyName, companyPossessive: possessive(landerCompanyName ?? "") })
               // A category lander's headline count must be THAT category's —
               // the board-wide 574k under an "Engineering jobs" H1 claimed
               // 574k engineering openings (scope-integrity finding).

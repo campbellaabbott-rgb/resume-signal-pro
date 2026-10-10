@@ -1365,7 +1365,7 @@ export default function Account() {
             <div className="text-center py-4">
               <p className="text-xs text-muted-foreground mb-2">{t("accountPage.trackerEmpty", "Track where you've applied — status, dates, and the score you applied with, all in one place.")}</p>
               <Link to="/jobs" className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-primary/40 text-primary hover:bg-primary/10 transition-colors">
-                {t("accountPage.trackerEmptyCta", "Browse 450,000+ verified openings — saving one starts your tracker")}
+                {t("accountPage.trackerEmptyCta", "Browse verified openings — saving one starts your tracker")}
               </Link>
             </div>
           ) : (

@@ -271,7 +271,7 @@ export default function HiringTrends() {
             <ShieldCheck className="w-4 h-4 text-success" /> How we count it
           </h2>
           <ul className="text-[13px] text-muted-foreground space-y-1.5">
-            <li>· "New postings" are counted by the date the company itself put on the role, straight from its official applicant-tracking feed — never scraped, never estimated.</li>
+            <li>· "New postings" are counted by the date the company itself put on the role, straight from its official applicant-tracking feed — never estimated.</li>
             <li>· When we add new companies to our catalog, their existing postings are excluded from weekly counts — coverage growth is not a hiring trend.</li>
             <li>· "Taken down" counts a posting whose feed stopped serving it, confirmed on a later pass, dated by the day we confirmed it gone. Same-title re-listings, batches our collector flagged as possible read failures of its own, and a large board's first-pass backlog are excluded — each is excluded from the Ghost Job Index's 90-day total too, so a week is a part of that total. A posting coming down is never called a hire.</li>
             <li>· Some feeds don't publish posting dates; those roles appear on the board but not in these weekly counts.</li>

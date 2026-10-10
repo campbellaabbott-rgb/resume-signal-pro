@@ -56,8 +56,7 @@
     "private": "100% privado",
     "headline": {
       "get": "El tablón de empleo con",
-      "recruiterGrade": "cero ofertas fantasma",
-      "feedback": "— más de 550.000 vacantes verificadas, emparejadas con tu currículum",
+      "recruiterGrade": "ofertas en vivo directas de los sistemas de contratación de cada empresa",
       "feedbackLive": "— {{n}}+ vacantes verificadas, comparadas con tu CV",
       "feedbackPlain": "— cada vacante verificada, comparada con tu CV"
     },
@@ -144,12 +143,10 @@
     "testimonialQuote": "Arreglé mi currículum en 10 minutos. Conseguí 3 llamadas de entrevista la misma semana.",
     "testimonialAuthorName": "— Sarah K., Ingeniera de Software",
     "transparentScoring": "puntuación de IA transparente, sin caja negra",
-    "factGdpr": "Cumple con GDPR",
     "factAutoDelete": "Currículum borrado en un máximo de 7 días",
     "factNoStorage": "Nunca se vende",
     "measureStrip": "Mediciones, no opiniones · Cada cita verificada · Una puntuación que muestra su trabajo",
     "jobsCta": "Bolsa de empleo en vivo — comprueba tu encaje antes de postularte →",
-    "browseJobs": "Ver más de 550.000 empleos verificados",
     "browseJobsLive": "Explora {{n}}+ empleos verificados",
     "browseJobsPlain": "Explora el tablón verificado"
   },
@@ -461,8 +458,7 @@
         "quote": "El servicio es súper útil y práctico.",
         "role": "Usuario de Reddit • Cliente de pago"
       }
-    },
-    "trustMessage": "Únete a miles de buscadores de empleo que han mejorado sus currículums con comentarios honestos de nivel reclutador."
+    }
   },
   "trustIndicators": {
     "badges": {
@@ -472,15 +468,11 @@
       },
       "ssl": {
         "label": "SSL 256-bit",
-        "description": "Encriptación nivel bancario"
+        "description": "Cifrado en tránsito"
       },
       "autoDelete": {
         "label": "Borrado en 7 días",
         "description": "Tus datos, tu control"
-      },
-      "gdpr": {
-        "label": "Cumple RGPD",
-        "description": "Privacidad primero"
       },
       "zeroStorage": {
         "label": "Nunca se vende",
@@ -518,7 +510,7 @@
     "actionPlan": "Plan de Acción",
     "redFlags": "Señales de Alerta",
     "linkedinAnalysis": "Análisis de LinkedIn",
-    "includedFree": "Incluido Gratis",
+    "includedInFullAnalysis": "En el Análisis Completo",
     "strength": "fortaleza",
     "suggestedHeadline": "Titular Sugerido",
     "aboutSection": "Sección Acerca de",
@@ -1414,8 +1406,7 @@
       "aiRewrittenResume": "Currículum reescrito por IA",
       "customCoverLetter": "Carta de presentación personalizada",
       "beforeAfterComparison": "Comparación antes/después",
-      "keywordOptimization": "Optimización de palabras clave",
-      "priorityProcessing": "Procesamiento prioritario"
+      "keywordOptimization": "Optimización de palabras clave"
     },
     "keywordFixFeatures": {
       "fullAtsBreakdown": "Desglose completo de puntuación ATS",
@@ -1474,9 +1465,10 @@
       "doNotApply": "✗ Mala compatibilidad — Considera otros puestos"
     },
     "atsBanner": {
-      "require60": "La mayoría de los ATS requieren 60+ para pasar",
-      "require75": "75+ aumenta la tasa de devolución de llamada",
-      "targetScore": "75+"
+      "belowMedian": "Por debajo de la mediana de {{median}} entre {{n}} currículums de {{industry}} escaneados aquí. Los principales ATS no rechazan por esta cifra, pero las correcciones de abajo la suben.",
+      "belowTopQuarter": "Por encima de la mediana de {{median}}; el cuartil superior de los {{n}} currículums de {{industry}} escaneados aquí puntúa {{p75}} o más.",
+      "noPassMark": "No es una nota de aprobado: los principales ATS no rechazan un currículum por una puntuación. Las correcciones de abajo la suben.",
+      "topQuarter": "Cuartil superior: {{p75}}+"
     },
     "eliteSignals": {
       "title": "Señales que atraen a reclutadores"
@@ -1561,10 +1553,14 @@
       "bulletWithData1": "• De tu currículum: \"{{bullet}}\" — sin impacto medible declarado",
       "bulletWithData2": "• {{weak}} de tus {{total}} puntos carecen de cuantificación",
       "bulletWithData3": "• Haz que cada uno se reescriba con métricas y un verbo de acción más fuerte",
-      "kwHard": "• {{count}} habilidad{{plural}} técnica{{plural}} crítica{{plural}} faltante{{plural}} en tu currículum",
-      "kwCerts": "• {{count}} certificación{{plural}} de la industria que mencionar (incluso en progreso)",
-      "kwTools": "• {{count}} herramienta{{plural}} comúnmente listada{{plural}} en tu campo que te faltan",
-      "kwMethodology": "• {{count}} palabra{{plural}} clave de metodología que usan tus competidores",
+      "kwHard_one": "• {{count}} habilidad técnica crítica faltante en tu currículum",
+      "kwHard_other": "• {{count}} habilidades técnicas críticas faltantes en tu currículum",
+      "kwCerts_one": "• {{count}} certificación de la industria que mencionar (incluso en progreso)",
+      "kwCerts_other": "• {{count}} certificaciones de la industria que mencionar (incluso en progreso)",
+      "kwTools_one": "• {{count}} herramienta comúnmente listada en tu campo que te falta",
+      "kwTools_other": "• {{count}} herramientas comúnmente listadas en tu campo que te faltan",
+      "kwMethodology_one": "• {{count}} palabra clave de metodología que usan tus competidores",
+      "kwMethodology_other": "• {{count}} palabras clave de metodología que usan tus competidores",
       "kwPlacement": "• Dónde colocar tus palabras clave más fuertes para máximo peso ATS",
       "kwVerbs": "• Verbos de acción que superan tus elecciones de palabras actuales",
       "kwDensity": "• Cómo se compara tu densidad de palabras clave con los mejores currículums de tu campo",
@@ -2519,22 +2515,19 @@
     "privacyMatters": "Tu privacidad importa",
     "titlePrefix": "Tu currículum está",
     "titleHighlight": "seguro con nosotros",
-    "heroSubtitle": "Construimos Resume Booster con principios de seguridad ante todo. Tus documentos profesionales merecen protección de nivel bancario, y eso es exactamente lo que ofrecemos.",
+    "heroSubtitle": "Qué guardamos, durante cuánto tiempo, a quién va y cómo pedir que se borre — por escrito, para que puedas comprobarlo.",
     "badges": {
       "ssl": "SSL de 256 bits",
-      "retention": "Plazos publicados",
-      "gdpr": "Cumple con el RGPD"
+      "retention": "Plazos publicados"
     },
     "stats": {
       "resumesAnalyzed": "Currículums analizados",
-      "betterResults": "Reportan mejores resultados",
-      "avgDelivery": "Tiempo promedio de entrega",
-      "dataBreaches": "Filtraciones de datos"
+      "betterResults": "Reportan mejores resultados"
     },
     "security": {
       "ssl": {
         "title": "Cifrado SSL de 256 bits",
-        "description": "Tu currículum está protegido con cifrado de nivel bancario durante la carga y el procesamiento. Usamos el mismo estándar de seguridad que las principales instituciones financieras."
+        "description": "Tu currículum viaja hasta nosotros y hasta los servicios que lo procesan por conexiones cifradas (HTTPS/TLS)."
       },
       "freeScan": {
         "title": "Qué guarda el escaneo gratis",
@@ -2545,8 +2538,8 @@
         "description": "Las tareas de borrado se ejecutan cada 15 minutos en el almacén temporal y cada hora en la caché de informes, la caché de IA y los análisis de pago, así que ninguno supera su plazo indicado en más de una hora."
       },
       "gdpr": {
-        "title": "Cumple con el RGPD",
-        "description": "Seguimos estrictos estándares europeos de protección de datos. Puedes solicitar la eliminación de cualquier dato en cualquier momento."
+        "title": "Tus derechos sobre tus datos",
+        "description": "Vivas donde vivas, puedes pedir en cualquier momento una copia de los datos que tenemos sobre ti, o su eliminación."
       },
       "neverSold": {
         "title": "Nunca se vende",
@@ -2647,7 +2640,7 @@
     "trustedByTitle": "Con la confianza de candidatos en grandes empresas",
     "trustedBySubtitle": "Profesionales de empresas líderes usan Resume Booster para conseguir el trabajo de sus sueños.",
     "ctaTitle": "¿Listo para mejorar tu currículum?",
-    "ctaSubtitle": "Únete a miles de candidatos que han mejorado sus currículums con nuestro análisis basado en IA.",
+    "ctaSubtitle": "Escaneo gratis, sin registro. Cada línea citada en el informe se comprueba contra tu propio currículum.",
     "ctaButton": "Obtén tu escaneo gratuito",
     "dataFence": {
       "badge": "Independencia de los datos",
@@ -2664,20 +2657,18 @@
     "transparentResearchBased": "Transparente y basado en investigación",
     "titlePrefix": "Nuestra metodología de",
     "titleHighlight": "análisis ATS",
-    "heroSubtitle": "Hemos realizado ingeniería inversa de cómo más de 50 sistemas de seguimiento de candidatos (ATS) analizan y puntúan los currículums. Así es exactamente cómo funciona nuestro análisis.",
-    "platformsAnalyzed": "Más de 50 plataformas ATS analizadas",
+    "heroSubtitle": "Cómo un escaneo convierte tu currículum en una puntuación, escrito a partir del código que la calcula.",
     "resumesProcessed": "{{total}} currículums procesados",
-    "updatedMonthly": "Actualizado mensualmente",
     "howAnalysisWorks": "Cómo funciona nuestro análisis",
     "step": "PASO {{number}}",
     "steps": {
       "parsing": {
         "title": "Análisis del documento",
-        "description": "Extraemos el texto preservando la estructura, procesando archivos PDF y DOCX con la misma lógica de análisis que usan las principales plataformas ATS."
+        "description": "Extraemos el texto de tu PDF o DOCX y conservamos su estructura: secciones, fechas y viñetas."
       },
       "aiAnalysis": {
         "title": "Análisis de IA",
-        "description": "Nuestra IA simula cómo cada ATS lee tu currículum, identificando secciones, palabras clave y formato que pueden causar errores de análisis."
+        "description": "Nuestra IA lee el currículum como lo haría un analizador, buscando secciones, palabras clave y formatos que puedan romper la lectura."
       },
       "keywordMatching": {
         "title": "Coincidencia de palabras clave",
@@ -2685,101 +2676,47 @@
       },
       "scoringAlgorithm": {
         "title": "Algoritmo de puntuación",
-        "description": "Tu puntuación ATS se calcula basándose en más de 50 factores, incluyendo densidad de palabras clave, formato, integridad de secciones y señales de alerta."
-      }
-    },
-    "atsPlatforms": {
-      "0": {
-        "description": "Análisis de encabezados de sección, extracción de palabras clave, validación del formato de fecha",
-        "marketShare": "Grandes empresas"
-      },
-      "1": {
-        "description": "Algoritmos de coincidencia de habilidades, puntuación del nivel de experiencia, indicadores de ajuste cultural",
-        "marketShare": "Tecnología y startups"
-      },
-      "2": {
-        "description": "Validación de datos de contacto, consistencia de formato, organización de secciones",
-        "marketShare": "Mercado medio"
-      },
-      "3": {
-        "description": "Análisis de densidad de palabras clave, coincidencia de títulos de puesto, puntuación de cualificaciones",
-        "marketShare": "Fortune 500"
-      },
-      "4": {
-        "description": "Análisis de educación, detección de certificaciones, coincidencia de taxonomía de habilidades",
-        "marketShare": "Salud y comercio minorista"
-      },
-      "5": {
-        "description": "Análisis de estructura del currículum, validación de la línea temporal de experiencia",
-        "marketShare": "Pymes"
-      },
-      "6": {
-        "description": "Optimización de palabras clave, algoritmos de clasificación de candidatos",
-        "marketShare": "Pequeñas empresas"
-      },
-      "7": {
-        "description": "Integración de perfiles sociales, seguimiento de referencias, evaluación de habilidades",
-        "marketShare": "Empresas grandes"
-      },
-      "8": {
-        "description": "Coincidencia impulsada por IA, indicadores de diversidad, cumplimiento global",
-        "marketShare": "Empresas globales"
-      },
-      "9": {
-        "description": "Análisis específico para contratación de personal, detección de contratistas, puntuación de disponibilidad",
-        "marketShare": "Agencias de personal"
+        "description": "La IA puntúa el currículum con pesos para tu sector, y su puntuación se mantiene a menos de {{band}} puntos de una puntuación basada en reglas calculada del mismo documento. El registro de auditoría divide luego el resultado en las cuatro partes de abajo."
       }
     },
     "atsPlatformsTitle": "Plataformas ATS contra las que analizamos",
-    "atsPlatformsSubtitle": "Nuestro análisis se basa en las reglas de análisis y algoritmos de puntuación de estas importantes plataformas ATS, que cubren más del 90% del mercado laboral.",
-    "moreAtsPlatforms": "+ 40 plataformas ATS regionales y específicas de la industria más",
+    "atsPlatformsSubtitle": "El escaneo valora cómo es probable que cada uno de estos {{count}} sistemas lea tu currículum. Son los sistemas que nombra; aquí no se afirma ninguna cuota del mercado laboral.",
     "scoreCalculatedTitle": "Cómo se calcula tu puntuación ATS",
-    "scoreCalculatedSubtitle": "Tu puntuación es una combinación ponderada de múltiples factores que determinan qué tan bien funcionará tu currículum en los sistemas ATS.",
-    "scoringFactors": {
-      "keywordOptimization": {
-        "factor": "Optimización de palabras clave",
-        "description": "Palabras clave y habilidades relevantes para la industria mencionadas"
-      },
-      "formatCompatibility": {
-        "factor": "Compatibilidad de formato",
-        "description": "Estructura limpia que el ATS puede analizar correctamente"
-      },
-      "sectionCompleteness": {
-        "factor": "Integridad de secciones",
-        "description": "Todas las secciones esperadas presentes y correctamente etiquetadas"
-      },
-      "experienceClarity": {
-        "factor": "Claridad de la experiencia",
-        "description": "Títulos de puesto, fechas y logros claros"
-      },
-      "actionVerbUsage": {
-        "factor": "Uso de verbos de acción",
-        "description": "Verbos de acción fuertes que demuestran impacto"
-      },
-      "quantifiedAchievements": {
-        "factor": "Logros cuantificados",
-        "description": "Números y métricas que demuestran resultados"
-      },
-      "redFlagAbsence": {
-        "factor": "Ausencia de señales de alerta",
-        "description": "Sin problemas de formato o contenido"
-      }
-    },
+    "scoreCalculatedSubtitle": "El apartado «Por qué esta puntuación» de cada informe divide la puntuación en estas cuatro partes, sobre 100 puntos.",
     "continuousResearchTitle": "Investigación continua",
-    "continuousResearchSubtitle": "Analizamos continuamente ofertas de empleo, actualizaciones de ATS y tendencias de contratación para mantener nuestro análisis preciso y actualizado.",
+    "continuousResearchSubtitle": "Las tablas de palabras clave y las reglas cambian a medida que aprendemos, y cada cambio queda fechado en el registro público de cambios.",
     "continuousResearch": {
-      "monthlyUpdates": "Actualizaciones mensuales del algoritmo",
-      "keywordDatabases": "Bases de datos de palabras clave específicas de la industria",
-      "recruiterFeedback": "Integración de comentarios reales de reclutadores"
+      "monthlyUpdates": "Cambios de reglas fechados en el registro de cambios",
+      "keywordDatabases": "Bases de datos de palabras clave específicas de la industria"
     },
-    "validatedByResultsTitle": "Validado por resultados",
-    "validatedByResultsSubtitle": "Nuestra metodología está validada por resultados reales de miles de candidatos que mejoraron sus currículums usando nuestro análisis.",
+    "validatedByResultsTitle": "Lo que esta página no afirma",
+    "validatedByResultsSubtitle": "No hay encuesta de resultados, así que aquí no se afirma ninguna tasa de entrevistas. Lo que se mide es cuántos currículums ha leído el escáner.",
     "validatedByResults": {
       "resumesAnalyzed": "{{total}} currículums analizados"
     },
     "ctaTitle": "¿Listo para ver tu puntuación ATS?",
-    "ctaSubtitle": "Obtén un análisis gratuito de tu currículum usando nuestra metodología comprobada.",
-    "ctaButton": "Analizar mi currículum gratis"
+    "ctaSubtitle": "Obtén un análisis gratuito de tu currículum con el método que describe esta página.",
+    "ctaButton": "Analizar mi currículum gratis",
+    "atsCount": "{{count}} sistemas ATS evaluados por nombre",
+    "pointsOf": "{{points}} de 100 puntos",
+    "audit": {
+      "keywords": {
+        "label": "Cobertura de palabras clave",
+        "description": "Las palabras clave esperadas para tu sector que contiene el currículum"
+      },
+      "format": {
+        "label": "Formato y legibilidad",
+        "description": "Si un analizador puede leer la estructura sin perder secciones"
+      },
+      "impact": {
+        "label": "Impacto cuantificado",
+        "description": "Cuántas de tus viñetas incluyen una cifra"
+      },
+      "content": {
+        "label": "Señales de contenido",
+        "description": "Verbos, estructura y profundidad de las secciones, frente a las señales de alerta"
+      }
+    }
   },
   "pricingPage": {
     "metaTitle": "Precios — Resume Booster",
@@ -2787,7 +2724,7 @@
     "noSubscriptions": "Pagos únicos • Nunca se renuevan automáticamente",
     "titlePrefix": "Elige tu",
     "titleHighlight": "Impulso de Currículum",
-    "subtitle": "Desde correcciones rápidas hasta paquetes completos de carrera. Paga una vez, usa para siempre.",
+    "subtitle": "Desde correcciones rápidas hasta paquetes completos de carrera. Los productos de pago único se pagan una vez; Pro y el plan Agent se renuevan cada mes hasta que canceles.",
     "secureCheckout": "Pago seguro",
     "instantAccess": "Acceso instantáneo",
     "stripeProtected": "Protegido por Stripe",
@@ -3981,7 +3918,7 @@
     "tailorLimitTitle": "Límite por hora alcanzado",
     "tailorLimit": "Has usado los ajustes de currículum de esta hora; se restablecen en menos de una hora. Todo lo generado queda guardado.",
     "savedMilestone": "Ya llevas {{n}} empleos en tu proceso",
-    "savedMilestoneDesc": "El Apply Agent puede preparar respuestas a medida para todos en un solo lote: prueba gratis de {{trialDays}} días para nuevos suscriptores, y el envío siempre lo haces tú.",
+    "savedMilestoneDesc": "El Apply Agent puede preparar respuestas a medida para todos en un solo lote: prueba gratis de {{trialDays}} días para nuevos suscriptores. En modo revisión, el predeterminado, no se envía nada hasta que lo apruebas.",
     "sortRelevance": "Relevancia",
     "companyNotHiring": "Ahora mismo no: {{company}} no tiene puestos abiertos en su portal. Sigue a la empresa abajo y te avisaremos por correo cuando publique nuevos puestos.",
     "companyYesHiringCapped": "Sí: más de {{n}} puestos abiertos verificados ahora mismo, directamente del portal de {{company}}.",
@@ -4107,7 +4044,6 @@
     "benchmarkTip": "Mediana de los pisos anualizados que las propias empresas publican (tarifas por hora y mensuales anualizadas), calculada solo sobre la moneda declarada dominante en este sector — nunca convertida, nunca mezclada. En vivo desde este tablero — no es una encuesta ni una estimación.",
     "benchmarkLine": "Salario anunciado en este sector: piso mediano {{symbol}}{{median}} ({{currency}}) — de {{n}} publicaciones aquí que declaran salario",
     "seenLastVisit": "publicada antes de tu última visita",
-    "urgencyTipFills": "Según {{n}} contrataciones genuinas en nuestro seguimiento (puestos que estuvieron publicados una semana o más y luego cerraron dentro de los 30 días tras la publicación), un puesto típico aquí cierra en unos {{d}} días — conviene postularse temprano.",
     "urgencyChip": "Suele cubrirse en ~{{d}} d",
     "repostTipTracked": "Esta empresa volvió a publicar el mismo título de puesto {{n}} veces durante nuestro seguimiento. Puede ser republicación rutinaria o puestos que reabren — vale saberlo antes de invertir en una postulación.",
     "repostChipTracked": "Republica puestos seguido ({{n}}×)",
@@ -4466,7 +4402,7 @@
     "deleteAccount": "Eliminar cuenta",
     "welcome": "¡Bienvenido! Consigamos tu primer puntaje 🎯",
     "trackerEmpty": "Registra dónde postulaste — estado, fechas y el puntaje con el que aplicaste, todo en un lugar.",
-    "trackerEmptyCta": "Explora más de 550.000 vacantes verificadas — guardar una inicia tu seguimiento",
+    "trackerEmptyCta": "Explora vacantes verificadas — guardar una inicia tu seguimiento",
     "status": {
       "saved": "Guardada",
       "applied": "Enviada",
@@ -4507,7 +4443,7 @@
     "setupTrack": "Guarda o postula a tu primer puesto",
     "setupDismiss": "Descartar",
     "bridgeTitle": "Tu Cola Matutina",
-    "bridgeBlurb": "El Agente revisa miles de anuncios nuevos cada noche y preselecciona los que valen tu mañana — empresas que republican descartadas, contratadores genuinos primero, cada uno con sus razones. Tú siempre pulsas enviar.",
+    "bridgeBlurb": "El Agente revisa miles de anuncios nuevos cada noche y preselecciona los que valen tu mañana — empresas que republican descartadas, contratadores genuinos primero, cada uno con sus razones. En modo revisión, el predeterminado, no se envía nada hasta que lo apruebas.",
     "bridgeGap": "También conoce tu mayor carencia actual ({{gap}}) y la pondera.",
     "bridgeCta": "Abrir la cola ↓",
     "notifTitle": "Correos y alertas",
@@ -4645,7 +4581,7 @@
     "f3Body": "El agente nunca inventa experiencia que no tienes. Cada afirmación se verifica contra tu currículum antes de que veas el borrador.",
     "f4Title": "Te prepara, hace seguimiento y te avisa",
     "f4Body": "Preparación de entrevista por candidatura, un pipeline que te dice qué hacer y un recordatorio cuando toca dar seguimiento.",
-    "control": "Tú tienes el control: el agente redacta, tú apruebas y envías desde el sitio de la propia empresa.",
+    "control": "Tú tienes el control: en modo revisión, el predeterminado, el agente redacta y no sale nada hasta que lo apruebas. El modo automático, que envía por ti, es un interruptor que activas tú.",
     "cta": "Elige un empleo y míralo en acción"
   },
   "boardHero": {
@@ -5053,9 +4989,9 @@
   },
   "homeHero": {
     "badge": "Tablón en vivo + agente de IA",
-    "headlinePre": "Cada empleo aquí es real.",
+    "headlinePre": "Ofertas en vivo, directas de los sistemas de contratación de cada empresa.",
     "headlineHighlight": "El agente se postula por ti.",
-    "sub": "Vacantes directas de los sistemas de contratación de las empresas — nunca extraídas, revisadas todo el día. Sube tu CV y el agente las clasifica todas, escribe cada solicitud con honestidad y la envía donde el empleador lo permite.",
+    "sub": "Vacantes leídas de los propios sistemas de contratación de las empresas y revisadas todo el día. Sube tu CV y el agente las clasifica todas, escribe cada solicitud con honestidad y la envía donde el empleador lo permite.",
     "statOpenings": "vacantes verificadas",
     "statCompanies": "empresas",
     "statSendable": "puede enviarlas el agente por ti",
@@ -5251,8 +5187,9 @@
     "scoreCta": "Puntuar mi currículum para este empleo (gratis)",
     "scoreNote": "Abre el escáner gratuito con la descripción de esta oferta ya completada.",
     "descHeading": "La descripción del propio empleador",
-    "sourceNote": "Directamente del sistema de selección de {{company}} — nunca un agregador, nunca una republicación. Una vacante con fecha se muestra como máximo {{days}} días y desaparece en cuanto el feed del empleador deja de incluirla.",
-    "theEmployer": "el empleador"
+    "sourceNote": "Directamente del sistema de selección de {{company}} — nunca un agregador, nunca una republicación. Una vacante con fecha se muestra como máximo {{days}} días desde la fecha que indica el empleador, y el portal vuelve a comprobarla cuando la abres.",
+    "theEmployer": "el empleador",
+    "theEmployerPossessive": "del empleador"
   },
   "pulseConfirm": {
     "title": "Confirma tu pulso mensual del mercado",
@@ -5304,6 +5241,7 @@
   },
   "seller": {
     "soldBy": "Vendido por {{name}}, {{address}}.",
+    "termsParty": "Estos Términos son un acuerdo entre tú y {{name}}, {{address}}.",
     "terms": "Estos Términos son un acuerdo entre tú y {{name}}, {{address}}.",
     "controller": "El responsable del tratamiento de tus datos personales es {{name}}, {{address}}."
   },

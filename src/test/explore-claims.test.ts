@@ -1304,7 +1304,9 @@ describe("both copies of Explore's title describe the page that exists", () => {
     // it a deleted section, including the twelve-card framing the rebuild was
     // built to remove.
     const llms = readFileSync(resolve(__dirname, "../../public/llms.txt"), "utf8");
-    const bullet = llms.split("\n").find((l) => l.includes("](/explore)")) ?? "";
+    // The file's links name the domain (absolute since 2026-10-09, so an
+    // answer engine quoting one line carries a working address).
+    const bullet = llms.split("\n").find((l) => /\]\((?:https:\/\/resumebooster\.work)?\/explore\)/.test(l)) ?? "";
     expect(bullet, "public/llms.txt no longer describes /explore at all").not.toBe("");
     expect(bullet, "public/llms.txt still advertises a removed collection").not.toMatch(GONE);
     // ...and it describes what the page IS, so the citation and the page agree.

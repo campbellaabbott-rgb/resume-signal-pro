@@ -56,8 +56,7 @@
     "private": "100% privé",
     "headline": {
       "get": "Het vacaturebord met",
-      "recruiterGrade": "nul spookvacatures",
-      "feedback": "— 550.000+ geverifieerde vacatures, gematcht met je cv",
+      "recruiterGrade": "live vacatures rechtstreeks uit de wervingssystemen van werkgevers",
       "feedbackLive": "— {{n}}+ geverifieerde vacatures, afgestemd op uw cv",
       "feedbackPlain": "— elke vacature geverifieerd, afgestemd op uw cv"
     },
@@ -144,12 +143,10 @@
     "testimonialQuote": "Mijn cv binnen 10 minuten opgelost. Diezelfde week 3 gesprekken gekregen.",
     "testimonialAuthorName": "— Sarah K., Software-engineer",
     "transparentScoring": "transparante AI-beoordeling, geen black box",
-    "factGdpr": "AVG-conform",
     "factAutoDelete": "Cv binnen 7 dagen verwijderd",
     "factNoStorage": "Nooit verkocht",
     "measureStrip": "Metingen, geen meningen · Elk citaat geverifieerd · Een score die zijn werk laat zien",
     "jobsCta": "Live vacaturebank — check je match vóór je solliciteert →",
-    "browseJobs": "Bekijk 550.000+ geverifieerde vacatures",
     "browseJobsLive": "Bekijk {{n}}+ geverifieerde vacatures",
     "browseJobsPlain": "Bekijk het geverifieerde vacaturebord"
   },
@@ -461,8 +458,7 @@
         "quote": "De service is super behulpzaam en nuttig.",
         "role": "Reddit-gebruiker • Betalende klant"
       }
-    },
-    "trustMessage": "Sluit je aan bij duizenden werkzoekenden die hun CV hebben verbeterd met eerlijke recruiter-feedback."
+    }
   },
   "trustIndicators": {
     "badges": {
@@ -472,15 +468,11 @@
       },
       "ssl": {
         "label": "256-bit SSL",
-        "description": "Bankniveau-encryptie"
+        "description": "Versleuteld tijdens verzending"
       },
       "autoDelete": {
         "label": "Verwijderd in 7 dagen",
         "description": "Jouw data, jouw controle"
-      },
-      "gdpr": {
-        "label": "AVG Conform",
-        "description": "Privacy eerst"
       },
       "zeroStorage": {
         "label": "Nooit verkocht",
@@ -518,7 +510,7 @@
     "actionPlan": "Actieplan",
     "redFlags": "Red Flags",
     "linkedinAnalysis": "LinkedIn-analyse",
-    "includedFree": "Gratis inbegrepen",
+    "includedInFullAnalysis": "In de volledige analyse",
     "strength": "sterk punt",
     "suggestedHeadline": "Voorgestelde headline",
     "aboutSection": "Over-sectie",
@@ -1414,8 +1406,7 @@
       "aiRewrittenResume": "Door AI herschreven cv",
       "customCoverLetter": "Aangepaste motivatiebrief",
       "beforeAfterComparison": "Voor/na-vergelijking",
-      "keywordOptimization": "Zoekwoordoptimalisatie",
-      "priorityProcessing": "Prioriteitsverwerking"
+      "keywordOptimization": "Zoekwoordoptimalisatie"
     },
     "keywordFixFeatures": {
       "fullAtsBreakdown": "Volledige uitsplitsing van ATS-score",
@@ -1474,9 +1465,10 @@
       "doNotApply": "✗ Slechte fit — Overweeg andere rollen"
     },
     "atsBanner": {
-      "require60": "De meeste ATS-systemen vereisen 60+ om door te komen",
-      "require75": "75+ verhoogt de terugbelratio",
-      "targetScore": "75+"
+      "belowMedian": "Onder de mediaan van {{median}} bij {{n}} hier gescande cv's uit {{industry}}. De grote ATS-platforms wijzen niet af op dit getal, maar de verbeteringen hieronder verhogen het.",
+      "belowTopQuarter": "Boven de mediaan van {{median}}; het bovenste kwart van de {{n}} hier gescande cv's uit {{industry}} scoort {{p75}} of meer.",
+      "noPassMark": "Dit is geen voldoende-grens: de grote ATS-platforms wijzen een cv niet af op een score. De verbeteringen hieronder verhogen hem.",
+      "topQuarter": "Bovenste kwart: {{p75}}+"
     },
     "eliteSignals": {
       "title": "Signalen die recruiters aantrekken"
@@ -1561,10 +1553,14 @@
       "bulletWithData1": "• Uit jouw cv: \"{{bullet}}\" — geen meetbare impact vermeld",
       "bulletWithData2": "• {{weak}} van jouw {{total}} bullets missen kwantificering",
       "bulletWithData3": "• Laat elk herschrijven met statistieken en een sterkere werkwoord",
-      "kwHard": "• {{count}} kritische harde vaardigheid{{plural}} ontbreekt/ontbreken in jouw cv",
-      "kwCerts": "• {{count}} branchecertificering{{plural}} te vermelden (ook als het in uitvoering is)",
-      "kwTools": "• {{count}} tool{{plural}} die gewoonlijk in jouw vakgebied wordt/worden vermeld",
-      "kwMethodology": "• {{count}} methodologietrefwoord{{plural}} die jouw concurrenten gebruiken",
+      "kwHard_one": "• {{count}} kritische harde vaardigheid ontbreekt in jouw cv",
+      "kwHard_other": "• {{count}} kritische harde vaardigheden ontbreken in jouw cv",
+      "kwCerts_one": "• {{count}} branchecertificering te vermelden (ook als het in uitvoering is)",
+      "kwCerts_other": "• {{count}} branchecertificeringen te vermelden (ook als ze in uitvoering zijn)",
+      "kwTools_one": "• {{count}} tool die gewoonlijk in jouw vakgebied wordt vermeld",
+      "kwTools_other": "• {{count}} tools die gewoonlijk in jouw vakgebied worden vermeld",
+      "kwMethodology_one": "• {{count}} methodologietrefwoord dat jouw concurrenten gebruiken",
+      "kwMethodology_other": "• {{count}} methodologietrefwoorden die jouw concurrenten gebruiken",
       "kwPlacement": "• Waar je jouw sterkste trefwoorden plaatst voor maximaal ATS-gewicht",
       "kwVerbs": "• Werkwoorden die jouw huidige woordkeuzes overtreffen",
       "kwDensity": "• Hoe jouw trefwoorddichtheid zich verhoudt tot de beste cv's in jouw vakgebied",
@@ -2519,22 +2515,19 @@
     "privacyMatters": "Jouw privacy is belangrijk",
     "titlePrefix": "Jouw cv is",
     "titleHighlight": "veilig bij ons",
-    "heroSubtitle": "We hebben Resume Booster gebouwd met security-first-principes. Jouw carrièredocumenten verdienen beveiliging op bankniveau, en dat is precies wat we bieden.",
+    "heroSubtitle": "Wat we bewaren, hoe lang, naar wie het gaat en hoe u het laat verwijderen — op papier, zodat u het kunt controleren.",
     "badges": {
       "ssl": "256-bit SSL",
-      "retention": "Gepubliceerde termijnen",
-      "gdpr": "AVG-conform"
+      "retention": "Gepubliceerde termijnen"
     },
     "stats": {
       "resumesAnalyzed": "Geanalyseerde cv's",
-      "betterResults": "Melden betere resultaten",
-      "avgDelivery": "Gemiddelde levertijd",
-      "dataBreaches": "Datalekken"
+      "betterResults": "Melden betere resultaten"
     },
     "security": {
       "ssl": {
         "title": "256-bit SSL-versleuteling",
-        "description": "Je cv wordt beschermd met versleuteling op bankniveau tijdens het uploaden en verwerken. We gebruiken dezelfde beveiligingsstandaard als grote financiële instellingen."
+        "description": "Uw cv gaat via versleutelde verbindingen (HTTPS/TLS) naar ons en naar de diensten die het verwerken."
       },
       "freeScan": {
         "title": "Wat de gratis scan bewaart",
@@ -2545,8 +2538,8 @@
         "description": "Verwijdertaken draaien elke 15 minuten voor de tijdelijke opslag en elk uur voor de rapportcache, de AI-cache en betaalde analyses, dus geen daarvan blijft meer dan een uur langer dan de genoemde termijn."
       },
       "gdpr": {
-        "title": "AVG-conform",
-        "description": "We houden ons aan strikte Europese gegevensbeschermingsnormen. Je kunt op elk moment verwijdering van je gegevens aanvragen."
+        "title": "Uw rechten op uw gegevens",
+        "description": "Waar u ook woont, u kunt op elk moment een kopie vragen van de gegevens die we over u hebben, of de verwijdering ervan."
       },
       "neverSold": {
         "title": "Nooit verkocht",
@@ -2647,7 +2640,7 @@
     "trustedByTitle": "Vertrouwd door werkzoekenden bij topbedrijven",
     "trustedBySubtitle": "Professionals van toonaangevende bedrijven gebruiken Resume Booster om hun droombaan te bemachtigen.",
     "ctaTitle": "Klaar om je cv te verbeteren?",
-    "ctaSubtitle": "Sluit je aan bij duizenden werkzoekenden die hun cv hebben verbeterd met onze AI-gestuurde analyse.",
+    "ctaSubtitle": "Gratis scan, geen aanmelding. Elke geciteerde regel in het rapport wordt gecontroleerd tegen uw eigen cv.",
     "ctaButton": "Krijg je gratis scan",
     "dataFence": {
       "badge": "Data-onafhankelijkheid",
@@ -2664,20 +2657,18 @@
     "transparentResearchBased": "Transparant & onderzoeksgebaseerd",
     "titlePrefix": "Onze ATS-analyse",
     "titleHighlight": "methodologie",
-    "heroSubtitle": "We hebben gereverse-engineerd hoe meer dan 50 Applicant Tracking Systems (ATS) cv's verwerken en scoren. Zo werkt onze analyse precies.",
-    "platformsAnalyzed": "50+ ATS-platforms geanalyseerd",
+    "heroSubtitle": "Hoe een scan van uw cv een score maakt, opgeschreven vanuit de code die hem berekent.",
     "resumesProcessed": "{{total}} cv's verwerkt",
-    "updatedMonthly": "Maandelijks bijgewerkt",
     "howAnalysisWorks": "Hoe onze analyse werkt",
     "step": "STAP {{number}}",
     "steps": {
       "parsing": {
         "title": "Documentverwerking",
-        "description": "We halen tekst eruit met behoud van structuur, en verwerken PDF- en DOCX-bestanden met dezelfde verwerkingslogica die grote ATS-platforms gebruiken."
+        "description": "We halen de tekst uit uw pdf of docx en behouden de structuur: secties, data en opsommingstekens."
       },
       "aiAnalysis": {
         "title": "AI-analyse",
-        "description": "Onze AI simuleert hoe elk ATS je cv leest, waarbij secties, zoekwoorden en opmaak worden geïdentificeerd die verwerkingsfouten kunnen veroorzaken."
+        "description": "Onze AI leest het cv zoals een parser dat zou doen en zoekt naar secties, trefwoorden en opmaak die het uitlezen kunnen breken."
       },
       "keywordMatching": {
         "title": "Zoekwoordmatching",
@@ -2685,101 +2676,47 @@
       },
       "scoringAlgorithm": {
         "title": "Scoringalgoritme",
-        "description": "Je ATS-score wordt berekend op basis van 50+ factoren, waaronder zoekwoorddichtheid, opmaak, volledigheid van secties en waarschuwingssignalen."
-      }
-    },
-    "atsPlatforms": {
-      "0": {
-        "description": "Verwerking van sectiekoppen, zoekwoordextractie, validatie van datumformaat",
-        "marketShare": "Grote ondernemingen"
-      },
-      "1": {
-        "description": "Algoritmen voor vaardighedenmatching, scoring van ervaringsniveau, indicatoren voor culturele fit",
-        "marketShare": "Tech & start-ups"
-      },
-      "2": {
-        "description": "Validatie van contactgegevens, consistentie van opmaak, sectie-organisatie",
-        "marketShare": "Middenmarkt"
-      },
-      "3": {
-        "description": "Analyse van zoekwoorddichtheid, matching van functietitels, scoring van kwalificaties",
-        "marketShare": "Fortune 500"
-      },
-      "4": {
-        "description": "Verwerking van opleidingsgegevens, detectie van certificeringen, matching van vaardighedentaxonomie",
-        "marketShare": "Zorg & retail"
-      },
-      "5": {
-        "description": "Analyse van cv-structuur, validatie van ervaringstijdlijn",
-        "marketShare": "MKB"
-      },
-      "6": {
-        "description": "Zoekwoordoptimalisatie, algoritmen voor sollicitantenrangschikking",
-        "marketShare": "Kleine bedrijven"
-      },
-      "7": {
-        "description": "Integratie van social profiles, referral tracking, vaardighedenbeoordeling",
-        "marketShare": "Enterprise"
-      },
-      "8": {
-        "description": "AI-gestuurde matching, diversiteitsindicatoren, wereldwijde compliance",
-        "marketShare": "Wereldwijde ondernemingen"
-      },
-      "9": {
-        "description": "Uitzendbureauspecifieke verwerking, detectie van zzp'ers, beschikbaarheidsscoring",
-        "marketShare": "Uitzendbureaus"
+        "description": "De AI scoort het cv met gewichten voor uw branche, en die score blijft binnen {{band}} punten van een op regels gebaseerde score uit hetzelfde document. Het auditspoor verdeelt het resultaat daarna over de vier onderdelen hieronder."
       }
     },
     "atsPlatformsTitle": "ATS-platforms waarop we analyseren",
-    "atsPlatformsSubtitle": "Onze analyse is gebaseerd op verwerkingsregels en scoringalgoritmen van deze grote ATS-platforms, die meer dan 90% van de arbeidsmarkt dekken.",
-    "moreAtsPlatforms": "+ 40 meer regionale en branchespecifieke ATS-platforms",
+    "atsPlatformsSubtitle": "De scan beoordeelt hoe elk van deze {{count}} systemen uw cv waarschijnlijk leest. Dit zijn de systemen die hij noemt; hier wordt geen marktaandeel geclaimd.",
     "scoreCalculatedTitle": "Hoe je ATS-score wordt berekend",
-    "scoreCalculatedSubtitle": "Je score is een gewogen combinatie van meerdere factoren die bepalen hoe goed je cv presteert in ATS-systemen.",
-    "scoringFactors": {
-      "keywordOptimization": {
-        "factor": "Zoekwoordoptimalisatie",
-        "description": "Genoemde branche-relevante zoekwoorden en vaardigheden"
-      },
-      "formatCompatibility": {
-        "factor": "Formaatcompatibiliteit",
-        "description": "Schone structuur die ATS correct kan verwerken"
-      },
-      "sectionCompleteness": {
-        "factor": "Volledigheid van secties",
-        "description": "Alle verwachte secties aanwezig en correct gelabeld"
-      },
-      "experienceClarity": {
-        "factor": "Duidelijkheid van ervaring",
-        "description": "Duidelijke functietitels, datums en prestaties"
-      },
-      "actionVerbUsage": {
-        "factor": "Gebruik van actiewerkwoorden",
-        "description": "Sterke actiewerkwoorden die impact aantonen"
-      },
-      "quantifiedAchievements": {
-        "factor": "Gekwantificeerde prestaties",
-        "description": "Cijfers en statistieken die resultaten bewijzen"
-      },
-      "redFlagAbsence": {
-        "factor": "Afwezigheid van waarschuwingssignalen",
-        "description": "Geen opmaak- of inhoudsproblemen"
-      }
-    },
+    "scoreCalculatedSubtitle": "De „Waarom deze score” van elk rapport verdeelt de score over deze vier onderdelen, op 100 punten.",
     "continuousResearchTitle": "Continu onderzoek",
-    "continuousResearchSubtitle": "We analyseren voortdurend vacatures, ATS-updates en wervingstrends om onze analyse nauwkeurig en actueel te houden.",
+    "continuousResearchSubtitle": "De trefwoordtabellen en regels veranderen naarmate we leren, en elke wijziging staat gedateerd in het openbare wijzigingslogboek.",
     "continuousResearch": {
-      "monthlyUpdates": "Maandelijkse algoritme-updates",
-      "keywordDatabases": "Branchespecifieke zoekwoorddatabases",
-      "recruiterFeedback": "Integratie van echte recruiter-feedback"
+      "monthlyUpdates": "Regelwijzigingen gedateerd in het wijzigingslogboek",
+      "keywordDatabases": "Branchespecifieke zoekwoorddatabases"
     },
-    "validatedByResultsTitle": "Gevalideerd door resultaten",
-    "validatedByResultsSubtitle": "Onze methodologie is gevalideerd door echte resultaten van duizenden werkzoekenden die hun cv hebben verbeterd met onze analyse.",
+    "validatedByResultsTitle": "Wat deze pagina niet beweert",
+    "validatedByResultsSubtitle": "Er is geen uitkomstenonderzoek, dus hier wordt geen sollicitatiegesprek-percentage geclaimd. Gemeten wordt hoeveel cv's de scanner heeft gelezen.",
     "validatedByResults": {
       "resumesAnalyzed": "{{total}} cv's geanalyseerd"
     },
     "ctaTitle": "Klaar om je ATS-score te zien?",
-    "ctaSubtitle": "Krijg een gratis analyse van je cv met onze bewezen methodologie.",
-    "ctaButton": "Analyseer mijn cv gratis"
+    "ctaSubtitle": "Krijg een gratis analyse van je cv volgens de methode die deze pagina beschrijft.",
+    "ctaButton": "Analyseer mijn cv gratis",
+    "atsCount": "{{count}} ATS-systemen bij naam gecontroleerd",
+    "pointsOf": "{{points}} van 100 punten",
+    "audit": {
+      "keywords": {
+        "label": "Dekking van trefwoorden",
+        "description": "De verwachte trefwoorden voor uw branche die het cv bevat"
+      },
+      "format": {
+        "label": "Opmaak & leesbaarheid",
+        "description": "Of een parser de structuur kan lezen zonder secties te verliezen"
+      },
+      "impact": {
+        "label": "Meetbare impact",
+        "description": "Hoeveel van uw opsommingstekens een getal bevatten"
+      },
+      "content": {
+        "label": "Inhoudssignalen",
+        "description": "Werkwoorden, structuur en diepgang van secties, afgewogen tegen waarschuwingssignalen"
+      }
+    }
   },
   "pricingPage": {
     "metaTitle": "Prijzen — Resume Booster",
@@ -2787,7 +2724,7 @@
     "noSubscriptions": "Eenmalige betalingen • Verlengen nooit automatisch",
     "titlePrefix": "Kies je",
     "titleHighlight": "Cv-boost",
-    "subtitle": "Van snelle correcties tot complete carrièrepakketten. Eenmaal betalen, voor altijd gebruiken.",
+    "subtitle": "Van snelle correcties tot complete carrièrepakketten. Eenmalige producten betaalt u één keer; Pro en het Agent-abonnement verlengen maandelijks tot u opzegt.",
     "secureCheckout": "Veilig afrekenen",
     "instantAccess": "Direct toegang",
     "stripeProtected": "Beschermd door Stripe",
@@ -3981,7 +3918,7 @@
     "tailorLimitTitle": "Uurlimiet bereikt",
     "tailorLimit": "Je hebt de cv-aanpassingen van dit uur gebruikt — ze resetten binnen het uur. Alles wat je hebt gegenereerd blijft bewaard.",
     "savedMilestone": "Dat zijn {{n}} vacatures in je pijplijn",
-    "savedMilestoneDesc": "De Apply Agent kan voor allemaal tegelijk antwoorden op maat voorbereiden — {{trialDays}} dagen gratis proberen voor nieuwe abonnees, en verzenden doe je altijd zelf.",
+    "savedMilestoneDesc": "De Apply Agent kan voor allemaal tegelijk antwoorden op maat voorbereiden — {{trialDays}} dagen gratis proberen voor nieuwe abonnees. In beoordelingsmodus, de standaard, gaat er niets uit voordat jij het goedkeurt.",
     "sortRelevance": "Relevantie",
     "companyNotHiring": "Nu even niet — {{company}} heeft momenteel geen open functies op hun vacaturesite. Volg het bedrijf hieronder en we mailen je zodra er nieuwe functies verschijnen.",
     "companyYesHiringCapped": "Ja — ruim {{n}} geverifieerde open functies op dit moment, rechtstreeks van de vacaturesite van {{company}}.",
@@ -4107,7 +4044,6 @@
     "benchmarkTip": "Mediaan van de ondergrenzen op jaarbasis die bedrijven zelf publiceren (uur- en maandtarieven omgerekend naar jaarbasis), berekend over alleen de dominante vermelde valuta in dit vakgebied — nooit omgerekend, nooit gemengd. Live van deze site — geen enquête of schatting.",
     "benchmarkLine": "Geadverteerd salaris in dit vakgebied: mediane ondergrens {{symbol}}{{median}} ({{currency}}) — uit {{n}} vacatures hier met salarisvermelding",
     "seenLastVisit": "geplaatst vóór je vorige bezoek",
-    "urgencyTipFills": "Op basis van {{n}} echte vervullingen in onze tracking (functies die een week of langer online stonden en daarna binnen 30 dagen na plaatsing sloten) sluit een functie hier doorgaans binnen ongeveer {{d}} dagen — vroeg solliciteren loont.",
     "urgencyChip": "Meestal vervuld in ~{{d}}d",
     "repostTipTracked": "Dit bedrijf plaatste dezelfde functietitel {{n}} keer opnieuw tijdens onze tracking. Dat kan wijzen op routinematig herplaatsen of functies die steeds opnieuw opengaan — goed om te weten voordat je tijd in een sollicitatie steekt.",
     "repostChipTracked": "Herplaatst vacatures vaak ({{n}}×)",
@@ -4466,7 +4402,7 @@
     "deleteAccount": "Account verwijderen",
     "welcome": "Welkom! Laten we je eerste score halen 🎯",
     "trackerEmpty": "Volg waar je hebt gesolliciteerd — status, datums en de verzonden score, op één plek.",
-    "trackerEmptyCta": "Bekijk 550.000+ geverifieerde vacatures — er één opslaan start je tracker",
+    "trackerEmptyCta": "Bekijk geverifieerde vacatures — er één opslaan start je tracker",
     "status": {
       "saved": "Opgeslagen",
       "applied": "Verstuurd",
@@ -4507,7 +4443,7 @@
     "setupTrack": "Sla je eerste rol op of solliciteer",
     "setupDismiss": "Sluiten",
     "bridgeTitle": "Jouw Morning Queue",
-    "bridgeBlurb": "De Apply Agent bekijkt 's nachts duizenden verse vacatures en selecteert wat je ochtend waard is — herplaatsers overgeslagen, echte aannemers eerst, elk met redenen. Versturen doe jij altijd.",
+    "bridgeBlurb": "De Apply Agent bekijkt 's nachts duizenden verse vacatures en selecteert wat je ochtend waard is — herplaatsers overgeslagen, echte aannemers eerst, elk met redenen. In beoordelingsmodus, de standaard, gaat er niets uit voordat jij het goedkeurt.",
     "bridgeGap": "Hij kent ook je huidige grootste hiaat ({{gap}}) en weegt die mee.",
     "bridgeCta": "Open de wachtrij ↓",
     "notifTitle": "E-mails & meldingen",
@@ -4645,7 +4581,7 @@
     "f3Body": "De agent verzint nooit ervaring die je niet hebt. Elke bewering wordt tegen je cv gecontroleerd voordat je het concept ziet.",
     "f4Title": "Bereidt voor, volgt op, herinnert je",
     "f4Body": "Interviewvoorbereiding per sollicitatie, een pipeline die zegt wat je nu moet doen, en een herinnering wanneer het tijd is voor een follow-up.",
-    "control": "Jij houdt de regie: de agent schrijft, jij keurt goed en verstuurt op de site van het bedrijf zelf.",
+    "control": "Jij houdt de regie: in beoordelingsmodus, de standaard, schrijft de agent en gaat er niets uit voordat jij het goedkeurt. De automatische modus, die voor je verstuurt, zet je zelf aan.",
     "cta": "Kies een vacature en zie hem aan het werk"
   },
   "boardHero": {
@@ -5053,9 +4989,9 @@
   },
   "homeHero": {
     "badge": "Live vacaturebord + AI-sollicitatieagent",
-    "headlinePre": "Elke vacature hier is echt.",
+    "headlinePre": "Live vacatures, rechtstreeks uit de wervingssystemen van werkgevers.",
     "headlineHighlight": "De agent solliciteert voor u.",
-    "sub": "Vacatures rechtstreeks uit de wervingssystemen van bedrijven — nooit gescrapet, de hele dag opnieuw gecontroleerd. Upload uw cv: de agent rangschikt ze allemaal, schrijft elke sollicitatie eerlijk en dient in waar de werkgever het toestaat.",
+    "sub": "Vacatures gelezen uit de eigen wervingssystemen van bedrijven en de hele dag opnieuw gecontroleerd. Upload uw cv: de agent rangschikt ze allemaal, schrijft elke sollicitatie eerlijk en dient in waar de werkgever het toestaat.",
     "statOpenings": "geverifieerde vacatures",
     "statCompanies": "bedrijven",
     "statSendable": "kan de agent voor u indienen",
@@ -5251,8 +5187,9 @@
     "scoreCta": "Mijn cv beoordelen voor deze vacature (gratis)",
     "scoreNote": "Opent de gratis scanner met de beschrijving van deze vacature al ingevuld.",
     "descHeading": "De eigen omschrijving van de werkgever",
-    "sourceNote": "Rechtstreeks uit het eigen wervingssysteem van {{company}} — nooit een aggregator, nooit een herplaatsing. Een gedateerde vacature wordt hoogstens {{days}} dagen getoond en verdwijnt zodra de feed van de werkgever hem niet meer bevat.",
-    "theEmployer": "de werkgever"
+    "sourceNote": "Rechtstreeks uit het eigen wervingssysteem van {{company}} — nooit een aggregator, nooit een herplaatsing. Een gedateerde vacature wordt hoogstens {{days}} dagen getoond vanaf de datum die de werkgever vermeldt, en het bord controleert een vacature opnieuw wanneer je hem opent.",
+    "theEmployer": "de werkgever",
+    "theEmployerPossessive": "van de werkgever"
   },
   "pulseConfirm": {
     "title": "Bevestig je maandelijkse marktpuls",
@@ -5304,6 +5241,7 @@
   },
   "seller": {
     "soldBy": "Verkocht door {{name}}, {{address}}.",
+    "termsParty": "Deze Voorwaarden zijn een overeenkomst tussen u en {{name}}, {{address}}.",
     "terms": "Deze Voorwaarden zijn een overeenkomst tussen jou en {{name}}, {{address}}.",
     "controller": "De verwerkingsverantwoordelijke voor je persoonsgegevens is {{name}}, {{address}}."
   },

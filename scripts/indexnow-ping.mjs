@@ -1,48 +1,108 @@
 #!/usr/bin/env node
 // IndexNow: instantly notify Bing/Yandex (and anything else on the protocol)
-// about our URLs instead of waiting for a crawl. Run after every publish that
-// adds or changes pages:
+// about our URLs instead of waiting for a crawl. Google ignores IndexNow (it
+// has its own sitemap pipeline), so this complements GSC, not replaces it.
 //
-//   npm run indexnow
+//   node scripts/indexnow-ping.mjs            every <loc> in public/sitemap.xml
+//   node scripts/indexnow-ping.mjs --changed  only what the LIVE publish changed
 //
-// Reads every <loc> from public/sitemap.xml and submits them in one batch.
+// --changed (SEO report 2026-10-08, S3) reads the live sitemap and the ledger
+// the bake serves beside it (/prerender-ledger.json): the pages whose
+// sitemap date is the publish day, and the posting URLs that publish retired
+// (a "no longer listed" or "no longer has a page" page, noindex), so a
+// search engine learns of a removal as fast as of an addition. The post-
+// publish verifier runs it on every clean pass (scripts/post-publish-smoke.mjs).
+//
 // The key file (public/<key>.txt) proves domain ownership; both it and the
-// pinged pages must be LIVE in production first — so run this after the
-// deploy is verified, not before. Google ignores IndexNow (it has its own
-// sitemap pipeline), so this complements GSC, not replaces it.
+// pinged pages must be LIVE in production first, so this runs after a
+// publish is verified, never from the build.
 
-import { readFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
-const KEY = "a546fa24b185c5a5ce1c3f93cb05a4f8";
-const HOST = "resumebooster.work";
+export const INDEXNOW_KEY = "a546fa24b185c5a5ce1c3f93cb05a4f8";
+export const INDEXNOW_HOST = "resumebooster.work";
+const SITE = `https://${INDEXNOW_HOST}`;
 
-const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const sitemap = readFileSync(join(root, "public/sitemap.xml"), "utf8");
-const urls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
-if (urls.length === 0) throw new Error("No URLs found in sitemap.xml");
-
-// Preflight: the key file must be reachable or every submission is rejected.
-const keyUrl = `https://${HOST}/${KEY}.txt`;
-const keyResp = await fetch(keyUrl, { signal: AbortSignal.timeout(10000) });
-const keyBody = (await keyResp.text()).trim();
-if (!keyResp.ok || keyBody !== KEY) {
-  console.error(`Key file not live yet (${keyResp.status} at ${keyUrl}) — deploy first, then rerun.`);
-  process.exit(1);
+/**
+ * The URLs one publish changed: every sitemap entry whose lastmod is the
+ * ledger's build day, plus every posting URL the ledger retired that day.
+ * Pure, so the rule is tested without a network.
+ */
+export function changedUrls({ sitemapXml, ledger }) {
+  const day = ledger && typeof ledger.builtAt === "string" ? ledger.builtAt : null;
+  if (!day) return [];
+  const out = new Set();
+  for (const m of String(sitemapXml || "").matchAll(/<url>\s*<loc>([^<]+)<\/loc>\s*<lastmod>([^<]+)<\/lastmod>/g)) {
+    if (m[2].trim() === day) out.add(m[1].trim());
+  }
+  const postings = ledger.postings && typeof ledger.postings === "object" ? ledger.postings : {};
+  for (const [path, e] of Object.entries(postings)) {
+    if (e && e.state !== "live" && e.since === day && path.startsWith("/")) out.add(`${SITE}${path}`);
+  }
+  return [...out];
 }
 
-// Bing's endpoint, not api.indexnow.org: the aggregator returned 403 for a
-// freshly-created key while Bing accepted the identical payload (2026-07-06).
-// Protocol-wise it makes no difference — any participating engine shares
-// submissions with all the others.
-const resp = await fetch("https://www.bing.com/indexnow", {
-  method: "POST",
-  headers: { "Content-Type": "application/json; charset=utf-8" },
-  body: JSON.stringify({ host: HOST, key: KEY, keyLocation: keyUrl, urlList: urls }),
-  signal: AbortSignal.timeout(30000),
-});
+/** Every <loc> in a sitemap. */
+export function allUrls(sitemapXml) {
+  return [...String(sitemapXml || "").matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1].trim());
+}
 
-// 200 = accepted, 202 = accepted (key validation pending) — both are success.
-console.log(`Submitted ${urls.length} URLs to IndexNow — HTTP ${resp.status} ${resp.status === 200 || resp.status === 202 ? "(accepted)" : "(UNEXPECTED — check key/URLs)"}`);
-process.exit(resp.status === 200 || resp.status === 202 ? 0 : 1);
+/**
+ * Submit a URL list. Returns { submitted, status } or { submitted: 0, reason }.
+ * Never throws: a failed ping must not fail the verifier that called it.
+ */
+export async function submit(urls, { fetchImpl = fetch } = {}) {
+  if (!urls.length) return { submitted: 0, reason: "nothing changed" };
+  const keyUrl = `${SITE}/${INDEXNOW_KEY}.txt`;
+  try {
+    const keyResp = await fetchImpl(keyUrl, { signal: AbortSignal.timeout(10000) });
+    const keyBody = (await keyResp.text()).trim();
+    if (!keyResp.ok || keyBody !== INDEXNOW_KEY) return { submitted: 0, reason: `key file not live (${keyResp.status})` };
+    // Bing's endpoint, not api.indexnow.org: the aggregator returned 403 for a
+    // freshly-created key while Bing accepted the identical payload
+    // (2026-07-06). Any participating engine shares submissions with the rest.
+    const resp = await fetchImpl("https://www.bing.com/indexnow", {
+      method: "POST",
+      headers: { "Content-Type": "application/json; charset=utf-8" },
+      body: JSON.stringify({ host: INDEXNOW_HOST, key: INDEXNOW_KEY, keyLocation: keyUrl, urlList: urls.slice(0, 10000) }),
+      signal: AbortSignal.timeout(30000),
+    });
+    // 200 = accepted, 202 = accepted (key validation pending).
+    return { submitted: Math.min(urls.length, 10000), status: resp.status, ok: resp.status === 200 || resp.status === 202 };
+  } catch (e) {
+    return { submitted: 0, reason: String(e).slice(0, 120) };
+  }
+}
+
+/** --changed: what the live publish changed, read from the live site. */
+export async function submitChanged({ fetchImpl = fetch } = {}) {
+  const get = async (url) => {
+    try {
+      const r = await fetchImpl(url, { signal: AbortSignal.timeout(15000) });
+      return r.ok ? await r.text() : null;
+    } catch { return null; }
+  };
+  const sitemapXml = await get(`${SITE}/sitemap.xml`);
+  const ledgerText = await get(`${SITE}/prerender-ledger.json`);
+  let ledger = null;
+  try { ledger = ledgerText ? JSON.parse(ledgerText) : null; } catch { ledger = null; }
+  if (!sitemapXml || !ledger) return { submitted: 0, reason: `live ${!sitemapXml ? "sitemap" : "ledger"} unreadable` };
+  return submit(changedUrls({ sitemapXml, ledger }), { fetchImpl });
+}
+
+const isMain = (() => {
+  try { return Boolean(process.argv[1]) && realpathSync(resolve(process.argv[1])) === realpathSync(fileURLToPath(import.meta.url)); } catch { return false; }
+})();
+
+if (isMain) {
+  const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+  const result = process.argv.includes("--changed")
+    ? await submitChanged()
+    : await submit(allUrls(readFileSync(join(root, "public/sitemap.xml"), "utf8")));
+  console.log(result.submitted
+    ? `Submitted ${result.submitted} URLs to IndexNow — HTTP ${result.status} ${result.ok ? "(accepted)" : "(UNEXPECTED — check key/URLs)"}`
+    : `IndexNow: nothing submitted (${result.reason})`);
+  process.exit(result.submitted && !result.ok ? 1 : 0);
+}

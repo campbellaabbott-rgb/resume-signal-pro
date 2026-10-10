@@ -1,4 +1,4 @@
-import { Shield, Lock, Clock, CloudOff, BookOpen, ExternalLink, Users, Zap } from "lucide-react";
+import { Lock, Clock, CloudOff, BookOpen, ExternalLink, Users, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useSafeTranslation } from "@/hooks/use-safe-translation";
 import { useScanTotals } from "@/hooks/use-scan-totals";
@@ -29,15 +29,13 @@ export function TrustIndicators() {
       descriptionKey: "trustIndicators.badges.autoDelete.description"
     },
     {
-      icon: Shield,
-      labelKey: "trustIndicators.badges.gdpr.label",
-      descriptionKey: "trustIndicators.badges.gdpr.description"
-    },
-    {
       icon: CloudOff,
       labelKey: "trustIndicators.badges.zeroStorage.label",
       descriptionKey: "trustIndicators.badges.zeroStorage.description"
     },
+    // The GDPR badge is gone (seo-content); this tile stays because it states
+    // the bound the scan guarantees, SCAN_RESULTS_WITHIN_SECONDS (scan-ai),
+    // not a typed "30s" no code computes (S8-114).
     {
       icon: Zap,
       labelKey: "trustIndicators.badges.instant.label",
