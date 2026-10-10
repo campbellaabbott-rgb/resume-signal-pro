@@ -54,7 +54,7 @@ for(const [t,w,s] of T){
 // S8-002: a Teamtailor board past 100 postings, read a page at a time.
 for(const [tok,size] of [["eutalents",2600],["anicuraglobal",642],["tutoringjobs",534]]){
   const r=await list({companies:[tok],limit:1});
-  soft(!bad(r)&&typeof r.total==="number"&&r.total>100,"S8-002 teamtailor:"+tok+" stored "+(r&&r.total)+" (its jobs.rss walked to "+size+" on 2026-10-08; want > 100 after .92 has visited it, 250 more per visit; <= 100 before)");
+  soft(!bad(r)&&typeof r.total==="number"&&r.total>100,"S8-002 teamtailor:"+tok+" stored "+(r&&r.total)+" (its jobs.rss walked to "+size+" on 2026-10-08; want > 100 after .92 has visited it, 200 more per visit; <= 100 before)");
 }
 {const ss=st.sliceStats||{};const mb=/^(\d{4}-\d{2}-\d{2})\.(\d+)$/.exec(String(ss.build||""));const ge=!!mb&&(mb[1]>"2026-09-09"||(mb[1]==="2026-09-09"&&Number(mb[2])>=92));
   late(ge&&typeof ss.buildSince==="string","S8-002 sliceStats.build "+JSON.stringify(ss.build)+", buildSince "+JSON.stringify(ss.buildSince)+" (want .92 or later and a time before 20261009100300 is applied: it marks only closures written before buildSince + 5 min; with no stamp it marks every closure to its ceiling and must be re-run)");}

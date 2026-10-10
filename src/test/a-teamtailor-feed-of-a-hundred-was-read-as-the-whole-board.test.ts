@@ -81,28 +81,28 @@ function shippedFetchBoard(f: ReturnType<typeof feed>) {
 }
 
 describe("a Teamtailor board of more than 100 postings is read in pages, never as a whole board of 100", () => {
-  it("tutoringjobs-sized (534): the first visit is a window of the cap that resumes, not a whole read of 100", async () => {
+  it("tutoringjobs-sized (534): the first visit is a window of whole pages that resumes, not a whole read of 100", async () => {
     const f = feed(534);
     const r = (await shippedFetchBoard(f)(0))!;
     expect(r.windowed, "a 100-item page was taken for the whole board; every row past it was closed as a takedown").toBe(true);
     expect(r.jobs.length).toBeGreaterThan(100);
-    expect(r.jobs.length).toBeGreaterThanOrEqual(MAX);
+    expect(r.jobs.length).toBeLessThanOrEqual(MAX);
     expect(r.nextOffset).toBe(r.jobs.length);
     expect(r.feedEnded).toBe(false);
-    expect(f.asked).toEqual([0, 100, 200]);
+    expect(f.asked).toEqual([0, 100]);
   });
 
   it("the visit that reaches the end states where the feed ended, so a lap can prove absence", async () => {
     const f = feed(534);
-    const r = (await shippedFetchBoard(f)(300))!;
-    expect(f.asked).toEqual([300, 400, 500]);
-    expect(r.jobs).toHaveLength(234);
+    const r = (await shippedFetchBoard(f)(400))!;
+    expect(f.asked).toEqual([400, 500]);
+    expect(r.jobs).toHaveLength(134);
     expect(r.windowed, "a visit that did not start at the top is never a whole read").toBe(true);
     expect(r.nextOffset).toBe(0);
     expect(r.feedEnded).toBe(true);
     expect(r.endOffset).toBe(534);
     // read-window's lap inputs: the total this visit states is what the lap is judged against.
-    expect(lapTotal(r.feedTotal, 300, 0)).toBe(534);
+    expect(lapTotal(r.feedTotal, 400, 0)).toBe(534);
   });
 
   it("every id on the board is served across the visits, once the cursor walks it", async () => {
@@ -129,12 +129,12 @@ describe("a Teamtailor board of more than 100 postings is read in pages, never a
   });
 
   it("a later page refused (Teamtailor answers 403 when it throttles) is a window that resumes there", async () => {
-    const f = feed(534, { refuseOffset: 200 });
+    const f = feed(534, { refuseOffset: 100 });
     const r = (await shippedFetchBoard(f)(0))!;
-    expect(r.jobs).toHaveLength(200);
+    expect(r.jobs).toHaveLength(100);
     expect(r.windowed).toBe(true);
     expect(r.feedEnded).toBe(false);
-    expect(r.nextOffset).toBe(200);
+    expect(r.nextOffset).toBe(100);
   });
 
   it("a 200 that is not the feed (a bot wall) at depth is a failed visit, never the end of the feed a lap could prove on", async () => {
@@ -183,14 +183,14 @@ describe("a board inside one visit is still a whole read, and states no total of
   });
 
   it("descriptions are read from every page of the visit", async () => {
-    const r = (await shippedFetchBoard(feed(250))(0))!;
+    const r = (await shippedFetchBoard(feed(150))(0))!;
     expect(typeof r.raw).toBe("string");
-    expect(xmlBlocks(r.raw as string, "item")).toHaveLength(250);
+    expect(xmlBlocks(r.raw as string, "item")).toHaveLength(150);
   });
 });
 
 describe("a Teamtailor visit reserves what it can bring back", () => {
-  it("the start gate reserves the per-visit cap for a teamtailor board, as for every paged vendor", async () => {
+  it("a visit to a big board never brings back more postings than the start gate reserved for it", async () => {
     const vendors = /const CAPPED_VISIT_VENDORS = new Set\(\[([^\]]*)\]\)/.exec(CODE)![1];
     expect(vendors).toMatch(/"teamtailor"/);
     // The shipped reservation expression, evaluated over the shipped vendor set.
@@ -198,6 +198,10 @@ describe("a Teamtailor visit reserves what it can bring back", () => {
     const reserve = new Function("inHotPhase", "deepTokens", "CAPPED_VISIT_VENDORS", "s", "MAX_POSTINGS_PER_VISIT", "COLD_BOARD_RESERVE", `return ${expr};`)(
       false, new Set(), new Set(JSON.parse(`[${vendors}]`)), { source: "teamtailor", token: "eutalents" }, MAX, num("COLD_BOARD_RESERVE"),
     );
-    expect(reserve).toBe(MAX);
+    const read = shippedFetchBoard(feed(2600));
+    for (const from of [0, 200, 1000]) {
+      const r = (await read(from))!;
+      expect(r.jobs.length, `a visit from ${from} brought back ${r.jobs.length} against a reservation of ${reserve}`).toBeLessThanOrEqual(reserve);
+    }
   });
 });

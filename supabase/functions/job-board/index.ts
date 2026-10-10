@@ -1940,7 +1940,8 @@ const TT_PAGE = 100;
 // A page of exactly TT_PAGE is never the whole board. Rationale: docs/job-board-index-notes.md#n439-teamtailor-pages
 async function fetchTeamtailor(s: JobSource, startOffset = 0): Promise<{ jobs: JobPosting[]; raw: string; windowed: boolean; feedTotal?: number; nextOffset: number; feedEnded: boolean; endOffset: number }> {
   const url = listUrl(s);
-  const pageCap = Math.max(1, s.pages ?? Math.ceil(MAX_POSTINGS_PER_VISIT / TT_PAGE));
+  // Whole pages inside the visit's reservation (MAX_POSTINGS_PER_VISIT): two.
+  const pageCap = Math.max(1, Math.min(s.pages ?? Infinity, Math.floor(MAX_POSTINGS_PER_VISIT / TT_PAGE)));
   const jobs: JobPosting[] = [];
   const pages: string[] = [];
   const seen = new Set<string>();

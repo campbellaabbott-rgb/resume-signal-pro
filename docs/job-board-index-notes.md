@@ -10126,10 +10126,13 @@ catalogued Teamtailor boards (offset=100 non-empty) found 58 such boards
 before Teamtailor began answering 403 to the burst (eutalents 2,600,
 anicuraglobal 642, academee 592, tutoringjobs 534, temporing 451, ...).
 
-Now a visit pages from the cursor in steps of 100, up to
-MAX_POSTINGS_PER_VISIT (three pages), like Oracle. A walk from the top that
-ends on a short or empty page is a whole read (the full-read prune stays on
-for every board of 299 or fewer). Anything else is windowed and resumes from
+Now a visit pages from the cursor in steps of 100, two whole pages (200), the
+most that fits the MAX_POSTINGS_PER_VISIT (250) the start gate reserves for
+it, like Oracle. (The first draft read ceil(250/100) = three pages, 300
+postings against that reservation, because the cap is checked after a whole
+page; review 2026-10-10.) A walk from the top that ends on a short or empty
+page is a whole read (the full-read prune stays on for every board of 199 or
+fewer). Anything else is windowed and resumes from
 nextOffset; absence on it is proven only by a lap (n104). The feed states no
 total, so the visit that finds the end of a RESUMED walk reports where it
 ended (`feedTotal = endOffset`), which is what lapTotal judges the wrap
@@ -10145,9 +10148,9 @@ A host that ignores ?offset serves its first page again; when every id on
 page 2 was on page 1 the visit is one window with no cursor and no claimed
 end, which is the immediate guard the register asked for (no catalogued
 board uses a custom host today; the `host` field is unused). A board of
-exactly 300 (or any multiple of 100 past it) ends each lap on an empty page,
+exactly 200 (or any multiple of 100 past it) ends each lap on an empty page,
 which proves it like a short page. Request cost: one GET for a board under
-100, two for exactly 100, up to three per visit above.
+100, two per visit above.
 
 THE REPAIR'S BOUND (review, 2026-10-10). Migration 20261009100300 marks the
 Teamtailor `full_read` closures the one-page read wrote, and it is applied
