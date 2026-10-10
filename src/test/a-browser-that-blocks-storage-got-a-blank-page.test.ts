@@ -8,7 +8,8 @@
  *
  * WHAT HOLDS NOW: the guard main.tsx loads first replaces an unusable storage
  * with an in-memory one, after which the generated storage broker answers and
- * works; a usable storage is left alone.
+ * works; a usable storage is left alone, and so is a full one (wave 3
+ * review): swapping a full storage hid the saved sign-in on every load.
  */
 import { afterEach, describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -35,6 +36,29 @@ describe("storage blocked by the browser", () => {
     const s = brokeredPreviewStorage() as Storage;
     s.setItem("sb-auth", "token");
     expect(s.getItem("sb-auth")).toBe("token");
+  });
+
+  it("a full storage is kept, so the saved sign-in still reads", () => {
+    const held = new Map([["sb-auth", "token"]]);
+    const full = {
+      get length() { return held.size; },
+      key: (i: number) => [...held.keys()][i] ?? null,
+      getItem: (k: string) => held.get(k) ?? null,
+      setItem: () => { throw new DOMException("The quota has been exceeded.", "QuotaExceededError"); },
+      removeItem: (k: string) => { held.delete(k); },
+      clear: () => held.clear(),
+    };
+    Object.defineProperty(window, "localStorage", { configurable: true, value: full });
+    expect(installStorageFallback()).toEqual([]);
+    expect(window.localStorage.getItem("sb-auth"), "the full storage was swapped for an empty one").toBe("token");
+  });
+
+  it("a storage whose writes are refused as insecure is still replaced", () => {
+    Object.defineProperty(window, "localStorage", {
+      configurable: true,
+      value: { getItem: () => null, setItem: () => { throw new DOMException("The operation is insecure.", "SecurityError"); }, removeItem() {} },
+    });
+    expect(installStorageFallback()).toContain("localStorage");
   });
 
   it("a usable storage is left exactly as it is", () => {
