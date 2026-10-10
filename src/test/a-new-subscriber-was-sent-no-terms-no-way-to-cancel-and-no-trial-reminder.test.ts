@@ -18,6 +18,12 @@
  * every figure from Stripe's subscription; a queue that refused the mail
  * gives the claim back and answers 500 so Stripe redelivers; a referral on an
  * uncommissioned checkout is recorded at $0.
+ *
+ * A NOTICE QUOTED THE LIST PRICE TO A BUYER WITH A PROMOTION CODE (wave 3
+ * review). The plan checkouts allow promotion codes, but both notices printed
+ * price.unit_amount: a 100%-off or first-month code got a legal notice stating
+ * a charge the buyer would not pay. They now state the discounted charge
+ * Stripe computed, how long it lasts, and the list price after it.
  */
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -36,7 +42,7 @@ const ENV: Record<string, string> = {
 const DAY = 86_400;
 const NOW = Math.floor(Date.now() / 1000);
 type Sub = Record<string, any>;
-const world: { subs: Record<string, Sub>; customers: Record<string, { id: string; email: string }> } = { subs: {}, customers: {} };
+const world: { subs: Record<string, Sub>; customers: Record<string, { id: string; email: string }>; previews: Record<string, number> } = { subs: {}, customers: {}, previews: {} };
 
 const STRIPE_STUB = `
 export default class Stripe {
@@ -47,6 +53,7 @@ export default class Stripe {
       retrieve: async (id) => w().subs[id],
       list: async ({ customer }) => ({ data: Object.values(w().subs).filter((s) => s.customer === customer), has_more: false }),
     };
+    this.invoices = { createPreview: async ({ subscription }) => ({ amount_due: w().previews[subscription] }) };
     this.customers = {
       retrieve: async (id) => w().customers[id],
       list: async ({ email }) => ({ data: Object.values(w().customers).filter((c) => c.email === email), has_more: false }),
@@ -75,6 +82,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   world.subs = {};
+  world.previews = {};
   world.customers = { cus_1: { id: "cus_1", email: "subscriber@example.com" } };
   queued = [];
   conversions = [];
@@ -172,6 +180,36 @@ describe("the confirmation a new subscriber is owed", () => {
     await new Promise((r) => setTimeout(r, 20));
     expect(conversions).toHaveLength(1);
     expect(conversions[0]).toMatchObject({ p_referral_code: "ab12cd34", p_commission_override: 0 });
+  });
+});
+
+describe("a subscriber who used a promotion code", () => {
+  const promo = (duration: string, end: number | null) => ({ discounts: [{ id: "di_1", end, source: { type: "coupon", coupon: { id: "co_1", duration } } }] });
+
+  it("is told the discounted charge, until when, and the list price after it", async () => {
+    const until = NOW + 90 * DAY;
+    world.subs.sub_pro = sub("sub_pro", SUBSCRIPTIONS.pro.priceUsd * 100, { ...promo("repeating", until), latest_invoice: { id: "in_1", amount_paid: 2250 } });
+    expect(await deliver("checkout.session.completed", completed("sub_pro", { amount_total: 2250 }))).toBe(200);
+    const text = queued[0].payload.text as string;
+    expect(text).toContain("Your first charge, with your promotion, is $22.50.");
+    expect(text).toContain(`$22.50 every month with your promotion until ${day(until)}, then $${SUBSCRIPTIONS.pro.priceUsd}.00 every month`);
+    expect(text, "the notice stated the list price as the charge").not.toContain(`You are charged $${SUBSCRIPTIONS.pro.priceUsd}.00 every month.`);
+  });
+
+  it("a code that covers the first charge says it is free, then the list price", async () => {
+    world.subs.sub_pro = sub("sub_pro", SUBSCRIPTIONS.pro.priceUsd * 100, { ...promo("once", null), latest_invoice: { id: "in_1", amount_paid: 0 } });
+    expect(await deliver("checkout.session.completed", completed("sub_pro", { amount_total: 0 }))).toBe(200);
+    expect(queued[0].payload.text).toContain(`Your first charge, with your promotion, is $0.00. After it you are charged $${SUBSCRIPTIONS.pro.priceUsd}.00 every month.`);
+  });
+
+  it("a trial's reminder names the discounted first charge Stripe will take", async () => {
+    const trialEnd = NOW + 3 * DAY;
+    const s = sub("sub_agent", SUBSCRIPTIONS.agent.priceUsd * 100, { status: "trialing", trial_end: trialEnd, ...promo("forever", null) });
+    world.subs.sub_agent = s;
+    world.previews.sub_agent = SUBSCRIPTIONS.agent.priceUsd * 50;
+    expect(await deliver("customer.subscription.trial_will_end", s)).toBe(200);
+    const half = (SUBSCRIPTIONS.agent.priceUsd / 2).toFixed(2);
+    expect(queued[0].payload.text).toContain(`you will be charged $${half} with your promotion on that day, and then $${half} every month (your promotion) until you cancel`);
   });
 });
 

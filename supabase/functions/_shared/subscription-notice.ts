@@ -16,8 +16,11 @@
  * Both go through the existing transactional queue (enqueue_email_delayed,
  * process-email-queue), like the fix-plan drip.
  *
- * Every figure is read from the subscription Stripe holds, never typed. No
- * refund is promised (owner decision). NO IMPORTS: vitest runs this file.
+ * Every figure is read from the subscription Stripe holds, never typed. A
+ * promotion code (the plan checkouts allow them) changes what the buyer pays:
+ * the notice then states the discounted charge Stripe computed, how long it
+ * lasts, and the list price after it. No refund is promised (owner
+ * decision). NO IMPORTS: vitest runs this file.
  */
 
 export type NoticeKind = "confirmation" | "trial_ending" | "withdrawal";
@@ -35,6 +38,13 @@ export type NoticeFacts = {
   portalLoginUrl?: string | null;
   /** With the EU/UK switch on: the last day of the 14-day withdrawal period, and where to write. */
   withdrawal?: { until: string; contact: string } | null;
+  /**
+   * A promotion on the plan: the discounted charge Stripe computed (smallest
+   * unit), and when the list price resumes: `until` (ISO) for a discount that
+   * lasts some months, `forever` for one that never ends, neither for one
+   * that covers only the first charge.
+   */
+  promo?: { amount: number; until: string | null; forever: boolean } | null;
 };
 
 export const NOTICE_FROM = "Resume Booster <billing@resumebooster.work>";
@@ -59,7 +69,14 @@ export function day(iso: string): string {
 
 /** The notice's subject, text and HTML. */
 export function noticeMail(kind: NoticeKind, f: NoticeFacts): { subject: string; text: string; html: string } {
-  const price = `${money(f.amount, f.currency)} every ${f.interval}`;
+  const list = `${money(f.amount, f.currency)} every ${f.interval}`;
+  const p = f.promo ?? null;
+  // The first charge, and what is charged after it.
+  const first = money(p ? p.amount : f.amount, f.currency);
+  const price = !p ? list
+    : p.forever ? `${money(p.amount, f.currency)} every ${f.interval} (your promotion)`
+    : p.until ? `${money(p.amount, f.currency)} every ${f.interval} with your promotion until ${day(p.until)}, then ${list}`
+    : list;
   const cancelHow = f.portalLoginUrl
     ? `To cancel, open ${f.accountUrl} and choose "Manage subscription", or sign in to Stripe's billing page at ${f.portalLoginUrl}.`
     : `To cancel, open ${f.accountUrl} and choose "Manage subscription".`;
@@ -69,8 +86,10 @@ export function noticeMail(kind: NoticeKind, f: NoticeFacts): { subject: string;
     subject = `Your ${f.planName} subscription`;
     paras.push(`Thank you for subscribing to ${f.planName}.`);
     if (f.trialEnd) {
-      paras.push(`Your free trial ends on ${day(f.trialEnd)}. Unless you cancel before then, you will be charged ${money(f.amount, f.currency)} on ${day(f.trialEnd)}, and then ${price}, renewing automatically until you cancel.`);
+      paras.push(`Your free trial ends on ${day(f.trialEnd)}. Unless you cancel before then, you will be charged ${first}${p ? " with your promotion" : ""} on ${day(f.trialEnd)}, and then ${price}, renewing automatically until you cancel.`);
       paras.push(`Cancel before ${day(f.trialEnd)} and you will not be charged.`);
+    } else if (p) {
+      paras.push(`Your first charge, with your promotion, is ${first}. After it you are charged ${price}. The subscription renews automatically until you cancel.`);
     } else {
       paras.push(`You are charged ${price}. The subscription renews automatically until you cancel.`);
     }
@@ -78,7 +97,7 @@ export function noticeMail(kind: NoticeKind, f: NoticeFacts): { subject: string;
   } else {
     subject = `Your ${f.planName} trial ends on ${f.trialEnd ? day(f.trialEnd) : "soon"}`;
     paras.push(`Your free trial of ${f.planName} ends on ${f.trialEnd ? day(f.trialEnd) : "its end date"}.`);
-    paras.push(`If you keep the subscription, you will be charged ${money(f.amount, f.currency)} on that day, and then ${price} until you cancel.`);
+    paras.push(`If you keep the subscription, you will be charged ${first}${p ? " with your promotion" : ""} on that day, and then ${price} until you cancel.`);
     paras.push(`If you do not want to be charged, cancel before the trial ends. ${cancelHow}`);
   }
   if (f.withdrawal) {

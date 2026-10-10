@@ -1,5 +1,5 @@
 // force-deploy: 2026-07-30T22:29:25Z
-// deploy-stamp: 2026-10-09T18:00Z
+// deploy-stamp: 2026-10-10T15:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -27,7 +27,7 @@ import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
 // change -- nothing wrote it before, so a new subscriber read as inactive.
 import { checkProByEmail, PRO_PRODUCT_NAME } from "../_shared/pro.ts";
 // The mail a new subscriber is owed: terms, cancellation, the trial's end.
-import { NOTICE_FROM, NOTICE_SENDER_DOMAIN, noticeKey, noticeMail, WITHDRAWAL_DAYS, type NoticeKind } from "../_shared/subscription-notice.ts";
+import { NOTICE_FROM, NOTICE_SENDER_DOMAIN, noticeKey, noticeMail, WITHDRAWAL_DAYS, type NoticeFacts, type NoticeKind } from "../_shared/subscription-notice.ts";
 import { euUkSalesOn } from "../_shared/checkout-policy.ts";
 import { inWithdrawalTerritory } from "../_shared/withdrawal.ts";
 // Who paid, as Stripe recorded it: customer_details first (anonymous buyers).
@@ -42,7 +42,7 @@ import { resumeSessionForCheckout } from "../_shared/checkout-resume-ref.ts";
 
 // Provable from outside without a purchase or a signature: every response,
 // the 405 a GET receives included, carries this in x-fn-build.
-const FN_BUILD = "stripe-webhook.2026-10-09.2";
+const FN_BUILD = "stripe-webhook.2026-10-09.3";
 const BUILD_HEADER = { "x-fn-build": FN_BUILD };
 
 // Declare EdgeRuntime for background tasks
@@ -326,9 +326,40 @@ async function grantAgentPass(session: Stripe.Checkout.Session, supabase: Supaba
  * claim whose enqueue fails is given back and the error thrown, so the
  * handler answers 500 and Stripe redelivers the event.
  */
+/**
+ * A PROMOTION ON THE PLAN (the plan checkouts allow promotion codes): the
+ * first charge Stripe computed (the paid first invoice, or a trial's upcoming
+ * one) and how long the discount lasts. Null when the plan has none or it
+ * leaves the first charge at the list price.
+ */
+async function promotionOf(stripe: Stripe, sub: Stripe.Subscription, listAmount: number): Promise<NoticeFacts["promo"]> {
+  const loose = sub as unknown as { discounts?: unknown[]; discount?: unknown };
+  if (!(Array.isArray(loose.discounts) && loose.discounts.length) && !loose.discount) return null;
+  const full = await stripe.subscriptions.retrieve(sub.id, { expand: ["discounts.source.coupon", "latest_invoice"] }) as unknown as {
+    id: string; status: string; discounts?: unknown[]; latest_invoice?: unknown;
+  };
+  let first: number | null = null;
+  if (full.status === "trialing") {
+    first = Number((await stripe.invoices.createPreview({ subscription: full.id }) as { amount_due?: number }).amount_due);
+  } else if (full.latest_invoice && typeof full.latest_invoice === "object") {
+    first = Number((full.latest_invoice as { amount_paid?: number }).amount_paid);
+  }
+  if (first === null || !Number.isFinite(first) || first >= listAmount) return null;
+  let until: number | null = null;
+  let forever = false;
+  for (const d of (full.discounts ?? []) as Array<{ end?: number | null; source?: { coupon?: unknown }; coupon?: unknown } | string>) {
+    if (!d || typeof d !== "object") continue;
+    const coupon = (d.source?.coupon ?? d.coupon) as { duration?: string } | string | null | undefined;
+    if (coupon && typeof coupon === "object" && coupon.duration === "forever") forever = true;
+    else if (typeof d.end === "number") until = Math.max(until ?? 0, d.end);
+  }
+  return { amount: first, until: !forever && until ? new Date(until * 1000).toISOString() : null, forever };
+}
+
 async function sendSubscriptionNotice(
   // deno-lint-ignore no-explicit-any
   supabase: SupabaseClient<any, any, any>,
+  stripe: Stripe,
   kind: NoticeKind,
   sub: Stripe.Subscription,
   email: string | null,
@@ -337,6 +368,7 @@ async function sendSubscriptionNotice(
 ): Promise<"queued" | "already" | "skipped"> {
   const price = sub.items?.data?.[0]?.price;
   if (!email || !price || typeof price.unit_amount !== "number") return "skipped";
+  const promo = await promotionOf(stripe, sub, price.unit_amount);
   const trialEnd = sub.status === "trialing" && sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null;
   if (kind === "trial_ending" && !trialEnd) return "skipped";
   const env = (k: string) => Deno.env.get(k);
@@ -352,6 +384,7 @@ async function sendSubscriptionNotice(
     withdrawal: kind === "confirmation" && euUkSalesOn(env) && inWithdrawalTerritory(buyerCountry)
       ? { until: new Date(Date.now() + WITHDRAWAL_DAYS * 86_400_000).toISOString(), contact: env("SUPPORT_EMAIL") ?? "resumeboostersupp@gmail.com" }
       : null,
+    promo,
   });
   const { error: claimError } = await supabase.from("subscription_notices").insert({ subscription_id: sub.id, kind, email });
   if (claimError) {
@@ -1018,7 +1051,7 @@ serve(async (req) => {
           if (subId) {
             try {
               const sub = await stripe.subscriptions.retrieve(subId);
-              await sendSubscriptionNotice(supabase, "confirmation", sub, buyerEmailOf(session), session.customer_details?.address?.country ?? null);
+              await sendSubscriptionNotice(supabase, stripe, "confirmation", sub, buyerEmailOf(session), session.customer_details?.address?.country ?? null);
             } catch (err) {
               processingError = String(err).slice(0, 500);
               mustRetry = true;
@@ -1304,7 +1337,7 @@ serve(async (req) => {
           const customerId = refId(sub.customer);
           const customer = customerId ? await stripe.customers.retrieve(customerId) : null;
           const email = customer && !(customer as { deleted?: boolean }).deleted ? (customer as Stripe.Customer).email ?? null : null;
-          await sendSubscriptionNotice(supabase, "trial_ending", sub, email);
+          await sendSubscriptionNotice(supabase, stripe, "trial_ending", sub, email);
         } catch (err) {
           processingError = String(err).slice(0, 500);
           mustRetry = true;
