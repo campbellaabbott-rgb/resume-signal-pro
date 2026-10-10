@@ -3,13 +3,16 @@
 # decision 1 of 2026-10-08). Deploy note: docs/wave3/scan-ai.md.
 #
 # THE CLAIMS, one line each below:
-#   - every changed function serves its 2026-10-09 build (or later);
+#   - every changed function serves its own build or a later one: 2026-10-09.N,
+#     or 2026-10-10.2 for the five main re-stamped 2026-10-10.1 (PR #25), so a
+#     production serving main's build without this wave's changes FAILs;
 #   - 20261009111000 landed: shortlist_candidates has jd_text_scored and is
 #     closed to anon, and shortlist_decide exists and refuses anon by name;
 #   - 20261009110000 (the limiter's sweep) cannot be observed read-only: INFO;
 #     nor can 20261009111000's decision stamp (it fires on an insert): INFO;
-#   - the homepage a crawler reads says a rescan repeats the report only
-#     within the 7-day cache, and states one time to results; llms.txt too;
+#   - the homepage a crawler reads says a rescan of the same file against the
+#     same posting repeats the report within the 7-day cache, and states one
+#     time to results; llms.txt too; an industry page states the same bound;
 #   - /resume-score as a crawler reads it states the same bound and names the
 #     cache window beside its report-ID promise;
 #   - the browser's bundle: the value table prices the Full Analysis, the
@@ -17,7 +20,10 @@
 #     Re-analyze, the partial banner names its reason, the resetting
 #     countdown key is gone; the free report has no "Premium Only" stack; the Why-not-ChatGPT
 #     card names the cache window; the Shortlist page decides through
-#     shortlist_decide.
+#     shortlist_decide; the "auto-rejected" Premium card under the report and
+#     the sticky bar's "$3 premium packages" are gone (review round 2);
+#   - the Apply kit's Pro bound and the redaction shapes need a signed-in or
+#     employer call: INFO, proven by the builds and their tests.
 #
 # READ-ONLY. OPTIONS preflights run no function logic. One anon table read
 # (select of one named column, limit 1) and one anon RPC whose arguments raise
@@ -30,18 +36,20 @@ vd72_build() { # $1 fn -> the preflight's x-fn-build header
   curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$1" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//'
 }
 for PAIR in \
-  "free-keyword-scan|2" "free-keyword-scan-stream|2" "shortlist-evaluate|3" \
-  "generate-application-answers|2" "generate-apply-package|2" "generate-ats-defense|1" \
-  "generate-career-path|2" "generate-career-snapshot|1" "generate-cover-letter|2" \
-  "generate-cover-letter-stream|1" "generate-graduate-gameplan|1" "generate-interview-coach|2" \
-  "generate-keyword-fix|1" "generate-premium-package|2" "generate-premium-package-stream|1" \
-  "generate-product-preview|1"; do
-  FN=${PAIR%%|*}; N=${PAIR#*|}
+  "free-keyword-scan|2026-10-09|2" "free-keyword-scan-stream|2026-10-09|2" "shortlist-evaluate|2026-10-10|2" \
+  "generate-application-answers|2026-10-10|2" "generate-apply-package|2026-10-09|3" "generate-ats-defense|2026-10-09|1" \
+  "generate-career-path|2026-10-09|2" "generate-career-snapshot|2026-10-10|2" "generate-cover-letter|2026-10-09|2" \
+  "generate-cover-letter-stream|2026-10-09|1" "generate-graduate-gameplan|2026-10-10|2" "generate-interview-coach|2026-10-09|2" \
+  "generate-keyword-fix|2026-10-09|1" "generate-premium-package|2026-10-09|2" "generate-premium-package-stream|2026-10-09|1" \
+  "generate-product-preview|2026-10-10|2"; do
+  FN=${PAIR%%|*}; REST=${PAIR#*|}; DAY=${REST%%|*}; N=${REST#*|}
   H=$(vd72_build "$FN")
   if [ -z "$H" ]; then echo "FAIL  $FN preflight carries no x-fn-build (not reachable, or a bundle older than build stamps)"
-  elif build_ge "$FN" "$H" "2026-10-09" "$N"; then echo "PASS  $FN preflight x-fn-build = $H ($FN.2026-10-09.$N or later)"
-  else echo "FAIL  $FN preflight x-fn-build = $H (want $FN.2026-10-09.$N or later: the previous bundle is still serving)"; fi
+  elif build_ge "$FN" "$H" "$DAY" "$N"; then echo "PASS  $FN preflight x-fn-build = $H ($FN.$DAY.$N or later)"
+  else echo "FAIL  $FN preflight x-fn-build = $H (want $FN.$DAY.$N or later: the previous bundle is still serving)"; fi
 done
+echo "INFO  generate-apply-package's Pro bound (60 kits an hour per account, 600 for all Pro accounts, 503 when the limiter is down) needs a signed-in Pro call; src/test/a-pro-accounts-apply-kits-had-no-bound-at-all.test.ts runs the shipped handler"
+echo "INFO  shortlist-evaluate's redaction (letter-spaced, nicknamed and surname-first names; es/pt/de/fr/nl/in/au/jp contact shapes) needs an employer call; src/test/shortlist-redaction-passed-letter-spaced-nicknamed-and-surname-first-names-and-european-addresses.test.ts runs it on a generated PDF"
 
 # 20261009111000. A named column the table lacks fails before the permission
 # check, so one read tells all three states apart.
@@ -81,6 +89,12 @@ elif printf '%s' "$LLMS72" | grep -qF "same job posting within 7 days returns th
 elif printf '%s' "$LLMS72" | grep -qF "same file within 7 days returns the same report"; then echo "FAIL  llms.txt promises the same report for the same file alone (the cache is keyed on the posting too)"
 else echo "FAIL  llms.txt carries neither sentence (${#LLMS72} bytes)"; fi
 
+# An industry page as a crawler reads it (its FAQ and FAQPage JSON-LD come from industry-faqs.ts).
+IND72=$(curl -s -m 30 -A "$UA" "$SITE/industries/healthcare")
+if printf '%s' "$IND72" | grep -qF "in about 20 seconds"; then echo "FAIL  /industries/healthcare (crawler) still says \"in about 20 seconds\": the prerender with this wave is not published"
+elif printf '%s' "$IND72" | grep -qF "within 90 seconds"; then echo "PASS  /industries/healthcare (crawler) states the scan's bound: within 90 seconds"
+else echo "FAIL  /industries/healthcare (crawler) states neither time (${#IND72} bytes)"; fi
+
 # A tool landing as a crawler reads it (its meta description and FAQ come from tool-landings.ts).
 RS72=$(curl -s -m 30 -A "$UA" "$SITE/resume-score")
 if printf '%s' "$RS72" | grep -qF "in about 20 seconds"; then echo "FAIL  /resume-score (crawler) still says \"in about 20 seconds\": the prerender with this wave is not published"
@@ -117,6 +131,11 @@ else
   done
   if printf '%s' "$EN72" | grep -qF "resultsExpiry"; then echo "FAIL  English strings still carry resultsExpiry (the resetting \"saved for N more hours\" countdown)"
   else echo "PASS  the resetting results countdown is gone from the English strings"; fi
+  if printf '%s' "$EN72" | grep -qF "being auto-rejected"; then echo "FAIL  English strings still carry the \"auto-rejected\" Premium card shown under the report (review round 2)"
+  else echo "PASS  the \"auto-rejected\" Premium card under the report is gone from the English strings"; fi
+  if printf '%s' "$EN72" | grep -qF "Premium packages from"; then echo "FAIL  the sticky bar still says \"Premium packages from\" the hidden \$3 product"
+  elif printf '%s' "$EN72" | grep -qF "Applies the fixes your free scan finds"; then echo "PASS  the sticky bar names the Full Analysis and what it does"
+  else echo "FAIL  the sticky bar's line is neither the old nor the new one"; fi
 fi
 IDX72=$(printf '%s' "$MAINB72" | grep -o '\./Index-[A-Za-z0-9_-]*\.js' | head -1)
 if [ -z "$IDX72" ]; then echo "FAIL  the main bundle names no Index chunk (frontend layout moved)"
