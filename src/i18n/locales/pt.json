@@ -4618,6 +4618,17 @@
       "unactivated": "ainda não iniciado",
       "live": "em andamento",
       "closed": "encerrado"
+    },
+    "withdraw": {
+      "title": "Desistir em até {{days}} dias",
+      "body": "Comprou o Pro ou a Fila da Manhã nos últimos {{days}} dias a partir da UE ou do Reino Unido? Você pode desistir: o plano é cancelado na hora, e o que você pagou, menos os dias já prestados, é reembolsado.",
+      "button": "Desistir do meu plano",
+      "confirm": "Desistir do seu plano? Ele é cancelado agora, e o reembolso dos dias ainda não prestados volta para o seu cartão.",
+      "done": "Desistência feita. O plano está cancelado e {{amount}} está sendo reembolsado no seu cartão. Uma confirmação está a caminho por e-mail.",
+      "doneNoRefund": "Desistência feita. O plano está cancelado; nada foi cobrado por ele, então não há nada a reembolsar.",
+      "none": "Nenhum plano desta conta começou nos últimos {{days}} dias.",
+      "notLinked": "Um plano no seu e-mail não está vinculado a esta conta. Escreva para nós e cuidaremos da desistência.",
+      "failed": "A desistência não foi concluída. Tente de novo em um minuto."
     }
   },
   "applyAgent": {

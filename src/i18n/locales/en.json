@@ -4618,6 +4618,17 @@
       "unactivated": "not started yet",
       "live": "running",
       "closed": "ended"
+    },
+    "withdraw": {
+      "title": "Withdraw within {{days}} days",
+      "body": "Bought Pro or the Morning Queue in the last {{days}} days from the EU or the UK? You can withdraw: the plan is cancelled at once, and what you paid, less the days already provided, is refunded.",
+      "button": "Withdraw from my plan",
+      "confirm": "Withdraw from your plan? It is cancelled now, and the refund for the days not yet provided goes back to your card.",
+      "done": "Withdrawn. The plan is cancelled and {{amount}} is being refunded to your card. A confirmation is on its way by email.",
+      "doneNoRefund": "Withdrawn. The plan is cancelled; nothing was charged for it, so there is nothing to refund.",
+      "none": "No plan on this account began in the last {{days}} days.",
+      "notLinked": "A plan on your email address is not linked to this account. Write to us and we will handle the withdrawal.",
+      "failed": "The withdrawal did not go through. Please try again in a minute."
     }
   },
   "applyAgent": {

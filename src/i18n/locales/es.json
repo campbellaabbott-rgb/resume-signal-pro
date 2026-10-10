@@ -4618,6 +4618,17 @@
       "unactivated": "aún no iniciado",
       "live": "en curso",
       "closed": "terminado"
+    },
+    "withdraw": {
+      "title": "Desistir en un plazo de {{days}} días",
+      "body": "¿Compraste Pro o Morning Queue en los últimos {{days}} días desde la UE o el Reino Unido? Puedes desistir: el plan se cancela de inmediato y se reembolsa lo que pagaste, menos los días ya prestados.",
+      "button": "Desistir de mi plan",
+      "confirm": "¿Desistir de tu plan? Se cancela ahora y el reembolso de los días aún no prestados vuelve a tu tarjeta.",
+      "done": "Desistimiento hecho. El plan está cancelado y se están reembolsando {{amount}} a tu tarjeta. Te llegará una confirmación por correo.",
+      "doneNoRefund": "Desistimiento hecho. El plan está cancelado; no se cobró nada por él, así que no hay nada que reembolsar.",
+      "none": "Ningún plan de esta cuenta empezó en los últimos {{days}} días.",
+      "notLinked": "Hay un plan con tu correo que no está vinculado a esta cuenta. Escríbenos y gestionaremos el desistimiento.",
+      "failed": "El desistimiento no se completó. Inténtalo de nuevo en un minuto."
     }
   },
   "applyAgent": {

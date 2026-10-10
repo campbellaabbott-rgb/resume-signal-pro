@@ -4618,6 +4618,17 @@
       "unactivated": "pas encore commencé",
       "live": "en cours",
       "closed": "terminé"
+    },
+    "withdraw": {
+      "title": "Se rétracter sous {{days}} jours",
+      "body": "Vous avez souscrit Pro ou Morning Queue depuis l'UE ou le Royaume-Uni au cours des {{days}} derniers jours ? Vous pouvez vous rétracter : la formule est résiliée immédiatement et ce que vous avez payé, moins les jours déjà fournis, vous est remboursé.",
+      "button": "Me rétracter de ma formule",
+      "confirm": "Vous rétracter de votre formule ? Elle est résiliée maintenant, et le remboursement des jours non encore fournis revient sur votre carte.",
+      "done": "Rétractation effectuée. La formule est résiliée et {{amount}} vous sont remboursés sur votre carte. Une confirmation arrive par e-mail.",
+      "doneNoRefund": "Rétractation effectuée. La formule est résiliée ; rien n'a été facturé, il n'y a donc rien à rembourser.",
+      "none": "Aucune formule de ce compte n'a commencé au cours des {{days}} derniers jours.",
+      "notLinked": "Une formule liée à votre adresse e-mail n'est pas rattachée à ce compte. Écrivez-nous et nous traiterons la rétractation.",
+      "failed": "La rétractation n'a pas abouti. Réessayez dans une minute."
     }
   },
   "applyAgent": {

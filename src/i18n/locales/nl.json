@@ -4618,6 +4618,17 @@
       "unactivated": "nog niet gestart",
       "live": "loopt",
       "closed": "afgelopen"
+    },
+    "withdraw": {
+      "title": "Herroepen binnen {{days}} dagen",
+      "body": "Pro of de Ochtendwachtrij in de afgelopen {{days}} dagen vanuit de EU of het VK gekocht? Je kunt herroepen: het abonnement stopt meteen, en wat je betaalde, min de dagen die al zijn geleverd, wordt terugbetaald.",
+      "button": "Mijn abonnement herroepen",
+      "confirm": "Je abonnement herroepen? Het stopt nu, en de terugbetaling voor de dagen die nog niet zijn geleverd gaat terug naar je kaart.",
+      "done": "Herroepen. Het abonnement is gestopt en {{amount}} wordt terugbetaald op je kaart. Er komt een bevestiging per e-mail.",
+      "doneNoRefund": "Herroepen. Het abonnement is gestopt; er is niets voor in rekening gebracht, dus er valt niets terug te betalen.",
+      "none": "Geen abonnement op dit account is in de afgelopen {{days}} dagen begonnen.",
+      "notLinked": "Een abonnement op je e-mailadres is niet aan dit account gekoppeld. Schrijf ons en we regelen de herroeping.",
+      "failed": "De herroeping is niet gelukt. Probeer het over een minuut opnieuw."
     }
   },
   "applyAgent": {

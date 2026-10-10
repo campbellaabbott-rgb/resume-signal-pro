@@ -4618,6 +4618,17 @@
       "unactivated": "hindi pa nagsisimula",
       "live": "tumatakbo",
       "closed": "tapos na"
+    },
+    "withdraw": {
+      "title": "Mag-withdraw sa loob ng {{days}} araw",
+      "body": "Bumili ng Pro o ng Morning Queue sa nakaraang {{days}} araw mula sa EU o UK? Puwede kang mag-withdraw: kakanselahin agad ang plan, at ibabalik ang ibinayad mo, bawas ang mga araw na naibigay na.",
+      "button": "I-withdraw ang plan ko",
+      "confirm": "I-withdraw ang plan mo? Kakanselahin ito ngayon, at ibabalik sa card mo ang refund para sa mga araw na hindi pa naibibigay.",
+      "done": "Na-withdraw na. Kanselado na ang plan at ibinabalik ang {{amount}} sa card mo. May kumpirmasyong darating sa email.",
+      "doneNoRefund": "Na-withdraw na. Kanselado na ang plan; walang siningil para dito, kaya walang ibabalik.",
+      "none": "Walang plan sa account na ito na nagsimula sa nakaraang {{days}} araw.",
+      "notLinked": "May plan sa email address mo na hindi naka-link sa account na ito. Sumulat sa amin at kami ang bahala sa pag-withdraw.",
+      "failed": "Hindi natuloy ang pag-withdraw. Pakisubukan ulit pagkalipas ng isang minuto."
     }
   },
   "applyAgent": {

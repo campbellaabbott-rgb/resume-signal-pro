@@ -4618,6 +4618,17 @@
       "unactivated": "noch nicht gestartet",
       "live": "läuft",
       "closed": "beendet"
+    },
+    "withdraw": {
+      "title": "Widerruf innerhalb von {{days}} Tagen",
+      "body": "Pro oder die Morning Queue in den letzten {{days}} Tagen aus der EU oder dem Vereinigten Königreich gekauft? Du kannst widerrufen: Der Plan wird sofort beendet, und was du bezahlt hast, abzüglich der bereits erbrachten Tage, wird erstattet.",
+      "button": "Meinen Plan widerrufen",
+      "confirm": "Deinen Plan widerrufen? Er wird jetzt beendet, und die Erstattung für die noch nicht erbrachten Tage geht auf deine Karte zurück.",
+      "done": "Widerrufen. Der Plan ist beendet, und {{amount}} werden auf deine Karte erstattet. Eine Bestätigung ist per E-Mail unterwegs.",
+      "doneNoRefund": "Widerrufen. Der Plan ist beendet; dafür wurde nichts berechnet, also gibt es nichts zu erstatten.",
+      "none": "Kein Plan dieses Kontos hat in den letzten {{days}} Tagen begonnen.",
+      "notLinked": "Ein Plan unter deiner E-Mail-Adresse ist nicht mit diesem Konto verknüpft. Schreib uns, und wir kümmern uns um den Widerruf.",
+      "failed": "Der Widerruf hat nicht geklappt. Bitte versuche es in einer Minute erneut."
     }
   },
   "applyAgent": {

@@ -45,6 +45,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { ProSubscriptionCard } from "@/components/ProSubscriptionCard";
 import { CreditsAndPurchases, type AccountPass } from "@/components/account/CreditsAndPurchases";
+import { WithdrawalPanel } from "@/components/account/WithdrawalPanel";
 import { collectAccountExport, type ExportClient } from "@/lib/account-export";
 import { trackedEmployerChip } from "@/lib/tracked-employer-chip";
 
@@ -1849,6 +1850,8 @@ export default function Account() {
         <div className="mb-6">
           <ProSubscriptionCard compact />
         </div>
+        {/* EU/UK 14-day withdrawal: renders nothing while the switch is off. */}
+        <WithdrawalPanel />
 
         {/* Credits + purchases (L3-22, L6-12) */}
         <CreditsAndPurchases fetching={fetching} account={account} email={user?.email ?? ""} />

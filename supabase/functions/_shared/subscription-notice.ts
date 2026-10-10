@@ -20,7 +20,7 @@
  * refund is promised (owner decision). NO IMPORTS: vitest runs this file.
  */
 
-export type NoticeKind = "confirmation" | "trial_ending";
+export type NoticeKind = "confirmation" | "trial_ending" | "withdrawal";
 
 export type NoticeFacts = {
   planName: string;
@@ -82,7 +82,7 @@ export function noticeMail(kind: NoticeKind, f: NoticeFacts): { subject: string;
     paras.push(`If you do not want to be charged, cancel before the trial ends. ${cancelHow}`);
   }
   if (f.withdrawal) {
-    paras.push(`You may withdraw from this contract within ${WITHDRAWAL_DAYS} days, until ${day(f.withdrawal.until)}, without giving a reason, by writing to ${f.withdrawal.contact}. If you asked for the service to start during that time, you pay for the days already used.`);
+    paras.push(`You may withdraw from this contract within ${WITHDRAWAL_DAYS} days, until ${day(f.withdrawal.until)}, without giving a reason: on your account page (${f.accountUrl}, "Withdraw within ${WITHDRAWAL_DAYS} days"), or by writing to ${f.withdrawal.contact}. If you asked for the service to start during that time, you pay for the days already used.`);
   }
   paras.push(`The Terms of Service you agreed to are at https://resumebooster.work/terms.`);
   const text = paras.join("\n\n");
@@ -90,6 +90,33 @@ export function noticeMail(kind: NoticeKind, f: NoticeFacts): { subject: string;
     paras.map((p) => `<p style="font-size:14px;line-height:1.5">${esc(p)}</p>`).join("")
   }</div>`;
   return { subject, text, html };
+}
+
+/**
+ * THE ACKNOWLEDGEMENT OF A WITHDRAWAL (EU/UK switch only; _shared/withdrawal.ts).
+ * A withdrawal made on our site is acknowledged on a durable medium without
+ * delay (Directive 2011/83/EU art. 11(3)): when it was received, that the plan
+ * is cancelled and charges stop, and what is refunded, computed, never typed.
+ */
+export function withdrawalMail(f: {
+  planName: string;
+  withdrawnAt: string;
+  refund: { amount: number; currency: string } | null;
+  accountUrl: string;
+}): { subject: string; text: string; html: string } {
+  const paras = [
+    `We received your withdrawal from ${f.planName} on ${day(f.withdrawnAt)}.`,
+    `The subscription is cancelled and will not charge you again.`,
+    f.refund && f.refund.amount > 0
+      ? `${money(f.refund.amount, f.refund.currency)}, what you paid less the days already provided, is being refunded to the card you paid with, within ${WITHDRAWAL_DAYS} days of your withdrawal.`
+      : `Nothing was charged for it, so there is nothing to refund.`,
+    `Your account is at ${f.accountUrl}.`,
+  ];
+  const text = paras.join("\n\n");
+  const html = `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#0f172a">${
+    paras.map((p) => `<p style="font-size:14px;line-height:1.5">${esc(p)}</p>`).join("")
+  }</div>`;
+  return { subject: `Your withdrawal from ${f.planName}`, text, html };
 }
 
 /** The idempotency key the queue and the ledger share. */
