@@ -386,7 +386,9 @@ Deno.test("TEETH: a chunk that fails stops the run before the swap, and the run 
 Deno.test("index.ts: the action decodes before it posts, runs the plan under one stamp, logs its kind and names the quarter", () => {
   assert(/case "lca_wages": return await runLcaWages\(client\);/.test(CODE));
   assertStringIncludes(CODE, "const runStartedAt = new Date().toISOString();");
-  assertStringIncludes(CODE, "const rows = await decodeLcaCells();");
+  // Decoded, then the ledger and twin-vendor tokens refused (S8-024, S8-105), then planned.
+  assertStringIncludes(CODE, "const refusal = refuseLcaCells(await decodeLcaCells(), twinVendorTokens(JOB_SOURCES));");
+  assertStringIncludes(CODE, "const rows = refusal.kept;");
   assertStringIncludes(CODE, "const plan = planLcaChunks(rows, runStartedAt, LCA_CHUNK_ROWS);");
   assertStringIncludes(CODE, "await postLcaChunks(client, plan, posted);");
   // The decode is upstream of the first post: a payload that fails its checks must cost nothing.

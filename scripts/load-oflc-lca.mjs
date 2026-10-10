@@ -408,7 +408,33 @@ export const COLUMNS = {
   wageTo: { required: false, names: ["WAGE_RATE_OF_PAY_TO", "WAGE_RATE_OF_PAY_TO_1"] },
   socTitle: { required: false, names: ["SOC_TITLE"] },
   visaClass: { required: false, names: ["VISA_CLASS"] },
+  fein: { required: false, names: ["EMPLOYER_FEIN"] },
 };
+
+// ── two filers behind one name (S8-024) ─────────────────────────────────────
+
+/** Legal-form words a filed employer name can end with, each to its one spelling. */
+const LEGAL_FORMS = new Map([
+  ["LLC", "LLC"], ["INC", "INC"], ["INCORPORATED", "INC"], ["CORP", "CORP"], ["CORPORATION", "CORP"],
+  ["LTD", "LTD"], ["LIMITED", "LTD"], ["LP", "LP"], ["LLP", "LLP"], ["PLC", "PLC"], ["PLLC", "PLLC"], ["PC", "PC"],
+]);
+
+/** The legal form a filed name ends with ("SIGMA SOFTWARE LLC" -> "LLC"), or "" when it names none. */
+export function legalFormOf(raw) {
+  const words = String(raw ?? "").toUpperCase().replace(/[^A-Z0-9]+/g, " ").trim().split(/\s+/);
+  return LEGAL_FORMS.get(words[words.length - 1] ?? "") ?? "";
+}
+
+/**
+ * Does one normalised name stand for two filers? keyNorm drops the legal form, so "SIGMA SOFTWARE
+ * LLC" and "SIGMA SOFTWARE INC" (two companies: a US consultancy's filings landed on a Ukrainian
+ * firm's board, S8-024) read as one name. Two DIFFERENT legal forms, or two different FEINs, among
+ * the applications behind one name are two entities, and the name is refused. A spelling with no
+ * form ("Acme Widgets" beside "Acme Widgets, Inc.") is compatible with any one form.
+ */
+export function namesTwoFilers(forms, feins) {
+  return forms.size > 1 || feins.size > 1;
+}
 
 /** Resolve the header row to column indexes. Throws, by name, on a missing required column. */
 export function resolveColumns(header) {
@@ -751,8 +777,13 @@ export async function loadDisclosureFile({ file, index, sourceUrl, fiscalQuarter
     sheetRows: 0, dataRows: 0, certified: 0, notCertified: 0, certifiedWithdrawnPrefix: 0,
     visaFiltered: 0, heldNonAsciiEmployer: 0, refusedSingleToken: 0, refusedAmbiguous: 0,
     unmatchedEmployer: 0, heldNoWage: 0, heldNonAnnualUnit: 0, heldNoSoc: 0, heldNoState: 0,
-    heldNoDecisionDate: 0, heldWageOutOfBand: 0, matchedRows: 0, cellWrites: 0,
+    heldNoDecisionDate: 0, heldWageOutOfBand: 0, matchedRows: 0, cellWrites: 0, refusedTwoFilers: 0,
   };
+  // HELD UNTIL THE WHOLE FILE IS READ: whether a name stands for two filers is known only once every
+  // application behind it has been seen (namesTwoFilers), so a matched row is folded at the end.
+  const pending = [];
+  const formsByNorm = new Map();
+  const feinsByNorm = new Map();
   const cells = newCells();
   let cols = null;
   const matchedTokens = new Set();
@@ -809,15 +840,24 @@ export async function loadDisclosureFile({ file, index, sourceUrl, fiscalQuarter
     // figure is one the file did not state.
     if (!isPlausibleAnnualWage(low) || !isPlausibleAnnualWage(high)) { counts.heldWageOutOfBand += 1; continue; }
 
-    if (coverageFrom === null || decided < coverageFrom) coverageFrom = decided;
-    if (coverageTo === null || decided > coverageTo) coverageTo = decided;
+    const form = legalFormOf(row[cols.employer]);
+    if (form) { if (!formsByNorm.has(m.norm)) formsByNorm.set(m.norm, new Set()); formsByNorm.get(m.norm).add(form); }
+    const fein = cols.fein >= 0 ? String(row[cols.fein] ?? "").replace(/[^0-9]/g, "") : "";
+    if (fein) { if (!feinsByNorm.has(m.norm)) feinsByNorm.set(m.norm, new Set()); feinsByNorm.get(m.norm).add(fein); }
+    pending.push({ norm: m.norm, tokens: m.tokens, soc, state, socTitle: cols.socTitle >= 0 ? (row[cols.socTitle] ?? null) : null, low, high, decided });
+    if (sample > 0 && pending.length >= sample) break;
+  }
+  const none = new Set();
+  for (const p of pending) {
+    if (namesTwoFilers(formsByNorm.get(p.norm) ?? none, feinsByNorm.get(p.norm) ?? none)) { counts.refusedTwoFilers += 1; continue; }
+    if (coverageFrom === null || p.decided < coverageFrom) coverageFrom = p.decided;
+    if (coverageTo === null || p.decided > coverageTo) coverageTo = p.decided;
     counts.matchedRows += 1;
-    for (const token of m.tokens) {
+    for (const token of p.tokens) {
       matchedTokens.add(token);
-      addCell(cells, { token, soc, state, socTitle: cols.socTitle >= 0 ? (row[cols.socTitle] ?? null) : null, lowAnnual: low, highAnnual: Math.max(high, low) });
+      addCell(cells, { token, soc: p.soc, state: p.state, socTitle: p.socTitle, lowAnnual: p.low, highAnnual: Math.max(p.high, p.low) });
       counts.cellWrites += 1;
     }
-    if (sample > 0 && counts.matchedRows >= sample) break;
   }
   if (cols === null) throw new Error(`${basename(file)} has no header row`);
   if (coverageFrom === null || coverageTo === null) {
@@ -877,7 +917,7 @@ if (isMain) {
 
   console.error(`[load-oflc-lca] sheet_rows=${counts.sheetRows} data_rows=${counts.dataRows}`);
   console.error(`[load-oflc-lca] certified_by_equality=${counts.certified} other_status=${counts.notCertified} of_which_certified_prefix_refused=${counts.certifiedWithdrawnPrefix}`);
-  console.error(`[load-oflc-lca] refused: single_token=${counts.refusedSingleToken} ambiguous=${counts.refusedAmbiguous} unmatched=${counts.unmatchedEmployer} held_non_ascii=${counts.heldNonAsciiEmployer}`);
+  console.error(`[load-oflc-lca] refused: single_token=${counts.refusedSingleToken} ambiguous=${counts.refusedAmbiguous} unmatched=${counts.unmatchedEmployer} held_non_ascii=${counts.heldNonAsciiEmployer} two_filers_one_name=${counts.refusedTwoFilers}`);
   console.error(`[load-oflc-lca] held: no_soc=${counts.heldNoSoc} no_state=${counts.heldNoState} no_decision_date=${counts.heldNoDecisionDate} no_readable_wage=${counts.heldNoWage} wage_not_filed_yearly=${counts.heldNonAnnualUnit} wage_outside_plausible_band=${counts.heldWageOutOfBand}`);
   // cell_writes is not matched_rows: an employer with two board tokens contributes its application
   // to each of them, so the cells hold (application x token) pairs while matched_rows counts

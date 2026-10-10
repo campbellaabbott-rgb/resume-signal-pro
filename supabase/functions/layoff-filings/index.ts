@@ -46,7 +46,8 @@ import { fetchTwcYear } from "./tx-xlsx.ts";
 import { fetchFlYear, flListingUrl } from "./fl-html.ts";
 import { deployMirrorRows } from "./mirror-catalogue.ts";
 import type { MirrorRow } from "./mirror-rows.ts";
-import { decodeLcaCells, LCA_CHUNK_ROWS, newLcaTally, planLcaChunks, postLcaChunks } from "./lca-cells.ts";
+import { decodeLcaCells, LCA_CHUNK_ROWS, newLcaTally, planLcaChunks, postLcaChunks, refuseLcaCells, twinVendorTokens } from "./lca-cells.ts";
+import { JOB_SOURCES } from "./board-sources.ts";
 import {
   LCA_CELL_COUNT, LCA_COVERAGE_FROM, LCA_COVERAGE_TO, LCA_FISCAL_QUARTER, LCA_PUBLISHED_ON, LCA_TOKEN_COUNT,
 } from "./lca-payload.ts";
@@ -759,6 +760,7 @@ async function runMirror(client: SupabaseLike, body: Record<string, unknown>): P
 interface LcaTally {
   cells: number; tokens: number; chunks: number; chunksDone: number;
   upserted: number; pruned: number; total: number; totalTokens: number;
+  refusedLedger: number; refusedTwin: number;
 }
 
 async function runLcaWages(client: SupabaseLike): Promise<Response> {
@@ -766,6 +768,7 @@ async function runLcaWages(client: SupabaseLike): Promise<Response> {
   const runStartedAt = new Date().toISOString();
   const tally: LcaTally = {
     cells: 0, tokens: 0, chunks: 0, chunksDone: 0, upserted: 0, pruned: 0, total: 0, totalTokens: 0,
+    refusedLedger: 0, refusedTwin: 0,
   };
   // THE POSTING TALLY IS OURS, AND postLcaChunks MUTATES IT AS IT GOES. A tally the callee built and
   // returned was lost on the throw, so the one run where the record matters -- a chunk that failed
@@ -775,7 +778,13 @@ async function runLcaWages(client: SupabaseLike): Promise<Response> {
   let ok = true;
   let note: string | null = null;
   try {
-    const rows = await decodeLcaCells();
+    // The ledger and the twin-vendor tokens are refused before a chunk is
+    // planned, so the swap on the last chunk takes their cells out of the
+    // live table too (S8-024, S8-105).
+    const refusal = refuseLcaCells(await decodeLcaCells(), twinVendorTokens(JOB_SOURCES));
+    const rows = refusal.kept;
+    tally.refusedLedger = refusal.ledger;
+    tally.refusedTwin = refusal.twin;
     const plan = planLcaChunks(rows, runStartedAt, LCA_CHUNK_ROWS);
     tally.cells = rows.length;
     tally.tokens = new Set(rows.map((r) => r.company_token)).size;
@@ -794,7 +803,8 @@ async function runLcaWages(client: SupabaseLike): Promise<Response> {
   const line =
     `[layoff-filings] kind=lca_wages cells=${tally.cells} tokens=${tally.tokens}` +
     ` chunks=${tally.chunksDone}/${tally.chunks} upserted=${tally.upserted} pruned=${tally.pruned}` +
-    ` total=${tally.total} total_tokens=${tally.totalTokens} quarter=${JSON.stringify(LCA_FISCAL_QUARTER)}` +
+    ` total=${tally.total} total_tokens=${tally.totalTokens} refused_ledger=${tally.refusedLedger} refused_twin=${tally.refusedTwin}` +
+    ` quarter=${JSON.stringify(LCA_FISCAL_QUARTER)}` +
     ` coverage=${LCA_COVERAGE_FROM}..${LCA_COVERAGE_TO}` +
     ` published=${LCA_PUBLISHED_ON} run_started_at=${runStartedAt} ms=${ms} ok=${ok}` +
     (note ? ` note=${JSON.stringify(note)}` : "");
