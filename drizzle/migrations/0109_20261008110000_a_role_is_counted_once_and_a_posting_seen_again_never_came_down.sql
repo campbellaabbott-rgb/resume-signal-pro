@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261008110000_a_role_is_counted_once_and_a_posting_seen_again_never_came_down.sql'));

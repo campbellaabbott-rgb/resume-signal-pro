@@ -5475,6 +5475,7 @@ export type Database = {
           fill_rate_30: number
           fill_rate_7: number
           fill_through: number
+          filled_roles_90d: number
           fills_30: number
           fills_90d: number
           fills_le_14: number
@@ -5487,6 +5488,7 @@ export type Database = {
           open_roles: number
           relist_rate_14: number
           relist_rate_30: number
+          relisted_roles_90d: number
           relists_30: number
           relists_90d: number
           still_open_14: number
