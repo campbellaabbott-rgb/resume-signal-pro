@@ -5254,5 +5254,10 @@
       "requestedTitle": "Uitbetaling aangevraagd",
       "requestedBody": "We mailen je om de betaling te regelen."
     }
+  },
+  "seller": {
+    "soldBy": "Verkocht door {{name}}, {{address}}.",
+    "termsParty": "Deze Voorwaarden zijn een overeenkomst tussen u en {{name}}, {{address}}.",
+    "controller": "De verwerkingsverantwoordelijke voor uw persoonsgegevens is {{name}}, {{address}}."
   }
 }

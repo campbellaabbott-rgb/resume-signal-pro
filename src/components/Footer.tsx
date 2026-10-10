@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { Mail } from "lucide-react";
+import { SellerIdentity } from "@/components/SellerIdentity";
 
 export function Footer() {
   const { t } = useTranslation();
@@ -56,7 +57,10 @@ export function Footer() {
         </nav>
 
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground px-2 sm:px-0">
-          <p>{t('footer.copyright', { year: new Date().getFullYear() })}</p>
+          <div>
+            <p>{t('footer.copyright', { year: new Date().getFullYear() })}</p>
+            <SellerIdentity variant="footer" className="text-xs mt-1" />
+          </div>
           <nav className="flex items-center gap-4 sm:gap-6 flex-wrap justify-center" aria-label={t('footer.navAriaLabel')}>
             <Link
               to="/pricing"

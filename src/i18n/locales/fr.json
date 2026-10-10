@@ -5254,5 +5254,10 @@
       "requestedTitle": "Paiement demandé",
       "requestedBody": "Nous vous écrirons pour organiser le paiement."
     }
+  },
+  "seller": {
+    "soldBy": "Vendu par {{name}}, {{address}}.",
+    "termsParty": "Les présentes Conditions constituent un accord entre vous et {{name}}, {{address}}.",
+    "controller": "Le responsable du traitement de vos données personnelles est {{name}}, {{address}}."
   }
 }

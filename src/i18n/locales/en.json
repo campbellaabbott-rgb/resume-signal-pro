@@ -5254,5 +5254,10 @@
       "requestedTitle": "Payout requested",
       "requestedBody": "We will email you to arrange payment."
     }
+  },
+  "seller": {
+    "soldBy": "Sold by {{name}}, {{address}}.",
+    "termsParty": "These Terms are an agreement between you and {{name}}, {{address}}.",
+    "controller": "The controller of your personal data is {{name}}, {{address}}."
   }
 }

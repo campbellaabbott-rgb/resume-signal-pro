@@ -5,6 +5,8 @@ import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AI_CACHE_MAX_HOURS, SHARED_ANALYSIS_DAYS } from "@/lib/resume-retention";
+import { PRIVACY_LAST_UPDATED } from "@/config/seller";
+import { SellerIdentity } from "@/components/SellerIdentity";
 
 export default function Privacy() {
   const { t, i18n } = useTranslation();
@@ -25,7 +27,8 @@ export default function Privacy() {
           </Link>
           
           <h1 className="text-4xl font-bold mb-8">{t('privacy.title')}</h1>
-          <p className="text-muted-foreground mb-4">{t('common.lastUpdated')}: {new Date().toLocaleDateString(dateLocale, { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+          <p className="text-muted-foreground mb-4">{t('common.lastUpdated')}: {new Date(`${PRIVACY_LAST_UPDATED}T12:00:00Z`).toLocaleDateString(dateLocale, { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}</p>
+          <SellerIdentity variant="privacy" className="text-muted-foreground mb-4" />
           <p className="text-sm text-muted-foreground/80 mb-8 italic">{t('privacy.legalNotice')}</p>
 
           <div className="prose prose-invert max-w-none space-y-8">

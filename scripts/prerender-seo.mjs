@@ -192,6 +192,7 @@ export { COUNTRY_STANDARDS } from "../supabase/functions/free-keyword-scan/count
 export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from "../src/data/cv-standards-content";
 export { getAllProducts, PASS, SUBSCRIPTIONS } from "../src/config/products";
 export { changelog } from "../src/data/changelog";
+export { PRIVACY_LAST_UPDATED, SELLER, TERMS_LAST_UPDATED, sellerIdentity } from "../src/config/seller";
 export { default as EN_LOCALE } from "../src/i18n/locales/en.json";
 export { default as EN_CHANGELOG } from "../src/i18n/changelog/en.json";
 export { TEMP_RESUME_HOURS, REPORT_CACHE_DAYS, AI_CACHE_MAX_HOURS, SHARED_ANALYSIS_DAYS, PRIVACY_EMAIL } from "../src/lib/resume-retention";
@@ -956,9 +957,13 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
   // snapshot), where total was the servable count and there is no tracked
   // figure to publish. Never guess one from the other.
   const FACETS_NEW_SHAPE = typeof boardFacets?.openTotal === "number";
+  // L4-03: a SNAPSHOT without openTotal states no board total at all. The
+  // committed one (2026-09-24) holds only `total`, written after the RPC had
+  // already moved the tracked corpus into that key, so reading it as servable
+  // printed 800,000+ over ~713k served. Snapshots now carry openTotal by name.
   const BOARD_TOTAL = FACETS_NEW_SHAPE
     ? boardFacets.openTotal
-    : (typeof boardFacets?.total === "number" ? boardFacets.total : null);
+    : (facetsSource !== "snapshot" && typeof boardFacets?.total === "number" ? boardFacets.total : null);
   // THE TRACKED CORPUS, from the SAME payload. It was a separate fetch reading
   // job_board_meta -> coverage.tracked, which is not currently being written —
   // so it returned null every bake while the number sat unread in the facets
@@ -1126,6 +1131,11 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
     mainEntity: faqs.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
   });
 
+  // WHO IS SELLING, in the crawlable footer too, from the one constant the
+  // app's footer reads (src/config/seller.ts). Empty until the owner sets it,
+  // and then nothing renders: an identity is never invented.
+  const SELLER_ID = D.sellerIdentity();
+  const SELLER_LINE = SELLER_ID ? `<p class="mt-4 text-center text-xs text-muted-foreground">Sold by ${esc(SELLER_ID.legalName)}, ${esc(SELLER_ID.postalAddress)}.</p>` : "";
   // Static shell around page content: simple header/footer so crawlers see
   // site-wide internal links. The SPA replaces all of it on hydration.
   const shell = (contentHtml, lang) => `
@@ -1168,6 +1178,7 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
           <a href="/pay-transparency" class="hover:text-foreground">Pay Transparency Index</a>
           <a href="/agent" class="hover:text-foreground">Apply Agent</a>
         </nav>
+        ${SELLER_LINE}
       </div></footer>
     </div>`;
 
@@ -2993,6 +3004,36 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
         <p class="text-sm text-muted-foreground mb-8">What you would be referring people to: a resume scanner whose full diagnostic is free with no signup, and a job board of verified openings pulled straight from employers' own hiring systems. Sign-up and login are on this page in the app.</p>
         ${cta("See the product first", "Run the free scan yourself before you recommend it — that is the honest order.", "Scan my resume free")}`,
     });
+  }
+
+  // ---- /terms and /privacy (L1-09) ----
+  //
+  // Both fell back to the homepage file for every crawler and agent while
+  // llms.txt said every page was prerendered, and both printed "Last
+  // updated: <today>". Each now has its own page: its title, its literal
+  // last-updated day (src/config/seller.ts), the seller when one is set, its
+  // section headings from the same locale keys the app renders, and the
+  // contact address. The full text renders in the browser at the same URL.
+  {
+    const legal = (path, key, updated, partyLine) => {
+      const L = (D.EN_LOCALE && D.EN_LOCALE[key]) || {};
+      const heads = Object.values(L.sections || {}).filter((h) => typeof h === "string");
+      write({
+        path,
+        title: `${L.title} — Resume Booster`,
+        description: `${L.title} for resumebooster.work, last updated ${updated}: ${heads.slice(0, 4).map((h) => h.replace(/^[\d.]+\s*/, "")).join(", ")} and more.`,
+        content: `
+          <h1 class="text-3xl font-bold mb-3">${esc(L.title)}</h1>
+          <p class="text-sm text-muted-foreground mb-4">Last updated: ${esc(updated)}</p>
+          ${partyLine ? `<p class="text-sm text-muted-foreground mb-4">${partyLine}</p>` : ""}
+          <p class="text-sm text-muted-foreground mb-6">The full text renders at this address in your browser. Its sections:</p>
+          <ol class="text-sm space-y-1">${heads.map((h) => `<li>${esc(h)}</li>`).join("")}</ol>
+          <p class="text-sm text-muted-foreground mt-6">Questions: <a href="mailto:${D.PRIVACY_EMAIL}">${D.PRIVACY_EMAIL}</a>.</p>`,
+        jsonLd: [breadcrumbLd([{ name: "Home", path: "/" }, { name: L.title, path }])],
+      });
+    };
+    legal("/terms", "terms", D.TERMS_LAST_UPDATED, SELLER_ID ? `These Terms are an agreement between you and ${esc(SELLER_ID.legalName)}, ${esc(SELLER_ID.postalAddress)}.` : "");
+    legal("/privacy", "privacy", D.PRIVACY_LAST_UPDATED, SELLER_ID ? `The controller of your personal data is ${esc(SELLER_ID.legalName)}, ${esc(SELLER_ID.postalAddress)}.` : "");
   }
 
   // ---- /pricing, /changelog, /explore ----

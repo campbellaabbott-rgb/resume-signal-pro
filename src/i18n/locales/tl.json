@@ -5254,5 +5254,10 @@
       "requestedTitle": "Na-request ang payout",
       "requestedBody": "Mag-e-email kami para ayusin ang bayad."
     }
+  },
+  "seller": {
+    "soldBy": "Ibinebenta ng {{name}}, {{address}}.",
+    "termsParty": "Ang mga Tuntuning ito ay kasunduan sa pagitan mo at ng {{name}}, {{address}}.",
+    "controller": "Ang controller ng iyong personal na data ay ang {{name}}, {{address}}."
   }
 }

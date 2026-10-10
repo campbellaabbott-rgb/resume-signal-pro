@@ -5254,5 +5254,10 @@
       "requestedTitle": "Auszahlung angefragt",
       "requestedBody": "Wir melden uns per E-Mail, um die Zahlung abzustimmen."
     }
+  },
+  "seller": {
+    "soldBy": "Verkäufer: {{name}}, {{address}}.",
+    "termsParty": "Diese Bedingungen sind eine Vereinbarung zwischen Ihnen und {{name}}, {{address}}.",
+    "controller": "Verantwortlicher für Ihre personenbezogenen Daten ist {{name}}, {{address}}."
   }
 }

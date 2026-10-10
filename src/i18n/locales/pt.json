@@ -5254,5 +5254,10 @@
       "requestedTitle": "Pagamento pedido",
       "requestedBody": "Vamos enviar um e-mail para combinar o pagamento."
     }
+  },
+  "seller": {
+    "soldBy": "Vendido por {{name}}, {{address}}.",
+    "termsParty": "Estes Termos são um acordo entre si e {{name}}, {{address}}.",
+    "controller": "O responsável pelo tratamento dos seus dados pessoais é {{name}}, {{address}}."
   }
 }

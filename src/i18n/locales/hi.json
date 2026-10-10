@@ -5254,5 +5254,10 @@
       "requestedTitle": "पेआउट का अनुरोध किया गया",
       "requestedBody": "भुगतान तय करने के लिए हम आपको ईमेल करेंगे।"
     }
+  },
+  "seller": {
+    "soldBy": "विक्रेता: {{name}}, {{address}}।",
+    "termsParty": "ये शर्तें आपके और {{name}}, {{address}} के बीच एक समझौता हैं।",
+    "controller": "आपके व्यक्तिगत डेटा का नियंत्रक {{name}}, {{address}} है।"
   }
 }
