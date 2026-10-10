@@ -29,6 +29,10 @@
 // any bucket they liked and walk out of the IP allowance.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { computeFit, resumeRoleTerms, scanResume } from "../_shared/fit-score.ts";
+import { spendAddressKey } from "../_shared/model-spend-gate.ts";
+
+// 2026-10-09.1: a reader's allowance is keyed on the platform's address, hourly (S8-062).
+const FN_BUILD = "job-fit.2026-10-09.1";
 
 // x-rb-bucket is deliberately NOT in Allow-Headers: a browser cannot send it,
 // and a server caller does not preflight.
@@ -36,6 +40,8 @@ const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Expose-Headers": "x-fn-build",
+  "x-fn-build": FN_BUILD,
 };
 const json = (b: unknown, status = 200, extra: Record<string, string> = {}) =>
   new Response(JSON.stringify(b), { status, headers: { "Content-Type": "application/json", ...cors, ...extra } });
@@ -44,8 +50,13 @@ const json = (b: unknown, status = 200, extra: Record<string, string> = {}) =>
 const FIT_BATCH_MAX = 20;
 /** Mirrors job-board: computeFit walks the whole dictionary against the text. */
 const FIT_DESC_CHARS = 20_000;
-/** The site's allowance per reader address — unchanged from the job-board copy. */
-const FIT_IP_MAX = 120;
+/**
+ * The site's allowance per reader address, per HOUR: job-board's
+ * FIT_PER_ADDRESS_HOUR (abuse-guards.ts; a test holds the two equal). Hourly
+ * because check_rate_limit sweeps rows older than the shortest caller's window
+ * (60 minutes), so a 1,440-minute row was an hourly one that could be reset.
+ */
+const FIT_PER_ADDRESS_HOUR = 60;
 /**
  * A keyed caller's allowance per API key. The key is already metered by
  * api_key_check (its own per-minute rate and daily quota, both printed on
@@ -58,17 +69,22 @@ const FIT_KEY_MAX = 1000;
 /** check_rate_limit refuses p_ip longer than 45; "key:" + a uuid is 40. */
 const BUCKET_SHAPE = /^key:[A-Za-z0-9-]{1,41}$/;
 
-/** Which daily row this request spends from, and how deep that row is. */
-function bucketFor(req: Request): { id: string; max: number; scope: "key" | "ip" } {
+/**
+ * Which row this request spends from, how deep it is and over what window. A
+ * reader's row is the address the PLATFORM states (cf-connecting-ip, else the
+ * last x-forwarded-for hop), normalised like the board meter (IPv6 by /64),
+ * never the first hop, which the caller writes: each forged hop was a fresh
+ * bucket, and one past 45 characters made the limiter raise (S8-062).
+ */
+function bucketFor(req: Request): { id: string; max: number; scope: "key" | "ip"; windowMinutes: number } {
   const auth = req.headers.get("authorization") ?? "";
   const bearer = auth.toLowerCase().startsWith("bearer ") ? auth.slice(7).trim() : "";
   const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
   const named = req.headers.get("x-rb-bucket")?.trim() ?? "";
   if (named && service && bearer === service && BUCKET_SHAPE.test(named)) {
-    return { id: named, max: FIT_KEY_MAX, scope: "key" };
+    return { id: named, max: FIT_KEY_MAX, scope: "key", windowMinutes: 1440 };
   }
-  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  return { id: clientIp, max: FIT_IP_MAX, scope: "ip" };
+  return { id: spendAddressKey(req.headers), max: FIT_PER_ADDRESS_HOUR, scope: "ip", windowMinutes: 60 };
 }
 
 Deno.serve(async (req) => {
@@ -94,19 +110,26 @@ Deno.serve(async (req) => {
       }
       const client = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", { auth: { persistSession: false } });
       const bucket = bucketFor(req);
-      // Same bucket name as job-board's copy, so a reader's daily allowance is
-      // one allowance however the client reaches the scorer.
-      const { data: allowed } = await client.rpc("check_rate_limit", {
-        p_function: "job-board-fit", p_ip: bucket.id, p_max_requests: bucket.max, p_window_minutes: 1440,
+      // Same bucket name, window and key as job-board's copy (addressAllowance),
+      // so a reader's allowance is one allowance however the client reaches the scorer.
+      const { data: allowed, error: limitErr } = await client.rpc("check_rate_limit", {
+        p_function: "job-board-fit", p_ip: bucket.id, p_max_requests: bucket.max, p_window_minutes: bucket.windowMinutes,
       });
+      // A limiter that cannot answer is a refusal, never a pass (S8-062).
+      if (limitErr || typeof allowed !== "boolean") {
+        return json({ error: "limiter_unavailable", message: "Fit scoring is temporarily unavailable. Please try again in a minute." }, 503, { "Retry-After": "60" });
+      }
       if (allowed === false) {
-        // The window is 24h from the bucket's first call; the RPC does not say
-        // how much of it is left, so the hint is an hour, like the API's own
+        // The window runs from the bucket's first call; the RPC does not say how
+        // much of it is left, so the hint is an hour, like the API's own
         // daily-quota refusal. `rateLimited` stays for bundles that read it.
+        const hourly = bucket.windowMinutes === 60;
         return json({
           error: "rate_limited",
-          message: `Daily fit-scoring allowance of ${bucket.max} reached; it resets 24 hours after the first scored call.`,
-          limit: bucket.max, window: "24h", scope: bucket.scope, rateLimited: true,
+          message: hourly
+            ? `Hourly fit-scoring allowance of ${bucket.max} reached; it resets an hour after the first scored call.`
+            : `Daily fit-scoring allowance of ${bucket.max} reached; it resets 24 hours after the first scored call.`,
+          limit: bucket.max, window: hourly ? "1h" : "24h", scope: bucket.scope, rateLimited: true,
         }, 429, { "Retry-After": "3600" });
       }
 
