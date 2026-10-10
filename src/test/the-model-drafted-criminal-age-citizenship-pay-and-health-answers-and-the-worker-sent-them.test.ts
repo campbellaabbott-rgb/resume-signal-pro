@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  ABOUT_WORK_DONE,
   classifyQuestion,
+  OWN_STATUS,
   PROTECTED_DEMOGRAPHIC,
   PROTECTED_FACTUAL,
+  RESUME_PROMPT,
   shapeModelAnswers,
 } from "../../supabase/functions/_shared/application-questions";
 import { matchQuestion, normaliseLabel, type StandingAnswers } from "../../worker/src/questions/match.js";
@@ -55,6 +58,10 @@ const PROTECTED = [
   "Have you served in the military?",
   "What is your age range?",
   "Which caste do you belong to?",
+  // A résumé prompt that asks about the candidate's own status is still that.
+  "Describe your experience with any criminal convictions you have",
+  "Explain your criminal record",
+  "Describe any medical conditions that may affect your work",
 ];
 
 /** Résumé questions in the same vocabulary. Widening must not swallow them. */
@@ -66,6 +73,14 @@ const STAYS_DRAFTABLE = [
   "How familiar are you with Service Titan?",
   "Tell us about a time you handled a difficult customer",
   "Have you managed a team of at least 15 people?",
+  // Review of the widening: work done in a protected topic's words was made
+  // `factual`, never drafted, and a required one blocked the send.
+  "Describe your experience with immigration law and visa petitions",
+  "Describe your experience administering vaccinations to children",
+  "Tell us about your experience processing payroll and wages",
+  "Describe your experience with drug screening assays in a GLP lab",
+  "What is your experience caring for pregnant patients?",
+  "Describe your experience handling reasonable accommodation requests as an HR partner",
 ];
 
 const MODEL_TEXT = "MODEL-WRITTEN ANSWER";
@@ -100,10 +115,23 @@ describe("résumé questions in the same words are still drafted, in both runtim
   });
 });
 
+describe("a years question in a protected topic's words is a résumé question", () => {
+  // The worker refuses every "how many years" label from the profile, drafted
+  // or not; what matters here is that neither runtime calls it protected.
+  it("the sheet drafts it and the worker does not hold it as protected", () => {
+    const label = "How many years of experience do you have with the US tax code?";
+    expect(classifyQuestion(label, "textarea")).toBe("draftable");
+    expect(workerProtected.isProtectedQuestion(label)).toBe(false);
+  });
+});
+
 describe("the two runtimes hold one list", () => {
   it("the worker's protected patterns are the server's, character for character", () => {
     expect(workerProtected.PROTECTED_FACTUAL.source).toBe(PROTECTED_FACTUAL.source);
     expect(workerProtected.PROTECTED_DEMOGRAPHIC.source).toBe(PROTECTED_DEMOGRAPHIC.source);
+    expect(workerProtected.RESUME_PROMPT.source).toBe(RESUME_PROMPT.source);
+    expect(workerProtected.ABOUT_WORK_DONE.source).toBe(ABOUT_WORK_DONE.source);
+    expect(workerProtected.OWN_STATUS.source).toBe(OWN_STATUS.source);
   });
 });
 
