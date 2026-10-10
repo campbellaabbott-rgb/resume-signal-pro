@@ -21,7 +21,7 @@ Branch `wave3/email-ops`. Verifier: `scripts/verify-deploy.d/75-wave3-email-ops.
 
 | Item | Status | What holds now |
 |---|---|---|
-| S8-019 | fixed | track-ab-event keys the address tier on `clientAddressOr`, refuses metadata over 2048 chars of JSON before any write, and adds a site-wide hourly ceiling (`client_write_allowed`, scope `track-ab-event:global`, 20,000/h); visitor budget 180, address ceiling 1800 (re-derived). **Retention on ab_test_events not added** (owner: pick a period) |
+| S8-019 | fixed | track-ab-event keys the address tier on `clientAddressOr`, refuses metadata over 2048 chars of JSON before any write, and adds a site-wide hourly ceiling (`client_write_allowed`, scope `track-ab-event:global`, 20,000/h); visitor budget 180, address ceiling 1800 (re-derived). The address ceiling is also taken BEFORE the site's hour (`mail_door_take`, door `track-ab-event:address`, bucket = keyed hash of the address), so one address spends at most 1,800 of the 20,000; a full site hour is logged as an error. An IPv6 caller rotating inside its /64 is still one address per call (as it always was for the writer's tier). **Retention on ab_test_events not added** (owner: pick a period) |
 | S8-049 | fixed | layoff half: 20261009142000 prefixes `layoff-partition-refresh` with `SET statement_timeout = '10min'`. Exit-rollup half already fixed by wave 2 (20261008113000, commit 21aa208b) |
 | S8-051 | fixed (aggregate) | 20261009143000 `cron_http_refusals(minutes)` over `net._http_response`; scan-heartbeat check `cron_http_refusals` fails on any 401/403 in the last hour. Per-job attribution needs request-id logging in every cron command (belongs with S8-050's inventory). check-alerts "blind" half: wave 2 L13-48 |
 | S8-052 | fixed | the saved-search digest claims 25 at a time, starts nothing after 100 s, hands back every claimed-but-unstarted row, and never retries a row inside the run that gave it back; the pulse and agent loops hand back what the clock leaves. Handed-back rows are restored when the run ends (restored at once, 25 of them at the NULLS FIRST head stopped every run); a suppressed or mailbox-less owner keeps the claim's stamp and is looked at again a cadence later |
@@ -55,7 +55,7 @@ All `<fn>.2026-10-09.1` (scan-heartbeat body `buildVersion` 2026-10-09.1; track-
 | send-market-pulse | 20261009141000 first (without it a refused confirmation logs "NOT taken back" and still answers 502) |
 | scan-heartbeat | 20261009143000 first, or its new check records a skip |
 | save-lead, agent-pass-status | none |
-| track-ab-event | `client_write_allowed` (20261004110000); if absent the site tier fails open, logged |
+| track-ab-event | `client_write_allowed` (20261004110000) and `mail_door_take` (20261004100000); if either is absent its tier fails open, logged (the writer's address ceiling still holds) |
 | get-analytics | deploy before or with the frontend (old builds show `pricing:25%` as its own variant) |
 | health-check, scheduled-health-probe | see the owner note on the live probe cron |
 

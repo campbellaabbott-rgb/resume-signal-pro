@@ -36,7 +36,8 @@
 //   free. It is the reason the address ceiling can be high.
 //
 //   TIER 2 -- the address ceiling. Keyed on the client address, inside
-//   track_ab_event_optimized (whose limiter, dedup and insert are one call).
+//   track_ab_event_optimized (whose limiter, dedup and insert are one call),
+//   and since 2026-10-10 also counted before the site's hour (ADDRESS_DOOR).
 //   This is the bound on a flood from one address, and the only one: the
 //   trade-off of this design, stated plainly, is that a single address may
 //   insert up to ADDRESS_CEILING_PER_HOUR rows an hour, because that is what
@@ -89,6 +90,22 @@ export const GLOBAL_CEILING_PER_HOUR = 20000;
 export const GLOBAL_BUDGET_SCOPE = "track-ab-event:global";
 export const METADATA_MAX_CHARS = 2048;
 
+// THE ADDRESS IS COUNTED BEFORE THE SITE (review 2026-10-10). The writer's
+// address ceiling ran after the site's hour, so one address minting a fresh
+// visitor id per call spent the site's 20,000 on every call, refused ones
+// included, and blacked out every visitor's funnel for the hour. The same
+// ceiling is now taken first, through mail_door_take (one fixed hour per
+// keyed hash of the address), so an address spends at most
+// ADDRESS_CEILING_PER_HOUR of the site's hour. A failed count fails open:
+// the writer's own address ceiling still holds.
+export const ADDRESS_DOOR = "track-ab-event:address";
+
+/** The address tier's bucket: a 32-hex keyed hash of the address, never the address. */
+export async function addressBucket(address: string, secret: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${secret}:${ADDRESS_DOOR}:${address}`));
+  return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, "0")).join("").slice(0, 32);
+}
+
 /** True when the metadata, as stored, would exceed METADATA_MAX_CHARS. */
 export function metadataTooLarge(metadata: unknown): boolean {
   try {
@@ -121,6 +138,8 @@ export interface TrackEvent {
   visitorId: string;
   metadata: unknown;
   clientIp: string;
+  /** addressBucket(clientIp, secret); without it the address is not counted before the site. */
+  addressBucket?: string;
 }
 
 export interface TrackOutcome {
@@ -129,11 +148,12 @@ export interface TrackOutcome {
 }
 
 /**
- * Record one event under the two-tier budget. The visitor tier is consulted
- * first and, when it refuses, the writer is never called — so a runaway client
- * spends nothing of its address's ceiling. A failure of the visitor tier's
- * own RPC fails OPEN to the writer: the address ceiling still holds, and an
- * analytics event is not worth a hard error.
+ * Record one event: the visitor's budget, then the address's hour, then the
+ * site's hour, then the writer. Each refusal stops the chain, so a runaway
+ * client spends nothing of its address's ceiling and an address spends at most
+ * its ceiling of the site's hour. A failure of a tier's own RPC fails OPEN to
+ * the next: the writer's address ceiling still holds, and an analytics event
+ * is not worth a hard error.
  */
 export async function recordEvent(rpc: Rpc, ev: TrackEvent): Promise<TrackOutcome> {
   const visitor = await rpc("check_rate_limit", {
@@ -148,9 +168,23 @@ export async function recordEvent(rpc: Rpc, ev: TrackEvent): Promise<TrackOutcom
     return { status: "rate_limited_visitor" };
   }
 
-  // The site's hour: one bucket for every caller (per-address equal to the
-  // ceiling, because the writer's own tier is the address bound). A failed
-  // check fails open, like the visitor tier: the address ceiling still holds.
+  if (ev.addressBucket) {
+    const addr = await rpc("mail_door_take", {
+      p_door: ADDRESS_DOOR,
+      p_bucket: ev.addressBucket,
+      p_max: ADDRESS_CEILING_PER_HOUR,
+      p_window_minutes: BUDGET_WINDOW_MINUTES,
+    });
+    if (addr.error) {
+      console.error("[TRACK-AB] address count failed, failing open:", addr.error.message);
+    } else if (addr.data === false) {
+      return { status: "rate_limited_address" };
+    }
+  }
+
+  // The site's hour: one bucket for every caller (client_write_allowed's
+  // per-address bucket sees this function's egress, so it equals the
+  // ceiling; the address was counted just above). A failed check fails open.
   const site = await rpc("client_write_allowed", {
     p_scope: GLOBAL_BUDGET_SCOPE,
     p_per_address: GLOBAL_CEILING_PER_HOUR,

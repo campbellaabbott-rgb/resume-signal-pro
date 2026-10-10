@@ -1,7 +1,7 @@
 // deploy-stamp: 2026-10-09T14:00Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { metadataTooLarge, recordEvent, type Rpc } from "./budget.ts";
+import { addressBucket, metadataTooLarge, recordEvent, type Rpc } from "./budget.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
 
 // Returned in every response so a deploy is provable from the outside: a
@@ -81,7 +81,8 @@ serve(async (req) => {
     // writes that one, and it keyed the address tier, the only flood bound.
     const clientIp = clientAddressOr(req.headers);
 
-    const outcome = await recordEvent(rpc, { testName, variant, eventType, visitorId, metadata, clientIp });
+    const bucket = await addressBucket(clientIp, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
+    const outcome = await recordEvent(rpc, { testName, variant, eventType, visitorId, metadata, clientIp, addressBucket: bucket });
 
     if (outcome.status === 'error') {
       console.error('Error tracking A/B event:', outcome.error);
@@ -89,7 +90,10 @@ serve(async (req) => {
     }
 
     // OPTIMIZATION: Minimal logging for success cases
-    if (outcome.status !== 'recorded') {
+    if (outcome.status === 'rate_limited_global') {
+      // Every visitor's events are refused until the hour rolls over.
+      console.error(`[TRACK-AB] the site's hour is full: ${testName}/${eventType} refused`);
+    } else if (outcome.status !== 'recorded') {
       console.log(`[TRACK-AB] ${outcome.status}: ${testName}/${eventType}`);
     }
 
