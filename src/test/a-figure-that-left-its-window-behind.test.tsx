@@ -53,6 +53,10 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
+
+// A full-page mount per case: the per-test budget comes from mount-budget.ts.
+vi.setConfig(MOUNT_TEST_BUDGET);
 
 const rpc = vi.fn();
 /** THE TILE COUNTS' ONLY SOURCE. They come off the board's own category facet
@@ -108,6 +112,12 @@ const curveRow = (category: string, over: Record<string, unknown> = {}) => ({
  *  serving API's filtered-count ceiling and one below it, so an assertion that
  *  the tiles no longer pass through that ceiling has something to bite on. */
 const FACET = { engineering: 38_412, design: 900 };
+const FACET_LATE_MS = 30;
+/** The face of every field row: the expander's text, count included. */
+const tileFaces = () => [...document.querySelectorAll("li")]
+  .filter((li) => li.querySelector("button[aria-expanded]"))
+  .map((li) => li.querySelector("button[aria-expanded]")?.textContent ?? "")
+  .join(" | ");
 const mount = (cache: Record<string, unknown> = {}, at = "/explore") => {
   invoke.mockImplementation(async (_fn: string, opts?: { body?: Record<string, unknown> }) => {
     const b = (opts?.body ?? {}) as Record<string, unknown>;
@@ -117,6 +127,12 @@ const mount = (cache: Record<string, unknown> = {}, at = "/explore") => {
       // drops is the browse the list exit performed on its way there, which
       // logged a job_board_search_events row on every /explore view.
       if (b.action === "facets") {
+      // THE FACET REPLY LANDS AFTER THE HEADING, ON PURPOSE. The heading
+      // renders before the facet arrives; on a loaded CI runner the reply
+      // came a tick late and a case that waited for the heading read empty
+      // tiles (4 of the 15 red runs in main's last 20, 10-04..10-10). A fixed
+      // delay makes that order deterministic here.
+      await new Promise((r) => setTimeout(r, FACET_LATE_MS));
       return { data: { jobs: [], categories: { ...FACET }, refreshedAt: "2026-09-09T14:07:54.645Z" }, error: null };
     }
     return { data: { jobs: [], total: 0 }, error: null };
@@ -248,7 +264,9 @@ describe("the removals are removals, not hidden sections", () => {
 
   it("the field tiles carry EXACT counts, and the note that contradicted them is gone", async () => {
     mount();
-    await waitFor(() => expect(pageText()).toMatch(/Every field on the board/));
+    // WAIT FOR THE STATE ASSERTED. The heading renders before the facet, so
+    // waiting for it and then reading the tiles read an empty grid.
+    await waitFor(() => expect(tileFaces()).toContain("38,412"), SLOW);
     // THIS ASSERTION INVERTED, AND THE INVERSION IS THE FIX. It used to require
     // the tile to format through the serving API's ceiling, on the argument
     // that a tile must agree with the page it opens. That argument was sound
@@ -263,10 +281,7 @@ describe("the removals are removals, not hidden sections", () => {
     // what the retired ceiling was, once, in prose — that is a sentence about
     // the grid and is exactly where the page's own rule says such a thing
     // belongs. What must never come back is the ceiling ON A TILE FACE.
-    const tiles = [...document.querySelectorAll("li")]
-      .filter((li) => li.querySelector("button[aria-expanded]"))
-      .map((li) => li.querySelector("button[aria-expanded]")?.textContent ?? "")
-      .join(" | ");
+    const tiles = tileFaces();
     expect(tiles, "the tile is capping again — six fields will read alike").not.toContain("10,000+");
     expect(tiles, "the tile above the old ceiling must print exactly").toContain("38,412");
     expect(tiles, "and so must the one below it").toContain("900");
@@ -293,7 +308,8 @@ describe("the removals are removals, not hidden sections", () => {
       transparent: [{ company: "Zillow", company_token: "zillow", open_roles: 267, pay_pct: 97, median_usd_floor: 118400 }],
       salary: [{ category: "data_ai", currency: "USD", n: 4318, median_annual_min: 129750 }],
     });
-    await waitFor(() => expect(pageText()).toMatch(/Every field on the board/));
+    // The rows land 30 ms after the cache reply, so by then the cache is read.
+    await waitFor(() => expect(tileFaces()).toContain("38,412"), SLOW);
     const txt = pageText();
     for (const ghost of [
       "Ghost Band Co", "Rawtitle Ltd", "Trendy Inc", "Newbie Inc", "Schnucks",
@@ -322,7 +338,8 @@ describe("the removals are removals, not hidden sections", () => {
     // warning about a collection this page does not render is a false alarm in
     // a raw internal spelling.
     mount({ stale_parts: ["trending", "segments", "hiring", "salary", "transparent", "role_rows", "chip_coverage", "ageout_basis", "fields", "field_grid", "field_curves", "totals"] });
-    await waitFor(() => expect(pageText()).toMatch(/Every field on the board/));
+    // The rows land 30 ms after the cache reply, so by then the cache is read.
+    await waitFor(() => expect(tileFaces()).toContain("38,412"), SLOW);
     expect(pageText(), "the staleness line named a collection nothing here renders")
       .not.toMatch(/could not be recomputed/);
     // …but a part that DOES back this page still raises the line. repost_index

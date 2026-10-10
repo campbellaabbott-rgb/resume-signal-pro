@@ -24,6 +24,10 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
+
+// A full-page mount per case: the per-test budget comes from mount-budget.ts.
+vi.setConfig(MOUNT_TEST_BUDGET);
 
 const invoke = vi.fn();
 vi.mock("@/integrations/supabase/client", () => ({
@@ -61,11 +65,18 @@ const FIRST_CHUNK_ONLY: Record<string, number> = {
   healthcare: 31_884,
 };
 const ALL_KNOWN_EMPTY: Record<string, number> = { engineering: 0, data_ai: 0, healthcare: 0 };
+const LIST_LATE_MS = 30;
 
 function boardMock(categories: Record<string, number>) {
   invoke.mockImplementation(async (fn: string, opts: { body?: Record<string, unknown> } | undefined) => {
     const body = opts?.body ?? {};
     if (fn === "job-board" && body.action === "list") {
+      // THE REPLY LANDS A TICK LATE, ON PURPOSE. Before it arrives the rail
+      // shows every industry with no number (nothing counted yet), so a case
+      // that read the rail as soon as the request went out read that state
+      // and failed on 6 of the 15 red runs in main's last 20 (10-04..10-10). A fixed
+      // delay makes that order deterministic here.
+      await new Promise((r) => setTimeout(r, LIST_LATE_MS));
       return {
         data: {
           jobs: [], total: 0, totalAllCompanies: 0, companies: [], companiesCount: 0,
@@ -96,7 +107,9 @@ describe("an uncounted industry is not an empty one", () => {
   it("behaviour: a category the count never reached keeps its chip and shows no number", async () => {
     boardMock(FIRST_CHUNK_ONLY);
     render(<MemoryRouter><Jobs /></MemoryRouter>);
-    await waitFor(() => expect(railChips().length).toBeGreaterThan(0));
+    // A NUMBER ON A CHIP, not just chips: before the reply the rail already
+    // shows every industry, uncounted.
+    await waitFor(() => expect(chipText().some((s) => s.includes("31,884"))).toBe(true), SLOW);
     const texts = chipText();
     // Counted and non-zero: chip plus number.
     expect(texts.some((s) => s.includes("Healthcare") && s.includes("31,884"))).toBe(true);
@@ -114,7 +127,9 @@ describe("an uncounted industry is not an empty one", () => {
     // hand-listed set, so a nineteenth category is covered the day it ships.
     boardMock(FIRST_CHUNK_ONLY);
     render(<MemoryRouter><Jobs /></MemoryRouter>);
-    await waitFor(() => expect(railChips().length).toBeGreaterThan(0));
+    // The reply on the rail, not the uncounted rail before it: that one also
+    // holds seventeen chips, so the count below would pass on it unread.
+    await waitFor(() => expect(chipText().some((s) => s.includes("31,884"))).toBe(true), SLOW);
     const zeroed = Object.values(FIRST_CHUNK_ONLY).filter((n) => n === 0).length;
     const counted = Object.keys(FIRST_CHUNK_ONLY).length;
     // 18 categories, minus the ones actually counted as zero.
@@ -127,7 +142,14 @@ describe("an uncounted industry is not an empty one", () => {
     // every chip always" — a measured-empty field is still removed.
     boardMock(ALL_KNOWN_EMPTY);
     render(<MemoryRouter><Jobs /></MemoryRouter>);
-    await waitFor(() => expect(invoke).toHaveBeenCalled());
+    // WAIT FOR THE REPLY TO BE ON THE RAIL, not for the request to leave.
+    // Before the reply every chip is present uncounted, Engineering included,
+    // so its absence beside a surviving uncounted Design is the reply on
+    // screen; an empty rail cannot satisfy this.
+    await waitFor(() => {
+      expect(chipText().some((s) => s.startsWith("Design")), "the uncounted industry vanished too").toBe(true);
+      expect(chipText().some((s) => s.startsWith("Engineering")), "the reply never reached the rail").toBe(false);
+    }, SLOW);
     for (const label of ["Engineering", "Data", "Healthcare"]) {
       expect(chipText().some((s) => s.startsWith(label)), `${label} was counted as 0 and must not show`).toBe(false);
     }

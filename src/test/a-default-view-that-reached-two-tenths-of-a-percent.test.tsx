@@ -55,6 +55,10 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
+
+// A full-page mount per case: the per-test budget comes from mount-budget.ts.
+vi.setConfig(MOUNT_TEST_BUDGET);
 
 const rpc = vi.fn();
 // Declared WITH its parameters, not as () => …. A zero-arg vi.fn gives the
@@ -198,6 +202,11 @@ const facetReply = (categories: Record<string, number> = { ...FIELD_COUNTS, othe
   error: null,
 });
 
+const FACET_LATE_MS = 30;
+/** The face of every field row: the expander's text, count included. */
+const tileFaces = () => [...document.querySelectorAll("li")]
+  .filter((li) => li.querySelector("button[aria-expanded]"))
+  .map((li) => li.querySelector("button[aria-expanded]")?.textContent ?? "");
 const mount = (over: Record<string, unknown> = {}, facet?: Record<string, number> | null) => {
   invoke.mockImplementation(async (_fn: string, opts?: { body?: Record<string, unknown> }) => {
     const b = (opts?.body ?? {}) as Record<string, unknown>;
@@ -207,6 +216,13 @@ const mount = (over: Record<string, unknown> = {}, facet?: Record<string, number
       // drops is the browse the list exit performed on its way there, which
       // logged a job_board_search_events row on every /explore view.
       if (b.action === "facets") {
+      // THE FACET REPLY LANDS AFTER THE HEADING, ON PURPOSE. The section
+      // heading renders before the facet arrives; on a loaded CI runner the
+      // reply came a tick late and a case that waited for the heading read
+      // empty tiles (1 of the 15 red runs in main's last 20, 10-04..10-10). A
+      // fixed delay makes that order deterministic, so a case that waits on
+      // a proxy instead of the state it asserts fails here every time.
+      await new Promise((r) => setTimeout(r, FACET_LATE_MS));
       return facet === null ? { data: null, error: { message: "down" } } : facetReply(facet);
     }
     return { data: { jobs: [], total: 0 }, error: null };
@@ -458,7 +474,9 @@ describe("2. what the default view actually renders, read off the DOM", () => {
 
   it("not one company card is on the entry point", async () => {
     mount();
-    await waitFor(() => expect(visibleText()).toContain("Every field on the board"));
+    // The rows, not the heading: the heading renders before the facet does,
+    // and the destinations counted below live in the rows.
+    await waitFor(() => expect(tileFaces().length).toBe(BOARD_CATEGORY_SLUGS.length + 1), SLOW);
     // The five deleted sections all routed to /jobs/company/{token}. Their
     // absence from the DEFAULT view is the property; the employer check still
     // links there, and it is a different (hidden, second) answer.
@@ -469,11 +487,14 @@ describe("2. what the default view actually renders, read off the DOM", () => {
 
   it("a tile's count is EXACT and uncapped, and the tile with no destination carries none", async () => {
     mount();
-    await waitFor(() => expect(visibleText()).toContain("Every field on the board"));
-    const tiles = [...document.querySelectorAll("li")]
-      .filter((li) => li.querySelector("button[aria-expanded]"))
-      .map((li) => li.querySelector("button[aria-expanded]")?.textContent ?? "");
-    const faces = tiles.join(" | ");
+    // WAIT FOR THE STATE ASSERTED, not for the heading above it: every row
+    // carrying a digit means the facet reply is on screen.
+    await waitFor(() => {
+      const f = tileFaces();
+      expect(f.length).toBe(BOARD_CATEGORY_SLUGS.length + 1);
+      expect(f.every((x) => /\d/.test(x)), "a row has no count yet").toBe(true);
+    }, SLOW);
+    const faces = tileFaces().join(" | ");
     // THIS ASSERTION INVERTED, AND THE INVERSION IS THE FIX. It used to require
     // the tile to format through the serving API's ceiling, on the argument
     // that a tile must agree with the page it opens. That was sound only while
