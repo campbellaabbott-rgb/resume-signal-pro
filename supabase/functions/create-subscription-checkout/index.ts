@@ -101,7 +101,12 @@ serve(async (req) => {
     const policy = policyMetadata(body, env);
     // The buyer's user id ON THE SUBSCRIPTION: the copy checkProByEmail reads
     // to bind pro_subscribers.user_id, on every later refresh.
-    const subscriptionBuyer = { user_id: buyer.id };
+    // The service-start request (EU/UK switch) rides on the plan too: a
+    // withdrawal reads it there to know whether the days provided may be kept.
+    const subscriptionBuyer = {
+      user_id: buyer.id,
+      ...(policy.service_start_consent ? { service_start_consent: policy.service_start_consent } : {}),
+    };
     const session = await stripe.checkout.sessions.create({
       ...(standing.reuseCustomerId ? { customer: standing.reuseCustomerId } : { customer_email: email }),
       mode: "subscription",
@@ -123,9 +128,7 @@ serve(async (req) => {
       allow_promotion_codes: true,
       // THE BUYER, three ways (the session, its metadata, the subscription).
       client_reference_id: buyer.id,
-      // The service-start request rides on the plan too: a withdrawal reads
-      // it there to know whether the days provided may be kept.
-      subscription_data: { metadata: { ...subscriptionBuyer, ...(policy.service_start_consent ? { service_start_consent: policy.service_start_consent } : {}) } },
+      subscription_data: { metadata: subscriptionBuyer },
       // The session id comes back so the account page can confirm the plan
       // before the webhook has refreshed the cache (S8-055).
       success_url: `${origin}/account?pro=success&session_id={CHECKOUT_SESSION_ID}`,

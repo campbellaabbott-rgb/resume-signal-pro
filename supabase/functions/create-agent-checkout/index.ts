@@ -119,7 +119,12 @@ serve(async (req) => {
     const policy = policyMetadata(body, env);
     // The buyer's user id ON THE SUBSCRIPTION — the copy checkAgentByEmail
     // reads to bind agent_subscribers.user_id, on every later refresh.
-    const subscriptionBuyer = { user_id: user.id };
+    // The service-start request (EU/UK switch) rides on the plan too: a
+    // withdrawal reads it there to know whether the days provided may be kept.
+    const subscriptionBuyer = {
+      user_id: user.id,
+      ...(policy.service_start_consent ? { service_start_consent: policy.service_start_consent } : {}),
+    };
     const session = await stripe.checkout.sessions.create({
       ...(standing.reuseCustomerId ? { customer: standing.reuseCustomerId } : { customer_email: email }),
       // THE BUYER, three ways: the session, its metadata, and the
@@ -151,8 +156,7 @@ serve(async (req) => {
       // (_shared/pro-standing.ts).
       subscription_data: {
         ...(trialOffered ? { trial_period_days: AGENT_TRIAL_DAYS } : {}),
-        // The service-start request rides on the plan for a withdrawal to read.
-        metadata: { ...subscriptionBuyer, ...(policy.service_start_consent ? { service_start_consent: policy.service_start_consent } : {}) },
+        metadata: subscriptionBuyer,
       },
       // LAND THEM WHERE THE AGENT IS SET UP, NOT ON THE ACCOUNT PAGE.
       //
