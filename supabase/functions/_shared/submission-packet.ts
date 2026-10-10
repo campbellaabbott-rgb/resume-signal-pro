@@ -15,6 +15,7 @@
 // share of applications it can finish alone is then a measurement, not a policy
 // setting — and it is high, because most fields are identity and a résumé.
 import { classifyQuestion, type QuestionClass } from "./application-questions.ts";
+import { coverage } from "./work-countries.ts";
 
 export type PacketQuestion = {
   label: string;
@@ -31,6 +32,9 @@ export type StandingAnswers = {
   salaryExpectation?: string;
   earliestStart?: string;
   willingToRelocate?: boolean | null;
+  /** Countries the candidate EXPLICITLY said they may work in (codes). The
+   *  boolean speaks only for the profile's own country, as in the worker. */
+  workAuthorizedCountries?: readonly string[];
   /** Demographic/EEO: honoured as given, defaulting to declining to answer. */
   shareDemographics?: boolean;
 };
@@ -206,23 +210,31 @@ const COVER_LETTER = /cover\s*-?\s*letter|motivation(al)?\s+letter|letter\s+of\s
 // is not a smaller sin than inventing experience; a wrong sponsorship answer can
 // void an application outright. They come from what the candidate configured, or
 // they block.
-function standingValue(label: string, s: StandingAnswers): string | null {
+//
+// WHICH COUNTRY, as the worker asks it (S8-007): the boolean speaks for the
+// profile's own country and the countries the candidate listed, nothing more.
+// The sheet answered "authorized to work in the U.S.?" Yes for a UK candidate
+// while the worker refused the same box; work-countries.ts is the worker's
+// module, copied byte for byte.
+function standingValue(label: string, s: StandingAnswers, country: string): string | null {
   const l = label.toLowerCase();
   const yn = (b: boolean | null | undefined) => (b === true ? "Yes" : b === false ? "No" : null);
+  const covered = (orMeansAny: boolean) =>
+    coverage(label, s.workAuthorizedCountries ?? [], country, { orMeansAny }).kind !== "not-covered";
   const sense = sponsorshipSense(label);
   if (sense) {
     // "Authorized to work ... WITHOUT sponsorship?" asks the opposite question
     // to "Will you require sponsorship?", and answering both with the same
     // boolean told an authorised candidate's review sheet to say No.
     if (s.requiresSponsorship === null || s.requiresSponsorship === undefined) return null;
-    if (sense === "unread") return null;
+    if (sense === "unread" || !covered(false)) return null;
     return yn(sense === "inverted" ? !s.requiresSponsorship : s.requiresSponsorship);
   }
   // A sponsor word that is not a sponsorship question ("are you currently
   // sponsored?", a résumé prompt) is the candidate's, never the boolean's.
   if (/sponsor/.test(l)) return null;
   if (/authori[sz]ed|legally able|right to work|work permit|eligible to work/.test(l)) {
-    return yn(s.workAuthorized);
+    return covered(true) ? yn(s.workAuthorized) : null;
   }
   // Current pay first, and never answered: null blocks a required one.
   if (SALARY_CURRENT.test(l)) return null;
@@ -331,7 +343,7 @@ export function buildPacket(opts: {
     }
 
     if (cls === "factual") {
-      const v = standingValue(label, standing);
+      const v = standingValue(label, standing, t(profile.country));
       if (v !== null) fields.push({ key: label, value: v, source: "standing" });
       else if (q.required) {
         blockers.push({

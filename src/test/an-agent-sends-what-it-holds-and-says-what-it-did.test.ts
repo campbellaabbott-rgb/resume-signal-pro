@@ -79,7 +79,8 @@ describe("1.11 — a drafted answer reaches the packet in the shape the packet r
 
 describe("L9-05 / 2.32 — the packet builder fills only what it holds", () => {
   const standing = { workAuthorized: true, requiresSponsorship: false, salaryExpectation: "$95,000", earliestStart: "2026-11-02" };
-  const profile = { fullName: "Ana Maria Diaz", email: "a@example.com", resumeFileUrl: "3f1c-uid/resume-1696.pdf" };
+  // A US candidate: the sheet's work questions read their country (2026-10-10), as the worker's do.
+  const profile = { fullName: "Ana Maria Diaz", email: "a@example.com", resumeFileUrl: "3f1c-uid/resume-1696.pdf", country: "United States" };
   const fill = (label: string, fieldType?: string, coverNote?: { value: string; tailored: boolean }) => {
     const p = buildPacket({ questions: [{ label, required: true, fieldType }], profile, standing, drafted: [], automationTier: "auto", coverNote });
     return { value: p.fields.find((f) => f.key === label)?.value ?? null, blocked: p.blockers.length > 0 };

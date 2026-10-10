@@ -241,8 +241,10 @@ const RE_SALARY_CURRENT =
 const RE_SALARY_EXPECTED =
   /\b(desired|expected|expectation|expectations|required|requirement|target|minimum|asking|anticipated)\b[^?]{0,40}\b(salary|compensation|package|ctc|cost\s+to\s+company|remuneration|pay|wage)|\b(desired|expected|required|minimum|asking)\s+(?:(?:hourly|daily|day)\s+)?rate\b|\b(?:hourly|daily|day)\s+rate\b[^?]{0,30}\b(expectation|expectations|requirement|requirements|range|desired|expected)\b|\b(salary|compensation|package|ctc|remuneration|pay)\b[^?]{0,30}\b(expectation|expectations|requirement|requirements|range|desired|expected)\b/i;
 
+// "legally able to work in the United States" is the sheet's work question
+// too; read as no question here, it went to the drafted-answer path.
 const RE_WORK_AUTH =
-  /legally\s+(authori[sz]ed|entitled|eligible|permitted)|(authori[sz]ed|eligible|entitled|permitted)\s+to\s+work|work\s+authori[sz]ation|right\s+to\s+work|permission\s+to\s+work/i;
+  /legally\s+(authori[sz]ed|entitled|eligible|permitted)|legally\s+(?:able|allowed)\s+to\s+(?:live\s+and\s+)?work|(authori[sz]ed|eligible|entitled|permitted)\s+to\s+work|work\s+authori[sz]ation|right\s+to\s+work|permission\s+to\s+work/i;
 
 // ── SPONSORSHIP QUESTION: one rule, byte-identical in worker/src/questions/match.ts and supabase/functions/_shared/submission-packet.ts ──
 // Which labels ask about sponsorship, and which way round. "Will you require

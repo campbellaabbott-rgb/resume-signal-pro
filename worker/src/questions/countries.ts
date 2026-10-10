@@ -24,6 +24,11 @@
  * "Are you authorised to work in the Republic of Ireland" becomes an answer
  * about Ireland when the candidate said Northern Ireland — so the aliases here
  * are exact tokens, not substrings of arbitrary words.
+ *
+ * COPIED BYTE FOR BYTE to supabase/functions/_shared/work-countries.ts, where
+ * the review sheet asks the same question of the same labels; the worker
+ * builds from worker/src alone, so the two cannot share one file. A test holds
+ * them identical: change both, or neither.
  */
 
 /** Canonical code -> the ways forms and people actually write it. */
