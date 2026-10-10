@@ -149,7 +149,9 @@ describe("/market-pulse/confirm: subscribed only by the person's click", () => {
     fireEvent.click(button);
     await waitFor(() => expect(screen.getByText(/You're subscribed/)).toBeInTheDocument());
     expect(invoke).toHaveBeenCalledWith("send-market-pulse", { body: { action: "confirm", token: TOKEN } });
-    expect(window.location.hash).toBe("");
+    // The fragment is cleared by a passive effect after the success render,
+    // so it is waited for; read once, it raced that effect (CI run 37707420206).
+    await waitFor(() => expect(window.location.hash).toBe(""));
   });
 
   it("an expired or spent link is named as such, and no button can resend it", async () => {
@@ -180,7 +182,8 @@ describe("/fix-plan/confirm: the sequence starts only on the person's click", ()
     fireEvent.click(button);
     await waitFor(() => expect(screen.getByText(/The first email arrives in two days/)).toBeInTheDocument());
     expect(invoke).toHaveBeenCalledWith("send-scan-report", { body: { action: "confirm-drip", token: SIGNED } });
-    expect(window.location.hash).toBe("");
+    // Cleared by a passive effect after the success render: waited for.
+    await waitFor(() => expect(window.location.hash).toBe(""));
   });
 
   it("a sequence already running this month, or an address that opted out, is said plainly", async () => {
