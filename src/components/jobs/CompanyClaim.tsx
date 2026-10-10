@@ -24,6 +24,10 @@ export function CompanyClaim({ companyToken, companyName }: Props) {
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  // The link's token, held for a click (S8-097): a mail scanner that runs
+  // the page's script must not complete a stranger's claim.
+  const [pendingVerify, setPendingVerify] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -44,7 +48,10 @@ export function CompanyClaim({ companyToken, companyName }: Props) {
     return () => { cancelled = true; };
   }, [companyToken]);
 
-  // Email-link landing: /jobs/company/:token?claim_verify=<uuid>
+  // Email-link landing: /jobs/company/:token?claim_verify=<uuid>. The token
+  // is read and taken out of the address bar; nothing is sent until the
+  // visitor presses the confirm button (every other confirmation in this
+  // lane works the same way, because mail scanners open links).
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const token = params.get("claim_verify");
@@ -53,26 +60,49 @@ export function CompanyClaim({ companyToken, companyName }: Props) {
     const qs = params.toString();
     // Keeps the entry's state: the board stamps its own entries (see Jobs).
     window.history.replaceState(window.history.state, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
-    (async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke("company-claim", {
-          body: { action: "verify", token },
-        });
-        const status = (data as { status?: string } | null)?.status;
-        if (!error && status === "verified") {
-          setVerified(true);
-          toast({ title: t("jobsPage.claim.verifyOk", "Claim verified — {{company}} now shows as a verified employer.", { company: companyName }) });
-        } else if (!error && status === "email_confirmed") {
-          toast({ title: t("jobsPage.claim.verifyPending", "Email confirmed. Your domain doesn't obviously match this company, so we'll review the claim by hand — usually within a day.") });
-        } else {
-          toast({ title: t("jobsPage.claim.verifyFail", "That verification link didn't work — it may be stale. Request a fresh one below."), variant: "destructive" });
-        }
-      } catch {
+    setPendingVerify(token);
+  }, [companyToken]);
+
+  const confirmVerify = async () => {
+    if (!pendingVerify || confirming) return;
+    setConfirming(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("company-claim", {
+        body: { action: "verify", token: pendingVerify },
+      });
+      const status = (data as { status?: string } | null)?.status;
+      if (!error && status === "verified") {
+        setVerified(true);
+        toast({ title: t("jobsPage.claim.verifyOk", "Claim verified — {{company}} now shows as a verified employer.", { company: companyName }) });
+      } else if (!error && status === "email_confirmed") {
+        toast({ title: t("jobsPage.claim.verifyPending", "Email confirmed. Your domain doesn't obviously match this company, so we'll review the claim by hand — usually within a day.") });
+      } else {
         toast({ title: t("jobsPage.claim.verifyFail", "That verification link didn't work — it may be stale. Request a fresh one below."), variant: "destructive" });
       }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [companyToken]);
+    } catch {
+      toast({ title: t("jobsPage.claim.verifyFail", "That verification link didn't work — it may be stale. Request a fresh one below."), variant: "destructive" });
+    } finally {
+      setConfirming(false);
+      setPendingVerify(null);
+    }
+  };
+
+  const confirmBox = pendingVerify ? (
+    <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 max-w-md mb-2">
+      <p className="text-[12px] text-foreground mb-2">
+        {t("jobsPage.claim.confirmPrompt", "You opened a link to confirm your claim of {{company}}. Press the button to finish.", { company: companyName })}
+      </p>
+      <button
+        type="button"
+        onClick={confirmVerify}
+        disabled={confirming}
+        className="inline-flex items-center gap-1.5 rounded-lg bg-primary text-primary-foreground text-[12px] font-medium px-3 py-1.5 disabled:opacity-60"
+      >
+        {confirming ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BadgeCheck className="w-3.5 h-3.5" />}
+        {t("jobsPage.claim.confirmButton", "Confirm my claim")}
+      </button>
+    </div>
+  ) : null;
 
   const submit = async () => {
     if (sending || !email.trim()) return;
@@ -98,6 +128,8 @@ export function CompanyClaim({ companyToken, companyName }: Props) {
 
   if (verified) {
     return (
+      <>
+      {confirmBox}
       <div className="flex flex-wrap items-center gap-2 mb-2">
         <span
           className="inline-flex items-center gap-1.5 rounded-full bg-success/10 border border-success/30 text-success text-[12px] font-medium px-2.5 py-1"
@@ -117,11 +149,13 @@ export function CompanyClaim({ companyToken, companyName }: Props) {
           </a>
         )}
       </div>
+      </>
     );
   }
 
   return (
     <div className="mb-2">
+      {confirmBox}
       {!open ? (
         <button
           type="button"
@@ -133,7 +167,7 @@ export function CompanyClaim({ companyToken, companyName }: Props) {
         </button>
       ) : sent ? (
         <p className="text-[12px] text-muted-foreground max-w-md">
-          {t("jobsPage.claim.sentNote", "Check your inbox — we sent a verification link to {{email}}. Click it and the claim is done.", { email: email.trim() })}
+          {t("jobsPage.claim.sentNote", "Check your inbox — we sent a verification link to {{email}}. Open it and press Confirm to finish the claim.", { email: email.trim() })}
         </p>
       ) : (
         <div className="rounded-xl border border-border bg-card p-3 max-w-md">
