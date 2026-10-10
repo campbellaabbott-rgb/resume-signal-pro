@@ -67,6 +67,7 @@ import { rememberPreStoredResume, forgetPreStoredResume } from "@/hooks/use-prod
 import { supabase } from "@/integrations/supabase/client";
 import { checkoutContext, getVisitorId } from "@/lib/track-transport";
 import { resilientCallers, callEdgeFunctionWithRetry, scanFailureKind } from "@/lib/resilient-edge-function";
+import { prepareJobAnalysisScan } from "@/lib/job-analysis-scan";
 import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
 import { 
   cleanupExpiredResumeData, 
@@ -1430,12 +1431,18 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
     const targetJob = uploadedJobs.find(j => j.title === jobTitle && j.company === jobCompany);
     const jobDesc = targetJob?.description || `${jobTitle} at ${jobCompany}`;
 
+    // The job becomes the scan's job description everywhere a purchase reads
+    // it, before the scan, with the market and context the primary sends.
+    const jobScan = prepareJobAnalysisScan(
+      { resumeText: contentToAnalyze, linkedInText, jobDescription: jobDesc, targetCountry, userContext: scanContext },
+      { setJobDescriptionText, persistScanInputs },
+    );
+
     setIsFreeScanLoading(true);
 
     try {
       const scanResult = await resilientCallers.freeKeywordScan({
-        resumeText: contentToAnalyze,
-        jobDescriptionText: jobDesc,
+        ...jobScan,
         honeypot,
         creditSessions: creditSessions(),
       });
