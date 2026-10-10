@@ -1593,7 +1593,7 @@
       "footnote": "Kumpletong package: ATS-optimized na resume + personalized na cover letter na handang ipadala sa mga employer"
     },
     "emailCapture": {
-      "joinMessage": "Sumali sa mahigit 10,000 naghahanap ng trabaho na tumatanggap ng lingguhang mga tip para talunin ang ATS at makakuha ng mga interview.",
+      "joinMessage": "Sumali sa mga naghahanap ng trabaho na tumatanggap ng lingguhang mga tip para talunin ang ATS at makakuha ng mga interview.",
       "noSpam": "Walang spam. Mag-unsubscribe anumang oras."
     },
     "coverLetterCta": {
@@ -1628,7 +1628,7 @@
       "emailSend": "Ipadala",
       "emailSent": "Naipadala! Tingnan ang iyong inbox.",
       "emailPrivacy": "Tanging mga resulta ng pagsusuri lang ang ipinapadala — hindi kailanman ang iyong resume. Walang spam.",
-      "pulseOptIn": "Padalhan din ako ng buwanang market pulse: ang mga tumataas na keyword sa aking industriya, may libreng rescan link. Mag-unsubscribe anumang oras.",
+      "pulseOptIn": "Padalhan din ako ng buwanang market pulse: ang mga pangunahing keyword para sa aking industriya mula sa aming keyword guide, may libreng rescan link. Mag-unsubscribe anumang oras.",
       "pulseConfirmSent": "Kung hindi pa nakukumpirma ng address na ito ang buwanang market pulse, pinadalhan namin ito ng confirmation link. Magsisimula lang ang pulse kapag na-click na ang link na iyon.",
       "pulseNotCovered": "Hindi pa sakop ng buwanang market pulse ang iyong larangan, kaya walang ipinadalang kumpirmasyon.",
       "dripConfirmSent": "May button ang email ng iyong report para simulan ang mga email ng fix plan. Walang ibang ipapadala hangga't hindi mo ito pinipindot.",
@@ -3877,7 +3877,9 @@
       "policyLink": "Bakit?",
       "emailPlaceholder": "ikaw@kumpanya.com",
       "send": "Ipadala ang link",
-      "sentNote": "Tingnan ang iyong inbox — nagpadala kami ng verification link sa {{email}}. I-click ito at tapos na ang claim.",
+      "sentNote": "Tingnan ang iyong inbox — nagpadala kami ng verification link sa {{email}}. Buksan ito at pindutin ang Kumpirmahin para tapusin ang claim.",
+      "confirmPrompt": "Binuksan mo ang link para kumpirmahin ang iyong claim sa {{company}}. Pindutin ang button para tapusin.",
+      "confirmButton": "Kumpirmahin ang aking claim",
       "sendFail": "Hindi maipadala ang verification email — pakisubukan muli.",
       "verifiedChip": "Beripikadong employer",
       "verifiedTip": "Isang contact sa kumpanyang ito ang nag-verify ng work email sa domain nito. Pagkakakilanlan lang ang kinukumpirma ng beripikasyon — hinding-hindi nito binabago ang hiring data na ipinapakita rito.",

@@ -1593,7 +1593,7 @@
       "footnote": "Pacote completo: currículo otimizado para ATS + carta de apresentação personalizada pronta para enviar aos empregadores"
     },
     "emailCapture": {
-      "joinMessage": "Junte-se a mais de 10.000 buscadores de emprego que recebem dicas semanais para superar o ATS e conseguir entrevistas.",
+      "joinMessage": "Junte-se a buscadores de emprego que recebem dicas semanais para superar o ATS e conseguir entrevistas.",
       "noSpam": "Sem spam. Cancele a inscrição a qualquer momento."
     },
     "coverLetterCta": {
@@ -1628,7 +1628,7 @@
       "emailSend": "Enviar",
       "emailSent": "Enviado! Verifique sua caixa de entrada.",
       "emailPrivacy": "Apenas os resultados da análise são enviados — nunca seu currículo. Sem spam.",
-      "pulseOptIn": "Envie-me também um pulso de mercado mensal: as palavras-chave em alta no meu setor, com um link de reescaneamento grátis. Cancele quando quiser.",
+      "pulseOptIn": "Envie-me também um pulso de mercado mensal: as principais palavras-chave do meu setor segundo o nosso guia de palavras-chave, com um link de reescaneamento grátis. Cancele quando quiser.",
       "pulseConfirmSent": "Se este endereço ainda não confirmou o pulso mensal do mercado, enviamos a ele um link de confirmação. O pulso só começa depois que esse link for clicado.",
       "pulseNotCovered": "O pulso mensal do mercado ainda não cobre sua área, então nenhuma confirmação foi enviada.",
       "dripConfirmSent": "O e-mail do seu relatório tem um botão para iniciar os e-mails do plano de ajustes. Nada mais é enviado até você clicar nele.",
@@ -3877,7 +3877,9 @@
       "policyLink": "Por quê?",
       "emailPlaceholder": "voce@empresa.com",
       "send": "Enviar link",
-      "sentNote": "Confira sua caixa de entrada — enviamos um link de verificação para {{email}}. Clique nele e a reivindicação está feita.",
+      "sentNote": "Confira sua caixa de entrada — enviamos um link de verificação para {{email}}. Abra-o e pressione Confirmar para concluir a reivindicação.",
+      "confirmPrompt": "Você abriu um link para confirmar sua reivindicação de {{company}}. Pressione o botão para concluir.",
+      "confirmButton": "Confirmar minha reivindicação",
       "sendFail": "Não foi possível enviar o e-mail de verificação — tente novamente.",
       "verifiedChip": "Empregador verificado",
       "verifiedTip": "Um contato desta empresa verificou um e-mail de trabalho no domínio dela. A verificação confirma identidade apenas — nunca altera os dados de contratação mostrados aqui.",

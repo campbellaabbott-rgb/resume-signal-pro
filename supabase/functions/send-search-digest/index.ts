@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-09T13:00Z
+// deploy-stamp: 2026-10-09T14:00Z
 // Feature 4 — weekly saved-search digest. Each opted-in saved search gets an
 // email counting how many NEW postings match it since the search's last
 // digest, with the freshest handful listed and a link back to the live board.
@@ -29,6 +29,7 @@ import { sameSecret } from "../_shared/service-caller.ts";
 import { oneClickHeaders, oneClickUrl, redirectToConfirm, unsubscribeParams, unsubscribePageUrl } from "../_shared/unsubscribe-link.ts";
 import { sellerFooterHtml } from "../_shared/seller.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -46,7 +47,19 @@ const SITE_URL = "https://resumebooster.work";
 // email a day, drift-proof against cron jitter); weekly keeps the old rhythm.
 // These floors live in search_digest_claim_batch (20261004100000), where the
 // claim is atomic: daily = 20 hours, anything else = 6 days.
-const CLAIM_BATCH = 400;
+// THE RUN HAS A CLOCK (S8-052). Claiming 400 at once and working them one by
+// one ran past the ~150 s isolate limit, and every claimed row left behind
+// lost its window (and its first-match mail, which needs a NULL stamp). Now
+// rows are claimed 25 at a time, nothing new starts after 100 s, and a row
+// claimed but not started is handed back.
+// A HANDED-BACK ROW IS RESTORED WHEN THE RUN ENDS (review 2026-10-10). The
+// claim orders NULLS FIRST and hands back any due row: restored at once, a
+// skipped row was due again before the next claim, which returned the same
+// rows, and 25 of them at the head stopped every run there. A suppressed or
+// mailbox-less owner keeps the claim's stamp and is looked at a cadence later.
+const CLAIM_BATCH = 25;
+const RUN_MAX = 400;
+const RUN_BUDGET_MS = 100_000;
 /** Rows read per search: the window's newest, deduped against what was already mailed. */
 const CANDIDATES = 60;
 
@@ -163,11 +176,40 @@ Deno.serve(async (req) => {
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
     const readerProof = await boardReaderHeader(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
 
+    const startedAt = Date.now();
+    const overBudget = () => Date.now() - startedAt >= RUN_BUDGET_MS;
+    /** Claims to hand back, by id, with the stamp each had: restored when the run ends. */
+    const toGiveBack = new Map<string, string | null>();
+    /** Hand a claim back: due again next run, as if never claimed (written by restoreClaims). */
+    const giveBack = (s: { id: string; digest_last_sent_at: string | null }) => {
+      if (!toGiveBack.has(s.id)) toGiveBack.set(s.id, s.digest_last_sent_at);
+      return Promise.resolve();
+    };
+    const restoreClaims = async () => {
+      const byStamp = new Map<string | null, string[]>();
+      for (const [id, prev] of toGiveBack) byStamp.set(prev, [...(byStamp.get(prev) ?? []), id]);
+      toGiveBack.clear();
+      await Promise.all([...byStamp].map(async ([prev, ids]) => {
+        for (let i = 0; i < ids.length; i += 100) {
+          const { error: gbErr } = await supabase.from("user_job_searches").update({ digest_last_sent_at: prev }).in("id", ids.slice(i, i + 100));
+          if (gbErr) console.error(`[SEARCH-DIGEST] ${ids.length} claim(s) not handed back:`, gbErr.message);
+        }
+      }));
+    };
+
+    // Suppressed addresses (global unsubscribes) are honored too.
+    const { data: suppressedRows } = await supabase.from("suppressed_emails").select("email");
+    const suppressed = new Set((suppressedRows ?? []).map((r) => (r.email as string).toLowerCase()));
+
+    let sent = 0, skipped = 0, considered = 0, handedBack = 0;
+    const seen = new Set<string>();
+    try {
+    claiming: while (considered < RUN_MAX && !overBudget()) {
     // THE CLAIM IS THE SELECTION. Each row comes back already stamped (its
     // own cadence decided in SQL), with the stamp it had before, which is the
     // "new since" window and what a give-back restores.
-    const { data: claimed, error } = await supabase.rpc("search_digest_claim_batch", { p_limit: CLAIM_BATCH });
-    if (error) throw error;
+    const { data: claimed, error } = await supabase.rpc("search_digest_claim_batch", { p_limit: Math.min(CLAIM_BATCH, RUN_MAX - considered) });
+    if (error) { if (considered === 0) throw error; console.error("[SEARCH-DIGEST] a later claim failed:", error.message); break; }
     const searches = ((claimed ?? []) as Array<{
       sd_id: string; sd_user_id: string; sd_name: string; sd_params: unknown;
       sd_prev_sent_at: string | null; sd_fit_threshold: number | null; sd_cadence: string | null;
@@ -175,23 +217,30 @@ Deno.serve(async (req) => {
       id: r.sd_id, user_id: r.sd_user_id, name: r.sd_name, params: r.sd_params,
       digest_last_sent_at: r.sd_prev_sent_at, fit_threshold: r.sd_fit_threshold, digest_cadence: r.sd_cadence,
     }));
-    /** Hand a claim back: the search is due again next run, as if never claimed. */
-    const giveBack = (s: { id: string; digest_last_sent_at: string | null }) =>
-      supabase.from("user_job_searches").update({ digest_last_sent_at: s.digest_last_sent_at }).eq("id", s.id);
-
-    // Suppressed addresses (global unsubscribes) are honored too.
-    const { data: suppressedRows } = await supabase.from("suppressed_emails").select("email");
-    const suppressed = new Set((suppressedRows ?? []).map((r) => (r.email as string).toLowerCase()));
-
-    let sent = 0, skipped = 0;
-    for (const s of searches ?? []) {
+    // A row this run already took is never worked twice: should a claim
+    // return one, it goes back with the rest when the run ends.
+    const fresh = searches.filter((x) => !seen.has(x.id));
+    for (const again of searches) if (seen.has(again.id)) await giveBack(again);
+    if (fresh.length === 0) break;
+    for (const x of fresh) seen.add(x.id);
+    considered += fresh.length;
+    for (let i = 0; i < fresh.length; i++) {
+      const s = fresh[i];
+      if (overBudget()) {
+        // Claimed, never started: back to due, window intact.
+        for (const rest of fresh.slice(i)) { await giveBack(rest); handedBack++; }
+        break claiming;
+      }
       const p = (s.params ?? {}) as SearchParams;
       const since = (s.digest_last_sent_at as string | null) ?? new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
 
       // Resolve the recipient email (service-role admin lookup by user_id).
-      const { data: userRes } = await supabase.auth.admin.getUserById(s.user_id as string);
+      // A lookup that failed is passing (the claim goes back); an owner with
+      // no mailbox or a suppressed one keeps the claim's stamp.
+      const { data: userRes, error: userErr } = await supabase.auth.admin.getUserById(s.user_id as string);
       const email = userRes?.user?.email?.toLowerCase();
-      if (!email || suppressed.has(email)) { await giveBack(s); skipped++; continue; }
+      if (userErr && !email) { await giveBack(s); skipped++; continue; }
+      if (!email || suppressed.has(email)) { skipped++; continue; }
 
       // Count NEW matches since last digest, and pull the freshest few.
       const callBoard = (extra: Record<string, unknown>) =>
@@ -424,7 +473,7 @@ Deno.serve(async (req) => {
           : strongMode
             ? `${shownCount} new strong ${newCount === 1 ? "match" : "matches"} for you — ${s.name}`
             : `${shownCount} new ${catLabel} ${newCount === 1 ? "match" : "matches"} — ${s.name}`;
-        const { error: sendErr } = await resend.emails.send({ from: "Resume Booster <reports@resumebooster.work>", to: email, subject, html, headers: unsubHeaders });
+        const { error: sendErr } = await resend.emails.send({ from: "Resume Booster <reports@resumebooster.work>", to: email, reply_to: CUSTOMER_REPLY_TO, subject, html, headers: unsubHeaders });
         if (sendErr) throw new Error(String((sendErr as { message?: string }).message ?? "send refused"));
         sent++;
         // Remembered so a re-dated or re-discovered posting is not mailed
@@ -440,7 +489,11 @@ Deno.serve(async (req) => {
         skipped++;
       }
     }
-    return new Response(JSON.stringify({ ok: true, sent, skipped, considered: (searches ?? []).length }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    } finally {
+      await restoreClaims();
+    }
+    return new Response(JSON.stringify({ ok: true, sent, skipped, considered, handedBack }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("[SEARCH-DIGEST] error:", e instanceof Error ? e.message : e);
     return new Response(JSON.stringify({ error: "digest run failed" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });

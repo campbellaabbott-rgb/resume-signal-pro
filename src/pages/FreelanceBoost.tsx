@@ -182,14 +182,22 @@ export default function FreelanceBoost() {
     if (!sessionId || autoRunRef.current) return;
     autoRunRef.current = true;
     void (async () => {
-      // The result already made for this purchase, read back rather than
-      // made again (S8-016).
+      // ALREADY GENERATED UNDER THIS PURCHASE: the saved section, on any
+      // device (the purchase email's button opens this link). It used to ask
+      // a buyer on a new device for the intake again and generate a second
+      // time (commercial-readiness 2026-10-08, item 3; sweep S8-016).
       try {
         const { data } = await supabase.functions.invoke("recover-purchase", { body: { sessionId } });
-        const hit = ((data as { purchases?: Array<{ productType?: string; generatedContent?: unknown }> } | null)?.purchases ?? [])
-          .find((p) => String(p.productType ?? "").startsWith("freelance") && p.generatedContent);
-        if (hit) { setResult(hit.generatedContent as BoostResult); return; }
-      } catch { /* nothing saved, or unreadable: generate */ }
+        const savedSection = data?.found
+          ? (data.purchases as Array<{ productType?: string; generatedContent?: unknown }> | undefined)
+              ?.find((p) => (p.productType === "freelance_boost" || p.productType === "freelance_transition_pro") && p.generatedContent)
+              ?.generatedContent
+          : null;
+        if (savedSection) {
+          setResult(savedSection as BoostResult);
+          return;
+        }
+      } catch { /* no saved copy reachable: generate as before */ }
       if (draftIsComplete(saved)) {
         void generate(saved);
       } else {

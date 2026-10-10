@@ -23,7 +23,10 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
-import { PRODUCT_ID_BY_TYPE, purchaseLinkFor } from "../../supabase/functions/_shared/purchase-link";
+// One module for the link (wave 3 integration): email-ops built _shared/purchase-links.ts
+// with (productType, sessionId); this group built purchase-link.ts with the arguments the
+// other way round. The merged tree keeps purchase-links.ts and this table in it.
+import { PRODUCT_ID_BY_TYPE, purchaseLinkFor } from "../../supabase/functions/_shared/purchase-links";
 
 vi.setConfig({ testTimeout: 30_000, hookTimeout: 120_000 });
 
@@ -163,10 +166,10 @@ describe("the purchase mail reopens the purchase (S8-015)", () => {
   };
 
   it("links the success page for this session and product, and prints the id", async () => {
-    expect(await send({ email: "buyer@example.com", productType: "career_snapshot", productName: "Career Snapshot", sessionId: "cs_live_abc123XYZ" })).toBe(200);
+    expect(await send({ email: "buyer@example.com", productType: "career_snapshot", productName: "Career Snapshot", sessionId: "cs_live_abc123XYZ789" })).toBe(200);
     const html = String(sent[0].html);
-    expect(html).toContain('href="https://resumebooster.work/product-success?session_id=cs_live_abc123XYZ&amp;product=careerSnapshot"');
-    expect(html).toContain("cs_live_abc123XYZ</strong>");
+    expect(html).toContain('href="https://resumebooster.work/product-success?session_id=cs_live_abc123XYZ789&amp;product=careerSnapshot"');
+    expect(html).toContain("cs_live_abc123XYZ789</strong>");
   });
 
   it("a Freelance Boost mail opens the intake page and is not called ready", async () => {
@@ -180,7 +183,8 @@ describe("the purchase mail reopens the purchase (S8-015)", () => {
     const table = [...src.matchAll(/\n  (\w+): \{[\s\S]*?productType: "([a-z_]+)"/g)].map((m) => [m[2], m[1]]);
     expect(table.length).toBeGreaterThanOrEqual(12);
     expect(Object.fromEntries(table)).toEqual(PRODUCT_ID_BY_TYPE);
-    expect(purchaseLinkFor("not-a-session", "career_snapshot")).toBeNull();
+    // A bogus id carries no session: the product page's recovery form, never the homepage.
+    expect(purchaseLinkFor("career_snapshot", "not-a-session")).toBe("https://resumebooster.work/product-success?product=careerSnapshot");
   });
 });
 

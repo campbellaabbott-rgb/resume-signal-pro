@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-04T22:00Z
+// deploy-stamp: 2026-10-09T14:00Z
 // Self-serve issuance for the public data API -- behind a mailbox.
 //
 // THE KEY USED TO BE HANDED TO WHOEVER TYPED AN ADDRESS (defect sweep 1.43).
@@ -43,6 +43,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { networkBucket } from "../_shared/network-bucket.ts";
 import { alertOwnerOnce } from "../_shared/owner-alert.ts";
 import { termsVersionOf } from "../_shared/checkout-policy.ts";
+import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 
 // Provable from outside without minting anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -232,6 +233,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         from: "Resume Booster <reports@resumebooster.work>",
         to: [email],
+        reply_to: CUSTOMER_REPLY_TO,
         subject: "Confirm your Resume Booster API key",
         html: confirmationHtml(link, Number(d.rq_live_keys) || 0),
       }),

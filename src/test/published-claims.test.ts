@@ -58,8 +58,10 @@ function allStrings(o: unknown, path = ""): Array<[string, string]> {
 }
 
 describe("no hand-written corpus counts in any locale", () => {
-  // Any rounded-thousand brag is the exact shape of the claim that was wrong.
-  const ROUND_BRAG = /\b\d{1,3}[.,\s]?000\s*\+/;
+  // Any rounded-thousand brag is the exact shape of the claim that was wrong;
+  // "more than 10,000" is the same brag without the plus (S8-035: four
+  // locales told readers "more than 10,000 job seekers" got tips nobody sent).
+  const ROUND_BRAG = /\b\d{1,3}[.,\s]?000\s*\+|\b(?:more than|over|más de|plus de|mais de|mahigit(?: sa)?|über|meer dan)\s+\d{1,3}[.,\s\u00a0\u202f]?000\b/i;
 
   for (const file of locales) {
     it(`${file} states no hardcoded 'N,000+' scan count`, () => {

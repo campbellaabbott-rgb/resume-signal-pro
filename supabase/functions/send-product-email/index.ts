@@ -1,8 +1,9 @@
-// deploy-stamp: 2026-10-09T13:00Z
+// deploy-stamp: 2026-10-09T14:00Z
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isServiceRoleCaller } from "../_shared/service-caller.ts";
-import { purchaseIdOf, purchaseLinkFor, SITE } from "../_shared/purchase-link.ts";
+import { purchaseLinkFor, purchaseReferenceIn } from "../_shared/purchase-links.ts";
+import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -29,18 +30,8 @@ interface ProductEmailRequest {
   productType: string;
   productName: string;
   generatedContent?: any;
-  /** The Checkout session (cs_live_/cs_test_) or Pro grant (pro_) id: the link reopens it (S8-015). */
+  /** The purchase's Stripe session (or Pro grant): the button opens the purchase with it. */
   sessionId?: string;
-}
-
-/** Bought here, made on a page after an intake: the mail opens that page, it is not "ready" yet (S8-016). */
-const MADE_AFTER_INTAKE = new Set(["freelance_boost", "freelance_transition_pro"]);
-
-/** The subject: "is Ready" only for a product the mail stands behind. */
-export function productEmailSubject(productType: string, productName: string, emoji: string): string {
-  return MADE_AFTER_INTAKE.has(productType)
-    ? `${emoji} Your ${productName}: open it here to finish`
-    : `${emoji} Your ${productName} is Ready!`;
 }
 
 // Product-specific info
@@ -50,32 +41,6 @@ const productInfo: Record<string, {
   howItWorks: string[];
   nextSteps: string[];
 }> = {
-  freelance_boost: {
-    emoji: "🧭",
-    tagline: "Your experience section, rebuilt from your freelance work",
-    howItWorks: [
-      "Open your purchase with the button below",
-      "Answer the short intake about your projects and target role",
-      "Your experience section is written from what you entered",
-    ],
-    nextSteps: [
-      "Keep this email: the button reopens your purchase on any device",
-      "Finish the intake to get your result",
-    ],
-  },
-  freelance_transition_pro: {
-    emoji: "🧭",
-    tagline: "Your experience section, cover letter and LinkedIn About, rebuilt from your freelance work",
-    howItWorks: [
-      "Open your purchase with the button below",
-      "Answer the short intake about your projects and target role",
-      "Your result is written from what you entered",
-    ],
-    nextSteps: [
-      "Keep this email: the button reopens your purchase on any device",
-      "Finish the intake to get your result",
-    ],
-  },
   basic_keyword_fix: {
     emoji: "🎯",
     tagline: "Boost your ATS score with optimized keywords",
@@ -236,6 +201,55 @@ const productInfo: Record<string, {
       "Download your roadmap as a PDF"
     ]
   },
+  // THE PRODUCTS DELIVERED ON THEIR OWN PAGES. The webhook mails these at
+  // payment, so a buyer who closes the tab can get back: the button opens the
+  // page that makes the product, with the purchase on it.
+  full_analysis: {
+    emoji: "📊",
+    tagline: "Your Full Resume Analysis is paid for. It runs on the page the button below opens",
+    howItWorks: [
+      "Your analysis runs on the page Checkout returned you to",
+      "If that page closed before the analysis finished, the button below opens it again",
+      "On a device that does not hold your resume, the page asks you to upload it; you won't be charged again",
+      "When the analysis is ready, we email you a link to the finished report"
+    ],
+    nextSteps: [
+      "Open your analysis with the button below",
+      "Upload your resume if the page asks for it",
+      "Read your score breakdown and the fixes it lists",
+      "Keep the report email: its link opens the finished analysis on any device"
+    ]
+  },
+  freelance_boost: {
+    emoji: "💼",
+    tagline: "Your Freelance Boost purchase is saved to the link below",
+    howItWorks: [
+      "Open the link below and check your intake answers: who each project was for and what you delivered",
+      "Press Generate to build your experience section; you won't be charged again",
+      "Once your section is generated, the same link shows it again on any device"
+    ],
+    nextSteps: [
+      "Open your purchase with the button below",
+      "Fill in or check your intake answers",
+      "Generate your experience section",
+      "Copy it into your resume"
+    ]
+  },
+  freelance_transition_pro: {
+    emoji: "💼",
+    tagline: "Your Freelance Boost Transition Pro purchase is saved to the link below",
+    howItWorks: [
+      "Open the link below and check your intake answers: who each project was for and what you delivered",
+      "Press Generate to build your experience section, transition cover letter and LinkedIn About; you won't be charged again",
+      "Once they are generated, the same link shows them again on any device"
+    ],
+    nextSteps: [
+      "Open your purchase with the button below",
+      "Fill in or check your intake answers",
+      "Generate your section, cover letter and LinkedIn About",
+      "Copy them into your application"
+    ]
+  },
   apply_assistant: {
     emoji: "📨",
     tagline: "A tailored resume, cover letter, and checklist — ready for you to review and submit",
@@ -254,11 +268,25 @@ const productInfo: Record<string, {
   }
 };
 
+/**
+ * A product made on its own page after payment is not "ready" when this mail
+ * goes: its subject says the purchase is waiting behind the button.
+ */
+const MADE_ON_ITS_PAGE = new Set(["full_analysis", "freelance_boost", "freelance_transition_pro"]);
+function subjectFor(productType: string, productName: string): string {
+  return MADE_ON_ITS_PAGE.has(productType)
+    ? `Your ${productName}: open your purchase`
+    : `Your ${productName} is Ready!`;
+}
+
 function generateProductEmailHtml(data: ProductEmailRequest): string {
   const { productName, productType, generatedContent } = data;
-  const purchaseId = purchaseIdOf(data.sessionId);
-  const link = purchaseLinkFor(data.sessionId, productType) ?? SITE;
   const info = productInfo[productType] || productInfo.basic_keyword_fix;
+  // BACK TO WHAT WAS BOUGHT, never the homepage (commercial-readiness
+  // 2026-10-08, item 3): the page Checkout returned the buyer to, with the
+  // purchase on it, and the reference the recovery form takes.
+  const purchaseUrl = purchaseLinkFor(productType, data.sessionId);
+  const reference = purchaseReferenceIn(data.sessionId ?? "");
   
   const howItWorksHtml = info.howItWorks.map((step, i) => 
     `<tr>
@@ -363,7 +391,7 @@ function generateProductEmailHtml(data: ProductEmailRequest): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Your ${escapeHtml(productName)} is Ready!</title>
+  <title>${escapeHtml(subjectFor(productType, productName))}</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6;">
   <table role="presentation" style="width: 100%; border-collapse: collapse;">
@@ -420,12 +448,15 @@ function generateProductEmailHtml(data: ProductEmailRequest): string {
 
               <!-- CTA Button: the page that reopens THIS purchase (S8-015) -->
               <div style="text-align: center; margin-top: 32px;">
-                <a href="${escapeHtml(link)}"
+                <a href="${escapeHtml(purchaseUrl)}"
                    style="display: inline-block; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
-                  View Your Results →
+                  Open your purchase →
                 </a>
               </div>
-              ${purchaseId ? `<p style="text-align: center; margin: 16px 0 0; color: #6b7280; font-size: 13px;">Your purchase ID: <strong>${escapeHtml(purchaseId)}</strong>. Keep this email: the button reopens your purchase on any device, and the recovery form on that page accepts this ID.</p>` : ""}
+              ${reference ? `<p style="color: #6b7280; font-size: 12px; text-align: center; margin: 16px 0 0;">
+                Keep this email: the button opens your purchase on any device, and the recovery form on that page accepts this reference. Order reference (session ID):<br>
+                <strong style="font-family: 'Courier New', monospace; color: #374151; word-break: break-all;">${escapeHtml(reference)}</strong>
+              </p>` : ''}
 
             </td>
           </tr>
@@ -509,7 +540,8 @@ Deno.serve(async (req) => {
     const { data, error } = await resend.emails.send({
       from: "Resume Booster <reports@resumebooster.work>",
       to: [email],
-      subject: productEmailSubject(productType, productName, emoji),
+      reply_to: CUSTOMER_REPLY_TO,
+      subject: `${emoji} ${subjectFor(productType, productName)}`,
       html,
     });
 
@@ -525,7 +557,7 @@ Deno.serve(async (req) => {
       await supabase.rpc('log_email_send', {
         p_email_type: `product_${productType}`,
         p_recipient: email,
-        p_subject: productEmailSubject(productType, productName, "").trim(),
+        p_subject: subjectFor(productType, productName),
         p_status: 'failed',
         p_error_message: error.message,
       });
@@ -542,7 +574,7 @@ Deno.serve(async (req) => {
     await supabase.rpc('log_email_send', {
       p_email_type: `product_${productType}`,
       p_recipient: email,
-      p_subject: productEmailSubject(productType, productName, "").trim(),
+      p_subject: subjectFor(productType, productName),
       p_status: 'sent',
       p_metadata: { resend_id: data?.id },
     });

@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-09T13:00Z
+// deploy-stamp: 2026-10-09T14:00Z
 // Sends the free scan summary to the user's email — our first lead-capture
 // touchpoint. Uses the same Resend setup as send-analysis-email and stores
 // the address in the leads table so follow-up campaigns have a source.
@@ -54,6 +54,7 @@ import { openDripLink, signDripLink, type DripPlan } from "../_shared/scan-drip-
 import { alertOwnerOnce } from "../_shared/owner-alert.ts";
 import { redirectToConfirm, unsubscribeParams, unsubscribePageUrl } from "../_shared/unsubscribe-link.ts";
 import { sellerFooterHtml } from "../_shared/seller.ts";
+import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -302,6 +303,7 @@ async function queueDrip(admin: Admin, plan: DripPlan): Promise<void> {
         message_id: crypto.randomUUID(),
         to: email,
         from: FROM,
+        reply_to: CUSTOMER_REPLY_TO,
         sender_domain: "notify.resumebooster.work",
         subject: d.subject,
         html: d.html,
@@ -656,12 +658,14 @@ Deno.serve(async (req) => {
       You received this because this address was entered for a scan report at resumebooster.work. If that wasn't you, ignore it.<br>
       Follow-up emails come only if the button for them in this email is pressed, and every one has an unsubscribe link.
     </p>
+    ${sellerFooterHtml()}
   </div>
 </body></html>`;
 
     const { error } = await resend.emails.send({
       from: FROM,
       to: [email],
+      reply_to: CUSTOMER_REPLY_TO,
       subject: body.sealed
         ? `Your resume scored ${Math.round(body.score)}/100 — here's your fix plan`
         : `Your resume scored ${Math.round(body.score)}/100 — your scan summary`,

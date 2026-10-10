@@ -42,7 +42,7 @@ import { resumeSessionForCheckout } from "../_shared/checkout-resume-ref.ts";
 
 // Provable from outside without a purchase or a signature: every response,
 // the 405 a GET receives included, carries this in x-fn-build.
-const FN_BUILD = "stripe-webhook.2026-10-09.3";
+const FN_BUILD = "stripe-webhook.2026-10-09.4";
 const BUILD_HEADER = { "x-fn-build": FN_BUILD };
 
 // Declare EdgeRuntime for background tasks
@@ -492,6 +492,30 @@ async function revocationTarget(
 
 // Trigger product delivery for a completed checkout
 // deno-lint-ignore no-explicit-any
+/**
+ * A PRODUCT MADE ON ITS OWN PAGE STILL GETS A MAIL AT PAYMENT. The Full
+ * Analysis and Freelance Boost are made after Checkout, on the page it
+ * returns to; a buyer who closed that tab had no mail and no way back
+ * (commercial-readiness 2026-10-08, item 3). The mail's button opens that
+ * page with the session. Background and best-effort: the page is the
+ * delivery, and send-product-email logs the send either way.
+ */
+function mailThePurchaseLink(
+  supabaseUrl: string, email: string | null, productType: string, productName: string, sessionId: string,
+): void {
+  if (!email) return;
+  EdgeRuntime.waitUntil(
+    fetch(`${supabaseUrl}/functions/v1/send-product-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
+      body: JSON.stringify({ email, productType, productName, sessionId }),
+    }).then(
+      (r) => { if (!r.ok) logStep("Purchase-link mail refused", { productType, status: r.status }); },
+      (e) => logStep("Purchase-link mail threw", { productType, error: String(e).slice(0, 200) }),
+    ),
+  );
+}
+
 async function triggerProductDelivery(
   session: Stripe.Checkout.Session,
   supabase: SupabaseClient<any, any, any>,
@@ -610,25 +634,13 @@ async function triggerProductDelivery(
   // generation-failed retry queue. The intake page owns delivery.
   if (productType === 'freelance_boost' || productType === 'freelance_transition_pro') {
     logStep("Freelance product — fulfilled via intake page; deferring webhook generation", { productType });
-    // THE ONLY WAY BACK TO A $29 / $59 PURCHASE (S8-016). It existed only in
-    // the success URL: no mail was sent, so a buyer who closed the tab before
-    // the intake, or whose generation failed, had nothing to return with and
-    // was shown the buy buttons again. The mail carries the link that reopens
-    // it on any device. Background: the payment is already recorded.
-    if (customerEmail) {
-      EdgeRuntime.waitUntil((async () => {
-        try {
-          const r = await fetch(`${supabaseUrl}/functions/v1/send-product-email`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
-            body: JSON.stringify({ email: customerEmail, productType, productName: productName || 'Freelance Boost', sessionId }),
-          });
-          if (!r.ok) logStep("Freelance purchase link not mailed", { status: r.status });
-        } catch (e) {
-          logStep("Freelance purchase link not mailed", { error: String(e).slice(0, 200) });
-        }
-      })());
-    }
+    // THE ONLY WAY BACK TO A $29 / $59 PURCHASE (S8-016; commercial-readiness
+    // item 3). It existed only in the success URL: no mail was sent, so a
+    // buyer who closed the tab before the intake, or whose generation failed,
+    // had nothing to return with and was shown the buy buttons again. The
+    // mail carries the link that reopens it on any device. Background: the
+    // payment is already recorded.
+    mailThePurchaseLink(supabaseUrl, customerEmail, productType, productName || "Freelance Boost", sessionId);
     return { success: true, productType, deferred: 'freelance_intake' };
   }
 
@@ -645,6 +657,7 @@ async function triggerProductDelivery(
   // not-yet-delivered and redeems the session itself, once.
   if (productType === FULL_ANALYSIS_PRODUCT_TYPE) {
     logStep("Full analysis — delivered by analyze-resume on the success page; nothing to generate here", { sessionId });
+    mailThePurchaseLink(supabaseUrl, customerEmail, productType, productName || 'Full Resume Analysis', sessionId);
     return { success: true, productType, deferred: 'success_page' };
   }
 
@@ -700,15 +713,52 @@ async function triggerProductDelivery(
   // server-side with no access to the browser's i18n state.
   const language = session.metadata?.language || 'en';
 
-  // Update status to generating (background)
-  EdgeRuntime.waitUntil(
-    Promise.resolve(
-      supabase.from('product_deliveries')
-        .update({ status: 'generating', content_generation_started_at: new Date().toISOString() })
-        .eq('id', deliveryRecord.data?.id)
-    )
-  );
+  // STRIPE IS ANSWERED BEFORE THE MODEL IS. Generation takes up to ~90 s and
+  // Stripe wants its 2xx within seconds; awaiting it here held every product
+  // sale's acknowledgement on the AI writer (commercial-readiness 2026-10-08,
+  // item 2). The claim, the delivery row and the 'generating' stamp are
+  // written first; the generation, the saved copy and the mail finish in the
+  // background. A finish that dies leaves the row 'generating', which the
+  // retry sweep picks up after 15 minutes (20261009140000).
+  await supabase.from('product_deliveries')
+    .update({ status: 'generating', content_generation_started_at: new Date().toISOString() })
+    .eq('id', deliveryRecord.data?.id);
 
+  EdgeRuntime.waitUntil(
+    generateAndDeliver({
+      supabase, supabaseUrl, sessionId, productType, productName, customerEmail,
+      deliveryId: deliveryRecord.data?.id, resumeText: resume_text, jobDescriptionText: job_description_text,
+      jobTitle, jobCompany, language,
+    }).then(
+      (r) => logStep("Background delivery finished", r),
+      (e) => logStep("Background delivery threw; the sweeper retries the row", { error: String(e).slice(0, 300) }),
+    ),
+  );
+  return { success: true, productType, deferred: 'generating' };
+}
+
+interface GenerationJob {
+  // deno-lint-ignore no-explicit-any
+  supabase: SupabaseClient<any, any, any>;
+  supabaseUrl: string;
+  sessionId: string;
+  productType: string | undefined;
+  productName: string | undefined;
+  customerEmail: string | null;
+  deliveryId: string | undefined;
+  resumeText: string;
+  jobDescriptionText: string | null;
+  jobTitle: string;
+  jobCompany: string;
+  language: string;
+}
+
+/** The generation, the saved copy and the delivery mail: run after Stripe has its answer. */
+async function generateAndDeliver(job: GenerationJob) {
+  const { supabase, supabaseUrl, sessionId, productType, productName, customerEmail, jobTitle, jobCompany, language } = job;
+  const resume_text = job.resumeText;
+  const job_description_text = job.jobDescriptionText;
+  const deliveryRecord = { data: { id: job.deliveryId } };
   const generationStart = Date.now();
   let generatedContent: any = null;
   let generationError: string | null = null;

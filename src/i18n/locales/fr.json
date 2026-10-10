@@ -1593,7 +1593,7 @@
       "footnote": "Package complet : CV optimisé ATS + lettre de motivation personnalisée prête à envoyer aux employeurs"
     },
     "emailCapture": {
-      "joinMessage": "Rejoignez plus de 10 000 chercheurs d'emploi qui reçoivent des conseils hebdomadaires pour battre l'ATS et décrocher des entretiens.",
+      "joinMessage": "Rejoignez des chercheurs d'emploi qui reçoivent des conseils hebdomadaires pour battre l'ATS et décrocher des entretiens.",
       "noSpam": "Pas de spam. Désabonnez-vous à tout moment."
     },
     "coverLetterCta": {
@@ -1628,7 +1628,7 @@
       "emailSend": "Envoyer",
       "emailSent": "Envoyé ! Vérifiez votre boîte de réception.",
       "emailPrivacy": "Seuls les résultats de l’analyse sont envoyés — jamais votre CV. Pas de spam.",
-      "pulseOptIn": "Envoyez-moi aussi un pouls du marché mensuel : les mots-clés en hausse dans mon secteur, avec un lien de réanalyse gratuite. Désabonnement à tout moment.",
+      "pulseOptIn": "Envoyez-moi aussi un pouls du marché mensuel : les mots-clés essentiels de mon secteur tirés de notre guide des mots-clés, avec un lien de réanalyse gratuite. Désabonnement à tout moment.",
       "pulseConfirmSent": "Si cette adresse n'a pas encore confirmé le pouls mensuel du marché, nous lui avons envoyé un lien de confirmation. Le pouls ne commence qu'une fois ce lien cliqué.",
       "pulseNotCovered": "Le pouls mensuel du marché ne couvre pas encore votre domaine, donc aucune confirmation n'a été envoyée.",
       "dripConfirmSent": "L'e-mail de votre rapport contient un bouton pour lancer les e-mails du plan de correction. Rien d'autre n'est envoyé tant que vous ne l'avez pas cliqué.",
@@ -3877,7 +3877,9 @@
       "policyLink": "Pourquoi ?",
       "emailPlaceholder": "vous@entreprise.com",
       "send": "Envoyer le lien",
-      "sentNote": "Vérifiez votre boîte de réception — nous avons envoyé un lien de vérification à {{email}}. Cliquez dessus et la revendication est faite.",
+      "sentNote": "Vérifiez votre boîte de réception — nous avons envoyé un lien de vérification à {{email}}. Ouvrez-le et appuyez sur Confirmer pour terminer la revendication.",
+      "confirmPrompt": "Vous avez ouvert un lien pour confirmer votre revendication de {{company}}. Appuyez sur le bouton pour terminer.",
+      "confirmButton": "Confirmer ma revendication",
       "sendFail": "Impossible d'envoyer l'e-mail de vérification — réessayez.",
       "verifiedChip": "Employeur vérifié",
       "verifiedTip": "Un contact de cette entreprise a vérifié un e-mail professionnel à son domaine. La vérification confirme l'identité uniquement — elle ne change jamais les données de recrutement affichées ici.",

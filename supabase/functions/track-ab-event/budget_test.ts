@@ -9,7 +9,12 @@
 import { assert, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
   ADDRESS_CEILING_PER_HOUR,
+  ADDRESS_DOOR,
+  addressBucket,
   BUDGET_WINDOW_MINUTES,
+  GLOBAL_BUDGET_SCOPE,
+  GLOBAL_CEILING_PER_HOUR,
+  metadataTooLarge,
   RATE_LIMIT_KEY_MAX,
   VISITOR_BUDGET_FUNCTION,
   VISITOR_BUDGET_PER_HOUR,
@@ -28,6 +33,7 @@ const event = () => ({
   visitorId: VISITOR,
   metadata: { page: "/" },
   clientIp: ADDRESS,
+  addressBucket: "a".repeat(32),
 });
 
 type Call = { fn: string; args: Record<string, unknown> };
@@ -46,11 +52,23 @@ const allowed: RpcResult = { data: true, error: null };
 const refused: RpcResult = { data: false, error: null };
 const wrote = (status: string): RpcResult => ({ data: { success: true, status }, error: null });
 
-Deno.test("tier 1 is keyed on the VISITOR under its own function name, tier 2 on the ADDRESS in the writer — in that order", async () => {
-  const { rpc, calls } = fakeRpc({ check_rate_limit: allowed, track_ab_event_optimized: wrote("recorded") });
+Deno.test("tier 1 is keyed on the VISITOR under its own function name, tier 2 on the ADDRESS before the site and in the writer — in that order", async () => {
+  const { rpc, calls } = fakeRpc({ check_rate_limit: allowed, mail_door_take: allowed, client_write_allowed: allowed, track_ab_event_optimized: wrote("recorded") });
   const out = await recordEvent(rpc, event());
   assertEquals(out.status, "recorded");
-  assertEquals(calls.map((c) => c.fn), ["check_rate_limit", "track_ab_event_optimized"]);
+  assertEquals(calls.map((c) => c.fn), ["check_rate_limit", "mail_door_take", "client_write_allowed", "track_ab_event_optimized"]);
+
+  const door = calls[1].args;
+  assertEquals(door.p_door, ADDRESS_DOOR);
+  assertEquals(door.p_bucket, "a".repeat(32));
+  assertEquals(door.p_max, ADDRESS_CEILING_PER_HOUR);
+  assertEquals(door.p_window_minutes, BUDGET_WINDOW_MINUTES);
+
+  const site = calls[2].args;
+  assertEquals(site.p_scope, GLOBAL_BUDGET_SCOPE);
+  assertEquals(site.p_ceiling, GLOBAL_CEILING_PER_HOUR);
+  assertEquals(site.p_per_address, GLOBAL_CEILING_PER_HOUR);
+  assertEquals(site.p_window_minutes, BUDGET_WINDOW_MINUTES);
 
   const tier1 = calls[0].args;
   assertEquals(tier1.p_ip, VISITOR, "the visitor tier is keyed on the visitor id");
@@ -59,7 +77,7 @@ Deno.test("tier 1 is keyed on the VISITOR under its own function name, tier 2 on
   assertEquals(tier1.p_max_requests, VISITOR_BUDGET_PER_HOUR);
   assertEquals(tier1.p_window_minutes, BUDGET_WINDOW_MINUTES);
 
-  const tier2 = calls[1].args;
+  const tier2 = calls[3].args;
   assertEquals(tier2.p_client_ip, ADDRESS, "the writer's limiter is keyed on the address");
   assert(tier2.p_client_ip !== VISITOR, "the writer's limiter must not be keyed on the visitor");
   assertEquals(tier2.p_max_requests, ADDRESS_CEILING_PER_HOUR);
@@ -72,52 +90,82 @@ Deno.test("tier 1 is keyed on the VISITOR under its own function name, tier 2 on
 });
 
 Deno.test("a visitor over its own budget is refused BEFORE the writer runs — it spends nothing of its address's ceiling", async () => {
-  const { rpc, calls } = fakeRpc({ check_rate_limit: refused, track_ab_event_optimized: wrote("recorded") });
+  const { rpc, calls } = fakeRpc({ check_rate_limit: refused, mail_door_take: allowed, client_write_allowed: allowed, track_ab_event_optimized: wrote("recorded") });
   const out = await recordEvent(rpc, event());
   assertEquals(out.status, "rate_limited_visitor");
   assertEquals(calls.map((c) => c.fn), ["check_rate_limit"]);
 });
 
 Deno.test("an address over its ceiling is reported as the address, not the visitor", async () => {
-  const { rpc } = fakeRpc({ check_rate_limit: allowed, track_ab_event_optimized: wrote("rate_limited") });
+  const { rpc } = fakeRpc({ check_rate_limit: allowed, mail_door_take: allowed, client_write_allowed: allowed, track_ab_event_optimized: wrote("rate_limited") });
   const out = await recordEvent(rpc, event());
   assertEquals(out.status, "rate_limited_address");
 });
 
 Deno.test("the writer's duplicate and recorded answers pass through unchanged", async () => {
   for (const s of ["duplicate", "recorded"] as const) {
-    const { rpc } = fakeRpc({ check_rate_limit: allowed, track_ab_event_optimized: wrote(s) });
+    const { rpc } = fakeRpc({ check_rate_limit: allowed, mail_door_take: allowed, client_write_allowed: allowed, track_ab_event_optimized: wrote(s) });
     assertEquals((await recordEvent(rpc, event())).status, s);
   }
 });
 
 Deno.test("a writer without a status word is a recorded row (the pre-status contract)", async () => {
-  const { rpc } = fakeRpc({ check_rate_limit: allowed, track_ab_event_optimized: { data: null, error: null } });
+  const { rpc } = fakeRpc({ check_rate_limit: allowed, mail_door_take: allowed, client_write_allowed: allowed, track_ab_event_optimized: { data: null, error: null } });
   assertEquals((await recordEvent(rpc, event())).status, "recorded");
 });
 
 Deno.test("the visitor tier's own failure fails OPEN to the writer; the writer's failure is an error", async () => {
   const broken: RpcResult = { data: null, error: { message: "boom" } };
-  const open = fakeRpc({ check_rate_limit: broken, track_ab_event_optimized: wrote("recorded") });
+  const open = fakeRpc({ check_rate_limit: broken, mail_door_take: allowed, client_write_allowed: allowed, track_ab_event_optimized: wrote("recorded") });
   assertEquals((await recordEvent(open.rpc, event())).status, "recorded");
-  assertEquals(open.calls.map((c) => c.fn), ["check_rate_limit", "track_ab_event_optimized"]);
+  assertEquals(open.calls.map((c) => c.fn), ["check_rate_limit", "mail_door_take", "client_write_allowed", "track_ab_event_optimized"]);
 
-  const closed = fakeRpc({ check_rate_limit: allowed, track_ab_event_optimized: broken });
+  const closed = fakeRpc({ check_rate_limit: allowed, mail_door_take: allowed, client_write_allowed: allowed, track_ab_event_optimized: broken });
   const out = await recordEvent(closed.rpc, event());
   assertEquals(out.status, "error");
   assertEquals(out.error, "boom");
 });
 
 Deno.test("the visitor key handed to check_rate_limit never exceeds its 45-character bound", async () => {
-  const { rpc, calls } = fakeRpc({ check_rate_limit: allowed, track_ab_event_optimized: wrote("recorded") });
+  const { rpc, calls } = fakeRpc({ check_rate_limit: allowed, mail_door_take: allowed, client_write_allowed: allowed, track_ab_event_optimized: wrote("recorded") });
   const long = "x".repeat(64); // the entry point accepts up to 64
   await recordEvent(rpc, { ...event(), visitorId: long });
   assertEquals(String(calls[0].args.p_ip).length, RATE_LIMIT_KEY_MAX);
-  assertEquals(calls[1].args.p_visitor_id, long, "the row itself keeps the full id");
+  assertEquals(calls[3].args.p_visitor_id, long, "the row itself keeps the full id");
 });
 
 Deno.test("the numbers: the address ceiling is at least ten visitor budgets, and the visitor budget is under check_rate_limit's 1000 bound", () => {
   assert(ADDRESS_CEILING_PER_HOUR >= 10 * VISITOR_BUDGET_PER_HOUR, `${ADDRESS_CEILING_PER_HOUR} < 10 × ${VISITOR_BUDGET_PER_HOUR}`);
   assert(VISITOR_BUDGET_PER_HOUR >= 1 && VISITOR_BUDGET_PER_HOUR <= 1000, "check_rate_limit raises outside 1..1000 and the tier would fail open on every call");
   assertEquals(BUDGET_WINDOW_MINUTES, 60);
+  assert(GLOBAL_CEILING_PER_HOUR >= 10 * ADDRESS_CEILING_PER_HOUR, "the site's hour admits at least ten address ceilings");
+});
+
+Deno.test("the site's hour refuses BEFORE the writer, and a failed site check fails open to the writer", async () => {
+  const full = fakeRpc({ check_rate_limit: allowed, mail_door_take: allowed, client_write_allowed: refused, track_ab_event_optimized: wrote("recorded") });
+  assertEquals((await recordEvent(full.rpc, event())).status, "rate_limited_global");
+  assertEquals(full.calls.map((c) => c.fn), ["check_rate_limit", "mail_door_take", "client_write_allowed"]);
+  const broken = fakeRpc({ check_rate_limit: allowed, mail_door_take: allowed, client_write_allowed: { data: null, error: { message: "down" } }, track_ab_event_optimized: wrote("recorded") });
+  assertEquals((await recordEvent(broken.rpc, event())).status, "recorded");
+});
+
+Deno.test("metadata over the cap is too large; the error boundaries' payload is not", () => {
+  assert(metadataTooLarge({ blob: "x".repeat(5000) }));
+  assert(!metadataTooLarge({ message: "m".repeat(300), stack: "s".repeat(600), componentStack: "c".repeat(600), path: "/jobs" }));
+});
+
+Deno.test("an address over its hour is refused BEFORE the site's hour is spent; a failed count fails open", async () => {
+  const full = fakeRpc({ check_rate_limit: allowed, mail_door_take: refused, client_write_allowed: allowed, track_ab_event_optimized: wrote("recorded") });
+  assertEquals((await recordEvent(full.rpc, event())).status, "rate_limited_address");
+  assertEquals(full.calls.map((c) => c.fn), ["check_rate_limit", "mail_door_take"]);
+  const broken = fakeRpc({ check_rate_limit: allowed, mail_door_take: { data: null, error: { message: "down" } }, client_write_allowed: allowed, track_ab_event_optimized: wrote("recorded") });
+  assertEquals((await recordEvent(broken.rpc, event())).status, "recorded");
+});
+
+Deno.test("the address bucket is a 32-hex keyed hash: one per address, another per key", async () => {
+  const a = await addressBucket(ADDRESS, "k1");
+  assert(/^[0-9a-f]{32}$/.test(a));
+  assertEquals(await addressBucket(ADDRESS, "k1"), a);
+  assert((await addressBucket("203.0.113.8", "k1")) !== a);
+  assert((await addressBucket(ADDRESS, "k2")) !== a);
 });

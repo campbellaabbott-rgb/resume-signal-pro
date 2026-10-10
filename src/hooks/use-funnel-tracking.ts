@@ -48,6 +48,13 @@ const getFunnelProgress = (): FunnelStage[] => {
   }
 };
 
+/**
+ * Whether this tab reached `stage`. A purchase page uses it to tell the tab
+ * that started the checkout from a revisit (the purchase email opened on any
+ * device), which is never a second sale.
+ */
+export const reachedInThisTab = (stage: FunnelStage): boolean => getFunnelProgress().includes(stage);
+
 // Save funnel progress
 const saveFunnelProgress = (stages: FunnelStage[]) => {
   sessionStorage.setItem('funnel_progress', JSON.stringify(stages));

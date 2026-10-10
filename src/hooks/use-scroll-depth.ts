@@ -37,7 +37,10 @@ export function useScrollDepth(pageName: string = 'home') {
       // pathname-only page fields) — not a bare client invoke around it.
       postTrackEvent({
         testName: 'scroll_depth',
-        variant: `${milestone}%`,
+        // The page is in the variant: the dedup keys read test, variant and
+        // event only, so a visitor's 25% on / swallowed their 25% on
+        // /pricing (S8-123).
+        variant: `${pageName}:${milestone}%`.slice(0, 30),
         eventType: 'view',
         metadata: {
           page: pageName,

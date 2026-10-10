@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-04T22:00Z
+// deploy-stamp: 2026-10-09T14:00Z
 // Agent morning email — the last hop of the overnight loop.
 //
 // agent-runner already scores fresh postings against each mandate and writes
@@ -36,6 +36,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { ACCOUNT_SUBSCRIPTION_RPC, entitledAccounts } from "../_shared/agent-entitlement.ts";
 import { isScheduledCaller } from "../_shared/email-cron.ts";
 import { sameSecret } from "../_shared/service-caller.ts";
+import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
+import { sellerFooterHtml } from "../_shared/seller-footer.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -50,6 +52,9 @@ const SITE_URL = "https://resumebooster.work";
 // Never more than one morning mail per ~20h, even if the cron double-fires:
 // the floor lives in agent_digest_claim_batch (20261004100000).
 const CLAIM_BATCH = 500;
+// Nothing new starts after 100 s; a claimed mandate not reached is handed
+// back with its cursor intact (S8-052: the isolate dies near 150 s).
+const RUN_BUDGET_MS = 100_000;
 const MAX_ROWS_IN_EMAIL = 6;
 
 /** The footer's sentence for a mandate's apply mode; null when the mode is unknown. */
@@ -144,6 +149,7 @@ Deno.serve(async (req) => {
     // THE CLAIM IS THE SELECTION: opted-in mandates not mailed in 20 hours,
     // stamped in the same statement, each with the stamp it had before (the
     // "new picks since" cursor, and what a give-back restores).
+    const startedAt = Date.now();
     const { data: claimed, error: claimErr } = await supabase.rpc("agent_digest_claim_batch", { p_limit: CLAIM_BATCH });
     if (claimErr) throw claimErr;
     const list = ((claimed ?? []) as Array<{ ad_user_id: string; ad_email: string; ad_prev_sent_at: string | null }>)
@@ -182,8 +188,13 @@ Deno.serve(async (req) => {
     const { data: suppressedRows } = await supabase.from("suppressed_emails").select("email");
     const suppressed = new Set(((suppressedRows ?? []) as Array<{ email: string }>).map((r) => r.email.toLowerCase()));
 
-    let sent = 0, skipped = 0;
-    for (const m of list) {
+    let sent = 0, skipped = 0, handedBack = 0;
+    for (let i = 0; i < list.length; i++) {
+      const m = list[i];
+      if (Date.now() - startedAt >= RUN_BUDGET_MS) {
+        for (const rest of list.slice(i)) { await giveBack(rest); handedBack++; }
+        break;
+      }
       // The set holds user ids; the address is only where the mail goes.
       if (!m.email || !entitled.has(m.user_id) || suppressed.has(m.email.toLowerCase())) { await giveBack(m); skipped++; continue; }
 
@@ -246,6 +257,7 @@ Deno.serve(async (req) => {
     </div>
     <div style="text-align:center;padding:14px 0 0">
       <a href="${escapeHtml(unsubUrl)}" style="font-size:11px;color:#94a3b8">Stop these morning emails</a>
+      ${sellerFooterHtml()}
     </div>
   </div>
 </body></html>`;
@@ -254,6 +266,7 @@ Deno.serve(async (req) => {
         const { error: sendErr } = await resend.emails.send({
           from: "Resume Booster <agent@resumebooster.work>",
           to: [m.email],
+          reply_to: CUSTOMER_REPLY_TO,
           subject: n === 1 ? "1 role worth your morning" : `${n} roles worth your morning`,
           html,
         });
@@ -268,7 +281,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    return json({ ok: true, sent, skipped });
+    return json({ ok: true, sent, skipped, handedBack });
   } catch (e) {
     console.error("[AGENT-DIGEST] error:", (e as Error)?.message);
     return json({ error: "Agent digest temporarily unavailable" }, 500);

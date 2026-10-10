@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-08T12:00Z
+// deploy-stamp: 2026-10-09T14:00Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { keyMatches } from "../_shared/admin-key.ts";
@@ -8,7 +8,7 @@ import { keyMatches } from "../_shared/admin-key.ts";
 // so the browser refused the request before it left: the dashboard was dead
 // whatever key was entered. The header is allowed now, and the key is
 // compared in constant time.
-const FN_BUILD = "get-analytics.2026-10-08.1";
+const FN_BUILD = "get-analytics.2026-10-09.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -167,7 +167,12 @@ serve(async (req) => {
     };
 
     events?.forEach(event => {
-      const eventPage = (event.metadata as { page?: string })?.page;
+      // Scroll and time milestones carry their page in the variant since
+      // 2026-10-09 ('pricing:25%', S8-123); the milestone is what is counted.
+      const isMilestone = event.test_name === 'scroll_depth' || event.test_name === 'time_on_page';
+      const prefixed = isMilestone ? /^([a-z_]{1,20}):(.+)$/.exec(String(event.variant)) : null;
+      event = prefixed ? { ...event, variant: prefixed[2] } : event;
+      const eventPage = (event.metadata as { page?: string })?.page ?? prefixed?.[1];
 
       // Track per-page metrics for scroll_depth and time_on_page
       if ((event.test_name === 'scroll_depth' || event.test_name === 'time_on_page') && eventPage) {

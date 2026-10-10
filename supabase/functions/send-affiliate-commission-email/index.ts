@@ -1,11 +1,12 @@
-// deploy-stamp: 2026-10-04T12:00Z
+// deploy-stamp: 2026-10-09T14:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@4.0.0";
 import { isServiceRoleCaller } from "../_shared/service-caller.ts";
+import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "send-affiliate-commission-email.2026-10-04.1";
+const FN_BUILD = "send-affiliate-commission-email.2026-10-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -91,6 +92,7 @@ serve(async (req) => {
     const { error: emailError } = await resend.emails.send({
       from: "Resume Booster <reports@resumebooster.work>",
       to: [affiliateEmail],
+      replyTo: CUSTOMER_REPLY_TO,
       subject: `🎉 You earned $${formattedCommission} commission!`,
       html: `
         <!DOCTYPE html>

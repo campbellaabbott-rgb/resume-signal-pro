@@ -27,6 +27,9 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
 import { bootEmailOpsDb, migration, rows, splitVerify } from "./helpers/email-ops-db";
 
+/** The claim as a run meets it: its rows once, then nothing (a run claims until it is handed none). */
+const perRun = <T,>(r: T[]) => { let fresh = false; return () => ((fresh = !fresh) ? r : []); };
+
 const SERVICE = "service_role_key_for_the_harness_0123456789abcdef";
 type Sent = { to: string; subject: string; html: string; headers?: Record<string, string> };
 const sent: Sent[] = [];
@@ -85,7 +88,7 @@ function install(extra: Record<string, unknown> = {}) {
   const rpc = (name: string, impl: (a: Record<string, unknown>) => unknown) => {
     db.rpcs[name] = (args) => { calls.push({ name, args }); return { data: impl(args), error: null }; };
   };
-  rpc("search_digest_claim_batch", () => [claimed(extra)]);
+  rpc("search_digest_claim_batch", perRun([claimed(extra)]));
   rpc("search_digest_record_sent", (a) => (a.p_posting_ids as string[]).length);
   // The claim stamped the row; a give-back restores PREV.
   db.rows("user_job_searches").push({ id: SID, digest_last_sent_at: "2026-10-07T14:23:00.000Z", digest_opt_in: true });

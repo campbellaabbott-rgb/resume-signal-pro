@@ -32,7 +32,7 @@ vi.mock("@/integrations/supabase/client", () => ({
 const trackPurchase = vi.fn();
 const trackFunnel = vi.fn();
 vi.mock("@/hooks/use-conversion-tracking", () => ({ useConversionTracking: () => ({ trackPurchaseCompleted: trackPurchase, trackButtonClick: vi.fn() }) }));
-vi.mock("@/hooks/use-funnel-tracking", () => ({ useFunnelTracking: () => ({ trackPurchaseCompleted: trackFunnel, trackProductClicked: vi.fn(), trackCheckoutStarted: vi.fn() }) }));
+vi.mock("@/hooks/use-funnel-tracking", async (orig) => ({ ...(await orig<typeof import("@/hooks/use-funnel-tracking")>()), useFunnelTracking: () => ({ trackPurchaseCompleted: trackFunnel, trackProductClicked: vi.fn(), trackCheckoutStarted: vi.fn() }) }));
 vi.mock("@/components/Header", () => ({ Header: () => null }));
 vi.mock("@/components/Footer", () => ({ Footer: () => null }));
 vi.mock("@/components/LiveMatches", () => ({ LiveMatches: () => null }));
