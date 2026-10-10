@@ -6,6 +6,7 @@ import {
   PROTECTED_DEMOGRAPHIC,
   PROTECTED_FACTUAL,
   RESUME_PROMPT,
+  SENTENCE_BREAK,
   shapeModelAnswers,
 } from "../../supabase/functions/_shared/application-questions";
 import { matchQuestion, normaliseLabel, type StandingAnswers } from "../../worker/src/questions/match.js";
@@ -67,6 +68,15 @@ const PROTECTED = [
   // fell to `unrecognised`, and the worker sent the model's draft.
   "Are you currently sponsored?",
   "Are you currently sponsored by your employer?",
+  // Review of the work-done exemption: a résumé prompt with a second clause
+  // about the candidate's own status or pay is that status question too.
+  "What experience do you have and what is your hourly rate?",
+  "Describe your experience, and confirm you are a U.S. citizen",
+  "Tell us about your experience. Do you need a reasonable accommodation?",
+  "How many years of experience do you have and do you hold a green card?",
+  "Describe your experience and whether you hold a US passport",
+  "Describe your experience with payroll, including your hourly rate",
+  "Tell us about your experience. Green card holder?",
 ];
 
 /** Résumé questions in the same vocabulary. Widening must not swallow them. */
@@ -88,6 +98,10 @@ const STAYS_DRAFTABLE = [
   "Describe your experience handling reasonable accommodation requests as an HR partner",
   // A sponsor word in a résumé prompt about work done stays draftable.
   "Describe your experience sponsoring H-1B visas for employees as an HR partner",
+  // The compound-clause rule must not swallow a one-clause résumé question.
+  "What experience do you have with immigration law?",
+  // A dotted initialism or "e.g." does not end a sentence.
+  "Describe your experience with U.S. immigration law (e.g. H-1B petitions)",
 ];
 
 const MODEL_TEXT = "MODEL-WRITTEN ANSWER";
@@ -166,6 +180,7 @@ describe("the two runtimes hold one list", () => {
     expect(workerProtected.RESUME_PROMPT.source).toBe(RESUME_PROMPT.source);
     expect(workerProtected.ABOUT_WORK_DONE.source).toBe(ABOUT_WORK_DONE.source);
     expect(workerProtected.OWN_STATUS.source).toBe(OWN_STATUS.source);
+    expect(workerProtected.SENTENCE_BREAK.source).toBe(SENTENCE_BREAK.source);
   });
 });
 
