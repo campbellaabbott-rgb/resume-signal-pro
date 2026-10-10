@@ -9,7 +9,11 @@
 -- the free scan's 7 a day, a purchase's 10 generator calls a day
 -- (purchaseSpendGate: premium package and its stream, keyword fix, snapshot,
 -- game plan, cover-letter stream, freelance boost), and the 1,440-minute
--- per-address caps of parse-resume-structured and import-freelance-profile.
+-- per-address caps of parse-resume-structured and import-freelance-profile,
+-- the Apply kit's 40 per address (purchase and unentitled callers; a Pro
+-- account is not counted, generate-apply-package .2026-10-09.2), and the
+-- daily caps of application-fit, job-board-fit, send-scan-report and
+-- company-claim.
 -- In pglite with the dice loaded, 10 calls were allowed, the 11th refused,
 -- and after one 60-minute caller's sweep 10 more were allowed.
 --

@@ -24,7 +24,10 @@ const corsHeaders = {
   'x-fn-build': FN_BUILD,
 };
 
-const RATE_LIMIT = 40; // per IP per day — raised from 15 so the account batch-prep co-pilot has real room (entitlement-gated, so only paying users reach this counter)
+// Per address per day, for purchase and unentitled callers. A Pro account
+// is never counted here: its plan is unlimited kits, and with the day now
+// lasting a day (20261009110000) this bucket capped Pro at 40.
+const RATE_LIMIT = 40;
 const RATE_WINDOW_MINUTES = 1440;
 /** Kits one purchase (a checkout session or a Pro grant) may generate in a day. A Pro account's own plan is unlimited and not counted here. */
 const KITS_PER_PURCHASE_DAY = 10;
@@ -86,7 +89,26 @@ serve(async (req) => {
         { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    // THE ONE RULE (L6-08, L6-29): the verified account's plan, both caches,
+    // by its user id -- never its address. Batch prep is an ongoing feature
+    // of the plan, so a trial unlocks it. Decided first, so a Pro account's
+    // kits are never counted in the address's day.
+    let proAccount = false;
     {
+      const authHeader = req.headers.get("Authorization") ?? "";
+      if (authHeader.startsWith("Bearer ")) {
+        try {
+          const authed = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
+            global: { headers: { Authorization: authHeader } },
+          });
+          const { data: { user } } = await authed.auth.getUser();
+          if (user?.id) proAccount = (await accountProStanding(supabase, user.id)).pro;
+        } catch (e) {
+          console.warn("[GENERATE-APPLY-PACKAGE] pro check failed:", String(e).slice(0, 120));
+        }
+      }
+    }
+    if (!proAccount) {
       const { data: allowed, error: rlError } = await supabase.rpc('check_rate_limit', {
         p_ip: clientIp,
         p_function: 'generate-apply-package',
@@ -151,11 +173,13 @@ serve(async (req) => {
     // alike (the three server callers also sent no session at all). The list
     // now lives in _shared/apply-kit.ts, in the spelling Stripe carries, and a
     // guard checks it against what every checkout mints.
-    let entitled = false;
+    let entitled = proAccount;
     let refunded = false;
     // Which credential opened the tool: a purchase is counted per day below.
     let entitledByPurchase = false;
-    if (typeof sessionId === "string" && sessionId.startsWith("cs_")) {
+    if (entitled) {
+      // A Pro account: its plan opens the tool, whatever session it names.
+    } else if (typeof sessionId === "string" && sessionId.startsWith("cs_")) {
       try {
         const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
         if (stripeKey) {
@@ -169,7 +193,7 @@ serve(async (req) => {
             console.warn(`[GENERATE-APPLY-PACKAGE] session ${sessionId} does not include the kit: ${session.payment_status} / ${productType || "no product"}`);
           }
           // Stripe still answers 'paid' for a refunded or disputed session
-          // (L6-18); a plan on the account may still open the tool below.
+          // (L6-18); a plan on the account was read above.
           if (entitled && supabase && await sessionWasRefunded(supabase, sessionId)) {
             entitled = false;
             entitledByPurchase = false;
@@ -188,29 +212,6 @@ serve(async (req) => {
       entitled = refusal === null;
       entitledByPurchase = entitled;
       if (!entitled) console.warn(`[GENERATE-APPLY-PACKAGE] grant ${sessionId} refused: ${refusal}`);
-    }
-    if (!entitled) {
-      const authHeader = req.headers.get("Authorization") ?? "";
-      if (authHeader.startsWith("Bearer ")) {
-        try {
-          const authed = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
-            global: { headers: { Authorization: authHeader } },
-          });
-          const { data: { user } } = await authed.auth.getUser();
-          const admin = user?.id ? getServiceClient() : null;
-          if (user?.id && admin) {
-            // THE ONE RULE (L6-08, L6-29): the verified account's plan, both
-            // caches, by its user id -- never its address. Batch prep is an
-            // ongoing feature of the plan, not a minted consumable, so a
-            // trial unlocks it: this path counted `active` only, and every
-            // trialing Agent subscriber the Account page called a Pro member
-            // got 402 here.
-            entitled = (await accountProStanding(admin, user.id)).pro;
-          }
-        } catch (e) {
-          console.warn("[GENERATE-APPLY-PACKAGE] pro check failed:", String(e).slice(0, 120));
-        }
-      }
     }
     if (!entitled && refunded) {
       return new Response(
