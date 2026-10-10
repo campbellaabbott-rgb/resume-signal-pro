@@ -32,7 +32,7 @@ Branch `wave3/email-ops`. Verifier: `scripts/verify-deploy.d/75-wave3-email-ops.
 | S8-100 | fixed | save-lead escapes every value, prints only detector/menu industries, uses the platform address (also for its rate key) and the ipinfo country of that address, never a header; subject stripped |
 | S8-101 | fixed | the pass refund alert has its own door, `owner-alert:pass` (`firstPassAlert`) |
 | S8-102 | fixed | the pulse says its keywords are the curated list, "not a count of this month's postings"; no percentages, no "shifted", no "right now"; the opt-in line (9 locales) no longer says "rising" |
-| S8-121 | fixed | error boundaries send variant `app` / the section (≤ 30) and the message in metadata |
+| S8-121 | fixed | error boundaries send variant `app:<8-hex hash of the message>` / `<section, cut>:<hash>` (≤ 30, `src/lib/crash-variant.ts`) and the message in metadata, so a visitor's second, different crash is not dropped as a duplicate of the first |
 | S8-122 | fixed | `useABTest().trackClick` records a view under `<test>__click`; `conversion` is left to the purchase |
 | S8-123 | fixed | scroll/time milestones carry the page in the variant (`pricing:25%`); get-analytics folds the prefix back |
 | S8-035 | partly | the "more than 10,000" claim is gone from es/fr/pt/tl (guard extended). **Owner decision:** remove the tips box or route it to the pulse; stop send-scan-report writing every report address into `free_scan_leads`; retention of existing rows |
@@ -100,7 +100,7 @@ migrations 1-4 -> send-product-email -> the other functions -> get-analytics wit
 - `product_delivery_health`: `stuck` drops; no row sits in `generating` past ~30 min.
 - Stripe dashboard: webhook response time for `checkout.session.completed` on product sales under ~2 s (was up to ~90 s).
 - `email_logs` / Resend: `product_full_analysis` and `product_freelance_boost` sends appear after those sales.
-- `ab_test_events`: `client_error` rows appear (variant `app` or a section) where there were almost none; `hero_layout__click` etc. views appear; `scroll_depth` variants `pricing:%`.
+- `ab_test_events`: `client_error` rows appear (variant `app:<hash>` or `<section>:<hash>`) where there were almost none; `hero_layout__click` etc. views appear; `scroll_depth` variants `pricing:%`.
 - get_cron_health: `layoff-partition-refresh` `ch_timeout` = 10min, no statement-timeout cancels.
 - Saved-search digest log: `handedBack` 0 on normal runs; a positive number means the run hit its 100 s clock (the rows run next day).
 

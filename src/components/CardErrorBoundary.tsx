@@ -3,6 +3,7 @@
 
 import { Component, type ReactNode } from "react";
 import { postTrackEvent, getVisitorId } from "@/lib/track-transport";
+import { crashVariant } from "@/lib/crash-variant";
 
 interface Props {
   children: ReactNode;
@@ -30,9 +31,9 @@ export class CardErrorBoundary extends Component<Props, State> {
       const visitorId = getVisitorId();
       postTrackEvent({
         testName: "client_error",
-        // The section alone, within track-ab-event's 30 characters (S8-121:
-        // "section: message" was refused with a 400 nobody saw).
-        variant: (this.props.section ?? "section").slice(0, 30),
+        // The section and the crash, within track-ab-event's 30 characters
+        // (S8-121: "section: message" was refused with a 400 nobody saw).
+        variant: crashVariant(this.props.section ?? "section", error?.message ?? "unknown"),
         eventType: "view",
         visitorId,
         metadata: {

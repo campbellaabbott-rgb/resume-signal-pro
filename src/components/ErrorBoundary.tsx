@@ -1,5 +1,6 @@
 import { Component, ReactNode } from "react";
 import { postTrackEvent, getVisitorId } from "@/lib/track-transport";
+import { crashVariant } from "@/lib/crash-variant";
 
 interface Props {
   children: ReactNode;
@@ -29,10 +30,9 @@ export class ErrorBoundary extends Component<Props, State> {
       const visitorId = getVisitorId();
       postTrackEvent({
         testName: "client_error",
-        // A short, stable variant: track-ab-event refuses one over 30
-        // characters with a 400 the transport swallows, so a crash whose
-        // message was longer never arrived (S8-121). The message is metadata.
-        variant: "app",
+        // Within track-ab-event's 30 characters (S8-121) and one per crash,
+        // so a visitor's second crash is not a duplicate of the first.
+        variant: crashVariant("app", error?.message ?? "unknown"),
         eventType: "view",
         visitorId,
         metadata: {
