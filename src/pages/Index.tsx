@@ -56,9 +56,6 @@ import { TrustIndicators } from "@/components/TrustIndicators";
 import { WhatYouGetSection } from "@/components/WhatYouGetSection";
 import { WhyNotChatGPT } from "@/components/WhyNotChatGPT";
 
-const ScoreBasedPackageRecommendation = lazy(() =>
-  import("@/components/ScoreBasedPackageRecommendation").then((m) => ({ default: m.ScoreBasedPackageRecommendation }))
-);
 import { FloatingUploadButton, FloatingSeeReportButton } from "@/components/FloatingUploadButton";
 import { CheckoutOverlay, type CheckoutStep } from "@/components/CheckoutOverlay";
 import { useToast } from "@/hooks/use-toast";
@@ -2352,9 +2349,8 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
                 onContextConfirm={(ctx) => persistScanContext(ctx)}
               />
               </ReportBoundary>
-              
-              {/* Score-based package recommendation */}
-              <ScoreBasedPackageRecommendation atsScore={freeKeywordResult.atsScoreEstimate} />
+              {/* The report's own Next steps section is the only offer here:
+                  the Full Analysis and Pro (owner decision 1, 2026-10-08). */}
 
               {/* LinkedIn insights — shown when user provided their LinkedIn profile */}
               {linkedInText && (
@@ -2443,7 +2439,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
       </main>
       
       {/* StickyBottomCTA only shown before results — once results are visible the
-          inline ScoreBasedPackageRecommendation is the primary CTA */}
+          report's Next steps section is the primary CTA */}
       {!freeKeywordResult && (
         <StickyBottomCTA isLoading={isLoading} />
       )}
