@@ -104,7 +104,7 @@ function confirmEmailHtml(industryLabel: string, link: string): string {
     </div>
     <div style="background:#fff;border-radius:14px;padding:26px 24px;border:1px solid #e2e8f0">
       <p style="font-size:15px;color:#111;font-weight:600;margin:0 0 12px">Confirm your monthly market pulse</p>
-      <p style="font-size:14px;color:#444;margin:0 0 12px">Someone, hopefully you, asked us to email this address once a month with the keywords ${escapeHtml(industryLabel)} job postings are screening for.</p>
+      <p style="font-size:14px;color:#444;margin:0 0 12px">Someone, hopefully you, asked us to email this address once a month with the core keywords our scanner checks ${escapeHtml(industryLabel)} resumes for.</p>
       <p style="font-size:14px;color:#444;margin:0 0 18px">Nothing is sent unless you confirm.</p>
       <div style="text-align:center">
         <a href="${link}" style="display:inline-block;background:#2563eb;color:#fff;font-size:14px;font-weight:700;padding:12px 26px;border-radius:10px;text-decoration:none">Confirm the monthly pulse</a>
@@ -172,8 +172,9 @@ Deno.serve(async (req) => {
       if (allowed !== true) return json({ success: false, error: "Too many requests. Please try again later." }, 429);
 
       const token = randomToken();
+      const tokenHash = await sha256Hex(token);
       const { data, error } = await supabase.rpc("market_pulse_request_confirm", {
-        p_email: email, p_industry: industry, p_score: score, p_token_hash: await sha256Hex(token), p_net: net,
+        p_email: email, p_industry: industry, p_score: score, p_token_hash: tokenHash, p_net: net,
       }).maybeSingle();
       if (error) {
         console.error("[MARKET-PULSE] request_confirm failed:", error.message?.slice(0, 160));
@@ -204,7 +205,11 @@ Deno.serve(async (req) => {
           html: confirmEmailHtml(industry.replace(/_/g, " "), link),
         });
         if (sendErr) {
-          console.error("[MARKET-PULSE] confirmation send failed");
+          // The request was recorded before the send (S8-099): take it back,
+          // or the address waits 7 days for a mail that never left, and three
+          // refusals in 90 days lock it out (20261009141000).
+          const { error: undoErr } = await supabase.rpc("market_pulse_confirm_unsent", { p_email: email, p_token_hash: tokenHash });
+          console.error(`[MARKET-PULSE] confirmation send failed; request ${undoErr ? "NOT taken back: " + String(undoErr.message ?? "").slice(0, 120) : "taken back"}`);
           return json({ success: false, error: "Could not send the confirmation email." }, 502);
         }
       }
@@ -280,7 +285,7 @@ Deno.serve(async (req) => {
         <p style="font-size:13px;color:#444;margin:0">
           Across your last ${trend.length} scans: <b>${escapeHtml(oldest)}</b> → <b>${escapeHtml(newest)}</b>
           <span style="color:${diffColor};font-weight:700">(${diff >= 0 ? "+" : ""}${escapeHtml(diff)})</span>
-          ${diff > 0 ? " — keep going." : diff === 0 ? " — a fresh scan against this month's keywords could move it." : " — worth a fresh look at the fix plan."}
+          ${diff > 0 ? " — keep going." : diff === 0 ? " — a fresh scan could move it." : " — worth a fresh look at the fix plan."}
         </p>
       </div>`;
           }
@@ -297,11 +302,12 @@ Deno.serve(async (req) => {
       <div style="font-size:11px;color:#94a3b8;margin-top:2px">Market pulse · ${escapeHtml(industryLabel)}</div>
     </div>
     <div style="background:#fff;border-radius:14px;padding:26px 24px;border:1px solid #e2e8f0">
-      <p style="font-size:15px;color:#111;font-weight:600;margin:0 0 12px">Here's what ${escapeHtml(industryLabel)} job postings are screening for right now.</p>
+      <p style="font-size:15px;color:#111;font-weight:600;margin:0 0 12px">The core keywords our scanner checks ${escapeHtml(industryLabel)} resumes for.</p>
+      <p style="font-size:12px;color:#64748b;margin:0 0 12px">From our curated ${escapeHtml(industryLabel)} keyword list, not a count of this month's postings.</p>
       ${progressHtml}
-      ${digest.mustHave.length ? `<h3 style="font-size:12px;color:#111;margin:14px 0 8px;text-transform:uppercase;letter-spacing:0.5px">In 80%+ of postings</h3><div>${kwPills(digest.mustHave, "#fef2f2", "#dc2626")}</div>` : ""}
-      ${digest.common.length ? `<h3 style="font-size:12px;color:#111;margin:14px 0 8px;text-transform:uppercase;letter-spacing:0.5px">In 50–79% of postings</h3><div>${kwPills(digest.common, "#fffbeb", "#d97706")}</div>` : ""}
-      <p style="font-size:13px;color:#444;margin:16px 0 0">${sub.cl_last_score ? `Your last scan scored <b>${escapeHtml(sub.cl_last_score)}/100</b>. ` : ""}Resumes drift out of date as postings change — a fresh scan takes about 60 seconds and is free.</p>
+      ${digest.mustHave.length ? `<h3 style="font-size:12px;color:#111;margin:14px 0 8px;text-transform:uppercase;letter-spacing:0.5px">Core keywords</h3><div>${kwPills(digest.mustHave, "#fef2f2", "#dc2626")}</div>` : ""}
+      ${digest.common.length ? `<h3 style="font-size:12px;color:#111;margin:14px 0 8px;text-transform:uppercase;letter-spacing:0.5px">Often expected</h3><div>${kwPills(digest.common, "#fffbeb", "#d97706")}</div>` : ""}
+      <p style="font-size:13px;color:#444;margin:16px 0 0">${sub.cl_last_score ? `Your last scan scored <b>${escapeHtml(sub.cl_last_score)}/100</b>. ` : ""}A fresh scan against a posting you want takes about 60 seconds and is free.</p>
       <div style="text-align:center;margin-top:20px">
         <a href="${rescanUrl}" style="display:inline-block;background:#2563eb;color:#fff;font-size:14px;font-weight:700;padding:12px 26px;border-radius:10px;text-decoration:none">Rescan my resume free</a>
       </div>
@@ -318,7 +324,7 @@ Deno.serve(async (req) => {
           from: "Resume Booster <reports@resumebooster.work>",
           to: [sub.cl_email],
           reply_to: CUSTOMER_REPLY_TO,
-          subject: `${industryLabel} postings shifted — is your resume current?`,
+          subject: `Your ${industryLabel} market pulse: the keywords to check your resume for`,
           html,
           headers: unsubHeaders,
         });

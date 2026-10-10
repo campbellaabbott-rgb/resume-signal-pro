@@ -333,7 +333,7 @@ describe("the batch send answers the scheduler and our service role, nobody else
     rpc("get_user_score_trend", () => []);
     const res = await post({ action: "send" }, { authorization: `Bearer ${SERVICE}` });
     expect(await res.json()).toMatchObject({ sent: 1, skipped: 1 });
-    expect(sent.map((m) => m.subject)).toEqual(["finance postings shifted — is your resume current?"]);
+    expect(sent.map((m) => m.subject)).toEqual(["Your finance market pulse: the keywords to check your resume for"]);
     for (const m of sent) expect(m.subject + m.html).not.toMatch(/Refund pending|555-0100/);
   });
 
@@ -363,7 +363,7 @@ describe("subscribe sends only a confirmation, only to the address given, and sa
     expect(sent).toHaveLength(1);
     expect(sent[0].to).toEqual(["jane@example.com"]);
     expect(sent[0].subject).toBe("Confirm your monthly market pulse");
-    expect(sent[0].html).toMatch(/keywords data science job postings are screening for/);
+    expect(sent[0].html).toMatch(/core keywords our scanner checks data science resumes for/);
     const token = /\/market-pulse\/confirm#t=([0-9a-f]{64})"/.exec(sent[0].html)?.[1];
     expect(token, "the mail carries no confirmation link").toBeTruthy();
     expect(sha(token!)).toBe(req.args.p_token_hash);

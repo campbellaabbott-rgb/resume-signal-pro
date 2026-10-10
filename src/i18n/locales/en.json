@@ -1627,7 +1627,7 @@
       "emailSend": "Send",
       "emailSent": "Sent! Check your inbox for your scan summary and fix plan.",
       "emailPrivacy": "Only the analysis results are emailed — never your resume. No spam.",
-      "pulseOptIn": "Also send me a monthly market pulse: the keywords rising in my industry, with a free rescan link. Unsubscribe anytime.",
+      "pulseOptIn": "Also send me a monthly market pulse: the core keywords for my industry from our keyword guide, with a free rescan link. Unsubscribe anytime.",
       "pulseConfirmSent": "If this address isn't confirmed for the monthly market pulse yet, we've emailed it a confirmation link. The pulse starts only after that link is clicked.",
       "pulseNotCovered": "The monthly market pulse doesn't cover your field yet, so no confirmation was sent.",
       "dripConfirmSent": "Your report email has a button to start the fix-plan emails. Nothing more is sent until you press it.",
