@@ -5846,6 +5846,7 @@ export type Database = {
           closed: number
           closed_flagged: number
           entry_new: number
+          live_new: number
           new_postings: number
           remote_new: number
           week_start: string
