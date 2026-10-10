@@ -1818,6 +1818,12 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         ...purchaseTerms(),
       });
 
+      // The EU/UK box above the button was not ticked (only with the switch
+      // on): ask for it, and leave the stored résumé for the next press.
+      if (typeof checkoutResult.errorBody?.consentRequired === 'string') {
+        toast({ title: t('purchaseTerms.consentNeeded'), variant: "destructive" });
+        return;
+      }
       if (checkoutResult.error) {
         throw new Error(checkoutResult.error.description);
       }

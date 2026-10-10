@@ -4,7 +4,7 @@
  * the affiliate line).
  *
  * Every checkout call spreads `...purchaseTerms()` next to
- * `...checkoutContext()`: the Terms version the button's line showed, the
+ * `...checkoutContext()`: the Terms version the pressed button's line showed, the
  * affiliate code this browser arrived with (five of six checkouts used to
  * drop it), and, only while the EU/UK switch is on, the box the buyer ticked.
  * The server (supabase/functions/_shared/checkout-policy.ts) reads exactly
@@ -21,14 +21,42 @@ let consent: Consent = { withdrawalWaiver: false, serviceStartConsent: false };
 const listeners = new Set<() => void>();
 
 /**
- * How many "By continuing you agree" lines are on screen. The version is sent
- * only while one is, so the record never says a buyer was shown a line that
- * the page they bought from did not render.
+ * WHICH BUTTON THE TERMS BELONG TO. A line covers the buttons inside its own
+ * block, the element it sits in. The version (and, with the switch on, the
+ * box) is sent only when the press that started the checkout landed in such
+ * a block: a line on another card of the same page covers nothing, so the
+ * record never says a buyer saw a line their button did not carry.
  */
-let linesShown = 0;
-export function termsLineMounted(): () => void {
-  linesShown++;
-  return () => { linesShown = Math.max(0, linesShown - 1); };
+const lines = new Set<Element>();
+let pressed: Element | null = null;
+
+function notePress(e: Event): void {
+  const t = (e as Event & { submitter?: Element | null }).submitter ?? e.target;
+  if (!(t instanceof Element)) return;
+  // A retry continues the purchase its first press started.
+  if (t.closest("[data-purchase-retry]")) return;
+  pressed = t;
+}
+if (typeof document !== "undefined") {
+  document.addEventListener("click", notePress, true);
+  document.addEventListener("submit", notePress, true);
+}
+
+/** Called by PurchaseTerms with its own element while it is on screen. */
+export function termsLineMounted(el: Element | null): () => void {
+  if (!el) return () => {};
+  lines.add(el);
+  return () => { lines.delete(el); };
+}
+
+/** True when the last press landed in the block of a Terms line on screen. */
+export function pressCarriesTerms(): boolean {
+  const t = pressed;
+  if (!t || !t.isConnected) return false;
+  for (const line of lines) {
+    if (line.isConnected && line.parentElement?.contains(t)) return true;
+  }
+  return false;
 }
 
 /** Set by the EU/UK box beside a buy button (PurchaseTerms). */
@@ -55,16 +83,19 @@ export type PurchaseTermsBody = {
 /** The body fields every checkout carries. Never throws: storage may be blocked. */
 export function purchaseTerms(): PurchaseTermsBody {
   const out: PurchaseTermsBody = {};
-  if (linesShown > 0) out.termsVersion = TERMS_VERSION;
+  const covered = pressCarriesTerms();
+  if (covered) out.termsVersion = TERMS_VERSION;
   try {
     const code = getStoredReferralCode();
     if (code) out.referralCode = code;
   } catch {
     /* blocked storage: no referral, still a checkout */
   }
+  // The box is part of the line: a box ticked on another card is not consent
+  // to this purchase.
   if (EU_UK_SALES_ON) {
-    out.withdrawalWaiver = consent.withdrawalWaiver;
-    out.serviceStartConsent = consent.serviceStartConsent;
+    out.withdrawalWaiver = covered && consent.withdrawalWaiver;
+    out.serviceStartConsent = covered && consent.serviceStartConsent;
   }
   return out;
 }

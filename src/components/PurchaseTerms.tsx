@@ -13,7 +13,7 @@
  *
  * Every number is interpolated from src/config (products, eu-consumer).
  */
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { SUBSCRIPTIONS } from "@/config/products";
 import { EU_UK_SALES_ON, WITHDRAWAL_DAYS } from "@/config/eu-consumer";
@@ -54,13 +54,15 @@ function AgreeLine({ text }: { text: string }) {
 export function PurchaseTerms({ kind, plan, className }: Props) {
   const { t } = useTranslation();
   const consent = usePurchaseConsent();
-  // While this line is on screen the button's call sends the Terms version.
-  useEffect(() => termsLineMounted(), []);
+  // While this line is on screen, a press on a button in its block sends the
+  // Terms version; it must sit in the same element as the buttons it covers.
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => termsLineMounted(ref.current), []);
   const proPrice = `$${SUBSCRIPTIONS.pro.priceUsd}`;
   const agentPrice = `$${SUBSCRIPTIONS.agent.priceUsd}`;
 
   return (
-    <div className={cn("space-y-1.5 text-xs text-muted-foreground", className)} data-testid="purchase-terms">
+    <div ref={ref} className={cn("space-y-1.5 text-xs text-muted-foreground", className)} data-testid="purchase-terms">
       {plan === "pro" && (
         <p>{t("purchaseTerms.renewal", { price: proPrice })}</p>
       )}

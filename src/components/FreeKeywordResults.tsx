@@ -32,6 +32,7 @@ import { IndustryKeywordSuggestions } from "./IndustryKeywordSuggestions";
 import { RoleKeywordSuggestions } from "./RoleKeywordSuggestions";
 import { analyzeKeywordPresence } from "@/config/industry-keywords";
 import { AddOnsShowcase } from "./AddOnsShowcase";
+import { PurchaseTerms } from "./PurchaseTerms";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -132,6 +133,15 @@ const getProductCtaCopy = (
   };
 };
 
+// A buy button carries its own Terms line: PurchaseTerms covers the buttons
+// in its block, so a line elsewhere in the report does not count for it.
+const TermsAbove = ({ children }: { children: React.ReactNode }) => (
+  <div className="flex flex-col items-center gap-2">
+    <PurchaseTerms kind="payment" className="text-center" />
+    {children}
+  </div>
+);
+
 // Cover Letter Button component
 const CoverLetterButton = ({ 
   hasJobDescription, 
@@ -158,6 +168,7 @@ const CoverLetterButton = ({
   }
 
   return (
+    <TermsAbove>
     <Button
       onClick={() => purchaseProduct('coverLetter', { ctaSection: section })}
       disabled={isPurchasing}
@@ -177,6 +188,7 @@ const CoverLetterButton = ({
         </>
       )}
     </Button>
+    </TermsAbove>
   );
 };
 
@@ -195,6 +207,7 @@ const KeywordFixButton = ({
   const copy = getProductCtaCopy(variant, t, formatPrice, isLocalCurrency).keywordFix;
 
   return (
+    <TermsAbove>
     <Button
       onClick={() => purchaseProduct('basicKeywordFix', { ctaSection: section })}
       disabled={isPurchasing}
@@ -214,6 +227,7 @@ const KeywordFixButton = ({
         </>
       )}
     </Button>
+    </TermsAbove>
   );
 };
 
@@ -240,6 +254,7 @@ const ApplyAssistantButton = ({
   }
 
   return (
+    <TermsAbove>
     <Button
       onClick={() => purchaseProduct('applyAssistant', { ctaSection: section })}
       disabled={isPurchasing}
@@ -259,6 +274,7 @@ const ApplyAssistantButton = ({
         </>
       )}
     </Button>
+    </TermsAbove>
   );
 };
 
@@ -284,6 +300,7 @@ const PremiumPackageButton = ({
 
   if (isPrimary) {
     return (
+      <TermsAbove>
       <Button
         onClick={handleClick}
         disabled={isPurchasing}
@@ -303,10 +320,12 @@ const PremiumPackageButton = ({
           </>
         )}
       </Button>
+      </TermsAbove>
     );
   }
 
   return (
+    <TermsAbove>
     <Button
       onClick={handleClick}
       disabled={isPurchasing}
@@ -327,6 +346,7 @@ const PremiumPackageButton = ({
         </>
       )}
     </Button>
+    </TermsAbove>
   );
 };
 
@@ -4749,6 +4769,7 @@ export function FreeKeywordResults({
             The diagnosis above is complete and free. These are the paid tools that do the work for you — no pressure, the fix plan stands on its own.
           </p>
           <div className="space-y-2.5">
+            <PurchaseTerms kind="payment" />
             <button onClick={() => handleUpgradeClick('next_steps_full_analysis')} className="w-full flex items-center justify-between rounded-xl border border-border p-3.5 text-left hover:border-primary/50 transition-colors">
               <span>
                 <span className="block text-sm font-medium text-foreground">Full Analysis — every bullet rewritten</span>
@@ -4993,6 +5014,7 @@ export function FreeKeywordResults({
             <p className="text-sm font-medium text-foreground mb-3 text-center px-4">
               These issues are specific to your resume — not generic tips.
             </p>
+            <PurchaseTerms kind="payment" className="mb-2 px-4 text-center" />
             <button
               onClick={() => handleUpgradeClick('hidden_issues_gate')}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-destructive text-white font-semibold text-sm shadow-lg hover:bg-destructive/90 transition-colors"
@@ -5034,6 +5056,7 @@ export function FreeKeywordResults({
               </span>
             ))}
           </div>
+          <PurchaseTerms kind="payment" className="mb-2 text-center" />
           <button
             onClick={() => handleUpgradeClick('gated_keywords')}
             className="w-full text-center text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
@@ -5241,6 +5264,7 @@ export function FreeKeywordResults({
           <CheckCircle2 className="w-3 h-3" />
           {t('freeResults.oneTimePaymentInstantAccess')}
         </div>
+        <PurchaseTerms kind="payment" className="mb-3 text-center" />
         <Button
           size="lg"
           onClick={() => handleUpgradeClick('final_cta')}

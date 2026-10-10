@@ -122,8 +122,9 @@ export function CheckoutOverlay({
 
             {/* Retry and close buttons */}
             <div className="flex gap-3 justify-center pt-2">
+              {/* A retry keeps the Terms the first press carried (purchase-terms.ts). */}
               {onRetry && !showFallbackOptions && (
-                <Button onClick={onRetry} variant="default">
+                <Button onClick={onRetry} variant="default" data-purchase-retry="">
                   <RefreshCw className="h-4 w-4 mr-2" />
                   {t('checkoutOverlay.tryAgain')}
                 </Button>

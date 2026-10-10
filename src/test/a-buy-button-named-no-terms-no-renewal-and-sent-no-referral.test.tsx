@@ -15,8 +15,8 @@
  *
  * WHAT HOLDS NOW, mounted for real with only the backend and auth faked: the
  * line is above each plan's button with its renewal terms from the price
- * config; the call carries the Terms version only while the line is on
- * screen, and the referral this browser arrived with; a buyer back from
+ * config; the call carries the Terms version only for a press on a button in
+ * the line's block while it is on screen, and the referral this browser arrived with; a buyer back from
  * Stripe is re-checked with that session until the plan reads live, and told
  * so.
  */
@@ -88,7 +88,9 @@ describe("the line above a buy button, and what the button's call carries", () =
 
   it("with no line on screen, no call claims the buyer was shown one", () => {
     expect(purchaseTerms().termsVersion).toBeUndefined();
+    invoke.mockResolvedValue({ data: { url: "" }, error: null });
     const { unmount } = render(<MemoryRouter><AgentSubscriptionCard /></MemoryRouter>);
+    fireEvent.click(screen.getByRole("button", { name: new RegExp(en.agentPlan.cta) }));
     expect(purchaseTerms().termsVersion).toBe(TERMS_VERSION);
     unmount();
     expect(purchaseTerms().termsVersion).toBeUndefined();
