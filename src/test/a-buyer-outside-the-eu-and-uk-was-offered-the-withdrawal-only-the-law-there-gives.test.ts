@@ -60,6 +60,7 @@ export default class Stripe {
     }]) };
     this.invoicePayments = { list: async ({ invoice }) => page([{ payment: { payment_intent: "pi_" + invoice } }]) };
     this.refunds = { list: async () => page([]), create: async (p) => { w().refunds.push(p); return p; } };
+    this.checkout = { sessions: { list: async () => page([]) } };
   }
 }`;
 

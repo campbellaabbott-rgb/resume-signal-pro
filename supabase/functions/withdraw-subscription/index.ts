@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-09T18:00Z
+// deploy-stamp: 2026-10-10T15:00Z
 // THE 14-DAY WITHDRAWAL FROM A PLAN, FOR EU AND UK BUYERS (owner decision 3,
 // 2026-10-08; rules in _shared/withdrawal.ts).
 //
@@ -11,8 +11,10 @@
 // the last 14 days, and was billed to an address in the EU, the EEA or the UK
 // (the latest paid invoice's address, else the customer's; no country read
 // means no right assumed, _shared/withdrawal.ts):
-//   1. each paid invoice is refunded but for the share of its period already
-//      provided (the buyer asked for the service to start inside the period);
+//   1. each paid invoice is refunded in full, or, when the plan records the
+//      buyer's request that it start inside the period (service_start_consent
+//      on the subscription, else on its checkout session), but for the share
+//      of its period already provided;
 //   2. the plan is cancelled at once;
 //   3. the withdrawal is acknowledged by mail, once (subscription_notices,
 //      kind 'withdrawal', 20261009133000).
@@ -33,9 +35,9 @@ import { listAll } from "../_shared/stripe-paging.ts";
 import { bearerOf } from "../_shared/service-caller.ts";
 import { euUkSalesOn } from "../_shared/checkout-policy.ts";
 import { NOTICE_FROM, NOTICE_SENDER_DOMAIN, noticeKey, withdrawalMail } from "../_shared/subscription-notice.ts";
-import { buyerCountryOf, inWithdrawalTerritory, withdrawalRefundCents, withinWithdrawalPeriod } from "../_shared/withdrawal.ts";
+import { buyerCountryOf, inWithdrawalTerritory, serviceStartRequested, withdrawalRefundCents, withinWithdrawalPeriod } from "../_shared/withdrawal.ts";
 
-const FN_BUILD = "withdraw-subscription.2026-10-09.2";
+const FN_BUILD = "withdraw-subscription.2026-10-09.3";
 const PRO_PRODUCT_NAME = "Resume Booster Pro";
 
 const corsHeaders = {
@@ -103,12 +105,18 @@ Deno.serve(async (req) => {
 
     const withdrawn: Array<{ subscription: string; refunded: number; currency: string }> = [];
     for (const { s, invoices } of eligible) {
-      // 1. Refund each paid invoice but for the days already provided.
+      // 1. Refund each paid invoice: in full, unless the buyer asked for the
+      //    plan to start early, and then less the days already provided.
+      let startRequested = serviceStartRequested(s.metadata);
+      if (!startRequested) {
+        const sessions = await stripe.checkout.sessions.list({ subscription: s.id, limit: 1 });
+        startRequested = serviceStartRequested(sessions.data?.[0]?.metadata);
+      }
       let refunded = 0;
       let currency = s.currency ?? "usd";
       for (const inv of invoices) {
         const line = inv.lines?.data?.[0] as { period?: { start?: number; end?: number } } | undefined;
-        const amount = withdrawalRefundCents(inv.amount_paid ?? 0, Number(line?.period?.start ?? inv.period_start), Number(line?.period?.end ?? inv.period_end), nowSec);
+        const amount = withdrawalRefundCents(inv.amount_paid ?? 0, Number(line?.period?.start ?? inv.period_start), Number(line?.period?.end ?? inv.period_end), nowSec, startRequested);
         if (amount <= 0) continue;
         const payments = await stripe.invoicePayments.list({ invoice: inv.id, status: "paid", limit: 1 });
         const intent = refId((payments.data?.[0]?.payment as { payment_intent?: unknown } | undefined)?.payment_intent);

@@ -7,11 +7,13 @@
  *
  * With it on, a plan bought in the last 14 days by a buyer billed in the EU,
  * the EEA or the UK (WITHDRAWAL_COUNTRIES) can be withdrawn from the account
- * page. The buyer asked for the service to start inside the period
- * (the checkout's box), so they pay for the days already provided and the
- * rest of what they paid is refunded: art. 14(3), in proportion to the period
- * paid for. A trial that has charged nothing is cancelled with nothing to
- * refund. A one-time product bought with the waiver ticked has no withdrawal
+ * page. A buyer who expressly asked for the service to start inside the
+ * period (the checkout's box, art. 7(3)) pays for the days already provided
+ * and the rest is refunded: art. 14(3), in proportion to the period paid for.
+ * A plan that carries no such request (one bought before the box existed, or
+ * not through our checkout) owes nothing for those days, so it is refunded in
+ * full: art. 14(4)(a)(ii). A trial that has charged nothing is cancelled with
+ * nothing to refund. A one-time product bought with the waiver ticked has no withdrawal
  * once delivered (art. 16(m)).
  *
  * NO IMPORTS: vitest runs this file.
@@ -57,14 +59,29 @@ export function withinWithdrawalPeriod(startSec: number, nowSec: number): boolea
 }
 
 /**
- * What is refunded of one paid invoice: all of it but the share of its period
- * already provided at `nowSec`. The provided share is rounded down to the
- * cent, so rounding never costs the buyer; a period that cannot be read
- * refunds in full rather than guessing a charge.
+ * True when any of the given metadata (the subscription's, then its checkout
+ * session's) records the buyer's request that the plan start inside the
+ * period: the checkout writes `service_start_consent` only when the box was
+ * ticked with the switch on.
  */
-export function withdrawalRefundCents(amountPaid: number, periodStart: number, periodEnd: number, nowSec: number): number {
+export function serviceStartRequested(...metadata: unknown[]): boolean {
+  for (const m of metadata) {
+    const v = m && typeof m === "object" ? (m as Record<string, unknown>).service_start_consent : undefined;
+    if (typeof v === "string" && v.trim()) return true;
+  }
+  return false;
+}
+
+/**
+ * What is refunded of one paid invoice. Without the buyer's request to start
+ * early, all of it. With it, all but the share of its period already provided
+ * at `nowSec`, rounded down to the cent so rounding never costs the buyer; a
+ * period that cannot be read refunds in full rather than guessing a charge.
+ */
+export function withdrawalRefundCents(amountPaid: number, periodStart: number, periodEnd: number, nowSec: number, startRequested: boolean): number {
   const paid = Math.max(0, Math.floor(Number(amountPaid) || 0));
   if (!paid) return 0;
+  if (startRequested !== true) return paid;
   const length = periodEnd - periodStart;
   if (!Number.isFinite(length) || length <= 0) return paid;
   const provided = Math.min(1, Math.max(0, (nowSec - periodStart) / length));

@@ -49,7 +49,7 @@ import { checkoutLanguageOf, checkoutOrigin, euConsentRefusal, policyMetadata, r
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-agent-checkout.2026-10-09.2";
+const FN_BUILD = "create-agent-checkout.2026-10-09.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -151,7 +151,8 @@ serve(async (req) => {
       // (_shared/pro-standing.ts).
       subscription_data: {
         ...(trialOffered ? { trial_period_days: AGENT_TRIAL_DAYS } : {}),
-        metadata: subscriptionBuyer,
+        // The service-start request rides on the plan for a withdrawal to read.
+        metadata: { ...subscriptionBuyer, ...(policy.service_start_consent ? { service_start_consent: policy.service_start_consent } : {}) },
       },
       // LAND THEM WHERE THE AGENT IS SET UP, NOT ON THE ACCOUNT PAGE.
       //

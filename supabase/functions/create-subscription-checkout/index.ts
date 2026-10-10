@@ -39,7 +39,7 @@ import { checkoutLanguageOf, checkoutOrigin, euConsentRefusal, policyMetadata, r
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-subscription-checkout.2026-10-09.2";
+const FN_BUILD = "create-subscription-checkout.2026-10-09.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -123,7 +123,9 @@ serve(async (req) => {
       allow_promotion_codes: true,
       // THE BUYER, three ways (the session, its metadata, the subscription).
       client_reference_id: buyer.id,
-      subscription_data: { metadata: subscriptionBuyer },
+      // The service-start request rides on the plan too: a withdrawal reads
+      // it there to know whether the days provided may be kept.
+      subscription_data: { metadata: { ...subscriptionBuyer, ...(policy.service_start_consent ? { service_start_consent: policy.service_start_consent } : {}) } },
       // The session id comes back so the account page can confirm the plan
       // before the webhook has refreshed the cache (S8-055).
       success_url: `${origin}/account?pro=success&session_id={CHECKOUT_SESSION_ID}`,

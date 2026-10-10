@@ -17,6 +17,13 @@
  *     acknowledged by mail once; a retry refunds nothing twice; a plan past
  *     the period, another account's plan, and a plan naming no account are
  *     left alone.
+ *
+ * A WITHDRAWAL KEPT THE DAYS PROVIDED FROM A BUYER WHO NEVER ASKED THE PLAN TO
+ * START EARLY (wave 3 review). Every refund was cut by the days provided, but
+ * art. 14(4)(a)(ii) allows that only when the buyer expressly asked for the
+ * service to start inside the period (the checkout's box). Now the days are
+ * kept only when the plan, or its checkout session, records that request; a
+ * plan without it is refunded in full.
  */
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -39,6 +46,7 @@ const world = {
   invoices: [] as Inv[],
   refunds: [] as Array<{ payment_intent: string; amount: number; metadata: Record<string, string>; status: string }>,
   cancelled: [] as string[],
+  sessions: [] as Array<{ subscription: string; metadata: Record<string, string> }>,
 };
 
 const STRIPE_STUB = `
@@ -53,6 +61,7 @@ export default class Stripe {
       cancel: async (id) => { hit(); w().cancelled.push(id); const s = w().subs.find((x) => x.id === id); if (s) s.status = "canceled"; return s; },
     };
     this.invoices = { list: async ({ subscription }) => { hit(); return page(w().invoices.filter((i) => i.subscription === subscription)); } };
+    this.checkout = { sessions: { list: async ({ subscription }) => { hit(); return page(w().sessions.filter((x) => x.subscription === subscription)); } } };
     this.invoicePayments = { list: async ({ invoice }) => { hit(); return page([{ invoice, payment: { type: "payment_intent", payment_intent: "pi_" + invoice } }]); } };
     this.refunds = {
       list: async ({ payment_intent }) => { hit(); return page(w().refunds.filter((r) => r.payment_intent === payment_intent)); },
@@ -86,7 +95,7 @@ beforeAll(async () => {
 
 afterEach(() => {
   delete env.EU_UK_SALES;
-  world.stripeCalls = 0; world.subs = []; world.invoices = []; world.refunds = []; world.cancelled = [];
+  world.stripeCalls = 0; world.subs = []; world.invoices = []; world.refunds = []; world.cancelled = []; world.sessions = [];
   db.tables = {}; queued.length = 0;
 });
 
@@ -94,9 +103,11 @@ const call = (jwt = "jwt-user") => handler(new Request("https://harness.supabase
   method: "POST", headers: { authorization: `Bearer ${jwt}`, "content-type": "application/json" }, body: "{}",
 }));
 
-const sub = (id: string, daysAgo: number, buyer: string | null, status = "active"): Sub => ({
+/** The checkout's service-start request, as create-*-checkout copies it onto the plan. */
+const STARTED_EARLY = { service_start_consent: "2026-10-09" };
+const sub = (id: string, daysAgo: number, buyer: string | null, status = "active", extra: Record<string, string> = STARTED_EARLY): Sub => ({
   id, customer: "cus_1", status, start_date: NOW() - daysAgo * DAY, created: NOW() - daysAgo * DAY, currency: "eur",
-  metadata: buyer ? { user_id: buyer } : {}, items: { data: [{ price: { unit_amount: 4500, currency: "eur" } }] },
+  metadata: buyer ? { user_id: buyer, ...extra } : {}, items: { data: [{ price: { unit_amount: 4500, currency: "eur" } }] },
 });
 const paid = (subscription: string, daysAgo: number, amount = 4500): Inv => ({
   id: `in_${subscription}`, subscription, amount_paid: amount, currency: "eur",
@@ -132,6 +143,25 @@ describe("with the switch on", () => {
     expect(payload.to).toBe("buyer@example.eu");
     expect(payload.text).toMatch(/cancelled and will not charge you again/);
     expect(payload.text).toMatch(/€40\.(49|50)/);
+  });
+
+  it("a plan that never recorded the buyer's request to start early is refunded in full", async () => {
+    env.EU_UK_SALES = "on";
+    world.subs = [sub("sub_a", 3, USER, "active", {})];
+    world.invoices = [paid("sub_a", 3)];
+    const body = await (await call()).json() as { withdrawn: Array<{ refunded: number }> };
+    expect(body.withdrawn[0].refunded, "the days provided were kept without the buyer's request").toBe(4500);
+    expect(world.refunds).toEqual([expect.objectContaining({ amount: 4500 })]);
+  });
+
+  it("the request is read from the plan's checkout session when the plan itself does not carry it", async () => {
+    env.EU_UK_SALES = "on";
+    world.subs = [sub("sub_a", 3, USER, "active", {})];
+    world.invoices = [paid("sub_a", 3)];
+    world.sessions = [{ subscription: "sub_a", metadata: { ...STARTED_EARLY } }];
+    const body = await (await call()).json() as { withdrawn: Array<{ refunded: number }> };
+    expect(body.withdrawn[0].refunded).toBeGreaterThanOrEqual(4049);
+    expect(body.withdrawn[0].refunded).toBeLessThanOrEqual(4050);
   });
 
   it("a retry after the refund went through and the cancel did not refunds nothing more", async () => {
@@ -182,11 +212,13 @@ describe("the rules", () => {
     expect(withinWithdrawalPeriod(start, start + 14 * DAY)).toBe(true);
     expect(withinWithdrawalPeriod(start, start + 14 * DAY + 1)).toBe(false);
     expect(withinWithdrawalPeriod(0, start)).toBe(false);
-    expect(withdrawalRefundCents(4500, start, start + 30 * DAY, start)).toBe(4500);
-    expect(withdrawalRefundCents(4500, start, start + 30 * DAY, start + 10 * DAY)).toBe(3000);
-    expect(withdrawalRefundCents(4500, start, start + 30 * DAY, start + 40 * DAY)).toBe(0);
-    expect(withdrawalRefundCents(4500, start, start, start)).toBe(4500);
-    expect(withdrawalRefundCents(1, start, start + 3 * DAY, start + DAY)).toBe(1);
+    expect(withdrawalRefundCents(4500, start, start + 30 * DAY, start, true)).toBe(4500);
+    expect(withdrawalRefundCents(4500, start, start + 30 * DAY, start + 10 * DAY, true)).toBe(3000);
+    expect(withdrawalRefundCents(4500, start, start + 30 * DAY, start + 40 * DAY, true)).toBe(0);
+    expect(withdrawalRefundCents(4500, start, start, start, true)).toBe(4500);
+    expect(withdrawalRefundCents(1, start, start + 3 * DAY, start + DAY, true)).toBe(1);
+    // Without the buyer's request to start early, nothing is kept for the days provided.
+    expect(withdrawalRefundCents(4500, start, start + 30 * DAY, start + 10 * DAY, false)).toBe(4500);
   });
 });
 

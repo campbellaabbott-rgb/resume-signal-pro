@@ -192,6 +192,15 @@ describe("the policy every checkout applies", () => {
         expect(ok.session?.metadata?.[c.mode === "payment" ? "withdrawal_waiver" : "service_start_consent"]).toBeTruthy();
       });
 
+      if (c.mode === "subscription") {
+        it("with the EU/UK switch on, the buyer's request to start early rides on the plan, where a withdrawal reads it", async () => {
+          env.EU_UK_SALES = "on";
+          const ok = await call(c, { serviceStartConsent: true });
+          expect(ok.status).toBe(200);
+          expect((ok.session?.subscription_data as { metadata?: Record<string, string> } | undefined)?.metadata?.service_start_consent).toBeTruthy();
+        });
+      }
+
       it("asks Stripe for its Terms checkbox only when the owner has switched it on", async () => {
         env.STRIPE_TERMS_CONSENT = "on";
         const r = await call(c);
