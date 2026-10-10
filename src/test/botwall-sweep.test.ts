@@ -12,8 +12,11 @@
  * collapse into `clean`, and a sweep that reached nobody must say so.
  */
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { tmpdir } from "node:os";
+import { execFileSync } from "node:child_process";
+import { parseDocument } from "yaml";
 import { signsInUrl, vendorVerdict, isOpportunity, SIGNS } from "../../worker/src/botwall-detect";
 
 const sweep = readFileSync(resolve(__dirname, "../../worker/src/botwall-sweep.ts"), "utf8");
@@ -276,3 +279,70 @@ describe("a vendor-level all-clear needs a denominator", () => {
     expect(sweep).toMatch(/nothing conclusive, which is not the same as still walled/);
   });
 });
+
+/**
+ * THE SWEEP NEVER HAD THE BOARD'S ADDRESS (L12-07).
+ *
+ * Every scheduled run from 2026-08-10 failed: first with exit 2, because the
+ * workflow read SUPABASE_URL and SUPABASE_ANON_KEY from repo secrets that were
+ * never set, then on the worker lockfile. The pair is the public one the
+ * browser bundle ships, and board-health already reads it from the committed
+ * .env. This runs the workflow's own step in bash and then applies GitHub's
+ * precedence (a step's `env:` overrides GITHUB_ENV; an unset secret is "") to
+ * get what the sweep process actually receives.
+ */
+describe("the sweep is handed the board's address and key", () => {
+  type Step = { name?: string; run?: string; env?: Record<string, string> };
+  const doc = parseDocument(wf);
+  const steps = ((doc.toJS() as { jobs?: { sweep?: { steps?: Step[] } } }).jobs?.sweep?.steps ?? []);
+  const sweepStep = steps.find((s) => /botwall-sweep\.ts/.test(s.run ?? ""));
+  const SECRETS: Record<string, string> = { APPLY_WORKER_SECRET: "set-in-repo" };
+
+  /** Run every step before the sweep that writes GITHUB_ENV, then resolve the sweep step's env over it. */
+  function sweepEnv(dotenv: string | null): { env: Record<string, string>; failed: boolean } {
+    const dir = mkdtempSync(join(tmpdir(), "botwall-env-"));
+    if (dotenv !== null) writeFileSync(join(dir, ".env"), dotenv);
+    writeFileSync(join(dir, "ghenv"), "");
+    let failed = false;
+    for (const s of steps.slice(0, steps.indexOf(sweepStep!))) {
+      if (!s.run || !/GITHUB_ENV/.test(s.run)) continue;
+      try { execFileSync("bash", ["-e", "-c", s.run], { cwd: dir, env: { PATH: process.env.PATH, GITHUB_ENV: join(dir, "ghenv") }, stdio: "pipe" }); }
+      catch { failed = true; }
+    }
+    const env: Record<string, string> = {};
+    for (const line of readFileSync(join(dir, "ghenv"), "utf8").split("\n")) {
+      const i = line.indexOf("=");
+      if (i > 0) env[line.slice(0, i)] = line.slice(i + 1);
+    }
+    for (const [k, v] of Object.entries(sweepStep?.env ?? {})) {
+      env[k] = String(v).replace(/\$\{\{\s*secrets\.(\w+)\s*\}\}/g, (_m, n: string) => SECRETS[n] ?? "");
+    }
+    return { env, failed };
+  }
+
+  it("the workflow parses and has a sweep step", () => {
+    expect(doc.errors.map((e) => e.message)).toEqual([]);
+    expect(sweepStep, "no step runs botwall-sweep.ts").toBeTruthy();
+  });
+
+  it("with the committed .env, the sweep receives the URL, the key and the broker URL", () => {
+    const { env, failed } = sweepEnv('VITE_SUPABASE_PROJECT_ID="p"\nVITE_SUPABASE_PUBLISHABLE_KEY="pk_test_123"\nVITE_SUPABASE_URL="https://p.supabase.co"\n');
+    expect(failed).toBe(false);
+    expect(env.SUPABASE_URL, "the sweep would exit 2: no SUPABASE_URL").toBe("https://p.supabase.co");
+    expect(env.SUPABASE_ANON_KEY, "the sweep would exit 2: no SUPABASE_ANON_KEY").toBe("pk_test_123");
+    expect(env.APPLY_BROKER_URL).toBe("https://p.supabase.co/functions/v1/apply-broker");
+    expect(env.APPLY_WORKER_SECRET).toBe("set-in-repo");
+  });
+
+  it("the committed .env really carries the two lines the step reads", () => {
+    const dotenv = readFileSync(resolve(__dirname, "../../.env"), "utf8");
+    expect(dotenv).toMatch(/^VITE_SUPABASE_URL=\S+/m);
+    expect(dotenv).toMatch(/^VITE_SUPABASE_PUBLISHABLE_KEY=\S+/m);
+  });
+
+  it("without the .env lines the run fails loudly, before any sweep", () => {
+    expect(sweepEnv(null).failed).toBe(true);
+    expect(sweepEnv("OTHER=1\n").failed).toBe(true);
+  });
+});
+
