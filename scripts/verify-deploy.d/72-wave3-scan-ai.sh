@@ -7,11 +7,15 @@
 #   - 20261009111000 landed: shortlist_candidates has jd_text_scored and is
 #     closed to anon, and shortlist_decide exists and refuses anon by name;
 #   - 20261009110000 (the limiter's sweep) cannot be observed read-only: INFO;
+#     nor can 20261009111000's decision stamp (it fires on an insert): INFO;
 #   - the homepage a crawler reads says a rescan repeats the report only
 #     within the 7-day cache, and states one time to results; llms.txt too;
+#   - /resume-score as a crawler reads it states the same bound and names the
+#     cache window beside its report-ID promise;
 #   - the browser's bundle: the value table prices the Full Analysis, the
-#     verdict labels and the crash notice exist, the resetting countdown key
-#     is gone; the free report has no "Premium Only" stack; the Why-not-ChatGPT
+#     verdict labels and the crash notice exist, the crash notice offers
+#     Re-analyze, the partial banner names its reason, the resetting
+#     countdown key is gone; the free report has no "Premium Only" stack; the Why-not-ChatGPT
 #     card names the cache window; the Shortlist page decides through
 #     shortlist_decide.
 #
@@ -57,6 +61,7 @@ case "$SD72C" in
   *) echo "FAIL  shortlist_decide as anon -> $SD72C $(printf '%s' "$SD72" | head -c 160) (want 42501)";;
 esac
 echo "INFO  20261009110000 (check_rate_limit sweeps only rows older than 1,440 minutes, S8-011) writes on every call, so it is not called here; its DO block checks the live body at apply time and src/test/a-day-allowance-the-limiter-sweeps-is-an-hour.test.ts runs it in pglite"
+echo "INFO  20261009111000's shortlist_decisions_stamp trigger (server clock and JWT actor; advance/reject only through shortlist_decide) fires on an insert, so it is not exercised here; its DO block checks the trigger at apply time and the pglite test runs it"
 
 # The homepage and llms.txt as a crawler reads them.
 HOME72=$(curl -s -m 30 -A "$UA" "$SITE/")
@@ -73,6 +78,15 @@ LLMS72=$(curl -s -m 30 -A "$UA" "$SITE/llms.txt")
 if printf '%s' "$LLMS72" | grep -qF "same document → same report ID"; then echo "FAIL  llms.txt still says \"reproducible (same document → same report ID)\" with no cache window"
 elif printf '%s' "$LLMS72" | grep -qF "within 7 days returns the same report"; then echo "PASS  llms.txt: a rescan of the same file within 7 days returns the same report"
 else echo "FAIL  llms.txt carries neither sentence (${#LLMS72} bytes)"; fi
+
+# A tool landing as a crawler reads it (its meta description and FAQ come from tool-landings.ts).
+RS72=$(curl -s -m 30 -A "$UA" "$SITE/resume-score")
+if printf '%s' "$RS72" | grep -qF "in about 20 seconds"; then echo "FAIL  /resume-score (crawler) still says \"in about 20 seconds\": the prerender with this wave is not published"
+elif printf '%s' "$RS72" | grep -qF "within 90 seconds"; then echo "PASS  /resume-score (crawler) states the scan's bound: within 90 seconds"
+else echo "FAIL  /resume-score (crawler) states neither time (${#RS72} bytes)"; fi
+if printf '%s' "$RS72" | grep -qF "Reproducible report ID"; then echo "FAIL  /resume-score (crawler) still promises a reproducible report ID with no window"
+elif printf '%s' "$RS72" | grep -qF "same file within 7 days"; then echo "PASS  /resume-score (crawler) names the 7-day cache window beside the report ID"
+else echo "FAIL  /resume-score (crawler) carries neither report-ID sentence"; fi
 
 # The bundle the browser loads.
 MAIN72=$(curl -s -m 30 "$SITE/" | grep -o '/assets/index-[^"]*\.js' | head -1)
@@ -91,7 +105,9 @@ else
   else echo "FAIL  the value table's cost line is neither the old range nor the new price"; fi
   for PAIR in "careerReportEnum|verdict labels in the reader's language from the English values (S8-034)" \
               "reportCrash|the report's crash notice says to scan again (S8-117)" \
-              "fullAnalysisDesc|the free report's two honest offers (owner decision 1)"; do
+              "fullAnalysisDesc|the free report's two honest offers (owner decision 1)" \
+              "Re-analyze to scan again|the crash notice offers Re-analyze past the saved report (review of S8-117)" \
+              "left some sections empty|the partial banner says a thin reply is not an outage (review of S8-067)"; do
     S=${PAIR%%|*}; WHY=${PAIR#*|}
     if printf '%s' "$EN72" | grep -qF "$S"; then echo "PASS  English strings carry $S: $WHY"
     else echo "FAIL  English strings lack $S: $WHY -- the frontend with this wave is not published"; fi

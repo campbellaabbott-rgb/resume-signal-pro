@@ -8,18 +8,39 @@ None of the 30 items had been fixed by wave 2. Each one was checked against main
 
 | Register | Commit | What changes |
 | --- | --- | --- |
-| **S8-004, S8-005** (high), S8-037, S8-038, S8-039, S8-040 | d6a1f1bc | Shortlist redaction now finds the candidate's name in the first six lines. That covers accented names, ALL-CAPS names, CJK names, names followed by credentials or a pipe, and names under a RESUME heading. It masks the name wherever it appears. Emails, profile URLs, personal domains, phone numbers (international, US and trunk-0), state+ZIP, and UK and Canadian postcodes are all stripped, so no contact detail reaches the model. Labelled personal fields keep their label and lose the value. Dates of birth, "N-year-old" and "graduated YYYY" are caught. Years are masked only on degree and school lines, and the Education section closes at any heading. Job evidence is no longer erased ("CPT coding", "Ministry of Finance", "Temple University", hotel accommodations, "opt-in"). Counts record only replacements that actually happened. |
+| **S8-004, S8-005** (high), S8-037, S8-038, S8-039, S8-040 | d6a1f1bc, a9cc9def | Shortlist redaction now finds the candidate's name in the first six lines. That covers accented names, ALL-CAPS names, CJK names, names followed by credentials or a pipe, and names under a RESUME heading. It masks the name wherever it appears. Emails, profile URLs, personal domains, phone numbers (international, US and trunk-0), state+ZIP, and UK and Canadian postcodes are all stripped. Detection is heuristic: the shapes it handles are the ones its tests list (see the review round for the shapes added there). Labelled personal fields keep their label and lose the value. Dates of birth, "N-year-old" and "graduated YYYY" are caught. Years are masked only on degree and school lines, and the Education section closes at any heading. Job evidence is no longer erased ("CPT coding", "Ministry of Finance", "Temple University", hotel accommodations, "opt-in"). Counts record only replacements that actually happened. |
 | S8-013 | 04702d77 | A résumé restored after a reload enables the free-scan and $5 buttons. |
 | S8-032 | 99f2ac53 | The grounding check now reads comma-grouped figures. An invented "10,000 users" is refused, and an honest "2,500" matched against a source "2500" passes. This applies to the cover letter, the Apply kit and the agent's cover note. |
 | S8-033, S8-066 | d780281a | The Premium Package keeps the buyer's own phone, LinkedIn and GitHub when the model only reformats them. Auto-fix no longer rewrites "good fortune" or "DVD/CD". |
 | Owner decision 1; commercial readiness items 6 and 7 | 94778203, 9b80ff43, ae644044 | **Offers.** The free report ends with one Next steps section and exactly two offers: the $5 Full Analysis and Pro. Removed: the invented "Premium Only" issues, the 48-hour countdown that reset on every visit, the "$25" button, and every other offer down to the hidden $3 fix. **Prices in copy.** The value table states the Full Analysis price that checkout charges. It used to say "$5 – $25", and "5 € – 25 €" in some locales. **Time to results.** The homepage gives one time to results everywhere: within 90 seconds (`SCAN_RESULTS_WITHIN_SECONDS`), the bound the code guarantees. **Repeatability.** "Same document, same score" now reads "a rescan of the same file within 7 days returns the same report", which is what the cache provides. The "Why not ChatGPT" card says the same. All nine locales are updated. |
-| S8-064, S8-067, S8-068, S8-069, S8-070, S8-071, S8-072 | 872c3117 | **Rescans.** A rescan that hits the cache spends no daily slot and answers `cached: true`. **Cache key.** The key and the report's market use one country rule. The reportId covers the inputs and the score, and analysis runs at temperature 0. **Partial reports.** A model shape that would have thrown, or an analysis that is invalid or less than 70% complete, now produces a partial report: it is not cached and the credit is refunded. **Score audit.** "Every point, accounted for" now sums to the total. **Language field.** The stream fork and both paid streams accept only a real language name or a locale code. The stream fork is kept in step with all of this. |
+| S8-064, S8-067, S8-068, S8-069, S8-070, S8-071, S8-072 | 872c3117 | **Rescans.** A rescan that hits the cache spends no daily slot and answers `cached: true`. **Cache key.** The key and the report's market use one country rule. The reportId covers the inputs and the score, and analysis runs at temperature 0. **Partial reports.** A model shape that would have thrown, or an analysis that is invalid or less than 70% complete, now produces a partial report: it is not cached and the credit is refunded. **Score audit.** "Every point, accounted for" now sums to the total. **Language field.** The stream fork and both paid streams accept only a real language name or a locale code. The stream fork has the same slot-after-cache, cache-key country, temperature 0, shape guard and thin-reply rule (cfb98f5b, after review); it has no reportId or score audit. |
 | S8-011 | cb37c10a | Every "per day" allowance on `check_rate_limit` lasts a full day: the free scan's 7, a purchase's 10, and the 1,440-minute caps. Before this, a 60-minute caller's sweep emptied them after about an hour (migration 20261009110000). |
-| S8-063, S8-065 | 6ebb2ab3 | ATS Defense and the Apply kit now count one purchase's daily allowance and answer 503 when the limiter is down. A paying Interview Coach buyer is counted in a bucket the size of the purchase, not the shared 20 per hour. |
+| S8-063, S8-065 | 6ebb2ab3, 53283c74 | ATS Defense and the Apply kit now count one purchase's daily allowance and answer 503 when the limiter is down. A paying Interview Coach buyer past the shared 20 an hour goes on while the purchase's 30 a day last (one address bucket; see the review round). |
 | S8-116, S8-117, S8-118 | cd65a83c | **File choosers.** Every file chooser can be reached by keyboard and screen reader. **Crash screens.** They use theme colours. The report's crash notice now says "scan again", because a refresh discarded the report, and it resets with each new result. **Sticky bar.** The help button lifts above the homepage's sticky bar, so the bar's dismiss button can be tapped. |
 | S8-075 | fd23eeed | "Get job-specific analysis" records the job as the scan's job description, in page state, the session and the stored résumé, before it scans. "Get full analysis" on that report now buys an analysis of that job. |
 | S8-034, S8-073 | c9256067 | **Verdicts.** Paid generators translate free text only. JSON keys and fixed choices ("Strong", "High", "Ready to Apply") stay in English, so colours and gauges work in every language. A translated verdict is mapped back to its English value, and the page shows it in the reader's language (`careerReportEnum`, nine locales). **Report shape.** Career Snapshot and Game Plan ship only a reply with the whole shape. Otherwise they ask the next model, and if none completes it they answer a retryable 502. The pages and PDFs shape a stored report before reading it, and each section has its own error boundary. |
 | S8-041, S8-042, S8-110, S8-111 | 5786c5df | **Evaluation record.** A Shortlist evaluation cannot be rewritten, and an employer cannot insert one: the service role writes it. A status changes only together with its logged decision, through `shortlist_decide`. An override is a decision and never rewrites the AI score. **JD.** The scored JD is the role's stored text, kept on the row. `jd_version` bumps on every edit. **Bias audit.** Selection rates leave pending candidates out. Demographics use EEO-1 categories, and free text is read into them. The audit adds a scoring-rate table (share above the median score). **Alternative review.** It hides a candidate's score and rank and is marked in exports. It can be requested before scoring, with no model call (migration 20261009111000). |
+
+## Review round (2026-10-10)
+
+A reviewer read the branch and reported 14 findings. Each was reproduced (deno runs of the shared modules, the edge harness, pglite) before it was fixed, and each fix has a behaviour test that fails on the code before it.
+
+| Finding | Commit | What changed |
+| --- | --- | --- |
+| Blocker: S8-004 not met | a9cc9def | **Names.** "Jack Ma", "Yo-Yo Ma" and "Anh Do" were read as a name plus a degree. Now a title-case two-letter trailing token is a surname, and in an ALL-CAPS line one is stripped only while two name words remain. "Jane Doe, MD" and "Priya Sharma, MS" were read as places. MD/MS/MA/PA/DC/PE after a comma now count as a place only with a ZIP or a town word ("Silver Spring"). A city heading the page ("New York, NY \| phone \| email", "Rio de Janeiro, Brazil") was taken for the name, while the real name went through and was still logged. A segment before a region code, a country or a known multi-word city is now a place on every line. "GONZALEZ, Maria" and "J. R. Smith" are now found. **Dates.** A month-name given name ("June Lee") is not masked before a year or a month range. **COMPLIANCE.md** now says detection is heuristic and points to the tests that list its shapes. |
+| Major: S8-005 incomplete | a9cc9def | Header lines now lose 10- to 15-digit runs ("9876543210", "98765 43210", "555.0100.199"), @handles and hosting subdomains ("x.vercel.app"). The labels Ph, M, T, P, H and Contact (No.) are read. A ZIP after a full state name and an ordinal street ("45 W 34th St") are caught. Handles built from the name ("@mariagonzalez", "maria_gonzalez.dev", "mgonzalez") are masked anywhere. A header line of years is kept. |
+| Major: S8-033 regression | 1ddd8a98 | The Premium guard removed the buyer's own phone whenever the source had a ZIP, a unit number or a year beside it. A greedy source digit run merged them into one number. A phone the source contains literally is always kept, and the source's phones are read with the output's bounded pattern. |
+| S8-041 incomplete | a72e997a | The `shortlist_decisions_stamp` trigger (in 20261009111000) sets `created_at` from the server clock and `actor_email` from the JWT. A direct advance or reject is refused; only `shortlist_decide` logs one, with the status it sets. |
+| S8-068 half-fixed | 58ae9246 | The primary honours `skipCache` (Re-analyze): it skips the cache read, counts the scan like a miss, and its report replaces the saved one. |
+| Stream fork not in step | cfb98f5b | The fork shapes the model's arrays and objects before its filters run (`keywords: [null]` threw after the slot was counted). A thin reply is served as partial (`partialReason: "thin"`) and is not cached. |
+| S8-032 comma-only | 97c4ac9a | Dot- and space-grouped figures ("10.000", "1.000.000", "10 000", and NBSP or narrow-NBSP groups) are read whole. An invented "10.000" is refused, and an honest "2.500" or "2 500" checked against "2,500" passes. |
+| Apply kit capped Pro at 40 a day | 8e8b430c | A Pro account's standing is decided first, and its kits are never counted in the address's day. Purchase and unentitled callers are still counted, at 40 per address per day. |
+| Purchase gave a second hourly allowance | 53283c74 | The address is counted in one bucket. A spent address goes on only while the named purchase's day lasts, and each call draws on it. Before, one address could make 20 + 30 calls an hour, every hour. |
+| Coach/Path labels stayed English | ed29955a | Interview Coach (difficulty, category) and Career Path (level, risk) show those values in the reader's language. Colours still key on the English value. 9 new `careerReportEnum` keys in nine locales. |
+| Landing copy | ad11e2e1 | /resume-checker, /resume-score and /es/revisar-curriculum interpolate `SCAN_RESULTS_WITHIN_SECONDS` and `REPORT_CACHE_DAYS`. They say "within 90 seconds" and "the same report ID on a rescan of the same file within 7 days". The prerendered CTA uses the same constant. |
+| Partial banner blamed an outage | 58ae9246 | `partialReason` is `rule_based` or `thin`, and the banner (`PartialResultsNotice`, nine locales) words each one. A thin reply is judged only on the sections a reply owes: no red flags, no missing keywords and no peer data are not gaps. |
+| Month-name given names erased dates | a9cc9def | See the first row. |
+| Crash notice replayed the crash | 58ae9246 | The crash notice offers Re-analyze, which skips the cache, and no longer promises the saved report. |
 
 ## Apply the migrations first, in this order
 
@@ -30,39 +51,50 @@ Both migrations check themselves with a DO block and are safe to re-run. Neither
    - Grants are re-stated as service role only.
    - Depends on `rate_limits` (20251216002238).
    - Apply it before, or with, the functions. Without it they still work, but "per day" stays hourly.
+   - **Allowances that become a real day:**
+     - the free scan's 7;
+     - a purchase's 10 (purchaseSpendGate);
+     - parse-resume-structured's 15 and import-freelance-profile's 10 per address;
+     - the Apply kit's 40 per address, for purchase and unentitled callers only (a Pro account is not counted from `generate-apply-package.2026-10-09.2`);
+     - application-fit's 60 per address;
+     - job-board-fit's daily allowance;
+     - the daily caps of send-scan-report and company-claim.
 2. `20261009111000_a_shortlist_evaluation_cannot_be_rewritten_and_a_status_changes_only_with_its_decision.sql`
    - Adds `shortlist_candidates.jd_text_scored`.
    - Revokes INSERT and table-wide UPDATE from authenticated and grants UPDATE (status) instead.
    - Adds the guard trigger and the `jd_version` trigger.
    - Adds `shortlist_decide(uuid, text, text)` (SECURITY INVOKER, authenticated only).
    - Restricts the decision insert policy to the caller's own candidates.
+   - Adds the `shortlist_decisions_stamp` BEFORE INSERT trigger (for authenticated and anon):
+     - `created_at` comes from the server clock and `actor_email` from the JWT;
+     - an advance or reject is refused unless `shortlist_decide` set the transaction-local `shortlist.deciding` switch for that candidate. The switch is cleared right after its own insert.
    - Depends on the Shortlist tables (20260703120000) and their grants (20260704160023).
-   - **Deploy `shortlist-evaluate.2026-10-09.2` and the frontend right after this migration.** In the gap, the old function's insert runs on the employer's client, which is now refused, and the old page's status update has no decision in its transaction, so it is refused too. Shortlist is an employer beta, so keep the gap to minutes.
+   - **Deploy `shortlist-evaluate.2026-10-09.3` and the frontend right after this migration.** In the gap, the old function's insert runs on the employer's client, which is now refused, and the old page's status update has no decision in its transaction, so it is refused too. Shortlist is an employer beta, so keep the gap to minutes.
 
 ## Deploy these functions
 
 | Function | Build | Why |
 | --- | --- | --- |
-| free-keyword-scan | `free-keyword-scan.2026-10-09.1` | Slot after the cache, `cached: true`, key country, reportId, temperature 0, shape guard, partial reports, the score audit (S8-067..072) |
-| free-keyword-scan-stream | `free-keyword-scan-stream.2026-10-09.1` | Kept in step with the primary, plus the language bound (S8-064) |
+| free-keyword-scan | `free-keyword-scan.2026-10-09.2` | Slot after the cache, `cached: true`, key country, reportId, temperature 0, shape guard, partial reports, the score audit (S8-067..072); `skipCache` honoured and `partialReason` (review) |
+| free-keyword-scan-stream | `free-keyword-scan-stream.2026-10-09.2` | Slot after the cache, key country, the language bound (S8-064); shape guard and thin-reply rule (review) |
 | generate-cover-letter-stream | `generate-cover-letter-stream.2026-10-09.1` | Language bound (S8-064) |
 | generate-premium-package-stream | `generate-premium-package-stream.2026-10-09.1` | Language bound (S8-064) |
-| generate-premium-package | `generate-premium-package.2026-10-09.1` | Contact guard compares canonical forms; auto-fix (S8-033, S8-066) |
-| generate-cover-letter | `generate-cover-letter.2026-10-09.1` | Grouped figures (S8-032); the purchase bucket (S8-065) |
-| generate-apply-package | `generate-apply-package.2026-10-09.1` | Grouped figures; the per-purchase day; limiter 503 (S8-032, S8-063) |
-| generate-application-answers | `generate-application-answers.2026-10-09.1` | Grouped figures in the cover note (S8-032); the instruction (S8-034) |
+| generate-premium-package | `generate-premium-package.2026-10-09.2` | Contact guard compares canonical forms and keeps a literal copy; auto-fix (S8-033, S8-066) |
+| generate-cover-letter | `generate-cover-letter.2026-10-09.2` | Comma-, dot- and space-grouped figures (S8-032); one address bucket with the purchase's day (S8-065) |
+| generate-apply-package | `generate-apply-package.2026-10-09.2` | Grouped figures; the per-purchase day; limiter 503 (S8-032, S8-063); a Pro account is not counted in the address's day (review) |
+| generate-application-answers | `generate-application-answers.2026-10-09.2` | Grouped figures in the cover note (S8-032); the instruction (S8-034) |
 | generate-ats-defense | `generate-ats-defense.2026-10-09.1` | The per-purchase day; limiter 503 (S8-063); the instruction (S8-034) |
-| generate-interview-coach | `generate-interview-coach.2026-10-09.1` | The purchase bucket (S8-065); the instruction |
-| generate-career-path | `generate-career-path.2026-10-09.1` | The purchase bucket (S8-065); the instruction |
+| generate-interview-coach | `generate-interview-coach.2026-10-09.2` | One address bucket with the purchase's day (S8-065); the instruction |
+| generate-career-path | `generate-career-path.2026-10-09.2` | One address bucket with the purchase's day (S8-065); the instruction |
 | generate-career-snapshot | `generate-career-snapshot.2026-10-09.1` | Whole shape or the next model; English verdicts (S8-073, S8-034) |
 | generate-graduate-gameplan | `generate-graduate-gameplan.2026-10-09.1` | The same (S8-073, S8-034) |
 | generate-keyword-fix | `generate-keyword-fix.2026-10-09.1` | The instruction (S8-034) |
 | generate-product-preview | `generate-product-preview.2026-10-09.1` | The instruction (S8-034) |
-| shortlist-evaluate | `shortlist-evaluate.2026-10-09.2` | Redaction (S8-004/005/037..040); the stored JD and `jd_text_scored`; service-role insert; `altReview` (S8-110, S8-111). Needs 20261009111000 first. |
+| shortlist-evaluate | `shortlist-evaluate.2026-10-09.3` | Redaction (S8-004/005/037..040, and the review's shapes); the stored JD and `jd_text_scored`; service-role insert; `altReview` (S8-110, S8-111). Needs 20261009111000 first. |
 
-The other functions that import `_shared/model-spend-gate.ts` get the same bundle on their next deploy, but they behave exactly as before. The change applies only to free generators that pass `products` (Interview Coach, Career Path, Cover Letter), so nothing else needs redeploying. job-board is untouched.
+The other functions that import `_shared/model-spend-gate.ts` get the same bundle on their next deploy, but they behave exactly as before. The address is still counted in its one bucket and refused when spent, and step 4a is unchanged. The change applies only to free generators that pass `products` (Interview Coach, Career Path, Cover Letter), so nothing else needs redeploying. All 26 importers pass `deno check`. job-board is untouched.
 
-**Frontend (Lovable publish).** This covers the free report and homepage (index.html, `public/llms.txt`, `scripts/prerender-seo.mjs`), the uploader, the crash screens, the help button, the Career Snapshot and Game Plan pages and PDFs, the Shortlist page, and all nine locale files.
+**Frontend (Lovable publish).** This covers the free report and homepage (index.html, `public/llms.txt`, `scripts/prerender-seo.mjs`), the uploader, the crash screens, the help button, the Career Snapshot and Game Plan pages and PDFs, the Interview Coach and Career Path labels, the partial-results banner, the tool landings, the Shortlist page, and all nine locale files.
 
 ## Owner steps
 
@@ -75,6 +107,7 @@ None beyond the deploy order above. Existing Shortlist demographics entered as f
 
   ```sql
   DROP TRIGGER shortlist_candidates_guard ON public.shortlist_candidates;
+  DROP TRIGGER shortlist_decisions_stamp ON public.shortlist_decisions;
   DROP TRIGGER shortlist_roles_jd_version ON public.shortlist_roles;
   GRANT INSERT, UPDATE ON public.shortlist_candidates TO authenticated;
   CREATE POLICY "owners insert own candidates" ON public.shortlist_candidates
@@ -86,11 +119,14 @@ None beyond the deploy order above. Existing Shortlist demographics entered as f
 
 ## What to measure
 
-- `bash scripts/verify-deploy.sh` section 72. Before this deploy it FAILs on every build and claim. This was run against production on 2026-10-10: 29 FAIL and 1 INFO, no crash.
+- `bash scripts/verify-deploy.sh` section 72. Before this deploy it FAILs on every build and claim. It was run against production on 2026-10-10 after the review round: 35 FAIL and 2 INFO, no crash.
 - Career Snapshot and Game Plan deliveries. Watch the "Reply refused" log lines and the share of 502s. A rise means a model now misses the shape, and those deliveries are retried by the sweeper instead of shipping broken.
 - Free scan. Watch the share of responses with `cached: true`, and confirm that a rescan of the same file no longer moves `scansUsed`.
 - Rate limits. A `rate_limits` row with a 1,440-minute window should now live a full day.
-- Shortlist. `shortlist_decisions` rows per status change should be 1:1, and no `shortlist_candidates` row should have an UPDATE that touches AI columns.
+- Shortlist. `shortlist_decisions` rows per status change should be 1:1, and no `shortlist_candidates` row should have an UPDATE that touches AI columns. No advance or reject row should have an `actor_email` different from its owner's sign-in address.
+- Partial reports. Watch the share of `partialReason: "thin"` against `"rule_based"`. A high thin share means the model is leaving owed sections empty. Thin reports are not cached and their credit is refunded.
+- Re-analyze. A `skipCache: true` scan should move `scansUsed` by one and replace the `scan_report_cache` row.
+- Apply kit. A Pro account should never get a 429 from `generate-apply-package`. Purchase and unentitled callers still get one at 41 a day per address.
 
 ## Tests added (each fails on the code before its change)
 
@@ -114,6 +150,22 @@ None beyond the deploy order above. Existing Shortlist demographics entered as f
 | `the-bias-audit-counted-pending-candidates-and-split-one-group-into-three` | 5 of 5 cases fail ("expected 10 to be 5") |
 | `shortlist-scored-the-jd-the-browser-sent-and-had-no-review-without-a-score` (harness) | 2 of 2 cases fail |
 | `an-alternative-review-kept-its-ai-score-and-rank` | The module did not exist before |
+| `shortlist-redaction-read-a-surname-as-a-degree-a-city-as-the-name-and-a-month-name-as-the-candidate` (review) | 22 of its 24 cases fail on the previous module. The other 2 are guards: a hospital line under a doctor's name, and a header line of years. |
+| `the-premium-contact-guard-deleted-the-buyers-own-phone-and-profiles` (review: 4 adjacent-number cases) | 4 of 8 fail on the previous guard |
+| `the-scan-fallback-threw-on-a-null-keyword-and-cached-a-thin-reply` (harness, review) | 2 of 3 fail on the previous fork |
+| `the-re-analyze-button-replayed-the-saved-report-and-a-thin-reply-was-called-an-outage` (harness, review) | 3 of 5 fail on the previous primary |
+| `the-partial-banner-called-a-thin-reply-an-outage-and-the-crash-notice-replayed-the-crash` (review) | 2 of 2 fail |
+| `a-dot-or-space-grouped-figure-was-split-by-the-grounding-check` (review) | 2 of 3 fail |
+| `the-apply-kits-address-day-capped-a-pro-account-at-forty` (harness, review) | The Pro case fails (a 429 at 41) |
+| `a-named-purchase-gave-an-address-a-second-hourly-allowance` (review) | The hour-boundary case fails (50 in the second hour, not 20) |
+| `a-shortlist-record-could-be-rewritten-and-scored-a-jd-it-never-kept` (pglite; review: decision-log cases) | The new "with it" case fails on the previous migration. The teeth case shows the backdated reject landing. |
+| `the-tool-landings-still-promised-twenty-seconds-and-an-id-with-no-window` (review) | 5 of 8 fail |
+| `the-coach-and-the-career-path-showed-english-labels-in-a-translated-product` (review) | 2 of 2 fail |
+
+Three earlier tests on this branch were changed to match the review's design, not loosened:
+
+- `the-spend-gate-fails-closed-and-keys-on-the-platforms-address` and `one-purchase-ran-the-dearest-generators-without-limit-and-locked-out-a-coach-buyer` now pin the one address bucket, as main did.
+- `a-paid-delivery-never-queues-behind-strangers` now spends the purchase's day before it expects the publishable-key replay to be refused. A body naming the purchase, sent under the publishable key, looks to the gate exactly like the buyer's own browser.
 
 ## Handoffs
 
@@ -121,7 +173,9 @@ None beyond the deploy order above. Existing Shortlist demographics entered as f
   - The homepage's "Why not ChatGPT" section and the whole Shortlist page are English-only. This was true before this branch; strings changed here follow their pages.
   - "24+ checks" (WhyNotChatGPT and the vendor landers in the prerender) and "in seconds" (four prerender CTAs) are numbers or durations that no code computes.
 - **Integrator**
-  - Locale files gain `homepage.reportCrash` and a top-level `careerReportEnum` block, appended at the end of each file. That is a likely textual conflict with other groups that append.
+  - Locale files gain `homepage.reportCrash`, `homepage.partialResults` and a top-level `careerReportEnum` block (with nine coach and path keys). They sit at the end of each file or of `homepage`, which is a likely textual conflict with other groups that append.
+  - `_shared/model-spend-gate.ts` counts the address in one bucket again (the `${fn}:purchase` bucket is gone). Another group that edits the gate should keep this rule: a spent address goes on only while the named purchase's day lasts.
+  - The decision-log trigger lives in this branch's own migration, 20261009111000, which has not been applied anywhere, so it was amended in place.
   - The function builds above may collide with other groups that bump the same functions (generate-apply-package, generate-ats-defense, free-keyword-scan). Take the later build and keep both changes.
   - The spend-gate harness fixture in `every-public-model-call-is-counted-before-it-is-made.test.ts` now gives its Shortlist role a `jd_text`.
 - **Payments**
