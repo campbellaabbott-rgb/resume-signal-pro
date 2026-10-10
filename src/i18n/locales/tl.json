@@ -694,10 +694,8 @@
     "mobileTitle": "I-analyze ang iyong resume →",
     "button": "I-analyze ang Aking Resume",
     "ctaButton": "Tingnan Lahat ng Packages",
-    "premiumFrom": "Premium packages mula sa",
-    "from": "Mula sa",
-    "features": "Buong rewrites + LinkedIn optimization + job-specific tailoring",
-    "featuresMobile": "Rewrites + LinkedIn optimization"
+    "features": "Inilalapat ang mga ayos mula sa libre mong scan sa sarili mong resume. Isang bayad, walang subscription.",
+    "featuresMobile": "Mga ayos ng scan mo, nailapat na. Isang bayad."
   },
   "finalCta": {
     "urgency": "Maaaring nawawalan ka ng mga interview dahil sa iyong resume ngayon",

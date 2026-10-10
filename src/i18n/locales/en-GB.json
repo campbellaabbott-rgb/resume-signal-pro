@@ -694,10 +694,8 @@
     "mobileTitle": "Get your CV analysed →",
     "button": "Analyse My CV",
     "ctaButton": "See All Packages",
-    "premiumFrom": "Premium packages from",
-    "from": "From",
-    "features": "Full rewrites + LinkedIn optimisation + job-specific tailoring",
-    "featuresMobile": "Full rewrites + LinkedIn optimisation"
+    "features": "Applies the fixes your free scan finds to your own CV. One payment, no subscription.",
+    "featuresMobile": "Your scan's fixes, applied. One payment."
   },
   "finalCta": {
     "urgency": "Your CV might be losing you interviews right now",

@@ -694,10 +694,8 @@
     "mobileTitle": "Get your resume analyzed →",
     "button": "Analyze My Resume",
     "ctaButton": "See All Packages",
-    "premiumFrom": "Premium packages from",
-    "from": "From",
-    "features": "Full rewrites + LinkedIn optimization + job-specific tailoring",
-    "featuresMobile": "Full rewrites + LinkedIn optimization"
+    "features": "Applies the fixes your free scan finds to your own resume. One payment, no subscription.",
+    "featuresMobile": "Your scan's fixes, applied. One payment."
   },
   "finalCta": {
     "urgency": "Your resume might be losing you interviews right now",

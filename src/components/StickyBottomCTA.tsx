@@ -56,8 +56,8 @@ export function StickyBottomCTA({ isLoading }: StickyBottomCTAProps) {
               </div>
               <div className="text-white">
                 <p className="font-semibold text-sm md:text-base">
-                  {t('stickyCta.premiumFrom')} ${PRODUCTS.basicKeywordFix.priceUsd}
-                  {isLocalCurrency && <span className="text-white/80 text-xs ml-1">({formatPrice(PRODUCTS.basicKeywordFix.priceUsd)})</span>}
+                  {t('freeResults.nextSteps.fullAnalysisName')} · ${PRODUCTS.fullAnalysis.priceUsd}
+                  {isLocalCurrency && <span className="text-white/80 text-xs ml-1">({formatPrice(PRODUCTS.fullAnalysis.priceUsd)})</span>}
                 </p>
                 <p className="text-xs md:text-sm text-white/80">{t('stickyCta.features')}</p>
               </div>
@@ -66,8 +66,8 @@ export function StickyBottomCTA({ isLoading }: StickyBottomCTAProps) {
             {/* Mobile: Compact */}
             <div className="sm:hidden text-white flex-1">
               <p className="font-semibold text-sm">
-                {t('stickyCta.from')} ${PRODUCTS.basicKeywordFix.priceUsd}
-                {isLocalCurrency && <span className="text-white/70 text-xs ml-1">({formatPrice(PRODUCTS.basicKeywordFix.priceUsd)})</span>}
+                {t('freeResults.nextSteps.fullAnalysisName')} · ${PRODUCTS.fullAnalysis.priceUsd}
+                {isLocalCurrency && <span className="text-white/70 text-xs ml-1">({formatPrice(PRODUCTS.fullAnalysis.priceUsd)})</span>}
               </p>
               <p className="text-xs text-white/70">{t('stickyCta.featuresMobile')}</p>
             </div>

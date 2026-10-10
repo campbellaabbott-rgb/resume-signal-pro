@@ -694,10 +694,8 @@
     "mobileTitle": "Lebenslauf analysieren →",
     "button": "Lebenslauf analysieren",
     "ctaButton": "Alle Pakete ansehen",
-    "premiumFrom": "Premium-Pakete ab",
-    "from": "Ab",
-    "features": "Komplette Umschreibungen + LinkedIn-Optimierung + Job-spezifisches Tailoring",
-    "featuresMobile": "Umschreibungen + LinkedIn-Optimierung"
+    "features": "Wendet die Korrekturen aus Ihrem kostenlosen Scan auf Ihren eigenen Lebenslauf an. Einmalige Zahlung, kein Abo.",
+    "featuresMobile": "Die Korrekturen Ihres Scans, angewendet. Einmalige Zahlung."
   },
   "finalCta": {
     "urgency": "Ihr Lebenslauf könnte Sie gerade Vorstellungsgespräche kosten",

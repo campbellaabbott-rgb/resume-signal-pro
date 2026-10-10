@@ -694,10 +694,8 @@
     "mobileTitle": "Analysez votre CV →",
     "button": "Analyser mon CV",
     "ctaButton": "Voir Tous les Forfaits",
-    "premiumFrom": "Forfaits premium à partir de",
-    "from": "À partir de",
-    "features": "Réécritures complètes + optimisation LinkedIn + personnalisation par poste",
-    "featuresMobile": "Réécritures + optimisation LinkedIn"
+    "features": "Applique les corrections de votre analyse gratuite à votre propre CV. Un seul paiement, sans abonnement.",
+    "featuresMobile": "Les corrections de votre analyse, appliquées. Un seul paiement."
   },
   "finalCta": {
     "urgency": "Votre CV vous fait peut-être perdre des entretiens en ce moment",
