@@ -35,7 +35,22 @@ every deploy: anything main has that production does not is a FAIL line.
 ## 2. One deploy at a time, main frozen in between
 
 1. A workstream lands on main only through an integration PR whose full test
-   suite passed.
+   suite passed. An integration branch must pass `--against origin/main` and
+   `--against` each merged branch's tip before it merges:
+
+       node scripts/deploy-ledger.mjs --against origin/main --against wave3/job-board --against ...
+
+   For every function whose folder or `_shared` imports differ between the
+   ref and HEAD, HEAD's build must sort at or after the ref's (`buildAtLeast`:
+   date first, then the numeric sequence) and be a different string. The
+   same string on different code is the class wave 3 hit:
+   send-search-digest.2026-10-09.1 on three branches, eleven functions'
+   .2026-10-09.1 on two. Any violation exits 3 (exit 2 stays MUST BUMP).
+   The mode is read-only and makes no network call. A difference only in the
+   function's own build-marker line is a relabel, not moved code.
+   A job-board version reserved to one workstream (`reservations`) may
+   be shared with that workstream's own branch while main does not contain
+   it (`--main` names the deployable ref; `--head` judges another commit).
 2. After it merges, main is FROZEN: nothing else merges until the owner has run
    the Lovable message generated from that exact commit and the verifier (plus
    the ledger) shows no gap.
@@ -56,7 +71,11 @@ the new main, and the ledger is re-run.
 | next | 20261012* onwards, one day each | 2026-09-09.94+ | that day |
 
 When two branches bump the same function, the integration keeps BOTH changes
-and gives the function a new stamp later than either.
+and gives the function a new stamp later than either. Every function whose code
+the integration changed gets a stamp later than main's and later than, and
+different from, every merged branch's. A function main last stamped on a later
+day (PR #25's 2026-10-10.1) takes that day with a higher sequence. The
+`--against` checks in §2 enforce this.
 
 ## 4. Findings go to one backlog, fixes to one wave
 
