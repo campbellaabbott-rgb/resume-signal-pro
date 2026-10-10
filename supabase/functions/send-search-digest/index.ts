@@ -52,6 +52,11 @@ const SITE_URL = "https://resumebooster.work";
 // lost its window (and its first-match mail, which needs a NULL stamp). Now
 // rows are claimed 25 at a time, nothing new starts after 100 s, and a row
 // claimed but not started is handed back.
+// A HANDED-BACK ROW IS RESTORED WHEN THE RUN ENDS (review 2026-10-10). The
+// claim orders NULLS FIRST and hands back any due row: restored at once, a
+// skipped row was due again before the next claim, which returned the same
+// rows, and 25 of them at the head stopped every run there. A suppressed or
+// mailbox-less owner keeps the claim's stamp and is looked at a cadence later.
 const CLAIM_BATCH = 25;
 const RUN_MAX = 400;
 const RUN_BUDGET_MS = 100_000;
@@ -173,9 +178,24 @@ Deno.serve(async (req) => {
 
     const startedAt = Date.now();
     const overBudget = () => Date.now() - startedAt >= RUN_BUDGET_MS;
-    /** Hand a claim back: the search is due again next run, as if never claimed. */
-    const giveBack = (s: { id: string; digest_last_sent_at: string | null }) =>
-      supabase.from("user_job_searches").update({ digest_last_sent_at: s.digest_last_sent_at }).eq("id", s.id);
+    /** Claims to hand back, by id, with the stamp each had: restored when the run ends. */
+    const toGiveBack = new Map<string, string | null>();
+    /** Hand a claim back: due again next run, as if never claimed (written by restoreClaims). */
+    const giveBack = (s: { id: string; digest_last_sent_at: string | null }) => {
+      if (!toGiveBack.has(s.id)) toGiveBack.set(s.id, s.digest_last_sent_at);
+      return Promise.resolve();
+    };
+    const restoreClaims = async () => {
+      const byStamp = new Map<string | null, string[]>();
+      for (const [id, prev] of toGiveBack) byStamp.set(prev, [...(byStamp.get(prev) ?? []), id]);
+      toGiveBack.clear();
+      await Promise.all([...byStamp].map(async ([prev, ids]) => {
+        for (let i = 0; i < ids.length; i += 100) {
+          const { error: gbErr } = await supabase.from("user_job_searches").update({ digest_last_sent_at: prev }).in("id", ids.slice(i, i + 100));
+          if (gbErr) console.error(`[SEARCH-DIGEST] ${ids.length} claim(s) not handed back:`, gbErr.message);
+        }
+      }));
+    };
 
     // Suppressed addresses (global unsubscribes) are honored too.
     const { data: suppressedRows } = await supabase.from("suppressed_emails").select("email");
@@ -183,6 +203,7 @@ Deno.serve(async (req) => {
 
     let sent = 0, skipped = 0, considered = 0, handedBack = 0;
     const seen = new Set<string>();
+    try {
     claiming: while (considered < RUN_MAX && !overBudget()) {
     // THE CLAIM IS THE SELECTION. Each row comes back already stamped (its
     // own cadence decided in SQL), with the stamp it had before, which is the
@@ -196,9 +217,8 @@ Deno.serve(async (req) => {
       id: r.sd_id, user_id: r.sd_user_id, name: r.sd_name, params: r.sd_params,
       digest_last_sent_at: r.sd_prev_sent_at, fit_threshold: r.sd_fit_threshold, digest_cadence: r.sd_cadence,
     }));
-    // A row this run already took and gave back (a refused send) is due
-    // again, so the claim can hand it over a second time: it goes straight
-    // back, never retried inside the same run.
+    // A row this run already took is never worked twice: should a claim
+    // return one, it goes back with the rest when the run ends.
     const fresh = searches.filter((x) => !seen.has(x.id));
     for (const again of searches) if (seen.has(again.id)) await giveBack(again);
     if (fresh.length === 0) break;
@@ -215,9 +235,12 @@ Deno.serve(async (req) => {
       const since = (s.digest_last_sent_at as string | null) ?? new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
 
       // Resolve the recipient email (service-role admin lookup by user_id).
-      const { data: userRes } = await supabase.auth.admin.getUserById(s.user_id as string);
+      // A lookup that failed is passing (the claim goes back); an owner with
+      // no mailbox or a suppressed one keeps the claim's stamp.
+      const { data: userRes, error: userErr } = await supabase.auth.admin.getUserById(s.user_id as string);
       const email = userRes?.user?.email?.toLowerCase();
-      if (!email || suppressed.has(email)) { await giveBack(s); skipped++; continue; }
+      if (userErr && !email) { await giveBack(s); skipped++; continue; }
+      if (!email || suppressed.has(email)) { skipped++; continue; }
 
       // Count NEW matches since last digest, and pull the freshest few.
       const callBoard = (extra: Record<string, unknown>) =>
@@ -467,6 +490,9 @@ Deno.serve(async (req) => {
         skipped++;
       }
     }
+    }
+    } finally {
+      await restoreClaims();
     }
     return new Response(JSON.stringify({ ok: true, sent, skipped, considered, handedBack }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
