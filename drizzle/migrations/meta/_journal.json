@@ -855,6 +855,13 @@
       "when": 1791672625443,
       "tag": "0121_20261008124000_a_payout_request_is_a_row_the_owner_can_act_on",
       "breakpoints": true
+    },
+    {
+      "idx": 122,
+      "version": "7",
+      "when": 1791672637429,
+      "tag": "0122_20261008126000_a_paid_payout_request_moves_its_conversions_out_of_the_pending_balance",
+      "breakpoints": true
     }
   ]
 }

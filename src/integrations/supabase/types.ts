@@ -160,6 +160,7 @@ export type Database = {
         Row: {
           affiliate_id: string
           amount_cents: number
+          conversion_ids: string[] | null
           id: string
           note: string | null
           requested_at: string
@@ -169,6 +170,7 @@ export type Database = {
         Insert: {
           affiliate_id: string
           amount_cents: number
+          conversion_ids?: string[] | null
           id?: string
           note?: string | null
           requested_at?: string
@@ -178,6 +180,7 @@ export type Database = {
         Update: {
           affiliate_id?: string
           amount_cents?: number
+          conversion_ids?: string[] | null
           id?: string
           note?: string | null
           requested_at?: string
