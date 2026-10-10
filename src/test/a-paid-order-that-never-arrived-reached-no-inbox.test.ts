@@ -15,6 +15,12 @@
  * mails the owner naming its session, once per order per day; a refused mail
  * leaves the order unannounced so the next run tries again; and the public
  * part of the response carries no buyer address.
+ *
+ * AND A NEW ONE WAS HIDDEN BEHIND A HUNDRED OLD ONES (review 2026-10-10). The
+ * list read the 100 OLDEST undelivered rows and aged them afterwards; nothing
+ * ages a failed generation out, so once 100 stood, a newer order was never
+ * named or marked new. Answered the way PostgREST answers the query the
+ * handler builds, the newest are read and the mail counts every standing row.
  */
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
@@ -152,5 +158,53 @@ describe("an undelivered paid order mails the owner, naming it", () => {
     expect(j.productDelivery.reason).toBe("clean");
     expect(orderMails()).toHaveLength(0);
     expect(db.on("product_deliveries")).toHaveLength(0);
+  });
+});
+
+/** The rows PostgREST would answer for the handler's product_deliveries query: in, or (eq/lt), order, limit, count. */
+function answerLikePostgrest(all: Array<Record<string, unknown>>, q: Query): Answer {
+  const cmp = (r: Record<string, unknown>, col: string, op: string, val: string) =>
+    op === "eq" ? String(r[col]) === val : op === "lt" ? String(r[col]) < val : false;
+  let out = all.slice();
+  for (const [m, a] of q.calls) {
+    if (m === "in") out = out.filter((r) => (a[1] as unknown[]).includes(r[a[0] as string]));
+    if (m === "or") {
+      const arms = String(a[0]).split(",").map((t) => { const [col, op, ...v] = t.split("."); return { col, op, val: v.join(".") }; });
+      out = out.filter((r) => arms.some((x) => cmp(r, x.col, x.op, x.val)));
+    }
+  }
+  const total = out.length;
+  const order = q.calls.find(([m]) => m === "order");
+  if (order) {
+    const col = order[1][0] as string;
+    const asc = (order[1][1] as { ascending?: boolean } | undefined)?.ascending !== false;
+    out.sort((x, y) => (String(x[col]) < String(y[col]) ? -1 : String(x[col]) > String(y[col]) ? 1 : 0) * (asc ? 1 : -1));
+  }
+  const limit = q.calls.find(([m]) => m === "limit");
+  if (limit) out = out.slice(0, Number(limit[1][0]));
+  const counted = q.calls.some(([m, a]) => m === "select" && (a[1] as { count?: string } | undefined)?.count === "exact");
+  return { data: out, error: null, count: counted ? total : null };
+}
+
+describe("a new undelivered order behind a hundred old ones", () => {
+  it("is named and marked new, and the mail counts every standing order", async () => {
+    const old = Array.from({ length: 150 }, (_, i) => ({
+      id: `pd-old-${i}`, stripe_session_id: `cs_live_old_${String(i).padStart(4, "0")}`, product_type: "full_analysis", status: "generation_failed",
+      created_at: ago(30 * 24 * 60 + i), retry_count: 3, max_retries: 3, customer_email: `old${i}@example.com`, generation_error: "model down", last_retry_error: null,
+    }));
+    rows = [...old, { id: "pd-new", stripe_session_id: "cs_live_newstuckorder01", product_type: "cover_letter", status: "payment_received", created_at: ago(180), retry_count: 0, max_retries: 3, customer_email: "new@example.com", generation_error: null, last_retry_error: null }];
+    // Every old order was announced an hour ago: only the new one is news.
+    state = { alerted: Object.fromEntries(old.map((o) => [o.id, ago(60)])) };
+    health = [{ status: "generation_failed", n: 0, exhausted: 150, stuck: 150, last_at: null }, { status: "payment_received", n: 1, exhausted: 0, stuck: 1, last_at: ago(180) }];
+    const base = db.answer;
+    db.answer = (q: Query) => (q.table === "product_deliveries" ? answerLikePostgrest(rows, q) : base(q));
+    const j = await run();
+    const mails = orderMails();
+    expect(mails, "a new undelivered order behind 100 old ones reached no inbox").toHaveLength(1);
+    const html = String((mails[0].body as { html: string }).html);
+    expect(html).toContain("cs_live_newstuckorder01");
+    expect(html).toMatch(/<b>new<\/b><\/td>\s*<td[^>]*>cover_letter/);
+    expect(html).toContain("151 paid orders have not been delivered");
+    expect(j.undeliveredOrdersTotal).toBe(151);
   });
 });

@@ -120,7 +120,7 @@ function unanswered(r: { timedOut?: boolean; failed?: boolean }, fn: string, ms:
  *
  * BUMP ON EVERY DEPLOY of this function.
  */
-const BUILD_VERSION = "2026-10-09.1"; // 10-09.1: a paid order that never arrived mails the owner, naming it (decided after the delivery read, not before); a cron call refused (401/403) in the last hour fails cron_http_refusals.  10-08.1: answers only its cron, the service role and the owner's key; the e2e scan is uncached; alerts stamp only after a send that worked; vendor drift skips when unevaluated; delivery reads email_logs too
+const BUILD_VERSION = "2026-10-09.1"; // 10-09.1: a paid order that never arrived mails the owner, naming it, newest first (decided after the delivery read, not before); a cron call refused (401/403) in the last hour fails cron_http_refusals.  10-08.1: answers only its cron, the service role and the owner's key; the e2e scan is uncached; alerts stamp only after a send that worked; vendor drift skips when unevaluated; delivery reads email_logs too
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1821,11 +1821,12 @@ serve(async (req) => {
     // decided, so an 'undelivered' verdict reached the JSON and no inbox. A
     // paid order that never arrived is its own alert, naming the order, once
     // per order per day; it does not change the platform status.
-    const undeliveredOrders = productDelivery.reason === 'undelivered'
+    const undeliveredRead = productDelivery.reason === 'undelivered'
       ? await listUndeliveredOrders(supabase)
-      : [];
-    if (undeliveredOrders && undeliveredOrders.length > 0) {
-      EdgeRuntime.waitUntil(sendUndeliveredOrderAlert(undeliveredOrders));
+      : { orders: [], total: 0 };
+    const undeliveredOrders = undeliveredRead ? undeliveredRead.orders : null;
+    if (undeliveredRead && undeliveredRead.orders.length > 0) {
+      EdgeRuntime.waitUntil(sendUndeliveredOrderAlert(undeliveredRead.orders, undeliveredRead.total));
     }
 
     // Send alert if status is not healthy — and a single recovery note when a
@@ -1894,6 +1895,8 @@ serve(async (req) => {
           ref: o.sessionId.slice(-8), productType: o.productType, status: o.status,
           ageMinutes: Math.round((Date.now() - Date.parse(o.createdAt)) / 60_000), retries: o.retries,
         })),
+        // Every standing undelivered row; the list above is the newest 100.
+        undeliveredOrdersTotal: undeliveredRead ? undeliveredRead.total : null,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
@@ -2202,8 +2205,12 @@ async function evaluateProductDelivery(
  * generation that failed (at any age), and a payment or a generation that has
  * not moved for two hours. Read with the service role; only the owner's mail
  * carries the buyer's address. null when the table could not be read.
+ * NEWEST FIRST, the age test in the query (review 2026-10-10): the oldest 100
+ * were read and then aged, and nothing ages a failed row out, so once 100
+ * stood no newer order was ever named. `total` counts every standing row.
  */
 const UNDELIVERED_STUCK_MS = 2 * 60 * 60_000;
+const UNDELIVERED_LIST_MAX = 100;
 interface UndeliveredOrder {
   id: string; sessionId: string; productType: string; status: string; createdAt: string;
   retries: string; email: string | null; error: string | null;
@@ -2211,16 +2218,18 @@ interface UndeliveredOrder {
 async function listUndeliveredOrders(
   // deno-lint-ignore no-explicit-any
   supabase: { from: (t: string) => any },
-): Promise<UndeliveredOrder[] | null> {
+): Promise<{ orders: UndeliveredOrder[]; total: number } | null> {
   try {
-    const { data, error } = await supabase.from('product_deliveries')
-      .select('id, stripe_session_id, product_type, status, created_at, retry_count, max_retries, customer_email, generation_error, last_retry_error')
-      .in('status', ['payment_received', 'generating', 'generation_failed'])
-      .order('created_at', { ascending: true })
-      .limit(100);
-    if (error) return null;
     const now = Date.now();
-    return ((data ?? []) as Array<Record<string, unknown>>)
+    const cutoff = new Date(now - UNDELIVERED_STUCK_MS).toISOString();
+    const { data, error, count } = await supabase.from('product_deliveries')
+      .select('id, stripe_session_id, product_type, status, created_at, retry_count, max_retries, customer_email, generation_error, last_retry_error', { count: 'exact' })
+      .in('status', ['payment_received', 'generating', 'generation_failed'])
+      .or(`status.eq.generation_failed,created_at.lt.${cutoff}`)
+      .order('created_at', { ascending: false })
+      .limit(UNDELIVERED_LIST_MAX);
+    if (error) return null;
+    const orders = ((data ?? []) as Array<Record<string, unknown>>)
       .filter((r) => r.status === 'generation_failed' || now - Date.parse(String(r.created_at)) >= UNDELIVERED_STUCK_MS)
       .map((r) => ({
         id: String(r.id),
@@ -2232,6 +2241,7 @@ async function listUndeliveredOrders(
         email: r.customer_email ? String(r.customer_email) : null,
         error: (r.last_retry_error ?? r.generation_error) ? String(r.last_retry_error ?? r.generation_error) : null,
       }));
+    return { orders, total: Math.max(typeof count === 'number' ? count : 0, orders.length) };
   } catch {
     return null;
   }
@@ -2249,7 +2259,7 @@ const escapeAlertHtml = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, (c) 
  * state that cannot be read.
  */
 const UNDELIVERED_REMIND_MS = 24 * 60 * 60_000;
-async function sendUndeliveredOrderAlert(orders: UndeliveredOrder[]): Promise<void> {
+async function sendUndeliveredOrderAlert(orders: UndeliveredOrder[], total: number): Promise<void> {
   try {
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
     const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "resumeboostersupp@gmail.com";
@@ -2299,7 +2309,8 @@ async function sendUndeliveredOrderAlert(orders: UndeliveredOrder[]): Promise<vo
         to: [ADMIN_EMAIL],
         subject: `Paid order${news.length === 1 ? '' : 's'} not delivered: ${news.length} new (${news.map((o) => o.productType).join(', ').slice(0, 100)})`,
         html: `<div style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#111">
-          <p>${orders.length} paid order${orders.length === 1 ? ' has' : 's have'} not been delivered: a generation that failed, or a payment or generation that has not moved for two hours. The retry sweep runs on its own schedule; the session id finds each one in Stripe.</p>
+          <p>${total} paid order${total === 1 ? ' has' : 's have'} not been delivered: a generation that failed, or a payment or generation that has not moved for two hours. The retry sweep runs on its own schedule; the session id finds each one in Stripe.</p>
+          ${total > orders.length ? `<p>The newest ${orders.length} are listed below.</p>` : ''}
           <table style="border-collapse:collapse"><tr><th></th><th align="left">product</th><th align="left">state</th><th align="left">age</th><th align="left">retries</th><th align="left">session</th><th align="left">buyer</th><th align="left">last error</th></tr>${rows}</table>
           <p>Each order is mailed once a day while it stays undelivered.</p>
         </div>`,
