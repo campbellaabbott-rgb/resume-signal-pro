@@ -792,6 +792,13 @@
       "when": 1791672534758,
       "tag": "0112_20261008111500_a_field_is_compared_with_its_own_week_before_anything_closed",
       "breakpoints": true
+    },
+    {
+      "idx": 113,
+      "version": "7",
+      "when": 1791672543498,
+      "tag": "0113_20261008112000_the_real_users_score_benchmark_counts_only_real_users",
+      "breakpoints": true
     }
   ]
 }
