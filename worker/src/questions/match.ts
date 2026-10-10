@@ -297,26 +297,33 @@ const RE_PORTFOLIO = /portfolio(?!\s+(?:management|manager|analy|optimi|construc
 // development"), so it counts only on a label that IS a field: one that says
 // whose detail it wants, one that opens with the detail and then ends or gives
 // a hint ("Phone number (include area code)", "Phone number where we can reach
-// you"), or a short label ending on it. Never a question, a prose prompt, a
-// textarea, or somebody else's detail. Rationale: docs/wave3/agents-api.md.
+// you"), or a short label ending on it. Never a question, a prose prompt, or
+// somebody else's detail. A long-text control does not make a bare field
+// ("Phone", "LinkedIn") prose; on one, only the shortest labels count by their
+// last word. Rationale: docs/wave3/agents-api.md.
 const CF_PROSE = /^\s*(?:please\s+)?(?:describe|tell|explain|share|walk|discuss|elaborate|outline|how|why|what\s+(?:experience|is\s+your\s+experience))\b/i;
 const CF_QUESTION = /^\s*(?:do|does|did|are|is|have|has|can|could|will|would|was|were)\b/i;
 const CF_SOMEONE_ELSE = /\b(emergency|next\s+of\s+kin|reference|referee|manager|supervisor|spouse|parent|guardian|recruiter|referr\w*)\b/i;
 const CF_OWN =
   /\byour\s+(?:(?:current|home|residential|full|postal|mailing|permanent|primary|personal|mobile|cell|contact|best|preferred)\s+)*(?:e-?mail|phone|mobile|cell|telephone|contact\s+number|address|linkedin|github|twitter|website|portfolio|zip|post(?:al)?\s*code|city|town)\b|linkedin\s+(?:profile\s+)?(?:url|link|profile)|(?:profile|portfolio|website|github)\s+(?:url|link)|\bwhich\s+(?:city|town)\b|(?:city|town)\s+of\s+residence/i;
 const CF_HEAD =
-  /^\s*(?:(?:home|mobile|cell|primary|secondary|personal|best|preferred|daytime|work|current|permanent|mailing|postal|residential|street|contact|legal)\s+)*(?:e-?mail(?:\s+address)?|phone(?:\s+number)?|mobile(?:\s+(?:phone|number))?|cell(?:\s+phone)?(?:\s+number)?|telephone(?:\s+number)?|contact\s+(?:phone\s+)?number|address|linkedin(?:\s+(?:profile|url|link))*|github(?:\s+(?:profile|url|link))*|twitter(?:\s+handle)?|website|portfolio(?:\s+(?:url|link|website))?|zip(?:\s+code)?|post(?:al)?\s*code|city|(?:(?:full|first|last|middle|given|family|preferred)\s+)+name)\s*(?:$|[(\[:,;*?]|[–—]|\s-\s|\s(?:where|we|for|so|that)\b)/i;
+  /^\s*(?:(?:home|mobile|cell|primary|secondary|personal|best|preferred|daytime|work|current|permanent|mailing|postal|residential|street|contact|legal)\s+)*(?:e-?mail(?:\s+address)?|phone(?:\s+number)?|mobile(?:\s+(?:phone|number))?|cell(?:\s+phone)?(?:\s+number)?|telephone(?:\s+number)?|contact\s+(?:phone\s+)?number|address(?:\s+(?:line\s*)?\d)?|street|linkedin(?:\s+(?:profile|url|link))*|github(?:\s+(?:profile|url|link))*|twitter(?:\s+handle)?|website|portfolio(?:\s+(?:url|link|website))?|zip(?:\s+code)?|post(?:al)?\s*code|city|(?:(?:full|first|last|middle|given|family|preferred)\s+)+name)\s*(?:$|[(\[:,;*?]|[–—]|\s-\s|\s(?:where|we|for|so|that)\b)/i;
 const CF_TAIL = /(?:e-?mail|phone|telephone|number|address|linkedin|github|twitter|website|portfolio|url|link|profile|code|zip|city|town|name|handle)$/i;
 export function contactLabelIsAField(label: string, fieldType: string): boolean {
   if (CF_SOMEONE_ELSE.test(label)) return false;
   if (CF_OWN.test(label)) return true;
-  const type = fieldType.toLowerCase();
-  if (type.includes("textarea") || type === "longtext" || CF_PROSE.test(label) || CF_QUESTION.test(label)) return false;
+  if (CF_PROSE.test(label) || CF_QUESTION.test(label)) return false;
   if (CF_HEAD.test(label)) return true;
+  const type = fieldType.toLowerCase();
+  const most = type.includes("textarea") || type === "longtext" ? 3 : 6;
   const words = label.replace(/\([^)]*\)|\[[^\]]*\]/g, " ").split(/[^\p{L}\p{N}'-]+/u).filter(Boolean);
-  return words.length > 0 && words.length <= 6 && CF_TAIL.test(words[words.length - 1]!);
+  return words.length > 0 && words.length <= most && CF_TAIL.test(words[words.length - 1]!);
 }
 // ── end of the contact-field rule ──
+/** The words a contact field is about; a drafted answer never goes into one. */
+const RE_CONTACT_WORD = /\b(?:e-?mail|phone|mobile|cell|telephone|linkedin|github|twitter|portfolio|website|url|zip|post(?:al)?\s*code|city|town|street|address)\b/i;
+/** Line 2 of an address is not the address again. */
+const RE_ADDRESS_LATER_LINE = /\baddress\s+(?:line\s*)?[2-9]\b/i;
 const RE_CITY = /^(city|town)$|city\s*\/\s*town|which\s+city|city\s+of\s+residence|^city\b/i;
 const RE_POSTCODE = /zip\s*code|zipcode|^zip\b|post(al)?\s*code/i;
 const RE_ADDRESS = /\baddress\b/i;
@@ -579,6 +586,9 @@ function matchStanding(
     return has(a.city) ? { kind: "fill", category: "city", value: a.city }
                        : text("city", "no city on file");
   }
+  if (contact && RE_ADDRESS_LATER_LINE.test(label)) {
+    return q.required ? text("address", "a later address line is not held apart from the address, and repeating it is wrong") : null;
+  }
   if (contact && RE_ADDRESS.test(label)) {
     return has(a.address) ? { kind: "fill", category: "address", value: a.address }
                           : text("address", "no address on file");
@@ -786,6 +796,10 @@ export function matchQuestion(
   if (standing.category === "unrecognised") {
     if (isProtectedQuestion(q.label)) {
       return { ...standing, why: `"${q.label.slice(0, 80)}" is the candidate's to answer; a drafted answer is never sent for it` };
+    }
+    // A contact field is the profile's or nobody's: the model never writes one.
+    if (contactLabelIsAField(q.label, q.type) && RE_CONTACT_WORD.test(q.label)) {
+      return { ...standing, why: `"${q.label.slice(0, 80)}" is a contact detail the profile does not hold; a drafted answer is never sent for it` };
     }
     const drafted = fromPrepared(q, prepared);
     if (drafted) {

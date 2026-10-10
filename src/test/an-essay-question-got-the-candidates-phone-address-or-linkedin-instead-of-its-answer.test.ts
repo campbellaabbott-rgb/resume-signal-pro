@@ -128,6 +128,45 @@ describe("a contact field with a hint is still a contact field, in both runtimes
   });
 });
 
+/**
+ * Review of the rule above: it called every textarea and Ashby LongText a
+ * prose box, so a bare "Phone", "Email" or "LinkedIn" on one (Greenhouse and
+ * Ashby both render plain fields that way) became `draftable` and the model
+ * was asked to write the candidate's contact details; the worker refused the
+ * box as a contact field and then filled the model's draft into it. The label
+ * says what the box is; the control type does not make a field prose.
+ */
+const BARE_CONTACT = ["LinkedIn", "Phone", "Phone number", "Email", "Portfolio", "GitHub", "Twitter", "Mobile", "Zip", "Postal code", "URL", "Address", "Street", "Address Line 1"];
+const FROM_PROFILE: Array<[string, string, string]> = [
+  ["Phone", "phone", A.phone], ["Phone number", "phone", A.phone], ["Mobile", "phone", A.phone],
+  ["Email", "email", A.email], ["LinkedIn", "linkedin", A.linkedin], ["Zip", "postcode", A.postcode],
+  ["Postal code", "postcode", A.postcode], ["Address", "address", A.address], ["Home address", "address", A.address],
+  ["Mailing address", "address", A.address],
+];
+
+describe("a bare contact label on a long-text control is still a contact field", () => {
+  for (const type of ["textarea", "LongText", "longtext"]) {
+    it.each(BARE_CONTACT)(`the sheet never sends %s on a ${type} to the model`, (label) => {
+      expect(classifyQuestion(label, type)).toBe("identity");
+    });
+  }
+
+  it.each(BARE_CONTACT)("the worker never fills a drafted answer into %s on a textarea", (label) => {
+    const r = withDraft(label, "textarea");
+    expect(r && r.kind === "fill" ? r.value : null).not.toBe(DRAFT);
+  });
+
+  it.each(FROM_PROFILE)("the worker fills %s on a textarea from the profile", (label, category, value) => {
+    expect(withDraft(label, "textarea")).toMatchObject({ kind: "fill", category, value });
+  });
+
+  it("an address split over lines takes the address on line 1 and never repeats it on line 2", () => {
+    expect(matchQuestion(ask("Address Line 1", "text"), A)).toMatchObject({ kind: "fill", category: "address", value: A.address });
+    const second = matchQuestion(ask("Address Line 2", "text"), A);
+    expect(second && second.kind === "fill" ? second.value : null).not.toBe(A.address);
+  });
+});
+
 describe("the worker and the sheet decide a contact field with one rule", () => {
   const read = (p: string) => readFileSync(join(process.cwd(), p), "utf8");
   const START = "// ── CONTACT FIELD OR ESSAY:";
@@ -150,8 +189,9 @@ describe("the worker and the sheet decide a contact field with one rule", () => 
       ...HINTED_FIELDS.map(([l]) => l), ...ESSAYS.map(([l]) => l),
       "Email Address", "Mobile Number", "Secondary contact number", "LinkedIn Profile URL", "Your phone number",
       "Emergency contact phone number", "Email marketing tools you have used (list them)",
+      ...BARE_CONTACT, "Address Line 2", "Portfolio management experience",
     ];
-    for (const type of ["text", "textarea"]) {
+    for (const type of ["text", "textarea", "LongText"]) {
       for (const l of labels) expect(workerRule(l, type), `${type}: ${l}`).toBe(sheetRule(l, type));
     }
   });
