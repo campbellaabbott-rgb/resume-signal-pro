@@ -5303,6 +5303,15 @@
     "stretch": "Ambitioniert",
     "mismatch": "Unpassend",
     "readyToApply": "Bereit zur Bewerbung",
-    "fixTheseFirst": "Zuerst beheben"
+    "fixTheseFirst": "Zuerst beheben",
+    "easy": "Leicht",
+    "hard": "Schwer",
+    "lead": "Lead",
+    "director": "Direktor",
+    "vp": "VP",
+    "behavioral": "Verhalten",
+    "technical": "Fachlich",
+    "situational": "Situativ",
+    "cultureFit": "Kulturelle Passung"
   }
 }

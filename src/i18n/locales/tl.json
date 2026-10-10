@@ -5303,6 +5303,15 @@
     "stretch": "Mapaghamon",
     "mismatch": "Hindi tugma",
     "readyToApply": "Handa nang mag-apply",
-    "fixTheseFirst": "Ayusin muna ang mga ito"
+    "fixTheseFirst": "Ayusin muna ang mga ito",
+    "easy": "Madali",
+    "hard": "Mahirap",
+    "lead": "Lead",
+    "director": "Direktor",
+    "vp": "VP",
+    "behavioral": "Pag-uugali",
+    "technical": "Teknikal",
+    "situational": "Sitwasyonal",
+    "cultureFit": "Pagkakatugma sa kultura"
   }
 }

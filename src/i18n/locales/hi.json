@@ -5303,6 +5303,15 @@
     "stretch": "चुनौतीपूर्ण",
     "mismatch": "बेमेल",
     "readyToApply": "आवेदन के लिए तैयार",
-    "fixTheseFirst": "पहले इन्हें ठीक करें"
+    "fixTheseFirst": "पहले इन्हें ठीक करें",
+    "easy": "आसान",
+    "hard": "कठिन",
+    "lead": "लीड",
+    "director": "निदेशक",
+    "vp": "VP",
+    "behavioral": "व्यवहार संबंधी",
+    "technical": "तकनीकी",
+    "situational": "परिस्थितिजन्य",
+    "cultureFit": "सांस्कृतिक अनुकूलता"
   }
 }

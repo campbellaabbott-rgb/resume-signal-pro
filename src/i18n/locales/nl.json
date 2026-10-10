@@ -5303,6 +5303,15 @@
     "stretch": "Uitdaging",
     "mismatch": "Niet passend",
     "readyToApply": "Klaar om te solliciteren",
-    "fixTheseFirst": "Eerst oplossen"
+    "fixTheseFirst": "Eerst oplossen",
+    "easy": "Makkelijk",
+    "hard": "Moeilijk",
+    "lead": "Lead",
+    "director": "Directeur",
+    "vp": "VP",
+    "behavioral": "Gedrag",
+    "technical": "Technisch",
+    "situational": "Situationeel",
+    "cultureFit": "Culturele fit"
   }
 }

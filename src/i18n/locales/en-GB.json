@@ -5303,6 +5303,15 @@
     "stretch": "Stretch",
     "mismatch": "Mismatch",
     "readyToApply": "Ready to Apply",
-    "fixTheseFirst": "Fix These First"
+    "fixTheseFirst": "Fix These First",
+    "easy": "Easy",
+    "hard": "Hard",
+    "lead": "Lead",
+    "director": "Director",
+    "vp": "VP",
+    "behavioral": "Behavioural",
+    "technical": "Technical",
+    "situational": "Situational",
+    "cultureFit": "Culture Fit"
   }
 }
