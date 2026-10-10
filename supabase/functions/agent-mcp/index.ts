@@ -234,7 +234,7 @@ const NOT_A_WEB_PAGE = `This is an MCP server for AI agents, not a web page. Pas
 /** The JSON-RPC methods this server answers, for the error that names them. */
 const SUPPORTED_METHODS = ["initialize", "tools/list", "tools/call", "prompts/list", "prompts/get", "resources/list", "resources/templates/list", "resources/read"] as const;
 /** Provable from outside with no key: every response, the preflight included, carries it in x-fn-build. */
-const FN_BUILD = "agent-mcp.2026-10-09.2";
+const FN_BUILD = "agent-mcp.2026-10-09.3";
 /** Where a free key is minted — the page every refusal in this file points at. */
 const MINT_URL = "https://resumebooster.work/data-api";
 /** Where a pass is bought, signed in — the fix every pass refusal names. */
@@ -601,6 +601,36 @@ const vendorOfId = (id: unknown): string => String(id ?? "").split(":")[0] ?? ""
  */
 const withoutNoRedistribution = <T extends Record<string, unknown>>(rows: T[]): T[] =>
   rows.filter((r) => !isNoRedistributionSource(r.source));
+/**
+ * The employer tokens of the withheld systems: a SmartRecruiters employer has
+ * its own token, never the vendor code, so the vendor check let it through and
+ * an empty page said "no openings". Read once an hour per isolate through the
+ * service-role reader /v1 uses (20261009122000); null when unreadable, and the
+ * vendor-code check alone then applies.
+ */
+let withheldTokenCache: { at: number; tokens: Set<string> } | null = null;
+async function withheldCompanyTokens(): Promise<Set<string> | null> {
+  if (withheldTokenCache && Date.now() - withheldTokenCache.at < 3_600_000) return withheldTokenCache.tokens;
+  const { data, error } = await db().rpc("v1_withheld_company_tokens", { p_sources: [...NO_REDISTRIBUTION_SOURCES] });
+  if (error || !Array.isArray(data)) {
+    console.warn("[AGENT-MCP] withheld company tokens unavailable:", String(error?.message ?? "not an array").slice(0, 120));
+    return null;
+  }
+  withheldTokenCache = { at: Date.now(), tokens: new Set(data.map((t) => String(t))) };
+  return withheldTokenCache.tokens;
+}
+/** Refuse by name, as /v1 does with a 451, an employer whose rows this server may not hand on. */
+async function refuseWithheldEmployers(tokens: string[], param: string): Promise<void> {
+  if (!tokens.length) return;
+  const withheld = await withheldCompanyTokens();
+  const barred = tokens.filter((t) => isNoRedistributionSource(t) || (withheld?.has(t) ?? false));
+  if (barred.length) {
+    throw new ToolArgumentError(
+      `${barred.join(", ")} cannot be served by this server. ${NO_REDISTRIBUTION_REASON}`,
+      `Drop it from \`${param}\` and the rest of the call is answered normally.`,
+    );
+  }
+}
 /** The rows of a board `list` answer, with the unredistributable ones dropped. */
 const servableJobs = (r: Record<string, unknown>): Array<Record<string, unknown>> =>
   withoutNoRedistribution((Array.isArray(r.jobs) ? r.jobs : []) as Array<Record<string, unknown>>);
@@ -2271,8 +2301,15 @@ function searchBody(args: Record<string, unknown>): Record<string, unknown> {
   };
 }
 
+/** searchBody, with a withheld employer's own token refused by name too. */
+async function servableSearchBody(args: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const body = searchBody(args);
+  await refuseWithheldEmployers(companyTokens(args.companies), "companies");
+  return body;
+}
+
 async function runSearchJobs(args: Record<string, unknown>): Promise<unknown> {
-  const r = await board(searchBody(args));
+  const r = await board(await servableSearchBody(args));
   const jobs = servableJobs(r);
   // The board's `total` beside them is the board's own and still counts what
   // it counted, so the narrowing is NAMED rather than left for an agent to
@@ -2286,7 +2323,7 @@ async function runSearchJobs(args: Record<string, unknown>): Promise<unknown> {
 }
 
 async function runDebugSearch(args: Record<string, unknown>): Promise<unknown> {
-  const base = searchBody(args);
+  const base = await servableSearchBody(args);
   // Decision (no SQL) and outcome (the real run) in parallel — the board's own
   // trace plus what actually happened, so an agent sees BOTH why the board
   // decided and what it then served.
@@ -2572,7 +2609,7 @@ async function runFitResume(args: Record<string, unknown>, apiKeyId: string): Pr
     return { terms, query: null, jobs: [], note: "No occupation the scanner recognises appears in this résumé — pass `query` with a job title." };
   }
   const limit = Math.max(1, Math.min(20, Number(args.limit ?? 20) || 20));
-  const r = await board(searchBody({ ...args, query, limit }));
+  const r = await board(await servableSearchBody({ ...args, query, limit }));
   // Dropped BEFORE scoring: this tool returns a job card per row exactly as
   // search_jobs does, so it redistributes the same way — and filtering here
   // also means the scorer's budget is never spent on a row nobody receives.
@@ -2731,6 +2768,7 @@ function employerTokensArg(args: Record<string, unknown>, tool: string): string[
  */
 async function runEmployerHiringRecord(client: SupabaseClient, args: Record<string, unknown>): Promise<unknown> {
   const tokens = employerTokensArg(args, "employer_hiring_record");
+  await refuseWithheldEmployers(tokens, "companyTokens");
   const { data, error } = await client.rpc("get_company_hiring_health", { p_tokens: tokens });
   if (error) throw new Error(`get_company_hiring_health: ${error.message}`);
   const rows = new Map<string, Record<string, unknown>>();
@@ -2846,6 +2884,7 @@ function layoffFilingOf(r: Record<string, unknown>): LayoffFiling | null {
  */
 async function runEmployerGrowth(client: SupabaseClient, args: Record<string, unknown>): Promise<unknown> {
   const tokens = employerTokensArg(args, "employer_growth");
+  await refuseWithheldEmployers(tokens, "companyTokens");
   const { data, error } = await client.rpc("get_company_growth", { p_tokens: tokens });
   if (error) throw new Error(`get_company_growth: ${error.message}`);
   const rows = new Map<string, Record<string, unknown>>();

@@ -23,6 +23,7 @@ vi.setConfig({ testTimeout: 30_000, hookTimeout: 120_000 });
 let handler: EdgeHandler;
 let boardBodies: Array<Record<string, unknown>>;
 let boardAnswer: Record<string, unknown>;
+let rpcNames: string[];
 
 function chain(result: unknown): unknown {
   const p: unknown = new Proxy({}, {
@@ -54,6 +55,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   boardBodies = [];
+  rpcNames = [];
   boardAnswer = {
     jobs: [
       { id: "greenhouse:acme:1", source: "greenhouse", token: "acme", company: "Acme", title: "Kubernetes Engineer", matchScope: "title", applyUrl: "https://boards.greenhouse.io/acme/jobs/1" },
@@ -65,7 +67,12 @@ beforeEach(() => {
   };
   (globalThis as Record<string, unknown>).__mcpDb = {
     rpc: (name: string) => {
-      const data = name === "mcp_anon_check"
+      rpcNames.push(name);
+      const data = name === "v1_withheld_company_tokens"
+        ? ["acmesr", "usajobs"]
+        : name === "get_company_hiring_health" || name === "get_company_growth"
+          ? [{ company_token: "acmesr", closed_90d: 4, superseded_90d: 0, verdict: "unknown", unknown_reason: "no_series" }]
+          : name === "mcp_anon_check"
         ? { allowed: true, global_used: 1, ip_used: 1, ip_cap: 25, global_cap: 2000 }
         : name === "api_key_check"
           ? { is_allowed: true, deny_reason: "", api_key_id: "key-1", key_tier: "free", rate_limit: 60, rate_used: 1, quota_limit: 1000, quota_used: 1, pass_ends_at: null, pass_apps_left: null }
@@ -113,6 +120,31 @@ describe("search through the connector", () => {
     const { sc } = await call("search", { query: "kubernetes" });
     const urls = (sc.results as Array<{ url: string }>).map((r) => r.url);
     expect(urls.every((u) => u.startsWith("https://resumebooster.work/jobs?job=") && u.includes("utm_source=mcp"))).toBe(true);
+  });
+});
+
+describe("a SmartRecruiters employer named by its own token is refused, not answered empty", () => {
+  // Its token is the employer's slug, never the vendor code, so the vendor
+  // check let it through: the board filtered to that employer, every row was
+  // dropped on the way out, and the agent read "no openings". /v1 refuses the
+  // same token with a 451 through the withheld reader; so does the connector.
+  it("search_jobs refuses it by name, before the board is asked", async () => {
+    const r = await call("search_jobs", { query: "engineer", companies: ["acmesr"] });
+    expect(r.raw).toMatch(/acmesr cannot be served by this server/);
+    expect(r.raw).toMatch(/SmartRecruiters/);
+    expect(boardBodies).toHaveLength(0);
+  });
+
+  it("another employer in the same search is still answered", async () => {
+    const r = await call("search_jobs", { query: "engineer", companies: ["acme"] });
+    expect(r.raw).not.toMatch(/cannot be served/);
+    expect(boardBodies).toHaveLength(1);
+  });
+
+  it.each(["employer_hiring_record", "employer_growth"])("%s refuses it rather than publishing its SmartRecruiters figures", async (tool) => {
+    const r = await call(tool, { companyTokens: ["acmesr"] }, { key: "rb_live_harness_key_0123456789" });
+    expect(r.raw).toMatch(/acmesr cannot be served by this server/);
+    expect(rpcNames).not.toContain(tool === "employer_growth" ? "get_company_growth" : "get_company_hiring_health");
   });
 });
 
