@@ -6086,6 +6086,17 @@ export type Database = {
           p75: number
         }[]
       }
+      get_recent_heartbeats: {
+        Args: { p_limit?: number }
+        Returns: {
+          created_at: string
+          function_name: string
+          id: string
+          response_time_ms: number
+          status: string
+          test_passed: boolean
+        }[]
+      }
       get_relisting_employers: {
         Args: { p_limit?: number }
         Returns: {
