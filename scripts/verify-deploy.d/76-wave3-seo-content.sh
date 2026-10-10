@@ -7,12 +7,13 @@
 # design; nothing here may crash.
 # Optional: keep the previous publish's sitemap at
 #   ~/.config/resumebooster/seo/last-sitemap.xml
-# and the F2a line checks every posting URL it named; without it the line
-# samples the live sitemap's own posting URLs.
+# and the F2a line checks every posting URL it named, eight at a time;
+# without it the line checks every posting URL of the live sitemap.
 echo "== 76. wave 3 seo-content: names, published URLs, company pages, data pages, claims =="
 
-SITE="$SITE" UA="$UA" LAST_SITEMAP="$HOME/.config/resumebooster/seo/last-sitemap.xml" node -e '
-const { SITE, UA, LAST_SITEMAP } = process.env;
+REPO_ROOT76="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+SITE="$SITE" UA="$UA" LAST_SITEMAP="$HOME/.config/resumebooster/seo/last-sitemap.xml" REPO_ROOT="$REPO_ROOT76" node -e '
+const { SITE, UA, LAST_SITEMAP, REPO_ROOT } = process.env;
 const fs = require("fs");
 const crypto = require("crypto");
 const out = (s, m) => console.log(`${s.padEnd(5)} ${m}`);
@@ -61,10 +62,13 @@ const textOf = (h) => h.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>
   if (dom.status === 200 && !isHomeCopy(dom.body)) {
     if (/Domino(?:\x27|&#39;)s(?:\x27|&#39;)s/.test(dom.body)) out("FAIL", "/jobs/company/dominos still says Domino\x27s\x27s");
     else out("PASS", "/jobs/company/dominos never doubles the possessive");
-    // S1 / L4-12
-    const own = (dom.body.match(/href="\/jobs\/company\/dominos\?(?:country|category)=/g) || []).length + (dom.body.match(/href="\/jobs\/posting\//g) || []).length;
-    if (own > 0) out("PASS", `/jobs/company/dominos carries its own facts: ${own} links into its places, fields or postings (S1)`);
-    else out("FAIL", "/jobs/company/dominos carries no place, field or posting link of its own (S1: one template paragraph)");
+    // S1 / L4-12: its own openings, linked to posting pages or to the posting
+    // on the live board. A ?country= or ?category= link is this same page to
+    // a crawler, so it is not counted.
+    const pagesN = (dom.body.match(/href="\/jobs\/posting\//g) || []).length;
+    const jobsN = (dom.body.match(/href="\/jobs\?job=/g) || []).length;
+    if (pagesN + jobsN >= 10) out("PASS", `/jobs/company/dominos lists ${pagesN + jobsN} of its own openings (${pagesN} posting pages, ${jobsN} board postings) (S1)`);
+    else out("FAIL", `/jobs/company/dominos links ${pagesN + jobsN} openings of its own (${pagesN} posting pages, ${jobsN} board postings); the bar is 10 (S1)`);
     if (/THE COUNT\x27S BASIS/.test(dom.body)) out("FAIL", "/jobs/company/dominos still prints the THE COUNT\x27S BASIS annotation (L4-12)");
     else out("PASS", "the company page states its count basis as prose (L4-12)");
   } else out("INFO", `/jobs/company/dominos answered ${dom.status}; F1/S1 judged on other pages only`);
@@ -84,14 +88,16 @@ const textOf = (h) => h.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>
   let prevPostings = [];
   try { prevPostings = [...fs.readFileSync(LAST_SITEMAP, "utf8").matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1].trim()).filter((u) => u.includes("/jobs/posting/")); } catch {}
   const basis = prevPostings.length ? "the previous publish\x27s sitemap" : "the live sitemap";
-  const sample = (prevPostings.length ? prevPostings : locs.filter((u) => u.includes("/jobs/posting/"))).slice(0, 60);
+  const sample = prevPostings.length ? prevPostings : locs.filter((u) => u.includes("/jobs/posting/"));
   let homeCopies = 0, stubs = 0, live = 0, failed = 0;
-  for (const u of sample) {
-    const r = await get(u, 20000);
-    if (r.status !== 200) { failed++; continue; }
-    if (isHomeCopy(r.body)) homeCopies++;
-    else if (/noindex/.test(robotsOf(r.body))) stubs++;
-    else live++;
+  for (let i = 0; i < sample.length; i += 8) {
+    await Promise.all(sample.slice(i, i + 8).map(async (u) => {
+      const r = await get(u, 20000);
+      if (r.status !== 200) { failed++; return; }
+      if (isHomeCopy(r.body)) homeCopies++;
+      else if (/noindex/.test(robotsOf(r.body))) stubs++;
+      else live++;
+    }));
   }
   if (!sample.length) out("INFO", "no posting URL to check (the sitemap names none)");
   else if (homeCopies === 0 && failed === 0) out("PASS", `${sample.length} posting URLs from ${basis}: ${live} live pages, ${stubs} noindex "no longer listed" pages, 0 homepage copies (F2a)`);
@@ -109,7 +115,14 @@ const textOf = (h) => h.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>
   if (!hrefs.size) out("INFO", `the ${postPages.length} sampled posting pages link no company page (they link /jobs?company= where no page is written)`);
   else if (dead + copies + dottedBare === 0) out("PASS", `${Math.min(hrefs.size, 25)} company links on ${postPages.length} posting pages: every one a real page, no slashless dotted href (F2b, F2c)`);
   else out("FAIL", `company links on posting pages: ${copies} homepage copies, ${dead} non-200, ${dottedBare} dotted hrefs without the slash (F2b/F2c)`);
-  // F1 on posting markup: hiringOrganization is not the capitalised tenant code
+  // F1 on posting markup: hiringOrganization is not the tenant code in any
+  // letter case ("SHM" as much as "Ms"), read against the same allowlist and
+  // override table the bake uses (src/lib/company-display.ts,
+  // supabase/functions/_shared/employer-names.ts).
+  const srcOf = (rel) => { try { return fs.readFileSync(`${REPO_ROOT}/${rel}`, "utf8"); } catch { return ""; } };
+  const realNames = new Set([...((srcOf("src/lib/company-display.ts").match(/REAL_TENANT_NAMES = new Set\(\[([\s\S]*?)\]\)/) || [])[1] || "").matchAll(/"([^"]+)"/g)].map((m) => m[1]));
+  const overrideKeys = new Set([...((srcOf("supabase/functions/_shared/employer-names.ts").match(/EMPLOYER_NAME_OVERRIDES[^=]*= new Map\(\[([\s\S]*?)\n\]\);/) || [])[1] || "").matchAll(/\["([^"]+)",/g)].map((m) => m[1]));
+  if (!realNames.size || !overrideKeys.size) out("INFO", `the F1 line read ${realNames.size} allowlisted names and ${overrideKeys.size} overrides from the repo at ${REPO_ROOT}`);
   let codeNamed = 0, orgs = 0;
   for (const u of postPages) {
     const r = await get(u, 20000);
@@ -118,10 +131,11 @@ const textOf = (h) => h.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>
     if (!jp || !tok.includes("~")) continue;
     orgs++;
     const slug = tok.split("~")[0].toLowerCase();
-    if (jp.hiringOrganization && jp.hiringOrganization.name === slug.charAt(0).toUpperCase() + slug.slice(1)) codeNamed++;
+    if (realNames.has(slug) || overrideKeys.has(tok) || (tok.includes("~wd") && overrideKeys.has(slug))) continue;
+    if (jp.hiringOrganization && String(jp.hiringOrganization.name).trim().toLowerCase() === slug) codeNamed++;
   }
   if (!orgs) out("INFO", "no sampled posting page is on a compound (Workday/Oracle) token, so the tenant-code check had nothing to read");
-  else if (codeNamed === 0) out("PASS", `${orgs} sampled Workday/Oracle posting pages: no hiringOrganization is the capitalised tenant code (F1)`);
+  else if (codeNamed === 0) out("PASS", `${orgs} sampled Workday/Oracle posting pages: no hiringOrganization is the tenant code in any case (F1)`);
   else out("FAIL", `${codeNamed} of ${orgs} sampled Workday/Oracle posting pages name the tenant code as hiringOrganization (F1)`);
 
   // ---- S2: the Ghost Job Index ----
@@ -155,11 +169,20 @@ const textOf = (h) => h.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>
   // ---- llms files ----
   const lt = await get("/llms.txt");
   const rel = (lt.body.match(/\]\(\//g) || []).length;
-  if (lt.status === 200 && rel === 0 && /work\.resumebooster\/jobs/.test(lt.body) && !/zero ghost|whether it was filled|10 languages/i.test(lt.body)) out("PASS", "/llms.txt names its domain on every link, names the registry entry, and drops zero-ghost, filled and 10 languages");
-  else out("FAIL", `/llms.txt: ${rel} relative links${/zero ghost/i.test(lt.body) ? ", still says zero ghost jobs" : ""}${/whether it was filled/.test(lt.body) ? ", still says filled" : ""}${/10 languages/.test(lt.body) ? ", still says 10 languages" : ""}${/work\.resumebooster\/jobs/.test(lt.body) ? "" : ", no registry name"}`);
+  if (lt.status === 200 && rel === 0 && /work\.resumebooster\/jobs/.test(lt.body) && !/zero ghost|whether it was filled|10 languages|aggregator or a scrape/i.test(lt.body)) out("PASS", "/llms.txt names its domain on every link, names the registry entry, and drops zero-ghost, filled, 10 languages and never-a-scrape");
+  else out("FAIL", `/llms.txt: ${rel} relative links${/zero ghost/i.test(lt.body) ? ", still says zero ghost jobs" : ""}${/whether it was filled/.test(lt.body) ? ", still says filled" : ""}${/10 languages/.test(lt.body) ? ", still says 10 languages" : ""}${/aggregator or a scrape/.test(lt.body) ? ", still says never a scrape" : ""}${/work\.resumebooster\/jobs/.test(lt.body) ? "" : ", no registry name"}`);
   const lf = await get("/llms-full.txt");
   if (/work\.resumebooster\/jobs/.test(lf.body) && !/raises both for its hours`?$/m.test(lf.body) && /never raises them on \/v1/.test(lf.body)) out("PASS", "/llms-full.txt names the registry entry and scopes the pass to the MCP server (L9-11)");
   else out("FAIL", "/llms-full.txt lacks the registry name or still says a pass raises the /v1 limits (L9-11)");
+  if (/every employer with open roles/.test(lf.body)) out("FAIL", "/llms-full.txt still says /companies lists every employer with open roles (L4-11)");
+  else if (/\/companies — the [\d,]+ employers this site gives a page/.test(lf.body)) out("PASS", "/llms-full.txt says /companies lists the employers with a page of their own, counted (L4-11)");
+  else out("FAIL", "/llms-full.txt has no counted /companies line (L4-11)");
+
+  // ---- L1-05: a role page calls the lists its field\x27s ----
+  const rp = await get("/roles/pilot");
+  const rpt = textOf(rp.body);
+  if (rp.status === 200 && /Keywords from the [^<]+ tables/.test(rp.body) && !/expect on a pilot resume|anchor a pilot resume/i.test(rpt)) out("PASS", "/roles/pilot heads its lists as the field\x27s tables (L1-05)");
+  else out("FAIL", "/roles/pilot still heads the field\x27s lists as written for the pilot title (L1-05)");
 
   // ---- L4-13: the share image is what it says ----
   const og = await get("/og-image.png");
