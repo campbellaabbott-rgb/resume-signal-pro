@@ -1,13 +1,18 @@
 # shellcheck shell=bash
-# ── 73. WAVE 3, AGENTS + API (branch wave3/agents-api, builds of 2026-10-09).
+# ── 73. WAVE 3, AGENTS + API (branch wave3/agents-api, builds of 2026-10-09 and
+# generate-application-answers 2026-10-10.2).
 # Sourced by scripts/verify-deploy.sh; J R MC probe build_ge $B $K $SITE $UA $RB
 # are in scope. Deploy note: docs/wave3/agents-api.md.
 #
 # THE CLAIMS:
-#   - six functions serve the new builds (agent-mcp .2, the rest .1);
+#   - six functions serve the new builds (agent-mcp .3, apply-agent .2, the
+#     rest .1; generate-application-answers 2026-10-10.2, a floor neither
+#     main's ledger repair, 10-10.1, nor scan-ai, 10-09.2, carries);
 #   - /v1 is apiVersion 2026-10-09.1 and lists SmartRecruiters beside the
 #     federal feed as withheld (owner decision 4); with the owner's key, naming
 #     it in source= is a 451 and an unknown employment_type a 400 (S8-078);
+#   - a SmartRecruiters employer named by its own token (read off the board)
+#     is refused by name in search_jobs' companies, not answered empty;
 #   - the connector names both withheld systems in search_jobs' vendor field
 #     and in its guide, types no coverage percentage into a tool description
 #     (S8-079), and an unkeyed search serves no SmartRecruiters row, links each
@@ -25,16 +30,17 @@
 #
 # READ-ONLY. OPTIONS preflights run no function logic. The /v1 index answers
 # before any key check. initialize, tools/list and the guide (read twice:
-# once as ChatGPT's user agent) are free and unmetered. ONE
-# unkeyed search_jobs call is made (one of this address's 25 free calls for
-# today). The keyed /v1 reads use the owner's own free key (RB_API_KEY in
+# once as ChatGPT's user agent) are free and unmetered. TWO
+# unkeyed search_jobs calls are made (two of this address's 25 free calls for
+# today); one job-board list with the probe budget reads a SmartRecruiters
+# token. The keyed /v1 reads use the owner's own free key (RB_API_KEY in
 # .env.local) and cost two calls of its quota; without it they are INFO. The
 # probes call revoked readers as anon, which answer 42501 before running.
 # The worker changes (S8-006/007/008/043-048/082) run from main in
 # apply-worker.yml and are proved by their tests, not here.
 echo "== 73. wave 3 agents-api: builds, SmartRecruiters withheld, the host's own allowance, the agent card's four systems =="
 
-for PAIR in "agent-mcp|2026-10-09|2" "public-api|2026-10-09|1" "apply-agent|2026-10-09|1" "apply-broker|2026-10-09|1" "send-agent-digest|2026-10-09|1" "generate-application-answers|2026-10-09|1"; do
+for PAIR in "agent-mcp|2026-10-09|3" "public-api|2026-10-09|1" "apply-agent|2026-10-09|2" "apply-broker|2026-10-09|1" "send-agent-digest|2026-10-09|1" "generate-application-answers|2026-10-10|2"; do
   W73_FN=${PAIR%%|*}; W73_REST=${PAIR#*|}; W73_D=${W73_REST%%|*}; W73_N=${W73_REST#*|}
   W73_H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$W73_FN" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
   if [ -z "$W73_H" ]; then echo "FAIL  $W73_FN preflight carries no x-fn-build (not deployed, or the previous bundle is serving)"
@@ -111,6 +117,19 @@ else{
   ok(typeof u.allowance==="string","the unkeyed block says which allowance answered (allowance="+u.allowance+", "+u.callsLeftToday+" of "+u.ipCap+" left; absent = the old build)");
   info("relatedTotal="+sc.relatedTotal+" relatedCapped="+sc.relatedCapped+" filterCoverageAt="+sc.filterCoverageAt+" (S8-077 pass-through; absent when the board sent none)");
 }'
+
+# A SmartRecruiters employer's own token, from the board, through search_jobs.
+W73_SRTOK=$(J '{"action":"list","vendor":"smartrecruiters","limit":1}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const r=(JSON.parse(s).jobs||[])[0]||{};console.log(r.source==="smartrecruiters"&&r.token?r.token:"")}catch{console.log("")}})')
+if [ -z "$W73_SRTOK" ]; then echo "INFO  the board answered no SmartRecruiters row -- the connector's per-employer refusal is proved by the-connector-handed-on-smartrecruiters-..."
+else
+  MC -d "{\"jsonrpc\":\"2.0\",\"id\":6,\"method\":\"tools/call\",\"params\":{\"name\":\"search_jobs\",\"arguments\":{\"query\":\"\",\"companies\":[\"$W73_SRTOK\"],\"limit\":1}}}" > /tmp/vd_73_srco.json
+  W73_SRTOK="$W73_SRTOK" node -e '
+const fs=require("fs");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);
+let j=null;try{j=JSON.parse(fs.readFileSync("/tmp/vd_73_srco.json","utf8"))}catch{}
+const t=String(((((j||{}).result||{}).content)||[{}])[0].text||"");const tok=process.env.W73_SRTOK;
+if(/allowance|free calls|limit/i.test(t)&&!/cannot be served/.test(t)){console.log("INFO  unkeyed search_jobs refused for its allowance, not its employer: "+t.slice(0,140));}
+else ok(t.includes(tok+" cannot be served by this server"),"search_jobs companies:[\""+tok+"\"] (a SmartRecruiters employer token) is refused by name ("+t.slice(0,120).replace(/\s+/g," ")+"; an empty page or rows = agent-mcp .3 or 20261009122000 not live)");'
+fi
 
 probe v1_withheld_company_tokens '{"p_sources":["smartrecruiters"]}'
 probe agent_packet_pass_funds '{"p_pass_id":null,"p_refunded_at":null}'

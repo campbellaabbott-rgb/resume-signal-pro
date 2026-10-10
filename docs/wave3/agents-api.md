@@ -10,14 +10,18 @@ agent can send on, not seven. Claude and ChatGPT users get the host's own
 unkeyed allowance instead of sharing one address's 25 calls.
 
 A review of the branch (2026-10-10) found two blockers, one major and four
-minors in its own fixes; all seven are fixed, see "Review round" below.
+minors in its own fixes; all seven are fixed, see "Review round" below. A
+second review the same day found six majors and one minor; all are fixed, see
+"Review round 2". The branch is rebased onto main after PR #25 (the deploy
+ledger).
 
 Verifier: `scripts/verify-deploy.d/73-wave3-agents-api.sh` (one PASS/FAIL/INFO
-line per claim; read-only; spends one unkeyed MCP call and, with
-`RB_API_KEY`, two calls of the owner's free /v1 key). Run against production
-on 2026-10-10 before deploy: every new-build claim FAILs as expected, nothing
-crashes, and the claims that hold today (no SmartRecruiters row in an unkeyed
-search, `agent_adoption_metrics` closed to anon) PASS.
+line per claim; read-only; spends two unkeyed MCP calls, one job-board list
+with the probe budget and, with `RB_API_KEY`, two calls of the owner's free
+/v1 key). Run against production on 2026-10-10 before deploy: every new-build
+claim FAILs as expected, nothing crashes, and the claims that hold today
+(`agent_adoption_metrics` closed to anon) PASS; the two unkeyed searches read
+INFO that day because the address had spent its 25 calls.
 
 ## Register items (S8 debug sweep, 2026-10-08, `fix_group: agents-api`)
 
@@ -89,6 +93,21 @@ resource, `/agents`, the home strip, llms.txt and llms-full carry the rule.
 | minor: "the UK or EU" needed both | confirmed | "or" and nothing else between the places: one is enough, for authorisation only (8177d4e7) |
 | minor: a hyphenated city never matched its own option | confirmed (Winston-Salem) | a hyphen splits only when spaced (11de7392) |
 
+## Review round 2 (2026-10-10)
+
+Each finding was reproduced before it was fixed (tsx against the worker and
+the shared modules, old 12a37285 against this branch).
+
+| finding | verdict | fix |
+|---|---|---|
+| major: the sponsorship context gate turned away "Will we have to sponsor you?", "Are you currently sponsored?" and "...sponsored by your employer?"; the server called them draftable and the worker filled the model's "No" for a candidate who needs sponsorship | confirmed (old worker: Yes/sponsorship; this branch: the draft) | one sponsorship rule, byte-identical in the worker and the sheet (`sponsorshipSense`); "sponsor you" is a context; a sponsor word the rule does not take is a protected token (`\bsponsor\w*` in `PROTECTED_FACTUAL`, both runtimes), so the model never drafts it and the worker never sends a draft for it; the sheet answers only what the worker answers |
+| major: a textarea or Ashby LongText made every bare contact label prose: "Phone", "Email", "LinkedIn", "Zip", "URL" became `draftable` and the worker filled the model's draft; textarea "Address" and text "Address Line 1" stopped filling from the profile | confirmed (11 labels at three control types; four worker fills of the draft) | the control type no longer makes a field-shaped label prose (on a long-text control the short-label tail counts only up to three words); "Street" and "Address Line N" are field heads; line 2 is never filled with the whole address; the worker never fills a drafted answer into a contact field. A blanket "short IDENTITY label = identity" fallback is NOT added: "Portfolio management experience" and "Email marketing experience" are short and would get the website and the email address (the first is pinned draftable by the S8-044 test) |
+| major: the review sheet answered country-specific work questions from the global boolean, so a UK candidate's sheet said Yes to "authorized to work in the U.S.?" while the worker refused | confirmed (four labels) | `_shared/work-countries.ts` is the worker's `countries.ts`, byte for byte (a test holds them identical); `standingValue` refuses a work or sponsorship question about a place the profile's country and `work_authorized_countries` do not cover; apply-agent now selects that column. Also found: the classifier never knew the British "authorised to work" or "requiring a visa", so those went to the model; `FACTUAL` reads both spellings and the -ing forms |
+| major: "without a visa sponsorship", "without the need of sponsorship" and "without needing a work visa" read forwards in both runtimes; the sheet did not see the visa phrasing | confirmed | the inversion reads an optional article and "the need of", and a visa or permit; a "without" neither reading parses goes to the candidate in both runtimes; the sheet's sponsorship branch fires on the worker's `RE_SPONSORSHIP` |
+| major: a résumé prompt with a second clause about status or pay kept the work-done exemption ("What experience do you have and what is your hourly rate?", "...and confirm you are a U.S. citizen", "...Do you need a reasonable accommodation?", "...do you hold a green card?", "...whether you hold a US passport") | confirmed (classifier draftable; the worker filled three) | `OWN_STATUS` adds "confirm (that) you", "whether you", "do/will/would you need/require/hold/submit" and "your (hourly/day) rate/wage/pay/salary"; a later sentence with a protected token voids the exemption (`SENTENCE_BREAK`, which a dotted initialism or "e.g." does not trigger). "do you have" is deliberately not added: it is how a résumé question is asked |
+| major: generate-application-answers carried 2026-10-09.1, below main's 2026-10-10.1 (PR #25) and scan-ai's 2026-10-09.2, so verifier 73 would PASS on either without this branch | confirmed: the branch was based on 12a37285 | rebased onto main (31647d4c); the function is `2026-10-10.2`, above both; verifier 73's floor is that build. Not an exact pin: the ledger tells the integration to give a function bumped by two branches a stamp later than either, and `build_ge`'s own header records an exact pin reading FAIL on every later build (run5, 2026-10-05) |
+| minor: the connector withheld SmartRecruiters by vendor code only, so `companies:[<an SR employer token>]` answered an empty page, and employer_hiring_record / employer_growth published SmartRecruiters figures | confirmed | agent-mcp reads `v1_withheld_company_tokens` (service role, hourly cache, as /v1) and refuses those tokens by name in `companies` (search_jobs, debug_search, fit_resume) and in both employer tools |
+
 ### Rationale (the code comments point here)
 
 - **Purchase text at source.** OpenAI's app rules forbid checkout links in an
@@ -111,8 +130,25 @@ resource, `/agents`, the home strip, llms.txt and llms-full carry the rule.
   not how long: whose detail it names, a label that opens with the detail and
   then ends or gives a hint (brackets, colon, dash, "where", "we", "for", "so",
   "that"), or six words or fewer (bracketed hints aside) ending on a contact
-  noun. A question, a prose prompt, a textarea or somebody else's detail never
-  is. The byte-identity test holds the two copies together.
+  noun. A question, a prose prompt or somebody else's detail never is. The
+  control type does not decide: Greenhouse and Ashby render plain fields as
+  long text, so a bare "Phone" on one is still a phone field; only the
+  short-label tail is tighter there (three words). The byte-identity test
+  holds the two copies together.
+- **One sponsorship rule.** Which labels ask about sponsorship, and which way
+  round, is decided once (`sponsorshipSense`, byte-identical in the worker
+  and the sheet): `asks` is answered from `requires_sponsorship`, `inverted`
+  from its opposite, `unread` (a "without" the inversion does not parse) by
+  nobody. Answering an unread label either way risks stating the opposite of
+  the truth, so it goes to the candidate. A sponsor word the rule does not
+  take is protected, never drafted.
+- **The sheet reads the country.** The worker's country module is copied, not
+  re-derived, because the worker builds from `worker/src` alone; the copy is
+  byte-identical and tested so. A work question about a place nobody stated is
+  a blocker on the sheet, exactly as it is a refusal in the worker.
+- **Two questions in one label.** The work-done exemption is for a résumé
+  prompt and nothing else; a second sentence carrying a protected token, or a
+  clause about the candidate's own status or pay, makes it a status question.
 - **Work done is not status.** A protected word inside "describe / tell us
   about / what is your experience ..." that names work done is a résumé
   question, unless the label also asks about the candidate's own status (are
@@ -149,24 +185,28 @@ these where both touch a function):
 
 | function | new `x-fn-build` | why |
 |---|---|---|
-| `agent-mcp` | `agent-mcp.2026-10-09.2` | SmartRecruiters withheld; `groupSimilar:false`; `relatedTotal`/`matchScope`/`filterCoverage` pass-through; card `siteUrl` with tracking; no purchase text inside ChatGPT; the host's own allowance; the guide names the withheld systems; purchase text built per host at source (review) |
+| `agent-mcp` | `agent-mcp.2026-10-09.3` | SmartRecruiters withheld; `groupSimilar:false`; `relatedTotal`/`matchScope`/`filterCoverage` pass-through; card `siteUrl` with tracking; no purchase text inside ChatGPT; the host's own allowance; the guide names the withheld systems; purchase text built per host at source (review); a SmartRecruiters employer's own token refused in `companies` and the employer tools (review 2) |
 | `public-api` | `public-api.2026-10-09.1` (`apiVersion` 2026-10-09.1) | SmartRecruiters withheld (451, `/v1/companies`); ranked `groupSimilar:false`, `total.related`, `match_scope`; parameter parsing (S8-078); the shared location rule; no typed percentage |
-| `apply-agent` | `apply-agent.2026-10-09.1` | the protected-question classifier (résumé prompts about work done stay draftable) and the one contact-field rule; packet profile carries only an own-folder résumé path |
+| `apply-agent` | `apply-agent.2026-10-09.2` | the protected-question classifier (résumé prompts about work done stay draftable) and the one contact-field rule; packet profile carries only an own-folder résumé path; the sheet's work questions read their country, so `work_authorized_countries` is selected (review 2) |
 | `apply-broker` | `apply-broker.2026-10-09.1` | signs only an own-folder résumé path |
-| `generate-application-answers` | `generate-application-answers.2026-10-09.1` | the classifier (as apply-agent); `supported` must be true; invented questions classified |
+| `generate-application-answers` | `generate-application-answers.2026-10-10.2` | the classifier (as apply-agent); `supported` must be true; invented questions classified. Above main's 2026-10-10.1 (PR #25) and scan-ai's 2026-10-09.2: **integrator**, scan-ai's change to this function is its stamp alone (its `_shared` imports changed); merge it into this one and keep 2026-10-10.2, or, if scan-ai lands first with a stamp of its own, give the merged function the next one and move verifier 73's floor to it |
 | `send-agent-digest` | `send-agent-digest.2026-10-09.1` | the plan read by account, not address |
 
 Not redeployed by this group, but their bundles change:
 
 - **job-board** (the job-board group's `.92`): imports `_shared/application-questions.ts`
-  (+10.2 KB raw source, 10,225 bytes against origin/main: the protected-topic
-  patterns with the résumé-prompt exemption, and the one contact-field rule,
-  used by its `application-questions` action) and `_shared/board-domains.ts` (+0.3 KB,
+  (+11.0 KB raw source, 11,218 bytes against origin/main: the protected-topic
+  patterns with the résumé-prompt exemption, the one contact-field rule and the
+  wider `FACTUAL`, used by its `application-questions` action) and `_shared/board-domains.ts` (+0.3 KB,
   `EMPLOYMENT_TYPES`). Count both against the ~4.5 MB cap.
 - **generate-apply-package** imports only `roleGuidance`, which did not change:
   no redeploy needed.
 
-The **worker** (`worker/`, S8-006/007/008/043/044/045/046/047/048/082) has no
+`_shared/submission-packet.ts` now imports `_shared/work-countries.ts`; only
+apply-agent imports the packet builder.
+
+The **worker** (`worker/`, S8-006/007/008/043/044/045/046/047/048/082 and
+review 2) has no
 deploy step: `apply-worker.yml` checks out main, so it is live from the first
 scheduled or woken run after merge.
 
@@ -221,9 +261,10 @@ probes answer 42501, not PGRST202), not by what the runner reports.
 - Functions: revert this branch's commits and redeploy. The builds on main
   before this branch: agent-mcp 2026-10-05.2, public-api 2026-10-08.2 (wave
   2), apply-agent and apply-broker 2026-10-05.2, generate-application-answers
-  2026-10-04.1, send-agent-digest 2026-10-08.1 (wave 2). Live on 2026-10-10:
-  the same, except public-api 2026-10-05.1 and send-agent-digest 2026-10-04.1
-  (wave 2 not yet deployed).
+  2026-10-10.1 (PR #25's re-stamp), send-agent-digest 2026-10-08.1 (wave 2).
+  Live on 2026-10-10: the same, except public-api 2026-10-05.1,
+  send-agent-digest 2026-10-04.1 and generate-application-answers 2026-10-04.1
+  (wave 2 and the ledger repair not yet deployed).
 - 120000: `DROP TRIGGER agent_mandates_resume_in_own_folder ON public.agent_mandates; DROP FUNCTION public.agent_mandates_resume_in_own_folder();`
 - 121000: re-run the `agent_claim_submission` and `agent_work_pending` blocks of
   20261005133000, then `DROP TRIGGER agent_submissions_owner_status_trg ON public.agent_submissions; DROP FUNCTION public.agent_submissions_owner_status(); DROP FUNCTION public.agent_packet_pass_funds(uuid, timestamptz);`
@@ -251,6 +292,15 @@ probes answer 42501, not PGRST202), not by what the runner reports.
   `employersOmitted: true`.
 - **The agent card.** The live card names Breezy, Personio, Pinpoint and
   Teamtailor under "Applies for you automatically" when the sender is online.
+- **Work questions about another country (review 2).** Expect more
+  `missing-standing` blockers on review sheets for postings outside the
+  candidate's own country, and the same labels as worker refusals with
+  category `work-authorization` or `sponsorship`; the candidate clears both by
+  listing the country in the agent profile. A sheet "Yes" beside a worker
+  refusal on one label is the disagreement this removed.
+- **The withheld reader in agent-mcp.** `[AGENT-MCP] withheld company tokens
+  unavailable` should not appear after 20261009122000 is applied; while it
+  does, only the vendor-code tokens are refused.
 
 ## Tests added (each failed on the code before its change)
 
@@ -281,3 +331,8 @@ probes answer 42501, not PGRST202), not by what the runner reports.
 | `an-essay-question-got-the-candidates-phone-…` + 18 cases (review) | 13 of 18 on the previous match.ts/application-questions.ts |
 | `the-model-drafted-criminal-age-…` + 17 cases (review) | 8 on the previous protected.ts/application-questions.ts (the 6 own-status cases pass on both) |
 | `the-agent-told-employers-a-uk-candidate-lives-in-ukraine` + 1 case (review) | fails on the previous match.ts |
+| `the-review-sheet-claimed-work-rights-in-a-country-the-worker-refused` (review 2) | 9 of 13 on the pre-review-2 sources (the byte-identity case among them; the four "still answers" cases that pass on both are guards) |
+| `an-essay-question-got-the-candidates-phone-…` + long-text, address-line and contact-draft cases (review 2) | 61 on the pre-review-2 sources |
+| `the-model-drafted-criminal-age-…` + sponsored, compound and "Will we have to sponsor you?" cases (review 2) | 20 on the pre-review-2 sources (the two new STAYS_DRAFTABLE labels are guards) |
+| `the-worker-answered-without-requiring-sponsorship-backwards-…` + article / "need of" / visa / unread cases and the block identity (review 2) | 9 on the pre-review-2 sources |
+| `the-connector-handed-on-smartrecruiters-…` + per-employer refusal (review 2) | 3 of 4 (the other-employer case is a guard) |
