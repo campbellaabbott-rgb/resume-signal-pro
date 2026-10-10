@@ -5295,7 +5295,9 @@
     "consentNeeded": "Marque a caixa acima do botão para continuar."
   },
   "freelanceBoost": {
-    "startNewPurchase": "Vai comprar para outra função? Comece uma nova compra."
+    "startNewPurchase": "Vai comprar para outra função? Comece uma nova compra.",
+    "boughtHereTitle": "3. A sua secção de experiência — já comprada neste dispositivo",
+    "openYourLink": "Para a ver ou gerar, abra a ligação no seu e-mail de compra. Não lhe será cobrado novamente."
   },
   "seller": {
     "soldBy": "Vendido por {{name}}, {{address}}.",

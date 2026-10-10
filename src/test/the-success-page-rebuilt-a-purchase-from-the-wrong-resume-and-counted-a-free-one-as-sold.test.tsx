@@ -123,21 +123,28 @@ describe("a report rebuilt from the recovery form is in the buyer's language (S8
 });
 
 describe("a Freelance Boost bought in this browser (S8-016)", () => {
-  it("is offered as already paid, not for sale again, and its saved result is read back rather than made again", async () => {
-    localStorage.setItem(PURCHASE_KEY, "cs_test_freelance01");
-    invoke.mockImplementation(async (fn: string) => fn === "recover-purchase"
-      ? { data: { success: true, found: true, purchases: [{ productType: "freelance_boost", generatedContent: { experienceSection: "Saved section" } }] }, error: null }
-      : { data: { success: true, data: { experienceSection: "Made again" } }, error: null });
+  it("is not offered for sale again, and the page asks for the purchase email's link", async () => {
+    localStorage.setItem(PURCHASE_KEY, JSON.stringify({ at: Date.now() }));
+    invoke.mockResolvedValue({ data: { success: true, found: false, purchases: [] }, error: null });
     at("/freelance-boost", <FreelanceBoost />);
-    await waitFor(() => expect(calls("recover-purchase").length).toBe(1), SLOW);
-    expect(calls("recover-purchase")[0][1].body.sessionId).toBe("cs_test_freelance01");
+    expect(await screen.findByText(en.freelanceBoost.openYourLink, {}, SLOW)).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Boost my experience/ }), "the buy button was offered to a buyer").toBeNull();
     expect(calls("generate-freelance-boost"), "the result was made again").toHaveLength(0);
   });
 
-  it("arriving from Stripe keeps the purchase in this browser", async () => {
+  it("with the link, its saved result is read back rather than made again", async () => {
+    invoke.mockImplementation(async (fn: string) => fn === "recover-purchase"
+      ? { data: { success: true, found: true, purchases: [{ productType: "freelance_boost", generatedContent: { experienceSection: "Saved section" } }] }, error: null }
+      : { data: { success: true, data: { experienceSection: "Made again" } }, error: null });
+    at("/freelance-boost?session_id=cs_test_freelance01", <FreelanceBoost />);
+    await waitFor(() => expect(calls("recover-purchase").length).toBe(1), SLOW);
+    expect(calls("recover-purchase")[0][1].body.sessionId).toBe("cs_test_freelance01");
+    expect(calls("generate-freelance-boost"), "the result was made again").toHaveLength(0);
+  });
+
+  it("arriving from Stripe marks this browser as having bought", async () => {
     invoke.mockResolvedValue({ data: { success: true, found: false, purchases: [] }, error: null });
     at("/freelance-boost?session_id=cs_test_freelance02", <FreelanceBoost />);
-    await waitFor(() => expect(localStorage.getItem(PURCHASE_KEY)).toBe("cs_test_freelance02"), SLOW);
+    await waitFor(() => expect(localStorage.getItem(PURCHASE_KEY)).not.toBeNull(), SLOW);
   });
 });

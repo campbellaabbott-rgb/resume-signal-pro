@@ -5295,7 +5295,9 @@
     "consentNeeded": "Lagyan ng tsek ang kahon sa itaas ng button para magpatuloy."
   },
   "freelanceBoost": {
-    "startNewPurchase": "Bibili para sa ibang posisyon? Magsimula ng bagong pagbili."
+    "startNewPurchase": "Bibili para sa ibang posisyon? Magsimula ng bagong pagbili.",
+    "boughtHereTitle": "3. Ang iyong experience section — nabili na sa device na ito",
+    "openYourLink": "Para makita o mabuo ito, buksan ang link sa iyong purchase email. Hindi ka na sisingilin ulit."
   },
   "seller": {
     "soldBy": "Ibinebenta ng {{name}}, {{address}}.",

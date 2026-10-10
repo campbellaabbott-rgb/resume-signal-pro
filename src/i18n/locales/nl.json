@@ -5295,7 +5295,9 @@
     "consentNeeded": "Vink het vakje boven de knop aan om verder te gaan."
   },
   "freelanceBoost": {
-    "startNewPurchase": "Koop je voor een andere functie? Begin een nieuwe aankoop."
+    "startNewPurchase": "Koop je voor een andere functie? Begin een nieuwe aankoop.",
+    "boughtHereTitle": "3. Je ervaringssectie — al gekocht op dit apparaat",
+    "openYourLink": "Open de link in je aankoopmail om hem te bekijken of te maken. Je betaalt niet opnieuw."
   },
   "seller": {
     "soldBy": "Verkocht door {{name}}, {{address}}.",

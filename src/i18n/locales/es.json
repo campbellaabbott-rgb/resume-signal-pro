@@ -5295,7 +5295,9 @@
     "consentNeeded": "Marca la casilla sobre el botón para continuar."
   },
   "freelanceBoost": {
-    "startNewPurchase": "¿Compras para otro puesto? Empieza una compra nueva."
+    "startNewPurchase": "¿Compras para otro puesto? Empieza una compra nueva.",
+    "boughtHereTitle": "3. Tu sección de experiencia: ya comprada en este dispositivo",
+    "openYourLink": "Para verla o generarla, abre el enlace de tu correo de compra. No se te cobrará de nuevo."
   },
   "seller": {
     "soldBy": "Vendido por {{name}}, {{address}}.",

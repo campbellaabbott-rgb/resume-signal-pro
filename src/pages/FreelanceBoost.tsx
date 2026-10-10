@@ -39,20 +39,27 @@ interface BoostResult {
 
 const DRAFT_KEY = "freelanceBoostIntake";
 /**
- * THE PURCHASE THIS BROWSER MADE (sweep S8-016). It existed only in the
- * success URL: back on /freelance-boost without it, a $29 or $59 buyer was
- * shown the buy buttons again and the result they had was regenerated on
- * every reload. The id is kept here on arrival; the saved result is read back
- * (recover-purchase) before anything is generated.
+ * THAT THIS BROWSER BOUGHT (sweep S8-016; wave 3 review). The purchase existed
+ * only in the success URL: back on /freelance-boost without it, a $29 or $59
+ * buyer was shown the buy buttons again. This keeps only the time of the
+ * purchase, never its id: the id loads the buyer's result for anyone who has
+ * it, so a stored one showed it to the next person on a shared browser. With
+ * the mark and no link, the page offers no buy button and asks for the link
+ * from the purchase email; the result loads only from that link.
  */
 export const PURCHASE_KEY = "freelanceBoostPurchase";
-const readPurchase = (): string | null => {
+/** How long the mark keeps the buy buttons away. */
+export const PURCHASE_MEMORY_MS = 7 * 86_400_000;
+const readBoughtHere = (): boolean => {
   try {
-    const v = localStorage.getItem(PURCHASE_KEY);
-    return v && /^(cs_live_|cs_test_|pro_)[A-Za-z0-9_-]{6,250}$/.test(v) ? v : null;
+    const at = Number((JSON.parse(localStorage.getItem(PURCHASE_KEY) ?? "null") as { at?: unknown } | null)?.at);
+    const age = Date.now() - at;
+    if (Number.isFinite(age) && age >= 0 && age < PURCHASE_MEMORY_MS) return true;
+    localStorage.removeItem(PURCHASE_KEY);
   } catch {
-    return null;
+    try { localStorage.removeItem(PURCHASE_KEY); } catch { /* storage blocked */ }
   }
+  return false;
 };
 
 type Situation = "primary" | "alongside" | "returning";
@@ -127,18 +134,19 @@ export default function FreelanceBoost() {
     } catch { /* storage blocked: the form still works for this visit */ }
   }, [projects, targetRole, jobPosting, employmentTimeline, situation, workMode]);
 
-  // Returned from checkout with a paid session (or a Pro grant), or this
-  // browser bought one before → the purchase, never the buy buttons.
+  // Returned from checkout with a paid session (or a Pro grant) → the
+  // purchase. This browser bought one before, without the link → no buy
+  // buttons, and the link from the email to see it.
   const urlSession = params.get("session_id");
-  const [storedSession, setStoredSession] = useState(readPurchase);
-  const sessionId = urlSession ?? storedSession;
+  const [boughtHere, setBoughtHere] = useState(readBoughtHere);
+  const sessionId = urlSession;
   useEffect(() => {
     if (!urlSession) return;
-    try { localStorage.setItem(PURCHASE_KEY, urlSession); } catch { /* storage blocked: the link still works */ }
+    try { localStorage.setItem(PURCHASE_KEY, JSON.stringify({ at: Date.now() })); } catch { /* storage blocked: the link still works */ }
   }, [urlSession]);
   const startNewPurchase = () => {
     try { localStorage.removeItem(PURCHASE_KEY); } catch { /* nothing kept */ }
-    setStoredSession(null);
+    setBoughtHere(false);
     setResult(null);
   };
   const generate = async (d: IntakeDraft) => {
@@ -523,11 +531,16 @@ export default function FreelanceBoost() {
                   {!intakeComplete && (
                     <p className="text-[11px] text-muted-foreground mt-2">Add your target role and at least one project (who it was for + what you delivered).</p>
                   )}
-                  {!urlSession && storedSession && (
-                    <button type="button" onClick={startNewPurchase} className="block mx-auto mt-3 text-[11px] text-muted-foreground underline">
-                      {t("freelanceBoost.startNewPurchase")}
-                    </button>
-                  )}
+                </div>
+              ) : boughtHere ? (
+                // BOUGHT ON THIS DEVICE, NO LINK: the result loads only from
+                // the purchase email's link, never for whoever opens the page.
+                <div className="rounded-2xl border-2 border-primary bg-card p-6 text-center">
+                  <p className="font-semibold text-foreground mb-1">{t("freelanceBoost.boughtHereTitle")}</p>
+                  <p className="text-xs text-muted-foreground max-w-md mx-auto">{t("freelanceBoost.openYourLink")}</p>
+                  <button type="button" onClick={startNewPurchase} className="block mx-auto mt-3 text-[11px] text-muted-foreground underline">
+                    {t("freelanceBoost.startNewPurchase")}
+                  </button>
                 </div>
               ) : (
               <div className="rounded-2xl border-2 border-primary bg-card p-6 text-center">

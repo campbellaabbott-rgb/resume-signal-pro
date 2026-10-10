@@ -5295,7 +5295,9 @@
     "consentNeeded": "Please tick the box above the button to continue."
   },
   "freelanceBoost": {
-    "startNewPurchase": "Buying for a different role? Start a new purchase."
+    "startNewPurchase": "Buying for a different role? Start a new purchase.",
+    "boughtHereTitle": "3. Your experience section — already bought on this device",
+    "openYourLink": "To see or generate it, open the link in your purchase email. You won't be charged again."
   },
   "seller": {
     "soldBy": "Sold by {{name}}, {{address}}.",
