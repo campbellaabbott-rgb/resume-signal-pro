@@ -799,6 +799,13 @@
       "when": 1791672543498,
       "tag": "0113_20261008112000_the_real_users_score_benchmark_counts_only_real_users",
       "breakpoints": true
+    },
+    {
+      "idx": 114,
+      "version": "7",
+      "when": 1791672552830,
+      "tag": "0114_20261008112500_the_closure_rollup_rolls_whole_months_and_rolls_them_when_nothing_is_pruned",
+      "breakpoints": true
     }
   ]
 }
