@@ -26,7 +26,7 @@
  */
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { execFileSync, spawn } from "node:child_process";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
@@ -166,6 +166,87 @@ describe("a refusal probe is a read: it can never commit a write (S8-125)", () =
     expect(sites.length, "found no probe call sites: the scan is broken").toBeGreaterThan(30);
     const nulls = sites.filter((s) => Object.values(JSON.parse(s.args) as Record<string, unknown>).some((v) => v === null)).map((s) => s.fn);
     expect(nulls, "these probes pass null, so they would refuse to run").toEqual([]);
+  });
+});
+
+/**
+ * Whether the latest definition of each function in supabase/migrations
+ * writes: its body (comments dropped) holds an INSERT, an UPDATE ... SET (an
+ * alias allowed), a DELETE or a TRUNCATE. Readers are false; functions no
+ * migration defines are absent.
+ */
+function migrationWriters(): Map<string, boolean> {
+  const dir = resolve(ROOT, "supabase/migrations");
+  const out = new Map<string, boolean>();
+  const WRITES = /\b(insert\s+into|update\s+(?:only\s+)?[\w."]+(?:\s+(?:as\s+)?\w+)?\s+set|delete\s+from|truncate)\b/i;
+  for (const f of readdirSync(dir).filter((n) => n.endsWith(".sql")).sort()) {
+    const sql = readFileSync(join(dir, f), "utf8");
+    const head = /create\s+(?:or\s+replace\s+)?function\s+(?:public\.)?"?([a-z0-9_]+)"?\s*\(/gi;
+    for (let m = head.exec(sql); m; m = head.exec(sql)) {
+      const semi = sql.indexOf(";", m.index);
+      const tag = /\$[a-z_]*\$/i.exec(sql.slice(m.index, semi < 0 ? undefined : semi));
+      if (!tag) continue;
+      const from = m.index + tag.index + tag[0].length;
+      const to = sql.indexOf(tag[0], from);
+      if (to < 0) continue;
+      out.set(m[1].toLowerCase(), WRITES.test(sql.slice(from, to).replace(/--[^\n]*/g, "")));
+      head.lastIndex = to + tag[0].length;
+    }
+  }
+  return out;
+}
+
+describe("no section POSTs a writer to watch it refuse (S8-125, sections 63 and 65)", () => {
+  const SECTIONS = readdirSync(resolve(ROOT, "scripts/verify-deploy.d")).filter((n) => n.endsWith(".sh")).sort();
+  const refuse = (by: Record<string, { status: number; body: unknown }> = {}): Route[] => [
+    ...Object.entries(by).map(([fn, a]) => ({ match: `^GET https://p\\.supabase\\.co/rest/v1/rpc/${fn}\\?`, status: a.status, body: JSON.stringify(a.body) })),
+    { match: "^GET https://p\\.supabase\\.co/rest/v1/rpc/", status: 401, body: JSON.stringify({ code: "42501", message: "permission denied" }) },
+  ];
+
+  it("every RPC a section POSTs is a reader by its migration; the writers 63 and 65 prove closed go out as read-only GETs", () => {
+    const writes = migrationWriters();
+    // Positive control: the migration reader knows these four write and these two read.
+    for (const w of ["payment_revoke", "payment_revoke_credits", "agent_pass_settle", "search_digest_record_sent"]) expect(writes.get(w), `${w} reads as a reader`).toBe(true);
+    for (const r of ["get_cron_health", "client_callable_census"]) expect(writes.get(r), `${r} reads as a writer`).toBe(false);
+
+    const posted = new Set<string>();
+    const gets = new Set<string>();
+    for (const n of ["63-wave2-email-ops.sh", "65-wave2-entitlements.sh"]) {
+      const { calls } = run(sectionFile(n), { curl: refuse() });
+      for (const c of calls) {
+        const r = /^R\t([a-z_]+)/.exec(c) ?? /^curl\tPOST https:\/\/p\.supabase\.co\/rest\/v1\/rpc\/([a-z_]+)/.exec(c);
+        if (r) posted.add(r[1]);
+        const g = /^curl\tGET https:\/\/p\.supabase\.co\/rest\/v1\/rpc\/([a-z_]+)/.exec(c);
+        if (g) gets.add(g[1]);
+      }
+    }
+    // Every other call site, read from the main script and each section file.
+    for (const src of [SCRIPT, ...SECTIONS.map(sectionFile)]) {
+      const code = src.split("\n").filter((l) => !/^\s*#/.test(l)).join("\n");
+      for (const m of code.matchAll(/(?:^|[\s($;|])R ([a-z_]+)\b/gm)) posted.add(m[1]);
+    }
+    expect(posted.size, "found no R call sites: the scan is broken").toBeGreaterThan(15);
+    const writers = [...posted].filter((fn) => writes.get(fn) === true).sort();
+    expect(writers, "the verifier POSTs these writers: had a revoke regressed, every run would write").toEqual([]);
+    for (const w of ["payment_revoke", "payment_revoke_credits", "agent_pass_settle", "search_digest_record_sent"]) expect(gets.has(w), `${w} is no longer probed at all`).toBe(true);
+  });
+
+  it("section 65 still judges its migrations: 42501 passes, a callable writer fails, and PGRST202 fails as not applied", () => {
+    const { lines } = run(sectionFile("65-wave2-entitlements.sh"), { curl: refuse({
+      payment_revoke_credits: { status: 500, body: { code: "25006", message: "cannot execute UPDATE in a read-only transaction" } },
+      agent_pass_settle: { status: 404, body: { code: "PGRST202", message: "Could not find the function" } },
+    }) });
+    expect(has(lines, "PASS", /^PASS {2}payment_revoke exists and refuses anon by name \(42501\)/), show(lines)).toBe(true);
+    expect(has(lines, "FAIL", /payment_revoke_credits is CALLABLE as anon/), show(lines)).toBe(true);
+    expect(has(lines, "FAIL", /agent_pass_settle not found \(PGRST202\): its migration has not applied/), show(lines)).toBe(true);
+  });
+
+  it("section 63 judges its four the same way, over a GET", () => {
+    const { lines } = run(sectionFile("63-wave2-email-ops.sh"), { curl: refuse({
+      email_delivery_health: { status: 404, body: { code: "PGRST202", message: "Could not find the function" } },
+    }) });
+    expect(has(lines, "PASS", /^PASS {2}search_digest_record_sent as anon -> 42501 \(closed\)/), show(lines)).toBe(true);
+    expect(has(lines, "FAIL", /email_delivery_health -> PGRST202 \(not created/), show(lines)).toBe(true);
   });
 });
 

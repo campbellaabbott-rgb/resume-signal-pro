@@ -10,7 +10,8 @@
 # holds: every build, old or new, refuses that token before any write (the
 # new ones answer 303 to the confirm page and never write on GET at all). The
 # board is read with one list countOnly request under x-rb-budget: probe.
-# Table and RPC probes are selects and readers a revoked grant refuses.
+# Table probes are selects. RPC refusal probes go through the shared GET
+# `probe`, which PostgREST runs read-only, writers and readers alike.
 echo "== 63. wave 2 email-ops: digest window and schedule, unsubscribe by button, mail queue, claims, sentinel, monitors, affiliates =="
 
 # Builds: date part 2026-10-08 or later (a later deploy carries this too).
@@ -69,10 +70,11 @@ case "$C63" in 42501) echo "PASS  affiliate_payout_requests carries conversion_i
 C63=$(curl -s -m 30 "$B/rest/v1/company_claims?select=owner_approved_at,last_sent_at&limit=1" -H "apikey: $K" -H "Authorization: Bearer $K" | vd63_code)
 case "$C63" in 42501) echo "PASS  company_claims carries owner_approved_at and last_sent_at (42501 on the columns, not 42703)";; 42703) echo "FAIL  company_claims lacks owner_approved_at/last_sent_at (20261008122000 not applied; company-claim .10-08 needs it)";;
   *) echo "INFO  company_claims column probe -> $C63";; esac
+# Through the shared GET `probe` (read-only): search_digest_record_sent writes.
 for P63 in 'get_recent_heartbeats|{"p_limit":1}' 'get_heartbeat_history|{"p_hours":1,"p_limit":1}' 'search_digest_record_sent|{"p_search_id":"00000000-0000-4000-8000-000000000000","p_posting_ids":[]}' 'email_delivery_health|{"p_hours":1}'; do
   N63=${P63%%|*}; A63=${P63#*|}
-  C63=$(R "$N63" "$A63" | vd63_code)
-  case "$C63" in 42501) echo "PASS  $N63 as anon -> 42501 (closed)";; PGRST202) echo "FAIL  $N63 -> PGRST202 (not created: its migration has not applied)";; *) echo "FAIL  $N63 as anon -> $C63 (want 42501)";; esac
+  L63=$(probe "$N63" "$A63")
+  case "$L63" in "PASS  $N63 as anon -> 42501"*) echo "PASS  $N63 as anon -> 42501 (closed)";; "INFO  $N63 -> PGRST202"*) echo "FAIL  $N63 -> PGRST202 (not created: its migration has not applied)";; *) echo "$L63 (want 42501)";; esac
 done
 R get_company_claim_status '{"p_token":"__vd63_no_such_company__"}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{}console.log((j&&j.verified===false?"PASS":"FAIL")+"  get_company_claim_status still answers the badge reader: "+s.slice(0,80))})'
 echo "INFO  the website under a Verified employer badge shows only after the owner approves the claim; the pglite test proves it, and production has no claim to read it from here"
