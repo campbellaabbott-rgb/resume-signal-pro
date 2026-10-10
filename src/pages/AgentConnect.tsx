@@ -73,7 +73,7 @@ import { useBoardTotals, roundedFloor } from "@/hooks/use-board-totals";
 import {
   MCP_TOOLS, MCP_HOSTS, MCP_PAGE_HOSTS, MCP_PAGE_HOST_IDS, MCP_OTHER_AGENTS_LINE, MCP_COPY_THE_PROMPT, MCP_READ_TOOLS, MCP_PAID_TOOLS,
   MCP_APPLY_TOOLS, MCP_ANON_TOOLS, MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS, MCP_FREE_KEY_DAILY_QUOTA, MCP_PROMPTS, MCP_RESOURCES,
-  MCP_SERVER_ADDRESS_NOTE, MCP_ADDRESS_GLOSS, MCP_NEEDS_ACCOUNT_LINE, MCP_INSTALL_REPO_URL, MCP_TEST_QUERY, MCP_TROUBLESHOOTING,
+  MCP_SERVER_ADDRESS_NOTE, MCP_ADDRESS_GLOSS, MCP_NEEDS_ACCOUNT_LINE, MCP_WITHHELD_NOTE, MCP_INSTALL_REPO_URL, MCP_TEST_QUERY, MCP_TROUBLESHOOTING,
   MCP_SIGN_IN_META_KEY, troubleRowsFor, stepSegments, hostTakesKey, curlInitialize, SIGN_IN_UNKNOWN, andList,
   type McpHost, type McpHostId, type McpStep, type McpMoreHost, type SignInFact, type TroubleRow,
 } from "@/config/mcp-tools";
@@ -814,11 +814,13 @@ export default function AgentConnect() {
                       <code className="text-xs">Authorization: Bearer rb_live_…</code> — tool discovery works
                       without one, so an agent can see what's here before you decide to mint anything.{" "}
                       {names(MCP_ANON_TOOLS)} answer with no key at all, {MCP_ANON_CAPS.perAddressPerDay} calls a
-                      day per network address (search capped at {MCP_ANON_CAPS.searchRows} rows), each answer saying how
+                      day per network address (from ChatGPT, per person; from Claude, a shared pool of{" "}
+                      {MCP_ANON_CAPS.hostPoolPerDay} first; search capped at {MCP_ANON_CAPS.searchRows} rows), each answer saying how
                       many are left; every other tool call needs a credential — the key, or the sign-in a
                       chat host performs for you while the server's sign-in service is on. Press Test the server above for today's state;
                       the initialize result carries it under <code className="text-xs">{`_meta["${MCP_SIGN_IN_META_KEY}"].state`}</code>.
                     </p>
+                    <p className="text-sm text-muted-foreground mt-3">{MCP_WITHHELD_NOTE}</p>
                   </div>
 
                   <div>

@@ -9206,7 +9206,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                 onChange={(e) => setMaxYears(Number(e.target.value) || 0)}
                 className="px-3 py-2 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                 aria-label={t("jobsPage.maxYearsFieldLabel", "Maximum years of experience required")}
-                title={t("jobsPage.maxYearsTip", "Hides postings that ask for more than this many years. Only postings that state a number can be matched — 29% of the board — so the rest are hidden while this is on.")}
+                title={t("jobsPage.maxYearsTip", "Hides postings that ask for more than this many years. Only postings that state a number can be matched, so the rest are hidden while this is on.")}
               >
                 <option value="">{t("jobsPage.anyMaxYears", "Any years required")}</option>
                 {MAX_YEARS_STEPS.map((y) => (
@@ -9512,7 +9512,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
               {(salaryFloor > 0 || salaryCeiling > 0) && (
                 <label
                   className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-background text-sm whitespace-nowrap text-muted-foreground cursor-pointer"
-                  title={t("jobsPage.inclUnstatedPayTip", "Keep postings that don't publish a salary. Only about a fifth of employers state pay, so a pay floor hides the rest — this puts them back.")}
+                  title={t("jobsPage.inclUnstatedPayTip", "Keep postings that don't publish a salary. Many employers don't state pay, so a pay floor hides their postings — this puts them back.")}
                 >
                   <input
                     type="checkbox"

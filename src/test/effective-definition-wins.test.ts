@@ -90,8 +90,10 @@ describe("agent_claim_submission — the last gate before an employer", () => {
     expect(code).toMatch(/m\.active = true/);
     expect(code).toMatch(/m\.paused_until IS NULL OR m\.paused_until <= now\(\)/);
     // Funding by the ACCOUNT (agent_subscription_live, 20261005130000) — the
-    // key apply-broker reads too, never an address.
-    expect(code).toMatch(/c\.pass_id IS NOT NULL OR public\.agent_subscription_live\(c\.user_id\)/);
+    // key apply-broker reads too, never an address. The pass leg reads the
+    // refund receipt (agent_packet_pass_funds, 20261009121000): a given-back
+    // application goes out only while its pass can charge it again.
+    expect(code).toMatch(/public\.agent_packet_pass_funds\(c\.pass_id, c\.pass_refunded_at\) OR public\.agent_subscription_live\(c\.user_id\)/);
   });
 
   it("a released packet for an employer the candidate has since blocked is parked, never handed out", () => {

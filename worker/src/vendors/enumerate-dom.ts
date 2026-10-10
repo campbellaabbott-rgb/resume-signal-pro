@@ -143,10 +143,20 @@ export const ENUMERATE_JS = `(() => {
       honeypot = invisible && unreachable && type !== "file";
     } catch (_) { honeypot = false; }
 
+    // REQUIREDNESS IN WORDS (sweep S8-046). Teamtailor and Personio say a
+    // question is required in its label ("...?*Required", "(erforderlich)",
+    // a trailing "*") and set the attribute on almost nothing, and the
+    // pre-submit guard is skipped on both because the attribute is
+    // untrustworthy there. So unless the label is read HERE, before the marker
+    // is stripped, an unanswerable required question neither blocks nor gets
+    // asked, and submit is pressed on an incomplete form.
+    const markedInLabel = /(?:[*\\u2217]\\s*(?:required|requis|erforderlich|pflichtfeld|obligatoire|obligatorio|obbligatorio|verplicht|obligatorisk|pakollinen|wymagane)?|\\((?:required|erforderlich|pflichtfeld|requis|obligatoire|obligatorio|obbligatorio|obrigat[oó]rio|verplicht|obligatorisk|pakollinen)\\)|\\s(?:required|erforderlich|requis|obligatoire|obligatorio|obbligatorio|verplicht|obligatorisk))\\s*$/i.test(label);
+    const requiredHere = required || markedInLabel;
+
     // A trailing asterisk is a requiredness MARKER, not part of the question.
     // Left on, every pattern would need to tolerate it and some would not.
     label = label.replace(/[*\\u2217]\\s*$/, "").trim();
-    out.push({ name: name, type: type, required: required, honeypot: honeypot, label: label.slice(0, 200), options: options.slice(0, 24) });
+    out.push({ name: name, type: type, required: requiredHere, honeypot: honeypot, label: label.slice(0, 200), options: options.slice(0, 24) });
   });
   return out;
 })()`;

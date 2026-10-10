@@ -200,15 +200,24 @@ describe("the unkeyed set is one constant, mirrored, and registered", () => {
 describe("the caps are named constants, mirrored, and the only numbers the keyless branch uses", () => {
   it("both caps and the search limit are declared once and mirrored on the page side", () => {
     expect(numberConstOf(MCP, "ANON_IP_CAP_PER_DAY")).toBe(MCP_ANON_CAPS.perAddressPerDay);
+    expect(numberConstOf(MCP, "ANON_HOST_POOL_PER_DAY")).toBe(MCP_ANON_CAPS.hostPoolPerDay);
     expect(numberConstOf(MCP, "ANON_GLOBAL_CAP_PER_DAY")).toBe(MCP_ANON_CAPS.globalPerDay);
     expect(numberConstOf(MCP, "ANON_SEARCH_LIMIT")).toBe(MCP_ANON_CAPS.searchRows);
     // Both must exist: a per-address bucket alone is a global bucket for the
     // hosts that share egress, and a global bucket alone is one caller's.
     expect(MCP_ANON_CAPS.globalPerDay).toBeGreaterThan(MCP_ANON_CAPS.perAddressPerDay);
+    // A host's pool is a share of the world, never all of it.
+    expect(MCP_ANON_CAPS.globalPerDay).toBeGreaterThan(MCP_ANON_CAPS.hostPoolPerDay);
   });
 
   it("the keyless branch hands the named constants to mcp_anon_check and clamps with the named limit", () => {
-    expect(UNKEYED).toMatch(/\.rpc\("mcp_anon_check", \{ p_ip_hash: ipHash, p_global_cap: ANON_GLOBAL_CAP_PER_DAY, p_ip_cap: ANON_IP_CAP_PER_DAY \}\)/);
+    // Each bucket (a host's own, then the address's) is counted with the
+    // global cap by name and its own cap from the bucket, whose caps are the
+    // named constants.
+    expect(UNKEYED).toMatch(/\.rpc\("mcp_anon_check", \{ p_ip_hash: b\.key, p_global_cap: ANON_GLOBAL_CAP_PER_DAY, p_ip_cap: b\.cap \}\)/);
+    expect(UNKEYED).toMatch(/buckets\.push\(\{ key: ipHash, cap: ANON_IP_CAP_PER_DAY, kind: "address"/);
+    expect(UNKEYED).toMatch(/key: `host:\$\{host\}`, cap: ANON_HOST_POOL_PER_DAY,/);
+    expect(UNKEYED).not.toMatch(/\bcap: \d/);
     expect(UNKEYED).toMatch(/Math\.min\(ANON_SEARCH_LIMIT,/);
     // No cap typed as a digit into the meter call, the clamp or the note:
     // the constant is the only spelling, or the page's mirror describes a
@@ -255,7 +264,11 @@ describe("the keyless branch is counted in its own table and nowhere else", () =
   });
 
   it("the address is hashed and truncated, never stored as itself", () => {
-    expect(UNKEYED).toMatch(/\(await sha256Hex\(callerAddress\(req\.headers\)\)\)\.slice\(0, 16\)/);
+    expect(UNKEYED).toMatch(/const address = callerAddress\(req\.headers\);\s*const ipHash = \(await sha256Hex\(address\)\)\.slice\(0, 16\);/);
+    // A ChatGPT user's bucket is keyed by a hash of the subject, never the subject.
+    expect(UNKEYED).toMatch(/const subjectHash = subject \? \(await sha256Hex\(subject\)\)\.slice\(0, 16\) : "";/);
+    expect(UNKEYED).toMatch(/key: `u:chatgpt:\$\{subjectHash\}`/);
+    expect(UNKEYED).not.toMatch(/key: (address|subject)\b|p_ip_hash: (address|subject)\b/);
   });
 
   it("the address is the platform's word, never the caller's: edge header first, then the LAST forwarded hop", () => {
@@ -286,7 +299,7 @@ describe("the keyless branch is counted in its own table and nowhere else", () =
     expect(UNKEYED).toMatch(/const ipLeft = Math\.max\(0, a\.ip_cap - a\.ip_used\);/);
     expect(UNKEYED).toMatch(/const globalLeft = Math\.max\(0, a\.global_cap - a\.global_used\);/);
     expect(UNKEYED).toMatch(/const worldClause = globalLeft < ipLeft \? `; \$\{globalLeft\} across every unkeyed caller` : "";/);
-    expect(UNKEYED).toMatch(/const note = `unkeyed: \$\{ipLeft\} of \$\{a\.ip_cap\} anonymous calls left today\$\{worldClause\}; a free key raises this to \$\{keyRaisesTo\}`/);
+    expect(UNKEYED).toMatch(/const note = `unkeyed: \$\{ipLeft\} of \$\{a\.ip_cap\} anonymous calls left today\$\{whose\}\$\{worldClause\}; a free key raises this to \$\{keyRaisesTo\}`/);
     expect(UNKEYED).toMatch(/callsLeftToday: ipLeft,/);
     expect(UNKEYED).toMatch(/globalLeftToday: globalLeft,/);
     expect(UNKEYED).toMatch(/toolOk\(\{ \.\.\.out, unkeyed \}\)/);
@@ -424,7 +437,7 @@ describe("a keyless call to a keyed tool answers the sign-in challenge while the
 
   it("the dispatch routes an unkeyed call to the unkeyed branch inside the metered try, and keyed calls unchanged", () => {
     expect(MCP).toMatch(/if \(!d\) \{\s*const \{ rpc, headers \} = await answerUnkeyed\(client, req, id, toolName, toolArgs, params\);/);
-    expect(MCP).toMatch(/callTool\(client, d\.api_key_id \?\? "", d\.key_tier, toolName, toolArgs\)/);
+    expect(MCP).toMatch(/callTool\(client, d\.api_key_id \?\? "", d\.key_tier, toolName, toolArgs, shop\)/);
   });
 });
 
@@ -524,9 +537,12 @@ describe("teeth: each property fails on a copy that breaks it", () => {
   });
 
   it("a copy that types a cap or the quota into the keyless branch is caught", () => {
-    const broken = UNKEYED.replace("p_ip_cap: ANON_IP_CAP_PER_DAY", "p_ip_cap: 25");
+    const broken = UNKEYED.replace("p_ip_cap: b.cap", "p_ip_cap: 25");
     expect(broken).not.toBe(UNKEYED);
     expect(broken).toMatch(/p_global_cap: \d|p_ip_cap: \d|Math\.min\(\d/);
+    const typedBucket = UNKEYED.replace("cap: ANON_IP_CAP_PER_DAY, kind: \"address\"", "cap: 25, kind: \"address\"");
+    expect(typedBucket).not.toBe(UNKEYED);
+    expect(typedBucket).toMatch(/\bcap: \d/);
     const typedNote = UNKEYED.replace("a free key raises this to ${keyRaisesTo}", "a free key raises this to 1,000");
     const note = /const note = `([^`]*)`/.exec(typedNote)?.[1] ?? "";
     expect(note.replace(/\$\{[^}]*\}/g, "")).toMatch(/\d/);

@@ -86,9 +86,11 @@ describe("the MCP exposes the trace as debug_search", () => {
   });
 
   it("shares ONE body mapping between search and debug — they cannot diverge", () => {
+    // One mapping, wrapped once (2026-10-10) so a withheld employer's own token is refused on both paths.
     expect(MCP).toMatch(/function searchBody\(args: Record<string, unknown>\)/);
-    expect(MCP).toMatch(/const r = await board\(searchBody\(args\)\)/);
-    expect(MCP).toMatch(/const base = searchBody\(args\)/);
+    expect(MCP).toMatch(/async function servableSearchBody\(args: Record<string, unknown>\)[^{]*\{\s*const body = searchBody\(args\);/);
+    expect(MCP).toMatch(/const r = await board\(await servableSearchBody\(args\)\)/);
+    expect(MCP).toMatch(/const base = await servableSearchBody\(args\)/);
   });
 });
 

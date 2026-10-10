@@ -215,15 +215,21 @@ describe("the refusals that keep a false statement out of an application", () =>
 });
 
 describe("what this actually changes, measured on the same 8 postings", () => {
-  it("lifts completable postings from 3 of 8 to 7 of 8", () => {
+  it("lifts completable postings from 3 of 8 to 6 of 8", () => {
     // The number that justified the work, pinned exactly. Recorded here so a
     // regression shows up as the product getting worse rather than as a vague
     // test failure — and so a change that "improves" it has to explain which
     // extra posting it now answers, and with what.
+    //
+    // It was 7 until 2026-10-09, and the seventh was bought with a misfiled
+    // answer: the adapter put the cover note in barloworldequipment's REQUIRED
+    // "Work History" box (cSummary). The note now goes in the Cover Letter box
+    // and Work History is a question, answered by its grounded draft or asked
+    // of the candidate (sweep S8-082), so with no draft that form blocks.
     const completable = forms.filter(
       (f) => planAnswers(f.questions, FULL, BREEZY_MAPPED).blocking.length === 0,
     );
-    expect(completable.length).toBe(7);
+    expect(completable.length).toBe(6);
   });
 
   it("still blocks the postings that ask something we genuinely cannot answer", () => {

@@ -16,6 +16,7 @@
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
 import { locationTerms } from "../_shared/location-terms.ts";
+import { isStateCodeAlias, locationBranch } from "../_shared/location-match.ts";
 import { resumeRoleTerms } from "../_shared/fit-score.ts";
 // EVERY /v1 SEARCH LANDS IN THE SITE'S DEMAND LOG. This function proxies
 // job-board's `list`, which logs a search event unconditionally, so paying
@@ -48,7 +49,7 @@ import { companyPage } from "./company-walk.ts";
 // on this file: 1,633,223 bytes before these three imports, 1,644,580 after —
 // +11KB, and no catalogue entry in the output. Re-measure if that import ever
 // stops being type-only.
-import { BOARD_VENDORS, EXPERIENCE_BANDS, JOB_CATEGORIES, WORK_MODES } from "../_shared/board-domains.ts";
+import { BOARD_VENDORS, EMPLOYMENT_TYPES, EXPERIENCE_BANDS, JOB_CATEGORIES, WORK_MODES } from "../_shared/board-domains.ts";
 
 // 2026-09-30.1 — BUMPED FOR A NARROWING, the second of that kind. The FREE
 // closure window falls from thirty days to seventy-two hours
@@ -88,7 +89,16 @@ import { BOARD_VENDORS, EXPERIENCE_BANDS, JOB_CATEGORIES, WORK_MODES } from "../
 // says which it got (suspectBatchesIncluded). suspectBatch is null on a row
 // written before the collector assessed its batches (batch_live_before IS
 // NULL): never assessed, so the default does not filter it either.
-const API_VERSION = "2026-10-08.1";
+//
+// 2026-10-09.1 NARROWS EVERY ROW-RETURNING ENDPOINT (owner decision
+// 2026-10-08): SmartRecruiters postings join the federal feed on
+// NO_REDISTRIBUTION_SOURCES until SmartRecruiters (SAP) grants permission, and
+// /v1/companies stops listing their employers. Also: engine=ranked returns
+// sibling postings instead of folding them, states the description-match total
+// beside the title one and each row's matchScope, and refuses remote=false and
+// non-boolean flags; employment_type, max_years and max_age_days parse the same
+// way on both engines; a state-code location binds at a boundary.
+const API_VERSION = "2026-10-09.1";
 const FRESH_WINDOW_DAYS = 30;
 const MAX_LIMIT = 100;
 /** How far back a PAID key may ask for closure history. The free tier gets the
@@ -171,12 +181,19 @@ const MAX_OFFSET = 10_000;
  * the federal feed is a bounded slice and never a census of federal hiring --
  * a second reason not to sell it as one.
  */
-const NO_REDISTRIBUTION_SOURCES = ["usajobs"] as const;
+// SMARTRECRUITERS, 2026-10-09 (owner decision 4 of 2026-10-08). About 79,000
+// SmartRecruiters postings are collected in bulk, and SAP's API policy, which
+// governs SmartRecruiters, bars large-scale extraction. They stay on the public
+// board and are withheld from every /v1 row (and the MCP connector) until
+// SmartRecruiters/SAP grants permission. Unlike the federal feed, a
+// SmartRecruiters employer has its own company_token, so /v1/companies drops
+// those through withheldCompanyTokens() below.
+const NO_REDISTRIBUTION_SOURCES = ["usajobs", "smartrecruiters"] as const;
 /** The `in` list PostgREST takes, built from the array so the two cannot drift. */
 const NO_REDISTRIBUTION_IN = `(${NO_REDISTRIBUTION_SOURCES.join(",")})`;
 /** Said in the refusal, in /v1's own index, and in /v1/stats. One wording. */
 const NO_REDISTRIBUTION_REASON =
-  "The U.S. federal job feed is readable on resumebooster.work but may not be redistributed as a data feed under its terms of use, so no /v1 endpoint returns its rows on any tier.";
+  "Two hiring systems are shown on resumebooster.work but not handed on by this API: the U.S. federal job feed, whose terms of use forbid redistributing it as a data feed, and SmartRecruiters, withheld until SmartRecruiters (SAP) permits it. No /v1 endpoint returns their rows on any tier.";
 const isNoRedistributionSource = (v: unknown): boolean =>
   (NO_REDISTRIBUTION_SOURCES as readonly string[]).includes(String(v ?? "").trim().toLowerCase());
 /**
@@ -187,6 +204,24 @@ const isNoRedistributionSource = (v: unknown): boolean =>
  */
 const withoutNoRedistribution = <T extends Record<string, unknown>>(rows: T[]): T[] =>
   rows.filter((r) => !isNoRedistributionSource(r.source));
+
+/**
+ * The company_tokens whose postings come from a withheld source, read once an
+ * hour per isolate through v1_withheld_company_tokens (20261009122000). null
+ * when the read failed or the function is not there yet: the caller then
+ * filters by the vendor-code tokens alone and says nothing it cannot back.
+ */
+let withheldTokenCache: { at: number; tokens: Set<string> } | null = null;
+async function withheldCompanyTokens(client: SupabaseClient): Promise<Set<string> | null> {
+  if (withheldTokenCache && Date.now() - withheldTokenCache.at < 3_600_000) return withheldTokenCache.tokens;
+  const { data, error } = await client.rpc("v1_withheld_company_tokens", { p_sources: [...NO_REDISTRIBUTION_SOURCES] });
+  if (error || !Array.isArray(data)) {
+    console.warn("[PUBLIC-API] withheld company tokens unavailable:", String(error?.message ?? "not an array").slice(0, 120));
+    return null;
+  }
+  withheldTokenCache = { at: Date.now(), tokens: new Set(data.map((t) => String(t))) };
+  return withheldTokenCache.tokens;
+}
 
 // The columns /v1 promises. Listed once, explicitly, because `select("*")`
 // would silently publish every column added to the table later — including
@@ -261,6 +296,10 @@ const LIST_FILTERS = [
   { param: "work_mode", col: "work_mode", cap: WORK_MODES.length, domain: WORK_MODES, fold: "lower" },
   { param: "source", col: "source", cap: 8, domain: BOARD_VENDORS, fold: "lower" },
   { param: "experience_band", col: "experience_band", cap: EXPERIENCE_BANDS.length, domain: EXPERIENCE_BANDS, fold: "lower" },
+  // A raw, case-sensitive .eq once: "Full_Time" or "full_time,part_time"
+  // answered an empty 200 (S8-078). Now a closed list like the others, the
+  // board's own contract (filters.ts: lower-case, comma list, whole domain).
+  { param: "employment_type", col: "employment_type", cap: EMPLOYMENT_TYPES.length, domain: EMPLOYMENT_TYPES, fold: "lower" },
 ] as const satisfies ReadonlyArray<{
   param: string; col: string; cap: number;
   domain: readonly string[] | null; fold: "upper" | "lower" | "none";
@@ -322,6 +361,14 @@ const asResponse = <T>(v: Parsed<T>, headers: Record<string, string>): T | null 
 const intParam = (p: URLSearchParams, name: string, headers: Record<string, string>) => asResponse(intQ(p, name), headers);
 const numParam = (p: URLSearchParams, name: string, headers: Record<string, string>) => asResponse(numQ(p, name), headers);
 const isoParam = (p: URLSearchParams, name: string, headers: Record<string, string>) => asResponse(isoQ(p, name), headers);
+/** "true" or "false", or unset; anything else is the 400 every engine gives (S8-078). */
+const boolParam = (p: URLSearchParams, name: string, headers: Record<string, string>): boolean | null | Response => {
+  const raw = p.get(name);
+  if (raw === null) return null;
+  if (raw === "true") return true;
+  if (raw === "false") return false;
+  return fail(400, "invalid_value", `${name} must be "true" or "false", got "${raw}".`, headers);
+};
 
 async function sha256Hex(s: string): Promise<string> {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
@@ -383,7 +430,7 @@ Deno.serve(async (req) => {
         explain: "/v1/jobs?explain=1 — appends a diagnostics block explaining what the query did.",
         rankedEngine: "/v1/jobs?engine=ranked (paid) — the site's full relevance/rescue engine instead of the default title match.",
         include: `/v1/jobs?include=description — adds the posting body to every row, and caps that request at ${MAX_LIMIT_WITH_DESCRIPTION} rows a page.`,
-        multiValue: "country, category, company_token, work_mode, source and experience_band take comma lists (e.g. country=US,GB). An unknown value in a closed set is a 400, never an empty page.",
+        multiValue: "country, category, company_token, work_mode, source, experience_band and employment_type take comma lists (e.g. country=US,GB). An unknown value in a closed set is a 400, never an empty page.",
       },
       // DOCUMENTED WHERE A CONSUMER LOOKS FIRST. A caller who finds this
       // vendor in the board's own source list and not in this API's rows must
@@ -659,11 +706,30 @@ async function listJobsRanked(url: URL, headers: Record<string, string>, lists: 
   if (maxAgeInt !== null && maxAgeInt <= 0) {
     return fail(400, "invalid_value", `max_age_days must be a positive whole number of days, got "${p.get("max_age_days")}".`, headers);
   }
+  // STRICT BOOLEANS ON THIS ENGINE TOO (S8-078). Only the literal "true" was
+  // mapped, so remote=false and remote=1 returned the unfiltered set under a
+  // 200 while the default engine bound or refused them. The board has no
+  // "not remote" predicate, so remote=false is refused here and named.
+  const remoteP = boolParam(p, "remote", headers);
+  if (remoteP instanceof Response) return remoteP;
+  if (remoteP === false) {
+    return fail(400, "unsupported_param", "engine=ranked cannot bind remote=false (the board filters for remote, not against it). Use the default engine, which binds both values.", headers);
+  }
+  const statedPayP = boolParam(p, "has_stated_pay", headers);
+  if (statedPayP instanceof Response) return statedPayP;
+  const agentReadyP = boolParam(p, "agent_ready_only", headers);
+  if (agentReadyP instanceof Response) return agentReadyP;
   // snake_case /v1 params -> camelCase board body. Names differ where the board
   // and the public API named the same predicate differently (company_token ->
   // companies, source -> vendor, experience_band -> experience).
   const body: Record<string, unknown> = {
     action: "list", limit, offset, includeFacets: false,
+    // EVERY POSTING, NOT ONE CARD PER TITLE (S8-029). The board folds an
+    // employer's same-title postings into one card for people and advances
+    // nextOffset past the siblings; /v1 rows carry no postingCount or
+    // otherLocations, so up to 96% of a multi-site page's postings were never
+    // delivered and nothing said they existed.
+    groupSimilar: false,
     ...(p.get("q") ? { q: p.get("q") } : {}),
     // The six closed-set filters arrive already split, deduped, case-folded and
     // checked against the board's own domains, so both engines refuse the same
@@ -683,7 +749,7 @@ async function listJobsRanked(url: URL, headers: Record<string, string>, lists: 
     ...(lists.experience_band.length ? { experience: lists.experience_band.join(",") } : {}),
     ...(p.get("department") ? { department: p.get("department") } : {}),
     ...(lists.source.length ? { vendor: lists.source.join(",") } : {}),
-    ...(p.get("remote") === "true" ? { remote: true } : {}),
+    ...(remoteP === true ? { remote: true } : {}),
     ...(Number.isFinite(salaryMin) && salaryMin > 0 ? { salaryFloor: salaryMin } : {}),
     ...(Number.isFinite(salaryMax) && salaryMax > 0 ? { salaryCeiling: salaryMax } : {}),
     ...(p.get("include_unstated_pay") === "true" ? { includeUnstatedPay: true } : {}),
@@ -697,12 +763,12 @@ async function listJobsRanked(url: URL, headers: Record<string, string>, lists: 
     // ("bay area" -> San Francisco|Oakland|San Jose) which is why location is
     // available here and refused on the default engine below.
     ...(p.get("location") ? { location: p.get("location") } : {}),
-    ...(p.get("employment_type") ? { employmentType: p.get("employment_type") } : {}),
+    ...(lists.employment_type.length ? { employmentType: lists.employment_type.join(",") } : {}),
     ...(maxYearsInt !== null ? { maxYears: maxYearsInt } : {}),
-    ...(p.get("has_stated_pay") === "true" ? { hasStatedPay: true } : {}),
+    ...(statedPayP === true ? { hasStatedPay: true } : {}),
     ...(p.get("pay_basis") ? { payBasis: p.get("pay_basis") } : {}),
     ...(maxAgeInt !== null ? { maxAgeDays: maxAgeInt } : {}),
-    ...(p.get("agent_ready_only") === "true" ? { sendableOnly: true } : {}),
+    ...(agentReadyP === true ? { sendableOnly: true } : {}),
     ...(p.get("sort") === "newest" || p.get("sort") === "salary" ? { sort: p.get("sort") } : {}),
   };
   const exclRaw = p.get("exclude_agencies");
@@ -742,8 +808,15 @@ async function listJobsRanked(url: URL, headers: Record<string, string>, lists: 
     // board's own honesty rule); null here means "not stated by this path",
     // never "not an agency".
     agency: typeof j.agency === "boolean" ? j.agency : null,
+    // "title" or "description": which tier matched the row (S8-077). null when
+    // the board's path did not say; description-only rows were otherwise
+    // indistinguishable from title ones.
+    match_scope: j.matchScope === "title" || j.matchScope === "description" ? j.matchScope : null,
   });
   const total = typeof r.total === "number" ? r.total : null;
+  // total.value is the TITLE-match count; the description tier's matches are
+  // `related` (S8-077). Reporting value alone hid ~95% of a q=kubernetes walk.
+  const related = typeof r.relatedTotal === "number" ? r.relatedTotal : null;
   const disc: Record<string, unknown> = {};
   for (const k of ["ignoredFilters", "excludedTerms", "intentFilters", "aliases", "didYouMean", "searchRoute", "coverage", "salaryStatedOnly", "agenciesExcluded"]) {
     if (r[k] !== undefined && r[k] !== null) disc[k] = r[k];
@@ -759,7 +832,14 @@ async function listJobsRanked(url: URL, headers: Record<string, string>, lists: 
       nextCursor: null,
       nextOffset: r.hasMore === true && typeof r.nextOffset === "number" && (r.nextOffset as number) <= MAX_OFFSET ? r.nextOffset : null,
     },
-    total: { value: r.countUnavailable === true ? null : total, basis: r.countUnavailable === true ? "unavailable" : (r.countCapped === true ? "capped" : "ranked") },
+    total: {
+      value: r.countUnavailable === true ? null : total,
+      related,
+      ...(r.relatedCapped === true ? { relatedCapped: true } : {}),
+      ...(typeof r.totalAtLeast === "number" ? { atLeast: r.totalAtLeast } : {}),
+      basis: r.countUnavailable === true ? "unavailable" : (r.countCapped === true ? "capped" : "ranked"),
+      note: "value counts postings whose title matched; related counts the further postings matched in the description only (null when the board did not count them). Each row says which in match_scope. Postings from the withheld hiring systems are counted here and not returned.",
+    },
     coverage: {
       freshnessWindowDays: FRESH_WINDOW_DAYS,
       note: "Only postings still live in the employer's own feed within the last 30 days.",
@@ -859,7 +939,10 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
     // the handful of token values that ARE restricted source names are
     // refused; every other unknown token still answers an honest empty page.
     if (f.param === "source" || f.param === "company_token") {
-      const barred = asked.filter(isNoRedistributionSource);
+      // A SmartRecruiters employer has its own token, so the withheld set is
+      // read too: an empty 200 for it would say the employer is not hiring.
+      const withheld = f.param === "company_token" && asked.length ? await withheldCompanyTokens(client) : null;
+      const barred = asked.filter((x) => isNoRedistributionSource(x) || (withheld?.has(x) ?? false));
       if (barred.length) {
         return fail(451, "source_not_redistributable",
           `${barred.map((x) => `"${x}"`).join(", ")} cannot be served by this API. ${NO_REDISTRIBUTION_REASON} Drop it from ?${f.param}= and the rest of your query is answered normally.`,
@@ -1006,21 +1089,23 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
       "that key would return pages that skip and repeat rows. Use engine=ranked, or take the default newest-first order.",
       headers);
   }
-  const employmentType = (p.get("employment_type") ?? "").trim().slice(0, 40);
   const payBasis = (p.get("pay_basis") ?? "").trim();
   if (payBasis && payBasis !== "hourly" && payBasis !== "salaried") {
     return fail(400, "invalid_value", `pay_basis must be "hourly" or "salaried", got "${payBasis}".`, headers);
   }
-  // WHOLE NUMBERS: min_years is a smallint, and 2.5 was a 500 (2.26).
-  const maxYearsRaw = p.get("max_years");
-  const maxYears = maxYearsRaw === null ? null : Number(maxYearsRaw);
-  if (maxYears !== null && (!Number.isInteger(maxYears) || maxYears < 0)) {
-    return fail(400, "invalid_value", `max_years must be a whole number of years >= 0, got "${maxYearsRaw}".`, headers);
+  // WHOLE NUMBERS: min_years is a smallint, and 2.5 was a 500 (2.26). Parsed
+  // by the shared intParam, as the ranked engine does (S8-078): an empty
+  // ?max_years= used to become Number("") = 0 and bind min_years <= 0, and an
+  // empty ?max_age_days= was a 400. Empty is unset on both engines now.
+  const maxYears = intParam(p, "max_years", headers);
+  if (maxYears instanceof Response) return maxYears;
+  if (maxYears !== null && maxYears < 0) {
+    return fail(400, "invalid_value", `max_years must be a whole number of years >= 0, got "${p.get("max_years")}".`, headers);
   }
-  const maxAgeRaw = p.get("max_age_days");
-  const maxAgeDays = maxAgeRaw === null ? null : Number(maxAgeRaw);
-  if (maxAgeDays !== null && (!Number.isInteger(maxAgeDays) || maxAgeDays <= 0)) {
-    return fail(400, "invalid_value", `max_age_days must be a positive whole number of days, got "${maxAgeRaw}".`, headers);
+  const maxAgeDays = intParam(p, "max_age_days", headers);
+  if (maxAgeDays instanceof Response) return maxAgeDays;
+  if (maxAgeDays !== null && maxAgeDays <= 0) {
+    return fail(400, "invalid_value", `max_age_days must be a positive whole number of days, got "${p.get("max_age_days")}".`, headers);
   }
   const statedPay = strictBool("has_stated_pay");
   if (statedPay instanceof Response) return statedPay;
@@ -1087,8 +1172,8 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
     // including which rows fall OUT. A posting that never stated a pay period,
     // an employment type or a years requirement cannot be shown to satisfy a
     // filter about one, so it is excluded rather than guessed at — the same
-    // reading the board publishes coverage for.
-    if (employmentType) qb = qb.eq("employment_type", employmentType);
+    // reading the board publishes coverage for. (employment_type binds in the
+    // LIST_FILTERS loop above.)
     // has_stated_pay ASKS THE EMPLOYER'S QUESTION, NOT OUR PARSER'S, and it
     // moved here on 2026-09-27 in the same change as the board's.
     //
@@ -1120,9 +1205,12 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
     if (maxAgeDays !== null) qb = qb.gte("posted_at", new Date(Date.now() - maxAgeDays * 86_400_000).toISOString());
     if (agentReady === true) qb = qb.in("source", [...SENDABLE_VENDORS]);
     // Mirrors the board's browse path: one name is an ILIKE, a metro is an OR
-    // over every name, each quoted because state aliases contain commas.
-    if (locTerms.length === 1) qb = qb.ilike("location", `%${locTerms[0]}%`);
-    else if (locTerms.length > 1) qb = qb.or(locTerms.map((x) => `location.ilike."%${x}%"`).join(","));
+    // over every name, each quoted because state aliases contain commas. A
+    // state code (", OR") binds at a boundary on a US/CA/unplaced row, the
+    // board's rule since .91 (L13-01): a plain ILIKE put "New York" under OR
+    // and Berlin under DE. One branch builder for both: _shared/location-match.ts.
+    if (locTerms.length === 1 && !isStateCodeAlias(locTerms[0])) qb = qb.ilike("location", `%${locTerms[0]}%`);
+    else if (locTerms.length > 0) qb = qb.or(locTerms.map(locationBranch).join(","));
     if (Number.isFinite(salaryMin) && salaryMin > 0) {
       // Same semantics the board uses, and the same disclosure obligation: only
       // about a fifth of postings state pay, so this filter is a narrow slice and
@@ -1271,8 +1359,11 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
         ? {
           statedPayShare: 0.237,
           statedPayShareBasis: "salary_rank_usd IS NOT NULL, 173,826 of 733,190 servable postings, counted 2026-09-27T02:07:00Z",
+          // No percentage typed into the sentence (S8-079): the dated share
+          // above carries its own basis, and a hand-typed figure here had
+          // drifted from the live coverage by a third.
           statedPayNote:
-            "A salary floor compares an annualised figure converted to approximate US dollars, which about 24% of postings carry; it cannot see the rest unless include_unstated_pay=true. A wider 28% state some pay figure — including hourly rates we do not annualise — and has_stated_pay=true selects those.",
+            "A salary floor compares an annualised figure converted to approximate US dollars, which only some postings carry (statedPayShare, dated in its basis); it cannot see the rest unless include_unstated_pay=true. More postings state some pay figure, including hourly rates we do not annualise, and has_stated_pay=true selects those.",
         }
         : {}),
     },
@@ -1304,6 +1395,13 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
             ...(postedAfter ? { posted_after: postedAfter } : {}),
             ...(postedBefore ? { posted_before: postedBefore } : {}),
             ...(includeUnstated ? { include_unstated_pay: true } : {}),
+            // The seven that bound and were not listed (S8-078).
+            ...(locTerms.length ? { location: { terms: locTerms, operator: locTerms.length === 1 && !isStateCodeAlias(locTerms[0]) ? "ilike" : "or" } } : {}),
+            ...(payBasis ? { pay_basis: payBasis } : {}),
+            ...(statedPay === true ? { has_stated_pay: true } : {}),
+            ...(maxYears !== null ? { max_years: maxYears } : {}),
+            ...(maxAgeDays !== null ? { max_age_days: maxAgeDays } : {}),
+            ...(agentReady === true ? { agent_ready_only: true } : {}),
           },
           fields: {
             included: includeFields,
@@ -1704,8 +1802,11 @@ async function companies(client: SupabaseClient, url: URL, headers: Record<strin
   // agency travelling in each row's `company`. So the vendor codes ARE the
   // tokens to drop here, and dropping them is what keeps a customer from
   // joining this endpoint to a /v1/jobs query that can only return zero.
+  // SmartRecruiters employers carry their own tokens, so those are dropped by
+  // the withheld set (20261009122000) rather than by the vendor code.
+  const withheld = await withheldCompanyTokens(client);
   const facet = (Array.isArray(v.companiesFacet) ? v.companiesFacet : [])
-    .filter((c) => !isNoRedistributionSource(c.token));
+    .filter((c) => !isNoRedistributionSource(c.token) && !(withheld?.has(String(c.token ?? "")) ?? false));
   // `open_postings` NOW MEANS OPEN. This is a FIX, not a breaking change: the
   // field kept its name, its type and its position, and the name was always
   // the promise. What it carried was companiesFacet.count — count(*) GROUP BY
@@ -1757,7 +1858,10 @@ async function companies(client: SupabaseClient, url: URL, headers: Record<strin
     // Named here for the same reason it is named on /v1/jobs: an employer
     // directory that silently omits one is a directory whose completeness a
     // consumer cannot reason about.
-    excludedSources: { sources: [...NO_REDISTRIBUTION_SOURCES], reason: NO_REDISTRIBUTION_REASON },
+    // employersOmitted says whether this response could also drop the
+    // employers of a withheld system that have their own tokens; false means
+    // the list of them could not be read, so some may still appear.
+    excludedSources: { sources: [...NO_REDISTRIBUTION_SOURCES], reason: NO_REDISTRIBUTION_REASON, employersOmitted: withheld !== null },
     // The figure's age is published rather than implied. This facet refreshes
     // at the end of a rotation pass, so it is minutes-to-hours old by design.
     asOf: data?.updated_at ?? null,

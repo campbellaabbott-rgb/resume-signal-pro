@@ -129,7 +129,7 @@ describe("the card carries what the board already parsed", () => {
 describe("a key can be asked what it is", () => {
   it("key_status reports tier, both windows and the paid features, from the decision that allowed the call", () => {
     const fn = between(MCP, "async function runKeyStatus(", "async function callTool(");
-    expect(fn).toMatch(/async function runKeyStatus\(client: SupabaseClient, d: Decision\)/);
+    expect(fn).toMatch(/async function runKeyStatus\(client: SupabaseClient, d: Decision, shop: Shop\)/);
     for (const f of ["d.rate_limit", "d.rate_used", "d.quota_limit", "d.quota_used", "d.key_tier"]) {
       expect(fn, `${f} must come from the decision, not a second read`).toMatch(new RegExp(f.replace(".", "\\.")));
     }
@@ -160,8 +160,8 @@ describe("a key can be asked what it is", () => {
     // The tier is handed to callTool and the decision row is not — the shape
     // the free-tier fit_resume hole was closed with. key_status is answered
     // beside it rather than by widening it.
-    expect(MCP).toMatch(/callTool\(client, d\.api_key_id \?\? "", d\.key_tier, toolName, toolArgs\)/);
-    expect(MCP).toMatch(/toolName === "key_status"\s*\n?\s*\? toolOk\(await runKeyStatus\(client, d\)\)/);
+    expect(MCP).toMatch(/callTool\(client, d\.api_key_id \?\? "", d\.key_tier, toolName, toolArgs, shop\)/);
+    expect(MCP).toMatch(/toolName === "key_status"\s*\n?\s*\? toolOk\(await runKeyStatus\(client, d, shop\)\)/);
   });
 
   it("apply-readiness asks the gates the seam enforces, with the seam's own predicates", () => {

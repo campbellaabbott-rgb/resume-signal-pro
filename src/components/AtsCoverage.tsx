@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Bot, MousePointerClick, Database } from "lucide-react";
-import { ATS_VENDORS, AUTO_VENDORS, CLICK_VENDORS, SERVING_SOURCES, UNMEASURED_ATS_SOURCES, type AtsVendor, type BoardSource } from "@/config/ats-vendors";
+import { ATS_VENDORS, SERVING_SOURCES, UNMEASURED_ATS_SOURCES, type AtsVendor, type BoardSource } from "@/config/ats-vendors";
+import { PREPARED_ONLY_VENDORS, SENDABLE_ATS_VENDORS, SENDABLE_VENDOR_KEYS } from "@/config/sendable-vendors";
 import { useAgentSender } from "@/hooks/useAgentSender";
 import { useBoardVendorCounts } from "@/hooks/useBoardVendorCounts";
 
@@ -93,7 +94,7 @@ export function AtsCoverage({
   // "where these jobs come from" that omits a source is false by omission;
   // this list is that rule applied. Dormant sources (serving: false, USAJOBS
   // while its secrets are unset) are not here, because their absence is the
-  // point. The bot mark still means a MEASURED auto tier; an unmeasured source
+  // point. The bot mark means the agent submits there (sendable-vendors.ts); an unmeasured source
   // shows no mark and the legend says why.
   const tierOf = new Map<string, AtsVendor["tier"]>(ATS_VENDORS.map((v) => [v.key, v.tier]));
   const stripSources = order(SERVING_SOURCES);
@@ -145,7 +146,7 @@ export function AtsCoverage({
                 key={v.key}
                 className="inline-flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full border border-border bg-card/60 hover:border-primary/40 transition-colors"
               >
-                {online && tierOf.get(v.key) === "auto" && (
+                {online && SENDABLE_VENDOR_KEYS.includes(v.key) && (
                   <Bot className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-success shrink-0" aria-hidden />
                 )}
                 <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{v.label}</span>
@@ -192,7 +193,7 @@ export function AtsCoverage({
             <p className="mt-1.5 flex items-start justify-center gap-1.5 max-w-xl mx-auto text-xs text-muted-foreground">
               <Bot className="w-3.5 h-3.5 text-success shrink-0 mt-0.5" aria-hidden />
               <span className="text-left sm:text-center">
-                {t("atsCoverage.stripLegend", "The agent submits these for you. Where we have measured the form, it fills the rest in and you press send — a human check we will not bypass. {{unmeasured}} are listed for where their jobs come from; the agent's reach on them is not yet measured.", { unmeasured: UNMEASURED_ATS_SOURCES.length })}
+                {t("atsCoverage.stripLegend", "The agent submits these for you. On the other systems it has measured, it fills the application in and you press send: some use a human check we will not bypass, and on some it cannot finish the form yet. {{unmeasured}} are listed for where their jobs come from; the agent's reach on them is not yet measured.", { unmeasured: UNMEASURED_ATS_SOURCES.length })}
               </span>
             </p>
           )}
@@ -210,14 +211,16 @@ export function AtsCoverage({
           Icon: Bot,
           title: t("atsCoverage.autoTitle", "We apply for you"),
           blurb: t("atsCoverage.autoBlurb", "The agent completes and submits the application itself."),
-          vendors: order(AUTO_VENDORS),
+          // The sendable list, not the CAPTCHA tier: Workday, SmartRecruiters
+          // and Oracle show no CAPTCHA but have no adapter that reaches a submit.
+          vendors: order(SENDABLE_ATS_VENDORS),
         },
         {
           key: "click",
           Icon: MousePointerClick,
           title: t("atsCoverage.clickTitle", "Filled in, you press send"),
-          blurb: t("atsCoverage.clickBlurb", "These use a CAPTCHA or a human check. We never solve or bypass one, so your application arrives ready and you send it."),
-          vendors: order(CLICK_VENDORS),
+          blurb: t("atsCoverage.clickBlurb", "These use a CAPTCHA or a human check we never solve or bypass, or a form the agent cannot finish on its own yet. Either way your application arrives ready and you send it."),
+          vendors: order(PREPARED_ONLY_VENDORS),
         },
         // THE SAME FIX THE STRIP ALREADY CARRIES, APPLIED TO THE LAYOUT THAT
         // ACTUALLY QUOTES A TOTAL. The comment above records that the strip

@@ -21,6 +21,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { wakeConfig, wakeSender } from "../_shared/wake-sender.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildPacket, toDraftedAnswers, type DraftedAnswer, type PacketQuestion, type Profile, type StandingAnswers } from "../_shared/submission-packet.ts";
+import { ownResumePath } from "../_shared/resume-path.ts";
 import { decideRelease, type ReleaseRefusal } from "../_shared/apply-release.ts";
 import { automationFor } from "../_shared/apply-automation.ts";
 import { classifyQuestion, cleanQuestionLabel } from "../_shared/application-questions.ts";
@@ -48,7 +49,9 @@ import { nextRunStamp } from "../_shared/run-stamp.ts";
 // wake is asked AFTER the run, so it sees this run's releases; a posting that
 // already has a packet is never refunded as a refusal; the subscription is
 // read by the account's user id (agent_subscription_rows), never an address.
-const BUILD_VERSION = "2026-10-05.2";
+// 2026-10-09.2: the sheet's work questions read their country, so the
+// mandate's listed countries are selected and handed to buildPacket.
+const BUILD_VERSION = "2026-10-09.2";
 // Provable from outside with no key: the CORS preflight and every response
 // carry this in x-fn-build.
 const FN_BUILD = `apply-agent.${BUILD_VERSION}`;
@@ -100,6 +103,7 @@ interface MandateRow {
   full_name: string; phone: string; linkedin: string; website: string;
   city: string; country: string; resume_file_url: string;
   work_authorized: boolean | null; requires_sponsorship: boolean | null;
+  work_authorized_countries: string[] | null;
   willing_to_relocate: boolean | null; salary_expectation: string; earliest_start: string;
   share_demographics: boolean; apply_mode: "review" | "auto";
   auto_apply_daily_cap: number; auto_apply_sources: string[];
@@ -317,7 +321,7 @@ serve(async (req) => {
   const { data: mandates } = await client
     .from("agent_mandates")
     .select("user_id,email,resume_text,full_name,phone,linkedin,website,city,country," +
-      "resume_file_url,work_authorized,requires_sponsorship,willing_to_relocate," +
+      "resume_file_url,work_authorized,requires_sponsorship,work_authorized_countries,willing_to_relocate," +
       "salary_expectation,earliest_start,share_demographics,apply_mode," +
       "auto_apply_daily_cap,auto_apply_sources,cover_note,tailor_cover_note," +
       // Selected explicitly: PostgREST returns ONLY named columns, so a guard on
@@ -568,10 +572,15 @@ serve(async (req) => {
 
     const profile: Profile = {
       fullName: m.full_name, email: accountEmail || m.email, phone: m.phone, linkedin: m.linkedin,
-      website: m.website, city: m.city, country: m.country, resumeFileUrl: m.resume_file_url,
+      website: m.website, city: m.city, country: m.country,
+      // Only a file in this account's own folder (S8-080); the broker refuses others too.
+      resumeFileUrl: ownResumePath(m.resume_file_url, m.user_id) ?? "",
     };
     const standing: StandingAnswers = {
       workAuthorized: m.work_authorized, requiresSponsorship: m.requires_sponsorship,
+      // Upper-cased as the worker reads the broker's copy, so both runtimes read one set.
+      workAuthorizedCountries: (Array.isArray(m.work_authorized_countries) ? m.work_authorized_countries : [])
+        .map((c) => String(c).toUpperCase()),
       willingToRelocate: m.willing_to_relocate, salaryExpectation: m.salary_expectation,
       earliestStart: m.earliest_start, shareDemographics: m.share_demographics,
     };

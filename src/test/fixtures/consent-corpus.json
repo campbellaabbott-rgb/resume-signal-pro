@@ -482,7 +482,7 @@
  {
   "label": "This role will be hired on a hybrid contract basis with a requirement to work from our Dean Street office in London at least twice per week. Please confirm that you are aware of and can commit this requirement.",
   "type": "boolean",
-  "expect": "identity"
+  "expect": "consent"
  },
  {
   "label": "If 'Yes' was your response to the previous question, please provide a copy of the agreement(s).",

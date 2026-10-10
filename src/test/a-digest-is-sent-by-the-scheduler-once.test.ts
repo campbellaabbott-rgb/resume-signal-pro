@@ -216,8 +216,10 @@ describe("send-search-digest answers the scheduler and our service role, nobody 
 describe("send-agent-digest answers the scheduler and our service role, nobody else", () => {
   const due = [{ ad_user_id: "u-1", ad_email: "Sub@Example.com", ad_prev_sent_at: "2026-10-03T06:40:00Z" }];
   const live = () => {
-    db.rows("agent_subscribers").push({ email: "sub@example.com", status: "active", current_period_end: new Date(Date.now() + 9e8).toISOString() });
+    db.rows("agent_subscribers").push({ user_id: "u-1", email: "sub@example.com", status: "active", current_period_end: new Date(Date.now() + 9e8).toISOString() });
     db.rows("agent_mandates").push({ user_id: "u-1", email_last_sent_at: "2026-10-04T06:40:00Z" });
+    // The plan is read by account (agent_subscription_rows, S8-076).
+    rpc("agent_subscription_rows", (a) => db.rows("agent_subscribers").filter((r) => (a.p_user_ids as string[]).includes(String(r.user_id))));
   };
 
   it("no key, the publishable key, or a wrong cron key: 401, nothing claimed, nothing sent", async () => {

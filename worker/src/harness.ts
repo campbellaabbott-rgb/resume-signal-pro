@@ -48,6 +48,7 @@ const FORM = (extraQuestions: string) => `<!doctype html>
   <input name="cAddress" placeholder="Address" />
   <input name="cSalary" placeholder="Desired Salary" />
   <textarea name="cSummary" placeholder="Work History"></textarea>
+  <textarea name="cCoverLetter" placeholder="Cover Letter"></textarea>
   <input name="cResume" type="file" required />
   <input name="nickname_hpcsaf" style="display:none" />
   ${extraQuestions}

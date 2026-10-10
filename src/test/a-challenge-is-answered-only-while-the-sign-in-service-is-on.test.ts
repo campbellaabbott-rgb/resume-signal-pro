@@ -448,7 +448,7 @@ describe("initialize carries the fact and one sentence for it, under the truncat
     expect(guide).toMatch(/signInGuideSection\(cachedSignIn\(\)\?\.state \?\? "unknown", ANON_TOOLS\.length, \{ notOn: SIGN_IN_NOT_ON, unkeyedTools: ANON_TOOLS, mintUrl: MINT_URL \}\)/);
     expect(guide).toMatch(/## If something refuses/);
     // Both guide reads warm the cache before the synchronous render.
-    const reads = [...MCP.matchAll(/guideText\(\)\)/g)];
+    const reads = [...MCP.matchAll(/guideText\(shop\)\)/g)];
     expect(reads.length).toBe(2);
     for (const site of reads) {
       const before = MCP.slice(Math.max(0, site.index! - 160), site.index!);
@@ -525,7 +525,7 @@ describe("every keyed tool says what it needs, a shortlist read with no ids is a
       const withUnkeyedNote = (rpc, note) => ({ ...rpc, note });
       const answerUnkeyed = async () => ({ rpc: { unkeyed: true }, headers: { "X-Unkeyed-Remaining": "1" } });
       return async function run(toolName, decision) {
-        const id = 1, read = false, toolArgs = {}, params = {}, keyHash = "hash";
+        const id = 1, read = false, toolArgs = {}, params = {}, keyHash = "hash", shop = "sells";
         const client = { rpc() { return { maybeSingle: async () => ({ data: decision, error: null }) }; } };
         const req = { headers: { get() { return ""; } } };
         let d = null;
@@ -657,17 +657,17 @@ describe("teeth: each property fails on a copy that reintroduces the old behavio
   });
 
   it("instructions that grow past the truncation in the off state are caught on the rendered text", () => {
-    const grown = MCP.replace("`The guide: ${GUIDE_URI}.`,", "`The guide: ${GUIDE_URI}. " + "x".repeat(40) + "`,");
+    const grown = MCP.replace("`The guide: ${GUIDE_URI}.`,", "`The guide: ${GUIDE_URI}. " + "x".repeat(100) + "`,");
     expect(grown).not.toBe(MCP);
     expect(Buffer.byteLength(renderInstructions(grown, "off"), "utf8")).toBeGreaterThanOrEqual(2048);
   });
 
   it("a guide read that renders before probing is caught", () => {
-    const warmed = "await probeSignIn();\n        return json(rpcResult(id, contentsOf(GUIDE_URI, read.resource.mimeType, guideText())));";
+    const warmed = "await probeSignIn();\n        return json(rpcResult(id, contentsOf(GUIDE_URI, read.resource.mimeType, guideText(shop))));";
     expect(MCP).toContain(warmed);
-    const cold = MCP.replace(warmed, "return json(rpcResult(id, contentsOf(GUIDE_URI, read.resource.mimeType, guideText())));");
+    const cold = MCP.replace(warmed, "return json(rpcResult(id, contentsOf(GUIDE_URI, read.resource.mimeType, guideText(shop))));");
     expect(cold).not.toBe(MCP);
-    const site = cold.indexOf("contentsOf(GUIDE_URI, read.resource.mimeType, guideText())");
+    const site = cold.indexOf("contentsOf(GUIDE_URI, read.resource.mimeType, guideText(shop))");
     expect(cold.slice(Math.max(0, site - 160), site)).not.toMatch(/await probeSignIn\(\);/);
   });
 });

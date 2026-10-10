@@ -15,6 +15,7 @@
 // share of applications it can finish alone is then a measurement, not a policy
 // setting — and it is high, because most fields are identity and a résumé.
 import { classifyQuestion, type QuestionClass } from "./application-questions.ts";
+import { coverage } from "./work-countries.ts";
 
 export type PacketQuestion = {
   label: string;
@@ -31,6 +32,9 @@ export type StandingAnswers = {
   salaryExpectation?: string;
   earliestStart?: string;
   willingToRelocate?: boolean | null;
+  /** Countries the candidate EXPLICITLY said they may work in (codes). The
+   *  boolean speaks only for the profile's own country, as in the worker. */
+  workAuthorizedCountries?: readonly string[];
   /** Demographic/EEO: honoured as given, defaulting to declining to answer. */
   shareDemographics?: boolean;
 };
@@ -171,10 +175,32 @@ function identityValue(label: string, p: Profile): string {
  */
 const SALARY_CURRENT =
   /\b(current|present|existing|latest|most\s+recent)\b[^?]{0,40}\b(salary|compensation|package|ctc|cost\s+to\s+company|remuneration|pay|earnings|wage)|(salary|compensation|package|ctc|remuneration|earnings)\b[^?]{0,20}\b(current|present)\b/;
-const SPONSOR_INVERTED =
-  /without\s+(the\s+need\s+for\s+|needing\s+(any\s+)?|requiring\s+(any\s+)?)?(visa\s+)?sponsor|not\s+require\s+sponsor|no\s+sponsorship\s+(required|needed)|free\s+from\s+(any\s+)?(visa|immigration)/;
 const START_DATE =
   /notice\s+period|when\s+(can|could|are|would)\s+you\s+(be\s+able\s+to\s+)?(start|commence|be\s+available\s+to\s+start)|start\s+date|date\s+(that\s+)?you\s+(could|can|would\s+be\s+able\s+to)\s+start|available\s+to\s+(start|commence|begin)|availability\s+to\s+start|earliest[^?]{0,30}(start|begin|commence)|how\s+soon\s+(can|could)\s+you/;
+
+// ── SPONSORSHIP QUESTION: one rule, byte-identical in worker/src/questions/match.ts and supabase/functions/_shared/submission-packet.ts ──
+// Which labels ask about sponsorship, and which way round. "Will you require
+// sponsorship?" is answered from requiresSponsorship; "...work without (the
+// need of / needing) a visa or sponsorship?" asks the opposite (S8-006); a
+// "without" neither reading parses goes to the candidate. A sponsor word in a
+// résumé prompt or with no immigration word beside it ("sponsorship and
+// partnership programs") is not one (S8-044). Rationale: docs/wave3/agents-api.md.
+export const RE_SPONSORSHIP =
+  /\bsponsor(ship|ing|ed)?\b|immigration\s+(case|petition|process|filing)|(requir\w*|need\w*)[^?]{0,30}\b(work\s+)?(visa|permit)\b/i;
+export const RE_SPONSOR_INVERTED =
+  /without\s+(?:the\s+need\s+(?:for|of)\s+|needing\s+|requiring\s+)?(?:an?\s+|any\s+)?(?:visa\s+|work\s+)?(?:sponsor|visa\b|permit\b)|not\s+require\s+sponsor|no\s+sponsorship\s+(required|needed)|free\s+from\s+(any\s+)?(visa|immigration)/i;
+const SP_CONTEXT = /visa|immigration|permit|authori[sz]|employment|to\s+work|requir|need|without|status|h-?1b|petition|\bsponsor\s+you\b/i;
+const SP_PROSE = /^\s*(?:please\s+)?(?:describe|tell|explain|share|walk|discuss|elaborate|outline|how|why|what\s+(?:experience|is\s+your\s+experience))\b/i;
+export type SponsorshipSense = "asks" | "inverted" | "unread";
+export function sponsorshipSense(label: string): SponsorshipSense | null {
+  if (!RE_SPONSORSHIP.test(label) || SP_PROSE.test(label)) return null;
+  if (!SP_CONTEXT.test(label) && label.trim().split(/\s+/).length > 3) return null;
+  if (RE_SPONSOR_INVERTED.test(label)) return "inverted";
+  return /\bwithout\b/i.test(label) ? "unread" : "asks";
+}
+// ── end of the sponsorship rule ──
+/** The name the sheet's inversion rule had before it moved into the block above. */
+export const SPONSOR_INVERTED = RE_SPONSOR_INVERTED;
 
 /** A cover-letter box: a document slot, or a text area that wants the note itself. */
 const COVER_LETTER = /cover\s*-?\s*letter|motivation(al)?\s+letter|letter\s+of\s+motivation/;
@@ -184,18 +210,31 @@ const COVER_LETTER = /cover\s*-?\s*letter|motivation(al)?\s+letter|letter\s+of\s
 // is not a smaller sin than inventing experience; a wrong sponsorship answer can
 // void an application outright. They come from what the candidate configured, or
 // they block.
-function standingValue(label: string, s: StandingAnswers): string | null {
+//
+// WHICH COUNTRY, as the worker asks it (S8-007): the boolean speaks for the
+// profile's own country and the countries the candidate listed, nothing more.
+// The sheet answered "authorized to work in the U.S.?" Yes for a UK candidate
+// while the worker refused the same box; work-countries.ts is the worker's
+// module, copied byte for byte.
+function standingValue(label: string, s: StandingAnswers, country: string): string | null {
   const l = label.toLowerCase();
   const yn = (b: boolean | null | undefined) => (b === true ? "Yes" : b === false ? "No" : null);
-  if (/sponsor/.test(l)) {
+  const covered = (orMeansAny: boolean) =>
+    coverage(label, s.workAuthorizedCountries ?? [], country, { orMeansAny }).kind !== "not-covered";
+  const sense = sponsorshipSense(label);
+  if (sense) {
     // "Authorized to work ... WITHOUT sponsorship?" asks the opposite question
     // to "Will you require sponsorship?", and answering both with the same
     // boolean told an authorised candidate's review sheet to say No.
     if (s.requiresSponsorship === null || s.requiresSponsorship === undefined) return null;
-    return yn(SPONSOR_INVERTED.test(l) ? !s.requiresSponsorship : s.requiresSponsorship);
+    if (sense === "unread" || !covered(false)) return null;
+    return yn(sense === "inverted" ? !s.requiresSponsorship : s.requiresSponsorship);
   }
+  // A sponsor word that is not a sponsorship question ("are you currently
+  // sponsored?", a résumé prompt) is the candidate's, never the boolean's.
+  if (/sponsor/.test(l)) return null;
   if (/authori[sz]ed|legally able|right to work|work permit|eligible to work/.test(l)) {
-    return yn(s.workAuthorized);
+    return covered(true) ? yn(s.workAuthorized) : null;
   }
   // Current pay first, and never answered: null blocks a required one.
   if (SALARY_CURRENT.test(l)) return null;
@@ -304,7 +343,7 @@ export function buildPacket(opts: {
     }
 
     if (cls === "factual") {
-      const v = standingValue(label, standing);
+      const v = standingValue(label, standing, t(profile.country));
       if (v !== null) fields.push({ key: label, value: v, source: "standing" });
       else if (q.required) {
         blockers.push({

@@ -38,6 +38,7 @@
       "cSalary",
       "cLocation",
       "cSummary",
+      "cCoverLetter",
       "salaryCurrency"
     ],
     "submitControl": "Submit Application (HIDDEN on step 1; 'Continue' advances)",

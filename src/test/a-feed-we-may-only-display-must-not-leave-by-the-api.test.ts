@@ -279,7 +279,7 @@ describe("a feed we may only display must not leave by the API", () => {
     // 200 here would be the API stating that the board carries no federal
     // roles, which is a claim about the world and not about our licence.
     expect(API, "the source filter does not test the restricted list at all")
-      .toMatch(/asked\.filter\(isNoRedistributionSource\)/);
+      .toMatch(/asked\.filter\(\(x\) => isNoRedistributionSource\(x\)/);
     expect(API, "the refusal is not a 451 naming its own code")
       .toMatch(/fail\(451, "source_not_redistributable"/);
     // The MCP server has no status codes; its equivalent is the in-band
@@ -422,7 +422,7 @@ function fnBody(code: string, decl: string): string {
  */
 describe("the guard above fails when the boundary is broken", () => {
   it("notices when one surface's list drifts from the other's", () => {
-    const drifted = MCP.replace(/const NO_REDISTRIBUTION_SOURCES = \["[^"]+"\]/, 'const NO_REDISTRIBUTION_SOURCES = ["nope"]');
+    const drifted = MCP.replace(/const NO_REDISTRIBUTION_SOURCES = \[[^\]]*\]/, 'const NO_REDISTRIBUTION_SOURCES = ["nope"]');
     expect(listOf(drifted, "NO_REDISTRIBUTION_SOURCES")).not.toEqual(listOf(API, "NO_REDISTRIBUTION_SOURCES"));
   });
 
