@@ -52,6 +52,20 @@ describe("a location is a whole place", () => {
       .toMatchObject({ kind: "choose", option: "Leeds Office" });
   });
 
+  it("a hyphenated city is one place, and a spaced dash still separates", () => {
+    expect(matchQuestion(select("Which location are you applying for?", ["Winston-Salem, NC", "Raleigh, NC"]), person("Winston-Salem", "United States")))
+      .toMatchObject({ kind: "choose", option: "Winston-Salem, NC" });
+    expect(matchQuestion(select("Which office are you applying for?", ["Stoke-on-Trent", "Manchester"]), person("Stoke-on-Trent", "")))
+      .toMatchObject({ kind: "choose", option: "Stoke-on-Trent" });
+    expect(matchQuestion(select("Which office are you applying for?", ["Aix-en-Provence (Hybrid)", "Paris"]), person("Aix-en-Provence", "")))
+      .toMatchObject({ kind: "choose", option: "Aix-en-Provence (Hybrid)" });
+    expect(matchQuestion(select("Which office are you applying for?", ["Leeds - Hybrid", "London – Office"]), person("London", "")))
+      .toMatchObject({ kind: "choose", option: "London – Office" });
+    // Salem is not Winston-Salem.
+    expect(matchQuestion(select("Which location are you applying for?", ["Winston-Salem, NC", "Raleigh, NC"]), person("Salem", "")))
+      .toMatchObject({ kind: "unanswerable" });
+  });
+
   it("a city that is not offered falls back to the country, as documented", () => {
     expect(matchQuestion(select("Which office are you applying for?", ["London, UK", "Berlin, Germany"]), person("Manchester", "United Kingdom")))
       .toMatchObject({ kind: "choose", option: "London, UK" });

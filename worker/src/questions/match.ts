@@ -370,9 +370,11 @@ function placeKey(s: string): string {
   return String(s ?? "").toLowerCase().replace(/\./g, "").split(/\s+/)
     .filter((w) => w && !GENERIC_PLACE.has(w)).join(" ").trim();
 }
-/** "New York, NY (Hybrid)" -> ["new york", "ny"]: the parts a city must equal. */
+/** "New York, NY (Hybrid)" -> ["new york", "ny"]: the parts a city must equal.
+ *  A hyphen splits only when spaced ("London - Hybrid"): "Winston-Salem" and
+ *  "Stoke-on-Trent" are one place each. */
 function placeParts(option: string): string[] {
-  return option.split(/[,()|/–—-]+/).map(placeKey).filter(Boolean);
+  return option.split(/\s+-\s+|[,()[\]|/–—]+/).map(placeKey).filter(Boolean);
 }
 
 const RE_RELOCATE =/willing\s+to\s+relocate|open\s+to\s+relocat|able\s+to\s+relocate|relocat(e|ion)/i;
