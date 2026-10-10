@@ -132,6 +132,19 @@ function usAsCountry(label: string): boolean {
 }
 /** "Latin America" and "South America" are not the United States. */
 const NOT_THE_US_AMERICA = /\b(latin|south|central|north)\s+america\b/;
+/**
+ * Named multi-country places: ASKED, never absent. Read as no country, they
+ * were answered from the home-country boolean, so a UK candidate told
+ * employers they may work in North America. North America is the US, Canada
+ * and Mexico, each to be covered; LATAM is a region no stated country covers,
+ * so the question goes to the candidate. Matched on the normalised label.
+ */
+const NAMED_REGIONS: Array<[RegExp, string[]]> = [
+  [/ north america /, ["US", "CA", "MX"]],
+  [/ (?:latin|south|central) america | latam /, ["LATAM"]],
+  [/ americas /, ["US", "CA", "MX", "LATAM"]],
+];
+const PLACE_WORDS_OUTSIDE_COUNTRIES = /\b(?:(?:north|latin|south|central) america|latam|americas|eu|european union|eea|europe)\b/g;
 
 /**
  * The codes this module can reason about. Exported so the account UI cannot
@@ -141,25 +154,53 @@ const NOT_THE_US_AMERICA = /\b(latin|south|central|north)\s+america\b/;
  */
 export const KNOWN_COUNTRY_CODES: readonly string[] = Object.keys(COUNTRIES);
 
-/** Every country/region a label mentions. Empty = the question names none. */
-export function countriesIn(label: string): string[] {
+/**
+ * Every place a label names, each as the codes it stands for: a country is
+ * one code, "North America" three. Empty = the question names none.
+ */
+function placesIn(label: string): string[][] {
   const t = ` ${norm(label)} `;
-  const hits = new Set<string>();
+  const places: string[][] = [];
   for (const [code, aliases] of Object.entries(COUNTRIES)) {
     for (const a of aliases) {
       // Whole-token match. Substring matching turns "us" into a hit on
       // "industry", "discuss" and "customer" — which would silently attach a
       // country to questions that name none.
       if (code === "US" && a === "us") {
-        if (t.includes(" us ") && usAsCountry(label)) { hits.add(code); break; }
+        if (t.includes(" us ") && usAsCountry(label)) { places.push([code]); break; }
         continue;
       }
       if (code === "US" && a === "america" && NOT_THE_US_AMERICA.test(t)) continue;
-      if (t.includes(` ${a} `)) { hits.add(code); break; }
+      if (t.includes(` ${a} `)) { places.push([code]); break; }
     }
   }
-  for (const [code, re] of REGION_ALIASES) if (re.test(undot(label))) hits.add(code);
-  return [...hits];
+  for (const [code, re] of REGION_ALIASES) if (re.test(undot(label))) places.push([code]);
+  for (const [re, codes] of NAMED_REGIONS) if (re.test(t)) places.push(codes);
+  return places;
+}
+
+/** Every country/region code a label names. Empty = the question names none. */
+export function countriesIn(label: string): string[] {
+  return [...new Set(placesIn(label).flat())];
+}
+
+/**
+ * True when the places a label names are joined by "or" and nothing else
+ * ("the UK or Ireland", "either the UK or the EU"): one of them answers it.
+ * Anything else between them, "and" included, and every place is needed.
+ */
+function joinedOnlyByOr(label: string): boolean {
+  let t = ` ${norm(label)} `;
+  const words = Object.entries(COUNTRIES)
+    .flatMap(([code, aliases]) => aliases.filter((a) => !(code === "US" && a === "us") || usAsCountry(label)))
+    .sort((a, b) => b.length - a.length);
+  t = t.replace(PLACE_WORDS_OUTSIDE_COUNTRIES, " § ");
+  for (const w of words) t = t.split(` ${w} `).join(" § ");
+  const first = t.indexOf("§");
+  const last = t.lastIndexOf("§");
+  if (first === last) return false;
+  const between = t.slice(first, last + 1);
+  return / or /.test(between) && between.replace(/§|\b(?:or|either|the)\b/g, "").trim() === "";
 }
 
 /** Turn a candidate's free-text country into a code, or null if unrecognised. */
@@ -187,7 +228,9 @@ export function coverage(
   label: string,
   authorised: readonly string[],
   ownCountry: string,
+  opts: { orMeansAny?: boolean } = {},
 ): CountryVerdict {
+  const places = placesIn(label);
   const asked = countriesIn(label);
   if (asked.length === 0) return { kind: "no-country" };
 
@@ -195,22 +238,35 @@ export function coverage(
   const have = new Set(authorised);
   if (own) have.add(own);
 
-  // EVERY named country must be covered. One match used to be enough, so
+  // Covered only by a country actually in the bloc. The whole reason this
+  // is a list rather than a guess is that "Europe" and "the EU" stopped
+  // being interchangeable with "the UK" in 2020.
+  const covers = (code: string): string | null =>
+    code === "EU_EEA" ? [...have].find((c) => EU_EEA.has(c)) ?? null : have.has(code) ? code : null;
+  const coveredBy = (place: string[]): string | null => {
+    const by = place.map(covers);
+    return by.every((c) => c !== null) ? by[0]! : null;
+  };
+
+  // "Authorised in the UK or the EU?" is answered by either: a candidate
+  // stating the UK says a true Yes. Only where the caller says a disjunction
+  // can be met by one place (authorisation, not sponsorship).
+  if (opts.orMeansAny && places.length > 1 && joinedOnlyByOr(label)) {
+    for (const p of places) {
+      const by = coveredBy(p);
+      if (by) return { kind: "covered", country: by };
+    }
+    return { kind: "not-covered", asked };
+  }
+
+  // EVERY named place must be covered. One match used to be enough, so
   // "authorised to work in the US and Canada?" was a Yes for a candidate who
   // had stated only the US: a claim about Canada nobody made (S8-007).
   let first: string | null = null;
-  for (const a of asked) {
-    if (a === "EU_EEA") {
-      // Covered only by a country actually in the bloc. The whole reason this
-      // is a list rather than a guess is that "Europe" and "the EU" stopped
-      // being interchangeable with "the UK" in 2020.
-      const inBloc = [...have].find((c) => EU_EEA.has(c));
-      if (!inBloc) return { kind: "not-covered", asked };
-      first = first ?? inBloc;
-      continue;
-    }
-    if (!have.has(a)) return { kind: "not-covered", asked };
-    first = first ?? a;
+  for (const p of places) {
+    const by = coveredBy(p);
+    if (!by) return { kind: "not-covered", asked };
+    first = first ?? by;
   }
   return { kind: "covered", country: first ?? asked[0]! };
 }

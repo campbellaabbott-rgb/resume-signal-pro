@@ -82,3 +82,61 @@ describe("a question naming two countries needs both", () => {
     expect(countriesIn("Are you authorized to work in Latin America?")).not.toContain("US");
   });
 });
+
+/**
+ * Review of the fix above: taking "America" out of "Latin America" left those
+ * labels naming NO country, so they were answered from the home-country
+ * boolean and a UK candidate claimed North and Latin American work rights.
+ * And requiring every named country turned a true Yes to "the UK or the EU"
+ * into a refusal.
+ */
+describe("a named region is asked, never absent", () => {
+  it.each([
+    ["Are you legally authorized to work in North America?", "work-authorization"],
+    ["Are you authorized to work in Latin America?", "work-authorization"],
+    ["Are you legally authorized to work in South America without sponsorship?", "sponsorship"],
+    ["Do you require sponsorship to work in North America?", "sponsorship"],
+    ["Are you authorized to work in Central America or LATAM?", "work-authorization"],
+  ])("a UK candidate refuses: %s", (label, category) => {
+    expect(countriesIn(label).length).toBeGreaterThan(0);
+    expect(matchQuestion(ask(label), person("United Kingdom"))).toMatchObject({ kind: "unanswerable", category });
+  });
+
+  it("North America is the US, Canada and Mexico, each one stated", () => {
+    const label = "Are you legally authorized to work in North America?";
+    expect(matchQuestion(ask(label), person("United States"))).toMatchObject({ kind: "unanswerable" });
+    expect(matchQuestion(ask(label), person("United States", ["CA", "MX"]))).toMatchObject({ kind: "choose", option: "Yes" });
+  });
+
+  it("Latin America is answered by no single stated country", () => {
+    expect(matchQuestion(ask("Are you authorized to work in Latin America?"), person("Brazil", ["MX", "AR", "CL", "CO"])))
+      .toMatchObject({ kind: "unanswerable" });
+  });
+});
+
+describe("places joined by 'or' are met by one, 'and' by all", () => {
+  it.each([
+    "Do you have the right to work in the UK or EU?",
+    "Are you authorised to work in the UK or Ireland?",
+    "Are you authorised to work in either the UK or the EU?",
+  ])("a UK candidate says a true Yes: %s", (label) => {
+    expect(matchQuestion(ask(label), person("United Kingdom"))).toMatchObject({ kind: "choose", option: "Yes" });
+  });
+
+  it.each([
+    "Are you authorised to work in the UK and Ireland?",
+    "Are you authorized to work in the UK or do you need a visa for Ireland?",
+  ])("anything but 'or' between them needs every place: %s", (label) => {
+    expect(matchQuestion(ask(label), person("United Kingdom"))).toMatchObject({ kind: "unanswerable" });
+  });
+
+  it("a sponsorship No would speak for every place, so 'or' is not enough there", () => {
+    expect(matchQuestion(ask("Do you require sponsorship to work in the UK or EU?"), person("United Kingdom")))
+      .toMatchObject({ kind: "unanswerable", category: "sponsorship" });
+  });
+
+  it("a candidate with neither place still refuses", () => {
+    expect(matchQuestion(ask("Are you authorized to work in the US or Canada?"), person("Germany")))
+      .toMatchObject({ kind: "unanswerable" });
+  });
+});

@@ -605,7 +605,9 @@ function matchStanding(
         : "candidate has not stated whether they are authorised to work");
     }
 
-    const cov = coverage(label, a.workAuthorizedCountries, a.country);
+    // "Authorised in the UK or the EU?" is met by either; "require
+    // sponsorship for the UK or the EU?" is not: a No there speaks for both.
+    const cov = coverage(label, a.workAuthorizedCountries, a.country, { orMeansAny: !isSponsor });
     if (cov.kind === "not-covered") {
       // The honest refusal. Saying "yes" here claims a right to work in a
       // country nobody has said they hold, which is a false statement with
