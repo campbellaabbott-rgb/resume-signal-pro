@@ -5282,6 +5282,22 @@
     "error": "No se pudo completar ahora. Vuelve a pulsar el botón en un momento.",
     "home": "Volver a Resume Booster"
   },
+  "purchaseTerms": {
+    "agree": "Al continuar, aceptas los <terms>Términos del servicio</terms> y la <privacy>Política de privacidad</privacy>.",
+    "renewal": "{{price}} al mes, con renovación automática hasta que canceles. Cancela cuando quieras desde tu cuenta.",
+    "agentTrial": "Quienes se suscriben por primera vez tienen {{days}} días gratis; después, {{price}} al mes, con renovación automática hasta que canceles. Cancela antes de que termine la prueba y no se te cobrará. Si ya te suscribiste antes, pagas desde el primer día.",
+    "waiver": "Quiero recibir mi compra ahora y entiendo que pierdo mi derecho de desistimiento de {{days}} días una vez entregada.",
+    "serviceStart": "Pido que el servicio empiece ahora. Si desisto en los {{days}} días siguientes, pago los días ya usados.",
+    "consentNeeded": "Marca la casilla sobre el botón para continuar."
+  },
+  "freelanceBoost": {
+    "startNewPurchase": "¿Compras para otro puesto? Empieza una compra nueva."
+  },
+  "seller": {
+    "soldBy": "Vendido por {{name}}, {{address}}.",
+    "terms": "Estos Términos son un acuerdo entre tú y {{name}}, {{address}}.",
+    "controller": "El responsable del tratamiento de tus datos personales es {{name}}, {{address}}."
+  },
   "affiliates": {
     "commission": {
       "tagline": "Gana una comisión por las herramientas que compren tus referidos.",
@@ -5304,21 +5320,5 @@
       "requestedTitle": "Pago solicitado",
       "requestedBody": "Te escribiremos por correo para organizar el pago."
     }
-  },
-  "purchaseTerms": {
-    "agree": "Al continuar, aceptas los <terms>Términos del servicio</terms> y la <privacy>Política de privacidad</privacy>.",
-    "renewal": "{{price}} al mes, con renovación automática hasta que canceles. Cancela cuando quieras desde tu cuenta.",
-    "agentTrial": "Quienes se suscriben por primera vez tienen {{days}} días gratis; después, {{price}} al mes, con renovación automática hasta que canceles. Cancela antes de que termine la prueba y no se te cobrará. Si ya te suscribiste antes, pagas desde el primer día.",
-    "waiver": "Quiero recibir mi compra ahora y entiendo que pierdo mi derecho de desistimiento de {{days}} días una vez entregada.",
-    "serviceStart": "Pido que el servicio empiece ahora. Si desisto en los {{days}} días siguientes, pago los días ya usados.",
-    "consentNeeded": "Marca la casilla sobre el botón para continuar."
-  },
-  "freelanceBoost": {
-    "startNewPurchase": "¿Compras para otro puesto? Empieza una compra nueva."
-  },
-  "seller": {
-    "soldBy": "Vendido por {{name}}, {{address}}.",
-    "terms": "Estos Términos son un acuerdo entre tú y {{name}}, {{address}}.",
-    "controller": "El responsable del tratamiento de tus datos personales es {{name}}, {{address}}."
   }
 }

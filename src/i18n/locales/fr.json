@@ -5282,6 +5282,22 @@
     "error": "Impossible de vous désabonner pour le moment. Réessayez le bouton dans un instant.",
     "home": "Retour à Resume Booster"
   },
+  "purchaseTerms": {
+    "agree": "En continuant, vous acceptez les <terms>Conditions d'utilisation</terms> et la <privacy>Politique de confidentialité</privacy>.",
+    "renewal": "{{price}} par mois, renouvelé automatiquement jusqu'à ce que vous résiliiez. Résiliez quand vous voulez depuis votre compte.",
+    "agentTrial": "Les nouveaux abonnés ont {{days}} jours gratuits, puis {{price}} par mois, renouvelé automatiquement jusqu'à résiliation. Résiliez avant la fin de l'essai et rien ne vous sera facturé. Un ancien abonné paie dès le premier jour.",
+    "waiver": "Je veux recevoir mon achat maintenant et je comprends que je perds mon droit de rétractation de {{days}} jours une fois qu'il a été livré.",
+    "serviceStart": "Je demande que le service commence maintenant. Si je me rétracte dans les {{days}} jours, je paie les jours déjà utilisés.",
+    "consentNeeded": "Cochez la case au-dessus du bouton pour continuer."
+  },
+  "freelanceBoost": {
+    "startNewPurchase": "Vous achetez pour un autre poste ? Commencer un nouvel achat."
+  },
+  "seller": {
+    "soldBy": "Vendu par {{name}}, {{address}}.",
+    "terms": "Les présentes Conditions constituent un accord entre vous et {{name}}, {{address}}.",
+    "controller": "Le responsable du traitement de vos données personnelles est {{name}}, {{address}}."
+  },
   "affiliates": {
     "commission": {
       "tagline": "Gagnez une commission sur les outils achetés par vos filleuls.",
@@ -5304,21 +5320,5 @@
       "requestedTitle": "Paiement demandé",
       "requestedBody": "Nous vous écrirons pour organiser le paiement."
     }
-  },
-  "purchaseTerms": {
-    "agree": "En continuant, vous acceptez les <terms>Conditions d'utilisation</terms> et la <privacy>Politique de confidentialité</privacy>.",
-    "renewal": "{{price}} par mois, renouvelé automatiquement jusqu'à ce que vous résiliiez. Résiliez quand vous voulez depuis votre compte.",
-    "agentTrial": "Les nouveaux abonnés ont {{days}} jours gratuits, puis {{price}} par mois, renouvelé automatiquement jusqu'à résiliation. Résiliez avant la fin de l'essai et rien ne vous sera facturé. Un ancien abonné paie dès le premier jour.",
-    "waiver": "Je veux recevoir mon achat maintenant et je comprends que je perds mon droit de rétractation de {{days}} jours une fois qu'il a été livré.",
-    "serviceStart": "Je demande que le service commence maintenant. Si je me rétracte dans les {{days}} jours, je paie les jours déjà utilisés.",
-    "consentNeeded": "Cochez la case au-dessus du bouton pour continuer."
-  },
-  "freelanceBoost": {
-    "startNewPurchase": "Vous achetez pour un autre poste ? Commencer un nouvel achat."
-  },
-  "seller": {
-    "soldBy": "Vendu par {{name}}, {{address}}.",
-    "terms": "Les présentes Conditions constituent un accord entre vous et {{name}}, {{address}}.",
-    "controller": "Le responsable du traitement de vos données personnelles est {{name}}, {{address}}."
   }
 }

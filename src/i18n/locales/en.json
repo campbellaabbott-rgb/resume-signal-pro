@@ -5282,6 +5282,22 @@
     "error": "Could not turn them off right now. Try the button again shortly.",
     "home": "Back to Resume Booster"
   },
+  "purchaseTerms": {
+    "agree": "By continuing you agree to the <terms>Terms of Service</terms> and the <privacy>Privacy Policy</privacy>.",
+    "renewal": "{{price}} a month, renewing automatically until you cancel. Cancel any time from your account.",
+    "agentTrial": "First-time subscribers get {{days}} days free, then {{price}} a month, renewing automatically until you cancel. Cancel before the trial ends and you are not charged. Returning subscribers pay from the first day.",
+    "waiver": "I want my purchase delivered now, and I understand that I lose my {{days}}-day right to withdraw once it has been delivered.",
+    "serviceStart": "I ask for the service to start now. If I withdraw within {{days}} days, I pay for the days already used.",
+    "consentNeeded": "Please tick the box above the button to continue."
+  },
+  "freelanceBoost": {
+    "startNewPurchase": "Buying for a different role? Start a new purchase."
+  },
+  "seller": {
+    "soldBy": "Sold by {{name}}, {{address}}.",
+    "terms": "These Terms are an agreement between you and {{name}}, {{address}}.",
+    "controller": "The controller of your personal data is {{name}}, {{address}}."
+  },
   "affiliates": {
     "commission": {
       "tagline": "Earn a commission on the tools your referrals buy.",
@@ -5304,21 +5320,5 @@
       "requestedTitle": "Payout requested",
       "requestedBody": "We will email you to arrange payment."
     }
-  },
-  "purchaseTerms": {
-    "agree": "By continuing you agree to the <terms>Terms of Service</terms> and the <privacy>Privacy Policy</privacy>.",
-    "renewal": "{{price}} a month, renewing automatically until you cancel. Cancel any time from your account.",
-    "agentTrial": "First-time subscribers get {{days}} days free, then {{price}} a month, renewing automatically until you cancel. Cancel before the trial ends and you are not charged. Returning subscribers pay from the first day.",
-    "waiver": "I want my purchase delivered now, and I understand that I lose my {{days}}-day right to withdraw once it has been delivered.",
-    "serviceStart": "I ask for the service to start now. If I withdraw within {{days}} days, I pay for the days already used.",
-    "consentNeeded": "Please tick the box above the button to continue."
-  },
-  "freelanceBoost": {
-    "startNewPurchase": "Buying for a different role? Start a new purchase."
-  },
-  "seller": {
-    "soldBy": "Sold by {{name}}, {{address}}.",
-    "terms": "These Terms are an agreement between you and {{name}}, {{address}}.",
-    "controller": "The controller of your personal data is {{name}}, {{address}}."
   }
 }

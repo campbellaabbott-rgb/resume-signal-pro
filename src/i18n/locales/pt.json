@@ -5282,6 +5282,22 @@
     "error": "Não foi possível cancelar agora. Tente o botão novamente daqui a pouco.",
     "home": "Voltar ao Resume Booster"
   },
+  "purchaseTerms": {
+    "agree": "Ao continuar, você concorda com os <terms>Termos de Serviço</terms> e a <privacy>Política de Privacidade</privacy>.",
+    "renewal": "{{price}} por mês, com renovação automática até você cancelar. Cancele quando quiser na sua conta.",
+    "agentTrial": "Quem assina pela primeira vez tem {{days}} dias grátis; depois, {{price}} por mês, com renovação automática até você cancelar. Cancele antes do fim do teste e nada será cobrado. Quem já assinou antes paga desde o primeiro dia.",
+    "waiver": "Quero receber minha compra agora e entendo que perco meu direito de desistência de {{days}} dias depois da entrega.",
+    "serviceStart": "Peço que o serviço comece agora. Se eu desistir em até {{days}} dias, pago pelos dias já usados.",
+    "consentNeeded": "Marque a caixa acima do botão para continuar."
+  },
+  "freelanceBoost": {
+    "startNewPurchase": "Vai comprar para outra função? Comece uma nova compra."
+  },
+  "seller": {
+    "soldBy": "Vendido por {{name}}, {{address}}.",
+    "terms": "Estes Termos são um acordo entre você e {{name}}, {{address}}.",
+    "controller": "O controlador dos seus dados pessoais é {{name}}, {{address}}."
+  },
   "affiliates": {
     "commission": {
       "tagline": "Ganhe comissão pelas ferramentas que suas indicações comprarem.",
@@ -5304,21 +5320,5 @@
       "requestedTitle": "Pagamento pedido",
       "requestedBody": "Vamos enviar um e-mail para combinar o pagamento."
     }
-  },
-  "purchaseTerms": {
-    "agree": "Ao continuar, você concorda com os <terms>Termos de Serviço</terms> e a <privacy>Política de Privacidade</privacy>.",
-    "renewal": "{{price}} por mês, com renovação automática até você cancelar. Cancele quando quiser na sua conta.",
-    "agentTrial": "Quem assina pela primeira vez tem {{days}} dias grátis; depois, {{price}} por mês, com renovação automática até você cancelar. Cancele antes do fim do teste e nada será cobrado. Quem já assinou antes paga desde o primeiro dia.",
-    "waiver": "Quero receber minha compra agora e entendo que perco meu direito de desistência de {{days}} dias depois da entrega.",
-    "serviceStart": "Peço que o serviço comece agora. Se eu desistir em até {{days}} dias, pago pelos dias já usados.",
-    "consentNeeded": "Marque a caixa acima do botão para continuar."
-  },
-  "freelanceBoost": {
-    "startNewPurchase": "Vai comprar para outra função? Comece uma nova compra."
-  },
-  "seller": {
-    "soldBy": "Vendido por {{name}}, {{address}}.",
-    "terms": "Estes Termos são um acordo entre você e {{name}}, {{address}}.",
-    "controller": "O controlador dos seus dados pessoais é {{name}}, {{address}}."
   }
 }

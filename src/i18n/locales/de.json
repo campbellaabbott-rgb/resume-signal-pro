@@ -5282,6 +5282,22 @@
     "error": "Das Abbestellen hat gerade nicht geklappt. Versuchen Sie es gleich noch einmal.",
     "home": "Zurück zu Resume Booster"
   },
+  "purchaseTerms": {
+    "agree": "Indem Sie fortfahren, stimmen Sie den <terms>Nutzungsbedingungen</terms> und der <privacy>Datenschutzerklärung</privacy> zu.",
+    "renewal": "{{price}} pro Monat, verlängert sich automatisch, bis Sie kündigen. Kündigen Sie jederzeit in Ihrem Konto.",
+    "agentTrial": "Neue Abonnenten erhalten {{days}} Tage kostenlos, danach {{price}} pro Monat, automatisch verlängert, bis Sie kündigen. Kündigen Sie vor Ende des Testzeitraums, wird nichts berechnet. Wer schon einmal abonniert hatte, zahlt ab dem ersten Tag.",
+    "waiver": "Ich möchte, dass mein Kauf sofort geliefert wird, und mir ist bekannt, dass ich mein {{days}}-tägiges Widerrufsrecht mit der Lieferung verliere.",
+    "serviceStart": "Ich verlange, dass die Leistung sofort beginnt. Widerrufe ich innerhalb von {{days}} Tagen, zahle ich für die bereits genutzten Tage.",
+    "consentNeeded": "Bitte setzen Sie das Häkchen über der Schaltfläche, um fortzufahren."
+  },
+  "freelanceBoost": {
+    "startNewPurchase": "Kaufen Sie für eine andere Stelle? Neuen Kauf beginnen."
+  },
+  "seller": {
+    "soldBy": "Verkauft von {{name}}, {{address}}.",
+    "terms": "Diese Bedingungen sind eine Vereinbarung zwischen dir und {{name}}, {{address}}.",
+    "controller": "Verantwortlicher für deine personenbezogenen Daten ist {{name}}, {{address}}."
+  },
   "affiliates": {
     "commission": {
       "tagline": "Verdienen Sie eine Provision auf die Tools, die Ihre Empfehlungen kaufen.",
@@ -5304,21 +5320,5 @@
       "requestedTitle": "Auszahlung angefragt",
       "requestedBody": "Wir melden uns per E-Mail, um die Zahlung abzustimmen."
     }
-  },
-  "purchaseTerms": {
-    "agree": "Indem Sie fortfahren, stimmen Sie den <terms>Nutzungsbedingungen</terms> und der <privacy>Datenschutzerklärung</privacy> zu.",
-    "renewal": "{{price}} pro Monat, verlängert sich automatisch, bis Sie kündigen. Kündigen Sie jederzeit in Ihrem Konto.",
-    "agentTrial": "Neue Abonnenten erhalten {{days}} Tage kostenlos, danach {{price}} pro Monat, automatisch verlängert, bis Sie kündigen. Kündigen Sie vor Ende des Testzeitraums, wird nichts berechnet. Wer schon einmal abonniert hatte, zahlt ab dem ersten Tag.",
-    "waiver": "Ich möchte, dass mein Kauf sofort geliefert wird, und mir ist bekannt, dass ich mein {{days}}-tägiges Widerrufsrecht mit der Lieferung verliere.",
-    "serviceStart": "Ich verlange, dass die Leistung sofort beginnt. Widerrufe ich innerhalb von {{days}} Tagen, zahle ich für die bereits genutzten Tage.",
-    "consentNeeded": "Bitte setzen Sie das Häkchen über der Schaltfläche, um fortzufahren."
-  },
-  "freelanceBoost": {
-    "startNewPurchase": "Kaufen Sie für eine andere Stelle? Neuen Kauf beginnen."
-  },
-  "seller": {
-    "soldBy": "Verkauft von {{name}}, {{address}}.",
-    "terms": "Diese Bedingungen sind eine Vereinbarung zwischen dir und {{name}}, {{address}}.",
-    "controller": "Verantwortlicher für deine personenbezogenen Daten ist {{name}}, {{address}}."
   }
 }

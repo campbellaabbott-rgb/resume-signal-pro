@@ -5282,6 +5282,22 @@
     "error": "Hindi ito natigil ngayon. Subukan muli ang button maya-maya.",
     "home": "Bumalik sa Resume Booster"
   },
+  "purchaseTerms": {
+    "agree": "Sa pagpapatuloy, sumasang-ayon ka sa <terms>Mga Tuntunin ng Serbisyo</terms> at sa <privacy>Patakaran sa Privacy</privacy>.",
+    "renewal": "{{price}} bawat buwan, awtomatikong nire-renew hanggang kanselahin mo. Kanselahin kahit kailan mula sa iyong account.",
+    "agentTrial": "Ang mga unang beses na subscriber ay may {{days}} araw na libre, pagkatapos ay {{price}} bawat buwan, awtomatikong nire-renew hanggang kanselahin mo. Kanselahin bago matapos ang trial at hindi ka sisingilin. Ang dating subscriber ay nagbabayad mula sa unang araw.",
+    "waiver": "Gusto kong maihatid na ngayon ang binili ko, at nauunawaan kong mawawala ang aking {{days}}-araw na karapatang umatras kapag naihatid na ito.",
+    "serviceStart": "Hinihiling kong magsimula na ngayon ang serbisyo. Kung aatras ako sa loob ng {{days}} araw, babayaran ko ang mga araw na nagamit na.",
+    "consentNeeded": "Lagyan ng tsek ang kahon sa itaas ng button para magpatuloy."
+  },
+  "freelanceBoost": {
+    "startNewPurchase": "Bibili para sa ibang posisyon? Magsimula ng bagong pagbili."
+  },
+  "seller": {
+    "soldBy": "Ibinebenta ng {{name}}, {{address}}.",
+    "terms": "Ang mga Tuntuning ito ay kasunduan sa pagitan mo at ng {{name}}, {{address}}.",
+    "controller": "Ang controller ng iyong personal na data ay ang {{name}}, {{address}}."
+  },
   "affiliates": {
     "commission": {
       "tagline": "Kumita ng komisyon sa mga tool na binibili ng mga ini-refer mo.",
@@ -5304,21 +5320,5 @@
       "requestedTitle": "Na-request ang payout",
       "requestedBody": "Mag-e-email kami para ayusin ang bayad."
     }
-  },
-  "purchaseTerms": {
-    "agree": "Sa pagpapatuloy, sumasang-ayon ka sa <terms>Mga Tuntunin ng Serbisyo</terms> at sa <privacy>Patakaran sa Privacy</privacy>.",
-    "renewal": "{{price}} bawat buwan, awtomatikong nire-renew hanggang kanselahin mo. Kanselahin kahit kailan mula sa iyong account.",
-    "agentTrial": "Ang mga unang beses na subscriber ay may {{days}} araw na libre, pagkatapos ay {{price}} bawat buwan, awtomatikong nire-renew hanggang kanselahin mo. Kanselahin bago matapos ang trial at hindi ka sisingilin. Ang dating subscriber ay nagbabayad mula sa unang araw.",
-    "waiver": "Gusto kong maihatid na ngayon ang binili ko, at nauunawaan kong mawawala ang aking {{days}}-araw na karapatang umatras kapag naihatid na ito.",
-    "serviceStart": "Hinihiling kong magsimula na ngayon ang serbisyo. Kung aatras ako sa loob ng {{days}} araw, babayaran ko ang mga araw na nagamit na.",
-    "consentNeeded": "Lagyan ng tsek ang kahon sa itaas ng button para magpatuloy."
-  },
-  "freelanceBoost": {
-    "startNewPurchase": "Bibili para sa ibang posisyon? Magsimula ng bagong pagbili."
-  },
-  "seller": {
-    "soldBy": "Ibinebenta ng {{name}}, {{address}}.",
-    "terms": "Ang mga Tuntuning ito ay kasunduan sa pagitan mo at ng {{name}}, {{address}}.",
-    "controller": "Ang controller ng iyong personal na data ay ang {{name}}, {{address}}."
   }
 }

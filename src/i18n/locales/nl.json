@@ -5282,6 +5282,22 @@
     "error": "Uitzetten lukte nu niet. Probeer de knop zo meteen opnieuw.",
     "home": "Terug naar Resume Booster"
   },
+  "purchaseTerms": {
+    "agree": "Door verder te gaan ga je akkoord met de <terms>Servicevoorwaarden</terms> en het <privacy>Privacybeleid</privacy>.",
+    "renewal": "{{price}} per maand, wordt automatisch verlengd tot je opzegt. Zeg op wanneer je wilt via je account.",
+    "agentTrial": "Nieuwe abonnees krijgen {{days}} dagen gratis, daarna {{price}} per maand, automatisch verlengd tot je opzegt. Zeg op voordat de proefperiode eindigt en je betaalt niets. Wie eerder abonnee was, betaalt vanaf de eerste dag.",
+    "waiver": "Ik wil mijn aankoop nu geleverd krijgen en begrijp dat ik mijn herroepingsrecht van {{days}} dagen verlies zodra die is geleverd.",
+    "serviceStart": "Ik vraag om de dienst nu te laten starten. Herroep ik binnen {{days}} dagen, dan betaal ik voor de dagen die al zijn gebruikt.",
+    "consentNeeded": "Vink het vakje boven de knop aan om verder te gaan."
+  },
+  "freelanceBoost": {
+    "startNewPurchase": "Koop je voor een andere functie? Begin een nieuwe aankoop."
+  },
+  "seller": {
+    "soldBy": "Verkocht door {{name}}, {{address}}.",
+    "terms": "Deze Voorwaarden zijn een overeenkomst tussen jou en {{name}}, {{address}}.",
+    "controller": "De verwerkingsverantwoordelijke voor je persoonsgegevens is {{name}}, {{address}}."
+  },
   "affiliates": {
     "commission": {
       "tagline": "Verdien commissie op de tools die je verwijzingen kopen.",
@@ -5304,21 +5320,5 @@
       "requestedTitle": "Uitbetaling aangevraagd",
       "requestedBody": "We mailen je om de betaling te regelen."
     }
-  },
-  "purchaseTerms": {
-    "agree": "Door verder te gaan ga je akkoord met de <terms>Servicevoorwaarden</terms> en het <privacy>Privacybeleid</privacy>.",
-    "renewal": "{{price}} per maand, wordt automatisch verlengd tot je opzegt. Zeg op wanneer je wilt via je account.",
-    "agentTrial": "Nieuwe abonnees krijgen {{days}} dagen gratis, daarna {{price}} per maand, automatisch verlengd tot je opzegt. Zeg op voordat de proefperiode eindigt en je betaalt niets. Wie eerder abonnee was, betaalt vanaf de eerste dag.",
-    "waiver": "Ik wil mijn aankoop nu geleverd krijgen en begrijp dat ik mijn herroepingsrecht van {{days}} dagen verlies zodra die is geleverd.",
-    "serviceStart": "Ik vraag om de dienst nu te laten starten. Herroep ik binnen {{days}} dagen, dan betaal ik voor de dagen die al zijn gebruikt.",
-    "consentNeeded": "Vink het vakje boven de knop aan om verder te gaan."
-  },
-  "freelanceBoost": {
-    "startNewPurchase": "Koop je voor een andere functie? Begin een nieuwe aankoop."
-  },
-  "seller": {
-    "soldBy": "Verkocht door {{name}}, {{address}}.",
-    "terms": "Deze Voorwaarden zijn een overeenkomst tussen jou en {{name}}, {{address}}.",
-    "controller": "De verwerkingsverantwoordelijke voor je persoonsgegevens is {{name}}, {{address}}."
   }
 }
