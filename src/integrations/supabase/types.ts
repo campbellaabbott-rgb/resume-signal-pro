@@ -3655,6 +3655,8 @@ export type Database = {
           product_name: string | null
           product_type: string | null
           resume_session_id: string | null
+          revoked_at: string | null
+          user_id: string | null
         }
         Insert: {
           consumed_at?: string | null
@@ -3669,6 +3671,8 @@ export type Database = {
           product_name?: string | null
           product_type?: string | null
           resume_session_id?: string | null
+          revoked_at?: string | null
+          user_id?: string | null
         }
         Update: {
           consumed_at?: string | null
@@ -3683,6 +3687,8 @@ export type Database = {
           product_name?: string | null
           product_type?: string | null
           resume_session_id?: string | null
+          revoked_at?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -3693,6 +3699,7 @@ export type Database = {
           status: string
           stripe_customer_id: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           current_period_end?: string | null
@@ -3700,6 +3707,7 @@ export type Database = {
           status?: string
           stripe_customer_id?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           current_period_end?: string | null
@@ -3707,6 +3715,7 @@ export type Database = {
           status?: string
           stripe_customer_id?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -6667,6 +6676,15 @@ export type Database = {
         }[]
       }
       one_click_vendors: { Args: never; Returns: string[] }
+      pro_entitlement_rows: {
+        Args: { p_user_id: string }
+        Returns: {
+          bound: boolean
+          current_period_end: string
+          status: string
+          tier: string
+        }[]
+      }
       product_delivery_health: {
         Args: { p_hours?: number }
         Returns: {

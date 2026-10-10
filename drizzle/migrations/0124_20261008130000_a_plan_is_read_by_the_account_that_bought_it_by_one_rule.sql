@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261008130000_a_plan_is_read_by_the_account_that_bought_it_by_one_rule.sql'));
