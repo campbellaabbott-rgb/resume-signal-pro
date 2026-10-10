@@ -10149,6 +10149,18 @@ exactly 300 (or any multiple of 100 past it) ends each lap on an empty page,
 which proves it like a short page. Request cost: one GET for a board under
 100, two for exactly 100, up to three per visit above.
 
+THE REPAIR'S BOUND (review, 2026-10-10). Migration 20261009100300 marks the
+Teamtailor `full_read` closures the one-page read wrote, and it is applied
+after .92 serves, so its ceiling (max event_id) also took in the real
+`full_read` closures .92 writes from whole paged reads in between. So
+stampSliceWork writes `build` and `buildSince` on slice_stats
+(`firstSliceOf`: this bundle's version and the earliest start of a slice it
+finished fetching in, kept across slices, replaced when another build's
+stamp is there; status.sliceStats shows both), and the repair marks only
+closures with closed_at before buildSince + 5 minutes (closed_at is the
+write time; the slack covers an old-bundle slice in flight at the deploy).
+No stamp of .92 or later: no bound, every closure to the ceiling.
+
 ## n440-a-replayed-lap-proof-closes-nothing-it-stamped
 
 Above: `lapOpenMs` and the `stampMs >= lapOpenMs` term of the vanish rule.

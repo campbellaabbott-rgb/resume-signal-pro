@@ -3107,7 +3107,7 @@ async function stampSliceWork(client: SupabaseClient, inHotPhase: boolean, slice
   const mem = memStamp();
   const write = (async () => {
     const { data: prev } = await client.from("job_board_meta").select("v").eq("k", "slice_stats").maybeSingle();
-    const pv = (prev?.v ?? {}) as { works?: number; workHotEmaMs?: number; workColdEmaMs?: number };
+    const pv = (prev?.v ?? {}) as { works?: number; workHotEmaMs?: number; workColdEmaMs?: number; build?: unknown; buildSince?: unknown };
     // A SEPARATE EMA, because it measures a different span. The hot/cold EMAs
     // are whole-slice and their thresholds were calibrated against that; fetch
     // time is a strict subset and must never be compared to those numbers.
@@ -3127,11 +3127,19 @@ async function stampSliceWork(client: SupabaseClient, inHotPhase: boolean, slice
         workHop: currentHop,
         ...(mem.heapMb !== undefined ? { workHeapMb: mem.heapMb } : {}),
         ...(mem.rssMb !== undefined ? { workRssMb: mem.rssMb } : {}),
+        ...firstSliceOf(pv, sliceWallStart),
       },
       updated_at: new Date().toISOString(),
     }, { onConflict: "k" });
   })().catch((e) => { sliceStampError = `work: ${String(e).slice(0, 160)}`; });
   await Promise.race([write, new Promise<void>((res) => setTimeout(res, SLICE_STATS_WRITE_MS))]);
+}
+
+/** slice_stats.build/buildSince: this bundle and the earliest start of a slice it fetched in; repairs bound on it (n439). */
+function firstSliceOf(pv: { build?: unknown; buildSince?: unknown }, sliceWallStart: number): { build: string; buildSince: string } {
+  const start = new Date(sliceWallStart).toISOString();
+  const since = pv.build === BUILD_VERSION && typeof pv.buildSince === "string" && pv.buildSince < start ? pv.buildSince : start;
+  return { build: BUILD_VERSION, buildSince: since };
 }
 
 /**

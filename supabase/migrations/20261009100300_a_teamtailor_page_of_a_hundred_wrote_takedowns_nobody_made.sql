@@ -26,6 +26,22 @@
 -- with the rest (suspect is excluded by every reader), the cautious direction
 -- for a table sold as "the employer took the role down".
 --
+-- WRITTEN BEFORE .92 ONLY. .92 reads these boards in pages and its own
+-- 'full_read' closures are real takedowns. The bundle stamps
+-- job_board_meta.slice_stats {build, buildSince}: its version and the earliest
+-- start of a slice it fetched in (status.sliceStats shows both). Only closures
+-- with closed_at (the moment the row was written) before buildSince + 5
+-- minutes are marked; the slack covers an old-bundle slice still in flight
+-- when .92 started (a slice's wall is 2 minutes), so .92's closures of its
+-- first five minutes are marked too. With no stamp of .92 or later (applied
+-- before .92 has finished a slice) every closure up to the ceiling is marked,
+-- all of them old-bundle closures, and the file must be re-run once .92
+-- serves. Also over-marked: .92's closures written before a later build
+-- (.93+) re-stamped buildSince, if the file is first applied after that, and
+-- those of a .92 slice that died before its stamp. All are listed under the
+-- same repair name, and each one closed after the bound's own buildSince can be
+-- told apart by closed_at.
+--
 -- A CEILING, as in 20261005100000: the rule is applied to the closures that
 -- exist when the block starts (event_id <= the max read first), the check
 -- covers the same set, and a second pass catches a closure committed just
@@ -64,6 +80,9 @@ DECLARE
   v_pass    int := 0;
   v_marked  bigint;
   v_unmarked_listed bigint;
+  v_build   text;
+  v_since   text;
+  v_bound   timestamptz;
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_class WHERE oid = 'public.job_board_closure_repairs'::regclass AND relrowsecurity) THEN
     RAISE EXCEPTION 'self-verify 20261009100300: job_board_closure_repairs does not have row-level security on';
@@ -112,6 +131,16 @@ BEGIN
 
   SELECT coalesce(max(event_id), 0) INTO v_ceiling FROM public.job_board_closures;
 
+  -- The upper time bound: .92 (or a later build) has stamped when it began.
+  SELECT m.v ->> 'build', m.v ->> 'buildSince' INTO v_build, v_since
+    FROM public.job_board_meta m WHERE m.k = 'slice_stats';
+  IF v_build ~ '^\d{4}-\d{2}-\d{2}\.\d{1,6}$' AND v_since ~ '^\d{4}-\d{2}-\d{2}T' THEN
+    IF split_part(v_build, '.', 1) > '2026-09-09'
+       OR (split_part(v_build, '.', 1) = '2026-09-09' AND split_part(v_build, '.', 2)::int >= 92) THEN
+      v_bound := v_since::timestamptz + interval '5 minutes';
+    END IF;
+  END IF;
+
   LOOP
     v_pass := v_pass + 1;
 
@@ -119,6 +148,7 @@ BEGIN
     SELECT c.event_id, 'teamtailor_rss_page_s8_002'
       FROM public.job_board_closures c
      WHERE c.event_id <= v_ceiling
+       AND (v_bound IS NULL OR c.closed_at < v_bound)
        AND c.source = 'teamtailor'
        AND c.company_token = ANY (v_tokens)
        AND (c.absence_basis = 'full_read' OR c.absence_basis IS NULL)
@@ -135,6 +165,7 @@ BEGIN
     SELECT count(*) INTO v_left
       FROM public.job_board_closures c
      WHERE c.event_id <= v_ceiling
+       AND (v_bound IS NULL OR c.closed_at < v_bound)
        AND c.source = 'teamtailor'
        AND c.company_token = ANY (v_tokens)
        AND (c.absence_basis = 'full_read' OR c.absence_basis IS NULL)
@@ -153,6 +184,15 @@ BEGIN
     RAISE EXCEPTION 'self-verify 20261009100300: % listed closure(s) are still not suspect', v_unmarked_listed;
   END IF;
 
+  IF v_bound IS NOT NULL AND EXISTS (
+       SELECT 1 FROM public.job_board_closure_repairs r
+         JOIN public.job_board_closures c ON c.event_id = r.event_id
+        WHERE r.repair = 'teamtailor_rss_page_s8_002' AND r.marked_at = now() AND c.closed_at >= v_bound) THEN
+    RAISE EXCEPTION 'self-verify 20261009100300: this run listed a closure written after %, which .92 or later wrote', v_bound;
+  END IF;
+
   SELECT count(*) INTO v_marked FROM public.job_board_closure_repairs WHERE repair = 'teamtailor_rss_page_s8_002';
-  RAISE NOTICE 'self-verify 20261009100300: % Teamtailor closure(s) written while one page of 100 was read as the whole board are marked suspect and listed in job_board_closure_repairs (% boards named, ceiling event_id %)', v_marked, array_length(v_tokens, 1), v_ceiling;
+  RAISE NOTICE 'self-verify 20261009100300: % Teamtailor closure(s) written while one page of 100 was read as the whole board are marked suspect and listed in job_board_closure_repairs (% boards named, ceiling event_id %, %)', v_marked, array_length(v_tokens, 1), v_ceiling,
+    CASE WHEN v_bound IS NULL THEN 'no .92 stamp on slice_stats yet: every closure to the ceiling, re-run once .92 serves'
+         ELSE 'closed before ' || v_bound::text || ' (build ' || v_build || ' began ' || v_since || ')' END;
 END $$;

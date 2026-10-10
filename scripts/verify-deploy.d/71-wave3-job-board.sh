@@ -56,7 +56,9 @@ for(const [tok,size] of [["eutalents",2600],["anicuraglobal",642],["tutoringjobs
   const r=await list({companies:[tok],limit:1});
   soft(!bad(r)&&typeof r.total==="number"&&r.total>100,"S8-002 teamtailor:"+tok+" stored "+(r&&r.total)+" (its jobs.rss walked to "+size+" on 2026-10-08; want > 100 after .92 has visited it, 250 more per visit; <= 100 before)");
 }
-info("S8-002 repair 20261009100300: no anon probe (job_board_closures and job_board_closure_repairs are closed to anon); its NOTICE names the closures marked suspect");
+{const ss=st.sliceStats||{};const mb=/^(\d{4}-\d{2}-\d{2})\.(\d+)$/.exec(String(ss.build||""));const ge=!!mb&&(mb[1]>"2026-09-09"||(mb[1]==="2026-09-09"&&Number(mb[2])>=92));
+  late(ge&&typeof ss.buildSince==="string","S8-002 sliceStats.build "+JSON.stringify(ss.build)+", buildSince "+JSON.stringify(ss.buildSince)+" (want .92 or later and a time before 20261009100300 is applied: it marks only closures written before buildSince + 5 min; with no stamp it marks every closure to its ceiling and must be re-run)");}
+info("S8-002 repair 20261009100300: no anon probe (job_board_closures and job_board_closure_repairs are closed to anon); its NOTICE names the closures marked suspect and the bound it used");
 // S8-023 / S8-083: the federal feed.
 {const dc=Array.isArray(st.descCoverage)?st.descCoverage.find((x)=>x&&x.source==="usajobs"):null;
   soft(!!dc&&dc.described>0,"S8-023 descCoverage usajobs: "+(dc?dc.described+" of "+dc.total+" described":"absent")+" (0 of 7,927 on .91; new federal rows carry a body from .92, stored ones stay null until they close)");}

@@ -13,11 +13,13 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import ts from "typescript";
 
 vi.setConfig({ hookTimeout: 120_000, testTimeout: 60_000 });
 
 const FILE = "20261009100300_a_teamtailor_page_of_a_hundred_wrote_takedowns_nobody_made.sql";
 const SQL = readFileSync(resolve(__dirname, "../../supabase/migrations", FILE), "utf8");
+const FN = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8");
 
 const SCHEMA = `
   CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
@@ -29,6 +31,7 @@ const SCHEMA = `
     company_token text NOT NULL, observed_on date NOT NULL DEFAULT current_date, source text NOT NULL DEFAULT '',
     observed_at timestamptz NOT NULL DEFAULT now(), live_count integer, stored_count integer, feed_total integer,
     state text NOT NULL DEFAULT 'ok', PRIMARY KEY (company_token, observed_on));
+  CREATE TABLE public.job_board_meta (k text PRIMARY KEY, v jsonb, updated_at timestamptz);
 `;
 
 // eutalents: in the measured list. bigboard: not in it, but the history shows 104 stored on one day.
@@ -107,5 +110,91 @@ describe("the closures a 100-item page wrote are marked suspect, and only those"
               has_table_privilege('service_role', 'public.job_board_closure_repairs', 'INSERT') AS s`,
     );
     expect(rows[0]).toEqual({ a: false, u: false, s: true });
+  });
+});
+
+describe("the closures .92 itself writes are left alone", () => {
+  // job-board stamps slice_stats {build, buildSince} from .92 on (stampSliceWork).
+  const SINCE = "2026-10-11T09:00:00.000Z";
+  async function repairedWith(build: string) {
+    const d = new PGlite();
+    await d.exec(SCHEMA);
+    await d.query(`INSERT INTO public.job_board_meta (k, v) VALUES ('slice_stats', $1::jsonb)`, [JSON.stringify({ slices: 40, build, buildSince: SINCE })]);
+    await d.exec(`
+      INSERT INTO public.job_board_closures (posting_id, source, company_token, absence_basis, closed_at) VALUES
+        ('teamtailor:groupeetam:old', 'teamtailor', 'groupeetam', 'full_read', '${SINCE}'::timestamptz - interval '3 days'),
+        ('teamtailor:groupeetam:overlap', 'teamtailor', 'groupeetam', 'full_read', '${SINCE}'::timestamptz + interval '2 minutes'),
+        ('teamtailor:groupeetam:new', 'teamtailor', 'groupeetam', 'full_read', '${SINCE}'::timestamptz + interval '6 hours');
+    `);
+    await d.exec(SQL);
+    const rows = (await d.query<{ posting_id: string; suspect: boolean }>(`SELECT posting_id, suspect FROM public.job_board_closures`)).rows;
+    await d.close();
+    return Object.fromEntries(rows.map((r) => [r.posting_id, r.suspect]));
+  }
+
+  it("a real takedown .92 read from a whole board after it began serving is not marked suspect", async () => {
+    const s = await repairedWith("2026-09-09.92");
+    expect(s["teamtailor:groupeetam:new"], "a closure .92 wrote from a paged read was excluded from every reader").toBe(false);
+    expect(s["teamtailor:groupeetam:old"]).toBe(true);
+    expect(s["teamtailor:groupeetam:overlap"], "an old-bundle slice still in flight when .92 began").toBe(true);
+  });
+
+  it("a stamp older than .92 bounds nothing: every closure to the ceiling is an old-bundle closure", async () => {
+    const s = await repairedWith("2026-09-09.91");
+    expect(s["teamtailor:groupeetam:new"]).toBe(true);
+    expect(s["teamtailor:groupeetam:old"]).toBe(true);
+  });
+});
+
+/** The shipped stampSliceWork (and whatever it calls to stamp the build), writing slice_stats to `store`. */
+function shippedStamp(store: { v: Record<string, unknown> | null }) {
+  const lifted = (name: string) => {
+    const at = FN.search(new RegExp(`\\n(?:async )?function ${name}\\(`));
+    expect(at, `${name} not found in job-board/index.ts`).toBeGreaterThan(-1);
+    return ts.transpileModule(FN.slice(at + 1, FN.indexOf("\n}\n", at) + 2), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
+  };
+  const build = /\nconst BUILD_VERSION = "([^"]+)";/.exec(FN)![1];
+  const client = {
+    from: () => ({
+      select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: store.v ? { v: store.v } : null, error: null }) }) }),
+      upsert: async (row: { v: Record<string, unknown> }) => { store.v = row.v; return { error: null }; },
+    }),
+  };
+  const src = `let sliceStampError = null; const currentHop = 0; const SLICE_STATS_WRITE_MS = 5000;
+    const BUILD_VERSION = ${JSON.stringify(build)}; function memStamp() { return {}; }
+    ${["firstSliceOf", "stampSliceWork"].filter((n) => new RegExp(`\\n(?:async )?function ${n}\\(`).test(FN)).map(lifted).join("\n")}
+    return stampSliceWork;`;
+  const stamp = new Function(src)() as (c: unknown, hot: boolean, start: number) => Promise<void>;
+  return { build, at: (startIso: string) => stamp(client, false, Date.parse(startIso)) };
+}
+
+describe("job-board says when this build began, which is the bound the repair reads", () => {
+  it("keeps the earliest slice start of this build, and starts over for a new build", async () => {
+    const store: { v: Record<string, unknown> | null } = { v: { works: 7, build: "2026-09-09.91", buildSince: "2026-09-01T00:00:00.000Z" } };
+    const s = shippedStamp(store);
+    await s.at("2026-10-11T09:01:00.000Z");
+    expect(store.v, "a stamp another build left is not this build's start").toMatchObject({ build: s.build, buildSince: "2026-10-11T09:01:00.000Z", works: 8 });
+    await s.at("2026-10-11T09:30:00.000Z");
+    expect(store.v!.buildSince).toBe("2026-10-11T09:01:00.000Z");
+    // A slice that started earlier and finished fetching later.
+    await s.at("2026-10-11T09:00:00.000Z");
+    expect(store.v!.buildSince).toBe("2026-10-11T09:00:00.000Z");
+  });
+
+  it("the stamp the bundle writes is the one the repair bounds on", async () => {
+    const store: { v: Record<string, unknown> | null } = { v: null };
+    await shippedStamp(store).at("2026-10-11T09:00:00.000Z");
+    const d = new PGlite();
+    await d.exec(SCHEMA);
+    await d.query(`INSERT INTO public.job_board_meta (k, v) VALUES ('slice_stats', $1::jsonb)`, [JSON.stringify(store.v)]);
+    await d.exec(`
+      INSERT INTO public.job_board_closures (posting_id, source, company_token, absence_basis, closed_at) VALUES
+        ('teamtailor:etam:before', 'teamtailor', 'etam', 'full_read', '2026-10-10T09:00:00Z'),
+        ('teamtailor:etam:after', 'teamtailor', 'etam', 'full_read', '2026-10-11T15:00:00Z');
+    `);
+    await d.exec(SQL);
+    const rows = (await d.query<{ posting_id: string; suspect: boolean }>(`SELECT posting_id, suspect FROM public.job_board_closures ORDER BY 1`)).rows;
+    await d.close();
+    expect(rows).toEqual([{ posting_id: "teamtailor:etam:after", suspect: false }, { posting_id: "teamtailor:etam:before", suspect: true }]);
   });
 });
