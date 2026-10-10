@@ -47,6 +47,7 @@ import { AgentSubscriptionCard } from "@/components/AgentSubscriptionCard";
 import { ProSubscriptionCard } from "@/components/ProSubscriptionCard";
 import { purchaseTerms } from "@/lib/purchase-terms";
 import { PRO_CONFIRM_INTERVAL_MS } from "@/hooks/use-pro-subscription";
+import i18n from "@/i18n";
 
 vi.setConfig(MOUNT_TEST_BUDGET);
 
@@ -91,6 +92,23 @@ describe("the line above a buy button, and what the button's call carries", () =
     expect(purchaseTerms().termsVersion).toBe(TERMS_VERSION);
     unmount();
     expect(purchaseTerms().termsVersion).toBeUndefined();
+  });
+
+  it("both subscribe calls name the page's language, so Stripe shows the renewal terms in it", async () => {
+    const was = i18n.language;
+    i18n.language = "de";
+    try {
+      invoke.mockImplementation(async (fn: string) => ({ data: fn === "check-subscription" ? { active: false } : { url: "" }, error: null }));
+      render(<MemoryRouter><AgentSubscriptionCard /><ProSubscriptionCard /></MemoryRouter>);
+      fireEvent.click(screen.getByRole("button", { name: new RegExp(en.agentPlan.cta) }));
+      fireEvent.click(await screen.findByRole("button", { name: /Go Pro/ }));
+      await waitFor(() => expect(invoke).toHaveBeenCalledWith("create-subscription-checkout", expect.anything()));
+      const bodyOf = (fn: string) => invoke.mock.calls.find(([f]) => f === fn)![1].body;
+      expect(bodyOf("create-agent-checkout").language).toBe("de");
+      expect(bodyOf("create-subscription-checkout").language).toBe("de");
+    } finally {
+      i18n.language = was;
+    }
   });
 
   it("while the EU/UK switch is off, no box is shown and no consent is sent", () => {

@@ -118,7 +118,8 @@ export function useProSubscription() {
       setActionLoading(true);
       try {
         const { data, error } = await supabase.functions.invoke("create-subscription-checkout", {
-          body: { email, ...checkoutContext(), ...purchaseTerms() },
+          // The page's language: Stripe shows the renewal terms in it.
+          body: { email, language: i18n.language, ...checkoutContext(), ...purchaseTerms() },
         });
         if (await consentWasRequired(error, data)) {
           toast({ title: i18n.t("purchaseTerms.consentNeeded"), variant: "destructive" });

@@ -44,7 +44,7 @@ type AgentCheckoutAnswer = {
  * bill beside the agent (to the billing portal).
  */
 export function AgentSubscriptionCard() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -69,7 +69,8 @@ export function AgentSubscriptionCard() {
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("create-agent-checkout", {
-        body: { ...checkoutContext(), ...purchaseTerms() },
+        // The page's language: Stripe shows the trial and renewal terms in it.
+        body: { language: i18n.language, ...checkoutContext(), ...purchaseTerms() },
       });
       if (await consentWasRequired(error, data)) {
         setLoading(false);

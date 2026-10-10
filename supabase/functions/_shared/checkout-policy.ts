@@ -128,8 +128,12 @@ export function sessionPolicy(opts: {
   hasCustomer?: boolean;
   /** The renewal sentence for a subscription (renewalTerms below). */
   renewal?: string | null;
+  /** The buyer's site language (checkoutLanguageOf), so Stripe's page matches the sentence. */
+  language?: string | null;
 }): Params {
   const out: Params = {};
+  const locale = opts.language ? STRIPE_LOCALE[opts.language] : undefined;
+  if (locale) out.locale = locale;
   const email = typeof opts.receiptEmail === "string" && opts.receiptEmail.includes("@") ? opts.receiptEmail.trim().toLowerCase() : "";
   if (opts.mode === "payment" && email) out.payment_intent_data = { receipt_email: email };
   const customText: Params = {};
@@ -152,17 +156,82 @@ export function sessionPolicy(opts: {
 
 const usd = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
+/** The site's languages (src/i18n/locales). */
+export const CHECKOUT_LANGUAGES = ["en", "en-GB", "de", "es", "fr", "hi", "nl", "pt", "tl"] as const;
+export type CheckoutLanguage = (typeof CHECKOUT_LANGUAGES)[number];
+
+/**
+ * The language the buyer's page was in (body.language): exact, then its base
+ * ("fr-CA" is fr). Null when the body names none we have (an old cached page):
+ * the sentence is then English and Stripe keeps choosing its own page language.
+ */
+export function checkoutLanguageOf(body: unknown): CheckoutLanguage | null {
+  const b = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
+  const raw = typeof b.language === "string" ? b.language.trim() : "";
+  const all: readonly string[] = CHECKOUT_LANGUAGES;
+  if (all.includes(raw)) return raw as CheckoutLanguage;
+  const base = raw.split(/[-_]/)[0].toLowerCase();
+  return all.includes(base) ? (base as CheckoutLanguage) : null;
+}
+
+/**
+ * Stripe Checkout's locale for each site language. Hindi has none, so its
+ * session keeps Stripe's own choice ("auto"); Tagalog is Stripe's Filipino;
+ * the site's Portuguese is Brazilian (você).
+ */
+const STRIPE_LOCALE: Record<string, string | undefined> = {
+  en: "en", "en-GB": "en-GB", de: "de", es: "es", fr: "fr", nl: "nl", pt: "pt-BR", tl: "fil",
+};
+
+/** The renewal sentence in each language: with a trial, and without. */
+const RENEWAL: Record<CheckoutLanguage, { trial: (days: number, price: string) => string; plain: (price: string) => string }> = {
+  en: {
+    trial: (d, p) => `Free for ${d} days, then ${p} every month until you cancel. Cancel before the trial ends and you will not be charged. Cancel any time from your account (Account, then Manage subscription).`,
+    plain: (p) => `${p} every month, renewing automatically until you cancel. Cancel any time from your account (Account, then Manage subscription).`,
+  },
+  "en-GB": {
+    trial: (d, p) => `Free for ${d} days, then ${p} every month until you cancel. Cancel before the trial ends and you will not be charged. Cancel any time from your account (Account, then Manage subscription).`,
+    plain: (p) => `${p} every month, renewing automatically until you cancel. Cancel any time from your account (Account, then Manage subscription).`,
+  },
+  de: {
+    trial: (d, p) => `${d} Tage kostenlos, danach ${p} pro Monat, bis Sie kündigen. Kündigen Sie vor Ende des Testzeitraums, wird nichts berechnet. Kündigen Sie jederzeit in Ihrem Konto.`,
+    plain: (p) => `${p} pro Monat, verlängert sich automatisch, bis Sie kündigen. Kündigen Sie jederzeit in Ihrem Konto.`,
+  },
+  es: {
+    trial: (d, p) => `Gratis durante ${d} días; después, ${p} al mes hasta que canceles. Cancela antes de que termine la prueba y no se te cobrará. Cancela cuando quieras desde tu cuenta.`,
+    plain: (p) => `${p} al mes, con renovación automática hasta que canceles. Cancela cuando quieras desde tu cuenta.`,
+  },
+  fr: {
+    trial: (d, p) => `Gratuit pendant ${d} jours, puis ${p} par mois jusqu'à résiliation. Résiliez avant la fin de l'essai et rien ne vous sera facturé. Résiliez quand vous voulez depuis votre compte.`,
+    plain: (p) => `${p} par mois, renouvelé automatiquement jusqu'à ce que vous résiliiez. Résiliez quand vous voulez depuis votre compte.`,
+  },
+  hi: {
+    trial: (d, p) => `${d} दिन मुफ़्त, फिर रद्द करने तक ${p} प्रति माह। परीक्षण अवधि खत्म होने से पहले रद्द करें तो कोई शुल्क नहीं लगेगा। अपने खाते से कभी भी रद्द करें।`,
+    plain: (p) => `${p} प्रति माह, रद्द करने तक अपने-आप नवीनीकृत होता है। अपने खाते से कभी भी रद्द करें।`,
+  },
+  nl: {
+    trial: (d, p) => `${d} dagen gratis, daarna ${p} per maand tot je opzegt. Zeg op voordat de proefperiode eindigt en je betaalt niets. Zeg op wanneer je wilt via je account.`,
+    plain: (p) => `${p} per maand, wordt automatisch verlengd tot je opzegt. Zeg op wanneer je wilt via je account.`,
+  },
+  pt: {
+    trial: (d, p) => `Grátis por ${d} dias; depois, ${p} por mês até você cancelar. Cancele antes do fim do teste e nada será cobrado. Cancele quando quiser na sua conta.`,
+    plain: (p) => `${p} por mês, com renovação automática até você cancelar. Cancele quando quiser na sua conta.`,
+  },
+  tl: {
+    trial: (d, p) => `Libre sa loob ng ${d} araw, pagkatapos ay ${p} bawat buwan hanggang kanselahin mo. Kanselahin bago matapos ang trial at hindi ka sisingilin. Kanselahin kahit kailan mula sa iyong account.`,
+    plain: (p) => `${p} bawat buwan, awtomatikong nire-renew hanggang kanselahin mo. Kanselahin kahit kailan mula sa iyong account.`,
+  },
+};
+
 /**
  * THE RENEWAL TERMS, as Stripe shows them beside its pay button and as the
- * confirmation mail repeats them. Computed from the price and the trial the
- * session actually carries, never typed.
+ * confirmation mail repeats them, in the buyer's site language (wave 3
+ * review: they were English for every buyer). Computed from the price and the
+ * trial the session actually carries, never typed.
  */
-export function renewalTerms(priceCents: number, trialDays: number | null): string {
-  const cancel = "Cancel any time from your account (Account, then Manage subscription).";
-  if (trialDays && trialDays > 0) {
-    return `Free for ${trialDays} days, then ${usd(priceCents)} every month until you cancel. Cancel before the trial ends and you will not be charged. ${cancel}`;
-  }
-  return `${usd(priceCents)} every month, renewing automatically until you cancel. ${cancel}`;
+export function renewalTerms(priceCents: number, trialDays: number | null, language?: string | null): string {
+  const t = RENEWAL[checkoutLanguageOf({ language }) ?? "en"];
+  return trialDays && trialDays > 0 ? t.trial(trialDays, usd(priceCents)) : t.plain(usd(priceCents));
 }
 
 /**

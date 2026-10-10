@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-09T13:00Z
+// deploy-stamp: 2026-10-09T18:00Z
 // Creates a Stripe Checkout session for Resume Booster Pro — $45/month,
 // all current and future consumer tools included. Uses inline recurring
 // price_data so no Price object needs to exist in the Stripe dashboard.
@@ -35,11 +35,11 @@ import { checkoutVerdict, verdictBody } from "../_shared/subscription-standing.t
 import { signedInUser } from "../_shared/signed-in-email.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
 import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-start.ts";
-import { checkoutOrigin, euConsentRefusal, policyMetadata, renewalTerms, sessionPolicy } from "../_shared/checkout-policy.ts";
+import { checkoutLanguageOf, checkoutOrigin, euConsentRefusal, policyMetadata, renewalTerms, sessionPolicy } from "../_shared/checkout-policy.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-subscription-checkout.2026-10-09.1";
+const FN_BUILD = "create-subscription-checkout.2026-10-09.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -130,7 +130,11 @@ serve(async (req) => {
       cancel_url: `${origin}/pricing?pro=cancelled`,
       metadata: { product_type: "pro_subscription", customer_email: email, user_id: buyer.id, ...policy },
       // Renewal terms beside Stripe's pay button, tax only with the EU/UK switch on.
-      ...sessionPolicy({ mode: "subscription", env, hasCustomer: !!standing.reuseCustomerId, renewal: renewalTerms(PRO_PRICE_CENTS, null) }),
+      // In the buyer's site language, with Stripe's page in the same one.
+      ...sessionPolicy({
+        mode: "subscription", env, hasCustomer: !!standing.reuseCustomerId,
+        renewal: renewalTerms(PRO_PRICE_CENTS, null, checkoutLanguageOf(body)), language: checkoutLanguageOf(body),
+      }),
     });
 
     // The start is on record before the browser has the url, so no

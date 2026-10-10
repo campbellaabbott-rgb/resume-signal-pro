@@ -35,7 +35,7 @@
 // the same Stripe read the double-billing guard makes). A read that fails
 // offers no trial.
 
-// deploy-stamp: 2026-10-09T13:00Z
+// deploy-stamp: 2026-10-09T18:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
@@ -45,11 +45,11 @@ import { checkoutVerdict, verdictBody } from "../_shared/subscription-standing.t
 import { clientAddressOr } from "../_shared/client-address.ts";
 import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-start.ts";
 import { bearerOf } from "../_shared/service-caller.ts";
-import { checkoutOrigin, euConsentRefusal, policyMetadata, renewalTerms, sessionPolicy } from "../_shared/checkout-policy.ts";
+import { checkoutLanguageOf, checkoutOrigin, euConsentRefusal, policyMetadata, renewalTerms, sessionPolicy } from "../_shared/checkout-policy.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-agent-checkout.2026-10-09.1";
+const FN_BUILD = "create-agent-checkout.2026-10-09.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -191,7 +191,8 @@ serve(async (req) => {
       // session carries (item 11); tax only with the EU/UK switch on.
       ...sessionPolicy({
         mode: "subscription", env, hasCustomer: !!standing.reuseCustomerId,
-        renewal: renewalTerms(AGENT_PRICE_CENTS, trialOffered ? AGENT_TRIAL_DAYS : null),
+        renewal: renewalTerms(AGENT_PRICE_CENTS, trialOffered ? AGENT_TRIAL_DAYS : null, checkoutLanguageOf(body)),
+        language: checkoutLanguageOf(body),
       }),
     });
 

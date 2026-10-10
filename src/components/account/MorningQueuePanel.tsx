@@ -182,7 +182,7 @@ const agentTerms = { agentPrice: SUBSCRIPTIONS.agent.priceUsd, trialDays: SUBSCR
 export function MorningQueuePanel({ userId, email, defaultResume }: {
   userId: string; email: string | null; defaultResume: string | null;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   // Same source the marketing surfaces use. Defaults to false and treats any
   // error as offline, so a first paint can understate the product but never
@@ -430,7 +430,7 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
   const subscribe = useCallback(async () => {
     if (!email) return;
     setBusy(true);
-    const { data, error } = await sb.functions.invoke("create-agent-checkout", { body: { email, ...checkoutContext(), ...purchaseTerms() } });
+    const { data, error } = await sb.functions.invoke("create-agent-checkout", { body: { email, language: i18n.language, ...checkoutContext(), ...purchaseTerms() } });
     setBusy(false);
     if (await consentWasRequired(error, data)) { toast.error(t("purchaseTerms.consentNeeded")); return; }
     if (error || !data?.url) {
@@ -439,7 +439,7 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
       return;
     }
     window.location.href = data.url;
-  }, [email, t]);
+  }, [email, t, i18n]);
 
   /**
    * THE RÉSUMÉ THE AGENT WILL SCORE AGAINST — one definition, used by both the
