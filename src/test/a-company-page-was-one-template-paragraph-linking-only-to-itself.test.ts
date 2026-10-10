@@ -1,10 +1,20 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { codeOf } from "./helpers/strip-comments";
 import {
+  LANDER_OPENINGS_READS,
   companyLanderPage,
+  duplicateSkeletons,
   landerFacts,
   landerHasOwnContent,
+  landerOpenings,
   landerRobots,
+  landerSkeleton,
   landerThinBreaker,
+  nextOpeningsCache,
+  openingsFromList,
+  openingsToRead,
   selectLanders,
 } from "../../scripts/prerender-pages.mjs";
 import { boardName, isCodeShapedName, possessive } from "@/lib/company-display";
@@ -21,6 +31,7 @@ import { boardName, isCodeShapedName, possessive } from "@/lib/company-display";
  */
 
 const SITE = "https://resumebooster.work";
+const TODAY = "2026-10-10";
 const esc = (s: string) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const fmt = (n: number) => n.toLocaleString("en-US");
 const href = (t: string) => (/\.[^/]*$/.test(`/jobs/company/${t}`) ? `/jobs/company/${t}/` : `/jobs/company/${t}`);
@@ -32,8 +43,9 @@ const factsOf = (intel: unknown) => landerFacts(intel, { countryName: (c: string
 const MS = { usd_n: 363, countries: [{ n: 509, country: "US" }, { n: 95, country: "IN" }, { n: 47, country: "GB" }], categories: [{ n: 147, category: "finance" }, { n: 105, category: "customer" }, { n: 78, category: "engineering" }] };
 const DOMINOS = { countries: [{ n: 21828, country: "US" }, { n: 3, country: "CA" }], categories: [{ n: 6126, category: "customer" }, { n: 5743, category: "operations" }, { n: 400, category: "other" }] };
 
-const page = (token: string, name: string, openN: number | null, intel: unknown, openings: Array<{ path: string; title: string; place: string }> = []) =>
-  companyLanderPage({ token, name, primaryToken: token, openN, facts: factsOf(intel), openings, sources: "Workday, Greenhouse", boardCompanies: 31000, site: SITE, esc, possessive, fmt, href });
+type Opening = { href: string; title: string; place: string };
+const page = (token: string, name: string, openN: number | null, intel: unknown, openings: Opening[] = [], openingsAt: string | null = null) =>
+  companyLanderPage({ token, name, primaryToken: token, openN, facts: factsOf(intel), openings, openingsAt, sources: "Workday, Greenhouse", boardCompanies: 31000, site: SITE, esc, possessive, fmt, href });
 
 /** The body with its name and numbers taken out: what the report compared. */
 const skeleton = (html: string, name: string) =>
@@ -48,11 +60,11 @@ describe("a company page carries what the board knows about that employer and no
   });
 
   it("links the posting pages this bake wrote for it, in the body and as an ItemList", () => {
-    const openings = [{ path: "/jobs/posting/workday/ms~wd5~external/JR1", title: "Performance Analyst", place: "Tempe, Arizona" }];
+    const { openings } = landerOpenings({ postings: [{ id: "workday:ms~wd5~external:JR1", path: "/jobs/posting/workday/ms~wd5~external/JR1", title: "Performance Analyst", place: "Tempe, Arizona" }], cached: null, today: TODAY });
     const p = page("ms~wd5~external", "Morgan Stanley", 605, MS, openings);
-    expect(p.content).toContain(`<a href="${openings[0].path}">Performance Analyst</a> — Tempe, Arizona`);
+    expect(p.content).toContain(`<a href="/jobs/posting/workday/ms~wd5~external/JR1">Performance Analyst</a> — Tempe, Arizona`);
     const ld = p.jsonLd[0] as { mainEntity?: { itemListElement: Array<{ url: string }> } };
-    expect(ld.mainEntity?.itemListElement[0].url).toBe(`${SITE}${openings[0].path}`);
+    expect(ld.mainEntity?.itemListElement[0].url).toBe(`${SITE}/jobs/posting/workday/ms~wd5~external/JR1`);
   });
 
   it("two employers' pages differ in more than the name and the count", () => {
@@ -72,7 +84,7 @@ describe("a company page carries what the board knows about that employer and no
   it("drops the catch-all bucket and empty rows from the facts", () => {
     const f = factsOf({ countries: [{ n: 0, country: "FR" }], categories: [{ n: 9, category: "other" }] });
     expect(f).toEqual({ countries: [], fields: [] });
-    expect(landerHasOwnContent({ facts: f, postings: [] })).toBe(false);
+    expect(landerHasOwnContent({ openings: [] })).toBe(false);
   });
 });
 
@@ -108,5 +120,89 @@ describe("a page with nothing of its own, or a name that is still a code, is not
     expect(by["ms~wd5~private"].primary, "one employer, one indexable page").toBe("ms~wd5~external");
     expect(by["uoflhealth~wd1~UofLHealthCareers"].unreadable).toBe(true);
     expect(by["dominos"].unreadable).toBe(false);
+  });
+});
+
+describe("a company page lists the employer's own openings, not just a place and a field", () => {
+  // Reviewer, 2026-10-10: S1 was half done. The only content most pages had
+  // of their own was one to three country and field names, linked back to the
+  // same page with ?country= or ?category= (the same static file to a crawler
+  // that runs no script), and a place and a field are shared by hundreds of
+  // employers, so near-template pages stayed indexable. The per-employer
+  // openings read the comments described did not exist.
+  const listing = (n: number, tag: string) => ({ jobs: Array.from({ length: n }, (_, i) => ({ id: `smartrecruiters:dominos:${tag}${i}`, title: `Delivery Driver ${tag} ${String.fromCharCode(97 + i)}`, location: "Ann Arbor, Michigan" })) });
+
+  it("reads the board's listing into openings, each linked to the posting on the live board", () => {
+    const rows = openingsFromList(200, listing(12, "x"));
+    expect(rows).toHaveLength(10);
+    const { openings, at, answered } = landerOpenings({ postings: [], cached: { at: "2026-10-08", rows }, today: TODAY });
+    expect(answered).toBe(true);
+    const p = page("dominos", "Domino's", 25792, DOMINOS, openings, at);
+    const jobLinks = p.content.match(/href="\/jobs\?job=[^"]+"/g) ?? [];
+    expect(jobLinks.length, "the report's bar for dominos: 10+ posting or job links").toBeGreaterThanOrEqual(10);
+    expect(p.content).toContain(`href="/jobs?job=smartrecruiters%3Adominos%3Ax0"`);
+    expect(p.content).toContain("read 2026-10-08");
+    expect((p.jsonLd[0] as { mainEntity?: unknown }).mainEntity, "a board link is the board, not an item of this page").toBeUndefined();
+    expect(openingsFromList(429, null), "a refused read is no answer").toBeNull();
+  });
+
+  it("a posting page of its own comes first and the board row for it is not listed twice", () => {
+    const rows = openingsFromList(200, listing(3, "y"))!;
+    const { openings } = landerOpenings({ postings: [{ id: rows[0].id, path: "/jobs/posting/smartrecruiters/dominos/y0", title: rows[0].title, place: "" }], cached: { at: TODAY, rows }, today: TODAY });
+    expect(openings.map((o: Opening) => o.href)).toEqual(["/jobs/posting/smartrecruiters/dominos/y0", "/jobs?job=smartrecruiters%3Adominos%3Ay1", "/jobs?job=smartrecruiters%3Adominos%3Ay2"]);
+  });
+
+  it("a place and a field alone do not make a page its own; an answered short listing is noindex, an unread one keeps its index", () => {
+    const short = landerOpenings({ postings: [], cached: { at: TODAY, rows: openingsFromList(200, listing(2, "z")) }, today: TODAY });
+    expect(landerHasOwnContent({ openings: short.openings })).toBe(false);
+    expect(landerRobots({ isPrimary: true, unreadable: false, answered: short.answered, ownContent: false })).toBe("noindex, follow");
+    const unread = landerOpenings({ postings: [{ id: "a", path: "/jobs/posting/x/y/a", title: "One", place: "" }], cached: null, today: TODAY });
+    expect(unread.answered, "a posting page with no listing read says nothing about the listing").toBe(false);
+    expect(landerRobots({ isPrimary: true, unreadable: false, answered: unread.answered, ownContent: false })).toBeNull();
+    const stale = landerOpenings({ postings: [], cached: { at: "2026-09-01", rows: openingsFromList(200, listing(10, "s")) }, today: TODAY });
+    expect(stale.openings, "a listing older than the window is not printed").toEqual([]);
+    expect(stale.answered).toBe(false);
+  });
+
+  it("each bake reads the never-read employers first, then the oldest, within its own reserve", () => {
+    const tokens = ["a", "b", "c", "d", "e"];
+    const cache = { a: { at: "2026-10-09", rows: [] }, b: { at: "2026-10-01", rows: [] }, d: { at: "2026-09-01", rows: [] } };
+    expect(openingsToRead({ tokens, cache, today: TODAY, max: 3 })).toEqual(["c", "d", "e"]);
+    expect(openingsToRead({ tokens, cache, today: TODAY, max: 4 })).toEqual(["c", "d", "e", "b"]);
+    expect(LANDER_OPENINGS_READS).toBeGreaterThan(0);
+    const next = nextOpeningsCache({ prior: cache, reads: new Map([["c", []]]), tokens: ["a", "b", "c", "d"], today: TODAY });
+    expect(Object.keys(next).sort(), "the old entry for d is dropped, the read for c joins").toEqual(["a", "b", "c"]);
+    expect(next.c.at).toBe(TODAY);
+  });
+
+  it("the report's measure: 450 employers with their own listings are 400+ distinct pages; with facts alone they collapse", () => {
+    const titles = ["Nurse", "Driver", "Analyst", "Cashier", "Engineer", "Teller", "Chef", "Pharmacist", "Mechanic", "Welder", "Recruiter", "Planner"];
+    const places = ["Austin, Texas", "Leeds", "Toronto, Ontario", "Pune", "Dublin"];
+    const word = (k: number) => k.toString(26).replace(/\d/g, (d) => "abcdefghij"[Number(d)]).replace(/[k-p]/g, "x");
+    const employers = Array.from({ length: 450 }, (_, k) => ({ token: `emp${k}`, name: `Employer ${word(k)} Group` }));
+    const render = (withListing: boolean) => employers.map((e, k) => {
+      const rows = withListing ? Array.from({ length: 6 }, (_, i) => ({ id: `greenhouse:${e.token}:${i}`, title: `${titles[(k + i) % titles.length]} ${word(k * 7 + i)}`, place: places[(k + i) % places.length] })) : [];
+      const { openings, at } = landerOpenings({ postings: [], cached: withListing ? { at: TODAY, rows } : null, today: TODAY });
+      const html = page(e.token, e.name, 40 + k, MS, openings, at).content;
+      return { key: e.token, skeleton: landerSkeleton(html, [e.name, possessive(e.name)]) };
+    });
+    const listed = render(true);
+    expect(new Set(listed.map((x) => x.skeleton)).size).toBeGreaterThanOrEqual(400);
+    expect(duplicateSkeletons(listed).size).toBe(0);
+    const bare = render(false);
+    expect(new Set(bare.map((x) => x.skeleton)).size, "name and count swapped, nothing else: one page").toBe(1);
+    expect(duplicateSkeletons(bare).size).toBe(450);
+    expect(landerRobots({ isPrimary: true, unreadable: false, answered: false, ownContent: false, duplicate: true })).toBe("noindex, follow");
+  });
+});
+
+describe("the bake reads the listings inside the build cap and keeps them for the next bake", () => {
+  const bake = codeOf(readFileSync(resolve(__dirname, "../../scripts/prerender-seo.mjs"), "utf8"));
+  it("the listings have their own share of the 721 reads, so the posting pages cannot spend it", () => {
+    expect(bake).toMatch(/const BAKE_BOARD_CALL_BUDGET = 721;/);
+    expect(bake).toMatch(/callBudget\(BAKE_BOARD_CALL_BUDGET - LANDER_OPENINGS_READS\)/);
+    expect(bake).toMatch(/openingsBudget\.take\(\)/);
+    expect(bake).toMatch(/openingsToRead\(\{ tokens: listedTokens, cache: landerOpeningsCache, today: TODAY \}\)/);
+    expect(bake).toMatch(/openings: landerOpeningsCache,/);
   });
 });

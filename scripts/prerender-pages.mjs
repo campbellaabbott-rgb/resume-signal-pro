@@ -259,11 +259,22 @@ export function pageLastmod({ fingerprint, prior, today, stated = null }) {
 // ---- What a company page says about its own employer (SEO report, S1) ----
 //
 // 485 of the 487 company pages were one template paragraph with the name and
-// the count swapped, linking only to themselves. Each now carries what the
-// board knows about that employer and no other: where its roles are and in
-// which fields (get_company_intel, the read the live lander makes), and the
-// posting pages this bake wrote for it. A page with none of that is the
-// template again, and goes out as noindex.
+// the count swapped, linking only to themselves. Each now lists that
+// employer's own openings: the posting pages this bake wrote for it, then the
+// board's own listing of its newest roles, each linked to the posting on the
+// live board. The listing costs one board read per employer, so a bake reads
+// LANDER_OPENINGS_READS of them (never-read or oldest first) and keeps every
+// answer in the ledger for LANDER_OPENINGS_MAX_AGE_DAYS; the rest of the
+// reads stay with the posting pages, inside the build cap. Where its roles
+// are and in which fields (get_company_intel) are printed too, but a place
+// and a field are shared by hundreds of employers, so they do not make a
+// page its own: fewer than LANDER_MIN_OPENINGS openings on an answered
+// listing, or a page whose text matches another page's once names and
+// numbers are taken out, goes out as noindex.
+export const LANDER_OPENINGS_READS = 100;
+export const LANDER_OPENINGS_MAX_AGE_DAYS = 14;
+export const LANDER_OPENINGS_SHOWN = 10;
+export const LANDER_MIN_OPENINGS = 3;
 
 /** Up to three named places and three named fields from one get_company_intel answer. */
 export function landerFacts(intel, { countryName, fieldLabel }) {
@@ -280,9 +291,84 @@ export function landerFacts(intel, { countryName, fieldLabel }) {
   return { countries, fields };
 }
 
-/** True when a company page has something of its own to say, so it may be indexed. */
-export const landerHasOwnContent = ({ facts, postings }) =>
-  (facts?.countries?.length ?? 0) + (facts?.fields?.length ?? 0) > 0 || (postings?.length ?? 0) > 0;
+/** The rows of one company-filtered board list read, or null when the answer cannot be read. */
+export function openingsFromList(status, body) {
+  if (status !== 200 || !body || typeof body !== "object" || !Array.isArray(body.jobs)) return null;
+  return body.jobs
+    .filter((r) => r && typeof r.id === "string" && r.id && typeof r.title === "string" && r.title.trim())
+    .slice(0, LANDER_OPENINGS_SHOWN)
+    .map((r) => ({ id: r.id, title: r.title.trim(), place: typeof r.location === "string" ? r.location.trim() : "" }));
+}
+
+const youngEntry = (e, today, maxAgeDays) => {
+  const age = e && typeof e === "object" && Array.isArray(e.rows) ? dayDiff(e.at, today) : null;
+  return age !== null && age >= 0 && age <= maxAgeDays ? e : null;
+};
+
+/** The employer boards whose listing this bake reads: never read (or too old to print) first, then the oldest, each in rank order. */
+export function openingsToRead({ tokens, cache, today, max = LANDER_OPENINGS_READS, maxAgeDays = LANDER_OPENINGS_MAX_AGE_DAYS }) {
+  const c = cache && typeof cache === "object" ? cache : {};
+  return tokens
+    .map((t, i) => ({ t, i, at: youngEntry(c[t], today, maxAgeDays)?.at ?? "" }))
+    .sort((a, b) => (a.at === b.at ? a.i - b.i : a.at < b.at ? -1 : 1))
+    .slice(0, Math.max(0, max))
+    .map((x) => x.t);
+}
+
+/** The listing cache the next bake reads: this bake's answers over the young entries it kept, for the boards still chosen. */
+export function nextOpeningsCache({ prior, reads, tokens, today, maxAgeDays = LANDER_OPENINGS_MAX_AGE_DAYS }) {
+  const out = {};
+  for (const t of tokens) {
+    if (reads.has(t)) out[t] = { at: today, rows: reads.get(t) };
+    else {
+      const e = youngEntry(prior?.[t], today, maxAgeDays);
+      if (e) out[t] = { at: e.at, rows: e.rows };
+    }
+  }
+  return out;
+}
+
+/**
+ * The openings one company page lists: the posting pages this bake wrote for
+ * the employer first, then its listing from the cache, each linked to the
+ * posting on the live board. `answered` is true only when there is a listing
+ * young enough to print: a posting page or two with no listing read says
+ * nothing about how many roles the employer lists.
+ */
+export function landerOpenings({ postings = [], cached = null, today, maxAgeDays = LANDER_OPENINGS_MAX_AGE_DAYS, limit = LANDER_OPENINGS_SHOWN }) {
+  const e = youngEntry(cached, today, maxAgeDays);
+  const out = [];
+  const ids = new Set();
+  for (const p of postings) {
+    if (out.length >= limit) break;
+    if (p.id) ids.add(p.id);
+    out.push({ href: p.path, title: p.title, place: p.place ?? "" });
+  }
+  for (const r of e ? e.rows : []) {
+    if (out.length >= limit) break;
+    if (ids.has(r.id)) continue;
+    ids.add(r.id);
+    out.push({ href: `/jobs?job=${encodeURIComponent(r.id)}`, title: r.title, place: r.place ?? "" });
+  }
+  return { openings: out, at: e ? e.at : null, answered: !!e };
+}
+
+/** True when a company page lists enough of its own openings to be a page of its own. */
+export const landerHasOwnContent = ({ openings }) => (openings?.length ?? 0) >= LANDER_MIN_OPENINGS;
+
+/** A page's text with its name, numbers and dates taken out: two pages with the same skeleton say the same thing. */
+export const landerSkeleton = (html, names = []) => {
+  let t = String(html ?? "").replace(/<[^>]*>/g, " ").replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#39;|&apos;/g, "'").replace(/&amp;/g, "&");
+  for (const n of names.filter(Boolean).sort((a, b) => b.length - a.length)) t = t.split(n).join("X");
+  return t.replace(/\d[\d,.\-]*/g, "N").replace(/\s+/g, " ").trim();
+};
+
+/** The keys whose skeleton another page also has: none of them says anything of its own. */
+export function duplicateSkeletons(items) {
+  const by = new Map();
+  for (const { key, skeleton } of items) by.set(skeleton, [...(by.get(skeleton) ?? []), key]);
+  return new Set([...by.values()].filter((ks) => ks.length > 1).flat());
+}
 
 /**
  * One company page. `robots` is decided by the caller (landerRobots); a page
@@ -294,12 +380,13 @@ export const landerHasOwnContent = ({ facts, postings }) =>
  * COUNT'S BASIS: ... so the number below it is the number this page states",
  * in the visible body of ~490 pages (L4-12).
  */
-export function companyLanderPage({ token, name, primaryToken, robots = null, openN, facts, openings = [], sources, boardCompanies, site, esc, possessive, fmt, href: hrefOf }) {
+export function companyLanderPage({ token, name, primaryToken, robots = null, openN, facts, openings = [], openingsAt = null, sources, boardCompanies, site, esc, possessive, fmt, href: hrefOf }) {
   const nm = name;
   const isPrimary = primaryToken === token;
   const hasN = typeof openN === "number";
   const href = hrefOf(token);
   const poss = possessive(nm);
+  const pages = openings.filter((p) => String(p.href).startsWith("/jobs/posting/"));
   const factsHtml = [
     facts?.countries?.length
       ? `<h2>Where ${esc(poss)} open roles are</h2>
@@ -310,8 +397,9 @@ export function companyLanderPage({ token, name, primaryToken, robots = null, op
             <p>The fields holding the most of its roles on this board: ${facts.fields.map((x) => `<a href="${href}?category=${encodeURIComponent(x.slug)}">${esc(x.label)}</a>`).join(", ")}. Fields are our own sorting of each posting's title, never a label the employer applied.</p>`
       : "",
     openings.length
-      ? `<h2>${esc(poss)} openings with a page of their own</h2>
-            <ul>${openings.map((p) => `<li><a href="${p.path}">${esc(p.title)}</a>${p.place ? ` — ${esc(p.place)}` : ""}</li>`).join("")}</ul>`
+      ? `<h2>Openings at ${esc(nm)}</h2>
+            <p>${openingsAt ? `From ${esc(poss)} listing on this board, read ${esc(openingsAt)}, newest first` : `${esc(poss)} openings with a page of their own on this site`}; the live board re-checks a posting when you open it.</p>
+            <ul>${openings.map((p) => `<li><a href="${esc(p.href)}">${esc(p.title)}</a>${p.place ? ` — ${esc(p.place)}` : ""}</li>`).join("")}</ul>`
       : "",
   ].filter(Boolean).join("\n            ");
   // 68-char SERP budget: the name always stays whole; the count phrase gives
@@ -346,7 +434,8 @@ export function companyLanderPage({ token, name, primaryToken, robots = null, op
       url: `${site}${href}`,
       about: { "@type": "Organization", name: nm },
       isPartOf: { "@type": "WebSite", name: "Resume Booster", url: site },
-      ...(openings.length ? { mainEntity: { "@type": "ItemList", itemListElement: openings.map((p, i) => ({ "@type": "ListItem", position: i + 1, url: `${site}${p.path}`, name: p.title })) } } : {}),
+      // Only the openings that are pages of their own: a board link is the board.
+      ...(pages.length ? { mainEntity: { "@type": "ItemList", itemListElement: pages.map((p, i) => ({ "@type": "ListItem", position: i + 1, url: `${site}${p.href}`, name: p.title })) } } : {}),
     }, {
       "@context": "https://schema.org",
       "@type": "BreadcrumbList",
@@ -361,21 +450,23 @@ export function companyLanderPage({ token, name, primaryToken, robots = null, op
 /**
  * Whether a company page may be indexed. Never when its name is still a
  * tenant code; never when the board ANSWERED and it has nothing of its own to
- * say. A failed read (an RPC outage) proves nothing, so the page keeps its
- * index on the count alone rather than a flaky read noindexing hundreds of
- * pages and tripping the sitemap ratchet.
+ * say; never when its text is another page's (`duplicate`). A listing not
+ * read yet, or a failed read, proves nothing, so the page keeps its index on
+ * the count alone rather than a flaky read noindexing hundreds of pages and
+ * tripping the sitemap ratchet.
  */
-export function landerRobots({ isPrimary, unreadable, answered, ownContent }) {
+export function landerRobots({ isPrimary, unreadable, answered, ownContent, duplicate = false }) {
   if (!isPrimary) return null;
-  return unreadable || (answered && !ownContent) ? "noindex, follow" : null;
+  return unreadable || duplicate || (answered && !ownContent) ? "noindex, follow" : null;
 }
 
 /**
  * True when "nothing of its own" answers are too many to be about the
  * employers: every company page is for an employer with 8+ open roles, so
- * when more than a quarter of the answered pages report no place and no
- * field, the read is broken and none is noindexed for it (that would also
- * trip the sitemap ratchet and lose the whole sitemap). Measured on a mock
- * bake whose intel answered empty: 460 of 489 pages, and the ratchet refused.
+ * when more than a quarter of the answered pages list too few openings (or
+ * match another page), the read is broken and none is noindexed for it (that
+ * would also trip the sitemap ratchet and lose the whole sitemap). Measured
+ * on a mock bake whose intel answered empty: 460 of 489, and the ratchet
+ * refused.
  */
 export const landerThinBreaker = ({ answered, thin }) => answered >= 20 && thin > answered * 0.25;

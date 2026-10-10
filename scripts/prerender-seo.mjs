@@ -26,6 +26,7 @@ import { dirname, join, resolve } from "node:path";
 import {
   PRERENDER_LEDGER_PATH, POSTING_STUB_KEEP_DAYS, callBudget, companyLanderPage, contentFingerprint, landerFacts, landerHasOwnContent, landerRobots, landerThinBreaker,
   bakeLanders, carrySitemaps, pageLastmod, postingCarryBase, postingCheckState, postingRowEligible, postingStubEntry, postingStubPage,
+  LANDER_OPENINGS_READS, LANDER_OPENINGS_SHOWN, duplicateSkeletons, landerOpenings, landerSkeleton, nextOpeningsCache, openingsFromList, openingsToRead,
 } from "./prerender-pages.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -210,14 +211,16 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
   const bundle = join(root, "scripts", ".prerender-data.mjs");
   execSync(`npx esbuild "${entry}" --bundle --format=esm --outfile="${bundle}" --log-level=error`, { cwd: root, stdio: "inherit" });
   const D = await import(bundle + `?t=${Date.now()}`);
-  // EVERY BOARD READ THIS BAKE MAKES IS COUNTED HERE, the facets rung, the
-  // posting pool, every carried re-check, every new posting and every employer
-  // page's openings, in that order of priority (rule 6 of the posting rule
-  // below). The build server has one day row at the board's build cap
+  // EVERY BOARD READ THIS BAKE MAKES IS COUNTED HERE: the facets rung, the
+  // posting pool, every carried re-check and every new posting (rule 6 of
+  // the posting rule below) share boardBudget; the employer pages' listings
+  // have LANDER_OPENINGS_READS of their own, so neither can starve the
+  // other. The build server has one day row at the board's build cap
   // (job-board/anon-budget.ts BUILD_DAILY_CAP), sized at twice the busiest
-  // day of bakes times this number.
+  // day of bakes times this total.
   const BAKE_BOARD_CALL_BUDGET = 721;
-  const boardBudget = callBudget(BAKE_BOARD_CALL_BUDGET);
+  const boardBudget = callBudget(BAKE_BOARD_CALL_BUDGET - LANDER_OPENINGS_READS);
+  const openingsBudget = callBudget(LANDER_OPENINGS_READS);
   const TODAY = new Date().toISOString().slice(0, 10);
 
   // ---- What the LIVE site published last time ----
@@ -1883,14 +1886,16 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
   //      single path into writtenPaths, the sitemap is built from writtenPaths,
   //      a noindex page never enters it, and an assertion below refuses the
   //      bake if a posting URL ever appears in the sitemap without its file.
-  //   6. Every board read this bake makes is counted against
-  //      BAKE_BOARD_CALL_BUDGET, spent in this order: the facets head and the
-  //      pool pages, the carried re-checks, the new postings, then the
-  //      employer pages' openings. A carried posting the budget cannot reach
-  //      is "unchecked", never dropped.
+  //   6. Every board read this block makes is counted against
+  //      boardBudget (BAKE_BOARD_CALL_BUDGET less the employer pages'
+  //      LANDER_OPENINGS_READS), spent in this order: the carried re-checks,
+  //      the pool pages, the new postings. A carried posting the budget
+  //      cannot reach is "unchecked", never dropped. The ceiling is sized to
+  //      fit: the facets head, 500 re-checks, 20 pool pages and 100 new
+  //      postings is the 621 (it was 600 when the listings had no reads).
   const POSTING_PAGE_CAP = 400;
   const POSTING_FRESH_RESERVE = 100;
-  const POSTING_PAGE_CEILING = 600;
+  const POSTING_PAGE_CEILING = 500;
   const POSTING_FETCH_CONCURRENCY = 8;
   // Twenty pages of 60: the board gives no caller without a secret more than
   // a page's 60 rows a call (job-board .88, anon-budget.ts pageCeiling), and
@@ -1906,6 +1911,8 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
   const postingsByToken = new Map();
   /** How many company pages this bake made indexable, for /companies and llms.txt. */
   let COMPANY_PAGE_COUNT = null;
+  /** Each employer page's board listing, carried in the ledger (S1); the previous one until the lander block replaces it. */
+  let landerOpeningsCache = ledgerIn && ledgerIn.openings && typeof ledgerIn.openings === "object" ? ledgerIn.openings : {};
   /** Every posting path this bake accounted for and its state, published as the ledger. */
   const postingLedger = {};
   {
@@ -2123,7 +2130,7 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
         postingPaths.push(path);
         if (job.token) {
           if (!postingsByToken.has(job.token)) postingsByToken.set(job.token, []);
-          postingsByToken.get(job.token).push({ path, title: String(job.title).trim(), place });
+          postingsByToken.get(job.token).push({ id: job.id, path, title: String(job.title).trim(), place });
         }
         postingLedger[path] = { state: "live", since: TODAY, first, title: job.title, company: nm, token: job.token ?? null };
       }
@@ -2158,7 +2165,7 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       if (postingPaths.length) {
         const links = detailed
           .filter((d) => postingPaths.includes(D.postingPagePath(d.job.id)))
-          .map((d) => `<li><a href="${D.postingPagePath(d.job.id)}">${esc(d.job.title)}</a> — ${esc(String(d.job.company).trim())}${d.job.location ? `, ${esc(String(d.job.location).trim())}` : ""}</li>`)
+          .map((d) => `<li><a href="${D.postingPagePath(d.job.id)}">${esc(d.job.title)}</a> — ${esc(D.postingEmployer(d.job))}${d.job.location ? `, ${esc(String(d.job.location).trim())}` : ""}</li>`)
           .join("\n              ");
         postingIndexSection = `
           <section>
@@ -2292,11 +2299,12 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
     //
     // S1 (SEO report 2026-10-08): 485 of 487 of these pages were one template
     // paragraph with the name and count swapped, linking only to themselves.
-    // Each now carries what the board knows about that employer and no other:
-    // where its roles are and in which fields (get_company_intel, the read the
-    // live lander makes), linked into the board filtered that way, and the
-    // posting pages this bake wrote for it. A page with none of that, or one
-    // whose name is still a tenant code, goes out as noindex, off the sitemap.
+    // Each now lists the employer's own openings (its posting pages, then its
+    // listing on the board, read LANDER_OPENINGS_READS employers a bake and
+    // carried in the ledger) and where its roles are and in which fields
+    // (get_company_intel). One with too few openings on an answered listing,
+    // one whose text is another page's, or one whose name is still a tenant
+    // code goes out as noindex, off the sitemap (landerRobots).
     {
       const envText6 = (() => { try { return readFileSync(join(root, ".env"), "utf8"); } catch { return ""; } })();
       const grab6 = (k) => process.env[k] || (envText6.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
@@ -2320,6 +2328,31 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
           }));
         }
       }
+      // Each employer's listing: the never-read and oldest first, one board
+      // read each from openingsBudget; every answer joins the ledger's cache.
+      const listedTokens = primaries0.filter((c) => !c.unreadable).map((c) => c.token);
+      const toRead = supaUrl6 && supaKey6 ? openingsToRead({ tokens: listedTokens, cache: landerOpeningsCache, today: TODAY }) : [];
+      const openingsReads = new Map();
+      let openingsUnread = 0;
+      for (let i = 0; i < toRead.length; i += 6) {
+        await Promise.all(toRead.slice(i, i + 6).map(async (t) => {
+          if (!openingsBudget.take()) { openingsUnread++; return; }
+          try {
+            const r = await fetch(`${supaUrl6}/functions/v1/job-board`, {
+              method: "POST",
+              headers: { apikey: supaKey6, Authorization: `Bearer ${supaKey6}`, "Content-Type": "application/json", "x-rb-budget": "build" },
+              body: JSON.stringify({ action: "list", companies: [t], sort: "newest", limit: LANDER_OPENINGS_SHOWN, includeFacets: false }),
+              signal: AbortSignal.timeout(20000),
+            });
+            let j = null;
+            try { j = await r.json(); } catch { j = null; }
+            const rows = openingsFromList(r.status, j);
+            if (rows) openingsReads.set(t, rows.map((x) => ({ id: x.id, title: x.title.slice(0, 140), place: x.place.slice(0, 80) })));
+            else openingsUnread++;
+          } catch { openingsUnread++; }
+        }));
+      }
+      if (listedTokens.length) landerOpeningsCache = nextOpeningsCache({ prior: landerOpeningsCache, reads: openingsReads, tokens: listedTokens, today: TODAY });
       const regionNames = (() => { try { return new Intl.DisplayNames(["en"], { type: "region" }); } catch { return null; } })();
       const countryName = (code) => { try { return regionNames?.of(String(code).toUpperCase()) ?? null; } catch { return null; } };
       const fieldLabelOf = (slug) => CATEGORY_LANDERS.find(([s]) => s === slug)?.[1] ?? null;
@@ -2328,41 +2361,57 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       let consolidated = 0;
       let thin = 0;
       let codeNamed = 0;
+      let duplicated = 0;
+      const pageOf = (c, info, robots) => companyLanderPage({
+        token: c.token, name: c.name, primaryToken: info.primary.token, robots, openN: openRolesOf(c), facts: info.facts,
+        openings: info.openings, openingsAt: info.at, sources: D.SERVING_SOURCE_LIST, boardCompanies,
+        site: SITE, esc, possessive, fmt: (n) => fmt(n), href: landerPath,
+      });
       // The facts and openings of each EMPLOYER (every board of it this bake
-      // chose), read first, so the noindex rule can see them all at once.
+      // chose), read first, so the noindex rules can see them all at once.
       const landerInfo = new Map(LANDERS.map((c) => {
         const primary = landerByToken.get(c.primary) ?? c;
         const tokens = LANDERS.filter((x) => x.primary === c.primary).map((x) => x.token);
         const facts = landerFacts(intelOf.get(primary.token), { countryName, fieldLabel: fieldLabelOf });
-        const openings = tokens.flatMap((t) => postingsByToken.get(t) ?? []).slice(0, 12);
-        return [c.token, { primary, facts, openings, ownContent: landerHasOwnContent({ facts, postings: openings }), answered: intelOf.has(primary.token) || openings.length > 0 }];
+        const listed = landerOpenings({ postings: tokens.flatMap((t) => postingsByToken.get(t) ?? []), cached: landerOpeningsCache[primary.token], today: TODAY });
+        return [c.token, { primary, facts, openings: listed.openings, at: listed.at, ownContent: landerHasOwnContent({ openings: listed.openings }), answered: listed.answered }];
       }));
+      // A page whose text matches another page's once names and numbers are
+      // out says nothing of its own (the report's measure: 485 of 487 did).
+      const candidates = LANDERS.filter((c) => c.primary === c.token && !c.unreadable);
+      const skeletonOf = new Map(candidates.map((c) => [c.token, landerSkeleton(pageOf(c, landerInfo.get(c.token), null).content, [c.name, possessive(c.name), esc(c.name), esc(possessive(c.name))])]));
+      const dupes = duplicateSkeletons(candidates.map((c) => ({ key: c.token, skeleton: skeletonOf.get(c.token) })));
       // A CIRCUIT BREAKER ON "NOTHING OF ITS OWN". Every employer here has 8+
-      // open roles, so an answer with no place and no field is rare; when more
-      // than a quarter of the answered primaries say so, the read is broken
-      // (an empty cache, a schema change), not the employers, and noindexing
-      // them would also trip the sitemap ratchet and lose the whole sitemap.
+      // open roles, so a listing with fewer than three is rare; when more
+      // than a quarter of the answered primaries say so (or match another
+      // page), the read is broken (an empty answer, a schema change), not the
+      // employers, and noindexing them would also trip the sitemap ratchet
+      // and lose the whole sitemap.
       const answeredPrimaries = LANDERS.filter((c) => c.primary === c.token && landerInfo.get(c.token).answered);
       const thinPrimaries = answeredPrimaries.filter((c) => !landerInfo.get(c.token).ownContent);
       const thinBreaker = landerThinBreaker({ answered: answeredPrimaries.length, thin: thinPrimaries.length });
-      if (thinBreaker) console.warn(`[prerender-seo] company pages: ${thinPrimaries.length} of ${answeredPrimaries.length} answered with no place or field of their own — treated as a broken read, none noindexed for it this bake`);
+      const dupeBreaker = landerThinBreaker({ answered: candidates.length, thin: dupes.size });
+      if (thinBreaker) console.warn(`[prerender-seo] company pages: ${thinPrimaries.length} of ${answeredPrimaries.length} answered listings had too few openings — treated as a broken read, none noindexed for it this bake`);
+      if (dupeBreaker) console.warn(`[prerender-seo] company pages: ${dupes.size} of ${candidates.length} match another page's text — treated as a cold listing cache, none noindexed for it this bake`);
       for (const c of LANDERS) {
-        const nm = c.name;
         const isPrimary = c.primary === c.token;
         if (!isPrimary) consolidated++;
-        const { primary, facts, openings, ownContent } = landerInfo.get(c.token);
-        const answered = landerInfo.get(c.token).answered && !thinBreaker;
-        const robots = landerRobots({ isPrimary, unreadable: c.unreadable, answered, ownContent });
+        const info = landerInfo.get(c.token);
+        const answered = info.answered && !thinBreaker;
+        const duplicate = !dupeBreaker && dupes.has(c.token);
+        const robots = landerRobots({ isPrimary, unreadable: c.unreadable, answered, ownContent: info.ownContent, duplicate });
         if (isPrimary && c.unreadable) codeNamed++;
-        else if (isPrimary && answered && !ownContent) thin++;
+        else if (isPrimary && answered && !info.ownContent) thin++;
+        else if (isPrimary && duplicate) duplicated++;
         if (isPrimary && !robots) indexable.add(c.token);
-        const openN = openRolesOf(c);
-        write(companyLanderPage({
-          token: c.token, name: nm, primaryToken: primary.token, robots, openN, facts, openings,
-          sources: D.SERVING_SOURCE_LIST, boardCompanies, site: SITE, esc, possessive, fmt: (n) => fmt(n), href: landerPath,
-        }));
+        write(pageOf(c, info, robots));
       }
-      console.log(`[prerender-seo] company pages: ${LANDERS.length} (${consolidated} canonicalized to a larger board of the same employer; ${indexable.size} indexable; noindex: ${thin} with nothing of their own to say, ${codeNamed} still named by a tenant code${codeNamed ? `: ${LANDERS.filter((c) => c.primary === c.token && c.unreadable).slice(0, 40).map((c) => c.token).join(", ")}` : ""}); intel read for ${intelOf.size} of ${primaries0.length}`);
+      const distinct = new Set([...indexable].map((t) => skeletonOf.get(t))).size;
+      console.log(`[prerender-seo] company pages: ${LANDERS.length} (${consolidated} canonicalized to a larger board of the same employer; ${indexable.size} indexable, ${distinct} distinct once names and numbers are out; noindex: ${thin} with too few openings of their own, ${duplicated} matching another page, ${codeNamed} still named by a tenant code${codeNamed ? `: ${LANDERS.filter((c) => c.primary === c.token && c.unreadable).slice(0, 40).map((c) => c.token).join(", ")}` : ""}); intel read for ${intelOf.size} of ${primaries0.length}; listings read ${openingsReads.size} of ${toRead.length} (${openingsUnread} unread), ${Object.keys(landerOpeningsCache).length} of ${listedTokens.length} carried`);
+      // The SEO report's bar for this family: at least 400 pages that say
+      // something of their own. Below it the listings have not filled in yet
+      // (the first bakes) or the reads are being refused.
+      if (distinct < 400) console.warn(`[prerender-seo] company pages: only ${distinct} distinct indexable pages (the bar is 400) — the listing cache fills ${LANDER_OPENINGS_READS} employers a bake`);
 
       // ---- /companies: the directory that links every indexable company page ----
       //
@@ -3444,6 +3493,7 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
     const ledgerOut = {
       builtAt: TODAY,
       postings: postingLedger,
+      openings: landerOpeningsCache,
       pages: Object.fromEntries([...pageFingerprints.entries()].map(([path, fp]) => [path, { fp: fp.fp, lastmod: lastmodOf(path) }])),
     };
     const ledgerJson = JSON.stringify(ledgerOut);
