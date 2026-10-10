@@ -11,6 +11,7 @@ import { Footer } from "@/components/Footer";
 import { INDUSTRY_KEYWORDS, SUB_INDUSTRY_TAXONOMY } from "../../supabase/functions/free-keyword-scan/industry-detection";
 import { ONET_EXPECTATIONS } from "../../supabase/functions/free-keyword-scan/onet-expectations";
 import { onetForRole } from "@/lib/onet-match";
+import { roleListCopy } from "@/lib/role-page-copy";
 import { ROLE_PAGES, rolesForIndustry } from "@/data/roles";
 
 const industryLabel = (slug: string) => slug.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -27,7 +28,7 @@ export default function RoleKeywords() {
       "@context": "https://schema.org",
       "@type": "WebPage",
       name: `${role.title} Resume Keywords & ATS Expectations`,
-      description: `The keywords, certifications, and skills ATS systems and recruiters look for on ${role.title.toLowerCase()} resumes — from the detection engine of a real resume scanner.`,
+      description: roleListCopy(role.title, industryLabel(role.industry)).ldDescription,
       breadcrumb: {
         "@type": "BreadcrumbList",
         itemListElement: [
@@ -43,6 +44,7 @@ export default function RoleKeywords() {
   if (!slug || !role || !data) return <Navigate to="/industries" replace />;
 
   const indName = industryLabel(role.industry);
+  const copy = roleListCopy(role.title, indName);
   const keywords = [...new Set(data.primary)].slice(0, 20);
   const certs = [...new Set(data.certifications)].slice(0, 10);
   // L1-05: the industry's occupation is cited only when it names this role.
@@ -66,11 +68,7 @@ export default function RoleKeywords() {
           </nav>
 
           <h1 className="text-3xl md:text-4xl font-bold mb-3">{role.title} Resume Keywords & ATS Expectations</h1>
-          <p className="text-muted-foreground mb-8">
-            This is the live data our resume scanner uses when it detects a {role.title.toLowerCase()} resume — the
-            keyword tables, certifications, and titles from our {indName.toLowerCase()} detection engine. When the
-            engine improves, this page updates with it.
-          </p>
+          <p className="text-muted-foreground mb-8">{copy.intro}</p>
 
           {onet && (
             <section className="rounded-2xl border border-primary/25 bg-primary/5 p-5 mb-6">
@@ -92,7 +90,7 @@ export default function RoleKeywords() {
           )}
 
           <section className="mb-8">
-            <h2 className="text-xl font-bold mb-2">Keywords ATS systems expect on a {role.title.toLowerCase()} resume</h2>
+            <h2 className="text-xl font-bold mb-2">{copy.keywordsHeading}</h2>
             <p className="text-sm text-muted-foreground mb-3">
               These terms carry the most weight in our scoring for this field:
             </p>
@@ -105,7 +103,7 @@ export default function RoleKeywords() {
 
           {certs.length > 0 && (
             <section className="mb-8">
-              <h2 className="text-xl font-bold mb-2">Certifications that anchor a {role.title.toLowerCase()} resume</h2>
+              <h2 className="text-xl font-bold mb-2">{copy.certsHeading}</h2>
               <div className="flex flex-wrap gap-1.5">
                 {certs.map((c) => (
                   <span key={c} className="px-2.5 py-1 rounded-lg bg-success/5 border border-success/25 text-sm text-foreground uppercase">{c}</span>

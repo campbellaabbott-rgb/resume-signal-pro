@@ -50,3 +50,39 @@ describe("a role page cites an occupation only when it names the role", () => {
     expect(bake, "the intro no longer calls the field's lists the role's").not.toMatch(/when it detects a \$\{esc\(role\.title/);
   });
 });
+
+describe("a role page's headings say the lists are its field's, as its intro does", () => {
+  // Reviewer, 2026-10-10: only the bake's intro was rewritten. The headings
+  // under it ("Keywords ATS systems expect on a pilot resume",
+  // "Certifications that anchor a pilot resume") and the React intro ("the
+  // live data our resume scanner uses when it detects a pilot resume")
+  // still presented the industry list as written for the title, so the baked
+  // and rendered text contradicted each other on 174 role pages.
+  it("the React page for /roles/pilot names the field's tables in its intro and both headings", async () => {
+    const { render } = await import("@testing-library/react");
+    const { createElement } = await import("react");
+    const { MemoryRouter, Routes, Route } = await import("react-router-dom");
+    const { HelmetProvider } = await import("react-helmet-async");
+    const { default: RoleKeywords } = await import("@/pages/RoleKeywords");
+    const { container } = render(
+      createElement(HelmetProvider, null,
+        createElement(MemoryRouter, { initialEntries: ["/roles/pilot"] },
+          createElement(Routes, null, createElement(Route, { path: "/roles/:slug", element: createElement(RoleKeywords) })))),
+    );
+    const role = ROLE_PAGES.pilot;
+    const h2 = [...container.querySelectorAll("h2")].map((h) => h.textContent ?? "");
+    const text = container.textContent ?? "";
+    expect(h2.some((h) => /^Keywords from the .+ tables$/.test(h)), h2.join(" | ")).toBe(true);
+    for (const h of h2) expect(h, "no heading presents the field's list as written for the title").not.toMatch(new RegExp(`on a ${role.title.toLowerCase()} resume`, "i"));
+    expect(text).not.toMatch(/when it detects a pilot resume/);
+    expect(text).toContain("They are the field's lists, not a list written for this one title.");
+  }, 30_000);
+
+  it("the bake prints the same intro and headings from the same function", () => {
+    const bake = codeOf(readFileSync(resolve(__dirname, "../../scripts/prerender-seo.mjs"), "utf8"));
+    expect(bake).toMatch(/const copy = D\.roleListCopy\(role\.title, indName\);/);
+    expect(bake).toMatch(/\$\{esc\(copy\.keywordsHeading\)\}/);
+    expect(bake).toMatch(/\$\{esc\(copy\.certsHeading\)\}/);
+    expect(bake).toMatch(/\$\{esc\(copy\.intro\)\}/);
+  });
+});
