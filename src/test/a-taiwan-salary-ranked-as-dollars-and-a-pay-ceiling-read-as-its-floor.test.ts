@@ -17,7 +17,7 @@ import { describe, expect, it } from "vitest";
 import { extractSalary, parseSalaryStructured } from "../../supabase/functions/_shared/salary-extract";
 
 describe("L13-19: a dollar sign is not always the US dollar", () => {
-  it("NT$ is TWD, and a bare $ in Taiwan, Argentina, Chile, Colombia, the Dominican Republic or Uruguay is that country's currency", () => {
+  it("NT$ is TWD, a bare $ in Taiwan is TWD, and a bare $ at peso magnitude in Argentina, Chile or Colombia is the peso", () => {
     expect(parseSalaryStructured("NT$2,000,000 per year", "TW")?.currency).toBe("TWD");
     expect(parseSalaryStructured("NT$2,000,000 per year", null)?.currency).toBe("TWD");
     expect(parseSalaryStructured("$1,200,000", "AR")?.currency).toBe("ARS");

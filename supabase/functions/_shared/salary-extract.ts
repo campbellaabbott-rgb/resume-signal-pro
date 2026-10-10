@@ -119,10 +119,17 @@ const P_AUD = /A(?:U)?\$/;
 // USD (the documented heuristic — most bare-$ postings are US).
 const BARE_DOLLAR_BY_COUNTRY: Record<string, string> = {
   CA: "CAD", AU: "AUD", NZ: "NZD", MX: "MXN", SG: "SGD", HK: "HKD",
-  // L13-19: "NT$2,000,000 per year" in Taiwan was stored as USD 2,000,000;
-  // these countries also write their own currency with a plain "$".
-  TW: "TWD", AR: "ARS", CL: "CLP", CO: "COP", DO: "DOP", UY: "UYU",
+  // L13-19: "NT$2,000,000 per year" in Taiwan was stored as USD 2,000,000.
+  TW: "TWD",
 };
+// These countries write their peso with a plain "$" too, but most bare-$ rows
+// placed there are remote jobs paid in US dollars ("$75,000–$100,000" in
+// Bogotá, "$60/hr" in Chile). The bare $ is read as the peso only when, read
+// as dollars, the figure would pay a million a year or more.
+const BARE_DOLLAR_PESO: Record<string, string> = {
+  AR: "ARS", CL: "CLP", CO: "COP", DO: "DOP", UY: "UYU",
+};
+const PESO_READING_ANNUAL = 1_000_000;
 
 function detectCurrency(s: string, country?: string | null): string | null {
   const iso = s.match(P_ISO);
@@ -554,7 +561,7 @@ export function parseSalaryStructured(
   // Currency is derived BEFORE the figures because the three-decimal rate rule
   // needs it: whether "23.170" is 23,170 or $23.17 is a question about the
   // posting's locale, not about the digits.
-  const currency = detectCurrency(s, country);
+  let currency = detectCurrency(s, country);
   const dotThreeIsRate = readsDotThreeAsRate(s, currency, country);
   const num = (raw: string, k?: string): number | null => {
     // "$23.170" in a dot-decimal locale that states no annual basis is $23.17,
@@ -603,6 +610,11 @@ export function parseSalaryStructured(
   if (min === null || min <= 0) return null;
 
   const MULT = PERIOD_MULTIPLIER;
+  const peso = BARE_DOLLAR_PESO[String(country ?? "").toUpperCase()];
+  if (peso && currency === "USD" && !P_ISO.test(s) && !/(?<![A-Za-z])US\$/i.test(s)) {
+    const top = Math.max(min, max ?? min);
+    if ((period ? top * MULT[period] : top) >= PESO_READING_ANNUAL) currency = peso;
+  }
   // `mult` and `annualMin` move together and are never assigned apart, so the
   // returned annualMin cannot drift from the multiplier that produced it.
   let annualMin: number | null = null;
