@@ -108,7 +108,10 @@ describe("the export collects every record the account can read about itself", (
         };
         return q;
       },
-      storage: { from: (bucket: string) => ({ list: async (path: string) => ({ data: bucket === "resumes" && path === USER_ID ? files : [], error: null }) }) },
+      storage: { from: (bucket: string) => ({
+        list: async (path: string) => ({ data: bucket === "resumes" && path === USER_ID ? files : [], error: null }),
+        createSignedUrls: async (paths: string[]) => ({ data: paths.map((path) => ({ path, signedUrl: `https://signed.test/${path}`, error: null })), error: null }),
+      }) },
     };
     return { client, calls };
   };
@@ -132,7 +135,7 @@ describe("the export collects every record the account can read about itself", (
     expect(out.agentPasses).toHaveLength(1);
     expect(out.shortlistRoles).toHaveLength(1);
     expect(out.applications).toHaveLength(EXPORT_PAGE + 5);
-    expect(out.cvFiles).toEqual([{ name: "cv-2026.pdf", createdAt: "2026-10-01T00:00:00Z", updatedAt: null, bytes: 1234 }]);
+    expect(out.cvFiles).toEqual([expect.objectContaining({ name: "cv-2026.pdf", createdAt: "2026-10-01T00:00:00Z", updatedAt: null, bytes: 1234 })]);
     // Every read is the caller's own rows, by the column its policy names.
     for (const c of calls) expect(c.uid).toBe(USER_ID);
     expect(calls.find((c) => c.table === "shortlist_roles")?.key).toBe("owner_id");
@@ -144,7 +147,7 @@ describe("the export collects every record the account can read about itself", (
         const q = { select: () => q, eq: () => q, range: async () => ({ data: null, error: { message: "permission denied" } }) };
         return q;
       },
-      storage: { from: () => ({ list: async () => ({ data: null, error: { message: "denied" } }) }) },
+      storage: { from: () => ({ list: async () => ({ data: null, error: { message: "denied" } }), createSignedUrls: async () => ({ data: null, error: { message: "denied" } }) }) },
     };
     const out = await collectAccountExport(client, USER_ID);
     expect(out.agentSubmissions).toEqual({ error: "permission denied" });
