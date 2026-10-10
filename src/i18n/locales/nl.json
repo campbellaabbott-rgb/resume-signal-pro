@@ -5315,5 +5315,10 @@
   },
   "freelanceBoost": {
     "startNewPurchase": "Koop je voor een andere functie? Begin een nieuwe aankoop."
+  },
+  "seller": {
+    "soldBy": "Verkocht door {{name}}, {{address}}.",
+    "terms": "Deze Voorwaarden zijn een overeenkomst tussen jou en {{name}}, {{address}}.",
+    "controller": "De verwerkingsverantwoordelijke voor je persoonsgegevens is {{name}}, {{address}}."
   }
 }

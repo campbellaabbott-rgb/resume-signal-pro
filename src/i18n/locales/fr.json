@@ -5315,5 +5315,10 @@
   },
   "freelanceBoost": {
     "startNewPurchase": "Vous achetez pour un autre poste ? Commencer un nouvel achat."
+  },
+  "seller": {
+    "soldBy": "Vendu par {{name}}, {{address}}.",
+    "terms": "Les présentes Conditions constituent un accord entre vous et {{name}}, {{address}}.",
+    "controller": "Le responsable du traitement de vos données personnelles est {{name}}, {{address}}."
   }
 }

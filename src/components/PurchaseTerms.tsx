@@ -19,6 +19,7 @@ import { SUBSCRIPTIONS } from "@/config/products";
 import { EU_UK_SALES_ON, WITHDRAWAL_DAYS } from "@/config/eu-consumer";
 import { setPurchaseConsent, termsLineMounted, usePurchaseConsent } from "@/lib/purchase-terms";
 import { cn } from "@/lib/utils";
+import { SellerIdentity } from "@/components/SellerIdentity";
 
 type Props = {
   /** What the button starts: a one-time payment, a plan, or a new account. */
@@ -82,6 +83,7 @@ export function PurchaseTerms({ kind, plan, className }: Props) {
         </label>
       )}
       <p><AgreeLine text={t("purchaseTerms.agree")} /></p>
+      <SellerIdentity variant="soldBy" />
     </div>
   );
 }

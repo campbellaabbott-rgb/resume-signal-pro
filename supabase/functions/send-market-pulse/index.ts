@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-04T22:00Z
+// deploy-stamp: 2026-10-09T13:00Z
 // Market pulse -- the product's retention loop. Sends each CONFIRMED
 // subscriber a short email with the current must-have keywords for their
 // industry and a free-rescan nudge.
@@ -35,10 +35,11 @@ import { networkBucket } from "../_shared/network-bucket.ts";
 import { isScheduledCaller } from "../_shared/email-cron.ts";
 import { alertOwnerOnce } from "../_shared/owner-alert.ts";
 import { oneClickHeaders, oneClickUrl, redirectToConfirm, unsubscribeParams, unsubscribePageUrl } from "../_shared/unsubscribe-link.ts";
+import { sellerFooterHtml } from "../_shared/seller.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "send-market-pulse.2026-10-08.1";
+const FN_BUILD = "send-market-pulse.2026-10-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -306,7 +307,7 @@ Deno.serve(async (req) => {
     <p style="font-size:11px;color:#94a3b8;text-align:center;margin-top:16px;line-height:1.5">
       You confirmed this monthly pulse${confirmedOn ? ` on ${escapeHtml(confirmedOn)}` : ""} by clicking the link we emailed you.<br>
       <a href="${escapeHtml(unsubUrl)}" style="color:#94a3b8">Unsubscribe</a> — no login needed.
-    </p>
+    </p>${sellerFooterHtml()}
   </div>
 </body></html>`;
 

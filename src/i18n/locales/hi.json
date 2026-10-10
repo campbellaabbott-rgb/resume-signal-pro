@@ -5315,5 +5315,10 @@
   },
   "freelanceBoost": {
     "startNewPurchase": "किसी दूसरी भूमिका के लिए खरीद रहे हैं? नई खरीद शुरू करें।"
+  },
+  "seller": {
+    "soldBy": "विक्रेता: {{name}}, {{address}}।",
+    "terms": "ये शर्तें आपके और {{name}}, {{address}} के बीच एक समझौता हैं।",
+    "controller": "आपके व्यक्तिगत डेटा का नियंत्रक {{name}}, {{address}} है।"
   }
 }

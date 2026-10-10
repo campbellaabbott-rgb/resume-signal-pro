@@ -4,6 +4,7 @@ import { Footer } from "@/components/Footer";
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { SellerIdentity } from "@/components/SellerIdentity";
 import { AI_CACHE_MAX_HOURS, SHARED_ANALYSIS_DAYS } from "@/lib/resume-retention";
 
 export default function Privacy() {
@@ -26,6 +27,7 @@ export default function Privacy() {
           
           <h1 className="text-4xl font-bold mb-8">{t('privacy.title')}</h1>
           <p className="text-muted-foreground mb-4">{t('common.lastUpdated')}: {new Date().toLocaleDateString(dateLocale, { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+          <SellerIdentity variant="controller" className="text-muted-foreground mb-4" />
           <p className="text-sm text-muted-foreground/80 mb-8 italic">{t('privacy.legalNotice')}</p>
 
           <div className="prose prose-invert max-w-none space-y-8">

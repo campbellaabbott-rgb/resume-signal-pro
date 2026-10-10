@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-04T22:00Z
+// deploy-stamp: 2026-10-09T13:00Z
 // Feature 4 — weekly saved-search digest. Each opted-in saved search gets an
 // email counting how many NEW postings match it since the search's last
 // digest, with the freshest handful listed and a link back to the live board.
@@ -27,11 +27,12 @@ import { boardReaderHeader } from "../_shared/board-reader-key.ts";
 import { isScheduledCaller } from "../_shared/email-cron.ts";
 import { sameSecret } from "../_shared/service-caller.ts";
 import { oneClickHeaders, oneClickUrl, redirectToConfirm, unsubscribeParams, unsubscribePageUrl } from "../_shared/unsubscribe-link.ts";
+import { sellerFooterHtml } from "../_shared/seller.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "send-search-digest.2026-10-08.1";
+const FN_BUILD = "send-search-digest.2026-10-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -400,7 +401,7 @@ Deno.serve(async (req) => {
     </div>
     <p style="font-size:11px;color:#94a3b8;text-align:center;margin:14px 0 0">
       You turned on the digest for this saved search. <a href="${escapeHtml(unsubUrl)}" style="color:#94a3b8">Turn it off</a>.
-    </p>
+    </p>${sellerFooterHtml()}
   </div>
 </body></html>`;
 

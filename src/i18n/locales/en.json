@@ -5315,5 +5315,10 @@
   },
   "freelanceBoost": {
     "startNewPurchase": "Buying for a different role? Start a new purchase."
+  },
+  "seller": {
+    "soldBy": "Sold by {{name}}, {{address}}.",
+    "terms": "These Terms are an agreement between you and {{name}}, {{address}}.",
+    "controller": "The controller of your personal data is {{name}}, {{address}}."
   }
 }

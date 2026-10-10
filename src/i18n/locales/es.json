@@ -5315,5 +5315,10 @@
   },
   "freelanceBoost": {
     "startNewPurchase": "¿Compras para otro puesto? Empieza una compra nueva."
+  },
+  "seller": {
+    "soldBy": "Vendido por {{name}}, {{address}}.",
+    "terms": "Estos Términos son un acuerdo entre tú y {{name}}, {{address}}.",
+    "controller": "El responsable del tratamiento de tus datos personales es {{name}}, {{address}}."
   }
 }

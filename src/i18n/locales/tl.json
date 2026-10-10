@@ -5315,5 +5315,10 @@
   },
   "freelanceBoost": {
     "startNewPurchase": "Bibili para sa ibang posisyon? Magsimula ng bagong pagbili."
+  },
+  "seller": {
+    "soldBy": "Ibinebenta ng {{name}}, {{address}}.",
+    "terms": "Ang mga Tuntuning ito ay kasunduan sa pagitan mo at ng {{name}}, {{address}}.",
+    "controller": "Ang controller ng iyong personal na data ay ang {{name}}, {{address}}."
   }
 }
