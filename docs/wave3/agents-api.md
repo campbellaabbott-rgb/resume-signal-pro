@@ -1,5 +1,12 @@
 # Wave 3: agents-api (branch `wave3/agents-api`, 2026-10-09)
 
+> **Integrated 2026-10-10 on `wave3/integration`.** The builds this note names
+> are this branch's own strings. Several were reused by other wave-3 branches on
+> different code, so every function the integration changed answers a later
+> build: see the stamp table in [README.md](README.md). Deploy from the ledger
+> (`node scripts/deploy-ledger.mjs --message` at the merge commit), never from
+> the tables below.
+
 The apply agent stops answering protected questions with model text, reads
 sponsorship, countries, yes/no options, required markers and contact fields the
 way a person would, and stops sending one user's résumé with another's

@@ -1,5 +1,12 @@
 # Wave 3: scan + AI (deploy note)
 
+> **Integrated 2026-10-10 on `wave3/integration`.** The builds this note names
+> are this branch's own strings. Several were reused by other wave-3 branches on
+> different code, so every function the integration changed answers a later
+> build: see the stamp table in [README.md](README.md). Deploy from the ledger
+> (`node scripts/deploy-ledger.mjs --message` at the merge commit), never from
+> the tables below.
+
 Branch `wave3/scan-ai`, from main at 12a37285 (wave 2, PR #24), with origin/main 31647d4c (PR #25, the deploy ledger) merged in at 0db147e7. It works every item in the S8 debug sweep of 2026-10-08 with `fix_group: "scan-ai"` (30 items, in the private register `platform-debug-2026-10-08/register.json`). It also applies owner decision 1 of 2026-10-08 to the scan's own pages. The verifier is `scripts/verify-deploy.d/72-wave3-scan-ai.sh`.
 
 None of the 30 items had been fixed by wave 2. Each one was checked against main at 12a37285 before work started.

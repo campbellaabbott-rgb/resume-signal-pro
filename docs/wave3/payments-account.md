@@ -1,5 +1,12 @@
 # Wave 3: payments + account (deploy note)
 
+> **Integrated 2026-10-10 on `wave3/integration`.** The builds this note names
+> are this branch's own strings. Several were reused by other wave-3 branches on
+> different code, so every function the integration changed answers a later
+> build: see the stamp table in [README.md](README.md). Deploy from the ledger
+> (`node scripts/deploy-ledger.mjs --message` at the merge commit), never from
+> the tables below.
+
 Branch `wave3/payments-account`, from main at 12a37285 (wave 2, PR #24). It works:
 
 - every item in the S8 debug sweep of 2026-10-08 (private register `platform-debug-2026-10-08/register.json`) with `fix_group` "payments" or "account";

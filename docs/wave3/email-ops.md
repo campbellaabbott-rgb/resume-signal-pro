@@ -1,5 +1,12 @@
 # Wave 3: email-ops deploy note (2026-10-09)
 
+> **Integrated 2026-10-10 on `wave3/integration`.** The builds this note names
+> are this branch's own strings. Several were reused by other wave-3 branches on
+> different code, so every function the integration changed answers a later
+> build: see the stamp table in [README.md](README.md). Deploy from the ledger
+> (`node scripts/deploy-ledger.mjs --message` at the merge commit), never from
+> the tables below.
+
 Branch `wave3/email-ops`. Verifier: `scripts/verify-deploy.d/75-wave3-email-ops.sh`
 (section 75; read-only; before the deploy every new-build line reads FAIL).
 

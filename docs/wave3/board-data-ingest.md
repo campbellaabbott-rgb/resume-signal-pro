@@ -1,5 +1,12 @@
 # Wave 3: board, data pages and ingest parsers (group board-data-ingest)
 
+> **Integrated 2026-10-10 on `wave3/integration`.** The builds this note names
+> are this branch's own strings. Several were reused by other wave-3 branches on
+> different code, so every function the integration changed answers a later
+> build: see the stamp table in [README.md](README.md). Deploy from the ledger
+> (`node scripts/deploy-ledger.mjs --message` at the merge commit), never from
+> the tables below.
+
 Branch `wave3/board-data-ingest`, from `12a37285` (wave 2, PR #24). Sources: the
 S8 debug-sweep register of 2026-10-08 (every item with fix_group
 `frontend-board`, `data-pages-sql`, `ingest-parsers`), the 2026-10-04

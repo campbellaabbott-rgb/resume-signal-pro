@@ -1,5 +1,12 @@
 # Wave 3 — seo-content (branch `wave3/seo-content`)
 
+> **Integrated 2026-10-10 on `wave3/integration`.** The builds this note names
+> are this branch's own strings. Several were reused by other wave-3 branches on
+> different code, so every function the integration changed answers a later
+> build: see the stamp table in [README.md](README.md). Deploy from the ledger
+> (`node scripts/deploy-ledger.mjs --message` at the merge commit), never from
+> the tables below.
+
 What crawlers, answer engines and visitors are told: employer names, the
 pages the publish keeps, the company and data pages, the methodology, the
 headline claims, the legal pages and the seller. Sources: the 2026-10-04
