@@ -4041,6 +4041,32 @@ export type Database = {
         }
         Relationships: []
       }
+      search_digest_sent: {
+        Row: {
+          posting_id: string
+          search_id: string
+          sent_at: string
+        }
+        Insert: {
+          posting_id: string
+          search_id: string
+          sent_at?: string
+        }
+        Update: {
+          posting_id?: string
+          search_id?: string
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "search_digest_sent_search_id_fkey"
+            columns: ["search_id"]
+            isOneToOne: false
+            referencedRelation: "user_job_searches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       seniority_corrections: {
         Row: {
           corrected_level: string
@@ -6785,6 +6811,10 @@ export type Database = {
           sd_prev_sent_at: string
           sd_user_id: string
         }[]
+      }
+      search_digest_record_sent: {
+        Args: { p_posting_ids: string[]; p_search_id: string }
+        Returns: number
       }
       search_jobs: {
         Args: {
