@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { mergeCompanyFacet } from "../../supabase/functions/job-board/clusters";
+import { companyLanderPage, selectLanders } from "../../scripts/prerender-pages.mjs";
 
 /**
  * TWO COMPANY NUMBERS, ONE OF WHICH MUST NEVER REACH A READER.
@@ -212,15 +213,24 @@ describe("no reader-facing surface publishes companiesFacet.count", () => {
     const from = c.indexOf("const openN = openRolesOf(c);");
     expect(from, "the lander must derive its number from openRolesOf").toBeGreaterThan(-1);
     const lander = c.slice(from, c.indexOf('console.log(`[prerender-seo] company pages', from));
-    // Title, description and H1 — the three crawlable claims — plus the A-Z
-    // row below, all from openN and all omitted when it is absent.
-    expect(lander).toMatch(/fmt\(openN\) \} Verified Openings|fmt\(openN\)\} Verified Openings/);
-    expect(lander).toMatch(/Browse \$\{fmt\(openN\)\} open roles at/);
-    expect(lander).toMatch(/\$\{fmt\(openN\)\} verified \$\{esc\(nm\)\} openings right now/);
-    expect(lander, "no crawlable claim may use the unfiltered count").not.toMatch(/fmt\(c\.count\)/);
-    // And the page states the rule the number was counted under.
-    expect(lander).toMatch(/THE COUNT'S BASIS/);
-    expect(lander).toMatch(/has not taken down and whose date falls inside the last 30 days/);
+    expect(lander, "the page is built from that number").toMatch(/companyLanderPage\(\{[\s\S]*\bopenN\b/);
+    expect(lander, "no crawlable claim may use the unfiltered count").not.toMatch(/c\.count/);
+    // Title, description and H1 — the three crawlable claims — all carry the
+    // servable number, and all drop it when it is absent.
+    const esc = (s: string) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+    const page = (openN: number | null) => companyLanderPage({
+      token: "pwc~wd3~Global_Experienced_Careers", name: "PwC", primaryToken: "pwc~wd3~Global_Experienced_Careers",
+      openN, facts: { countries: [], fields: [] }, openings: [], sources: "Workday", boardCompanies: null,
+      site: "https://resumebooster.work", esc, possessive: (n: string) => `${n}'s`, fmt: (n: number) => n.toLocaleString("en-US"),
+      href: (t: string) => `/jobs/company/${t}`,
+    });
+    const withN = page(2119);
+    expect(withN.title).toBe("PwC Jobs — 2,119 Verified Openings");
+    expect(withN.description).toMatch(/^Browse 2,119 open roles at PwC/);
+    expect(withN.content).toMatch(/2,119 verified PwC openings right now/);
+    expect(withN.content, "the page states the rule the number was counted under").toMatch(/has not taken down and whose date falls inside the last 30 days/);
+    const without = page(null);
+    for (const s of [without.title, without.description, without.content]) expect(s.replace(/<[^>]*>/g, " ")).not.toMatch(/\d/);
   });
 
   it("the A-Z index row omits its number rather than printing the old one", () => {
@@ -530,7 +540,11 @@ describe("the fallback ladder cannot be emptied by a silent facet", () => {
     // — but it is what decides WHO gets a page when no servable number exists.
     // Dropping it turned count-free landers into no landers.
     expect(c).toMatch(/typeof c\.count === "number" \? \{ count: c\.count \} : \{\}/);
-    expect(c, "the gate that consumes it").toMatch(/typeof c\.count === "number" && c\.count >= 8/);
+    // The gate that consumes it: with no servable number, eight or more
+    // catalogued roles still selects a page (count-free), seven does not.
+    const pick = (count: number) => selectLanders([{ token: "acme", name: "Acme", count }], { openOf: () => null });
+    expect(pick(8).map((x) => x.token)).toEqual(["acme"]);
+    expect(pick(7)).toEqual([]);
   });
 
   it("the field lander's denominator names boards and drops out when unmeasured", () => {

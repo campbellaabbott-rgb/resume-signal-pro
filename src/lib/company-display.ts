@@ -12,7 +12,7 @@
 
 // Relative, not "@/": scripts/prerender-seo.mjs bundles this module with
 // esbuild, which knows no alias.
-import { boardDisplayName, employerDisplayName } from "../../supabase/functions/_shared/employer-names";
+import { boardDisplayName, employerDisplayName, employerNameOverride } from "../../supabase/functions/_shared/employer-names";
 
 // Short all-consonant tokens are the tell. English words of 3+ letters
 // essentially always carry a vowel (y counts), so a vowel-less token is an
@@ -106,7 +106,7 @@ export function possessive(name: string): string {
  * that site, never from a guess that a code "looks like" a word.
  */
 const REAL_TENANT_NAMES = new Set([
-  "abbott", "adobe", "alcon", "allstate", "aptiv", "arrow", "babilou", "barclays", "baxter",
+  "abbott", "accenture", "adobe", "alcon", "allstate", "aptiv", "arrow", "babilou", "barclays", "baxter",
   "benchmark", "boeing", "bunnings", "cox", "ecolab", "entegris", "extendicare", "ferguson",
   "ferrovial", "freudenberg", "geisinger", "greystar", "humana", "kyndryl", "labcorp", "manulife",
   "marmon", "mars", "michaels", "micron", "moog", "nike", "novartis", "parsons", "puma",
@@ -125,6 +125,8 @@ export function isCodeShapedName(token: string | null | undefined, name: string 
   const t = String(token ?? "").trim();
   const n = String(name ?? "").trim();
   if (!t.includes("~") || !n) return false;
+  // An override is the employer's own words, even when they equal the code ("Maersk").
+  if (employerNameOverride(t) !== null) return false;
   const slug = t.split("~")[0].toLowerCase();
   if (!slug || REAL_TENANT_NAMES.has(slug)) return false;
   return n === slug.charAt(0).toUpperCase() + slug.slice(1);

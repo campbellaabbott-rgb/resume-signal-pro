@@ -23,6 +23,10 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, realpa
 import { execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
+import {
+  PRERENDER_LEDGER_PATH, POSTING_STUB_KEEP_DAYS, callBudget, companyLanderPage, contentFingerprint, landerFacts, landerHasOwnContent, landerRobots,
+  pageLastmod, postingCarryBase, postingCheckState, postingStubPage, selectLanders,
+} from "./prerender-pages.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const dist = join(root, "dist");
@@ -58,11 +62,16 @@ export const setContent = (html, prefix, value) => putVerbatim(html, new RegExp(
 // uses; renderFile below only writes what this returns.
 //
 // `isFallback` marks the root index.html, which doubles as the SPA fallback
-// for every non-prerendered route: it gets NO canonical (a canonical of "/"
-// on /pricing would tell non-Google engines /pricing is a duplicate) and an
-// inline script that clears the static homepage content immediately when
-// the browser path isn't "/" (crawlers don't run it; JS users on other
-// routes get the same blank-then-render they had before).
+// for every non-prerendered route. It used to get NO canonical, because a
+// canonical of "/" on a route the bake had not written would call that route
+// a duplicate of the homepage. Every address the site links or ever
+// published now has a file of its own (the posting ledger below keeps a page
+// for every posting URL it has published), so what still falls back IS a copy
+// of the homepage to a crawler, and saying so is the honest canonical: an
+// unknown address was an indexable copy of "/" (SEO report 2026-10-08, F2d).
+// The inline script clears the static homepage content and removes that
+// canonical when the browser path isn't "/" (crawlers that run no script
+// read the file as served; the app writes its own head for its own routes).
 // `canonical` names a DIFFERENT page as the indexable version of this one —
 // for near-duplicates that must stay reachable but must not compete. `robots`
 // sets the meta robots tag for pages that exist only to serve their own URL
@@ -111,7 +120,7 @@ export const composeHtml = (
       ? putVerbatim(html, /<meta name="robots"[^>]*>/, tag)
       : putVerbatim(html, "</head>", `${tag}\n</head>`);
   }
-  let headExtra = `${isFallback ? "" : `<link rel="canonical" href="${SITE}${publicHref(canonical || path)}" />\n`}<meta name="x-prerendered" content="1" />\n`;
+  let headExtra = `<link rel="canonical" href="${isFallback ? `${SITE}/` : `${SITE}${publicHref(canonical || path)}`}" />\n<meta name="x-prerendered" content="1" />\n`;
   if (hreflang) {
     // hreflang is a { locale: path } map (any number of locales). Every
     // cluster member emits the SAME set of alternates (reciprocity is what
@@ -147,7 +156,7 @@ export const composeHtml = (
   headExtra += preloadFor(path);
   html = putVerbatim(html, "</head>", `${headExtra}</head>`);
   const clearScript = isFallback
-    ? `<script>if(location.pathname!=="/"){var r=document.getElementById("root");if(r)r.innerHTML="";}</script>`
+    ? `<script>if(location.pathname!=="/"){var r=document.getElementById("root");if(r)r.innerHTML="";var c=document.querySelector('link[rel="canonical"]');if(c)c.remove();}</script>`
     : "";
   html = putVerbatim(html, '<div id="root"></div>', `<div id="root">${shell(content, lang)}</div>${clearScript}`);
   return html;
@@ -177,7 +186,7 @@ export { COMPETITORS } from "../src/data/competitors";
 export { VENDORS } from "../src/data/ats-vendors";
 export { ES_INDUSTRIES, isSpanish } from "../src/data/es-industries";
 export { SCREENER_NOTES } from "../src/data/screener-notes";
-export { GUIDES, guideGrounding } from "../src/data/guides";
+export { GUIDES, GUIDES_INDEX_DESCRIPTION, GUIDES_INDEX_TITLE, GUIDES_INTRO, guideGrounding } from "../src/data/guides";
 export { buildIndustryFaqs } from "../src/data/industry-faqs";
 export { COUNTRY_STANDARDS } from "../supabase/functions/free-keyword-scan/country-standards";
 export { COUNTRY_SLUGS, CV_LOCALES, EN_TEMPLATE, fill, hreflangCluster } from "../src/data/cv-standards-content";
@@ -192,11 +201,44 @@ export { MCP_MORE_HOSTS, MCP_TROUBLESHOOTING, MCP_SIGN_IN_NEUTRAL, MCP_SERVER_AD
 export { MCP_PAGE_HOSTS, MCP_OFF_PAGE_HOSTS, MCP_OTHER_AGENTS_LINE, MCP_COPY_THE_PROMPT } from "../src/config/mcp-tools";
 export { FREE_KEY_RATE_PER_MIN } from "../src/config/free-key-limits";
 export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/sendable-vendors";
-export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPostingLive, jdParagraphs, postingIdFromPath, postingIdentity, postingJsonLd, postingPageDescription, postingPagePath, postingPageTitle } from "../src/components/jobs/posting-page";
+export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPostingLive, jdParagraphs, postingEmployer, postingIdFromPath, postingIdentity, postingJsonLd, postingPageDescription, postingPagePath, postingPageTitle, postingPathParts } from "../src/components/jobs/posting-page";
+export { boardName, employerName, isCodeShapedName, possessive } from "../src/lib/company-display";
 `);
   const bundle = join(root, "scripts", ".prerender-data.mjs");
   execSync(`npx esbuild "${entry}" --bundle --format=esm --outfile="${bundle}" --log-level=error`, { cwd: root, stdio: "inherit" });
   const D = await import(bundle + `?t=${Date.now()}`);
+  // EVERY BOARD READ THIS BAKE MAKES IS COUNTED HERE, the facets rung, the
+  // posting pool, every carried re-check, every new posting and every employer
+  // page's openings, in that order of priority (rule 6 of the posting rule
+  // below). The build server has one day row at the board's build cap
+  // (job-board/anon-budget.ts BUILD_DAILY_CAP), sized at twice the busiest
+  // day of bakes times this number.
+  const BAKE_BOARD_CALL_BUDGET = 721;
+  const boardBudget = callBudget(BAKE_BOARD_CALL_BUDGET);
+  const TODAY = new Date().toISOString().slice(0, 10);
+
+  // ---- What the LIVE site published last time ----
+  //
+  // The previous publish's sitemap and the ledger it served beside it: the
+  // posting pages it wrote and what became of them, and each page's content
+  // fingerprint with the date that content last changed. A hosted build never
+  // commits what it writes, so the committed copies are only the fallback for
+  // a build that cannot reach the site (SEO report 2026-10-08, F2a and S3).
+  const fetchText = async (url) => {
+    try {
+      const r = await fetch(url, { signal: AbortSignal.timeout(15000), headers: { "User-Agent": "resumebooster-prerender" } });
+      return r.ok ? await r.text() : null;
+    } catch { return null; }
+  };
+  const liveSitemap = await fetchText(`${SITE}/sitemap.xml`);
+  const liveLedgerText = await fetchText(`${SITE}${PRERENDER_LEDGER_PATH}`);
+  let ledgerIn = null;
+  try { ledgerIn = liveLedgerText ? JSON.parse(liveLedgerText) : null; } catch { ledgerIn = null; }
+  if (!ledgerIn || typeof ledgerIn !== "object") {
+    try { ledgerIn = JSON.parse(readFileSync(join(root, "public", PRERENDER_LEDGER_PATH.slice(1)), "utf8")); } catch { ledgerIn = null; }
+  }
+  const ledgerSource = liveLedgerText && ledgerIn ? "live" : ledgerIn ? "committed" : "none";
+  const priorPages = ledgerIn && ledgerIn.pages && typeof ledgerIn.pages === "object" ? ledgerIn.pages : {};
   // THE FREE KEY'S TWO NUMBERS, SPELLED ONCE. The rate and the quota were
   // typed here three times and on the page twice — a fifth spelling of two
   // migration constants, and false for a pass holder. Every sentence
@@ -281,7 +323,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
     const grab2 = (k) => process.env[k] || (envText2.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
     const supaUrl2 = grab2("VITE_SUPABASE_URL");
     const supaKey2 = grab2("VITE_SUPABASE_PUBLISHABLE_KEY");
-    if (!boardFacets && supaUrl2 && supaKey2) {
+    if (!boardFacets && supaUrl2 && supaKey2 && boardBudget.take()) {
       const fr = await fetch(`${supaUrl2}/functions/v1/job-board`, {
         method: "POST",
         // The bake is one build-server address making ~721 board calls: it
@@ -314,7 +356,12 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
           && j.companies.some((c) => typeof c?.open === "number");
         if (j && typeof j.totalAllCompanies === "number" && Array.isArray(j.companies) && j.companies.length > 100 && rung2Numbered) {
           boardFacets = {
-            total: j.totalAllCompanies,
+            // L4-03: the list's totalAllCompanies is the SERVABLE count (the
+            // board's coverage.open) and trackedTotal the corpus. Each goes
+            // under its own key, so the reader below never takes one for the
+            // other.
+            openTotal: j.totalAllCompanies,
+            total: typeof j.trackedTotal === "number" ? j.trackedTotal : null,
             // The board function's facet head carries `open` per entry (the
             // servable count) and no `count` at all since the 20260909214000
             // deploy — see facetHead in job-board/index.ts. Carried through
@@ -336,7 +383,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
   if (!boardFacets) {
     try {
       const snap = JSON.parse(readFileSync(FACETS_SNAPSHOT, "utf8"));
-      if (snap && typeof snap.total === "number" && Array.isArray(snap.companiesFacet) && snap.companiesFacet.length > 100) {
+      if (snap && (typeof snap.openTotal === "number" || typeof snap.total === "number") && Array.isArray(snap.companiesFacet) && snap.companiesFacet.length > 100) {
         boardFacets = snap;
         facetsSource = "snapshot";
         facetsSavedAt = typeof snap.savedAt === "string" ? snap.savedAt : null;
@@ -384,7 +431,12 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
       if (trimmed.length <= 100) {
         console.log(`[prerender-seo] facet read produced only ${trimmed.length} usable company entries — keeping the committed snapshot rather than overwriting it`);
       } else writeFileSync(FACETS_SNAPSHOT, JSON.stringify({
+        // L4-03: BOTH numbers, each by its own name. The snapshot used to keep
+        // only `total` (the TRACKED corpus since the RPC changed shape), and
+        // the reader, finding no openTotal, took it for the servable count: a
+        // snapshot-fed bake would have printed 800,000+ over ~713k served.
         total: boardFacets.total,
+        ...(typeof boardFacets.openTotal === "number" ? { openTotal: boardFacets.openTotal } : {}),
         companiesCount: typeof boardFacets.companiesCount === "number"
           ? boardFacets.companiesCount
           : (Array.isArray(boardFacets.companiesFacet) ? boardFacets.companiesFacet.length : null),
@@ -424,6 +476,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
   let statsCache = null;
   let transparencyCache = null;
   let freshnessRow = null;
+  let auditRow = null;
   try {
     const envText4 = (() => { try { return readFileSync(join(root, ".env"), "utf8"); } catch { return ""; } })();
     const grab4 = (k) => process.env[k] || (envText4.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
@@ -451,9 +504,13 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
       if (isObj(tc)) transparencyCache = tc;
       const fr4 = await rpc4("get_freshness_stats", 20000);
       if (Array.isArray(fr4) && isObj(fr4[0])) freshnessRow = fr4[0];
+      // The daily self-audit the Ghost Job Index reports (S2): the same
+      // cached blob the React page reads.
+      const au4 = await rpc4("get_audit_result", 10000);
+      if (isObj(au4)) auditRow = au4;
     }
   } catch { /* offline build -- the four data pages ship their count-free copy */ }
-  console.log(`[prerender-seo] data-page figures: stats_cache ${statsCache ? "read" : "UNREAD"}, transparency_cache ${transparencyCache ? "read" : "UNREAD"}, freshness ${freshnessRow ? "read" : "UNREAD"}`);
+  console.log(`[prerender-seo] data-page figures: stats_cache ${statsCache ? "read" : "UNREAD"}, transparency_cache ${transparencyCache ? "read" : "UNREAD"}, freshness ${freshnessRow ? "read" : "UNREAD"}, audit ${auditRow ? "read" : "UNREAD"}`);
 
   // >>> DATA-PAGE FIGURE BUILDER START
   //
@@ -549,6 +606,12 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
       const d = new Date(v);
       return Number.isFinite(d.getTime()) ? d.toISOString().slice(0, 16).replace("T", " ") + " UTC" : null;
     };
+    // The payload's own stamp as an ISO instant, for the Dataset markup's dateModified.
+    const isoOf = (v) => {
+      if (typeof v !== "string") return null;
+      const d = new Date(v);
+      return Number.isFinite(d.getTime()) ? d.toISOString() : null;
+    };
     const UNREAD = "This build could not read the board's own measurements, so this page states no figure rather than one it cannot source. The live page reads them when it opens in a browser.";
     const unread = () => ({ html: `<p class="text-sm text-muted-foreground mb-8">${UNREAD}</p>`, desc: null, read: false });
     /** A figure list plus the one sentence that says what it counts, when it was taken and how often it moves. */
@@ -567,6 +630,15 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
         + `<p class="text-xs text-muted-foreground mt-3">${basis}</p></section>`;
     };
     const pct = (n, d) => (num(n) !== null && num(d) !== null && d > 0 ? Math.round((100 * n) / d) : null);
+    // NAMES AND LINKS COME IN WITH THE PAYLOAD (SEO report 2026-10-08, F1, F2b
+    // and the raw field codes): the employer's own name, a link only to a page
+    // that exists, and the field's printed label, "other" included. A caller
+    // that passes none gets the stored spellings and the live board's address.
+    const companyName = typeof P.companyName === "function" ? P.companyName : (_t, stored) => String(stored ?? "");
+    const companyHref = typeof P.companyHref === "function"
+      ? P.companyHref
+      : (token, query) => `/jobs?company=${encodeURIComponent(String(token ?? ""))}${query ? `&${query}` : ""}`;
+    const fieldLabel = typeof P.fieldLabel === "function" ? P.fieldLabel : (slug) => String(slug).replace(/_/g, " ");
     // THE CACHE PUBLISHES WHICH OF ITS OWN PARTS IT COULD NOT RECOMPUTE, and a
     // figure standing on a previous run's value under a fresh "measured at"
     // stamp is a stale claim wearing a current date. When the row says a part
@@ -621,10 +693,23 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
         { value: f && num(f.p95_min) !== null ? `${(f.p95_min / 60).toFixed(1)} hours` : null, label: "covers 95% of feeds — the rest are older, and this is a measurement rather than a promise" },
         { value: f ? fmt(f.boards) : null, label: "company feeds in the rotation" },
       ], `Measured from each feed's own last verification stamp${f && asOf(f.computed_at) ? ` ${asOf(f.computed_at)}` : ""}, ${C["job-board-stats-rollup"]}.`);
-      const html = stock + lifecycle + fresh;
+      // THE DAILY RE-CHECK, DATED, from the audit blob and nowhere else
+      // (S2: llms.txt sent answer engines here for this number and the page
+      // never printed it). The percentage is over the probes that decided,
+      // and both counts stand beside it.
+      const a = isObj(P.audit) ? P.audit : null;
+      const aDecided = a ? (num(a.decided) ?? (num(a.live) !== null && num(a.gone) !== null ? a.live + a.gone : null)) : null;
+      const aAt = a && typeof a.at === "string" && Number.isFinite(new Date(a.at).getTime()) ? new Date(a.at).toISOString().slice(0, 10) : null;
+      const audit = a && num(a.accuracyPct) !== null && num(a.sampled) !== null && aDecided !== null && aAt
+        ? group("The daily re-check", [
+            { value: `${a.accuracyPct}%`, label: `of ${fmt(aDecided)} sampled postings that could be decided were still live at the employer's own source (${fmt(a.sampled)} sampled on ${aAt}, drawn evenly across hiring systems)` },
+          ], `Daily re-check: ${a.accuracyPct}% of ${fmt(aDecided)} decided sample postings still live at the source (${aAt}). A probe that could not be decided leaves the denominator rather than counting as a pass. Run once a day; the live page shows the latest run.`)
+        : "";
+      const html = stock + audit + lifecycle + fresh;
       if (!html) return unread();
       return {
         html,
+        modified: isoOf(g?.computed_at) ?? isoOf(f?.computed_at),
         desc: openN && g ? `${openN} open roles from employers' own job boards, ${g.median_days_open != null ? `median age ${g.median_days_open} days by the employer's stated date` : "each dated by the employer"}, and ${fmt(g.closed_90d)} closure events logged in 90 days.` : null,
         read: true,
       };
@@ -662,7 +747,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
         : [];
       const fields = byCat.length
         ? table("Where the early-career openings are", ["Field", "Openings"],
-            byCat.map(([slug, n]) => [`<a href="/jobs?category=${encodeURIComponent(slug)}&amp;experience=entry">${esc(slug.replace(/_/g, " "))}</a>`, fmt(n)]),
+            byCat.map(([slug, n]) => [`<a href="/jobs?category=${encodeURIComponent(slug)}&amp;experience=entry">${esc(fieldLabel(slug))}</a>`, fmt(n)]),
             basis)
         : "";
       // THE COLUMN IT IS RANKED ON IS A COLUMN ON THE TABLE. The RPC orders
@@ -676,7 +761,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
         .filter((c) => c && typeof c.company === "string" && num(c.entry_roles) !== null && num(c.open_roles) > 0)
         .slice(0, 15)
         .map((c) => [
-          `<a href="/jobs/company/${encodeURIComponent(String(c.company_token))}?experience=entry">${esc(c.company)}</a>`,
+          `<a href="${esc(companyHref(c.company_token, "experience=entry"))}">${esc(companyName(c.company_token, c.company))}</a>`,
           `${Math.round((100 * c.entry_roles) / c.open_roles)}%`,
           fmt(c.entry_roles),
           fmt(c.open_roles) ?? "—",
@@ -689,6 +774,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
       if (!html) return unread();
       return {
         html,
+        modified: isoOf(P.stats?.computed_at),
         desc: entryN && share !== null ? `${entryN} early-career openings — ${share}% of the board — counted only where the posting's own title or requirements say so.` : null,
         read: true,
       };
@@ -767,7 +853,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
         .slice(0, 10)
         .map((c) => {
           const d = deltasMature && num(c.prior7) >= 20 ? Math.round((100 * (c.last7 - c.prior7)) / c.prior7) : null;
-          return [esc(String(c.category).replace(/_/g, " ")), fmt(c.last7), d === null ? "—" : `${d > 0 ? "+" : ""}${d}%`];
+          return [esc(fieldLabel(String(c.category))), fmt(c.last7), d === null ? "—" : `${d > 0 ? "+" : ""}${d}%`];
         });
       const fields = catRows.length
         ? table("Which fields are hiring, last 7 days", ["Field", "New postings", "vs the 7 days before"], catRows,
@@ -777,6 +863,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
       if (!html) return unread();
       return {
         html,
+        modified: isoOf(P.stats?.computed_at),
         desc: lastFull
           ? `${fmt(lastFull.new_postings)} roles employers dated in the last complete week${wk ? ` (from ${wk})` : ""}${closurePublished ? `, and ${fmt(closure.closed)} closure events logged` : ""}.`
           : null,
@@ -807,7 +894,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
       ], basis);
       const catRows = Array.isArray(p?.categories)
         ? p.categories.filter((c) => isObj(c) && num(c.pay_pct) !== null).slice(0, 10)
-            .map((c) => [esc(String(c.category).replace(/_/g, " ")), `${c.pay_pct}%`, fmt(c.total) ?? "—"])
+            .map((c) => [esc(fieldLabel(String(c.category))), `${c.pay_pct}%`, fmt(c.total) ?? "—"])
         : [];
       const fields = catRows.length
         ? table("By field", ["Field", "State pay", "Postings"], catRows, `${basis} Fields with fewer than 200 postings are left out rather than shown on a sample too small to read.`)
@@ -824,7 +911,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
         : "";
       const companyRows = Array.isArray(p?.top_companies)
         ? p.top_companies.filter((c) => isObj(c) && typeof c.company === "string" && num(c.pay_pct) !== null).slice(0, 15)
-            .map((c) => [`<a href="/jobs/company/${encodeURIComponent(String(c.company_token))}">${esc(c.company)}</a>`, `${c.pay_pct}%`, fmt(c.total) ?? "—"])
+            .map((c) => [`<a href="${esc(companyHref(c.company_token))}">${esc(companyName(c.company_token, c.company))}</a>`, `${c.pay_pct}%`, fmt(c.total) ?? "—"])
         : [];
       const employers = companyRows.length
         ? table("Most transparent large employers", ["Employer", "State pay", "Postings"], companyRows,
@@ -834,6 +921,7 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
       if (!html) return unread();
       return {
         html,
+        modified: isoOf(t?.computed_at),
         desc: o && num(o.pay_pct) !== null ? `${o.pay_pct}% of the ${fmt(o.total)} postings we have catalogued state pay, in the employer's own words — counted, never modelled.` : null,
         read: true,
       };
@@ -843,13 +931,6 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
   }
   // <<< DATA-PAGE FIGURE BUILDER END
 
-  // ONE CALL, read by the four write() blocks below. Built here rather than
-  // inline so a page cannot silently render a different payload from the one
-  // the guard exercises.
-  const DATA_FIGURES = dataPageFigures({ stats: statsCache, transparency: transparencyCache, freshness: freshnessRow });
-  for (const [k, v] of Object.entries(DATA_FIGURES)) {
-    if (!v.read) console.warn(`[prerender-seo] /${k} data page: figures UNREAD — it ships its prose and says so`);
-  }
 
   // ---- Shared live-count constants: ONE derivation for every surface that
   // states a headline number (home title, llms.txt, jobs page uses its own
@@ -974,6 +1055,8 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
   // does not name is a build error rather than a blank.
   const fillCopy = (s, vals, who) => String(s || "").replace(/\{\{(\w+)\}\}/g, (_, k) => { if (!(k in vals)) throw new Error(`[prerender-seo] ${who} copy names a placeholder with no mirror: ${k}`); return String(vals[k]); });
   const label = (slug) => slug.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  // "Domino's", never "Domino's's" (F1): every possessive of an employer name.
+  const possessive = D.possessive;
   const displayKeyword = (k) => (k.length <= 4 && !k.includes(" ") ? k.toUpperCase() : k);
   const uniq = (a) => [...new Set(a)];
   // The ONLY industry count: every surface computes from the engine's actual
@@ -1133,9 +1216,17 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
   // file — it has to, or the host serves it the homepage — but it stays OUT of
   // the sitemap. Submitting a URL for indexing while telling the crawler not to
   // index it is a contradiction Search Console reports as an error.
+  /** path -> { fp, stated } for every page this bake wrote. */
+  const pageFingerprints = new Map();
   const write = (page) => {
     renderFile(page);
     if (!page.canonical && !page.robots) writtenPaths.push(page.path);
+    // S3: what the page says, blind to its date stamps, so the sitemap date
+    // moves only when the page does (prerender-pages.mjs pageLastmod).
+    pageFingerprints.set(page.path, {
+      fp: contentFingerprint(`${page.title}\n${page.description}\n${page.content}`),
+      stated: typeof page.lastmod === "string" ? page.lastmod : null,
+    });
     count++;
   };
 
@@ -1322,12 +1413,17 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
     const guides = Object.values(D.GUIDES);
     write({
       path: "/guides",
-      title: "Resume & ATS Guides — From Real Scanner Data",
-      description: "How ATS systems actually work, how resumes really get rejected, and how to fix yours — every guide grounded in the checks our scanner runs, not folklore.",
+      title: D.GUIDES_INDEX_TITLE,
+      description: D.GUIDES_INDEX_DESCRIPTION,
       content: `
         <h1 class="text-3xl font-bold mb-3">Resume &amp; ATS guides</h1>
-        <p class="text-muted-foreground mb-8">No recycled folklore: every guide below is grounded in the checks our scanner runs on real resumes and the documented behavior of real ATS parsers. Where the popular advice is wrong, we say so.</p>
-        <div class="space-y-3">${guides.map((g) => `
+        <p class="text-muted-foreground mb-8">${esc(D.GUIDES_INTRO)}</p>
+        <div class="space-y-3">
+          <a href="/research/ats-score-benchmarks" class="block rounded-2xl border border-primary/40 bg-primary/5 p-5">
+            <h2 class="font-semibold text-foreground mb-1">What's a good ATS score? Live benchmarks from real scans</h2>
+            <p class="text-sm text-muted-foreground">Original data, computed live from our scan corpus: overall median and quartiles, per-industry benchmarks, and experience-level medians — not folklore thresholds.</p>
+            <p class="text-xs text-muted-foreground mt-2">Live data study · Updates as scans complete</p>
+          </a>${guides.map((g) => `
           <a href="/guides/${g.slug}" class="block rounded-2xl border border-border bg-card p-5">
             <h2 class="font-semibold text-foreground mb-1">${esc(g.h1)}</h2>
             <p class="text-sm text-muted-foreground">${esc(g.description)}</p>
@@ -1350,6 +1446,8 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
       if (g.faqs?.length) jsonLd.push(faqLd(g.faqs));
       write({
         path: `/guides/${g.slug}`,
+        // S3: a guide's sitemap date is the date its own markup states.
+        lastmod: g.updated,
         title: g.title,
         description: g.description,
         jsonLd,
@@ -1670,6 +1768,41 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
     }
   }
 
+  // ---- The employer pages this bake writes, chosen BEFORE anything links one ----
+  //
+  // L1-04 / SEO report F2b: every posting page linked "All open roles at X" and
+  // named X in its breadcrumb, but only the top employers get a page, and that
+  // set was chosen AFTER the posting loop. About 180 such links, on 265 pages,
+  // led to the homepage copy. The set is now decided here, from the same
+  // facets, and a link or a breadcrumb names an employer page only when this
+  // bake writes it; otherwise it links the live board filtered to the board.
+  //
+  // F1: every name on these pages is the employer's own (D.boardName, the
+  // company_name_overrides mirror), and a board whose name is still its vendor
+  // tenant code ("Uoflhealth") gets a page but never an indexable one, until
+  // the job-board group's override table names it.
+  const LANDERS = selectLanders(Array.isArray(boardFacets?.companiesFacet) ? boardFacets.companiesFacet : [], {
+    openOf: openRolesOf,
+    displayName: (c) => D.boardName(c.token, c.name),
+    unreadable: (c, name) => D.isCodeShapedName(c.token, name),
+  });
+  const landerByToken = new Map(LANDERS.map((c) => [c.token, c]));
+  /** The indexable employer page for a board token, when this bake writes one. */
+  const landerFor = (token) => {
+    const c = typeof token === "string" ? landerByToken.get(token) : null;
+    if (!c) return null;
+    const p = landerByToken.get(c.primary) ?? c;
+    return { name: p.name, href: publicHref(`/jobs/company/${p.token}`) };
+  };
+  /** The href a data-page table or a posting uses for an employer board. */
+  const companyHrefFor = (token) => landerFor(token)?.href ?? `/jobs?company=${encodeURIComponent(String(token ?? ""))}`;
+  const companyLinkHtml = (token, name) => {
+    const l = landerFor(token);
+    return l
+      ? `<a href="${l.href}">All open roles at ${esc(l.name)}</a>`
+      : `<a href="${companyHrefFor(token)}">${esc(possessive(name))} open roles on the live board</a>`;
+  };
+
   // ---- A POSTING GETS A PAGE — AND THE SET IS BOUNDED, BY A STATED RULE ----
   //
   // THE DEFECT. Until this block existed a posting had no addressable page at
@@ -1699,24 +1832,38 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
   //      date, a place with its country, and a real description — and only if
   //      the employer's own feed still served it at the last re-read and it is
   //      inside the board's serving window. Nothing is invented to qualify.
-  //   2. Eligible postings that ALREADY HAVE A PAGE in the committed sitemap
-  //      come first, up to POSTING_PAGE_CARRY_MAX, so a URL that has been
-  //      submitted for indexing keeps its page for as long as the posting is
-  //      alive instead of churning out from under the crawler on the next bake.
+  //   2. Every posting the LIVE site has published comes first and is
+  //      re-checked, with no cap: the previous publish's sitemap and the ledger
+  //      it served beside it (postingCarryBase, at the top of this file). One
+  //      still live and eligible keeps its page. One the board answers is gone
+  //      keeps a noindex page that says so, for POSTING_STUB_KEEP_DAYS. One
+  //      still on the board but no longer eligible, or one the board did not
+  //      answer for, keeps a noindex page that says that. A URL this site has
+  //      published never falls back to the homepage copy.
   //   3. The rest of the budget goes to the newest eligible postings by the
   //      employer's own stated date — the ones whose page will stay valid
   //      longest, since the window closes a fixed number of days after that
-  //      date. The reserve in rule 2 guarantees this never falls to zero.
+  //      date. The budget is POSTING_PAGE_CAP less the carried live pages and
+  //      never below POSTING_FRESH_RESERVE, so the set keeps moving; and no new
+  //      page is added past POSTING_PAGE_CEILING live ones. The board's
+  //      30-day window retires every page within a month of its date anyway.
   //   4. One page per posting IDENTITY. One requisition appears as several rows
-  //      across a tenant's career sites on this board; the copies get no page at
-  //      all rather than compete with each other, which is also what keeps the
-  //      served titles distinct.
+  //      across a tenant's career sites on this board; the copies get no page of
+  //      their own rather than compete with each other (a carried copy keeps a
+  //      noindex page pointing at the one that carries it), which is also what
+  //      keeps the served titles distinct.
   //   5. ONLY what this block actually wrote reaches sitemap.xml. write() is the
   //      single path into writtenPaths, the sitemap is built from writtenPaths,
-  //      and an assertion below refuses the bake if a posting URL ever appears
-  //      in the sitemap without its file.
+  //      a noindex page never enters it, and an assertion below refuses the
+  //      bake if a posting URL ever appears in the sitemap without its file.
+  //   6. Every board read this bake makes is counted against
+  //      BAKE_BOARD_CALL_BUDGET, spent in this order: the facets head and the
+  //      pool pages, the carried re-checks, the new postings, then the
+  //      employer pages' openings. A carried posting the budget cannot reach
+  //      is "unchecked", never dropped.
   const POSTING_PAGE_CAP = 400;
-  const POSTING_PAGE_CARRY_MAX = 300;
+  const POSTING_FRESH_RESERVE = 100;
+  const POSTING_PAGE_CEILING = 600;
   const POSTING_FETCH_CONCURRENCY = 8;
   // Twenty pages of 60: the board gives no caller without a secret more than
   // a page's 60 rows a call (job-board .88, anon-budget.ts pageCeiling), and
@@ -1726,14 +1873,24 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
   const POSTING_MIN_DESCRIPTION = 100;
   /** Rendered into /jobs so the selection is visible from the board itself. */
   let postingIndexSection = "";
-  /** Paths this block wrote, for the sitemap assertion. */
+  /** Paths this block wrote as live pages, for the sitemap assertion. */
   const postingPaths = [];
+  /** The live posting pages by board token, for the company pages' own openings (S1). */
+  const postingsByToken = new Map();
+  /** How many company pages this bake made indexable, for /companies and llms.txt. */
+  let COMPANY_PAGE_COUNT = null;
+  /** Every posting path this bake accounted for and its state, published as the ledger. */
+  const postingLedger = {};
   {
     const envText5 = (() => { try { return readFileSync(join(root, ".env"), "utf8"); } catch { return ""; } })();
     const grab5 = (k) => process.env[k] || (envText5.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
     const supaUrl5 = grab5("VITE_SUPABASE_URL");
     const supaKey5 = grab5("VITE_SUPABASE_PUBLISHABLE_KEY");
-    const boardRead = async (body) => {
+    // The HTTP status rides back with the body: a refusal, an error and "no
+    // such posting" are different answers (postingCheckState), and only the
+    // last may retire a published page.
+    const boardCall = async (body) => {
+      if (!boardBudget.take()) return { status: 0, body: null, refused: "budget" };
       try {
         const r = await fetch(`${supaUrl5}/functions/v1/job-board`, {
           method: "POST",
@@ -1745,8 +1902,14 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
         // A refused read drops a posting page and its sitemap URL with no
         // error of its own, so the refusal is said out loud in the bake log.
         if (r.status === 429) console.warn(`[prerender-seo] job-board refused a ${body.action ?? "list"} read with 429 (board budget) — posting pages from this bake will be short`);
-        return r.ok ? await r.json() : null;
-      } catch { return null; }
+        let j = null;
+        try { j = await r.json(); } catch { j = null; }
+        return { status: r.status, body: j };
+      } catch { return { status: 0, body: null }; }
+    };
+    const boardRead = async (body) => {
+      const r = await boardCall(body);
+      return r.status >= 200 && r.status < 300 ? r.body : null;
     };
     try {
       if (!supaUrl5 || !supaKey5) throw new Error("no board credentials — posting pages skipped");
@@ -1770,74 +1933,81 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
         && D.postingPagePath(j.id)
         && typeof j.title === "string" && j.title.trim()
         && typeof j.company === "string" && j.company.trim()
+        // F1: a page states the employer by its own name or is not written.
+        && !D.isCodeShapedName(j.token, D.postingEmployer(j))
         && j.agency !== true
         && j.country
         && (j.workMode === "remote" || j.location)
         && D.isPostingLive(j));
+      const describedEnough = (text) => D.jdParagraphs(text).join("\n").length >= POSTING_MIN_DESCRIPTION;
 
-      // The descriptions, at a concurrency measured against this board rather
-      // than guessed. A posting whose description cannot be read, or is too
-      // short to be a description, gets no page — Google requires one, and a
-      // page that omits it would be an invalid posting page rather than a thin
-      // one. Takes ids or list rows; the detail action's own row wins where it
-      // returns one, because it is the fresher read.
-      const fetchDetails = async (items) => {
+      // One detail read per item, at a concurrency measured against this board
+      // rather than guessed. Each answer keeps its state: "found" with the row
+      // and the description, "gone", or "unchecked". The detail action's own
+      // row wins where it returns one, because it is the fresher read.
+      const readDetails = async (ids) => {
         const out = [];
-        for (let i = 0; i < items.length; i += POSTING_FETCH_CONCURRENCY) {
-          const slice = items.slice(i, i + POSTING_FETCH_CONCURRENCY);
-          const got = await Promise.all(slice.map(async (item) => {
-            const id = typeof item === "string" ? item : item.id;
-            const d = await boardRead({ action: "detail", id });
-            const row = d && typeof d === "object" && d.job ? d.job : (typeof item === "string" ? null : item);
-            const text = d && typeof d.description === "string" ? d.description : "";
-            return { job: row, description: text };
-          }));
-          for (const g of got) {
-            if (!eligibleRow(g.job)) continue;
-            if (D.jdParagraphs(g.description).join("\n").length < POSTING_MIN_DESCRIPTION) continue;
-            out.push(g);
-          }
+        for (let i = 0; i < ids.length; i += POSTING_FETCH_CONCURRENCY) {
+          const slice = ids.slice(i, i + POSTING_FETCH_CONCURRENCY);
+          out.push(...await Promise.all(slice.map(async (id) => {
+            const r = await boardCall({ action: "detail", id });
+            const state = postingCheckState(r.status, r.body);
+            const b = r.body && typeof r.body === "object" ? r.body : {};
+            const job = state === "found" ? b.job : null;
+            const gone = b.agedOut || b.closed || null;
+            return {
+              id,
+              state,
+              job,
+              description: typeof b.description === "string" ? b.description : "",
+              title: job?.title ?? gone?.title ?? null,
+              company: job?.company ?? gone?.company ?? null,
+            };
+          })));
         }
         return out;
       };
 
-      // RULE 2 — THE CARRY SET IS RESOLVED BY ID, NOT BY HOPING IT FALLS INSIDE
-      // THE NEWEST WINDOW.
+      // RULE 2 — THE CARRY SET IS WHAT THE LIVE SITE PUBLISHED, RESOLVED BY ID.
       //
-      // It was an intersection with the candidate pool below, and the pool is
-      // the newest ~900 rows of a board taking tens of thousands a day. A
-      // carried posting that is alive and fully eligible is simply not in that
-      // window a day later, so it was never carried: measured on a bake hours
-      // after the committed one, 397 posting URLs in, 2 kept and 395 dropped —
-      // and 10 of 10 of the dropped ones sampled through the detail action came
-      // back live with no missingSince. Each abandoned URL then serves the SPA
-      // fallback, which is the homepage with `index, follow` and no canonical
-      // at all: the exact defect this page family exists to end, moved from
-      // /jobs?job= to /jobs/posting/. So every carried id is asked about
-      // directly. The bake already spends hundreds of these calls; this makes a
-      // published URL survive until the posting genuinely dies, which is what
-      // the rule printed on /jobs says.
-      const carried = [];
-      try {
-        const prevXml = readFileSync(join(root, "public/sitemap.xml"), "utf8");
-        for (const m of prevXml.matchAll(/<loc>([^<]+)<\/loc>/g)) {
-          const id = D.postingIdFromPath(m[1].replace(SITE, ""));
-          if (id && !carried.includes(id)) carried.push(id);
-        }
-      } catch { /* first build, or no committed sitemap — nothing to carry */ }
-      const carriedDetailed = await fetchDetails(carried.slice(0, POSTING_PAGE_CARRY_MAX));
+      // It was the COMMITTED sitemap, which a hosted publish never updates, cut
+      // at 300 of 400 (measured 2026-10-08: 364 of 371 published posting URLs
+      // served the homepage copy). Before that it was an intersection with the
+      // newest window, which kept 2 of 397. Every carried id is asked about
+      // directly, and what the board answers decides the page.
+      let committedSitemap = "";
+      try { committedSitemap = readFileSync(join(root, "public/sitemap.xml"), "utf8"); } catch { /* first build */ }
+      const carryBase = postingCarryBase({
+        ledger: ledgerIn,
+        sitemaps: [liveSitemap ?? "", committedSitemap],
+        idFromPath: D.postingIdFromPath,
+        today: TODAY,
+      });
+      const carriedPaths = [...carryBase.recheck.keys()];
+      const carriedChecks = await readDetails(carriedPaths.map((p) => D.postingIdFromPath(p)));
+      const firstSeen = (path) => carryBase.recheck.get(path) ?? TODAY;
 
       // Rule 4 — one page per identity. The carried pages claim their
       // identities first, so a duplicate appearing in today's newest window
       // cannot evict a URL that is already published.
-      const takenIdentity = new Set();
+      const takenIdentity = new Map();
       const detailed = [];
-      for (const g of carriedDetailed) {
-        const k = D.postingIdentity(g.job);
-        if (takenIdentity.has(k)) continue;
-        takenIdentity.add(k);
-        detailed.push(g);
+      const stubs = [];
+      for (const c of carriedChecks) {
+        const path = D.postingPagePath(c.id);
+        if (c.state === "found" && eligibleRow(c.job) && describedEnough(c.description)) {
+          const k = D.postingIdentity(c.job);
+          if (takenIdentity.has(k)) {
+            stubs.push({ ...c, path, state: "retired", duplicateOf: takenIdentity.get(k) });
+            continue;
+          }
+          takenIdentity.set(k, path);
+          detailed.push({ job: c.job, description: c.description, first: firstSeen(path) });
+        } else {
+          stubs.push({ ...c, path, state: c.state === "found" ? "retired" : c.state });
+        }
       }
+      const carriedLive = detailed.length;
 
       // Rule 3 — the rest of the budget goes to the newest eligible postings.
       //
@@ -1861,11 +2031,12 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
       //     offset. The id-dedupe below is what actually prevents a duplicate
       //     from an offset page shifting under us, and it is asserted rather
       //     than described.
+      const freshBudget = Math.max(0, Math.min(POSTING_PAGE_CEILING - carriedLive, Math.max(POSTING_PAGE_CAP - carriedLive, POSTING_FRESH_RESERVE)));
       const pool = [];
       const seenIds = new Set();
       let offset = 0;
       let poolDuplicates = 0;
-      for (let p = 0; p < POSTING_LIST_PAGES; p++) {
+      for (let p = 0; p < POSTING_LIST_PAGES && freshBudget > 0; p++) {
         const j = await boardRead({ action: "list", sort: "newest", limit: POSTING_LIST_PAGE_ROWS, includeFacets: false, offset });
         if (!j || !Array.isArray(j.jobs) || j.jobs.length === 0) break;
         for (const row of j.jobs) {
@@ -1882,27 +2053,38 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
 
       const fresh = [];
       for (const j of pool) {
-        if (detailed.length + fresh.length >= POSTING_PAGE_CAP) break;
+        if (fresh.length >= freshBudget) break;
         if (!eligibleRow(j)) continue;
+        if (carryBase.recheck.has(D.postingPagePath(j.id)) || carryBase.stubs.has(D.postingPagePath(j.id))) continue;
         const k = D.postingIdentity(j);
         if (takenIdentity.has(k)) continue;
-        takenIdentity.add(k);
+        takenIdentity.set(k, D.postingPagePath(j.id));
         fresh.push(j);
       }
-      for (const g of await fetchDetails(fresh)) detailed.push(g);
+      let freshWritten = 0;
+      for (const c of await readDetails(fresh.map((j) => j.id))) {
+        if (c.state !== "found" || !eligibleRow(c.job) || !describedEnough(c.description)) continue;
+        detailed.push({ job: c.job, description: c.description, first: TODAY });
+        freshWritten++;
+      }
       const eligible = pool.filter(eligibleRow);
 
       let withPay = 0;
-      for (const { job, description } of detailed) {
+      for (const { job, description, first } of detailed) {
         const path = D.postingPagePath(job.id);
         const ld = D.postingJsonLd(job, description, { site: SITE });
-        // A page whose markup we cannot stand behind is not written at all.
-        // Its URL then never reaches the sitemap, which is the whole contract.
-        if (!path || !ld) continue;
+        // A page whose markup we cannot stand behind is not written as a live
+        // page. Its URL keeps a noindex page instead and never reaches the
+        // sitemap, which is the whole contract.
+        if (!path || !ld) {
+          stubs.push({ id: job.id, path, state: "retired", title: job.title, company: job.company });
+          continue;
+        }
         if (ld.baseSalary) withPay++;
         const paras = D.jdParagraphs(description);
-        const nm = String(job.company).trim();
+        const nm = D.postingEmployer(job);
         const place = job.location ? String(job.location).trim() : "";
+        const lander = landerFor(job.token);
         write({
           path,
           title: D.postingPageTitle(job),
@@ -1913,25 +2095,54 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
             <p>${esc(nm)}${place ? ` — ${esc(place)}` : ""}${job.workMode === "remote" ? " — Remote" : ""}</p>
             <p>Posted ${esc(String(job.postedAt).slice(0, 10))}, as stated by the employer. ${job.salary
               ? `Pay, in the employer's own words and neither converted nor estimated: ${esc(String(job.salary))}.`
-              : "This employer states no pay on this posting, so this page states none."}</p>
-            ${job.applyUrl ? `<p><a href="${esc(String(job.applyUrl))}" rel="noopener noreferrer nofollow">Apply on ${esc(nm)}'s own site</a> — the application happens on ${esc(nm)}'s own hiring system. This board never reposts a job and never stands between you and the employer.</p>` : ""}
+              : "We found no pay figure on this posting. That is our reading, not a statement by the employer — the description may still name one."}</p>
+            ${job.applyUrl ? `<p><a href="${esc(String(job.applyUrl))}" rel="noopener noreferrer nofollow">Apply on ${esc(possessive(nm))} own site</a> — the application happens on ${esc(possessive(nm))} own hiring system. This board never reposts a job and never stands between you and the employer.</p>` : ""}
             <h2>The employer's own description</h2>
             ${paras.map((p) => `<p>${esc(p)}</p>`).join("\n            ")}
-            <p><a href="/jobs/company/${esc(String(job.token ?? ""))}">All open roles at ${esc(nm)}</a> · <a href="/jobs">Search the live board</a> · <a href="/">Check your resume against this posting free</a></p>
-            <p>Pulled straight from ${esc(nm)}'s own hiring system — never an aggregator, never a repost. A dated posting is served for at most ${D.BOARD_FRESH_WINDOW_DAYS} days from the date the employer states, and is dropped the moment their feed stops serving it. This page was built ${new Date().toISOString().slice(0, 10)}.</p>
+            <p>${companyLinkHtml(job.token, nm)} · <a href="/jobs">Search the live board</a> · <a href="/">Check your resume against this posting free</a></p>
+            <p>Pulled straight from ${esc(possessive(nm))} own hiring system — never an aggregator, never a repost. A dated posting is served for at most ${D.BOARD_FRESH_WINDOW_DAYS} days from the date the employer states, and this page was checked against the board when it was built, ${TODAY}; the board itself re-checks a posting when you open it.</p>
           `,
           jsonLd: [ld, {
             "@context": "https://schema.org",
             "@type": "BreadcrumbList",
             itemListElement: [
               { "@type": "ListItem", position: 1, name: "Job board", item: `${SITE}/jobs` },
-              ...(job.token ? [{ "@type": "ListItem", position: 2, name: `${nm} jobs`, item: `${SITE}/jobs/company/${job.token}` }] : []),
-              { "@type": "ListItem", position: job.token ? 3 : 2, name: job.title, item: `${SITE}${path}` },
+              ...(lander ? [{ "@type": "ListItem", position: 2, name: `${lander.name} jobs`, item: `${SITE}${lander.href}` }] : []),
+              { "@type": "ListItem", position: lander ? 3 : 2, name: job.title, item: `${SITE}${path}` },
             ],
           }],
         });
         postingPaths.push(path);
+        if (job.token) {
+          if (!postingsByToken.has(job.token)) postingsByToken.set(job.token, []);
+          postingsByToken.get(job.token).push({ path, title: String(job.title).trim(), place });
+        }
+        postingLedger[path] = { state: "live", since: TODAY, first, title: job.title, company: nm, token: job.token ?? null };
       }
+
+      // The URLs this site published that get no live page: each keeps a
+      // noindex page saying why (postingStubPage), and the ledger remembers
+      // it, so the next bake neither re-checks a gone posting nor forgets it.
+      const priorOf = (path) => (ledgerIn && ledgerIn.postings && ledgerIn.postings[path]) || {};
+      const writeStub = (s) => {
+        if (!s.path) return;
+        const prior = priorOf(s.path);
+        const since = prior.state === s.state && typeof prior.since === "string" ? prior.since : TODAY;
+        const title = s.title ?? prior.title ?? null;
+        const company = s.company ?? prior.company ?? null;
+        const token = s.job?.token ?? prior.token ?? (D.postingPathParts?.(s.id)?.token ?? null);
+        write(postingStubPage({
+          path: s.path, id: s.id, state: s.state, since: s.state === "gone" ? since : null,
+          title, company, windowDays: D.BOARD_FRESH_WINDOW_DAYS, duplicateOf: s.duplicateOf ?? null, esc,
+          companyLink: token ? companyLinkHtml(token, company || "this employer") : "",
+        }));
+        postingLedger[s.path] = { state: s.state, since, first: prior.first ?? carryBase.recheck.get(s.path) ?? TODAY, title, company, token };
+      };
+      for (const s of stubs) writeStub(s);
+      for (const [path, e] of carryBase.stubs) {
+        writeStub({ id: D.postingIdFromPath(path), path, state: "gone", title: e.title ?? null, company: e.company ?? null });
+      }
+      const stubCount = (st) => Object.values(postingLedger).filter((e) => e.state === st).length;
 
       // SITEMAP-ONLY ORPHANS ARE A KNOWN DEFECT HERE — 387 company pages sat in
       // the sitemap linked from nothing. Every posting page this bake wrote is
@@ -1945,19 +2156,17 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
         postingIndexSection = `
           <section>
             <h2>Openings with a page of their own</h2>
-            <p>${postingPaths.length} of them, and the board serves far more than that — this is a deliberate bound, not the whole board. A posting gets its own page when the employer stated everything such a page must carry (the job, the employer, the date, a place with its country, and a real description), when their own feed still served it at the last re-read, and when it is inside the ${D.BOARD_FRESH_WINDOW_DAYS}-day window. Pages already published keep their URL while the posting lives; the remaining budget goes to the most recently posted, whose pages stay valid longest. Duplicates of one requisition across an employer's several career sites get one page between them. Every other opening is browsable here on the board and nowhere in the sitemap, because a URL we cannot serve as its own page is a URL we do not advertise.</p>
+            <p>${postingPaths.length} of them, and the board serves far more than that — this is a deliberate bound, not the whole board. A posting gets its own page when the employer stated everything such a page must carry (the job, the employer, the date, a place with its country, and a real description), when their own feed still served it at the last re-read, and when it is inside the ${D.BOARD_FRESH_WINDOW_DAYS}-day window. Pages already published keep their URL while the posting lives, and once it is no longer listed the URL keeps a short page saying so, marked not to be indexed, rather than disappearing; the remaining budget goes to the most recently posted, whose pages stay valid longest. Duplicates of one requisition across an employer's several career sites get one page between them. Every other opening is browsable here on the board and nowhere in the sitemap, because a URL we cannot serve as its own page is a URL we do not advertise.</p>
             <ul>
               ${links}
             </ul>
           </section>`;
       }
-      console.log(`[prerender-seo] posting pages: ${postingPaths.length} written (cap ${POSTING_PAGE_CAP}; ${carried.length} posting URLs in the committed sitemap → ${carriedDetailed.length} still live and eligible, carried; ${fresh.length} new from a pool of ${pool.length} (${eligible.length} eligible); ${withPay} carry employer-stated pay)`);
-      // A bake that drops a published URL without its posting having died is
-      // the churn defect. It cannot be asserted from inside the loop (a posting
-      // may legitimately have gone), so it is reported every time: a carry rate
-      // that collapses is the symptom to look at first.
-      if (carried.length && carriedDetailed.length < carried.length * 0.5) {
-        console.warn(`[prerender-seo] posting pages: only ${carriedDetailed.length} of ${carried.length} published posting URLs survived re-verification — if that is not a genuine wave of closures, the carry resolution is broken again`);
+      console.log(`[prerender-seo] posting pages: carried ${carriedPaths.length} / live ${postingPaths.length} (${carriedLive} carried, ${freshWritten} new from a pool of ${pool.length}, ${eligible.length} eligible) / tombstoned ${stubCount("gone")} / retired ${stubCount("retired")} / unchecked ${stubCount("unchecked")}; ${withPay} carry employer-stated pay; carry base: live sitemap ${liveSitemap ? "read" : "UNREAD"}, ledger ${ledgerSource}`);
+      // A carried page the board did not answer for is the symptom to look at
+      // first: it is an "unchecked" noindex page until a later bake reaches it.
+      if (stubCount("unchecked")) {
+        console.warn(`[prerender-seo] posting pages: ${stubCount("unchecked")} published posting URL(s) could not be re-checked (board refusal, error or the call budget) — each carries a noindex "could not re-check" page until a bake reaches it`);
       }
     } catch (e) {
       // A bake that cannot reach the board writes NO posting pages and puts no
@@ -1967,6 +2176,44 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
       console.warn(`[prerender-seo] posting pages SKIPPED (${e?.message || e}) — no posting URL enters the sitemap on this bake`);
     }
   }
+
+  // ONE CALL, read by the four write() blocks below. Built here rather than
+  // inline so a page cannot silently render a different payload from the one
+  // the guard exercises; after the employer-page set, so its tables link an
+  // employer page only where this bake writes one.
+  const DATA_FIGURES = dataPageFigures({
+    stats: statsCache, transparency: transparencyCache, freshness: freshnessRow, audit: auditRow,
+    companyHref: (token, query) => {
+      const href = companyHrefFor(token);
+      return query ? `${href}${href.includes("?") ? "&" : "?"}${query}` : href;
+    },
+    companyName: (token, stored) => D.employerName(token, stored),
+    fieldLabel: (slug) => (slug === "other" ? "Roles we could not sort into a field" : CATEGORY_LANDERS.find(([s]) => s === slug)?.[1] ?? String(slug).replace(/_/g, " ")),
+  });
+  for (const [k, v] of Object.entries(DATA_FIGURES)) {
+    if (!v.read) console.warn(`[prerender-seo] /${k} data page: figures UNREAD — it ships its prose and says so`);
+  }
+  // THE LICENSE THE PUBLISHED NUMBERS ARE OFFERED UNDER: an owner decision
+  // not yet made (the SEO report recommends CC BY 4.0). Empty means the
+  // markup names none, which claims nothing.
+  // TODO(owner): set to a license URL, e.g. "https://creativecommons.org/licenses/by/4.0/".
+  const DATA_LICENSE = "";
+  /**
+   * S2: each data page is a Dataset (it was a generic WebPage with no date),
+   * dated by its own payload's stamp: no stamp, no dateModified.
+   */
+  const datasetLd = ({ name, description, path, modified }) => ({
+    "@context": "https://schema.org",
+    "@type": "Dataset",
+    name,
+    description,
+    url: `${SITE}${path}`,
+    isAccessibleForFree: true,
+    creator: { "@type": "Organization", name: "Resume Booster", url: SITE },
+    ...(DATA_LICENSE ? { license: DATA_LICENSE } : {}),
+    ...(modified ? { dateModified: modified } : {}),
+    isPartOf: { "@type": "WebSite", name: "Resume Booster", url: SITE },
+  });
 
   // ---- Job-board category landers: the queries people actually type are
   // "healthcare jobs", not "job board". 17 crawlable pages, counts baked
@@ -1989,7 +2236,9 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
         .map(([s, l]) => `<a href="/jobs/field/${s}" class="underline">${l} jobs</a>`).join(" · ");
       write({
         path: `/jobs/field/${slug}`,
-        title: n ? `${label} Jobs — ${fmt(n)}+ Live Openings` : `${label} Jobs — Live Openings from Company Boards`,
+        // L13-37: the "+" is a promise, so it takes the churn margin like every
+        // other headline count (plusClaim), not the exact baked figure.
+        title: n ? `${label} Jobs — ${plusClaim(n, n >= 10000 ? 1000 : 100)} Live Openings` : `${label} Jobs — Live Openings from Company Boards`,
         // THE NOUN AND THE FALLBACK, both wrong in the same clause. The number
         // is companiesOpenCount — a count of company_token BOARDS, and one
         // employer can run several — so "N companies" overstates employers,
@@ -2023,142 +2272,87 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
       });
     }
 
-    // Company landing pages: the top employers by open-role count each get a
-    // crawlable "verified roles at {Company}" page — a real seeker destination and
-    // a large SEO surface, generated from the company facet already fetched above.
-    // Count-gated and capped so only substantive companies get a page; if the
-    // build can't reach the board, this simply produces none.
+    // Company landing pages: the employers LANDERS chose (selectLanders, top
+    // 500 by OPEN roles, 8 or more; see the block above the posting loop),
+    // each named by its own name. One employer running several boards gets
+    // one indexable page, the board with the most open roles; the rest keep
+    // their file (or the host serves them the homepage) and canonicalise to it.
+    //
+    // THE NUMBER IN THE <title> IS THE NUMBER THE DESTINATION SERVES, OR THERE
+    // IS NO NUMBER: `open` is counted under both serving predicates in the same
+    // pass (migration 20260909214000), the exact query /jobs/company/{token}
+    // runs. PwC once read 3,254 here against 2,119 served.
+    //
+    // S1 (SEO report 2026-10-08): 485 of 487 of these pages were one template
+    // paragraph with the name and count swapped, linking only to themselves.
+    // Each now carries what the board knows about that employer and no other:
+    // where its roles are and in which fields (get_company_intel, the read the
+    // live lander makes), linked into the board filtered that way, and the
+    // posting pages this bake wrote for it. A page with none of that, or one
+    // whose name is still a tenant code, goes out as noindex, off the sitemap.
     {
-      const companyFacet = Array.isArray(boardFacets?.companiesFacet) ? boardFacets.companiesFacet : [];
-      const topCompanies = companyFacet
-        // Tilde is allowed: Oracle/Workday compound tokens (tenant~dc~site) are
-        // valid URL path segments, the list API accepts them, and the SPA route
-        // serves them 200 — verified live 2026-07-26 on Hilton (efet~us2~CX_1,
-        // 2,001 postings), which had no lander at all under the old filter.
-        //
-        // GATED AND RANKED ON OPEN ROLES, NOT ON THE CATALOG COUNT. The old
-        // gate (c.count >= 8) admitted employers whose eight postings had all
-        // been withdrawn, and ranked a board with 4,000 dead rows above one
-        // with 300 live ones. `open` is counted under both serving predicates
-        // in the same pass (migration 20260909214000) — the exact query
-        // /jobs/company/{token} runs — so a lander exists only where the
-        // destination has something to show. A build that cannot reach the
-        // servable number falls back to the catalog count for SELECTION only,
-        // and then prints no number anywhere on the page.
-        .filter((c) => c && typeof c.token === "string" && /^[A-Za-z0-9._~-]+$/.test(c.token)
-          && typeof c.name === "string" && c.name.trim()
-          && (typeof openRolesOf(c) === "number" ? openRolesOf(c) >= 8 : (typeof c.count === "number" && c.count >= 8)))
-        .sort((a, b) => (openRolesOf(b) ?? b.count ?? 0) - (openRolesOf(a) ?? a.count ?? 0))
-        .slice(0, 500);
-      // ONE EMPLOYER, TWO BOARDS, TWO IDENTICAL PAGES.
-      //
-      // The URL is per-BOARD (source~tenant) but the page is about the
-      // EMPLOYER, so an employer running two boards got two landers with the
-      // same title, the same description and the same body — abbottcareers and
-      // abbottcareers2, boeing's EXTERNAL_CAREERS and external_subsidiary, two
-      // HPE boards, two PwC boards (audit 2026-08-15). Both were in the
-      // sitemap, so we were submitting pairs of duplicates and letting Google
-      // pick which to keep, which is how a page ends up reported as "Duplicate
-      // without user-selected canonical".
-      //
-      // The largest board becomes the indexable page for that employer; the
-      // rest keep their file (they must, or the host serves them the homepage)
-      // and point their canonical at it. Grouped on the same normalized display
-      // name that get_size_segments merges on, so this page family and the
-      // company counts agree about what "one employer" means.
-      const primaryByName = new Map();
-      for (const c of topCompanies) {
-        const key = c.name.trim().toLowerCase();
-        const prev = primaryByName.get(key);
-        // The indexable page for an employer is the board with the most OPEN
-        // roles — the same ranking the gate above uses, so the canonical does
-        // not point at a sibling board that has nothing to serve.
-        if (!prev || (openRolesOf(c) ?? c.count ?? 0) > (openRolesOf(prev) ?? prev.count ?? 0)) primaryByName.set(key, c);
+      const envText6 = (() => { try { return readFileSync(join(root, ".env"), "utf8"); } catch { return ""; } })();
+      const grab6 = (k) => process.env[k] || (envText6.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
+      const supaUrl6 = grab6("VITE_SUPABASE_URL");
+      const supaKey6 = grab6("VITE_SUPABASE_PUBLISHABLE_KEY");
+      const intelOf = new Map();
+      const primaries0 = LANDERS.filter((c) => c.primary === c.token);
+      if (supaUrl6 && supaKey6) {
+        for (let i = 0; i < primaries0.length; i += 6) {
+          await Promise.all(primaries0.slice(i, i + 6).map(async (c) => {
+            try {
+              const r = await fetch(`${supaUrl6}/rest/v1/rpc/get_company_intel`, {
+                method: "POST",
+                headers: { apikey: supaKey6, Authorization: `Bearer ${supaKey6}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ p_token: c.token }),
+                signal: AbortSignal.timeout(8000),
+              });
+              const j = r.ok ? await r.json() : null;
+              if (j && typeof j === "object" && !Array.isArray(j)) intelOf.set(c.token, j);
+            } catch { /* that page states no places or fields */ }
+          }));
+        }
       }
+      const regionNames = (() => { try { return new Intl.DisplayNames(["en"], { type: "region" }); } catch { return null; } })();
+      const countryName = (code) => { try { return regionNames?.of(String(code).toUpperCase()) ?? null; } catch { return null; } };
+      const fieldLabelOf = (slug) => CATEGORY_LANDERS.find(([s]) => s === slug)?.[1] ?? null;
+      const landerPath = (token) => publicHref(`/jobs/company/${token}`);
+      const indexable = new Set();
       let consolidated = 0;
-      for (const c of topCompanies) {
-        const nm = c.name.trim();
-        const primary = primaryByName.get(nm.toLowerCase());
-        const isPrimary = primary.token === c.token;
+      let thin = 0;
+      let codeNamed = 0;
+      for (const c of LANDERS) {
+        const nm = c.name;
+        const isPrimary = c.primary === c.token;
         if (!isPrimary) consolidated++;
-        // THE NUMBER IN THE <title> IS THE NUMBER THE DESTINATION SERVES, OR
-        // THERE IS NO NUMBER.
-        //
-        // Every figure on this page was companiesFacet.count — count(*) GROUP
-        // BY company_token with NEITHER serving predicate, because the board
-        // leaves that grouping unfiltered so its orphan prune can DELETE by it
-        // (migration 20260825190000). Measured 2026-09-09 against the board's
-        // own filtered count, the median employer was ~1% over and the tail was
-        // not: PwC 3,254 against 2,119 — 1,135 roles promised in a SERP title
-        // that /jobs/company/pwc~wd3~Global_Experienced_Careers does not have.
-        // These are ~500 crawlable URLs that only regenerate on a build, so the
-        // overstatement sat in Google's index between deploys.
-        //
-        // `open` is the same instant's count under both predicates (migration
-        // 20260909214000). When this build could not reach it, the page states
-        // NO count at all rather than the one it cannot reproduce — the same
-        // rule prerender-seo already applied to the BOARD total (see the
-        // "`total` CHANGED MEANING UNDERNEATH THIS LINE" note above), which was
-        // fixed for the whole board and never re-derived per company.
+        const primary = landerByToken.get(c.primary) ?? c;
+        // The facts and openings of the EMPLOYER: every board of it this bake chose.
+        const tokens = LANDERS.filter((x) => x.primary === c.primary).map((x) => x.token);
+        const facts = landerFacts(intelOf.get(primary.token), { countryName, fieldLabel: fieldLabelOf });
+        const openings = tokens.flatMap((t) => postingsByToken.get(t) ?? []).slice(0, 12);
+        const ownContent = landerHasOwnContent({ facts, postings: openings });
+        const answered = intelOf.has(primary.token) || openings.length > 0;
+        const robots = landerRobots({ isPrimary, unreadable: c.unreadable, answered, ownContent });
+        if (isPrimary && c.unreadable) codeNamed++;
+        else if (isPrimary && answered && !ownContent) thin++;
+        if (isPrimary && !robots) indexable.add(c.token);
         const openN = openRolesOf(c);
-        const hasN = typeof openN === "number";
-        write({
-          path: `/jobs/company/${c.token}`,
-          canonical: isPrimary ? null : `/jobs/company/${primary.token}`,
-          // 68-char SERP budget: a long employer name ("National Federation
-          // of Independent Business (NFIB)") overflowed at 79 chars and
-          // truncated mid-claim. The name always stays whole — the count
-          // phrase gives way first, "Verified" before "Openings".
-          title: (() => {
-            if (!hasN) return `${nm} Jobs — Open Roles From Their Own Job Board`.length <= 68
-              ? `${nm} Jobs — Open Roles From Their Own Job Board`
-              : `${nm} Jobs`;
-            const full = `${nm} Jobs — ${fmt(openN)} Verified Openings`;
-            if (full.length <= 68) return full;
-            const short = `${nm} Jobs — ${fmt(openN)} Openings`;
-            return short.length <= 68 ? short : `${nm} Jobs`;
-          })(),
-          description: hasN
-            ? `Browse ${fmt(openN)} open roles at ${nm}, pulled straight from ${nm}'s own job board and re-checked continuously — no aggregators, no reposts. Check your resume's fit free, then apply on ${nm}'s own site.`
-            : `Browse open roles at ${nm}, pulled straight from ${nm}'s own job board and re-checked continuously — no aggregators, no reposts. Check your resume's fit free, then apply on ${nm}'s own site.`,
-          content: `
-            <h1>Open roles at ${esc(nm)}</h1>
-            <p>${hasN ? `${fmt(openN)} verified ${esc(nm)} openings right now` : `Verified ${esc(nm)} openings`}, pulled straight from ${esc(nm)}'s own official job board (one of ${D.SERVING_SOURCE_LIST}) and re-checked continuously. No aggregators, no reposts, no scraped copies — every role belongs to ${esc(nm)}, and applying happens on ${esc(nm)}'s own site.${hasN ? ` THE COUNT'S BASIS: an "open role" here is a posting ${esc(nm)} has not taken down and whose date falls inside the last 30 days — the same two rules the linked board page applies, so the number below it is the number this page states. Counts were measured when this page was last built; the board's own count refreshes periodically through the day and moves as roles open and close.` : ` This build could not read a count it can stand behind for ${esc(nm)}, so it states none rather than a figure the linked page would contradict — open the board below for the roles themselves.`}</p>
-            <p><a href="/jobs/company/${c.token}">Browse all ${esc(nm)} openings on the live board</a> — filter by role, location, experience, and remote, and check any posting against your resume with the <a href="/">free resume scan</a> before you spend an application on it.</p>
-            <p>See <a href="/jobs">the full job board</a>${boardCompanies ? ` for openings across ${fmt(boardCompanies)} company job boards with roles open now` : ""}.</p>
-          `,
-          jsonLd: [{
-            "@context": "https://schema.org",
-            "@type": "CollectionPage",
-            name: `Open roles at ${nm}`,
-            description: `Verified ${nm} openings from ${nm}'s official job board, re-verified throughout the day.`,
-            url: `${SITE}/jobs/company/${c.token}`,
-            isPartOf: { "@type": "WebSite", name: "Resume Booster", url: SITE },
-          }, {
-            "@context": "https://schema.org",
-            "@type": "BreadcrumbList",
-            itemListElement: [
-              { "@type": "ListItem", position: 1, name: "Job board", item: `${SITE}/jobs` },
-              { "@type": "ListItem", position: 2, name: `${nm} jobs`, item: `${SITE}/jobs/company/${c.token}` },
-            ],
-          }],
-        });
+        write(companyLanderPage({
+          token: c.token, name: nm, primaryToken: primary.token, robots, openN, facts, openings,
+          sources: D.SERVING_SOURCE_LIST, boardCompanies, site: SITE, esc, possessive, fmt: (n) => fmt(n), href: landerPath,
+        }));
       }
-      console.log(`[prerender-seo] company pages: ${topCompanies.length} (${consolidated} canonicalized to a larger board of the same employer)`);
+      console.log(`[prerender-seo] company pages: ${LANDERS.length} (${consolidated} canonicalized to a larger board of the same employer; ${indexable.size} indexable; noindex: ${thin} with nothing of their own to say, ${codeNamed} still named by a tenant code${codeNamed ? `: ${LANDERS.filter((c) => c.primary === c.token && c.unreadable).slice(0, 40).map((c) => c.token).join(", ")}` : ""}); intel read for ${intelOf.size} of ${primaries0.length}`);
 
-      // ---- /companies: the directory that links every company page ----
+      // ---- /companies: the directory that links every indexable company page ----
       //
       // 387 of the sitemap's URLs were company pages LINKED FROM NO PAGE
-      // (audit 2026-08-28) — submitted for indexing, then left unreachable by
-      // any crawl path, which wastes their PageRank and slows discovery. This
-      // hub links every prerendered company page (consolidated duplicates
-      // excluded — linking a page whose canonical points elsewhere would
-      // resurrect the duplicate-signal problem), grouped alphabetically.
+      // (audit 2026-08-28). This hub links every indexable company page,
+      // grouped alphabetically; a consolidated duplicate or a noindex page
+      // stays off it, since linking a page that is not to be indexed would
+      // send the same mixed signal the canonical exists to prevent.
       {
-        const primaries = topCompanies.filter((c) => {
-          const primary = primaryByName.get(c.name.trim().toLowerCase());
-          return primary.token === c.token;
-        });
+        const primaries = LANDERS.filter((c) => indexable.has(c.token));
         const byLetter = new Map();
         for (const c of [...primaries].sort((a, b) => a.name.localeCompare(b.name))) {
           const letter = /^[a-z]/i.test(c.name.trim()) ? c.name.trim()[0].toUpperCase() : "#";
@@ -2173,16 +2367,17 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
               // count or no count. An A-Z row that disagreed with the page one
               // click away is the same defect at directory scale.
               const o = openRolesOf(c);
-              return `<li><a href="${publicHref(`/jobs/company/${c.token}`)}" class="text-primary hover:underline">${esc(c.name)}</a>${typeof o === "number" ? ` <span class="text-muted-foreground">— ${fmt(o)} open roles</span>` : ""}</li>`;
+              return `<li><a href="${landerPath(c.token)}" class="text-primary hover:underline">${esc(c.name)}</a>${typeof o === "number" ? ` <span class="text-muted-foreground">— ${fmt(o)} open roles</span>` : ""}</li>`;
             }).join("\n            ")}
           </ul>`).join("\n");
+        COMPANY_PAGE_COUNT = primaries.length;
         write({
           path: "/companies",
           title: `${fmt(primaries.length)} Companies Hiring Now — Verified Job Boards`,
-          description: `Every employer on the board with a dedicated page: ${fmt(primaries.length)} companies, each pulled straight from its own official career system and re-checked continuously. No aggregators, no reposts.`,
+          description: `The ${fmt(primaries.length)} employers on the board with a page of their own, each pulled straight from its own official career system and re-checked continuously.`,
           content: `
             <h1 class="text-2xl font-bold mb-3">Companies hiring on the board</h1>
-            <p class="text-muted-foreground mb-6">${fmt(primaries.length)} employers with dedicated pages, listed A–Z — every posting comes from the company's own hiring system. Where a count is shown it means postings the employer has not taken down, dated inside the last 30 days: the same rule the linked page serves, measured when this index was last built. Looking for a specific role instead? <a href="/jobs" class="text-primary underline">Search the live board</a>.</p>
+            <p class="text-muted-foreground mb-6">The ${fmt(primaries.length)} employers with a page of their own, listed A–Z; the board itself carries far more (${boardCompanies ? `${fmt(boardCompanies)} company job boards with roles open now` : "every one is searchable"} on <a href="/jobs" class="text-primary underline">the live board</a>). Every posting comes from the company's own hiring system. Where a count is shown it means postings the employer has not taken down, dated inside the last 30 days: the same rule the linked page serves, measured when this index was last built.</p>
             ${sections}`,
         });
       }
@@ -2249,22 +2444,20 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
       write({
         path: "/ghost-job-index",
         title: "The Ghost Job Index — how many job postings are actually real?",
-        description: DATA_FIGURES.ghost.desc ?? "A live measure of job-posting reality: how many roles are open, how long postings stay up, how fast they fill, and who is actively hiring — audited daily.",
+        description: DATA_FIGURES.ghost.desc ?? "A live measure of job-posting reality: how many roles are open, how long postings stay up, how often they come down, and a daily re-check against employers' own systems.",
         content: `
           <h1>The Ghost Job Index</h1>
           <p>Ghost jobs — postings that are stale, already filled, or never real — waste job seekers' time everywhere. This page is our live, honest measure of the opposite: postings that are verified, fresh, and from companies actually hiring.</p>
-          <p>Every figure is computed from the full lifecycle of postings on companies' official job boards (${D.SERVING_SOURCE_LIST}) — never an aggregator or a scrape. Any posting whose company-stated date passes 30 days is dropped automatically, we log every closure to measure which employers truly fill roles, we sample random listings daily and re-check them against the companies' own systems, and every posting is re-checked live the moment you click Apply. Where a company states no date at all we can't judge the posting old, so we keep it and show no age rather than guess one.</p>
+          <p>Every figure is computed from the full lifecycle of postings on companies' official job boards (${D.SERVING_SOURCE_LIST}), never an aggregator. Any posting whose company-stated date passes 30 days is dropped automatically, we log every takedown we see (a takedown is never called a hire: a hire, a withdrawal and a cancelled requisition look the same from a feed), and we sample listings daily and re-check them against the companies' own systems. Where a company states no date at all we can't judge the posting old, so we keep it and show no age rather than guess one.</p>
           ${DATA_FIGURES.ghost.html}
           <p><a href="/jobs">Browse the live board</a> — or check any posting against your resume with the <a href="/">free resume scan</a> first.</p>
         `,
-        jsonLd: [{
-          "@context": "https://schema.org",
-          "@type": "WebPage",
+        jsonLd: [datasetLd({
           name: "The Ghost Job Index",
-          description: "A live, honest measure of job-posting freshness and which companies actually fill roles, computed from official company job boards and audited daily.",
-          url: `${SITE}/ghost-job-index`,
-          isPartOf: { "@type": "WebSite", name: "Resume Booster", url: SITE },
-        }],
+          description: "A live measure of job-posting freshness computed from official company job boards: open roles, posting age by the employer's stated date, takedowns logged over 90 days (a takedown is never called a hire), and a daily re-check of sampled postings against the employers' own systems.",
+          path: "/ghost-job-index",
+          modified: DATA_FIGURES.ghost.modified,
+        })],
       });
     }
 
@@ -2282,14 +2475,12 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
           ${DATA_FIGURES.entry.html}
           <p><a href="/jobs?experience=entry">Browse all verified entry-level openings</a>, check the <a href="/hiring-trends">weekly hiring trends</a>, or scan your resume against any posting with the <a href="/">free resume scan</a>.</p>
         `,
-        jsonLd: [{
-          "@context": "https://schema.org",
-          "@type": "WebPage",
+        jsonLd: [datasetLd({
           name: "The Entry-Level Index",
-          description: "A live ranking of companies with real entry-level openings, counted from official company job boards.",
-          url: `${SITE}/entry-level-index`,
-          isPartOf: { "@type": "WebSite", name: "Resume Booster", url: SITE },
-        }],
+          description: "Early-career openings counted from official company job boards, by our classification of each posting's own title and stated requirements, with the job boards ranked by the share of their open roles that are early-career.",
+          path: "/entry-level-index",
+          modified: DATA_FIGURES.entry.modified,
+        })],
       });
     }
 
@@ -2306,14 +2497,12 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
           ${DATA_FIGURES.trends.html}
           <p><a href="/jobs">Browse the live board</a>, see <a href="/entry-level-index">who's hiring entry-level</a>, or check the <a href="/ghost-job-index">Ghost Job Index</a>.</p>
         `,
-        jsonLd: [{
-          "@context": "https://schema.org",
-          "@type": "WebPage",
+        jsonLd: [datasetLd({
           name: "Weekly Hiring Trends",
-          description: "Live weekly hiring data computed from official company job boards: new postings, trending fields, and roles actually filled.",
-          url: `${SITE}/hiring-trends`,
-          isPartOf: { "@type": "WebSite", name: "Resume Booster", url: SITE },
-        }],
+          description: "Weekly hiring data computed from official company job boards: roles employers dated each week, the fields they are in, and the closure events logged each week, where a posting coming down is never called a hire.",
+          path: "/hiring-trends",
+          modified: DATA_FIGURES.trends.modified,
+        })],
       });
     }
 
@@ -2331,14 +2520,12 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
           ${DATA_FIGURES.pay.html}
           <p>Placement on this page cannot be bought. Browse <a href="/jobs?mode=remote">remote roles</a>, check the <a href="/ghost-job-index">Ghost Job Index</a>, or license the underlying data at <a href="/data-api">Hiring Data &amp; API</a>.</p>
         `,
-        jsonLd: [{
-          "@context": "https://schema.org",
-          "@type": "WebPage",
+        jsonLd: [datasetLd({
           name: "Pay Transparency Index",
-          description: "Live ranking of fields, hiring systems, and large employers by the share of job postings stating pay, computed from official company job boards.",
-          url: `${SITE}/pay-transparency`,
-          isPartOf: { "@type": "WebSite", name: "Resume Booster", url: SITE },
-        }],
+          description: "The share of job postings that state pay, by field, by hiring system and across large employers, counted from the employers' own posting text and applicant-tracking fields; nothing estimated or modelled.",
+          path: "/pay-transparency",
+          modified: DATA_FIGURES.pay.modified,
+        })],
       });
     }
 
@@ -3011,7 +3198,9 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
     lines.push("# Resume Booster — full text for AI/answer engines");
     lines.push("");
     lines.push(`> Free diagnostic resume scanner (resumebooster.work): ATS score with a point-by-point audit trail, every quoted finding verified against the actual document, per-vendor parsing checks (Workday, Greenhouse, Lever, iCIMS), keyword expectations sourced from the U.S. Department of Labor's O*NET database. ${NIND} industries, 10 languages including native Spanish detection. Free scan, no signup; the résumé text is deleted after 24 hours and the report that quotes it after 7 days. See /llms.txt for the short overview.`);
-    if (BOARD_TOTAL) {
+    // A corpus line in the file answer engines quote is a live reading or
+    // nothing: a snapshot-fed bake prints no board total here (L4-03).
+    if (BOARD_TOTAL && facetsSource !== "snapshot") {
       lines.push("");
       lines.push(`> Live job board (/jobs): ${Number(BOARD_TOTAL).toLocaleString("en-US")} live postings${BOARD_TRACKED ? ` (${Number(BOARD_TRACKED).toLocaleString("en-US")} tracked in all, including roles since closed)` : ""} from ${BOARD_COMPANIES ? `${BOARD_COMPANIES.toLocaleString("en-US")} company job boards that have roles open right now, read through their` : "company job boards, read through their"} OFFICIAL job-board APIs (${D.SERVING_SOURCE_LIST}) — no scraping, no aggregators; the largest boards are re-checked most often and the rotation runs continuously (how far behind it is right now is a measurement rather than a promise — live median and 95th-percentile re-check ages: ${SITE}/ghost-job-index). Per-field pages at /jobs/field/{engineering,healthcare,finance,...}. Free deterministic resume-fit scoring against any posting.`);
     }
@@ -3241,18 +3430,42 @@ export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPost
     // build with fresh live counts, so the bake date IS the modification
     // date. The audit found zero lastmod across all 877 URLs — discarding
     // recrawl-priority signal on a board whose selling point is freshness.
-    const LASTMOD = new Date().toISOString().slice(0, 10);
+    //
+    // NOT ANY MORE (SEO report 2026-10-08, S3): all 1,267 entries carried the
+    // publish date, and a date that moves on every publish is one search
+    // engines learn to ignore. Each page's date is now the day what it says
+    // last changed (or its own stated date), carried in the ledger.
+    const lastmodOf = (path) => {
+      const fp = pageFingerprints.get(path);
+      if (!fp) return TODAY;
+      return pageLastmod({ fingerprint: fp.fp, prior: priorPages[path], today: TODAY, stated: fp.stated });
+    };
     const xml = [
       `<?xml version="1.0" encoding="UTF-8"?>`,
       `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`,
       // publicHref, not e.path: a dotted last segment needs the trailing slash
       // or the host 404s it. See the comment on publicHref.
-      ...entries.map((e) => `  <url>\n    <loc>${SITE}${publicHref(e.path)}</loc>\n    <lastmod>${LASTMOD}</lastmod>\n    <changefreq>${e.changefreq}</changefreq>\n    <priority>${e.priority}</priority>\n  </url>`),
+      ...entries.map((e) => `  <url>\n    <loc>${SITE}${publicHref(e.path)}</loc>\n    <lastmod>${lastmodOf(e.path)}</lastmod>\n    <changefreq>${e.changefreq}</changefreq>\n    <priority>${e.priority}</priority>\n  </url>`),
       `</urlset>`,
     ].join("\n");
     writeFileSync(join(root, "public/sitemap.xml"), xml);
     writeFileSync(join(dist, "sitemap.xml"), xml);
-    console.log(`[prerender-seo] sitemap.xml regenerated: ${entries.length} URLs (public/ + dist/)`);
+    console.log(`[prerender-seo] sitemap.xml regenerated: ${entries.length} URLs (public/ + dist/), ${new Set(entries.map((e) => lastmodOf(e.path))).size} distinct lastmod dates`);
+
+    // THE LEDGER THE NEXT BAKE READS (F2a, S3): every posting URL this bake
+    // accounted for and what became of it, and every page's fingerprint with
+    // the date it last changed. Served beside the sitemap, so the next
+    // publish reads what THIS one published; the public/ copy is the fallback
+    // for a build that cannot reach the site.
+    const ledgerOut = {
+      builtAt: TODAY,
+      postings: postingLedger,
+      pages: Object.fromEntries([...pageFingerprints.entries()].map(([path, fp]) => [path, { fp: fp.fp, lastmod: lastmodOf(path) }])),
+    };
+    const ledgerJson = JSON.stringify(ledgerOut);
+    writeFileSync(join(dist, PRERENDER_LEDGER_PATH.slice(1)), ledgerJson);
+    writeFileSync(join(root, "public", PRERENDER_LEDGER_PATH.slice(1)), ledgerJson);
+    console.log(`[prerender-seo] ${PRERENDER_LEDGER_PATH} written: ${Object.keys(postingLedger).length} posting URLs, ${pageFingerprints.size} pages (read from: ${ledgerSource})`);
   }
 
   // Say out loud what the clamp had to cut. Silent truncation is how the

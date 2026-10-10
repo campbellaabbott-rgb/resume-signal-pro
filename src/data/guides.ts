@@ -38,6 +38,18 @@ export interface Guide {
 }
 
 /** The byline's grounding line, with the résumé-guide default. One source, two renderers. */
+/**
+ * The /guides index's one claim about every guide, spelled once for the page
+ * and the bake. It was "every guide grounded in the checks our scanner runs",
+ * true of the résumé guides and false the moment the apply-agent guide joined
+ * them; the page retracted it and the bake kept serving it (L4-10).
+ */
+export const GUIDES_INTRO =
+  "No recycled folklore. Every guide below is grounded in something this product actually does — the checks our scanner runs, the documented behavior of real ATS parsers, or what our apply agent will and will not do on your behalf. Where the popular advice is wrong, we say so.";
+export const GUIDES_INDEX_TITLE = "Resume, ATS & Apply Agent Guides — From Real Data";
+export const GUIDES_INDEX_DESCRIPTION =
+  "How ATS systems actually work, how resumes really get rejected, how to fix yours, and how our apply agent works — grounded in what the product does, not folklore.";
+
 export const GUIDE_GROUNDING_DEFAULT =
   "Grounded in the checks our scanner runs on every resume";
 export function guideGrounding(g: Pick<Guide, "grounding">): string {
