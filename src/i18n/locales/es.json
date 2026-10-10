@@ -1735,7 +1735,7 @@
       },
       "cost": {
         "feature": "Costo",
-        "us": "$5 – $25 pago único",
+        "us": "Escaneo gratis · Análisis completo ${{price}} pago único",
         "them": "$150 – $500+"
       },
       "atsOptimization": {

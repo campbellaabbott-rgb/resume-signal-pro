@@ -1735,7 +1735,7 @@
       },
       "cost": {
         "feature": "Kosten",
-        "us": "5 € – 25 € einmalig",
+        "us": "Kostenloser Scan · Vollständige Analyse {{price}} $ einmalig",
         "them": "150 € – 500 €+"
       },
       "atsOptimization": {

@@ -1735,7 +1735,7 @@
       },
       "cost": {
         "feature": "Coût",
-        "us": "5 à 25 $ paiement unique",
+        "us": "Analyse gratuite · Analyse complète {{price}} $ paiement unique",
         "them": "150 à 500 $+"
       },
       "atsOptimization": {

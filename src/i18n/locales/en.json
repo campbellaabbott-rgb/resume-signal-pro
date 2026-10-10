@@ -1735,7 +1735,7 @@
       },
       "cost": {
         "feature": "Cost",
-        "us": "$5 – $25 one-time",
+        "us": "Free scan · Full Analysis ${{price}} one-time",
         "them": "$150 – $500+"
       },
       "atsOptimization": {

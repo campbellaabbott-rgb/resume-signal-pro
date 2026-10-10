@@ -1735,7 +1735,7 @@
       },
       "cost": {
         "feature": "Kosten",
-        "us": "€5 – €25 eenmalig",
+        "us": "Gratis scan · Volledige analyse $ {{price}} eenmalig",
         "them": "€140 – €450+"
       },
       "atsOptimization": {

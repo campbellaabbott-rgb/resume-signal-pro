@@ -109,3 +109,35 @@ describe("the free report's offers", () => {
     expect(pro.getAttribute("href")).toBe("/pricing");
   });
 });
+
+// The homepage's value table priced us at "$5 – $25 one-time" in every
+// language, a typed range that matched no product (one-time prices run from
+// $2 to $59) and showed €/£ where checkout charges dollars.
+describe("the value table's cost", () => {
+  it("names the Full Analysis price checkout charges, in every language", async () => {
+    const { ValueComparison } = await import("@/components/ValueComparison");
+    const i18n = (await import("@/i18n")).default;
+    const { readdirSync, readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const dir = resolve(__dirname, "../i18n/locales");
+    const langs = readdirSync(dir).filter((f) => f.endsWith(".json")).map((f) => f.replace(/\.json$/, ""));
+    expect(langs.length).toBe(9);
+    try {
+      for (const lng of langs) {
+        // Only English ships in the bundle; load each locale the way the lazy loader does.
+        i18n.addResourceBundle(lng, "translation", JSON.parse(readFileSync(resolve(dir, `${lng}.json`), "utf8")), true, true);
+        await i18n.changeLanguage(lng);
+        expect(i18n.t("valueComparison.feature"), lng).toBe(JSON.parse(readFileSync(resolve(dir, `${lng}.json`), "utf8")).valueComparison.feature);
+        const { container, unmount } = render(<MemoryRouter><ValueComparison /></MemoryRouter>);
+        const row = [...container.querySelectorAll("div.grid")].find((r) => r.textContent?.includes(i18n.t("valueComparison.rows.cost.feature")));
+        const cell = row?.children[1]?.textContent ?? "";
+        const numbers = [...cell.matchAll(/\d+/g)].map((m) => Number(m[0]));
+        expect(numbers, `${lng}: ${cell}`).toEqual([PRODUCTS.fullAnalysis.priceUsd]);
+        expect(cell, lng).toContain("$");
+        unmount();
+      }
+    } finally {
+      await i18n.changeLanguage("en");
+    }
+  });
+});
