@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-05T11:00Z
+// deploy-stamp: 2026-10-09T13:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -8,7 +8,7 @@ import { clientAddressOr } from "../_shared/client-address.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "verify-scan-pack-purchase.2026-10-05.1";
+const FN_BUILD = "verify-scan-pack-purchase.2026-10-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -132,6 +132,19 @@ serve(async (req) => {
     // as grandfathered -- so whenever this function won the race against the
     // webhook, a $2 scan-pack receipt became proof of purchase for every paid
     // generator: the exact hole 20260827180000 closed for the other writers.
+    // Get credits from line items quantity (more reliable than metadata)
+    let creditsToAdd = 1;
+    
+    if (session.line_items?.data?.length) {
+      const quantity = session.line_items.data[0].quantity || 1;
+      creditsToAdd = quantity;
+      logStep("Credits from line items", { quantity: creditsToAdd });
+    } else if (session.metadata?.credits) {
+      // Fallback to metadata
+      creditsToAdd = parseInt(session.metadata.credits) || 1;
+      logStep("Credits from metadata", { credits: creditsToAdd });
+    }
+
     const { error: claimError } = await supabase
       .from('used_stripe_sessions')
       .insert({
@@ -144,14 +157,16 @@ serve(async (req) => {
       if (claimError.code === '23505') {
         logStep("Session already claimed by another process (race avoided)", { sessionId });
 
-        const { data: credits } = await supabase.rpc('get_scan_credits', { p_email: customerEmail });
-
+        // THIS PURCHASE'S COUNT, NEVER THE ADDRESS'S BALANCE (S8-054). The
+        // checkout takes any typed address without sign-in, so answering
+        // the address's pool here (and on the first claim) told whoever paid
+        // the $0.60 minimum how many credits any address holds.
         return new Response(
           JSON.stringify({
             verified: true,
             alreadyCredited: true,
             email: customerEmail,
-            credits: credits || 0
+            creditsAdded: creditsToAdd
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
         );
@@ -164,19 +179,6 @@ serve(async (req) => {
         JSON.stringify({ error: "Failed to verify purchase. Please contact support.", verified: false }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
-    }
-
-    // Get credits from line items quantity (more reliable than metadata)
-    let creditsToAdd = 1;
-    
-    if (session.line_items?.data?.length) {
-      const quantity = session.line_items.data[0].quantity || 1;
-      creditsToAdd = quantity;
-      logStep("Credits from line items", { quantity: creditsToAdd });
-    } else if (session.metadata?.credits) {
-      // Fallback to metadata
-      creditsToAdd = parseInt(session.metadata.credits) || 1;
-      logStep("Credits from metadata", { credits: creditsToAdd });
     }
 
     // Validate credits amount — reject entirely rather than silently under-deliver
@@ -203,15 +205,11 @@ serve(async (req) => {
 
     logStep("Credits added successfully", { email: customerEmail, credits: creditsToAdd });
 
-    // Get updated credit count
-    const { data: newCredits } = await supabase.rpc('get_scan_credits', { p_email: customerEmail });
-
     return new Response(
-      JSON.stringify({ 
-        verified: true, 
+      JSON.stringify({
+        verified: true,
         email: customerEmail,
-        creditsAdded: creditsToAdd,
-        totalCredits: newCredits || creditsToAdd
+        creditsAdded: creditsToAdd
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );

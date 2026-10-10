@@ -395,7 +395,7 @@
       },
       "subscription": {
         "question": "Ito ba ay subscription?",
-        "answer": "Meron parehong opsyon, at ikaw ang pipili. Ang bawat report at tool ay isang beses na bayad na hindi na uulit. Bukod dito, may dalawang optional na monthly plan: ang Pro sa ${{proPrice}}/buwan para sa walang limitasyong resume scan at lahat ng tool, at ang Morning Queue sa ${{agentPrice}}/buwan, kung saan inihahanda ng Apply Agent ang isang shortlist para sa iyo magdamag. Libre pa rin ang resume scan at ang job board sa dalawang paraan, at walang awtomatikong nag-a-upgrade sa iyo."
+        "answer": "Meron parehong opsyon, at ikaw ang pipili. Ang bawat report at tool ay isang beses na bayad na hindi na uulit. Bukod dito, may dalawang optional na monthly plan: ang Pro sa ${{proPrice}}/buwan para sa walang limitasyong resume scan at lahat ng tool, at ang Morning Queue sa ${{agentPrice}}/buwan, kung saan inihahanda ng Apply Agent ang isang shortlist para sa iyo magdamag. Libre pa rin ang resume scan at ang job board sa dalawang paraan. Parehong nire-renew ang dalawang plan bawat buwan hanggang kanselahin mo, at ang libreng trial ng Morning Queue para sa mga unang beses na subscriber ay nagiging bayad na plan pagkatapos nito maliban kung kanselahin mo bago iyon. Wala nang ibang awtomatikong nag-a-upgrade sa iyo."
       },
       "share": {
         "question": "Maaari ko bang ibahagi ang aking pagsusuri sa iba?",
@@ -1784,7 +1784,7 @@
     "goToHome": "Pumunta sa Home",
     "creditsAdded_one": "{{count}} Credit Idinagdag!",
     "creditsAdded_other": "{{count}} Credits Idinagdag!",
-    "creditsLiveOn": "Aktibo na ang iyong mga credit sa account para sa",
+    "creditsLiveOn": "Ipinapadala ang resibo para sa mga credit na ito sa",
     "creditsBalancePrefix": "Makikita mo ang iyong balanse sa",
     "myCredits": "Aking Credits",
     "creditsBalanceSuffix": "button sa header sa device na ito — hindi na kailangang ilagay ulit ang iyong email.",
@@ -2827,7 +2827,7 @@
     "creditsNeverExpire": "Hindi nag-expire ang mga credit",
     "emailToReceive": "Email para tanggapin ang credits",
     "emailPlaceholder": "iyong@email.com",
-    "creditsTiedToEmail": "Ang mga credit ay nakakabit sa iyong email address",
+    "creditsTiedToEmail": "Gumagana ang iyong mga credit sa browser na ito, at sa iyong account kung naka-sign in ka rito. Para sa resibo mo ang email.",
     "processing": "Pinoproseso...",
     "buyCreditsFor_one": "Bilhin ang {{count}} Credit para sa {{price}}",
     "buyCreditsFor_other": "Bilhin ang {{count}} Credits para sa {{price}}",
@@ -2935,11 +2935,13 @@
     "neverExpire": "ay hindi nag-expire",
     "fullAtsEachScan": "Buong ATS analysis sa bawat scan",
     "emailPlaceholder": "iyong@email.com",
-    "creditsLinkedToEmail": "Ang mga credit ay ikakabit sa email na ito",
+    "creditsLinkedToEmail": "Gumagana ang iyong mga credit sa browser na ito, at sa iyong account kung naka-sign in ka rito. Para sa resibo mo ang email.",
     "processing": "Pinoproseso...",
     "getCreditsFor_one": "Kunin ang {{count}} Credit para sa {{price}}",
     "getCreditsFor_other": "Kunin ang {{count}} Credits para sa {{price}}",
-    "noThanks": "Salamat na lang, hihintayin ko ang pag-reset ng aking libreng scan"
+    "noThanks": "Salamat na lang, hihintayin ko ang pag-reset ng aking libreng scan",
+    "fewerCredits": "Bawasan ang credits",
+    "moreCredits": "Dagdagan ang credits"
   },
   "changelogPage": {
     "metaTitle": "Changelog — Resume Booster",
@@ -3569,7 +3571,9 @@
       "education": "Edukasyon",
       "skills": "Mga Kasanayan",
       "certifications": "Mga Sertipikasyon"
-    }
+    },
+    "replaceWithFixes": "Palitan ang kasalukuyang draft mo sa builder ng resume mula sa scan mo, kasama ang mga ayos mula sa report?",
+    "replaceWithLatestScan": "May draft ka mula sa naunang resume. Palitan ito ng resume mula sa pinakabago mong scan?"
   },
   "jobsPage": {
     "seoTitle": "Live na trabaho mismo mula sa mga kumpanya — suriin ang iyong fit bago mag-apply",
@@ -4597,7 +4601,35 @@
     "replyWindowFill": "nag-apply {{d}} araw na ang nakalipas — {{pct}}% ng mga posisyon ng employer na ito ay tuluyang naaalis, hindi na muling ipino-post, sa loob ng {{h}} araw mula nang i-post",
     "replyWindowFillPast": "nag-apply {{d}} araw na ang nakalipas — lampas na sa {{h}} araw kung saan {{pct}}% ng mga posisyon ng employer na ito ay tuluyan nang naalis; makatuwiran ang mag-follow up",
     "replyWindowFillCensored": "nag-apply {{d}} araw na ang nakalipas — mahigit kalahati ng mga posisyon ng employer na ito ay nakapaskil pa rin 30 araw matapos i-post",
-    "replyWindowFillCoverage": "sa {{pct}}% ng mga posisyon nito na may petsa ng pag-post mula mismo sa kumpanya"
+    "replyWindowFillCoverage": "sa {{pct}}% ng mga posisyon nito na may petsa ng pag-post mula mismo sa kumpanya",
+    "deleteAccountBody": "Permanenteng binubura ang iyong account, kasaysayan ng scan, checklist, layunin, mga aplikasyon at anumang CV na in-upload mo para sa agent, at kinakansela ang anumang subscription na binabayaran ng account na ito, kaya wala nang sisingilin. Itinatago ang mga rekord ng pagbili para sa accounting. Hindi na ito maibabalik.",
+    "deleteUnlinkedPlan": "May subscription ang address na ito na hindi naka-link sa account na ito. Kanselahin muna ito sa billing page ng Stripe, saka burahin ang account. Walang nabura.",
+    "deleteRetry": "Hindi nabura ang iyong account: hindi namin natapos ang pag-alis ng iyong naka-save na CV o ang pagkansela ng iyong subscription. Pakisubukang muli makalipas ang isang minuto.",
+    "deletePlanCancelled": "Kinansela namin ang isang subscription sa account na ito, kaya hindi ka na nito sisingilin, pero hindi nabura ang account mismo. Pakisubukang muli makalipas ang isang minuto, o makipag-ugnayan sa support kung pumalya ulit.",
+    "deleteAgentStopped": "Naka-off na ang iyong apply agent.",
+    "deleteCvRemoved": "Natanggal na ang iyong naka-save na CV.",
+    "deleteFailed": "Nabigo ang pagbura ng account. Makipag-ugnayan sa support.",
+    "lifecycleGoingDown": "Sa huli naming pagsusuri, wala na ang posting na ito sa board ng employer. Lalagyan namin ito ng petsa kapag nakumpirmang tinanggal na.",
+    "getMoreCredits": "Kumuha ng mas maraming credit →",
+    "purchasesEmpty": "Wala pang binili. Lalabas dito ang mga report at tool na binili gamit ang email na ito, at ang mga Agent Pass na binili sa account na ito.",
+    "passRow": "Agent Pass",
+    "passState": {
+      "unactivated": "hindi pa nagsisimula",
+      "live": "tumatakbo",
+      "closed": "tapos na"
+    },
+    "withdraw": {
+      "title": "Mag-withdraw sa loob ng {{days}} araw",
+      "body": "Bumili ng Pro o ng Morning Queue sa nakaraang {{days}} araw mula sa EU o UK? Puwede kang mag-withdraw: kakanselahin agad ang plan, at ibabalik ang ibinayad mo, bawas ang mga araw na naibigay na.",
+      "button": "I-withdraw ang plan ko",
+      "confirm": "I-withdraw ang plan mo? Kakanselahin ito ngayon, at ibabalik sa card mo ang refund para sa mga araw na hindi pa naibibigay.",
+      "done": "Na-withdraw na. Kanselado na ang plan at ibinabalik ang {{amount}} sa card mo. May kumpirmasyong darating sa email.",
+      "doneNoRefund": "Na-withdraw na. Kanselado na ang plan; walang siningil para dito, kaya walang ibabalik.",
+      "none": "Walang plan sa account na ito na nagsimula sa nakaraang {{days}} araw.",
+      "notLinked": "May plan sa email address mo na hindi naka-link sa account na ito. Sumulat sa amin at kami ang bahala sa pag-withdraw.",
+      "outsideTerritory": "Ang {{days}}-araw na pag-withdraw ay para sa mga plan na sinisingil sa address sa EU, EEA o UK, at sa ibang lugar sinisingil ang plan na ito. Maaari mo pa rin itong kanselahin anumang oras.",
+      "failed": "Hindi natuloy ang pag-withdraw. Pakisubukan ulit pagkalipas ng isang minuto."
+    }
   },
   "applyAgent": {
     "badge": "Ang iyong AI apply agent",
@@ -4907,7 +4939,10 @@
   },
   "proPlan": {
     "trialing": "Naka-on ang iyong trial: bukas na ngayon ang walang-limitasyong scan at ang sabayang paghahanda ng mga aplikasyon. Kasama ang mga bayad na tool simula sa iyong unang bayad.",
-    "linkPending": "May plan ang address na ito na hindi pa naka-link sa account na ito. Mag-sign in gamit ang Google sa address na iyon para magamit ito rito."
+    "linkPending": "May plan ang address na ito na hindi pa naka-link sa account na ito. Mag-sign in gamit ang Google sa address na iyon para magamit ito rito.",
+    "confirmed": "Salamat: kumpirmado na ang iyong Pro subscription.",
+    "confirming": "Kinukumpirma ang iyong subscription sa Stripe. Ilang segundo lang ito.",
+    "notConfirmedYet": "Hindi pa namin makumpirma ang iyong subscription. I-refresh ang page na ito makalipas ang isang minuto, o makipag-ugnayan sa support kung hindi lumabas ang iyong plan."
   },
   "atsCoverage": {
     "heading": "Ginawa para sa mga sistemang talagang ginagamit ng mga employer",
@@ -5251,6 +5286,24 @@
     "missing": "Kailangan ng pahinang ito ang unsubscribe link mula sa isa sa aming mga email.",
     "error": "Hindi ito natigil ngayon. Subukan muli ang button maya-maya.",
     "home": "Bumalik sa Resume Booster"
+  },
+  "purchaseTerms": {
+    "agree": "Sa pagpapatuloy, sumasang-ayon ka sa <terms>Mga Tuntunin ng Serbisyo</terms> at sa <privacy>Patakaran sa Privacy</privacy>.",
+    "renewal": "{{price}} bawat buwan, awtomatikong nire-renew hanggang kanselahin mo. Kanselahin kahit kailan mula sa iyong account.",
+    "agentTrial": "Ang mga unang beses na subscriber ay may {{days}} araw na libre, pagkatapos ay {{price}} bawat buwan, awtomatikong nire-renew hanggang kanselahin mo. Kanselahin bago matapos ang trial at hindi ka sisingilin. Ang dating subscriber ay nagbabayad mula sa unang araw.",
+    "waiver": "Gusto kong maihatid na ngayon ang binili ko, at nauunawaan kong mawawala ang aking {{days}}-araw na karapatang umatras kapag naihatid na ito.",
+    "serviceStart": "Hinihiling kong magsimula na ngayon ang serbisyo. Kung aatras ako sa loob ng {{days}} araw, babayaran ko ang mga araw na nagamit na.",
+    "consentNeeded": "Lagyan ng tsek ang kahon sa itaas ng button para magpatuloy."
+  },
+  "freelanceBoost": {
+    "startNewPurchase": "Bibili para sa ibang posisyon? Magsimula ng bagong pagbili.",
+    "boughtHereTitle": "3. Ang iyong experience section — nabili na sa device na ito",
+    "openYourLink": "Para makita o mabuo ito, buksan ang link sa iyong purchase email. Hindi ka na sisingilin ulit."
+  },
+  "seller": {
+    "soldBy": "Ibinebenta ng {{name}}, {{address}}.",
+    "terms": "Ang mga Tuntuning ito ay kasunduan sa pagitan mo at ng {{name}}, {{address}}.",
+    "controller": "Ang controller ng iyong personal na data ay ang {{name}}, {{address}}."
   },
   "affiliates": {
     "commission": {

@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { Mail } from "lucide-react";
+import { SellerIdentity } from "@/components/SellerIdentity";
 
 export function Footer() {
   const { t } = useTranslation();
@@ -91,6 +92,8 @@ export function Footer() {
             <LanguageSwitcher variant="compact" />
           </nav>
         </div>
+        {/* Who sells: nothing until src/config/seller.ts is filled in. */}
+        <SellerIdentity variant="soldBy" className="mt-4 text-center text-xs text-muted-foreground" />
       </div>
     </footer>
   );

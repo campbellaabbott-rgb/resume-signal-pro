@@ -144,6 +144,25 @@ interface PremiumPackageData {
   jobDetails: { title: string; company: string };
 }
 
+/**
+ * THE PRODUCTS WHOSE SAVED COPY THIS PAGE RENDERS AS IT IS (sweep S8-009):
+ * verify-product-purchase is asked for it, and generates it from the résumé
+ * the checkout bound when nothing is saved yet. The tab's own résumé is only
+ * the fallback when the server holds none. The two streamed products render a
+ * saved copy too, and stream only when nothing is saved.
+ */
+const SERVER_RENDERED: ReadonlySet<string> = new Set(['basicKeywordFix', 'atsDefense', 'careerSnapshot', 'graduateGamePlan', 'applyAssistant']);
+/**
+ * The waits between asks while the webhook is still making the product: six
+ * asks over a minute, the length of a generation. verify-product-purchase
+ * allows 30 calls an hour per address, so a load and a reload (or two
+ * purchases) stay well inside it.
+ */
+export const VERIFY_POLL_DELAYS_MS: readonly number[] = [5000, 8000, 12000, 15000, 20000];
+
+/** The language the buyer reads, as i18next stored it. */
+const uiLanguage = (): string => { try { return localStorage.getItem('i18nextLng') || 'en'; } catch { return 'en'; } };
+
 export default function ProductSuccess() {
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
@@ -169,6 +188,14 @@ export default function ProductSuccess() {
   const { toast } = useToast();
   const { trackPurchaseCompleted } = useConversionTracking();
   const { trackPurchaseCompleted: trackFunnelPurchase } = useFunnelTracking();
+  // A Pro member's included tool (a pro_ grant) took no money: it is not a
+  // sale at the catalogue price in either ledger (wave-2 handoff; Success.tsx
+  // already refused it for the full analysis).
+  const recordPurchase = useCallback((key: string | null, priceUsd: number | undefined, id: string | null) => {
+    if (!key || priceUsd === undefined || !id || id.startsWith('pro_')) return;
+    trackPurchaseCompleted(key, priceUsd, id);
+    trackFunnelPurchase(key, priceUsd, id);
+  }, [trackPurchaseCompleted, trackFunnelPurchase]);
   
   // Resume recovery state
   const [isRecoveryMode, setIsRecoveryMode] = useState(false);
@@ -218,6 +245,25 @@ export default function ProductSuccess() {
     }
     return null;
   }, []);
+
+  /**
+   * A saved copy, put where this product's view reads it. False when the
+   * product has no view for a saved copy (the coach and the simulator are
+   * widgets that fetch their own) or the copy is empty.
+   */
+  const applySavedContent = useCallback((content: any): boolean => {
+    if (!content || typeof content !== 'object') return false;
+    if (productKey === 'atsDefense') setAtsDefenseData(content);
+    else if (productKey === 'careerSnapshot') setCareerSnapshotData(content);
+    else if (productKey === 'graduateGamePlan') setGraduateGamePlanData(content);
+    else if (productKey === 'applyAssistant') {
+      setApplyPackageData({ ...content, tailoredResume: normalizeBuilderResume(content.tailoredResume) });
+      setApplyCoverLetter(content.coverLetter || null);
+    } else if (productKey === 'basicKeywordFix' || productKey === 'coverLetter' || productKey === 'premiumPackage') {
+      setGeneratedContent(content);
+    } else return false;
+    return true;
+  }, [productKey]);
 
   // Regenerate content with provided resume text
   const regenerateContent = useCallback(async (resumeText: string, jobDescription?: string, targetRoles?: string[]) => {
@@ -294,7 +340,10 @@ export default function ProductSuccess() {
       // means a newly-gated endpoint cannot be forgotten in its own branch —
       // which is precisely how the non-stream generators went ungated while
       // their streaming twins were fixed. Harmless where it is not read.
-      let body: Record<string, unknown> = { resumeText, sessionId };
+      // The buyer's language, once, for every product (S8-074): only the
+      // Apply Assistant branch passed it, so a recovered report came back in
+      // English whatever the buyer read.
+      let body: Record<string, unknown> = { resumeText, sessionId, language: uiLanguage() };
 
       if (productKey === 'basicKeywordFix') {
         endpoint = 'generate-keyword-fix';
@@ -563,8 +612,7 @@ export default function ProductSuccess() {
 
       // Track success
       if (productKey && product) {
-        trackPurchaseCompleted(productKey, product.priceUsd, sessionId);
-        trackFunnelPurchase(productKey, product.priceUsd, sessionId || undefined);
+        recordPurchase(productKey, product.priceUsd, sessionId);
         clearReferralCode();
       }
 
@@ -579,7 +627,7 @@ export default function ProductSuccess() {
         variant: "destructive"
       });
     }
-  }, [productKey, product, sessionId, toast, regenerateContent, trackPurchaseCompleted, trackFunnelPurchase]);
+  }, [productKey, product, sessionId, toast, regenerateContent, recordPurchase]);
 
   // Handle file upload for recovery
   const handleRecoveryFileUpload = useCallback(async (file: File) => {
@@ -660,13 +708,24 @@ export default function ProductSuccess() {
         // For premium package and cover letter, use streaming generation for real-time UX
         const useStreaming = productKey === 'premiumPackage' || productKey === 'coverLetter';
         
-        // Verify purchase first (don't generate content if we'll stream)
-        const { data, error } = await supabase.functions.invoke('verify-product-purchase', {
-          body: { 
-            sessionId, 
-            generateContent: !useStreaming && (productKey === 'basicKeywordFix')
-          }
-        });
+        // The saved copy, or one made from the résumé the checkout bound
+        // (S8-009). While the webhook is still making it the answer is
+        // inProgress, and the page asks again rather than making it twice.
+        let data: Record<string, any> | null = null;
+        let error: { message: string } | null = null;
+        for (let tries = 0; ; tries++) {
+          const answer = await supabase.functions.invoke('verify-product-purchase', {
+            body: { sessionId, generateContent: !useStreaming && SERVER_RENDERED.has(productKey ?? '') }
+          });
+          // A later ask refused (its hourly budget, a blip) after the purchase
+          // was confirmed in progress: keep that answer and take the same path
+          // as when the asks run out, never "could not verify" for a paid one.
+          if (answer.error && data?.inProgress) break;
+          data = answer.data as Record<string, any> | null;
+          error = answer.error as { message: string } | null;
+          if (error || !data?.inProgress || tries >= VERIFY_POLL_DELAYS_MS.length) break;
+          await new Promise((r) => setTimeout(r, VERIFY_POLL_DELAYS_MS[tries]));
+        }
 
         if (error) {
           console.error('Verification error:', error);
@@ -700,14 +759,19 @@ export default function ProductSuccess() {
           window.dispatchEvent(new CustomEvent(CREDITS_UPDATED_EVENT));
         }
 
-        // If we already have generated content from the verification, use it
-        if (data?.generatedContent) {
-          setGeneratedContent(data.generatedContent);
-
-          // Track purchase completion
+        // The server's copy, rendered into the product's own view.
+        if (productKey !== 'scanPack' && data?.generatedContent && applySavedContent(data.generatedContent)) {
           if (productKey && product) {
-            trackPurchaseCompleted(productKey, product.priceUsd, sessionId);
-            trackFunnelPurchase(productKey, product.priceUsd, sessionId || undefined);
+            recordPurchase(productKey, product.priceUsd, sessionId);
+            clearReferralCode();
+          }
+          setIsVerifying(false);
+          return;
+        }
+        if (productKey === 'scanPack' && data?.generatedContent) {
+          setGeneratedContent(data.generatedContent);
+          if (productKey && product) {
+            recordPurchase(productKey, product.priceUsd, sessionId);
             clearReferralCode();
           }
           setIsVerifying(false);
@@ -915,8 +979,7 @@ export default function ProductSuccess() {
         }
         
         if (productKey && product && !useStreaming) {
-          trackPurchaseCompleted(productKey, product.priceUsd, sessionId);
-          trackFunnelPurchase(productKey, product.priceUsd, sessionId || undefined);
+          recordPurchase(productKey, product.priceUsd, sessionId);
           clearReferralCode();
         }
       } catch (err) {
@@ -1786,19 +1849,7 @@ export default function ProductSuccess() {
                                   );
 
                                   if (matchingPurchase?.generatedContent) {
-                                    if (productKey === 'atsDefense') {
-                                      setAtsDefenseData(matchingPurchase.generatedContent);
-                                    } else if (productKey === 'careerSnapshot') {
-                                      setCareerSnapshotData(matchingPurchase.generatedContent);
-                                    } else if (productKey === 'graduateGamePlan') {
-                                      setGraduateGamePlanData(matchingPurchase.generatedContent);
-                                    } else if (productKey === 'applyAssistant') {
-                                      setApplyPackageData({
-                                        ...matchingPurchase.generatedContent,
-                                        tailoredResume: normalizeBuilderResume(matchingPurchase.generatedContent.tailoredResume),
-                                      });
-                                      setApplyCoverLetter(matchingPurchase.generatedContent.coverLetter || null);
-                                    } else {
+                                    if (!applySavedContent(matchingPurchase.generatedContent)) {
                                       setGeneratedContent(matchingPurchase.generatedContent);
                                     }
                                     setShowEmailRecovery(false);

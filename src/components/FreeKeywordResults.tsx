@@ -26,6 +26,7 @@ import { ReturningUserInsights } from "./ReturningUserInsights";
 import { IndustryKeywordSuggestions } from "./IndustryKeywordSuggestions";
 import { RoleKeywordSuggestions } from "./RoleKeywordSuggestions";
 import { analyzeKeywordPresence } from "@/config/industry-keywords";
+import { PurchaseTerms } from "./PurchaseTerms";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -4619,6 +4620,7 @@ export function FreeKeywordResults({
         <h3 className="font-semibold text-foreground mb-1">{t('freeResults.nextSteps.title')}</h3>
         <p className="text-xs text-muted-foreground mb-4">{t('freeResults.nextSteps.body')}</p>
         <div className="space-y-2.5">
+          <PurchaseTerms kind="payment" />
           <button
             data-offer="fullAnalysis"
             onClick={() => handleUpgradeClick('next_steps_full_analysis')}

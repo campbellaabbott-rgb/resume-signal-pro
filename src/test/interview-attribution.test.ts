@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import {
   attributionSummary,
   interviewSignals,
+  isUpcomingInterview,
   type TrackedApplication,
 } from "@/lib/interviewAttribution";
 
@@ -154,11 +155,17 @@ describe("the copy on screen", () => {
     expect(hub).toMatch(/kind !== "not-observed"/);
   });
 
-  it("uses one grace day, the same as the upcoming list", () => {
-    // A row must not be able to sit in "upcoming" and "since your interview"
-    // at the same moment, which is what two different cutoffs would allow.
-    expect(hub).toMatch(/now = Date\.now\(\) - 86_400_000/);
-    const lib = readFileSync(resolve(__dirname, "../lib/interviewAttribution.ts"), "utf8");
-    expect(lib).toMatch(/iv > now - DAY/);
+  it("never lists one interview as upcoming and as past at the same moment", () => {
+    // Every hour of three days, against interviews from two days back to two
+    // days ahead: each row is in exactly one of the two lists.
+    for (let h = 0; h < 72; h++) {
+      const now = new Date(2026, 7, 4, h, 30).getTime();
+      for (let day = 2; day <= 8; day++) {
+        const iv = `2026-08-0${day}T00:00:00+00:00`;
+        const upcoming = isUpcomingInterview(iv, now);
+        const past = interviewSignals([row({ interview_at: iv })], now).length === 1;
+        expect(upcoming !== past, `${iv} at ${new Date(now).toString()}`).toBe(true);
+      }
+    }
   });
 });

@@ -1,3 +1,5 @@
+// FIRST: blocked site storage must not stop the app mounting (S8-104).
+import "./lib/storage-guard";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { HelmetProvider } from "react-helmet-async";

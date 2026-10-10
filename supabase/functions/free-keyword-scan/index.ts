@@ -1,5 +1,5 @@
 // force-deploy: 2026-07-30T22:29:25Z
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-09T18:00Z
 const serve = (handler: (req: Request) => Response | Promise<Response>) => Deno.serve(handler);
 import { detectIndustry, formatDetectionForPrompt, buildDynamicCorrectionBoosts, INDUSTRY_KEYWORDS, detectSubIndustry } from "./industry-detection.ts";
 import { getOnetExpectation } from "./onet-expectations.ts";
@@ -449,7 +449,7 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 
 // Provable from outside without a scan: every response, the CORS preflight
 // included, carries this in x-fn-build.
-const FN_BUILD = "free-keyword-scan.2026-10-09.2";
+const FN_BUILD = "free-keyword-scan.2026-10-09.3";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

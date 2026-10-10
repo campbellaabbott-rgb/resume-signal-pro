@@ -109,7 +109,7 @@ describe("every caller hands the generator its proof of purchase", () => {
     // Per-branch assignment is how the original leak survived: keyword-fix got
     // its sessionId line and the branches beside it did not.
     const ui = readFileSync(resolve(__dirname, "../pages/ProductSuccess.tsx"), "utf8");
-    expect(ui).toMatch(/let body: Record<string, unknown> = \{ resumeText, sessionId \}/);
+    expect(ui).toMatch(/let body: Record<string, unknown> = \{ resumeText, sessionId(, [^}]*)? \}/);
   });
 });
 

@@ -262,7 +262,8 @@ describe("the get-account-data handler", () => {
         select: () => q,
         eq: (_c: string, v: unknown) => { purchaseReads.push([table, v]); return q; },
         order: () => q,
-        limit: () => Promise.resolve({ data: [{ product_name: "Premium Resume Package", created_at: "2026-09-30T10:00:00Z" }], error: null }),
+        // The account's passes are read by user id (wave 3, L6-12): none here.
+        limit: () => Promise.resolve({ data: table === "agent_passes" ? [] : [{ product_name: "Premium Resume Package", created_at: "2026-09-30T10:00:00Z" }], error: null }),
       };
       return q;
     },
@@ -290,7 +291,7 @@ describe("the get-account-data handler", () => {
   it("a password sign-up as a buyer's address sees none of that address's credits or purchases", async () => {
     const r = await account(JWT.squatter);
     expect(r.status).toBe(200);
-    expect(r.json).toEqual({ credits: 0, purchases: [], mailboxProven: false });
+    expect(r.json).toEqual({ credits: 0, purchases: [], passes: [], mailboxProven: false });
     // The one read it makes is the mailbox switch row, never a purchase.
     expect(purchaseReads.filter(([t]) => t === "purchased_content")).toEqual([]);
     expect(balanceArgs[0]).toMatchObject({ p_email: null, p_user_id: SQUATTER });
@@ -306,7 +307,7 @@ describe("the get-account-data handler", () => {
     expect(r.json.credits).toBe(7);
     expect(r.json.mailboxProven).toBe(true);
     expect(r.json.purchases).toEqual([{ product: "Premium Resume Package", date: "2026-09-30T10:00:00Z" }]);
-    expect(purchaseReads).toEqual([["purchased_content", "owner@example.com"]]);
+    expect(purchaseReads.filter(([t]) => t !== "agent_passes")).toEqual([["purchased_content", "owner@example.com"]]);
     expect(buildIsAtLeast(r.build, "get-account-data", "2026-10-08"), `build ${r.build}`).toBe(true);
   });
 

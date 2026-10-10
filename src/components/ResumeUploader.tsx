@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ScanGuideArrow } from "@/components/ScanGuideArrow";
 import { useScanPrefetch } from "@/hooks/use-scan-prefetch";
 import { ScanProgressStages } from "@/components/ScanProgressStages";
+import { PurchaseTerms } from "@/components/PurchaseTerms";
 // Step indicator component for better UX guidance
 interface StepIndicatorProps {
   number: number;
@@ -1269,7 +1270,8 @@ export function ResumeUploader({
                   </div>
                 )}
 
-                {/* Secondary: Full Analysis link */}
+                {/* Secondary: Full Analysis link, under the Terms line. */}
+                {onFreeScan && <PurchaseTerms kind="payment" className="text-center" />}
                 {onFreeScan && (
                   <button
                     onClick={resumeMode === "paste" ? handleTextPaste : handleCheckoutClick}
@@ -1290,6 +1292,7 @@ export function ResumeUploader({
                 {/* Fallback if no free scan available */}
                 {!onFreeScan && (
                   <div className="space-y-3">
+                    <PurchaseTerms kind="payment" className="text-center" />
                     <Button
                       variant="hero"
                       size="xl"

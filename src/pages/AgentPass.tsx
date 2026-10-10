@@ -45,6 +45,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { MCP_PAGE_HOSTS, andList, type McpHost, type SignInFact } from "@/config/mcp-tools";
 import { PASS } from "@/config/products";
 import { AgentSetupChecklist } from "@/components/account/AgentSetupChecklist";
+import { PurchaseTerms } from "@/components/PurchaseTerms";
 // The remembered host is ONE rule, in src/lib/agent-handoff.ts: the board,
 // /agents and this receipt read and write the same key through the same two
 // functions, so a change to what counts as a page host lands in one place.
@@ -253,6 +254,7 @@ export default function AgentPass() {
                 {!open && (
                   <div className="mt-3">
                     {refusal && <p className="text-sm text-destructive mb-2">{refusal}</p>}
+                    <PurchaseTerms kind="payment" className="mb-2" />
                     <button
                       type="button" onClick={buy} disabled={buying}
                       className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-60"

@@ -1,5 +1,5 @@
 // force-deploy: 2026-07-30T22:29:25Z
-// deploy-stamp: 2026-10-08T13:00Z
+// deploy-stamp: 2026-10-10T15:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -7,7 +7,7 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 // Price identity for the $99 apply agent, and the entitlement writer.
 // Static import: the dynamic one inside the handler typechecked as `any`,
 // which is how a rename would have reached production silently.
-import { AGENT_PRICE_CENTS, checkAgentByEmail, isAgentPriced, subscriptionBuyer } from "../_shared/agent.ts";
+import { AGENT_PRICE_CENTS, AGENT_PRODUCT_NAME, checkAgentByEmail, isAgentPriced, subscriptionBuyer } from "../_shared/agent.ts";
 // The six-hour pass: identified by product_type ONLY (Freelance Boost bills
 // the same amount), granted through one idempotent RPC with every number
 // copied in from this module — never spelled here, never matched on.
@@ -25,7 +25,11 @@ import {
 import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
 // The Pro cache, written when a Pro payment lands and on every subscription
 // change -- nothing wrote it before, so a new subscriber read as inactive.
-import { checkProByEmail } from "../_shared/pro.ts";
+import { checkProByEmail, PRO_PRODUCT_NAME } from "../_shared/pro.ts";
+// The mail a new subscriber is owed: terms, cancellation, the trial's end.
+import { NOTICE_FROM, NOTICE_SENDER_DOMAIN, noticeKey, noticeMail, WITHDRAWAL_DAYS, type NoticeFacts, type NoticeKind } from "../_shared/subscription-notice.ts";
+import { euUkSalesOn } from "../_shared/checkout-policy.ts";
+import { inWithdrawalTerritory } from "../_shared/withdrawal.ts";
 // Who paid, as Stripe recorded it: customer_details first (anonymous buyers).
 import { buyerEmailOf } from "../_shared/buyer-email.ts";
 // The full analysis is delivered by analyze-resume on the success page; the
@@ -38,7 +42,7 @@ import { resumeSessionForCheckout } from "../_shared/checkout-resume-ref.ts";
 
 // Provable from outside without a purchase or a signature: every response,
 // the 405 a GET receives included, carries this in x-fn-build.
-const FN_BUILD = "stripe-webhook.2026-10-08.2";
+const FN_BUILD = "stripe-webhook.2026-10-09.3";
 const BUILD_HEADER = { "x-fn-build": FN_BUILD };
 
 // Declare EdgeRuntime for background tasks
@@ -313,6 +317,107 @@ async function grantAgentPass(session: Stripe.Checkout.Session, supabase: Supaba
   return { granted: r?.granted_ok === true, reason, passId: r?.granted_pass_id ?? null };
 }
 
+/**
+ * SEND A SUBSCRIPTION NOTICE ONCE (wave 3; Cal. B&P 17602; the notices are
+ * described in _shared/subscription-notice.ts). The ledger row is claimed
+ * first, so a redelivered event, or the trial event arriving twice, sends
+ * nothing more; the mail goes into the transactional queue the drip uses,
+ * marked legal_notice so a drip unsubscribe does not drop it (a bounce does). A
+ * claim whose enqueue fails is given back and the error thrown, so the
+ * handler answers 500 and Stripe redelivers the event.
+ */
+/**
+ * A PROMOTION ON THE PLAN (the plan checkouts allow promotion codes): the
+ * first charge Stripe computed (the paid first invoice, or a trial's upcoming
+ * one) and how long the discount lasts. Null when the plan has none or it
+ * leaves the first charge at the list price.
+ */
+async function promotionOf(stripe: Stripe, sub: Stripe.Subscription, listAmount: number): Promise<NoticeFacts["promo"]> {
+  const loose = sub as unknown as { discounts?: unknown[]; discount?: unknown };
+  if (!(Array.isArray(loose.discounts) && loose.discounts.length) && !loose.discount) return null;
+  const full = await stripe.subscriptions.retrieve(sub.id, { expand: ["discounts.source.coupon", "latest_invoice"] }) as unknown as {
+    id: string; status: string; discounts?: unknown[]; latest_invoice?: unknown;
+  };
+  let first: number | null = null;
+  if (full.status === "trialing") {
+    first = Number((await stripe.invoices.createPreview({ subscription: full.id }) as { amount_due?: number }).amount_due);
+  } else if (full.latest_invoice && typeof full.latest_invoice === "object") {
+    first = Number((full.latest_invoice as { amount_paid?: number }).amount_paid);
+  }
+  if (first === null || !Number.isFinite(first) || first >= listAmount) return null;
+  let until: number | null = null;
+  let forever = false;
+  for (const d of (full.discounts ?? []) as Array<{ end?: number | null; source?: { coupon?: unknown }; coupon?: unknown } | string>) {
+    if (!d || typeof d !== "object") continue;
+    const coupon = (d.source?.coupon ?? d.coupon) as { duration?: string } | string | null | undefined;
+    if (coupon && typeof coupon === "object" && coupon.duration === "forever") forever = true;
+    else if (typeof d.end === "number") until = Math.max(until ?? 0, d.end);
+  }
+  return { amount: first, until: !forever && until ? new Date(until * 1000).toISOString() : null, forever };
+}
+
+async function sendSubscriptionNotice(
+  // deno-lint-ignore no-explicit-any
+  supabase: SupabaseClient<any, any, any>,
+  stripe: Stripe,
+  kind: NoticeKind,
+  sub: Stripe.Subscription,
+  email: string | null,
+  /** The billing country the checkout collected: the 14-day paragraph is for EU/EEA/UK buyers only. */
+  buyerCountry: string | null = null,
+): Promise<"queued" | "already" | "skipped"> {
+  const price = sub.items?.data?.[0]?.price;
+  if (!email || !price || typeof price.unit_amount !== "number") return "skipped";
+  const promo = await promotionOf(stripe, sub, price.unit_amount);
+  const trialEnd = sub.status === "trialing" && sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null;
+  if (kind === "trial_ending" && !trialEnd) return "skipped";
+  const env = (k: string) => Deno.env.get(k);
+  const loginUrl = env("STRIPE_PORTAL_LOGIN_URL") ?? "";
+  const mail = noticeMail(kind, {
+    planName: isAgentPriced(sub.items?.data as ReadonlyArray<{ price?: unknown }> | undefined) ? AGENT_PRODUCT_NAME : PRO_PRODUCT_NAME,
+    amount: price.unit_amount,
+    currency: price.currency ?? "usd",
+    interval: price.recurring?.interval ?? "month",
+    trialEnd,
+    accountUrl: "https://resumebooster.work/account",
+    portalLoginUrl: /^https:\/\/billing\.stripe\.com\//.test(loginUrl) ? loginUrl : null,
+    withdrawal: kind === "confirmation" && euUkSalesOn(env) && inWithdrawalTerritory(buyerCountry)
+      ? { until: new Date(Date.now() + WITHDRAWAL_DAYS * 86_400_000).toISOString(), contact: env("SUPPORT_EMAIL") ?? "resumeboostersupp@gmail.com" }
+      : null,
+    promo,
+  });
+  const { error: claimError } = await supabase.from("subscription_notices").insert({ subscription_id: sub.id, kind, email });
+  if (claimError) {
+    if (claimError.code === "23505") return "already";
+    throw new Error(`subscription_notices: ${claimError.message}`);
+  }
+  const { error: enqueueError } = await supabase.rpc("enqueue_email_delayed", {
+    queue_name: "transactional_emails",
+    payload: {
+      message_id: crypto.randomUUID(),
+      idempotency_key: noticeKey(sub.id, kind),
+      to: email,
+      from: NOTICE_FROM,
+      sender_domain: NOTICE_SENDER_DOMAIN,
+      subject: mail.subject,
+      html: mail.html,
+      text: mail.text,
+      purpose: "transactional",
+      label: kind === "confirmation" ? "subscription-confirmation" : "trial-ending",
+      // Required by law: the queue sends it past a drip unsubscribe.
+      legal_notice: true,
+      queued_at: new Date().toISOString(),
+    },
+    delay_seconds: 0,
+  });
+  if (enqueueError) {
+    await supabase.from("subscription_notices").delete().eq("subscription_id", sub.id).eq("kind", kind);
+    throw new Error(`enqueue_email_delayed: ${enqueueError.message}`);
+  }
+  logStep("Subscription notice queued", { kind, subscription: sub.id });
+  return "queued";
+}
+
 /** The id of a Stripe reference that may arrive expanded or as a bare id. */
 const refId = (v: unknown): string | null =>
   typeof v === "string" && v ? v : (v && typeof v === "object" && typeof (v as { id?: unknown }).id === "string" ? (v as { id: string }).id : null);
@@ -505,6 +610,25 @@ async function triggerProductDelivery(
   // generation-failed retry queue. The intake page owns delivery.
   if (productType === 'freelance_boost' || productType === 'freelance_transition_pro') {
     logStep("Freelance product — fulfilled via intake page; deferring webhook generation", { productType });
+    // THE ONLY WAY BACK TO A $29 / $59 PURCHASE (S8-016). It existed only in
+    // the success URL: no mail was sent, so a buyer who closed the tab before
+    // the intake, or whose generation failed, had nothing to return with and
+    // was shown the buy buttons again. The mail carries the link that reopens
+    // it on any device. Background: the payment is already recorded.
+    if (customerEmail) {
+      EdgeRuntime.waitUntil((async () => {
+        try {
+          const r = await fetch(`${supabaseUrl}/functions/v1/send-product-email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
+            body: JSON.stringify({ email: customerEmail, productType, productName: productName || 'Freelance Boost', sessionId }),
+          });
+          if (!r.ok) logStep("Freelance purchase link not mailed", { status: r.status });
+        } catch (e) {
+          logStep("Freelance purchase link not mailed", { error: String(e).slice(0, 200) });
+        }
+      })());
+    }
     return { success: true, productType, deferred: 'freelance_intake' };
   }
 
@@ -755,7 +879,7 @@ async function triggerProductDelivery(
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`
             },
-            body: JSON.stringify({ email: customerEmail, productType, productName, generatedContent })
+            body: JSON.stringify({ email: customerEmail, productType, productName, generatedContent, sessionId })
           });
 
           if (emailResponse.ok) {
@@ -919,6 +1043,21 @@ serve(async (req) => {
             session.customer as string | { id?: string } | null,
             event.type,
           );
+          // THE CONFIRMATION A NEW SUBSCRIBER IS OWED (item 11): terms,
+          // renewal, the trial's end, how to cancel. Once per subscription;
+          // a failure answers 500 so Stripe redelivers, and everything above
+          // and below is safe to run again.
+          const subId = refId(session.subscription);
+          if (subId) {
+            try {
+              const sub = await stripe.subscriptions.retrieve(subId);
+              await sendSubscriptionNotice(supabase, stripe, "confirmation", sub, buyerEmailOf(session), session.customer_details?.address?.country ?? null);
+            } catch (err) {
+              processingError = String(err).slice(0, 500);
+              mustRetry = true;
+              logStep("Subscription confirmation not queued; Stripe will redeliver", { subscription: subId, error: processingError });
+            }
+          }
         }
 
         // The paid gate: 'paid', or a payment-mode session a promotion code
@@ -981,7 +1120,10 @@ serve(async (req) => {
               // career_path_simulator entirely, and would have defaulted
               // apply_assistant to the $5 tier on a $7 sale).
               const lowCommission = ['basic_keyword_fix', 'cover_letter', 'scan_pack', 'scan_credits', 'career_bundle', 'interview_coach', 'career_path_simulator', 'apply_assistant'];
-              const commissionCents = lowCommission.includes(productType || '') ? 100 : 500;
+              // Every checkout now carries the code; the ones the affiliate
+              // page promises nothing for mark it "none" and are recorded at
+              // $0 (_shared/checkout-policy.ts policyMetadata).
+              const commissionCents = session.metadata?.referral_commission === "none" ? 0 : lowCommission.includes(productType || '') ? 100 : 500;
               
               // verify-product-purchase (triggered from the success page) can also
               // record this same conversion — the table's UNIQUE constraint on
@@ -1178,6 +1320,29 @@ serve(async (req) => {
           sub.customer as string | { id?: string } | null,
           event.type,
         );
+        break;
+      }
+
+      // THREE DAYS BEFORE A TRIAL ENDS Stripe sends this (once the owner adds
+      // it to the endpoint): the subscriber is told the date and amount of
+      // the first charge and how to cancel before it. A trial already set to
+      // cancel is told nothing; a failure answers 500 so Stripe redelivers.
+      case "customer.subscription.trial_will_end": {
+        const sub = event.data.object as Stripe.Subscription;
+        if (sub.status !== "trialing" || sub.cancel_at_period_end || sub.cancel_at) {
+          logStep("Trial ending: no reminder for a trial that will not convert", { sub: sub.id, status: sub.status });
+          break;
+        }
+        try {
+          const customerId = refId(sub.customer);
+          const customer = customerId ? await stripe.customers.retrieve(customerId) : null;
+          const email = customer && !(customer as { deleted?: boolean }).deleted ? (customer as Stripe.Customer).email ?? null : null;
+          await sendSubscriptionNotice(supabase, stripe, "trial_ending", sub, email);
+        } catch (err) {
+          processingError = String(err).slice(0, 500);
+          mustRetry = true;
+          logStep("Trial reminder not queued; Stripe will redeliver", { sub: sub.id, error: processingError });
+        }
         break;
       }
 

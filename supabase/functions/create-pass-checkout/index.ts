@@ -43,11 +43,12 @@ import {
   PASS_SESSION_HOURS,
 } from "../_shared/pass.ts";
 import { checkoutContextFromRequest, recordCheckoutStart } from "../_shared/checkout-start.ts";
+import { checkoutOrigin, euConsentRefusal, policyMetadata, sessionPolicy } from "../_shared/checkout-policy.ts";
 
-// deploy-stamp: 2026-09-27T20:38Z
+// deploy-stamp: 2026-10-09T13:00Z
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-pass-checkout.2026-09-27.3";
+const FN_BUILD = "create-pass-checkout.2026-09-27.4";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -174,7 +175,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    const origin = req.headers.get("origin") || "https://resumebooster.work";
+    // The Terms shown, the referral (recorded at $0: the pass earns no
+    // commission), the EU/UK waiver while that switch is on. Read off a clone:
+    // identity is still only the verified token above.
+    const body = await req.clone().json().catch(() => ({}));
+    const env = (k: string) => Deno.env.get(k);
+    const consentMissing = euConsentRefusal(env, "payment", body);
+    if (consentMissing) return json({ error: "Please tick the box above the button to continue.", consentRequired: consentMissing }, 400);
+    const policy = policyMetadata(body, env);
+    // Only our own hosts get the buyer back (S8-060).
+    const origin = checkoutOrigin(req.headers.get("origin"), env);
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       customer_email: user.email,
@@ -201,6 +211,7 @@ Deno.serve(async (req) => {
         product_name: PASS_PRODUCT_NAME,
         user_id: user.id,
         customer_email: user.email,
+        ...policy,
       },
       // The post-purchase page repairs a late webhook from this session id
       // (agent-pass-status), then hands the buyer the connect block for their
@@ -208,7 +219,8 @@ Deno.serve(async (req) => {
       success_url: `${origin}/agents/pass?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/agents?pass=cancelled`,
       allow_promotion_codes: true,
-      automatic_tax: { enabled: false },
+      // The receipt to the account's address; tax only with the EU/UK switch on.
+      ...sessionPolicy({ mode: "payment", env, receiptEmail: user.email }),
     });
 
     // The start is on record before the browser has the url, so no
@@ -225,7 +237,7 @@ Deno.serve(async (req) => {
       currency: session.currency,
       mode: session.mode,
       context: await checkoutContextFromRequest(req),
-      metadata: { planCents: PASS_PRICE_CENTS },
+      metadata: { planCents: PASS_PRICE_CENTS, termsVersion: policy.terms_version || null, referral: !!policy.referral_code, withdrawalWaiver: policy.withdrawal_waiver ?? null },
     });
 
     console.log(`[CREATE-PASS-CHECKOUT] Session ${session.id} created for user ${user.id}`);

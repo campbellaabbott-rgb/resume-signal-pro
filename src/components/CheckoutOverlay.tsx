@@ -2,7 +2,7 @@ import { Loader2, Check, Wifi, CreditCard, ExternalLink, RefreshCw, Copy, Extern
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export type CheckoutStep = 'verifying' | 'connecting' | 'redirecting';
 
@@ -21,6 +21,9 @@ const stepKeys: { id: CheckoutStep; labelKey: string; icon: React.ElementType }[
   { id: 'redirecting', labelKey: 'checkoutOverlay.steps.redirecting', icon: ExternalLink },
 ];
 
+/** How long the loading screen runs before it offers Close as well. */
+export const CLOSE_OFFERED_AFTER_MS = 4000;
+
 export function CheckoutOverlay({
   isVisible,
   currentStep = 'verifying',
@@ -31,7 +34,19 @@ export function CheckoutOverlay({
 }: CheckoutOverlayProps) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
-
+  // A WAY OUT OF THE LOADING SCREEN (S8-014). It had a Close button only in
+  // its error branch, so a stalled hand-off, or a page the back button
+  // restored mid-redirect, was a full-screen dead end. After a few seconds
+  // the loading screen offers Close too, and it is a modal dialog that takes
+  // focus, so a keyboard user is not left behind it.
+  const [offerClose, setOfferClose] = useState(false);
+  const panel = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!isVisible) { setOfferClose(false); return; }
+    panel.current?.focus();
+    const timer = setTimeout(() => setOfferClose(true), CLOSE_OFFERED_AFTER_MS);
+    return () => clearTimeout(timer);
+  }, [isVisible]);
   if (!isVisible) return null;
 
   const currentStepIndex = stepKeys.findIndex(s => s.id === currentStep);
@@ -64,15 +79,20 @@ export function CheckoutOverlay({
   const showFallbackOptions = checkoutUrl && error;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-sm">
-      <div className="text-center space-y-6 p-8 max-w-md">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="checkout-overlay-title"
+    >
+      <div ref={panel} tabIndex={-1} className="text-center space-y-6 p-8 max-w-md outline-none">
         {error ? (
           <>
             <div className="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
               <span className="text-destructive text-2xl">!</span>
             </div>
             <div className="space-y-2">
-              <h3 className="text-xl font-semibold text-foreground">
+              <h3 id="checkout-overlay-title" className="text-xl font-semibold text-foreground">
                 {showFallbackOptions ? t('checkoutOverlay.redirectBlocked') : t('checkoutOverlay.connectionIssue')}
               </h3>
               <p className="text-muted-foreground">
@@ -102,8 +122,9 @@ export function CheckoutOverlay({
 
             {/* Retry and close buttons */}
             <div className="flex gap-3 justify-center pt-2">
+              {/* A retry keeps the Terms the first press carried (purchase-terms.ts). */}
               {onRetry && !showFallbackOptions && (
-                <Button onClick={onRetry} variant="default">
+                <Button onClick={onRetry} variant="default" data-purchase-retry="">
                   <RefreshCw className="h-4 w-4 mr-2" />
                   {t('checkoutOverlay.tryAgain')}
                 </Button>
@@ -119,7 +140,7 @@ export function CheckoutOverlay({
           <>
             <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
             <div className="space-y-2">
-              <h3 className="text-xl font-semibold text-foreground">
+              <h3 id="checkout-overlay-title" className="text-xl font-semibold text-foreground">
                 {t('checkoutOverlay.preparingCheckout')}
               </h3>
               <p className="text-muted-foreground text-sm">
@@ -170,6 +191,12 @@ export function CheckoutOverlay({
               })}
             </div>
             
+            {offerClose && onClose && (
+              <Button onClick={onClose} variant="outline" size="sm">
+                {t('common.close')}
+              </Button>
+            )}
+
             {/* Security badges */}
             <div className="flex items-center justify-center gap-4 pt-4 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">

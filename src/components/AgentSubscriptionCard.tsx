@@ -12,6 +12,8 @@ import { ATS_VENDORS } from "@/config/ats-vendors";
 import { PREPARED_ONLY_VENDORS, SENDABLE_ATS_VENDORS } from "@/config/sendable-vendors";
 import { useAgentSender } from "@/hooks/useAgentSender";
 import { checkoutContext } from "@/lib/track-transport";
+import { consentWasRequired, purchaseTerms } from "@/lib/purchase-terms";
+import { PurchaseTerms } from "@/components/PurchaseTerms";
 
 type AgentCheckoutAnswer = {
   url?: string;
@@ -43,7 +45,7 @@ type AgentCheckoutAnswer = {
  * bill beside the agent (to the billing portal).
  */
 export function AgentSubscriptionCard() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -71,8 +73,14 @@ export function AgentSubscriptionCard() {
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("create-agent-checkout", {
-        body: { ...checkoutContext() },
+        // The page's language: Stripe shows the trial and renewal terms in it.
+        body: { language: i18n.language, ...checkoutContext(), ...purchaseTerms() },
       });
+      if (await consentWasRequired(error, data)) {
+        setLoading(false);
+        toast.error(t("purchaseTerms.consentNeeded"));
+        return;
+      }
       const status = (error as { context?: { status?: number } } | null)?.context?.status;
       if (status === 401) {
         setLoading(false);
@@ -189,6 +197,8 @@ export function AgentSubscriptionCard() {
         </li>
       </ul>
 
+      {/* The trial, the renewal and the Terms, above the button (item 11, 12). */}
+      <PurchaseTerms kind="subscription" plan="agent" className="mb-3 text-center" />
       <Button className="w-full gap-2" onClick={subscribe} disabled={loading}>
         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bot className="w-4 h-4" />}
         {t("agentPlan.cta", "Start the agent")}

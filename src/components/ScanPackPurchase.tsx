@@ -13,19 +13,22 @@ import { useScanCredits } from "@/hooks/use-scan-credits";
 import { clampScanCredits, MAX_SCAN_CREDITS, MIN_SCAN_CREDITS } from "@/config/scan-credits";
 import { useConversionTracking } from "@/hooks/use-conversion-tracking";
 import { useCurrency } from "@/hooks/use-currency";
+import { PurchaseTerms } from "@/components/PurchaseTerms";
 
 export interface ScanPackPurchaseProps {
   onClose?: () => void;
   className?: string;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** The receipt address to start from, e.g. the signed-in account's. */
+  defaultEmail?: string;
 }
 
 const PRESET_AMOUNTS = [5, 10, 20, 50];
 
-export function ScanPackPurchase({ onClose, className, open, onOpenChange }: ScanPackPurchaseProps) {
+export function ScanPackPurchase({ onClose, className, open, onOpenChange, defaultEmail }: ScanPackPurchaseProps) {
   const { t } = useTranslation();
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(defaultEmail ?? "");
   const [creditAmount, setCreditAmount] = useState(10);
   const { purchaseCredits, isLoading, pricePerCredit } = useScanCredits();
   const { trackButtonClick } = useConversionTracking();
@@ -162,6 +165,7 @@ export function ScanPackPurchase({ onClose, className, open, onOpenChange }: Sca
           </p>
         </div>
 
+        <PurchaseTerms kind="payment" className="text-center" />
         {/* Purchase button */}
         <Button
           onClick={handlePurchase}

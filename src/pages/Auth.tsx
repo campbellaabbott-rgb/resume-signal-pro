@@ -6,7 +6,8 @@ import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { Mail, Lock, Loader2, UserPlus, LogIn, Eye, EyeOff } from "lucide-react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { useAuth, safeNextPath } from "@/contexts/AuthContext";
+import { useAuth, safeNextPath, termsAcceptance } from "@/contexts/AuthContext";
+import { PurchaseTerms } from "@/components/PurchaseTerms";
 import { supabase } from "@/integrations/supabase/client";
 import { postTrackEvent } from "@/lib/track-transport";
 
@@ -65,7 +66,8 @@ export default function Auth() {
     setBusy(true);
     const { error: err } = await supabase.auth.signInWithOtp({
       email: email.trim(),
-      options: { emailRedirectTo: `${window.location.origin}${next}` },
+      // A link can create the account, so it records the Terms the line names.
+      options: { emailRedirectTo: `${window.location.origin}${next}`, data: termsAcceptance() },
     });
     setBusy(false);
     if (err) setError(/rate limit/i.test(err.message)
@@ -75,7 +77,13 @@ export default function Auth() {
   };
 
   const resendConfirmation = async () => {
-    const { error: err } = await supabase.auth.resend({ type: "signup", email: email.trim() });
+    // The confirmation link lands where the sign-up was headed (L3-20), not
+    // on the site's default.
+    const { error: err } = await supabase.auth.resend({
+      type: "signup",
+      email: email.trim(),
+      options: { emailRedirectTo: `${window.location.origin}${next}` },
+    });
     setNotice(err ? null : "Confirmation email resent — check your inbox.");
     setError(err ? err.message : null);
   };
@@ -193,6 +201,7 @@ export default function Auth() {
             )}
             {notice && <p className="text-xs text-success mb-3">{notice}</p>}
 
+            <PurchaseTerms kind="signup" className="mb-3" />
             <button
               onClick={submit}
               disabled={busy}

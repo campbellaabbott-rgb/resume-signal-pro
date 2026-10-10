@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-05T11:00Z
+// deploy-stamp: 2026-10-09T13:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { FULL_ANALYSIS_PRODUCT_TYPE } from "../_shared/full-analysis.ts";
@@ -6,7 +6,7 @@ import { clientAddressOr } from "../_shared/client-address.ts";
 
 // Provable from outside without running a sweep: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "retry-failed-deliveries.2026-10-05.1";
+const FN_BUILD = "retry-failed-deliveries.2026-10-09.1";
 
 // WHAT THIS SWEEP CAN DELIVER. A row for anything else (a subscription, the
 // six-hour pass, the Freelance Boost tiers, an unknown type) is taken off the
@@ -381,6 +381,8 @@ serve(async (req) => {
                 email: delivery.customer_email,
                 productType: delivery.product_type,
                 productName: delivery.product_name,
+                // The link that reopens the purchase, and its id (S8-015).
+                sessionId: delivery.stripe_session_id,
                 generatedContent
               })
             });
@@ -445,6 +447,8 @@ serve(async (req) => {
                 email: delivery.customer_email,
                 productType: delivery.product_type,
                 productName: delivery.product_name,
+                // The link that reopens the purchase, and its id (S8-015).
+                sessionId: delivery.stripe_session_id,
                 generatedContent
               })
             });

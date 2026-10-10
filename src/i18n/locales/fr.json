@@ -395,7 +395,7 @@
       },
       "subscription": {
         "question": "Est-ce un abonnement ?",
-        "answer": "Les deux options existent, à vous de choisir. Chaque rapport et outil correspond à un paiement unique qui ne se renouvelle jamais. Séparément, deux formules mensuelles facultatives sont proposées : Pro à ${{proPrice}}/mois pour des analyses illimitées et tous les outils, et Morning Queue à ${{agentPrice}}/mois, où l'agent de candidature prépare une présélection pour vous pendant la nuit. L'analyse de CV et la bourse à l'emploi restent gratuites dans les deux cas, et rien ne vous fait passer à une formule payante automatiquement."
+        "answer": "Les deux options existent, à vous de choisir. Chaque rapport et outil correspond à un paiement unique qui ne se renouvelle jamais. Séparément, deux formules mensuelles facultatives sont proposées : Pro à ${{proPrice}}/mois pour des analyses illimitées et tous les outils, et Morning Queue à ${{agentPrice}}/mois, où l'agent de candidature prépare une présélection pour vous pendant la nuit. L'analyse de CV et la bourse à l'emploi restent gratuites dans les deux cas. Les deux formules se renouvellent chaque mois jusqu'à ce que vous les résiliiez, et l'essai gratuit de Morning Queue pour les nouveaux abonnés devient la formule payante à son terme, sauf si vous le résiliez avant. Rien d'autre ne vous fait passer à une formule payante automatiquement."
       },
       "share": {
         "question": "Puis-je partager mon analyse ?",
@@ -1784,7 +1784,7 @@
     "goToHome": "Retour à l'accueil",
     "creditsAdded_one": "{{count}} crédit ajouté !",
     "creditsAdded_other": "{{count}} crédits ajoutés !",
-    "creditsLiveOn": "Vos crédits sont désormais actifs sur le compte associé à",
+    "creditsLiveOn": "Le reçu de ces crédits est envoyé à",
     "creditsBalancePrefix": "Vous verrez votre solde dans le bouton",
     "myCredits": "Mes crédits",
     "creditsBalanceSuffix": "dans l'en-tête sur cet appareil — pas besoin de saisir à nouveau votre e-mail.",
@@ -2827,7 +2827,7 @@
     "creditsNeverExpire": "Les crédits n'expirent jamais",
     "emailToReceive": "E-mail pour recevoir les crédits",
     "emailPlaceholder": "votre@email.com",
-    "creditsTiedToEmail": "Les crédits sont liés à votre adresse e-mail",
+    "creditsTiedToEmail": "Vos crédits fonctionnent dans ce navigateur, et sur votre compte si vous êtes connecté ici. L'e-mail sert à recevoir votre reçu.",
     "processing": "Traitement en cours...",
     "buyCreditsFor_one": "Acheter {{count}} crédit pour {{price}}",
     "buyCreditsFor_other": "Acheter {{count}} crédits pour {{price}}",
@@ -2935,11 +2935,13 @@
     "neverExpire": "n'expirent jamais",
     "fullAtsEachScan": "Analyse ATS complète à chaque scan",
     "emailPlaceholder": "votre@email.com",
-    "creditsLinkedToEmail": "Les crédits seront liés à cet e-mail",
+    "creditsLinkedToEmail": "Vos crédits fonctionnent dans ce navigateur, et sur votre compte si vous êtes connecté ici. L'e-mail sert à recevoir votre reçu.",
     "processing": "Traitement en cours...",
     "getCreditsFor_one": "Obtenir {{count}} crédit pour {{price}}",
     "getCreditsFor_other": "Obtenir {{count}} crédits pour {{price}}",
-    "noThanks": "Non merci, j'attendrai la réinitialisation de mes scans gratuits"
+    "noThanks": "Non merci, j'attendrai la réinitialisation de mes scans gratuits",
+    "fewerCredits": "Moins de crédits",
+    "moreCredits": "Plus de crédits"
   },
   "changelogPage": {
     "metaTitle": "Journal des modifications — Resume Booster",
@@ -3569,7 +3571,9 @@
       "education": "Formation",
       "skills": "Compétences",
       "certifications": "Certifications"
-    }
+    },
+    "replaceWithFixes": "Remplacer votre brouillon actuel par le CV de votre analyse, avec les corrections du rapport appliquées ?",
+    "replaceWithLatestScan": "Vous avez un brouillon issu d'un CV précédent. Le remplacer par le CV de votre dernière analyse ?"
   },
   "jobsPage": {
     "seoTitle": "Offres en direct des sites carrières des entreprises — vérifiez votre profil avant de postuler",
@@ -4597,7 +4601,35 @@
     "replyWindowFill": "candidature il y a {{d}} jours — {{pct}}% des postes de cet employeur sont retirés définitivement, sans être republiés, dans les {{h}} jours suivant leur publication",
     "replyWindowFillPast": "candidature il y a {{d}} jours — au-delà des {{h}} jours où {{pct}}% des postes de cet employeur avaient déjà été retirés définitivement ; une relance est justifiée",
     "replyWindowFillCensored": "candidature il y a {{d}} jours — plus de la moitié des postes de cet employeur étaient encore en ligne 30 jours après publication",
-    "replyWindowFillCoverage": "sur les {{pct}}% de ses postes portant une date de publication indiquée par l'entreprise elle-même"
+    "replyWindowFillCoverage": "sur les {{pct}}% de ses postes portant une date de publication indiquée par l'entreprise elle-même",
+    "deleteAccountBody": "Supprime définitivement votre compte, votre historique d'analyses, votre liste de tâches, votre objectif, vos candidatures et tout CV téléversé pour l'agent, et résilie tout abonnement payé par ce compte, pour qu'aucun autre montant ne soit prélevé. Les justificatifs d'achat sont conservés pour la comptabilité. Cette action est irréversible.",
+    "deleteUnlinkedPlan": "Cette adresse a un abonnement qui n'est pas lié à ce compte. Résiliez-le d'abord depuis la page de facturation de Stripe, puis supprimez le compte. Rien n'a été supprimé.",
+    "deleteRetry": "Votre compte n'a pas été supprimé : nous n'avons pas pu retirer votre CV enregistré ou résilier votre abonnement. Réessayez dans une minute.",
+    "deletePlanCancelled": "Nous avons résilié un abonnement de ce compte, il ne vous sera donc plus facturé, mais le compte lui-même n'a pas été supprimé. Réessayez dans une minute, ou contactez le support si cela échoue encore.",
+    "deleteAgentStopped": "Votre agent de candidature a été désactivé.",
+    "deleteCvRemoved": "Votre CV enregistré a été supprimé.",
+    "deleteFailed": "La suppression du compte a échoué. Contactez l'assistance.",
+    "lifecycleGoingDown": "Lors de notre dernière vérification, cette offre n'était plus sur le site carrières de l'employeur. Nous la daterons quand son retrait sera confirmé.",
+    "getMoreCredits": "Obtenir plus de crédits →",
+    "purchasesEmpty": "Aucun achat pour l'instant. Les rapports et outils achetés avec cette adresse e-mail, et les Agent Pass achetés sur ce compte, apparaissent ici.",
+    "passRow": "Agent Pass",
+    "passState": {
+      "unactivated": "pas encore commencé",
+      "live": "en cours",
+      "closed": "terminé"
+    },
+    "withdraw": {
+      "title": "Se rétracter sous {{days}} jours",
+      "body": "Vous avez souscrit Pro ou Morning Queue depuis l'UE ou le Royaume-Uni au cours des {{days}} derniers jours ? Vous pouvez vous rétracter : la formule est résiliée immédiatement et ce que vous avez payé, moins les jours déjà fournis, vous est remboursé.",
+      "button": "Me rétracter de ma formule",
+      "confirm": "Vous rétracter de votre formule ? Elle est résiliée maintenant, et le remboursement des jours non encore fournis revient sur votre carte.",
+      "done": "Rétractation effectuée. La formule est résiliée et {{amount}} vous sont remboursés sur votre carte. Une confirmation arrive par e-mail.",
+      "doneNoRefund": "Rétractation effectuée. La formule est résiliée ; rien n'a été facturé, il n'y a donc rien à rembourser.",
+      "none": "Aucune formule de ce compte n'a commencé au cours des {{days}} derniers jours.",
+      "notLinked": "Une formule liée à votre adresse e-mail n'est pas rattachée à ce compte. Écrivez-nous et nous traiterons la rétractation.",
+      "outsideTerritory": "La rétractation sous {{days}} jours s'applique aux formules facturées à une adresse dans l'UE, l'EEE ou au Royaume-Uni, et cette formule a été facturée ailleurs. Vous pouvez toujours la résilier à tout moment.",
+      "failed": "La rétractation n'a pas abouti. Réessayez dans une minute."
+    }
   },
   "applyAgent": {
     "badge": "Votre agent IA de candidature",
@@ -4907,7 +4939,10 @@
   },
   "proPlan": {
     "trialing": "Votre essai est en cours : les analyses illimitées et la préparation de candidatures par lots sont débloquées dès maintenant. Les outils payants sont inclus à partir de votre premier paiement.",
-    "linkPending": "Cette adresse a un abonnement qui n'est pas encore lié à ce compte. Connectez-vous avec Google avec cette adresse pour l'utiliser ici."
+    "linkPending": "Cette adresse a un abonnement qui n'est pas encore lié à ce compte. Connectez-vous avec Google avec cette adresse pour l'utiliser ici.",
+    "confirmed": "Merci : votre abonnement Pro est confirmé.",
+    "confirming": "Confirmation de votre abonnement auprès de Stripe. Cela prend quelques secondes.",
+    "notConfirmedYet": "Nous n'avons pas encore pu confirmer votre abonnement. Actualisez cette page dans une minute, ou contactez le support si votre abonnement n'apparaît pas."
   },
   "atsCoverage": {
     "heading": "Conçu pour les systèmes que les employeurs utilisent vraiment",
@@ -5251,6 +5286,24 @@
     "missing": "Cette page a besoin du lien de désabonnement de l'un de nos e-mails.",
     "error": "Impossible de vous désabonner pour le moment. Réessayez le bouton dans un instant.",
     "home": "Retour à Resume Booster"
+  },
+  "purchaseTerms": {
+    "agree": "En continuant, vous acceptez les <terms>Conditions d'utilisation</terms> et la <privacy>Politique de confidentialité</privacy>.",
+    "renewal": "{{price}} par mois, renouvelé automatiquement jusqu'à ce que vous résiliiez. Résiliez quand vous voulez depuis votre compte.",
+    "agentTrial": "Les nouveaux abonnés ont {{days}} jours gratuits, puis {{price}} par mois, renouvelé automatiquement jusqu'à résiliation. Résiliez avant la fin de l'essai et rien ne vous sera facturé. Un ancien abonné paie dès le premier jour.",
+    "waiver": "Je veux recevoir mon achat maintenant et je comprends que je perds mon droit de rétractation de {{days}} jours une fois qu'il a été livré.",
+    "serviceStart": "Je demande que le service commence maintenant. Si je me rétracte dans les {{days}} jours, je paie les jours déjà utilisés.",
+    "consentNeeded": "Cochez la case au-dessus du bouton pour continuer."
+  },
+  "freelanceBoost": {
+    "startNewPurchase": "Vous achetez pour un autre poste ? Commencer un nouvel achat.",
+    "boughtHereTitle": "3. Votre section expérience — déjà achetée sur cet appareil",
+    "openYourLink": "Pour la voir ou la générer, ouvrez le lien de votre e-mail d'achat. Vous ne serez pas facturé une seconde fois."
+  },
+  "seller": {
+    "soldBy": "Vendu par {{name}}, {{address}}.",
+    "terms": "Les présentes Conditions constituent un accord entre vous et {{name}}, {{address}}.",
+    "controller": "Le responsable du traitement de vos données personnelles est {{name}}, {{address}}."
   },
   "affiliates": {
     "commission": {

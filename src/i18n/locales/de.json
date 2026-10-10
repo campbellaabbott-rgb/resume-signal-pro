@@ -395,7 +395,7 @@
       },
       "subscription": {
         "question": "Ist das ein Abo?",
-        "answer": "Beide Optionen gibt es, und du entscheidest. Jeder Bericht und jedes Tool ist eine einmalige Zahlung, die sich nie automatisch verlängert. Separat gibt es zwei optionale monatliche Pläne: Pro für ${{proPrice}}/Monat mit unbegrenzten Scans und allen Tools, sowie die Morning Queue für ${{agentPrice}}/Monat, bei der der Bewerbungs-Agent über Nacht eine Vorauswahl für dich vorbereitet. Der Lebenslauf-Scan und die Jobbörse bleiben in jedem Fall kostenlos, und nichts stuft dich automatisch hoch."
+        "answer": "Beide Optionen gibt es, und du entscheidest. Jeder Bericht und jedes Tool ist eine einmalige Zahlung, die sich nie automatisch verlängert. Separat gibt es zwei optionale monatliche Pläne: Pro für ${{proPrice}}/Monat mit unbegrenzten Scans und allen Tools, sowie die Morning Queue für ${{agentPrice}}/Monat, bei der der Bewerbungs-Agent über Nacht eine Vorauswahl für dich vorbereitet. Der Lebenslauf-Scan und die Jobbörse bleiben in jedem Fall kostenlos. Beide Pläne verlängern sich jeden Monat, bis du kündigst, und die kostenlose Testphase der Morning Queue für Erstabonnenten geht an ihrem Ende in den bezahlten Plan über, wenn du nicht vorher kündigst. Sonst stuft dich nichts automatisch hoch."
       },
       "share": {
         "question": "Kann ich meine Analyse teilen?",
@@ -1784,7 +1784,7 @@
     "goToHome": "Zur Startseite",
     "creditsAdded_one": "{{count}} Credit hinzugefügt!",
     "creditsAdded_other": "{{count}} Credits hinzugefügt!",
-    "creditsLiveOn": "Deine Credits sind jetzt aktiv für das Konto",
+    "creditsLiveOn": "Die Quittung für diese Credits geht an",
     "creditsBalancePrefix": "Dein Guthaben siehst du über den Button",
     "myCredits": "Meine Credits",
     "creditsBalanceSuffix": "in der Kopfzeile auf diesem Gerät — du musst deine E-Mail nicht erneut eingeben.",
@@ -2827,7 +2827,7 @@
     "creditsNeverExpire": "Credits verfallen nie",
     "emailToReceive": "E-Mail zum Erhalt der Credits",
     "emailPlaceholder": "deine@email.de",
-    "creditsTiedToEmail": "Credits sind an deine E-Mail-Adresse gebunden",
+    "creditsTiedToEmail": "Deine Credits funktionieren in diesem Browser und in deinem Konto, wenn du hier angemeldet bist. An die E-Mail-Adresse geht deine Quittung.",
     "processing": "Verarbeitung läuft...",
     "buyCreditsFor_one": "{{count}} Credit für {{price}} kaufen",
     "buyCreditsFor_other": "{{count}} Credits für {{price}} kaufen",
@@ -2935,11 +2935,13 @@
     "neverExpire": "verfallen nie",
     "fullAtsEachScan": "Vollständige ATS-Analyse bei jedem Scan",
     "emailPlaceholder": "deine@email.de",
-    "creditsLinkedToEmail": "Credits werden mit dieser E-Mail verknüpft",
+    "creditsLinkedToEmail": "Deine Credits funktionieren in diesem Browser und in deinem Konto, wenn du hier angemeldet bist. An die E-Mail-Adresse geht deine Quittung.",
     "processing": "Verarbeitung läuft...",
     "getCreditsFor_one": "{{count}} Credit für {{price}} erhalten",
     "getCreditsFor_other": "{{count}} Credits für {{price}} erhalten",
-    "noThanks": "Nein danke, ich warte, bis meine kostenlosen Scans zurückgesetzt werden"
+    "noThanks": "Nein danke, ich warte, bis meine kostenlosen Scans zurückgesetzt werden",
+    "fewerCredits": "Weniger Credits",
+    "moreCredits": "Mehr Credits"
   },
   "changelogPage": {
     "metaTitle": "Änderungsprotokoll — Resume Booster",
@@ -3569,7 +3571,9 @@
       "education": "Ausbildung",
       "skills": "Fähigkeiten",
       "certifications": "Zertifikate"
-    }
+    },
+    "replaceWithFixes": "Deinen aktuellen Entwurf im Builder durch den Lebenslauf aus deinem Scan ersetzen, mit den Korrekturen aus dem Bericht?",
+    "replaceWithLatestScan": "Du hast einen Entwurf aus einem früheren Lebenslauf. Durch den Lebenslauf aus deinem neuesten Scan ersetzen?"
   },
   "jobsPage": {
     "seoTitle": "Live-Jobs direkt von den Karriereseiten der Unternehmen — prüfe deine Passung vor der Bewerbung",
@@ -4597,7 +4601,35 @@
     "replyWindowFill": "vor {{d}} Tagen beworben — {{pct}}% der Stellen dieses Arbeitgebers werden innerhalb von {{h}} Tagen nach Veröffentlichung endgültig entfernt und nicht neu ausgeschrieben",
     "replyWindowFillPast": "vor {{d}} Tagen beworben — über der {{h}}-Tage-Marke, bis zu der {{pct}}% der Stellen dieses Arbeitgebers endgültig entfernt waren; eine Nachfrage ist angemessen",
     "replyWindowFillCensored": "vor {{d}} Tagen beworben — mehr als die Hälfte der Stellen dieses Arbeitgebers war 30 Tage nach Veröffentlichung noch online",
-    "replyWindowFillCoverage": "bezogen auf die {{pct}}% seiner Stellen mit einem vom Unternehmen selbst angegebenen Veröffentlichungsdatum"
+    "replyWindowFillCoverage": "bezogen auf die {{pct}}% seiner Stellen mit einem vom Unternehmen selbst angegebenen Veröffentlichungsdatum",
+    "deleteAccountBody": "Löscht Ihr Konto, Ihren Scanverlauf, Ihre Checkliste, Ihr Ziel, Ihre Bewerbungen und jeden für den Agenten hochgeladenen Lebenslauf endgültig und kündigt jedes Abonnement, das dieses Konto bezahlt, sodass nichts mehr berechnet wird. Kaufbelege werden für die Buchhaltung aufbewahrt. Dies kann nicht rückgängig gemacht werden.",
+    "deleteUnlinkedPlan": "Für diese Adresse besteht ein Abonnement, das nicht mit diesem Konto verknüpft ist. Kündigen Sie es zuerst auf der Abrechnungsseite von Stripe und löschen Sie dann das Konto. Es wurde nichts gelöscht.",
+    "deleteRetry": "Ihr Konto wurde nicht gelöscht: Wir konnten Ihren gespeicherten Lebenslauf nicht vollständig entfernen oder Ihr Abonnement nicht kündigen. Bitte versuchen Sie es in einer Minute erneut.",
+    "deletePlanCancelled": "Wir haben ein Abonnement dieses Kontos gekündigt, es wird Ihnen also nichts mehr berechnet, aber das Konto selbst wurde nicht gelöscht. Bitte versuchen Sie es in einer Minute erneut oder wenden Sie sich an den Support, falls es wieder fehlschlägt.",
+    "deleteAgentStopped": "Ihr Bewerbungsagent wurde ausgeschaltet.",
+    "deleteCvRemoved": "Ihr gespeicherter Lebenslauf wurde entfernt.",
+    "deleteFailed": "Das Löschen des Kontos ist fehlgeschlagen. Bitte wenden Sie sich an den Support.",
+    "lifecycleGoingDown": "Bei unserer letzten Prüfung war diese Stelle nicht mehr auf der Karriereseite des Arbeitgebers. Ein Datum nennen wir erst, wenn feststeht, dass sie entfernt wurde.",
+    "getMoreCredits": "Mehr Credits holen →",
+    "purchasesEmpty": "Noch keine Käufe. Berichte und Tools, die mit dieser E-Mail-Adresse gekauft wurden, und Agent Passes, die mit diesem Konto gekauft wurden, erscheinen hier.",
+    "passRow": "Agent Pass",
+    "passState": {
+      "unactivated": "noch nicht gestartet",
+      "live": "läuft",
+      "closed": "beendet"
+    },
+    "withdraw": {
+      "title": "Widerruf innerhalb von {{days}} Tagen",
+      "body": "Pro oder die Morning Queue in den letzten {{days}} Tagen aus der EU oder dem Vereinigten Königreich gekauft? Du kannst widerrufen: Der Plan wird sofort beendet, und was du bezahlt hast, abzüglich der bereits erbrachten Tage, wird erstattet.",
+      "button": "Meinen Plan widerrufen",
+      "confirm": "Deinen Plan widerrufen? Er wird jetzt beendet, und die Erstattung für die noch nicht erbrachten Tage geht auf deine Karte zurück.",
+      "done": "Widerrufen. Der Plan ist beendet, und {{amount}} werden auf deine Karte erstattet. Eine Bestätigung ist per E-Mail unterwegs.",
+      "doneNoRefund": "Widerrufen. Der Plan ist beendet; dafür wurde nichts berechnet, also gibt es nichts zu erstatten.",
+      "none": "Kein Plan dieses Kontos hat in den letzten {{days}} Tagen begonnen.",
+      "notLinked": "Ein Plan unter deiner E-Mail-Adresse ist nicht mit diesem Konto verknüpft. Schreib uns, und wir kümmern uns um den Widerruf.",
+      "outsideTerritory": "Der Widerruf innerhalb von {{days}} Tagen gilt für Pläne, die an eine Adresse in der EU, im EWR oder im Vereinigten Königreich abgerechnet werden, und dieser Plan wurde anderswo abgerechnet. Du kannst ihn trotzdem jederzeit kündigen.",
+      "failed": "Der Widerruf hat nicht geklappt. Bitte versuche es in einer Minute erneut."
+    }
   },
   "applyAgent": {
     "badge": "Ihr KI-Bewerbungsagent",
@@ -4907,7 +4939,10 @@
   },
   "proPlan": {
     "trialing": "Ihre Testphase läuft: Unbegrenzte Scans und die gesammelte Bewerbungsvorbereitung sind jetzt freigeschaltet. Die kostenpflichtigen Tools sind ab Ihrer ersten Zahlung enthalten.",
-    "linkPending": "Zu dieser Adresse gibt es ein Abo, das noch nicht mit diesem Konto verknüpft ist. Melden Sie sich mit Google unter dieser Adresse an, um es hier zu nutzen."
+    "linkPending": "Zu dieser Adresse gibt es ein Abo, das noch nicht mit diesem Konto verknüpft ist. Melden Sie sich mit Google unter dieser Adresse an, um es hier zu nutzen.",
+    "confirmed": "Danke: Ihr Pro-Abonnement ist bestätigt.",
+    "confirming": "Ihr Abonnement wird bei Stripe bestätigt. Das dauert ein paar Sekunden.",
+    "notConfirmedYet": "Wir konnten Ihr Abonnement noch nicht bestätigen. Laden Sie diese Seite in einer Minute neu, oder wenden Sie sich an den Support, falls Ihr Abo nicht erscheint."
   },
   "atsCoverage": {
     "heading": "Gebaut für die Systeme, die Arbeitgeber wirklich nutzen",
@@ -5251,6 +5286,24 @@
     "missing": "Diese Seite braucht den Abmeldelink aus einer unserer E-Mails.",
     "error": "Das Abbestellen hat gerade nicht geklappt. Versuchen Sie es gleich noch einmal.",
     "home": "Zurück zu Resume Booster"
+  },
+  "purchaseTerms": {
+    "agree": "Indem Sie fortfahren, stimmen Sie den <terms>Nutzungsbedingungen</terms> und der <privacy>Datenschutzerklärung</privacy> zu.",
+    "renewal": "{{price}} pro Monat, verlängert sich automatisch, bis Sie kündigen. Kündigen Sie jederzeit in Ihrem Konto.",
+    "agentTrial": "Neue Abonnenten erhalten {{days}} Tage kostenlos, danach {{price}} pro Monat, automatisch verlängert, bis Sie kündigen. Kündigen Sie vor Ende des Testzeitraums, wird nichts berechnet. Wer schon einmal abonniert hatte, zahlt ab dem ersten Tag.",
+    "waiver": "Ich möchte, dass mein Kauf sofort geliefert wird, und mir ist bekannt, dass ich mein {{days}}-tägiges Widerrufsrecht mit der Lieferung verliere.",
+    "serviceStart": "Ich verlange, dass die Leistung sofort beginnt. Widerrufe ich innerhalb von {{days}} Tagen, zahle ich für die bereits genutzten Tage.",
+    "consentNeeded": "Bitte setzen Sie das Häkchen über der Schaltfläche, um fortzufahren."
+  },
+  "freelanceBoost": {
+    "startNewPurchase": "Kaufen Sie für eine andere Stelle? Neuen Kauf beginnen.",
+    "boughtHereTitle": "3. Ihr Erfahrungsabschnitt – auf diesem Gerät bereits gekauft",
+    "openYourLink": "Öffnen Sie den Link in Ihrer Kauf-E-Mail, um ihn anzusehen oder zu erstellen. Es wird Ihnen nichts erneut berechnet."
+  },
+  "seller": {
+    "soldBy": "Verkauft von {{name}}, {{address}}.",
+    "terms": "Diese Bedingungen sind eine Vereinbarung zwischen dir und {{name}}, {{address}}.",
+    "controller": "Verantwortlicher für deine personenbezogenen Daten ist {{name}}, {{address}}."
   },
   "affiliates": {
     "commission": {

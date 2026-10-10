@@ -1,11 +1,12 @@
-// deploy-stamp: 2026-10-04T12:00Z
+// deploy-stamp: 2026-10-09T13:00Z
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isServiceRoleCaller } from "../_shared/service-caller.ts";
+import { purchaseIdOf, purchaseLinkFor, SITE } from "../_shared/purchase-link.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "send-product-email.2026-10-06.1";
+const FN_BUILD = "send-product-email.2026-10-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -28,6 +29,18 @@ interface ProductEmailRequest {
   productType: string;
   productName: string;
   generatedContent?: any;
+  /** The Checkout session (cs_live_/cs_test_) or Pro grant (pro_) id: the link reopens it (S8-015). */
+  sessionId?: string;
+}
+
+/** Bought here, made on a page after an intake: the mail opens that page, it is not "ready" yet (S8-016). */
+const MADE_AFTER_INTAKE = new Set(["freelance_boost", "freelance_transition_pro"]);
+
+/** The subject: "is Ready" only for a product the mail stands behind. */
+export function productEmailSubject(productType: string, productName: string, emoji: string): string {
+  return MADE_AFTER_INTAKE.has(productType)
+    ? `${emoji} Your ${productName}: open it here to finish`
+    : `${emoji} Your ${productName} is Ready!`;
 }
 
 // Product-specific info
@@ -37,6 +50,32 @@ const productInfo: Record<string, {
   howItWorks: string[];
   nextSteps: string[];
 }> = {
+  freelance_boost: {
+    emoji: "🧭",
+    tagline: "Your experience section, rebuilt from your freelance work",
+    howItWorks: [
+      "Open your purchase with the button below",
+      "Answer the short intake about your projects and target role",
+      "Your experience section is written from what you entered",
+    ],
+    nextSteps: [
+      "Keep this email: the button reopens your purchase on any device",
+      "Finish the intake to get your result",
+    ],
+  },
+  freelance_transition_pro: {
+    emoji: "🧭",
+    tagline: "Your experience section, cover letter and LinkedIn About, rebuilt from your freelance work",
+    howItWorks: [
+      "Open your purchase with the button below",
+      "Answer the short intake about your projects and target role",
+      "Your result is written from what you entered",
+    ],
+    nextSteps: [
+      "Keep this email: the button reopens your purchase on any device",
+      "Finish the intake to get your result",
+    ],
+  },
   basic_keyword_fix: {
     emoji: "🎯",
     tagline: "Boost your ATS score with optimized keywords",
@@ -217,6 +256,8 @@ const productInfo: Record<string, {
 
 function generateProductEmailHtml(data: ProductEmailRequest): string {
   const { productName, productType, generatedContent } = data;
+  const purchaseId = purchaseIdOf(data.sessionId);
+  const link = purchaseLinkFor(data.sessionId, productType) ?? SITE;
   const info = productInfo[productType] || productInfo.basic_keyword_fix;
   
   const howItWorksHtml = info.howItWorks.map((step, i) => 
@@ -377,13 +418,14 @@ function generateProductEmailHtml(data: ProductEmailRequest): string {
                 </ul>
               </div>
 
-              <!-- CTA Button -->
+              <!-- CTA Button: the page that reopens THIS purchase (S8-015) -->
               <div style="text-align: center; margin-top: 32px;">
-                <a href="https://resumebooster.work" 
+                <a href="${escapeHtml(link)}"
                    style="display: inline-block; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
                   View Your Results →
                 </a>
               </div>
+              ${purchaseId ? `<p style="text-align: center; margin: 16px 0 0; color: #6b7280; font-size: 13px;">Your purchase ID: <strong>${escapeHtml(purchaseId)}</strong>. Keep this email: the button reopens your purchase on any device, and the recovery form on that page accepts this ID.</p>` : ""}
 
             </td>
           </tr>
@@ -467,7 +509,7 @@ Deno.serve(async (req) => {
     const { data, error } = await resend.emails.send({
       from: "Resume Booster <reports@resumebooster.work>",
       to: [email],
-      subject: `${emoji} Your ${productName} is Ready!`,
+      subject: productEmailSubject(productType, productName, emoji),
       html,
     });
 
@@ -483,7 +525,7 @@ Deno.serve(async (req) => {
       await supabase.rpc('log_email_send', {
         p_email_type: `product_${productType}`,
         p_recipient: email,
-        p_subject: `Your ${productName} is Ready!`,
+        p_subject: productEmailSubject(productType, productName, "").trim(),
         p_status: 'failed',
         p_error_message: error.message,
       });
@@ -500,7 +542,7 @@ Deno.serve(async (req) => {
     await supabase.rpc('log_email_send', {
       p_email_type: `product_${productType}`,
       p_recipient: email,
-      p_subject: `Your ${productName} is Ready!`,
+      p_subject: productEmailSubject(productType, productName, "").trim(),
       p_status: 'sent',
       p_metadata: { resend_id: data?.id },
     });

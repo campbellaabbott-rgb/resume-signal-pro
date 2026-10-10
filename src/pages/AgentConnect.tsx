@@ -80,6 +80,8 @@ import {
 import { MCP_URL, runServerTest, describeTest, readSignInFromServer } from "@/lib/mcp-test";
 import { rememberedHostChoice, rememberHostName } from "@/lib/agent-handoff";
 import { postTrackEvent, getVisitorId, checkoutContext } from "@/lib/track-transport";
+import { purchaseTerms } from "@/lib/purchase-terms";
+import { PurchaseTerms } from "@/components/PurchaseTerms";
 import { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "@/config/sendable-vendors";
 import { PASS, SUBSCRIPTIONS } from "@/config/products";
 import { FREE_KEY_RATE_PER_MIN } from "@/config/free-key-limits";
@@ -172,7 +174,7 @@ export function usePassStatus(sessionId?: string | null) {
  * browser is on its way to Stripe, or to a generic failure line.
  */
 export async function startPassCheckout(): Promise<string | null> {
-  const { data, error } = await supabase.functions.invoke("create-pass-checkout", { body: { ...checkoutContext() } });
+  const { data, error } = await supabase.functions.invoke("create-pass-checkout", { body: { ...checkoutContext(), ...purchaseTerms() } });
   if (error) {
     const ctx = (error as { context?: { json?: () => Promise<unknown> } }).context;
     let message: string | null = null;
@@ -652,12 +654,15 @@ export function PassCard() {
           <Ticket className="w-4 h-4" /> {t("agentPass.holdOpen", "You hold a pass — open it")}
         </Link>
       ) : (
+        <>
+        <PurchaseTerms kind="payment" className="mb-2" />
         <button
           type="button" onClick={buy} disabled={busy}
           className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
         >
           {busy ? <><Loader2 className="w-4 h-4 animate-spin" /> {t("agentPass.buying", "Opening checkout…")}</> : <><Ticket className="w-4 h-4" /> {t("agentPass.buy", "Buy the pass — ${{passPrice}}", PASS_COPY)}</>}
         </button>
+        </>
       )}
     </div>
   );

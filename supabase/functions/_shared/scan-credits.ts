@@ -82,9 +82,13 @@ export async function sessionHash(id: string): Promise<string> {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+import { checkoutSessionSettled } from "./pass-settlement.ts";
+
 export type StripeCheckoutSession = {
   id?: string;
   payment_status?: string | null;
+  mode?: string | null;
+  amount_total?: number | null;
   customer_email?: string | null;
   metadata?: Record<string, string | undefined> | null;
   line_items?: { data?: Array<{ quantity?: number | null }> } | null;
@@ -110,9 +114,14 @@ export function creditsBoughtOf(s: StripeCheckoutSession): number {
   return Math.max(1, Math.min(MAX_CREDITS_PER_PURCHASE, Math.floor(n)));
 }
 
-/** A paid credit purchase with a credited address, or null. */
+/**
+ * A settled credit purchase with a credited address, or null. Settled as the
+ * webhook settles it (S8-053): 'paid', or a $0 payment-mode session a
+ * 100%-off code completed, which the webhook credited and this refused to
+ * record, so the held session could spend nothing.
+ */
 export function grantFromStripe(s: StripeCheckoutSession | null | undefined): { email: string; productType: string; credits: number } | null {
-  if (!s || s.payment_status !== "paid") return null;
+  if (!s || !checkoutSessionSettled(s)) return null;
   const productType = String(s.metadata?.product_type ?? "");
   if (!CREDIT_PRODUCT_TYPES.has(productType)) return null;
   const email = creditedEmailOf(s);

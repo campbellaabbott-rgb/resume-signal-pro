@@ -1,8 +1,9 @@
 // THE FULL RESUME ANALYSIS: WHAT A SESSION MUST HAVE BOUGHT, AND WHETHER IT
 // HAS ALREADY HAD ITS ANALYSIS.
 //
-// Pure, no imports: analyze-resume, stripe-webhook and retry-failed-deliveries
-// share it, and the tests execute it.
+// Pure: analyze-resume, stripe-webhook and retry-failed-deliveries share it,
+// and the tests execute it. Its one import is the settlement rule every
+// one-time product shares (pass-settlement.ts), itself pure.
 //
 // THE INCIDENT. From 2025-12-23 to 2026-10-01 no buyer of this product could
 // receive it. analyze-resume refused any session worth under a $20 floor that
@@ -28,8 +29,12 @@
 export const FULL_ANALYSIS_PRODUCT_TYPE = "full_analysis";
 export const FULL_ANALYSIS_PRODUCT_NAME = "Full Resume Analysis";
 
+import { checkoutSessionSettled } from "./pass-settlement.ts";
+
 type SessionLike = {
   payment_status?: string | null;
+  mode?: string | null;
+  amount_total?: number | null;
   metadata?: Record<string, string | null | undefined> | null;
   total_details?: { amount_discount?: number | null } | null;
 } | null | undefined;
@@ -85,10 +90,17 @@ export function legacyFullAnalysisRefusal(session: SessionLike): string | null {
   return null;
 }
 
-/** null when the session is a paid full analysis; otherwise why it is not. */
+/**
+ * null when the session is a settled full analysis; otherwise why it is not.
+ * Settled is the webhook's rule (S8-053): 'paid', or a $0 payment-mode session
+ * a 100%-off code completed. The webhook accepted the owner's comps and this
+ * answered them 402.
+ */
 export function fullAnalysisRefusal(session: SessionLike): string | null {
   if (!session) return "no session";
-  if (session.payment_status !== "paid") return `payment_status is ${session.payment_status ?? "missing"}`;
+  if (!checkoutSessionSettled({ ...session, metadata: session.metadata as Record<string, string | undefined> | null | undefined })) {
+    return `payment_status is ${session.payment_status ?? "missing"}`;
+  }
   const bought = session.metadata?.product_type ?? null;
   if (bought === FULL_ANALYSIS_PRODUCT_TYPE) return null;
   if (bought) return `the session bought ${bought}, not the full analysis`;

@@ -17,7 +17,10 @@
 
 import { CalendarClock, History } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { interviewSignals, type InterviewSignal, type TrackedApplication } from "@/lib/interviewAttribution";
+import {
+  calendarDaysUntil, interviewSignals, isUpcomingInterview,
+  type InterviewSignal, type TrackedApplication,
+} from "@/lib/interviewAttribution";
 
 interface AppRow extends TrackedApplication {
   id: string;
@@ -28,9 +31,8 @@ interface AppRow extends TrackedApplication {
 
 export function InterviewsHub({ applications }: { applications: AppRow[] }) {
   const { t } = useTranslation();
-  const now = Date.now() - 86_400_000; // include today regardless of timezone
   const upcoming = applications
-    .filter((a) => a.interview_at && Date.parse(a.interview_at) >= now)
+    .filter((a) => isUpcomingInterview(a.interview_at))
     .sort((a, b) => Date.parse(a.interview_at!) - Date.parse(b.interview_at!))
     .slice(0, 4);
 
@@ -42,7 +44,7 @@ export function InterviewsHub({ applications }: { applications: AppRow[] }) {
   if (upcoming.length === 0 && past.length === 0) return null;
 
   const dayLabel = (iso: string) => {
-    const d = Math.round((Date.parse(iso) - Date.now()) / 86_400_000);
+    const d = calendarDaysUntil(iso);
     if (d <= 0) return t("accountPage.ivhToday", "Today");
     if (d === 1) return t("accountPage.ivhTomorrow", "Tomorrow");
     return t("accountPage.ivhInDays", "In {{n}} days", { n: d });

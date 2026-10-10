@@ -396,7 +396,7 @@
       },
       "subscription": {
         "question": "Isto é uma subscrição?",
-        "answer": "As duas opções existem, e você escolhe. Cada relatório e ferramenta é um pagamento único que nunca se renova. Separadamente, há dois planos mensais opcionais: o Pro por ${{proPrice}}/mês, com verificações ilimitadas e todas as ferramentas, e a Fila da Manhã por ${{agentPrice}}/mês, em que o agente de candidatura prepara uma lista de vagas selecionadas para você durante a noite. A verificação de currículo e o quadro de vagas continuam gratuitos de qualquer forma, e nada faz upgrade da sua conta automaticamente."
+        "answer": "As duas opções existem, e você escolhe. Cada relatório e ferramenta é um pagamento único que nunca se renova. Separadamente, há dois planos mensais opcionais: o Pro por ${{proPrice}}/mês, com verificações ilimitadas e todas as ferramentas, e a Fila da Manhã por ${{agentPrice}}/mês, em que o agente de candidatura prepara uma lista de vagas selecionadas para você durante a noite. A verificação de currículo e o quadro de vagas continuam gratuitos de qualquer forma. Os dois planos são renovados todo mês até você cancelar, e o teste gratuito da Fila da Manhã para novos assinantes vira o plano pago quando termina, a menos que você cancele antes. Fora isso, nada faz upgrade da sua conta automaticamente."
       },
       "share": {
         "question": "Posso partilhar a minha análise com outros?",
@@ -1784,7 +1784,7 @@
     "goToHome": "Ir para a Página Inicial",
     "creditsAdded_one": "{{count}} crédito adicionado!",
     "creditsAdded_other": "{{count}} créditos adicionados!",
-    "creditsLiveOn": "Os seus créditos já estão ativos na conta de",
+    "creditsLiveOn": "O recibo destes créditos é enviado para",
     "creditsBalancePrefix": "Verá o seu saldo no botão",
     "myCredits": "Os Meus Créditos",
     "creditsBalanceSuffix": "no cabeçalho neste dispositivo — não precisa de introduzir o seu e-mail novamente.",
@@ -2827,7 +2827,7 @@
     "creditsNeverExpire": "Os créditos nunca expiram",
     "emailToReceive": "E-mail para receber os créditos",
     "emailPlaceholder": "seu@email.com",
-    "creditsTiedToEmail": "Os créditos estão vinculados ao seu endereço de e-mail",
+    "creditsTiedToEmail": "Os seus créditos funcionam neste navegador e na sua conta se tiver sessão iniciada aqui. O e-mail é para o seu recibo.",
     "processing": "A processar...",
     "buyCreditsFor_one": "Comprar {{count}} crédito por {{price}}",
     "buyCreditsFor_other": "Comprar {{count}} créditos por {{price}}",
@@ -2935,11 +2935,13 @@
     "neverExpire": "nunca expiram",
     "fullAtsEachScan": "Análise ATS completa em cada verificação",
     "emailPlaceholder": "seu@email.com",
-    "creditsLinkedToEmail": "Os créditos serão vinculados a este e-mail",
+    "creditsLinkedToEmail": "Os seus créditos funcionam neste navegador e na sua conta se tiver sessão iniciada aqui. O e-mail é para o seu recibo.",
     "processing": "A processar...",
     "getCreditsFor_one": "Obter {{count}} crédito por {{price}}",
     "getCreditsFor_other": "Obter {{count}} créditos por {{price}}",
-    "noThanks": "Não, obrigado, vou esperar pela reinicialização das minhas verificações gratuitas"
+    "noThanks": "Não, obrigado, vou esperar pela reinicialização das minhas verificações gratuitas",
+    "fewerCredits": "Menos créditos",
+    "moreCredits": "Mais créditos"
   },
   "changelogPage": {
     "metaTitle": "Registo de alterações — Resume Booster",
@@ -3569,7 +3571,9 @@
       "education": "Formação",
       "skills": "Habilidades",
       "certifications": "Certificações"
-    }
+    },
+    "replaceWithFixes": "Substituir o rascunho atual do editor pelo currículo da sua verificação, com as correções do relatório aplicadas?",
+    "replaceWithLatestScan": "Você tem um rascunho de um currículo anterior. Substituí-lo pelo currículo da sua verificação mais recente?"
   },
   "jobsPage": {
     "seoTitle": "Vagas ao vivo direto dos sites das próprias empresas — confira seu encaixe antes de se candidatar",
@@ -4597,7 +4601,35 @@
     "replyWindowFill": "candidatou-se há {{d}} dias — {{pct}}% das vagas deste empregador são retiradas em definitivo, sem voltarem a ser publicadas, em até {{h}} dias após a publicação",
     "replyWindowFillPast": "candidatou-se há {{d}} dias — para lá dos {{h}} dias em que {{pct}}% das vagas deste empregador já tinham sido retiradas em definitivo; um seguimento é razoável",
     "replyWindowFillCensored": "candidatou-se há {{d}} dias — mais de metade das vagas deste empregador continuava publicada 30 dias depois",
-    "replyWindowFillCoverage": "sobre os {{pct}}% das suas vagas que indicam uma data de publicação da própria empresa"
+    "replyWindowFillCoverage": "sobre os {{pct}}% das suas vagas que indicam uma data de publicação da própria empresa",
+    "deleteAccountBody": "Exclui para sempre a sua conta, o histórico de análises, a lista de tarefas, o objetivo, as candidaturas e qualquer CV enviado para o agente, e cancela qualquer assinatura paga por esta conta, para que nada mais seja cobrado. Os registos de compra são mantidos para fins contabilísticos. Não pode ser desfeito.",
+    "deleteUnlinkedPlan": "Este endereço tem uma assinatura que não está ligada a esta conta. Cancele-a primeiro na página de faturação da Stripe e depois exclua a conta. Nada foi excluído.",
+    "deleteRetry": "A sua conta não foi excluída: não conseguimos terminar de remover o seu CV guardado ou de cancelar a sua assinatura. Tente novamente daqui a um minuto.",
+    "deletePlanCancelled": "Cancelámos uma assinatura desta conta, por isso não lhe será cobrada novamente, mas a conta em si não foi excluída. Tente novamente daqui a um minuto ou contacte o suporte se voltar a falhar.",
+    "deleteAgentStopped": "O seu agente de candidaturas foi desligado.",
+    "deleteCvRemoved": "O seu CV guardado foi removido.",
+    "deleteFailed": "A exclusão da conta falhou. Contacte o suporte.",
+    "lifecycleGoingDown": "Na nossa última verificação, esta vaga já não estava no site da empresa. Vamos datá-la quando for confirmado que foi retirada.",
+    "getMoreCredits": "Obter mais créditos →",
+    "purchasesEmpty": "Nenhuma compra ainda. Relatórios e ferramentas comprados com este e-mail, e Agent Passes comprados nesta conta, aparecem aqui.",
+    "passRow": "Agent Pass",
+    "passState": {
+      "unactivated": "ainda não iniciado",
+      "live": "em andamento",
+      "closed": "encerrado"
+    },
+    "withdraw": {
+      "title": "Desistir em até {{days}} dias",
+      "body": "Comprou o Pro ou a Fila da Manhã nos últimos {{days}} dias a partir da UE ou do Reino Unido? Você pode desistir: o plano é cancelado na hora, e o que você pagou, menos os dias já prestados, é reembolsado.",
+      "button": "Desistir do meu plano",
+      "confirm": "Desistir do seu plano? Ele é cancelado agora, e o reembolso dos dias ainda não prestados volta para o seu cartão.",
+      "done": "Desistência feita. O plano está cancelado e {{amount}} está sendo reembolsado no seu cartão. Uma confirmação está a caminho por e-mail.",
+      "doneNoRefund": "Desistência feita. O plano está cancelado; nada foi cobrado por ele, então não há nada a reembolsar.",
+      "none": "Nenhum plano desta conta começou nos últimos {{days}} dias.",
+      "notLinked": "Um plano no seu e-mail não está vinculado a esta conta. Escreva para nós e cuidaremos da desistência.",
+      "outsideTerritory": "A desistência em {{days}} dias aplica-se a planos faturados para um endereço na UE, no EEE ou no Reino Unido, e este plano foi faturado noutro local. Pode cancelá-lo a qualquer momento.",
+      "failed": "A desistência não foi concluída. Tente de novo em um minuto."
+    }
   },
   "applyAgent": {
     "badge": "Seu agente de IA para candidaturas",
@@ -4907,7 +4939,10 @@
   },
   "proPlan": {
     "trialing": "Seu teste está ativo: análises ilimitadas e a preparação de candidaturas em lote já estão liberadas. As ferramentas pagas ficam incluídas a partir do seu primeiro pagamento.",
-    "linkPending": "Este endereço tem um plano que ainda não está vinculado a esta conta. Entre com o Google usando esse endereço para usá-lo aqui."
+    "linkPending": "Este endereço tem um plano que ainda não está vinculado a esta conta. Entre com o Google usando esse endereço para usá-lo aqui.",
+    "confirmed": "Obrigado: a sua assinatura Pro está confirmada.",
+    "confirming": "A confirmar a sua assinatura com a Stripe. Demora alguns segundos.",
+    "notConfirmedYet": "Ainda não conseguimos confirmar a sua assinatura. Atualize esta página daqui a um minuto ou contacte o suporte se o seu plano não aparecer."
   },
   "atsCoverage": {
     "heading": "Feito para os sistemas que os empregadores usam mesmo",
@@ -5251,6 +5286,24 @@
     "missing": "Esta página precisa do link para cancelar a inscrição de um dos nossos e-mails.",
     "error": "Não foi possível cancelar agora. Tente o botão novamente daqui a pouco.",
     "home": "Voltar ao Resume Booster"
+  },
+  "purchaseTerms": {
+    "agree": "Ao continuar, você concorda com os <terms>Termos de Serviço</terms> e a <privacy>Política de Privacidade</privacy>.",
+    "renewal": "{{price}} por mês, com renovação automática até você cancelar. Cancele quando quiser na sua conta.",
+    "agentTrial": "Quem assina pela primeira vez tem {{days}} dias grátis; depois, {{price}} por mês, com renovação automática até você cancelar. Cancele antes do fim do teste e nada será cobrado. Quem já assinou antes paga desde o primeiro dia.",
+    "waiver": "Quero receber minha compra agora e entendo que perco meu direito de desistência de {{days}} dias depois da entrega.",
+    "serviceStart": "Peço que o serviço comece agora. Se eu desistir em até {{days}} dias, pago pelos dias já usados.",
+    "consentNeeded": "Marque a caixa acima do botão para continuar."
+  },
+  "freelanceBoost": {
+    "startNewPurchase": "Vai comprar para outra função? Comece uma nova compra.",
+    "boughtHereTitle": "3. A sua secção de experiência — já comprada neste dispositivo",
+    "openYourLink": "Para a ver ou gerar, abra a ligação no seu e-mail de compra. Não lhe será cobrado novamente."
+  },
+  "seller": {
+    "soldBy": "Vendido por {{name}}, {{address}}.",
+    "terms": "Estes Termos são um acordo entre você e {{name}}, {{address}}.",
+    "controller": "O controlador dos seus dados pessoais é {{name}}, {{address}}."
   },
   "affiliates": {
     "commission": {

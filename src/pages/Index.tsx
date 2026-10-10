@@ -49,7 +49,7 @@ import { type JobEntry } from "@/components/JobSelector";
 import { HowItWorks } from "@/components/HowItWorks";
 import { HomeHero } from "@/components/HomeHero";
 import { Bot, ArrowRight } from "lucide-react";
-import { PASS } from "@/config/products";
+import { PASS, PRODUCTS } from "@/config/products";
 import { MCP_ANON_CAPS } from "@/config/mcp-tools";
 import { AgentMatchesPanel } from "@/components/AgentMatchesPanel";
 import { MiniPricingCards } from "@/components/MiniPricingCards";
@@ -65,6 +65,8 @@ import { useScanCredits, creditSessions, CREDITS_UPDATED_EVENT } from "@/hooks/u
 import { rememberPreStoredResume, forgetPreStoredResume } from "@/hooks/use-product-checkout";
 import { supabase } from "@/integrations/supabase/client";
 import { checkoutContext, getVisitorId } from "@/lib/track-transport";
+import { purchaseTerms } from "@/lib/purchase-terms";
+import { useBackForwardRestore } from "@/hooks/use-back-forward-restore";
 import { resilientCallers, callEdgeFunctionWithRetry, scanFailureKind } from "@/lib/resilient-edge-function";
 import { prepareJobAnalysisScan } from "@/lib/job-analysis-scan";
 import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
@@ -564,6 +566,15 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
   const [preStoredSessionId, setPreStoredSessionId] = useState<string | null>(null);
   const [uploadedJobs, setUploadedJobs] = useState<JobEntry[]>([]);
   const [showRateLimitUpsell, setShowRateLimitUpsell] = useState(false);
+  // The server's own reset time for the daily limit (S8-119): the upsell used
+  // to print hours to LOCAL MIDNIGHT beside a toast quoting the server's
+  // rolling 24-hour window, two different times on one screen.
+  const [rateLimitResetHours, setRateLimitResetHours] = useState<number | null>(null);
+  const openRateLimitUpsell = (hours?: unknown) => {
+    const h = Number(hours);
+    setRateLimitResetHours(Number.isFinite(h) && h > 0 ? Math.ceil(h) : null);
+    setShowRateLimitUpsell(true);
+  };
   const [showTailoredResumeModal, setShowTailoredResumeModal] = useState(false);
   const [showProductModal, setShowProductModal] = useState(false);
   
@@ -1144,7 +1155,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
               description: scanResult.error.description,
               variant: "destructive",
             });
-            setShowRateLimitUpsell(true);
+            openRateLimitUpsell(body.hoursUntilReset);
             return;
           }
           if (failure === 'refused') {
@@ -1216,7 +1227,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
             description: data.error || `You've used all ${data.scansLimit || 7} free scans.`,
             variant: "destructive",
           });
-          setShowRateLimitUpsell(true);
+          openRateLimitUpsell(data.hoursUntilReset);
           return;
         } else {
           throw new Error(data?.error || "Failed to analyze resume");
@@ -1231,7 +1242,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
           description: result.error || `You've used all your free scans. Resets in ~24 hours.`,
           variant: "destructive",
         });
-        setShowRateLimitUpsell(true);
+        openRateLimitUpsell((result as any).hoursUntilReset);
         return;
       }
 
@@ -1393,7 +1404,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
       // Check if error message contains rate limit info
       const errorMsg = error?.message?.toLowerCase() || '';
       if (errorMsg.includes('rate') || errorMsg.includes('limit') || errorMsg.includes('429')) {
-        setShowRateLimitUpsell(true);
+        openRateLimitUpsell(undefined);
         toast({
           title: t('homepage.toast.dailyScanLimitReached'),
           description: t('homepage.toast.tryAgain'),
@@ -1453,7 +1464,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
             description: scanResult.error.description,
             variant: "destructive",
           });
-          setShowRateLimitUpsell(true);
+          openRateLimitUpsell((scanResult.errorBody as Record<string, unknown> | undefined)?.hoursUntilReset);
           return;
         }
         trackApiError('free-keyword-scan', 500, scanResult.error.description);
@@ -1473,7 +1484,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
           description: data.error || `You've used all ${data.scansLimit || 7} free scans. Resets in ~${data.hoursUntilReset || 24} hours.`,
           variant: "destructive",
         });
-        setShowRateLimitUpsell(true);
+        openRateLimitUpsell(data.hoursUntilReset);
         return;
       }
 
@@ -1730,6 +1741,10 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
 
     // Track button click for conversion analytics
     trackButtonClick('fullAnalysis', 'main_checkout');
+    // The funnel's product stage for the main product (S8-120): both were
+    // destructured below and never called, so every Full Analysis purchase
+    // appeared in the funnel with no checkout before it.
+    trackProductClicked('fullAnalysis', PRODUCTS.fullAnalysis.name, PRODUCTS.fullAnalysis.priceUsd);
 
     // Show full-screen loading overlay
     setIsCheckoutLoading(true);
@@ -1809,8 +1824,16 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         // The visitor and the page, so the start the server records joins
         // back to this browser's landing (checkout_starts.visitor_id).
         ...checkoutContext(),
+        // The affiliate's code, and the Terms line's version while one is shown.
+        ...purchaseTerms(),
       });
 
+      // The EU/UK box above the button was not ticked (only with the switch
+      // on): ask for it, and leave the stored résumé for the next press.
+      if (typeof checkoutResult.errorBody?.consentRequired === 'string') {
+        toast({ title: t('purchaseTerms.consentNeeded'), variant: "destructive" });
+        return;
+      }
       if (checkoutResult.error) {
         throw new Error(checkoutResult.error.description);
       }
@@ -1823,6 +1846,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
       // Store the checkout URL immediately for fallback use
       hasReceivedUrl = true;
       setCheckoutUrl(checkoutData.url);
+      trackCheckoutStarted('fullAnalysis', PRODUCTS.fullAnalysis.priceUsd);
       console.log("[Checkout] Checkout URL received and stored for fallback");
 
       // Tie the temp session ID to this specific checkout session
@@ -1897,6 +1921,20 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
     }
   };
 
+  // BACK FROM STRIPE THROUGH THE BACK BUTTON (S8-014). handleCheckout leaves
+  // the overlay up once a Stripe URL arrives, on purpose; the browser's
+  // back/forward cache then restores the page with that state intact, a
+  // full-screen "Redirecting to checkout" with no way out. A restored page
+  // (pageshow, persisted) starts with the overlay closed.
+  useBackForwardRestore(() => {
+    setIsCheckoutLoading(false);
+    setCheckoutError(undefined);
+    setCheckoutUrl(undefined);
+    setCheckoutStep('verifying');
+    setCheckoutRedirect(false);
+    setIsLoading(false);
+  });
+
   const handleRetryCheckout = () => {
     setCheckoutError(undefined);
     setCheckoutUrl(undefined);
@@ -1908,6 +1946,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
     setIsCheckoutLoading(false);
     setCheckoutError(undefined);
     setCheckoutUrl(undefined);
+    setCheckoutRedirect(false);
   };
 
 
@@ -2454,7 +2493,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
       {/* Rate Limit Upsell Modal */}
       {showRateLimitUpsell && (
         <Suspense fallback={null}>
-          <RateLimitUpsell onClose={() => setShowRateLimitUpsell(false)} />
+          <RateLimitUpsell resetHours={rateLimitResetHours} onClose={() => setShowRateLimitUpsell(false)} />
         </Suspense>
       )}
 

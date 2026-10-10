@@ -24,6 +24,8 @@ import { MCP_PAGE_HOSTS, andList } from "@/config/mcp-tools";
 import { servingSourceSummary } from "@/config/ats-vendors";
 import { CLOSURE_RECORD_WINDOW_DAYS, closureCountSpanDays } from "@/lib/hiring-trends-trust";
 import { apiKeyTokenFromHash, errorBodyOf, forgetConfirmFragment } from "@/lib/confirm-link";
+import { PurchaseTerms } from "@/components/PurchaseTerms";
+import { purchaseTerms } from "@/lib/purchase-terms";
 
 const rpc = (fn: string, args?: Record<string, unknown>) =>
   (supabase as unknown as { rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }> }).rpc(fn, args);
@@ -112,7 +114,10 @@ function GetAKeyBody({ box }: { box: React.RefObject<HTMLDivElement> }) {
     e.preventDefault();
     setBusy(true); setErr(null);
     try {
-      const { data, error } = await supabase.functions.invoke("api-key-request", { body: { email, name } });
+      // The Terms version the line above the button showed (item 12); the
+      // function records it with the request.
+      const { termsVersion } = purchaseTerms();
+      const { data, error } = await supabase.functions.invoke("api-key-request", { body: { email, name, ...(termsVersion ? { termsVersion } : {}) } });
       const d = (error ? await errorBodyOf(error) : data) as ApiError & { requested?: boolean };
       if (error || !d?.requested) { setErr(messageOf(d) ?? "Could not send the confirmation email. Try again shortly."); return; }
       setRequestedFor(email.trim());
@@ -235,6 +240,7 @@ function GetAKeyBody({ box }: { box: React.RefObject<HTMLDivElement> }) {
         />
       </div>
       {err && <p className="text-sm text-destructive mb-3">{err}</p>}
+      <PurchaseTerms kind="signup" className="mb-3" />
       <button
         type="submit" disabled={busy}
         className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"

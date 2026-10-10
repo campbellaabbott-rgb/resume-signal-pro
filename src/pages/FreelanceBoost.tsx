@@ -5,6 +5,7 @@
 // structure decision happens server-side, deterministically.
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useSearchParams, Link } from "react-router-dom";
 import { Briefcase, Plus, Trash2, Loader2, Check, Copy, ArrowRight } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
@@ -18,6 +19,7 @@ import { useProductCheckout } from "@/hooks/use-product-checkout";
 import { useToast } from "@/hooks/use-toast";
 import { ProductPreview } from "@/components/ProductPreview";
 import { getResumeFromSession } from "@/hooks/use-session-resume";
+import { PurchaseTerms } from "@/components/PurchaseTerms";
 
 interface ProjectIntake {
   clientType: string; problem: string; deliverable: string; toolsSkills: string;
@@ -36,6 +38,29 @@ interface BoostResult {
 }
 
 const DRAFT_KEY = "freelanceBoostIntake";
+/**
+ * THAT THIS BROWSER BOUGHT (sweep S8-016; wave 3 review). The purchase existed
+ * only in the success URL: back on /freelance-boost without it, a $29 or $59
+ * buyer was shown the buy buttons again. This keeps only the time of the
+ * purchase, never its id: the id loads the buyer's result for anyone who has
+ * it, so a stored one showed it to the next person on a shared browser. With
+ * the mark and no link, the page offers no buy button and asks for the link
+ * from the purchase email; the result loads only from that link.
+ */
+export const PURCHASE_KEY = "freelanceBoostPurchase";
+/** How long the mark keeps the buy buttons away. */
+export const PURCHASE_MEMORY_MS = 7 * 86_400_000;
+const readBoughtHere = (): boolean => {
+  try {
+    const at = Number((JSON.parse(localStorage.getItem(PURCHASE_KEY) ?? "null") as { at?: unknown } | null)?.at);
+    const age = Date.now() - at;
+    if (Number.isFinite(age) && age >= 0 && age < PURCHASE_MEMORY_MS) return true;
+    localStorage.removeItem(PURCHASE_KEY);
+  } catch {
+    try { localStorage.removeItem(PURCHASE_KEY); } catch { /* storage blocked */ }
+  }
+  return false;
+};
 
 type Situation = "primary" | "alongside" | "returning";
 type WorkMode = "freelance" | "fractional";
@@ -76,6 +101,7 @@ const draftIsComplete = (d: Partial<IntakeDraft> | null): d is IntakeDraft =>
   !!d && Array.isArray(d.projects) && d.projects.some((p) => p?.deliverable?.trim()) && typeof d.targetRole === "string" && d.targetRole.trim().length > 0;
 
 export default function FreelanceBoost() {
+  const { t } = useTranslation();
   const [params] = useSearchParams();
   const { purchaseProduct, isLoading: checkoutLoading } = useProductCheckout();
   const { toast } = useToast();
@@ -108,8 +134,21 @@ export default function FreelanceBoost() {
     } catch { /* storage blocked: the form still works for this visit */ }
   }, [projects, targetRole, jobPosting, employmentTimeline, situation, workMode]);
 
-  // Returned from checkout with a paid session (or a Pro grant) → generate.
-  const sessionId = params.get("session_id");
+  // Returned from checkout with a paid session (or a Pro grant) → the
+  // purchase. This browser bought one before, without the link → no buy
+  // buttons, and the link from the email to see it.
+  const urlSession = params.get("session_id");
+  const [boughtHere, setBoughtHere] = useState(readBoughtHere);
+  const sessionId = urlSession;
+  useEffect(() => {
+    if (!urlSession) return;
+    try { localStorage.setItem(PURCHASE_KEY, JSON.stringify({ at: Date.now() })); } catch { /* storage blocked: the link still works */ }
+  }, [urlSession]);
+  const startNewPurchase = () => {
+    try { localStorage.removeItem(PURCHASE_KEY); } catch { /* nothing kept */ }
+    setBoughtHere(false);
+    setResult(null);
+  };
   const generate = async (d: IntakeDraft) => {
     if (!sessionId) return;
     setGenerating(true);
@@ -142,11 +181,21 @@ export default function FreelanceBoost() {
   useEffect(() => {
     if (!sessionId || autoRunRef.current) return;
     autoRunRef.current = true;
-    if (draftIsComplete(saved)) {
-      void generate(saved);
-    } else {
-      setGenError("Your intake answers weren't found on this device. Fill in the form below and press \"Generate my section\" — your purchase is saved to this link, and you won't be charged again.");
-    }
+    void (async () => {
+      // The result already made for this purchase, read back rather than
+      // made again (S8-016).
+      try {
+        const { data } = await supabase.functions.invoke("recover-purchase", { body: { sessionId } });
+        const hit = ((data as { purchases?: Array<{ productType?: string; generatedContent?: unknown }> } | null)?.purchases ?? [])
+          .find((p) => String(p.productType ?? "").startsWith("freelance") && p.generatedContent);
+        if (hit) { setResult(hit.generatedContent as BoostResult); return; }
+      } catch { /* nothing saved, or unreadable: generate */ }
+      if (draftIsComplete(saved)) {
+        void generate(saved);
+      } else {
+        setGenError("Your intake answers weren't found on this device. Fill in the form below and press \"Generate my section\" — your purchase is saved to this link, and you won't be charged again.");
+      }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
 
@@ -483,6 +532,16 @@ export default function FreelanceBoost() {
                     <p className="text-[11px] text-muted-foreground mt-2">Add your target role and at least one project (who it was for + what you delivered).</p>
                   )}
                 </div>
+              ) : boughtHere ? (
+                // BOUGHT ON THIS DEVICE, NO LINK: the result loads only from
+                // the purchase email's link, never for whoever opens the page.
+                <div className="rounded-2xl border-2 border-primary bg-card p-6 text-center">
+                  <p className="font-semibold text-foreground mb-1">{t("freelanceBoost.boughtHereTitle")}</p>
+                  <p className="text-xs text-muted-foreground max-w-md mx-auto">{t("freelanceBoost.openYourLink")}</p>
+                  <button type="button" onClick={startNewPurchase} className="block mx-auto mt-3 text-[11px] text-muted-foreground underline">
+                    {t("freelanceBoost.startNewPurchase")}
+                  </button>
+                </div>
               ) : (
               <div className="rounded-2xl border-2 border-primary bg-card p-6 text-center">
                 <p className="font-semibold text-foreground mb-1">3. Get your experience section — one-time, no subscription</p>
@@ -490,6 +549,7 @@ export default function FreelanceBoost() {
                   Recruiter-grade bullets in your target field's vocabulary, the right structure for your situation,
                   honest date handling, and keyword coverage against your posting.
                 </p>
+                <PurchaseTerms kind="payment" className="mb-3" />
                 <div className="grid sm:grid-cols-2 gap-3 max-w-lg mx-auto text-left">
                   <div className="rounded-xl border border-border p-4 flex flex-col">
                     <p className="text-sm font-semibold text-foreground">Boost</p>

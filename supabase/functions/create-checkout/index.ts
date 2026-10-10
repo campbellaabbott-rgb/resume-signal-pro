@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-08T13:00Z
+// deploy-stamp: 2026-10-09T13:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { getServiceClient } from "../_shared/supabase-client.ts";
@@ -6,10 +6,11 @@ import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-star
 import { clientAddressOr } from "../_shared/client-address.ts";
 import { accountProStanding } from "../_shared/pro.ts";
 import { FULL_ANALYSIS_PRODUCT_NAME, FULL_ANALYSIS_PRODUCT_TYPE } from "../_shared/full-analysis.ts";
+import { checkoutOrigin, euConsentRefusal, policyMetadata, sessionPolicy } from "../_shared/checkout-policy.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-checkout.2026-10-08.1";
+const FN_BUILD = "create-checkout.2026-10-09.1";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -397,7 +398,10 @@ serve(async (req) => {
     }
 
     const stripe = getStripe(stripeKey);
-    const origin = req.headers.get("origin") || "https://lovable.dev";
+    const env = (k: string) => Deno.env.get(k);
+    // Only our own hosts get the buyer back (S8-060). This fell back to
+    // lovable.dev, a host that is not ours at all.
+    const origin = checkoutOrigin(req.headers.get("origin"), env);
 
     // THE FULL ANALYSIS IS PART OF PRO (owner decision 2026-10-04, platform
     // sweep L3-04). The Pro card and Pro's own Stripe page said "every paid
@@ -410,6 +414,8 @@ serve(async (req) => {
     // redeems it through analyze-resume like a paid session. A trial, or no
     // plan, buys at the price below.
     const bearer = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+    // A signed-in buyer's verified address, for Stripe's receipt.
+    let receiptEmail: string | null = null;
     if (bearer && bearer !== (Deno.env.get("SUPABASE_ANON_KEY") ?? "")) {
       let member: { id: string; email: string } | null = null;
       try {
@@ -421,6 +427,7 @@ serve(async (req) => {
         logStep("Token check failed; continuing as an anonymous checkout", { error: String(authErr).slice(0, 120) });
       }
       if (member) {
+        receiptEmail = member.email;
         const standing = await accountProStanding(supabase, member.id);
         if (!standing.known) {
           // Charging a member for a tool their plan includes is worse than a retry.
@@ -463,6 +470,17 @@ serve(async (req) => {
         if (standing.trialing) logStep("Trialing plan: the full analysis is bought, not minted, while the trial runs");
       }
     }
+
+    // The EU/UK switch (off by default): a paid report delivered at once
+    // needs the buyer's waiver of the withdrawal period first.
+    const consentMissing = euConsentRefusal(env, "payment", requestBody);
+    if (consentMissing) {
+      return new Response(
+        JSON.stringify({ error: "Please tick the box above the button to continue.", consentRequired: consentMissing }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const policy = policyMetadata(requestBody, env);
 
     // Optional coupon code (normalize to UPPERCASE)
     const normalizedPromoCode =
@@ -536,9 +554,12 @@ serve(async (req) => {
         originalCurrency: currency,
         baseAmountUSD: BASE_PRICE_USD.toString(),
         product_type: 'full_analysis',
+        ...policy,
       },
       // Additional reliability settings
       expires_at: Math.floor(Date.now() / 1000) + 30 * 60, // Session expires in 30 minutes
+      // A signed-in buyer's receipt; tax only with the EU/UK switch on.
+      ...(sessionPolicy({ mode: "payment", env, receiptEmail }) as Partial<Stripe.Checkout.SessionCreateParams>),
     };
 
     if (promotionCodeId) {
@@ -561,7 +582,7 @@ serve(async (req) => {
       currency: session.currency ?? currency,
       mode: session.mode ?? "payment",
       context: checkoutContextOf(requestBody),
-      metadata: { promo: !!promotionCodeId, requestedCurrency: requestedCurrency ?? null },
+      metadata: { promo: !!promotionCodeId, requestedCurrency: requestedCurrency ?? null, termsVersion: policy.terms_version || null, referral: !!policy.referral_code, withdrawalWaiver: policy.withdrawal_waiver ?? null },
     });
 
     trackPerformance(requestStartTime, 'create-checkout', true, { currency, amount }, clientIp);

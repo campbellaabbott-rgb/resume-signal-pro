@@ -95,6 +95,9 @@ let underLimit: boolean;
 let grants: Map<string, { email: string; left: number; claimedBy: string | null }>;
 let settingsReads: number;
 let autoconfirm: boolean;
+/** Sessions a verifier already claimed (used_stripe_sessions), and what Stripe answers for each id. */
+let claimedSessions: Array<{ session_id: string; product_type: string | null }>;
+let stripeSessions: Record<string, Record<string, unknown>>;
 /** POSTs to notify-owner: the URL's headers and body (wave 2 email-ops, register L10-13). */
 const notifyCalls: Array<{ headers: Record<string, string>; body: Record<string, unknown> }> = [];
 const env: Record<string, string> = {
@@ -161,6 +164,17 @@ function client() {
         if (g) g.left += 1;
         return { data: true, error: null };
       }
+      case "scan_credit_grant_record": {
+        const hash = String(args.p_session_hash);
+        const email = String(args.p_email);
+        const g = grants.get(hash);
+        if (g && g.email !== email) return { data: false, error: null };
+        if (!g) {
+          grants.set(hash, { email, left: Number(args.p_credits_bought), claimedBy: null });
+          balances.set(email, (balances.get(email) ?? 0) + Number(args.p_credits_bought));
+        }
+        return { data: true, error: null };
+      }
       case "scan_credit_account_grants":
         return {
           data: [...grants.entries()]
@@ -185,6 +199,7 @@ function client() {
         return { data: null, error: null };
       }
       if (table === "scan_report_cache") return { data: state.single ? cacheRow : cacheRow ? [cacheRow] : [], error: null };
+      if (table === "used_stripe_sessions") return { data: claimedSessions, error: null };
       return { data: state.single ? null : [], error: null };
     };
     const builder: Record<string, unknown> = new Proxy({}, {
@@ -222,6 +237,11 @@ beforeAll(async () => {
       settingsReads++;
       return new Response(JSON.stringify({ mailer_autoconfirm: autoconfirm, disable_signup: false }), { status: 200 });
     }
+    const stripeSession = /^https:\/\/api\.stripe\.com\/v1\/checkout\/sessions\/([^?]+)/.exec(String(url));
+    if (stripeSession) {
+      const found = stripeSessions[decodeURIComponent(stripeSession[1])];
+      return found ? new Response(JSON.stringify(found), { status: 200 }) : new Response("{}", { status: 404 });
+    }
     if (String(url).includes("ai.gateway.lovable.dev")) {
       aiCalls++;
       if (!aiOk) return new Response(JSON.stringify({ error: "down" }), { status: 500 });
@@ -240,6 +260,8 @@ beforeEach(() => {
   balances = new Map([["victim@example.com", 9], ["owner@example.com", 2], ["pro@example.com", 0], ["buyer@example.com", 5]]);
   grants = new Map([[CLAIMED_HASH, { email: "buyer@example.com", left: 1, claimedBy: BUYER_ID }]]);
   settingsReads = 0;
+  claimedSessions = [];
+  stripeSessions = {};
   autoconfirm = true; // as read from the live project on 2026-10-04
   delete env.EMAIL_CONFIRMED_SINCE;
   rpcLog = [];
@@ -343,6 +365,38 @@ describe("an address on a session proves nothing either, while sign-ups are auto
   });
 });
 
+describe("a comped scan pack pays for a scan (S8-053, through this function's own bundle)", () => {
+  // free-keyword-scan is the first function to resolve a pack the browser
+  // holds, through _shared/scan-credits.ts grantFromStripe. That once read
+  // 'paid' alone, so a pack the owner's 100%-off code completed at $0 bought
+  // nothing here; this function's deployed bundle carries the fix only once it
+  // is redeployed, which is why its build moved with the module.
+  it("a $0 pack completed with a 100%-off code is granted and spent past the limit", async () => {
+    const id = "cs_test_compedpack0001";
+    claimedSessions = [{ session_id: id, product_type: "scan_pack" }];
+    stripeSessions[id] = {
+      id, mode: "payment", payment_status: "no_payment_required", amount_total: 0,
+      customer_email: "comped@example.com", metadata: { product_type: "scan_pack", credits: "10" },
+    };
+    const r = await scan({ resumeText: RESUME, creditSessions: [id] });
+    expect(r.status).toBe(200);
+    expect(r.json.creditUsed).toBe(true);
+    expect(balances.get("comped@example.com")).toBe(9);
+  });
+
+  it("a pack with money still owed is not", async () => {
+    const id = "cs_test_unpaidpack0001";
+    claimedSessions = [{ session_id: id, product_type: "scan_pack" }];
+    stripeSessions[id] = {
+      id, mode: "payment", payment_status: "unpaid", amount_total: 900,
+      customer_email: "owes@example.com", metadata: { product_type: "scan_pack", credits: "10" },
+    };
+    const r = await scan({ resumeText: RESUME, creditSessions: [id] });
+    expect(r.status).toBe(429);
+    expect(balances.get("owes@example.com")).toBeUndefined();
+  });
+});
+
 describe("a proven buyer's credit is spent only when a full report is delivered", () => {
   it("a full report keeps the credit and prints the receipt", async () => {
     const r = await scan({ resumeText: RESUME }, JWT.ownerGoogle);
@@ -431,6 +485,7 @@ describe("a malformed body is the caller's mistake", () => {
 
   it("every answer carries the build", async () => {
     const res = await handler(new Request("https://harness.supabase.co/functions/v1/free-keyword-scan", { method: "OPTIONS" }));
-    expect(buildIsAtLeast(res.headers.get("x-fn-build"), "free-keyword-scan", "2026-10-08")).toBe(true);
+    // 2026-10-09: the bundle carries the comped-pack settlement (S8-053).
+    expect(buildIsAtLeast(res.headers.get("x-fn-build"), "free-keyword-scan", "2026-10-09"), String(res.headers.get("x-fn-build"))).toBe(true);
   });
 });

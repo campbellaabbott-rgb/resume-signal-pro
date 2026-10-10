@@ -395,7 +395,7 @@
       },
       "subscription": {
         "question": "Is dit een abonnement?",
-        "answer": "Beide opties bestaan, en jij kiest. Elk rapport en elke tool is een eenmalige betaling die nooit wordt verlengd. Daarnaast zijn er twee optionele maandabonnementen: Pro voor ${{proPrice}}/maand voor onbeperkte scans en alle tools, en de Ochtendwachtrij voor ${{agentPrice}}/maand, waarbij de sollicitatie-agent 's nachts een shortlist voor je klaarzet. De cv-scan en de vacaturebank blijven in beide gevallen gratis, en je wordt nooit automatisch geüpgraded."
+        "answer": "Beide opties bestaan, en jij kiest. Elk rapport en elke tool is een eenmalige betaling die nooit wordt verlengd. Daarnaast zijn er twee optionele maandabonnementen: Pro voor ${{proPrice}}/maand voor onbeperkte scans en alle tools, en de Ochtendwachtrij voor ${{agentPrice}}/maand, waarbij de sollicitatie-agent 's nachts een shortlist voor je klaarzet. De cv-scan en de vacaturebank blijven in beide gevallen gratis. Beide abonnementen worden elke maand verlengd tot je opzegt, en de gratis proefperiode van de Ochtendwachtrij voor nieuwe abonnees gaat aan het einde over in het betaalde abonnement, tenzij je vóór die tijd opzegt. Verder word je nooit automatisch geüpgraded."
       },
       "share": {
         "question": "Kan ik mijn analyse delen?",
@@ -1784,7 +1784,7 @@
     "goToHome": "Naar de startpagina",
     "creditsAdded_one": "{{count}} credit toegevoegd!",
     "creditsAdded_other": "{{count}} credits toegevoegd!",
-    "creditsLiveOn": "Je credits zijn nu actief op het account voor",
+    "creditsLiveOn": "De bon voor deze credits gaat naar",
     "creditsBalancePrefix": "Je ziet je saldo bij de knop",
     "myCredits": "Mijn credits",
     "creditsBalanceSuffix": "in de header op dit apparaat — je hoeft je e-mailadres niet opnieuw in te voeren.",
@@ -2827,7 +2827,7 @@
     "creditsNeverExpire": "Credits verlopen nooit",
     "emailToReceive": "E-mail om credits te ontvangen",
     "emailPlaceholder": "jouw@email.nl",
-    "creditsTiedToEmail": "Credits zijn gekoppeld aan je e-mailadres",
+    "creditsTiedToEmail": "Je credits werken in deze browser, en op je account als je hier bent ingelogd. Het e-mailadres is voor je bon.",
     "processing": "Verwerken...",
     "buyCreditsFor_one": "Koop {{count}} credit voor {{price}}",
     "buyCreditsFor_other": "Koop {{count}} credits voor {{price}}",
@@ -2935,11 +2935,13 @@
     "neverExpire": "verlopen nooit",
     "fullAtsEachScan": "Volledige ATS-analyse bij elke scan",
     "emailPlaceholder": "jouw@email.nl",
-    "creditsLinkedToEmail": "Credits worden aan dit e-mailadres gekoppeld",
+    "creditsLinkedToEmail": "Je credits werken in deze browser, en op je account als je hier bent ingelogd. Het e-mailadres is voor je bon.",
     "processing": "Verwerken...",
     "getCreditsFor_one": "Krijg {{count}} credit voor {{price}}",
     "getCreditsFor_other": "Krijg {{count}} credits voor {{price}}",
-    "noThanks": "Nee, bedankt, ik wacht tot mijn gratis scans worden gereset"
+    "noThanks": "Nee, bedankt, ik wacht tot mijn gratis scans worden gereset",
+    "fewerCredits": "Minder credits",
+    "moreCredits": "Meer credits"
   },
   "changelogPage": {
     "metaTitle": "Wijzigingslogboek — Resume Booster",
@@ -3569,7 +3571,9 @@
       "education": "Opleiding",
       "skills": "Vaardigheden",
       "certifications": "Certificeringen"
-    }
+    },
+    "replaceWithFixes": "Je huidige concept in de builder vervangen door het cv uit je scan, met de verbeteringen uit het rapport toegepast?",
+    "replaceWithLatestScan": "Je hebt een concept van een eerder cv. Vervangen door het cv uit je nieuwste scan?"
   },
   "jobsPage": {
     "seoTitle": "Live vacatures rechtstreeks van de bedrijven zelf — check je match voordat je solliciteert",
@@ -4597,7 +4601,35 @@
     "replyWindowFill": "{{d}} dagen geleden gesolliciteerd — {{pct}}% van de functies van deze werkgever verdwijnt binnen {{h}} dagen na plaatsing definitief en komt niet opnieuw online",
     "replyWindowFillPast": "{{d}} dagen geleden gesolliciteerd — voorbij de {{h}} dagen waarop {{pct}}% van de functies van deze werkgever al definitief weg was; navragen is redelijk",
     "replyWindowFillCensored": "{{d}} dagen geleden gesolliciteerd — meer dan de helft van de functies van deze werkgever stond 30 dagen na plaatsing nog online",
-    "replyWindowFillCoverage": "over de {{pct}}% van zijn functies met een door het bedrijf zelf vermelde plaatsingsdatum"
+    "replyWindowFillCoverage": "over de {{pct}}% van zijn functies met een door het bedrijf zelf vermelde plaatsingsdatum",
+    "deleteAccountBody": "Verwijdert je account, scangeschiedenis, checklist, doel, sollicitaties en elk cv dat je voor de agent hebt geüpload definitief, en zegt elk abonnement op dat dit account betaalt, zodat er niets meer wordt afgeschreven. Aankoopgegevens bewaren we voor de boekhouding. Dit kan niet ongedaan worden gemaakt.",
+    "deleteUnlinkedPlan": "Dit adres heeft een abonnement dat niet aan dit account is gekoppeld. Zeg het eerst op via de factuurpagina van Stripe en verwijder daarna het account. Er is niets verwijderd.",
+    "deleteRetry": "Je account is niet verwijderd: we konden je opgeslagen cv niet verwijderen of je abonnement niet opzeggen. Probeer het over een minuut opnieuw.",
+    "deletePlanCancelled": "We hebben een abonnement op dit account opgezegd, dus daarvoor betaal je niets meer, maar het account zelf is niet verwijderd. Probeer het over een minuut opnieuw, of neem contact op met support als het weer mislukt.",
+    "deleteAgentStopped": "Je sollicitatieagent is uitgeschakeld.",
+    "deleteCvRemoved": "Je opgeslagen cv is verwijderd.",
+    "deleteFailed": "Het verwijderen van het account is mislukt. Neem contact op met support.",
+    "lifecycleGoingDown": "Bij onze laatste controle stond deze vacature niet meer op de site van de werkgever. We geven een datum zodra vaststaat dat ze is verwijderd.",
+    "getMoreCredits": "Meer credits krijgen →",
+    "purchasesEmpty": "Nog geen aankopen. Rapporten en tools die met dit e-mailadres zijn gekocht, en Agent Passes die op dit account zijn gekocht, verschijnen hier.",
+    "passRow": "Agent Pass",
+    "passState": {
+      "unactivated": "nog niet gestart",
+      "live": "loopt",
+      "closed": "afgelopen"
+    },
+    "withdraw": {
+      "title": "Herroepen binnen {{days}} dagen",
+      "body": "Pro of de Ochtendwachtrij in de afgelopen {{days}} dagen vanuit de EU of het VK gekocht? Je kunt herroepen: het abonnement stopt meteen, en wat je betaalde, min de dagen die al zijn geleverd, wordt terugbetaald.",
+      "button": "Mijn abonnement herroepen",
+      "confirm": "Je abonnement herroepen? Het stopt nu, en de terugbetaling voor de dagen die nog niet zijn geleverd gaat terug naar je kaart.",
+      "done": "Herroepen. Het abonnement is gestopt en {{amount}} wordt terugbetaald op je kaart. Er komt een bevestiging per e-mail.",
+      "doneNoRefund": "Herroepen. Het abonnement is gestopt; er is niets voor in rekening gebracht, dus er valt niets terug te betalen.",
+      "none": "Geen abonnement op dit account is in de afgelopen {{days}} dagen begonnen.",
+      "notLinked": "Een abonnement op je e-mailadres is niet aan dit account gekoppeld. Schrijf ons en we regelen de herroeping.",
+      "outsideTerritory": "De herroeping binnen {{days}} dagen geldt voor abonnementen die naar een adres in de EU, de EER of het VK worden gefactureerd, en dit abonnement is elders gefactureerd. Je kunt het altijd nog opzeggen.",
+      "failed": "De herroeping is niet gelukt. Probeer het over een minuut opnieuw."
+    }
   },
   "applyAgent": {
     "badge": "Je AI-sollicitatieagent",
@@ -4907,7 +4939,10 @@
   },
   "proPlan": {
     "trialing": "Je proefperiode loopt: onbeperkte scans en het in één keer voorbereiden van sollicitaties zijn nu ontgrendeld. De betaalde tools zijn inbegrepen vanaf je eerste betaling.",
-    "linkPending": "Dit adres heeft een abonnement dat nog niet aan dit account is gekoppeld. Log in met Google met dat adres om het hier te gebruiken."
+    "linkPending": "Dit adres heeft een abonnement dat nog niet aan dit account is gekoppeld. Log in met Google met dat adres om het hier te gebruiken.",
+    "confirmed": "Bedankt: je Pro-abonnement is bevestigd.",
+    "confirming": "Je abonnement wordt bij Stripe bevestigd. Dit duurt een paar seconden.",
+    "notConfirmedYet": "We konden je abonnement nog niet bevestigen. Vernieuw deze pagina over een minuut, of neem contact op met support als je abonnement niet verschijnt."
   },
   "atsCoverage": {
     "heading": "Gebouwd voor de systemen die werkgevers echt gebruiken",
@@ -5251,6 +5286,24 @@
     "missing": "Deze pagina heeft de afmeldlink uit een van onze e-mails nodig.",
     "error": "Uitzetten lukte nu niet. Probeer de knop zo meteen opnieuw.",
     "home": "Terug naar Resume Booster"
+  },
+  "purchaseTerms": {
+    "agree": "Door verder te gaan ga je akkoord met de <terms>Servicevoorwaarden</terms> en het <privacy>Privacybeleid</privacy>.",
+    "renewal": "{{price}} per maand, wordt automatisch verlengd tot je opzegt. Zeg op wanneer je wilt via je account.",
+    "agentTrial": "Nieuwe abonnees krijgen {{days}} dagen gratis, daarna {{price}} per maand, automatisch verlengd tot je opzegt. Zeg op voordat de proefperiode eindigt en je betaalt niets. Wie eerder abonnee was, betaalt vanaf de eerste dag.",
+    "waiver": "Ik wil mijn aankoop nu geleverd krijgen en begrijp dat ik mijn herroepingsrecht van {{days}} dagen verlies zodra die is geleverd.",
+    "serviceStart": "Ik vraag om de dienst nu te laten starten. Herroep ik binnen {{days}} dagen, dan betaal ik voor de dagen die al zijn gebruikt.",
+    "consentNeeded": "Vink het vakje boven de knop aan om verder te gaan."
+  },
+  "freelanceBoost": {
+    "startNewPurchase": "Koop je voor een andere functie? Begin een nieuwe aankoop.",
+    "boughtHereTitle": "3. Je ervaringssectie — al gekocht op dit apparaat",
+    "openYourLink": "Open de link in je aankoopmail om hem te bekijken of te maken. Je betaalt niet opnieuw."
+  },
+  "seller": {
+    "soldBy": "Verkocht door {{name}}, {{address}}.",
+    "terms": "Deze Voorwaarden zijn een overeenkomst tussen jou en {{name}}, {{address}}.",
+    "controller": "De verwerkingsverantwoordelijke voor je persoonsgegevens is {{name}}, {{address}}."
   },
   "affiliates": {
     "commission": {

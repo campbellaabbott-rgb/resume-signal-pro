@@ -10,7 +10,7 @@ import { useTranslation } from "react-i18next";
 // where a comma is a separator. Same reason mandateProposal strips them.
 import { toMandateField } from "@/lib/mandateProposal";
 import {
-  TrendingUp, Coins, ShoppingBag, LogOut, Loader2, ScanSearch, Target,
+  TrendingUp, LogOut, Loader2, ScanSearch, Target,
   ListChecks, GitCompare, Briefcase, Plus, Trash2, AlertTriangle, ExternalLink, Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -44,6 +44,10 @@ import { useProSubscription } from "@/hooks/use-pro-subscription";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { ProSubscriptionCard } from "@/components/ProSubscriptionCard";
+import { CreditsAndPurchases, type AccountPass } from "@/components/account/CreditsAndPurchases";
+import { WithdrawalPanel } from "@/components/account/WithdrawalPanel";
+import { collectAccountExport, type ExportClient } from "@/lib/account-export";
+import { deleteRefusalKeys, type DeleteRefusal } from "@/lib/account-delete";
 import { trackedEmployerChip } from "@/lib/tracked-employer-chip";
 
 interface FixItem { step: string; done: boolean }
@@ -158,6 +162,8 @@ const versionName = (s: UserScan) =>
 interface AccountData {
   credits: number;
   purchases: Array<{ product: string; date: string }>;
+  /** The account's Agent Passes, which are never purchased_content rows (L6-12). */
+  passes: AccountPass[];
   /** False while this sign-in has not proven the account's mailbox (get-account-data). */
   mailboxProven?: boolean;
 }
@@ -382,7 +388,8 @@ export default function Account() {
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    if (!loading && !session) navigate("/auth", { replace: true });
+    // Back here after signing in, query intact (/agent?welcome=1 after Stripe; L3-20).
+    if (!loading && !session) navigate(`/auth?next=${encodeURIComponent(window.location.pathname + window.location.search)}`, { replace: true });
   }, [loading, session, navigate]);
 
   const loadAll = useCallback(async () => {
@@ -439,8 +446,13 @@ export default function Account() {
     const prof = profileRes.data as { target_score?: number; matching_scan_id?: string | null; matching_resume_text?: string | null } | null;
     setTargetScore(prof?.target_score ?? null);
     setMatching({ scanId: prof?.matching_scan_id ?? null, text: prof?.matching_resume_text ?? null });
-    const acc = (accountRes as { data?: { credits?: number; purchases?: AccountData["purchases"]; mailboxProven?: boolean } }).data;
-    setAccount({ credits: acc?.credits ?? 0, purchases: acc?.purchases ?? [], mailboxProven: acc?.mailboxProven !== false });
+    const acc = (accountRes as { data?: { credits?: number; purchases?: AccountData["purchases"]; passes?: AccountData["passes"]; mailboxProven?: boolean } }).data;
+    setAccount({
+      credits: acc?.credits ?? 0,
+      purchases: acc?.purchases ?? [],
+      passes: Array.isArray(acc?.passes) ? acc!.passes : [],
+      mailboxProven: acc?.mailboxProven !== false,
+    });
     setFetching(false);
     void checkPostingFreshness(apps);
   }, [session]);
@@ -523,6 +535,9 @@ export default function Account() {
       for (const r of rows) {
         if (!r.closed_at) continue;
         if (r.closed_at_is_observation === true) continue;
+        // Only a takedown that stayed down (L13-14): a relisted role, or one
+        // the log no longer trusts, must not acquire a date nothing can undo.
+        if (r.outcome !== "came_down") continue;
         await appsTable.update({ posting_closed_at: r.closed_at, posting_checked_at: new Date().toISOString() })
           .eq("job_id", r.job_id).is("posting_closed_at", null);
       }
@@ -617,25 +632,16 @@ export default function Account() {
   };
 
   const exportData = async () => {
-    // "All my data" must mean all of it (audit: searches, mandate, queue,
-    // and the pinned matching resume were missing from the export).
+    // "All my data" must mean all of it: every table the account can read by
+    // its own id, all rows, and the stored CV files (L3-14; lib/account-export).
     const uid = user?.id ?? "";
-    const [searches, mandates, queue, profile] = await Promise.all([
-      supabase.from("user_job_searches").select("*").eq("user_id", uid).then((r) => r.data ?? []),
-      supabase.from("agent_mandates").select("*").eq("user_id", uid).then((r) => r.data ?? []),
-      supabase.from("agent_queue").select("*").eq("user_id", uid).then((r) => r.data ?? []),
-      supabase.from("user_profiles").select("matching_resume_text").eq("user_id", uid).maybeSingle().then((r) => r.data ?? null),
-    ]);
+    if (!uid) return;
+    const records = await collectAccountExport(supabase as unknown as ExportClient, uid);
     const payload = {
       exportedAt: new Date().toISOString(),
       account: { email: user?.email, memberSince: user?.created_at },
       targetScore,
-      scans,
-      applications,
-      savedSearches: searches,
-      agentMandates: mandates,
-      agentQueue: queue,
-      matchingResume: profile?.matching_resume_text ?? null,
+      ...records,
       credits: account?.credits ?? 0,
       purchases: account?.purchases ?? [],
     };
@@ -661,11 +667,19 @@ export default function Account() {
     if (!error && (data as { success?: boolean })?.success) {
       await signOut();
       navigate("/");
-    } else {
-      setDeleting(false);
-      setConfirmDelete(false);
-      alert("Account deletion failed — please contact support.");
+      return;
     }
+    // The function refuses when a plan could not be read or cancelled or the
+    // CV could not be removed (L6-30, L3-13), and says what had already
+    // changed: the message follows its answer (lib/account-delete).
+    let refusal: DeleteRefusal = null;
+    try {
+      const ctx = (error as { context?: { clone?: () => { json: () => Promise<unknown> } } } | null)?.context;
+      refusal = ((await ctx?.clone?.().json()) as DeleteRefusal) ?? null;
+    } catch { /* body unreadable */ }
+    setDeleting(false);
+    setConfirmDelete(false);
+    alert(deleteRefusalKeys(refusal).map((k) => t(k)).join(" "));
   };
 
   if (loading || !session) {
@@ -1509,6 +1523,15 @@ export default function Account() {
                           </p>
                         );
                       }
+                      // Stamped missing on our last read and not yet closed
+                      // (L11-08): neither "still posted" nor a date.
+                      if (outcome === "going_down") {
+                        return (
+                          <p className="text-[11px] text-muted-foreground/70 mt-0.5">
+                            {t("accountPage.lifecycleGoingDown")}
+                          </p>
+                        );
+                      }
                       if (outcome === "not_observed") {
                         return (
                           <p className="text-[11px] text-muted-foreground/70 mt-0.5">
@@ -1825,49 +1848,11 @@ export default function Account() {
         <div className="mb-6">
           <ProSubscriptionCard compact />
         </div>
+        {/* EU/UK 14-day withdrawal: renders nothing while the switch is off. */}
+        <WithdrawalPanel />
 
-        {/* Credits + purchases */}
-        <div className="grid sm:grid-cols-2 gap-4 mb-6">
-          <div className="rounded-2xl border border-border bg-card p-5">
-            <div className="flex items-center gap-2 mb-2">
-              <Coins className="w-4 h-4 text-warning" />
-              <h2 className="font-semibold text-foreground text-sm">{t("accountPage.credits", "Scan credits")}</h2>
-            </div>
-            <p className="text-3xl font-bold text-foreground mb-1">{fetching ? "…" : account?.credits ?? 0}</p>
-            <p className="text-xs text-muted-foreground mb-3">
-              {account?.mailboxProven === false
-                ? "Credits bought in a browser where you're signed in follow your account and never expire. Credits under your email address count here once it's confirmed: sign in with Google using it."
-                : "Credits are linked to your email and never expire."}
-            </p>
-            <Link to="/pricing" className="inline-block px-3.5 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors">
-              Get more credits →
-            </Link>
-          </div>
-          <div className="rounded-2xl border border-border bg-card p-5">
-            <div className="flex items-center gap-2 mb-2">
-              <ShoppingBag className="w-4 h-4 text-primary" />
-              <h2 className="font-semibold text-foreground text-sm">{t("accountPage.purchases", "Purchases")}</h2>
-            </div>
-            {fetching ? (
-              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-            ) : (account?.purchases.length ?? 0) === 0 ? (
-              <p className="text-xs text-muted-foreground">
-                {account?.mailboxProven === false
-                  ? "Purchases made under your email address show here once this sign-in confirms the address: sign in with Google using it."
-                  : "No purchases yet. Anything you buy with this email shows up here."}
-              </p>
-            ) : (
-              <div className="space-y-1.5 max-h-40 overflow-y-auto">
-                {account!.purchases.map((p, i) => (
-                  <div key={i} className="flex items-center justify-between text-xs border border-border/50 rounded-lg px-2.5 py-1.5">
-                    <span className="text-foreground truncate">{p.product}</span>
-                    <span className="text-muted-foreground shrink-0 ml-2">{new Date(p.date).toLocaleDateString()}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+        {/* Credits + purchases (L3-22, L6-12) */}
+        <CreditsAndPurchases fetching={fetching} account={account} email={user?.email ?? ""} />
 
         {/* Cross-link: the employer-side product */}
         <div className="rounded-2xl border border-border bg-gradient-to-r from-primary/5 to-transparent p-5 mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-3">
@@ -1924,7 +1909,7 @@ export default function Account() {
             <h2 className="font-semibold text-foreground text-sm">{t("accountPage.deleteAccount", "Delete account")}</h2>
           </div>
           <p className="text-xs text-muted-foreground mb-3">
-            Permanently deletes your account, scan history, checklist, goal, and applications. Purchase records are retained for accounting. This cannot be undone.
+            {t("accountPage.deleteAccountBody")}
           </p>
           {!confirmDelete ? (
             <button

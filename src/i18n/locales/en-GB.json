@@ -395,7 +395,7 @@
       },
       "subscription": {
         "question": "Is this a subscription?",
-        "answer": "Both options exist, and you choose. Every report and tool is a one-time payment that never renews. Separately, two optional monthly plans are available: Pro at ${{proPrice}}/month for unlimited scans and every tool, and the Morning Queue at ${{agentPrice}}/month, where the apply agent prepares a shortlist for you overnight. The CV scan and the job board stay free either way, and nothing upgrades you automatically."
+        "answer": "Both options exist, and you choose. Every report and tool is a one-time payment that never renews. Separately, two optional monthly plans are available: Pro at ${{proPrice}}/month for unlimited scans and every tool, and the Morning Queue at ${{agentPrice}}/month, where the apply agent prepares a shortlist for you overnight. The CV scan and the job board stay free either way. Both plans renew every month until you cancel, and the Morning Queue's free trial for first-time subscribers turns into the paid plan when it ends unless you cancel before then. Nothing else upgrades you automatically."
       },
       "share": {
         "question": "Can I share my analysis with others?",
@@ -1784,7 +1784,7 @@
     "goToHome": "Go to Home",
     "creditsAdded_one": "{{count}} Credit Added!",
     "creditsAdded_other": "{{count}} Credits Added!",
-    "creditsLiveOn": "Your credits are now live on the account for",
+    "creditsLiveOn": "The receipt for these credits goes to",
     "creditsBalancePrefix": "You'll see your balance in the",
     "myCredits": "My Credits",
     "creditsBalanceSuffix": "button in the header on this device — no need to enter your email again.",
@@ -2827,7 +2827,7 @@
     "creditsNeverExpire": "Credits never expire",
     "emailToReceive": "Email to receive credits",
     "emailPlaceholder": "your@email.com",
-    "creditsTiedToEmail": "Credits are tied to your email address",
+    "creditsTiedToEmail": "Your credits work in this browser, and on your account if you're signed in here. The email gets your receipt.",
     "processing": "Processing...",
     "buyCreditsFor_one": "Buy {{count}} Credit for {{price}}",
     "buyCreditsFor_other": "Buy {{count}} Credits for {{price}}",
@@ -2935,11 +2935,13 @@
     "neverExpire": "never expire",
     "fullAtsEachScan": "Full ATS analysis with each scan",
     "emailPlaceholder": "your@email.com",
-    "creditsLinkedToEmail": "Credits will be linked to this email",
+    "creditsLinkedToEmail": "Your credits work in this browser, and on your account if you're signed in here. The email gets your receipt.",
     "processing": "Processing...",
     "getCreditsFor_one": "Get {{count}} Credit for {{price}}",
     "getCreditsFor_other": "Get {{count}} Credits for {{price}}",
-    "noThanks": "No thanks, I'll wait for my free scans to reset"
+    "noThanks": "No thanks, I'll wait for my free scans to reset",
+    "fewerCredits": "Fewer credits",
+    "moreCredits": "More credits"
   },
   "changelogPage": {
     "metaTitle": "Changelog — Resume Booster",
@@ -3569,7 +3571,9 @@
       "education": "Education",
       "skills": "Skills",
       "certifications": "Certifications"
-    }
+    },
+    "replaceWithFixes": "Replace your current builder draft with the CV from your scan, with the report's fixes applied?",
+    "replaceWithLatestScan": "You have a builder draft from an earlier CV. Replace it with the CV from your latest scan?"
   },
   "jobsPage": {
     "seoTitle": "Live Jobs From Companies' Own Boards — Check Your Fit Before You Apply",
@@ -4597,7 +4601,35 @@
     "replyWindowFill": "applied {{d}}d ago — {{pct}}% of this employer's roles are taken down for good, not re-listed, within {{h}} days of being posted",
     "replyWindowFillPast": "applied {{d}}d ago — past the {{h}}-day mark by which {{pct}}% of this employer's roles had been taken down for good; a follow-up is reasonable",
     "replyWindowFillCensored": "applied {{d}}d ago — more than half of this employer's roles were still up 30 days after being posted",
-    "replyWindowFillCoverage": "across the {{pct}}% of its roles that carry a posting date from the company itself"
+    "replyWindowFillCoverage": "across the {{pct}}% of its roles that carry a posting date from the company itself",
+    "deleteAccountBody": "Permanently deletes your account, scan history, checklist, goal, applications and any CV you uploaded for the agent, and cancels any subscription this account pays for, so nothing more is charged. Purchase records are retained for accounting. This cannot be undone.",
+    "deleteUnlinkedPlan": "This address has a subscription that isn't linked to this account. Cancel it from Stripe's billing page first, then delete the account. Nothing was deleted.",
+    "deleteRetry": "Your account was not deleted: we couldn't finish removing your stored CV or cancelling your subscription. Please try again in a minute.",
+    "deletePlanCancelled": "We cancelled a subscription on this account, so it will not charge you again, but the account itself was not deleted. Please try again in a minute, or contact support if it fails again.",
+    "deleteAgentStopped": "Your apply agent has been switched off.",
+    "deleteCvRemoved": "Your stored CV has been removed.",
+    "deleteFailed": "Account deletion failed. Please contact support.",
+    "lifecycleGoingDown": "Our last check did not find this posting on the employer's board. We'll date it once it is confirmed down.",
+    "getMoreCredits": "Get more credits →",
+    "purchasesEmpty": "No purchases yet. Reports and tools bought with this email, and Agent Passes bought on this account, show up here.",
+    "passRow": "Agent Pass",
+    "passState": {
+      "unactivated": "not started yet",
+      "live": "running",
+      "closed": "ended"
+    },
+    "withdraw": {
+      "title": "Withdraw within {{days}} days",
+      "body": "Bought Pro or the Morning Queue in the last {{days}} days from the EU or the UK? You can withdraw: the plan is cancelled at once, and what you paid, less the days already provided, is refunded.",
+      "button": "Withdraw from my plan",
+      "confirm": "Withdraw from your plan? It is cancelled now, and the refund for the days not yet provided goes back to your card.",
+      "done": "Withdrawn. The plan is cancelled and {{amount}} is being refunded to your card. A confirmation is on its way by email.",
+      "doneNoRefund": "Withdrawn. The plan is cancelled; nothing was charged for it, so there is nothing to refund.",
+      "none": "No plan on this account began in the last {{days}} days.",
+      "notLinked": "A plan on your email address is not linked to this account. Write to us and we will handle the withdrawal.",
+      "outsideTerritory": "The {{days}}-day withdrawal applies to plans billed to an address in the EU, the EEA or the UK, and this plan was billed elsewhere. You can still cancel it at any time.",
+      "failed": "The withdrawal did not go through. Please try again in a minute."
+    }
   },
   "applyAgent": {
     "badge": "Your AI apply agent",
@@ -4907,7 +4939,10 @@
   },
   "proPlan": {
     "trialing": "Your trial is on: unlimited scans and batch application prep are unlocked now. The paid tools are included from your first payment.",
-    "linkPending": "This address has a plan that isn't linked to this account yet. Sign in with Google using that address to use it here."
+    "linkPending": "This address has a plan that isn't linked to this account yet. Sign in with Google using that address to use it here.",
+    "confirmed": "Thank you: your Pro subscription is confirmed.",
+    "confirming": "Confirming your subscription with Stripe. This takes a few seconds.",
+    "notConfirmedYet": "We could not confirm your subscription yet. Refresh this page in a minute, or contact support if your plan does not appear."
   },
   "atsCoverage": {
     "heading": "Built for the systems employers actually use",
@@ -5251,6 +5286,24 @@
     "missing": "This page needs the unsubscribe link from one of our emails.",
     "error": "Could not turn them off right now. Try the button again shortly.",
     "home": "Back to Resume Booster"
+  },
+  "purchaseTerms": {
+    "agree": "By continuing you agree to the <terms>Terms of Service</terms> and the <privacy>Privacy Policy</privacy>.",
+    "renewal": "{{price}} a month, renewing automatically until you cancel. Cancel any time from your account.",
+    "agentTrial": "First-time subscribers get {{days}} days free, then {{price}} a month, renewing automatically until you cancel. Cancel before the trial ends and you are not charged. Returning subscribers pay from the first day.",
+    "waiver": "I want my purchase delivered now, and I understand that I lose my {{days}}-day right to withdraw once it has been delivered.",
+    "serviceStart": "I ask for the service to start now. If I withdraw within {{days}} days, I pay for the days already used.",
+    "consentNeeded": "Please tick the box above the button to continue."
+  },
+  "freelanceBoost": {
+    "startNewPurchase": "Buying for a different role? Start a new purchase.",
+    "boughtHereTitle": "3. Your experience section — already bought on this device",
+    "openYourLink": "To see or generate it, open the link in your purchase email. You won't be charged again."
+  },
+  "seller": {
+    "soldBy": "Sold by {{name}}, {{address}}.",
+    "terms": "These Terms are an agreement between you and {{name}}, {{address}}.",
+    "controller": "The controller of your personal data is {{name}}, {{address}}."
   },
   "affiliates": {
     "commission": {

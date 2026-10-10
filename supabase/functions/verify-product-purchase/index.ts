@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-08T13:00Z
+// deploy-stamp: 2026-10-09T13:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -11,7 +11,7 @@ import { REFUNDED_PURCHASE_MESSAGE, sessionWasRefunded } from "../_shared/paymen
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "verify-product-purchase.2026-10-08.2";
+const FN_BUILD = "verify-product-purchase.2026-10-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,6 +26,9 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
 const SCAN_CREDIT_PRODUCT_TYPES = ['scan_pack', 'scan_credits', 'career_bundle'];
 // The products this path can generate when asked: the Apply Assistant and
 // every case of buildGenerationRequest below.
+/** How long a delivery marked generating counts as being made by someone else. */
+const GENERATION_IN_PROGRESS_MS = 5 * 60 * 1000;
+
 const GENERATED_PRODUCT_TYPES = [
   'apply_assistant', 'basic_keyword_fix', 'cover_letter', 'premium_package', 'graduate_gameplan',
   'career_snapshot', 'ats_defense', 'interview_coach', 'career_path_simulator',
@@ -395,7 +398,14 @@ serve(async (req) => {
     // same content — double AI spend — and every success-page refresh generated
     // it yet again. Reuse already-saved content when it exists; only fall
     // through to generate if nothing has been produced for this session yet.
-    if (generateContent && resumeSessionId && !generatedContent) {
+    // THE SAVED COPY FIRST, FOR EVERY GENERATED PRODUCT (sweep S8-009). The
+    // webhook generates every bound sale from the copy the checkout bound and
+    // saves it; the success page used to regenerate from whatever résumé its
+    // tab held (an Account apply kit for job X, bought in a tab holding a
+    // homepage scan of job Y, showed a kit for Y), and asked for the saved
+    // copy only for the keyword fix. It is answered now whenever it exists.
+    let inProgress = false;
+    if (GENERATED_PRODUCT_TYPES.includes(productType ?? '') && !generatedContent) {
       try {
         const { data: priorRows } = await supabase
           .rpc('get_purchased_content_by_session', { p_session_id: sessionId });
@@ -411,7 +421,27 @@ serve(async (req) => {
       }
     }
 
-    if (generateContent && resumeSessionId && !generatedContent) {
+    // ANOTHER DELIVERER IS MAKING IT. The webhook claims the session first and
+    // generates for up to a minute; generating here as well was the doubled
+    // model spend of every bound sale. A row marked generating in the last
+    // few minutes is answered inProgress, and the page asks again.
+    if (generateContent && !generatedContent && !isFirstUse && GENERATED_PRODUCT_TYPES.includes(productType ?? '')) {
+      try {
+        const { data: row } = await supabase
+          .from('product_deliveries')
+          .select('status, content_generation_started_at')
+          .eq('stripe_session_id', sessionId)
+          .maybeSingle();
+        const started = Date.parse(String((row as { content_generation_started_at?: string } | null)?.content_generation_started_at ?? ''));
+        inProgress = (row as { status?: string } | null)?.status === 'generating'
+          && Number.isFinite(started) && Date.now() - started < GENERATION_IN_PROGRESS_MS;
+        if (inProgress) logStep("Generation in progress elsewhere; not generating twice", { sessionId });
+      } catch (e) {
+        logStep("Delivery status unreadable; generating here", { error: String(e) });
+      }
+    }
+
+    if (generateContent && resumeSessionId && !generatedContent && !inProgress) {
       logStep("Content generation requested", { productType, resumeSessionId });
 
       // Log generation started
@@ -579,7 +609,7 @@ serve(async (req) => {
     // Asked to generate a product this path generates, and nothing came of it
     // without a failure being recorded above (no résumé linked, or the stored
     // one gone): that is a failed delivery too, not a sale to confirm.
-    if (generateContent && !generatedContent && !undelivered && GENERATED_PRODUCT_TYPES.includes(productType ?? '')) {
+    if (generateContent && !generatedContent && !undelivered && !inProgress && GENERATED_PRODUCT_TYPES.includes(productType ?? '')) {
       await recordUndelivered(resumeSessionId
         ? 'The résumé for this purchase could not be read; nothing was generated'
         : 'No résumé is linked to this purchase; nothing was generated');
@@ -656,7 +686,9 @@ serve(async (req) => {
       // premium-tier commission, leaving only ~$2 to cover the Stripe fee and two
       // AI generation calls on every affiliate-referred sale.
       const lowCommissionProducts = ['basic_keyword_fix', 'cover_letter', 'scan_pack', 'scan_credits', 'career_bundle', 'interview_coach', 'career_path_simulator', 'apply_assistant'];
-      const commissionCents = lowCommissionProducts.includes(productType || '') ? 100 : 500;
+      // A checkout the affiliate page promises nothing for marks its referral
+      // "none" (_shared/checkout-policy.ts): recorded at $0, never paid.
+      const commissionCents = session.metadata?.referral_commission === "none" ? 0 : lowCommissionProducts.includes(productType || '') ? 100 : 500;
       logStep("Recording affiliate conversion", { 
         referralCode, 
         amount: session.amount_total,
@@ -685,7 +717,7 @@ serve(async (req) => {
             .eq('referral_code', referralCode)
             .single();
           
-          if (affiliateData?.email) {
+          if (affiliateData?.email && commissionCents > 0) {
             const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
             // The service-role key: the commission mailer is internal and
             // refuses the publishable key, which every visitor holds.
@@ -724,7 +756,18 @@ serve(async (req) => {
       // for the retry sweeper, which mails a product when it has made it.
       logStep("Confirmation mail held back: this delivery failed and is left for the retry sweeper", { reason: undelivered });
     }
-    if (isFirstUse && customerEmail && !undelivered) {
+    // NEVER "READY" WITH NOTHING BEHIND IT (S8-009). Claiming a generated
+    // product without content in hand (the page asked for none, or it is
+    // still being made) used to mail "Your X is Ready!" with no content and
+    // log email_sent, which closes the delivery row as delivered: if the page
+    // then could not generate, the retry sweeper never looked at the row
+    // again. The row stays at payment_received; the sweeper makes it and
+    // mails it.
+    const nothingToSend = GENERATED_PRODUCT_TYPES.includes(productType ?? '') && !generatedContent;
+    if (isFirstUse && customerEmail && !undelivered && nothingToSend) {
+      logStep("Confirmation mail held back: nothing has been made yet; the retry sweeper delivers it", { sessionId });
+    }
+    if (isFirstUse && customerEmail && !undelivered && !nothingToSend) {
       try {
         // The service-role key: send-product-email is internal and refuses
         // the publishable key, which every visitor holds.
@@ -738,7 +781,9 @@ serve(async (req) => {
             email: customerEmail,
             productType,
             productName,
-            generatedContent
+            generatedContent,
+            // The link that reopens the purchase, and its id (S8-015).
+            sessionId
           })
         });
 
@@ -791,6 +836,8 @@ serve(async (req) => {
         // not say otherwise.
         emailSent,
         generatedContent,
+        // The webhook is still making it: ask again shortly (S8-009).
+        inProgress,
         hasResumeData: !!resumeSessionId
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

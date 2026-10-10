@@ -35,7 +35,7 @@ import { provenMailbox } from "../_shared/mailbox-proof.ts";
 
 // Provable from outside: every response, the CORS preflight included, carries
 // this in x-fn-build.
-const FN_BUILD = "scan-credits.2026-10-08.1";
+const FN_BUILD = "scan-credits.2026-10-09.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
