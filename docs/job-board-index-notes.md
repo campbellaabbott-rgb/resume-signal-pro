@@ -10231,3 +10231,31 @@ pay ARE corrected on the next visit by the corrections diff, and because .92
 changed our reading, not the agencies' postings, those four fields are patched
 without a field-change log row on usajobs until OUR_READING_CHANGED is removed
 (after 2026-11-09, when every live federal row has been re-read).
+
+## n445-the-date-and-pay-orders-match-a-stemmed-title
+
+Above: `titleStemmed` and `ftsQuery`, the NEWEST (newestTextSort) and SALARY
+(salaryTextSort) exits.
+
+Sweep S8-027. Both exits matched titles with the simple (unstemmed)
+configuration, so a plural query found only titles carrying the literal
+plural: q=teachers sort=newest ended at 243 rows (hasMore false) while
+countOnly counted 4,610, under "newest first across every posting whose title
+matches". ftsQuery's possessive variant did not help: websearch reads an
+unquoted `teachers or teacher s` as 'teachers' | 'teacher' & 's', so the
+variant matched any title with a stray "'s" anywhere ("Engineer II (Men's
+Health)" for q=engineers) and never a plain "Teacher".
+
+Now, for a RANKED-route query (no stopword, no token of three characters or
+fewer, not an employer or symbol), both exits match english stems:
+title_tsv @@ websearch_to_tsquery('english', q) narrows on its GIN index and
+to_tsvector('english', title) @@ the same query decides, evaluated only on the
+narrowed rows. title_tsv alone would also match the employer and department
+(an employer called "Teachers Federal Credit Union" for q=teachers), which
+would make the page's title caption false; the second predicate keeps it
+true, so sortMatcher stays "title". A SIMPLE-route query ("it teachers",
+"rn") keeps the simple matcher: the english index drops "it", and the router
+already sends those queries to the simple tier for that reason (R3). The pay
+order took the alias expansion already (wave 2, L8-02). ftsQuery's variant is
+now quoted, a phrase 'x' <-> 's', which still matches "Domino's" (stored as
+'domino' 's') in the simple tiers that use it.

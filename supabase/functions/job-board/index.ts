@@ -7369,10 +7369,22 @@ function ftsSafe(t: string): string {
 function ftsQuery(raw: string): string {
   const safe = ftsSafe(raw);
   // Length floor keeps it off short plurals where the split half is noise.
+  // Quoted: unquoted, websearch read the variant as 'x' & 's' (n445).
   if (/^[a-z0-9]+s$/i.test(safe) && safe.length >= 5) {
-    return `${safe} or ${safe.slice(0, -1)} s`;
+    return `${safe} or "${safe.slice(0, -1)} s"`;
   }
   return safe;
+}
+
+/**
+ * The date and pay orders' title match for a RANKED-route query: english
+ * stems, so "teachers" finds "Teacher". title_tsv (indexed) narrows; the title
+ * alone decides, so the "title matches" caption stays true (n445).
+ */
+// deno-lint-ignore no-explicit-any
+function titleStemmed<T extends { textSearch: (...a: any[]) => T }>(qb: T, q: string): T {
+  return qb.textSearch("title_tsv", q, { type: "websearch", config: "english" })
+    .textSearch("title", q, { type: "websearch", config: "english" });
 }
 
 /**
@@ -11955,6 +11967,8 @@ async function serveList(
       const res = await withDeadline(
         (salaryEmployer
           ? salBase.in("company_token", salaryEmployer)
+          : qClass?.route === "RANKED"
+          ? titleStemmed(salBase, ftsSafe(salaryExpand.q))
           : salBase.textSearch("title", salaryExpand.expansions.length ? ftsSafe(salaryExpand.q) : ftsQuery(qText), { type: "websearch", config: "simple" }))
           .not("salary_rank_usd", "is", null)
           .order("salary_rank_usd", { ascending: false })
@@ -12025,13 +12039,15 @@ async function serveList(
   if (newestTextSort) try {
     const t_newest_sorted = Date.now();
     const newestExpand = expandQuery(qText);
+    const newestBase = buildQuery("effective_posted", false, undefined, { skipTerms: true });
     const { data: newRows, error: newErr } = await withDeadline(
-      buildQuery("effective_posted", false, undefined, { skipTerms: true })
-        .textSearch(
+      (qClass?.route === "RANKED"
+        ? titleStemmed(newestBase, ftsSafe(newestExpand.q))
+        : newestBase.textSearch(
           "title",
           newestExpand.expansions.length ? ftsSafe(newestExpand.q) : ftsQuery(qText),
           { type: "websearch", config: "simple" },
-        )
+        ))
         // posted_at with NULLS LAST, not effective_posted: an undated posting
         // takes our crawl stamp there, and 57 of 60 rows on the old browse sort
         // were undated rows claiming to be the newest thing on the board. The
