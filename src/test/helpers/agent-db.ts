@@ -31,6 +31,12 @@ export const M_ONE_CLICK = "20261005134500_oracle_leaves_the_one_click_mirror_wi
 /** The tables the agent's SQL touches, with the columns it reads and writes. */
 export const AGENT_STAND_INS = `
   CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;
+  -- Supabase's own default: every table created in public is granted ALL to
+  -- anon, authenticated and service_role, and a GRANT never takes any of it
+  -- away. Without this the stand-ins held no client privilege at all, and a
+  -- self-check that a client role cannot write a column passed here and failed
+  -- live (20261008132000 on agent_passes.settled_at, rolled back twice).
+  ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role;
   CREATE SCHEMA auth;
   CREATE TABLE auth.users (
     id uuid PRIMARY KEY, email text, email_confirmed_at timestamptz,
@@ -84,6 +90,9 @@ export const AGENT_STAND_INS = `
     CHECK (applications_used >= 0 AND applications_used <= applications_total)
   );
   CREATE UNIQUE INDEX agent_passes_one_open_pass_per_user ON public.agent_passes (user_id) WHERE closed_at IS NULL;
+  -- The privileges 20260917100000 left, on top of the default above.
+  REVOKE ALL ON public.agent_passes FROM PUBLIC, anon;
+  GRANT SELECT ON public.agent_passes TO authenticated;
   CREATE TABLE public.agent_queue (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     user_id uuid NOT NULL, posting_id text NOT NULL,
@@ -96,6 +105,7 @@ export const AGENT_STAND_INS = `
     UNIQUE (user_id, posting_id)
   );
   GRANT SELECT ON public.agent_queue TO authenticated;
+  REVOKE UPDATE ON public.agent_queue FROM authenticated;
   GRANT UPDATE (status, decided_at) ON public.agent_queue TO authenticated;
   CREATE TABLE public.agent_submissions (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -113,6 +123,7 @@ export const AGENT_STAND_INS = `
     created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
     UNIQUE (user_id, posting_id)
   );
+  REVOKE UPDATE ON public.agent_submissions FROM authenticated;
   CREATE TABLE public.agent_learned_answers (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY, user_id uuid NOT NULL,
     question_key text NOT NULL, question_label text NOT NULL,

@@ -118,7 +118,9 @@ beforeAll(async () => {
   db = await agentDb({ seed: STAND_INS });
   await db.exec(MIG("20261008130000_a_plan_is_read_by_the_account_that_bought_it_by_one_rule.sql"));
   await db.exec(MIG("20261008131000_a_refunded_payment_takes_back_what_it_bought.sql"));
-  // The close a refund makes is a close like any other: the settlement runs too.
+  // The close a refund makes is a close like any other: the settlement runs too,
+  // after the file that takes the signed-in role's writes off agent_passes.
+  await db.exec(MIG("20261008131500_a_signed_in_account_reads_its_pass_and_never_writes_it.sql"));
   await db.exec(MIG("20261008132000_a_closed_pass_gives_back_every_application_it_never_sent.sql"));
   // The grant the pass page's repair calls, as its only file defines it.
   await db.exec(MIG("20260917110000_agent_pass_grant.sql"));
