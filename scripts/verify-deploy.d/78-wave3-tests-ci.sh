@@ -2,11 +2,10 @@
 #
 # == wave 3, tests-ci (docs/wave3/tests-ci.md) ==
 # THE CLAIMS:
-#   - seven functions that named no build now answer this branch's build or
+#   - five functions that named no build now answer this branch's build or
 #     later on the preflight (S8-124); layoff-filings' BUILD_VERSION moved with
-#     it. job-fit, application-fit and layoff-filings are judged from .2: .1
-#     is the build wave3/job-board and wave3/board-data-ingest put on other
-#     code, so a live .1 says nothing about this branch;
+#     it, judged from .2 because wave3/board-data-ingest put .1 on other code.
+#     job-fit and application-fit are stamped by wave3/job-board (section 71);
 #   - the board's outside alarm (board-health.yml) parses, runs on its
 #     schedule, and reads two fields the board publishes (L12-01);
 #   - CI on main runs every check whatever an earlier one said, runs the Deno
@@ -20,7 +19,7 @@
 # design: they judge what main has run since the change.
 echo "== 78. wave 3 tests-ci: stamps, the outside alarm, CI on main =="
 
-for P78 in application-fit:2 create-test-coupon:1 generate-cohort-report:1 job-fit:2 scrape-linkedin:1 warm-up:1 layoff-filings:2; do
+for P78 in create-test-coupon:1 generate-cohort-report:1 scrape-linkedin:1 warm-up:1 layoff-filings:2; do
   FN=${P78%%:*}; N78=${P78#*:}
   V78=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$FN" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
   if [ -z "$V78" ]; then echo "FAIL  $FN preflight carries no x-fn-build (not deployed since it was stamped; want $FN.2026-10-09.$N78 or later)"

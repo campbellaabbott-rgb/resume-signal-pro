@@ -58,21 +58,26 @@ describe("stamped(): every response names the build, and nothing else changes", 
 
 /**
  * Functions still without a stamp on this branch, each owned by another
- * wave-3 group that stamps it in this wave. The excuse lasts only while the
- * function names neither a build nor the header: once its owner stamps it, it
- * is held to the same rule as every other function, whether or not anyone has
- * taken it off this list. (A shrink check that FAILED when a listed function
- * was stamped turned main red the moment the owners' branches merged: all four
- * are stamped on wave3/payments-account and wave3/email-ops.) The list may
+ * wave-3 group that changes and stamps it in this wave. The excuse lasts only
+ * while the function names neither a build nor the header: once its owner
+ * stamps it, it is held to the same rule as every other function, whether or
+ * not anyone has taken it off this list. (A shrink check that FAILED when a
+ * listed function was stamped turned main red the moment the owners' branches
+ * merged: all six are stamped on wave3/payments-account, wave3/email-ops and
+ * wave3/job-board.) job-fit and application-fit are left to job-board because
+ * a second stamp here collided with its own: the same build string on
+ * different code, and a clean merge declaring FN_BUILD twice. The list may
  * only shrink.
  */
 const STAMPED_BY_ITS_OWNER: Record<string, string> = {
+  "application-fit": "job-board",
   "create-test-checkout": "payments-account",
   "delete-account": "payments-account",
+  "job-fit": "job-board",
   "recover-purchase": "email-ops",
   "save-lead": "email-ops",
 };
-const OWNER_LIST_AT_START = ["create-test-checkout", "delete-account", "recover-purchase", "save-lead"];
+const OWNER_LIST_AT_START = ["application-fit", "create-test-checkout", "delete-account", "job-fit", "recover-purchase", "save-lead"];
 
 /** What a function's index.ts says about its build: the two shapes scripts/deploy-ledger.mjs buildOf() reads, and whether it sends the header. */
 function stampOf(fn: string, src: string): { build: boolean; sends: boolean } {
