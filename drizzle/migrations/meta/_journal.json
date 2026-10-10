@@ -806,6 +806,13 @@
       "when": 1791672552830,
       "tag": "0114_20261008112500_the_closure_rollup_rolls_whole_months_and_rolls_them_when_nothing_is_pruned",
       "breakpoints": true
+    },
+    {
+      "idx": 115,
+      "version": "7",
+      "when": 1791672561659,
+      "tag": "0115_20261008113000_the_exit_rollup_rolls_its_ended_months_when_nothing_is_pruned",
+      "breakpoints": true
     }
   ]
 }
