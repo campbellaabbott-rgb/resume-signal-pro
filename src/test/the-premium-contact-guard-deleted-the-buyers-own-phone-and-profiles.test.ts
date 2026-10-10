@@ -29,6 +29,24 @@ describe("the contact guard compares contact details in canonical form", () => {
     expect(r.removed).toEqual([]);
   });
 
+  // Text extracted from a PDF loses the separator icons, so the phone sits
+  // next to a ZIP, a unit number or a year with only a space between them.
+  for (const source of [
+    "Jane Smith\nBrooklyn, NY 11215 555-010-0199\nSenior engineer.",
+    "Jane Smith\n10001 555.010.0199\nSenior engineer.",
+    "Jane Smith\nApt 12 555-010-0199\nSenior engineer.",
+    "Jane Smith\n555-010-0199 2015 - 2020 Acme\nSenior engineer.",
+  ]) {
+    it(`keeps the buyer's phone when the source has a number beside it: ${JSON.stringify(source.split("\n")[1])}`, () => {
+      const phone = source.match(/555[.-]010[.-]0199/)![0];
+      for (const written of [phone, "(555) 010-0199"]) {
+        const r = stripInventedContact(`Jane Smith\n${written} | Brooklyn, NY\nSenior engineer.`, source);
+        expect(r.removed).toEqual([]);
+        expect(r.text).toContain(written);
+      }
+    });
+  }
+
   it("still strips an invented profile URL and phone", () => {
     const draft = "Jane Smith\n555-010-0199 | jane.smith@gmail.com | linkedin.com/in/jane-smith-pro | 555-777-1234\nSenior engineer.";
     const r = stripInventedContact(draft, ORIGINAL);

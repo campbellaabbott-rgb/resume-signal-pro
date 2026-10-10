@@ -30,7 +30,7 @@ for PAIR in \
   "generate-application-answers|1" "generate-apply-package|1" "generate-ats-defense|1" \
   "generate-career-path|1" "generate-career-snapshot|1" "generate-cover-letter|1" \
   "generate-cover-letter-stream|1" "generate-graduate-gameplan|1" "generate-interview-coach|1" \
-  "generate-keyword-fix|1" "generate-premium-package|1" "generate-premium-package-stream|1" \
+  "generate-keyword-fix|1" "generate-premium-package|2" "generate-premium-package-stream|1" \
   "generate-product-preview|1"; do
   FN=${PAIR%%|*}; N=${PAIR#*|}
   H=$(vd72_build "$FN")

@@ -11,6 +11,9 @@
  * scheme, "www." or a trailing slash. Comparing literal substrings deleted
  * the buyer's own phone when the model wrote "(555) 010-0199" for
  * "555-010-0199", and their LinkedIn and GitHub when it added https://www.
+ * A literal copy is always kept, and the source's phones are read with the
+ * same bounded pattern as the output's: a greedy digit run merged
+ * "NY 11215 555-010-0199" into one number that no output phone could equal.
  */
 
 const URL_PATTERNS = [
@@ -38,7 +41,10 @@ export const canonUrl = (s: string): string =>
 export function stripInventedContact(text: string, original: string): { text: string; removed: string[] } {
   const removed: string[] = [];
   const origLower = original.toLowerCase();
-  const sourcePhones = new Set([...original.matchAll(SOURCE_PHONE)].map((m) => canonPhone(m[0])));
+  const sourcePhones = new Set([
+    ...[...original.matchAll(SOURCE_PHONE)].map((m) => canonPhone(m[0])),
+    ...[...original.matchAll(PHONE)].map((m) => canonPhone(m[0])),
+  ]);
   const sourceUrls = new Set([...original.matchAll(SOURCE_URL)].map((m) => canonUrl(m[0])));
 
   let out = text;
@@ -55,7 +61,7 @@ export function stripInventedContact(text: string, original: string): { text: st
     return "";
   });
   out = out.replace(PHONE, (match) => {
-    if (sourcePhones.has(canonPhone(match))) return match;
+    if (original.includes(match) || sourcePhones.has(canonPhone(match))) return match;
     removed.push(match);
     return "";
   });
