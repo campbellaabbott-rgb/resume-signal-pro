@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-05T11:00Z
+// deploy-stamp: 2026-10-09T14:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { FULL_ANALYSIS_PRODUCT_TYPE } from "../_shared/full-analysis.ts";
@@ -6,7 +6,7 @@ import { clientAddressOr } from "../_shared/client-address.ts";
 
 // Provable from outside without running a sweep: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "retry-failed-deliveries.2026-10-05.1";
+const FN_BUILD = "retry-failed-deliveries.2026-10-09.1";
 
 // WHAT THIS SWEEP CAN DELIVER. A row for anything else (a subscription, the
 // six-hour pass, the Freelance Boost tiers, an unknown type) is taken off the
@@ -104,8 +104,11 @@ serve(async (req) => {
         const metadata = delivery.metadata as Record<string, unknown> || {};
         const resumeSessionId = metadata.resume_session_id as string;
         
-        // Handle based on current status
-        if (delivery.status === 'payment_received' || delivery.status === 'generation_failed') {
+        // Handle based on current status. A 'generating' row reaches here only
+        // when its generation began 15+ minutes ago and never finished
+        // (20261009140000): nothing is still writing it, so it is generated
+        // again like a payment that was never started.
+        if (delivery.status === 'payment_received' || delivery.status === 'generation_failed' || delivery.status === 'generating') {
           // Need to generate content
           
           // For scan packs, just add credits
@@ -471,16 +474,19 @@ serve(async (req) => {
         const errorMessage = retryError instanceof Error ? retryError.message : String(retryError);
         logStep("Retry failed", { id: delivery.id, error: errorMessage });
 
+        // A stuck generation that failed again is a failed generation, not
+        // one still in flight.
+        const failedStatus = delivery.status === 'generating' ? 'generation_failed' : delivery.status;
         await supabase.rpc('update_delivery_retry', {
           p_id: delivery.id,
-          p_status: delivery.status,
+          p_status: failedStatus,
           p_error: errorMessage,
           p_increment_retry: true
         });
 
         results.push({ 
           id: delivery.id, 
-          status: delivery.status, 
+          status: failedStatus, 
           success: false, 
           error: errorMessage 
         });

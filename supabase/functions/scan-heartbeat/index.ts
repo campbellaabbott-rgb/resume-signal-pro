@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-08T12:00Z
+// deploy-stamp: 2026-10-09T14:00Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isScheduledCaller } from "../_shared/email-cron.ts";
@@ -17,7 +17,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-admin-key, x-email-cron',
   'Access-Control-Expose-Headers': 'x-fn-build',
   // BUILD_VERSION below, as the other functions carry it.
-  'x-fn-build': 'scan-heartbeat.2026-10-08.1',
+  'x-fn-build': 'scan-heartbeat.2026-10-09.1',
 };
 
 // Test resume for heartbeat checks
@@ -120,7 +120,7 @@ function unanswered(r: { timedOut?: boolean; failed?: boolean }, fn: string, ms:
  *
  * BUMP ON EVERY DEPLOY of this function.
  */
-const BUILD_VERSION = "2026-10-08.1"; // 10-08.1: answers only its cron, the service role and the owner's key; the e2e scan is uncached; alerts stamp only after a send that worked; vendor drift skips when unevaluated; delivery reads email_logs too
+const BUILD_VERSION = "2026-10-09.1"; // 10-09.1: a paid order that never arrived mails the owner, naming it (decided after the delivery read, not before).  10-08.1: answers only its cron, the service role and the owner's key; the e2e scan is uncached; alerts stamp only after a send that worked; vendor drift skips when unevaluated; delivery reads email_logs too
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1775,6 +1775,30 @@ serve(async (req) => {
 
     console.log(`[SCAN-HEARTBEAT] ${overallStatus} | Total: ${totalTime}ms | Checks: ${checks.map(c => `${c.name}:${c.passed}`).join(', ')}${skipped.length ? ` | SKIPPED: ${skipped.map(s => s.name).join(', ')}` : ''}`);
 
+    // IS EMAIL ACTUALLY GOING OUT. The worst failure this product has is a paid
+    // report that never arrives, and until now nothing anywhere reported it —
+    // the delivery log recorded every failure and no surface read it.
+    const delivery = await evaluateDelivery(supabase);
+
+    // AND DID THE PRODUCT ITSELF EVER GET MADE. The email check above assumes
+    // there was something to send. reconcile-stripe assumes the webhook never
+    // ran. Neither sees a generation that failed after the idempotency marker
+    // was written, which is the one case where the customer has paid, the
+    // system believes it delivered, and the retry has already given up.
+    const productDelivery = await evaluateProductDelivery(supabase);
+
+    // READ BEFORE ANY ALERT IS DECIDED (commercial-readiness 2026-10-08, item
+    // 2). Both reads above used to run after the alert below had been
+    // decided, so an 'undelivered' verdict reached the JSON and no inbox. A
+    // paid order that never arrived is its own alert, naming the order, once
+    // per order per day; it does not change the platform status.
+    const undeliveredOrders = productDelivery.reason === 'undelivered'
+      ? await listUndeliveredOrders(supabase)
+      : [];
+    if (undeliveredOrders && undeliveredOrders.length > 0) {
+      EdgeRuntime.waitUntil(sendUndeliveredOrderAlert(undeliveredOrders));
+    }
+
     // Send alert if status is not healthy — and a single recovery note when a
     // previously-alerted state clears, so the inbox learns the incident ended
     // without anyone re-curling the endpoint.
@@ -1815,18 +1839,6 @@ serve(async (req) => {
     // sentence beside it.
     const fillGaps = await evaluateFillGaps(supabase);
 
-    // IS EMAIL ACTUALLY GOING OUT. The worst failure this product has is a paid
-    // report that never arrives, and until now nothing anywhere reported it —
-    // the delivery log recorded every failure and no surface read it.
-    const delivery = await evaluateDelivery(supabase);
-
-    // AND DID THE PRODUCT ITSELF EVER GET MADE. The email check above assumes
-    // there was something to send. reconcile-stripe assumes the webhook never
-    // ran. Neither sees a generation that failed after the idempotency marker
-    // was written, which is the one case where the customer has paid, the
-    // system believes it delivered, and the retry has already given up.
-    const productDelivery = await evaluateProductDelivery(supabase);
-
     return new Response(
       JSON.stringify({
         status: overallStatus,
@@ -1845,7 +1857,14 @@ serve(async (req) => {
         confirmationGaps,
         fillGaps,
         delivery,
-        productDelivery
+        productDelivery,
+        // The orders behind an 'undelivered' verdict, by product, state and
+        // age, with the session's last 8 characters: no address here (the
+        // owner's mail carries the rest). null = the rows could not be read.
+        undeliveredOrders: undeliveredOrders === null ? null : undeliveredOrders.map((o) => ({
+          ref: o.sessionId.slice(-8), productType: o.productType, status: o.status,
+          ageMinutes: Math.round((Date.now() - Date.parse(o.createdAt)) / 60_000), retries: o.retries,
+        })),
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
@@ -2144,6 +2163,132 @@ async function evaluateProductDelivery(
     };
   } catch {
     return empty;
+  }
+}
+
+/**
+ * THE ORDERS BEHIND AN 'undelivered' VERDICT, NAMED.
+ *
+ * The same rows product_delivery_health counts as failed or stuck: a
+ * generation that failed (at any age), and a payment or a generation that has
+ * not moved for two hours. Read with the service role; only the owner's mail
+ * carries the buyer's address. null when the table could not be read.
+ */
+const UNDELIVERED_STUCK_MS = 2 * 60 * 60_000;
+interface UndeliveredOrder {
+  id: string; sessionId: string; productType: string; status: string; createdAt: string;
+  retries: string; email: string | null; error: string | null;
+}
+async function listUndeliveredOrders(
+  // deno-lint-ignore no-explicit-any
+  supabase: { from: (t: string) => any },
+): Promise<UndeliveredOrder[] | null> {
+  try {
+    const { data, error } = await supabase.from('product_deliveries')
+      .select('id, stripe_session_id, product_type, status, created_at, retry_count, max_retries, customer_email, generation_error, last_retry_error')
+      .in('status', ['payment_received', 'generating', 'generation_failed'])
+      .order('created_at', { ascending: true })
+      .limit(100);
+    if (error) return null;
+    const now = Date.now();
+    return ((data ?? []) as Array<Record<string, unknown>>)
+      .filter((r) => r.status === 'generation_failed' || now - Date.parse(String(r.created_at)) >= UNDELIVERED_STUCK_MS)
+      .map((r) => ({
+        id: String(r.id),
+        sessionId: String(r.stripe_session_id ?? ''),
+        productType: String(r.product_type ?? 'unknown'),
+        status: String(r.status),
+        createdAt: String(r.created_at),
+        retries: `${Number(r.retry_count ?? 0)}/${Number(r.max_retries ?? 0)}`,
+        email: r.customer_email ? String(r.customer_email) : null,
+        error: (r.last_retry_error ?? r.generation_error) ? String(r.last_retry_error ?? r.generation_error) : null,
+      }));
+  } catch {
+    return null;
+  }
+}
+
+const escapeAlertHtml = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c] as string));
+
+/**
+ * ONE MAIL PER UNDELIVERED ORDER PER DAY, TO THE OWNER, NAMING IT.
+ *
+ * An order is news when it has not been announced in 24 hours; the mail lists
+ * every order still undelivered, the new ones marked. The announced stamps are
+ * written only after Resend accepted the mail, so a refused alert is tried
+ * again on the next run (the L10-05 rule). A two-an-hour backstop bounds a
+ * state that cannot be read.
+ */
+const UNDELIVERED_REMIND_MS = 24 * 60 * 60_000;
+async function sendUndeliveredOrderAlert(orders: UndeliveredOrder[]): Promise<void> {
+  try {
+    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+    const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "resumeboostersupp@gmail.com";
+    if (!RESEND_API_KEY) {
+      console.error(`[SCAN-HEARTBEAT] ${orders.length} paid order(s) undelivered and RESEND_API_KEY is not set: nobody can be told`);
+      return;
+    }
+    const client = createClient(Deno.env.get("SUPABASE_URL") ?? '', Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? '');
+    let alerted: Record<string, string> = {};
+    try {
+      const { data: st } = await client.from('job_board_meta').select('v').eq('k', 'undelivered_alert_state').maybeSingle();
+      const v = (st?.v ?? {}) as { alerted?: Record<string, string> };
+      if (v.alerted && typeof v.alerted === 'object') alerted = v.alerted;
+    } catch { /* unread state: every order is news; the backstop bounds it */ }
+    const now = Date.now();
+    const isNews = (o: UndeliveredOrder) => {
+      const at = Date.parse(alerted[o.id] ?? '');
+      return !Number.isFinite(at) || now - at >= UNDELIVERED_REMIND_MS;
+    };
+    const news = orders.filter(isNews);
+    if (news.length === 0) return;
+    try {
+      const { data: allowed } = await client.rpc('check_rate_limit', {
+        p_function: 'alert:undelivered', p_ip: 'global', p_max_requests: 2, p_window_minutes: 60,
+      });
+      if (allowed === false) {
+        console.log('[SCAN-HEARTBEAT] undelivered-order alert held by its 2/hour backstop');
+        return;
+      }
+    } catch { /* send */ }
+
+    const rows = orders.map((o) => `<tr>
+        <td style="padding:4px 8px">${isNews(o) ? '<b>new</b>' : ''}</td>
+        <td style="padding:4px 8px">${escapeAlertHtml(o.productType)}</td>
+        <td style="padding:4px 8px">${escapeAlertHtml(o.status)}</td>
+        <td style="padding:4px 8px">${Math.round((now - Date.parse(o.createdAt)) / 60_000)} min</td>
+        <td style="padding:4px 8px">${escapeAlertHtml(o.retries)}</td>
+        <td style="padding:4px 8px;font-family:monospace">${escapeAlertHtml(o.sessionId)}</td>
+        <td style="padding:4px 8px">${escapeAlertHtml(o.email ?? '')}</td>
+        <td style="padding:4px 8px">${escapeAlertHtml((o.error ?? '').slice(0, 160))}</td>
+      </tr>`).join('');
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: "Resume Booster Alerts <onboarding@resend.dev>",
+        to: [ADMIN_EMAIL],
+        subject: `Paid order${news.length === 1 ? '' : 's'} not delivered: ${news.length} new (${news.map((o) => o.productType).join(', ').slice(0, 100)})`,
+        html: `<div style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#111">
+          <p>${orders.length} paid order${orders.length === 1 ? ' has' : 's have'} not been delivered: a generation that failed, or a payment or generation that has not moved for two hours. The retry sweep runs on its own schedule; the session id finds each one in Stripe.</p>
+          <table style="border-collapse:collapse"><tr><th></th><th align="left">product</th><th align="left">state</th><th align="left">age</th><th align="left">retries</th><th align="left">session</th><th align="left">buyer</th><th align="left">last error</th></tr>${rows}</table>
+          <p>Each order is mailed once a day while it stays undelivered.</p>
+        </div>`,
+      }),
+    });
+    if (!res.ok) {
+      console.error(`[SCAN-HEARTBEAT] undelivered-order alert REFUSED by Resend: HTTP ${res.status}; nothing is marked announced, the next run tries again`);
+      return;
+    }
+    const stamp = new Date(now).toISOString();
+    const next: Record<string, string> = {};
+    for (const o of orders) next[o.id] = isNews(o) ? stamp : alerted[o.id];
+    await client.from('job_board_meta').upsert(
+      { k: 'undelivered_alert_state', v: { alerted: next }, updated_at: stamp },
+      { onConflict: 'k' },
+    );
+  } catch (e) {
+    console.error('[SCAN-HEARTBEAT] undelivered-order alert failed:', e);
   }
 }
 

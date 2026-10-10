@@ -1,5 +1,5 @@
 // force-deploy: 2026-07-30T22:29:25Z
-// deploy-stamp: 2026-10-08T13:00Z
+// deploy-stamp: 2026-10-09T14:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -38,7 +38,7 @@ import { resumeSessionForCheckout } from "../_shared/checkout-resume-ref.ts";
 
 // Provable from outside without a purchase or a signature: every response,
 // the 405 a GET receives included, carries this in x-fn-build.
-const FN_BUILD = "stripe-webhook.2026-10-08.2";
+const FN_BUILD = "stripe-webhook.2026-10-09.1";
 const BUILD_HEADER = { "x-fn-build": FN_BUILD };
 
 // Declare EdgeRuntime for background tasks
@@ -576,15 +576,52 @@ async function triggerProductDelivery(
   // server-side with no access to the browser's i18n state.
   const language = session.metadata?.language || 'en';
 
-  // Update status to generating (background)
-  EdgeRuntime.waitUntil(
-    Promise.resolve(
-      supabase.from('product_deliveries')
-        .update({ status: 'generating', content_generation_started_at: new Date().toISOString() })
-        .eq('id', deliveryRecord.data?.id)
-    )
-  );
+  // STRIPE IS ANSWERED BEFORE THE MODEL IS. Generation takes up to ~90 s and
+  // Stripe wants its 2xx within seconds; awaiting it here held every product
+  // sale's acknowledgement on the AI writer (commercial-readiness 2026-10-08,
+  // item 2). The claim, the delivery row and the 'generating' stamp are
+  // written first; the generation, the saved copy and the mail finish in the
+  // background. A finish that dies leaves the row 'generating', which the
+  // retry sweep picks up after 15 minutes (20261009140000).
+  await supabase.from('product_deliveries')
+    .update({ status: 'generating', content_generation_started_at: new Date().toISOString() })
+    .eq('id', deliveryRecord.data?.id);
 
+  EdgeRuntime.waitUntil(
+    generateAndDeliver({
+      supabase, supabaseUrl, sessionId, productType, productName, customerEmail,
+      deliveryId: deliveryRecord.data?.id, resumeText: resume_text, jobDescriptionText: job_description_text,
+      jobTitle, jobCompany, language,
+    }).then(
+      (r) => logStep("Background delivery finished", r),
+      (e) => logStep("Background delivery threw; the sweeper retries the row", { error: String(e).slice(0, 300) }),
+    ),
+  );
+  return { success: true, productType, deferred: 'generating' };
+}
+
+interface GenerationJob {
+  // deno-lint-ignore no-explicit-any
+  supabase: SupabaseClient<any, any, any>;
+  supabaseUrl: string;
+  sessionId: string;
+  productType: string | undefined;
+  productName: string | undefined;
+  customerEmail: string | null;
+  deliveryId: string | undefined;
+  resumeText: string;
+  jobDescriptionText: string | null;
+  jobTitle: string;
+  jobCompany: string;
+  language: string;
+}
+
+/** The generation, the saved copy and the delivery mail: run after Stripe has its answer. */
+async function generateAndDeliver(job: GenerationJob) {
+  const { supabase, supabaseUrl, sessionId, productType, productName, customerEmail, jobTitle, jobCompany, language } = job;
+  const resume_text = job.resumeText;
+  const job_description_text = job.jobDescriptionText;
+  const deliveryRecord = { data: { id: job.deliveryId } };
   const generationStart = Date.now();
   let generatedContent: any = null;
   let generationError: string | null = null;
