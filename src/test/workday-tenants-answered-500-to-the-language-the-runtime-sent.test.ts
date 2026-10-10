@@ -5,7 +5,8 @@ import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { resolve } from "node:path";
 import ts from "typescript";
-import { vendorDefaultHeaders, WORKDAY_ACCEPT_LANGUAGE } from "../../supabase/functions/job-board/request-headers";
+import * as requestHeaders from "../../supabase/functions/job-board/request-headers";
+const { WORKDAY_ACCEPT_LANGUAGE, workdaySite } = requestHeaders;
 
 /**
  * SOME WORKDAY TENANTS ANSWERED HTTP 500 TO THE LANGUAGE THE RUNTIME SENT.
@@ -54,12 +55,12 @@ afterAll(() => new Promise<void>((r) => server.close(() => r())));
 /** The shipped fetchWithTimeout, sending every request to the stand-in. */
 function shippedFetch(): (url: string, init?: RequestInit) => Promise<Response> {
   const names: Record<string, unknown> = {
+    ...requestHeaders,
     fetch: (url: string, init?: RequestInit) => globalThis.fetch(url.replace(/^https:\/\/[^/]+/, origin), init),
     FETCH_TIMEOUT_MS: constOf("FETCH_TIMEOUT_MS"),
     MAX_RESPONSE_BYTES: constOf("MAX_RESPONSE_BYTES"),
     OVERSIZE_MARKER: "OVERSIZE_BODY",
     BODY_LATE_MARKER: /\nconst BODY_LATE_MARKER = "([^"]+)";/.exec(FN)?.[1] ?? "",
-    vendorDefaultHeaders,
   };
   // Whatever helpers fetchWithTimeout calls today are lifted with it.
   const src = ["discardBody", "boundBody", "bodyDeadline", "fetchWithTimeout"]
@@ -104,8 +105,8 @@ describe("a Workday list request names a language", () => {
     const res = await shippedFetch()("https://api.greenhouse.io/v1/boards/acme/jobs");
     await res.body?.cancel();
     expect(seen.at(-1) ?? "*").toBe("*");
-    expect(vendorDefaultHeaders("https://acme.teamtailor.com/jobs.rss")).toEqual({});
-    expect(vendorDefaultHeaders("https://acme.wd3.myworkdayjobs.com/wday/cxs/acme/Ext/jobs")).toEqual({ "Accept-Language": WORKDAY_ACCEPT_LANGUAGE });
-    expect(vendorDefaultHeaders("not a url")).toEqual({});
+    expect(workdaySite("https://acme.teamtailor.com/jobs.rss")).toBeNull();
+    expect(workdaySite("https://acme.wd3.myworkdayjobs.com/wday/cxs/acme/Ext/jobs")).toBe("acme.wd3.myworkdayjobs.com/ext");
+    expect(workdaySite("not a url")).toBeNull();
   });
 });

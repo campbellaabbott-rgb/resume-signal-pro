@@ -10030,8 +10030,8 @@ Analysis emails had linked buyers to the same host until 2026-10-08 (PR #19).
 
 ## n437-workday-accept-language
 
-Above: `vendorDefaultHeaders` (request-headers.ts), merged under the caller's
-headers in fetchWithTimeout.
+Above: `withWorkdayLanguage` (request-headers.ts), which fetchWithTimeout
+sends every vendor request through.
 
 Deno's fetch, like Node's undici, sends `Accept-Language: *` when a request
 names no language, and job-board named none. Some Workday tenants answer that
@@ -10042,13 +10042,32 @@ truist~wd1~careers 500 -> 200 (total 1,497), geico~wd1~External 500 -> 200
 (742); nvidia~wd5~NVIDIAExternalCareerSite 200 either way. Page 0 threw, the
 failure streak grew, and after DEAD_BOARD_THRESHOLD over
 DEAD_BOARD_MIN_FAILING_MS the dormancy prune deleted what the board held.
+They also answer 500 under `fr-CA` and 200 with no header or an empty one: a
+tenant with one language refuses any other.
 
-Scoped by host to `*.myworkdayjobs.com`, so the list POST, verify's search
-POST and the CXS detail GETs (verify and the description lane) all carry it,
-and no other vendor does: a named language may switch another vendor's
-descriptions. A caller that names its own language keeps it. Recovery needs
-no data edit: a dormant board is re-probed every DORMANT_RECHECK_MS (12h) and
-a failing one by the retry lane, and the first 200 clears its entry.
+ENGLISH ONLY AFTER A 500 (review, 2026-10-10). The first fix named en-US on
+every Workday request. Most tenants answer `*` in their own default language,
+and what the board stores was read that way: first 20 postings, `*` against
+en-US, desjardins~wd10~desjardins changed 20/20 titles and 6 locations
+('Conseiller ou conseillère, Gouvernance de l'IA' -> 'Senior Advisor, Data
+governance'), cbcrc~wd3~CBC_Radio-Canada_Jobs 10/20 titles, cdpq~wd10~CDPQ 2
+titles and every externalPath ('/job/Montral/...' -> '/job/Montreal/...',
+apply_url is built from it), bbva~wd3~BBVA 2 locationsText ('Ubicaciones: 2'
+-> '2 Locations'); the stored rows were French. The corrections diff would
+have rewritten those rows on the first visit and logged each as an employer
+edit. No-header and empty-header answers are the English ones too, so neither
+preserves what is stored. So the request goes out under the runtime's `*`
+first, byte-identical to .91, and only a 500 is retried under
+`en-US,en;q=0.9`. The answer is remembered per isolate by host + CXS site:
+a site that needed English goes straight to it (an English-only tenant pays
+its one refused request once per isolate, not per page), and a site seen
+answering `*` is never retried in English after a later 500 (a passing error
+on a bilingual tenant stays a failed read, as on .91, instead of an English
+page). Memo capped at 4,096 sites (cleared when full). A caller that names its
+own language keeps it, and no other vendor is touched: a named language may
+switch another vendor's descriptions. Recovery needs no data edit: a dormant
+board is re-probed every DORMANT_RECHECK_MS (12h) and a failing one by the
+retry lane, and the first 200 clears its entry.
 
 ## n438-a-body-has-a-clock
 

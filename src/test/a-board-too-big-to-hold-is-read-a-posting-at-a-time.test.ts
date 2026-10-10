@@ -57,6 +57,7 @@ import { codeOf } from "./helpers/strip-comments";
 import { JOB_SOURCES } from "../../supabase/functions/job-board/sources";
 import { htmlToText, isDatedBefore, normalizeAshby, normalizeGreenhouse, normalizeLever, sanePostedAt } from "../../supabase/functions/job-board/normalize";
 import { beforeDeadline, jsonArrayElements, SLIM_SPECS, streamSlim } from "../../supabase/functions/job-board/slim-stream";
+import { withWorkdayLanguage } from "../../supabase/functions/job-board/request-headers";
 import population from "./fixtures/oversize-light-population-2026-10-01.json";
 import leverFixture from "./fixtures/oversize-lever-palantir-2026-10-01.json";
 import ashbyFixture from "./fixtures/oversize-ashby-openai-2026-10-01.json";
@@ -639,10 +640,10 @@ describe("(f) readOversizeBoard and the worker's retry, executed — not spelled
     const warned: string[] = [];
     const urls: string[] = [];
     const listUrl = (s: Board) => { urls.push(`${s.source}:${s.token}`); return `https://feed.test/${s.source}/${s.token}`; };
-    const read = new Function("fetch", "listUrl", "beforeDeadline", "SLIM_SPECS", "streamSlim", "normalizeLever", "normalizeAshby", "normalizeGreenhouse", "console", "vendorDefaultHeaders", `${toJs(ts)}\nreturn readOversizeBoard;`)(
+    const read = new Function("fetch", "listUrl", "beforeDeadline", "SLIM_SPECS", "streamSlim", "normalizeLever", "normalizeAshby", "normalizeGreenhouse", "console", "withWorkdayLanguage", `${toJs(ts)}\nreturn readOversizeBoard;`)(
       fetchStub, listUrl, beforeDeadline, SLIM_SPECS, streamSlim, normalizeLever, normalizeAshby, normalizeGreenhouse,
       { warn: (...a: unknown[]) => warned.push(a.map(String).join(" ")), log: () => {}, error: () => {} },
-      () => ({}),
+      withWorkdayLanguage,
     ) as (s: Board, deadlineAt: number, freshCutoffMs: number) => Promise<Read>;
     return { read, warned, urls };
   };

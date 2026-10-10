@@ -42,6 +42,15 @@ for(const [t,w,s] of T){
   const r=await list({companies:[t+"~"+w+"~"+s],limit:1});
   soft(!bad(r)&&typeof r.total==="number"&&r.total>0,"S8-003 board "+t+"~"+w+"~"+s+": total "+(r&&r.total)+" (want > 0 once .92 has read it: a dormant board is re-probed within 12h, a failing one by the retry lane; 0 or absent before)");
 }
+// S8-003 review: a tenant that answers * in French keeps its French rows (en-US only after a 500).
+{const T2=[["desjardins","wd10","desjardins"],["cbcrc","wd3","CBC_Radio-Canada_Jobs"]];
+  for(const [t,w,s] of T2){
+    const titles=async(lang)=>{try{const r=await fetch("https://"+t+"."+w+".myworkdayjobs.com/wday/cxs/"+t+"/"+s+"/jobs",{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json","Accept-Language":lang},body:JSON.stringify({appliedFacets:{},limit:20,offset:0,searchText:""})});const j=await r.json();return new Set((j.jobPostings||[]).map((p)=>p.title))}catch{return null}};
+    const star=await titles("*"),en=await titles("en-US,en;q=0.9");const r=await list({companies:[t+"~"+w+"~"+s]});
+    if(!star||!en||bad(r)){info("S8-003 "+t+": tenant or board unreadable");continue}
+    const stored=rows(r).map((j)=>j.title);const enOnly=stored.filter((x)=>en.has(x)&&!star.has(x));const starOnly=stored.filter((x)=>star.has(x)&&!en.has(x));
+    console.log((enOnly.length===0?"PASS":"FAIL")+"  S8-003 "+t+"~"+w+"~"+s+": "+enOnly.length+" of "+stored.length+" stored titles are the English-only answer, "+starOnly.length+" the tenant\x27s own (*) answer, e.g. "+JSON.stringify(enOnly.slice(0,2))+" (want 0 English-only: the board reads Workday under * and asks en-US only after a 500)");
+  }}
 // S8-002: a Teamtailor board past 100 postings, read a page at a time.
 for(const [tok,size] of [["eutalents",2600],["anicuraglobal",642],["tutoringjobs",534]]){
   const r=await list({companies:[tok],limit:1});

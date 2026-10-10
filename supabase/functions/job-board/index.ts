@@ -94,7 +94,7 @@ import { classifyQuestion } from "../_shared/application-questions.ts";
 import { parseBreezyQuestions, parsePinpointQuestions, breezyApplyUrl, pinpointApplyUrl } from "../_shared/vendor-questions.ts";
 import { realQuestionVendors, SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
 import { beforeDeadline, SLIM_SPECS, streamSlim } from "./slim-stream.ts";
-import { vendorDefaultHeaders } from "./request-headers.ts";
+import { withWorkdayLanguage } from "./request-headers.ts";
 import { anonBudgetGate, anonBudgetStatus, budgetEcho, BUDGETED_ACTIONS, callerAddress, exemptKind, pageCeiling } from "./anon-budget.ts";
 import { boardPassAction } from "./board-pass.ts";
 import {
@@ -1210,7 +1210,7 @@ function boundBody(src: Response | Request, limit = MAX_RESPONSE_BYTES): Respons
 }
 
 async function fetchWithTimeout(url: string, init?: RequestInit, limit = MAX_RESPONSE_BYTES, bodyMs = FETCH_TIMEOUT_MS): Promise<Response> {
-  const once = async () => {
+  const send = async (lang: Record<string, string>) => {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
     let res: Response;
@@ -1218,14 +1218,15 @@ async function fetchWithTimeout(url: string, init?: RequestInit, limit = MAX_RES
       res = await fetch(url, {
         ...init,
         signal: ctrl.signal,
-        // A vendor's own defaults (Workday names a language, S8-003), then the caller's.
-        headers: { "User-Agent": "resumebooster.work job board (contact: support@resumebooster.work)", ...vendorDefaultHeaders(url), ...(init?.headers ?? {}) },
+        headers: { "User-Agent": "resumebooster.work job board (contact: support@resumebooster.work)", ...lang, ...(init?.headers ?? {}) },
       });
     } finally {
       clearTimeout(t);
     }
     return bodyDeadline(res, bodyMs);
   };
+  // Workday: English only where the runtime's language is refused (S8-003, n437).
+  const once = () => withWorkdayLanguage(url, init?.headers, send, discardBody);
   const res = await once();
   // Rate limits: honor Retry-After with one short, capped retry (personio
   // 429s observed under burst; vendor interleaving spreads the load but a

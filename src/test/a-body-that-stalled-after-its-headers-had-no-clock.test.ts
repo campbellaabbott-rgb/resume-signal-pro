@@ -6,7 +6,7 @@ import type { AddressInfo } from "node:net";
 import { resolve } from "node:path";
 import ts from "typescript";
 import { codeOf } from "./helpers/strip-comments";
-import { vendorDefaultHeaders } from "../../supabase/functions/job-board/request-headers";
+import * as requestHeaders from "../../supabase/functions/job-board/request-headers";
 
 /**
  * A BODY THAT STALLED AFTER ITS HEADERS HAD NO CLOCK.
@@ -81,7 +81,7 @@ function shipped(): Shipped {
     MAX_RESPONSE_BYTES: 4_000_000,
     OVERSIZE_MARKER: strConst("OVERSIZE_MARKER"),
     BODY_LATE_MARKER: strConst("BODY_LATE_MARKER"),
-    vendorDefaultHeaders,
+    ...requestHeaders,
   };
   const fns = ["discardBody", "boundBody", "bodyDeadline", "fetchWithTimeout", "readChunkPage"].filter(has);
   const src = fns.map(lifted).join("\n");
