@@ -35,10 +35,11 @@ function remember(site: string, english: boolean): void {
  * CBC/Radio-Canada in French), and what the board stores was read that way;
  * some tenants with no such language answer it with HTTP 500 (Truist, Geico,
  * 7-Eleven, WVU Medicine; 200 under en-US). So: the runtime's language first,
- * and English only after a 500 from a site not already seen answering it.
- * A site's answer is remembered for the isolate, so an English-only tenant
- * pays its one refused request once, and a tenant seen answering the default
- * is never re-read in English after a passing 500.
+ * asked twice, and English only when a site never seen answering it refuses
+ * both. The memo is read after every answer, because a chunk's pages are in
+ * flight together: a site seen answering `*` meanwhile keeps a 500 a failed
+ * read and never takes an English answer. An English-only site pays two
+ * refusals per page in flight before its first English answer, then none.
  */
 export async function withWorkdayLanguage(
   url: string,
@@ -48,13 +49,18 @@ export async function withWorkdayLanguage(
 ): Promise<Response> {
   const site = workdaySite(url, headers);
   if (!site) return send({});
-  const known = siteNeedsEnglish.get(site);
-  if (known) return send(ENGLISH);
-  const res = await send({});
-  if (res.ok) { remember(site, false); return res; }
-  if (res.status !== 500 || known === false) return res;
+  if (siteNeedsEnglish.get(site)) return send(ENGLISH);
+  let res = await send({});
+  for (let tries = 1; ; tries++) {
+    if (res.ok) { remember(site, false); return res; }
+    const known = siteNeedsEnglish.get(site);
+    if (res.status !== 500 || known === false) return res;
+    if (known || tries >= 2) break;
+    discard(res);
+    res = await send({});
+  }
   const en = await send(ENGLISH);
-  if (!en.ok) { discard(en); return res; }
+  if (!en.ok || siteNeedsEnglish.get(site) === false) { discard(en); return res; }
   discard(res);
   remember(site, true);
   return en;

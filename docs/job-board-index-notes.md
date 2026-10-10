@@ -10059,11 +10059,25 @@ edit. No-header and empty-header answers are the English ones too, so neither
 preserves what is stored. So the request goes out under the runtime's `*`
 first, byte-identical to .91, and only a 500 is retried under
 `en-US,en;q=0.9`. The answer is remembered per isolate by host + CXS site:
-a site that needed English goes straight to it (an English-only tenant pays
-its one refused request once per isolate, not per page), and a site seen
-answering `*` is never retried in English after a later 500 (a passing error
-on a bilingual tenant stays a failed read, as on .91, instead of an English
-page). Memo capped at 4,096 sites (cleared when full). A caller that names its
+a site that needed English goes straight to it, and a site seen answering
+`*` is never retried in English after a later 500 (a passing error on a
+bilingual tenant stays a failed read, as on .91, instead of an English page).
+Memo capped at 4,096 sites (cleared when full).
+
+TWO REFUSALS, AND THE MEMO READ AFTER EVERY ANSWER (second review,
+2026-10-10). A cold slice is a fresh isolate that reads each board once, and
+fetchWorkday sends a chunk's four pages together, so a site's first answer
+is usually the deciding one, and each page read the memo before its request
+went out: one passing 500, on page 0 or on a page whose chunk-mate had
+already come back French, switched the site to English for the isolate (the
+desjardins/cbcrc/cdpq flips above, logged as employer edits and flipped
+back by the next isolate). Now an unseen site's 500 is asked under `*` once
+more, English follows only a second 500, and the memo is re-read after each
+answer: a site another page has seen answering `*` keeps its 500 a failed
+page and never takes an English answer, and one seen needing English goes
+there at once. Cost: an English-only tenant pays two refusals per page in
+flight before its first English answer (up to 8 extra requests a chunk,
+once per isolate). A caller that names its
 own language keeps it, and no other vendor is touched: a named language may
 switch another vendor's descriptions. Recovery needs no data edit: a dormant
 board is re-probed every DORMANT_RECHECK_MS (12h) and a failing one by the
