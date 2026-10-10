@@ -2364,11 +2364,14 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       let thin = 0;
       let codeNamed = 0;
       let duplicated = 0;
-      const pageOf = (c, info, robots) => companyLanderPage({
-        token: c.token, name: c.name, primaryToken: info.primary.token, robots, openN: openRolesOf(c), facts: info.facts,
-        openings: info.openings, openingsAt: info.at, sources: D.SERVING_SOURCE_LIST, boardCompanies,
-        site: SITE, esc, possessive, fmt: (n) => fmt(n), href: landerPath,
-      });
+      const pageOf = (c, info, robots) => {
+        const openN = openRolesOf(c);
+        return companyLanderPage({
+          token: c.token, name: c.name, primaryToken: info.primary.token, robots, openN, facts: info.facts,
+          openings: info.openings, openingsAt: info.at, sources: D.SERVING_SOURCE_LIST, boardCompanies,
+          site: SITE, esc, possessive, fmt: (n) => fmt(n), href: landerPath,
+        });
+      };
       // The facts and openings of each EMPLOYER (every board of it this bake
       // chose), read first, so the noindex rules can see them all at once.
       const landerInfo = new Map(LANDERS.map((c) => {
