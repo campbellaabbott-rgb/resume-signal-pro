@@ -109,3 +109,6 @@ info("S8-062 job-fit / application-fit: keyed on the platform address hourly, a 
 info("S8-030 / S8-031 / S8-084 / S8-085 / S8-086 / S8-089: no anon probe; see the .92 note for the status fields and logs to watch");
 }catch(e){console.log("INFO  section 71 stopped early: "+String(e).slice(0,160))}
 })()'
+# S10-018 (20261009100400): cron.job is not readable with the publishable key, so the
+# orphan cleanup's new command is judged by the owner, read-only, with the service role.
+echo "INFO  S10-018 / 20261009100400: with the service role, SELECT command FROM cron.job WHERE jobname = 'job-board-verif-orphan-cleanup' must begin SET statement_timeout = '5min' and resolve split_part(v.company_token, ':', 1); after 03:51 UTC, SELECT count(*) FROM job_board_verifications WHERE company_token LIKE '%:%' stays above 0 (the old command left 0)"

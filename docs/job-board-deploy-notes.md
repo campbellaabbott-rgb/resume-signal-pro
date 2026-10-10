@@ -10,6 +10,39 @@ still pins it.
 
 ## 2026-09-09.92
 
+ALSO IN .92 (wave 3 integration, 2026-10-10; docs/wave3/README.md):
+- BUILDS. job-fit and application-fit answer `job-fit.2026-10-09.2` and
+  `application-fit.2026-10-09.2`, not the `.1` named below. Both this group and
+  board-data-ingest stamped them .1 on different code, and the integration
+  carries both. Section 71 judges .2. job-board stays `2026-09-09.92`, the
+  wave-3 reservation.
+- S10-018: migration `20261009100400_the_orphan_cleanup_keeps_a_boards_own_stamp_while_its_postings_exist.sql`.
+  The nightly job-board-verif-orphan-cleanup deleted every `source:token`
+  stamp n428 writes, because no posting's company_token is a key. The next
+  slice's seed then handed the deferred twin its twin's fresh stamp, so it
+  never aged to the 48 h sweep. The command now resolves a key to its board
+  and keeps it while that vendor's posting on that token exists
+  (cron.alter_job by name; its own statement_timeout). It is independent of
+  the bundle (no build needs to be live first) and applies in filename order
+  after 20261009100300. Rollback:
+  `SELECT cron.alter_job(job_id := (SELECT jobid FROM cron.job WHERE jobname = 'job-board-verif-orphan-cleanup'), command := $$DELETE FROM public.job_board_verifications v WHERE NOT EXISTS (SELECT 1 FROM public.job_board_postings p WHERE p.company_token = v.company_token);$$);`
+  (that brings the nightly deletion of every keyed stamp back). Measure:
+  section 71's S10-018 line (service role).
+- From wave 3 board-data-ingest (docs/wave3/board-data-ingest.md), pasted as
+  its group asked: normalize.ts, experience.ts, descriptions.ts,
+  `_shared/salary-extract.ts`, `_shared/fit-score.ts`, and three index.ts
+  lines. SALARY_PARSE_VERSION 9 -> 10 (backfill-salary re-reads stored text:
+  dollar currencies of TW/AR/CL/CO/DO/UY, millions refused, "up to" ceilings,
+  per-figure periods). COUNTRY_MAP_VERSION 7 -> 8 (trailing city country /
+  trailing state code; DERIVED_NOT_EMPLOYER_EDITS gains `country`). Recruitee
+  period and exact Lever figures, with OUR_PAY_REWRITE = lever, recruitee:
+  **ONE-SHOT, remove in the first build after one full cold rotation of
+  .92**. Also iCIMS country, seniority words and year sentences (new rows
+  only), clusterKey in every script, and fit capped at 100.
+- From wave 3 agents-api: job-board now bundles `_shared/application-questions.ts`
+  (+11.0 KB raw source) and `_shared/board-domains.ts` (+0.3 KB). Count both
+  against the ~4.5 MB cap, beside board-data-ingest's +11,777 bytes.
+
 WAVE 3, JOB-BOARD GROUP (the S8 debug sweep of 2026-10-08, ~/.config/resumebooster/platform-debug-2026-10-08/register.json, fix_group "job-board", plus the server half of the SEO & GEO report's F1). THREE FUNCTIONS: job-board `2026-09-09.92` (index.ts, normalize.ts, read-window.ts, rotation.ts, search-routing.ts, search-alias.ts, NEW request-headers.ts), job-fit `job-fit.2026-10-09.1` and application-fit `application-fit.2026-10-09.1` (both had NO x-fn-build until now). THREE MIGRATIONS (20261009100100, 20261009100200, 20261009100300: filename order is apply order, and the last waits for .92 to serve). One NEW shared module no function imports yet: supabase/functions/_shared/employer-names.ts (for the prerender and the React app). Verifier: NEW scripts/verify-deploy.d/71-wave3-job-board.sh. sources.ts UNCHANGED. Rationale: docs/job-board-index-notes.md n437-n447.
 
 IF .91 IS STILL NOT LIVE (it was not on 2026-10-10: production answered .90), deploying .92 ships .91 too: follow the .91 section below for its three migrations and the wave 2 README's two-step order first.
