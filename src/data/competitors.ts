@@ -30,7 +30,7 @@ export const COMPETITORS: Record<string, Competitor> = {
     slug: "chatgpt",
     name: "ChatGPT & Claude",
     intro:
-      "ChatGPT and Claude are what we're most often compared to — fairly, because they're genuinely excellent at resume advice. The honest difference is category: they are conversationalists, this is an instrument. Ask a chatbot to rate your resume five times and you'll get five different answers; an instrument returns the same report for the same file (within the 7 days a report is kept) and tells you where that reading sits among real ones.",
+      "ChatGPT and Claude are what we're most often compared to — fairly, because they're genuinely excellent at resume advice. The honest difference is category: they are conversationalists, this is an instrument. Ask a chatbot to rate your resume five times and you'll get five different answers; an instrument returns the same report for the same file and posting (within the 7 days a report is kept) and tells you where that reading sits among real ones.",
     pricingNote:
       "ChatGPT and Claude both have generous free tiers, with paid plans around $20/month (as of mid-2026). Resume Booster's diagnostic scan is free with no sign-up; paid tools are $3–29 one-time with an optional all-access subscription.",
     rows: [

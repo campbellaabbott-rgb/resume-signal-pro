@@ -106,7 +106,7 @@
     },
     "socialFirst": {
       "joinThousands": "Libreng scan · Walang sign-up · Resulta sa loob ng {{seconds}} segundo",
-      "subheading": "I-upload ang iyong resume at makakuha ng iskor na masusuri mo: i-scan muli ang parehong file sa loob ng {{days}} araw at pareho ang ulat — ikinumpara sa tunay na mga scan sa iyong industriya, bawat sipi beripikado. Hindi opinyon ng chatbot.",
+      "subheading": "I-upload ang iyong resume at makakuha ng iskor na masusuri mo: i-scan muli ang parehong file laban sa parehong job posting sa loob ng {{days}} araw at pareho ang ulat (gumagawa ng bago ang “Suriin ulit”) — ikinumpara sa tunay na mga scan sa iyong industriya, bawat sipi beripikado. Hindi opinyon ng chatbot.",
       "recentActivityCount": "{{count}} katao",
       "recentActivityText": "ang nag-scan ng kanilang resume sa huling oras"
     },
@@ -402,7 +402,7 @@
       },
       "dataStorage": {
         "question": "Iniimbak ba ninyo ang aking resume data?",
-        "answer": "Sandali lang, at may takdang oras. Kapag nag-upload o nag-paste ka ng resume, iniimbak ang text nito nang 24 oras para magamit ng checkout, saka binubura. Ang libre mong report, na sumisipi ng mga linya mula sa resume mo, ay iniimbak nang 7 araw para pareho ang report ng parehong file, saka binubura. Ang bayad na pagsusuri ay nananatili sa likod ng pribadong link nito nang 90 araw, maliban kung burahin mo ito nang mas maaga. Mas matagal lang naming iniimbak ang resume kapag hiniling mo: isang bersyong sine-save mo sa account mo, ang resume na itinakda mo para sa job matching, o ang CV na ibinigay mo sa apply agent, na ipinapadala ito sa mga employer na inaaplayan nito para sa iyo. Hindi namin ito kailanman ibinebenta. Nakalista sa aming Trust page ang bawat kopya at ang takdang oras nito."
+        "answer": "Sandali lang, at may takdang oras. Kapag nag-upload o nag-paste ka ng resume, iniimbak ang text nito nang 24 oras para magamit ng checkout, saka binubura. Ang libre mong report, na sumisipi ng mga linya mula sa resume mo, ay iniimbak nang 7 araw para pareho ang report kapag ni-rescan ang parehong file laban sa parehong job posting, saka binubura. Ang bayad na pagsusuri ay nananatili sa likod ng pribadong link nito nang 90 araw, maliban kung burahin mo ito nang mas maaga. Mas matagal lang naming iniimbak ang resume kapag hiniling mo: isang bersyong sine-save mo sa account mo, ang resume na itinakda mo para sa job matching, o ang CV na ibinigay mo sa apply agent, na ipinapadala ito sa mga employer na inaaplayan nito para sa iyo. Hindi namin ito kailanman ibinebenta. Nakalista sa aming Trust page ang bawat kopya at ang takdang oras nito."
       },
       "vsChatGPT": {
         "question": "Bakit ito mas maganda kaysa ChatGPT o resume templates?",

@@ -106,7 +106,7 @@
     },
     "socialFirst": {
       "joinThousands": "Analyse gratuite · Sans inscription · Résultats en {{seconds}} secondes maximum",
-      "subheading": "Téléversez votre CV et obtenez un score vérifiable : rescannez le même fichier sous {{days}} jours et vous obtenez le même rapport — comparé à de vrais scans de votre secteur, chaque citation vérifiée. Pas l'avis d'un chatbot.",
+      "subheading": "Téléversez votre CV et obtenez un score vérifiable : rescannez le même fichier avec la même offre sous {{days}} jours et vous obtenez le même rapport (« Réanalyser » en crée un nouveau) — comparé à de vrais scans de votre secteur, chaque citation vérifiée. Pas l'avis d'un chatbot.",
       "recentActivityCount": "{{count}} personnes",
       "recentActivityText": "ont scanné leur CV dans la dernière heure"
     },
@@ -402,7 +402,7 @@
       },
       "dataStorage": {
         "question": "Stockez-vous mes données de CV ?",
-        "answer": "Brièvement, et avec une échéance. Quand vous téléversez ou collez un CV, son texte est conservé 24 heures pour qu'un paiement puisse l'utiliser, puis supprimé. Votre rapport gratuit, qui cite des lignes de votre CV, est conservé 7 jours pour que le même fichier obtienne le même rapport, puis supprimé. Une analyse payante reste derrière son lien privé pendant 90 jours, sauf si vous la supprimez avant. Nous ne gardons un CV plus longtemps que si vous le demandez : une version enregistrée dans votre compte, le CV choisi pour la correspondance d'offres, ou le CV confié à l'agent de candidature, qui l'envoie aux employeurs auxquels il postule pour vous. Nous ne le vendons jamais. Notre page Confiance liste chaque copie et son délai."
+        "answer": "Brièvement, et avec une échéance. Quand vous téléversez ou collez un CV, son texte est conservé 24 heures pour qu'un paiement puisse l'utiliser, puis supprimé. Votre rapport gratuit, qui cite des lignes de votre CV, est conservé 7 jours pour qu'une nouvelle analyse du même fichier avec la même offre obtienne le même rapport, puis supprimé. Une analyse payante reste derrière son lien privé pendant 90 jours, sauf si vous la supprimez avant. Nous ne gardons un CV plus longtemps que si vous le demandez : une version enregistrée dans votre compte, le CV choisi pour la correspondance d'offres, ou le CV confié à l'agent de candidature, qui l'envoie aux employeurs auxquels il postule pour vous. Nous ne le vendons jamais. Notre page Confiance liste chaque copie et son délai."
       },
       "vsChatGPT": {
         "question": "Pourquoi est-ce mieux que ChatGPT ?",

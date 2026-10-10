@@ -106,7 +106,7 @@
     },
     "socialFirst": {
       "joinThousands": "Escaneo gratis · Sin registro · Resultados en {{seconds}} segundos como máximo",
-      "subheading": "Sube tu currículum y obtén una puntuación que puedes comprobar: si vuelves a escanear el mismo archivo antes de {{days}} días, recibes el mismo informe — comparada con escaneos reales de tu sector, con cada cita verificada. No es la opinión de un chatbot.",
+      "subheading": "Sube tu currículum y obtén una puntuación que puedes comprobar: si vuelves a escanear el mismo archivo con la misma oferta antes de {{days}} días, recibes el mismo informe («Volver a analizar» crea uno nuevo) — comparada con escaneos reales de tu sector, con cada cita verificada. No es la opinión de un chatbot.",
       "recentActivityCount": "{{count}} personas",
       "recentActivityText": "escanearon su currículum en la última hora"
     },
@@ -402,7 +402,7 @@
       },
       "dataStorage": {
         "question": "¿Almacenan los datos de mi currículum?",
-        "answer": "Solo por poco tiempo y con fecha de caducidad. Cuando subes o pegas un currículum, su texto se guarda 24 horas para que un pago pueda usarlo, y luego se borra. Tu informe gratuito, que cita líneas de tu currículum, se guarda 7 días para que el mismo archivo reciba el mismo informe, y luego se borra. Un análisis de pago permanece tras su enlace privado 90 días, salvo que lo borres antes. Solo guardamos un currículum más tiempo cuando tú lo pides: una versión que guardas en tu cuenta, el currículum que eliges para las coincidencias de empleo o el CV que das al agente de candidaturas, que lo envía a las empresas a las que se postula por ti. Nunca lo vendemos. Nuestra página de confianza enumera cada copia y su plazo."
+        "answer": "Solo por poco tiempo y con fecha de caducidad. Cuando subes o pegas un currículum, su texto se guarda 24 horas para que un pago pueda usarlo, y luego se borra. Tu informe gratuito, que cita líneas de tu currículum, se guarda 7 días para que un nuevo escaneo del mismo archivo con la misma oferta reciba el mismo informe, y luego se borra. Un análisis de pago permanece tras su enlace privado 90 días, salvo que lo borres antes. Solo guardamos un currículum más tiempo cuando tú lo pides: una versión que guardas en tu cuenta, el currículum que eliges para las coincidencias de empleo o el CV que das al agente de candidaturas, que lo envía a las empresas a las que se postula por ti. Nunca lo vendemos. Nuestra página de confianza enumera cada copia y su plazo."
       },
       "vsChatGPT": {
         "question": "¿Por qué es mejor que ChatGPT o plantillas de currículum?",

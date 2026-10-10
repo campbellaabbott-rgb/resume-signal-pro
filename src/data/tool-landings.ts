@@ -55,7 +55,7 @@ export const TOOL_LANDINGS: Record<string, ToolLanding> = {
       },
       {
         q: "¿Guardan mi currículum?",
-        a: `Por poco tiempo. El texto se guarda 24 horas para que un pago pueda usarlo, y el informe, que cita tu currículum, se guarda ${D} días para que un nuevo escaneo del mismo archivo dé el mismo informe; después ambos se borran automáticamente. Durante esos ${D} días, un nuevo escaneo lleva el mismo identificador de informe, para que compruebes esa coherencia tú mismo.`,
+        a: `Por poco tiempo. El texto se guarda 24 horas para que un pago pueda usarlo, y el informe, que cita tu currículum, se guarda ${D} días para que un nuevo escaneo del mismo archivo con la misma oferta dé el mismo informe; después ambos se borran automáticamente. Durante esos ${D} días, ese nuevo escaneo lleva el mismo identificador de informe, para que compruebes esa coherencia tú mismo.`,
       },
       {
         q: "¿Cómo se calcula el puntaje?",
@@ -72,7 +72,7 @@ export const TOOL_LANDINGS: Record<string, ToolLanding> = {
       `Check your resume free within ${S} seconds: ATS score with an audit trail, missing keywords, weak bullets rewritten, per-vendor parsing checks. No sign-up; your resume is deleted within 7 days.`,
     heading: "A resume checker that shows its work",
     intro:
-      `Upload or paste your resume above and you get the complete diagnostic — not a teaser. Every finding quotes your actual document, the score comes with its modeling band, and a rescan of the same file within ${D} days returns the same report and ID.`,
+      `Upload or paste your resume above and you get the complete diagnostic — not a teaser. Every finding quotes your actual document, the score comes with its modeling band, and a rescan of the same file against the same posting within ${D} days returns the same report and ID.`,
     bullets: [
       "No sign-up and no email required for the full report",
       "Your resume is deleted within 7 days and never sold",
@@ -87,7 +87,7 @@ export const TOOL_LANDINGS: Record<string, ToolLanding> = {
       },
       {
         q: "Do you store my resume?",
-        a: `Briefly. The text is held for 24 hours so a checkout can use it, and the report, which quotes your resume, is cached for ${D} days so a rescan of the same file returns the same report; both are then deleted automatically. Within those ${D} days a rescan carries the same report ID, so you can verify that consistency yourself.`,
+        a: `Briefly. The text is held for 24 hours so a checkout can use it, and the report, which quotes your resume, is cached for ${D} days so a rescan of the same file against the same posting returns the same report; both are then deleted automatically. Within those ${D} days such a rescan carries the same report ID, so you can verify that consistency yourself.`,
       },
       {
         q: "How is the score calculated?",
@@ -147,7 +147,7 @@ export const TOOL_LANDINGS: Record<string, ToolLanding> = {
       "Score with a modeling band — honest about its own precision",
       "Point-by-point audit trail: every deduction tied to a quoted finding",
       "Benchmarked against real scans in your industry where we have enough data",
-      `The same report ID on a rescan of the same file within ${D} days — verify consistency`,
+      `The same report ID on a rescan of the same file and posting within ${D} days — verify consistency`,
       "Free, no sign-up, resume deleted within 7 days",
     ],
     faqs: [

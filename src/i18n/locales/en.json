@@ -106,7 +106,7 @@
     },
     "socialFirst": {
       "joinThousands": "Free scan · No sign-up · Results within {{seconds}} seconds",
-      "subheading": "Upload your resume and get a score you can check: rescan the same file within {{days}} days and you get the same report — benchmarked against real scans in your industry, every quoted line verified. Not a chatbot's opinion.",
+      "subheading": "Upload your resume and get a score you can check: rescan the same file against the same posting within {{days}} days and you get the same report (Re-analyze builds a fresh one) — benchmarked against real scans in your industry, every quoted line verified. Not a chatbot's opinion.",
       "recentActivityCount": "{{count}} people",
       "recentActivityText": "scanned their resume in the last hour"
     },
@@ -402,7 +402,7 @@
       },
       "dataStorage": {
         "question": "Do you store my resume data?",
-        "answer": "Only briefly, and on a clock. When you upload or paste a resume, its text is held for 24 hours so a checkout can use it, then deleted. Your free report, which quotes lines from your resume, is kept for 7 days so the same file gets the same report, then deleted. A paid analysis stays behind its private link for 90 days unless you delete it sooner. We keep a resume longer only when you ask us to: a version you save to your account, the resume you set for job matching, or the CV you give the apply agent, which sends it to the employers it applies to for you. We never sell it. Our Trust page lists every copy and its clock."
+        "answer": "Only briefly, and on a clock. When you upload or paste a resume, its text is held for 24 hours so a checkout can use it, then deleted. Your free report, which quotes lines from your resume, is kept for 7 days so a rescan of the same file against the same posting gets the same report, then deleted. A paid analysis stays behind its private link for 90 days unless you delete it sooner. We keep a resume longer only when you ask us to: a version you save to your account, the resume you set for job matching, or the CV you give the apply agent, which sends it to the employers it applies to for you. We never sell it. Our Trust page lists every copy and its clock."
       },
       "vsChatGPT": {
         "question": "Why is this better than ChatGPT or resume templates?",

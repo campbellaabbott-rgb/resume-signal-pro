@@ -66,7 +66,8 @@ echo "INFO  20261009111000's shortlist_decisions_stamp trigger (server clock and
 # The homepage and llms.txt as a crawler reads them.
 HOME72=$(curl -s -m 30 -A "$UA" "$SITE/")
 if printf '%s' "$HOME72" | grep -qF "Same document, same score"; then echo "FAIL  / (crawler) still promises \"Same document, same score, every time\": the prerender with this wave is not published"
-elif printf '%s' "$HOME72" | grep -qF "within 7 days and you get the same report"; then echo "PASS  / (crawler) says a rescan of the same file within 7 days returns the same report (the report cache)"
+elif printf '%s' "$HOME72" | grep -qF "against the same posting within 7 days and you get the same report"; then echo "PASS  / (crawler) says a rescan of the same file against the same posting within 7 days returns the same report (the report cache's key and window)"
+elif printf '%s' "$HOME72" | grep -qF "Rescan the same file within 7 days"; then echo "FAIL  / (crawler) still promises the same report for the same file alone; the cache is keyed on the posting too (review round 2)"
 else echo "FAIL  / (crawler) carries neither reproducibility sentence (the prerender's hero moved?)"; fi
 SECS72=$(printf '%s' "$HOME72" | grep -oE '[0-9]+ seconds' | sort -u | tr '\n' ' ')
 case "$SECS72" in
@@ -76,7 +77,8 @@ case "$SECS72" in
 esac
 LLMS72=$(curl -s -m 30 -A "$UA" "$SITE/llms.txt")
 if printf '%s' "$LLMS72" | grep -qF "same document → same report ID"; then echo "FAIL  llms.txt still says \"reproducible (same document → same report ID)\" with no cache window"
-elif printf '%s' "$LLMS72" | grep -qF "within 7 days returns the same report"; then echo "PASS  llms.txt: a rescan of the same file within 7 days returns the same report"
+elif printf '%s' "$LLMS72" | grep -qF "same job posting within 7 days returns the same report"; then echo "PASS  llms.txt: a rescan of the same file against the same job posting within 7 days returns the same report"
+elif printf '%s' "$LLMS72" | grep -qF "same file within 7 days returns the same report"; then echo "FAIL  llms.txt promises the same report for the same file alone (the cache is keyed on the posting too)"
 else echo "FAIL  llms.txt carries neither sentence (${#LLMS72} bytes)"; fi
 
 # A tool landing as a crawler reads it (its meta description and FAQ come from tool-landings.ts).
@@ -85,7 +87,8 @@ if printf '%s' "$RS72" | grep -qF "in about 20 seconds"; then echo "FAIL  /resum
 elif printf '%s' "$RS72" | grep -qF "within 90 seconds"; then echo "PASS  /resume-score (crawler) states the scan's bound: within 90 seconds"
 else echo "FAIL  /resume-score (crawler) states neither time (${#RS72} bytes)"; fi
 if printf '%s' "$RS72" | grep -qF "Reproducible report ID"; then echo "FAIL  /resume-score (crawler) still promises a reproducible report ID with no window"
-elif printf '%s' "$RS72" | grep -qF "same file within 7 days"; then echo "PASS  /resume-score (crawler) names the 7-day cache window beside the report ID"
+elif printf '%s' "$RS72" | grep -qE "same (file and )?posting within 7 days"; then echo "PASS  /resume-score (crawler) names the posting and the 7-day cache window beside the report ID"
+elif printf '%s' "$RS72" | grep -qF "same file within 7 days"; then echo "FAIL  /resume-score (crawler) names the 7-day window but not the posting the cache is keyed on"
 else echo "FAIL  /resume-score (crawler) carries neither report-ID sentence"; fi
 
 # The bundle the browser loads.
@@ -120,7 +123,8 @@ if [ -z "$IDX72" ]; then echo "FAIL  the main bundle names no Index chunk (front
 else
   IDXB72=$(curl -s -m 30 "$SITE/assets/${IDX72#./}")
   if printf '%s' "$IDXB72" | grep -qF "reproducible on rescan"; then echo "FAIL  the Why-not-ChatGPT card still promises a score reproducible on any rescan"
-  elif printf '%s' "$IDXB72" | grep -qF "days returns the same report"; then echo "PASS  the Why-not-ChatGPT card names the report cache's window"
+  elif printf '%s' "$IDXB72" | grep -qF "against the same posting within"; then echo "PASS  the Why-not-ChatGPT card names the posting and the report cache's window"
+  elif printf '%s' "$IDXB72" | grep -qF "days returns the same report"; then echo "FAIL  the Why-not-ChatGPT card names the window but not the posting the cache is keyed on"
   else echo "FAIL  the Why-not-ChatGPT card carries neither sentence"; fi
   FKR72=$(printf '%s' "$IDXB72" | grep -o '\./FreeKeywordResults-[A-Za-z0-9_-]*\.js' | head -1)
   if [ -z "$FKR72" ]; then echo "FAIL  the Index chunk names no FreeKeywordResults chunk"

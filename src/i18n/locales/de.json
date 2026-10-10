@@ -106,7 +106,7 @@
     },
     "socialFirst": {
       "joinThousands": "Kostenloser Scan · Keine Anmeldung · Ergebnisse innerhalb von {{seconds}} Sekunden",
-      "subheading": "Laden Sie Ihren Lebenslauf hoch und erhalten Sie einen überprüfbaren Score: Scannen Sie dieselbe Datei innerhalb von {{days}} Tagen erneut, erhalten Sie denselben Bericht — verglichen mit echten Scans Ihrer Branche, jedes Zitat verifiziert. Keine Chatbot-Meinung.",
+      "subheading": "Laden Sie Ihren Lebenslauf hoch und erhalten Sie einen überprüfbaren Score: Scannen Sie dieselbe Datei mit derselben Stellenanzeige innerhalb von {{days}} Tagen erneut, erhalten Sie denselben Bericht („Neu analysieren“ erstellt einen neuen) — verglichen mit echten Scans Ihrer Branche, jedes Zitat verifiziert. Keine Chatbot-Meinung.",
       "recentActivityCount": "{{count}} Personen",
       "recentActivityText": "haben in der letzten Stunde ihren Lebenslauf gescannt"
     },
@@ -402,7 +402,7 @@
       },
       "dataStorage": {
         "question": "Speichern Sie meine Lebenslaufdaten?",
-        "answer": "Nur kurz und mit Ablaufdatum. Wenn Sie einen Lebenslauf hochladen oder einfügen, wird sein Text 24 Stunden lang aufbewahrt, damit ein Kauf darauf zugreifen kann, und dann gelöscht. Ihr kostenloser Bericht, der Zeilen aus Ihrem Lebenslauf zitiert, wird 7 Tage lang aufbewahrt, damit dieselbe Datei denselben Bericht erhält, und dann gelöscht. Eine bezahlte Analyse bleibt 90 Tage hinter ihrem privaten Link, sofern Sie sie nicht früher löschen. Länger behalten wir einen Lebenslauf nur, wenn Sie es wünschen: eine Version, die Sie in Ihrem Konto speichern, den Lebenslauf für das Job-Matching oder den Lebenslauf, den Sie dem Bewerbungsagenten geben – er sendet ihn an die Arbeitgeber, bei denen er sich für Sie bewirbt. Wir verkaufen ihn nie. Unsere Vertrauensseite listet jede Kopie und ihre Frist auf."
+        "answer": "Nur kurz und mit Ablaufdatum. Wenn Sie einen Lebenslauf hochladen oder einfügen, wird sein Text 24 Stunden lang aufbewahrt, damit ein Kauf darauf zugreifen kann, und dann gelöscht. Ihr kostenloser Bericht, der Zeilen aus Ihrem Lebenslauf zitiert, wird 7 Tage lang aufbewahrt, damit ein erneuter Scan derselben Datei mit derselben Stellenanzeige denselben Bericht erhält, und dann gelöscht. Eine bezahlte Analyse bleibt 90 Tage hinter ihrem privaten Link, sofern Sie sie nicht früher löschen. Länger behalten wir einen Lebenslauf nur, wenn Sie es wünschen: eine Version, die Sie in Ihrem Konto speichern, den Lebenslauf für das Job-Matching oder den Lebenslauf, den Sie dem Bewerbungsagenten geben – er sendet ihn an die Arbeitgeber, bei denen er sich für Sie bewirbt. Wir verkaufen ihn nie. Unsere Vertrauensseite listet jede Kopie und ihre Frist auf."
       },
       "vsChatGPT": {
         "question": "Warum ist das besser als ChatGPT?",

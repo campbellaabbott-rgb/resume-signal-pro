@@ -106,7 +106,7 @@
     },
     "socialFirst": {
       "joinThousands": "Análise grátis · Sem cadastro · Resultados em até {{seconds}} segundos",
-      "subheading": "Envie seu currículo e receba uma pontuação que você pode conferir: escaneie o mesmo arquivo de novo em até {{days}} dias e receba o mesmo relatório — comparada com escaneamentos reais do seu setor, cada citação verificada. Não é a opinião de um chatbot.",
+      "subheading": "Envie seu currículo e receba uma pontuação que você pode conferir: escaneie o mesmo arquivo com a mesma vaga de novo em até {{days}} dias e receba o mesmo relatório (“Reanalisar” cria um novo) — comparada com escaneamentos reais do seu setor, cada citação verificada. Não é a opinião de um chatbot.",
       "recentActivityCount": "{{count}} pessoas",
       "recentActivityText": "verificaram o currículo na última hora"
     },
@@ -403,7 +403,7 @@
       },
       "dataStorage": {
         "question": "Armazenam os dados do meu currículo?",
-        "answer": "Apenas por pouco tempo, e com prazo. Quando carrega ou cola um currículo, o texto é guardado durante 24 horas para que um pagamento o possa usar, e depois apagado. O seu relatório gratuito, que cita linhas do seu currículo, é guardado durante 7 dias para que o mesmo ficheiro receba o mesmo relatório, e depois apagado. Uma análise paga fica atrás da sua ligação privada durante 90 dias, a menos que a apague antes. Só guardamos um currículo durante mais tempo quando nos pede: uma versão que guarda na sua conta, o currículo que define para a correspondência de vagas ou o CV que entrega ao agente de candidaturas, que o envia aos empregadores a que se candidata por si. Nunca o vendemos. A nossa página de Confiança lista cada cópia e o respetivo prazo."
+        "answer": "Apenas por pouco tempo, e com prazo. Quando carrega ou cola um currículo, o texto é guardado durante 24 horas para que um pagamento o possa usar, e depois apagado. O seu relatório gratuito, que cita linhas do seu currículo, é guardado durante 7 dias para que uma nova análise do mesmo ficheiro com a mesma vaga receba o mesmo relatório, e depois apagado. Uma análise paga fica atrás da sua ligação privada durante 90 dias, a menos que a apague antes. Só guardamos um currículo durante mais tempo quando nos pede: uma versão que guarda na sua conta, o currículo que define para a correspondência de vagas ou o CV que entrega ao agente de candidaturas, que o envia aos empregadores a que se candidata por si. Nunca o vendemos. A nossa página de Confiança lista cada cópia e o respetivo prazo."
       },
       "vsChatGPT": {
         "question": "Porque é isto melhor que o ChatGPT ou modelos de currículo?",

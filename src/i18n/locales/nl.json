@@ -106,7 +106,7 @@
     },
     "socialFirst": {
       "joinThousands": "Gratis scan · Geen aanmelding · Resultaten binnen {{seconds}} seconden",
-      "subheading": "Upload je cv en krijg een score die je kunt controleren: scan hetzelfde bestand binnen {{days}} dagen opnieuw en je krijgt hetzelfde rapport — vergeleken met echte scans in jouw sector, elk citaat geverifieerd. Geen chatbot-mening.",
+      "subheading": "Upload je cv en krijg een score die je kunt controleren: scan hetzelfde bestand met dezelfde vacature binnen {{days}} dagen opnieuw en je krijgt hetzelfde rapport (‘Opnieuw analyseren’ maakt een nieuw) — vergeleken met echte scans in jouw sector, elk citaat geverifieerd. Geen chatbot-mening.",
       "recentActivityCount": "{{count}} mensen",
       "recentActivityText": "hebben hun cv in het afgelopen uur gescand"
     },
@@ -402,7 +402,7 @@
       },
       "dataStorage": {
         "question": "Slaan jullie mijn CV-gegevens op?",
-        "answer": "Alleen kort, en met een vervaldatum. Als je een cv uploadt of plakt, wordt de tekst 24 uur bewaard zodat een betaling hem kan gebruiken, en daarna verwijderd. Je gratis rapport, dat regels uit je cv citeert, wordt 7 dagen bewaard zodat hetzelfde bestand hetzelfde rapport krijgt, en daarna verwijderd. Een betaalde analyse blijft 90 dagen achter de privélink, tenzij je hem eerder verwijdert. Langer bewaren we een cv alleen als jij daarom vraagt: een versie die je in je account opslaat, het cv dat je instelt voor vacaturematching, of het cv dat je aan de sollicitatieagent geeft, die het naar de werkgevers stuurt waar hij namens jou solliciteert. We verkopen het nooit. Onze Vertrouwen-pagina somt elke kopie en de termijn ervan op."
+        "answer": "Alleen kort, en met een vervaldatum. Als je een cv uploadt of plakt, wordt de tekst 24 uur bewaard zodat een betaling hem kan gebruiken, en daarna verwijderd. Je gratis rapport, dat regels uit je cv citeert, wordt 7 dagen bewaard zodat een nieuwe scan van hetzelfde bestand met dezelfde vacature hetzelfde rapport krijgt, en daarna verwijderd. Een betaalde analyse blijft 90 dagen achter de privélink, tenzij je hem eerder verwijdert. Langer bewaren we een cv alleen als jij daarom vraagt: een versie die je in je account opslaat, het cv dat je instelt voor vacaturematching, of het cv dat je aan de sollicitatieagent geeft, die het naar de werkgevers stuurt waar hij namens jou solliciteert. We verkopen het nooit. Onze Vertrouwen-pagina somt elke kopie en de termijn ervan op."
       },
       "vsChatGPT": {
         "question": "Waarom is dit beter dan ChatGPT?",
