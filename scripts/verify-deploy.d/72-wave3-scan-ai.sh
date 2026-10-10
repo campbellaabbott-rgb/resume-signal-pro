@@ -27,8 +27,8 @@ vd72_build() { # $1 fn -> the preflight's x-fn-build header
 }
 for PAIR in \
   "free-keyword-scan|2" "free-keyword-scan-stream|2" "shortlist-evaluate|3" \
-  "generate-application-answers|1" "generate-apply-package|1" "generate-ats-defense|1" \
-  "generate-career-path|1" "generate-career-snapshot|1" "generate-cover-letter|1" \
+  "generate-application-answers|2" "generate-apply-package|2" "generate-ats-defense|1" \
+  "generate-career-path|1" "generate-career-snapshot|1" "generate-cover-letter|2" \
   "generate-cover-letter-stream|1" "generate-graduate-gameplan|1" "generate-interview-coach|1" \
   "generate-keyword-fix|1" "generate-premium-package|2" "generate-premium-package-stream|1" \
   "generate-product-preview|1"; do
