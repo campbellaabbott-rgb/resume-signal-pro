@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { RefreshCw, CheckCircle, AlertTriangle, XCircle, Activity, Database, Zap, CreditCard, ArrowLeft, BarChart3, Clock, FileSearch, AlertOctagon, Mail, ShieldAlert, Ban, DollarSign, Webhook, FileWarning, Bell, Shuffle, Shield, ShieldOff, Timer, Flame, Snowflake, Thermometer, Target } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { adminRpc } from '@/lib/admin-auth';
+import { adminAuthHeaders, adminRpc } from '@/lib/admin-auth';
 import { getAllCircuitStates, resetServiceCircuit } from '@/hooks/use-circuit-breaker';
 import { HealthTrendChart } from '@/components/dashboard/HealthTrendChart';
 import { EmailTrendChart } from '@/components/dashboard/EmailTrendChart';
@@ -503,7 +503,9 @@ function HealthCheckContent() {
     
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
-        const { data: result, error: fnError } = await supabase.functions.invoke('health-check');
+        // The owner's key gets a live probe with each provider's message; a
+        // caller without it gets a minute-old answer with none (S8-061).
+        const { data: result, error: fnError } = await supabase.functions.invoke('health-check', { headers: adminAuthHeaders() });
         
         if (fnError) {
           throw fnError;

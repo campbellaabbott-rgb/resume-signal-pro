@@ -25,7 +25,7 @@ Branch `wave3/email-ops`. Verifier: `scripts/verify-deploy.d/75-wave3-email-ops.
 | S8-049 | fixed | layoff half: 20261009142000 prefixes `layoff-partition-refresh` with `SET statement_timeout = '10min'`. Exit-rollup half already fixed by wave 2 (20261008113000, commit 21aa208b) |
 | S8-051 | fixed (aggregate) | 20261009143000 `cron_http_refusals(minutes)` over `net._http_response`; scan-heartbeat check `cron_http_refusals` fails on any 401/403 in the last hour. Per-job attribution needs request-id logging in every cron command (belongs with S8-050's inventory). check-alerts "blind" half: wave 2 L13-48 |
 | S8-052 | fixed | the saved-search digest claims 25 at a time, starts nothing after 100 s, hands back every claimed-but-unstarted row, and never retries a row inside the run that gave it back; the pulse and agent loops hand back what the clock leaves. Handed-back rows are restored when the run ends (restored at once, 25 of them at the NULLS FIRST head stopped every run); a suppressed or mailbox-less owner keeps the claim's stamp and is looked at again a cadence later |
-| S8-061 | fixed | health-check and scheduled-health-probe run live probes (Stripe, AI, heartbeat write) only for `x-admin-key`, `x-email-cron` or the service role; anonymous health-checks share one live probe per isolate per minute without provider text; an anonymous probe is database-only and writes nothing |
+| S8-061 | fixed | health-check and scheduled-health-probe run live probes (Stripe, AI, heartbeat write) only for `x-admin-key`, `x-email-cron` or the service role; anonymous health-checks share one live probe per isolate per minute without provider text; an anonymous probe is database-only and writes nothing. The owner's /health-check page now sends its stored admin key, so it keeps getting a live probe with each provider's message (without the key it would show the minute-old, message-less answer) |
 | S8-097 | fixed | CompanyClaim holds the `?claim_verify=` token for a press of "Confirm my claim"; nothing is sent on open |
 | S8-098 | already fixed by wave 2 | industry-corrections-digest answers only `isScheduledCaller` (commit 3c3fe0d7) and runs weekly with the cron key (20261008125000) |
 | S8-099 | fixed | 20261009141000 `market_pulse_confirm_unsent` (INVOKER, service_role); send-market-pulse takes back a request whose confirmation Resend refused |
@@ -59,7 +59,7 @@ All `<fn>.2026-10-09.1` (scan-heartbeat body `buildVersion` 2026-10-09.1; track-
 | get-analytics | deploy before or with the frontend (old builds show `pricing:25%` as its own variant) |
 | health-check, scheduled-health-probe | see the owner note on the live probe cron |
 
-Frontend (Lovable publish): ProductSuccess, FreelanceBoost, CompanyClaim, ErrorBoundary, CardErrorBoundary, use-ab-test (+ Hero, FreeKeywordResults call sites), use-scroll-depth, use-time-on-page, nine locales.
+Frontend (Lovable publish): ProductSuccess, FreelanceBoost, CompanyClaim, HealthCheck (publish with or before health-check .10-09, or the dashboard loses its per-service messages), ErrorBoundary, CardErrorBoundary, use-ab-test (+ Hero, FreeKeywordResults call sites), use-scroll-depth, use-time-on-page, nine locales.
 
 ## Migrations, in apply order
 
