@@ -35,11 +35,11 @@ import { checkoutVerdict, verdictBody } from "../_shared/subscription-standing.t
 import { signedInUser } from "../_shared/signed-in-email.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
 import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-start.ts";
-import { checkoutLanguageOf, checkoutOrigin, euConsentRefusal, policyMetadata, renewalTerms, sessionPolicy } from "../_shared/checkout-policy.ts";
+import { checkoutLanguageOf, checkoutOrigin, euConsentAnswer, euConsentRefusal, policyMetadata, renewalTerms, sessionPolicy } from "../_shared/checkout-policy.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-subscription-checkout.2026-10-09.4";
+const FN_BUILD = "create-subscription-checkout.2026-10-09.5";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -81,7 +81,7 @@ serve(async (req) => {
     // The EU/UK switch, off by default: with it on, the buyer must have asked
     // for the service to start inside the withdrawal period.
     const consentMissing = euConsentRefusal(env, "subscription", body);
-    if (consentMissing) return json({ error: "Please tick the box above the button to continue.", consentRequired: consentMissing }, 400);
+    if (consentMissing) return json(euConsentAnswer(consentMissing), 400);
 
     // An account granted the agent by hand already has Pro (the agent includes it).
     if (await manualAgentGrant(supabase, email)) return json({ alreadySubscribed: true, tier: "agent" });

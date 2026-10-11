@@ -6,11 +6,11 @@ import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-star
 import { rememberCheckoutResume, tempResumeIdOf } from "../_shared/checkout-resume-ref.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
 import { accountProStanding, addressProStanding } from "../_shared/pro.ts";
-import { checkoutOrigin, euConsentRefusal, policyMetadata, sessionPolicy } from "../_shared/checkout-policy.ts";
+import { checkoutOrigin, euConsentAnswer, euConsentRefusal, policyMetadata, sessionPolicy } from "../_shared/checkout-policy.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-product-checkout.2026-10-09.2";
+const FN_BUILD = "create-product-checkout.2026-10-09.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -302,7 +302,7 @@ serve(async (req) => {
     const consentMissing = euConsentRefusal(env, "payment", body);
     if (consentMissing) {
       return new Response(
-        JSON.stringify({ error: "Please tick the box above the button to continue.", consentRequired: consentMissing }),
+        JSON.stringify(euConsentAnswer(consentMissing)),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }

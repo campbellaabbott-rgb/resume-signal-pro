@@ -6,11 +6,11 @@ import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-star
 import { clientAddressOr } from "../_shared/client-address.ts";
 import { accountProStanding } from "../_shared/pro.ts";
 import { FULL_ANALYSIS_PRODUCT_NAME, FULL_ANALYSIS_PRODUCT_TYPE } from "../_shared/full-analysis.ts";
-import { checkoutOrigin, euConsentRefusal, policyMetadata, sessionPolicy } from "../_shared/checkout-policy.ts";
+import { checkoutOrigin, euConsentAnswer, euConsentRefusal, euSalesPolicy, policyMetadata, sessionPolicy } from "../_shared/checkout-policy.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-checkout.2026-10-09.2";
+const FN_BUILD = "create-checkout.2026-10-09.3";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -281,6 +281,15 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // THE PAGE ASKS WHETHER THE EU/UK SWITCH IS ON (S11-142): a GET answers
+  // the switch and nothing else, before any limiter or Stripe call, so the
+  // buy buttons can show the box the moment the owner turns it on.
+  if (req.method === "GET") {
+    return new Response(JSON.stringify(euSalesPolicy((k: string) => Deno.env.get(k))), {
+      headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "public, max-age=60" },
+    });
+  }
+
   // Geo-blocking check
   if (isBlockedCountry(req)) {
     const country = getCountryCode(req);
@@ -476,7 +485,7 @@ serve(async (req) => {
     const consentMissing = euConsentRefusal(env, "payment", requestBody);
     if (consentMissing) {
       return new Response(
-        JSON.stringify({ error: "Please tick the box above the button to continue.", consentRequired: consentMissing }),
+        JSON.stringify(euConsentAnswer(consentMissing)),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

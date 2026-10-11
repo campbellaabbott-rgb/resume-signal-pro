@@ -35,6 +35,7 @@ import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harnes
 import { TERMS_VERSION } from "@/config/terms";
 import { TERMS_VERSION as SERVER_TERMS_VERSION } from "../../supabase/functions/_shared/checkout-policy";
 import { SUBSCRIPTIONS } from "@/config/products";
+import en from "../i18n/locales/en.json";
 
 const BUYER = { id: "00000000-0000-4000-8000-0000000c0de1", email: "buyer@example.com" };
 const env: Record<string, string> = {};
@@ -239,5 +240,33 @@ describe("the scan-credit checkout attaches nobody's customer (S8-059)", () => {
     expect(state.customerLists).toEqual([]);
     expect(r.session?.customer).toBeUndefined();
     expect(r.session?.customer_email).toBe("typed@example.com");
+  });
+});
+
+/**
+ * S11-142: the server's switch and the page's build flag could not flip
+ * together. The refusal now names the box and carries its wording, and
+ * create-checkout answers a GET with the switch, so a published page can show
+ * the box the moment the owner turns the secret on.
+ */
+describe("the refusal carries the box, and create-checkout answers the switch (S11-142)", () => {
+  const fill = (s: string) => s.replace("{{days}}", "14");
+  for (const c of CASES) {
+    it(`${c.fn}: a refusal names which box and carries its English wording`, async () => {
+      env.EU_UK_SALES = "on";
+      const refused = await call(c);
+      expect(refused.status).toBe(400);
+      const box = c.mode === "payment" ? "withdrawalWaiver" : "serviceStartConsent";
+      expect(refused.json.consentBox, "the refusal did not say which box").toBe(box);
+      expect(refused.json.consentText, "the refusal did not carry the box's wording").toBe(fill(c.mode === "payment" ? en.purchaseTerms.waiver : en.purchaseTerms.serviceStart));
+    });
+  }
+
+  it("create-checkout answers a GET with the switch, and starts nothing", async () => {
+    const ask = async () => (await handlers["create-checkout"](new Request("https://harness.supabase.co/functions/v1/create-checkout", { method: "GET" }))).json() as Promise<Record<string, unknown>>;
+    expect(await ask()).toMatchObject({ euUkSales: false, withdrawalDays: 14 });
+    env.EU_UK_SALES = "on";
+    expect(await ask(), "the page could not learn that the switch is on").toMatchObject({ euUkSales: true });
+    expect(state.created).toHaveLength(0);
   });
 });

@@ -43,12 +43,12 @@ import {
   PASS_SESSION_HOURS,
 } from "../_shared/pass.ts";
 import { checkoutContextFromRequest, recordCheckoutStart } from "../_shared/checkout-start.ts";
-import { checkoutOrigin, euConsentRefusal, policyMetadata, sessionPolicy } from "../_shared/checkout-policy.ts";
+import { checkoutOrigin, euConsentAnswer, euConsentRefusal, policyMetadata, sessionPolicy } from "../_shared/checkout-policy.ts";
 
 // deploy-stamp: 2026-10-09T13:00Z
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-pass-checkout.2026-09-27.4";
+const FN_BUILD = "create-pass-checkout.2026-09-27.5";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -181,7 +181,7 @@ Deno.serve(async (req) => {
     const body = await req.clone().json().catch(() => ({}));
     const env = (k: string) => Deno.env.get(k);
     const consentMissing = euConsentRefusal(env, "payment", body);
-    if (consentMissing) return json({ error: "Please tick the box above the button to continue.", consentRequired: consentMissing }, 400);
+    if (consentMissing) return json(euConsentAnswer(consentMissing), 400);
     const policy = policyMetadata(body, env);
     // Only our own hosts get the buyer back (S8-060).
     const origin = checkoutOrigin(req.headers.get("origin"), env);

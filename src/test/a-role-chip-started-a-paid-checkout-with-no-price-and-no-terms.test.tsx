@@ -48,9 +48,9 @@ vi.mock("@/lib/resilient-edge-function", async (importOriginal) => {
 });
 
 import { ResumeUploader } from "@/components/ResumeUploader";
-import { purchaseTerms, setPurchaseConsent } from "@/lib/purchase-terms";
+import { purchaseTerms, resetPurchaseTermsForTests } from "@/lib/purchase-terms";
 
-afterEach(() => { cleanup(); eu.on = false; setPurchaseConsent({ withdrawalWaiver: false, serviceStartConsent: false }); });
+afterEach(() => { cleanup(); eu.on = false; resetPurchaseTermsForTests(); });
 
 const RESUME = "Jane Doe\nSenior Data Engineer, Acme Corp, Jan 2020 - Present\n- Built 40 Airflow pipelines moving 2TB a day\n- Cut warehouse spend by $250,000 a year\n";
 
@@ -105,9 +105,13 @@ describe("the role chips under an imported sheet", () => {
   it("with the EU/UK switch on, a ticked box reaches every checkout the uploader starts", async () => {
     eu.on = true;
     const { checkouts, chips } = await mountWithSheet();
-    setPurchaseConsent({ withdrawalWaiver: true });
     for (const chip of chips) fireEvent.click(chip);
-    fireEvent.click(screen.getAllByRole("button").find((b) => /or get the complete analysis/i.test(b.textContent ?? ""))!);
+    const full = screen.getAllByRole("button").find((b) => /or get the complete analysis/i.test(b.textContent ?? ""))!;
+    // The box of the line that covers this button (S11-141: each line holds its own).
+    let block: HTMLElement | null = full.parentElement;
+    while (block && !block.querySelector("input[type=checkbox]")) block = block.parentElement;
+    fireEvent.click(block!.querySelector("input[type=checkbox]")!);
+    fireEvent.click(full);
     expect(checkouts.length).toBeGreaterThan(0);
     for (const c of checkouts) expect(c, "a checkout sent the waiver as unticked after the buyer ticked it").toMatchObject({ withdrawalWaiver: true });
   });

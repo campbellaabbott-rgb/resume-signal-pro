@@ -4,11 +4,11 @@ import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-start.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
-import { checkoutOrigin, euConsentRefusal, policyMetadata, sessionPolicy } from "../_shared/checkout-policy.ts";
+import { checkoutOrigin, euConsentAnswer, euConsentRefusal, policyMetadata, sessionPolicy } from "../_shared/checkout-policy.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-scan-pack-checkout.2026-10-09.2";
+const FN_BUILD = "create-scan-pack-checkout.2026-10-09.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -124,7 +124,7 @@ serve(async (req) => {
     const consentMissing = euConsentRefusal(env, "payment", requestBody);
     if (consentMissing) {
       return new Response(
-        JSON.stringify({ error: "Please tick the box above the button to continue.", consentRequired: consentMissing }),
+        JSON.stringify(euConsentAnswer(consentMissing)),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

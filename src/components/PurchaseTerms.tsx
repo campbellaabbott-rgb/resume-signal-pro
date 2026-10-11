@@ -16,8 +16,10 @@
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { SUBSCRIPTIONS } from "@/config/products";
-import { EU_UK_SALES_ON, WITHDRAWAL_DAYS } from "@/config/eu-consumer";
-import { setPurchaseConsent, termsLineMounted, usePurchaseConsent } from "@/lib/purchase-terms";
+import { WITHDRAWAL_DAYS } from "@/config/eu-consumer";
+import {
+  askServerForEuUkSwitch, serverBoxWording, setPurchaseConsent, termsLineMounted, useEuUkBoxShown, usePurchaseConsent,
+} from "@/lib/purchase-terms";
 import { cn } from "@/lib/utils";
 import { SellerIdentity } from "@/components/SellerIdentity";
 
@@ -53,11 +55,16 @@ function AgreeLine({ text }: { text: string }) {
 
 export function PurchaseTerms({ kind, plan, className }: Props) {
   const { t } = useTranslation();
-  const consent = usePurchaseConsent();
   // While this line is on screen, a press on a button in its block sends the
   // Terms version; it must sit in the same element as the buttons it covers.
+  // Its box is its own (S11-141).
   const ref = useRef<HTMLDivElement>(null);
+  const consent = usePurchaseConsent(ref);
   useEffect(() => termsLineMounted(ref.current), []);
+  // The box shows when the server's switch is on, not only the build's (S11-142).
+  const boxShown = useEuUkBoxShown();
+  useEffect(() => { if (kind !== "signup") askServerForEuUkSwitch(); }, [kind]);
+  const box = kind === "payment" ? "withdrawalWaiver" : "serviceStartConsent";
   const proPrice = `$${SUBSCRIPTIONS.pro.priceUsd}`;
   const agentPrice = `$${SUBSCRIPTIONS.agent.priceUsd}`;
 
@@ -69,18 +76,18 @@ export function PurchaseTerms({ kind, plan, className }: Props) {
       {plan === "agent" && (
         <p>{t("purchaseTerms.agentTrial", { days: SUBSCRIPTIONS.agent.trialDays, price: agentPrice })}</p>
       )}
-      {EU_UK_SALES_ON && kind !== "signup" && (
+      {boxShown && kind !== "signup" && (
         <label className="flex items-start gap-2 text-left">
           <input
             type="checkbox"
             className="mt-0.5"
-            checked={kind === "payment" ? consent.withdrawalWaiver : consent.serviceStartConsent}
-            onChange={(e) => setPurchaseConsent(kind === "payment" ? { withdrawalWaiver: e.target.checked } : { serviceStartConsent: e.target.checked })}
+            checked={consent[box]}
+            onChange={(e) => setPurchaseConsent(ref.current, { [box]: e.target.checked })}
           />
           <span>
             {kind === "payment"
-              ? t("purchaseTerms.waiver", { days: WITHDRAWAL_DAYS })
-              : t("purchaseTerms.serviceStart", { days: WITHDRAWAL_DAYS })}
+              ? t("purchaseTerms.waiver", { days: WITHDRAWAL_DAYS, defaultValue: serverBoxWording(box) })
+              : t("purchaseTerms.serviceStart", { days: WITHDRAWAL_DAYS, defaultValue: serverBoxWording(box) })}
           </span>
         </label>
       )}

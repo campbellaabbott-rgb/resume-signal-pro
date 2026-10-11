@@ -79,13 +79,13 @@ if (!(globalThis as { IntersectionObserver?: unknown }).IntersectionObserver) {
 
 import { FreeKeywordResults } from "@/components/FreeKeywordResults";
 import { PurchaseTerms } from "@/components/PurchaseTerms";
-import { purchaseTerms, setPurchaseConsent } from "@/lib/purchase-terms";
+import { purchaseTerms, resetPurchaseTermsForTests } from "@/lib/purchase-terms";
 
 vi.setConfig(MOUNT_TEST_BUDGET);
 afterEach(() => {
   cleanup();
   eu.on = false;
-  setPurchaseConsent({ withdrawalWaiver: false, serviceStartConsent: false });
+  resetPurchaseTermsForTests();
   sent.length = 0;
 });
 

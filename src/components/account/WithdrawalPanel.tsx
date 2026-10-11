@@ -14,7 +14,8 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Undo2, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { EU_UK_SALES_ON, WITHDRAWAL_DAYS } from "@/config/eu-consumer";
+import { WITHDRAWAL_DAYS } from "@/config/eu-consumer";
+import { askServerForEuUkSwitch, useEuUkBoxShown } from "@/lib/purchase-terms";
 
 type Withdrawn = { subscription: string; refunded: number; currency: string };
 type Outcome =
@@ -38,8 +39,12 @@ export function WithdrawalPanel() {
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   // What the preview found: offer the button, say a plan is not linked, or show nothing.
   const [offer, setOffer] = useState<"withdraw" | "notLinked" | null>(null);
+  // The server's switch counts, not only the build's (S11-142): the owner
+  // turns EU_UK_SALES on after this page is published, without a rebuild.
+  const switchOn = useEuUkBoxShown();
+  useEffect(() => { askServerForEuUkSwitch(); }, []);
   useEffect(() => {
-    if (!EU_UK_SALES_ON) return;
+    if (!switchOn) return;
     let live = true;
     supabase.functions.invoke("withdraw-subscription", { body: { preview: true } })
       .then(({ data, error }) => {
@@ -49,8 +54,8 @@ export function WithdrawalPanel() {
       })
       .catch(() => { /* no preview: no panel */ });
     return () => { live = false; };
-  }, []);
-  if (!EU_UK_SALES_ON || !offer) return null;
+  }, [switchOn]);
+  if (!switchOn || !offer) return null;
 
   const withdraw = async () => {
     if (!window.confirm(t("accountPage.withdraw.confirm"))) return;
