@@ -11169,7 +11169,9 @@ function JobsBoard({ boardId }: { boardId: string }) {
               {/* The catalog turns over daily — "nothing today" is not
                   "nothing ever". Saving the search wires it into the existing
                   alert loop, so the dead end becomes the reason to come back. */}
-              {(q || location || category || company) && (
+              {/* Never for an employer we do not carry: no posting of theirs
+                  will ever arrive to be mailed (S11-020). */}
+              {(q || location || category || company) && !landerUncarried && (
                 <div className="mt-4 pt-3 border-t border-border">
                   <p className="text-xs text-muted-foreground mb-2">
                     {t("jobsPage.zeroAlertHint", "New postings land here every day. Get an email when roles matching this search appear:")}

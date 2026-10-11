@@ -90,6 +90,8 @@ describe("a company page for an employer the board does not carry", () => {
     await waitFor(() => expect(h1(), "the page never said it does not carry the employer").toMatch(/We don.t carry Amazon/), SLOW);
     expect(document.body.textContent, "an employer we never read was said to be not hiring").not.toMatch(/has no open roles/);
     expect(screen.queryByText(/Claim this profile/), "a claim offer on a page for an employer we do not carry").toBeNull();
+    expect(screen.queryByRole("button", { name: /Alert me when this exists/ }), "an alert for postings that can never arrive").toBeNull();
+    expect(screen.queryByRole("button", { name: /^Watch Amazon/ }), "a watch on an employer we do not read").toBeNull();
     await waitFor(() => expect(robots().some((r) => /noindex/.test(r)), `robots: ${robots().join(" | ") || "none"}`).toBe(true), SLOW);
     expect(document.title).not.toMatch(/Is Amazon hiring/);
   });
@@ -99,6 +101,7 @@ describe("a company page for an employer the board does not carry", () => {
     mount("/jobs/company/acme");
     await waitFor(() => expect(document.body.textContent).toMatch(/has no open roles/), SLOW);
     expect(h1()).not.toMatch(/We don.t carry/);
+    expect(screen.queryByRole("button", { name: /^Watch Acme/ }), "the positive control: a carried employer keeps its watch").not.toBeNull();
     expect(robots().some((r) => /noindex/.test(r))).toBe(false);
   });
 });
