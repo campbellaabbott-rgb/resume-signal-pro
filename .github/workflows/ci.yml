@@ -132,6 +132,20 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      # NODE AND THE ROOT DEPS, because one Deno test is a node test too.
+      # layoff-filings/mirror_test.ts runs scripts/layoff-board-names-mirror.mjs
+      # --emit (deno-tests.sh grants --allow-run=node), and that script loads
+      # the catalogue reader and the facet map through tsx. With no install
+      # here the parity test failed on main with "Cannot find module
+      # 'tsx/cjs/api'" (run 38174026636): the check that the deployed mirror
+      # and the operator script write the same names never ran in CI. Same
+      # node pin and install as the other jobs (the --legacy-peer-deps reason
+      # is written above the `test` job's install).
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --legacy-peer-deps
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
