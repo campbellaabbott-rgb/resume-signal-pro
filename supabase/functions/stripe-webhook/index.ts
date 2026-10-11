@@ -27,7 +27,8 @@ import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
 // change -- nothing wrote it before, so a new subscriber read as inactive.
 import { checkProByEmail, PRO_PRODUCT_NAME } from "../_shared/pro.ts";
 // The mail a new subscriber is owed: terms, cancellation, the trial's end.
-import { NOTICE_FROM, NOTICE_SENDER_DOMAIN, noticeKey, noticeMail, WITHDRAWAL_DAYS, type NoticeFacts, type NoticeKind } from "../_shared/subscription-notice.ts";
+import { noticeMail, sendLegalNotice, WITHDRAWAL_CANCEL_COMMENT, WITHDRAWAL_DAYS, type NoticeFacts, type NoticeKind } from "../_shared/subscription-notice.ts";
+import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 import { euUkSalesOn } from "../_shared/checkout-policy.ts";
 import { inWithdrawalTerritory } from "../_shared/withdrawal.ts";
 // Who paid, as Stripe recorded it: customer_details first (anonymous buyers).
@@ -42,7 +43,7 @@ import { resumeSessionForCheckout } from "../_shared/checkout-resume-ref.ts";
 
 // Provable from outside without a purchase or a signature: every response,
 // the 405 a GET receives included, carries this in x-fn-build.
-const FN_BUILD = "stripe-webhook.2026-10-09.4";
+const FN_BUILD = "stripe-webhook.2026-10-09.5";
 const BUILD_HEADER = { "x-fn-build": FN_BUILD };
 
 // Declare EdgeRuntime for background tasks
@@ -318,15 +319,6 @@ async function grantAgentPass(session: Stripe.Checkout.Session, supabase: Supaba
 }
 
 /**
- * SEND A SUBSCRIPTION NOTICE ONCE (wave 3; Cal. B&P 17602; the notices are
- * described in _shared/subscription-notice.ts). The ledger row is claimed
- * first, so a redelivered event, or the trial event arriving twice, sends
- * nothing more; the mail goes into the transactional queue the drip uses,
- * marked legal_notice so a drip unsubscribe does not drop it (a bounce does). A
- * claim whose enqueue fails is given back and the error thrown, so the
- * handler answers 500 and Stripe redelivers the event.
- */
-/**
  * A PROMOTION ON THE PLAN (the plan checkouts allow promotion codes): the
  * first charge Stripe computed (the paid first invoice, or a trial's upcoming
  * one) and how long the discount lasts. Null when the plan has none or it
@@ -356,6 +348,16 @@ async function promotionOf(stripe: Stripe, sub: Stripe.Subscription, listAmount:
   return { amount: first, until: !forever && until ? new Date(until * 1000).toISOString() : null, forever };
 }
 
+/**
+ * SEND A SUBSCRIPTION NOTICE ONCE (wave 3; Cal. B&P 17602; the notices are
+ * described in _shared/subscription-notice.ts). Sent directly through Resend
+ * with the notice's idempotency key and recorded only after a 2xx (S11-053;
+ * owner decision 2026-10-11): the queue is not used for them. A notice the
+ * ledger records as sent is not sent again; a send that fails records nothing
+ * and throws, so the handler answers 500 and Stripe redelivers the event.
+ * Every figure is read from Stripe, never from the clock, so a redelivery
+ * sends Resend the same mail under the same key.
+ */
 async function sendSubscriptionNotice(
   // deno-lint-ignore no-explicit-any
   supabase: SupabaseClient<any, any, any>,
@@ -365,9 +367,15 @@ async function sendSubscriptionNotice(
   email: string | null,
   /** The billing country the checkout collected: the 14-day paragraph is for EU/EEA/UK buyers only. */
   buyerCountry: string | null = null,
-): Promise<"queued" | "already" | "skipped"> {
+): Promise<"sent" | "already" | "skipped" | "suppressed"> {
   const price = sub.items?.data?.[0]?.price;
   if (!email || !price || typeof price.unit_amount !== "number") return "skipped";
+  // Already sent: nothing to compute and no Stripe call to spend.
+  const { data: prior } = await supabase.from("subscription_notices")
+    .select("sent_at").eq("subscription_id", sub.id).eq("kind", kind).maybeSingle();
+  if (prior?.sent_at) return "already";
+  // The withdrawal period runs from the day the plan began, not from this delivery.
+  const startedMs = Number(sub.start_date ?? sub.created) * 1000;
   const promo = await promotionOf(stripe, sub, price.unit_amount);
   const trialEnd = sub.status === "trialing" && sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null;
   if (kind === "trial_ending" && !trialEnd) return "skipped";
@@ -382,40 +390,49 @@ async function sendSubscriptionNotice(
     accountUrl: "https://resumebooster.work/account",
     portalLoginUrl: /^https:\/\/billing\.stripe\.com\//.test(loginUrl) ? loginUrl : null,
     withdrawal: kind === "confirmation" && euUkSalesOn(env) && inWithdrawalTerritory(buyerCountry)
-      ? { until: new Date(Date.now() + WITHDRAWAL_DAYS * 86_400_000).toISOString(), contact: env("SUPPORT_EMAIL") ?? "resumeboostersupp@gmail.com" }
+      ? { until: new Date((Number.isFinite(startedMs) && startedMs > 0 ? startedMs : Date.now()) + WITHDRAWAL_DAYS * 86_400_000).toISOString(), contact: env("SUPPORT_EMAIL") ?? "resumeboostersupp@gmail.com" }
       : null,
     promo,
   });
-  const { error: claimError } = await supabase.from("subscription_notices").insert({ subscription_id: sub.id, kind, email });
-  if (claimError) {
-    if (claimError.code === "23505") return "already";
-    throw new Error(`subscription_notices: ${claimError.message}`);
-  }
-  const { error: enqueueError } = await supabase.rpc("enqueue_email_delayed", {
-    queue_name: "transactional_emails",
-    payload: {
-      message_id: crypto.randomUUID(),
-      idempotency_key: noticeKey(sub.id, kind),
-      to: email,
-      from: NOTICE_FROM,
-      sender_domain: NOTICE_SENDER_DOMAIN,
-      subject: mail.subject,
-      html: mail.html,
-      text: mail.text,
-      purpose: "transactional",
-      label: kind === "confirmation" ? "subscription-confirmation" : "trial-ending",
-      // Required by law: the queue sends it past a drip unsubscribe.
-      legal_notice: true,
-      queued_at: new Date().toISOString(),
-    },
-    delay_seconds: 0,
+  const sent = await sendLegalNotice(supabase, {
+    subscriptionId: sub.id, kind, to: email, mail,
+    apiKey: env("RESEND_API_KEY"), replyTo: CUSTOMER_REPLY_TO,
   });
-  if (enqueueError) {
-    await supabase.from("subscription_notices").delete().eq("subscription_id", sub.id).eq("kind", kind);
-    throw new Error(`enqueue_email_delayed: ${enqueueError.message}`);
+  if (sent.outcome === "failed") throw new Error(`subscription notice not sent (${sent.status}): ${sent.error}`);
+  if (sent.outcome === "suppressed") {
+    logStep("Subscription notice not sent: the address bounced or complained", { kind, subscription: sub.id, reason: sent.reason });
+    return "suppressed";
   }
-  logStep("Subscription notice queued", { kind, subscription: sub.id });
-  return "queued";
+  logStep(sent.outcome === "sent" ? "Subscription notice sent" : "Subscription notice already sent", { kind, subscription: sub.id });
+  return sent.outcome;
+}
+
+/**
+ * A WITHDRAWAL'S ACKNOWLEDGEMENT, WHEN ITS FIRST SEND FAILED (S11-053).
+ * withdraw-subscription writes the mail into the ledger (pending_mail) before
+ * it cancels the plan, then sends it. The cancel makes Stripe send
+ * customer.subscription.deleted, and Stripe redelivers that event until it is
+ * answered 2xx: so a pending acknowledgement is sent here, and a failure
+ * throws for a redelivery. Only a plan the withdrawal itself cancelled (its
+ * comment) is acknowledged.
+ */
+async function sendPendingWithdrawal(
+  // deno-lint-ignore no-explicit-any
+  supabase: SupabaseClient<any, any, any>,
+  sub: Stripe.Subscription,
+): Promise<void> {
+  const comment = (sub as unknown as { cancellation_details?: { comment?: string | null } }).cancellation_details?.comment ?? "";
+  if (comment !== WITHDRAWAL_CANCEL_COMMENT) return;
+  const { data: row } = await supabase.from("subscription_notices")
+    .select("email, sent_at, pending_mail").eq("subscription_id", sub.id).eq("kind", "withdrawal").maybeSingle();
+  const mail = row?.pending_mail as { subject?: unknown; html?: unknown; text?: unknown } | null | undefined;
+  if (!row || row.sent_at || !mail || typeof mail.subject !== "string" || typeof mail.html !== "string" || typeof mail.text !== "string") return;
+  const sent = await sendLegalNotice(supabase, {
+    subscriptionId: sub.id, kind: "withdrawal", to: String(row.email), mail: { subject: mail.subject, html: mail.html, text: mail.text },
+    apiKey: Deno.env.get("RESEND_API_KEY"), replyTo: CUSTOMER_REPLY_TO,
+  });
+  if (sent.outcome === "failed") throw new Error(`withdrawal acknowledgement not sent (${sent.status}): ${sent.error}`);
+  logStep("Pending withdrawal acknowledgement", { subscription: sub.id, outcome: sent.outcome });
 }
 
 /** The id of a Stripe reference that may arrive expanded or as a bare id. */
@@ -1105,7 +1122,7 @@ serve(async (req) => {
             } catch (err) {
               processingError = String(err).slice(0, 500);
               mustRetry = true;
-              logStep("Subscription confirmation not queued; Stripe will redeliver", { subscription: subId, error: processingError });
+              logStep("Subscription confirmation not sent; Stripe will redeliver", { subscription: subId, error: processingError });
             }
           }
         }
@@ -1353,6 +1370,17 @@ serve(async (req) => {
       case "customer.subscription.updated":
       case "customer.subscription.deleted": {
         const sub = event.data.object as Stripe.Subscription;
+        // A withdrawal's acknowledgement whose first send failed (S11-053):
+        // a failure answers 500 so Stripe redelivers this event.
+        if (event.type === "customer.subscription.deleted") {
+          try {
+            await sendPendingWithdrawal(supabase, sub);
+          } catch (err) {
+            processingError = String(err).slice(0, 500);
+            mustRetry = true;
+            logStep("Withdrawal acknowledgement not sent; Stripe will redeliver", { sub: sub.id, error: processingError });
+          }
+        }
         // A subscription event carries no email, only a customer reference.
         await refreshProEntitlement(
           stripe, supabase,
@@ -1391,7 +1419,7 @@ serve(async (req) => {
         } catch (err) {
           processingError = String(err).slice(0, 500);
           mustRetry = true;
-          logStep("Trial reminder not queued; Stripe will redeliver", { sub: sub.id, error: processingError });
+          logStep("Trial reminder not sent; Stripe will redeliver", { sub: sub.id, error: processingError });
         }
         break;
       }

@@ -13,8 +13,16 @@
  *     Stripe sends three days before a trial ends (an event the owner adds to
  *     the endpoint): the date and amount of the first charge and how to
  *     cancel before it. Not sent for a trial already set to cancel.
- * Both go through the existing transactional queue (enqueue_email_delayed,
- * process-email-queue), like the fix-plan drip.
+ * SENT DIRECTLY, RECORDED ONLY AFTER RESEND ACCEPTED IT (S11-053; owner
+ * decision 2026-10-11). They went through the transactional queue and the
+ * ledger row was written when the mail was QUEUED. Production had no drain,
+ * a restored drain dead-letters a mail after 60 minutes or five failures, and
+ * the queue's sender domain had no DNS: the notices were lost for good while
+ * the ledger said each went once. Now sendLegalNotice (below) sends each
+ * through Resend, the path and key paid deliveries use, with an idempotency
+ * key, and writes sent_at only after a 2xx. A send that fails records
+ * nothing: the webhook answers 500 and Stripe redelivers the event, and
+ * Resend's idempotency key keeps a redelivery from mailing twice.
  *
  * Every figure is read from the subscription Stripe holds, never typed. A
  * promotion code (the plan checkouts allow them) changes what the buyer pays:
@@ -138,5 +146,107 @@ export function withdrawalMail(f: {
   return { subject: `Your withdrawal from ${f.planName}`, text, html };
 }
 
-/** The idempotency key the queue and the ledger share. */
+/** The idempotency key Resend and the ledger share. */
 export const noticeKey = (subscriptionId: string, kind: NoticeKind) => `sub-notice:${subscriptionId}:${kind}`;
+
+/** The cancellation comment a 14-day withdrawal leaves on the plan (withdraw-subscription). */
+export const WITHDRAWAL_CANCEL_COMMENT = "EU/UK 14-day withdrawal";
+
+/** The label each notice is logged under (email_send_log.template_name). */
+export const NOTICE_LABEL: Readonly<Record<NoticeKind, string>> = {
+  confirmation: "subscription-confirmation",
+  trial_ending: "trial-ending",
+  withdrawal: "subscription-withdrawal",
+};
+
+/** Where Resend takes a mail: the same API and key send-product-email uses for paid deliveries. */
+export const RESEND_EMAILS_URL = "https://api.resend.com/emails";
+const RESEND_TIMEOUT_MS = 15_000;
+
+export type LegalNoticeOutcome =
+  | { outcome: "sent"; id: string | null }
+  | { outcome: "already" }
+  | { outcome: "suppressed"; reason: string }
+  | { outcome: "failed"; status: number; error: string };
+
+type NoticeDb = {
+  // deno-lint-ignore no-explicit-any
+  from: (t: string) => any;
+};
+
+/**
+ * SEND ONE LEGAL NOTICE NOW, AND RECORD IT ONLY AFTER RESEND ACCEPTED IT.
+ *
+ *   1. A notice the ledger already records as sent is not sent again.
+ *   2. A bounced or complained address gets nothing (as the queue did); an
+ *      unsubscribe from the drip does not stop a notice the law requires.
+ *   3. Resend is called with the notice's idempotency key, so a retry of a
+ *      send that went through (its record failed, or Stripe redelivered)
+ *      returns the first answer instead of a second mail.
+ *   4. Only a 2xx writes sent_at. A row a withdrawal left waiting (its mail in
+ *      pending_mail) is stamped; otherwise one is inserted.
+ * Never throws: every failure is an outcome the caller acts on.
+ */
+export async function sendLegalNotice(
+  db: NoticeDb,
+  n: {
+    subscriptionId: string;
+    kind: NoticeKind;
+    to: string;
+    mail: { subject: string; html: string; text: string };
+    apiKey: string | undefined;
+    replyTo: string;
+    fetchImpl?: typeof fetch;
+  },
+): Promise<LegalNoticeOutcome> {
+  const to = n.to.trim().toLowerCase();
+  const label = NOTICE_LABEL[n.kind];
+  try {
+    const { data: prior, error: readError } = await db.from("subscription_notices")
+      .select("sent_at").eq("subscription_id", n.subscriptionId).eq("kind", n.kind).maybeSingle();
+    if (readError) return { outcome: "failed", status: 0, error: `subscription_notices read: ${String(readError.message ?? readError).slice(0, 160)}` };
+    if (prior?.sent_at) return { outcome: "already" };
+
+    const { data: suppressed } = await db.from("suppressed_emails").select("reason").eq("email", to).maybeSingle();
+    if (suppressed && suppressed.reason !== "unsubscribe") {
+      await db.from("email_send_log").insert({ message_id: noticeKey(n.subscriptionId, n.kind), template_name: label, recipient_email: to, status: "suppressed" });
+      return { outcome: "suppressed", reason: String(suppressed.reason ?? "suppressed") };
+    }
+
+    if (!n.apiKey) return { outcome: "failed", status: 0, error: "RESEND_API_KEY is not set" };
+    let res: Response;
+    try {
+      res = await (n.fetchImpl ?? fetch)(RESEND_EMAILS_URL, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${n.apiKey}`,
+          "Content-Type": "application/json",
+          "Idempotency-Key": noticeKey(n.subscriptionId, n.kind),
+        },
+        body: JSON.stringify({ from: NOTICE_FROM, to: [to], reply_to: n.replyTo, subject: n.mail.subject, html: n.mail.html, text: n.mail.text }),
+        signal: AbortSignal.timeout(RESEND_TIMEOUT_MS),
+      });
+    } catch (e) {
+      return { outcome: "failed", status: 0, error: `resend unreachable: ${String(e instanceof Error ? e.message : e).slice(0, 160)}` };
+    }
+    const body = await res.json().catch(() => null) as { id?: unknown; message?: unknown; name?: unknown } | null;
+    if (res.status < 200 || res.status >= 300) {
+      return { outcome: "failed", status: res.status, error: String(body?.message ?? body?.name ?? `resend answered ${res.status}`).slice(0, 200) };
+    }
+    const id = typeof body?.id === "string" ? body.id : null;
+    const stamp = { sent_at: new Date().toISOString(), provider_message_id: id };
+    const { error: recordError } = prior
+      ? await db.from("subscription_notices").update({ ...stamp, pending_mail: null }).eq("subscription_id", n.subscriptionId).eq("kind", n.kind)
+      : await db.from("subscription_notices").insert({ subscription_id: n.subscriptionId, kind: n.kind, email: to, ...stamp });
+    // 23505: a concurrent delivery recorded the same send (Resend answered
+    // both from one idempotency key). Anything else is retried, and the
+    // retry's send is answered from that key, not mailed again.
+    if (recordError && recordError.code !== "23505") {
+      return { outcome: "failed", status: res.status, error: `sent but not recorded: ${String(recordError.message ?? recordError).slice(0, 160)}` };
+    }
+    await db.from("email_send_log").insert({ message_id: noticeKey(n.subscriptionId, n.kind), template_name: label, recipient_email: to, status: "sent" });
+    return { outcome: "sent", id };
+  } catch (e) {
+    return { outcome: "failed", status: 0, error: String(e instanceof Error ? e.message : e).slice(0, 200) };
+  }
+}

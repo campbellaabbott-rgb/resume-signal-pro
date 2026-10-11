@@ -38,6 +38,7 @@ const ENV: Record<string, string> = {
   SUPABASE_URL: "https://harness.supabase.co",
   SUPABASE_SERVICE_ROLE_KEY: "service_harness",
   SUPABASE_ANON_KEY: "anon_harness",
+  RESEND_API_KEY: "re_harness",
 };
 const DAY = 86_400;
 const NOW = Math.floor(Date.now() / 1000);
@@ -65,6 +66,9 @@ let handler: EdgeHandler;
 let db: FakeDb;
 let queued: Array<Record<string, any>>;
 let enqueueFails: boolean;
+/** What Resend was handed (S11-053: legal notices go directly, never through the queue). */
+let mails: Array<Record<string, any>>;
+const resend = { status: 200, keys: [] as string[], bodies: [] as string[] };
 let conversions: Array<Record<string, unknown>>;
 
 beforeAll(async () => {
@@ -72,6 +76,15 @@ beforeAll(async () => {
   g.Deno = { env: { get: (k: string) => ENV[k] } };
   g.EdgeRuntime = { waitUntil: (p: Promise<unknown>) => { Promise.resolve(p).catch(() => undefined); } };
   g.__noticeWorld = world;
+  g.fetch = async (input: string | URL | Request, init?: RequestInit) => {
+    const url = String(input instanceof Request ? input.url : input);
+    if (url !== "https://api.resend.com/emails") return new Response("{}", { status: 200 });
+    resend.keys.push(String((init?.headers as Record<string, string>)["Idempotency-Key"]));
+    resend.bodies.push(String(init?.body));
+    if (resend.status !== 200) return new Response(JSON.stringify({ message: "provider down" }), { status: resend.status });
+    mails.push(JSON.parse(String(init?.body)));
+    return new Response(JSON.stringify({ id: `re_${mails.length}` }), { status: 200 });
+  };
   handler = await loadEdgeHandler("stripe-webhook", {
     "https://deno.land/std@0.190.0/http/server.ts": "export function serve(h) { globalThis.__edgeHandler = h; }",
     "https://esm.sh/stripe@18.5.0": STRIPE_STUB,
@@ -85,6 +98,10 @@ beforeEach(() => {
   world.previews = {};
   world.customers = { cus_1: { id: "cus_1", email: "subscriber@example.com" } };
   queued = [];
+  mails = [];
+  resend.status = 200;
+  resend.keys = [];
+  resend.bodies = [];
   conversions = [];
   enqueueFails = false;
   db = new FakeDb({ used_stripe_sessions: ["session_id"] });
@@ -143,10 +160,10 @@ describe("the confirmation a new subscriber is owed", () => {
     world.subs.sub_agent = sub("sub_agent", SUBSCRIPTIONS.agent.priceUsd * 100, { status: "trialing", trial_end: trialEnd });
     const event = completed("sub_agent", { payment_status: "no_payment_required", amount_total: 0, metadata: { product_type: "apply_agent" } });
     expect(await deliver("checkout.session.completed", event)).toBe(200);
-    expect(queued).toHaveLength(1);
-    const p = queued[0].payload;
-    expect(queued[0].queue_name).toBe("transactional_emails");
-    expect(p.to).toBe("subscriber@example.com");
+    expect(mails).toHaveLength(1);
+    const p = mails[0];
+    expect(queued, "a legal notice went into the queue").toHaveLength(0);
+    expect(p.to).toEqual(["subscriber@example.com"]);
     expect(p.text).toContain(`Your free trial ends on ${day(trialEnd)}`);
     expect(p.text).toContain(`you will be charged $${SUBSCRIPTIONS.agent.priceUsd}.00 on ${day(trialEnd)}`);
     expect(p.text).toContain("renewing automatically until you cancel");
@@ -154,24 +171,24 @@ describe("the confirmation a new subscriber is owed", () => {
     expect(p.text).toContain("https://resumebooster.work/account");
     expect(p.text).not.toMatch(/refund/i);
     expect(await deliver("checkout.session.completed", event)).toBe(200);
-    expect(queued, "a redelivered event mailed again").toHaveLength(1);
+    expect(mails, "a redelivered event mailed again").toHaveLength(1);
   });
 
   it("a Pro subscriber is told the price and that it renews until cancelled", async () => {
     world.subs.sub_pro = sub("sub_pro", SUBSCRIPTIONS.pro.priceUsd * 100);
     expect(await deliver("checkout.session.completed", completed("sub_pro"))).toBe(200);
-    expect(queued).toHaveLength(1);
-    expect(queued[0].payload.text).toContain(`You are charged $${SUBSCRIPTIONS.pro.priceUsd}.00 every month. The subscription renews automatically until you cancel.`);
+    expect(mails).toHaveLength(1);
+    expect(mails[0].text).toContain(`You are charged $${SUBSCRIPTIONS.pro.priceUsd}.00 every month. The subscription renews automatically until you cancel.`);
   });
 
-  it("a queue that refuses gives the claim back and asks Stripe to redeliver; the redelivery sends it", async () => {
+  it("a send Resend refuses records nothing and asks Stripe to redeliver; the redelivery sends it", async () => {
     world.subs.sub_pro = sub("sub_pro", SUBSCRIPTIONS.pro.priceUsd * 100);
-    enqueueFails = true;
+    resend.status = 500;
     expect(await deliver("checkout.session.completed", completed("sub_pro"))).toBe(500);
     expect(db.rows("subscription_notices")).toHaveLength(0);
-    enqueueFails = false;
+    resend.status = 200;
     expect(await deliver("checkout.session.completed", completed("sub_pro"))).toBe(200);
-    expect(queued).toHaveLength(1);
+    expect(mails).toHaveLength(1);
   });
 
   it("a referred Pro sale is recorded at $0, since the affiliate page promises nothing for it", async () => {
@@ -190,7 +207,7 @@ describe("a subscriber who used a promotion code", () => {
     const until = NOW + 90 * DAY;
     world.subs.sub_pro = sub("sub_pro", SUBSCRIPTIONS.pro.priceUsd * 100, { ...promo("repeating", until), latest_invoice: { id: "in_1", amount_paid: 2250 } });
     expect(await deliver("checkout.session.completed", completed("sub_pro", { amount_total: 2250 }))).toBe(200);
-    const text = queued[0].payload.text as string;
+    const text = mails[0].text as string;
     expect(text).toContain("Your first charge, with your promotion, is $22.50.");
     expect(text).toContain(`$22.50 every month with your promotion until ${day(until)}, then $${SUBSCRIPTIONS.pro.priceUsd}.00 every month`);
     expect(text, "the notice stated the list price as the charge").not.toContain(`You are charged $${SUBSCRIPTIONS.pro.priceUsd}.00 every month.`);
@@ -199,7 +216,7 @@ describe("a subscriber who used a promotion code", () => {
   it("a code that covers the first charge says it is free, then the list price", async () => {
     world.subs.sub_pro = sub("sub_pro", SUBSCRIPTIONS.pro.priceUsd * 100, { ...promo("once", null), latest_invoice: { id: "in_1", amount_paid: 0 } });
     expect(await deliver("checkout.session.completed", completed("sub_pro", { amount_total: 0 }))).toBe(200);
-    expect(queued[0].payload.text).toContain(`Your first charge, with your promotion, is $0.00. After it you are charged $${SUBSCRIPTIONS.pro.priceUsd}.00 every month.`);
+    expect(mails[0].text).toContain(`Your first charge, with your promotion, is $0.00. After it you are charged $${SUBSCRIPTIONS.pro.priceUsd}.00 every month.`);
   });
 
   it("a trial's reminder names the discounted first charge Stripe will take", async () => {
@@ -209,7 +226,7 @@ describe("a subscriber who used a promotion code", () => {
     world.previews.sub_agent = SUBSCRIPTIONS.agent.priceUsd * 50;
     expect(await deliver("customer.subscription.trial_will_end", s)).toBe(200);
     const half = (SUBSCRIPTIONS.agent.priceUsd / 2).toFixed(2);
-    expect(queued[0].payload.text).toContain(`you will be charged $${half} with your promotion on that day, and then $${half} every month (your promotion) until you cancel`);
+    expect(mails[0].text).toContain(`you will be charged $${half} with your promotion on that day, and then $${half} every month (your promotion) until you cancel`);
   });
 });
 
@@ -220,16 +237,80 @@ describe("the reminder three days before a trial ends", () => {
     world.subs.sub_agent = s;
     expect(await deliver("customer.subscription.trial_will_end", s)).toBe(200);
     expect(await deliver("customer.subscription.trial_will_end", s)).toBe(200);
-    expect(queued).toHaveLength(1);
-    expect(queued[0].payload.subject).toContain(day(trialEnd));
-    expect(queued[0].payload.text).toContain(`you will be charged $${SUBSCRIPTIONS.agent.priceUsd}.00 on that day`);
-    expect(queued[0].payload.text).toContain("cancel before the trial ends");
+    expect(mails).toHaveLength(1);
+    expect(mails[0].subject).toContain(day(trialEnd));
+    expect(mails[0].text).toContain(`you will be charged $${SUBSCRIPTIONS.agent.priceUsd}.00 on that day`);
+    expect(mails[0].text).toContain("cancel before the trial ends");
   });
 
   it("is not sent for a trial already set to cancel", async () => {
     const s = sub("sub_agent", SUBSCRIPTIONS.agent.priceUsd * 100, { status: "trialing", trial_end: NOW + 3 * DAY, cancel_at_period_end: true });
     expect(await deliver("customer.subscription.trial_will_end", s)).toBe(200);
-    expect(queued).toHaveLength(0);
+    expect(mails).toHaveLength(0);
+  });
+});
+
+/**
+ * S11-053 (owner decision 2026-10-11). The notice's ledger row was written
+ * when the mail was QUEUED; production had no drain, so the notice was lost
+ * while the ledger said sent, and a redelivery found the row and sent nothing.
+ * Now: directly through Resend with the notice's idempotency key, recorded
+ * only after a 2xx, never queued.
+ */
+describe("a legal notice is sent directly and recorded only after Resend accepted it (S11-053)", () => {
+  it("goes to Resend with its idempotency key, never to the queue, and the ledger stamps the send", async () => {
+    world.subs.sub_pro = sub("sub_pro", SUBSCRIPTIONS.pro.priceUsd * 100);
+    expect(await deliver("checkout.session.completed", completed("sub_pro"))).toBe(200);
+    expect(queued, "a legal notice went into the queue").toHaveLength(0);
+    expect(resend.keys).toEqual(["sub-notice:sub_pro:confirmation"]);
+    const row = db.rows("subscription_notices").find((r) => r.subscription_id === "sub_pro");
+    expect(row?.sent_at, "the ledger did not record when Resend accepted it").toBeTruthy();
+    expect(row?.provider_message_id).toBe("re_1");
+  });
+
+  it("while Resend refuses, the ledger holds nothing that says sent, and every redelivery tries again", async () => {
+    world.subs.sub_pro = sub("sub_pro", SUBSCRIPTIONS.pro.priceUsd * 100);
+    resend.status = 403;
+    expect(await deliver("checkout.session.completed", completed("sub_pro"))).toBe(500);
+    expect(await deliver("checkout.session.completed", completed("sub_pro"))).toBe(500);
+    expect(db.rows("subscription_notices").filter((r) => r.sent_at), "a refused send was recorded as sent").toHaveLength(0);
+    expect(resend.keys, "the redelivery found a row and sent nothing").toHaveLength(2);
+  });
+
+  it("a send whose record failed is retried with the same key and the same mail, so Resend answers it once", async () => {
+    world.subs.sub_pro = sub("sub_pro", SUBSCRIPTIONS.pro.priceUsd * 100);
+    db.faults.push({ table: "subscription_notices", op: "insert", error: { message: "connection reset" } });
+    expect(await deliver("checkout.session.completed", completed("sub_pro"))).toBe(500);
+    expect(await deliver("checkout.session.completed", completed("sub_pro"))).toBe(200);
+    expect(resend.keys).toEqual(["sub-notice:sub_pro:confirmation", "sub-notice:sub_pro:confirmation"]);
+    expect(resend.bodies[1], "the retry sent Resend a different mail under the same key").toBe(resend.bodies[0]);
+  });
+
+  it("an address that bounced gets nothing; one that left the drip still gets the notice", async () => {
+    world.subs.sub_pro = sub("sub_pro", SUBSCRIPTIONS.pro.priceUsd * 100);
+    db.rows("suppressed_emails").push({ email: "subscriber@example.com", reason: "bounce" });
+    expect(await deliver("checkout.session.completed", completed("sub_pro"))).toBe(200);
+    expect(resend.keys).toHaveLength(0);
+    db.tables.suppressed_emails = [{ email: "subscriber@example.com", reason: "unsubscribe" }];
+    world.subs.sub_two = sub("sub_two", SUBSCRIPTIONS.pro.priceUsd * 100);
+    expect(await deliver("checkout.session.completed", completed("sub_two"))).toBe(200);
+    expect(resend.keys).toEqual(["sub-notice:sub_two:confirmation"]);
+  });
+
+  it("a withdrawal acknowledgement left waiting is sent on the deletion event, and only for a plan the withdrawal cancelled", async () => {
+    const waiting = { subject: "Your withdrawal from Resume Booster Pro", html: "<p>h</p>", text: "We received your withdrawal." };
+    db.rows("subscription_notices").push({ subscription_id: "sub_w", kind: "withdrawal", email: "subscriber@example.com", sent_at: null, pending_mail: waiting });
+    world.subs.sub_w = sub("sub_w", SUBSCRIPTIONS.pro.priceUsd * 100, { status: "canceled" });
+    expect(await deliver("customer.subscription.deleted", { ...world.subs.sub_w, cancellation_details: { comment: "cancelled by the customer" } })).toBe(200);
+    expect(resend.keys, "an ordinary cancellation was sent a withdrawal acknowledgement").toHaveLength(0);
+    resend.status = 503;
+    expect(await deliver("customer.subscription.deleted", { ...world.subs.sub_w, cancellation_details: { comment: "EU/UK 14-day withdrawal" } })).toBe(500);
+    resend.status = 200;
+    expect(await deliver("customer.subscription.deleted", { ...world.subs.sub_w, cancellation_details: { comment: "EU/UK 14-day withdrawal" } })).toBe(200);
+    expect(mails.map((m) => m.text)).toEqual(["We received your withdrawal."]);
+    const row = db.rows("subscription_notices").find((r) => r.subscription_id === "sub_w");
+    expect(row?.sent_at).toBeTruthy();
+    expect(row?.pending_mail ?? null).toBeNull();
   });
 });
 

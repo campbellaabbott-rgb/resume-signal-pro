@@ -34,10 +34,11 @@ import { AGENT_PRODUCT_NAME, isAgentPriced, subscriptionBuyer } from "../_shared
 import { listAll } from "../_shared/stripe-paging.ts";
 import { bearerOf } from "../_shared/service-caller.ts";
 import { euUkSalesOn } from "../_shared/checkout-policy.ts";
-import { NOTICE_FROM, NOTICE_SENDER_DOMAIN, noticeKey, withdrawalMail } from "../_shared/subscription-notice.ts";
+import { sendLegalNotice, WITHDRAWAL_CANCEL_COMMENT, withdrawalMail } from "../_shared/subscription-notice.ts";
+import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 import { buyerCountryOf, inWithdrawalTerritory, serviceStartRequested, withdrawalRefundCents, withinWithdrawalPeriod } from "../_shared/withdrawal.ts";
 
-const FN_BUILD = "withdraw-subscription.2026-10-09.4";
+const FN_BUILD = "withdraw-subscription.2026-10-09.5";
 const PRO_PRODUCT_NAME = "Resume Booster Pro";
 
 const corsHeaders = {
@@ -137,47 +138,42 @@ Deno.serve(async (req) => {
         }
         currency = inv.currency ?? currency;
       }
-      // 2. Cancel at once: no further charge.
+      // 2. The acknowledgement is written into the ledger BEFORE the cancel,
+      //    as a mail waiting to be sent (S11-053). The cancel makes Stripe
+      //    send customer.subscription.deleted, which stripe-webhook answers
+      //    by sending a waiting acknowledgement, redelivered until it goes:
+      //    so a send that fails below is not lost. A row already there (a
+      //    retried request) keeps what it holds.
+      const mail = withdrawalMail({
+        planName: isAgentPriced(s.items?.data as ReadonlyArray<{ price?: unknown }> | undefined) ? AGENT_PRODUCT_NAME : PRO_PRODUCT_NAME,
+        withdrawnAt: new Date(nowSec * 1000).toISOString(),
+        refund: refunded > 0 ? { amount: refunded, currency } : null,
+        accountUrl: "https://resumebooster.work/account",
+      });
+      const { error: pendingError } = await admin.from("subscription_notices").insert({
+        subscription_id: s.id, kind: "withdrawal", email, pending_mail: { subject: mail.subject, html: mail.html, text: mail.text },
+      });
+      if (pendingError && pendingError.code !== "23505") {
+        throw new Error(`acknowledgement not recorded before the cancel: ${String(pendingError.message).slice(0, 160)}`);
+      }
+
+      // 3. Cancel at once: no further charge.
       await stripe.subscriptions.cancel(
         s.id,
-        { cancellation_details: { comment: "EU/UK 14-day withdrawal" } },
+        { cancellation_details: { comment: WITHDRAWAL_CANCEL_COMMENT } },
         { idempotencyKey: `withdrawal-cancel:${s.id}` },
       );
       withdrawn.push({ subscription: s.id, refunded, currency });
 
-      // 3. The acknowledgement, once (a claim first, as the other notices).
-      const { error: claimError } = await admin.from("subscription_notices").insert({ subscription_id: s.id, kind: "withdrawal", email });
-      if (!claimError) {
-        const mail = withdrawalMail({
-          planName: isAgentPriced(s.items?.data as ReadonlyArray<{ price?: unknown }> | undefined) ? AGENT_PRODUCT_NAME : PRO_PRODUCT_NAME,
-          withdrawnAt: new Date(nowSec * 1000).toISOString(),
-          refund: refunded > 0 ? { amount: refunded, currency } : null,
-          accountUrl: "https://resumebooster.work/account",
-        });
-        const { error: enqueueError } = await admin.rpc("enqueue_email_delayed", {
-          queue_name: "transactional_emails",
-          payload: {
-            message_id: crypto.randomUUID(),
-            idempotency_key: noticeKey(s.id, "withdrawal"),
-            to: email,
-            from: NOTICE_FROM,
-            sender_domain: NOTICE_SENDER_DOMAIN,
-            subject: mail.subject,
-            html: mail.html,
-            text: mail.text,
-            purpose: "transactional",
-            label: "subscription-withdrawal",
-            legal_notice: true,
-            queued_at: new Date().toISOString(),
-          },
-          delay_seconds: 0,
-        });
-        if (enqueueError) {
-          await admin.from("subscription_notices").delete().eq("subscription_id", s.id).eq("kind", "withdrawal");
-          console.error("[WITHDRAW-SUBSCRIPTION] acknowledgement not queued:", enqueueError.message?.slice(0, 160));
-        }
-      } else if (claimError.code !== "23505") {
-        console.error("[WITHDRAW-SUBSCRIPTION] acknowledgement not claimed:", claimError.message?.slice(0, 160));
+      // 4. The acknowledgement, sent now through Resend and recorded as sent
+      //    only after it accepted it. A failure leaves it waiting for the
+      //    webhook's redelivered event.
+      const sent = await sendLegalNotice(admin, {
+        subscriptionId: s.id, kind: "withdrawal", to: email, mail,
+        apiKey: env("RESEND_API_KEY"), replyTo: CUSTOMER_REPLY_TO,
+      });
+      if (sent.outcome === "failed") {
+        console.error(`[WITHDRAW-SUBSCRIPTION] acknowledgement not sent yet (${sent.status}); the webhook sends it on Stripe's redelivery:`, sent.error);
       }
     }
 
