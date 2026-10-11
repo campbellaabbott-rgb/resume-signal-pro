@@ -2435,12 +2435,28 @@ function icimsSalary(d: IcimsJobData): string | null {
   return null;
 }
 
-/** iCIMS' own ISO-2, unless the location text resolves to a different country. */
+/**
+ * iCIMS' own ISO-2 stands, unless the posting's FIRST site (the text before
+ * any ";") names a US state or a Canadian province and the code is another
+ * country: Smoothie King's stores at "KCMO, MO" arrived as FR (L7-15).
+ *
+ * Not the whole location through detectCountry (S11-059): that tests country
+ * words ahead of spelled-out states, so "China Lake, California" read CN,
+ * "Peru, Illinois" PE, "Rome, Georgia" IT, "Dublin, Georgia" IE, and a
+ * multi-site "New York, New York; Toronto, Canada" CA, each over the feed's
+ * correct US. A two-letter code that is also the feed's own code ("Bangalore,
+ * IN", "Amsterdam, NL") is the feed's country, not a state or province.
+ * Without a feed code, the text decides as everywhere else.
+ */
 export function icimsCountry(feedCode: unknown, location: string | null | undefined): string | null {
   const code = /^[A-Za-z]{2}$/.test(String(feedCode ?? "")) ? String(feedCode).toUpperCase() : null;
-  const fromText = detectCountry(location);
-  if (code !== null && fromText !== null && fromText !== code) return fromText;
-  return code ?? fromText;
+  if (code === null) return detectCountry(location);
+  const first = String(location ?? "").split(";")[0].slice(0, 300);
+  const notOwn = (m: RegExpExecArray | null) => !!m?.[1] && m[1] !== code;
+  const us = notOwn(P_US_STATE_CODE.exec(first)) || P_US_STATE_NAME.test(first) || notOwn(P_US_STATE_CODE_LEADING.exec(first));
+  const ca = notOwn(P_CA_PROV_CODE.exec(first)) || P_CA_PROV_NAME.test(first);
+  const site = us && !ca ? "US" : ca && !us ? "CA" : null;
+  return site !== null && site !== code ? site : code;
 }
 
 export function normalizeIcims(raw: IcimsJobItem[], company: string, token: string): JobPosting[] {
