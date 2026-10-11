@@ -23,7 +23,7 @@
       "fnBuildDate": "2026-10-08"
     },
     "wave3": {
-      "branches": ["wave3/"],
+      "branches": ["wave3/", "w31/"],
       "migrations": "20261009*",
       "jobBoard": "2026-09-09.92",
       "fnBuildDate": "2026-10-09"

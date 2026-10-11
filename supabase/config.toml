@@ -54,6 +54,10 @@ project_id = "bwhdazbotpblihdxcmho"
     verify_jwt = false
   [functions.free-keyword-scan-stream]
     verify_jwt = false
+  # Public: the scanner's Job URL tab, anonymous visitors included. Its own
+  # host list, address fence and two meters stand in for the JWT (S11-032).
+  [functions.fetch-job-posting]
+    verify_jwt = false
   # Public: an anonymous buyer proves a purchase with its Stripe session id,
   # a signed-in caller with its JWT, both checked in the function.
   [functions.scan-credits]
