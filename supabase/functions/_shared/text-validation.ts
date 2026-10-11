@@ -42,6 +42,29 @@ export function looksGarbled(text: string): boolean {
 }
 
 /**
+ * A FILE THAT IS BROKEN IS NOT AN OUTAGE (register S11-033).
+ *
+ * pdf.js names what it could not read: a damaged stream, page tree or
+ * cross-reference table surfaces as one of these error names (a worker-side
+ * FormatError reaches the caller as UnknownErrorException). parse-pdf answers
+ * them with a 422 that says the file is damaged; any other error is ours and
+ * stays a 500. The names are checked, never `instanceof`: pdfjs-serverless
+ * does not export the classes (see parse-pdf's PasswordException note).
+ */
+const DAMAGED_PDF_ERRORS = new Set([
+  "InvalidPDFException",
+  "MissingPDFException",
+  "FormatError",
+  "UnknownErrorException",
+  "UnexpectedResponseException",
+]);
+
+export function isDamagedPdfError(error: unknown): boolean {
+  const name = (error as { name?: unknown } | null)?.name;
+  return typeof name === "string" && DAMAGED_PDF_ERRORS.has(name);
+}
+
+/**
  * Legacy .doc (pre-2007, OLE Compound File binary format) is not a ZIP at all,
  * so mammoth/JSZip can't read it — it would fail deep inside JSZip with a
  * confusing, generic error instead of a clear "convert to .docx" message.
