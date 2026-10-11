@@ -167,3 +167,24 @@ describe("the parameters mean the same on both engines", () => {
     expect(or).toContain("country.in.(US,CA)");
   });
 });
+
+// Review of S11-021 on /v1: .92's ingest stores every location with the ASCII
+// apostrophe, and only the board's list action folded what was typed. /v1's
+// own location filter sent a phone's "St. John’s" as typed, which would match
+// nothing once the rows were folded (live .91: 0 against 101).
+describe("a phone's apostrophe on /v1 is the board's apostrophe", () => {
+  it("the default engine's location filter carries the ASCII apostrophe the rows carry", async () => {
+    await get(`/v1/jobs?location=${encodeURIComponent("St. John’s")}`);
+    const loc = postingsCalls().filter(([m, a]) => m === "ilike" && a[0] === "location").map(([, a]) => String(a[1]));
+    expect(loc.length).toBeGreaterThan(0);
+    expect([...new Set(loc)]).toEqual(["%St. John's%"]);
+  });
+
+  it("the shared location terms fold it, so /v1 and the board send one string", async () => {
+    const { locationTerms } = await import("../../supabase/functions/_shared/location-terms");
+    const { foldTypedText } = await import("../../supabase/functions/job-board/typed-text");
+    for (const typed of ["St. John’s", "Coeur d‘Alene", "Martha＇s Vineyard", "Kaʼu"]) {
+      expect(locationTerms(typed).terms).toEqual([foldTypedText({ location: typed }).location]);
+    }
+  });
+});

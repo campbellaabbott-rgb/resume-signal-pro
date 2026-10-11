@@ -9,7 +9,13 @@
 // the same places. The board imports them back; nothing about its behaviour
 // changes. Guards that used to read these out of index.ts read this file now.
 
-export const sanitizeTerm = (t: string) => t.replace(/[%_\\|"]/g, "").trim();
+// ONE APOSTROPHE ON BOTH DOORS (S11-021, review). The board's ingest stores
+// every location and title with the ASCII apostrophe, and its list action
+// folds what was typed (job-board/typed-text.ts). /v1 builds its own location
+// filter from these terms, so the fold lives here too: a phone's "St. John’s"
+// (U+2019) is the stored "St. John's" on either engine. The same five
+// characters as typed-text.ts.
+export const sanitizeTerm = (t: string) => t.replace(/[‘’‛ʼ＇]/g, "'").replace(/[%_\\|"]/g, "").trim();
 
 export const STATE_ALIASES: Record<string, { names: string[]; keepRaw: boolean }> = {
   "alabama": { names: ["Alabama", ", AL"], keepRaw: false },
