@@ -110,6 +110,7 @@ import { startGate } from "./start-gate.ts";
 import { addLightReread, lightReread, lightRereadStats, type LightRereadStats } from "./light-reread.ts";
 import { selectDeepLane } from "./deep-lane.ts";
 import { nameSyncTarget, overrideFor, overrideTable } from "./name-sync.ts";
+import { foldApostrophes, foldTypedText, sameButApostrophes } from "./typed-text.ts";
 
 // .88 (abuse-guards.ts): what one anonymous call may cost. verify fans out to
 // vendors, report and click each write a row; a person never needs more.
@@ -4291,8 +4292,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             // the upsert strips it until then.
             ...(j.source === "oracle" ? { req_key: oracleReqKeyOfId(j.id) } : {}),
             company: j.company,
-            title: clean(j.title.trim().slice(0, 300)),
-            location: clean(j.location.trim().slice(0, 300)),
+            // One apostrophe in what we store, the one a search folds to (S11-021).
+            title: clean(foldApostrophes(j.title.trim()).slice(0, 300)),
+            location: clean(foldApostrophes(j.location.trim()).slice(0, 300)),
             country: rowCountry,
             // THE JURISDICTION, which the country patterns already found and
             // then dropped on the floor. Pay-disclosure law is state-level, so
@@ -4761,6 +4763,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
             v === null || v === undefined ? null : String(v).replace(/\u0000/g, "").slice(0, VALUE_CAP);
           const note = (field: string, oldV: unknown, newV: unknown) => {
             if (DERIVED_NOT_EMPLOYER_EDITS.has(field) || OUR_READING_CHANGED.has(`${s.source}:${field}`)) return;
+            // Ingest folding a stored curly apostrophe is our reading changing,
+            // not the employer editing the posting (S11-021): patched, unlogged.
+            if (sameButApostrophes(oldV, newV)) return;
             if (changeLog.length >= FIELD_CHANGES_PER_VISIT) {
               // corrections.length is the count of COMPLETED postings: this
               // posting's patch has not been pushed yet, so cutting here drops
@@ -11351,6 +11356,8 @@ async function serveList(
    *  outside this function still appears in phaseMs instead of vanishing. */
   pre?: Record<string, number>,
 ) {
+  // The curly apostrophe a phone types reads as the ASCII one stored (S11-021).
+  body = foldTypedText(body);
   // Rationale: docs/job-board-index-notes.md#n280-limitraw
   const limitRaw = Number(body.limit);
   const limit = Number.isFinite(limitRaw) && limitRaw >= 1 ? Math.min(Math.floor(limitRaw), 200) : 60;
