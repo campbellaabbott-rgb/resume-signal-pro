@@ -1953,7 +1953,7 @@ function guideText(shop: Shop): string {
     `- **No key.** ${by(ANON_TOOLS)} answer with no Authorization header at all: search capped at ${ANON_SEARCH_LIMIT} rows, ${ANON_IP_CAP_PER_DAY} calls a day per network address (an office or a home connection counts as one address; from ChatGPT each user has their own ${ANON_IP_CAP_PER_DAY}, and Claude's users share ${ANON_HOST_POOL_PER_DAY} a day before the address's own) and ${ANON_GLOBAL_CAP_PER_DAY} a day across every unkeyed caller; every answer says how many are left and whose they are. \`${tool("search")}\` and \`${tool("fetch")}\` are \`${tool("search_jobs")}\` and \`${tool("get_job")}\` under the names ChatGPT's research connector calls.`,
     `- **Free key, no account** (${MINT_URL}): ${FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} calls a day, every filter, and every other read tool — ${by(KEY_ONLY_READ_TOOLS)}.`,
     `- **Paid key:** ${by(PAID_TOOLS)}, exactly like POST /v1/fit on the data API.`,
-    `- **Account-linked key** (${DOCS_URL}) with an Agent plan or a live Agent Pass${passAt} and a mandate (the permission you set up in Account: what roles, where, and whether it may send): ${by(ACCOUNT_TOOLS)}. A pass also opens the paid scorer.`,
+    `- **Account-linked key** (${DOCS_URL}) with an Agent plan or a live Agent Pass${passAt} and a mandate (the permission you set up in Account: what roles, where, and whether it may send): ${by(ACCOUNT_TOOLS)}. An Agent plan or a live pass also opens the paid scorer.`,
     ``,
     `## Call order`,
     ``,
@@ -3780,7 +3780,7 @@ async function answerUnkeyed(
           dailyCalls: FREE_KEY_DAILY_QUOTA,
           adds:
             `${keyRaisesTo} calls a day instead of ${a.ip_cap}, search_jobs pages up to ${KEYED_SEARCH_LIMIT} rows instead of ${ANON_SEARCH_LIMIT}, ` +
-            `and every other read tool: ${KEY_ONLY_READ_TOOLS.join(", ")}. ${PAID_TOOLS.join(", ")} needs a paid key; ` +
+            `and every other read tool: ${KEY_ONLY_READ_TOOLS.join(", ")}. ${PAID_TOOLS.join(", ")} needs a paid key, a live Agent Pass or the Agent plan on the key's account; ` +
             `${ACCOUNT_TOOLS.join(", ")} need a key minted while signed in (${DOCS_URL}).`,
         },
       };
@@ -3914,7 +3914,7 @@ Deno.serve(async (req) => {
         `Four tiers.\n` +
         `- No key: ${ANON_TOOLS.join(", ")} answer with no Authorization header at all — search capped at ${ANON_SEARCH_LIMIT} rows, ${ANON_IP_CAP_PER_DAY} calls a day per network address and ${ANON_GLOBAL_CAP_PER_DAY} a day across every unkeyed caller, each answer saying how many are left (search and fetch are search_jobs and get_job in the shape ChatGPT's research connector calls).\n` +
         `- Free key, no account (${MINT_URL}): ${FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} calls a day, every search filter, up to ${KEYED_SEARCH_LIMIT} rows, and every other read tool: ${KEY_ONLY_READ_TOOLS.join(", ")}. check_jobs_open takes ${CHECK_JOBS_OPEN_MAX} ids a call and get_jobs ${GET_JOBS_MAX} — the quota counts calls, not ids.\n` +
-        `- Paid key, or a live Agent Pass: ${PAID_TOOLS.join(", ")} — résumé fit scoring, as POST /v1/fit.\n` +
+        `- Paid key, a live Agent Pass, or the Agent plan on the key's account: ${PAID_TOOLS.join(", ")} — résumé fit scoring, as POST /v1/fit.\n` +
         `- Account key (${DOCS_URL}) with an Agent plan or a live Agent Pass on the account, plus a mandate set in Account: ${ACCOUNT_TOOLS.join(", ")}. key_status shows a pass's time and applications left; the clock starts at the first call other than key_status.\n` +
         `countUnavailable means the board refuses to guess a total; ignoredFilters names any filter it could not apply. This board watches postings come down and can say which employers take roles down and leave them down — employer_hiring_record and employer_growth carry that record per employer, with every unknown named as unknown. ` +
         `The guide: ${GUIDE_URI}.`,

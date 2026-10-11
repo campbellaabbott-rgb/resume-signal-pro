@@ -185,3 +185,50 @@ describe("S11-121: the Agent plan opens the résumé scorer", () => {
     expect((sc.features as { fit_resume: boolean }).fit_resume).toBe(false);
   });
 });
+
+// Review of S11-121: the dispatcher opened the scorer to Agent-plan keys, but
+// initialize, the guide and board_stats still told an agent it needed a paid
+// key or a pass, so an Agent-plan agent reading them would never call it.
+describe("S11-121: every place that says what opens the scorer names the Agent plan", () => {
+  const rpc = async (method: string, params: Record<string, unknown> = {}) => {
+    const res = await handler(new Request("https://harness.supabase.co/functions/v1/agent-mcp", {
+      method: "POST",
+      headers: { "content-type": "application/json", accept: "application/json, text/event-stream", authorization: `Bearer ${KEY}`, "x-forwarded-for": "203.0.113.7" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+    }));
+    return await res.json() as { result?: Record<string, unknown> };
+  };
+
+  it("initialize's instructions", async () => {
+    const r = await rpc("initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "t", version: "1" } });
+    const line = String(r.result?.instructions ?? "").split("\n").find((l) => l.includes("fit_resume")) ?? "";
+    expect(line).toMatch(/Agent plan/);
+  });
+
+  it("the guide", async () => {
+    const r = await rpc("resources/read", { uri: "resumebooster://guide" });
+    const text = JSON.stringify(r.result ?? {});
+    expect(text).toMatch(/opens the paid scorer/);
+    expect(text).not.toMatch(/A pass also opens the paid scorer\./);
+    expect(text).toMatch(/An Agent plan or a live pass also opens the paid scorer/);
+  });
+
+  it("board_stats' withKey, as an unkeyed caller reads it", async () => {
+    const res = await handler(new Request("https://harness.supabase.co/functions/v1/agent-mcp", {
+      method: "POST",
+      headers: { "content-type": "application/json", accept: "application/json, text/event-stream", "x-forwarded-for": "203.0.113.7" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "board_stats", arguments: {} } }),
+    }));
+    const body = await res.json() as { result?: { structuredContent?: Record<string, unknown>; content?: Array<{ text: string }> } };
+    const sc = body.result?.structuredContent ?? JSON.parse(body.result?.content?.[0]?.text ?? "{}");
+    const adds = String((sc.withKey as { adds?: string } | undefined)?.adds ?? "");
+    expect(adds).toMatch(/fit_resume needs a paid key, a live Agent Pass or the Agent plan on the key's account/);
+  });
+
+  it("llms.txt", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const txt = readFileSync(resolve(__dirname, "../../public/llms.txt"), "utf8");
+    expect(txt).toMatch(/a paid key, a live Agent Pass or the Agent plan on the key's account opens résumé fit scoring/);
+  });
+});

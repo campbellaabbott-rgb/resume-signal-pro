@@ -875,7 +875,7 @@ export const MCP_TROUBLESHOOTING: readonly TroubleRow[] = [
   {
     id: "fit-paid",
     see: "\"fit_resume is a paid feature…\"",
-    why: "Résumé fit scoring needs a paid key or a live Agent Pass.",
+    why: "Résumé fit scoring needs a paid key, a live Agent Pass or the Agent plan.",
     fix: `${MCP_MINT_PATH} for a paid key, or /agents/pass — search keeps working.`,
     source: { kind: "server", pin: "fit_resume is a paid feature", file: "index.ts" },
   },
