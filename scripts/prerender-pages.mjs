@@ -210,6 +210,23 @@ export const postingRowEligible = (j, D) => !!(j
   && D.isPostingLive(j));
 
 /**
+ * HOW MANY NEW POSTING PAGES ONE BAKE MAY ADD (rule 3 of the bake's posting
+ * block). The carried set has no cap: every URL the live site published is
+ * re-checked and keeps its page while the posting lives (L13-36). The budget
+ * for postings that never had a page is `cap` less the carried live pages,
+ * never below `reserve` (so the set keeps moving), and never past `ceiling`
+ * live pages in all. So `cap` is the size the set aims at, NOT a bound on it:
+ * with 300 or more carried pages the reserve takes the set past `cap`, and the
+ * bound on the live set is max(ceiling, carried live).
+ *
+ * The 2026-10-11 bake carried 454 live pages and added 46: 500, the ceiling,
+ * against a `cap` of 400 that a guard still read as the bound.
+ */
+export function postingFreshBudget({ carriedLive, cap, reserve, ceiling }) {
+  return Math.max(0, Math.min(ceiling - carriedLive, Math.max(cap - carriedLive, reserve)));
+}
+
+/**
  * A fixed number of board reads for one bake. Every read takes one; once it
  * is spent, take() answers false and the caller treats the read as not made.
  * The build server's address has one day row at the board's build cap, so a

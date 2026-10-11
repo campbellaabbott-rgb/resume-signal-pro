@@ -25,7 +25,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 import {
   PRERENDER_LEDGER_PATH, POSTING_STUB_KEEP_DAYS, callBudget, companyLanderPage, contentFingerprint, landerFacts, landerHasOwnContent, landerRobots, landerThinBreaker,
-  bakeLanders, carrySitemaps, pageLastmod, postingCarryBase, postingCheckState, postingRowEligible, postingStubEntry, postingStubPage,
+  bakeLanders, carrySitemaps, pageLastmod, postingCarryBase, postingCheckState, postingFreshBudget, postingRowEligible, postingStubEntry, postingStubPage,
   LANDER_OPENINGS_READS, LANDER_OPENINGS_SHOWN, companiesLlmsLine, duplicateSkeletons, landerBreakers, landerOpenings, landerSkeleton, nextOpeningsCache, openingsFromList, openingsToRead,
 } from "./prerender-pages.mjs";
 
@@ -2020,7 +2020,7 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
             continue;
           }
           takenIdentity.set(k, path);
-          detailed.push({ job: c.job, description: c.description, first: firstSeen(path) });
+          detailed.push({ job: c.job, description: c.description, first: firstSeen(path), carried: true });
         } else {
           stubs.push({ ...c, path, state: c.state === "found" ? "retired" : c.state });
         }
@@ -2049,7 +2049,7 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       //     offset. The id-dedupe below is what actually prevents a duplicate
       //     from an offset page shifting under us, and it is asserted rather
       //     than described.
-      const freshBudget = Math.max(0, Math.min(POSTING_PAGE_CEILING - carriedLive, Math.max(POSTING_PAGE_CAP - carriedLive, POSTING_FRESH_RESERVE)));
+      const freshBudget = postingFreshBudget({ carriedLive, cap: POSTING_PAGE_CAP, reserve: POSTING_FRESH_RESERVE, ceiling: POSTING_PAGE_CEILING });
       const pool = [];
       const seenIds = new Set();
       let offset = 0;
@@ -2082,13 +2082,13 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       let freshWritten = 0;
       for (const c of await readDetails(fresh.map((j) => j.id))) {
         if (c.state !== "found" || !eligibleRow(c.job) || !describedEnough(c.description)) continue;
-        detailed.push({ job: c.job, description: c.description, first: TODAY });
+        detailed.push({ job: c.job, description: c.description, first: TODAY, carried: false });
         freshWritten++;
       }
       const eligible = pool.filter(eligibleRow);
 
       let withPay = 0;
-      for (const { job, description, first } of detailed) {
+      for (const { job, description, first, carried } of detailed) {
         const path = D.postingPagePath(job.id);
         const ld = D.postingJsonLd(job, description, { site: SITE });
         // A page whose markup we cannot stand behind is not written as a live
@@ -2135,7 +2135,11 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
           if (!postingsByToken.has(job.token)) postingsByToken.set(job.token, []);
           postingsByToken.get(job.token).push({ id: job.id, path, title: String(job.title).trim(), place });
         }
-        postingLedger[path] = { state: "live", since: TODAY, first, title: job.title, company: nm, token: job.token ?? null };
+        // `carried` says which side of rule 3 the page came from: re-checked
+        // from what the live site published, or new under postingFreshBudget.
+        // The built-output guard judges the ceiling from it (the bound on the
+        // live set is max(ceiling, carried), never POSTING_PAGE_CAP).
+        postingLedger[path] = { state: "live", since: TODAY, first, carried, title: job.title, company: nm, token: job.token ?? null };
       }
 
       // The URLs this site published that get no live page: each keeps a
