@@ -449,7 +449,7 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 
 // Provable from outside without a scan: every response, the CORS preflight
 // included, carries this in x-fn-build.
-const FN_BUILD = "free-keyword-scan.2026-10-09.3";
+const FN_BUILD = "free-keyword-scan.2026-10-09.4";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -4551,14 +4551,19 @@ ${resumeText.substring(0, 20000)}
       }
     }
 
-    // Log successful completion metric
+    // Log the completion. A partial report (the rule-based fallback, or a thin
+    // model reply) is not a valid AI output: it was logged outputValid true,
+    // so the metrics could not tell a scan the model wrote from one it did
+    // not (S11-028). The reason rides along.
     logScanMetric(metricCtx, 'completed', {
-      outputValid: true,
+      outputValid: !partialReport,
       responseScore: analysis.atsScoreEstimate,
-      metadata: { 
-        industry: analysis.industry, 
+      metadata: {
+        industry: analysis.industry,
         experienceLevel: analysis.experienceLevel?.level,
-        formatGrade: analysis.formatGrade
+        formatGrade: analysis.formatGrade,
+        partialReason: partialReport ? (responseData.partialReason ?? null) : null,
+        usedFallback: usedRuleBasedFallback,
       }
     });
     
