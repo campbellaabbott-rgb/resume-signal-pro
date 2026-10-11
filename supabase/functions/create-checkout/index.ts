@@ -10,7 +10,7 @@ import { checkoutOrigin, euConsentAnswer, euConsentRefusal, euSalesPolicy, polic
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-checkout.2026-10-09.3";
+const FN_BUILD = "create-checkout.2026-10-09.61";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

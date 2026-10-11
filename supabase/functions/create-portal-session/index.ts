@@ -15,7 +15,7 @@ import { checkoutOrigin } from "../_shared/checkout-policy.ts";
 
 // Provable from outside without an account: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-portal-session.2026-10-09.3";
+const FN_BUILD = "create-portal-session.2026-10-09.61";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

@@ -11,7 +11,7 @@ import { targetRolesMetadata } from "../_shared/target-roles.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-product-checkout.2026-10-09.3";
+const FN_BUILD = "create-product-checkout.2026-10-09.61";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

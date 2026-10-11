@@ -26,7 +26,7 @@
 -- the old build "would spend a retry, which is harmless"; it spends none).
 -- So the old one-argument function is replaced by one with a second argument
 -- that defaults to false: the live sweep's call ({p_limit}) resolves to it
--- and is handed no 'generating' row, and retry-failed-deliveries 2026-10-09.3
+-- and is handed no 'generating' row, and retry-failed-deliveries 2026-10-09.61
 -- passes p_include_generating true and treats such a row as it treats
 -- payment_received (generate, save, mail). Either order of deploy is safe.
 --

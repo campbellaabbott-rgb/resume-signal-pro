@@ -10,8 +10,8 @@
 --
 -- OWNER DECISION 2026-10-11: the notices go DIRECTLY through Resend, the path
 -- paid deliveries use, with an idempotency key, and a notice is recorded as
--- sent only after a 2xx. stripe-webhook 2026-10-09.5 and withdraw-subscription
--- 2026-10-09.5 (_shared/subscription-notice.ts sendLegalNotice) do that.
+-- sent only after a 2xx. stripe-webhook 2026-10-09.61 and withdraw-subscription
+-- 2026-10-09.61 (_shared/subscription-notice.ts sendLegalNotice) do that.
 -- This file gives the ledger what they write:
 --   sent_at              when Resend accepted the mail (2xx); NULL for none;
 --   provider_message_id  Resend's id for it;
@@ -22,8 +22,8 @@
 -- and lets service_role stamp a row (UPDATE). queued_at stays as the time the
 -- row was written.
 --
--- Apply BEFORE stripe-webhook 2026-10-09.5 and withdraw-subscription
--- 2026-10-09.5: both write the new columns. Depends on 20261009130000.
+-- Apply BEFORE stripe-webhook 2026-10-09.61 and withdraw-subscription
+-- 2026-10-09.61: both write the new columns. Depends on 20261009130000.
 -- Safe to re-run.
 
 SET LOCAL statement_timeout = '2min';

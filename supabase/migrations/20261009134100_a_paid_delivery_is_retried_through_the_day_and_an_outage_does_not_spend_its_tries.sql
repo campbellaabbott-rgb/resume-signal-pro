@@ -11,7 +11,7 @@
 --
 -- OWNER DECISION 2026-10-11: retries are spread over 24 hours, transient
 -- errors do not count toward the budget, and an alarm fires when a delivery
--- runs out (retry-failed-deliveries 2026-10-09.3 mails the owner).
+-- runs out (retry-failed-deliveries 2026-10-09.61 mails the owner).
 --
 -- WHAT THIS FILE DOES.
 --   1. delivery_error_is_transient(text): a 402, 408, 425, 429 or 5xx status

@@ -48,7 +48,7 @@ import { checkoutOrigin, euConsentAnswer, euConsentRefusal, policyMetadata, sess
 // deploy-stamp: 2026-10-09T13:00Z
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-pass-checkout.2026-09-27.5";
+const FN_BUILD = "create-pass-checkout.2026-09-27.61";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",

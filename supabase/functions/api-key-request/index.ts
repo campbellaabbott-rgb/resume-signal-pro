@@ -47,7 +47,7 @@ import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 
 // Provable from outside without minting anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "api-key-request.2026-10-09.3";
+const FN_BUILD = "api-key-request.2026-10-09.61";
 
 const SITE = "https://resumebooster.work";
 

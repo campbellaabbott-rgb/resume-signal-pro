@@ -9,7 +9,7 @@
 -- member's included copy is a pro_grants row, which needs a column for them.
 -- verify-product-purchase reads it into the grant's synthetic session.
 --
--- create-product-checkout 2026-10-09.4 writes it, and mints the grant without
+-- create-product-checkout 2026-10-09.61 writes it, and mints the grant without
 -- it if this file has not applied (so no member is sent to Stripe for an
 -- included tool). Apply before or with the function. Safe to re-run.
 

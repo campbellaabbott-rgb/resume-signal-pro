@@ -45,7 +45,7 @@ import { targetRolesOf } from "../_shared/target-roles.ts";
 
 // Provable from outside without a purchase or a signature: every response,
 // the 405 a GET receives included, carries this in x-fn-build.
-const FN_BUILD = "stripe-webhook.2026-10-09.5";
+const FN_BUILD = "stripe-webhook.2026-10-09.61";
 const BUILD_HEADER = { "x-fn-build": FN_BUILD };
 
 // Declare EdgeRuntime for background tasks

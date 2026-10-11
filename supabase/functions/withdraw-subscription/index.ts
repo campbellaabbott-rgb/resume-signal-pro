@@ -38,7 +38,7 @@ import { sendLegalNotice, WITHDRAWAL_CANCEL_COMMENT, withdrawalMail } from "../_
 import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 import { buyerCountryOf, inWithdrawalTerritory, serviceStartRequested, withdrawalRefundCents, withinWithdrawalPeriod } from "../_shared/withdrawal.ts";
 
-const FN_BUILD = "withdraw-subscription.2026-10-09.5";
+const FN_BUILD = "withdraw-subscription.2026-10-09.61";
 const PRO_PRODUCT_NAME = "Resume Booster Pro";
 
 const corsHeaders = {
