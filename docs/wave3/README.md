@@ -440,9 +440,9 @@ the rest. Each file checks itself and is safe to re-run.
 | 14 | 20261009133000_a_withdrawal_is_acknowledged_once_per_subscription | payments-account | needed before the EU/UK switch |
 | 14a | 20261009134000_a_legal_notice_is_recorded_as_sent_only_after_resend_accepted_it | payments-account (S11) | BEFORE stripe-webhook and withdraw-subscription |
 | 14b | 20261009134100_a_paid_delivery_is_retried_through_the_day_and_an_outage_does_not_spend_its_tries | payments-account (S11) | any time |
-| 14c | 20261009134200_a_served_posting_keeps_no_closure_date_and_the_tracker_cap_counts_only_what_its_owner_added | payments-account (S11) | after 131000, with or before the frontend; one daily cron job |
+| 14c | 20261009134200_a_served_posting_keeps_no_closure_date_and_the_tracker_cap_counts_only_what_its_owner_added | payments-account (S11) | **after the frontend, right after 131000** (131000 re-creates the cap in its older form); one daily cron job |
 | 14d | 20261009134300_a_pro_grant_keeps_the_roles_its_ats_defense_was_bought_for | payments-account (S11) | before or with create-product-checkout |
-| 15 | 20261009140000_a_paid_order_stuck_mid_generation_is_retried_after_fifteen_minutes | email-ops (edited in S11) | either side of retry-failed-deliveries: the stuck-generation rows go only to a sweep that passes p_include_generating (S11-146) |
+| 15 | 20261009140000_a_paid_order_stuck_mid_generation_is_retried_after_fifteen_minutes | email-ops (edited in S11) | **BEFORE retry-failed-deliveries**: the new sweep always passes p_include_generating, which only this file's function takes; the live sweep is handed no stuck-generation row (S11-146) |
 | 16 | 20261009141000_a_pulse_confirmation_that_never_left_does_not_lock_its_address_out | email-ops | before send-market-pulse |
 | 17 | 20261009142000_the_layoff_refresh_job_gets_the_ten_minutes_its_functions_ask_for | email-ops | any time |
 | 18 | 20261009143000_a_cron_call_its_function_refused_is_counted_not_read_as_success | email-ops | before scan-heartbeat |

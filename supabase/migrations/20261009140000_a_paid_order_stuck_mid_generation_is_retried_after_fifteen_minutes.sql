@@ -28,7 +28,10 @@
 -- that defaults to false: the live sweep's call ({p_limit}) resolves to it
 -- and is handed no 'generating' row, and retry-failed-deliveries 2026-10-09.61
 -- passes p_include_generating true and treats such a row as it treats
--- payment_received (generate, save, mail). Either order of deploy is safe.
+-- payment_received (generate, save, mail). Apply this file BEFORE that
+-- build: the live sweep's call resolves to the new function either way, but
+-- the new sweep's two-argument call names no function until this file has
+-- run (docs/deploy-ledger.json orders it first).
 --
 -- Safe to re-run.
 

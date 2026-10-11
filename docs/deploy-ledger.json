@@ -21,9 +21,13 @@
   ],
   "migrationOrder": {
     "_note": "Per migration stamp: `after` is \"fn:<name>@<YYYY-MM-DD.N>\" (apply once that function answers that build or later) or \"frontend\" (apply once the frontend is published); `before` lists \"fn:<name>\" a migration must precede. No entry: before the functions. The ledger prints five steps: migrations before the functions, the functions, migrations after the functions they wait for, the frontend, migrations after the frontend (docs/DEPLOY-LEDGER.md §1).",
+    "20261009101000": {
+      "before": ["fn:job-board"],
+      "why": "S11-009: the new job-board retries a missed ranked search with p_title_only, which only this migration's search_jobs takes (against the old SQL that retry fails into today's unranked fallback); the old job-board never sends it"
+    },
     "20261009111000": {
       "before": ["fn:shortlist-evaluate"],
-      "why": "the new shortlist-evaluate writes jd_text_scored, which this migration adds. S11-056 splits it: the additive half stays here; the half that revokes the live function's client INSERT and adds the guard triggers takes after: frontend"
+      "why": "the new shortlist-evaluate writes jd_text_scored, which this migration adds. S11-056 split it: this is the additive half; the half that revokes the live function's client INSERT and adds the guard triggers is 20261009112000, held in holdUntilVerified until the new function and the Shortlist page serve"
     },
     "20261009123000": {
       "before": ["fn:agent-mcp"],
@@ -37,9 +41,21 @@
       "after": "frontend",
       "why": "S11-138: its one-time clear of wrong closure dates is written back by the live Account page until the wave-3 frontend is published"
     },
+    "20261009134000": {
+      "before": ["fn:stripe-webhook", "fn:withdraw-subscription"],
+      "why": "S11-053: both functions write subscription_notices.sent_at, which this migration adds"
+    },
+    "20261009134200": {
+      "after": "frontend",
+      "why": "S11-139: it re-creates owner_row_cap and its triggers with the owner-only count, and 131000 (after the frontend) re-creates them in their older form; applied first, 131000 would undo it. Filename order puts it right after 131000"
+    },
+    "20261009134300": {
+      "before": ["fn:create-product-checkout"],
+      "why": "S11-074: the new checkout writes pro_grants.target_roles (it falls back to a grant without roles while the column is missing)"
+    },
     "20261009140000": {
-      "after": "fn:retry-failed-deliveries@2026-10-09.2",
-      "why": "S11-146: it hands 'generating' rows to the retry sweep; the live 2026-10-05.1 sweep skips them without spending a retry, so they hold its 5-row batch"
+      "before": ["fn:retry-failed-deliveries"],
+      "why": "S11-146: retry-failed-deliveries 2026-10-09.61 and later always passes p_include_generating, which only this migration's two-argument function takes, so the new sweep fails every run until it applies; the live 2026-10-05.1 sweep's one-argument call resolves to the new function through its default and is handed no 'generating' row"
     },
     "20261009141000": {
       "before": ["fn:send-market-pulse"],

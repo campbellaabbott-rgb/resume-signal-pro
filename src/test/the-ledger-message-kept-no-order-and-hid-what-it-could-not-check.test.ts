@@ -7,8 +7,9 @@
  * Lovable message (docs/DEPLOY-LEDGER.md §1). Three defects:
  *   - S11-049: it printed every migration, then every function, then the
  *     frontend. Wave 3 needs 131000 after the frontend (the live Account page
- *     writes back what it clears) and 140000 after the new retry sweep (the
- *     live one holds its batch with rows it skips). In wave 2 Lovable stopped
+ *     writes back what it clears), 134200 after 131000, and 140000 before the
+ *     new retry sweep (which calls the signature 140000 creates; the fixtures
+ *     below still exercise an `after` rule). In wave 2 Lovable stopped
  *     for hours between steps. docs/deploy-ledger.json `migrationOrder` now
  *     carries `after` (and checked `before`) per stamp, and the message prints
  *     five steps.
@@ -142,7 +143,12 @@ describe("S11-049: a migration sits in the step its constraint names", () => {
     const p = L.migrationPhases(wave3, POLICY, rows);
     expect(p.errors).toEqual([]);
     expect(p.afterFrontend.map((m) => m.file.slice(0, 14))).toContain("20261009131000");
-    expect(p.afterFunctions.map((m) => m.file.slice(0, 14))).toContain("20261009140000");
+    // 134200 re-creates the cap 131000 also re-creates, so it follows 131000
+    // after the frontend; 140000 precedes the sweep that calls its new
+    // signature (wave-3 fix round integration).
+    const late = p.afterFrontend.map((m) => m.file.slice(0, 14));
+    expect(late.indexOf("20261009134200")).toBeGreaterThan(late.indexOf("20261009131000"));
+    expect(p.pre.find((m) => m.file.startsWith("20261009140000"))?.note).toMatch(/before retry-failed-deliveries/);
     const g = p.pre.find((m) => m.file.startsWith("20261009144000"));
     expect(g?.note).toMatch(/before send-search-digest and send-agent-digest/);
     expect(p.pre.find((m) => m.file.startsWith("20261009130000"))?.note).toMatch(/before stripe-webhook/);
