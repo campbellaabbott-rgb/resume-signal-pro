@@ -21,9 +21,18 @@
 // and aria-controls naming its panel, and aria-describedby naming the count
 // sentence, so a screen reader hears the basis with the perk. Hover (a mouse
 // or pen, never a touch, which would open and close on one tap) and keyboard
-// focus open the panel; a click or tap pins it open and a second one closes
-// it; Escape closes it and returns focus to the check. Focus moving into the
-// panel (its posting link) keeps it open.
+// focus open the panel. A tap or click pins it open and a second one closes
+// it; a keyboard (or screen reader) activation always flips what is shown, so
+// every Enter or Space changes aria-expanded. Focus moving into the panel (its
+// posting link) keeps it open.
+//
+// ONE PANEL AT A TIME, IN THE FLOW. The open check is held by the list, not
+// by each item, so opening one closes any other. The panel sits in normal
+// flow at every width and pushes the list down: it never covers another
+// check, a stated limit or another country's group. Escape anywhere on the
+// page closes it (focus goes back to the check when it was inside the item),
+// and so does a press anywhere outside the open item, so a panel opened by
+// hover or a tap can always be dismissed without moving to it (WCAG 1.4.13).
 //
 // NOTHING IS A PLACEHOLDER. Until a key passes its audit the block renders
 // nothing at all; an expired key is a key the reader no longer names. On a
@@ -31,7 +40,7 @@
 // whose benefits text our ingest drops, the block prints only the reason, and
 // only while some key is live elsewhere.
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Ban, Check, ExternalLink } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -46,6 +55,7 @@ import {
   showsConditions,
   type EmployerPerksAnswer,
   type PerkClaim,
+  type PerkStatute,
   type PerkWithheldReason,
 } from "@/lib/employer-perks";
 
@@ -65,8 +75,8 @@ function readDate(iso: string, lang: string): string {
   }
 }
 
-function perkLabel(t: TFunction, perk: PerkClaim["perk"]): string {
-  switch (perk) {
+function perkLabel(t: TFunction, claim: Pick<PerkClaim, "perk" | "k" | "n">): string {
+  switch (claim.perk) {
     case "health": return t("jobsPage.perks.labelHealth", "Health insurance");
     case "dental": return t("jobsPage.perks.labelDental", "Dental coverage");
     case "vision": return t("jobsPage.perks.labelVision", "Vision coverage");
@@ -75,14 +85,17 @@ function perkLabel(t: TFunction, perk: PerkClaim["perk"]): string {
     case "pto": return t("jobsPage.perks.labelPto", "Paid time off");
     case "parental": return t("jobsPage.perks.labelParental", "Parental leave");
     case "equity": return t("jobsPage.perks.labelEquity", "Equity or stock");
-    case "visa_not_offered": return t("jobsPage.perks.labelVisaNotOffered", "Visa sponsorship: stated as not available");
+    // A stated limit carries its share on the label itself: three postings of
+    // thirty saying it is not an employer that "does not sponsor", and the
+    // label must not read as one before anyone opens the count.
+    case "visa_not_offered": return t("jobsPage.perks.labelVisaNotOffered", "Visa sponsorship: stated as not available in at least {{k}} of {{n}} postings", { k: claim.k, n: claim.n });
   }
 }
 
 function withheldLine(t: TFunction, reason: PerkWithheldReason, share: number | null): string {
   switch (reason) {
     case "collision":
-      return t("jobsPage.perks.withheldCollision", "Not shown here: two employers use this board name, so we can't tell whose postings a perk line comes from.");
+      return t("jobsPage.perks.withheldCollision", "Not shown here: more than one hiring system carries a board with this name, and we can't tell whether they are one employer.");
     case "agency":
       return t("jobsPage.perks.withheldAgency", "Not shown for a staffing agency's board: perks in its postings describe the agency's own package or each client's, not one employer's.");
     case "franchise":
@@ -94,13 +107,48 @@ function withheldLine(t: TFunction, reason: PerkWithheldReason, share: number | 
   }
 }
 
-function PerkItem({ claim, lang, limit }: { claim: PerkClaim; lang: string; limit: boolean }) {
+/** A statute, linked to its official text, with where it applies when that is narrower than the country. */
+function StatuteLink({ law }: { law: PerkStatute }) {
+  return (
+    <>
+      <a
+        href={law.sourceUrl}
+        target="_blank"
+        rel="noopener noreferrer nofollow"
+        className="text-primary hover:underline"
+      >
+        {law.statute}
+        <ExternalLink className="inline w-3 h-3 ml-0.5 align-[-1px]" aria-hidden="true" />
+      </a>
+      {law.appliesIn ? <>{" "}({law.appliesIn})</> : null}
+    </>
+  );
+}
+
+/** Which check is open, and whether a tap, click or keyboard pinned it. Held by the list: one at a time. */
+interface OpenCheck { id: string; pinned: boolean }
+
+function PerkItem({
+  claim, lang, limit, open, pinned, onOpen, onClose,
+}: {
+  claim: PerkClaim;
+  lang: string;
+  limit: boolean;
+  open: boolean;
+  pinned: boolean;
+  onOpen: (pin: boolean) => void;
+  onClose: () => void;
+}) {
   const { t } = useTranslation();
-  const [pinned, setPinned] = useState(false);
-  const [peek, setPeek] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
-  const open = pinned || (peek && !dismissed);
+  const item = useRef<HTMLLIElement>(null);
   const button = useRef<HTMLButtonElement>(null);
+  // Whether this check was open when the press that is about to click it
+  // began. A tap focuses the button (which opens it) before its click lands,
+  // so the click must judge the state the person saw, not the one focus made.
+  const press = useRef<boolean | null>(null);
+  // Set while Escape hands focus back to the check, so that focus does not
+  // reopen the panel Escape just closed.
+  const refocusing = useRef(false);
   const id = useId();
   const panelId = `${id}-basis`;
   const countId = `${id}-count`;
@@ -108,26 +156,43 @@ function PerkItem({ claim, lang, limit }: { claim: PerkClaim; lang: string; limi
   const country = countryName(claim.country, lang);
   const date = readDate(claim.asOf, lang);
   const conditions = showsConditions(claim);
-  const label = perkLabel(t, claim.perk);
+  const label = perkLabel(t, claim);
   const hoverable = (pointerType: string) => pointerType === "mouse" || pointerType === "pen";
+
+  // While open: Escape anywhere closes it (focus returns to the check when it
+  // was inside this item), and a press anywhere outside this item closes it.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      const inside = item.current?.contains(document.activeElement) ?? false;
+      onClose();
+      if (inside) {
+        refocusing.current = true;
+        try { button.current?.focus(); } finally { refocusing.current = false; }
+      }
+    };
+    const onDown = (e: PointerEvent) => {
+      if (item.current && e.target instanceof Node && item.current.contains(e.target)) return;
+      onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onDown);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onDown);
+    };
+  }, [open, onClose]);
 
   return (
     <li
-      className="relative"
+      ref={item}
       data-perk={claim.perk}
-      onPointerEnter={(e) => { if (hoverable(e.pointerType)) setPeek(true); }}
-      onPointerLeave={(e) => { if (hoverable(e.pointerType)) { setPeek(false); setDismissed(false); } }}
-      onFocus={() => setPeek(true)}
+      onPointerEnter={(e) => { if (hoverable(e.pointerType) && !open) onOpen(false); }}
+      onPointerLeave={(e) => { if (hoverable(e.pointerType) && open && !pinned) onClose(); }}
+      onFocus={() => { if (!open && !refocusing.current) onOpen(false); }}
       onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) { setPeek(false); setDismissed(false); }
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "Escape" && open) {
-          e.stopPropagation();
-          setPinned(false);
-          setDismissed(true);
-          button.current?.focus();
-        }
+        if (open && !e.currentTarget.contains(e.relatedTarget as Node | null)) onClose();
       }}
     >
       <button
@@ -136,9 +201,20 @@ function PerkItem({ claim, lang, limit }: { claim: PerkClaim; lang: string; limi
         aria-expanded={open}
         aria-controls={panelId}
         aria-describedby={countId}
+        onPointerDown={() => { press.current = open; }}
         onClick={() => {
-          if (pinned) { setPinned(false); setDismissed(true); }
-          else { setPinned(true); setDismissed(false); }
+          const pointer = press.current;
+          press.current = null;
+          if (pointer === null) {
+            // Keyboard or assistive technology: every activation flips it.
+            if (open) onClose();
+            else onOpen(true);
+            return;
+          }
+          // A tap or click: open (or opened by the hover or the focus this
+          // same press caused) and not yet pinned pins it; pinned closes it.
+          if (pointer && pinned) onClose();
+          else onOpen(true);
         }}
         className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-left text-[13px] rounded-sm py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
       >
@@ -160,7 +236,7 @@ function PerkItem({ claim, lang, limit }: { claim: PerkClaim; lang: string; limi
       <div
         id={panelId}
         hidden={!open}
-        className="mt-1 sm:mt-0 sm:absolute sm:left-0 sm:right-0 sm:top-full sm:z-20 rounded-lg border border-border bg-popover text-popover-foreground p-3 text-[12px] leading-snug shadow-md space-y-1.5"
+        className="mt-1 rounded-lg border border-border bg-popover text-popover-foreground p-3 text-[12px] leading-snug shadow-sm space-y-1.5"
       >
         <p id={countId} className="text-foreground">
           {limit
@@ -189,15 +265,8 @@ function PerkItem({ claim, lang, limit }: { claim: PerkClaim; lang: string; limi
         {claim.baseline && (
           <p className="text-muted-foreground">
             {t("jobsPage.perks.legal", "This country's law sets a minimum for this, and this line may describe that minimum:")}{" "}
-            <a
-              href={claim.baseline.sourceUrl}
-              target="_blank"
-              rel="noopener noreferrer nofollow"
-              className="text-primary hover:underline"
-            >
-              {claim.baseline.statute}
-              <ExternalLink className="inline w-3 h-3 ml-0.5 align-[-1px]" aria-hidden="true" />
-            </a>
+            <StatuteLink law={claim.baseline} />
+            {claim.baseline.also && <>; <StatuteLink law={claim.baseline.also} /></>}
           </p>
         )}
       </div>
@@ -208,6 +277,8 @@ function PerkItem({ claim, lang, limit }: { claim: PerkClaim; lang: string; limi
 export function CompanyPerksView({ answer }: { answer: EmployerPerksAnswer | null }) {
   const { t, i18n } = useTranslation();
   const titleId = useId();
+  const [openCheck, setOpenCheck] = useState<OpenCheck | null>(null);
+  const close = useCallback(() => setOpenCheck(null), []);
   const view = perksView(answer);
   if (!view) return null;
   const lang = i18n.language || "en";
@@ -228,35 +299,57 @@ export function CompanyPerksView({ answer }: { answer: EmployerPerksAnswer | nul
     <section aria-labelledby={titleId} data-company-perks="claims" className="rounded-xl border border-border bg-card p-4 max-w-xl mb-3">
       <h2 id={titleId} className="text-sm font-semibold text-foreground">{title}</h2>
       <p className="text-[12px] text-muted-foreground mt-0.5">
-        {t("jobsPage.perks.notListed", "A perk not listed here doesn't mean it isn't offered: it means we didn't find it stated in enough of the postings we could read.")}
+        {t("jobsPage.perks.notListed", "A perk not listed here doesn't mean it isn't offered. We list only perks whose reading we have checked, and only where enough of the postings we could read state them.")}
       </p>
       <p className="text-[11px] text-muted-foreground mt-0.5 mb-2">
         {t("jobsPage.perks.howTo", "Tap, hover or focus a perk to see how many postings state it and the line they use.")}
       </p>
       <div className="space-y-3">
-        {view.groups.map((g) => (
-          <div key={g.country} data-perks-country={g.country}>
-            {several && <h3 className="text-[12px] font-semibold text-foreground mb-1">{countryName(g.country, lang)}</h3>}
-            {g.checks.length > 0 && (
-              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
-                {g.checks.map((c) => <PerkItem key={c.perk} claim={c} lang={lang} limit={false} />)}
-              </ul>
-            )}
-            {g.limits.length > 0 && (
-              <div className="mt-2">
-                <h4 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-0.5">
-                  {t("jobsPage.perks.limitsTitle", "Stated limits")}
-                </h4>
-                <ul className="grid grid-cols-1 gap-y-1">
-                  {g.limits.map((c) => <PerkItem key={c.perk} claim={c} lang={lang} limit />)}
+        {view.groups.map((g) => {
+          // One heading level per step: the limits heading sits under a
+          // country h3 when there are several, and directly under the h2
+          // when one country qualifies and its h3 is left out.
+          const LimitsHeading = several ? "h4" : "h3";
+          const item = (c: PerkClaim, limit: boolean) => {
+            const key = `${g.country}:${c.perk}`;
+            const isOpen = openCheck?.id === key;
+            return (
+              <PerkItem
+                key={c.perk}
+                claim={c}
+                lang={lang}
+                limit={limit}
+                open={isOpen}
+                pinned={isOpen && openCheck!.pinned}
+                onOpen={(pin) => setOpenCheck({ id: key, pinned: pin })}
+                onClose={close}
+              />
+            );
+          };
+          return (
+            <div key={g.country} data-perks-country={g.country}>
+              {several && <h3 className="text-[12px] font-semibold text-foreground mb-1">{countryName(g.country, lang)}</h3>}
+              {g.checks.length > 0 && (
+                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 items-start">
+                  {g.checks.map((c) => item(c, false))}
                 </ul>
-              </div>
-            )}
-          </div>
-        ))}
+              )}
+              {g.limits.length > 0 && (
+                <div className="mt-2">
+                  <LimitsHeading className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-0.5">
+                    {t("jobsPage.perks.limitsTitle", "Stated limits")}
+                  </LimitsHeading>
+                  <ul className="grid grid-cols-1 gap-y-1">
+                    {g.limits.map((c) => item(c, true))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
       <p className="text-[10px] text-muted-foreground mt-3">
-        {t("jobsPage.perks.basis", "Read from the text of their own open postings. A check needs at least {{minN}} postings in a country that we could read, with the perk stated in at least {{minK}} of them and in at least {{minPct}}% of them. \"At least\" because our reader can miss a mention.", {
+        {t("jobsPage.perks.basis", "Read from the text of their own open postings written in English; postings in other languages are not read yet. A check needs at least {{minN}} postings in a country that we could read, with the perk stated in at least {{minK}} of them and in at least {{minPct}}% of them. \"At least\" because our reader can miss a mention.", {
           minN: minReadable,
           minK: minStated,
           minPct: Math.round(minShare * 100),

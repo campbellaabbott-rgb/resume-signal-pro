@@ -282,9 +282,12 @@ describe("we could not observe it is not they are not hiring", () => {
     // Read the call sites out of the file rather than listing them here. A
     // surface added next quarter is in this set the moment it is written, which
     // is the difference between a guard for a class and a guard for four lines.
-    const CONSUMER = /\b(hiringRecordVerdict|hiringRecordOf|isActivelyHiring|hiringSignalOf)\s*\(/g;
+    // gatedHiringRecord and gatedVerdict are the verdict read through the
+    // shared hiring-record gate, which every surface on the page now reads:
+    // they are consumers too.
+    const CONSUMER = /\b(hiringRecordVerdict|gatedHiringRecord|gatedVerdict|hiringRecordOf|isActivelyHiring|hiringSignalOf)\s*\(/g;
     // The definitions themselves are not consumers.
-    const DEFINITION = /(export function hiringRecordVerdict\s*\(|const hiringRecordOf = useCallback|const isActivelyHiring = useCallback|const hiringSignalOf = useCallback|hiringRecordVerdict\(tok \? curveByToken|hiringSignalOf\(tok\) === "positive"|activelyHiringVerdict\(hiringRecordOf\(tok\), growthVerdict\(growthOf\(tok\)\)\))/;
+    const DEFINITION = /(export function hiringRecordVerdict\s*\(|export function gatedHiringRecord\s*\(|export function gatedVerdict\s*\(|const hiringRecordOf = useCallback|const isActivelyHiring = useCallback|const hiringSignalOf = useCallback|hiringRecordVerdict\(tok \? curveByToken|gatedVerdict\(tok \? curveByToken|hiringSignalOf\(tok\) === "positive"|activelyHiringVerdict\(hiringRecordOf\(tok\), growthVerdict\(growthOf\(tok\)\)\))/;
 
     const sites = all(JOBS, CONSUMER).filter((i) => {
       const lineStart = JOBS.lastIndexOf("\n", i) + 1;

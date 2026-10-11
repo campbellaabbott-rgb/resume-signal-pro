@@ -158,7 +158,8 @@ describe("published keys show checks, and each opens its basis", () => {
   it("a stated visa limit is listed apart, with no checkmark, and needs three postings", () => {
     const visa = row({ perk: "visa_not_offered", k: 3, n: 12, quote: "This role is not eligible for visa sponsorship." });
     const { container } = show(answer({ published_keys: ["health", "visa_not_offered"], perks: [row({}), visa] }));
-    expect(screen.getByRole("heading", { level: 4, name: "Stated limits" })).toBeInTheDocument();
+    // One country: the limits heading sits directly under the h2, so it is an h3.
+    expect(screen.getByRole("heading", { level: 3, name: "Stated limits" })).toBeInTheDocument();
     const limit = screen.getByRole("button", { name: /Visa sponsorship: stated as not available/ });
     expect(limit.closest("li")?.querySelector(".lucide-check")).toBeNull();
     expect(container.querySelectorAll(".lucide-check")).toHaveLength(1);
@@ -207,7 +208,7 @@ describe("collision and agency boards render nothing but the reason", () => {
     const { container } = show(withheld({ collision: true }));
     expect(screen.queryAllByRole("button")).toEqual([]);
     expect(container.querySelector("[data-perks-withheld='collision']")).not.toBeNull();
-    expect(screen.getByText(/two employers use this board name/)).toBeInTheDocument();
+    expect(screen.getByText(/more than one hiring system carries a board with this name, and we can't tell whether they are one employer/)).toBeInTheDocument();
   });
 
   it("an agency's board: no check, the reason", () => {
@@ -278,16 +279,134 @@ describe("each check is an accessible disclosure", () => {
     expect(dental).toHaveAttribute("aria-expanded", "true");
   });
 
-  it("Enter pins a focused check; Enter again closes it while focus stays", async () => {
+  it("every Enter on a focused check flips what is shown, so each activation is announced", async () => {
     const user = userEvent.setup();
     show(answer());
     const check = screen.getByRole("button", { name: /Health insurance/ });
+    const panel = document.getElementById(check.getAttribute("aria-controls")!)!;
     await user.tab();
-    await user.keyboard("{Enter}");
+    // Focus shows the count (owner decision D1)...
     expect(check).toHaveAttribute("aria-expanded", "true");
+    // ...and the first Enter is a change a screen reader can announce.
     await user.keyboard("{Enter}");
     expect(check).toHaveFocus();
     expect(check).toHaveAttribute("aria-expanded", "false");
+    expect(panel).not.toBeVisible();
+    await user.keyboard("{Enter}");
+    expect(check).toHaveAttribute("aria-expanded", "true");
+    expect(panel).toBeVisible();
+    await user.keyboard(" ");
+    expect(check).toHaveAttribute("aria-expanded", "false");
+  });
+});
+
+describe("one panel at a time, in the flow, always dismissible", () => {
+  const panelOf = (b: HTMLElement) => document.getElementById(b.getAttribute("aria-controls")!)!;
+
+  it("the panel sits in the flow at every width: it never overlays the checks below it", () => {
+    show(answer());
+    for (const b of screen.getAllByRole("button")) {
+      const cls = panelOf(b).className;
+      expect(cls, "an absolutely positioned panel covers the checks under it").not.toMatch(/(^|\s)(sm:|md:|lg:)?(absolute|fixed)(\s|$)/);
+      expect(b.closest("li")!.className).not.toMatch(/(^|\s)relative(\s|$)/);
+    }
+  });
+
+  it("opening a second check closes the first, and a press outside closes the one open", async () => {
+    const user = userEvent.setup();
+    show(answer());
+    const health = screen.getByRole("button", { name: /Health insurance/ });
+    const dental = screen.getByRole("button", { name: /Dental coverage/ });
+    await user.click(health);
+    expect(health).toHaveAttribute("aria-expanded", "true");
+    await user.click(dental);
+    expect(dental).toHaveAttribute("aria-expanded", "true");
+    expect(health, "two panels open at once").toHaveAttribute("aria-expanded", "false");
+    expect(document.querySelectorAll("[id$='-basis']:not([hidden])")).toHaveLength(1);
+    await user.click(document.body);
+    expect(dental, "a pinned panel survived a click elsewhere").toHaveAttribute("aria-expanded", "false");
+    await user.pointer({ keys: "[TouchA]", target: health });
+    expect(health).toHaveAttribute("aria-expanded", "true");
+    await user.pointer({ keys: "[TouchA]", target: document.body });
+    expect(health, "a tapped panel survived a tap elsewhere").toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("a panel opened by hover closes on Escape while the pointer stays over it and focus is elsewhere (WCAG 1.4.13)", async () => {
+    const user = userEvent.setup();
+    show(answer());
+    const health = screen.getByRole("button", { name: /Health insurance/ });
+    await user.hover(health);
+    expect(panelOf(health)).toBeVisible();
+    expect(document.activeElement).toBe(document.body);
+    await user.keyboard("{Escape}");
+    expect(panelOf(health)).not.toBeVisible();
+    expect(health).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("with several countries, each limits heading sits under its country's h3", () => {
+    const visa = row({ perk: "visa_not_offered", k: 3, n: 12, quote: "This role is not eligible for visa sponsorship." });
+    show(answer({ published_keys: ["health", "pto", "visa_not_offered"], perks: [row({}), visa, UK_PTO] }));
+    const outline = Array.from(document.querySelectorAll("h2, h3, h4")).map((h) => `${h.tagName}:${h.textContent}`);
+    expect(outline).toEqual(["H2:Perks stated in their job postings", "H3:United States", "H4:Stated limits", "H3:United Kingdom"]);
+  });
+});
+
+describe("the block's own sentences claim no more than it knows", () => {
+  it("the not-listed line gives no cause for a missing perk: a published key, an unpublished key and a withheld key all look alike", () => {
+    // dental is stated in 38 of 40 postings and is simply not a live key here.
+    show(answer({ published_keys: ["health"], perks: [row({ k: 30, n: 40 }), row({ perk: "dental", k: 38, n: 40 })] }));
+    const line = screen.getByText(/A perk not listed here doesn't mean it isn't offered/).textContent ?? "";
+    expect(screen.queryByRole("button", { name: /Dental/ })).toBeNull();
+    expect(line, "the line says why dental is missing, and the reason is false").not.toMatch(/didn't find it|not stated in enough|stated in too few/);
+    expect(line).toMatch(/We list only perks whose reading we have checked/);
+  });
+
+  it("no locale keeps the old causal clause or the collision claim that two employers share the name", () => {
+    const OLD_CAUSE: Record<string, RegExp> = {
+      en: /it means we didn't find/, "en-GB": /it means we didn't find/, de: /Wir haben sie nur nicht/, nl: /we vonden het alleen niet/,
+      fr: /nous ne l'avons simplement pas trouvé/, es: /significa que no lo encontramos/, pt: /quer dizer que não o encontramos/,
+      hi: /इसका मतलब बस इतना है/, tl: /ibig sabihin lang, hindi namin ito nakitang/,
+    };
+    const OLD_COLLISION: Record<string, RegExp> = {
+      en: /two employers use/, "en-GB": /two employers use/, de: /Zwei Arbeitgeber nutzen/, nl: /twee werkgevers gebruiken/,
+      fr: /deux employeurs utilisent/, es: /dos empleadores usan/, pt: /dois empregadores usam/, hi: /दो नियोक्ता इस बोर्ड नाम/, tl: /dalawang employer ang gumagamit/,
+    };
+    const dir = resolve(ROOT, "src/i18n/locales");
+    for (const l of Object.keys(OLD_CAUSE)) {
+      const perks = JSON.parse(readFileSync(resolve(dir, `${l}.json`), "utf8")).jobsPage.perks as Record<string, string>;
+      expect(perks.notListed, `${l} notListed`).not.toMatch(OLD_CAUSE[l]);
+      expect(perks.withheldCollision, `${l} withheldCollision`).not.toMatch(OLD_COLLISION[l]);
+    }
+  });
+
+  it("a stated visa limit carries its share on the label, before anyone opens it", () => {
+    const visa = row({ perk: "visa_not_offered", k: 3, n: 30, quote: "This role is not eligible for visa sponsorship." });
+    show(answer({ published_keys: ["health", "visa_not_offered"], perks: [row({}), visa] }));
+    const limit = screen.getByRole("button", { name: /Visa sponsorship/ });
+    expect(limit.textContent).toContain("Visa sponsorship: stated as not available in at least 3 of 30 postings");
+    expect(limit).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("the basis line says only postings written in English are read", () => {
+    show(answer());
+    expect(screen.getByText(/Read from the text of their own open postings written in English; postings in other languages are not read yet\./)).toBeInTheDocument();
+  });
+
+  it("a statute narrower than the country names where it applies and links the law for the rest", async () => {
+    const user = userEvent.setup();
+    const gb = { ...UK_PTO, baseline: { ...(UK_PTO.baseline as Record<string, unknown>), applies_in: "Great Britain",
+      also: { statute: "Working Time Regulations (Northern Ireland) 2016, regulations 15 and 16", applies_in: "Northern Ireland",
+              source_url: "https://www.legislation.gov.uk/nisr/2016/49/regulation/16" } } };
+    show(answer({ published_keys: ["pto"], perks: [gb] }));
+    const check = screen.getByRole("button", { name: /Paid time off/ });
+    await user.click(check);
+    const panel = document.getElementById(check.getAttribute("aria-controls")!)!;
+    expect(panel.textContent).toContain("Working Time Regulations 1998, regulations 13 and 13A (Great Britain); Working Time Regulations (Northern Ireland) 2016, regulations 15 and 16 (Northern Ireland)");
+    expect(within(panel).getByRole("link", { name: /Northern Ireland\) 2016/ })).toHaveAttribute("href", "https://www.legislation.gov.uk/nisr/2016/49/regulation/16");
+    // Half a citation is none: a GB-only statute without the law for the rest is not shown.
+    const half = { ...UK_PTO, baseline: { ...(UK_PTO.baseline as Record<string, unknown>), applies_in: "Great Britain" } };
+    const again = show(answer({ published_keys: ["pto"], perks: [half] }));
+    expect(within(again.container).getByRole("button", { name: /Paid time off/ })).not.toHaveTextContent("may be the legal minimum");
   });
 });
 

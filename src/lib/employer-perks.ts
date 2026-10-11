@@ -57,11 +57,22 @@ export const QUALIFIED_TAG_MIN_SHARE = 1 / 3;
 export const PERK_WITHHELD_REASONS = ["collision", "agency", "franchise", "vendor_text_not_stored"] as const;
 export type PerkWithheldReason = (typeof PERK_WITHHELD_REASONS)[number];
 
-export interface PerkBaseline {
+export interface PerkStatute {
   statute: string;
   sourceUrl: string;
-  readOn: string;
+  /** Where the statute applies, when that is narrower than the country group (the GB rows: Great Britain). */
+  appliesIn: string | null;
 }
+
+export interface PerkBaseline extends PerkStatute {
+  readOn: string;
+  /** The law that sets the same minimum in the rest of the country group (Northern Ireland for the GB rows). */
+  also: PerkStatute | null;
+}
+
+/** Statute only, from the two official registers the table's CHECK allows. */
+const STATUTE_URL = /^https:\/\/www\.(legislation\.gov\.uk|gesetze-im-internet\.de)\//;
+const text = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v.trim() : null);
 
 export interface PerkClaim {
   perk: PerkCheckKey | PerkLimitKey;
@@ -100,13 +111,22 @@ const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object
 const isCount = (v: unknown): v is number => typeof v === "number" && Number.isInteger(v) && v >= 0;
 const ISO2 = /^[A-Z]{2}$/;
 
-function readBaseline(v: unknown): PerkBaseline | null {
+function readStatute(v: unknown): PerkStatute | null {
   if (!isObj(v)) return null;
-  const { statute, source_url: sourceUrl, read_on: readOn } = v;
-  if (typeof statute !== "string" || !statute.trim()) return null;
-  // Statute only, from the two official registers the table's CHECK allows.
-  if (typeof sourceUrl !== "string" || !/^https:\/\/www\.(legislation\.gov\.uk|gesetze-im-internet\.de)\//.test(sourceUrl)) return null;
-  return { statute: statute.trim(), sourceUrl, readOn: typeof readOn === "string" ? readOn : "" };
+  const statute = text(v.statute);
+  const sourceUrl = v.source_url;
+  if (!statute || typeof sourceUrl !== "string" || !STATUTE_URL.test(sourceUrl)) return null;
+  return { statute, sourceUrl, appliesIn: text(v.applies_in) };
+}
+
+function readBaseline(v: unknown): PerkBaseline | null {
+  const law = readStatute(v);
+  if (!law || !isObj(v)) return null;
+  const also = readStatute(v.also);
+  // A statute narrower than the country is shown only with where it applies
+  // and the law for the rest; one without the other is not shown at all.
+  if (law.appliesIn && !(also && also.appliesIn)) return null;
+  return { ...law, readOn: typeof v.read_on === "string" ? v.read_on : "", also };
 }
 
 function readClaim(v: unknown): PerkClaim | null {

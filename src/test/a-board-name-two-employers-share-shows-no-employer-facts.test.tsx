@@ -17,7 +17,7 @@
 //    every block on an ordinary employer.
 // 3. The browser's employer cache answers a shared token with nothing.
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, waitFor } from "@testing-library/react";
+import { fireEvent, render, waitFor } from "@testing-library/react";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { CATALOG } from "./helpers/catalog";
 import { BOARD_COLLISION_ROWS, collidedBoards, isCollidedToken } from "@/lib/board-collisions";
@@ -71,6 +71,13 @@ const CURVE = (token: string) => ({
   still_open_14: 0.8, fill_rate_7: 0.1, fill_rate_30: 0.3, median_days_to_fill: null, median_censored: true,
   dated_coverage: 0.9, dated_n: 9, undated_n: 1, fill_through: 0.5, churn: 0, absorption: 0, tracking_days: 40, sufficient: false,
 });
+const LCA = (token: string) => ({
+  ow_company_token: token, ow_soc_code: "15-1252", ow_soc_title: "Software Developers", ow_worksite_state: "CA",
+  ow_wage_low: 120000, ow_wage_high: 145600, ow_wage_median: 124800, ow_filings_n: 12, ow_match_basis: "employer_top",
+  ow_employer_filings_n: 21, ow_employer_cells_n: 2, ow_fiscal_quarter: "FY2026 Q3",
+  ow_source_file: "LCA_Disclosure_Data_FY2026_Q3.xlsx", ow_source_url: "https://www.dol.gov/media/LCA_Disclosure_Data_FY2026_Q3.xlsx",
+  ow_published_on: "2026-08-25", ow_coverage_from: "2025-10-01", ow_coverage_to: "2026-06-30",
+});
 const FILING = {
   lf_filing_id: "sec:1", lf_source: "sec_8k_205", lf_filer_name: "Clear Secure, Inc.", lf_event_date: ago(20).slice(0, 10),
   lf_filed_date: ago(18).slice(0, 10), lf_workers: 120, lf_url: "https://www.sec.gov/x", lf_status: "final", lf_form: "8-K",
@@ -98,11 +105,13 @@ function mount(token: string, jobs: ReturnType<typeof job>[]) {
     if (fn === "get_company_fill_curve") return { data: (a?.p_tokens ?? []).map(CURVE), error: null };
     if (fn === "get_similar_companies") return { data: [{ company: "Peer Co", company_token: "peerco", open_roles: 9, category: "engineering" }], error: null };
     if (fn === "get_employer_layoff_filings_all") return { data: [FILING], error: null };
+    if (fn === "get_employer_lca_wages") return { data: (a?.p_tokens ?? []).map(LCA), error: null };
     return { data: [], error: null };
   });
   invoke.mockImplementation(async (fn: string, a: { body?: Record<string, unknown> } | undefined) => {
     const b = a?.body ?? {};
     if (fn === "job-fit") return { data: { terms: [] }, error: null };
+    if (fn === "job-board" && b.action === "detail") return { data: { job: jobs.find((j) => j.id === b.id) ?? jobs[0], description: "A role." } };
     if (fn === "job-board" && b.action === "facets") return { data: { categories: {}, refreshedAt: ago(0), sources: {}, sourcesAt: ago(0) }, error: null };
     if (fn === "job-board" && b.action === "list") {
       if (b.facetCounts) return { data: { categories: {} } };
@@ -182,6 +191,51 @@ describe("the lander of a shared token", () => {
     expect(t, "the similar employers list").not.toContain("Peer Co");
     expect(t, "the filings on record").not.toContain("Clear Secure");
     expect(askedAbout("clear"), "an employer-level reader was asked about the shared token").toEqual([]);
+  });
+});
+
+describe("the cards and the detail pane of a shared token", () => {
+  beforeEach(() => {
+    try { sessionStorage.clear(); localStorage.clear(); } catch { /* blocked */ }
+    invoke.mockReset(); rpc.mockReset();
+  });
+  const batchAsked = (fn: string, token: string) => rpc.mock.calls
+    .some(([f, a]) => f === fn && Array.isArray(a?.p_tokens) && (a.p_tokens as string[]).includes(token));
+  const STAY_OFF = /\bwatched [\d,]+ of its roles come off the board\b/;
+  const titles = () => Array.from(document.querySelectorAll<HTMLElement>("[title]")).map((e) => e.getAttribute("title") ?? "");
+  const firstCard = () => document.querySelector<HTMLElement>("[data-job-id]")!;
+  const openDetail = async () => {
+    fireEvent.click(firstCard());
+    await waitFor(() => expect(text()).toMatch(/What the data says|The data says/), SLOW);
+  };
+
+  it("positive control: an ordinary employer's card and detail pane carry its record and its filed wages", async () => {
+    mount("jnj", [job("workday", "jnj", "Johnson & Johnson", 1)]);
+    await waitFor(() => expect(text()).toContain("Platform Engineer 1"), SLOW);
+    await waitFor(() => expect(batchAsked("get_company_fill_curve", "jnj")).toBe(true), SLOW);
+    await waitFor(() => expect(firstCard().textContent).toContain("Actively hiring"), SLOW);
+    await openDetail();
+    await waitFor(() => expect(text()).toContain("Filed H-1B wages"), SLOW);
+    expect(text()).toContain("we watched 9 of its roles come off the board and stay off");
+  });
+
+  it("asks no per-board record about it, and its cards and detail pane print no record and no filed wages", async () => {
+    mount("clear", [job("greenhouse", "clear", "CLEAR - Corporate", 1), job("bamboohr", "clear", "Clear", 2)]);
+    await waitFor(() => expect(text()).toContain("2 hiring systems carry a board with this name"), SLOW);
+    await waitFor(() => expect(text()).toContain("Platform Engineer 1"), SLOW);
+    // Give the batches a chance to fire: they fire on the same render as the cards.
+    await new Promise((r) => setTimeout(r, 100));
+    expect(batchAsked("get_company_fill_curve", "clear"), "the fill curve was asked about a shared token").toBe(false);
+    expect(batchAsked("get_company_growth", "clear"), "the growth row was asked about a shared token").toBe(false);
+    for (const c of Array.from(document.querySelectorAll<HTMLElement>("[data-job-id]"))) {
+      expect(c.textContent, "a card on a shared token carried a hiring verdict").not.toMatch(/Actively hiring|Fills fast|No closure record|Closure record withheld/);
+    }
+    expect(titles().filter((s) => STAY_OFF.test(s))).toEqual([]);
+    await openDetail();
+    await new Promise((r) => setTimeout(r, 100));
+    expect(text(), "the detail pane printed a pooled closure count").not.toMatch(STAY_OFF);
+    expect(text(), "the detail pane printed the token's H-1B filings").not.toContain("Filed H-1B wages");
+    expect(rpc.mock.calls.some(([f, a]) => f === "get_employer_lca_wages" && (a?.p_tokens as string[] | undefined)?.includes("clear")), "the filed-wage reader was asked about a shared token").toBe(false);
   });
 });
 

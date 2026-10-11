@@ -524,7 +524,10 @@ describe("a card that shows nine chips shows nothing", () => {
     // employer whose roles came back faster than they stayed down while the
     // detail pane warned. And the role caution the pane prints sits between
     // the event caution and the praise.
-    const iFast = slot.indexOf('hiringRecordVerdict(hh) === "closes" && canStateFillRate');
+    // Since company profiles phase 0 the praise branch reads the verdict
+    // through the shared hiring-record gate (gatedVerdict), so a record the
+    // employer page withholds cannot be praised on its card.
+    const iFast = slot.indexOf('gatedVerdict(hh) === "closes" && canStateFillRate');
     const iRoles = slot.indexOf("relistCaution(hh)");
     const iActive = slot.indexOf("isActivelyHiring(job.token)");
     expect(iRoles, "the role caution branch is missing").toBeGreaterThan(-1);

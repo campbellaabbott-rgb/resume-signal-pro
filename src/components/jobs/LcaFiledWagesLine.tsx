@@ -284,7 +284,9 @@ export function LcaFiledWagesLine({ companyToken, companyName, socCode = null, w
       )}
 
       <p className="text-[11px] text-muted-foreground mb-1">
-        {t("jobsPage.lcaNotAnOffer", "These are wages that were filed for those applications. They are not this role's pay and not an offer.")}
+        {context === "employer"
+          ? t("jobsPage.lcaNotAnOfferEmployer", "These are wages that were filed for those applications. They are not the pay of any role on this board and not an offer.")
+          : t("jobsPage.lcaNotAnOffer", "These are wages that were filed for those applications. They are not this role's pay and not an offer.")}
       </p>
 
       <p className="text-[11px] text-muted-foreground">

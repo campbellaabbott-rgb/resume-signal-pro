@@ -51,7 +51,7 @@ const MIGRATIONS = resolve(ROOT, "supabase/migrations");
  *  stated in its k block, and a guard reading a superseded migration proves nothing. */
 const READER = "20260925150733";
 const LOCALES = resolve(ROOT, "src/i18n/locales");
-const KEYS = ["lcaChip", "lcaRange", "lcaWhyThisCell", "lcaWhyThisCellEmployer", "lcaSponsor", "lcaPeriod", "lcaNotAnOffer", "lcaBasis", "lcaMinNote"] as const;
+const KEYS = ["lcaChip", "lcaRange", "lcaWhyThisCell", "lcaWhyThisCellEmployer", "lcaSponsor", "lcaPeriod", "lcaNotAnOffer", "lcaNotAnOfferEmployer", "lcaBasis", "lcaMinNote"] as const;
 
 const migRaw = (prefix: string) => {
   const f = readdirSync(MIGRATIONS).find((x) => x.startsWith(prefix) && x.endsWith(".sql"));
@@ -250,6 +250,7 @@ describe("the copy never promises pay, and never drops the basis of a number", (
         expect(promisesIn(j[k]), `${f} jobsPage.${k} reads as a promise about pay: "${j[k]}"`).toEqual([]);
       }
       expect(j.lcaNotAnOffer.toLowerCase()).toContain("not an offer");
+      expect(j.lcaNotAnOfferEmployer.toLowerCase()).toContain("not an offer");
     }
   });
 
@@ -430,6 +431,24 @@ describe("the rendered line says what it is a figure of", () => {
     const { container } = render(<LcaFiledWagesLine companyToken="acmewidgets" companyName="Acme Widgets" socCode="15-1252" worksiteState="US-CA" />);
     await screen.findByText(/filed 12 certified labor condition applications/i);
     expect(container.querySelector("[data-lca-basis]"), "a matched cell claims it was not matched").toBeNull();
+  });
+
+  it("on the employer page no role is in view, so the line never calls the wages 'this role's pay'", async () => {
+    // The employer page asks with no occupation and no state; its sentence
+    // says the cell is matched to no role, and the closing sentence must not
+    // then name a role that is not there. Positive control: beside a posting,
+    // the same row keeps "this role's pay".
+    rpcAnswer.rows = [{ ...ROW, ow_match_basis: "employer_top" }];
+    const employer = render(<LcaFiledWagesLine companyToken="acmewidgets" companyName="Acme Widgets" context="employer" />);
+    await waitFor(() => expect(employer.container.querySelector('[data-lca-context="employer"]')).not.toBeNull());
+    const box = employer.container.querySelector('[data-lca-context="employer"]')!.textContent ?? "";
+    expect(box).toContain("It is not matched to any one role on this board.");
+    expect(box, "the employer page named a role that is not in view").not.toContain("this role's pay");
+    expect(box).toContain("They are not the pay of any role on this board and not an offer.");
+    employer.unmount();
+    const posting = render(<LcaFiledWagesLine companyToken="acmewidgets" companyName="Acme Widgets" />);
+    await waitFor(() => expect(posting.container.querySelector('[data-lca-context="posting"]')).not.toBeNull());
+    expect(posting.container.textContent).toContain("They are not this role's pay and not an offer.");
   });
 
   it("renders nothing for the reader's null answer -- no placeholder, no absence on screen", async () => {

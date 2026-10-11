@@ -61,7 +61,7 @@ import { CompanyIntelPanel } from "@/components/jobs/CompanyIntelPanel";
 import { CompanyPerks } from "@/components/jobs/CompanyPerks";
 import { PublicCompanyCard } from "@/components/jobs/PublicCompanyCard";
 import { EmployerContext } from "@/components/jobs/EmployerContext";
-import { HIRING_RECORD_GATE_COPY, LAP_BUCKET, hiringRecordGate } from "@/lib/hiring-record-gate";
+import { HIRING_RECORD_GATE_COPY, LAP_BUCKET, hiringRecordGate, type HiringRecordRefusal } from "@/lib/hiring-record-gate";
 import { datedHeadcount } from "@/lib/headcount";
 import { SavedSearchPills } from "@/components/jobs/SavedSearchPills";
 import { LayoffFilingChip, LayoffFilingLine, LayoffFilingsOnRecord, useEmployerLayoffFilings, useEmployerLayoffFilingsAll } from "@/components/jobs/LayoffFilingLine";
@@ -492,6 +492,41 @@ export function hiringRecordVerdict(
   return "no-pattern";
 }
 
+/**
+ * THE VERDICT THROUGH THE SHARED GATE, READ ONCE FOR EVERY SURFACE. The
+ * employer page refuses the ninety-day counts where hundreds of roles came
+ * down and none came back (our re-list detector failing, not an employer
+ * whose roles never return) and below the depth floor (21 days of watching,
+ * 28 on a board confirmed only by re-reading it in full). A card, a detail
+ * pane, the compare drawer and the "Actively hiring" filter on the same page
+ * used to read hiringRecordVerdict raw, so the card under "Closure record
+ * withheld" carried a green badge whose tooltip printed the refused count.
+ *
+ * A record the gate refuses is "unknown", and `withheld` names the gate's
+ * reason, so a surface can say "withheld" rather than "no closure record"
+ * (we hold one) and never a no. An empty record stays "unknown" with no
+ * reason; a reading the gate allows keeps its verdict.
+ */
+export interface GatedHiringRecord {
+  verdict: HiringRecordVerdict;
+  withheld: HiringRecordRefusal | null;
+}
+export function gatedHiringRecord(h: FillCurve | null | undefined): GatedHiringRecord {
+  const raw = hiringRecordVerdict(h);
+  if (raw === "unknown") return { verdict: "unknown", withheld: null };
+  const gate = hiringRecordGate(h);
+  if (!gate.counts90.ok) return { verdict: "unknown", withheld: gate.counts90.reason };
+  return { verdict: raw, withheld: null };
+}
+/** The gated verdict alone: what every surface branches on. */
+export function gatedVerdict(h: FillCurve | null | undefined): HiringRecordVerdict {
+  return gatedHiringRecord(h).verdict;
+}
+/** Why the gate withholds a record we hold, or null (no record, or a readable one). */
+export function withheldReason(h: FillCurve | null | undefined): HiringRecordRefusal | null {
+  return gatedHiringRecord(h).withheld;
+}
+
 /** The floor the role caution needs before it speaks: ten roles that came back. */
 export const RELIST_CAUTION_MIN = 10;
 
@@ -720,12 +755,24 @@ export function admittedBy(closes: HiringRecordVerdict, growth: GrowthVerdict): 
   return c && g ? "both" : c ? "closes" : g ? "grew" : null;
 }
 
+/** Why a closure verdict is unknown, where it is not simply "no record": the
+ *  gate withheld a record we hold, or the token is a board name two hiring
+ *  systems share, for which no employer fact is read. */
+export type ClosureUnknownKind = "withheld" | "shared";
+
 /** What the filter kept, what it set aside, and why — BOTH halves counted. */
 export interface HiringSignalPartition<T> extends HiringRecordPartition<T> {
   /** Of `shown`: rows admitted by takedowns alone, by growth alone, by both. */
   admitted: { closes: number; grew: number; both: number };
-  /** Of `setAside`: distinct employers whose closure record is unread. */
+  /** Of `setAside`: distinct employers we hold no closure record for (never
+   *  one whose record the gate withholds, and never a shared board name). */
   noClosureEmployers: number;
+  /** Of `setAside`: distinct employers whose closure record we hold and the
+   *  shared gate will not let us print (relist control or depth floor). */
+  withheldEmployers: number;
+  /** Of `setAside`: distinct tokens two hiring systems carry. No employer
+   *  fact is read for them at all, so neither half is "unread" for them. */
+  sharedEmployers: number;
   /** Of `setAside`: distinct employers whose growth reading is unknown. */
   growthUnreadEmployers: number;
   /** Of `setAside`: distinct employers per growth reason family. */
@@ -743,11 +790,14 @@ export function partitionByHiringSignal<T extends { token?: string | null }>(
   rows: readonly T[],
   closesOf: (tok?: string | null) => HiringRecordVerdict,
   growthOf: (tok?: string | null) => Pick<GrowthRow, "verdict" | "unknown_reason"> | null | undefined,
+  closureUnknownKindOf: (tok?: string | null) => ClosureUnknownKind | null = () => null,
 ): HiringSignalPartition<T> {
   const shown: T[] = [];
   const setAside: T[] = [];
   const setAsideTokens = new Set<string>();
   const noClosure = new Set<string>();
+  const withheld = new Set<string>();
+  const shared = new Set<string>();
   const growthUnread = new Set<string>();
   const byFamily: Record<GrowthReasonFamily, Set<string>> = {
     read: new Set(), series: new Set(), tooNew: new Set(), tooSmall: new Set(), replaced: new Set(), excluded: new Set(), unread: new Set(),
@@ -769,7 +819,10 @@ export function partitionByHiringSignal<T extends { token?: string | null }>(
       setAside.push(r);
       if (r.token) {
         setAsideTokens.add(r.token);
-        if (closes === "unknown") noClosure.add(r.token);
+        const kind = closes === "unknown" ? closureUnknownKindOf(r.token) : null;
+        if (kind === "shared") { shared.add(r.token); continue; }
+        if (kind === "withheld") withheld.add(r.token);
+        else if (closes === "unknown") noClosure.add(r.token);
         if (growth === "unknown") {
           growthUnread.add(r.token);
           byFamily[growthReasonFamily(growthUnknownReason(g) ?? "unread")].add(r.token);
@@ -784,7 +837,8 @@ export function partitionByHiringSignal<T extends { token?: string | null }>(
   ) as Record<GrowthReasonFamily, number>;
   return {
     shown, setAside, setAsideEmployers: setAsideTokens.size, noPattern,
-    admitted, noClosureEmployers: noClosure.size, growthUnreadEmployers: growthUnread.size, growthReasons,
+    admitted, noClosureEmployers: noClosure.size, withheldEmployers: withheld.size, sharedEmployers: shared.size,
+    growthUnreadEmployers: growthUnread.size, growthReasons,
   };
 }
 
@@ -3454,23 +3508,42 @@ function JobsBoard({ boardId }: { boardId: string }) {
   // hundreds of takedowns means our detector is failing, and every refusal is
   // printed with its reason on the card.
   const landerGate = useMemo(() => hiringRecordGate(hiringCurve), [hiringCurve]);
+  // WHY A RECORD WE HOLD IS NOT PRINTED, in the gate's own sentence, for every
+  // surface that reads a withheld record: the Hiring Health card, a job card's
+  // badge, the detail pane and the compare drawer all say the same thing.
+  const withheldWhy = (h: FillCurve): string => {
+    const g = hiringRecordGate(h);
+    if (g.counts90.reason === "relist detection unproven") {
+      return t("jobsPage.hhGate.relist", HIRING_RECORD_GATE_COPY.relist, { n: (h.filled_roles_90d ?? 0).toLocaleString(), d: h.tracking_days });
+    }
+    return lapCertified(h)
+      ? t("jobsPage.hhGate.countsTrackingLap", HIRING_RECORD_GATE_COPY.countsTrackingLap, { d: h.tracking_days, min: g.countsMinTrackingDays })
+      : t("jobsPage.hhGate.countsTracking", HIRING_RECORD_GATE_COPY.countsTracking, { d: h.tracking_days, min: g.countsMinTrackingDays });
+  };
+  // The employer page's own badge for a withheld record, with the gate's
+  // reason as its tooltip, for a job card and the detail pane: the card and
+  // the Hiring Health card above it say one thing.
+  const withheldBadge = (h: FillCurve, extra = "") => (
+    <span
+      className={`inline-flex items-center gap-1 text-muted-foreground${extra ? ` ${extra}` : ""}`}
+      data-hh-withheld={withheldReason(h) ?? undefined}
+      title={withheldWhy(h)}
+    >
+      <Info className="w-3 h-3 shrink-0" />
+      {t("jobsPage.hhGate.withheldBadge", HIRING_RECORD_GATE_COPY.withheldBadge)}
+    </span>
+  );
   // The verdict on the card reads only counts the gate lets it print: a record
   // whose counts are withheld is unknown, never "closes", and never a no. The
-  // raw reading still decides WHICH unknown it is: no closure record at all, or
+  // gated reading still says WHICH unknown it is: no closure record at all, or
   // a record we hold and will not print (landerRecordWithheld).
-  const landerRawRecord = hiringRecordVerdict(hiringCurve);
-  const landerRecordWithheld = landerRawRecord !== "unknown" && !landerGate.counts90.ok;
-  const landerRecord: HiringRecordVerdict = landerRawRecord === "unknown" || landerRecordWithheld ? "unknown" : landerRawRecord;
+  const landerRecord: HiringRecordVerdict = gatedVerdict(hiringCurve);
+  const landerRecordWithheld = landerRecord === "unknown" && withheldReason(hiringCurve) !== null;
   // What a withheld record prints instead of its counts, in plain words: our
   // re-list detector failing on the board, or a watch too short (28 days on a
   // board confirmed only by re-reading it in full) for a takedown to have had
   // time to come back.
-  const landerCountsWhy: string | null = !hiringCurve || !landerRecordWithheld ? null
-    : landerGate.counts90.reason === "relist detection unproven"
-      ? t("jobsPage.hhGate.relist", HIRING_RECORD_GATE_COPY.relist, { n: (hiringCurve.filled_roles_90d ?? 0).toLocaleString(), d: hiringCurve.tracking_days })
-      : lapCertified(hiringCurve)
-        ? t("jobsPage.hhGate.countsTrackingLap", HIRING_RECORD_GATE_COPY.countsTrackingLap, { d: hiringCurve.tracking_days, min: landerGate.countsMinTrackingDays })
-        : t("jobsPage.hhGate.countsTracking", HIRING_RECORD_GATE_COPY.countsTracking, { d: hiringCurve.tracking_days, min: landerGate.countsMinTrackingDays });
+  const landerCountsWhy: string | null = !hiringCurve || !landerRecordWithheld ? null : withheldWhy(hiringCurve);
   // The employer's OWN advertised posting total at our last fetch, which the
   // curve RPC does not carry. When it exceeds our stored rows the fetch was
   // windowed and open_roles is a floor, so the panel prints "N+" rather than a
@@ -5673,8 +5746,14 @@ function JobsBoard({ boardId }: { boardId: string }) {
 
   // Batch-fetch the fill curve for the visible company tokens (one lookup each,
   // deduped via a ref so a missing RPC or repeat tokens never loop).
+  //
+  // NEVER FOR A BOARD NAME TWO HIRING SYSTEMS SHARE. The curve is keyed by
+  // token, so on such a token it pools both boards' closures into one record,
+  // and the page that says it "shows no employer facts here" printed a badge
+  // and a count built from two employers. With no row the card's slot and the
+  // detail pane's line render nothing, and the filter names the token as shared.
   useEffect(() => {
-    const batch = Array.from(new Set(jobs.map((j) => j.token).filter((x): x is string => !!x)))
+    const batch = Array.from(new Set(jobs.map((j) => j.token).filter((x): x is string => !!x && !isCollidedToken(x))))
       .filter((tok) => !healthAttempted.current.has(tok))
       .slice(0, 200);
     // Nothing left to ask for: every visible token has been attempted, so the
@@ -5757,7 +5836,8 @@ function JobsBoard({ boardId }: { boardId: string }) {
   // unchanged. A row per token asked comes back, so a missing row means we
   // did not ask — never that the board did not grow.
   useEffect(() => {
-    const batch = Array.from(new Set(jobs.map((j) => j.token).filter((x): x is string => !!x)))
+    // Not for a shared board name either, for the same reason as the curve.
+    const batch = Array.from(new Set(jobs.map((j) => j.token).filter((x): x is string => !!x && !isCollidedToken(x))))
       .filter((tok) => !growthAttempted.current.has(tok))
       .slice(0, 200);
     if (batch.length === 0) { setGrowthPending(false); return; }
@@ -5817,7 +5897,18 @@ function JobsBoard({ boardId }: { boardId: string }) {
    *  third one exists and what it cost to not have it. */
   const hiringRecordOf = useCallback(
     (tok?: string | null): HiringRecordVerdict =>
-      hiringRecordVerdict(tok ? curveByToken[tok] : undefined),
+      gatedVerdict(tok ? curveByToken[tok] : undefined),
+    [curveByToken],
+  );
+  /** Which unknown a closure verdict is, where it is not "no record": a record
+   *  the shared gate withholds, or a board name two hiring systems share (no
+   *  employer fact is read for those at all). */
+  const closureUnknownKindOf = useCallback(
+    (tok?: string | null): ClosureUnknownKind | null => {
+      if (!tok) return null;
+      if (isCollidedToken(tok)) return "shared";
+      return gatedVerdict(curveByToken[tok]) === "unknown" && withheldReason(curveByToken[tok]) !== null ? "withheld" : null;
+    },
     [curveByToken],
   );
   /** THE PAGE'S ONE READING OF THE GROWTH ROW: the row itself, so a surface can
@@ -5850,8 +5941,8 @@ function JobsBoard({ boardId }: { boardId: string }) {
    *  the exclusion the copy under the results states out loud, and it now
    *  carries which half was unread and, for growth, why. */
   const hiringPartition = useMemo(
-    () => partitionByHiringSignal(jobs, hiringRecordOf, growthOf),
-    [jobs, hiringRecordOf, growthOf],
+    () => partitionByHiringSignal(jobs, hiringRecordOf, growthOf, closureUnknownKindOf),
+    [jobs, hiringRecordOf, growthOf, closureUnknownKindOf],
   );
   /** Both reads in flight or one: the finding half of the disclosure waits for
    *  BOTH, because a sentence about employers may only be said about a read
@@ -7535,7 +7626,8 @@ function JobsBoard({ boardId }: { boardId: string }) {
                   // says which half admitted this employer, and the unread
                   // branches say which half we could not read.
                   const detailGrowth = growthOf(detailJob.token);
-                  const closes = hiringRecordVerdict(detailCurve);
+                  const detailReading = gatedHiringRecord(detailCurve);
+                  const closes = detailReading.verdict;
                   const growth = growthVerdict(detailGrowth);
                   const combined = activelyHiringVerdict(closes, growth);
                   if (combined === "positive") {
@@ -7549,6 +7641,8 @@ function JobsBoard({ boardId }: { boardId: string }) {
                       </span>
                     );
                   }
+                  // Held, and withheld by the gate: never "no closure record".
+                  if (combined === "unknown" && detailReading.withheld !== null) return withheldBadge(detailCurve);
                   if (combined === "unknown" && hiringRecordSlot(closes) === "unreadable") {
                     return (
                       <span
@@ -7603,12 +7697,16 @@ function JobsBoard({ boardId }: { boardId: string }) {
                   that is. The board holds no worksite subdivision either, so
                   the state stays unasked rather than guessed out of the
                   free-text location. */}
-              <LcaFiledWagesLine
-                companyToken={detailJob.token ?? ""}
-                companyName={companyDisplayName(detailJob.company)}
-                socCode={null}
-                worksiteState={null}
-              />
+              {/* NEVER ON A BOARD NAME TWO HIRING SYSTEMS SHARE: the filings
+                  are matched to the token, and the token is two employers. */}
+              {!isCollidedToken(detailJob.token) && (
+                <LcaFiledWagesLine
+                  companyToken={detailJob.token ?? ""}
+                  companyName={companyDisplayName(detailJob.company)}
+                  socCode={null}
+                  worksiteState={null}
+                />
+              )}
 
               {/* Ontario postings only. The reader returns no row for anything
                   outside the stored CA-ON subdivision code, for a posting the
@@ -8099,9 +8197,12 @@ function JobsBoard({ boardId }: { boardId: string }) {
                 // `fills >= 3 && churn <= fills` — the same arithmetic as the
                 // chip, with the threshold spelled as a literal, so the two
                 // surfaces could drift and neither could grow a third state.
-                // It goes through hiringRecordVerdict like everything else.
-                const verdict = hiringRecordVerdict(hh);
+                // It goes through the gated verdict like everything else: a
+                // count the employer page withholds is not printed here either.
+                const reading = gatedHiringRecord(hh);
+                const verdict = reading.verdict;
                 if (verdict === "closes") clauses.push(t("jobsPage.verdictTakedownsObserved", "we watched {{n}} of its roles come off the board and stay off", { n: fills }));
+                if (hh && reading.withheld !== null) clauses.push(t("jobsPage.verdictRecordWithheld", "we hold a closure record for this employer and do not print it: {{why}}", { why: withheldWhy(hh) }));
                 // THE THIRD STATE, SAID OUT LOUD IN THE PLACE PEOPLE DECIDE.
                 // This block answers "should I apply?", and on a windowed
                 // employer it used to answer it while silently omitting that we
@@ -8116,7 +8217,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                 // question we never asked. The cause is not asserted either:
                 // windowing and a quiet fully-read board are indistinguishable
                 // from here.
-                if (hh && verdict === "unknown") clauses.push(t("jobsPage.verdictNoRecord", "we hold no closure record for this employer, so we cannot say either way — that can be a board bigger than one visit can read, where no closure of theirs is observable to us, or an employer who took nothing down while we watched"));
+                if (hh && verdict === "unknown" && reading.withheld === null) clauses.push(t("jobsPage.verdictNoRecord", "we hold no closure record for this employer, so we cannot say either way — that can be a board bigger than one visit can read, where no closure of theirs is observable to us, or an employer who took nothing down while we watched"));
                 // THE GROWTH CLAUSE, on the same three-state rule. "grew"
                 // prints both of OUR observation dates and both counts beside
                 // the rate, and says board, not employer; "unknown" names the
@@ -8892,7 +8993,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                     {t("jobsPage.hiringBadge2", "Actively hiring")}
                   </span>
                 )}
-                {landerRawRecord === "unknown" && (
+                {landerRecord === "unknown" && !landerRecordWithheld && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
                     {t("jobsPage.noRecordBadge", "No closure record")}
                   </span>
@@ -8967,7 +9068,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                      roles close", and on the employer with 34,000 open roles
                      that sentence had been true-sounding and wrong for months. */
                   <li className="italic text-muted-foreground/80">
-                    {landerRawRecord === "unknown"
+                    {landerRecord === "unknown" && !landerRecordWithheld
                       ? t("jobsPage.hhNoClosureRecord", "We hold no closure record for this employer: not one of their postings has been observed coming off the board. On a board bigger than one visit can read, no closure is observable to us until we complete a provable full pass and then watch a role go after it; on a board we do read in full, it means nothing came down while we watched. We cannot tell those apart from here, so this is a gap on our side and not a sign they are not hiring.")
                       : t("jobsPage.hhRelistsOnly", "Every posting of theirs we have watched leave came back re-listed, so we have no clean take-down to count — at least {{n}} re-listings logged, and that count is a floor because we log one return per title per day.", { n: hiringCurve.relisted_roles_90d ?? 0 })}
                   </li>
@@ -10487,6 +10588,17 @@ function JobsBoard({ boardId }: { boardId: string }) {
                             .map(([, s]) => s)
                             .join("; ") || t("jobsPage.growthReasonNone", "none"),
                         })}{" "}
+                        {/* THE TWO UNKNOWNS THAT ARE NOT "NO RECORD", counted
+                            apart so the sentence above stays true: a record we
+                            hold and the shared gate withholds, and a board name
+                            two hiring systems share, for which no employer fact
+                            is read at all. */}
+                        {hiringPartition.withheldEmployers > 0 && (
+                          <>{t("jobsPage.hiringSetAsideWithheld", "{{w}} we hold a closure record for and do not print: on their board our re-list detection is not working, or we have not watched it long enough for a takedown to have stayed down. That is a gap in our record, not a fact about the employer.", { w: hiringPartition.withheldEmployers.toLocaleString() })}{" "}</>
+                        )}
+                        {hiringPartition.sharedEmployers > 0 && (
+                          <>{t("jobsPage.hiringSetAsideShared", "{{s}} are board names two hiring systems carry: we read no employer fact for those, so neither half is read for them.", { s: hiringPartition.sharedEmployers.toLocaleString() })}{" "}</>
+                        )}
                         <button
                           type="button"
                           onClick={() => setActivelyHiringOnly(false)}
@@ -12416,7 +12528,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                               // why a count gate stopped implying it). POSITIVE-ONLY: any
                               // other verdict falls through to the branches below, where the
                               // third state is named.
-                              if (hiringRecordVerdict(hh) === "closes" && canStateFillRate(hh, hh.tracking_days) && !lapCertified(hh)
+                              if (gatedVerdict(hh) === "closes" && canStateFillRate(hh, hh.tracking_days) && !lapCertified(hh)
                                 && hh.fill_rate_14 >= URGENT_FILL_RATE_MIN) {
                                 return (
                                   <span
@@ -12470,6 +12582,8 @@ function JobsBoard({ boardId }: { boardId: string }) {
                               // Two unread shapes, and the closure one wins the
                               // slot when both are unread: it is the older gap
                               // and the one a reader has learnt to expect.
+                              // Held and withheld by the gate: never "no closure record".
+                              if (withheldReason(hh) !== null) return withheldBadge(hh, "whitespace-nowrap");
                               if (hiringRecordSlot(hiringRecordOf(job.token)) === "unreadable") {
                                 return (
                                   <span
@@ -13528,8 +13642,13 @@ function JobsBoard({ boardId }: { boardId: string }) {
                           are stated here, and the unknown line is deliberately
                           neutral-toned rather than a warning — it is a fact
                           about our record. */}
-                      {hiringRecordVerdict(hh) === "closes" && (
+                      {gatedVerdict(hh) === "closes" && (
                         <li className="text-success">{t("jobsPage.verdictTakedownsObserved", "we watched {{n}} of its roles come off the board and stay off", { n: hh!.filled_roles_90d ?? 0 })}</li>
+                      )}
+                      {/* A record the gate withholds: held, not printed, and
+                          said with the gate's reason rather than as "no record". */}
+                      {hh && withheldReason(hh) !== null && (
+                        <li className="text-muted-foreground" data-hh-withheld={withheldReason(hh) ?? undefined}>{t("jobsPage.verdictRecordWithheld", "we hold a closure record for this employer and do not print it: {{why}}", { why: withheldWhy(hh) })}</li>
                       )}
                       {/* `hh &&`, not `!healthPending`: a row is the evidence
                           that we asked about this employer and got an answer.
@@ -13537,7 +13656,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                           a posting with no token — there is no employer to
                           speak about, and the compare drawer stays silent for
                           the same reason the card slot does. */}
-                      {hh && hiringRecordVerdict(hh) === "unknown" && (
+                      {hh && gatedVerdict(hh) === "unknown" && withheldReason(hh) === null && (
                         <li className="text-muted-foreground">{t("jobsPage.verdictNoRecord", "we hold no closure record for this employer, so we cannot say either way — that can be a board bigger than one visit can read, where no closure of theirs is observable to us, or an employer who took nothing down while we watched")}</li>
                       )}
                       {/* THE GROWTH ROW, side by side. Both of OUR dates and

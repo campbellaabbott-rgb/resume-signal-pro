@@ -78,7 +78,7 @@ export function BoardCollisionNotice({ companyToken, boards, labelOf }: {
       </ul>
       {open && (
         <p className="text-[11px] text-muted-foreground/80 mt-2">
-          {t("jobsPage.collision.basis", "Open roles are postings each board's own feed still serves, dated by the employer inside the last 30 days.")}
+          {t("jobsPage.collision.basis", "Open roles are postings each board's own feed still serves whose date falls inside the last 30 days: the employer's date, or for a posting that carries none, the day we last saw it.")}
         </p>
       )}
       <p className="text-[11px] text-muted-foreground/80 mt-1">
