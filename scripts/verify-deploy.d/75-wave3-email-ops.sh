@@ -16,10 +16,10 @@ echo "== 75. wave 3 email-ops: undelivered-order alert, stuck-generation retry, 
 # fn:N = the wave-3 integration's build on 2026-10-09 (docs/wave3/README.md). The
 # branch's own .1 is not enough: payments-account and agents-api stamped several
 # of these .1 on other code, so only the merged build proves the merged code.
-for P75 in scan-heartbeat:2 retry-failed-deliveries:2 stripe-webhook:4 send-product-email:2 verify-product-purchase:2 \
-  admin-regenerate-delivery:2 send-analysis-email:2 recover-purchase:2 process-email-queue:2 api-key-request:2 \
-  company-claim:2 send-affiliate-commission-email:2 send-agent-digest:3 send-market-pulse:2 send-scan-report:2 \
-  send-search-digest:3 save-lead:2 agent-pass-status:2 track-ab-event:2 get-analytics:2 \
+for P75 in scan-heartbeat:71 retry-failed-deliveries:61 stripe-webhook:61 send-product-email:2 verify-product-purchase:71 \
+  admin-regenerate-delivery:2 send-analysis-email:2 recover-purchase:2 process-email-queue:2 api-key-request:61 \
+  company-claim:2 send-affiliate-commission-email:2 send-agent-digest:24 send-market-pulse:24 send-scan-report:24 \
+  send-search-digest:25 save-lead:2 agent-pass-status:2 track-ab-event:2 get-analytics:2 \
   health-check:2 scheduled-health-probe:2; do
   FN75=${P75%%:*}; N75=${P75#*:}
   H75=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$FN75" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')

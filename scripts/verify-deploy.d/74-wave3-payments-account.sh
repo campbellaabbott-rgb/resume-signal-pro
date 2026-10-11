@@ -40,11 +40,11 @@ vd74_build() { # $1 fn, $2 method -> the x-fn-build header value
 }
 
 for PAIR in \
-  analyze-resume:2 api-key-request:2 create-agent-checkout:4 create-checkout:2 \
-  create-portal-session:2 create-product-checkout:2 create-scan-pack-checkout:2 create-subscription-checkout:4 \
-  delete-account:4 get-account-data:2 retry-failed-deliveries:2 scan-credits:2 send-market-pulse:2 \
-  send-product-email:2 send-scan-report:2 send-search-digest:3 verify-product-purchase:2 \
-  verify-scan-pack-purchase:2 withdraw-subscription:4 process-email-queue:2 free-keyword-scan:3; do
+  analyze-resume:62 api-key-request:61 create-agent-checkout:61 create-checkout:61 \
+  create-portal-session:61 create-product-checkout:61 create-scan-pack-checkout:61 create-subscription-checkout:61 \
+  delete-account:4 get-account-data:2 retry-failed-deliveries:61 scan-credits:2 send-market-pulse:24 \
+  send-product-email:2 send-scan-report:24 send-search-digest:25 verify-product-purchase:71 \
+  verify-scan-pack-purchase:2 withdraw-subscription:61 process-email-queue:2 free-keyword-scan:5 create-test-checkout:61; do
   FN=${PAIR%%:*}; SEQ=${PAIR#*:}
   H=$(vd74_build "$FN")
   if [ -z "$H" ]; then echo "FAIL  $FN preflight carries no x-fn-build (the previous bundle is still serving, or the function is not deployed)"

@@ -39,12 +39,18 @@ vd72_build() { # $1 fn -> the preflight's x-fn-build header
   curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$1" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//'
 }
 for PAIR in \
-  "free-keyword-scan|2026-10-09|3" "free-keyword-scan-stream|2026-10-09|3" "shortlist-evaluate|2026-10-10|3" \
-  "generate-application-answers|2026-10-10|3" "generate-apply-package|2026-10-09|4" "generate-ats-defense|2026-10-09|2" \
-  "generate-career-path|2026-10-09|3" "generate-career-snapshot|2026-10-10|3" "generate-cover-letter|2026-10-09|3" \
-  "generate-cover-letter-stream|2026-10-09|2" "generate-graduate-gameplan|2026-10-10|3" "generate-interview-coach|2026-10-09|3" \
-  "generate-keyword-fix|2026-10-09|2" "generate-premium-package|2026-10-09|3" "generate-premium-package-stream|2026-10-09|2" \
-  "generate-product-preview|2026-10-10|3"; do
+  "free-keyword-scan|2026-10-09|5" "free-keyword-scan-stream|2026-10-09|5" "shortlist-evaluate|2026-10-10|62" \
+  "generate-application-answers|2026-10-10|62" "generate-apply-package|2026-10-09|62" "generate-ats-defense|2026-10-09|3" \
+  "generate-career-path|2026-10-09|4" "generate-career-snapshot|2026-10-10|4" "generate-cover-letter|2026-10-09|62" \
+  "generate-cover-letter-stream|2026-10-09|3" "generate-graduate-gameplan|2026-10-10|4" "generate-interview-coach|2026-10-09|4" \
+  "generate-keyword-fix|2026-10-09|3" "generate-premium-package|2026-10-09|62" "generate-premium-package-stream|2026-10-09|3" \
+  "generate-product-preview|2026-10-10|4" \
+  "parse-pdf|2026-10-09|1" "parse-docx|2026-10-09|1" "parse-resume-structured|2026-10-09|2" \
+  "analyze-linkedin-profile|2026-10-09|2" "generate-freelance-boost|2026-10-09|2" "generate-resume-roast|2026-10-09|2" \
+  "generate-elevator-pitch|2026-10-10|3" "generate-recruiter-view|2026-10-10|3" "generate-summary|2026-10-10|3" \
+  "generate-tailored-resume|2026-10-10|3" "generate-tailored-resume-stream|2026-10-10|1" "import-freelance-profile|2026-10-10|3" \
+  "test-ai-fallback|2026-10-09|2" \
+  "job-fit|2026-10-09|3" "application-fit|2026-10-09|3"; do
   FN=${PAIR%%|*}; REST=${PAIR#*|}; DAY=${REST%%|*}; N=${REST#*|}
   H=$(vd72_build "$FN")
   if [ -z "$H" ]; then echo "FAIL  $FN preflight carries no x-fn-build (not reachable, or a bundle older than build stamps)"

@@ -21,7 +21,7 @@
 echo "== 77. wave 3 board-data-ingest: board explanations, phone header, layoff filings, landers, wage cells, parsers =="
 
 # ── function builds ─────────────────────────────────────────────────────────
-for PAIR in "agent-runner|2026-10-09|2" "public-api|2026-10-09|2" "send-search-digest|2026-10-09|3" "agent-mcp|2026-10-09|4" "job-fit|2026-10-09|2" "application-fit|2026-10-09|2"; do
+for PAIR in "agent-runner|2026-10-09|2" "public-api|2026-10-09|71" "send-search-digest|2026-10-09|25" "agent-mcp|2026-10-09|71" "job-fit|2026-10-09|3" "application-fit|2026-10-09|3"; do
   W77_FN=${PAIR%%|*}; W77_REST=${PAIR#*|}; W77_D=${W77_REST%%|*}; W77_N=${W77_REST#*|}
   W77_H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$W77_FN" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
   if [ -z "$W77_H" ]; then echo "FAIL  $W77_FN preflight carries no x-fn-build (not deployed, or the previous bundle is serving)"

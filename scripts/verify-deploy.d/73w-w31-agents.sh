@@ -7,8 +7,10 @@
 # THE CLAIMS:
 #   - nine functions serve this round's builds (agent-access and
 #     generate-application-answers on 2026-10-10.24, the rest 2026-10-09.24;
-#     the integration carries two of them later: generate-application-answers
-#     2026-10-10.62 and send-search-digest 2026-10-09.25);
+#     the integration carries four of them later: generate-application-answers
+#     2026-10-10.62, send-search-digest 2026-10-09.25, and agent-mcp and
+#     apply-agent 2026-10-09.71, the review round's sponsorship, country,
+#     refusal and scorer-copy fixes);
 #   - the morning shortlist's old unsubscribe link changes nothing on a GET and
 #     redirects to the confirm page (S11-132): a made-up id and token are
 #     enough, because the GET never reads them;
@@ -23,7 +25,7 @@
 # GETs, which PostgREST runs read-only.
 echo "== 73w. wave 3 round S11 agents: builds, the shortlist's unsubscribe, the pass rule in the tool text =="
 
-for PAIR in "agent-mcp|2026-10-09|24" "apply-agent|2026-10-09|24" "apply-broker|2026-10-09|24" "agent-access|2026-10-10|24" \
+for PAIR in "agent-mcp|2026-10-09|71" "apply-agent|2026-10-09|71" "apply-broker|2026-10-09|24" "agent-access|2026-10-10|24" \
             "generate-application-answers|2026-10-10|62" "send-agent-digest|2026-10-09|24" "send-search-digest|2026-10-09|25" \
             "send-market-pulse|2026-10-09|24" "send-scan-report|2026-10-09|24"; do
   W73W_FN=${PAIR%%|*}; W73W_REST=${PAIR#*|}; W73W_D=${W73W_REST%%|*}; W73W_N=${W73W_REST#*|}
