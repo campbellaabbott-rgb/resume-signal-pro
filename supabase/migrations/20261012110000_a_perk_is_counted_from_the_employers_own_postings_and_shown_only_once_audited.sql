@@ -746,6 +746,7 @@ BEGIN
        AND NOT (r.source = ANY (v_skip))
        AND NOT EXISTS (SELECT 1 FROM public.employer_perk_board_flags f WHERE f.company_token = r.company_token AND f.source = r.source)
        AND NOT EXISTS (SELECT 1 FROM public.employer_perk_postings e2 WHERE e2.company_token = r.company_token AND e2.source <> r.source)
+       AND (r.perk <> 'visa_not_offered' OR r.k >= 3)
      ORDER BY random()
      LIMIT LEAST(GREATEST(COALESCE(p_rows, 60), 1), 200)
   )
@@ -901,6 +902,13 @@ $$;
 -- vendor whose benefits text our ingest drops, shows none and says why. The
 -- quoted posting is named only while it still serves. Never a description,
 -- an apply link or a list of postings.
+--
+-- It also names the keys that are live right now (published_keys), so the
+-- lander can tell "nothing has passed its audit yet", where it prints
+-- nothing at all, from "perks are withheld on this board", where it prints
+-- the reason. And a stated visa limit needs three postings saying it, not
+-- two (plan section 4, "Stated limits"); the owner's draw holds the same
+-- bar, so the audit judges only rows that can print.
 
 CREATE OR REPLACE FUNCTION public.get_employer_perks(p_token text)
 RETURNS jsonb
@@ -947,11 +955,13 @@ AS $$
        AND NOT (SELECT collision FROM shared)
        AND NOT EXISTS (SELECT 1 FROM withheld w WHERE w.source = r.source)
        AND r.n >= 5 AND r.k >= 2 AND r.k * 10 >= r.n
+       AND (r.perk <> 'visa_not_offered' OR r.k >= 3)
   )
   SELECT jsonb_build_object(
     'token', p_token,
     'collision', (SELECT collision FROM shared),
     'expiry_days', 45,
+    'published_keys', COALESCE((SELECT jsonb_agg(lk.perk ORDER BY lk.perk) FROM live lk), '[]'::jsonb),
     'perks', COALESCE((SELECT jsonb_agg(jsonb_build_object(
                'source', c.source, 'country', c.country, 'perk', c.perk, 'k', c.k, 'n', c.n,
                'qualified_share', c.qualified_share, 'standard_text', c.standard_text, 'as_of', c.as_of,
@@ -1011,8 +1021,9 @@ $close$;
 COMMENT ON FUNCTION public.get_employer_perks(text) IS
   'One board''s published perk rows: k of n readable postings per country, the quoted line and the still-serving posting it came '
   'from, the statutory baseline where one exists. Only keys published, audited in the last 45 days, with the publish pause off; '
-  'thresholds n >= 5, k >= 2, k/n >= 10% re-checked; nothing on a token two vendors share, a franchise or agency board, or a '
-  'vendor whose benefits text is not stored (withheld lists why). anon and authenticated may call it.';
+  'thresholds n >= 5, k >= 2, k/n >= 10% re-checked, and k >= 3 for a stated visa limit; nothing on a token two vendors share, '
+  'a franchise or agency board, or a vendor whose benefits text is not stored (withheld lists why). published_keys names the '
+  'keys live right now, so a page prints a withheld reason only when there is something to withhold. anon and authenticated may call it.';
 
 -- ── 13. the self-check ─────────────────────────────────────────────────────
 

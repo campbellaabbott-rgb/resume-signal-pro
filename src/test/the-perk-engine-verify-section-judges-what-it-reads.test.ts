@@ -76,7 +76,7 @@ const DEPLOYED: Route[] = [
   { match: "^GET .*/rest/v1/employer_perk_(postings|rollups)\\?", status: 401, body: '{"code":"42501","message":"permission denied for table"}' },
   { match: "^GET .*/rest/v1/rpc/", status: 401, body: '{"code":"42501","message":"permission denied for function"}' },
 ];
-const EMPTY = { token: "ramp", collision: false, expiry_days: 45, perks: [], withheld: [] };
+const EMPTY = { token: "ramp", collision: false, expiry_days: 45, published_keys: [], perks: [], withheld: [] };
 
 describe("section 80 on a deployed engine", () => {
   it("prints PASS and INFO only, and every call is a preflight, a keyless POST, the reader or a GET", () => {
@@ -100,8 +100,19 @@ describe("section 80 fails what is wrong", () => {
     expect(run(DEPLOYED, '{"code":"PGRST202","message":"Could not find the function"}').lines.filter((l) => /^FAIL {2}get_employer_perks\(\w+\) as anon -> .*PGRST202/.test(l))).toHaveLength(3);
     const flex = { ...EMPTY, perks: [{ perk: "flex", country: "US", k: 6, n: 6, quote: "Flexible working" }] };
     expect(run(DEPLOYED, flex).lines.some((l) => /^FAIL {2}get_employer_perks\(ramp\) answers the publishable key in shape/.test(l))).toBe(true);
-    const thin = { ...EMPTY, perks: [{ perk: "health", country: "US", k: 1, n: 6, quote: "Medical insurance" }] };
+    const thin = { ...EMPTY, published_keys: ["health"], perks: [{ perk: "health", country: "US", k: 1, n: 6, quote: "Medical insurance" }] };
     expect(run(DEPLOYED, thin).lines.some((l) => /^FAIL {2}ramp US health breaks the published-row rule/.test(l))).toBe(true);
+    const visa = { ...EMPTY, published_keys: ["visa_not_offered"], perks: [{ perk: "visa_not_offered", country: "US", k: 2, n: 6, quote: "No visa sponsorship." }] };
+    expect(run(DEPLOYED, visa).lines.some((l) => /^FAIL {2}ramp US visa_not_offered breaks the published-row rule/.test(l))).toBe(true);
+  });
+
+  it("a reader that does not name its live keys, or shows a row for a key it does not name", () => {
+    const unnamed = { token: "ramp", collision: false, expiry_days: 45, perks: [], withheld: [] };
+    expect(run(DEPLOYED, unnamed).lines.some((l) => /^FAIL {2}get_employer_perks\(ramp\) answers the publishable key in shape/.test(l))).toBe(true);
+    const stray = { ...EMPTY, published_keys: ["dental"], perks: [{ perk: "health", country: "US", k: 6, n: 6, quote: "Medical insurance" }] };
+    expect(run(DEPLOYED, stray).lines.some((l) => /^FAIL {2}get_employer_perks\(ramp\) answers the publishable key in shape/.test(l))).toBe(true);
+    const fine = { ...EMPTY, published_keys: ["health"], perks: [{ perk: "health", country: "US", k: 6, n: 6, quote: "Medical insurance" }] };
+    expect(run(DEPLOYED, fine).lines.filter((l) => !/^(PASS|INFO) {2}|^== /.test(l))).toEqual([]);
   });
 
   it("a keyless POST that is answered, or a perk table the publishable key can read", () => {

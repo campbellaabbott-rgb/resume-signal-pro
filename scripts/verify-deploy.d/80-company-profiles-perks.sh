@@ -8,9 +8,11 @@
 #     preflight allows the cron's key header and the owner's;
 #   - a POST holding neither key is refused before any work (401);
 #   - the reader get_employer_perks answers the publishable key with an object
-#     -- perks, withheld, collision, the 45-day expiry -- and every perk it
-#     shows is one of the nine candidate keys (none at all until a key passes
-#     its row audit: every key ships unpublished);
+#     -- perks, withheld, collision, the 45-day expiry, and the keys live now
+#     (the lander prints a withheld reason only while one is) -- and every perk
+#     it shows is one of the nine candidate keys and one of the live ones, a
+#     stated visa limit on three postings or more (none at all until a key
+#     passes its row audit: every key ships unpublished);
 #   - the perk tables refuse the publishable key outright, and the owner's
 #     status reader and the cron-key check refuse it by name (42501).
 #
@@ -41,10 +43,11 @@ const fs=require("fs");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);con
 const t=process.env.W80_T;let j=null;try{j=JSON.parse(fs.readFileSync("/tmp/vd_80_perks.json","utf8"))}catch{}
 if(!j||typeof j!=="object"||Array.isArray(j)||!Array.isArray(j.perks)){ok(false,"get_employer_perks("+t+") as anon -> "+JSON.stringify(j).slice(0,200)+" (PGRST202 = 20261012110000 not applied)");process.exit(0)}
 const CANDIDATES=["health","dental","vision","life_dis","retire","pto","parental","equity","visa_not_offered"];
-const off=j.perks.filter((p)=>!CANDIDATES.includes(p.perk));
-ok(off.length===0&&j.expiry_days===45&&Array.isArray(j.withheld)&&typeof j.collision==="boolean","get_employer_perks("+t+") answers the publishable key in shape, with no key off the candidate list ("+j.perks.length+" published rows, withheld "+JSON.stringify(j.withheld).slice(0,120)+")");
+const live=Array.isArray(j.published_keys)?j.published_keys:null;
+const off=j.perks.filter((p)=>!CANDIDATES.includes(p.perk)||!(live||[]).includes(p.perk));
+ok(live!==null&&live.every((k)=>CANDIDATES.includes(k))&&off.length===0&&j.expiry_days===45&&Array.isArray(j.withheld)&&typeof j.collision==="boolean","get_employer_perks("+t+") answers the publishable key in shape, naming its live keys "+JSON.stringify(live)+" and no row outside them ("+j.perks.length+" published rows, withheld "+JSON.stringify(j.withheld).slice(0,120)+")");
 if(!j.perks.length)info("get_employer_perks("+t+"): no published rows -- every key ships unpublished until it passes its 60-row audit (scripts/perk-audit.mjs)");
-for(const p of j.perks){if(!(p.n>=5&&p.k>=2&&p.k*10>=p.n&&p.quote))ok(false,t+" "+p.country+" "+p.perk+" breaks the published-row rule: k "+p.k+" of n "+p.n+", quote "+JSON.stringify(p.quote))}'
+for(const p of j.perks){if(!(p.n>=5&&p.k>=2&&p.k*10>=p.n&&p.quote&&(p.perk!=="visa_not_offered"||p.k>=3)))ok(false,t+" "+p.country+" "+p.perk+" breaks the published-row rule: k "+p.k+" of n "+p.n+", quote "+JSON.stringify(p.quote))}'
 done
 
 W80_P=$(curl -s -m 30 "$B/rest/v1/employer_perk_postings?select=*&limit=1" -H "apikey: $K" -H "Authorization: Bearer $K")

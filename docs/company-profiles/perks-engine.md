@@ -11,7 +11,7 @@ perk key ships unpublished, and the lander's perks block is phase 2.
 |---|---|
 | `supabase/functions/_shared/perks-extract.ts` | The frozen prototype extractor (sha1 c9c0cf6f), decisions unchanged, plus the stored encoding. Imported by employer-profiles only. |
 | `supabase/functions/employer-profiles` (`employer-profiles.2026-10-12.1`) | `sweep` (cron key only) and four owner actions (`audit_status`, `audit_draw`, `audit_record`, `audit_pause`, admin key only). `verify_jwt = false`. |
-| `20261012110000` | Eleven private tables (RLS on, no policy, every client privilege revoked), the sweep's take and store, the nightly rollup, the lease, the owner's audit functions, and the reader `get_employer_perks(p_token)`. |
+| `20261012110000` | Eleven private tables (RLS on, no policy, every client privilege revoked), the sweep's take and store, the nightly rollup, the lease, the owner's audit functions, and the reader `get_employer_perks(p_token)`, which also names the keys live right now (`published_keys`, read by the phase-2 lander block) and shows a stated visa limit only on three postings or more (the draw holds the same bar). |
 | `20261012110100` | `client_callable_census()` re-issued whole with the reader on its anon list. |
 | `20261012111000` | The vault key, `employer_profiles_cron_key_matches`, and two crons: `employer-perks-sweep` every minute, `employer-perks-rollup` at 00:13, 00:43, 01:13 and 01:43 UTC. **Held** until step 1 verifies (`docs/deploy-ledger.json`). |
 | `scripts/perk-audit.mjs` | Draws rows for the row audit, writes the review file, records the judgement. |
