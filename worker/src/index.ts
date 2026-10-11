@@ -50,7 +50,10 @@ const IDLE_EXIT_MS = Number(process.env.WORKER_IDLE_EXIT_MS ?? 0);
 // are found among the inputs the enumerator read, never a hidden one
 // (S11-047); a reason prints as its stage in the public log (S11-046); the
 // sponsorship notice and "this country" rules (S11-012, S11-060).
-const WORKER_VERSION = "2026-10-09.24";
+// 2026-10-09.26: a notice inside the question's own clause or with an "if you
+// require sponsorship" condition is not the question, and "the country in
+// which you are applying" is the posting's (review of S11-012, S11-060).
+const WORKER_VERSION = "2026-10-09.26";
 // Where an unresolved submit leaves its evidence, for the human who has to
 // decide whether the application actually went out. The hosted container runs
 // as a non-root user in a root-owned /app, so it sets WORKER_SHOT_DIR (fly.toml)

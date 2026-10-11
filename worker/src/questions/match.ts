@@ -276,12 +276,27 @@ const SP_ASKS_YOU = /^\s*(?:please\s+)?(?:are|do|does|did|will|would|have|has|ha
 const SP_HISTORY =
   /\b(?:have|has)\s+(?:you\s+)?(?:ever\s+|previously\s+|already\s+)?been\s+sponsored\b|\b(?:were|was)\s+you\s+(?:ever\s+|previously\s+)?sponsored\b|\bare\s+you\s+(?:currently\s+|presently\s+|now\s+)?(?:being\s+)?sponsored\b|\b(?:ever|previously|already)\s+(?:been\s+)?sponsored\b|\bsponsored\s+(?:before|previously|in\s+the\s+past)\b|\b(?:current|previous|prior|former|past)\s+employer\s+(?:has\s+|have\s+|had\s+)?sponsor|\b(?:did|has|does)\s+(?:your\s+|an?\s+)?(?:current\s+|previous\s+|prior\s+|former\s+)?employer\s+sponsor|\b(?:currently|presently)\s+(?:hold|have|on)\s+(?:an?\s+)?sponsored\b/i;
 export type SponsorshipSense = "asks" | "inverted" | "unread" | "history";
+// The notice also comes inside the question's own clause ("...the United
+// States as we are unable to sponsor visas?"), so a clause opened by as, since,
+// because or so is split off and read on its own. A condition ("if you require
+// sponsorship") or an instruction ("please do not apply") is the employer
+// talking, never the question, whatever "you" it holds. And an authorisation
+// question whose sponsor words left after that are not the candidate's own
+// need ("will you require sponsorship") is not read as either: it goes to the
+// candidate (review of S11-012).
+const SP_CONDITION = /^\s*(?:and\s+|but\s+)?(?:if|should|in\s+case|where|when)\s+you\b/i;
+const SP_INSTRUCTION = /\b(?:do\s+not|don['’]?t|should\s+not|need\s+not|refrain\s+from)\s+apply|\bwill\s+not\s+be\s+considered\b/i;
+const SP_AUTH_ASKED =
+  /legally\s+(authori[sz]ed|entitled|eligible|permitted)|legally\s+(?:able|allowed)\s+to\s+(?:live\s+and\s+)?work|(authori[sz]ed|eligible|entitled|permitted)\s+to\s+work|work\s+authori[sz]ation|right\s+to\s+work|permission\s+to\s+work/i;
+const SP_OWN_NEED =
+  /\b(?:requir|need)\w*\s+(?:\w+\s+){0,4}?(?:sponsor|(?:work\s+)?visa\b|(?:work\s+)?permit\b)|\bsponsor\w*\s+(?:\w+\s+){0,3}?(?:requir|need)\w*/i;
 /** The label without the employer's sponsorship notice: what is actually asked. */
 export function withoutSponsorNotice(label: string): string {
   return label
-    .split(/([.?!;:,()[\]]|\s[-–—]\s)/)
+    .split(/([.?!;:,()[\]]|\s[-–—]\s|\s(?:as|since|because|so)\s)/i)
     .filter((part) => {
       const s = part.replace(/\bsponsor\w*\s+(?:you|your\s+\w+)\b/gi, "sponsor");
+      if (/\bsponsor/i.test(s) && (SP_CONDITION.test(s) || SP_INSTRUCTION.test(s))) return false;
       return !(/\bsponsor/i.test(s) && SP_NOTICE_NEG.test(s) && SP_NOTICE_WHO.test(s)
         && !SP_ASKS_YOU.test(s) && !RE_SPONSOR_INVERTED.test(part));
     })
@@ -295,7 +310,8 @@ export function sponsorshipSense(label: string): SponsorshipSense | null {
   if (!SP_CONTEXT.test(asked) && asked.trim().split(/\s+/).length > 3) return null;
   if (SP_HISTORY.test(asked)) return "history";
   if (RE_SPONSOR_INVERTED.test(asked)) return "inverted";
-  return /\bwithout\b/i.test(asked) ? "unread" : "asks";
+  if (/\bwithout\b/i.test(asked)) return "unread";
+  return SP_AUTH_ASKED.test(asked) && !SP_OWN_NEED.test(asked) ? "unread" : "asks";
 }
 // ── end of the sponsorship rule ──
 
@@ -666,7 +682,9 @@ function matchStanding(
         : "candidate has not stated whether they are authorised to work");
     }
     if (sense === "unread") {
-      return text(category, "the question turns on a \"without\" this rule cannot read, so either answer could state the opposite of the truth");
+      return text(category, /\bwithout\b/i.test(workQuestion)
+        ? "the question turns on a \"without\" this rule cannot read, so either answer could state the opposite of the truth"
+        : "it asks about authorisation and names sponsorship without asking the candidate's own need, so either answer could state the opposite of the truth");
     }
     if (sense === "history") {
       return text(category, "it asks about sponsorship the candidate has had or has now, and the profile states only whether they will need it");

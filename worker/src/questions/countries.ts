@@ -223,9 +223,13 @@ export function toCode(country: string): string | null {
  * as no country, they were answered from the home-country boolean, so a UK
  * candidate told a US employer they may work "in this country". They resolve
  * to the posting's own country, and are refused when that is not known.
+ * "The country in which / for which / where you are applying", "the location
+ * you are applying for", "the country of employment" and "this location" are
+ * the same question (review of S11-060). "The country where you reside" is
+ * not: that one is the candidate's own.
  */
 const THE_POSTINGS_COUNTRY =
-  /\bthis\s+country\b|\bcountry\s+(?:in\s+which|where|that)\s+(?:this|the)\s+(?:job|role|position|vacancy|post|opening|opportunity)\b|\b(?:where|in\s+which)\s+(?:this|the)\s+(?:job|role|position|vacancy|post|opening|opportunity)\s+is\s+(?:based|located|situated)\b|\b(?:country|location)\s+of\s+(?:this|the)\s+(?:job|role|position|vacancy|post|opening|opportunity)\b|\b(?:this|the)\s+(?:job|role|position)['’]s\s+(?:country|location)\b|\b(?:job|role|position)\s+location\b/i;
+  /\bthis\s+country\b|\b(?:country|location)\s+(?:(?:in|for|to)\s+which\s+|where\s+|that\s+)?you\s*(?:are\s+|['’]re\s+)?applying\b|\bcountry\s+of\s+employment\b|\bthis\s+location\b|\bcountry\s+(?:in\s+which|where|that)\s+(?:this|the)\s+(?:job|role|position|vacancy|post|opening|opportunity)\b|\b(?:where|in\s+which)\s+(?:this|the)\s+(?:job|role|position|vacancy|post|opening|opportunity)\s+is\s+(?:based|located|situated)\b|\b(?:country|location)\s+of\s+(?:this|the)\s+(?:job|role|position|vacancy|post|opening|opportunity)\b|\b(?:this|the)\s+(?:job|role|position)['’]s\s+(?:country|location)\b|\b(?:job|role|position)\s+location\b/i;
 
 /** The posting's country as a code: an ISO pair the board stores, or a name. */
 export function postingCountryCode(country: string | null | undefined): string | null {
