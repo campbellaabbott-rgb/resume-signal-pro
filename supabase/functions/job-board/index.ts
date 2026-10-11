@@ -4673,6 +4673,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         // ONE-SHOT, REMOVE AFTER ONE COLD ROTATION (wave 3, L7-04/L7-05): the Lever and
         // Recruitee pay text is re-formatted (exact figures, the stated period), so the
         // first rewrite of a stored figure is our correction, not an employer edit.
+        // Remove after 2026-11-09: a dated test fails from that day while this set exists
+        // (S11-136), since an employer's real pay edit on these vendors goes unlogged.
         const OUR_PAY_REWRITE = new Set(["lever", "recruitee"]);
         const FIELD_CHANGES_PER_VISIT = 500;
         const VALUE_CAP = 1_000; // salary strings and titles both fit generously
@@ -4759,7 +4761,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           // an answer, the employer did nothing. See VENDOR_FIELD_FIRST_READ, which
           // is a one-shot list and names why it must be removed.
           const firstVendorRead = curPay === null && nextPay !== null && VENDOR_FIELD_FIRST_READ.has(`${s.source}:salary`);
-          const ourRewrite = curPay !== null && nextPay !== null && OUR_PAY_REWRITE.has(s.source);
+          // Only a CHANGED text is a rewrite: the same string patched every salaried
+          // Lever and Recruitee row on every visit (S11-136).
+          const ourRewrite = curPay !== null && nextPay !== null && curPay !== nextPay && OUR_PAY_REWRITE.has(s.source);
           if (sameMoney || firstVendorRead || ourRewrite) patch.salary = nextPay;
           else put("salary", row.salary, prev.salary, false);
           // Rationale: docs/job-board-index-notes.md#n113-patch-salary-undefined
