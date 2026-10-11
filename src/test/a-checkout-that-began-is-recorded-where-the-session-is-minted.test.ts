@@ -198,11 +198,39 @@ function violations(fn: string, code: string): string[] {
   return out;
 }
 
-/** The FN_BUILD value a minter declares, or null. */
+/**
+ * The FN_BUILD value a minter declares, or null. Two shapes, the two the
+ * deploy ledger's buildOf reads: the whole string as one literal, or the
+ * function's name in its own FN_NAME constant and the build in a template
+ * that starts with it. create-pass-checkout needs the second: the pass guard
+ * reads a standalone number on any line that names the pass, and an October
+ * build date carries one.
+ */
 function buildMarkerOf(code: string): string | null {
   const m = /const FN_BUILD = "([^"]+)";/.exec(code);
-  return m ? m[1] : null;
+  if (m) return m[1];
+  const name = /const FN_NAME = "([^"]+)";/.exec(code);
+  const tpl = /const FN_BUILD = `\$\{FN_NAME\}\.([^`$]+)`;/.exec(code);
+  return name && tpl ? `${name[1]}.${tpl[1]}` : null;
 }
+
+describe("the build marker reader", () => {
+  it("reads the literal shape", () => {
+    expect(buildMarkerOf('const FN_BUILD = "create-checkout.2026-10-09.61";')).toBe("create-checkout.2026-10-09.61");
+  });
+  it("reads the FN_NAME shape as the function the constant names", () => {
+    expect(buildMarkerOf('const FN_NAME = "create-pass-checkout";\nconst FN_BUILD = `${FN_NAME}.2026-10-09.62`;')).toBe("create-pass-checkout.2026-10-09.62");
+  });
+  it("reads a template whose FN_NAME is another function as that function, which the self-naming check refuses", () => {
+    const marker = buildMarkerOf('const FN_NAME = "create-checkout";\nconst FN_BUILD = `${FN_NAME}.2026-10-09.62`;');
+    expect(marker!.startsWith("create-pass-checkout.")).toBe(false);
+  });
+  it("finds no marker in a template with no FN_NAME, or in one that interpolates anything else", () => {
+    expect(buildMarkerOf("const FN_BUILD = `${FN_NAME}.2026-10-09.62`;")).toBeNull();
+    expect(buildMarkerOf('const FN_NAME = "create-pass-checkout";\nconst FN_BUILD = `${FN_NAME}.${DAY}.62`;')).toBeNull();
+    expect(buildMarkerOf('const FN_NAME = "create-pass-checkout";')).toBeNull();
+  });
+});
 
 // ---------------------------------------------------------------------------
 // 1-3, 6: the minters.
