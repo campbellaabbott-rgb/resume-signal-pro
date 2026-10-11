@@ -135,5 +135,7 @@ describe("the tracker cap counts only what the member added (S11-139)", () => {
     await fresh();
     await db.exec(`INSERT INTO public.shortlist_candidates (owner_id, file_name) SELECT '${U1}', 'cv' || g FROM generate_series(1, 10000) g`);
     await expect(db.exec(`INSERT INTO public.shortlist_candidates (owner_id, file_name) VALUES ('${U1}', 'one more')`)).rejects.toThrow(/most it can/);
-  });
+    // Ten thousand rows through the cap trigger in pglite: seconds on an idle
+    // machine, past the default 5 s budget when the pre-push gate runs loaded.
+  }, 60_000);
 });
