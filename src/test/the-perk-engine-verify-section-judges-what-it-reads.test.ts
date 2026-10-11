@@ -71,7 +71,7 @@ ${PROBE}
 }
 
 const DEPLOYED: Route[] = [
-  { match: "^OPTIONS .*/functions/v1/employer-profiles$", headers: { "x-fn-build": "employer-profiles.2026-10-12.1", "access-control-allow-headers": "authorization, x-client-info, apikey, content-type, x-admin-key, x-employer-profiles-cron" } },
+  { match: "^OPTIONS .*/functions/v1/employer-profiles$", headers: { "x-fn-build": "employer-profiles.2026-10-12.2", "access-control-allow-headers": "authorization, x-client-info, apikey, content-type, x-admin-key, x-employer-profiles-cron" } },
   { match: "^POST .*/functions/v1/employer-profiles$", status: 401, body: '{"error":"Unauthorized"}' },
   { match: "^GET .*/rest/v1/employer_perk_(postings|rollups)\\?", status: 401, body: '{"code":"42501","message":"permission denied for table"}' },
   { match: "^GET .*/rest/v1/rpc/", status: 401, body: '{"code":"42501","message":"permission denied for function"}' },
@@ -82,7 +82,7 @@ describe("section 80 on a deployed engine", () => {
   it("prints PASS and INFO only, and every call is a preflight, a keyless POST, the reader or a GET", () => {
     const { lines, calls } = run(DEPLOYED, EMPTY);
     expect(lines.filter((l) => !/^(PASS|INFO) {2}|^== /.test(l)), lines.join("\n")).toEqual([]);
-    expect(lines.some((l) => /^PASS {2}employer-profiles preflight x-fn-build = employer-profiles\.2026-10-12\.1/.test(l))).toBe(true);
+    expect(lines.some((l) => /^PASS {2}employer-profiles preflight x-fn-build = employer-profiles\.2026-10-12\.2/.test(l))).toBe(true);
     expect(lines.filter((l) => /^PASS {2}get_employer_perks\((ramp|tailscale|spotify)\) answers the publishable key in shape/.test(l))).toHaveLength(3);
     expect(lines.some((l) => /^PASS {2}employer_perk_audit_status as anon -> 42501/.test(l))).toBe(true);
     for (const c of calls) expect(c, c).toMatch(/^(OPTIONS .*employer-profiles|POST .*functions\/v1\/employer-profiles|R get_employer_perks |GET )/);
@@ -94,6 +94,9 @@ describe("section 80 fails what is wrong", () => {
     expect(run(DEPLOYED.slice(1), EMPTY).lines.some((l) => /^FAIL {2}employer-profiles preflight carries no x-fn-build/.test(l))).toBe(true);
     const old = [{ ...DEPLOYED[0], headers: { ...DEPLOYED[0].headers, "x-fn-build": "employer-profiles.2026-10-11.9" } }, ...DEPLOYED.slice(1)];
     expect(run(old, EMPTY).lines.some((l) => /^FAIL {2}employer-profiles preflight x-fn-build = employer-profiles\.2026-10-11\.9/.test(l))).toBe(true);
+    // .1 reads non-English postings and stores no leave days: it is a previous build now.
+    const first = [{ ...DEPLOYED[0], headers: { ...DEPLOYED[0].headers, "x-fn-build": "employer-profiles.2026-10-12.1" } }, ...DEPLOYED.slice(1)];
+    expect(run(first, EMPTY).lines.some((l) => /^FAIL {2}employer-profiles preflight x-fn-build = employer-profiles\.2026-10-12\.1 \(want employer-profiles\.2026-10-12\.2 or later\)/.test(l))).toBe(true);
   });
 
   it("a reader that is not there, or one that shows a withheld key or a row under the threshold", () => {
@@ -113,6 +116,17 @@ describe("section 80 fails what is wrong", () => {
     expect(run(DEPLOYED, stray).lines.some((l) => /^FAIL {2}get_employer_perks\(ramp\) answers the publishable key in shape/.test(l))).toBe(true);
     const fine = { ...EMPTY, published_keys: ["health"], perks: [{ perk: "health", country: "US", k: 6, n: 6, quote: "Medical insurance" }] };
     expect(run(DEPLOYED, fine).lines.filter((l) => !/^(PASS|INFO) {2}|^== /.test(l))).toEqual([]);
+  });
+
+  it("a reader that hands out a withheld reason or a collision flag while no key is live", () => {
+    expect(run(DEPLOYED, EMPTY).lines.filter((l) => /^PASS {2}get_employer_perks\(\w+\) with no key live answers no withheld reason and no collision flag/.test(l))).toHaveLength(3);
+    const leaks = { ...EMPTY, withheld: [{ source: "greenhouse", reason: "franchise", share: 0.333 }] };
+    expect(run(DEPLOYED, leaks).lines.some((l) => /^FAIL {2}get_employer_perks\(ramp\) with no key live answers no withheld reason/.test(l))).toBe(true);
+    const shared = { ...EMPTY, collision: true };
+    expect(run(DEPLOYED, shared).lines.some((l) => /^FAIL {2}get_employer_perks\(ramp\) with no key live answers no withheld reason and no collision flag/.test(l))).toBe(true);
+    // Once a key is live, a reason is what the lander prints: not a failure.
+    const liveReason = { ...EMPTY, published_keys: ["health"], withheld: [{ source: "greenhouse", reason: "agency", share: 1 }] };
+    expect(run(DEPLOYED, liveReason).lines.filter((l) => !/^(PASS|INFO) {2}|^== /.test(l))).toEqual([]);
   });
 
   it("a keyless POST that is answered, or a perk table the publishable key can read", () => {

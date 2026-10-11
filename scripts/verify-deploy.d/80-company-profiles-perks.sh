@@ -4,7 +4,7 @@
 # in scope. Deploy note: docs/company-profiles/perks-engine.md.
 #
 # THE CLAIMS:
-#   - employer-profiles serves employer-profiles.2026-10-12.1 or later, and its
+#   - employer-profiles serves employer-profiles.2026-10-12.2 or later, and its
 #     preflight allows the cron's key header and the owner's;
 #   - a POST holding neither key is refused before any work (401);
 #   - the reader get_employer_perks answers the publishable key with an object
@@ -12,7 +12,8 @@
 #     (the lander prints a withheld reason only while one is) -- and every perk
 #     it shows is one of the nine candidate keys and one of the live ones, a
 #     stated visa limit on three postings or more (none at all until a key
-#     passes its row audit: every key ships unpublished);
+#     passes its row audit: every key ships unpublished); with no key live it
+#     answers no withheld reason and no collision flag either (fail closed);
 #   - the perk tables refuse the publishable key outright, and the owner's
 #     status reader and the cron-key check refuse it by name (42501).
 #
@@ -27,8 +28,8 @@ echo "== 80. company profiles: the perk engine (20261012110000-111000, employer-
 W80_H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/employer-profiles" -H "Origin: $SITE" -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: x-admin-key,x-employer-profiles-cron,content-type" | tr -d '\r')
 W80_B=$(printf '%s\n' "$W80_H" | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
 if [ -z "$W80_B" ]; then echo "FAIL  employer-profiles preflight carries no x-fn-build (the function is not deployed)"
-elif build_ge employer-profiles "$W80_B" 2026-10-12 1; then echo "PASS  employer-profiles preflight x-fn-build = $W80_B (employer-profiles.2026-10-12.1 or later)"
-else echo "FAIL  employer-profiles preflight x-fn-build = $W80_B (want employer-profiles.2026-10-12.1 or later)"; fi
+elif build_ge employer-profiles "$W80_B" 2026-10-12 2; then echo "PASS  employer-profiles preflight x-fn-build = $W80_B (employer-profiles.2026-10-12.2 or later)"
+else echo "FAIL  employer-profiles preflight x-fn-build = $W80_B (want employer-profiles.2026-10-12.2 or later)"; fi
 W80_A=$(printf '%s\n' "$W80_H" | grep -i '^access-control-allow-headers:' | head -1 | tr 'A-Z' 'a-z')
 case "$W80_A" in *x-employer-profiles-cron*x-admin-key*|*x-admin-key*x-employer-profiles-cron*) echo "PASS  employer-profiles preflight allows x-employer-profiles-cron and x-admin-key";;
   *) echo "FAIL  employer-profiles preflight does not allow both key headers: ${W80_A:-(no header)}";; esac
@@ -46,6 +47,7 @@ const CANDIDATES=["health","dental","vision","life_dis","retire","pto","parental
 const live=Array.isArray(j.published_keys)?j.published_keys:null;
 const off=j.perks.filter((p)=>!CANDIDATES.includes(p.perk)||!(live||[]).includes(p.perk));
 ok(live!==null&&live.every((k)=>CANDIDATES.includes(k))&&off.length===0&&j.expiry_days===45&&Array.isArray(j.withheld)&&typeof j.collision==="boolean","get_employer_perks("+t+") answers the publishable key in shape, naming its live keys "+JSON.stringify(live)+" and no row outside them ("+j.perks.length+" published rows, withheld "+JSON.stringify(j.withheld).slice(0,120)+")");
+if(live&&live.length===0)ok(Array.isArray(j.withheld)&&j.withheld.length===0&&j.collision===false,"get_employer_perks("+t+") with no key live answers no withheld reason and no collision flag (withheld "+JSON.stringify(j.withheld).slice(0,120)+", collision "+j.collision+")");
 if(!j.perks.length)info("get_employer_perks("+t+"): no published rows -- every key ships unpublished until it passes its 60-row audit (scripts/perk-audit.mjs)");
 for(const p of j.perks){if(!(p.n>=5&&p.k>=2&&p.k*10>=p.n&&p.quote&&(p.perk!=="visa_not_offered"||p.k>=3)))ok(false,t+" "+p.country+" "+p.perk+" breaks the published-row rule: k "+p.k+" of n "+p.n+", quote "+JSON.stringify(p.quote))}'
 done

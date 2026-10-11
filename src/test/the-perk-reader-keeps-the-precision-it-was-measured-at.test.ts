@@ -29,7 +29,7 @@ import { describe, expect, it } from "vitest";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import {
-  CANDIDATE_KEYS, PERK_KEYS, ROLLUP_KEYS, WITHHELD_KEYS, extract, readPosting, type PerkKey,
+  CANDIDATE_KEYS, PERK_KEYS, ROLLUP_KEYS, WITHHELD_KEYS, extract, isEnglishText, ptoDaysOf, readPosting, type PerkKey,
 } from "../../supabase/functions/_shared/perks-extract";
 import { extractSalary } from "../../supabase/functions/_shared/salary-extract";
 import { codeOf, sqlCodeOf } from "./helpers/strip-comments";
@@ -164,12 +164,38 @@ describe("Ramp's fertility HRA line is a benefit, never pay", () => {
   it("the perk read keeps no amount: masks and quoted words only, and no value of 10,000", () => {
     for (const r of ramp) {
       const read = readPosting(r.title, r.description);
-      expect(Object.keys(read).sort()).toEqual(["franchise", "n", "q", "quotes", "readable", "y"]);
+      // Masks, quoted words and three flags (readable, English, franchise): no amount.
+      expect(Object.keys(read).sort()).toEqual(["english", "franchise", "n", "q", "quotes", "readable", "y"]);
       expect(read.readable).toBe(true);
+      expect(typeof read.english).toBe("boolean");
+      // The one figure the sweep keeps beside a quote is a leave line's day count, two digits at most.
+      for (const q of read.quotes) if (q) expect(ptoDaysOf(q).days ?? 0).toBeLessThan(100);
       const values = extract(r.title, r.description).values;
       expect(Object.keys(values).every((k) => ["pto_days", "parental_weeks", "retire_pct"].includes(k))).toBe(true);
       expect(Object.values(values)).not.toContain(10000);
     }
+  });
+
+  it("only a posting written in English reads as English: the split's fifteen in other languages and scripts do not", () => {
+    // German (Airbus), Spanish (AstraZeneca Mexico, Accenture Spain), Chinese
+    // (Accenture China), Polish and Lithuanian (Inter IKEA), French
+    // (Deliveroo), Swedish (Telenor) and Dutch (BoekenVoordeel), read by eye.
+    // The rollup counts only English postings until the blind second
+    // labelled set has judged the other languages (plan section 3).
+    const NOT_ENGLISH = [14, 19, 37, 38, 62, 64, 178, 191, 192, 193, 194, 197, 198, 199, 200];
+    const foreign = FIXTURE.rows.filter((r) => !readPosting(r.title, r.description).english).map((r) => r.idx);
+    expect(foreign).toEqual(NOT_ENGLISH);
+    expect(FIXTURE.rows.length - foreign.length).toBe(84);
+    expect(isEnglishText("Was wir dir bieten: 30 Tage Urlaub im Jahr und eine betriebliche Altersvorsorge mit Zuschuss für dich.")).toBe(false);
+    expect(isEnglishText("What we offer: thirty days of leave a year, and a pension with an employer match for you and your family.")).toBe(true);
+  });
+
+  it("a leave line's day count: weeks are five days, hours are never days, and bank holidays on top are named", () => {
+    expect(ptoDaysOf("30 Tage Urlaub im Jahr")).toEqual({ days: 30, plusPublicHolidays: false });
+    expect(ptoDaysOf("25 days annual leave plus bank holidays")).toEqual({ days: 25, plusPublicHolidays: true });
+    expect(ptoDaysOf("28 days holiday including bank holidays")).toEqual({ days: 28, plusPublicHolidays: false });
+    expect(ptoDaysOf("6 weeks paid vacation")).toEqual({ days: 30, plusPublicHolidays: false });
+    expect(ptoDaysOf("80 hours of PTO a year").days).toBeNull();
   });
 
   it("the control: the salary parser, which perk text never reaches, reads the same line as pay", () => {

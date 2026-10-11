@@ -16,7 +16,7 @@
  * 3 ms in Deno: the prototype measured 0.54 ms mean on one machine and
  * 2.58 ms on another, against a 2-second CPU cap per request.
  */
-import { EXTRACTOR_VERSION, readPosting } from "../_shared/perks-extract.ts";
+import { EXTRACTOR_VERSION, PERK_BIT, ptoDaysOf, readPosting } from "../_shared/perks-extract.ts";
 
 export const SWEEP_LEASE = "sweep";
 export const LEASE_SECONDS = 90;
@@ -75,6 +75,8 @@ export interface StoredRow {
   source: string;
   country: string | null;
   readable: boolean;
+  /** Written in English: only English postings are counted until other languages are judged. */
+  english: boolean;
   franchise: boolean;
   agency: boolean;
   y: number;
@@ -84,23 +86,40 @@ export interface StoredRow {
   extractor_version: number;
 }
 
+/** One quoted line as employer_perk_store takes it; a leave line also carries the days it states. */
+export interface StoredLine {
+  h: string;
+  line: string;
+  pto_days?: number | null;
+  pto_plus_holidays?: boolean;
+}
+
 /** One board's postings, read: the rows and the distinct quoted lines employer_perk_store takes, and the time the reading took. */
 export async function encodeBoard(
   batch: BoardBatch,
   memo: Map<string, string> = new Map(),
-): Promise<{ rows: StoredRow[]; lines: Array<{ h: string; line: string }>; extractMs: number }> {
+): Promise<{ rows: StoredRow[]; lines: StoredLine[]; extractMs: number }> {
   const t0 = performance.now();
   const reads = batch.rows.map((r) => ({ r, read: readPosting(r.title ?? "", r.body) }));
   const extractMs = performance.now() - t0;
-  const lines = new Map<string, string>();
+  const lines = new Map<string, StoredLine>();
   const rows: StoredRow[] = [];
   for (const { r, read } of reads) {
     const hashes: Array<string | null> = [];
-    for (const quote of read.quotes) {
+    for (const [bit, quote] of read.quotes.entries()) {
       if (!quote) { hashes.push(null); continue; }
       let h = memo.get(quote);
       if (!h) { h = await lineHash(quote); memo.set(quote, h); }
-      lines.set(h, quote);
+      const entry = lines.get(h) ?? { h, line: quote };
+      // The days a leave line states, read from the line itself, so the
+      // reader never tags a line above the statutory minimum as "may be the
+      // legal minimum".
+      if (bit === PERK_BIT.pto && entry.pto_days === undefined) {
+        const d = ptoDaysOf(quote);
+        entry.pto_days = d.days;
+        entry.pto_plus_holidays = d.plusPublicHolidays;
+      }
+      lines.set(h, entry);
       hashes.push(h);
     }
     rows.push({
@@ -109,6 +128,7 @@ export async function encodeBoard(
       source: r.source,
       country: r.country,
       readable: read.readable,
+      english: read.english,
       franchise: read.franchise,
       agency: r.agency === true,
       y: read.y,
@@ -118,7 +138,7 @@ export async function encodeBoard(
       extractor_version: EXTRACTOR_VERSION,
     });
   }
-  return { rows, lines: [...lines].map(([h, line]) => ({ h, line })), extractMs };
+  return { rows, lines: [...lines.values()], extractMs };
 }
 
 export interface SweepConfig {

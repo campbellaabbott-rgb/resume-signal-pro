@@ -20,7 +20,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
-  CANDIDATE_KEYS, LAUNCH_ROWS, OWNER_CHECKS_PER_KEY, passesLaunch, planRecord, reviewRow, rowVerdict, tally,
+  CANDIDATE_KEYS, LAUNCH_ROWS, OWNER_CHECKS_PER_KEY, keyState, passesLaunch, planRecord, reauditKeys, reviewRow, rowVerdict, tally,
 } from "../../scripts/perk-audit.mjs";
 import { CANDIDATE_KEYS as EXTRACTOR_CANDIDATES } from "../../supabase/functions/_shared/perks-extract";
 
@@ -132,5 +132,30 @@ describe("the script's lists and rows", () => {
     expect(src).not.toMatch(/console\.(log|error)\([^)]*adminKey/);
     expect(src).toMatch(/functions\/v1\/employer-profiles/);
     expect(src, "the script asks only the function, never an RPC").not.toMatch(/rest\/v1\/rpc|\.rpc\(/);
+  });
+});
+
+describe("an expired key is not a published one", () => {
+  const NOW = Date.parse("2026-12-01T00:00:00Z");
+  const day = 86_400_000;
+  const k = (perk: string, o: Record<string, unknown>) => ({ perk, rows: 10, ...o });
+
+  it("a flag whose 45 days ran out is expired, from the status row or from its own date", () => {
+    expect(keyState(k("health", { published: false, flag: true, expired: true, expires_at: new Date(NOW - day).toISOString() }), NOW)).toBe("expired");
+    // A status row from a function that still reports the raw flag as published.
+    expect(keyState(k("health", { published: true, expires_at: new Date(NOW - 75 * day).toISOString() }), NOW)).toBe("expired");
+    expect(keyState(k("health", { published: true, expires_at: new Date(NOW + 10 * day).toISOString() }), NOW)).toBe("published");
+    expect(keyState(k("dental", { published: false, expires_at: null }), NOW)).toBe("unpublished");
+  });
+
+  it("the monthly re-audit draws only keys that are published and unexpired", () => {
+    const keys = [
+      k("health", { published: true, flag: true, expired: false, expires_at: new Date(NOW + 5 * day).toISOString() }),
+      k("pto", { published: true, expires_at: new Date(NOW - 75 * day).toISOString() }),
+      k("retire", { published: false, flag: true, expired: true, expires_at: new Date(NOW - 2 * day).toISOString() }),
+      k("dental", { published: false, flag: false, expires_at: null }),
+      k("flex", { published: true, expires_at: new Date(NOW + 5 * day).toISOString() }),
+    ];
+    expect(reauditKeys(keys, NOW)).toEqual(["health"]);
   });
 });

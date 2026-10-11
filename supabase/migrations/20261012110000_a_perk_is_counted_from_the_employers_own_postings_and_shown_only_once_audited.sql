@@ -22,15 +22,25 @@
 --                            in the bit order of employer_profile_perk_publish,
 --                            one quoted-line hash per bit, the posting's
 --                            country, whether its text was long enough to
---                            read, franchise wording, the board's agency
---                            flag, and the extractor version that read it.
+--                            read, whether it is written in English,
+--                            franchise wording, the board's agency flag, and
+--                            the extractor version that read it.
 --                            Ints and hashes, not jsonb: about a million rows.
 --   employer_perk_lines      the quoted lines, once each, keyed by hash. A
 --                            boilerplate block repeated on 160 postings is
---                            stored once.
+--                            stored once. A leave line carries the days it
+--                            states, so a legal-minimum note never rides a
+--                            line that states more than the minimum.
 --   employer_perk_rollups    the claim rows: k of n readable postings in one
 --                            country state the perk. Written only when n >= 5,
 --                            k >= 2 and k/n >= 10% (the CHECK holds it too).
+--                            ENGLISH POSTINGS ONLY: the extractor's precision
+--                            was measured on a split with about ten
+--                            non-English postings in ninety-nine, and plan
+--                            section 3 holds other languages back until the
+--                            blind second labelled set has judged them. A
+--                            posting in another language counts in neither k
+--                            nor n, whatever key passes its audit.
 --                            Franchise and agency postings count in neither
 --                            k nor n, and a board whose readable postings
 --                            carry franchise wording 30% of the time or more
@@ -46,7 +56,14 @@
 --                            automatic enrolment and 5.6 weeks' leave, German
 --                            statutory leave and the right to a company pension
 --                            by salary conversion. "This line may describe
---                            that minimum."
+--                            that minimum." The GB statutes extend to Great
+--                            Britain (the Pensions Act 2008 to England, Wales
+--                            and Scotland), and Northern Ireland's postings
+--                            share the GB country group, so each GB row names
+--                            where it applies and cites the Northern Ireland
+--                            law that sets the same minimum. Leave rows carry
+--                            the minimum in days, and the reader drops the note
+--                            from a quoted line that states more.
 --   employer_profile_runs, employer_profile_config (the pause switches),
 --   employer_profile_leases (one sweep at a time), employer_perk_sweep_boards
 --   (boards in priority order), employer_perk_rollup_state (the nightly cursor).
@@ -54,8 +71,11 @@
 -- NEVER A DESCRIPTION, A SALARY OR A SEARCH FIELD. Nothing here writes
 -- job_board_postings; benefit amounts never reach the salary parser.
 --
--- Self-verifying, safe to re-run: tables IF NOT EXISTS, functions OR REPLACE,
--- seeds ON CONFLICT DO NOTHING (a re-run never resets a publish flag).
+-- Self-verifying, safe to re-run: tables IF NOT EXISTS (and every column this
+-- file added after its first draft, ADD COLUMN IF NOT EXISTS), functions OR
+-- REPLACE, the publish seeds ON CONFLICT DO NOTHING (a re-run never resets a
+-- publish flag), the statutory rows ON CONFLICT DO UPDATE (a re-run carries
+-- their corrected text).
 
 SET LOCAL statement_timeout = '2min';
 
@@ -67,6 +87,7 @@ CREATE TABLE IF NOT EXISTS public.employer_perk_postings (
   company_token     text NOT NULL,
   country           text,
   readable          boolean NOT NULL,
+  english           boolean NOT NULL DEFAULT false,
   franchise         boolean NOT NULL DEFAULT false,
   agency            boolean NOT NULL DEFAULT false,
   perks_y           integer NOT NULL DEFAULT 0,
@@ -80,22 +101,29 @@ CREATE TABLE IF NOT EXISTS public.employer_perk_postings (
   CONSTRAINT employer_perk_postings_unread_states_nothing
     CHECK (readable OR (perks_y = 0 AND perks_q = 0 AND perks_n = 0))
 );
+ALTER TABLE public.employer_perk_postings ADD COLUMN IF NOT EXISTS english boolean NOT NULL DEFAULT false;
 CREATE INDEX IF NOT EXISTS employer_perk_postings_board_idx
   ON public.employer_perk_postings (company_token, source, country);
 
 COMMENT ON TABLE public.employer_perk_postings IS
   'One row per serving posting the employer-profiles sweep read: Y/Q/N bitmasks in employer_profile_perk_publish bit order, '
-  'one quoted-line hash per bit (employer_perk_lines), country, readable (description >= 200 chars), franchise wording, the '
-  'board''s agency flag, extractor_version. Private: service_role only. Never a description, salary or search field.';
+  'one quoted-line hash per bit (employer_perk_lines), country, readable (description >= 200 chars), english (written in '
+  'English; only English postings are counted until other languages are judged), franchise wording, the board''s agency '
+  'flag, extractor_version. Private: service_role only. Never a description, salary or search field.';
 
 CREATE TABLE IF NOT EXISTS public.employer_perk_lines (
   line_hash     text PRIMARY KEY CHECK (line_hash ~ '^[0-9a-f]{16}$'),
   line          text NOT NULL CHECK (length(line) BETWEEN 1 AND 240),
+  pto_days      numeric(5,1) CHECK (pto_days IS NULL OR pto_days > 0),
+  pto_plus_holidays boolean NOT NULL DEFAULT false,
   first_seen_at timestamptz NOT NULL DEFAULT now(),
   last_seen_at  timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE public.employer_perk_lines ADD COLUMN IF NOT EXISTS pto_days numeric(5,1) CHECK (pto_days IS NULL OR pto_days > 0);
+ALTER TABLE public.employer_perk_lines ADD COLUMN IF NOT EXISTS pto_plus_holidays boolean NOT NULL DEFAULT false;
 COMMENT ON TABLE public.employer_perk_lines IS
-  'The verbatim benefits lines a posting was read from, once each, keyed by the first 16 hex of their SHA-256. Private.';
+  'The verbatim benefits lines a posting was read from, once each, keyed by the first 16 hex of their SHA-256. A leave line '
+  'carries the days it states (pto_days, weeks counted as five) and whether it puts public holidays on top. Private.';
 
 -- ── 2. claim rows ──────────────────────────────────────────────────────────
 
@@ -191,26 +219,59 @@ CREATE TABLE IF NOT EXISTS public.perk_legal_baselines (
   note       text NOT NULL,
   source_url text NOT NULL CHECK (source_url ~ '^https://www\.(legislation\.gov\.uk|gesetze-im-internet\.de)/'),
   read_on    date NOT NULL,
+  minimum_days numeric(5,1),
+  minimum_days_plus_holidays numeric(5,1),
+  applies_in text,
+  also_statute text,
+  also_applies_in text,
+  also_source_url text CHECK (also_source_url IS NULL OR also_source_url ~ '^https://www\.legislation\.gov\.uk/'),
   PRIMARY KEY (country, perk)
 );
+ALTER TABLE public.perk_legal_baselines ADD COLUMN IF NOT EXISTS minimum_days numeric(5,1);
+ALTER TABLE public.perk_legal_baselines ADD COLUMN IF NOT EXISTS minimum_days_plus_holidays numeric(5,1);
+ALTER TABLE public.perk_legal_baselines ADD COLUMN IF NOT EXISTS applies_in text;
+ALTER TABLE public.perk_legal_baselines ADD COLUMN IF NOT EXISTS also_statute text;
+ALTER TABLE public.perk_legal_baselines ADD COLUMN IF NOT EXISTS also_applies_in text;
+ALTER TABLE public.perk_legal_baselines ADD COLUMN IF NOT EXISTS also_source_url text
+  CHECK (also_source_url IS NULL OR also_source_url ~ '^https://www\.legislation\.gov\.uk/');
 COMMENT ON TABLE public.perk_legal_baselines IS
   'Statutory minimums a perk line may only restate, each with its official source and the date it was read. Statute only: '
-  'no US federal paid leave exists to cite, Swedish and Dutch pensions come from agreements, so v1 holds UK and DE alone.';
+  'no US federal paid leave exists to cite, Swedish and Dutch pensions come from agreements, so v1 holds UK and DE alone. '
+  'applies_in: where the cited statute extends, when narrower than the country group; also_*: the law that sets the same '
+  'minimum in the rest of the group (Northern Ireland for the GB rows). minimum_days: a leave minimum in days on a five-day '
+  'week (minimum_days_plus_holidays: the same minimum when public holidays come on top), so the reader never tags a line '
+  'that states more.';
 
-INSERT INTO public.perk_legal_baselines (country, perk, statute, minimum, note, source_url, read_on) VALUES
+INSERT INTO public.perk_legal_baselines
+  (country, perk, statute, minimum, note, source_url, read_on, minimum_days, minimum_days_plus_holidays,
+   applies_in, also_statute, also_applies_in, also_source_url) VALUES
   ('GB', 'retire', 'Pensions Act 2008, Part 1, Chapter 1 (automatic enrolment)',
    'An employer must enrol each eligible jobholder in a qualifying workplace pension scheme and pay into it.',
-   'This line may describe that minimum.', 'https://www.legislation.gov.uk/ukpga/2008/30/part/1/chapter/1', DATE '2026-10-10'),
+   'This line may describe that minimum.', 'https://www.legislation.gov.uk/ukpga/2008/30/part/1/chapter/1', DATE '2026-10-10',
+   NULL, NULL,
+   'England, Wales and Scotland', 'Pensions (No. 2) Act (Northern Ireland) 2008, Part 1, Chapter 1 (automatic enrolment)',
+   'Northern Ireland', 'https://www.legislation.gov.uk/nia/2008/13/part/1/chapter/1'),
   ('GB', 'pto', 'Working Time Regulations 1998, regulations 13 and 13A',
    '5.6 weeks of paid annual leave a year, capped at 28 days; bank holidays may count towards it.',
-   'This line may describe that minimum.', 'https://www.legislation.gov.uk/uksi/1998/1833/regulation/13A', DATE '2026-10-10'),
+   'This line may describe that minimum.', 'https://www.legislation.gov.uk/uksi/1998/1833/regulation/13A', DATE '2026-10-10',
+   28, 20,
+   'Great Britain', 'Working Time Regulations (Northern Ireland) 2016, regulations 15 and 16',
+   'Northern Ireland', 'https://www.legislation.gov.uk/nisr/2016/49/regulation/16'),
   ('DE', 'pto', 'Bundesurlaubsgesetz (BUrlG) § 3',
    'At least 24 working days of paid leave a year counted on a six-day week, which is 20 days on a five-day week.',
-   'This line may describe that minimum.', 'https://www.gesetze-im-internet.de/burlg/__3.html', DATE '2026-10-10'),
+   'This line may describe that minimum.', 'https://www.gesetze-im-internet.de/burlg/__3.html', DATE '2026-10-10',
+   20, 20,
+   NULL, NULL, NULL, NULL),
   ('DE', 'retire', 'Betriebsrentengesetz (BetrAVG) § 1a',
    'An employee may require up to 4% of the pension insurance contribution ceiling to be paid into a company pension by salary conversion (Entgeltumwandlung).',
-   'This line may describe that minimum.', 'https://www.gesetze-im-internet.de/betravg/__1a.html', DATE '2026-10-10')
-ON CONFLICT (country, perk) DO NOTHING;
+   'This line may describe that minimum.', 'https://www.gesetze-im-internet.de/betravg/__1a.html', DATE '2026-10-10',
+   NULL, NULL,
+   NULL, NULL, NULL, NULL)
+ON CONFLICT (country, perk) DO UPDATE
+  SET statute = EXCLUDED.statute, minimum = EXCLUDED.minimum, note = EXCLUDED.note, source_url = EXCLUDED.source_url,
+      read_on = EXCLUDED.read_on, minimum_days = EXCLUDED.minimum_days, minimum_days_plus_holidays = EXCLUDED.minimum_days_plus_holidays,
+      applies_in = EXCLUDED.applies_in, also_statute = EXCLUDED.also_statute, also_applies_in = EXCLUDED.also_applies_in,
+      also_source_url = EXCLUDED.also_source_url;
 
 -- ── 5. the machinery: runs, config, lease, queue, rollup cursor ───────────
 
@@ -464,15 +525,21 @@ BEGIN
   END IF;
 
   IF p_lines IS NOT NULL AND jsonb_typeof(p_lines) = 'array' THEN
-    INSERT INTO public.employer_perk_lines AS l (line_hash, line)
-    SELECT DISTINCT ON (x.value ->> 'h') x.value ->> 'h', x.value ->> 'line'
+    INSERT INTO public.employer_perk_lines AS l (line_hash, line, pto_days, pto_plus_holidays)
+    SELECT DISTINCT ON (x.value ->> 'h') x.value ->> 'h', x.value ->> 'line',
+           CASE WHEN (x.value ->> 'pto_days') ~ '^[0-9]{1,3}(\.[0-9]+)?$' AND (x.value ->> 'pto_days')::numeric > 0
+                THEN round((x.value ->> 'pto_days')::numeric, 1) END,
+           COALESCE((x.value -> 'pto_plus_holidays') = 'true'::jsonb, false)
       FROM jsonb_array_elements(p_lines) AS x(value)
      WHERE jsonb_typeof(x.value) = 'object'
        AND (x.value ->> 'h') ~ '^[0-9a-f]{16}$'
        AND length(COALESCE(x.value ->> 'line', '')) BETWEEN 1 AND 240
     ON CONFLICT (line_hash) DO UPDATE
-      SET last_seen_at = now()
-      WHERE l.last_seen_at < now() - interval '1 day';
+      SET last_seen_at = now(),
+          pto_days = COALESCE(EXCLUDED.pto_days, l.pto_days),
+          pto_plus_holidays = EXCLUDED.pto_plus_holidays OR l.pto_plus_holidays
+      WHERE l.last_seen_at < now() - interval '1 day'
+         OR (EXCLUDED.pto_days IS NOT NULL AND l.pto_days IS NULL);
     GET DIAGNOSTICS v_lines = ROW_COUNT;
   END IF;
 
@@ -486,6 +553,7 @@ BEGIN
              NULLIF(x.value ->> 'country', '') AS country,
              jsonb_typeof(x.value -> 'readable') = 'boolean' AS readable_given,
              COALESCE((x.value -> 'readable') = 'true'::jsonb, false) AS readable,
+             COALESCE((x.value -> 'english') = 'true'::jsonb, false) AS english,
              COALESCE((x.value -> 'franchise') = 'true'::jsonb, false) AS franchise,
              COALESCE((x.value -> 'agency') = 'true'::jsonb, false) AS agency,
              CASE WHEN (x.value ->> 'extractor_version') ~ '^[0-9]{1,4}$' THEN (x.value ->> 'extractor_version')::integer END AS version,
@@ -501,9 +569,9 @@ BEGIN
        WHERE jsonb_typeof(x.value) = 'object'
     )
     INSERT INTO public.employer_perk_postings AS e
-      (posting_id, source, company_token, country, readable, franchise, agency, perks_y, perks_q, perks_n, quote_line_hash, extractor_version, extracted_at)
+      (posting_id, source, company_token, country, readable, english, franchise, agency, perks_y, perks_q, perks_n, quote_line_hash, extractor_version, extracted_at)
     SELECT DISTINCT ON (s.posting_id)
-           s.posting_id, s.source, p_token, s.country, s.readable, s.franchise, s.agency,
+           s.posting_id, s.source, p_token, s.country, s.readable, s.english, s.franchise, s.agency,
            s.y::integer, s.q::integer, s.n::integer,
            CASE WHEN s.readable THEN s.hashes[1:31] END, p_version, now()
       FROM shaped s
@@ -518,7 +586,7 @@ BEGIN
        AND (s.readable OR (s.y = 0 AND s.q = 0 AND s.n = 0))
     ON CONFLICT (posting_id) DO UPDATE
       SET source = EXCLUDED.source, company_token = EXCLUDED.company_token, country = EXCLUDED.country,
-          readable = EXCLUDED.readable, franchise = EXCLUDED.franchise, agency = EXCLUDED.agency,
+          readable = EXCLUDED.readable, english = EXCLUDED.english, franchise = EXCLUDED.franchise, agency = EXCLUDED.agency,
           perks_y = EXCLUDED.perks_y, perks_q = EXCLUDED.perks_q, perks_n = EXCLUDED.perks_n,
           quote_line_hash = EXCLUDED.quote_line_hash, extractor_version = EXCLUDED.extractor_version,
           extracted_at = EXCLUDED.extracted_at;
@@ -652,7 +720,7 @@ BEGIN
       SELECT e.posting_id, e.source, e.company_token, e.country, e.perks_y, e.perks_q, e.perks_n, e.quote_line_hash
         FROM public.employer_perk_postings e
        WHERE e.company_token = ANY (v_tokens)
-         AND e.readable AND NOT e.franchise AND NOT e.agency
+         AND e.readable AND e.english AND NOT e.franchise AND NOT e.agency
          AND e.country IS NOT NULL AND e.country <> ''
          AND NOT EXISTS (SELECT 1 FROM public.employer_perk_board_flags f
                           WHERE f.company_token = e.company_token AND f.source = e.source)
@@ -762,7 +830,7 @@ BEGIN
                        JOIN public.job_board_postings p2 ON p2.id = e.posting_id
                        LEFT JOIN public.employer_perk_lines l2 ON l2.line_hash = e.quote_line_hash[k.bit + 1]
                       WHERE e.company_token = pk.company_token AND e.source = pk.source AND e.country = pk.country
-                        AND e.readable AND NOT e.franchise AND NOT e.agency
+                        AND e.readable AND e.english AND NOT e.franchise AND NOT e.agency
                         AND CASE WHEN k.counts = 'negation' THEN ((e.perks_n >> k.bit) & 1) = 1
                                  ELSE (((e.perks_y | e.perks_q) >> k.bit) & 1) = 1 END
                       ORDER BY random()
@@ -781,8 +849,10 @@ $$;
 -- A judgement, written back. launch: at least 60 judged and at most one in
 -- twenty wrong (57 of 60) publishes the key, anything less unpublishes it.
 -- reaudit: a stratum of at least 5; two or more wrong unpublishes the key,
--- otherwise a published key's 45 days start again (an unpublished key is
--- never published by a re-audit). withdraw: unpublished, any key.
+-- otherwise a published key's 45 days start again. A re-audit never
+-- publishes a key that is not live: an unpublished key, or a key whose last
+-- audit is 45 days old or more (expired, and so already off every page),
+-- needs a launch audit of 60 rows. withdraw: unpublished, any key.
 CREATE OR REPLACE FUNCTION public.employer_perk_audit_record(p_perk text, p_mode text, p_judged integer, p_correct integer, p_note text DEFAULT NULL)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -827,8 +897,9 @@ BEGIN
         RAISE EXCEPTION 'a re-audit stratum judges at least 5 rows, not %', p_judged USING ERRCODE = '22023';
       END IF;
       UPDATE public.employer_profile_perk_publish pp
-         SET published = pp.published AND v_wrong < 2,
-             last_audited_at = CASE WHEN pp.published AND v_wrong < 2 THEN now() ELSE pp.last_audited_at END,
+         SET published = pp.published AND pp.last_audited_at >= now() - interval '45 days' AND v_wrong < 2,
+             last_audited_at = CASE WHEN pp.published AND pp.last_audited_at >= now() - interval '45 days' AND v_wrong < 2
+                                    THEN now() ELSE pp.last_audited_at END,
              audit_mode = 'reaudit', audit_judged = p_judged, audit_correct = p_correct,
              audit_note = left(p_note, 500), updated_at = now()
        WHERE pp.perk = p_perk;
@@ -868,6 +939,9 @@ $$;
 
 -- What the owner needs to judge the engine: the keys and their audits, the
 -- switches, the rollup lap, the queue, and the newest runs. No posting text.
+-- `published` is what the reader does: the flag AND an audit under 45 days
+-- old. `flag` is the stored column and `expired` says the flag outlived its
+-- audit; `live` adds the publish pause.
 CREATE OR REPLACE FUNCTION public.employer_perk_audit_status()
 RETURNS jsonb
 LANGUAGE sql
@@ -878,7 +952,13 @@ SET statement_timeout = '15s'
 AS $$
   SELECT jsonb_build_object(
     'keys', (SELECT COALESCE(jsonb_agg(jsonb_build_object(
-               'perk', pp.perk, 'published', pp.published, 'last_audited_at', pp.last_audited_at,
+               'perk', pp.perk,
+               'published', pp.published AND pp.last_audited_at IS NOT NULL AND pp.last_audited_at >= now() - interval '45 days',
+               'flag', pp.published,
+               'expired', pp.published AND (pp.last_audited_at IS NULL OR pp.last_audited_at < now() - interval '45 days'),
+               'live', pp.published AND pp.last_audited_at IS NOT NULL AND pp.last_audited_at >= now() - interval '45 days'
+                       AND NOT COALESCE((SELECT c.publish_paused FROM public.employer_profile_config c WHERE c.id), true),
+               'last_audited_at', pp.last_audited_at,
                'expires_at', pp.last_audited_at + interval '45 days', 'audit_mode', pp.audit_mode,
                'audit_judged', pp.audit_judged, 'audit_correct', pp.audit_correct,
                'rows', (SELECT count(*) FROM public.employer_perk_rollups r WHERE r.perk = pp.perk)) ORDER BY pp.bit, pp.counts), '[]'::jsonb)
@@ -909,6 +989,20 @@ $$;
 -- the reason. And a stated visa limit needs three postings saying it, not
 -- two (plan section 4, "Stated limits"); the owner's draw holds the same
 -- bar, so the audit judges only rows that can print.
+--
+-- NOTHING UNAUDITED LEAVES WHILE NO KEY IS LIVE. The withheld reasons (a
+-- board's franchise share, its agency share, a vendor's suppression) and the
+-- collision flag are the rollup's own output too; with no key live they are
+-- answered empty and false, so the reader fails closed whole, not only for
+-- the claim rows.
+--
+-- A LEGAL-MINIMUM NOTE ONLY WHERE THE LINE CAN BE THE MINIMUM. The baseline
+-- rides a leave row only when the quoted line states no day count, or one
+-- at or under the statutory figure (20 days in Germany; in Great Britain 28
+-- days, or 20 when the line puts bank holidays on top): "30 Tage Urlaub im
+-- Jahr" cannot describe a 20-day minimum. Where the statute extends to part
+-- of the country group only, the row names where, and the law that sets the
+-- same minimum in the rest.
 
 CREATE OR REPLACE FUNCTION public.get_employer_perks(p_token text)
 RETURNS jsonb
@@ -938,12 +1032,15 @@ AS $$
   ),
   shared AS (SELECT count(*) > 1 AS collision FROM srcs),
   withheld AS (
-    SELECT f.source, f.flag AS reason, f.share FROM public.employer_perk_board_flags f WHERE f.company_token = p_token
+    SELECT f.source, f.flag AS reason, f.share FROM public.employer_perk_board_flags f
+     WHERE f.company_token = p_token AND EXISTS (SELECT 1 FROM live)
     UNION ALL
-    SELECT s.source, 'vendor_text_not_stored', NULL::numeric FROM srcs s, cfg WHERE s.source = ANY (cfg.skip)
+    SELECT s.source, 'vendor_text_not_stored', NULL::numeric FROM srcs s, cfg
+     WHERE s.source = ANY (cfg.skip) AND EXISTS (SELECT 1 FROM live)
   ),
   claims AS (
     SELECT r.source, r.country, r.perk, r.k, r.n, r.qualified_share, r.standard_text, r.as_of, l.line,
+           l.pto_days, l.pto_plus_holidays,
            CASE WHEN EXISTS (SELECT 1 FROM public.job_board_postings p
                               WHERE p.id = r.quote_posting_id AND p.missing_since IS NULL
                                 AND p.effective_posted >= now() - interval '30 days')
@@ -959,7 +1056,7 @@ AS $$
   )
   SELECT jsonb_build_object(
     'token', p_token,
-    'collision', (SELECT collision FROM shared),
+    'collision', (SELECT collision FROM shared) AND EXISTS (SELECT 1 FROM live),
     'expiry_days', 45,
     'published_keys', COALESCE((SELECT jsonb_agg(lk.perk ORDER BY lk.perk) FROM live lk), '[]'::jsonb),
     'perks', COALESCE((SELECT jsonb_agg(jsonb_build_object(
@@ -967,8 +1064,17 @@ AS $$
                'qualified_share', c.qualified_share, 'standard_text', c.standard_text, 'as_of', c.as_of,
                'quote', c.line, 'quote_posting_id', c.posting,
                'baseline', (SELECT jsonb_build_object('statute', b.statute, 'minimum', b.minimum, 'note', b.note,
-                                                      'source_url', b.source_url, 'read_on', b.read_on)
-                              FROM public.perk_legal_baselines b WHERE b.country = c.country AND b.perk = c.perk))
+                                                      'source_url', b.source_url, 'read_on', b.read_on,
+                                                      'applies_in', b.applies_in,
+                                                      'also', CASE WHEN b.also_statute IS NOT NULL AND b.also_source_url IS NOT NULL THEN
+                                                                jsonb_build_object('statute', b.also_statute, 'applies_in', b.also_applies_in,
+                                                                                   'source_url', b.also_source_url) END)
+                              FROM public.perk_legal_baselines b
+                             WHERE b.country = c.country AND b.perk = c.perk
+                               AND NOT (c.perk = 'pto' AND c.pto_days IS NOT NULL AND b.minimum_days IS NOT NULL
+                                        AND c.pto_days > CASE WHEN c.pto_plus_holidays
+                                                              THEN COALESCE(b.minimum_days_plus_holidays, b.minimum_days)
+                                                              ELSE b.minimum_days END)))
                ORDER BY c.country, c.perk) FROM claims c), '[]'::jsonb),
     'withheld', COALESCE((SELECT jsonb_agg(jsonb_build_object('source', w.source, 'reason', w.reason, 'share', w.share)
                                            ORDER BY w.source, w.reason) FROM withheld w), '[]'::jsonb)
@@ -1021,9 +1127,10 @@ $close$;
 COMMENT ON FUNCTION public.get_employer_perks(text) IS
   'One board''s published perk rows: k of n readable postings per country, the quoted line and the still-serving posting it came '
   'from, the statutory baseline where one exists. Only keys published, audited in the last 45 days, with the publish pause off; '
-  'thresholds n >= 5, k >= 2, k/n >= 10% re-checked, and k >= 3 for a stated visa limit; nothing on a token two vendors share, '
-  'a franchise or agency board, or a vendor whose benefits text is not stored (withheld lists why). published_keys names the '
-  'keys live right now, so a page prints a withheld reason only when there is something to withhold. anon and authenticated may call it.';
+  'thresholds n >= 5, k >= 2, k/n >= 10% re-checked, and k >= 3 for a stated visa limit; English postings only; nothing on a '
+  'token two vendors share, a franchise or agency board, or a vendor whose benefits text is not stored (withheld lists why). '
+  'published_keys names the keys live right now; with none live, withheld is empty and collision false. A leave row''s '
+  'statutory note is dropped when the quoted line states more days than the minimum. anon and authenticated may call it.';
 
 -- ── 13. the self-check ─────────────────────────────────────────────────────
 
@@ -1095,6 +1202,19 @@ BEGIN
   END IF;
   IF (SELECT count(*) FROM public.perk_legal_baselines WHERE country IN ('GB', 'DE')) < 4 THEN
     v_bad := v_bad || 'the four statutory baselines are not all present'::text;
+  END IF;
+  -- The GB statutes name their extent and cite Northern Ireland's; every leave row carries its minimum in days.
+  IF EXISTS (SELECT 1 FROM public.perk_legal_baselines b
+              WHERE b.country = 'GB' AND (b.applies_in IS NULL OR b.also_statute IS NULL OR b.also_source_url IS NULL)) THEN
+    v_bad := v_bad || 'a GB statutory row does not say where it applies or cite the Northern Ireland law'::text;
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.perk_legal_baselines b WHERE b.perk = 'pto' AND b.minimum_days IS NULL) THEN
+    v_bad := v_bad || 'a statutory leave row carries no minimum in days'::text;
+  END IF;
+  -- Only English postings are counted: the column the rollup filters on exists.
+  IF NOT EXISTS (SELECT 1 FROM pg_attribute a WHERE a.attrelid = to_regclass('public.employer_perk_postings')
+                    AND a.attname = 'english' AND NOT a.attisdropped) THEN
+    v_bad := v_bad || 'employer_perk_postings has no english column'::text;
   END IF;
 
   IF cardinality(v_bad) > 0 THEN

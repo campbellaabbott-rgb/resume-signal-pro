@@ -12,7 +12,7 @@
     },
     {
       "stamp": "20261012111000",
-      "until": "company profiles phase 1 step 1 verified: employer-profiles' OPTIONS answers x-fn-build employer-profiles.2026-10-12.1 and verify section 80 passes (get_employer_perks answers anon, the perk tables refuse it). Applied earlier, the every-minute sweep cron kicks a function that is not deployed yet and every kick is a refusal cron_http_refusals counts"
+      "until": "company profiles phase 1 step 1 verified: employer-profiles' OPTIONS answers x-fn-build employer-profiles.2026-10-12.2 and verify section 80 passes (get_employer_perks answers anon, the perk tables refuse it). Applied earlier, the every-minute sweep cron kicks a function that is not deployed yet and every kick is a refusal cron_http_refusals counts"
     },
     {
       "stamp": "20261009160100",

@@ -36,7 +36,7 @@ import { runSweep } from "./sweep.ts";
 
 // Provable from outside without a key: every response, the preflight
 // included, carries this in x-fn-build (stamped()).
-export const FN_BUILD = "employer-profiles.2026-10-12.1";
+export const FN_BUILD = "employer-profiles.2026-10-12.2";
 
 const CRON_HEADER = "x-employer-profiles-cron";
 

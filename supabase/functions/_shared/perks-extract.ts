@@ -370,9 +370,88 @@ export function quoteOf(m: Mention, max = QUOTE_MAX_CHARS): string {
   return `${start > 0 ? "…" : ""}${s.slice(start, end).trim()}${end < s.length ? "…" : ""}`;
 }
 
+/**
+ * WRITTEN IN ENGLISH, OR NOT. The extractor reads benefits headings in twelve
+ * languages, but its precision was measured on a held-out split where about
+ * ten postings in ninety-nine are not English, which says nothing about how
+ * it reads German, French, Dutch, Swedish or Polish lines. Plan section 3
+ * holds non-English lines back until the blind second labelled set has
+ * judged them, so every posting is marked here and the rollup counts only
+ * English ones. The test is the share of common function words: distinctive
+ * English ones against distinctive ones of the other languages the
+ * extractor's headings name. A posting it cannot place is not English
+ * (fail closed): it is counted in neither k nor n.
+ */
+// Words another of these languages also spells ("to" in Polish, "is" in
+// Dutch, "an" in German, "on" in French, "as" in Portuguese, "at" in Danish)
+// are left out of both lists, and so are words US postings carry for other
+// reasons ("EST", "Las Vegas").
+const EN_WORDS = new Set([
+  "the", "and", "of", "with", "you", "your", "we", "our", "are", "will", "for", "this", "that",
+  "from", "have", "be", "by", "or", "which", "who", "us", "it", "they", "their", "can", "about",
+]);
+const OTHER_WORDS = new Set([
+  // DE
+  "und", "der", "die", "das", "mit", "für", "wir", "ist", "ein", "eine", "dich", "dir", "bei", "auf", "sie", "unser", "unsere", "oder", "zu", "von", "im", "wird",
+  // FR
+  "et", "les", "des", "pour", "avec", "nous", "vous", "une", "dans", "sur", "du", "au", "aux", "votre", "notre",
+  // NL
+  "het", "een", "voor", "wij", "jij", "ons", "bij", "zijn", "naar", "ook", "jouw", "onze", "wordt",
+  // Nordic
+  "och", "att", "som", "för", "är", "på", "vår", "vi", "til", "og", "af",
+  // ES / PT / IT
+  "para", "con", "una", "por", "nuestro", "nuestra", "uma", "você", "nosso", "nossa", "não", "della", "che", "nostro", "nostra",
+  // PL / LT
+  "oraz", "się", "dla", "jest", "ir", "su",
+]);
+/** At least this many English function words, and at least this many times as many as all the others. */
+export const ENGLISH_MIN_WORDS = 8;
+export const ENGLISH_MIN_RATIO = 3;
+/** Letters outside the Latin script (Chinese, Japanese, Cyrillic, Devanagari...) above this share: not English. */
+export const ENGLISH_MAX_OTHER_SCRIPT = 0.1;
+
+export function isEnglishText(text: string): boolean {
+  let letters = 0, otherScript = 0;
+  for (const ch of text) {
+    if (!/\p{L}/u.test(ch)) continue;
+    letters++;
+    if (!/\p{Script=Latin}/u.test(ch)) otherScript++;
+  }
+  if (!letters || otherScript > ENGLISH_MAX_OTHER_SCRIPT * letters) return false;
+  let en = 0, other = 0;
+  for (const w of text.toLowerCase().split(/[^\p{L}]+/u)) {
+    if (!w) continue;
+    if (EN_WORDS.has(w)) en++;
+    else if (OTHER_WORDS.has(w)) other++;
+  }
+  return en >= ENGLISH_MIN_WORDS && en >= ENGLISH_MIN_RATIO * other;
+}
+
+/**
+ * THE DAYS A QUOTED LEAVE LINE STATES, so a legal-minimum note is never
+ * attached to a line that states more than the minimum. "30 Tage Urlaub im
+ * Jahr" is not the German statutory 20 days on a five-day week, and "25 days
+ * plus bank holidays" is not the UK's 28 days counted with bank holidays.
+ * Read with the extractor's own day pattern (weeks count five days); hours
+ * are never days. plusPublicHolidays: the line puts public holidays on top.
+ */
+export function ptoDaysOf(line: string): { days: number | null; plusPublicHolidays: boolean } {
+  const m = PTO_DAYS.exec(line);
+  let days: number | null = null;
+  if (m) {
+    const n = parseFloat((m[1] ?? m[4] ?? "").replace(",", "."));
+    const unit = (m[2] ?? m[5] ?? "").toLowerCase();
+    if (Number.isFinite(n) && n > 0) days = unit.startsWith("week") ? n * 5 : n;
+  }
+  const plusPublicHolidays = /\b(plus|in addition to|on top of|excluding|exclusive of|not including|as well as|and)\b[^.\n]{0,24}?\b(bank|public|statutory|national)\s+holidays?\b|\+\s*(bank|public|statutory)\s+holidays?\b|\b(zzgl\.?|zuzüglich|plus)\s+(gesetzliche[rn]?\s+)?feiertage?n?\b/i.test(line);
+  return { days, plusPublicHolidays };
+}
+
 export interface PostingRead {
   /** The description was long enough to read (READABLE_MIN_CHARS). */
   readable: boolean;
+  /** Written in English (isEnglishText). Only English postings are counted until other languages are judged. */
+  english: boolean;
   /** The posting carries franchise wording. */
   franchise: boolean;
   /** Bit i set: PERK_KEYS[i] read as Y / Q / N. A key carries at most one of the three. */
@@ -388,7 +467,8 @@ export function readPosting(title: string, description: string | null | undefine
   const text = description ?? "";
   const quotes: Array<string | null> = PERK_KEYS.map(() => null);
   const franchise = isFranchisePosting(`${title}\n${text}`);
-  if (text.trim().length < READABLE_MIN_CHARS) return { readable: false, franchise, y: 0, q: 0, n: 0, quotes };
+  const english = isEnglishText(`${title}\n${text}`);
+  if (text.trim().length < READABLE_MIN_CHARS) return { readable: false, english, franchise, y: 0, q: 0, n: 0, quotes };
   const e = extract(title, text);
   let y = 0, q = 0, n = 0;
   for (const key of PERK_KEYS) {
@@ -403,5 +483,5 @@ export function readPosting(title: string, description: string | null | undefine
     const pick = same.find((m) => m.inSection) ?? same[0];
     if (pick) quotes[bit] = quoteOf(pick);
   }
-  return { readable: true, franchise, y, q, n, quotes };
+  return { readable: true, english, franchise, y, q, n, quotes };
 }

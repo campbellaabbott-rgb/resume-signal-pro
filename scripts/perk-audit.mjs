@@ -123,6 +123,27 @@ export function planRecord(file) {
   return { error: `unknown mode ${file.mode}` };
 }
 
+/**
+ * What a key's status row says it is, read the way the reader reads it: live
+ * only while its flag is set AND its last audit is under 45 days old. A flag
+ * that outlived its audit is EXPIRED: it is already off every page, a
+ * re-audit cannot bring it back (employer_perk_audit_record refuses), and it
+ * needs a launch audit of 60 rows. A status row from an older function that
+ * carries only `published` is judged on its own expires_at.
+ */
+export function keyState(k, now = Date.now()) {
+  const flag = k.flag ?? k.published;
+  const exp = k.expires_at ? Date.parse(k.expires_at) : NaN;
+  if (!flag) return "unpublished";
+  if (k.expired === true || !(exp > now)) return "expired";
+  return k.published === false ? "expired" : "published";
+}
+
+/** The candidate keys a monthly re-audit may draw: published and not expired. */
+export function reauditKeys(keys, now = Date.now()) {
+  return (keys ?? []).filter((k) => CANDIDATE_KEYS.includes(k.perk) && keyState(k, now) === "published").map((k) => k.perk);
+}
+
 /** One drawn row, shaped for a judge: everything needed to decide, nothing decided. */
 export function reviewRow(r, perk) {
   return {
@@ -226,7 +247,9 @@ async function main(argv) {
     console.log(`build ${r.build}, extractor v${r.extractorVersion}`);
     for (const k of d.keys ?? []) {
       if (!CANDIDATE_KEYS.includes(k.perk)) continue;
-      console.log(`${k.perk.padEnd(17)} ${k.published ? "PUBLISHED" : "unpublished"}  rows ${k.rows}  audited ${k.last_audited_at ?? "never"}  expires ${k.expires_at ?? "-"}  ${k.audit_mode ?? ""} ${k.audit_correct ?? ""}/${k.audit_judged ?? ""}`);
+      const state = keyState(k);
+      const label = state === "published" ? "PUBLISHED" : state === "expired" ? "EXPIRED (off every page; needs a launch audit)" : "unpublished";
+      console.log(`${k.perk.padEnd(17)} ${label}  rows ${k.rows}  audited ${k.last_audited_at ?? "never"}  expires ${k.expires_at ?? "-"}  ${k.audit_mode ?? ""} ${k.audit_correct ?? ""}/${k.audit_judged ?? ""}`);
     }
     console.log(`config ${JSON.stringify(d.config)}`);
     console.log(`queue ${JSON.stringify(d.queue)}  postings ${JSON.stringify(d.postings)}`);
@@ -247,8 +270,10 @@ async function main(argv) {
   }
   if (cmd === "reaudit-draw") {
     const status = await ask({ action: "audit_status" });
-    const live = (status.data?.keys ?? []).filter((k) => k.published && CANDIDATE_KEYS.includes(k.perk)).map((k) => k.perk);
-    if (!live.length) { console.log("no key is published; nothing to re-audit"); return; }
+    const live = reauditKeys(status.data?.keys);
+    const expired = (status.data?.keys ?? []).filter((k) => CANDIDATE_KEYS.includes(k.perk) && keyState(k) === "expired").map((k) => k.perk);
+    if (expired.length) console.log(`expired, not re-audited (each needs a launch audit: draw --perk KEY): ${expired.join(", ")}`);
+    if (!live.length) { console.log("no key is published and unexpired; nothing to re-audit"); return; }
     const total = Number(a.total ?? LAUNCH_ROWS);
     const per = Math.max(Number(a["per-key"] ?? REAUDIT_MIN_PER_KEY), Math.ceil(total / live.length));
     const rows = [];

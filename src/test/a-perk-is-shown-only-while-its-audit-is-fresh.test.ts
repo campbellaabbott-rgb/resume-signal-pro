@@ -20,7 +20,13 @@
  *   - franchise and agency postings count in neither k nor n, and a board at
  *     30% franchise wording shows nothing but the reason;
  *   - a token two vendors share, and a vendor whose benefits text is not
- *     stored, show nothing but the reason; the statutory note rides UK rows;
+ *     stored, show nothing but the reason; the statutory note rides UK rows,
+ *     names where its statute applies with the Northern Ireland law beside
+ *     it, and never rides a leave line that states more than the minimum;
+ *   - only postings written in English are counted, and with no key live
+ *     the reader answers no withheld reason and no collision flag;
+ *   - a flag past its 45 days is expired in the status too, and a five-row
+ *     re-audit cannot bring it back;
  *   - the rollup prunes postings that left the serving set, and the reader
  *     names a quoted posting only while it still serves;
  *   - the lease admits one holder at a time and frees itself on expiry;
@@ -69,6 +75,15 @@ const ROLE = "Responsibilities\nWrite code, review designs and pair with the tea
 const US_BENEFITS = "What we offer\nComprehensive medical, dental and vision insurance for you and your family\n401(k) retirement plan with a company match";
 const UK_BENEFITS = "Benefits\n25 days annual leave plus bank holidays\nWorkplace pension with employer contributions";
 const NO_VISA = "Please note this role is not eligible for visa sponsorship.";
+// A German posting, read in full by the extractor's German headings and patterns.
+const DE_TEXT = [
+  "Über uns\nWir sind ein Softwarehaus in Berlin und entwickeln mit unseren Kunden seit vielen Jahren Lösungen für die Logistik, und wir freuen uns auf dich.",
+  "Deine Aufgaben\nDu entwickelst neue Funktionen und arbeitest eng mit dem Team zusammen.",
+  "Was wir dir bieten\nKrankenzusatzversicherung für dich\n30 Tage Urlaub im Jahr\nBetriebliche Altersvorsorge mit Arbeitgeberzuschuss",
+].join("\n");
+const DE_EN_30 = "What we offer\n30 days of paid annual leave every year\nPrivate health insurance for you";
+const DE_EN_20 = "What we offer\n20 days of paid annual leave every year\nPrivate health insurance for you";
+const UK_28 = "Benefits\n28 days holiday including bank holidays\nWorkplace pension with employer contributions";
 const FRANCHISE = "This location is independently owned and operated by a franchisee, who sets its own pay and benefits.";
 
 type P = { id: string; source?: string; token: string; country: string | null; text: string; agency?: boolean; company?: string };
@@ -91,6 +106,10 @@ add(6, () => ({ token: "leverco", source: "lever", country: "US", text: body(US_
 add(6, (i) => ({ token: "visaco", country: "US", text: i < 3 ? body(NO_VISA) : body() }));
 add(6, () => ({ token: "nowhere", country: null, text: body(US_BENEFITS) }));
 add(3, () => ({ token: "fed", source: "usajobs", country: "US", text: body(US_BENEFITS) }));
+add(6, () => ({ token: "dewerk", country: "DE", text: DE_TEXT }));
+add(6, () => ({ token: "de30", country: "DE", text: body(DE_EN_30) }));
+add(6, () => ({ token: "de20", country: "DE", text: body(DE_EN_20) }));
+add(5, () => ({ token: "ukmin", country: "GB", text: body(UK_28) }));
 
 const OPEN: PGlite[] = [];
 afterAll(async () => { for (const db of OPEN) { try { await db.close(); } catch { /* best effort */ } } });
@@ -133,7 +152,7 @@ async function sweepAll(db: PGlite): Promise<{ calls: number; stored: number; re
 }
 
 type Perks = {
-  token: string; collision: boolean; expiry_days: number;
+  token: string; collision: boolean; expiry_days: number; published_keys: string[];
   perks: Array<{ source: string; country: string; perk: string; k: number; n: number; quote: string; quote_posting_id: string | null; qualified_share: number; standard_text: boolean; baseline: null | { statute: string; note: string; source_url: string } }>;
   withheld: Array<{ source: string; reason: string; share: number | null }>;
 };
@@ -290,7 +309,7 @@ describe("20261012110000 under Supabase's default grants", () => {
     expect(await rollups(db, "fed"), "USAJOBS stores no description and is never read").toEqual([]);
   });
 
-  it("the stated visa limit publishes like a perk, and UK leave carries its statutory note", async () => {
+  it("the stated visa limit publishes like a perk; a UK pension carries its statutory note, a leave line above the minimum none", async () => {
     expect((await record(db, "visa_not_offered", "launch", 60, 58)).rows[0].r.published).toBe(true);
     const v = (await perksAs(db, "visaco")).perks;
     expect(v.map((p) => [p.perk, p.k, p.n])).toEqual([["visa_not_offered", 3, 6]]);
@@ -299,10 +318,11 @@ describe("20261012110000 under Supabase's default grants", () => {
     await record(db, "retire", "launch", 60, 60);
     const gb = (await perksAs(db, "acme")).perks.filter((p) => p.country === "GB");
     expect(gb.map((p) => [p.perk, p.k, p.n])).toEqual([["pto", 2, 5], ["retire", 2, 5]]);
-    for (const p of gb) {
-      expect(p.baseline?.note).toBe("This line may describe that minimum.");
-      expect(p.baseline?.source_url).toMatch(/^https:\/\/www\.legislation\.gov\.uk\//);
-    }
+    const pension = gb.find((p) => p.perk === "retire")!;
+    expect(pension.baseline?.note).toBe("This line may describe that minimum.");
+    expect(pension.baseline?.source_url).toMatch(/^https:\/\/www\.legislation\.gov\.uk\//);
+    // "25 days annual leave plus bank holidays" is more than 5.6 weeks: no note on it.
+    expect(gb.find((p) => p.perk === "pto")!.baseline).toBeNull();
     const us = (await perksAs(db, "acme")).perks.find((p) => p.country === "US" && p.perk === "retire");
     expect(us?.baseline, "no US statute is cited").toBeNull();
   });
@@ -329,8 +349,10 @@ describe("20261012110000 under Supabase's default grants", () => {
   it("the owner's draw: quoted rows with a link, the employer and a spot check of at most 3, candidates only", async () => {
     const d = (await db.query<{ r: { perk: string; drawn: number; rows: Array<Record<string, unknown> & { spot_check: unknown[] }> } }>(
       "SELECT public.employer_perk_audit_draw('health', 60) AS r")).rows[0].r;
-    // acme US, tenth, mostly. leverco is suppressed and "shared" is two vendors: neither can publish, so neither is drawn.
-    expect(d.drawn).toBe(3);
+    // acme US, tenth, mostly, de30 and de20 (English postings in Germany). leverco is suppressed and "shared" is two
+    // vendors: neither can publish, so neither is drawn. dewerk's German postings count for nothing.
+    expect(d.drawn).toBe(5);
+    expect(d.rows.map((r) => r.company_token)).not.toContain("dewerk");
     for (const row of d.rows) {
       expect(row.quote).toBeTruthy();
       expect(String(row.quote_link)).toMatch(/^https:\/\/jobs\.example\.com\//);
@@ -367,6 +389,85 @@ describe("20261012110000 under Supabase's default grants", () => {
     expect(r.rows[0].published).toBe(true);
     const n = await db.query<{ n: number }>("SELECT count(*)::int AS n FROM public.employer_profile_perk_publish");
     expect(n.rows[0].n).toBe(23);
+  });
+});
+
+describe("what the reader may say, and when", () => {
+  let db: PGlite;
+  type Baseline = { statute: string; source_url: string; applies_in: string | null; also: null | { statute: string; applies_in: string; source_url: string } };
+  const baselineOf = async (token: string, country: string, perk: string) =>
+    ((await perksAs(db, token)).perks.find((p) => p.country === country && p.perk === perk)?.baseline ?? null) as unknown as Baseline | null;
+  const status = async () => (await db.query<{ r: { keys: Array<{ perk: string; published: boolean; flag: boolean; expired: boolean; live: boolean }> } }>(
+    "SELECT public.employer_perk_audit_status() AS r")).rows[0].r.keys;
+
+  beforeAll(async () => {
+    db = await boot();
+    await db.exec(ENGINE);
+    await sweepAll(db);
+    await db.query("SELECT public.employer_perk_rollup_tick(90000)");
+  });
+
+  it("before any key is live the reader answers nothing at all: no withheld reason, no collision flag", async () => {
+    for (const t of ["franch", "staffco", "leverco", "shared", "acme"]) {
+      const a = await perksAs(db, t);
+      expect(a.perks, t).toEqual([]);
+      expect(a.withheld, `${t}: an unaudited reason left the database`).toEqual([]);
+      expect(a.collision, `${t}: an unaudited collision flag left the database`).toBe(false);
+    }
+  });
+
+  it("a German posting is counted in neither k nor n, whatever key passes; an English posting in Germany is", async () => {
+    const rows = await db.query<{ english: boolean; n: number }>(
+      "SELECT english, count(*)::int AS n FROM public.employer_perk_postings WHERE company_token = 'dewerk' GROUP BY english");
+    expect(rows.rows).toEqual([{ english: false, n: 6 }]);
+    expect((await db.query<{ n: number }>("SELECT count(*)::int AS n FROM public.employer_perk_postings WHERE company_token = 'acme' AND readable AND NOT english")).rows[0].n, "a readable English posting was marked foreign").toBe(0);
+    for (const key of ["health", "pto", "retire"]) await record(db, key, "launch", 60, 60);
+    expect(await rollups(db, "dewerk")).toEqual([]);
+    expect((await perksAs(db, "dewerk")).perks, "German lines published under an English audit").toEqual([]);
+    expect((await rollups(db, "de30")).map((r) => [r.country, r.perk, r.k, r.n])).toContainEqual(["DE", "pto", 6, 6]);
+    // Once a key is live, a withheld board's reason prints (the positive control for the first case).
+    expect((await perksAs(db, "franch")).withheld).toEqual([{ source: "greenhouse", reason: "franchise", share: 0.333 }]);
+    expect((await perksAs(db, "shared")).collision).toBe(true);
+  });
+
+  it("a leave line that states more than the statutory minimum carries no legal-minimum note; one at the minimum does", async () => {
+    expect(await baselineOf("de30", "DE", "pto"), "30 days is not the German 20-day minimum").toBeNull();
+    expect((await baselineOf("de20", "DE", "pto"))?.statute).toBe("Bundesurlaubsgesetz (BUrlG) § 3");
+    const uk = await baselineOf("ukmin", "GB", "pto");
+    expect(uk?.statute, "28 days including bank holidays is the UK minimum").toBe("Working Time Regulations 1998, regulations 13 and 13A");
+    expect(await baselineOf("acme", "GB", "pto"), "25 days plus bank holidays is more than 28").toBeNull();
+    const line = await db.query<{ pto_days: string; pto_plus_holidays: boolean }>(
+      "SELECT l.pto_days, l.pto_plus_holidays FROM public.employer_perk_rollups r JOIN public.employer_perk_lines l ON l.line_hash = r.quote_hash WHERE r.company_token = 'acme' AND r.country = 'GB' AND r.perk = 'pto'");
+    expect(line.rows[0]).toEqual({ pto_days: "25.0", pto_plus_holidays: true });
+  });
+
+  it("a GB statute says where it applies and cites the Northern Ireland law that sets the same minimum", async () => {
+    const leave = await baselineOf("ukmin", "GB", "pto");
+    expect(leave?.applies_in).toBe("Great Britain");
+    expect(leave?.also).toEqual({ statute: "Working Time Regulations (Northern Ireland) 2016, regulations 15 and 16", applies_in: "Northern Ireland",
+      source_url: "https://www.legislation.gov.uk/nisr/2016/49/regulation/16" });
+    const pension = await baselineOf("ukmin", "GB", "retire");
+    expect(pension?.applies_in).toBe("England, Wales and Scotland");
+    expect(pension?.also?.statute).toBe("Pensions (No. 2) Act (Northern Ireland) 2008, Part 1, Chapter 1 (automatic enrolment)");
+    expect(pension?.also?.source_url).toBe("https://www.legislation.gov.uk/nia/2008/13/part/1/chapter/1");
+    const de = await baselineOf("de20", "DE", "pto");
+    expect(de?.applies_in ?? null).toBeNull();
+    expect(de?.also ?? null).toBeNull();
+  });
+
+  it("a flag past its 45 days is expired everywhere: the status says so, and a five-row re-audit cannot revive it", async () => {
+    await record(db, "dental", "launch", 60, 60);
+    await db.exec("UPDATE public.employer_profile_perk_publish SET last_audited_at = now() - interval '120 days' WHERE perk = 'dental'");
+    const before = (await status()).find((k) => k.perk === "dental")!;
+    expect(before).toMatchObject({ published: false, flag: true, expired: true, live: false });
+    const r = (await record(db, "dental", "reaudit", 5, 4)).rows[0].r;
+    expect(r.published, "an expired key came back on a five-row re-audit").toBe(false);
+    expect(Date.now() - Date.parse(r.last_audited_at!), "an expired key's clock was restarted").toBeGreaterThan(100 * 86_400_000);
+    expect((await perksAs(db, "acme")).published_keys).not.toContain("dental");
+    // Positive controls: a fresh key's re-audit restarts it, and a launch audit brings the expired one back.
+    expect((await status()).find((k) => k.perk === "health")).toMatchObject({ published: true, flag: true, expired: false, live: true });
+    expect((await record(db, "health", "reaudit", 5, 4)).rows[0].r.published).toBe(true);
+    expect((await record(db, "dental", "launch", 60, 60)).rows[0].r.published).toBe(true);
   });
 });
 
