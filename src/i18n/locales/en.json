@@ -3609,6 +3609,7 @@
     "saveTip": "Save this posting to your application tracker",
     "saveSearch": "Save this search",
     "searchExists": "You already saved this search.",
+    "searchAlertsOn": "Alerts turned on",
     "searchSaved": "Search saved",
     "searchSavedDesc": "Your account shows how many new postings match since your last look.",
     "freshAll": "Any date",
