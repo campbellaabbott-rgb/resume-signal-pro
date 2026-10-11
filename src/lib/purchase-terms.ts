@@ -38,13 +38,26 @@ const subscribe = (l: () => void) => { listeners.add(l); return () => { listener
  */
 const lines = new Map<Element, Consent>();
 let pressed: Element | null = null;
+/**
+ * THE BOX A PURCHASE SPENT, KEPT UNTIL THAT PURCHASE IS DONE WITH (review of
+ * S11-141). The box clears the moment its purchase reads it, so a "Try again"
+ * after a failed first attempt read an empty box and the server refused the
+ * retry (withdrawal_waiver_required) though the buyer had ticked it; and a
+ * purchase that read it and then started no checkout (the roles question
+ * closed, a résumé that could not be stored, a failed call) lost the tick. A
+ * retry of the same line sends what its first press sent, and
+ * purchaseTermsUnused() gives the box back to a line that started nothing.
+ */
+let spent: { line: Element; consent: Consent } | null = null;
+let retrying = false;
 
 function notePress(e: Event): void {
   const t = (e as Event & { submitter?: Element | null }).submitter ?? e.target;
   if (!(t instanceof Element)) return;
   // A retry continues the purchase its first press started.
-  if (t.closest("[data-purchase-retry]")) return;
+  if (t.closest("[data-purchase-retry]")) { retrying = true; return; }
   pressed = t;
+  retrying = false;
 }
 if (typeof document !== "undefined") {
   document.addEventListener("click", notePress, true);
@@ -58,6 +71,7 @@ export function termsLineMounted(el: Element | null): () => void {
   emit();
   return () => {
     lines.delete(el);
+    if (spent?.line === el) spent = null;
     emit();
   };
 }
@@ -176,17 +190,38 @@ export function purchaseTerms(): PurchaseTermsBody {
     /* blocked storage: no referral, still a checkout */
   }
   // The box is part of the line: only the box beside the pressed button is
-  // consent to this purchase, and it is spent by it.
+  // consent to this purchase, and it is spent by it. A retry of that purchase
+  // sends what the first press sent.
   if (euUkBoxShown()) {
-    const c = (line && lines.get(line)) || NO_CONSENT;
+    let c = (line && lines.get(line)) || NO_CONSENT;
+    const ticked = (x: Consent) => x.withdrawalWaiver || x.serviceStartConsent;
+    if (retrying && line && spent?.line === line && !ticked(c)) c = spent.consent;
     out.withdrawalWaiver = c.withdrawalWaiver;
     out.serviceStartConsent = c.serviceStartConsent;
-    if (line && (c.withdrawalWaiver || c.serviceStartConsent)) {
-      lines.set(line, NO_CONSENT);
-      emit();
+    if (line && ticked(c)) {
+      spent = { line, consent: c };
+      if (ticked(lines.get(line) ?? NO_CONSENT)) {
+        lines.set(line, NO_CONSENT);
+        emit();
+      }
     }
   }
   return out;
+}
+
+/**
+ * The purchase that last read a box started no checkout: give that box back
+ * to its line, unless the line has left the screen or was ticked again since.
+ * Called where a checkout ends before the server returned its URL.
+ */
+export function purchaseTermsUnused(): void {
+  const s = spent;
+  spent = null;
+  if (!s || !lines.has(s.line)) return;
+  const now = lines.get(s.line)!;
+  if (now.withdrawalWaiver || now.serviceStartConsent) return;
+  lines.set(s.line, s.consent);
+  emit();
 }
 
 /**
@@ -219,6 +254,8 @@ export async function consentWasRequired(error: unknown, data?: unknown): Promis
 /** For tests: forget every box and the server's answer. */
 export function resetPurchaseTermsForTests(): void {
   for (const line of lines.keys()) lines.set(line, NO_CONSENT);
+  spent = null;
+  retrying = false;
   serverSaysOn = false;
   askedServer = false;
   for (const k of Object.keys(serverWording)) delete serverWording[k as keyof Consent];

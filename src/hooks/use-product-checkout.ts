@@ -6,7 +6,7 @@ import { useConversionTracking } from '@/hooks/use-conversion-tracking';
 import { useFunnelTracking } from '@/hooks/use-funnel-tracking';
 import { parseEdgeFunctionError } from '@/lib/edge-function-errors';
 import { checkoutContext } from '@/lib/track-transport';
-import { consentWasRequired, purchaseTerms } from '@/lib/purchase-terms';
+import { consentWasRequired, purchaseTerms, purchaseTermsUnused } from '@/lib/purchase-terms';
 import i18n from '@/i18n';
 import { useCheckoutPrefetch } from '@/hooks/use-checkout-prefetch';
 import { getResumeFromSession } from '@/hooks/use-session-resume';
@@ -235,6 +235,7 @@ export function useProductCheckout() {
 
     const product = PRODUCTS[productId];
     if (!product) {
+      purchaseTermsUnused();
       toast({
         title: "Invalid Product",
         description: "The selected product is not available.",
@@ -248,7 +249,8 @@ export function useProductCheckout() {
     let targetRoles: string[] | undefined = opts.targetRoles ? cleanTargetRoles(opts.targetRoles) : undefined;
     if (productId === 'atsDefense' && !targetRoles?.length) {
       const answered = await askForTargetRoles(opts.jobTitle ? [opts.jobTitle] : []);
-      if (answered === null) return null;
+      // Closing the question starts no checkout, so the box goes back to its line.
+      if (answered === null) { purchaseTermsUnused(); return null; }
       targetRoles = answered;
     }
 
@@ -261,6 +263,8 @@ export function useProductCheckout() {
     // Track in funnel
     trackProductClicked(productId, product.name, product.priceUsd);
 
+    // Every way out below that is not the checkout URL gives the box back.
+    let started = false;
     try {
       // The résumé this purchase is delivered from: the one on screen, never
       // another (see bindPurchaseResume).
@@ -347,6 +351,7 @@ export function useProductCheckout() {
               title: "Redirecting to Checkout",
               description: "Taking you to Stripe checkout…",
             });
+        started = true;
         window.location.assign(data.url);
         return data.url;
       }
@@ -361,6 +366,7 @@ export function useProductCheckout() {
       });
       return null;
     } finally {
+      if (!started) purchaseTermsUnused();
       setIsLoading(false);
       setCurrentProduct(null);
     }
