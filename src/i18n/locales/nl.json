@@ -5349,5 +5349,16 @@
     "example3": "bijv. Rapportage-analist (optioneel)",
     "cancel": "Annuleren",
     "continue": "Verder naar afrekenen"
+  },
+  "productFeatures": {
+    "atsDefense": [
+      "ATS-compatibiliteitscheck (score voor/na)",
+      "Analyse en optimalisatie van ontbrekende trefwoorden",
+      "Opmaak aangepast zodat ATS je cv goed inlezen",
+      "Richt zich op maximaal 3 functies die je vóór het afrekenen noemt",
+      "Tips om je LinkedIn-profiel af te stemmen",
+      "Trefwoordenbank voor je branche",
+      "30 dagen garantie op heroptimalisatie"
+    ]
   }
 }

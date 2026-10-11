@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { productFeatures } from "@/lib/product-features";
 import { Flame, MessageSquare, TrendingUp, ArrowRight, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -143,7 +144,7 @@ export function AddOnsShowcase({ variant = 'compact', sessionId, className, resu
               <p className="text-sm text-muted-foreground mb-4">{product.description}</p>
               
               <ul className="space-y-2 mb-4 flex-1">
-                {product.features.slice(0, 3).map((feature, i) => (
+                {productFeatures(t, key, product.features).slice(0, 3).map((feature, i) => (
                   <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
                     <span className="w-1 h-1 rounded-full bg-primary mt-1.5 shrink-0" />
                     {feature}

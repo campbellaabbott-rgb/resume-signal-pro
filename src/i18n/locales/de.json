@@ -5349,5 +5349,16 @@
     "example3": "z. B. Reporting Analyst (optional)",
     "cancel": "Abbrechen",
     "continue": "Weiter zur Bezahlung"
+  },
+  "productFeatures": {
+    "atsDefense": [
+      "ATS-Kompatibilitätsprüfung (Score vorher/nachher)",
+      "Keyword-Lückenanalyse und -Optimierung",
+      "Format-Umbau, damit ATS deinen Lebenslauf sauber einlesen",
+      "Zielt auf bis zu 3 Rollen, die du vor der Bezahlung nennst",
+      "Tipps zum Abgleich deines LinkedIn-Profils",
+      "Keyword-Sammlung für deine Branche",
+      "30-Tage-Garantie auf erneute Optimierung"
+    ]
   }
 }

@@ -5349,5 +5349,16 @@
     "example3": "ex. : Analyste reporting (facultatif)",
     "cancel": "Annuler",
     "continue": "Continuer vers le paiement"
+  },
+  "productFeatures": {
+    "atsDefense": [
+      "Audit de compatibilité ATS (score avant/après)",
+      "Analyse et optimisation des mots-clés manquants",
+      "Restructuration du format pour la lecture par les ATS",
+      "Cible jusqu'à 3 postes que vous indiquez avant le paiement",
+      "Conseils pour aligner votre profil LinkedIn",
+      "Banque de mots-clés de votre secteur",
+      "Garantie de réoptimisation pendant 30 jours"
+    ]
   }
 }

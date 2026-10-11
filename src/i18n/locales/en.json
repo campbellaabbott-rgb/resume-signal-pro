@@ -5349,5 +5349,16 @@
     "example3": "e.g., Reporting Analyst (optional)",
     "cancel": "Cancel",
     "continue": "Continue to checkout"
+  },
+  "productFeatures": {
+    "atsDefense": [
+      "ATS compatibility audit (before/after score)",
+      "Keyword gap analysis & optimization",
+      "Format restructuring for ATS parsing",
+      "Targets up to 3 roles you name before checkout",
+      "LinkedIn profile alignment tips",
+      "Industry keyword bank",
+      "30-day re-optimize guarantee"
+    ]
   }
 }

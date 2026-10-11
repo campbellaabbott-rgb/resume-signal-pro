@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { productFeatures } from "@/lib/product-features";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -308,7 +309,7 @@ export default function Pricing() {
 
                   {/* Features */}
                   <ul className="space-y-2 mb-6 flex-1">
-                    {product.features.map((feature, i) => (
+                    {productFeatures(t, key, product.features).map((feature, i) => (
                       <li key={i} className="flex items-start gap-2 text-sm">
                         <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
                         <span>{feature}</span>

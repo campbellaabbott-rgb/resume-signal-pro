@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { productFeatures } from '@/lib/product-features';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -157,7 +158,7 @@ export function ProductSelectionModal({
                   </div>
                   <p className="text-sm text-muted-foreground mb-2">{product.description}</p>
                   <div className="flex flex-wrap gap-x-3 gap-y-1">
-                    {product.features.slice(0, 3).map((feature, i) => (
+                    {productFeatures(t, key, product.features).slice(0, 3).map((feature, i) => (
                       <span key={i} className="text-xs text-muted-foreground flex items-center gap-1">
                         <Check className="w-3 h-3 text-primary" />
                         {feature}

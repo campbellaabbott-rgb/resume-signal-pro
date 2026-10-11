@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { productFeatures } from "@/lib/product-features";
 import { useReportEnumLabel } from "@/hooks/use-report-enum-label";
 import { 
   CheckCircle2, 
@@ -2110,7 +2111,7 @@ export default function ProductSuccess() {
             </div>
 
             <div className="grid sm:grid-cols-2 gap-3">
-              {product.features.map((feature, index) => (
+              {productFeatures(t, productKey ?? "", product.features).map((feature, index) => (
                 <div 
                   key={index}
                   className="flex items-center gap-3 p-3 rounded-lg bg-card/50 border border-border/50"

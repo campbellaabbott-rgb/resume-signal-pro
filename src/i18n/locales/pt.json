@@ -5349,5 +5349,16 @@
     "example3": "p. ex., Analista de relatórios (opcional)",
     "cancel": "Cancelar",
     "continue": "Continuar para o pagamento"
+  },
+  "productFeatures": {
+    "atsDefense": [
+      "Auditoria de compatibilidade ATS (pontuação antes/depois)",
+      "Análise e otimização das palavras-chave em falta",
+      "Reestruturação do formato para leitura pelos ATS",
+      "Foca até 3 funções que indica antes do pagamento",
+      "Dicas para alinhar o seu perfil do LinkedIn",
+      "Banco de palavras-chave do seu setor",
+      "Garantia de reotimização de 30 dias"
+    ]
   }
 }

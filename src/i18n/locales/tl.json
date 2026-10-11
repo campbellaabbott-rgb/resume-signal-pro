@@ -5349,5 +5349,16 @@
     "example3": "hal., Reporting Analyst (opsyonal)",
     "cancel": "Kanselahin",
     "continue": "Magpatuloy sa checkout"
+  },
+  "productFeatures": {
+    "atsDefense": [
+      "ATS compatibility audit (score bago at pagkatapos)",
+      "Pagsusuri at pag-optimize ng mga kulang na keyword",
+      "Pag-aayos ng format para mabasa nang malinis ng ATS",
+      "Tinutugunan ang hanggang 3 posisyong ibibigay mo bago mag-checkout",
+      "Mga tip para maitugma ang iyong LinkedIn profile",
+      "Keyword bank para sa iyong industriya",
+      "30-araw na garantiya ng muling pag-optimize"
+    ]
   }
 }
