@@ -10367,3 +10367,112 @@ boeing~wd1~INTERN). Regenerating it means re-copying it byte for byte into
 layoff-filings (guarded), and building the lists at serve time from the live
 company facet means a 1.3 MB read or an isolate memo on the search path;
 either is a decision for the owner, not made here.
+
+## n480-a-state-code-that-leads-the-place
+
+Above: location-match.ts (`codePatterns`, `PROVINCE_CODES`, `partMatchesTerm`,
+`locationBranch`; the `_shared` copy is the same file) and migration
+20261009101000 (search_jobs, count_jobs_capped, fuzzy_title_search).
+
+Register S11-003 and S11-002, measured live on .91, 2026-10-11 (read-only).
+
+A leading code was not a state. "Texas" expands to "Texas|, TX" and ", TX"
+matched only "<city>, TX". CVS stores "TX - Houston" (location="TX - "
+counted 1,054 CVS rows against 15 for "Texas"), RTX "US-TX-Houston", Sanford
+"SD, Sioux Falls", others "Tyler,TX - 100 Rice Road" and "USA TX Austin":
+board-wide "TX - " 2,657, "US-TX-" 465, "CA - " 3,605. q=pharmacist
+location=Texas counted 121 while location="TX - " alone counted 130. A code
+alias is now three arms: 20261008100200's arm as it stood (", XX", a US,
+Canadian or unplaced row), the same with no space (",XX", the same rows), and
+a leading or dashed code (`^XX ?([-,]|$)`, `- ?XX` then a non-letter or the
+end, `^USA? XX` then a non-letter or the end) on a row whose stored country is
+the code's own: CA for the ten province codes, US for every other. The new
+rows never matched before, so they get no unplaced chance: "IN - Jaipur" with
+no country is not Indiana, "CA - BROSSARD BUILDING" stored as Canada is not
+California, "PITTSBURG - ON SITE" is not Ontario. Read live before choosing:
+"- IN PERSON" 0 rows, "Remote - India" stops at the "d", "US - OKLAHOMA CITY
+HUB (OKOKL)" at the "L". Not covered: a space-only trailing code ("Palatka
+FL", "NY Victor"), which needs a place reader, not a regex (S11-027,
+detectRegion).
+
+The clause could not use an index. Every alias was tested inside a correlated
+EXISTS over the split list, a semi-join run per candidate row. When the place
+leaves under 200 title hits, search_jobs reads search_tsv, and
+{q:"manager", location:"Boise"} tested every "manager" description through
+it: search_jobs 8,362 ms, 57014, the unranked fallback at 10.7 s (Knoxville
+and Leeds the same; manager/Denver 1.1 s and nurse/Boise 1.3 s stayed
+ranked). The clause is built in plpgsql now, one constant arm per alias, so
+every arm is an index condition on job_board_postings_location_trgm_idx: a
+name is an ILIKE, a code an ILIKE plus a regex or a regex alone (pg_trgm
+extracts trigrams from a regex; in pglite the leading regex for TX returned
+exactly the rows holding the word "tx"). pglite, 300k seeded rows:
+manager/Boise 379 -> 49 ms (the description-tier count went from a Nested
+Loop Semi Join over 114k search_tsv rows to a BitmapAnd of the two indexes),
+count_jobs_capped 292 -> 13 ms, fuzzy_title_search 204 -> 10 ms;
+a-place-filter-reads-its-index-and-a-leading-state-code-is-a-state.test.ts
+holds the plan on 40k rows. fuzzy_title_search became plpgsql to build the
+same clause, its predicates appended only when they bind, with the old truth
+table kept (a NULL agency opt-out still hides agencies, an unknown pay basis
+still matches nothing).
+
+## n481-a-plural-search-with-a-short-word
+
+Above: search-routing.ts (`isLiteralToken`, `simpleRouteFilters`,
+`singularReading`, `stopwordTokens`), index.ts `titleFilters` and the SIMPLE
+route's four title matches (the routed count, the routed list, the date and
+pay orders), and `englishDropDisclosure`.
+
+Register S11-004, live on .91, 2026-10-11: "QA engineer" 400+ against "QA
+engineers" total 2 with hasMore false; "UX designers" 2 against 184; "HR
+managers" 4, all one Bosch programme; "AI engineers" 9. R3 sends any query
+with a token of three characters or fewer, or a stopword, to the SIMPLE route,
+which matched the whole query with the unstemmed 'simple' configuration, so
+only titles literally carrying "engineers" matched, and a short window was
+published as an exact total. The SIMPLE route now matches token by token:
+each short or stop token literally on the title ('simple'), OR'ed with its own
+alias phrases ("qa or quality assurance"); every other token by english stem
+on title_tsv (indexed) and on the title (which decides, the n445 rule).
+websearch syntax (a quote, " or ", a leading "-") or a query with nothing to
+stem keeps the whole-query match. The re-ranker also reads the query with its
+stemmed plurals singular, so "QA Engineer" leads "QA engineers". The
+`aliases` disclosure names the phrases the split bound and no others. Both
+halves stay indexed: in pglite on 300k seeded rows the split read is a
+BitmapAnd of job_board_postings_title_simple_fts_idx and title_tsv_idx
+(20-33 ms for the 400-row window), the english title test a recheck.
+
+An empty window fell through to search_jobs, whose english tsquery discards a
+stopword: "IT technicians" headlined 10,000 with Wynn's "Gaming Technicians"
+first and no droppedTerms. With the split, "IT Technician" titles are found;
+when the window is still empty, the exits that serve the english search's rows
+(the ranked exit and the location split) spread `englishDropDisclosure`, so
+`droppedTerms` names "it". The nine searchDisclosures spreads are unchanged.
+
+## n482-the-description-tier-on-a-clock
+
+Above: ranked-deadline.ts (`rankedWithDeadline`, RANKED_FULL_DEADLINE_MS
+2,500, RANKED_TITLE_DEADLINE_MS 4,000), the two search_jobs calls it wraps
+(countOnly and the ranked list), migration 20261009101000's `p_title_only`,
+and `relatedUnavailable`.
+
+Register S11-009, live on .91, 2026-10-11: {q:"manager", country:"GB",
+payBasis:"hourly"} 57014 after 8,122 ms and the unranked fallback at 10.4 s;
+experience/CA/salaried 8,118 ms; manager/CA/hourly 8,127 ms. Under 200 title
+hits the description tier counts and samples search_tsv under the filters,
+and when the filtered set is under 3,000 nothing stops that walk early. The
+two calls were awaited bare. The full call now races 2.5 s; on a miss the
+title tier alone answers (p_title_only skips the tier; related_rows NULL)
+under 4 s, ranked, and the response says `relatedUnavailable: true` (the
+related segment was not read, which is not zero). Both clocks missing sets
+rankedFellBack "deadline: ...". A clock never outlasts the request budget.
+withDeadline cannot cancel SQL, so the abandoned call still runs to its 8 s.
+The escalation rule (title_total < 200) is untouched.
+
+Chosen against the healthy description tier, measured the same day: python/PT
+554 ms, tableau 1,200, bls certification 846, customer service/GB/salaried
+1,079, forklift/CA 661; excel/GB 5,533 ms (related 2,936) is the one
+measured success the clock now cuts to its 64 title rows. Title-tier calls
+measured 253-1,054 ms, so a title-tier search does not reach the clock.
+Deploy order: the migration with or before job-board. Old job-board on the new
+SQL never sends p_title_only (DEFAULT false). New job-board on the old SQL
+sends it only after a missed clock; that call answers PGRST202 and the request
+falls back as it does today.

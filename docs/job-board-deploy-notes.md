@@ -43,6 +43,39 @@ ALSO IN .92 (wave 3 integration, 2026-10-10; docs/wave3/README.md):
   (+11.0 KB raw source) and `_shared/board-domains.ts` (+0.3 KB). Count both
   against the ~4.5 MB cap, beside board-data-ingest's +11,777 bytes.
 
+SEARCH GROUP, wave 3 round 1 (S11 register 2026-10-11, items S11-002, S11-003,
+S11-004, S11-009; branch w31/search). job-board stays `2026-09-09.92`;
+public-api goes to `public-api.2026-10-09.6` (its `_shared/location-match.ts`
+copy changed). ONE MIGRATION:
+`20261009101000_a_place_filter_reads_its_index_and_a_leading_state_code_is_a_state.sql`.
+Verifier: NEW scripts/verify-deploy.d/79-wave3-search.sh. Rationale: n480-n482.
+- S11-002. The three search functions build the place as constant arms in
+  plpgsql, each an index condition on location_trgm_idx, instead of a per-row
+  semi-join over the alias list. Live on .91: q=manager in Boise, Knoxville or
+  Leeds 57014 after ~8.1-8.4 s and the unranked fallback at ~10 s.
+- S11-003. A state also matches a code that leads the place ("TX - Houston",
+  "US-TX-Houston", "USA TX Austin", "Austin - TX", "SD, Sioux Falls") on a row
+  in the code's own country, and ",TX" with no space. The same rule in
+  location-match.ts (browse, preferMatchedLocation, /v1). Live on .91:
+  q=pharmacist location=Texas 121 vs location="TX - " 130.
+- S11-004. The SIMPLE route matches short and stop words literally and the
+  rest by english stem, and an english search behind an empty window names
+  the stopword it ignored (droppedTerms). Live on .91: "QA engineers" 2,
+  "UX designers" 2, "HR managers" 4, "IT technicians" 10,000 unrelated.
+- S11-009. search_jobs is on a 2.5 s clock; on a miss the title tier alone
+  answers (new `p_title_only`) under 4 s, ranked, with `relatedUnavailable:
+  true`. Live on .91: manager/GB/hourly 57014 after 8.12 s.
+ORDER: the migration with or before job-board (old job-board never sends
+p_title_only; new job-board sends it only after a missed clock, and against
+the old SQL that call fails into today's fallback). It is not held. It
+re-creates search_jobs (now 24 parameters), count_jobs_capped and
+fuzzy_title_search (now plpgsql), service_role only, and runs each once with a
+term no posting holds to prove the generated SQL parses. ROLLBACK: re-apply
+20261008100200 (it drops every overload of the three first); a job-board
+already serving this build then gets PGRST202 on its title-only retry and
+falls back as before. MEASURE: section 79 (every line INFO until .92 serves
+and the migration is applied).
+
 WAVE 3, JOB-BOARD GROUP (the S8 debug sweep of 2026-10-08, ~/.config/resumebooster/platform-debug-2026-10-08/register.json, fix_group "job-board", plus the server half of the SEO & GEO report's F1). THREE FUNCTIONS: job-board `2026-09-09.92` (index.ts, normalize.ts, read-window.ts, rotation.ts, search-routing.ts, search-alias.ts, NEW request-headers.ts), job-fit `job-fit.2026-10-09.1` and application-fit `application-fit.2026-10-09.1` (both had NO x-fn-build until now). THREE MIGRATIONS (20261009100100, 20261009100200, 20261009100300: filename order is apply order, and the last waits for .92 to serve). One NEW shared module no function imports yet: supabase/functions/_shared/employer-names.ts (for the prerender and the React app). Verifier: NEW scripts/verify-deploy.d/71-wave3-job-board.sh. sources.ts UNCHANGED. Rationale: docs/job-board-index-notes.md n437-n447.
 
 IF .91 IS STILL NOT LIVE (it was not on 2026-10-10: production answered .90), deploying .92 ships .91 too: follow the .91 section below for its three migrations and the wave 2 README's two-step order first.
