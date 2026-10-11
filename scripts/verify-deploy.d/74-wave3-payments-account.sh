@@ -51,13 +51,15 @@ for PAIR in \
   elif build_ge "$FN" "$H" "2026-10-09" "$SEQ"; then echo "PASS  $FN preflight x-fn-build = $H ($FN.2026-10-09.$SEQ or later)"
   else echo "FAIL  $FN preflight x-fn-build = $H (want $FN.2026-10-09.$SEQ or later: the previous bundle is still serving)"; fi
 done
-# create-pass-checkout keeps a September date: the pass guard refuses a pass
-# number (an October date's 10) on any line that names the pass, so the merged
-# build follows main's 2026-09-27.3 (payments-account's own string was 2026-10-09.1).
+# create-pass-checkout names itself through FN_NAME, so its build carries an
+# October date off the line that names the pass (the pass guard reads a
+# standalone number there). The S11 round's EU/UK box (S11-141/142) needs
+# 2026-10-09.62; main's 2026-09-27.3 and the earlier merges' 2026-09-27.4 and
+# .61 are older bundles.
 PC74=$(vd74_build create-pass-checkout)
 if [ -z "$PC74" ]; then echo "FAIL  create-pass-checkout preflight carries no x-fn-build"
-elif build_ge create-pass-checkout "$PC74" "2026-09-27" "4"; then echo "PASS  create-pass-checkout preflight x-fn-build = $PC74 (create-pass-checkout.2026-09-27.4 or later)"
-else echo "FAIL  create-pass-checkout preflight x-fn-build = $PC74 (want create-pass-checkout.2026-09-27.4 or later: the checkout policy is not serving)"; fi
+elif build_ge create-pass-checkout "$PC74" "2026-10-09" "62"; then echo "PASS  create-pass-checkout preflight x-fn-build = $PC74 (create-pass-checkout.2026-10-09.62 or later)"
+else echo "FAIL  create-pass-checkout preflight x-fn-build = $PC74 (want create-pass-checkout.2026-10-09.62 or later: the checkout policy and the S11 consent box are not serving)"; fi
 WH74=$(vd74_build stripe-webhook GET)
 if build_ge stripe-webhook "$WH74" "2026-10-09" "4"; then echo "PASS  stripe-webhook GET x-fn-build = $WH74 (subscription confirmation + trial reminder marked legal notices and stating a promotion's charge, the 14-day paragraph for EU/EEA/UK buyers only, pro_ grants not sales, Boost link mail)"
 else echo "FAIL  stripe-webhook GET x-fn-build = '${WH74}' (want stripe-webhook.2026-10-09.4 or later: no subscriber notices, notices a drip unsubscribe drops, or notices quoting the list price to a promotion)"; fi

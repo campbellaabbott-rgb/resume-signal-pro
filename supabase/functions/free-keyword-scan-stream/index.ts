@@ -6496,7 +6496,9 @@ function clampImprovementToScoreGap(report: Record<string, unknown>): void {
 // Provable from outside without a scan: every response, the CORS preflight
 // included, carries this in x-fn-build. 2026-10-08.1: the improvement-potential
 // clamp (register L5-15), on fresh and cached reports.
-const FN_BUILD = "free-keyword-scan-stream.2026-10-09.4";
+// 2026-10-09.5 (wave-3 fix round integration): parsers-scan and
+// fetcher-frontend each stamped .4 on different code.
+const FN_BUILD = "free-keyword-scan-stream.2026-10-09.5";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

@@ -462,7 +462,10 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 
 // Provable from outside without a scan: every response, the CORS preflight
 // included, carries this in x-fn-build.
-const FN_BUILD = "free-keyword-scan.2026-10-09.4";
+// 2026-10-09.5 (wave-3 fix round integration): parsers-scan (S11-019's hourly
+// ceiling, S11-083), fetcher-frontend (S11-032, a link is no job description)
+// and seo-ingest-ops (S11-028/150) each stamped .4 on different code.
+const FN_BUILD = "free-keyword-scan.2026-10-09.5";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

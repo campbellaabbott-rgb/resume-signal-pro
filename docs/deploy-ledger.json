@@ -16,7 +16,7 @@
     },
     {
       "stamp": "20261009112000",
-      "until": "wave 3 step 1 verified: shortlist-evaluate's OPTIONS answers x-fn-build shortlist-evaluate.2026-10-10.4 or later (its evaluation insert is the service role's; section 72 prints the build) AND the frontend published from the same commit decides through shortlist_decide (section 72: 'the Shortlist page records a decision through shortlist_decide' PASSes). Applied earlier, the live shortlist-evaluate's insert through the employer's JWT fails 42501 after its paid model call and the live page's decision insert and status PATCH are refused (S11-056)"
+      "until": "wave 3 step 1 verified: shortlist-evaluate's OPTIONS answers x-fn-build shortlist-evaluate.2026-10-10.62 or later (its evaluation insert is the service role's; section 72 prints the build) AND the frontend published from the same commit decides through shortlist_decide (section 72: 'the Shortlist page records a decision through shortlist_decide' PASSes). Applied earlier, the live shortlist-evaluate's insert through the employer's JWT fails 42501 after its paid model call and the live page's decision insert and status PATCH are refused (S11-056)"
     }
   ],
   "migrationOrder": {

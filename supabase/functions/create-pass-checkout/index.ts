@@ -48,7 +48,13 @@ import { checkoutOrigin, euConsentAnswer, euConsentRefusal, policyMetadata, sess
 // deploy-stamp: 2026-10-09T13:00Z
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-pass-checkout.2026-09-27.61";
+// The name and the build sit on separate lines, as in agent-pass-status: the
+// pass guard reads a standalone number on any line naming the pass, and an
+// October date carries one. 2026-10-09.62 (wave-3 fix round integration)
+// sorts after every branch's string, wave3/payments-account's 2026-10-09.1
+// included, which a September date could not.
+const FN_NAME = "create-pass-checkout";
+const FN_BUILD = `${FN_NAME}.2026-10-09.62`;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",

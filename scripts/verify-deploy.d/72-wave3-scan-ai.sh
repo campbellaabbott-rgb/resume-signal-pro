@@ -58,13 +58,13 @@ echo "INFO  shortlist-evaluate's redaction (letter-spaced, nicknamed and surname
 # check, so one read tells all three states apart.
 SL72=$(curl -s -m 30 "$B/rest/v1/shortlist_candidates?select=jd_text_scored&limit=1" -H "apikey: $K" -H "Authorization: Bearer $K")
 # 20261009112000 is held in docs/deploy-ledger.json until shortlist-evaluate
-# .2026-10-10.4 and the new Shortlist page serve (S11-056); while it is held,
+# .2026-10-10.62 and the new Shortlist page serve (S11-056); while it is held,
 # anon still reaches the table under RLS and reads an empty list.
 HOLD72=$(node -e 'const j=JSON.parse(require("fs").readFileSync("docs/deploy-ledger.json","utf8"));process.stdout.write((j.holdUntilVerified||[]).some(h=>h.stamp==="20261009112000")?"held":"released")' 2>/dev/null)
 case "$SL72" in
   *'"42501"'*|*'permission denied'*) echo "PASS  shortlist_candidates has jd_text_scored and refuses anon (42501): 20261009111000 and 20261009112000 applied (S8-041, S8-110)";;
   *'42703'*|*'does not exist'*|*'PGRST204'*) echo "FAIL  shortlist_candidates.jd_text_scored does not exist: 20261009111000 has not applied";;
-  '[]'|'['*) if [ "$HOLD72" = "held" ]; then echo "INFO  shortlist_candidates has jd_text_scored (20261009111000 applied); anon still reads an empty list under RLS because 20261009112000 is held until shortlist-evaluate .2026-10-10.4 and the new Shortlist page serve (S11-056)"
+  '[]'|'['*) if [ "$HOLD72" = "held" ]; then echo "INFO  shortlist_candidates has jd_text_scored (20261009111000 applied); anon still reads an empty list under RLS because 20261009112000 is held until shortlist-evaluate .2026-10-10.62 and the new Shortlist page serve (S11-056)"
              else echo "FAIL  shortlist_candidates answered anon with rows or an empty list: 20261009112000 was released but its revoke has not applied"; fi;;
   *) echo "FAIL  shortlist_candidates as anon -> ${SL72:0:160}";;
 esac
