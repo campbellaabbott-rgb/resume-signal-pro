@@ -108,12 +108,19 @@ describe("a plural query sorted by date or pay finds the singular titles (S8-027
     expect(titles).not.toContain("Registered Nurse");
   });
 
-  it("a query the english index cannot see keeps the simple matcher (q=it teachers)", async () => {
+  it("a token the english index cannot see keeps the simple matcher (q=it teachers)", async () => {
     await post({ action: "list", q: "it teachers", sort: "newest", limit: 60, groupSimilar: false });
-    // Recorded on the second pass: every title read of this search is simple-config.
+    // Recorded on the second pass. Since 20261009101000's wave (S11-004) the
+    // SIMPLE route stems the words english CAN see ("teachers" finds
+    // "Teacher"), but "it", which the english config discards, is matched
+    // literally on every read and is never handed to an english matcher.
     const reads = board.db.queries.filter((q) => q.table === "job_board_postings" && calls(q, "textSearch"));
     expect(reads.length).toBeGreaterThan(0);
-    for (const q of reads) for (const [m, a] of q.calls) if (m === "textSearch") expect((a[2] as { config: string }).config).toBe("simple");
+    for (const q of reads) {
+      const ts = q.calls.filter(([m]) => m === "textSearch").map(([, a]) => ({ col: a[0], q: String(a[1]), cfg: (a[2] as { config: string }).config }));
+      expect(ts.some((t) => t.cfg === "simple" && /(^|\s)it(\s|$)/.test(t.q)), JSON.stringify(ts)).toBe(true);
+      expect(ts.filter((t) => t.cfg === "english" && /(^|\s)it(\s|$)/.test(t.q)), JSON.stringify(ts)).toEqual([]);
+    }
   });
 });
 

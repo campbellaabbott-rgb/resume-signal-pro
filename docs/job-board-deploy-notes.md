@@ -58,6 +58,39 @@ S11 JOBBOARD-RUNTIME (the S11 sweep of 2026-10-11, ~/.config/resumebooster/platf
 - S11 rollback: job-board, redeploy the previous .92 build (the tail runs inside the request again and dies at 150 s). 20261009100500: none needed (the job had no definition in the repo; re-create it by hand only if the owner knows what it ran). 20261009100600: `UPDATE public.company_name_overrides SET display_name = 'Flex' WHERE slug = 'flextronics'; UPDATE public.company_name_overrides SET display_name = 'Spectrum Health' WHERE slug = 'spectrumhealth';` (the lane would rename them back on a NAME_SYNC_VERSION bump). The name-sync lane: set job_board_meta name_sync_version to {"version": 4} to stop it.
 - S11 measure (read-only, section 71's S11 lines): status.passEnd has a doneAt after its startedAt once a .92 pass ends; status.filterAudit.ageMin under 720; status.dbFailingBoards []; a folded `q=cashier` card carries siblings with ids and apply links; `{companies:["ms~wd5~external"]}` reads "Morgan Stanley" once the lane has reached it (a few dozen boards a pass; log line `name sync v4`). The chain should reach the pass end on its own: status.chainKick.fromHop past 176 during a cold phase, with no 5-7 minute idle before the :x9 cron.
 
+SEARCH GROUP, wave 3 round 1 (S11 register 2026-10-11, items S11-002, S11-003,
+S11-004, S11-009; branch w31/search). job-board stays `2026-09-09.92`;
+public-api goes to `public-api.2026-10-09.6` (its `_shared/location-match.ts`
+copy changed). ONE MIGRATION:
+`20261009101000_a_place_filter_reads_its_index_and_a_leading_state_code_is_a_state.sql`.
+Verifier: NEW scripts/verify-deploy.d/79-wave3-search.sh. Rationale: n480-n482.
+- S11-002. The three search functions build the place as constant arms in
+  plpgsql, each an index condition on location_trgm_idx, instead of a per-row
+  semi-join over the alias list. Live on .91: q=manager in Boise, Knoxville or
+  Leeds 57014 after ~8.1-8.4 s and the unranked fallback at ~10 s.
+- S11-003. A state also matches a code that leads the place ("TX - Houston",
+  "US-TX-Houston", "USA TX Austin", "Austin - TX", "SD, Sioux Falls") on a row
+  in the code's own country, and ",TX" with no space. The same rule in
+  location-match.ts (browse, preferMatchedLocation, /v1). Live on .91:
+  q=pharmacist location=Texas 121 vs location="TX - " 130.
+- S11-004. The SIMPLE route matches short and stop words literally and the
+  rest by english stem, and an english search behind an empty window names
+  the stopword it ignored (droppedTerms). Live on .91: "QA engineers" 2,
+  "UX designers" 2, "HR managers" 4, "IT technicians" 10,000 unrelated.
+- S11-009. search_jobs is on a 2.5 s clock; on a miss the title tier alone
+  answers (new `p_title_only`) under 4 s, ranked, with `relatedUnavailable:
+  true`. Live on .91: manager/GB/hourly 57014 after 8.12 s.
+ORDER: the migration with or before job-board (old job-board never sends
+p_title_only; new job-board sends it only after a missed clock, and against
+the old SQL that call fails into today's fallback). It is not held. It
+re-creates search_jobs (now 24 parameters), count_jobs_capped and
+fuzzy_title_search (now plpgsql), service_role only, and runs each once with a
+term no posting holds to prove the generated SQL parses. ROLLBACK: re-apply
+20261008100200 (it drops every overload of the three first); a job-board
+already serving this build then gets PGRST202 on its title-only retry and
+falls back as before. MEASURE: section 79 (every line INFO until .92 serves
+and the migration is applied).
+
 WAVE 3, JOB-BOARD GROUP (the S8 debug sweep of 2026-10-08, ~/.config/resumebooster/platform-debug-2026-10-08/register.json, fix_group "job-board", plus the server half of the SEO & GEO report's F1). THREE FUNCTIONS: job-board `2026-09-09.92` (index.ts, normalize.ts, read-window.ts, rotation.ts, search-routing.ts, search-alias.ts, NEW request-headers.ts), job-fit `job-fit.2026-10-09.1` and application-fit `application-fit.2026-10-09.1` (both had NO x-fn-build until now). THREE MIGRATIONS (20261009100100, 20261009100200, 20261009100300: filename order is apply order, and the last waits for .92 to serve). One NEW shared module no function imports yet: supabase/functions/_shared/employer-names.ts (for the prerender and the React app). Verifier: NEW scripts/verify-deploy.d/71-wave3-job-board.sh. sources.ts UNCHANGED. Rationale: docs/job-board-index-notes.md n437-n447.
 
 IF .91 IS STILL NOT LIVE (it was not on 2026-10-10: production answered .90), deploying .92 ships .91 too: follow the .91 section below for its three migrations and the wave 2 README's two-step order first.

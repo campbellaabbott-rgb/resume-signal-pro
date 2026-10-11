@@ -85,11 +85,12 @@ import { advanceProgress, baseConsumedPrefix, isPassDone, type RefreshProgress }
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
 import { detectExperience, isExperienceBand } from "./experience.ts";
 import { categoryParam, extraFilterParams, filterViolations, isUnfiltered, normalizeFilters, payParams, rpcBlindFilters, rescueVendorsParam, SALARIED_PERIODS, sendableSourcesParam, splitPage, salaryFromQueryText, salaryTokenInQuery, WIDENING_FILTERS } from "./filters.ts";
-import { foldName, foldTypeahead, pickRoute, rerankWindow, RETRIEVER_FOR, ringWordPattern, splitExclusions, startsWithWord, titleExcluded } from "./search-routing.ts";
+import { foldName, foldTypeahead, pickRoute, rerankWindow, RETRIEVER_FOR, ringWordPattern, simpleRouteFilters, singularReading, splitExclusions, startsWithWord, stopwordTokens, titleExcluded, type TitleFilter } from "./search-routing.ts";
 import { planRankedPage, RANKED_WINDOW, RING_WINDOW, rowsReached, symbolLiteralRows } from "./paging.ts";
 import { collapseClusters, GROUP_OVERFETCH, interleaveByCompany, rowClusterKey, visibleCategories, mergeCompanyFacet } from "./clusters.ts";
 import { EMPLOYER_ALIASES } from "./employer-aliases.ts";
-import { expandQuery } from "./search-alias.ts";
+import { expandQuery, ROLE_ALIASES } from "./search-alias.ts";
+import { rankedWithDeadline } from "./ranked-deadline.ts";
 import { classifyQuestion } from "../_shared/application-questions.ts";
 import { parseBreezyQuestions, parsePinpointQuestions, breezyApplyUrl, pinpointApplyUrl } from "../_shared/vendor-questions.ts";
 import { realQuestionVendors, SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
@@ -7565,6 +7566,12 @@ function titleStemmed<T extends { textSearch: (...a: any[]) => T }>(qb: T, q: st
     .textSearch("title", q, { type: "websearch", config: "english" });
 }
 
+/** The SIMPLE route's split title match, one wfts filter each (search-routing.ts simpleRouteFilters; n481). */
+// deno-lint-ignore no-explicit-any
+function titleFilters<T extends { textSearch: (...a: any[]) => T }>(qb: T, filters: readonly TitleFilter[]): T {
+  return filters.reduce((b, f) => b.textSearch(f.column, f.query, { type: "websearch", config: f.config }), qb);
+}
+
 /**
  * A balanced "…" pair is ONE term: its words, in order, joined by single
  * spaces. Everything outside the pairs tokenises exactly as before, and a
@@ -7687,6 +7694,19 @@ const DID_YOU_MEAN: Record<string, string> = {
   "manger": "manager",
 };
 
+/** The words a search ignored: filler, plus the stopwords an english tsquery served it discarded (S11-004, n481). */
+function droppedTermsOf(body: Record<string, unknown>, englishDropped: readonly string[] = []): string[] {
+  return [...new Set([...queryTerms(body.q).dropped, ...englishDropped])];
+}
+
+/**
+ * Spread AFTER searchDisclosures at an exit that serves an english tsquery's
+ * rows: "it technicians" searched as "technicians" says it ignored "it".
+ */
+function englishDropDisclosure(body: Record<string, unknown>, englishDropped: readonly string[]): Record<string, unknown> {
+  return englishDropped.length ? { droppedTerms: droppedTermsOf(body, englishDropped) } : {};
+}
+
 function searchDisclosures(
   body: Record<string, unknown>,
   applied: { salaryFloor?: number | null; postedAfter?: string | null; newSince?: string | null; excludeAgencies?: boolean; hasDescription?: boolean },
@@ -7695,7 +7715,7 @@ function searchDisclosures(
   const out: Record<string, unknown> = {};
   // Words removed because they cannot be part of a job title ("jobs", "near",
   // "me"). Reported rather than silently swallowed.
-  const dropped = queryTerms(body.q).dropped;
+  const dropped = droppedTermsOf(body);
   if (dropped.length) out.droppedTerms = dropped;
   // Pay lifted out of the search box into the filter. Read off the DERIVED
   // filter, never the raw body — normalizeFilters is the only place that reads
@@ -11970,8 +11990,12 @@ async function serveList(
         // defect this block exists to prevent. Mirrors the routed list's
         // ternary exactly, including the ftsSafe/ftsQuery split.
         const rcExpand = routedRetriever === "company" ? { q: qText, expansions: [] as string[] } : expandQuery(qText);
+        // The list's own split title match (S11-004, n481), or its whole-query one.
+        const rcSplit = routedRetriever === "simple" ? simpleRouteFilters(ftsSafe(qText), ROLE_ALIASES) : null;
         rqC = routedRetriever === "company" && routeDecision.tokens?.length
           ? rqC.in("company_token", routeDecision.tokens)
+          : rcSplit
+          ? titleFilters(rqC, rcSplit.filters)
           : rqC.textSearch(
             "title",
             rcExpand.expansions.length ? ftsSafe(rcExpand.q) : ftsQuery(qText),
@@ -12006,7 +12030,8 @@ async function serveList(
       try {
         const { q: expQC } = expandQuery(qTextC);
         const t_search_jobs_4 = Date.now();
-        const { data: rc, error: ec } = await client.rpc("search_jobs", {
+        // On a clock: a missed full call is answered by the title tier (S11-009, n482).
+        const rcAnswer = await rankedWithDeadline((titleOnly) => client.rpc("search_jobs", {
           p_q: expQC,
           p_fresh_cutoff: freshCutoffIso,
           p_location: rankedLocationParam(applied.location),
@@ -12026,7 +12051,9 @@ async function serveList(
         ...(applied.excludeAgencies ? { p_exclude_agencies: true } : {}),
           p_limit: 1,
           p_offset: 0,
-        });
+          ...(titleOnly ? { p_title_only: true } : {}),
+        }), budgetLeft);
+        const { data: rc, error: ec } = rcAnswer;
         markFrom("search_jobs", t_search_jobs_4);
         if (!ec && Array.isArray(rc)) {
           // Rationale: docs/job-board-index-notes.md#n324-trc
@@ -12052,6 +12079,8 @@ async function serveList(
             ...(relC === null || relC === 0
               ? {}
               : { relatedTotal: relC, ...(tC + relC >= 3_000 ? { relatedCapped: true } : {}) }),
+            // The description tier missed its clock: not looked at, so not zero.
+            ...(rcAnswer.cut ? { relatedUnavailable: true } : {}),
             ...countHonesty,
           });
         }
@@ -12156,6 +12185,7 @@ async function serveList(
   const salaryTextSort = !countOnly && !!qText && body.sort === "salary";
   const salaryEmployer = qClass?.route === "EMPLOYER" && !!qClass.tokens?.length ? qClass.tokens : null;
   const salaryExpand = salaryEmployer ? { q: qText, expansions: [] as string[] } : expandQuery(qText);
+  const salarySplit = qClass?.route === "SIMPLE" && !salaryEmployer ? simpleRouteFilters(ftsSafe(qText), ROLE_ALIASES) : null;
 
   if (salaryTextSort) {
     const t_salary_sorted = Date.now();
@@ -12167,6 +12197,8 @@ async function serveList(
           ? salBase.in("company_token", salaryEmployer)
           : qClass?.route === "RANKED"
           ? titleStemmed(salBase, ftsSafe(salaryExpand.q))
+          : salarySplit
+          ? titleFilters(salBase, salarySplit.filters)
           : salBase.textSearch("title", salaryExpand.expansions.length ? ftsSafe(salaryExpand.q) : ftsQuery(qText), { type: "websearch", config: "simple" }))
           .not("salary_rank_usd", "is", null)
           .order("salary_rank_usd", { ascending: false })
@@ -12205,6 +12237,8 @@ async function serveList(
           ? "salary-sorted employer search, ordered on the indexed pay column"
           : "salary-sorted text search, ordered on the indexed pay column",
         ...(salaryExpand.expansions.length ? { aliases: salaryExpand.expansions } : {}),
+        // The split match binds its own alias phrases, and only those (n481).
+        ...(salarySplit ? { aliases: salarySplit.expansions.length ? salarySplit.expansions : undefined } : {}),
         ...(salaryEmployer && qClass?.matchedName ? { companyMatched: qClass.matchedName } : {}),
         ...(salJobs.length === 0 && offset === 0 ? { sortUnavailable: salRows === null ? "unavailable" : "no-stated-pay" } : {}),
         // Said out loud: this page deliberately shows only postings that state
@@ -12237,10 +12271,13 @@ async function serveList(
   if (newestTextSort) try {
     const t_newest_sorted = Date.now();
     const newestExpand = expandQuery(qText);
+    const newestSplit = qClass?.route === "SIMPLE" ? simpleRouteFilters(ftsSafe(qText), ROLE_ALIASES) : null;
     const newestBase = buildQuery("effective_posted", false, undefined, { skipTerms: true });
     const { data: newRows, error: newErr } = await withDeadline(
       (qClass?.route === "RANKED"
         ? titleStemmed(newestBase, ftsSafe(newestExpand.q))
+        : newestSplit
+        ? titleFilters(newestBase, newestSplit.filters)
         : newestBase.textSearch(
           "title",
           newestExpand.expansions.length ? ftsSafe(newestExpand.q) : ftsQuery(qText),
@@ -12284,6 +12321,8 @@ async function serveList(
         // The alias expansion is part of what was matched, so it is disclosed
         // the same way the ranked path discloses it.
         ...(newestExpand.expansions.length ? { aliases: newestExpand.expansions } : {}),
+        // The split match binds its own alias phrases, and only those (n481).
+        ...(newestSplit ? { aliases: newestSplit.expansions.length ? newestSplit.expansions : undefined } : {}),
         // Rationale: docs/job-board-index-notes.md#n336-total-null
         total: null,
         countUnavailable: true,
@@ -12316,9 +12355,14 @@ async function serveList(
     // Rationale: docs/job-board-index-notes.md#n339-blockstart
     const blockStart = Math.floor(offset / ROUTE_WINDOW) * ROUTE_WINDOW;
     const routedExpand = routedRetriever === "company" ? { q: qText, expansions: [] as string[] } : expandQuery(qText);
+    // Short and stop tokens literal, the rest stemmed (S11-004, n481); null keeps the whole-query match.
+    const routedSplit = routedRetriever === "simple" ? simpleRouteFilters(ftsSafe(qText), ROLE_ALIASES) : null;
+    const routedAliases = routedSplit ? routedSplit.expansions : routedExpand.expansions;
     let rq = buildQuery("effective_posted", false, undefined, { skipTerms: true });
     rq = routedRetriever === "company" && routeDecision.tokens?.length
       ? rq.in("company_token", routeDecision.tokens)
+      : routedSplit
+      ? titleFilters(rq, routedSplit.filters)
       : rq.textSearch(
         "title",
         routedExpand.expansions.length ? ftsSafe(routedExpand.q) : ftsQuery(qText),
@@ -12349,7 +12393,7 @@ async function serveList(
       // Scored against the typed query AND every alias it was expanded to —
       // otherwise the rows the expansion just fetched are sorted below the ones
       // that literally spell the abbreviation, and the widening is invisible.
-      const orderReadings = [qText, ...routedExpand.expansions];
+      const orderReadings = [qText, ...(routedSplit ? [singularReading(qText)] : []), ...routedAliases];
       const ordered = routedRetriever === "company" ? mapped : rerankWindow(mapped, orderReadings);
       // Sliced INSIDE the block: `offset` is a global position, the window is
       // now a block of it.
@@ -12402,6 +12446,8 @@ async function serveList(
           // path does. Emitted only when an expansion actually bound, so the
           // line can never claim a phrase the query did not look for.
           ...(routedExpand.expansions.length ? { aliases: routedExpand.expansions } : {}),
+          // The split match binds its own alias phrases, and only those (n481).
+          ...(routedSplit ? { aliases: routedSplit.expansions.length ? routedSplit.expansions : undefined } : {}),
           ...(routeDecision.matchedName ? { companyMatched: routeDecision.matchedName } : {}),
           ...exclusionCountsCaveat(excludedTerms),
           // The pre-exclusion figure, republished as the labelled ceiling it
@@ -12487,7 +12533,8 @@ async function serveList(
       const t_head_ring_started = Date.now();
 
       const t_search_jobs_3 = Date.now();
-      const { data: ranked, error: rankErr } = await client.rpc("search_jobs", {
+      // On a clock: a missed full call is answered by the title tier (S11-009, n482).
+      const rankedAnswer = await rankedWithDeadline(async (titleOnly) => await client.rpc("search_jobs", {
         p_q: expandedQ,
         p_fresh_cutoff: freshCutoffIso,
         p_location: rankedLocationParam(applied.location),
@@ -12511,8 +12558,14 @@ async function serveList(
         // Rationale: docs/job-board-index-notes.md#n350-p-limit-pageplan-plimit
         p_limit: pagePlan.pLimit,
         p_offset: pagePlan.pOffset,
-      });
+        ...(titleOnly ? { p_title_only: true } : {}),
+      }), budgetLeft);
+      const { data: ranked, error: rankErr } = rankedAnswer;
       markFrom("search_jobs", t_search_jobs_3);
+      if (rankedAnswer.timedOut) {
+        rankedFellBack = "deadline: search_jobs answered neither the full call nor the title tier in time";
+        console.error(`[JOB-BOARD] ranked search missed both clocks for q=${JSON.stringify(qText)}`);
+      }
       // A RETURNED ERROR WAS CHECKED AND THROWN AWAY. `rankErr` gated the happy
       // path and was never read again, so a ranked search that TIMED OUT looked
       // exactly like one that was never attempted: rankedFellBack stayed null,
@@ -12762,6 +12815,7 @@ async function serveList(
                     jobs: splitServed,
                     searchId,
                     ...searchDisclosures(body, applied, maxAgeClamped),
+                    ...englishDropDisclosure(body, stopwordTokens(won.head)),
                     ...intentDisclosure(intentLift),
                     ...exclusionDisclosure(excludedTerms),
                     ...coverageDisclosure(applied, meta),
@@ -13335,6 +13389,7 @@ async function serveList(
           jobs: rankedServed,
           searchId,
           ...searchDisclosures(body, applied, maxAgeClamped),
+          ...englishDropDisclosure(body, stopwordTokens(qText)),
           ...(earnedDym ? { didYouMean: earnedDym } : {}),
           ...intentDisclosure(intentLift),
           ...exclusionDisclosure(excludedTerms),
@@ -13369,6 +13424,8 @@ async function serveList(
           ...(countWithheld || related === null || related === 0
             ? {}
             : { relatedTotal: related, ...(relatedCapped ? { relatedCapped: true } : {}) }),
+          // The description tier missed its clock: not looked at, so not zero.
+          ...(rankedAnswer.cut ? { relatedUnavailable: true } : {}),
           ...(rankedCapped && !symbolQuery ? { countCapped: true } : {}),
           ...exclusionCountsCaveat(excludedTerms),
           // Rationale: docs/job-board-index-notes.md#n392-augmented-totalunderstated-exclusi
