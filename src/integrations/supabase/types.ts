@@ -3371,6 +3371,24 @@ export type Database = {
         }
         Relationships: []
       }
+      lifecycle_reads: {
+        Row: {
+          day: string
+          job_id: string
+          user_id: string
+        }
+        Insert: {
+          day: string
+          job_id: string
+          user_id: string
+        }
+        Update: {
+          day?: string
+          job_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       mail_door_counts: {
         Row: {
           bucket: string
