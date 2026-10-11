@@ -1100,6 +1100,13 @@
       "when": 1791751647127,
       "tag": "0156_20261009160200_a_company_lander_reads_only_its_own_employer",
       "breakpoints": true
+    },
+    {
+      "idx": 157,
+      "version": "7",
+      "when": 1791751655770,
+      "tag": "0157_20261009160300_a_federal_wage_filing_needs_an_employer_hiring_in_the_us",
+      "breakpoints": true
     }
   ]
 }
