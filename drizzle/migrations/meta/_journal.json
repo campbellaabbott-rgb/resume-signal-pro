@@ -1016,6 +1016,13 @@
       "when": 1791751516904,
       "tag": "0144_20261009130000_a_subscription_notice_is_sent_once_per_subscription_and_kind",
       "breakpoints": true
+    },
+    {
+      "idx": 145,
+      "version": "7",
+      "when": 1791751530859,
+      "tag": "0145_20261009132000_an_api_key_request_keeps_the_terms_it_was_shown",
+      "breakpoints": true
     }
   ]
 }

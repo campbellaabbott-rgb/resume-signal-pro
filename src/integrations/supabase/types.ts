@@ -987,6 +987,7 @@ export type Database = {
           key_name: string | null
           mailbox: string
           request_net: string | null
+          terms_version: string | null
           token_hash: string
         }
         Insert: {
@@ -1000,6 +1001,7 @@ export type Database = {
           key_name?: string | null
           mailbox: string
           request_net?: string | null
+          terms_version?: string | null
           token_hash: string
         }
         Update: {
@@ -1013,6 +1015,7 @@ export type Database = {
           key_name?: string | null
           mailbox?: string
           request_net?: string | null
+          terms_version?: string | null
           token_hash?: string
         }
         Relationships: [
