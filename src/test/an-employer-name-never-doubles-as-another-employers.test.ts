@@ -27,12 +27,19 @@ const stem = (t: string) => t.split("~")[0].toLowerCase();
 
 function collisions(): string[] {
   const out: string[] = [];
+  // Every board's shown name, worked out once: the pairwise loop recomputed it
+  // for each override and timed out under a loaded pre-push gate.
+  const byShownName = new Map<string, typeof JOB_SOURCES[number][]>();
+  for (const c of JOB_SOURCES) {
+    const key = fold(employerDisplayName(c.token, c.name));
+    const list = byShownName.get(key);
+    if (list) list.push(c); else byShownName.set(key, [c]);
+  }
   for (const b of JOB_SOURCES) {
     const named = employerNameOverride(b.token);
     if (named === null) continue;
-    for (const c of JOB_SOURCES) {
+    for (const c of byShownName.get(fold(named)) ?? []) {
       if (c === b || c.token === b.token) continue;
-      if (fold(employerDisplayName(c.token, c.name)) !== fold(named)) continue;
       if (c.token.includes("~") && stem(c.token) === stem(b.token)) continue;
       if (SAME_EMPLOYER.some(([x, y]) => (x === b.token && y === c.token) || (x === c.token && y === b.token))) continue;
       out.push(`${b.source}:${b.token} is named "${named}", which ${c.source}:${c.token} is called`);
