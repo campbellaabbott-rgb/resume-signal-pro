@@ -52,9 +52,10 @@ The builds that deploy are the ones in the stamp table below.
    the group notes:
    - `20261009130000` (subscription_notices) before stripe-webhook. The new
      webhook claims a notice row on every new subscription.
-   - `20261009111000` (Shortlist record) right before shortlist-evaluate and
-     the frontend. In the gap, the old page's status updates are refused.
-     Keep it to minutes.
+   - `20261009111000` (Shortlist record, additive half) before
+     shortlist-evaluate: the new function writes `jd_text_scored`, which only
+     it adds. It refuses nothing the live function or page does (S11-056).
+     The lockdown half, `20261009112000`, is HELD (below).
    - `20261009141000` before send-market-pulse. `20261009143000` before
      scan-heartbeat.
    - `20261009144000` before send-search-digest and send-agent-digest. The
@@ -397,7 +398,8 @@ the rest. Each file checks itself and is safe to re-run.
 | 3 | 20261009100300_a_teamtailor_page_of_a_hundred_wrote_takedowns_nobody_made | job-board | **HELD**: after job-board .92 serves with sliceStats.build/buildSince |
 | 4 | 20261009100400_the_orphan_cleanup_keeps_a_boards_own_stamp_while_its_postings_exist | integration (S10-018) | independent; cron.alter_job by name |
 | 5 | 20261009110000_a_day_long_allowance_survives_an_hourly_callers_sweep | scan-ai | before or with the functions |
-| 6 | 20261009111000_a_shortlist_evaluation_cannot_be_rewritten_and_a_status_changes_only_with_its_decision | scan-ai | right before shortlist-evaluate + frontend |
+| 6 | 20261009111000_a_shortlist_evaluation_cannot_be_rewritten_and_a_status_changes_only_with_its_decision | scan-ai | additive (jd_text_scored, shortlist_decide, jd_version): before shortlist-evaluate |
+| 6a | 20261009112000_a_shortlist_evaluation_is_closed_to_the_browser_once_no_live_code_writes_it_from_there | parsers-scan (S11-056) | **HELD**: after shortlist-evaluate .2026-10-10.4 serves AND the published Shortlist page decides through shortlist_decide (section 72 PASSes both) |
 | 7 | 20261009120000_a_mandate_can_name_only_a_resume_in_its_own_folder | agents-api | independent |
 | 8 | 20261009121000_a_refunded_pass_application_is_sent_only_if_it_is_paid_for_again | agents-api | after wave 2's 20261008132000 |
 | 9 | 20261009122000_v1_names_the_employers_whose_rows_it_withholds | agents-api | either side of public-api |

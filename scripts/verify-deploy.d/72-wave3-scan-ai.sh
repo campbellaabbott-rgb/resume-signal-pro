@@ -7,8 +7,10 @@
 #     or 2026-10-10.3 for the five main re-stamped 2026-10-10.1 (PR #25; the wave 3
 #     integration build, above scan-ai's and agents-api's 10-10.2), so a
 #     production serving main's build without this wave's changes FAILs;
-#   - 20261009111000 landed: shortlist_candidates has jd_text_scored and is
-#     closed to anon, and shortlist_decide exists and refuses anon by name;
+#   - 20261009111000 landed: shortlist_candidates has jd_text_scored, and
+#     shortlist_decide exists and refuses anon by name; 20261009112000 (the
+#     lockdown, held until the new function and page serve, S11-056) closes
+#     the table to anon: INFO while the ledger holds it, FAIL once released;
 #   - 20261009110000 (the limiter's sweep) cannot be observed read-only: INFO;
 #     nor can 20261009111000's decision stamp (it fires on an insert): INFO;
 #   - the homepage a crawler reads says a rescan of the same file against the
@@ -55,10 +57,15 @@ echo "INFO  shortlist-evaluate's redaction (letter-spaced, nicknamed and surname
 # 20261009111000. A named column the table lacks fails before the permission
 # check, so one read tells all three states apart.
 SL72=$(curl -s -m 30 "$B/rest/v1/shortlist_candidates?select=jd_text_scored&limit=1" -H "apikey: $K" -H "Authorization: Bearer $K")
+# 20261009112000 is held in docs/deploy-ledger.json until shortlist-evaluate
+# .2026-10-10.4 and the new Shortlist page serve (S11-056); while it is held,
+# anon still reaches the table under RLS and reads an empty list.
+HOLD72=$(node -e 'const j=JSON.parse(require("fs").readFileSync("docs/deploy-ledger.json","utf8"));process.stdout.write((j.holdUntilVerified||[]).some(h=>h.stamp==="20261009112000")?"held":"released")' 2>/dev/null)
 case "$SL72" in
-  *'"42501"'*|*'permission denied'*) echo "PASS  shortlist_candidates has jd_text_scored and refuses anon (42501): 20261009111000 applied (S8-041, S8-110)";;
+  *'"42501"'*|*'permission denied'*) echo "PASS  shortlist_candidates has jd_text_scored and refuses anon (42501): 20261009111000 and 20261009112000 applied (S8-041, S8-110)";;
   *'42703'*|*'does not exist'*|*'PGRST204'*) echo "FAIL  shortlist_candidates.jd_text_scored does not exist: 20261009111000 has not applied";;
-  '[]'|'['*) echo "FAIL  shortlist_candidates answered anon with rows or an empty list: the table grants were not revoked";;
+  '[]'|'['*) if [ "$HOLD72" = "held" ]; then echo "INFO  shortlist_candidates has jd_text_scored (20261009111000 applied); anon still reads an empty list under RLS because 20261009112000 is held until shortlist-evaluate .2026-10-10.4 and the new Shortlist page serve (S11-056)"
+             else echo "FAIL  shortlist_candidates answered anon with rows or an empty list: 20261009112000 was released but its revoke has not applied"; fi;;
   *) echo "FAIL  shortlist_candidates as anon -> ${SL72:0:160}";;
 esac
 # A read-only GET, never a POST: shortlist_decide WRITES (a decision row and a
@@ -74,7 +81,7 @@ case "$SD72C" in
   *) echo "FAIL  shortlist_decide as anon -> $SD72C $(printf '%s' "$SD72" | head -c 160) (want 42501)";;
 esac
 echo "INFO  20261009110000 (check_rate_limit sweeps only rows older than 1,440 minutes, S8-011) writes on every call, so it is not called here; its DO block checks the live body at apply time and src/test/a-day-allowance-the-limiter-sweeps-is-an-hour.test.ts runs it in pglite"
-echo "INFO  20261009111000's shortlist_decisions_stamp trigger (server clock and JWT actor; advance/reject only through shortlist_decide) fires on an insert, so it is not exercised here; its DO block checks the trigger at apply time and the pglite test runs it"
+echo "INFO  20261009112000's shortlist_decisions_stamp trigger (server clock and JWT actor; advance/reject only through shortlist_decide) fires on an insert, so it is not exercised here; its DO block checks the trigger at apply time and the pglite test runs it"
 
 # The homepage and llms.txt as a crawler reads them.
 HOME72=$(curl -s -m 30 -A "$UA" "$SITE/")
