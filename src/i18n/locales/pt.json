@@ -1649,10 +1649,6 @@
       "cta": "Reescanear contra esta vaga",
       "tooShort": "Cole a vaga completa para uma comparação real"
     },
-    "applyBridge": {
-      "title": "Prepare esta candidatura exata",
-      "desc": "Você acabou de se comparar com uma vaga real — o Apply Assistant a transforma em candidatura: seu currículo adaptado a esta vaga, uma carta combinando e uma lista honesta de lacunas. Veja antes uma amostra a partir do seu próprio currículo."
-    },
     "matches": {
       "title": "Vagas ao vivo que combinam com este currículo",
       "titleSearching": "Procurando vagas ao vivo para este currículo",

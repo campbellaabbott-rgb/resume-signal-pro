@@ -221,6 +221,10 @@ export function useProductCheckout() {
   const { prefetch: prefetchCheckout, prefetchProps } = useCheckoutPrefetch();
 
   const purchaseProduct = async (productId: ProductId, options?: CheckoutOptions | string): Promise<string | null> => {
+    // The Terms the press carried, read before the first await: a tap during
+    // the résumé store below would otherwise be read as the press that
+    // started this checkout (review of the integration, 2026-10-10).
+    const terms = purchaseTerms();
     // Handle backwards compatibility - if options is a string, treat it as sessionId
     const opts: CheckoutOptions = typeof options === 'string' 
       ? { sessionId: options } 
@@ -274,7 +278,7 @@ export function useProductCheckout() {
           // back to this browser's landing (checkout_starts.visitor_id).
           ...checkoutContext(),
           // The referral, the Terms line's version, the EU/UK box.
-          ...purchaseTerms(),
+          ...terms,
         }
       });
 

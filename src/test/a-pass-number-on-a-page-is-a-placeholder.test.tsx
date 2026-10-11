@@ -32,6 +32,7 @@ import { HelmetProvider } from "react-helmet-async";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { PASS } from "../config/products";
+import { TERMS_VERSION } from "../config/terms";
 import { MCP_HOSTS, MCP_PAGE_HOSTS, MCP_OFF_PAGE_HOSTS } from "../config/mcp-tools";
 
 const ROOT = resolve(__dirname, "../..");
@@ -354,7 +355,12 @@ describe("the pass card on /agents", () => {
     expect(screen.queryByRole("button", { name: /buy/i })).toBeNull();
   });
 
-  it("returning from sign-in with ?buy=pass fires the checkout once, only after the status answers", async () => {
+  // Coming back from sign-in used to open the checkout by itself, so a buyer
+  // reached Stripe for the pass with no Terms line ever on screen, and the
+  // session recorded no Terms version (review of the integration,
+  // 2026-10-10). Now the return lands on the Buy button and its line, and
+  // only a press opens checkout.
+  it("returning from sign-in with ?buy=pass opens nothing by itself: the Buy button and its Terms line wait for a press", async () => {
     auth.session = { user: USER };
     invoke.mockImplementation(async (fn: string) => {
       if (fn === "agent-pass-status") return { data: { pass: { state: "none" }, key: { live: false } }, error: null };
@@ -362,9 +368,15 @@ describe("the pass card on /agents", () => {
       return { data: null, error: null };
     });
     mount(<PassCard />, "/agents?buy=pass");
+    const btn = await screen.findByRole("button", { name: new RegExp(`buy.*\\$${PASS.priceUsd}`, "i") });
+    await new Promise((r) => setTimeout(r, 50));
+    expect(calls("create-pass-checkout").length, "the checkout opened with no press").toBe(0);
+    expect(btn.parentElement?.querySelector('[data-testid="purchase-terms"]'), "the Buy button came back without its Terms line").toBeTruthy();
+    expect(document.activeElement, "the return did not land on the Buy button").toBe(btn);
+    fireEvent.click(btn);
     await waitFor(() => expect(calls("create-pass-checkout").length).toBe(1));
+    expect((calls("create-pass-checkout")[0][1] as { body: Record<string, unknown> }).body).toMatchObject({ termsVersion: TERMS_VERSION });
     await screen.findByText(/refused for the test/);
-    expect(calls("create-pass-checkout").length).toBe(1);
   });
 });
 

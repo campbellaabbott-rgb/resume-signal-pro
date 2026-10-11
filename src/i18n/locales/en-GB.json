@@ -1649,10 +1649,6 @@
       "cta": "Rescan against this posting",
       "tooShort": "Paste the full posting for a real comparison"
     },
-    "applyBridge": {
-      "title": "Prepare this exact application",
-      "desc": "You just checked against a real posting — Apply Assistant turns it into a submission: your resume tailored to this job, a matching cover letter, and an honest gap list. Preview it from your own resume first."
-    },
     "matches": {
       "title": "Live openings matching this resume",
       "titleSearching": "Finding live openings for this CV",

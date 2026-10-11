@@ -1649,10 +1649,6 @@
       "cta": "Rescanner avec cette offre",
       "tooShort": "Collez l'offre complète pour une vraie comparaison"
     },
-    "applyBridge": {
-      "title": "Préparez cette candidature précise",
-      "desc": "Vous venez de vous comparer à une vraie offre — Apply Assistant en fait une candidature : votre CV adapté à ce poste, une lettre assortie et une liste honnête des écarts. Voyez d'abord un échantillon depuis votre propre CV."
-    },
     "matches": {
       "title": "Offres en direct correspondant à ce CV",
       "titleSearching": "Recherche d'offres en direct pour ce CV",

@@ -563,7 +563,12 @@ export function MintAgentKey({ onMinted, next }: { onMinted?: (key: string) => v
 /**
  * THE PASS CARD. Sign-in sits before the buy button, always: the pass binds
  * to user_id, never to an email or a key, and the sign-in link carries
- * ?next=/agents?buy=pass so the buyer lands back here with the button armed.
+ * ?next=/agents?buy=pass so the buyer lands back here at the Buy button, with
+ * its Terms line beside it. Coming back starts nothing: the checkout opens
+ * only on a press of that button, so the press records the Terms version
+ * (and, with the EU/UK switch on, the box). It used to open by itself on
+ * return, and the buyer reached Stripe without the line ever on screen
+ * (review of the integration, 2026-10-10).
  * Signed in, the Buy control appears only once agent-pass-status has
  * answered (so nothing here can 404 ahead of the function deploy), and it
  * reads the answer: an open pass links to /agents/pass instead of selling a
@@ -588,7 +593,7 @@ export function PassCard() {
   const { status } = usePassStatus();
   const [busy, setBusy] = useState(false);
   const [refusal, setRefusal] = useState<string | null>(null);
-  const autoFired = useRef(false);
+  const buyButton = useRef<HTMLButtonElement>(null);
 
   const buy = useCallback(async () => {
     setBusy(true); setRefusal(null);
@@ -598,16 +603,15 @@ export function PassCard() {
     } finally { setBusy(false); }
   }, [t]);
 
-  // The buyer who clicked Buy signed out and came back through /auth: fire
-  // the checkout once, and only once the status endpoint has answered that
-  // there is nothing open on the account.
+  // The buyer came back from /auth meaning to buy: once the status endpoint
+  // has answered, bring the Buy button (and the Terms line above it) into
+  // view and focus it. Nothing is bought until it is pressed.
   useEffect(() => {
-    if (!wantsBuy || !session || !status || autoFired.current) return;
-    if (status.pass.state === "unactivated" || status.pass.state === "live") return;
-    autoFired.current = true;
+    if (!wantsBuy || !session || !status) return;
     const p = new URLSearchParams(params); p.delete("buy"); setParams(p, { replace: true });
-    void buy();
-  }, [wantsBuy, session, status, params, setParams, buy]);
+    const el = buyButton.current;
+    if (el) { el.scrollIntoView?.({ block: "center" }); el.focus(); }
+  }, [wantsBuy, session, status, params, setParams]);
 
   const open = status && (status.pass.state === "unactivated" || status.pass.state === "live");
   const host = hostName ? MCP_PAGE_HOSTS.find((h) => h.name === hostName) : undefined;
@@ -657,7 +661,7 @@ export function PassCard() {
         <>
         <PurchaseTerms kind="payment" className="mb-2" />
         <button
-          type="button" onClick={buy} disabled={busy}
+          ref={buyButton} type="button" onClick={buy} disabled={busy}
           className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
         >
           {busy ? <><Loader2 className="w-4 h-4 animate-spin" /> {t("agentPass.buying", "Opening checkout…")}</> : <><Ticket className="w-4 h-4" /> {t("agentPass.buy", "Buy the pass — ${{passPrice}}", PASS_COPY)}</>}

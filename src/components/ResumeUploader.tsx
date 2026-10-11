@@ -1210,25 +1210,19 @@ export function ResumeUploader({
           </div>
 
 
-          {/* Job Comparison CTAs - show when jobs are uploaded */}
+          {/* Role chips, shown once a sheet of jobs is imported. A chip picks
+              the role the scan compares against and buys nothing: it named no
+              price and sat under no Terms line, yet it started the paid Full
+              Analysis checkout (review of the integration, 2026-10-10). The
+              free scan and the priced Full Analysis link below, under their
+              Terms line, use the role picked here. */}
           {parsedJobs.length > 0 && canProceed && (
             <div className="p-4 rounded-xl border border-primary/20 bg-primary/5">
               <JobComparisonCTA
                 jobTitles={parsedJobs.map(j => j.title)}
                 onGetStarted={(jobTitle) => {
-                  // Find and select the job if a specific title was clicked
-                  if (jobTitle) {
-                    const job = parsedJobs.find(j => j.title === jobTitle);
-                    if (job) {
-                      handleJobSelect(job);
-                    }
-                  }
-                  // Trigger checkout
-                  if (resumeMode === "paste") {
-                    handleTextPaste();
-                  } else {
-                    handleCheckoutClick();
-                  }
+                  const job = jobTitle ? parsedJobs.find(j => j.title === jobTitle) : undefined;
+                  if (job) handleJobSelect(job);
                 }}
                 isLoading={isLoading}
               />

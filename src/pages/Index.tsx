@@ -1711,6 +1711,10 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
   }, [triggerBackgroundScan, jobDescriptionText, honeypot, forgetPreStored]);
 
   const handleCheckout = async (text?: string, linkedIn?: string, jobDescription?: string) => {
+    // The Terms this press carried, read now, while the press is the last
+    // one: by the time the body is built, a tap on the overlay (or anywhere
+    // else) during the awaits below would be (review of the integration).
+    const terms = purchaseTerms();
     const contentToAnalyze = text || resumeText;
     const linkedInContent = linkedIn || linkedInText;
     const jobDescriptionContent = jobDescription || jobDescriptionText;
@@ -1825,7 +1829,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         // back to this browser's landing (checkout_starts.visitor_id).
         ...checkoutContext(),
         // The affiliate's code, and the Terms line's version while one is shown.
-        ...purchaseTerms(),
+        ...terms,
       });
 
       // The EU/UK box above the button was not ticked (only with the switch

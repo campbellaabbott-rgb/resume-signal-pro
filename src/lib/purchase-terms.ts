@@ -80,7 +80,14 @@ export type PurchaseTermsBody = {
   serviceStartConsent?: boolean;
 };
 
-/** The body fields every checkout carries. Never throws: storage may be blocked. */
+/**
+ * The body fields every checkout carries. Never throws: storage may be blocked.
+ *
+ * It reads the LAST press on the page, so call it in the press's own handler
+ * before the first await and keep the result: a tap during a later await (on
+ * the checkout overlay, or anywhere) becomes the last press, and the buyer
+ * who pressed a covered button would be recorded as having seen no Terms.
+ */
 export function purchaseTerms(): PurchaseTermsBody {
   const out: PurchaseTermsBody = {};
   const covered = pressCarriesTerms();

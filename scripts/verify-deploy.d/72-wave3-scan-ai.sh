@@ -155,7 +155,8 @@ else
   else
     FKRB72=$(curl -s -m 30 "$SITE/assets/${FKR72#./}")
     if printf '%s' "$FKRB72" | grep -qF "Premium Only"; then echo "FAIL  the free report still shows the invented \"Premium Only\" issues"
-    elif printf '%s' "$FKRB72" | grep -qF "report-next-steps"; then echo "PASS  the free report ends in one Next steps section with the two offers, no \"Premium Only\" stack"
+    elif printf '%s' "$FKRB72" | grep -qE "freeResults\.applyBridge|Prepare this exact application|productId:\"applyAssistant\""; then echo "FAIL  the free report still sells a third product: the \"Prepare this exact application\" card and its \$7 Apply Assistant checkout (review of the integration)"
+    elif printf '%s' "$FKRB72" | grep -qF "report-next-steps"; then echo "PASS  the free report ends in one Next steps section with the two offers, no \"Premium Only\" stack and no Apply Assistant card"
     else echo "FAIL  the free report chunk has neither the old stack nor the Next steps section"; fi
   fi
 fi

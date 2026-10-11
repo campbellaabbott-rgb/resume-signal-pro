@@ -1649,10 +1649,6 @@
       "cta": "Reescanear contra esta oferta",
       "tooShort": "Pega la oferta completa para una comparación real"
     },
-    "applyBridge": {
-      "title": "Prepara esta candidatura exacta",
-      "desc": "Acabas de compararte con una oferta real — Apply Assistant la convierte en una candidatura: tu currículum adaptado a este puesto, una carta a juego y una lista honesta de brechas. Primero ve una muestra con tu propio currículum."
-    },
     "matches": {
       "title": "Ofertas en vivo que encajan con este currículum",
       "titleSearching": "Buscando ofertas en vivo para este currículum",

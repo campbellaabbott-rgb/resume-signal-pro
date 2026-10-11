@@ -13,9 +13,15 @@
  * Analysis and Pro. Rendered with a report that has red flags, keywords,
  * withheld keywords, a job description and an uploaded job: the only prices
  * on the page are those two.
+ *
+ * REVIEW OF THE INTEGRATION (2026-10-10): every scan run against a posting
+ * (production sets keywordSource to the job description on each one) still
+ * showed a third offer, "Prepare this exact application", whose sample ended
+ * in a $7 Apply Assistant checkout. The mount below now passes that source,
+ * presses every sample the report shows and every unlock it then offers.
  */
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 vi.mock("@/integrations/supabase/client", () => {
@@ -31,7 +37,12 @@ vi.mock("@/integrations/supabase/client", () => {
     supabase: {
       from: () => chain,
       rpc: vi.fn(async () => ({ data: null, error: null })),
-      functions: { invoke: vi.fn(async () => ({ data: null, error: null })) },
+      // A sample, when the report offers one, renders as the paid product's preview.
+      functions: {
+        invoke: vi.fn(async (fn: string) => fn === "generate-product-preview"
+          ? { data: { success: true, preview: { productId: "x", kind: "text", label: "Sample", heading: "Your sample", body: "A real slice of the paid output.", before: null, note: null } }, error: null }
+          : { data: null, error: null }),
+      },
       auth: {
         getSession: async () => ({ data: { session: null } }),
         getUser: async () => ({ data: { user: null } }),
@@ -51,8 +62,10 @@ if (!(globalThis as { IntersectionObserver?: unknown }).IntersectionObserver) {
 
 import { FreeKeywordResults } from "@/components/FreeKeywordResults";
 import { PRODUCTS, SUBSCRIPTIONS } from "@/config/products";
+import { supabase } from "@/integrations/supabase/client";
 
-function mount() {
+type Source = { source: "job_description" | "onet" | "model"; occupation?: string; code?: string } | null;
+function mount(keywordSource: Source = null) {
   const onGetFullAnalysis = vi.fn();
   const utils = render(
     <MemoryRouter>
@@ -77,6 +90,7 @@ function mount() {
         quickWins={[{ fix: "Add pipeline throughput numbers", timeEstimate: "10 min", impact: "high", scoreImpact: 6, category: "quantification" }] as never}
         onGetFullAnalysis={onGetFullAnalysis}
         onGenerateTailoredResume={vi.fn()}
+        keywordSource={keywordSource}
       />
     </MemoryRouter>,
   );
@@ -92,11 +106,27 @@ describe("the free report's offers", () => {
     expect(text).not.toMatch(/saved for \d+ more hours/i);
   });
 
+  // A price, not an example metric such as "$25M in closed deals".
+  const pricesOn = (el: HTMLElement) => [...new Set([...(el.textContent ?? "").matchAll(/\$\s?(\d+)(?![\d.,]*\s?[KMBkmb](?![a-z]))(?![\d.,])/g)].map((m) => Number(m[1])))].sort((a, b) => a - b);
+  const TWO = [PRODUCTS.fullAnalysis.priceUsd, SUBSCRIPTIONS.pro.priceUsd].sort((a, b) => a - b);
+
   it("prices only the Full Analysis and Pro, never $25", () => {
     const { container } = mount();
-    // A price, not an example metric such as "$25M in closed deals".
-    const prices = new Set([...(container.textContent ?? "").matchAll(/\$\s?(\d+)(?![\d.,]*\s?[KMBkmb](?![a-z]))(?![\d.,])/g)].map((m) => Number(m[1])));
-    expect([...prices].sort((a, b) => a - b)).toEqual([PRODUCTS.fullAnalysis.priceUsd, SUBSCRIPTIONS.pro.priceUsd].sort((a, b) => a - b));
+    expect(pricesOn(container)).toEqual(TWO);
+  });
+
+  it("a scan against a posting sells no third product, even after every sample and unlock is pressed", async () => {
+    const invoke = supabase.functions.invoke as unknown as ReturnType<typeof vi.fn>;
+    invoke.mockClear();
+    const { container } = mount({ source: "job_description" });
+    expect(container.textContent, "the report offered the Apply Assistant").not.toContain(PRODUCTS.applyAssistant.name);
+    for (const b of screen.queryAllByRole("button", { name: /see a sample from your résumé/i })) fireEvent.click(b);
+    await act(async () => { await new Promise((r) => setTimeout(r, 50)); });
+    for (const b of screen.queryAllByRole("button", { name: /^unlock /i })) fireEvent.click(b);
+    await act(async () => { await new Promise((r) => setTimeout(r, 50)); });
+    expect(pricesOn(container), "a third price appeared on a report run against a posting").toEqual(TWO);
+    const checkouts = invoke.mock.calls.filter(([fn]) => fn === "create-product-checkout");
+    expect(checkouts, "a press on the free report started a checkout for a third product").toEqual([]);
   });
 
   it("the Full Analysis offer starts its checkout, and the Pro offer opens the plan", () => {
