@@ -953,6 +953,13 @@
       "when": 1791751423038,
       "tag": "0135_20261009101000_a_place_filter_reads_its_index_and_a_leading_state_code_is_a_state",
       "breakpoints": true
+    },
+    {
+      "idx": 136,
+      "version": "7",
+      "when": 1791751433434,
+      "tag": "0136_20261009110000_a_day_long_allowance_survives_an_hourly_callers_sweep",
+      "breakpoints": true
     }
   ]
 }
