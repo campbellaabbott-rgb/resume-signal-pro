@@ -1051,6 +1051,13 @@
       "when": 1791751575431,
       "tag": "0149_20261009134300_a_pro_grant_keeps_the_roles_its_ats_defense_was_bought_for",
       "breakpoints": true
+    },
+    {
+      "idx": 150,
+      "version": "7",
+      "when": 1791751590405,
+      "tag": "0150_20261009140000_a_paid_order_stuck_mid_generation_is_retried_after_fifteen_minutes",
+      "breakpoints": true
     }
   ]
 }
