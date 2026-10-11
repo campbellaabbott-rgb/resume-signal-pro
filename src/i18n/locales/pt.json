@@ -4827,7 +4827,11 @@
     "coverNotePlaceholder": "ex. Sou engenheiro de dados com oito anos a construir pipelines em Python e dbt e procuro um cargo sénior onde possa ser responsável por uma plataforma de ponta a ponta.",
     "coverNoteCount": "{{n}} de 2000 caracteres",
     "coverNoteHintTailored": "Opcional. Alguns formulários não são enviados sem ela, e o agente para em vez de enviar um campo em branco. Como a personalização está ativada, o agente adapta-a a cada vaga usando apenas o que o seu currículo e o anúncio realmente dizem — e se não conseguir fazê-lo com honestidade, a sua nota é enviada exatamente como a escreveu.",
-    "tailorCoverNote": "Adaptar esta nota a cada vaga. O agente reescreve-a com base no anúncio usando apenas factos que já constam do seu currículo: não pode acrescentar uma empresa, uma escola, uma competência ou um número que não esteja lá, e nunca menciona por iniciativa própria o seu estatuto de visto, salário ou data de início. O que não conseguir fundamentar, descarta: a sua nota segue tal como está."
+    "tailorCoverNote": "Adaptar esta nota a cada vaga. O agente reescreve-a com base no anúncio usando apenas factos que já constam do seu currículo: não pode acrescentar uma empresa, uma escola, uma competência ou um número que não esteja lá, e nunca menciona por iniciativa própria o seu estatuto de visto, salário ou data de início. O que não conseguir fundamentar, descarta: a sua nota segue tal como está.",
+    "suggestedTitle": "Do teu CV, mas não temos a certeza. Confirma antes de ser usado:",
+    "useSuggested": "Usar",
+    "dismissSuggested": "Não está certo",
+    "uploadedCheck": "Guardado. Confirma abaixo o que lemos do teu CV antes de o agente o usar."
   },
   "applyQueue": {
     "title": "Candidaturas preparadas",
@@ -4868,7 +4872,11 @@
     "decideAgentOff": "Ative primeiro o seu agente — uma candidatura aprovada espera por isso.",
     "decideBlockedCompany": "Este empregador está na sua lista de nunca candidatar, por isso o agente não lhe envia nada.",
     "decideInFlight": "O envio está a tratar desta agora — já é tarde para a alterar.",
-    "decideFailed": "Não foi possível — atualize a página e tente de novo."
+    "decideFailed": "Não foi possível — atualize a página e tente de novo.",
+    "notArrived": "Não chegou",
+    "recordedNotSent": "Registado: esta não seguiu.",
+    "retryNotTransient": "Tentar de novo não resolve o motivo da paragem. Abra-a para ver porquê.",
+    "retryNotFunded": "O seu passe já não tem candidaturas para a enviar de novo."
   },
   "agentPlan": {
     "badge": "Candidata-se por si",
@@ -4947,13 +4955,13 @@
   },
   "applyRefusal": {
     "sender-offline": "O nosso emissor está offline, por isso nada saiu. Está em fila e segue assim que voltar — não precisa de fazer nada.",
-    "fit-unknown": "Não conseguimos avaliar esta vaga face ao seu currículo, por isso não a enviámos sem supervisão. Pode enviá-la você.",
+    "fit-unknown": "Não conseguimos avaliar esta vaga face ao seu currículo, por isso o agente não a enviou sozinho. Aprove-a para a enviar.",
     "not-ready": "Este empregador pergunta algo que não responderemos por si. Abra e preencha o que falta.",
     "review-mode": "Pronta e à espera de que carregue em enviar — o seu agente está em modo de revisão, por isso nunca envia sozinho.",
     "vendor-not-allowed": "Não ativou a candidatura sem supervisão para este portal de emprego.",
     "already-submitted": "Já enviada. Nunca enviamos a mesma candidatura duas vezes.",
     "duplicate": "Já se tinha candidatado a esta vaga, por isso não lhe tocámos.",
-    "fit-below-floor": "Abaixo do limiar de adequação que definiu. Baixe-o se quiser que as vagas limítrofes também sigam.",
+    "fit-below-floor": "Uma adequação mais fraca do que o agente envia sozinho. Aprove-a para a enviar.",
     "daily-cap": "O limite de hoje esgotou. Segue amanhã, ou aumente o seu limite diário.",
     "vendor-needs-human": "Este portal exige um passo que só uma pessoa pode dar — normalmente uma caixa que não assinalaremos por si."
   },
@@ -4983,7 +4991,8 @@
     "held": "Preparada, ainda não enviada.",
     "ready": "Pronta — não precisa de si.",
     "blocked": "Aqui é preciso algo seu.",
-    "preparing": "A preparar…"
+    "preparing": "A preparar…",
+    "not-arrived": "Verificou e não chegou. O agente não a vai enviar de novo."
   },
   "agentHero": {
     "badge": "O seu agente de candidaturas com IA",
@@ -5021,7 +5030,7 @@
   },
   "homeAgent": {
     "lead": "Traga o seu próprio agente de IA.",
-    "passLine": "Um passe de {{passPrice}} $ dá-lhe {{passHours}} horas a toda a velocidade para pesquisar o quadro e candidatar-se a {{passApplications}} vagas por si. Nunca renova; inicie sessão para comprar.",
+    "passLine": "Um passe de {{passPrice}} $ dá-lhe {{passHours}} horas a toda a velocidade para pesquisar o quadro e candidatar-se a {{passApplications}} vagas por si. Só contam as vagas a que consegue candidatar-se sozinho. Nunca renova; inicie sessão para comprar.",
     "connectCta": "Ligar o seu agente",
     "passCta": "Comprar ou abrir o seu passe",
     "connectLine2": "Conecte-o grátis e sem conta — {{freeCallsPerDay}} chamadas por dia por endereço de rede para explorar o quadro de vagas (um escritório ou uma conexão doméstica conta como um só endereço; pelo ChatGPT cada pessoa tem as suas próprias {{freeCallsPerDay}}, e pelo Claude vem primeiro uma cota diária que todos os usuários do Claude compartilham)."
@@ -5098,7 +5107,7 @@
     "clockShelfExpired": "O seu último passe expirou sem uso a {{date}}.",
     "clockNone": "Ainda não há passe nesta conta.",
     "applications": "{{left}} de {{passApplications}} candidaturas",
-    "applicationsBasis": "Cada pedido aceite gasta uma. Um pedido recusado por um filtro não gasta nada, e um envio que nunca aconteceu devolve a sua candidatura.",
+    "applicationsBasis": "Só gasta uma a vaga a que o seu agente consegue candidatar-se sozinho. Um pedido que ele recusa não gasta nada, e um envio que nunca aconteceu devolve a sua candidatura.",
     "buyAnother": "Comprar um passe",
     "whichAgent": "Qual agente?",
     "handoffTitle": "Entregue-o ao seu agente",
@@ -5120,7 +5129,8 @@
     "connectorPassGate": "A partir de {{host}} o passe só poderá ser usado quando o login estiver ativado; hoje, use-o a partir de {{headerHosts}} com sua chave de agente.",
     "repairSecondPass": "Este pagamento não criou um segundo passe: uma conta tem um passe aberto de cada vez, e o seu aparece aqui sem alterações. Já fomos avisados e este pagamento será reembolsado — se não voltar ao seu cartão dentro de alguns dias, escreva para resumeboostersupp@gmail.com.",
     "repairNotYours": "Esta compra pertence a uma conta diferente daquela em que tem sessão iniciada, e o passe está nessa conta. Inicie sessão na conta que pagou para o ver.",
-    "repairRefunded": "Este pagamento foi reembolsado, por isso não abre nenhum passe."
+    "repairRefunded": "Este pagamento foi reembolsado, por isso não abre nenhum passe.",
+    "cardCharge": "Só contam as vagas a que o seu agente consegue candidatar-se sozinho. O resto é recusado e não custa nada."
   },
   "oauthConsent": {
     "title": "Ligue o seu agente",
@@ -5242,7 +5252,8 @@
     "invalid": "Este link não é válido. Use o link para cancelar a inscrição do próprio e-mail.",
     "missing": "Esta página precisa do link para cancelar a inscrição de um dos nossos e-mails.",
     "error": "Não foi possível cancelar agora. Tente o botão novamente daqui a pouco.",
-    "home": "Voltar ao Resume Booster"
+    "home": "Voltar ao Resume Booster",
+    "agentDigest": "Parar os e-mails da seleção da manhã. O seu agente continua a funcionar e as escolhas dele ficam na sua conta."
   },
   "purchaseTerms": {
     "agree": "Ao continuar, você concorda com os <terms>Termos de Serviço</terms> e a <privacy>Política de Privacidade</privacy>.",

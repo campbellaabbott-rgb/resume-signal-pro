@@ -4827,7 +4827,11 @@
     "coverNotePlaceholder": "p. ej. Soy ingeniero de datos con ocho años construyendo pipelines en Python y dbt, y busco un puesto sénior donde pueda responsabilizarme de una plataforma de principio a fin.",
     "coverNoteCount": "{{n}} de 2000 caracteres",
     "coverNoteHintTailored": "Opcional. Algunos formularios no se envían sin ella, y el agente se detiene en lugar de enviar un campo vacío. Como la personalización está activada, el agente la adapta a cada puesto usando solo lo que dicen realmente tu currículum y la oferta; y si no puede hacerlo con honestidad, tu nota se envía tal como la escribiste.",
-    "tailorCoverNote": "Adaptar esta nota a cada puesto. El agente la reescribe según la oferta usando solo datos que ya están en tu currículum: no puede añadir una empresa, un centro de estudios, una habilidad ni una cifra que no figure, y nunca menciona por iniciativa propia tu situación de visado, tu salario ni tu fecha de incorporación. Lo que no pueda fundamentar, lo descarta: se envía tu nota tal cual."
+    "tailorCoverNote": "Adaptar esta nota a cada puesto. El agente la reescribe según la oferta usando solo datos que ya están en tu currículum: no puede añadir una empresa, un centro de estudios, una habilidad ni una cifra que no figure, y nunca menciona por iniciativa propia tu situación de visado, tu salario ni tu fecha de incorporación. Lo que no pueda fundamentar, lo descarta: se envía tu nota tal cual.",
+    "suggestedTitle": "De tu currículum, pero no estamos seguros. Revísalo antes de que se use:",
+    "useSuggested": "Usarlo",
+    "dismissSuggested": "No es correcto",
+    "uploadedCheck": "Guardado. Revisa abajo lo que leímos de tu currículum antes de que el agente lo use."
   },
   "applyQueue": {
     "title": "Candidaturas preparadas",
@@ -4868,7 +4872,11 @@
     "decideAgentOff": "Primero activa tu agente: una solicitud aprobada espera a que lo hagas.",
     "decideBlockedCompany": "Esta empresa está en tu lista de no postular nunca, así que el agente no le enviará nada.",
     "decideInFlight": "El envío la tiene ahora mismo: ya es tarde para cambiarla.",
-    "decideFailed": "No se pudo hacer: actualiza la página e inténtalo de nuevo."
+    "decideFailed": "No se pudo hacer: actualiza la página e inténtalo de nuevo.",
+    "notArrived": "No llegó",
+    "recordedNotSent": "Anotado: esta no salió.",
+    "retryNotTransient": "Reintentar no arregla por qué se detuvo. Ábrela para ver el motivo.",
+    "retryNotFunded": "A tu pase no le queda ninguna candidatura para enviarla otra vez."
   },
   "agentPlan": {
     "badge": "Se postula por ti",
@@ -4947,13 +4955,13 @@
   },
   "applyRefusal": {
     "sender-offline": "Nuestro emisor está desconectado, así que no se envió nada. Está en cola y saldrá en cuanto vuelva: no tienes que hacer nada.",
-    "fit-unknown": "No pudimos evaluar esta oferta con tu currículum, así que no la enviamos sin supervisión. Puedes enviarla tú.",
+    "fit-unknown": "No pudimos evaluar esta oferta con tu currículum, así que el agente no la envió por su cuenta. Apruébala para enviarla.",
     "not-ready": "Esta empresa pregunta algo que no responderemos por ti. Ábrela y completa lo que falta.",
     "review-mode": "Lista y esperando a que pulses enviar: tu agente está en modo revisión, así que nunca envía solo.",
     "vendor-not-allowed": "No has activado el envío sin supervisión para este portal de empleo.",
     "already-submitted": "Ya enviada. Nunca enviamos la misma candidatura dos veces.",
     "duplicate": "Ya te habías inscrito en esta oferta, así que no hicimos nada.",
-    "fit-below-floor": "Por debajo del umbral de encaje que fijaste. Bájalo si quieres que también se envíen las dudosas.",
+    "fit-below-floor": "Encaja menos de lo que el agente envía por su cuenta. Apruébala para enviarla.",
     "daily-cap": "El límite de hoy está agotado. Saldrá mañana, o sube tu límite diario.",
     "vendor-needs-human": "Este portal exige un paso que solo puede dar una persona: normalmente una casilla que no marcaremos por ti."
   },
@@ -4983,7 +4991,8 @@
     "held": "Preparada, aún sin enviar.",
     "ready": "Lista: no necesita nada de ti.",
     "blocked": "Aquí hace falta algo tuyo.",
-    "preparing": "Preparando…"
+    "preparing": "Preparando…",
+    "not-arrived": "Lo comprobaste y no llegó. El agente no volverá a enviarla."
   },
   "agentHero": {
     "badge": "Tu agente de solicitudes con IA",
@@ -5021,7 +5030,7 @@
   },
   "homeAgent": {
     "lead": "Trae tu propio agente de IA.",
-    "passLine": "Un pase de ${{passPrice}} le da {{passHours}} horas a toda velocidad para investigar la bolsa y presentar {{passApplications}} candidaturas por ti. Nunca se renueva; inicia sesión para comprarlo.",
+    "passLine": "Un pase de ${{passPrice}} le da {{passHours}} horas a toda velocidad para investigar la bolsa y presentar {{passApplications}} candidaturas por ti. Solo cuentan las ofertas en las que puede enviar la candidatura él mismo. Nunca se renueva; inicia sesión para comprarlo.",
     "connectCta": "Conecta tu agente",
     "passCta": "Comprar o abrir tu pase",
     "connectLine2": "Conéctalo gratis y sin cuenta: {{freeCallsPerDay}} llamadas al día por dirección de red para explorar la bolsa (una oficina o una conexión doméstica cuentan como una sola dirección; desde ChatGPT cada persona tiene sus propias {{freeCallsPerDay}}, y desde Claude primero se usa un cupo diario que comparten todos los usuarios de Claude)."
@@ -5098,7 +5107,7 @@
     "clockShelfExpired": "Tu último pase caducó sin usar el {{date}}.",
     "clockNone": "Todavía no hay ningún pase en esta cuenta.",
     "applications": "{{left}} de {{passApplications}} candidaturas",
-    "applicationsBasis": "Cada solicitud aceptada gasta una. Una solicitud rechazada por un filtro no gasta nada, y un envío que nunca ocurrió devuelve su candidatura.",
+    "applicationsBasis": "Solo gasta una la oferta en la que tu agente puede enviar la candidatura él mismo. Una solicitud que rechaza no gasta nada, y un envío que nunca ocurrió devuelve su candidatura.",
     "buyAnother": "Comprar un pase",
     "whichAgent": "¿Qué agente?",
     "handoffTitle": "Entrégaselo a tu agente",
@@ -5120,7 +5129,8 @@
     "connectorPassGate": "Desde {{host}} el pase solo podrá usarse cuando el inicio de sesión esté activado; hoy, úsalo desde {{headerHosts}} con tu clave de agente.",
     "repairSecondPass": "Este pago no creó un segundo pase: una cuenta tiene un solo pase abierto a la vez, y el tuyo se muestra aquí sin cambios. Ya nos han avisado y este pago se reembolsará; si no vuelve a tu tarjeta en unos días, escribe a resumeboostersupp@gmail.com.",
     "repairNotYours": "Esta compra pertenece a una cuenta distinta de aquella con la que has iniciado sesión, y su pase está en esa cuenta. Inicia sesión con la cuenta que pagó para verlo.",
-    "repairRefunded": "Este pago fue reembolsado, así que no abre ningún pase."
+    "repairRefunded": "Este pago fue reembolsado, así que no abre ningún pase.",
+    "cardCharge": "Solo cuentan las ofertas en las que tu agente puede enviar la candidatura él mismo. Lo demás se rechaza y no cuesta nada."
   },
   "oauthConsent": {
     "title": "Conecta tu agente",
@@ -5242,7 +5252,8 @@
     "invalid": "Este enlace no es válido. Usa el enlace para darse de baja del propio correo.",
     "missing": "Esta página necesita el enlace para darse de baja de uno de nuestros correos.",
     "error": "No se pudo completar ahora. Vuelve a pulsar el botón en un momento.",
-    "home": "Volver a Resume Booster"
+    "home": "Volver a Resume Booster",
+    "agentDigest": "Dejar de recibir los correos de la lista de la mañana. Tu agente sigue funcionando y sus selecciones siguen en tu cuenta."
   },
   "purchaseTerms": {
     "agree": "Al continuar, aceptas los <terms>Términos del servicio</terms> y la <privacy>Política de privacidad</privacy>.",

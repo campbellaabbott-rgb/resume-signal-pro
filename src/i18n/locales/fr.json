@@ -4827,7 +4827,11 @@
     "coverNotePlaceholder": "ex. Ingénieur data depuis huit ans, je construis des pipelines en Python et dbt et je cherche un poste senior où je pourrais porter une plateforme de bout en bout.",
     "coverNoteCount": "{{n}} sur 2000 caractères",
     "coverNoteHintTailored": "Facultatif. Certains formulaires refusent l'envoi sans elle, et l'agent s'arrête plutôt que d'envoyer un champ vide. La personnalisation étant activée, l'agent l'adapte à chaque poste en n'utilisant que ce que votre CV et l'annonce disent réellement — et s'il ne peut pas le faire honnêtement, votre note est envoyée telle que vous l'avez écrite.",
-    "tailorCoverNote": "Adapter cette note à chaque poste. L'agent la réécrit en fonction de l'annonce en n'utilisant que des faits déjà présents dans votre CV : il ne peut ajouter ni employeur, ni école, ni compétence, ni chiffre absent, et il n'évoque jamais de lui-même votre situation de visa, votre salaire ou votre date de disponibilité. Tout ce qu'il ne peut pas étayer, il l'écarte : votre note part telle quelle."
+    "tailorCoverNote": "Adapter cette note à chaque poste. L'agent la réécrit en fonction de l'annonce en n'utilisant que des faits déjà présents dans votre CV : il ne peut ajouter ni employeur, ni école, ni compétence, ni chiffre absent, et il n'évoque jamais de lui-même votre situation de visa, votre salaire ou votre date de disponibilité. Tout ce qu'il ne peut pas étayer, il l'écarte : votre note part telle quelle.",
+    "suggestedTitle": "Tiré de votre CV, mais nous n'en sommes pas sûrs. Vérifiez avant qu'il soit utilisé :",
+    "useSuggested": "L'utiliser",
+    "dismissSuggested": "Pas correct",
+    "uploadedCheck": "Enregistré. Vérifiez ci-dessous ce que nous avons lu dans votre CV avant que l'agent l'utilise."
   },
   "applyQueue": {
     "title": "Candidatures préparées",
@@ -4868,7 +4872,11 @@
     "decideAgentOff": "Activez d'abord votre agent — une candidature approuvée attend cela.",
     "decideBlockedCompany": "Cet employeur figure sur votre liste « ne jamais postuler », l'agent ne lui enverra donc rien.",
     "decideInFlight": "L'envoi est en train de la traiter — il est trop tard pour la modifier.",
-    "decideFailed": "Impossible pour l'instant — actualisez la page et réessayez."
+    "decideFailed": "Impossible pour l'instant — actualisez la page et réessayez.",
+    "notArrived": "Elle n'est pas arrivée",
+    "recordedNotSent": "C'est noté : celle-ci n'est pas partie.",
+    "retryNotTransient": "Réessayer ne réglera pas ce qui l'a arrêtée. Ouvrez-la pour voir pourquoi.",
+    "retryNotFunded": "Votre pass n'a plus de candidature pour l'envoyer à nouveau."
   },
   "agentPlan": {
     "badge": "Postule à votre place",
@@ -4947,13 +4955,13 @@
   },
   "applyRefusal": {
     "sender-offline": "Notre émetteur est hors ligne, rien n'est parti. C'est en file d'attente et partira dès son retour : vous n'avez rien à faire.",
-    "fit-unknown": "Nous n'avons pas pu évaluer cette offre par rapport à votre CV, donc nous ne l'avons pas envoyée sans supervision. Vous pouvez l'envoyer vous-même.",
+    "fit-unknown": "Nous n'avons pas pu évaluer cette offre par rapport à votre CV, donc l'agent ne l'a pas envoyée seul. Approuvez-la pour l'envoyer.",
     "not-ready": "Cet employeur pose une question à laquelle nous ne répondrons pas à votre place. Ouvrez-la et complétez.",
     "review-mode": "Prête et en attente de votre envoi : votre agent est en mode révision, il n'envoie donc jamais seul.",
     "vendor-not-allowed": "Vous n'avez pas activé la candidature sans supervision pour ce site d'emploi.",
     "already-submitted": "Déjà envoyée. Nous n'envoyons jamais deux fois la même candidature.",
     "duplicate": "Vous aviez déjà postulé à cette offre, nous n'y avons pas touché.",
-    "fit-below-floor": "Sous le seuil d'adéquation que vous avez fixé. Abaissez-le si vous voulez aussi les offres limites.",
+    "fit-below-floor": "Une adéquation plus faible que ce que l'agent envoie seul. Approuvez-la pour l'envoyer.",
     "daily-cap": "La limite du jour est atteinte. Cela partira demain, ou augmentez votre plafond quotidien.",
     "vendor-needs-human": "Ce site exige une étape que seule une personne peut faire — souvent une case que nous ne cocherons pas à votre place."
   },
@@ -4983,7 +4991,8 @@
     "held": "Préparée, pas encore envoyée.",
     "ready": "Prête — rien ne vous attend.",
     "blocked": "Quelque chose ici vous attend.",
-    "preparing": "Préparation…"
+    "preparing": "Préparation…",
+    "not-arrived": "Vous avez vérifié : elle n'est pas arrivée. L'agent ne l'enverra pas de nouveau."
   },
   "agentHero": {
     "badge": "Votre agent de candidature IA",
@@ -5021,7 +5030,7 @@
   },
   "homeAgent": {
     "lead": "Amenez votre propre agent IA.",
-    "passLine": "Un pass à {{passPrice}} $ lui donne {{passHours}} heures à pleine vitesse pour étudier les offres et postuler à {{passApplications}} emplois pour vous. Sans reconduction ; connectez-vous pour l'acheter.",
+    "passLine": "Un pass à {{passPrice}} $ lui donne {{passHours}} heures à pleine vitesse pour étudier les offres et postuler à {{passApplications}} emplois pour vous. Seules comptent les offres où il peut envoyer la candidature lui-même. Sans reconduction ; connectez-vous pour l'acheter.",
     "connectCta": "Connecter votre agent",
     "passCta": "Acheter ou ouvrir votre pass",
     "connectLine2": "Connectez-le gratuitement et sans compte — {{freeCallsPerDay}} appels par jour et par adresse réseau pour explorer la bourse d'emploi (un bureau ou une connexion domestique compte pour une seule adresse ; depuis ChatGPT chaque personne a ses propres {{freeCallsPerDay}}, et depuis Claude un quota quotidien partagé par tous les utilisateurs de Claude passe en premier)."
@@ -5098,7 +5107,7 @@
     "clockShelfExpired": "Votre dernier pass a expiré sans usage le {{date}}.",
     "clockNone": "Aucun pass sur ce compte pour l'instant.",
     "applications": "{{left}} candidatures sur {{passApplications}}",
-    "applicationsBasis": "Chaque demande acceptée en consomme une. Une demande refusée par un garde-fou ne consomme rien, et un envoi qui n'a jamais eu lieu restitue sa candidature.",
+    "applicationsBasis": "Seule une offre où votre agent peut envoyer la candidature lui-même en consomme une. Une demande qu'il refuse ne consomme rien, et un envoi qui n'a jamais eu lieu restitue sa candidature.",
     "buyAnother": "Acheter un pass",
     "whichAgent": "Quel agent ?",
     "handoffTitle": "Confiez-le à votre agent",
@@ -5120,7 +5129,8 @@
     "connectorPassGate": "Depuis {{host}}, le pass ne pourra être utilisé qu'une fois la connexion activée ; aujourd'hui, utilisez-le depuis {{headerHosts}} avec votre clé d'agent.",
     "repairSecondPass": "Ce paiement n'a pas créé de second pass : un compte détient un seul pass ouvert à la fois, et le vôtre est affiché ici, inchangé. Nous avons été prévenus et ce paiement sera remboursé — s'il n'est pas revenu sur votre carte d'ici quelques jours, écrivez à resumeboostersupp@gmail.com.",
     "repairNotYours": "Cet achat appartient à un autre compte que celui avec lequel vous êtes connecté, et son pass se trouve sur ce compte. Connectez-vous au compte qui a payé pour le voir.",
-    "repairRefunded": "Ce paiement a été remboursé : il n'ouvre donc aucun pass."
+    "repairRefunded": "Ce paiement a été remboursé : il n'ouvre donc aucun pass.",
+    "cardCharge": "Seules comptent les offres où votre agent peut envoyer la candidature lui-même. Le reste est refusé et ne coûte rien."
   },
   "oauthConsent": {
     "title": "Connectez votre agent",
@@ -5242,7 +5252,8 @@
     "invalid": "Ce lien n'est pas valide. Utilisez le lien de désabonnement de l'e-mail lui-même.",
     "missing": "Cette page a besoin du lien de désabonnement de l'un de nos e-mails.",
     "error": "Impossible de vous désabonner pour le moment. Réessayez le bouton dans un instant.",
-    "home": "Retour à Resume Booster"
+    "home": "Retour à Resume Booster",
+    "agentDigest": "Arrêter les e-mails de la sélection du matin. Votre agent continue de tourner et ses choix restent dans votre compte."
   },
   "purchaseTerms": {
     "agree": "En continuant, vous acceptez les <terms>Conditions d'utilisation</terms> et la <privacy>Politique de confidentialité</privacy>.",

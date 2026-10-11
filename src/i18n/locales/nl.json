@@ -4827,7 +4827,11 @@
     "coverNotePlaceholder": "bijv. Ik ben data engineer met acht jaar ervaring in het bouwen van pipelines met Python en dbt, en zoek een senior rol waarin ik een platform van begin tot eind kan dragen.",
     "coverNoteCount": "{{n}} van 2000 tekens",
     "coverNoteHintTailored": "Optioneel. Sommige formulieren verzenden niet zonder, en de agent stopt liever dan een leeg veld te versturen. Omdat afstemming aanstaat, past de agent de notitie aan per functie en gebruikt daarbij alleen wat je cv en de vacature daadwerkelijk zeggen — lukt dat niet eerlijk, dan wordt je notitie precies zo verstuurd als je hem hebt geschreven.",
-    "tailorCoverNote": "Deze notitie per functie aanpassen. De agent herschrijft hem aan de hand van de vacature en gebruikt alleen feiten die al in je cv staan: hij kan geen werkgever, opleiding, vaardigheid of getal toevoegen dat er niet in staat, en noemt uit zichzelf nooit je visumstatus, salaris of startdatum. Wat hij niet kan onderbouwen, laat hij weg: dan gaat je notitie ongewijzigd mee."
+    "tailorCoverNote": "Deze notitie per functie aanpassen. De agent herschrijft hem aan de hand van de vacature en gebruikt alleen feiten die al in je cv staan: hij kan geen werkgever, opleiding, vaardigheid of getal toevoegen dat er niet in staat, en noemt uit zichzelf nooit je visumstatus, salaris of startdatum. Wat hij niet kan onderbouwen, laat hij weg: dan gaat je notitie ongewijzigd mee.",
+    "suggestedTitle": "Uit je cv, maar we weten het niet zeker. Controleer het voordat het wordt gebruikt:",
+    "useSuggested": "Gebruiken",
+    "dismissSuggested": "Klopt niet",
+    "uploadedCheck": "Opgeslagen. Controleer hieronder wat we uit je cv hebben gelezen voordat de agent het gebruikt."
   },
   "applyQueue": {
     "title": "Voorbereide sollicitaties",
@@ -4868,7 +4872,11 @@
     "decideAgentOff": "Zet eerst je agent aan — een goedgekeurde sollicitatie wacht daarop.",
     "decideBlockedCompany": "Deze werkgever staat op je nooit-solliciteren-lijst, dus de agent verstuurt er niets naartoe.",
     "decideInFlight": "De verzender is hier nu mee bezig — het is te laat om hem te wijzigen.",
-    "decideFailed": "Dat lukte niet — vernieuw de pagina en probeer het opnieuw."
+    "decideFailed": "Dat lukte niet — vernieuw de pagina en probeer het opnieuw.",
+    "notArrived": "Niet aangekomen",
+    "recordedNotSent": "Genoteerd: deze is niet verstuurd.",
+    "retryNotTransient": "Opnieuw proberen lost niet op waarom deze stopte. Open hem om te zien waarom.",
+    "retryNotFunded": "Uw pas heeft geen sollicitatie meer over om deze opnieuw te versturen."
   },
   "agentPlan": {
     "badge": "Solliciteert voor je",
@@ -4947,13 +4955,13 @@
   },
   "applyRefusal": {
     "sender-offline": "Onze verzender is offline, er is niets verstuurd. Dit staat in de wachtrij en gaat weg zodra hij terug is — u hoeft niets te doen.",
-    "fit-unknown": "We konden deze vacature niet tegen uw cv beoordelen en hebben hem daarom niet onbeheerd verstuurd. U kunt hem zelf versturen.",
+    "fit-unknown": "We konden deze vacature niet tegen uw cv beoordelen, dus de agent heeft hem niet zelf verstuurd. Keur hem goed om hem te versturen.",
     "not-ready": "Deze werkgever vraagt iets dat wij niet voor u invullen. Open de sollicitatie en vul de gaten aan.",
     "review-mode": "Klaar en wacht tot u op versturen drukt — uw agent staat in beoordelingsmodus en verstuurt dus nooit zelf.",
     "vendor-not-allowed": "U heeft onbeheerd solliciteren voor deze vacaturesite niet aangezet.",
     "already-submitted": "Al verstuurd. We versturen dezelfde sollicitatie nooit twee keer.",
     "duplicate": "U had al op deze vacature gesolliciteerd, dus we hebben hem met rust gelaten.",
-    "fit-below-floor": "Onder de matchdrempel die u heeft ingesteld. Verlaag hem als u ook twijfelgevallen wilt versturen.",
+    "fit-below-floor": "Een zwakkere match dan de agent zelf verstuurt. Keur hem goed om hem te versturen.",
     "daily-cap": "De limiet van vandaag is op. Dit gaat morgen weg, of verhoog uw daglimiet.",
     "vendor-needs-human": "Deze site vereist een stap die alleen een mens kan doen — meestal een vinkje dat wij niet namens u zetten."
   },
@@ -4983,7 +4991,8 @@
     "held": "Voorbereid, nog niet verstuurd.",
     "ready": "Klaar — er is niets nodig.",
     "blocked": "Hier is iets van u nodig.",
-    "preparing": "Voorbereiden…"
+    "preparing": "Voorbereiden…",
+    "not-arrived": "U heeft het gecontroleerd: deze is niet aangekomen. De agent verstuurt hem niet opnieuw."
   },
   "agentHero": {
     "badge": "Uw AI-sollicitatieagent",
@@ -5021,7 +5030,7 @@
   },
   "homeAgent": {
     "lead": "Neem je eigen AI-agent mee.",
-    "passLine": "Een pas van ${{passPrice}} geeft hem {{passHours}} uur op volle snelheid om de vacaturebank te onderzoeken en voor jou op {{passApplications}} vacatures te solliciteren. Verlengt nooit; log in om te kopen.",
+    "passLine": "Een pas van ${{passPrice}} geeft hem {{passHours}} uur op volle snelheid om de vacaturebank te onderzoeken en voor jou op {{passApplications}} vacatures te solliciteren. Alleen vacatures waar hij zelf kan solliciteren tellen mee. Verlengt nooit; log in om te kopen.",
     "connectCta": "Verbind je agent",
     "passCta": "Pas kopen of openen",
     "connectLine2": "Verbind hem gratis en zonder account — {{freeCallsPerDay}} aanroepen per dag per netwerkadres om het vacaturebord te verkennen (een kantoor of een thuisverbinding telt als één adres; vanuit ChatGPT heeft iedereen zijn eigen {{freeCallsPerDay}}, en vanuit Claude gaat eerst een dagelijkse pot voor die alle Claude-gebruikers delen)."
@@ -5098,7 +5107,7 @@
     "clockShelfExpired": "Je laatste pas verviel ongebruikt op {{date}}.",
     "clockNone": "Nog geen pas op dit account.",
     "applications": "{{left}} van {{passApplications}} sollicitaties",
-    "applicationsBasis": "Elke geaccepteerde aanvraag kost er één. Een aanvraag die een controle weigert kost niets, en een verzending die nooit plaatsvond geeft zijn sollicitatie terug.",
+    "applicationsBasis": "Alleen een vacature waar je agent zelf kan solliciteren kost er één. Een aanvraag die hij weigert kost niets, en een verzending die nooit plaatsvond geeft zijn sollicitatie terug.",
     "buyAnother": "Koop een pas",
     "whichAgent": "Welke agent?",
     "handoffTitle": "Geef hem aan je agent",
@@ -5120,7 +5129,8 @@
     "connectorPassGate": "Vanuit {{host}} is de pas pas te gebruiken zodra inloggen aanstaat; gebruik hem vandaag vanuit {{headerHosts}} met je agentsleutel.",
     "repairSecondPass": "Deze betaling heeft geen tweede pass gemaakt: een account heeft steeds één open pass, en de jouwe staat hier ongewijzigd. We zijn op de hoogte en deze betaling wordt terugbetaald — staat hij over een paar dagen niet terug op je kaart, mail dan naar resumeboostersupp@gmail.com.",
     "repairNotYours": "Deze aankoop hoort bij een ander account dan waarmee je bent ingelogd, en de pass staat op dat account. Log in met het account dat heeft betaald om hem te zien.",
-    "repairRefunded": "Deze betaling is terugbetaald, dus er opent geen pas mee."
+    "repairRefunded": "Deze betaling is terugbetaald, dus er opent geen pas mee.",
+    "cardCharge": "Alleen vacatures waar je agent zelf kan solliciteren tellen mee. De rest wordt geweigerd en kost niets."
   },
   "oauthConsent": {
     "title": "Verbind je agent",
@@ -5242,7 +5252,8 @@
     "invalid": "Deze link is niet geldig. Gebruik de afmeldlink in de e-mail zelf.",
     "missing": "Deze pagina heeft de afmeldlink uit een van onze e-mails nodig.",
     "error": "Uitzetten lukte nu niet. Probeer de knop zo meteen opnieuw.",
-    "home": "Terug naar Resume Booster"
+    "home": "Terug naar Resume Booster",
+    "agentDigest": "Stop de e-mails met de ochtendselectie. Je agent blijft draaien en zijn keuzes blijven in je account staan."
   },
   "purchaseTerms": {
     "agree": "Door verder te gaan ga je akkoord met de <terms>Servicevoorwaarden</terms> en het <privacy>Privacybeleid</privacy>.",

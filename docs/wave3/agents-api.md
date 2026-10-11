@@ -162,6 +162,73 @@ the shared modules, old 12a37285 against this branch).
   you, have you been, your age/citizenship/visa/criminal/medical/health, any
   convictions, conditions you ...). Mirrored in the worker so the sender does
   not refuse the sheet's draft.
+- **The employer's notice is not the question (S11-012).** A label is read
+  without the parts that are the employer's own statement about sponsorship
+  ("Please note we are unable to sponsor visas", "as we cannot sponsor",
+  "Sponsorship is not available for this role"): a clause with a sponsor word,
+  a negative and an employer-side subject (we, our, the company, the role,
+  sponsorship) that does not address the candidate and is not itself an
+  inversion ("no sponsorship required"). What is left is answered: an
+  authorisation question from `work_authorized` with its country coverage, a
+  sponsorship question from `requires_sponsorship`. Sponsorship the candidate
+  has had or holds now ("Have you ever been sponsored for an H-1B?", "Has a
+  previous employer sponsored you?") is history the profile does not state,
+  and goes to the candidate (`history`). Both copies stay byte-identical; the
+  S8-008 corpus asserts the answers themselves, not just agreement.
+- **"This country" is the posting's (S11-060).** "This country", "the country
+  in which this job is located", "where this role is based" and "the job's
+  location" name the posting's own country. It travels from
+  `job_board_postings.country` (an ISO pair, or a name) into the sheet through
+  apply-agent and into the worker through the broker's claim
+  (`packet.posting_country`). Unknown, such a question is refused; a country
+  the label also names outright still answers for itself.
+
+## Round S11 (branch `w31/agents`, inside wave 3, 2026-10-11)
+
+Fourteen items from the S11 sweep, each reproduced first and proved by a test
+that fails on the code before it. Owner decisions of 2026-10-11 bind S11-039,
+S11-042 and S11-121.
+
+| item | what was wrong | now |
+|---|---|---|
+| S11-011 | Breezy submits by XHR; the worker read the page before the answer and recorded every send as "not sent" | the writes the click started are waited for and the page re-read until the form goes; a visible form after a sent request is `uncertain`; harness XHR modes (11/11, then 12/12 with S11-047) |
+| S11-012 | an authorisation question with a "we cannot sponsor" notice was answered from the sponsorship flag | the notice is taken out before the label is read; history refused (rationale above) |
+| S11-039 | a pass spent an application on every request, ~96% of them prep-only | on a pass, a job the agent cannot submit is refused before anything is spent; the plan still prepares it; copy in 9 locales and the tool description |
+| S11-040 | a failed drafting call became "nothing in your résumé supports an answer", for good | `_shared/draft-reply.ts`: a failed call leaves the posting for the next run; the model's echo is matched by case, spacing and list number; an unparseable reply is a 502 |
+| S11-041 | a résumé "on file" meant its text | key_status and request_application need the file in the account's own folder too |
+| S11-042 | a fit-below-floor or fit-unknown packet could never be approved | approve accepts both (the floor guards only unattended sends); one `APPROVABLE_REFUSALS` list, pinned to the SQL; the re-decide loop never rewrites an approvable packet into an unapprovable code; copy fixed in 9 locales |
+| S11-043 | Try again reset attempts on a 'blocked' packet the claim never hands out | agent-access `retry` → agent_packet_decide: a released packet that stopped for a transient reason (the worker's rule, mirrored) goes back to ready, blockers and attempts cleared; refused when the pass cannot pay |
+| S11-044 | an unconfirmed submit counted for neither the cooldown nor the daily cap, and was refunded | `uncertain_at`; counted as a send everywhere; never refunded until the person says "It did not arrive" (`not_sent`) |
+| S11-045 | a CV upload saved a guessed heading as the name | only high-confidence values are filled; the rest are suggestions to accept; LinkedIn from the header only |
+| S11-046 | the public Actions log printed read-backs and page text | a reason prints as its refusal stage; other text through scrubWording; read-back gone from the reason |
+| S11-047 | a hidden Rails field in front of Pinpoint's consent box took `first()` | controls are located among non-hidden inputs; a radio's own option text is checked before it is ticked |
+| S11-060 | "this country" answered from the home country | the posting's country (rationale above) |
+| S11-121 | Agent-plan keys (minted 'free') were refused fit_resume | the Agent plan opens it, read by the account |
+| S11-132 | the shortlist unsubscribed on a bare GET with no List-Unsubscribe | confirm page plus RFC 8058 one-click, as the other digests |
+
+### Deploy (round S11)
+
+Functions, all with new builds (`--against origin/wave3/integration`: 9
+functions differ, 0 violations): agent-mcp, apply-agent, apply-broker,
+send-agent-digest, send-search-digest, send-market-pulse, send-scan-report
+`2026-10-09.24`; agent-access, generate-application-answers `2026-10-10.24`
+(both were already on 2026-10-10). The last three digests change nothing of
+their own: `_shared/unsubscribe-link.ts` gained the `agent-digest` list.
+
+Migrations, in this order, both self-checking and safe to re-run:
+
+1. `20261009124000_an_unconfirmed_send_counts_as_a_send_and_keeps_its_application`
+   (adds `agent_submissions.uncertain_at` and backfills unconfirmed rows;
+   replaces agent_mark_uncertain, agent_employer_in_cooldown,
+   agent_claim_submission, agent_sent_today, the refund trigger and
+   agent_pass_packet_gives_back). It replaces agent_claim_submission again:
+   any other branch that also replaces it must carry `uncertain_at` in its
+   cooldown park and daily cap.
+2. `20261009124100_a_person_may_send_what_the_agent_would_not_and_try_a_failed_send_again`
+   (agent_packet_decide with approve, cancel, retry, not_sent).
+
+The worker (GitHub Actions, from main) carries WORKER_VERSION 2026-10-09.24.
+Verify: `scripts/verify-deploy.d/73w-w31-agents.sh`.
 
 ## Not done, and why
 

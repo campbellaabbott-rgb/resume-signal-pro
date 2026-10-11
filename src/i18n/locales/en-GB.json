@@ -4827,7 +4827,11 @@
     "coverNotePlaceholder": "e.g. I'm a data engineer with eight years building pipelines in Python and dbt, currently looking for a senior role where I can own a platform end to end.",
     "coverNoteCount": "{{n}} of 2000 characters",
     "coverNoteHintTailored": "Optional. Some forms won't submit without one, and the agent stops rather than sending a blank. Because tailoring is on, the agent adapts this for each role using only what your CV and the posting actually say — and if it can't do that honestly, your note is sent exactly as written.",
-    "tailorCoverNote": "Adapt this note for each role. The agent rewrites it against the job advert using only facts already in your CV — it can't add an employer, a school, a skill or a number that isn't there, and it never volunteers your visa status, salary or start date. Anything it can't ground, it drops: your note goes as written instead."
+    "tailorCoverNote": "Adapt this note for each role. The agent rewrites it against the job advert using only facts already in your CV — it can't add an employer, a school, a skill or a number that isn't there, and it never volunteers your visa status, salary or start date. Anything it can't ground, it drops: your note goes as written instead.",
+    "suggestedTitle": "From your CV, but we are not sure. Check before it is used:",
+    "useSuggested": "Use it",
+    "dismissSuggested": "Not right",
+    "uploadedCheck": "Saved. Check what we read from your CV below before the agent uses it."
   },
   "applyQueue": {
     "title": "Prepared applications",
@@ -4868,7 +4872,11 @@
     "decideAgentOff": "Switch your agent on first — an approved application waits for that.",
     "decideBlockedCompany": "This employer is on your never-apply list, so the agent will not send to it.",
     "decideInFlight": "The sender has this one right now — it is too late to change it.",
-    "decideFailed": "Could not do that — refresh and try again."
+    "decideFailed": "Could not do that — refresh and try again.",
+    "notArrived": "It did not arrive",
+    "recordedNotSent": "Noted: this one did not go out.",
+    "retryNotTransient": "A retry will not fix why this one stopped. Open it to see why.",
+    "retryNotFunded": "Your pass has no application left to send this again."
   },
   "agentPlan": {
     "badge": "Does the applying for you",
@@ -4947,13 +4955,13 @@
   },
   "applyRefusal": {
     "sender-offline": "Our sender is offline, so nothing went out. This is queued and goes as soon as it is back — you do not need to do anything.",
-    "fit-unknown": "We could not score this one against your CV, so we did not send it unattended. You can still send it yourself.",
+    "fit-unknown": "We could not score this one against your CV, so the agent did not send it on its own. Approve it to send it.",
     "not-ready": "This employer asks something we will not answer for you. Open it and fill the gaps.",
     "review-mode": "Ready and waiting for you to press send — your agent is in review mode, so it never sends on its own.",
     "vendor-not-allowed": "You have not switched on unattended applying for this job site.",
     "already-submitted": "Already sent. We never send the same application twice.",
     "duplicate": "You have already applied to this posting, so we left it alone.",
-    "fit-below-floor": "Below the fit floor you set. Lower the floor if you want borderline roles sent too.",
+    "fit-below-floor": "A weaker match than the agent sends on its own. Approve it to send it.",
     "daily-cap": "Today's limit is used up. This goes out tomorrow, or raise your daily cap.",
     "vendor-needs-human": "This job site needs a step only a person can do — usually a tick box we will not tick on your behalf."
   },
@@ -4983,7 +4991,8 @@
     "held": "Prepared, not sent yet.",
     "ready": "Ready — nothing needs you.",
     "blocked": "Something here needs you.",
-    "preparing": "Preparing…"
+    "preparing": "Preparing…",
+    "not-arrived": "You checked, and this one did not arrive. The agent will not send it again."
   },
   "agentHero": {
     "badge": "Your AI apply agent",
@@ -5021,7 +5030,7 @@
   },
   "homeAgent": {
     "lead": "Bring your own AI agent.",
-    "passLine": "A ${{passPrice}} pass gives it {{passHours}} hours at full speed to research the board and apply to {{passApplications}} jobs for you. Never renews; sign in to buy.",
+    "passLine": "A ${{passPrice}} pass gives it {{passHours}} hours at full speed to research the board and apply to {{passApplications}} jobs for you. It counts only jobs it can submit itself. Never renews; sign in to buy.",
     "connectCta": "Connect your agent",
     "passCta": "Buy or open your pass",
     "connectLine2": "Connect it free with no account — {{freeCallsPerDay}} calls a day per network address to look around the board (an office or a home connection counts as one address; from ChatGPT each person has their own {{freeCallsPerDay}}, and from Claude a daily pool every Claude user shares comes first)."
@@ -5098,7 +5107,7 @@
     "clockShelfExpired": "Your last pass expired unused on {{date}}.",
     "clockNone": "No pass on this account yet.",
     "applications": "{{left}} of {{passApplications}} applications",
-    "applicationsBasis": "Each accepted request spends one. A request a gate refuses spends nothing, and a send that never happened gives its application back.",
+    "applicationsBasis": "Only a job your agent can submit itself spends one. A request it refuses spends nothing, and a send that never happened gives its application back.",
     "buyAnother": "Buy a pass",
     "whichAgent": "Which agent?",
     "handoffTitle": "Hand it to your agent",
@@ -5120,7 +5129,8 @@
     "connectorPassGate": "From {{host}} the pass can be used only once sign-in is switched on; today, use it from {{headerHosts}} with your agent key.",
     "repairSecondPass": "This payment did not create a second pass: an account holds one open pass at a time, and yours is shown here, unchanged. We have been told, and this payment will be refunded — if it is not back on your card within a few days, write to resumeboostersupp@gmail.com.",
     "repairNotYours": "This checkout belongs to a different account from the one you are signed in to, and its pass is on that account. Sign in to the account that paid to see it.",
-    "repairRefunded": "This payment was refunded, so it does not open a pass."
+    "repairRefunded": "This payment was refunded, so it does not open a pass.",
+    "cardCharge": "It counts only jobs your agent can submit itself. Anything else is refused and costs nothing."
   },
   "oauthConsent": {
     "title": "Connect your agent",
@@ -5242,7 +5252,8 @@
     "invalid": "This link is not valid. Use the unsubscribe link in the email itself.",
     "missing": "This page needs the unsubscribe link from one of our emails.",
     "error": "Could not turn them off right now. Try the button again shortly.",
-    "home": "Back to Resume Booster"
+    "home": "Back to Resume Booster",
+    "agentDigest": "Stop the morning shortlist emails. Your agent keeps running, and its picks stay in your account."
   },
   "purchaseTerms": {
     "agree": "By continuing you agree to the <terms>Terms of Service</terms> and the <privacy>Privacy Policy</privacy>.",

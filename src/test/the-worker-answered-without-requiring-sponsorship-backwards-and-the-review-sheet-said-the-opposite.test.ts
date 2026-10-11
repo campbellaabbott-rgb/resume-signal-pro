@@ -53,13 +53,22 @@ function sheetAnswer(label: string, requiresSponsorship: boolean): string | unde
   return p.fields.find((f) => f.key === label)?.value;
 }
 
+/**
+ * The answer itself, not just agreement (S11-012): two runtimes that agree on
+ * the wrong answer passed this test while both read an authorisation question
+ * backwards. A "require" label is answered Yes by a candidate who needs
+ * sponsorship; a "without" label No.
+ */
+const forwards = (label: string) => !/\bwithout\b/i.test(label);
+const want = (label: string, needs: boolean) => (forwards(label) === needs ? "Yes" : "No");
+
 describe("the worker and the review sheet answer a sponsorship question the same way", () => {
   for (const needs of [true, false]) {
     it.each(LABELS)(`requiresSponsorship=${needs}: %s`, (label) => {
       const sheet = sheetAnswer(label, needs);
       const sent = matchQuestion(radio(label), worker(needs));
-      expect(sheet, "the review sheet answers it").toMatch(/^(Yes|No)$/);
-      expect(sent).toMatchObject({ kind: "choose", option: sheet });
+      expect(sheet, "the review sheet answers it").toBe(want(label, needs));
+      expect(sent).toMatchObject({ kind: "choose", option: want(label, needs) });
     });
   }
 

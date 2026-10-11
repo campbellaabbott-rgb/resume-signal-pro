@@ -34,7 +34,10 @@ import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
 // 2026-10-09.6 (S11-005): asks the board with groupSimilar off, so a folded card never hides the postings it mails about.
-const FN_BUILD = "send-search-digest.2026-10-09.6";
+// 2026-10-09.24: _shared/unsubscribe-link.ts gained the agent-digest list it
+// imports beside (S11-132).
+// 2026-10-09.25 (wave-3 fix round integration): carries both of the above.
+const FN_BUILD = "send-search-digest.2026-10-09.25";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

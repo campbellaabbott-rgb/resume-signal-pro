@@ -430,7 +430,7 @@ export function AgentOfferStrip() {
           {t("homeAgent.connectLine2", "Connect it free with no account — {{freeCallsPerDay}} calls a day per network address to look around the board (an office or a home connection counts as one address; from ChatGPT each person has their own {{freeCallsPerDay}}, and from Claude a daily pool every Claude user shares comes first).", AGENT_OFFER_COPY)}
         </p>
         <p className="mt-1">
-          {t("homeAgent.passLine", "A ${{passPrice}} pass gives it {{passHours}} hours at full speed to research the board and apply to {{passApplications}} jobs for you. Never renews; sign in to buy.", AGENT_OFFER_COPY)}
+          {t("homeAgent.passLine", "A ${{passPrice}} pass gives it {{passHours}} hours at full speed to research the board and apply to {{passApplications}} jobs for you. It counts only jobs it can submit itself. Never renews; sign in to buy.", AGENT_OFFER_COPY)}
         </p>
         <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[13px] font-medium">
           <Link to="/agents" className="inline-flex items-center gap-1 text-primary hover:underline">

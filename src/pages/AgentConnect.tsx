@@ -626,6 +626,9 @@ export function PassCard() {
         {t("agentPass.cardBody", "{{passHours}} hours with your agent, {{passApplications}} applications, ${{passPrice}}. Never renews.", PASS_COPY)}
       </p>
       <p className="text-sm text-muted-foreground mb-2">
+        {t("agentPass.cardCharge", "It counts only jobs your agent can submit itself. Anything else is refused and costs nothing.")}
+      </p>
+      <p className="text-sm text-muted-foreground mb-2">
         {t("agentPass.cardClock", "The clock starts at your agent's first call, not at purchase. An unstarted pass keeps for {{passShelfDays}} days.", PASS_COPY)}
       </p>
       <p className="text-sm text-muted-foreground mb-4">

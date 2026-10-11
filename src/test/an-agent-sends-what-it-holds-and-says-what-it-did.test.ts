@@ -72,7 +72,11 @@ describe("1.11 — a drafted answer reaches the packet in the shape the packet r
 
   it("apply-agent converts at the boundary instead of assigning", () => {
     const agent = code(read("supabase/functions/apply-agent/index.ts"));
-    expect(agent).toMatch(/drafted = toDraftedAnswers\(/);
+    // The conversion moved into the shared reply reader (S11-040), which also
+    // tells a failed call from an empty one; apply-agent takes only its output.
+    expect(agent).toMatch(/const read = readDraftReply\(reply, needsDraft\);/);
+    expect(agent).toMatch(/drafted = read\.drafted;/);
+    expect(code(read("supabase/functions/_shared/draft-reply.ts"))).toMatch(/const drafted = toDraftedAnswers\(toAskedLabels\(/);
     expect(agent).not.toMatch(/if \(Array\.isArray\(list\)\) drafted = list;/);
   });
 });

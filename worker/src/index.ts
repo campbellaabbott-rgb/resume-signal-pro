@@ -21,6 +21,7 @@ import type { BlockedQuestion } from "./apply.js";
 import { applyToPosting } from "./apply.js";
 import { ADAPTERS, BLOCKED } from "./vendors/index.js";
 import { isTransientRefusal, refusalBlocker } from "./refusal.js";
+import { publicReason, publicText } from "./public-log.js";
 import { identityFields } from "./packet-fields.js";
 import { mayLeaveIdle, waitForNextClaimMs, WAIT_HORIZON_SECONDS } from "./idle.js";
 import { normaliseLabel, type StandingAnswers } from "./questions/match.js";
@@ -45,7 +46,11 @@ const IDLE_EXIT_MS = Number(process.env.WORKER_IDLE_EXIT_MS ?? 0);
 // 2026-10-05.1: waits for a cancel window the broker names instead of leaving;
 // stamps question keys on a question refusal; refuses a submit that never
 // placed the name or email its adapter maps.
-const WORKER_VERSION = "2026-10-05.1";
+// 2026-10-09.24: an XHR submit is read after its answer (S11-011); controls
+// are found among the inputs the enumerator read, never a hidden one
+// (S11-047); a reason prints as its stage in the public log (S11-046); the
+// sponsorship notice and "this country" rules (S11-012, S11-060).
+const WORKER_VERSION = "2026-10-09.24";
 // Where an unresolved submit leaves its evidence, for the human who has to
 // decide whether the application actually went out. The hosted container runs
 // as a non-root user in a root-owned /app, so it sets WORKER_SHOT_DIR (fly.toml)
@@ -63,10 +68,14 @@ const SHOT_DIR = process.env.WORKER_SHOT_DIR ?? join(process.cwd(), "mac", "unce
  * text and URLs are left out. WORKER_VERBOSE_LOGS=1 restores them, for an
  * operator watching their own terminal. The full reason still reaches the
  * candidate's own record through the broker; only stdout is quieter.
+ *
+ * A REASON PRINTS AS ITS STAGE, never as text (S11-046): the pattern scrub
+ * that stood here let a control's read-back and the tail of a page excerpt
+ * with an inner quote through. See public-log.ts.
  */
 const VERBOSE_LOGS = process.env.WORKER_VERBOSE_LOGS === "1";
-const scrub = (s: string): string =>
-  VERBOSE_LOGS ? s : s.replace(/https?:\/\/\S+/gi, "<url>").replace(/page said: "[^"]*"/gi, "page said: <omitted>");
+const scrub = (reason: string): string => publicReason(reason, VERBOSE_LOGS);
+const quiet = (text: string): string => publicText(text, VERBOSE_LOGS);
 const who = (p: { id: number; source?: string; company?: string; title?: string }): string =>
   VERBOSE_LOGS ? `#${p.id} ${p.source ?? ""} ${p.company ?? ""}${p.title ? ` — ${p.title}` : ""}`.trim() : `#${p.id} ${p.source ?? ""}`.trim();
 
@@ -131,7 +140,7 @@ async function stageResume(resumeUrl: string | null): Promise<{ path: string; di
     await writeFile(path, Buffer.from(await res.arrayBuffer()));
     return { path, dir };
   } catch (e) {
-    console.warn(`[worker] resume fetch threw: ${String(e).slice(0, 120)}`);
+    console.warn(`[worker] resume fetch threw: ${quiet(String(e)).slice(0, 120)}`);
     return null;
   }
 }
@@ -208,7 +217,7 @@ async function recordPending(
     company: p.company,
   })).filter((q) => q.question_key));
   if (!r.ok) {
-    console.error(`[worker] could not record pending questions (${r.kind}): ${r.detail}`);
+    console.error(`[worker] could not record pending questions (${r.kind}): ${quiet(r.detail)}`);
     return;
   }
   console.log(`[worker] ${askable.length} question(s) recorded for the candidate of ${who(p)} to answer once`);
@@ -310,7 +319,7 @@ async function release(id: number, patch: Record<string, unknown>) {
   // row into user_applications so the tracker the candidate reads and
   // agent_submissions can never disagree about what they applied to.
   const r = await broker.release(id, patch);
-  if (!r.ok) console.error(`[worker] release ${id} failed (${r.kind}): ${r.detail}`);
+  if (!r.ok) console.error(`[worker] release ${id} failed (${r.kind}): ${quiet(r.detail)}`);
   else if (patch.status === "submitted" && r.data.mirrored === false) {
     // Not fatal — the send IS recorded. But the tracker is what the person
     // paying actually looks at, and a missing row there reads as "the agent
@@ -345,7 +354,12 @@ async function runOne(
   await pauseForEmployer(p.company);
 
   const staged = await stageResume(claimed.resumeUrl);
-  const answers = toStanding(claimed.answers, claimed.packet?.fields);
+  // The posting's country rides beside the standing answers: "authorised to
+  // work in this country?" is about the posting, not the candidate (S11-060).
+  const answers: StandingAnswers = {
+    ...toStanding(claimed.answers, claimed.packet?.fields),
+    postingCountry: claimed.packet?.posting_country ?? null,
+  };
   const learned = toLearned(claimed.learned);
   let outcome;
   try {
@@ -522,7 +536,7 @@ async function main() {
     //
     // Cost is one POST on an idle run, against a browser launch it is skipping.
     const hello = await broker.ping(WORKER_ID, WORKER_VERSION, 0);
-    if (!hello.ok) console.warn(`[worker] heartbeat failed (${hello.kind}): ${hello.detail}`);
+    if (!hello.ok) console.warn(`[worker] heartbeat failed (${hello.kind}): ${quiet(hello.detail)}`);
 
     let r = await broker.claim(WORKER_ID, WORKER_VERSION);
     // A PACKET ABOUT TO OPEN IS WORK (L9-22 review). A worker woken for a
@@ -539,13 +553,13 @@ async function main() {
       console.log(`[worker] nothing claimable yet — a cancel window ends in ${Math.round(ms / 1000)}s, waiting for it`);
       await sleep(ms);
       const again = await broker.ping(WORKER_ID, WORKER_VERSION, 0);
-      if (!again.ok) console.warn(`[worker] heartbeat failed (${again.kind}): ${again.detail}`);
+      if (!again.ok) console.warn(`[worker] heartbeat failed (${again.kind}): ${quiet(again.detail)}`);
       r = await broker.claim(WORKER_ID, WORKER_VERSION);
     }
     if (!r.ok) {
       // Could not ASK is not the same as nothing to do. Exit non-zero so a
       // scheduled run shows red rather than quietly reporting an empty queue.
-      console.error(`[worker] first claim failed (${r.kind}): ${r.detail}`);
+      console.error(`[worker] first claim failed (${r.kind}): ${quiet(r.detail)}`);
       if (r.kind === "auth" || r.kind === "misconfigured") process.exit(2);
       process.exit(1);
     }
@@ -583,7 +597,7 @@ async function main() {
     // claims then a healthy-but-idle sender would look dead and apply-agent
     // would stop releasing to it — the system would talk itself into an outage.
     const pong = await broker.ping(WORKER_ID, WORKER_VERSION, 0);
-    if (!pong.ok) console.warn(`[worker] ping failed (${pong.kind}): ${pong.detail}`);
+    if (!pong.ok) console.warn(`[worker] ping failed (${pong.kind}): ${quiet(pong.detail)}`);
 
     // The packet claimed before the browser launched is used on the first pass,
     // then normal claiming takes over. Without this it would sit leased and
@@ -593,7 +607,7 @@ async function main() {
     else {
       const r = await broker.claim(WORKER_ID, WORKER_VERSION);
       if (!r.ok) {
-        console.error(`[worker] claim failed (${r.kind}): ${r.detail}`);
+        console.error(`[worker] claim failed (${r.kind}): ${quiet(r.detail)}`);
       // A claim that will not run is not work. Left out of this check, a
       // persistent failure keeps the process (and its browser) alive forever.
         if (idleTooLong()) {
@@ -632,7 +646,7 @@ async function main() {
     } catch (e) {
       // A crash after clicking submit is the same ambiguity as a timeout, and
       // gets the same treatment: parked, never retried.
-      console.error(`[worker] #${p.id} threw:`, scrub(String(e)).slice(0, 200));
+      console.error(`[worker] #${p.id} threw:`, quiet(String(e)).slice(0, 200));
       await broker.uncertain(p.id, `worker crashed: ${String(e).slice(0, 140)}`);
     }
     await sleep(GAP_MS);

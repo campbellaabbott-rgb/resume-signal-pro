@@ -45,11 +45,16 @@ export type DerivedContact = Partial<Record<ContactField, DerivedValue>>;
  */
 const HEADER_LINES = 12;
 
-/** Headings people put above their own name. Never a name. */
+/** Headings people put above (or, in two columns, beside) their own name. Never a name. */
 const NOT_A_NAME = new Set([
   "curriculum vitae", "curriculum vita", "resume", "résumé", "cv",
   "personal details", "personal information", "profile", "contact",
   "contact details", "contact information", "about me", "summary",
+  "professional summary", "professional profile", "career summary", "personal statement",
+  "career objective", "objective", "key skills", "core skills", "skills", "technical skills",
+  "core competencies", "key achievements", "achievements", "work experience",
+  "professional experience", "employment history", "work history", "experience",
+  "education", "qualifications", "certifications", "references", "languages", "interests",
 ]);
 
 const clean = (s: string) => s.replace(/\s+/g, " ").trim();
@@ -78,9 +83,13 @@ function findEmail(text: string): DerivedValue | undefined {
   return { value, confidence: "high" };
 }
 
-/** linkedin.com/in/<slug> is unambiguous. Normalised so the stored value is a URL. */
+/**
+ * linkedin.com/in/<slug> is unambiguous about being a profile, not about whose.
+ * HEADER ONLY (S11-045): a referee's or a former manager's profile further down
+ * went onto applications as the candidate's own. Normalised to a URL.
+ */
 function findLinkedIn(text: string): DerivedValue | undefined {
-  const m = text.match(/(?:https?:\/\/)?(?:[a-z]{2,3}\.)?linkedin\.com\/in\/([A-Za-z0-9\-_%]+)/i);
+  const m = headerOf(text).join("\n").match(/(?:https?:\/\/)?(?:[a-z]{2,3}\.)?linkedin\.com\/in\/([A-Za-z0-9\-_%]+)/i);
   if (!m) return undefined;
   return { value: `https://www.linkedin.com/in/${m[1]}`, confidence: "high" };
 }
@@ -134,7 +143,10 @@ function findPhone(text: string): DerivedValue | undefined {
  */
 function findName(text: string): DerivedValue | undefined {
   for (const line of headerOf(text).slice(0, 5)) {
-    const l = clean(line);
+    // "JANE DOE, RN" and "Jane Doe – Registered Nurse": the name is the part
+    // before the comma or dash, and the rest is letters or a title. Only that
+    // part is read; the line itself is never a name (S11-045).
+    const l = clean(line.split(/,\s|\s[–—-]\s/)[0] ?? "");
     if (l.length > 50 || l.length < 3) continue;
     if (NOT_A_NAME.has(l.toLowerCase())) continue;
     if (/[@\d]/.test(l)) continue;                        // contact line, not a name
@@ -186,20 +198,32 @@ export function deriveContact(resumeText: string | null | undefined): DerivedCon
  * silently revert a field they fixed by hand — that is the kind of bug where
  * somebody corrects their phone number, sees it change back, and stops trusting
  * the whole product.
+ *
+ * AND ONLY WHAT IS SURE IS FILLED (S11-045). A `low` value used to be written
+ * in like any other, so "Registered Nurse", "Professional Summary" or "Key
+ * Skills" was saved as full_name the moment a CV was uploaded, and the worker
+ * applied under it with nobody asked. Low values come back as `suggested`, for
+ * the person to accept; the field stays empty until they do, so readiness
+ * reports the gap instead of the agent sending a heading as a name.
  */
 export function fillGaps<T extends Record<string, unknown>>(
   profile: T,
   derived: DerivedContact,
-): { next: T; filled: ContactField[] } {
+): { next: T; filled: ContactField[]; suggested: Partial<Record<ContactField, string>> } {
   const next = { ...profile };
   const filled: ContactField[] = [];
+  const suggested: Partial<Record<ContactField, string>> = {};
   for (const [k, v] of Object.entries(derived) as [ContactField, DerivedValue][]) {
     const current = next[k];
     const isEmpty = current === null || current === undefined ||
       (typeof current === "string" && current.trim().length === 0);
     if (!isEmpty) continue;
+    if (v.confidence !== "high") {
+      suggested[k] = v.value;
+      continue;
+    }
     (next as Record<string, unknown>)[k] = v.value;
     filled.push(k);
   }
-  return { next, filled };
+  return { next, filled, suggested };
 }

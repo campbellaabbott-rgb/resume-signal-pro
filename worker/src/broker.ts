@@ -60,6 +60,9 @@ export type ClaimedPacket = {
     fields: Record<string, { value: string; source: string }>;
     /** Attempts INCLUDING this claim. Absent from a broker older than 2026-10-05. */
     attempts?: number;
+    /** The posting's own country (S11-060). Absent from an older broker, and
+     *  then "this country" questions are refused, never answered from home. */
+    posting_country?: string | null;
   };
   answers: StandingAnswersWire;
   learned: Array<{ key: string; label: string; kind: "fill" | "choose" | "check"; value: string }>;

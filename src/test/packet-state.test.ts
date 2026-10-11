@@ -142,9 +142,20 @@ describe("the panel wires it, and the retry cannot revive a sent packet", () => 
 
   it("guards the retry against an already-sent packet", () => {
     // Belt and braces with packetState.canRetry: even a UI bug must not be able
-    // to re-queue something that already went to an employer.
-    expect(panel).toMatch(/\.is\("submitted_at", null\)/);
-    expect(panel).toMatch(/attempts: 0/);
+    // to re-queue something that already went to an employer. The retry now
+    // goes through agent-access to agent_packet_decide (S11-043: the panel's
+    // own reset left a 'blocked' packet blocked), and the database refuses a
+    // sent packet before it looks at the decision at all.
+    expect(panel).toMatch(/onClick=\{\(\) => void decide\(p, "retry"\)\}/);
+    expect(panel).not.toMatch(/\.update\(\{ attempts: 0/);
+    const sql = readFileSync(resolve(__dirname,
+      "../../supabase/migrations/20261009124100_a_person_may_send_what_the_agent_would_not_and_try_a_failed_send_again.sql"), "utf8")
+      .replace(/--[^\n]*/g, "");
+    const sentGuard = sql.indexOf("IF r.ssubmitted IS NOT NULL THEN");
+    expect(sentGuard).toBeGreaterThan(0);
+    expect(sql.slice(sentGuard, sentGuard + 120)).toMatch(/'already_sent'/);
+    expect(sentGuard).toBeLessThan(sql.indexOf("IF p_decision = 'retry' THEN"));
+    expect(sql).toMatch(/SET status = 'ready', blockers = '\[\]'::jsonb, attempts = 0/);
   });
 
   it("only shows the retry when canRetry says so", () => {

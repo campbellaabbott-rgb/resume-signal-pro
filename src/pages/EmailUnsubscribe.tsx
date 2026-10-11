@@ -49,7 +49,9 @@ export default function EmailUnsubscribe() {
     ? t("emailUnsubscribe.searchDigest", "Stop the digest emails for this saved search. Your other saved searches are not affected.")
     : target?.list === "market-pulse"
       ? t("emailUnsubscribe.marketPulse", "Stop the monthly market pulse emails to this address.")
-      : t("emailUnsubscribe.scanReport", "Stop all emails from Resume Booster to this address, including any fix-plan emails still to come.");
+      : target?.list === "agent-digest"
+        ? t("emailUnsubscribe.agentDigest", "Stop the morning shortlist emails. Your agent keeps running, and its picks stay in your account.")
+        : t("emailUnsubscribe.scanReport", "Stop all emails from Resume Booster to this address, including any fix-plan emails still to come.");
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">

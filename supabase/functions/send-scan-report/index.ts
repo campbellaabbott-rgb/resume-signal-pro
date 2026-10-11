@@ -58,7 +58,9 @@ import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "send-scan-report.2026-10-09.2";
+// 2026-10-09.24: no change of its own; _shared/unsubscribe-link.ts gained the
+// agent-digest list it imports beside (S11-132).
+const FN_BUILD = "send-scan-report.2026-10-09.24";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

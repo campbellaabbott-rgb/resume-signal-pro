@@ -7,6 +7,9 @@
 //                                      review, review mode, sender offline,
 //                                      daily cap) with the cancel window
 //   POST {action:"cancel",  id}     -> stop one packet no worker holds
+//   POST {action:"retry",   id}     -> put back a released packet that
+//                                      stopped for a transient reason
+//   POST {action:"not_sent", id}    -> an unconfirmed send did not arrive
 //
 // WHO IT ANSWERS ABOUT: the caller, from the VERIFIED session, and nobody else.
 //
@@ -54,7 +57,10 @@ import { networkBucket } from "../_shared/network-bucket.ts";
 // (agent_subscription_rows) — a live Stripe plan on the caller's address that
 // is not bound to the account and not on a proven mailbox answers inactive,
 // and says so (subscriptionUnbound).
-const FN_BUILD = "agent-access.2026-10-10.1";
+// 2026-10-10.24: two more decisions through agent_packet_decide: retry a
+// released packet that stopped for a transient reason (S11-043), and record
+// that an unconfirmed send did not arrive (S11-044).
+const FN_BUILD = "agent-access.2026-10-10.24";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -140,11 +146,14 @@ serve(async (req) => {
   const action = typeof body.action === "string" ? body.action : "status";
 
   try {
-    // ── the owner's two decisions on one packet ─────────────────────────────
-    if (action === "approve" || action === "cancel") {
+    // ── the owner's say on one packet ───────────────────────────────────────
+    // approve, cancel; retry a send that stopped for a transient reason
+    // (S11-043); not_sent, the person's answer to an unconfirmed send
+    // (S11-044). The rules live in agent_packet_decide (20261009124100).
+    if (action === "approve" || action === "cancel" || action === "retry" || action === "not_sent") {
       const id = Number(body.id);
       if (!Number.isInteger(id) || id <= 0) return json({ ok: false, reason: "bad_request" }, 400);
-      if (action === "approve") {
+      if (action === "approve" || action === "retry") {
         // Only a vendor the worker can complete may be released: a packet for
         // any other is prepared for the candidate to send by hand, and
         // releasing it would read as "on its way" when nothing can take it.
