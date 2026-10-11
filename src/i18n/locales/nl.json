@@ -1981,11 +1981,10 @@
       },
       "atsDefense": {
         "howItWorks": [
-          "Onze AI voerde een uitgebreide ATS-compatibiliteitsaudit uit",
-          "We analyseerden je cv tegen 50+ ATS-platforms",
-          "Zoekwoorden geoptimaliseerd voor tot 3 doelfuncties",
-          "Formaat geherstructureerd voor maximale verwerkbaarheid",
-          "LinkedIn-afstemmingstips inbegrepen"
+          "We hebben gecontroleerd hoe sollicitatiesystemen je cv lezen",
+          "We hebben je trefwoorden afgestemd op de functies die je noemde (maximaal 3)",
+          "We hebben secties aangepast zodat ze foutloos worden ingelezen",
+          "We hebben tips toegevoegd om je LinkedIn-profiel erop af te stemmen"
         ],
         "nextSteps": [
           {
@@ -2751,7 +2750,7 @@
     "ladderSpecialistDesc": "Voor carrièreswitchers: freelance-, gig- en projectwerk vertaald naar ervaring op recruiterniveau.",
     "allToolsToggle": "Bekijk alle tools ({{count}} meer)",
     "guarantee": "Elke betaalde tool is gedekt: niet blij met het resultaat? We regenereren het gratis — beantwoord gewoon je bon.",
-    "passLine": "Of een eenmalige pas voor je eigen AI-agent: ${{passPrice}} voor {{passHours}} uur en {{passApplications}} sollicitaties. Verlengt nooit.",
+    "passLine": "Of een eenmalige pas voor je eigen AI-agent: ${{passPrice}} voor {{passHours}} uur en {{passApplications}} sollicitaties, die alleen tellen als hij ze kan versturen. Verlengt nooit.",
     "passLink": "Verbind je agent"
   },
   "scanPackPurchase": {
@@ -4491,7 +4490,7 @@
     "acNothingNew": "Niets nieuws om voor te bereiden — de opgeslagen vacatures konden niet worden aangepast (ontbrekende beschrijving of feitencontrole). Voeg de vacaturetekst toe en probeer opnieuw.",
     "acTitle": "Sollicitatie-copiloot",
     "acPreppedCount": "{{done}}/{{total}} voorbereid",
-    "acBlurb": "We passen cv en brief aan op elke opgeslagen vacature — verankerd in je echte cv, niets verzonnen. Jij controleert en solliciteert op de site van het bedrijf.",
+    "acBlurb": "Voor elke opgeslagen vacature schrijven we een aangepast cv en een sollicitatiebrief op basis van je echte cv, zonder iets te verzinnen. Jij controleert ze en solliciteert op de site van de werkgever.",
     "acPrepProgress": "Bezig met {{i}} van {{total}} — {{company}}…",
     "acPrepAll_one": "{{count}} sollicitatie op maat voorbereiden",
     "acPrepAll_other": "{{count}} sollicitaties op maat voorbereiden",
@@ -4862,8 +4861,8 @@
     "includesPro": "Bevat alles uit Pro (${{proPrice}}/maand)",
     "perkAutoApply": "Solliciteert automatisch voor je op {{names}}",
     "perkOneClick": "Sollicitaties ingevuld en klaar om te versturen op {{names}}",
-    "perkMorningQueue": "Ochtendwachtrij: 's nachts voert de agent je zoekopdracht uit en zet hij een shortlist voor de ochtend in je account",
-    "perkQueue": "Een wachtrij die je eerst kunt nakijken, of onbeheerd laten draaien — jouw keuze, altijd aan te passen",
+    "perkMorningQueue": "Ochtendwachtrij: elke ochtend staat er een shortlist met nieuwe passende vacatures in je account",
+    "perkQueue": "Controleer elke sollicitatie voordat hij weggaat, of laat hem zelf versturen. Altijd aan te passen.",
     "perkCap": "Een daglimiet die jij instelt, en nooit twee keer op dezelfde vacature",
     "perkHonest": "Hij verzint nooit een antwoord. Heeft een vraag jou nodig, dan stopt hij en vraagt het.",
     "cta": "Agent starten",
@@ -5006,7 +5005,7 @@
   },
   "homeAgent": {
     "lead": "Neem je eigen AI-agent mee.",
-    "passLine": "Een pas van ${{passPrice}} geeft hem {{passHours}} uur op volle snelheid om de vacaturebank te onderzoeken en voor jou op {{passApplications}} vacatures te solliciteren. Verlengt nooit; log in om te kopen.",
+    "passLine": "Een pas van ${{passPrice}} geeft je agent {{passHours}} uur om de vacaturebank te doorzoeken en voor jou op {{passApplications}} vacatures te solliciteren. Een vacature telt alleen als de agent de sollicitatie kan versturen. Verlengt nooit; log in om te kopen.",
     "connectCta": "Verbind je agent",
     "passCta": "Pas kopen of openen",
     "connectLine2": "Verbind hem gratis en zonder account — {{freeCallsPerDay}} aanroepen per dag per netwerkadres om het vacaturebord te verkennen (een kantoor of een thuisverbinding telt als één adres; vanuit ChatGPT heeft iedereen zijn eigen {{freeCallsPerDay}}, en vanuit Claude gaat eerst een dagelijkse pot voor die alle Claude-gebruikers delen)."
@@ -5060,7 +5059,7 @@
   },
   "agentPass": {
     "cardTitle": "Een pas voor je agent",
-    "cardBody": "{{passHours}} uur met je agent, {{passApplications}} sollicitaties, ${{passPrice}}. Verlengt nooit.",
+    "cardBody": "{{passHours}} uur met je agent en {{passApplications}} sollicitaties voor ${{passPrice}}. Een sollicitatie telt alleen als de agent hem kan versturen. Verlengt nooit.",
     "cardClock": "De klok start bij de eerste aanroep van je agent, niet bij aankoop. Een niet-gestarte pas blijft {{passShelfDays}} dagen geldig.",
     "cardIncludes": "Inclusief de cv-scorer zolang hij loopt. Het bord lezen blijft gratis; het Agent-plan doet hetzelfde elke maand en verlengt — de pas nooit.",
     "buy": "Koop de pas — ${{passPrice}}",
@@ -5083,7 +5082,7 @@
     "clockShelfExpired": "Je laatste pas verviel ongebruikt op {{date}}.",
     "clockNone": "Nog geen pas op dit account.",
     "applications": "{{left}} van {{passApplications}} sollicitaties",
-    "applicationsBasis": "Elke geaccepteerde aanvraag kost er één. Een aanvraag die een controle weigert kost niets, en een verzending die nooit plaatsvond geeft zijn sollicitatie terug.",
+    "applicationsBasis": "Een sollicitatie telt alleen voor een vacature waar de agent hem kan versturen. Een geweigerde aanvraag, of een verzending die nooit plaatsvond, kost niets.",
     "buyAnother": "Koop een pas",
     "whichAgent": "Welke agent?",
     "handoffTitle": "Geef hem aan je agent",

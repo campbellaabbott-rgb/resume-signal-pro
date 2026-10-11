@@ -1981,11 +1981,10 @@
       },
       "atsDefense": {
         "howItWorks": [
-          "Our AI performed a comprehensive ATS compatibility audit",
-          "We analysed your CV against 50+ ATS platforms",
-          "Keywords optimised for up to 3 target roles",
-          "Format restructured for maximum parseability",
-          "LinkedIn alignment tips included"
+          "We checked how applicant tracking systems read your CV",
+          "We matched your keywords to the roles you named (up to 3)",
+          "We reworked sections so they parse cleanly",
+          "We added tips to line up your LinkedIn profile"
         ],
         "nextSteps": [
           {
@@ -2751,7 +2750,7 @@
     "ladderSpecialistDesc": "For career changers: freelance, gig, and side-hustle work translated into recruiter-grade experience.",
     "allToolsToggle": "See every tool ({{count}} more)",
     "guarantee": "Every paid tool is covered: not happy with the output? We'll regenerate it free — just reply to your receipt.",
-    "passLine": "Or a one-off pass for your own AI agent: ${{passPrice}} for {{passHours}} hours and {{passApplications}} applications. Never renews.",
+    "passLine": "Or a one-off pass for your own AI agent: ${{passPrice}} for {{passHours}} hours and {{passApplications}} applications, counted only when it can send them. Never renews.",
     "passLink": "Connect your agent"
   },
   "scanPackPurchase": {
@@ -4491,7 +4490,7 @@
     "acNothingNew": "Nothing new to prep — the saved postings couldn't be tailored (missing description or grounding check). Add a job posting and try again.",
     "acTitle": "Application co-pilot",
     "acPreppedCount": "{{done}}/{{total}} prepped",
-    "acBlurb": "We tailor a CV + cover letter to each saved posting — grounded against your real CV, no invented facts. You review and apply on the company's own site.",
+    "acBlurb": "For each saved job, we write a tailored CV and a cover letter from your real CV, with nothing invented. You check them and apply on the employer's own site.",
     "acPrepProgress": "Prepping {{i}} of {{total}} — {{company}}…",
     "acPrepAll_one": "Prep {{count}} tailored application",
     "acPrepAll_other": "Prep {{count}} tailored applications",
@@ -4862,8 +4861,8 @@
     "includesPro": "Includes everything in Pro (${{proPrice}}/mo)",
     "perkAutoApply": "Applies for you automatically on {{names}}",
     "perkOneClick": "Applications filled in and ready to send on {{names}}",
-    "perkMorningQueue": "Morning Queue: overnight, the agent runs your search and leaves a shortlist in your account for the morning",
-    "perkQueue": "A queue you can review first, or let it run unattended — your choice, changeable any time",
+    "perkMorningQueue": "Morning Queue: a shortlist of new matches waits in your account each morning",
+    "perkQueue": "Review each application before it goes, or let it send on its own. Change it any time.",
     "perkCap": "A daily limit you set, and it never applies to the same job twice",
     "perkHonest": "It never invents an answer. If a question needs you, it stops and asks.",
     "cta": "Start the agent",
@@ -5006,7 +5005,7 @@
   },
   "homeAgent": {
     "lead": "Bring your own AI agent.",
-    "passLine": "A ${{passPrice}} pass gives it {{passHours}} hours at full speed to research the board and apply to {{passApplications}} jobs for you. Never renews; sign in to buy.",
+    "passLine": "A ${{passPrice}} pass gives your agent {{passHours}} hours to search the board and apply to {{passApplications}} jobs for you. A job counts only when the agent can send the application. Never renews; sign in to buy.",
     "connectCta": "Connect your agent",
     "passCta": "Buy or open your pass",
     "connectLine2": "Connect it free with no account — {{freeCallsPerDay}} calls a day per network address to look around the board (an office or a home connection counts as one address; from ChatGPT each person has their own {{freeCallsPerDay}}, and from Claude a daily pool every Claude user shares comes first)."
@@ -5060,7 +5059,7 @@
   },
   "agentPass": {
     "cardTitle": "A pass for your agent",
-    "cardBody": "{{passHours}} hours with your agent, {{passApplications}} applications, ${{passPrice}}. Never renews.",
+    "cardBody": "{{passHours}} hours with your agent and {{passApplications}} applications for ${{passPrice}}. An application counts only when the agent can send it. Never renews.",
     "cardClock": "The clock starts at your agent's first call, not at purchase. An unstarted pass keeps for {{passShelfDays}} days.",
     "cardIncludes": "Includes the CV scorer while it runs. Reading the board stays free; the Agent plan does the same every month and renews — the pass never does.",
     "buy": "Buy the pass — ${{passPrice}}",
@@ -5083,7 +5082,7 @@
     "clockShelfExpired": "Your last pass expired unused on {{date}}.",
     "clockNone": "No pass on this account yet.",
     "applications": "{{left}} of {{passApplications}} applications",
-    "applicationsBasis": "Each accepted request spends one. A request a gate refuses spends nothing, and a send that never happened gives its application back.",
+    "applicationsBasis": "An application counts only for a job the agent can send it to. A refused request, or a send that never happened, costs nothing.",
     "buyAnother": "Buy a pass",
     "whichAgent": "Which agent?",
     "handoffTitle": "Hand it to your agent",
