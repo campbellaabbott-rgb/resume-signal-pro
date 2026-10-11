@@ -48,7 +48,7 @@ export type RefusalSeverity =
   | "by-design";
 
 /** Where the fix lives, so the UI can offer one rather than describe a problem. */
-export type RefusalFix = "profile" | "mode" | "sources" | "fit-floor" | "cap" | null;
+export type RefusalFix = "profile" | "mode" | "sources" | "cap" | null;
 
 export type RefusalFace = {
   code: RefusalCode;
@@ -83,9 +83,10 @@ const FACES: Record<RefusalCode, RefusalFace> = {
     "cancelled-by-you", "by-design",
     "You cancelled this one before it went out. Nothing was sent.",
   ),
+  // A person's approval is not an unattended send (S11-042): Approve sends it.
   "fit-unknown": F(
     "fit-unknown", "on-us",
-    "We could not score this one against your résumé, so we did not send it unattended. You can still send it yourself.",
+    "We could not score this one against your résumé, so the agent did not send it on its own. Approve it to send it.",
   ),
 
   // --- theirs to clear ----------------------------------------------------
@@ -114,10 +115,11 @@ const FACES: Record<RefusalCode, RefusalFace> = {
     "duplicate", "by-design",
     "You have already applied to this posting, so we left it alone.",
   ),
+  // The floor is fixed (55%) and guards only what the agent sends on its own;
+  // there is no setting to lower it, so the copy no longer points at one.
   "fit-below-floor": F(
     "fit-below-floor", "by-design",
-    "Below the fit floor you set. Lower the floor if you want borderline roles sent too.",
-    "fit-floor",
+    "A weaker match than the agent sends on its own. Approve it to send it.",
   ),
   "daily-cap": F(
     "daily-cap", "by-design",

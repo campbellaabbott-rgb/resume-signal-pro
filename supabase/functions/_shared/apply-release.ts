@@ -79,6 +79,17 @@ export type ReleaseRefusal =
   // exists only in the database renders to a candidate as a raw slug.
   | "cancelled-by-you";
 
+/**
+ * The refusals a PERSON may override with "Approve and send"
+ * (agent_packet_decide, 20261009124100, holds the same list; a test pins
+ * them equal). The moment ones (the candidate's say-so, the on-ramp, the
+ * sender, the day's cap), and the fit floor with an unknown fit: OWNER
+ * DECISION 2026-10-11, the floor guards only unattended sends (S11-042).
+ */
+export const APPROVABLE_REFUSALS: ReadonlySet<ReleaseRefusal> = new Set<ReleaseRefusal>([
+  "review-mode", "held-for-review", "sender-offline", "daily-cap", "fit-below-floor", "fit-unknown",
+]);
+
 export function decideRelease(i: ReleaseInput): ReleaseDecision {
   // Order matters only for which reason a candidate sees first; each check is
   // independently sufficient to refuse.

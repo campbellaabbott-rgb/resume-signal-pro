@@ -4846,7 +4846,11 @@
     "decideAgentOff": "Switch your agent on first — an approved application waits for that.",
     "decideBlockedCompany": "This employer is on your never-apply list, so the agent will not send to it.",
     "decideInFlight": "The sender has this one right now — it is too late to change it.",
-    "decideFailed": "Could not do that — refresh and try again."
+    "decideFailed": "Could not do that — refresh and try again.",
+    "notArrived": "It did not arrive",
+    "recordedNotSent": "Noted: this one did not go out.",
+    "retryNotTransient": "A retry will not fix why this one stopped. Open it to see why.",
+    "retryNotFunded": "Your pass has no application left to send this again."
   },
   "agentPlan": {
     "badge": "Does the applying for you",
@@ -4925,13 +4929,13 @@
   },
   "applyRefusal": {
     "sender-offline": "Our sender is offline, so nothing went out. This is queued and goes as soon as it is back — you do not need to do anything.",
-    "fit-unknown": "We could not score this one against your CV, so we did not send it unattended. You can still send it yourself.",
+    "fit-unknown": "We could not score this one against your CV, so the agent did not send it on its own. Approve it to send it.",
     "not-ready": "This employer asks something we will not answer for you. Open it and fill the gaps.",
     "review-mode": "Ready and waiting for you to press send — your agent is in review mode, so it never sends on its own.",
     "vendor-not-allowed": "You have not switched on unattended applying for this job site.",
     "already-submitted": "Already sent. We never send the same application twice.",
     "duplicate": "You have already applied to this posting, so we left it alone.",
-    "fit-below-floor": "Below the fit floor you set. Lower the floor if you want borderline roles sent too.",
+    "fit-below-floor": "A weaker match than the agent sends on its own. Approve it to send it.",
     "daily-cap": "Today's limit is used up. This goes out tomorrow, or raise your daily cap.",
     "vendor-needs-human": "This job site needs a step only a person can do — usually a tick box we will not tick on your behalf."
   },
@@ -4961,7 +4965,8 @@
     "held": "Prepared, not sent yet.",
     "ready": "Ready — nothing needs you.",
     "blocked": "Something here needs you.",
-    "preparing": "Preparing…"
+    "preparing": "Preparing…",
+    "not-arrived": "You checked, and this one did not arrive. The agent will not send it again."
   },
   "agentHero": {
     "badge": "Your AI apply agent",

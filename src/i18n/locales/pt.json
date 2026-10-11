@@ -4846,7 +4846,11 @@
     "decideAgentOff": "Ative primeiro o seu agente — uma candidatura aprovada espera por isso.",
     "decideBlockedCompany": "Este empregador está na sua lista de nunca candidatar, por isso o agente não lhe envia nada.",
     "decideInFlight": "O envio está a tratar desta agora — já é tarde para a alterar.",
-    "decideFailed": "Não foi possível — atualize a página e tente de novo."
+    "decideFailed": "Não foi possível — atualize a página e tente de novo.",
+    "notArrived": "Não chegou",
+    "recordedNotSent": "Registado: esta não seguiu.",
+    "retryNotTransient": "Tentar de novo não resolve o motivo da paragem. Abra-a para ver porquê.",
+    "retryNotFunded": "O seu passe já não tem candidaturas para a enviar de novo."
   },
   "agentPlan": {
     "badge": "Candidata-se por si",
@@ -4925,13 +4929,13 @@
   },
   "applyRefusal": {
     "sender-offline": "O nosso emissor está offline, por isso nada saiu. Está em fila e segue assim que voltar — não precisa de fazer nada.",
-    "fit-unknown": "Não conseguimos avaliar esta vaga face ao seu currículo, por isso não a enviámos sem supervisão. Pode enviá-la você.",
+    "fit-unknown": "Não conseguimos avaliar esta vaga face ao seu currículo, por isso o agente não a enviou sozinho. Aprove-a para a enviar.",
     "not-ready": "Este empregador pergunta algo que não responderemos por si. Abra e preencha o que falta.",
     "review-mode": "Pronta e à espera de que carregue em enviar — o seu agente está em modo de revisão, por isso nunca envia sozinho.",
     "vendor-not-allowed": "Não ativou a candidatura sem supervisão para este portal de emprego.",
     "already-submitted": "Já enviada. Nunca enviamos a mesma candidatura duas vezes.",
     "duplicate": "Já se tinha candidatado a esta vaga, por isso não lhe tocámos.",
-    "fit-below-floor": "Abaixo do limiar de adequação que definiu. Baixe-o se quiser que as vagas limítrofes também sigam.",
+    "fit-below-floor": "Uma adequação mais fraca do que o agente envia sozinho. Aprove-a para a enviar.",
     "daily-cap": "O limite de hoje esgotou. Segue amanhã, ou aumente o seu limite diário.",
     "vendor-needs-human": "Este portal exige um passo que só uma pessoa pode dar — normalmente uma caixa que não assinalaremos por si."
   },
@@ -4961,7 +4965,8 @@
     "held": "Preparada, ainda não enviada.",
     "ready": "Pronta — não precisa de si.",
     "blocked": "Aqui é preciso algo seu.",
-    "preparing": "A preparar…"
+    "preparing": "A preparar…",
+    "not-arrived": "Verificou e não chegou. O agente não a vai enviar de novo."
   },
   "agentHero": {
     "badge": "O seu agente de candidaturas com IA",

@@ -23,7 +23,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildPacket, type DraftedAnswer, type PacketQuestion, type Profile, type StandingAnswers } from "../_shared/submission-packet.ts";
 import { readDraftReply } from "../_shared/draft-reply.ts";
 import { ownResumePath } from "../_shared/resume-path.ts";
-import { decideRelease, type ReleaseRefusal } from "../_shared/apply-release.ts";
+import { APPROVABLE_REFUSALS, decideRelease, type ReleaseRefusal } from "../_shared/apply-release.ts";
 import { automationFor } from "../_shared/apply-automation.ts";
 import { classifyQuestion, cleanQuestionLabel } from "../_shared/application-questions.ts";
 import { ACCOUNT_SUBSCRIPTION_RPC, accountSubscription, effectiveDailyCap, normalizeEmail, packetIsFunded, rowIsEntitled } from "../_shared/agent-entitlement.ts";
@@ -557,8 +557,15 @@ serve(async (req) => {
           autoReleasedCount: autoReleased,
         });
         if (!decision.release) {
-          // The reason a candidate reads must be today's, not the first run's.
-          if (decision.code !== w.release_refusal) {
+          // The reason a candidate reads must be today's, not the first run's,
+          // EXCEPT that a packet a person could approve is never re-reasoned
+          // into a code nobody can approve (S11-042): in auto mode a
+          // review-mode packet re-decided as vendor-not-allowed would lose
+          // its Approve button for good, while the person's own approval is
+          // exactly what the unattended rules do not govern.
+          const keepsApprove = APPROVABLE_REFUSALS.has(w.release_refusal as ReleaseRefusal)
+            && !APPROVABLE_REFUSALS.has(decision.code);
+          if (decision.code !== w.release_refusal && !keepsApprove) {
             await client.from("agent_submissions").update({ release_refusal: decision.code })
               .eq("id", w.id).is("released_at", null);
             summary.rereasoned++;

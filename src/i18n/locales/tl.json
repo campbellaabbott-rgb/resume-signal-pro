@@ -4846,7 +4846,11 @@
     "decideAgentOff": "I-on muna ang iyong agent — hinihintay iyon ng naaprubahang aplikasyon.",
     "decideBlockedCompany": "Nasa listahan mo ng hindi kailanman aaplayan ang employer na ito, kaya hindi magpapadala rito ang agent.",
     "decideInFlight": "Hawak na ito ng sender ngayon — huli na para baguhin ito.",
-    "decideFailed": "Hindi ito nagawa — i-refresh at subukang muli."
+    "decideFailed": "Hindi ito nagawa — i-refresh at subukang muli.",
+    "notArrived": "Hindi ito dumating",
+    "recordedNotSent": "Naitala: hindi ito naipadala.",
+    "retryNotTransient": "Hindi maaayos ng pag-ulit kung bakit ito huminto. Buksan ito para makita kung bakit.",
+    "retryNotFunded": "Wala nang natitirang aplikasyon ang iyong pass para ipadala ito ulit."
   },
   "agentPlan": {
     "badge": "Siya ang mag-a-apply para sa iyo",
@@ -4925,13 +4929,13 @@
   },
   "applyRefusal": {
     "sender-offline": "Offline ang aming tagapagpadala, kaya walang naipadala. Naka-queue ito at aalis pagbalik niya — wala kang kailangang gawin.",
-    "fit-unknown": "Hindi namin nasukat ito laban sa iyong résumé, kaya hindi namin ipinadala nang walang bantay. Maaari mo itong ipadala mismo.",
+    "fit-unknown": "Hindi namin nasukat ito laban sa iyong résumé, kaya hindi ito ipinadala ng agent nang mag-isa. Aprubahan ito para maipadala.",
     "not-ready": "May tinatanong ang employer na hindi namin sasagutin para sa iyo. Buksan ito at punan ang mga kulang.",
     "review-mode": "Handa na at naghihintay na pindutin mo ang send — nasa review mode ang iyong ahente, kaya hindi ito kusang nagpapadala.",
     "vendor-not-allowed": "Hindi mo pa binubuksan ang walang-bantay na pag-aaplay para sa job site na ito.",
     "already-submitted": "Naipadala na. Hindi namin kailanman ipinapadala nang dalawang beses ang parehong aplikasyon.",
     "duplicate": "Nag-apply ka na sa posisyong ito, kaya hindi namin ito ginalaw.",
-    "fit-below-floor": "Mas mababa sa fit floor na itinakda mo. Ibaba ito kung gusto mong maipadala rin ang mga borderline.",
+    "fit-below-floor": "Mas mahina ang tugma kaysa sa ipinapadala ng agent nang mag-isa. Aprubahan ito para maipadala.",
     "daily-cap": "Ubos na ang limitasyon ngayong araw. Aalis ito bukas, o taasan ang iyong pang-araw-araw na limitasyon.",
     "vendor-needs-human": "May hakbang ang site na tao lang ang makakagawa — kadalasan ay isang checkbox na hindi namin tatakan para sa iyo."
   },
@@ -4961,7 +4965,8 @@
     "held": "Handa na, hindi pa naipapadala.",
     "ready": "Handa — wala kang kailangang gawin.",
     "blocked": "May kailangan dito mula sa iyo.",
-    "preparing": "Inihahanda…"
+    "preparing": "Inihahanda…",
+    "not-arrived": "Tiningnan mo, at hindi ito dumating. Hindi na ito ipapadala ulit ng agent."
   },
   "agentHero": {
     "badge": "Ang iyong AI apply agent",

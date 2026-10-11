@@ -4846,7 +4846,11 @@
     "decideAgentOff": "Schalte zuerst deinen Agenten ein — eine freigegebene Bewerbung wartet darauf.",
     "decideBlockedCompany": "Dieser Arbeitgeber steht auf deiner Nie-bewerben-Liste, deshalb sendet der Agent nicht dorthin.",
     "decideInFlight": "Der Versand bearbeitet diese gerade — sie lässt sich nicht mehr ändern.",
-    "decideFailed": "Das hat nicht geklappt — aktualisiere die Seite und versuche es erneut."
+    "decideFailed": "Das hat nicht geklappt — aktualisiere die Seite und versuche es erneut.",
+    "notArrived": "Nicht angekommen",
+    "recordedNotSent": "Notiert: Diese ist nicht rausgegangen.",
+    "retryNotTransient": "Ein neuer Versuch behebt nicht, warum sie gestoppt hat. Öffne sie, um den Grund zu sehen.",
+    "retryNotFunded": "Dein Pass hat keine Bewerbung mehr übrig, um sie erneut zu senden."
   },
   "agentPlan": {
     "badge": "Bewirbt sich für Sie",
@@ -4925,13 +4929,13 @@
   },
   "applyRefusal": {
     "sender-offline": "Unser Sender ist offline, es wurde nichts verschickt. Die Bewerbung steht in der Warteschlange und geht raus, sobald er wieder da ist — Sie müssen nichts tun.",
-    "fit-unknown": "Wir konnten diese Stelle nicht gegen Ihren Lebenslauf bewerten und haben sie deshalb nicht unbeaufsichtigt verschickt. Sie können sie selbst senden.",
+    "fit-unknown": "Wir konnten diese Stelle nicht gegen Ihren Lebenslauf bewerten, deshalb hat der Agent sie nicht allein verschickt. Geben Sie sie frei, um sie zu senden.",
     "not-ready": "Dieser Arbeitgeber fragt etwas, das wir nicht für Sie beantworten. Öffnen Sie die Bewerbung und ergänzen Sie die Lücken.",
     "review-mode": "Fertig und wartet auf Ihr Senden — Ihr Agent ist im Prüfmodus und verschickt nie von allein.",
     "vendor-not-allowed": "Sie haben das unbeaufsichtigte Bewerben für diese Jobplattform nicht aktiviert.",
     "already-submitted": "Bereits gesendet. Wir verschicken dieselbe Bewerbung nie zweimal.",
     "duplicate": "Sie haben sich auf diese Stelle bereits beworben, deshalb haben wir sie nicht angerührt.",
-    "fit-below-floor": "Unter der von Ihnen gesetzten Passungsgrenze. Senken Sie sie, wenn auch Grenzfälle rausgehen sollen.",
+    "fit-below-floor": "Eine schwächere Passung, als der Agent allein verschickt. Geben Sie sie frei, um sie zu senden.",
     "daily-cap": "Das heutige Limit ist aufgebraucht. Sie geht morgen raus, oder erhöhen Sie Ihr Tageslimit.",
     "vendor-needs-human": "Diese Plattform verlangt einen Schritt, den nur ein Mensch machen kann — meist ein Häkchen, das wir nicht für Sie setzen."
   },
@@ -4961,7 +4965,8 @@
     "held": "Vorbereitet, noch nicht gesendet.",
     "ready": "Fertig — nichts zu tun.",
     "blocked": "Hier wird etwas von Ihnen gebraucht.",
-    "preparing": "Wird vorbereitet…"
+    "preparing": "Wird vorbereitet…",
+    "not-arrived": "Sie haben nachgesehen: Diese Bewerbung ist nicht angekommen. Der Agent sendet sie nicht noch einmal."
   },
   "agentHero": {
     "badge": "Ihr KI-Bewerbungsagent",

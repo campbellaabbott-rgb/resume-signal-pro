@@ -4846,7 +4846,11 @@
     "decideAgentOff": "Primero activa tu agente: una solicitud aprobada espera a que lo hagas.",
     "decideBlockedCompany": "Esta empresa está en tu lista de no postular nunca, así que el agente no le enviará nada.",
     "decideInFlight": "El envío la tiene ahora mismo: ya es tarde para cambiarla.",
-    "decideFailed": "No se pudo hacer: actualiza la página e inténtalo de nuevo."
+    "decideFailed": "No se pudo hacer: actualiza la página e inténtalo de nuevo.",
+    "notArrived": "No llegó",
+    "recordedNotSent": "Anotado: esta no salió.",
+    "retryNotTransient": "Reintentar no arregla por qué se detuvo. Ábrela para ver el motivo.",
+    "retryNotFunded": "A tu pase no le queda ninguna candidatura para enviarla otra vez."
   },
   "agentPlan": {
     "badge": "Se postula por ti",
@@ -4925,13 +4929,13 @@
   },
   "applyRefusal": {
     "sender-offline": "Nuestro emisor está desconectado, así que no se envió nada. Está en cola y saldrá en cuanto vuelva: no tienes que hacer nada.",
-    "fit-unknown": "No pudimos evaluar esta oferta con tu currículum, así que no la enviamos sin supervisión. Puedes enviarla tú.",
+    "fit-unknown": "No pudimos evaluar esta oferta con tu currículum, así que el agente no la envió por su cuenta. Apruébala para enviarla.",
     "not-ready": "Esta empresa pregunta algo que no responderemos por ti. Ábrela y completa lo que falta.",
     "review-mode": "Lista y esperando a que pulses enviar: tu agente está en modo revisión, así que nunca envía solo.",
     "vendor-not-allowed": "No has activado el envío sin supervisión para este portal de empleo.",
     "already-submitted": "Ya enviada. Nunca enviamos la misma candidatura dos veces.",
     "duplicate": "Ya te habías inscrito en esta oferta, así que no hicimos nada.",
-    "fit-below-floor": "Por debajo del umbral de encaje que fijaste. Bájalo si quieres que también se envíen las dudosas.",
+    "fit-below-floor": "Encaja menos de lo que el agente envía por su cuenta. Apruébala para enviarla.",
     "daily-cap": "El límite de hoy está agotado. Saldrá mañana, o sube tu límite diario.",
     "vendor-needs-human": "Este portal exige un paso que solo puede dar una persona: normalmente una casilla que no marcaremos por ti."
   },
@@ -4961,7 +4965,8 @@
     "held": "Preparada, aún sin enviar.",
     "ready": "Lista: no necesita nada de ti.",
     "blocked": "Aquí hace falta algo tuyo.",
-    "preparing": "Preparando…"
+    "preparing": "Preparando…",
+    "not-arrived": "Lo comprobaste y no llegó. El agente no volverá a enviarla."
   },
   "agentHero": {
     "badge": "Tu agente de solicitudes con IA",

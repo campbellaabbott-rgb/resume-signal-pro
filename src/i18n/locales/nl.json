@@ -4846,7 +4846,11 @@
     "decideAgentOff": "Zet eerst je agent aan — een goedgekeurde sollicitatie wacht daarop.",
     "decideBlockedCompany": "Deze werkgever staat op je nooit-solliciteren-lijst, dus de agent verstuurt er niets naartoe.",
     "decideInFlight": "De verzender is hier nu mee bezig — het is te laat om hem te wijzigen.",
-    "decideFailed": "Dat lukte niet — vernieuw de pagina en probeer het opnieuw."
+    "decideFailed": "Dat lukte niet — vernieuw de pagina en probeer het opnieuw.",
+    "notArrived": "Niet aangekomen",
+    "recordedNotSent": "Genoteerd: deze is niet verstuurd.",
+    "retryNotTransient": "Opnieuw proberen lost niet op waarom deze stopte. Open hem om te zien waarom.",
+    "retryNotFunded": "Uw pas heeft geen sollicitatie meer over om deze opnieuw te versturen."
   },
   "agentPlan": {
     "badge": "Solliciteert voor je",
@@ -4925,13 +4929,13 @@
   },
   "applyRefusal": {
     "sender-offline": "Onze verzender is offline, er is niets verstuurd. Dit staat in de wachtrij en gaat weg zodra hij terug is — u hoeft niets te doen.",
-    "fit-unknown": "We konden deze vacature niet tegen uw cv beoordelen en hebben hem daarom niet onbeheerd verstuurd. U kunt hem zelf versturen.",
+    "fit-unknown": "We konden deze vacature niet tegen uw cv beoordelen, dus de agent heeft hem niet zelf verstuurd. Keur hem goed om hem te versturen.",
     "not-ready": "Deze werkgever vraagt iets dat wij niet voor u invullen. Open de sollicitatie en vul de gaten aan.",
     "review-mode": "Klaar en wacht tot u op versturen drukt — uw agent staat in beoordelingsmodus en verstuurt dus nooit zelf.",
     "vendor-not-allowed": "U heeft onbeheerd solliciteren voor deze vacaturesite niet aangezet.",
     "already-submitted": "Al verstuurd. We versturen dezelfde sollicitatie nooit twee keer.",
     "duplicate": "U had al op deze vacature gesolliciteerd, dus we hebben hem met rust gelaten.",
-    "fit-below-floor": "Onder de matchdrempel die u heeft ingesteld. Verlaag hem als u ook twijfelgevallen wilt versturen.",
+    "fit-below-floor": "Een zwakkere match dan de agent zelf verstuurt. Keur hem goed om hem te versturen.",
     "daily-cap": "De limiet van vandaag is op. Dit gaat morgen weg, of verhoog uw daglimiet.",
     "vendor-needs-human": "Deze site vereist een stap die alleen een mens kan doen — meestal een vinkje dat wij niet namens u zetten."
   },
@@ -4961,7 +4965,8 @@
     "held": "Voorbereid, nog niet verstuurd.",
     "ready": "Klaar — er is niets nodig.",
     "blocked": "Hier is iets van u nodig.",
-    "preparing": "Voorbereiden…"
+    "preparing": "Voorbereiden…",
+    "not-arrived": "U heeft het gecontroleerd: deze is niet aangekomen. De agent verstuurt hem niet opnieuw."
   },
   "agentHero": {
     "badge": "Uw AI-sollicitatieagent",

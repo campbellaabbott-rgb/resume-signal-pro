@@ -4846,7 +4846,11 @@
     "decideAgentOff": "Activez d'abord votre agent — une candidature approuvée attend cela.",
     "decideBlockedCompany": "Cet employeur figure sur votre liste « ne jamais postuler », l'agent ne lui enverra donc rien.",
     "decideInFlight": "L'envoi est en train de la traiter — il est trop tard pour la modifier.",
-    "decideFailed": "Impossible pour l'instant — actualisez la page et réessayez."
+    "decideFailed": "Impossible pour l'instant — actualisez la page et réessayez.",
+    "notArrived": "Elle n'est pas arrivée",
+    "recordedNotSent": "C'est noté : celle-ci n'est pas partie.",
+    "retryNotTransient": "Réessayer ne réglera pas ce qui l'a arrêtée. Ouvrez-la pour voir pourquoi.",
+    "retryNotFunded": "Votre pass n'a plus de candidature pour l'envoyer à nouveau."
   },
   "agentPlan": {
     "badge": "Postule à votre place",
@@ -4925,13 +4929,13 @@
   },
   "applyRefusal": {
     "sender-offline": "Notre émetteur est hors ligne, rien n'est parti. C'est en file d'attente et partira dès son retour : vous n'avez rien à faire.",
-    "fit-unknown": "Nous n'avons pas pu évaluer cette offre par rapport à votre CV, donc nous ne l'avons pas envoyée sans supervision. Vous pouvez l'envoyer vous-même.",
+    "fit-unknown": "Nous n'avons pas pu évaluer cette offre par rapport à votre CV, donc l'agent ne l'a pas envoyée seul. Approuvez-la pour l'envoyer.",
     "not-ready": "Cet employeur pose une question à laquelle nous ne répondrons pas à votre place. Ouvrez-la et complétez.",
     "review-mode": "Prête et en attente de votre envoi : votre agent est en mode révision, il n'envoie donc jamais seul.",
     "vendor-not-allowed": "Vous n'avez pas activé la candidature sans supervision pour ce site d'emploi.",
     "already-submitted": "Déjà envoyée. Nous n'envoyons jamais deux fois la même candidature.",
     "duplicate": "Vous aviez déjà postulé à cette offre, nous n'y avons pas touché.",
-    "fit-below-floor": "Sous le seuil d'adéquation que vous avez fixé. Abaissez-le si vous voulez aussi les offres limites.",
+    "fit-below-floor": "Une adéquation plus faible que ce que l'agent envoie seul. Approuvez-la pour l'envoyer.",
     "daily-cap": "La limite du jour est atteinte. Cela partira demain, ou augmentez votre plafond quotidien.",
     "vendor-needs-human": "Ce site exige une étape que seule une personne peut faire — souvent une case que nous ne cocherons pas à votre place."
   },
@@ -4961,7 +4965,8 @@
     "held": "Préparée, pas encore envoyée.",
     "ready": "Prête — rien ne vous attend.",
     "blocked": "Quelque chose ici vous attend.",
-    "preparing": "Préparation…"
+    "preparing": "Préparation…",
+    "not-arrived": "Vous avez vérifié : elle n'est pas arrivée. L'agent ne l'enverra pas de nouveau."
   },
   "agentHero": {
     "badge": "Votre agent de candidature IA",
