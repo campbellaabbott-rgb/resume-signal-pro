@@ -5300,6 +5300,10 @@
     "behavioral": "व्यवहार संबंधी",
     "technical": "तकनीकी",
     "situational": "परिस्थितिजन्य",
-    "cultureFit": "सांस्कृतिक अनुकूलता"
+    "cultureFit": "सांस्कृतिक अनुकूलता",
+    "critical": "अत्यंत ज़रूरी",
+    "fiveMinutes": "5 मिनट",
+    "fifteenMinutes": "15 मिनट",
+    "thirtyMinutes": "30 मिनट"
   }
 }

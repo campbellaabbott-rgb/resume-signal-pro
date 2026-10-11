@@ -5300,6 +5300,10 @@
     "behavioral": "Pag-uugali",
     "technical": "Teknikal",
     "situational": "Sitwasyonal",
-    "cultureFit": "Pagkakatugma sa kultura"
+    "cultureFit": "Pagkakatugma sa kultura",
+    "critical": "Kritikal",
+    "fiveMinutes": "5 minuto",
+    "fifteenMinutes": "15 minuto",
+    "thirtyMinutes": "30 minuto"
   }
 }

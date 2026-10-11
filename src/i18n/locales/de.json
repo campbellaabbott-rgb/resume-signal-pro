@@ -5300,6 +5300,10 @@
     "behavioral": "Verhalten",
     "technical": "Fachlich",
     "situational": "Situativ",
-    "cultureFit": "Kulturelle Passung"
+    "cultureFit": "Kulturelle Passung",
+    "critical": "Kritisch",
+    "fiveMinutes": "5 Minuten",
+    "fifteenMinutes": "15 Minuten",
+    "thirtyMinutes": "30 Minuten"
   }
 }
