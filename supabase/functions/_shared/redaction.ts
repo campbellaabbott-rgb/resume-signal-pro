@@ -344,16 +344,32 @@ const COMMON_WORDS = new Set(("will may mark bill grace hope faith joy rose youn
   "strong gold silver fox wolf swift noble duke earl prince bishop law rice post day knight ray guy pat sue jack bob rob " +
   "sunny penny ruby amber jade crystal river forest storm win wing lee").split(" "));
 
-function tokenSource(tok: string, shape: "any" | "title" | "upper"): string {
+function tokenSource(tok: string, shape: "any" | "title" | "upper" | "written"): string {
   return [...tok].map((ch, idx) => {
     if (ch === "'" || ch === "’") return "['’]";
     const lower = ch.toLowerCase();
-    const upper = shape === "upper" || (shape === "title" && idx === 0);
+    // "written": each letter in the case the header wrote it ("McDonald").
+    const upper = shape === "upper" || (shape === "title" && idx === 0) || (shape === "written" && ch !== lower);
     const set = FOLD_OF.get(lower);
     if (!set) return escapeRe(shape === "any" ? ch : upper ? ch.toUpperCase() : lower);
     if (shape === "any") return `[${set}]`;
     return upper ? `[${set.toUpperCase()}]` : `[${set}]`;
   }).join("");
+}
+
+/**
+ * Lines of the header block: the first HEADER_LINES non-empty lines, up to the
+ * first section heading (the same rule the contact rules use, step 2).
+ */
+function headerLineCount(text: string): number {
+  const lines = text.split("\n");
+  let seen = 0;
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].trim().length === 0) continue;
+    if (seen >= HEADER_LINES || endsHeader(lines[i])) return i;
+    seen++;
+  }
+  return lines.length;
 }
 
 // Two-letter English words are never masked on their own ("An" in "Nguyễn
@@ -400,18 +416,39 @@ function maskName(text: string, name: string): { text: string; count: number } {
   return { text: out, count };
 }
 
+/**
+ * A NAME'S SINGLE WORDS ARE MASKED WHERE THEY ARE WRITTEN AS A NAME (register
+ * S11-057). Case-insensitive matching of every token turned a candidate named
+ * John Wells into "40 horizontal [CANDIDATE]" and erased "banks", "grant",
+ * "mills", "glass" and "English" from résumés whose owners carry those
+ * surnames: job evidence lost before scoring, and logged as name redaction,
+ * in an employer compliance product. Inside the header block a token is
+ * still masked in any case; below it, only Title case, UPPER case or the case
+ * the header wrote it in. The full name and the handles built from it stay
+ * case-insensitive everywhere (maskName).
+ */
 function maskTokens(text: string, tokens: Set<string>, hit: () => void): string {
   const B = "(?<![\\p{L}\\p{M}])", E = "(?![\\p{L}\\p{M}])";
+  const split = (t: string) => {
+    const lines = t.split("\n");
+    const k = headerLineCount(t);
+    return { head: lines.slice(0, k).join("\n"), body: lines.slice(k).join("\n"), joiner: k > 0 && k < lines.length ? "\n" : "" };
+  };
   let out = text;
   for (const tok of [...tokens].sort((a, b) => b.length - a.length)) {
     const plain = tok.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
     if (FUNCTION_WORDS.has(plain)) continue;
     // A given name that is also a month ("June Lee") keeps "June 2012" and "May – Dec 2017".
     const guard = new RegExp(`^${MONTHS}$`).test(plain) ? `(?!\\.?,?[ \\t]*(?:\\d{1,2}(?:st|nd|rd|th)?,?[ \\t]+)?(?:(?:19|20)\\d{2}|['’]\\d{2})(?!\\d)|[ \\t]*(?:[-–—/]|to)[ \\t]*(?:${MONTHS_ANY}|(?:19|20)\\d{2}))(?<!(?<!\\d)\\d{1,2}(?:st|nd|rd|th)?[ \\t]+${tokenSource(tok, "any")})` : "";
-    const re = COMMON_WORDS.has(plain) || plain.length <= 2
-      ? new RegExp(`${B}(?:${tokenSource(tok, "title")}|${tokenSource(tok, "upper")})${E}${guard}`, "gu")
-      : new RegExp(`${B}${tokenSource(tok, "any")}${E}${guard}`, "giu");
-    out = out.replace(re, () => { hit(); return "[CANDIDATE]"; });
+    const cased = new RegExp(`${B}(?:${tokenSource(tok, "title")}|${tokenSource(tok, "upper")}|${tokenSource(tok, "written")})${E}${guard}`, "gu");
+    const mark = () => { hit(); return "[CANDIDATE]"; };
+    if (COMMON_WORDS.has(plain) || plain.length <= 2) {
+      out = out.replace(cased, mark);
+      continue;
+    }
+    const anyCase = new RegExp(`${B}${tokenSource(tok, "any")}${E}${guard}`, "giu");
+    const { head, body, joiner } = split(out);
+    out = head.replace(anyCase, mark) + joiner + body.replace(cased, mark);
   }
   return out;
 }
