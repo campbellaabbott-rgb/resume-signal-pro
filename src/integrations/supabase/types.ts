@@ -7012,6 +7012,7 @@ export type Database = {
           p_salary_ceiling?: number
           p_salary_floor?: number
           p_sources?: string[]
+          p_title_only?: boolean
           p_work_mode?: string
         }
         Returns: {
