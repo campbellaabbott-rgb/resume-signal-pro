@@ -40,7 +40,7 @@
 # apply-worker.yml and are proved by their tests, not here.
 echo "== 73. wave 3 agents-api: builds, SmartRecruiters withheld, the host's own allowance, the agent card's four systems =="
 
-for PAIR in "agent-mcp|2026-10-09|4" "public-api|2026-10-09|2" "apply-agent|2026-10-09|3" "apply-broker|2026-10-09|2" "send-agent-digest|2026-10-09|2" "generate-application-answers|2026-10-10|3"; do
+for PAIR in "agent-mcp|2026-10-09|4" "public-api|2026-10-09|2" "apply-agent|2026-10-09|3" "apply-broker|2026-10-09|2" "send-agent-digest|2026-10-09|3" "generate-application-answers|2026-10-10|3"; do
   W73_FN=${PAIR%%|*}; W73_REST=${PAIR#*|}; W73_D=${W73_REST%%|*}; W73_N=${W73_REST#*|}
   W73_H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$W73_FN" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
   if [ -z "$W73_H" ]; then echo "FAIL  $W73_FN preflight carries no x-fn-build (not deployed, or the previous bundle is serving)"

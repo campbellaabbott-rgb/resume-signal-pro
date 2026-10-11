@@ -18,8 +18,8 @@ echo "== 75. wave 3 email-ops: undelivered-order alert, stuck-generation retry, 
 # of these .1 on other code, so only the merged build proves the merged code.
 for P75 in scan-heartbeat:2 retry-failed-deliveries:2 stripe-webhook:4 send-product-email:2 verify-product-purchase:2 \
   admin-regenerate-delivery:2 send-analysis-email:2 recover-purchase:2 process-email-queue:2 api-key-request:2 \
-  company-claim:2 send-affiliate-commission-email:2 send-agent-digest:2 send-market-pulse:2 send-scan-report:2 \
-  send-search-digest:2 save-lead:2 agent-pass-status:2 track-ab-event:2 get-analytics:2 \
+  company-claim:2 send-affiliate-commission-email:2 send-agent-digest:3 send-market-pulse:2 send-scan-report:2 \
+  send-search-digest:3 save-lead:2 agent-pass-status:2 track-ab-event:2 get-analytics:2 \
   health-check:2 scheduled-health-probe:2; do
   FN75=${P75%%:*}; N75=${P75#*:}
   H75=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$FN75" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
@@ -82,7 +82,8 @@ fi
 echo "INFO  stripe-webhook 2026-10-09.4 answers checkout.session.completed before the AI writer (vitest: stripe-waited-on-the-ai-writer...); watch Stripe's webhook delivery times drop under ~2 s for product sales"
 echo "INFO  scan-heartbeat 2026-10-09.2 mails the owner (subject 'Paid order(s) not delivered') once per undelivered order per day, newest 100 listed and every standing row counted, and fails check cron_http_refusals on any 401/403 cron answer in the last hour; its JSON (undeliveredOrders, undeliveredOrdersTotal, checks) is readable only with the cron key, service role or ADMIN_API_KEY"
 echo "INFO  track-ab-event 2026-10-09.2 counts each address (mail_door_take door track-ab-event:address, 1,800/h) before the site's 20,000/h; mail_door_take is a counter, so it is never called here: with the service role, SELECT count(*) FROM mail_door_counts WHERE door = 'track-ab-event:address' is above 0 after an hour of traffic"
-echo "INFO  send-search-digest 2026-10-09.2 restores handed-back claims when the run ends and keeps the claim's stamp for a suppressed or mailbox-less owner (vitest: searches-the-digest-handed-back-held-the-head-of-the-queue); its run answers {considered, handedBack} only to the cron"
+echo "INFO  send-search-digest 2026-10-09.3 and send-agent-digest 2026-10-09.3 write a give-back at once, and a row a run worked waits behind every row not yet worked (migration 20261009144000, applied BEFORE them; vitest: a-digest-row-handed-back-led-every-later-run, against the real claims); the search digest keeps the claim's stamp for a suppressed or mailbox-less owner, the agent digest for a mandate it may not mail or with nothing to tell; their runs answer {considered, handedBack} only to the cron"
+echo "INFO  with the service role, after the next 14:23 and 06:40 runs: SELECT count(*) FILTER (WHERE digest_attempted_at IS NOT NULL) FROM user_job_searches; and the same for agent_mandates.email_attempted_at -- above 0 once a run has claimed under 20261009144000"
 echo "INFO  /health-check (frontend) sends the stored admin key to health-check: after the publish, the dashboard's service cards show provider messages again (an anonymous health-check answer has none)"
 echo "INFO  customer mails now carry reply_to resumeboostersupp@gmail.com; OWNER: reply once to a purchase mail and to a pulse confirmation and confirm the reply lands in that inbox"
 echo "INFO  the seller line in marketing footers renders nothing until _shared/seller-identity.ts is filled (both fields); OWNER: fill it when the entity and address exist, keep the frontend copy equal"

@@ -7,8 +7,11 @@
 // sends the shortlist, with the same reasons the UI shows, before they're up.
 //
 // Discipline this inherits from the rest of the platform:
-//   - Never email an empty shortlist. No picks = no send, and the cursor does
-//     NOT advance, so tomorrow's mail still covers today's window.
+//   - Never email an empty shortlist. No picks = no send. The claim's stamp
+//     stays: the read found no ready pick made since the last mail, so the
+//     window it closes held nothing to tell (review of the wave-3
+//     integration; a cursor handed back here kept the mandate at the head of
+//     every later claim).
 //   - Entitlement is re-checked at SEND time against agent_subscribers, not
 //     assumed from the mandate — a lapsed subscriber stops receiving.
 //   - Reasons are the stored ones. This email never re-derives or embellishes:
@@ -28,9 +31,21 @@
 // mailed every subscriber once per post. The cron now sends x-email-cron
 // (_shared/email-cron.ts), and mandates are CLAIMED by agent_digest_claim_batch,
 // which stamps them in the statement that chooses them (FOR UPDATE SKIP
-// LOCKED, at most once per 20 hours). Every skip that used to leave the cursor
-// alone (not entitled, suppressed, an empty shortlist, a failed send) now
-// gives the claim back, so the cursor is exactly where it was.
+// LOCKED, at most once per 20 hours).
+//
+// WHAT A SKIP DOES TO THE CLAIM (review of the wave-3 integration,
+// 2026-10-10; 20261009144000). The claim orders by email_attempted_at, then
+// the cursor, NULLS FIRST, and takes 500 a run. Every skip used to hand the
+// cursor back, so 500 mandates that are never mailed (lapsed plans, pass
+// buyers, opted in by default, and empty shortlists) sat at the head of every
+// claim and nobody behind them was reached. Now:
+//   - not entitled, suppressed, no address, or an empty shortlist: the claim's
+//     stamps stay. There is nothing to tell, and the mandate is looked at a
+//     day later, behind the rest;
+//   - a failed send, a failed plan read or a failed shortlist read: the cursor
+//     goes back, so the window is retried, but the attempt stamp stays, so it
+//     waits behind every mandate not yet tried;
+//   - claimed but never reached before the clock: both stamps go back.
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { ACCOUNT_SUBSCRIPTION_RPC, entitledAccounts } from "../_shared/agent-entitlement.ts";
@@ -41,7 +56,7 @@ import { sellerFooterHtml } from "../_shared/seller-footer.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "send-agent-digest.2026-10-09.2";
+const FN_BUILD = "send-agent-digest.2026-10-09.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -152,12 +167,24 @@ Deno.serve(async (req) => {
     const startedAt = Date.now();
     const { data: claimed, error: claimErr } = await supabase.rpc("agent_digest_claim_batch", { p_limit: CLAIM_BATCH });
     if (claimErr) throw claimErr;
-    const list = ((claimed ?? []) as Array<{ ad_user_id: string; ad_email: string; ad_prev_sent_at: string | null }>)
-      .map((r) => ({ user_id: r.ad_user_id, email: r.ad_email, email_last_sent_at: r.ad_prev_sent_at }));
+    const list = ((claimed ?? []) as Array<{ ad_user_id: string; ad_email: string; ad_prev_sent_at: string | null; ad_prev_attempted_at?: string | null }>)
+      .map((r) => ({
+        user_id: r.ad_user_id, email: r.ad_email, email_last_sent_at: r.ad_prev_sent_at,
+        attempted: "ad_prev_attempted_at" in r ? { prev: r.ad_prev_attempted_at ?? null } : undefined,
+      }));
     if (list.length === 0) return json({ ok: true, sent: 0, skipped: 0, note: "no opted-in mandates due" });
-    /** Hand a claim back: the cursor returns to where it was, as if never claimed. */
-    const giveBack = (m: { user_id: string; email_last_sent_at: string | null }) =>
-      supabase.from("agent_mandates").update({ email_last_sent_at: m.email_last_sent_at }).eq("user_id", m.user_id);
+    /**
+     * Hand a claim back: the cursor returns to where it was, so the window is
+     * retried. A mandate this run tried keeps the claim's attempt stamp and
+     * waits behind the rest; one never reached (`untouched`) gets that stamp
+     * back too. The attempt stamp is written only when the claim returned it.
+     */
+    const giveBack = async (m: { user_id: string; email_last_sent_at: string | null; attempted?: { prev: string | null } }, untouched = false) => {
+      const patch: Record<string, string | null> = { email_last_sent_at: m.email_last_sent_at };
+      if (untouched && m.attempted) patch.email_attempted_at = m.attempted.prev;
+      const { error: gbErr } = await supabase.from("agent_mandates").update(patch).eq("user_id", m.user_id);
+      if (gbErr) console.warn(`[AGENT-DIGEST] claim on ${m.user_id} not handed back:`, String(gbErr.message ?? "").slice(0, 120));
+    };
 
     // Entitlement at SEND time, BY ACCOUNT (sweep S8-076): the plan
     // agent_subscription_rows answers for each claimed user id, the read every
@@ -166,10 +193,11 @@ Deno.serve(async (req) => {
     // change it skipped a paying subscriber, or kept mailing a cancelled one.
     // A failed read entitles nobody, and every claim is given back.
     let entitled = new Set<string>();
+    let plansUnread = false;
     {
       const ids = [...new Set(list.map((m) => m.user_id).filter(Boolean))];
       const { data: subs, error: subErr } = await supabase.rpc(ACCOUNT_SUBSCRIPTION_RPC, { p_user_ids: ids });
-      if (subErr) console.warn("[AGENT-DIGEST] subscription read failed; nobody is mailed this run:", String(subErr.message ?? "").slice(0, 120));
+      if (subErr) { plansUnread = true; console.warn("[AGENT-DIGEST] subscription read failed; nobody is mailed this run:", String(subErr.message ?? "").slice(0, 120)); }
       else entitled = entitledAccounts(subs);
     }
 
@@ -192,11 +220,15 @@ Deno.serve(async (req) => {
     for (let i = 0; i < list.length; i++) {
       const m = list[i];
       if (Date.now() - startedAt >= RUN_BUDGET_MS) {
-        for (const rest of list.slice(i)) { await giveBack(rest); handedBack++; }
+        for (const rest of list.slice(i)) { await giveBack(rest, true); handedBack++; }
         break;
       }
-      // The set holds user ids; the address is only where the mail goes.
-      if (!m.email || !entitled.has(m.user_id) || suppressed.has(m.email.toLowerCase())) { await giveBack(m); skipped++; continue; }
+      // The plans could not be read: nobody is known to be entitled, so every
+      // window is retried.
+      if (plansUnread) { await giveBack(m); skipped++; continue; }
+      // The set holds user ids; the address is only where the mail goes. A
+      // mandate nobody may mail keeps the claim's stamps.
+      if (!m.email || !entitled.has(m.user_id) || suppressed.has(m.email.toLowerCase())) { skipped++; continue; }
 
       // Only picks the user hasn't been told about. Still 'ready' = not yet
       // approved or dismissed in the UI, so the mail never re-surfaces a
@@ -208,15 +240,19 @@ Deno.serve(async (req) => {
         .order("fit_pct", { ascending: false })
         .limit(MAX_ROWS_IN_EMAIL);
       if (m.email_last_sent_at) q = q.gt("created_at", m.email_last_sent_at);
-      const { data: picks } = await q;
+      const { data: picks, error: picksErr } = await q;
+      // A shortlist that could not be read is not an empty one: retry the window.
+      if (picksErr) { await giveBack(m); skipped++; continue; }
 
       const rows = (picks ?? []) as Array<{
         posting_id: string; title: string; company: string; location: string | null;
         apply_url: string; salary: string | null; fit_pct: number | null; reasons: unknown;
       }>;
-      // Never email an empty shortlist, and DON'T advance the cursor — tomorrow's
-      // mail must still cover today's window. The claim is handed back.
-      if (rows.length === 0) { await giveBack(m); skipped++; continue; }
+      // Never email an empty shortlist. The claim's stamp stays: this read found
+      // no ready pick made since the last mail, so the window holds nothing to
+      // lose, and handing the cursor back kept the mandate at the head of the
+      // queue.
+      if (rows.length === 0) { skipped++; continue; }
 
       const token = await hmacToken(m.user_id);
       const unsubUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-agent-digest?action=unsubscribe&id=${encodeURIComponent(m.user_id)}&token=${token}`;

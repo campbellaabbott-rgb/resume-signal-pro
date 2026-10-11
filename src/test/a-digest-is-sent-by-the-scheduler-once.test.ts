@@ -248,25 +248,27 @@ describe("send-agent-digest answers the scheduler and our service role, nobody e
     expect(db.rows("agent_mandates")[0].email_last_sent_at, "a sent digest gave its claim back").toBe("2026-10-04T06:40:00Z");
   });
 
-  it("an empty shortlist, a lapsed subscriber or a failed send gives the claim back: the cursor stays where it was", async () => {
+  // An empty shortlist or a lapsed plan used to give the claim back too, and a
+  // mandate given back led every later claim (review of the wave-3
+  // integration; a-digest-row-handed-back-led-every-later-run runs the SQL).
+  // Now only a failed send (or a failed read) hands the cursor back.
+  it("an empty shortlist or a lapsed subscriber keeps the claim's stamp; a failed send gives the claim back", async () => {
     rpc("agent_digest_claim_batch", () => due);
     live();
     await post(agent, "send-agent-digest", { authorization: `Bearer ${SERVICE}` });
     expect(sent).toEqual([]);
-    expect(db.rows("agent_mandates")[0].email_last_sent_at).toBe("2026-10-03T06:40:00Z");
+    expect(db.rows("agent_mandates")[0].email_last_sent_at, "an empty shortlist handed its cursor back").toBe("2026-10-04T06:40:00Z");
 
-    db.rows("agent_mandates")[0].email_last_sent_at = "2026-10-04T06:40:00Z";
     db.tables.agent_subscribers = [];
     db.rows("agent_queue").push({ user_id: "u-1", status: "ready", posting_id: "p1", title: "Nurse", company: "Acme", location: null, apply_url: "https://acme.example/a", salary: null, fit_pct: 80, reasons: [], created_at: "2026-10-04T05:00:00Z" });
     await post(agent, "send-agent-digest", { authorization: `Bearer ${SERVICE}` });
     expect(sent).toEqual([]);
-    expect(db.rows("agent_mandates")[0].email_last_sent_at).toBe("2026-10-03T06:40:00Z");
+    expect(db.rows("agent_mandates")[0].email_last_sent_at, "a lapsed plan handed its cursor back").toBe("2026-10-04T06:40:00Z");
 
-    db.rows("agent_mandates")[0].email_last_sent_at = "2026-10-04T06:40:00Z";
     live();
     failFor.add("Sub@Example.com");
     await post(agent, "send-agent-digest", { authorization: `Bearer ${SERVICE}` });
-    expect(db.rows("agent_mandates")[0].email_last_sent_at).toBe("2026-10-03T06:40:00Z");
+    expect(db.rows("agent_mandates")[0].email_last_sent_at, "a failed send kept the claim's stamp: its window is lost").toBe("2026-10-03T06:40:00Z");
   });
 
   it("the preflight answers its build", async () => {

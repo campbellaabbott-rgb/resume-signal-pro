@@ -33,7 +33,7 @@ import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "send-search-digest.2026-10-09.2";
+const FN_BUILD = "send-search-digest.2026-10-09.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -52,14 +52,26 @@ const SITE_URL = "https://resumebooster.work";
 // lost its window (and its first-match mail, which needs a NULL stamp). Now
 // rows are claimed 25 at a time, nothing new starts after 100 s, and a row
 // claimed but not started is handed back.
-// A HANDED-BACK ROW IS RESTORED WHEN THE RUN ENDS (review 2026-10-10). The
-// claim orders NULLS FIRST and hands back any due row: restored at once, a
-// skipped row was due again before the next claim, which returned the same
-// rows, and 25 of them at the head stopped every run there. A suppressed or
-// mailbox-less owner keeps the claim's stamp and is looked at a cadence later.
+// A HANDED-BACK ROW WAITS AT THE BACK OF THE QUEUE (review of the wave-3
+// integration, 2026-10-10; 20261009144000). The claim used to order by the
+// window stamp alone, NULLS FIRST, so a search handed back with its old stamp
+// led the next claim: within a run it stopped the run, and across runs the
+// same failing searches (a board that cannot count them, a send that keeps
+// failing) took the clock or the 400 and nothing behind them was ever reached.
+// The claim now orders by digest_attempted_at first and stamps it, so a search
+// the run worked, whatever came of it, goes behind every search not yet
+// worked. A give-back after an attempt restores only the window stamp, and is
+// written at once (an isolate killed mid-run used to leave every give-back of
+// that run unwritten, the windows lost). A row claimed but never started gets
+// both stamps back, and keeps its place. A suppressed or mailbox-less owner
+// keeps the claim's stamps and is looked at a cadence later.
 const CLAIM_BATCH = 25;
 const RUN_MAX = 400;
 const RUN_BUDGET_MS = 100_000;
+// No board call outlives the isolate (~150 s): each gets at most 20 s, and
+// never past 140 s into the run.
+const BOARD_CALL_MS = 20_000;
+const RUN_HARD_MS = 140_000;
 /** Rows read per search: the window's newest, deduped against what was already mailed. */
 const CANDIDATES = 60;
 
@@ -178,24 +190,23 @@ Deno.serve(async (req) => {
 
     const startedAt = Date.now();
     const overBudget = () => Date.now() - startedAt >= RUN_BUDGET_MS;
-    /** Claims to hand back, by id, with the stamp each had: restored when the run ends. */
-    const toGiveBack = new Map<string, string | null>();
-    /** Hand a claim back: due again next run, as if never claimed (written by restoreClaims). */
-    const giveBack = (s: { id: string; digest_last_sent_at: string | null }) => {
-      if (!toGiveBack.has(s.id)) toGiveBack.set(s.id, s.digest_last_sent_at);
-      return Promise.resolve();
+    type Claimed = { id: string; digest_last_sent_at: string | null; attempted?: { prev: string | null } };
+    /**
+     * Hand a claim back, written now. The window stamp returns to what it was,
+     * so the search is due again with its window intact. A search this run
+     * worked keeps the claim's attempt stamp and so waits behind the rest of
+     * the queue; one never started (`untouched`) gets that stamp back too,
+     * and keeps its place. The attempt stamp is written only when the claim
+     * returned it (a claim from before 20261009144000 does not).
+     */
+    const giveBack = async (s: Claimed, untouched = false) => {
+      const patch: Record<string, string | null> = { digest_last_sent_at: s.digest_last_sent_at };
+      if (untouched && s.attempted) patch.digest_attempted_at = s.attempted.prev;
+      const { error: gbErr } = await supabase.from("user_job_searches").update(patch).eq("id", s.id);
+      if (gbErr) console.error(`[SEARCH-DIGEST] claim on ${s.id} not handed back:`, gbErr.message);
     };
-    const restoreClaims = async () => {
-      const byStamp = new Map<string | null, string[]>();
-      for (const [id, prev] of toGiveBack) byStamp.set(prev, [...(byStamp.get(prev) ?? []), id]);
-      toGiveBack.clear();
-      await Promise.all([...byStamp].map(async ([prev, ids]) => {
-        for (let i = 0; i < ids.length; i += 100) {
-          const { error: gbErr } = await supabase.from("user_job_searches").update({ digest_last_sent_at: prev }).in("id", ids.slice(i, i + 100));
-          if (gbErr) console.error(`[SEARCH-DIGEST] ${ids.length} claim(s) not handed back:`, gbErr.message);
-        }
-      }));
-    };
+    /** A board call's clock: 20 s, and never past the run's hard limit. */
+    const boardClock = () => Math.max(1_000, Math.min(BOARD_CALL_MS, RUN_HARD_MS - (Date.now() - startedAt)));
 
     // Suppressed addresses (global unsubscribes) are honored too.
     const { data: suppressedRows } = await supabase.from("suppressed_emails").select("email");
@@ -203,32 +214,33 @@ Deno.serve(async (req) => {
 
     let sent = 0, skipped = 0, considered = 0, handedBack = 0;
     const seen = new Set<string>();
-    try {
     claiming: while (considered < RUN_MAX && !overBudget()) {
     // THE CLAIM IS THE SELECTION. Each row comes back already stamped (its
-    // own cadence decided in SQL), with the stamp it had before, which is the
-    // "new since" window and what a give-back restores.
+    // own cadence decided in SQL), with the stamps it had before: the window
+    // stamp is the "new since" window, and both are what a give-back restores.
     const { data: claimed, error } = await supabase.rpc("search_digest_claim_batch", { p_limit: Math.min(CLAIM_BATCH, RUN_MAX - considered) });
     if (error) { if (considered === 0) throw error; console.error("[SEARCH-DIGEST] a later claim failed:", error.message); break; }
     const searches = ((claimed ?? []) as Array<{
       sd_id: string; sd_user_id: string; sd_name: string; sd_params: unknown;
       sd_prev_sent_at: string | null; sd_fit_threshold: number | null; sd_cadence: string | null;
+      sd_prev_attempted_at?: string | null;
     }>).map((r) => ({
       id: r.sd_id, user_id: r.sd_user_id, name: r.sd_name, params: r.sd_params,
       digest_last_sent_at: r.sd_prev_sent_at, fit_threshold: r.sd_fit_threshold, digest_cadence: r.sd_cadence,
+      attempted: "sd_prev_attempted_at" in r ? { prev: r.sd_prev_attempted_at ?? null } : undefined,
     }));
     // A row this run already took is never worked twice: should a claim
-    // return one, it goes back with the rest when the run ends.
+    // return one again, that claim is undone.
     const fresh = searches.filter((x) => !seen.has(x.id));
-    for (const again of searches) if (seen.has(again.id)) await giveBack(again);
+    for (const again of searches) if (seen.has(again.id)) await giveBack(again, true);
     if (fresh.length === 0) break;
     for (const x of fresh) seen.add(x.id);
     considered += fresh.length;
     for (let i = 0; i < fresh.length; i++) {
       const s = fresh[i];
       if (overBudget()) {
-        // Claimed, never started: back to due, window intact.
-        for (const rest of fresh.slice(i)) { await giveBack(rest); handedBack++; }
+        // Claimed, never started: back to due, window and place intact.
+        for (const rest of fresh.slice(i)) { await giveBack(rest, true); handedBack++; }
         break claiming;
       }
       const p = (s.params ?? {}) as SearchParams;
@@ -246,6 +258,7 @@ Deno.serve(async (req) => {
       const callBoard = (extra: Record<string, unknown>) =>
         fetch(boardBase, {
           method: "POST",
+          signal: AbortSignal.timeout(boardClock()),
           headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}`, "Content-Type": "application/json", ...searchCallerHeader("digest"), ...readerProof },
           // EVERY field the board can filter on, or the digest mails a wider
           // search than the one saved. The seven that were hand-list-dropped
@@ -489,9 +502,6 @@ Deno.serve(async (req) => {
         skipped++;
       }
     }
-    }
-    } finally {
-      await restoreClaims();
     }
     return new Response(JSON.stringify({ ok: true, sent, skipped, considered, handedBack }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {

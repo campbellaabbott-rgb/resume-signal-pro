@@ -68,8 +68,9 @@ export const DIGEST_CRONS_BEFORE = `
   SELECT cron.schedule('send-agent-digest', '40 6 * * *', 'SELECT net.http_post(url := ''https://x/functions/v1/send-agent-digest'')');
 `;
 
-export async function bootMailDoorDb(opts: { cron?: boolean; digestCrons?: boolean; seed?: string } = {}): Promise<PGlite> {
-  const db = new PGlite();
+/** `db`: a PGlite the caller built (its own type parsers, say); a fresh one otherwise. */
+export async function bootMailDoorDb(opts: { cron?: boolean; digestCrons?: boolean; seed?: string; db?: PGlite } = {}): Promise<PGlite> {
+  const db = opts.db ?? new PGlite();
   await db.exec(BEFORE
     + (opts.cron ? CRON_STAND_IN + "SELECT cron.schedule('send-market-pulse', '47 15 * * *', 'SELECT 1');" : "")
     + (opts.cron && opts.digestCrons ? DIGEST_CRONS_BEFORE : "")

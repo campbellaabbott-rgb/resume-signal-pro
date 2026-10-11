@@ -43,7 +43,7 @@ for PAIR in \
   analyze-resume:2 api-key-request:2 create-agent-checkout:4 create-checkout:2 \
   create-portal-session:2 create-product-checkout:2 create-scan-pack-checkout:2 create-subscription-checkout:4 \
   delete-account:4 get-account-data:2 retry-failed-deliveries:2 scan-credits:2 send-market-pulse:2 \
-  send-product-email:2 send-scan-report:2 send-search-digest:2 verify-product-purchase:2 \
+  send-product-email:2 send-scan-report:2 send-search-digest:3 verify-product-purchase:2 \
   verify-scan-pack-purchase:2 withdraw-subscription:4 process-email-queue:2 free-keyword-scan:3; do
   FN=${PAIR%%:*}; SEQ=${PAIR#*:}
   H=$(vd74_build "$FN")
