@@ -98,10 +98,14 @@ for(const sort of ["newest","salary"]){
   if(!cs)info("S8-087 sliceStats.cursorStep "+JSON.stringify(cs)+" (null on a hot slice; re-run during the cold phase)");
   else{const n=Number(st.coldBoards)||0;const step=n?((cs.to-cs.from)%n+n)%n:cs.to-cs.from;
     info("S8-087 cursorStep "+JSON.stringify(cs)+": stepped "+step+" for "+cs.started+" started (on .92 a step above started is dormant skips passed, below it a deferral ahead of later starts; on .91 it always equals started)")}}
-// F1 (server half): employer names (migration 20261009100100).
-for(const [tok,want] of [["ms~wd5~external","Morgan Stanley"],["rmit~wd3~RMIT_Careers","RMIT University"],["cc","Climate Corps"]]){
+// F1 (server half): employer names (migration 20261009100100). Since S11-133 the
+// migration renames only the five bare-token boards (cc); a named tenant's stored
+// rows are renamed by job-board's name-sync lane (NAME_SYNC_VERSION 4), last in a
+// pass-end tail, a few dozen boards per pass: INFO until it has reached them.
+for(const [tok,want,lane] of [["ms~wd5~external","Morgan Stanley",true],["rmit~wd3~RMIT_Careers","RMIT University",true],["flextronics~wd1~Careers","Flex Ltd.",true],["cc","Climate Corps",false]]){
   const r=await list({companies:[tok],limit:1});const got=rows(r)[0]&&rows(r)[0].company;
   if(bad(r)||!rows(r).length)info("F1 "+tok+": no open row to read a name from");
+  else if(lane)soft(got===want,"F1 "+tok+" stored as "+JSON.stringify(got)+" (want "+want+" once the name-sync lane v4 has reached the board; S11-133/S11-134)");
   else console.log((got===want?"PASS":"FAIL")+"  F1 "+tok+" stored as "+JSON.stringify(got)+" (want "+want+"; FAIL until 20261009100100 is applied)");
 }
 // S8-062: no anon probe that does not spend a limiter row; the build lines above carry it.
