@@ -12,6 +12,8 @@ import {
   selectLanders,
 } from "../../scripts/prerender-pages.mjs";
 import { boardName, isCodeShapedName } from "@/lib/company-display";
+import { employerKey } from "@/lib/employer-key";
+import { CATALOG } from "./helpers/catalog";
 
 /**
  * TWO EMPLOYERS SHARING A NAME ARE NOT ONE EMPLOYER'S BOARDS.
@@ -46,6 +48,35 @@ describe("who is one employer, in the bake", () => {
     expect(bakeEmployerKey("ejwl~us2~CX")).toBe(bakeEmployerKey("ejwl~us2~CX_1"));
     expect(bakeEmployerKey("a232a7a1-770b~9201585048116_2")).toBe(bakeEmployerKey("a232a7a1-770b~1684781626_2117"));
     expect(bakeEmployerKey("careers.aarp.org")).toBe("slug:careers.aarp.org");
+  });
+
+  it("over the whole catalogue it never joins two boards the site's employer key keeps apart", () => {
+    // The bake cannot import src/lib/employer-key.ts (plain node on the hosted
+    // builder) and the facet carries no source, so bakeEmployerKey reads the
+    // token's shape. Held here against employerKey(source, token) over every
+    // board exactly one hiring system carries (a board two carry shows no
+    // employer facts at all): one bake key never spans two employer keys.
+    const sourcesOf = new Map<string, Set<string>>();
+    for (const e of CATALOG) {
+      const s = sourcesOf.get(e.token) ?? new Set<string>();
+      s.add(e.source);
+      sourcesOf.set(e.token, s);
+    }
+    const single = [...sourcesOf].filter(([, s]) => s.size === 1).map(([t, s]) => [t, [...s][0]] as const);
+    expect(single.length, "the catalogue reader found too few boards to judge").toBeGreaterThan(20_000);
+    const spans = new Map<string, Set<string>>();
+    for (const [token, source] of single) {
+      const b = bakeEmployerKey(token);
+      const k = spans.get(b) ?? new Set<string>();
+      k.add(employerKey(source, token));
+      spans.set(b, k);
+    }
+    const joined = [...spans].filter(([, k]) => k.size > 1).map(([b, k]) => `${b}: ${[...k].join(" + ")}`);
+    expect(joined, "the bake would pool these different employers' boards").toEqual([]);
+    // And it does pool where the key pools: one Workday tenant's career sites.
+    const pooled = [...spans].filter(([b]) => b.startsWith("workday:")).length;
+    const workdayBoards = single.filter(([, s]) => s === "workday").length;
+    expect(pooled, "every Workday site became its own employer: the bake key stopped pooling").toBeLessThan(workdayBoards);
   });
 
   it("the merges the matcher's rule alone allows are refused: a plain slug is never a Workday tenant", () => {

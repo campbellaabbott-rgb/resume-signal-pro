@@ -82,7 +82,12 @@ const FILING = {
  * get_company_growth are also asked in batches for every card on the page, a
  * per-board badge this change does not touch, so they are not judged here.)
  */
-const EMPLOYER_LEVEL = ["get_company_financials", "get_similar_companies", "get_company_claim_status", "get_employer_layoff_filings_all", "get_company_hiring_health"];
+const EMPLOYER_LEVEL = [
+  "get_company_financials", "get_similar_companies", "get_company_claim_status", "get_employer_layoff_filings_all", "get_company_hiring_health",
+  // The lander's perks block (phase 2) and its filed-wage line (the LCA line
+  // that replaced DeclaredWagesCard): both describe one employer.
+  "get_employer_perks", "get_employer_lca_wages",
+];
 
 function mount(token: string, jobs: ReturnType<typeof job>[]) {
   const path = `/jobs/company/${token}`;
@@ -152,6 +157,10 @@ describe("the lander of a shared token", () => {
     await waitFor(() => expect(text()).toContain("123,456"), SLOW);
     expect(text()).not.toContain("hiring systems carry a board with this name");
     await waitFor(() => expect(askedAbout("jnj")).toContain("get_company_financials"), SLOW);
+    // The same mounts ask the perks reader and the filed-wage reader, so their
+    // absence on a shared token below is the gate, not a mount nobody makes.
+    await waitFor(() => expect(askedAbout("jnj")).toContain("get_employer_perks"), SLOW);
+    await waitFor(() => expect(askedAbout("jnj")).toContain("get_employer_lca_wages"), SLOW);
   });
 
   it("names each board with its hiring system and open roles, and prints no employer-level fact", async () => {

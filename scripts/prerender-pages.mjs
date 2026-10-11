@@ -149,14 +149,25 @@ export function postingStubEntry({ stub, prior, today, first = null, employerNam
  * pod board (eu~slug), and otherwise the first '~' segment, which is the
  * tenant on Workday and Oracle and the token itself on a plain slug.
  *
- * The plan's key is source + segment (src/lib/employer-key.ts, when the
- * identity work lands: employer_key(source, token)). The companies facet the
- * bake reads carries no source, so the token's own shape stands in for it:
- * a Workday token (tenant~wdN~site) never shares a key with an Oracle tenant
+ * The site's key is source + segment: employer_key(source, token) in SQL
+ * (20261012100000), mirrored by employerKey in src/lib/employer-key.ts. The
+ * companies facet the bake reads carries no source, and this module runs
+ * under plain node on the hosted builder, where it cannot import that
+ * TypeScript file, so the token's own shape stands in for the source: a
+ * Workday token (tenant~wdN~site) never shares a key with an Oracle tenant
  * or a plain slug whose text matches its first segment, which is exactly the
  * merge that put Blackstone Inc.'s figures on a "Blackstone Shooting Sports"
  * board. Two facet entries never share a plain token, so a plain token is its
  * own employer here, as it is under the source-qualified key.
+ *
+ * Over the whole catalogue this key never joins two boards employerKey keeps
+ * apart (the guard in
+ * src/test/two-employers-sharing-a-name-are-not-one-employers-boards.test.ts
+ * runs both over every board one hiring system carries). It may keep apart a
+ * few boards employerKey joins: an ADP client's bare id and its id~site
+ * boards, because a bare id could equally be a Paylocity board. Keeping apart
+ * only costs pooling; joining would print one employer's openings as
+ * another's.
  */
 export function bakeEmployerKey(token) {
   const t = String(token ?? "").trim();
