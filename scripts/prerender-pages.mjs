@@ -143,13 +143,52 @@ export function postingStubEntry({ stub, prior, today, first = null, employerNam
 }
 
 /**
+ * WHO IS ONE EMPLOYER, for the bake. The layoff matcher's employer segment
+ * (20260918100400, "WHO IS ONE EMPLOYER"): the client segment on a UKG token
+ * (recruiting~CLIENT~uuid, recruiting2~CLIENT~uuid), the whole token on an EU
+ * pod board (eu~slug), and otherwise the first '~' segment, which is the
+ * tenant on Workday and Oracle and the token itself on a plain slug.
+ *
+ * The plan's key is source + segment (src/lib/employer-key.ts, when the
+ * identity work lands: employer_key(source, token)). The companies facet the
+ * bake reads carries no source, so the token's own shape stands in for it:
+ * a Workday token (tenant~wdN~site) never shares a key with an Oracle tenant
+ * or a plain slug whose text matches its first segment, which is exactly the
+ * merge that put Blackstone Inc.'s figures on a "Blackstone Shooting Sports"
+ * board. Two facet entries never share a plain token, so a plain token is its
+ * own employer here, as it is under the source-qualified key.
+ */
+export function bakeEmployerKey(token) {
+  const t = String(token ?? "").trim();
+  const parts = t.split("~");
+  const first = parts[0];
+  if ((first === "recruiting" || first === "recruiting2") && parts.length >= 2) return `ukg:${first}~${parts[1]}`;
+  if (first === "eu" && parts.length >= 2) return `eu:${t}`;
+  if (parts.length >= 3 && /^wd\d+$/.test(parts[1])) return `workday:${first}`;
+  if (parts.length >= 3) return `tenant3:${first}`;
+  if (parts.length === 2) return `tenant2:${first}`;
+  return `slug:${t}`;
+}
+
+/**
  * The employer boards that get a page this bake, ranked and gated on OPEN
- * roles (the count /jobs/company/{token} serves), each with the token of its
- * employer's indexable board: one employer running several boards gets one
- * indexable page, the board with the most open roles, and the rest
- * canonicalise to it. Grouped on the name the page renders. `displayName`
- * gives that name; `unreadable` flags a board whose name is still a system
- * code, which gets a page but never an indexable one.
+ * roles (the count /jobs/company/{token} serves), each with the token of the
+ * indexable page it canonicalises to (`primary`).
+ *
+ * SIBLINGS ARE ONE EMPLOYER UNDER ONE NAME: the same bakeEmployerKey and the
+ * same normalised name. One employer running several boards under its name
+ * gets one indexable page, the board with the most open roles; the rest
+ * canonicalise to it, and only they pool their openings into it
+ * (`employerPrimary` is that board, `sameEmployer` is true).
+ *
+ * TWO EMPLOYERS UNDER ONE NAME ARE NOT SIBLINGS. Grouping on the name alone
+ * told crawlers, and the page's own pooled openings told readers, that every
+ * board printing "Accenture" was one employer. They are kept apart now: the
+ * smaller employer's page still canonicalises to the larger one, so no two
+ * indexable pages share a title, but `sameEmployer` is false, it pools none of
+ * the larger employer's openings, and nothing links it as that employer's
+ * page. `displayName` gives the name; `unreadable` flags a board whose name is
+ * still a system code, which gets a page but never an indexable one.
  */
 export function selectLanders(companyFacet, { openOf, displayName = (c) => c.name.trim(), unreadable = () => false, max = 500, min = 8 }) {
   const size = (c) => (typeof c.open === "number" ? c.open : (c.count ?? 0));
@@ -167,13 +206,51 @@ export function selectLanders(companyFacet, { openOf, displayName = (c) => c.nam
       const name = displayName(c);
       return { token: c.token, name, stored: c.name.trim(), open: typeof open === "number" ? open : null, count: typeof c.count === "number" ? c.count : null, unreadable: !!unreadable(c, name) };
     });
-  const primaryByName = new Map();
+  const nameKey = (c) => c.name.toLowerCase().replace(/\s+/g, " ").trim();
+  const groupKey = (c) => `${bakeEmployerKey(c.token)}\u0000${nameKey(c)}`;
+  // One employer under one name: its largest board.
+  const primaryByGroup = new Map();
   for (const c of top) {
-    const key = c.name.toLowerCase();
-    const prev = primaryByName.get(key);
-    if (!prev || size(c) > size(prev)) primaryByName.set(key, c);
+    const prev = primaryByGroup.get(groupKey(c));
+    if (!prev || size(c) > size(prev)) primaryByGroup.set(groupKey(c), c);
   }
-  return top.map((c) => ({ ...c, primary: primaryByName.get(c.name.toLowerCase()).token }));
+  // Across employers sharing a name: the largest of their primaries carries
+  // the one indexable page for that title.
+  const largestByName = new Map();
+  for (const p of primaryByGroup.values()) {
+    const prev = largestByName.get(nameKey(p));
+    if (!prev || size(p) > size(prev)) largestByName.set(nameKey(p), p);
+  }
+  return top.map((c) => {
+    const own = primaryByGroup.get(groupKey(c));
+    const named = largestByName.get(nameKey(c));
+    const employerKey = bakeEmployerKey(c.token);
+    return { ...c, employerKey, employerPrimary: own.token, primary: named.token, sameEmployer: bakeEmployerKey(named.token) === employerKey };
+  });
+}
+
+/**
+ * The boards whose openings an employer page pools: its own employer's boards
+ * under its name (one bakeEmployerKey, one name), never a different employer
+ * that merely shares the name.
+ */
+export function employerBoardsOf(landers, token) {
+  const c = landers.find((x) => x.token === token);
+  if (!c) return [];
+  const own = c.employerPrimary ?? c.primary;
+  return landers.filter((x) => (x.employerPrimary ?? x.primary) === own).map((x) => x.token);
+}
+
+/**
+ * The employer page a board's postings link as their employer's own: the page
+ * it canonicalises to, unless that page belongs to a different employer
+ * sharing its name, in which case there is none (null) and the caller links
+ * the live board filtered to the board itself.
+ */
+export function employerPageOf(landers, token) {
+  const c = landers.find((x) => x.token === token);
+  if (!c || c.sameEmployer === false) return null;
+  return c.primary;
 }
 
 /**
@@ -377,6 +454,23 @@ export function duplicateSkeletons(items) {
  */
 export const companiesLlmsLine = ({ site, count }) =>
   `- Companies with a page of their own: ${site}/companies — ${typeof count === "number" ? `the ${count.toLocaleString("en-US")} employers` : "the employers"} this site gives a page, A–Z, each linked with the open-role count measured when the index was built. The board itself carries far more employers, every one searchable at ${site}/jobs.`;
+
+/**
+ * The /companies line of the hand-written public/llms.txt, which said "each
+ * with its live count" over counts measured when the index was built, and
+ * named no number of employers at all. The committed file carries the line
+ * without a number; each bake restates it with the number of employer pages
+ * that same bake made indexable (the A–Z /companies lists exactly those), and
+ * a bake that counted none takes the number out rather than leaving the last
+ * one standing.
+ */
+export const LLMS_TXT_COMPANIES = /The (?:[\d,]+ )?employers this site gives a page of their own/;
+export const llmsTxtCompaniesCount = (text, count) => String(text).replace(
+  LLMS_TXT_COMPANIES,
+  typeof count === "number" && Number.isFinite(count)
+    ? `The ${count.toLocaleString("en-US")} employers this site gives a page of their own`
+    : "The employers this site gives a page of their own",
+);
 
 /**
  * One company page. `robots` is decided by the caller (landerRobots); a page

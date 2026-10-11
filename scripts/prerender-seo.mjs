@@ -25,8 +25,8 @@ import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 import {
   PRERENDER_LEDGER_PATH, POSTING_STUB_KEEP_DAYS, callBudget, companyLanderPage, contentFingerprint, landerFacts, landerHasOwnContent, landerRobots, landerThinBreaker,
-  bakeLanders, carrySitemaps, pageLastmod, postingCarryBase, postingCheckState, postingRowEligible, postingStubEntry, postingStubPage,
-  LANDER_OPENINGS_READS, LANDER_OPENINGS_SHOWN, companiesLlmsLine, duplicateSkeletons, landerBreakers, landerOpenings, landerSkeleton, nextOpeningsCache, openingsFromList, openingsToRead,
+  bakeLanders, employerBoardsOf, employerPageOf, carrySitemaps, pageLastmod, postingCarryBase, postingCheckState, postingRowEligible, postingStubEntry, postingStubPage,
+  LANDER_OPENINGS_READS, LANDER_OPENINGS_SHOWN, LLMS_TXT_COMPANIES, companiesLlmsLine, llmsTxtCompaniesCount, duplicateSkeletons, landerBreakers, landerOpenings, landerSkeleton, nextOpeningsCache, openingsFromList, openingsToRead,
 } from "./prerender-pages.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -1824,7 +1824,12 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
   const landerFor = (token) => {
     const c = typeof token === "string" ? landerByToken.get(token) : null;
     if (!c) return null;
-    const p = landerByToken.get(c.primary) ?? c;
+    // A board whose page canonicalises to ANOTHER employer that shares its
+    // name has no employer page of its own to link: its postings link the
+    // live board filtered to it, never the other employer's page.
+    const pageToken = employerPageOf(LANDERS, token);
+    if (!pageToken) return null;
+    const p = landerByToken.get(pageToken) ?? c;
     return { name: p.name, href: publicHref(`/jobs/company/${p.token}`) };
   };
   /** The href a data-page table or a posting uses for an employer board. */
@@ -2362,6 +2367,10 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       const landerPath = (token) => publicHref(`/jobs/company/${token}`);
       const indexable = new Set();
       let consolidated = 0;
+      // Boards whose page canonicalises to a DIFFERENT employer sharing its
+      // name (bakeEmployerKey differs): counted apart from one employer's
+      // own consolidated boards, because they are not that.
+      let nameShared = 0;
       let thin = 0;
       let codeNamed = 0;
       let duplicated = 0;
@@ -2374,12 +2383,17 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
         });
       };
       // The facts and openings of each EMPLOYER (every board of it this bake
-      // chose), read first, so the noindex rules can see them all at once.
+      // chose under one name), read first, so the noindex rules can see them
+      // all at once. `primary` is the page a board canonicalises to; the facts
+      // and openings are always its OWN employer's (`employerPrimary`), so a
+      // board that shares a name with a larger, different employer never
+      // prints that employer's openings as its own.
       const landerInfo = new Map(LANDERS.map((c) => {
         const primary = landerByToken.get(c.primary) ?? c;
-        const tokens = LANDERS.filter((x) => x.primary === c.primary).map((x) => x.token);
-        const facts = landerFacts(intelOf.get(primary.token), { countryName, fieldLabel: fieldLabelOf });
-        const listed = landerOpenings({ postings: tokens.flatMap((t) => postingsByToken.get(t) ?? []), cached: landerOpeningsCache[primary.token], today: TODAY });
+        const own = landerByToken.get(c.employerPrimary ?? c.primary) ?? c;
+        const tokens = employerBoardsOf(LANDERS, c.token);
+        const facts = landerFacts(intelOf.get(own.token), { countryName, fieldLabel: fieldLabelOf });
+        const listed = landerOpenings({ postings: tokens.flatMap((t) => postingsByToken.get(t) ?? []), cached: landerOpeningsCache[own.token], today: TODAY });
         return [c.token, { primary, facts, openings: listed.openings, at: listed.at, ownContent: landerHasOwnContent({ openings: listed.openings }), answered: listed.answered }];
       }));
       // A page whose text matches another page's once names and numbers are
@@ -2402,7 +2416,8 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       if (dupeBreaker) console.warn(`[prerender-seo] company pages: ${dupes.size} of ${candidates.length} match another page's text — treated as a cold listing cache, none noindexed for it this bake`);
       for (const c of LANDERS) {
         const isPrimary = c.primary === c.token;
-        if (!isPrimary) consolidated++;
+        if (!isPrimary && c.sameEmployer !== false) consolidated++;
+        if (!isPrimary && c.sameEmployer === false) nameShared++;
         const info = landerInfo.get(c.token);
         const answered = info.answered && !thinBreaker;
         const duplicate = !dupeBreaker && dupes.has(c.token);
@@ -2414,7 +2429,7 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
         write(pageOf(c, info, robots));
       }
       const distinct = new Set([...indexable].map((t) => skeletonOf.get(t))).size;
-      console.log(`[prerender-seo] company pages: ${LANDERS.length} (${consolidated} canonicalized to a larger board of the same employer; ${indexable.size} indexable, ${distinct} distinct once names and numbers are out; noindex: ${thin} with too few openings of their own, ${duplicated} matching another page, ${codeNamed} still named by a tenant code${codeNamed ? `: ${LANDERS.filter((c) => c.primary === c.token && c.unreadable).slice(0, 40).map((c) => c.token).join(", ")}` : ""}); intel read for ${intelOf.size} of ${primaries0.length}; listings read ${openingsReads.size} of ${toRead.length} (${openingsUnread} unread), ${Object.keys(landerOpeningsCache).length} of ${listedTokens.length} carried`);
+      console.log(`[prerender-seo] company pages: ${LANDERS.length} (${consolidated} canonicalized to a larger board of the same employer; ${nameShared} canonicalized to a larger, different employer under the same name; ${indexable.size} indexable, ${distinct} distinct once names and numbers are out; noindex: ${thin} with too few openings of their own, ${duplicated} matching another page, ${codeNamed} still named by a tenant code${codeNamed ? `: ${LANDERS.filter((c) => c.primary === c.token && c.unreadable).slice(0, 40).map((c) => c.token).join(", ")}` : ""}); intel read for ${intelOf.size} of ${primaries0.length}; listings read ${openingsReads.size} of ${toRead.length} (${openingsUnread} unread), ${Object.keys(landerOpeningsCache).length} of ${listedTokens.length} carried`);
       // The SEO report's bar for this family: at least 400 pages that say
       // something of their own. Below it the listings have not filled in yet
       // (the first bakes) or the reads are being refused.
@@ -3438,6 +3453,12 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       // renders — the committed file had fourteen systems typed by hand while
       // the board served more, the shape published-claims guards on /jobs.
       sub(/own hiring system \([^)]+\) — never an aggregator/, `own hiring system (${D.SERVING_SOURCE_LIST}) — never an aggregator`);
+      // The /companies line: the number of employer pages THIS bake made
+      // indexable, the same count the A–Z page and llms-full print. It
+      // describes this build's own output, so it is restated from a snapshot-
+      // fed bake too, and dropped (not left standing) when none was counted.
+      if (!LLMS_TXT_COMPANIES.test(lt)) missed.push(String(LLMS_TXT_COMPANIES));
+      else lt = llmsTxtCompaniesCount(lt, COMPANY_PAGE_COUNT);
       if (missed.length) {
         // Not fatal to the bake, but never silent: an orphaned figure is a
         // number nothing updates, which is how a true "+" claim rots into a
