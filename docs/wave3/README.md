@@ -1,7 +1,10 @@
 # Wave 3: one integration of eight branches
 
-Wave 3 merges eight branches onto `origin/main` at `31647d4c`. That base already
-holds wave 2 (PR #24) and the deploy ledger (PR #25). The branches are
+Wave 3 merges eight branches onto `origin/main`. It was built on `31647d4c`
+(wave 2, PR #24, and the deploy ledger, PR #25) and then took main again at
+`25363267`: PR #26 (migration `20261008131500` and the test helper that starts
+from Supabase's default grants), Lovable's staged-migration stubs 0106-0129
+and the "Deployed 53 functions" commit that put wave 2 live. The branches are
 job-board, board-data-ingest, scan-ai, agents-api, payments-account,
 email-ops, seo-content and tests-ci. The integration branch is
 `wave3/integration`, built 2026-10-10. It also carries the S10-018 fix, the
@@ -19,8 +22,11 @@ The builds that deploy are the ones in the stamp table below.
 1. **Not before wave 2.** Wave 3 deploys ONLY after wave 2's step 1 AND step 2
    are verified live ([wave 2 README](../wave2/README.md): sections 61-66 and
    49 clean, then 20261008125000 and 20261008128000 applied and verified).
-   Then main thaws (docs/DEPLOY-LEDGER.md §2). Production was still on
-   job-board `.90` on 2026-10-10.
+   Then main thaws (docs/DEPLOY-LEDGER.md §2). Wave 2's step 1 is deployed:
+   on 2026-10-10 the live preflights answered job-board.2026-09-09.91,
+   stripe-webhook.2026-10-08.2 and create-pass-checkout.2026-09-27.3, and
+   main's staged-runner stubs record every wave-2 migration except the two
+   held ones (20261008125000, 20261008128000), which the ledger still holds.
 2. **Merge only through an integration PR whose suite passed and whose
    `--against` checks pass:**
 
@@ -30,9 +36,10 @@ The builds that deploy are the ones in the stamp table below.
    re-run the checks and the suite.
 3. **Regenerate the Lovable message at the merge commit**:
    `node scripts/deploy-ledger.mjs --message`. Never copy a list from this
-   file: the ledger compares the merge commit with production. On this branch,
-   before wave 2 deployed, it listed wave 2 and wave 3 together (87 functions,
-   43 migrations plus 4 held). Once wave 2 is live it lists wave 3 alone.
+   file: the ledger compares the merge commit with production. Before wave 2
+   deployed it listed wave 2 and wave 3 together (87 functions, 43 migrations
+   plus 4 held). Since main was merged in at `25363267` it lists wave 3 alone:
+   78 functions, 21 migrations, and 4 held (wave 2's two and wave 3's two).
 4. **Step 1, one Lovable session.** Apply the migrations the message lists, in
    its order (it skips the held ones). Deploy the functions it lists. Publish
    the frontend from the same commit. These orders inside step 1 come from
@@ -44,11 +51,16 @@ The builds that deploy are the ones in the stamp table below.
      Keep it to minutes.
    - `20261009141000` before send-market-pulse. `20261009143000` before
      scan-heartbeat.
+   - `20261009144000` before send-search-digest and send-agent-digest. The
+     new digests write a give-back at once and rely on the claim's new order
+     to keep that row from leading the next claim of the same run.
    - send-product-email first among the mail functions. stripe-webhook sends
      it `full_analysis` and `freelance_*`.
    - get-analytics and health-check with or before the frontend.
-   - `20261009121000` needs wave 2's `20261008132000`, which wave 2's step 1
-     applies.
+   - `20261009121000` needs wave 2's `20261008132000`, which in turn needs
+     PR #26's `20261008131500` first (Lovable rolled 132000 back twice
+     without it). Main's staged-runner stubs record both as applied, so the
+     ledger lists neither.
 
    Then run `bash scripts/verify-deploy.sh`. Sections 71-78 cover wave 3 and
    49 is the ledger. Every build line must PASS before step 2.
@@ -155,6 +167,57 @@ stamp through `_shared/fn-build.ts` `stamped()`.
 - `node scripts/deploy-ledger.mjs --against <ref>` (exit 3).
 - Two held migrations.
 - The fixes listed under "Where two groups met".
+- The fixes from the review of the integration, listed below.
+
+## Fixes from the review of the integration (2026-10-10)
+
+Four read-only reviewers read the branch. Each finding was reproduced
+first, then fixed with a behaviour test that fails on the old file and passes
+on the new one.
+
+- **Main had moved.** Main was merged in at `25363267` (above).
+- **The free report sold a third product.** Every scan run against a posting
+  showed "Prepare this exact application", whose sample ended in a $7 Apply
+  Assistant checkout. The card is gone, along with its two locale keys in all
+  nine files. The two-offer test now mounts the report with the posting
+  source, presses every sample and unlock, and finds only the Full Analysis
+  and Pro prices. Verifier section 72 FAILs while the deployed chunk still
+  carries the card.
+- **Role chips bought the Full Analysis.** After a sheet of jobs was imported,
+  each role chip started the $5 checkout with no price and no Terms line.
+  A chip now picks its role and buys nothing. The priced link below, under
+  its line, starts the checkout.
+- **The pass opened itself after sign-in.** Coming back from /auth with
+  `?buy=pass` started create-pass-checkout with no press and no Terms line
+  on screen. The return now lands on the Buy button, focused, with its line,
+  and only a press opens checkout.
+- **A tap during checkout erased the Terms.** `purchaseTerms()` reads the last
+  press, and the homepage Full Analysis and every product checkout read it
+  only after awaits. Both now read it before their first await.
+- **Digest give-backs led every later run.** Migration `20261009144000` gives
+  `user_job_searches` and `agent_mandates` an attempt stamp. Both claims now
+  order by it first and stamp it, and return their rows in the order they
+  chose them. A row a run worked waits behind every row not yet worked.
+  send-search-digest `.3` writes each give-back at once, with no `finally`
+  holding them, and every board call has a clock (20 s, never past 140 s
+  into the run). send-agent-digest `.3` keeps the claim's stamp for a
+  mandate it may not mail and for an empty shortlist. It hands the cursor
+  back only for a failed send or a failed read. The new test runs both shipped
+  handlers against the real claims in pglite.
+- **The ledger's --against rule was laxer than §2.** A reserved job-board
+  version is now shared only with a branch of the workstream that owns it,
+  only when HEAD belongs to that workstream too, and only while main does not
+  carry it. Before, any reservation was shared with any ref (.91, .92 and
+  .93). Branches map to workstreams through `branches` in
+  `docs/deploy-ledger.json`. A relabel must change the marker and nothing
+  else on its line. A sequence with a leading zero (`.04`) is unreadable.
+- **Two wave-2 functions could not be told apart from their deploy.** Wave 2
+  changed affiliate-payout-request and industry-corrections-digest after
+  their `2026-10-08.1` stamps went live, so the ledger answered MUST BUMP
+  (exit 2). Both now answer `2026-10-09.1` and deploy with wave 3.
+  check-subscription is still listed as CHECK. Its only import from
+  `subscription-standing.ts` is `isOwingStatus`, and the change there added
+  a field that function never reads, so it is not restamped.
 
 ## Where two groups met (the integration's decisions)
 
@@ -194,7 +257,8 @@ stamp through `_shared/fn-build.ts` `stamped()`.
   catalogue range (seo-content).
 - **Locale files.** Rebuilt by a three-way key merge of all six branches that
   touched them. Every key a branch added is present, and the nine files hold
-  identical key sets (4,160), with no duplicates. Keys a branch retired are
+  identical key sets (4,158 after the review retired the two
+  `freeResults.applyBridge` keys), with no duplicates. Keys a branch retired are
   gone unless merged code reads them (`trustIndicators.badges.instant.label`
   stays). For the seven keys scan-ai and seo-content changed differently,
   scan-ai's values are kept. For `seller.soldBy` and `seller.controller`,
@@ -220,15 +284,18 @@ stamp through `_shared/fn-build.ts` `stamped()`.
 ## Build stamps (function: main -> integration)
 
 76 functions differ from main in their folder or a direct `_shared` import.
+Two more are restamped only (affiliate-payout-request,
+industry-corrections-digest; see the review fixes), so 78 deploy.
 Each answers the integration build on its OPTIONS preflight
 (`x-fn-build: <fn>.<build>`). job-board also answers it as `status.version`,
 and layoff-filings as its GET `version`.
 
-| function | main (31647d4c) | integration | strings the branches set |
+| function | main (25363267) | integration | strings the branches set |
 |---|---|---|---|
 | admin-regenerate-delivery | 2026-10-05.1 | **2026-10-09.2** | email-ops 2026-10-09.1 |
 | agent-mcp | 2026-10-05.2 | **2026-10-09.4** | board-data-ingest 2026-10-09.1, agents-api 2026-10-09.3 |
 | agent-pass-status | 2026-10-08.1 | **2026-10-09.2** | email-ops 2026-10-09.1 |
+| affiliate-payout-request | 2026-10-08.1 | **2026-10-09.1** | none (restamped: wave 2 changed its code after the stamp went live) |
 | agent-runner | 2026-10-05.2 | **2026-10-09.2** | board-data-ingest 2026-10-09.1 |
 | analyze-linkedin-profile | 2026-10-05.1 | **2026-10-09.1** | none (a _shared import it reads changed) |
 | analyze-resume | 2026-10-08.2 | **2026-10-09.2** | payments-account 2026-10-09.1 |
@@ -273,6 +340,7 @@ and layoff-filings as its GET `version`.
 | get-analytics | 2026-10-08.1 | **2026-10-09.2** | email-ops 2026-10-09.1 |
 | health-check | 2026-10-08.1 | **2026-10-09.2** | email-ops 2026-10-09.1 |
 | import-freelance-profile | 2026-10-10.1 | **2026-10-10.2** | none (a _shared import it reads changed) |
+| industry-corrections-digest | 2026-10-08.1 | **2026-10-09.1** | none (restamped: wave 2 changed its code after the stamp went live) |
 | job-board | 2026-09-09.91 | **2026-09-09.92** | job-board 2026-09-09.92 |
 | job-fit | none | **2026-10-09.2** | job-board 2026-10-09.1, board-data-ingest 2026-10-09.1 |
 | layoff-filings | 2026-09-25.1 | **2026-10-09.3** | board-data-ingest 2026-10-09.1, tests-ci 2026-10-09.2 |
@@ -288,12 +356,12 @@ and layoff-filings as its GET `version`.
 | scheduled-health-probe | 2026-10-08.1 | **2026-10-09.2** | email-ops 2026-10-09.1 |
 | scrape-linkedin | none | **2026-10-09.2** | tests-ci 2026-10-09.1 |
 | send-affiliate-commission-email | 2026-10-04.1 | **2026-10-09.2** | email-ops 2026-10-09.1 |
-| send-agent-digest | 2026-10-08.1 | **2026-10-09.2** | email-ops 2026-10-09.1, agents-api 2026-10-09.1 |
+| send-agent-digest | 2026-10-08.1 | **2026-10-09.3** | email-ops 2026-10-09.1, agents-api 2026-10-09.1 |
 | send-analysis-email | 2026-10-06.1 | **2026-10-09.2** | email-ops 2026-10-09.1 |
 | send-market-pulse | 2026-10-08.1 | **2026-10-09.2** | payments-account 2026-10-09.1, email-ops 2026-10-09.1 |
 | send-product-email | 2026-10-06.1 | **2026-10-09.2** | payments-account 2026-10-09.1, email-ops 2026-10-09.1 |
 | send-scan-report | 2026-10-08.1 | **2026-10-09.2** | payments-account 2026-10-09.1, email-ops 2026-10-09.1 |
-| send-search-digest | 2026-10-08.1 | **2026-10-09.2** | board-data-ingest 2026-10-09.1, payments-account 2026-10-09.1, email-ops 2026-10-09.1 |
+| send-search-digest | 2026-10-08.1 | **2026-10-09.3** | board-data-ingest 2026-10-09.1, payments-account 2026-10-09.1, email-ops 2026-10-09.1 |
 | shortlist-evaluate | 2026-10-10.1 | **2026-10-10.3** | scan-ai 2026-10-10.2 |
 | stripe-webhook | 2026-10-08.2 | **2026-10-09.4** | payments-account 2026-10-09.3, email-ops 2026-10-09.1 |
 | test-ai-fallback | 2026-10-08.1 | **2026-10-09.1** | none (a _shared import it reads changed) |
@@ -333,10 +401,11 @@ the rest. Each file checks itself and is safe to re-run.
 | 16 | 20261009141000_a_pulse_confirmation_that_never_left_does_not_lock_its_address_out | email-ops | before send-market-pulse |
 | 17 | 20261009142000_the_layoff_refresh_job_gets_the_ten_minutes_its_functions_ask_for | email-ops | any time |
 | 18 | 20261009143000_a_cron_call_its_function_refused_is_counted_not_read_as_success | email-ops | before scan-heartbeat |
-| 19 | 20261009160000_an_exit_cost_filing_is_not_printed_as_a_workforce_reduction | board-data-ingest | independent |
-| 20 | 20261009160100_an_illinois_notice_dated_after_its_stamp_is_not_a_notice_date | board-data-ingest | **HELD**: after layoff-filings .3 serves |
-| 21 | 20261009160200_a_company_lander_reads_only_its_own_employer | board-data-ingest | independent |
-| 22 | 20261009160300_a_federal_wage_filing_needs_an_employer_hiring_in_the_us | board-data-ingest | independent |
+| 19 | 20261009144000_a_digest_given_back_waits_behind_the_rest_of_the_queue | integration (review) | BEFORE send-search-digest and send-agent-digest |
+| 20 | 20261009160000_an_exit_cost_filing_is_not_printed_as_a_workforce_reduction | board-data-ingest | independent |
+| 21 | 20261009160100_an_illinois_notice_dated_after_its_stamp_is_not_a_notice_date | board-data-ingest | **HELD**: after layoff-filings .3 serves |
+| 22 | 20261009160200_a_company_lander_reads_only_its_own_employer | board-data-ingest | independent |
+| 23 | 20261009160300_a_federal_wage_filing_needs_an_employer_hiring_in_the_us | board-data-ingest | independent |
 
 No wave-3 migration depends on wave 2's held 20261008125000 or
 20261008128000. None touches their cron jobs or reads what they create, so
@@ -344,17 +413,31 @@ nothing more is held for them.
 
 ## Checks run on this branch (2026-10-10)
 
+As built on `31647d4c`:
+- The first full vitest run on the merged tree failed 4 tests, the four
+  combination failures above. Each was fixed and its file re-run green.
+- `--head 173a740b` (the merge before the restamp) reports the collisions,
+  for example 17 against wave3/email-ops.
+
+After main was merged in at `25363267` and the review fixes landed:
 - App typecheck (`npm run typecheck`, the pre-commit/pre-push gate): clean.
 - Worker typecheck (`cd worker && tsc --noEmit`): clean.
-- `bash scripts/check-functions.sh`: every edge function (all 76 changed
-  ones included) passes `deno check`, and so do the Deno tests beside them.
-  `deno.lock` is unchanged.
-- The full vitest suite. The first run on the merged tree failed 4 tests, the
-  four combination failures above. Each was fixed and its file re-run green,
-  and the pre-push gate re-runs the suite.
-- `node scripts/deploy-ledger.mjs --message`: exit 0, no MUST BUMP. It
-  lists wave 2 and wave 3 together because wave 2 is not live yet.
+- `bash scripts/check-functions.sh`: every edge function passes `deno check`,
+  and so do the Deno tests beside them. `bash scripts/deno-tests.sh`: 66
+  passed, 0 failed. `deno.lock` is unchanged.
+- The full vitest suite (846 files, 10,938 tests): 840 files passed. The
+  five that failed were timeouts while the machine's load average stood
+  between 250 and 600, plus one file whose worker never started. Each of the
+  six passed when re-run alone afterwards.
+- Each review fix's test was run on the old file (failing) and the new one
+  (passing): the ledger rule 8 of 13 failing before, the free report's third
+  offer, the role chips 3/3, the pass return, the tap during checkout 4/4,
+  and the digest claims 8/8 (with the old functions and without
+  20261009144000).
+- `node scripts/deploy-ledger.mjs --message`: exit 0, no MUST BUMP. It lists
+  wave 3 alone: 78 functions, 21 migrations, 4 held. check-subscription is
+  listed as CHECK (see the review fixes).
 - `--against` origin/main and all eight wave-3 tips: 0 violations. The
-  job-board .92 reservation is reported as shared with wave3/job-board.
-  `--head 173a740b` (the merge before the restamp) reports the collisions,
-  for example 17 against wave3/email-ops.
+  job-board .92 reservation is reported as wave 3's, shared with
+  wave3/job-board. `--against wave3/tests-ci --head wave3/board-data-ingest`
+  now reports the two tips' .91 on different job-board code as a violation.
