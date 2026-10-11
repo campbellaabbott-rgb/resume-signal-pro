@@ -23,6 +23,7 @@ import { provenMailbox, type AuthUserLike } from "../_shared/mailbox-proof.ts";
 // re-exports it): the scanner has no reason to load Stripe.
 import { accountProStanding } from "../_shared/pro-standing.ts";
 import { SCAN_MODEL_CHAIN } from "../_shared/scan-models.ts";
+import { FIXED_CHOICES_STAY_ENGLISH, normalizeScanReport } from "../_shared/scan-report-shape.ts";
 import { buildScoreAudit, reportIdFor } from "./report-meta.ts";
 import {
   detectCountryFromResume,
@@ -1585,7 +1586,10 @@ serve(async (req) => {
     // flattened reports would replay for 7 days.
     // Bumped 2026-10-09: the report id now names the inputs and the score,
     // the score audit sums to the score, and thin model output is partial.
-    const REPORT_ENGINE_VERSION = 'scan-v2026-10-09';
+    // Bumped again in wave 3 (S11-007, S11-029, S11-058): a posting no longer
+    // reads as healthcare from "internal" or "what you'll do", every keyword
+    // gap is in the report, and its fixed choices hold drawable values.
+    const REPORT_ENGINE_VERSION = 'scan-v2026-10-09-s11';
     const reportCacheKey = await (async () => {
       const ctx = (body.userContext ?? {}) as Record<string, unknown>;
       const ctxPart = ['situation', 'targetRole', 'confirmedIndustry', 'confirmedExperience']
@@ -1624,6 +1628,9 @@ serve(async (req) => {
         const { creditUsed: _staleReceipt, creditsRemaining: _staleBalance, ...storedReport } =
           cached.report as Record<string, unknown>;
         const cachedReport: Record<string, unknown> = { ...storedReport, cachedReport: true, cached: true };
+        // A report cached with a translated fixed choice must not replay a
+        // crash (S11-029).
+        normalizeScanReport(cachedReport);
         // Sealed on the way out, so a report cached before the mail seal
         // existed can still be emailed in full (see the seal at the end).
         await attachScanMailSeal(cachedReport, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
@@ -2350,7 +2357,7 @@ This resume must be judged as ${seniorityDetection.level === 'executive' ? 'a C-
     // so it's the freshest instruction the model reads.
     const resumeLanguage = detectResumeLanguage(resumeText);
     const languageHint = resumeLanguage.language !== 'en'
-      ? `\n\n**DETECTED RESUME LANGUAGE: ${resumeLanguage.languageName.toUpperCase()} (MANDATORY).** This resume is written in ${resumeLanguage.languageName}. Your ENTIRE response must be written in ${resumeLanguage.languageName} — every string value (tips, red flags, rewrites, explanations, verdicts). Keep the JSON keys in English exactly as specified. Keyword suggestions must be ${resumeLanguage.languageName} terms actually used in that job market. Do NOT respond in English.`
+      ? `\n\n**DETECTED RESUME LANGUAGE: ${resumeLanguage.languageName.toUpperCase()} (MANDATORY).** This resume is written in ${resumeLanguage.languageName}. Your ENTIRE response must be written in ${resumeLanguage.languageName} — every free-text string value (tips, red flags, rewrites, explanations, verdicts). Keep the JSON keys in English exactly as specified. ${FIXED_CHOICES_STAY_ENGLISH} Keyword suggestions must be ${resumeLanguage.languageName} terms actually used in that job market. Do NOT respond in English.`
       : '';
     if (resumeLanguage.language !== 'en') {
       console.log(`[FREE-KEYWORD-SCAN] Resume language: ${resumeLanguage.language} (${resumeLanguage.confidence}) — ${resumeLanguage.evidence[0] ?? ''}`);
@@ -3467,15 +3474,13 @@ ${resumeText.substring(0, 20000)}
     }));
     keywordsWithWeight.sort((a, b) => b._freq - a._freq);
 
-    // Free tier: show 3 keywords clearly, gate the rest behind blur
-    const FREE_KEYWORD_VISIBLE = 3;
-    const visibleKeywords = keywordsWithWeight.slice(0, FREE_KEYWORD_VISIBLE).map(({ _freq, ...k }) => k);
-    const gatedKeywords = keywordsWithWeight.slice(FREE_KEYWORD_VISIBLE, 9).map(({ _freq, ...k }) => ({
-      keyword: k.keyword,
-      category: k.category || 'industry_standard',
-      gated: true,
-    }));
-    const keywords = visibleKeywords;
+    // EVERY KEYWORD GAP IS IN THE REPORT (S11-058). The first three used to be
+    // returned and the rest put in a second, gated list, which wave 3 stopped
+    // rendering, so half of every report's gaps (often the posting's own
+    // requirements) vanished while the audit said the diagnosis was complete.
+    // The keywords card shows three and collapses the rest behind a button.
+    const KEYWORD_GAPS_MAX = 9;
+    const keywords = keywordsWithWeight.slice(0, KEYWORD_GAPS_MAX).map(({ _freq, ...k }) => k);
 
     const redFlags = (analysis.redFlags || []).slice(0, 3);
 
@@ -3912,9 +3917,6 @@ ${resumeText.substring(0, 20000)}
       presentHighFrequency: compGap.presentHighFrequency,
       gapScore: compGap.gapScore,
     };
-
-    // Gated keywords — shown blurred in free tier (improvement #8)
-    responseData.gatedKeywords = gatedKeywords;
 
     // Detection quality score — drives UI confidence warning (improvement #7)
     responseData.detectionQualityScore = detectionQualityScore;
@@ -4586,6 +4588,10 @@ ${resumeText.substring(0, 20000)}
       );
     }
     
+    // Every fixed choice and list the page draws holds a value it can draw,
+    // before the report is cached or sealed (S11-029).
+    normalizeScanReport(responseData);
+
     // Cache the finished report for identical rescans (full AI reports only —
     // fallback/partial reports would freeze a degraded experience for 7 days).
     if (!isOwnProbe && !usedRuleBasedFallback && !responseData.partialResults) {

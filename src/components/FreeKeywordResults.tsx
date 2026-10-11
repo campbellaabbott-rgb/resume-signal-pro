@@ -625,14 +625,14 @@ export function FreeKeywordResults({
   uploadedJobs = [],
   jobMatchScore,
   jobMatchGrade,
-  matchingSkills = [],
-  missingSkills = [],
-  missingSkillsDetailed = [],
+  matchingSkills: matchingSkillsProp,
+  missingSkills: missingSkillsProp,
+  missingSkillsDetailed: missingSkillsDetailedProp,
   experienceFit,
   titleAlignment,
   jobMatchSummary,
   applicationRecommendation,
-  skillGapActions = [],
+  skillGapActions: skillGapActionsProp,
   competitiveAssessment,
   careerSituation,
   formatRecommendation,
@@ -714,6 +714,12 @@ export function FreeKeywordResults({
   sourceWasFile,
   keywordSource,
 }: FreeKeywordResultsProps) {
+  // A null list from the model is an empty list, not a crash: a default
+  // parameter applies only to undefined (S11-029).
+  const matchingSkills = Array.isArray(matchingSkillsProp) ? matchingSkillsProp : [];
+  const missingSkills = Array.isArray(missingSkillsProp) ? missingSkillsProp : [];
+  const missingSkillsDetailed = Array.isArray(missingSkillsDetailedProp) ? missingSkillsDetailedProp : [];
+  const skillGapActions = Array.isArray(skillGapActionsProp) ? skillGapActionsProp : [];
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
   const { trackButtonClick } = useConversionTracking();
@@ -4158,12 +4164,14 @@ export function FreeKeywordResults({
             {(["summary", "experience", "skills", "education"] as const).map((sec) => {
               const q = sectionCheck.sectionQuality?.[sec];
               if (!q) return null;
-              const cfg = {
+              // A value outside the four (a translated "sólida") draws as
+              // adequate rather than crashing the report (S11-029).
+              const cfg = ({
                 strong: { color: "text-success", bg: "bg-success/10 border-success/20", dot: "bg-success" },
                 adequate: { color: "text-primary", bg: "bg-primary/10 border-primary/20", dot: "bg-primary" },
                 thin: { color: "text-warning", bg: "bg-warning/10 border-warning/20", dot: "bg-warning" },
                 missing: { color: "text-destructive", bg: "bg-destructive/10 border-destructive/20", dot: "bg-destructive" },
-              }[q];
+              } as Record<string, { color: string; bg: string; dot: string }>)[q] ?? { color: "text-primary", bg: "bg-primary/10 border-primary/20", dot: "bg-primary" };
               return (
                 <div key={sec} className={`flex items-center gap-2 rounded-lg border p-2 ${cfg.bg}`}>
                   <span className={`w-2 h-2 rounded-full shrink-0 ${cfg.dot}`} />

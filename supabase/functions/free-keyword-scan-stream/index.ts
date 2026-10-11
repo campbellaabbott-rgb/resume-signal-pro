@@ -8,6 +8,7 @@ import { detectIndustry as detectIndustryShared } from "./industry-detection.ts"
 // byte-identical copies of free-keyword-scan/*.ts — keep them in sync.
 import { detectCountryFromResume, effectiveCountryOf } from "./market-intelligence.ts";
 import { resolveLanguageName } from "../_shared/language-instruction.ts";
+import { FIXED_CHOICES_STAY_ENGLISH, normalizeScanReport } from "../_shared/scan-report-shape.ts";
 import { evaluateCountryStandards } from "./country-standards.ts";
 import { computeParseQuality, parseResumeStructure, formatStructureForPrompt } from "./resume-structure.ts";
 import { detectResumeLanguage } from "./resume-language.ts";
@@ -7576,7 +7577,7 @@ serve(async (req) => {
       // the résumé the IP country decides it, so it is part of the key
       // (sweep S8-070; the wave 2 notes' open follow-up).
       const keyCountry = effectiveCountryOf(validTargetCountry, detectCountryFromResume(resumeText), ipCountry);
-      const cacheInput = `v5|${normalizedResume}|${normalizedJob}|${keyCountry}|${languageKey}`;
+      const cacheInput = `v6|${normalizedResume}|${normalizedJob}|${keyCountry}|${languageKey}`;
       const cacheKey = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(cacheInput))
         .then(hash => Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join(''))
         .then(hex => hex.substring(0, 32));
@@ -7626,6 +7627,8 @@ serve(async (req) => {
           // (a report cached before the clamp shipped can still exceed it).
           const servedFromCache = { ...cachedResponse, cached: true };
           clampImprovementToScoreGap(servedFromCache);
+          // A report cached with a translated fixed choice must not replay a crash (S11-029).
+          normalizeScanReport(servedFromCache);
           send('complete', servedFromCache);
           close();
           return;
@@ -7889,7 +7892,7 @@ What is the PRIMARY industry of this candidate's own experience? Reply with only
       const reportLanguage = detectedResumeLanguage.language !== 'en'
         ? detectedResumeLanguage.languageName
         : (resolveLanguageName(language) ?? "English");
-      const systemPrompt = `Expert ATS resume analyst. Respond in ${reportLanguage}. Every string value in your JSON must be written in ${reportLanguage} (keys stay in English).
+      const systemPrompt = `Expert ATS resume analyst. Respond in ${reportLanguage}. Every free-text string value in your JSON must be written in ${reportLanguage} (keys stay in English). ${FIXED_CHOICES_STAY_ENGLISH}
 
 RESUME TYPE DETECTED: ${resumeType.type} (${resumeType.label})
 SENIORITY LEVEL: ${seniority}
@@ -8956,6 +8959,10 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         console.warn(`[FREE-KEYWORD-SCAN-STREAM] Thin model analysis served as partial (${owed.filter(Boolean).length}/${owed.length} owed sections)`);
         Object.assign(responseData, { partialResults: true, partialReason: 'thin' });
       }
+
+      // Every fixed choice and list the page draws holds a value it can draw,
+      // before the report is cached or sent (S11-029).
+      normalizeScanReport(responseData);
 
       // Store in cache for future requests (non-blocking)
       if (!thinAnalysis) EdgeRuntime.waitUntil(
