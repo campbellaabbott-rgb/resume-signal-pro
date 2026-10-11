@@ -29,7 +29,8 @@ closes the gap. Policy lives in `docs/deploy-ledger.json`:
   be met (main carries an earlier build, or no such function) stops the
   message (exit 6). A migration with no entry goes before the functions.
 - `reservations`: the migration-timestamp day and job-board version each
-  workstream may use, so two branches never collide.
+  workstream may use, so two branches never collide, and the order they
+  deploy in (`deployOrder`, §3).
 
 `--message` runs `git fetch origin main` and refuses (exit 5) unless HEAD is
 origin/main: Lovable pulls main, and a stale checkout re-lists migrations
@@ -96,13 +97,25 @@ the new main, and the ledger is re-run.
 
 ## 3. Reserved ranges
 
-| workstream | migrations | job-board BUILD_VERSION | other FN_BUILD date |
-|---|---|---|---|
-| wave 2 (merged, PR #24) | 20261008* | 2026-09-09.91 | 2026-10-08 |
-| wave 3 (in progress; branches wave3/ and the S11 round's w31/) | 20261009* | 2026-09-09.92 | 2026-10-09 |
-| ledger repair (this PR) | none | none | 2026-10-10 |
-| connect-and-apply | 20261011* | 2026-09-09.93 | 2026-10-11 |
-| next | 20261012* onwards, one day each | 2026-09-09.94+ | that day |
+The deploy order from 2026-10-11 is the order of the rows after the done ones.
+Each row is a `reservations` key in `docs/deploy-ledger.json`, which carries
+the order as `deployOrder`.
+
+| deploy | workstream (`reservations` key; branches) | migrations | job-board BUILD_VERSION | other FN_BUILD date |
+|---|---|---|---|---|
+| done | wave 2 (`wave2`; PR #24, verified 2026-10-11) | 20261008* | 2026-09-09.91 | 2026-10-08 |
+| done | ledger repair (PR #25) | none | none | 2026-10-10 |
+| 1 | wave 3 (`wave3`; wave3/, the S11 round's w31/, post-wave3/). Deployed 2026-10-11. Its closeout is the post-wave-3 tooling PR, then the three released migrations | 20261009* | 2026-09-09.92 | 2026-10-09 |
+| 2 | company profiles phases 0-2 (`company-profiles`; profiles/) | 20261012* | none: no job-board change | 2026-10-12 |
+| 3 | wave 4 (`wave4`; wave4/, connect-apply/): the S12 sweep fixes, the connect-search-apply build and the profiles MCP and /v1 tools, built and integrated as ONE wave. Until 2026-10-11 this was the connect-and-apply reservation | 20261011* | 2026-09-09.93 | 2026-10-11 |
+| 4 | company profiles phase 3, vendor benefits capture (`company-profiles-phase3`; profiles-p3/) | 20261013* | 2026-09-09.94 | 2026-10-13 |
+| after | next | 20261014* onwards, one day each | 2026-09-09.95+ | that day |
+
+A migration stamp need not sort in deploy order. Wave 4's 20261011* deploys
+after profiles' 20261012*, and the ledger lists whatever the staged runner has
+not recorded, whatever sorts first. Function stamps follow the rule below:
+wave 4 may not stamp 2026-10-11 on a function profiles already stamped
+2026-10-12.
 
 When two branches bump the same function, the integration keeps BOTH changes
 and gives the function a new stamp later than either. Every function whose code

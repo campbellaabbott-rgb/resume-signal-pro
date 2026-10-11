@@ -73,28 +73,50 @@
       "why": "held until wave 3 verified, released 2026-10-11 (layoff-filings 2026-10-09.3 serving; the old build no longer runs). Applied while an older layoff-filings ran, its next nightly WARN read re-upserted the misdated Illinois ids as active"
     }
   },
+  "_reservationsNote": "Listed in deploy order from 2026-10-11 (deployOrder; docs/DEPLOY-LEDGER.md §3): the wave 3 closeout, company profiles phases 0-2, wave 4, company profiles phase 3. A migration stamp need not sort in deploy order (wave 4's 20261011* deploys after profiles' 20261012*): the ledger lists what the staged runner has not recorded, whatever sorts first. A function stamped on a later day by an earlier deploy takes that day with a higher sequence (§3).",
   "reservations": {
     "wave2": {
       "branches": ["wave2/", "wave2-integration"],
       "migrations": "20261008*",
       "jobBoard": "2026-09-09.91",
-      "fnBuildDate": "2026-10-08"
+      "fnBuildDate": "2026-10-08",
+      "status": "deployed; verified 2026-10-11 (verifiedDeploys 1fc1702d)"
     },
     "wave3": {
-      "branches": ["wave3/", "w31/"],
+      "branches": ["wave3/", "w31/", "post-wave3/"],
       "migrations": "20261009*",
       "jobBoard": "2026-09-09.92",
-      "fnBuildDate": "2026-10-09"
+      "fnBuildDate": "2026-10-09",
+      "status": "deployed 2026-10-11 (verifiedDeploys 35559389); the closeout is the post-wave-3 tooling PR (post-wave3/), then the three released migrations in a second message",
+      "deployOrder": 1
     },
-    "connect-apply": {
-      "branches": ["connect-apply/"],
+    "company-profiles": {
+      "branches": ["profiles/"],
+      "migrations": "20261012*",
+      "jobBoard": "none: phases 0-2 change no job-board (phase 3 is company-profiles-phase3)",
+      "fnBuildDate": "2026-10-12",
+      "status": "phases 0-2 (identity, the hiring-record gate, perks); in flight on profiles/integration",
+      "deployOrder": 2
+    },
+    "wave4": {
+      "branches": ["wave4/", "connect-apply/"],
       "migrations": "20261011*",
       "jobBoard": "2026-09-09.93",
-      "fnBuildDate": "2026-10-11"
+      "fnBuildDate": "2026-10-11",
+      "status": "the S12 sweep fixes, the connect-search-apply build and the profiles MCP and /v1 tools, built and integrated as ONE wave. This was the connect-apply reservation until 2026-10-11; connect-apply/ branches belong to wave 4",
+      "deployOrder": 3
+    },
+    "company-profiles-phase3": {
+      "branches": ["profiles-p3/"],
+      "migrations": "20261013*",
+      "jobBoard": "2026-09-09.94",
+      "fnBuildDate": "2026-10-13",
+      "status": "vendor benefits capture; its branches are profiles-p3/, so they are not taken for phases 0-2's profiles/",
+      "deployOrder": 4
     },
     "next": {
-      "migrations": "20261012* and later, one day per workstream",
-      "jobBoard": "2026-09-09.94+"
+      "migrations": "20261014* and later, one day per workstream",
+      "jobBoard": "2026-09-09.95+"
     }
   },
   "_baselineNote": "Lovable's staged-runner stubs (drizzle/migrations) name every migration from 20260923 on; earlier ones were applied before that record was complete and were judged applied by behaviour (2026-10-10 check: 20260917170000, 20260918101000, 20260918200000, 20260921120000 have no stub).",
