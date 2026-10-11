@@ -74,7 +74,7 @@ describe("the heartbeat reads the pass-end tail's three ages", () => {
   it("job-board writes the counted time on both rows, and the heartbeat reads it", () => {
     const BOARD = readFileSync(resolve(__dirname, "../../supabase/functions/job-board/index.ts"), "utf8");
     expect(BOARD).toMatch(/facetsCarried = true;\s*facetsCountedAt = carriedCountsAt\(pv\);/);
-    expect(BOARD).toMatch(/\.\.\.\(facetsCarried \? \{ facetsCarried: true, facetsCarriedAt: facetsCountedAt \?\? startIso \} : \{\}\),\s*refreshedAt: startIso,/);
+    expect(BOARD).toMatch(/\.\.\.\(facetsCarried \? \{ facetsCarriedAt: facetsCountedAt \?\? startIso \} : \{\}\),\s*refreshedAt: startIso,/);
     expect(BOARD).toMatch(/\.\.\.\(facetsCarried \? \{ facetsCarried: true, facetsCarriedAt: facetsCountedAt \?\? v\.refreshedAt \} : \{\}\),/);
     expect(HB).toMatch(/select\('refreshedAt:v->>refreshedAt,facetsCarriedAt:v->>facetsCarriedAt'\)\.eq\('k', 'refresh_head'\)/);
     expect(HB).toMatch(/facetsCarriedAt: rh\.error \? null : \(rh\.data as \{ facetsCarriedAt\?: string \| null \} \| null\)\?\.facetsCarriedAt,/);

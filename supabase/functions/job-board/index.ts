@@ -5836,7 +5836,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         // Facet fields above are LAST pass's, carried through an aggregate
         // failure so the upsert-replaces-whole-v write cannot clobber them —
         // named so a reader of this row can tell a carried total from a fresh one.
-        ...(facetsCarried ? { facetsCarried: true, facetsCarriedAt: facetsCountedAt ?? startIso } : {}),
+        ...(facetsCarried ? { facetsCarried: true } : {}),
+        // When those carried counts were counted, so the next carry keeps it (facet-carry.ts).
+        ...(facetsCarried ? { facetsCarriedAt: facetsCountedAt ?? startIso } : {}),
         refreshedAt: startIso,
       };
       await client.from("job_board_meta").upsert({ k: "refresh", v, updated_at: new Date().toISOString() }, { onConflict: "k" });
