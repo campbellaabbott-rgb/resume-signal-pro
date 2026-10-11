@@ -7,6 +7,7 @@ import { useScrollDepth } from "@/hooks/use-scroll-depth";
 import { useTimeOnPage } from "@/hooks/use-time-on-page";
 import { useFunnelTracking } from "@/hooks/use-funnel-tracking";
 import { takeJdHandoff } from "@/lib/jd-handoff";
+import { scannableJobDescription } from "@/lib/job-description-input";
 import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
 import { ResumeUploader } from "@/components/ResumeUploader";
@@ -616,11 +617,19 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
   // Job-board handoff: /jobs stores the selected posting's description in
   // sessionStorage and navigates here with #upload. Prefill the JD so the
   // next scan is a fit check against that exact posting.
+  //
+  // THE HAND-OFF OUTRANKS THE SESSION (sweep S11-008). The restore effect
+  // below runs in the same commit with the first render's empty description,
+  // so it used to set the PREVIOUS scan's posting on top of this one: the
+  // toast named B and the scan scored A. The hand-off is written to the
+  // session here, before that effect reads it, and the restore only fills an
+  // empty description.
   useEffect(() => {
     try {
       const h = takeJdHandoff();
       if (!h) return;
       setJobDescriptionText(h.jd);
+      saveResumeToSession("", undefined, h.jd);
       toast({
         title: t("jobsPage.fitLoadedTitle", "Job description loaded"),
         description: t("jobsPage.fitLoadedDesc", "{{title}} at {{company}} — upload or paste your resume and the scan will check fit against this posting.", {
@@ -734,8 +743,11 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
     if (sessionData.linkedInText && !linkedInText) {
       setLinkedInText(sessionData.linkedInText);
     }
-    if (sessionData.jobDescriptionText && !jobDescriptionText) {
-      setJobDescriptionText(sessionData.jobDescriptionText);
+    if (sessionData.jobDescriptionText) {
+      const restored = sessionData.jobDescriptionText;
+      // Functional: this closure's jobDescriptionText is the first render's,
+      // never a hand-off set earlier in the same commit.
+      setJobDescriptionText((prev) => prev || restored);
     }
     
     // HASH NAVIGATION (/#upload from the board's "Check my fit — free scan").
@@ -1086,7 +1098,9 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
     // Grade→game-plan rescan: a posting pasted in the report arrives here
     // directly (state updates are async, so the param wins over state). The
     // uploader's own JD box also arrives as this argument (register L13-31).
-    const jdForScan = (typeof jdOverride === "string" ? jdOverride : jobDescriptionText) || undefined;
+    // Never a link: the primary and the streaming fallback both send this
+    // (scannableJobDescription, sweep S11-032).
+    const jdForScan = scannableJobDescription(typeof jdOverride === "string" ? jdOverride : jobDescriptionText) || undefined;
     if (typeof jdOverride === "string" && jdOverride !== jobDescriptionText) setJobDescriptionText(jdOverride);
 
     // Warm the lazy report chunk while the scan runs so results render instantly.

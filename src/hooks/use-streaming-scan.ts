@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { parseEdgeFunctionError, ParsedEdgeFunctionError } from '@/lib/edge-function-errors';
 import { isNetworkRetryable } from '@/lib/resilient-edge-function';
+import { scannableJobDescription } from '@/lib/job-description-input';
 import { 
   validateResumeBeforeSend, 
   validateExperienceEstimate,
@@ -300,7 +301,8 @@ export function useStreamingScan() {
           },
           body: JSON.stringify({
             resumeText,
-            jobDescriptionText: options?.jobDescriptionText,
+            // Never a link (src/lib/job-description-input.ts, S11-032).
+            jobDescriptionText: scannableJobDescription(options?.jobDescriptionText) || undefined,
             honeypot: options?.honeypot,
             skipCache: options?.skipCache,
             targetCountry: options?.targetCountry,

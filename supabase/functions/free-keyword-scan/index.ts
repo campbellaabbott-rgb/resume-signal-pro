@@ -10,6 +10,7 @@ import { groundedIn, normalizeForGrounding } from "./grounding.ts";
 import { getServiceClient } from "../_shared/supabase-client.ts";
 import { attachScanMailSeal } from "../_shared/scan-mail-seal.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
+import { scannableJobDescription } from "../_shared/job-description-input.ts";
 import {
   parseCreditSessions,
   refundScanCredit,
@@ -1355,7 +1356,10 @@ serve(async (req) => {
       // this it fell through to the generic 500 handler (found by fuzzing).
       req.json().catch(() => { throw Object.assign(new Error('bad json'), { badJson: true }); })
     ]);
-    const { resumeText, jobDescriptionText, honeypot } = body;
+    const { resumeText, honeypot } = body;
+    // A link is not a posting (_shared/job-description-input.ts, S11-032):
+    // the old Job URL tab sent "[Job URL: ...]" and was scored against it.
+    const jobDescriptionText = scannableJobDescription(body.jobDescriptionText);
     // Target market the candidate is applying TO (ISO-2). Optional; overrides
     // residence-detected country for standards when the user states it.
     const validTargetCountry = (typeof body.targetCountry === 'string' && /^[A-Za-z]{2}$/.test(body.targetCountry))

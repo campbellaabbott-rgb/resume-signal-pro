@@ -1509,6 +1509,10 @@ interface BoardResponse {
   relatedTotal?: number;
   relatedCapped?: boolean;
   countUnavailable?: boolean;
+  /** Employer tokens of the request the board does not carry (sweep S11-020):
+   *  sent only when every employer the request scopes to is outside the
+   *  catalogue, never for an employer whose board is empty today. */
+  unknownCompanies?: string[];
   /** A pay-ordered first page with nothing on it, and why: no match states pay,
    *  or the pay read failed. Either way the matches exist, so "nothing matches"
    *  would be false. */
@@ -3796,6 +3800,26 @@ function JobsBoard({ boardId }: { boardId: string }) {
       ({ error: err } = await searchesTable().insert({
         user_id: session.user.id, name, params, digest_opt_in: true,
       }));
+    }
+    // AN ALERT ON A SEARCH ALREADY SAVED TURNS THE ALERT ON (sweep S11-037).
+    // The name is a pure function of the filters and the table is unique on
+    // (user, name), so an alert asked for on a search saved earlier without
+    // one collides here. The person just asked to be emailed: the saved row
+    // gets the digest, at the cadence an alert promises. A plain Save on the
+    // same collision changes nothing.
+    if (err && err.code === "23505" && alert) {
+      let { error: upErr } = await searchesTable()
+        .update({ digest_opt_in: true, digest_cadence: "daily" })
+        .eq("user_id", session.user.id).eq("name", name);
+      if (upErr && /digest_cadence/.test(upErr.message ?? "")) {
+        ({ error: upErr } = await searchesTable()
+          .update({ digest_opt_in: true })
+          .eq("user_id", session.user.id).eq("name", name));
+      }
+      toast(upErr
+        ? { title: t("jobsPage.saveFailed", "Couldn't save — try again.") }
+        : { title: t("jobsPage.searchAlertsOn", "Alerts turned on") });
+      return;
     }
     if (err && err.code === "23505") {
       toast({ title: t("jobsPage.searchExists", "You already saved this search.") });
@@ -6595,8 +6619,16 @@ function JobsBoard({ boardId }: { boardId: string }) {
    *  location, no other filter, not the browser-side "actively hiring" cut).
    *  Anything else leaves the question unanswered — never answered wrongly. */
   const currentFilterSig = useMemo(() => JSON.stringify(boardFilterBody(filterState)), [filterState]);
+  /** WE DO NOT CARRY THIS EMPLOYER (sweep S11-020). The board names a token
+   *  outside its catalogue (unknownCompanies) instead of answering an empty
+   *  list, and the page says so: noindex, no "not hiring" sentence and no
+   *  claim offer. A zero for a token we never read is no answer about the
+   *  employer, and it used to be printed as one on an indexable page. */
+  const landerUncarried = !!landerCompany && !error && !!data && dataFilterSig === currentFilterSig
+    && Array.isArray(data.unknownCompanies) && data.unknownCompanies.includes(landerCompany);
   const landerHiringAnswer = useMemo((): "yes" | "no" | null => {
     if (!landerCompany || activelyHiringOnly || error || loading || !data) return null;
+    if (landerUncarried) return null;
     if (!Object.keys(boardFilterBody(filterState)).every((k) => k === "companies")) return null;
     if (dataFilterSig !== currentFilterSig) return null;
     // A WITHDRAWN COUNT IS NOT A ZERO (total:null + countUnavailable).
@@ -6605,7 +6637,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
     // descriptions has total 0 and a full page.
     if ((data.total ?? 0) + (data.relatedTotal ?? 0) > 0) return "yes";
     return refreshing ? null : "no";
-  }, [landerCompany, activelyHiringOnly, error, loading, data, filterState, dataFilterSig, currentFilterSig, refreshing]);
+  }, [landerCompany, activelyHiringOnly, error, loading, data, filterState, dataFilterSig, currentFilterSig, refreshing, landerUncarried]);
   // Whether the reply on screen answers the request now on screen — the
   // search order claim reads `data` and may speak only for that reply.
   const orderClaimCurrent = !loading && !refreshing && !!data && dataFilterSig === currentFilterSig;
@@ -8474,16 +8506,21 @@ function JobsBoard({ boardId }: { boardId: string }) {
       <SEO
         title={landerCategory
           ? t("jobsPage.landerSeoTitle", "Live {{category}} Jobs — From Official Company Job Boards", { category: t(`jobsPage.categories.${landerCategory}`, landerCategory) })
+          : landerUncarried
+          ? t("jobsPage.uncarriedSeoTitle", "We don't carry {{company}}", { company: landerCompanyName })
           : landerCompany
           ? t("jobsPage.companySeoTitle", "Is {{company}} hiring? — Real, verified open roles", { company: landerCompanyName })
           : t("jobsPage.seoTitle", "Live Jobs From Companies' Own Boards — Check Your Fit Before You Apply")}
-        description={landerCategory
+        description={landerUncarried
+          ? t("jobsPage.uncarriedBody", "{{company}} isn't on our job board. We only list jobs from the employer job boards we read.", { company: landerCompanyName })
+          : landerCategory
           ? t("jobsPage.landerSeoDescription", "Live {{category}} openings pulled straight from companies' own official job boards — no aggregators, no reposts, re-verified all day. Check your resume's fit free, then apply on the company's own site.", { category: t(`jobsPage.categories.${landerCategory}`, landerCategory) })
           : landerCompany
           ? t("jobsPage.companySeoDescription", "Browse {{companyPossessive}} open roles, pulled straight from {{companyPossessive}} own job board and re-verified all day — no aggregators, no reposts. Check your resume's fit against any role free, then apply on {{companyPossessive}} own site.", { company: landerCompanyName, companyPossessive: possessive(landerCompanyName ?? "") })
           : t("jobsPage.seoDescription", "Real openings pulled straight from thousands of companies' own official job boards — no aggregators, no reposts, re-verified all day and checked live when you apply. See how your resume fits any posting free, then apply on the company's own site.")}
         path={landerCompany ? companyLanderPath(landerCompany) : landerCategory ? `/jobs/field/${landerCategory}` : "/jobs"}
         canonicalPath={landerCompany && bakedPrimary ? companyLanderPath(bakedPrimary) : undefined}
+        noIndex={landerUncarried}
       />
       <Header />
       {/* The site-wide skip link is the first focusable element in the
@@ -8538,7 +8575,9 @@ function JobsBoard({ boardId }: { boardId: string }) {
               76% bounce; mobile showed zero jobs for 2.5 screens). */}
           <div className="flex items-center gap-2 mb-1">
             <Briefcase className="w-5 h-5 text-primary" />
-            <h1 className="text-2xl md:text-3xl font-bold">{landerCompany
+            <h1 className="text-2xl md:text-3xl font-bold">{landerUncarried
+              ? t("jobsPage.uncarriedH1", "We don't carry {{company}}", { company: landerCompanyName })
+              : landerCompany
               ? t("jobsPage.companyH1", "Open roles at {{company}}", { company: landerCompanyName })
               : landerCategory
               ? t("jobsPage.landerH1", "Live {{category}} jobs", { category: t(`jobsPage.categories.${landerCategory}`, landerCategory) })
@@ -8586,7 +8625,9 @@ function JobsBoard({ boardId }: { boardId: string }) {
             </p>
           )}
           <p className="text-sm text-muted-foreground mb-2">
-            {landerCompany
+            {landerUncarried
+              ? t("jobsPage.uncarriedBody", "{{company}} isn't on our job board. We only list jobs from the employer job boards we read.", { company: landerCompanyName })
+              : landerCompany
               ? t("jobsPage.companySubtitle", "Every {{company}} opening here comes straight from {{companyPossessive}} own careers system — verified, still open, and re-checked the moment you apply.", { company: landerCompanyName, companyPossessive: possessive(landerCompanyName ?? "") })
               // A category lander's headline count must be THAT category's —
               // the board-wide 574k under an "Engineering jobs" H1 claimed
@@ -8754,7 +8795,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
           {landerCompany && (
             <DeclaredWagesCard companyToken={landerCompany} companyName={landerCompanyName ?? landerCompany} />
           )}
-          {landerCompany && (
+          {landerCompany && !landerUncarried && (
             <CompanyClaim companyToken={landerCompany} companyName={landerCompanyName ?? landerCompany} />
           )}
           {/* Single row on phones (scrolls; mask hints overflow) — wrapped to
@@ -8955,7 +8996,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
 
           {/* Watch-company: one click on any company page — a saved search under
               the hood, so account new-since counts and the digest just work. */}
-          {landerCompany && (
+          {landerCompany && !landerUncarried && (
             <div className="flex flex-wrap items-center gap-2 mb-6 -mt-2">
               <Button size="sm" variant="outline" className="gap-1.5" onClick={watchCompany}>
                 <BookmarkCheck className="w-3.5 h-3.5" />
@@ -11155,7 +11196,9 @@ function JobsBoard({ boardId }: { boardId: string }) {
               {/* The catalog turns over daily — "nothing today" is not
                   "nothing ever". Saving the search wires it into the existing
                   alert loop, so the dead end becomes the reason to come back. */}
-              {(q || location || category || company) && (
+              {/* Never for an employer we do not carry: no posting of theirs
+                  will ever arrive to be mailed (S11-020). */}
+              {(q || location || category || company) && !landerUncarried && (
                 <div className="mt-4 pt-3 border-t border-border">
                   <p className="text-xs text-muted-foreground mb-2">
                     {t("jobsPage.zeroAlertHint", "New postings land here every day. Get an email when roles matching this search appear:")}
