@@ -24,7 +24,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type { PGlite } from "@electric-sql/pglite";
 import { agentDb, migration } from "./helpers/agent-db";
-import { APPROVABLE_REFUSALS } from "../../supabase/functions/_shared/apply-release";
+import { APPROVABLE_REFUSALS, decideRelease, refusalToStore, type ReleaseInput } from "../../supabase/functions/_shared/apply-release";
 import { packetState } from "../lib/packetState";
 
 const M_PASS_GRANT = "20261008131500_a_signed_in_account_reads_its_pass_and_never_writes_it.sql";
@@ -144,9 +144,36 @@ describe("S11-042: a person may approve below the fit floor", () => {
     expect(await decide(id, "approve")).toMatchObject({ decided_ok: false, decide_reason: "not_approvable" });
   });
 
-  it("apply-agent never re-reasons an approvable packet into a code nobody can approve", () => {
+  it("a packet waiting for a person keeps its Approve code when only an unattended rule now refuses it", () => {
+    expect(refusalToStore("review-mode", "vendor-not-allowed")).toBe("review-mode");
+    expect(refusalToStore("held-for-review", "vendor-not-allowed")).toBe("held-for-review");
+  });
+
+  // Review of S11-042: the shipped rule kept any approvable code, so a stale
+  // "sender-offline" or "daily-cap" told the person it was queued for later
+  // while it waited on gaps, or on a vendor taken off the auto list.
+  const auto = (over: Partial<ReleaseInput>): ReleaseInput => ({
+    applyMode: "auto", packetReady: true, blockerCount: 0, source: "breezy", allowedSources: ["breezy"],
+    sentToday: 0, dailyCap: 10, alreadySubmitted: false, fitPct: 80, minFitPct: 50, duplicate: false,
+    senderOnline: true, holdFirstN: 0, autoReleasedCount: 0, ...over,
+  });
+  const redecided = (previous: string, over: Partial<ReleaseInput>) => {
+    const d = decideRelease(auto(over));
+    if (d.release === true) throw new Error("expected a refusal");
+    return refusalToStore(previous, d.code);
+  };
+  it.each([
+    ["sender-offline", { packetReady: false, blockerCount: 2 }, "not-ready"],
+    ["sender-offline", { source: "personio" }, "vendor-not-allowed"],
+    ["daily-cap", { source: "personio" }, "vendor-not-allowed"],
+    ["review-mode", { packetReady: false, blockerCount: 2 }, "not-ready"],
+  ] as const)("a waiting %s packet re-decided with %j stores today's reason, %s", (previous, over, want) => {
+    expect(redecided(previous, over)).toBe(want);
+  });
+
+  it("apply-agent stores what refusalToStore says, and the panel reads the same approvable list", () => {
     const agent = readFileSync(resolve(__dirname, "../../supabase/functions/apply-agent/index.ts"), "utf8");
-    expect(agent).toMatch(/const keepsApprove = APPROVABLE_REFUSALS\.has\(w\.release_refusal as ReleaseRefusal\)\s*&& !APPROVABLE_REFUSALS\.has\(decision\.code\);\s*if \(decision\.code !== w\.release_refusal && !keepsApprove\) \{/);
+    expect(agent).toMatch(/const stored = refusalToStore\(w\.release_refusal, decision\.code\);\s*if \(stored !== w\.release_refusal\) \{\s*await client\.from\("agent_submissions"\)\.update\(\{ release_refusal: stored \}\)/);
     const panel = readFileSync(resolve(__dirname, "../components/account/ApplyQueuePanel.tsx"), "utf8");
     expect(panel).toMatch(/const APPROVABLE: ReadonlySet<string> = APPROVABLE_REFUSALS;/);
   });
