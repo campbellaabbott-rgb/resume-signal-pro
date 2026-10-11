@@ -3810,6 +3810,7 @@ export type Database = {
           retry_count: number
           status: string
           stripe_session_id: string
+          transient_failures: number
         }
         Insert: {
           ai_model_used?: string | null
@@ -3838,6 +3839,7 @@ export type Database = {
           retry_count?: number
           status?: string
           stripe_session_id: string
+          transient_failures?: number
         }
         Update: {
           ai_model_used?: string | null
@@ -3866,6 +3868,7 @@ export type Database = {
           retry_count?: number
           status?: string
           stripe_session_id?: string
+          transient_failures?: number
         }
         Relationships: []
       }
@@ -5310,6 +5313,10 @@ export type Database = {
       }
       delete_email: {
         Args: { message_id: number; queue_name: string }
+        Returns: boolean
+      }
+      delivery_error_is_transient: {
+        Args: { p_error: string }
         Returns: boolean
       }
       detect_user_error_spikes: {

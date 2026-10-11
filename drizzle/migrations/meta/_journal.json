@@ -1037,6 +1037,13 @@
       "when": 1791751553181,
       "tag": "0147_20261009134000_a_legal_notice_is_recorded_as_sent_only_after_resend_accepted_it",
       "breakpoints": true
+    },
+    {
+      "idx": 148,
+      "version": "7",
+      "when": 1791751565414,
+      "tag": "0148_20261009134100_a_paid_delivery_is_retried_through_the_day_and_an_outage_does_not_spend_its_tries",
+      "breakpoints": true
     }
   ]
 }
