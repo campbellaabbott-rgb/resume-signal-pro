@@ -240,8 +240,10 @@ const SUPPORTED_METHODS = ["initialize", "tools/list", "tools/call", "prompts/li
  *  2026-10-09.24: a pass is spent only on a job the agent can submit, and any
  *  other is refused for nothing (S11-039); "a résumé on file" needs the file in
  *  the account's folder as well as its text (S11-041); the Agent plan opens
- *  fit_resume (S11-121). */
-const FN_BUILD = "agent-mcp.2026-10-09.24";
+ *  fit_resume (S11-121).
+ *  2026-10-09.71: initialize, the guide and board_stats name the Agent plan
+ *  beside a paid key and a pass as what opens fit_resume (review of S11-121). */
+const FN_BUILD = "agent-mcp.2026-10-09.71";
 /** Where a free key is minted — the page every refusal in this file points at. */
 const MINT_URL = "https://resumebooster.work/data-api";
 /** Where a pass is bought, signed in — the fix every pass refusal names. */

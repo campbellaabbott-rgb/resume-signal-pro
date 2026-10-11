@@ -483,7 +483,7 @@ describe("the shipped bundle", () => {
       "https://esm.sh/@supabase/supabase-js@2": "export function createClient() { return globalThis.__fjpDb; }",
     });
     const pre = await handler(new Request("https://h.supabase.co/functions/v1/fetch-job-posting", { method: "OPTIONS" }));
-    expect(pre.headers.get("x-fn-build")).toBe("fetch-job-posting.2026-10-09.2");
+    expect(pre.headers.get("x-fn-build")).toBe("fetch-job-posting.2026-10-09.71");
     expect(pre.headers.get("access-control-allow-headers")).toMatch(/content-type/);
     const res = await handler(post("https://www.indeed.com/viewjob?jk=1"));
     expect(await res.json()).toEqual({ ok: false, reason: "unsupported_host" });

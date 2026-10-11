@@ -321,7 +321,7 @@ const LIST_FILTERS = [
 // suspectBatch is null, not false, on a closure nobody assessed.
 // 2026-10-09.6: a state filter also matches a code that leads the place
 // ("TX - Houston", "US-TX-Houston"), _shared/location-match.ts (S11-003).
-const FN_BUILD = "public-api.2026-10-09.7";
+const FN_BUILD = "public-api.2026-10-09.71";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",

@@ -8,7 +8,7 @@ register items: S11-032, S11-008, S11-020, S11-037. Verifier:
 
 | function | build | why |
 |---|---|---|
-| fetch-job-posting (NEW) | `fetch-job-posting.2026-10-09.2` | S11-032 (the review round's clocks and one-pass scans: .2) |
+| fetch-job-posting (NEW) | `fetch-job-posting.2026-10-09.71` | S11-032 (the review round's clocks and one-pass scans: .71) |
 | free-keyword-scan | `free-keyword-scan.2026-10-09.4` | ignores a link sent as the job description |
 | free-keyword-scan-stream | `free-keyword-scan-stream.2026-10-09.4` | the same |
 | analyze-resume | `analyze-resume.2026-10-09.3` | the same, for the $5 analysis |

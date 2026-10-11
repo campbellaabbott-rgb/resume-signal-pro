@@ -57,7 +57,10 @@ import { nextRunStamp } from "../_shared/run-stamp.ts";
 // answers "this country" from the posting's own country (S11-060); a failed
 // drafting call leaves the posting for the next run instead of a packet that
 // blames the résumé (S11-040).
-const BUILD_VERSION = "2026-10-09.24";
+// 2026-10-09.71: a notice inside the question's own clause is not the
+// question, "the country in which you are applying" is the posting's, and a
+// waiting packet stores today's refusal (review of S11-012, S11-060, S11-042).
+const BUILD_VERSION = "2026-10-09.71";
 // Provable from outside with no key: the CORS preflight and every response
 // carry this in x-fn-build.
 const FN_BUILD = `apply-agent.${BUILD_VERSION}`;
