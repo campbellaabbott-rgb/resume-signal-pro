@@ -72,7 +72,7 @@ beforeEach(() => {
 
 async function upload(bytes: Uint8Array, name = "resume.docx"): Promise<{ status: number; body: Record<string, unknown> }> {
   const form = new FormData();
-  form.append("file", new File([bytes], name, { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" }));
+  form.append("file", new File([bytes as Uint8Array<ArrayBuffer>], name, { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" }));
   const res = await handler(new Request("https://harness.supabase.co/functions/v1/parse-docx", { method: "POST", body: form }));
   return { status: res.status, body: await res.json() };
 }
