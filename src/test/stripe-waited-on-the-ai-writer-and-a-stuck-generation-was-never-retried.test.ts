@@ -182,12 +182,16 @@ describe("20261009140000: the selector picks a generation nobody finished, after
       INSERT INTO public.product_deliveries (stripe_session_id, product_type, status, created_at, content_generation_started_at, retry_count) VALUES
         ('gen_spent', 'cover_letter', 'generating', now() - interval '3 hours', now() - interval '3 hours', 3);
     `);
-    const { rows } = await db.query<{ stripe_session_id: string }>("SELECT stripe_session_id FROM public.get_failed_deliveries_for_retry(20)");
+    // The sweep that handles stuck generations asks for them (S11-146).
+    const { rows } = await db.query<{ stripe_session_id: string }>("SELECT stripe_session_id FROM public.get_failed_deliveries_for_retry(20, true)");
     expect(rows.map((r) => r.stripe_session_id).sort()).toEqual(["gen_old", "gen_unstamped_old", "pay_old"]);
+    // A caller that does not ask (the live sweep) is handed none.
+    const live = await db.query<{ stripe_session_id: string }>("SELECT stripe_session_id FROM public.get_failed_deliveries_for_retry(20)");
+    expect(live.rows.map((r) => r.stripe_session_id).sort()).toEqual(["pay_old"]);
     const acl = await db.query<{ anon: boolean; auth: boolean; svc: boolean }>(
-      `SELECT has_function_privilege('anon', 'public.get_failed_deliveries_for_retry(integer)', 'EXECUTE') AS anon,
-              has_function_privilege('authenticated', 'public.get_failed_deliveries_for_retry(integer)', 'EXECUTE') AS auth,
-              has_function_privilege('service_role', 'public.get_failed_deliveries_for_retry(integer)', 'EXECUTE') AS svc`);
+      `SELECT has_function_privilege('anon', 'public.get_failed_deliveries_for_retry(integer,boolean)', 'EXECUTE') AS anon,
+              has_function_privilege('authenticated', 'public.get_failed_deliveries_for_retry(integer,boolean)', 'EXECUTE') AS auth,
+              has_function_privilege('service_role', 'public.get_failed_deliveries_for_retry(integer,boolean)', 'EXECUTE') AS svc`);
     expect(acl.rows[0]).toEqual({ anon: false, auth: false, svc: true });
   });
 });

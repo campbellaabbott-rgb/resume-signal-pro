@@ -59,10 +59,22 @@ export function AgentSubscriptionCard() {
 
   const toSignIn = () => navigate(`/auth?next=${encodeURIComponent(`${location.pathname}${location.search}`)}`);
 
+  // The portal's answer is shown whatever it is (S11-015): a refusal used to
+  // leave the button doing nothing at all.
   const openPortal = async () => {
-    const { data } = await supabase.functions.invoke("create-portal-session", { body: {} });
-    const url = (data as { url?: string } | null)?.url;
-    if (url) window.location.href = url;
+    const { data, error } = await supabase.functions.invoke("create-portal-session", { body: {} });
+    let answer = (data ?? {}) as { url?: string; error?: string };
+    if (error && !answer.url && !answer.error) {
+      try {
+        const ctx = (error as { context?: { json?: () => Promise<unknown> } }).context;
+        if (ctx?.json) answer = ((await ctx.json()) ?? {}) as typeof answer;
+      } catch { /* no body: the generic line below */ }
+    }
+    if (answer.url) {
+      window.location.href = answer.url;
+      return;
+    }
+    toast.error(answer.error || t("agentPlan.portalFailed"));
   };
 
   const subscribe = async () => {

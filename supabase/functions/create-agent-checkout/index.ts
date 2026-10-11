@@ -45,11 +45,11 @@ import { checkoutVerdict, verdictBody } from "../_shared/subscription-standing.t
 import { clientAddressOr } from "../_shared/client-address.ts";
 import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-start.ts";
 import { bearerOf } from "../_shared/service-caller.ts";
-import { checkoutLanguageOf, checkoutOrigin, euConsentRefusal, policyMetadata, renewalTerms, sessionPolicy } from "../_shared/checkout-policy.ts";
+import { checkoutLanguageOf, checkoutOrigin, euConsentAnswer, euConsentRefusal, policyMetadata, renewalTerms, sessionPolicy } from "../_shared/checkout-policy.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-agent-checkout.2026-10-09.4";
+const FN_BUILD = "create-agent-checkout.2026-10-09.61";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -97,7 +97,7 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const env = (k: string) => Deno.env.get(k);
     const consentMissing = euConsentRefusal(env, "subscription", body);
-    if (consentMissing) return json({ error: "Please tick the box above the button to continue.", consentRequired: consentMissing }, 400);
+    if (consentMissing) return json(euConsentAnswer(consentMissing), 400);
 
     // An account granted the agent by hand already has it.
     if (await manualAgentGrant(supabase, email)) return json({ alreadySubscribed: true, tier: "agent" });

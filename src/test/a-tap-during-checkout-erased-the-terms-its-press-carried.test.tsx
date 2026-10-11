@@ -95,14 +95,21 @@ vi.mock("@/components/ResumeUploader", async () => {
 import Index from "@/pages/Index";
 import { PurchaseTerms } from "@/components/PurchaseTerms";
 import { useProductCheckout } from "@/hooks/use-product-checkout";
-import { setPurchaseConsent } from "@/lib/purchase-terms";
+import { resetPurchaseTermsForTests } from "@/lib/purchase-terms";
 
 vi.setConfig(MOUNT_TEST_BUDGET);
 afterEach(() => {
   cleanup(); eu.on = false; invoke.mockReset(); createCheckout.mockReset();
-  setPurchaseConsent({ withdrawalWaiver: false, serviceStartConsent: false });
+  resetPurchaseTermsForTests();
   try { sessionStorage.clear(); localStorage.clear(); } catch { /* blocked */ }
 });
+
+/** Ticks the box of the Terms line that covers this button (each line holds its own, S11-141). */
+function tickBoxBeside(name: string) {
+  let block: HTMLElement | null = screen.getByRole("button", { name }).parentElement;
+  while (block && !block.querySelector("input[type=checkbox]")) block = block.parentElement;
+  fireEvent.click(block!.querySelector("input[type=checkbox]")!);
+}
 
 /** A press, then a tap on the page body while the résumé store is still open. */
 async function pressThenTapElsewhere(button: HTMLElement) {
@@ -136,7 +143,7 @@ describe("a product checkout (use-product-checkout)", () => {
     eu.on = true;
     invoke.mockResolvedValue({ data: null, error: null });
     render(<MemoryRouter><Card /></MemoryRouter>);
-    setPurchaseConsent({ withdrawalWaiver: true });
+    tickBoxBeside("unlock");
     await pressThenTapElsewhere(screen.getByRole("button", { name: "unlock" }));
     await waitFor(() => expect(body()).toBeTruthy());
     expect(body()).toMatchObject({ termsVersion: TERMS_VERSION, withdrawalWaiver: true });
@@ -161,7 +168,7 @@ describe("the homepage's Full Analysis checkout (Index.handleCheckout)", () => {
     invoke.mockResolvedValue({ data: null, error: null });
     createCheckout.mockResolvedValue({ data: null, error: { title: "x", description: "stopped for the test", isRetryable: false }, attempts: 1, totalDuration: 1 });
     render(<HelmetProvider><MemoryRouter initialEntries={["/"]}><Index /></MemoryRouter></HelmetProvider>);
-    setPurchaseConsent({ withdrawalWaiver: true });
+    tickBoxBeside("buy the full analysis");
     await pressThenTapElsewhere(screen.getByRole("button", { name: "buy the full analysis" }));
     await waitFor(() => expect(createCheckout).toHaveBeenCalled());
     expect(sent()).toMatchObject({ termsVersion: TERMS_VERSION, withdrawalWaiver: true });

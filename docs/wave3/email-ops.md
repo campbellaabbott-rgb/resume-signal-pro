@@ -55,7 +55,7 @@ All `<fn>.2026-10-09.1` (scan-heartbeat body `buildVersion` 2026-10-09.1; track-
 |---|---|
 | send-product-email | **deploy FIRST of the mail set**: stripe-webhook .10-09 sends it `full_analysis` / `freelance_*`, which the old build renders with the keyword-fix copy and a homepage button |
 | stripe-webhook | send-product-email .10-09 |
-| retry-failed-deliveries | 20261009140000 (the old build with the new selector spends a retry on a stuck row and leaves it, harmless) |
+| retry-failed-deliveries | 20261009140000 (since the S11 round, S11-146: a stuck row goes only to a sweep that passes p_include_generating, so the old build is handed none; it used to skip them without spending a retry and hold its five-row batch) |
 | verify-product-purchase, admin-regenerate-delivery, send-analysis-email | none (an old send-product-email ignores the new `sessionId`) |
 | recover-purchase | none; the frontend works with the old build for bare ids and links |
 | process-email-queue, api-key-request, company-claim, send-affiliate-commission-email, send-agent-digest, send-scan-report, send-search-digest | none |
@@ -96,7 +96,7 @@ migrations 1-4 -> send-product-email -> the other functions -> get-analytics wit
 ## Rollback
 
 - Functions: redeploy the previous builds; each is independent except roll back stripe-webhook before (or with) send-product-email.
-- 20261009140000: re-apply 20261005110000's `get_failed_deliveries_for_retry` body (drops the `generating` arm).
+- 20261009140000: `DROP FUNCTION public.get_failed_deliveries_for_retry(integer, boolean)`, then re-apply 20261005110000's `get_failed_deliveries_for_retry(integer)` body (drops the `generating` arm); roll retry-failed-deliveries back first, since its build passes p_include_generating.
 - 20261009141000 and 20261009143000: additive; leave them, or `DROP FUNCTION public.market_pulse_confirm_unsent(text,text)` / `public.cron_http_refusals(integer)` after rolling back the functions that call them.
 - 20261009142000: `SELECT cron.alter_job(job_id := (SELECT jobid FROM cron.job WHERE jobname = 'layoff-partition-refresh'), command := ' SELECT public.layoff_matches_rebuild(); SELECT public.refresh_layoff_partition(); ');`
 - Frontend: the hooks and pages revert with the publish; rows already written with `pricing:` prefixes or `__click` test names stay readable by get-analytics .10-09.

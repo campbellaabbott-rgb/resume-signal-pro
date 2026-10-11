@@ -15,7 +15,7 @@ import { checkoutOrigin } from "../_shared/checkout-policy.ts";
 
 // Provable from outside without an account: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-portal-session.2026-10-09.2";
+const FN_BUILD = "create-portal-session.2026-10-09.61";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -23,6 +23,25 @@ const corsHeaders = {
   "Access-Control-Expose-Headers": "x-fn-build",
   "x-fn-build": FN_BUILD,
 };
+
+/** Does a Pro or agent cache row bound to this account name this Stripe customer? */
+async function rowBindsCustomer(
+  // deno-lint-ignore no-explicit-any
+  db: { from: (t: string) => any },
+  userId: string,
+  customerId: string,
+): Promise<boolean> {
+  for (const table of ["pro_subscribers", "agent_subscribers"]) {
+    try {
+      const { data, error } = await db.from(table).select("user_id")
+        .eq("user_id", userId).eq("stripe_customer_id", customerId).limit(1);
+      if (!error && Array.isArray(data) && data.length > 0) return true;
+    } catch (_) {
+      // An unread table proves nothing; the other proofs still apply.
+    }
+  }
+  return false;
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -70,7 +89,16 @@ serve(async (req) => {
     // the plan names (metadata.user_id) or a session that proved the mailbox.
     // Anyone else is sent to Stripe's own emailed portal login, which proves
     // the mailbox itself, so a paying password user can still cancel.
-    const bound = !!data?.user?.id && status.boundUserId === data.user.id;
+    //
+    // A ROW THE DATABASE ALREADY BINDS COUNTS TOO (S11-015; owner decision
+    // 2026-10-11). Plans bought before checkouts stamped metadata.user_id
+    // carry no buyer in Stripe, but 20261008130000 bound their cache rows to
+    // the account, and check-subscription reads them as this account's. Such
+    // a subscriber was offered "Manage subscription" and then refused. A Pro
+    // or agent row bound to THIS account whose stripe_customer_id is the
+    // customer the portal would open is the proof the plan gates accept.
+    const uid = data?.user?.id ?? "";
+    const bound = !!uid && (status.boundUserId === uid || await rowBindsCustomer(supabase, uid, status.stripeCustomerId));
     const proven = bound || !!(await provenMailbox(data?.user, jwt, {
       db: supabase,
       confirmedSince: Deno.env.get("EMAIL_CONFIRMED_SINCE") ?? null,

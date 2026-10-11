@@ -1995,11 +1995,10 @@
       },
       "atsDefense": {
         "howItWorks": [
-          "Nuestra IA realizó una auditoría integral de compatibilidad con ATS",
-          "Analizamos tu currículum frente a más de 50 plataformas ATS",
-          "Palabras clave optimizadas para hasta 3 puestos objetivo",
-          "Formato reestructurado para máxima capacidad de análisis",
-          "Incluye consejos de alineación de LinkedIn"
+          "Comprobamos cómo leen tu currículum los sistemas de seguimiento de candidatos",
+          "Ajustamos tus palabras clave a los puestos que indicaste (hasta 3)",
+          "Reorganizamos secciones para que se lean sin errores",
+          "Añadimos consejos para alinear tu perfil de LinkedIn"
         ],
         "nextSteps": [
           {
@@ -2189,6 +2188,11 @@
         "deliveryTime": "Instantáneo",
         "deliveryMethod": "En esta página"
       }
+    },
+    "stillBeingMade": {
+      "title": "Tu {{product}} todavía se está preparando",
+      "emailed": "Está tardando más de lo habitual. Te lo enviaremos por correo en cuanto esté listo, así que puedes cerrar esta página.",
+      "refresh": "Está tardando más de lo habitual. Recarga esta página en unos minutos para verlo."
     }
   },
   "analysisResults": {
@@ -2760,7 +2764,7 @@
     "ladderSpecialistDesc": "Para quienes cambian de carrera: trabajo freelance y por proyectos traducido a experiencia de nivel profesional.",
     "allToolsToggle": "Ver todas las herramientas ({{count}} más)",
     "guarantee": "Cada herramienta de pago está cubierta: ¿no te convence el resultado? Lo regeneramos gratis — solo responde a tu recibo.",
-    "passLine": "O un pase único para tu propio agente de IA: ${{passPrice}} por {{passHours}} horas y {{passApplications}} candidaturas. Nunca se renueva.",
+    "passLine": "O un pase único para tu propio agente de IA: ${{passPrice}} por {{passHours}} horas y {{passApplications}} candidaturas, que solo cuentan si puede enviarlas. Nunca se renueva.",
     "passLink": "Conecta tu agente"
   },
   "scanPackPurchase": {
@@ -4508,7 +4512,7 @@
     "acNothingNew": "Nada nuevo que preparar — las vacantes guardadas no pudieron adaptarse (falta descripción o verificación). Añade la oferta e inténtalo de nuevo.",
     "acTitle": "Copiloto de postulación",
     "acPreppedCount": "{{done}}/{{total}} preparadas",
-    "acBlurb": "Adaptamos un currículum y una carta a cada vacante guardada — con base en tu currículum real, sin datos inventados. Tú revisas y postulas en el sitio de la empresa.",
+    "acBlurb": "Para cada empleo guardado, escribimos un currículum adaptado y una carta de presentación a partir de tu currículum real, sin inventar nada. Tú los revisas y postulas en el sitio de la empresa.",
     "acPrepProgress": "Preparando {{i}} de {{total}} — {{company}}…",
     "acPrepAll_one": "Preparar {{count}} postulación adaptada",
     "acPrepAll_other": "Preparar {{count}} postulaciones adaptadas",
@@ -4767,7 +4771,8 @@
     "anyRole": "Cualquier puesto",
     "searchLimitHit": "Puedes tener hasta 10 búsquedas activas. Pausa una para añadir otra.",
     "searchLastRun": "Última ejecución: {{scanned}} revisadas, {{picked}} en cola.",
-    "passFunds": "Tu Agent Pass financia este agente: quedan {{left}} solicitudes. Activa el agente abajo y tu IA conectada podrá pedir solicitudes."
+    "passFunds": "Tu Agent Pass financia este agente: quedan {{left}} solicitudes. Activa el agente abajo y tu IA conectada podrá pedir solicitudes.",
+    "trackerFull": "Guardado, pero tu seguimiento está lleno (2000 entradas). Elimina entradas antiguas para añadir más."
   },
   "applyProfile": {
     "authorized": "¿Tienes autorización para trabajar donde te postulas?",
@@ -4886,8 +4891,8 @@
     "includesPro": "Incluye todo lo de Pro (${{proPrice}}/mes)",
     "perkAutoApply": "Se postula automáticamente por ti en {{names}}",
     "perkOneClick": "Solicitudes rellenadas y listas para enviar en {{names}}",
-    "perkMorningQueue": "Cola matinal: durante la noche, el agente ejecuta tu búsqueda y te deja una lista corta en tu cuenta para la mañana",
-    "perkQueue": "Una cola que puedes revisar primero, o dejar que funcione sola: tú decides y puedes cambiarlo cuando quieras",
+    "perkMorningQueue": "Cola matinal: cada mañana te espera en tu cuenta una lista corta de empleos nuevos que encajan contigo",
+    "perkQueue": "Revisa cada candidatura antes de que salga o deja que se envíe sola. Puedes cambiarlo cuando quieras.",
     "perkCap": "Un límite diario que tú fijas, y nunca se postula dos veces al mismo puesto",
     "perkHonest": "Nunca inventa una respuesta. Si una pregunta te necesita, se detiene y te consulta.",
     "cta": "Activar el agente",
@@ -4899,7 +4904,8 @@
     "signInFirst": "Primero iniciarás sesión: el agente funciona desde tu cuenta.",
     "alreadySubscribed": "Ya tienes el agente; te llevamos a él.",
     "needsPaymentUpdate": "Tu plan tiene un pago pendiente. Actualiza tu tarjeta en lugar de empezar un plan nuevo.",
-    "hasPro": "Tienes Pro, que el agente incluye. Cancela Pro en Gestionar suscripción y luego activa el agente, para que nunca pagues los dos."
+    "hasPro": "Tienes Pro, que el agente incluye. Cancela Pro en Gestionar suscripción y luego activa el agente, para que nunca pagues los dos.",
+    "portalFailed": "No pudimos abrir la facturación. Inténtalo de nuevo en un minuto."
   },
   "proPlan": {
     "trialing": "Tu prueba está activa: los escaneos ilimitados y la preparación de solicitudes en lote ya están desbloqueados. Las herramientas de pago se incluyen a partir de tu primer pago.",
@@ -5030,7 +5036,7 @@
   },
   "homeAgent": {
     "lead": "Trae tu propio agente de IA.",
-    "passLine": "Un pase de ${{passPrice}} le da {{passHours}} horas a toda velocidad para investigar la bolsa y presentar {{passApplications}} candidaturas por ti. Solo cuentan las ofertas en las que puede enviar la candidatura él mismo. Nunca se renueva; inicia sesión para comprarlo.",
+    "passLine": "Un pase de ${{passPrice}} le da a tu agente {{passHours}} horas para buscar en la bolsa y postularse por ti a {{passApplications}} empleos. Un empleo solo cuenta si el agente puede enviar la candidatura. Nunca se renueva; inicia sesión para comprarlo.",
     "connectCta": "Conecta tu agente",
     "passCta": "Comprar o abrir tu pase",
     "connectLine2": "Conéctalo gratis y sin cuenta: {{freeCallsPerDay}} llamadas al día por dirección de red para explorar la bolsa (una oficina o una conexión doméstica cuentan como una sola dirección; desde ChatGPT cada persona tiene sus propias {{freeCallsPerDay}}, y desde Claude primero se usa un cupo diario que comparten todos los usuarios de Claude)."
@@ -5107,7 +5113,7 @@
     "clockShelfExpired": "Tu último pase caducó sin usar el {{date}}.",
     "clockNone": "Todavía no hay ningún pase en esta cuenta.",
     "applications": "{{left}} de {{passApplications}} candidaturas",
-    "applicationsBasis": "Solo gasta una la oferta en la que tu agente puede enviar la candidatura él mismo. Una solicitud que rechaza no gasta nada, y un envío que nunca ocurrió devuelve su candidatura.",
+    "applicationsBasis": "Una candidatura solo cuenta para un empleo al que el agente puede enviarla. Una solicitud rechazada, o un envío que nunca ocurrió, no cuesta nada.",
     "buyAnother": "Comprar un pase",
     "whichAgent": "¿Qué agente?",
     "handoffTitle": "Entrégaselo a tu agente",
@@ -5331,5 +5337,15 @@
     "fiveMinutes": "5 minutos",
     "fifteenMinutes": "15 minutos",
     "thirtyMinutes": "30 minutos"
+  },
+  "atsRoles": {
+    "title": "¿A qué puestos te postulas?",
+    "description": "Indica hasta {{count}} puestos. Tu informe ATS Defense se adapta a cada uno.",
+    "roleLabel": "Puesto {{n}}",
+    "example1": "p. ej., Analista de datos",
+    "example2": "p. ej., Analista de negocio (opcional)",
+    "example3": "p. ej., Analista de informes (opcional)",
+    "cancel": "Cancelar",
+    "continue": "Continuar al pago"
   }
 }

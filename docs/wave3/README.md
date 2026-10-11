@@ -52,6 +52,9 @@ The builds that deploy are the ones in the stamp table below.
    the group notes:
    - `20261009130000` (subscription_notices) before stripe-webhook. The new
      webhook claims a notice row on every new subscription.
+   - `20261009134000` (S11-053) before stripe-webhook and
+     withdraw-subscription: both write the notice's `sent_at`.
+   - `20261009134300` (S11-074) before or with create-product-checkout.
    - `20261009111000` (Shortlist record, additive half) before
      shortlist-evaluate: the new function writes `jd_text_scored`, which only
      it adds. It refuses nothing the live function or page does (S11-056).
@@ -95,7 +98,24 @@ Owner steps that code cannot do are in each group's note. The main ones:
 - The seller identity: fill `src/config/seller.ts` AND
   `supabase/functions/_shared/seller-identity.ts`. They are now the only two
   places it lives.
-- The `notify.resumebooster.work` DNS for transactional mail.
+- The `notify.resumebooster.work` DNS for the queued mail (auth mails and
+  the drip). The subscription notices no longer depend on it: since the S11
+  round they go straight through Resend from `billing@resumebooster.work`,
+  so the `resumebooster.work` domain must stay verified in Resend.
+- `STRIPE_PORTAL_LOGIN_URL`: set it to Stripe's customer-portal login link
+  and check it in a private window (S11-015).
+- The EU/UK switch, in this order (S11-142): publish the frontend, turn on
+  Stripe Tax, then set `EU_UK_SALES=on`. `VITE_EU_UK_SALES` is not needed.
+- Pro plans bought between wave 2's binding and its deploy (S11-061, owner
+  action in Stripe only, no code): 20261008130000 bound Pro rows by address at
+  22:51Z, but the old checkout and webhook kept writing unbound rows until the
+  deploy at 00:35Z, and nothing binds those rows later. In the Stripe
+  Dashboard, list the subscriptions created from 22:45Z to 00:36Z, and the
+  sessions of the old checkout completed up to about 24 hours after 00:35Z.
+  For each, confirm the buyer's account and set the subscription's
+  `metadata.user_id` to that account's id; the next Pro refresh binds the row.
+  Never bind by `updated_at` (checkProByEmail rewrites it, which would reopen
+  S8-001).
 - The email-queue cron (S8-017).
 
 ## What wave 3 ships, per group
@@ -144,6 +164,16 @@ per press. Subscribers get confirmation and trial-reminder mails as legal
 notices (130000). EU/UK withdrawal sits behind the switch (133000). Account
 deletion cancels plans first. The closure log is metered per account (131000).
 The success page shows the saved copy. Scan packs and $0 sessions deliver.
+The S11 round (w31/payments-account, migrations 134000-134300, builds
+`.61`): legal notices sent directly through Resend and recorded only after a
+2xx; paid deliveries retried through the day with outages spending no tries
+and an owner alarm when one runs out; the Premium Package and Cover Letter
+made once by the checked generators and shown from the saved copy; a five-
+minute wait for slow generations; ATS Defense asks for and carries up to three
+roles; the co-pilot writes its cover letters; the Full Analysis survives a
+reload; legacy subscribers reach billing; the EU/UK box follows the server's
+switch and belongs to its own line; the tracker cap counts only the member's
+rows. Details in [payments-account](payments-account.md) ("S11 round").
 
 **email-ops.** Undelivered paid orders mail the owner. Stuck generations are
 retried after 15 minutes (140000), and the webhook answers Stripe before the
@@ -408,7 +438,11 @@ the rest. Each file checks itself and is safe to re-run.
 | 12 | 20261009131000_a_tracker_row_reads_the_closure_log_by_the_day_and_a_free_account_has_bounds | payments-account | with the frontend |
 | 13 | 20261009132000_an_api_key_request_keeps_the_terms_it_was_shown | payments-account | independent |
 | 14 | 20261009133000_a_withdrawal_is_acknowledged_once_per_subscription | payments-account | needed before the EU/UK switch |
-| 15 | 20261009140000_a_paid_order_stuck_mid_generation_is_retried_after_fifteen_minutes | email-ops | before or with retry-failed-deliveries |
+| 14a | 20261009134000_a_legal_notice_is_recorded_as_sent_only_after_resend_accepted_it | payments-account (S11) | BEFORE stripe-webhook and withdraw-subscription |
+| 14b | 20261009134100_a_paid_delivery_is_retried_through_the_day_and_an_outage_does_not_spend_its_tries | payments-account (S11) | any time |
+| 14c | 20261009134200_a_served_posting_keeps_no_closure_date_and_the_tracker_cap_counts_only_what_its_owner_added | payments-account (S11) | after 131000, with or before the frontend; one daily cron job |
+| 14d | 20261009134300_a_pro_grant_keeps_the_roles_its_ats_defense_was_bought_for | payments-account (S11) | before or with create-product-checkout |
+| 15 | 20261009140000_a_paid_order_stuck_mid_generation_is_retried_after_fifteen_minutes | email-ops (edited in S11) | either side of retry-failed-deliveries: the stuck-generation rows go only to a sweep that passes p_include_generating (S11-146) |
 | 16 | 20261009141000_a_pulse_confirmation_that_never_left_does_not_lock_its_address_out | email-ops | before send-market-pulse |
 | 17 | 20261009142000_the_layoff_refresh_job_gets_the_ten_minutes_its_functions_ask_for | email-ops | any time |
 | 18 | 20261009143000_a_cron_call_its_function_refused_is_counted_not_read_as_success | email-ops | before scan-heartbeat |

@@ -117,7 +117,7 @@ export const PRODUCTS = {
       'ATS compatibility audit (before/after score)',
       'Keyword gap analysis & optimization',
       'Format restructuring for ATS parsing',
-      'Multi-role targeting (up to 3 roles)',
+      'Targets up to 3 roles you name before checkout',
       'LinkedIn profile alignment tips',
       'Industry keyword bank',
       '30-day re-optimize guarantee'

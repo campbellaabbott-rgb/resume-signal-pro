@@ -141,9 +141,43 @@ else echo "FAIL  /pricing as served to a crawler carries neither FAQ sentence ($
 echo "INFO  OWNER STEP (receipts, item 1): Stripe Dashboard > Settings > Customer emails: turn on 'Successful payments' -- REQUIRED for anonymous one-time buyers (most \$5 Full Analysis sales: no address is known when the session is made, so no receipt_email is set) as well as for plan renewals; a one-time checkout names receipt_email only when the buyer is signed in or typed an address. Also, under Subscriptions and invoices, 'Send finalized invoices and credit notes to customers'"
 echo "INFO  OWNER STEP (item 11): add customer.subscription.trial_will_end to the stripe-webhook endpoint's events; without it no trial reminder is sent (the confirmation needs nothing new)"
 echo "INFO  OWNER STEP (item 12, optional): set the Terms URL in Stripe (Settings > Public details > Terms of service), then the secret STRIPE_TERMS_CONSENT=on to add Stripe's own Terms checkbox; setting the secret first makes Stripe refuse every session"
-echo "INFO  OWNER STEP (decision 3): leave EU_UK_SALES and VITE_EU_UK_SALES unset until the VAT registration; then turn on Stripe Tax (Dashboard > Tax, origin address, registrations) BEFORE setting both to 'on' together"
+echo "INFO  OWNER STEP (decision 3, order per S11-142): leave EU_UK_SALES unset until the VAT registration; then turn on Stripe Tax (Dashboard > Tax, origin address, registrations), and only then set the secret EU_UK_SALES=on. The published page asks create-checkout and shows the box on its own; VITE_EU_UK_SALES is no longer needed (setting it shows the box whatever the server says)"
 echo "INFO  OWNER STEP (item 10): fill src/config/seller.ts and supabase/functions/_shared/seller.ts with the legal name and postal address once chosen, then redeploy the frontend and send-search-digest, send-market-pulse, send-scan-report"
-echo "INFO  OWNER STEP: mail (the subscriber notices, the withdrawal acknowledgement, the purchase links) is delivered only once notify.resumebooster.work has DNS; STRIPE_PORTAL_LOGIN_URL, when set, is named in the notices as the second way to cancel"
+echo "INFO  OWNER STEP (S11-053): the subscriber notices and the withdrawal acknowledgement go straight through Resend (RESEND_API_KEY, the key paid deliveries use) from billing@resumebooster.work: the resumebooster.work domain must stay verified in Resend. The queue's notify.resumebooster.work DNS still matters for auth mails and the drip. STRIPE_PORTAL_LOGIN_URL, when set, is named in the notices as the second way to cancel"
+echo "INFO  OWNER STEP (S11-015): set STRIPE_PORTAL_LOGIN_URL to the Stripe customer-portal login link (Stripe Dashboard > Settings > Billing > Customer portal > 'Login link', https://billing.stripe.com/p/login/...) and check it by opening it in a private window: it is where a subscriber whose session cannot prove the mailbox is sent to cancel"
+
+# ── THE S11 ROUND (2026-10-11), deploy note docs/wave3/payments-account.md "S11 round".
+for PAIR74 in stripe-webhook:GET withdraw-subscription:OPTIONS retry-failed-deliveries:OPTIONS verify-product-purchase:OPTIONS \
+  create-product-checkout:OPTIONS create-checkout:OPTIONS create-portal-session:OPTIONS analyze-resume:OPTIONS \
+  generate-premium-package:OPTIONS generate-cover-letter:OPTIONS generate-apply-package:OPTIONS; do
+  FN74=${PAIR74%%:*}; M74=${PAIR74#*:}
+  H74=$(vd74_build "$FN74" "$M74")
+  if [ -z "$H74" ]; then echo "FAIL  $FN74 carries no x-fn-build (the S11 round is not deployed)"
+  elif build_ge "$FN74" "$H74" "2026-10-09" "61"; then echo "PASS  $FN74 x-fn-build = $H74 (the S11 round: $FN74.2026-10-09.61 or later)"
+  else echo "FAIL  $FN74 x-fn-build = $H74 (want $FN74.2026-10-09.61 or later: the S11 round is not serving)"; fi
+done
+# Read-only: a GET answers the switch and nothing else (S11-142).
+EP74=$(curl -s -m 30 "$B/functions/v1/create-checkout" -H "apikey: $K" -H "Authorization: Bearer $K")
+case "$EP74" in
+  *'"euUkSales":false'*) echo "PASS  create-checkout answers a GET with the EU/UK switch, off (S11-142: the page's box stays dormant until the server says on)";;
+  *'"euUkSales":true'*) echo "INFO  create-checkout says the EU/UK switch is ON -- correct only after the VAT registration";;
+  *) echo "FAIL  create-checkout GET -> ${EP74:0:120} (want a JSON euUkSales: the S11 build is not serving)";;
+esac
+# Read-only GETs: both readers refuse anon (42501) once their migrations ran;
+# a PGRST202 means the file did not apply.
+for P74 in 'get_failed_deliveries_for_retry|p_limit=1&p_include_generating=false|20261009140000 (S11-146: the stuck-generation opt-in)' \
+           'delivery_error_is_transient|p_error=x|20261009134100 (S11-014: outages spend no tries)'; do
+  N74=${P74%%|*}; REST74=${P74#*|}; A74=${REST74%%|*}; WHY74=${REST74#*|}
+  C74=$(curl -s -m 60 "$B/rest/v1/rpc/$N74?$A74" -H "apikey: $K" -H "Authorization: Bearer $K")
+  case "$C74" in
+    *'"42501"'*|*'permission denied'*) echo "PASS  $N74 exists and refuses anon (42501): $WHY74";;
+    *'"PGRST202"'*) echo "FAIL  $N74 -> PGRST202: $WHY74 has not applied";;
+    *) echo "FAIL  $N74 as anon -> ${C74:0:140} (want 42501): $WHY74";;
+  esac
+done
+vd74_table subscription_notices sent_at "a legal notice is recorded as sent only after Resend accepted it (S11-053)" 20261009134000
+echo "INFO  20261009134200 / 20261009134300 (owner SQL): SELECT count(*) FROM pg_trigger WHERE tgname = 'user_applications_served_posting_undated_trg'; SELECT jobname, command FROM cron.job WHERE jobname = 'tracker-served-postings-undated'; SELECT column_name FROM information_schema.columns WHERE table_name IN ('user_applications','pro_grants') AND column_name IN ('written_by','target_roles') -- want 1 trigger, 1 job carrying statement_timeout, 2 columns"
+echo "INFO  MEASURE (S11-014): SELECT status, retry_count, transient_failures, max_retries, next_retry_at FROM product_deliveries WHERE status IN ('payment_received','generating','generation_failed','email_failed') ORDER BY created_at DESC LIMIT 20 -- an outage shows transient_failures rising with retry_count unchanged, and tries spaced 5m, 15m, 1h, 2h, 4h, 6h, 8h"
 echo "INFO  MEASURE: after the next new subscription, subscription_notices holds one 'confirmation' row for it, and checkout_starts.metadata carries termsVersion (null only for a press with no Terms line in its block: read origin_path and checkout_function) and referral true/false; an affiliate referral on a non-catalogue checkout records a \$0 conversion (referral_commission none)"
 echo "INFO  MEASURE: get-account-data returns passes[] for a pass buyer; delete-account cancels the account's plans, sets agent_mandates.active false, removes resumes/{user id}/, then deletes (one test account, owner-run)"
 echo "INFO  MEASURE: the next subscription bought with a promotion code gets a confirmation naming 'Your first charge, with your promotion' and the list price after it; verify-product-purchase 429s in its logs fall to near zero (a success-page load makes at most six calls)"

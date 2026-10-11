@@ -10,7 +10,7 @@
  * the résumé that was emailed and saved.
  */
 import { describe, expect, it } from "vitest";
-import { stripInventedContact } from "../../supabase/functions/generate-premium-package/contact-guard";
+import { stripInventedContact } from "../../supabase/functions/_shared/contact-guard";
 
 const ORIGINAL = `Jane Smith
 555-010-0199 | jane.smith@gmail.com | linkedin.com/in/janesmith | github.com/jsmith

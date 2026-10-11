@@ -29,6 +29,17 @@ const CLIENT = `export function createClient() {
       const q = db.from(t);
       const insert = q.insert.bind(q);
       q.insert = (p) => insert(t === "shortlist_candidates" && !p.id ? { id: "cand-" + (++globalThis.__slSeq), ...p } : p);
+      // A head count, as supabase-js answers { count } for select(cols, { count: "exact", head: true }).
+      const select = q.select.bind(q);
+      q.select = (cols, opts) => {
+        if (!opts || !opts.head) return select(cols);
+        const filters = [];
+        const counted = {
+          eq: (c, v) => { filters.push([c, v]); return counted; },
+          then: (ok, no) => Promise.resolve({ data: null, error: null, count: db.rows(t).filter((r) => filters.every(([c, v]) => r[c] === v)).length }).then(ok, no),
+        };
+        return counted;
+      };
       return q;
     },
     auth: { getUser: async () => ({ data: { user: { id: "user-1", email: "hr@employer.test" } }, error: null }) },
@@ -91,6 +102,29 @@ describe("an evaluation", () => {
     expect(prompts[0]).not.toContain(BODY_JD);
     const [row] = inserted("shortlist_candidates");
     expect(row).toMatchObject({ jd_version: 3, jd_text_scored: STORED_JD, score: 71, owner_id: "user-1" });
+  });
+});
+
+/**
+ * S11-139: since 20261009111000 only this function writes shortlist_candidates,
+ * as service_role, which the 10,000-row cap used to exempt. The cap now holds
+ * for it (20261009134200), and a full account is told before a model call.
+ */
+describe("an account that holds the most evaluations it can", () => {
+  it("is refused before any model call, and nothing is written", async () => {
+    for (let i = 0; i < 10_000; i++) db.rows("shortlist_candidates").push({ id: `old-${i}`, owner_id: "user-1" });
+    const r = await call({ roleId: "role-1", resumeText: RESUME, fileName: "Candidate 9" });
+    expect(r.status, "a full account was scored anyway").toBe(409);
+    expect(r.body.code).toBe("candidate_cap");
+    expect(prompts).toHaveLength(0);
+    expect(inserted("shortlist_candidates")).toHaveLength(0);
+  });
+
+  it("one under the cap is still scored", async () => {
+    for (let i = 0; i < 9_999; i++) db.rows("shortlist_candidates").push({ id: `old-${i}`, owner_id: "user-1" });
+    const r = await call({ roleId: "role-1", resumeText: RESUME, fileName: "Candidate 10" });
+    expect(r.status).toBe(200);
+    expect(prompts).toHaveLength(1);
   });
 });
 

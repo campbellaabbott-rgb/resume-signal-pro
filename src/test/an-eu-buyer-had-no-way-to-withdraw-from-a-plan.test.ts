@@ -47,6 +47,7 @@ const world = {
   refunds: [] as Array<{ payment_intent: string; amount: number; metadata: Record<string, string>; status: string }>,
   cancelled: [] as string[],
   sessions: [] as Array<{ subscription: string; metadata: Record<string, string> }>,
+  ledgerAtCancel: [] as Array<Record<string, unknown>>,
 };
 
 const STRIPE_STUB = `
@@ -58,7 +59,12 @@ export default class Stripe {
     this.customers = { list: async () => { hit(); return page([{ id: "cus_1", address: { country: "DE" } }]); } };
     this.subscriptions = {
       list: async () => { hit(); return page(w().subs); },
-      cancel: async (id) => { hit(); w().cancelled.push(id); const s = w().subs.find((x) => x.id === id); if (s) s.status = "canceled"; return s; },
+      cancel: async (id) => {
+        hit(); w().cancelled.push(id);
+        // What the ledger held when the plan was cancelled.
+        w().ledgerAtCancel.push(...globalThis.__wdDb.rows("subscription_notices").map((r) => ({ ...r })));
+        const s = w().subs.find((x) => x.id === id); if (s) s.status = "canceled"; return s;
+      },
     };
     this.invoices = { list: async ({ subscription }) => { hit(); return page(w().invoices.filter((i) => i.subscription === subscription)); } };
     this.checkout = { sessions: { list: async ({ subscription }) => { hit(); return page(w().sessions.filter((x) => x.subscription === subscription)); } } };
@@ -72,8 +78,12 @@ export default class Stripe {
 
 const env: Record<string, string> = {
   SUPABASE_URL: "https://harness.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "service", SUPABASE_ANON_KEY: "anon", STRIPE_SECRET_KEY: "sk_test",
+  RESEND_API_KEY: "re_test",
 };
 const db = new FakeDb({ subscription_notices: ["subscription_id"] });
+/** What Resend was handed (S11-053: the acknowledgement goes directly, never through the queue). */
+const mails: Array<{ to: string[]; subject: string; text: string; html: string; from: string }> = [];
+const resend = { status: 200, keys: [] as string[] };
 const queued: Array<Record<string, unknown>> = [];
 let handler: EdgeHandler;
 
@@ -86,6 +96,14 @@ beforeAll(async () => {
       : { data: { user: null }, error: { message: "bad" } } },
   });
   g.Deno = { env: { get: (k: string) => env[k] }, serve: (h: unknown) => { g.__edgeHandler = h; } };
+  g.fetch = async (input: string | URL | Request, init?: RequestInit) => {
+    const url = String(input instanceof Request ? input.url : input);
+    if (url !== "https://api.resend.com/emails") return new Response("{}", { status: 404 });
+    resend.keys.push(String((init?.headers as Record<string, string>)["Idempotency-Key"]));
+    if (resend.status !== 200) return new Response(JSON.stringify({ message: "provider down" }), { status: resend.status });
+    mails.push(JSON.parse(String(init?.body)));
+    return new Response(JSON.stringify({ id: `re_${mails.length}` }), { status: 200 });
+  };
   handler = await loadEdgeHandler("withdraw-subscription", {
     "https://esm.sh/@supabase/supabase-js@2": "export const createClient = () => globalThis.__wdDb;",
     "https://esm.sh/stripe@18.5.0": STRIPE_STUB,
@@ -95,8 +113,8 @@ beforeAll(async () => {
 
 afterEach(() => {
   delete env.EU_UK_SALES;
-  world.stripeCalls = 0; world.subs = []; world.invoices = []; world.refunds = []; world.cancelled = []; world.sessions = [];
-  db.tables = {}; queued.length = 0;
+  world.stripeCalls = 0; world.subs = []; world.invoices = []; world.refunds = []; world.cancelled = []; world.sessions = []; world.ledgerAtCancel = [];
+  db.tables = {}; mails.length = 0; resend.status = 200; resend.keys.length = 0;
 });
 
 const call = (jwt = "jwt-user") => handler(new Request("https://harness.supabase.co/functions/v1/withdraw-subscription", {
@@ -138,9 +156,9 @@ describe("with the switch on", () => {
     expect(body.withdrawn[0].refunded).toBeLessThanOrEqual(4050);
     expect(world.refunds).toEqual([expect.objectContaining({ payment_intent: "pi_in_sub_a", metadata: { withdrawal: "14_day", subscription: "sub_a" } })]);
     expect(world.cancelled).toEqual(["sub_a"]);
-    expect(queued).toHaveLength(1);
-    const payload = queued[0].payload as { to: string; subject: string; text: string };
-    expect(payload.to).toBe("buyer@example.eu");
+    expect(mails).toHaveLength(1);
+    const payload = mails[0];
+    expect(payload.to).toEqual(["buyer@example.eu"]);
     expect(payload.text).toMatch(/cancelled and will not charge you again/);
     expect(payload.text).toMatch(/€40\.(49|50)/);
   });
@@ -177,7 +195,7 @@ describe("with the switch on", () => {
     // And once cancelled, the plan is no longer there to withdraw from.
     const again = await (await call()).json() as { withdrawn: unknown[]; reason: string };
     expect(again).toEqual({ withdrawn: [], reason: "none_eligible" });
-    expect(queued).toHaveLength(1);
+    expect(mails).toHaveLength(1);
   });
 
   it("a trial that charged nothing is cancelled with nothing refunded", async () => {
@@ -187,7 +205,7 @@ describe("with the switch on", () => {
     expect(body.withdrawn).toEqual([{ subscription: "sub_t", refunded: 0, currency: "eur" }]);
     expect(world.refunds).toEqual([]);
     expect(world.cancelled).toEqual(["sub_t"]);
-    expect((queued[0].payload as { text: string }).text).toMatch(/nothing to refund/);
+    expect(mails[0].text).toMatch(/nothing to refund/);
   });
 
   it("leaves alone a plan past the 14 days, another account's plan, and one that names no account", async () => {
@@ -203,6 +221,42 @@ describe("with the switch on", () => {
   it("refuses a caller with no session", async () => {
     env.EU_UK_SALES = "on";
     expect((await call("nope")).status).toBe(401);
+  });
+});
+
+/**
+ * S11-053 (owner decision 2026-10-11): the acknowledgement goes directly
+ * through Resend with its idempotency key, never through the queue, and the
+ * ledger says sent only after a 2xx. It is written into the ledger, waiting,
+ * before the plan is cancelled, so a send that fails is not lost: the
+ * webhook sends it on the deletion event Stripe redelivers.
+ */
+describe("the acknowledgement is sent directly and recorded only after Resend accepted it", () => {
+  it("is sent through Resend with its key, never queued, and stamped as sent", async () => {
+    env.EU_UK_SALES = "on";
+    world.subs = [sub("sub_a", 3, USER)];
+    world.invoices = [paid("sub_a", 3)];
+    await call();
+    expect(queued, "the acknowledgement went into the queue").toHaveLength(0);
+    expect(resend.keys).toEqual(["sub-notice:sub_a:withdrawal"]);
+    const row = db.rows("subscription_notices").find((r) => r.subscription_id === "sub_a");
+    expect(row?.sent_at, "the ledger did not record the send").toBeTruthy();
+    expect(row?.provider_message_id).toBe("re_1");
+    expect(row?.pending_mail ?? null).toBeNull();
+  });
+
+  it("a send Resend refuses is not recorded as sent, and was waiting in the ledger before the cancel", async () => {
+    env.EU_UK_SALES = "on";
+    resend.status = 503;
+    world.subs = [sub("sub_a", 3, USER)];
+    world.invoices = [paid("sub_a", 3)];
+    const body = await (await call()).json() as { withdrawn: unknown[] };
+    expect(body.withdrawn).toHaveLength(1);
+    expect(mails).toHaveLength(0);
+    const row = db.rows("subscription_notices").find((r) => r.subscription_id === "sub_a");
+    expect(row?.sent_at ?? null, "a refused send was recorded as sent").toBeNull();
+    expect((row?.pending_mail as { text?: string } | undefined)?.text).toMatch(/cancelled and will not charge you again/);
+    expect(world.ledgerAtCancel.map((r) => r.kind), "the plan was cancelled before its acknowledgement was written down").toEqual(["withdrawal"]);
   });
 });
 
@@ -234,6 +288,24 @@ describe("the ledger (20261009133000) in a real Postgres", () => {
     await pg.exec("INSERT INTO public.subscription_notices (subscription_id, kind, email) VALUES ('sub_x', 'withdrawal', 'a@b.co')");
     await expect(pg.exec("INSERT INTO public.subscription_notices (subscription_id, kind, email) VALUES ('sub_x', 'withdrawal', 'a@b.co')")).rejects.toThrow(/duplicate key/);
     await expect(pg.exec("INSERT INTO public.subscription_notices (subscription_id, kind, email) VALUES ('sub_y', 'refund', 'a@b.co')")).rejects.toThrow(/subscription_notices_kind_check/);
+    await pg.close();
+  }, 60_000);
+
+  it("20261009134000: a row can wait unsent and be stamped by service_role only, and the file runs twice", async () => {
+    const pg = new PGlite();
+    await pg.exec("CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;");
+    const dir = resolve(__dirname, "../../supabase/migrations");
+    await pg.exec(readFileSync(resolve(dir, "20261009130000_a_subscription_notice_is_sent_once_per_subscription_and_kind.sql"), "utf8"));
+    await pg.exec(readFileSync(resolve(dir, "20261009133000_a_withdrawal_is_acknowledged_once_per_subscription.sql"), "utf8"));
+    const sql = readFileSync(resolve(dir, "20261009134000_a_legal_notice_is_recorded_as_sent_only_after_resend_accepted_it.sql"), "utf8");
+    await pg.exec(sql);
+    await pg.exec(sql);
+    await pg.exec(`INSERT INTO public.subscription_notices (subscription_id, kind, email, pending_mail) VALUES ('sub_x', 'withdrawal', 'a@b.co', '{"subject":"s","html":"h","text":"t"}')`);
+    const waiting = await pg.query<{ sent_at: string | null }>("SELECT sent_at FROM public.subscription_notices WHERE subscription_id = 'sub_x'");
+    expect(waiting.rows[0].sent_at).toBeNull();
+    const acl = await pg.query<{ a: boolean; u: boolean; s: boolean }>(
+      "SELECT has_table_privilege('anon','public.subscription_notices','UPDATE') AS a, has_table_privilege('authenticated','public.subscription_notices','UPDATE') AS u, has_table_privilege('service_role','public.subscription_notices','UPDATE') AS s");
+    expect(acl.rows[0]).toEqual({ a: false, u: false, s: true });
     await pg.close();
   }, 60_000);
 });

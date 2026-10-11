@@ -10,6 +10,7 @@ import { consentWasRequired, purchaseTerms } from '@/lib/purchase-terms';
 import i18n from '@/i18n';
 import { useCheckoutPrefetch } from '@/hooks/use-checkout-prefetch';
 import { getResumeFromSession } from '@/hooks/use-session-resume';
+import { askForTargetRoles, cleanTargetRoles } from '@/lib/target-roles-request';
 
 /** The résumé (and posting) a purchase is made from: what the buyer is looking at. */
 export interface PurchaseInputs {
@@ -29,6 +30,8 @@ export interface CheckoutOptions {
    * of exactly these; without them it is bound to the résumé the tab restores.
    */
   inputs?: PurchaseInputs;
+  /** ATS Defense: the roles to target, when the caller already asked (S11-074). */
+  targetRoles?: string[];
 }
 
 /**
@@ -64,7 +67,7 @@ export const PRESTORED_RESUME_KEY = 'rb_prestored_resume_session';
  * the buyer leaves for Stripe; the retry reuses them.
  */
 export const CHECKOUT_RETRY_KEY = 'rb_checkout_retry';
-export type CheckoutRetry = { productId: string; sessionId?: string; jobTitle?: string; jobCompany?: string; path: string; at: number };
+export type CheckoutRetry = { productId: string; sessionId?: string; jobTitle?: string; jobCompany?: string; targetRoles?: string[]; path: string; at: number };
 
 export function readCheckoutRetry(productId: string): CheckoutRetry | null {
   try {
@@ -240,9 +243,18 @@ export function useProductCheckout() {
       return null;
     }
 
+    // ATS DEFENSE TARGETS THE ROLES ITS BUYER NAMES (S11-074): asked before
+    // any checkout starts; closing the question starts none.
+    let targetRoles: string[] | undefined = opts.targetRoles ? cleanTargetRoles(opts.targetRoles) : undefined;
+    if (productId === 'atsDefense' && !targetRoles?.length) {
+      const answered = await askForTargetRoles(opts.jobTitle ? [opts.jobTitle] : []);
+      if (answered === null) return null;
+      targetRoles = answered;
+    }
+
     setIsLoading(true);
     setCurrentProduct(productId);
-    
+
     // Track button click for conversion analytics with section metadata
     trackButtonClick(productId, opts.ctaSection || 'product_checkout');
     
@@ -271,6 +283,7 @@ export function useProductCheckout() {
           sessionId: binding.sessionId,
           jobTitle: opts.jobTitle,
           jobCompany: opts.jobCompany,
+          ...(targetRoles?.length ? { targetRoles } : {}),
           // Generation happens server-side from the webhook, which has no
           // access to the browser's i18n state — has to be captured now.
           language: localStorage.getItem('i18nextLng') || 'en',
@@ -319,7 +332,7 @@ export function useProductCheckout() {
         trackCheckoutStarted(productId, product.priceUsd);
         try {
           const retry: CheckoutRetry = {
-            productId, sessionId: binding.sessionId, jobTitle: opts.jobTitle, jobCompany: opts.jobCompany,
+            productId, sessionId: binding.sessionId, jobTitle: opts.jobTitle, jobCompany: opts.jobCompany, targetRoles,
             path: `${window.location.pathname}${window.location.search}`, at: Date.now(),
           };
           sessionStorage.setItem(CHECKOUT_RETRY_KEY, JSON.stringify(retry));

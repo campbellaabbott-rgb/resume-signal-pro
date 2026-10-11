@@ -1995,11 +1995,10 @@
       },
       "atsDefense": {
         "howItWorks": [
-          "Unsere KI hat ein umfassendes ATS-Kompatibilitäts-Audit durchgeführt",
-          "Wir haben deinen Lebenslauf gegen über 50 ATS-Plattformen analysiert",
-          "Keywords für bis zu 3 Zielpositionen optimiert",
-          "Format für maximale Verarbeitbarkeit umstrukturiert",
-          "LinkedIn-Abstimmungstipps enthalten"
+          "Wir haben geprüft, wie Bewerbermanagementsysteme deinen Lebenslauf lesen",
+          "Wir haben deine Keywords auf die Rollen abgestimmt, die du genannt hast (bis zu 3)",
+          "Wir haben Abschnitte so umgebaut, dass sie sauber eingelesen werden",
+          "Wir haben Tipps ergänzt, um dein LinkedIn-Profil anzugleichen"
         ],
         "nextSteps": [
           {
@@ -2189,6 +2188,11 @@
         "deliveryTime": "Sofort",
         "deliveryMethod": "Auf dieser Seite"
       }
+    },
+    "stillBeingMade": {
+      "title": "Dein {{product}} wird noch erstellt",
+      "emailed": "Es dauert länger als sonst. Wir schicken es dir per E-Mail, sobald es fertig ist. Du kannst diese Seite schließen.",
+      "refresh": "Es dauert länger als sonst. Lade diese Seite in ein paar Minuten neu, um es zu sehen."
     }
   },
   "analysisResults": {
@@ -2760,7 +2764,7 @@
     "ladderSpecialistDesc": "Für Quereinsteiger: Freelance-, Gig- und Projektarbeit übersetzt in Recruiter-taugliche Berufserfahrung.",
     "allToolsToggle": "Alle Tools ansehen ({{count}} weitere)",
     "guarantee": "Jedes kostenpflichtige Tool ist abgesichert: nicht zufrieden mit dem Ergebnis? Wir generieren es kostenlos neu — antworten Sie einfach auf Ihre Quittung.",
-    "passLine": "Oder ein einmaliger Pass für deinen eigenen KI-Agenten: {{passPrice}} $ für {{passHours}} Stunden und {{passApplications}} Bewerbungen. Verlängert sich nie.",
+    "passLine": "Oder ein einmaliger Pass für deinen eigenen KI-Agenten: {{passPrice}} $ für {{passHours}} Stunden und {{passApplications}} Bewerbungen, die nur zählen, wenn er sie abschicken kann. Verlängert sich nie.",
     "passLink": "Verbinde deinen Agenten"
   },
   "scanPackPurchase": {
@@ -4508,7 +4512,7 @@
     "acNothingNew": "Nichts Neues vorzubereiten — die gespeicherten Stellen konnten nicht zugeschnitten werden (fehlende Beschreibung oder Faktenprüfung). Stellenausschreibung ergänzen und erneut versuchen.",
     "acTitle": "Bewerbungs-Copilot",
     "acPreppedCount": "{{done}}/{{total}} vorbereitet",
-    "acBlurb": "Wir schneiden Lebenslauf und Anschreiben auf jede gespeicherte Stelle zu — verankert in Ihrem echten Lebenslauf, nichts erfunden. Sie prüfen und bewerben sich auf der Unternehmensseite.",
+    "acBlurb": "Für jede gespeicherte Stelle schreiben wir einen angepassten Lebenslauf und ein Anschreiben aus Ihrem echten Lebenslauf, ohne etwas zu erfinden. Sie prüfen beides und bewerben sich auf der Seite des Arbeitgebers.",
     "acPrepProgress": "Bereite {{i}} von {{total}} vor — {{company}}…",
     "acPrepAll_one": "{{count}} zugeschnittene Bewerbung vorbereiten",
     "acPrepAll_other": "{{count}} zugeschnittene Bewerbungen vorbereiten",
@@ -4767,7 +4771,8 @@
     "anyRole": "Beliebige Rolle",
     "searchLimitHit": "Du kannst bis zu 10 aktive Suchen haben. Pausiere eine, um eine weitere hinzuzufügen.",
     "searchLastRun": "Letzter Lauf: {{scanned}} geprüft, {{picked}} eingereiht.",
-    "passFunds": "Dein Agent Pass finanziert diesen Agenten: noch {{left}} Bewerbungen. Schalte den Agenten unten ein, dann kann deine verbundene KI Bewerbungen anfordern."
+    "passFunds": "Dein Agent Pass finanziert diesen Agenten: noch {{left}} Bewerbungen. Schalte den Agenten unten ein, dann kann deine verbundene KI Bewerbungen anfordern.",
+    "trackerFull": "Behalten, aber dein Tracker ist voll (2.000 Einträge). Entferne alte Einträge, um neue hinzuzufügen."
   },
   "applyProfile": {
     "authorized": "Bist du berechtigt, dort zu arbeiten, wo du dich bewirbst?",
@@ -4886,8 +4891,8 @@
     "includesPro": "Enthält alles aus Pro ({{proPrice}} $/Monat)",
     "perkAutoApply": "Bewirbt sich automatisch für Sie bei {{names}}",
     "perkOneClick": "Bewerbungen ausgefüllt und versandbereit bei {{names}}",
-    "perkMorningQueue": "Morgen-Queue: Über Nacht führt der Agent Ihre Suche aus und legt Ihnen für den Morgen eine Auswahl ins Konto",
-    "perkQueue": "Eine Liste, die Sie erst prüfen können – oder unbeaufsichtigt laufen lassen. Ihre Entscheidung, jederzeit änderbar.",
+    "perkMorningQueue": "Morgen-Queue: Jeden Morgen wartet eine Auswahl neuer passender Stellen in Ihrem Konto",
+    "perkQueue": "Prüfen Sie jede Bewerbung, bevor sie rausgeht, oder lassen Sie sie selbstständig senden. Jederzeit änderbar.",
     "perkCap": "Ein Tageslimit, das Sie festlegen, und nie zwei Bewerbungen auf dieselbe Stelle",
     "perkHonest": "Er erfindet nie eine Antwort. Braucht eine Frage Sie, hält er an und fragt.",
     "cta": "Agent starten",
@@ -4899,7 +4904,8 @@
     "signInFirst": "Du meldest dich zuerst an – der Agent arbeitet über dein Konto.",
     "alreadySubscribed": "Du hast den Agenten bereits – wir bringen dich hin.",
     "needsPaymentUpdate": "Für deinen Plan ist eine Zahlung offen. Aktualisiere deine Karte, statt einen neuen Plan zu starten.",
-    "hasPro": "Du hast Pro, das im Agenten enthalten ist. Kündige Pro zuerst unter Abo verwalten und starte dann den Agenten – so zahlst du nie für beides."
+    "hasPro": "Du hast Pro, das im Agenten enthalten ist. Kündige Pro zuerst unter Abo verwalten und starte dann den Agenten – so zahlst du nie für beides.",
+    "portalFailed": "Die Abrechnung konnte nicht geöffnet werden. Bitte versuche es in einer Minute erneut."
   },
   "proPlan": {
     "trialing": "Ihre Testphase läuft: Unbegrenzte Scans und die gesammelte Bewerbungsvorbereitung sind jetzt freigeschaltet. Die kostenpflichtigen Tools sind ab Ihrer ersten Zahlung enthalten.",
@@ -5030,7 +5036,7 @@
   },
   "homeAgent": {
     "lead": "Bring deinen eigenen KI-Agenten mit.",
-    "passLine": "Ein Pass für {{passPrice}} $ gibt ihm {{passHours}} Stunden mit voller Geschwindigkeit, um die Jobbörse zu recherchieren und sich für dich auf {{passApplications}} Stellen zu bewerben. Gezählt werden nur Stellen, bei denen er die Bewerbung selbst abschicken kann. Verlängert sich nie; zum Kauf anmelden.",
+    "passLine": "Ein Pass für {{passPrice}} $ gibt deinem Agenten {{passHours}} Stunden, um die Jobbörse zu durchsuchen und sich für dich auf {{passApplications}} Stellen zu bewerben. Eine Stelle zählt nur, wenn der Agent die Bewerbung abschicken kann. Verlängert sich nie; zum Kauf anmelden.",
     "connectCta": "Agenten verbinden",
     "passCta": "Pass kaufen oder öffnen",
     "connectLine2": "Kostenlos und ohne Konto verbinden — {{freeCallsPerDay}} Aufrufe pro Tag und Netzwerkadresse, um sich auf der Jobbörse umzusehen (ein Büro oder ein Heimanschluss zählt als eine Adresse; aus ChatGPT hat jede Person ihre eigenen {{freeCallsPerDay}}, und aus Claude kommt zuerst ein Tageskontingent, das alle Claude-Nutzer teilen)."
@@ -5107,7 +5113,7 @@
     "clockShelfExpired": "Dein letzter Pass ist ungenutzt am {{date}} verfallen.",
     "clockNone": "Noch kein Pass auf diesem Konto.",
     "applications": "{{left}} von {{passApplications}} Bewerbungen",
-    "applicationsBasis": "Nur eine Stelle, bei der dein Agent die Bewerbung selbst abschicken kann, verbraucht eine. Eine Anfrage, die er ablehnt, verbraucht nichts, und ein Versand, der nie stattfand, gibt seine Bewerbung zurück.",
+    "applicationsBasis": "Eine Bewerbung zählt nur bei einer Stelle, an die der Agent sie abschicken kann. Eine abgelehnte Anfrage oder ein Versand, der nie stattfand, kostet nichts.",
     "buyAnother": "Pass kaufen",
     "whichAgent": "Welcher Agent?",
     "handoffTitle": "Übergib ihn deinem Agenten",
@@ -5331,5 +5337,15 @@
     "fiveMinutes": "5 Minuten",
     "fifteenMinutes": "15 Minuten",
     "thirtyMinutes": "30 Minuten"
+  },
+  "atsRoles": {
+    "title": "Für welche Rollen bewirbst du dich?",
+    "description": "Nenne bis zu {{count}} Jobtitel. Dein ATS-Defense-Bericht richtet sich auf jeden davon aus.",
+    "roleLabel": "Rolle {{n}}",
+    "example1": "z. B. Datenanalyst",
+    "example2": "z. B. Business Analyst (optional)",
+    "example3": "z. B. Reporting Analyst (optional)",
+    "cancel": "Abbrechen",
+    "continue": "Weiter zur Bezahlung"
   }
 }

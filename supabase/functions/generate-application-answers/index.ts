@@ -32,7 +32,8 @@ import { toAskedLabels } from "../_shared/draft-reply.ts";
 // 200 with no answers, and the model's echo of a question is matched to the
 // label asked by case, spacing and list number (S11-040).
 // 2026-10-10.25 (wave-3 fix round integration): carries both of the above.
-const FN_BUILD = "generate-application-answers.2026-10-10.25";
+// 2026-10-10.62 (wave-3 fix round integration): carries both 2026-10-10.25 and the payments-account group's 2026-10-10.61.
+const FN_BUILD = "generate-application-answers.2026-10-10.62";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

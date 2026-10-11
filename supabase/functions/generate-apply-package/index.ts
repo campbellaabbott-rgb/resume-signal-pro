@@ -16,7 +16,8 @@ import { purchaseSpendGate, spendRefusal } from "../_shared/model-spend-gate.ts"
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-apply-package.2026-10-09.5";
+// 2026-10-09.62 (wave-3 fix round integration): carries both 2026-10-09.5 and the payments-account group's 2026-10-09.61.
+const FN_BUILD = "generate-apply-package.2026-10-09.62";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -290,6 +291,10 @@ serve(async (req) => {
 - Extract job metadata (company, role title) directly from the job posting text. If the posting describes how to apply (a portal, an email, a specific instruction), summarize it in applyMethodHint; if it doesn't say, leave applyMethodHint as an empty string rather than guessing.
 ${roleGuidance(typeof jobCategory === "string" ? jobCategory : null, typeof experienceBand === "string" ? experienceBand : null)}
 
+## CONTACT LINE — COPY ONLY, NEVER ADD
+- Every contact field (name, email, phone, location, LinkedIn, website) is copied exactly from the candidate's resume.
+- A field the resume does not have is an EMPTY STRING. Never invent a phone number, LinkedIn URL, website or email, and never write "N/A", "Not provided" or a placeholder.
+
 ## OUTPUT FORMAT (JSON)
 Return a structured resume (contact, summary, experience[], education[], skills[], certifications[]) tailored for this job, plus job metadata and a human-action checklist.`;
 
@@ -499,6 +504,8 @@ Prepare the tailored application package.`;
       verified: true,
       removedSkills: grounding.removedSkills,
       removedCertifications: grounding.removedCertifications,
+      // Contact values the résumé lacks, blanked (S11-017).
+      removedContact: grounding.removedContact,
     };
 
     console.log("[GENERATE-APPLY-PACKAGE] Successfully generated package, model:", modelUsed);

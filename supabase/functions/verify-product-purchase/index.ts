@@ -8,10 +8,11 @@ import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
 import { buyerEmailOf } from "../_shared/buyer-email.ts";
 import { proGrantRefusal } from "../_shared/pro.ts";
 import { REFUNDED_PURCHASE_MESSAGE, sessionWasRefunded } from "../_shared/payment-revocation.ts";
+import { targetRolesOf } from "../_shared/target-roles.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "verify-product-purchase.2026-10-09.2";
+const FN_BUILD = "verify-product-purchase.2026-10-09.61";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -63,7 +64,8 @@ function buildGenerationRequest(
   jobTitle: string,
   jobCompany: string,
   language: string,
-  sessionId: string
+  sessionId: string,
+  targetRoles: string[] = []
 ): { endpoint: string; body: Record<string, unknown> } | null {
   switch (productType) {
     // generate-keyword-fix gates on assertPaidSession too, and this is the path
@@ -89,7 +91,7 @@ function buildGenerationRequest(
       // Stripe checkout session lookup, so it requires sessionId in the
       // body — unlike every other product here, which trusts this caller
       // implicitly. Without it, this call always 401s.
-      return { endpoint: 'generate-ats-defense', body: { sessionId, resumeText, jobDescription: jobDescriptionText, targetRoles: [], language } };
+      return { endpoint: 'generate-ats-defense', body: { sessionId, resumeText, jobDescription: jobDescriptionText, targetRoles, language } };
     case 'interview_coach':
       return { endpoint: 'generate-interview-coach', body: { sessionId, resumeText, isPremium: true, language } };
     case 'career_path_simulator':
@@ -239,6 +241,7 @@ serve(async (req) => {
           job_company: grant.job_company || "",
           referral_code: "",
           language: grant.language || "en",
+          target_roles: grant.target_roles || "",
         },
       };
       logStep("Pro grant verified", { grantId, productType: session.metadata.product_type });
@@ -294,6 +297,8 @@ serve(async (req) => {
     // the text). A Pro grant's synthetic session, and a session minted before
     // that change, still name it in metadata.
     const resumeSessionId = await resumeSessionForCheckout(supabaseEarly, sessionId, session.metadata);
+    // The roles an ATS Defense buyer named at checkout (S11-074).
+    const boughtRoles = targetRolesOf(session.metadata?.target_roles);
 
     // Initialize Supabase to check for duplicate processing
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -359,6 +364,7 @@ serve(async (req) => {
           job_company: session.metadata?.job_company || null,
           referral_code: session.metadata?.referral_code || null,
           language: session.metadata?.language || null,
+          target_roles: session.metadata?.target_roles || null,
           ...(purchasedCredits != null ? { credits: purchasedCredits } : {}),
         }
       });
@@ -424,8 +430,10 @@ serve(async (req) => {
     // ANOTHER DELIVERER IS MAKING IT. The webhook claims the session first and
     // generates for up to a minute; generating here as well was the doubled
     // model spend of every bound sale. A row marked generating in the last
-    // few minutes is answered inProgress, and the page asks again.
-    if (generateContent && !generatedContent && !isFirstUse && GENERATED_PRODUCT_TYPES.includes(productType ?? '')) {
+    // few minutes is answered inProgress, and the page asks again: for EVERY
+    // generated product without a saved copy, whatever the page asked for
+    // (S11-054: the streamed products were never told, and made a second copy).
+    if (!generatedContent && !isFirstUse && GENERATED_PRODUCT_TYPES.includes(productType ?? '')) {
       try {
         const { data: row } = await supabase
           .from('product_deliveries')
@@ -507,6 +515,8 @@ serve(async (req) => {
               checklist: packageResult.checklist,
               coverLetter: coverLetterResult?.data?.coverLetter || null,
               modelUsed: packageResult.modelUsed,
+              // What the fact check removed, shown with the saved copy (S11-055).
+              groundingReport: packageResult.groundingReport ?? null,
             };
             logStep("Apply package generated successfully");
 
@@ -540,7 +550,7 @@ serve(async (req) => {
           }
         } else {
           const request = resume_text
-            ? buildGenerationRequest(productType, resume_text, job_description_text || '', jobTitle, jobCompany, language, sessionId)
+            ? buildGenerationRequest(productType, resume_text, job_description_text || '', jobTitle, jobCompany, language, sessionId, boughtRoles)
             : null;
 
           if (request) {
@@ -838,7 +848,9 @@ serve(async (req) => {
         generatedContent,
         // The webhook is still making it: ask again shortly (S8-009).
         inProgress,
-        hasResumeData: !!resumeSessionId
+        hasResumeData: !!resumeSessionId,
+        // The ATS Defense roles named at checkout, for the page's own fallback (S11-074).
+        ...(productType === 'ats_defense' ? { targetRoles: boughtRoles } : {}),
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

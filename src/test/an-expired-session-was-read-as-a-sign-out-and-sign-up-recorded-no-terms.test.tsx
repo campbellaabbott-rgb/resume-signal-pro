@@ -20,6 +20,7 @@ import en from "../i18n/locales/en.json";
 
 const h = vi.hoisted(() => ({
   listener: null as null | ((event: string, s: unknown) => void),
+  listeners: [] as Array<(event: string, s: unknown) => void>,
   signUp: vi.fn(async () => ({ error: null })),
   signInWithOtp: vi.fn(async () => ({ error: null })),
   resend: vi.fn(async () => ({ error: null })),
@@ -29,7 +30,7 @@ const h = vi.hoisted(() => ({
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     auth: {
-      onAuthStateChange: (cb: (event: string, s: unknown) => void) => { h.listener = cb; return { data: { subscription: { unsubscribe() {} } } }; },
+      onAuthStateChange: (cb: (event: string, s: unknown) => void) => { h.listener = cb; h.listeners.push(cb); return { data: { subscription: { unsubscribe() {} } } }; },
       getSession: async () => ({ data: { session: null } }),
       signUp: h.signUp,
       signInWithOtp: h.signInWithOtp,
@@ -55,7 +56,7 @@ function Probe() {
   return <div><span data-testid="expired">{String(sessionExpired)}</span><button onClick={() => void signOut()}>out</button></div>;
 }
 
-beforeEach(() => { h.listener = null; localStorage.clear(); vi.clearAllMocks(); });
+beforeEach(() => { h.listener = null; h.listeners = []; localStorage.clear(); vi.clearAllMocks(); });
 afterEach(cleanup);
 
 describe("an expired session is told apart from the user signing out (L3-20)", () => {
@@ -71,6 +72,37 @@ describe("an expired session is told apart from the user signing out (L3-20)", (
     act(() => h.listener!("SIGNED_IN", SESSION));
     await act(async () => { fireEvent.click(screen.getByText("out")); });
     expect(screen.getByTestId("expired").textContent).toBe("false");
+  });
+});
+
+/**
+ * S11-145: auth-js broadcasts SIGNED_OUT to every open tab. Two providers
+ * stand for two tabs of one browser (one localStorage); the sign-out pressed
+ * in the first reaches the second as the broadcast SIGNED_OUT.
+ */
+function TabProbe({ id }: { id: string }) {
+  const { sessionExpired, signOut } = useAuth();
+  return <div><span data-testid={`expired-${id}`}>{String(sessionExpired)}</span><button onClick={() => void signOut()}>{`out-${id}`}</button></div>;
+}
+
+describe("a sign-out pressed in one tab is not an expiry in the others (S11-145)", () => {
+  it("the other tab, told SIGNED_OUT by the broadcast, says nothing about an expired session", async () => {
+    render(<><AuthProvider><TabProbe id="a" /></AuthProvider><AuthProvider><TabProbe id="b" /></AuthProvider></>);
+    const [tabA, tabB] = h.listeners;
+    act(() => { tabA("SIGNED_IN", SESSION); tabB("SIGNED_IN", SESSION); });
+    h.signOut.mockImplementationOnce(async () => { tabA("SIGNED_OUT", null); return { error: null }; });
+    await act(async () => { fireEvent.click(screen.getByText("out-a")); });
+    act(() => tabB("SIGNED_OUT", null)); // the broadcast
+    expect(screen.getByTestId("expired-a").textContent).toBe("false");
+    expect(screen.getByTestId("expired-b").textContent, "the sibling tab called a deliberate sign-out an expiry").toBe("false");
+  });
+
+  it("a session that vanishes long after any sign-out is still an expiry", async () => {
+    localStorage.setItem("rb_signed_out_at", String(Date.now() - 5 * 60_000));
+    render(<AuthProvider><Probe /></AuthProvider>);
+    act(() => h.listener!("SIGNED_IN", SESSION));
+    act(() => h.listener!("SIGNED_OUT", null));
+    await waitFor(() => expect(screen.getByTestId("expired").textContent).toBe("true"));
   });
 });
 

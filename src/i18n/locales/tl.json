@@ -1995,11 +1995,10 @@
       },
       "atsDefense": {
         "howItWorks": [
-          "Nagsagawa ang aming AI ng komprehensibong ATS compatibility audit",
-          "Sinuri namin ang iyong resume laban sa 50+ ATS platform",
-          "Na-optimize ang mga keyword para sa hanggang 3 target role",
-          "Na-restructure ang format para sa maximum na parseability",
-          "Kasama ang mga tip sa LinkedIn alignment"
+          "Sinuri namin kung paano binabasa ng mga applicant tracking system ang iyong resume",
+          "Itinugma namin ang iyong mga keyword sa mga posisyong binanggit mo (hanggang 3)",
+          "Inayos namin ang mga seksyon para mabasa nang malinis",
+          "Nagdagdag kami ng mga tip para maitugma ang iyong LinkedIn profile"
         ],
         "nextSteps": [
           {
@@ -2189,6 +2188,11 @@
         "deliveryTime": "Instant",
         "deliveryMethod": "Sa Pahinang Ito"
       }
+    },
+    "stillBeingMade": {
+      "title": "Ginagawa pa ang iyong {{product}}",
+      "emailed": "Mas matagal ito kaysa karaniwan. Ie-email namin ito sa iyo sa sandaling handa na, kaya puwede mo nang isara ang pahinang ito.",
+      "refresh": "Mas matagal ito kaysa karaniwan. I-refresh ang pahinang ito pagkalipas ng ilang minuto para makita ito."
     }
   },
   "analysisResults": {
@@ -2760,7 +2764,7 @@
     "ladderSpecialistDesc": "Para sa mga nagpapalit ng karera: freelance, gig, at side-hustle na trabaho na isinalin sa recruiter-grade na karanasan.",
     "allToolsToggle": "Tingnan ang lahat ng tool ({{count}} pa)",
     "guarantee": "Sakop ang bawat bayad na tool: hindi masaya sa resulta? Ire-regenerate namin ito nang libre — sumagot lang sa iyong resibo.",
-    "passLine": "O isang one-off na pass para sa sarili mong AI agent: ${{passPrice}} para sa {{passHours}} oras at {{passApplications}} aplikasyon. Hindi kailanman nagre-renew.",
+    "passLine": "O isang one-off na pass para sa sarili mong AI agent: ${{passPrice}} para sa {{passHours}} oras at {{passApplications}} aplikasyon, na binibilang lang kapag kaya niyang ipadala. Hindi kailanman nagre-renew.",
     "passLink": "Ikonekta ang iyong agent"
   },
   "scanPackPurchase": {
@@ -4508,7 +4512,7 @@
     "acNothingNew": "Walang bagong ihahanda — hindi maiangkop ang mga naka-save na posting (walang paglalarawan o grounding check). Magdagdag ng job posting at subukan muli.",
     "acTitle": "Katuwang sa aplikasyon",
     "acPreppedCount": "{{done}}/{{total}} naihanda",
-    "acBlurb": "Iniaangkop namin ang resume at cover letter sa bawat naka-save na posting — nakabatay sa totoo mong resume, walang imbentong detalye. Ikaw ang susuri at mag-a-apply sa sariling site ng kumpanya.",
+    "acBlurb": "Para sa bawat naka-save na trabaho, gumagawa kami ng iniangkop na resume at cover letter mula sa totoo mong resume, walang imbento. Ikaw ang susuri at mag-a-apply sa sariling site ng employer.",
     "acPrepProgress": "Inihahanda ang {{i}} ng {{total}} — {{company}}…",
     "acPrepAll_one": "Ihanda ang {{count}} iniangkop na aplikasyon",
     "acPrepAll_other": "Ihanda ang {{count}} iniangkop na aplikasyon",
@@ -4767,7 +4771,8 @@
     "anyRole": "Kahit anong role",
     "searchLimitHit": "Hanggang 10 aktibong search lang. I-pause ang isa para makapagdagdag.",
     "searchLastRun": "Huling takbo: {{scanned}} na-scan, {{picked}} naka-queue.",
-    "passFunds": "Ang iyong Agent Pass ang nagpopondo sa agent na ito: {{left}} aplikasyon pa ang natitira. I-on ang agent sa ibaba, at makakahiling ng aplikasyon ang naka-connect mong AI."
+    "passFunds": "Ang iyong Agent Pass ang nagpopondo sa agent na ito: {{left}} aplikasyon pa ang natitira. I-on ang agent sa ibaba, at makakahiling ng aplikasyon ang naka-connect mong AI.",
+    "trackerFull": "Itinabi, pero puno na ang iyong tracker (2,000 entry). Mag-alis ng mga lumang entry para makadagdag pa."
   },
   "applyProfile": {
     "authorized": "May pahintulot ka bang magtrabaho kung saan ka nag-a-apply?",
@@ -4886,8 +4891,8 @@
     "includesPro": "Kasama ang lahat ng nasa Pro (${{proPrice}}/buwan)",
     "perkAutoApply": "Awtomatikong nag-a-apply para sa iyo sa {{names}}",
     "perkOneClick": "Mga aplikasyong napunan na at handang ipadala sa {{names}}",
-    "perkMorningQueue": "Morning Queue: sa magdamag, pinapatakbo ng agent ang iyong paghahanap at nag-iiwan ng shortlist sa iyong account para sa umaga",
-    "perkQueue": "May listahang puwede mong suriin muna, o hayaang tumakbo mag-isa — ikaw ang pipili, mababago anumang oras",
+    "perkMorningQueue": "Morning Queue: tuwing umaga, may shortlist ng mga bagong tugmang trabaho na naghihintay sa iyong account",
+    "perkQueue": "Suriin ang bawat aplikasyon bago ito ipadala, o hayaan itong kusang maipadala. Mababago anumang oras.",
     "perkCap": "Ikaw ang nagtatakda ng pang-araw-araw na limitasyon, at hindi ito mag-a-apply nang dalawang beses sa iisang trabaho",
     "perkHonest": "Hindi ito kailanman gumagawa-gawa ng sagot. Kung kailangan ka ng isang tanong, hihinto ito at magtatanong.",
     "cta": "Simulan ang agent",
@@ -4899,7 +4904,8 @@
     "signInFirst": "Magsa-sign in ka muna — gumagana ang agent mula sa iyong account.",
     "alreadySubscribed": "Mayroon ka nang agent — dadalhin ka namin doon.",
     "needsPaymentUpdate": "May nakabinbing bayad ang iyong plano. I-update ang iyong card sa halip na magsimula ng bagong plano.",
-    "hasPro": "Naka-Pro ka, na kasama na sa agent. Kanselahin muna ang Pro sa Manage subscription, saka simulan ang agent — para hindi ka masingil sa dalawa."
+    "hasPro": "Naka-Pro ka, na kasama na sa agent. Kanselahin muna ang Pro sa Manage subscription, saka simulan ang agent — para hindi ka masingil sa dalawa.",
+    "portalFailed": "Hindi namin mabuksan ang billing. Pakisubukang muli pagkalipas ng isang minuto."
   },
   "proPlan": {
     "trialing": "Naka-on ang iyong trial: bukas na ngayon ang walang-limitasyong scan at ang sabayang paghahanda ng mga aplikasyon. Kasama ang mga bayad na tool simula sa iyong unang bayad.",
@@ -5030,7 +5036,7 @@
   },
   "homeAgent": {
     "lead": "Dalhin ang sarili mong AI agent.",
-    "passLine": "Ang ${{passPrice}} na pass ay nagbibigay dito ng {{passHours}} oras sa buong bilis para mag-research sa job board at mag-apply sa {{passApplications}} trabaho para sa iyo. Binibilang lang ang mga trabahong kaya nitong i-submit mismo. Hindi kailanman nagre-renew; mag-sign in para bumili.",
+    "passLine": "Ang ${{passPrice}} na pass ay nagbibigay sa iyong agent ng {{passHours}} oras para maghanap sa job board at mag-apply para sa iyo sa {{passApplications}} trabaho. Binibilang lang ang trabaho kapag kaya ng agent na ipadala ang aplikasyon. Hindi kailanman nagre-renew; mag-sign in para bumili.",
     "connectCta": "Ikonekta ang iyong agent",
     "passCta": "Bumili o buksan ang iyong pass",
     "connectLine2": "Ikonekta ito nang libre at walang account — {{freeCallsPerDay}} na tawag bawat araw bawat network address para tumingin-tingin sa job board (ang isang opisina o koneksyon sa bahay ay binibilang bilang isang address; mula sa ChatGPT may sariling {{freeCallsPerDay}} ang bawat tao, at mula sa Claude, nauuna ang pang-araw-araw na pool na pinagsasaluhan ng lahat ng gumagamit ng Claude)."
@@ -5107,7 +5113,7 @@
     "clockShelfExpired": "Napaso nang hindi nagagamit ang iyong huling pass noong {{date}}.",
     "clockNone": "Wala pang pass sa account na ito.",
     "applications": "{{left}} sa {{passApplications}} aplikasyon",
-    "applicationsBasis": "Ang trabahong kaya lang i-submit mismo ng iyong agent ang gumagastos ng isa. Ang kahilingang tinatanggihan nito ay walang gastos, at ang pagpapadalang hindi kailanman nangyari ay nagbabalik ng aplikasyon nito.",
+    "applicationsBasis": "Binibilang lang ang aplikasyon para sa trabahong kayang padalhan ng agent. Walang bayad ang kahilingang tinanggihan, o ang pagpapadalang hindi nangyari.",
     "buyAnother": "Bumili ng pass",
     "whichAgent": "Aling agent?",
     "handoffTitle": "Ibigay ito sa iyong agent",
@@ -5331,5 +5337,15 @@
     "fiveMinutes": "5 minuto",
     "fifteenMinutes": "15 minuto",
     "thirtyMinutes": "30 minuto"
+  },
+  "atsRoles": {
+    "title": "Anong mga posisyon ang inaaplayan mo?",
+    "description": "Maglagay ng hanggang {{count}} job title. Tinutugunan ng iyong ATS Defense report ang bawat isa.",
+    "roleLabel": "Posisyon {{n}}",
+    "example1": "hal., Data Analyst",
+    "example2": "hal., Business Analyst (opsyonal)",
+    "example3": "hal., Reporting Analyst (opsyonal)",
+    "cancel": "Kanselahin",
+    "continue": "Magpatuloy sa checkout"
   }
 }

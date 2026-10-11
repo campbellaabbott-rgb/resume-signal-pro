@@ -1995,11 +1995,10 @@
       },
       "atsDefense": {
         "howItWorks": [
-          "Notre IA a effectué un audit complet de compatibilité ATS",
-          "Nous avons analysé votre CV par rapport à plus de 50 plateformes ATS",
-          "Mots-clés optimisés pour jusqu'à 3 postes cibles",
-          "Format restructuré pour une analyse maximale",
-          "Conseils d'alignement LinkedIn inclus"
+          "Nous avons vérifié comment les logiciels de recrutement lisent votre CV",
+          "Nous avons aligné vos mots-clés sur les postes que vous avez indiqués (jusqu'à 3)",
+          "Nous avons remanié des sections pour qu'elles soient lues sans erreur",
+          "Nous avons ajouté des conseils pour aligner votre profil LinkedIn"
         ],
         "nextSteps": [
           {
@@ -2189,6 +2188,11 @@
         "deliveryTime": "Instantané",
         "deliveryMethod": "Sur cette page"
       }
+    },
+    "stillBeingMade": {
+      "title": "Votre {{product}} est encore en préparation",
+      "emailed": "Cela prend plus de temps que d'habitude. Nous vous l'enverrons par e-mail dès qu'il sera prêt : vous pouvez fermer cette page.",
+      "refresh": "Cela prend plus de temps que d'habitude. Actualisez cette page dans quelques minutes pour le voir."
     }
   },
   "analysisResults": {
@@ -2760,7 +2764,7 @@
     "ladderSpecialistDesc": "Pour les reconversions : le travail freelance et les missions traduits en expérience de niveau recruteur.",
     "allToolsToggle": "Voir tous les outils ({{count}} de plus)",
     "guarantee": "Chaque outil payant est couvert : pas satisfait du résultat ? Nous le régénérons gratuitement — répondez simplement à votre reçu.",
-    "passLine": "Ou un pass unique pour votre propre agent IA : {{passPrice}} $ pour {{passHours}} heures et {{passApplications}} candidatures. Sans reconduction.",
+    "passLine": "Ou un pass unique pour votre propre agent IA : {{passPrice}} $ pour {{passHours}} heures et {{passApplications}} candidatures, comptées seulement s'il peut les envoyer. Sans reconduction.",
     "passLink": "Connectez votre agent"
   },
   "scanPackPurchase": {
@@ -4508,7 +4512,7 @@
     "acNothingNew": "Rien de nouveau à préparer — les offres enregistrées n'ont pas pu être adaptées (description manquante ou contrôle d'ancrage). Ajoutez l'offre et réessayez.",
     "acTitle": "Copilote de candidature",
     "acPreppedCount": "{{done}}/{{total}} préparées",
-    "acBlurb": "Nous adaptons un CV et une lettre à chaque offre enregistrée — ancrés dans votre vrai CV, sans rien inventer. Vous relisez et postulez sur le site de l'entreprise.",
+    "acBlurb": "Pour chaque offre enregistrée, nous rédigeons un CV adapté et une lettre de motivation à partir de votre vrai CV, sans rien inventer. Vous les relisez et postulez sur le site de l'employeur.",
     "acPrepProgress": "Préparation {{i}} sur {{total}} — {{company}}…",
     "acPrepAll_one": "Préparer {{count}} candidature adaptée",
     "acPrepAll_other": "Préparer {{count}} candidatures adaptées",
@@ -4767,7 +4771,8 @@
     "anyRole": "Tout poste",
     "searchLimitHit": "Vous pouvez avoir jusqu'à 10 recherches actives. Mettez-en une en pause pour en ajouter une autre.",
     "searchLastRun": "Dernière exécution : {{scanned}} analysées, {{picked}} en file.",
-    "passFunds": "Votre Agent Pass finance cet agent : il reste {{left}} candidatures. Activez l'agent ci-dessous, et votre IA connectée pourra demander des candidatures."
+    "passFunds": "Votre Agent Pass finance cet agent : il reste {{left}} candidatures. Activez l'agent ci-dessous, et votre IA connectée pourra demander des candidatures.",
+    "trackerFull": "Conservé, mais votre suivi est plein (2 000 entrées). Supprimez d'anciennes entrées pour en ajouter."
   },
   "applyProfile": {
     "authorized": "Êtes-vous autorisé à travailler là où vous postulez ?",
@@ -4886,8 +4891,8 @@
     "includesPro": "Comprend tout le contenu de Pro ({{proPrice}} $/mois)",
     "perkAutoApply": "Postule automatiquement pour vous sur {{names}}",
     "perkOneClick": "Candidatures remplies et prêtes à envoyer sur {{names}}",
-    "perkMorningQueue": "File du matin : pendant la nuit, l'agent lance votre recherche et vous laisse une présélection dans votre compte pour le matin",
-    "perkQueue": "Une file que vous pouvez vérifier d'abord, ou laisser tourner seule — à vous de choisir, modifiable à tout moment",
+    "perkMorningQueue": "File du matin : chaque matin, une présélection de nouvelles offres pour vous vous attend dans votre compte",
+    "perkQueue": "Relisez chaque candidature avant son envoi, ou laissez-la partir seule. Modifiable à tout moment.",
     "perkCap": "Une limite quotidienne que vous fixez, et jamais deux candidatures au même poste",
     "perkHonest": "Il n'invente jamais de réponse. Si une question vous revient, il s'arrête et vous demande.",
     "cta": "Lancer l'agent",
@@ -4899,7 +4904,8 @@
     "signInFirst": "Vous vous connecterez d'abord : l'agent fonctionne depuis votre compte.",
     "alreadySubscribed": "Vous avez déjà l'agent — on vous y emmène.",
     "needsPaymentUpdate": "Votre formule a un paiement en attente. Mettez à jour votre carte plutôt que de souscrire une nouvelle formule.",
-    "hasPro": "Vous avez Pro, que l'agent inclut. Résiliez Pro dans Gérer l'abonnement, puis lancez l'agent — vous ne paierez jamais les deux."
+    "hasPro": "Vous avez Pro, que l'agent inclut. Résiliez Pro dans Gérer l'abonnement, puis lancez l'agent — vous ne paierez jamais les deux.",
+    "portalFailed": "Impossible d'ouvrir la facturation. Réessayez dans une minute."
   },
   "proPlan": {
     "trialing": "Votre essai est en cours : les analyses illimitées et la préparation de candidatures par lots sont débloquées dès maintenant. Les outils payants sont inclus à partir de votre premier paiement.",
@@ -5030,7 +5036,7 @@
   },
   "homeAgent": {
     "lead": "Amenez votre propre agent IA.",
-    "passLine": "Un pass à {{passPrice}} $ lui donne {{passHours}} heures à pleine vitesse pour étudier les offres et postuler à {{passApplications}} emplois pour vous. Seules comptent les offres où il peut envoyer la candidature lui-même. Sans reconduction ; connectez-vous pour l'acheter.",
+    "passLine": "Un pass à {{passPrice}} $ donne à votre agent {{passHours}} heures pour explorer les offres et postuler pour vous à {{passApplications}} emplois. Un emploi ne compte que si l'agent peut envoyer la candidature. Sans reconduction ; connectez-vous pour l'acheter.",
     "connectCta": "Connecter votre agent",
     "passCta": "Acheter ou ouvrir votre pass",
     "connectLine2": "Connectez-le gratuitement et sans compte — {{freeCallsPerDay}} appels par jour et par adresse réseau pour explorer la bourse d'emploi (un bureau ou une connexion domestique compte pour une seule adresse ; depuis ChatGPT chaque personne a ses propres {{freeCallsPerDay}}, et depuis Claude un quota quotidien partagé par tous les utilisateurs de Claude passe en premier)."
@@ -5107,7 +5113,7 @@
     "clockShelfExpired": "Votre dernier pass a expiré sans usage le {{date}}.",
     "clockNone": "Aucun pass sur ce compte pour l'instant.",
     "applications": "{{left}} candidatures sur {{passApplications}}",
-    "applicationsBasis": "Seule une offre où votre agent peut envoyer la candidature lui-même en consomme une. Une demande qu'il refuse ne consomme rien, et un envoi qui n'a jamais eu lieu restitue sa candidature.",
+    "applicationsBasis": "Une candidature ne compte que pour une offre où l'agent peut l'envoyer. Une demande refusée, ou un envoi qui n'a jamais eu lieu, ne coûte rien.",
     "buyAnother": "Acheter un pass",
     "whichAgent": "Quel agent ?",
     "handoffTitle": "Confiez-le à votre agent",
@@ -5331,5 +5337,15 @@
     "fiveMinutes": "5 minutes",
     "fifteenMinutes": "15 minutes",
     "thirtyMinutes": "30 minutes"
+  },
+  "atsRoles": {
+    "title": "À quels postes postulez-vous ?",
+    "description": "Indiquez jusqu'à {{count}} intitulés de poste. Votre rapport ATS Defense cible chacun d'eux.",
+    "roleLabel": "Poste {{n}}",
+    "example1": "ex. : Analyste de données",
+    "example2": "ex. : Analyste métier (facultatif)",
+    "example3": "ex. : Analyste reporting (facultatif)",
+    "cancel": "Annuler",
+    "continue": "Continuer vers le paiement"
   }
 }

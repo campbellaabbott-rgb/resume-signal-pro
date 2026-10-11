@@ -110,6 +110,38 @@ const Success = () => {
     cleanupExpiredResumeData();
   }, []);
 
+  /**
+   * THE ANALYSIS STAYS ON A RELOAD (S11-016). Once it is shown, the address
+   * names it (?share=), beside the session, so a reload, Back or a restored
+   * tab loads the saved copy. The page deleted its temporary keys after the
+   * analysis and kept only session_id, so every reload said "we need your
+   * résumé again" for the product the buyer had just paid for.
+   */
+  const rememberShareInUrl = (newShareId: unknown) => {
+    if (typeof newShareId !== "string" || !newShareId || !sessionId) return;
+    navigate(`/success?session_id=${encodeURIComponent(sessionId)}&share=${encodeURIComponent(newShareId)}`, { replace: true });
+  };
+
+  /**
+   * The analysis this purchase already received, asked of analyze-resume by
+   * the session alone (it answers a redeemed session from its saved copy).
+   * True when one was shown.
+   */
+  const showDeliveredAnalysis = async (stripeSessionId: string): Promise<boolean> => {
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke("analyze-resume", { body: { resumeText: "", sessionId: stripeSessionId } });
+      if (fnError || !data || data.error || !data.alreadyDelivered) return false;
+      const { shareId: savedShareId, emailSent: _emailSent, alreadyDelivered: _delivered, ...analysisResult } = data;
+      setAnalysisData(analysisResult);
+      setShareId(savedShareId);
+      setNeedsResume(false);
+      rememberShareInUrl(savedShareId);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   useEffect(() => {
     const runAnalysis = async (resumeText: string, linkedInText?: string, jobDescriptionText?: string, stripeSessionId?: string) => {
       try {
@@ -135,6 +167,7 @@ const Success = () => {
         setAnalysisData(analysisResult);
         setShareId(newShareId);
         setEmailSent(wasEmailSent || false);
+        rememberShareInUrl(newShareId);
 
         // Save personalization profile for future content generation
         updateFromAnalysis(analysisResult, resumeText, linkedInText, jobDescriptionText, stripeSessionId);
@@ -219,7 +252,13 @@ const Success = () => {
         getResumeData("tempSessionId");
 
       if (!tempSessionId) {
-        // No server-side temp session - show recovery UI
+        // No résumé in this tab: an analysis this purchase already received
+        // is shown, never a request to regenerate it (S11-016); only a
+        // purchase with none asks for the résumé.
+        if (await showDeliveredAnalysis(sessionId)) {
+          setIsLoading(false);
+          return;
+        }
         setNeedsResume(true);
         setIsLoading(false);
         return;
@@ -239,7 +278,11 @@ const Success = () => {
         }
 
         if (!tempData || tempData.length === 0 || !(tempData[0] as any).resume_text) {
-          // Data expired or not found
+          // Data expired or not found: the delivered analysis first (S11-016).
+          if (await showDeliveredAnalysis(sessionId)) {
+            setIsLoading(false);
+            return;
+          }
           setNeedsResume(true);
           setIsLoading(false);
           return;
@@ -433,7 +476,9 @@ const Success = () => {
     });
   };
 
-  const isSharedView = !!shareIdParam;
+  // A link someone shared names only the analysis; the buyer's own page,
+  // reloaded, names the purchase beside it and is still the buyer's view.
+  const isSharedView = !!shareIdParam && !sessionId;
 
   return (
     <div className="min-h-screen bg-background">
@@ -539,6 +584,7 @@ const Success = () => {
                           const { shareId: newShareId, ...analysisResult } = data;
                           setAnalysisData(analysisResult);
                           setShareId(newShareId);
+                          rememberShareInUrl(newShareId);
 
                           toast({
                             title: "Analysis ready",

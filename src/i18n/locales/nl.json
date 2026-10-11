@@ -1995,11 +1995,10 @@
       },
       "atsDefense": {
         "howItWorks": [
-          "Onze AI voerde een uitgebreide ATS-compatibiliteitsaudit uit",
-          "We analyseerden je cv tegen 50+ ATS-platforms",
-          "Zoekwoorden geoptimaliseerd voor tot 3 doelfuncties",
-          "Formaat geherstructureerd voor maximale verwerkbaarheid",
-          "LinkedIn-afstemmingstips inbegrepen"
+          "We hebben gecontroleerd hoe sollicitatiesystemen je cv lezen",
+          "We hebben je trefwoorden afgestemd op de functies die je noemde (maximaal 3)",
+          "We hebben secties aangepast zodat ze foutloos worden ingelezen",
+          "We hebben tips toegevoegd om je LinkedIn-profiel erop af te stemmen"
         ],
         "nextSteps": [
           {
@@ -2189,6 +2188,11 @@
         "deliveryTime": "Direct",
         "deliveryMethod": "Op deze pagina"
       }
+    },
+    "stillBeingMade": {
+      "title": "Je {{product}} wordt nog gemaakt",
+      "emailed": "Het duurt langer dan normaal. We mailen het je zodra het klaar is, dus je kunt deze pagina sluiten.",
+      "refresh": "Het duurt langer dan normaal. Vernieuw deze pagina over een paar minuten om het te zien."
     }
   },
   "analysisResults": {
@@ -2760,7 +2764,7 @@
     "ladderSpecialistDesc": "Voor carrièreswitchers: freelance-, gig- en projectwerk vertaald naar ervaring op recruiterniveau.",
     "allToolsToggle": "Bekijk alle tools ({{count}} meer)",
     "guarantee": "Elke betaalde tool is gedekt: niet blij met het resultaat? We regenereren het gratis — beantwoord gewoon je bon.",
-    "passLine": "Of een eenmalige pas voor je eigen AI-agent: ${{passPrice}} voor {{passHours}} uur en {{passApplications}} sollicitaties. Verlengt nooit.",
+    "passLine": "Of een eenmalige pas voor je eigen AI-agent: ${{passPrice}} voor {{passHours}} uur en {{passApplications}} sollicitaties, die alleen tellen als hij ze kan versturen. Verlengt nooit.",
     "passLink": "Verbind je agent"
   },
   "scanPackPurchase": {
@@ -4508,7 +4512,7 @@
     "acNothingNew": "Niets nieuws om voor te bereiden — de opgeslagen vacatures konden niet worden aangepast (ontbrekende beschrijving of feitencontrole). Voeg de vacaturetekst toe en probeer opnieuw.",
     "acTitle": "Sollicitatie-copiloot",
     "acPreppedCount": "{{done}}/{{total}} voorbereid",
-    "acBlurb": "We passen cv en brief aan op elke opgeslagen vacature — verankerd in je echte cv, niets verzonnen. Jij controleert en solliciteert op de site van het bedrijf.",
+    "acBlurb": "Voor elke opgeslagen vacature schrijven we een aangepast cv en een sollicitatiebrief op basis van je echte cv, zonder iets te verzinnen. Jij controleert ze en solliciteert op de site van de werkgever.",
     "acPrepProgress": "Bezig met {{i}} van {{total}} — {{company}}…",
     "acPrepAll_one": "{{count}} sollicitatie op maat voorbereiden",
     "acPrepAll_other": "{{count}} sollicitaties op maat voorbereiden",
@@ -4767,7 +4771,8 @@
     "anyRole": "Elke functie",
     "searchLimitHit": "Je kunt maximaal 10 actieve zoekopdrachten hebben. Pauzeer er een om een nieuwe toe te voegen.",
     "searchLastRun": "Laatste run: {{scanned}} bekeken, {{picked}} in de wachtrij.",
-    "passFunds": "Je Agent Pass betaalt deze agent: nog {{left}} sollicitaties. Zet de agent hieronder aan, dan kan je gekoppelde AI sollicitaties aanvragen."
+    "passFunds": "Je Agent Pass betaalt deze agent: nog {{left}} sollicitaties. Zet de agent hieronder aan, dan kan je gekoppelde AI sollicitaties aanvragen.",
+    "trackerFull": "Bewaard, maar je tracker is vol (2.000 items). Verwijder oude items om er meer toe te voegen."
   },
   "applyProfile": {
     "authorized": "Mag je werken waar je solliciteert?",
@@ -4886,8 +4891,8 @@
     "includesPro": "Bevat alles uit Pro (${{proPrice}}/maand)",
     "perkAutoApply": "Solliciteert automatisch voor je op {{names}}",
     "perkOneClick": "Sollicitaties ingevuld en klaar om te versturen op {{names}}",
-    "perkMorningQueue": "Ochtendwachtrij: 's nachts voert de agent je zoekopdracht uit en zet hij een shortlist voor de ochtend in je account",
-    "perkQueue": "Een wachtrij die je eerst kunt nakijken, of onbeheerd laten draaien — jouw keuze, altijd aan te passen",
+    "perkMorningQueue": "Ochtendwachtrij: elke ochtend staat er een shortlist met nieuwe passende vacatures in je account",
+    "perkQueue": "Controleer elke sollicitatie voordat hij weggaat, of laat hem zelf versturen. Altijd aan te passen.",
     "perkCap": "Een daglimiet die jij instelt, en nooit twee keer op dezelfde vacature",
     "perkHonest": "Hij verzint nooit een antwoord. Heeft een vraag jou nodig, dan stopt hij en vraagt het.",
     "cta": "Agent starten",
@@ -4899,7 +4904,8 @@
     "signInFirst": "Je logt eerst in — de agent werkt vanuit je account.",
     "alreadySubscribed": "Je hebt de agent al — we brengen je ernaartoe.",
     "needsPaymentUpdate": "Er staat een betaling open voor je plan. Werk je kaart bij in plaats van een nieuw plan te starten.",
-    "hasPro": "Je hebt Pro, dat bij de agent inbegrepen is. Zeg Pro eerst op via Abonnement beheren en start dan de agent — zo betaal je nooit voor beide."
+    "hasPro": "Je hebt Pro, dat bij de agent inbegrepen is. Zeg Pro eerst op via Abonnement beheren en start dan de agent — zo betaal je nooit voor beide.",
+    "portalFailed": "We konden de facturering niet openen. Probeer het over een minuut opnieuw."
   },
   "proPlan": {
     "trialing": "Je proefperiode loopt: onbeperkte scans en het in één keer voorbereiden van sollicitaties zijn nu ontgrendeld. De betaalde tools zijn inbegrepen vanaf je eerste betaling.",
@@ -5030,7 +5036,7 @@
   },
   "homeAgent": {
     "lead": "Neem je eigen AI-agent mee.",
-    "passLine": "Een pas van ${{passPrice}} geeft hem {{passHours}} uur op volle snelheid om de vacaturebank te onderzoeken en voor jou op {{passApplications}} vacatures te solliciteren. Alleen vacatures waar hij zelf kan solliciteren tellen mee. Verlengt nooit; log in om te kopen.",
+    "passLine": "Een pas van ${{passPrice}} geeft je agent {{passHours}} uur om de vacaturebank te doorzoeken en voor jou op {{passApplications}} vacatures te solliciteren. Een vacature telt alleen als de agent de sollicitatie kan versturen. Verlengt nooit; log in om te kopen.",
     "connectCta": "Verbind je agent",
     "passCta": "Pas kopen of openen",
     "connectLine2": "Verbind hem gratis en zonder account — {{freeCallsPerDay}} aanroepen per dag per netwerkadres om het vacaturebord te verkennen (een kantoor of een thuisverbinding telt als één adres; vanuit ChatGPT heeft iedereen zijn eigen {{freeCallsPerDay}}, en vanuit Claude gaat eerst een dagelijkse pot voor die alle Claude-gebruikers delen)."
@@ -5107,7 +5113,7 @@
     "clockShelfExpired": "Je laatste pas verviel ongebruikt op {{date}}.",
     "clockNone": "Nog geen pas op dit account.",
     "applications": "{{left}} van {{passApplications}} sollicitaties",
-    "applicationsBasis": "Alleen een vacature waar je agent zelf kan solliciteren kost er één. Een aanvraag die hij weigert kost niets, en een verzending die nooit plaatsvond geeft zijn sollicitatie terug.",
+    "applicationsBasis": "Een sollicitatie telt alleen voor een vacature waar de agent hem kan versturen. Een geweigerde aanvraag, of een verzending die nooit plaatsvond, kost niets.",
     "buyAnother": "Koop een pas",
     "whichAgent": "Welke agent?",
     "handoffTitle": "Geef hem aan je agent",
@@ -5331,5 +5337,15 @@
     "fiveMinutes": "5 minuten",
     "fifteenMinutes": "15 minuten",
     "thirtyMinutes": "30 minuten"
+  },
+  "atsRoles": {
+    "title": "Op welke functies solliciteer je?",
+    "description": "Noem maximaal {{count}} functietitels. Je ATS Defense-rapport richt zich op elk ervan.",
+    "roleLabel": "Functie {{n}}",
+    "example1": "bijv. Data-analist",
+    "example2": "bijv. Business-analist (optioneel)",
+    "example3": "bijv. Rapportage-analist (optioneel)",
+    "cancel": "Annuleren",
+    "continue": "Verder naar afrekenen"
   }
 }

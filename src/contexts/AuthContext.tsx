@@ -39,6 +39,28 @@ export function safeNextPath(raw: string | null | undefined): string {
   return s;
 }
 
+/**
+ * A DELIBERATE SIGN-OUT, SHARED WITH THIS BROWSER'S OTHER TABS (S11-145).
+ * auth-js broadcasts SIGNED_OUT to every open tab, and the flag the sign-out
+ * button sets lives in one tab's memory, so every other tab called the
+ * person's own sign-out (or account deletion) an expiry. The button now also
+ * writes the time to localStorage, which every tab of this site reads; a
+ * session that vanishes within a minute of that mark is a sign-out.
+ */
+export const SIGN_OUT_MARK_KEY = "rb_signed_out_at";
+const SIGN_OUT_MARK_MS = 60_000;
+function markDeliberateSignOut(): void {
+  try { localStorage.setItem(SIGN_OUT_MARK_KEY, String(Date.now())); } catch { /* storage blocked: this tab's flag still holds */ }
+}
+export function signOutWasDeliberate(now: number = Date.now()): boolean {
+  try {
+    const at = Number(localStorage.getItem(SIGN_OUT_MARK_KEY));
+    return Number.isFinite(at) && at > 0 && now >= at && now - at < SIGN_OUT_MARK_MS;
+  } catch {
+    return false;
+  }
+}
+
 interface AuthContextValue {
   session: Session | null;
   user: User | null;
@@ -77,8 +99,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // A session vanishing without THE USER signing out = expiry/revocation.
       // auth-js reports a failed refresh as SIGNED_OUT too, so the event name
       // cannot tell the two apart (platform sweep L3-20: this never fired);
-      // the sign-out button sets userSignedOut first, and only that is quiet.
-      if (hadSession && !s && !userSignedOut.current) setSessionExpired(true);
+      // the sign-out button sets userSignedOut first, and only that is quiet,
+      // in this tab and (through its shared mark) in every other one.
+      if (hadSession && !s && !userSignedOut.current && !signOutWasDeliberate()) setSessionExpired(true);
       if (!s) { hadSession = false; userSignedOut.current = false; }
       if (s) {
         hadSession = true;
@@ -119,6 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     userSignedOut.current = true;
+    markDeliberateSignOut();
     await supabase.auth.signOut();
   };
 

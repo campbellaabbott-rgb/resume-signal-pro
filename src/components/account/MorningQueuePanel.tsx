@@ -553,6 +553,9 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
           fit_pct: it.fit_pct,
         });
         if (!insErr) toast.success(t("agentQueue.keptTracked", "Kept — added to your tracker below."));
+        // A full tracker is said, not swallowed (S11-139): the pick is kept,
+        // but it is not in the tracker.
+        else if ((insErr as { code?: string }).code === "54000") toast.error(t("agentQueue.trackerFull"));
       }
     }
   }, [queue, userId, t]);

@@ -39,7 +39,7 @@ const PaymentFailed = () => {
     // résumé copy and its job, never the tab's homepage scan.
     const retry = readCheckoutRetry(known);
     if (retry?.sessionId) {
-      await purchaseProduct(known, { ctaSection: "payment_cancelled", sessionId: retry.sessionId, jobTitle: retry.jobTitle, jobCompany: retry.jobCompany });
+      await purchaseProduct(known, { ctaSection: "payment_cancelled", sessionId: retry.sessionId, jobTitle: retry.jobTitle, jobCompany: retry.jobCompany, targetRoles: retry.targetRoles });
       return;
     }
     // Made from a résumé, and we do not know which: back to where it was bought.

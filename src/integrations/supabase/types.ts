@@ -3804,6 +3804,7 @@ export type Database = {
           retry_count: number
           status: string
           stripe_session_id: string
+          transient_failures: number
         }
         Insert: {
           ai_model_used?: string | null
@@ -3832,6 +3833,7 @@ export type Database = {
           retry_count?: number
           status?: string
           stripe_session_id: string
+          transient_failures?: number
         }
         Update: {
           ai_model_used?: string | null
@@ -3860,6 +3862,7 @@ export type Database = {
           retry_count?: number
           status?: string
           stripe_session_id?: string
+          transient_failures?: number
         }
         Relationships: []
       }
@@ -4544,6 +4547,7 @@ export type Database = {
           status: string
           status_changed_at: string | null
           user_id: string
+          written_by: string | null
         }
         Insert: {
           applied_at?: string
@@ -4570,6 +4574,7 @@ export type Database = {
           status?: string
           status_changed_at?: string | null
           user_id: string
+          written_by?: string | null
         }
         Update: {
           applied_at?: string
@@ -4596,6 +4601,7 @@ export type Database = {
           status?: string
           status_changed_at?: string | null
           user_id?: string
+          written_by?: string | null
         }
         Relationships: [
           {
@@ -5902,7 +5908,7 @@ export type Database = {
       get_explore_denominators: { Args: never; Returns: Json }
       get_explore_field_grid: { Args: never; Returns: Json }
       get_failed_deliveries_for_retry: {
-        Args: { p_limit?: number }
+        Args: { p_include_generating?: boolean; p_limit?: number }
         Returns: {
           customer_email: string
           id: string
