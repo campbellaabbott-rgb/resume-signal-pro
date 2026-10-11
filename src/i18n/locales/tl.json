@@ -5230,7 +5230,8 @@
     "invalid": "Hindi wasto ang link na ito. Gamitin ang unsubscribe link sa mismong email.",
     "missing": "Kailangan ng pahinang ito ang unsubscribe link mula sa isa sa aming mga email.",
     "error": "Hindi ito natigil ngayon. Subukan muli ang button maya-maya.",
-    "home": "Bumalik sa Resume Booster"
+    "home": "Bumalik sa Resume Booster",
+    "agentDigest": "Itigil ang mga email ng shortlist tuwing umaga. Patuloy na tatakbo ang iyong agent, at mananatili sa iyong account ang mga pinili nito."
   },
   "purchaseTerms": {
     "agree": "Sa pagpapatuloy, sumasang-ayon ka sa <terms>Mga Tuntunin ng Serbisyo</terms> at sa <privacy>Patakaran sa Privacy</privacy>.",

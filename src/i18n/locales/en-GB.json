@@ -5230,7 +5230,8 @@
     "invalid": "This link is not valid. Use the unsubscribe link in the email itself.",
     "missing": "This page needs the unsubscribe link from one of our emails.",
     "error": "Could not turn them off right now. Try the button again shortly.",
-    "home": "Back to Resume Booster"
+    "home": "Back to Resume Booster",
+    "agentDigest": "Stop the morning shortlist emails. Your agent keeps running, and its picks stay in your account."
   },
   "purchaseTerms": {
     "agree": "By continuing you agree to the <terms>Terms of Service</terms> and the <privacy>Privacy Policy</privacy>.",

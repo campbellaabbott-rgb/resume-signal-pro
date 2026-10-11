@@ -5230,7 +5230,8 @@
     "invalid": "Dieser Link ist ungültig. Nutzen Sie den Abmeldelink in der E-Mail selbst.",
     "missing": "Diese Seite braucht den Abmeldelink aus einer unserer E-Mails.",
     "error": "Das Abbestellen hat gerade nicht geklappt. Versuchen Sie es gleich noch einmal.",
-    "home": "Zurück zu Resume Booster"
+    "home": "Zurück zu Resume Booster",
+    "agentDigest": "Die morgendlichen Shortlist-E-Mails beenden. Ihr Agent läuft weiter, und seine Vorschläge bleiben in Ihrem Konto."
   },
   "purchaseTerms": {
     "agree": "Indem Sie fortfahren, stimmen Sie den <terms>Nutzungsbedingungen</terms> und der <privacy>Datenschutzerklärung</privacy> zu.",

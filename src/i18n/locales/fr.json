@@ -5230,7 +5230,8 @@
     "invalid": "Ce lien n'est pas valide. Utilisez le lien de désabonnement de l'e-mail lui-même.",
     "missing": "Cette page a besoin du lien de désabonnement de l'un de nos e-mails.",
     "error": "Impossible de vous désabonner pour le moment. Réessayez le bouton dans un instant.",
-    "home": "Retour à Resume Booster"
+    "home": "Retour à Resume Booster",
+    "agentDigest": "Arrêter les e-mails de la sélection du matin. Votre agent continue de tourner et ses choix restent dans votre compte."
   },
   "purchaseTerms": {
     "agree": "En continuant, vous acceptez les <terms>Conditions d'utilisation</terms> et la <privacy>Politique de confidentialité</privacy>.",

@@ -5230,7 +5230,8 @@
     "invalid": "Deze link is niet geldig. Gebruik de afmeldlink in de e-mail zelf.",
     "missing": "Deze pagina heeft de afmeldlink uit een van onze e-mails nodig.",
     "error": "Uitzetten lukte nu niet. Probeer de knop zo meteen opnieuw.",
-    "home": "Terug naar Resume Booster"
+    "home": "Terug naar Resume Booster",
+    "agentDigest": "Stop de e-mails met de ochtendselectie. Je agent blijft draaien en zijn keuzes blijven in je account staan."
   },
   "purchaseTerms": {
     "agree": "Door verder te gaan ga je akkoord met de <terms>Servicevoorwaarden</terms> en het <privacy>Privacybeleid</privacy>.",

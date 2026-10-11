@@ -5230,7 +5230,8 @@
     "invalid": "Este enlace no es válido. Usa el enlace para darse de baja del propio correo.",
     "missing": "Esta página necesita el enlace para darse de baja de uno de nuestros correos.",
     "error": "No se pudo completar ahora. Vuelve a pulsar el botón en un momento.",
-    "home": "Volver a Resume Booster"
+    "home": "Volver a Resume Booster",
+    "agentDigest": "Dejar de recibir los correos de la lista de la mañana. Tu agente sigue funcionando y sus selecciones siguen en tu cuenta."
   },
   "purchaseTerms": {
     "agree": "Al continuar, aceptas los <terms>Términos del servicio</terms> y la <privacy>Política de privacidad</privacy>.",
