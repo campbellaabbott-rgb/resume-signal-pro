@@ -350,7 +350,12 @@ async function runOne(
   await pauseForEmployer(p.company);
 
   const staged = await stageResume(claimed.resumeUrl);
-  const answers = toStanding(claimed.answers, claimed.packet?.fields);
+  // The posting's country rides beside the standing answers: "authorised to
+  // work in this country?" is about the posting, not the candidate (S11-060).
+  const answers: StandingAnswers = {
+    ...toStanding(claimed.answers, claimed.packet?.fields),
+    postingCountry: claimed.packet?.posting_country ?? null,
+  };
   const learned = toLearned(claimed.learned);
   let outcome;
   try {

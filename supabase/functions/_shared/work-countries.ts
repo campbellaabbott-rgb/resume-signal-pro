@@ -217,6 +217,26 @@ export function toCode(country: string): string | null {
   return null;
 }
 
+/**
+ * "This country", "the country where this job is located", "where this role
+ * is based": the POSTING's country, named without being named (S11-060). Read
+ * as no country, they were answered from the home-country boolean, so a UK
+ * candidate told a US employer they may work "in this country". They resolve
+ * to the posting's own country, and are refused when that is not known.
+ */
+const THE_POSTINGS_COUNTRY =
+  /\bthis\s+country\b|\bcountry\s+(?:in\s+which|where|that)\s+(?:this|the)\s+(?:job|role|position|vacancy|post|opening|opportunity)\b|\b(?:where|in\s+which)\s+(?:this|the)\s+(?:job|role|position|vacancy|post|opening|opportunity)\s+is\s+(?:based|located|situated)\b|\b(?:country|location)\s+of\s+(?:this|the)\s+(?:job|role|position|vacancy|post|opening|opportunity)\b|\b(?:this|the)\s+(?:job|role|position)['’]s\s+(?:country|location)\b|\b(?:job|role|position)\s+location\b/i;
+
+/** The posting's country as a code: an ISO pair the board stores, or a name. */
+export function postingCountryCode(country: string | null | undefined): string | null {
+  const c = String(country ?? "").trim();
+  if (/^[A-Za-z]{2}$/.test(c)) {
+    const up = c.toUpperCase() === "UK" ? "GB" : c.toUpperCase();
+    return up in COUNTRIES ? up : null;
+  }
+  return c ? toCode(c) : null;
+}
+
 export type CountryVerdict =
   | { kind: "no-country" }
   | { kind: "covered"; country: string }
@@ -228,15 +248,24 @@ export type CountryVerdict =
  * @param authorised codes the candidate has explicitly said they may work in
  * @param ownCountry their stated country, which the single `work_authorized`
  *        boolean is about and nothing more
+ * @param opts.postingCountry the posting's own country, which "this country"
+ *        and "where this role is based" name
  */
 export function coverage(
   label: string,
   authorised: readonly string[],
   ownCountry: string,
-  opts: { orMeansAny?: boolean } = {},
+  opts: { orMeansAny?: boolean; postingCountry?: string | null } = {},
 ): CountryVerdict {
   const places = placesIn(label);
   const asked = countriesIn(label);
+  if (THE_POSTINGS_COUNTRY.test(norm(label))) {
+    const here = postingCountryCode(opts.postingCountry);
+    // A place the label also names outright still answers for itself; with
+    // no place at all and no posting country, nothing honest can be said.
+    if (!here && asked.length === 0) return { kind: "not-covered", asked: ["the posting's country (not known)"] };
+    if (here && !asked.includes(here)) { places.push([here]); asked.push(here); }
+  }
   if (asked.length === 0) return { kind: "no-country" };
 
   const own = toCode(ownCountry);

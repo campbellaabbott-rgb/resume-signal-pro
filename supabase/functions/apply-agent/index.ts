@@ -51,7 +51,10 @@ import { nextRunStamp } from "../_shared/run-stamp.ts";
 // read by the account's user id (agent_subscription_rows), never an address.
 // 2026-10-09.2: the sheet's work questions read their country, so the
 // mandate's listed countries are selected and handed to buildPacket.
-const BUILD_VERSION = "2026-10-09.3";
+// 2026-10-09.24: the sheet reads an authorisation question without the
+// employer's sponsorship notice, refuses sponsorship history (S11-012), and
+// answers "this country" from the posting's own country (S11-060).
+const BUILD_VERSION = "2026-10-09.24";
 // Provable from outside with no key: the CORS preflight and every response
 // carry this in x-fn-build.
 const FN_BUILD = `apply-agent.${BUILD_VERSION}`;
@@ -818,8 +821,16 @@ serve(async (req) => {
           }
         }
 
+        // THE POSTING'S COUNTRY (S11-060). "Authorised to work in this
+        // country?" is about the posting, and the sheet answered it from the
+        // candidate's home country whatever the posting. A failed read leaves
+        // it unknown, and such a question then blocks instead of guessing.
+        const { data: placeRow } = await client.from("job_board_postings")
+          .select("country").eq("id", q.posting_id).maybeSingle();
+        const postingCountry = t((placeRow as { country?: string | null } | null)?.country) || null;
+
         const packet = buildPacket({
-          questions, profile, standing, drafted, automationTier: auto.tier, coverNote,
+          questions, profile, standing, drafted, automationTier: auto.tier, coverNote, postingCountry,
         });
 
         const decision = decideRelease({

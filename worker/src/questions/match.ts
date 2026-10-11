@@ -130,6 +130,10 @@ export type StandingAnswers = {
    *  Defaults false: agreeing to a legal notice on someone's behalf is an act
    *  they have to authorise, not a default they discover afterwards. */
   consentToProcessing: boolean;
+  /** The country of the POSTING, from the board row (S11-060). Not the
+   *  candidate's: it is what "authorised to work in this country?" and "where
+   *  this role is based" are about. Unknown means such a question is refused. */
+  postingCountry?: string | null;
 };
 
 export type Resolution =
@@ -252,19 +256,46 @@ const RE_WORK_AUTH =
 // need of / needing) a visa or sponsorship?" asks the opposite (S8-006); a
 // "without" neither reading parses goes to the candidate. A sponsor word in a
 // résumé prompt or with no immigration word beside it ("sponsorship and
-// partnership programs") is not one (S8-044). Rationale: docs/wave3/agents-api.md.
+// partnership programs") is not one (S8-044). The employer's own notice in the
+// label ("Please note we are unable to sponsor visas") is taken out before the
+// label is read, and the question left is what gets answered: read whole, an
+// authorisation question carrying that notice was answered from the sponsorship
+// flag, so a citizen said No and a visa-needer said Yes (S11-012). Sponsorship
+// the candidate has had or has now ("Have you ever been sponsored for an
+// H-1B?") is history the profile does not hold, and goes to the candidate.
+// Rationale: docs/wave3/agents-api.md.
 export const RE_SPONSORSHIP =
   /\bsponsor(ship|ing|ed)?\b|immigration\s+(case|petition|process|filing)|(requir\w*|need\w*)[^?]{0,30}\b(work\s+)?(visa|permit)\b/i;
 export const RE_SPONSOR_INVERTED =
   /without\s+(?:the\s+need\s+(?:for|of)\s+|needing\s+|requiring\s+)?(?:an?\s+|any\s+)?(?:visa\s+|work\s+)?(?:sponsor|visa\b|permit\b)|not\s+require\s+sponsor|no\s+sponsorship\s+(required|needed)|free\s+from\s+(any\s+)?(visa|immigration)/i;
 const SP_CONTEXT = /visa|immigration|permit|authori[sz]|employment|to\s+work|requir|need|without|status|h-?1b|petition|\bsponsor\s+you\b/i;
 const SP_PROSE = /^\s*(?:please\s+)?(?:describe|tell|explain|share|walk|discuss|elaborate|outline|how|why|what\s+(?:experience|is\s+your\s+experience))\b/i;
-export type SponsorshipSense = "asks" | "inverted" | "unread";
+const SP_NOTICE_NEG = /\b(?:unable|cannot|can\s*not|can['’]?t|not|no|never|won['’]?t|don['’]?t|doesn['’]?t|isn['’]?t|aren['’]?t)\b/i;
+const SP_NOTICE_WHO = /\b(?:we|we['’]re|our|company|employer|organi[sz]ation|role|position|job|vacancy|opening|sponsorship)\b/i;
+const SP_ASKS_YOU = /^\s*(?:please\s+)?(?:are|do|does|did|will|would|have|has|had|can|could|is|was|were|should|may|confirm|indicate|select|state|tell|acknowledge)\b|\byou(?:r|rs|rself)?\b/i;
+const SP_HISTORY =
+  /\b(?:have|has)\s+(?:you\s+)?(?:ever\s+|previously\s+|already\s+)?been\s+sponsored\b|\b(?:were|was)\s+you\s+(?:ever\s+|previously\s+)?sponsored\b|\bare\s+you\s+(?:currently\s+|presently\s+|now\s+)?(?:being\s+)?sponsored\b|\b(?:ever|previously|already)\s+(?:been\s+)?sponsored\b|\bsponsored\s+(?:before|previously|in\s+the\s+past)\b|\b(?:current|previous|prior|former|past)\s+employer\s+(?:has\s+|have\s+|had\s+)?sponsor|\b(?:did|has|does)\s+(?:your\s+|an?\s+)?(?:current\s+|previous\s+|prior\s+|former\s+)?employer\s+sponsor|\b(?:currently|presently)\s+(?:hold|have|on)\s+(?:an?\s+)?sponsored\b/i;
+export type SponsorshipSense = "asks" | "inverted" | "unread" | "history";
+/** The label without the employer's sponsorship notice: what is actually asked. */
+export function withoutSponsorNotice(label: string): string {
+  return label
+    .split(/([.?!;:,()[\]]|\s[-–—]\s)/)
+    .filter((part) => {
+      const s = part.replace(/\bsponsor\w*\s+(?:you|your\s+\w+)\b/gi, "sponsor");
+      return !(/\bsponsor/i.test(s) && SP_NOTICE_NEG.test(s) && SP_NOTICE_WHO.test(s)
+        && !SP_ASKS_YOU.test(s) && !RE_SPONSOR_INVERTED.test(part));
+    })
+    .join("")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 export function sponsorshipSense(label: string): SponsorshipSense | null {
-  if (!RE_SPONSORSHIP.test(label) || SP_PROSE.test(label)) return null;
-  if (!SP_CONTEXT.test(label) && label.trim().split(/\s+/).length > 3) return null;
-  if (RE_SPONSOR_INVERTED.test(label)) return "inverted";
-  return /\bwithout\b/i.test(label) ? "unread" : "asks";
+  const asked = withoutSponsorNotice(label);
+  if (!RE_SPONSORSHIP.test(asked) || SP_PROSE.test(asked)) return null;
+  if (!SP_CONTEXT.test(asked) && asked.trim().split(/\s+/).length > 3) return null;
+  if (SP_HISTORY.test(asked)) return "history";
+  if (RE_SPONSOR_INVERTED.test(asked)) return "inverted";
+  return /\bwithout\b/i.test(asked) ? "unread" : "asks";
 }
 // ── end of the sponsorship rule ──
 
@@ -621,8 +652,11 @@ function matchStanding(
   // practice — "authorized to work in the US", "require sponsorship for a UK
   // visa" — and a single global boolean answering them produced false claims
   // about a real person's immigration status. See ./countries.ts.
+  // The employer's "we are unable to sponsor" notice is not the question: the
+  // question left once it is out is what is read and answered (S11-012).
+  const workQuestion = withoutSponsorNotice(label);
   const sense = sponsorshipSense(label);
-  if (sense || RE_WORK_AUTH.test(label)) {
+  if (sense || RE_WORK_AUTH.test(workQuestion)) {
     const isSponsor = sense !== null;
     const category = isSponsor ? "sponsorship" : "work-authorization";
     const stated = isSponsor ? a.requiresSponsorship : a.workAuthorized;
@@ -634,10 +668,15 @@ function matchStanding(
     if (sense === "unread") {
       return text(category, "the question turns on a \"without\" this rule cannot read, so either answer could state the opposite of the truth");
     }
+    if (sense === "history") {
+      return text(category, "it asks about sponsorship the candidate has had or has now, and the profile states only whether they will need it");
+    }
 
     // "Authorised in the UK or the EU?" is met by either; "require
     // sponsorship for the UK or the EU?" is not: a No there speaks for both.
-    const cov = coverage(label, a.workAuthorizedCountries, a.country, { orMeansAny: !isSponsor });
+    // "This country" is the posting's own (S11-060).
+    const cov = coverage(workQuestion, a.workAuthorizedCountries, a.country,
+      { orMeansAny: !isSponsor, postingCountry: a.postingCountry ?? null });
     if (cov.kind === "not-covered") {
       // The honest refusal. Saying "yes" here claims a right to work in a
       // country nobody has said they hold, which is a false statement with
