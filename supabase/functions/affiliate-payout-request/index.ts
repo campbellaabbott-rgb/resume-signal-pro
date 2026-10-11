@@ -24,9 +24,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { networkBucket } from "../_shared/network-bucket.ts";
 
-// Wave 3 restamps this build: wave 2 changed the code below after its stamp
-// went live, so the live stamp could not show which code was serving.
-const FN_BUILD = "affiliate-payout-request.2026-10-09.1";
+const FN_BUILD = "affiliate-payout-request.2026-10-08.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
