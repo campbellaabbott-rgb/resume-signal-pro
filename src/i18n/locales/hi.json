@@ -1054,7 +1054,13 @@
       "tooManyAttempts": "बहुत अधिक प्रयास",
       "tooManyAttemptsDescription": "फिर से प्रयास करने से पहले कुछ मिनट प्रतीक्षा करें।",
       "serviceTemporarilyUnavailable": "सेवा अस्थायी रूप से उपलब्ध नहीं है",
-      "serviceTemporarilyUnavailableDescription": "हमारी भुगतान सेवा अस्थायी रूप से बंद है। कृपया कुछ मिनटों में फिर से प्रयास करें।"
+      "serviceTemporarilyUnavailableDescription": "हमारी भुगतान सेवा अस्थायी रूप से बंद है। कृपया कुछ मिनटों में फिर से प्रयास करें।",
+      "fileDamaged": "यह फ़ाइल पढ़ी नहीं जा सकती",
+      "fileDamagedDescription": "यह खराब लगती है या असली PDF या .docx नहीं है। इसे फिर से सेव करें, दूसरा फ़ॉर्मेट आज़माएँ, या अपने रिज़्यूमे का टेक्स्ट पेस्ट करें।",
+      "fontUnreadable": "इस PDF के अक्षर पढ़े नहीं जा सकते",
+      "fontUnreadableDescription": "इसका फ़ॉन्ट असली अक्षरों से मेल नहीं खाता। इसके बजाय .docx अपलोड करें या अपने रिज़्यूमे का टेक्स्ट पेस्ट करें।",
+      "unreadCharacters": "कुछ अक्षर पढ़े नहीं जा सके",
+      "unreadCharactersDescription": "हमने {{count}} अक्षर छोड़ दिए जिन्हें यह PDF पहचान नहीं देता। सबसे सटीक स्कैन के लिए .docx अपलोड करें या अपने रिज़्यूमे का टेक्स्ट पेस्ट करें।"
     },
     "reportCrash": {
       "title": "आपकी रिपोर्ट दिखाने में कुछ गड़बड़ हुई",

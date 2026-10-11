@@ -1054,7 +1054,13 @@
       "tooManyAttempts": "Te veel pogingen",
       "tooManyAttemptsDescription": "Wacht een paar minuten voordat je het opnieuw probeert.",
       "serviceTemporarilyUnavailable": "Service tijdelijk niet beschikbaar",
-      "serviceTemporarilyUnavailableDescription": "Onze betaalservice is tijdelijk niet beschikbaar. Probeer het over een paar minuten opnieuw."
+      "serviceTemporarilyUnavailableDescription": "Onze betaalservice is tijdelijk niet beschikbaar. Probeer het over een paar minuten opnieuw.",
+      "fileDamaged": "Dit bestand kan niet worden gelezen",
+      "fileDamagedDescription": "Het lijkt beschadigd of is geen echte PDF of .docx. Sla het opnieuw op, probeer het andere formaat of plak de tekst van je cv.",
+      "fontUnreadable": "De letters in deze PDF kunnen niet worden gelezen",
+      "fontUnreadableDescription": "Het lettertype verwijst niet naar echte tekens. Upload in plaats daarvan een .docx of plak de tekst van je cv.",
+      "unreadCharacters": "Sommige tekens konden niet worden gelezen",
+      "unreadCharactersDescription": "We hebben {{count}} tekens overgeslagen die deze PDF niet benoemt. Upload voor de nauwkeurigste scan een .docx of plak de tekst van je cv."
     },
     "reportCrash": {
       "title": "Er ging iets mis bij het tonen van je rapport",

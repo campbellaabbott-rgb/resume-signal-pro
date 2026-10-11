@@ -1054,7 +1054,13 @@
       "tooManyAttempts": "Too many attempts",
       "tooManyAttemptsDescription": "Please wait a few minutes before trying again.",
       "serviceTemporarilyUnavailable": "Service temporarily unavailable",
-      "serviceTemporarilyUnavailableDescription": "Our payment service is temporarily down. Please try again in a few minutes."
+      "serviceTemporarilyUnavailableDescription": "Our payment service is temporarily down. Please try again in a few minutes.",
+      "fileDamaged": "This file can't be read",
+      "fileDamagedDescription": "It looks damaged or isn't a real PDF or .docx. Save it again, try the other format, or paste your resume text.",
+      "fontUnreadable": "This PDF's letters can't be read",
+      "fontUnreadableDescription": "Its font doesn't map to real characters. Upload a .docx or paste your resume text instead.",
+      "unreadCharacters": "Some characters couldn't be read",
+      "unreadCharactersDescription": "We skipped {{count}} characters this PDF doesn't name. For the most accurate scan, upload a .docx or paste your resume text."
     },
     "reportCrash": {
       "title": "Something went wrong displaying your report",

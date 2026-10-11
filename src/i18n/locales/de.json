@@ -1054,7 +1054,13 @@
       "tooManyAttempts": "Zu viele Versuche",
       "tooManyAttemptsDescription": "Bitte warte ein paar Minuten, bevor du es erneut versuchst.",
       "serviceTemporarilyUnavailable": "Dienst vorübergehend nicht verfügbar",
-      "serviceTemporarilyUnavailableDescription": "Unser Zahlungsdienst ist vorübergehend nicht verfügbar. Bitte versuche es in ein paar Minuten erneut."
+      "serviceTemporarilyUnavailableDescription": "Unser Zahlungsdienst ist vorübergehend nicht verfügbar. Bitte versuche es in ein paar Minuten erneut.",
+      "fileDamaged": "Diese Datei lässt sich nicht lesen",
+      "fileDamagedDescription": "Sie scheint beschädigt oder keine echte PDF- bzw. .docx-Datei zu sein. Speichere sie erneut, versuche das andere Format oder füge den Text deines Lebenslaufs ein.",
+      "fontUnreadable": "Die Buchstaben in diesem PDF lassen sich nicht lesen",
+      "fontUnreadableDescription": "Die Schrift ist keinen echten Zeichen zugeordnet. Lade stattdessen eine .docx-Datei hoch oder füge den Text deines Lebenslaufs ein.",
+      "unreadCharacters": "Einige Zeichen ließen sich nicht lesen",
+      "unreadCharactersDescription": "Wir haben {{count}} Zeichen ausgelassen, die dieses PDF nicht benennt. Für den genauesten Scan lade eine .docx-Datei hoch oder füge den Text deines Lebenslaufs ein."
     },
     "reportCrash": {
       "title": "Beim Anzeigen Ihres Berichts ist ein Fehler aufgetreten",

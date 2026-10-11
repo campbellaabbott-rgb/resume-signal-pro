@@ -1054,7 +1054,13 @@
       "tooManyAttempts": "Sobrang dami ng pagsubok",
       "tooManyAttemptsDescription": "Maghintay ng ilang minuto bago subukan ulit.",
       "serviceTemporarilyUnavailable": "Pansamantalang hindi available ang serbisyo",
-      "serviceTemporarilyUnavailableDescription": "Pansamantalang down ang aming payment service. Pakisubukan ulit sa ilang minuto."
+      "serviceTemporarilyUnavailableDescription": "Pansamantalang down ang aming payment service. Pakisubukan ulit sa ilang minuto.",
+      "fileDamaged": "Hindi mabasa ang file na ito",
+      "fileDamagedDescription": "Mukhang sira ito o hindi tunay na PDF o .docx. I-save ulit, subukan ang ibang format, o i-paste ang teksto ng iyong resume.",
+      "fontUnreadable": "Hindi mabasa ang mga titik ng PDF na ito",
+      "fontUnreadableDescription": "Hindi tumutugma sa tunay na mga karakter ang font nito. Mag-upload na lang ng .docx o i-paste ang teksto ng iyong resume.",
+      "unreadCharacters": "May ilang karakter na hindi nabasa",
+      "unreadCharactersDescription": "Nilaktawan namin ang {{count}} karakter na hindi pinangalanan ng PDF na ito. Para sa pinakatumpak na scan, mag-upload ng .docx o i-paste ang teksto ng iyong resume."
     },
     "reportCrash": {
       "title": "May nagkamali sa pagpapakita ng iyong ulat",
