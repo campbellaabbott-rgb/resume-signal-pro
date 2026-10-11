@@ -51,6 +51,8 @@ export interface BoardFailureState {
    * against reality. Adding a faster lane can no longer erode it.
    */
   firstFailedAt?: Record<string, number>;
+  /** board key -> consecutive visits whose rows our database would not read or store (foldDbFailures, S11-023). */
+  dbStreaks?: Record<string, number>;
 }
 
 /**
@@ -171,6 +173,13 @@ export function classifyDormancy(
  */
 export function updateBoardFailures(params: {
   okTokens: readonly string[];
+  /**
+   * Boards whose FEED answered but whose rows our own database would not read
+   * or store (S11-023). Dormancy measures the vendor, so these clear a streak
+   * and leave dormancy exactly as a stored visit does; their own run is
+   * counted by foldDbFailures. Never a failure.
+   */
+  answeredTokens?: readonly string[];
   failedTokens: readonly string[];
   recheckTokens: ReadonlySet<string>;
   streaks: Record<string, number>;
@@ -198,7 +207,8 @@ export function updateBoardFailures(params: {
   const firstFailedAt: Record<string, number> = { ...(params.firstFailedAt ?? {}) };
   const toPrune: string[] = [];
 
-  for (const t of params.okTokens) {
+  const answered = new Set(params.answeredTokens ?? []);
+  for (const t of [...params.okTokens, ...answered]) {
     delete streaks[t];
     delete dormant[t];
     // A board that answered has nothing to retry. Leaving the stamp would keep
@@ -207,6 +217,8 @@ export function updateBoardFailures(params: {
     delete firstFailedAt[t];   // the streak is over; the clock starts fresh next time
   }
   for (const t of params.failedTokens) {
+    // A board whose feed answered is not failing, whatever list a caller put it in.
+    if (answered.has(t)) continue;
     if (params.recheckTokens.has(t)) {
       dormant[t] = params.now; // recovery probe still dead — reset the recheck timer
       delete failedAt[t];      // dormancy owns this board's cadence now
@@ -341,4 +353,49 @@ export function dropBareSharedKeys(state: BoardFailureState, shared: ReadonlySet
     },
     dropped,
   };
+}
+
+/**
+ * OUR OWN DATABASE FAILING IS NOT THE VENDOR FAILING (S11-023).
+ *
+ * A board whose feed read fine but whose existing-rows read or new-row
+ * upsert then failed used to fall out of okKeys and into failedTokens, so a
+ * write error that repeats on every visit (a CHECK constraint the normaliser
+ * disagrees with: day-rate salary_period, 2026-08-25 to 09-06) walked a live
+ * board to DEAD_BOARD_THRESHOLD, pruned its whole corpus as 'board_dormant'
+ * into the closure ledger, and each 12-hour recheck, failing on insert again,
+ * only re-armed the dormancy. Measured with this module: pruned at visit 17,
+ * 41.7 hours in, and dark from then on.
+ *
+ * So index.ts hands those boards to updateBoardFailures as boards that
+ * ANSWERED (the feed did, which is all dormancy measures) and counts them
+ * here instead: board key -> consecutive visits our database failed. A visit
+ * that stored cleanly clears the count; the status action and scan-heartbeat
+ * name every board at DB_FAIL_ALARM_VISITS or more. Bounded like the other
+ * maps, the longest runs kept.
+ */
+export const DB_FAIL_ALARM_VISITS = 3;
+
+export function foldDbFailures(
+  prev: Record<string, number> | null | undefined,
+  dbFailed: readonly string[],
+  stored: readonly string[],
+  cap: number,
+): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(prev ?? {})) {
+    if (typeof v === "number" && Number.isFinite(v) && v > 0) out[k] = v;
+  }
+  for (const k of stored) delete out[k];
+  for (const k of new Set(dbFailed)) out[k] = (own(out, k) ?? 0) + 1;
+  const entries = Object.entries(out);
+  return entries.length > cap ? Object.fromEntries(entries.sort((a, b) => b[1] - a[1]).slice(0, cap)) : out;
+}
+
+/** The boards whose stores have failed DB_FAIL_ALARM_VISITS visits running, longest run first. */
+export function dbFailingBoards(dbStreaks: Record<string, number> | null | undefined, threshold = DB_FAIL_ALARM_VISITS): Array<{ key: string; visits: number }> {
+  return Object.entries(dbStreaks ?? {})
+    .filter(([, v]) => typeof v === "number" && v >= threshold)
+    .sort((a, b) => b[1] - a[1])
+    .map(([key, visits]) => ({ key, visits }));
 }

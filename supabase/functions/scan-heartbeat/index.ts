@@ -8,7 +8,7 @@ import { keyMatches } from "../_shared/admin-key.ts";
 // literal {salaryFloor: 100000} probe has been landing in the demand log on
 // every heartbeat run since the check shipped. See _shared/search-caller.ts.
 import { searchCallerHeader } from "../_shared/search-caller.ts";
-import { boardTailChecks } from "./board-tail.ts";
+import { boardTailChecks, dbFailureCheck } from "./board-tail.ts";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -121,7 +121,7 @@ function unanswered(r: { timedOut?: boolean; failed?: boolean }, fn: string, ms:
  *
  * BUMP ON EVERY DEPLOY of this function.
  */
-const BUILD_VERSION = "2026-10-09.6"; // 10-09.6: fails job_board_refresh_head (3h), job_board_filter_audit (12h) and job_board_pass_end (a pass-end tail that started and never finished, S11-001).  10-09.1: a paid order that never arrived mails the owner, naming it, newest first (decided after the delivery read, not before); a cron call refused (401/403) in the last hour fails cron_http_refusals.  10-08.1: answers only its cron, the service role and the owner's key; the e2e scan is uncached; alerts stamp only after a send that worked; vendor drift skips when unevaluated; delivery reads email_logs too
+const BUILD_VERSION = "2026-10-09.6"; // 10-09.6: fails job_board_refresh_head (3h), job_board_filter_audit (12h) and job_board_pass_end (a pass-end tail that started and never finished, S11-001) and job_board_db_failures (S11-023).  10-09.1: a paid order that never arrived mails the owner, naming it, newest first (decided after the delivery read, not before); a cron call refused (401/403) in the last hour fails cron_http_refusals.  10-08.1: answers only its cron, the service role and the owner's key; the e2e scan is uncached; alerts stamp only after a send that worked; vendor drift skips when unevaluated; delivery reads email_logs too
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -607,6 +607,9 @@ serve(async (req) => {
         .from('job_board_meta').select('updated_at').eq('k', 'filter_audit').maybeSingle();
       const passEndP = supabase
         .from('job_board_meta').select('v').eq('k', 'pass_end').maybeSingle();
+      // S11-023: boards our own database keeps failing (board-tail.ts dbFailureCheck).
+      const dbStreaksP = supabase
+        .from('job_board_meta').select('dbStreaks:v->dbStreaks').eq('k', 'board_failures').maybeSingle();
 
       const { data: prog, error } = await supabase
         .from('job_board_meta')
@@ -1063,6 +1066,22 @@ serve(async (req) => {
         }
       } catch (e) {
         skip('job_board_pass_end', e instanceof Error ? e.message : 'unreadable pass-end rows');
+      }
+      try {
+        const ds = await dbStreaksP;
+        if (ds.error) skip('job_board_db_failures', ds.error.message);
+        else {
+          const v = dbFailureCheck((ds.data as { dbStreaks?: Record<string, unknown> } | null)?.dbStreaks ?? null);
+          if (!v.skipped) {
+            checks.push({ name: v.name, passed: v.passed, responseTimeMs: 0, error: v.error });
+            if (!v.passed) {
+              if (overallStatus === 'healthy') overallStatus = 'degraded';
+              errorMessage = errorMessage ?? v.error ?? null;
+            }
+          }
+        }
+      } catch (e) {
+        skip('job_board_db_failures', e instanceof Error ? e.message : 'unreadable board_failures');
       }
 
       try {

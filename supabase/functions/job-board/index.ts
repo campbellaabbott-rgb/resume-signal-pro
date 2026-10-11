@@ -77,7 +77,7 @@ import {
   backlogFromCoverage,
 } from "../_shared/posted-backfill.ts";
 import { extractSalary, parseSalaryStructured } from "../_shared/salary-extract.ts";
-import { boardKey, classifyDormancy, dropBareSharedKeys, keySource, keyToken, rearmIncompletePrunes, selectRetries, updateBoardFailures, type BoardFailureState } from "./dormancy.ts";
+import { boardKey, classifyDormancy, DB_FAIL_ALARM_VISITS, dbFailingBoards, dropBareSharedKeys, foldDbFailures, keySource, keyToken, rearmIncompletePrunes, selectRetries, updateBoardFailures, type BoardFailureState } from "./dormancy.ts";
 import { STALE_LANE_MIN_AGE_H, STALE_PER_SLICE, bumpStaleTries, classifyStale, countByClass, keysOf, readStaleTries, selectStaleLane, staleExclusion, unresolvedTokens, writeStaleTries, type StaleClass, type StaleRow, type StaleVerdict } from "./stale-lane.ts";
 import { tokenMapFromRecord, tokenMapToRecord } from "./token-map.ts";
 import { decideRekick } from "./chain-watchdog.ts";
@@ -3202,6 +3202,8 @@ function firstSliceOf(pv: { build?: unknown; buildSince?: unknown }, sliceWallSt
 let sliceBudgetNote: { fetched: number; skipped: number; hit: boolean; lastUpsertError: string | null; heapStopped: boolean; wallStopped: boolean; sizeStopped: boolean; boardBudget: number } | null = null;
 // This slice's light re-reads (n081), added to the row's running totals by the recorder.
 let sliceLightReread: LightRereadStats | null = null;
+// This slice's boards whose feed read but whose rows our database would not read or store (S11-023).
+let sliceDbFailNote: { boards: number; alarm: number } | null = null;
 // WHERE A CHAIN DIES IS A NUMBER, NOT A GUESS. Three 546 deaths on 2026-09-03
 // sat at hops 6, 7 and 6 while chains otherwise reach hop 9, and the slice
 // that died last was a small cold one (6,386 postings, 39s). That is the
@@ -3288,6 +3290,8 @@ async function recordSliceStats(client: SupabaseClient, sliceWallStart: number, 
         // The stale lane's slice outcome rides the same row: how many stale
         // boards this slice tried, and how many of those stamped.
         ...(sliceStaleNote ? { staleTries: sliceStaleNote.tries, staleResolved: sliceStaleNote.resolved } : {}),
+        // Boards our own database failed this slice, and how many have failed DB_FAIL_ALARM_VISITS running (S11-023).
+        ...(sliceDbFailNote ? { dbFailed: sliceDbFailNote } : {}),
         ...(sliceLightReread ? { lightReread: addLightReread((pv as { lightReread?: unknown }).lightReread, sliceLightReread, new Date().toISOString()) } : {}),
       },
       updated_at: new Date().toISOString(),
@@ -3363,6 +3367,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   sliceStaleNote = null;
   sliceCursorNote = null;
   sliceLightReread = null;
+  sliceDbFailNote = null;
   const { hotList: HOT_LIST, coldList: COLD_LIST } = await tierLists(client);
   await loadDynamicLight(client); // auto-enrolled giant boards fetch without content
   // Loaded in the same invocation that runs the freshness sweep, because the
@@ -3860,6 +3865,9 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   const queue = [...slice];
   // Boards that read, by board key (n417): the failure state and, since .91, the stale lane (n428).
   const okKeys: string[] = [];
+  // Boards whose feed read but whose rows OUR database would not read or
+  // store (S11-023): neither a vendor failure nor a stored visit.
+  const dbFailedKeys: string[] = [];
   const failed: string[] = [];
   let sliceTotal = 0;
   let fetchedInSlice = 0;
@@ -4442,6 +4450,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         }
         if (!boardOk) {
           failed.push(`${s.name} (db-read)`);
+          dbFailedKeys.push(boardKeyOf(s));
           // The cursor already advanced past this window, but nothing here got
           // an epoch: those rows would read as never-seen at the wrap. Disarm
           // the lap rather than let a database blip become takedowns.
@@ -5002,6 +5011,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         }
         if (!boardOk) {
           failed.push(`${s.name} (db-write)`);
+          dbFailedKeys.push(boardKeyOf(s));
           continue;
         }
         // The re-admitted rows are stored, so their tombstones now record the date they came back on.
@@ -5370,9 +5380,20 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
     const failedTokens = [...new Set(slice
       .filter((s) => !skipTokens.has(boardKeyOf(s)) && !quarantineSkipped.has(s.token) && !budgetSkippedSet.has(s.token) && !okKeySet.has(boardKeyOf(s)))
       .map(boardKeyOf))];
-    if (okKeys.length > 0 || failedTokens.length > 0 || recheckTokens.size > 0) {
+    // A board whose rows we could not read or store, visit after visit, is our
+    // bug, not the employer's: counted, named, and never pruned for it.
+    const sliceDbStreaks = foldDbFailures(bfV.dbStreaks, dbFailedKeys, okKeys, DORMANT_CAP);
+    const dbAlarm = dbFailingBoards(sliceDbStreaks);
+    sliceDbFailNote = { boards: dbFailedKeys.length, alarm: dbAlarm.length };
+    if (dbAlarm.length > 0) {
+      console.error(`[JOB-BOARD] DB FAILURES: ${dbAlarm.length} board(s) whose feed reads but whose rows our database would not read or store for ${DB_FAIL_ALARM_VISITS}+ visits running: ${dbAlarm.slice(0, 8).map((b) => `${b.key} x${b.visits}`).join(", ")}${lastUpsertError ? ` — last: ${String(lastUpsertError).slice(0, 160)}` : ""}`);
+    }
+    if (okKeys.length > 0 || failedTokens.length > 0 || recheckTokens.size > 0 || dbFailedKeys.length > 0) {
       const folded = updateBoardFailures({
         okTokens: okKeys,
+        // Our database failing is not the vendor failing (S11-023): these
+        // feeds answered, so they clear and leave dormancy, never re-arm it.
+        answeredTokens: dbFailedKeys,
         failedTokens,
         recheckTokens,
         streaks: boardFailures.streaks,
@@ -5397,7 +5418,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
       // A prune the exit log broke is retried, not left dormant (n416).
       const { streaks, dormant, failedAt, firstFailedAt } = rearmIncompletePrunes(folded, pruneUnfinished, boardFailures, DEAD_BOARD_THRESHOLD, Date.now());
       await client.from("job_board_meta").upsert(
-        { k: "board_failures", v: { streaks, dormant, failedAt, firstFailedAt, ...(retryLane ? { lastRetryLane: retryLane } : {}) }, updated_at: new Date().toISOString() },
+        { k: "board_failures", v: { streaks, dormant, failedAt, firstFailedAt, dbStreaks: sliceDbStreaks, ...(retryLane ? { lastRetryLane: retryLane } : {}) }, updated_at: new Date().toISOString() },
         { onConflict: "k" },
       );
       if (deepCursorsDirty || deepLane) {
@@ -8601,6 +8622,9 @@ Deno.serve(async (req) => {
         totalPostings: rfV.total ?? null,
         coldBoards: rotV.coldBoards ?? null,
         dormantBoards: Object.keys(dormant).length,
+        // Boards whose feed reads but whose rows our database would not read or
+        // store, DB_FAIL_ALARM_VISITS visits running or more (S11-023).
+        dbFailingBoards: dbFailingBoards(((bf.data?.v ?? {}) as { dbStreaks?: Record<string, number> }).dbStreaks).slice(0, 20),
         // Rationale: docs/job-board-index-notes.md#n220-chainkick
         chainKick: (() => {
           const v = (chainKick.data?.v ?? {}) as Record<string, unknown>;

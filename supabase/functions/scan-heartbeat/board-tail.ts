@@ -25,6 +25,34 @@
  * job-board build that writes pass_end is live there is nothing to judge.
  */
 
+/**
+ * job-board's DB_FAIL_ALARM_VISITS (dormancy.ts), mirrored: this function
+ * cannot import job-board's folder. A test pins the two equal.
+ */
+export const DB_FAIL_ALARM_VISITS = 3;
+
+/**
+ * job_board_db_failures (S11-023): boards whose feed reads but whose rows our
+ * own database would not read or store, DB_FAIL_ALARM_VISITS visits running.
+ * Before S11-023 such a board was pruned as 'board_dormant' after 41 hours; now
+ * it is kept, and this is where it is named. board_failures.v.dbStreaks, read
+ * by JSON path. A missing map is no failing board: job-board writes it on the
+ * first slice of the build that keeps it.
+ */
+export function dbFailureCheck(dbStreaks: Record<string, unknown> | null | undefined): BoardTailVerdict {
+  const failing = Object.entries(dbStreaks ?? {})
+    .filter(([, v]) => typeof v === "number" && v >= DB_FAIL_ALARM_VISITS)
+    .sort((a, b) => (b[1] as number) - (a[1] as number));
+  return failing.length === 0
+    ? { name: "job_board_db_failures", skipped: false, passed: true }
+    : {
+      name: "job_board_db_failures",
+      skipped: false,
+      passed: false,
+      error: `${failing.length} board(s) read from their feed but our database would not read or store their rows for ${DB_FAIL_ALARM_VISITS}+ visits running (${failing.slice(0, 5).map(([k, v]) => `${k} x${v}`).join(", ")}): a schema or normaliser mismatch; see job-board logs for 'DB FAILURES' and status.dbFailingBoards`,
+    };
+}
+
 export const REFRESH_HEAD_MAX_MIN = 180;
 export const FILTER_AUDIT_MAX_MIN = 12 * 60;
 export const PASS_END_GRACE_MIN = 30;

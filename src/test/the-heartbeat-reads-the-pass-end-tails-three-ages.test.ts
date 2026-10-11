@@ -52,7 +52,10 @@ describe("the heartbeat reads the pass-end tail's three ages", () => {
   });
 
   it("scan-heartbeat runs the checks and degrades on a failure", () => {
-    expect(HB).toMatch(/import \{ boardTailChecks \} from "\.\/board-tail\.ts";/);
+    expect(HB).toMatch(/import \{ boardTailChecks, dbFailureCheck \} from "\.\/board-tail\.ts";/);
+    // S11-023's check rides the same block, from board_failures.v.dbStreaks.
+    expect(HB).toMatch(/select\('dbStreaks:v->dbStreaks'\)\.eq\('k', 'board_failures'\)/);
+    expect(HB).toMatch(/const v = dbFailureCheck\(/);
     const at = HB.indexOf("boardTailChecks({");
     expect(at).toBeGreaterThan(0);
     const block = HB.slice(at, at + 1400);
