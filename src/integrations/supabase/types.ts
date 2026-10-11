@@ -4547,6 +4547,7 @@ export type Database = {
           status: string
           status_changed_at: string | null
           user_id: string
+          written_by: string | null
         }
         Insert: {
           applied_at?: string
@@ -4573,6 +4574,7 @@ export type Database = {
           status?: string
           status_changed_at?: string | null
           user_id: string
+          written_by?: string | null
         }
         Update: {
           applied_at?: string
@@ -4599,6 +4601,7 @@ export type Database = {
           status?: string
           status_changed_at?: string | null
           user_id?: string
+          written_by?: string | null
         }
         Relationships: [
           {

@@ -16,7 +16,7 @@ import { modelSpendGate } from "../_shared/model-spend-gate.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "shortlist-evaluate.2026-10-10.3";
+const FN_BUILD = "shortlist-evaluate.2026-10-10.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,6 +26,8 @@ const corsHeaders = {
 
 const PROMPT_VERSION = "shortlist-v1";
 const MODEL_ID = "google/gemini-2.5-flash";
+/** The evaluations one account may hold: owner_row_cap on shortlist_candidates (20261009134200). */
+const SHORTLIST_CANDIDATE_CAP = 10_000;
 
 // Any signed-in account can own a role, and signing up is free, so a sign-in
 // is not a spending limit: an address allowance sized for an employer
@@ -78,6 +80,15 @@ Deno.serve(async (req) => {
     // Evaluations are written by the service role only (20261009111000); the
     // owner is the verified caller.
     const service = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
+
+    // ONE ACCOUNT HOLDS AT MOST SHORTLIST_CANDIDATE_CAP EVALUATIONS (S11-139).
+    // The database's cap (20261009134200) applies to this writer too; asked
+    // here first, a full account is told so before any model call is spent.
+    const { count: held } = await service.from("shortlist_candidates")
+      .select("id", { count: "exact", head: true }).eq("owner_id", user.id);
+    if (typeof held === "number" && held >= SHORTLIST_CANDIDATE_CAP) {
+      return json({ error: `This account holds ${SHORTLIST_CANDIDATE_CAP.toLocaleString("en-US")} evaluations, the most it can. Delete roles you no longer need to evaluate more.`, code: "candidate_cap" }, 409);
+    }
 
     // Alternative review (ADA / accommodation) before any scoring: a record
     // with no score and its logged request, and no model call (sweep S8-111).

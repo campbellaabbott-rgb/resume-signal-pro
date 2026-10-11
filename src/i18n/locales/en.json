@@ -4745,7 +4745,8 @@
     "anyRole": "Any role",
     "searchLimitHit": "You can run up to 10 active searches. Pause one to add another.",
     "searchLastRun": "Last run: scanned {{scanned}}, queued {{picked}}.",
-    "passFunds": "Your Agent Pass funds this agent: {{left}} applications left. Switch the agent on below, and your connected AI can request applications."
+    "passFunds": "Your Agent Pass funds this agent: {{left}} applications left. Switch the agent on below, and your connected AI can request applications.",
+    "trackerFull": "Kept, but your tracker is full (2,000 entries). Remove old entries to add more."
   },
   "applyProfile": {
     "authorized": "Are you authorised to work where you're applying?",

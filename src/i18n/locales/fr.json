@@ -4745,7 +4745,8 @@
     "anyRole": "Tout poste",
     "searchLimitHit": "Vous pouvez avoir jusqu'à 10 recherches actives. Mettez-en une en pause pour en ajouter une autre.",
     "searchLastRun": "Dernière exécution : {{scanned}} analysées, {{picked}} en file.",
-    "passFunds": "Votre Agent Pass finance cet agent : il reste {{left}} candidatures. Activez l'agent ci-dessous, et votre IA connectée pourra demander des candidatures."
+    "passFunds": "Votre Agent Pass finance cet agent : il reste {{left}} candidatures. Activez l'agent ci-dessous, et votre IA connectée pourra demander des candidatures.",
+    "trackerFull": "Conservé, mais votre suivi est plein (2 000 entrées). Supprimez d'anciennes entrées pour en ajouter."
   },
   "applyProfile": {
     "authorized": "Êtes-vous autorisé à travailler là où vous postulez ?",

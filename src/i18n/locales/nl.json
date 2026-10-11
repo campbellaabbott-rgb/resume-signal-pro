@@ -4745,7 +4745,8 @@
     "anyRole": "Elke functie",
     "searchLimitHit": "Je kunt maximaal 10 actieve zoekopdrachten hebben. Pauzeer er een om een nieuwe toe te voegen.",
     "searchLastRun": "Laatste run: {{scanned}} bekeken, {{picked}} in de wachtrij.",
-    "passFunds": "Je Agent Pass betaalt deze agent: nog {{left}} sollicitaties. Zet de agent hieronder aan, dan kan je gekoppelde AI sollicitaties aanvragen."
+    "passFunds": "Je Agent Pass betaalt deze agent: nog {{left}} sollicitaties. Zet de agent hieronder aan, dan kan je gekoppelde AI sollicitaties aanvragen.",
+    "trackerFull": "Bewaard, maar je tracker is vol (2.000 items). Verwijder oude items om er meer toe te voegen."
   },
   "applyProfile": {
     "authorized": "Mag je werken waar je solliciteert?",

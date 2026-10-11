@@ -4745,7 +4745,8 @@
     "anyRole": "Kahit anong role",
     "searchLimitHit": "Hanggang 10 aktibong search lang. I-pause ang isa para makapagdagdag.",
     "searchLastRun": "Huling takbo: {{scanned}} na-scan, {{picked}} naka-queue.",
-    "passFunds": "Ang iyong Agent Pass ang nagpopondo sa agent na ito: {{left}} aplikasyon pa ang natitira. I-on ang agent sa ibaba, at makakahiling ng aplikasyon ang naka-connect mong AI."
+    "passFunds": "Ang iyong Agent Pass ang nagpopondo sa agent na ito: {{left}} aplikasyon pa ang natitira. I-on ang agent sa ibaba, at makakahiling ng aplikasyon ang naka-connect mong AI.",
+    "trackerFull": "Itinabi, pero puno na ang iyong tracker (2,000 entry). Mag-alis ng mga lumang entry para makadagdag pa."
   },
   "applyProfile": {
     "authorized": "May pahintulot ka bang magtrabaho kung saan ka nag-a-apply?",

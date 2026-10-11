@@ -4745,7 +4745,8 @@
     "anyRole": "Cualquier puesto",
     "searchLimitHit": "Puedes tener hasta 10 búsquedas activas. Pausa una para añadir otra.",
     "searchLastRun": "Última ejecución: {{scanned}} revisadas, {{picked}} en cola.",
-    "passFunds": "Tu Agent Pass financia este agente: quedan {{left}} solicitudes. Activa el agente abajo y tu IA conectada podrá pedir solicitudes."
+    "passFunds": "Tu Agent Pass financia este agente: quedan {{left}} solicitudes. Activa el agente abajo y tu IA conectada podrá pedir solicitudes.",
+    "trackerFull": "Guardado, pero tu seguimiento está lleno (2000 entradas). Elimina entradas antiguas para añadir más."
   },
   "applyProfile": {
     "authorized": "¿Tienes autorización para trabajar donde te postulas?",

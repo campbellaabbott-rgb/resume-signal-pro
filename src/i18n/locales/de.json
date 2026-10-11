@@ -4745,7 +4745,8 @@
     "anyRole": "Beliebige Rolle",
     "searchLimitHit": "Du kannst bis zu 10 aktive Suchen haben. Pausiere eine, um eine weitere hinzuzufügen.",
     "searchLastRun": "Letzter Lauf: {{scanned}} geprüft, {{picked}} eingereiht.",
-    "passFunds": "Dein Agent Pass finanziert diesen Agenten: noch {{left}} Bewerbungen. Schalte den Agenten unten ein, dann kann deine verbundene KI Bewerbungen anfordern."
+    "passFunds": "Dein Agent Pass finanziert diesen Agenten: noch {{left}} Bewerbungen. Schalte den Agenten unten ein, dann kann deine verbundene KI Bewerbungen anfordern.",
+    "trackerFull": "Behalten, aber dein Tracker ist voll (2.000 Einträge). Entferne alte Einträge, um neue hinzuzufügen."
   },
   "applyProfile": {
     "authorized": "Bist du berechtigt, dort zu arbeiten, wo du dich bewirbst?",
