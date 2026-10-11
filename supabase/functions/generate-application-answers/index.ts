@@ -23,10 +23,14 @@ import { checkInputLimits } from "../_shared/input-limits.ts";
 import { clipField, clipText, modelSpendGate } from "../_shared/model-spend-gate.ts";
 import { classifyQuestion, selectDraftable, roleGuidance, shapeModelAnswers, type AppQuestion } from "../_shared/application-questions.ts";
 import { coverNotePrompt, validateCoverNote, gateCanCheck, COVER_NOTE_VERSION } from "../_shared/cover-note.ts";
+import { toAskedLabels } from "../_shared/draft-reply.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-application-answers.2026-10-10.3";
+// 2026-10-10.24: a reply that is not the JSON asked for answers 502 instead of
+// 200 with no answers, and the model's echo of a question is matched to the
+// label asked by case, spacing and list number (S11-040).
+const FN_BUILD = "generate-application-answers.2026-10-10.24";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -231,14 +235,25 @@ ${inferred ? "" : `\nQUESTIONS TO ANSWER (draft each, grounded strictly in the r
 
     const result = await response.json();
     const content: string = result?.choices?.[0]?.message?.content ?? "";
-    let parsed: { answers?: Array<{ question?: string; answer?: string; supported?: boolean; note?: string }> } = {};
+    let parsed: { answers?: unknown } = {};
     try { parsed = JSON.parse(content); }
     catch { try { parsed = JSON.parse(content.match(/\{[\s\S]*\}/)?.[0] ?? "{}"); } catch { parsed = {}; } }
+    // A reply that is not the JSON asked for is a failed call, not "no
+    // answers": read as [], every required question became "nothing in your
+    // résumé supports an answer" for good (S11-040).
+    if (!parsed || !Array.isArray(parsed.answers)) {
+      console.error("[APPLICATION-ANSWERS] the model's reply was not the JSON asked for");
+      return json({ error: "Couldn't draft answers right now." }, 502);
+    }
 
     const draftLabels = new Set(draftable.map((q) => (q.label ?? "").trim()));
+    // The model's echo of each question is matched to the label asked the way
+    // the packet matches labels (case, spacing, a list number), and carries
+    // the asked label verbatim from here on (S11-040).
+    const echoed = inferred ? parsed.answers : toAskedLabels(parsed.answers, [...draftLabels]);
     // Support is a literal true, and an invented question is classified before
     // it is answered (S8-008): see shapeModelAnswers.
-    const shaped = shapeModelAnswers(parsed.answers, { inferred, askedLabels: draftLabels, limit: 12 });
+    const shaped = shapeModelAnswers(echoed, { inferred, askedLabels: draftLabels, limit: 12 });
     const answers = shaped.answers;
     skipped.push(...shaped.skipped);
 
