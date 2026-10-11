@@ -12,7 +12,7 @@ import { targetRolesOf } from "../_shared/target-roles.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "verify-product-purchase.2026-10-09.61";
+const FN_BUILD = "verify-product-purchase.2026-10-09.71";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -34,6 +34,15 @@ const GENERATED_PRODUCT_TYPES = [
   'apply_assistant', 'basic_keyword_fix', 'cover_letter', 'premium_package', 'graduate_gameplan',
   'career_snapshot', 'ats_defense', 'interview_coach', 'career_path_simulator',
 ];
+/**
+ * The products the success page shows from the saved copy (ProductSuccess's
+ * SERVER_RENDERED; a test pins the two equal). Interview Coach and the Career
+ * Path Simulator are widgets that make their own on the page, so "in
+ * progress" means nothing to them: told it, the page waited on "verifying"
+ * for up to five minutes and spent up to 14 of its 30 verify calls an hour
+ * before showing the widget (review of S11-054).
+ */
+const SAVED_COPY_PRODUCT_TYPES = GENERATED_PRODUCT_TYPES.filter((t) => t !== 'interview_coach' && t !== 'career_path_simulator');
 
 /**
  * How many credits a scan purchase bought: the metadata, else the line item's
@@ -411,6 +420,8 @@ serve(async (req) => {
     // homepage scan of job Y, showed a kit for Y), and asked for the saved
     // copy only for the keyword fix. It is answered now whenever it exists.
     let inProgress = false;
+    // Set when the bound résumé could not be read: the sweep cannot make it either.
+    let resumeUnreadable = false;
     if (GENERATED_PRODUCT_TYPES.includes(productType ?? '') && !generatedContent) {
       try {
         const { data: priorRows } = await supabase
@@ -433,7 +444,7 @@ serve(async (req) => {
     // few minutes is answered inProgress, and the page asks again: for EVERY
     // generated product without a saved copy, whatever the page asked for
     // (S11-054: the streamed products were never told, and made a second copy).
-    if (!generatedContent && !isFirstUse && GENERATED_PRODUCT_TYPES.includes(productType ?? '')) {
+    if (!generatedContent && !isFirstUse && SAVED_COPY_PRODUCT_TYPES.includes(productType ?? '')) {
       try {
         const { data: row } = await supabase
           .from('product_deliveries')
@@ -465,6 +476,7 @@ serve(async (req) => {
         .rpc('get_temp_resume', { p_session_id: resumeSessionId });
 
       if (resumeError) {
+        resumeUnreadable = true;
         logStep("Error fetching resume data", { error: resumeError.message });
       } else if (resumeData && resumeData.length > 0) {
         const { resume_text, job_description_text } = resumeData[0];
@@ -610,6 +622,7 @@ serve(async (req) => {
           }
         }
       } else {
+        resumeUnreadable = true;
         logStep("No resume data found for session", { resumeSessionId });
       }
     } else if (generateContent && !resumeSessionId) {
@@ -848,7 +861,9 @@ serve(async (req) => {
         generatedContent,
         // The webhook is still making it: ask again shortly (S8-009).
         inProgress,
-        hasResumeData: !!resumeSessionId,
+        // A résumé is bound AND readable: the retry sweep can make the product
+        // from it, so the page makes nothing of its own (review of S11-054).
+        hasResumeData: !!resumeSessionId && !resumeUnreadable,
         // The ATS Defense roles named at checkout, for the page's own fallback (S11-074).
         ...(productType === 'ats_defense' ? { targetRoles: boughtRoles } : {}),
       }),

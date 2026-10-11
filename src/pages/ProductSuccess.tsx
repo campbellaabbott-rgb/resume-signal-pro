@@ -624,7 +624,9 @@ export default function ProductSuccess() {
           if (answer.error && data?.inProgress) break;
           data = answer.data as Record<string, any> | null;
           error = answer.error as { message: string } | null;
-          if (error || !data?.inProgress || tries >= VERIFY_POLL_DELAYS_MS.length) break;
+          // Only a product shown from the saved copy waits for it: the Coach and
+          // the Career Path widgets make their own (review of S11-054).
+          if (error || !data?.inProgress || !SERVER_RENDERED.has(productKey ?? '') || tries >= VERIFY_POLL_DELAYS_MS.length) break;
           await new Promise((r) => setTimeout(r, VERIFY_POLL_DELAYS_MS[tries]));
         }
 
@@ -645,7 +647,13 @@ export default function ProductSuccess() {
         // STILL BEING MADE AFTER FIVE MINUTES OF ASKING (S11-140): the server
         // is generating it and mails it when it is ready. Nothing is made
         // again from this tab's résumé while that generation runs.
-        if (data?.inProgress && !data?.generatedContent) {
+        // A RÉSUMÉ WAS BOUND AND THE SERVER COULD NOT MAKE IT YET (review of
+        // S11-054): the delivery is left generation_failed and the retry sweep
+        // makes it from that résumé, saves it and mails it. A copy made here
+        // from this tab's résumé would be a second generation and a second,
+        // different document. Said the same way as one still being made.
+        const sweepMakesIt = !data?.generatedContent && data?.hasResumeData === true && SERVER_RENDERED.has(productKey ?? '');
+        if (SERVER_RENDERED.has(productKey ?? '') && ((data?.inProgress && !data?.generatedContent) || sweepMakesIt)) {
           setStillBeingMade(true);
           if (productKey && product && (reachedInThisTab('checkout_started') || data.isFirstUse !== false)) {
             recordPurchase(productKey, product.priceUsd, sessionId);

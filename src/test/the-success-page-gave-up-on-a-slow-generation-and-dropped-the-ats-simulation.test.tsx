@@ -102,3 +102,38 @@ describe("the saved ATS Defense report (S11-055, S11-074)", () => {
     expect(body.targetRoles, "the roles named at checkout were dropped").toEqual(["Data Analyst", "BI Developer"]);
   });
 });
+
+// Review of S11-054. (1) With a résumé bound and the server's generation
+// failed, verify answers no copy and not in progress; the page made its own
+// Premium Package from the tab while the retry sweep made and mailed another.
+// (2) The verifier's "in progress" reached the Coach and the Career Path,
+// widgets that make their own: the page waited on "verifying" for minutes.
+describe("what the page makes itself after a paid purchase (review of S11-054)", () => {
+  it.each(["premiumPackage", "coverLetter"])("%s: a bound résumé the server failed on is left to the sweep, and the page says it is coming", async (product) => {
+    invoke.mockImplementation(async (fn: string) => fn === "verify-product-purchase"
+      ? { data: { verified: true, isFirstUse: true, inProgress: false, generatedContent: null, hasResumeData: true, customerEmail: "b@example.com" }, error: null }
+      : { data: { success: true, data: { summary: "made again from the tab" } }, error: null });
+    render(<MemoryRouter initialEntries={[`/product-success?session_id=cs_test_bound_${product}&product=${product}`]}><ProductSuccess /></MemoryRouter>);
+    expect(await screen.findByTestId("still-being-made", {}, SLOW)).toBeInTheDocument();
+    expect(screen.getByText(en.productSuccess.stillBeingMade.emailed)).toBeInTheDocument();
+    expect(generatorCalls(), "the page made a second copy from the tab's résumé").toEqual([]);
+  });
+
+  it("with no résumé bound the page still makes the Premium Package from the tab", async () => {
+    invoke.mockImplementation(async (fn: string) => fn === "verify-product-purchase"
+      ? { data: { verified: true, isFirstUse: true, inProgress: false, generatedContent: null, hasResumeData: false, customerEmail: null }, error: null }
+      : { data: { success: true, data: { summary: "made from the tab" } }, error: null });
+    render(<MemoryRouter initialEntries={["/product-success?session_id=cs_test_unbound_prem&product=premiumPackage"]}><ProductSuccess /></MemoryRouter>);
+    await waitFor(() => expect(generatorCalls().map(([f]) => f)).toContain("generate-premium-package"), SLOW);
+  });
+
+  it.each(["interviewCoach", "careerPathSimulator"])("%s: an answer in progress is not waited for", async (product) => {
+    invoke.mockImplementation(async (fn: string) => fn === "verify-product-purchase"
+      ? { data: { verified: true, isFirstUse: false, inProgress: true, generatedContent: null, customerEmail: "b@example.com" }, error: null }
+      : { data: {}, error: null });
+    render(<MemoryRouter initialEntries={[`/product-success?session_id=cs_test_widget_${product}&product=${product}`]}><ProductSuccess /></MemoryRouter>);
+    await waitFor(() => expect(screen.getByText(en.productSuccess.sessionReady)).toBeInTheDocument(), SLOW);
+    expect(verifyCalls(), "the page polled for a widget that makes its own").toHaveLength(1);
+    expect(screen.queryByTestId("still-being-made")).toBeNull();
+  });
+});

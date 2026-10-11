@@ -191,3 +191,46 @@ describe("a premium package the webhook is still making (S11-054)", () => {
     expect(fetches.filter((f) => f.url.includes("/functions/v1/generate-"))).toEqual([]);
   });
 });
+
+// Review of S11-054: "in progress" is for the products the page shows from the
+// saved copy; and a résumé that is bound but unreadable is not one the sweep
+// can make the product from.
+describe("what the verifier tells the page (review of S11-054)", () => {
+  it.each(["interview_coach", "career_path_simulator"])("%s being made elsewhere is not answered in progress: the page's widget makes its own", async (type) => {
+    const id = `cs_live_${type}_in_progress`;
+    world.sessions[id] = paid(id, { product_type: type, product_name: type });
+    db.rows("used_stripe_sessions").push({ session_id: id, product_type: type });
+    db.rows("product_deliveries").push({ id: `pd-${type}`, stripe_session_id: id, product_type: type, status: "generating", content_generation_started_at: new Date().toISOString() });
+    const answer = await ask(id, false);
+    expect(answer.inProgress, "the page was told to wait for a widget").toBe(false);
+  });
+
+  it("a bound résumé the verifier could read is answered hasResumeData; one it could not read is not", async () => {
+    const failing = "cs_live_premium_bound_read";
+    world.sessions[failing] = paid(failing, { product_type: "premium_package", product_name: "Premium Package" });
+    db.rows("checkout_resume_refs").push({ stripe_session_id: failing, resume_session_id: RESUME_ID });
+    expect((await ask(failing, true)).hasResumeData).toBe(true);
+
+    const gone = "cs_live_premium_bound_gone";
+    world.sessions[gone] = paid(gone, { product_type: "premium_package", product_name: "Premium Package" });
+    db.rows("checkout_resume_refs").push({ stripe_session_id: gone, resume_session_id: RESUME_ID });
+    db.rpcs.get_temp_resume = () => ({ data: [], error: null });
+    const answer = await ask(gone, true);
+    expect(answer.generatedContent ?? null).toBe(null);
+    expect(answer.hasResumeData, "an unreadable résumé was reported as one the sweep can build from").toBe(false);
+  });
+
+  it("the verifier's saved-copy products are the success page's SERVER_RENDERED", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const { SERVER_RENDERED } = await import("../pages/ProductSuccess");
+    const { PRODUCTS } = await import("../config/products");
+    const src = readFileSync(resolve(__dirname, "../../supabase/functions/verify-product-purchase/index.ts"), "utf8");
+    const generated = [...(/const GENERATED_PRODUCT_TYPES = \[([^\]]*)\]/.exec(src)?.[1] ?? "").matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+    const excluded = [...(/const SAVED_COPY_PRODUCT_TYPES = GENERATED_PRODUCT_TYPES\.filter\(\(t\) => ([^;]*)\);/.exec(src)?.[1] ?? "").matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+    const savedCopy = generated.filter((t) => !excluded.includes(t)).sort();
+    const page = [...SERVER_RENDERED].map((k) => (PRODUCTS as Record<string, { id: string }>)[k].id).sort();
+    expect(savedCopy).toEqual(page);
+    expect(src).toMatch(/!generatedContent && !isFirstUse && SAVED_COPY_PRODUCT_TYPES\.includes\(productType \?\? ''\)/);
+  });
+});
