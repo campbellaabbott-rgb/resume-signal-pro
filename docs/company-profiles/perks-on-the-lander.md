@@ -22,7 +22,12 @@ No edge function changes. job-board is not touched.
 ## What the block prints
 
 - Heading "Perks stated in their job postings", and the line saying a perk not
-  listed doesn't mean it isn't offered.
+  listed doesn't mean it isn't offered. That line gives no cause for a missing
+  perk ("we list only perks whose reading we have checked, and only where
+  enough of the postings we could read state them"): a perk can be missing
+  because its key is unpublished, expired or withheld while nearly every
+  posting states it.
+- The basis line says only postings written in English are read for now.
 - One check per live key above the threshold, per country; countries get a
   subheading only when more than one qualifies.
 - Tap, hover (mouse or pen) or keyboard focus opens the basis: "Stated in at
@@ -33,9 +38,20 @@ No edge function changes. job-board is not touched.
   postings hedge it or limit who is eligible (the panel gives the count), and
   "may be the legal minimum" on UK and German rows with a statutory baseline
   (the panel links the statute and says "this line may describe that
-  minimum").
+  minimum"). The reader leaves the baseline off a leave line that states more
+  days than the minimum ("30 Tage Urlaub im Jahr", "25 days plus bank
+  holidays"). A GB statute is shown with where it applies (Great Britain;
+  England, Wales and Scotland for the Pensions Act 2008) and the Northern
+  Ireland law that sets the same minimum, both linked; a statute narrower than
+  its country without the law for the rest is not shown at all.
 - A stated visa limit is listed apart under "Stated limits", never with a
-  checkmark.
+  checkmark, and its label carries its share before anyone opens it: "Visa
+  sponsorship: stated as not available in at least k of n postings". The
+  limits heading is an h3 under the h2 when one country qualifies, and an h4
+  under each country's h3 when several do.
+- A token two vendors share (by the reader's own rows) says "more than one
+  hiring system carries a board with this name, and we can't tell whether
+  they are one employer", never that two employers use it.
 - A token two vendors share, an agency's board, a franchise board or a vendor
   whose benefits text we drop: no check, only the reason, and only while some
   key is live. With no key live anywhere, those boards render nothing too.
@@ -46,8 +62,15 @@ No edge function changes. job-board is not touched.
   does not list.
 
 Each check is a `<button>` with `aria-expanded`, `aria-controls` (its panel)
-and `aria-describedby` (the count sentence). Escape closes an open panel and
-returns focus to the check.
+and `aria-describedby` (the count sentence). Focus or hover opens the basis; a
+tap or click pins it and a second one closes it; every keyboard or screen
+reader activation flips it, so each Enter or Space changes `aria-expanded`.
+One panel is open at a time (the list holds the open check), and the panel
+sits in normal flow at every width, pushing the list down rather than covering
+the checks, the stated limits or another country. Escape anywhere on the page
+closes it (returning focus to the check when focus was inside it), and so does
+a press anywhere outside the open item, so a panel opened by hover can be
+dismissed without moving to it (WCAG 1.4.13).
 
 ## Deploy
 
