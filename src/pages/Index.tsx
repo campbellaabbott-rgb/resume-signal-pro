@@ -348,6 +348,8 @@ interface FreeKeywordResult {
   reportCompleteness?: number;
   partialResults?: boolean;
   partialReason?: string;
+  /** A backup report whose own reply hid the sections it left empty. */
+  partialHidden?: boolean;
   parseQuality?: { verdict: 'good' | 'fair' | 'poor'; wordCount: number; issues: string[] };
   // Emitted by the scan backend but previously never declared here NOR mapped
   // below, so the cards that read them stayed permanently dark (caught only
@@ -432,7 +434,7 @@ export function AgentOfferStrip() {
           {t("homeAgent.connectLine2", "Connect it free with no account — {{freeCallsPerDay}} calls a day per network address to look around the board (an office or a home connection counts as one address; from ChatGPT each person has their own {{freeCallsPerDay}}, and from Claude a daily pool every Claude user shares comes first).", AGENT_OFFER_COPY)}
         </p>
         <p className="mt-1">
-          {t("homeAgent.passLine", "A ${{passPrice}} pass gives it {{passHours}} hours at full speed to research the board and apply to {{passApplications}} jobs for you. It counts only jobs it can submit itself. Never renews; sign in to buy.", AGENT_OFFER_COPY)}
+          {t("homeAgent.passLine", "A ${{passPrice}} pass gives your agent {{passHours}} hours to search the board and apply to {{passApplications}} jobs for you. A job counts only when the agent can send the application. Never renews; sign in to buy.", AGENT_OFFER_COPY)}
         </p>
         <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[13px] font-medium">
           <Link to="/agents" className="inline-flex items-center gap-1 text-primary hover:underline">
@@ -1409,6 +1411,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
           reportCompleteness: (result as any).reportCompleteness,
           partialResults: (result as any).partialResults,
           partialReason: (result as any).partialReason,
+          partialHidden: (result as any).partialHidden,
           parseQuality: (result as any).parseQuality,
           // Country standards + platform-profile detection — emitted by both scan
           // paths; must be mapped here or their cards never render.
@@ -2312,7 +2315,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
                 </div>
               )}
               {freeKeywordResult.partialResults && (
-                <PartialResultsNotice reason={freeKeywordResult.partialReason} />
+                <PartialResultsNotice reason={freeKeywordResult.partialReason} hidden={freeKeywordResult.partialHidden} />
               )}
               {/* THE 60-SECOND PAYOFF. The scan just proved the machine read
                   this CV; this panel is the agent acting on that read — live

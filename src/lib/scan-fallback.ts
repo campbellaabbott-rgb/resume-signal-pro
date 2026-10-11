@@ -26,7 +26,13 @@ export function streamFallbackDeadline(scanStartedAt: number, now: number = Date
   return deadlineAt - now >= STREAM_FALLBACK_MIN_MS ? deadlineAt : null;
 }
 
-/** A report the backup scanner wrote: partial, and says why. */
-export function asFallbackReport<T extends object>(report: T): T & { partialResults: true; partialReason: "fallback" } {
-  return { ...report, partialResults: true, partialReason: "fallback" };
+/**
+ * A report the backup scanner wrote: partial, and says why. When the
+ * backup's own reply was thin and it hid the sections it left empty (its
+ * reason "thin_unfilled", S11-147), the report keeps that fact as
+ * partialHidden, so the banner says both.
+ */
+export function asFallbackReport<T extends object>(report: T): T & { partialResults: true; partialReason: "fallback"; partialHidden?: true } {
+  const hidden = (report as { partialReason?: unknown }).partialReason === "thin_unfilled";
+  return { ...report, partialResults: true, partialReason: "fallback", ...(hidden ? { partialHidden: true as const } : {}) };
 }

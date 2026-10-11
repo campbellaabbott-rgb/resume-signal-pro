@@ -247,7 +247,7 @@ export default function AgentPass() {
                       {t("agentPass.applications", "{{left}} of {{passApplications}} applications", { left: pass.applicationsLeft, passApplications })}
                     </p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      {t("agentPass.applicationsBasis", "Only a job your agent can submit itself spends one. A request it refuses spends nothing, and a send that never happened gives its application back.")}
+                      {t("agentPass.applicationsBasis", "An application counts only for a job the agent can send it to. A refused request, or a send that never happened, costs nothing.")}
                     </p>
                   </>
                 )}
