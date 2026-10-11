@@ -39,6 +39,11 @@ No edge function changes. job-board is not touched.
 - A token two vendors share, an agency's board, a franchise board or a vendor
   whose benefits text we drop: no check, only the reason, and only while some
   key is live. With no key live anywhere, those boards render nothing too.
+  On the lander, a token the catalogue lists as carried by two hiring systems
+  (`src/lib/board-collisions.ts`) does not mount the block at all: its page
+  shows only the per-vendor split, so the collision reason appears only where
+  the reader finds two sources among a token's perk rows that the catalogue
+  does not list.
 
 Each check is a `<button>` with `aria-expanded`, `aria-controls` (its panel)
 and `aria-describedby` (the count sentence). Escape closes an open panel and

@@ -38,8 +38,14 @@
       "jobBoard": "2026-09-09.93",
       "fnBuildDate": "2026-10-11"
     },
+    "company-profiles": {
+      "branches": ["profiles/"],
+      "migrations": "20261012*",
+      "jobBoard": "assigned when phase 3 merges, after .92 (wave 3) and .93 (connect-apply)",
+      "fnBuildDate": "2026-10-12"
+    },
     "next": {
-      "migrations": "20261012* and later, one day per workstream",
+      "migrations": "20261013* and later, one day per workstream",
       "jobBoard": "2026-09-09.94+"
     }
   },

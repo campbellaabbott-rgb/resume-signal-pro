@@ -83,7 +83,8 @@ the new main, and the ledger is re-run.
 | wave 3 (in progress) | 20261009* | 2026-09-09.92 | 2026-10-09 |
 | ledger repair (this PR) | none | none | 2026-10-10 |
 | connect-and-apply | 20261011* | 2026-09-09.93 | 2026-10-11 |
-| next | 20261012* onwards, one day each | 2026-09-09.94+ | that day |
+| company profiles (branches `profiles/`) | 20261012* | assigned when phase 3 merges, after .92 and .93; phases 0-2 change no job-board | 2026-10-12 |
+| next | 20261013* onwards, one day each | 2026-09-09.94+ | that day |
 
 When two branches bump the same function, the integration keeps BOTH changes
 and gives the function a new stamp later than either. Every function whose code
