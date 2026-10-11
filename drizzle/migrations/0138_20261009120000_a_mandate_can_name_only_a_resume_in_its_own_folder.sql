@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261009120000_a_mandate_can_name_only_a_resume_in_its_own_folder.sql'));

@@ -967,6 +967,13 @@
       "when": 1791751441755,
       "tag": "0137_20261009111000_a_shortlist_evaluation_cannot_be_rewritten_and_a_status_changes_only_with_its_decision",
       "breakpoints": true
+    },
+    {
+      "idx": 138,
+      "version": "7",
+      "when": 1791751456756,
+      "tag": "0138_20261009120000_a_mandate_can_name_only_a_resume_in_its_own_folder",
+      "breakpoints": true
     }
   ]
 }
