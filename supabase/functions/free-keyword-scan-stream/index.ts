@@ -1,6 +1,7 @@
 // deploy-stamp: 2026-07-04T18:44Z
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { clientAddressOr } from "../_shared/client-address.ts";
+import { scannableJobDescription } from "../_shared/job-description-input.ts";
 import { detectIndustry as detectIndustryShared } from "./industry-detection.ts";
 // Geo: the UI calls ONLY this streaming function, so country detection and the
 // 52-market resume standards must run HERE to reach users (the non-stream
@@ -6493,7 +6494,7 @@ function clampImprovementToScoreGap(report: Record<string, unknown>): void {
 // Provable from outside without a scan: every response, the CORS preflight
 // included, carries this in x-fn-build. 2026-10-08.1: the improvement-potential
 // clamp (register L5-15), on fresh and cached reports.
-const FN_BUILD = "free-keyword-scan-stream.2026-10-09.3";
+const FN_BUILD = "free-keyword-scan-stream.2026-10-09.4";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7409,7 +7410,9 @@ serve(async (req) => {
   // Process in background while streaming progress
   EdgeRuntime.waitUntil((async () => {
     try {
-      const { resumeText, jobDescriptionText, honeypot, skipCache, skipAdminEmail, language, targetCountry } = await req.json();
+      const { resumeText, jobDescriptionText: askedJobDescription, honeypot, skipCache, skipAdminEmail, language, targetCountry } = await req.json();
+      // A link is not a posting (_shared/job-description-input.ts, S11-032).
+      const jobDescriptionText = scannableJobDescription(askedJobDescription);
       // Target market the candidate is applying TO (ISO-2). Optional; when the
       // user states it, it overrides residence-detected country for standards —
       // someone applying abroad needs the destination market's expectations.

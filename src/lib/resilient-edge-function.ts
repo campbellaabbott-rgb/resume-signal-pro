@@ -554,4 +554,18 @@ export const resilientCallers = {
     timeout: 60000,
     initialDelay: 1000,
   }),
+
+  /**
+   * Read a posting link (the scanner's Job URL tab, S11-032). The function
+   * holds every fetch to its own 9-second deadline; one retry, and only for a
+   * request that never got an answer.
+   */
+  fetchJobPosting: createResilientCaller('fetch-job-posting', {
+    maxRetries: 1,
+    timeout: 25000,
+    initialDelay: 1000,
+    // A meter's refusal (429, 503) is an answer: asking again spends the next lookup.
+    shouldRetry: (e) => isNetworkRetryable(e)
+      && !(e instanceof FunctionsHttpError && [429, 503].includes(Number(e.context?.status))),
+  }),
 };

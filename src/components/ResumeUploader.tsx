@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Upload, FileText, X, Loader2, CheckCircle2, Sparkles, CreditCard, Linkedin, Target, Zap, Link, Table2, Download, ChevronDown, ChevronUp, ArrowDown } from "lucide-react";
 import { WalletPaymentBadge } from "./WalletPaymentBadge";
 import { SCAN_RESULTS_WITHIN_SECONDS } from "@/config/scan-timing";
@@ -16,6 +16,7 @@ import { ScanGuideArrow } from "@/components/ScanGuideArrow";
 import { useScanPrefetch } from "@/hooks/use-scan-prefetch";
 import { ScanProgressStages } from "@/components/ScanProgressStages";
 import { PurchaseTerms } from "@/components/PurchaseTerms";
+import { looksLikeLink, scannableJobDescription } from "@/lib/job-description-input";
 // Step indicator component for better UX guidance
 interface StepIndicatorProps {
   number: number;
@@ -443,12 +444,58 @@ export function ResumeUploader({
     }
   };
 
-  const getFinalJobDescriptionText = () => {
-    if (jobDescriptionMode === "url" && jobDescriptionUrl.trim()) {
-      return `[Job URL: ${jobDescriptionUrl.trim()}]\n\n${localJobDescriptionText}`;
-    }
-    return localJobDescriptionText || jobDescriptionText;
+  // THE JOB URL TAB READS THE POSTING (sweep S11-032). It used to send
+  // "[Job URL: <link>]" as the job description, so the scan and the $5
+  // analysis were scored against a link. A link now goes to fetch-job-posting,
+  // which reads the posting from the employer's job board; the text it returns
+  // lands in the paste box, where the person can see and edit it. A site it
+  // cannot read asks for the text instead. A link is never sent as the
+  // description (scannableJobDescription), and the servers ignore one anyway.
+  type UrlFetchState = "idle" | "loading" | "unsupported" | "failed" | "limited";
+  const [urlFetch, setUrlFetch] = useState<UrlFetchState>("idle");
+  /** The link waiting to be read: the Job URL box, or a bare link pasted into the text box. */
+  const pendingJobLink = (): string => {
+    if (jobDescriptionMode === "url") return jobDescriptionUrl.trim();
+    if (jobDescriptionMode === "paste" && looksLikeLink(localJobDescriptionText)) return localJobDescriptionText.trim();
+    return "";
   };
+  /** Read a posting link; the posting's text, or null (the box then says why and asks for the text). */
+  const reading = useRef(false);
+  const readJobLink = async (link: string): Promise<string | null> => {
+    // One read at a time: a second press while the first is out spends no lookup.
+    if (reading.current) return null;
+    reading.current = true;
+    setUrlFetch("loading");
+    const result = await resilientCallers.fetchJobPosting({ url: link }).finally(() => { reading.current = false; });
+    const data = (result.data ?? null) as { ok?: boolean; text?: string; title?: string | null; company?: string | null; url?: string; reason?: string } | null;
+    if (data?.ok && typeof data.text === "string" && data.text.trim()) {
+      const head = [
+        data.title ? `Job Title: ${data.title}` : "",
+        data.company ? `Company: ${data.company}` : "",
+        `Source: ${data.url ?? link}`,
+      ].filter(Boolean).join("\n");
+      const text = `${head}\n\nJob Description:\n${data.text.trim()}`;
+      setLocalJobDescriptionText(text);
+      setJobDescriptionUrl("");
+      setJobDescriptionMode("paste");
+      setShowJobDescription(true);
+      setUrlFetch("idle");
+      toast({
+        title: t('uploader.jobUrlLoadedTitle'),
+        description: data.title ? t('uploader.jobUrlLoadedDesc', { title: data.title }) : undefined,
+      });
+      return text;
+    }
+    const reason = data?.reason ?? String(result.errorBody?.reason ?? "");
+    setUrlFetch(
+      reason === "unsupported_host" || reason === "not_https" || reason === "bad_url" ? "unsupported"
+        : reason === "rate_limited" || reason === "board_budget" || result.httpStatus === 429 ? "limited"
+        : "failed",
+    );
+    return null;
+  };
+  const getFinalJobDescriptionText = () =>
+    scannableJobDescription(localJobDescriptionText || jobDescriptionText).trim();
 
   // THE JOB DESCRIPTION THE FREE SCAN USES IS THE ONE IN THIS BOX (register
   // L13-31). The box kept its text in local state and the scan button sent
@@ -458,22 +505,34 @@ export function ResumeUploader({
   // its own content is the truth: empty means no JD. An import failure
   // message shown in the box is not a job description.
   const jobDescriptionForScan = (): string => {
-    const own = jobDescriptionMode === "url" && jobDescriptionUrl.trim()
-      ? `[Job URL: ${jobDescriptionUrl.trim()}]\n\n${localJobDescriptionText}`
-      : localJobDescriptionText;
+    const own = localJobDescriptionText;
     const failure = own.startsWith("Error:") ||
       own === t('uploader.gsheetsImportFailed') || own === t('uploader.gsheetsImportFailedShared');
-    return failure ? "" : own.trim();
+    return failure ? "" : scannableJobDescription(own.trim()).trim();
   };
 
   const handleFreeScanClick = () => {
     if (!onFreeScan) return;
-    const jd = jobDescriptionForScan();
-    onJobDescriptionTextChange?.(jd);
-    onFreeScan(resumeMode === "paste" ? textInput.trim() : undefined, jd);
+    const resumeOverride = resumeMode === "paste" ? textInput.trim() : undefined;
+    const scan = (jd: string) => {
+      onJobDescriptionTextChange?.(jd);
+      onFreeScan(resumeOverride, jd);
+    };
+    // A link still waiting to be read is read first, and the scan runs on
+    // the posting's text; a link that cannot be read stops here, and the box
+    // asks for the text rather than scanning against nothing the person meant.
+    const link = pendingJobLink();
+    if (!link) { scan(jobDescriptionForScan()); return; }
+    void readJobLink(link).then((read) => { if (read !== null) scan(scannableJobDescription(read).trim()); });
   };
 
+  // A PAID PATH NEVER BUYS AGAINST A LINK. A link still waiting to be read is
+  // read first and the press stops there: the posting lands in the box, and
+  // the next press buys with the text the buyer can see. Synchronous
+  // otherwise, so the press that started a checkout is the one it records.
   const handleTextPaste = () => {
+    const link = pendingJobLink();
+    if (link) { void readJobLink(link); return; }
     if (textInput.trim()) {
       const finalLinkedInText = linkedInMode === "paste" ? localLinkedInText : linkedInText;
       const finalJobDescriptionText = getFinalJobDescriptionText();
@@ -482,6 +541,8 @@ export function ResumeUploader({
   };
 
   const handleCheckoutClick = () => {
+    const link = pendingJobLink();
+    if (link) { void readJobLink(link); return; }
     const finalLinkedInText = linkedInMode === "paste" ? localLinkedInText : linkedInText;
     const finalJobDescriptionText = getFinalJobDescriptionText();
     onCheckout(finalLinkedInText || undefined, finalJobDescriptionText || undefined);
@@ -826,32 +887,73 @@ export function ResumeUploader({
                     </div>
                   </div>
                 )}
+                {/* A bare link pasted as the description is read, not sent. */}
+                {jobDescriptionMode === "paste" && looksLikeLink(localJobDescriptionText) && urlFetch !== "unsupported" && urlFetch !== "failed" && urlFetch !== "limited" && (
+                  <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl bg-muted/50 border border-border">
+                    <span className="text-sm text-foreground">{t('uploader.jobUrlInPasteBox')}</span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={urlFetch === "loading"}
+                      onClick={() => void readJobLink(localJobDescriptionText.trim())}
+                    >
+                      {urlFetch === "loading" ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                      {urlFetch === "loading" ? t('uploader.jobUrlFetching') : t('uploader.jobUrlFetch')}
+                    </Button>
+                  </div>
+                )}
 
-                {/* URL Mode */}
+                {/* URL Mode: the link is read by fetch-job-posting, and the
+                    posting's text lands in the paste box (S11-032). */}
                 {jobDescriptionMode === "url" && (
                   <div className="space-y-3">
-                    <div className="relative">
-                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
-                        <Link className="w-4 h-4" />
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <div className="relative flex-1">
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
+                          <Link className="w-4 h-4" />
+                        </div>
+                        <input
+                          type="url"
+                          value={jobDescriptionUrl}
+                          onChange={(e) => { setJobDescriptionUrl(e.target.value); setUrlFetch("idle"); }}
+                          onKeyDown={(e) => { if (e.key === "Enter" && jobDescriptionUrl.trim()) { e.preventDefault(); void readJobLink(jobDescriptionUrl.trim()); } }}
+                          placeholder={t('uploader.jobUrlPlaceholder')}
+                          aria-label={t('uploader.modeTabs.jobUrl')}
+                          className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-success/50 focus:border-success/50 text-sm transition-all"
+                        />
                       </div>
-                      <input
-                        type="url"
-                        value={jobDescriptionUrl}
-                        onChange={(e) => setJobDescriptionUrl(e.target.value)}
-                        placeholder={t('uploader.jobUrlPlaceholder')}
-                        className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-success/50 focus:border-success/50 text-sm transition-all"
-                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-12 shrink-0"
+                        disabled={!jobDescriptionUrl.trim() || urlFetch === "loading"}
+                        onClick={() => void readJobLink(jobDescriptionUrl.trim())}
+                      >
+                        {urlFetch === "loading" ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                        {urlFetch === "loading" ? t('uploader.jobUrlFetching') : t('uploader.jobUrlFetch')}
+                      </Button>
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {t('uploader.jobUrlTip')}
                     </p>
-                    {/* Optional: additional notes textarea */}
-                    <textarea
-                      value={localJobDescriptionText}
-                      onChange={(e) => setLocalJobDescriptionText(e.target.value)}
-                      placeholder={t('uploader.jobUrlNotesPlaceholder')}
-                      className="w-full h-24 p-4 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-success/50 focus:border-success/50 resize-none text-sm leading-relaxed transition-all"
-                    />
+                  </div>
+                )}
+                {/* Why a link could not be read, and the way on: paste the text. */}
+                {(urlFetch === "unsupported" || urlFetch === "failed" || urlFetch === "limited") && (
+                  <div role="status" className="flex flex-wrap items-center gap-2 p-3 rounded-xl bg-muted/50 border border-border">
+                    <span className="text-sm text-foreground">
+                      {urlFetch === "unsupported" ? t('uploader.jobUrlUnsupported')
+                        : urlFetch === "limited" ? t('uploader.jobUrlLimited')
+                        : t('uploader.jobUrlFailed')}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => { setJobDescriptionMode("paste"); setUrlFetch("idle"); if (looksLikeLink(localJobDescriptionText)) setLocalJobDescriptionText(""); }}
+                      className="text-sm font-medium text-primary hover:underline"
+                    >
+                      {t('uploader.jobUrlPasteInstead')}
+                    </button>
                   </div>
                 )}
 
@@ -1050,25 +1152,12 @@ export function ResumeUploader({
                 )}
 
                 {/* Success indicator */}
-                {hasJobDescriptionContent && jobDescriptionMode === "paste" && localJobDescriptionText.trim() && (
+                {hasJobDescriptionContent && jobDescriptionMode === "paste" && localJobDescriptionText.trim() && !looksLikeLink(localJobDescriptionText) && (
                   <div className="flex items-center gap-2 p-3 rounded-xl bg-success/5 border border-success/20">
                     <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
                     <span className="text-sm text-success">{t('uploader.jdAdded')}</span>
                     <button
                       onClick={() => setLocalJobDescriptionText("")}
-                      className="ml-auto p-1 hover:bg-success/10 rounded-lg transition-colors"
-                    >
-                      <X className="w-3 h-3 text-success" />
-                    </button>
-                  </div>
-                )}
-                
-                {jobDescriptionMode === "url" && jobDescriptionUrl.trim() && (
-                  <div className="flex items-center gap-2 p-3 rounded-xl bg-success/5 border border-success/20">
-                    <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-                    <span className="text-sm text-success">{t('uploader.jobUrlAdded')}</span>
-                    <button
-                      onClick={() => setJobDescriptionUrl("")}
                       className="ml-auto p-1 hover:bg-success/10 rounded-lg transition-colors"
                     >
                       <X className="w-3 h-3 text-success" />

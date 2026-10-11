@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { getServiceClient } from "../_shared/supabase-client.ts";
+import { scannableJobDescription } from "../_shared/job-description-input.ts";
 import {
   FULL_ANALYSIS_PRODUCT_NAME,
   FULL_ANALYSIS_PRODUCT_TYPE,
@@ -14,7 +15,7 @@ import { REFUNDED_PURCHASE_MESSAGE, sessionWasRefunded } from "../_shared/paymen
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "analyze-resume.2026-10-09.2";
+const FN_BUILD = "analyze-resume.2026-10-09.3";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -649,7 +650,9 @@ serve(async (req) => {
   const clientIp = getClientIp(req);
 
   try {
-    const { resumeText, linkedInText, jobDescriptionText, sessionId } = await req.json();
+    const { resumeText, linkedInText, jobDescriptionText: askedJobDescription, sessionId } = await req.json();
+    // A paid analysis is never framed around a link (_shared/job-description-input.ts, S11-032).
+    const jobDescriptionText = scannableJobDescription(askedJobDescription);
 
     // EARLY INPUT VALIDATION (fail fast before payment verification)
     if (!resumeText || typeof resumeText !== 'string' || resumeText.trim().length === 0) {
@@ -678,7 +681,7 @@ serve(async (req) => {
     }
 
     // Validate job description text if provided  
-    const hasJobDescription = jobDescriptionText && typeof jobDescriptionText === 'string' && jobDescriptionText.trim().length > 0;
+    const hasJobDescription = jobDescriptionText.trim().length > 0;
     if (hasJobDescription && jobDescriptionText.length > MAX_JOB_DESCRIPTION_LENGTH) {
       console.log(`[ANALYZE-RESUME] Job description too long: ${jobDescriptionText.length} characters`);
       return new Response(

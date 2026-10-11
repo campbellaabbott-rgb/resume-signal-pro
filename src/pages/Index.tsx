@@ -7,6 +7,7 @@ import { useScrollDepth } from "@/hooks/use-scroll-depth";
 import { useTimeOnPage } from "@/hooks/use-time-on-page";
 import { useFunnelTracking } from "@/hooks/use-funnel-tracking";
 import { takeJdHandoff } from "@/lib/jd-handoff";
+import { scannableJobDescription } from "@/lib/job-description-input";
 import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
 import { ResumeUploader } from "@/components/ResumeUploader";
@@ -1060,7 +1061,9 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
     // Grade→game-plan rescan: a posting pasted in the report arrives here
     // directly (state updates are async, so the param wins over state). The
     // uploader's own JD box also arrives as this argument (register L13-31).
-    const jdForScan = (typeof jdOverride === "string" ? jdOverride : jobDescriptionText) || undefined;
+    // Never a link: the primary and the streaming fallback both send this
+    // (scannableJobDescription, sweep S11-032).
+    const jdForScan = scannableJobDescription(typeof jdOverride === "string" ? jdOverride : jobDescriptionText) || undefined;
     if (typeof jdOverride === "string" && jdOverride !== jobDescriptionText) setJobDescriptionText(jdOverride);
 
     // Warm the lazy report chunk while the scan runs so results render instantly.

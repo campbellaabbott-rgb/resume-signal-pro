@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { validateResumeBeforeSend } from '@/lib/resume-validation';
 import { clearAllClientScanCaches } from './use-streaming-scan';
+import { scannableJobDescription } from '@/lib/job-description-input';
 
 interface PrefetchState {
   isWarmedUp: boolean;
@@ -160,7 +161,7 @@ export function useScanPrefetch({ resumeText, jobDescriptionText, honeypot, onVa
           },
           body: JSON.stringify({
             resumeText: text,
-            jobDescriptionText: jobDesc || undefined,
+            jobDescriptionText: scannableJobDescription(jobDesc) || undefined,
             honeypot: hp || '',
             skipCache: true, // Always get fresh results for background scan
           }),
