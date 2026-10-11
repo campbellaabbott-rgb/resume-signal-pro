@@ -45,12 +45,25 @@
  * the catalog parser still works.
  */
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-export const SOURCES_PATH = resolve(
-  __dirname,
-  "../../../supabase/functions/job-board/sources.ts",
-);
+/**
+ * This file's own folder, under every loader that reads it. Vitest and a tsx
+ * require (scripts/layoff-board-names-mirror.mjs) give a true __dirname; a tsx
+ * ESM import (`tsx -e 'import("./src/test/helpers/catalog.ts")'`, the line
+ * verify-deploy section 1 and its test both run) gave the CALLER'S working
+ * directory, so the catalogue was read three folders above it: from a
+ * worktree, the main checkout's sources.ts (a different catalogue, silently);
+ * in CI, /home/runner/supabase/... (ENOENT). import.meta.url names the file
+ * itself wherever it exists; fileURLToPath keeps a path with spaces whole.
+ */
+const HERE: string = (() => {
+  const url = (import.meta as { url?: string }).url;
+  return typeof url === "string" && url.startsWith("file:") ? dirname(fileURLToPath(url)) : __dirname;
+})();
+
+export const SOURCES_PATH = resolve(HERE, "../../../supabase/functions/job-board/sources.ts");
 
 /** Record separator inside a packed literal: U+000A, written there as an escape. */
 const RECORD_SEP = "\n";

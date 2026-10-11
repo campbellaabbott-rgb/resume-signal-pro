@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { codeOf } from "./helpers/strip-comments";
 import { POSTING_PATH_PREFIX } from "@/components/jobs/posting-page";
 import { skipWithoutDist } from "./helpers/built-output";
+import { LANDER_OPENINGS_READS, postingFreshBudget } from "../../scripts/prerender-pages.mjs";
 
 /**
  * A SITEMAP ENTRY IS A REQUEST TO INDEX THAT URL, SO EVERY ENTRY MUST HAVE A
@@ -171,11 +172,72 @@ describe.skipIf(skipWithoutDist(built))("the built sitemap advertises no posting
     ).toEqual([]);
   });
 
-  it("stays inside the cap the generator states, so the set cannot quietly become unbounded", () => {
-    const cap = Number(
-      /const POSTING_PAGE_CAP = (\d+)/.exec(codeOf(readFileSync(resolve(ROOT, "scripts/prerender-seo.mjs"), "utf8")))![1],
-    );
-    expect(advertisedPostingPaths(xml).length).toBeLessThanOrEqual(cap);
+  // THE BOUND THE GENERATOR STATES, read from what this bake recorded. This
+  // used to compare the count with POSTING_PAGE_CAP, which stopped being a
+  // bound on 2026-10-10 (SEO F2a, L13-36): carried pages have no cap, new ones
+  // stop at POSTING_PAGE_CEILING, and the 2026-10-11 bake carried 454 and
+  // added 46. Main's CI went red on a bake that did exactly what its rule says.
+  it("adds no new posting page past the ceiling, and carries no more than the bake can re-check", () => {
+    const ledger = JSON.parse(readFileSync(resolve(ROOT, "dist/prerender-ledger.json"), "utf8")) as {
+      builtAt: string;
+      postings: Record<string, { state: string; first?: string; carried?: unknown }>;
+    };
+    const live = Object.entries(ledger.postings).filter(([, e]) => e.state === "live");
+    const livePaths = new Set(live.map(([p]) => p));
+    expect(advertisedPostingPaths(xml).filter((p) => !livePaths.has(p)), "advertised posting URLs the bake's ledger does not call live").toEqual([]);
+    expect(live.filter(([, e]) => typeof e.carried !== "boolean").map(([p]) => p), "live pages that do not say whether they were carried").toEqual([]);
+    // A page first published on an earlier day can only have been carried.
+    expect(live.filter(([, e]) => e.carried === false && e.first !== ledger.builtAt).map(([p]) => p)).toEqual([]);
+
+    const carried = live.filter(([, e]) => e.carried === true).length;
+    const fresh = live.length - carried;
+    const ceiling = generatorNumber("POSTING_PAGE_CEILING");
+    expect(fresh).toBeLessThanOrEqual(postingFreshBudget({
+      carriedLive: carried, cap: generatorNumber("POSTING_PAGE_CAP"), reserve: generatorNumber("POSTING_FRESH_RESERVE"), ceiling,
+    }));
+    expect(live.length).toBeLessThanOrEqual(Math.max(ceiling, carried));
+    // Every carried page is one board read, and the bake's reads are fixed.
+    expect(carried).toBeLessThanOrEqual(generatorNumber("BAKE_BOARD_CALL_BUDGET") - LANDER_OPENINGS_READS);
+  });
+});
+
+/** A numeric constant the bake declares, read from its code (not its comments). */
+function generatorNumber(name: string): number {
+  const m = new RegExp(`const ${name} = (\\d+);`).exec(codeOf(readFileSync(resolve(ROOT, "scripts/prerender-seo.mjs"), "utf8")));
+  expect(m, `scripts/prerender-seo.mjs declares no ${name}`).toBeTruthy();
+  return Number(m![1]);
+}
+
+describe("the posting budget is a ceiling on new pages, not the cap its name suggests", () => {
+  const rule = () => ({
+    cap: generatorNumber("POSTING_PAGE_CAP"),
+    reserve: generatorNumber("POSTING_FRESH_RESERVE"),
+    ceiling: generatorNumber("POSTING_PAGE_CEILING"),
+  });
+
+  it("the bake computes its budget through the one rule this file checks", () => {
+    const GEN = codeOf(readFileSync(resolve(ROOT, "scripts/prerender-seo.mjs"), "utf8"));
+    expect(GEN).toMatch(/const freshBudget = postingFreshBudget\(\{ carriedLive, cap: POSTING_PAGE_CAP, reserve: POSTING_FRESH_RESERVE, ceiling: POSTING_PAGE_CEILING \}\);/);
+    expect(GEN).toMatch(/if \(fresh\.length >= freshBudget\) break;/);
+    expect(GEN, "a live ledger entry no longer says whether it was carried").toMatch(/postingLedger\[path\] = \{ state: "live", since: TODAY, first, carried,/);
+  });
+
+  it("TEETH: the bake that turned main red was inside its rule and outside POSTING_PAGE_CAP", () => {
+    const { cap, ceiling, ...r } = rule();
+    const fresh = postingFreshBudget({ carriedLive: 454, cap, ceiling, ...r });
+    expect(454 + fresh).toBe(ceiling);
+    expect(454 + fresh).toBeGreaterThan(cap);
+  });
+
+  it("keeps the reserve moving under the ceiling, and adds nothing once the carried pages reach it", () => {
+    const { cap, reserve, ceiling } = rule();
+    expect(postingFreshBudget({ carriedLive: 0, cap, reserve, ceiling })).toBe(cap);
+    expect(postingFreshBudget({ carriedLive: cap, cap, reserve, ceiling })).toBe(Math.min(reserve, ceiling - cap));
+    expect(postingFreshBudget({ carriedLive: ceiling, cap, reserve, ceiling })).toBe(0);
+    expect(postingFreshBudget({ carriedLive: ceiling + 50, cap, reserve, ceiling })).toBe(0);
+    for (let carriedLive = 0; carriedLive <= ceiling + 100; carriedLive += 7) {
+      expect(carriedLive + postingFreshBudget({ carriedLive, cap, reserve, ceiling })).toBeLessThanOrEqual(Math.max(ceiling, carriedLive));
+    }
   });
 });
 

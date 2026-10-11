@@ -25,6 +25,114 @@ build strings. The builds that deploy are the ones in the stamp tables below
 (the S11 round's table first, then the earlier one for the functions the
 round did not touch).
 
+## Deployed 2026-10-11
+
+Lovable deployed PR #30 (merge `35559389`) from main in two commits:
+"Deployed 80 backend functions" (`fa7cdecd`, 20:52Z) and "Applied remaining
+DB updates" (`65f7e5bc`, 21:05Z). The 80 functions are the ones whose build
+moved since wave 2's verified deploy (`1fc1702d`). agent-connect,
+parse-spreadsheet and reconcile-stripe kept their builds and were not
+redeployed. `docs/deploy-ledger.json` records the deploy under
+`verifiedDeploys` (commit `35559389`).
+
+### What the verification showed
+
+`scripts/verify-deploy.sh` read **906 PASS and 11 FAIL**. These six FAILs
+are explained by evidence in the post-wave-3 tooling PR:
+
+- **Section 49 (4 FAILs), ledger false positives.** apply-broker and
+  job-board read MUST BUMP because the fix round changed their code after
+  their stamps were written, before this deploy. 20261008125000 and
+  20261008128000 read "not applied" because Lovable applied them without a
+  staged-runner stub. They are live by behaviour: get_cron_health lists
+  send-search-digest, industry-corrections-digest and check-error-spikes,
+  and check-error-spikes has run 35+ times. The ledger now records the
+  deploy and lists both migrations as `appliedOutsideDrizzle`.
+- **Section 73 (1 FAIL), a verifier bug.** The agent_packet_pass_funds probe
+  passed two nulls, and probe() refuses a null before calling anything (a
+  GET cannot carry one). The probe now sends typed values. Production
+  answers 42501.
+- **Section 77 (1 FAIL), a verifier bug.** "The header has a phone menu"
+  searched only `index-*.js`. The header is in the shared chunk
+  `Footer-COGdNeJS.js`, which pages load and the shell modulepreloads. The
+  line now walks the chunk graph to the chunk that renders the header (its
+  positive control is `header.mainNavAriaLabel`) and PASSes live.
+
+The post-deploy review put the other five FAILs down to the owner steps and
+the performance item below. None of them is a code defect.
+
+Proven live after the deploy:
+
+- **S11-001:** the pass-end receipt went out at 21:21:22Z.
+- **fetch-job-posting** read a real Greenhouse posting and refused private
+  and unknown hosts.
+- **board-health** was dispatched and came back green.
+
+### The sitemap's 500 posting URLs
+
+Main's built-output CI job failed with "expected 500 to be less than or
+equal to 400". **The live sitemap did advertise 500 posting URLs.**
+`https://resumebooster.work/sitemap.xml` (read 2026-10-11 21:40Z) names
+exactly 500 `/jobs/posting/` URLs among its 1,360, and the live
+`/prerender-ledger.json` lists 500 live posting pages. The CI bake made the
+same count: 454 carried pages and 46 new ones.
+
+**500 is the bake's intended ceiling**, not an overrun. Since the seo-content
+group's F2a rework (`d66e5706`, lowered to 500 by `722d2f8d`, both
+2026-10-10):
+
+- carried pages have no cap;
+- new pages get `POSTING_PAGE_CAP` (400) less the carried pages, never fewer
+  than the 100-page reserve;
+- no new page is added past `POSTING_PAGE_CEILING` (500).
+
+So 400 is the size the set aims at, not a bound on it. The guard still read
+400. It now checks the rule itself: postingFreshBudget, with a per-page
+`carried` flag in the ledger.
+
+### Owner steps still open
+
+- **The email queue drain.** Set it up in Lovable Cloud's email setup, then
+  add the `notify.resumebooster.work` DNS. Auth mails and the drip queue
+  until both are done.
+- **`STRIPE_PORTAL_LOGIN_URL`** (S11-015): set it, then check it in a
+  private window.
+- **The S11-061 Stripe binding:** the Pro plans bought between wave 2's
+  binding and its deploy. The full step is under "Deploy procedure" below.
+
+### Open performance item
+
+On the /jobs first page, `get_company_fill_curve` took 19.8 s to answer a
+31-token cold call (section 64 a5). The tooling PR does not change it. The
+company-profiles precompute (`profiles/integration`) addresses it.
+
+### The second message: the three held migrations
+
+Every hold condition is now met:
+
+- job-board .92 serves with `sliceStats.buildSince` 2026-10-11T20:48:26Z
+  (100300);
+- shortlist-evaluate 2026-10-10.62 serves, and the Shortlist page decides
+  through shortlist_decide (112000);
+- layoff-filings 2026-10-09.3 serves, and the old build no longer runs
+  (160100).
+
+The tooling PR removes their `holdUntilVerified` entries. Their conditions
+stay in `migrationOrder` as after-rules. Once it merges, regenerate the
+message at the merge commit with `node scripts/deploy-ledger.mjs --message`.
+It lists the three migrations in this order, each beside the build it waits
+for:
+
+    1. Apply these 3 migrations, in this order, one at a time (each is self-verifying and safe to re-run):
+       1. 20261009100300_a_teamtailor_page_of_a_hundred_wrote_takedowns_nobody_made.sql (job-board already answers job-board.2026-09-09.92)
+       2. 20261009112000_a_shortlist_evaluation_is_closed_to_the_browser_once_no_live_code_writes_it_from_there.sql (shortlist-evaluate already answers shortlist-evaluate.2026-10-10.62)
+       3. 20261009160100_an_illinois_notice_dated_after_its_stamp_is_not_a_notice_date.sql (layoff-filings already answers layoff-filings.2026-10-09.3)
+       NEVER apply: 20260928003117_a_timeout_that_blanks_a_section_is_raised_where_the_cron_pays_for_it.sql (superseded).
+    2. Publish the frontend.
+
+The frontend publish also ships the bake's per-page `carried` flag. Section
+49 reads these three as "migration not applied" until they are applied.
+
 ## Deploy procedure: read this first
 
 1. **Not before wave 2.** Wave 3 deploys ONLY after wave 2's step 1 AND step 2

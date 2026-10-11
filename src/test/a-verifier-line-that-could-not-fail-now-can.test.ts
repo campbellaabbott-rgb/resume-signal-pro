@@ -259,3 +259,55 @@ describe("S11-156: section 78 judges the Deploy run by its conclusion and execut
     expect(deployLine(lines).some((l) => l.startsWith("PASS")), show(lines)).toBe(false);
   });
 });
+
+// ── section 77: the phone menu, judged in the chunk that renders the header ──
+// The deploy of 2026-10-11 read "the header has a phone menu" as FAIL while
+// the live header carried it: Rollup had moved Header beside Footer into a
+// shared chunk (Footer-*.js) that pages load and the shell modulepreloads, and
+// the line searched only the entry. It now walks the chunk graph to the chunk
+// that renders the header, found by a literal the header has carried since
+// June (header.mainNavAriaLabel), and judges the menu there.
+const HEADER = `t("header.mainNavAriaLabel");t("header.signIn")`;
+const MENU = `"aria-controls":"phone-nav",t("header.menu","Menu")`;
+const ENTRY_NAME = "index-abc12345.js";
+function site77(o: { entry?: string; preload?: string[]; chunks?: Record<string, string> }): Route[] {
+  const shell = `<html><head><script type="module" crossorigin src="/assets/${ENTRY_NAME}"></script>${(o.preload ?? []).map((c) => `<link rel="modulepreload" href="/assets/${c}">`).join("")}</head><body></body></html>`;
+  return [
+    route("/", shell),
+    route(`/assets/${ENTRY_NAME}`, o.entry ?? `a[href="#main-content"];`),
+    ...Object.entries(o.chunks ?? {}).map(([name, body]) => route(`/assets/${name}`, body)),
+  ];
+}
+const menuLine = (lines: string[]) => lines.filter((l) => /phone menu|renders the header/.test(l));
+
+describe("section 77 finds the phone menu in the chunk that renders the header, wherever Rollup put it", () => {
+  it("positive control: the live layout (the header in Footer-*.js, preloaded by the shell and named in the entry's preload map) passes, naming that chunk", () => {
+    const entry = `a[href="#main-content"];const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/Jobs-aaaaaaaa.js","assets/Footer-COGdNeJS.js"])))=>i.map(i=>d[i]);`;
+    expect(entry.includes("phone-nav"), "the fixture's entry must not carry the menu, or this proves nothing").toBe(false);
+    const lines = runSection("77-wave3-board-data-ingest.sh", { routes: site77({ entry, preload: ["Footer-COGdNeJS.js"], chunks: { "Footer-COGdNeJS.js": HEADER + MENU, "Jobs-aaaaaaaa.js": "jobs" } }) });
+    expect(has(lines, "PASS", /the header has a phone menu \(phone-nav, header\.menu in Footer-COGdNeJS\.js, the chunk that renders the header\)/), show(lines)).toBe(true);
+  });
+
+  it("passes when the header chunk is reached only through another chunk, and when the header is back in the entry", () => {
+    const twoHops = runSection("77-wave3-board-data-ingest.sh", { routes: site77({
+      entry: `import("./Layout-bbbbbbbb.js");`,
+      chunks: { "Layout-bbbbbbbb.js": `import{H}from"./Header-cccccccc.js";`, "Header-cccccccc.js": HEADER + MENU },
+    }) });
+    expect(has(twoHops, "PASS", /phone-nav, header\.menu in Header-cccccccc\.js/), show(twoHops)).toBe(true);
+    const inEntry = runSection("77-wave3-board-data-ingest.sh", { routes: site77({ entry: `a[href="#main-content"];${HEADER}${MENU}` }) });
+    expect(has(inEntry, "PASS", /phone-nav, header\.menu in index-abc12345\.js/), show(inEntry)).toBe(true);
+  });
+
+  it("a header chunk without the menu is a FAIL", () => {
+    const lines = runSection("77-wave3-board-data-ingest.sh", { routes: site77({ preload: ["Footer-COGdNeJS.js"], chunks: { "Footer-COGdNeJS.js": HEADER } }) });
+    expect(has(lines, "FAIL", /the header has a phone menu \(phone-nav, header\.menu in Footer-COGdNeJS\.js/), show(lines)).toBe(true);
+    expect(menuLine(lines).some((l) => l.startsWith("PASS")), show(lines)).toBe(false);
+  });
+
+  it("a walk that finds no chunk rendering the header judges nothing, and says so as a FAIL", () => {
+    // The menu literals alone, in a chunk with no header: never credited.
+    const lines = runSection("77-wave3-board-data-ingest.sh", { routes: site77({ preload: ["Stray-dddddddd.js"], chunks: { "Stray-dddddddd.js": MENU } }) });
+    expect(has(lines, "FAIL", /no chunk reachable from the entry renders the header \(header\.mainNavAriaLabel, after reading \d+ chunks\): the phone menu cannot be judged/), show(lines)).toBe(true);
+    expect(menuLine(lines).some((l) => l.startsWith("PASS")), show(lines)).toBe(false);
+  });
+});

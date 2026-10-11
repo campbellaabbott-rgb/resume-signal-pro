@@ -123,6 +123,23 @@ describe("the Deno tests run in CI", () => {
     expect(run).toBeGreaterThan(setup);
   });
 
+  // Run 38174026636: the job had Deno and no node deps, so the layoff mirror's
+  // parity test failed on "Cannot find module 'tsx/cjs/api'" and the check
+  // never ran in CI. The job installs what that child process needs first.
+  it("the job installs node and the root deps before the tests, because one Deno test runs node through tsx", () => {
+    const steps = jobs["deno-tests"]?.steps ?? [];
+    const node = steps.findIndex((s) => /^actions\/setup-node@/.test(s.uses ?? ""));
+    const install = steps.findIndex((s) => /^npm ci\b/.test(s.run ?? ""));
+    const run = steps.findIndex((s) => /bash scripts\/deno-tests\.sh/.test(s.run ?? ""));
+    expect(node, "the deno-tests job sets up no node").toBeGreaterThan(-1);
+    expect(install, "the deno-tests job installs no node deps").toBeGreaterThan(node);
+    expect(run).toBeGreaterThan(install);
+    // The need is real: drop it here only when no Deno test shells out to node and tsx any more.
+    expect(readFileSync(resolve(ROOT, "scripts/deno-tests.sh"), "utf8")).toMatch(/--allow-run=node/);
+    expect(readFileSync(resolve(ROOT, "supabase/functions/layoff-filings/mirror_test.ts"), "utf8")).toMatch(/new Deno\.Command\("node", \{\s*args: \["scripts\/layoff-board-names-mirror\.mjs", "--emit"\]/);
+    expect(readFileSync(resolve(ROOT, "scripts/layoff-board-names-mirror.mjs"), "utf8")).toMatch(/require\("tsx\/cjs\/api"\)/);
+  });
+
   it("the script hands Deno only the *_test.ts files, never the vitest files beside them", () => {
     const src = readFileSync(resolve(ROOT, "scripts/deno-tests.sh"), "utf8");
     const dir = mkdtempSync(join(tmpdir(), "deno-tests-"));

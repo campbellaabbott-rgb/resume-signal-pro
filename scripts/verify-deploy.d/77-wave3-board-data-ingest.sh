@@ -44,9 +44,31 @@ const get=async(u)=>{try{const r=await fetch(u);return r.ok?await r.text():""}ca
   const mainPath=(shell.match(/\/assets\/index-[^"]*\.js/)||[])[0];
   const main=mainPath?await get(SITE+mainPath):"";
   const chunk=(name)=>{const m=main.match(new RegExp("\"\\./"+name+"-[A-Za-z0-9_-]*\\.js\""));return m?m[0].slice(3,-1):null};
+  // THE HEADER IS NOT IN THE ENTRY. Rollup put Header beside Footer in a
+  // shared chunk (Footer-*.js) that pages load and the shell modulepreloads,
+  // so a search of index-*.js read FAIL on 2026-10-11 while the live header
+  // carried the menu. Walk the chunk graph instead: the entry, then what the
+  // shell preloads, then every chunk the entry and each fetched chunk name
+  // (a "./X-hash.js" import or an "assets/X-hash.js" preload entry), and take
+  // the chunk that renders the header. POSITIVE CONTROL: that chunk is found
+  // by header.mainNavAriaLabel, which the header has carried since June; a
+  // walk that cannot find it judges nothing about the phone menu.
+  const refs=(src)=>[...new Set([...String(src).matchAll(/(?:\.\/|\/?assets\/)([A-Za-z0-9_.-]+-[A-Za-z0-9_-]{6,}\.js)/g)].map((m)=>m[1]))];
+  const holding=async(has,cap=150)=>{
+    const entryName=mainPath?mainPath.replace(/^\/assets\//,""):"";
+    if(has(main))return{name:entryName,src:main,read:1};
+    const seen=new Set([entryName]);const queue=[...refs(shell),...refs(main)];let read=1;
+    while(queue.length&&read<cap){const name=queue.shift();if(seen.has(name))continue;seen.add(name);
+      const src=await get(SITE+"/assets/"+name);read++;if(!src)continue;
+      if(has(src))return{name,src,read};
+      for(const r of refs(src))if(!seen.has(r))queue.push(r);}
+    return{name:null,src:"",read};
+  };
   if(!main){ok(false,"could not load the live entry chunk -- no bundle claim below can be judged")}
   else{
-    ok(main.includes("phone-nav")&&main.includes("header.menu"),"the header has a phone menu (phone-nav, header.menu): the nav and Sign in under 640px, Start no longer clipped (S8-093)");
+    const hdr=await holding((s)=>s.includes("header.mainNavAriaLabel"));
+    if(!hdr.name)ok(false,"no chunk reachable from the entry renders the header (header.mainNavAriaLabel, after reading "+hdr.read+" chunks): the phone menu cannot be judged");
+    else ok(hdr.src.includes("phone-nav")&&hdr.src.includes("header.menu"),"the header has a phone menu (phone-nav, header.menu in "+hdr.name+", the chunk that renders the header): the nav and Sign in under 640px, Start no longer clipped (S8-093)");
     ok(main.includes("a[href=\"#main-content\"]"),"the skip link lands on every page: the fallback handler is in the entry (S8-095)");
     const jobsName=chunk("Jobs"),postName=chunk("JobPosting"),ghostName=chunk("GhostJobIndex");
     const jobs=jobsName?await get(SITE+"/assets/"+jobsName):"";

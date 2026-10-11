@@ -172,14 +172,36 @@ describe("with 20261009111000 alone: the deploy window (S11-056)", () => {
   });
 });
 
-describe("the held lockdown is held, with an exact condition (S11-056)", () => {
-  it("docs/deploy-ledger.json holds 20261009112000 until the new function and page serve", () => {
-    const ledger = JSON.parse(readFileSync(resolve(__dirname, "../../docs/deploy-ledger.json"), "utf8")) as { holdUntilVerified: Array<{ stamp: string; until: string }> };
+// Wave 3 verified on 2026-10-11 and the hold was released: from then on the
+// same condition is a migrationOrder rule, so a message can still never put
+// the lockdown ahead of the function whose insert it would refuse.
+describe("the lockdown waits for the new function and page, held or released (S11-056)", () => {
+  type Ledger = {
+    holdUntilVerified: Array<{ stamp: string; until: string }>;
+    migrationOrder: Record<string, { after?: string; before?: string[]; why?: string }>;
+  };
+  const ledger = JSON.parse(readFileSync(resolve(__dirname, "../../docs/deploy-ledger.json"), "utf8")) as Ledger;
+
+  it("docs/deploy-ledger.json holds 20261009112000, or orders it after shortlist-evaluate .2026-10-10.62, naming shortlist_decide", async () => {
+    const { buildAtLeast } = await import("../../scripts/deploy-ledger.mjs");
     const hold = ledger.holdUntilVerified.find((h) => h.stamp === "20261009112000");
-    expect(hold, "20261009112000 is not held").toBeTruthy();
-    expect(hold!.until).toMatch(/shortlist-evaluate\.2026-10-\d\d\.\d+/);
-    expect(hold!.until).toMatch(/shortlist_decide/);
+    const rule = ledger.migrationOrder["20261009112000"];
+    expect(hold || rule, "20261009112000 is neither held nor ordered").toBeTruthy();
+    if (hold) {
+      expect(hold.until).toMatch(/shortlist-evaluate\.2026-10-\d\d\.\d+/);
+      expect(hold.until).toMatch(/shortlist_decide/);
+      return;
+    }
+    const after = /^fn:shortlist-evaluate@(\d{4}-\d{2}-\d{2}\.\d+)$/.exec(rule!.after ?? "");
+    expect(after, `after "${rule!.after}" does not name shortlist-evaluate`).toBeTruthy();
+    expect(buildAtLeast(`shortlist-evaluate.${after![1]}`, "shortlist-evaluate.2026-10-10.62")).toBe(true);
+    expect(rule!.why).toMatch(/shortlist_decide/);
+  });
+
+  it("the additive half is neither held nor made to wait for the function it must precede", () => {
     expect(ledger.holdUntilVerified.some((h) => h.stamp === "20261009111000"), "the additive half must not be held").toBe(false);
+    expect(ledger.migrationOrder["20261009111000"]?.after).toBeUndefined();
+    expect(ledger.migrationOrder["20261009111000"]?.before).toContain("fn:shortlist-evaluate");
   });
 });
 

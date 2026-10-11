@@ -14,6 +14,9 @@
 //   node scripts/deploy-ledger.mjs --json     # machine-readable
 //   node scripts/deploy-ledger.mjs --against <git-ref> [--against <git-ref> ...] [--main <git-ref>] [--head <git-ref>]
 //                                             # integration check, no network (exit 3 on a violation)
+//   node scripts/deploy-ledger.mjs --overlap <git-ref> [<git-ref> ...] [--main <git-ref>]
+//                                             # parallel branches' shared files and functions, no network
+//                                             # (exit 4 when one is not declared in sharedFiles)
 //
 // Read-only: OPTIONS preflights (no function logic runs), `git fetch origin
 // main` and git/file reads; --against makes no network call at all. Policy
@@ -22,7 +25,8 @@
 // MUST BUMP. Exit 3: --against found a function whose code moved without a
 // later build. Exit 4: a function's preflight did not answer, so the ledger
 // could not check it. Exit 5: --message refused, HEAD is not origin/main.
-// Exit 6: a migrationOrder rule cannot be met.
+// Exit 6: a migrationOrder rule cannot be met. In --overlap mode, exit 4
+// means two refs change a file or a function that sharedFiles gives no owner.
 //
 // Importing this module runs nothing: the report runs only when the file is
 // the entry point, so the pure rules below are testable without git or a
@@ -281,6 +285,110 @@ export function runAgainst(refs, mainRef, policy, headRef = "HEAD") {
   return bad;
 }
 
+// ── --overlap: parallel branches must not share files unless one owns them ───
+/**
+ * The workstream that owns a path, from docs/deploy-ledger.json `sharedFiles`
+ * (path -> workstream). A key ending in "/" covers every path under it, so
+ * "supabase/functions/agent-mcp/" declares that function's whole folder; a
+ * function is also declared by "fn:<name>". The longest matching key wins.
+ * Pure. Returns the owner string, or null when nothing declares the path.
+ */
+export function sharedOwner(sharedFiles, path) {
+  const map = sharedFiles && typeof sharedFiles === "object" ? sharedFiles : {};
+  let best = null;
+  for (const [k, v] of Object.entries(map)) {
+    if (k.startsWith("_") || typeof v !== "string" || !v) continue;
+    const hit = k === path || (k.endsWith("/") && path.startsWith(k));
+    if (hit && (!best || k.length > best.k.length)) best = { k, v };
+  }
+  return best ? best.v : null;
+}
+
+/**
+ * THE OVERLAP RULE (docs/DEPLOY-LEDGER.md §6). Parallel branches must change
+ * disjoint files, or the ledger must name who owns each file they share.
+ * `changes` is one entry per ref: { ref, files: [path], functions: [name] },
+ * each the ref's own diff from its merge-base with main. A file or a function
+ * changed by two or more refs is an overlap; it is DECLARED only when
+ * `sharedFiles` names an owner and that owner is a workstream in
+ * `reservations` (an owner nobody reserved is a typo, not a decision). Pure:
+ * no git, no network.
+ *
+ *   returns { files: [{ path, refs, owner, declared }], functions: [{ fn, refs, owner, declared }], undeclared: number }
+ */
+export function overlapReport(changes, policy = {}) {
+  const known = new Set(Object.keys(policy?.reservations ?? {}));
+  const judge = (owner) => owner !== null && known.has(owner);
+  const multi = (key) => {
+    const by = new Map();
+    for (const c of changes ?? []) for (const x of new Set(c[key] ?? [])) by.set(x, [...(by.get(x) ?? []), c.ref]);
+    return [...by.entries()].filter(([, refs]) => refs.length > 1).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+  };
+  const files = multi("files").map(([path, refs]) => {
+    const owner = sharedOwner(policy?.sharedFiles, path);
+    return { path, refs, owner, declared: judge(owner) };
+  });
+  const functions = multi("functions").map(([fn, refs]) => {
+    const owner = sharedOwner(policy?.sharedFiles, `fn:${fn}`) ?? sharedOwner(policy?.sharedFiles, `supabase/functions/${fn}/`);
+    return { fn, refs, owner, declared: judge(owner) };
+  });
+  return { files, functions, undeclared: [...files, ...functions].filter((x) => !x.declared).length };
+}
+
+/**
+ * The functions a set of changed paths reaches at `ref`: every function whose
+ * own folder changed, and every function that imports a changed _shared
+ * module there (the same reach the ledger's MUST BUMP and --against use).
+ */
+function functionsTouched(ref, files) {
+  const out = new Set();
+  for (const f of files) {
+    const m = /^supabase\/functions\/([^/]+)\//.exec(f);
+    if (m && m[1] !== "_shared") out.add(m[1]);
+  }
+  const shared = files.filter((f) => f.startsWith("supabase/functions/_shared/"));
+  if (shared.length) {
+    // One `git grep` at the ref for the import specifiers, not a read of every
+    // function's files (that took minutes on job-board's 4 MB catalogue).
+    // --text: a file holding a NUL byte is still searched.
+    let hits = "";
+    try {
+      hits = execFileSync("git", ["grep", "--text", "-l", "-F", ...shared.flatMap((p) => ["-e", `../_shared/${p.slice("supabase/functions/_shared/".length)}`]), ref, "--", "supabase/functions"],
+        { cwd: ROOT, encoding: "utf8", maxBuffer: 1 << 28, stdio: ["ignore", "pipe", "ignore"] });
+    } catch { /* exit 1: no function imports them */ }
+    for (const l of hits.split("\n")) {
+      const m = /^[^:]+:supabase\/functions\/([^/]+)\//.exec(l);
+      if (m && m[1] !== "_shared") out.add(m[1]);
+    }
+  }
+  return [...out].sort();
+}
+
+/** --overlap: git reads only. Each ref is diffed from its merge-base with `mainRef`. Returns the undeclared count. */
+export function runOverlap(refs, mainRef, policy) {
+  const changes = refs.map((ref) => {
+    git("rev-parse", "--verify", `${ref}^{commit}`); // an unknown ref is an error, not an empty pass
+    const base = git("merge-base", ref, mainRef);
+    const files = git("diff", "--name-only", base, ref).split("\n").filter(Boolean);
+    return { ref, base, files, functions: functionsTouched(ref, files) };
+  });
+  const r = overlapReport(changes, policy);
+  console.log(`OVERLAP across ${refs.length} ref(s), each diffed from its merge-base with ${mainRef} (git only, no network)`);
+  for (const c of changes) console.log(`  ${c.ref}: ${c.files.length} files, ${c.functions.length} functions (since ${c.base.slice(0, 8)})`);
+  const line = (x, name) => {
+    const who = x.declared ? `owned by ${x.owner}` : x.owner ? `sharedFiles names "${x.owner}", which no reservation is` : "no owner in sharedFiles";
+    console.log(`  ${x.declared ? "DECLARED  " : "UNDECLARED"} ${name.padEnd(48)} ${who}; changed by ${x.refs.join(", ")}`);
+  };
+  console.log(`Files changed by more than one ref: ${r.files.length}`);
+  for (const x of r.files) line(x, x.path);
+  console.log(`Functions changed by more than one ref: ${r.functions.length}`);
+  for (const x of r.functions) line(x, x.fn);
+  console.log(r.undeclared
+    ? `${r.undeclared} undeclared overlap(s): give each file one owner in docs/deploy-ledger.json sharedFiles, or move the change to one branch (docs/DEPLOY-LEDGER.md §6).`
+    : `No undeclared overlap.`);
+  return r.undeclared;
+}
+
 /**
  * One preflight's x-fn-build: the header's value, null when the function
  * answered without one, undefined when nothing answered (a network error or
@@ -487,6 +595,17 @@ export function lovableMessage({ head, draftOf = null, phases, hold = [], neverA
 async function main(argv) {
   const POLICY = JSON.parse(readFileSync(join(ROOT, "docs/deploy-ledger.json"), "utf8"));
   const args = new Set(argv);
+
+  if (argv.includes("--overlap")) {
+    // Every argument after --overlap up to the next flag is a ref; --main names the base.
+    const at = argv.indexOf("--overlap");
+    const refs = [];
+    for (let i = at + 1; i < argv.length && !argv[i].startsWith("--"); i++) refs.push(argv[i]);
+    if (!refs.length) { console.error("--overlap needs at least one git ref"); process.exit(1); }
+    const mi = argv.indexOf("--main");
+    const bad = runOverlap(refs, mi >= 0 && argv[mi + 1] ? argv[mi + 1] : "origin/main", POLICY);
+    process.exit(bad ? 4 : 0);
+  }
 
   const against = argv.flatMap((a, i) => (a === "--against" && argv[i + 1] ? [argv[i + 1]] : []));
   if (argv.includes("--against")) {

@@ -4,21 +4,12 @@
   "neverApply": [
     "20260928003117"
   ],
-  "appliedOutsideDrizzle": [],
-  "holdUntilVerified": [
-    {
-      "stamp": "20261009100300",
-      "until": "wave 3 step 1 verified: job-board's OPTIONS answers x-fn-build job-board.2026-09-09.92 (status.version 2026-09-09.92) AND status.sliceStats carries build 2026-09-09.92 and a buildSince (section 71 prints both). Applied earlier it marks the old bundle's closures only up to its ceiling and must be re-run once buildSince exists"
-    },
-    {
-      "stamp": "20261009160100",
-      "until": "wave 3 step 1 verified: layoff-filings' OPTIONS answers x-fn-build layoff-filings.2026-10-09.3 (its GET answers version 2026-10-09.3), ideally after one nightly WARN run of that build. Applied earlier, the old build re-upserts the misdated Illinois ids as active on its next nightly read"
-    },
-    {
-      "stamp": "20261009112000",
-      "until": "wave 3 step 1 verified: shortlist-evaluate's OPTIONS answers x-fn-build shortlist-evaluate.2026-10-10.62 or later (its evaluation insert is the service role's; section 72 prints the build) AND the frontend published from the same commit decides through shortlist_decide (section 72: 'the Shortlist page records a decision through shortlist_decide' PASSes). Applied earlier, the live shortlist-evaluate's insert through the employer's JWT fails 42501 after its paid model call and the live page's decision insert and status PATCH are refused (S11-056)"
-    }
+  "appliedOutsideDrizzle": [
+    "20261008125000",
+    "20261008128000"
   ],
+  "_appliedOutsideDrizzleNote": "Applied, but no staged-runner stub names them. 20261008125000 and 20261008128000 were released 2026-10-11 after wave 2 step 1 verified, and Lovable applied them without writing a stub, so every later message re-listed them. They are live by behaviour (checked 2026-10-11): get_cron_health lists send-search-digest, industry-corrections-digest and check-error-spikes, and check-error-spikes has run 35+ times.",
+  "holdUntilVerified": [],
   "migrationOrder": {
     "_note": "Per migration stamp: `after` is \"fn:<name>@<YYYY-MM-DD.N>\" (apply once that function answers that build or later) or \"frontend\" (apply once the frontend is published); `before` lists \"fn:<name>\" a migration must precede. No entry: before the functions. The ledger prints five steps: migrations before the functions, the functions, migrations after the functions they wait for, the frontend, migrations after the frontend (docs/DEPLOY-LEDGER.md §1).",
     "20261009101000": {
@@ -68,31 +59,72 @@
     "20261009144000": {
       "before": ["fn:send-search-digest", "fn:send-agent-digest"],
       "why": "the new digests write a give-back at once and rely on the claim's attempt-stamp order to keep that row from leading the next claim"
+    },
+    "20261009100300": {
+      "after": "fn:job-board@2026-09-09.92",
+      "why": "held until wave 3 verified, released 2026-10-11 (job-board .92 with status.sliceStats.buildSince 2026-10-11T20:48:26Z). Applied while an older job-board served, it marks that bundle's closures only up to its ceiling and must be re-run once buildSince exists"
+    },
+    "20261009112000": {
+      "after": "fn:shortlist-evaluate@2026-10-10.62",
+      "why": "S11-056, held until wave 3 verified, released 2026-10-11. It revokes the browser's insert into shortlist_candidates, so the evaluation insert must already be the service role's (shortlist-evaluate 2026-10-10.62) AND the Shortlist page must decide through shortlist_decide (the wave-3 frontend, published; verify section 72). The ledger checks only the function half"
+    },
+    "20261009160100": {
+      "after": "fn:layoff-filings@2026-10-09.3",
+      "why": "held until wave 3 verified, released 2026-10-11 (layoff-filings 2026-10-09.3 serving; the old build no longer runs). Applied while an older layoff-filings ran, its next nightly WARN read re-upserted the misdated Illinois ids as active"
     }
   },
+  "_reservationsNote": "Listed in deploy order from 2026-10-11 (deployOrder; docs/DEPLOY-LEDGER.md §3): the wave 3 closeout, company profiles phases 0-2, wave 4, company profiles phase 3. A migration stamp need not sort in deploy order (wave 4's 20261011* deploys after profiles' 20261012*): the ledger lists what the staged runner has not recorded, whatever sorts first. A function stamped on a later day by an earlier deploy takes that day with a higher sequence (§3).",
   "reservations": {
     "wave2": {
       "branches": ["wave2/", "wave2-integration"],
       "migrations": "20261008*",
       "jobBoard": "2026-09-09.91",
-      "fnBuildDate": "2026-10-08"
+      "fnBuildDate": "2026-10-08",
+      "status": "deployed; verified 2026-10-11 (verifiedDeploys 1fc1702d)"
     },
     "wave3": {
-      "branches": ["wave3/", "w31/"],
+      "branches": ["wave3/", "w31/", "post-wave3/"],
       "migrations": "20261009*",
       "jobBoard": "2026-09-09.92",
-      "fnBuildDate": "2026-10-09"
+      "fnBuildDate": "2026-10-09",
+      "status": "deployed 2026-10-11 (verifiedDeploys 35559389); the closeout is the post-wave-3 tooling PR (post-wave3/), then the three released migrations in a second message",
+      "deployOrder": 1
     },
-    "connect-apply": {
-      "branches": ["connect-apply/"],
+    "company-profiles": {
+      "branches": ["profiles/"],
+      "migrations": "20261012*",
+      "jobBoard": "none: phases 0-2 change no job-board (phase 3 is company-profiles-phase3)",
+      "fnBuildDate": "2026-10-12",
+      "status": "phases 0-2 (identity, the hiring-record gate, perks); in flight on profiles/integration",
+      "deployOrder": 2
+    },
+    "wave4": {
+      "branches": ["wave4/", "connect-apply/"],
       "migrations": "20261011*",
       "jobBoard": "2026-09-09.93",
-      "fnBuildDate": "2026-10-11"
+      "fnBuildDate": "2026-10-11",
+      "status": "the S12 sweep fixes, the connect-search-apply build and the profiles MCP and /v1 tools, built and integrated as ONE wave. This was the connect-apply reservation until 2026-10-11; connect-apply/ branches belong to wave 4",
+      "deployOrder": 3
+    },
+    "company-profiles-phase3": {
+      "branches": ["profiles-p3/"],
+      "migrations": "20261013*",
+      "jobBoard": "2026-09-09.94",
+      "fnBuildDate": "2026-10-13",
+      "status": "vendor benefits capture; its branches are profiles-p3/, so they are not taken for phases 0-2's profiles/",
+      "deployOrder": 4
     },
     "next": {
-      "migrations": "20261012* and later, one day per workstream",
-      "jobBoard": "2026-09-09.94+"
+      "migrations": "20261014* and later, one day per workstream",
+      "jobBoard": "2026-09-09.95+"
     }
+  },
+  "_sharedFilesNote": "File ownership while branches run in parallel (docs/DEPLOY-LEDGER.md §6): path -> the workstream (a reservations key) that owns it. A key ending in / covers its folder; fn:<name> covers a function. node scripts/deploy-ledger.mjs --overlap <ref> ... exits 4 on any file or function two refs change that this map does not give a reservation-named owner. The other branch rebases onto the owner's version and re-applies only its own entries. 2026-10-11: post-wave3/tooling (wave3) and profiles/integration both change the four files below. wave3 merges first and owns the ledger policy and its rules doc; profiles' hold (20261012111000) and its reservation are re-applied by profiles on that version. company-profiles owns the bake, and keeps this PR's postingFreshBudget and per-page carried flag when it rebases.",
+  "sharedFiles": {
+    "docs/deploy-ledger.json": "wave3",
+    "docs/DEPLOY-LEDGER.md": "wave3",
+    "scripts/prerender-seo.mjs": "company-profiles",
+    "scripts/prerender-pages.mjs": "company-profiles"
   },
   "_baselineNote": "Lovable's staged-runner stubs (drizzle/migrations) name every migration from 20260923 on; earlier ones were applied before that record was complete and were judged applied by behaviour (2026-10-10 check: 20260917170000, 20260918101000, 20260918200000, 20260921120000 have no stub).",
   "verifiedDeploys": [
@@ -154,7 +186,94 @@
         "test-ai-fallback": "test-ai-fallback.2026-10-08.1",
         "verify-product-purchase": "verify-product-purchase.2026-10-08.2"
       }
+    },
+    {
+      "commit": "35559389",
+      "date": "2026-10-11",
+      "note": "wave 3 (PR #30, merge 35559389): Lovable 'Deployed 80 backend functions' fa7cdecd (20:52Z) and 'Applied remaining DB updates' 65f7e5bc (21:05Z); verify-deploy 906 PASS and 11 FAIL, every FAIL explained (docs/wave3/README.md, 'Deployed 2026-10-11'). The 80 are every function whose build at 35559389 differs from its build at 1fc1702d; agent-connect, parse-spreadsheet and reconcile-stripe kept their builds and were not redeployed. apply-broker and job-board read MUST BUMP before this entry only because the fix round changed their code after their stamps were written, before this deploy.",
+      "functions": {
+        "admin-regenerate-delivery": "admin-regenerate-delivery.2026-10-09.2",
+        "agent-access": "agent-access.2026-10-10.24",
+        "agent-mcp": "agent-mcp.2026-10-09.71",
+        "agent-pass-status": "agent-pass-status.2026-10-09.2",
+        "agent-runner": "agent-runner.2026-10-09.2",
+        "analyze-linkedin-profile": "analyze-linkedin-profile.2026-10-09.2",
+        "analyze-resume": "analyze-resume.2026-10-09.62",
+        "api-key-request": "api-key-request.2026-10-09.61",
+        "application-fit": "application-fit.2026-10-09.3",
+        "apply-agent": "apply-agent.2026-10-09.71",
+        "apply-broker": "apply-broker.2026-10-09.24",
+        "company-claim": "company-claim.2026-10-09.2",
+        "create-agent-checkout": "create-agent-checkout.2026-10-09.61",
+        "create-checkout": "create-checkout.2026-10-09.61",
+        "create-pass-checkout": "create-pass-checkout.2026-10-09.62",
+        "create-portal-session": "create-portal-session.2026-10-09.61",
+        "create-product-checkout": "create-product-checkout.2026-10-09.61",
+        "create-scan-pack-checkout": "create-scan-pack-checkout.2026-10-09.61",
+        "create-subscription-checkout": "create-subscription-checkout.2026-10-09.61",
+        "create-test-checkout": "create-test-checkout.2026-10-09.61",
+        "create-test-coupon": "create-test-coupon.2026-10-09.2",
+        "delete-account": "delete-account.2026-10-09.4",
+        "fetch-job-posting": "fetch-job-posting.2026-10-09.71",
+        "free-keyword-scan": "free-keyword-scan.2026-10-09.5",
+        "free-keyword-scan-stream": "free-keyword-scan-stream.2026-10-09.5",
+        "generate-application-answers": "generate-application-answers.2026-10-10.62",
+        "generate-apply-package": "generate-apply-package.2026-10-09.62",
+        "generate-ats-defense": "generate-ats-defense.2026-10-09.3",
+        "generate-career-path": "generate-career-path.2026-10-09.4",
+        "generate-career-snapshot": "generate-career-snapshot.2026-10-10.4",
+        "generate-cohort-report": "generate-cohort-report.2026-10-09.2",
+        "generate-cover-letter": "generate-cover-letter.2026-10-09.62",
+        "generate-cover-letter-stream": "generate-cover-letter-stream.2026-10-09.3",
+        "generate-elevator-pitch": "generate-elevator-pitch.2026-10-10.3",
+        "generate-freelance-boost": "generate-freelance-boost.2026-10-09.2",
+        "generate-graduate-gameplan": "generate-graduate-gameplan.2026-10-10.4",
+        "generate-interview-coach": "generate-interview-coach.2026-10-09.4",
+        "generate-keyword-fix": "generate-keyword-fix.2026-10-09.3",
+        "generate-premium-package": "generate-premium-package.2026-10-09.62",
+        "generate-premium-package-stream": "generate-premium-package-stream.2026-10-09.3",
+        "generate-product-preview": "generate-product-preview.2026-10-10.4",
+        "generate-recruiter-view": "generate-recruiter-view.2026-10-10.3",
+        "generate-resume-roast": "generate-resume-roast.2026-10-09.2",
+        "generate-summary": "generate-summary.2026-10-10.3",
+        "generate-tailored-resume": "generate-tailored-resume.2026-10-10.3",
+        "get-account-data": "get-account-data.2026-10-09.2",
+        "get-analytics": "get-analytics.2026-10-09.2",
+        "health-check": "health-check.2026-10-09.2",
+        "import-freelance-profile": "import-freelance-profile.2026-10-10.3",
+        "job-board": "job-board.2026-09-09.92",
+        "job-fit": "job-fit.2026-10-09.3",
+        "layoff-filings": "layoff-filings.2026-10-09.3",
+        "nl-search": "nl-search.2026-10-09.7",
+        "parse-docx": "parse-docx.2026-10-09.1",
+        "parse-pdf": "parse-pdf.2026-10-09.1",
+        "parse-resume-structured": "parse-resume-structured.2026-10-09.2",
+        "process-email-queue": "process-email-queue.2026-10-09.2",
+        "public-api": "public-api.2026-10-09.71",
+        "recover-purchase": "recover-purchase.2026-10-09.2",
+        "retry-failed-deliveries": "retry-failed-deliveries.2026-10-09.61",
+        "save-lead": "save-lead.2026-10-09.2",
+        "scan-credits": "scan-credits.2026-10-09.2",
+        "scan-heartbeat": "scan-heartbeat.2026-10-09.71",
+        "scheduled-health-probe": "scheduled-health-probe.2026-10-09.2",
+        "scrape-linkedin": "scrape-linkedin.2026-10-09.2",
+        "send-affiliate-commission-email": "send-affiliate-commission-email.2026-10-09.2",
+        "send-agent-digest": "send-agent-digest.2026-10-09.24",
+        "send-analysis-email": "send-analysis-email.2026-10-09.2",
+        "send-market-pulse": "send-market-pulse.2026-10-09.24",
+        "send-product-email": "send-product-email.2026-10-09.2",
+        "send-scan-report": "send-scan-report.2026-10-09.24",
+        "send-search-digest": "send-search-digest.2026-10-09.25",
+        "shortlist-evaluate": "shortlist-evaluate.2026-10-10.62",
+        "stripe-webhook": "stripe-webhook.2026-10-09.61",
+        "test-ai-fallback": "test-ai-fallback.2026-10-09.2",
+        "track-ab-event": "track-ab-event.2026-10-09.2",
+        "verify-product-purchase": "verify-product-purchase.2026-10-09.71",
+        "verify-scan-pack-purchase": "verify-scan-pack-purchase.2026-10-09.2",
+        "warm-up": "warm-up.2026-10-09.2",
+        "withdraw-subscription": "withdraw-subscription.2026-10-09.61"
+      }
     }
   ],
-  "_holdNote": "20261008125000 and 20261008128000 were released 2026-10-11 after wave 2 step 1 verified (their conditions: job-board .91, send-search-digest, industry-corrections-digest and check-error-spikes serving; /email/unsubscribe live)."
+  "_holdNote": "20261008125000 and 20261008128000 were released 2026-10-11 after wave 2 step 1 verified (their conditions: job-board .91, send-search-digest, industry-corrections-digest and check-error-spikes serving; /email/unsubscribe live). 20261009100300, 20261009112000 and 20261009160100 were released 2026-10-11 after wave 3 verified (job-board .92 with sliceStats.buildSince 2026-10-11T20:48:26Z; shortlist-evaluate 2026-10-10.62 with the Shortlist page deciding through shortlist_decide; layoff-filings 2026-10-09.3 serving and the old build no longer running). Their conditions stay in migrationOrder as after-rules."
 }
