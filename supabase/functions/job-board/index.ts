@@ -10963,9 +10963,14 @@ Deno.serve(async (req) => {
         // this posting close, we know its title and company and when — enough
         // for the client to say what happened and offer a search for similar
         // live roles instead of a silent dead end.
+        // BY THE BOARD FIRST (S11-024): the ledger has no posting_id index, so
+        // the posting id alone read ~5M rows (7 s cold, 1.5 s warm on an
+        // unknown id). The token, already checked against the catalogue above,
+        // reaches job_board_closures_curve_idx (company_token, closed_at DESC).
         const { data: closure } = await client
           .from("job_board_closures")
           .select("title, company, closed_at")
+          .eq("company_token", token)
           .eq("posting_id", id)
           .order("closed_at", { ascending: false })
           .limit(1)
