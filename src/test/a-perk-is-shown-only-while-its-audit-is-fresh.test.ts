@@ -417,13 +417,13 @@ describe("what the reader may say, and when", () => {
   });
 
   it("a German posting is counted in neither k nor n, whatever key passes; an English posting in Germany is", async () => {
+    for (const key of ["health", "pto", "retire"]) await record(db, key, "launch", 60, 60);
+    expect((await perksAs(db, "dewerk")).perks, "German lines published under an English audit").toEqual([]);
+    expect(await rollups(db, "dewerk")).toEqual([]);
     const rows = await db.query<{ english: boolean; n: number }>(
       "SELECT english, count(*)::int AS n FROM public.employer_perk_postings WHERE company_token = 'dewerk' GROUP BY english");
     expect(rows.rows).toEqual([{ english: false, n: 6 }]);
     expect((await db.query<{ n: number }>("SELECT count(*)::int AS n FROM public.employer_perk_postings WHERE company_token = 'acme' AND readable AND NOT english")).rows[0].n, "a readable English posting was marked foreign").toBe(0);
-    for (const key of ["health", "pto", "retire"]) await record(db, key, "launch", 60, 60);
-    expect(await rollups(db, "dewerk")).toEqual([]);
-    expect((await perksAs(db, "dewerk")).perks, "German lines published under an English audit").toEqual([]);
     expect((await rollups(db, "de30")).map((r) => [r.country, r.perk, r.k, r.n])).toContainEqual(["DE", "pto", 6, 6]);
     // Once a key is live, a withheld board's reason prints (the positive control for the first case).
     expect((await perksAs(db, "franch")).withheld).toEqual([{ source: "greenhouse", reason: "franchise", share: 0.333 }]);
@@ -431,6 +431,8 @@ describe("what the reader may say, and when", () => {
   });
 
   it("a leave line that states more than the statutory minimum carries no legal-minimum note; one at the minimum does", async () => {
+    await record(db, "pto", "launch", 60, 60);
+    expect((await perksAs(db, "de30")).perks.some((p) => p.country === "DE" && p.perk === "pto"), "the row is shown; only its note is judged").toBe(true);
     expect(await baselineOf("de30", "DE", "pto"), "30 days is not the German 20-day minimum").toBeNull();
     expect((await baselineOf("de20", "DE", "pto"))?.statute).toBe("Bundesurlaubsgesetz (BUrlG) § 3");
     const uk = await baselineOf("ukmin", "GB", "pto");
@@ -442,6 +444,7 @@ describe("what the reader may say, and when", () => {
   });
 
   it("a GB statute says where it applies and cites the Northern Ireland law that sets the same minimum", async () => {
+    for (const key of ["pto", "retire"]) await record(db, key, "launch", 60, 60);
     const leave = await baselineOf("ukmin", "GB", "pto");
     expect(leave?.applies_in).toBe("Great Britain");
     expect(leave?.also).toEqual({ statute: "Working Time Regulations (Northern Ireland) 2016, regulations 15 and 16", applies_in: "Northern Ireland",
