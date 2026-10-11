@@ -2175,6 +2175,11 @@
         "deliveryTime": "Instant",
         "deliveryMethod": "Sa Pahinang Ito"
       }
+    },
+    "stillBeingMade": {
+      "title": "Ginagawa pa ang iyong {{product}}",
+      "emailed": "Mas matagal ito kaysa karaniwan. Ie-email namin ito sa iyo sa sandaling handa na, kaya puwede mo nang isara ang pahinang ito.",
+      "refresh": "Mas matagal ito kaysa karaniwan. I-refresh ang pahinang ito pagkalipas ng ilang minuto para makita ito."
     }
   },
   "analysisResults": {
@@ -5296,5 +5301,15 @@
     "technical": "Teknikal",
     "situational": "Sitwasyonal",
     "cultureFit": "Pagkakatugma sa kultura"
+  },
+  "atsRoles": {
+    "title": "Anong mga posisyon ang inaaplayan mo?",
+    "description": "Maglagay ng hanggang {{count}} job title. Tinutugunan ng iyong ATS Defense report ang bawat isa.",
+    "roleLabel": "Posisyon {{n}}",
+    "example1": "hal., Data Analyst",
+    "example2": "hal., Business Analyst (opsyonal)",
+    "example3": "hal., Reporting Analyst (opsyonal)",
+    "cancel": "Kanselahin",
+    "continue": "Magpatuloy sa checkout"
   }
 }

@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { FULL_ANALYSIS_PRODUCT_TYPE } from "../_shared/full-analysis.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
+import { targetRolesOf } from "../_shared/target-roles.ts";
 
 // Provable from outside without running a sweep: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -345,6 +346,8 @@ serve(async (req) => {
               checklist: packageResult.checklist,
               coverLetter: coverLetterResult?.data?.coverLetter || null,
               modelUsed: packageResult.modelUsed,
+              // What the fact check removed, shown with the saved copy (S11-055).
+              groundingReport: packageResult.groundingReport ?? null,
             };
           } else {
             // Generate content
@@ -380,7 +383,8 @@ serve(async (req) => {
               // Without it, this call always 401s.
               endpoint = 'generate-ats-defense';
               body.sessionId = delivery.stripe_session_id;
-              body.targetRoles = [];
+              // The roles named at checkout (S11-074), kept on the row by the webhook or the verifier.
+              body.targetRoles = targetRolesOf((metadata as { target_roles?: unknown }).target_roles);
             } else if (delivery.product_type === 'interview_coach') {
               endpoint = 'generate-interview-coach';
               body.isPremium = true;

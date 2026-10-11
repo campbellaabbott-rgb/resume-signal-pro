@@ -2175,6 +2175,11 @@
         "deliveryTime": "Instantáneo",
         "deliveryMethod": "En esta página"
       }
+    },
+    "stillBeingMade": {
+      "title": "Tu {{product}} todavía se está preparando",
+      "emailed": "Está tardando más de lo habitual. Te lo enviaremos por correo en cuanto esté listo, así que puedes cerrar esta página.",
+      "refresh": "Está tardando más de lo habitual. Recarga esta página en unos minutos para verlo."
     }
   },
   "analysisResults": {
@@ -5296,5 +5301,15 @@
     "technical": "Técnica",
     "situational": "Situacional",
     "cultureFit": "Encaje cultural"
+  },
+  "atsRoles": {
+    "title": "¿A qué puestos te postulas?",
+    "description": "Indica hasta {{count}} puestos. Tu informe ATS Defense se adapta a cada uno.",
+    "roleLabel": "Puesto {{n}}",
+    "example1": "p. ej., Analista de datos",
+    "example2": "p. ej., Analista de negocio (opcional)",
+    "example3": "p. ej., Analista de informes (opcional)",
+    "cancel": "Cancelar",
+    "continue": "Continuar al pago"
   }
 }

@@ -40,6 +40,8 @@ import { FULL_ANALYSIS_PRODUCT_TYPE } from "../_shared/full-analysis.ts";
 import { withoutResumeText } from "../_shared/webhook-payload.ts";
 // Which résumé a product is delivered from: kept on our side, never in Stripe.
 import { resumeSessionForCheckout } from "../_shared/checkout-resume-ref.ts";
+// The roles an ATS Defense buyer named at checkout (S11-074).
+import { targetRolesOf } from "../_shared/target-roles.ts";
 
 // Provable from outside without a purchase or a signature: every response,
 // the 405 a GET receives included, carries this in x-fn-build.
@@ -590,6 +592,7 @@ async function triggerProductDelivery(
       job_company: session.metadata?.job_company,
       referral_code: session.metadata?.referral_code,
       language: session.metadata?.language,
+      target_roles: session.metadata?.target_roles || null,
       ...(isScanProduct ? { credits: creditsBoughtBy(session) } : {}),
     }
   }).select().single();
@@ -745,7 +748,7 @@ async function triggerProductDelivery(
     generateAndDeliver({
       supabase, supabaseUrl, sessionId, productType, productName, customerEmail,
       deliveryId: deliveryRecord.data?.id, resumeText: resume_text, jobDescriptionText: job_description_text,
-      jobTitle, jobCompany, language,
+      jobTitle, jobCompany, language, targetRoles: targetRolesOf(session.metadata?.target_roles),
     }).then(
       (r) => logStep("Background delivery finished", r),
       (e) => logStep("Background delivery threw; the sweeper retries the row", { error: String(e).slice(0, 300) }),
@@ -768,6 +771,8 @@ interface GenerationJob {
   jobTitle: string;
   jobCompany: string;
   language: string;
+  /** The ATS Defense roles named at checkout (S11-074). */
+  targetRoles: string[];
 }
 
 /** The generation, the saved copy and the delivery mail: run after Stripe has its answer. */
@@ -823,6 +828,8 @@ async function generateAndDeliver(job: GenerationJob) {
         checklist: packageResult.checklist,
         coverLetter: coverLetterResult?.data?.coverLetter || null,
         modelUsed: packageResult.modelUsed,
+        // What the fact check removed, shown with the saved copy (S11-055).
+        groundingReport: packageResult.groundingReport ?? null,
       };
       logStep("Content generated", { productType });
     } else {
@@ -857,7 +864,7 @@ async function generateAndDeliver(job: GenerationJob) {
         // other product here, which trusts this webhook call implicitly.
         // Without it, this call always 401s and silently falls through to
         // the frontend's manual recovery flow on the success page instead.
-        case 'ats_defense': endpoint = 'generate-ats-defense'; body.sessionId = sessionId; body.targetRoles = []; break;
+        case 'ats_defense': endpoint = 'generate-ats-defense'; body.sessionId = sessionId; body.targetRoles = job.targetRoles; break;
         case 'interview_coach': endpoint = 'generate-interview-coach'; body.isPremium = true; break;
         case 'career_path_simulator': endpoint = 'generate-career-path'; body.isPremium = true; break;
         default: throw new Error(`Unknown product type: ${productType}`);

@@ -2175,6 +2175,11 @@
         "deliveryTime": "Direct",
         "deliveryMethod": "Op deze pagina"
       }
+    },
+    "stillBeingMade": {
+      "title": "Je {{product}} wordt nog gemaakt",
+      "emailed": "Het duurt langer dan normaal. We mailen het je zodra het klaar is, dus je kunt deze pagina sluiten.",
+      "refresh": "Het duurt langer dan normaal. Vernieuw deze pagina over een paar minuten om het te zien."
     }
   },
   "analysisResults": {
@@ -5296,5 +5301,15 @@
     "technical": "Technisch",
     "situational": "Situationeel",
     "cultureFit": "Culturele fit"
+  },
+  "atsRoles": {
+    "title": "Op welke functies solliciteer je?",
+    "description": "Noem maximaal {{count}} functietitels. Je ATS Defense-rapport richt zich op elk ervan.",
+    "roleLabel": "Functie {{n}}",
+    "example1": "bijv. Data-analist",
+    "example2": "bijv. Business-analist (optioneel)",
+    "example3": "bijv. Rapportage-analist (optioneel)",
+    "cancel": "Annuleren",
+    "continue": "Verder naar afrekenen"
   }
 }

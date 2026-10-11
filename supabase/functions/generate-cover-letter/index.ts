@@ -2,6 +2,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { validateProseClaims } from "../_shared/resume-grounding.ts";
+import { stripInventedContact } from "../_shared/contact-guard.ts";
 import { looksLikeBrokenJson } from "../_shared/ai-fallback.ts";
 import { checkInputLimits, MAX_JOB_DESCRIPTION_LENGTH } from "../_shared/input-limits.ts";
 import { clipField, clipText, modelSpendGate } from "../_shared/model-spend-gate.ts";
@@ -379,6 +380,20 @@ Write something that sounds like this specific person wrote it - confident, spec
       };
     }
 
+    // THE CONTACT GUARD, AS THE PREMIUM PACKAGE RUNS IT (S11-018). A letter's
+    // sign-off can carry a phone, an address or a profile link: any the
+    // résumé does not contain is removed, first, so its digits are never
+    // read as a claimed figure below.
+    const guardContact = (draft: { coverLetter?: unknown }) => {
+      if (typeof draft?.coverLetter !== "string" || typeof resumeText !== "string") return;
+      const guarded = stripInventedContact(draft.coverLetter, resumeText);
+      if (guarded.removed.length > 0) {
+        draft.coverLetter = guarded.text;
+        logStep("Contact-integrity guard removed invented items", { removed: guarded.removed });
+      }
+    };
+    guardContact(result);
+
     // Grounding gate: every figure in the letter must come from the resume or
     // the job posting (letters legitimately cite the employer's own numbers).
     // Same shape as generate-apply-package: one retry with explicit fact-check
@@ -410,6 +425,7 @@ Write something that sounds like this specific person wrote it - confident, spec
           const retryMatch = typeof retryContent === "string" ? retryContent.match(/\{[\s\S]*\}/) : null;
           if (retryMatch) {
             result = JSON.parse(retryMatch[0]);
+            guardContact(result);
             proseIssues = validateProseClaims(resumeText ?? "", String(result.coverLetter ?? ""), groundingContext);
           }
         }

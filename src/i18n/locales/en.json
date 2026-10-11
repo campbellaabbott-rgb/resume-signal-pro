@@ -2175,6 +2175,11 @@
         "deliveryTime": "Instant",
         "deliveryMethod": "On This Page"
       }
+    },
+    "stillBeingMade": {
+      "title": "Your {{product}} is still being made",
+      "emailed": "It is taking longer than usual. We'll email it to you as soon as it's ready, so you can close this page.",
+      "refresh": "It is taking longer than usual. Refresh this page in a few minutes to see it."
     }
   },
   "analysisResults": {
@@ -5296,5 +5301,15 @@
     "technical": "Technical",
     "situational": "Situational",
     "cultureFit": "Culture Fit"
+  },
+  "atsRoles": {
+    "title": "Which roles are you applying for?",
+    "description": "Name up to {{count}} job titles. Your ATS Defense report targets each one.",
+    "roleLabel": "Role {{n}}",
+    "example1": "e.g., Data Analyst",
+    "example2": "e.g., Business Analyst (optional)",
+    "example3": "e.g., Reporting Analyst (optional)",
+    "cancel": "Cancel",
+    "continue": "Continue to checkout"
   }
 }

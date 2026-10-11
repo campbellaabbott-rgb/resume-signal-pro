@@ -7,6 +7,7 @@ import { rememberCheckoutResume, tempResumeIdOf } from "../_shared/checkout-resu
 import { clientAddressOr } from "../_shared/client-address.ts";
 import { accountProStanding, addressProStanding } from "../_shared/pro.ts";
 import { checkoutOrigin, euConsentAnswer, euConsentRefusal, policyMetadata, sessionPolicy } from "../_shared/checkout-policy.ts";
+import { targetRolesMetadata } from "../_shared/target-roles.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -146,6 +147,8 @@ serve(async (req) => {
     const normalizedEmail = email?.includes?.('@') ? email.toLowerCase().trim() : null;
     const sanitizedJobTitle = typeof jobTitle === 'string' ? jobTitle.slice(0, 100).replace(/[<>]/g, '') : '';
     const sanitizedJobCompany = typeof jobCompany === 'string' ? jobCompany.slice(0, 100).replace(/[<>]/g, '') : '';
+    // ATS Defense targets up to three roles the buyer names (S11-074).
+    const targetRoles = product.productType === 'ats_defense' ? targetRolesMetadata(body.targetRoles) : null;
     // Allowlist against the site's actual supported languages — this flows
     // into an AI prompt server-side later (generation happens from the
     // webhook, which has no access to the browser's i18n state), so it must
@@ -225,23 +228,41 @@ serve(async (req) => {
           console.log("[CREATE-PRODUCT-CHECKOUT] Trialing plan: no grant minted while the trial runs");
         }
         if (standing.consumables) {
-          const { data: grant, error: grantError } = await supabase
+          const grantFields = {
+            // The account the redeemer re-checks (20261008130000).
+            user_id: proUserId,
+            product_id: productId,
+            product_type: product.productType,
+            product_name: product.name,
+            credits: product.credits ?? null,
+            resume_session_id: sessionId || null,
+            job_title: sanitizedJobTitle || null,
+            job_company: sanitizedJobCompany || null,
+            language: sanitizedLanguage,
+          };
+          let { data: grant, error: grantError } = await supabase
             .from("pro_grants")
             .insert({
               email: proEmail,
-              // The account the redeemer re-checks (20261008130000).
-              user_id: proUserId,
-              product_id: productId,
-              product_type: product.productType,
-              product_name: product.name,
-              credits: product.credits ?? null,
-              resume_session_id: sessionId || null,
-              job_title: sanitizedJobTitle || null,
-              job_company: sanitizedJobCompany || null,
-              language: sanitizedLanguage,
+              ...grantFields,
+              // The roles an ATS Defense grant targets (S11-074).
+              ...(targetRoles ? { target_roles: targetRoles } : {}),
             })
             .select("id")
             .single();
+          // A database without the target_roles column yet (20261009134300
+          // not applied): the grant is minted without the roles rather than
+          // sending a member to Stripe for a tool their plan includes.
+          if (grantError && targetRoles && (grantError.code === "42703" || grantError.code === "PGRST204")) {
+            ({ data: grant, error: grantError } = await supabase
+              .from("pro_grants")
+              .insert({
+                email: proEmail,
+                ...grantFields,
+              })
+              .select("id")
+              .single());
+          }
           if (!grantError && grant) {
             console.log(`[CREATE-PRODUCT-CHECKOUT] Pro grant ${grant.id} issued to ${proEmail} for ${product.name}`);
             return new Response(
@@ -346,6 +367,9 @@ serve(async (req) => {
         job_title: sanitizedJobTitle,
         job_company: sanitizedJobCompany,
         language: sanitizedLanguage,
+        // The roles an ATS Defense buyer named (S11-074): every deliverer
+        // reads them. Empty for any other product, which Stripe stores as none.
+        target_roles: targetRoles ?? "",
         ...policy,
       },
     });

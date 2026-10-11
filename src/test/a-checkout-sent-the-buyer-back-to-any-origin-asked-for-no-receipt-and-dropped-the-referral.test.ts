@@ -244,6 +244,26 @@ describe("the scan-credit checkout attaches nobody's customer (S8-059)", () => {
 });
 
 /**
+ * S11-074: ATS Defense sells targeting of up to three roles the buyer names,
+ * and no checkout carried them. create-product-checkout now writes them to
+ * the session's metadata, cleaned, for every deliverer to read.
+ */
+describe("an ATS Defense checkout carries the roles its buyer named (S11-074)", () => {
+  const ats = { fn: "create-product-checkout", body: { email: "typed@example.com", productId: "atsDefense" }, signedIn: false, mode: "payment" as const, commissioned: true, receipt: "typed@example.com" };
+
+  it("writes up to three roles, cleaned and without repeats, to the session's metadata", async () => {
+    const r = await call(ats, { targetRoles: [" Data Analyst ", "data analyst", "BI|Developer", "Analytics Engineer", "A fourth role"] });
+    expect(r.status, JSON.stringify(r.json)).toBe(200);
+    expect(r.session?.metadata?.target_roles, "the roles never reached Stripe").toBe("Data Analyst | BI Developer | Analytics Engineer");
+  });
+
+  it("another product carries none", async () => {
+    const r = await call({ ...ats, body: { email: "typed@example.com", productId: "coverLetter" } }, { targetRoles: ["Data Analyst"] });
+    expect(r.session?.metadata?.target_roles ?? "", "a product that targets no roles carried some").toBe("");
+  });
+});
+
+/**
  * S11-142: the server's switch and the page's build flag could not flip
  * together. The refusal now names the box and carries its wording, and
  * create-checkout answers a GET with the switch, so a published page can show

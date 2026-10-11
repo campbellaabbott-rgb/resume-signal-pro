@@ -2175,6 +2175,11 @@
         "deliveryTime": "Sofort",
         "deliveryMethod": "Auf dieser Seite"
       }
+    },
+    "stillBeingMade": {
+      "title": "Dein {{product}} wird noch erstellt",
+      "emailed": "Es dauert länger als sonst. Wir schicken es dir per E-Mail, sobald es fertig ist. Du kannst diese Seite schließen.",
+      "refresh": "Es dauert länger als sonst. Lade diese Seite in ein paar Minuten neu, um es zu sehen."
     }
   },
   "analysisResults": {
@@ -5296,5 +5301,15 @@
     "technical": "Fachlich",
     "situational": "Situativ",
     "cultureFit": "Kulturelle Passung"
+  },
+  "atsRoles": {
+    "title": "Für welche Rollen bewirbst du dich?",
+    "description": "Nenne bis zu {{count}} Jobtitel. Dein ATS-Defense-Bericht richtet sich auf jeden davon aus.",
+    "roleLabel": "Rolle {{n}}",
+    "example1": "z. B. Datenanalyst",
+    "example2": "z. B. Business Analyst (optional)",
+    "example3": "z. B. Reporting Analyst (optional)",
+    "cancel": "Abbrechen",
+    "continue": "Weiter zur Bezahlung"
   }
 }
