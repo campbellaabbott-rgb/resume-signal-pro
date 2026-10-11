@@ -6750,6 +6750,10 @@ export type Database = {
           cf_reason: string
         }[]
       }
+      market_pulse_confirm_unsent: {
+        Args: { p_email: string; p_token_hash: string }
+        Returns: boolean
+      }
       market_pulse_request_confirm: {
         Args: {
           p_email: string
