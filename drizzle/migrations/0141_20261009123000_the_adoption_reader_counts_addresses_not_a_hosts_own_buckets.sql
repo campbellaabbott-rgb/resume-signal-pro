@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261009123000_the_adoption_reader_counts_addresses_not_a_hosts_own_buckets.sql'));
