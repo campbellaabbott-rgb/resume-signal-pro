@@ -9,9 +9,14 @@
  * writes. These are the three it now reads, as pure decisions over rows the
  * caller fetched:
  *
- *   job_board_refresh_head  refresh_head.v.refreshedAt older than 3 h. The
- *                           tail writes it once per pass, and a pass takes
- *                           about 50 minutes.
+ *   job_board_refresh_head  the served counts older than 3 h: refresh_head's
+ *                           facetsCarriedAt when the pass carried them through
+ *                           a failed aggregate (the time they were counted),
+ *                           else its refreshedAt. The tail writes the row once
+ *                           per pass, and a pass takes about 50 minutes. A
+ *                           carried pass stamps refreshedAt with its own time,
+ *                           so refreshedAt alone stayed green while counts of
+ *                           any age were served (review of S11-001).
  *   job_board_filter_audit  filter_audit.updated_at older than 12 h. The
  *                           tail kicks the audit when it is 6 h old.
  *   job_board_pass_end      a pass_end row whose startedAt is more than 30
@@ -61,6 +66,8 @@ export type BoardTailRows = {
   now: number;
   /** refresh_head's v.refreshedAt, read by JSON path. */
   refreshedAt: string | null | undefined;
+  /** refresh_head's v.facetsCarriedAt: present only when the counts were carried. */
+  facetsCarriedAt?: string | null | undefined;
   /** filter_audit's updated_at. */
   filterAuditAt: string | null | undefined;
   /** pass_end's v. */
@@ -81,16 +88,25 @@ export function boardTailChecks(rows: BoardTailRows): BoardTailVerdict[] {
   const out: BoardTailVerdict[] = [];
 
   const headAge = ageMin(rows.now, rows.refreshedAt);
+  const countedAge = ageMin(rows.now, rows.facetsCarriedAt);
   if (headAge === null) {
     out.push({ name: "job_board_refresh_head", skipped: true, reason: "refresh_head carries no refreshedAt" });
-  } else {
-    const stale = headAge > REFRESH_HEAD_MAX_MIN;
+  } else if (headAge > REFRESH_HEAD_MAX_MIN) {
     out.push({
       name: "job_board_refresh_head",
       skipped: false,
-      passed: !stale,
-      ...(stale ? { error: `the board's served counts are ${Math.round(headAge / 60)}h old (refresh_head.refreshedAt ${rows.refreshedAt}; ${REFRESH_HEAD_MAX_MIN / 60}h bound): the pass-end tail is not reaching its refresh write` } : {}),
+      passed: false,
+      error: `the board's served counts are ${Math.round(headAge / 60)}h old (refresh_head.refreshedAt ${rows.refreshedAt}; ${REFRESH_HEAD_MAX_MIN / 60}h bound): the pass-end tail is not reaching its refresh write`,
     });
+  } else if (countedAge !== null && countedAge > REFRESH_HEAD_MAX_MIN) {
+    out.push({
+      name: "job_board_refresh_head",
+      skipped: false,
+      passed: false,
+      error: `the board's served counts were counted ${Math.round(countedAge / 60)}h ago (refresh_head.facetsCarriedAt ${rows.facetsCarriedAt}; ${REFRESH_HEAD_MAX_MIN / 60}h bound): refresh_job_board_facets is failing and each pass carries the old counts forward (see job_board_meta facets_attempt)`,
+    });
+  } else {
+    out.push({ name: "job_board_refresh_head", skipped: false, passed: true });
   }
 
   const auditAge = ageMin(rows.now, rows.filterAuditAt);

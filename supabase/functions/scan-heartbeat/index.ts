@@ -18,7 +18,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-admin-key, x-email-cron',
   'Access-Control-Expose-Headers': 'x-fn-build',
   // BUILD_VERSION below, as the other functions carry it.
-  'x-fn-build': 'scan-heartbeat.2026-10-09.7',
+  'x-fn-build': 'scan-heartbeat.2026-10-09.8',
 };
 
 // Test resume for heartbeat checks
@@ -604,9 +604,9 @@ serve(async (req) => {
       const exploreCacheP = supabase
         .from('job_board_meta').select('updated_at').eq('k', 'explore_cache').maybeSingle();
       // The three rows the board's pass-end tail writes (S11-001, board-tail.ts).
-      // refresh_head by JSON path: only its stamp, not the 200-employer facet.
+      // refresh_head by JSON path: only its two stamps, not the 200-employer facet.
       const refreshHeadP = supabase
-        .from('job_board_meta').select('refreshedAt:v->>refreshedAt').eq('k', 'refresh_head').maybeSingle();
+        .from('job_board_meta').select('refreshedAt:v->>refreshedAt,facetsCarriedAt:v->>facetsCarriedAt').eq('k', 'refresh_head').maybeSingle();
       const filterAuditP = supabase
         .from('job_board_meta').select('updated_at').eq('k', 'filter_audit').maybeSingle();
       const passEndP = supabase
@@ -1057,6 +1057,7 @@ serve(async (req) => {
         const verdicts = boardTailChecks({
           now: Date.now(),
           refreshedAt: rh.error ? null : (rh.data as { refreshedAt?: string } | null)?.refreshedAt,
+          facetsCarriedAt: rh.error ? null : (rh.data as { facetsCarriedAt?: string | null } | null)?.facetsCarriedAt,
           filterAuditAt: fa.error ? null : (fa.data as { updated_at?: string } | null)?.updated_at,
           passEnd: pe.error ? null : ((pe.data as { v?: { startedAt?: unknown; doneAt?: unknown } } | null)?.v ?? null),
         });

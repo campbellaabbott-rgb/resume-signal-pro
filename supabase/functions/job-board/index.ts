@@ -113,6 +113,7 @@ import { addLightReread, lightReread, lightRereadStats, type LightRereadStats } 
 import { selectDeepLane } from "./deep-lane.ts";
 import { nameSyncTarget, overrideFor, overrideTable } from "./name-sync.ts";
 import { foldApostrophes, foldTypedText, sameButApostrophes } from "./typed-text.ts";
+import { carriedCountsAt } from "./facet-carry.ts";
 
 // .88 (abuse-guards.ts): what one anonymous call may cost. verify fans out to
 // vendors, report and click each write a row; a person never needs more.
@@ -5570,6 +5571,8 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
       const facetsOk = !facetsErr && !!f.total;
       // Rationale: docs/job-board-index-notes.md#n142-facetscarried
       let facetsCarried = false;
+      // When the carried counts were counted, not when this pass ran (facet-carry.ts).
+      let facetsCountedAt: string | null = null;
       if (!facetsOk) {
         console.warn("[JOB-BOARD] facets RPC unavailable — carrying previous facets, maintenance continues:", facetsErr?.message ?? "empty result");
         // Attempt receipt: without it, "the cron ran and the aggregate failed"
@@ -5597,6 +5600,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
               : {}),
           };
           facetsCarried = true;
+          facetsCountedAt = carriedCountsAt(pv);
         } else {
           // Cold database AND a failed aggregate: nothing to carry, nothing the
           // maintenance below could safely stand on. The original early return
@@ -5832,7 +5836,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         // Facet fields above are LAST pass's, carried through an aggregate
         // failure so the upsert-replaces-whole-v write cannot clobber them —
         // named so a reader of this row can tell a carried total from a fresh one.
-        ...(facetsCarried ? { facetsCarried: true } : {}),
+        ...(facetsCarried ? { facetsCarried: true, facetsCarriedAt: facetsCountedAt ?? startIso } : {}),
         refreshedAt: startIso,
       };
       await client.from("job_board_meta").upsert({ k: "refresh", v, updated_at: new Date().toISOString() }, { onConflict: "k" });
@@ -5850,7 +5854,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         // row anyone actually reads, so a carried (stale) total served as current
         // was indistinguishable from a freshly computed one. Now the served row
         // says which it is.
-        ...(facetsCarried ? { facetsCarried: true, facetsCarriedAt: v.refreshedAt } : {}),
+        ...(facetsCarried ? { facetsCarried: true, facetsCarriedAt: facetsCountedAt ?? v.refreshedAt } : {}),
         refreshedAt: v.refreshedAt,
         companiesCount: companies.length,
         // Rationale: docs/job-board-index-notes.md#n160-typeof-v-as-companiesopencount-number
