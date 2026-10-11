@@ -4805,7 +4805,11 @@
     "coverNotePlaceholder": "ex. Ingénieur data depuis huit ans, je construis des pipelines en Python et dbt et je cherche un poste senior où je pourrais porter une plateforme de bout en bout.",
     "coverNoteCount": "{{n}} sur 2000 caractères",
     "coverNoteHintTailored": "Facultatif. Certains formulaires refusent l'envoi sans elle, et l'agent s'arrête plutôt que d'envoyer un champ vide. La personnalisation étant activée, l'agent l'adapte à chaque poste en n'utilisant que ce que votre CV et l'annonce disent réellement — et s'il ne peut pas le faire honnêtement, votre note est envoyée telle que vous l'avez écrite.",
-    "tailorCoverNote": "Adapter cette note à chaque poste. L'agent la réécrit en fonction de l'annonce en n'utilisant que des faits déjà présents dans votre CV : il ne peut ajouter ni employeur, ni école, ni compétence, ni chiffre absent, et il n'évoque jamais de lui-même votre situation de visa, votre salaire ou votre date de disponibilité. Tout ce qu'il ne peut pas étayer, il l'écarte : votre note part telle quelle."
+    "tailorCoverNote": "Adapter cette note à chaque poste. L'agent la réécrit en fonction de l'annonce en n'utilisant que des faits déjà présents dans votre CV : il ne peut ajouter ni employeur, ni école, ni compétence, ni chiffre absent, et il n'évoque jamais de lui-même votre situation de visa, votre salaire ou votre date de disponibilité. Tout ce qu'il ne peut pas étayer, il l'écarte : votre note part telle quelle.",
+    "suggestedTitle": "Tiré de votre CV, mais nous n'en sommes pas sûrs. Vérifiez avant qu'il soit utilisé :",
+    "useSuggested": "L'utiliser",
+    "dismissSuggested": "Pas correct",
+    "uploadedCheck": "Enregistré. Vérifiez ci-dessous ce que nous avons lu dans votre CV avant que l'agent l'utilise."
   },
   "applyQueue": {
     "title": "Candidatures préparées",

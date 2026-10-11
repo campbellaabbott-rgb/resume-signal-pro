@@ -4805,7 +4805,11 @@
     "coverNotePlaceholder": "e.g. I'm a data engineer with eight years building pipelines in Python and dbt, currently looking for a senior role where I can own a platform end to end.",
     "coverNoteCount": "{{n}} of 2000 characters",
     "coverNoteHintTailored": "Optional. Some forms won't submit without one, and the agent stops rather than sending a blank. Because tailoring is on, the agent adapts this for each role using only what your résumé and the posting actually say — and if it can't do that honestly, your note is sent exactly as written.",
-    "tailorCoverNote": "Adapt this note for each role. The agent rewrites it against the job posting using only facts already in your résumé — it can't add an employer, a school, a skill or a number that isn't there, and it never volunteers your visa status, salary or start date. Anything it can't ground, it drops: your note goes as written instead."
+    "tailorCoverNote": "Adapt this note for each role. The agent rewrites it against the job posting using only facts already in your résumé — it can't add an employer, a school, a skill or a number that isn't there, and it never volunteers your visa status, salary or start date. Anything it can't ground, it drops: your note goes as written instead.",
+    "suggestedTitle": "From your CV, but we are not sure. Check before it is used:",
+    "useSuggested": "Use it",
+    "dismissSuggested": "Not right",
+    "uploadedCheck": "Saved. Check what we read from your CV below before the agent uses it."
   },
   "applyQueue": {
     "title": "Prepared applications",

@@ -4805,7 +4805,11 @@
     "coverNotePlaceholder": "z. B. Ich bin Data Engineer mit acht Jahren Erfahrung im Bau von Pipelines mit Python und dbt und suche eine Senior-Rolle, in der ich eine Plattform von Anfang bis Ende verantworten kann.",
     "coverNoteCount": "{{n}} von 2000 Zeichen",
     "coverNoteHintTailored": "Optional. Manche Formulare lassen sich ohne Notiz nicht absenden, und der Agent bricht lieber ab, als ein leeres Feld zu senden. Da die Anpassung aktiviert ist, passt der Agent sie an jede Stelle an und nutzt dabei nur das, was in Ihrem Lebenslauf und in der Anzeige tatsächlich steht — gelingt das nicht ehrlich, wird Ihre Notiz genau so gesendet, wie Sie sie geschrieben haben.",
-    "tailorCoverNote": "Diese Notiz an jede Stelle anpassen. Der Agent schreibt sie anhand der Stellenanzeige um und verwendet dabei nur Angaben, die bereits in Ihrem Lebenslauf stehen: Er kann keinen Arbeitgeber, keine Hochschule, keine Fähigkeit und keine Zahl hinzufügen, die dort fehlt, und er nennt von sich aus nie Ihren Visastatus, Ihr Gehalt oder Ihr Eintrittsdatum. Was er nicht belegen kann, lässt er weg: Dann geht Ihre Notiz unverändert raus."
+    "tailorCoverNote": "Diese Notiz an jede Stelle anpassen. Der Agent schreibt sie anhand der Stellenanzeige um und verwendet dabei nur Angaben, die bereits in Ihrem Lebenslauf stehen: Er kann keinen Arbeitgeber, keine Hochschule, keine Fähigkeit und keine Zahl hinzufügen, die dort fehlt, und er nennt von sich aus nie Ihren Visastatus, Ihr Gehalt oder Ihr Eintrittsdatum. Was er nicht belegen kann, lässt er weg: Dann geht Ihre Notiz unverändert raus.",
+    "suggestedTitle": "Aus deinem Lebenslauf, aber nicht sicher. Prüfe es, bevor es verwendet wird:",
+    "useSuggested": "Übernehmen",
+    "dismissSuggested": "Stimmt nicht",
+    "uploadedCheck": "Gespeichert. Prüfe unten, was wir aus deinem Lebenslauf gelesen haben, bevor der Agent es verwendet."
   },
   "applyQueue": {
     "title": "Vorbereitete Bewerbungen",

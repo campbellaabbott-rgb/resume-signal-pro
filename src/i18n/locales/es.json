@@ -4805,7 +4805,11 @@
     "coverNotePlaceholder": "p. ej. Soy ingeniero de datos con ocho años construyendo pipelines en Python y dbt, y busco un puesto sénior donde pueda responsabilizarme de una plataforma de principio a fin.",
     "coverNoteCount": "{{n}} de 2000 caracteres",
     "coverNoteHintTailored": "Opcional. Algunos formularios no se envían sin ella, y el agente se detiene en lugar de enviar un campo vacío. Como la personalización está activada, el agente la adapta a cada puesto usando solo lo que dicen realmente tu currículum y la oferta; y si no puede hacerlo con honestidad, tu nota se envía tal como la escribiste.",
-    "tailorCoverNote": "Adaptar esta nota a cada puesto. El agente la reescribe según la oferta usando solo datos que ya están en tu currículum: no puede añadir una empresa, un centro de estudios, una habilidad ni una cifra que no figure, y nunca menciona por iniciativa propia tu situación de visado, tu salario ni tu fecha de incorporación. Lo que no pueda fundamentar, lo descarta: se envía tu nota tal cual."
+    "tailorCoverNote": "Adaptar esta nota a cada puesto. El agente la reescribe según la oferta usando solo datos que ya están en tu currículum: no puede añadir una empresa, un centro de estudios, una habilidad ni una cifra que no figure, y nunca menciona por iniciativa propia tu situación de visado, tu salario ni tu fecha de incorporación. Lo que no pueda fundamentar, lo descarta: se envía tu nota tal cual.",
+    "suggestedTitle": "De tu currículum, pero no estamos seguros. Revísalo antes de que se use:",
+    "useSuggested": "Usarlo",
+    "dismissSuggested": "No es correcto",
+    "uploadedCheck": "Guardado. Revisa abajo lo que leímos de tu currículum antes de que el agente lo use."
   },
   "applyQueue": {
     "title": "Candidaturas preparadas",

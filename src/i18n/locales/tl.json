@@ -4805,7 +4805,11 @@
     "coverNotePlaceholder": "hal. Isa akong data engineer na walong taon nang gumagawa ng pipelines sa Python at dbt, at naghahanap ng senior na papel kung saan maaari kong pangasiwaan ang isang platform mula simula hanggang dulo.",
     "coverNoteCount": "{{n}} sa 2000 na karakter",
     "coverNoteHintTailored": "Opsyonal. May mga form na hindi maisusumite kung wala ito, at hihinto ang ahente sa halip na magpadala ng blangko. Dahil naka-on ang pag-angkop, ina-angkop ito ng ahente sa bawat posisyon gamit lamang ang aktuwal na nakasaad sa iyong résumé at sa anunsyo — at kung hindi niya iyon magawa nang tapat, ipapadala ang iyong nota nang eksakto sa pagkakasulat mo.",
-    "tailorCoverNote": "Iangkop ang notang ito sa bawat posisyon. Isinusulat itong muli ng ahente batay sa anunsyo gamit lamang ang mga bagay na nasa iyong résumé na — hindi siya makakadagdag ng employer, paaralan, kasanayan o numerong wala roon, at hindi niya kusang binabanggit ang iyong visa status, sahod o petsa ng pagsisimula. Ang hindi niya mapatunayan ay inaalis niya: ang iyong nota ang ipapadala nang buo."
+    "tailorCoverNote": "Iangkop ang notang ito sa bawat posisyon. Isinusulat itong muli ng ahente batay sa anunsyo gamit lamang ang mga bagay na nasa iyong résumé na — hindi siya makakadagdag ng employer, paaralan, kasanayan o numerong wala roon, at hindi niya kusang binabanggit ang iyong visa status, sahod o petsa ng pagsisimula. Ang hindi niya mapatunayan ay inaalis niya: ang iyong nota ang ipapadala nang buo.",
+    "suggestedTitle": "Mula sa iyong CV, pero hindi kami sigurado. Suriin bago ito gamitin:",
+    "useSuggested": "Gamitin ito",
+    "dismissSuggested": "Hindi tama",
+    "uploadedCheck": "Na-save. Suriin sa ibaba ang nabasa namin mula sa iyong CV bago ito gamitin ng ahente."
   },
   "applyQueue": {
     "title": "Mga inihandang aplikasyon",
