@@ -17,6 +17,7 @@ import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supa
 import { HOT_TOKENS, JOB_SOURCES, LIGHT_DESC_TOKENS, ORACLE_CANONICAL_SITES, type JobSource } from "./sources.ts";
 import { BOARD_DESC_SOURCES, buildEmbedInput, DETAIL_DESC_SOURCES, clusterKey, jobPostingLd, workdayCxsUrl } from "./descriptions.ts";
 import { fetchJazzhr, jazzhrPostingUrl, parseJazzhrDetail } from "./vendors/jazzhr.ts";
+import { uncarriedCompanies, uncarriedListReply } from "./uncarried.ts";
 import {
   COUNTRY_MAP_VERSION,
   detectWorkMode,
@@ -9479,6 +9480,10 @@ Deno.serve(async (req) => {
     if (action === "list") {
       // Rationale: docs/job-board-index-notes.md#n238-t-entry
       const t_entry = Date.now();
+      // An employer scope the catalogue does not carry is named, never read
+      // as an employer with no openings (uncarried.ts, sweep S11-020).
+      const uncarried = uncarriedCompanies(normalizeFilters(body, JOB_SOURCES.length).applied.companies, CATALOGUE_TOKENS);
+      if (uncarried) return json(uncarriedListReply(uncarried));
       // Rationale: docs/job-board-index-notes.md#n239-meta-deadline-ms
       const META_DEADLINE_MS = 3_000;
       const t_meta = Date.now();
