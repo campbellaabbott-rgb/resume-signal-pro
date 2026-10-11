@@ -4869,7 +4869,8 @@
     "signInFirst": "You'll sign in first — the agent works from your account.",
     "alreadySubscribed": "You already have the agent — taking you to it.",
     "needsPaymentUpdate": "Your plan has a payment due. Update your card instead of starting a new plan.",
-    "hasPro": "You're on Pro, which the agent includes. Cancel Pro in Manage subscription first, then start the agent — so you're never billed for both."
+    "hasPro": "You're on Pro, which the agent includes. Cancel Pro in Manage subscription first, then start the agent — so you're never billed for both.",
+    "portalFailed": "We couldn't open billing. Please try again in a minute."
   },
   "proPlan": {
     "trialing": "Your trial is on: unlimited scans and batch application prep are unlocked now. The paid tools are included from your first payment.",

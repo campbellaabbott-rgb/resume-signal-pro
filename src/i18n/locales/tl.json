@@ -4869,7 +4869,8 @@
     "signInFirst": "Magsa-sign in ka muna — gumagana ang agent mula sa iyong account.",
     "alreadySubscribed": "Mayroon ka nang agent — dadalhin ka namin doon.",
     "needsPaymentUpdate": "May nakabinbing bayad ang iyong plano. I-update ang iyong card sa halip na magsimula ng bagong plano.",
-    "hasPro": "Naka-Pro ka, na kasama na sa agent. Kanselahin muna ang Pro sa Manage subscription, saka simulan ang agent — para hindi ka masingil sa dalawa."
+    "hasPro": "Naka-Pro ka, na kasama na sa agent. Kanselahin muna ang Pro sa Manage subscription, saka simulan ang agent — para hindi ka masingil sa dalawa.",
+    "portalFailed": "Hindi namin mabuksan ang billing. Pakisubukang muli pagkalipas ng isang minuto."
   },
   "proPlan": {
     "trialing": "Naka-on ang iyong trial: bukas na ngayon ang walang-limitasyong scan at ang sabayang paghahanda ng mga aplikasyon. Kasama ang mga bayad na tool simula sa iyong unang bayad.",

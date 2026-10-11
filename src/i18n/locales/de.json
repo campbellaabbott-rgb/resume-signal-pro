@@ -4869,7 +4869,8 @@
     "signInFirst": "Du meldest dich zuerst an – der Agent arbeitet über dein Konto.",
     "alreadySubscribed": "Du hast den Agenten bereits – wir bringen dich hin.",
     "needsPaymentUpdate": "Für deinen Plan ist eine Zahlung offen. Aktualisiere deine Karte, statt einen neuen Plan zu starten.",
-    "hasPro": "Du hast Pro, das im Agenten enthalten ist. Kündige Pro zuerst unter Abo verwalten und starte dann den Agenten – so zahlst du nie für beides."
+    "hasPro": "Du hast Pro, das im Agenten enthalten ist. Kündige Pro zuerst unter Abo verwalten und starte dann den Agenten – so zahlst du nie für beides.",
+    "portalFailed": "Die Abrechnung konnte nicht geöffnet werden. Bitte versuche es in einer Minute erneut."
   },
   "proPlan": {
     "trialing": "Ihre Testphase läuft: Unbegrenzte Scans und die gesammelte Bewerbungsvorbereitung sind jetzt freigeschaltet. Die kostenpflichtigen Tools sind ab Ihrer ersten Zahlung enthalten.",

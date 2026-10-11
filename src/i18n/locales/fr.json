@@ -4869,7 +4869,8 @@
     "signInFirst": "Vous vous connecterez d'abord : l'agent fonctionne depuis votre compte.",
     "alreadySubscribed": "Vous avez déjà l'agent — on vous y emmène.",
     "needsPaymentUpdate": "Votre formule a un paiement en attente. Mettez à jour votre carte plutôt que de souscrire une nouvelle formule.",
-    "hasPro": "Vous avez Pro, que l'agent inclut. Résiliez Pro dans Gérer l'abonnement, puis lancez l'agent — vous ne paierez jamais les deux."
+    "hasPro": "Vous avez Pro, que l'agent inclut. Résiliez Pro dans Gérer l'abonnement, puis lancez l'agent — vous ne paierez jamais les deux.",
+    "portalFailed": "Impossible d'ouvrir la facturation. Réessayez dans une minute."
   },
   "proPlan": {
     "trialing": "Votre essai est en cours : les analyses illimitées et la préparation de candidatures par lots sont débloquées dès maintenant. Les outils payants sont inclus à partir de votre premier paiement.",

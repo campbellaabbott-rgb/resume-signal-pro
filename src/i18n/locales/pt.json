@@ -4869,7 +4869,8 @@
     "signInFirst": "Vai entrar primeiro — o agente funciona a partir da sua conta.",
     "alreadySubscribed": "Você já tem o agente — vamos levá-lo até ele.",
     "needsPaymentUpdate": "O seu plano tem um pagamento pendente. Atualize o cartão em vez de iniciar um novo plano.",
-    "hasPro": "Você tem o Pro, que o agente inclui. Cancele o Pro em Gerir assinatura e depois inicie o agente — assim nunca paga os dois."
+    "hasPro": "Você tem o Pro, que o agente inclui. Cancele o Pro em Gerir assinatura e depois inicie o agente — assim nunca paga os dois.",
+    "portalFailed": "Não foi possível abrir a faturação. Tente novamente daqui a um minuto."
   },
   "proPlan": {
     "trialing": "Seu teste está ativo: análises ilimitadas e a preparação de candidaturas em lote já estão liberadas. As ferramentas pagas ficam incluídas a partir do seu primeiro pagamento.",

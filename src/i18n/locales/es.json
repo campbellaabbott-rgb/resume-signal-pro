@@ -4869,7 +4869,8 @@
     "signInFirst": "Primero iniciarás sesión: el agente funciona desde tu cuenta.",
     "alreadySubscribed": "Ya tienes el agente; te llevamos a él.",
     "needsPaymentUpdate": "Tu plan tiene un pago pendiente. Actualiza tu tarjeta en lugar de empezar un plan nuevo.",
-    "hasPro": "Tienes Pro, que el agente incluye. Cancela Pro en Gestionar suscripción y luego activa el agente, para que nunca pagues los dos."
+    "hasPro": "Tienes Pro, que el agente incluye. Cancela Pro en Gestionar suscripción y luego activa el agente, para que nunca pagues los dos.",
+    "portalFailed": "No pudimos abrir la facturación. Inténtalo de nuevo en un minuto."
   },
   "proPlan": {
     "trialing": "Tu prueba está activa: los escaneos ilimitados y la preparación de solicitudes en lote ya están desbloqueados. Las herramientas de pago se incluyen a partir de tu primer pago.",
