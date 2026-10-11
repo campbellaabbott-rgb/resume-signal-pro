@@ -9,6 +9,7 @@ import { detectIndustry as detectIndustryShared } from "./industry-detection.ts"
 import { detectCountryFromResume, effectiveCountryOf } from "./market-intelligence.ts";
 import { resolveLanguageName } from "../_shared/language-instruction.ts";
 import { FIXED_CHOICES_STAY_ENGLISH, normalizeScanReport } from "../_shared/scan-report-shape.ts";
+import { functionCeiling } from "../_shared/model-spend-gate.ts";
 import { evaluateCountryStandards } from "./country-standards.ts";
 import { computeParseQuality, parseResumeStructure, formatStructureForPrompt } from "./resume-structure.ts";
 import { detectResumeLanguage } from "./resume-language.ts";
@@ -6519,7 +6520,12 @@ const MIN_RESUME_CHARS = 120;
 const STREAM_AI_DEADLINE_MS = 110_000;
 const STREAM_ATTEMPT_TIMEOUT_MS = 55_000;
 
-const ADMIN_EMAIL = Deno.env.get('ADMIN_EMAIL') || 'resumeboostersupp@gmail.com';
+/**
+ * The function-wide hour (S11-019): model-backed scans the anonymous internet,
+ * and separately proven callers (a board pass, a proven mailbox, a paying
+ * account), may run per hour, and one proven identity's share of the latter.
+ */
+const SCAN_CEILING = { strangersPerHour: 300, provenPerHour: 300, perProvenCallerPerHour: 20 } as const;
 
 const getCountryFromHeaders = (req: Request): string | null => {
   // Sanitized (review-caught 2026-07-25): Cloudflare emits pseudo-codes XX
@@ -6543,11 +6549,21 @@ const getClientIp = (req: Request): string => clientAddressOr(req.headers, 'unkn
 // The country for the regional block: the CDN's header when there is one,
 // else the same ipinfo.io lookup the primary makes (cached per isolate).
 const ipCountryCache = new Map<string, { country: string | null; at: number }>();
+
+// One ipinfo answer per /24 (an IPv6 /64), S11-019: a pool rotating inside a
+// block is one lookup, not one per address. The country of a block is the
+// country of its addresses for every purpose this lookup serves.
+const ipinfoBlock = (ip: string): string => {
+  const v4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.\d{1,3}$/.exec(ip);
+  if (v4) return `${v4[1]}.${v4[2]}.${v4[3]}.0/24`;
+  const words = ip.toLowerCase().split(':');
+  return words.length > 2 ? `${words.slice(0, 4).join(':')}::/64` : ip;
+};
 async function resolveCountry(req: Request, clientIp: string): Promise<string | null> {
   const fromHeader = getCountryFromHeaders(req);
   if (fromHeader) return fromHeader;
   if (!clientIp || clientIp === 'unknown') return null;
-  const hit = ipCountryCache.get(clientIp);
+  const hit = ipCountryCache.get(ipinfoBlock(clientIp));
   if (hit && Date.now() - hit.at < 60 * 60 * 1000) return hit.country;
   const key = Deno.env.get('IPINFO_API_KEY');
   if (!key) return null;
@@ -6556,7 +6572,7 @@ async function resolveCountry(req: Request, clientIp: string): Promise<string | 
     if (!r.ok) return null;
     const j = await r.json() as { country?: unknown };
     const cc = typeof j.country === 'string' && /^[A-Z]{2}$/.test(j.country) ? j.country : null;
-    ipCountryCache.set(clientIp, { country: cc, at: Date.now() });
+    ipCountryCache.set(ipinfoBlock(clientIp), { country: cc, at: Date.now() });
     return cc;
   } catch {
     return null;
@@ -7663,6 +7679,21 @@ serve(async (req) => {
         return;
       }
 
+
+      // THE FUNCTION-WIDE HOUR (S11-019), the primary's twin: a rotating
+      // address pool gets a fresh daily allowance per address, so only a
+      // ceiling across callers bounds it, kept apart for proven callers so a
+      // pool cannot lock them out. The bucket is the scanner's own, shared
+      // with the primary as the daily one is, so the two forks together spend
+      // one hour. Past it (or when it cannot be counted) this fork asks for a
+      // retry, as it does past the concurrency slot.
+      const ceiling = await functionCeiling(supabase, req, FUNCTION_NAME, SCAN_CEILING);
+      if (ceiling) {
+        console.log(`[FREE-KEYWORD-SCAN-STREAM] Function ceiling refused (${ceiling.code}, limit ${ceiling.limit})`);
+        send('error', { error: 'Our analysers are busy right now. Please try again in a minute.', code: 'busy', retryable: true });
+        close();
+        return;
+      }
 
       // The primary's concurrency ceiling (2.05). Past it the primary serves
       // its instant rule-based report; this fork has none, so it asks for a
@@ -8871,62 +8902,26 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         }).slice(0, 3),
       };
 
-      const country = requestCountry || 'Unknown';
-
-      // Send admin notification email for every free scan (skip if testing)
-      EdgeRuntime.waitUntil(
-        (async () => {
-          try {
-            // Skip admin email if explicitly requested (for testing)
-            if (skipAdminEmail) {
-              console.log('[FREE-KEYWORD-SCAN-STREAM] Skipping admin notification (skipAdminEmail=true)');
-              return;
-            }
-            
-            const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
-            if (!RESEND_API_KEY) {
-              console.log('[FREE-KEYWORD-SCAN-STREAM] No RESEND_API_KEY, skipping admin notification');
-              return;
-            }
-
-            const atsScore = analysis.atsScoreEstimate || 0;
-            const response = await fetch('https://api.resend.com/emails', {
-              method: 'POST',
-              headers: {
-                Authorization: `Bearer ${RESEND_API_KEY}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                from: 'Resume Booster <onboarding@resend.dev>',
-                to: [ADMIN_EMAIL],
-                subject: `🔍 New Free Scan: ${analysis.industry || 'Unknown'} (ATS ${atsScore}) - ${country}`,
-                html: `
-                  <h2>New Free Resume Scan</h2>
-                  <ul>
-                    <li><strong>Country:</strong> ${country}</li>
-                    <li><strong>Industry:</strong> ${analysis.industry || 'Unknown'}</li>
-                    <li><strong>Resume Type:</strong> ${resumeType.label}</li>
-                    <li><strong>Seniority:</strong> ${seniority}</li>
-                    <li><strong>ATS Score:</strong> ${atsScore}/100</li>
-                    <li><strong>Recruiter Score:</strong> ${dualScore.recruiterImpact}/100</li>
-                    <li><strong>Experience Level:</strong> ${analysis.experienceLevel?.level || 'Unknown'}</li>
-                    <li><strong>IP Address:</strong> ${clientIp}</li>
-                    <li><strong>Time:</strong> ${new Date().toISOString()}</li>
-                  </ul>
-                `,
-              }),
-            });
-
-            if (!response.ok) {
-              console.error('[FREE-KEYWORD-SCAN-STREAM] Admin notification failed:', await response.text());
-            } else {
-              console.log('[FREE-KEYWORD-SCAN-STREAM] Admin notification sent');
-            }
-          } catch (err) {
-            console.error('[FREE-KEYWORD-SCAN-STREAM] Admin notification error:', err);
-          }
-        })()
-      );
+      // OWNER NOTES GO THROUGH notify-owner ONLY (S11-019). This fork mailed
+      // the owner directly through Resend on every scan, a per-scan send any
+      // address pool could multiply against the quota paid deliveries share.
+      // notify-owner is the counted door; it answers only the service role.
+      if ((Deno.env.get('NOTIFY_SCANS') ?? 'true') !== 'false') {
+        const notifyKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+        EdgeRuntime.waitUntil(
+          fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/notify-owner`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${notifyKey}`, apikey: notifyKey },
+            body: JSON.stringify({
+              type: 'scan',
+              score: analysis.atsScoreEstimate,
+              industry: analysis.industry ?? null,
+              country: requestCountry ?? null,
+              authed: isAuthedUser,
+            }),
+          }).then(() => {}, (e) => console.warn('[FREE-KEYWORD-SCAN-STREAM] Owner notify failed:', e))
+        );
+      }
 
       // Increment counter
       EdgeRuntime.waitUntil(

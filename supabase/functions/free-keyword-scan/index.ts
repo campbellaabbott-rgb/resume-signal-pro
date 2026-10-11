@@ -24,6 +24,7 @@ import { provenMailbox, type AuthUserLike } from "../_shared/mailbox-proof.ts";
 import { accountProStanding } from "../_shared/pro-standing.ts";
 import { SCAN_MODEL_CHAIN } from "../_shared/scan-models.ts";
 import { FIXED_CHOICES_STAY_ENGLISH, normalizeScanReport } from "../_shared/scan-report-shape.ts";
+import { functionCeiling } from "../_shared/model-spend-gate.ts";
 import { buildScoreAudit, reportIdFor } from "./report-meta.ts";
 import {
   detectCountryFromResume,
@@ -346,6 +347,16 @@ const SLOW_REQUEST_THRESHOLD = 20000; // 20s - AI analysis takes time
 const VERY_SLOW_THRESHOLD = 70000; // 70s - Gemini Pro model takes 40-60s typically
 
 const FUNCTION_NAME = 'free-keyword-scan';
+
+/**
+ * THE FUNCTION-WIDE HOUR (S11-019): model-backed scans the anonymous internet,
+ * and separately proven callers (a board pass, a proven mailbox, a paying
+ * account), may run per hour, and one proven identity's share of the latter.
+ * The per-address day and the request budget bound one address; only this
+ * bounds a rotating pool. Past it the scan is served the rule-based report,
+ * which calls no model.
+ */
+const SCAN_CEILING = { strangersPerHour: 300, provenPerHour: 300, perProvenCallerPerHour: 20 } as const;
 
 
 // Fallback must be a real inbox — admin@resumebooster.com was a dead letter
@@ -1228,6 +1239,16 @@ async function fetchWithRetry(
 const countryCache = new Map<string, { country: string; timestamp: number }>();
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
+// One ipinfo answer per /24 (an IPv6 /64), S11-019: a pool rotating inside a
+// block is one lookup, not one per address. The country of a block is the
+// country of its addresses for every purpose this lookup serves.
+const ipinfoBlock = (ip: string): string => {
+  const v4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.\d{1,3}$/.exec(ip);
+  if (v4) return `${v4[1]}.${v4[2]}.${v4[3]}.0/24`;
+  const words = ip.toLowerCase().split(':');
+  return words.length > 2 ? `${words.slice(0, 4).join(':')}::/64` : ip;
+};
+
 const getCountryFromHeaders = (req: Request): string | null => {
   // Cloudflare/CDN provides country code in cf-ipcountry header. Sanitized
   // (review-caught 2026-07-25): Cloudflare emits pseudo-codes XX (unknown)
@@ -1247,7 +1268,7 @@ async function getCountryFromIpInfo(ip: string): Promise<string | null> {
   if (!ip || ip === 'unknown') return null;
   
   // Check cache first
-  const cached = countryCache.get(ip);
+  const cached = countryCache.get(ipinfoBlock(ip));
   if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
     return cached.country;
   }
@@ -1273,7 +1294,7 @@ async function getCountryFromIpInfo(ip: string): Promise<string | null> {
     
     // Cache the result
     if (country) {
-      countryCache.set(ip, { country, timestamp: Date.now() });
+      countryCache.set(ipinfoBlock(ip), { country, timestamp: Date.now() });
     }
     
     console.log(`[FREE-KEYWORD-SCAN] ipinfo.io resolved IP ${ip} to country: ${country}`);
@@ -3109,7 +3130,18 @@ ${resumeText.substring(0, 20000)}
     const MAX_CONCURRENT_AI_SCANS = Number(Deno.env.get('MAX_CONCURRENT_AI_SCANS') ?? '40');
     let scanSlotId: string | null = null;
     let loadShedded = false;
-    try {
+    // THE FUNCTION-WIDE HOUR comes first (S11-019): a scan past it calls no
+    // model and takes no slot. Unlike the slot it fails CLOSED, as every spend
+    // gate does: a ceiling a counting error switches off is no ceiling. Our
+    // own heartbeat is not counted, so the probe never reads a full hour as
+    // an outage.
+    const ceiling = isHeartbeatProbe
+      ? null
+      : await functionCeiling(supabase, req, FUNCTION_NAME, SCAN_CEILING, { boardPass: body.boardPass });
+    if (ceiling) {
+      loadShedded = true;
+      console.log(`[FREE-KEYWORD-SCAN] FUNCTION CEILING: ${ceiling.code} (limit ${ceiling.limit}) — serving the rule-based report`);
+    } else try {
       const { data: slot, error: slotErr } = await supabase.rpc('acquire_scan_slot', { p_max: MAX_CONCURRENT_AI_SCANS, p_ttl_seconds: 180 });
       if (!slotErr && slot === null) loadShedded = true;
       else if (!slotErr && typeof slot === 'string') scanSlotId = slot;
@@ -3533,53 +3565,11 @@ ${resumeText.substring(0, 20000)}
       })()
     );
 
-    // Send admin notification email for every free scan
-    if (!isOwnProbe) EdgeRuntime.waitUntil(
-      (async () => {
-        try {
-          const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-          if (!RESEND_API_KEY) {
-            console.log("[FREE-KEYWORD-SCAN] No RESEND_API_KEY, skipping admin notification");
-            return;
-          }
-          
-          const atsScore = analysis.atsScoreEstimate || 0;
-          const scoreEmoji = atsScore >= 80 ? '🟢' : atsScore >= 60 ? '🟡' : '🔴';
-          
-          const response = await fetch("https://api.resend.com/emails", {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${RESEND_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              from: "Resume Booster <onboarding@resend.dev>",
-              to: [ADMIN_EMAIL],
-              subject: `🔍 New Free Scan: ${analysis.industry || 'Unknown'} (ATS ${atsScore}) - ${country}`,
-              html: `
-                <h2>New Free Resume Scan</h2>
-                <ul>
-                  <li><strong>Country:</strong> ${country}</li>
-                  <li><strong>Industry:</strong> ${analysis.industry || 'Unknown'}</li>
-                  <li><strong>ATS Score:</strong> ${atsScore}/100</li>
-                  <li><strong>Experience Level:</strong> ${analysis.experienceLevel?.level || 'Unknown'}</li>
-                  <li><strong>IP Address:</strong> ${clientIp}</li>
-                  <li><strong>Time:</strong> ${new Date().toISOString()}</li>
-                </ul>
-              `,
-            }),
-          });
-          
-          if (!response.ok) {
-            console.error("[FREE-KEYWORD-SCAN] Admin notification failed:", await response.text());
-          } else {
-            console.log("[FREE-KEYWORD-SCAN] Admin notification sent");
-          }
-        } catch (err) {
-          console.error("[FREE-KEYWORD-SCAN] Admin notification error:", err);
-        }
-      })()
-    );
+    // NO PER-SCAN MAIL FROM HERE (S11-019). This used to mail the owner
+    // directly through Resend on every scan, load-shed and rule-based ones
+    // included, beside the notify-owner call below: a per-scan send any
+    // address pool could multiply against the quota paid deliveries share.
+    // Owner notes go through notify-owner, the counted door, only.
 
     // ── SCHEMA VALIDATION LAYER ─────────────────────────────────────────────
     // AI output goes almost straight into the response; one malformed field
