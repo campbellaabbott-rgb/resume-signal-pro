@@ -4453,19 +4453,28 @@ export type Database = {
         Row: {
           email: string
           kind: string
+          pending_mail: Json | null
+          provider_message_id: string | null
           queued_at: string
+          sent_at: string | null
           subscription_id: string
         }
         Insert: {
           email: string
           kind: string
+          pending_mail?: Json | null
+          provider_message_id?: string | null
           queued_at?: string
+          sent_at?: string | null
           subscription_id: string
         }
         Update: {
           email?: string
           kind?: string
+          pending_mail?: Json | null
+          provider_message_id?: string | null
           queued_at?: string
+          sent_at?: string | null
           subscription_id?: string
         }
         Relationships: []

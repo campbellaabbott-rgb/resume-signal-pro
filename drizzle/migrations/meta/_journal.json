@@ -1030,6 +1030,13 @@
       "when": 1791751546096,
       "tag": "0146_20261009133000_a_withdrawal_is_acknowledged_once_per_subscription",
       "breakpoints": true
+    },
+    {
+      "idx": 147,
+      "version": "7",
+      "when": 1791751553181,
+      "tag": "0147_20261009134000_a_legal_notice_is_recorded_as_sent_only_after_resend_accepted_it",
+      "breakpoints": true
     }
   ]
 }
