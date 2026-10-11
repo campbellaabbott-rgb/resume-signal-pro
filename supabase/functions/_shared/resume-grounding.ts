@@ -13,6 +13,8 @@
 // Anything autonomous — overnight kit pre-drafting, the apply agent — MUST
 // call the validated non-stream paths, never the stream variants.
 
+import { canonPhone, canonUrl } from "./contact-guard.ts";
+
 export interface TailoredExperience {
   company: string;
   title: string;
@@ -47,8 +49,64 @@ export interface GroundingReport {
   /** Non-fatal: stripped because the source resume doesn't support them. */
   removedSkills: string[];
   removedCertifications: string[];
-  /** The resume with ungrounded skills/certs removed. Only meaningful when ok. */
+  /** Contact fields blanked: a value the source résumé lacks, or a placeholder ("N/A"). */
+  removedContact: string[];
+  /** The resume with ungrounded skills/certs and contact values removed. Only meaningful when ok. */
   cleaned: TailoredResumeShape;
+}
+
+/**
+ * THE CONTACT LINE IS COPIED, NEVER ADDED (S11-017). The kit's tool schema
+ * makes every contact field a required string, so a résumé with no phone,
+ * LinkedIn or website came back with invented ones ("(512) 555-0142",
+ * "linkedin.com/in/janedoe") or a placeholder ("N/A", "Not provided"), and
+ * the PDF and DOCX exporters printed them under a "nothing was invented"
+ * banner. Each contact value must come from the source:
+ *   - email: the same address appears in the source;
+ *   - phone: the same digits as a phone in the source (canonPhone);
+ *   - linkedIn / website / any URL: the same host and path (canonUrl);
+ *   - fullName and location: their significant words appear in the source;
+ *   - title (the headline under the name) is the résumé's own tailoring and
+ *     is not contact information, so it is left alone.
+ * A placeholder is blanked whatever the field.
+ */
+const CONTACT_PLACEHOLDER = /^(?:n\/?a|none|not provided|not available|not applicable|not listed|unknown|tbd|-+|—|\[[^\]]*\]|\([^)]*\))$/i;
+const SOURCE_PHONE_RUN = /\+?\d[\d\s().-]{6,18}\d/g;
+
+export function groundContact(sourceResume: string, contact: Record<string, string> | null | undefined): { contact: Record<string, string>; removed: string[] } {
+  const out: Record<string, string> = {};
+  const removed: string[] = [];
+  const hay = " " + normalizeForMatch(sourceResume) + " ";
+  const lower = sourceResume.toLowerCase();
+  const sourceUrls = lower.replace(/https?:\/\//g, "").replace(/(^|[\s(|,])www\./g, "$1");
+  const sourcePhones = new Set([...sourceResume.matchAll(SOURCE_PHONE_RUN)].map((m) => canonPhone(m[0])));
+  for (const [field, raw] of Object.entries(contact ?? {})) {
+    const value = typeof raw === "string" ? raw.trim() : "";
+    if (!value) { out[field] = ""; continue; }
+    if (CONTACT_PLACEHOLDER.test(value)) { out[field] = ""; removed.push(`${field}: ${value}`); continue; }
+    const key = field.toLowerCase();
+    let supported: boolean;
+    if (key === "title" || key === "headline") {
+      supported = true;
+    } else if (key.includes("email") || /@/.test(value)) {
+      supported = lower.includes(value.toLowerCase());
+    } else if (key.includes("phone") || key.includes("mobile")) {
+      const digits = canonPhone(value);
+      supported = digits.length >= 7 && (sourcePhones.has(digits) || sourceResume.includes(value));
+    } else if (key.includes("linkedin") || key.includes("website") || key.includes("url") || key.includes("github") || key.includes("portfolio") || /\.[a-z]{2,}(\/|$)/i.test(value)) {
+      const canon = canonUrl(value);
+      supported = canon.length > 3 && sourceUrls.includes(canon);
+    } else if (key === "fullname" || key === "name") {
+      supported = tokensSupported(hay, value, 1);
+    } else if (key === "location") {
+      supported = tokensSupported(hay, value, 0.5);
+    } else {
+      supported = tokensSupported(hay, value, 0.75);
+    }
+    if (supported) out[field] = raw as string;
+    else { out[field] = ""; removed.push(`${field}: ${value}`); }
+  }
+  return { contact: out, removed };
 }
 
 /** Lowercase, strip accents/punctuation, collapse whitespace. */
@@ -228,11 +286,16 @@ export function validateTailoredResume(sourceResume: string, resume: TailoredRes
     return supported;
   });
 
+  // Contact values the source lacks are blanked, not refused: a missing
+  // LinkedIn is no reason to withhold a kit, an invented one is never shipped.
+  const groundedContact = groundContact(sourceResume, resume.contact);
+
   return {
     ok: issues.length === 0,
     issues,
     removedSkills,
     removedCertifications,
-    cleaned: { ...resume, skills: keptSkills, certifications: keptCerts },
+    removedContact: groundedContact.removed,
+    cleaned: { ...resume, contact: groundedContact.contact, skills: keptSkills, certifications: keptCerts },
   };
 }
