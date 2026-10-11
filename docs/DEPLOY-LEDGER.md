@@ -31,6 +31,8 @@ closes the gap. Policy lives in `docs/deploy-ledger.json`:
 - `reservations`: the migration-timestamp day and job-board version each
   workstream may use, so two branches never collide, and the order they
   deploy in (`deployOrder`, §3).
+- `sharedFiles`: the owner of each file that two parallel branches both
+  change (§6; checked by `--overlap`).
 
 `--message` runs `git fetch origin main` and refuses (exit 5) unless HEAD is
 origin/main: Lovable pulls main, and a stale checkout re-lists migrations
@@ -139,3 +141,38 @@ stamp the function never SENDS counts as no marker (layoff-filings carries a
 BUILD_VERSION that only reaches a JSON body). Any
 workstream that changes such a function adds a marker (`FN_BUILD` in the CORS
 headers, as the other functions do). The ledger lists the ones still missing.
+
+## 6. Parallel branches own their files
+
+Branches that run at the same time change disjoint sets of files, or the
+ledger names who owns each file they share. A file two branches both edit is
+merged by whoever comes second, from memory, and the edits made in the other
+branch are what gets lost. A function two branches both change is the same
+risk one level up, plus a build-stamp collision (§2).
+
+`docs/deploy-ledger.json` `sharedFiles` maps a path to the workstream (a
+`reservations` key) that owns it. A key ending in `/` covers its folder, and
+`fn:<name>` covers a function. The owner's version is the base. The other
+branch rebases onto it after the owner merges and re-applies only its own
+entries. Name an owner only when the overlap cannot be moved to one branch.
+
+    node scripts/deploy-ledger.mjs --overlap <ref> [<ref> ...] [--main <ref>]
+
+For each ref it diffs `merge-base(ref, origin/main)..ref`, so each branch is
+judged by its own changes and not by what main gained since it forked. It
+lists every file changed by more than one ref, and every function changed by
+more than one ref (its own folder, or a `_shared` module it imports at that
+ref). It exits 4 when any of them has no owner in `sharedFiles`, or an owner
+that no reservation names. Pure git: no network, no fetch (run
+`git fetch origin` first).
+
+Run it on every in-flight branch:
+
+- **before launching parallel builders**, on the branches they will start
+  from, and again once each has pushed;
+- **before merging any branch while another is in flight**, on all of them,
+  the one merging included.
+
+An undeclared overlap is settled before the work continues: move the change to
+one branch, or give the file an owner in `sharedFiles` and say in both
+branches' notes what the other must keep.

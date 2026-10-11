@@ -119,6 +119,13 @@
       "jobBoard": "2026-09-09.95+"
     }
   },
+  "_sharedFilesNote": "File ownership while branches run in parallel (docs/DEPLOY-LEDGER.md §6): path -> the workstream (a reservations key) that owns it. A key ending in / covers its folder; fn:<name> covers a function. node scripts/deploy-ledger.mjs --overlap <ref> ... exits 4 on any file or function two refs change that this map does not give a reservation-named owner. The other branch rebases onto the owner's version and re-applies only its own entries. 2026-10-11: post-wave3/tooling (wave3) and profiles/integration both change the four files below. wave3 merges first and owns the ledger policy and its rules doc; profiles' hold (20261012111000) and its reservation are re-applied by profiles on that version. company-profiles owns the bake, and keeps this PR's postingFreshBudget and per-page carried flag when it rebases.",
+  "sharedFiles": {
+    "docs/deploy-ledger.json": "wave3",
+    "docs/DEPLOY-LEDGER.md": "wave3",
+    "scripts/prerender-seo.mjs": "company-profiles",
+    "scripts/prerender-pages.mjs": "company-profiles"
+  },
   "_baselineNote": "Lovable's staged-runner stubs (drizzle/migrations) name every migration from 20260923 on; earlier ones were applied before that record was complete and were judged applied by behaviour (2026-10-10 check: 20260917170000, 20260918101000, 20260918200000, 20260921120000 have no stub).",
   "verifiedDeploys": [
     {
