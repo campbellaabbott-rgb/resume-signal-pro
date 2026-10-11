@@ -132,7 +132,10 @@ else ok(t.includes(tok+" cannot be served by this server"),"search_jobs companie
 fi
 
 probe v1_withheld_company_tokens '{"p_sources":["smartrecruiters"]}'
-probe agent_packet_pass_funds '{"p_pass_id":null,"p_refunded_at":null}'
+# Typed values, never null: a GET query string cannot carry a SQL NULL, so
+# probe() refuses one (it printed FAIL here on 2026-10-11 without asking).
+# Revoked from anon, the function answers 42501 before reading either value.
+probe agent_packet_pass_funds '{"p_pass_id":"00000000-0000-4000-8000-0000000000aa","p_refunded_at":"2026-10-11T00:00:00Z"}'
 probe agent_adoption_metrics '{"p_days":1}'
 echo "INFO  agent_mandates_resume_in_own_folder (20261009120000) and agent_submissions_owner_status_trg (20261009121000) are triggers: proved in pglite (a-mandate-could-send..., a-refunded-pass-packet...), not probed here"
 

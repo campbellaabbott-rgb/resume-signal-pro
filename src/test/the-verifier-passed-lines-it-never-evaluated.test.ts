@@ -164,12 +164,30 @@ describe("a refusal probe is a read: it can never commit a write (S8-125)", () =
     expect(calls.filter((c) => /rpc/.test(c))).toEqual([]);
   });
 
+  // EVERY section file, read from the folder. The list was seven names long
+  // and 73-wave3-agents-api.sh, added later, probed agent_packet_pass_funds
+  // with two nulls: the deploy of 2026-10-11 read that line as a FAIL.
   it("no probe call site in the verifier passes a null argument", () => {
-    const files = [SCRIPT, ...["30-email-relays.sh", "35-model-spend-gate.sh", "40-db-exposure.sh", "40-resume-privacy.sh", "45-agents-api.sh", "45-payments.sh", "45-scan-ai.sh"].filter((n) => existsSync(resolve(ROOT, "scripts/verify-deploy.d", n))).map(sectionFile)];
-    const sites = files.flatMap((f) => [...f.matchAll(/(?:^|; )probe ([a-z_]+) '([^']*)'/gm)].map((m) => ({ fn: m[1], args: m[2] })));
-    expect(sites.length, "found no probe call sites: the scan is broken").toBeGreaterThan(30);
-    const nulls = sites.filter((s) => Object.values(JSON.parse(s.args) as Record<string, unknown>).some((v) => v === null)).map((s) => s.fn);
+    const sections = readdirSync(resolve(ROOT, "scripts/verify-deploy.d")).filter((n) => n.endsWith(".sh")).sort();
+    expect(sections, "the scan no longer reads the wave-3 agents section").toContain("73-wave3-agents-api.sh");
+    const files = [{ name: "verify-deploy.sh", src: SCRIPT }, ...sections.map((name) => ({ name, src: sectionFile(name) }))];
+    const sites = files.flatMap(({ name, src }) => [...src.matchAll(/(?:^\s*|; )probe ([a-z_]+) '([^']*)'/gm)].map((m) => ({ at: `${name}: ${m[1]}`, args: m[2] })));
+    expect(sites.length, "found no probe call sites: the scan is broken").toBeGreaterThan(40);
+    expect(sites.map((s) => s.at)).toContain("73-wave3-agents-api.sh: agent_packet_pass_funds");
+    const nulls = sites.filter((s) => Object.values(JSON.parse(s.args) as Record<string, unknown>).some((v) => v === null)).map((s) => s.at);
     expect(nulls, "these probes pass null, so they would refuse to run").toEqual([]);
+  });
+
+  it("section 73 asks agent_packet_pass_funds with typed values, and reads its 42501 as the revoke", () => {
+    const line = sectionFile("73-wave3-agents-api.sh").split("\n").find((l) => /^probe agent_packet_pass_funds /.test(l));
+    expect(line, "section 73 no longer probes agent_packet_pass_funds").toBeTruthy();
+    const { lines, calls } = run(line!, { curl: rpc(401, { code: "42501", message: "permission denied for function agent_packet_pass_funds" }) });
+    expect(has(lines, "PASS", /agent_packet_pass_funds as anon -> 42501/), show(lines)).toBe(true);
+    const sent = calls.filter((c) => /\/rest\/v1\/rpc\/agent_packet_pass_funds\?/.test(c));
+    expect(sent.length, calls.join(" | ")).toBe(1);
+    const qs = new URL(sent[0].split(" ")[1]).searchParams;
+    expect(qs.get("p_pass_id")).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+    expect(Number.isNaN(Date.parse(qs.get("p_refunded_at") ?? ""))).toBe(false);
   });
 });
 
