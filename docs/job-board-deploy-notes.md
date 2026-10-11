@@ -46,7 +46,7 @@ ALSO IN .92 (wave 3 integration, 2026-10-10; docs/wave3/README.md):
   company page printed as "<X> has no open roles" under index,follow. A scope
   mixing carried and uncarried tokens is served as before. The page renders
   "We don't carry <X>", noindex, with no not-hiring sentence and no claim
-  offer. Measure: section 79's job-board line (an anon list probe).
+  offer. Measure: section 80's job-board line (an anon list probe).
 - From wave 3 agents-api: job-board now bundles `_shared/application-questions.ts`
   (+11.0 KB raw source) and `_shared/board-domains.ts` (+0.3 KB). Count both
   against the ~4.5 MB cap, beside board-data-ingest's +11,777 bytes.

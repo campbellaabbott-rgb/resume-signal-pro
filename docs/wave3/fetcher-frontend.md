@@ -2,7 +2,7 @@
 
 Branch `w31/fetcher-frontend`, built on `origin/wave3/integration`. Four
 register items: S11-032, S11-008, S11-020, S11-037. Verifier:
-`scripts/verify-deploy.d/79-wave3-fetcher-frontend.sh`.
+`scripts/verify-deploy.d/80-wave3-fetcher-frontend.sh`.
 
 ## Builds
 
@@ -65,7 +65,7 @@ No migrations. No new SQL function: the fetcher calls `check_rate_limit` and
    could not read the link and asks for the text.
 2. free-keyword-scan, free-keyword-scan-stream, analyze-resume and job-board
    in any order.
-3. `bash scripts/verify-deploy.sh`: section 79 PASS.
+3. `bash scripts/verify-deploy.sh`: section 80 PASS.
 
 ## Notes for the owner
 
