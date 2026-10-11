@@ -16,9 +16,9 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-type Mode = "thank" | "stay" | "nothing" | "navigation";
+type Mode = "thank" | "stay" | "nothing" | "navigation" | "beacon";
 const state = vi.hoisted(() => ({
-  mode: "thank" as "thank" | "stay" | "nothing" | "navigation",
+  mode: "thank" as "thank" | "stay" | "nothing" | "navigation" | "beacon",
   delayMs: 0,
   answered: false,
   run: 0,
@@ -45,13 +45,15 @@ vi.mock("../../worker/src/vendors/index.ts", () => {
           response: () => response,
         };
         for (const l of state.listeners) l(req);
+        // A third-party beacon the page also fires, which never answers.
+        if (state.mode === "beacon") for (const l of state.listeners) l({ method: () => "POST", isNavigationRequest: () => false, response: () => new Promise(() => {}) });
       }
       return "submitted" as const;
     },
     unansweredRequired: async () => null,
     // Breezy's own reading: the form still visible is "no"; gone with a
     // thank-you on the page is "yes".
-    confirmed: async () => (state.mode === "thank" && state.answered ? "yes" as const : "no" as const),
+    confirmed: async () => ((state.mode === "thank" || state.mode === "beacon") && state.answered ? "yes" as const : "no" as const),
     requiredAttributeIsTrustworthy: false,
     mappedNames: new Set<string>(["cName", "cEmail"]),
     fieldKeys: new Set(["fullName", "email"]),
@@ -67,9 +69,9 @@ function fakeBrowser() {
   const locator = () => ({ evaluateAll: async () => 0 });
   const page = {
     on: (event: string, fn: (r: unknown) => void) => { if (event === "request") state.listeners.push(fn); },
-    // The page's own clock: a wait moves it, so the twenty-second budget is
-    // spent in a few milliseconds of real time.
-    waitForTimeout: async (ms: number) => { vi.setSystemTime(Date.now() + ms); await new Promise((r) => setTimeout(r, 1)); },
+    // The page's own clock: a wait moves it fifty times faster than real
+    // time, so the twenty-second budget is spent in under half a second.
+    waitForTimeout: async (ms: number) => { vi.setSystemTime(Date.now() + ms); await new Promise((r) => setTimeout(r, ms / 50)); },
     // networkidle fired before the click and the document never changed.
     waitForLoadState: async () => {},
     textContent: async () => "Apply for this role", content: async () => "<form></form>",
@@ -99,6 +101,11 @@ afterEach(() => { vi.useRealTimers(); });
 describe("an XHR submit is read after the employer's server answers it", () => {
   it.each([0, 30, 150])("answered in %i ms and the form replaced: recorded as sent", async (delay) => {
     const out = await send("thank", delay);
+    expect(out.kind).toBe("submitted");
+  });
+
+  it("a beacon that never answers does not hold back a page that says it went", async () => {
+    const out = await send("beacon", 30);
     expect(out.kind).toBe("submitted");
   });
 

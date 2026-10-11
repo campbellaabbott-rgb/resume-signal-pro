@@ -389,12 +389,17 @@ export async function applyToPosting(browser: Browser, input: ApplyInput): Promi
     const deadline = Date.now() + SUBMIT_WAIT;
     await page.waitForTimeout(REQUEST_GRACE_MS);
     const inPlace = writes.filter((r) => !r.isNavigationRequest());
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const answered = await Promise.race([
-      Promise.all(inPlace.map((r) => r.response().catch(() => null))).then(() => true as const),
-      new Promise<false>((done) => { timer = setTimeout(() => done(false), Math.max(0, deadline - Date.now())); }),
-    ]).finally(() => clearTimeout(timer));
-    if (!answered) {
+    // Every write is awaited, but a page that already shows its confirmation
+    // is believed while a write is still out: a third-party beacon that never
+    // answers must not turn a confirmed send into an unconfirmed one.
+    let answered = inPlace.length === 0;
+    void Promise.all(inPlace.map((r) => r.response().catch(() => null))).then(() => { answered = true; });
+    let confirmedEarly = false;
+    while (!answered && Date.now() < deadline) {
+      if ((await adapter.confirmed(page).catch(() => "unknown" as const)) === "yes") { confirmedEarly = true; break; }
+      await page.waitForTimeout(RECHECK_MS);
+    }
+    if (!answered && !confirmedEarly) {
       return {
         kind: "uncertain",
         reason: "submitted and the employer's server never answered — outcome unknown, not retrying",
@@ -420,9 +425,9 @@ export async function applyToPosting(browser: Browser, input: ApplyInput): Promi
       // The form never went away, but the click sent something. Whether the
       // employer kept it cannot be read from here, and "not sent" invites a
       // second application under the candidate's name that nobody can take back.
-      const statuses = await Promise.all(
-        inPlace.map((r) => r.response().then((x) => (x ? String(x.status()) : "no answer"), () => "no answer")),
-      );
+      const statuses = answered
+        ? await Promise.all(inPlace.map((r) => r.response().then((x) => (x ? String(x.status()) : "no answer"), () => "no answer")))
+        : ["no answer"];
       return {
         kind: "uncertain",
         reason: `submit sent ${inPlace.length} request(s) (status ${statuses.join(", ")}) and the form is still showing — outcome unknown, not retrying`,

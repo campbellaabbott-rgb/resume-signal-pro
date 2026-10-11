@@ -46,7 +46,11 @@ const IDLE_EXIT_MS = Number(process.env.WORKER_IDLE_EXIT_MS ?? 0);
 // 2026-10-05.1: waits for a cancel window the broker names instead of leaving;
 // stamps question keys on a question refusal; refuses a submit that never
 // placed the name or email its adapter maps.
-const WORKER_VERSION = "2026-10-05.1";
+// 2026-10-09.24: an XHR submit is read after its answer (S11-011); controls
+// are found among the inputs the enumerator read, never a hidden one
+// (S11-047); a reason prints as its stage in the public log (S11-046); the
+// sponsorship notice and "this country" rules (S11-012, S11-060).
+const WORKER_VERSION = "2026-10-09.24";
 // Where an unresolved submit leaves its evidence, for the human who has to
 // decide whether the application actually went out. The hosted container runs
 // as a non-root user in a root-owned /app, so it sets WORKER_SHOT_DIR (fly.toml)
