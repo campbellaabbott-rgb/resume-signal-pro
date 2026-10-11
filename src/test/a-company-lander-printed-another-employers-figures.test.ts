@@ -88,15 +88,17 @@ describe("a company lander printed another employer's figures", () => {
     expect(wd).not.toContain("pwc~wd3~Advisory");
   });
 
+  // The cache is keyed on the employer key since 20261012100000 (hiring system
+  // plus board): the source travels with the token.
   it("the browser's employer cache asks once per employer: two eu~ boards are two employers, two sites of one tenant are one", async () => {
     rpc.mockClear();
-    await getEmployerCtx("eu~lookers");
-    await getEmployerCtx("eu~rubyhotels");
+    await getEmployerCtx("eu~lookers", "greenhouse");
+    await getEmployerCtx("eu~rubyhotels", "greenhouse");
     const asked = rpc.mock.calls.filter(([f]) => f === "get_company_intel").map(([, a]) => a?.p_token);
     expect(asked, "the second eu~ employer was served the first one's cached context").toEqual(["eu~lookers", "eu~rubyhotels"]);
     rpc.mockClear();
-    await getEmployerCtx("acme~wd1~Careers");
-    await getEmployerCtx("acme~wd1~Campus");
+    await getEmployerCtx("acme~wd1~Careers", "workday");
+    await getEmployerCtx("acme~wd1~Campus", "workday");
     expect(rpc.mock.calls.filter(([f]) => f === "get_company_intel").length).toBe(1);
   });
 });

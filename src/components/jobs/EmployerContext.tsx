@@ -2,8 +2,8 @@
 // moved to the exact place users decide. Headcount (with basis), public-company
 // financials, and the role-matched declared wage from H-1B filings; every row
 // renders only when its data exists, and the whole block disappears when none
-// does. Data comes from the shared per-slug cache (no refires while arrowing
-// through postings).
+// does. Data comes from the shared per-employer cache, keyed on the posting's
+// hiring system plus its board (no refires while arrowing through postings).
 
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -19,8 +19,11 @@ const fmtMoney = (n: number, currency?: string | null): string => {
   return `${prefix}${abs >= 1e9 ? (abs / 1e9).toFixed(1) + "B" : abs >= 1e6 ? Math.round(abs / 1e6) + "M" : abs >= 1e3 ? Math.round(abs / 1e3) + "k" : abs}`;
 };
 
-export function EmployerContext({ companyToken, companyName, postingTitle }: {
-  companyToken: string; companyName: string; postingTitle: string;
+export function EmployerContext({ companyToken, source, companyName, postingTitle }: {
+  companyToken: string;
+  /** The posting's hiring system: the employer key is the system plus the board. */
+  source?: string | null;
+  companyName: string; postingTitle: string;
 }) {
   const { t } = useTranslation();
   const [ctx, setCtx] = useState<EmployerCtx | null>(null);
@@ -32,7 +35,7 @@ export function EmployerContext({ companyToken, companyName, postingTitle }: {
     setLoading(true);
     // Small dwell so arrowing through the list doesn't fire a fetch per stop.
     const timer = setTimeout(() => {
-      void getEmployerCtx(companyToken).then((c) => {
+      void getEmployerCtx(companyToken, source).then((c) => {
         if (cancelled) return;
         setCtx(c);
         setLoading(false);
@@ -43,7 +46,7 @@ export function EmployerContext({ companyToken, companyName, postingTitle }: {
       });
     }, 350);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [companyToken]);
+  }, [companyToken, source]);
 
   // Shimmer while the sourced facts load — prevents both the late pop-in and
   // the "did anything happen?" gap (the RPCs take a couple of seconds).

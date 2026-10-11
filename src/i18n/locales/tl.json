@@ -3832,6 +3832,15 @@
       "salary": "median ng nakasaad na salary floor ${{m}} ({{n}} USD na posting)",
       "fields": "pangunahing kumukuha sa {{fields}}"
     },
+    "collision": {
+      "title": "{{n}} hiring system ang may board na may ganitong pangalan",
+      "body": "Walang hawak kaming impormasyon na nagsasabing iisang employer ang may-ari ng mga board na ito, at kadalasan ay hindi. Kaya inililista ng page na ito ang mga trabaho mula sa lahat ng board, pero walang ipinapakitang impormasyon tungkol sa employer dito: walang bilang ng sahod o empleyado, hiring record, filing, o katulad na employer, dahil hindi namin masasabi kung aling employer ang tinutukoy ng mga ito.",
+      "board": "{{name}} sa {{vendor}}",
+      "openRoles": "bukas na trabaho ngayon: {{n}}",
+      "basis": "Ang bukas na trabaho ay mga posting na ipinapakita pa ng sariling feed ng bawat board, na may petsa mula sa employer sa loob ng huling 30 araw.",
+      "filterHint": "Para makita lang ang mga trabaho ng isang board, piliin ang hiring system nito sa mga filter.",
+      "otherSystem": "ibang hiring system"
+    },
     "similar": {
       "title": "Kumukuha rin sa {{field}}",
       "blurb": "Mga kumpanyang may aktibong bakante sa parehong larangan, mula sa sarili nilang career system.",

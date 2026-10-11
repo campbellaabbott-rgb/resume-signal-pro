@@ -3832,6 +3832,15 @@
       "salary": "mediaan vermeld salarisminimum ${{m}} ({{n}} USD-vacatures)",
       "fields": "werft vooral in {{fields}}"
     },
+    "collision": {
+      "title": "{{n}} wervingssystemen hebben een vacaturebord met deze naam",
+      "body": "Niets in onze gegevens zegt of deze borden bij één werkgever horen, en vaak is dat niet zo. Daarom toont deze pagina de vacatures van alle borden, maar hier geen werkgeversgegevens: geen salaris- of personeelscijfers, geen wervingsgeschiedenis, geen officiële meldingen en geen vergelijkbare werkgevers, omdat we niet kunnen zeggen over welke werkgever ze gaan.",
+      "board": "{{name}} op {{vendor}}",
+      "openRoles": "openstaande vacatures nu: {{n}}",
+      "basis": "Openstaande vacatures zijn vacatures die de eigen feed van elk bord nog toont, door de werkgever gedateerd binnen de laatste 30 dagen.",
+      "filterHint": "Kies in de filters het wervingssysteem van een bord om alleen de vacatures van dat bord te zien.",
+      "otherSystem": "een ander wervingssysteem"
+    },
     "similar": {
       "title": "Werven ook in {{field}}",
       "blurb": "Bedrijven met actieve vacatures in hetzelfde veld, uit hun eigen carrièresystemen.",

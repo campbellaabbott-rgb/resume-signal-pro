@@ -3832,6 +3832,15 @@
       "salary": "median stated salary floor ${{m}} ({{n}} USD postings)",
       "fields": "hires mostly in {{fields}}"
     },
+    "collision": {
+      "title": "{{n}} hiring systems carry a board with this name",
+      "body": "Nothing we hold says whether these boards belong to one employer, and often they do not. So this page lists the roles from all of them and shows no employer facts here: no pay or headcount figures, hiring record, filings or similar employers, because we could not say which employer they describe.",
+      "board": "{{name}} on {{vendor}}",
+      "openRoles": "open roles now: {{n}}",
+      "basis": "Open roles are postings each board's own feed still serves, dated by the employer inside the last 30 days.",
+      "filterHint": "To see one board's roles alone, choose its hiring system in the filters.",
+      "otherSystem": "another hiring system"
+    },
     "similar": {
       "title": "Also hiring in {{field}}",
       "blurb": "Companies with live openings in the same field, from their own career systems.",

@@ -3832,6 +3832,15 @@
       "salary": "piso salarial declarado mediano ${{m}} ({{n}} anuncios en USD)",
       "fields": "contrata sobre todo en {{fields}}"
     },
+    "collision": {
+      "title": "{{n}} sistemas de contratación tienen un portal con este nombre",
+      "body": "Nada de lo que tenemos indica si estos portales pertenecen a un mismo empleador, y a menudo no es así. Por eso esta página muestra las ofertas de todos ellos, pero aquí no muestra datos del empleador: ni cifras de salario o plantilla, ni historial de contratación, ni registros oficiales, ni empleadores similares, porque no podríamos decir a qué empleador describen.",
+      "board": "{{name}} en {{vendor}}",
+      "openRoles": "puestos abiertos ahora: {{n}}",
+      "basis": "Los puestos abiertos son ofertas que el propio feed de cada portal sigue publicando, con fecha del empleador dentro de los últimos 30 días.",
+      "filterHint": "Para ver solo las ofertas de un portal, elige su sistema de contratación en los filtros.",
+      "otherSystem": "otro sistema de contratación"
+    },
     "similar": {
       "title": "También contratan en {{field}}",
       "blurb": "Empresas con vacantes activas en el mismo campo, desde sus propios sistemas de empleo.",

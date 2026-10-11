@@ -65,8 +65,10 @@ import { SavedSearchPills } from "@/components/jobs/SavedSearchPills";
 import { LayoffFilingChip, LayoffFilingLine, LayoffFilingsOnRecord, useEmployerLayoffFilings, useEmployerLayoffFilingsAll } from "@/components/jobs/LayoffFilingLine";
 import { LcaFiledWagesLine } from "@/components/jobs/LcaFiledWagesLine";
 import { OntarioEsaDisclosures } from "@/components/jobs/OntarioEsaDisclosures";
-import { getEmployerCtx, type EmployerCtx } from "@/lib/employer-context";
-import { employerGroupKey } from "@/lib/employer-group";
+import { employerCtxKey, getEmployerCtx, type EmployerCtx } from "@/lib/employer-context";
+import { postingSource } from "@/lib/employer-key";
+import { collidedBoards, isCollidedToken } from "@/lib/board-collisions";
+import { BoardCollisionNotice } from "@/components/jobs/BoardCollisionNotice";
 import { SimilarCompanies } from "@/components/jobs/SimilarCompanies";
 import { TailoredResumeModal, type TailoredResumeContent } from "@/components/TailoredResumeModal";
 import { supabase } from "@/integrations/supabase/client";
@@ -2618,6 +2620,14 @@ function JobsBoard({ boardId }: { boardId: string }) {
   // company chip left "Open roles at Foo" rendered over the whole 573k board,
   // with the board-wide total presented as Foo's (bug sweep 2026-07-26).
   const landerCompany = routeCompany && company === routeCompany ? routeCompany : undefined;
+  // A LANDER TOKEN TWO HIRING SYSTEMS CARRY (139 in the catalogue, read from
+  // the catalogue and not from which boards have live postings). Every
+  // per-employer reader keys on the token, so intel, pay, headcount, SEC
+  // figures, the hiring record, filings and similar employers would describe
+  // both boards as one company: /jobs/company/clear is Clear on BambooHR and
+  // CLEAR - Corporate on Greenhouse. Such a page shows the per-vendor split
+  // and its open-role counts, and no employer-level block.
+  const landerCollision = landerCompany ? collidedBoards(landerCompany) : null;
   const landerCategory = routeCategory && category === routeCategory ? routeCategory : undefined;
   // A secondary board's lander consolidates into the employer's primary board:
   // the bake says so in this address's own canonical, read before React writes
@@ -3173,8 +3183,9 @@ function JobsBoard({ boardId }: { boardId: string }) {
   // Batch 3: compare tray (client-side only — every compared field is already
   // loaded: fit/hits/misses, salary, age, company hiring-health).
   const [compareIds, setCompareIds] = useState<string[]>([]);
-  // Employer context per compared company (slug-keyed, shared promise cache) —
-  // fills the compare cards with headcount/public-co facts when they exist.
+  // Employer context per compared company (keyed on the employer: hiring
+  // system plus board, the shared promise cache's own key) — fills the
+  // compare cards with headcount/public-co facts when they exist.
   const [compareCtx, setCompareCtx] = useState<Record<string, EmployerCtx>>({});
   const [compareOpen, setCompareOpen] = useState(false);
   useEffect(() => {
@@ -3182,9 +3193,9 @@ function JobsBoard({ boardId }: { boardId: string }) {
     for (const id of compareIds) {
       const j = jobs.find((x) => x.id === id);
       if (!j?.token) continue;
-      const slug = employerGroupKey(j.token);
-      if (compareCtx[slug]) continue;
-      void getEmployerCtx(j.token).then((c) => setCompareCtx((prev) => ({ ...prev, [slug]: c })));
+      const key = employerCtxKey(j.token, postingSource(j));
+      if (compareCtx[key]) continue;
+      void getEmployerCtx(j.token, postingSource(j)).then((c) => setCompareCtx((prev) => ({ ...prev, [key]: c })));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compareOpen, compareIds]);
@@ -5749,8 +5760,12 @@ function JobsBoard({ boardId }: { boardId: string }) {
   // folded into it. The employer page reads every qualifying filing for its
   // one token. Both readers, their hide rules and the copy live in
   // LayoffFilingLine.tsx.
-  const layoffFilingOf = useEmployerLayoffFilings(jobs.map((j) => j.token));
-  const landerLayoffFilings = useEmployerLayoffFilingsAll(landerCompany);
+  //
+  // Neither is asked about a token two hiring systems carry: a filing matched
+  // to that token cannot be told apart between the two employers behind it,
+  // and an absent filing is never read as "none" (every surface already says so).
+  const layoffFilingOf = useEmployerLayoffFilings(jobs.map((j) => (isCollidedToken(j.token) ? null : j.token)));
+  const landerLayoffFilings = useEmployerLayoffFilingsAll(landerCollision ? null : landerCompany);
 
   /** THE PAGE'S ONE READING OF THE CLOSURE RECORD. Three answers, and every
    *  surface below branches on all three — see hiringRecordVerdict for why the
@@ -6290,7 +6305,8 @@ function JobsBoard({ boardId }: { boardId: string }) {
   // silently turn a floor into an exact number, so the older health RPC is
   // still asked for that one field, for one token, on the company page alone.
   useEffect(() => {
-    if (!landerCompany) { setHiringCurve(null); setLanderFeedTotal(null); setLanderGrowth(null); return; }
+    // A token two hiring systems carry has no one employer's record to read.
+    if (!landerCompany || landerCollision) { setHiringCurve(null); setLanderFeedTotal(null); setLanderGrowth(null); return; }
     let cancelled = false;
     (async () => {
       try {
@@ -6336,7 +6352,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [landerCompany]);
+  }, [landerCompany, landerCollision]);
 
   // What actually happens to roles in a FIELD, from the lifecycle log. The
   // function that computes it carries its own honesty floor and returns no
@@ -8247,7 +8263,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                   previously lander-only. On small screens it renders after the
                   description instead, so the JD leads. */}
               {!isSmallScreen && (
-                <EmployerContext companyToken={detailJob.token} companyName={detailJob.company} postingTitle={detailJob.title} />
+                <EmployerContext companyToken={detailJob.token} source={postingSource(detailJob)} companyName={detailJob.company} postingTitle={detailJob.title} />
               )}
               {/* Inline fit: never leave the posting to learn your score. With
                   a resume on file but ranking off, one click scores in place;
@@ -8352,7 +8368,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                   )}
                   {isSmallScreen && (
                     <div className="mt-3">
-                      <EmployerContext companyToken={detailJob.token} companyName={detailJob.company} postingTitle={detailJob.title} />
+                      <EmployerContext companyToken={detailJob.token} source={postingSource(detailJob)} companyName={detailJob.company} postingTitle={detailJob.title} />
                     </div>
                   )}
                 </div>
@@ -8719,15 +8735,22 @@ function JobsBoard({ boardId }: { boardId: string }) {
               </span>
             </p>
           )}
-          {landerCompany && <CompanyIntelPanel companyToken={landerCompany} />}
+          {/* A token two hiring systems carry: the split and each board's open
+              roles, and none of the employer-level blocks below (intel, SEC
+              figures, wage filings, the claim, Hiring Health with its filings,
+              similar employers), which would describe two companies as one. */}
+          {landerCompany && landerCollision && (
+            <BoardCollisionNotice companyToken={landerCompany} boards={landerCollision} labelOf={sourceLabel} />
+          )}
+          {landerCompany && !landerCollision && <CompanyIntelPanel companyToken={landerCompany} />}
           {/* SEC-sourced financial context for US-listed employers. */}
-          {landerCompany && <PublicCompanyCard companyToken={landerCompany} />}
+          {landerCompany && !landerCollision && <PublicCompanyCard companyToken={landerCompany} />}
           {/* DOL-sourced declared wages (H-1B filings) — labeled, never
               presented as company-wide pay. */}
-          {landerCompany && (
+          {landerCompany && !landerCollision && (
             <DeclaredWagesCard companyToken={landerCompany} companyName={landerCompanyName ?? landerCompany} />
           )}
-          {landerCompany && (
+          {landerCompany && !landerCollision && (
             <CompanyClaim companyToken={landerCompany} companyName={landerCompanyName ?? landerCompany} />
           )}
           {/* Single row on phones (scrolls; mask hints overflow) — wrapped to
@@ -8789,7 +8812,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
               "typically within ~N days" — was drawn from a window that could not
               contain the answer, and it read within a day and a half of the same
               number for every employer and every field on the board. */}
-          {landerCompany && hiringCurve && (hiringCurve.open_roles > 0 || (hiringCurve.filled_roles_90d ?? 0) + (hiringCurve.relisted_roles_90d ?? 0) > 0) && (
+          {landerCompany && !landerCollision && hiringCurve && (hiringCurve.open_roles > 0 || (hiringCurve.filled_roles_90d ?? 0) + (hiringCurve.relisted_roles_90d ?? 0) > 0) && (
             <div className="rounded-xl border border-border bg-card p-4 mb-6 max-w-xl">
               <div className="flex items-center gap-2 mb-2">
                 <Activity className="w-4 h-4 text-primary shrink-0" />
@@ -13384,7 +13407,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                         <li className="text-success">✓ {t("jobsPage.appliedBadge", "Applied")}</li>
                       )}
                       {(() => {
-                        const ctx = j.token ? compareCtx[employerGroupKey(j.token)] : undefined;
+                        const ctx = j.token ? compareCtx[employerCtxKey(j.token, postingSource(j))] : undefined;
                         if (!ctx) return null;
                         return (
                           <>
@@ -13482,7 +13505,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
         </div>
       )}
       {/* Lander hub: other companies hiring in this company's dominant field. */}
-      {landerCompany && <SimilarCompanies companyToken={landerCompany} />}
+      {landerCompany && !landerCollision && <SimilarCompanies companyToken={landerCompany} />}
       <Footer />
     </div>
   );
