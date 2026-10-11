@@ -28,7 +28,8 @@ import { modelSpendGate } from "../_shared/model-spend-gate.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "nl-search.2026-10-09.1";
+// 2026-10-09.6 (S11-026): pay figures are read in the currency the user named and converted to the dollars the board compares; one above $2M or in a currency the board cannot rank is dropped and named, never clamped.
+const FN_BUILD = "nl-search.2026-10-09.6";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
