@@ -87,6 +87,14 @@ describe("the pattern, so the next one is not written the same way", () => {
     // any queue name and payload and creates the queue it is handed. It was
     // left out of the 07-30 exact-name lockdown and stayed anon-callable.
     "enqueue_email_delayed",
+    // The perk engine (20261012110000, 20261012111000): the sweep's take and
+    // store, the nightly rollup, the lease, the owner's audit path and the
+    // cron-key check. Each reaches a table with no policy; an anonymous call
+    // would forge the perk rows a profile prints, or publish a key unaudited.
+    "employer_perk_sweep_take", "employer_perk_store", "employer_perk_rollup_tick",
+    "employer_profile_lease_take", "employer_profile_lease_release",
+    "employer_perk_audit_draw", "employer_perk_audit_record", "employer_profile_set_pause", "employer_perk_audit_status",
+    "employer_profiles_cron_key_matches",
   ];
 
   // PER STATEMENT: the phrase must sit on the function's own REVOKE, not
