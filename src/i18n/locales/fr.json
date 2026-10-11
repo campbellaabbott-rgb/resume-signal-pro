@@ -5004,7 +5004,7 @@
   },
   "homeAgent": {
     "lead": "Amenez votre propre agent IA.",
-    "passLine": "Un pass à {{passPrice}} $ lui donne {{passHours}} heures à pleine vitesse pour étudier les offres et postuler à {{passApplications}} emplois pour vous. Sans reconduction ; connectez-vous pour l'acheter.",
+    "passLine": "Un pass à {{passPrice}} $ lui donne {{passHours}} heures à pleine vitesse pour étudier les offres et postuler à {{passApplications}} emplois pour vous. Seules comptent les offres où il peut envoyer la candidature lui-même. Sans reconduction ; connectez-vous pour l'acheter.",
     "connectCta": "Connecter votre agent",
     "passCta": "Acheter ou ouvrir votre pass",
     "connectLine2": "Connectez-le gratuitement et sans compte — {{freeCallsPerDay}} appels par jour et par adresse réseau pour explorer la bourse d'emploi (un bureau ou une connexion domestique compte pour une seule adresse ; depuis ChatGPT chaque personne a ses propres {{freeCallsPerDay}}, et depuis Claude un quota quotidien partagé par tous les utilisateurs de Claude passe en premier)."
@@ -5081,7 +5081,7 @@
     "clockShelfExpired": "Votre dernier pass a expiré sans usage le {{date}}.",
     "clockNone": "Aucun pass sur ce compte pour l'instant.",
     "applications": "{{left}} candidatures sur {{passApplications}}",
-    "applicationsBasis": "Chaque demande acceptée en consomme une. Une demande refusée par un garde-fou ne consomme rien, et un envoi qui n'a jamais eu lieu restitue sa candidature.",
+    "applicationsBasis": "Seule une offre où votre agent peut envoyer la candidature lui-même en consomme une. Une demande qu'il refuse ne consomme rien, et un envoi qui n'a jamais eu lieu restitue sa candidature.",
     "buyAnother": "Acheter un pass",
     "whichAgent": "Quel agent ?",
     "handoffTitle": "Confiez-le à votre agent",
@@ -5103,7 +5103,8 @@
     "connectorPassGate": "Depuis {{host}}, le pass ne pourra être utilisé qu'une fois la connexion activée ; aujourd'hui, utilisez-le depuis {{headerHosts}} avec votre clé d'agent.",
     "repairSecondPass": "Ce paiement n'a pas créé de second pass : un compte détient un seul pass ouvert à la fois, et le vôtre est affiché ici, inchangé. Nous avons été prévenus et ce paiement sera remboursé — s'il n'est pas revenu sur votre carte d'ici quelques jours, écrivez à resumeboostersupp@gmail.com.",
     "repairNotYours": "Cet achat appartient à un autre compte que celui avec lequel vous êtes connecté, et son pass se trouve sur ce compte. Connectez-vous au compte qui a payé pour le voir.",
-    "repairRefunded": "Ce paiement a été remboursé : il n'ouvre donc aucun pass."
+    "repairRefunded": "Ce paiement a été remboursé : il n'ouvre donc aucun pass.",
+    "cardCharge": "Seules comptent les offres où votre agent peut envoyer la candidature lui-même. Le reste est refusé et ne coûte rien."
   },
   "oauthConsent": {
     "title": "Connectez votre agent",

@@ -5004,7 +5004,7 @@
   },
   "homeAgent": {
     "lead": "Neem je eigen AI-agent mee.",
-    "passLine": "Een pas van ${{passPrice}} geeft hem {{passHours}} uur op volle snelheid om de vacaturebank te onderzoeken en voor jou op {{passApplications}} vacatures te solliciteren. Verlengt nooit; log in om te kopen.",
+    "passLine": "Een pas van ${{passPrice}} geeft hem {{passHours}} uur op volle snelheid om de vacaturebank te onderzoeken en voor jou op {{passApplications}} vacatures te solliciteren. Alleen vacatures waar hij zelf kan solliciteren tellen mee. Verlengt nooit; log in om te kopen.",
     "connectCta": "Verbind je agent",
     "passCta": "Pas kopen of openen",
     "connectLine2": "Verbind hem gratis en zonder account — {{freeCallsPerDay}} aanroepen per dag per netwerkadres om het vacaturebord te verkennen (een kantoor of een thuisverbinding telt als één adres; vanuit ChatGPT heeft iedereen zijn eigen {{freeCallsPerDay}}, en vanuit Claude gaat eerst een dagelijkse pot voor die alle Claude-gebruikers delen)."
@@ -5081,7 +5081,7 @@
     "clockShelfExpired": "Je laatste pas verviel ongebruikt op {{date}}.",
     "clockNone": "Nog geen pas op dit account.",
     "applications": "{{left}} van {{passApplications}} sollicitaties",
-    "applicationsBasis": "Elke geaccepteerde aanvraag kost er één. Een aanvraag die een controle weigert kost niets, en een verzending die nooit plaatsvond geeft zijn sollicitatie terug.",
+    "applicationsBasis": "Alleen een vacature waar je agent zelf kan solliciteren kost er één. Een aanvraag die hij weigert kost niets, en een verzending die nooit plaatsvond geeft zijn sollicitatie terug.",
     "buyAnother": "Koop een pas",
     "whichAgent": "Welke agent?",
     "handoffTitle": "Geef hem aan je agent",
@@ -5103,7 +5103,8 @@
     "connectorPassGate": "Vanuit {{host}} is de pas pas te gebruiken zodra inloggen aanstaat; gebruik hem vandaag vanuit {{headerHosts}} met je agentsleutel.",
     "repairSecondPass": "Deze betaling heeft geen tweede pass gemaakt: een account heeft steeds één open pass, en de jouwe staat hier ongewijzigd. We zijn op de hoogte en deze betaling wordt terugbetaald — staat hij over een paar dagen niet terug op je kaart, mail dan naar resumeboostersupp@gmail.com.",
     "repairNotYours": "Deze aankoop hoort bij een ander account dan waarmee je bent ingelogd, en de pass staat op dat account. Log in met het account dat heeft betaald om hem te zien.",
-    "repairRefunded": "Deze betaling is terugbetaald, dus er opent geen pas mee."
+    "repairRefunded": "Deze betaling is terugbetaald, dus er opent geen pas mee.",
+    "cardCharge": "Alleen vacatures waar je agent zelf kan solliciteren tellen mee. De rest wordt geweigerd en kost niets."
   },
   "oauthConsent": {
     "title": "Verbind je agent",

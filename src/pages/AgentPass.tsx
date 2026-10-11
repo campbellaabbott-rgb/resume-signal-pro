@@ -247,7 +247,7 @@ export default function AgentPass() {
                       {t("agentPass.applications", "{{left}} of {{passApplications}} applications", { left: pass.applicationsLeft, passApplications })}
                     </p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      {t("agentPass.applicationsBasis", "Each accepted request spends one. A request a gate refuses spends nothing, and a send that never happened gives its application back.")}
+                      {t("agentPass.applicationsBasis", "Only a job your agent can submit itself spends one. A request it refuses spends nothing, and a send that never happened gives its application back.")}
                     </p>
                   </>
                 )}
@@ -264,6 +264,9 @@ export default function AgentPass() {
                     </button>
                     <p className="text-sm text-muted-foreground mt-2">
                       {t("agentPass.cardBody", "{{passHours}} hours with your agent, {{passApplications}} applications, ${{passPrice}}. Never renews.", PASS_COPY)}
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {t("agentPass.cardCharge", "It counts only jobs your agent can submit itself. Anything else is refused and costs nothing.")}
                     </p>
                   </div>
                 )}

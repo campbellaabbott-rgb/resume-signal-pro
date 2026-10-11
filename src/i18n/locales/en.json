@@ -5004,7 +5004,7 @@
   },
   "homeAgent": {
     "lead": "Bring your own AI agent.",
-    "passLine": "A ${{passPrice}} pass gives it {{passHours}} hours at full speed to research the board and apply to {{passApplications}} jobs for you. Never renews; sign in to buy.",
+    "passLine": "A ${{passPrice}} pass gives it {{passHours}} hours at full speed to research the board and apply to {{passApplications}} jobs for you. It counts only jobs it can submit itself. Never renews; sign in to buy.",
     "connectCta": "Connect your agent",
     "passCta": "Buy or open your pass",
     "connectLine2": "Connect it free with no account — {{freeCallsPerDay}} calls a day per network address to look around the board (an office or a home connection counts as one address; from ChatGPT each person has their own {{freeCallsPerDay}}, and from Claude a daily pool every Claude user shares comes first)."
@@ -5081,7 +5081,7 @@
     "clockShelfExpired": "Your last pass expired unused on {{date}}.",
     "clockNone": "No pass on this account yet.",
     "applications": "{{left}} of {{passApplications}} applications",
-    "applicationsBasis": "Each accepted request spends one. A request a gate refuses spends nothing, and a send that never happened gives its application back.",
+    "applicationsBasis": "Only a job your agent can submit itself spends one. A request it refuses spends nothing, and a send that never happened gives its application back.",
     "buyAnother": "Buy a pass",
     "whichAgent": "Which agent?",
     "handoffTitle": "Hand it to your agent",
@@ -5103,7 +5103,8 @@
     "connectorPassGate": "From {{host}} the pass can be used only once sign-in is switched on; today, use it from {{headerHosts}} with your agent key.",
     "repairSecondPass": "This payment did not create a second pass: an account holds one open pass at a time, and yours is shown here, unchanged. We have been told, and this payment will be refunded — if it is not back on your card within a few days, write to resumeboostersupp@gmail.com.",
     "repairNotYours": "This checkout belongs to a different account from the one you are signed in to, and its pass is on that account. Sign in to the account that paid to see it.",
-    "repairRefunded": "This payment was refunded, so it does not open a pass."
+    "repairRefunded": "This payment was refunded, so it does not open a pass.",
+    "cardCharge": "It counts only jobs your agent can submit itself. Anything else is refused and costs nothing."
   },
   "oauthConsent": {
     "title": "Connect your agent",

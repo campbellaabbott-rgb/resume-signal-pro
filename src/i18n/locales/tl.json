@@ -5004,7 +5004,7 @@
   },
   "homeAgent": {
     "lead": "Dalhin ang sarili mong AI agent.",
-    "passLine": "Ang ${{passPrice}} na pass ay nagbibigay dito ng {{passHours}} oras sa buong bilis para mag-research sa job board at mag-apply sa {{passApplications}} trabaho para sa iyo. Hindi kailanman nagre-renew; mag-sign in para bumili.",
+    "passLine": "Ang ${{passPrice}} na pass ay nagbibigay dito ng {{passHours}} oras sa buong bilis para mag-research sa job board at mag-apply sa {{passApplications}} trabaho para sa iyo. Binibilang lang ang mga trabahong kaya nitong i-submit mismo. Hindi kailanman nagre-renew; mag-sign in para bumili.",
     "connectCta": "Ikonekta ang iyong agent",
     "passCta": "Bumili o buksan ang iyong pass",
     "connectLine2": "Ikonekta ito nang libre at walang account — {{freeCallsPerDay}} na tawag bawat araw bawat network address para tumingin-tingin sa job board (ang isang opisina o koneksyon sa bahay ay binibilang bilang isang address; mula sa ChatGPT may sariling {{freeCallsPerDay}} ang bawat tao, at mula sa Claude, nauuna ang pang-araw-araw na pool na pinagsasaluhan ng lahat ng gumagamit ng Claude)."
@@ -5081,7 +5081,7 @@
     "clockShelfExpired": "Napaso nang hindi nagagamit ang iyong huling pass noong {{date}}.",
     "clockNone": "Wala pang pass sa account na ito.",
     "applications": "{{left}} sa {{passApplications}} aplikasyon",
-    "applicationsBasis": "Bawat tinanggap na kahilingan ay gumagastos ng isa. Ang kahilingang tinanggihan ng isang gate ay walang gastos, at ang pagpapadalang hindi kailanman nangyari ay nagbabalik ng aplikasyon nito.",
+    "applicationsBasis": "Ang trabahong kaya lang i-submit mismo ng iyong agent ang gumagastos ng isa. Ang kahilingang tinatanggihan nito ay walang gastos, at ang pagpapadalang hindi kailanman nangyari ay nagbabalik ng aplikasyon nito.",
     "buyAnother": "Bumili ng pass",
     "whichAgent": "Aling agent?",
     "handoffTitle": "Ibigay ito sa iyong agent",
@@ -5103,7 +5103,8 @@
     "connectorPassGate": "Mula sa {{host}}, magagamit lang ang pass kapag naka-on na ang sign-in; ngayon, gamitin ito mula sa {{headerHosts}} gamit ang iyong agent key.",
     "repairSecondPass": "Hindi lumikha ng ikalawang pass ang bayad na ito: isang bukas na pass lang ang hawak ng isang account sa bawat pagkakataon, at nakikita rito ang sa iyo nang walang pagbabago. Naabisuhan na kami at ire-refund ang bayad na ito — kung hindi ito bumalik sa card mo sa loob ng ilang araw, sumulat sa resumeboostersupp@gmail.com.",
     "repairNotYours": "Ang checkout na ito ay sa ibang account kaysa sa naka-sign in ka, at nasa account na iyon ang pass nito. Mag-sign in sa account na nagbayad para makita ito.",
-    "repairRefunded": "Na-refund ang bayad na ito, kaya hindi ito nagbubukas ng pass."
+    "repairRefunded": "Na-refund ang bayad na ito, kaya hindi ito nagbubukas ng pass.",
+    "cardCharge": "Binibilang lang ang mga trabahong kaya mismong i-submit ng iyong agent. Ang iba ay tinatanggihan at walang bayad."
   },
   "oauthConsent": {
     "title": "Ikonekta ang iyong agent",

@@ -59,6 +59,9 @@ import { searchCallerHeader } from "../_shared/search-caller.ts";
 import { boardReaderHeader } from "../_shared/board-reader-key.ts";
 import { computeFit, resumeRoleTerms } from "../_shared/fit-score.ts";
 import { applyServingFences, parseCountries } from "../_shared/mandate-reach.ts";
+// The file the broker signs: one in the account's own folder (S8-080). Read
+// here too, so "a résumé on file" means the file a form will be sent (S11-041).
+import { ownResumePath } from "../_shared/resume-path.ts";
 import {
   ACCOUNT_SUBSCRIPTION_RPC,
   accountSubscription,
@@ -233,8 +236,12 @@ const DOCS_URL = SERVER_INFO.websiteUrl;
 const NOT_A_WEB_PAGE = `This is an MCP server for AI agents, not a web page. Paste this address into your agent; the how-to is at ${DOCS_URL}.`;
 /** The JSON-RPC methods this server answers, for the error that names them. */
 const SUPPORTED_METHODS = ["initialize", "tools/list", "tools/call", "prompts/list", "prompts/get", "resources/list", "resources/templates/list", "resources/read"] as const;
-/** Provable from outside with no key: every response, the preflight included, carries it in x-fn-build. */
-const FN_BUILD = "agent-mcp.2026-10-09.4";
+/** Provable from outside with no key: every response, the preflight included, carries it in x-fn-build.
+ *  2026-10-09.24: a pass is spent only on a job the agent can submit, and any
+ *  other is refused for nothing (S11-039); "a résumé on file" needs the file in
+ *  the account's folder as well as its text (S11-041); the Agent plan opens
+ *  fit_resume (S11-121). */
+const FN_BUILD = "agent-mcp.2026-10-09.24";
 /** Where a free key is minted — the page every refusal in this file points at. */
 const MINT_URL = "https://resumebooster.work/data-api";
 /** Where a pass is bought, signed in — the fix every pass refusal names. */
@@ -1274,6 +1281,8 @@ const TOOLS = [
       "Ask the board's apply agent to submit an application to this job on behalf of the key's owner. " +
       "Needs an account key (mint one at " + DOCS_URL + "), an active Agent plan OR a live Agent Pass on the account, and a mandate set in Account — " +
       "call key_status first: it says which of the three is missing, and on a pass how many applications and how much time are left. " +
+      "On a pass, only a job the agent can submit itself (agentReady true, which check_apply_support reports) uses an application; any other job is refused and nothing is spent. " +
+      "On the Agent plan nothing is counted, and such a job is prepared for the person to send. " +
       "Every application passes the same gates as the signed-in flow, including the honesty classifier: answers are drawn from the owner's own profile and never invented. " +
       "Ask the person for a yes on this specific job id before calling. " + KEYED_TOOL_SENTENCE,
     annotations: {
@@ -1384,7 +1393,7 @@ const TOOLS = [
     title: "Score a résumé against the board",
     description:
       "Score a résumé against open jobs, for an agent holding a CV: reads the occupation out of resumeText (or uses `query` if given), searches the board for it, and scores up to 20 results 0-100 with the matched and missing terms per job. " +
-      "PAID — needs a paid API key, exactly like POST /v1/fit on the data API, or a live Agent Pass on the key's account; a free key gets an in-band refusal saying what opens it. " +
+      "PAID — needs a paid API key, exactly like POST /v1/fit on the data API, or a live Agent Pass or the Agent plan on the key's account; a free key gets an in-band refusal saying what opens it. " +
       "A null fit means the posting has no stored description to score. Returns the terms it read from the CV so the agent can pick a different one and call again with `query`. " + KEYED_TOOL_SENTENCE,
     annotations: READS_THE_BOARD,
     inputSchema: {
@@ -1589,7 +1598,7 @@ const TOOLS = [
         features: {
           type: "object",
           properties: {
-            fit_resume: { type: "boolean", description: "Paid tiers and a live pass, exactly as POST /v1/fit plus the pass." },
+            fit_resume: { type: "boolean", description: "Paid tiers, a live pass, and keys of an account on the Agent plan: POST /v1/fit plus the pass and the plan." },
             rankedEngine: { type: "boolean", description: "/v1/jobs?engine=ranked on the data API, same key. Paid tiers only — never the pass." },
             request_application: { type: "boolean", description: "True only when every apply gate below already passes." },
           },
@@ -1983,7 +1992,7 @@ function guideText(shop: Shop): string {
     `- "That is not a job id from this board." — the argument was a link or a title; use the id from a search card, e.g. greenhouse:acme:12345 (the id in a resumebooster.work/jobs?job=<id> link is the same one).`,
     `- "unknown tool" or "method not found" — call tools/list for the names; the methods are ${SUPPORTED_METHODS.join(", ")}.`,
     `- "${NOT_A_WEB_PAGE}" — the address was opened in a browser; nothing is wrong.`,
-    `- "${tool("fit_resume")} is a paid feature…" — résumé fit scoring needs a paid key${forSale(shop, ` (${MINT_URL})`, "")} or a live Agent Pass${passAt}; search keeps working.`,
+    `- "${tool("fit_resume")} is a paid feature…" — résumé fit scoring needs a paid key${forSale(shop, ` (${MINT_URL})`, "")}, a live Agent Pass${passAt} or the Agent plan on the key's account; search keeps working.`,
     `- "The apply agent needs an active Agent plan or a live pass." / "No agent mandate on this account." / "Your agent is switched off." / "No resume on file…" — the apply agent is not funded, not set up, off, or has no CV; each answer names the page to fix it. The off switch always wins.`,
     `- "The pass on this account is not live." / "No applications left on this pass." — the pass ended or its applications are used; search keeps working on the key's own daily quota, which counts every call made that UTC day, the pass's calls included — a key that made more than that during the pass waits for midnight UTC.`,
     `- "ids is required…" from ${tool("get_jobs")} or ${tool("check_jobs_open")} — send {ids: [...]}.`,
@@ -3016,6 +3025,10 @@ function describePass(p: OpenPassRow | null, shop: Shop, now: number = Date.now(
   };
 }
 
+/** key_status's blocker and request_application's refusal for a text-only résumé (S11-041). */
+const RESUME_FILE_MISSING =
+  "Your CV text is on file but the CV itself is not, and employers' forms need the file. Upload your CV in Account → Apply profile.";
+
 /** Why an activated pass no longer funds a request: no applications left, or the clock ended. */
 function passBlockerReason(p: PassRow): string {
   const left = Number(p.applications_total ?? 0) - Number(p.applications_used ?? 0);
@@ -3061,13 +3074,18 @@ async function applyReadiness(
     };
   }
   const { data: mandate } = await client.from("agent_mandates")
-    .select("active, paused_until, resume_text").eq("user_id", userId).maybeSingle();
-  const m = mandate as { active?: boolean; paused_until?: string | null; resume_text?: string | null } | null;
+    .select("active, paused_until, resume_text, resume_file_url").eq("user_id", userId).maybeSingle();
+  const m = mandate as { active?: boolean; paused_until?: string | null; resume_text?: string | null; resume_file_url?: string | null } | null;
   const pausedUntil = m?.paused_until && Date.parse(m.paused_until) > Date.now() ? m.paused_until : null;
   const mandateActive = m?.active === true && !pausedUntil;
   // The seam's own floor, not a second one: "a resume on file" has to mean the
-  // same length there and here or this tool would promise a refusal.
-  const resumeOnFile = String(m?.resume_text ?? "").length >= 100;
+  // same length there and here or this tool would promise a refusal. AND THE
+  // FILE ITSELF (S11-041): employers' forms ask for the document, and a
+  // mandate saved from a scan holds only its text, so a text-only account was
+  // told it was ready and then spent a pass on packets that block.
+  const resumeText = String(m?.resume_text ?? "").length >= 100;
+  const resumeFile = ownResumePath(m?.resume_file_url, userId) !== null;
+  const resumeOnFile = resumeText && resumeFile;
 
   // The account's subscription BY ITS USER ID (agent_subscription_rows): a
   // plan bound to it, or one on a mailbox it proved — never one found by an
@@ -3092,7 +3110,8 @@ async function applyReadiness(
   if (!m) blockers.push("No agent mandate on this account — set your agent up in Account.");
   else if (m.active !== true) blockers.push("Your agent is switched off.");
   else if (pausedUntil) blockers.push(`Your agent is paused until ${pausedUntil}.`);
-  if (!resumeOnFile) blockers.push("No resume on file — the agent refuses to apply blind.");
+  if (!resumeText) blockers.push("No resume on file — the agent refuses to apply blind.");
+  else if (!resumeFile) blockers.push(RESUME_FILE_MISSING);
   if (!planActive) {
     blockers.push(pass && !subscribed
       ? `The pass on this account has ${passBlockerReason(pass)}` + forSale(shop, ` — buy another at ${PASS_URL} when its clock ends, or subscribe to the Agent plan.`, "; applying needs a live pass or an Agent plan on the account.")
@@ -3178,13 +3197,13 @@ async function enqueueApplication(
   }
 
   const { data: mandate } = await client.from("agent_mandates")
-    .select("active, paused_until, resume_text, apply_mode, daily_count, countries, category, include_uncategorised, max_age_days, salary_min, last_prepare_kick_at, blocked_companies, employer_cooldown_days")
+    .select("active, paused_until, resume_text, resume_file_url, apply_mode, daily_count, countries, category, include_uncategorised, max_age_days, salary_min, last_prepare_kick_at, blocked_companies, employer_cooldown_days")
     .eq("user_id", userId).maybeSingle();
   if (!mandate) {
     return refuse("mandate", "No agent mandate on this account.", "Set up your agent in Account — that is where you authorize what it may do and hand it your details.");
   }
   const m = mandate as {
-    active?: boolean; paused_until?: string | null; resume_text?: string | null; apply_mode?: string;
+    active?: boolean; paused_until?: string | null; resume_text?: string | null; resume_file_url?: string | null; apply_mode?: string;
     countries?: string | null; category?: string | null; include_uncategorised?: boolean | null;
     max_age_days?: number | null; salary_min?: number | null; last_prepare_kick_at?: string | null;
     blocked_companies?: string[] | null; employer_cooldown_days?: number | null;
@@ -3231,6 +3250,27 @@ async function enqueueApplication(
       forSale(shop, `Buy a pass at ${PASS_URL} or subscribe at ${AGENT_PLAN_URL} — search`, "Search") + " tools keep working without either.");
   }
   const passFunded = !subscribed;
+
+  // The text scores the fit; the FILE is what an employer's form takes
+  // (S11-041). Refused here, before anything is spent, with key_status's words.
+  if (ownResumePath(m.resume_file_url, userId) === null) {
+    return refuse("resume", RESUME_FILE_MISSING, "Upload your CV in Account → Apply profile — nothing was spent.");
+  }
+
+  // A PASS PAYS ONLY FOR WHAT THE AGENT CAN SUBMIT (S11-039, owner decision
+  // 2026-10-11). The pass is sold as applications the agent sends, and about
+  // 96% of postings are on systems it can only prepare for; spending one on
+  // each made ten requests about nine prepared forms. On a pass, a job the
+  // agent cannot submit to is refused before anything is written or spent.
+  // On the Agent plan nothing is counted, so it is still prepared for the
+  // person to send.
+  const vendor = parts[0];
+  const agentReady = SENDABLE_VENDORS.includes(vendor);
+  if (passFunded && !agentReady) {
+    return refuse("vendor",
+      `A pass is used only on jobs the agent can submit itself, and this employer's system (${vendor}) is not one of them.`,
+      "Nothing was spent. Apply on the employer's site yourself, or pick a job whose agentReady is true (check_apply_support says before you ask).");
+  }
 
   // The posting, through the SAME serving fences selection uses — this is the
   // only moment the pipeline checks them, so the request must too.
@@ -3397,8 +3437,6 @@ async function enqueueApplication(
     }
   }
 
-  const vendor = parts[0];
-  const agentReady = SENDABLE_VENDORS.includes(vendor);
   // EVERY WARNING, KEPT (L9-17). Two spreads both wrote `warning`, so a
   // low-fit posting on a non-submittable system lost the fit warning to the
   // vendor one. `warning` stays (the first, for a client that reads only it);
@@ -3486,7 +3524,6 @@ async function runKeyStatus(client: SupabaseClient, d: Decision, shop: Shop): Pr
   // fit_resume and is true on a pass. The tier itself is the decision's —
   // api_key_check answers the pass tier while an open pass exists.
   const paid = isPaidKeyTier(d.key_tier);
-  const fit = hasFitAccess(d.key_tier);
   const apiKeyId = d.api_key_id ?? "";
   const userId = apiKeyId ? await keyOwner(client, apiKeyId) : null;
   // The pass row, read once and shared with the readiness block; its state
@@ -3494,6 +3531,9 @@ async function runKeyStatus(client: SupabaseClient, d: Decision, shop: Shop): Pr
   // this call (pass_ends_at is what api_key_check will enforce).
   const pass = userId ? await openPassOf(client, userId) : null;
   const apply = await applyReadiness(client, userId, pass, shop);
+  // The Agent plan opens the scorer too (S11-121): `subscribed` is the same
+  // account-keyed read agentPlanOpensFit makes at the dispatch.
+  const fit = hasFitAccess(d.key_tier) || apply.subscribed === true;
   const passBlock = describePass(pass, shop);
   if (d.pass_ends_at) passBlock.endsAt = d.pass_ends_at;
   if (typeof d.pass_apps_left === "number") passBlock.applicationsLeft = d.pass_apps_left;
@@ -3567,6 +3607,20 @@ async function noteActivatedVia(client: SupabaseClient, d: Decision, via: string
   }
 }
 
+/**
+ * fit_resume on the Agent plan (S11-121): the key's account holds a live plan
+ * (agent_subscription_rows by user id, rowIsEntitled), the same read
+ * request_application and key_status make. Asked only after the tier refused.
+ */
+async function agentPlanOpensFit(client: SupabaseClient, apiKeyId: string): Promise<boolean> {
+  if (!apiKeyId) return false;
+  const userId = await keyOwner(client, apiKeyId);
+  if (!userId) return false;
+  const { data, error } = await client.rpc(ACCOUNT_SUBSCRIPTION_RPC, { p_user_ids: [userId] });
+  if (error) return false;
+  return rowIsEntitled(accountSubscription(data, userId) as SubscriberRow | null);
+}
+
 async function callTool(
   client: SupabaseClient,
   apiKeyId: string,
@@ -3595,11 +3649,18 @@ async function callTool(
       // API and free here, and the free path drained the paid customers'
       // shared scorer allowance. Refused in-band, before any search runs.
       if (!hasFitAccess(tier)) {
-        return toolErr(
-          "fit_resume is a paid feature — résumé-to-job fit scoring, the same feature as POST /v1/fit — open on a paid key or a live pass.",
-          forSale(shop, "Upgrade the key at https://resumebooster.work/data-api, or buy a pass at " + PASS_URL + " — the", "A paid key or a live pass on the key's account opens it; the") +
-            " search tools keep working on a free key.",
-        );
+        // THE AGENT PLAN INCLUDES IT (S11-121, owner decision 2026-10-11).
+        // Agent-plan keys are minted 'free' (api_key_issue_agent), so the
+        // tier alone refused a subscriber the scorer /agents sells them. The
+        // plan is read the way every apply gate reads it: by the key's
+        // account, never an address. A failed read is no plan.
+        if (!(await agentPlanOpensFit(client, apiKeyId))) {
+          return toolErr(
+            "fit_resume is a paid feature — résumé-to-job fit scoring, the same feature as POST /v1/fit — open on a paid key, a live pass or the Agent plan.",
+            forSale(shop, "Upgrade the key at https://resumebooster.work/data-api, or buy a pass at " + PASS_URL + " — the", "A paid key, a live pass or the Agent plan on the key's account opens it; the") +
+              " search tools keep working on a free key.",
+          );
+        }
       }
       return toolOk(await runFitResume(args, apiKeyId));
     }
