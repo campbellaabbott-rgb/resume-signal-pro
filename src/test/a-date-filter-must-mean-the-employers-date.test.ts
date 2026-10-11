@@ -106,7 +106,12 @@ describe("a date filter must mean the employer's date", () => {
     expect(defining.length, "no migration defines the search RPC").toBeGreaterThan(0);
     const sql = readFileSync(resolve(dir, defining[defining.length - 1]), "utf8");
     const binds = [...sql.matchAll(/p_posted_after IS NOT NULL THEN filters := filters \|\| ' AND p\.(\w+) >/g)].map((m) => m[1]);
-    expect(binds.length, `expected both functions to bind p_posted_after in ${defining[defining.length - 1]}`).toBe(2);
+    // One bind per function that builds its filters this way: search_jobs and
+    // count_jobs_capped always, and fuzzy_title_search too since
+    // 20261009101000 made it plpgsql (S11-002). None may drop it.
+    const builders = (sql.match(/^\s+filters text := /gm) ?? []).length;
+    expect(builders, "the ranked search and its count build filters in plpgsql").toBeGreaterThanOrEqual(2);
+    expect(binds.length, `expected every filter-building function to bind p_posted_after in ${defining[defining.length - 1]}`).toBe(builders);
     for (const col of binds) {
       expect(
         col,

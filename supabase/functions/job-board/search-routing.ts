@@ -85,6 +85,57 @@ export const ENGLISH_STOPWORDS: ReadonlySet<string> = new Set([
   "was", "were", "be", "been", "being", "do", "does", "did", "of", "as", "who",
 ]);
 
+/** R3's token test: a stopword, or three letters or digits or fewer. */
+export const isLiteralToken = (t: string): boolean => ENGLISH_STOPWORDS.has(t) || foldName(t).length <= 3;
+
+/** The query's tokens the english tsquery discards ("it" in "it technicians"). */
+export const stopwordTokens = (q: string): string[] =>
+  [...new Set(String(q ?? "").toLowerCase().split(/\s+/).filter((t) => t !== "or" && ENGLISH_STOPWORDS.has(t)))];
+
+export type TitleFilter = { column: "title" | "title_tsv"; query: string; config: "simple" | "english" };
+
+/**
+ * The SIMPLE route's title match, token by token (S11-004, n481). Each short
+ * or stop token is matched literally (simple config on the title), OR'ed with
+ * its own alias phrases; every other token is matched by english stem, on
+ * title_tsv (indexed) and on the title alone (which decides), so "QA
+ * engineers" finds "QA Engineer". `safeQ` is ftsSafe output. null keeps the
+ * whole-query simple match: websearch syntax (a quote, " or ", a leading "-"),
+ * or no token that needs a stem.
+ */
+export function simpleRouteFilters(
+  safeQ: string,
+  aliases: Readonly<Record<string, readonly string[]>>,
+): { filters: TitleFilter[]; expansions: string[] } | null {
+  const q = String(safeQ ?? "").trim();
+  if (!q || q.includes('"')) return null;
+  const tokens = q.toLowerCase().split(/\s+/).filter(Boolean);
+  if (tokens.some((t) => t === "or" || t.startsWith("-"))) return null;
+  const literal = tokens.filter(isLiteralToken);
+  const stem = tokens.filter((t) => !isLiteralToken(t));
+  if (literal.length === 0 || stem.length === 0) return null;
+  const expansions: string[] = [];
+  const alts = (t: string) => (Object.prototype.hasOwnProperty.call(aliases, t) ? aliases[t] : []).slice(0, 2);
+  const either = (t: string) => {
+    for (const p of alts(t)) if (!expansions.includes(p)) expansions.push(p);
+    return [t, ...alts(t)].join(" or ");
+  };
+  const filters: TitleFilter[] = literal.map((t) => ({ column: "title", query: either(t), config: "simple" }));
+  const plain = stem.filter((t) => alts(t).length === 0);
+  const english = [...(plain.length ? [plain.join(" ")] : []), ...stem.filter((t) => alts(t).length > 0).map(either)];
+  for (const e of english) {
+    filters.push({ column: "title_tsv", query: e, config: "english" });
+    filters.push({ column: "title", query: e, config: "english" });
+  }
+  return { filters, expansions };
+}
+
+/** The query with its stemmed plurals singular, a reading for the re-ranker only ("qa engineers" -> "qa engineer"). */
+export function singularReading(q: string): string {
+  return String(q ?? "").split(/\s+/).filter(Boolean).map((t) =>
+    isLiteralToken(t.toLowerCase()) ? t : t.replace(/ies$/i, "y").replace(/([^s])s$/i, "$1")).join(" ");
+}
+
 export type Route = "BROWSE" | "EMPLOYER" | "SYMBOL" | "SIMPLE" | "RANKED";
 
 /**
@@ -205,7 +256,7 @@ export function pickRoute(
   // character token is absent from the stored english tsvector, so that path is
   // either blind (q="IT" -> 0 rows) or answering a different question
   // (q="it manager" -> 92,919 rows for "manager").
-  if (tokens.some((t) => ENGLISH_STOPWORDS.has(t) || foldName(t).length <= 3)) {
+  if (tokens.some(isLiteralToken)) {
     return { route: "SIMPLE", reason: "query contains a token the english index discards" };
   }
 

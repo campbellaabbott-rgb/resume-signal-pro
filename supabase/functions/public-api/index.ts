@@ -319,7 +319,9 @@ const LIST_FILTERS = [
 // 2026-10-08.1: /v1/changes leaves suspect closure batches out unless
 // include_suspect=true, and marks them when it serves them. 2026-10-08.2:
 // suspectBatch is null, not false, on a closure nobody assessed.
-const FN_BUILD = "public-api.2026-10-09.2";
+// 2026-10-09.6: a state filter also matches a code that leads the place
+// ("TX - Houston", "US-TX-Houston"), _shared/location-match.ts (S11-003).
+const FN_BUILD = "public-api.2026-10-09.6";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -1206,7 +1208,8 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
     if (agentReady === true) qb = qb.in("source", [...SENDABLE_VENDORS]);
     // Mirrors the board's browse path: one name is an ILIKE, a metro is an OR
     // over every name, each quoted because state aliases contain commas. A
-    // state code (", OR") binds at a boundary on a US/CA/unplaced row, the
+    // state code (", OR") binds at a boundary on a US/CA/unplaced row, or
+    // leading ("OR - Eugene") on a row in its own country, the
     // board's rule since .91 (L13-01): a plain ILIKE put "New York" under OR
     // and Berlin under DE. One branch builder for both: _shared/location-match.ts.
     if (locTerms.length === 1 && !isStateCodeAlias(locTerms[0])) qb = qb.ilike("location", `%${locTerms[0]}%`);

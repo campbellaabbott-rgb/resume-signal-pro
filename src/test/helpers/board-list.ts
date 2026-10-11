@@ -13,7 +13,7 @@ export const SVC = "svc-key-for-tests";
 export interface BoardList {
   db: ProxyDb;
   post: (body: Record<string, unknown>) => Promise<Record<string, unknown>>;
-  answer: (fn: (q: Query) => Answer | undefined) => void;
+  answer: (fn: (q: Query) => Answer | Promise<Answer | undefined> | undefined) => void;
   reset: () => void;
 }
 
@@ -26,7 +26,7 @@ export async function bootBoardList(): Promise<BoardList> {
   const handler: EdgeHandler = await loadEdgeHandler("job-board", {
     "https://esm.sh/@supabase/supabase-js@2": "export function createClient() { return globalThis.__jbDb; }",
   });
-  let answers: Array<(q: Query) => Answer | undefined> = [];
+  let answers: Array<(q: Query) => Answer | Promise<Answer | undefined> | undefined> = [];
   const db = new ProxyDb();
   const isMeta = (q: Query, k: string) => q.table === "job_board_meta" && q.calls.some(([m, a]) => m === "eq" && a[0] === "k" && a[1] === k);
   db.answer = (q) => {
