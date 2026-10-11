@@ -5884,6 +5884,7 @@ export type Database = {
           lf_source_url: string
           lf_state: string
           lf_workers: number
+          lf_workforce: boolean
         }[]
       }
       get_employer_layoff_filings_all: {
@@ -5909,6 +5910,7 @@ export type Database = {
           la_state: string
           la_total_n: number
           la_workers: number
+          la_workforce: boolean
         }[]
       }
       get_employer_lca_wages: {
