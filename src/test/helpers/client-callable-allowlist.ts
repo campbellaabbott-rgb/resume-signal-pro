@@ -61,7 +61,7 @@ export const CLIENT_CALLABLE: AllowedFunction[] = [
   A("public.get_company_financials(text)", "src/components/jobs/PublicCompanyCard.tsx", "public record: SEC ticker and revenue series"),
   A("public.get_company_growth(text[])", "src/pages/Jobs.tsx", "aggregates: per-company 7-day growth rate"),
   A("public.get_company_hiring_health(text[])", "src/pages/Jobs.tsx", "aggregates: per-company closure and repost counts"),
-  A("public.get_company_intel(text)", "src/components/jobs/CompanyIntelPanel.tsx", "aggregates: one company's category, country and salary medians"),
+  A("public.get_company_intel(text)", "src/components/jobs/CompanyIntelPanel.tsx", "aggregates: one company's category, country and salary medians, and the token's open roles per hiring system"),
   A("public.get_company_suggest(text)", "src/pages/Explore.tsx", "aggregates: up to 8 company names matching a 3+ letter query, with open-role counts"),
   A("public.get_country_facet()", "src/pages/Jobs.tsx", "aggregates: postings per country"),
   A("public.get_employer_layoff_filings(text[])", "src/components/jobs/LayoffFilingLine.tsx", "public record: WARN / SEC 8-K filings matched to the tokens asked about"),

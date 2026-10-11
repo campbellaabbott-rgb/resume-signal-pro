@@ -209,6 +209,7 @@ export { FREE_KEY_RATE_PER_MIN } from "../src/config/free-key-limits";
 export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/sendable-vendors";
 export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPostingLive, jdParagraphs, postingEmployer, postingIdFromPath, postingIdentity, postingJsonLd, postingPageDescription, postingPagePath, postingPageTitle, postingPathParts } from "../src/components/jobs/posting-page";
 export { boardName, employerName, isCodeShapedName, possessive } from "../src/lib/company-display";
+export { isCollidedToken } from "../src/lib/board-collisions";
 `);
   const bundle = join(root, "scripts", ".prerender-data.mjs");
   execSync(`npx esbuild "${entry}" --bundle --format=esm --outfile="${bundle}" --log-level=error`, { cwd: root, stdio: "inherit" });
@@ -2315,9 +2316,13 @@ export { boardName, employerName, isCodeShapedName, possessive } from "../src/li
       const supaKey6 = grab6("VITE_SUPABASE_PUBLISHABLE_KEY");
       const intelOf = new Map();
       const primaries0 = LANDERS.filter((c) => c.primary === c.token);
+      // A token two hiring systems carry (src/lib/board-collisions.ts) states
+      // no places or fields: its intel pools both boards, which may be two
+      // employers. Its page still lists its openings.
+      const intelAsked = primaries0.filter((c) => !D.isCollidedToken(c.token));
       if (supaUrl6 && supaKey6) {
-        for (let i = 0; i < primaries0.length; i += 6) {
-          await Promise.all(primaries0.slice(i, i + 6).map(async (c) => {
+        for (let i = 0; i < intelAsked.length; i += 6) {
+          await Promise.all(intelAsked.slice(i, i + 6).map(async (c) => {
             try {
               const r = await fetch(`${supaUrl6}/rest/v1/rpc/get_company_intel`, {
                 method: "POST",

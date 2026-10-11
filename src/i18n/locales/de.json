@@ -3832,6 +3832,15 @@
       "salary": "medianes genanntes Einstiegsgehalt {{m}} $ ({{n}} USD-Anzeigen)",
       "fields": "stellt vor allem ein in {{fields}}"
     },
+    "collision": {
+      "title": "{{n}} Bewerbungssysteme führen ein Jobboard mit diesem Namen",
+      "body": "Nichts in unseren Daten sagt, ob diese Jobboards zu einem einzigen Arbeitgeber gehören – oft tun sie es nicht. Deshalb listet diese Seite die Stellen aller Boards, zeigt hier aber keine Arbeitgeberangaben: keine Gehalts- oder Mitarbeiterzahlen, keine Einstellungsbilanz, keine Meldungen und keine ähnlichen Arbeitgeber, weil wir nicht sagen könnten, welchen Arbeitgeber sie beschreiben.",
+      "board": "{{name}} bei {{vendor}}",
+      "openRoles": "offene Stellen jetzt: {{n}}",
+      "basis": "Offene Stellen sind Ausschreibungen, die der eigene Feed des jeweiligen Boards noch führt und die der Arbeitgeber innerhalb der letzten 30 Tage datiert hat.",
+      "filterHint": "Um nur die Stellen eines Boards zu sehen, wählen Sie in den Filtern sein Bewerbungssystem.",
+      "otherSystem": "einem anderen Bewerbungssystem"
+    },
     "similar": {
       "title": "Stellen ebenfalls ein in {{field}}",
       "blurb": "Unternehmen mit aktiven Stellen im selben Feld, aus ihren eigenen Karrieresystemen.",

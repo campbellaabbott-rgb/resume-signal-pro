@@ -3832,6 +3832,15 @@
       "salary": "plancher salarial déclaré médian {{m}} $ ({{n}} offres en USD)",
       "fields": "recrute surtout en {{fields}}"
     },
+    "collision": {
+      "title": "{{n}} systèmes de recrutement hébergent un site carrières portant ce nom",
+      "body": "Rien dans nos données n'indique si ces sites appartiennent à un même employeur, et souvent ce n'est pas le cas. Cette page liste donc les offres de chacun, mais n'affiche ici aucune donnée sur l'employeur : ni salaires ni effectifs, ni historique de recrutement, ni déclarations officielles, ni employeurs similaires, car nous ne pourrions pas dire quel employeur elles décrivent.",
+      "board": "{{name}} sur {{vendor}}",
+      "openRoles": "postes ouverts actuellement : {{n}}",
+      "basis": "Les postes ouverts sont les offres que le flux propre à chaque site publie encore, datées par l'employeur dans les 30 derniers jours.",
+      "filterHint": "Pour ne voir que les offres d'un site, choisissez son système de recrutement dans les filtres.",
+      "otherSystem": "un autre système de recrutement"
+    },
     "similar": {
       "title": "Recrutent aussi en {{field}}",
       "blurb": "Des entreprises avec des offres actives dans le même domaine, depuis leurs propres systèmes carrière.",
