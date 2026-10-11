@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261009134300_a_pro_grant_keeps_the_roles_its_ats_defense_was_bought_for.sql'));

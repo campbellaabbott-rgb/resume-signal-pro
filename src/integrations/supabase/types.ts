@@ -3719,6 +3719,7 @@ export type Database = {
           product_type: string | null
           resume_session_id: string | null
           revoked_at: string | null
+          target_roles: string | null
           user_id: string | null
         }
         Insert: {
@@ -3735,6 +3736,7 @@ export type Database = {
           product_type?: string | null
           resume_session_id?: string | null
           revoked_at?: string | null
+          target_roles?: string | null
           user_id?: string | null
         }
         Update: {
@@ -3751,6 +3753,7 @@ export type Database = {
           product_type?: string | null
           resume_session_id?: string | null
           revoked_at?: string | null
+          target_roles?: string | null
           user_id?: string | null
         }
         Relationships: []

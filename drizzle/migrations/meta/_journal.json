@@ -1044,6 +1044,13 @@
       "when": 1791751565414,
       "tag": "0148_20261009134100_a_paid_delivery_is_retried_through_the_day_and_an_outage_does_not_spend_its_tries",
       "breakpoints": true
+    },
+    {
+      "idx": 149,
+      "version": "7",
+      "when": 1791751575431,
+      "tag": "0149_20261009134300_a_pro_grant_keeps_the_roles_its_ats_defense_was_bought_for",
+      "breakpoints": true
     }
   ]
 }
