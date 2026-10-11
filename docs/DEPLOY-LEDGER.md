@@ -46,11 +46,19 @@ every deploy: anything main has that production does not is a FAIL line.
    same string on different code is the class wave 3 hit:
    send-search-digest.2026-10-09.1 on three branches, eleven functions'
    .2026-10-09.1 on two. Any violation exits 3 (exit 2 stays MUST BUMP).
-   The mode is read-only and makes no network call. A difference only in the
-   function's own build-marker line is a relabel, not moved code.
-   A job-board version reserved to one workstream (`reservations`) may
-   be shared with that workstream's own branch while main does not contain
-   it (`--main` names the deployable ref; `--head` judges another commit).
+   The mode is read-only and makes no network call. A relabel is not moved
+   code: every changed line carries the function's own build marker, and with
+   the marker masked the removed and added lines are the same lines. A line
+   that changes anything beside the marker is code. A build whose sequence
+   has a leading zero (`.04`) is unreadable, never "later".
+   One string may be shared: the job-board version reserved to a workstream
+   (`reservations`), between a ref and HEAD that both belong to that
+   workstream, while main carries neither that version nor a later one. A
+   branch belongs to the workstream whose `branches` list names it (an entry
+   ending in `/` is a prefix). A commit id, an unnamed branch or another
+   workstream's branch shares nothing. `--main` names the deployable ref and
+   `--head` judges another commit (by its branch name, so a commit id gets no
+   allowance).
 2. After it merges, main is FROZEN: nothing else merges until the owner has run
    the Lovable message generated from that exact commit and the verifier (plus
    the ledger) shows no gap.

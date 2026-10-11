@@ -41,37 +41,68 @@ export function buildOf(fn, src) {
   if (!src) return null;
   const esc = fn.replace(/[-]/g, "\\-");
   const lit = new RegExp(`["'\`](${esc}\\.\\d{4}-\\d{2}-\\d{2}\\.[A-Za-z0-9-]+)["'\`]`).exec(src);
-  if (lit) return lit[1];
+  if (lit) return readable(lit[1]);
   const tpl = /\$\{FN_NAME\}\.(\d{4}-\d{2}-\d{2}\.[A-Za-z0-9-]+)/.exec(src);
   const name = /const FN_NAME\s*=\s*["']([^"']+)["']/.exec(src);
-  if (tpl && name && name[1] === fn) return `${fn}.${tpl[1]}`;
+  if (tpl && name && name[1] === fn) return readable(`${fn}.${tpl[1]}`);
   const bv = /const BUILD_VERSION\s*=\s*["'](\d{4}-\d{2}-\d{2}\.[A-Za-z0-9-]+)["']/.exec(src);
-  if (bv) return `${fn}.${bv[1]}`;
+  if (bv) return readable(`${fn}.${bv[1]}`);
   return null;
 }
 
-/** a >= b for builds "fn.YYYY-MM-DD.N" (numeric N), else equality. */
+/**
+ * A build the ledger can order: "fn.YYYY-MM-DD.N" where N is a plain number
+ * with no leading zero. "fn.2026-10-09.04" names the same position as ".4"
+ * under a numeric comparison, so it would pass as a new build on moved code
+ * (and read live-ahead in the live report, never deployed): it is unreadable.
+ */
+const BUILD_TAIL = /\.(\d{4}-\d{2}-\d{2})\.(0|[1-9]\d*)$/;
+export function readableBuild(b) {
+  return typeof b === "string" && BUILD_TAIL.test(b);
+}
+const readable = (b) => (readableBuild(b) ? b : null);
+
+/** a >= b for readable builds of one function (date first, then the numeric N); false for anything else. */
 export function buildAtLeast(a, b) {
   if (!a || !b) return false;
-  const pa = /\.(\d{4}-\d{2}-\d{2})\.([A-Za-z0-9-]+)$/.exec(a), pb = /\.(\d{4}-\d{2}-\d{2})\.([A-Za-z0-9-]+)$/.exec(b);
-  if (!pa || !pb || a.slice(0, a.length - pa[0].length) !== b.slice(0, b.length - pb[0].length)) return a === b;
+  const pa = BUILD_TAIL.exec(a), pb = BUILD_TAIL.exec(b);
+  if (!pa || !pb) return false;
+  if (a.slice(0, a.length - pa[0].length) !== b.slice(0, b.length - pb[0].length)) return false;
   if (pa[1] !== pb[1]) return pa[1] > pb[1];
-  return /^\d+$/.test(pa[2]) && /^\d+$/.test(pb[2]) ? Number(pa[2]) >= Number(pb[2]) : pa[2] === pb[2];
+  return Number(pa[2]) >= Number(pb[2]);
 }
 
 /**
- * True when every line a diff of `fn`'s index.ts adds or removes is its own
- * build marker (the literal "fn.YYYY-MM-DD.N" or `const BUILD_VERSION =`).
- * Such a difference relabels the same code: it moves no behaviour, so the
- * --against rule does not ask it for a later build (an integration may give a
- * function a stamp that sorts below a branch's when a guard forbids the
- * branch's date, as the pass checkout's does).
+ * True when a diff of `fn`'s index.ts only RELABELS the build: every changed
+ * line carries the function's own marker (the literal "fn.YYYY-MM-DD.N", the
+ * `${FN_NAME}.YYYY-MM-DD.N` template, or the value of `const BUILD_VERSION =`),
+ * and with that marker masked the removed lines and the added lines are the
+ * same lines. Such a difference moves no behaviour, so the --against rule does
+ * not ask it for a later build (an integration may give a function a stamp
+ * that sorts below a branch's when a guard forbids the branch's date, as the
+ * pass checkout's does). A line that changes anything besides the marker
+ * (code beside the declaration, a comment turned into code) is moved code.
  */
 export function onlyMarkerLines(fn, diffLines) {
   const esc = fn.replace(/[-]/g, "\\-");
-  const marker = new RegExp(`${esc}\\.\\d{4}-\\d{2}-\\d{2}\\.[A-Za-z0-9-]+|const BUILD_VERSION\\s*=`);
+  const SEQ = "\\d{4}-\\d{2}-\\d{2}\\.[A-Za-z0-9-]+";
+  const masks = [
+    [new RegExp(`(?<![A-Za-z0-9_-])${esc}\\.${SEQ}`, "g"), "<BUILD>"],
+    [new RegExp(`\\$\\{FN_NAME\\}\\.${SEQ}`, "g"), "<BUILD>"],
+    [new RegExp(`(const\\s+BUILD_VERSION\\s*=\\s*["'\`])${SEQ}`, "g"), "$1<BUILD>"],
+  ];
   const changed = diffLines.filter((l) => /^[-+]/.test(l) && !/^(---|\+\+\+) /.test(l));
-  return changed.length > 0 && changed.every((l) => marker.test(l));
+  if (!changed.length) return false;
+  const side = { "-": [], "+": [] };
+  for (const l of changed) {
+    let body = l.slice(1);
+    let hit = false;
+    for (const [re, to] of masks) body = body.replace(re, (...m) => { hit = true; return to.replace("$1", m[1]); });
+    if (!hit) return false;
+    side[l[0]].push(body);
+  }
+  const removed = side["-"].sort(), added = side["+"].sort();
+  return removed.length === added.length && removed.every((x, i) => x === added[i]);
 }
 
 /**
@@ -80,9 +111,9 @@ export function onlyMarkerLines(fn, diffLines) {
  * after the ref's (buildAtLeast) AND be a different string: the same string on
  * different code is the October collision class (three branches shipped
  * send-search-digest.2026-10-09.1 on three different bundles). `allowEqual`
- * names strings a ref may share with HEAD: a job-board version reserved to one
- * workstream, against that workstream's own undeployed branch (the CLI passes
- * it only for a ref main does not contain). Pure: no git, no network.
+ * names strings a ref may share with HEAD: at most the one job-board version
+ * reserved to the workstream both the ref and HEAD belong to, while main does
+ * not carry it (sharedReservation). Pure: no git, no network.
  *
  *   entries: [{ fn, ref: build|null, head: build|null, changed: boolean }]
  *   returns: [{ fn, ref, head, reason }]
@@ -91,7 +122,7 @@ export function againstViolations(entries, { allowEqual = new Set() } = {}) {
   const out = [];
   for (const e of entries) {
     if (!e.changed) continue;
-    if (!e.head) { out.push({ ...pick(e), reason: "its code changed and it carries no build the ledger can read" }); continue; }
+    if (!readableBuild(e.head)) { out.push({ ...pick(e), reason: "its code changed and it carries no build the ledger can read" }); continue; }
     if (!e.ref) continue; // a new function, or a marker added: nothing earlier to sort after
     if (e.head === e.ref) {
       if (!allowEqual.has(e.head)) out.push({ ...pick(e), reason: "same build string on different code" });
@@ -103,12 +134,49 @@ export function againstViolations(entries, { allowEqual = new Set() } = {}) {
 }
 const pick = (e) => ({ fn: e.fn, ref: e.ref ?? null, head: e.head ?? null });
 
-/** Job-board versions reserved to one workstream (docs/deploy-ledger.json reservations), as full build strings. */
+/** Job-board versions reserved to any workstream (docs/deploy-ledger.json reservations), as full build strings. */
 export function reservedJobBoardBuilds(policy) {
   return new Set(Object.values(policy?.reservations ?? {})
     .map((r) => r?.jobBoard)
-    .filter((v) => typeof v === "string" && /^\d{4}-\d{2}-\d{2}\.\d+$/.test(v))
+    .filter((v) => typeof v === "string" && readableBuild(`job-board.${v}`))
     .map((v) => `job-board.${v}`));
+}
+
+/**
+ * The workstream a branch belongs to: the reservation whose `branches` list
+ * names it (an entry ending in "/" is a prefix, any other an exact name), with
+ * any "origin/" or "refs/heads/" in front of the name ignored. null for a
+ * commit id or a branch no reservation names.
+ */
+export function workstreamOf(policy, refName) {
+  const name = String(refName ?? "").replace(/^refs\/(heads|remotes)\//, "").replace(/^origin\//, "");
+  if (!name) return null;
+  for (const [ws, r] of Object.entries(policy?.reservations ?? {})) {
+    for (const b of Array.isArray(r?.branches) ? r.branches : []) {
+      if (typeof b === "string" && b && (b.endsWith("/") ? name.startsWith(b) && name.length > b.length : name === b)) return ws;
+    }
+  }
+  return null;
+}
+
+/**
+ * THE ONE STRING A REF MAY SHARE WITH HEAD (docs/DEPLOY-LEDGER.md §2): the
+ * job-board version reserved to the workstream that owns the ref, and only
+ * when HEAD belongs to that same workstream and main does not already carry
+ * that version or a later one. Another workstream's reservation, a version
+ * main has deployed (wave 2's .91), or a ref no reservation names shares
+ * nothing. Pure: `head` and `mainJobBoard` are passed in.
+ *
+ *   returns: a Set holding zero or one full build string
+ */
+export function sharedReservation(policy, { ref, head, mainJobBoard = null }) {
+  const ws = workstreamOf(policy, ref);
+  if (!ws || workstreamOf(policy, head) !== ws) return new Set();
+  const v = policy.reservations[ws]?.jobBoard;
+  const build = typeof v === "string" ? `job-board.${v}` : null;
+  if (!readableBuild(build)) return new Set();
+  if (mainJobBoard && buildAtLeast(mainJobBoard, build)) return new Set();
+  return new Set([build]);
 }
 
 function sharedImports(fn) {
@@ -164,10 +232,14 @@ export function runAgainst(refs, mainRef, policy, headRef = "HEAD") {
     .filter((f) => f && f !== "_shared")
     .sort();
   let bad = 0;
+  // HEAD's branch name, so its workstream can be read; a detached HEAD has none.
+  let headName = headRef;
+  if (headRef === "HEAD") { try { headName = git("rev-parse", "--abbrev-ref", "HEAD"); } catch { headName = ""; } }
+  const mainJobBoard = buildOf("job-board", showAt(mainRef, "supabase/functions/job-board/index.ts"));
   for (const ref of refs) {
     git("rev-parse", "--verify", `${ref}^{commit}`); // an unknown ref is an error, not an empty pass
     const deployable = isAncestor(ref, mainRef);
-    const allowEqual = deployable ? new Set() : reservedJobBoardBuilds(policy);
+    const allowEqual = deployable ? new Set() : sharedReservation(policy, { ref, head: headName, mainJobBoard });
     const entries = fns.map((fn) => {
       const changed = codeChanged(ref, fn, headRef);
       const p = `supabase/functions/${fn}/index.ts`;
@@ -177,7 +249,7 @@ export function runAgainst(refs, mainRef, policy, headRef = "HEAD") {
     const v = againstViolations(entries, { allowEqual });
     const shared = moved.filter((e) => e.head && e.head === e.ref && allowEqual.has(e.head));
     console.log(`AGAINST ${ref}${deployable ? ` (contained in ${mainRef})` : ""}: ${moved.length} functions' code differs from ${headRef}; ${v.length} violation(s)`);
-    for (const e of shared) console.log(`  RESERVED  ${e.fn.padEnd(32)} ${e.head} (a reservation shared with an undeployed branch; docs/deploy-ledger.json)`);
+    for (const e of shared) console.log(`  RESERVED  ${e.fn.padEnd(32)} ${e.head} (${workstreamOf(policy, ref)}'s reservation, shared with its own undeployed branch; docs/deploy-ledger.json)`);
     for (const x of v) console.log(`  VIOLATION ${x.fn.padEnd(32)} ref ${x.ref ?? "-"}  HEAD ${x.head ?? "-"}  (${x.reason})`);
     bad += v.length;
   }

@@ -25,16 +25,19 @@
   ],
   "reservations": {
     "wave2": {
+      "branches": ["wave2/", "wave2-integration"],
       "migrations": "20261008*",
       "jobBoard": "2026-09-09.91",
       "fnBuildDate": "2026-10-08"
     },
     "wave3": {
+      "branches": ["wave3/"],
       "migrations": "20261009*",
       "jobBoard": "2026-09-09.92",
       "fnBuildDate": "2026-10-09"
     },
     "connect-apply": {
+      "branches": ["connect-apply/"],
       "migrations": "20261011*",
       "jobBoard": "2026-09-09.93",
       "fnBuildDate": "2026-10-11"
