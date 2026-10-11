@@ -1093,6 +1093,13 @@
       "when": 1791751637682,
       "tag": "0155_20261009160000_an_exit_cost_filing_is_not_printed_as_a_workforce_reduction",
       "breakpoints": true
+    },
+    {
+      "idx": 156,
+      "version": "7",
+      "when": 1791751647127,
+      "tag": "0156_20261009160200_a_company_lander_reads_only_its_own_employer",
+      "breakpoints": true
     }
   ]
 }
