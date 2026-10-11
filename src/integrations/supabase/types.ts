@@ -156,6 +156,47 @@ export type Database = {
           },
         ]
       }
+      affiliate_payout_requests: {
+        Row: {
+          affiliate_id: string
+          amount_cents: number
+          conversion_ids: string[] | null
+          id: string
+          note: string | null
+          requested_at: string
+          resolved_at: string | null
+          status: string
+        }
+        Insert: {
+          affiliate_id: string
+          amount_cents: number
+          conversion_ids?: string[] | null
+          id?: string
+          note?: string | null
+          requested_at?: string
+          resolved_at?: string | null
+          status?: string
+        }
+        Update: {
+          affiliate_id?: string
+          amount_cents?: number
+          conversion_ids?: string[] | null
+          id?: string
+          note?: string | null
+          requested_at?: string
+          resolved_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliate_payout_requests_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       affiliate_sessions: {
         Row: {
           affiliate_id: string
@@ -436,6 +477,7 @@ export type Database = {
           purchased_at: string
           rate_per_min: number
           session_hours: number
+          settled_at: string | null
           shelf_expires_at: string
           stripe_payment_intent_id: string | null
           stripe_session_id: string
@@ -457,6 +499,7 @@ export type Database = {
           purchased_at?: string
           rate_per_min: number
           session_hours: number
+          settled_at?: string | null
           shelf_expires_at: string
           stripe_payment_intent_id?: string | null
           stripe_session_id: string
@@ -478,6 +521,7 @@ export type Database = {
           purchased_at?: string
           rate_per_min?: number
           session_hours?: number
+          settled_at?: string | null
           shelf_expires_at?: string
           stripe_payment_intent_id?: string | null
           stripe_session_id?: string
@@ -1264,7 +1308,9 @@ export type Database = {
           created_at: string
           domain_match: boolean
           id: string
+          last_sent_at: string | null
           note: string | null
+          owner_approved_at: string | null
           status: string
           verified_at: string | null
           verify_token: string
@@ -1278,7 +1324,9 @@ export type Database = {
           created_at?: string
           domain_match?: boolean
           id?: string
+          last_sent_at?: string | null
           note?: string | null
+          owner_approved_at?: string | null
           status?: string
           verified_at?: string | null
           verify_token?: string
@@ -1292,7 +1340,9 @@ export type Database = {
           created_at?: string
           domain_match?: boolean
           id?: string
+          last_sent_at?: string | null
           note?: string | null
+          owner_approved_at?: string | null
           status?: string
           verified_at?: string | null
           verify_token?: string
@@ -3594,6 +3644,60 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_revocations: {
+        Row: {
+          applications_stopped: number
+          claim_revoked: boolean
+          created_at: string
+          credits_clawed: number
+          email: string | null
+          grants_revoked: number
+          paid_at: string | null
+          pass_closed: boolean
+          payment_intent_id: string
+          product_type: string | null
+          reason: string
+          stripe_event_id: string | null
+          stripe_session_id: string | null
+          subscription_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          applications_stopped?: number
+          claim_revoked?: boolean
+          created_at?: string
+          credits_clawed?: number
+          email?: string | null
+          grants_revoked?: number
+          paid_at?: string | null
+          pass_closed?: boolean
+          payment_intent_id: string
+          product_type?: string | null
+          reason: string
+          stripe_event_id?: string | null
+          stripe_session_id?: string | null
+          subscription_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          applications_stopped?: number
+          claim_revoked?: boolean
+          created_at?: string
+          credits_clawed?: number
+          email?: string | null
+          grants_revoked?: number
+          paid_at?: string | null
+          pass_closed?: boolean
+          payment_intent_id?: string
+          product_type?: string | null
+          reason?: string
+          stripe_event_id?: string | null
+          stripe_session_id?: string | null
+          subscription_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       pro_grants: {
         Row: {
           consumed_at: string | null
@@ -3608,6 +3712,8 @@ export type Database = {
           product_name: string | null
           product_type: string | null
           resume_session_id: string | null
+          revoked_at: string | null
+          user_id: string | null
         }
         Insert: {
           consumed_at?: string | null
@@ -3622,6 +3728,8 @@ export type Database = {
           product_name?: string | null
           product_type?: string | null
           resume_session_id?: string | null
+          revoked_at?: string | null
+          user_id?: string | null
         }
         Update: {
           consumed_at?: string | null
@@ -3636,6 +3744,8 @@ export type Database = {
           product_name?: string | null
           product_type?: string | null
           resume_session_id?: string | null
+          revoked_at?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -3646,6 +3756,7 @@ export type Database = {
           status: string
           stripe_customer_id: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           current_period_end?: string | null
@@ -3653,6 +3764,7 @@ export type Database = {
           status?: string
           stripe_customer_id?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           current_period_end?: string | null
@@ -3660,6 +3772,7 @@ export type Database = {
           status?: string
           stripe_customer_id?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -4040,6 +4153,32 @@ export type Database = {
           started_at?: string
         }
         Relationships: []
+      }
+      search_digest_sent: {
+        Row: {
+          posting_id: string
+          search_id: string
+          sent_at: string
+        }
+        Insert: {
+          posting_id: string
+          search_id: string
+          sent_at?: string
+        }
+        Update: {
+          posting_id?: string
+          search_id?: string
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "search_digest_sent_search_id_fkey"
+            columns: ["search_id"]
+            isOneToOne: false
+            referencedRelation: "user_job_searches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       seniority_corrections: {
         Row: {
@@ -4838,6 +4977,11 @@ export type Database = {
           window_days: number
         }[]
       }
+      agent_pass_packet_gives_back: {
+        Args: { s: Database["public"]["Tables"]["agent_submissions"]["Row"] }
+        Returns: boolean
+      }
+      agent_pass_settle: { Args: { p_pass_id: string }; Returns: number }
       agent_prepare_now: { Args: never; Returns: boolean }
       agent_queue_enqueue: {
         Args: {
@@ -5059,6 +5203,7 @@ export type Database = {
       cleanup_expired_temp_resumes: { Args: never; Returns: number }
       cleanup_old_rate_limits: { Args: never; Returns: number }
       client_callable_census: { Args: never; Returns: Json }
+      client_callable_unlisted_names: { Args: never; Returns: Json }
       client_write_allowed: {
         Args: {
           p_ceiling: number
@@ -5862,6 +6007,7 @@ export type Database = {
           closed: number
           closed_flagged: number
           entry_new: number
+          live_new: number
           new_postings: number
           remote_new: number
           week_start: string
@@ -6069,6 +6215,17 @@ export type Database = {
           p75: number
         }[]
       }
+      get_recent_heartbeats: {
+        Args: { p_limit?: number }
+        Returns: {
+          created_at: string
+          function_name: string
+          id: string
+          response_time_ms: number
+          status: string
+          test_passed: boolean
+        }[]
+      }
       get_relisting_employers: {
         Args: { p_limit?: number }
         Returns: {
@@ -6086,17 +6243,6 @@ export type Database = {
           worst_title: string
           worst_title_events_floor: number
           worst_title_first_at: string
-        }[]
-      }
-      get_recent_heartbeats: {
-        Args: { p_limit?: number }
-        Returns: {
-          created_at: string
-          function_name: string
-          id: string
-          response_time_ms: number
-          status: string
-          test_passed: boolean
         }[]
       }
       get_repost_churn_companies: {
@@ -6595,6 +6741,34 @@ export type Database = {
         }[]
       }
       one_click_vendors: { Args: never; Returns: string[] }
+      payment_revoke: {
+        Args: {
+          p_credits?: number
+          p_email?: string
+          p_paid_at?: string
+          p_payment_intent_id: string
+          p_product_type?: string
+          p_reason: string
+          p_stripe_event_id?: string
+          p_stripe_session_id?: string
+          p_subscription_id?: string
+          p_user_id?: string
+        }
+        Returns: Json
+      }
+      payment_revoke_credits: {
+        Args: { p_credits: number; p_email: string }
+        Returns: number
+      }
+      pro_entitlement_rows: {
+        Args: { p_user_id: string }
+        Returns: {
+          bound: boolean
+          current_period_end: string
+          status: string
+          tier: string
+        }[]
+      }
       product_delivery_health: {
         Args: { p_hours?: number }
         Returns: {
@@ -6811,6 +6985,10 @@ export type Database = {
           sd_prev_sent_at: string
           sd_user_id: string
         }[]
+      }
+      search_digest_record_sent: {
+        Args: { p_posting_ids: string[]; p_search_id: string }
+        Returns: number
       }
       search_jobs: {
         Args: {

@@ -743,6 +743,174 @@
       "when": 1791420732246,
       "tag": "0105_20261001090000_the_closure_ledger_is_the_asset_stop_deleting_it",
       "breakpoints": true
+    },
+    {
+      "idx": 106,
+      "version": "7",
+      "when": 1791672473520,
+      "tag": "0106_20261008100000_a_twins_read_kept_a_deferred_boards_rows_out_of_the_48h_sweep",
+      "breakpoints": true
+    },
+    {
+      "idx": 107,
+      "version": "7",
+      "when": 1791672481596,
+      "tag": "0107_20261008100100_the_stale_window_reads_a_board_stamp_by_its_board",
+      "breakpoints": true
+    },
+    {
+      "idx": 108,
+      "version": "7",
+      "when": 1791672490014,
+      "tag": "0108_20261008100200_a_state_code_matched_a_country_that_starts_with_its_letters",
+      "breakpoints": true
+    },
+    {
+      "idx": 109,
+      "version": "7",
+      "when": 1791672498530,
+      "tag": "0109_20261008110000_a_role_is_counted_once_and_a_posting_seen_again_never_came_down",
+      "breakpoints": true
+    },
+    {
+      "idx": 110,
+      "version": "7",
+      "when": 1791672510636,
+      "tag": "0110_20261008110500_a_field_pools_a_posting_seen_again_after_a_dark_batch_once",
+      "breakpoints": true
+    },
+    {
+      "idx": 111,
+      "version": "7",
+      "when": 1791672522797,
+      "tag": "0111_20261008111000_a_week_the_fence_already_emptied_is_not_drawn_and_today_is_the_last_24_hours",
+      "breakpoints": true
+    },
+    {
+      "idx": 112,
+      "version": "7",
+      "when": 1791672534758,
+      "tag": "0112_20261008111500_a_field_is_compared_with_its_own_week_before_anything_closed",
+      "breakpoints": true
+    },
+    {
+      "idx": 113,
+      "version": "7",
+      "when": 1791672543498,
+      "tag": "0113_20261008112000_the_real_users_score_benchmark_counts_only_real_users",
+      "breakpoints": true
+    },
+    {
+      "idx": 114,
+      "version": "7",
+      "when": 1791672552830,
+      "tag": "0114_20261008112500_the_closure_rollup_rolls_whole_months_and_rolls_them_when_nothing_is_pruned",
+      "breakpoints": true
+    },
+    {
+      "idx": 115,
+      "version": "7",
+      "when": 1791672561659,
+      "tag": "0115_20261008113000_the_exit_rollup_rolls_its_ended_months_when_nothing_is_pruned",
+      "breakpoints": true
+    },
+    {
+      "idx": 116,
+      "version": "7",
+      "when": 1791672570236,
+      "tag": "0116_20261008113500_a_filing_month_is_rolled_whole_and_counted_once",
+      "breakpoints": true
+    },
+    {
+      "idx": 117,
+      "version": "7",
+      "when": 1791672579498,
+      "tag": "0117_20261008120000_a_saved_search_remembers_the_postings_it_already_mailed",
+      "breakpoints": true
+    },
+    {
+      "idx": 118,
+      "version": "7",
+      "when": 1791672590668,
+      "tag": "0118_20261008121000_an_email_log_row_its_own_send_superseded_is_not_stuck",
+      "breakpoints": true
+    },
+    {
+      "idx": 119,
+      "version": "7",
+      "when": 1791672599008,
+      "tag": "0119_20261008122000_a_claimed_website_shows_only_after_the_owner_approves_it",
+      "breakpoints": true
+    },
+    {
+      "idx": 120,
+      "version": "7",
+      "when": 1791672612674,
+      "tag": "0120_20261008123000_the_heartbeat_and_the_owner_notes_answer_only_our_own_callers",
+      "breakpoints": true
+    },
+    {
+      "idx": 121,
+      "version": "7",
+      "when": 1791672625443,
+      "tag": "0121_20261008124000_a_payout_request_is_a_row_the_owner_can_act_on",
+      "breakpoints": true
+    },
+    {
+      "idx": 122,
+      "version": "7",
+      "when": 1791672637429,
+      "tag": "0122_20261008126000_a_paid_payout_request_moves_its_conversions_out_of_the_pending_balance",
+      "breakpoints": true
+    },
+    {
+      "idx": 123,
+      "version": "7",
+      "when": 1791672648322,
+      "tag": "0123_20261008127000_the_health_history_and_scan_metrics_read_heartbeats_through_the_owners_key",
+      "breakpoints": true
+    },
+    {
+      "idx": 124,
+      "version": "7",
+      "when": 1791672660112,
+      "tag": "0124_20261008130000_a_plan_is_read_by_the_account_that_bought_it_by_one_rule",
+      "breakpoints": true
+    },
+    {
+      "idx": 125,
+      "version": "7",
+      "when": 1791672671616,
+      "tag": "0125_20261008131000_a_refunded_payment_takes_back_what_it_bought",
+      "breakpoints": true
+    },
+    {
+      "idx": 126,
+      "version": "7",
+      "when": 1791678600877,
+      "tag": "0126_20261008131500_a_signed_in_account_reads_its_pass_and_never_writes_it",
+      "breakpoints": true
+    },
+    {
+      "idx": 127,
+      "version": "7",
+      "when": 1791678676114,
+      "tag": "0127_20261008132000_a_closed_pass_gives_back_every_application_it_never_sent",
+      "breakpoints": true
+    },
+    {
+      "idx": 128,
+      "version": "7",
+      "when": 1791678697897,
+      "tag": "0128_20261008140000_the_takedown_ticker_no_longer_says_the_change_feed_counts_higher",
+      "breakpoints": true
+    },
+    {
+      "idx": 129,
+      "version": "7",
+      "when": 1791678717975,
+      "tag": "0129_20261008141000_the_owner_can_read_which_client_callable_definers_no_list_names",
+      "breakpoints": true
     }
   ]
 }

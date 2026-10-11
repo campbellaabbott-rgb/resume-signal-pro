@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261008121000_an_email_log_row_its_own_send_superseded_is_not_stuck.sql'));

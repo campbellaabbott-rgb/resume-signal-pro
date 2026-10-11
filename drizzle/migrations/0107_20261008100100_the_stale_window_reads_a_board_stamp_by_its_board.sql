@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261008100100_the_stale_window_reads_a_board_stamp_by_its_board.sql'));

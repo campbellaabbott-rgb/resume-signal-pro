@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261008112000_the_real_users_score_benchmark_counts_only_real_users.sql'));

@@ -28,6 +28,9 @@ import type { PGlite } from "@electric-sql/pglite";
 import { agentDb } from "./helpers/agent-db";
 
 const M = "20261008132000_a_closed_pass_gives_back_every_application_it_never_sent.sql";
+// Runs first, as it does live: without it the signed-in role still holds
+// Supabase's default UPDATE on agent_passes and M's self-check refuses.
+const M_PASS_GRANT = "20261008131500_a_signed_in_account_reads_its_pass_and_never_writes_it.sql";
 const USER = "00000000-0000-4000-8000-00000000a901";
 const EARLIER = "00000000-0000-4000-8000-00000000a902";
 const EARLY_PASS = "00000000-0000-4000-8000-0000000000c1";
@@ -53,6 +56,7 @@ beforeAll(async () => {
     INSERT INTO public.agent_queue (user_id, posting_id, status, pass_id) VALUES
       ('${EARLIER}', 'early:requested', 'approved', '${EARLY_PASS}'),
       ('${EARLIER}', 'early:dismissed', 'dismissed', '${EARLY_PASS}');`);
+  await db.exec(readFileSync(resolve(__dirname, "../../supabase/migrations", M_PASS_GRANT), "utf8"));
   await db.exec(readFileSync(resolve(__dirname, "../../supabase/migrations", M), "utf8"));
 }, 240_000);
 

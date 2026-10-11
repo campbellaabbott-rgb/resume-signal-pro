@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261008113000_the_exit_rollup_rolls_its_ended_months_when_nothing_is_pruned.sql'));
