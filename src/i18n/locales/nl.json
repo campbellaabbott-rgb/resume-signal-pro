@@ -1069,7 +1069,8 @@
     "partialResults": {
       "title": "Gedeeltelijke resultaten:",
       "ruleBased": "onze AI-beoordelaar was even niet bereikbaar, dus dit rapport gebruikt alleen automatische analyse. Scan over een paar minuten opnieuw voor de volledige, door AI gepersonaliseerde versie.",
-      "thin": "de AI-beoordeling liet enkele onderdelen leeg, dus automatische analyse heeft ze aangevuld. Deze versie is niet opgeslagen, dus een nieuwe scan maakt een nieuwe."
+      "thin": "de AI-beoordeling liet enkele onderdelen leeg, dus automatische analyse heeft ze aangevuld. Deze versie is niet opgeslagen, dus een nieuwe scan maakt een nieuwe.",
+      "thinUnfilled": "de AI-beoordeling liet enkele onderdelen leeg, dus die zijn verborgen. Scan over een paar minuten opnieuw voor het volledige rapport."
     }
   },
   "miniPricingCards": {

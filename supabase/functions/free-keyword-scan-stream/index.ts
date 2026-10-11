@@ -8944,7 +8944,9 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
       });
 
       // A thin reply (the primary's S8-067 rule) is served marked partial and
-      // never cached: a week of it would replay to every rescan.
+      // never cached: a week of it would replay to every rescan. Its reason is
+      // its own (S11-147): this fork fills no empty section, so the page hides
+      // them and says so instead of crediting "automated analysis".
       const owed = [
         Number.isFinite(analysis.atsScoreEstimate), !!analysis.formatGrade, !!analysis.experienceLevel, !!analysis.sectionCheck,
         (analysis.quickWins?.length ?? 0) > 0, !!analysis.topStrength, !!analysis.improvementPotential,
@@ -8952,7 +8954,7 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
       const thinAnalysis = owed.filter(Boolean).length / owed.length < 0.7;
       if (thinAnalysis) {
         console.warn(`[FREE-KEYWORD-SCAN-STREAM] Thin model analysis served as partial (${owed.filter(Boolean).length}/${owed.length} owed sections)`);
-        Object.assign(responseData, { partialResults: true, partialReason: 'thin' });
+        Object.assign(responseData, { partialResults: true, partialReason: 'thin_unfilled' });
       }
 
       // Every fixed choice and list the page draws holds a value it can draw,

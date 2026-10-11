@@ -1069,7 +1069,8 @@
     "partialResults": {
       "title": "Teilergebnisse:",
       "ruleBased": "Unsere KI-Prüfung war kurz nicht erreichbar, daher beruht dieser Bericht nur auf automatischer Analyse. Scannen Sie in ein paar Minuten erneut für die vollständige, KI-personalisierte Version.",
-      "thin": "Die KI-Prüfung hat einige Abschnitte leer gelassen, daher hat die automatische Analyse sie ergänzt. Diese Version wurde nicht gespeichert, ein erneuter Scan erstellt also eine neue."
+      "thin": "Die KI-Prüfung hat einige Abschnitte leer gelassen, daher hat die automatische Analyse sie ergänzt. Diese Version wurde nicht gespeichert, ein erneuter Scan erstellt also eine neue.",
+      "thinUnfilled": "Die KI-Prüfung hat einige Abschnitte leer gelassen, daher sind sie ausgeblendet. Scannen Sie in ein paar Minuten erneut für den vollständigen Bericht."
     }
   },
   "miniPricingCards": {

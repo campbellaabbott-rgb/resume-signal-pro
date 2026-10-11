@@ -1069,7 +1069,8 @@
     "partialResults": {
       "title": "Résultats partiels :",
       "ruleBased": "notre relecteur IA a été brièvement indisponible, ce rapport repose donc uniquement sur l'analyse automatique. Relancez l'analyse dans quelques minutes pour la version complète personnalisée par l'IA.",
-      "thin": "la relecture IA a laissé certaines sections vides, l'analyse automatique les a donc complétées. Cette version n'a pas été enregistrée : une nouvelle analyse en produit une nouvelle."
+      "thin": "la relecture IA a laissé certaines sections vides, l'analyse automatique les a donc complétées. Cette version n'a pas été enregistrée : une nouvelle analyse en produit une nouvelle.",
+      "thinUnfilled": "la relecture IA a laissé certaines sections vides, elles sont donc masquées. Relancez l'analyse dans quelques minutes pour obtenir le rapport complet."
     }
   },
   "miniPricingCards": {

@@ -115,7 +115,8 @@ describe("the fallback's model JSON", () => {
     toolArgs = JSON.stringify({ industry: "finance", atsScoreEstimate: 55, keywords: [], redFlags: [] });
     const r = await scan();
     expect(r.complete?.partialResults).toBe(true);
-    expect(r.complete?.partialReason).toBe("thin");
+    // Its own reason since S11-147: this fork fills nothing, so the page hides the gaps.
+    expect(r.complete?.partialReason).toBe("thin_unfilled");
     expect(stores).toBe(0);
   });
 });

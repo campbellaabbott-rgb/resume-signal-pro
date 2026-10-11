@@ -71,6 +71,12 @@ function getClientCachedResult(cacheKey: string): StreamingScanResult | null {
       return null;
     }
 
+    // A partial report is never replayed (S11-147): one cached before this
+    // rule is dropped, so the next scan builds the whole report.
+    if (result && typeof result === 'object' && (result as { partialResults?: unknown }).partialResults === true) {
+      localStorage.removeItem(cacheKey);
+      return null;
+    }
     console.log('[StreamingScan] Client cache HIT for key:', cacheKey.substring(0, 20));
     return result;
   } catch {
@@ -393,8 +399,10 @@ export function useStreamingScan() {
                     }
                   }
                   
-                  // Cache successful result in localStorage for instant repeat scans
-                  if (result.success !== false) {
+                  // Cache successful result in localStorage for instant repeat scans;
+                  // never a partial one, which the server does not cache either
+                  // and which a rescan should replace (S11-147).
+                  if (result.success !== false && (result as { partialResults?: unknown }).partialResults !== true) {
                     setClientCachedResult(clientCacheKey, result, resumeText);
                   }
                   

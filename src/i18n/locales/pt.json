@@ -1069,7 +1069,8 @@
     "partialResults": {
       "title": "Resultados parciais:",
       "ruleBased": "nosso revisor de IA ficou indisponível por um momento, então este relatório usa apenas análise automática. Analise de novo em alguns minutos para a versão completa personalizada por IA.",
-      "thin": "a revisão de IA deixou algumas seções vazias, então a análise automática as preencheu. Esta versão não foi salva, então uma nova análise gera outra."
+      "thin": "a revisão de IA deixou algumas seções vazias, então a análise automática as preencheu. Esta versão não foi salva, então uma nova análise gera outra.",
+      "thinUnfilled": "a revisão de IA deixou algumas seções vazias, então elas estão ocultas. Analise de novo em alguns minutos para obter o relatório completo."
     }
   },
   "miniPricingCards": {

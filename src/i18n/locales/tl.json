@@ -1069,7 +1069,8 @@
     "partialResults": {
       "title": "Bahagyang resulta:",
       "ruleBased": "saglit na hindi available ang aming AI reviewer, kaya awtomatikong pagsusuri lang ang gamit ng ulat na ito. Mag-scan muli pagkalipas ng ilang minuto para sa buong bersyong naka-personalize ng AI.",
-      "thin": "may ilang seksyong iniwang blangko ang AI review, kaya pinunan ang mga ito ng awtomatikong pagsusuri. Hindi na-save ang bersyong ito, kaya gagawa ng bago ang muling pag-scan."
+      "thin": "may ilang seksyong iniwang blangko ang AI review, kaya pinunan ang mga ito ng awtomatikong pagsusuri. Hindi na-save ang bersyong ito, kaya gagawa ng bago ang muling pag-scan.",
+      "thinUnfilled": "may ilang seksyong iniwang blangko ang AI review, kaya nakatago ang mga ito. Mag-scan muli pagkalipas ng ilang minuto para sa buong ulat."
     }
   },
   "miniPricingCards": {

@@ -1016,7 +1016,8 @@ export function FreeKeywordResults({
     ? { current: realWordCount, idealMin: 400, idealMax: 850, verdict: (realWordCount < 400 ? "too_few" : realWordCount > 850 ? "too_many" : "ideal") as "too_few" | "ideal" | "too_many" }
     : null);
   const [correctedExperience, setCorrectedExperience] = useState<string | null>(null);
-  const experienceLevelBase = experienceLevelProp || { level: "mid" as const, yearsEstimate: "3-5 years" };
+  // No invented years (S11-147): an absent estimate is not "3-5 years".
+  const experienceLevelBase = experienceLevelProp || { level: "mid" as const, yearsEstimate: "" };
   const experienceLevel = correctedExperience
     ? { ...experienceLevelBase, level: correctedExperience as typeof experienceLevelBase.level }
     : experienceLevelBase;
@@ -1061,7 +1062,12 @@ export function FreeKeywordResults({
     missingItems: contactInfoProp?.missingItems ?? [],
   };
 
-  const topStrength = topStrengthProp || { title: "Clear Experience", description: "Your work history is well-documented" };
+  // ABSENT IS HIDDEN, NOT INVENTED (register S11-147). A report the model left
+  // thin used to show "Clear Experience", a 2-year average tenure, "steady"
+  // progression and an industry average of 72 under a banner that called
+  // them automated analysis. Each of these tiles now hides when its field is
+  // absent.
+  const topStrength = topStrengthProp ?? null;
   const quantificationScore =
     quantificationScoreProp ||
     computedQuantificationScore ||
@@ -1079,8 +1085,8 @@ export function FreeKeywordResults({
   const topSkipReasons = topSkipReasonsProp || [];
   const powerWords = powerWordsProp || [];
   const weakPhrases = weakPhrasesProp || [];
-  const timelineAnalysis = timelineAnalysisProp || { avgTenure: "2 years", progression: "steady" as const, hasGaps: false, totalYears: computedTotalYears ?? "—" };
-  const industryBenchmark = industryBenchmarkProp || { industryAvg: 72, comparison: "at" as const, percentile: "Top 50%" };
+  const timelineAnalysis = timelineAnalysisProp ?? null;
+  const industryBenchmark = industryBenchmarkProp ?? null;
   const quickWins = quickWinsProp || [];
   const sampleRewrite = sampleRewriteProp;
   // No fallback, deliberately: the old hardcoded default showed every user
@@ -1770,7 +1776,7 @@ export function FreeKeywordResults({
         formatGrade={formatGrade}
         industry={effectiveIndustry}
         experienceLevel={getExperienceLevelLabel(experienceLevel.level)}
-        topStrength={topStrength.title}
+        topStrength={topStrength?.title ?? ""}
         redFlagsCount={redFlags.length}
         quickWins={quickWins}
         improvementPotential={improvementPotential}
@@ -2491,7 +2497,7 @@ export function FreeKeywordResults({
           formatGrade={formatGrade}
           industry={industry}
           experienceLevel={getExperienceLevelLabel(experienceLevel.level)}
-          topStrength={topStrength.title}
+          topStrength={topStrength?.title ?? ""}
           improvementPotential={improvementPotential?.estimatedScoreIncrease}
         />
       </div>
@@ -2551,8 +2557,10 @@ export function FreeKeywordResults({
       )}
 
       {/* Industry Benchmark & Timeline Analysis */}
+      {(industryBenchmark || timelineAnalysis) && (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
         {/* Industry Benchmark */}
+        {industryBenchmark && (
         <div className="rounded-2xl bg-card border border-border p-5">
           <div className="flex items-center gap-2 mb-2">
             <Target className="w-4 h-4 text-primary" />
@@ -2706,7 +2714,10 @@ export function FreeKeywordResults({
           )}
         </div>
 
+        )}
+
         {/* Timeline Analysis */}
+        {timelineAnalysis && (
         <div className="rounded-2xl bg-card border border-border p-5">
           <div className="flex items-center gap-2 mb-4">
             <FileText className="w-4 h-4 text-primary" />
@@ -2783,7 +2794,9 @@ export function FreeKeywordResults({
             )}
           </div>
         </div>
+        )}
       </div>
+      )}
 
       </div> {/* end section-issues */}
 

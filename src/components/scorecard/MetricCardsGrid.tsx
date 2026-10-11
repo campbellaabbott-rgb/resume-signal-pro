@@ -284,7 +284,8 @@ interface MetricCardsGridProps {
   bulletImpactScore: BulletImpactScore;
   keywordDensity?: KeywordDensity;
   improvementPotential?: ImprovementPotential;
-  topStrength: TopStrength;
+  /** Hidden when the scan named none (S11-147): never an invented strength. */
+  topStrength: TopStrength | null;
   redFlags: RedFlag[];
 }
 
@@ -469,6 +470,7 @@ export function MetricCardsGrid({
 
       {/* Highlights row: Top Strength + Red Flags */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+        {topStrength && (
         <div className="flex items-start gap-3 p-3 rounded-xl border border-success/20 bg-success/5">
           <div className="p-2 rounded-lg bg-success/10 shrink-0">
             <Trophy className="w-4 h-4 text-success" />
@@ -481,6 +483,7 @@ export function MetricCardsGrid({
             <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">{topStrength.description}</p>
           </div>
         </div>
+        )}
 
         <div className="flex items-start gap-3 p-3 rounded-xl border border-destructive/20 bg-destructive/5">
           <div className="p-2 rounded-lg bg-destructive/10 shrink-0">

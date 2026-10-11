@@ -1069,7 +1069,8 @@
     "partialResults": {
       "title": "Resultados parciales:",
       "ruleBased": "nuestro revisor de IA no estuvo disponible por un momento, así que este informe usa solo análisis automático. Vuelve a escanear en unos minutos para obtener la versión completa personalizada con IA.",
-      "thin": "la revisión de IA dejó algunas secciones vacías, así que el análisis automático las completó. Esta versión no se guardó, así que un nuevo escaneo genera una nueva."
+      "thin": "la revisión de IA dejó algunas secciones vacías, así que el análisis automático las completó. Esta versión no se guardó, así que un nuevo escaneo genera una nueva.",
+      "thinUnfilled": "la revisión de IA dejó algunas secciones vacías, así que se ocultan. Vuelve a escanear en unos minutos para obtener el informe completo."
     }
   },
   "miniPricingCards": {
