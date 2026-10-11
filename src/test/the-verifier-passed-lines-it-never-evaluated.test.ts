@@ -26,9 +26,10 @@
  */
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { execFileSync, spawn } from "node:child_process";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 vi.setConfig({ testTimeout: 60_000 });
 
@@ -303,6 +304,32 @@ describe("builds are judged 'this build or later', by number (S8-126, S8-124)", 
     expect(has(off.lines, "FAIL", /catalogSize = /), show(off.lines)).toBe(true);
     const other = run(S1, { J: status({ version: "2026-09-09.1", catalogSize: 5 }) });
     expect(has(other.lines, "INFO", /production serves 2026-09-09\.1 and this checkout is/), show(other.lines)).toBe(true);
+  });
+
+  // The count above came from three folders above the CALLER: a tsx ESM import
+  // gave catalog.ts the working directory as __dirname. CI read
+  // /home/runner/supabase/... (ENOENT); a worktree read the main checkout's
+  // catalogue and agreed by luck. A copy at another depth, under a path with
+  // spaces, run from two working directories, must read its own sources.ts.
+  it("the catalogue reader finds the sources.ts beside its own file, from any working directory and through a path with spaces", () => {
+    const tmp = realpathSync(mkdtempSync(join(tmpdir(), "catalog reader ")));
+    try {
+      const root = join(tmp, "a checkout with spaces", "one level deeper");
+      mkdirSync(join(root, "src/test/helpers"), { recursive: true });
+      mkdirSync(join(root, "supabase/functions/job-board"), { recursive: true });
+      copyFileSync(resolve(ROOT, "src/test/helpers/catalog.ts"), join(root, "src/test/helpers/catalog.ts"));
+      copyFileSync(resolve(ROOT, "supabase/functions/job-board/sources.ts"), join(root, "supabase/functions/job-board/sources.ts"));
+      // The repo's own module type: without it tsx loads the copy as CommonJS, whose __dirname was always right.
+      writeFileSync(join(root, "package.json"), JSON.stringify({ type: JSON.parse(readFileSync(resolve(ROOT, "package.json"), "utf8")).type }));
+      const code = `import(${JSON.stringify(pathToFileURL(join(root, "src/test/helpers/catalog.ts")).href)}).then((m)=>console.log(JSON.stringify([m.SOURCES_PATH, m.CATALOG.length])))`;
+      for (const cwd of [tmp, join(root, "src/test"), ROOT]) {
+        const [path, n] = JSON.parse(execFileSync(resolve(ROOT, "node_modules/.bin/tsx"), ["-e", code], { cwd, encoding: "utf8" }).trim());
+        expect(path, `run from ${cwd}`).toBe(join(root, "supabase/functions/job-board/sources.ts"));
+        expect(n).toBeGreaterThan(20_000);
+      }
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
   });
 
   const preflight = (fnBuild: (fn: string) => string): Route[] => [
