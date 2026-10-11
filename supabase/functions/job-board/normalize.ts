@@ -725,21 +725,51 @@ const P_US_STATE_CODE_LEADING =
 // EG), and about 1.8k such rows carried no region_code, which the WARN filing
 // gate requires. An upper-case code followed by a comma or a dash is not an
 // English word in that position, so all fifty-one count here, and the US-
-// prefixed structured form ("US-TX-Houston") too. Two readings still win over
-// it: a leading ISO country code followed by that country's own city ("IN,
-// Chennai", "DE, Berlin", "CA, Toronto"), and a string that names a country in
-// words ("SD, Jinan, China").
+// prefixed structured form ("US-TX-Houston") too. Four readings still win over
+// it:
+//   - a Canadian province after the code, as its code or its name ("CA - ON,
+//     Ottawa", "CA, Ontario, London");
+//   - the leading code's own country's city in ANY later segment, split on the
+//     dash as well as the comma ("IN, Chennai", "CA - Toronto - Office", "DE -
+//     HQ - Berlin");
+//   - a string that names a country in words ("SD, Jinan, China");
+//   - for a code that is also a country the board carries in volume (below),
+//     no place we can read after it at all. "CA - BROSSARD BUILDING (PQBRO)",
+//     "IN, Bangalore Kar" and "DE - KOELN (COLOGNE) CENTER (DEKOL)" are
+//     Canada, India and Germany; read as states they were filed US-CA, US-IN
+//     and US-DE, and the ingest rewrote the stored CA/IN/DE with them.
+// A city the table files in a THIRD country stays evidence for the state:
+// that is the US town named after a city abroad ("SD, Aberdeen", "MN,
+// Alexandria", "PA, Ghent") this rule exists for.
 const P_US_STATE_CODE_LEADING_PUNCT = new RegExp(`^(${[...US_STATE_CODES].join("|")})\\s*[,\\-–—]\\s*(?=[A-Za-z])`);
 const P_US_PREFIXED_STATE = new RegExp(`^(?:US|USA)\\s*[-–—,]\\s*(${[...US_STATE_CODES].join("|")})\\s*(?:[-–—,]|$)`);
+// The state codes that are also ISO countries with real board volume. Read
+// live 2026-10-11 (job-board list, countOnly, by country): CA, DE and IN at
+// the 10,000 cap, ID 1,835, CO 1,797, AR 1,139, IL 982, MA 402, TN 168, PA
+// 142, MO 124, MT 56, KY 45, AZ 38, AL 21. The other collisions served under
+// 20 each (GA 3, MN 6, SD 6, VA 0), so a leading code there stays the state.
+const STATE_CODES_THAT_ARE_COUNTRIES_WE_CARRY: ReadonlySet<string> = new Set([
+  "AL", "AR", "AZ", "CA", "CO", "DE", "ID", "IL", "IN", "KY", "MA", "MO", "MT", "PA", "TN",
+]);
+const P_CA_PROV_SEGMENT = /^(?:ON|QC|BC|AB|MB|SK|NS|NB|PE|NL|YT|NT|NU)$/;
+const P_US_WORDS = /\b(?:US|USA|United States)\b/;
 
 /** The state a location's punctuated state-first form names ("SD, Aberdeen"), or null. */
 function leadingPunctuatedState(s: string): string | null {
   const m = P_US_STATE_CODE_LEADING_PUNCT.exec(s);
   if (!m) return null;
-  const firstPlace = s.slice(m[0].length).split(/[,;·|/]/)[0];
-  if (cityCountry(firstPlace) === m[1]) return null;
-  for (const [re, code] of COUNTRY_PATTERNS) if (code !== "US" && re.test(s)) return null;
-  return m[1];
+  const code = m[1];
+  const rest = s.slice(m[0].length);
+  const segments = rest.split(/[-–—,;·|/]/).map((x) => x.trim()).filter(Boolean);
+  if (segments.some((x) => P_CA_PROV_SEGMENT.test(x)) || P_CA_PROV_NAME.test(rest)) return null;
+  const places = segments.map((x) => cityCountry(x));
+  if (places.includes(code)) return null;
+  for (const [re, c] of COUNTRY_PATTERNS) if (c !== "US" && re.test(s)) return null;
+  if (STATE_CODES_THAT_ARE_COUNTRIES_WE_CARRY.has(code)) {
+    const placed = places.some((c) => c !== null) || P_US_STATE_NAME.test(rest) || P_US_WORDS.test(rest);
+    if (!placed) return null;
+  }
+  return code;
 }
 
 /** The state a location's leading form states outright: "US-TX-Houston" or "SD, Aberdeen". */
@@ -1527,7 +1557,15 @@ export function workdayDetailPlace(payload: unknown): WorkdayDetailPlace {
   const fromDescriptor = typeof descRaw === "string" ? detectCountry(descRaw) : null;
   // What the display location STATES, never a bare-city guess (S11-027): the
   // city table read "SD, Aberdeen" as Britain and nulled the vendor's own US.
-  const fromLocation = location ? statedCountry(location) : null;
+  // A location that leads with the vendor's own code ("CA - Brossard" beside
+  // alpha-2 CA) names that country first, not a state: only what follows the
+  // code can contradict it.
+  const lead = location ? P_US_STATE_CODE_LEADING_PUNCT.exec(location) : null;
+  const fromLocation = !location
+    ? null
+    : lead && code && code !== "US" && lead[1] === code
+      ? statedCountry(location.slice(lead[0].length))
+      : statedCountry(location);
   let country: string | null;
   if (code && (fromDescriptor || fromLocation)) {
     // Stated twice, disagreeing on either reading — refuse.

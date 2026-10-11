@@ -68,6 +68,60 @@ describe("the state-first form with its punctuation", () => {
   });
 });
 
+describe("a leading code that is also a country the board carries is not read as a state without a place", () => {
+  // Live .91 shapes (read-only list probes, 2026-10-11): the stored country is
+  // the employer's, and a list read re-derives country from the location on
+  // every visit. Read as states, these were filed US-CA, US-IN, US-DE, US-CO.
+  const LIVE_ABROAD: ReadonlyArray<readonly [string, string]> = [
+    ["CA - ON, Ottawa", "CA"],
+    ["CA, Ontario, London", "CA"],
+    ["CA - Toronto - Office", "CA"],
+    ["CA - BROSSARD BUILDING (PQBRO)", "CA"],
+    ["IN - Bengaluru - Office", "IN"],
+    ["IN, Bangalore Kar", "IN"],
+    ["DE - HQ - Berlin", "DE"],
+    ["DE - KOELN (COLOGNE) CENTER (DEKOL)", "DE"],
+    ["CO - BOGOTA - SIBERIA - BOMI (COSIB)", "CO"],
+  ];
+
+  it("is never the United States, and names no US state", () => {
+    for (const [loc] of LIVE_ABROAD) {
+      expect(detectCountry(loc), loc).not.toBe("US");
+      expect(detectRegion(loc, "US"), loc).toBe(null);
+    }
+  });
+
+  it("the list read hands the ingest nothing that overwrites the stored country", () => {
+    // The ingest writes `j.country ?? detectCountry(location)` and puts a
+    // non-null value over the stored one; Workday list rows carry no country.
+    const workdayListRow = (location: string): { country?: string; location: string } => ({ location });
+    for (const [loc, stored] of LIVE_ABROAD) {
+      const j = workdayListRow(loc);
+      const listCountry = j.country ?? detectCountry(j.location);
+      expect(listCountry === null || listCountry === stored, `${loc}: ${listCountry} over ${stored}`).toBe(true);
+    }
+  });
+
+  it("a place we can read after the code still makes it the state", () => {
+    expect(detectPlace("CA - San Diego")).toEqual({ country: "US", region: "US-CA" });
+    expect(detectPlace("IN - Indianapolis")).toEqual({ country: "US", region: "US-IN" });
+    expect(detectPlace("CO - Denver")).toEqual({ country: "US", region: "US-CO" });
+    expect(detectPlace("MA, Boston")).toEqual({ country: "US", region: "US-MA" });
+  });
+
+  it("Workday's own alpha-2 stands beside a location that leads with that same code", () => {
+    const place = (location: string, alpha2: string, descriptor: string) =>
+      workdayDetailPlace({
+        jobPostingInfo: { location, country: { descriptor }, jobRequisitionLocation: { country: { alpha2Code: alpha2 } } },
+      });
+    expect(place("CA - BROSSARD BUILDING (PQBRO)", "CA", "Canada").country).toBe("CA");
+    expect(place("IN - Bengaluru - Office", "IN", "India").country).toBe("IN");
+    expect(place("DE - HQ - Berlin", "DE", "Germany").country).toBe("DE");
+    // What follows the code can still contradict it, when it states a country.
+    expect(place("CA - Munich, Germany", "CA", "Canada").country).toBe(null);
+  });
+});
+
 describe("a city-table guess never vetoes the employer's own country", () => {
   it("statedCountry reads what the string says and makes no city guess", () => {
     expect(statedCountry("Aberdeen")).toBe(null);
