@@ -27,10 +27,28 @@
 -- test replays the migrations against that map.
 --
 -- RE-RUNNABLE: ON CONFLICT DO NOTHING (a curated row already there wins), and
--- the backfill touches only rows whose name differs. The backfill is row-level
--- UPDATEs on the tokens these rows name (no DDL lock); the trigger re-applies
--- the same names to every later write. The company facet (refresh-board-facets,
--- every 15 minutes) and the explore cache pick the names up on their next run.
+-- the five bare-token repairs touch only rows whose name differs. The trigger
+-- applies the names to every later write. The company facet
+-- (refresh-board-facets, every 15 minutes) and the explore cache pick the names
+-- up on their next run.
+--
+-- THE STORED ROWS ARE RENAMED BY THE JOB BOARD, NOT HERE (S11-133). This file
+-- first renamed every stored row itself: about 80,800 postings on 216 boards,
+-- their closures through a LIKE over the whole ledger, and the snapshots, in
+-- one transaction that held row locks against the ingest and rewrote both
+-- generated tsvectors and every index on those rows. Its self-verify then read
+-- every posting, and one ingest insert committed under the old trigger in the
+-- meantime would have rolled the whole file back. The overrides and the
+-- trigger change stay here. The rename is job-board's name-sync lane
+-- (NAME_SYNC_VERSION 4): a board at a time, by the trigger's own precedence
+-- over this table, postings, closures, snapshots and the closure rollup,
+-- resumable across passes. The self-verify reads only what this file writes.
+--
+-- CLARIO (S11-134). The Workday tenant clarioclinical and recruitee:clario, a
+-- mobile-apps company, both call themselves Clario, and get_company_suggest and
+-- the clusters merge by name. The tenant takes the legal name its postings
+-- state ("hiringOrganization": "eResearch Technology Inc") beside the one its
+-- sidebar uses.
 
 -- A BARE TOKEN IS NOT A FULL TOKEN. The exact-key branch (20260724194500) was
 -- written for full tokens ("ebqb~us2~CX_1"), but every Workday tenant slug in
@@ -155,7 +173,7 @@ INSERT INTO public.company_name_overrides (slug, display_name) VALUES
   ('hoganlovells', 'Hogan Lovells Cadwalader'), -- sidebar: "Hogan Lovells Cadwalader brings together more than 3,100 lawyers"
   ('tmhcc', 'Tokio Marine HCC'), -- sidebar: "At Tokio Marine HCC, we pride ourselves"
   ('bdf', 'Banque de France'), -- sidebar: "la Banque de France contribue à la stratégie monétaire"
-  ('clarioclinical', 'Clario'), -- sidebar: "Clario is a leading provider of endpoint data solutions"
+  ('clarioclinical', 'Clario (eResearch Technology)'), -- sidebar: "Clario is a leading provider of endpoint data solutions"; hiringOrganization: "eResearch Technology Inc"
   ('iko~wd3~Roofmart_Careers', 'Roofmart'), -- sidebar: "Roofmart has been the distributor of choice"
   ('iko~wd3~IKO_Careers', 'IKO'), -- sidebar: "IKO is a leading manufacturer of residential and commercial roofing systems"
   ('promachbuilt', 'ProMach'), -- sidebar: "About ProMach"
@@ -273,39 +291,23 @@ WITH b(source, company_token, name) AS (VALUES
 UPDATE public.job_board_company_snapshots s SET company = b.name
   FROM b WHERE s.company_token = b.company_token AND s.company IS DISTINCT FROM b.name;
 
--- The stored rows, by the trigger's precedence: a Workday tenant's slug, then
--- an exact full-token key over it. Only rows whose name differs.
-UPDATE public.job_board_postings p SET company = o.display_name
-  FROM public.company_name_overrides o
- WHERE p.company_token LIKE '%~wd%' AND split_part(p.company_token, '~', 1) = o.slug
-   AND NOT EXISTS (SELECT 1 FROM public.company_name_overrides e WHERE e.slug = p.company_token)
-   AND p.company IS DISTINCT FROM o.display_name;
-UPDATE public.job_board_postings p SET company = o.display_name
-  FROM public.company_name_overrides o
- WHERE p.company_token LIKE '%~%' AND p.company_token = o.slug AND p.company IS DISTINCT FROM o.display_name;
-
-UPDATE public.job_board_closures c SET company = o.display_name
-  FROM public.company_name_overrides o
- WHERE c.company_token LIKE '%~wd%' AND split_part(c.company_token, '~', 1) = o.slug
-   AND NOT EXISTS (SELECT 1 FROM public.company_name_overrides e WHERE e.slug = c.company_token)
-   AND c.company IS DISTINCT FROM o.display_name;
-UPDATE public.job_board_closures c SET company = o.display_name
-  FROM public.company_name_overrides o
- WHERE c.company_token LIKE '%~%' AND c.company_token = o.slug AND c.company IS DISTINCT FROM o.display_name;
-
-UPDATE public.job_board_company_snapshots s SET company = o.display_name
-  FROM public.company_name_overrides o
- WHERE s.company_token LIKE '%~wd%' AND split_part(s.company_token, '~', 1) = o.slug
-   AND NOT EXISTS (SELECT 1 FROM public.company_name_overrides e WHERE e.slug = s.company_token)
-   AND s.company IS DISTINCT FROM o.display_name;
-UPDATE public.job_board_company_snapshots s SET company = o.display_name
-  FROM public.company_name_overrides o
- WHERE s.company_token LIKE '%~%' AND s.company_token = o.slug AND s.company IS DISTINCT FROM o.display_name;
+-- The closure rollup's months for those five boards, which the rollup made
+-- final under the wrong name (S11-135). Absent where the rollup does not exist.
+DO $$
+BEGIN
+  IF to_regclass('public.job_board_closure_rollup') IS NOT NULL THEN
+    UPDATE public.job_board_closure_rollup r SET company = b.name
+      FROM (VALUES
+        ('cc', 'Climate Corps'), ('ag', 'Avathon Government'), ('ccf', 'Ccf'),
+        ('kbr', 'Kaufman Borgeest & Ryan'), ('fourseasons', 'Four Seasons Garage Doors')
+      ) AS b(company_token, name)
+     WHERE r.company_token = b.company_token AND r.company IS DISTINCT FROM b.name;
+  END IF;
+END $$;
 
 DO $$
 DECLARE
   v_missing text[];
-  v_wrong   bigint;
   v_bare    bigint;
 BEGIN
   SELECT array_agg(k) INTO v_missing
@@ -350,22 +352,6 @@ BEGIN
     RAISE EXCEPTION 'self-verify 20261009100100: apply_company_name_override still matches a bare token as a full one';
   END IF;
 
-  -- Every stored posting on a named board carries the name (the trigger keeps it so).
-  SELECT count(*) INTO v_wrong
-    FROM public.job_board_postings p
-    CROSS JOIN LATERAL (
-      SELECT coalesce(
-        CASE WHEN p.company_token LIKE '%~%'
-             THEN (SELECT e.display_name FROM public.company_name_overrides e WHERE e.slug = p.company_token) END,
-        CASE WHEN p.company_token LIKE '%~wd%'
-             THEN (SELECT w.display_name FROM public.company_name_overrides w WHERE w.slug = split_part(p.company_token, '~', 1)) END
-      ) AS name
-    ) o
-   WHERE o.name IS NOT NULL AND p.company IS DISTINCT FROM o.name;
-  IF v_wrong > 0 THEN
-    RAISE EXCEPTION 'self-verify 20261009100100: % posting(s) on a named board still carry another name', v_wrong;
-  END IF;
-
   -- No bare-token board still carries a Workday tenant's name it was given.
   SELECT count(*) INTO v_bare
     FROM public.job_board_postings p
@@ -380,5 +366,5 @@ BEGIN
   IF v_bare > 0 THEN
     RAISE EXCEPTION 'self-verify 20261009100100: % posting(s) on a bare-token board still carry a Workday tenant''s name', v_bare;
   END IF;
-  RAISE NOTICE 'self-verify 20261009100100: % employer name(s) added; bare tokens no longer match a tenant slug; every stored posting on a named board carries its name', 179;
+  RAISE NOTICE 'self-verify 20261009100100: % employer name(s) added; bare tokens no longer match a tenant slug; the stored rows are renamed by job-board''s name-sync lane (NAME_SYNC_VERSION 4)', 179;
 END $$;

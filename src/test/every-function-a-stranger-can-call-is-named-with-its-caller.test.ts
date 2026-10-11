@@ -675,7 +675,9 @@ describe("the tracker's lifecycle answers only for the caller's own tracker", ()
     expect([CENSUS_FILE, LIFECYCLE_FILE]).toContain(f.file);
     expect(f.body).toMatch(/FROM public\.user_applications a\s+WHERE a\.user_id = auth\.uid\(\)\s+AND a\.job_id = ANY \(p_job_ids\[1:500\]\)/);
     // Both ledgers are read only through the intersected ids.
-    expect(f.body).toMatch(/c\.posting_id IN \(SELECT ids\.jid FROM ids\)/);
+    // The closure ledger since S11-024: joined to the intersected ids, by each
+    // id's token first (the ledger has no posting_id index) and then the id.
+    expect(f.body).toMatch(/FROM ids\s+JOIN public\.job_board_closures c\s+ON c\.company_token = split_part\(ids\.jid, ':', 2\)\s+AND c\.posting_id = ids\.jid/);
     expect(f.body).toMatch(/p\.id IN \(SELECT ids\.jid FROM ids\)/);
     expect(f.body, "no ledger read may take the caller's ids directly").not.toMatch(/(posting_id|p\.id)\s*=\s*ANY\s*\(\s*p_job_ids/);
     // The 2026-09-09 shape survives: the row stays, the duration goes NULL.

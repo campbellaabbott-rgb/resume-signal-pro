@@ -147,12 +147,43 @@ const list = (domain: readonly string[], cap: number) => (raw: unknown): string 
  *  truthy string, and the board takes `=== true`. */
 const flag = (raw: unknown): boolean | undefined => (raw === true ? true : undefined);
 
-/** An annual pay figure. Strict `number`: a model that answers "150k" has not
- *  answered the question the schema asked, and parsing its prose here is how a
- *  filter starts meaning whatever the string happened to look like. */
+/**
+ * THE BOARD COMPARES PAY IN APPROXIMATE US DOLLARS (S11-026).
+ *
+ * salaryFloor and salaryCeiling bind salary_rank_usd, a generated column that
+ * multiplies each posting's annual figure by one of these factors (the CASE
+ * arms of 20260716180000; pinned equal by
+ * src/test/a-pay-request-is-compared-in-the-boards-currency.test.ts, since SQL
+ * cannot be imported). The prompt asked for a figure "with no currency symbol"
+ * and never said so, so "£45,000" became a $45k floor that admits £37,080
+ * roles, and "¥8,000,000" or "20 lakh" were clamped to a $2M floor that
+ * returns nothing under a chip claiming the reader's own threshold. The model
+ * now names the currency it read (salaryCurrency) and the figure is converted
+ * here; a currency the board cannot rank is dropped and named, never guessed.
+ */
+export const BOARD_USD_FACTORS: Readonly<Record<string, number>> = {
+  USD: 1.0, EUR: 1.08, GBP: 1.27, CAD: 0.73, AUD: 0.66, NZD: 0.61, CHF: 1.12, SEK: 0.095, DKK: 0.145,
+  NOK: 0.094, PLN: 0.25, INR: 0.012, SGD: 0.74, JPY: 0.0066, BRL: 0.18, MXN: 0.055, PHP: 0.017,
+};
+/** The largest annual figure a pay filter takes, in US dollars. Above it the
+ *  request is dropped and named; clamping it made a floor nobody asked for. */
+export const MAX_ANNUAL_USD = 2_000_000;
+
+/** The USD factor for the currency the model read, 1 when it named none, null when the board cannot rank it. */
+export function usdFactor(raw: unknown): number | null {
+  const code = typeof raw === "string" ? raw.trim().toUpperCase() : "";
+  if (!code) return 1;
+  return Object.prototype.hasOwnProperty.call(BOARD_USD_FACTORS, code) ? BOARD_USD_FACTORS[code] : null;
+}
+
+/** An annual pay figure in US dollars. Strict `number`: a model that answers
+ *  "150k" has not answered the question the schema asked, and parsing its
+ *  prose here is how a filter starts meaning whatever the string happened to
+ *  look like. Above MAX_ANNUAL_USD it is refused, not clamped. */
 const money = (raw: unknown): number | undefined => {
   if (typeof raw !== "number" || !Number.isFinite(raw) || raw <= 0) return undefined;
-  return Math.min(Math.round(raw), 2_000_000);
+  const n = Math.round(raw);
+  return n > MAX_ANNUAL_USD ? undefined : n;
 };
 
 /**
@@ -223,16 +254,16 @@ export const NL_FILTERS: readonly NlFilter[] = [
   {
     key: "salaryFloor",
     prompt:
-      'a number (ANNUAL, no currency symbol, no "k") when the user states a minimum. An hourly rate is not an annual figure — for "over $30/hr" set payBasis "hourly" and leave this out.',
+      'a number (ANNUAL, no currency symbol, no "k") when the user states a minimum, in the currency they state it in ("20 lakh" is 2000000, "¥8M" is 8000000); name that currency in salaryCurrency. An hourly rate is not an annual figure — for "over $30/hr" set payBasis "hourly" and leave this out.',
     type: "number",
-    schema: "Annual minimum as a plain number, no currency symbol",
+    schema: "Annual minimum as a plain number in the user's currency (see salaryCurrency), no symbol",
     take: money,
   },
   {
     key: "salaryCeiling",
-    prompt: 'a number (ANNUAL) when the user states a maximum ("up to 90k", "under 120k"). Must be above salaryFloor.',
+    prompt: 'a number (ANNUAL, in the same currency as salaryFloor) when the user states a maximum ("up to 90k", "under 120k"). Must be above salaryFloor.',
     type: "number",
-    schema: "Annual maximum as a plain number, above salaryFloor",
+    schema: "Annual maximum as a plain number in the user's currency, above salaryFloor",
     // A band that closes below its own floor is REFUSED here, not forwarded.
     // filters.ts refuses it too — and names it in ignoredFilters, which on this
     // path would tell the reader the BOARD declined a filter, when what actually
@@ -421,6 +452,7 @@ RULES:
 - Only set a filter when the query clearly implies it. When unsure, leave it out and let it fall into q or notMapped.
 - Use the EXACT spellings listed above. A value outside the list is dropped by the server, not guessed at.
 - NEVER widen. Every filter here narrows; there is no way to ask for more than the board already shows.
+- Pay: write salaryFloor and salaryCeiling in the currency the user used, and set salaryCurrency to its ISO code (GBP for £, EUR for €, INR for ₹ or lakh, JPY for ¥, CAD, AUD...). Leave salaryCurrency out for US dollars or when no currency is named. The board compares pay in approximate US dollars; the server converts.
 - Concepts the board CANNOT filter (company size, "startup", funding stage, "no degree required", visa sponsorship, benefits, a named employer, industry-of-company) must go in notMapped as short phrases — never faked into a filter.
 - interpreted: 2-6 short human-readable chips describing ONLY what you put into the filters above (e.g. "Remote", "Part-time", "$150k+ minimum"). This is shown to the user, so a chip for something you did not filter on is a lie — put that in notMapped instead.`;
 
@@ -432,6 +464,8 @@ export const TOOL_PARAMETERS = {
   type: "object",
   properties: {
     ...Object.fromEntries(NL_FILTERS.map((f) => [f.key, { type: f.type, description: f.schema }])),
+    // Not a filter: the unit of the two pay filters, converted by validateParse (S11-026).
+    salaryCurrency: { type: "string", description: "ISO code of the currency salaryFloor/salaryCeiling are stated in; omit for US dollars" },
     interpreted: { type: "array", items: { type: "string" }, description: "2-6 short chips of what was understood" },
     notMapped: { type: "array", items: { type: "string" }, description: "Concepts with no matching filter" },
   },
@@ -463,9 +497,11 @@ export type NlParse = {
 export function validateParse(parsed: Record<string, unknown>): NlParse {
   const filters: Record<string, NlValue> = {};
   const dropped: string[] = [];
+  // The pay filters' unit (S11-026): the board compares approximate US dollars.
+  const fx = usdFactor(parsed.salaryCurrency);
 
   for (const f of NL_FILTERS) {
-    const raw = parsed[f.key];
+    let raw = parsed[f.key];
     // NOT ASKED is not the same as REFUSED, and only the second is reported.
     // `false` is a boolean control at rest, `0` is the off position for every
     // numeric one (filters.ts reads them the same way), and an empty string or
@@ -474,6 +510,13 @@ export function validateParse(parsed: Record<string, unknown>): NlParse {
     if (raw === undefined || raw === null || raw === false || raw === 0) continue;
     if (typeof raw === "string" && !raw.trim()) continue;
     if (Array.isArray(raw) && raw.length === 0) continue;
+
+    // A pay figure is converted to the dollars the board compares; one in a
+    // currency the board cannot rank is refused and named.
+    if ((f.key === "salaryFloor" || f.key === "salaryCeiling") && typeof raw === "number") {
+      if (fx === null) { dropped.push(f.key); continue; }
+      raw = raw * fx;
+    }
 
     const v = f.take(raw, filters);
     if (v === undefined) dropped.push(f.key);

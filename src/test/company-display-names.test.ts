@@ -139,7 +139,18 @@ describe("a rename actually reaches stored rows", () => {
    *  failure this codebase keeps paying for.
    *
    *  Mutation-tested: renaming a board and leaving the version at 2 must fail. */
-  const PINNED = { nameSyncVersion: 3, tokenCount: 38 };
+  const PINNED = { nameSyncVersion: 4, tokenCount: 38 };
+
+  /** The lane's own block: from its version read to its last log line. It sat
+   *  before the salary kick until S11-001 moved the kicks ahead of the slow
+   *  work, so "salary_parse_version" no longer ends it. */
+  const laneBlock = () => {
+    const from = IDX.indexOf('k", "name_sync_version"');
+    const to = IDX.indexOf("name sync failed (retries next pass)", from);
+    expect(from, "the name-sync lane's version read is gone").toBeGreaterThan(-1);
+    expect(to, "the name-sync lane's closing log line is gone").toBeGreaterThan(from);
+    return IDX.slice(from, to);
+  };
 
   it("the token list and the sync version move together", () => {
     const m = /const NAME_SYNC_VERSION = (\d+);/.exec(IDX);
@@ -170,7 +181,7 @@ describe("a rename actually reaches stored rows", () => {
     // v1 only collected tokens whose stored name contained &amp; / &#039;. A
     // corrected name is not escaped, so without this line the sweep would run,
     // stamp itself done, and change nothing.
-    const block = IDX.slice(IDX.indexOf('k", "name_sync_version"'), IDX.indexOf("salary_parse_version"));
+    const block = laneBlock();
     expect(block).toMatch(/for \(const tk of RENAMED_TOKENS\) tokens\.add\(tk\);/);
   });
 
@@ -181,7 +192,7 @@ describe("a rename actually reaches stored rows", () => {
     // reached the end having failed every update would still record itself
     // complete and never retry — the rename lost permanently, with a success
     // line in the log.
-    const block = IDX.slice(IDX.indexOf('k", "name_sync_version"'), IDX.indexOf("salary_parse_version"));
+    const block = laneBlock();
     expect(block).toMatch(/if \(failed === 0\) \{/);
     const stampAt = block.indexOf('k: "name_sync_version"');
     const guardAt = block.indexOf("if (failed === 0) {");
@@ -193,30 +204,34 @@ describe("a rename actually reaches stored rows", () => {
     // Makes each retry cheaper than the last, so successive passes get further
     // instead of re-running the same expensive updates and dying in the same
     // place. Without it a partial sweep never converges.
-    const block = IDX.slice(IDX.indexOf('k", "name_sync_version"'), IDX.indexOf("salary_parse_version"));
-    expect(block).toMatch(/\.neq\("company", src\.name\)\.limit\(1\)/);
-    expect(block).toMatch(/if \(!stale\?\.length\) \{ already\+\+; continue; \}/);
+    const block = laneBlock();
+    expect(block).toMatch(/\.neq\("company", target\)\.limit\(1\)/);
+    // Postings AND closures since v4: the trigger renames a re-read board's
+    // postings, so its closures can be the only rows still wrong.
+    expect(block).toMatch(/if \(!stale\?\.length && !staleClosed\?\.length\) \{ already\+\+; continue; \}/);
   });
 
   it("narrows each UPDATE to the rows that actually differ", () => {
     // The original statement rewrote every row for the token, including ones
     // already correct — which is why the largest boards timed out.
-    const block = IDX.slice(IDX.indexOf('k", "name_sync_version"'), IDX.indexOf("salary_parse_version"));
-    const updates = [...block.matchAll(/\.update\(\{ company: src\.name \}\)[^;]*/g)].map((m) => m[0]);
-    expect(updates.length, "expected postings + closures updates").toBe(2);
+    const block = laneBlock();
+    const updates = [...block.matchAll(/\.update\(\{ company: target \}\)[^;]*/g)].map((m) => m[0]);
+    // postings, closures, and (S11-133/S11-135) the snapshots and the closure rollup.
+    expect(updates.length, "expected postings, closures, snapshots and rollup updates").toBe(4);
     for (const u of updates) {
-      expect(u, `unnarrowed update rewrites correct rows too: ${u}`).toContain('.neq("company", src.name)');
+      expect(u, `unnarrowed update rewrites correct rows too: ${u}`).toContain('.neq("company", target)');
     }
   });
 
   it("still updates closures as well as postings", () => {
     // job_board_closures feeds the actively-hiring leaderboard, so a name fixed
     // only in postings would leave the old one showing there.
-    const block = IDX.slice(IDX.indexOf('k", "name_sync_version"'), IDX.indexOf("salary_parse_version"));
+    const block = laneBlock();
     // Whitespace-tolerant: the calls are wrapped across lines now, and a guard
     // that breaks on reformatting teaches people to delete guards.
-    expect(block).toMatch(/from\("job_board_postings"\)\s*\.update\(\{ company: src\.name \}\)/);
-    expect(block).toMatch(/from\("job_board_closures"\)\s*\.update\(\{ company: src\.name \}\)/);
+    expect(block).toMatch(/from\("job_board_postings"\)\s*\.update\(\{ company: target \}\)/);
+    expect(block).toMatch(/from\("job_board_closures"\)\s*\.update\(\{ company: target \}\)/);
+    expect(block, "a rename the closure rollup never hears keeps the old name on every final month").toMatch(/from\("job_board_closure_rollup"\)\s*\.update\(\{ company: target \}\)/);
   });
 });
 

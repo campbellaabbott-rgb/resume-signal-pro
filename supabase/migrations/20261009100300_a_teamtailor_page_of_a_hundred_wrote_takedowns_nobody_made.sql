@@ -196,3 +196,118 @@ BEGIN
     CASE WHEN v_bound IS NULL THEN 'no .92 stamp on slice_stats yet: every closure to the ceiling, re-run once .92 serves'
          ELSE 'closed before ' || v_bound::text || ' (build ' || v_build || ' began ' || v_since || ')' END;
 END $$;
+
+-- THE ROLLUP'S FINAL MONTHS ARE ROLLED AGAIN FOR THE BOARDS MARKED (S11-135).
+--
+-- roll_up_and_prune_closures (20261008112500) rolls each month once, after it
+-- ends, and never again: a month rolled after its end is final. It counts the
+-- closures that are not suspect AT ROLL TIME. This file marks closures suspect
+-- in months the nightly job has already made final (July to September, by the
+-- time .92 serves), so job_board_closure_rollup would keep counting them as
+-- fills for ever. Nothing reads the rollup yet and the raw rows are not pruned
+-- (the cron passes NULL), which is why this was latent, not live.
+--
+-- So every final rollup month that holds a closure this repair listed is
+-- deleted and rolled again from the ledger, with the aggregates of
+-- roll_up_and_prune_closures itself: every category of that board's month, all
+-- vendors on the token, as the rollup groups them. A month that is not final
+-- yet is left to the nightly job, which will read the suspect flags when it
+-- rolls. Safe to re-run: a month rolled again from the same rows comes out the
+-- same. Skipped where the rollup does not exist.
+DO $$
+DECLARE
+  v_tok   text[];
+  v_mon   date[];
+  v_bad   bigint;
+BEGIN
+  IF to_regclass('public.job_board_closure_rollup') IS NULL THEN
+    RAISE NOTICE '20261009100300: no closure rollup here, so no final month to roll again';
+    RETURN;
+  END IF;
+
+  SELECT array_agg(t.company_token), array_agg(t.month) INTO v_tok, v_mon
+    FROM (
+      SELECT DISTINCT rr.company_token, rr.month
+        FROM public.job_board_closure_rollup rr
+        JOIN (
+          SELECT DISTINCT c.company_token, date_trunc('month', c.closed_at)::date AS month
+            FROM public.job_board_closure_repairs r
+            JOIN public.job_board_closures c ON c.event_id = r.event_id
+           WHERE r.repair = 'teamtailor_rss_page_s8_002'
+        ) m ON m.company_token = rr.company_token AND m.month = rr.month
+       WHERE rr.rolled_at >= rr.month + interval '1 month'
+    ) t;
+  IF v_tok IS NULL THEN
+    RAISE NOTICE '20261009100300: no final rollup month holds a closure this repair marked';
+    RETURN;
+  END IF;
+
+  DELETE FROM public.job_board_closure_rollup rr
+   USING unnest(v_tok, v_mon) AS t(company_token, month)
+   WHERE rr.company_token = t.company_token AND rr.month = t.month;
+
+  WITH src AS (
+    SELECT
+      c.company_token,
+      max(c.company) AS company,
+      COALESCE(NULLIF(c.category, ''), 'other') AS category,
+      date_trunc('month', c.closed_at)::date AS month,
+      count(*) FILTER (
+        WHERE NOT c.superseded
+          AND NOT COALESCE(c.suspect, false)
+          AND c.absence_basis IS DISTINCT FROM 'lap_backfill'
+      )::int AS fills,
+      count(*) FILTER (WHERE c.superseded
+                         AND c.absence_basis IS DISTINCT FROM 'lap_backfill')::int AS relists,
+      count(*) FILTER (WHERE c.absence_basis = 'lap_backfill')::int AS backfill_n,
+      percentile_cont(0.5) WITHIN GROUP (
+        ORDER BY extract(epoch FROM (c.closed_at - c.posted_at)) / 86400.0
+      ) FILTER (WHERE NOT c.superseded AND NOT COALESCE(c.suspect, false)
+                  AND c.absence_basis IS DISTINCT FROM 'lap_backfill'
+                  AND c.posted_at IS NOT NULL
+                  AND c.closed_at >= c.posted_at
+                  AND c.closed_at - c.posted_at <= interval '365 days') AS p50,
+      percentile_cont(0.75) WITHIN GROUP (
+        ORDER BY extract(epoch FROM (c.closed_at - c.posted_at)) / 86400.0
+      ) FILTER (WHERE NOT c.superseded AND NOT COALESCE(c.suspect, false)
+                  AND c.absence_basis IS DISTINCT FROM 'lap_backfill'
+                  AND c.posted_at IS NOT NULL
+                  AND c.closed_at >= c.posted_at
+                  AND c.closed_at - c.posted_at <= interval '365 days') AS p75,
+      count(*) FILTER (WHERE NOT c.superseded AND NOT COALESCE(c.suspect, false)
+                         AND c.absence_basis IS DISTINCT FROM 'lap_backfill'
+                         AND c.posted_at IS NOT NULL
+                         AND c.closed_at >= c.posted_at
+                         AND c.closed_at - c.posted_at <= interval '365 days')::int AS dated_n,
+      min(c.closed_at) AS first_c,
+      max(c.closed_at) AS last_c
+    FROM public.job_board_closures c
+    JOIN unnest(v_tok, v_mon) AS t(company_token, month)
+      ON t.company_token = c.company_token
+     AND c.closed_at >= t.month
+     AND c.closed_at < t.month + interval '1 month'
+    WHERE c.company_token <> ''
+    GROUP BY c.company_token, COALESCE(NULLIF(c.category, ''), 'other'), date_trunc('month', c.closed_at)::date
+  )
+  INSERT INTO public.job_board_closure_rollup
+    (company_token, company, category, month, fills, relists, dated_n, backfill_n, p50_days_open, p75_days_open, first_closed_at, last_closed_at, rolled_at)
+  SELECT s.company_token, s.company, s.category, s.month, s.fills, s.relists, s.dated_n, s.backfill_n,
+         round(s.p50::numeric, 1), round(s.p75::numeric, 1), s.first_c, s.last_c, now()
+    FROM src s;
+
+  -- Every month rolled again counts as fills exactly the closures that are
+  -- still not suspect, and none of the ones this repair marked.
+  SELECT count(*) INTO v_bad
+    FROM unnest(v_tok, v_mon) AS t(company_token, month)
+   WHERE (SELECT coalesce(sum(rr.fills), 0) FROM public.job_board_closure_rollup rr
+           WHERE rr.company_token = t.company_token AND rr.month = t.month)
+      <> (SELECT count(*) FROM public.job_board_closures c
+           WHERE c.company_token = t.company_token
+             AND c.closed_at >= t.month AND c.closed_at < t.month + interval '1 month'
+             AND NOT c.superseded AND NOT COALESCE(c.suspect, false)
+             AND c.absence_basis IS DISTINCT FROM 'lap_backfill');
+  IF v_bad > 0 THEN
+    RAISE EXCEPTION 'self-verify 20261009100300: % rolled-again rollup month(s) do not count the ledger''s unsuspect closures', v_bad;
+  END IF;
+  RAISE NOTICE 'self-verify 20261009100300: % final rollup month(s) rolled again without the closures marked suspect', array_length(v_tok, 1);
+END $$;

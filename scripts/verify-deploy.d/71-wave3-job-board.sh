@@ -98,15 +98,28 @@ for(const sort of ["newest","salary"]){
   if(!cs)info("S8-087 sliceStats.cursorStep "+JSON.stringify(cs)+" (null on a hot slice; re-run during the cold phase)");
   else{const n=Number(st.coldBoards)||0;const step=n?((cs.to-cs.from)%n+n)%n:cs.to-cs.from;
     info("S8-087 cursorStep "+JSON.stringify(cs)+": stepped "+step+" for "+cs.started+" started (on .92 a step above started is dormant skips passed, below it a deferral ahead of later starts; on .91 it always equals started)")}}
-// F1 (server half): employer names (migration 20261009100100).
-for(const [tok,want] of [["ms~wd5~external","Morgan Stanley"],["rmit~wd3~RMIT_Careers","RMIT University"],["cc","Climate Corps"]]){
+// F1 (server half): employer names (migration 20261009100100). Since S11-133 the
+// migration renames only the five bare-token boards (cc); the stored rows of a named tenant
+// are renamed by the name-sync lane of job-board (NAME_SYNC_VERSION 4), last in a
+// pass-end tail, a few dozen boards per pass: INFO until it has reached them.
+for(const [tok,want,lane] of [["ms~wd5~external","Morgan Stanley",true],["rmit~wd3~RMIT_Careers","RMIT University",true],["flextronics~wd1~Careers","Flex Ltd.",true],["cc","Climate Corps",false]]){
   const r=await list({companies:[tok],limit:1});const got=rows(r)[0]&&rows(r)[0].company;
   if(bad(r)||!rows(r).length)info("F1 "+tok+": no open row to read a name from");
+  else if(lane)soft(got===want,"F1 "+tok+" stored as "+JSON.stringify(got)+" (want "+want+" once the name-sync lane v4 has reached the board; S11-133/S11-134)");
   else console.log((got===want?"PASS":"FAIL")+"  F1 "+tok+" stored as "+JSON.stringify(got)+" (want "+want+"; FAIL until 20261009100100 is applied)");
 }
 // S8-062: no anon probe that does not spend a limiter row; the build lines above carry it.
 info("S8-062 job-fit / application-fit: keyed on the platform address hourly, a limiter error is 503; not probed (a fit-batch call spends a check_rate_limit row). Judge by the two x-fn-build lines above.");
 info("S8-030 / S8-031 / S8-084 / S8-085 / S8-086 / S8-089: no anon probe; see the .92 note for the status fields and logs to watch");
+// S11 jobboard-runtime (the .92 additions, docs/job-board-deploy-notes.md).
+{const pe=st.passEnd||null;const s0=pe&&Date.parse(pe.startedAt);const d0=pe&&Date.parse(pe.doneAt);
+  if(!pe)late(false,"S11-001 status.passEnd absent (want {startedAt, doneAt} once a .92 pass has ended: the tail runs after the hop answers)");
+  else late(Number.isFinite(d0)&&d0>=s0||(Number.isFinite(s0)&&Date.now()-s0<30*60000),"S11-001 pass-end tail: started "+pe.startedAt+", done "+(pe.doneAt||"never")+(pe.ms?" ("+Math.round(pe.ms/1000)+" s)":"")+" (want a doneAt after every startedAt; a start with no finish past 30 min is a tail that died)");}
+{const fa=st.filterAudit||{};soft(typeof fa.ageMin==="number"&&fa.ageMin<12*60,"S11-001 filterAudit ageMin "+fa.ageMin+" (want under 720 once a .92 pass has ended: the tail kicks the audit before its slow deletes)");}
+late(Array.isArray(st.dbFailingBoards)&&st.dbFailingBoards.length===0,"S11-023 status.dbFailingBoards "+JSON.stringify(st.dbFailingBoards)+" (want []: a board our database fails to read or store for 3+ visits is named here, never pruned)");
+{const r=await call({action:"list",q:"cashier",limit:60,includeFacets:false});const folded=rows(r).filter((c)=>(c.postingCount||1)>1);
+  if(bad(r)||!folded.length)info("S11-005 q=cashier: no folded card to read");
+  else late(folded.every((c)=>Array.isArray(c.siblings)&&c.siblings.length>0&&c.siblings.every((s)=>s&&s.id&&s.applyUrl)),"S11-005 q=cashier: "+folded.length+" folded card(s), siblings "+folded.slice(0,3).map((c)=>(c.siblings||[]).length+"/"+(c.postingCount-1)).join(", ")+" (want every folded posting carried with its id and apply link, up to 50 a card)");}
 }catch(e){console.log("INFO  section 71 stopped early: "+String(e).slice(0,160))}
 })()'
 # S10-018 (20261009100400): cron.job is not readable with the publishable key, so the

@@ -10,8 +10,11 @@
  *
  * Three things are checked here:
  *  1. the migration, run on a real Postgres (pglite) with the SHIPPED trigger
- *     function, renames the stored rows and every later write, and leaves a
- *     tenant's other employers alone where it keyed one site;
+ *     function, names every later write and leaves a tenant's other employers
+ *     alone where it keyed one site. Since S11-133 it no longer rewrites the
+ *     stored rows itself (80,800 postings in one transaction): job-board's
+ *     name-sync lane does, and the-name-sync-lane-renames-what-the-migration-
+ *     no-longer-does.test.ts runs that lane;
  *  2. supabase/functions/_shared/employer-names.ts, which the prerender and the
  *     app import, is the table the migrations leave (every write replayed);
  *  3. employerDisplayName resolves a token by the trigger's own precedence.
@@ -86,23 +89,36 @@ beforeAll(async () => {
 });
 afterAll(async () => { try { await db.close(); } catch { /* best effort */ } });
 
-describe("the migration renames what is stored and everything written after it", () => {
-  it("renames the stored postings of a named tenant, every site of it", async () => {
-    expect(await nameOf("job_board_postings", "ms~wd5~external")).toBe("Morgan Stanley");
-    expect(await nameOf("job_board_postings", "ms~wd5~private")).toBe("Morgan Stanley");
-    expect(await nameOf("job_board_postings", "pg~wd5~1000")).toBe("P&G");
+const insertOne = async (id: string, token: string, company: string, source = "workday") => {
+  await db.query(`INSERT INTO public.job_board_postings (id, source, company_token, company) VALUES ($1, $2, $3, $4)`, [id, source, token, company]);
+  return (await db.query<{ company: string }>(`SELECT company FROM public.job_board_postings WHERE id = $1`, [id])).rows[0].company;
+};
+
+describe("the migration names every write after it, and leaves the stored rows to the name-sync lane", () => {
+  it("does not rewrite a named tenant's stored rows in its own transaction (S11-133)", async () => {
+    expect(await nameOf("job_board_postings", "ms~wd5~external")).toBe("Ms");
+    expect(await nameOf("job_board_closures", "mdlz~wd3~External")).toBe("Mdlz");
+    expect(await nameOf("job_board_company_snapshots", "rmit~wd3~RMIT_Careers")).toBe("Rmit");
   });
 
-  it("a site keyed by its full token is renamed; the tenant's other employers keep their names", async () => {
-    expect(await nameOf("job_board_postings", "db~wd3~DBWebsite")).toBe("Deutsche Bank");
-    expect(await nameOf("job_board_postings", "db~wd3~DWSWebsite")).toBe("Db");
-    expect(await nameOf("job_board_postings", "easyservice~wd5~MercyHealthCareers")).toBe("Mercy Health");
-    expect(await nameOf("job_board_postings", "easyservice~wd5~roperstfrancishealthcare")).toBe("Easyservice");
+  it("every later write of a named tenant takes its name, every site of it", async () => {
+    expect(await insertOne("workday:ms~wd5~external:N1", "ms~wd5~external", "Ms")).toBe("Morgan Stanley");
+    expect(await insertOne("workday:ms~wd5~private:N2", "ms~wd5~private", "Ms")).toBe("Morgan Stanley");
+    expect(await insertOne("workday:pg~wd5~1000:N3", "pg~wd5~1000", "Pg")).toBe("P&G");
+  });
+
+  it("a site keyed by its full token is named on its next write; the tenant's other employers keep their names", async () => {
+    expect(await insertOne("workday:db~wd3~DBWebsite:N4", "db~wd3~DBWebsite", "Db")).toBe("Deutsche Bank");
+    expect(await insertOne("workday:db~wd3~DWSWebsite:N5", "db~wd3~DWSWebsite", "Db")).toBe("Db");
+    expect(await insertOne("workday:easyservice~wd5~MercyHealthCareers:N6", "easyservice~wd5~MercyHealthCareers", "Easyservice")).toBe("Mercy Health");
+    expect(await insertOne("workday:easyservice~wd5~roperstfrancishealthcare:N7", "easyservice~wd5~roperstfrancishealthcare", "Easyservice")).toBe("Easyservice");
   });
 
   it("never touches a board it does not name, nor a non-Workday token that shares a slug", async () => {
     expect(await nameOf("job_board_postings", "geico~wd1~External")).toBe("Geico");
+    expect(await insertOne("workday:geico~wd1~External:N8", "geico~wd1~External", "Geico")).toBe("Geico");
     expect(await nameOf("job_board_postings", "ms")).toBe("Ms Studio");
+    expect(await insertOne("greenhouse:ms:N9", "ms", "Ms Studio", "greenhouse")).toBe("Ms Studio");
   });
 
   it("a bare greenhouse token that shares a tenant slug gets its own name back, and keeps it", async () => {
@@ -116,21 +132,16 @@ describe("the migration renames what is stored and everything written after it",
     expect(after.map((r) => r.company)).toEqual(["Climate Corps", "NorthCoast Asset Management"]);
   });
 
-  it("renames the closure ledger and the snapshots too", async () => {
-    expect(await nameOf("job_board_closures", "mdlz~wd3~External")).toBe("Mondelēz International");
-    expect(await nameOf("job_board_closures", "tmobile~wd1~External")).toBe("T-Mobile");
-    expect(await nameOf("job_board_company_snapshots", "rmit~wd3~RMIT_Careers")).toBe("RMIT University");
-  });
-
-  it("re-applies an older override whose rows had drifted, and a later ingest write cannot undo any of it", async () => {
+  it("an older override reaches a drifted row on its next write, and no ingest write can undo a name", async () => {
+    await db.exec(`UPDATE public.job_board_postings SET company = company WHERE company_token = 'nvidia~wd5~NVIDIAExternalCareerSite'`);
     expect(await nameOf("job_board_postings", "nvidia~wd5~NVIDIAExternalCareerSite")).toBe("NVIDIA");
-    await db.exec(`INSERT INTO public.job_board_postings (id, company_token, company) VALUES ('workday:ms~wd5~external:R99', 'ms~wd5~external', 'Ms')`);
-    expect((await db.query<{ company: string }>(`SELECT company FROM public.job_board_postings WHERE id = 'workday:ms~wd5~external:R99'`)).rows[0].company).toBe("Morgan Stanley");
+    expect(await insertOne("workday:ms~wd5~external:R99", "ms~wd5~external", "Ms")).toBe("Morgan Stanley");
   });
 
   it("is safe to run again", async () => {
     await db.exec(mig(FILE));
-    expect(await nameOf("job_board_postings", "ms~wd5~external")).toBe("Morgan Stanley");
+    expect(await insertOne("workday:ms~wd5~external:R100", "ms~wd5~external", "Ms")).toBe("Morgan Stanley");
+    expect(await nameOf("job_board_postings", "cc")).toBe("Climate Corps");
   });
 });
 
