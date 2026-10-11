@@ -3826,6 +3826,7 @@
       "bandMid": "médio porte",
       "bandSmall": "porte startup",
       "employees": "≈{{n}} funcionários ({{basis}}) · {{band}}",
+      "asOf": "em {{date}}",
       "basisYc": "perfil YC",
       "basisPr": "registros públicos",
       "net7d": "+{{n}} vagas líquidas novas esta semana",
@@ -3864,12 +3865,6 @@
       "netLoss": "Prejuízo líquido {{v}} (FY{{y}})",
       "trendAria": "Receita por ano fiscal",
       "sourceLine": "Fonte: os próprios relatórios de {{name}} à SEC (10-K/20-F). Números conforme arquivados; não é aconselhamento de investimento."
-    },
-    "h1b": {
-      "chip": "Salários declarados · pedidos H-1B {{fy}}",
-      "summary": "{{company}} declarou salários-base para {{n}} posições H-1B certificadas — mediana {{m}}/ano.",
-      "range": "{{lo}}–{{hi}} · {{n}} pedidos",
-      "sourceLine": "Fonte: arquivos públicos LCA do Departamento do Trabalho dos EUA — salários-base declarados pelo empregador, anualizados. Apenas posições H-1B; não é o salário de toda a empresa."
     },
     "employerCtx": {
       "title": "Sobre este empregador",
@@ -4319,6 +4314,15 @@
     "hhMedian": "Metade destas vagas é preenchida ao dia {{d}}.",
     "hhPaceThin": "Ainda não terminaram vagas suficientes desta empresa para dizer a que ritmo se move — {{d}} dias de acompanhamento até agora.",
     "hhPaceThinUntracked": "Ainda não terminaram vagas suficientes desta empresa para dizer a que ritmo se move.",
+    "hhGate": {
+      "lap": "Não indicamos a rapidez com que as vagas deste empregador são retiradas. Neste quadro só confirmamos uma retirada ao reler o quadro inteiro, o que pode confirmá-la com uma a três leituras de atraso, por isso uma proporção dentro de 14 dias e um tempo típico sairiam ambos errados. É um limite da forma como lemos o quadro, não um facto sobre o empregador.",
+      "coverage": "Não indicamos a rapidez com que as vagas deste empregador são retiradas: só {{pct}}% das suas vagas trazem uma data de publicação da própria empresa, poucas demais para medir.",
+      "paceTracking": "Observamos este quadro há {{d}} dias. Uma proporção de vagas retiradas em 14 dias precisa de pelo menos {{min}} dias de observação, por isso ainda não damos nenhuma.",
+      "countsTracking": "Observamos este quadro há {{d}} dias. Só contamos as vagas retiradas e não republicadas após {{min}} dias de observação, porque uma vaga retirada há menos tempo ainda pode voltar.",
+      "countsTrackingLap": "Observamos este quadro há {{d}} dias. Aqui só contamos as vagas retiradas e não republicadas após {{min}} dias de observação: neste quadro uma retirada só é confirmada ao reler o quadro inteiro, e uma vaga retirada há menos tempo ainda pode voltar.",
+      "relist": "Não mostramos quantas vagas deste empregador foram retiradas e continuaram retiradas. Registámos {{n}} vagas retiradas neste quadro em {{d}} dias de observação e nenhuma que tenha voltado, o que num quadro deste tamanho significa que a nossa deteção de republicações não está a funcionar aqui, não que nada tenha sido republicado. É uma lacuna no nosso registo, não um facto sobre o empregador.",
+      "withheldBadge": "Registo de retiradas retido"
+    },
     "hhRepostsFloor": "Republicou o mesmo título de vaga pelo menos {{n}} vezes durante o acompanhamento — republicação de rotina, ou vagas que voltam a abrir sem parar.",
     "hhFootnoteCurve": "Calculado a partir do ciclo de vida completo das publicações oficiais desta empresa — quando abrem e quando saem — não de um instantâneo. As vagas ainda publicadas, e as que passaram o nosso limite de 30 dias, contam como inacabadas em vez de ficarem de fora.",
     "repostTipFloor": "Esta empresa republicou o mesmo título de vaga pelo menos {{n}} vezes durante o nosso acompanhamento — contamos um título republicado uma vez por dia, por isso o número real pode ser maior. Pode significar republicação de rotina ou vagas que voltam a abrir sem parar — vale a pena saber antes de investir numa candidatura.",
@@ -4361,6 +4365,7 @@
     "lcaChip": "Salários H-1B declarados · {{quarter}}",
     "lcaRange": "{{company}} apresentou {{n}} Labor Condition Applications certificadas para {{occupation}} em {{state}} no {{quarter}}, com salários anuais de {{low}} a {{high}}.",
     "lcaWhyThisCell": "Este é o maior grupo de pedidos que este empregador apresentou naquele trimestre. Este anúncio não indica nenhum código de ocupação, por isso não foi associado a esta vaga.",
+    "lcaWhyThisCellEmployer": "Este é o maior grupo de pedidos que este empregador apresentou nesse trimestre, mostrado como um exemplo do que apresentou. Não está associado a nenhuma vaga específica deste quadro.",
     "lcaSponsor": "{{company}} tem {{total}} pedidos certificados registados nesse período com salário anual declarado, distribuídos por {{groups}} grupos de ocupação e estado.",
     "lcaPeriod": "São pedidos que o Departamento certificou entre {{from}} e {{to}}.",
     "lcaNotAnOffer": "Estes são os salários apresentados nesses pedidos. Não são a remuneração desta vaga nem uma proposta.",

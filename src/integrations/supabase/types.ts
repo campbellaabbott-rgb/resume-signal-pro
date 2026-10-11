@@ -1404,18 +1404,21 @@ export type Database = {
       }
       company_profiles: {
         Row: {
+          as_of: string | null
           company_token: string
           employee_basis: string
           employee_count: number
           yc_batch: string | null
         }
         Insert: {
+          as_of?: string | null
           company_token: string
           employee_basis: string
           employee_count: number
           yc_batch?: string | null
         }
         Update: {
+          as_of?: string | null
           company_token?: string
           employee_basis?: string
           employee_count?: number

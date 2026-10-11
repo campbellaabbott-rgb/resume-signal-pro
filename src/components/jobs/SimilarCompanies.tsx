@@ -8,12 +8,15 @@ import { companyLanderPath } from "@/lib/public-href";
 import { ArrowRight, Compass } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
+import { datedHeadcount } from "@/lib/headcount";
 
 interface SimilarRow {
   company: string;
   company_token: string;
   open_roles: number;
   employees: number | null;
+  /** The day the count was true; today's reader returns none, so no count prints (D11). */
+  employees_as_of?: string | null;
   employee_basis: string | null;
   category: string;
 }
@@ -49,7 +52,10 @@ export function SimilarCompanies({ companyToken }: { companyToken: string }) {
         {t("jobsPage.similar.blurb", "Companies with live openings in the same field, from their own career systems.")}
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-        {rows.map((r) => (
+        {rows.map((r) => {
+          // A headcount prints with the date it was true or not at all (D11).
+          const head = datedHeadcount(r);
+          return (
           <Link
             key={r.company_token}
             to={companyLanderPath(r.company_token)}
@@ -62,21 +68,22 @@ export function SimilarCompanies({ companyToken }: { companyToken: string }) {
               <span className="block text-sm font-semibold text-foreground truncate">{r.company}</span>
               <span className="block text-[11px] text-muted-foreground">
                 {t("jobsPage.similar.openRoles", "{{n}} open roles", { n: r.open_roles })}
-                {r.employees != null && (
+                {head && (
                   // Basis label rides along (same keys the intel panel uses) —
                   // an unattributed headcount reads as our claim; it isn't.
                   <>
-                    {" · "}{t("jobsPage.similar.employees", "≈{{n}} employees", { n: r.employees.toLocaleString() })}
+                    {" · "}{t("jobsPage.similar.employees", "≈{{n}} employees", { n: head.n.toLocaleString() })}
                     {" ("}{r.employee_basis === "yc_self_reported"
                       ? t("jobsPage.intel.basisYc", "YC profile")
-                      : t("jobsPage.intel.basisPr", "public records")}{")"}
+                      : t("jobsPage.intel.basisPr", "public records")}{", "}{t("jobsPage.intel.asOf", "as of {{date}}", { date: head.asOf })}{")"}
                   </>
                 )}
               </span>
             </span>
             <ArrowRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
           </Link>
-        ))}
+          );
+        })}
       </div>
     </section>
   );

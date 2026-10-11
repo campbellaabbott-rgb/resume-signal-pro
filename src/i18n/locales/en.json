@@ -3826,6 +3826,7 @@
       "bandMid": "mid-market",
       "bandSmall": "startup-size",
       "employees": "≈{{n}} employees ({{basis}}) · {{band}}",
+      "asOf": "as of {{date}}",
       "basisYc": "YC profile",
       "basisPr": "public records",
       "net7d": "+{{n}} net-new roles this week",
@@ -3864,12 +3865,6 @@
       "netLoss": "Net loss {{v}} (FY{{y}})",
       "trendAria": "Revenue by fiscal year",
       "sourceLine": "Source: {{name}}'s own SEC filings (10-K/20-F). Figures as filed; not investment advice."
-    },
-    "h1b": {
-      "chip": "Declared wages · H-1B filings {{fy}}",
-      "summary": "{{company}} declared base wages for {{n}} certified H-1B positions — median {{m}}/year.",
-      "range": "{{lo}}–{{hi}} · {{n}} filings",
-      "sourceLine": "Source: US Department of Labor LCA disclosure files — base wages as declared by the employer, annualized. H-1B roles only; not company-wide pay."
     },
     "employerCtx": {
       "title": "About this employer",
@@ -4319,6 +4314,15 @@
     "hhMedian": "Half of these roles are filled by day {{d}}.",
     "hhPaceThin": "Not enough of this company's roles have finished yet to say how fast it moves — {{d}}d of tracking so far.",
     "hhPaceThinUntracked": "Not enough of this company's roles have finished yet to say how fast it moves.",
+    "hhGate": {
+      "lap": "We do not state how fast this employer's roles come down. We confirm a takedown on this board only by re-reading the whole board, which can confirm it one to three reads late, so a share within 14 days and a typical time would both come out wrong. This is a limit of how we read the board, not a fact about the employer.",
+      "coverage": "We do not state how fast this employer's roles come down: only {{pct}}% of its roles carry a posting date from the company itself, too few to measure from.",
+      "paceTracking": "We have watched this board for {{d}} days. A share of roles down within 14 days needs at least {{min}} days of watching, so we do not state one yet.",
+      "countsTracking": "We have watched this board for {{d}} days. We count roles taken down and not re-listed only after {{min}} days of watching, because a role taken down more recently may still come back.",
+      "countsTrackingLap": "We have watched this board for {{d}} days. We count roles taken down and not re-listed only after {{min}} days of watching here: on this board a takedown is confirmed only by re-reading the whole board, and a role taken down more recently may still come back.",
+      "relist": "We do not print how many of this employer's roles came down and stayed down. We logged {{n}} roles taken down on this board over {{d}} days of watching and not one that came back, which on a board this size means our re-list detection is not working here, not that nothing was re-listed. This is a gap in our record, not a fact about the employer.",
+      "withheldBadge": "Closure record withheld"
+    },
     "hhRepostsFloor": "Re-listed the same role title at least {{n}} times during our tracking — routine reposting, or roles that keep reopening.",
     "hhFootnoteCurve": "Computed from the full lifecycle of this company's official postings — when they open and when they come down — not a one-time snapshot. Roles still up, and roles that passed our 30-day cap, are counted as unfinished rather than left out.",
     "repostTipFloor": "This company re-listed the same role title at least {{n}} times during our tracking — we count a re-listed title once a day, so the real number can be higher. That can mean routine reposting or roles that keep reopening — worth knowing before you invest in an application.",
@@ -4361,6 +4365,7 @@
     "lcaChip": "Filed H-1B wages · {{quarter}}",
     "lcaRange": "{{company}} filed {{n}} certified labor condition applications for {{occupation}} in {{state}} in {{quarter}}, at annual wages from {{low}} to {{high}}.",
     "lcaWhyThisCell": "This is the largest group of applications this employer filed that quarter. Nothing on this posting states an occupation code, so it was not matched to this role.",
+    "lcaWhyThisCellEmployer": "This is the largest group of applications this employer filed that quarter, shown as one example of what it filed. It is not matched to any one role on this board.",
     "lcaSponsor": "{{company}} has {{total}} certified applications on file for that period with a yearly-stated wage, across {{groups}} occupation-and-state groups.",
     "lcaPeriod": "These are applications the Department certified between {{from}} and {{to}}.",
     "lcaNotAnOffer": "These are wages that were filed for those applications. They are not this role's pay and not an offer.",

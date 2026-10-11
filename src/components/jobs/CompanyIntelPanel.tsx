@@ -1,7 +1,13 @@
-// Company intel strip on the lander: verified headcount (with its basis and
-// scale band), this company's stated-salary median, and its top fields. Every
-// clause renders only when its data exists — absent data shows nothing, never
-// a guess.
+// Company intel strip on the lander: headcount (with its basis, scale band and
+// the date it was true), this company's stated-salary median, and its top
+// fields. Every clause renders only when its data exists — absent data shows
+// nothing, never a guess.
+//
+// NO UNDATED HEADCOUNT (owner decision D11, 2026-10-11). company_profiles has
+// no column saying when a count was true, so the headcount clause renders only
+// through datedHeadcount, which needs a plain calendar date beside the count.
+// Until the reader returns one (employees_as_of, from company_profiles.as_of,
+// added by 20261012102000 and left null) the clause renders nothing.
 //
 // NO NET-NEW FIGURE. This strip printed "+N net-new roles this week" from
 // get_company_intel.net_7d -- the difference of raw stored-row counts across a
@@ -16,9 +22,12 @@ import { useEffect, useState } from "react";
 import { Users, BadgeDollarSign, Layers } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
+import { datedHeadcount } from "@/lib/headcount";
 
 interface Intel {
   employees: number | null;
+  /** The day the count was true. Not returned by today's reader, so the count stays hidden. */
+  employees_as_of?: string | null;
   employee_basis: string | null;
   yc_batch: string | null;
   median_usd_floor: number | null;
@@ -60,22 +69,23 @@ export function CompanyIntelPanel({ companyToken }: { companyToken: string }) {
   }
   if (!intel) return null;
 
-  const band = intel.employees == null ? null
-    : intel.employees >= 1000 ? t("jobsPage.intel.bandEnterprise", "enterprise")
-    : intel.employees >= 100 ? t("jobsPage.intel.bandMid", "mid-market")
+  const head = datedHeadcount(intel);
+  const band = head == null ? null
+    : head.n >= 1000 ? t("jobsPage.intel.bandEnterprise", "enterprise")
+    : head.n >= 100 ? t("jobsPage.intel.bandMid", "mid-market")
     : t("jobsPage.intel.bandSmall", "startup-size");
 
   const items: Array<{ icon: typeof Users; text: string }> = [];
-  if (intel.employees != null) {
+  if (head) {
     items.push({
       icon: Users,
-      text: t("jobsPage.intel.employees", "≈{{n}} employees ({{basis}}) · {{band}}", {
-        n: intel.employees.toLocaleString(),
+      text: `${t("jobsPage.intel.employees", "≈{{n}} employees ({{basis}}) · {{band}}", {
+        n: head.n.toLocaleString(),
         basis: intel.employee_basis === "yc_self_reported"
           ? t("jobsPage.intel.basisYc", "YC profile")
           : t("jobsPage.intel.basisPr", "public records"),
         band,
-      }),
+      })} · ${t("jobsPage.intel.asOf", "as of {{date}}", { date: head.asOf })}`,
     });
   }
   if (intel.median_usd_floor != null && (intel.usd_n ?? 0) >= 10) {

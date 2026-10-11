@@ -3826,6 +3826,7 @@
       "bandMid": "mid-market",
       "bandSmall": "sukat-startup",
       "employees": "≈{{n}} empleyado ({{basis}}) · {{band}}",
+      "asOf": "noong {{date}}",
       "basisYc": "YC profile",
       "basisPr": "pampublikong rekord",
       "net7d": "+{{n}} netong bagong posisyon ngayong linggo",
@@ -3864,12 +3865,6 @@
       "netLoss": "Netong lugi {{v}} (FY{{y}})",
       "trendAria": "Kita ayon sa fiscal year",
       "sourceLine": "Pinagmulan: sariling SEC filings ni {{name}} (10-K/20-F). Mga bilang ayon sa isinampa; hindi payo sa pamumuhunan."
-    },
-    "h1b": {
-      "chip": "Idineklarang sahod · H-1B filings {{fy}}",
-      "summary": "Nagdeklara ang {{company}} ng batayang sahod para sa {{n}} sertipikadong H-1B na posisyon — median {{m}}/taon.",
-      "range": "{{lo}}–{{hi}} · {{n}} filing",
-      "sourceLine": "Pinagmulan: pampublikong LCA files ng US Department of Labor — batayang sahod ayon sa deklarasyon ng employer, taunan. H-1B na posisyon lamang; hindi sahod ng buong kumpanya."
     },
     "employerCtx": {
       "title": "Tungkol sa employer na ito",
@@ -4319,6 +4314,15 @@
     "hhMedian": "Kalahati sa mga posisyong ito ay napupunan pagsapit ng araw {{d}}.",
     "hhPaceThin": "Kulang pa ang natapos na posisyon ng kumpanyang ito para masabi kung gaano ito kabilis — {{d}} araw pa lang ng pagtunton.",
     "hhPaceThinUntracked": "Kulang pa ang natapos na posisyon ng kumpanyang ito para masabi kung gaano ito kabilis.",
+    "hhGate": {
+      "lap": "Hindi namin sinasabi kung gaano kabilis naaalis ang mga posisyon ng employer na ito. Sa board na ito, kinukumpirma lang namin ang pagkaalis kapag binasa naming muli ang buong board, kaya maaaring makumpirma ito nang isa hanggang tatlong pagbasa ang huli. Dahil dito, parehong mali ang lalabas na bahagi sa loob ng 14 na araw at ang karaniwang tagal. Hangganan ito ng paraan ng pagbasa namin sa board, hindi katotohanan tungkol sa employer.",
+      "coverage": "Hindi namin sinasabi kung gaano kabilis naaalis ang mga posisyon ng employer na ito: {{pct}}% lang ng mga posisyon nito ang may petsa ng pag-post mula mismo sa kumpanya, masyadong kaunti para masukat.",
+      "paceTracking": "{{d}} araw na naming binabantayan ang board na ito. Kailangan ng hindi bababa sa {{min}} araw ng pagbabantay para sa bahagi ng mga posisyong naaalis sa loob ng 14 na araw, kaya wala pa kaming sinasabi.",
+      "countsTracking": "{{d}} araw na naming binabantayan ang board na ito. Binibilang lang namin ang mga posisyong inalis at hindi na muling ipinost pagkatapos ng {{min}} araw ng pagbabantay, dahil maaari pang bumalik ang posisyong inalis kamakailan.",
+      "countsTrackingLap": "{{d}} araw na naming binabantayan ang board na ito. Dito, binibilang lang namin ang mga posisyong inalis at hindi na muling ipinost pagkatapos ng {{min}} araw ng pagbabantay: sa board na ito, nakukumpirma lang ang pagkaalis kapag binasang muli ang buong board, at maaari pang bumalik ang posisyong inalis kamakailan.",
+      "relist": "Hindi namin ipinapakita kung ilang posisyon ng employer na ito ang inalis at nanatiling alis. Nakapagtala kami ng {{n}} na posisyong inalis sa board na ito sa {{d}} araw ng pagbabantay at wala ni isang bumalik. Sa board na ganito kalaki, ibig sabihin nito na hindi gumagana rito ang pagtukoy namin sa muling pag-post, hindi na walang muling ipinost. Puwang ito sa aming tala, hindi katotohanan tungkol sa employer.",
+      "withheldBadge": "Nakatagong tala ng pag-aalis"
+    },
     "hhRepostsFloor": "Muling nag-post ng parehong titulo nang hindi bababa sa {{n}} beses sa panahon ng pagtunton — karaniwang pag-repost, o mga posisyong paulit-ulit na nagbubukas.",
     "hhFootnoteCurve": "Kinalkula mula sa buong lifecycle ng mga opisyal na posting ng kumpanyang ito — kung kailan bumubukas at kung kailan naaalis — hindi mula sa isang snapshot. Ang mga posisyong nakapaskil pa, at ang mga lumagpas sa aming 30-araw na hangganan, ay binibilang na hindi pa tapos sa halip na iwanan.",
     "repostTipFloor": "Muling nag-post ang kumpanyang ito ng parehong titulo nang hindi bababa sa {{n}} beses sa panahon ng pagtunton — isang beses lang sa isang araw namin binibilang ang muling ipinost na titulo, kaya maaaring mas mataas ang tunay na bilang. Maaaring karaniwang pag-repost ito o mga posisyong paulit-ulit na nagbubukas — mabuting malaman bago mamuhunan sa isang aplikasyon.",
@@ -4361,6 +4365,7 @@
     "lcaChip": "Mga isinumiteng sahod sa H-1B · {{quarter}}",
     "lcaRange": "Nag-file ang {{company}} ng {{n}} sertipikadong Labor Condition Applications para sa {{occupation}} sa {{state}} noong {{quarter}}, na may taunang sahod mula {{low}} hanggang {{high}}.",
     "lcaWhyThisCell": "Ito ang pinakamalaking pangkat ng mga aplikasyong inihain ng employer na ito sa quarter na iyon. Walang nakasaad na occupation code sa posting na ito, kaya hindi ito itinugma sa tungkuling ito.",
+    "lcaWhyThisCellEmployer": "Ito ang pinakamalaking grupo ng mga aplikasyong inihain ng employer na ito sa quarter na iyon, ipinakita bilang isang halimbawa ng inihain nito. Hindi ito itinugma sa anumang isang posisyon sa board na ito.",
     "lcaSponsor": "May {{total}} sertipikadong aplikasyon ang {{company}} para sa panahong iyon na may taunang sahod na nakasaad, sa {{groups}} grupo ng trabaho at estado.",
     "lcaPeriod": "Mga aplikasyong sertipikado ng Departamento sa pagitan ng {{from}} at {{to}}.",
     "lcaNotAnOffer": "Ito ang mga sahod na isinumite para sa mga aplikasyong iyon. Hindi ito ang bayad sa trabahong ito at hindi ito alok.",

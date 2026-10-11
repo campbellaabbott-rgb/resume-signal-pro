@@ -3826,6 +3826,7 @@
       "bandMid": "Mittelstand",
       "bandSmall": "Startup-Größe",
       "employees": "≈{{n}} Mitarbeitende ({{basis}}) · {{band}}",
+      "asOf": "Stand {{date}}",
       "basisYc": "YC-Profil",
       "basisPr": "öffentliche Register",
       "net7d": "+{{n}} netto neue Stellen diese Woche",
@@ -3864,12 +3865,6 @@
       "netLoss": "Nettoverlust {{v}} (GJ{{y}})",
       "trendAria": "Umsatz nach Geschäftsjahr",
       "sourceLine": "Quelle: {{name}}s eigene SEC-Berichte (10-K/20-F). Zahlen wie eingereicht; keine Anlageberatung."
-    },
-    "h1b": {
-      "chip": "Deklarierte Gehälter · H-1B-Anträge {{fy}}",
-      "summary": "{{company}} hat Grundgehälter für {{n}} zertifizierte H-1B-Stellen deklariert — Median {{m}}/Jahr.",
-      "range": "{{lo}}–{{hi}} · {{n}} Anträge",
-      "sourceLine": "Quelle: öffentliche LCA-Daten des US-Arbeitsministeriums — vom Arbeitgeber deklarierte Grundgehälter, annualisiert. Nur H-1B-Stellen; nicht die unternehmensweite Bezahlung."
     },
     "employerCtx": {
       "title": "Über diesen Arbeitgeber",
@@ -4319,6 +4314,15 @@
     "hhMedian": "Die Hälfte dieser Stellen ist bis Tag {{d}} besetzt.",
     "hhPaceThin": "Es sind noch nicht genug Stellen dieses Unternehmens abgeschlossen, um sein Tempo zu beziffern — bisher {{d}} Tage Beobachtung.",
     "hhPaceThinUntracked": "Es sind noch nicht genug Stellen dieses Unternehmens abgeschlossen, um sein Tempo zu beziffern.",
+    "hhGate": {
+      "lap": "Wir geben nicht an, wie schnell die Stellen dieses Arbeitgebers vom Board verschwinden. Eine Entfernung bestätigen wir auf diesem Board nur, indem wir das ganze Board neu einlesen, und das kann sie ein bis drei Durchläufe zu spät bestätigen. Ein Anteil innerhalb von 14 Tagen und eine typische Dauer wären deshalb beide falsch. Das ist eine Grenze unserer Art, das Board zu lesen, keine Aussage über den Arbeitgeber.",
+      "coverage": "Wir geben nicht an, wie schnell die Stellen dieses Arbeitgebers vom Board verschwinden: Nur {{pct}} % seiner Stellen tragen ein Veröffentlichungsdatum vom Unternehmen selbst, zu wenige, um daraus zu messen.",
+      "paceTracking": "Wir beobachten dieses Board seit {{d}} Tagen. Ein Anteil der Stellen, die innerhalb von 14 Tagen verschwinden, braucht mindestens {{min}} Tage Beobachtung, deshalb nennen wir noch keinen.",
+      "countsTracking": "Wir beobachten dieses Board seit {{d}} Tagen. Entfernte und nicht neu ausgeschriebene Stellen zählen wir erst nach {{min}} Tagen Beobachtung, weil eine kürzlich entfernte Stelle noch zurückkommen kann.",
+      "countsTrackingLap": "Wir beobachten dieses Board seit {{d}} Tagen. Entfernte und nicht neu ausgeschriebene Stellen zählen wir hier erst nach {{min}} Tagen Beobachtung: Auf diesem Board wird eine Entfernung nur durch erneutes Einlesen des ganzen Boards bestätigt, und eine kürzlich entfernte Stelle kann noch zurückkommen.",
+      "relist": "Wir nennen nicht, wie viele Stellen dieses Arbeitgebers entfernt wurden und entfernt blieben. Wir haben auf diesem Board in {{d}} Tagen Beobachtung {{n}} entfernte Stellen erfasst und keine einzige, die zurückkam. Bei einem Board dieser Größe heißt das, dass unsere Erkennung von Neuausschreibungen hier nicht funktioniert, nicht dass nichts neu ausgeschrieben wurde. Das ist eine Lücke in unseren Daten, keine Aussage über den Arbeitgeber.",
+      "withheldBadge": "Entfernungsdaten zurückgehalten"
+    },
     "hhRepostsFloor": "Denselben Stellentitel während unserer Beobachtung mindestens {{n}}× erneut eingestellt — routinemäßiges Neueinstellen oder Stellen, die immer wieder aufgehen.",
     "hhFootnoteCurve": "Berechnet aus dem gesamten Lebenszyklus der offiziellen Anzeigen dieses Unternehmens — wann sie erscheinen und wann sie verschwinden — nicht aus einer Momentaufnahme. Noch offene Stellen und Stellen jenseits unserer 30-Tage-Grenze zählen als unabgeschlossen statt herauszufallen.",
     "repostTipFloor": "Dieses Unternehmen hat denselben Stellentitel während unserer Beobachtung mindestens {{n}}× erneut eingestellt — wir zählen einen wiedereingestellten Titel nur einmal pro Tag, die tatsächliche Zahl kann also höher sein. Das kann routinemäßiges Neueinstellen bedeuten oder Stellen, die immer wieder aufgehen — gut zu wissen, bevor man Aufwand in eine Bewerbung steckt.",
@@ -4361,6 +4365,7 @@
     "lcaChip": "Eingereichte H-1B-Löhne · {{quarter}}",
     "lcaRange": "{{company}} hat im Zeitraum {{quarter}} {{n}} zertifizierte Labor Condition Applications für {{occupation}} in {{state}} eingereicht, mit Jahreslöhnen von {{low}} bis {{high}}.",
     "lcaWhyThisCell": "Das ist die größte Gruppe von Anträgen, die dieser Arbeitgeber in dem Quartal eingereicht hat. Diese Anzeige nennt keinen Berufscode, daher wurde sie dieser Stelle nicht zugeordnet.",
+    "lcaWhyThisCellEmployer": "Das ist die größte Gruppe von Anträgen, die dieser Arbeitgeber in dem Quartal eingereicht hat, gezeigt als ein Beispiel dafür, was er eingereicht hat. Sie ist keiner einzelnen Stelle auf diesem Board zugeordnet.",
     "lcaSponsor": "{{company}} hat für diesen Zeitraum {{total}} zertifizierte Anträge mit jährlich angegebenem Lohn im Bestand, verteilt auf {{groups}} Gruppen aus Beruf und Bundesstaat.",
     "lcaPeriod": "Es handelt sich um Anträge, die das Ministerium zwischen {{from}} und {{to}} zertifiziert hat.",
     "lcaNotAnOffer": "Das sind die für diese Anträge eingereichten Löhne. Sie sind weder die Vergütung dieser Stelle noch ein Angebot.",

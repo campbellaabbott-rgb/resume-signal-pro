@@ -3826,6 +3826,7 @@
       "bandMid": "middenbedrijf",
       "bandSmall": "startup-formaat",
       "employees": "≈{{n}} medewerkers ({{basis}}) · {{band}}",
+      "asOf": "per {{date}}",
       "basisYc": "YC-profiel",
       "basisPr": "openbare registers",
       "net7d": "+{{n}} netto nieuwe vacatures deze week",
@@ -3864,12 +3865,6 @@
       "netLoss": "Nettoverlies {{v}} (FY{{y}})",
       "trendAria": "Omzet per boekjaar",
       "sourceLine": "Bron: {{name}}s eigen SEC-rapporten (10-K/20-F). Cijfers zoals ingediend; geen beleggingsadvies."
-    },
-    "h1b": {
-      "chip": "Opgegeven lonen · H-1B-aanvragen {{fy}}",
-      "summary": "{{company}} gaf basislonen op voor {{n}} gecertificeerde H-1B-posities — mediaan {{m}}/jaar.",
-      "range": "{{lo}}–{{hi}} · {{n}} aanvragen",
-      "sourceLine": "Bron: openbare LCA-bestanden van het Amerikaanse ministerie van Arbeid — basislonen zoals opgegeven door de werkgever, op jaarbasis. Alleen H-1B-posities; niet het bedrijfsbrede loon."
     },
     "employerCtx": {
       "title": "Over deze werkgever",
@@ -4319,6 +4314,15 @@
     "hhMedian": "De helft van deze functies is op dag {{d}} vervuld.",
     "hhPaceThin": "Er zijn nog te weinig functies van dit bedrijf afgerond om te zeggen hoe snel het beweegt — {{d}} dagen volgen tot nu toe.",
     "hhPaceThinUntracked": "Er zijn nog te weinig functies van dit bedrijf afgerond om te zeggen hoe snel het beweegt.",
+    "hhGate": {
+      "lap": "We geven niet aan hoe snel de vacatures van deze werkgever verdwijnen. Op dit bord bevestigen we een verwijdering alleen door het hele bord opnieuw te lezen, en dat kan haar één tot drie leesrondes te laat bevestigen, dus een aandeel binnen 14 dagen en een typische duur zouden allebei verkeerd uitvallen. Dit is een grens van hoe wij het bord lezen, geen feit over de werkgever.",
+      "coverage": "We geven niet aan hoe snel de vacatures van deze werkgever verdwijnen: maar {{pct}}% van de vacatures draagt een plaatsingsdatum van het bedrijf zelf, te weinig om mee te meten.",
+      "paceTracking": "We volgen dit bord nu {{d}} dagen. Een aandeel vacatures dat binnen 14 dagen verdwijnt, vraagt minstens {{min}} dagen volgen, dus we noemen er nog geen.",
+      "countsTracking": "We volgen dit bord nu {{d}} dagen. Vacatures die verwijderd en niet opnieuw geplaatst zijn, tellen we pas na {{min}} dagen volgen, omdat een recenter verwijderde vacature nog terug kan komen.",
+      "countsTrackingLap": "We volgen dit bord nu {{d}} dagen. Vacatures die verwijderd en niet opnieuw geplaatst zijn, tellen we hier pas na {{min}} dagen volgen: op dit bord wordt een verwijdering alleen bevestigd door het hele bord opnieuw te lezen, en een recenter verwijderde vacature kan nog terugkomen.",
+      "relist": "We tonen niet hoeveel vacatures van deze werkgever verwijderd zijn en verwijderd bleven. We registreerden op dit bord {{n}} verwijderde vacatures in {{d}} dagen volgen en niet één die terugkwam. Bij een bord van deze omvang betekent dat dat onze herkenning van herplaatsingen hier niet werkt, niet dat er niets opnieuw geplaatst is. Dit is een gat in onze gegevens, geen feit over de werkgever.",
+      "withheldBadge": "Verwijderingsgegevens achtergehouden"
+    },
     "hhRepostsFloor": "Dezelfde functietitel tijdens onze meting minstens {{n}} keer opnieuw geplaatst — routineus herplaatsen, of functies die steeds weer opengaan.",
     "hhFootnoteCurve": "Berekend uit de volledige levenscyclus van de officiële vacatures van dit bedrijf — wanneer ze openen en wanneer ze verdwijnen — niet uit een momentopname. Functies die nog online staan, en functies voorbij onze 30-dagengrens, tellen als onafgerond in plaats van weg te vallen.",
     "repostTipFloor": "Dit bedrijf plaatste dezelfde functietitel tijdens onze meting minstens {{n}} keer opnieuw — we tellen een herplaatste titel één keer per dag, dus het werkelijke aantal kan hoger liggen. Dat kan routineus herplaatsen betekenen of functies die steeds weer opengaan — goed om te weten voor je in een sollicitatie investeert.",
@@ -4361,6 +4365,7 @@
     "lcaChip": "Ingediende H-1B-lonen · {{quarter}}",
     "lcaRange": "{{company}} heeft in {{quarter}} {{n}} gecertificeerde Labor Condition Applications ingediend voor {{occupation}} in {{state}}, met jaarlonen van {{low}} tot {{high}}.",
     "lcaWhyThisCell": "Dit is de grootste groep aanvragen die deze werkgever dat kwartaal heeft ingediend. Deze vacature vermeldt geen beroepscode, dus is ze niet aan deze functie gekoppeld.",
+    "lcaWhyThisCellEmployer": "Dit is de grootste groep aanvragen die deze werkgever in dat kwartaal indiende, getoond als één voorbeeld van wat er werd ingediend. Ze is aan geen enkele functie op dit bord gekoppeld.",
     "lcaSponsor": "{{company}} heeft voor die periode {{total}} gecertificeerde aanvragen met een opgegeven jaarloon staan, verdeeld over {{groups}} groepen van beroep en staat.",
     "lcaPeriod": "Dit zijn aanvragen die het ministerie tussen {{from}} en {{to}} heeft gecertificeerd.",
     "lcaNotAnOffer": "Dit zijn de lonen die voor die aanvragen zijn ingediend. Het is niet de beloning van deze functie en geen aanbod.",
