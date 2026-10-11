@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261009130000_a_subscription_notice_is_sent_once_per_subscription_and_kind.sql'));

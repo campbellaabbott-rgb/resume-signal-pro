@@ -4446,6 +4446,27 @@ export type Database = {
         }
         Relationships: []
       }
+      subscription_notices: {
+        Row: {
+          email: string
+          kind: string
+          queued_at: string
+          subscription_id: string
+        }
+        Insert: {
+          email: string
+          kind: string
+          queued_at?: string
+          subscription_id: string
+        }
+        Update: {
+          email?: string
+          kind?: string
+          queued_at?: string
+          subscription_id?: string
+        }
+        Relationships: []
+      }
       suppressed_emails: {
         Row: {
           created_at: string

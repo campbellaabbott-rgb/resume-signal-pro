@@ -1009,6 +1009,13 @@
       "when": 1791751506017,
       "tag": "0143_20261009124100_a_person_may_send_what_the_agent_would_not_and_try_a_failed_send_again",
       "breakpoints": true
+    },
+    {
+      "idx": 144,
+      "version": "7",
+      "when": 1791751516904,
+      "tag": "0144_20261009130000_a_subscription_notice_is_sent_once_per_subscription_and_kind",
+      "breakpoints": true
     }
   ]
 }
