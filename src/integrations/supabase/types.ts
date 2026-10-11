@@ -5203,6 +5203,7 @@ export type Database = {
       cleanup_expired_temp_resumes: { Args: never; Returns: number }
       cleanup_old_rate_limits: { Args: never; Returns: number }
       client_callable_census: { Args: never; Returns: Json }
+      client_callable_unlisted_names: { Args: never; Returns: Json }
       client_write_allowed: {
         Args: {
           p_ceiling: number

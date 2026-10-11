@@ -904,6 +904,13 @@
       "when": 1791678697897,
       "tag": "0128_20261008140000_the_takedown_ticker_no_longer_says_the_change_feed_counts_higher",
       "breakpoints": true
+    },
+    {
+      "idx": 129,
+      "version": "7",
+      "when": 1791678717975,
+      "tag": "0129_20261008141000_the_owner_can_read_which_client_callable_definers_no_list_names",
+      "breakpoints": true
     }
   ]
 }
