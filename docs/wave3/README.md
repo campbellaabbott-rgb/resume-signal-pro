@@ -1,10 +1,13 @@
 # Wave 3: one integration of eight branches
 
 Wave 3 merges eight branches onto `origin/main`. It was built on `31647d4c`
-(wave 2, PR #24, and the deploy ledger, PR #25) and then took main again at
-`25363267`: PR #26 (migration `20261008131500` and the test helper that starts
-from Supabase's default grants), Lovable's staged-migration stubs 0106-0129
-and the "Deployed 53 functions" commit that put wave 2 live. The branches are
+(wave 2, PR #24, and the deploy ledger, PR #25) and has since taken main twice.
+At `25363267` it took PR #26 (migration `20261008131500` and the test helper
+that starts from Supabase's default grants), Lovable's staged-migration stubs
+0106-0129, and the "Deployed 53 functions" commit that put wave 2 live. At
+`a3201ce7` it took PR #27 (the default-grants guard), PR #28 (the ledger's
+`verifiedDeploys` record and wave 2's released holds) and PR #29 (wave 2's
+changelog). The branches are
 job-board, board-data-ingest, scan-ai, agents-api, payments-account,
 email-ops, seo-content and tests-ci. The integration branch is
 `wave3/integration`, built 2026-10-10. It also carries the S10-018 fix, the
@@ -24,9 +27,10 @@ The builds that deploy are the ones in the stamp table below.
    49 clean, then 20261008125000 and 20261008128000 applied and verified).
    Then main thaws (docs/DEPLOY-LEDGER.md §2). Wave 2's step 1 is deployed:
    on 2026-10-10 the live preflights answered job-board.2026-09-09.91,
-   stripe-webhook.2026-10-08.2 and create-pass-checkout.2026-09-27.3, and
-   main's staged-runner stubs record every wave-2 migration except the two
-   held ones (20261008125000, 20261008128000), which the ledger still holds.
+   stripe-webhook.2026-10-08.2 and create-pass-checkout.2026-09-27.3. Main
+   records that deploy in `verifiedDeploys` (commit `1fc1702d`). It released
+   wave 2's two held migrations (20261008125000, 20261008128000) on
+   2026-10-11. That is wave 2's step 2, and it goes before anything here.
 2. **Merge only through an integration PR whose suite passed and whose
    `--against` checks pass:**
 
@@ -38,8 +42,10 @@ The builds that deploy are the ones in the stamp table below.
    `node scripts/deploy-ledger.mjs --message`. Never copy a list from this
    file: the ledger compares the merge commit with production. Before wave 2
    deployed it listed wave 2 and wave 3 together (87 functions, 43 migrations
-   plus 4 held). Since main was merged in at `25363267` it lists wave 3 alone:
-   78 functions, 21 migrations, and 4 held (wave 2's two and wave 3's two).
+   plus 4 held). With main merged in at `a3201ce7` it lists 76 functions and
+   23 migrations, with wave 3's two held. The 23 are wave 2's two released
+   step-2 migrations, listed first, then wave 3's 21. Once wave 2's step 2 is
+   applied, the list is wave 3 alone.
 4. **Step 1, one Lovable session.** Apply the migrations the message lists, in
    its order (it skips the held ones). Deploy the functions it lists. Publish
    the frontend from the same commit. These orders inside step 1 come from
@@ -175,7 +181,13 @@ Four read-only reviewers read the branch. Each finding was reproduced
 first, then fixed with a behaviour test that fails on the old file and passes
 on the new one.
 
-- **Main had moved.** Main was merged in at `25363267` (above).
+- **Main had moved.** Main was merged in at `25363267`, and again at
+  `a3201ce7` when it moved during this work (above). PR #28 rewrote the
+  ledger script that this branch had refactored. The merge keeps the
+  refactor (the pure rules are exported and tested) and carries #28's two
+  rules into it: `verifiedDeploys`, and a stamp the function never sends
+  counting as no marker. Section 40 takes main's `build_ge` form of the
+  check-alerts line.
 - **The free report sold a third product.** Every scan run against a posting
   showed "Prepare this exact application", whose sample ended in a $7 Apply
   Assistant checkout. The card is gone, along with its two locale keys in all
@@ -211,13 +223,14 @@ on the new one.
   .93). Branches map to workstreams through `branches` in
   `docs/deploy-ledger.json`. A relabel must change the marker and nothing
   else on its line. A sequence with a leading zero (`.04`) is unreadable.
-- **Two wave-2 functions could not be told apart from their deploy.** Wave 2
-  changed affiliate-payout-request and industry-corrections-digest after
-  their `2026-10-08.1` stamps went live, so the ledger answered MUST BUMP
-  (exit 2). Both now answer `2026-10-09.1` and deploy with wave 3.
-  check-subscription is still listed as CHECK. Its only import from
-  `subscription-standing.ts` is `isOwingStatus`, and the change there added
-  a field that function never reads, so it is not restamped.
+- **Two wave-2 functions read MUST BUMP for a while.** With wave 2 live and
+  before main's `verifiedDeploys` record arrived, the ledger answered MUST
+  BUMP (exit 2) for affiliate-payout-request and industry-corrections-digest.
+  Wave 2 had changed both after writing their `2026-10-08.1` stamps. They
+  were restamped, then the restamp was reverted once `a3201ce7` came in:
+  the record proves that the 1fc1702d deploy shipped those changes. Neither
+  deploys with wave 3. The ledger now answers exit 0, with no MUST BUMP and
+  no CHECK.
 
 ## Where two groups met (the integration's decisions)
 
@@ -284,18 +297,15 @@ on the new one.
 ## Build stamps (function: main -> integration)
 
 76 functions differ from main in their folder or a direct `_shared` import.
-Two more are restamped only (affiliate-payout-request,
-industry-corrections-digest; see the review fixes), so 78 deploy.
 Each answers the integration build on its OPTIONS preflight
 (`x-fn-build: <fn>.<build>`). job-board also answers it as `status.version`,
 and layoff-filings as its GET `version`.
 
-| function | main (25363267) | integration | strings the branches set |
+| function | main (a3201ce7) | integration | strings the branches set |
 |---|---|---|---|
 | admin-regenerate-delivery | 2026-10-05.1 | **2026-10-09.2** | email-ops 2026-10-09.1 |
 | agent-mcp | 2026-10-05.2 | **2026-10-09.4** | board-data-ingest 2026-10-09.1, agents-api 2026-10-09.3 |
 | agent-pass-status | 2026-10-08.1 | **2026-10-09.2** | email-ops 2026-10-09.1 |
-| affiliate-payout-request | 2026-10-08.1 | **2026-10-09.1** | none (restamped: wave 2 changed its code after the stamp went live) |
 | agent-runner | 2026-10-05.2 | **2026-10-09.2** | board-data-ingest 2026-10-09.1 |
 | analyze-linkedin-profile | 2026-10-05.1 | **2026-10-09.1** | none (a _shared import it reads changed) |
 | analyze-resume | 2026-10-08.2 | **2026-10-09.2** | payments-account 2026-10-09.1 |
@@ -340,7 +350,6 @@ and layoff-filings as its GET `version`.
 | get-analytics | 2026-10-08.1 | **2026-10-09.2** | email-ops 2026-10-09.1 |
 | health-check | 2026-10-08.1 | **2026-10-09.2** | email-ops 2026-10-09.1 |
 | import-freelance-profile | 2026-10-10.1 | **2026-10-10.2** | none (a _shared import it reads changed) |
-| industry-corrections-digest | 2026-10-08.1 | **2026-10-09.1** | none (restamped: wave 2 changed its code after the stamp went live) |
 | job-board | 2026-09-09.91 | **2026-09-09.92** | job-board 2026-09-09.92 |
 | job-fit | none | **2026-10-09.2** | job-board 2026-10-09.1, board-data-ingest 2026-10-09.1 |
 | layoff-filings | 2026-09-25.1 | **2026-10-09.3** | board-data-ingest 2026-10-09.1, tests-ci 2026-10-09.2 |
@@ -419,24 +428,26 @@ As built on `31647d4c`:
 - `--head 173a740b` (the merge before the restamp) reports the collisions,
   for example 17 against wave3/email-ops.
 
-After main was merged in at `25363267` and the review fixes landed:
+After main was merged in (`25363267`, then `a3201ce7`) and the review fixes
+landed:
 - App typecheck (`npm run typecheck`, the pre-commit/pre-push gate): clean.
 - Worker typecheck (`cd worker && tsc --noEmit`): clean.
 - `bash scripts/check-functions.sh`: every edge function passes `deno check`,
   and so do the Deno tests beside them. `bash scripts/deno-tests.sh`: 66
   passed, 0 failed. `deno.lock` is unchanged.
-- The full vitest suite (846 files, 10,938 tests): 840 files passed. The
-  five that failed were timeouts while the machine's load average stood
-  between 250 and 600, plus one file whose worker never started. Each of the
-  six passed when re-run alone afterwards.
+- The full vitest suite at `4f77c2b1` (846 files, 10,938 tests): 840 files
+  passed. Five failed on timeouts while the machine's load average stood
+  between 250 and 600, and one never started its worker. All six passed when
+  re-run alone afterwards. After the `a3201ce7` merge, the pre-push gate
+  runs the suite again.
 - Each review fix's test was run on the old file (failing) and the new one
   (passing): the ledger rule 8 of 13 failing before, the free report's third
   offer, the role chips 3/3, the pass return, the tap during checkout 4/4,
   and the digest claims 8/8 (with the old functions and without
   20261009144000).
-- `node scripts/deploy-ledger.mjs --message`: exit 0, no MUST BUMP. It lists
-  wave 3 alone: 78 functions, 21 migrations, 4 held. check-subscription is
-  listed as CHECK (see the review fixes).
+- `node scripts/deploy-ledger.mjs --message`: exit 0, with no MUST BUMP and
+  no CHECK. It lists 76 functions and 23 migrations (wave 2's two released
+  ones first), and holds 2.
 - `--against` origin/main and all eight wave-3 tips: 0 violations. The
   job-board .92 reservation is reported as wave 3's, shared with
   wave3/job-board. `--against wave3/tests-ci --head wave3/board-data-ingest`
