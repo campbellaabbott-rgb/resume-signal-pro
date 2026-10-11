@@ -252,7 +252,8 @@ refuted. One item is half done: S11-021's accent half (below).
 
 - **Build stamps.** Where two groups stamped one function, it got one build
   later than both:
-  - nl-search 2026-10-09.7 and scan-heartbeat 2026-10-09.7;
+  - nl-search 2026-10-09.7 and scan-heartbeat 2026-10-09.7 (the review round
+    took scan-heartbeat to 2026-10-09.71);
   - send-search-digest 2026-10-09.25;
   - generate-application-answers 2026-10-10.62;
   - analyze-resume, generate-apply-package, generate-cover-letter and
@@ -338,7 +339,8 @@ to re-run.
   That confirms the fetcher can resolve DNS on Supabase's runtime. If it
   cannot, every read asks for the text, which is safe.
 - **The apply worker (S11-011)** runs from main on GitHub Actions. It changes
-  only once main carries this merge (WORKER_VERSION 2026-10-09.24).
+  only once main carries this merge (WORKER_VERSION 2026-10-09.26 since the
+  review round).
 
 ### Build stamps after the round (function: main -> before -> after)
 
@@ -348,12 +350,12 @@ Functions not listed keep the build in the earlier table. job-board keeps
 | function | main (a3201ce7) | before the round (1b7bfe53) | fix round | strings the fixer branches set |
 |---|---|---|---|---|
 | agent-access | 2026-10-10.1 | 2026-10-10.1 | **2026-10-10.24** | agents 2026-10-10.24 |
-| agent-mcp | 2026-10-05.2 | 2026-10-09.4 | **2026-10-09.24** | agents 2026-10-09.24 |
+| agent-mcp | 2026-10-05.2 | 2026-10-09.4 | **2026-10-09.71** | agents 2026-10-09.24; review round 2026-10-09.71 |
 | analyze-linkedin-profile | 2026-10-05.1 | 2026-10-09.1 | **2026-10-09.2** | parsers-scan 2026-10-09.2 |
 | analyze-resume | 2026-10-08.2 | 2026-10-09.2 | **2026-10-09.62** | fetcher-frontend 2026-10-09.3, payments-account 2026-10-09.61 |
 | api-key-request | 2026-10-04.2 | 2026-10-09.2 | **2026-10-09.61** | payments-account 2026-10-09.61 |
 | application-fit | none | 2026-10-09.2 | **2026-10-09.3** | parsers-scan 2026-10-09.3 |
-| apply-agent | 2026-10-05.2 | 2026-10-09.3 | **2026-10-09.24** | agents 2026-10-09.24 |
+| apply-agent | 2026-10-05.2 | 2026-10-09.3 | **2026-10-09.71** | agents 2026-10-09.24; review round 2026-10-09.71 |
 | apply-broker | 2026-10-05.2 | 2026-10-09.2 | **2026-10-09.24** | agents 2026-10-09.24 |
 | create-agent-checkout | 2026-10-08.2 | 2026-10-09.4 | **2026-10-09.61** | payments-account 2026-10-09.61 |
 | create-checkout | 2026-10-08.1 | 2026-10-09.2 | **2026-10-09.61** | payments-account 2026-10-09.61 |
@@ -363,7 +365,7 @@ Functions not listed keep the build in the earlier table. job-board keeps
 | create-scan-pack-checkout | 2026-10-05.1 | 2026-10-09.2 | **2026-10-09.61** | payments-account 2026-10-09.61 |
 | create-subscription-checkout | 2026-10-08.1 | 2026-10-09.4 | **2026-10-09.61** | payments-account 2026-10-09.61 |
 | create-test-checkout | none | 2026-10-09.2 | **2026-10-09.61** | payments-account 2026-10-09.61 |
-| fetch-job-posting | none | none | **2026-10-09.1** | fetcher-frontend 2026-10-09.1 |
+| fetch-job-posting | none | none | **2026-10-09.71** | fetcher-frontend 2026-10-09.1; review round 2026-10-09.71 |
 | free-keyword-scan | 2026-10-08.3 | 2026-10-09.3 | **2026-10-09.5** | parsers-scan 2026-10-09.4, fetcher-frontend 2026-10-09.4, seo-ingest-ops 2026-10-09.4 |
 | free-keyword-scan-stream | 2026-10-08.1 | 2026-10-09.3 | **2026-10-09.5** | parsers-scan 2026-10-09.4, fetcher-frontend 2026-10-09.4 |
 | generate-application-answers | 2026-10-10.1 | 2026-10-10.3 | **2026-10-10.62** | parsers-scan 2026-10-10.4, agents 2026-10-10.24, payments-account 2026-10-10.61 |
@@ -391,9 +393,9 @@ Functions not listed keep the build in the earlier table. job-board keeps
 | parse-docx | 2026-10-05.1 | 2026-10-05.1 | **2026-10-09.1** | parsers-scan 2026-10-09.1 |
 | parse-pdf | 2026-10-05.1 | 2026-10-05.1 | **2026-10-09.1** | parsers-scan 2026-10-09.1 |
 | parse-resume-structured | 2026-10-05.1 | 2026-10-09.1 | **2026-10-09.2** | parsers-scan 2026-10-09.2 |
-| public-api | 2026-10-08.2 | 2026-10-09.2 | **2026-10-09.6** | search 2026-10-09.6 |
+| public-api | 2026-10-08.2 | 2026-10-09.2 | **2026-10-09.71** | search 2026-10-09.6; review round 2026-10-09.71 |
 | retry-failed-deliveries | 2026-10-05.1 | 2026-10-09.2 | **2026-10-09.61** | payments-account 2026-10-09.61 |
-| scan-heartbeat | 2026-10-08.1 | 2026-10-09.2 | **2026-10-09.7** | jobboard-runtime 2026-10-09.6, seo-ingest-ops 2026-10-09.3 |
+| scan-heartbeat | 2026-10-08.1 | 2026-10-09.2 | **2026-10-09.71** | jobboard-runtime 2026-10-09.6, seo-ingest-ops 2026-10-09.3; review round 2026-10-09.71 |
 | send-agent-digest | 2026-10-08.1 | 2026-10-09.3 | **2026-10-09.24** | agents 2026-10-09.24 |
 | send-market-pulse | 2026-10-08.1 | 2026-10-09.2 | **2026-10-09.24** | agents 2026-10-09.24 |
 | send-scan-report | 2026-10-08.1 | 2026-10-09.2 | **2026-10-09.24** | agents 2026-10-09.24 |
@@ -401,7 +403,7 @@ Functions not listed keep the build in the earlier table. job-board keeps
 | shortlist-evaluate | 2026-10-10.1 | 2026-10-10.3 | **2026-10-10.62** | parsers-scan 2026-10-10.4, payments-account 2026-10-10.61 |
 | stripe-webhook | 2026-10-08.2 | 2026-10-09.4 | **2026-10-09.61** | payments-account 2026-10-09.61 |
 | test-ai-fallback | 2026-10-08.1 | 2026-10-09.1 | **2026-10-09.2** | parsers-scan 2026-10-09.2 |
-| verify-product-purchase | 2026-10-08.2 | 2026-10-09.2 | **2026-10-09.61** | payments-account 2026-10-09.61 |
+| verify-product-purchase | 2026-10-08.2 | 2026-10-09.2 | **2026-10-09.71** | payments-account 2026-10-09.61; review round 2026-10-09.71 |
 | withdraw-subscription | none | 2026-10-09.4 | **2026-10-09.61** | payments-account 2026-10-09.61 |
 
 ### Checks run on the round (2026-10-11)
@@ -437,6 +439,91 @@ On `w31/integrate`, built from `origin/wave3/integration` at `1b7bfe53`:
   no MUST BUMP and no CHECK. It lists 30 migrations before the functions, 2
   after the frontend (131000, then 134200), and 3 held (100300, 112000,
   160100).
+
+### The review round (2026-10-11, on `4e03554a`)
+
+A four-lens review of the merged round (money promises, search and the job
+board, the fetcher and the agents, deploy and tests) found 17 defects. Each
+was reproduced on `w31/integrate` first and fixed with a behaviour test that
+fails on the file before the fix (proved by putting the old file back). None
+was refuted. New builds this round end in `.71`; job-board keeps `.92`; the
+worker is WORKER_VERSION 2026-10-09.26. No new migrations.
+
+- **Blocker, S11-027's leading-state rule (job-board `.92`).** "CA - ON,
+  Ottawa", "CA - BROSSARD BUILDING (PQBRO)", "IN, Bangalore Kar", "DE - HQ -
+  Berlin" and "CO - BOGOTA ..." were read as US states, and the list read
+  would have rewritten about 500 stored CA/IN/DE/CO countries to US. A
+  leading code now refuses the state reading when a later segment (split on
+  the dash too) is a Canadian province or that country's own city, and a code
+  that is also a country the board carries in volume (CA, DE, IN, ID, CO, AR,
+  IL, MA, TN, PA, MO, MT, KY, AZ, AL: live counts 2026-10-11) needs a place we
+  can read after it. Workday's own alpha-2 stands beside a location that leads
+  with the same code. COUNTRY_MAP_VERSION stays 9 (it never served).
+- **S11-012, notice in the question's own clause (both runtimes, byte for
+  byte).** "...the United States as / since we do not sponsor?" and "..., if
+  you require sponsorship please do not apply" were answered from the
+  sponsorship flag. A clause opened by as, since, because or so is read on
+  its own; a condition ("if you require...") or an instruction ("do not
+  apply") is never the question; an authorisation question whose sponsor
+  words are not the candidate's own need goes to the candidate.
+- **S11-060, "the country in which you are applying" (both runtimes).** That
+  form, "the location you are applying for", "the country of employment" and
+  "this location" are the posting's country. "The country where you reside"
+  stays the candidate's.
+- **S11-042, stale refusals.** A waiting packet stores today's refusal
+  (`refusalToStore`, _shared/apply-release.ts): a sender-offline packet with
+  gaps becomes not-ready. Only a packet waiting for a person keeps its code
+  when an unattended rule (vendor-not-allowed) alone refuses it.
+- **S11-032, the fetcher's clocks.** Name lookups race the deadline (and take
+  an abort signal), one read shares one 12 s clock across the API and the
+  page (9 s a chain), only the first 1,000,000 characters are parsed, and the
+  ld+json, script, comment and tag scans are one pass (they were quadratic).
+- **S11-021 on /v1.** `_shared/location-terms.ts` folds the apostrophe, so
+  /v1's own location filter sends "St. John's" as the board stores it.
+- **S11-001, carried counts.** facetsCarriedAt is the time the carried counts
+  were counted (`job-board/facet-carry.ts`), not the pass time, and
+  scan-heartbeat fails the served counts on that age past 3 h.
+- **Verifier.** Section 71's pass-end line is INFO while a tail is in flight
+  (it read PASS); section 79 gates on job-board's x-fn-build with build_ge;
+  sections 71-80 ask for every wave-3 build exactly (a new test reads them),
+  so the 112000 hold's "section 72 PASSes" means shortlist-evaluate .62.
+- **The ledger.** `--message` also refuses (exit 5) a checkout at main whose
+  deploy inputs differ from main's commit, and names them.
+- **S11-141, the EU/UK box.** A "Try again" sends the box its first press
+  carried; a product checkout that starts nothing (the roles question closed,
+  a résumé not stored, a failed call) gives the box back.
+- **S11-142.** The $29 pass and the Full Analysis checkouts read a box refusal
+  through consentWasRequired, so the box shows without a reload.
+- **S11-054.** With a readable résumé bound and the server's generation
+  failed, the success page makes nothing and says it is coming (the sweep
+  makes and mails it); "in progress" is answered only for products shown from
+  the saved copy, so the Coach and Career Path widgets do not wait.
+- **S11-121.** initialize, the guide, board_stats, /llms.txt, /llms-full.txt
+  and the /agents error table name the Agent plan beside a paid key and a pass.
+- **S11-074.** ATS Defense's bullets, the roles promise among them, are shown
+  in the reader's language in all nine locales (`productFeatures`).
+
+Builds this round: agent-mcp, apply-agent, fetch-job-posting, public-api,
+scan-heartbeat and verify-product-purchase `2026-10-09.71`.
+
+Checks on `w31/integrate` after the round (2026-10-11):
+- App typecheck and worker `tsc --noEmit`: clean.
+- `bash scripts/check-functions.sh`: every function and the Deno tests
+  beside them pass; `supabase/functions/deno.lock` restored.
+- The full suite, run twice. First run: 12 failed tests. Six were this
+  round's own edits tripping guards that pin `sanitizeTerm` and the
+  carried-facets line, so the fold moved into `locationTerms()` and the fat
+  row keeps its marker line, and those guards read as they did. Six (in four
+  files) were timeouts under machine load, and each file passed alone. Second run: 914 files
+  passed, 1 failed, 1 skipped; 11,625 tests passed and 23 skipped. The one
+  failure was a timeout under load in a pglite test that inserts 10,000 rows
+  inside the default 5 s budget (a-relisted-posting..., untouched here). It
+  passes alone.
+- `--against` origin/main, origin/wave3/integration, the eight wave-3 tips
+  and the seven `w31/` tips: 0 violations, exit 0.
+- `--message`: exit 5, the main-only refusal (not 2: nothing MUST BUMP).
+  `--draft`: exit 0, 80 functions to deploy, 0 unchecked, 32 migrations with
+  3 held, 131000 then 134200 after the frontend.
 
 ## What wave 3 ships, per group
 

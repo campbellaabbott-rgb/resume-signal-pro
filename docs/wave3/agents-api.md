@@ -227,7 +227,7 @@ Migrations, in this order, both self-checking and safe to re-run:
 2. `20261009124100_a_person_may_send_what_the_agent_would_not_and_try_a_failed_send_again`
    (agent_packet_decide with approve, cancel, retry, not_sent).
 
-The worker (GitHub Actions, from main) carries WORKER_VERSION 2026-10-09.24.
+The worker (GitHub Actions, from main) carries WORKER_VERSION 2026-10-09.26 (2026-10-09.24 for the round; .26 for the review round's sponsorship-notice and applied-in country readings).
 Verify: `scripts/verify-deploy.d/73w-w31-agents.sh`.
 
 ## Not done, and why
