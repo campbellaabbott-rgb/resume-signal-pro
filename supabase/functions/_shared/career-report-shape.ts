@@ -14,6 +14,14 @@
 //   a Spanish "Fuerte" read as a red, 30% gauge. They are kept in English,
 //   translations a model writes anyway are mapped back, and the page shows
 //   each one in the reader's language from its English value.
+// - A VERDICT OFF THE LIST IS DRAWN NEUTRAL, NOT REFUSED; AN EMPTY SECTION IS
+//   REFUSED (register S11-148). One off-list or translated label ("Declining",
+//   "Low" for a trajectory, "Listo para postularte") walked the whole model
+//   chain to a 502 and a failed paid delivery, while a reply whose strengths,
+//   risks, fixes, positioning or weeks were empty shipped as delivered. Now an
+//   off-list value becomes "" (reportTone draws it "unknown", never red), a
+//   missing channel priority is allowed, and a section with no content is a
+//   problem.
 
 export const REPORT_ENUMS = {
   overall: ["Strong", "Mixed", "Risky"],
@@ -126,11 +134,17 @@ class Check {
     this.problems.push(`${path} is missing`);
     return {};
   }
-  enumOf(kind: ReportEnumKind, v: unknown, path: string): string {
+  enumOf(kind: ReportEnumKind, v: unknown, path: string, optional = false): string {
     const c = canonicalReportEnum(kind, v);
     if (c) return c;
-    this.problems.push(`${path} ${JSON.stringify(v ?? null).slice(0, 40)} is not one of ${REPORT_ENUMS[kind].join("/")}`);
-    return text(v);
+    // Missing is incomplete (unless the field is optional); present but off
+    // the list is a value the page draws neutral, never a refused report.
+    if (!optional && text(v) === "") this.problems.push(`${path} is missing`);
+    return "";
+  }
+  /** A section that must say something. */
+  filled(ok: boolean, path: string): void {
+    if (!ok) this.problems.push(`${path} is empty`);
   }
 }
 
@@ -191,8 +205,11 @@ export function shapeCareerSnapshot(raw: unknown): Shaped<CareerSnapshotShape> {
     },
     priorityFixes: recList(r.priorityFixes, (o) => ({ fix: text(o.fix), impact: text(o.impact), timeEstimate: text(o.timeEstimate) }), (t) => ({ fix: t, impact: "", timeEstimate: "" })),
   };
-  if (!data.recruiterPerception.summary) c.problems.push("recruiterPerception.summary is empty");
-  if (data.topStrengths.length === 0) c.problems.push("topStrengths is empty");
+  c.filled(!!data.recruiterPerception.summary, "recruiterPerception.summary");
+  c.filled(data.topStrengths.some((x) => x.strength), "topStrengths");
+  c.filled(data.careerRisks.some((x) => x.risk), "careerRisks");
+  c.filled(data.priorityFixes.some((x) => x.fix), "priorityFixes");
+  c.filled(!!data.positioningGuidance.idealPositioning, "positioningGuidance.idealPositioning");
   return { data, problems: c.problems };
 }
 
@@ -233,7 +250,7 @@ export function shapeGamePlan(raw: unknown): Shaped<GamePlanShape> {
     },
     applicationStrategy: {
       weeklyTarget: text(app.weeklyTarget),
-      whereToApply: recList(app.whereToApply, (o) => ({ channel: text(o.channel), priority: c.enumOf("priority", o.priority, "applicationStrategy.whereToApply.priority"), tip: text(o.tip) }), (t) => ({ channel: t, priority: "", tip: "" })),
+      whereToApply: recList(app.whereToApply, (o) => ({ channel: text(o.channel), priority: c.enumOf("priority", o.priority, "applicationStrategy.whereToApply.priority", true), tip: text(o.tip) }), (t) => ({ channel: t, priority: "", tip: "" })),
       whatToAvoid: textList(app.whatToAvoid),
       keyInsight: text(app.keyInsight),
     },
@@ -246,6 +263,8 @@ export function shapeGamePlan(raw: unknown): Shaped<GamePlanShape> {
     },
     thirtyDayPlan: { week1: week("week1"), week2: week("week2"), week3: week("week3"), week4: week("week4") },
   };
+  c.filled(!!data.resumeReadinessGate.summary, "resumeReadinessGate.summary");
+  for (const k of ["week1", "week2", "week3", "week4"] as const) c.filled(data.thirtyDayPlan[k].tasks.length > 0, `thirtyDayPlan.${k}.tasks`);
   return { data, problems: c.problems };
 }
 

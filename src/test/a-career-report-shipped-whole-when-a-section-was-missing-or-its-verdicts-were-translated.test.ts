@@ -43,7 +43,7 @@ const SNAPSHOT_ES = {
   },
   recruiterPerception: { summary: "Una ingeniera sénior sólida." },
   topStrengths: [{ strength: "Pagos", evidence: "Migró el sistema de pagos." }],
-  careerRisks: [],
+  careerRisks: [{ risk: "Sin reportes directos", recruiterQuestion: "¿Ha liderado?", mitigation: "Mentoría." }],
   positioningGuidance: { idealPositioning: "IC sénior.", rolesToTarget: ["Staff"], rolesToAvoid: "Gerente", companyStages: ["Serie B"], storyFraming: "Multiplicadora." },
   priorityFixes: [{ fix: "Añadir mentoría", impact: "Alto", timeEstimate: "15 minutos" }],
 };
