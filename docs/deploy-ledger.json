@@ -17,6 +17,10 @@
   ],
   "migrationOrder": {
     "_note": "Per migration stamp: `after` is \"fn:<name>@<YYYY-MM-DD.N>\" (apply once that function answers that build or later) or \"frontend\" (apply once the frontend is published); `before` lists \"fn:<name>\" a migration must precede. No entry: before the functions. The ledger prints five steps: migrations before the functions, the functions, migrations after the functions they wait for, the frontend, migrations after the frontend (docs/DEPLOY-LEDGER.md §1).",
+    "20261009111000": {
+      "before": ["fn:shortlist-evaluate"],
+      "why": "the new shortlist-evaluate writes jd_text_scored, which this migration adds. S11-056 splits it: the additive half stays here; the half that revokes the live function's client INSERT and adds the guard triggers takes after: frontend"
+    },
     "20261009123000": {
       "before": ["fn:agent-mcp"],
       "why": "the adoption reader must stop reading host buckets as addresses before the new agent-mcp writes them"
