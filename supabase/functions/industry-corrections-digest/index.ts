@@ -21,7 +21,9 @@ import { INDUSTRY_KEYWORDS } from "../_shared/industry-detection.ts";
 import { CORRECTION_MENU_INDUSTRIES } from "../_shared/correction-menu-industries.ts";
 import { isScheduledCaller } from "../_shared/email-cron.ts";
 
-const FN_BUILD = "industry-corrections-digest.2026-10-08.1";
+// Wave 3 restamps this build: wave 2 changed the code below after its stamp
+// went live, so the live stamp could not show which code was serving.
+const FN_BUILD = "industry-corrections-digest.2026-10-09.1";
 const OWNER_EMAIL = Deno.env.get("OWNER_NOTIFY_EMAIL") ?? "resumeboostersupp@gmail.com";
 
 const corsHeaders = {
