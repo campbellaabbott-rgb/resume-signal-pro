@@ -72,10 +72,21 @@ else{
 const bw=(rd("/tmp/vd_78_bw.json")||[]).filter((r)=>r.event==="schedule");const bl=bw[0];
 if(!bl||(Number.isFinite(since)&&Date.parse(bl.createdAt)<since))info("the bot-wall sweep has not run on a schedule since this change (Mondays 06:12 UTC)"+(bl?"; last: "+bl.createdAt+" "+bl.conclusion:""));
 else ok(bl.conclusion==="success","the bot-wall sweep'"'"'s latest scheduled run: "+bl.createdAt+" "+bl.conclusion+" (9 of 9 failed 2026-08-10..10-05)");
+// The Deploy run: judged by its conclusion and by the annotations the step
+// EXECUTED ("<job> TAB <step> TAB <time> ##[notice]..."), never by a grep of
+// the whole log: GitHub echoes every line of the run: script above it, and
+// that script holds the very words of each verdict, so a failing run read
+// PASS (S11-156).
 let log="";try{log=fs.readFileSync("/tmp/vd_78_dep.log","utf8")}catch{}
-if(!log)info("the latest Deploy run'"'"'s log could not be read");
-else if(/cannot verify what is live/.test(log))ok(false,"the latest Deploy run still ran the old verify step (no URL or key: it compared nothing)");
-else if(/Deploy verified/.test(log))ok(true,"the latest Deploy run compared the live job-board build and it matched this commit or later");
-else if(/Deployed code is not this commit/.test(log))info("the latest Deploy run compared and production was behind that commit at push time: re-run its verify job after the Lovable deploy");
-else info("the latest Deploy run'"'"'s verify step printed neither verdict (it may have failed to read: see its log)");'
+const dep=(rd("/tmp/vd_78_dep.json")||[])[0]||null;
+const executed=log.split("\n").map((l)=>{const rest=l.split("\t").slice(2).join("\t").replace(/^﻿/,"");const m=/^\d{4}-\d{2}-\d{2}T[\d:.]+Z (.*)$/.exec(rest);return m?m[1].trim():""}).filter((x)=>/^##\[(notice|warning|error)\]/.test(x));
+const verified=executed.find((x)=>/^##\[notice\]job-board serves \S+ \(this commit is \S+\)/.test(x));
+const behind=executed.find((x)=>/^##\[error\].*this commit is/.test(x));
+const oldStep=executed.find((x)=>/^##\[warning\].*cannot verify what is live/.test(x));
+if(!dep)info("the latest Deploy run could not be listed");
+else if(!log)info("the latest Deploy run'"'"'s log could not be read");
+else if(oldStep)ok(false,"the latest Deploy run still ran the old verify step (no URL or key: it compared nothing)");
+else if(dep.conclusion==="success"&&verified)ok(true,"the latest Deploy run compared the live job-board build and it matched this commit or later: "+verified.replace(/^##\[notice\]/,""));
+else if(behind)info("the latest Deploy run ("+(dep.conclusion||"unfinished")+") compared and production was behind that commit at push time: re-run its verify job after the Lovable deploy ("+behind.replace(/^##\[error\]/,"").slice(0,120)+")");
+else info("the latest Deploy run ("+(dep.conclusion||"unfinished")+") executed no verdict of its own (the script echo is not one): not judged; see its log");'
 fi
