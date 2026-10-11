@@ -5309,6 +5309,19 @@ export type Database = {
           n: number
         }[]
       }
+      cron_http_refusals: {
+        Args: { p_minutes?: number }
+        Returns: {
+          available: boolean
+          last_refused_at: string
+          last_refused_sample: string
+          last_refused_status: number
+          refused: number
+          responses: number
+          server_errors: number
+          timed_out: number
+        }[]
+      }
       custom_access_token_hook: { Args: { event: Json }; Returns: Json }
       delete_analysis_by_share_id: {
         Args: { p_share_id: string }
