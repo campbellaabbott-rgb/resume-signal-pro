@@ -1063,7 +1063,8 @@
     "partialResults": {
       "title": "Résultats partiels :",
       "ruleBased": "notre relecteur IA a été brièvement indisponible, ce rapport repose donc uniquement sur l'analyse automatique. Relancez l'analyse dans quelques minutes pour la version complète personnalisée par l'IA.",
-      "thin": "la relecture IA a laissé certaines sections vides, l'analyse automatique les a donc complétées. Cette version n'a pas été enregistrée : une nouvelle analyse en produit une nouvelle."
+      "thin": "la relecture IA a laissé certaines sections vides, l'analyse automatique les a donc complétées. Cette version n'a pas été enregistrée : une nouvelle analyse en produit une nouvelle.",
+      "fallback": "notre analyseur principal était indisponible, un analyseur de secours plus simple a donc rédigé ce rapport. Il n'a pas de « Pourquoi ce score », et son score n'est pas comparé à notre score fondé sur des règles. Relancez l'analyse dans quelques minutes pour le rapport complet."
     }
   },
   "miniPricingCards": {
@@ -2672,13 +2673,13 @@
       },
       "scoringAlgorithm": {
         "title": "Algorithme de notation",
-        "description": "L'IA note le CV avec des pondérations propres à votre secteur, et son score reste à moins de {{band}} points d'un score fondé sur des règles calculé à partir du même document. La piste d'audit répartit ensuite le résultat entre les quatre parties ci-dessous."
+        "description": "L'IA note le CV avec des pondérations propres à votre secteur, et son score reste à moins de {{band}} points d'un score fondé sur des règles calculé à partir du même document. La piste d'audit répartit ensuite le résultat entre les quatre parties ci-dessous. Si l'analyseur principal est indisponible, un analyseur de secours plus simple répond à sa place : son rapport le signale en haut et n'a pas de piste d'audit."
       }
     },
     "atsPlatformsTitle": "Plateformes ATS face auxquelles nous analysons",
     "atsPlatformsSubtitle": "L'analyse évalue la façon dont chacun de ces {{count}} systèmes lira probablement votre CV. Ce sont les systèmes qu'elle nomme ; rien ici ne revendique une part du marché de l'emploi.",
     "scoreCalculatedTitle": "Comment votre score ATS est calculé",
-    "scoreCalculatedSubtitle": "Le « Pourquoi ce score » de chaque rapport répartit le score entre ces quatre parties, sur 100 points.",
+    "scoreCalculatedSubtitle": "Le « Pourquoi ce score » de chaque rapport complet répartit le score entre ces quatre parties, sur 100 points.",
     "continuousResearchTitle": "Recherche continue",
     "continuousResearchSubtitle": "Les tables de mots-clés et les règles évoluent à mesure que nous apprenons, et chaque changement est daté dans le journal public des modifications.",
     "continuousResearch": {

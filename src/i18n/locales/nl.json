@@ -1063,7 +1063,8 @@
     "partialResults": {
       "title": "Gedeeltelijke resultaten:",
       "ruleBased": "onze AI-beoordelaar was even niet bereikbaar, dus dit rapport gebruikt alleen automatische analyse. Scan over een paar minuten opnieuw voor de volledige, door AI gepersonaliseerde versie.",
-      "thin": "de AI-beoordeling liet enkele onderdelen leeg, dus automatische analyse heeft ze aangevuld. Deze versie is niet opgeslagen, dus een nieuwe scan maakt een nieuwe."
+      "thin": "de AI-beoordeling liet enkele onderdelen leeg, dus automatische analyse heeft ze aangevuld. Deze versie is niet opgeslagen, dus een nieuwe scan maakt een nieuwe.",
+      "fallback": "onze hoofdscanner was niet bereikbaar, dus een eenvoudigere reservescanner heeft dit rapport gemaakt. Het heeft geen „Waarom deze score”, en de score is niet getoetst aan onze op regels gebaseerde score. Scan over een paar minuten opnieuw voor het volledige rapport."
     }
   },
   "miniPricingCards": {
@@ -2672,13 +2673,13 @@
       },
       "scoringAlgorithm": {
         "title": "Scoringalgoritme",
-        "description": "De AI scoort het cv met gewichten voor uw branche, en die score blijft binnen {{band}} punten van een op regels gebaseerde score uit hetzelfde document. Het auditspoor verdeelt het resultaat daarna over de vier onderdelen hieronder."
+        "description": "De AI scoort het cv met gewichten voor uw branche, en die score blijft binnen {{band}} punten van een op regels gebaseerde score uit hetzelfde document. Het auditspoor verdeelt het resultaat daarna over de vier onderdelen hieronder. Is de hoofdscanner niet bereikbaar, dan antwoordt in plaats daarvan een eenvoudigere reserve: dat rapport zegt dat bovenaan en heeft geen auditspoor."
       }
     },
     "atsPlatformsTitle": "ATS-platforms waarop we analyseren",
     "atsPlatformsSubtitle": "De scan beoordeelt hoe elk van deze {{count}} systemen uw cv waarschijnlijk leest. Dit zijn de systemen die hij noemt; hier wordt geen marktaandeel geclaimd.",
     "scoreCalculatedTitle": "Hoe je ATS-score wordt berekend",
-    "scoreCalculatedSubtitle": "De „Waarom deze score” van elk rapport verdeelt de score over deze vier onderdelen, op 100 punten.",
+    "scoreCalculatedSubtitle": "De „Waarom deze score” van elk volledig rapport verdeelt de score over deze vier onderdelen, op 100 punten.",
     "continuousResearchTitle": "Continu onderzoek",
     "continuousResearchSubtitle": "De trefwoordtabellen en regels veranderen naarmate we leren, en elke wijziging staat gedateerd in het openbare wijzigingslogboek.",
     "continuousResearch": {

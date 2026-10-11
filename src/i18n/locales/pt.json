@@ -1063,7 +1063,8 @@
     "partialResults": {
       "title": "Resultados parciais:",
       "ruleBased": "nosso revisor de IA ficou indisponível por um momento, então este relatório usa apenas análise automática. Analise de novo em alguns minutos para a versão completa personalizada por IA.",
-      "thin": "a revisão de IA deixou algumas seções vazias, então a análise automática as preencheu. Esta versão não foi salva, então uma nova análise gera outra."
+      "thin": "a revisão de IA deixou algumas seções vazias, então a análise automática as preencheu. Esta versão não foi salva, então uma nova análise gera outra.",
+      "fallback": "nosso analisador principal estava fora do ar, então um analisador reserva mais simples gerou este relatório. Ele não tem o «Porquê esta pontuação», e a pontuação dele não é conferida com a nossa pontuação baseada em regras. Analise de novo em alguns minutos para o relatório completo."
     }
   },
   "miniPricingCards": {
@@ -2672,13 +2673,13 @@
       },
       "scoringAlgorithm": {
         "title": "Algoritmo de pontuação",
-        "description": "A IA pontua o currículo com pesos para o seu setor, e a pontuação fica a menos de {{band}} pontos de uma pontuação baseada em regras calculada a partir do mesmo documento. O registo de auditoria divide depois o resultado nas quatro partes abaixo."
+        "description": "A IA pontua o currículo com pesos para o seu setor, e a pontuação fica a menos de {{band}} pontos de uma pontuação baseada em regras calculada a partir do mesmo documento. O registo de auditoria divide depois o resultado nas quatro partes abaixo. Se o analisador principal estiver fora do ar, responde no lugar dele um analisador reserva mais simples: o relatório avisa isso no topo e não tem registo de auditoria."
       }
     },
     "atsPlatformsTitle": "Plataformas ATS contra as quais analisamos",
     "atsPlatformsSubtitle": "A análise avalia como cada um destes {{count}} sistemas deverá ler o seu currículo. São os sistemas que nomeia; aqui não se reivindica nenhuma quota do mercado de trabalho.",
     "scoreCalculatedTitle": "Como a sua pontuação ATS é calculada",
-    "scoreCalculatedSubtitle": "O «Porquê esta pontuação» de cada relatório divide a pontuação nestas quatro partes, em 100 pontos.",
+    "scoreCalculatedSubtitle": "O «Porquê esta pontuação» de cada relatório completo divide a pontuação nestas quatro partes, em 100 pontos.",
     "continuousResearchTitle": "Investigação contínua",
     "continuousResearchSubtitle": "As tabelas de palavras-chave e as regras mudam à medida que aprendemos, e cada alteração fica datada no registo público de alterações.",
     "continuousResearch": {

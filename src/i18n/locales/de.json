@@ -1063,7 +1063,8 @@
     "partialResults": {
       "title": "Teilergebnisse:",
       "ruleBased": "Unsere KI-Prüfung war kurz nicht erreichbar, daher beruht dieser Bericht nur auf automatischer Analyse. Scannen Sie in ein paar Minuten erneut für die vollständige, KI-personalisierte Version.",
-      "thin": "Die KI-Prüfung hat einige Abschnitte leer gelassen, daher hat die automatische Analyse sie ergänzt. Diese Version wurde nicht gespeichert, ein erneuter Scan erstellt also eine neue."
+      "thin": "Die KI-Prüfung hat einige Abschnitte leer gelassen, daher hat die automatische Analyse sie ergänzt. Diese Version wurde nicht gespeichert, ein erneuter Scan erstellt also eine neue.",
+      "fallback": "Unser Hauptscanner war nicht erreichbar, daher hat ein einfacherer Ersatzscanner diesen Bericht erstellt. Er enthält kein „Warum diese Punktzahl“, und seine Punktzahl wird nicht mit unserer regelbasierten Punktzahl abgeglichen. Scannen Sie in ein paar Minuten erneut für den vollständigen Bericht."
     }
   },
   "miniPricingCards": {
@@ -2672,13 +2673,13 @@
       },
       "scoringAlgorithm": {
         "title": "Bewertungsalgorithmus",
-        "description": "Die KI bewertet den Lebenslauf mit Gewichtungen für Ihre Branche, und ihre Punktzahl bleibt innerhalb von {{band}} Punkten einer regelbasierten Punktzahl aus demselben Dokument. Der Prüfpfad teilt das Ergebnis dann in die vier Teile unten auf."
+        "description": "Die KI bewertet den Lebenslauf mit Gewichtungen für Ihre Branche, und ihre Punktzahl bleibt innerhalb von {{band}} Punkten einer regelbasierten Punktzahl aus demselben Dokument. Der Prüfpfad teilt das Ergebnis dann in die vier Teile unten auf. Ist der Hauptscanner ausgefallen, antwortet stattdessen ein einfacherer Ersatz: Sein Bericht sagt das ganz oben und hat keinen Prüfpfad."
       }
     },
     "atsPlatformsTitle": "ATS-Plattformen, gegen die wir analysieren",
     "atsPlatformsSubtitle": "Der Scan bewertet, wie jedes dieser {{count}} Systeme Ihren Lebenslauf wahrscheinlich liest. Es sind die Systeme, die er nennt; hier wird kein Marktanteil behauptet.",
     "scoreCalculatedTitle": "Wie dein ATS-Score berechnet wird",
-    "scoreCalculatedSubtitle": "Das „Warum diese Punktzahl“ jedes Berichts teilt die Punktzahl in diese vier Teile auf, von 100 Punkten.",
+    "scoreCalculatedSubtitle": "Das „Warum diese Punktzahl“ jedes vollständigen Berichts teilt die Punktzahl in diese vier Teile auf, von 100 Punkten.",
     "continuousResearchTitle": "Kontinuierliche Forschung",
     "continuousResearchSubtitle": "Die Schlüsselworttabellen und Regeln ändern sich, während wir lernen, und jede Änderung ist im öffentlichen Changelog datiert.",
     "continuousResearch": {

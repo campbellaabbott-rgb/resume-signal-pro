@@ -1063,7 +1063,8 @@
     "partialResults": {
       "title": "Bahagyang resulta:",
       "ruleBased": "saglit na hindi available ang aming AI reviewer, kaya awtomatikong pagsusuri lang ang gamit ng ulat na ito. Mag-scan muli pagkalipas ng ilang minuto para sa buong bersyong naka-personalize ng AI.",
-      "thin": "may ilang seksyong iniwang blangko ang AI review, kaya pinunan ang mga ito ng awtomatikong pagsusuri. Hindi na-save ang bersyong ito, kaya gagawa ng bago ang muling pag-scan."
+      "thin": "may ilang seksyong iniwang blangko ang AI review, kaya pinunan ang mga ito ng awtomatikong pagsusuri. Hindi na-save ang bersyong ito, kaya gagawa ng bago ang muling pag-scan.",
+      "fallback": "hindi available ang aming pangunahing scanner, kaya isang mas simpleng backup ang gumawa ng ulat na ito. Wala itong \"Bakit ang score na ito\", at hindi sinuri ang score nito laban sa aming rule-based na score. Mag-scan muli pagkalipas ng ilang minuto para sa buong ulat."
     }
   },
   "miniPricingCards": {
@@ -2672,13 +2673,13 @@
       },
       "scoringAlgorithm": {
         "title": "Scoring Algorithm",
-        "description": "Binibigyan ng AI ng score ang resume gamit ang timbang para sa iyong industriya, at ang score nito ay pinananatili sa loob ng {{band}} puntos ng isang rule-based na score mula sa parehong dokumento. Hinahati ng audit trail ang resulta sa apat na bahagi sa ibaba."
+        "description": "Binibigyan ng AI ng score ang resume gamit ang timbang para sa iyong industriya, at ang score nito ay pinananatili sa loob ng {{band}} puntos ng isang rule-based na score mula sa parehong dokumento. Hinahati ng audit trail ang resulta sa apat na bahagi sa ibaba. Kapag hindi available ang pangunahing scanner, isang mas simpleng backup ang sasagot: sinasabi ito ng ulat nito sa itaas at wala itong audit trail."
       }
     },
     "atsPlatformsTitle": "Mga ATS Platform na Aming Sinusuri",
     "atsPlatformsSubtitle": "Sinusuri ng scan kung paano malamang na babasahin ng bawat isa sa {{count}} system na ito ang resume mo. Ito ang mga system na pinangangalanan nito; walang inaangking bahagi ng job market dito.",
     "scoreCalculatedTitle": "Paano Kinakalkula ang Iyong ATS Score",
-    "scoreCalculatedSubtitle": "Hinahati ng \"Bakit ang score na ito\" ng bawat report ang score sa apat na bahaging ito, mula sa 100 puntos.",
+    "scoreCalculatedSubtitle": "Hinahati ng \"Bakit ang score na ito\" ng bawat buong report ang score sa apat na bahaging ito, mula sa 100 puntos.",
     "continuousResearchTitle": "Tuloy-tuloy na Pananaliksik",
     "continuousResearchSubtitle": "Nagbabago ang mga keyword table at mga patakaran habang natututo kami, at may petsa ang bawat pagbabago sa pampublikong changelog.",
     "continuousResearch": {
