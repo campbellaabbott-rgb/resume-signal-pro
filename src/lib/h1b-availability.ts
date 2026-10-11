@@ -1,12 +1,12 @@
 // Is the H-1B wage data actually in the database?
 //
-// get_company_h1b is called by DeclaredWagesCard and employer-context, but no
-// migration in this repo defines it — the SQL was never written, so the RPC
-// 404s on every call and re-running migrations cannot fix it. The harvest is
-// blocked upstream: the DOL 403s every programmatic LCA download, which is
-// tracked as its own task and needs a manual download to unblock.
+// get_company_h1b is called by employer-context, but no migration in this repo
+// defines it — the SQL was never written, so the RPC 404s on every call and
+// re-running migrations cannot fix it. The employer page's card that also
+// called it was deleted on 2026-10-12; that page now prints the filed wages
+// from get_employer_lca_wages (LcaFiledWagesLine), the reader that exists.
 //
-// Both call sites already fail soft, so nothing user-visible is wrong. What was
+// The call site already fails soft, so nothing user-visible is wrong. What was
 // wrong is that they fired a guaranteed-404 request on every employer page view
 // and read, in the source, like a working feature. This flag makes the absence
 // deliberate and gives the eventual harvest exactly one line to flip.

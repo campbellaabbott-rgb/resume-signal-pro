@@ -51,7 +51,7 @@ const MIGRATIONS = resolve(ROOT, "supabase/migrations");
  *  stated in its k block, and a guard reading a superseded migration proves nothing. */
 const READER = "20260925150733";
 const LOCALES = resolve(ROOT, "src/i18n/locales");
-const KEYS = ["lcaChip", "lcaRange", "lcaWhyThisCell", "lcaSponsor", "lcaPeriod", "lcaNotAnOffer", "lcaBasis", "lcaMinNote"] as const;
+const KEYS = ["lcaChip", "lcaRange", "lcaWhyThisCell", "lcaWhyThisCellEmployer", "lcaSponsor", "lcaPeriod", "lcaNotAnOffer", "lcaBasis", "lcaMinNote"] as const;
 
 const migRaw = (prefix: string) => {
   const f = readdirSync(MIGRATIONS).find((x) => x.startsWith(prefix) && x.endsWith(".sql"));

@@ -59,11 +59,13 @@ import { SUBSCRIPTIONS } from "@/config/products";
 import { CompanyClaim } from "@/components/jobs/CompanyClaim";
 import { CompanyIntelPanel } from "@/components/jobs/CompanyIntelPanel";
 import { PublicCompanyCard } from "@/components/jobs/PublicCompanyCard";
-import { DeclaredWagesCard } from "@/components/jobs/DeclaredWagesCard";
 import { EmployerContext } from "@/components/jobs/EmployerContext";
+import { HIRING_RECORD_GATE_COPY, LAP_BUCKET, hiringRecordGate } from "@/lib/hiring-record-gate";
+import { datedHeadcount } from "@/lib/headcount";
 import { SavedSearchPills } from "@/components/jobs/SavedSearchPills";
 import { LayoffFilingChip, LayoffFilingLine, LayoffFilingsOnRecord, useEmployerLayoffFilings, useEmployerLayoffFilingsAll } from "@/components/jobs/LayoffFilingLine";
 import { LcaFiledWagesLine } from "@/components/jobs/LcaFiledWagesLine";
+import { EmployerLcaFiledWagesLine } from "@/components/jobs/LcaFiledWagesLine";
 import { OntarioEsaDisclosures } from "@/components/jobs/OntarioEsaDisclosures";
 import { getEmployerCtx, type EmployerCtx } from "@/lib/employer-context";
 import { employerGroupKey } from "@/lib/employer-group";
@@ -376,6 +378,13 @@ interface FillCurve {
    *  of 25+, 5+ observed fills, and an interval no wider than ±15 points. The
    *  client no longer re-derives this from whatever count it happened to have. */
   sufficient: boolean;
+  /** How the board is read (full_read, lap_proven, lap_pending, unprovable),
+   *  passed through untouched. The employer page's record goes through
+   *  hiringRecordGate, which refuses the fourteen-day share and the median on
+   *  a lap_proven board. Absent on a row from an older deploy. */
+  observability_bucket?: string | null;
+  sufficient_30?: boolean | null;
+  insufficient_reason_30?: string | null;
 }
 
 // Roles taken down for good before we'll call a company "actively hiring" —
@@ -941,6 +950,17 @@ export function canStateFillRate(
   return typeof observedDays === "number" && Number.isFinite(observedDays)
     && observedDays >= FILL_RATE_MIN_TRACKING_DAYS;
 }
+/**
+ * THE LAP TERM, for the employer-grain fill claims outside the Hiring Health
+ * card (the card reads the whole shared gate, src/lib/hiring-record-gate.ts,
+ * whose fourteen-day share is exactly canStateFillRate plus this). On a
+ * lap_proven board a takedown is certified one to three laps late, so the
+ * share within 14 days, the median and every sentence built on them read too
+ * low or too slow; the RPC already refuses the thirty-day share there for the
+ * same reason. A row that does not carry the bucket is not refused by it.
+ */
+export const lapCertified = (h: Pick<FillCurve, "observability_bucket"> | null | undefined): boolean =>
+  h?.observability_bucket === LAP_BUCKET;
 /** A 0..1 share as whole percent, for copy. Never a fraction on screen. */
 const asPct = (x: number) => Math.round(Math.max(0, Math.min(1, x)) * 100);
 
@@ -3415,6 +3435,30 @@ function JobsBoard({ boardId }: { boardId: string }) {
   // The company page's growth row (get_company_growth, one token), beside the
   // curve: the health panel prints the rate with its window and both dates.
   const [landerGrowth, setLanderGrowth] = useState<GrowthRow | null>(null);
+  // THE EMPLOYER PAGE'S RECORD, THROUGH THE SHARED GATE (src/lib/hiring-record-
+  // gate.ts, the same module the profile bake, MCP and /v1 will print through).
+  // It refuses the fourteen-day share and the median on a lap_proven board, the
+  // ninety-day counts below their depth floor or where zero re-listings against
+  // hundreds of takedowns means our detector is failing, and every refusal is
+  // printed with its reason on the card.
+  const landerGate = useMemo(() => hiringRecordGate(hiringCurve), [hiringCurve]);
+  // The verdict on the card reads only counts the gate lets it print: a record
+  // whose counts are withheld is unknown, never "closes", and never a no. The
+  // raw reading still decides WHICH unknown it is: no closure record at all, or
+  // a record we hold and will not print (landerRecordWithheld).
+  const landerRawRecord = hiringRecordVerdict(hiringCurve);
+  const landerRecordWithheld = landerRawRecord !== "unknown" && !landerGate.counts90.ok;
+  const landerRecord: HiringRecordVerdict = landerRawRecord === "unknown" || landerRecordWithheld ? "unknown" : landerRawRecord;
+  // What a withheld record prints instead of its counts, in plain words: our
+  // re-list detector failing on the board, or a watch too short (28 days on a
+  // board confirmed only by re-reading it in full) for a takedown to have had
+  // time to come back.
+  const landerCountsWhy: string | null = !hiringCurve || !landerRecordWithheld ? null
+    : landerGate.counts90.reason === "relist detection unproven"
+      ? t("jobsPage.hhGate.relist", HIRING_RECORD_GATE_COPY.relist, { n: (hiringCurve.filled_roles_90d ?? 0).toLocaleString(), d: hiringCurve.tracking_days })
+      : lapCertified(hiringCurve)
+        ? t("jobsPage.hhGate.countsTrackingLap", HIRING_RECORD_GATE_COPY.countsTrackingLap, { d: hiringCurve.tracking_days, min: landerGate.countsMinTrackingDays })
+        : t("jobsPage.hhGate.countsTracking", HIRING_RECORD_GATE_COPY.countsTracking, { d: hiringCurve.tracking_days, min: landerGate.countsMinTrackingDays });
   // The employer's OWN advertised posting total at our last fetch, which the
   // curve RPC does not carry. When it exceeds our stored rows the fetch was
   // windowed and open_roles is a floor, so the panel prints "N+" rather than a
@@ -8070,7 +8114,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                 // "at least": the collector logs a relisted title once a day per
                 // company, so this count is a floor and never an exact tally.
                 if (relistCaution(hh)) clauses.push(t("jobsPage.verdictChurnFloor", "re-lists roles often (at least {{n}}×) — responses may be slow", { n: churn }));
-                if (canStateFillRate(hh, hh?.tracking_days) && hh!.fill_rate_14 >= URGENT_FILL_RATE_MIN) {
+                if (canStateFillRate(hh, hh?.tracking_days) && !lapCertified(hh) && hh!.fill_rate_14 >= URGENT_FILL_RATE_MIN) {
                   // "up to", and the coverage share named when it is thin.
                   // The fill share is a CEILING for the same reason the relist
                   // counts are floors: the collector logs one superseded
@@ -8085,7 +8129,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                   }) + (coverageBand(hh!.dated_coverage) === "qualified"
                     ? " " + t("jobsPage.fillCoverageQualifierClause", "(across the {{pct}}% of its roles that carry the company's own posting date)", { pct: asPct(hh!.dated_coverage) })
                     : ""));
-                } else if (canStateFillRate(hh, hh?.tracking_days) && hh!.median_censored) {
+                } else if (canStateFillRate(hh, hh?.tracking_days) && !lapCertified(hh) && hh!.median_censored) {
                   // The honest opposite of "fills fast", and the only thing that
                   // may be said when the curve never reaches half inside the
                   // days we can see: a bound, never a number.
@@ -8149,7 +8193,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                 const field = canStateFillRate(rawField, rawField?.window_days) ? rawField : null;
                 const fieldQualified = !!field && coverageBand(field.dated_coverage) === "qualified";
                 const hh = detailJob.token ? curveByToken[detailJob.token] : undefined;
-                const employer = canStateFillRate(hh, hh?.tracking_days) ? hh! : null;
+                const employer = canStateFillRate(hh, hh?.tracking_days) && !lapCertified(hh) ? hh! : null;
                 // Only when this posting has actually been up longer than the
                 // horizon the employer usually resolves roles inside, and only
                 // when that employer's record can carry the claim at all.
@@ -8722,10 +8766,17 @@ function JobsBoard({ boardId }: { boardId: string }) {
           {landerCompany && <CompanyIntelPanel companyToken={landerCompany} />}
           {/* SEC-sourced financial context for US-listed employers. */}
           {landerCompany && <PublicCompanyCard companyToken={landerCompany} />}
-          {/* DOL-sourced declared wages (H-1B filings) — labeled, never
-              presented as company-wide pay. */}
+          {/* WHAT THIS EMPLOYER FILED WITH THE US DEPARTMENT OF LABOR, from
+              the working reader (get_employer_lca_wages). It replaces a card
+              that called a function no migration defines and so never
+              rendered. The quarter, the file and its published date come from
+              the row, the cell's occupation is named, and an employer with no
+              row renders nothing: a missing filing is never "does not
+              sponsor". No posting is in view here, so the employer variant
+              says the largest cell is an example of what was filed, matched
+              to no role. */}
           {landerCompany && (
-            <DeclaredWagesCard companyToken={landerCompany} companyName={landerCompanyName ?? landerCompany} />
+            <EmployerLcaFiledWagesLine companyToken={landerCompany} companyName={landerCompanyName ?? landerCompany} className="mb-3" />
           )}
           {landerCompany && (
             <CompanyClaim companyToken={landerCompany} companyName={landerCompanyName ?? landerCompany} />
@@ -8798,20 +8849,31 @@ function JobsBoard({ boardId }: { boardId: string }) {
                     every other surface. The open-roles condition stays: a
                     closure record with a dead board behind it is not a reason to
                     say anything encouraging. */}
-                {hiringCurve.open_roles > 0 && activelyHiringVerdict(hiringRecordVerdict(hiringCurve), growthVerdict(landerGrowth)) === "positive" && (
+                {/* THE PILL READS THE GATED RECORD (landerRecord): counts the
+                    gate withholds cannot carry "Actively hiring", and the
+                    growth half still can. */}
+                {hiringCurve.open_roles > 0 && activelyHiringVerdict(landerRecord, growthVerdict(landerGrowth)) === "positive" && (
                   <span
                     className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-success/10 text-success"
-                    title={hiringBadgeTip(hiringRecordVerdict(hiringCurve), growthVerdict(landerGrowth), hiringCurve, landerGrowth)}
+                    title={hiringBadgeTip(landerRecord, growthVerdict(landerGrowth), hiringCurve, landerGrowth)}
                   >
                     {t("jobsPage.hiringBadge2", "Actively hiring")}
                   </span>
                 )}
-                {hiringRecordVerdict(hiringCurve) === "unknown" && (
+                {landerRawRecord === "unknown" && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
                     {t("jobsPage.noRecordBadge", "No closure record")}
                   </span>
                 )}
-                {hiringRecordVerdict(hiringCurve) !== "unknown" && growthVerdict(landerGrowth) === "unknown" && (
+                {/* A record we hold and will not print is not "no closure
+                    record": the badge says it is withheld, and the line below
+                    says why. */}
+                {landerRecordWithheld && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                    {t("jobsPage.hhGate.withheldBadge", HIRING_RECORD_GATE_COPY.withheldBadge)}
+                  </span>
+                )}
+                {landerRecord !== "unknown" && growthVerdict(landerGrowth) === "unknown" && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
                     {t("jobsPage.growthUnreadBadge", "Posting rate unread")}
                   </span>
@@ -8850,7 +8912,9 @@ function JobsBoard({ boardId }: { boardId: string }) {
                 )}
                 {/* ROLES, NOT EVENTS (20261008110000): a role that came down
                     twice, or is serving again, is not "taken down for good". */}
-                {(hiringCurve.filled_roles_90d ?? 0) > 0 ? (
+                {landerCountsWhy ? (
+                  <li className="italic text-muted-foreground/80" data-hh-gate={landerGate.counts90.reason}>{landerCountsWhy}</li>
+                ) : (hiringCurve.filled_roles_90d ?? 0) > 0 ? (
                   <li>
                     {t("jobsPage.hhFilledPre", "Filled")}{" "}
                     <span className="text-foreground font-semibold">{hiringCurve.filled_roles_90d}</span>{" "}
@@ -8871,7 +8935,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                      roles close", and on the employer with 34,000 open roles
                      that sentence had been true-sounding and wrong for months. */
                   <li className="italic text-muted-foreground/80">
-                    {hiringRecordVerdict(hiringCurve) === "unknown"
+                    {landerRawRecord === "unknown"
                       ? t("jobsPage.hhNoClosureRecord", "We hold no closure record for this employer: not one of their postings has been observed coming off the board. On a board bigger than one visit can read, no closure is observable to us until we complete a provable full pass and then watch a role go after it; on a board we do read in full, it means nothing came down while we watched. We cannot tell those apart from here, so this is a gap on our side and not a sign they are not hiring.")
                       : t("jobsPage.hhRelistsOnly", "Every posting of theirs we have watched leave came back re-listed, so we have no clean take-down to count — at least {{n}} re-listings logged, and that count is a floor because we log one return per title per day.", { n: hiringCurve.relisted_roles_90d ?? 0 })}
                   </li>
@@ -8882,9 +8946,12 @@ function JobsBoard({ boardId }: { boardId: string }) {
                 <LayoffFilingsOnRecord rows={landerLayoffFilings} />
                 {/* THE PACE LINE. Three states and no fourth: a share with its
                     interval; a bound where the record never reaches half inside
-                    the days we can see; or, below the RPC's own bar, the span
-                    we have watched and no claim at all. */}
-                {canStateFillRate(hiringCurve, hiringCurve?.tracking_days) ? (
+                    the days we can see; or, below the bar, no claim at all and
+                    the reason for it. The bar is the shared gate's: the page's
+                    canStateFillRate terms plus the lap term, so a board we
+                    confirm only by re-reading it in full prints neither the
+                    share nor the median (its takedowns are certified late). */}
+                {landerGate.share14.ok ? (
                   <li>
                     {/* dated_n, not n_at_risk_14 — the cohort the durations
                         were computed over, not the roles that had not yet done
@@ -8896,7 +8963,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                       hi: asPct(hiringCurve.fill_rate_14_hi),
                       n: hiringCurve.dated_n.toLocaleString(),
                     })}
-                    {hiringCurve.median_censored ? (
+                    {!landerGate.median.ok ? null : hiringCurve.median_censored ? (
                       <> {t("jobsPage.hhMedianCensored", "We did not see half of them come down inside {{d}} days, so there is no typical figure to give.", { d: FILL_SUPPORT_MAX_DAYS })}</>
                     ) : (
                       <> {t("jobsPage.hhMedian", "Half of these roles are filled by day {{d}}.", { d: Math.round(hiringCurve.median_days_to_fill ?? 0) })}</>
@@ -8906,13 +8973,21 @@ function JobsBoard({ boardId }: { boardId: string }) {
                     )}
                   </li>
                 ) : (
-                  <li className="italic text-muted-foreground/80">
-                    {hiringCurve.tracking_days > 0
-                      ? t("jobsPage.hhPaceThin", "Not enough of this company's roles have finished yet to say how fast it moves — {{d}}d of tracking so far.", { d: hiringCurve.tracking_days })
-                      : t("jobsPage.hhPaceThinUntracked", "Not enough of this company's roles have finished yet to say how fast it moves.")}
+                  <li className="italic text-muted-foreground/80" data-hh-gate={landerGate.share14.reason}>
+                    {landerGate.share14.reason === "lap"
+                      ? t("jobsPage.hhGate.lap", HIRING_RECORD_GATE_COPY.lap)
+                      : landerGate.share14.reason === "coverage"
+                        ? t("jobsPage.hhGate.coverage", HIRING_RECORD_GATE_COPY.coverage, { pct: asPct(hiringCurve.dated_coverage) })
+                        : landerGate.share14.reason === "tracking" && hiringCurve.tracking_days > 0
+                          ? t("jobsPage.hhGate.paceTracking", HIRING_RECORD_GATE_COPY.paceTracking, { d: hiringCurve.tracking_days, min: FILL_RATE_MIN_TRACKING_DAYS })
+                          : hiringCurve.tracking_days > 0
+                            ? t("jobsPage.hhPaceThin", "Not enough of this company's roles have finished yet to say how fast it moves — {{d}}d of tracking so far.", { d: hiringCurve.tracking_days })
+                            : t("jobsPage.hhPaceThinUntracked", "Not enough of this company's roles have finished yet to say how fast it moves.")}
                   </li>
                 )}
-                {relistCaution(hiringCurve) && (
+                {/* The caution prints both ninety-day counts, so it speaks only
+                    where the gate lets them; a withheld record already says why. */}
+                {landerGate.counts90.ok && relistCaution(hiringCurve) && (
                   <li className="text-warning/90">
                     {/* The card's and the drawer's rule (relistCaution), with
                         the card tooltip's words: roles back against roles down. */}
@@ -12309,7 +12384,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                               // why a count gate stopped implying it). POSITIVE-ONLY: any
                               // other verdict falls through to the branches below, where the
                               // third state is named.
-                              if (hiringRecordVerdict(hh) === "closes" && canStateFillRate(hh, hh.tracking_days)
+                              if (hiringRecordVerdict(hh) === "closes" && canStateFillRate(hh, hh.tracking_days) && !lapCertified(hh)
                                 && hh.fill_rate_14 >= URGENT_FILL_RATE_MIN) {
                                 return (
                                   <span
@@ -13388,13 +13463,14 @@ function JobsBoard({ boardId }: { boardId: string }) {
                         if (!ctx) return null;
                         return (
                           <>
-                            {ctx.employees != null && (
+                            {/* A headcount prints with the date it was true or not at all (D11). */}
+                            {datedHeadcount(ctx) && (
                               <li>{t("jobsPage.employerCtx.employees", "≈{{n}} employees ({{basis}})", {
-                                n: ctx.employees.toLocaleString(),
+                                n: datedHeadcount(ctx)!.n.toLocaleString(),
                                 basis: ctx.employeeBasis === "yc_self_reported"
                                   ? t("jobsPage.intel.basisYc", "YC profile")
                                   : t("jobsPage.intel.basisPr", "public records"),
-                              })}</li>
+                              })}{" · "}{t("jobsPage.intel.asOf", "as of {{date}}", { date: datedHeadcount(ctx)!.asOf })}</li>
                             )}
                             {ctx.ticker && ctx.revenue != null && (
                               <li>
@@ -13459,7 +13535,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                           panel printed the same number with both. A comparison
                           made on the point estimates of two overlapping
                           intervals is a comparison of noise. */}
-                      {canStateFillRate(hh, hh?.tracking_days) && (
+                      {canStateFillRate(hh, hh?.tracking_days) && !lapCertified(hh) && (
                         <li>
                           {t("jobsPage.compareFillRateBounded", "up to {{pct}}% of its roles come down for good within {{d}}d ({{lo}}–{{hi}}%)", { pct: asPct(hh!.fill_rate_14), d: URGENT_FILL_MAX_DAYS, lo: asPct(hh!.fill_rate_14_lo), hi: asPct(hh!.fill_rate_14_hi) })}
                           {coverageBand(hh!.dated_coverage) === "qualified" && (

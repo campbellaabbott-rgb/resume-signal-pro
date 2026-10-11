@@ -3826,6 +3826,7 @@
       "bandMid": "mediana empresa",
       "bandSmall": "tamaño startup",
       "employees": "≈{{n}} empleados ({{basis}}) · {{band}}",
+      "asOf": "a {{date}}",
       "basisYc": "perfil de YC",
       "basisPr": "registros públicos",
       "net7d": "+{{n}} puestos netos nuevos esta semana",
@@ -3855,12 +3856,6 @@
       "netLoss": "Pérdida neta {{v}} (FY{{y}})",
       "trendAria": "Ingresos por año fiscal",
       "sourceLine": "Fuente: informes de {{name}} ante la SEC (10-K/20-F). Cifras según lo presentado; no es asesoramiento de inversión."
-    },
-    "h1b": {
-      "chip": "Salarios declarados · solicitudes H-1B {{fy}}",
-      "summary": "{{company}} declaró salarios base para {{n}} puestos H-1B certificados — mediana {{m}}/año.",
-      "range": "{{lo}}–{{hi}} · {{n}} solicitudes",
-      "sourceLine": "Fuente: archivos públicos LCA del Departamento de Trabajo de EE. UU. — salarios base declarados por el empleador, anualizados. Solo puestos H-1B; no es el salario de toda la empresa."
     },
     "employerCtx": {
       "title": "Sobre este empleador",
@@ -4311,6 +4306,15 @@
     "hhMedian": "La mitad de estos puestos se cubren para el día {{d}}.",
     "hhPaceThin": "Aún no han terminado suficientes vacantes de esta empresa para decir a qué ritmo se mueve — {{d}} días de seguimiento hasta ahora.",
     "hhPaceThinUntracked": "Aún no han terminado suficientes vacantes de esta empresa para decir a qué ritmo se mueve.",
+    "hhGate": {
+      "lap": "No indicamos con qué rapidez se retiran los puestos de este empleador. En este tablón solo confirmamos una retirada al volver a leer el tablón completo, lo que puede confirmarla con una a tres lecturas de retraso, así que una proporción dentro de 14 días y un tiempo típico saldrían ambos mal. Es un límite de cómo leemos el tablón, no un dato sobre el empleador.",
+      "coverage": "No indicamos con qué rapidez se retiran los puestos de este empleador: solo el {{pct}} % de sus puestos lleva una fecha de publicación de la propia empresa, demasiado pocos para medir.",
+      "paceTracking": "Llevamos {{d}} días observando este tablón. Una proporción de puestos retirados en 14 días necesita al menos {{min}} días de observación, así que todavía no damos ninguna.",
+      "countsTracking": "Llevamos {{d}} días observando este tablón. Solo contamos los puestos retirados y no republicados después de {{min}} días de observación, porque un puesto retirado hace menos tiempo aún puede volver.",
+      "countsTrackingLap": "Llevamos {{d}} días observando este tablón. Aquí solo contamos los puestos retirados y no republicados después de {{min}} días de observación: en este tablón una retirada solo se confirma al volver a leer el tablón completo, y un puesto retirado hace menos tiempo aún puede volver.",
+      "relist": "No publicamos cuántos puestos de este empleador se retiraron y siguieron retirados. Registramos {{n}} puestos retirados en este tablón en {{d}} días de observación y ninguno que volviera, lo que en un tablón de este tamaño significa que nuestra detección de republicaciones no funciona aquí, no que nada se haya republicado. Es un hueco en nuestro registro, no un dato sobre el empleador.",
+      "withheldBadge": "Registro de retiradas retenido"
+    },
     "hhRepostsFloor": "Republicó el mismo título de puesto al menos {{n}} veces durante nuestro seguimiento — republicación rutinaria, o vacantes que se reabren una y otra vez.",
     "hhFootnoteCurve": "Calculado a partir del ciclo de vida completo de las publicaciones oficiales de esta empresa — cuándo se abren y cuándo se retiran — no de una foto puntual. Las vacantes aún publicadas, y las que superaron nuestro límite de 30 días, cuentan como sin terminar en lugar de quedar fuera.",
     "repostTipFloor": "Esta empresa republicó el mismo título de puesto al menos {{n}} veces durante nuestro seguimiento — contamos un título republicado una vez al día, así que la cifra real puede ser mayor. Puede significar republicación rutinaria o vacantes que se reabren una y otra vez — conviene saberlo antes de invertir en una candidatura.",
@@ -4352,6 +4356,7 @@
     "lcaChip": "Salarios H-1B presentados · {{quarter}}",
     "lcaRange": "{{company}} presentó {{n}} Labor Condition Applications certificadas para {{occupation}} en {{state}} en {{quarter}}, con salarios anuales de {{low}} a {{high}}.",
     "lcaWhyThisCell": "Este es el mayor grupo de solicitudes que este empleador presentó ese trimestre. Esta oferta no indica ningún código de ocupación, así que no se emparejó con este puesto.",
+    "lcaWhyThisCellEmployer": "Este es el mayor grupo de solicitudes que este empleador presentó ese trimestre, mostrado como un ejemplo de lo que presentó. No está asociado a ningún puesto concreto de este tablón.",
     "lcaSponsor": "{{company}} tiene {{total}} solicitudes certificadas registradas en ese período con salario anual declarado, repartidas en {{groups}} grupos de ocupación y estado.",
     "lcaPeriod": "Se trata de solicitudes que el Departamento certificó entre {{from}} y {{to}}.",
     "lcaNotAnOffer": "Son los salarios presentados para esas solicitudes. No son la remuneración de este puesto ni una oferta.",

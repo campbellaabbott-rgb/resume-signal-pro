@@ -178,6 +178,12 @@ export interface LcaFiledWagesLineProps {
   socCode?: string | null;
   /** The posting's US state, two letters or a region code with its country prefix. */
   worksiteState?: string | null;
+  /** Where the line sits. "posting" (the default) is beside one posting; "employer" is the
+   *  employer page, where no posting is in view, so the sentence explaining an unasked cell
+   *  must not mention one. */
+  context?: "posting" | "employer";
+  /** Extra classes for the outer box (spacing on the employer page). */
+  className?: string;
 }
 
 /**
@@ -185,7 +191,7 @@ export interface LcaFiledWagesLineProps {
  * every bar -- no skeleton, no "no data" state, because an absence here is not
  * a fact about the employer and must not occupy space as though it were.
  */
-export function LcaFiledWagesLine({ companyToken, companyName, socCode = null, worksiteState = null }: LcaFiledWagesLineProps) {
+export function LcaFiledWagesLine({ companyToken, companyName, socCode = null, worksiteState = null, context = "posting", className = "" }: LcaFiledWagesLineProps) {
   const { t, i18n } = useTranslation();
   const [row, setRow] = useState<{ employer: LcaEmployerFilings; wages: LcaFiledWages | null } | null>(null);
 
@@ -217,7 +223,7 @@ export function LcaFiledWagesLine({ companyToken, companyName, socCode = null, w
   const lang = i18n.language || "en";
 
   return (
-    <div className="rounded-lg border border-border bg-card p-3 max-w-xl text-left">
+    <div className={`rounded-lg border border-border bg-card p-3 max-w-xl text-left${className ? ` ${className}` : ""}`} data-lca-context={context}>
       <div className="flex items-center gap-1.5 mb-1 text-[12px] font-medium text-primary">
         <FileText className="w-3.5 h-3.5" aria-hidden="true" />
         {t("jobsPage.lcaChip", "Filed H-1B wages · {{quarter}}", { quarter: employer.fiscalQuarter })}
@@ -243,10 +249,15 @@ export function LcaFiledWagesLine({ companyToken, companyName, socCode = null, w
 
       {wages && LCA_UNASKED_BASES.includes(wages.basis) && (
         <p className="text-[11px] text-muted-foreground mb-1" data-lca-basis={wages.basis}>
-          {t(
-            "jobsPage.lcaWhyThisCell",
-            "This is the largest group of applications this employer filed that quarter. Nothing on this posting states an occupation code, so it was not matched to this role.",
-          )}
+          {context === "employer"
+            ? t(
+              "jobsPage.lcaWhyThisCellEmployer",
+              "This is the largest group of applications this employer filed that quarter, shown as one example of what it filed. It is not matched to any one role on this board.",
+            )
+            : t(
+              "jobsPage.lcaWhyThisCell",
+              "This is the largest group of applications this employer filed that quarter. Nothing on this posting states an occupation code, so it was not matched to this role.",
+            )}
         </p>
       )}
 
@@ -285,6 +296,26 @@ export function LcaFiledWagesLine({ companyToken, companyName, socCode = null, w
         {t("jobsPage.lcaMinNote", "Shown only where at least {{min}} certified applications sit behind the figure.", { min: LCA_MIN_FILINGS })}
       </p>
     </div>
+  );
+}
+
+/**
+ * The employer page's line (/jobs/company/:token): the same reader, the same
+ * bars and the same copy, asked with no occupation and no state because no
+ * posting is in view, so the reader answers the employer's largest cell and
+ * the sentence beside it says that cell is an example, matched to no role.
+ * It replaced a card that called a function no migration defines.
+ */
+export function EmployerLcaFiledWagesLine({ companyToken, companyName, className = "" }: { companyToken: string; companyName: string; className?: string }) {
+  return (
+    <LcaFiledWagesLine
+      companyToken={companyToken}
+      companyName={companyName}
+      socCode={null}
+      worksiteState={null}
+      context="employer"
+      className={className}
+    />
   );
 }
 

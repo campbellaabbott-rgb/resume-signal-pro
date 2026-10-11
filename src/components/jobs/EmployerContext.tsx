@@ -12,6 +12,7 @@ import { Building2, Landmark, FileText, TrendingUp, TrendingDown, ArrowRight } f
 import { useTranslation } from "react-i18next";
 import { getEmployerCtx, matchDeclaredRole, type EmployerCtx } from "@/lib/employer-context";
 import { postTrackEvent, getVisitorId } from "@/lib/track-transport";
+import { datedHeadcount } from "@/lib/headcount";
 
 const fmtMoney = (n: number, currency?: string | null): string => {
   const prefix = currency === "EUR" ? "€" : currency === "GBP" ? "£" : "$";
@@ -36,7 +37,7 @@ export function EmployerContext({ companyToken, companyName, postingTitle }: {
         if (cancelled) return;
         setCtx(c);
         setLoading(false);
-        if (c.employees != null || c.ticker || c.h1bTotal) {
+        if (datedHeadcount(c) || c.ticker || c.h1bTotal) {
           const visitorId = getVisitorId();
           postTrackEvent({ testName: "job_board", variant: "employer_ctx_view", eventType: "view", visitorId, metadata: { token: companyToken.split("~")[0] } });
         }
@@ -58,7 +59,9 @@ export function EmployerContext({ companyToken, companyName, postingTitle }: {
   }
   if (!ctx) return null;
   const declared = matchDeclaredRole(postingTitle, ctx.h1bRoles);
-  const hasAnything = ctx.employees != null || ctx.ticker || ctx.h1bTotal;
+  // A headcount prints with the date it was true or not at all (D11).
+  const head = datedHeadcount(ctx);
+  const hasAnything = head || ctx.ticker || ctx.h1bTotal;
   if (!hasAnything) return null;
 
   return (
@@ -67,14 +70,14 @@ export function EmployerContext({ companyToken, companyName, postingTitle }: {
         <Building2 className="w-4 h-4 text-primary" />
         {t("jobsPage.employerCtx.title", "About this employer")}
       </p>
-      {ctx.employees != null && (
+      {head && (
         <p className="text-muted-foreground">
           {t("jobsPage.employerCtx.employees", "≈{{n}} employees ({{basis}})", {
-            n: ctx.employees.toLocaleString(),
+            n: head.n.toLocaleString(),
             basis: ctx.employeeBasis === "yc_self_reported"
               ? t("jobsPage.intel.basisYc", "YC profile")
               : t("jobsPage.intel.basisPr", "public records"),
-          })}
+          })}{" · "}{t("jobsPage.intel.asOf", "as of {{date}}", { date: head.asOf })}
         </p>
       )}
       {ctx.ticker && ctx.revenue != null && (
