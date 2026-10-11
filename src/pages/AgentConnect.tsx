@@ -80,7 +80,7 @@ import {
 import { MCP_URL, runServerTest, describeTest, readSignInFromServer } from "@/lib/mcp-test";
 import { rememberedHostChoice, rememberHostName } from "@/lib/agent-handoff";
 import { postTrackEvent, getVisitorId, checkoutContext } from "@/lib/track-transport";
-import { purchaseTerms } from "@/lib/purchase-terms";
+import { consentWasRequired, purchaseTerms } from "@/lib/purchase-terms";
 import { PurchaseTerms } from "@/components/PurchaseTerms";
 import { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "@/config/sendable-vendors";
 import { PASS, SUBSCRIPTIONS } from "@/config/products";
@@ -175,6 +175,10 @@ export function usePassStatus(sessionId?: string | null) {
  */
 export async function startPassCheckout(): Promise<string | null> {
   const { data, error } = await supabase.functions.invoke("create-pass-checkout", { body: { ...checkoutContext(), ...purchaseTerms() } });
+  // A refusal for the EU/UK box is the server saying its switch is on: the
+  // box shows beside the button from now on, whenever this page was loaded
+  // (review of S11-142). The refusal's own sentence is still what is shown.
+  await consentWasRequired(error, data);
   if (error) {
     const ctx = (error as { context?: { json?: () => Promise<unknown> } }).context;
     let message: string | null = null;

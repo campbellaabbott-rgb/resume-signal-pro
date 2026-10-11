@@ -69,9 +69,10 @@ vi.mock("@/components/ResumeUploader", () => ({
 }));
 
 import Index from "@/pages/Index";
+import { euUkBoxShown, resetPurchaseTermsForTests } from "@/lib/purchase-terms";
 
 vi.setConfig(MOUNT_TEST_BUDGET);
-afterEach(cleanup);
+afterEach(() => { cleanup(); resetPurchaseTermsForTests(); });
 
 describe("the homepage's Full Analysis checkout refused for the EU/UK box", () => {
   it("asks the buyer to tick the box and leaves no failed checkout on screen", async () => {
@@ -89,5 +90,24 @@ describe("the homepage's Full Analysis checkout refused for the EU/UK box", () =
     await waitFor(() => expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: en.purchaseTerms.consentNeeded })));
     expect(toast).not.toHaveBeenCalledWith(expect.objectContaining({ title: en.homepage.toast.checkoutFailed }));
     await waitFor(() => expect(screen.queryByTestId("checkout-overlay"), "the overlay stayed up").toBeNull());
+  });
+
+  // Review of S11-142: the refusal is the server saying its switch is on, and
+  // only five callers read it that way. A page loaded before the owner flipped
+  // the switch told the buyer to tick a box it never showed until a reload.
+  it("the refusal shows the box beside the button, on a page loaded before the switch", async () => {
+    createCheckout.mockResolvedValue({
+      data: null,
+      error: { title: "Request failed", description: "Please tick the box above the button to continue.", isRetryable: false },
+      attempts: 1,
+      totalDuration: 5,
+      httpStatus: 400,
+      errorBody: { error: "Please tick the box above the button to continue.", consentRequired: "withdrawal_waiver_required", consentBox: "withdrawalWaiver", consentText: "I want it delivered now." },
+    });
+    expect(euUkBoxShown()).toBe(false);
+    render(<HelmetProvider><MemoryRouter initialEntries={["/"]}><Index /></MemoryRouter></HelmetProvider>);
+    fireEvent.click(screen.getByRole("button", { name: "paste and analyse" }));
+    await waitFor(() => expect(createCheckout).toHaveBeenCalled());
+    await waitFor(() => expect(euUkBoxShown(), "the refusal named the box and the page still did not show it").toBe(true));
   });
 });

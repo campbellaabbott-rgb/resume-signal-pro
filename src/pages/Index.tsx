@@ -66,7 +66,7 @@ import { useScanCredits, creditSessions, CREDITS_UPDATED_EVENT } from "@/hooks/u
 import { rememberPreStoredResume, forgetPreStoredResume } from "@/hooks/use-product-checkout";
 import { supabase } from "@/integrations/supabase/client";
 import { checkoutContext, getVisitorId } from "@/lib/track-transport";
-import { purchaseTerms } from "@/lib/purchase-terms";
+import { consentWasRequired, purchaseTerms } from "@/lib/purchase-terms";
 import { useBackForwardRestore } from "@/hooks/use-back-forward-restore";
 import { resilientCallers, callEdgeFunctionWithRetry, scanFailureKind } from "@/lib/resilient-edge-function";
 import { parseFailureCopy, parseNoticeCopy } from "@/lib/parse-failure-copy";
@@ -1907,7 +1907,9 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
 
       // The EU/UK box above the button was not ticked (only with the switch
       // on): ask for it, and leave the stored résumé for the next press.
-      if (typeof checkoutResult.errorBody?.consentRequired === 'string') {
+      // The refusal is also the server saying its switch is on: it shows the
+      // box beside the button, whenever this page was loaded (review of S11-142).
+      if (await consentWasRequired(null, checkoutResult.errorBody)) {
         toast({ title: t('purchaseTerms.consentNeeded'), variant: "destructive" });
         return;
       }
