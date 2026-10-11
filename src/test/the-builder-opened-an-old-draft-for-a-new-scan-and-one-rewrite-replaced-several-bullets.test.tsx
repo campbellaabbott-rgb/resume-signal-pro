@@ -16,7 +16,7 @@
  * The page is mounted for real; the structured parser's answer is faked.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { MOUNT_TEST_BUDGET } from "./helpers/mount-budget";
 import en from "../i18n/locales/en.json";
@@ -29,6 +29,7 @@ vi.mock("@/integrations/supabase/client", () => ({
 vi.mock("@/components/Header", () => ({ Header: () => null }));
 vi.mock("@/components/Footer", () => ({ Footer: () => null }));
 vi.mock("@/components/seo/SEO", () => ({ SEO: () => null }));
+vi.mock("@/lib/resume-builder-export", () => ({ exportResumeBuilderPDF: async () => undefined, exportResumeBuilderDocx: async () => undefined }));
 
 import ResumeBuilder from "@/pages/ResumeBuilder";
 
@@ -119,6 +120,70 @@ describe("what the builder imports", () => {
     expect(confirm).not.toHaveBeenCalled();
     expect(invoke).not.toHaveBeenCalled();
     expect(screen.getByDisplayValue("Imported Person")).toBeTruthy();
+  });
+});
+
+/**
+ * S11-143: the builder's own "Rescan this version" wrote the draft's export
+ * to the tab without marking it as the draft's source, so coming back asked
+ * to replace the hand-edited draft with an AI re-parse of its own export.
+ * S11-144: "Start Over" then leaving before typing re-imported (and
+ * re-parsed) the scan on the next visit.
+ */
+describe("the builder's own loops do not re-import", () => {
+  let hrefs: string[];
+  beforeEach(() => {
+    hrefs = [];
+    const real = window.location;
+    const loc: Record<string, unknown> = {};
+    for (const k of ["origin", "protocol", "host", "hostname", "port", "pathname", "search", "hash"] as const) {
+      Object.defineProperty(loc, k, { get: () => real[k], enumerable: true });
+    }
+    Object.defineProperty(loc, "href", { get: () => real.href, set: (v: string) => { hrefs.push(v); }, enumerable: true });
+    vi.stubGlobal("location", loc);
+  });
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  it("coming back from 'Rescan this version' opens the draft without offering to replace it", async () => {
+    sessionStorage.setItem("rb_resume_text", SCAN_A);
+    mount();
+    await screen.findByDisplayValue("Imported Person");
+    fireEvent.click(screen.getByRole("button", { name: /export pdf/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /rescan this version/i }));
+    expect(hrefs).toEqual(["/?rescan=1#upload"]);
+    expect(sessionStorage.getItem("rb_resume_text")).not.toBe(SCAN_A);
+    cleanup();
+    invoke.mockClear();
+    confirm.mockClear();
+    mount();
+    expect(confirm, "the builder offered to replace the draft with a re-parse of its own export").not.toHaveBeenCalled();
+    expect(invoke).not.toHaveBeenCalled();
+    expect(screen.getByDisplayValue("Imported Person")).toBeTruthy();
+  });
+
+  it("'Start Over' sticks: leaving before typing does not re-import the scan", async () => {
+    sessionStorage.setItem("rb_resume_text", SCAN_A);
+    mount();
+    await screen.findByDisplayValue("Imported Person");
+    fireEvent.click(screen.getByRole("button", { name: /start over/i }));
+    await waitFor(() => expect(screen.queryByDisplayValue("Imported Person")).toBeNull());
+    cleanup();
+    invoke.mockClear();
+    mount();
+    expect(invoke, "the cleared builder re-imported the scan").not.toHaveBeenCalled();
+    expect(screen.queryByDisplayValue("Imported Person")).toBeNull();
+  });
+
+  it("the report's 'fixes applied' handoff still imports after 'Start Over'", async () => {
+    sessionStorage.setItem("rb_resume_text", SCAN_A);
+    mount();
+    await screen.findByDisplayValue("Imported Person");
+    fireEvent.click(screen.getByRole("button", { name: /start over/i }));
+    cleanup();
+    invoke.mockClear();
+    sessionStorage.setItem("rb_scan_fixes", JSON.stringify({ rewrites: [], keywords: ["SQL"], reportId: null }));
+    mount();
+    await waitFor(() => expect(invoke).toHaveBeenCalledWith("parse-resume-structured", { body: { resumeText: SCAN_A } }));
   });
 });
 

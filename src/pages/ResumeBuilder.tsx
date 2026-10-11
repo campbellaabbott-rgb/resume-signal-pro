@@ -232,6 +232,10 @@ export default function ResumeBuilder() {
     if (!window.confirm("This will clear everything in the builder. Continue?")) return;
     setResume(createEmptyResume());
     localStorage.removeItem(DRAFT_STORAGE_KEY);
+    // The clear sticks (S11-144): the tab's scan counts as offered, so the
+    // next visit opens the empty builder instead of re-importing it.
+    const scanned = getResumeFromSession().resumeText;
+    if (scanned && scanned.trim()) writeImportedFrom(scanned);
   };
 
   const handleExportPdf = async () => {
@@ -314,7 +318,12 @@ export default function ResumeBuilder() {
                 size="sm"
                 className="shrink-0"
                 onClick={() => {
-                  try { sessionStorage.setItem("rb_resume_text", builderResumeToText(resume)); } catch { /* ignore */ }
+                  // The rescan's text IS this draft (S11-143): marked as the
+                  // draft's source, so coming back does not offer to replace
+                  // the draft with a re-parse of its own export.
+                  const builderText = builderResumeToText(resume);
+                  try { sessionStorage.setItem("rb_resume_text", builderText); } catch { /* ignore */ }
+                  writeImportedFrom(builderText);
                   window.location.href = "/?rescan=1#upload";
                 }}
               >
