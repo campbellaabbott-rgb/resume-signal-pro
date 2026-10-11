@@ -8,6 +8,7 @@ import { keyMatches } from "../_shared/admin-key.ts";
 // literal {salaryFloor: 100000} probe has been landing in the demand log on
 // every heartbeat run since the check shipped. See _shared/search-caller.ts.
 import { searchCallerHeader } from "../_shared/search-caller.ts";
+import { boardTailChecks } from "./board-tail.ts";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -17,7 +18,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-admin-key, x-email-cron',
   'Access-Control-Expose-Headers': 'x-fn-build',
   // BUILD_VERSION below, as the other functions carry it.
-  'x-fn-build': 'scan-heartbeat.2026-10-09.2',
+  'x-fn-build': 'scan-heartbeat.2026-10-09.6',
 };
 
 // Test resume for heartbeat checks
@@ -120,7 +121,7 @@ function unanswered(r: { timedOut?: boolean; failed?: boolean }, fn: string, ms:
  *
  * BUMP ON EVERY DEPLOY of this function.
  */
-const BUILD_VERSION = "2026-10-09.2"; // 10-09.1: a paid order that never arrived mails the owner, naming it, newest first (decided after the delivery read, not before); a cron call refused (401/403) in the last hour fails cron_http_refusals.  10-08.1: answers only its cron, the service role and the owner's key; the e2e scan is uncached; alerts stamp only after a send that worked; vendor drift skips when unevaluated; delivery reads email_logs too
+const BUILD_VERSION = "2026-10-09.6"; // 10-09.6: fails job_board_refresh_head (3h), job_board_filter_audit (12h) and job_board_pass_end (a pass-end tail that started and never finished, S11-001).  10-09.1: a paid order that never arrived mails the owner, naming it, newest first (decided after the delivery read, not before); a cron call refused (401/403) in the last hour fails cron_http_refusals.  10-08.1: answers only its cron, the service role and the owner's key; the e2e scan is uncached; alerts stamp only after a send that worked; vendor drift skips when unevaluated; delivery reads email_logs too
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -598,6 +599,14 @@ serve(async (req) => {
         .from('job_board_meta').select('updated_at').eq('k', 'facets').maybeSingle();
       const exploreCacheP = supabase
         .from('job_board_meta').select('updated_at').eq('k', 'explore_cache').maybeSingle();
+      // The three rows the board's pass-end tail writes (S11-001, board-tail.ts).
+      // refresh_head by JSON path: only its stamp, not the 200-employer facet.
+      const refreshHeadP = supabase
+        .from('job_board_meta').select('refreshedAt:v->>refreshedAt').eq('k', 'refresh_head').maybeSingle();
+      const filterAuditP = supabase
+        .from('job_board_meta').select('updated_at').eq('k', 'filter_audit').maybeSingle();
+      const passEndP = supabase
+        .from('job_board_meta').select('v').eq('k', 'pass_end').maybeSingle();
 
       const { data: prog, error } = await supabase
         .from('job_board_meta')
@@ -1031,6 +1040,29 @@ serve(async (req) => {
         } catch (e) {
           skip(checkName, e instanceof Error ? e.message : 'unreadable');
         }
+      }
+
+      // The pass-end tail's three ages (S11-001): the served counts, the
+      // filter audit, and a tail that started and never finished.
+      try {
+        const [rh, fa, pe] = await Promise.all([refreshHeadP, filterAuditP, passEndP]);
+        const readErr = rh.error ?? fa.error ?? pe.error;
+        const verdicts = boardTailChecks({
+          now: Date.now(),
+          refreshedAt: rh.error ? null : (rh.data as { refreshedAt?: string } | null)?.refreshedAt,
+          filterAuditAt: fa.error ? null : (fa.data as { updated_at?: string } | null)?.updated_at,
+          passEnd: pe.error ? null : ((pe.data as { v?: { startedAt?: unknown; doneAt?: unknown } } | null)?.v ?? null),
+        });
+        for (const v of verdicts) {
+          if (v.skipped) { skip(v.name, readErr ? readErr.message : v.reason); continue; }
+          checks.push({ name: v.name, passed: v.passed, responseTimeMs: 0, error: v.error });
+          if (!v.passed) {
+            if (overallStatus === 'healthy') overallStatus = 'degraded';
+            errorMessage = errorMessage ?? v.error ?? null;
+          }
+        }
+      } catch (e) {
+        skip('job_board_pass_end', e instanceof Error ? e.message : 'unreadable pass-end rows');
       }
 
       try {

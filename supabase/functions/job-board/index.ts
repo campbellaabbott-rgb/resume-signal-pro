@@ -2257,7 +2257,16 @@ const BACKFILL_HOP_PAUSE_MS = 3_000;
 // guaranteed slots, size leaders fill the rest of HOT_SIZE.
 const VELOCITY_HOT_SLOTS = 40;
 const VELOCITY_WINDOW_DAYS = 7;
-const CHAIN_CAP = Math.ceil(HOT_SIZE / HOT_SLICE) + COLD_SLICES_PER_PASS + 4; // pass length + stall headroom
+/**
+ * THE SMALLEST STEP THE HOT PHASE EVER TAKES (S11-022). The cap below was
+ * sized for 10-board hot hops, but a hot hop takes min(shed step, the posting
+ * budget's floor(1200/250) = 4) boards: 4 at L0 and L1, 3 at L2. So a pass
+ * needed 30 hot hops (40 shedding at L2) plus 160 cold ones against a cap of
+ * 176, and every chain stopped at cold slice 147 and idled until cron. The
+ * floor takes L2's 3 under the same budget bound runRefresh applies.
+ */
+const HOT_STEP_FLOOR = Math.min(3, Math.max(1, Math.floor(HOT_POSTING_BUDGET / MAX_POSTINGS_PER_VISIT)));
+const CHAIN_CAP = Math.ceil(HOT_SIZE / HOT_STEP_FLOOR) + COLD_SLICES_PER_PASS + 4; // pass length at the slowest hot step + stall headroom
 
 // Rationale: docs/job-board-index-notes.md#n046-corpus-ceiling
 const CORPUS_CEILING = 1_200_000; // arm eviction above this
@@ -2878,6 +2887,17 @@ function dropTombstones(client: SupabaseClient, ids: readonly string[]): void {
 // COLD_SLICES_PER_PASS 48→120: the sweep is per-PASS, so a 2.5x longer pass
 // would otherwise cut the drain rate 2.5x and let the >30d tail accumulate.
 const FRESH_PRUNE_MAX = 15_000;
+/**
+ * The freshness sweep's clock (S11-001), counted from the START of the
+ * pass-end hop: no new chunk is taken after this. The tail runs after the
+ * hop has answered, so the gateway's 150 s idle timeout no longer applies to
+ * it, but the worker's own wall clock still does. A parent hop's background
+ * kick has been seen alive 165 s after its own start (it stamped the child's
+ * 504), so background work outlives 150 s. 180 s leaves the slowest
+ * observed slice (128 s) plus the facets, the refresh write and the kicks
+ * room to finish first, and one chunk in flight past it.
+ */
+const PASS_END_SWEEP_UNTIL_MS = 180_000;
 
 // force=true bypasses the slice lock, so it must not be reachable from the
 // open internet (the function serves anonymous traffic): chain hops carry a
@@ -3196,6 +3216,24 @@ async function breadcrumb(client: SupabaseClient, mark: string, extra?: Record<s
     }, { onConflict: "k" });
   })().catch(() => { /* never break the thing it measures */ });
   await Promise.race([write, new Promise<void>((r) => setTimeout(r, 600))]);
+}
+/**
+ * THE PASS-END TAIL'S OWN RECEIPT (S11-001). slice_trace keeps only the latest
+ * mark, and the next chain overwrites it within minutes, so "the tail started
+ * and never finished" left no trace once a new pass began. This row is
+ * written when the tail starts ({startedAt}) and again when it ends
+ * ({startedAt, doneAt}); scan-heartbeat fails job_board_pass_end when a
+ * start has had no finish for half an hour. Bounded like breadcrumb.
+ */
+async function stampPassEnd(client: SupabaseClient, v: Record<string, unknown>): Promise<void> {
+  const write = (async () => {
+    const { error } = await client.from("job_board_meta").upsert(
+      { k: "pass_end", v: { build: BUILD_VERSION, ...v }, updated_at: new Date().toISOString() },
+      { onConflict: "k" },
+    );
+    if (error) console.warn("[JOB-BOARD] pass_end stamp failed (non-fatal):", String(error.message ?? error).slice(0, 120));
+  })().catch(() => { /* never break the thing it measures */ });
+  await Promise.race([write, new Promise<void>((r) => setTimeout(r, 2_000))]);
 }
 function memStamp(): { heapMb?: number; rssMb?: number } {
   try {
@@ -5444,723 +5482,773 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
   }
 
   if (passDone) {
-    // THE TAIL PULSES TOO. The dead-chain watchdog judges the freshest stamp
-    // on slice_trace / slice_stats / refresh_progress, and this block is the
-    // longest silence a live hop can show after its loop-done mark: facets,
-    // orphan prune and the freshness sweep page the table for minutes. Three
-    // coarse marks per PASS (never per slice) bound that silence at one block
-    // and keep a status call during the tail inside the window.
-    await breadcrumb(client, "pass-end", { elapsedMs: Date.now() - sliceWallStart });
-    // Rationale: docs/job-board-index-notes.md#n139-
-    {
-      const { data: sampled, error: sErr } = await client.rpc("record_board_pool_sample");
-      if (sErr) console.warn("[JOB-BOARD] pool sample failed (non-fatal):", sErr.message?.slice(0, 140));
-      else console.log(`[JOB-BOARD] pool sample recorded: serving=${sampled}`);
+    // THE HOP ANSWERS BEFORE ITS TAIL (S11-001). The parent hop awaits this
+    // hop's whole body, and the gateway answers 504 IDLE_TIMEOUT to any
+    // request that has said nothing for 150 s, killing the handler with it.
+    // The tail ran inside the request: it reached 'pass-end-pruned' about
+    // 31 s in, then the date hygiene and the 15,000-id sweep (every chunk read
+    // first, every delete at the end) ran past 150 s on every pass from
+    // 2026-10-09 15:51Z. Nothing after the sweep ever ran: the refresh row,
+    // refresh_head, hot_tokens, the filter audit and the salary, experience
+    // and country kicks. So the tail now runs after the answer, in the
+    // background, and in the order that matters: the facets, then the rows
+    // the board serves and every kick, then the slow deletes, which are
+    // bounded by a clock and delete each chunk as they go.
+    const passEndStartedAt = new Date().toISOString();
+    const passEndHop = chainHop;
+    const passEndTail = async (): Promise<{ ok: boolean; detail: string }> => {
+      // THE TAIL PULSES TOO. The dead-chain watchdog judges the freshest stamp
+      // on slice_trace / slice_stats / refresh_progress, and this block is the
+      // longest silence a live hop can show after its loop-done mark: facets,
+      // orphan prune and the freshness sweep page the table for minutes. Three
+      // coarse marks per PASS (never per slice) bound that silence at one block
+      // and keep a status call during the tail inside the window.
+      await breadcrumb(client, "pass-end", { elapsedMs: Date.now() - sliceWallStart });
+      await stampPassEnd(client, { startedAt: passEndStartedAt, hop: passEndHop });
+      // Rationale: docs/job-board-index-notes.md#n139-
+      {
+        const { data: sampled, error: sErr } = await client.rpc("record_board_pool_sample");
+        if (sErr) console.warn("[JOB-BOARD] pool sample failed (non-fatal):", sErr.message?.slice(0, 140));
+        else console.log(`[JOB-BOARD] pool sample recorded: serving=${sampled}`);
 
-      // Rationale: docs/job-board-index-notes.md#n140-const-data-flow-error-ferr-await-client
-      const { data: flow, error: fErr } = await client.rpc("get_board_flow", { p_hours: 24 });
-      if (fErr) console.warn("[JOB-BOARD] board flow cache failed (non-fatal):", fErr.message?.slice(0, 140));
-      else {
-        const row = Array.isArray(flow) ? flow[0] : flow;
-        if (row && typeof row === "object") {
+        // Rationale: docs/job-board-index-notes.md#n140-const-data-flow-error-ferr-await-client
+        const { data: flow, error: fErr } = await client.rpc("get_board_flow", { p_hours: 24 });
+        if (fErr) console.warn("[JOB-BOARD] board flow cache failed (non-fatal):", fErr.message?.slice(0, 140));
+        else {
+          const row = Array.isArray(flow) ? flow[0] : flow;
+          if (row && typeof row === "object") {
+            await client.from("job_board_meta").upsert(
+              { k: "board_flow_cache", v: row, updated_at: new Date().toISOString() },
+              { onConflict: "k" },
+            );
+          }
+        }
+      }
+
+      // Rationale: docs/job-board-index-notes.md#n141-const-data-facets-error-facetserr-await
+      const { data: facets, error: facetsErr } = await client.rpc("refresh_job_board_facets");
+      let f = (facets ?? {}) as Record<string, unknown>;
+      const facetsOk = !facetsErr && !!f.total;
+      // Rationale: docs/job-board-index-notes.md#n142-facetscarried
+      let facetsCarried = false;
+      if (!facetsOk) {
+        console.warn("[JOB-BOARD] facets RPC unavailable — carrying previous facets, maintenance continues:", facetsErr?.message ?? "empty result");
+        // Attempt receipt: without it, "the cron ran and the aggregate failed"
+        // and "nothing ever fired" are indistinguishable from meta alone.
+        waitUntil(Promise.resolve(client.from("job_board_meta").upsert(
+          { k: "facets_attempt", v: { at: new Date().toISOString(), error: String(facetsErr?.message ?? "empty result").slice(0, 200) }, updated_at: new Date().toISOString() },
+          { onConflict: "k" },
+        )).then(() => {}).catch(() => {}));
+        const { data: prevRefresh } = await client.from("job_board_meta").select("v").eq("k", "refresh").maybeSingle();
+        const pv = (prevRefresh?.v ?? {}) as Record<string, unknown>;
+        if (pv.total) {
+          f = {
+            total: pv.total,
+            companiesFacet: pv.companiesFacet ?? [],
+            categoriesFacet: pv.categoriesFacet ?? {},
+            // Rationale: docs/job-board-index-notes.md#n143-pv-companiesopen-typeof-pv-companiesopen
+            ...(pv.companiesOpen && typeof pv.companiesOpen === "object"
+              ? { companiesOpen: pv.companiesOpen, companiesOpenCount: pv.companiesOpenCount }
+              : {}),
+            // The per-source map rides the carry by the same rule: present only
+            // when the previous row had it, absent otherwise, so the vendor
+            // dropdown falls silent rather than printing a stale-or-empty map.
+            ...(pv.sourcesFacet && typeof pv.sourcesFacet === "object" && !Array.isArray(pv.sourcesFacet)
+              ? { sourcesFacet: pv.sourcesFacet }
+              : {}),
+          };
+          facetsCarried = true;
+        } else {
+          // Cold database AND a failed aggregate: nothing to carry, nothing the
+          // maintenance below could safely stand on. The original early return
+          // is still right for exactly this corner.
+          await recordSliceStats(client, sliceWallStart, inHotPhase);
+          return { ok: true, detail: `pass complete but facets RPC unavailable (${facetsErr?.message ?? "empty result"}) and no previous facets to carry` };
+        }
+      }
+      let companies = Array.isArray(f.companiesFacet) ? f.companiesFacet : [];
+
+      // Rationale: docs/job-board-index-notes.md#n144-try
+      try {
+        const ranks = Object.fromEntries(ORACLE_SITE_RANK);
+        const rankJson = JSON.stringify(ranks);
+        const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(rankJson));
+        const rankHash = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 16);
+        const { data: rankRow } = await client.from("job_board_meta").select("v").eq("k", "oracle_site_rank").maybeSingle();
+        // Written when the hash differs OR the stamped bundle version differs:
+        // the migration's seed carries the same hash and no version, and the
+        // repair SQL refuses its delete phase until a bundle that dedupes at
+        // ingest (this one or later) has stamped `version` here. Without that
+        // proof the pre-.68 bundle re-inserts every copy the repair deletes.
+        const rankStored = (rankRow?.v ?? null) as { hash?: string; version?: string } | null;
+        if (rankStored?.hash !== rankHash || rankStored?.version !== BUILD_VERSION) {
           await client.from("job_board_meta").upsert(
-            { k: "board_flow_cache", v: row, updated_at: new Date().toISOString() },
+            { k: "oracle_site_rank", v: { hash: rankHash, sites: ORACLE_SITE_RANK.size, ranks, canonical: ORACLE_CANONICAL_SITES, version: BUILD_VERSION, at: new Date().toISOString() }, updated_at: new Date().toISOString() },
+            { onConflict: "k" },
+          );
+          console.log(`[JOB-BOARD] oracle site-rank table published: ${ORACLE_SITE_RANK.size} ranked sites (hash ${rankHash})`);
+        }
+      } catch (e) {
+        console.warn("[JOB-BOARD] oracle site-rank publish failed (non-fatal):", String((e as Error)?.message ?? e).slice(0, 120));
+      }
+      const validTokens = new Set(JOB_SOURCES.map((s) => s.token));
+      const { data: hwRow } = await client.from("job_board_meta").select("v").eq("k", "catalog_highwater").maybeSingle();
+      const highwater = Number((hwRow?.v as { size?: number } | null)?.size) || 0;
+      if (!facetsOk) {
+        // Carried facets are yesterday's company list — good enough to SERVE,
+        // never good enough to DELETE by. A destructive path computes its own
+        // input (the rule stated on the RPC call above), and a carried input is
+        // not its own.
+        console.warn("[JOB-BOARD] orphan prune SKIPPED: facets carried, not computed — no deletions from a stale company list");
+      } else if (JOB_SOURCES.length < highwater) {
+        console.warn(`[JOB-BOARD] orphan prune SKIPPED: bundle catalog ${JOB_SOURCES.length} < high-water ${highwater} — stale deploy must not wipe newer boards`);
+      } else {
+        if (JOB_SOURCES.length > highwater) {
+          await client.from("job_board_meta").upsert(
+            { k: "catalog_highwater", v: { size: JOB_SOURCES.length, at: new Date().toISOString() }, updated_at: new Date().toISOString() },
             { onConflict: "k" },
           );
         }
+        const orphanTokens = companies
+          .map((c) => (c as { token?: string }).token)
+          .filter((tk): tk is string => typeof tk === "string" && !validTokens.has(tk));
+        if (orphanTokens.length > 0) {
+          let orphanLogged = 0;
+          for (const tk of orphanTokens) {
+            // Deletes only what the exit ledger recorded (n416); the token is in
+            // no catalog entry, so no vendor's twin can be standing on it.
+            orphanLogged += (await pruneWholeBoard(client, tk, "untracked", null)).logged;
+          }
+          console.log(`[JOB-BOARD] orphan-pruned ${orphanTokens.length} removed board(s), ${orphanLogged} postings logged as untracked: ${orphanTokens.slice(0, 8).join(", ")}`);
+          companies = companies.filter((c) => !orphanTokens.includes((c as { token?: string }).token ?? ""));
+        }
+        await breadcrumb(client, "pass-end-pruned", { orphans: orphanTokens.length, elapsedMs: Date.now() - sliceWallStart });
       }
-    }
 
-    // Rationale: docs/job-board-index-notes.md#n141-const-data-facets-error-facetserr-await
-    const { data: facets, error: facetsErr } = await client.rpc("refresh_job_board_facets");
-    let f = (facets ?? {}) as Record<string, unknown>;
-    const facetsOk = !facetsErr && !!f.total;
-    // Rationale: docs/job-board-index-notes.md#n142-facetscarried
-    let facetsCarried = false;
-    if (!facetsOk) {
-      console.warn("[JOB-BOARD] facets RPC unavailable — carrying previous facets, maintenance continues:", facetsErr?.message ?? "empty result");
-      // Attempt receipt: without it, "the cron ran and the aggregate failed"
-      // and "nothing ever fired" are indistinguishable from meta alone.
-      waitUntil(Promise.resolve(client.from("job_board_meta").upsert(
-        { k: "facets_attempt", v: { at: new Date().toISOString(), error: String(facetsErr?.message ?? "empty result").slice(0, 200) }, updated_at: new Date().toISOString() },
-        { onConflict: "k" },
-      )).then(() => {}).catch(() => {}));
-      const { data: prevRefresh } = await client.from("job_board_meta").select("v").eq("k", "refresh").maybeSingle();
-      const pv = (prevRefresh?.v ?? {}) as Record<string, unknown>;
-      if (pv.total) {
-        f = {
-          total: pv.total,
-          companiesFacet: pv.companiesFacet ?? [],
-          categoriesFacet: pv.categoriesFacet ?? {},
-          // Rationale: docs/job-board-index-notes.md#n143-pv-companiesopen-typeof-pv-companiesopen
-          ...(pv.companiesOpen && typeof pv.companiesOpen === "object"
-            ? { companiesOpen: pv.companiesOpen, companiesOpenCount: pv.companiesOpenCount }
-            : {}),
-          // The per-source map rides the carry by the same rule: present only
-          // when the previous row had it, absent otherwise, so the vendor
-          // dropdown falls silent rather than printing a stale-or-empty map.
-          ...(pv.sourcesFacet && typeof pv.sourcesFacet === "object" && !Array.isArray(pv.sourcesFacet)
-            ? { sourcesFacet: pv.sourcesFacet }
-            : {}),
+      // Rationale: docs/job-board-index-notes.md#n149-coverage
+      const coverage = await (async () => {
+        // The numerator must stand on the SAME population as the denominator.
+        // `open` below applies the freshness window; this did not, so every
+        // published fraction was a count over one population divided by the
+        // size of a smaller one — inflating each by 1.5-3%. A coverage figure
+        // whose two halves disagree about what the board is cannot be right
+        // even when it looks plausible.
+        const freshIso = new Date(Date.now() - FRESH_WINDOW_DAYS * 86_400_000).toISOString();
+        // Rationale: docs/job-board-index-notes.md#n150-coveragefailed
+        const coverageFailed: string[] = [];
+        const one = async (col: string, op: "not.is.null" | "neq.unspecified") => {
+          const q = client.from("job_board_postings").select("id", { count: "exact", head: true })
+            .is("missing_since", null).gte("effective_posted", freshIso);
+          const { count, error } = op === "not.is.null" ? await q.not(col, "is", null) : await q.neq(col, "unspecified");
+          if (error) {
+            coverageFailed.push(col);
+            console.error(`[JOB-BOARD] filter coverage count failed for ${col}: ${error.code ?? ""} ${String(error.message ?? "").slice(0, 120)}`);
+          }
+          return count ?? null;
         };
-        facetsCarried = true;
-      } else {
-        // Cold database AND a failed aggregate: nothing to carry, nothing the
-        // maintenance below could safely stand on. The original early return
-        // is still right for exactly this corner.
-        await recordSliceStats(client, sliceWallStart, inHotPhase);
-        return { ok: true, detail: `pass complete but facets RPC unavailable (${facetsErr?.message ?? "empty result"}) and no previous facets to carry` };
-      }
-    }
-    let companies = Array.isArray(f.companiesFacet) ? f.companiesFacet : [];
-
-    // Rationale: docs/job-board-index-notes.md#n144-try
-    try {
-      const ranks = Object.fromEntries(ORACLE_SITE_RANK);
-      const rankJson = JSON.stringify(ranks);
-      const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(rankJson));
-      const rankHash = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 16);
-      const { data: rankRow } = await client.from("job_board_meta").select("v").eq("k", "oracle_site_rank").maybeSingle();
-      // Written when the hash differs OR the stamped bundle version differs:
-      // the migration's seed carries the same hash and no version, and the
-      // repair SQL refuses its delete phase until a bundle that dedupes at
-      // ingest (this one or later) has stamped `version` here. Without that
-      // proof the pre-.68 bundle re-inserts every copy the repair deletes.
-      const rankStored = (rankRow?.v ?? null) as { hash?: string; version?: string } | null;
-      if (rankStored?.hash !== rankHash || rankStored?.version !== BUILD_VERSION) {
-        await client.from("job_board_meta").upsert(
-          { k: "oracle_site_rank", v: { hash: rankHash, sites: ORACLE_SITE_RANK.size, ranks, canonical: ORACLE_CANONICAL_SITES, version: BUILD_VERSION, at: new Date().toISOString() }, updated_at: new Date().toISOString() },
-          { onConflict: "k" },
-        );
-        console.log(`[JOB-BOARD] oracle site-rank table published: ${ORACLE_SITE_RANK.size} ranked sites (hash ${rankHash})`);
-      }
-    } catch (e) {
-      console.warn("[JOB-BOARD] oracle site-rank publish failed (non-fatal):", String((e as Error)?.message ?? e).slice(0, 120));
-    }
-    const validTokens = new Set(JOB_SOURCES.map((s) => s.token));
-    const { data: hwRow } = await client.from("job_board_meta").select("v").eq("k", "catalog_highwater").maybeSingle();
-    const highwater = Number((hwRow?.v as { size?: number } | null)?.size) || 0;
-    if (!facetsOk) {
-      // Carried facets are yesterday's company list — good enough to SERVE,
-      // never good enough to DELETE by. A destructive path computes its own
-      // input (the rule stated on the RPC call above), and a carried input is
-      // not its own.
-      console.warn("[JOB-BOARD] orphan prune SKIPPED: facets carried, not computed — no deletions from a stale company list");
-    } else if (JOB_SOURCES.length < highwater) {
-      console.warn(`[JOB-BOARD] orphan prune SKIPPED: bundle catalog ${JOB_SOURCES.length} < high-water ${highwater} — stale deploy must not wipe newer boards`);
-    } else {
-      if (JOB_SOURCES.length > highwater) {
-        await client.from("job_board_meta").upsert(
-          { k: "catalog_highwater", v: { size: JOB_SOURCES.length, at: new Date().toISOString() }, updated_at: new Date().toISOString() },
-          { onConflict: "k" },
-        );
-      }
-      const orphanTokens = companies
-        .map((c) => (c as { token?: string }).token)
-        .filter((tk): tk is string => typeof tk === "string" && !validTokens.has(tk));
-      if (orphanTokens.length > 0) {
-        let orphanLogged = 0;
-        for (const tk of orphanTokens) {
-          // Deletes only what the exit ledger recorded (n416); the token is in
-          // no catalog entry, so no vendor's twin can be standing on it.
-          orphanLogged += (await pruneWholeBoard(client, tk, "untracked", null)).logged;
-        }
-        console.log(`[JOB-BOARD] orphan-pruned ${orphanTokens.length} removed board(s), ${orphanLogged} postings logged as untracked: ${orphanTokens.slice(0, 8).join(", ")}`);
-        companies = companies.filter((c) => !orphanTokens.includes((c as { token?: string }).token ?? ""));
-      }
-      await breadcrumb(client, "pass-end-pruned", { orphans: orphanTokens.length, elapsedMs: Date.now() - sliceWallStart });
-    }
-
-    // Rationale: docs/job-board-index-notes.md#n145-nowiso
-    const nowIso = new Date().toISOString();
-    {
-      const futureIso = new Date(Date.now() + 2 * 86_400_000).toISOString();
-      const garbageIso = new Date(POSTED_AT_GARBAGE_FLOOR_MS).toISOString();
-      const { error: e1 } = await client.from("job_board_postings").update({ posted_at: null }).gt("posted_at", futureIso);
-      const { error: e2 } = await client.from("job_board_postings").update({ posted_at: null }).lt("posted_at", garbageIso);
-      if (e1 || e2) console.warn("[JOB-BOARD] date-hygiene error:", (e1 ?? e2)?.message);
-    }
-
-    // Freshness cap sweep: drop the aged tail (effective_posted past the window)
-    // so the corpus reclaims itself immediately rather than waiting a full cold
-    // rotation for the per-board prune. Bounded per pass (a single delete of the
-    // ~65k initial backlog risks a statement timeout on the free tier); the
-    // ingestion filter keeps dated-old postings from re-entering, so this
-    // converges within a few passes and then only trims the daily trickle.
-    {
-      const freshCutoffIso = new Date(freshCutoffMs).toISOString();
-      const ids: string[] = [];
-      // Rationale: docs/job-board-index-notes.md#n421-a-row-not-read-is-not-written
-      if (!META_READ.oversize) console.warn("[JOB-BOARD] freshness sweep skipped: the oversize registry was unread this slice, so aged rows wait for the next pass (the list already hides them)");
-      for (let from = 0; META_READ.oversize && ids.length < FRESH_PRUNE_MAX; from += 1000) {
-        const take = Math.min(1000, FRESH_PRUNE_MAX - ids.length);
-        const { data: page, error } = await client
-          .from("job_board_postings")
-          .select("id")
-          .lt("effective_posted", freshCutoffIso)
-          .order("effective_posted", { ascending: true })
-          .range(from, from + take - 1);
-        if (error) { console.warn("[JOB-BOARD] freshness sweep select error:", error.message); break; }
-        ids.push(...(page ?? []).map((r) => r.id as string));
-        if (!page || page.length < take) break;
-      }
-      // Rationale: docs/job-board-index-notes.md#n146-alreadytombstoned
-      const alreadyTombstoned = new Set<string>();
-      if (ids.length > 0) {
+        // The previous figures, read by JSON PATH so this costs a few bytes rather
+        // than the 1.3-1.6MB the whole meta row weighs.
+        const prevCoverage = await (async () => {
+          try {
+            const { data } = await client.from("job_board_meta")
+              .select("coverage:v->coverage").eq("k", "refresh").maybeSingle();
+            const c = (data as { coverage?: unknown } | null)?.coverage;
+            return c && typeof c === "object" ? c as Record<string, unknown> : null;
+          } catch { return null; }
+        })();
+        // Rationale: docs/job-board-index-notes.md#n151-try
         try {
-          for (let i = 0; i < ids.length; i += 200) {
-            const { data: t, error: tErr } = await client
-              .from("job_board_aged_out").select("id").in("id", ids.slice(i, i + 200));
-            if (tErr) throw tErr;
-            for (const r of t ?? []) alreadyTombstoned.add(String((r as { id: string }).id));
-          }
-        } catch (e) {
-          console.warn("[JOB-BOARD] aged-out read failed (exits may double-count this pass):", String((e as Error)?.message ?? e).slice(0, 120));
-        }
-      }
-      if (ids.length > 0) {
-        const exitedAt = new Date().toISOString();
-        for (let i = 0; i < ids.length; i += 200) {
-          const slice = ids.slice(i, i + 200);
-          // Widened with the lifecycle facets and effective_posted (which the
-          // tombstone below needs). Same read that was already running; the
-          // posting is deleted a few lines further on, so this is the last
-          // moment its pay, team, geography and level exist.
-          let agedRes = await client
-            .from("job_board_postings")
-            .select(`${LIFECYCLE_SELECT}, effective_posted`)
-            .in("id", slice);
-          if (agedRes.error) {
-            agedRes = (await client
-              .from("job_board_postings")
-              .select("id, source, company_token, company, title, category, posted_at, first_seen, effective_posted")
-              .in("id", slice)) as typeof agedRes;
-          }
-          const agedRows = agedRes.data as unknown as Array<Record<string, unknown>> | null;
-          if (!agedRows?.length) continue;
-          // Write the tombstone for every aged row not already tombstoned —
-          // this is what keeps it from coming back. An existing tombstone keeps
-          // its date: a re-admitted row's records the date it came back on.
-          // Rationale: docs/job-board-index-notes.md#n412-redated-past-tombstone
-          const untombstoned = agedRows.filter((r) => !alreadyTombstoned.has(String(r.id)));
-          if (untombstoned.length > 0) waitUntil(Promise.resolve(client.from("job_board_aged_out").upsert(
-            untombstoned.map((r) => ({
-              id: r.id as string,
-              source: r.source as string,
-              company_token: r.company_token as string,
-              posted_at: (r.effective_posted ?? r.posted_at) as string | null,
-            })),
-            // ignoreDuplicates holds the rule even when the read above failed and the set is empty.
-            { onConflict: "id", ignoreDuplicates: true },
-          )).then(() => {}).catch(() => {}));
-          // Rationale: docs/job-board-index-notes.md#n147-oversizeheld
-          const oversizeHeld = agedRows.filter((r) => heldOversize(OVERSIZE_BOARDS, r, SHARED_TOKENS) && !alreadyTombstoned.has(String(r.id)));
-          for (const r of oversizeHeld) alreadyTombstoned.add(String(r.id));
-          if (oversizeHeld.length > 0) {
-            console.warn(`[JOB-BOARD] freshness sweep: ${oversizeHeld.length} aged posting(s) on ${new Set(oversizeHeld.map((r) => String(r.company_token))).size} OVERSIZE board(s) dropped without a closure-log entry — the board is deferred by the byte budget, not closed`);
-          }
-          const freshlyDead = agedRows.filter((r) => !alreadyTombstoned.has(String(r.id)));
-          if (freshlyDead.length === 0) continue;
-          // The other site the hiring-health estimator draws censoring times
-          // from (exit_reason <> 'removed'), and the other one that was
-          // coalescing posted_at with first_seen per row with no flag. Same
-          // rule as everywhere else now: emit the duration, name its clock.
-          const sweptExitRow = (r: Record<string, unknown>) => {
-            const t = tenureDays(r.posted_at, r.first_seen, exitedAt);
-            return {
-              posting_id: r.id as string,
-              source: r.source as string,
-              company_token: r.company_token as string,
-              company: (r.company as string | null) ?? null,
-              title: (r.title as string | null) ?? null,
-              category: (r.category as string) ?? "other",
-              exit_reason: exitReasonFor(r.posted_at, r.first_seen),
-              posted_at: (r.posted_at as string | null) ?? null,
-              days_on_board: t.days,
-              origin_basis: t.basis,
-              exited_at: exitedAt,
-              ...lifecycleFacets(r),
+          const { data: fcRaw, error: fcErr } = await client.rpc("get_filter_coverage");
+          const fc = fcRaw as Record<string, unknown> | null;
+          if (!fcErr && fc && typeof fc === "object" && typeof fc.open === "number" && (fc.open as number) > 0) {
+            const open = fc.open as number;
+            const frac = (n: unknown) => (typeof n === "number" ? Math.round((n / open) * 1000) / 1000 : null);
+            const prevCov = (prevCoverage ?? {}) as Record<string, unknown>;
+            // Same carry-forward contract as the fallback path: a figure the
+            // scan could not produce keeps last pass's value rather than
+            // deleting the disclosure.
+            const keep = (name: string) => {
+              const f = frac(fc[name]);
+              if (f !== null) return f;
+              coverageFailed.push(name);
+              const old = prevCov[name];
+              return typeof old === "number" ? old : null;
             };
-          };
-          waitUntil(Promise.resolve(insertExits(
-            client, freshlyDead.map(sweptExitRow), "freshness-sweep",
-          )).then(({ error }) => {
-            if (error) console.warn("[JOB-BOARD] freshness-sweep exit insert failed (non-fatal):", String(error.message ?? error).slice(0, 150));
-          }).catch(() => {}));
-        }
-      }
-      let dropped = 0;
-      for (let i = 0; i < ids.length; i += 200) {
-        const { error } = await client.from("job_board_postings").delete().in("id", ids.slice(i, i + 200));
-        if (error) { console.warn("[JOB-BOARD] freshness sweep delete error:", error.message); break; }
-        dropped += Math.min(200, ids.length - i);
-      }
-      if (dropped > 0) console.log(`[JOB-BOARD] freshness cap: dropped ${dropped} postings older than ${FRESH_WINDOW_DAYS}d`);
-      await breadcrumb(client, "pass-end-swept", { dropped, elapsedMs: Date.now() - sliceWallStart });
-      // Tombstones expire, so the table stays bounded and a vendor that
-      // recycles posting ids eventually gets a second chance. 180 days is far
-      // past any window in which a re-fetched id could still be the same
-      // aged-out job.
-      try {
-        await client.from("job_board_aged_out").delete()
-          .lt("aged_at", new Date(Date.now() - 180 * 86_400_000).toISOString());
-      } catch { /* bounded cleanup — never worth failing a pass over */ }
-    }
-
-    // Rationale: docs/job-board-index-notes.md#n148-const-count-plannedsize-await-client-from
-    const { count: plannedSize } = await client.from("job_board_postings").select("id", { count: "planned", head: true });
-    const estimate = typeof plannedSize === "number" ? plannedSize : null;
-    let corpusSize: number | null = null;
-    let corpusBasis: "exact" | "planner estimate" | "unmeasured" = "unmeasured";
-    if (estimate !== null && estimate > CORPUS_CEILING * 0.95) {
-      const { count: exactSize } = await client.from("job_board_postings").select("id", { count: "exact", head: true });
-      if (typeof exactSize === "number") { corpusSize = exactSize; corpusBasis = "exact"; }
-    }
-    if (corpusSize === null && estimate !== null) { corpusSize = estimate; corpusBasis = "planner estimate"; }
-    if (corpusBasis === "unmeasured") {
-      console.error("[JOB-BOARD] capacity governor: corpus size unmeasurable (planned count failed) — eviction skipped and headroom unknown");
-    }
-    if (corpusBasis === "exact" && (corpusSize as number) > CORPUS_CEILING) {
-      const overflow = (corpusSize as number) - CORPUS_TARGET;
-      // Page the oldest ids (PostgREST caps a response at 1,000 rows) so a big
-      // jump — e.g. a wider board selection — can be shed in one pass.
-      const ids: string[] = [];
-      for (let from = 0; ids.length < overflow; from += 1000) {
-        const take = Math.min(1000, overflow - ids.length);
-        const { data: page, error } = await client
-          .from("job_board_postings")
-          .select("id")
-          .order("effective_posted", { ascending: true })
-          .range(from, from + take - 1);
-        if (error) { console.warn("[JOB-BOARD] capacity select error:", error.message); break; }
-        ids.push(...(page ?? []).map((r) => r.id as string));
-        if (!page || page.length < take) break;
-      }
-      let evicted = 0;
-      for (let i = 0; i < ids.length; i += 200) {
-        const { error } = await client.from("job_board_postings").delete().in("id", ids.slice(i, i + 200));
-        if (error) { console.warn("[JOB-BOARD] capacity evict error:", error.message); break; }
-        evicted += Math.min(200, ids.length - i);
-      }
-      await client.from("job_board_meta").upsert(
-        { k: "capacity", v: { at: nowIso, corpusBefore: corpusSize, basis: corpusBasis, ceiling: CORPUS_CEILING, target: CORPUS_TARGET, evicted, active: true }, updated_at: nowIso },
-        { onConflict: "k" },
-      );
-      console.warn(`[JOB-BOARD] capacity governor: corpus ${corpusSize} > ${CORPUS_CEILING} — evicted ${evicted} stalest postings toward ${CORPUS_TARGET}`);
-    } else {
-      // Record headroom each pass so the heartbeat can watch the corpus trend
-      // toward the ceiling before it ever binds. `basis` travels with it: an
-      // unmeasured corpus must NOT be published as a healthy headroom, which is
-      // exactly what `corpusSize ?? 0` used to do.
-      await client.from("job_board_meta").upsert(
-        {
-          k: "capacity",
-          v: {
-            at: nowIso,
-            corpus: corpusSize,
-            basis: corpusBasis,
-            ceiling: CORPUS_CEILING,
-            headroom: corpusSize === null ? null : CORPUS_CEILING - corpusSize,
-            evicted: 0,
-            active: false,
-          },
-          updated_at: nowIso,
-        },
-        { onConflict: "k" },
-      );
-    }
-
-    // Rationale: docs/job-board-index-notes.md#n149-coverage
-    const coverage = await (async () => {
-      // The numerator must stand on the SAME population as the denominator.
-      // `open` below applies the freshness window; this did not, so every
-      // published fraction was a count over one population divided by the
-      // size of a smaller one — inflating each by 1.5-3%. A coverage figure
-      // whose two halves disagree about what the board is cannot be right
-      // even when it looks plausible.
-      const freshIso = new Date(Date.now() - FRESH_WINDOW_DAYS * 86_400_000).toISOString();
-      // Rationale: docs/job-board-index-notes.md#n150-coveragefailed
-      const coverageFailed: string[] = [];
-      const one = async (col: string, op: "not.is.null" | "neq.unspecified") => {
-        const q = client.from("job_board_postings").select("id", { count: "exact", head: true })
-          .is("missing_since", null).gte("effective_posted", freshIso);
-        const { count, error } = op === "not.is.null" ? await q.not(col, "is", null) : await q.neq(col, "unspecified");
-        if (error) {
-          coverageFailed.push(col);
-          console.error(`[JOB-BOARD] filter coverage count failed for ${col}: ${error.code ?? ""} ${String(error.message ?? "").slice(0, 120)}`);
-        }
-        return count ?? null;
-      };
-      // The previous figures, read by JSON PATH so this costs a few bytes rather
-      // than the 1.3-1.6MB the whole meta row weighs.
-      const prevCoverage = await (async () => {
-        try {
-          const { data } = await client.from("job_board_meta")
-            .select("coverage:v->coverage").eq("k", "refresh").maybeSingle();
-          const c = (data as { coverage?: unknown } | null)?.coverage;
-          return c && typeof c === "object" ? c as Record<string, unknown> : null;
-        } catch { return null; }
-      })();
-      // Rationale: docs/job-board-index-notes.md#n151-try
-      try {
-        const { data: fcRaw, error: fcErr } = await client.rpc("get_filter_coverage");
-        const fc = fcRaw as Record<string, unknown> | null;
-        if (!fcErr && fc && typeof fc === "object" && typeof fc.open === "number" && (fc.open as number) > 0) {
-          const open = fc.open as number;
-          const frac = (n: unknown) => (typeof n === "number" ? Math.round((n / open) * 1000) / 1000 : null);
+            return {
+              open,
+              salaryFloor: keep("salaryFloor"),
+              workMode: keep("workMode"),
+              experience: keep("experience"),
+              country: keep("country"),
+              // The five that were pinned constants until this scan existed.
+              payBasis: keep("payBasis"),
+              hasStatedPay: keep("hasStatedPay"),
+              // THE COLUMN THE STATES-PAY FILTER BINDS, carried through because
+              // the disclosure has to read it. get_filter_coverage has counted it
+              // on this same scan since 20260909100000 and nothing stored it, so
+              // the sentence under a stated-pay page had no way to describe the
+              // population that page was actually narrowed to. Cost: zero extra
+              // work — the count was already in the payload being discarded.
+              salaryText: keep("salaryText"),
+              maxYears: keep("maxYears"),
+              department: keep("department"),
+              employmentType: keep("employmentType"),
+              // Rationale: docs/job-board-index-notes.md#n152-annualwithouttext-typeof-fc-annual-without-text
+              annualWithoutText: typeof fc.annual_without_text === "number" ? fc.annual_without_text : null,
+              ...(coverageFailed.length ? { staleParts: coverageFailed } : {}),
+            };
+          }
+          if (fcErr) {
+            console.warn(`[JOB-BOARD] get_filter_coverage unavailable (${fcErr.code ?? ""} ${String(fcErr.message ?? "").slice(0, 80)}) — falling back to per-column counts`);
+          }
+          // Rationale: docs/job-board-index-notes.md#n153-const-count-open-await-client-from-job-b
+          const { count: open } = await client.from("job_board_postings")
+            .select("id", { count: "exact", head: true }).is("missing_since", null)
+            .gte("effective_posted", new Date(Date.now() - FRESH_WINDOW_DAYS * 86_400_000).toISOString());
+          if (!open) return undefined;
+          // Rationale: docs/job-board-index-notes.md#n154-const-sal-wm-exp-ctry-await-promise-all
+          const [sal, wm, exp, ctry] = await Promise.all([
+            one("salary_rank_usd", "not.is.null"),
+            one("work_mode", "not.is.null"),
+            one("experience_band", "neq.unspecified"),
+            // Rationale: docs/job-board-index-notes.md#n155-one-country-not-is-null
+            one("country", "not.is.null"),
+          ]);
+          const frac = (n: number | null) => (n === null ? null : Math.round((n / open) * 1000) / 1000);
+          // A STALE-BUT-REAL FIGURE BEATS AN ABSENT ONE. Overwriting a working
+          // number with null on a transient failure deletes the caveat entirely,
+          // and the filter it describes keeps hiding the same share of the board
+          // with nothing on screen to say so. Coverage moves by fractions of a
+          // percent between passes, so last pass's figure is still true enough to
+          // warn with — and it is replaced the moment a count succeeds again.
           const prevCov = (prevCoverage ?? {}) as Record<string, unknown>;
-          // Same carry-forward contract as the fallback path: a figure the
-          // scan could not produce keeps last pass's value rather than
-          // deleting the disclosure.
-          const keep = (name: string) => {
-            const f = frac(fc[name]);
+          const keep = (name: string, n: number | null) => {
+            const f = frac(n);
             if (f !== null) return f;
-            coverageFailed.push(name);
             const old = prevCov[name];
             return typeof old === "number" ? old : null;
           };
+          if (coverageFailed.length) {
+            console.warn(`[JOB-BOARD] filter coverage carried forward for: ${coverageFailed.join(", ")}`);
+          }
+          // THE FIVE LIVE FIGURES THE ONE-SCAN RPC PRODUCES must survive a pass
+          // where the RPC fails and this fallback runs — the upsert replaces v
+          // whole, so leaving them out of this return DELETES them and the
+          // disclosure silently reverts to the dated pinned constants. Carried
+          // from prevCoverage exactly like a failed count's own figure is.
+          const carryLive = (name: string) => {
+            const old = (prevCoverage ?? {} as Record<string, unknown>)[name];
+            if (typeof old === "number") { coverageFailed.push(name); return old; }
+            return null;
+          };
           return {
             open,
-            salaryFloor: keep("salaryFloor"),
-            workMode: keep("workMode"),
-            experience: keep("experience"),
-            country: keep("country"),
-            // The five that were pinned constants until this scan existed.
-            payBasis: keep("payBasis"),
-            hasStatedPay: keep("hasStatedPay"),
-            // THE COLUMN THE STATES-PAY FILTER BINDS, carried through because
-            // the disclosure has to read it. get_filter_coverage has counted it
-            // on this same scan since 20260909100000 and nothing stored it, so
-            // the sentence under a stated-pay page had no way to describe the
-            // population that page was actually narrowed to. Cost: zero extra
-            // work — the count was already in the payload being discarded.
-            salaryText: keep("salaryText"),
-            maxYears: keep("maxYears"),
-            department: keep("department"),
-            employmentType: keep("employmentType"),
-            // Rationale: docs/job-board-index-notes.md#n152-annualwithouttext-typeof-fc-annual-without-text
-            annualWithoutText: typeof fc.annual_without_text === "number" ? fc.annual_without_text : null,
+            salaryFloor: keep("salaryFloor", sal),
+            workMode: keep("workMode", wm),
+            experience: keep("experience", exp),
+            country: keep("country", ctry),
+            payBasis: carryLive("payBasis"),
+            hasStatedPay: carryLive("hasStatedPay"),
+            // Carried for the same reason as its four neighbours: the upsert
+            // replaces the whole block, so omitting the figure the states-pay
+            // disclosure reads deletes it and that sentence goes silent until the
+            // next successful scan.
+            salaryText: carryLive("salaryText"),
+            maxYears: carryLive("maxYears"),
+            department: carryLive("department"),
+            employmentType: carryLive("employmentType"),
+            // Carried for the same reason, and it is a COUNT rather than a
+            // fraction: this path runs when the one-scan RPC failed, so there is
+            // nothing to re-measure it from, and dropping it would delete the only
+            // external evidence for the invariant the states-pay widening rests on.
+            annualWithoutText: carryLive("annualWithoutText"),
             ...(coverageFailed.length ? { staleParts: coverageFailed } : {}),
           };
-        }
-        if (fcErr) {
-          console.warn(`[JOB-BOARD] get_filter_coverage unavailable (${fcErr.code ?? ""} ${String(fcErr.message ?? "").slice(0, 80)}) — falling back to per-column counts`);
-        }
-        // Rationale: docs/job-board-index-notes.md#n153-const-count-open-await-client-from-job-b
-        const { count: open } = await client.from("job_board_postings")
-          .select("id", { count: "exact", head: true }).is("missing_since", null)
-          .gte("effective_posted", new Date(Date.now() - FRESH_WINDOW_DAYS * 86_400_000).toISOString());
-        if (!open) return undefined;
-        // Rationale: docs/job-board-index-notes.md#n154-const-sal-wm-exp-ctry-await-promise-all
-        const [sal, wm, exp, ctry] = await Promise.all([
-          one("salary_rank_usd", "not.is.null"),
-          one("work_mode", "not.is.null"),
-          one("experience_band", "neq.unspecified"),
-          // Rationale: docs/job-board-index-notes.md#n155-one-country-not-is-null
-          one("country", "not.is.null"),
-        ]);
-        const frac = (n: number | null) => (n === null ? null : Math.round((n / open) * 1000) / 1000);
-        // A STALE-BUT-REAL FIGURE BEATS AN ABSENT ONE. Overwriting a working
-        // number with null on a transient failure deletes the caveat entirely,
-        // and the filter it describes keeps hiding the same share of the board
-        // with nothing on screen to say so. Coverage moves by fractions of a
-        // percent between passes, so last pass's figure is still true enough to
-        // warn with — and it is replaced the moment a count succeeds again.
-        const prevCov = (prevCoverage ?? {}) as Record<string, unknown>;
-        const keep = (name: string, n: number | null) => {
-          const f = frac(n);
-          if (f !== null) return f;
-          const old = prevCov[name];
-          return typeof old === "number" ? old : null;
-        };
-        if (coverageFailed.length) {
-          console.warn(`[JOB-BOARD] filter coverage carried forward for: ${coverageFailed.join(", ")}`);
-        }
-        // THE FIVE LIVE FIGURES THE ONE-SCAN RPC PRODUCES must survive a pass
-        // where the RPC fails and this fallback runs — the upsert replaces v
-        // whole, so leaving them out of this return DELETES them and the
-        // disclosure silently reverts to the dated pinned constants. Carried
-        // from prevCoverage exactly like a failed count's own figure is.
-        const carryLive = (name: string) => {
-          const old = (prevCoverage ?? {} as Record<string, unknown>)[name];
-          if (typeof old === "number") { coverageFailed.push(name); return old; }
-          return null;
-        };
-        return {
-          open,
-          salaryFloor: keep("salaryFloor", sal),
-          workMode: keep("workMode", wm),
-          experience: keep("experience", exp),
-          country: keep("country", ctry),
-          payBasis: carryLive("payBasis"),
-          hasStatedPay: carryLive("hasStatedPay"),
-          // Carried for the same reason as its four neighbours: the upsert
-          // replaces the whole block, so omitting the figure the states-pay
-          // disclosure reads deletes it and that sentence goes silent until the
-          // next successful scan.
-          salaryText: carryLive("salaryText"),
-          maxYears: carryLive("maxYears"),
-          department: carryLive("department"),
-          employmentType: carryLive("employmentType"),
-          // Carried for the same reason, and it is a COUNT rather than a
-          // fraction: this path runs when the one-scan RPC failed, so there is
-          // nothing to re-measure it from, and dropping it would delete the only
-          // external evidence for the invariant the states-pay widening rests on.
-          annualWithoutText: carryLive("annualWithoutText"),
-          ...(coverageFailed.length ? { staleParts: coverageFailed } : {}),
-        };
-        // `open` doubles as the honest board total — see the headline note in
-        // serveList. It is an EXACT count of exactly the rows a visitor can
-        // page to, taken in the same pass, so it costs nothing extra.
-      } catch { return undefined; }
-    })();
+          // `open` doubles as the honest board total — see the headline note in
+          // serveList. It is an EXACT count of exactly the rows a visitor can
+          // page to, taken in the same pass, so it costs nothing extra.
+        } catch { return undefined; }
+      })();
 
-    const v = {
-      total: f.total, // includes just-pruned orphans until the next pass recomputes — harmless
-      boards: companies.length,
-      failedSources: failedAcc,
-      // How many actually failed, versus how many fit in the sample above.
-      failedCount: failedTotal,
-      companiesFacet: companies,
-      // Rationale: docs/job-board-index-notes.md#n156-f-companiesopen-typeof-f-companiesopen
-      ...(f.companiesOpen && typeof f.companiesOpen === "object" ? { companiesOpen: f.companiesOpen } : {}),
-      ...(typeof f.companiesOpenCount === "number" ? { companiesOpenCount: f.companiesOpenCount } : {}),
-      categoriesFacet: f.categoriesFacet ?? {},
-      // source -> servable count, same pass, same two serving predicates as
-      // categoriesFacet (migration 20260909214000). Spread only when the pass
-      // produced it: an absent key is what the vendor dropdown reads as
-      // "publish no number", and an empty map would read as twenty zeros.
-      ...(f.sourcesFacet && typeof f.sourcesFacet === "object" && !Array.isArray(f.sourcesFacet)
-        ? { sourcesFacet: f.sourcesFacet }
-        : {}),
-      // Rationale: docs/job-board-index-notes.md#n157-coverage-coverage-coverage-at-st
-      ...(coverage ? { coverage: { ...coverage, at: startIso } } : {}),
-      // Facet fields above are LAST pass's, carried through an aggregate
-      // failure so the upsert-replaces-whole-v write cannot clobber them —
-      // named so a reader of this row can tell a carried total from a fresh one.
-      ...(facetsCarried ? { facetsCarried: true } : {}),
-      refreshedAt: startIso,
-    };
-    await client.from("job_board_meta").upsert({ k: "refresh", v, updated_at: new Date().toISOString() }, { onConflict: "k" });
-    // Rationale: docs/job-board-index-notes.md#n158-vhead
-    const vHead = {
-      total: v.total,
-      boards: v.boards,
-      failedSources: v.failedSources,
-      failedCount: v.failedCount,
-      categoriesFacet: v.categoriesFacet,
-      // Rationale: docs/job-board-index-notes.md#n159-coverage-coverage-coverage-tracke
-      ...(coverage ? { coverage: { ...coverage, tracked: v.total, at: v.refreshedAt } } : {}),
-      // The carried-facets marker must ride the SERVED row, not only the fat
-      // one — serving reads refresh_head. Stamped here it left no trace on the
-      // row anyone actually reads, so a carried (stale) total served as current
-      // was indistinguishable from a freshly computed one. Now the served row
-      // says which it is.
-      ...(facetsCarried ? { facetsCarried: true, facetsCarriedAt: v.refreshedAt } : {}),
-      refreshedAt: v.refreshedAt,
-      companiesCount: companies.length,
-      // Rationale: docs/job-board-index-notes.md#n160-typeof-v-as-companiesopencount-number
-      ...(typeof (v as { companiesOpenCount?: number }).companiesOpenCount === "number"
-        ? { companiesOpenCount: (v as { companiesOpenCount?: number }).companiesOpenCount }
-        : {}),
-      // Rationale: docs/job-board-index-notes.md#n161-v-as-sourcesfacet-unknown-sourcesfac
-      ...((v as { sourcesFacet?: unknown }).sourcesFacet
-          && typeof (v as { sourcesFacet?: unknown }).sourcesFacet === "object"
-          && !Array.isArray((v as { sourcesFacet?: unknown }).sourcesFacet)
-        ? { sourcesFacet: (v as { sourcesFacet?: Record<string, number> }).sourcesFacet }
-        : {}),
-      // ORDERED BY WHAT IS OPEN, once we know it. The old ordering (raw facet
-      // count) put a board with 4,000 withdrawn postings and none open at the
-      // top of the employer dropdown. `count` stays ON the entry — it is what
-      // mergeCompanyFacet folds sub-boards by and what picks the stable
-      // primary token for links — but serveList strips it before it reaches
-      // the wire, so no client can render it.
-      companiesFacet: (() => {
-        const om = (v as { companiesOpen?: Record<string, number> }).companiesOpen;
-        const withOpen = (companies as Array<{ token?: string; name?: string; count?: number }>).map((c) =>
-          om && typeof c.token === "string" ? { ...c, open: om[c.token] ?? 0 } : c
-        ) as Array<{ token?: string; name?: string; count?: number; open?: number }>;
-        return withOpen
-          .sort((a, b) => (b.open ?? b.count ?? 0) - (a.open ?? a.count ?? 0))
-          .slice(0, 200);
-      })(),
-    };
-    await client.from("job_board_meta").upsert({ k: "refresh_head", v: vHead, updated_at: new Date().toISOString() }, { onConflict: "k" });
-    // Rationale: docs/job-board-index-notes.md#n162-hotexcluded
-    const hotExcluded = new Set<string>();
-    try {
-      const { data: ex } = await client.from("showcase_excluded").select("company_token");
-      for (const r of (ex ?? []) as Array<{ company_token?: string }>) {
-        if (typeof r.company_token === "string") hotExcluded.add(r.company_token);
-      }
-    } catch { /* keep the previous behaviour rather than an empty hot tier */ }
-
-    const sizeRanked = [...companies]
-      .filter((c): c is { token: string; count: number } => typeof (c as { token?: unknown }).token === "string" && typeof (c as { count?: unknown }).count === "number")
-      .filter((c) => !hotExcluded.has(c.token))
-      .sort((a, b) => b.count - a.count)
-      .map((c) => c.token);
-    const hotSet = new Set<string>();
-    try {
-      const { data: velo, error: veloErr } = await client.rpc("get_board_velocity", { days: VELOCITY_WINDOW_DAYS, top_n: VELOCITY_HOT_SLOTS });
-      if (!veloErr && Array.isArray(velo)) {
-        for (const r of velo as Array<{ company_token?: string }>) {
-          if (typeof r.company_token === "string" && hotSet.size < VELOCITY_HOT_SLOTS) hotSet.add(r.company_token);
+      const v = {
+        total: f.total, // includes just-pruned orphans until the next pass recomputes — harmless
+        boards: companies.length,
+        failedSources: failedAcc,
+        // How many actually failed, versus how many fit in the sample above.
+        failedCount: failedTotal,
+        companiesFacet: companies,
+        // Rationale: docs/job-board-index-notes.md#n156-f-companiesopen-typeof-f-companiesopen
+        ...(f.companiesOpen && typeof f.companiesOpen === "object" ? { companiesOpen: f.companiesOpen } : {}),
+        ...(typeof f.companiesOpenCount === "number" ? { companiesOpenCount: f.companiesOpenCount } : {}),
+        categoriesFacet: f.categoriesFacet ?? {},
+        // source -> servable count, same pass, same two serving predicates as
+        // categoriesFacet (migration 20260909214000). Spread only when the pass
+        // produced it: an absent key is what the vendor dropdown reads as
+        // "publish no number", and an empty map would read as twenty zeros.
+        ...(f.sourcesFacet && typeof f.sourcesFacet === "object" && !Array.isArray(f.sourcesFacet)
+          ? { sourcesFacet: f.sourcesFacet }
+          : {}),
+        // Rationale: docs/job-board-index-notes.md#n157-coverage-coverage-coverage-at-st
+        ...(coverage ? { coverage: { ...coverage, at: startIso } } : {}),
+        // Facet fields above are LAST pass's, carried through an aggregate
+        // failure so the upsert-replaces-whole-v write cannot clobber them —
+        // named so a reader of this row can tell a carried total from a fresh one.
+        ...(facetsCarried ? { facetsCarried: true } : {}),
+        refreshedAt: startIso,
+      };
+      await client.from("job_board_meta").upsert({ k: "refresh", v, updated_at: new Date().toISOString() }, { onConflict: "k" });
+      // Rationale: docs/job-board-index-notes.md#n158-vhead
+      const vHead = {
+        total: v.total,
+        boards: v.boards,
+        failedSources: v.failedSources,
+        failedCount: v.failedCount,
+        categoriesFacet: v.categoriesFacet,
+        // Rationale: docs/job-board-index-notes.md#n159-coverage-coverage-coverage-tracke
+        ...(coverage ? { coverage: { ...coverage, tracked: v.total, at: v.refreshedAt } } : {}),
+        // The carried-facets marker must ride the SERVED row, not only the fat
+        // one — serving reads refresh_head. Stamped here it left no trace on the
+        // row anyone actually reads, so a carried (stale) total served as current
+        // was indistinguishable from a freshly computed one. Now the served row
+        // says which it is.
+        ...(facetsCarried ? { facetsCarried: true, facetsCarriedAt: v.refreshedAt } : {}),
+        refreshedAt: v.refreshedAt,
+        companiesCount: companies.length,
+        // Rationale: docs/job-board-index-notes.md#n160-typeof-v-as-companiesopencount-number
+        ...(typeof (v as { companiesOpenCount?: number }).companiesOpenCount === "number"
+          ? { companiesOpenCount: (v as { companiesOpenCount?: number }).companiesOpenCount }
+          : {}),
+        // Rationale: docs/job-board-index-notes.md#n161-v-as-sourcesfacet-unknown-sourcesfac
+        ...((v as { sourcesFacet?: unknown }).sourcesFacet
+            && typeof (v as { sourcesFacet?: unknown }).sourcesFacet === "object"
+            && !Array.isArray((v as { sourcesFacet?: unknown }).sourcesFacet)
+          ? { sourcesFacet: (v as { sourcesFacet?: Record<string, number> }).sourcesFacet }
+          : {}),
+        // ORDERED BY WHAT IS OPEN, once we know it. The old ordering (raw facet
+        // count) put a board with 4,000 withdrawn postings and none open at the
+        // top of the employer dropdown. `count` stays ON the entry — it is what
+        // mergeCompanyFacet folds sub-boards by and what picks the stable
+        // primary token for links — but serveList strips it before it reaches
+        // the wire, so no client can render it.
+        companiesFacet: (() => {
+          const om = (v as { companiesOpen?: Record<string, number> }).companiesOpen;
+          const withOpen = (companies as Array<{ token?: string; name?: string; count?: number }>).map((c) =>
+            om && typeof c.token === "string" ? { ...c, open: om[c.token] ?? 0 } : c
+          ) as Array<{ token?: string; name?: string; count?: number; open?: number }>;
+          return withOpen
+            .sort((a, b) => (b.open ?? b.count ?? 0) - (a.open ?? a.count ?? 0))
+            .slice(0, 200);
+        })(),
+      };
+      await client.from("job_board_meta").upsert({ k: "refresh_head", v: vHead, updated_at: new Date().toISOString() }, { onConflict: "k" });
+      // Rationale: docs/job-board-index-notes.md#n162-hotexcluded
+      const hotExcluded = new Set<string>();
+      try {
+        const { data: ex } = await client.from("showcase_excluded").select("company_token");
+        for (const r of (ex ?? []) as Array<{ company_token?: string }>) {
+          if (typeof r.company_token === "string") hotExcluded.add(r.company_token);
         }
+      } catch { /* keep the previous behaviour rather than an empty hot tier */ }
+
+      const sizeRanked = [...companies]
+        .filter((c): c is { token: string; count: number } => typeof (c as { token?: unknown }).token === "string" && typeof (c as { count?: unknown }).count === "number")
+        .filter((c) => !hotExcluded.has(c.token))
+        .sort((a, b) => b.count - a.count)
+        .map((c) => c.token);
+      const hotSet = new Set<string>();
+      try {
+        const { data: velo, error: veloErr } = await client.rpc("get_board_velocity", { days: VELOCITY_WINDOW_DAYS, top_n: VELOCITY_HOT_SLOTS });
+        if (!veloErr && Array.isArray(velo)) {
+          for (const r of velo as Array<{ company_token?: string }>) {
+            if (typeof r.company_token === "string" && hotSet.size < VELOCITY_HOT_SLOTS) hotSet.add(r.company_token);
+          }
+        }
+      } catch { /* velocity unavailable — size-only ranking */ }
+      for (const t of sizeRanked) {
+        if (hotSet.size >= HOT_SIZE) break;
+        hotSet.add(t);
       }
-    } catch { /* velocity unavailable — size-only ranking */ }
-    for (const t of sizeRanked) {
-      if (hotSet.size >= HOT_SIZE) break;
-      hotSet.add(t);
-    }
-    const ranked = [...hotSet];
-    // (The quiet-set refresh that used to live here went with the quiet lane —
-    // see the removal note in the cold-phase skip logic. One fewer heavy RPC
-    // per pass.)
-    if (ranked.length >= 50) {
-      await client.from("job_board_meta").upsert(
-        { k: "hot_tokens", v: { tokens: ranked }, updated_at: new Date().toISOString() },
-        { onConflict: "k" },
-      );
-    }
-    console.log(`[JOB-BOARD] pass complete: hot ${HOT_LIST.length} boards + ${COLD_SLICES_PER_PASS} cold slices; corpus total ${f.total}`);
-    // Experience bands not yet backfilled (fresh column on existing rows)? Fill
-    // the NULL tail in a self-chaining sweep with its own compute budget. Stamped
-    // on completion so it runs once; new rows already carry a band from ingestion.
-    const { data: expVer } = await client.from("job_board_meta").select("v").eq("k", "experience_version").maybeSingle();
-    if ((expVer?.v as { version?: number } | null)?.version !== EXPERIENCE_VERSION) {
-      const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
-      waitUntil(chainKey().then((key) => fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "backfill-experience", chainKey: key }),
-      })).then((r) => discardBody(r)).catch(() => {}));
-    }
-    // Country not yet backfilled (fresh column on existing rows)? Same
-    // self-chaining sweep pattern; new rows carry country from ingestion.
-    const { data: coVer } = await client.from("job_board_meta").select("v").eq("k", "country_version").maybeSingle();
-    if ((coVer?.v as { version?: number } | null)?.version !== COUNTRY_VERSION) {
-      const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
-      waitUntil(chainKey().then((key) => fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "backfill-country", chainKey: key }),
-      })).then((r) => discardBody(r)).catch(() => {}));
-    }
-    // Rationale: docs/job-board-index-notes.md#n163-filter-audit-every-ms
-    const FILTER_AUDIT_EVERY_MS = 6 * 60 * 60_000;
-    const { data: faRow } = await client.from("job_board_meta").select("updated_at").eq("k", "filter_audit").maybeSingle();
-    const faAge = faRow?.updated_at ? Date.now() - Date.parse(faRow.updated_at) : Infinity;
-    if (faAge > FILTER_AUDIT_EVERY_MS) {
-      const faUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
-      waitUntil(chainKey().then((key) =>
-        fetch(faUrl, {
+      const ranked = [...hotSet];
+      // (The quiet-set refresh that used to live here went with the quiet lane —
+      // see the removal note in the cold-phase skip logic. One fewer heavy RPC
+      // per pass.)
+      if (ranked.length >= 50) {
+        await client.from("job_board_meta").upsert(
+          { k: "hot_tokens", v: { tokens: ranked }, updated_at: new Date().toISOString() },
+          { onConflict: "k" },
+        );
+      }
+      console.log(`[JOB-BOARD] pass complete: hot ${HOT_LIST.length} boards + ${COLD_SLICES_PER_PASS} cold slices; corpus total ${f.total}`);
+      // Experience bands not yet backfilled (fresh column on existing rows)? Fill
+      // the NULL tail in a self-chaining sweep with its own compute budget. Stamped
+      // on completion so it runs once; new rows already carry a band from ingestion.
+      const { data: expVer } = await client.from("job_board_meta").select("v").eq("k", "experience_version").maybeSingle();
+      if ((expVer?.v as { version?: number } | null)?.version !== EXPERIENCE_VERSION) {
+        const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
+        waitUntil(chainKey().then((key) => fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "filter-audit", chainKey: key }),
-        })
-      ).then((r) => discardBody(r)).catch(() => {}));
-    }
-
-    // Undated rows whose vendor feed DOES carry dates? Date them once.
-    // The kick now (a) stands down while a chain is demonstrably alive
-    // (hop stamp < 5 min old) instead of spawning a concurrent duplicate,
-    // and (b) revives a DEAD chain at its stored phase+cursor rather than
-    // from the beginning — restart-from-scratch is why v2's late phases
-    // never ran.
-    const { data: pbVer } = await client.from("job_board_meta").select("v").eq("k", "posted_backfill").maybeSingle();
-    const pbV = (pbVer?.v ?? {}) as { version?: number; resumeVersion?: number; phase?: string; cursor?: string; at?: string; sweptAt?: string; backlogAtSweep?: number };
-    const pbAlive = typeof pbV.at === "string" && Date.now() - Date.parse(pbV.at) < 5 * 60_000;
-    // Read the backlog only when the cheap checks have not already decided, so
-    // the common "not due" path costs no extra query.
-    const pbBacklog = pbAlive ? null : await undatedBacklog(client);
-    if (postedBackfillDue(pbV, pbBacklog) && !pbAlive) {
-      const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
-      // Rationale: docs/job-board-index-notes.md#n164-resume
-      const resume = pbV.resumeVersion === POSTED_BACKFILL_VERSION
-        && typeof pbV.phase === "string" && typeof pbV.cursor === "string"
-        ? { phase: pbV.phase, cursor: pbV.cursor }
-        : {};
-      waitUntil(chainKey().then((key) => fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "backfill-posted", chainKey: key, ...resume }),
-      })).then((r) => discardBody(r)).catch(() => {}));
-    }
-    // One-time name sync: ~48 rung-3 census names shipped HTML-escaped
-    // ("Bob's Main Street Auto &amp; Towing") and were decoded in the catalog —
-    // but the refresh is INSERT-ONLY by design (existing rows are never
-    // rewritten), so stored rows can never heal on their own. Find rows still
-    // carrying escaped names and sync them (postings + closures, which feed
-    // the actively-hiring leaderboard) to the decoded catalog name. Stamped.
-    const { data: nsVer } = await client.from("job_board_meta").select("v").eq("k", "name_sync_version").maybeSingle();
-    if ((nsVer?.v as { version?: number } | null)?.version !== NAME_SYNC_VERSION) {
-      try {
-        const tokens = new Set<string>();
-        for (const pat of ["%&amp;%", "%&#039;%"]) {
-          const { data: escRows } = await client.from("job_board_postings").select("company_token").like("company", pat).limit(1000);
-          for (const r of escRows ?? []) tokens.add(r.company_token as string);
-        }
-        // Boards whose catalog display name was CORRECTED rather than merely
-        // escaped. Same insert-only problem, same cure: stored rows keep the
-        // old name forever unless something rewrites them, so a rename in
-        // sources.ts is invisible on the site without this sweep.
-        for (const tk of RENAMED_TOKENS) tokens.add(tk);
-        // Rationale: docs/job-board-index-notes.md#n165-fixed
-        let fixed = 0, failed = 0, already = 0;
-        for (const tk of tokens) {
-          const src = JOB_SOURCES.find((s) => s.token === tk);
-          if (!src) continue;
-          // (a) SKIP BOARDS ALREADY CORRECT. Makes every retry cheaper than the
-          //     last, so successive passes get further instead of re-doing the
-          //     same expensive updates and dying in the same place.
-          const { data: stale } = await client.from("job_board_postings")
-            .select("company_token").eq("company_token", tk).neq("company", src.name).limit(1);
-          if (!stale?.length) { already++; continue; }
-          // (b) NARROW THE UPDATE to rows that actually differ. The old
-          //     statement rewrote every row for the token including ones already
-          //     carrying the right name, which is what made the big boards time
-          //     out in the first place.
-          const { error: e1 } = await client.from("job_board_postings")
-            .update({ company: src.name }).eq("company_token", tk).neq("company", src.name);
-          const { error: e2 } = await client.from("job_board_closures")
-            .update({ company: src.name }).eq("company_token", tk).neq("company", src.name);
-          if (e1 || e2) {
-            failed++;
-            console.warn(`[JOB-BOARD] name sync: ${tk} failed:`, (e1 ?? e2)?.message?.slice(0, 120));
-          } else fixed++;
-        }
-        // (c) STAMP ONLY ON A CLEAN RUN. Leaving it unstamped costs one more
-        //     pass; stamping over failures costs the rename permanently.
-        if (failed === 0) {
-          await client.from("job_board_meta").upsert(
-            { k: "name_sync_version", v: { version: NAME_SYNC_VERSION, fixed, already, sweptAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
-            { onConflict: "k" },
-          );
-          console.log(`[JOB-BOARD] name sync v${NAME_SYNC_VERSION} complete: ${fixed} renamed, ${already} already correct`);
-        } else {
-          console.warn(`[JOB-BOARD] name sync v${NAME_SYNC_VERSION} INCOMPLETE: ${fixed} renamed, ${failed} failed, ${already} already correct — version left unstamped so the next pass resumes`);
-        }
-      } catch (e) {
-        console.warn("[JOB-BOARD] name sync failed (retries next pass):", String(e).slice(0, 150));
+          body: JSON.stringify({ action: "backfill-experience", chainKey: key }),
+        })).then((r) => discardBody(r)).catch(() => {}));
       }
-    }
+      // Country not yet backfilled (fresh column on existing rows)? Same
+      // self-chaining sweep pattern; new rows carry country from ingestion.
+      const { data: coVer } = await client.from("job_board_meta").select("v").eq("k", "country_version").maybeSingle();
+      if ((coVer?.v as { version?: number } | null)?.version !== COUNTRY_VERSION) {
+        const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
+        waitUntil(chainKey().then((key) => fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "backfill-country", chainKey: key }),
+        })).then((r) => discardBody(r)).catch(() => {}));
+      }
+      // Rationale: docs/job-board-index-notes.md#n163-filter-audit-every-ms
+      const FILTER_AUDIT_EVERY_MS = 6 * 60 * 60_000;
+      const { data: faRow } = await client.from("job_board_meta").select("updated_at").eq("k", "filter_audit").maybeSingle();
+      const faAge = faRow?.updated_at ? Date.now() - Date.parse(faRow.updated_at) : Infinity;
+      if (faAge > FILTER_AUDIT_EVERY_MS) {
+        const faUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
+        waitUntil(chainKey().then((key) =>
+          fetch(faUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "filter-audit", chainKey: key }),
+          })
+        ).then((r) => discardBody(r)).catch(() => {}));
+      }
 
-    // Same deal for salary_min_annual: rows are insert-only, so postings that
-    // predate the structured parser need one sweep. Stamped on completion.
-    const { data: salVer } = await client.from("job_board_meta").select("v").eq("k", "salary_parse_version").maybeSingle();
-    if ((salVer?.v as { version?: number } | null)?.version !== SALARY_PARSE_VERSION) {
-      const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
-      waitUntil(chainKey().then((key) => fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "backfill-salary", chainKey: key }),
-      })).then((r) => discardBody(r)).catch(() => {}));
-    }
+      // Undated rows whose vendor feed DOES carry dates? Date them once.
+      // The kick now (a) stands down while a chain is demonstrably alive
+      // (hop stamp < 5 min old) instead of spawning a concurrent duplicate,
+      // and (b) revives a DEAD chain at its stored phase+cursor rather than
+      // from the beginning — restart-from-scratch is why v2's late phases
+      // never ran.
+      const { data: pbVer } = await client.from("job_board_meta").select("v").eq("k", "posted_backfill").maybeSingle();
+      const pbV = (pbVer?.v ?? {}) as { version?: number; resumeVersion?: number; phase?: string; cursor?: string; at?: string; sweptAt?: string; backlogAtSweep?: number };
+      const pbAlive = typeof pbV.at === "string" && Date.now() - Date.parse(pbV.at) < 5 * 60_000;
+      // Read the backlog only when the cheap checks have not already decided, so
+      // the common "not due" path costs no extra query.
+      const pbBacklog = pbAlive ? null : await undatedBacklog(client);
+      if (postedBackfillDue(pbV, pbBacklog) && !pbAlive) {
+        const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
+        // Rationale: docs/job-board-index-notes.md#n164-resume
+        const resume = pbV.resumeVersion === POSTED_BACKFILL_VERSION
+          && typeof pbV.phase === "string" && typeof pbV.cursor === "string"
+          ? { phase: pbV.phase, cursor: pbV.cursor }
+          : {};
+        waitUntil(chainKey().then((key) => fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "backfill-posted", chainKey: key, ...resume }),
+        })).then((r) => discardBody(r)).catch(() => {}));
+      }
+      // Same deal for salary_min_annual: rows are insert-only, so postings that
+      // predate the structured parser need one sweep. Stamped on completion.
+      const { data: salVer } = await client.from("job_board_meta").select("v").eq("k", "salary_parse_version").maybeSingle();
+      if ((salVer?.v as { version?: number } | null)?.version !== SALARY_PARSE_VERSION) {
+        const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
+        waitUntil(chainKey().then((key) => fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "backfill-salary", chainKey: key }),
+        })).then((r) => discardBody(r)).catch(() => {}));
+      }
 
-    await maybeKickMaintenance(client);
-    await recordSliceStats(client, sliceWallStart, inHotPhase);
-    return { ok: true, detail: `pass complete — corpus ${f.total} postings from ${companies.length} boards; cold rotation at ${cold}/${COLD_LIST.length}${lastUpsertError ? ` — last upsert error: ${String(lastUpsertError).slice(0, 120)}` : ""}` };
+      // One-time name sync: ~48 rung-3 census names shipped HTML-escaped
+      // ("Bob's Main Street Auto &amp; Towing") and were decoded in the catalog —
+      // but the refresh is INSERT-ONLY by design (existing rows are never
+      // rewritten), so stored rows can never heal on their own. Find rows still
+      // carrying escaped names and sync them (postings + closures, which feed
+      // the actively-hiring leaderboard) to the decoded catalog name. Stamped.
+      const { data: nsVer } = await client.from("job_board_meta").select("v").eq("k", "name_sync_version").maybeSingle();
+      if ((nsVer?.v as { version?: number } | null)?.version !== NAME_SYNC_VERSION) {
+        try {
+          const tokens = new Set<string>();
+          for (const pat of ["%&amp;%", "%&#039;%"]) {
+            const { data: escRows } = await client.from("job_board_postings").select("company_token").like("company", pat).limit(1000);
+            for (const r of escRows ?? []) tokens.add(r.company_token as string);
+          }
+          // Boards whose catalog display name was CORRECTED rather than merely
+          // escaped. Same insert-only problem, same cure: stored rows keep the
+          // old name forever unless something rewrites them, so a rename in
+          // sources.ts is invisible on the site without this sweep.
+          for (const tk of RENAMED_TOKENS) tokens.add(tk);
+          // Rationale: docs/job-board-index-notes.md#n165-fixed
+          let fixed = 0, failed = 0, already = 0;
+          for (const tk of tokens) {
+            const src = JOB_SOURCES.find((s) => s.token === tk);
+            if (!src) continue;
+            // (a) SKIP BOARDS ALREADY CORRECT. Makes every retry cheaper than the
+            //     last, so successive passes get further instead of re-doing the
+            //     same expensive updates and dying in the same place.
+            const { data: stale } = await client.from("job_board_postings")
+              .select("company_token").eq("company_token", tk).neq("company", src.name).limit(1);
+            if (!stale?.length) { already++; continue; }
+            // (b) NARROW THE UPDATE to rows that actually differ. The old
+            //     statement rewrote every row for the token including ones already
+            //     carrying the right name, which is what made the big boards time
+            //     out in the first place.
+            const { error: e1 } = await client.from("job_board_postings")
+              .update({ company: src.name }).eq("company_token", tk).neq("company", src.name);
+            const { error: e2 } = await client.from("job_board_closures")
+              .update({ company: src.name }).eq("company_token", tk).neq("company", src.name);
+            if (e1 || e2) {
+              failed++;
+              console.warn(`[JOB-BOARD] name sync: ${tk} failed:`, (e1 ?? e2)?.message?.slice(0, 120));
+            } else fixed++;
+          }
+          // (c) STAMP ONLY ON A CLEAN RUN. Leaving it unstamped costs one more
+          //     pass; stamping over failures costs the rename permanently.
+          if (failed === 0) {
+            await client.from("job_board_meta").upsert(
+              { k: "name_sync_version", v: { version: NAME_SYNC_VERSION, fixed, already, sweptAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
+              { onConflict: "k" },
+            );
+            console.log(`[JOB-BOARD] name sync v${NAME_SYNC_VERSION} complete: ${fixed} renamed, ${already} already correct`);
+          } else {
+            console.warn(`[JOB-BOARD] name sync v${NAME_SYNC_VERSION} INCOMPLETE: ${fixed} renamed, ${failed} failed, ${already} already correct — version left unstamped so the next pass resumes`);
+          }
+        } catch (e) {
+          console.warn("[JOB-BOARD] name sync failed (retries next pass):", String(e).slice(0, 150));
+        }
+      }
+
+      // Rationale: docs/job-board-index-notes.md#n145-nowiso
+      const nowIso = new Date().toISOString();
+      {
+        const futureIso = new Date(Date.now() + 2 * 86_400_000).toISOString();
+        const garbageIso = new Date(POSTED_AT_GARBAGE_FLOOR_MS).toISOString();
+        const { error: e1 } = await client.from("job_board_postings").update({ posted_at: null }).gt("posted_at", futureIso);
+        const { error: e2 } = await client.from("job_board_postings").update({ posted_at: null }).lt("posted_at", garbageIso);
+        if (e1 || e2) console.warn("[JOB-BOARD] date-hygiene error:", (e1 ?? e2)?.message);
+      }
+
+      // Freshness cap sweep: drop the aged tail (effective_posted past the window)
+      // so the corpus reclaims itself immediately rather than waiting a full cold
+      // rotation for the per-board prune. Bounded per pass (a single delete of the
+      // ~65k initial backlog risks a statement timeout on the free tier); the
+      // ingestion filter keeps dated-old postings from re-entering, so this
+      // converges within a few passes and then only trims the daily trickle.
+      //
+      // ONE CHUNK AT A TIME, ON A CLOCK (S11-001). It used to read all 15,000
+      // ids, then every chunk's rows, and delete only at the very end, so a tail
+      // that died anywhere in the reads deleted nothing at all: the aged
+      // backlog grew from 20.5k to 36.6k while the sweep ran every pass. Each
+      // chunk is now read, tombstoned, logged and deleted before the next is
+      // taken, so whatever a pass gets through stays done. Since every chunk
+      // is gone before the next read, the next chunk is always the oldest 200
+      // again: no offset to drift. No new chunk starts once the pass-end hop is
+      // PASS_END_SWEEP_UNTIL_MS old, and the cap still bounds a pass.
+      {
+        const freshCutoffIso = new Date(freshCutoffMs).toISOString();
+        const sweepUntil = sliceWallStart + PASS_END_SWEEP_UNTIL_MS;
+        let swept = 0;
+        let sweepStop = "done";
+        // Rationale: docs/job-board-index-notes.md#n421-a-row-not-read-is-not-written
+        if (!META_READ.oversize) {
+          sweepStop = "registry-unread";
+          console.warn("[JOB-BOARD] freshness sweep skipped: the oversize registry was unread this slice, so aged rows wait for the next pass (the list already hides them)");
+        }
+        while (META_READ.oversize) {
+          if (swept >= FRESH_PRUNE_MAX) { sweepStop = "cap"; break; }
+          if (Date.now() >= sweepUntil) { sweepStop = "clock"; break; }
+          const take = Math.min(200, FRESH_PRUNE_MAX - swept);
+          const { data: page, error: pageErr } = await client
+            .from("job_board_postings")
+            .select("id")
+            .lt("effective_posted", freshCutoffIso)
+            .order("effective_posted", { ascending: true })
+            .range(0, take - 1);
+          if (pageErr) { console.warn("[JOB-BOARD] freshness sweep select error:", pageErr.message); sweepStop = "select-error"; break; }
+          const ids: string[] = (page ?? []).map((r) => r.id as string);
+          if (ids.length === 0) break;
+          // Rationale: docs/job-board-index-notes.md#n146-alreadytombstoned
+          const alreadyTombstoned = new Set<string>();
+          try {
+            for (let i = 0; i < ids.length; i += 200) {
+              const { data: t, error: tErr } = await client
+                .from("job_board_aged_out").select("id").in("id", ids.slice(i, i + 200));
+              if (tErr) throw tErr;
+              for (const r of t ?? []) alreadyTombstoned.add(String((r as { id: string }).id));
+            }
+          } catch (e) {
+            console.warn("[JOB-BOARD] aged-out read failed (exits may double-count this pass):", String((e as Error)?.message ?? e).slice(0, 120));
+          }
+          const exitedAt = new Date().toISOString();
+          for (let i = 0; i < ids.length; i += 200) {
+            const slice = ids.slice(i, i + 200);
+            // Widened with the lifecycle facets and effective_posted (which the
+            // tombstone below needs). Same read that was already running; the
+            // posting is deleted a few lines further on, so this is the last
+            // moment its pay, team, geography and level exist.
+            let agedRes = await client
+              .from("job_board_postings")
+              .select(`${LIFECYCLE_SELECT}, effective_posted`)
+              .in("id", slice);
+            if (agedRes.error) {
+              agedRes = (await client
+                .from("job_board_postings")
+                .select("id, source, company_token, company, title, category, posted_at, first_seen, effective_posted")
+                .in("id", slice)) as typeof agedRes;
+            }
+            const agedRows = agedRes.data as unknown as Array<Record<string, unknown>> | null;
+            if (!agedRows?.length) continue;
+            // Write the tombstone for every aged row not already tombstoned —
+            // this is what keeps it from coming back. An existing tombstone keeps
+            // its date: a re-admitted row's records the date it came back on.
+            // AWAITED, because the chunk's delete now follows at once: a
+            // tombstone still in flight when its row is deleted leaves a window
+            // in which ingest can insert the row again.
+            // Rationale: docs/job-board-index-notes.md#n412-redated-past-tombstone
+            const untombstoned = agedRows.filter((r) => !alreadyTombstoned.has(String(r.id)));
+            if (untombstoned.length > 0) {
+              const { error: tombErr } = await client.from("job_board_aged_out").upsert(
+                untombstoned.map((r) => ({
+                  id: r.id as string,
+                  source: r.source as string,
+                  company_token: r.company_token as string,
+                  posted_at: (r.effective_posted ?? r.posted_at) as string | null,
+                })),
+                // ignoreDuplicates holds the rule even when the read above failed and the set is empty.
+                { onConflict: "id", ignoreDuplicates: true },
+              );
+              if (tombErr) console.warn("[JOB-BOARD] freshness sweep tombstone write failed (non-fatal):", String(tombErr.message ?? tombErr).slice(0, 120));
+            }
+            // Rationale: docs/job-board-index-notes.md#n147-oversizeheld
+            const oversizeHeld = agedRows.filter((r) => heldOversize(OVERSIZE_BOARDS, r, SHARED_TOKENS) && !alreadyTombstoned.has(String(r.id)));
+            for (const r of oversizeHeld) alreadyTombstoned.add(String(r.id));
+            if (oversizeHeld.length > 0) {
+              console.warn(`[JOB-BOARD] freshness sweep: ${oversizeHeld.length} aged posting(s) on ${new Set(oversizeHeld.map((r) => String(r.company_token))).size} OVERSIZE board(s) dropped without a closure-log entry — the board is deferred by the byte budget, not closed`);
+            }
+            const freshlyDead = agedRows.filter((r) => !alreadyTombstoned.has(String(r.id)));
+            if (freshlyDead.length === 0) continue;
+            // The other site the hiring-health estimator draws censoring times
+            // from (exit_reason <> 'removed'), and the other one that was
+            // coalescing posted_at with first_seen per row with no flag. Same
+            // rule as everywhere else now: emit the duration, name its clock.
+            const sweptExitRow = (r: Record<string, unknown>) => {
+              const t = tenureDays(r.posted_at, r.first_seen, exitedAt);
+              return {
+                posting_id: r.id as string,
+                source: r.source as string,
+                company_token: r.company_token as string,
+                company: (r.company as string | null) ?? null,
+                title: (r.title as string | null) ?? null,
+                category: (r.category as string) ?? "other",
+                exit_reason: exitReasonFor(r.posted_at, r.first_seen),
+                posted_at: (r.posted_at as string | null) ?? null,
+                days_on_board: t.days,
+                origin_basis: t.basis,
+                exited_at: exitedAt,
+                ...lifecycleFacets(r),
+              };
+            };
+            waitUntil(Promise.resolve(insertExits(
+              client, freshlyDead.map(sweptExitRow), "freshness-sweep",
+            )).then(({ error }) => {
+              if (error) console.warn("[JOB-BOARD] freshness-sweep exit insert failed (non-fatal):", String(error.message ?? error).slice(0, 150));
+            }).catch(() => {}));
+          }
+          let dropped = 0;
+          for (let i = 0; i < ids.length; i += 200) {
+            const { error } = await client.from("job_board_postings").delete().in("id", ids.slice(i, i + 200));
+            if (error) { console.warn("[JOB-BOARD] freshness sweep delete error:", error.message); break; }
+            dropped += Math.min(200, ids.length - i);
+          }
+          swept += dropped;
+          // A chunk that would not delete is read again first next time: stop
+          // rather than spin on it until the clock runs out.
+          if (dropped < ids.length) { sweepStop = "delete-error"; break; }
+          if (ids.length < take) break;
+        }
+        if (swept > 0) console.log(`[JOB-BOARD] freshness cap: dropped ${swept} postings older than ${FRESH_WINDOW_DAYS}d (stopped: ${sweepStop})`);
+        await breadcrumb(client, "pass-end-swept", { dropped: swept, stop: sweepStop, elapsedMs: Date.now() - sliceWallStart });
+        // Tombstones expire, so the table stays bounded and a vendor that
+        // recycles posting ids eventually gets a second chance. 180 days is far
+        // past any window in which a re-fetched id could still be the same
+        // aged-out job.
+        try {
+          await client.from("job_board_aged_out").delete()
+            .lt("aged_at", new Date(Date.now() - 180 * 86_400_000).toISOString());
+        } catch { /* bounded cleanup — never worth failing a pass over */ }
+      }
+
+      // Rationale: docs/job-board-index-notes.md#n148-const-count-plannedsize-await-client-from
+      const { count: plannedSize } = await client.from("job_board_postings").select("id", { count: "planned", head: true });
+      const estimate = typeof plannedSize === "number" ? plannedSize : null;
+      let corpusSize: number | null = null;
+      let corpusBasis: "exact" | "planner estimate" | "unmeasured" = "unmeasured";
+      if (estimate !== null && estimate > CORPUS_CEILING * 0.95) {
+        const { count: exactSize } = await client.from("job_board_postings").select("id", { count: "exact", head: true });
+        if (typeof exactSize === "number") { corpusSize = exactSize; corpusBasis = "exact"; }
+      }
+      if (corpusSize === null && estimate !== null) { corpusSize = estimate; corpusBasis = "planner estimate"; }
+      if (corpusBasis === "unmeasured") {
+        console.error("[JOB-BOARD] capacity governor: corpus size unmeasurable (planned count failed) — eviction skipped and headroom unknown");
+      }
+      if (corpusBasis === "exact" && (corpusSize as number) > CORPUS_CEILING) {
+        const overflow = (corpusSize as number) - CORPUS_TARGET;
+        // Page the oldest ids (PostgREST caps a response at 1,000 rows) so a big
+        // jump — e.g. a wider board selection — can be shed in one pass.
+        const ids: string[] = [];
+        for (let from = 0; ids.length < overflow; from += 1000) {
+          const take = Math.min(1000, overflow - ids.length);
+          const { data: page, error } = await client
+            .from("job_board_postings")
+            .select("id")
+            .order("effective_posted", { ascending: true })
+            .range(from, from + take - 1);
+          if (error) { console.warn("[JOB-BOARD] capacity select error:", error.message); break; }
+          ids.push(...(page ?? []).map((r) => r.id as string));
+          if (!page || page.length < take) break;
+        }
+        let evicted = 0;
+        for (let i = 0; i < ids.length; i += 200) {
+          const { error } = await client.from("job_board_postings").delete().in("id", ids.slice(i, i + 200));
+          if (error) { console.warn("[JOB-BOARD] capacity evict error:", error.message); break; }
+          evicted += Math.min(200, ids.length - i);
+        }
+        await client.from("job_board_meta").upsert(
+          { k: "capacity", v: { at: nowIso, corpusBefore: corpusSize, basis: corpusBasis, ceiling: CORPUS_CEILING, target: CORPUS_TARGET, evicted, active: true }, updated_at: nowIso },
+          { onConflict: "k" },
+        );
+        console.warn(`[JOB-BOARD] capacity governor: corpus ${corpusSize} > ${CORPUS_CEILING} — evicted ${evicted} stalest postings toward ${CORPUS_TARGET}`);
+      } else {
+        // Record headroom each pass so the heartbeat can watch the corpus trend
+        // toward the ceiling before it ever binds. `basis` travels with it: an
+        // unmeasured corpus must NOT be published as a healthy headroom, which is
+        // exactly what `corpusSize ?? 0` used to do.
+        await client.from("job_board_meta").upsert(
+          {
+            k: "capacity",
+            v: {
+              at: nowIso,
+              corpus: corpusSize,
+              basis: corpusBasis,
+              ceiling: CORPUS_CEILING,
+              headroom: corpusSize === null ? null : CORPUS_CEILING - corpusSize,
+              evicted: 0,
+              active: false,
+            },
+            updated_at: nowIso,
+          },
+          { onConflict: "k" },
+        );
+      }
+
+      await stampPassEnd(client, { startedAt: passEndStartedAt, hop: passEndHop, refreshedAt: startIso, doneAt: new Date().toISOString(), ms: Date.now() - Date.parse(passEndStartedAt) });
+      await maybeKickMaintenance(client);
+      await recordSliceStats(client, sliceWallStart, inHotPhase);
+      return { ok: true, detail: `pass complete — corpus ${f.total} postings from ${companies.length} boards; cold rotation at ${cold}/${COLD_LIST.length}${lastUpsertError ? ` — last upsert error: ${String(lastUpsertError).slice(0, 120)}` : ""}` };
+    };
+    // Settled, never rejecting: the hop has already answered, so a rejection
+    // here would be unhandled. A tail that dies leaves its pass_end row
+    // without doneAt, which is what the heartbeat reads.
+    waitUntil(passEndTail().then(
+      (r) => console.log(`[JOB-BOARD] pass-end tail finished: ${r.detail}`),
+      (e) => console.error("[JOB-BOARD] pass-end tail threw:", String((e as Error)?.message ?? e).slice(0, 200)),
+    ));
+    return { ok: true, detail: `pass complete — cold rotation at ${cold}/${COLD_LIST.length}; the pass-end tail runs after this answer${lastUpsertError ? ` — last upsert error: ${String(lastUpsertError).slice(0, 120)}` : ""}` };
   }
 
   // Rationale: docs/job-board-index-notes.md#n166-await-maybekickmaintenance-client
