@@ -4,6 +4,7 @@
 // numbers, no trash talk, and every page names where the competitor wins.
 
 import { oneTimePriceRangeUsd } from "../config/products";
+import { LANGUAGE_COUNT } from "../i18n/languages";
 
 export interface CompetitorRow {
   dim: string;
@@ -96,7 +97,7 @@ export const COMPETITORS: Record<string, Competitor> = {
       { dim: "ATS analysis", us: US_FREE, them: "A resume checker exists, but the product's center of gravity is the builder.", usWins: true },
       { dim: "Score honesty", us: US_HONESTY, them: "Checker feedback without a verified audit trail.", usWins: true },
       { dim: "Pricing model", us: US_PRICING, them: "Freemium with subscription for premium templates and AI (as of mid-2026).", usWins: true },
-      { dim: "Languages", us: "10 languages including full Spanish resume detection.", them: "Multi-language templates — broadly comparable here.", usWins: false },
+      { dim: "Languages", us: `An interface in ${LANGUAGE_COUNT} languages, plus full Spanish resume detection.`, them: "Multi-language templates — broadly comparable here.", usWins: false },
     ],
   },
   enhancv: {

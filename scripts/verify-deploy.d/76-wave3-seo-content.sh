@@ -240,6 +240,22 @@ const textOf = (h) => h.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>
   else if (/\/companies — the [\d,]+ employers this site gives a page/.test(lf.body)) out("PASS", "/llms-full.txt says /companies lists the employers with a page of their own, counted (L4-11)");
   else out("FAIL", "/llms-full.txt has no counted /companies line (L4-11)");
 
+  // ---- S11-151: the language count everywhere it was typed ----
+  const vs = await get("/vs/kickresume");
+  const es = await get("/es/revisar-curriculum");
+  const typed = [[vs, "/vs/kickresume", /\b10 languages\b/], [es, "/es/revisar-curriculum", /\b10 idiomas\b/]].filter(([r, , re]) => r.status === 200 && re.test(textOf(r.body))).map(([, p]) => p);
+  if (vs.status !== 200 && es.status !== 200) out("INFO", `/vs/kickresume and /es/revisar-curriculum answered ${vs.status} and ${es.status}: the language count not judged there`);
+  else if (typed.length) out("FAIL", `still says 10 languages over the eight the interface ships: ${typed.join(", ")} (S11-151)`);
+  else out("PASS", "/vs/kickresume and /es/revisar-curriculum print the derived interface language count, not 10 (S11-151)");
+  const mainJs = (home.body.match(/\/assets\/index-[^"]*\.js/) || [])[0];
+  const mainB = mainJs ? (await get(mainJs)).body : "";
+  const idxJs = (mainB.match(/\.\/Index-[A-Za-z0-9_-]*\.js/) || [])[0];
+  const idxB = idxJs ? (await get(`/assets/${idxJs.slice(2)}`)).body : "";
+  if (!idxB) out("INFO", "the homepage SPA chunk could not be found, so its WebApplication JSON-LD was not judged");
+  else if (/industries and 10 languages/.test(idxB)) out("FAIL", "the homepage SPA\x27s WebApplication JSON-LD still says 10 languages (S11-151)");
+  else if (/with an interface in/.test(idxB)) out("PASS", "the homepage SPA\x27s WebApplication JSON-LD prints the derived interface language count (S11-151)");
+  else out("INFO", "the homepage SPA chunk carries neither the old nor the new WebApplication description");
+
   // ---- L1-05: a role page calls the lists its field\x27s ----
   const rp = await get("/roles/pilot");
   const rpt = textOf(rp.body);

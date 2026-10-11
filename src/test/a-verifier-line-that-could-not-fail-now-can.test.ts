@@ -136,6 +136,19 @@ describe("S11-013 controls in section 76: a real employer named by its code keep
   });
 });
 
+describe("S11-151 in section 76: the typed '10 languages' on /vs, the Spanish landing and the SPA JSON-LD", () => {
+  const homeWithJs = HOME.replace("</head>", `<script type="module" src="/assets/index-abc123.js"></script></head>`);
+  const spa = (desc: string) => [route("/", homeWithJs), route("/assets/index-abc123.js", `import("./Index-def456.js")`), route("/assets/Index-def456.js", `const d=\`${desc}\`;`)];
+  it("fails on the old copy and passes on the derived count", () => {
+    const bad = runSection("76-wave3-seo-content.sh", { routes: [...spa("across 58 industries and 10 languages."), route("/vs/kickresume", "<p>10 languages including full Spanish resume detection.</p>"), route("/es/revisar-curriculum", "<li>además de 10 idiomas</li>"), ...site76()] });
+    expect(has(bad, "FAIL", /still says 10 languages over the eight the interface ships: \/vs\/kickresume, \/es\/revisar-curriculum \(S11-151\)/), show(bad)).toBe(true);
+    expect(has(bad, "FAIL", /SPA's WebApplication JSON-LD still says 10 languages/), show(bad)).toBe(true);
+    const good = runSection("76-wave3-seo-content.sh", { routes: [...spa("across 58 industries, with an interface in 8 languages."), route("/vs/kickresume", "<p>An interface in 8 languages, plus full Spanish resume detection.</p>"), route("/es/revisar-curriculum", "<li>con la interfaz en 8 idiomas</li>"), ...site76()] });
+    expect(has(good, "PASS", /print the derived interface language count, not 10 \(S11-151\)/), show(good)).toBe(true);
+    expect(has(good, "PASS", /SPA's WebApplication JSON-LD prints the derived interface language count/), show(good)).toBe(true);
+  });
+});
+
 describe("S11-154: F2a judges the previous publish's URLs or says it cannot; S3 ignores guide dates", () => {
   const LAST = ".config/resumebooster/seo/last-sitemap.xml";
 
