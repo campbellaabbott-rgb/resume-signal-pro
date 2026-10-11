@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261009160200_a_company_lander_reads_only_its_own_employer.sql'));

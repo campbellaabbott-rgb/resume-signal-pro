@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261009160000_an_exit_cost_filing_is_not_printed_as_a_workforce_reduction.sql'));

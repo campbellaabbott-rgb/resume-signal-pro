@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261009133000_a_withdrawal_is_acknowledged_once_per_subscription.sql'));

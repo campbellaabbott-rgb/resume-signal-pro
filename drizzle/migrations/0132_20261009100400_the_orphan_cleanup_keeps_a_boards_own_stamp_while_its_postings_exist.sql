@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261009100400_the_orphan_cleanup_keeps_a_boards_own_stamp_while_its_postings_exist.sql'));

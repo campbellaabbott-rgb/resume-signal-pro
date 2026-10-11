@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261009134100_a_paid_delivery_is_retried_through_the_day_and_an_outage_does_not_spend_its_tries.sql'));

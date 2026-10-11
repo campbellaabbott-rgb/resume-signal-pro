@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261009124000_an_unconfirmed_send_counts_as_a_send_and_keeps_its_application.sql'));

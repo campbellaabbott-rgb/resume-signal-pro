@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261009141000_a_pulse_confirmation_that_never_left_does_not_lock_its_address_out.sql'));
