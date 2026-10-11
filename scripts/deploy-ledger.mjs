@@ -416,12 +416,22 @@ export function migrationPhases(pending, policy, rows) {
  * 503fff27 checkout still listed 132000, 140000 and 141000); one ahead of it
  * names a commit Lovable cannot pull. Pure.
  *
- *   returns null when HEAD is origin/main, else the refusal sentence
+ * The commit is not the whole question: every input below is read from the
+ * working tree, so a checkout at origin/main with an edited function, an
+ * untracked migration or an edited policy printed a message naming main's
+ * commit and listing what main does not have (review of S11-127). `dirty`
+ * is the git status of DEPLOY_INPUTS.
+ *
+ *   returns null when HEAD is origin/main and its inputs are clean, else the refusal sentence
  */
-export function checkoutRefusal({ head, originMain, fetched = true, behind = 0, ahead = 0 }) {
+export const DEPLOY_INPUTS = ["supabase/functions", "supabase/migrations", "drizzle/migrations", "docs/deploy-ledger.json", "scripts/deploy-ledger.mjs"];
+export function checkoutRefusal({ head, originMain, fetched = true, behind = 0, ahead = 0, dirty = [] }) {
   if (!fetched) return "git fetch origin failed, so the ledger cannot tell whether this checkout is GitHub main";
   if (!originMain) return "origin/main could not be read";
-  if (head === originMain) return null;
+  if (head === originMain) {
+    if (!dirty.length) return null;
+    return `HEAD is origin/main ${String(originMain).slice(0, 8)} but ${dirty.length} deploy input(s) differ from that commit: ${dirty.slice(0, 8).join(", ")}${dirty.length > 8 ? ", ..." : ""} (commit, stash or remove them)`;
+  }
   const where = behind && ahead ? `${behind} commit(s) behind and ${ahead} ahead of` : behind ? `${behind} commit(s) behind` : ahead ? `${ahead} commit(s) ahead of` : "not";
   return `HEAD ${String(head).slice(0, 8)} is ${where} origin/main ${String(originMain).slice(0, 8)}`;
 }
@@ -521,7 +531,14 @@ async function main(argv) {
   try { originMain = git("rev-parse", "origin/main"); } catch { /* unreadable */ }
   const headFull = git("rev-parse", "HEAD");
   if (originMain) { try { [behind, ahead] = git("rev-list", "--left-right", "--count", `origin/main...HEAD`).split(/\s+/).map(Number); } catch { /* unknown */ } }
-  const refusal = checkoutRefusal({ head: headFull, originMain, fetched, behind, ahead });
+  // Every input this report reads from the working tree, as git sees it.
+  let dirty = [];
+  try {
+    // Untrimmed: a porcelain line opens with its two status columns, the first often a space.
+    dirty = execFileSync("git", ["status", "--porcelain", "--untracked-files=all", "--", ...DEPLOY_INPUTS], { cwd: ROOT, encoding: "utf8" })
+      .split("\n").filter(Boolean).map((l) => l.slice(3));
+  } catch { dirty = ["(git status failed)"]; }
+  const refusal = checkoutRefusal({ head: headFull, originMain, fetched, behind, ahead, dirty });
   const checkout = { head: headFull, originMain, behind, ahead, refusal };
 
   // Exit: 5 refused (not main), 6 an order rule cannot be met, 4 a function

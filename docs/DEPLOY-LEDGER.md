@@ -33,7 +33,11 @@ closes the gap. Policy lives in `docs/deploy-ledger.json`:
 
 `--message` runs `git fetch origin main` and refuses (exit 5) unless HEAD is
 origin/main: Lovable pulls main, and a stale checkout re-lists migrations
-already applied. `--draft` prints the same message from any checkout, headed
+already applied. It also refuses, naming the paths, when any input it reads
+from the working tree (supabase/functions, supabase/migrations,
+drizzle/migrations, docs/deploy-ledger.json, the script itself) differs from
+that commit: an untracked migration would otherwise be listed under main's
+commit. `--draft` prints the same message from any checkout, headed
 as a draft that is not a deploy message. A function whose preflight does not
 answer, twice, is "could not check": the report lists it, the message opens
 with a STOP naming it, section 49 FAILs it, and the script exits 4.

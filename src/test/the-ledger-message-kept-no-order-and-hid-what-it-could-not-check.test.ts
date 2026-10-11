@@ -228,6 +228,25 @@ describe("S11-127: a message comes only from a checkout that is GitHub main", ()
     expect(L.checkoutRefusal({ head: "x", originMain: "x", fetched: false })).toMatch(/git fetch origin failed/);
   });
 
+  // Review of S11-127: the inputs are read from the working tree, so a dirty
+  // checkout at origin/main printed a sendable message naming main's commit
+  // and listing an untracked migration main does not have.
+  it("refuses a checkout at origin/main whose deploy inputs differ from its commit, and names them", () => {
+    const r = L.checkoutRefusal({ head: "a3201ce7aa", originMain: "a3201ce7aa", dirty: ["supabase/migrations/20261012999999_an_untracked_file_nobody_committed.sql", "scripts/deploy-ledger.mjs"] });
+    expect(r).toMatch(/2 deploy input\(s\) differ from that commit/);
+    expect(r).toContain("supabase/migrations/20261012999999_an_untracked_file_nobody_committed.sql");
+    expect(L.checkoutRefusal({ head: "a3201ce7aa", originMain: "a3201ce7aa", dirty: [] })).toBeNull();
+  });
+
+  it("the report reads the dirty paths from git status over every input the message is built from", () => {
+    const src = readFileSync(resolve(ROOT, "scripts/deploy-ledger.mjs"), "utf8");
+    expect(src).toMatch(/execFileSync\("git", \["status", "--porcelain", "--untracked-files=all", "--", \.\.\.DEPLOY_INPUTS\]/);
+    for (const p of ["supabase/functions", "supabase/migrations", "drizzle/migrations", "docs/deploy-ledger.json", "scripts/deploy-ledger.mjs"]) {
+      expect(L.DEPLOY_INPUTS).toContain(p);
+    }
+    expect(src).toMatch(/checkoutRefusal\(\{ head: headFull, originMain, fetched, behind, ahead, dirty \}\)/);
+  });
+
   it("a draft names itself and never says to pull main", () => {
     const msg = L.lovableMessage({ head: "1b7bfe53", draftOf: "wave3/integration", phases: L.migrationPhases([], {}, []) });
     expect(msg[0]).toMatch(/^DRAFT from wave3\/integration at 1b7bfe53: NOT a deploy message/);
