@@ -461,7 +461,7 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 
 // Provable from outside without a scan: every response, the CORS preflight
 // included, carries this in x-fn-build.
-const FN_BUILD = "free-keyword-scan.2026-10-09.3";
+const FN_BUILD = "free-keyword-scan.2026-10-09.4";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
