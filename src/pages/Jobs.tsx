@@ -58,6 +58,7 @@ import { useProSubscription } from "@/hooks/use-pro-subscription";
 import { SUBSCRIPTIONS } from "@/config/products";
 import { CompanyClaim } from "@/components/jobs/CompanyClaim";
 import { CompanyIntelPanel } from "@/components/jobs/CompanyIntelPanel";
+import { CompanyPerks } from "@/components/jobs/CompanyPerks";
 import { PublicCompanyCard } from "@/components/jobs/PublicCompanyCard";
 import { EmployerContext } from "@/components/jobs/EmployerContext";
 import { HIRING_RECORD_GATE_COPY, LAP_BUCKET, hiringRecordGate } from "@/lib/hiring-record-gate";
@@ -8780,13 +8781,20 @@ function JobsBoard({ boardId }: { boardId: string }) {
             </p>
           )}
           {/* A token two hiring systems carry: the split and each board's open
-              roles, and none of the employer-level blocks below (intel, SEC
-              figures, wage filings, the claim, Hiring Health with its filings,
-              similar employers), which would describe two companies as one. */}
+              roles, and none of the employer-level blocks below (intel,
+              perks, SEC figures, wage filings, the claim, Hiring Health with
+              its filings, similar employers), which would describe two
+              companies as one. */}
           {landerCompany && landerCollision && (
             <BoardCollisionNotice companyToken={landerCompany} boards={landerCollision} labelOf={sourceLabel} />
           )}
           {landerCompany && !landerCollision && <CompanyIntelPanel companyToken={landerCompany} />}
+          {/* Perks this employer's own open postings state, per country, as
+              checks whose basis opens on tap, hover or focus. Renders nothing
+              until a perk passes its audit (company profiles phase 2), and
+              nothing on a token two hiring systems carry, whose postings may
+              be two employers' (plan section 2). */}
+          {landerCompany && !landerCollision && <CompanyPerks companyToken={landerCompany} />}
           {/* SEC-sourced financial context for US-listed employers. */}
           {landerCompany && !landerCollision && <PublicCompanyCard companyToken={landerCompany} />}
           {/* WHAT THIS EMPLOYER FILED WITH THE US DEPARTMENT OF LABOR, from
