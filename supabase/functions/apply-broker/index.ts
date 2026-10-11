@@ -330,8 +330,9 @@ serve(async (req) => {
         // The posting's own country (S11-060): "authorised to work in this
         // country?" is about it. A failed read sends null, and the worker
         // refuses such a question rather than answering from home.
-        const { data: place } = await client.from("job_board_postings")
-          .select("country").eq("id", row.posting_id).maybeSingle();
+        const place = await client.from("job_board_postings")
+          .select("country").eq("id", row.posting_id).maybeSingle()
+          .then((r: { data: unknown }) => r.data, () => null);
         const postingCountry = str((place as { country?: unknown } | null)?.country).trim() || null;
 
         return json({
