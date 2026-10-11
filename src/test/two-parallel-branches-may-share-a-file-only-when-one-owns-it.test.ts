@@ -85,10 +85,14 @@ describe("the rule, on fixtures", () => {
 const dirs: string[] = [];
 afterAll(() => { for (const d of dirs) { try { rmSync(d, { recursive: true, force: true }); } catch { /* best effort */ } } });
 
+// The pre-push hook runs this suite with GIT_DIR (and friends) pointing at the
+// checkout being pushed; inherited, they send every git call below there.
+const CLEAN_ENV: NodeJS.ProcessEnv = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith("GIT_")));
+
 function repo() {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), "overlap repo ")));
   dirs.push(dir);
-  const g = (...a: string[]) => execFileSync("git", a, { cwd: dir, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+  const g = (...a: string[]) => execFileSync("git", a, { cwd: dir, env: CLEAN_ENV, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
   const put = (path: string, body: string) => { mkdirSync(dirname(join(dir, path)), { recursive: true }); writeFileSync(join(dir, path), body); };
   const commit = (msg: string) => { g("add", "-A"); g("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", msg); };
   g("init", "-q", "-b", "main");
@@ -122,7 +126,7 @@ function repo() {
   g("checkout", "-q", "main");
   const run = (...refs: string[]) => {
     try {
-      return { code: 0, out: execFileSync(process.execPath, [join(dir, "scripts/deploy-ledger.mjs"), "--overlap", ...refs, "--main", "main"], { cwd: dir, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }) };
+      return { code: 0, out: execFileSync(process.execPath, [join(dir, "scripts/deploy-ledger.mjs"), "--overlap", ...refs, "--main", "main"], { cwd: dir, env: CLEAN_ENV, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }) };
     } catch (e) {
       const x = e as { status?: number; stdout?: string; stderr?: string };
       return { code: x.status ?? 1, out: `${x.stdout ?? ""}${x.stderr ?? ""}` };
