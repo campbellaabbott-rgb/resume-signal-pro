@@ -190,17 +190,38 @@ function sharedImports(fn) {
   return [...out];
 }
 
-function changedSinceStamp(fn, build) {
+function changedSinceStamp(fn, build, policy) {
   // The commit that introduced the current build string; anything in the
   // function's own folder or its _shared imports changed after it is code the
   // stamp does not prove deployed.
   let c = "";
   try { c = git("log", "-1", "--format=%H", `-S${build.slice(fn.length + 1)}`, "--", `supabase/functions/${fn}/index.ts`); } catch { /* none */ }
   if (!c) return { since: null, changed: [] };
+  // A verified deploy that shipped this very build from a later commit proves
+  // everything up to that commit is live: Lovable deploys the function as main
+  // holds it, not as it was when the stamp was written. Only changes after the
+  // newest such deploy are unproven (docs/deploy-ledger.json verifiedDeploys).
+  for (const d of [...(policy?.verifiedDeploys ?? [])].reverse()) {
+    if (d.functions?.[fn] !== build) continue;
+    if (isAncestor(c, d.commit)) c = git("rev-parse", d.commit);
+    break;
+  }
   const paths = [`supabase/functions/${fn}`, ...sharedImports(fn)];
   let changed = [];
   try { changed = git("diff", "--name-only", `${c}..HEAD`, "--", ...paths).split("\n").filter(Boolean); } catch { /* none */ }
   return { since: c.slice(0, 8), changed };
+}
+
+/**
+ * A stamp in the source proves nothing unless the function sends it: the
+ * ledger reads x-fn-build from the preflight, so a BUILD_VERSION that only
+ * reaches a JSON body (layoff-filings) would read "to deploy" forever.
+ */
+function sendsBuildHeader(fn) {
+  const dir = join(FN_DIR, fn);
+  const own = readdirSync(dir).filter((f) => f.endsWith(".ts")).map((f) => join(dir, f));
+  const shared = sharedImports(fn).map((p) => join(ROOT, p)).filter((p) => existsSync(p));
+  return [...own, ...shared].some((p) => /x-fn-build/i.test(readFileSync(p, "utf8")));
 }
 
 // ── --against: git reads only ───────────────────────────────────────────────
@@ -311,12 +332,13 @@ async function main(argv) {
   const fns = readdirSync(FN_DIR).filter((d) => d !== "_shared" && existsSync(join(FN_DIR, d, "index.ts"))).sort();
   const rows = await pool(fns, 8, async (fn) => {
     const src = readFileSync(join(FN_DIR, fn, "index.ts"), "utf8");
-    const want = buildOf(fn, src);
+    const stamp = buildOf(fn, src);
+    const want = stamp && sendsBuildHeader(fn) ? stamp : null;
     const have = await live(BASE, fn);
-    const drift = want ? changedSinceStamp(fn, want) : { since: null, changed: [] };
+    const drift = want ? changedSinceStamp(fn, want, POLICY) : { since: null, changed: [] };
     const state = !want ? "no-marker" : have === undefined ? "unreachable" : !have ? "deploy (no live header)"
       : buildAtLeast(have, want) ? (have === want ? "live" : "live-ahead") : "deploy";
-    return { fn, want, have: have ?? null, state, changedSinceStamp: drift.changed, stampCommit: drift.since };
+    return { fn, want, have: have ?? null, state, changedSinceStamp: drift.changed, stampCommit: drift.since, ...(stamp && !want ? { stampNotSent: stamp } : {}) };
   });
   const mig = migrations(POLICY);
   const toDeploy = rows.filter((r) => r.state.startsWith("deploy"));
@@ -344,7 +366,7 @@ async function main(argv) {
     console.log(`\nCHECK: only a _shared import changed after the live stamp (bump if the change reaches this function's behaviour):`);
     for (const r of sharedOnly) console.log(`  ${r.fn.padEnd(32)} ${r.changedSinceStamp.map((p) => p.replace("supabase/functions/_shared/", "")).join(", ")}`);
   }
-  if (noMarker.length) console.log(`\nNo build marker (a deploy of these cannot be verified): ${noMarker.map((r) => r.fn).join(", ")}`);
+  if (noMarker.length) console.log(`\nNo build marker (a deploy of these cannot be verified): ${noMarker.map((r) => r.stampNotSent ? `${r.fn} (carries ${r.stampNotSent} but never sends x-fn-build)` : r.fn).join(", ")}`);
   console.log(`\nMigrations pending (in apply order): ${mig.pending.length}`);
   for (const f of mig.pending) console.log(`  ${f}`);
   if (mig.hold.length) { console.log(`Held until the step before is verified live:`); for (const f of mig.hold) console.log(`  HOLD  ${f}`); }
@@ -353,17 +375,18 @@ async function main(argv) {
   if (args.has("--message")) {
     console.log(`\n──────── Lovable message ────────\n`);
     console.log(`Pull GitHub main at commit **${head}** (or later ONLY if the deploy ledger is re-run on it).\n`);
+    let step = 0;
     if (mig.pending.length) {
-      console.log(`1. Apply these ${mig.pending.length} migrations, in this order, one at a time (each is self-verifying and safe to re-run):`);
+      console.log(`${++step}. Apply these ${mig.pending.length} migrations, in this order, one at a time (each is self-verifying and safe to re-run):`);
       mig.pending.forEach((f, i) => console.log(`   ${i + 1}. ${f}`));
       if (mig.hold.length) console.log(`   Do NOT apply yet: ${mig.hold.join(", ")}.`);
       if (mig.neverApplyPresent.length) console.log(`   NEVER apply: ${mig.neverApplyPresent.join(", ")} (superseded).`);
     }
     if (toDeploy.length) {
-      console.log(`2. Deploy these ${toDeploy.length} edge functions. An OPTIONS request to each must answer this x-fn-build:`);
+      console.log(`${++step}. Deploy these ${toDeploy.length} edge functions. An OPTIONS request to each must answer this x-fn-build:`);
       for (const r of toDeploy) console.log(`   - ${r.fn}: ${r.want}`);
     }
-    console.log(`3. Publish the frontend.`);
+    console.log(`${++step}. Publish the frontend.`);
   }
   if (unbumped.length) process.exitCode = 2;
 }

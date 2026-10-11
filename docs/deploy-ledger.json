@@ -7,14 +7,6 @@
   "appliedOutsideDrizzle": [],
   "holdUntilVerified": [
     {
-      "stamp": "20261008125000",
-      "until": "wave 2 step 1 verified: job-board .91, send-search-digest, industry-corrections-digest serving and /email/unsubscribe live"
-    },
-    {
-      "stamp": "20261008128000",
-      "until": "wave 2 step 1 verified: check-error-spikes serving"
-    },
-    {
       "stamp": "20261009100300",
       "until": "wave 3 step 1 verified: job-board's OPTIONS answers x-fn-build job-board.2026-09-09.92 (status.version 2026-09-09.92) AND status.sliceStats carries build 2026-09-09.92 and a buildSince (section 71 prints both). Applied earlier it marks the old bundle's closures only up to its ceiling and must be re-run once buildSince exists"
     },
@@ -47,5 +39,67 @@
       "jobBoard": "2026-09-09.94+"
     }
   },
-  "_baselineNote": "Lovable's staged-runner stubs (drizzle/migrations) name every migration from 20260923 on; earlier ones were applied before that record was complete and were judged applied by behaviour (2026-10-10 check: 20260917170000, 20260918101000, 20260918200000, 20260921120000 have no stub)."
+  "_baselineNote": "Lovable's staged-runner stubs (drizzle/migrations) name every migration from 20260923 on; earlier ones were applied before that record was complete and were judged applied by behaviour (2026-10-10 check: 20260917170000, 20260918101000, 20260918200000, 20260921120000 have no stub).",
+  "verifiedDeploys": [
+    {
+      "commit": "1fc1702d",
+      "date": "2026-10-11",
+      "note": "wave 2 step 1 (PR #24 + #25 + #26): Lovable 'Deployed 53 functions' 25363267; verify-deploy 594 PASS, every FAIL explained (step-2 crons, pre-existing 7h, ledger false positives this entry fixes, a stale section-40 pin). layoff-filings left out: it never sends x-fn-build.",
+      "functions": {
+        "admin-ops": "admin-ops.2026-10-08.2",
+        "affiliate-payout-request": "affiliate-payout-request.2026-10-08.1",
+        "agent-access": "agent-access.2026-10-10.1",
+        "agent-pass-status": "agent-pass-status.2026-10-08.1",
+        "analyze-resume": "analyze-resume.2026-10-08.2",
+        "auth-email-hook": "auth-email-hook.2026-10-08.1",
+        "check-alerts": "check-alerts.2026-10-08.1",
+        "check-error-spikes": "check-error-spikes.2026-10-08.1",
+        "check-subscription": "check-subscription.2026-10-08.1",
+        "company-claim": "company-claim.2026-10-08.1",
+        "create-agent-checkout": "create-agent-checkout.2026-10-08.2",
+        "create-checkout": "create-checkout.2026-10-08.1",
+        "create-pass-checkout": "create-pass-checkout.2026-09-27.3",
+        "create-portal-session": "create-portal-session.2026-10-08.2",
+        "create-product-checkout": "create-product-checkout.2026-10-08.1",
+        "create-subscription-checkout": "create-subscription-checkout.2026-10-08.1",
+        "free-keyword-scan": "free-keyword-scan.2026-10-08.3",
+        "free-keyword-scan-stream": "free-keyword-scan-stream.2026-10-08.1",
+        "generate-application-answers": "generate-application-answers.2026-10-10.1",
+        "generate-apply-package": "generate-apply-package.2026-10-08.2",
+        "generate-ats-defense": "generate-ats-defense.2026-10-08.1",
+        "generate-career-snapshot": "generate-career-snapshot.2026-10-10.1",
+        "generate-elevator-pitch": "generate-elevator-pitch.2026-10-10.1",
+        "generate-freelance-boost": "generate-freelance-boost.2026-10-08.2",
+        "generate-graduate-gameplan": "generate-graduate-gameplan.2026-10-10.1",
+        "generate-product-preview": "generate-product-preview.2026-10-10.1",
+        "generate-recruiter-view": "generate-recruiter-view.2026-10-10.1",
+        "generate-summary": "generate-summary.2026-10-10.1",
+        "generate-tailored-resume": "generate-tailored-resume.2026-10-10.1",
+        "generate-tailored-resume-stream": "generate-tailored-resume-stream.2026-10-10.1",
+        "get-account-data": "get-account-data.2026-10-08.1",
+        "get-analytics": "get-analytics.2026-10-08.1",
+        "get-error-telemetry": "get-error-telemetry.2026-10-08.1",
+        "health-check": "health-check.2026-10-08.1",
+        "import-freelance-profile": "import-freelance-profile.2026-10-10.1",
+        "industry-corrections-digest": "industry-corrections-digest.2026-10-08.1",
+        "job-board": "job-board.2026-09-09.91",
+        "nl-search": "nl-search.2026-10-08.1",
+        "notify-owner": "notify-owner.2026-10-08.1",
+        "process-email-queue": "process-email-queue.2026-10-08.1",
+        "public-api": "public-api.2026-10-08.2",
+        "scan-credits": "scan-credits.2026-10-08.1",
+        "scan-heartbeat": "scan-heartbeat.2026-10-08.1",
+        "scheduled-health-probe": "scheduled-health-probe.2026-10-08.1",
+        "send-agent-digest": "send-agent-digest.2026-10-08.1",
+        "send-market-pulse": "send-market-pulse.2026-10-08.1",
+        "send-scan-report": "send-scan-report.2026-10-08.1",
+        "send-search-digest": "send-search-digest.2026-10-08.1",
+        "shortlist-evaluate": "shortlist-evaluate.2026-10-10.1",
+        "stripe-webhook": "stripe-webhook.2026-10-08.2",
+        "test-ai-fallback": "test-ai-fallback.2026-10-08.1",
+        "verify-product-purchase": "verify-product-purchase.2026-10-08.2"
+      }
+    }
+  ],
+  "_holdNote": "20261008125000 and 20261008128000 were released 2026-10-11 after wave 2 step 1 verified (their conditions: job-board .91, send-search-digest, industry-corrections-digest and check-error-spikes serving; /email/unsubscribe live)."
 }

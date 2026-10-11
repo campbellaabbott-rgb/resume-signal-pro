@@ -79,17 +79,16 @@ NOKEY=$(curl -s -m 30 -o /dev/null -w '%{http_code}' -X POST "$B/functions/v1/ad
 # evaluation (and could mail the owner) for any POST -- a keyless POST refused.
 H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/check-alerts" -H "Origin: $SITE" -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: x-alerts-cron,content-type")
 CBUILD=$(printf '%s' "$H" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
-# THIS BUILD OR LATER: it matched only 2026-10-04 builds, so any rebuild read
-# FAIL and the keyless POST below was never sent again.
-VD40_CA=old; build_ge check-alerts "$CBUILD" 2026-10-04 1 && VD40_CA=new
-case "$VD40_CA" in
-  new)
-    echo "PASS  check-alerts preflight x-fn-build = $CBUILD (check-alerts.2026-10-04.1 or later)"
+# build_ge, not a pinned day: the exact pin read FAIL (and stopped sending the
+# keyless probe) once 2026-10-08.1 replaced 2026-10-04.1.
+if build_ge check-alerts "$CBUILD" 2026-10-04 1; then
+    echo "PASS  check-alerts preflight x-fn-build = $CBUILD (2026-10-04.1 or later)"
     printf '%s' "$H" | tr -d '\r' | grep -i '^access-control-allow-headers:' | grep -qi 'x-alerts-cron' && echo "PASS  check-alerts allows the x-alerts-cron header" || echo "FAIL  check-alerts preflight does not allow x-alerts-cron"
     CNOKEY=$(curl -s -m 30 -o /tmp/vd_40_alerts.json -w '%{http_code}' -X POST "$B/functions/v1/check-alerts" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -d '{}')
-    [ "$CNOKEY" = "401" ] && echo "PASS  check-alerts without a key -> 401 (no evaluation, no metrics)" || echo "FAIL  check-alerts without a key -> $CNOKEY $(head -c 160 /tmp/vd_40_alerts.json)";;
-  *) echo "FAIL  check-alerts preflight x-fn-build = '${CBUILD}' (want check-alerts.2026-10-04.1 or later; the keyless POST is NOT sent until it is: the old build evaluates and may mail for anyone)";;
-esac
+    [ "$CNOKEY" = "401" ] && echo "PASS  check-alerts without a key -> 401 (no evaluation, no metrics)" || echo "FAIL  check-alerts without a key -> $CNOKEY $(head -c 160 /tmp/vd_40_alerts.json)"
+else
+  echo "FAIL  check-alerts preflight x-fn-build = '${CBUILD}' (want check-alerts.2026-10-04.1 or later; the keyless POST is NOT sent until it is: the old build evaluates and may mail for anyone)"
+fi
 EH=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/check-error-spikes" -H "Origin: $SITE" -H "Access-Control-Request-Method: POST")
 EBUILD=$(printf '%s' "$EH" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
 if build_ge check-error-spikes "$EBUILD" 2026-10-04 1; then echo "PASS  check-error-spikes preflight x-fn-build = $EBUILD (alert email defangs browser-written text)"; else echo "FAIL  check-error-spikes preflight x-fn-build = '${EBUILD}' (want check-error-spikes.2026-10-04.1 or later)"; fi
