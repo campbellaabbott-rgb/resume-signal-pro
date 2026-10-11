@@ -323,6 +323,7 @@ export type Database = {
           daily_count: number
           earliest_start: string
           email: string
+          email_attempted_at: string | null
           email_last_sent_at: string | null
           email_opt_in: boolean
           employer_cooldown_days: number
@@ -374,6 +375,7 @@ export type Database = {
           daily_count?: number
           earliest_start?: string
           email?: string
+          email_attempted_at?: string | null
           email_last_sent_at?: string | null
           email_opt_in?: boolean
           employer_cooldown_days?: number
@@ -425,6 +427,7 @@ export type Database = {
           daily_count?: number
           earliest_start?: string
           email?: string
+          email_attempted_at?: string | null
           email_last_sent_at?: string | null
           email_opt_in?: boolean
           employer_cooldown_days?: number
@@ -4655,6 +4658,7 @@ export type Database = {
       user_job_searches: {
         Row: {
           created_at: string
+          digest_attempted_at: string | null
           digest_cadence: string
           digest_last_sent_at: string | null
           digest_opt_in: boolean
@@ -4667,6 +4671,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          digest_attempted_at?: string | null
           digest_cadence?: string
           digest_last_sent_at?: string | null
           digest_opt_in?: boolean
@@ -4679,6 +4684,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          digest_attempted_at?: string | null
           digest_cadence?: string
           digest_last_sent_at?: string | null
           digest_opt_in?: boolean
@@ -4944,6 +4950,7 @@ export type Database = {
         Args: { p_limit: number }
         Returns: {
           ad_email: string
+          ad_prev_attempted_at: string
           ad_prev_sent_at: string
           ad_user_id: string
         }[]
@@ -7051,6 +7058,7 @@ export type Database = {
           sd_id: string
           sd_name: string
           sd_params: Json
+          sd_prev_attempted_at: string
           sd_prev_sent_at: string
           sd_user_id: string
         }[]
