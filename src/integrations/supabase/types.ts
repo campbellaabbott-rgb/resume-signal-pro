@@ -7157,6 +7157,10 @@ export type Database = {
         Returns: boolean
       }
       use_scan_credit: { Args: { p_email: string }; Returns: boolean }
+      v1_withheld_company_tokens: {
+        Args: { p_sources: string[] }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
