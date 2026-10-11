@@ -70,11 +70,70 @@ const UNANSWERABLE = `
   <div><label for="q9">What is your ID Number?</label>
     <input id="q9" name="section__question_9" required /></div>`;
 
-type Mode = "confirms" | "silent" | "form-still-there" | "failed-but-says-thanks" | "german";
+/**
+ * Breezy's real submit, in shape (S11-011). The live form posts from an
+ * ng-click handler, with no navigation: the page that pressed the button is
+ * the page that has to show the outcome. networkidle has already fired on that
+ * page, so waiting for it returns at once; reading the form straight after the
+ * click found it still on screen and recorded a send the employer received as
+ * "not sent". `delay` is how long the server takes to answer the XHR.
+ */
+const FORM_XHR = (extraQuestions: string, onDone: "thank" | "stay" | "nothing") => `<!doctype html>
+<html><head><title>Senior Care Assistant — Apply</title></head><body>
+<h1>Apply</h1>
+<form id="f" novalidate onsubmit="return false">
+  <input name="cName" placeholder="Full name" required />
+  <input name="cEmail" type="email" placeholder="Email" required />
+  <input name="cPhoneNumber" placeholder="Phone" />
+  <input name="cAddress" placeholder="Address" />
+  <input name="cSalary" placeholder="Desired Salary" />
+  <textarea name="cSummary" placeholder="Work History"></textarea>
+  <textarea name="cCoverLetter" placeholder="Cover Letter"></textarea>
+  <input name="cResume" type="file" required />
+  ${extraQuestions}
+  <button type="button" id="go">Submit Application</button>
+</form>
+<div id="done" style="display:none"><h1>Thank you!</h1><p>Your application has been received.</p></div>
+<script>
+document.getElementById("go").addEventListener("click", function () {
+  if (${JSON.stringify(onDone)} === "nothing") return;
+  fetch("/api/apply", { method: "POST", body: new FormData(document.getElementById("f")) })
+    .then(function (r) { return r.json(); })
+    .then(function () {
+      if (${JSON.stringify(onDone)} !== "thank") return;
+      document.getElementById("f").style.display = "none";
+      document.getElementById("done").style.display = "block";
+    });
+});
+</script>
+</body></html>`;
 
-function server(mode: Mode, extra: string, port: number) {
+type Mode =
+  | "confirms" | "silent" | "form-still-there" | "failed-but-says-thanks" | "german"
+  | "xhr-confirms" | "xhr-form-stays" | "xhr-nothing-sent";
+
+/** Applications the server actually received, per run: the employer's side. */
+let received = 0;
+
+function server(mode: Mode, extra: string, port: number, delay = 0) {
   return createServer((req, res) => {
     const url = (req.url ?? "").split("?")[0]!;
+    if (req.method === "POST" && url === "/api/apply") {
+      req.on("data", () => {});
+      req.on("end", () => {
+        received++;
+        setTimeout(() => {
+          res.writeHead(200, { "content-type": "application/json" });
+          res.end(JSON.stringify({ ok: true }));
+        }, delay);
+      });
+      return;
+    }
+    if (url.endsWith("/apply") && mode.startsWith("xhr-")) {
+      res.writeHead(200, { "content-type": "text/html" });
+      res.end(FORM_XHR(extra, mode === "xhr-confirms" ? "thank" : mode === "xhr-form-stays" ? "stay" : "nothing"));
+      return;
+    }
     if (req.method === "POST" && url === "/submit") {
       // Drain the upload before replying, or the browser sees a broken pipe.
       req.on("data", () => {});
@@ -127,8 +186,9 @@ const ANSWERS: StandingAnswers = {
   shareDemographics: false, consentToProcessing: true,
 };
 
-async function run(name: string, mode: Mode, extra: string, port: number, expect: string) {
-  const srv = server(mode, extra, port);
+async function run(name: string, mode: Mode, extra: string, port: number, expect: string, delay = 0) {
+  received = 0;
+  const srv = server(mode, extra, port, delay);
   const browser = await chromium.launch({ headless: true });
   const dir = await mkdtemp(join(tmpdir(), "harness-"));
   const resume = join(dir, "resume.pdf");
@@ -146,7 +206,8 @@ async function run(name: string, mode: Mode, extra: string, port: number, expect
     });
     const got = out.kind;
     const ok = got === expect;
-    console.log(`  ${ok ? "PASS" : "FAIL"}  ${name.padEnd(34)} -> ${got}${ok ? "" : `  (expected ${expect})`}`);
+    const employer = mode.startsWith("xhr-") ? `  [employer received ${received}]` : "";
+    console.log(`  ${ok ? "PASS" : "FAIL"}  ${name.padEnd(34)} -> ${got}${ok ? "" : `  (expected ${expect})`}${employer}`);
     if (!ok || out.kind !== "submitted") {
       console.log(`        ${"reason" in out ? out.reason : "evidence" in out ? out.evidence : ""}`.slice(0, 150));
     }
@@ -167,6 +228,13 @@ async function main() {
     await run("unanswerable question -> refuse", "confirms", SCREENING + UNANSWERABLE, 8734, "not-submitted"),
     await run("German confirmation recognised", "german", SCREENING, 8735, "submitted"),
     await run("failed submit that says 'thank you'", "failed-but-says-thanks", SCREENING, 8736, "not-submitted"),
+    // S11-011: Breezy's XHR submit. A send the employer received is never
+    // recorded as unsent; a click that sent nothing still is.
+    await run("XHR submit, answered at once", "xhr-confirms", SCREENING, 8737, "submitted", 0),
+    await run("XHR submit, answered in 300 ms", "xhr-confirms", SCREENING, 8738, "submitted", 300),
+    await run("XHR submit, answered in 1.5 s", "xhr-confirms", SCREENING, 8739, "submitted", 1500),
+    await run("XHR sent, form left up -> uncertain", "xhr-form-stays", SCREENING, 8740, "uncertain", 300),
+    await run("click sent nothing -> not-submitted", "xhr-nothing-sent", SCREENING, 8741, "not-submitted"),
   ];
   const passed = results.filter(Boolean).length;
   console.log(`\n  ${passed}/${results.length} paths behaved as designed`);

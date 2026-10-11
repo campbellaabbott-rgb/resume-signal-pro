@@ -16,7 +16,7 @@
 // The lesson is that a driver cannot be written from imagination. It can only be
 // written from observation, per vendor. What CAN be written once is this: the
 // rules about what must never happen.
-import type { Browser, Page } from "playwright";
+import type { Browser, Page, Request } from "playwright";
 import { adapterFor, BLOCKED } from "./vendors/index.js";
 import type { PacketFieldKey, VendorAdapter } from "./vendors/types.js";
 import { planAnswers, type PreparedAnswers, type StandingAnswers } from "./questions/match.js";
@@ -90,6 +90,14 @@ export type ApplyOutcome =
 const SETTLE_MS = 2_500;
 const SUBMIT_WAIT = 20_000;
 const MAX_STEPS = 6;
+/** How long a click handler's request has to show up: the browser reports it
+ *  after the click itself has resolved. */
+const REQUEST_GRACE_MS = 750;
+/** How often a page that posted in place is read again for its outcome. */
+const RECHECK_MS = 500;
+
+/** A request that can carry an application: anything but a read. */
+const isWrite = (r: Request): boolean => !/^(?:GET|HEAD|OPTIONS)$/i.test(r.method());
 
 export async function applyToPosting(browser: Browser, input: ApplyInput): Promise<ApplyOutcome> {
   /** What actually went onto the form, in order, for the evidence trail. */
@@ -114,6 +122,13 @@ export async function applyToPosting(browser: Browser, input: ApplyInput): Promi
     acceptDownloads: false,
   });
   const page = await ctx.newPage();
+  // Every write the page starts after the final click (S11-011). Breezy posts
+  // its application from an ng-click handler with no navigation, so the page
+  // that pressed submit is the page that has to show the outcome, and its
+  // networkidle had fired long before. Cleared before each proceed(), so a
+  // résumé upload or an autosave from an earlier step is not read as the send.
+  const writes: Request[] = [];
+  page.on("request", (r: Request) => { if (isWrite(r)) writes.push(r); });
 
   try {
     const formUrl = await adapter.resolveFormUrl(page, input.applyUrl);
@@ -347,6 +362,7 @@ export async function applyToPosting(browser: Browser, input: ApplyInput): Promi
         }
       }
 
+      writes.length = 0;
       const step_result = await adapter.proceed(page).catch(() => "stuck" as const);
       if (step_result === "stuck") {
         return {
@@ -363,8 +379,30 @@ export async function applyToPosting(browser: Browser, input: ApplyInput): Promi
     }
 
     // EVERYTHING BEFORE THIS POINT IS REVERSIBLE. Nothing after it is.
+    //
+    // A SUBMIT THAT POSTS IN PLACE IS READ AFTER ITS ANSWER, never before.
+    // waitForLoadState returns at once on a page whose networkidle already
+    // fired, so a form read straight after an XHR submit is always still on
+    // screen; every Breezy send was recorded as "not sent" while the employer
+    // held the application (S11-011). The writes the click started are waited
+    // for, then the page is read again until it stops showing the form.
+    const deadline = Date.now() + SUBMIT_WAIT;
+    await page.waitForTimeout(REQUEST_GRACE_MS);
+    const inPlace = writes.filter((r) => !r.isNavigationRequest());
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const answered = await Promise.race([
+      Promise.all(inPlace.map((r) => r.response().catch(() => null))).then(() => true as const),
+      new Promise<false>((done) => { timer = setTimeout(() => done(false), Math.max(0, deadline - Date.now())); }),
+    ]).finally(() => clearTimeout(timer));
+    if (!answered) {
+      return {
+        kind: "uncertain",
+        reason: "submitted and the employer's server never answered — outcome unknown, not retrying",
+        screenshot: await page.screenshot().catch(() => undefined),
+      };
+    }
     try {
-      await page.waitForLoadState("networkidle", { timeout: SUBMIT_WAIT });
+      await page.waitForLoadState("networkidle", { timeout: Math.max(1, deadline - Date.now()) });
     } catch {
       return {
         kind: "uncertain",
@@ -373,7 +411,24 @@ export async function applyToPosting(browser: Browser, input: ApplyInput): Promi
       };
     }
 
-    const verdict = await adapter.confirmed(page).catch(() => "unknown" as const);
+    let verdict = await adapter.confirmed(page).catch(() => "unknown" as const);
+    while (verdict === "no" && inPlace.length > 0 && Date.now() < deadline) {
+      await page.waitForTimeout(RECHECK_MS);
+      verdict = await adapter.confirmed(page).catch(() => "unknown" as const);
+    }
+    if (verdict === "no" && inPlace.length > 0) {
+      // The form never went away, but the click sent something. Whether the
+      // employer kept it cannot be read from here, and "not sent" invites a
+      // second application under the candidate's name that nobody can take back.
+      const statuses = await Promise.all(
+        inPlace.map((r) => r.response().then((x) => (x ? String(x.status()) : "no answer"), () => "no answer")),
+      );
+      return {
+        kind: "uncertain",
+        reason: `submit sent ${inPlace.length} request(s) (status ${statuses.join(", ")}) and the form is still showing — outcome unknown, not retrying`,
+        screenshot: await page.screenshot().catch(() => undefined),
+      };
+    }
     if (verdict === "yes") {
       return {
         kind: "submitted",
@@ -383,7 +438,8 @@ export async function applyToPosting(browser: Browser, input: ApplyInput): Promi
     }
     if (verdict === "no") {
       // Only asserted where an adapter has real evidence — e.g. Breezy still
-      // showing the same form. Nothing was sent, so this is safely retryable.
+      // showing the same form after a click that sent nothing in place, or a
+      // posted page that came back as the form. Safely retryable.
       return { kind: "not-submitted", reason: "submit did not take; the form is still showing" };
     }
     // CARRY WHAT THE PAGE ACTUALLY SAID.
