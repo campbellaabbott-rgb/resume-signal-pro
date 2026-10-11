@@ -15,7 +15,7 @@
 
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { HOT_TOKENS, JOB_SOURCES, LIGHT_DESC_TOKENS, ORACLE_CANONICAL_SITES, type JobSource } from "./sources.ts";
-import { BOARD_DESC_SOURCES, buildEmbedInput, DETAIL_DESC_SOURCES, clusterKey, jobPostingLd, workdayCxsUrl } from "./descriptions.ts";
+import { BOARD_DESC_SOURCES, buildEmbedInput, DETAIL_DESC_SOURCES, jobPostingLd, workdayCxsUrl } from "./descriptions.ts";
 import { fetchJazzhr, jazzhrPostingUrl, parseJazzhrDetail } from "./vendors/jazzhr.ts";
 import {
   COUNTRY_MAP_VERSION,
@@ -87,7 +87,7 @@ import { detectExperience, isExperienceBand } from "./experience.ts";
 import { categoryParam, extraFilterParams, filterViolations, isUnfiltered, normalizeFilters, payParams, rpcBlindFilters, rescueVendorsParam, SALARIED_PERIODS, sendableSourcesParam, splitPage, salaryFromQueryText, salaryTokenInQuery, WIDENING_FILTERS } from "./filters.ts";
 import { foldName, foldTypeahead, pickRoute, rerankWindow, RETRIEVER_FOR, ringWordPattern, splitExclusions, startsWithWord, titleExcluded } from "./search-routing.ts";
 import { planRankedPage, RANKED_WINDOW, RING_WINDOW, rowsReached, symbolLiteralRows } from "./paging.ts";
-import { collapseClusters, GROUP_OVERFETCH, interleaveByCompany, visibleCategories, mergeCompanyFacet } from "./clusters.ts";
+import { collapseClusters, GROUP_OVERFETCH, interleaveByCompany, rowClusterKey, visibleCategories, mergeCompanyFacet } from "./clusters.ts";
 import { EMPLOYER_ALIASES } from "./employer-aliases.ts";
 import { expandQuery } from "./search-alias.ts";
 import { classifyQuestion } from "../_shared/application-questions.ts";
@@ -4450,11 +4450,12 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
         }
         if (!boardOk) {
           failed.push(`${s.name} (db-read)`);
-          dbFailedKeys.push(boardKeyOf(s));
           // The cursor already advanced past this window, but nothing here got
           // an epoch: those rows would read as never-seen at the wrap. Disarm
           // the lap rather than let a database blip become takedowns.
           failLap();
+          // Our read failed, not the vendor's feed (S11-023).
+          dbFailedKeys.push(boardKeyOf(s));
           continue;
         }
         // Rationale: docs/job-board-index-notes.md#n096-servedthisvisit
@@ -12620,7 +12621,7 @@ async function serveList(
           if (exclude) {
             semSource = semSource.filter((r) =>
               !exclude.ids.has(String(r.id ?? "")) &&
-              !exclude.keys.has(clusterKey(String(r.company ?? ""), String(r.title ?? ""))));
+              !exclude.keys.has(rowClusterKey(r)));
           }
           const anchored = semSource.some((r) => {
             const hay = `${String(r.title ?? "")} ${String(r.company ?? "")}`.toLowerCase();
@@ -13195,7 +13196,7 @@ async function serveList(
               // with near-identical closeMatch cards.
               const haveKeys = new Set(rankedGrouped.jobs.map((j) => {
                 const r = j as Record<string, unknown>;
-                return clusterKey(String(r.company ?? r.token ?? ""), String(r.title ?? ""));
+                return rowClusterKey(r);
               }));
               const fuzzyRows = (fz as unknown[]).map(rowToJob) as Array<Record<string, unknown>>;
               const room = Math.max(0, limit - rankedGrouped.jobs.length);
@@ -13203,7 +13204,7 @@ async function serveList(
               // fuzzyExtra banner claims close matches attachRecheckedAt then
               // deletes — "10 close-match titles below" over 6 surviving cards.
               const novel = fuzzyRows.filter((r) =>
-                !haveKeys.has(clusterKey(String(r.company ?? r.token ?? ""), String(r.title ?? ""))) &&
+                !haveKeys.has(rowClusterKey(r)) &&
                 !(excludedTerms.length && titleExcluded(String(r.title ?? ""), excludedTerms)));
               const extra = (groupSimilar ? collapseClusters(novel, room).jobs : novel.slice(0, room))
                 .map((j) => ({ ...(j as Record<string, unknown>), closeMatch: true }));
@@ -13239,7 +13240,7 @@ async function serveList(
             // unanchored rows ship under an anchored claim.
             const haveIds = new Set(rankedGrouped.jobs.map((j) => String((j as Record<string, unknown>).id ?? "")));
             const haveKeys2 = new Set(rankedGrouped.jobs.map((j) =>
-              clusterKey(String((j as Record<string, unknown>).company ?? ""), String((j as Record<string, unknown>).title ?? ""))));
+              rowClusterKey(j as Record<string, unknown>)));
             const semSource = await semanticRows(Math.min(room * 3, 60), 1_500, { ids: haveIds, keys: haveKeys2 });
             if (semSource.length > 0) {
               // Same pre-count prune as the fuzzy extras above: the

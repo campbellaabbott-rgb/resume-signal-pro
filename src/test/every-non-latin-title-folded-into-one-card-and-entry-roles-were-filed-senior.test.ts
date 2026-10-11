@@ -29,8 +29,9 @@ describe("L13-22: a title in any script keys on its own words", () => {
     expect(clusterKey("Yanfeng", "质量工程师")).not.toBe(clusterKey("Yanfeng", "采购经理"));
   });
   it("positive control: the same role in two cities still folds, in any script", () => {
-    expect(clusterKey("Ramboll", "Project Manager (Leeds)")).toBe(clusterKey("Ramboll", "Project Manager - #R12345"));
-    expect(clusterKey("Raiffeisen Bank", "Інкасатор (Київ)")).toBe(clusterKey("Raiffeisen Bank", "Інкасатор"));
+    // Each row's own location is passed: a bracket folds when it is that place (S11-025).
+    expect(clusterKey("Ramboll", "Project Manager (Leeds)", "Leeds, United Kingdom")).toBe(clusterKey("Ramboll", "Project Manager - #R12345", "Dublin, Ireland"));
+    expect(clusterKey("Raiffeisen Bank", "Інкасатор (Київ)", "Київ, Україна")).toBe(clusterKey("Raiffeisen Bank", "Інкасатор", "Львів, Україна"));
   });
   it("a title that normalises to nothing never folds with a different one", () => {
     expect(clusterKey("Acme", "###")).not.toBe(clusterKey("Acme", "***"));

@@ -22,7 +22,11 @@ describe("clusterKey — folds the same role, never different roles", () => {
 
   it("folds location and requisition suffixes that ride along on the title", () => {
     const base = clusterKey("acme", "Registered Nurse");
-    expect(clusterKey("acme", "Registered Nurse (Boston)")).toBe(base);
+    // A place in brackets folds when it is the row's own place (S11-025): the
+    // key now reads the location, and a bracket that names something else
+    // (a subject, a shift) stays in the key.
+    expect(clusterKey("acme", "Registered Nurse (Boston)", "Boston, MA")).toBe(clusterKey("acme", "Registered Nurse", "Boston, MA"));
+    expect(clusterKey("acme", "Registered Nurse (Boston)", "Boston, MA")).toBe(base);
     expect(clusterKey("acme", "Registered Nurse [Remote]")).toBe(base);
     expect(clusterKey("acme", "Registered Nurse R12345")).toBe(base);
     expect(clusterKey("acme", "Registered Nurse #2025-031054")).toBe(base);

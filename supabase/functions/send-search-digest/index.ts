@@ -33,7 +33,8 @@ import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "send-search-digest.2026-10-09.3";
+// 2026-10-09.6 (S11-005): asks the board with groupSimilar off, so a folded card never hides the postings it mails about.
+const FN_BUILD = "send-search-digest.2026-10-09.6";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -292,6 +293,10 @@ Deno.serve(async (req) => {
             // the alert mails postings the saved screen hid.
             excludeAgencies: p.excludeAgencies || undefined,
             includeFacets: false,
+            // Postings, not folded cards (S11-005): a fold keeps one row of a
+            // role posted in many places, so the mail named one store's posting
+            // for twenty-two.
+            groupSimilar: false,
             ...extra,
           }),
         }).then((r) => (r.ok ? r.json() : null)).then((j) => windowAnswer(j, since)).catch(() => null);

@@ -112,17 +112,24 @@ export function buildEmbedInput(
  * "Nurse - Boston #R123" collapse, while "Senior Nurse" stays distinct from
  * "Nurse". Titles that differ in any meaningful word are never merged.
  */
-export function clusterKey(companyKey: string, title: string): string {
+export function clusterKey(companyKey: string, title: string, location?: string | null): string {
   // The company side is a display NAME since 2026-07-25 (so one employer's
   // several feed tokens fold together); normalize it the same way as titles.
   // LETTERS AND DIGITS OF EVERY SCRIPT (L13-22): [^a-z0-9] erased every
   // Cyrillic and CJK title, so all of Raiffeisen Bank's Ukrainian roles
   // ("Інкасатор", "Головний економіст") shared one key and one card.
   const companyKey0 = (companyKey || "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  const placeWords = qualifierWords(location ?? "");
   const t = (title || "")
     .toLowerCase()
-    // location/req qualifiers that ride along on the title
-    .replace(/[([{][^)\]}]*[)\]}]/g, " ")
+    // A BRACKETED SEGMENT IS STRIPPED ONLY WHEN IT IS NOISE (S11-025): a
+    // requisition number, a work-mode word, or the row's own place. Every
+    // bracket used to go, whatever it held, so "Teacher (Mathematics)" and
+    // "Teacher (Elementary)", "(Night Shift)" and "(Day Shift)" folded into
+    // one card claiming N openings of the first: q=teacher at Pine Ridge
+    // served 2 cards for 6 distinct roles. Anything else stays in the key,
+    // brackets dropped.
+    .replace(/[([{]([^)\]}]*)[)\]}]/g, (_m, inner: string) => (qualifierIsNoise(inner, placeWords) ? " " : ` ${inner} `))
     // requisition ids: R12345, JR-9620, #2025-031054
     .replace(/#?\b(?:jr|r|req|job)?[-\s]?\d[\d-]{3,}\b/gi, " ")
     .replace(/[^\p{L}\p{N}]+/gu, " ")
@@ -130,6 +137,32 @@ export function clusterKey(companyKey: string, title: string): string {
   // A title that normalises to nothing is never folded with another: it keys
   // on its own spelling.
   return t === "" ? `${companyKey0} \u0001${(title || "").trim().toLowerCase()}` : `${companyKey0} ${t}`;
+}
+
+/** Lower-cased, accents dropped, so "Montréal" in a title matches "Montreal" in a location. */
+const foldQualifier = (s: string): string => s.toLowerCase().normalize("NFKD").replace(/\p{M}+/gu, "");
+/** Words a bracket may hold and still only say WHERE or HOW the job is worked. */
+const WORK_MODE_WORDS = new Set(["remote", "hybrid", "onsite", "on", "site", "in", "office", "virtual", "telecommute", "wfh", "home", "work", "from"]);
+
+/** The words of a location, as a bracket's words are compared against them. */
+function qualifierWords(location: string): Set<string> {
+  return new Set(foldQualifier(location).split(/[^\p{L}\p{N}]+/u).filter((w) => w.length >= 2));
+}
+
+/**
+ * True when a title's bracketed segment carries nothing that tells two roles
+ * apart: a requisition-like number (three or more digits, or "#" and a digit),
+ * or words that are all the row's own location or a work mode
+ * ("(Boston)" on a Boston row, "[Remote]", "(Pueblo, CO)"). A bracket naming a
+ * subject, a level, a shift or a team keeps its words in the key.
+ */
+function qualifierIsNoise(inner: string, placeWords: ReadonlySet<string>): boolean {
+  const s = foldQualifier(inner).trim();
+  if (!s) return true;
+  if (/\d{3,}/.test(s) || /#\s*\d/.test(s)) return true;
+  const words = s.split(/[^\p{L}\p{N}]+/u).filter((w) => w.length >= 2);
+  if (words.length === 0) return false;
+  return words.every((w) => placeWords.has(w) || WORK_MODE_WORDS.has(w));
 }
 
 /**

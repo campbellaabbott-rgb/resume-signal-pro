@@ -16,6 +16,29 @@ import { clusterKey } from "./descriptions.ts";
 // says how many locations it covers, instead of spending 13 slots on it.
 export const GROUP_OVERFETCH = 3;
 export const GROUP_SAMPLE_LOCATIONS = 6;
+/**
+ * How many folded postings a card carries as openable siblings (S11-005).
+ * The fold used to keep only the lead row: each folded posting bumped a count
+ * and left a place name, and its id and apply link were dropped, so Pilot's
+ * 22 "Cashier" postings were one Bellemont, AZ link and Cinemark's 198 theatre
+ * roles one. Fifty covers every live fold measured but the largest, whose
+ * card also links to the rest.
+ */
+export const GROUP_SIBLINGS_MAX = 50;
+
+/**
+ * The key a row folds on: the employer, the title (clusterKey, with the row's
+ * own location deciding which bracketed words are noise, S11-025) and the
+ * COUNTRY. A fold never crosses a border (S11-005): q=cashier folded a Nanton,
+ * AB posting under Pilot's Bellemont, AZ card. A row with no country folds
+ * only with rows that have none. Every reader that asks "is this row already
+ * on the page" asks with this key, so nothing hidden by one is shown by
+ * another.
+ */
+export function rowClusterKey(r: Record<string, unknown>): string {
+  const country = String(r.country ?? "").trim().toUpperCase();
+  return `${clusterKey(String(r.company ?? r.token ?? ""), String(r.title ?? ""), typeof r.location === "string" ? r.location : null)}\u0002${country}`;
+}
 
 /**
  * Fold rows sharing a cluster key into one, carrying a location count.
@@ -127,7 +150,7 @@ export function collapseClusters(
     // must fold together. Two different employers sharing an identical display
     // name AND an identical title is the residual risk, accepted — users could
     // not tell those cards apart anyway.
-    const key = clusterKey(String(r.company ?? r.token ?? ""), String(r.title ?? ""));
+    const key = rowClusterKey(r);
     const hit = byKey.get(key);
     if (!hit && out.length >= limit) break; // next page starts exactly here
     rawConsumed++;
@@ -149,9 +172,14 @@ export function collapseClusters(
       // genuinely spread across 13 sites would read "6 more locations".
       if (loc) locSets.get(key)?.add(loc);
       hit.locationCount = locSets.get(key)?.size ?? 1;
+      // The folded posting stays openable: its own id, place, apply link and date.
+      const sibs = hit.siblings as Array<Record<string, unknown>>;
+      if (sibs.length < GROUP_SIBLINGS_MAX) {
+        sibs.push({ id: r.id, location: r.location ?? null, applyUrl: r.applyUrl ?? null, postedAt: r.postedAt ?? null });
+      }
       continue;
     }
-    const row = { ...r, postingCount: 1, locationCount: 1, otherLocations: [] as string[] };
+    const row = { ...r, postingCount: 1, locationCount: 1, otherLocations: [] as string[], siblings: [] as Array<Record<string, unknown>> };
     const leadLoc = typeof r.location === "string" ? r.location.trim() : "";
     locSets.set(key, new Set(leadLoc ? [leadLoc] : []));
     byKey.set(key, row);
@@ -163,6 +191,7 @@ export function collapseClusters(
       delete row.postingCount;
       delete row.locationCount;
       delete row.otherLocations;
+      delete row.siblings;
     }
   }
   return { jobs: out, rawConsumed };
