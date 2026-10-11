@@ -4222,6 +4222,7 @@ export type Database = {
           flags: Json | null
           id: string
           interview_questions: Json | null
+          jd_text_scored: string | null
           jd_version: number
           level_read: string | null
           model_version: string | null
@@ -4241,6 +4242,7 @@ export type Database = {
           flags?: Json | null
           id?: string
           interview_questions?: Json | null
+          jd_text_scored?: string | null
           jd_version?: number
           level_read?: string | null
           model_version?: string | null
@@ -4260,6 +4262,7 @@ export type Database = {
           flags?: Json | null
           id?: string
           interview_questions?: Json | null
+          jd_text_scored?: string | null
           jd_version?: number
           level_read?: string | null
           model_version?: string | null
@@ -7070,6 +7073,10 @@ export type Database = {
           title: string
           work_mode: string
         }[]
+      }
+      shortlist_decide: {
+        Args: { p_action: string; p_candidate_id: string; p_reason?: string }
+        Returns: Json
       }
       should_generate_weekly_report: { Args: never; Returns: boolean }
       should_send_alert: {

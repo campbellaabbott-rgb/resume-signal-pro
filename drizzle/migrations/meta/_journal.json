@@ -960,6 +960,13 @@
       "when": 1791751433434,
       "tag": "0136_20261009110000_a_day_long_allowance_survives_an_hourly_callers_sweep",
       "breakpoints": true
+    },
+    {
+      "idx": 137,
+      "version": "7",
+      "when": 1791751441755,
+      "tag": "0137_20261009111000_a_shortlist_evaluation_cannot_be_rewritten_and_a_status_changes_only_with_its_decision",
+      "breakpoints": true
     }
   ]
 }
