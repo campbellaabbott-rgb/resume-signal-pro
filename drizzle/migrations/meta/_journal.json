@@ -1023,6 +1023,13 @@
       "when": 1791751530859,
       "tag": "0145_20261009132000_an_api_key_request_keeps_the_terms_it_was_shown",
       "breakpoints": true
+    },
+    {
+      "idx": 146,
+      "version": "7",
+      "when": 1791751546096,
+      "tag": "0146_20261009133000_a_withdrawal_is_acknowledged_once_per_subscription",
+      "breakpoints": true
     }
   ]
 }
