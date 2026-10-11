@@ -86,7 +86,14 @@ export function parseMinYears(text: string): number | null {
 // "staff" is senior only as the engineering rung; "lead" is not a rung beside
 // a shift, a team, a crew or a store-floor job; "partner" is expert only as
 // a firm's partner.
-const STAFF_RUNG = /\bstaff\s+(?:(?:software|data|machine learning|ml|ai|product|security|site reliability|platform|backend|back-end|frontend|front-end|full[- ]?stack|systems?|infrastructure|cloud|devops|mobile|research|applied|hardware|firmware|network)\s+)*(?:engineer|scientist|developer|designer|architect|analyst|researcher|swe|sre)\b/;
+// The tech modifiers a Staff rung carries. S11-137: the list lacked iOS,
+// Android, database, application, engineering and more, and the nouns lacked
+// manager, so Staff iOS Engineer, Staff Database Engineer, Staff Product
+// Manager and Staff Engineering Manager went from senior to unspecified. A
+// manager is a rung only behind at least one of these words: a bare "Staff
+// Manager" may run a staffing desk.
+const STAFF_TECH = "software|data|machine learning|ml|ai|product|security|application|applications|site reliability|reliability|platform|backend|back-end|frontend|front-end|full[- ]?stack|systems?|infrastructure|cloud|devops|mobile|ios|android|web|database|research|applied|hardware|firmware|network|engineering|technical|program|ux|ui|qa|quality|test|automation|solutions|embedded|graphics|game|gameplay|compiler|distributed|analytics|performance";
+const STAFF_RUNG = new RegExp(`\\bstaff\\s+(?:(?:${STAFF_TECH})\\s+)*(?:engineer|scientist|developer|designer|architect|analyst|researcher|swe|sre)\\b|\\bstaff\\s+(?:(?:${STAFF_TECH})\\s+)+manager\\b`);
 const LEAD_NOT_A_RUNG = /\b(?:shift|team|crew|store|line|floor|cashier|sales|retail|warehouse|production|area|key|front end|front desk|kitchen|cook|bar|server)\s+lead\b|\blead\s+(?:cashier|teller|associate|server|cook|host|clerk|driver|custodian|housekeeper|caregiver|cleaner|picker|packer|sales associate)\b/;
 const FIRM_PARTNER = /\b(?:managing|equity|senior|founding|general|named)\s+partner\b|\bpartner\s*,\s*(?:law|legal|litigation|corporate|tax|audit|advisory|consulting)\b/;
 export function bandFromTitle(title: string): ExperienceBand | null {
