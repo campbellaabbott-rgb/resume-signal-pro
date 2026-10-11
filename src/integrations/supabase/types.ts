@@ -3371,6 +3371,24 @@ export type Database = {
         }
         Relationships: []
       }
+      lifecycle_reads: {
+        Row: {
+          day: string
+          job_id: string
+          user_id: string
+        }
+        Insert: {
+          day: string
+          job_id: string
+          user_id: string
+        }
+        Update: {
+          day?: string
+          job_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       mail_door_counts: {
         Row: {
           bucket: string
@@ -4592,6 +4610,7 @@ export type Database = {
           status: string
           status_changed_at: string | null
           user_id: string
+          written_by: string | null
         }
         Insert: {
           applied_at?: string
@@ -4618,6 +4637,7 @@ export type Database = {
           status?: string
           status_changed_at?: string | null
           user_id: string
+          written_by?: string | null
         }
         Update: {
           applied_at?: string
@@ -4644,6 +4664,7 @@ export type Database = {
           status?: string
           status_changed_at?: string | null
           user_id?: string
+          written_by?: string | null
         }
         Relationships: [
           {
@@ -7221,6 +7242,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      undate_served_tracker_rows: { Args: never; Returns: number }
       update_delivery_retry: {
         Args: {
           p_error?: string

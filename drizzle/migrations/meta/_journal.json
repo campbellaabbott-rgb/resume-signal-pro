@@ -1107,6 +1107,20 @@
       "when": 1791751655770,
       "tag": "0157_20261009160300_a_federal_wage_filing_needs_an_employer_hiring_in_the_us",
       "breakpoints": true
+    },
+    {
+      "idx": 158,
+      "version": "7",
+      "when": 1791752653712,
+      "tag": "0158_20261009131000_a_tracker_row_reads_the_closure_log_by_the_day_and_a_free_account_has_bounds",
+      "breakpoints": true
+    },
+    {
+      "idx": 159,
+      "version": "7",
+      "when": 1791752697512,
+      "tag": "0159_20261009134200_a_served_posting_keeps_no_closure_date_and_the_tracker_cap_counts_only_what_its_owner_added",
+      "breakpoints": true
     }
   ]
 }
