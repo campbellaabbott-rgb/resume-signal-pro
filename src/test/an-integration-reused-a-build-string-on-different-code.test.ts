@@ -101,6 +101,13 @@ describe("--against: a function whose code moved needs a later, different build"
       expect(L.againstViolations(same("2026-09-09.92"), { allowEqual: shared("wave3/job-board") })).toEqual([]);
     });
 
+    it("the S11 fix round (w31/ branches) ships inside wave 3 and shares its .92", () => {
+      expect([...shared("origin/wave3/integration", "w31/seo-ingest-ops")]).toEqual(["job-board.2026-09-09.92"]);
+      expect([...shared("w31/search", "wave3/integration")]).toEqual(["job-board.2026-09-09.92"]);
+      expect([...shared("w31/", "wave3/integration")], "the bare prefix is not a branch").toEqual([]);
+      expect([...shared("connect-apply/board", "w31/seo-ingest-ops")]).toEqual([]);
+    });
+
     it(".91 is on main: no branch may share it, so two wave-3 tips carrying it on different code collide", () => {
       // wave3/tests-ci and wave3/board-data-ingest both carried main's .91 on different job-board code.
       const allowEqual = shared("wave3/tests-ci", "wave3/board-data-ingest");

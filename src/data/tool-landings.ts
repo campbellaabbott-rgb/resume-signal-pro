@@ -6,6 +6,7 @@
 
 import { SCAN_RESULTS_WITHIN_SECONDS } from "../config/scan-timing";
 import { REPORT_CACHE_DAYS } from "../lib/resume-retention";
+import { LANGUAGE_COUNT } from "../i18n/languages";
 
 const S = SCAN_RESULTS_WITHIN_SECONDS;
 const D = REPORT_CACHE_DAYS;
@@ -41,7 +42,7 @@ export const TOOL_LANDINGS: Record<string, ToolLanding> = {
       "Sin registro y sin correo electrónico para el informe completo",
       "Tu currículum se borra en un máximo de 7 días y nunca se vende",
       "Puntaje con auditoría detallada: cada punto rastreable a un hallazgo",
-      "Detección nativa en español en 15 industrias, además de 10 idiomas",
+      `Detección nativa en español en 15 industrias, con la interfaz en ${LANGUAGE_COUNT} idiomas`,
       "Funciona con o sin oferta de trabajo (expectativas por ocupación del Departamento de Trabajo de EE. UU.)",
     ],
     faqs: [

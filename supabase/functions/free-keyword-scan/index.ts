@@ -4547,14 +4547,19 @@ ${resumeText.substring(0, 20000)}
       }
     }
 
-    // Log successful completion metric
+    // Log the completion. A partial report (the rule-based fallback, or a thin
+    // model reply) is not a valid AI output: it was logged outputValid true,
+    // so the metrics could not tell a scan the model wrote from one it did
+    // not (S11-028). The reason rides along.
     logScanMetric(metricCtx, 'completed', {
-      outputValid: true,
+      outputValid: !partialReport,
       responseScore: analysis.atsScoreEstimate,
-      metadata: { 
-        industry: analysis.industry, 
+      metadata: {
+        industry: analysis.industry,
         experienceLevel: analysis.experienceLevel?.level,
-        formatGrade: analysis.formatGrade
+        formatGrade: analysis.formatGrade,
+        partialReason: partialReport ? (responseData.partialReason ?? null) : null,
+        usedFallback: usedRuleBasedFallback,
       }
     });
     

@@ -92,6 +92,8 @@ import { useErrorTracking } from "@/hooks/use-error-tracking";
 import { useAffiliateTracking, getStoredReferralCode } from "@/hooks/use-affiliate-auth";
 import { useStreamingScan, type StreamProgress, clearAllClientScanCaches } from "@/hooks/use-streaming-scan";
 import { useScanPrefetch } from "@/hooks/use-scan-prefetch";
+import { LANGUAGE_COUNT } from "@/i18n/languages";
+import { asFallbackReport, streamFallbackDeadline } from "@/lib/scan-fallback";
 const ScanFeedback = lazy(() =>
   import("@/components/ScanFeedback").then((m) => ({ default: m.ScanFeedback }))
 );
@@ -1142,6 +1144,9 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
     
     // Track scan started in funnel
     trackScanStarted();
+    // The scan's window starts at the press: the backup scanner below may run
+    // only inside it (src/lib/scan-fallback.ts, S11-150).
+    const scanStartedAt = Date.now();
 
     try {
       // Check if we have a background scan result ready (from paste/upload prefetch)
@@ -1222,13 +1227,18 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
           }
 
           // FALLBACK (outages only): the streaming fork. Older report shape
-          // (fewer cards) but keeps scans working if the primary is down.
-          console.warn('[FreeScan] Primary endpoint failed, falling back to streaming scan');
-          const streamResult = await startStreamingScan(contentToAnalyze, {
+          // (fewer cards) but keeps scans working if the primary is down. It
+          // runs only inside the scan's window, and its report is marked
+          // partial with the reason, since it has no rule-based clamp and no
+          // audit trail (S11-150).
+          const fallbackDeadline = streamFallbackDeadline(scanStartedAt);
+          console.warn(`[FreeScan] Primary endpoint failed, ${fallbackDeadline === null ? 'too late in the window for' : 'falling back to'} the streaming scan`);
+          const streamResult = fallbackDeadline === null ? null : await startStreamingScan(contentToAnalyze, {
             jobDescriptionText: jdForScan,
             honeypot,
             skipCache,
             targetCountry: targetCountry || undefined,
+            deadlineAt: fallbackDeadline,
             onProgress: (progress) => {
               console.log('[StreamingScan] Progress:', progress.stage, progress.progress + '%');
             },
@@ -1237,7 +1247,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
             },
           });
           if (streamResult) {
-            result = streamResult;
+            result = asFallbackReport(streamResult);
           } else {
             trackApiError('free-keyword-scan', 500, scanResult.error.description);
             toast({
@@ -2031,7 +2041,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         url: "https://resumebooster.work",
         applicationCategory: "BusinessApplication",
         operatingSystem: "Web",
-        description: `Free diagnostic resume scan: ATS score with a full audit trail, verified quotes, per-vendor parsing checks, and a fix plan — across ${DETECTED_INDUSTRY_COUNT} industries and 10 languages.`,
+        description: `Free diagnostic resume scan: ATS score with a full audit trail, verified quotes, per-vendor parsing checks, and a fix plan — across ${DETECTED_INDUSTRY_COUNT} industries, with an interface in ${LANGUAGE_COUNT} languages.`,
         offers: { "@type": "Offer", price: "0", priceCurrency: "USD", description: "Free resume scan — no signup required" },
       }) }} />
       {/* TWO TRUE NUMBERS, EACH UNDER ITS OWN NOUN.

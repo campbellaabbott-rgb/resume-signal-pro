@@ -1077,7 +1077,9 @@
       "title": "Resultados parciales:",
       "ruleBased": "nuestro revisor de IA no estuvo disponible por un momento, así que este informe usa solo análisis automático. Vuelve a escanear en unos minutos para obtener la versión completa personalizada con IA.",
       "thin": "la revisión de IA dejó algunas secciones vacías, así que el análisis automático las completó. Esta versión no se guardó, así que un nuevo escaneo genera una nueva.",
-      "thinUnfilled": "la revisión de IA dejó algunas secciones vacías, así que se ocultan. Vuelve a escanear en unos minutos para obtener el informe completo."
+      "thinUnfilled": "la revisión de IA dejó algunas secciones vacías, así que se ocultan. Vuelve a escanear en unos minutos para obtener el informe completo.",
+      "fallback": "nuestro escáner principal no estaba disponible, así que un escáner de respaldo más sencillo hizo este informe. No incluye «Por qué esta puntuación» y su puntuación no se contrasta con nuestra puntuación basada en reglas. Vuelve a escanear en unos minutos para obtener el informe completo.",
+      "fallbackHidden": "Las secciones que el escáner de respaldo dejó vacías están ocultas."
     }
   },
   "miniPricingCards": {
@@ -2690,13 +2692,13 @@
       },
       "scoringAlgorithm": {
         "title": "Algoritmo de puntuación",
-        "description": "La IA puntúa el currículum con pesos para tu sector, y su puntuación se mantiene a menos de {{band}} puntos de una puntuación basada en reglas calculada del mismo documento. El registro de auditoría divide luego el resultado en las cuatro partes de abajo."
+        "description": "La IA puntúa el currículum con pesos para tu sector, y su puntuación se mantiene a menos de {{band}} puntos de una puntuación basada en reglas calculada del mismo documento. El registro de auditoría divide luego el resultado en las cuatro partes de abajo. Si el escáner principal no está disponible, responde en su lugar un respaldo más sencillo: su informe lo indica arriba y no tiene registro de auditoría."
       }
     },
     "atsPlatformsTitle": "Plataformas ATS contra las que analizamos",
     "atsPlatformsSubtitle": "El escaneo valora cómo es probable que cada uno de estos {{count}} sistemas lea tu currículum. Son los sistemas que nombra; aquí no se afirma ninguna cuota del mercado laboral.",
     "scoreCalculatedTitle": "Cómo se calcula tu puntuación ATS",
-    "scoreCalculatedSubtitle": "El apartado «Por qué esta puntuación» de cada informe divide la puntuación en estas cuatro partes, sobre 100 puntos.",
+    "scoreCalculatedSubtitle": "El apartado «Por qué esta puntuación» de cada informe completo divide la puntuación en estas cuatro partes, sobre 100 puntos.",
     "continuousResearchTitle": "Investigación continua",
     "continuousResearchSubtitle": "Las tablas de palabras clave y las reglas cambian a medida que aprendemos, y cada cambio queda fechado en el registro público de cambios.",
     "continuousResearch": {

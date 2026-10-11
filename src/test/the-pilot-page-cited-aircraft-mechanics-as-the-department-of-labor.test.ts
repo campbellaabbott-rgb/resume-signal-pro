@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { codeOf } from "./helpers/strip-comments";
-import { onetForRole, onetNamesRole } from "@/lib/onet-match";
+import { onetCitesRole, onetForRole, ROLE_ONET_SOC } from "@/lib/onet-match";
 import { ROLE_PAGES } from "@/data/roles";
 import { ONET_EXPECTATIONS } from "../../supabase/functions/free-keyword-scan/onet-expectations";
 
@@ -17,36 +17,51 @@ import { ONET_EXPECTATIONS } from "../../supabase/functions/free-keyword-scan/on
  */
 
 describe("a role page cites an occupation only when it names the role", () => {
+  const cites = (slug: string) => onetForRole(ROLE_PAGES[slug], ONET_EXPECTATIONS[ROLE_PAGES[slug].industry]) !== null;
+
   it("the four the register named no longer cite another occupation", () => {
-    expect(onetNamesRole("Pilot", "Aircraft Mechanics")).toBe(false);
-    expect(onetNamesRole("Dentist", "Dental Hygienists")).toBe(false);
-    expect(onetNamesRole("Professor", "Elementary School Teachers")).toBe(false);
-    expect(onetNamesRole("Plumber", "Electricians")).toBe(false);
+    for (const slug of ["pilot", "dentist", "professor", "plumber"]) expect(cites(slug), slug).toBe(false);
   });
 
-  it("a generic word is not a match, a real one is", () => {
-    expect(onetNamesRole("Sales Manager", "Marketing Managers")).toBe(false);
-    expect(onetNamesRole("Registered Nurse", "Registered Nurses")).toBe(true);
-    expect(onetNamesRole("Data Scientist", "Data Scientists")).toBe(true);
+  // S11-152: the word-overlap matcher dropped words under three letters, so
+  // RN and CPA lost their own occupation, and stemmed "attorney" against
+  // "Lawyers"; it matched "engineer" alone, so civil and electrical engineers
+  // cited Mechanical Engineers, and "manager" was generic only on one side.
+  it("RN, CPA and attorney cite their own occupation; civil and electrical engineers and HR managers cite none", () => {
+    for (const slug of ["rn", "cpa", "attorney", "registered-nurse", "lawyer", "data-scientist", "mechanical-engineer"]) expect(cites(slug), slug).toBe(true);
+    for (const slug of ["civil-engineer", "electrical-engineer", "human-resources-manager", "sales-manager", "ui-designer", "line-cook", "dental-assistant", "data-analyst"]) expect(cites(slug), slug).toBe(false);
   });
 
-  it("over the shipped tables, every cited occupation shares a non-generic word with its role", () => {
+  it("every row of the table names a real role and the code its industry's entry carries", () => {
+    expect(ROLE_ONET_SOC.size).toBeGreaterThan(40);
+    for (const [slug, code] of ROLE_ONET_SOC) {
+      const role = ROLE_PAGES[slug];
+      expect(role, `${slug} is not a role page`).toBeDefined();
+      expect(ONET_EXPECTATIONS[role.industry]?.code, `${slug} cites ${code}, its industry's entry is another occupation`).toBe(code);
+      expect(onetCitesRole(slug, ONET_EXPECTATIONS[role.industry])).toBe(true);
+    }
+    // a code that is not the entry's cites nothing, even for a listed slug
+    expect(onetCitesRole("rn", { code: "29-1171.00" })).toBe(false);
+    expect(onetCitesRole("no-such-role", ONET_EXPECTATIONS.healthcare)).toBe(false);
+  });
+
+  it("over the shipped tables, cited and withheld pages both exist", () => {
     let cited = 0;
     let withheld = 0;
     for (const role of Object.values(ROLE_PAGES)) {
       const onet = ONET_EXPECTATIONS[role.industry];
       if (!onet) continue;
-      if (onetForRole(role.title, onet)) cited++;
+      if (onetForRole(role, onet)) cited++;
       else withheld++;
     }
     expect(cited, "some roles still cite their own occupation").toBeGreaterThan(0);
     expect(withheld, "and the mismatched ones do not").toBeGreaterThan(0);
   });
 
-  it("the React role page and the bake both go through the match", () => {
-    expect(codeOf(readFileSync(resolve(__dirname, "../pages/RoleKeywords.tsx"), "utf8"))).toMatch(/onetForRole\(role\.title, ONET_EXPECTATIONS\[role\.industry\]\)/);
+  it("the React role page and the bake both go through the table", () => {
+    expect(codeOf(readFileSync(resolve(__dirname, "../pages/RoleKeywords.tsx"), "utf8"))).toMatch(/onetForRole\(role, ONET_EXPECTATIONS\[role\.industry\]\)/);
     const bake = codeOf(readFileSync(resolve(__dirname, "../../scripts/prerender-seo.mjs"), "utf8"));
-    expect(bake).toMatch(/D\.onetForRole\(role\.title, D\.ONET_EXPECTATIONS\[role\.industry\]\)/);
+    expect(bake).toMatch(/D\.onetForRole\(role, D\.ONET_EXPECTATIONS\[role\.industry\]\)/);
     expect(bake, "the intro no longer calls the field's lists the role's").not.toMatch(/when it detects a \$\{esc\(role\.title/);
   });
 });

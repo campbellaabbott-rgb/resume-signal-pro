@@ -162,6 +162,12 @@ interface StreamingScanOptions {
   targetCountry?: string;
   maxRetries?: number;
   retryDelay?: number;
+  /**
+   * Epoch ms by which the scan must answer: no attempt or retry starts after
+   * it, and a running one is aborted at it (S11-150: the scan's own window,
+   * src/lib/scan-fallback.ts). Without it each attempt has two minutes.
+   */
+  deadlineAt?: number;
   onProgress?: (progress: StreamProgress) => void;
   onComplete?: (result: StreamingScanResult) => void;
   onError?: (error: ParsedEdgeFunctionError) => void;
@@ -259,7 +265,9 @@ export function useStreamingScan() {
     
     let lastError: unknown = null;
     
+    const leftMs = () => (typeof options?.deadlineAt === 'number' ? options.deadlineAt - Date.now() : Infinity);
     for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+      if (leftMs() <= 0) break;
       // Only create new abort controller for retries, first attempt uses the one we created above
       if (attempt > 1) {
         abortControllerRef.current = new AbortController();
@@ -279,7 +287,7 @@ export function useStreamingScan() {
       // the user staring at a spinner indefinitely since `reader.read()` has no
       // timeout of its own. Capture this attempt's controller specifically so a late
       // timer firing can't abort a *different* attempt's controller.
-      const STREAM_TIMEOUT_MS = 120_000;
+      const STREAM_TIMEOUT_MS = Math.min(120_000, leftMs());
       const controllerForThisAttempt = abortControllerRef.current;
       const timeoutId = setTimeout(() => {
         console.warn('[StreamingScan] Client-side timeout — aborting stalled request');
@@ -472,7 +480,7 @@ export function useStreamingScan() {
         }
 
         // Check if we should retry
-        const shouldRetry = attempt <= maxRetries && isNetworkRetryable(error);
+        const shouldRetry = attempt <= maxRetries && isNetworkRetryable(error) && leftMs() > retryDelay * attempt;
         
         if (shouldRetry) {
           console.log(`[StreamingScan] Network error, retrying in ${retryDelay * attempt}ms`);

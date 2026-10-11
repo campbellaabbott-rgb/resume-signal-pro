@@ -1077,7 +1077,9 @@
       "title": "Partial results:",
       "ruleBased": "our AI reviewer was briefly unavailable, so this report uses automated analysis only. Rescan in a few minutes for the full AI-personalised version.",
       "thin": "the AI review left some sections empty, so automated analysis filled them in. This version was not saved, so a rescan builds a fresh one.",
-      "thinUnfilled": "the AI review left some sections empty, so they are hidden. Rescan in a few minutes for the full report."
+      "thinUnfilled": "the AI review left some sections empty, so they are hidden. Rescan in a few minutes for the full report.",
+      "fallback": "our main scanner was down, so a simpler backup wrote this report. It has no \"Why this score\" breakdown, and its score is not checked against our rule-based score. Rescan in a few minutes for the full report.",
+      "fallbackHidden": "Sections the backup left empty are hidden."
     }
   },
   "miniPricingCards": {
@@ -2690,13 +2692,13 @@
       },
       "scoringAlgorithm": {
         "title": "Scoring Algorithm",
-        "description": "The AI scores the CV with weights for your industry, and its score is held within {{band}} points of a rule-based score computed from the same document. The audit trail then splits the result into the four parts below."
+        "description": "The AI scores the CV with weights for your industry, and its score is held within {{band}} points of a rule-based score computed from the same document. The audit trail then splits the result into the four parts below. If the main scanner is down, a simpler backup answers instead: its report says so at the top and has no audit trail."
       }
     },
     "atsPlatformsTitle": "ATS Platforms We Analyse Against",
     "atsPlatformsSubtitle": "The scan rates how each of these {{count}} systems is likely to read your CV. These are the systems it names; nothing here claims a share of the job market.",
     "scoreCalculatedTitle": "How Your ATS Score Is Calculated",
-    "scoreCalculatedSubtitle": "Every report's \"Why this score\" splits the score into these four parts, out of 100 points.",
+    "scoreCalculatedSubtitle": "Every full report's \"Why this score\" splits the score into these four parts, out of 100 points.",
     "continuousResearchTitle": "Continuous Research",
     "continuousResearchSubtitle": "The keyword tables and the rules change as we learn, and every change is dated in the public changelog.",
     "continuousResearch": {

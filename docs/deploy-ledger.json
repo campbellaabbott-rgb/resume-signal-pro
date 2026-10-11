@@ -19,6 +19,41 @@
       "until": "wave 3 step 1 verified: shortlist-evaluate's OPTIONS answers x-fn-build shortlist-evaluate.2026-10-10.4 or later (its evaluation insert is the service role's; section 72 prints the build) AND the frontend published from the same commit decides through shortlist_decide (section 72: 'the Shortlist page records a decision through shortlist_decide' PASSes). Applied earlier, the live shortlist-evaluate's insert through the employer's JWT fails 42501 after its paid model call and the live page's decision insert and status PATCH are refused (S11-056)"
     }
   ],
+  "migrationOrder": {
+    "_note": "Per migration stamp: `after` is \"fn:<name>@<YYYY-MM-DD.N>\" (apply once that function answers that build or later) or \"frontend\" (apply once the frontend is published); `before` lists \"fn:<name>\" a migration must precede. No entry: before the functions. The ledger prints five steps: migrations before the functions, the functions, migrations after the functions they wait for, the frontend, migrations after the frontend (docs/DEPLOY-LEDGER.md §1).",
+    "20261009111000": {
+      "before": ["fn:shortlist-evaluate"],
+      "why": "the new shortlist-evaluate writes jd_text_scored, which this migration adds. S11-056 splits it: the additive half stays here; the half that revokes the live function's client INSERT and adds the guard triggers takes after: frontend"
+    },
+    "20261009123000": {
+      "before": ["fn:agent-mcp"],
+      "why": "the adoption reader must stop reading host buckets as addresses before the new agent-mcp writes them"
+    },
+    "20261009130000": {
+      "before": ["fn:stripe-webhook"],
+      "why": "the new webhook claims a subscription_notices row on every new subscription"
+    },
+    "20261009131000": {
+      "after": "frontend",
+      "why": "S11-138: its one-time clear of wrong closure dates is written back by the live Account page until the wave-3 frontend is published"
+    },
+    "20261009140000": {
+      "after": "fn:retry-failed-deliveries@2026-10-09.2",
+      "why": "S11-146: it hands 'generating' rows to the retry sweep; the live 2026-10-05.1 sweep skips them without spending a retry, so they hold its 5-row batch"
+    },
+    "20261009141000": {
+      "before": ["fn:send-market-pulse"],
+      "why": "the new pulse takes back confirmations that never left"
+    },
+    "20261009143000": {
+      "before": ["fn:scan-heartbeat"],
+      "why": "the new heartbeat calls cron_http_refusals, which this migration creates"
+    },
+    "20261009144000": {
+      "before": ["fn:send-search-digest", "fn:send-agent-digest"],
+      "why": "the new digests write a give-back at once and rely on the claim's attempt-stamp order to keep that row from leading the next claim"
+    }
+  },
   "reservations": {
     "wave2": {
       "branches": ["wave2/", "wave2-integration"],

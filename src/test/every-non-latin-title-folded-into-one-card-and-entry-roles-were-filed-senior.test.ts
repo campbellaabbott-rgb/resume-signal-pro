@@ -52,6 +52,17 @@ describe("L7-08: staff, lead and partner are rungs only where they are rungs", (
     expect(bandFromTitle("Senior Accountant")).toBe("senior");
     expect(bandFromTitle("Director of Nursing")).toBe("expert");
   });
+  // S11-137: the modifier list lacked these words and the nouns lacked
+  // manager, so these Staff-level tech titles left the Senior filter.
+  it("Staff-level tech titles the list did not name are senior; non-rung Staff titles stay unspecified", () => {
+    for (const t of ["Staff Product Manager", "Staff Engineering Manager", "Staff iOS Engineer", "Staff Android Engineer",
+      "Staff Database Engineer", "Staff Application Security Engineer", "Staff Technical Program Manager", "Staff Web Developer"]) {
+      expect(bandFromTitle(t), t).toBe("senior");
+    }
+    for (const t of ["Staff Nurse", "Staff Accountant", "Staff Civil Engineer", "Staff Manager", "Staff Scheduling Manager", "Staff Physical Therapist"]) {
+      expect(bandFromTitle(t), t).toBeNull();
+    }
+  });
 });
 
 describe("L7-09, L8-15: a year count is a requirement only when it is one", () => {
