@@ -39,7 +39,14 @@ every deploy: anything main has that production does not is a FAIL line.
 2. After it merges, main is FROZEN: nothing else merges until the owner has run
    the Lovable message generated from that exact commit and the verifier (plus
    the ledger) shows no gap.
-3. Held migrations go out in a second message once their prerequisites verify.
+3. When it verifies, record it in `docs/deploy-ledger.json` `verifiedDeploys`:
+   the commit the message named and every function it deployed, with its
+   build. Lovable deploys a function as main holds it, so code changed after a
+   stamp was written but before that commit is live; from then on the ledger
+   asks for a bump only for changes after the recorded deploy (without the
+   record, all seven functions fixed during wave 2's integration read MUST
+   BUMP the moment their stamps went live). Then release the held migrations
+   (empty their `holdUntilVerified` entries) and send them in a second message.
 4. Then the next integration may merge.
 
 Branches keep working while main is frozen; they merge when it thaws, against
@@ -68,6 +75,8 @@ wave.
 
 ## 5. Every function carries a build marker
 
-A function without `x-fn-build` cannot be verified after a deploy. Any
+A function without `x-fn-build` cannot be verified after a deploy, and a
+stamp the function never SENDS counts as no marker (layoff-filings carries a
+BUILD_VERSION that only reaches a JSON body). Any
 workstream that changes such a function adds a marker (`FN_BUILD` in the CORS
 headers, as the other functions do). The ledger lists the ones still missing.
