@@ -267,6 +267,7 @@ describe("S11-012: the employer's sponsorship notice is not the question", () =>
     // An authorisation question that also asks the candidate's own need is
     // still answered from that need.
     ["Are you authorized to work in the US, and will you now or in the future require sponsorship?", US_NEEDS_VISA, "Yes"],
+    ["Are you authorized to work in the US, or will you require H-1B sponsorship?", US_NEEDS_VISA, "Yes"],
     // A sponsorship question with the same notice is still a sponsorship question.
     ["Will you now or in the future require visa sponsorship? Please note we are unable to sponsor.", US_CITIZEN, "No"],
     ["Will you now or in the future require visa sponsorship? Please note we are unable to sponsor.", US_NEEDS_VISA, "Yes"],

@@ -289,7 +289,7 @@ const SP_INSTRUCTION = /\b(?:do\s+not|don['’]?t|should\s+not|need\s+not|refrai
 const SP_AUTH_ASKED =
   /legally\s+(authori[sz]ed|entitled|eligible|permitted)|legally\s+(?:able|allowed)\s+to\s+(?:live\s+and\s+)?work|(authori[sz]ed|eligible|entitled|permitted)\s+to\s+work|work\s+authori[sz]ation|right\s+to\s+work|permission\s+to\s+work/i;
 const SP_OWN_NEED =
-  /\b(?:requir|need)\w*\s+(?:\w+\s+){0,4}?(?:sponsor|(?:work\s+)?visa\b|(?:work\s+)?permit\b)|\bsponsor\w*\s+(?:\w+\s+){0,3}?(?:requir|need)\w*/i;
+  /\b(?:requir|need)\w*\s+(?:\S+\s+){0,4}?(?:sponsor|(?:work\s+)?visa\b|(?:work\s+)?permit\b)|\bsponsor\w*\s+(?:\S+\s+){0,3}?(?:requir|need)\w*/i;
 /** The label without the employer's sponsorship notice: what is actually asked. */
 export function withoutSponsorNotice(label: string): string {
   return label
