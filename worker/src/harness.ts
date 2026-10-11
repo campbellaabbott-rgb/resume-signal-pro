@@ -71,6 +71,30 @@ const UNANSWERABLE = `
     <input id="q9" name="section__question_9" required /></div>`;
 
 /**
+ * Rails' hidden field before a control of the same name (S11-047): Pinpoint's
+ * required consent box and a radio group. The answer must land on the box
+ * and on the option it names, never on the hidden input in front of them.
+ */
+const RAILS_HIDDEN = `
+  <fieldset><legend>Are you willing to relocate?</legend>
+    <input type="hidden" name="application[relocate]" value="" />
+    <input type="radio" id="r-yes" name="application[relocate]" value="yes" required /><label for="r-yes">Yes</label>
+    <input type="radio" id="r-no" name="application[relocate]" value="no" /><label for="r-no">No</label>
+  </fieldset>
+  <div>
+    <input type="hidden" name="application[process_information]" value="0" />
+    <label><input type="checkbox" name="application[process_information]" value="1" required />
+      I consent to the processing of my personal data</label>
+  </div>`;
+/** What the server must have received for RAILS_HIDDEN to count as sent right. */
+const RAILS_SENT = [
+  /name="application\[relocate\]"\r\n\r\nyes\r\n/,
+  /name="application\[process_information\]"\r\n\r\n1\r\n/,
+];
+/** The last application body the native-POST server received. */
+let lastBody = "";
+
+/**
  * Breezy's real submit, in shape (S11-011). The live form posts from an
  * ng-click handler, with no navigation: the page that pressed the button is
  * the page that has to show the outcome. networkidle has already fired on that
@@ -136,8 +160,10 @@ function server(mode: Mode, extra: string, port: number, delay = 0) {
     }
     if (req.method === "POST" && url === "/submit") {
       // Drain the upload before replying, or the browser sees a broken pipe.
-      req.on("data", () => {});
+      const chunks: Buffer[] = [];
+      req.on("data", (c: Buffer) => { chunks.push(c); });
       req.on("end", () => {
+        lastBody = Buffer.concat(chunks).toString("latin1");
         res.writeHead(200, { "content-type": "text/html" });
         if (mode === "confirms") {
           res.end(`<!doctype html><html><body><h1>Thank you!</h1>
@@ -186,8 +212,11 @@ const ANSWERS: StandingAnswers = {
   shareDemographics: false, consentToProcessing: true,
 };
 
-async function run(name: string, mode: Mode, extra: string, port: number, expect: string, delay = 0) {
+async function run(
+  name: string, mode: Mode, extra: string, port: number, expect: string, delay = 0, mustSend: RegExp[] = [],
+) {
   received = 0;
+  lastBody = "";
   const srv = server(mode, extra, port, delay);
   const browser = await chromium.launch({ headless: true });
   const dir = await mkdtemp(join(tmpdir(), "harness-"));
@@ -205,7 +234,9 @@ async function run(name: string, mode: Mode, extra: string, port: number, expect
       answers: ANSWERS,
     });
     const got = out.kind;
-    const ok = got === expect;
+    const missed = mustSend.filter((re) => !re.test(lastBody));
+    const ok = got === expect && missed.length === 0;
+    if (missed.length) console.log(`        the employer did not receive ${missed.map(String).join(", ")}`);
     const employer = mode.startsWith("xhr-") ? `  [employer received ${received}]` : "";
     console.log(`  ${ok ? "PASS" : "FAIL"}  ${name.padEnd(34)} -> ${got}${ok ? "" : `  (expected ${expect})`}${employer}`);
     if (!ok || out.kind !== "submitted") {
@@ -235,6 +266,8 @@ async function main() {
     await run("XHR submit, answered in 1.5 s", "xhr-confirms", SCREENING, 8739, "submitted", 1500),
     await run("XHR sent, form left up -> uncertain", "xhr-form-stays", SCREENING, 8740, "uncertain", 300),
     await run("click sent nothing -> not-submitted", "xhr-nothing-sent", SCREENING, 8741, "not-submitted"),
+    // S11-047: a Rails hidden field in front of a consent box and a radio.
+    await run("Rails hidden fields -> right controls", "confirms", SCREENING + RAILS_HIDDEN, 8742, "submitted", 0, RAILS_SENT),
   ];
   const passed = results.filter(Boolean).length;
   console.log(`\n  ${passed}/${results.length} paths behaved as designed`);
