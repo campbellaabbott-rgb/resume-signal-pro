@@ -114,7 +114,9 @@ info("S8-030 / S8-031 / S8-084 / S8-085 / S8-086 / S8-089: no anon probe; see th
 // S11 jobboard-runtime (the .92 additions, docs/job-board-deploy-notes.md).
 {const pe=st.passEnd||null;const s0=pe&&Date.parse(pe.startedAt);const d0=pe&&Date.parse(pe.doneAt);
   if(!pe)late(false,"S11-001 status.passEnd absent (want {startedAt, doneAt} once a .92 pass has ended: the tail runs after the hop answers)");
-  else late(Number.isFinite(d0)&&d0>=s0||(Number.isFinite(s0)&&Date.now()-s0<30*60000),"S11-001 pass-end tail: started "+pe.startedAt+", done "+(pe.doneAt||"never")+(pe.ms?" ("+Math.round(pe.ms/1000)+" s)":"")+" (want a doneAt after every startedAt; a start with no finish past 30 min is a tail that died)");}
+  else if(Number.isFinite(d0)&&d0>=s0)late(true,"S11-001 pass-end tail: started "+pe.startedAt+", done "+pe.doneAt+(pe.ms?" ("+Math.round(pe.ms/1000)+" s)":"")+" (want a doneAt after every startedAt)");
+  else if(Number.isFinite(s0)&&Date.now()-s0<30*60000)info("S11-001 pass-end tail: started "+pe.startedAt+", not finished yet ("+Math.round((Date.now()-s0)/60000)+" min in): a tail in flight proves nothing either way; run this section again after 30 min");
+  else late(false,"S11-001 pass-end tail: started "+pe.startedAt+", done "+(pe.doneAt||"never")+" (want a doneAt after every startedAt; a start with no finish past 30 min is a tail that died)");}
 {const fa=st.filterAudit||{};soft(typeof fa.ageMin==="number"&&fa.ageMin<12*60,"S11-001 filterAudit ageMin "+fa.ageMin+" (want under 720 once a .92 pass has ended: the tail kicks the audit before its slow deletes)");}
 late(Array.isArray(st.dbFailingBoards)&&st.dbFailingBoards.length===0,"S11-023 status.dbFailingBoards "+JSON.stringify(st.dbFailingBoards)+" (want []: a board our database fails to read or store for 3+ visits is named here, never pruned)");
 {const r=await call({action:"list",q:"cashier",limit:60,includeFacets:false});const folded=rows(r).filter((c)=>(c.postingCount||1)>1);

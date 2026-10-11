@@ -1,18 +1,22 @@
 # job-board .92 search group (S11-002, S11-003, S11-004, S11-009; migration
 # 20261009101000; docs/job-board-deploy-notes.md, .92, "SEARCH GROUP").
-# Sourced by scripts/verify-deploy.sh. Read-only: status and list reads with
+# Sourced by scripts/verify-deploy.sh. Read-only: one OPTIONS preflight and list reads with
 # x-rb-budget: probe (each logs one search event, as every list probe here
-# does). Every line is INFO until status.version is .92 or later; the SQL lines
-# also need 20261009101000.
+# does). Every line is INFO until job-board's preflight x-fn-build is .92 or
+# later (build_ge, as sections 73w and 80 gate); the SQL lines also need
+# 20261009101000.
 echo "== 79. search (wave 3): the place reads its index, a leading state code is a state, plural short-word searches, the description tier on a clock =="
-B="$B" K="$K" node -e '(async()=>{
+VD79_H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/job-board" -H "x-rb-budget: probe" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
+if [ -z "$VD79_H" ]; then VD79_V92=0; echo "FAIL  job-board preflight carries no x-fn-build (want job-board.2026-09-09.92 or later; every line below is INFO until it is)"
+elif build_ge job-board "$VD79_H" 2026-09-09 92; then VD79_V92=1; echo "PASS  job-board preflight x-fn-build = $VD79_H (job-board.2026-09-09.92 or later)"
+else VD79_V92=0; echo "FAIL  job-board preflight x-fn-build = $VD79_H (want job-board.2026-09-09.92 or later: the previous bundle is still serving; every line below is INFO until it is)"; fi
+B="$B" K="$K" VD79_V92="$VD79_V92" node -e '(async()=>{
 const {B,K}=process.env;
 const H={"Content-Type":"application/json","x-rb-budget":"probe",apikey:K,Authorization:"Bearer "+K};
 const call=async(body)=>{const t0=Date.now();try{const r=await fetch(B+"/functions/v1/job-board",{method:"POST",headers:H,body:JSON.stringify(body)});let j;try{j=await r.json()}catch{j={}}return {...j,_status:r.status,_ms:Date.now()-t0}}catch(e){return {err:String(e).slice(0,100),_ms:Date.now()-t0}}};
 const list=(b)=>call({action:"list",groupSimilar:false,includeFacets:false,limit:60,...b});
-const st=await call({action:"status"});
-const m=/^(\d{4}-\d{2}-\d{2})\.(\d+)$/.exec(String(st.version||""));
-const v92=!!m&&(m[1]>"2026-09-09"||(m[1]==="2026-09-09"&&Number(m[2])>=92));
+// The bash above judged the job-board preflight x-fn-build with build_ge.
+const v92=process.env.VD79_V92==="1";
 const late=(c,msg)=>console.log((c?"PASS":(v92?"FAIL":"INFO"))+"  "+msg);
 const info=(msg)=>console.log("INFO  "+msg);
 const bad=(r)=>!r||r.err||r.error;
