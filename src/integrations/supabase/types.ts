@@ -4936,6 +4936,10 @@ export type Database = {
           decided_ok: boolean
         }[]
       }
+      agent_packet_pass_funds: {
+        Args: { p_pass_id: string; p_refunded_at: string }
+        Returns: boolean
+      }
       agent_pass_grant: {
         Args: {
           p_amount_cents: number
