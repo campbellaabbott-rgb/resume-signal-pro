@@ -39,8 +39,12 @@
 -- get_company_intel: the employer's postings carry the source rule; the
 --   headcount join follows them (it took max(employee_count) over every
 --   merged token); the snapshot series reads the boards those postings name
---   plus the lander's own board (snapshots carry no source); and the answer
---   gains open_by_source, open roles on THIS token per hiring system.
+--   plus the lander's own board (snapshots carry no source), and for a
+--   Workday token every Workday site of its tenant, as the wave-3 body did:
+--   a site whose roles all came down this week has no serving posting left
+--   to name it, and its fall belongs in the tenant's week (a Workday-shaped
+--   token is only ever Workday, so that arm pools no other vendor); and the
+--   answer gains open_by_source, open roles on THIS token per hiring system.
 -- get_similar_companies: the dominant field is read from the employer's own
 --   postings under the rule, and the exclusion names the employer's own
 --   boards by token, so the category scan stays index-only on
@@ -234,7 +238,10 @@ AS $$
   snaps AS MATERIALIZED (
     SELECT s.snapshot_date, sum(s.open_roles)::int AS open_roles
     FROM public.job_board_company_snapshots s
-    WHERE (s.company_token = p_token OR s.company_token IN (SELECT DISTINCT company_token FROM posts))
+    WHERE (s.company_token = p_token
+           OR s.company_token IN (SELECT DISTINCT company_token FROM posts)
+           OR (p_token ~ '^[^~]+~wd[0-9]+~' AND s.company_token ~ '^[^~]+~wd[0-9]+~'
+               AND split_part(s.company_token, '~', 1) = split_part(p_token, '~', 1)))
       AND s.snapshot_date >= current_date - 7
     GROUP BY s.snapshot_date
   ),

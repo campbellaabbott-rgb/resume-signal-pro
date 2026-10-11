@@ -202,6 +202,43 @@ describe("the 1,249 pooled UKG and EU boards each read their own intel", () => {
   });
 });
 
+describe("the week's series keeps a tenant's site whose roles all came down", () => {
+  // acme~wd1~Careers serves 10 roles all week; acme~wd1~Stores served 40 six
+  // days ago and none today (every posting marked missing yesterday). The
+  // wave-3 reader summed every Workday site of the tenant, so net_7d said the
+  // tenant lost 40 roles. The re-keyed reader chose snapshot boards from the
+  // 30-day serving postings, so a site whose roles all closed this week fell
+  // out of its own series and net_7d said 0.
+  const WD_SEED = `
+    INSERT INTO public.job_board_postings (id, source, company_token, company, category, country, salary_currency, salary_min_annual, missing_since, effective_posted) VALUES
+    ${[
+      ...posts("workday", "acmewd~wd1~Careers", "Acme", 10, 50000, "operations"),
+      ...Array.from({ length: 40 }, (_, i) => `('workday:acmewd~wd1~Stores:${i}', 'workday', 'acmewd~wd1~Stores', 'Acme', 'retail', 'US', 'USD', 30000, now() - interval '1 day', now() - interval '9 days')`),
+      ...posts("greenhouse", "acmewd", "Acme Sports", 3, 40000, "retail"),
+    ].join(",\n    ")};
+    INSERT INTO public.job_board_company_snapshots (company_token, snapshot_date, open_roles) VALUES
+      ('acmewd~wd1~Careers', current_date - 6, 10), ('acmewd~wd1~Careers', current_date, 10),
+      ('acmewd~wd1~Stores', current_date - 6, 40), ('acmewd~wd1~Stores', current_date, 0),
+      ('acmewd', current_date - 6, 50), ('acmewd', current_date, 3);
+  `;
+  let b: PGlite, a: PGlite;
+  beforeAll(async () => {
+    [b, a] = await Promise.all([boot("wave3"), boot("fix")]);
+    await b.exec(WD_SEED);
+    await a.exec(WD_SEED);
+  });
+
+  it("positive control: the wave-3 reader counted the closed site's 40 roles in the tenant's week", async () => {
+    expect((await intel(b, "acmewd~wd1~Careers")).net_7d).toBe(-40);
+  });
+
+  it("the re-keyed reader still counts them, and still keeps a plain slug on another vendor out", async () => {
+    expect((await intel(a, "acmewd~wd1~Careers")).net_7d, "a site whose roles all closed fell out of its tenant's series").toBe(-40);
+    expect((await intel(a, "acmewd~wd1~Stores")).net_7d).toBe(-40);
+    expect((await intel(a, "acmewd")).net_7d, "the Greenhouse board read the Workday tenant's snapshots").toBe(-47);
+  });
+});
+
 describe("similar employers exclude the employer itself and no one else", () => {
   it("a Workday tenant's list names neither of its sites; the board that only shares its name is another employer", async () => {
     const list = await similar(after, BX_SITE);
