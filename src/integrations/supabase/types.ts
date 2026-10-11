@@ -477,6 +477,7 @@ export type Database = {
           purchased_at: string
           rate_per_min: number
           session_hours: number
+          settled_at: string | null
           shelf_expires_at: string
           stripe_payment_intent_id: string | null
           stripe_session_id: string
@@ -498,6 +499,7 @@ export type Database = {
           purchased_at?: string
           rate_per_min: number
           session_hours: number
+          settled_at?: string | null
           shelf_expires_at: string
           stripe_payment_intent_id?: string | null
           stripe_session_id: string
@@ -519,6 +521,7 @@ export type Database = {
           purchased_at?: string
           rate_per_min?: number
           session_hours?: number
+          settled_at?: string | null
           shelf_expires_at?: string
           stripe_payment_intent_id?: string | null
           stripe_session_id?: string
@@ -4974,6 +4977,11 @@ export type Database = {
           window_days: number
         }[]
       }
+      agent_pass_packet_gives_back: {
+        Args: { s: Database["public"]["Tables"]["agent_submissions"]["Row"] }
+        Returns: boolean
+      }
+      agent_pass_settle: { Args: { p_pass_id: string }; Returns: number }
       agent_prepare_now: { Args: never; Returns: boolean }
       agent_queue_enqueue: {
         Args: {
@@ -5195,6 +5203,7 @@ export type Database = {
       cleanup_expired_temp_resumes: { Args: never; Returns: number }
       cleanup_old_rate_limits: { Args: never; Returns: number }
       client_callable_census: { Args: never; Returns: Json }
+      client_callable_unlisted_names: { Args: never; Returns: Json }
       client_write_allowed: {
         Args: {
           p_ceiling: number

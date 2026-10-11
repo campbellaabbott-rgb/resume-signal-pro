@@ -883,6 +883,34 @@
       "when": 1791672671616,
       "tag": "0125_20261008131000_a_refunded_payment_takes_back_what_it_bought",
       "breakpoints": true
+    },
+    {
+      "idx": 126,
+      "version": "7",
+      "when": 1791678600877,
+      "tag": "0126_20261008131500_a_signed_in_account_reads_its_pass_and_never_writes_it",
+      "breakpoints": true
+    },
+    {
+      "idx": 127,
+      "version": "7",
+      "when": 1791678676114,
+      "tag": "0127_20261008132000_a_closed_pass_gives_back_every_application_it_never_sent",
+      "breakpoints": true
+    },
+    {
+      "idx": 128,
+      "version": "7",
+      "when": 1791678697897,
+      "tag": "0128_20261008140000_the_takedown_ticker_no_longer_says_the_change_feed_counts_higher",
+      "breakpoints": true
+    },
+    {
+      "idx": 129,
+      "version": "7",
+      "when": 1791678717975,
+      "tag": "0129_20261008141000_the_owner_can_read_which_client_callable_definers_no_list_names",
+      "breakpoints": true
     }
   ]
 }
