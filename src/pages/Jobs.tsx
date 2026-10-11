@@ -58,6 +58,7 @@ import { useProSubscription } from "@/hooks/use-pro-subscription";
 import { SUBSCRIPTIONS } from "@/config/products";
 import { CompanyClaim } from "@/components/jobs/CompanyClaim";
 import { CompanyIntelPanel } from "@/components/jobs/CompanyIntelPanel";
+import { CompanyPerks } from "@/components/jobs/CompanyPerks";
 import { PublicCompanyCard } from "@/components/jobs/PublicCompanyCard";
 import { DeclaredWagesCard } from "@/components/jobs/DeclaredWagesCard";
 import { EmployerContext } from "@/components/jobs/EmployerContext";
@@ -8720,6 +8721,10 @@ function JobsBoard({ boardId }: { boardId: string }) {
             </p>
           )}
           {landerCompany && <CompanyIntelPanel companyToken={landerCompany} />}
+          {/* Perks this employer's own open postings state, per country, as
+              checks whose basis opens on tap, hover or focus. Renders nothing
+              until a perk passes its audit (company profiles phase 2). */}
+          {landerCompany && <CompanyPerks companyToken={landerCompany} />}
           {/* SEC-sourced financial context for US-listed employers. */}
           {landerCompany && <PublicCompanyCard companyToken={landerCompany} />}
           {/* DOL-sourced declared wages (H-1B filings) — labeled, never
