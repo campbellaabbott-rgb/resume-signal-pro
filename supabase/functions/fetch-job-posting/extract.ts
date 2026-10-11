@@ -47,6 +47,35 @@ function unescapeOnce(s: string): string {
   });
 }
 
+// EVERY SCAN HERE IS ONE PASS (review of S11-032). A lazy [\s\S]*? run from
+// each of N unclosed openers reads to the end of the page N times: 560 KB of
+// unclosed ld+json script tags took 2.9 s, and the 3 MB cap let in pages worth
+// about 80 s of CPU on a host an employer controls. Blocks are found with
+// indexOf, and a tag pattern never runs across another "<".
+
+/**
+ * Script, style, noscript and template bodies and comments, dropped in one
+ * pass. An unclosed one runs to the end of the page, as a browser reads it.
+ */
+function dropBlocks(s: string): string {
+  const lower = s.toLowerCase();
+  const opener = /<(script|style|noscript|template)\b|<!--/g;
+  let out = "";
+  let at = 0;
+  for (;;) {
+    opener.lastIndex = at;
+    const m = opener.exec(lower);
+    if (!m) return out + s.slice(at);
+    out += `${s.slice(at, m.index)} `;
+    const end = lower.indexOf(m[1] ? `</${m[1]}` : "-->", m.index + m[0].length);
+    if (end < 0) return out;
+    if (!m[1]) { at = end + 3; continue; }
+    const gt = lower.indexOf(">", end);
+    if (gt < 0) return out;
+    at = gt + 1;
+  }
+}
+
 /**
  * HTML (or HTML escaped once more, as Greenhouse's API sends it) to plain
  * text: block ends and list items become line breaks, every tag goes, spaces
@@ -56,13 +85,11 @@ export function htmlToText(html: string): string {
   let s = html || "";
   // Escaped markup (&lt;p&gt;) is unescaped first so its tags are seen as tags.
   if (/&lt;\/?[a-z]/i.test(s)) s = unescapeOnce(s);
-  s = s
-    .replace(/<(script|style|noscript|template)\b[\s\S]*?<\/\1\s*>/gi, " ")
-    .replace(/<!--[\s\S]*?-->/g, " ")
+  s = dropBlocks(s)
     .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<li\b[^>]*>/gi, "\n• ")
+    .replace(/<li\b[^<>]*>/gi, "\n• ")
     .replace(/<\/(p|div|li|ul|ol|h[1-6]|tr|section|article|blockquote)\s*>/gi, "\n")
-    .replace(/<[^>]+>/g, " ");
+    .replace(/<[^<>]+>/g, " ");
   s = unescapeOnce(s);
   return s
     .replace(/\r/g, "")
@@ -94,13 +121,29 @@ function nodes(v: unknown, out: Array<Record<string, unknown>> = [], depth = 0):
   return out;
 }
 
+/** Each ld+json script body on a page, in order, found in one pass. */
+function ldJsonBodies(html: string): string[] {
+  const lower = html.toLowerCase();
+  const out: string[] = [];
+  let at = 0;
+  for (;;) {
+    const open = lower.indexOf("<script", at);
+    if (open < 0) return out;
+    const gt = lower.indexOf(">", open);
+    if (gt < 0) return out;
+    const close = lower.indexOf("</script", gt);
+    if (close < 0) return out;
+    if (/type\s*=\s*["']?application\/ld\+json/.test(lower.slice(open, gt))) out.push(html.slice(gt + 1, close));
+    at = close + 8;
+  }
+}
+
 /** The page's schema.org JobPosting, read as a search engine reads it; null when it has none. */
 export function jobPostingFromHtml(html: string): Posting | null {
-  const re = /<script[^>]*type\s*=\s*["']?application\/ld\+json["']?[^>]*>([\s\S]*?)<\/script>/gi;
-  for (const m of (html || "").matchAll(re)) {
+  for (const body of ldJsonBodies(html || "")) {
     let parsed: unknown;
     try {
-      parsed = JSON.parse(m[1].trim().replace(/^<!\[CDATA\[|\]\]>$/g, ""));
+      parsed = JSON.parse(body.trim().replace(/^<!\[CDATA\[|\]\]>$/g, ""));
     } catch {
       continue;
     }
@@ -276,15 +319,17 @@ export function apiPlanFor(u: URL, vendor: string): ApiPlan | null {
  */
 export function vendorPageText(html: string, vendor: string): Posting | null {
   if (vendor === "ukg") {
-    const m = /CandidateOpportunityDetail\((\{[\s\S]*?\})\);/.exec(html || "");
-    const j = m ? json(m[1]) : null;
+    const page = html || "";
+    const at = page.indexOf("CandidateOpportunityDetail({");
+    const end = at < 0 ? -1 : page.indexOf("});", at);
+    const j = end < 0 ? null : json(page.slice(at + "CandidateOpportunityDetail(".length, end + 1));
     return j ? posting(j.Title, null, str(j.Description)) : null;
   }
   if (vendor === "jazzhr") {
-    const start = /id=["']job-description["'][^>]*>/i.exec(html || "");
+    const start = /id=["']job-description["'][^<>]*>/i.exec(html || "");
     if (!start) return null;
     const rest = html.slice((start.index ?? 0) + start[0].length);
-    const end = /<div[^>]*class=["'][^"']*col-xs-5|class=["']page-footer|id=["']job-application|id=["']resumator-mobile-apply-button/i.exec(rest);
+    const end = /<div[^<>]*class=["'][^"']*col-xs-5|class=["']page-footer|id=["']job-application|id=["']resumator-mobile-apply-button/i.exec(rest);
     // The page title reads "<role> - <employer> - Career Page".
     const head = (/<title>([^<]*)<\/title>/i.exec(html)?.[1] ?? "").split(" - ");
     return posting(head[0] || null, head.length > 2 ? head[1] : null, end ? rest.slice(0, end.index) : rest.slice(0, 200_000));

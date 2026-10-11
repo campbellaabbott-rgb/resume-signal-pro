@@ -119,8 +119,11 @@ export function isPublicAddress(raw: string): boolean {
 
 // ── resolution ───────────────────────────────────────────────────────────────
 
-/** Every address a name has (A and AAAA); throws when the name does not resolve. */
-export type Resolver = (host: string) => Promise<string[]>;
+/**
+ * Every address a name has (A and AAAA); throws when the name does not
+ * resolve. The signal aborts when the fetch's deadline passes.
+ */
+export type Resolver = (host: string, signal?: AbortSignal) => Promise<string[]>;
 
 export type Refusal =
   | "dns_failed" | "blocked_address" | "not_https" | "unsupported_host" | "bad_url"
@@ -130,13 +133,28 @@ class Refused extends Error {
   constructor(readonly reason: Refusal, readonly status?: number) { super(reason); }
 }
 
-/** All of a name's addresses, each one public, or a refusal. */
-async function publicAddresses(host: string, resolve: Resolver): Promise<string[]> {
+/**
+ * All of a name's addresses, each one public, or a refusal. The answer races
+ * the fetch's own deadline: a resolver that is slow, or never answers, costs
+ * no more time than a slow server (review of S11-032).
+ */
+async function publicAddresses(host: string, resolve: Resolver, deadline: number, signal: AbortSignal): Promise<string[]> {
+  const left = deadline - Date.now();
+  if (left <= 0) throw new Refused("timeout");
   let addrs: string[];
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    addrs = await resolve(host);
-  } catch {
-    throw new Refused("dns_failed");
+    const asked = resolve(host, signal);
+    asked.catch(() => {});
+    const late = new Promise<"timeout">((r) => { timer = setTimeout(() => r("timeout"), left); });
+    const got = await Promise.race([asked, late]);
+    if (got === "timeout") throw new Refused("timeout");
+    addrs = got;
+  } catch (e) {
+    if (e instanceof Refused) throw e;
+    throw new Refused(Date.now() >= deadline ? "timeout" : "dns_failed");
+  } finally {
+    clearTimeout(timer);
   }
   if (!addrs.length) throw new Refused("dns_failed");
   if (!addrs.every(isPublicAddress)) throw new Refused("blocked_address");
@@ -148,7 +166,7 @@ async function publicAddresses(host: string, resolve: Resolver): Promise<string[
 export type SafeFetchDeps = {
   fetch: (url: string, init: RequestInit) => Promise<Response>;
   resolve: Resolver;
-  /** Milliseconds for the whole fetch, every hop and every body byte included. */
+  /** Milliseconds for the whole fetch, every hop, every name lookup and every body byte included. */
   deadlineMs?: number;
   maxBytes?: number;
   maxRedirects?: number;
@@ -212,7 +230,7 @@ export async function safeFetch(start: string, deps: SafeFetchDeps, accept = "te
     for (let hop = 0; ; hop++) {
       const checked = checkFetchUrl(url);
       if (checked.ok === false) return { ok: false, reason: checked.reason };
-      await publicAddresses(url.hostname, deps.resolve);
+      await publicAddresses(url.hostname, deps.resolve, deadline, ctrl.signal);
       let res: Response;
       let headersTimer: ReturnType<typeof setTimeout> | undefined;
       try {
@@ -241,7 +259,7 @@ export async function safeFetch(start: string, deps: SafeFetchDeps, accept = "te
       // THE REBINDING CHECK: the name is asked again now the request has gone.
       // An answer that turned private since the first look gets nothing read.
       try {
-        await publicAddresses(url.hostname, deps.resolve);
+        await publicAddresses(url.hostname, deps.resolve, deadline, ctrl.signal);
       } catch (e) {
         await res.body?.cancel().catch(() => {});
         throw e;
@@ -271,7 +289,7 @@ export async function safeFetch(start: string, deps: SafeFetchDeps, accept = "te
 
 // ── the runtime's resolver ───────────────────────────────────────────────────
 
-type DnsApi = { resolveDns?: (name: string, type: "A" | "AAAA") => Promise<string[]> };
+type DnsApi = { resolveDns?: (name: string, type: "A" | "AAAA", options?: { signal?: AbortSignal }) => Promise<string[]> };
 
 /**
  * The edge runtime's own resolver (Deno.resolveDns), A and AAAA together. A
@@ -281,11 +299,11 @@ type DnsApi = { resolveDns?: (name: string, type: "A" | "AAAA") => Promise<strin
  */
 export function runtimeResolver(fetchImpl: (url: string, init: RequestInit) => Promise<Response>): Resolver {
   const deno = (globalThis as { Deno?: DnsApi }).Deno;
-  const viaDoh = async (host: string): Promise<string[]> => {
+  const viaDoh = async (host: string, signal?: AbortSignal): Promise<string[]> => {
     const ask = async (type: "A" | "AAAA"): Promise<string[]> => {
       const res = await fetchImpl(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(host)}&type=${type}`, {
         headers: { accept: "application/dns-json" },
-        signal: AbortSignal.timeout(3_000),
+        signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(3_000)]) : AbortSignal.timeout(3_000),
       });
       if (!res.ok) throw new Error(`doh ${res.status}`);
       const j = await res.json() as { Answer?: Array<{ type?: number; data?: string }> };
@@ -295,10 +313,10 @@ export function runtimeResolver(fetchImpl: (url: string, init: RequestInit) => P
     const [a, aaaa] = await Promise.all([ask("A"), ask("AAAA")]);
     return [...a, ...aaaa];
   };
-  return async (host: string): Promise<string[]> => {
-    if (typeof deno?.resolveDns !== "function") return await viaDoh(host);
+  return async (host: string, signal?: AbortSignal): Promise<string[]> => {
+    if (typeof deno?.resolveDns !== "function") return await viaDoh(host, signal);
     const one = async (type: "A" | "AAAA"): Promise<string[] | Error> => {
-      try { return await deno.resolveDns!(host, type); } catch (e) { return e instanceof Error ? e : new Error(String(e)); }
+      try { return await deno.resolveDns!(host, type, signal ? { signal } : undefined); } catch (e) { return e instanceof Error ? e : new Error(String(e)); }
     };
     const [a, aaaa] = await Promise.all([one("A"), one("AAAA")]);
     const got = [...(Array.isArray(a) ? a : []), ...(Array.isArray(aaaa) ? aaaa : [])];
@@ -307,7 +325,8 @@ export function runtimeResolver(fetchImpl: (url: string, init: RequestInit) => P
     // not implemented) is asked through DNS-over-HTTPS; a name that does not
     // exist stays a failure.
     const errs = [a, aaaa].filter((x): x is Error => x instanceof Error);
-    if (errs.length && errs.every((e) => !/NotFound|no data|not found|NXDOMAIN/i.test(`${e.name} ${e.message}`))) return await viaDoh(host);
+    if (signal?.aborted) throw new Error("lookup aborted");
+    if (errs.length && errs.every((e) => !/NotFound|no data|not found|NXDOMAIN/i.test(`${e.name} ${e.message}`))) return await viaDoh(host, signal);
     throw new Error("name does not resolve");
   };
 }

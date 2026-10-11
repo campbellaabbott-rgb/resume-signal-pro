@@ -8,7 +8,7 @@ register items: S11-032, S11-008, S11-020, S11-037. Verifier:
 
 | function | build | why |
 |---|---|---|
-| fetch-job-posting (NEW) | `fetch-job-posting.2026-10-09.1` | S11-032 |
+| fetch-job-posting (NEW) | `fetch-job-posting.2026-10-09.2` | S11-032 (the review round's clocks and one-pass scans: .2) |
 | free-keyword-scan | `free-keyword-scan.2026-10-09.4` | ignores a link sent as the job description |
 | free-keyword-scan-stream | `free-keyword-scan-stream.2026-10-09.4` | the same |
 | analyze-resume | `analyze-resume.2026-10-09.3` | the same, for the $5 analysis |
@@ -35,8 +35,11 @@ No migrations. No new SQL function: the fetcher calls `check_rate_limit` and
   public (private, loopback, link-local, CGNAT, multicast, documentation, IPv6
   ULA and link-local, IPv4 dressed as IPv6 are refused), checked before every
   request and again after its headers (rebinding); redirects followed by hand,
-  at most 3, each hop held to the whole rule; 3 MB and 9 s per read, body
-  included. Two meters before anything outbound: `check_rate_limit` (20 an
+  at most 3, each hop held to the whole rule; 3 MB and 9 s per request chain,
+  every name lookup and body byte included, and 12 s for the whole read (the
+  vendor API and the page share it). Only the first 1,000,000 characters of a
+  page are parsed, and every scan is one pass (review round: a resolver had no
+  clock, and the ld+json scan was quadratic). Two meters before anything outbound: `check_rate_limit` (20 an
   hour per address; a limiter error refuses) and the board's day
   (`job_board_anon_check`, the same bucket and caps job-board uses; fails open
   like the board). An unlisted host answers `unsupported_host` with no meter

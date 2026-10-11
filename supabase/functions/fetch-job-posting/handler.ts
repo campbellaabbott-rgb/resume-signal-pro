@@ -16,7 +16,7 @@
  * answer). Logs name the vendor and the outcome, never the link.
  */
 import { parseJobUrl } from "./hosts.ts";
-import { type Refusal, type SafeFetchDeps, safeFetch } from "./net-guard.ts";
+import { FETCH_DEADLINE_MS, type Refusal, type SafeFetchDeps, safeFetch } from "./net-guard.ts";
 import { apiPlanFor, jobPostingFromHtml, type Posting, vendorPageText } from "./extract.ts";
 import { meterFetch, type Rpc } from "./budget.ts";
 
@@ -30,16 +30,30 @@ export type Outcome =
   | { ok: true; posting: Posting; vendor: string; source: "vendor_api" | "json_ld" | "vendor_page"; url: string }
   | { ok: false; reason: Refusal | "no_description" };
 
-export type HandlerDeps = SafeFetchDeps & { rpc: Rpc; serviceKey: string };
+/**
+ * One read is at most two request chains (the vendor API, then the page),
+ * and they share one clock: each chain gets its own deadline or what is left
+ * of the read's, whichever is less. The scanner's client waits 25 s.
+ */
+export const READ_DEADLINE_MS = 12_000;
+/** The most page text handed to the extractors; the byte cap is separate and larger. */
+export const MAX_PARSE_CHARS = 1_000_000;
+export type ReadDeps = SafeFetchDeps & { readDeadlineMs?: number };
+export type HandlerDeps = ReadDeps & { rpc: Rpc; serviceKey: string };
 
 const reply = (body: Record<string, unknown>, status = 200, extra: Record<string, string> = {}) =>
   new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json", "Cache-Control": "no-store", ...extra } });
 
 /** Read one posting: its API first when the vendor has one, then its page. */
-export async function readPosting(url: URL, vendor: string, deps: SafeFetchDeps): Promise<Outcome> {
+export async function readPosting(url: URL, vendor: string, deps: ReadDeps): Promise<Outcome> {
+  const readDeadline = Date.now() + (deps.readDeadlineMs ?? READ_DEADLINE_MS);
+  const chain = (): SafeFetchDeps => ({
+    ...deps,
+    deadlineMs: Math.max(0, Math.min(deps.deadlineMs ?? FETCH_DEADLINE_MS, readDeadline - Date.now())),
+  });
   const plan = apiPlanFor(url, vendor);
   if (plan) {
-    const r = await safeFetch(plan.url, deps, "application/json");
+    const r = await safeFetch(plan.url, chain(), "application/json");
     if (r.ok === true) {
       const p = plan.read(r.body);
       if (p) return { ok: true, posting: p, vendor, source: "vendor_api", url: url.toString() };
@@ -49,11 +63,12 @@ export async function readPosting(url: URL, vendor: string, deps: SafeFetchDeps)
       return { ok: false, reason: r.reason };
     }
   }
-  const page = await safeFetch(url.toString(), deps);
+  const page = await safeFetch(url.toString(), chain());
   if (page.ok === false) return { ok: false, reason: page.reason };
-  const fromLd = jobPostingFromHtml(page.body);
+  const html = page.body.length > MAX_PARSE_CHARS ? page.body.slice(0, MAX_PARSE_CHARS) : page.body;
+  const fromLd = jobPostingFromHtml(html);
   if (fromLd) return { ok: true, posting: fromLd, vendor, source: "json_ld", url: url.toString() };
-  const fromPage = vendorPageText(page.body, vendor);
+  const fromPage = vendorPageText(html, vendor);
   if (fromPage) return { ok: true, posting: fromPage, vendor, source: "vendor_page", url: url.toString() };
   return { ok: false, reason: "no_description" };
 }

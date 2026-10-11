@@ -6,7 +6,7 @@ import { handleFetchJobPosting } from "./handler.ts";
 import { runtimeResolver } from "./net-guard.ts";
 
 // The build every response names (x-fn-build); see _shared/fn-build.ts.
-const FN_BUILD = "fetch-job-posting.2026-10-09.1";
+const FN_BUILD = "fetch-job-posting.2026-10-09.2";
 
 const fetchImpl = (url: string, init: RequestInit) => fetch(url, init);
 const resolve = runtimeResolver(fetchImpl);

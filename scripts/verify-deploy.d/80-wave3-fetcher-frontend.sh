@@ -23,7 +23,7 @@ echo "== 80. wave 3 round 2: the job-link fetcher, links ignored as job descript
 vd80_build() { # $1 fn -> the preflight's x-fn-build header
   curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$1" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//'
 }
-for PAIR in "fetch-job-posting|2026-10-09|1" "free-keyword-scan|2026-10-09|5" "free-keyword-scan-stream|2026-10-09|5" "analyze-resume|2026-10-09|62"; do
+for PAIR in "fetch-job-posting|2026-10-09|2" "free-keyword-scan|2026-10-09|5" "free-keyword-scan-stream|2026-10-09|5" "analyze-resume|2026-10-09|62"; do
   FN=${PAIR%%|*}; REST=${PAIR#*|}; DAY=${REST%%|*}; N=${REST#*|}
   H=$(vd80_build "$FN")
   if [ -z "$H" ]; then echo "FAIL  $FN preflight carries no x-fn-build (not deployed, or a bundle older than build stamps)"

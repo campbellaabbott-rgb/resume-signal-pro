@@ -30,7 +30,7 @@ import { checkFetchUrl, parseJobUrl, vendorOfHost } from "../../supabase/functio
 import { isPublicAddress, runtimeResolver, safeFetch, type SafeFetchDeps } from "../../supabase/functions/fetch-job-posting/net-guard";
 import { apiPlanFor, htmlToText, jobPostingFromHtml, vendorPageText } from "../../supabase/functions/fetch-job-posting/extract";
 import { boardAddressKey, boardBucket, boardNetworkOf, BOARD_ADDRESS_DAILY_CAP, BOARD_BUDGET_DEADLINE_MS, BOARD_BUILD_DAILY_CAP, BOARD_PROBE_DAILY_CAP, FETCHES_PER_ADDRESS_HOUR, RATE_WINDOW_MINUTES } from "../../supabase/functions/fetch-job-posting/budget";
-import { handleFetchJobPosting, type HandlerDeps } from "../../supabase/functions/fetch-job-posting/handler";
+import { handleFetchJobPosting, readPosting, type HandlerDeps } from "../../supabase/functions/fetch-job-posting/handler";
 import { addressKey, ADDRESS_DAILY_CAP, ANON_BUDGET_DEADLINE_MS, bucketFor, BUILD_DAILY_CAP, networkOf, PROBE_DAILY_CAP, type CountedCaller } from "../../supabase/functions/job-board/anon-budget";
 import { loadEdgeHandler } from "./helpers/edge-harness";
 
@@ -398,6 +398,66 @@ describe("the board's day is the board's own row", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Review of S11-032: the resolver had no clock (a 4 s resolver over three
+// redirects held a 9 s fetch for 32 s), the two request chains of one read had
+// one clock each, and the ld+json and script scans were quadratic (560 KB of
+// unclosed ld+json script tags took 2.9 s).
+describe("one clock per read, DNS and parsing included", () => {
+  const URL0 = "https://acme.recruitee.com/o/payroll-analyst";
+  const elapsed = async <T,>(f: () => Promise<T>): Promise<[T, number]> => {
+    const t0 = Date.now();
+    const v = await f();
+    return [v, Date.now() - t0];
+  };
+
+  it("a resolver that never answers ends at the deadline", async () => {
+    const [r, ms] = await elapsed(() => safeFetch(URL0, deps({ resolve: () => new Promise<string[]>(() => {}), deadlineMs: 300 })));
+    expect(r).toEqual({ ok: false, reason: "timeout" });
+    expect(ms).toBeLessThan(2_000);
+  });
+
+  it("slow DNS on every hop of a redirect chain still ends at the deadline", async () => {
+    let hop = 0;
+    const d = deps({
+      resolve: () => new Promise<string[]>((ok) => setTimeout(() => ok([PUBLIC_V4]), 250)),
+      fetch: async () => new Response("", { status: 302, headers: { location: `https://acme.recruitee.com/o/r${++hop}` } }),
+      deadlineMs: 600,
+    });
+    const [r, ms] = await elapsed(() => safeFetch(URL0, d));
+    expect(r).toEqual({ ok: false, reason: "timeout" });
+    expect(ms).toBeLessThan(1_400);
+  });
+
+  it("the vendor API and the page share the read's clock", async () => {
+    const d = { ...deps({ fetch: () => new Promise<Response>(() => {}), deadlineMs: 1_200 }), readDeadlineMs: 1_300 };
+    const [r, ms] = await elapsed(() => readPosting(new URL("https://boards.greenhouse.io/acme/jobs/123"), "greenhouse", d));
+    expect(r).toEqual({ ok: false, reason: "timeout" });
+    expect(ms).toBeLessThan(2_000);
+  });
+
+  it("a page of unclosed ld+json, script, comment and tag openers parses in linear time", () => {
+    const pages = [
+      '<script type="application/ld+json">'.repeat(16_000),
+      "<script>".repeat(40_000),
+      "<!--".repeat(80_000),
+      "<li<a".repeat(60_000),
+    ];
+    for (const html of pages) {
+      const t0 = Date.now();
+      expect(jobPostingFromHtml(html)).toBe(null);
+      htmlToText(html);
+      expect(Date.now() - t0, html.slice(0, 12)).toBeLessThan(400);
+    }
+  });
+
+  it("the scans still read what they read before", () => {
+    expect(jobPostingFromHtml(LD_PAGE)).toMatchObject({ title: "Senior Payroll Analyst", company: "Acme" });
+    expect(htmlToText("<p>a</p><script>var x = '<p>no</p>';</script><!-- c --><style>p{}</style><li>b")).toBe("a\n\n• b");
+    expect(htmlToText("x <script>never closed")).toBe("x");
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 describe("the runtime resolver", () => {
   it("asks A and AAAA, and a name with neither is a failure", async () => {
     const asked: string[] = [];
@@ -423,7 +483,7 @@ describe("the shipped bundle", () => {
       "https://esm.sh/@supabase/supabase-js@2": "export function createClient() { return globalThis.__fjpDb; }",
     });
     const pre = await handler(new Request("https://h.supabase.co/functions/v1/fetch-job-posting", { method: "OPTIONS" }));
-    expect(pre.headers.get("x-fn-build")).toBe("fetch-job-posting.2026-10-09.1");
+    expect(pre.headers.get("x-fn-build")).toBe("fetch-job-posting.2026-10-09.2");
     expect(pre.headers.get("access-control-allow-headers")).toMatch(/content-type/);
     const res = await handler(post("https://www.indeed.com/viewjob?jk=1"));
     expect(await res.json()).toEqual({ ok: false, reason: "unsupported_host" });
