@@ -1054,7 +1054,13 @@
       "tooManyAttempts": "Zu viele Versuche",
       "tooManyAttemptsDescription": "Bitte warte ein paar Minuten, bevor du es erneut versuchst.",
       "serviceTemporarilyUnavailable": "Dienst vorübergehend nicht verfügbar",
-      "serviceTemporarilyUnavailableDescription": "Unser Zahlungsdienst ist vorübergehend nicht verfügbar. Bitte versuche es in ein paar Minuten erneut."
+      "serviceTemporarilyUnavailableDescription": "Unser Zahlungsdienst ist vorübergehend nicht verfügbar. Bitte versuche es in ein paar Minuten erneut.",
+      "fileDamaged": "Diese Datei lässt sich nicht lesen",
+      "fileDamagedDescription": "Sie scheint beschädigt oder keine echte PDF- bzw. .docx-Datei zu sein. Speichere sie erneut, versuche das andere Format oder füge den Text deines Lebenslaufs ein.",
+      "fontUnreadable": "Die Buchstaben in diesem PDF lassen sich nicht lesen",
+      "fontUnreadableDescription": "Die Schrift ist keinen echten Zeichen zugeordnet. Lade stattdessen eine .docx-Datei hoch oder füge den Text deines Lebenslaufs ein.",
+      "unreadCharacters": "Einige Zeichen ließen sich nicht lesen",
+      "unreadCharactersDescription": "Wir haben {{count}} Zeichen ausgelassen, die dieses PDF nicht benennt. Für den genauesten Scan lade eine .docx-Datei hoch oder füge den Text deines Lebenslaufs ein."
     },
     "reportCrash": {
       "title": "Beim Anzeigen Ihres Berichts ist ein Fehler aufgetreten",
@@ -1063,7 +1069,8 @@
     "partialResults": {
       "title": "Teilergebnisse:",
       "ruleBased": "Unsere KI-Prüfung war kurz nicht erreichbar, daher beruht dieser Bericht nur auf automatischer Analyse. Scannen Sie in ein paar Minuten erneut für die vollständige, KI-personalisierte Version.",
-      "thin": "Die KI-Prüfung hat einige Abschnitte leer gelassen, daher hat die automatische Analyse sie ergänzt. Diese Version wurde nicht gespeichert, ein erneuter Scan erstellt also eine neue."
+      "thin": "Die KI-Prüfung hat einige Abschnitte leer gelassen, daher hat die automatische Analyse sie ergänzt. Diese Version wurde nicht gespeichert, ein erneuter Scan erstellt also eine neue.",
+      "thinUnfilled": "Die KI-Prüfung hat einige Abschnitte leer gelassen, daher sind sie ausgeblendet. Scannen Sie in ein paar Minuten erneut für den vollständigen Bericht."
     }
   },
   "miniPricingCards": {
@@ -5297,6 +5304,10 @@
     "behavioral": "Verhalten",
     "technical": "Fachlich",
     "situational": "Situativ",
-    "cultureFit": "Kulturelle Passung"
+    "cultureFit": "Kulturelle Passung",
+    "critical": "Kritisch",
+    "fiveMinutes": "5 Minuten",
+    "fifteenMinutes": "15 Minuten",
+    "thirtyMinutes": "30 Minuten"
   }
 }

@@ -196,7 +196,7 @@ export function ShareableScoreCard({
     const shareText = encodeURIComponent(
       `Just scored ${atsScore}/100 on my resume ATS scan! 📊\n\n` +
       `Industry: ${industry}\n` +
-      `Top Strength: ${topStrength}\n\n` +
+      (topStrength ? `Top Strength: ${topStrength}\n\n` : "") +
       `Get your free resume score → resumescanner.ai\n\n` +
       `#resume #jobsearch #career #ATS`
     );
@@ -313,9 +313,10 @@ export function ShareableScoreCard({
         )}
       </div>
 
-      {/* Top strength */}
-      <div 
-        style={{ 
+      {/* Top strength, only when the scan named one (S11-147) */}
+      {topStrength && (
+      <div
+        style={{
           padding: "16px",
           borderRadius: "12px",
           marginBottom: "24px",
@@ -326,6 +327,7 @@ export function ShareableScoreCard({
         <p style={{ color: "#22c55e", fontSize: "12px", fontWeight: "500", marginBottom: "4px" }}>Top Strength</p>
         <p style={{ color: "#fff", margin: 0 }}>{topStrength}</p>
       </div>
+      )}
 
       {/* Footer CTA */}
       <div style={{ textAlign: "center", paddingTop: "16px", borderTop: "1px solid rgba(255,255,255,0.1)" }}>

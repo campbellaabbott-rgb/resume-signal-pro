@@ -715,6 +715,37 @@ function countryWordNamesAUsTown(s: string): boolean {
 // the state-NAME pattern: Georgia is also a country.
 const P_US_STATE_CODE_LEADING =
   /^(AK|AR|AZ|CT|FL|IA|KS|KY|MN|NC|ND|NH|NJ|NM|NV|NY|RI|SD|TN|TX|UT|VT|WI|WV|WY|IL|MO)\s*[-–—]?\s+[A-Za-z]/;
+
+// THE STATE-FIRST FORM WRITTEN WITH ITS PUNCTUATION (register S11-027).
+//
+// "SD, Aberdeen", "MN, Alexandria", "WV, Ghent", "OH, Lima", "VA - Richmond":
+// the short list above wants whitespace after the code and leaves out VA, MA,
+// CA, PA, GA and OH, so these reached the bare-city table and were filed in
+// Britain, Egypt, Belgium and Peru (Sanford alone: 23 rows served as GB, 2 as
+// EG), and about 1.8k such rows carried no region_code, which the WARN filing
+// gate requires. An upper-case code followed by a comma or a dash is not an
+// English word in that position, so all fifty-one count here, and the US-
+// prefixed structured form ("US-TX-Houston") too. Two readings still win over
+// it: a leading ISO country code followed by that country's own city ("IN,
+// Chennai", "DE, Berlin", "CA, Toronto"), and a string that names a country in
+// words ("SD, Jinan, China").
+const P_US_STATE_CODE_LEADING_PUNCT = new RegExp(`^(${[...US_STATE_CODES].join("|")})\\s*[,\\-–—]\\s*(?=[A-Za-z])`);
+const P_US_PREFIXED_STATE = new RegExp(`^(?:US|USA)\\s*[-–—,]\\s*(${[...US_STATE_CODES].join("|")})\\s*(?:[-–—,]|$)`);
+
+/** The state a location's punctuated state-first form names ("SD, Aberdeen"), or null. */
+function leadingPunctuatedState(s: string): string | null {
+  const m = P_US_STATE_CODE_LEADING_PUNCT.exec(s);
+  if (!m) return null;
+  const firstPlace = s.slice(m[0].length).split(/[,;·|/]/)[0];
+  if (cityCountry(firstPlace) === m[1]) return null;
+  for (const [re, code] of COUNTRY_PATTERNS) if (code !== "US" && re.test(s)) return null;
+  return m[1];
+}
+
+/** The state a location's leading form states outright: "US-TX-Houston" or "SD, Aberdeen". */
+function leadingStatedState(s: string): string | null {
+  return P_US_PREFIXED_STATE.exec(s)?.[1] ?? leadingPunctuatedState(s);
+}
 const P_US_STATE_NAME = /\b(?:alabama|alaska|arizona|arkansas|california|colorado|connecticut|delaware|florida|hawaii|idaho|illinois|indiana|iowa|kansas|kentucky|louisiana|maine|maryland|massachusetts|michigan|minnesota|mississippi|missouri|montana|nebraska|nevada|new hampshire|new jersey|new mexico|new york|north carolina|north dakota|ohio|oklahoma|oregon|pennsylvania|rhode island|south carolina|south dakota|tennessee|texas|utah|vermont|virginia|washington|west virginia|wisconsin|wyoming)\b/i;
 const P_CA_PROV_NAME = /\b(?:ontario|quebec|british columbia|alberta|manitoba|saskatchewan|nova scotia|new brunswick|newfoundland)\b/i;
 
@@ -744,7 +775,12 @@ const P_CA_PROV_NAME = /\b(?:ontario|quebec|british columbia|alberta|manitoba|sa
 // country wins ("Bangalore, IN", "Berlin, DE", "Toronto, ON, CA"), and an
 // upper-case trailing US state code beats a country word earlier in the
 // string ("Mexico, MO", "Lake Wales, FL", "... Albany, NY"); "tunis" added.
-export const COUNTRY_MAP_VERSION = 8;
+// 9 (S11-027): a leading state code followed by a comma or a dash, any of the
+// fifty-one, and the "US-XX-" form, are the US ahead of the bare-city table
+// ("SD, Aberdeen" was GB, "OH, Lima" PE). Stored rows are re-derived as each
+// board is read again (the ingest recomputes country and region_code from the
+// location on every read); the backfill sweep re-runs the null-country rows.
+export const COUNTRY_MAP_VERSION = 9;
 const CITY_COUNTRY = new Map<string, string>([
   ["aarhus", "DK"],
   ["aberdeen", "GB"],
@@ -1085,6 +1121,20 @@ export function cityCountry(location: string): string | null {
 const P_TRAILING_CODE = /,\s*([A-Z]{2})(?:\s+\d{5}(?:-\d{4})?)?\s*$/;
 
 export function detectCountry(location: string | null | undefined): string | null {
+  return countryOf(location, true);
+}
+
+/**
+ * The country a location STATES, with no bare-city guess (register S11-027).
+ * The vendor's own alpha-2 code is refused when the display location
+ * contradicts it; a city-table reading of "Aberdeen" or "Alexandria" is a
+ * guess, not a contradiction, so it must never veto the employer's code.
+ */
+export function statedCountry(location: string | null | undefined): string | null {
+  return countryOf(location, false);
+}
+
+function countryOf(location: string | null | undefined, guessFromCity: boolean): string | null {
   if (!location) return null;
   const s = String(location).slice(0, 300);
   // The two measured US towns whose names are countries — see the docblock on
@@ -1106,11 +1156,14 @@ export function detectCountry(location: string | null | undefined): string | nul
       return "US";
     }
   }
+  // The state-first form with its punctuation (S11-027), ahead of the country
+  // words only because it already refuses a string that names a country.
+  if (leadingStatedState(s) !== null) return "US";
   for (const [re, code] of COUNTRY_PATTERNS) if (re.test(s)) return code;
   if (P_US_STATE_CODE.test(s) || P_US_STATE_NAME.test(s) || P_US_STATE_CODE_LEADING.test(s)) return "US";
   if (P_CA_PROV_CODE.test(s) || P_CA_PROV_NAME.test(s)) return "CA";
   if (/\bUS\b/.test(s)) return "US"; // "Remote - US", "US Remote" — after state codes so ", USA" paths won
-  return cityCountry(s);
+  return guessFromCity ? cityCountry(s) : null;
 }
 
 // ── THE SUBDIVISION WE ALREADY PARSED AND THREW AWAY ────────────────────────
@@ -1153,7 +1206,12 @@ export function detectCountry(location: string | null | undefined): string | nul
 // sweep if one is ever built. Cost of leaving them, from the review walk of
 // 2026-09-23 (6,144 live rows A/B-tested against both rules): 1,033 reach the
 // spelled-out-name branch and 17 of those — 1.65% — change under version 2.
-export const REGION_MAP_VERSION = 2;
+// 3 (S11-027): the "US-XX-City" form and the punctuated state-first form
+// ("SD, Sioux Falls") name their state; a leading code and a spelled-out state
+// that disagree name none. The list read's put("region_code", ...) in the
+// ingest writes a re-derived non-null region over a stored one on the board's
+// next visit, which is how the ~1.8k "ST, City" rows with no region get one.
+export const REGION_MAP_VERSION = 3;
 
 // The SAME 49 names P_US_STATE_NAME carries, as a map so the match can be
 // turned into a code. Georgia is absent here for the reason it is absent
@@ -1278,11 +1336,19 @@ export function detectRegion(
   // is unambiguous and trailing, and "Kansas City, MO" already resolves to MO
   // through it. The province branch is not changed either — of 180 rows that
   // reached it, zero named two different provinces.
+  // The structured "US-TX-Houston" form states its state outright (S11-027):
+  // ahead of the names, so "US-DC-Washington" is not read as Washington State.
+  const prefixed = P_US_PREFIXED_STATE.exec(s);
+  if (prefixed?.[1]) return `US-${prefixed[1]}`;
   const named = new Set<string>();
   for (const m of s.matchAll(new RegExp(P_US_STATE_NAME_CAP.source, "gi"))) {
     const c = US_STATE_NAME_TO_CODE[String(m[1]).toLowerCase()];
     if (c) named.add(c);
   }
+  // The punctuated state-first form ("SD, Sioux Falls") names its state
+  // unless a spelled-out state elsewhere in the string disagrees with it.
+  const lead = leadingPunctuatedState(s);
+  if (lead) return named.size === 0 || (named.size === 1 && named.has(lead)) ? `US-${lead}` : null;
   if (named.size > 1) return null;
   if (named.size === 1) return `US-${[...named][0]}`;
   const leading = P_US_STATE_CODE_LEADING.exec(s);
@@ -1459,7 +1525,9 @@ export function workdayDetailPlace(payload: unknown): WorkdayDetailPlace {
   // The two readings of the SAME claim: the country the payload names beside
   // the display location, and the country the display location itself names.
   const fromDescriptor = typeof descRaw === "string" ? detectCountry(descRaw) : null;
-  const fromLocation = location ? detectCountry(location) : null;
+  // What the display location STATES, never a bare-city guess (S11-027): the
+  // city table read "SD, Aberdeen" as Britain and nulled the vendor's own US.
+  const fromLocation = location ? statedCountry(location) : null;
   let country: string | null;
   if (code && (fromDescriptor || fromLocation)) {
     // Stated twice, disagreeing on either reading — refuse.

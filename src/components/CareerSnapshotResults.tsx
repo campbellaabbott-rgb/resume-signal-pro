@@ -364,7 +364,7 @@ export function CareerSnapshotResults({ data: stored }: CareerSnapshotResultsPro
                 <p className="text-sm text-muted-foreground mt-1">{fix.impact}</p>
                 <Badge variant="outline" className="mt-2 text-xs">
                   <Clock className="w-3 h-3 mr-1" />
-                  {fix.timeEstimate}
+                  {enumLabel(fix.timeEstimate)}
                 </Badge>
               </div>
             </div>

@@ -132,7 +132,7 @@ None beyond the deploy order above. Existing Shortlist demographics entered as f
 ## Rollback
 
 - **Functions.** Redeploy the previous builds listed in the verifier's FAIL lines. The previous Career Snapshot and Game Plan builds accept any four-key reply again.
-- **20261009111000.** Run:
+- **20261009112000 then 20261009111000** (the lockdown half was split out and held, S11-056). Run:
 
   ```sql
   DROP TRIGGER shortlist_candidates_guard ON public.shortlist_candidates;

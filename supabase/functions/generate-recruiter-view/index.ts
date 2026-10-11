@@ -8,7 +8,7 @@ import { clipField, modelSpendGate } from "../_shared/model-spend-gate.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-recruiter-view.2026-10-10.2";
+const FN_BUILD = "generate-recruiter-view.2026-10-10.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

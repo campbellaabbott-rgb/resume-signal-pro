@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useReportEnumLabel } from "@/hooks/use-report-enum-label";
 import { 
   CheckCircle2, 
   Loader2, 
@@ -165,6 +166,8 @@ const uiLanguage = (): string => { try { return localStorage.getItem('i18nextLng
 
 export default function ProductSuccess() {
   const { t } = useTranslation();
+  // A fixed-choice value (the Keyword Fix importance) in the reader's language (S11-149).
+  const enumLabel = useReportEnumLabel();
   const [searchParams] = useSearchParams();
   const [isVerifying, setIsVerifying] = useState(true);
   const [verificationError, setVerificationError] = useState<string | null>(null);
@@ -1345,7 +1348,7 @@ export default function ProductSuccess() {
                             <div className="flex items-center gap-2 mb-1">
                               <span className="font-semibold">{kw.keyword}</span>
                               <Badge variant={kw.importance === 'critical' ? 'destructive' : kw.importance === 'high' ? 'default' : 'secondary'} className="text-xs">
-                                {kw.importance}
+                                {enumLabel(kw.importance)}
                               </Badge>
                               <Badge variant="outline" className="text-xs">{kw.category}</Badge>
                             </div>

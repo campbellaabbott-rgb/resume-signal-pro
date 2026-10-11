@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Upload, FileText, X, Loader2, CheckCircle2, Sparkles, CreditCard, Linkedin, Target, Zap, Link, Table2, Download, ChevronDown, ChevronUp, ArrowDown } from "lucide-react";
 import { WalletPaymentBadge } from "./WalletPaymentBadge";
 import { SCAN_RESULTS_WITHIN_SECONDS } from "@/config/scan-timing";
@@ -157,6 +157,7 @@ interface ResumeUploaderProps {
   onClearResume?: () => void;
   isLoading?: boolean;
   isFreeScanLoading?: boolean;
+  /** Kept for callers; the page's own résumé text now decides (S11-030). */
   hasContent?: boolean;
   resumeText?: string;
   linkedInText?: string;
@@ -164,6 +165,14 @@ interface ResumeUploaderProps {
   jobDescriptionText?: string;
   onJobDescriptionTextChange?: (text: string) => void;
   onJobsChange?: (jobs: JobEntry[]) => void;
+  /**
+   * The page's word that the picked file is gone (register S11-030): bumped on
+   * a failed parse and on Clear, so this box never shows "uploaded" over a
+   * résumé the page does not hold.
+   */
+  uploadResetSignal?: number;
+  /** Bumped on Clear: the paste box empties with the page's résumé. */
+  pasteResetSignal?: number;
   streamingProgress?: {
     stage: string;
     message: string;
@@ -180,13 +189,14 @@ export function ResumeUploader({
   onClearResume,
   isLoading,
   isFreeScanLoading,
-  hasContent,
   resumeText = "",
   linkedInText = "",
   onLinkedInTextChange,
   jobDescriptionText = "",
   onJobDescriptionTextChange,
   onJobsChange,
+  uploadResetSignal = 0,
+  pasteResetSignal = 0,
   streamingProgress
 }: ResumeUploaderProps) {
   const { t } = useTranslation();
@@ -199,18 +209,41 @@ export function ResumeUploader({
   const [resumeMode, setResumeMode] = useState<"upload" | "paste">("upload");
   const [linkedInMode, setLinkedInMode] = useState<"upload" | "paste">("upload");
 
-  // Keep parent in sync with paste textarea so the UI matches the upload flow
+  // Keep parent in sync with paste textarea so the UI matches the upload flow.
+  //
+  // ONLY A CHANGED DRAFT IS SENT (register S11-031). The effect re-ran whenever
+  // the parent's handler changed identity, and that handler depends on the
+  // job description, so "Check against a posting" (which sets the JD) re-sent
+  // the unchanged draft and the handler nulled the report mid-rescan. And
+  // switching to an empty Paste tab sent "", erasing an uploaded résumé. The
+  // last value sent is remembered; an unchanged one, or an empty box nothing
+  // was ever typed into, is not sent.
+  const lastSentDraft = useRef<string | null>(null);
   useEffect(() => {
     if (!onResumeDraftChange) return;
     if (resumeMode !== "paste") return;
 
     const trimmed = textInput.trim();
+    if (trimmed === (lastSentDraft.current ?? "")) return;
     const timer = window.setTimeout(() => {
+      lastSentDraft.current = trimmed;
       onResumeDraftChange(trimmed);
     }, 250);
 
     return () => window.clearTimeout(timer);
   }, [resumeMode, textInput, onResumeDraftChange]);
+
+  // The page's resets (S11-030): a failed parse or Clear drops the picked
+  // file, and Clear empties the paste box too. The first render is no reset.
+  useEffect(() => {
+    if (uploadResetSignal > 0) setSelectedFile(null);
+  }, [uploadResetSignal]);
+  useEffect(() => {
+    if (pasteResetSignal > 0) {
+      lastSentDraft.current = "";
+      setTextInput("");
+    }
+  }, [pasteResetSignal]);
   const [linkedInFile, setLinkedInFile] = useState<File | null>(null);
   const [localLinkedInText, setLocalLinkedInText] = useState("");
   // Collapse optional sections by default on mobile
@@ -290,8 +323,11 @@ export function ResumeUploader({
     }
   }, [onFileSelect]);
 
+  // Removing the file removes the résumé it gave the page (S11-030): the scan
+  // and the $5 button follow the page's text, which would otherwise stay.
   const clearFile = () => {
     setSelectedFile(null);
+    onClearResume?.();
   };
 
   const handleLinkedInFileUpload = async (file: File) => {
@@ -487,11 +523,18 @@ export function ResumeUploader({
     onCheckout(finalLinkedInText || undefined, finalJobDescriptionText || undefined);
   };
 
-  // A résumé the page restored (reload, the board's "Check my fit", Account's
-  // rescan link) is shown as loaded and is what the scan sends, so it counts
-  // as content even though no file was picked in this mount.
-  const restoredResume = !!hasContent && resumeText.trim().length >= 100;
-  const canProceed = resumeMode === "upload" ? (!!selectedFile || restoredResume) : !!textInput.trim();
+  // THE PAGE'S TEXT IS THE TRUTH (register S11-030). This used to be
+  // `!!selectedFile`, the box's own pick: a click mid-parse, a failed parse,
+  // Clear, or parses landing out of order scanned nothing ("No resume
+  // provided" under "uploaded") or the PREVIOUS résumé, and sent it to the $5
+  // checkout. Now the upload side may proceed only once the page holds a
+  // résumé (a parsed file, or one it restored on reload or from the board)
+  // and is not still reading one.
+  const pageHasResume = resumeText.trim().length >= 100;
+  const canProceed = resumeMode === "upload" ? pageHasResume && !isLoading : !!textInput.trim();
+  // "Uploaded" only over a file the page has finished reading into a résumé.
+  const uploadReady = !!selectedFile && pageHasResume && !isLoading;
+  const uploadReading = !!selectedFile && !!isLoading;
   const hasLinkedInContent = linkedInMode === "upload" ? !!linkedInText : !!localLinkedInText.trim();
   const hasJobDescriptionContent = !!localJobDescriptionText.trim() || !!jobDescriptionText || !!jobDescriptionUrl.trim() || !!jobDescriptionFile;
 
@@ -585,10 +628,16 @@ export function ResumeUploader({
                   dragOver 
                     ? "border-primary bg-primary/5 scale-[1.01]" 
                     : "border-border/50 hover:border-primary/40 hover:bg-card/80 active:bg-card/90",
-                  selectedFile && "border-success/50 bg-success/5"
+                  uploadReady && "border-success/50 bg-success/5"
                 )}
               >
-                {selectedFile ? (
+                {uploadReading ? (
+                  <div className="space-y-3 animate-scale-in" aria-live="polite">
+                    <Loader2 className="w-7 h-7 text-primary animate-spin mx-auto" />
+                    <p className="text-sm font-medium text-foreground">{t('uploader.actions.processing')}</p>
+                    <p className="text-xs text-muted-foreground truncate">{selectedFile?.name}</p>
+                  </div>
+                ) : uploadReady && selectedFile ? (
                   <div className="space-y-4 animate-scale-in">
                     <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-success/10">
                       <CheckCircle2 className="w-7 h-7 text-success" />

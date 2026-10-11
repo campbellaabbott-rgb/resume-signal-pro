@@ -68,6 +68,7 @@ import { checkoutContext, getVisitorId } from "@/lib/track-transport";
 import { purchaseTerms } from "@/lib/purchase-terms";
 import { useBackForwardRestore } from "@/hooks/use-back-forward-restore";
 import { resilientCallers, callEdgeFunctionWithRetry, scanFailureKind } from "@/lib/resilient-edge-function";
+import { parseFailureCopy, parseNoticeCopy } from "@/lib/parse-failure-copy";
 import { prepareJobAnalysisScan } from "@/lib/job-analysis-scan";
 import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
 import { 
@@ -548,6 +549,16 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
   // market, so they get that market's standards instead of their residence's.
   const [targetCountry, setTargetCountry] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  // THE PAGE'S RÉSUMÉ IS THE ONE THE UPLOADER SHOWS (register S11-030). Each
+  // file read is numbered: an answer for a file the visitor has since
+  // replaced or cleared is dropped. The two signals tell the uploader to drop
+  // its picked file (a failed read, Clear) and to empty its paste box (Clear).
+  const parseSeqRef = useRef(0);
+  const [uploadResetSignal, setUploadResetSignal] = useState(0);
+  const [pasteResetSignal, setPasteResetSignal] = useState(0);
+  // The text the current résumé state holds, for the draft handler to tell a
+  // real edit from the same draft sent again (S11-031).
+  const resumeTextRef = useRef("");
   const [showFloatingScan, setShowFloatingScan] = useState(false); // Only true after fresh upload / paste-ready
   const [floatingScanTrigger, setFloatingScanTrigger] = useState(0);
   const [freeKeywordResult, setFreeKeywordResult] = useState<FreeKeywordResult | null>(null);
@@ -555,6 +566,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
   // crashed does not keep a later scan's report behind the notice (S8-117).
   const reportSeq = useRef(0);
   const reportBoundaryKey = useMemo(() => ++reportSeq.current, [freeKeywordResult]);
+  useEffect(() => { resumeTextRef.current = resumeText; }, [resumeText]);
   const [isCachedResult, setIsCachedResult] = useState(false);
 
   // Tell the hero's live scan counter a scan just finished so it refetches
@@ -894,6 +906,14 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
   }, [searchParams, toast, verifyPurchase]);
 
   const handleFileSelect = async (file: File) => {
+    // This read's number: a later pick or a Clear makes its answer stale.
+    const seq = ++parseSeqRef.current;
+    const current = () => seq === parseSeqRef.current;
+    // The file that did not become the page's résumé is dropped from the uploader too.
+    const failUpload = () => {
+      setSelectedFile(null);
+      setUploadResetSignal((n) => n + 1);
+    };
     // Fail fast on size before uploading anything — without this, an oversized
     // file uploads in full over the network only to be rejected by the server's
     // identical 10MB limit, wasting the user's time on a slow connection.
@@ -903,10 +923,15 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         description: t('homepage.toast.fileTooLargeDescription'),
         variant: "destructive",
       });
+      failUpload();
       return;
     }
 
     setSelectedFile(file);
+    // The previous résumé is not the one on screen any more: nothing may be
+    // scanned or bought from it while this file is read (S11-030).
+    setResumeText("");
+    setResumeMultiColumnDetected(undefined);
     setShowFloatingScan(true); // Show floating button on fresh upload
     setFloatingScanTrigger((v) => v + 1);
     setFreeKeywordResult(null); // Clear previous results
@@ -921,6 +946,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
 
     if (file.type === "text/plain") {
       const text = await file.text();
+      if (!current()) return;
       setResumeText(text);
       setResumeMultiColumnDetected(undefined); // No layout data for plain text
       saveResumeToSession(text); // Persist to session storage
@@ -937,18 +963,22 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         formData.append("file", file);
 
         const result = await resilientCallers.parsePdf(formData);
+        if (!current()) return;
 
         if (result.error) {
+          // A damaged file or an unreadable font says so in the visitor's
+          // language (S11-033, S11-035); anything else keeps the caller's words.
+          const copy = parseFailureCopy(t, result.errorBody);
           toast({
-            title: result.error.title,
-            description: result.error.description,
+            title: copy?.title ?? result.error.title,
+            description: copy?.description ?? result.error.description,
             variant: "destructive",
           });
-          setSelectedFile(null);
+          failUpload();
           return;
         }
 
-        const data = result.data as { success?: boolean; text?: string; pages?: number; error?: string; multiColumnDetected?: boolean };
+        const data = result.data as { success?: boolean; text?: string; pages?: number; error?: string; multiColumnDetected?: boolean; notice?: string; unreadCharacters?: number };
         if (data?.success && data?.text) {
           setResumeText(data.text);
           setResumeMultiColumnDetected(data.multiColumnDetected);
@@ -956,7 +986,10 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
           preStoreResume(data.text); // Pre-store server-side for faster checkout
           triggerBackgroundScan(data.text, jobDescriptionText, honeypot); // Start background scan
           trackUploadCompleted(file.size, Date.now());
-          toast({
+          // Characters the PDF does not name were left out: say so, and how to
+          // get them read (S11-035).
+          const notice = parseNoticeCopy(t, data);
+          toast(notice ?? {
             title: t('homepage.toast.pdfParsedSuccess'),
             description: t('homepage.toast.pdfParsedSuccessDescription', { pages: data.pages }),
           });
@@ -964,6 +997,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
           throw new Error(data?.error || "Failed to parse PDF");
         }
       } catch (error) {
+        if (!current()) return;
         console.error("PDF parsing error:", error);
         toast({
           title: t('homepage.toast.pdfParsingFailed'),
@@ -972,9 +1006,9 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
             : t('homepage.toast.pdfParsingFailedDescription'),
           variant: "destructive",
         });
-        setSelectedFile(null);
+        failUpload();
       } finally {
-        setIsLoading(false);
+        if (current()) setIsLoading(false);
       }
       return;
     }
@@ -989,14 +1023,16 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         formData.append("file", file);
 
         const result = await resilientCallers.parseDocx(formData);
+        if (!current()) return;
 
         if (result.error) {
+          const copy = parseFailureCopy(t, result.errorBody);
           toast({
-            title: result.error.title,
-            description: result.error.description,
+            title: copy?.title ?? result.error.title,
+            description: copy?.description ?? result.error.description,
             variant: "destructive",
           });
-          setSelectedFile(null);
+          failUpload();
           return;
         }
 
@@ -1016,6 +1052,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
           throw new Error(data?.error || "Failed to parse DOCX");
         }
       } catch (error) {
+        if (!current()) return;
         console.error("DOCX parsing error:", error);
         toast({
           title: t('homepage.toast.docParsingFailed'),
@@ -1024,9 +1061,9 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
             : t('homepage.toast.docParsingFailedDescription'),
           variant: "destructive",
         });
-        setSelectedFile(null);
+        failUpload();
       } finally {
-        setIsLoading(false);
+        if (current()) setIsLoading(false);
       }
       return;
     }
@@ -1039,7 +1076,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
       description: t('homepage.toast.unsupportedFileTypeDescription'),
       variant: "destructive",
     });
-    setSelectedFile(null);
+    failUpload();
   };
 
   const handleFreeScan = async (skipCacheArg?: unknown, jdOverride?: string) => {
@@ -1659,8 +1696,14 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
 
   // Clear resume and start fresh
   const handleClearResume = useCallback(() => {
+    // A read still in flight answers for a résumé that was just cleared.
+    parseSeqRef.current++;
+    setIsLoading(false);
     setResumeText("");
     setSelectedFile(null);
+    // The uploader drops its file and empties its paste box (S11-030).
+    setUploadResetSignal((n) => n + 1);
+    setPasteResetSignal((n) => n + 1);
     setFreeKeywordResult(null);
     setShowFloatingScan(false);
     clearResumeSession();
@@ -1694,6 +1737,9 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
   // For paste mode: keep the preview + floating CTAs in sync with the textarea (no checkout yet)
   const handleResumeDraftChange = useCallback((draft: string) => {
     const normalized = draft.trim();
+    // The same draft again is no edit (S11-031): it must not throw away the
+    // report built from it, nor the caches.
+    if (normalized === resumeTextRef.current.trim()) return;
     setResumeText(normalized);
     setFreeKeywordResult(null);
     // The text changed: a purchase may not be made from the stored older copy.
@@ -2109,6 +2155,8 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
           jobDescriptionText={jobDescriptionText}
           onJobDescriptionTextChange={setJobDescriptionText}
           onJobsChange={setUploadedJobs}
+          uploadResetSignal={uploadResetSignal}
+          pasteResetSignal={pasteResetSignal}
           streamingProgress={streamingProgress}
         />
         

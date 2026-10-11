@@ -1,24 +1,16 @@
 // deploy-stamp: 2026-07-04T18:44Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-// mammoth's type defs export no default (TS1192); esm.sh's CJS shim serves
-// both shapes at runtime, so take the namespace and prefer .default if the
-// shim provides one — identical runtime behavior, type-checkable.
-import * as mammothNs from "https://esm.sh/mammoth@1.6.0";
-const mammoth = (mammothNs as unknown as { default?: typeof mammothNs }).default ?? mammothNs;
-// The same zip reader mammoth uses. Its d.ts exports no default (TS1192), as
-// with mammoth above: take the namespace and prefer .default at runtime.
-import * as jszipNs from "https://esm.sh/jszip@3.10.1";
-const JSZip = ((jszipNs as unknown as { default?: unknown }).default ?? jszipNs) as unknown as {
-  loadAsync(data: Uint8Array): Promise<unknown>;
-};
+// mammoth and the zip reader, at the versions this function deploys.
+import { JSZip, mammoth } from "./libs.ts";
+import { DamagedDocxError, readDocxBody } from "./docx-text.ts";
 import { looksGarbled, isOleCompoundFile } from "../_shared/text-validation.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
 import { headerFooterLines, withHeaderFooter, type ZipLike } from "./header-footer.ts";
 
 // Provable from outside without an upload: every response, the CORS preflight
 // included, carries this in x-fn-build.
-const FN_BUILD = "parse-docx.2026-10-05.1";
+const FN_BUILD = "parse-docx.2026-10-09.1";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -223,16 +215,15 @@ serve(async (req) => {
     // Uint8Array work under the `buffer` key, but Uint8Array is the safer,
     // more conventional choice for binary data in Deno.
     const docxBuffer = new Uint8Array(arrayBuffer);
-    // mammoth's d.ts wants a Node Buffer; the esm.sh shim accepts any
-    // Uint8Array at runtime (exercised by every production docx scan).
-    const result = await mammoth.extractRawText({ buffer: docxBuffer } as unknown as Parameters<typeof mammoth.extractRawText>[0]);
+    // Soft line breaks kept as lines (register S11-010); a zip or document
+    // that cannot be read throws DamagedDocxError, a 422 below (S11-033).
+    const result = await readDocxBody(docxBuffer, { mammoth, JSZip });
     // mammoth reads the body only; contact details in a page header or footer
     // are added back (register L5-07). A header that cannot be read is no
     // reason to fail an upload whose body was read.
-    let text = result.value.trim();
+    let text = result.body.trim();
     try {
-      const zip = await JSZip.loadAsync(docxBuffer);
-      text = withHeaderFooter(text, await headerFooterLines(zip as unknown as ZipLike)).trim();
+      text = withHeaderFooter(text, await headerFooterLines(result.zip as unknown as ZipLike)).trim();
     } catch (e) {
       console.warn("[PARSE-DOCX] Header/footer read skipped:", e instanceof Error ? e.message : String(e));
     }
@@ -310,24 +301,40 @@ serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error: unknown) {
-    trackPerformance(requestStartTime, 'parse-docx', false, { error: error instanceof Error ? error.message : 'Unknown' }, clientIp);
+    // A file that is not a readable .docx is the FILE's problem (register
+    // S11-033): a 500 made the browser retry it twice, open the parse circuit
+    // and refuse the visitor's next, valid file as "Document Parser
+    // Unavailable". It is a 422 that names the file.
+    const damaged = error instanceof DamagedDocxError;
+    trackPerformance(requestStartTime, 'parse-docx', false, { error: error instanceof Error ? error.message : 'Unknown', damaged }, clientIp);
     console.error("[PARSE-DOCX] Error:", error);
 
     // Log parse failure to database
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    
+
     EdgeRuntime.waitUntil(
       (async () => {
         await supabase.rpc('log_parse_failure', {
           p_file_type: 'docx',
-          p_error_code: 'parse_error',
+          p_error_code: damaged ? 'damaged_file' : 'parse_error',
           p_error_message: error instanceof Error ? error.message : 'Unknown error',
           p_visitor_id: clientIp
         });
       })()
     );
+
+    if (damaged) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          code: "damaged_file",
+          error: "This file looks damaged or isn't a real .docx. Please save it again as a .docx, upload a PDF, or paste your resume text instead.",
+        }),
+        { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     return new Response(
       JSON.stringify({

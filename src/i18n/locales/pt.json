@@ -1054,7 +1054,13 @@
       "tooManyAttempts": "Muitas tentativas",
       "tooManyAttemptsDescription": "Aguarde alguns minutos antes de tentar novamente.",
       "serviceTemporarilyUnavailable": "Serviço temporariamente indisponível",
-      "serviceTemporarilyUnavailableDescription": "O nosso serviço de pagamento está temporariamente fora do ar. Tente novamente em alguns minutos."
+      "serviceTemporarilyUnavailableDescription": "O nosso serviço de pagamento está temporariamente fora do ar. Tente novamente em alguns minutos.",
+      "fileDamaged": "Não foi possível ler este ficheiro",
+      "fileDamagedDescription": "Parece estar danificado ou não é um PDF ou .docx verdadeiro. Guarde-o novamente, experimente o outro formato ou cole o texto do seu currículo.",
+      "fontUnreadable": "Não é possível ler as letras deste PDF",
+      "fontUnreadableDescription": "O tipo de letra não corresponde a caracteres reais. Carregue antes um .docx ou cole o texto do seu currículo.",
+      "unreadCharacters": "Não foi possível ler alguns caracteres",
+      "unreadCharactersDescription": "Ignorámos {{count}} caracteres que este PDF não identifica. Para a análise mais precisa, carregue um .docx ou cole o texto do seu currículo."
     },
     "reportCrash": {
       "title": "Algo deu errado ao exibir seu relatório",
@@ -1063,7 +1069,8 @@
     "partialResults": {
       "title": "Resultados parciais:",
       "ruleBased": "nosso revisor de IA ficou indisponível por um momento, então este relatório usa apenas análise automática. Analise de novo em alguns minutos para a versão completa personalizada por IA.",
-      "thin": "a revisão de IA deixou algumas seções vazias, então a análise automática as preencheu. Esta versão não foi salva, então uma nova análise gera outra."
+      "thin": "a revisão de IA deixou algumas seções vazias, então a análise automática as preencheu. Esta versão não foi salva, então uma nova análise gera outra.",
+      "thinUnfilled": "a revisão de IA deixou algumas seções vazias, então elas estão ocultas. Analise de novo em alguns minutos para obter o relatório completo."
     }
   },
   "miniPricingCards": {
@@ -5297,6 +5304,10 @@
     "behavioral": "Comportamental",
     "technical": "Técnica",
     "situational": "Situacional",
-    "cultureFit": "Fit cultural"
+    "cultureFit": "Fit cultural",
+    "critical": "Crítica",
+    "fiveMinutes": "5 minutos",
+    "fifteenMinutes": "15 minutos",
+    "thirtyMinutes": "30 minutos"
   }
 }

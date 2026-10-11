@@ -45,8 +45,11 @@ async function letterSpacedHeaderPdf(): Promise<string> {
 describe("a letter-spaced header from a real PDF", () => {
   it("is read as the name, and the name is masked in the body too", async () => {
     const text = await letterSpacedHeaderPdf();
-    // What the parser hands Shortlist: the header's two words with a gap.
-    expect(text.split("\n")[0]).toMatch(/^CARLOS\s{2,}MENDES$/);
+    // What the parser hands Shortlist: the header's two words with a gap. Since
+    // parse-pdf joins a pdf.js space item without adding separators around it
+    // (S11-006), the gap is one space; the wider gaps other PDFs give are the
+    // shapes in the table below.
+    expect(text.split("\n")[0]).toMatch(/^CARLOS\s+MENDES$/);
     const r = redactForScoring(text);
     expect(r.redacted).not.toMatch(/carlos|mendes/i);
     expect(r.redacted).toContain("led a team of five engineers.");

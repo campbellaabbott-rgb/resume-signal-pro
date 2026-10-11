@@ -1054,7 +1054,13 @@
       "tooManyAttempts": "Sobrang dami ng pagsubok",
       "tooManyAttemptsDescription": "Maghintay ng ilang minuto bago subukan ulit.",
       "serviceTemporarilyUnavailable": "Pansamantalang hindi available ang serbisyo",
-      "serviceTemporarilyUnavailableDescription": "Pansamantalang down ang aming payment service. Pakisubukan ulit sa ilang minuto."
+      "serviceTemporarilyUnavailableDescription": "Pansamantalang down ang aming payment service. Pakisubukan ulit sa ilang minuto.",
+      "fileDamaged": "Hindi mabasa ang file na ito",
+      "fileDamagedDescription": "Mukhang sira ito o hindi tunay na PDF o .docx. I-save ulit, subukan ang ibang format, o i-paste ang teksto ng iyong resume.",
+      "fontUnreadable": "Hindi mabasa ang mga titik ng PDF na ito",
+      "fontUnreadableDescription": "Hindi tumutugma sa tunay na mga karakter ang font nito. Mag-upload na lang ng .docx o i-paste ang teksto ng iyong resume.",
+      "unreadCharacters": "May ilang karakter na hindi nabasa",
+      "unreadCharactersDescription": "Nilaktawan namin ang {{count}} karakter na hindi pinangalanan ng PDF na ito. Para sa pinakatumpak na scan, mag-upload ng .docx o i-paste ang teksto ng iyong resume."
     },
     "reportCrash": {
       "title": "May nagkamali sa pagpapakita ng iyong ulat",
@@ -1063,7 +1069,8 @@
     "partialResults": {
       "title": "Bahagyang resulta:",
       "ruleBased": "saglit na hindi available ang aming AI reviewer, kaya awtomatikong pagsusuri lang ang gamit ng ulat na ito. Mag-scan muli pagkalipas ng ilang minuto para sa buong bersyong naka-personalize ng AI.",
-      "thin": "may ilang seksyong iniwang blangko ang AI review, kaya pinunan ang mga ito ng awtomatikong pagsusuri. Hindi na-save ang bersyong ito, kaya gagawa ng bago ang muling pag-scan."
+      "thin": "may ilang seksyong iniwang blangko ang AI review, kaya pinunan ang mga ito ng awtomatikong pagsusuri. Hindi na-save ang bersyong ito, kaya gagawa ng bago ang muling pag-scan.",
+      "thinUnfilled": "may ilang seksyong iniwang blangko ang AI review, kaya nakatago ang mga ito. Mag-scan muli pagkalipas ng ilang minuto para sa buong ulat."
     }
   },
   "miniPricingCards": {
@@ -5297,6 +5304,10 @@
     "behavioral": "Pag-uugali",
     "technical": "Teknikal",
     "situational": "Sitwasyonal",
-    "cultureFit": "Pagkakatugma sa kultura"
+    "cultureFit": "Pagkakatugma sa kultura",
+    "critical": "Kritikal",
+    "fiveMinutes": "5 minuto",
+    "fifteenMinutes": "15 minuto",
+    "thirtyMinutes": "30 minuto"
   }
 }

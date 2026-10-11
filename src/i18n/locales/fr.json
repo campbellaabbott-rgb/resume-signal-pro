@@ -1054,7 +1054,13 @@
       "tooManyAttempts": "Trop de tentatives",
       "tooManyAttemptsDescription": "Veuillez attendre quelques minutes avant de réessayer.",
       "serviceTemporarilyUnavailable": "Service temporairement indisponible",
-      "serviceTemporarilyUnavailableDescription": "Notre service de paiement est temporairement hors service. Veuillez réessayer dans quelques minutes."
+      "serviceTemporarilyUnavailableDescription": "Notre service de paiement est temporairement hors service. Veuillez réessayer dans quelques minutes.",
+      "fileDamaged": "Impossible de lire ce fichier",
+      "fileDamagedDescription": "Il semble endommagé ou n'est pas un vrai PDF ou .docx. Enregistrez-le à nouveau, essayez l'autre format ou collez le texte de votre CV.",
+      "fontUnreadable": "Impossible de lire les lettres de ce PDF",
+      "fontUnreadableDescription": "Sa police ne correspond pas à de vrais caractères. Téléversez plutôt un .docx ou collez le texte de votre CV.",
+      "unreadCharacters": "Certains caractères n'ont pas pu être lus",
+      "unreadCharactersDescription": "Nous avons ignoré {{count}} caractères que ce PDF ne nomme pas. Pour l'analyse la plus précise, téléversez un .docx ou collez le texte de votre CV."
     },
     "reportCrash": {
       "title": "Un problème est survenu lors de l'affichage de votre rapport",
@@ -1063,7 +1069,8 @@
     "partialResults": {
       "title": "Résultats partiels :",
       "ruleBased": "notre relecteur IA a été brièvement indisponible, ce rapport repose donc uniquement sur l'analyse automatique. Relancez l'analyse dans quelques minutes pour la version complète personnalisée par l'IA.",
-      "thin": "la relecture IA a laissé certaines sections vides, l'analyse automatique les a donc complétées. Cette version n'a pas été enregistrée : une nouvelle analyse en produit une nouvelle."
+      "thin": "la relecture IA a laissé certaines sections vides, l'analyse automatique les a donc complétées. Cette version n'a pas été enregistrée : une nouvelle analyse en produit une nouvelle.",
+      "thinUnfilled": "la relecture IA a laissé certaines sections vides, elles sont donc masquées. Relancez l'analyse dans quelques minutes pour obtenir le rapport complet."
     }
   },
   "miniPricingCards": {
@@ -5297,6 +5304,10 @@
     "behavioral": "Comportementale",
     "technical": "Technique",
     "situational": "Situationnelle",
-    "cultureFit": "Adéquation culturelle"
+    "cultureFit": "Adéquation culturelle",
+    "critical": "Critique",
+    "fiveMinutes": "5 minutes",
+    "fifteenMinutes": "15 minutes",
+    "thirtyMinutes": "30 minutes"
   }
 }

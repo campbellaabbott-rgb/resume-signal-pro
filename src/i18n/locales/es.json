@@ -1054,7 +1054,13 @@
       "tooManyAttempts": "Demasiados intentos",
       "tooManyAttemptsDescription": "Espera unos minutos antes de volver a intentarlo.",
       "serviceTemporarilyUnavailable": "Servicio temporalmente no disponible",
-      "serviceTemporarilyUnavailableDescription": "Nuestro servicio de pago está temporalmente caído. Por favor, inténtalo de nuevo en unos minutos."
+      "serviceTemporarilyUnavailableDescription": "Nuestro servicio de pago está temporalmente caído. Por favor, inténtalo de nuevo en unos minutos.",
+      "fileDamaged": "No se puede leer este archivo",
+      "fileDamagedDescription": "Parece dañado o no es un PDF o .docx real. Guárdalo de nuevo, prueba el otro formato o pega el texto de tu currículum.",
+      "fontUnreadable": "No se pueden leer las letras de este PDF",
+      "fontUnreadableDescription": "Su fuente no corresponde a caracteres reales. Sube un .docx o pega el texto de tu currículum.",
+      "unreadCharacters": "Algunos caracteres no se pudieron leer",
+      "unreadCharactersDescription": "Omitimos {{count}} caracteres que este PDF no identifica. Para el análisis más preciso, sube un .docx o pega el texto de tu currículum."
     },
     "reportCrash": {
       "title": "Algo salió mal al mostrar tu informe",
@@ -1063,7 +1069,8 @@
     "partialResults": {
       "title": "Resultados parciales:",
       "ruleBased": "nuestro revisor de IA no estuvo disponible por un momento, así que este informe usa solo análisis automático. Vuelve a escanear en unos minutos para obtener la versión completa personalizada con IA.",
-      "thin": "la revisión de IA dejó algunas secciones vacías, así que el análisis automático las completó. Esta versión no se guardó, así que un nuevo escaneo genera una nueva."
+      "thin": "la revisión de IA dejó algunas secciones vacías, así que el análisis automático las completó. Esta versión no se guardó, así que un nuevo escaneo genera una nueva.",
+      "thinUnfilled": "la revisión de IA dejó algunas secciones vacías, así que se ocultan. Vuelve a escanear en unos minutos para obtener el informe completo."
     }
   },
   "miniPricingCards": {
@@ -5297,6 +5304,10 @@
     "behavioral": "Conductual",
     "technical": "Técnica",
     "situational": "Situacional",
-    "cultureFit": "Encaje cultural"
+    "cultureFit": "Encaje cultural",
+    "critical": "Crítica",
+    "fiveMinutes": "5 minutos",
+    "fifteenMinutes": "15 minutos",
+    "thirtyMinutes": "30 minutos"
   }
 }

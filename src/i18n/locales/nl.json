@@ -1054,7 +1054,13 @@
       "tooManyAttempts": "Te veel pogingen",
       "tooManyAttemptsDescription": "Wacht een paar minuten voordat je het opnieuw probeert.",
       "serviceTemporarilyUnavailable": "Service tijdelijk niet beschikbaar",
-      "serviceTemporarilyUnavailableDescription": "Onze betaalservice is tijdelijk niet beschikbaar. Probeer het over een paar minuten opnieuw."
+      "serviceTemporarilyUnavailableDescription": "Onze betaalservice is tijdelijk niet beschikbaar. Probeer het over een paar minuten opnieuw.",
+      "fileDamaged": "Dit bestand kan niet worden gelezen",
+      "fileDamagedDescription": "Het lijkt beschadigd of is geen echte PDF of .docx. Sla het opnieuw op, probeer het andere formaat of plak de tekst van je cv.",
+      "fontUnreadable": "De letters in deze PDF kunnen niet worden gelezen",
+      "fontUnreadableDescription": "Het lettertype verwijst niet naar echte tekens. Upload in plaats daarvan een .docx of plak de tekst van je cv.",
+      "unreadCharacters": "Sommige tekens konden niet worden gelezen",
+      "unreadCharactersDescription": "We hebben {{count}} tekens overgeslagen die deze PDF niet benoemt. Upload voor de nauwkeurigste scan een .docx of plak de tekst van je cv."
     },
     "reportCrash": {
       "title": "Er ging iets mis bij het tonen van je rapport",
@@ -1063,7 +1069,8 @@
     "partialResults": {
       "title": "Gedeeltelijke resultaten:",
       "ruleBased": "onze AI-beoordelaar was even niet bereikbaar, dus dit rapport gebruikt alleen automatische analyse. Scan over een paar minuten opnieuw voor de volledige, door AI gepersonaliseerde versie.",
-      "thin": "de AI-beoordeling liet enkele onderdelen leeg, dus automatische analyse heeft ze aangevuld. Deze versie is niet opgeslagen, dus een nieuwe scan maakt een nieuwe."
+      "thin": "de AI-beoordeling liet enkele onderdelen leeg, dus automatische analyse heeft ze aangevuld. Deze versie is niet opgeslagen, dus een nieuwe scan maakt een nieuwe.",
+      "thinUnfilled": "de AI-beoordeling liet enkele onderdelen leeg, dus die zijn verborgen. Scan over een paar minuten opnieuw voor het volledige rapport."
     }
   },
   "miniPricingCards": {
@@ -5297,6 +5304,10 @@
     "behavioral": "Gedrag",
     "technical": "Technisch",
     "situational": "Situationeel",
-    "cultureFit": "Culturele fit"
+    "cultureFit": "Culturele fit",
+    "critical": "Kritiek",
+    "fiveMinutes": "5 minuten",
+    "fifteenMinutes": "15 minuten",
+    "thirtyMinutes": "30 minuten"
   }
 }

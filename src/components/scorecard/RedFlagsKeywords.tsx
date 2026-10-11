@@ -236,7 +236,9 @@ export function KeywordsSection({
       {/* Keyword cards */}
       <div className="space-y-2">
         {sorted.slice(0, visibleCount).map((item, index) => {
-          const impact = impactConfig[item.impact || "medium"];
+          // An impact the model wrote outside the three (a translated "alta",
+          // a "low") reads as medium rather than crashing the report (S11-029).
+          const impact = impactConfig[item.impact as keyof typeof impactConfig] ?? impactConfig.medium;
           const cat = item.category ? categoryConfig[item.category] : null;
 
           return (

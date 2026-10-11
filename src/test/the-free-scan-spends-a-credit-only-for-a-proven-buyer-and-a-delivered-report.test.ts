@@ -142,7 +142,8 @@ function client() {
     rpcLog.push([name, args]);
     switch (name) {
       case "check_global_rate_limit": return { data: true, error: null };
-      case "check_rate_limit": return { data: args.p_function === "free-keyword-scan" ? underLimit : true, error: null };
+      // The day's allowance is the 1440-minute bucket; the function-wide hour (S11-019) has room here.
+      case "check_rate_limit": return { data: args.p_function === "free-keyword-scan" && args.p_window_minutes === 1440 ? underLimit : true, error: null };
       case "acquire_scan_slot": return { data: "slot-1", error: null };
       case "pro_entitlement_rows":
         proLookups.push(args.p_user_id);
