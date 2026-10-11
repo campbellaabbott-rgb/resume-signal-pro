@@ -751,6 +751,7 @@ export type Database = {
           submitted_at: string | null
           submitted_via: string | null
           title: string
+          uncertain_at: string | null
           updated_at: string
           user_id: string
         }
@@ -786,6 +787,7 @@ export type Database = {
           submitted_at?: string | null
           submitted_via?: string | null
           title?: string
+          uncertain_at?: string | null
           updated_at?: string
           user_id: string
         }
@@ -821,6 +823,7 @@ export type Database = {
           submitted_at?: string | null
           submitted_via?: string | null
           title?: string
+          uncertain_at?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -4879,6 +4882,7 @@ export type Database = {
           submitted_at: string | null
           submitted_via: string | null
           title: string
+          uncertain_at: string | null
           updated_at: string
           user_id: string
         }[]
