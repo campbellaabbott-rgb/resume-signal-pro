@@ -15,6 +15,37 @@
       "until": "wave 3 step 1 verified: layoff-filings' OPTIONS answers x-fn-build layoff-filings.2026-10-09.3 (its GET answers version 2026-10-09.3), ideally after one nightly WARN run of that build. Applied earlier, the old build re-upserts the misdated Illinois ids as active on its next nightly read"
     }
   ],
+  "migrationOrder": {
+    "_note": "Per migration stamp: `after` is \"fn:<name>@<YYYY-MM-DD.N>\" (apply once that function answers that build or later) or \"frontend\" (apply once the frontend is published); `before` lists \"fn:<name>\" a migration must precede. No entry: before the functions. The ledger prints five steps: migrations before the functions, the functions, migrations after the functions they wait for, the frontend, migrations after the frontend (docs/DEPLOY-LEDGER.md §1).",
+    "20261009123000": {
+      "before": ["fn:agent-mcp"],
+      "why": "the adoption reader must stop reading host buckets as addresses before the new agent-mcp writes them"
+    },
+    "20261009130000": {
+      "before": ["fn:stripe-webhook"],
+      "why": "the new webhook claims a subscription_notices row on every new subscription"
+    },
+    "20261009131000": {
+      "after": "frontend",
+      "why": "S11-138: its one-time clear of wrong closure dates is written back by the live Account page until the wave-3 frontend is published"
+    },
+    "20261009140000": {
+      "after": "fn:retry-failed-deliveries@2026-10-09.2",
+      "why": "S11-146: it hands 'generating' rows to the retry sweep; the live 2026-10-05.1 sweep skips them without spending a retry, so they hold its 5-row batch"
+    },
+    "20261009141000": {
+      "before": ["fn:send-market-pulse"],
+      "why": "the new pulse takes back confirmations that never left"
+    },
+    "20261009143000": {
+      "before": ["fn:scan-heartbeat"],
+      "why": "the new heartbeat calls cron_http_refusals, which this migration creates"
+    },
+    "20261009144000": {
+      "before": ["fn:send-search-digest", "fn:send-agent-digest"],
+      "why": "the new digests write a give-back at once and rely on the claim's attempt-stamp order to keep that row from leading the next claim"
+    }
+  },
   "reservations": {
     "wave2": {
       "branches": ["wave2/", "wave2-integration"],

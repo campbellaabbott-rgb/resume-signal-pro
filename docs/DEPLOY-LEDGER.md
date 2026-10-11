@@ -20,8 +20,23 @@ closes the gap. Policy lives in `docs/deploy-ledger.json`:
 - `holdUntilVerified`: migrations that start scheduled work; they go out in a
   second message only after the first one verifies live.
 - `drizzleBaseline`: the staged-runner record is complete from this stamp on.
+- `migrationOrder`: per migration stamp, `after` is `fn:<name>@<YYYY-MM-DD.N>`
+  (apply once that function answers that build or later) or `frontend`
+  (apply once the frontend is published), and `before` lists `fn:<name>`
+  the migration must precede. The message prints five steps: migrations
+  before the functions, the functions, migrations after the function each
+  waits for, the frontend, migrations after the frontend. A rule that cannot
+  be met (main carries an earlier build, or no such function) stops the
+  message (exit 6). A migration with no entry goes before the functions.
 - `reservations`: the migration-timestamp day and job-board version each
   workstream may use, so two branches never collide.
+
+`--message` runs `git fetch origin main` and refuses (exit 5) unless HEAD is
+origin/main: Lovable pulls main, and a stale checkout re-lists migrations
+already applied. `--draft` prints the same message from any checkout, headed
+as a draft that is not a deploy message. A function whose preflight does not
+answer, twice, is "could not check": the report lists it, the message opens
+with a STOP naming it, section 49 FAILs it, and the script exits 4.
 
 The script exits 2 when a function's own code changed after a stamp that is
 ALREADY LIVE ("MUST BUMP"): such a deploy could not be told apart from what is
