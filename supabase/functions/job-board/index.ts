@@ -8222,6 +8222,12 @@ Deno.serve(async (req) => {
       ).catch(() => null);
       // .88: the demand lane's use, as counts (abuse-guards.ts demandLaneStatus).
       const demandRead = readDemand(client).catch(() => ({ queue: null, served: null }));
+      // The pass-end tail's receipt (S11-001), named like the two above and never
+      // a position in the batch below: {startedAt, doneAt, ms}, so a tail that
+      // started and never finished is visible from outside without a service key.
+      const passEndRead = Promise.resolve(
+        client.from("job_board_meta").select("v").eq("k", "pass_end").maybeSingle(),
+      ).catch(() => null);
       const [prog, pbMeta, rot, refreshMeta, bf, hotMeta, fresh, breaker, dateCov, boardFlow, ingestPaused, dcCache, bsMeta, dsMeta, ssMeta, esMeta, fiOk, fiBad, faMeta, aaMeta, arMeta, rsRun, rsCron, hsMeta, rcProg, rcVer, hwMeta, deepCur, chainKick, sliceStatsRow, descCov, traceRow, overMeta, closurePop, oracleRepair, staleMeta, freshRow] = await Promise.all([
         client.from("job_board_meta").select("v, updated_at").eq("k", "refresh_progress").maybeSingle(),
         client.from("job_board_meta").select("v, updated_at").eq("k", "posted_backfill").maybeSingle(),
@@ -8324,6 +8330,7 @@ Deno.serve(async (req) => {
       // positional batch above so it runs beside it, and never a position in it.
       const anonBudgetRow = await anonBudgetRead;
       const demandRow = await demandRead;
+      const passEndRow = await passEndRead;
       const pgV = (prog.data?.v ?? {}) as { hot?: number; cold?: number; coldDone?: number; failedAcc?: string[]; failedTotal?: number };
       const rotV = (rot.data?.v ?? {}) as { completedAt?: string; coldBoards?: number };
       const rfV = { total: (refreshMeta.data as { total?: unknown } | null)?.total as number | undefined };
@@ -8758,6 +8765,9 @@ Deno.serve(async (req) => {
           : ageMin(dcCache.data?.updated_at ?? null),
         // The last thing a slice said before it stopped saying anything.
         sliceTrace: ((traceRow as { data?: { v?: unknown } } | null)?.data?.v ?? null) as Record<string, unknown> | null,
+        // The pass-end tail's receipt (S11-001): a startedAt with no later doneAt
+        // past half an hour is a tail that died (scan-heartbeat job_board_pass_end).
+        passEnd: ((passEndRow as { data?: { v?: unknown } } | null)?.data?.v ?? null) as Record<string, unknown> | null,
         // Boards past MAX_RESPONSE_BYTES: named, sized and dated, largest
         // first. A deferral is not a failure, so nothing else on this page
         // would ever mention them.

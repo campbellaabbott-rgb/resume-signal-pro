@@ -80,7 +80,7 @@ the new main, and the ledger is re-run.
 | workstream | migrations | job-board BUILD_VERSION | other FN_BUILD date |
 |---|---|---|---|
 | wave 2 (merged, PR #24) | 20261008* | 2026-09-09.91 | 2026-10-08 |
-| wave 3 (in progress) | 20261009* | 2026-09-09.92 | 2026-10-09 |
+| wave 3 (in progress; branches wave3/ and the S11 round's w31/) | 20261009* | 2026-09-09.92 | 2026-10-09 |
 | ledger repair (this PR) | none | none | 2026-10-10 |
 | connect-and-apply | 20261011* | 2026-09-09.93 | 2026-10-11 |
 | next | 20261012* onwards, one day each | 2026-09-09.94+ | that day |
