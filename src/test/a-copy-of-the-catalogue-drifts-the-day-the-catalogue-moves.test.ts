@@ -64,6 +64,30 @@ describe("a copy of the catalogue drifts the day the catalogue moves", () => {
     expect(src, "a ../job-board import in the function breaks the deploy bundle").not.toMatch(/from\s+"\.\.\/job-board\//);
   });
 
+  /**
+   * THE COPY AND THE BUILD THAT SHIPS IT MOVE TOGETHER (S8-124). A copy kept
+   * byte-identical in the repo is still stale in production until
+   * layoff-filings is redeployed, and the deploy ledger lists a function for
+   * redeploy only when its build string moves. On 2026-09-27 the copy moved
+   * (4293a792) under a BUILD_VERSION set on 09-25, so nothing could say the
+   * deployed mirror was the old catalogue. Pinned like build-version-guard pins
+   * job-board's: when the copy changes, bump BUILD_VERSION and both values here.
+   */
+  it("the catalogue copy and layoff-filings' BUILD_VERSION are pinned together", () => {
+    const { createHash } = require("node:crypto") as typeof import("node:crypto");
+    const h = createHash("sha256");
+    for (const [, copy] of PAIRS) h.update(readFileSync(resolve(FN, copy)));
+    const copyHash = h.digest("hex").slice(0, 16);
+    const version = /export const BUILD_VERSION = "([^"]+)"/.exec(readFileSync(resolve(FN, "layoff-filings/index.ts"), "utf8"))?.[1];
+    const PINNED = { copyHash: "889b830993f5d3fc", version: "2026-10-09.3" };
+    expect(
+      { copyHash, version },
+      copyHash !== PINNED.copyHash && version === PINNED.version
+        ? "the catalogue copy changed and layoff-filings' BUILD_VERSION did not: bump it, so the deploy ledger lists layoff-filings for redeploy, then update PINNED"
+        : "update PINNED to the copy's hash and the BUILD_VERSION that ships it",
+    ).toEqual(PINNED);
+  });
+
   it("the copies are files the deploy can upload, not symlinks pointing outside the folder", () => {
     // A symlink to ../job-board would leave the folder the platform uploads;
     // readFileSync follows links, so check the link itself.

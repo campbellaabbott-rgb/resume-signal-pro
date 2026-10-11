@@ -14,7 +14,7 @@
 //
 // Labels come from the vendor table the board's source note already uses, so
 // a vendor is spelled one way across the site.
-import { ATS_VENDORS } from "./ats-vendors";
+import { ATS_VENDORS, type AtsVendor } from "./ats-vendors";
 
 export const SENDABLE_VENDOR_KEYS: readonly string[] = ["breezy", "personio", "pinpoint", "teamtailor"];
 
@@ -27,3 +27,12 @@ export const SENDABLE_VENDOR_LABELS: readonly string[] = SENDABLE_VENDOR_KEYS.ma
 export const SENDABLE_VENDOR_SENTENCE = SENDABLE_VENDOR_LABELS.length > 1
   ? `${SENDABLE_VENDOR_LABELS.slice(0, -1).join(", ")} and ${SENDABLE_VENDOR_LABELS[SENDABLE_VENDOR_LABELS.length - 1]}`
   : SENDABLE_VENDOR_LABELS.join("");
+
+/**
+ * The vendor rows the agent SUBMITS on, and every other ATS row (prepared for
+ * the person to send). Agent copy reads these, never the CAPTCHA tier: the
+ * `auto` tier also holds Workday, SmartRecruiters and Oracle, where no adapter
+ * reaches a submit, and the $99 card once promised sending on all seven.
+ */
+export const SENDABLE_ATS_VENDORS: readonly AtsVendor[] = ATS_VENDORS.filter((v) => SENDABLE_VENDOR_KEYS.includes(v.key));
+export const PREPARED_ONLY_VENDORS: readonly AtsVendor[] = ATS_VENDORS.filter((v) => !SENDABLE_VENDOR_KEYS.includes(v.key));

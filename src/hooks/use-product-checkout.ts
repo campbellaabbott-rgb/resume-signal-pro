@@ -6,9 +6,11 @@ import { useConversionTracking } from '@/hooks/use-conversion-tracking';
 import { useFunnelTracking } from '@/hooks/use-funnel-tracking';
 import { parseEdgeFunctionError } from '@/lib/edge-function-errors';
 import { checkoutContext } from '@/lib/track-transport';
-import { getStoredReferralCode } from '@/hooks/use-affiliate-auth';
+import { consentWasRequired, purchaseTerms, purchaseTermsUnused } from '@/lib/purchase-terms';
+import i18n from '@/i18n';
 import { useCheckoutPrefetch } from '@/hooks/use-checkout-prefetch';
 import { getResumeFromSession } from '@/hooks/use-session-resume';
+import { askForTargetRoles, cleanTargetRoles } from '@/lib/target-roles-request';
 
 /** The résumé (and posting) a purchase is made from: what the buyer is looking at. */
 export interface PurchaseInputs {
@@ -28,6 +30,8 @@ export interface CheckoutOptions {
    * of exactly these; without them it is bound to the résumé the tab restores.
    */
   inputs?: PurchaseInputs;
+  /** ATS Defense: the roles to target, when the caller already asked (S11-074). */
+  targetRoles?: string[];
 }
 
 /**
@@ -54,6 +58,28 @@ export interface CheckoutOptions {
  * there is simply no stored copy, and the purchase stores one itself.
  */
 export const PRESTORED_RESUME_KEY = 'rb_prestored_resume_session';
+
+/**
+ * WHAT A CHECKOUT WAS BOUND TO, FOR "TRY AGAIN" (sweep S8-056). The payment-
+ * failed page retried with no inputs, so the retry bound whatever résumé the
+ * tab held: an Account apply kit for job X, cancelled and retried, was bought
+ * for the homepage scan of job Y. The binding and the job are kept here when
+ * the buyer leaves for Stripe; the retry reuses them.
+ */
+export const CHECKOUT_RETRY_KEY = 'rb_checkout_retry';
+export type CheckoutRetry = { productId: string; sessionId?: string; jobTitle?: string; jobCompany?: string; targetRoles?: string[]; path: string; at: number };
+
+export function readCheckoutRetry(productId: string): CheckoutRetry | null {
+  try {
+    const r = JSON.parse(sessionStorage.getItem(CHECKOUT_RETRY_KEY) ?? 'null') as CheckoutRetry | null;
+    // An hour: a cancel comes straight back, and the copy it names must still
+    // be inside the store's day.
+    if (!r || r.productId !== productId || typeof r.at !== 'number' || Date.now() - r.at > 60 * 60 * 1000) return null;
+    return r;
+  } catch {
+    return null;
+  }
+}
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MIN_RESUME_CHARS = 50; // store_temp_resume's own floor
 
@@ -82,13 +108,24 @@ function digest(text: string | null | undefined): string {
   return `${(h2 >>> 0).toString(16)}${(h1 >>> 0).toString(16)}:${str.length}`;
 }
 
-type StoredCopy = { id: string; resume: string; linkedIn: string; jd: string };
+type StoredCopy = { id: string; resume: string; linkedIn: string; jd: string; storedAt: number };
+
+/**
+ * HOW LONG A STORED COPY IS TRUSTED (sweep S8-057). The temporary store keeps
+ * a copy 24 hours (20261004150000) and the retention job deletes it after;
+ * a purchase made later in a long-lived tab bound the deleted copy, the
+ * checkout logged it 'gone' and went ahead, and the webhook had no résumé to
+ * build or mail from. A copy older than this is no match, so a fresh one is
+ * stored at the buy. A copy kept before the stamp existed is treated as old.
+ */
+export const STORED_COPY_MAX_AGE_MS = 23 * 60 * 60 * 1000;
 
 function readStoredCopy(): StoredCopy | null {
   try {
     const raw = JSON.parse(sessionStorage.getItem(PRESTORED_RESUME_KEY) ?? 'null');
     if (raw && typeof raw.id === 'string' && UUID.test(raw.id) && typeof raw.resume === 'string'
-      && typeof raw.linkedIn === 'string' && typeof raw.jd === 'string') {
+      && typeof raw.linkedIn === 'string' && typeof raw.jd === 'string'
+      && typeof raw.storedAt === 'number' && Date.now() - raw.storedAt < STORED_COPY_MAX_AGE_MS) {
       return raw as StoredCopy;
     }
   } catch { /* a bare id from before the digest, or no storage: no stored copy */ }
@@ -104,6 +141,7 @@ export function rememberPreStoredResume(sessionId: string | null | undefined, in
         resume: digest(inputs.resumeText),
         linkedIn: digest(inputs.linkedInText),
         jd: digest(inputs.jobDescription),
+        storedAt: Date.now(),
       };
       sessionStorage.setItem(PRESTORED_RESUME_KEY, JSON.stringify(copy));
     } else {
@@ -186,6 +224,10 @@ export function useProductCheckout() {
   const { prefetch: prefetchCheckout, prefetchProps } = useCheckoutPrefetch();
 
   const purchaseProduct = async (productId: ProductId, options?: CheckoutOptions | string): Promise<string | null> => {
+    // The Terms the press carried, read before the first await: a tap during
+    // the résumé store below would otherwise be read as the press that
+    // started this checkout (review of the integration, 2026-10-10).
+    const terms = purchaseTerms();
     // Handle backwards compatibility - if options is a string, treat it as sessionId
     const opts: CheckoutOptions = typeof options === 'string' 
       ? { sessionId: options } 
@@ -193,6 +235,7 @@ export function useProductCheckout() {
 
     const product = PRODUCTS[productId];
     if (!product) {
+      purchaseTermsUnused();
       toast({
         title: "Invalid Product",
         description: "The selected product is not available.",
@@ -201,15 +244,27 @@ export function useProductCheckout() {
       return null;
     }
 
+    // ATS DEFENSE TARGETS THE ROLES ITS BUYER NAMES (S11-074): asked before
+    // any checkout starts; closing the question starts none.
+    let targetRoles: string[] | undefined = opts.targetRoles ? cleanTargetRoles(opts.targetRoles) : undefined;
+    if (productId === 'atsDefense' && !targetRoles?.length) {
+      const answered = await askForTargetRoles(opts.jobTitle ? [opts.jobTitle] : []);
+      // Closing the question starts no checkout, so the box goes back to its line.
+      if (answered === null) { purchaseTermsUnused(); return null; }
+      targetRoles = answered;
+    }
+
     setIsLoading(true);
     setCurrentProduct(productId);
-    
+
     // Track button click for conversion analytics with section metadata
     trackButtonClick(productId, opts.ctaSection || 'product_checkout');
     
     // Track in funnel
     trackProductClicked(productId, product.name, product.priceUsd);
 
+    // Every way out below that is not the checkout URL gives the box back.
+    let started = false;
     try {
       // The résumé this purchase is delivered from: the one on screen, never
       // another (see bindPurchaseResume).
@@ -232,16 +287,22 @@ export function useProductCheckout() {
           sessionId: binding.sessionId,
           jobTitle: opts.jobTitle,
           jobCompany: opts.jobCompany,
-          referralCode: getStoredReferralCode(),
+          ...(targetRoles?.length ? { targetRoles } : {}),
           // Generation happens server-side from the webhook, which has no
           // access to the browser's i18n state — has to be captured now.
           language: localStorage.getItem('i18nextLng') || 'en',
           // The visitor and the page, so the start the server records joins
           // back to this browser's landing (checkout_starts.visitor_id).
           ...checkoutContext(),
+          // The referral, the Terms line's version, the EU/UK box.
+          ...terms,
         }
       });
 
+      if (await consentWasRequired(error, data)) {
+        toast({ title: i18n.t("purchaseTerms.consentNeeded"), variant: "destructive" });
+        return null;
+      }
       if (error) {
         console.error('Checkout error:', error);
         const parsedError = await parseEdgeFunctionError(error);
@@ -273,6 +334,13 @@ export function useProductCheckout() {
         // see use-conversion-tracking.ts -- the server's checkout_starts row
         // is the record of a session minted)
         trackCheckoutStarted(productId, product.priceUsd);
+        try {
+          const retry: CheckoutRetry = {
+            productId, sessionId: binding.sessionId, jobTitle: opts.jobTitle, jobCompany: opts.jobCompany, targetRoles,
+            path: `${window.location.pathname}${window.location.search}`, at: Date.now(),
+          };
+          sessionStorage.setItem(CHECKOUT_RETRY_KEY, JSON.stringify(retry));
+        } catch { /* no storage: a retry goes back to the page instead */ }
         
         toast(data.proIncluded
           ? {
@@ -283,6 +351,7 @@ export function useProductCheckout() {
               title: "Redirecting to Checkout",
               description: "Taking you to Stripe checkout…",
             });
+        started = true;
         window.location.assign(data.url);
         return data.url;
       }
@@ -297,6 +366,7 @@ export function useProductCheckout() {
       });
       return null;
     } finally {
+      if (!started) purchaseTermsUnused();
       setIsLoading(false);
       setCurrentProduct(null);
     }

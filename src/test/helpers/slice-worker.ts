@@ -75,6 +75,8 @@ export interface GateEnv {
   dormant?: string[];
   base?: string[];
   baseAttempted?: number;
+  /** Board keys already started or skipped as dormant this slice (n446); the run adds to a copy. */
+  consumed?: string[];
   inHotPhase?: boolean;
   /** Loop turns to run before giving up (default 1). A deferral or a yield ends a turn; a start ends the run. */
   turns?: number;
@@ -90,6 +92,8 @@ export interface GateOut {
   wallStopped: boolean;
   heapStopped: boolean;
   baseAttempted: number;
+  /** Board keys started or skipped as dormant, the run's turns included. */
+  consumed: string[];
   /** The worker left the loop (the queue was empty), as opposed to moving on to its next turn. */
   exited: boolean;
 }
@@ -101,7 +105,7 @@ export function runGate(env: GateEnv): Promise<GateOut> {
   const names = [
     "env", "queue", "skipTokens", "boardKeyOf", "yieldsByToken", "YIELD_SPIN_LIMIT", "budgetSkipped", "setTimeout",
     "inHotPhase", "deepTokens", "CAPPED_VISIT_VENDORS", "MAX_POSTINGS_PER_VISIT", "COLD_BOARD_RESERVE", "baseTokens",
-    "startGate", "SLICE_POSTING_BUDGET", "sliceWallStart", "SLICE_WALL_BUDGET_MS", "memStamp", "HEAP_SOFT_LIMIT_MB", "boardBudget",
+    "baseConsumed", "startGate", "SLICE_POSTING_BUDGET", "sliceWallStart", "SLICE_WALL_BUDGET_MS", "memStamp", "HEAP_SOFT_LIMIT_MB", "boardBudget",
   ];
   const run = compile(`async function __run() {
     let fetchedInSlice = env.fetchedInSlice, inFlightReserve = env.inFlightReserve, boardsDone = env.boardsDone, baseAttempted = env.baseAttempted;
@@ -116,6 +120,7 @@ export function runGate(env: GateEnv): Promise<GateOut> {
   const queue = env.queue.map((b) => ({ name: b.token, ...b }));
   const deferred: string[] = [];
   const waitedMs: number[] = [];
+  const consumed = new Set<string>(env.consumed ?? []);
   const first = env.queue[0];
   const yields = new Map<string, number>(first && env.spinsSoFar ? [[first.token, env.spinsSoFar]] : []);
   const scope: Record<string, unknown> = {
@@ -133,6 +138,7 @@ export function runGate(env: GateEnv): Promise<GateOut> {
     MAX_POSTINGS_PER_VISIT: constOf("MAX_POSTINGS_PER_VISIT"),
     COLD_BOARD_RESERVE: constOf("COLD_BOARD_RESERVE"),
     baseTokens: new Set(env.base ?? []),
+    baseConsumed: consumed,
     startGate,
     SLICE_POSTING_BUDGET: constOf("SLICE_POSTING_BUDGET"),
     sliceWallStart: Date.now() - (env.elapsedMs ?? 1_000),
@@ -144,7 +150,7 @@ export function runGate(env: GateEnv): Promise<GateOut> {
   return (run(...names.map((n) => scope[n])) as () => Promise<Omit<GateOut, "deferred" | "queue" | "waitedMs"> | undefined>)().then((o) => ({
     started: null, sizeStopped: false, wallStopped: false, heapStopped: false, baseAttempted: env.baseAttempted ?? 0, exited: true,
     ...(o ?? {}),
-    deferred, queue: queue.map((b) => b.token), waitedMs,
+    deferred, queue: queue.map((b) => b.token), waitedMs, consumed: [...consumed],
   }));
 }
 

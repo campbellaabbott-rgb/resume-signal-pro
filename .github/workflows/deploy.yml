@@ -30,9 +30,10 @@
 #
 # SECRETS REQUIRED (repo settings -> Secrets and variables -> Actions):
 #   SUPABASE_ACCESS_TOKEN  personal access token from supabase.com/dashboard/account/tokens
-#   SUPABASE_URL           already set (used by the bot-wall sweep)
-#   SUPABASE_ANON_KEY      already set
 #   SUPABASE_DB_PASSWORD   ONLY needed for the manual migration job
+# The verify job needs no secret: it reads the public URL and publishable key
+# from the committed .env (an earlier version of this note said SUPABASE_URL
+# and SUPABASE_ANON_KEY were "already set"; neither ever was).
 #
 # If SUPABASE_ACCESS_TOKEN is absent the deploy job skips with a notice rather
 # than failing the run — an unconfigured pipeline should be visibly idle, not
@@ -110,31 +111,65 @@ jobs:
       - name: Wait for propagation
         run: sleep 45
 
+      # THE URL AND KEY COME FROM THE COMMITTED .env, as board-health and the
+      # bot-wall sweep read them. They were read from repo secrets that were
+      # never set, so from the day this job was written it printed a warning
+      # and exited 0 on every push: a green "verify" that had compared nothing.
+      # A run that cannot compare now FAILS, because "not verified" is not "OK".
+      #
+      # RED WHILE PRODUCTION LAGS MAIN, BY DESIGN. The step compares the live
+      # job-board build with this commit's BUILD_VERSION and never looks at
+      # what the push changed, so EVERY push to main is red while production
+      # serves an older job-board build than main (2026-10-10: .90 live, .91
+      # on main), whatever that push touched. Deploy job-board through Lovable,
+      # then re-run the job; green means production serves this build or a
+      # later one.
       - name: Compare the live BUILD_VERSION against this commit
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          set -euo pipefail
-          if [ -z "${SUPABASE_URL:-}" ] || [ -z "${SUPABASE_ANON_KEY:-}" ]; then
-            echo "::warning::SUPABASE_URL / SUPABASE_ANON_KEY not set — cannot verify what is live."
-            exit 0
-          fi
-
-          EXPECTED=$(grep -m1 -oE 'BUILD_VERSION = "[^"]+"' supabase/functions/job-board/index.ts | sed 's/.*"\(.*\)"/\1/')
-          echo "repo expects: $EXPECTED"
-
-          LIVE=$(curl -sS -X POST "$SUPABASE_URL/functions/v1/job-board" \
-            -H "apikey: $SUPABASE_ANON_KEY" -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
-            -H "Content-Type: application/json" -H "x-rb-budget: probe" -d '{"action":"status"}' --max-time 60 \
-            | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("version") or d.get("buildVersion") or "")')
-          echo "live reports: $LIVE"
-
-          if [ "$LIVE" != "$EXPECTED" ]; then
-            echo "::error title=Deployed code is not this commit::job-board reports '$LIVE' but this commit is '$EXPECTED'. The project copy is behind — pull from GitHub before deploying. This exact split shipped stale code twice on 2026-08-07."
+          set -u
+          SB_URL=$(grep -m1 '^VITE_SUPABASE_URL=' .env 2>/dev/null | cut -d= -f2- | tr -d '"' || true)
+          SB_ANON=$(grep -m1 '^VITE_SUPABASE_PUBLISHABLE_KEY=' .env 2>/dev/null | cut -d= -f2- | tr -d '"' || true)
+          if [ -z "$SB_URL" ] || [ -z "$SB_ANON" ]; then
+            echo "::error title=Deploy not verified::could not read VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY from .env, so nothing was compared."
             exit 1
           fi
-          echo "::notice title=Deploy verified::job-board is serving $LIVE"
+
+          EXPECTED=$(grep -m1 -oE 'BUILD_VERSION = "[^"]+"' supabase/functions/job-board/index.ts | sed 's/.*"\(.*\)"/\1/' || true)
+          if [ -z "$EXPECTED" ]; then
+            echo "::error title=Deploy not verified::no BUILD_VERSION in supabase/functions/job-board/index.ts"
+            exit 1
+          fi
+          echo "repo expects: $EXPECTED"
+
+          LIVE=$(curl -sS -X POST "$SB_URL/functions/v1/job-board" \
+            -H "apikey: $SB_ANON" -H "Authorization: Bearer $SB_ANON" \
+            -H "Content-Type: application/json" -H "x-rb-budget: probe" -d '{"action":"status"}' --max-time 60 \
+            | jq -r '.version // empty' 2>/dev/null || true)
+          echo "live reports: ${LIVE:-nothing}"
+          if [ -z "$LIVE" ]; then
+            echo "::error title=Deploy not verified::job-board's status answered no version (down, not JSON, or the field moved), so nothing was compared."
+            exit 1
+          fi
+
+          # THIS BUILD OR A LATER ONE: YYYY-MM-DD.N, the date first, then N as a
+          # number. Anything else cannot be ordered: a letter sorts after every
+          # digit, so 'degraded' or 'job-board.2026-09-09.80' would read as later.
+          for v in "$LIVE" "$EXPECTED"; do
+            if ! printf '%s\n' "$v" | grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}\.[0-9]+$'; then
+              echo "::error title=Deploy not verified::'$v' is not a YYYY-MM-DD.N build, so nothing was compared (live '$LIVE', this commit '$EXPECTED')."
+              exit 1
+            fi
+          done
+          ld="${LIVE%%.*}"; ln="${LIVE#*.}"; ed="${EXPECTED%%.*}"; en="${EXPECTED#*.}"
+          ok=no
+          if [ "$ld" \> "$ed" ]; then ok=yes
+          elif [ "$ld" = "$ed" ] && [ "$ln" -ge "$en" ]; then ok=yes
+          fi
+          if [ "$ok" != yes ]; then
+            echo "::error title=Deployed code is not this commit::job-board serves '$LIVE' and this commit is '$EXPECTED'. Either the Lovable deploy has not run yet (re-run this job after it does) or it shipped stale code, which happened twice on 2026-08-07."
+            exit 1
+          fi
+          echo "::notice title=Deploy verified::job-board serves $LIVE (this commit is $EXPECTED)"
 
   migrate:
     # MANUAL ONLY. See the header: a migration that applies itself removes the

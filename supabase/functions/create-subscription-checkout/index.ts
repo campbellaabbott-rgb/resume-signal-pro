@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-08T13:00Z
+// deploy-stamp: 2026-10-09T18:00Z
 // Creates a Stripe Checkout session for Resume Booster Pro — $45/month,
 // all current and future consumer tools included. Uses inline recurring
 // price_data so no Price object needs to exist in the Stripe dashboard.
@@ -35,10 +35,11 @@ import { checkoutVerdict, verdictBody } from "../_shared/subscription-standing.t
 import { signedInUser } from "../_shared/signed-in-email.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
 import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-start.ts";
+import { checkoutLanguageOf, checkoutOrigin, euConsentAnswer, euConsentRefusal, policyMetadata, renewalTerms, sessionPolicy } from "../_shared/checkout-policy.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-subscription-checkout.2026-10-08.1";
+const FN_BUILD = "create-subscription-checkout.2026-10-09.61";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -76,6 +77,11 @@ serve(async (req) => {
       return json({ error: "Sign in to subscribe, so the plan is attached to your account.", signInRequired: true }, 401);
     }
     const body = await req.json().catch(() => ({}));
+    const env = (k: string) => Deno.env.get(k);
+    // The EU/UK switch, off by default: with it on, the buyer must have asked
+    // for the service to start inside the withdrawal period.
+    const consentMissing = euConsentRefusal(env, "subscription", body);
+    if (consentMissing) return json(euConsentAnswer(consentMissing), 400);
 
     // An account granted the agent by hand already has Pro (the agent includes it).
     if (await manualAgentGrant(supabase, email)) return json({ alreadySubscribed: true, tier: "agent" });
@@ -90,10 +96,17 @@ serve(async (req) => {
     const verdict = checkoutVerdict(standing, "pro");
     if (verdict.kind !== "proceed") return json(verdictBody(verdict));
 
-    const origin = req.headers.get("origin") || "https://resumebooster.work";
+    // Only our own hosts get the buyer back (S8-060); a forged Origin gets the site.
+    const origin = checkoutOrigin(req.headers.get("origin"), env);
+    const policy = policyMetadata(body, env);
     // The buyer's user id ON THE SUBSCRIPTION: the copy checkProByEmail reads
     // to bind pro_subscribers.user_id, on every later refresh.
-    const subscriptionBuyer = { user_id: buyer.id };
+    // The service-start request (EU/UK switch) rides on the plan too: a
+    // withdrawal reads it there to know whether the days provided may be kept.
+    const subscriptionBuyer = {
+      user_id: buyer.id,
+      ...(policy.service_start_consent ? { service_start_consent: policy.service_start_consent } : {}),
+    };
     const session = await stripe.checkout.sessions.create({
       ...(standing.reuseCustomerId ? { customer: standing.reuseCustomerId } : { customer_email: email }),
       mode: "subscription",
@@ -116,9 +129,17 @@ serve(async (req) => {
       // THE BUYER, three ways (the session, its metadata, the subscription).
       client_reference_id: buyer.id,
       subscription_data: { metadata: subscriptionBuyer },
-      success_url: `${origin}/account?pro=success`,
+      // The session id comes back so the account page can confirm the plan
+      // before the webhook has refreshed the cache (S8-055).
+      success_url: `${origin}/account?pro=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/pricing?pro=cancelled`,
-      metadata: { product_type: "pro_subscription", customer_email: email, user_id: buyer.id },
+      metadata: { product_type: "pro_subscription", customer_email: email, user_id: buyer.id, ...policy },
+      // Renewal terms beside Stripe's pay button, tax only with the EU/UK switch on.
+      // In the buyer's site language, with Stripe's page in the same one.
+      ...sessionPolicy({
+        mode: "subscription", env, hasCustomer: !!standing.reuseCustomerId,
+        renewal: renewalTerms(PRO_PRICE_CENTS, null, checkoutLanguageOf(body)), language: checkoutLanguageOf(body),
+      }),
     });
 
     // The start is on record before the browser has the url, so no
@@ -133,7 +154,7 @@ serve(async (req) => {
       currency: session.currency,
       mode: session.mode,
       context: checkoutContextOf(body),
-      metadata: { planCents: PRO_PRICE_CENTS },
+      metadata: { planCents: PRO_PRICE_CENTS, termsVersion: policy.terms_version || null, referral: !!policy.referral_code, serviceStartConsent: policy.service_start_consent ?? null },
     });
 
     console.log(`[CREATE-SUBSCRIPTION-CHECKOUT] Session ${session.id} created`);

@@ -117,3 +117,44 @@ describe("create-portal-session", () => {
     expect(body.code).toBe("mailbox_unproven");
   });
 });
+
+/**
+ * S11-015: a legacy plan carries no metadata.user_id, but 20261008130000
+ * bound its cache row to the account. The portal accepts a row bound to THIS
+ * account whose stripe_customer_id is the customer it would open (owner
+ * decision 2026-10-11), and nothing looser.
+ */
+describe("create-portal-session: a legacy plan whose row the database binds", () => {
+  const legacy = () => { (world.subs.cus_victim[0] as { metadata: Record<string, string> }).metadata = {}; };
+
+  it("opens for the account a Pro row binds, when the row names the same Stripe customer", async () => {
+    legacy();
+    db.rows("pro_subscribers").push({ email: "subscriber@example.com", user_id: OWNER_ID, stripe_customer_id: "cus_victim", status: "active" });
+    const body = await open("jwt-owner");
+    expect(body.url, "a bound legacy Pro subscriber was refused the portal").toBe("https://billing.stripe.com/session/cus_victim");
+    expect(world.portals).toEqual(["cus_victim"]);
+  });
+
+  it("opens for the account an agent row binds", async () => {
+    legacy();
+    db.rows("agent_subscribers").push({ email: "subscriber@example.com", user_id: OWNER_ID, stripe_customer_id: "cus_victim", status: "active" });
+    const body = await open("jwt-owner");
+    expect(body.url, "a bound legacy agent subscriber was refused the portal").toBe("https://billing.stripe.com/session/cus_victim");
+  });
+
+  it("does not open for another account on the same address", async () => {
+    legacy();
+    db.rows("pro_subscribers").push({ email: "subscriber@example.com", user_id: OWNER_ID, stripe_customer_id: "cus_victim", status: "active" });
+    const body = await open("jwt-stranger");
+    expect(world.portals).toEqual([]);
+    expect(body.code).toBe("mailbox_unproven");
+  });
+
+  it("does not open when the bound row names a different customer", async () => {
+    legacy();
+    db.rows("agent_subscribers").push({ email: "other@example.com", user_id: OWNER_ID, stripe_customer_id: "cus_someone_else", status: "active" });
+    const body = await open("jwt-owner");
+    expect(world.portals).toEqual([]);
+    expect(body.code).toBe("mailbox_unproven");
+  });
+});

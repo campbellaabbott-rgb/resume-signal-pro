@@ -137,7 +137,8 @@ export const CLIENT_CALLABLE: AllowedFunction[] = [
   // Was anon-callable for ANY 500 posting ids: the per-posting closure ledger
   // (the moat), in bulk, behind no meter. 20261004110000 made it signed-in
   // only and intersects the ids with the caller's own user_applications rows.
-  U("public.get_application_lifecycle(text[])", "src/pages/Account.tsx", "own rows: outcome, closure date and days standing for the job ids on the caller's own tracker (auth.uid()), never another user's and never posting content"),
+  U("public.get_application_lifecycle(text[])", "src/pages/Account.tsx", "own rows: outcome, closure date and days standing for the job ids on the caller's own tracker (auth.uid()), never another user's and never posting content",
+    "the caller's own day ledger in lifecycle_reads (the posting ids it was answered today, at most 1,000 distinct a day) and the deletion of rows older than two days; nothing a stranger can read (20261009131000, S8-018)"),
 ];
 
 /**

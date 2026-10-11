@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-08T12:00Z
+// deploy-stamp: 2026-10-09T14:00Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isScheduledCaller } from "../_shared/email-cron.ts";
@@ -8,6 +8,7 @@ import { keyMatches } from "../_shared/admin-key.ts";
 // literal {salaryFloor: 100000} probe has been landing in the demand log on
 // every heartbeat run since the check shipped. See _shared/search-caller.ts.
 import { searchCallerHeader } from "../_shared/search-caller.ts";
+import { boardTailChecks, dbFailureCheck } from "./board-tail.ts";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -17,7 +18,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-admin-key, x-email-cron',
   'Access-Control-Expose-Headers': 'x-fn-build',
   // BUILD_VERSION below, as the other functions carry it.
-  'x-fn-build': 'scan-heartbeat.2026-10-08.1',
+  'x-fn-build': 'scan-heartbeat.2026-10-09.71',
 };
 
 // Test resume for heartbeat checks
@@ -51,6 +52,10 @@ function heartbeatResume(): string {
 // Thresholds for health determination
 const HEALTHY_RESPONSE_TIME_MS = 30000; // 30s
 const DEGRADED_RESPONSE_TIME_MS = 60000; // 60s
+// Check 6b (S11-028): half or more of an hour's visitor scans on the
+// rule-based fallback fails it; under four scans an hour it is not judged.
+const FALLBACK_RATE_ALARM = 0.5;
+const FALLBACK_RATE_MIN_SCANS = 4;
 const AI_MODEL = 'google/gemini-2.5-flash';
 
 interface HealthCheckResult {
@@ -120,7 +125,7 @@ function unanswered(r: { timedOut?: boolean; failed?: boolean }, fn: string, ms:
  *
  * BUMP ON EVERY DEPLOY of this function.
  */
-const BUILD_VERSION = "2026-10-08.1"; // 10-08.1: answers only its cron, the service role and the owner's key; the e2e scan is uncached; alerts stamp only after a send that worked; vendor drift skips when unevaluated; delivery reads email_logs too
+const BUILD_VERSION = "2026-10-09.7"; // 10-09.7: carries both .6 and .3 (wave-3 fix round integration).  10-09.6: fails job_board_refresh_head (3h), job_board_filter_audit (12h) and job_board_pass_end (a pass-end tail that started and never finished, S11-001) and job_board_db_failures (S11-023).  10-09.3: a partial e2e report, a refused (429) e2e scan and a visitor fallback rate of half or more fail their checks (S11-028).  10-09.1: a paid order that never arrived mails the owner, naming it, newest first (decided after the delivery read, not before); a cron call refused (401/403) in the last hour fails cron_http_refusals.  10-08.1: answers only its cron, the service role and the owner's key; the e2e scan is uncached; alerts stamp only after a send that worked; vendor drift skips when unevaluated; delivery reads email_logs too
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -433,6 +438,35 @@ serve(async (req) => {
       skip('stripe_credentials', `Stripe did not answer (${e instanceof Error ? e.message : 'unreachable'}) — credentials not evaluated`);
     }
 
+    // Check 2c: no cron call was refused in the last hour (S8-051). A cron
+    // run reads 'succeeded' whatever its function answered; a 401/403 is a
+    // key or a gate (a re-key that missed a job), never a blip. 5xx and
+    // timeouts are reported in the check's text, not failed on.
+    try {
+      const { data, error } = await supabase.rpc('cron_http_refusals', { p_minutes: 60 }).maybeSingle();
+      const r = data as { available?: boolean; responses?: number; refused?: number; server_errors?: number; timed_out?: number; last_refused_status?: number | null; last_refused_sample?: string | null } | null;
+      if (error || !r) {
+        skip('cron_http_refusals', `reader unavailable (${error?.message?.slice(0, 80) ?? 'no row'}) — cron answers not evaluated`);
+      } else if (!r.available) {
+        skip('cron_http_refusals', 'pg_net keeps no answers here — cron answers not evaluated');
+      } else {
+        const refused = Number(r.refused ?? 0);
+        checks.push({
+          name: 'cron_http_refusals',
+          passed: refused === 0,
+          responseTimeMs: 0,
+          error: refused === 0 ? undefined
+            : `${refused} of ${Number(r.responses ?? 0)} cron calls in the last hour were refused (latest HTTP ${r.last_refused_status ?? '?'}: ${String(r.last_refused_sample ?? '').slice(0, 120)}); 5xx ${Number(r.server_errors ?? 0)}, timeouts ${Number(r.timed_out ?? 0)}`,
+        });
+        if (refused > 0) {
+          if (overallStatus === 'healthy') overallStatus = 'degraded';
+          errorMessage = errorMessage || `Cron: ${refused} refused calls in the last hour`;
+        }
+      }
+    } catch (e) {
+      skip('cron_http_refusals', `reader threw (${e instanceof Error ? e.message.slice(0, 80) : 'unknown'}) — cron answers not evaluated`);
+    }
+
     // Check 3: Cache system
     const cacheStart = Date.now();
     try {
@@ -569,6 +603,17 @@ serve(async (req) => {
         .from('job_board_meta').select('updated_at').eq('k', 'facets').maybeSingle();
       const exploreCacheP = supabase
         .from('job_board_meta').select('updated_at').eq('k', 'explore_cache').maybeSingle();
+      // The three rows the board's pass-end tail writes (S11-001, board-tail.ts).
+      // refresh_head by JSON path: only its two stamps, not the 200-employer facet.
+      const refreshHeadP = supabase
+        .from('job_board_meta').select('refreshedAt:v->>refreshedAt,facetsCarriedAt:v->>facetsCarriedAt').eq('k', 'refresh_head').maybeSingle();
+      const filterAuditP = supabase
+        .from('job_board_meta').select('updated_at').eq('k', 'filter_audit').maybeSingle();
+      const passEndP = supabase
+        .from('job_board_meta').select('v').eq('k', 'pass_end').maybeSingle();
+      // S11-023: boards our own database keeps failing (board-tail.ts dbFailureCheck).
+      const dbStreaksP = supabase
+        .from('job_board_meta').select('dbStreaks:v->dbStreaks').eq('k', 'board_failures').maybeSingle();
 
       const { data: prog, error } = await supabase
         .from('job_board_meta')
@@ -1002,6 +1047,46 @@ serve(async (req) => {
         } catch (e) {
           skip(checkName, e instanceof Error ? e.message : 'unreadable');
         }
+      }
+
+      // The pass-end tail's three ages (S11-001): the served counts, the
+      // filter audit, and a tail that started and never finished.
+      try {
+        const [rh, fa, pe] = await Promise.all([refreshHeadP, filterAuditP, passEndP]);
+        const readErr = rh.error ?? fa.error ?? pe.error;
+        const verdicts = boardTailChecks({
+          now: Date.now(),
+          refreshedAt: rh.error ? null : (rh.data as { refreshedAt?: string } | null)?.refreshedAt,
+          facetsCarriedAt: rh.error ? null : (rh.data as { facetsCarriedAt?: string | null } | null)?.facetsCarriedAt,
+          filterAuditAt: fa.error ? null : (fa.data as { updated_at?: string } | null)?.updated_at,
+          passEnd: pe.error ? null : ((pe.data as { v?: { startedAt?: unknown; doneAt?: unknown } } | null)?.v ?? null),
+        });
+        for (const v of verdicts) {
+          if (v.skipped) { skip(v.name, readErr ? readErr.message : v.reason); continue; }
+          checks.push({ name: v.name, passed: v.passed, responseTimeMs: 0, error: v.error });
+          if (!v.passed) {
+            if (overallStatus === 'healthy') overallStatus = 'degraded';
+            errorMessage = errorMessage ?? v.error ?? null;
+          }
+        }
+      } catch (e) {
+        skip('job_board_pass_end', e instanceof Error ? e.message : 'unreadable pass-end rows');
+      }
+      try {
+        const ds = await dbStreaksP;
+        if (ds.error) skip('job_board_db_failures', ds.error.message);
+        else {
+          const v = dbFailureCheck((ds.data as { dbStreaks?: Record<string, unknown> } | null)?.dbStreaks ?? null);
+          if (!v.skipped) {
+            checks.push({ name: v.name, passed: v.passed, responseTimeMs: 0, error: v.error });
+            if (!v.passed) {
+              if (overallStatus === 'healthy') overallStatus = 'degraded';
+              errorMessage = errorMessage ?? v.error ?? null;
+            }
+          }
+        }
+      } catch (e) {
+        skip('job_board_db_failures', e instanceof Error ? e.message : 'unreadable board_failures');
       }
 
       try {
@@ -1710,9 +1795,12 @@ serve(async (req) => {
       const e2eTime = Date.now() - e2eStart;
 
       if (scanResp.status === 429) {
-        // Alive (the limiter answered coherently) but the report path is
-        // unverified this cycle. Don't page for this.
-        checks.push({ name: 'e2e_scan', passed: true, responseTimeMs: e2eTime, error: 'rate-limited: alive but report unverified (set HEARTBEAT_SECRET)' });
+        // A REFUSAL IS NOT A PASS (S11-028). The limiter answered, so the
+        // function is up, but the report path was not exercised this cycle,
+        // and with HEARTBEAT_SECRET set the heartbeat should never be refused.
+        checks.push({ name: 'e2e_scan', passed: false, responseTimeMs: e2eTime, error: 'rate-limited: the report path was not exercised this cycle (is HEARTBEAT_SECRET set on both functions?)' });
+        if (overallStatus === 'healthy') overallStatus = 'degraded';
+        errorMessage = errorMessage || 'E2E scan: 429, the report path was not verified';
       } else if (!scanResp.ok) {
         const bodyText = (await scanResp.text()).substring(0, 200);
         checks.push({ name: 'e2e_scan', passed: false, responseTimeMs: e2eTime, error: `HTTP ${scanResp.status}: ${bodyText}` });
@@ -1722,17 +1810,30 @@ serve(async (req) => {
         const scanJson = await scanResp.json();
         const fromCache = scanJson?.cachedReport === true;
         const anatomyOk = !fromCache && typeof scanJson.atsScoreEstimate === 'number' && !!scanJson.reportMeta?.reportId;
+        // A PARTIAL REPORT IS NOT A WORKING SCAN (S11-028). free-keyword-scan
+        // sets reportMeta and a numeric score on its rule-based fallback too,
+        // so tool calling could break (a 400 on the schema, unparsed
+        // tool_calls, the 85 s clock) and every visitor get "Partial results"
+        // while this check read green. A thin model reply (completeness under
+        // 70) is partial as well.
+        const partial = scanJson?.partialResults === true;
+        const completeness = typeof scanJson?.reportCompleteness === 'number' ? scanJson.reportCompleteness : null;
+        const thin = completeness !== null && completeness < 70;
+        const e2eOk = anatomyOk && !partial && !thin;
         checks.push({
           name: 'e2e_scan',
-          passed: anatomyOk,
+          passed: e2eOk,
           responseTimeMs: e2eTime,
           error: fromCache
             ? 'served from the 7-day report cache — the scan pipeline was not exercised'
-            : anatomyOk ? undefined : 'Response missing atsScoreEstimate/reportMeta',
+            : !anatomyOk ? 'Response missing atsScoreEstimate/reportMeta'
+            : partial ? `answered with a partial report (${typeof scanJson.partialReason === 'string' ? scanJson.partialReason : 'no reason given'}): the AI analysis did not complete, so visitors may be getting automated-only reports`
+            : thin ? `report completeness ${completeness}% (under 70): the AI analysis left most sections empty`
+            : undefined,
         });
-        if (!anatomyOk) {
-          overallStatus = 'degraded';
-          errorMessage = errorMessage || 'E2E scan: 200 but malformed report';
+        if (!e2eOk) {
+          overallStatus = overallStatus === 'down' ? 'down' : 'degraded';
+          errorMessage = errorMessage || (anatomyOk ? 'E2E scan: 200 but a partial report' : 'E2E scan: 200 but malformed report');
         }
       }
     } catch (e) {
@@ -1744,6 +1845,40 @@ serve(async (req) => {
       });
       overallStatus = 'down';
       errorMessage = errorMessage || `E2E scan: ${e instanceof Error ? e.message : 'Unknown'}`;
+    }
+
+    // Check 6b: HOW MANY VISITORS GOT THE FALLBACK (S11-028). One heartbeat
+    // scan an hour can land on a good minute; the visitors' own scans say
+    // whether the AI analysis is reaching them. free-keyword-scan writes one
+    // detection_telemetry row per visitor scan (never its own probes) with
+    // used_fallback when the rule-based report was served. Nothing read it.
+    try {
+      const since = new Date(Date.now() - 60 * 60_000).toISOString();
+      const [all, fell] = await Promise.all([
+        supabase.from('detection_telemetry').select('id', { count: 'exact', head: true }).gte('created_at', since),
+        supabase.from('detection_telemetry').select('id', { count: 'exact', head: true }).gte('created_at', since).eq('used_fallback', true),
+      ]);
+      const readErr = all.error ?? fell.error;
+      const total = typeof all.count === 'number' ? all.count : null;
+      const fallbacks = typeof fell.count === 'number' ? fell.count : null;
+      if (readErr || total === null || fallbacks === null) {
+        skip('scan_fallback_rate', `detection_telemetry unreadable: ${readErr?.message ?? 'no count returned'}`);
+      } else if (total < FALLBACK_RATE_MIN_SCANS) {
+        skip('scan_fallback_rate', `${total} visitor scan(s) in the last hour: too few to judge (needs ${FALLBACK_RATE_MIN_SCANS})`);
+      } else {
+        const ok = fallbacks / total < FALLBACK_RATE_ALARM;
+        checks.push({
+          name: 'scan_fallback_rate',
+          passed: ok,
+          error: ok ? undefined : `${fallbacks} of ${total} visitor scans in the last hour got the rule-based fallback report (bar: under ${Math.round(FALLBACK_RATE_ALARM * 100)}%): the AI analysis is failing for visitors`,
+        });
+        if (!ok) {
+          if (overallStatus === 'healthy') overallStatus = 'degraded';
+          errorMessage = errorMessage || `Scan fallback rate: ${fallbacks} of ${total} in the last hour`;
+        }
+      }
+    } catch (e) {
+      skip('scan_fallback_rate', `detection_telemetry read failed: ${e instanceof Error ? e.message : 'unknown'}`);
     }
 
     // Calculate total response time and adjust status based on latency
@@ -1774,6 +1909,31 @@ serve(async (req) => {
     });
 
     console.log(`[SCAN-HEARTBEAT] ${overallStatus} | Total: ${totalTime}ms | Checks: ${checks.map(c => `${c.name}:${c.passed}`).join(', ')}${skipped.length ? ` | SKIPPED: ${skipped.map(s => s.name).join(', ')}` : ''}`);
+
+    // IS EMAIL ACTUALLY GOING OUT. The worst failure this product has is a paid
+    // report that never arrives, and until now nothing anywhere reported it —
+    // the delivery log recorded every failure and no surface read it.
+    const delivery = await evaluateDelivery(supabase);
+
+    // AND DID THE PRODUCT ITSELF EVER GET MADE. The email check above assumes
+    // there was something to send. reconcile-stripe assumes the webhook never
+    // ran. Neither sees a generation that failed after the idempotency marker
+    // was written, which is the one case where the customer has paid, the
+    // system believes it delivered, and the retry has already given up.
+    const productDelivery = await evaluateProductDelivery(supabase);
+
+    // READ BEFORE ANY ALERT IS DECIDED (commercial-readiness 2026-10-08, item
+    // 2). Both reads above used to run after the alert below had been
+    // decided, so an 'undelivered' verdict reached the JSON and no inbox. A
+    // paid order that never arrived is its own alert, naming the order, once
+    // per order per day; it does not change the platform status.
+    const undeliveredRead = productDelivery.reason === 'undelivered'
+      ? await listUndeliveredOrders(supabase)
+      : { orders: [], total: 0 };
+    const undeliveredOrders = undeliveredRead ? undeliveredRead.orders : null;
+    if (undeliveredRead && undeliveredRead.orders.length > 0) {
+      EdgeRuntime.waitUntil(sendUndeliveredOrderAlert(undeliveredRead.orders, undeliveredRead.total));
+    }
 
     // Send alert if status is not healthy — and a single recovery note when a
     // previously-alerted state clears, so the inbox learns the incident ended
@@ -1815,18 +1975,6 @@ serve(async (req) => {
     // sentence beside it.
     const fillGaps = await evaluateFillGaps(supabase);
 
-    // IS EMAIL ACTUALLY GOING OUT. The worst failure this product has is a paid
-    // report that never arrives, and until now nothing anywhere reported it —
-    // the delivery log recorded every failure and no surface read it.
-    const delivery = await evaluateDelivery(supabase);
-
-    // AND DID THE PRODUCT ITSELF EVER GET MADE. The email check above assumes
-    // there was something to send. reconcile-stripe assumes the webhook never
-    // ran. Neither sees a generation that failed after the idempotency marker
-    // was written, which is the one case where the customer has paid, the
-    // system believes it delivered, and the retry has already given up.
-    const productDelivery = await evaluateProductDelivery(supabase);
-
     return new Response(
       JSON.stringify({
         status: overallStatus,
@@ -1845,7 +1993,16 @@ serve(async (req) => {
         confirmationGaps,
         fillGaps,
         delivery,
-        productDelivery
+        productDelivery,
+        // The orders behind an 'undelivered' verdict, by product, state and
+        // age, with the session's last 8 characters: no address here (the
+        // owner's mail carries the rest). null = the rows could not be read.
+        undeliveredOrders: undeliveredOrders === null ? null : undeliveredOrders.map((o) => ({
+          ref: o.sessionId.slice(-8), productType: o.productType, status: o.status,
+          ageMinutes: Math.round((Date.now() - Date.parse(o.createdAt)) / 60_000), retries: o.retries,
+        })),
+        // Every standing undelivered row; the list above is the newest 100.
+        undeliveredOrdersTotal: undeliveredRead ? undeliveredRead.total : null,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
@@ -2144,6 +2301,140 @@ async function evaluateProductDelivery(
     };
   } catch {
     return empty;
+  }
+}
+
+/**
+ * THE ORDERS BEHIND AN 'undelivered' VERDICT, NAMED.
+ *
+ * The same rows product_delivery_health counts as failed or stuck: a
+ * generation that failed (at any age), and a payment or a generation that has
+ * not moved for two hours. Read with the service role; only the owner's mail
+ * carries the buyer's address. null when the table could not be read.
+ * NEWEST FIRST, the age test in the query (review 2026-10-10): the oldest 100
+ * were read and then aged, and nothing ages a failed row out, so once 100
+ * stood no newer order was ever named. `total` counts every standing row.
+ */
+const UNDELIVERED_STUCK_MS = 2 * 60 * 60_000;
+const UNDELIVERED_LIST_MAX = 100;
+interface UndeliveredOrder {
+  id: string; sessionId: string; productType: string; status: string; createdAt: string;
+  retries: string; email: string | null; error: string | null;
+}
+async function listUndeliveredOrders(
+  // deno-lint-ignore no-explicit-any
+  supabase: { from: (t: string) => any },
+): Promise<{ orders: UndeliveredOrder[]; total: number } | null> {
+  try {
+    const now = Date.now();
+    const cutoff = new Date(now - UNDELIVERED_STUCK_MS).toISOString();
+    const { data, error, count } = await supabase.from('product_deliveries')
+      .select('id, stripe_session_id, product_type, status, created_at, retry_count, max_retries, customer_email, generation_error, last_retry_error', { count: 'exact' })
+      .in('status', ['payment_received', 'generating', 'generation_failed'])
+      .or(`status.eq.generation_failed,created_at.lt.${cutoff}`)
+      .order('created_at', { ascending: false })
+      .limit(UNDELIVERED_LIST_MAX);
+    if (error) return null;
+    const orders = ((data ?? []) as Array<Record<string, unknown>>)
+      .filter((r) => r.status === 'generation_failed' || now - Date.parse(String(r.created_at)) >= UNDELIVERED_STUCK_MS)
+      .map((r) => ({
+        id: String(r.id),
+        sessionId: String(r.stripe_session_id ?? ''),
+        productType: String(r.product_type ?? 'unknown'),
+        status: String(r.status),
+        createdAt: String(r.created_at),
+        retries: `${Number(r.retry_count ?? 0)}/${Number(r.max_retries ?? 0)}`,
+        email: r.customer_email ? String(r.customer_email) : null,
+        error: (r.last_retry_error ?? r.generation_error) ? String(r.last_retry_error ?? r.generation_error) : null,
+      }));
+    return { orders, total: Math.max(typeof count === 'number' ? count : 0, orders.length) };
+  } catch {
+    return null;
+  }
+}
+
+const escapeAlertHtml = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c] as string));
+
+/**
+ * ONE MAIL PER UNDELIVERED ORDER PER DAY, TO THE OWNER, NAMING IT.
+ *
+ * An order is news when it has not been announced in 24 hours; the mail lists
+ * every order still undelivered, the new ones marked. The announced stamps are
+ * written only after Resend accepted the mail, so a refused alert is tried
+ * again on the next run (the L10-05 rule). A two-an-hour backstop bounds a
+ * state that cannot be read.
+ */
+const UNDELIVERED_REMIND_MS = 24 * 60 * 60_000;
+async function sendUndeliveredOrderAlert(orders: UndeliveredOrder[], total: number): Promise<void> {
+  try {
+    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+    const ADMIN_EMAIL = Deno.env.get("ADMIN_EMAIL") || "resumeboostersupp@gmail.com";
+    if (!RESEND_API_KEY) {
+      console.error(`[SCAN-HEARTBEAT] ${orders.length} paid order(s) undelivered and RESEND_API_KEY is not set: nobody can be told`);
+      return;
+    }
+    const client = createClient(Deno.env.get("SUPABASE_URL") ?? '', Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? '');
+    let alerted: Record<string, string> = {};
+    try {
+      const { data: st } = await client.from('job_board_meta').select('v').eq('k', 'undelivered_alert_state').maybeSingle();
+      const v = (st?.v ?? {}) as { alerted?: Record<string, string> };
+      if (v.alerted && typeof v.alerted === 'object') alerted = v.alerted;
+    } catch { /* unread state: every order is news; the backstop bounds it */ }
+    const now = Date.now();
+    const isNews = (o: UndeliveredOrder) => {
+      const at = Date.parse(alerted[o.id] ?? '');
+      return !Number.isFinite(at) || now - at >= UNDELIVERED_REMIND_MS;
+    };
+    const news = orders.filter(isNews);
+    if (news.length === 0) return;
+    try {
+      const { data: allowed } = await client.rpc('check_rate_limit', {
+        p_function: 'alert:undelivered', p_ip: 'global', p_max_requests: 2, p_window_minutes: 60,
+      });
+      if (allowed === false) {
+        console.log('[SCAN-HEARTBEAT] undelivered-order alert held by its 2/hour backstop');
+        return;
+      }
+    } catch { /* send */ }
+
+    const rows = orders.map((o) => `<tr>
+        <td style="padding:4px 8px">${isNews(o) ? '<b>new</b>' : ''}</td>
+        <td style="padding:4px 8px">${escapeAlertHtml(o.productType)}</td>
+        <td style="padding:4px 8px">${escapeAlertHtml(o.status)}</td>
+        <td style="padding:4px 8px">${Math.round((now - Date.parse(o.createdAt)) / 60_000)} min</td>
+        <td style="padding:4px 8px">${escapeAlertHtml(o.retries)}</td>
+        <td style="padding:4px 8px;font-family:monospace">${escapeAlertHtml(o.sessionId)}</td>
+        <td style="padding:4px 8px">${escapeAlertHtml(o.email ?? '')}</td>
+        <td style="padding:4px 8px">${escapeAlertHtml((o.error ?? '').slice(0, 160))}</td>
+      </tr>`).join('');
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: "Resume Booster Alerts <onboarding@resend.dev>",
+        to: [ADMIN_EMAIL],
+        subject: `Paid order${news.length === 1 ? '' : 's'} not delivered: ${news.length} new (${news.map((o) => o.productType).join(', ').slice(0, 100)})`,
+        html: `<div style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#111">
+          <p>${total} paid order${total === 1 ? ' has' : 's have'} not been delivered: a generation that failed, or a payment or generation that has not moved for two hours. The retry sweep runs on its own schedule; the session id finds each one in Stripe.</p>
+          ${total > orders.length ? `<p>The newest ${orders.length} are listed below.</p>` : ''}
+          <table style="border-collapse:collapse"><tr><th></th><th align="left">product</th><th align="left">state</th><th align="left">age</th><th align="left">retries</th><th align="left">session</th><th align="left">buyer</th><th align="left">last error</th></tr>${rows}</table>
+          <p>Each order is mailed once a day while it stays undelivered.</p>
+        </div>`,
+      }),
+    });
+    if (!res.ok) {
+      console.error(`[SCAN-HEARTBEAT] undelivered-order alert REFUSED by Resend: HTTP ${res.status}; nothing is marked announced, the next run tries again`);
+      return;
+    }
+    const stamp = new Date(now).toISOString();
+    const next: Record<string, string> = {};
+    for (const o of orders) next[o.id] = isNews(o) ? stamp : alerted[o.id];
+    await client.from('job_board_meta').upsert(
+      { k: 'undelivered_alert_state', v: { alerted: next }, updated_at: stamp },
+      { onConflict: 'k' },
+    );
+  } catch (e) {
+    console.error('[SCAN-HEARTBEAT] undelivered-order alert failed:', e);
   }
 }
 

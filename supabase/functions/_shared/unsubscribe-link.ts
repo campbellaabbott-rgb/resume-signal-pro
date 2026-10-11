@@ -20,7 +20,9 @@
  */
 export const SITE_URL = "https://resumebooster.work";
 
-export type UnsubscribeList = "search-digest" | "market-pulse" | "scan-report";
+// agent-digest: the agent's morning shortlist (send-agent-digest), which still
+// unsubscribed on a bare GET with no List-Unsubscribe headers (S11-132).
+export type UnsubscribeList = "search-digest" | "market-pulse" | "scan-report" | "agent-digest";
 
 /** The confirm page on our own domain, the parameters in the fragment. */
 export function unsubscribePageUrl(list: UnsubscribeList, params: Record<string, string>): string {

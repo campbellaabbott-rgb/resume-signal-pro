@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { 
   ChevronDown, 
@@ -25,67 +25,26 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { exportCareerSnapshotPDF } from '@/lib/pdf-export';
 import { hasUnsupportedPdfCharacters } from '@/lib/pdf-text-support';
-
-interface CareerSignalScore {
-  overall: 'Strong' | 'Mixed' | 'Risky';
-  performanceSignal: { score: string; summary: string };
-  trajectorySignal: { score: string; summary: string };
-  credibilitySignal: { score: string; summary: string };
-  seniorityAlignment: { currentLevel: string; targetFit: string; summary: string };
-}
-
-interface CareerRisk {
-  risk: string;
-  recruiterQuestion: string;
-  mitigation: string;
-}
-
-interface Strength {
-  strength: string;
-  evidence: string;
-}
-
-interface PriorityFix {
-  fix: string;
-  impact: string;
-  timeEstimate: string;
-}
-
-interface CareerSnapshotData {
-  careerSignalScore: CareerSignalScore;
-  recruiterPerception: { summary: string };
-  topStrengths: Strength[];
-  careerRisks: CareerRisk[];
-  positioningGuidance: {
-    idealPositioning: string;
-    rolesToTarget: string[];
-    rolesToAvoid: string[];
-    companyStages: string[];
-    storyFraming: string;
-  };
-  priorityFixes: PriorityFix[];
-}
+import { CardErrorBoundary } from '@/components/CardErrorBoundary';
+import { reportTone, shapeCareerSnapshot, type CareerSnapshotShape, type ReportTone } from '@/lib/career-report-shape';
+import { useReportEnumLabel } from '@/hooks/use-report-enum-label';
 
 interface CareerSnapshotResultsProps {
-  data: CareerSnapshotData;
+  /** The stored or generated report, in whatever shape it was saved; it is shaped before anything reads it (sweep S8-073). */
+  data: unknown;
 }
 
-const SignalGauge = ({ label, score, icon: Icon }: { label: string; score: string; icon: React.ElementType }) => {
-  const getScoreColor = (score: string) => {
-    const positiveScores = ['Strong', 'High', 'Growth', 'Aligned'];
-    const neutralScores = ['Mixed', 'Medium', 'Stable', 'Stretch'];
-    if (positiveScores.includes(score)) return 'text-success';
-    if (neutralScores.includes(score)) return 'text-warning';
-    return 'text-destructive';
-  };
+const TONE_TEXT: Record<ReportTone, string> = {
+  positive: 'text-success',
+  neutral: 'text-warning',
+  negative: 'text-destructive',
+  unknown: 'text-muted-foreground',
+};
+const TONE_GAUGE: Record<ReportTone, number> = { positive: 100, neutral: 60, negative: 30, unknown: 0 };
 
-  const getProgressValue = (score: string) => {
-    const positiveScores = ['Strong', 'High', 'Growth', 'Aligned'];
-    const neutralScores = ['Mixed', 'Medium', 'Stable', 'Stretch'];
-    if (positiveScores.includes(score)) return 100;
-    if (neutralScores.includes(score)) return 60;
-    return 30;
-  };
+const SignalGauge = ({ label, score, icon: Icon }: { label: string; score: string; icon: React.ElementType }) => {
+  const enumLabel = useReportEnumLabel();
+  const tone = reportTone(score);
 
   return (
     <div className="space-y-2">
@@ -94,11 +53,11 @@ const SignalGauge = ({ label, score, icon: Icon }: { label: string; score: strin
           <Icon className="w-4 h-4 text-muted-foreground" />
           <span className="text-sm font-medium">{label}</span>
         </div>
-        <Badge variant="outline" className={cn("font-semibold", getScoreColor(score))}>
-          {score}
+        <Badge variant="outline" className={cn("font-semibold", TONE_TEXT[tone])} data-tone={tone}>
+          {enumLabel(score)}
         </Badge>
       </div>
-      <Progress value={getProgressValue(score)} className="h-2" />
+      <Progress value={TONE_GAUGE[tone]} className="h-2" />
     </div>
   );
 };
@@ -179,12 +138,16 @@ const CopyButton = ({ text, label }: { text: string; label?: string }) => {
   );
 };
 
-export function CareerSnapshotResults({ data }: CareerSnapshotResultsProps) {
+export function CareerSnapshotResults({ data: stored }: CareerSnapshotResultsProps) {
   const { t } = useTranslation();
+  const enumLabel = useReportEnumLabel();
+  const data: CareerSnapshotShape = useMemo(() => shapeCareerSnapshot(stored).data, [stored]);
   const getOverallColor = (overall: string) => {
-    if (overall === 'Strong') return 'bg-success/20 text-success border-success/30';
-    if (overall === 'Mixed') return 'bg-warning/20 text-warning border-warning/30';
-    return 'bg-destructive/20 text-destructive border-destructive/30';
+    const tone = reportTone(overall);
+    if (tone === 'positive') return 'bg-success/20 text-success border-success/30';
+    if (tone === 'neutral') return 'bg-warning/20 text-warning border-warning/30';
+    if (tone === 'negative') return 'bg-destructive/20 text-destructive border-destructive/30';
+    return 'bg-muted text-muted-foreground border-border';
   };
 
   const handleExportPDF = () => {
@@ -213,6 +176,7 @@ export function CareerSnapshotResults({ data }: CareerSnapshotResultsProps) {
       </div>
 
       {/* Overall Career Signal Score */}
+      <CardErrorBoundary section="career-snapshot-signal">
       <Card className="border-2 border-primary/20 bg-gradient-to-br from-card to-primary/5">
         <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
@@ -226,7 +190,7 @@ export function CareerSnapshotResults({ data }: CareerSnapshotResultsProps) {
               </div>
             </div>
             <Badge className={cn("text-lg px-4 py-1 border", getOverallColor(data.careerSignalScore.overall))}>
-              {data.careerSignalScore.overall}
+              {enumLabel(data.careerSignalScore.overall)}
             </Badge>
           </div>
         </CardHeader>
@@ -259,14 +223,16 @@ export function CareerSnapshotResults({ data }: CareerSnapshotResultsProps) {
           />
           <p className="text-sm text-muted-foreground pl-6">
             {t('careerSnapshot.signalScore.currentLevel', {
-              level: data.careerSignalScore.seniorityAlignment.currentLevel,
+              level: enumLabel(data.careerSignalScore.seniorityAlignment.currentLevel),
               summary: data.careerSignalScore.seniorityAlignment.summary,
             })}
           </p>
         </CardContent>
       </Card>
+      </CardErrorBoundary>
 
       {/* Recruiter Perception */}
+      <CardErrorBoundary section="career-snapshot-perception">
       <ExpandableSection title={t('careerSnapshot.recruiterPerception')} icon={Briefcase} defaultOpen>
         <div className="bg-accent/50 rounded-lg p-4 border border-border/50">
           <p className="text-foreground leading-relaxed italic">
@@ -277,8 +243,10 @@ export function CareerSnapshotResults({ data }: CareerSnapshotResultsProps) {
           <CopyButton text={data.recruiterPerception.summary} label={t('careerSnapshot.copy.summary')} />
         </div>
       </ExpandableSection>
+      </CardErrorBoundary>
 
       {/* Top Strengths */}
+      <CardErrorBoundary section="career-snapshot-strengths">
       <ExpandableSection title={t('careerSnapshot.topStrengths.title')} icon={Award} badge={t('careerSnapshot.topStrengths.identified', { count: data.topStrengths.length })}>
         <div className="space-y-4">
           {data.topStrengths.map((strength, index) => (
@@ -292,8 +260,10 @@ export function CareerSnapshotResults({ data }: CareerSnapshotResultsProps) {
           ))}
         </div>
       </ExpandableSection>
+      </CardErrorBoundary>
 
       {/* Career Risks */}
+      <CardErrorBoundary section="career-snapshot-risks">
       <ExpandableSection title={t('careerSnapshot.careerRisks.title')} icon={AlertTriangle} badge={t('careerSnapshot.careerRisks.count', { count: data.careerRisks.length })}>
         <div className="space-y-4">
           {data.careerRisks.map((risk, index) => (
@@ -319,8 +289,10 @@ export function CareerSnapshotResults({ data }: CareerSnapshotResultsProps) {
           ))}
         </div>
       </ExpandableSection>
+      </CardErrorBoundary>
 
       {/* Positioning Guidance */}
+      <CardErrorBoundary section="career-snapshot-positioning">
       <ExpandableSection title={t('careerSnapshot.positioning.title')} icon={Target}>
         <div className="space-y-6">
           <div className="bg-primary/5 p-4 rounded-lg border border-primary/20">
@@ -376,8 +348,10 @@ export function CareerSnapshotResults({ data }: CareerSnapshotResultsProps) {
           </div>
         </div>
       </ExpandableSection>
+      </CardErrorBoundary>
 
       {/* Priority Fixes */}
+      <CardErrorBoundary section="career-snapshot-fixes">
       <ExpandableSection title={t('careerSnapshot.priorityFixes.title')} icon={Clock} badge={t('careerSnapshot.priorityFixes.badge')}>
         <div className="space-y-3">
           {data.priorityFixes.map((fix, index) => (
@@ -390,13 +364,14 @@ export function CareerSnapshotResults({ data }: CareerSnapshotResultsProps) {
                 <p className="text-sm text-muted-foreground mt-1">{fix.impact}</p>
                 <Badge variant="outline" className="mt-2 text-xs">
                   <Clock className="w-3 h-3 mr-1" />
-                  {fix.timeEstimate}
+                  {enumLabel(fix.timeEstimate)}
                 </Badge>
               </div>
             </div>
           ))}
         </div>
       </ExpandableSection>
+      </CardErrorBoundary>
     </div>
   );
 }

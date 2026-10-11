@@ -1,10 +1,17 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-09T13:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
+import { checkoutOrigin } from "../_shared/checkout-policy.ts";
+
+// Provable from outside without a purchase: every response, the CORS
+// preflight included, carries this in x-fn-build.
+const FN_BUILD = "create-test-checkout.2026-10-09.61";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Expose-Headers": "x-fn-build",
+  "x-fn-build": FN_BUILD,
 };
 
 // Test mode products - these should be created in your Stripe TEST dashboard
@@ -65,7 +72,8 @@ serve(async (req) => {
     }
 
     const stripe = new Stripe(stripeTestKey, { apiVersion: "2025-12-15.clover" });
-    const origin = req.headers.get("origin") || "https://lovable.dev";
+    // Only our own hosts get the buyer back (S8-060).
+    const origin = checkoutOrigin(req.headers.get("origin"), (k) => Deno.env.get(k));
 
     // Create checkout session with price_data (for testing without pre-created prices)
     const session = await stripe.checkout.sessions.create({

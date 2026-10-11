@@ -4,7 +4,9 @@ import { Footer } from "@/components/Footer";
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { SellerIdentity } from "@/components/SellerIdentity";
 import { AI_CACHE_MAX_HOURS, SHARED_ANALYSIS_DAYS } from "@/lib/resume-retention";
+import { PRIVACY_LAST_UPDATED } from "@/config/seller";
 
 export default function Privacy() {
   const { t, i18n } = useTranslation();
@@ -25,7 +27,8 @@ export default function Privacy() {
           </Link>
           
           <h1 className="text-4xl font-bold mb-8">{t('privacy.title')}</h1>
-          <p className="text-muted-foreground mb-4">{t('common.lastUpdated')}: {new Date().toLocaleDateString(dateLocale, { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+          <p className="text-muted-foreground mb-4">{t('common.lastUpdated')}: {new Date(`${PRIVACY_LAST_UPDATED}T12:00:00Z`).toLocaleDateString(dateLocale, { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}</p>
+          <SellerIdentity variant="privacy" className="text-muted-foreground mb-4" />
           <p className="text-sm text-muted-foreground/80 mb-8 italic">{t('privacy.legalNotice')}</p>
 
           <div className="prose prose-invert max-w-none space-y-8">
@@ -110,7 +113,7 @@ export default function Privacy() {
               <p className="text-muted-foreground leading-relaxed mb-4">We retain your information as follows:</p>
               <ul className="list-disc pl-6 text-muted-foreground space-y-2">
                 <li><strong className="text-foreground">Resume and LinkedIn Content:</strong> Held in a private temporary store for 24 hours after you upload or paste it, so a checkout can use it, then deleted automatically.</li>
-                <li><strong className="text-foreground">Free Reports:</strong> A free report quotes lines from your resume, including its first ~600 characters. It is cached for 7 days under a one-way fingerprint of the text, so the same file gets the same report, then deleted automatically. The fingerprint and the industry detected are kept so a rescan reads the same industry; the fingerprint cannot be turned back into your resume.</li>
+                <li><strong className="text-foreground">Free Reports:</strong> A free report quotes lines from your resume, including its first ~600 characters. It is cached for 7 days under a one-way fingerprint of the text, so a rescan of the same file against the same posting gets the same report, then deleted automatically. The fingerprint and the industry detected are kept so a rescan reads the same industry; the fingerprint cannot be turned back into your resume.</li>
                 <li><strong className="text-foreground">Cached AI Output:</strong> The AI-written summary at the top of a free report, and a report written by our backup scanner, are cached for up to {AI_CACHE_MAX_HOURS} hours under a one-way fingerprint of the text, then deleted automatically. A paid analysis is never cached.</li>
                 <li><strong className="text-foreground">Analysis Results:</strong> A paid analysis, which quotes your resume, is kept behind its private share link for {SHARED_ANALYSIS_DAYS} days and then deleted automatically, or sooner if you delete it from the results page; that link is its only copy on our servers, apart from any copy emailed to you. Documents generated for other paid products are kept with your purchase record so you can recover them, until you ask us to erase them.</li>
                 <li><strong className="text-foreground">Account Content:</strong> A resume version you save, the resume you set for job matching, and the CV you give the apply agent (the file and its text) are kept until you delete your account. The apply agent sends that CV to the employers it applies to on your behalf. Deleting your account erases the saved text; to have an uploaded CV file erased, email resumeboostersupp@gmail.com.</li>

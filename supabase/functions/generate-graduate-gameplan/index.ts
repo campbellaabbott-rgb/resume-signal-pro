@@ -5,12 +5,13 @@ import { assertPaidSession } from "../_shared/paid-session.ts";
 import { clipField, clipText, modelSpendGate } from "../_shared/model-spend-gate.ts";
 import { checkInputLimits, MAX_JOB_DESCRIPTION_LENGTH } from "../_shared/input-limits.ts";
 import { checkAiGatewayResponse } from "../_shared/ai-gateway-response.ts";
-import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
+import { callAIWithModelFallback, chainFrom, UnusableModelOutput } from "../_shared/ai-fallback.ts";
+import { parseReportJson, shapeGamePlan } from "../_shared/career-report-shape.ts";
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-graduate-gameplan.2026-10-10.1";
+const FN_BUILD = "generate-graduate-gameplan.2026-10-10.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -264,60 +265,51 @@ Create a comprehensive, actionable Graduate Game Plan that gives this new grad/e
 
     logStep("Calling AI API");
 
-    const { response } = await callAIWithModelFallback(apiKey, {
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ],
-      temperature: 0.7,
-      maxTokens: 4000,
-      jsonResponse: true,
-      models: chainFrom("google/gemini-2.5-flash"),
-      context: "GRADUATE-GAMEPLAN",
-    });
-
-    const rateLimitResponse = await checkAiGatewayResponse(response, corsHeaders);
-    if (rateLimitResponse) return rateLimitResponse;
-
-    const result = await response.json();
-    const content = result.choices?.[0]?.message?.content;
-
-    if (!content) {
-      throw new Error("No content returned from AI");
-    }
-
-    logStep("AI response received", { contentLength: content.length });
-
-    // Parse the JSON response
-    let graduateGamePlan;
-    try {
-      graduateGamePlan = JSON.parse(content);
-    } catch (parseError) {
-      // Try to extract JSON from the response
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        graduateGamePlan = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error("Failed to parse AI response as JSON");
+    // A reply ships only when it has the whole shape (sweep S8-073); else the
+    // next model is asked, inside one 125 s budget. Verdicts come back in
+    // English (career-report-shape.ts, S8-034).
+    const models = chainFrom("google/gemini-2.5-flash");
+    const startedAt = Date.now();
+    let graduateGamePlan: unknown = null;
+    let modelUsed = models[0];
+    let problems: string[] = [];
+    for (let i = 0; i < models.length;) {
+      const left = 125_000 - (Date.now() - startedAt);
+      if (left < 5_000) break;
+      const call = await callAIWithModelFallback(apiKey, {
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ],
+        temperature: 0.7,
+        maxTokens: 4000,
+        jsonResponse: true,
+        models: models.slice(i),
+        deadlineMs: left,
+        context: "GRADUATE-GAMEPLAN",
+      });
+      const rateLimitResponse = await checkAiGatewayResponse(call.response, corsHeaders);
+      if (rateLimitResponse) return rateLimitResponse;
+      const result = await call.response.json().catch(() => null);
+      const parsed = parseReportJson(result?.choices?.[0]?.message?.content);
+      const shaped = parsed ? shapeGamePlan(parsed) : null;
+      problems = shaped ? shaped.problems : ["the reply is not JSON"];
+      if (shaped && problems.length === 0) {
+        graduateGamePlan = shaped.data;
+        modelUsed = call.modelUsed;
+        break;
       }
+      logStep("Reply refused", { model: call.modelUsed, problems: problems.slice(0, 5) });
+      i = models.indexOf(call.modelUsed) + 1;
+      if (i <= 0) break;
     }
-
-    // Validate required fields
-    if (!graduateGamePlan.resumeReadinessGate || !graduateGamePlan.roleTargetingMap || 
-        !graduateGamePlan.applicationStrategy || !graduateGamePlan.thirtyDayPlan) {
-      throw new Error("Graduate Game Plan response missing required fields");
-    }
-
-    logStep("Graduate Game Plan generated successfully", {
-      verdict: graduateGamePlan.resumeReadinessGate?.verdict,
-      priorityRolesCount: graduateGamePlan.roleTargetingMap?.priorityRoles?.length
-    });
+    if (!graduateGamePlan) throw new UnusableModelOutput(`Graduate Game Plan reply incomplete: ${problems.slice(0, 3).join("; ")}`);
 
     return new Response(
       JSON.stringify({
         success: true,
         data: graduateGamePlan,
-        modelUsed: "google/gemini-2.5-flash"
+        modelUsed
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
@@ -326,6 +318,12 @@ Create a comprehensive, actionable Graduate Game Plan that gives this new grad/e
     const errorMessage = error instanceof Error ? error.message : String(error);
     logStep("Error generating Graduate Game Plan", { error: errorMessage });
     
+    if (error instanceof UnusableModelOutput) {
+      return new Response(
+        JSON.stringify({ error: "The AI returned an incomplete report. Please try again.", retryable: true }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     return new Response(
       JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

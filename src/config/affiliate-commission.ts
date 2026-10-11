@@ -29,13 +29,19 @@ export const SMALL_TOOL_PRODUCT_TYPES = [
 ] as const;
 
 /**
- * WHICH SALES EARN AT ALL. Only create-product-checkout puts the referral
- * code on the Stripe session, so only its catalogue can be credited: the Full
- * Resume Analysis (create-checkout), scan credit top-ups
- * (create-scan-pack-checkout), Pro, Morning Queue and the Agent Pass earn
- * nothing. The copy names these products and those exclusions; the affiliate
- * test holds this list equal to that checkout's catalogue and the set of
- * checkouts that carry the code to REFERRAL_CHECKOUTS.
+ * WHICH SALES EARN AT ALL. Every checkout now carries the referral code
+ * (wave 3: five of six used to drop it, so a referred Pro or Full Analysis
+ * sale was invisible), but only create-product-checkout's catalogue is
+ * commissioned: the Full Resume Analysis (create-checkout), scan credit
+ * top-ups (create-scan-pack-checkout), Pro, Morning Queue and the Agent Pass
+ * mark the referral "none" and the conversion is recorded at $0, attributed
+ * and unpaid (supabase/functions/_shared/checkout-policy.ts). The copy names
+ * the commissioned products and those exclusions; the affiliate test holds
+ * this list equal to that checkout's catalogue, the checkouts that carry the
+ * code to REFERRAL_CHECKOUTS and the ones that pay on it to
+ * COMMISSIONED_CHECKOUTS. To pay on another product is an owner decision:
+ * move its checkout into COMMISSIONED_CHECKOUTS, pass commissioned: true, and
+ * change the copy in the same commit.
  */
 export const COMMISSIONED_PRODUCT_TYPES = {
   /** Named in the copy, paid at AFFILIATE_COMMISSION_CENTS.other. */
@@ -44,8 +50,18 @@ export const COMMISSIONED_PRODUCT_TYPES = {
   smallTool: ["basic_keyword_fix", "cover_letter", "scan_pack", "interview_coach", "career_path_simulator", "apply_assistant"],
 } as const;
 
-/** The checkout functions whose Stripe sessions carry referral_code. */
-export const REFERRAL_CHECKOUTS = ["create-product-checkout"] as const;
+/** The checkout functions whose Stripe sessions carry referral_code: all six that mint a live session. */
+export const REFERRAL_CHECKOUTS = [
+  "create-agent-checkout",
+  "create-checkout",
+  "create-pass-checkout",
+  "create-product-checkout",
+  "create-scan-pack-checkout",
+  "create-subscription-checkout",
+] as const;
+
+/** The checkouts whose referred sales pay a commission; every other one records the referral at $0. */
+export const COMMISSIONED_CHECKOUTS = ["create-product-checkout"] as const;
 
 /** The dashboard's payout minimum, in cents (affiliate-payout-request holds the same number). */
 export const AFFILIATE_MIN_PAYOUT_CENTS = 2500;

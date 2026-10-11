@@ -85,6 +85,57 @@ export const ENGLISH_STOPWORDS: ReadonlySet<string> = new Set([
   "was", "were", "be", "been", "being", "do", "does", "did", "of", "as", "who",
 ]);
 
+/** R3's token test: a stopword, or three letters or digits or fewer. */
+export const isLiteralToken = (t: string): boolean => ENGLISH_STOPWORDS.has(t) || foldName(t).length <= 3;
+
+/** The query's tokens the english tsquery discards ("it" in "it technicians"). */
+export const stopwordTokens = (q: string): string[] =>
+  [...new Set(String(q ?? "").toLowerCase().split(/\s+/).filter((t) => t !== "or" && ENGLISH_STOPWORDS.has(t)))];
+
+export type TitleFilter = { column: "title" | "title_tsv"; query: string; config: "simple" | "english" };
+
+/**
+ * The SIMPLE route's title match, token by token (S11-004, n481). Each short
+ * or stop token is matched literally (simple config on the title), OR'ed with
+ * its own alias phrases; every other token is matched by english stem, on
+ * title_tsv (indexed) and on the title alone (which decides), so "QA
+ * engineers" finds "QA Engineer". `safeQ` is ftsSafe output. null keeps the
+ * whole-query simple match: websearch syntax (a quote, " or ", a leading "-"),
+ * or no token that needs a stem.
+ */
+export function simpleRouteFilters(
+  safeQ: string,
+  aliases: Readonly<Record<string, readonly string[]>>,
+): { filters: TitleFilter[]; expansions: string[] } | null {
+  const q = String(safeQ ?? "").trim();
+  if (!q || q.includes('"')) return null;
+  const tokens = q.toLowerCase().split(/\s+/).filter(Boolean);
+  if (tokens.some((t) => t === "or" || t.startsWith("-"))) return null;
+  const literal = tokens.filter(isLiteralToken);
+  const stem = tokens.filter((t) => !isLiteralToken(t));
+  if (literal.length === 0 || stem.length === 0) return null;
+  const expansions: string[] = [];
+  const alts = (t: string) => (Object.prototype.hasOwnProperty.call(aliases, t) ? aliases[t] : []).slice(0, 2);
+  const either = (t: string) => {
+    for (const p of alts(t)) if (!expansions.includes(p)) expansions.push(p);
+    return [t, ...alts(t)].join(" or ");
+  };
+  const filters: TitleFilter[] = literal.map((t) => ({ column: "title", query: either(t), config: "simple" }));
+  const plain = stem.filter((t) => alts(t).length === 0);
+  const english = [...(plain.length ? [plain.join(" ")] : []), ...stem.filter((t) => alts(t).length > 0).map(either)];
+  for (const e of english) {
+    filters.push({ column: "title_tsv", query: e, config: "english" });
+    filters.push({ column: "title", query: e, config: "english" });
+  }
+  return { filters, expansions };
+}
+
+/** The query with its stemmed plurals singular, a reading for the re-ranker only ("qa engineers" -> "qa engineer"). */
+export function singularReading(q: string): string {
+  return String(q ?? "").split(/\s+/).filter(Boolean).map((t) =>
+    isLiteralToken(t.toLowerCase()) ? t : t.replace(/ies$/i, "y").replace(/([^s])s$/i, "$1")).join(" ");
+}
+
 export type Route = "BROWSE" | "EMPLOYER" | "SYMBOL" | "SIMPLE" | "RANKED";
 
 /**
@@ -123,9 +174,41 @@ export interface RouteDecision {
  * first because they are unambiguous; the stopword rule only claims a query no
  * other rule wanted.
  */
+type Aliases = Readonly<Record<string, { tokens: string[]; name: string }>>;
+const own = (o: object, k: string): boolean => Object.prototype.hasOwnProperty.call(o, k);
+const fillerKeyMemo = new WeakMap<object, Map<string, { tokens: string[]; name: string }>>();
+
+/**
+ * Alias keys with the query parser's filler words folded out of the name
+ * ("Bank of America" -> "bankamerica"): the router sees the query after "of"
+ * is dropped, so a name holding one never matched its own key (S8-090, n447).
+ * Only names that keep two or more words (so "Destination Careers" never
+ * claims "destination"), never a key the table already holds, and never a key
+ * two names would share.
+ */
+export function fillerFoldedAliases(aliases: Aliases, filler: ReadonlySet<string>): ReadonlyMap<string, { tokens: string[]; name: string }> {
+  const memo = fillerKeyMemo.get(aliases);
+  if (memo) return memo;
+  const out = new Map<string, { tokens: string[]; name: string }>();
+  const shared = new Set<string>();
+  for (const hit of Object.values(aliases)) {
+    const words = hit.name.toLowerCase().split(/\s+/).filter((w) => foldName(w) !== "");
+    const kept = words.filter((w) => !filler.has(foldName(w)));
+    if (kept.length === words.length || kept.length < 2) continue;
+    const key = foldName(kept.join(" "));
+    if (own(aliases, key)) continue;
+    if (out.has(key) && out.get(key)!.name !== hit.name) shared.add(key);
+    out.set(key, hit);
+  }
+  for (const k of shared) out.delete(k);
+  fillerKeyMemo.set(aliases, out);
+  return out;
+}
+
 export function pickRoute(
   rawQ: string,
-  aliases: Readonly<Record<string, { tokens: string[]; name: string }>>,
+  aliases: Aliases,
+  filler?: ReadonlySet<string>,
 ): RouteDecision {
   const raw = String(rawQ ?? "").trim();
   if (!raw) return { route: "BROWSE", reason: "empty query" };
@@ -138,7 +221,8 @@ export function pickRoute(
   // real job titles when it was tried, measured by replaying the board's own
   // titles as queries.
   if (alnum.length >= 3 && !OCCUPATION_GUARD.has(alnum)) {
-    const hit = aliases[alnum];
+    // Own keys only: aliases["constructor"] was Object's constructor, and the route threw (n447).
+    const hit = own(aliases, alnum) ? aliases[alnum] : filler ? fillerFoldedAliases(aliases, filler).get(alnum) : undefined;
     if (hit && hit.tokens.length > 0) {
       return { route: "EMPLOYER", reason: `whole query matches employer ${hit.name}`, tokens: hit.tokens, matchedName: hit.name };
     }
@@ -172,7 +256,7 @@ export function pickRoute(
   // character token is absent from the stored english tsvector, so that path is
   // either blind (q="IT" -> 0 rows) or answering a different question
   // (q="it manager" -> 92,919 rows for "manager").
-  if (tokens.some((t) => ENGLISH_STOPWORDS.has(t) || foldName(t).length <= 3)) {
+  if (tokens.some(isLiteralToken)) {
     return { route: "SIMPLE", reason: "query contains a token the english index discards" };
   }
 

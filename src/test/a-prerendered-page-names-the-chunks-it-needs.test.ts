@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
+import { skipWithoutDist } from "./helpers/built-output";
 
 /**
  * A PRERENDERED PAGE NAMED ONE SCRIPT AND NEEDED THREE.
@@ -42,7 +43,7 @@ describe("a prerendered page names the chunks it needs", () => {
   // Only meaningful after a build; skipped rather than failed on a clean tree,
   // because the source assertions above already hold the contract.
   const jobsHtml = resolve(ROOT, "dist/jobs/index.html");
-  it.skipIf(!existsSync(jobsHtml))("the built /jobs page carries both hints", () => {
+  it.skipIf(skipWithoutDist(existsSync(jobsHtml)))("the built /jobs page carries both hints", () => {
     const html = readFileSync(jobsHtml, "utf8");
     const hints = [...html.matchAll(/<link rel="modulepreload" href="\/assets\/([^"]+)"/g)].map((m) => m[1]);
     expect(hints.some((h) => h.startsWith("Jobs-")), `hints were ${JSON.stringify(hints)}`).toBe(true);

@@ -8,6 +8,10 @@ import { FloatingHelpButton } from "./components/FloatingHelpButton";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { LanguageDebugBanner } from "./components/LanguageDebugBanner";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { VisitSource } from "./components/VisitSource";
+import { SkipLinkFallback } from "./components/SkipLinkFallback";
+
+const TargetRolesDialog = lazy(() => import("./components/TargetRolesDialog").then((m) => ({ default: m.TargetRolesDialog })));
 
 // Index is the landing page almost every visitor hits first, so it stays eagerly
 // imported. Every other route is lazy-loaded so visitors to "/" aren't downloading
@@ -80,7 +84,12 @@ const App = () => (
   <AuthProvider>
     <Toaster />
     <Sonner />
+    {/* The roles question every ATS Defense buy button asks (S11-074). */}
+    <Suspense fallback={null}><TargetRolesDialog /></Suspense>
     <BrowserRouter>
+      {/* First, so it reads the landing address before any page edits it. */}
+      <VisitSource />
+      <SkipLinkFallback />
       <ScrollToTop />
       <Suspense fallback={null}>
         <Routes>

@@ -24,6 +24,8 @@ import { MCP_PAGE_HOSTS, andList } from "@/config/mcp-tools";
 import { servingSourceSummary } from "@/config/ats-vendors";
 import { CLOSURE_RECORD_WINDOW_DAYS, closureCountSpanDays } from "@/lib/hiring-trends-trust";
 import { apiKeyTokenFromHash, errorBodyOf, forgetConfirmFragment } from "@/lib/confirm-link";
+import { PurchaseTerms } from "@/components/PurchaseTerms";
+import { purchaseTerms } from "@/lib/purchase-terms";
 
 const rpc = (fn: string, args?: Record<string, unknown>) =>
   (supabase as unknown as { rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }> }).rpc(fn, args);
@@ -47,7 +49,7 @@ const ENDPOINTS: Array<{ path: string; body: string; params?: string; notes?: st
     notes: [
       "country, category, company_token, work_mode, source and experience_band take a comma list — country=US,GB — capped at 5, 3, 12, 3, 8 and 4 values, the same caps the board applies. Over the cap is a 400, never a silent slice.",
       "A value outside a closed set (an unknown source, category, work mode or experience band) is a 400 naming the valid values. It is never an empty page, which would read as a statement about the market in answer to a typo.",
-      "One hiring system inside that set — the U.S. federal feed — is refused rather than filtered. Its terms of use permit showing results to a person and not redistributing them as a data feed, so no endpoint here returns its rows on any tier, and naming it in source= answers 451 with that reason. A 400 would be wrong, because the value really is in the set; an empty 200 would be worse, because it would tell your code there are no federal jobs. /v1 lists the excluded systems and the reason in its own index.",
+      "Two hiring systems inside that set are refused rather than filtered: the U.S. federal feed, whose terms of use permit showing results to a person and not redistributing them as a data feed, and SmartRecruiters, withheld until SmartRecruiters (SAP) gives permission. Both stay on the public job board. No endpoint here returns their rows on any tier, /v1/companies does not list SmartRecruiters employers, and naming either in source= (or a SmartRecruiters employer in company_token=) answers 451 with the reason. A 400 would be wrong, because the value really is in the set; an empty 200 would be worse, because it would tell your code there are no such jobs. /v1 lists the excluded systems and the reason in its own index.",
       "include=description adds the posting body to every row and caps that request at 25 rows a page — descriptions average ~5.7KB, so a 100-row page would be ~570KB. Page with cursor= to walk the rest. /v1/jobs/{id} always carries it.",
       "engine=ranked (paid) swaps the default title match for the site's full relevance/rescue engine, and passes its disclosures through. explain=1 appends a diagnostics block naming every filter that bound and how.",
     ],
@@ -112,7 +114,10 @@ function GetAKeyBody({ box }: { box: React.RefObject<HTMLDivElement> }) {
     e.preventDefault();
     setBusy(true); setErr(null);
     try {
-      const { data, error } = await supabase.functions.invoke("api-key-request", { body: { email, name } });
+      // The Terms version the line above the button showed (item 12); the
+      // function records it with the request.
+      const { termsVersion } = purchaseTerms();
+      const { data, error } = await supabase.functions.invoke("api-key-request", { body: { email, name, ...(termsVersion ? { termsVersion } : {}) } });
       const d = (error ? await errorBodyOf(error) : data) as ApiError & { requested?: boolean };
       if (error || !d?.requested) { setErr(messageOf(d) ?? "Could not send the confirmation email. Try again shortly."); return; }
       setRequestedFor(email.trim());
@@ -235,6 +240,7 @@ function GetAKeyBody({ box }: { box: React.RefObject<HTMLDivElement> }) {
         />
       </div>
       {err && <p className="text-sm text-destructive mb-3">{err}</p>}
+      <PurchaseTerms kind="signup" className="mb-3" />
       <button
         type="submit" disabled={busy}
         className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
@@ -292,7 +298,7 @@ export default function DataApi() {
     // lead and the count from the one list, and it names only systems the
     // board actually serves rows from.
     { title: "Lifecycle-tracked postings", body: `Every opening from companies' official applicant-tracking feeds (${servingSourceSummary(5)}) — with first-seen, company-stated post date where the vendor provides one, and the exact close date when it comes down.` },
-    { title: "Fills vs. re-listing churn", body: "When a posting closes we record whether it genuinely closed or was re-listed under a new ID. That distinction — companies that fill roles vs. companies that churn them — exists almost nowhere else." },
+    { title: "Takedowns vs. re-listing churn", body: "When a posting closes we record whether it genuinely came down or was re-listed under a new ID. A takedown is never called a hire: a hire, a withdrawal and a cancelled requisition look the same from a feed." },
     { title: "Stated salary ranges", body: "Salary ranges extracted from posting text where the company itself states them, normalized by currency and period. Never estimated, never modeled." },
     { title: "Daily accuracy audits", body: "We sample random live postings every day and re-check them against the companies' own systems, stratified per hiring system. The audit trail ships with the data." },
   ];
@@ -324,7 +330,7 @@ export default function DataApi() {
       icon: Building2,
       name: "Commercial license",
       price: "Custom",
-      body: "Recurring feeds or API access to postings, closures, fills and churn signals for commercial use. Tell us the shape of what you need and we'll quote it.",
+      body: "Recurring feeds or API access to postings, closures, takedown and churn signals for commercial use. Tell us the shape of what you need and we'll quote it.",
       cta: "Talk to us",
       subject: "Commercial data license",
     },
@@ -334,7 +340,7 @@ export default function DataApi() {
     <>
       <SEO
         title="Hiring Data & API — lifecycle-tracked job posting data | Resume Booster"
-        description="License the dataset behind our live board: lifecycle-tracked postings from official company career sites, genuine fills vs re-listing churn, stated salary ranges, and daily accuracy audits. Free for journalists with attribution."
+        description="License the dataset behind our live board: lifecycle-tracked postings from official company career sites, genuine takedowns vs re-listing churn, stated salary ranges, and daily accuracy audits. Free for journalists with attribution."
         path="/data-api"
       />
       <Header />
@@ -353,7 +359,7 @@ export default function DataApi() {
               </h1>
               <p className="text-xl text-muted-foreground mb-8">
                 Most job data stops at "posted." Ours follows every posting to the end: when it closed, whether it was
-                genuinely filled or quietly re-listed, and what the company said it paid — collected only from
+                genuinely taken down or quietly re-listed, and what the company said it paid — collected only from
                 companies' own official career sites and audited against them daily.
               </p>
               <div className="flex flex-wrap justify-center gap-4 text-sm">

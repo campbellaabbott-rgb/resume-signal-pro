@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Coins, Zap, X, Mail, CheckCircle2, Plus, Minus, Clock, AlertCircle } from "lucide-react";
+import { Coins, Zap, Mail, CheckCircle2, Plus, Minus, Clock, AlertCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,14 +7,28 @@ import { useScanCredits } from "@/hooks/use-scan-credits";
 import { clampScanCredits, MAX_SCAN_CREDITS, MIN_SCAN_CREDITS } from "@/config/scan-credits";
 import { useConversionTracking } from "@/hooks/use-conversion-tracking";
 import { useCurrency } from "@/hooks/use-currency";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { PurchaseTerms } from "@/components/PurchaseTerms";
 
 interface RateLimitUpselProps {
   onClose: () => void;
+  /**
+   * Hours until the daily limit resets, AS THE SERVER COUNTS THEM (its
+   * rolling window), or null when the answer did not say: then no reset time
+   * is printed rather than a guessed one (S8-119).
+   */
+  resetHours?: number | null;
 }
 
 const PRESET_AMOUNTS = [5, 10, 20];
 
-export function RateLimitUpsell({ onClose }: RateLimitUpselProps) {
+/**
+ * The scan-credit offer shown when the daily free scans run out. A Radix
+ * dialog (S8-119): it was a plain fixed div after the footer, with no dialog
+ * role, no focus handling and no Escape, and its stepper and amount field had
+ * no labels.
+ */
+export function RateLimitUpsell({ onClose, resetHours = null }: RateLimitUpselProps) {
   const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [creditAmount, setCreditAmount] = useState(10);
@@ -45,15 +59,9 @@ export function RateLimitUpsell({ onClose }: RateLimitUpselProps) {
   const isValidEmail = email.includes('@') && email.includes('.');
   const totalPrice = creditAmount * pricePerCredit;
 
-  // Calculate time until reset (midnight local time)
-  const now = new Date();
-  const midnight = new Date(now);
-  midnight.setHours(24, 0, 0, 0);
-  const hoursUntilReset = Math.ceil((midnight.getTime() - now.getTime()) / (1000 * 60 * 60));
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-md bg-card border border-border rounded-2xl shadow-2xl animate-slide-up overflow-hidden">
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="w-full max-w-md p-0 gap-0 bg-card border border-border rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
         {/* Error Banner - Prominent and clear */}
         <div className="bg-gradient-to-r from-amber-500/90 to-orange-500/90 px-6 py-4 text-white">
           <div className="flex items-start gap-3">
@@ -61,31 +69,24 @@ export function RateLimitUpsell({ onClose }: RateLimitUpselProps) {
               <AlertCircle className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="font-bold text-lg">{t('rateLimitUpsell.title')}</h2>
-              <p className="text-white/90 text-sm mt-1">
+              <DialogTitle className="font-bold text-lg">{t('rateLimitUpsell.title')}</DialogTitle>
+              <DialogDescription className="text-white/90 text-sm mt-1">
                 {t('rateLimitUpsell.subtitle')}
-              </p>
+              </DialogDescription>
             </div>
           </div>
         </div>
         
         <div className="p-6">
-          {/* Close button */}
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 p-2 text-white/80 hover:text-white rounded-full hover:bg-white/10 transition-colors"
-            aria-label={t('common.close')}
-          >
-            <X className="w-5 h-5" />
-          </button>
-
-          {/* Reset timer info */}
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6 bg-secondary/50 rounded-lg px-4 py-3">
-            <Clock className="w-4 h-4 shrink-0" />
-            <span>
-              {t('rateLimitUpsell.resetIn')} <strong className="text-foreground">{t('rateLimitUpsell.hour', { count: hoursUntilReset })}</strong>
-            </span>
-          </div>
+          {/* Reset timer info: the server's count, or nothing. */}
+          {resetHours !== null && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6 bg-secondary/50 rounded-lg px-4 py-3">
+              <Clock className="w-4 h-4 shrink-0" />
+              <span>
+                {t('rateLimitUpsell.resetIn')} <strong className="text-foreground">{t('rateLimitUpsell.hour', { count: resetHours })}</strong>
+              </span>
+            </div>
+          )}
 
           {/* Credit amount selector */}
           <div className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-xl p-4 mb-6 border border-primary/20">
@@ -95,7 +96,7 @@ export function RateLimitUpsell({ onClose }: RateLimitUpselProps) {
             </div>
 
             <div className="flex items-center justify-between mb-3">
-              <span className="text-sm text-muted-foreground">{t('rateLimitUpsell.howManyCredits')}</span>
+              <label htmlFor="rate-limit-credit-amount" className="text-sm text-muted-foreground">{t('rateLimitUpsell.howManyCredits')}</label>
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
@@ -103,10 +104,12 @@ export function RateLimitUpsell({ onClose }: RateLimitUpselProps) {
                   className="h-8 w-8"
                   onClick={() => adjustAmount(-1)}
                   disabled={creditAmount <= MIN_SCAN_CREDITS}
+                  aria-label={t('rateLimitUpsell.fewerCredits')}
                 >
                   <Minus className="h-4 w-4" />
                 </Button>
                 <Input
+                  id="rate-limit-credit-amount"
                   type="number"
                   min={MIN_SCAN_CREDITS}
                   max={MAX_SCAN_CREDITS}
@@ -121,6 +124,7 @@ export function RateLimitUpsell({ onClose }: RateLimitUpselProps) {
                   className="h-8 w-8"
                   onClick={() => adjustAmount(1)}
                   disabled={creditAmount >= MAX_SCAN_CREDITS}
+                  aria-label={t('rateLimitUpsell.moreCredits')}
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
@@ -175,6 +179,7 @@ export function RateLimitUpsell({ onClose }: RateLimitUpselProps) {
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 type="email"
+                aria-label={t('rateLimitUpsell.emailPlaceholder')}
                 placeholder={t('rateLimitUpsell.emailPlaceholder')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -184,6 +189,7 @@ export function RateLimitUpsell({ onClose }: RateLimitUpselProps) {
             <p className="text-xs text-muted-foreground">{t('rateLimitUpsell.creditsLinkedToEmail')}</p>
           </div>
 
+          <PurchaseTerms kind="payment" className="mb-3 text-center" />
           {/* Purchase button */}
           <Button
             onClick={handlePurchase}
@@ -211,7 +217,7 @@ export function RateLimitUpsell({ onClose }: RateLimitUpselProps) {
             </button>
           </div>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

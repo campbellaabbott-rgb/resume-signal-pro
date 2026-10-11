@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { productFeatures } from '@/lib/product-features';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +12,7 @@ import { useProductCheckout } from '@/hooks/use-product-checkout';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { PurchaseTerms } from "@/components/PurchaseTerms";
 
 interface ProductSelectionModalProps {
   open: boolean;
@@ -153,15 +155,10 @@ export function ProductSelectionModal({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="font-semibold text-foreground">{product.name}</span>
-                    {'savings' in product && product.savings && (
-                      <Badge variant="secondary" className="text-xs">
-                        {product.savings}
-                      </Badge>
-                    )}
                   </div>
                   <p className="text-sm text-muted-foreground mb-2">{product.description}</p>
                   <div className="flex flex-wrap gap-x-3 gap-y-1">
-                    {product.features.slice(0, 3).map((feature, i) => (
+                    {productFeatures(t, key, product.features).slice(0, 3).map((feature, i) => (
                       <span key={i} className="text-xs text-muted-foreground flex items-center gap-1">
                         <Check className="w-3 h-3 text-primary" />
                         {feature}
@@ -262,6 +259,7 @@ export function ProductSelectionModal({
           </TooltipProvider>
         )}
 
+        <PurchaseTerms kind="payment" className="mt-4 text-center" />
         {/* Purchase button */}
         <Button 
           onClick={handlePurchase}

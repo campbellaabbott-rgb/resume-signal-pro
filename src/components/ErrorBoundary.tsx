@@ -1,5 +1,6 @@
 import { Component, ReactNode } from "react";
 import { postTrackEvent, getVisitorId } from "@/lib/track-transport";
+import { crashVariant } from "@/lib/crash-variant";
 
 interface Props {
   children: ReactNode;
@@ -29,10 +30,13 @@ export class ErrorBoundary extends Component<Props, State> {
       const visitorId = getVisitorId();
       postTrackEvent({
         testName: "client_error",
-        variant: (error?.message ?? "unknown").slice(0, 120),
+        // Within track-ab-event's 30 characters (S8-121) and one per crash,
+        // so a visitor's second crash is not a duplicate of the first.
+        variant: crashVariant("app", error?.message ?? "unknown"),
         eventType: "view",
         visitorId,
         metadata: {
+          message: (error?.message ?? "unknown").slice(0, 300),
           stack: (error?.stack ?? "").slice(0, 600),
           componentStack: (info?.componentStack ?? "").slice(0, 600),
           path: window.location.pathname,
@@ -46,20 +50,22 @@ export class ErrorBoundary extends Component<Props, State> {
       if (this.props.fallback) return this.props.fallback;
 
       return (
-        <div className="flex min-h-screen items-center justify-center p-8 text-center">
+        // Theme tokens, not gray-900 on the near-black body (~1.1:1): the
+        // headline was invisible in the dark theme (sweep S8-117).
+        <div className="flex min-h-screen items-center justify-center bg-background p-8 text-center text-foreground">
           <div className="max-w-md space-y-4">
-            <h1 className="text-2xl font-semibold text-gray-900">Something went wrong</h1>
-            <p className="text-gray-600">
+            <h1 className="text-2xl font-semibold text-foreground">Something went wrong</h1>
+            <p className="text-muted-foreground">
               An unexpected error occurred. Please refresh the page to try again.
             </p>
             {this.state.error?.message && (
-              <p className="rounded-lg bg-gray-100 px-3 py-2 text-left font-mono text-xs text-gray-500 break-words">
+              <p className="rounded-lg bg-muted px-3 py-2 text-left font-mono text-xs text-muted-foreground break-words">
                 {String(this.state.error.message).slice(0, 300)}
               </p>
             )}
             <button
               onClick={() => window.location.reload()}
-              className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+              className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90"
             >
               Refresh page
             </button>

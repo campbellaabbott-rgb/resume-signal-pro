@@ -38,7 +38,9 @@ afterEach(() => { sent.length = 0; db.tables = {}; db.writes = []; db.rpcs = {};
 
 function install(mandate: Record<string, unknown> | null) {
   db.rpcs.agent_digest_claim_batch = () => ({ data: [{ ad_user_id: "u-1", ad_email: "sub@example.com", ad_prev_sent_at: null }], error: null });
-  db.rows("agent_subscribers").push({ email: "sub@example.com", status: "active", current_period_end: new Date(Date.now() + 9e8).toISOString() });
+  db.rows("agent_subscribers").push({ user_id: "u-1", email: "sub@example.com", status: "active", current_period_end: new Date(Date.now() + 9e8).toISOString() });
+  // The plan is read by account (agent_subscription_rows, S8-076).
+  db.rpcs.agent_subscription_rows = (a) => ({ data: db.rows("agent_subscribers").filter((r) => (a.p_user_ids as string[]).includes(String(r.user_id))), error: null });
   if (mandate) db.rows("agent_mandates").push({ user_id: "u-1", email_last_sent_at: null, ...mandate });
   db.rows("agent_queue").push({ user_id: "u-1", status: "ready", posting_id: "p1", title: "Nurse", company: "Acme", location: "Leeds", apply_url: "https://acme.example/a", salary: null, fit_pct: 80, reasons: [], created_at: new Date().toISOString() });
 }

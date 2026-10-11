@@ -54,7 +54,8 @@ export interface AtsVendor extends BoardSource {
 }
 
 export const ATS_VENDORS: readonly AtsVendor[] = [
-  // Applications the agent can complete and submit on its own.
+  // No CAPTCHA in the sample. Which of these the agent can SUBMIT on is the
+  // narrower list in sendable-vendors.ts; agent copy reads that one.
   { key: "workday", label: "Workday", tier: "auto" },
   { key: "smartrecruiters", label: "SmartRecruiters", tier: "auto" },
   { key: "breezy", label: "Breezy", tier: "auto" },

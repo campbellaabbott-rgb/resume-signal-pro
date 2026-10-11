@@ -315,7 +315,9 @@ describe("we could not observe it is not they are not hiring", () => {
     // branch asserted below -- so the chain is matched as a range rather than
     // by widening the window for every other site on the page. The range is
     // bounded, so a site pasted far from the chain is still outside it.
-    const slotStart = JOBS.indexOf("const churn = hh.relists_90d;");
+    // Re-anchored 2026-10-09: the chain's first statement is now its row read
+    // (the three-event caution that opened it is gone, S8-092).
+    const slotStart = JOBS.indexOf("const hh = curveByToken[job.token];");
     const slotEnd = JOBS.search(/hiringRecordSlot\(hiringRecordOf\(job\.token\)\) === "unreadable"/);
     expect(slotStart, "the one-slot chain moved -- RE-ANCHOR this guard, do not delete it").toBeGreaterThan(-1);
     expect(slotEnd, "the slot's third-state chip is missing").toBeGreaterThan(slotStart);

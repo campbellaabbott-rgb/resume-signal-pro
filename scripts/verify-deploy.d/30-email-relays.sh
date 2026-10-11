@@ -59,7 +59,6 @@ if vd30_build_ok stripe-webhook "$WH30"; then echo "PASS  stripe-webhook GET car
 else echo "FAIL  stripe-webhook GET x-fn-build = '${WH30}' (want stripe-webhook.2026-10-04.N or later)"; fi
 echo "INFO  ORDER: the four callers (stripe-webhook, verify-product-purchase, retry-failed-deliveries, analyze-resume) must serve 2026-10-04+ no later than the three internal mailers, or purchase mail is refused (401) in between"
 echo "INFO  send-scan-report prints a report's sentences only under free-keyword-scan's reportMeta.mailSeal; deploy free-keyword-scan with it, or every emailed report carries the numbers only. A scan costs money, so the seal is proven only by 'npm run verify:deploy:scan' (its 'scan emits current fields' line names mailSeal when missing)"
-echo "INFO  7f pins the callers' builds to exactly 2026-10-01.1; after this deploy those lines read FAIL by construction -- this section's 'or later' lines supersede them"
 
 # The tables: closed to anon BY NAME (42501), present (not PGRST205), and the
 # pulse table carries the opt-in column (42501 on the column, not 42703).

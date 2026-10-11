@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle, RefreshCcw, CreditCard, HelpCircle, ArrowLeft, Loader2 } from "lucide-react";
 import { PRODUCTS, type ProductId } from "@/config/products";
-import { useProductCheckout } from "@/hooks/use-product-checkout";
+import { MADE_FROM_THE_RESUME, readCheckoutRetry, useProductCheckout } from "@/hooks/use-product-checkout";
+import { PurchaseTerms } from "@/components/PurchaseTerms";
 
 /**
  * Stripe's cancel_url for every one-time checkout.
@@ -34,6 +35,15 @@ const PaymentFailed = () => {
     // The analysis is bought from the scan results; the credits from their own picker.
     if (known === "fullAnalysis") return navigate("/");
     if (known === "scanPack") return navigate("/pricing");
+    // THE SAME BINDING AS THE CHECKOUT THAT WAS CANCELLED (S8-056): its stored
+    // résumé copy and its job, never the tab's homepage scan.
+    const retry = readCheckoutRetry(known);
+    if (retry?.sessionId) {
+      await purchaseProduct(known, { ctaSection: "payment_cancelled", sessionId: retry.sessionId, jobTitle: retry.jobTitle, jobCompany: retry.jobCompany, targetRoles: retry.targetRoles });
+      return;
+    }
+    // Made from a résumé, and we do not know which: back to where it was bought.
+    if (MADE_FROM_THE_RESUME.has(known)) return navigate(retry?.path && !retry.path.startsWith("/payment-failed") ? retry.path : "/pricing");
     await purchaseProduct(known, { ctaSection: "payment_cancelled" });
   };
 
@@ -59,6 +69,7 @@ const PaymentFailed = () => {
         <CardContent className="space-y-6">
           {/* Action buttons first: most people here just want to go back. */}
           <div className="flex flex-col gap-3 pt-2">
+            <PurchaseTerms kind="payment" className="text-center" />
             <Button size="lg" className="w-full gap-2" onClick={tryAgain} disabled={isLoading}>
               {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCcw className="w-4 h-4" />}
               {t("paymentFailed.tryAgain")}

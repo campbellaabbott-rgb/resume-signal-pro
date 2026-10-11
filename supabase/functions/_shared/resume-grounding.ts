@@ -13,6 +13,8 @@
 // Anything autonomous — overnight kit pre-drafting, the apply agent — MUST
 // call the validated non-stream paths, never the stream variants.
 
+import { canonPhone, canonUrl } from "./contact-guard.ts";
+
 export interface TailoredExperience {
   company: string;
   title: string;
@@ -47,8 +49,64 @@ export interface GroundingReport {
   /** Non-fatal: stripped because the source resume doesn't support them. */
   removedSkills: string[];
   removedCertifications: string[];
-  /** The resume with ungrounded skills/certs removed. Only meaningful when ok. */
+  /** Contact fields blanked: a value the source résumé lacks, or a placeholder ("N/A"). */
+  removedContact: string[];
+  /** The resume with ungrounded skills/certs and contact values removed. Only meaningful when ok. */
   cleaned: TailoredResumeShape;
+}
+
+/**
+ * THE CONTACT LINE IS COPIED, NEVER ADDED (S11-017). The kit's tool schema
+ * makes every contact field a required string, so a résumé with no phone,
+ * LinkedIn or website came back with invented ones ("(512) 555-0142",
+ * "linkedin.com/in/janedoe") or a placeholder ("N/A", "Not provided"), and
+ * the PDF and DOCX exporters printed them under a "nothing was invented"
+ * banner. Each contact value must come from the source:
+ *   - email: the same address appears in the source;
+ *   - phone: the same digits as a phone in the source (canonPhone);
+ *   - linkedIn / website / any URL: the same host and path (canonUrl);
+ *   - fullName and location: their significant words appear in the source;
+ *   - title (the headline under the name) is the résumé's own tailoring and
+ *     is not contact information, so it is left alone.
+ * A placeholder is blanked whatever the field.
+ */
+const CONTACT_PLACEHOLDER = /^(?:n\/?a|none|not provided|not available|not applicable|not listed|unknown|tbd|-+|—|\[[^\]]*\]|\([^)]*\))$/i;
+const SOURCE_PHONE_RUN = /\+?\d[\d\s().-]{6,18}\d/g;
+
+export function groundContact(sourceResume: string, contact: Record<string, string> | null | undefined): { contact: Record<string, string>; removed: string[] } {
+  const out: Record<string, string> = {};
+  const removed: string[] = [];
+  const hay = " " + normalizeForMatch(sourceResume) + " ";
+  const lower = sourceResume.toLowerCase();
+  const sourceUrls = lower.replace(/https?:\/\//g, "").replace(/(^|[\s(|,])www\./g, "$1");
+  const sourcePhones = new Set([...sourceResume.matchAll(SOURCE_PHONE_RUN)].map((m) => canonPhone(m[0])));
+  for (const [field, raw] of Object.entries(contact ?? {})) {
+    const value = typeof raw === "string" ? raw.trim() : "";
+    if (!value) { out[field] = ""; continue; }
+    if (CONTACT_PLACEHOLDER.test(value)) { out[field] = ""; removed.push(`${field}: ${value}`); continue; }
+    const key = field.toLowerCase();
+    let supported: boolean;
+    if (key === "title" || key === "headline") {
+      supported = true;
+    } else if (key.includes("email") || /@/.test(value)) {
+      supported = lower.includes(value.toLowerCase());
+    } else if (key.includes("phone") || key.includes("mobile")) {
+      const digits = canonPhone(value);
+      supported = digits.length >= 7 && (sourcePhones.has(digits) || sourceResume.includes(value));
+    } else if (key.includes("linkedin") || key.includes("website") || key.includes("url") || key.includes("github") || key.includes("portfolio") || /\.[a-z]{2,}(\/|$)/i.test(value)) {
+      const canon = canonUrl(value);
+      supported = canon.length > 3 && sourceUrls.includes(canon);
+    } else if (key === "fullname" || key === "name") {
+      supported = tokensSupported(hay, value, 1);
+    } else if (key === "location") {
+      supported = tokensSupported(hay, value, 0.5);
+    } else {
+      supported = tokensSupported(hay, value, 0.75);
+    }
+    if (supported) out[field] = raw as string;
+    else { out[field] = ""; removed.push(`${field}: ${value}`); }
+  }
+  return { contact: out, removed };
 }
 
 /** Lowercase, strip accents/punctuation, collapse whitespace. */
@@ -98,7 +156,16 @@ const yearsIn = (s: string) => [...s.matchAll(/\b(19|20)\d{2}\b/g)].map((m) => m
 // flagging them would reject harmless drafts far more often than it would
 // catch lies. Years are already validated structurally where they matter.
 
-const NUM_CLAIM = /\$\s?\d[\d,.]*\s?[kKmMbB]?|\d+(?:[.,]\d+)?\s?%|\d+(?:\.\d+)?x\b|\b\d+(?:[.,]\d+)?\s?[kKmMbB]\b|\b\d{2,}\b/g;
+// The grouped arm ("10,000", "1,000,000") runs before the bare-integer arm,
+// which would otherwise split "10,000" into "10" and "000", both dropped as
+// small counts, so an invented "10,000 users" passed (sweep S8-032).
+// Dot and space grouping ("10.000", "1.000.000", "10 000") are read the same
+// way: generate-cover-letter writes Spanish for Spanish postings. A single
+// dot group counts only with exactly three digits after it, and a space group
+// never runs into a hyphen ("3 100-person teams").
+const NUM_CLAIM = /\$\s?\d[\d,.]*\s?[kKmMbB]?|\d+(?:[.,]\d+)?\s?%|\d+(?:\.\d+)?x\b|\b\d+(?:[.,]\d+)?\s?[kKmMbB]\b|\b\d{1,3}(?:,\d{3})+\b|\b\d{1,3}(?:\.\d{3})+\b(?![.,]\d)|\b\d{1,3}(?:[ \u00A0\u202F]\d{3})+\b(?![-\u2010\u2011])|\b\d{2,}\b/g;
+const GROUPED = /^\d{1,3}(?:[,. \u00A0\u202F]\d{3})+$/;
+const SPACE_GROUPED = /^(\d{1,3})[ \u00A0\u202F](\d{3}(?:[ \u00A0\u202F]\d{3})*)$/;
 
 /**
  * Canonical digit-string for matching: "1,200" == "1200", "32 %" == "32%",
@@ -107,14 +174,18 @@ const NUM_CLAIM = /\$\s?\d[\d,.]*\s?[kKmMbB]?|\d+(?:[.,]\d+)?\s?%|\d+(?:\.\d+)?x
  * sentence on one side and not the other was refused as invented: an honest
  * cover letter or apply kit got a 422 (register L5-06).
  */
-const canonNum = (s: string) => s.replace(/[\s,]/g, "").toLowerCase().replace(/\.+$/, "");
+const canonNum = (s: string) => {
+  const t = s.replace(/[\s\u00A0\u202F,]/g, "").toLowerCase().replace(/\.+$/, "");
+  return t.replace(/(^|[^\d.])(\d{1,3}(?:\.\d{3})+)$/, (_m, pre: string, n: string) => pre + n.replace(/\./g, ""));
+};
 
 const numClaims = (text: string): string[] =>
   [...(text.matchAll(NUM_CLAIM))].map((m) => m[0]).filter((raw) => {
-    const bare = raw.replace(/[^0-9.]/g, "");
-    const isBareInt = /^\d+$/.test(raw.trim());
+    const grouped = GROUPED.test(raw.trim());
+    const bare = grouped ? raw.replace(/\D/g, "") : raw.replace(/[^0-9.]/g, "");
+    const isBareInt = grouped || /^\d+$/.test(raw.trim());
     if (isBareInt && Number(bare) < 13) return false;      // small counts: allowed
-    if (isBareInt && /^(19|20)\d{2}$/.test(raw.trim())) return false; // years: handled elsewhere
+    if (isBareInt && /^(19|20)\d{2}$/.test(bare)) return false; // years: handled elsewhere
     return true;
   });
 
@@ -132,6 +203,10 @@ export function unsupportedNumericClaims(sourceResume: string, text: string): st
     const canon = canonNum(claim);
     const digits = canon.replace(/[^0-9.]/g, "").replace(/\.+$/, "");
     if (sourceNums.has(canon) || sourceNums.has(digits)) continue;
+    // "2 500" may be a small count and a figure ("2 500-seat venues" without
+    // the hyphen): it passes when its tail is the source's, as it did before.
+    const sp = claim.trim().match(SPACE_GROUPED);
+    if (sp && Number(sp[1]) < 13 && sourceNums.has(canonNum(sp[2]))) continue;
     bad.push(claim.trim());
   }
   return [...new Set(bad)];
@@ -211,11 +286,16 @@ export function validateTailoredResume(sourceResume: string, resume: TailoredRes
     return supported;
   });
 
+  // Contact values the source lacks are blanked, not refused: a missing
+  // LinkedIn is no reason to withhold a kit, an invented one is never shipped.
+  const groundedContact = groundContact(sourceResume, resume.contact);
+
   return {
     ok: issues.length === 0,
     issues,
     removedSkills,
     removedCertifications,
-    cleaned: { ...resume, skills: keptSkills, certifications: keptCerts },
+    removedContact: groundedContact.removed,
+    cleaned: { ...resume, contact: groundedContact.contact, skills: keptSkills, certifications: keptCerts },
   };
 }

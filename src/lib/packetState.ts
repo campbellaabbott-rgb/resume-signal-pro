@@ -35,6 +35,7 @@ export const UNCERTAIN_ATTEMPTS = 99;
 
 export type PacketPhase =
   | "sent"
+  | "not-arrived"    // was uncertain; the person checked and it did not arrive
   | "uncertain"      // submit pressed, outcome unknown — never retried
   | "exhausted"      // tried MAX_ATTEMPTS times and stopped
   | "in-flight"      // a worker holds the lease right now
@@ -71,6 +72,13 @@ export function packetState(p: PacketLike): PacketVerdict {
 
   // Sent is sent. Nothing below can override it, and nothing may retry it.
   if (p.submitted_at) return V("sent", "Sent.", false, attempts);
+
+  // The person's answer to an unconfirmed send (agent_packet_decide
+  // 'not_sent', S11-044). It outranks the unconfirmed state it replaced, and
+  // is never retried: the employer may still hold a half-made application.
+  if ((p.blockers ?? []).some((b) => b?.kind === "not-sent")) {
+    return V("not-arrived", "You checked, and this one did not arrive. The agent will not send it again.", false, attempts);
+  }
 
   // UNCERTAIN outranks exhausted. Both park the packet, but they mean very
   // different things and only one of them is safe to retry — this one never is,

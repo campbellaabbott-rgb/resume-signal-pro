@@ -11,6 +11,14 @@
 
 export const sanitizeTerm = (t: string) => t.replace(/[%_\\|"]/g, "").trim();
 
+// ONE APOSTROPHE ON BOTH DOORS (S11-021, review). The board's ingest stores
+// every location and title with the ASCII apostrophe, and its list action
+// folds what was typed (job-board/typed-text.ts). /v1 builds its own location
+// filter from locationTerms(), so the fold happens there too: a phone's "St.
+// John’s" (U+2019) is the stored "St. John's" on either engine. The same five
+// characters as typed-text.ts.
+const foldTypedApostrophes = (t: string) => t.replace(/[‘’‛ʼ＇]/g, "'");
+
 export const STATE_ALIASES: Record<string, { names: string[]; keepRaw: boolean }> = {
   "alabama": { names: ["Alabama", ", AL"], keepRaw: false },
   "al": { names: ["Alabama", ", AL"], keepRaw: false },
@@ -278,7 +286,7 @@ export function rankedLocationParam(raw: unknown): string | null {
 }
 
 export function locationTerms(raw: unknown): { terms: string[]; expandedFrom: string | null } {
-  const clean = sanitizeTerm(String(raw ?? ""));
+  const clean = sanitizeTerm(foldTypedApostrophes(String(raw ?? "")));
   if (!clean) return { terms: [], expandedFrom: null };
   // Metro first: "NYC" and "LA" are cities, not states, and must not be
   // shadowed by a same-spelled code.

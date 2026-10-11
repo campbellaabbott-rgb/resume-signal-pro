@@ -10,9 +10,15 @@ import { useCallback } from "react";
 export function useSafeTranslation() {
   const { t, i18n } = useTranslation();
 
-  const safeT = useCallback((key: string, fallback?: string): string => {
+  // The second argument is a fallback string, or interpolation values: the
+  // trust strip's "{{total}} Resumes" and "{{seconds}}" badges passed values
+  // here and rendered the placeholders raw.
+  const safeT = useCallback((key: string, fallbackOrValues?: string | Record<string, unknown>): string => {
+    const fallback = typeof fallbackOrValues === "string" ? fallbackOrValues : undefined;
     // Try to get the translation
-    const translation = t(key);
+    const translation = typeof fallbackOrValues === "object" && fallbackOrValues !== null
+      ? String(t(key, fallbackOrValues as never))
+      : t(key);
     
     // If translation returns the key itself, it means it's missing
     if (translation === key) {

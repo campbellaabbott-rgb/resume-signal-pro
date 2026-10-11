@@ -21,6 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { refusalFace } from "@/lib/refusalCopy";
 import { packetState, needsAttention as packetNeedsAttention } from "@/lib/packetState";
 import { isSendableVendor } from "../../../supabase/functions/_shared/apply-automation";
+import { APPROVABLE_REFUSALS } from "../../../supabase/functions/_shared/apply-release";
 
 const sb = supabase as unknown as {
   from: (t: string) => any;
@@ -28,11 +29,15 @@ const sb = supabase as unknown as {
 };
 
 /**
- * Refusals that describe the MOMENT — a packet good to go that is waiting on
- * the candidate's say-so, the sender, or the day's cap. These are the ones
- * "Approve and send" may release (agent_packet_decide refuses the rest).
+ * The refusals "Approve and send" may override: the moment ones (the
+ * candidate's say-so, the on-ramp, the sender, the day's cap) and, since a
+ * person's approval is not an unattended send, the fit floor (S11-042).
+ * agent_packet_decide holds the same list and refuses the rest.
  */
-const APPROVABLE = new Set(["review-mode", "held-for-review", "sender-offline", "daily-cap"]);
+const APPROVABLE: ReadonlySet<string> = APPROVABLE_REFUSALS;
+
+/** The owner's say on one packet, all through agent-access. */
+type Decision = "approve" | "cancel" | "retry" | "not_sent";
 
 type Status = "preparing" | "ready" | "blocked" | "submitted" | "failed" | "stale";
 
@@ -112,37 +117,18 @@ export function ApplyQueuePanel({ userId }: { userId: string }) {
     void load();
   }, [load, t]);
 
-  // TRY AGAIN — only offered where retrying is honest.
-  //
-  // agent_claim_submission stops at `attempts < 3`, which is right: a form we
-  // cannot drive is a bug to fix, not a thing to keep hammering at an employer.
-  // But the packet then sits there permanently, and until now said "Ready".
-  //
-  // Resetting attempts to 0 puts it back in the queue and the cap applies again
-  // from scratch. It is NEVER offered for an `uncertain` packet — that one had
-  // submit pressed with an unknown outcome, and retrying could apply someone
-  // twice. packetState.canRetry encodes that distinction; this only honours it.
-  const retry = useCallback(async (p: Packet) => {
-    setBusy(p.id);
-    const { error } = await sb.from("agent_submissions")
-      .update({ attempts: 0, claimed_at: null, claimed_by: "" })
-      .eq("id", p.id).is("submitted_at", null);   // never revive a sent packet
-    setBusy(null);
-    if (error) { toast.error(t("applyQueue.retryFailed", "Could not queue that again — try again")); return; }
-    toast.success(t("applyQueue.retried", "Queued again — it will go out on the next run"));
-    void load();
-  }, [load, t]);
-
-  // APPROVE AND SEND, AND STOP (register 1.09, 1.44). A packet held for
-  // review — every one in review mode, the first three of every auto-mode
-  // agent — had no way to go: nothing ever wrote released_at after the insert,
-  // while the queue told the candidate "approve it and it goes". And a
-  // released packet waiting out its cancel window had no cancel control.
-  // Both go through agent-access, which acts for the signed-in user only; the
-  // database refuses anything already sent, in a worker's hands, or (for an
-  // approval) for an agent that is off, paused, or an employer on the
-  // never-apply list.
-  const decide = useCallback(async (p: Packet, action: "approve" | "cancel") => {
+  // APPROVE AND SEND, STOP, TRY AGAIN, AND "IT DID NOT ARRIVE" (register 1.09,
+  // 1.44, S11-043, S11-044). A packet held for review had no way to go, a
+  // released one waiting out its cancel window had no cancel control, and Try
+  // again reset only attempts and the lease, so a packet the worker had parked
+  // as 'blocked' after its third transient refusal was never claimed while the
+  // toast said "Queued again". All four go through agent-access, which acts for
+  // the signed-in user only; the database refuses anything already sent or in
+  // a worker's hands, puts back only a packet that stopped for a reason about
+  // the moment (never one pressed and not confirmed: a retry could apply them
+  // twice), and gives a pass application back for an unconfirmed send only
+  // when the person says it did not arrive.
+  const decide = useCallback(async (p: Packet, action: Decision) => {
     setBusy(p.id);
     const { data, error } = await sb.functions.invoke("agent-access", { body: { action, id: p.id } });
     setBusy(null);
@@ -154,9 +140,13 @@ export function ApplyQueuePanel({ userId }: { userId: string }) {
       } catch { /* body unreadable */ }
     }
     if (!error && (data as { ok?: boolean } | null)?.ok) {
-      toast.success(action === "approve"
-        ? t("applyQueue.approved", "Approved — it goes to the sender once your cancel window has passed.")
-        : t("applyQueue.cancelled", "Stopped — this application will not be sent."));
+      const done: Record<Decision, string> = {
+        approve: t("applyQueue.approved", "Approved — it goes to the sender once your cancel window has passed."),
+        cancel: t("applyQueue.cancelled", "Stopped — this application will not be sent."),
+        retry: t("applyQueue.retried", "Queued again — it will go out on the next run"),
+        not_sent: t("applyQueue.recordedNotSent", "Noted: this one did not go out."),
+      };
+      toast.success(done[action]);
       void load();
       return;
     }
@@ -165,8 +155,13 @@ export function ApplyQueuePanel({ userId }: { userId: string }) {
       agent_paused: t("applyQueue.decideAgentOff", "Switch your agent on first — an approved application waits for that."),
       blocked_company: t("applyQueue.decideBlockedCompany", "This employer is on your never-apply list, so the agent will not send to it."),
       in_flight: t("applyQueue.decideInFlight", "The sender has this one right now — it is too late to change it."),
+      not_retryable: t("applyQueue.retryNotTransient", "A retry will not fix why this one stopped. Open it to see why."),
+      not_funded: t("applyQueue.retryNotFunded", "Your pass has no application left to send this again."),
     };
-    toast.error(why[reason ?? ""] ?? t("applyQueue.decideFailed", "Could not do that — refresh and try again."));
+    const fallback = action === "retry"
+      ? t("applyQueue.retryFailed", "Could not queue that again — try again")
+      : t("applyQueue.decideFailed", "Could not do that — refresh and try again.");
+    toast.error(why[reason ?? ""] ?? fallback);
     void load();
   }, [load, t]);
 
@@ -318,7 +313,7 @@ export function ApplyQueuePanel({ userId }: { userId: string }) {
                           never going. */}
                       {(() => {
                         const st = packetState(p);
-                        if (st.phase !== "exhausted" && st.phase !== "uncertain") return null;
+                        if (st.phase !== "exhausted" && st.phase !== "uncertain" && st.phase !== "not-arrived") return null;
                         return (
                           <div className="mt-1.5 flex items-start gap-1.5 text-xs text-warning">
                             <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-[1px]" aria-hidden />
@@ -328,10 +323,20 @@ export function ApplyQueuePanel({ userId }: { userId: string }) {
                                 <button
                                   type="button"
                                   disabled={busy === p.id}
-                                  onClick={() => void retry(p)}
+                                  onClick={() => void decide(p, "retry")}
                                   className="ml-2 font-semibold text-primary hover:underline disabled:opacity-50"
                                 >
                                   {t("applyQueue.tryAgain", "Try again")}
+                                </button>
+                              )}
+                              {st.phase === "uncertain" && (
+                                <button
+                                  type="button"
+                                  disabled={busy === p.id}
+                                  onClick={() => void decide(p, "not_sent")}
+                                  className="ml-2 font-semibold text-primary hover:underline disabled:opacity-50"
+                                >
+                                  {t("applyQueue.notArrived", "It did not arrive")}
                                 </button>
                               )}
                             </span>

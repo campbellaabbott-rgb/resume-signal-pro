@@ -5,6 +5,7 @@
 // nothing here is invented, and when the RPC is unreachable the page says so
 // instead of showing stale or made-up stats.
 
+import { SCAN_RESULTS_WITHIN_SECONDS } from "@/config/scan-timing";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
@@ -283,7 +284,7 @@ export default function ScoreStudy() {
           <section className="rounded-2xl border border-primary/25 bg-primary/5 p-6 text-center mb-6">
             <h2 className="text-lg font-bold mb-2">See where your resume lands in this distribution — free</h2>
             <p className="text-sm text-muted-foreground mb-4">
-              The full diagnostic in about 20 seconds: your score with an audit trail, missing keywords, and
+              The full diagnostic within {SCAN_RESULTS_WITHIN_SECONDS} seconds: your score with an audit trail, missing keywords, and
               per-vendor parsing checks. No signup; your resume is deleted within 7 days.
             </p>
             <Link

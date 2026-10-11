@@ -29,6 +29,9 @@ import type { PGlite } from "@electric-sql/pglite";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
 import { MAIL_DOOR_VERIFY, bootMailDoorDb, rows } from "./helpers/mail-door-db";
 
+/** The claim as a run meets it: its rows once, then nothing (a run claims until it is handed none). */
+const perRun = <T,>(r: T[]) => { let fresh = false; return () => ((fresh = !fresh) ? r : []); };
+
 // ── 1. the SQL ───────────────────────────────────────────────────────────────
 
 const U = "11111111-1111-4111-8111-111111111111";
@@ -166,7 +169,7 @@ describe("send-search-digest answers the scheduler and our service role, nobody 
 
   it("no key, the publishable key, or a wrong cron key: 401, nothing claimed, nothing sent", async () => {
     rpc("email_cron_key_matches", (a) => a.p_key === CRON_KEY);
-    rpc("search_digest_claim_batch", () => [claimed(null)]);
+    rpc("search_digest_claim_batch", perRun([claimed(null)]));
     for (const h of UNAUTHORISED) expect((await post(search, "send-search-digest", h)).status, JSON.stringify(h)).toBe(401);
     expect(calls.filter((c) => c.name === "search_digest_claim_batch")).toEqual([]);
     expect(sent).toEqual([]);
@@ -174,7 +177,7 @@ describe("send-search-digest answers the scheduler and our service role, nobody 
 
   it("the cron key claims, and the claim is the only selection: it mails exactly the claimed search, and keeps the stamp", async () => {
     rpc("email_cron_key_matches", (a) => a.p_key === CRON_KEY);
-    rpc("search_digest_claim_batch", () => [claimed("2026-09-27T14:23:00Z")]);
+    rpc("search_digest_claim_batch", perRun([claimed("2026-09-27T14:23:00Z")]));
     boardTotal = 3;
     boardJobs = [{ id: "j1", company: "Acme", title: "Nurse", location: "Leeds", applyUrl: "https://acme.example/apply" }];
     const res = await post(search, "send-search-digest", { "x-email-cron": CRON_KEY });
@@ -185,7 +188,7 @@ describe("send-search-digest answers the scheduler and our service role, nobody 
   });
 
   it("a failed send, or a transient empty list, gives the claim back so the next run retries", async () => {
-    rpc("search_digest_claim_batch", () => [claimed("2026-09-27T14:23:00Z")]);
+    rpc("search_digest_claim_batch", perRun([claimed("2026-09-27T14:23:00Z")]));
     db.rows("user_job_searches").push({ id: "s-1", digest_last_sent_at: "2026-10-04T14:23:00Z" });
     boardTotal = 3;
     boardJobs = [{ id: "j1", company: "Acme", title: "Nurse", location: "Leeds", applyUrl: "https://acme.example/apply" }];
@@ -200,7 +203,7 @@ describe("send-search-digest answers the scheduler and our service role, nobody 
   });
 
   it("nothing new: no mail, and the claim's stamp advances the window", async () => {
-    rpc("search_digest_claim_batch", () => [claimed(null)]);
+    rpc("search_digest_claim_batch", perRun([claimed(null)]));
     boardTotal = 0;
     await post(search, "send-search-digest", { authorization: `Bearer ${SERVICE}` });
     expect(sent).toEqual([]);
@@ -216,8 +219,10 @@ describe("send-search-digest answers the scheduler and our service role, nobody 
 describe("send-agent-digest answers the scheduler and our service role, nobody else", () => {
   const due = [{ ad_user_id: "u-1", ad_email: "Sub@Example.com", ad_prev_sent_at: "2026-10-03T06:40:00Z" }];
   const live = () => {
-    db.rows("agent_subscribers").push({ email: "sub@example.com", status: "active", current_period_end: new Date(Date.now() + 9e8).toISOString() });
+    db.rows("agent_subscribers").push({ user_id: "u-1", email: "sub@example.com", status: "active", current_period_end: new Date(Date.now() + 9e8).toISOString() });
     db.rows("agent_mandates").push({ user_id: "u-1", email_last_sent_at: "2026-10-04T06:40:00Z" });
+    // The plan is read by account (agent_subscription_rows, S8-076).
+    rpc("agent_subscription_rows", (a) => db.rows("agent_subscribers").filter((r) => (a.p_user_ids as string[]).includes(String(r.user_id))));
   };
 
   it("no key, the publishable key, or a wrong cron key: 401, nothing claimed, nothing sent", async () => {
@@ -243,25 +248,27 @@ describe("send-agent-digest answers the scheduler and our service role, nobody e
     expect(db.rows("agent_mandates")[0].email_last_sent_at, "a sent digest gave its claim back").toBe("2026-10-04T06:40:00Z");
   });
 
-  it("an empty shortlist, a lapsed subscriber or a failed send gives the claim back: the cursor stays where it was", async () => {
+  // An empty shortlist or a lapsed plan used to give the claim back too, and a
+  // mandate given back led every later claim (review of the wave-3
+  // integration; a-digest-row-handed-back-led-every-later-run runs the SQL).
+  // Now only a failed send (or a failed read) hands the cursor back.
+  it("an empty shortlist or a lapsed subscriber keeps the claim's stamp; a failed send gives the claim back", async () => {
     rpc("agent_digest_claim_batch", () => due);
     live();
     await post(agent, "send-agent-digest", { authorization: `Bearer ${SERVICE}` });
     expect(sent).toEqual([]);
-    expect(db.rows("agent_mandates")[0].email_last_sent_at).toBe("2026-10-03T06:40:00Z");
+    expect(db.rows("agent_mandates")[0].email_last_sent_at, "an empty shortlist handed its cursor back").toBe("2026-10-04T06:40:00Z");
 
-    db.rows("agent_mandates")[0].email_last_sent_at = "2026-10-04T06:40:00Z";
     db.tables.agent_subscribers = [];
     db.rows("agent_queue").push({ user_id: "u-1", status: "ready", posting_id: "p1", title: "Nurse", company: "Acme", location: null, apply_url: "https://acme.example/a", salary: null, fit_pct: 80, reasons: [], created_at: "2026-10-04T05:00:00Z" });
     await post(agent, "send-agent-digest", { authorization: `Bearer ${SERVICE}` });
     expect(sent).toEqual([]);
-    expect(db.rows("agent_mandates")[0].email_last_sent_at).toBe("2026-10-03T06:40:00Z");
+    expect(db.rows("agent_mandates")[0].email_last_sent_at, "a lapsed plan handed its cursor back").toBe("2026-10-04T06:40:00Z");
 
-    db.rows("agent_mandates")[0].email_last_sent_at = "2026-10-04T06:40:00Z";
     live();
     failFor.add("Sub@Example.com");
     await post(agent, "send-agent-digest", { authorization: `Bearer ${SERVICE}` });
-    expect(db.rows("agent_mandates")[0].email_last_sent_at).toBe("2026-10-03T06:40:00Z");
+    expect(db.rows("agent_mandates")[0].email_last_sent_at, "a failed send kept the claim's stamp: its window is lost").toBe("2026-10-03T06:40:00Z");
   });
 
   it("the preflight answers its build", async () => {

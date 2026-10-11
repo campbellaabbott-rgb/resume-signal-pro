@@ -1,9 +1,8 @@
+import { BANNER_MIN_SAMPLE, scoreBannerLine } from "@/lib/score-banner";
 import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { useProductCheckout } from "@/hooks/use-product-checkout";
 import { useTranslation } from "react-i18next";
 import { useConversionTracking } from "@/hooks/use-conversion-tracking";
-import { useTodayScanCount } from "@/hooks/use-shared-data";
 import { useABTest } from "@/hooks/use-ab-test";
 import { 
   Sparkles, ArrowRight, CheckCircle2, Target, Zap, Lock, Mail, Loader2, ListChecks, Award,
@@ -15,15 +14,12 @@ import {
 import { LockedPremiumInsight } from "./LockedPremiumInsight";
 import { ScanOutcomeAsk } from "./ScanOutcomeAsk";
 import { SaveResumeVersion } from "./SaveResumeVersion";
-import { WalletPaymentBadge } from "./WalletPaymentBadge";
 import { PersonalizedInsights } from "./PersonalizedInsights";
 import { ElevatorPitchGenerator } from "./ElevatorPitchGenerator";
 import { RecruiterViewMode } from "./RecruiterViewMode";
 import { ResumeRoast } from "./ResumeRoast";
 import { InterviewCoach } from "./InterviewCoach";
 import { CareerPathSimulator } from "./CareerPathSimulator";
-import { TieredPricingSection } from "./TieredPricingSection";
-import { ResumeBeforeAfter } from "./ResumeBeforeAfter";
 import { JobKeywordMatcher } from "./JobKeywordMatcher";
 import { ATSParseSimulator } from "./ATSParseSimulator";
 import { PeerBenchmark } from "./PeerBenchmark";
@@ -31,7 +27,7 @@ import { ReturningUserInsights } from "./ReturningUserInsights";
 import { IndustryKeywordSuggestions } from "./IndustryKeywordSuggestions";
 import { RoleKeywordSuggestions } from "./RoleKeywordSuggestions";
 import { analyzeKeywordPresence } from "@/config/industry-keywords";
-import { AddOnsShowcase } from "./AddOnsShowcase";
+import { PurchaseTerms } from "./PurchaseTerms";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,7 +43,6 @@ import { ScoreSimulatorCard, AtsVendorChecksCard, WeakestBulletsCard, CareerBrid
 import { EmailReportCapture } from "./EmailReportCapture";
 import { RoleTargetingCard, CheckAgainstPostingCard } from "./RoleTargeting";
 import { LiveMatches } from "./LiveMatches";
-import { ProductPreview } from "./ProductPreview";
 import { CardErrorBoundary } from "./CardErrorBoundary";
 import { getAvailableIndustries } from "./IndustryConfidenceIndicator";
 import { diffWords } from "@/lib/diff-words";
@@ -69,7 +64,7 @@ import {
 
 import { useCurrency } from "@/hooks/use-currency";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { PRODUCTS } from "@/config/products";
+import { PRODUCTS, SUBSCRIPTIONS } from "@/config/products";
 import {
   Tooltip,
   TooltipContent,
@@ -94,241 +89,6 @@ const getMetricTooltip = (t: (key: string) => string, metricKey: MetricTooltipKe
   whyMatters: t(`freeResults.metricTooltips.${metricKey}.whyMatters`),
 });
 
-// A/B Test copy variants for product CTAs - reads from translation keys so
-// every variant is localized; the variant key itself maps to a camelCase
-// translation sub-key (benefit_focused -> benefitFocused).
-const getProductCtaCopy = (
-  variant: 'control' | 'benefit_focused' | 'scarcity',
-  t: (key: string, options?: Record<string, unknown>) => string,
-  formatLocalPrice: (usd: number) => string,
-  isLocal: boolean
-) => {
-  const variantKey = variant === 'benefit_focused' ? 'benefitFocused' : variant;
-  const coverLetterPrice = isLocal
-    ? `$${PRODUCTS.coverLetter.priceUsd} ≈ ${formatLocalPrice(PRODUCTS.coverLetter.priceUsd)}`
-    : `$${PRODUCTS.coverLetter.priceUsd}`;
-  const premiumPrice = isLocal
-    ? `$${PRODUCTS.premiumPackage.priceUsd} ≈ ${formatLocalPrice(PRODUCTS.premiumPackage.priceUsd)}`
-    : `$${PRODUCTS.premiumPackage.priceUsd}`;
-
-  return {
-    coverLetter: {
-      button: t(`freeResults.ctaCopy.coverLetter.${variantKey}.button`, { price: coverLetterPrice }),
-      description: t(`freeResults.ctaCopy.coverLetter.${variantKey}.description`),
-    },
-    keywordFix: {
-      button: t(`freeResults.ctaCopy.keywordFix.${variantKey}.button`),
-      headline: t(`freeResults.ctaCopy.keywordFix.${variantKey}.headline`),
-    },
-    premiumPackage: {
-      button: t(`freeResults.ctaCopy.premiumPackage.${variantKey}.button`, { price: premiumPrice }),
-      headline: t(`freeResults.ctaCopy.premiumPackage.${variantKey}.headline`),
-      subtext: t(`freeResults.ctaCopy.premiumPackage.${variantKey}.subtext`),
-    },
-    tailoredResume: {
-      button: t(`freeResults.ctaCopy.tailoredResume.${variantKey}.button`),
-      description: t(`freeResults.ctaCopy.tailoredResume.${variantKey}.description`),
-    },
-  };
-};
-
-// Cover Letter Button component
-const CoverLetterButton = ({ 
-  hasJobDescription, 
-  variant,
-  section = 'default'
-}: { 
-  hasJobDescription: boolean; 
-  variant: 'control' | 'benefit_focused' | 'scarcity';
-  section?: string;
-}) => {
-  const { t } = useTranslation();
-  const { purchaseProduct, isLoading, currentProduct, checkoutPrefetchProps } = useProductCheckout();
-  const { formatPrice, isLocalCurrency } = useCurrency();
-  const isPurchasing = isLoading && currentProduct === 'coverLetter';
-  const copy = getProductCtaCopy(variant, t, formatPrice, isLocalCurrency).coverLetter;
-
-  if (!hasJobDescription) {
-    return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Lock className="w-4 h-4" />
-        <span>{t('freeResults.addJobDescriptionToUnlock')}</span>
-      </div>
-    );
-  }
-
-  return (
-    <Button
-      onClick={() => purchaseProduct('coverLetter', { ctaSection: section })}
-      disabled={isPurchasing}
-      size="sm"
-      className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
-      {...checkoutPrefetchProps}
-    >
-      {isPurchasing ? (
-        <>
-          <Loader2 className="w-4 h-4 animate-spin" />
-          {t('freeResults.processing')}
-        </>
-      ) : (
-        <>
-          <FileText className="w-4 h-4" />
-          {copy.button}
-        </>
-      )}
-    </Button>
-  );
-};
-
-// Keyword Fix Button component
-const KeywordFixButton = ({ 
-  variant,
-  section = 'default'
-}: { 
-  variant: 'control' | 'benefit_focused' | 'scarcity';
-  section?: string;
-}) => {
-  const { t } = useTranslation();
-  const { purchaseProduct, isLoading, currentProduct, checkoutPrefetchProps } = useProductCheckout();
-  const { formatPrice, isLocalCurrency } = useCurrency();
-  const isPurchasing = isLoading && currentProduct === 'basicKeywordFix';
-  const copy = getProductCtaCopy(variant, t, formatPrice, isLocalCurrency).keywordFix;
-
-  return (
-    <Button
-      onClick={() => purchaseProduct('basicKeywordFix', { ctaSection: section })}
-      disabled={isPurchasing}
-      size="sm"
-      className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
-      {...checkoutPrefetchProps}
-    >
-      {isPurchasing ? (
-        <>
-          <Loader2 className="w-4 h-4 animate-spin" />
-          {t('freeResults.processing')}
-        </>
-      ) : (
-        <>
-          <Zap className="w-4 h-4" />
-          {copy.button}
-        </>
-      )}
-    </Button>
-  );
-};
-
-// Apply Assistant Button component — requires a job description to be present,
-// since the product tailors a resume + cover letter to a specific posting.
-const ApplyAssistantButton = ({
-  hasJobDescription,
-  section = 'default'
-}: {
-  hasJobDescription: boolean;
-  section?: string;
-}) => {
-  const { t } = useTranslation();
-  const { purchaseProduct, isLoading, currentProduct, checkoutPrefetchProps } = useProductCheckout();
-  const isPurchasing = isLoading && currentProduct === 'applyAssistant';
-
-  if (!hasJobDescription) {
-    return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Lock className="w-4 h-4" />
-        <span>{t('freeResults.addJobDescriptionToUnlock')}</span>
-      </div>
-    );
-  }
-
-  return (
-    <Button
-      onClick={() => purchaseProduct('applyAssistant', { ctaSection: section })}
-      disabled={isPurchasing}
-      size="sm"
-      className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
-      {...checkoutPrefetchProps}
-    >
-      {isPurchasing ? (
-        <>
-          <Loader2 className="w-4 h-4 animate-spin" />
-          {t('freeResults.processing')}
-        </>
-      ) : (
-        <>
-          <Send className="w-4 h-4" />
-          {t('freeResults.buildApplicationPackage', { price: PRODUCTS.applyAssistant.priceUsd })}
-        </>
-      )}
-    </Button>
-  );
-};
-
-// Premium Package Button component
-const PremiumPackageButton = ({
-  variant, 
-  isPrimary = false, 
-  section = 'default' 
-}: { 
-  variant: 'control' | 'benefit_focused' | 'scarcity'; 
-  isPrimary?: boolean;
-  section?: string;
-}) => {
-  const { t } = useTranslation();
-  const { purchaseProduct, isLoading, currentProduct, checkoutPrefetchProps } = useProductCheckout();
-  const { formatPrice, isLocalCurrency } = useCurrency();
-  const isPurchasing = isLoading && currentProduct === 'premiumPackage';
-  const copy = getProductCtaCopy(variant, t, formatPrice, isLocalCurrency).premiumPackage;
-
-  const handleClick = () => {
-    purchaseProduct('premiumPackage', { ctaSection: section });
-  };
-
-  if (isPrimary) {
-    return (
-      <Button
-        onClick={handleClick}
-        disabled={isPurchasing}
-        size="lg"
-        className="gap-2 bg-white hover:bg-white/90 text-primary font-bold shadow-lg"
-        {...checkoutPrefetchProps}
-      >
-        {isPurchasing ? (
-          <>
-            <Loader2 className="w-5 h-5 animate-spin" />
-            {t('freeResults.processing')}
-          </>
-        ) : (
-          <>
-            <Sparkles className="w-5 h-5" />
-            {copy.button}
-          </>
-        )}
-      </Button>
-    );
-  }
-
-  return (
-    <Button
-      onClick={handleClick}
-      disabled={isPurchasing}
-      size="lg"
-      variant="outline"
-      className="flex-1 sm:flex-none gap-2 border-primary/30 hover:bg-primary/10 text-primary font-bold"
-      {...checkoutPrefetchProps}
-    >
-      {isPurchasing ? (
-        <>
-          <Loader2 className="w-5 h-5 animate-spin" />
-          {t('freeResults.processing')}
-        </>
-      ) : (
-        <>
-          <ArrowRight className="w-5 h-5" />
-          {copy.button}
-        </>
-      )}
-    </Button>
-  );
-};
 
 // Reusable tooltip component for metrics - works on mobile with tap
 const MetricTooltip = ({ metricKey }: { metricKey: MetricTooltipKey }) => {
@@ -865,14 +625,14 @@ export function FreeKeywordResults({
   uploadedJobs = [],
   jobMatchScore,
   jobMatchGrade,
-  matchingSkills = [],
-  missingSkills = [],
-  missingSkillsDetailed = [],
+  matchingSkills: matchingSkillsProp,
+  missingSkills: missingSkillsProp,
+  missingSkillsDetailed: missingSkillsDetailedProp,
   experienceFit,
   titleAlignment,
   jobMatchSummary,
   applicationRecommendation,
-  skillGapActions = [],
+  skillGapActions: skillGapActionsProp,
   competitiveAssessment,
   careerSituation,
   formatRecommendation,
@@ -954,11 +714,17 @@ export function FreeKeywordResults({
   sourceWasFile,
   keywordSource,
 }: FreeKeywordResultsProps) {
+  // A null list from the model is an empty list, not a crash: a default
+  // parameter applies only to undefined (S11-029).
+  const matchingSkills = Array.isArray(matchingSkillsProp) ? matchingSkillsProp : [];
+  const missingSkills = Array.isArray(missingSkillsProp) ? missingSkillsProp : [];
+  const missingSkillsDetailed = Array.isArray(missingSkillsDetailedProp) ? missingSkillsDetailedProp : [];
+  const skillGapActions = Array.isArray(skillGapActionsProp) ? skillGapActionsProp : [];
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
   const { trackButtonClick } = useConversionTracking();
-  const scanCountData = useTodayScanCount();
-  const { variant: contentDepthVariant, trackConversion: trackContentDepthConversion } = useABTest('free_content_depth');
+  // trackClick, not trackConversion: a click is not the purchase (S8-122, wave3/email-ops).
+  const { variant: contentDepthVariant, trackClick: trackContentDepthConversion } = useABTest('free_content_depth');
   // Diagnostic layout supersedes the gated-content experiment: locked/blurred
   // cards mid-report are interleaved commerce, which the layout decision
   // rejected. Deep insights render ungated for everyone.
@@ -975,34 +741,9 @@ export function FreeKeywordResults({
   const [isSubscribed, setIsSubscribed] = useState(false);
   const { toast } = useToast();
   const { addScanEntry, setUserEmail, isReturningUser, getLatestScan, getPreviousScan } = useScanHistory();
-  // Direct product checkout for Next Steps offers that are NOT the $25 full
-  // analysis (audit 2026-07-08: the $5 Interview Coach button was routing
-  // into the $25 flow via handleUpgradeClick).
-  const { purchaseProduct: purchaseProductDirect } = useProductCheckout();
   const [hasRecordedScan, setHasRecordedScan] = useState(false);
   const [correctedIndustry, setCorrectedIndustry] = useState<string | null>(null);
-  const [showExitOffer, setShowExitOffer] = useState(false);
   const [scanTimestamp] = useState(() => Date.now());
-
-  // Exit-intent fallback offer: if someone scrolls through every upsell and
-  // starts to leave without buying anything, show the cheapest paid product
-  // once instead of just losing them. Fires on the classic "mouse left
-  // toward the top of the viewport" signal, once per session (sessionStorage
-  // guard) so it can't become an annoyance on repeat visits or re-renders.
-  useEffect(() => {
-    if (sessionStorage.getItem('exitOfferShown')) return;
-
-    const handleMouseOut = (e: MouseEvent) => {
-      if (e.clientY <= 0 && !e.relatedTarget) {
-        setShowExitOffer(true);
-        sessionStorage.setItem('exitOfferShown', 'true');
-        document.removeEventListener('mouseout', handleMouseOut);
-      }
-    };
-
-    document.addEventListener('mouseout', handleMouseOut);
-    return () => document.removeEventListener('mouseout', handleMouseOut);
-  }, []);
 
   // Use corrected industry if set, otherwise use detected
   const effectiveIndustry = correctedIndustry || industry;
@@ -1275,7 +1016,8 @@ export function FreeKeywordResults({
     ? { current: realWordCount, idealMin: 400, idealMax: 850, verdict: (realWordCount < 400 ? "too_few" : realWordCount > 850 ? "too_many" : "ideal") as "too_few" | "ideal" | "too_many" }
     : null);
   const [correctedExperience, setCorrectedExperience] = useState<string | null>(null);
-  const experienceLevelBase = experienceLevelProp || { level: "mid" as const, yearsEstimate: "3-5 years" };
+  // No invented years (S11-147): an absent estimate is not "3-5 years".
+  const experienceLevelBase = experienceLevelProp || { level: "mid" as const, yearsEstimate: "" };
   const experienceLevel = correctedExperience
     ? { ...experienceLevelBase, level: correctedExperience as typeof experienceLevelBase.level }
     : experienceLevelBase;
@@ -1320,7 +1062,12 @@ export function FreeKeywordResults({
     missingItems: contactInfoProp?.missingItems ?? [],
   };
 
-  const topStrength = topStrengthProp || { title: "Clear Experience", description: "Your work history is well-documented" };
+  // ABSENT IS HIDDEN, NOT INVENTED (register S11-147). A report the model left
+  // thin used to show "Clear Experience", a 2-year average tenure, "steady"
+  // progression and an industry average of 72 under a banner that called
+  // them automated analysis. Each of these tiles now hides when its field is
+  // absent.
+  const topStrength = topStrengthProp ?? null;
   const quantificationScore =
     quantificationScoreProp ||
     computedQuantificationScore ||
@@ -1338,8 +1085,8 @@ export function FreeKeywordResults({
   const topSkipReasons = topSkipReasonsProp || [];
   const powerWords = powerWordsProp || [];
   const weakPhrases = weakPhrasesProp || [];
-  const timelineAnalysis = timelineAnalysisProp || { avgTenure: "2 years", progression: "steady" as const, hasGaps: false, totalYears: computedTotalYears ?? "—" };
-  const industryBenchmark = industryBenchmarkProp || { industryAvg: 72, comparison: "at" as const, percentile: "Top 50%" };
+  const timelineAnalysis = timelineAnalysisProp ?? null;
+  const industryBenchmark = industryBenchmarkProp ?? null;
   const quickWins = quickWinsProp || [];
   const sampleRewrite = sampleRewriteProp;
   // No fallback, deliberately: the old hardcoded default showed every user
@@ -1670,27 +1417,6 @@ export function FreeKeywordResults({
   return (
     <TooltipProvider delayDuration={200}>
     <div className="w-full max-w-3xl mx-auto animate-fade-in">
-      {showExitOffer && !diagnosticLayout && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="relative w-full max-w-sm bg-card border border-border rounded-2xl shadow-2xl p-6 animate-slide-up">
-            <button
-              onClick={() => setShowExitOffer(false)}
-              className="absolute top-3 right-3 text-muted-foreground hover:text-foreground transition-colors"
-              aria-label={t('common.close')}
-            >
-              <X className="w-4 h-4" />
-            </button>
-            <h3 className="text-lg font-bold mb-1">{t('freeResults.exitOffer.title')}</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              {realKeywordGapStats && realKeywordGapStats.totalMissing > 0
-                ? t('freeResults.exitOffer.withStats', { count: realKeywordGapStats.totalMissing, industry: effectiveIndustry.replace(/_/g, ' ') })
-                : t('freeResults.exitOffer.noStats')}
-            </p>
-            <KeywordFixButton variant="benefit_focused" section="exit_intent" />
-          </div>
-        </div>
-      )}
-
       {/* ── Verdict-first hero — one sentence the whole report is evidence for ── */}
       {reportVerdict && (
         <div className="rounded-2xl border-2 border-primary/40 bg-gradient-to-r from-primary/10 to-primary/5 p-5 mb-4">
@@ -1790,16 +1516,9 @@ export function FreeKeywordResults({
 
       <LiveMatches resumeText={resumeText} industry={effectiveIndustry} />
 
-      {/* The highest-intent moment in the product: the user just checked
-          against a SPECIFIC opening. Offer to prepare that exact application,
-          preview-first, from their own resume against this posting. */}
-      {keywordSource?.source === 'job_description' && resumeText && (
-        <div className="rounded-2xl border border-primary/30 bg-card p-5 mb-4">
-          <h3 className="font-bold text-foreground mb-1">{t('freeResults.applyBridge.title', 'Prepare this exact application')}</h3>
-          <p className="text-xs text-muted-foreground mb-3">{t('freeResults.applyBridge.desc', 'You just checked against a real posting — Apply Assistant turns it into a submission: your resume tailored to this job, a matching cover letter, and an honest gap list. Preview it from your own resume first.')}</p>
-          <ProductPreview productId="applyAssistant" resumeText={resumeText} jobDescription={jobDescriptionText} industry={effectiveIndustry} />
-        </div>
-      )}
+      {/* No third offer here (owner decision 2026-10-08): a scan run against a
+          posting ends in the same two upgrades as any other, the Full
+          Analysis and Pro, in the Next steps section below. */}
 
       {/* Specimen header — report ID, engine, provenance */}
       {reportMeta && <DiagnosticHeader meta={reportMeta} candidateName={candidateName} />}
@@ -2057,7 +1776,7 @@ export function FreeKeywordResults({
         formatGrade={formatGrade}
         industry={effectiveIndustry}
         experienceLevel={getExperienceLevelLabel(experienceLevel.level)}
-        topStrength={topStrength.title}
+        topStrength={topStrength?.title ?? ""}
         redFlagsCount={redFlags.length}
         quickWins={quickWins}
         improvementPotential={improvementPotential}
@@ -2250,7 +1969,6 @@ export function FreeKeywordResults({
               {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
               {getFirstCtaText()}
             </Button>
-            <span className="text-[10px] text-muted-foreground">{t('freeResults.cta.resultsExpiry', { hours: 48 })}</span>
           </div>
         </div>
       </div>
@@ -2520,21 +2238,6 @@ export function FreeKeywordResults({
             </div>
           )}
 
-          {/* Apply Assistant upsell — full tailored package, not just suggestions */}
-          <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 border-2 border-primary/30">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2 rounded-full bg-primary/20">
-                <Send className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <h5 className="font-bold text-foreground">{t('freeResults.jobMatch.completePackage.title')}</h5>
-                <p className="text-xs text-muted-foreground">
-                  {t('freeResults.jobMatch.completePackage.subtitle')}
-                </p>
-              </div>
-            </div>
-            <ApplyAssistantButton hasJobDescription={!!jobDescriptionText} section="job_match_apply_assistant" />
-          </div>
         </div>
       )}
       
@@ -2572,11 +2275,18 @@ export function FreeKeywordResults({
                   {atsScoreEstimate < 60 ? t('freeResults.atRiskOrNeedsImprovement.atRisk') : t('freeResults.atRiskOrNeedsImprovement.needsImprovement')}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {atsScoreEstimate < 60 ? t('freeResults.atsBanner.require60') : t('freeResults.atsBanner.require75')}
+                  {/* L4-06: "Most ATS require 60+ to pass" told about half of all
+                      users (median 58) something the site's own guides call a
+                      myth. The line now places the score in this industry's
+                      own scanned distribution, or says plainly it is no pass
+                      mark when that distribution is not on hand. */}
+                  {(() => { const line = scoreBannerLine(atsScoreEstimate, realBenchmark); return t(line.key, line.vars); })()}
                 </p>
               </div>
             </div>
-            <span className="text-lg font-bold text-success shrink-0">{t('freeResults.atsBanner.targetScore')}</span>
+            {realBenchmark && realBenchmark.n >= BANNER_MIN_SAMPLE && (
+              <span className="text-sm font-bold text-success shrink-0">{t('freeResults.atsBanner.topQuarter', { p75: Math.round(realBenchmark.p75) })}</span>
+            )}
           </div>
         </div>
       )}
@@ -2787,7 +2497,7 @@ export function FreeKeywordResults({
           formatGrade={formatGrade}
           industry={industry}
           experienceLevel={getExperienceLevelLabel(experienceLevel.level)}
-          topStrength={topStrength.title}
+          topStrength={topStrength?.title ?? ""}
           improvementPotential={improvementPotential?.estimatedScoreIncrease}
         />
       </div>
@@ -2847,8 +2557,10 @@ export function FreeKeywordResults({
       )}
 
       {/* Industry Benchmark & Timeline Analysis */}
+      {(industryBenchmark || timelineAnalysis) && (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
         {/* Industry Benchmark */}
+        {industryBenchmark && (
         <div className="rounded-2xl bg-card border border-border p-5">
           <div className="flex items-center gap-2 mb-2">
             <Target className="w-4 h-4 text-primary" />
@@ -3002,7 +2714,10 @@ export function FreeKeywordResults({
           )}
         </div>
 
+        )}
+
         {/* Timeline Analysis */}
+        {timelineAnalysis && (
         <div className="rounded-2xl bg-card border border-border p-5">
           <div className="flex items-center gap-2 mb-4">
             <FileText className="w-4 h-4 text-primary" />
@@ -3079,7 +2794,9 @@ export function FreeKeywordResults({
             )}
           </div>
         </div>
+        )}
       </div>
+      )}
 
       </div> {/* end section-issues */}
 
@@ -3605,20 +3322,6 @@ export function FreeKeywordResults({
           </div>
         )}
 
-        {/* Premium Package CTA */}
-        <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 border border-primary/20">
-          <div className="flex flex-col sm:flex-row items-center gap-4">
-            <div className="flex-1 text-center sm:text-left">
-              <p className="font-semibold text-foreground">
-                {getProductCtaCopy('control', t, formatPrice, isLocalCurrency).premiumPackage.headline}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {t('freeResults.atsCompat.ctaSubtext')}
-              </p>
-            </div>
-            <PremiumPackageButton variant="control" isPrimary section="ats_compatibility" />
-          </div>
-        </div>
       </div>
       </CollapsibleSection>
       )}
@@ -3990,20 +3693,6 @@ export function FreeKeywordResults({
             ))}
           </div>
 
-          {/* Premium Package CTA */}
-          <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-primary/20 to-primary/10 border border-primary/30">
-            <div className="flex flex-col sm:flex-row items-center gap-3">
-              <div className="flex-1 text-center sm:text-left">
-                <p className="font-semibold text-foreground text-sm">
-                  {t('freeResults.quickWins.wantAllDone')}
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {t('freeResults.quickWins.premiumIncludes')}
-                </p>
-              </div>
-              <PremiumPackageButton variant="control" isPrimary section="quick_wins" />
-            </div>
-          </div>
         </div>
       )}
 
@@ -4078,10 +3767,6 @@ export function FreeKeywordResults({
             </div>
           </div>
           
-          <div className="flex items-center gap-2 mt-4 p-2 rounded-lg bg-primary/10 border border-primary/20">
-            <Lock className="w-3 h-3 text-primary" />
-            <span className="text-xs text-primary">{t('freeResults.sampleRewrite.cta', { price: priceDisplay })}</span>
-          </div>
         </div>
       )}
 
@@ -4492,12 +4177,14 @@ export function FreeKeywordResults({
             {(["summary", "experience", "skills", "education"] as const).map((sec) => {
               const q = sectionCheck.sectionQuality?.[sec];
               if (!q) return null;
-              const cfg = {
+              // A value outside the four (a translated "sólida") draws as
+              // adequate rather than crashing the report (S11-029).
+              const cfg = ({
                 strong: { color: "text-success", bg: "bg-success/10 border-success/20", dot: "bg-success" },
                 adequate: { color: "text-primary", bg: "bg-primary/10 border-primary/20", dot: "bg-primary" },
                 thin: { color: "text-warning", bg: "bg-warning/10 border-warning/20", dot: "bg-warning" },
                 missing: { color: "text-destructive", bg: "bg-destructive/10 border-destructive/20", dot: "bg-destructive" },
-              }[q];
+              } as Record<string, { color: string; bg: string; dot: string }>)[q] ?? { color: "text-primary", bg: "bg-primary/10 border-primary/20", dot: "bg-primary" };
               return (
                 <div key={sec} className={`flex items-center gap-2 rounded-lg border p-2 ${cfg.bg}`}>
                   <span className={`w-2 h-2 rounded-full shrink-0 ${cfg.dot}`} />
@@ -4740,36 +4427,6 @@ export function FreeKeywordResults({
         </div>
       )}
 
-      {/* Diagnostic layout: all offers live here, after the findings end */}
-      {diagnosticLayout && (
-        <div className="rounded-2xl border border-border bg-card p-6 mb-6">
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">Next steps</p>
-          <h3 className="font-semibold text-foreground mb-1">If you want help executing the fixes above</h3>
-          <p className="text-xs text-muted-foreground mb-4">
-            The diagnosis above is complete and free. These are the paid tools that do the work for you — no pressure, the fix plan stands on its own.
-          </p>
-          <div className="space-y-2.5">
-            <button onClick={() => handleUpgradeClick('next_steps_full_analysis')} className="w-full flex items-center justify-between rounded-xl border border-border p-3.5 text-left hover:border-primary/50 transition-colors">
-              <span>
-                <span className="block text-sm font-medium text-foreground">Full Analysis — every bullet rewritten</span>
-                <span className="block text-xs text-muted-foreground">Applies the fixes from this report to your actual resume content.</span>
-              </span>
-              <span className="text-sm font-semibold text-primary shrink-0 ml-3">{priceDisplay}</span>
-            </button>
-            <button onClick={() => { trackButtonClick('interviewCoach', 'next_steps_interview_coach'); purchaseProductDirect('interviewCoach', { ctaSection: 'next_steps' }); }} className="w-full flex items-center justify-between rounded-xl border border-border p-3.5 text-left hover:border-primary/50 transition-colors">
-              <span>
-                <span className="block text-sm font-medium text-foreground">Interview Coach — answers to the questions above</span>
-                <span className="block text-xs text-muted-foreground">Preparation for the exact questions this resume will trigger.</span>
-              </span>
-              <span className="text-sm font-semibold text-primary shrink-0 ml-3">$5</span>
-            </button>
-            <Link to="/pricing" className="block text-center text-xs text-muted-foreground hover:text-foreground pt-1">
-              See everything, including the all-access plan →
-            </Link>
-          </div>
-        </div>
-      )}
-
       {/* Score-Gated Premium Insights — pure upsell; moved to Next Steps in diagnostic */}
       {!diagnosticLayout && (
       <div className="space-y-4 mb-6">
@@ -4810,15 +4467,15 @@ export function FreeKeywordResults({
           previewLines={
             realKeywordGapStats && realKeywordGapStats.totalMissing > 0
               ? [
-                  t('freeResults.lockedInsights.kwHard', { count: realKeywordGapStats.criticalMissing, plural: realKeywordGapStats.criticalMissing === 1 ? '' : 's' }),
+                  t('freeResults.lockedInsights.kwHard', { count: realKeywordGapStats.criticalMissing }),
                   ...(realKeywordGapStats.certifications > 0
-                    ? [t('freeResults.lockedInsights.kwCerts', { count: realKeywordGapStats.certifications, plural: realKeywordGapStats.certifications === 1 ? '' : 's' })]
+                    ? [t('freeResults.lockedInsights.kwCerts', { count: realKeywordGapStats.certifications })]
                     : []),
                   ...(realKeywordGapStats.tools > 0
-                    ? [t('freeResults.lockedInsights.kwTools', { count: realKeywordGapStats.tools, plural: realKeywordGapStats.tools === 1 ? '' : 's' })]
+                    ? [t('freeResults.lockedInsights.kwTools', { count: realKeywordGapStats.tools })]
                     : []),
                   ...(realKeywordGapStats.methodology > 0
-                    ? [t('freeResults.lockedInsights.kwMethodology', { count: realKeywordGapStats.methodology, plural: realKeywordGapStats.methodology === 1 ? '' : 's' })]
+                    ? [t('freeResults.lockedInsights.kwMethodology', { count: realKeywordGapStats.methodology })]
                     : []),
                 ]
               : realKeywordGapStats
@@ -4895,153 +4552,11 @@ export function FreeKeywordResults({
       {/* ═══════════════════════════════════════════════════════════ */}
       <div id="section-upgrade">
 
-      {/* Premium Resume Package CTA - Clear single action */}
-      {onGenerateTailoredResume && (
-        <div className="rounded-2xl bg-gradient-to-br from-success/20 via-success/10 to-primary/10 border-2 border-success/40 p-6 mb-5 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-40 h-40 bg-success/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-          <div className="absolute bottom-0 left-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
-          <div className="relative">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="p-2 rounded-full bg-success/20">
-                <Download className="w-5 h-5 text-success" />
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-primary">{t('freeResults.premiumCta.package')}</span>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary font-medium">
-                  {isLocalCurrency ? `$${PRODUCTS.premiumPackage.priceUsd} ≈ ${formatPrice(PRODUCTS.premiumPackage.priceUsd)}` : `$${PRODUCTS.premiumPackage.priceUsd}`}
-                </span>
-              </div>
-            </div>
-            <h4 className="text-xl font-bold text-foreground mb-2">
-              {t('freeResults.premiumCta.title')}
-            </h4>
-            <p className="text-sm text-muted-foreground mb-4">
-              {t('freeResults.premiumCta.subtitle')}
-            </p>
-            <div className="grid sm:grid-cols-3 gap-3 mb-4">
-              <div className="flex items-center gap-2 p-2 rounded-lg bg-background/50 border border-success/20">
-                <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-                <span className="text-xs text-foreground">{t('freeResults.premiumCta.aiResume')}</span>
-              </div>
-              <div className="flex items-center gap-2 p-2 rounded-lg bg-background/50 border border-success/20">
-                <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-                <span className="text-xs text-foreground">{t('freeResults.premiumCta.customCoverLetter')}</span>
-              </div>
-              <div className="flex items-center gap-2 p-2 rounded-lg bg-background/50 border border-success/20">
-                <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-                <span className="text-xs text-foreground">{t('freeResults.premiumCta.pdfDownload')}</span>
-              </div>
-            </div>
-            
-            {/* Before/After Comparison */}
-            <div className="mb-4">
-              <ResumeBeforeAfter />
-            </div>
-            
-            <div className="flex flex-col sm:flex-row gap-3">
-              <PremiumPackageButton variant="control" isPrimary section="tailored_resume" />
-            </div>
-            <Link to="/pricing" onClick={() => window.scrollTo(0, 0)} className="inline-flex items-center justify-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors mt-3">
-              {t('freeResults.premiumCta.seeAll')} <ArrowRight className="w-3 h-3" />
-            </Link>
-            <p className="text-xs text-muted-foreground mt-3">
-              {t('freeResults.premiumCta.footnote')}
-            </p>
-          </div>
-        </div>
-      )}
-
       {/* Red Flags Details - Priority sorted with severity indicators */}
-      <RedFlagsSection
-        redFlags={redFlags}
-        onUpgradeClick={() => handleUpgradeClick('red_flags')}
-        premiumButton={<PremiumPackageButton variant="control" isPrimary section="red_flags" />}
-      />
-
-      {/* Gated "hidden issues" card — shows that more problems exist but gates the detail */}
-      {redFlags.length >= 1 && (
-        <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-5 mb-5 relative overflow-hidden">
-          <div className="flex items-center gap-2 mb-3">
-            <Lock className="w-4 h-4 text-destructive" />
-            <h4 className="font-semibold text-foreground">
-              {redFlags.length + 2} more issues detected in {candidateName ? `${candidateName.split(' ')[0]}'s` : 'your'} resume
-            </h4>
-            <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-destructive/15 text-destructive font-semibold">
-              Premium Only
-            </span>
-          </div>
-          {/* Blurred fake issue rows */}
-          <div className="space-y-2 select-none pointer-events-none">
-            {[
-              { label: "ATS Rejection Trigger", detail: "A formatting pattern on line 3 of your experience section causes 4 major ATS systems to drop your resume before human review." },
-              { label: "Keyword Density Issue", detail: "Your top 2 skills appear only once — most shortlisted candidates in your industry mention them 3-5 times across different sections." },
-              { label: "Experience Gap Signal", detail: "A 7-month gap between your last two roles is flagged by applicant tracking systems without a framing fix." },
-            ].map((item, i) => (
-              <div key={i} className="rounded-lg border border-destructive/15 bg-background/60 p-3 blur-[3px]">
-                <div className="flex items-start gap-2">
-                  <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">{item.label}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{item.detail}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          {/* Unlock overlay */}
-          <div className="absolute inset-x-0 bottom-0 top-16 flex flex-col items-center justify-end pb-5 bg-gradient-to-t from-destructive/10 via-destructive/5 to-transparent">
-            <p className="text-sm font-medium text-foreground mb-3 text-center px-4">
-              These issues are specific to your resume — not generic tips.
-            </p>
-            <button
-              onClick={() => handleUpgradeClick('hidden_issues_gate')}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-destructive text-white font-semibold text-sm shadow-lg hover:bg-destructive/90 transition-colors"
-            >
-              <Lock className="w-4 h-4" />
-              Unlock Full Analysis
-            </button>
-          </div>
-        </div>
-      )}
+      <RedFlagsSection redFlags={redFlags} />
 
       {/* Missing Keywords - Priority sorted with impact indicators */}
-      <KeywordsSection
-        keywords={keywords}
-        industry={effectiveIndustry}
-        keywordFixButton={<KeywordFixButton variant="control" section="keyword_suggestions" />}
-        keywordFixHeadline={getProductCtaCopy('control', t, formatPrice, isLocalCurrency).keywordFix.headline}
-        keywordFixPrice={isLocalCurrency ? `$${PRODUCTS.basicKeywordFix.priceUsd} ≈ ${formatPrice(PRODUCTS.basicKeywordFix.priceUsd)}` : `$${PRODUCTS.basicKeywordFix.priceUsd}`}
-      />
-
-      {/* ── GATED KEYWORDS (improvement #8) — blurred pills showing there's more ── */}
-      {gatedKeywords && gatedKeywords.length > 0 && (
-        <div className="rounded-2xl border border-border bg-card p-5 mb-5 relative overflow-hidden">
-          <div className="flex items-center gap-2 mb-3">
-            <Lock className="w-4 h-4 text-muted-foreground" />
-            <h4 className="font-semibold text-foreground">+ {gatedKeywords.length} more high-priority keywords</h4>
-          </div>
-          <p className="text-xs text-muted-foreground mb-3">
-            These appear in 50–80% of job postings for your role — the top-quartile candidates have all of them.
-          </p>
-          <div className="flex flex-wrap gap-2 mb-4 select-none pointer-events-none">
-            {gatedKeywords.slice(0, 6).map((kw, i) => (
-              <span
-                key={i}
-                className="text-sm px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 font-medium blur-[5px]"
-                aria-hidden="true"
-              >
-                {kw.keyword}
-              </span>
-            ))}
-          </div>
-          <button
-            onClick={() => handleUpgradeClick('gated_keywords')}
-            className="w-full text-center text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
-          >
-            Unlock all {gatedKeywords.length} keywords →
-          </button>
-        </div>
-      )}
+      <KeywordsSection keywords={keywords} industry={effectiveIndustry} />
 
       {/* Email Capture */}
       <div className="rounded-2xl bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20 p-5 mb-5">
@@ -5090,104 +4605,6 @@ export function FreeKeywordResults({
         <p className="text-xs text-muted-foreground mt-2">{t('freeResults.emailCapture.noSpam')}</p>
       </div>
 
-      {/* Cover Letter CTA - requires job description */}
-      <div className="rounded-2xl bg-gradient-to-br from-accent/10 via-primary/5 to-accent/10 border border-accent/30 p-5 mb-5">
-        <div className="flex items-start gap-3">
-          <div className="p-2.5 rounded-xl bg-accent/20 shrink-0">
-            <FileText className="w-5 h-5 text-accent-foreground" />
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <h4 className="font-bold text-foreground">{t('freeResults.coverLetterCta.title')}</h4>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-accent/20 text-accent-foreground font-medium">
-                {isLocalCurrency ? `$${PRODUCTS.coverLetter.priceUsd} ≈ ${formatPrice(PRODUCTS.coverLetter.priceUsd)}` : `$${PRODUCTS.coverLetter.priceUsd}`}
-              </span>
-            </div>
-            <p className="text-sm text-muted-foreground mb-3">
-              {getProductCtaCopy('control', t, formatPrice, isLocalCurrency).coverLetter.description}
-            </p>
-            <div className="flex flex-wrap gap-2 mb-3 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-success" /> {t('freeResults.coverLetterCta.personalizedOpening')}</span>
-              <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-success" /> {t('freeResults.coverLetterCta.skillsHighlighted')}</span>
-              <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-success" /> {t('freeResults.coverLetterCta.instantDownload')}</span>
-            </div>
-            <CoverLetterButton hasJobDescription={uploadedJobs.length > 0} variant="control" section="cover_letter_cta" />
-          </div>
-        </div>
-      </div>
-
-      {/* $5 Add-Ons Section — with live "preview from your résumé" now that the scan gives us the text + industry */}
-      <AddOnsShowcase variant="compact" className="mb-5" resumeText={resumeText} industry={industry} />
-      <div className="rounded-2xl bg-gradient-to-br from-primary via-primary/90 to-primary/80 border-2 border-primary p-6 mb-5 relative overflow-hidden shadow-xl shadow-primary/20">
-        <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-0 w-40 h-40 bg-white/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
-        <div className="relative">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-primary-foreground/80">{t('freeResults.bestValue')}</span>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-white/20 text-primary-foreground font-bold">{PRODUCTS.premiumPackage.savings}</span>
-          </div>
-          <h3 className="text-2xl font-bold text-primary-foreground mb-2">
-            {getProductCtaCopy('control', t, formatPrice, isLocalCurrency).premiumPackage.headline}
-          </h3>
-          <p className="text-sm text-primary-foreground/80 mb-4">
-            {t('freeResults.premiumIncludesDetail', { subtext: getProductCtaCopy('control', t, formatPrice, isLocalCurrency).premiumPackage.subtext })}
-          </p>
-          <div className="grid grid-cols-2 gap-2 mb-4">
-            {[
-              t('freeResults.premiumFeatures.completeAtsAnalysis'),
-              t('freeResults.premiumFeatures.aiRewrittenResume'),
-              t('freeResults.premiumFeatures.customCoverLetter'),
-              t('freeResults.premiumFeatures.beforeAfterComparison'),
-              t('freeResults.premiumFeatures.keywordOptimization'),
-              t('freeResults.premiumFeatures.priorityProcessing')
-            ].map((feature, i) => (
-              <div key={i} className="flex items-center gap-2 text-xs text-primary-foreground/90">
-                <CheckCircle2 className="w-3 h-3 text-primary-foreground shrink-0" />
-                {feature}
-              </div>
-            ))}
-          </div>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-            <PremiumPackageButton variant="control" isPrimary section="bottom_cta" />
-            <div className="text-primary-foreground">
-              <span className="text-2xl font-bold">
-                {isLocalCurrency ? `$${PRODUCTS.premiumPackage.priceUsd} ≈ ${formatPrice(PRODUCTS.premiumPackage.priceUsd)}` : `$${PRODUCTS.premiumPackage.priceUsd}`}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Tiered Pricing Options */}
-      <TieredPricingSection onFullAnalysisCheckout={onGetFullAnalysis} />
-
-      {/* What's Locked */}
-      <div className="rounded-2xl bg-muted/30 border border-border/50 p-5 mb-6">
-        <div className="flex items-center gap-2 mb-3">
-          <Lock className="w-4 h-4 text-muted-foreground" />
-          <h4 className="font-medium text-muted-foreground">{t('freeResults.unlockWithFullAnalysis')}</h4>
-        </div>
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          {[
-            t('freeResults.keywordFixFeatures.fullAtsBreakdown'),
-            t('freeResults.keywordFixFeatures.bulletPointRewrites'),
-            t('freeResults.keywordFixFeatures.redFlagFixes'),
-            t('freeResults.keywordFixFeatures.linkedinOptimization'),
-            t('freeResults.keywordFixFeatures.actionVerbReplacements'),
-            t('freeResults.keywordFixFeatures.quantificationSuggestions'),
-            t('freeResults.keywordFixFeatures.skillsGapAnalysis'),
-            t('freeResults.keywordFixFeatures.industryInsights'),
-            t('freeResults.keywordFixFeatures.summaryRewrites'),
-            t('freeResults.keywordFixFeatures.prioritizedActionPlan')
-          ].map((feature, i) => (
-            <div key={i} className="flex items-center gap-2 text-muted-foreground">
-              <div className="w-1 h-1 rounded-full bg-muted-foreground/50" />
-              {feature}
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* Job Comparison CTA - show when jobs are uploaded (FREE feature) */}
       {uploadedJobs.length > 0 && (
         <div className="p-5 rounded-2xl border border-success/30 bg-gradient-to-br from-success/5 via-background to-success/10 mb-6">
@@ -5217,48 +4634,40 @@ export function FreeKeywordResults({
         </div>
       )}
 
-      {/* Final CTA */}
-      <div className="text-center p-6 rounded-2xl bg-gradient-to-br from-primary/10 via-background to-primary/5 border border-primary/20">
-        {/* Social proof — the REAL scans-today count, or nothing. This line
-            used to render `inflatedCount` (2800 + count*3, clock-derived on
-            error) under copy claiming "people upgraded this week": a number we
-            invented for a quantity we don't even measure. Now it makes the
-            claim the RPC actually answers, and only once the day's count is
-            large enough to be worth stating — a quiet morning renders no line
-            at all rather than a padded one. */}
-        {scanCountData && scanCountData.count >= 25 && (
-          <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground mb-3">
-            <div className="flex -space-x-1">
-              {['bg-blue-400','bg-green-400','bg-purple-400'].map((c,i) => (
-                <div key={i} className={`w-5 h-5 rounded-full ${c} border-2 border-background`} />
-              ))}
-            </div>
-            <span>{t('freeResults.cta.socialProof', { count: scanCountData.count })}</span>
-          </div>
-        )}
-
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-success/10 text-success text-xs font-medium mb-3">
-          <CheckCircle2 className="w-3 h-3" />
-          {t('freeResults.oneTimePaymentInstantAccess')}
+      {/* Next steps: the report's only paid offers, and only these two —
+          the $5 Full Analysis and Pro (owner decision 2026-10-08). No
+          countdown, no locked "issues", no other product. */}
+      <div className="rounded-2xl border border-border bg-card p-6 mb-6" data-testid="report-next-steps">
+        <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">{t('freeResults.nextSteps.eyebrow')}</p>
+        <h3 className="font-semibold text-foreground mb-1">{t('freeResults.nextSteps.title')}</h3>
+        <p className="text-xs text-muted-foreground mb-4">{t('freeResults.nextSteps.body')}</p>
+        <div className="space-y-2.5">
+          <PurchaseTerms kind="payment" />
+          <button
+            data-offer="fullAnalysis"
+            onClick={() => handleUpgradeClick('next_steps_full_analysis')}
+            disabled={isLoading}
+            className="w-full flex items-center justify-between rounded-xl border border-border p-3.5 text-left hover:border-primary/50 transition-colors disabled:opacity-60"
+          >
+            <span>
+              <span className="block text-sm font-medium text-foreground">{t('freeResults.nextSteps.fullAnalysisName')}</span>
+              <span className="block text-xs text-muted-foreground">{t('freeResults.nextSteps.fullAnalysisDesc')}</span>
+            </span>
+            <span className="text-sm font-semibold text-primary shrink-0 ml-3">{priceDisplay}</span>
+          </button>
+          <Link
+            data-offer="pro"
+            to="/pricing"
+            onClick={() => trackButtonClick('pro', 'next_steps_pro')}
+            className="w-full flex items-center justify-between rounded-xl border border-border p-3.5 text-left hover:border-primary/50 transition-colors"
+          >
+            <span>
+              <span className="block text-sm font-medium text-foreground">{t('freeResults.nextSteps.proName')}</span>
+              <span className="block text-xs text-muted-foreground">{t('freeResults.nextSteps.proDesc')}</span>
+            </span>
+            <span className="text-sm font-semibold text-primary shrink-0 ml-3">{t('freeResults.nextSteps.proPrice', { price: SUBSCRIPTIONS.pro.priceUsd })}</span>
+          </Link>
         </div>
-        <Button
-          size="lg"
-          onClick={() => handleUpgradeClick('final_cta')}
-          disabled={isLoading}
-          className="gap-2 px-10 h-14 text-lg font-bold bg-gradient-to-r from-primary via-primary to-primary/80 hover:from-primary/90 hover:via-primary/90 hover:to-primary/70 shadow-xl shadow-primary/30 hover:shadow-2xl hover:shadow-primary/40 transition-all hover:scale-[1.02] active:scale-[0.98]"
-        >
-          {getFinalCtaText()} — {t('freeScan.cta.price')}
-          <ArrowRight className="w-5 h-5" />
-        </Button>
-        <WalletPaymentBadge className="mt-3" />
-        {/* Urgency */}
-        <p className="text-xs text-muted-foreground mt-2 flex items-center justify-center gap-1">
-          <span>⏱</span>
-          {t('freeResults.cta.resultsExpiry', { hours: Math.max(0, 48 - Math.floor((Date.now() - scanTimestamp) / 3600000)) })}
-        </p>
-        <p className="text-sm text-muted-foreground mt-1">
-          <span className="text-success font-medium">{t('freeResults.oneInterviewPaidForItself', { price: priceDisplay })}</span>
-        </p>
       </div>
 
       </div> {/* end section-upgrade */}

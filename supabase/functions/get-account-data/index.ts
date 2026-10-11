@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-08T13:00Z
+// deploy-stamp: 2026-10-09T13:00Z
 // Account data for the signed-in user: scan credits and purchase history.
 // Both are keyed by email in service-role tables, so this function verifies
 // the caller's JWT and reads on their behalf.
@@ -14,7 +14,10 @@
 //     pool ONLY when the session proved its mailbox (_shared/mailbox-proof.ts:
 //     a verified Google/Apple sign-in today);
 //   - purchases by address: only for a proven mailbox, else none, with
-//     mailboxProven: false so the page can say why.
+//     mailboxProven: false so the page can say why;
+//   - the account's Agent Passes (agent_passes, by the verified user id): a
+//     pass is never a purchased_content row, so the Purchases box said "No
+//     purchases yet" to a $29 buyer (platform sweep L6-12).
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { provenMailbox } from "../_shared/mailbox-proof.ts";
@@ -22,7 +25,7 @@ import { isAuthUserId, scanCreditBalance, type CreditDb } from "../_shared/scan-
 
 // Provable from outside: every response, the CORS preflight included, carries
 // this in x-fn-build.
-const FN_BUILD = "get-account-data.2026-10-08.1";
+const FN_BUILD = "get-account-data.2026-10-09.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -55,7 +58,7 @@ Deno.serve(async (req) => {
       anonKey: Deno.env.get("SUPABASE_ANON_KEY") ?? "",
     });
 
-    const [credits, purchasesRes] = await Promise.all([
+    const [credits, purchasesRes, passesRes] = await Promise.all([
       scanCreditBalance(service as unknown as CreditDb, { provenEmail, userId: user.id, sessionHashes: [] }),
       provenEmail
         ? service.from("purchased_content")
@@ -64,6 +67,11 @@ Deno.serve(async (req) => {
           .order("created_at", { ascending: false })
           .limit(50)
         : Promise.resolve({ data: [] as unknown[] }),
+      service.from("agent_passes")
+        .select("purchased_at, shelf_expires_at, activated_at, expires_at, closed_at")
+        .eq("user_id", user.id)
+        .order("purchased_at", { ascending: false })
+        .limit(20),
     ]);
 
     const purchases = ((purchasesRes as { data?: unknown[] | null }).data ?? []).map((row) => {
@@ -71,7 +79,17 @@ Deno.serve(async (req) => {
       return { product: p.product_name ?? p.product_type ?? "Purchase", date: p.created_at };
     });
 
-    return json({ credits: credits ?? 0, purchases, mailboxProven: !!provenEmail });
+    // State from the timestamps, as agent-pass-status derives it (its lazy
+    // close may not have run yet).
+    const now = Date.now();
+    const passes = ((passesRes as { data?: unknown[] | null }).data ?? []).map((row) => {
+      const p = row as { purchased_at: string; shelf_expires_at?: string | null; activated_at?: string | null; expires_at?: string | null; closed_at?: string | null };
+      const ended = !!p.closed_at
+        || (p.activated_at ? !!p.expires_at && Date.parse(p.expires_at) <= now : !!p.shelf_expires_at && Date.parse(p.shelf_expires_at) <= now);
+      return { date: p.purchased_at, state: ended ? "closed" : p.activated_at ? "live" : "unactivated" };
+    });
+
+    return json({ credits: credits ?? 0, purchases, passes, mailboxProven: !!provenEmail });
   } catch (e) {
     console.error("[GET-ACCOUNT-DATA] Uncaught:", e instanceof Error ? e.message : String(e));
     return json({ error: "Unexpected error" }, 500);

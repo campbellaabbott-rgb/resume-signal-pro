@@ -20,8 +20,27 @@ closes the gap. Policy lives in `docs/deploy-ledger.json`:
 - `holdUntilVerified`: migrations that start scheduled work; they go out in a
   second message only after the first one verifies live.
 - `drizzleBaseline`: the staged-runner record is complete from this stamp on.
+- `migrationOrder`: per migration stamp, `after` is `fn:<name>@<YYYY-MM-DD.N>`
+  (apply once that function answers that build or later) or `frontend`
+  (apply once the frontend is published), and `before` lists `fn:<name>`
+  the migration must precede. The message prints five steps: migrations
+  before the functions, the functions, migrations after the function each
+  waits for, the frontend, migrations after the frontend. A rule that cannot
+  be met (main carries an earlier build, or no such function) stops the
+  message (exit 6). A migration with no entry goes before the functions.
 - `reservations`: the migration-timestamp day and job-board version each
   workstream may use, so two branches never collide.
+
+`--message` runs `git fetch origin main` and refuses (exit 5) unless HEAD is
+origin/main: Lovable pulls main, and a stale checkout re-lists migrations
+already applied. It also refuses, naming the paths, when any input it reads
+from the working tree (supabase/functions, supabase/migrations,
+drizzle/migrations, docs/deploy-ledger.json, the script itself) differs from
+that commit: an untracked migration would otherwise be listed under main's
+commit. `--draft` prints the same message from any checkout, headed
+as a draft that is not a deploy message. A function whose preflight does not
+answer, twice, is "could not check": the report lists it, the message opens
+with a STOP naming it, section 49 FAILs it, and the script exits 4.
 
 The script exits 2 when a function's own code changed after a stamp that is
 ALREADY LIVE ("MUST BUMP"): such a deploy could not be told apart from what is
@@ -35,7 +54,30 @@ every deploy: anything main has that production does not is a FAIL line.
 ## 2. One deploy at a time, main frozen in between
 
 1. A workstream lands on main only through an integration PR whose full test
-   suite passed.
+   suite passed. An integration branch must pass `--against origin/main` and
+   `--against` each merged branch's tip before it merges:
+
+       node scripts/deploy-ledger.mjs --against origin/main --against wave3/job-board --against ...
+
+   For every function whose folder or `_shared` imports differ between the
+   ref and HEAD, HEAD's build must sort at or after the ref's (`buildAtLeast`:
+   date first, then the numeric sequence) and be a different string. The
+   same string on different code is the class wave 3 hit:
+   send-search-digest.2026-10-09.1 on three branches, eleven functions'
+   .2026-10-09.1 on two. Any violation exits 3 (exit 2 stays MUST BUMP).
+   The mode is read-only and makes no network call. A relabel is not moved
+   code: every changed line carries the function's own build marker, and with
+   the marker masked the removed and added lines are the same lines. A line
+   that changes anything beside the marker is code. A build whose sequence
+   has a leading zero (`.04`) is unreadable, never "later".
+   One string may be shared: the job-board version reserved to a workstream
+   (`reservations`), between a ref and HEAD that both belong to that
+   workstream, while main carries neither that version nor a later one. A
+   branch belongs to the workstream whose `branches` list names it (an entry
+   ending in `/` is a prefix). A commit id, an unnamed branch or another
+   workstream's branch shares nothing. `--main` names the deployable ref and
+   `--head` judges another commit (by its branch name, so a commit id gets no
+   allowance).
 2. After it merges, main is FROZEN: nothing else merges until the owner has run
    the Lovable message generated from that exact commit and the verifier (plus
    the ledger) shows no gap.
@@ -57,13 +99,17 @@ the new main, and the ledger is re-run.
 | workstream | migrations | job-board BUILD_VERSION | other FN_BUILD date |
 |---|---|---|---|
 | wave 2 (merged, PR #24) | 20261008* | 2026-09-09.91 | 2026-10-08 |
-| wave 3 (in progress) | 20261009* | 2026-09-09.92 | 2026-10-09 |
+| wave 3 (in progress; branches wave3/ and the S11 round's w31/) | 20261009* | 2026-09-09.92 | 2026-10-09 |
 | ledger repair (this PR) | none | none | 2026-10-10 |
 | connect-and-apply | 20261011* | 2026-09-09.93 | 2026-10-11 |
 | next | 20261012* onwards, one day each | 2026-09-09.94+ | that day |
 
 When two branches bump the same function, the integration keeps BOTH changes
-and gives the function a new stamp later than either.
+and gives the function a new stamp later than either. Every function whose code
+the integration changed gets a stamp later than main's and later than, and
+different from, every merged branch's. A function main last stamped on a later
+day (PR #25's 2026-10-10.1) takes that day with a higher sequence. The
+`--against` checks in §2 enforce this.
 
 ## 4. Findings go to one backlog, fixes to one wave
 

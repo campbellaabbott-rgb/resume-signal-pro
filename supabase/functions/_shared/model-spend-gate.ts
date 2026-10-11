@@ -38,13 +38,18 @@
  *   4. THE FUNCTION AS A WHOLE, on endpoints a stranger reaches the model
  *      through without paying. A rotating pool gets a fresh address bucket per
  *      address, so a function-wide hourly ceiling is the only bound against
- *      one. Two of them: a caller who has PROVEN something -- a signed-in
- *      account, or a browser holding a board pass (a solved Turnstile
- *      challenge) -- spends an allowance of its own (`user:` / `pass:`, the
- *      address allowance's size) and then the "proven" ceiling; everyone else
- *      spends the "global" one. A pool that spends the anonymous ceiling
- *      therefore cannot lock out a person who signed in or proved a browser,
- *      and the worst an hour can cost is still two fixed numbers.
+ *      one. Two of them: a caller who has PROVEN something -- a browser
+ *      holding a board pass (a solved Turnstile challenge), a signed-in
+ *      account whose mailbox provenMailbox() accepts, or a paying account --
+ *      spends an allowance of its own (`user:` / `pass:`, the address
+ *      allowance's size) and then the "proven" ceiling; everyone else spends
+ *      the "global" one. A pool that spends the anonymous ceiling therefore
+ *      cannot lock out a person who proved a mailbox, paid, or proved a
+ *      browser, and the worst an hour can cost is still two fixed numbers.
+ *      A plain password account is NOT proven (register S11-083, owner
+ *      decision 2026-10-11): sign-ups auto-confirm, so ten throwaway accounts
+ *      on ten addresses used to spend the proven ceiling and lock every
+ *      signed-in person out of every free AI tool for the hour.
  *   5. Any failure to count -- an RPC error, a null answer, a thrown call, no
  *      database client at all -- is a refusal (503, limiter_unavailable). A
  *      limiter that fails open is a limiter a caller can switch off.
@@ -60,6 +65,8 @@
  */
 import { clientAddress } from "./client-address.ts";
 import { boardPassId } from "./board-pass-verify.ts";
+import { provenMailbox, type AuthUserLike } from "./mailbox-proof.ts";
+import { accountProStanding } from "./pro-standing.ts";
 
 /** The anonymous function-wide bucket. No address spells this. */
 export const GLOBAL_BUCKET = "global";
@@ -303,10 +310,15 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * "pass:<id>" for a valid board pass, "user:<uuid>" for a verified signed-in
- * account (an anonymous sign-in is not one: it costs nothing to mint), or null
- * for an anonymous caller. Both names fit check_rate_limit's 45 characters.
+ * account that has PROVEN something (register S11-083): a mailbox
+ * provenMailbox() accepts (a Google or Apple sign-in for the address that
+ * provider verified, or an emailed confirmation once confirmation is really
+ * on), or a paying account (a live, non-trial plan by pro-standing's one
+ * rule). Anything else is null: an anonymous caller, an anonymous sign-in,
+ * and a plain password account, which costs nothing to mint while sign-ups
+ * auto-confirm. Both names fit check_rate_limit's 45 characters.
  */
-async function provenCaller(db: SpendDb, h: Headers, boardPass: unknown): Promise<string | null> {
+export async function provenCaller(db: SpendDb, h: Headers, boardPass: unknown): Promise<string | null> {
   const pass = await boardPassId(boardPass, env("SUPABASE_SERVICE_ROLE_KEY"), env("TURNSTILE_SECRET_KEY"));
   if (pass) return `pass:${pass}`;
   const jwt = bearerOf(h);
@@ -315,9 +327,18 @@ async function provenCaller(db: SpendDb, h: Headers, boardPass: unknown): Promis
   if (typeof db.auth?.getUser !== "function") return null;
   try {
     const { data, error } = await db.auth.getUser(jwt);
-    const user = data?.user as { id?: unknown; is_anonymous?: unknown } | undefined;
+    const user = data?.user as (AuthUserLike & { is_anonymous?: unknown }) | undefined;
     if (error || !user || user.is_anonymous === true || typeof user.id !== "string" || !UUID.test(user.id)) return null;
-    return `user:${user.id.toLowerCase()}`;
+    const id = user.id.toLowerCase();
+    const mailbox = await provenMailbox(user, jwt, {
+      db,
+      confirmedSince: env("EMAIL_CONFIRMED_SINCE") ?? null,
+      supabaseUrl: env("SUPABASE_URL") ?? "",
+      anonKey: env("SUPABASE_ANON_KEY") ?? "",
+    });
+    if (mailbox) return `user:${id}`;
+    if ((await accountProStanding(db, id)).consumables) return `user:${id}`;
+    return null;
   } catch {
     return null;
   }
@@ -368,7 +389,18 @@ export async function modelSpendGate(
   }
   if (!db) return spendRefusal("limiter_unavailable", null, cors);
 
-  // 2. The address.
+  // 2. A free generator delivering a purchase of what it sells. The shared
+  //    20-an-hour address bucket refused a paying Interview Coach buyer (15
+  //    calls a pass) for an hour on the 21st call with half the purchase's 30
+  //    a day unspent (sweep S8-065). A separate purchase bucket fixed that but
+  //    gave any address naming a purchase a second hourly allowance beside
+  //    the plain one. So the address is counted in one bucket, always, and a
+  //    spent address goes on only while the named purchase's day lasts: every
+  //    call past the address's hour draws on that day.
+  const delivers = limits.globalPerHour !== undefined && !!session && !!opts.products && opts.products.length > 0
+    && await deliversProduct(db, session, opts.products);
+
+  // 3. The address.
   const mine = await counted(db, {
     p_function: fn,
     p_ip: spendAddressKey(req.headers),
@@ -376,38 +408,98 @@ export async function modelSpendGate(
     p_window_minutes: limits.windowMinutes ?? 60,
   });
   if (mine === null) return spendRefusal("limiter_unavailable", null, cors);
+
+  // 4a. A purchase-gated generator: the function checked the purchase; its day is a hard limit.
+  if (limits.globalPerHour === undefined) {
+    if (mine === false) return spendRefusal("rate_limited_function", limits.perAddress, cors);
+    return purchaseSpendGate(db, fn, session, perSession, cors);
+  }
+
+  // 4b. A free generator delivering a purchase of what it sells: off the ceiling while its day lasts.
+  if (delivers && session) {
+    const day = await countSession(db, fn, session, perSession);
+    if (day === true) return null;
+    if (mine === false) return spendRefusal(day === null ? "limiter_unavailable" : "rate_limited_function", day === null ? null : limits.perAddress, cors);
+    // Spent (or uncountable) inside the address's hour: charged to the ceiling below like any caller.
+  }
   if (mine === false) return spendRefusal("rate_limited_function", limits.perAddress, cors);
 
-  // 3a. A purchase-gated generator: the function checked the purchase; its day is a hard limit.
-  if (limits.globalPerHour === undefined) return purchaseSpendGate(db, fn, session, perSession, cors);
+  // 5. The function as a whole: proven callers and strangers spend separate allowances.
+  const verdict = await ceilingVerdict(
+    db,
+    req.headers,
+    fn,
+    { max: limits.perAddress, windowMinutes: limits.windowMinutes ?? 60 },
+    { strangers: limits.globalPerHour, proven: limits.globalPerHour },
+    opts.boardPass,
+  );
+  return verdict ? spendRefusal(verdict.code, verdict.limit, cors) : null;
+}
 
-  // 3b. A free generator delivering a purchase of what it sells: off the ceiling while its day lasts.
-  if (session && opts.products && opts.products.length > 0 && await deliversProduct(db, session, opts.products)) {
-    if (await countSession(db, fn, session, perSession) === true) return null;
-    // Spent (or uncountable): charged to the ceiling below like any caller, never refused for it.
-  }
+/** Which allowance ran out, or null to go on. */
+export type CeilingVerdict = { code: SpendRefusalCode; limit: number | null } | null;
 
-  // 4. The function as a whole: proven callers and strangers spend separate allowances.
-  const who = await provenCaller(db, req.headers, opts.boardPass);
+/**
+ * Step 5 on its own: a proven caller's own allowance, then the proven or the
+ * anonymous function-wide hourly ceiling. Any failure to count is a refusal.
+ */
+async function ceilingVerdict(
+  db: SpendDb,
+  h: Headers,
+  fn: string,
+  own: { max: number; windowMinutes: number },
+  ceilings: { strangers: number; proven: number },
+  boardPass: unknown,
+): Promise<CeilingVerdict> {
+  const who = await provenCaller(db, h, boardPass);
   if (who) {
-    const own = await counted(db, {
-      p_function: fn,
-      p_ip: who,
-      p_max_requests: limits.perAddress,
-      p_window_minutes: limits.windowMinutes ?? 60,
-    });
-    if (own === null) return spendRefusal("limiter_unavailable", null, cors);
-    if (own === false) return spendRefusal("rate_limited_function", limits.perAddress, cors);
+    const mine = await counted(db, { p_function: fn, p_ip: who, p_max_requests: own.max, p_window_minutes: own.windowMinutes });
+    if (mine === null) return { code: "limiter_unavailable", limit: null };
+    if (mine === false) return { code: "rate_limited_function", limit: own.max };
   }
-  const world = await counted(db, {
-    p_function: fn,
-    p_ip: who ? PROVEN_BUCKET : GLOBAL_BUCKET,
-    p_max_requests: limits.globalPerHour,
-    p_window_minutes: 60,
-  });
-  if (world === null) return spendRefusal("limiter_unavailable", null, cors);
-  if (world === false) return spendRefusal("rate_limited_global", limits.globalPerHour, cors);
+  const max = who ? ceilings.proven : ceilings.strangers;
+  const world = await counted(db, { p_function: fn, p_ip: who ? PROVEN_BUCKET : GLOBAL_BUCKET, p_max_requests: max, p_window_minutes: 60 });
+  if (world === null) return { code: "limiter_unavailable", limit: null };
+  if (world === false) return { code: "rate_limited_global", limit: max };
   return null;
+}
+
+/** A function-wide hour with strangers and proven callers kept apart. */
+export type FunctionCeiling = {
+  /** Model-backed calls the whole anonymous internet may make per hour. */
+  strangersPerHour: number;
+  /** The same for proven callers (board pass, proven mailbox, paying account), as a separate allowance. */
+  provenPerHour: number;
+  /** One proven identity's own hourly allowance inside the proven ceiling. */
+  perProvenCallerPerHour: number;
+};
+
+/**
+ * THE FUNCTION-WIDE HOUR FOR A FUNCTION THAT COUNTS ADDRESSES ITS OWN WAY
+ * (register S11-019). The free scanner keeps its per-address day (7, or 15
+ * signed in) and the cross-function request budget, but neither bounds a
+ * rotating address pool, and neither scanner fork had a ceiling at all. This
+ * is step 5 alone, with the same proven-caller rule: a verdict, not a
+ * Response, so the primary can serve its rule-based report (no model call)
+ * instead of an error. Our own servers are never counted.
+ */
+export async function functionCeiling(
+  db: SpendDb | null | undefined,
+  req: Request,
+  fn: string,
+  limits: FunctionCeiling,
+  opts: { boardPass?: unknown } = {},
+): Promise<CeilingVerdict> {
+  if (isServiceCaller(req.headers, env("SUPABASE_SERVICE_ROLE_KEY"))) return null;
+  if (!db) return { code: "limiter_unavailable", limit: null };
+  return ceilingVerdict(
+    db,
+    req.headers,
+    fn,
+    { max: limits.perProvenCallerPerHour, windowMinutes: 60 },
+    { strangers: limits.strangersPerHour, proven: limits.provenPerHour },
+    opts.boardPass,
+  );
 }
 
 // ── input bounds for the short fields ─────────────────────────────────────

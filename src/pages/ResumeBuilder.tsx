@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { SEO } from "@/components/seo/SEO";
 import { Loader2, Download, FileText, RotateCcw, Sparkles } from "lucide-react";
 import { Header } from "@/components/Header";
@@ -21,14 +22,24 @@ import { ExperienceEditor } from "@/components/builder/ExperienceEditor";
 import { EducationEditor } from "@/components/builder/EducationEditor";
 import { TagListEditor } from "@/components/builder/TagListEditor";
 import { ResumePreview } from "@/components/builder/ResumePreview";
+import {
+  IMPORTED_FROM_KEY,
+  applyScanRewrites,
+  builderResumeHasContent,
+  importDecision,
+  textFingerprint,
+} from "@/lib/builder-import";
 
 const DRAFT_STORAGE_KEY = "resumeBuilderDraft";
 
+// A draft with nothing in it is no draft (L3-11): the empty starting résumé
+// is never saved, and one saved before this change reads as absent.
 function loadDraft(): BuilderResume | null {
   try {
     const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
     if (!raw) return null;
-    return JSON.parse(raw) as BuilderResume;
+    const draft = JSON.parse(raw) as BuilderResume;
+    return builderResumeHasContent(draft) ? draft : null;
   } catch {
     return null;
   }
@@ -36,11 +47,20 @@ function loadDraft(): BuilderResume | null {
 
 function saveDraft(resume: BuilderResume) {
   try {
-    localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(resume));
+    if (builderResumeHasContent(resume)) localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(resume));
+    else localStorage.removeItem(DRAFT_STORAGE_KEY);
   } catch {
     // Storage full or disabled — not worth surfacing to the user, the draft just
     // won't persist across refreshes.
   }
+}
+
+/** The scan the draft was imported from, or last offered (see builder-import). */
+function readImportedFrom(): string | null {
+  try { return localStorage.getItem(IMPORTED_FROM_KEY); } catch { return null; }
+}
+function writeImportedFrom(text: string) {
+  try { localStorage.setItem(IMPORTED_FROM_KEY, textFingerprint(text)); } catch { /* storage blocked */ }
 }
 
 // Scan→builder handoff payload written by the report's "Open in builder with
@@ -53,7 +73,6 @@ interface ScanFixes {
   reportId: string | null;
 }
 
-const normalizeBullet = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
 // Plain-text serialization for the rescan ritual: the exported document goes
 // back through the real scanner so the improvement is measured, not assumed.
@@ -83,26 +102,8 @@ function builderResumeToText(r: BuilderResume): string {
   return lines.join("\n");
 }
 
-function applyScanRewrites(resume: BuilderResume, rewrites: ScanFixes["rewrites"]): { resume: BuilderResume; applied: number } {
-  let applied = 0;
-  const normalized = rewrites.map((r) => ({ key: normalizeBullet(r.before), after: r.after }));
-  const experience = resume.experience.map((entry) => ({
-    ...entry,
-    bullets: entry.bullets.map((b) => {
-      const nb = normalizeBullet(b);
-      if (!nb) return b;
-      const hit = normalized.find((r) => r.key && (r.key === nb || nb.includes(r.key) || r.key.includes(nb)));
-      if (hit) {
-        applied += 1;
-        return hit.after;
-      }
-      return b;
-    }),
-  }));
-  return { resume: { ...resume, experience }, applied };
-}
-
 export default function ResumeBuilder() {
+  const { t } = useTranslation();
   const [resume, setResume] = useState<BuilderResume>(() => loadDraft() || createEmptyResume());
   const [isPrefilling, setIsPrefilling] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
@@ -112,10 +113,10 @@ export default function ResumeBuilder() {
   const hasAttemptedPrefillRef = useRef(false);
   const { toast } = useToast();
 
-  // On first load, if there's no existing draft but the user has a resume from a
-  // recent scan/analysis, offer to prefill the builder from it via AI extraction.
-  // When the report's "fixes applied" handoff is present, it takes priority —
-  // including over an existing draft (with confirmation, since that's destructive).
+  // On first load, prefill from this tab's scan via AI extraction: at once when
+  // there is no draft with content; with a confirmation over a real draft when
+  // the scan is one it was not imported from (or the report's "fixes applied"
+  // handoff is present). See lib/builder-import (L3-11).
   useEffect(() => {
     if (hasAttemptedPrefillRef.current) return;
     hasAttemptedPrefillRef.current = true;
@@ -168,24 +169,31 @@ export default function ResumeBuilder() {
       if (raw) fixes = JSON.parse(raw) as ScanFixes;
     } catch { /* malformed payload — treat as absent */ }
 
-    const existingDraft = loadDraft();
-    if (existingDraft && !fixes) return;
-    if (existingDraft && fixes) {
+    const sessionData = getResumeFromSession();
+    const decision = importDecision({
+      draft: loadDraft(),
+      sessionText: sessionData.resumeText,
+      hasFixes: !!fixes,
+      lastOffered: readImportedFrom(),
+    });
+    if (decision === "none" || decision === "keep") return;
+    if (decision === "ask" || decision === "ask-fixes") {
+      // Asked once per scan: a "no" is remembered, so the next visit opens
+      // the draft without asking again about the same scan.
+      writeImportedFrom(sessionData.resumeText!);
       const replace = window.confirm(
-        "Replace your current builder draft with the resume from your scan, with the report's fixes applied?",
+        decision === "ask-fixes" ? t("resumeBuilder.replaceWithFixes") : t("resumeBuilder.replaceWithLatestScan"),
       );
       if (!replace) {
         try { sessionStorage.removeItem("rb_scan_fixes"); } catch { /* ignore */ }
         return;
       }
     }
-
-    const sessionData = getResumeFromSession();
-    if (!sessionData.resumeText || sessionData.resumeText.trim().length < 50) return;
+    const importedText = sessionData.resumeText!;
 
     setIsPrefilling(true);
     supabase.functions
-      .invoke("parse-resume-structured", { body: { resumeText: sessionData.resumeText } })
+      .invoke("parse-resume-structured", { body: { resumeText: importedText } })
       .then(({ data, error }) => {
         if (error || !data?.success) {
           console.error("[ResumeBuilder] Prefill failed:", error || data?.error);
@@ -200,6 +208,7 @@ export default function ResumeBuilder() {
         }
         if (fixes?.keywords?.length) setScanKeywords(fixes.keywords);
         try { sessionStorage.removeItem("rb_scan_fixes"); } catch { /* ignore */ }
+        writeImportedFrom(importedText);
         setResume(next);
         toast({
           title: appliedCount > 0 ? `Resume imported — ${appliedCount} fix${appliedCount === 1 ? "" : "es"} from your report applied` : "Resume imported",
@@ -223,6 +232,10 @@ export default function ResumeBuilder() {
     if (!window.confirm("This will clear everything in the builder. Continue?")) return;
     setResume(createEmptyResume());
     localStorage.removeItem(DRAFT_STORAGE_KEY);
+    // The clear sticks (S11-144): the tab's scan counts as offered, so the
+    // next visit opens the empty builder instead of re-importing it.
+    const scanned = getResumeFromSession().resumeText;
+    if (scanned && scanned.trim()) writeImportedFrom(scanned);
   };
 
   const handleExportPdf = async () => {
@@ -305,7 +318,12 @@ export default function ResumeBuilder() {
                 size="sm"
                 className="shrink-0"
                 onClick={() => {
-                  try { sessionStorage.setItem("rb_resume_text", builderResumeToText(resume)); } catch { /* ignore */ }
+                  // The rescan's text IS this draft (S11-143): marked as the
+                  // draft's source, so coming back does not offer to replace
+                  // the draft with a re-parse of its own export.
+                  const builderText = builderResumeToText(resume);
+                  try { sessionStorage.setItem("rb_resume_text", builderText); } catch { /* ignore */ }
+                  writeImportedFrom(builderText);
                   window.location.href = "/?rescan=1#upload";
                 }}
               >

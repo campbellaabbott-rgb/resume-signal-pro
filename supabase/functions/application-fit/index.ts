@@ -5,11 +5,19 @@
 // No AI call, so it's fast, free, and always explainable.
 
 import { computeFit } from "../_shared/fit-score.ts";
+import { spendAddressKey } from "../_shared/model-spend-gate.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+// 2026-10-09.1: the limit is keyed on the platform's address, hourly, and a limiter error refuses (S8-062).
+// 2026-10-09.1 (wave3/board-data-ingest): the fit score is capped at 100 (_shared/fit-score.ts, L8-13).
+// Provable from outside: every response, the preflight included, carries it.
+const FN_BUILD = "application-fit.2026-10-09.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Expose-Headers": "x-fn-build",
+  "x-fn-build": FN_BUILD,
 };
 
 Deno.serve(async (req) => {
@@ -26,14 +34,22 @@ Deno.serve(async (req) => {
     }
 
     // Cheap but real rate limit — deterministic compute, still not a free-for-all.
-    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    // Keyed on the address the platform states, never the caller-written first
+    // x-forwarded-for hop (each forged hop was a fresh bucket, and one past 45
+    // characters made the limiter raise, which read as allowed). Hourly: the
+    // limiter sweeps rows older than an hour, so a 1,440-minute row never held.
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
-    const { data: allowed } = await supabase.rpc("check_rate_limit", {
-      p_function: "application-fit", p_ip: clientIp, p_max_requests: 60, p_window_minutes: 1440,
+    const { data: allowed, error: limitErr } = await supabase.rpc("check_rate_limit", {
+      p_function: "application-fit", p_ip: spendAddressKey(req.headers), p_max_requests: 60, p_window_minutes: 60,
     });
+    if (limitErr || typeof allowed !== "boolean") {
+      return new Response(JSON.stringify({ error: "Fit check is temporarily unavailable. Please try again in a minute." }), {
+        status: 503, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "60" },
+      });
+    }
     if (allowed === false) {
-      return new Response(JSON.stringify({ error: "Daily fit-check limit reached.", rateLimited: true }), {
-        status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      return new Response(JSON.stringify({ error: "Hourly fit-check limit reached.", rateLimited: true }), {
+        status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "3600" },
       });
     }
 

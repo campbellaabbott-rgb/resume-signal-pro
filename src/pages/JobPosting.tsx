@@ -27,10 +27,12 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, Navigate, useParams } from "react-router-dom";
+import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { companyLanderPath } from "@/lib/public-href";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, Building2, ExternalLink, Loader2, MapPin } from "lucide-react";
+import { ArrowLeft, Building2, ExternalLink, Loader2, MapPin, Sparkles } from "lucide-react";
+import { canHandOff, writeJdHandoff } from "@/lib/jd-handoff";
+import { postTrackEvent } from "@/lib/track-transport";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -48,8 +50,10 @@ import {
   postingPageDescription,
   postingPagePath,
   postingPageTitle,
+  postingEmployer,
   type PostingRow,
 } from "@/components/jobs/posting-page";
+import { possessive } from "@/lib/company-display";
 
 const SITE = "https://resumebooster.work";
 
@@ -85,6 +89,7 @@ function clearJobMarkup(): void {
 
 export default function JobPosting() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const params = useParams<{ source?: string; token?: string; key?: string; id?: string }>();
 
   // THE ONE-SEGMENT FORM IS A COMPATIBILITY ROUTE, NOT A SECOND PAGE.
@@ -218,6 +223,14 @@ export default function JobPosting() {
     return () => { if (previous !== null) tag.setAttribute("content", previous); };
   }, [retracted]);
 
+  // A VISIT TO A LIVE POSTING, so "scans per 100 job-page visits" has its
+  // denominator. Once per tab session (the transport's repeat rule).
+  const viewedPath = live && id ? postingPagePath(id) : null;
+  useEffect(() => {
+    if (!viewedPath) return;
+    postTrackEvent({ testName: "job_page", variant: "posting_view", eventType: "view", metadata: { page: viewedPath } });
+  }, [viewedPath]);
+
   if (legacyId) {
     return legacyTarget
       ? <Navigate to={legacyTarget} replace />
@@ -227,7 +240,18 @@ export default function JobPosting() {
 
   const paragraphs = description ? jdParagraphs(description) : [];
   const path = postingPagePath(id) ?? "/jobs";
-  const company = (job?.company ?? "").trim();
+  // The employer by the name it uses, not its vendor tenant code (F1).
+  const company = job?.company ? postingEmployer(job) : "";
+  const companyPossessive = company ? possessive(company) : "";
+  // THE SCANNER ALREADY READS A HAND-OFF (Index.tsx, the board's "Check my
+  // fit"): this page holds the description, so it hands it over directly.
+  const canScore = live && canHandOff(description);
+  const scoreAgainstThisJob = () => {
+    if (!job || !description) return;
+    if (!writeJdHandoff({ jd: description, title: job.title ?? undefined, company: company || undefined, applyUrl: job.applyUrl ?? undefined })) return;
+    postTrackEvent({ testName: "job_page", variant: "score_against_job", eventType: "view", metadata: { page: path } });
+    navigate("/#upload");
+  };
   const heading = live && job?.title ? job.title : t("jobPostingPage.genericHeading", "Job posting");
   // THE GONE COPY IS FOR "GONE" ONLY. It used to cover every state that was
   // not ready, so a renderer that snapshotted while loading, after a transient
@@ -362,22 +386,39 @@ export default function JobPosting() {
                 </div>
               </dl>
 
-              {job.applyUrl && (
+              {(job.applyUrl || canScore) && (
                 <div className="mb-8">
-                  <Button asChild size="lg">
-                    <a href={job.applyUrl} target="_blank" rel="noopener noreferrer nofollow">
-                      {company
-                        ? t("jobPostingPage.applyCta", { defaultValue: "Apply on {{company}}'s own site", company })
-                        : t("jobPostingPage.applyCtaPlain", "Apply on the employer's own site")}
-                      <ExternalLink className="w-4 h-4 ml-1.5" />
-                    </a>
-                  </Button>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    {t(
-                      "jobPostingPage.applyNote",
-                      "The application happens on the employer's own hiring system. This board never reposts a job or stands between you and them.",
+                  <div className="flex flex-wrap gap-3">
+                    {job.applyUrl && (
+                      <Button asChild size="lg">
+                        <a href={job.applyUrl} target="_blank" rel="noopener noreferrer nofollow">
+                          {company
+                            ? t("jobPostingPage.applyCta", { defaultValue: "Apply on {{companyPossessive}} own site", company, companyPossessive })
+                            : t("jobPostingPage.applyCtaPlain", "Apply on the employer's own site")}
+                          <ExternalLink className="w-4 h-4 ml-1.5" />
+                        </a>
+                      </Button>
                     )}
-                  </p>
+                    {canScore && (
+                      <Button size="lg" variant="outline" className="gap-1.5" onClick={scoreAgainstThisJob}>
+                        <Sparkles className="w-4 h-4" aria-hidden="true" />
+                        {t("jobPostingPage.scoreCta", "Score my résumé against this job (free)")}
+                      </Button>
+                    )}
+                  </div>
+                  {canScore && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {t("jobPostingPage.scoreNote", "Opens the free scanner with this posting's description already filled in.")}
+                    </p>
+                  )}
+                  {job.applyUrl && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {t(
+                        "jobPostingPage.applyNote",
+                        "The application happens on the employer's own hiring system. This board never reposts a job or stands between you and them.",
+                      )}
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -405,8 +446,9 @@ export default function JobPosting() {
                 <p className="text-xs text-muted-foreground mt-10">
                   {t("jobPostingPage.sourceNote", {
                     defaultValue:
-                      "Pulled straight from {{company}}'s own hiring system — never an aggregator, never a repost. A dated posting is served for at most {{days}} days and is dropped the moment the employer's feed stops serving it.",
+                      "Pulled straight from {{companyPossessive}} own hiring system — never an aggregator, never a repost. A dated posting is served for at most {{days}} days from the date the employer states, and the board re-checks a posting when you open it.",
                     company: company || t("jobPostingPage.theEmployer", "the employer"),
+                    companyPossessive: companyPossessive || t("jobPostingPage.theEmployerPossessive", "the employer's"),
                     days: BOARD_FRESH_WINDOW_DAYS,
                   })}
                 </p>

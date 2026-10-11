@@ -15,8 +15,8 @@ import { assert, assertEquals, assertStringIncludes } from "https://deno.land/st
 const RAW = Deno.readTextFileSync(new URL("./index.ts", import.meta.url));
 const CODE = RAW.replace(/\/\*[\s\S]*?\*\//g, "\n").replace(/^\s*\/\/.*$/gm, "");
 
-Deno.test("the eight actions dispatch, and nothing else is an action", () => {
-  const actions = ["edgar", "edgar_audit", "edgar_backfill", "warn", "matches", "partition", "mirror", "lca_wages"];
+Deno.test("the nine actions dispatch, and nothing else is an action", () => {
+  const actions = ["edgar", "edgar_audit", "edgar_backfill", "edgar_reread", "warn", "matches", "partition", "mirror", "lca_wages"];
   for (const a of actions) {
     assert(new RegExp(`case "${a}":`).test(CODE), `action ${a}`);
   }
@@ -62,13 +62,13 @@ Deno.test("the mirror constants are spelled once each, as src/config/layoffs.ts 
 Deno.test("the poller never passes through the request budget and never lets the SEC floor above the published ceiling", () => {
   assert(!CODE.includes("check_rate_limit"));
   assert(!CODE.includes("check_global_rate_limit"));
-  // Two intervals for sec.gov: 500 ms on the hourly poll and the audit, 250 ms on the backfill. The SEC's
-  // ceiling is 10 requests a second; a 100 ms floor sits ON it, so every floor must be at least the
-  // backfill's 250 ms (4/s), and the hourly poll and the audit at least 500 ms.
+  // Two intervals for sec.gov: 500 ms on the hourly poll, the audit and the one-shot re-read, 250 ms on
+  // the backfill. The SEC's ceiling is 10 requests a second; a 100 ms floor sits ON it, so every floor
+  // must be at least the backfill's 250 ms (4/s), and the other three at least 500 ms.
   const intervals = [...CODE.matchAll(/secHttp\((\d+)\)/g)].map((m) => +m[1]);
   assert(intervals.length >= 3);
   assert(intervals.every((ms) => ms >= 250), `sec.gov floor ${JSON.stringify(intervals)}`);
-  assertEquals(intervals.filter((ms) => ms >= 500).length, 2, "the hourly poll and the audit run at 2/s");
+  assertEquals(intervals.filter((ms) => ms >= 500).length, 3, "the hourly poll, the audit and the re-read run at 2/s");
   // The contact address rides the User-Agent.
   assertStringIncludes(CODE, "ResumeSignalPro layoff-filings (${SEC_CONTACT})");
   // The cron secret header is the only door.

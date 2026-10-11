@@ -6,6 +6,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { H1B_DATA_AVAILABLE } from "@/lib/h1b-availability";
+import { employerGroupKey } from "@/lib/employer-group";
 
 export interface EmployerCtx {
   employees?: number | null;
@@ -28,7 +29,9 @@ const rpc = (f: string, a?: Record<string, unknown>) =>
 const cache = new Map<string, Promise<EmployerCtx>>();
 
 export function getEmployerCtx(companyToken: string): Promise<EmployerCtx> {
-  const slug = companyToken.split("~")[0];
+  // One employer per key: a Workday tenant's sites share one, every other
+  // token is its own (eu~ and recruiting~ are hosts, not employers; S8-021).
+  const slug = employerGroupKey(companyToken);
   const hit = cache.get(slug);
   if (hit) return hit;
   const p = (async (): Promise<EmployerCtx> => {

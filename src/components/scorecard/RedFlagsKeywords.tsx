@@ -88,13 +88,15 @@ const categoryConfig: Record<string, { label: string; className: string }> = {
 
 // --- Red Flags Section ---
 
+// Findings only: the free report's two paid offers live in its Next steps
+// section (owner decision 2026-10-08). The "More red flags in full analysis"
+// hint and the $12 package button that sat here promised what no product
+// was shown to deliver.
 interface RedFlagsSectionProps {
   redFlags: RedFlag[];
-  onUpgradeClick: () => void;
-  premiumButton: React.ReactNode;
 }
 
-export function RedFlagsSection({ redFlags, onUpgradeClick, premiumButton }: RedFlagsSectionProps) {
+export function RedFlagsSection({ redFlags }: RedFlagsSectionProps) {
   if (redFlags.length === 0) return null;
 
   // Sort by inferred severity
@@ -169,23 +171,6 @@ export function RedFlagsSection({ redFlags, onUpgradeClick, premiumButton }: Red
           );
         })}
       </div>
-
-      {/* Locked hint */}
-      <div className="flex items-center gap-1.5 mt-3 text-muted-foreground">
-        <Lock className="w-3 h-3" />
-        <span className="text-[11px]">More red flags + how to fix them in full analysis</span>
-      </div>
-
-      {/* Premium CTA */}
-      <div className="mt-4 p-3 rounded-xl bg-gradient-to-r from-destructive/8 to-destructive/4 border border-destructive/15">
-        <div className="flex flex-col sm:flex-row items-center gap-3">
-          <div className="flex-1 text-center sm:text-left">
-            <p className="font-semibold text-foreground text-sm">Fix all red flags automatically</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Get an AI-rewritten resume that eliminates these issues</p>
-          </div>
-          {premiumButton}
-        </div>
-      </div>
     </div>
   );
 }
@@ -195,17 +180,11 @@ export function RedFlagsSection({ redFlags, onUpgradeClick, premiumButton }: Red
 interface KeywordsSectionProps {
   keywords: KeywordSuggestion[];
   industry: string;
-  keywordFixButton: React.ReactNode;
-  keywordFixHeadline: string;
-  keywordFixPrice: string;
 }
 
 export function KeywordsSection({
   keywords,
   industry,
-  keywordFixButton,
-  keywordFixHeadline,
-  keywordFixPrice,
 }: KeywordsSectionProps) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
@@ -257,7 +236,9 @@ export function KeywordsSection({
       {/* Keyword cards */}
       <div className="space-y-2">
         {sorted.slice(0, visibleCount).map((item, index) => {
-          const impact = impactConfig[item.impact || "medium"];
+          // An impact the model wrote outside the three (a translated "alta",
+          // a "low") reads as medium rather than crashing the report (S11-029).
+          const impact = impactConfig[item.impact as keyof typeof impactConfig] ?? impactConfig.medium;
           const cat = item.category ? categoryConfig[item.category] : null;
 
           return (
@@ -311,27 +292,6 @@ export function KeywordsSection({
           Show less
         </button>
       )}
-
-      {/* Keyword Fix Upsell */}
-      <div className="mt-4 p-3 rounded-xl bg-gradient-to-r from-primary/8 to-primary/4 border border-primary/15">
-        <div className="flex items-start gap-3">
-          <div className="p-2 rounded-lg bg-primary/10 shrink-0">
-            <Target className="w-4 h-4 text-primary" />
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <h5 className="font-semibold text-foreground text-sm">{keywordFixHeadline}</h5>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/15 text-primary font-medium">
-                {keywordFixPrice}
-              </span>
-            </div>
-            <p className="text-xs text-muted-foreground mb-3">
-              Complete keyword optimization report with exact phrases recruiters search for.
-            </p>
-            {keywordFixButton}
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

@@ -1,5 +1,6 @@
-// deploy-stamp: 2026-10-08T12:00Z
+// deploy-stamp: 2026-10-09T14:00Z
 import { getServiceClient } from "../_shared/supabase-client.ts";
+import { isProbeOperator } from "../_shared/probe-caller.ts";
 
 // A KEY THAT IS REFUSED IS NOT A HEALTHY SERVICE (register L13-67). The Stripe
 // check discarded the response and read a missing key as "ok", so a rolled or
@@ -7,11 +8,11 @@ import { getServiceClient } from "../_shared/supabase-client.ts";
 // was fine; the AI check counted only a 5xx, so a 401 (bad key) or a 402
 // (credits exhausted) read healthy. Stripe now passes only on a 200 from its
 // balance endpoint; a missing key or a 401/402/403 from either is an error.
-const FN_BUILD = "health-check.2026-10-08.1";
+const FN_BUILD = "health-check.2026-10-09.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-admin-key, x-email-cron",
   "Access-Control-Expose-Headers": "x-fn-build",
   "x-fn-build": FN_BUILD,
 };
@@ -145,6 +146,25 @@ function determineOverallStatus(checks: HealthCheckResult['checks']): 'healthy' 
   return 'healthy';
 }
 
+// AN ANONYMOUS CALLER IS ANSWERED FROM A RESULT AT MOST A MINUTE OLD (S8-061):
+// one live probe per isolate per minute, whoever asks, and without the
+// providers' refusal text. The owner's key, the cron key and the service role
+// get a live probe with every message.
+const PUBLIC_CACHE_MS = 60_000;
+let publicCache: { at: number; result: HealthCheckResult } | null = null;
+let publicInFlight: Promise<HealthCheckResult> | null = null;
+const withoutDetail = (r: HealthCheckResult): HealthCheckResult => ({
+  ...r,
+  checks: Object.fromEntries(Object.entries(r.checks).map(([k, c]) => [k, { status: c.status, latency_ms: c.latency_ms }])) as HealthCheckResult['checks'],
+});
+
+async function liveProbe(): Promise<HealthCheckResult> {
+  const startTime = Date.now();
+  const [database, ai_gateway, stripe] = await Promise.all([checkDatabase(), checkAIGateway(), checkStripe()]);
+  const checks = { database, ai_gateway, stripe };
+  return { status: determineOverallStatus(checks), timestamp: new Date().toISOString(), checks, response_time_ms: Date.now() - startTime, version: '2.2.0' };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -182,6 +202,27 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: status === 'unhealthy' ? 503 : 200,
     });
+  }
+
+  const operator = await isProbeOperator(req.headers, supabase, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '', Deno.env.get('ADMIN_API_KEY') ?? '');
+  if (!operator) {
+    try {
+      if (!publicCache || Date.now() - publicCache.at >= PUBLIC_CACHE_MS) {
+        publicInFlight ??= liveProbe().finally(() => { publicInFlight = null; });
+        const fresh = await publicInFlight;
+        publicCache = { at: Date.now(), result: fresh };
+      }
+      const result = withoutDetail(publicCache.result);
+      return new Response(JSON.stringify(result), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: result.status === 'unhealthy' ? 503 : 200,
+      });
+    } catch {
+      return new Response(
+        JSON.stringify({ status: 'unhealthy', timestamp: new Date().toISOString() }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 503 }
+      );
+    }
   }
 
   try {

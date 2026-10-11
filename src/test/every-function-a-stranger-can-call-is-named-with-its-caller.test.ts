@@ -50,6 +50,7 @@ const ROOT = resolve(__dirname, "../..");
 const read = (p: string) => readFileSync(resolve(ROOT, p), "utf8");
 const MIG_DIR = resolve(ROOT, "supabase/migrations");
 const CENSUS_FILE = readdirSync(MIG_DIR).find((f) => f.startsWith("20261004110000_"))!;
+const LIFECYCLE_FILE = readdirSync(MIG_DIR).find((f) => f.startsWith("20261009131000_"))!;
 const CENSUS_SQL = CENSUS_FILE ? read(`supabase/migrations/${CENSUS_FILE}`) : "";
 
 const nameOf = (sig: string) => sig.slice("public.".length, sig.indexOf("("));
@@ -663,16 +664,20 @@ describe("the tracker's lifecycle answers only for the caller's own tracker", ()
     expect(authenticatedCan(f)).toBe(true);
     expect(ALLOW.get(f.sig)?.roles).toBe("authenticated");
     const account = codeOf(read("src/pages/Account.tsx"));
-    expect(account, "Account.tsx sends a visitor without a session to /auth").toMatch(/if \(!loading && !session\) navigate\("\/auth"/);
+    expect(account, "Account.tsx sends a visitor without a session to /auth").toMatch(/if \(!loading && !session\) navigate\(["`]\/auth/);
     expect(account).toMatch(/rpc\("get_application_lifecycle", \{ p_job_ids: toCheck \}\)/);
     expect(account, "toCheck is the job ids on the user's own tracker rows").toMatch(/const toCheck = apps\.filter\(/);
   });
 
   it("intersects the ids with user_applications for auth.uid() before reading either ledger", () => {
-    expect(f.file).toBe(CENSUS_FILE);
+    // Redefined by wave 3 (S8-018: metered by the day; L13-14, L11-08), the
+    // census shape kept.
+    expect([CENSUS_FILE, LIFECYCLE_FILE]).toContain(f.file);
     expect(f.body).toMatch(/FROM public\.user_applications a\s+WHERE a\.user_id = auth\.uid\(\)\s+AND a\.job_id = ANY \(p_job_ids\[1:500\]\)/);
     // Both ledgers are read only through the intersected ids.
-    expect(f.body).toMatch(/c\.posting_id IN \(SELECT ids\.jid FROM ids\)/);
+    // The closure ledger since S11-024: joined to the intersected ids, by each
+    // id's token first (the ledger has no posting_id index) and then the id.
+    expect(f.body).toMatch(/FROM ids\s+JOIN public\.job_board_closures c\s+ON c\.company_token = split_part\(ids\.jid, ':', 2\)\s+AND c\.posting_id = ids\.jid/);
     expect(f.body).toMatch(/p\.id IN \(SELECT ids\.jid FROM ids\)/);
     expect(f.body, "no ledger read may take the caller's ids directly").not.toMatch(/(posting_id|p\.id)\s*=\s*ANY\s*\(\s*p_job_ids/);
     // The 2026-09-09 shape survives: the row stays, the duration goes NULL.

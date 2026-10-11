@@ -33,13 +33,14 @@ import {
 } from "../_shared/pass.ts";
 import { passSessionSettled } from "../_shared/pass-settlement.ts";
 import { paymentRevocationState } from "../_shared/payment-revocation.ts";
+import { firstPassAlert } from "../_shared/owner-alert.ts";
 
 // Provable from outside without signing in: the preflight carries it. The
 // name and the date sit on separate lines on purpose: a guard reads every line
 // that names the product for a spelled pass number, and a build date's "10"
 // is not one.
 const FN_NAME = "agent-pass-status";
-const FN_BUILD = `${FN_NAME}.2026-10-08.1`;
+const FN_BUILD = `${FN_NAME}.2026-10-09.2`;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -64,11 +65,7 @@ const TERMINAL_REPAIRS = new Set(["pass_already_open", "not_yours", "payment_rev
 
 async function tellOwnerOnce(service: ServiceClient, reason: string, sessionId: string): Promise<void> {
   try {
-    const bucket = `pass:${reason}:${sessionId}`.slice(0, 64);
-    const { data: first, error } = await service.rpc("mail_door_take", {
-      p_door: "owner-alert", p_bucket: bucket, p_max: 1, p_window_minutes: 43200,
-    });
-    if (error || first !== true) return;
+    if (!(await firstPassAlert(service, `pass:${reason}:${sessionId}`))) return;
     const resendKey = Deno.env.get("RESEND_API_KEY");
     if (!resendKey) return;
     const to = Deno.env.get("OWNER_NOTIFY_EMAIL") ?? "resumeboostersupp@gmail.com";

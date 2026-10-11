@@ -16,6 +16,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { ACCOUNT_SUBSCRIPTION_RPC, accountSubscription, normalizeEmail, packetIsFunded } from "../_shared/agent-entitlement.ts";
 import { HANDBACK_HOLD_MINUTES, retryClaimableAt } from "../_shared/apply-retry.ts";
+import { ownResumePath } from "../_shared/resume-path.ts";
 
 // 2026-10-05.1: a claim handed back unworked spends no attempt (L9-02); the
 // subscription is read by the ACCOUNT's address (1.07); the claim itself now
@@ -28,7 +29,10 @@ import { HANDBACK_HOLD_MINUTES, retryClaimableAt } from "../_shared/apply-retry.
 // the key the claim uses; a transient refusal's retry waits (10, then 30
 // minutes); an empty claim says when the next cancel window ends, so a
 // started worker waits for it instead of leaving.
-const BUILD_VERSION = "2026-10-05.2";
+// 2026-10-09.24: the claimed packet carries the posting's own country, so the
+// worker answers "authorised to work in this country?" about the posting, and
+// refuses it when the country is not known (S11-060).
+const BUILD_VERSION = "2026-10-09.24";
 // Provable from outside with no secret: the preflight and every response carry it.
 const FN_BUILD = `apply-broker.${BUILD_VERSION}`;
 const LEASE_MINUTES = 10;
@@ -308,7 +312,11 @@ serve(async (req) => {
         // A signed URL into the PRIVATE bucket, valid for five minutes. Never a
         // public URL: a résumé is an address, a phone number and a work history.
         let resumeUrl: string | null = null;
-        const path = str(mandate.resume_file_url);
+        // Only a file in this account's own folder is ever signed (S8-080).
+        const path = ownResumePath(mandate.resume_file_url, row.user_id);
+        if (!path && str(mandate.resume_file_url)) {
+          console.warn(`[APPLY-BROKER] ${row.id}: resume_file_url is outside the account's folder; not signed`);
+        }
         if (path) {
           const { data: signed, error: signErr } = await client.storage
             .from("resumes").createSignedUrl(path, RESUME_URL_TTL_SECONDS);
@@ -318,6 +326,14 @@ serve(async (req) => {
 
         const full = str(mandate.full_name).trim();
         const parts = full.split(/\s+/).filter(Boolean);
+
+        // The posting's own country (S11-060): "authorised to work in this
+        // country?" is about it. A failed read sends null, and the worker
+        // refuses such a question rather than answering from home.
+        const place = await client.from("job_board_postings")
+          .select("country").eq("id", row.posting_id).maybeSingle()
+          .then((r: { data: unknown }) => r.data, () => null);
+        const postingCountry = str((place as { country?: unknown } | null)?.country).trim() || null;
 
         return json({
           packet: {
@@ -334,6 +350,7 @@ serve(async (req) => {
             // so the worker reports a transient failure as final instead of
             // leaving a packet "ready" that nothing will ever claim again.
             attempts: Number(row.attempts ?? 0),
+            posting_country: postingCountry,
           },
           answers: {
             fullName: full,

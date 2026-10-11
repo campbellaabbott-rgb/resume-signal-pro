@@ -65,7 +65,7 @@ else echo "FAIL  the guide with an unknown key -> $(printf '%s' "$GD" | head -c 
 
 # The new definers are service-role only. Each call below is harmless even if
 # a revoke had not landed (see the head of this file).
-probe agent_packet_decide '{"p_user_id":null,"p_submission_id":null,"p_decision":"verify"}'
+probe agent_packet_decide '{"p_user_id":"00000000-0000-4000-8000-000000000000","p_submission_id":0,"p_decision":"verify"}'
 probe agent_queue_refuse '{"p_row_id":0,"p_reason":"verify-probe"}'
 probe agent_unclaim_submission '{"p_submission_id":0,"p_hold_minutes":0}'
 # The account-bound subscription read (pure readers) and the one-click list.
@@ -74,7 +74,7 @@ probe agent_subscription_live '{"p_user_id":"00000000-0000-0000-0000-00000000000
 probe account_mailbox_proven '{"p_user_id":"00000000-0000-0000-0000-000000000000"}'
 probe one_click_vendors '{}'
 probe agent_queue_unprepared '{"p_user_id":"00000000-0000-0000-0000-000000000000","p_statuses":[],"p_pass_only":false,"p_limit":1}'
-probe api_key_issue_agent '{"p_user_id":null,"p_email":"","p_key_hash":"","p_key_prefix":""}'
+probe api_key_issue_agent '{"p_user_id":"00000000-0000-4000-8000-000000000000","p_email":"","p_key_hash":"","p_key_prefix":""}'
 MT=$(curl -s -m 30 -w '\n%{http_code}' "$B/rest/v1/api_key_agent_mints?select=*&limit=1" -H "apikey: $K" -H "Authorization: Bearer $K")
 MT_CODE=$(printf '%s' "$MT" | tail -1)
 case "$MT_CODE" in

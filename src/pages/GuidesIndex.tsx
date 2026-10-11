@@ -5,15 +5,15 @@ import { ArrowRight } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { GUIDES } from "@/data/guides";
+import { GUIDES, GUIDES_INDEX_DESCRIPTION, GUIDES_INDEX_TITLE, GUIDES_INTRO } from "@/data/guides";
 
 export default function GuidesIndex() {
   const guides = Object.values(GUIDES);
   return (
     <div className="min-h-screen bg-background">
       <SEO
-        title="Resume, ATS & Apply Agent Guides — From Real Data"
-        description="How ATS systems actually work, how resumes really get rejected, how to fix yours, and how our apply agent works — grounded in what the product does, not folklore."
+        title={GUIDES_INDEX_TITLE}
+        description={GUIDES_INDEX_DESCRIPTION}
         path="/guides"
       />
       <Header />
@@ -21,13 +21,8 @@ export default function GuidesIndex() {
         <div className="container max-w-3xl">
           <h1 className="text-3xl md:text-4xl font-bold mb-3">Guides</h1>
           <p className="text-muted-foreground mb-8 max-w-2xl">
-            {/* WAS "every guide below is grounded in the checks our scanner runs
-                on real resumes", which was true of eight résumé guides and went
-                false the moment a guide about the apply agent joined them. A
-                blanket claim about a growing list is a claim that expires. */}
-            No recycled folklore. Every guide below is grounded in something this product actually does — the
-            checks our scanner runs, the documented behavior of real ATS parsers, or what our apply agent will
-            and will not do on your behalf. Where the popular advice is wrong, we say so.
+            {/* One spelling for this page and the bake (src/data/guides.ts). */}
+            {GUIDES_INTRO}
           </p>
           <div className="space-y-3">
             <Link

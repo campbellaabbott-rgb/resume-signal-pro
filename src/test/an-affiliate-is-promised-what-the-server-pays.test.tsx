@@ -31,7 +31,7 @@ import { MemoryRouter } from "react-router-dom";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { readdirSync } from "node:fs";
-import { AFFILIATE_COMMISSION_CENTS, COMMISSIONED_PRODUCT_TYPES, REFERRAL_CHECKOUTS, SMALL_TOOL_PRODUCT_TYPES } from "@/config/affiliate-commission";
+import { AFFILIATE_COMMISSION_CENTS, COMMISSIONED_CHECKOUTS, COMMISSIONED_PRODUCT_TYPES, REFERRAL_CHECKOUTS, SMALL_TOOL_PRODUCT_TYPES } from "@/config/affiliate-commission";
 
 const toast = { success: vi.fn(), error: vi.fn(), info: vi.fn() };
 vi.mock("sonner", () => ({ toast: { success: (...a: unknown[]) => toast.success(...a), error: (...a: unknown[]) => toast.error(...a), info: (...a: unknown[]) => toast.info(...a) } }));
@@ -79,12 +79,16 @@ describe("the promise is the payout", () => {
 
 describe("only a sale whose checkout carries the referral code earns, and the copy says which", () => {
   const FN = resolve(ROOT, "supabase/functions");
-  it("the checkouts that put referral_code on the Stripe session are exactly the ones the copy credits", () => {
-    const carrying = readdirSync(FN)
-      .filter((d) => /^create-.*checkout$/.test(d))
-      .filter((d) => { try { return /\breferral_code\s*:/.test(code(`supabase/functions/${d}/index.ts`)); } catch { return false; } })
-      .sort();
+  it("every live checkout carries the referral code, and only the ones the copy credits pay on it", () => {
+    // Wave 3: the code rides every checkout through the shared policy
+    // (_shared/checkout-policy.ts); the behaviour is run in
+    // a-checkout-sent-the-buyer-back-to-any-origin-asked-for-no-receipt-and-dropped-the-referral.
+    const minters = readdirSync(FN).filter((d) => /^create-.*checkout$/.test(d) && d !== "create-test-checkout");
+    const src = (d: string) => { try { return code(`supabase/functions/${d}/index.ts`); } catch { return ""; } };
+    const carrying = minters.filter((d) => /\bpolicyMetadata\(/.test(src(d))).sort();
     expect(carrying, "a checkout started or stopped carrying the referral code; re-check the copy").toEqual([...REFERRAL_CHECKOUTS].sort());
+    const paying = minters.filter((d) => /\bpolicyMetadata\([^)]*commissioned:\s*true/.test(src(d))).sort();
+    expect(paying, "a checkout started or stopped paying on referrals; re-check the copy").toEqual([...COMMISSIONED_CHECKOUTS].sort());
   });
 
   it("the products the copy credits are that checkout's catalogue, each at the rate the server pays it", () => {

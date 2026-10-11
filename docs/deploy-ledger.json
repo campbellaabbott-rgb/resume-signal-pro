@@ -5,19 +5,86 @@
     "20260928003117"
   ],
   "appliedOutsideDrizzle": [],
-  "holdUntilVerified": [],
+  "holdUntilVerified": [
+    {
+      "stamp": "20261009100300",
+      "until": "wave 3 step 1 verified: job-board's OPTIONS answers x-fn-build job-board.2026-09-09.92 (status.version 2026-09-09.92) AND status.sliceStats carries build 2026-09-09.92 and a buildSince (section 71 prints both). Applied earlier it marks the old bundle's closures only up to its ceiling and must be re-run once buildSince exists"
+    },
+    {
+      "stamp": "20261009160100",
+      "until": "wave 3 step 1 verified: layoff-filings' OPTIONS answers x-fn-build layoff-filings.2026-10-09.3 (its GET answers version 2026-10-09.3), ideally after one nightly WARN run of that build. Applied earlier, the old build re-upserts the misdated Illinois ids as active on its next nightly read"
+    },
+    {
+      "stamp": "20261009112000",
+      "until": "wave 3 step 1 verified: shortlist-evaluate's OPTIONS answers x-fn-build shortlist-evaluate.2026-10-10.62 or later (its evaluation insert is the service role's; section 72 prints the build) AND the frontend published from the same commit decides through shortlist_decide (section 72: 'the Shortlist page records a decision through shortlist_decide' PASSes). Applied earlier, the live shortlist-evaluate's insert through the employer's JWT fails 42501 after its paid model call and the live page's decision insert and status PATCH are refused (S11-056)"
+    }
+  ],
+  "migrationOrder": {
+    "_note": "Per migration stamp: `after` is \"fn:<name>@<YYYY-MM-DD.N>\" (apply once that function answers that build or later) or \"frontend\" (apply once the frontend is published); `before` lists \"fn:<name>\" a migration must precede. No entry: before the functions. The ledger prints five steps: migrations before the functions, the functions, migrations after the functions they wait for, the frontend, migrations after the frontend (docs/DEPLOY-LEDGER.md §1).",
+    "20261009101000": {
+      "before": ["fn:job-board"],
+      "why": "S11-009: the new job-board retries a missed ranked search with p_title_only, which only this migration's search_jobs takes (against the old SQL that retry fails into today's unranked fallback); the old job-board never sends it"
+    },
+    "20261009111000": {
+      "before": ["fn:shortlist-evaluate"],
+      "why": "the new shortlist-evaluate writes jd_text_scored, which this migration adds. S11-056 split it: this is the additive half; the half that revokes the live function's client INSERT and adds the guard triggers is 20261009112000, held in holdUntilVerified until the new function and the Shortlist page serve"
+    },
+    "20261009123000": {
+      "before": ["fn:agent-mcp"],
+      "why": "the adoption reader must stop reading host buckets as addresses before the new agent-mcp writes them"
+    },
+    "20261009130000": {
+      "before": ["fn:stripe-webhook"],
+      "why": "the new webhook claims a subscription_notices row on every new subscription"
+    },
+    "20261009131000": {
+      "after": "frontend",
+      "why": "S11-138: its one-time clear of wrong closure dates is written back by the live Account page until the wave-3 frontend is published"
+    },
+    "20261009134000": {
+      "before": ["fn:stripe-webhook", "fn:withdraw-subscription"],
+      "why": "S11-053: both functions write subscription_notices.sent_at, which this migration adds"
+    },
+    "20261009134200": {
+      "after": "frontend",
+      "why": "S11-139: it re-creates owner_row_cap and its triggers with the owner-only count, and 131000 (after the frontend) re-creates them in their older form; applied first, 131000 would undo it. Filename order puts it right after 131000"
+    },
+    "20261009134300": {
+      "before": ["fn:create-product-checkout"],
+      "why": "S11-074: the new checkout writes pro_grants.target_roles (it falls back to a grant without roles while the column is missing)"
+    },
+    "20261009140000": {
+      "before": ["fn:retry-failed-deliveries"],
+      "why": "S11-146: retry-failed-deliveries 2026-10-09.61 and later always passes p_include_generating, which only this migration's two-argument function takes, so the new sweep fails every run until it applies; the live 2026-10-05.1 sweep's one-argument call resolves to the new function through its default and is handed no 'generating' row"
+    },
+    "20261009141000": {
+      "before": ["fn:send-market-pulse"],
+      "why": "the new pulse takes back confirmations that never left"
+    },
+    "20261009143000": {
+      "before": ["fn:scan-heartbeat"],
+      "why": "the new heartbeat calls cron_http_refusals, which this migration creates"
+    },
+    "20261009144000": {
+      "before": ["fn:send-search-digest", "fn:send-agent-digest"],
+      "why": "the new digests write a give-back at once and rely on the claim's attempt-stamp order to keep that row from leading the next claim"
+    }
+  },
   "reservations": {
     "wave2": {
+      "branches": ["wave2/", "wave2-integration"],
       "migrations": "20261008*",
       "jobBoard": "2026-09-09.91",
       "fnBuildDate": "2026-10-08"
     },
     "wave3": {
+      "branches": ["wave3/", "w31/"],
       "migrations": "20261009*",
       "jobBoard": "2026-09-09.92",
       "fnBuildDate": "2026-10-09"
     },
     "connect-apply": {
+      "branches": ["connect-apply/"],
       "migrations": "20261011*",
       "jobBoard": "2026-09-09.93",
       "fnBuildDate": "2026-10-11"

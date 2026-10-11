@@ -1,6 +1,34 @@
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-09T14:00Z
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { clientAddressOr } from "../_shared/client-address.ts";
+import { INDUSTRY_KEYWORDS } from "../_shared/industry-detection.ts";
+import { CORRECTION_MENU_INDUSTRIES } from "../_shared/correction-menu-industries.ts";
+
+// Provable from outside without saving a lead: every response carries it.
+const FN_BUILD = "save-lead.2026-10-09.2";
+
+/**
+ * WHAT A CALLER WROTE NEVER BECOMES MARKUP IN THE OWNER'S MAIL (S8-100). The
+ * lead alert printed the posted industry, the forwarded address and a header
+ * country raw into its HTML and subject, so an anonymous POST could put a
+ * link in the owner's inbox. Now: the industry is printed only when it is a
+ * label the detector or the correction menu produces; the address is the
+ * platform's (never the first forwarded hop); the country comes only from the
+ * lookup of that address, never a header; every value is escaped, and the
+ * subject carries no control characters or markup.
+ */
+const KNOWN_INDUSTRIES: ReadonlySet<string> = new Set([...Object.keys(INDUSTRY_KEYWORDS), ...CORRECTION_MENU_INDUSTRIES]);
+function knownIndustry(v: unknown): string | null {
+  return typeof v === "string" && KNOWN_INDUSTRIES.has(v) ? v : null;
+}
+function escapeHtml(v: unknown): string {
+  return String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[c] as string));
+}
+function subjectSafe(v: unknown): string {
+  // deno-lint-ignore no-control-regex
+  return String(v ?? "").replace(/[\u0000-\u001f\u007f<>]/g, "").slice(0, 120);
+}
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -75,7 +103,7 @@ async function sendLeadNotificationEmail(
       body: JSON.stringify({
         from: "Resume Booster <onboarding@resend.dev>",
         to: [ADMIN_EMAIL],
-        subject: `${scoreEmoji} NEW LEAD: ${email} | ${industry || 'Unknown'} | ${country}`,
+        subject: subjectSafe(`${scoreEmoji} NEW LEAD: ${email} | ${industry || 'Unknown'} | ${country}`),
         html: `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; background: #f8fafc;">
             
@@ -88,7 +116,7 @@ async function sendLeadNotificationEmail(
             <!-- Customer Email - PROMINENT -->
             <div style="background: #eff6ff; padding: 25px; border-bottom: 2px solid #3b82f6;">
               <p style="margin: 0 0 8px 0; font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">📧 Customer Email</p>
-              <a href="mailto:${email}" style="font-size: 24px; font-weight: bold; color: #1e40af; text-decoration: none;">${email}</a>
+              <a href="mailto:${escapeHtml(email)}" style="font-size: 24px; font-weight: bold; color: #1e40af; text-decoration: none;">${escapeHtml(email)}</a>
             </div>
             
             <!-- Quick Info -->
@@ -96,21 +124,21 @@ async function sendLeadNotificationEmail(
               <table style="width: 100%; border-collapse: collapse;">
                 <tr>
                   <td style="padding: 10px 0; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 13px;">🌍 Location</td>
-                  <td style="padding: 10px 0; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 600; color: #1e293b;">${country}</td>
+                  <td style="padding: 10px 0; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 600; color: #1e293b;">${escapeHtml(country)}</td>
                 </tr>
                 <tr>
                   <td style="padding: 10px 0; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 13px;">🏢 Industry</td>
-                  <td style="padding: 10px 0; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 600; color: #1e293b;">${industry || 'Not detected'}</td>
+                  <td style="padding: 10px 0; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 600; color: #1e293b;">${escapeHtml(industry || 'Not detected')}</td>
                 </tr>
                 <tr>
                   <td style="padding: 10px 0; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 13px;">📊 ATS Score</td>
                   <td style="padding: 10px 0; border-bottom: 1px solid #e2e8f0; text-align: right;">
-                    <span style="background: ${scoreColor}; color: white; padding: 4px 12px; border-radius: 12px; font-weight: 600; font-size: 14px;">${atsScore || 'N/A'}</span>
+                    <span style="background: ${scoreColor}; color: white; padding: 4px 12px; border-radius: 12px; font-weight: 600; font-size: 14px;">${escapeHtml(atsScore || 'N/A')}</span>
                   </td>
                 </tr>
                 <tr>
                   <td style="padding: 10px 0; color: #64748b; font-size: 13px;">🔍 IP Address</td>
-                  <td style="padding: 10px 0; text-align: right; font-size: 12px; color: #94a3b8; font-family: monospace;">${ip}</td>
+                  <td style="padding: 10px 0; text-align: right; font-size: 12px; color: #94a3b8; font-family: monospace;">${escapeHtml(ip)}</td>
                 </tr>
               </table>
             </div>
@@ -122,7 +150,7 @@ async function sendLeadNotificationEmail(
             
             <!-- CTA -->
             <div style="background: #f1f5f9; padding: 20px; border-radius: 0 0 12px 12px; text-align: center;">
-              <a href="mailto:${email}?subject=Your%20Resume%20Booster%20Results%20%F0%9F%93%84&body=Hi!%0A%0AThanks%20for%20trying%20our%20free%20resume%20scan.%20I%20noticed%20your%20ATS%20score%20could%20use%20some%20improvement%20%E2%80%93%20I%E2%80%99d%20love%20to%20help%20you%20boost%20it!%0A%0AWould%20you%20be%20interested%20in%20a%20quick%20chat%20about%20how%20to%20optimize%20your%20resume%3F%0A%0ABest%2C%0AResume%20Booster%20Team" 
+              <a href="mailto:${escapeHtml(email)}?subject=Your%20Resume%20Booster%20Results%20%F0%9F%93%84&body=Hi!%0A%0AThanks%20for%20trying%20our%20free%20resume%20scan.%20I%20noticed%20your%20ATS%20score%20could%20use%20some%20improvement%20%E2%80%93%20I%E2%80%99d%20love%20to%20help%20you%20boost%20it!%0A%0AWould%20you%20be%20interested%20in%20a%20quick%20chat%20about%20how%20to%20optimize%20your%20resume%3F%0A%0ABest%2C%0AResume%20Booster%20Team" 
                  style="display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">
                 📧 Reply to Lead
               </a>
@@ -146,6 +174,8 @@ async function sendLeadNotificationEmail(
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Expose-Headers': 'x-fn-build',
+  'x-fn-build': FN_BUILD,
 };
 
 // Common disposable email domains to block
@@ -191,13 +221,9 @@ const DISPOSABLE_EMAIL_DOMAINS = new Set([
   'quickmail.nl', 'tempsky.com'
 ]);
 
-// Helper to get client IP from request (prioritize Cloudflare's trusted header)
-const getClientIp = (req: Request): string => {
-  return req.headers.get('cf-connecting-ip') ||
-         req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
-         req.headers.get('x-real-ip') || 
-         'unknown';
-};
+// The platform's address for the caller: cf-connecting-ip, else the LAST
+// forwarded hop (the first is whatever the caller wrote).
+const getClientIp = (req: Request): string => clientAddressOr(req.headers);
 
 // Blocked country codes (ISO 3166-1 alpha-2)
 const BLOCKED_COUNTRIES = new Set(['RU', 'NG', 'PK']);
@@ -375,10 +401,12 @@ serve(async (req) => {
       );
     }
 
-    // Send lead notification email in background (get country async)
-    const countryPromise = getCountryCode(req, clientIp).then(c => c || 'Unknown');
+    // Send lead notification email in background. The country is the lookup
+    // of the platform's address only: a country header is the caller's.
+    const countryPromise = getCountryFromIpInfo(clientIp).then(c => c || 'Unknown');
+    const score = Number.isInteger(atsScore) && atsScore >= 0 && atsScore <= 100 ? atsScore : null;
     EdgeRuntime.waitUntil(
-      countryPromise.then(country => sendLeadNotificationEmail(email, clientIp, country, industry, atsScore))
+      countryPromise.then(country => sendLeadNotificationEmail(email, clientIp, country, knownIndustry(industry), score))
     );
 
     trackPerformance(requestStartTime, 'save-lead', true, {}, clientIp);

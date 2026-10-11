@@ -18,7 +18,7 @@ import { ShieldCheck, Loader2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { applyReadiness, worstSeverity } from "@/lib/applyReadiness";
-import { deriveContact, fillGaps } from "@/lib/resumeContact";
+import { deriveContact, fillGaps, type ContactField } from "@/lib/resumeContact";
 import { resumeTextFrom } from "@/lib/resumeText";
 
 const sb = supabase as unknown as {
@@ -173,6 +173,9 @@ export function ApplyProfilePanel({ userId }: { userId: string }) {
   const [saving, setSaving] = useState(false);
   const [exists, setExists] = useState(false);
   const [uploading, setUploading] = useState(false);
+  // What the CV seemed to say but could not be sure of (S11-045): shown for
+  // the person to accept, never saved on their behalf.
+  const [suggested, setSuggested] = useState<Partial<Record<ContactField, string>>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -280,7 +283,8 @@ export function ApplyProfilePanel({ userId }: { userId: string }) {
     // be a false declaration made under somebody else's name.
     const text = await resumeTextFrom(file);
     const derived = deriveContact(text);
-    const { next, filled } = fillGaps({ ...p, resume_file_url: path }, derived);
+    const { next, filled, suggested: unsure } = fillGaps({ ...p, resume_file_url: path }, derived);
+    setSuggested(unsure);
 
     // The account's own email beats parsing every time — it is verified, and it
     // is the address employers will actually reach them on.
@@ -293,7 +297,21 @@ export function ApplyProfilePanel({ userId }: { userId: string }) {
     setP(next);
     const ok = await persist(next);
     if (!ok) return;
-    toast.success(filled.length
+    // ONE CV PER ACCOUNT IN STORAGE (L3-13). upsert keys on the filename, so
+    // Jane_CV_2026.pdf after Jane_CV.pdf left the first one stored forever,
+    // with nothing pointing at it. The others under this account's folder go
+    // only once the mandate names the new one: removed earlier, a failed save
+    // or a closed tab left the mandate pointing at a file that was gone, and
+    // the agent applied with no CV. A failure here only leaves what was
+    // already there, and deleting the account removes the whole folder.
+    try {
+      const { data: kept } = await sb.storage.from("resumes").list(userId, { limit: 100 });
+      const stale = (kept ?? []).map((f: { name: string }) => `${userId}/${f.name}`).filter((p2: string) => p2 !== path);
+      if (stale.length) await sb.storage.from("resumes").remove(stale);
+    } catch { /* the new file is saved either way */ }
+    toast.success(Object.keys(unsure).length
+      ? t("applyProfile.uploadedCheck", "Saved. Check what we read from your CV below before the agent uses it.")
+      : filled.length
       ? t("applyProfile.uploadedAndRead", "Saved. We filled in {{count}} details from your CV — check them below.", { count: filled.length })
       : t("applyProfile.uploadedSaved", "Saved. Your CV is attached and the agent can start."));
   }, [userId, t, p, persist]);
@@ -301,6 +319,17 @@ export function ApplyProfilePanel({ userId }: { userId: string }) {
   const save = useCallback(async () => {
     if (await persist(p)) toast.success(t("applyProfile.saved", "Saved"));
   }, [p, persist, t]);
+
+  // The person's yes turns a suggestion into their own value, and only then is
+  // it saved (S11-045). A no just drops it; the field stays theirs to fill.
+  const decideSuggestion = useCallback(async (k: ContactField, use: boolean) => {
+    const value = suggested[k];
+    setSuggested((s) => { const rest = { ...s }; delete rest[k]; return rest; });
+    if (!use || !value) return;
+    const next = { ...p, [k]: value } as ApplyProfile;
+    setP(next);
+    if (await persist(next)) toast.success(t("applyProfile.saved", "Saved"));
+  }, [suggested, p, persist, t]);
 
   if (loading) {
     return (
@@ -396,6 +425,35 @@ export function ApplyProfilePanel({ userId }: { userId: string }) {
           </label>
         ))}
       </div>
+
+      {Object.keys(suggested).length > 0 && (
+        <div className="mb-5 rounded-lg border border-border bg-muted/30 p-3" data-cv-suggestions>
+          <div className="text-sm font-medium text-foreground mb-2">
+            {t("applyProfile.suggestedTitle", "From your CV, but we are not sure. Check before it is used:")}
+          </div>
+          <ul className="space-y-2">
+            {(Object.entries(suggested) as Array<[ContactField, string]>).map(([k, v]) => (
+              <li key={k} className="text-sm flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span className="text-muted-foreground">
+                  {k === "full_name" ? t("applyProfile.name", "Full name")
+                    : k === "website" ? t("applyProfile.website", "Website or portfolio")
+                    : k === "linkedin" ? t("applyProfile.linkedin", "LinkedIn")
+                    : k === "phone" ? t("applyProfile.phone", "Phone") : k}:
+                </span>
+                <span className="font-medium text-foreground break-all">{v}</span>
+                <button type="button" onClick={() => void decideSuggestion(k, true)}
+                  className="text-xs font-semibold text-primary hover:underline">
+                  {t("applyProfile.useSuggested", "Use it")}
+                </button>
+                <button type="button" onClick={() => void decideSuggestion(k, false)}
+                  className="text-xs text-muted-foreground hover:text-foreground hover:underline">
+                  {t("applyProfile.dismissSuggested", "Not right")}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="border-t border-border pt-5 mb-5">
         <h4 className="text-sm font-semibold text-foreground mb-1">

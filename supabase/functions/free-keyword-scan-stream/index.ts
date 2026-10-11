@@ -1,12 +1,16 @@
 // deploy-stamp: 2026-07-04T18:44Z
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { clientAddressOr } from "../_shared/client-address.ts";
+import { scannableJobDescription } from "../_shared/job-description-input.ts";
 import { detectIndustry as detectIndustryShared } from "./industry-detection.ts";
 // Geo: the UI calls ONLY this streaming function, so country detection and the
 // 52-market resume standards must run HERE to reach users (the non-stream
 // free-keyword-scan has copies but is never invoked by the client). Modules are
 // byte-identical copies of free-keyword-scan/*.ts — keep them in sync.
-import { detectCountryFromResume } from "./market-intelligence.ts";
+import { detectCountryFromResume, effectiveCountryOf } from "./market-intelligence.ts";
+import { resolveLanguageName } from "../_shared/language-instruction.ts";
+import { FIXED_CHOICES_STAY_ENGLISH, normalizeScanReport } from "../_shared/scan-report-shape.ts";
+import { functionCeiling } from "../_shared/model-spend-gate.ts";
 import { evaluateCountryStandards } from "./country-standards.ts";
 import { computeParseQuality, parseResumeStructure, formatStructureForPrompt } from "./resume-structure.ts";
 import { detectResumeLanguage } from "./resume-language.ts";
@@ -967,8 +971,9 @@ function getParentIndustry(industry: string): string {
 }
 
 // Normalize industry to valid value
-function normalizeIndustry(raw: string | undefined | null): string {
-  if (!raw) return 'general';
+function normalizeIndustry(raw: unknown): string {
+  // Model JSON is untrusted: a number here used to throw (sweep S8-071).
+  if (!raw || typeof raw !== 'string') return 'general';
   const normalized = raw.toLowerCase().trim();
   
   // Direct match
@@ -6491,7 +6496,9 @@ function clampImprovementToScoreGap(report: Record<string, unknown>): void {
 // Provable from outside without a scan: every response, the CORS preflight
 // included, carries this in x-fn-build. 2026-10-08.1: the improvement-potential
 // clamp (register L5-15), on fresh and cached reports.
-const FN_BUILD = "free-keyword-scan-stream.2026-10-08.1";
+// 2026-10-09.5 (wave-3 fix round integration): parsers-scan and
+// fetcher-frontend each stamped .4 on different code.
+const FN_BUILD = "free-keyword-scan-stream.2026-10-09.5";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -6516,7 +6523,12 @@ const MIN_RESUME_CHARS = 120;
 const STREAM_AI_DEADLINE_MS = 110_000;
 const STREAM_ATTEMPT_TIMEOUT_MS = 55_000;
 
-const ADMIN_EMAIL = Deno.env.get('ADMIN_EMAIL') || 'resumeboostersupp@gmail.com';
+/**
+ * The function-wide hour (S11-019): model-backed scans the anonymous internet,
+ * and separately proven callers (a board pass, a proven mailbox, a paying
+ * account), may run per hour, and one proven identity's share of the latter.
+ */
+const SCAN_CEILING = { strangersPerHour: 300, provenPerHour: 300, perProvenCallerPerHour: 20 } as const;
 
 const getCountryFromHeaders = (req: Request): string | null => {
   // Sanitized (review-caught 2026-07-25): Cloudflare emits pseudo-codes XX
@@ -6540,11 +6552,21 @@ const getClientIp = (req: Request): string => clientAddressOr(req.headers, 'unkn
 // The country for the regional block: the CDN's header when there is one,
 // else the same ipinfo.io lookup the primary makes (cached per isolate).
 const ipCountryCache = new Map<string, { country: string | null; at: number }>();
+
+// One ipinfo answer per /24 (an IPv6 /64), S11-019: a pool rotating inside a
+// block is one lookup, not one per address. The country of a block is the
+// country of its addresses for every purpose this lookup serves.
+const ipinfoBlock = (ip: string): string => {
+  const v4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.\d{1,3}$/.exec(ip);
+  if (v4) return `${v4[1]}.${v4[2]}.${v4[3]}.0/24`;
+  const words = ip.toLowerCase().split(':');
+  return words.length > 2 ? `${words.slice(0, 4).join(':')}::/64` : ip;
+};
 async function resolveCountry(req: Request, clientIp: string): Promise<string | null> {
   const fromHeader = getCountryFromHeaders(req);
   if (fromHeader) return fromHeader;
   if (!clientIp || clientIp === 'unknown') return null;
-  const hit = ipCountryCache.get(clientIp);
+  const hit = ipCountryCache.get(ipinfoBlock(clientIp));
   if (hit && Date.now() - hit.at < 60 * 60 * 1000) return hit.country;
   const key = Deno.env.get('IPINFO_API_KEY');
   if (!key) return null;
@@ -6553,7 +6575,7 @@ async function resolveCountry(req: Request, clientIp: string): Promise<string | 
     if (!r.ok) return null;
     const j = await r.json() as { country?: unknown };
     const cc = typeof j.country === 'string' && /^[A-Z]{2}$/.test(j.country) ? j.country : null;
-    ipCountryCache.set(clientIp, { country: cc, at: Date.now() });
+    ipCountryCache.set(ipinfoBlock(clientIp), { country: cc, at: Date.now() });
     return cc;
   } catch {
     return null;
@@ -7407,7 +7429,9 @@ serve(async (req) => {
   // Process in background while streaming progress
   EdgeRuntime.waitUntil((async () => {
     try {
-      const { resumeText, jobDescriptionText, honeypot, skipCache, skipAdminEmail, language, targetCountry } = await req.json();
+      const { resumeText, jobDescriptionText: askedJobDescription, honeypot, skipCache, skipAdminEmail, language, targetCountry } = await req.json();
+      // A link is not a posting (_shared/job-description-input.ts, S11-032).
+      const jobDescriptionText = scannableJobDescription(askedJobDescription);
       // Target market the candidate is applying TO (ISO-2). Optional; when the
       // user states it, it overrides residence-detected country for standards —
       // someone applying abroad needs the destination market's expectations.
@@ -7516,29 +7540,6 @@ serve(async (req) => {
       } catch { /* anonymous */ }
       const dailyScanLimit = isAuthedUser ? SIGNED_IN_SCANS_PER_DAY : FREE_SCANS_PER_DAY;
 
-      // Rate limiting
-      const { data: allowed, error: rlError } = await supabase.rpc('check_rate_limit', {
-        p_function: FUNCTION_NAME,
-        p_ip: clientIp,
-        p_max_requests: dailyScanLimit,
-        p_window_minutes: 24 * 60
-      });
-
-      if (rlError) {
-        send('error', { error: 'Service temporarily unavailable. Please try again shortly.' });
-        close();
-        return;
-      }
-      if (!allowed) {
-        send('error', {
-          error: 'Daily scan limit reached. Upgrade for unlimited access!',
-          rateLimited: true,
-          scansLimit: dailyScanLimit
-        });
-        close();
-        return;
-      }
-
       send('progress', PROGRESS_STAGES[1]);
 
       // ======================== Early Resume Type & Seniority Detection ========================
@@ -7593,7 +7594,11 @@ serve(async (req) => {
       const languageKey = typeof language === 'string' ? language.trim().toLowerCase().slice(0, 12) : '';
 
       // Create cache key from normalized content hash
-      const cacheInput = `v4|${normalizedResume}|${normalizedJob}|${validTargetCountry ?? ''}|${languageKey}`;
+      // The market the report is written for: with no confident location in
+      // the résumé the IP country decides it, so it is part of the key
+      // (sweep S8-070; the wave 2 notes' open follow-up).
+      const keyCountry = effectiveCountryOf(validTargetCountry, detectCountryFromResume(resumeText), ipCountry);
+      const cacheInput = `v6|${normalizedResume}|${normalizedJob}|${keyCountry}|${languageKey}`;
       const cacheKey = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(cacheInput))
         .then(hash => Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join(''))
         .then(hex => hex.substring(0, 32));
@@ -7643,6 +7648,8 @@ serve(async (req) => {
           // (a report cached before the clamp shipped can still exceed it).
           const servedFromCache = { ...cachedResponse, cached: true };
           clampImprovementToScoreGap(servedFromCache);
+          // A report cached with a translated fixed choice must not replay a crash (S11-029).
+          normalizeScanReport(servedFromCache);
           send('complete', servedFromCache);
           close();
           return;
@@ -7652,6 +7659,46 @@ serve(async (req) => {
       }
       
       console.log(`[FREE-KEYWORD-SCAN-STREAM] Cache MISS for key ${cacheKey.substring(0, 8)}...`);
+
+      // The day's scan slot, counted only once the cache has missed: a
+      // rescan of the same text is a replay (sweep S8-068, as in the primary).
+      const { data: allowed, error: rlError } = await supabase.rpc('check_rate_limit', {
+        p_function: FUNCTION_NAME,
+        p_ip: clientIp,
+        p_max_requests: dailyScanLimit,
+        p_window_minutes: 24 * 60
+      });
+
+      if (rlError) {
+        send('error', { error: 'Service temporarily unavailable. Please try again shortly.' });
+        close();
+        return;
+      }
+      if (!allowed) {
+        send('error', {
+          error: 'Daily scan limit reached. Upgrade for unlimited access!',
+          rateLimited: true,
+          scansLimit: dailyScanLimit
+        });
+        close();
+        return;
+      }
+
+
+      // THE FUNCTION-WIDE HOUR (S11-019), the primary's twin: a rotating
+      // address pool gets a fresh daily allowance per address, so only a
+      // ceiling across callers bounds it, kept apart for proven callers so a
+      // pool cannot lock them out. The bucket is the scanner's own, shared
+      // with the primary as the daily one is, so the two forks together spend
+      // one hour. Past it (or when it cannot be counted) this fork asks for a
+      // retry, as it does past the concurrency slot.
+      const ceiling = await functionCeiling(supabase, req, FUNCTION_NAME, SCAN_CEILING);
+      if (ceiling) {
+        console.log(`[FREE-KEYWORD-SCAN-STREAM] Function ceiling refused (${ceiling.code}, limit ${ceiling.limit})`);
+        send('error', { error: 'Our analysers are busy right now. Please try again in a minute.', code: 'busy', retryable: true });
+        close();
+        return;
+      }
 
       // The primary's concurrency ceiling (2.05). Past it the primary serves
       // its instant rule-based report; this fork has none, so it asks for a
@@ -7880,8 +7927,8 @@ What is the PRIMARY industry of this candidate's own experience? Reply with only
       // non-English (mirrors the primary); the UI locale covers the rest.
       const reportLanguage = detectedResumeLanguage.language !== 'en'
         ? detectedResumeLanguage.languageName
-        : (language || "English");
-      const systemPrompt = `Expert ATS resume analyst. Respond in ${reportLanguage}. Every string value in your JSON must be written in ${reportLanguage} (keys stay in English).
+        : (resolveLanguageName(language) ?? "English");
+      const systemPrompt = `Expert ATS resume analyst. Respond in ${reportLanguage}. Every free-text string value in your JSON must be written in ${reportLanguage} (keys stay in English). ${FIXED_CHOICES_STAY_ENGLISH}
 
 RESUME TYPE DETECTED: ${resumeType.type} (${resumeType.label})
 SENIORITY LEVEL: ${seniority}
@@ -8048,6 +8095,7 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
           },
           body: JSON.stringify({
             model,
+            temperature: 0,
             messages: [
               { role: "system", content: systemPrompt },
               { role: "user", content: userPrompt }
@@ -8353,6 +8401,26 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         return;
       }
 
+      // Model JSON has a shape before any filter walks it (the primary's
+      // S8-071 block): keywords: [null] threw after the day's slot was counted.
+      {
+        for (const k of ['keywords', 'redFlags', 'quickWins']) {
+          if (analysis[k] === undefined || analysis[k] === null) continue;
+          analysis[k] = Array.isArray(analysis[k])
+            ? analysis[k].filter((x: unknown) => !!x && typeof x === 'object' && !Array.isArray(x))
+            : [];
+        }
+        if (typeof analysis.industry !== 'string') analysis.industry = undefined;
+        for (const k of ['experienceLevel', 'sectionCheck', 'topStrength', 'improvementPotential', 'detectedLanguage']) {
+          const v = analysis[k];
+          if (v !== undefined && v !== null && (typeof v !== 'object' || Array.isArray(v))) analysis[k] = null;
+        }
+        if (typeof analysis.atsScoreEstimate !== 'number' || !Number.isFinite(analysis.atsScoreEstimate)) {
+          const n = Number(analysis.atsScoreEstimate);
+          analysis.atsScoreEstimate = Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : null;
+        }
+      }
+
       // Normalize industry using hybrid detection (combines server + AI + two-pass verification)
       const industryDetectionStart = Date.now();
       const rawIndustry = analysis.industry;
@@ -8595,9 +8663,7 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         const resumeGeo = detectCountryFromResume(resumeText);
         // Low-confidence resume detection (an exact evidence tie) defers to
         // IP geolocation — parity with the primary path, 2026-07-25.
-        const effectiveCountry = validTargetCountry
-          || (resumeGeo.confidence !== 'low' ? resumeGeo.country : null)
-          || ipCountry || resumeGeo.country || 'US';
+        const effectiveCountry = effectiveCountryOf(validTargetCountry, resumeGeo, ipCountry);
         countryStandardsResult = evaluateCountryStandards(resumeText, effectiveCountry);
         // Single basis derivation — same shape as the primary fork's geoBasis.
         const geoBasis = validTargetCountry ? 'target'
@@ -8841,62 +8907,26 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         }).slice(0, 3),
       };
 
-      const country = requestCountry || 'Unknown';
-
-      // Send admin notification email for every free scan (skip if testing)
-      EdgeRuntime.waitUntil(
-        (async () => {
-          try {
-            // Skip admin email if explicitly requested (for testing)
-            if (skipAdminEmail) {
-              console.log('[FREE-KEYWORD-SCAN-STREAM] Skipping admin notification (skipAdminEmail=true)');
-              return;
-            }
-            
-            const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
-            if (!RESEND_API_KEY) {
-              console.log('[FREE-KEYWORD-SCAN-STREAM] No RESEND_API_KEY, skipping admin notification');
-              return;
-            }
-
-            const atsScore = analysis.atsScoreEstimate || 0;
-            const response = await fetch('https://api.resend.com/emails', {
-              method: 'POST',
-              headers: {
-                Authorization: `Bearer ${RESEND_API_KEY}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                from: 'Resume Booster <onboarding@resend.dev>',
-                to: [ADMIN_EMAIL],
-                subject: `🔍 New Free Scan: ${analysis.industry || 'Unknown'} (ATS ${atsScore}) - ${country}`,
-                html: `
-                  <h2>New Free Resume Scan</h2>
-                  <ul>
-                    <li><strong>Country:</strong> ${country}</li>
-                    <li><strong>Industry:</strong> ${analysis.industry || 'Unknown'}</li>
-                    <li><strong>Resume Type:</strong> ${resumeType.label}</li>
-                    <li><strong>Seniority:</strong> ${seniority}</li>
-                    <li><strong>ATS Score:</strong> ${atsScore}/100</li>
-                    <li><strong>Recruiter Score:</strong> ${dualScore.recruiterImpact}/100</li>
-                    <li><strong>Experience Level:</strong> ${analysis.experienceLevel?.level || 'Unknown'}</li>
-                    <li><strong>IP Address:</strong> ${clientIp}</li>
-                    <li><strong>Time:</strong> ${new Date().toISOString()}</li>
-                  </ul>
-                `,
-              }),
-            });
-
-            if (!response.ok) {
-              console.error('[FREE-KEYWORD-SCAN-STREAM] Admin notification failed:', await response.text());
-            } else {
-              console.log('[FREE-KEYWORD-SCAN-STREAM] Admin notification sent');
-            }
-          } catch (err) {
-            console.error('[FREE-KEYWORD-SCAN-STREAM] Admin notification error:', err);
-          }
-        })()
-      );
+      // OWNER NOTES GO THROUGH notify-owner ONLY (S11-019). This fork mailed
+      // the owner directly through Resend on every scan, a per-scan send any
+      // address pool could multiply against the quota paid deliveries share.
+      // notify-owner is the counted door; it answers only the service role.
+      if ((Deno.env.get('NOTIFY_SCANS') ?? 'true') !== 'false') {
+        const notifyKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+        EdgeRuntime.waitUntil(
+          fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/notify-owner`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${notifyKey}`, apikey: notifyKey },
+            body: JSON.stringify({
+              type: 'scan',
+              score: analysis.atsScoreEstimate,
+              industry: analysis.industry ?? null,
+              country: requestCountry ?? null,
+              authed: isAuthedUser,
+            }),
+          }).then(() => {}, (e) => console.warn('[FREE-KEYWORD-SCAN-STREAM] Owner notify failed:', e))
+        );
+      }
 
       // Increment counter
       EdgeRuntime.waitUntil(
@@ -8918,8 +8948,26 @@ OUTPUT: ATS score (0-100), industry, format grade (A-D), experience level, keywo
         }
       });
 
+      // A thin reply (the primary's S8-067 rule) is served marked partial and
+      // never cached: a week of it would replay to every rescan. Its reason is
+      // its own (S11-147): this fork fills no empty section, so the page hides
+      // them and says so instead of crediting "automated analysis".
+      const owed = [
+        Number.isFinite(analysis.atsScoreEstimate), !!analysis.formatGrade, !!analysis.experienceLevel, !!analysis.sectionCheck,
+        (analysis.quickWins?.length ?? 0) > 0, !!analysis.topStrength, !!analysis.improvementPotential,
+      ];
+      const thinAnalysis = owed.filter(Boolean).length / owed.length < 0.7;
+      if (thinAnalysis) {
+        console.warn(`[FREE-KEYWORD-SCAN-STREAM] Thin model analysis served as partial (${owed.filter(Boolean).length}/${owed.length} owed sections)`);
+        Object.assign(responseData, { partialResults: true, partialReason: 'thin_unfilled' });
+      }
+
+      // Every fixed choice and list the page draws holds a value it can draw,
+      // before the report is cached or sent (S11-029).
+      normalizeScanReport(responseData);
+
       // Store in cache for future requests (non-blocking)
-      EdgeRuntime.waitUntil(
+      if (!thinAnalysis) EdgeRuntime.waitUntil(
         (async () => {
           try {
             const { error: storeError } = await supabase.rpc('store_cached_response', {

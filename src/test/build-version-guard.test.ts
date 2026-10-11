@@ -1421,7 +1421,21 @@ const PINNED = {
   // discovery window (posted_at OR first_seen after X), RPC-blind, echoed on
   // list and count answers (n306b).
   // sources.ts UNCHANGED.
-  buildVersion: "2026-09-09.91",
+  // 2026-09-09.92: wave 3 of the platform sweeps (S8 register, 2026-10-08;
+  // n437-n447). Workday is asked in en-US (S8-003); a vendor body has a clock
+  // (S8-030); Teamtailor reads every page of jobs.rss and a 100-item page
+  // proves no absence (S8-002; repair 20261009100300); a replayed lap proof
+  // closes nothing it stamped (S8-031); a windowed visit writes aged exits
+  // (S8-084); a closure drops its tombstone (S8-085); an empty page inside a
+  // lap's total proves nothing and two quick failures keep the cursor
+  // (S8-086); USAJOBS stores body, telework, pay period and country (S8-023,
+  // S8-083); the stated-pay stand-down is gone (S8-089); the date and pay
+  // orders match stemmed titles (S8-027); the cold cursor passes a prefix
+  // (S8-087); filler-word employers route and "constructor" is a query
+  // (S8-090). Employer display names: 20261009100100; the federal feed's
+  // name: 20261009100200.
+  // sources.ts UNCHANGED.
+  buildVersion: "2026-09-09.92",
 };
 
 /**

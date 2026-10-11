@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { Mail } from "lucide-react";
+import { SellerIdentity } from "@/components/SellerIdentity";
 
 export function Footer() {
   const { t } = useTranslation();
@@ -23,11 +24,11 @@ export function Footer() {
         
         {/* Resources — internal links matter for SEO: pages reachable only via
             sitemap rank far worse than internally-linked ones.
-            This nav is also the ONLY navigation that renders at every viewport:
-            Header.tsx wraps its whole nav in `hidden sm:flex` and the app has no
-            hamburger menu anywhere, so under 640px a destination missing from
-            this list is unreachable by any link in the product. /explore was
-            missing from both for exactly that reason. */}
+            This nav is also the only navigation that renders at every viewport
+            without a tap: Header.tsx wraps its nav row in `hidden sm:flex`, and
+            under 640px it is behind the header's menu button (since
+            2026-10-09; before that there was no menu at all, and /explore was
+            missing from both for exactly that reason). */}
         <nav aria-label="Resources" className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-muted-foreground mb-8 pb-8 border-b border-border/50">
           {/* TRANSLATED, AND NAMING WHAT THE PAGE IS. This was the one literal
               in this nav with no t() call, so a German or Hindi reader saw it
@@ -56,7 +57,11 @@ export function Footer() {
         </nav>
 
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground px-2 sm:px-0">
-          <p>{t('footer.copyright', { year: new Date().getFullYear() })}</p>
+          <div>
+            <p>{t('footer.copyright', { year: new Date().getFullYear() })}</p>
+            {/* Who sells: nothing until src/config/seller.ts is filled in (one line; wave 3 had placed two). */}
+            <SellerIdentity variant="footer" className="text-xs mt-1" />
+          </div>
           <nav className="flex items-center gap-4 sm:gap-6 flex-wrap justify-center" aria-label={t('footer.navAriaLabel')}>
             <Link
               to="/pricing"

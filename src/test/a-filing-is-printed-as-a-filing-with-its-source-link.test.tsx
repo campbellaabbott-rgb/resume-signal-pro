@@ -360,7 +360,13 @@ describe("a filing is printed as a filing, with its source link -- or not at all
     // by its own date, our read, the computation time.
     expect(s).toContain("Filings read hourly from SEC EDGAR and nightly from state notices as consolidated by Big Local News; newest filing held is dated 2026-09-15, read ");
     expect(s).toContain("; computed ");
-    expect(s).toContain("State notices reach the consolidated feed a median 3 days after the notice date (measured ");
+    // S8-096: the figure is public_date (the state's own stamp) minus the
+    // notice date. When the consolidated feed received a notice was never
+    // measured, so the sentence names the state's stamp and says the rest is
+    // unmeasured; it used to claim an arrival lag at the feed.
+    expect(s).toContain("State agencies stamp a notice a median 3 days after its notice date (measured ");
+    expect(s).toContain("when it reaches us after that is not measured.");
+    expect(s).not.toContain("reach the consolidated feed");
     // NEVER a number of the arms: no share, no interval, no "up to", neither figure.
     expect(s).not.toMatch(/%/);
     expect(s).not.toMatch(/±/);

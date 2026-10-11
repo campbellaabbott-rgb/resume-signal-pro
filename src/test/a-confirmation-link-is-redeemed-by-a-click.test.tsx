@@ -101,7 +101,8 @@ describe("/data-api: a key needs the mailbox, and the link needs a click", () =>
     // True whether or not the server mailed: its answer does not say.
     expect(screen.getByText(/can receive mail from us, a link is on its way/)).toBeInTheDocument();
     expect(screen.queryByText(/We sent a link to/)).toBeNull();
-    expect(invoke).toHaveBeenCalledWith("api-key-request", { body: { email: "dev@example.org", name: "" } });
+    // Plus the Terms version the line above the button showed (wave 3, item 12).
+    expect(invoke).toHaveBeenCalledWith("api-key-request", { body: expect.objectContaining({ email: "dev@example.org", name: "" }) });
     expect(screen.queryByText(/rb_live_/)).toBeNull();
     expect(screen.queryByText(/revokes the old one/i)).toBeNull();
   });
@@ -149,7 +150,9 @@ describe("/market-pulse/confirm: subscribed only by the person's click", () => {
     fireEvent.click(button);
     await waitFor(() => expect(screen.getByText(/You're subscribed/)).toBeInTheDocument());
     expect(invoke).toHaveBeenCalledWith("send-market-pulse", { body: { action: "confirm", token: TOKEN } });
-    expect(window.location.hash).toBe("");
+    // The fragment is cleared by a passive effect after the success render,
+    // so it is waited for; read once, it raced that effect (CI run 37707420206).
+    await waitFor(() => expect(window.location.hash).toBe(""));
   });
 
   it("an expired or spent link is named as such, and no button can resend it", async () => {
@@ -180,7 +183,8 @@ describe("/fix-plan/confirm: the sequence starts only on the person's click", ()
     fireEvent.click(button);
     await waitFor(() => expect(screen.getByText(/The first email arrives in two days/)).toBeInTheDocument());
     expect(invoke).toHaveBeenCalledWith("send-scan-report", { body: { action: "confirm-drip", token: SIGNED } });
-    expect(window.location.hash).toBe("");
+    // Cleared by a passive effect after the success render: waited for.
+    await waitFor(() => expect(window.location.hash).toBe(""));
   });
 
   it("a sequence already running this month, or an address that opted out, is said plainly", async () => {

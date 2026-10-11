@@ -47,7 +47,10 @@ vi.mock("@/hooks/use-pro-subscription", () => ({
 }));
 
 const purchaseProduct = vi.fn(async () => null);
-vi.mock("@/hooks/use-product-checkout", () => ({ useProductCheckout: () => ({ purchaseProduct, isLoading: false, currentProduct: null }) }));
+vi.mock("@/hooks/use-product-checkout", async (orig) => ({
+  ...(await orig<typeof import("@/hooks/use-product-checkout")>()),
+  useProductCheckout: () => ({ purchaseProduct, isLoading: false, currentProduct: null }),
+}));
 vi.mock("@/components/Header", () => ({ Header: () => null }));
 vi.mock("@/components/Footer", () => ({ Footer: () => null }));
 vi.mock("@/components/seo/SEO", () => ({ SEO: () => null }));
@@ -175,9 +178,10 @@ describe("a buyer back from Stripe with a paid Freelance Boost (L3-16)", () => {
     localStorage.setItem("freelanceBoostIntake", JSON.stringify(DRAFT));
     invoke.mockResolvedValue({ data: { success: true, data: { structure: "projects_section", structureNote: "", header: "Freelance Projects", scopeStatement: "", projects: [{ clientLabel: "dental", relevance: 8, bullets: ["Shipped a booking site"], keywordsCovered: [] }], transitionParagraph: "", gapHandling: "", keywordCoverage: null } }, error: null });
     at("/freelance-boost?session_id=cs_test_paid_boost", <FreelanceBoost />);
-    await waitFor(() => expect(invoke).toHaveBeenCalled(), SLOW);
-    const [fn, opts] = invoke.mock.calls[0] as [string, { body: { sessionId: string; targetRole: string } }];
-    expect(fn).toBe("generate-freelance-boost");
+    // The saved result is asked for first (wave 3, S8-016); none here, so it is generated.
+    await waitFor(() => expect(invoke.mock.calls.some(([f]) => f === "generate-freelance-boost")).toBe(true), SLOW);
+    expect(invoke.mock.calls[0][0]).toBe("recover-purchase");
+    const [, opts] = invoke.mock.calls.find(([f]) => f === "generate-freelance-boost") as [string, { body: { sessionId: string; targetRole: string } }];
     expect(opts.body).toMatchObject({ sessionId: "cs_test_paid_boost", targetRole: "Product Manager" });
     expect(await screen.findByText("Shipped a booking site", {}, SLOW)).toBeInTheDocument();
     expect(JSON.parse(localStorage.getItem("freelanceBoostIntake") ?? "{}").targetRole, "the saved intake was overwritten").toBe("Product Manager");
@@ -189,7 +193,7 @@ describe("a buyer back from Stripe with a paid Freelance Boost (L3-16)", () => {
     expect(await screen.findByRole("button", { name: /generate my section \(already paid\)/i }, SLOW)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /boost my experience/i }), "a paid buyer was offered the $29 checkout again").toBeNull();
     expect(screen.queryByRole("button", { name: /full transition kit/i })).toBeNull();
-    expect(invoke).not.toHaveBeenCalled();
+    expect(invoke.mock.calls.filter(([f]) => f === "generate-freelance-boost"), "generated with no intake").toHaveLength(0);
   });
 
   it("without a purchase, still sells", () => {
@@ -200,11 +204,13 @@ describe("a buyer back from Stripe with a paid Freelance Boost (L3-16)", () => {
 
 describe("backing out of Stripe (L3-15)", () => {
   it("says nothing was charged, and Try again goes back to the product being bought", async () => {
+    // With the binding the cancelled checkout carried (wave 3, S8-056).
+    sessionStorage.setItem("rb_checkout_retry", JSON.stringify({ productId: "premiumPackage", sessionId: "8a6f7d3e-1b2c-4d5e-9f00-112233445566", path: "/pricing", at: Date.now() }));
     at("/payment-failed?product=premiumPackage", <PaymentFailed />);
     expect(screen.getByText("Checkout cancelled")).toBeInTheDocument();
     expect(screen.queryByText(/couldn't process your payment/i)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /try again/i }));
-    await waitFor(() => expect(purchaseProduct).toHaveBeenCalledWith("premiumPackage", { ctaSection: "payment_cancelled" }), SLOW);
+    await waitFor(() => expect(purchaseProduct).toHaveBeenCalledWith("premiumPackage", expect.objectContaining({ ctaSection: "payment_cancelled", sessionId: "8a6f7d3e-1b2c-4d5e-9f00-112233445566" })), SLOW);
   });
 
   it("returns a Freelance Boost buyer to the guided flow, where their intake is kept", () => {

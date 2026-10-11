@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { productFeatures } from "@/lib/product-features";
 import { Flame, MessageSquare, TrendingUp, ArrowRight, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import { PRODUCTS, ProductId } from "@/config/products";
 import { useCurrency } from "@/hooks/use-currency";
 import { useProductCheckout } from "@/hooks/use-product-checkout";
 import { ProductPreview } from "@/components/ProductPreview";
+import { PurchaseTerms } from "@/components/PurchaseTerms";
 
 const addOnProducts: { key: ProductId; icon: React.ElementType }[] = [
   { key: 'interviewCoach', icon: MessageSquare },
@@ -49,6 +51,7 @@ export function AddOnsShowcase({ variant = 'compact', sessionId, className, resu
           {t('addOnsShowcase.targetedInsights')}
         </p>
         
+        <PurchaseTerms kind="payment" className="mb-3" />
         <div className="grid gap-3">
           {addOnProducts.map(({ key, icon: Icon }) => {
             const product = PRODUCTS[key];
@@ -117,6 +120,7 @@ export function AddOnsShowcase({ variant = 'compact', sessionId, className, resu
         </p>
       </div>
       
+      <PurchaseTerms kind="payment" className="mb-3 text-center" />
       <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto">
         {addOnProducts.map(({ key, icon: Icon }) => {
           const product = PRODUCTS[key];
@@ -140,7 +144,7 @@ export function AddOnsShowcase({ variant = 'compact', sessionId, className, resu
               <p className="text-sm text-muted-foreground mb-4">{product.description}</p>
               
               <ul className="space-y-2 mb-4 flex-1">
-                {product.features.slice(0, 3).map((feature, i) => (
+                {productFeatures(t, key, product.features).slice(0, 3).map((feature, i) => (
                   <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
                     <span className="w-1 h-1 rounded-full bg-primary mt-1.5 shrink-0" />
                     {feature}

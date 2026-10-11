@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { hasUnsupportedPdfCharacters } from "@/lib/pdf-text-support";
+import { useReportEnumLabel } from "@/hooks/use-report-enum-label";
 
 interface CareerPathSimulatorProps {
   resumeText: string;
@@ -65,6 +66,8 @@ const pathColors: Record<string, { bg: string; border: string; accent: string }>
 
 export function CareerPathSimulator({ resumeText, industry, currentRole, isPremium, sessionId }: CareerPathSimulatorProps) {
   const { t } = useTranslation();
+  // Level and risk arrive in English (the colours key on them); shown in the reader's language.
+  const enumLabel = useReportEnumLabel();
   const [data, setData] = useState<CareerData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [activePath, setActivePath] = useState<string | null>(null);
@@ -136,7 +139,7 @@ export function CareerPathSimulator({ resumeText, industry, currentRole, isPremi
         <div className="flex items-center gap-2 mb-2">
           <span className="text-xs font-semibold text-foreground">📍 {data.currentPosition?.title}</span>
           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted/50 text-muted-foreground">
-            {data.currentPosition?.level}
+            {enumLabel(data.currentPosition?.level ?? "")}
           </span>
           {isPremium && (
             <Button
@@ -223,7 +226,7 @@ export function CareerPathSimulator({ resumeText, industry, currentRole, isPremi
           {/* Path details */}
           <div className="mt-3 pt-3 border-t border-border/30 flex items-center gap-3 flex-wrap">
             <span className={cn("text-[10px] font-semibold", riskColors[activePathData.riskLevel] || "text-muted-foreground")}>
-              {t('careerPathSimulator.risk', { level: activePathData.riskLevel })}
+              {t('careerPathSimulator.risk', { level: enumLabel(activePathData.riskLevel) })}
             </span>
             <div className="flex gap-1 flex-wrap">
               {activePathData.requiredSkills?.map((s, i) => (

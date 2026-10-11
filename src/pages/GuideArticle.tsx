@@ -2,6 +2,7 @@
 // Article JSON-LD + FAQPage where the guide has FAQs; same content is
 // prerendered to static HTML at build time.
 
+import { SCAN_RESULTS_WITHIN_SECONDS } from "@/config/scan-timing";
 import { useMemo } from "react";
 import { useParams, Link, Navigate } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
@@ -112,7 +113,7 @@ export default function GuideArticle() {
           <section className="rounded-2xl border-2 border-primary bg-card p-6 text-center mb-8">
             <h2 className="text-xl font-bold mb-2">See where your resume actually stands — free</h2>
             <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
-              The full diagnostic in about 20 seconds: parsing, keywords, structure, and red flags — with every
+              The full diagnostic within {SCAN_RESULTS_WITHIN_SECONDS} seconds: parsing, keywords, structure, and red flags — with every
               finding quoted from your actual document. No signup; your resume is deleted within 7 days.
             </p>
             <Link to="/" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors">

@@ -57,6 +57,7 @@ import { codeOf } from "./helpers/strip-comments";
 import { JOB_SOURCES } from "../../supabase/functions/job-board/sources";
 import { htmlToText, isDatedBefore, normalizeAshby, normalizeGreenhouse, normalizeLever, sanePostedAt } from "../../supabase/functions/job-board/normalize";
 import { beforeDeadline, jsonArrayElements, SLIM_SPECS, streamSlim } from "../../supabase/functions/job-board/slim-stream";
+import { withWorkdayLanguage } from "../../supabase/functions/job-board/request-headers";
 import population from "./fixtures/oversize-light-population-2026-10-01.json";
 import leverFixture from "./fixtures/oversize-lever-palantir-2026-10-01.json";
 import ashbyFixture from "./fixtures/oversize-ashby-openai-2026-10-01.json";
@@ -587,7 +588,7 @@ describe("(e) the retry is a separate statement that never writes the failure ve
     expect((CODE.match(/readOversizeBoard\(/g) ?? []).length, "a declaration and exactly one caller").toBe(2);
     const i = CODE.indexOf("async function readOversizeBoard(");
     const body = CODE.slice(i, CODE.indexOf("\n}\n", i));
-    expect(body).toMatch(/await beforeDeadline\(fetchWithTimeout\(listUrl\(s\), undefined, STREAM_WIRE_BYTES\), deadlineAt, discardBody\)/);
+    expect(body).toMatch(/await beforeDeadline\(fetchWithTimeout\(listUrl\(s\), undefined, STREAM_WIRE_BYTES, STREAM_READ_BUDGET_MS\), deadlineAt, discardBody\)/);
     expect(body).toMatch(/streamSlim\(res\.body, spec, \{/);
     for (const opt of ["freshCutoffMs,", "maxBytes: SLIM_RETAINED_BYTES,", "maxElementBytes: SLIM_ELEMENT_BYTES,", "descKeepChars: 2 * STORED_DESC_CAP,", "descCeiling: SLIM_DESC_CEILING,", "deadlineAt,"]) {
       expect(body, `streamSlim must be called with ${opt}`).toContain(opt);
@@ -633,15 +634,16 @@ describe("(f) readOversizeBoard and the worker's retry, executed — not spelled
   /** The shipped reader over the shipped byte bound and fetch wrapper, with only the network stubbed. */
   const shippedReader = (fetchStub: (url: string, init?: RequestInit) => Promise<Response>) => {
     const ts = [
-      ...["OVERSIZE_MARKER", "MAX_RESPONSE_BYTES", "STREAM_WIRE_BYTES", "SLIM_ELEMENT_BYTES", "SLIM_RETAINED_BYTES", "SLIM_DESC_CEILING", "STORED_DESC_CAP", "FETCH_TIMEOUT_MS"].map(constDecl),
-      ...["function discardBody(", "function boundBody(", "async function fetchWithTimeout(", "async function readOversizeBoard("].map(fnDecl),
+      ...["OVERSIZE_MARKER", "MAX_RESPONSE_BYTES", "STREAM_WIRE_BYTES", "STREAM_READ_BUDGET_MS", "SLIM_ELEMENT_BYTES", "SLIM_RETAINED_BYTES", "SLIM_DESC_CEILING", "STORED_DESC_CAP", "FETCH_TIMEOUT_MS", "BODY_LATE_MARKER"].map(constDecl),
+      ...["function discardBody(", "function boundBody(", "function bodyDeadline(", "async function fetchWithTimeout(", "async function readOversizeBoard("].map(fnDecl),
     ].join("\n");
     const warned: string[] = [];
     const urls: string[] = [];
     const listUrl = (s: Board) => { urls.push(`${s.source}:${s.token}`); return `https://feed.test/${s.source}/${s.token}`; };
-    const read = new Function("fetch", "listUrl", "beforeDeadline", "SLIM_SPECS", "streamSlim", "normalizeLever", "normalizeAshby", "normalizeGreenhouse", "console", `${toJs(ts)}\nreturn readOversizeBoard;`)(
+    const read = new Function("fetch", "listUrl", "beforeDeadline", "SLIM_SPECS", "streamSlim", "normalizeLever", "normalizeAshby", "normalizeGreenhouse", "console", "withWorkdayLanguage", `${toJs(ts)}\nreturn readOversizeBoard;`)(
       fetchStub, listUrl, beforeDeadline, SLIM_SPECS, streamSlim, normalizeLever, normalizeAshby, normalizeGreenhouse,
       { warn: (...a: unknown[]) => warned.push(a.map(String).join(" ")), log: () => {}, error: () => {} },
+      withWorkdayLanguage,
     ) as (s: Board, deadlineAt: number, freshCutoffMs: number) => Promise<Read>;
     return { read, warned, urls };
   };

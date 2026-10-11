@@ -82,6 +82,24 @@ const at = (iso: string | null | undefined): number | null => {
 };
 
 /**
+ * CALENDAR DAYS FROM TODAY TO THE INTERVIEW'S DATE, in the viewer's zone
+ * (platform sweep L3-17). interview_at is a picked date stored as UTC
+ * midnight; rounding the hours to it called tomorrow "Today" late in the day.
+ * The date part is read at local midnight against today's local midnight;
+ * rounding absorbs a daylight-saving hour. NaN for an unreadable date.
+ */
+export function calendarDaysUntil(iso: string, now: number | Date = Date.now()): number {
+  const day = Date.parse(String(iso).slice(0, 10) + "T00:00:00");
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+  return Math.round((day - today.getTime()) / DAY);
+}
+
+/** Today or later in the viewer's calendar: listed as upcoming, never as past. */
+export const isUpcomingInterview = (iso: string | null | undefined, now: number | Date = Date.now()): boolean =>
+  !!iso && calendarDaysUntil(iso, now) >= 0;
+
+/**
  * Interviews that have already happened, with what the board did afterwards.
  *
  * `now` is a parameter so this is testable without freezing the clock, and so a
@@ -98,10 +116,9 @@ export function interviewSignals(
     // No interview date is not a missing signal — it is a different question,
     // and the tracker's own lifecycle line already answers that one.
     if (iv === null) continue;
-    // An interview in the future has nothing to attribute yet. Same one-day
-    // grace as InterviewsHub uses, so a row cannot be "upcoming" there and
-    // "past" here at the same moment.
-    if (iv > now - DAY) continue;
+    // Today's or a later interview has nothing to attribute yet. The same rule
+    // InterviewsHub lists as upcoming, so no row is in both at once.
+    if (isUpcomingInterview(a.interview_at, now)) continue;
 
     const outcome = String(a.lifecycle_outcome ?? "");
     const closed = at(a.posting_closed_at);

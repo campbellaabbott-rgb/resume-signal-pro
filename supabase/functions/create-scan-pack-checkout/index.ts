@@ -1,13 +1,14 @@
-// deploy-stamp: 2026-10-05T11:00Z
+// deploy-stamp: 2026-10-09T13:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-start.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
+import { checkoutOrigin, euConsentAnswer, euConsentRefusal, policyMetadata, sessionPolicy } from "../_shared/checkout-policy.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-scan-pack-checkout.2026-10-05.1";
+const FN_BUILD = "create-scan-pack-checkout.2026-10-09.61";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -117,21 +118,27 @@ serve(async (req) => {
     }
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-12-15.clover" });
-    const origin = req.headers.get("origin") || "https://lovable.dev";
-
-    // Check if customer exists
-    const customers = await stripe.customers.list({ email: normalizedEmail, limit: 1 });
-    let customerId: string | undefined;
-    if (customers.data.length > 0) {
-      customerId = customers.data[0].id;
-      logStep("Found existing customer", { customerId });
+    const env = (k: string) => Deno.env.get(k);
+    // Only our own hosts get the buyer back (S8-060).
+    const origin = checkoutOrigin(req.headers.get("origin"), env);
+    const consentMissing = euConsentRefusal(env, "payment", requestBody);
+    if (consentMissing) {
+      return new Response(
+        JSON.stringify(euConsentAnswer(consentMissing)),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
+    const policy = policyMetadata(requestBody, env);
 
+    // NO STRIPE CUSTOMER IS LOOKED UP BY THE TYPED ADDRESS (S8-059). Nobody
+    // signs in here, so the address is a claim: it used to attach a
+    // stranger's payment and receipt to whatever Customer that address
+    // already had (a subscriber's, say). The address only prefills Stripe's
+    // form and names the receipt.
     // Create checkout session with quantity = number of credits
     // Stripe handles currency conversion automatically for international cards
     const session = await stripe.checkout.sessions.create({
-      customer: customerId,
-      customer_email: customerId ? undefined : normalizedEmail,
+      customer_email: normalizedEmail,
       line_items: [
         {
           price_data: {
@@ -156,7 +163,9 @@ serve(async (req) => {
         product_type: "scan_pack",
         credits: credits.toString(),
         customer_email: normalizedEmail,
+        ...policy,
       },
+      ...sessionPolicy({ mode: "payment", env, receiptEmail: normalizedEmail }),
     });
 
     // The start is on record before the browser has the url, so no
@@ -171,7 +180,7 @@ serve(async (req) => {
       currency: session.currency,
       mode: session.mode,
       context: checkoutContextOf(requestBody),
-      metadata: { credits },
+      metadata: { credits, termsVersion: policy.terms_version || null, referral: !!policy.referral_code, withdrawalWaiver: policy.withdrawal_waiver ?? null },
     });
 
     logStep("Checkout session created", { sessionId: session.id, email: normalizedEmail, credits });

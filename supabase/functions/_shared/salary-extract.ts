@@ -15,8 +15,17 @@ const RANGE_SEP = String.raw`\s*(?:-|–|—|to|through)\s*`;
 // pay-period wording that ties a figure to compensation
 const PERIOD = String.raw`(?:per\s+(?:hour|year|annum|month|week)|an?\s+(?:hour|year)|hourly|annually|yearly|monthly|\/\s?(?:hr|hour|yr|year|mo|month|wk|week))`;
 
-const RANGE_RE = new RegExp(`(${MONEY})${RANGE_SEP}(${MONEY})(\\s*${PERIOD})?`, "i");
-const SINGLE_RE = new RegExp(`(${MONEY})(\\s*${PERIOD})`, "i");
+// A period may follow EACH figure ("$17.00/hr - $38.00/hr", "$25 per hour -
+// $30 per hour"): with only one slot, after the second, the first figure's
+// period stopped the range and the single-figure pattern took the low end
+// alone, so a $17-$38 job printed "$17.00/hr" (L7-07). Group 3 is the period
+// either figure states.
+const RANGE_RE = new RegExp(`(${MONEY})(?:\\s*${PERIOD})?${RANGE_SEP}(${MONEY})(\\s*${PERIOD})?`, "i");
+const RANGE_FIRST_PERIOD = new RegExp(`^${MONEY}\\s*(${PERIOD})`, "i");
+// "Up to $38/hr" is a ceiling: the qualifier is kept in the mined text, and
+// the structured parser reads a ceiling as no floor (L7-06).
+const CEILING_WORDS = String.raw`(?:up\s+to|as\s+much\s+as|maximum\s+of|max(?:imum)?\.?)`;
+const SINGLE_RE = new RegExp(`(?:${CEILING_WORDS}\\s*)?(${MONEY})(\\s*${PERIOD})`, "i");
 
 // Figures near these words are one-offs, not compensation.
 // Context words that mean the nearby dollar figure is NOT this job's pay.
@@ -100,7 +109,7 @@ export interface ParsedSalary {
 // before the bare-$ fallback — otherwise a peso or real posting gets labeled
 // USD and its high nominal value tops the salary ranking (live incident:
 // MX$1,152,000 ≈ $63k ranked as $1.15M).
-const P_ISO = /\b(USD|EUR|GBP|CAD|AUD|NZD|CHF|SEK|DKK|NOK|PLN|INR|SGD|JPY|BRL|MXN|PHP|HKD)\b/i;
+const P_ISO = /\b(USD|EUR|GBP|CAD|AUD|NZD|CHF|SEK|DKK|NOK|PLN|INR|SGD|JPY|BRL|MXN|PHP|HKD|TWD|ARS|CLP|COP|DOP|UYU)\b/i;
 const P_CAD = /C(?:A)?\$/;
 const P_AUD = /A(?:U)?\$/;
 // Bare-$ countries whose local currency ALSO writes plain "$". A Toronto
@@ -110,7 +119,17 @@ const P_AUD = /A(?:U)?\$/;
 // USD (the documented heuristic — most bare-$ postings are US).
 const BARE_DOLLAR_BY_COUNTRY: Record<string, string> = {
   CA: "CAD", AU: "AUD", NZ: "NZD", MX: "MXN", SG: "SGD", HK: "HKD",
+  // L13-19: "NT$2,000,000 per year" in Taiwan was stored as USD 2,000,000.
+  TW: "TWD",
 };
+// These countries write their peso with a plain "$" too, but most bare-$ rows
+// placed there are remote jobs paid in US dollars ("$75,000–$100,000" in
+// Bogotá, "$60/hr" in Chile). The bare $ is read as the peso only when, read
+// as dollars, the figure would pay a million a year or more.
+const BARE_DOLLAR_PESO: Record<string, string> = {
+  AR: "ARS", CL: "CLP", CO: "COP", DO: "DOP", UY: "UYU",
+};
+const PESO_READING_ANNUAL = 1_000_000;
 
 function detectCurrency(s: string, country?: string | null): string | null {
   const iso = s.match(P_ISO);
@@ -123,6 +142,12 @@ function detectCurrency(s: string, country?: string | null): string | null {
   if (/(?<![A-Za-z])HK\$/i.test(s)) return "HKD";
   if (/(?<![A-Za-z])R\$/i.test(s)) return "BRL";
   if (/(?<![A-Za-z])S\$/i.test(s)) return "SGD";
+  if (/(?<![A-Za-z])NT\$/i.test(s)) return "TWD";
+  if (/(?<![A-Za-z])AR\$/i.test(s)) return "ARS";
+  if (/(?<![A-Za-z])CL\$/i.test(s)) return "CLP";
+  if (/(?<![A-Za-z])COL?\$/i.test(s)) return "COP";
+  if (/(?<![A-Za-z])RD\$/i.test(s)) return "DOP";
+  if (/(?<![A-Za-z])\$U\b|(?<![A-Za-z])UY\$/i.test(s)) return "UYU";
   if (s.includes("€")) return "EUR";
   if (s.includes("£")) return "GBP";
   if (s.includes("₹")) return "INR";
@@ -203,7 +228,18 @@ const PARITY_MONTHLY_MAX = 35_000;
 // "$15.00 to $18,12" (improved, ceiling 18 -> 18.12). If a "$55,00" row is ever
 // found, the reading was decided here and is not an oversight.
 const P_MONEY = /[$€£]?\s?(\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{1,2})?|\d+(?:\.\d{1,2}|,\d{2}(?![\d,])(?!\.\d))?)\s?([kK])?/;
-const P_RANGE = new RegExp(P_MONEY.source + String.raw`\s*(?:-|–|—|to|through)\s*` + P_MONEY.source);
+const P_RANGE = new RegExp(
+  P_MONEY.source
+  // "$17.00/hr - $38.00/hr": the first figure's own period (L7-07), never captured.
+  + String.raw`(?:\s*(?:\/\s?(?:hr|hour|yr|year|mo|month|wk|week)\b|per\s+(?:hour|year|annum|month|week)|an?\s+(?:hour|year)))?`
+  + String.raw`\s*(?:-|–|—|to|through)\s*` + P_MONEY.source,
+);
+// A figure stated in millions or billions is a company figure or a typo, never
+// a wage: "$80.3M" was annualised as an hourly rate to 167,024 (L13-19).
+const P_MILLIONS = /\d(?:[.,]\d+)?\s?(?:mm?|mn|million|bn|billion)\b/i;
+// A ceiling with no floor ("Up to 95000.00 (USD) Annually", "Up to $38/hr") is
+// not a pay floor; it was stored as one (L7-06).
+const P_CEILING_ONLY = /^\W*(?:pay(?:\s+range)?\s*:?\s*)?(?:up\s+to|as\s+much\s+as|maximum\s+of|max(?:imum)?\.?)\s/i;
 // "an hour"/"a year" are Workday's OWN payRange phrasing ("$29.20 an hour")
 // — absent from this vocabulary, 17,641 vendor-stated workday salaries sat
 // unannualized (measured 2026-08-24).
@@ -521,10 +557,11 @@ export function parseSalaryStructured(
 ): ParsedSalary | null {
   if (!text) return null;
   const s = decodeLegacyEntities(String(text).slice(0, 300));
+  if (P_MILLIONS.test(s)) return null;
   // Currency is derived BEFORE the figures because the three-decimal rate rule
   // needs it: whether "23.170" is 23,170 or $23.17 is a question about the
   // posting's locale, not about the digits.
-  const currency = detectCurrency(s, country);
+  let currency = detectCurrency(s, country);
   const dotThreeIsRate = readsDotThreeAsRate(s, currency, country);
   const num = (raw: string, k?: string): number | null => {
     // "$23.170" in a dot-decimal locale that states no annual basis is $23.17,
@@ -563,12 +600,21 @@ export function parseSalaryStructured(
     if (min !== null && max !== null && max < min && r[2] && !r[4]) max *= 1000;
     if (min !== null && max !== null && min < max / 900 && !r[2] && r[4]) min *= 1000;
   } else {
+    // A lone figure after "up to" is the most the posting offers, not the
+    // least; it gets no floor, so it never enters the floor filter or the
+    // pay order as if it were one.
+    if (P_CEILING_ONLY.test(s)) return null;
     const m1 = s.match(P_MONEY);
     if (m1 && m1[1]) min = num(m1[1], m1[2]);
   }
   if (min === null || min <= 0) return null;
 
   const MULT = PERIOD_MULTIPLIER;
+  const peso = BARE_DOLLAR_PESO[String(country ?? "").toUpperCase()];
+  if (peso && currency === "USD" && !P_ISO.test(s) && !/(?<![A-Za-z])US\$/i.test(s)) {
+    const top = Math.max(min, max ?? min);
+    if ((period ? top * MULT[period] : top) >= PESO_READING_ANNUAL) currency = peso;
+  }
   // `mult` and `annualMin` move together and are never assigned apart, so the
   // returned annualMin cannot drift from the multiplier that produced it.
   let annualMin: number | null = null;
@@ -658,7 +704,8 @@ export function extractSalary(text: string | null | undefined): string | null {
     if (!NOT_PAY.test(ctx)) {
       const lo = parseMoney(range[1]);
       const hi = parseMoney(range[2]);
-      const hourly = /hour|hr|hourly/i.test(range[3] ?? "") ||
+      const firstPeriod = RANGE_FIRST_PERIOD.exec(range[0])?.[1] ?? "";
+      const hourly = /hour|hr|hourly/i.test(`${range[3] ?? ""} ${firstPeriod}`) ||
         (lo !== null && hi !== null && lo < 1_000 && hi < 1_000 && !/[kK]\s*$/.test(range[1] + range[2]));
       if (lo !== null && hi !== null && plausible(lo, hi, hourly)) {
         return range[0].replace(/\s+/g, " ").trim().slice(0, 200);

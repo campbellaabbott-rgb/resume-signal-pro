@@ -1,5 +1,5 @@
 // force-deploy: 2026-07-30T22:29:25Z
-// deploy-stamp: 2026-07-04T18:44Z
+// deploy-stamp: 2026-10-09T18:00Z
 const serve = (handler: (req: Request) => Response | Promise<Response>) => Deno.serve(handler);
 import { detectIndustry, formatDetectionForPrompt, buildDynamicCorrectionBoosts, INDUSTRY_KEYWORDS, detectSubIndustry } from "./industry-detection.ts";
 import { getOnetExpectation } from "./onet-expectations.ts";
@@ -10,6 +10,7 @@ import { groundedIn, normalizeForGrounding } from "./grounding.ts";
 import { getServiceClient } from "../_shared/supabase-client.ts";
 import { attachScanMailSeal } from "../_shared/scan-mail-seal.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
+import { scannableJobDescription } from "../_shared/job-description-input.ts";
 import {
   parseCreditSessions,
   refundScanCredit,
@@ -23,8 +24,12 @@ import { provenMailbox, type AuthUserLike } from "../_shared/mailbox-proof.ts";
 // re-exports it): the scanner has no reason to load Stripe.
 import { accountProStanding } from "../_shared/pro-standing.ts";
 import { SCAN_MODEL_CHAIN } from "../_shared/scan-models.ts";
+import { FIXED_CHOICES_STAY_ENGLISH, normalizeScanReport } from "../_shared/scan-report-shape.ts";
+import { functionCeiling } from "../_shared/model-spend-gate.ts";
+import { buildScoreAudit, reportIdFor } from "./report-meta.ts";
 import {
   detectCountryFromResume,
+  effectiveCountryOf,
   getMarketInsight,
   formatGeoContextForPrompt,
   analyzeSkillsRecency,
@@ -262,8 +267,9 @@ const INDUSTRY_ALIASES: Record<string, string> = {
 };
 
 // Normalize industry to valid value
-function normalizeIndustry(raw: string | undefined | null): string {
-  if (!raw) return 'general';
+function normalizeIndustry(raw: unknown): string {
+  // Model JSON is untrusted: industry: 5 used to throw here (sweep S8-071).
+  if (!raw || typeof raw !== 'string') return 'general';
   const normalized = raw.toLowerCase().trim();
 
   // Direct match (e.g., "data_engineering")
@@ -342,6 +348,16 @@ const SLOW_REQUEST_THRESHOLD = 20000; // 20s - AI analysis takes time
 const VERY_SLOW_THRESHOLD = 70000; // 70s - Gemini Pro model takes 40-60s typically
 
 const FUNCTION_NAME = 'free-keyword-scan';
+
+/**
+ * THE FUNCTION-WIDE HOUR (S11-019): model-backed scans the anonymous internet,
+ * and separately proven callers (a board pass, a proven mailbox, a paying
+ * account), may run per hour, and one proven identity's share of the latter.
+ * The per-address day and the request budget bound one address; only this
+ * bounds a rotating pool. Past it the scan is served the rule-based report,
+ * which calls no model.
+ */
+const SCAN_CEILING = { strangersPerHour: 300, provenPerHour: 300, perProvenCallerPerHour: 20 } as const;
 
 
 // Fallback must be a real inbox — admin@resumebooster.com was a dead letter
@@ -446,7 +462,10 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 
 // Provable from outside without a scan: every response, the CORS preflight
 // included, carries this in x-fn-build.
-const FN_BUILD = "free-keyword-scan.2026-10-08.3";
+// 2026-10-09.5 (wave-3 fix round integration): parsers-scan (S11-019's hourly
+// ceiling, S11-083), fetcher-frontend (S11-032, a link is no job description)
+// and seo-ingest-ops (S11-028/150) each stamped .4 on different code.
+const FN_BUILD = "free-keyword-scan.2026-10-09.5";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -1224,6 +1243,16 @@ async function fetchWithRetry(
 const countryCache = new Map<string, { country: string; timestamp: number }>();
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
+// One ipinfo answer per /24 (an IPv6 /64), S11-019: a pool rotating inside a
+// block is one lookup, not one per address. The country of a block is the
+// country of its addresses for every purpose this lookup serves.
+const ipinfoBlock = (ip: string): string => {
+  const v4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.\d{1,3}$/.exec(ip);
+  if (v4) return `${v4[1]}.${v4[2]}.${v4[3]}.0/24`;
+  const words = ip.toLowerCase().split(':');
+  return words.length > 2 ? `${words.slice(0, 4).join(':')}::/64` : ip;
+};
+
 const getCountryFromHeaders = (req: Request): string | null => {
   // Cloudflare/CDN provides country code in cf-ipcountry header. Sanitized
   // (review-caught 2026-07-25): Cloudflare emits pseudo-codes XX (unknown)
@@ -1243,7 +1272,7 @@ async function getCountryFromIpInfo(ip: string): Promise<string | null> {
   if (!ip || ip === 'unknown') return null;
   
   // Check cache first
-  const cached = countryCache.get(ip);
+  const cached = countryCache.get(ipinfoBlock(ip));
   if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
     return cached.country;
   }
@@ -1269,7 +1298,7 @@ async function getCountryFromIpInfo(ip: string): Promise<string | null> {
     
     // Cache the result
     if (country) {
-      countryCache.set(ip, { country, timestamp: Date.now() });
+      countryCache.set(ipinfoBlock(ip), { country, timestamp: Date.now() });
     }
     
     console.log(`[FREE-KEYWORD-SCAN] ipinfo.io resolved IP ${ip} to country: ${country}`);
@@ -1330,7 +1359,10 @@ serve(async (req) => {
       // this it fell through to the generic 500 handler (found by fuzzing).
       req.json().catch(() => { throw Object.assign(new Error('bad json'), { badJson: true }); })
     ]);
-    const { resumeText, jobDescriptionText, honeypot } = body;
+    const { resumeText, honeypot } = body;
+    // A link is not a posting (_shared/job-description-input.ts, S11-032):
+    // the old Job URL tab sent "[Job URL: ...]" and was scored against it.
+    const jobDescriptionText = scannableJobDescription(body.jobDescriptionText);
     // Target market the candidate is applying TO (ISO-2). Optional; overrides
     // residence-detected country for standards when the user states it.
     const validTargetCountry = (typeof body.targetCountry === 'string' && /^[A-Za-z]{2}$/.test(body.targetCountry))
@@ -1453,21 +1485,17 @@ serve(async (req) => {
     let provenEmail: string | null = null;
     const dailyScanLimit = isAuthedUser ? SIGNED_IN_SCANS_PER_DAY : FREE_SCANS_PER_DAY;
 
+    // The day's scan slot is counted only after the report cache misses
+    // (below): a rescan of the same file is a replay, and it used to spend one
+    // of the day's slots to return the cached report (sweep S8-068).
     const [
       globalRateLimitResult,
-      functionRateLimitResult,
       correctionResult
     ] = await Promise.all([
       supabase.rpc('check_global_rate_limit', {
         p_ip: clientIp,
         p_max_requests: 100,
         p_window_minutes: 60
-      }),
-      supabase.rpc('check_rate_limit', {
-        p_function: 'free-keyword-scan',
-        p_ip: clientIp,
-        p_max_requests: dailyScanLimit,
-        p_window_minutes: 1440 // 24 hours
       }),
       // Load dynamic correction boosts from DB — aggregate counts per original→target pair
       // so the compound learning system (Fix #3) gets real frequency data.
@@ -1520,99 +1548,6 @@ serve(async (req) => {
         JSON.stringify({ error: 'Too many requests. Please try again later.', rateLimited: true, code: 'rate_limited_budget' }),
         { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '3600' } }
       );
-    }
-
-    // Check function-specific rate limit result
-    if (functionRateLimitResult.error) {
-      console.error("[FREE-KEYWORD-SCAN] Rate limit check error:", functionRateLimitResult.error);
-      return new Response(
-        JSON.stringify({ error: 'Service temporarily unavailable. Please try again shortly.' }),
-        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    } else if (!functionRateLimitResult.data && !isHeartbeatProbe) {
-      // PAST THE DAILY LIMIT, two things can still pay for a scan, and each
-      // needs PROOF of whose it is (defect sweep 2.07). An address typed into
-      // the request proves nothing: it used to be enough to spend a stranger's
-      // purchased credits, or to scan without limit as a Pro subscriber.
-      //
-      // 1. Pro, held by the signed-in ACCOUNT: the one rule
-      //    (_shared/pro-standing.ts) over both caches, by user id. Unlimited
-      //    scans are an ongoing feature of the plan, so a trial counts. A
-      //    password sign-up as a subscriber's address holds no plan: the plan
-      //    belongs to the account that bought it (20261008130000).
-      if (authedUserId) {
-        try {
-          if ((await accountProStanding(supabase, authedUserId)).pro) {
-            console.log('[FREE-KEYWORD-SCAN] Rate limit reached — signed-in Pro account, scan allowed');
-            proBypass = true;
-          }
-        } catch (e) {
-          console.warn('[FREE-KEYWORD-SCAN] Pro check failed:', e);
-        }
-      }
-      // The address's credit pool still needs the mailbox proven. The switch
-      // is the mailbox_proof_settings row; the secret only answers when that
-      // row cannot be read.
-      if (authedUser && !proBypass) {
-        provenEmail = await provenMailbox(authedUser, authedJwt, {
-          db: supabase,
-          confirmedSince: Deno.env.get('EMAIL_CONFIRMED_SINCE') ?? null,
-          supabaseUrl: Deno.env.get('SUPABASE_URL') ?? '',
-          anonKey: Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-        });
-      }
-      // 2. A purchased credit: the proven address's pool, a purchase this
-      //    browser holds the Stripe Checkout session of, or a purchase the
-      //    signed-in account claimed (each capped at what it bought).
-      //    RESERVED here, before the cache lookup and the model call, so
-      //    concurrent requests cannot share one credit; given back in the
-      //    finally below unless a full report is delivered (2.06).
-      if (!proBypass) {
-        creditHold = await reserveScanCredit(
-          supabase,
-          { userId: authedUserId, provenEmail, sessionIds: parseCreditSessions(body.creditSessions) },
-          { stripeKey: Deno.env.get('STRIPE_SECRET_KEY') ?? '' },
-        );
-        if (creditHold) console.log(`[FREE-KEYWORD-SCAN] Rate limit reached — 1 ${creditHold.via} credit reserved`);
-      }
-      if (creditHold || proBypass) {
-        // Credit reserved or Pro subscriber — fall through and run the scan.
-      } else {
-      // Get current usage for helpful error message (non-blocking detail fetch)
-      const { data: usageData } = await supabase
-        .from('rate_limits')
-        .select('request_count, window_start')
-        .eq('function_name', 'free-keyword-scan')
-        .eq('ip_address', clientIp)
-        .maybeSingle();
-      
-      const scansUsed = usageData?.request_count || dailyScanLimit;
-      const windowStart = usageData?.window_start ? new Date(usageData.window_start) : new Date();
-      const resetTime = new Date(windowStart.getTime() + 24 * 60 * 60 * 1000);
-      const hoursUntilReset = Math.max(1, Math.ceil((resetTime.getTime() - Date.now()) / (1000 * 60 * 60)));
-      
-      console.log(`[FREE-KEYWORD-SCAN] Rate limit exceeded for IP: ${clientIp} (${scansUsed}/${dailyScanLimit} used, authed=${isAuthedUser})`);
-      
-      // Said to every signed-in account whose address is unproven, whether or
-      // not it holds anything, so the answer reveals nothing about the address.
-      const unprovenNote = isAuthedUser && !provenEmail
-        ? ` Pro or scan credits under this account's address are not used until the address is confirmed: sign in with Google using that address, or sign in once in the browser where you bought the credits.`
-        : '';
-      return new Response(
-        JSON.stringify({ 
-          error: (isAuthedUser
-            ? `You've used all ${dailyScanLimit} free scans for today. Get a Scan Pack to keep going, or your limit resets in ~${hoursUntilReset} hour${hoursUntilReset !== 1 ? 's' : ''}.`
-            : `You've used all ${dailyScanLimit} free scans for today. Create a free account for ${SIGNED_IN_SCANS_PER_DAY}/day, get a Scan Pack, or come back in ~${hoursUntilReset} hour${hoursUntilReset !== 1 ? 's' : ''}.`) + unprovenNote,
-          rateLimited: true,
-          mailboxUnproven: isAuthedUser && !provenEmail,
-          scansUsed,
-          scansLimit: dailyScanLimit,
-          hoursUntilReset,
-          resetTime: resetTime.toISOString()
-        }),
-        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-      }
     }
 
     // Check if job description provided
@@ -1677,7 +1612,12 @@ serve(async (req) => {
     // boundary no longer read as a 7-month gap, and non-Latin quotes are
     // grounded. resumeHash collapses whitespace, so without the bump the
     // flattened reports would replay for 7 days.
-    const REPORT_ENGINE_VERSION = 'scan-v2026-10-05';
+    // Bumped 2026-10-09: the report id now names the inputs and the score,
+    // the score audit sums to the score, and thin model output is partial.
+    // Bumped again in wave 3 (S11-007, S11-029, S11-058): a posting no longer
+    // reads as healthcare from "internal" or "what you'll do", every keyword
+    // gap is in the report, and its fixed choices hold drawable values.
+    const REPORT_ENGINE_VERSION = 'scan-v2026-10-09-s11';
     const reportCacheKey = await (async () => {
       const ctx = (body.userContext ?? {}) as Record<string, unknown>;
       const ctxPart = ['situation', 'targetRole', 'confirmedIndustry', 'confirmedExperience']
@@ -1687,11 +1627,19 @@ serve(async (req) => {
       // targetCountry MUST be part of the key: the same résumé applying to a
       // different market gets different country standards, so it can't share a
       // cached report (was missing → target override silently ignored on cache hit).
-      const raw = `${resumeHash}|${jdPart}|${ctxPart}|${validTargetCountry ?? ''}|${REPORT_ENGINE_VERSION}`;
+      // The market the report is written for, not only the applying-to
+      // country: with no confident location in the résumé, the request's IP
+      // country decides the standards, so it is part of the key (S8-070).
+      const keyCountry = effectiveCountryOf(validTargetCountry, detectCountryFromResume(resumeText), country || null);
+      const raw = `${resumeHash}|${jdPart}|${ctxPart}|${keyCountry}|${REPORT_ENGINE_VERSION}`;
       const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
       return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
     })();
-    try {
+    // "Re-analyze" (skipCache) skips the read: the scan is counted like a
+    // miss and its report replaces the saved one. It used to replay the
+    // saved report, so the button did nothing.
+    const skipCache = body.skipCache === true;
+    if (!skipCache) try {
       const { data: cached } = await supabase
         .from('scan_report_cache')
         .select('report, created_at')
@@ -1699,14 +1647,18 @@ serve(async (req) => {
         .maybeSingle();
       if (cached?.report && new Date(cached.created_at).getTime() > Date.now() - 7 * 24 * 3600 * 1000) {
         console.log(`[FREE-KEYWORD-SCAN] Report cache HIT (${reportCacheKey.slice(0, 12)}…) — served instantly`);
-        // A cache hit is free: a reserved credit is refunded in the finally.
-        // And the cached copy never carries a credit receipt: entries written
+        // A cache hit is free: it is served before the day's slot is
+        // counted or a credit reserved. And the cached copy never carries a
+        // credit receipt: entries written
         // before 2026-10-05 hold the FIRST scanner's receipt and balance
         // (defect sweep 2.18), which would print "1 credit used, N remaining"
         // to someone who spent nothing.
         const { creditUsed: _staleReceipt, creditsRemaining: _staleBalance, ...storedReport } =
           cached.report as Record<string, unknown>;
-        const cachedReport: Record<string, unknown> = { ...storedReport, cachedReport: true };
+        const cachedReport: Record<string, unknown> = { ...storedReport, cachedReport: true, cached: true };
+        // A report cached with a translated fixed choice must not replay a
+        // crash (S11-029).
+        normalizeScanReport(cachedReport);
         // Sealed on the way out, so a report cached before the mail seal
         // existed can still be emailed in full (see the seal at the end).
         await attachScanMailSeal(cachedReport, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
@@ -1718,6 +1670,106 @@ serve(async (req) => {
     } catch (e) {
       console.warn('[FREE-KEYWORD-SCAN] Report cache read failed (continuing):', e);
     }
+
+    // The day's scan slot, counted only now that the cache has missed.
+    const functionRateLimitResult = await supabase.rpc('check_rate_limit', {
+      p_function: 'free-keyword-scan',
+      p_ip: clientIp,
+      p_max_requests: dailyScanLimit,
+      p_window_minutes: 1440 // 24 hours
+    });
+    if (functionRateLimitResult.error) {
+      console.error("[FREE-KEYWORD-SCAN] Rate limit check error:", functionRateLimitResult.error);
+      return new Response(
+        JSON.stringify({ error: 'Service temporarily unavailable. Please try again shortly.' }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    } else if (!functionRateLimitResult.data && !isHeartbeatProbe) {
+      // PAST THE DAILY LIMIT, two things can still pay for a scan, and each
+      // needs PROOF of whose it is (defect sweep 2.07). An address typed into
+      // the request proves nothing: it used to be enough to spend a stranger's
+      // purchased credits, or to scan without limit as a Pro subscriber.
+      //
+      // 1. Pro, held by the signed-in ACCOUNT: the one rule
+      //    (_shared/pro-standing.ts) over both caches, by user id. Unlimited
+      //    scans are an ongoing feature of the plan, so a trial counts. A
+      //    password sign-up as a subscriber's address holds no plan: the plan
+      //    belongs to the account that bought it (20261008130000).
+      if (authedUserId) {
+        try {
+          if ((await accountProStanding(supabase, authedUserId)).pro) {
+            console.log('[FREE-KEYWORD-SCAN] Rate limit reached — signed-in Pro account, scan allowed');
+            proBypass = true;
+          }
+        } catch (e) {
+          console.warn('[FREE-KEYWORD-SCAN] Pro check failed:', e);
+        }
+      }
+      // The address's credit pool still needs the mailbox proven. The switch
+      // is the mailbox_proof_settings row; the secret only answers when that
+      // row cannot be read.
+      if (authedUser && !proBypass) {
+        provenEmail = await provenMailbox(authedUser, authedJwt, {
+          db: supabase,
+          confirmedSince: Deno.env.get('EMAIL_CONFIRMED_SINCE') ?? null,
+          supabaseUrl: Deno.env.get('SUPABASE_URL') ?? '',
+          anonKey: Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+        });
+      }
+      // 2. A purchased credit: the proven address's pool, a purchase this
+      //    browser holds the Stripe Checkout session of, or a purchase the
+      //    signed-in account claimed (each capped at what it bought).
+      //    RESERVED here, after the cache has missed and before the model
+      //    call, so concurrent requests cannot share one credit; given back in
+      //    the finally below unless a full report is delivered (2.06).
+      if (!proBypass) {
+        creditHold = await reserveScanCredit(
+          supabase,
+          { userId: authedUserId, provenEmail, sessionIds: parseCreditSessions(body.creditSessions) },
+          { stripeKey: Deno.env.get('STRIPE_SECRET_KEY') ?? '' },
+        );
+        if (creditHold) console.log(`[FREE-KEYWORD-SCAN] Rate limit reached — 1 ${creditHold.via} credit reserved`);
+      }
+      if (creditHold || proBypass) {
+        // Credit reserved or Pro subscriber — fall through and run the scan.
+      } else {
+      // Get current usage for helpful error message (non-blocking detail fetch)
+      const { data: usageData } = await supabase
+        .from('rate_limits')
+        .select('request_count, window_start')
+        .eq('function_name', 'free-keyword-scan')
+        .eq('ip_address', clientIp)
+        .maybeSingle();
+      
+      const scansUsed = usageData?.request_count || dailyScanLimit;
+      const windowStart = usageData?.window_start ? new Date(usageData.window_start) : new Date();
+      const resetTime = new Date(windowStart.getTime() + 24 * 60 * 60 * 1000);
+      const hoursUntilReset = Math.max(1, Math.ceil((resetTime.getTime() - Date.now()) / (1000 * 60 * 60)));
+      
+      console.log(`[FREE-KEYWORD-SCAN] Rate limit exceeded for IP: ${clientIp} (${scansUsed}/${dailyScanLimit} used, authed=${isAuthedUser})`);
+      
+      // Said to every signed-in account whose address is unproven, whether or
+      // not it holds anything, so the answer reveals nothing about the address.
+      const unprovenNote = isAuthedUser && !provenEmail
+        ? ` Pro or scan credits under this account's address are not used until the address is confirmed: sign in with Google using that address, or sign in once in the browser where you bought the credits.`
+        : '';
+      return new Response(
+        JSON.stringify({ 
+          error: (isAuthedUser
+            ? `You've used all ${dailyScanLimit} free scans for today. Get a Scan Pack to keep going, or your limit resets in ~${hoursUntilReset} hour${hoursUntilReset !== 1 ? 's' : ''}.`
+            : `You've used all ${dailyScanLimit} free scans for today. Create a free account for ${SIGNED_IN_SCANS_PER_DAY}/day, get a Scan Pack, or come back in ~${hoursUntilReset} hour${hoursUntilReset !== 1 ? 's' : ''}.`) + unprovenNote,
+          rateLimited: true,
+          mailboxUnproven: isAuthedUser && !provenEmail,
+          scansUsed,
+          scansLimit: dailyScanLimit,
+          hoursUntilReset,
+          resetTime: resetTime.toISOString()
+        }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+      }
+    }
+
 
     let pinnedIndustry: string | null = null;
     try {
@@ -2311,9 +2363,7 @@ This resume must be judged as ${seniorityDetection.level === 'executive' ? 'a C-
     // mention vs one Seattle mention) defers to IP geolocation, which at
     // least knows where the candidate is; it is still used when no IP
     // country is available.
-    const effectiveCountry = validTargetCountry
-      || (resumeGeo.confidence !== 'low' ? resumeGeo.country : null)
-      || country || resumeGeo.country || 'US';
+    const effectiveCountry = effectiveCountryOf(validTargetCountry, resumeGeo, country || null);
     // How that choice was made — derived ONCE and threaded into the prompt
     // hint, marketIntelligence.countrySource, and the geo response block, so
     // the three can never disagree (review-caught 2026-07-25: the prompt
@@ -2335,7 +2385,7 @@ This resume must be judged as ${seniorityDetection.level === 'executive' ? 'a C-
     // so it's the freshest instruction the model reads.
     const resumeLanguage = detectResumeLanguage(resumeText);
     const languageHint = resumeLanguage.language !== 'en'
-      ? `\n\n**DETECTED RESUME LANGUAGE: ${resumeLanguage.languageName.toUpperCase()} (MANDATORY).** This resume is written in ${resumeLanguage.languageName}. Your ENTIRE response must be written in ${resumeLanguage.languageName} — every string value (tips, red flags, rewrites, explanations, verdicts). Keep the JSON keys in English exactly as specified. Keyword suggestions must be ${resumeLanguage.languageName} terms actually used in that job market. Do NOT respond in English.`
+      ? `\n\n**DETECTED RESUME LANGUAGE: ${resumeLanguage.languageName.toUpperCase()} (MANDATORY).** This resume is written in ${resumeLanguage.languageName}. Your ENTIRE response must be written in ${resumeLanguage.languageName} — every free-text string value (tips, red flags, rewrites, explanations, verdicts). Keep the JSON keys in English exactly as specified. ${FIXED_CHOICES_STAY_ENGLISH} Keyword suggestions must be ${resumeLanguage.languageName} terms actually used in that job market. Do NOT respond in English.`
       : '';
     if (resumeLanguage.language !== 'en') {
       console.log(`[FREE-KEYWORD-SCAN] Resume language: ${resumeLanguage.language} (${resumeLanguage.confidence}) — ${resumeLanguage.evidence[0] ?? ''}`);
@@ -3037,6 +3087,7 @@ ${resumeText.substring(0, 20000)}
             },
             body: JSON.stringify({
               model: modelId,
+              temperature: 0,
               messages: [
                 { role: "system", content: systemPrompt + roleNote },
                 { role: "user", content: userPrompt }
@@ -3086,7 +3137,18 @@ ${resumeText.substring(0, 20000)}
     const MAX_CONCURRENT_AI_SCANS = Number(Deno.env.get('MAX_CONCURRENT_AI_SCANS') ?? '40');
     let scanSlotId: string | null = null;
     let loadShedded = false;
-    try {
+    // THE FUNCTION-WIDE HOUR comes first (S11-019): a scan past it calls no
+    // model and takes no slot. Unlike the slot it fails CLOSED, as every spend
+    // gate does: a ceiling a counting error switches off is no ceiling. Our
+    // own heartbeat is not counted, so the probe never reads a full hour as
+    // an outage.
+    const ceiling = isHeartbeatProbe
+      ? null
+      : await functionCeiling(supabase, req, FUNCTION_NAME, SCAN_CEILING, { boardPass: body.boardPass });
+    if (ceiling) {
+      loadShedded = true;
+      console.log(`[FREE-KEYWORD-SCAN] FUNCTION CEILING: ${ceiling.code} (limit ${ceiling.limit}) — serving the rule-based report`);
+    } else try {
       const { data: slot, error: slotErr } = await supabase.rpc('acquire_scan_slot', { p_max: MAX_CONCURRENT_AI_SCANS, p_ttl_seconds: 180 });
       if (!slotErr && slot === null) loadShedded = true;
       else if (!slotErr && typeof slot === 'string') scanSlotId = slot;
@@ -3183,6 +3245,31 @@ ${resumeText.substring(0, 20000)}
         outputValid: false,
         metadata: { issues: validation.issues }
       });
+    }
+
+    // Model JSON is untrusted until it has a shape: keywords: [null] threw a
+    // TypeError in the keyword filter, before the schema layer below ever ran,
+    // and the page's fallback then spent a second daily slot (sweep S8-071).
+    // Arrays the code walks become arrays of objects (or strings) here; the
+    // full coercion below still decides what each entry may hold.
+    {
+      const objectArrays = ['keywords', 'redFlags', 'quickWins', 'weakPhrases', 'additionalRewrites',
+        'formatGradeDrivers', 'resumeTriggeredQuestions', 'weakestBullets'];
+      for (const k of objectArrays) {
+        if (analysis[k] === undefined || analysis[k] === null) continue;
+        analysis[k] = Array.isArray(analysis[k])
+          ? analysis[k].filter((x: unknown) => !!x && typeof x === 'object' && !Array.isArray(x))
+          : [];
+      }
+      for (const k of ['topSkipReasons', 'powerWords']) {
+        if (analysis[k] !== undefined && analysis[k] !== null && !Array.isArray(analysis[k])) analysis[k] = [];
+        if (Array.isArray(analysis[k])) analysis[k] = analysis[k].filter((x: unknown) => typeof x === 'string' || (!!x && typeof x === 'object'));
+      }
+      if (analysis.industry !== undefined && typeof analysis.industry !== 'string') analysis.industry = null;
+      for (const k of ['experienceLevel', 'sectionCheck', 'scoreBreakdown', 'industryBenchmark', 'sampleRewrite', 'nextBestAction']) {
+        const v = analysis[k];
+        if (v !== undefined && v !== null && (typeof v !== 'object' || Array.isArray(v))) analysis[k] = null;
+      }
     }
 
     // Normalize industry to valid value
@@ -3426,15 +3513,13 @@ ${resumeText.substring(0, 20000)}
     }));
     keywordsWithWeight.sort((a, b) => b._freq - a._freq);
 
-    // Free tier: show 3 keywords clearly, gate the rest behind blur
-    const FREE_KEYWORD_VISIBLE = 3;
-    const visibleKeywords = keywordsWithWeight.slice(0, FREE_KEYWORD_VISIBLE).map(({ _freq, ...k }) => k);
-    const gatedKeywords = keywordsWithWeight.slice(FREE_KEYWORD_VISIBLE, 9).map(({ _freq, ...k }) => ({
-      keyword: k.keyword,
-      category: k.category || 'industry_standard',
-      gated: true,
-    }));
-    const keywords = visibleKeywords;
+    // EVERY KEYWORD GAP IS IN THE REPORT (S11-058). The first three used to be
+    // returned and the rest put in a second, gated list, which wave 3 stopped
+    // rendering, so half of every report's gaps (often the posting's own
+    // requirements) vanished while the audit said the diagnosis was complete.
+    // The keywords card shows three and collapses the rest behind a button.
+    const KEYWORD_GAPS_MAX = 9;
+    const keywords = keywordsWithWeight.slice(0, KEYWORD_GAPS_MAX).map(({ _freq, ...k }) => k);
 
     const redFlags = (analysis.redFlags || []).slice(0, 3);
 
@@ -3487,53 +3572,11 @@ ${resumeText.substring(0, 20000)}
       })()
     );
 
-    // Send admin notification email for every free scan
-    if (!isOwnProbe) EdgeRuntime.waitUntil(
-      (async () => {
-        try {
-          const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-          if (!RESEND_API_KEY) {
-            console.log("[FREE-KEYWORD-SCAN] No RESEND_API_KEY, skipping admin notification");
-            return;
-          }
-          
-          const atsScore = analysis.atsScoreEstimate || 0;
-          const scoreEmoji = atsScore >= 80 ? '🟢' : atsScore >= 60 ? '🟡' : '🔴';
-          
-          const response = await fetch("https://api.resend.com/emails", {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${RESEND_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              from: "Resume Booster <onboarding@resend.dev>",
-              to: [ADMIN_EMAIL],
-              subject: `🔍 New Free Scan: ${analysis.industry || 'Unknown'} (ATS ${atsScore}) - ${country}`,
-              html: `
-                <h2>New Free Resume Scan</h2>
-                <ul>
-                  <li><strong>Country:</strong> ${country}</li>
-                  <li><strong>Industry:</strong> ${analysis.industry || 'Unknown'}</li>
-                  <li><strong>ATS Score:</strong> ${atsScore}/100</li>
-                  <li><strong>Experience Level:</strong> ${analysis.experienceLevel?.level || 'Unknown'}</li>
-                  <li><strong>IP Address:</strong> ${clientIp}</li>
-                  <li><strong>Time:</strong> ${new Date().toISOString()}</li>
-                </ul>
-              `,
-            }),
-          });
-          
-          if (!response.ok) {
-            console.error("[FREE-KEYWORD-SCAN] Admin notification failed:", await response.text());
-          } else {
-            console.log("[FREE-KEYWORD-SCAN] Admin notification sent");
-          }
-        } catch (err) {
-          console.error("[FREE-KEYWORD-SCAN] Admin notification error:", err);
-        }
-      })()
-    );
+    // NO PER-SCAN MAIL FROM HERE (S11-019). This used to mail the owner
+    // directly through Resend on every scan, load-shed and rule-based ones
+    // included, beside the notify-owner call below: a per-scan send any
+    // address pool could multiply against the quota paid deliveries share.
+    // Owner notes go through notify-owner, the counted door, only.
 
     // ── SCHEMA VALIDATION LAYER ─────────────────────────────────────────────
     // AI output goes almost straight into the response; one malformed field
@@ -3871,9 +3914,6 @@ ${resumeText.substring(0, 20000)}
       presentHighFrequency: compGap.presentHighFrequency,
       gapScore: compGap.gapScore,
     };
-
-    // Gated keywords — shown blurred in free tier (improvement #8)
-    responseData.gatedKeywords = gatedKeywords;
 
     // Detection quality score — drives UI confidence warning (improvement #7)
     responseData.detectionQualityScore = detectionQualityScore;
@@ -4274,10 +4314,24 @@ ${resumeText.substring(0, 20000)}
       if (pct < 70) {
         console.warn(`[FREE-KEYWORD-SCAN] Low report completeness: ${pct}% — missing: ${Object.entries(checks).filter(([, v]) => !v).map(([k]) => k).join(', ')}`);
       }
-      return { pct, missing: Object.entries(checks).filter(([, v]) => !v).map(([k]) => k) };
+      // No red flags, no missing keywords and no peer data are answers a
+      // strong résumé can earn, so they never make a model reply "thin".
+      const owed = Object.entries(checks).filter(([k]) => k !== 'redFlags' && k !== 'keywords' && k !== 'comparisons');
+      const ownPct = Math.round((owed.filter(([, v]) => v).length / owed.length) * 100);
+      return { pct, ownPct, missing: Object.entries(checks).filter(([, v]) => !v).map(([k]) => k) };
     })();
     responseData.reportCompleteness = reportCompleteness.pct;
-    responseData.partialResults = usedRuleBasedFallback;
+    // A model analysis that failed validation, or left most sections empty,
+    // is served like the rule-based report: marked partial, never cached
+    // (a week of a thin report), and the reserved credit goes back. It used
+    // to ship as complete with completeness 60 (sweep S8-067).
+    const thinAnalysis = !usedRuleBasedFallback && (!validation.valid || reportCompleteness.ownPct < 70);
+    if (thinAnalysis) console.warn(`[FREE-KEYWORD-SCAN] Thin model analysis served as partial (valid=${validation.valid}, completeness=${reportCompleteness.pct}%, owed=${reportCompleteness.ownPct}%)`);
+    const partialReport = usedRuleBasedFallback || thinAnalysis;
+    responseData.partialResults = partialReport;
+    // Why it is partial: the page says "our AI reviewer was unavailable" only
+    // when it was, never for a reply the model did write.
+    responseData.partialReason = usedRuleBasedFallback ? 'rule_based' : thinAnalysis ? 'thin' : undefined;
 
     // Parse-quality gate — bad extraction is the biggest silent accuracy
     // killer: a mangled PDF produces a confidently wrong report. Shared with
@@ -4289,7 +4343,7 @@ ${resumeText.substring(0, 20000)}
     // reserved credit goes back (finally, below) and no receipt is printed.
     // The balance is the same proven identity's: the account, plus the
     // purchases this browser presented.
-    if (creditHold && !usedRuleBasedFallback) {
+    if (creditHold && !partialReport) {
       responseData.creditUsed = true;
       const presented = await Promise.all(parseCreditSessions(body.creditSessions).map(sessionHash));
       responseData.creditsRemaining = await scanCreditBalance(supabase, { provenEmail, userId: authedUserId, sessionHashes: presented });
@@ -4367,8 +4421,13 @@ ${resumeText.substring(0, 20000)}
     // Diagnostic report metadata — the "specimen header": report ID (resume
     // hash prefix, stable across rescans of the same document), engine
     // version, timestamp, detection confidence, benchmark provenance.
+    // The id names THIS report: every input that keys the cache, plus the
+    // score it states. It used to hash the résumé alone, so one résumé's
+    // reports for different postings shared a mail cap, and a re-drawn score
+    // after the 7-day cache came back under the same id (sweep S8-069).
+    const reportId = await reportIdFor(reportCacheKey, analysis.atsScoreEstimate);
     responseData.reportMeta = {
-      reportId: resumeHash.slice(0, 12).toUpperCase(),
+      reportId,
       engineVersion: REPORT_ENGINE_VERSION,
       generatedAt: new Date().toISOString(),
       industry: finalIndustry,
@@ -4458,24 +4517,18 @@ ${resumeText.substring(0, 20000)}
 
     // "Why this score" audit trail — deterministic, derived from the same
     // sub-scores the report shows, so every point is accounted for.
-    responseData.scoreAudit = (() => {
-      const sb = (analysis.scoreBreakdown ?? {}) as { keywords?: number; format?: number; quantification?: number };
-      const clamp01 = (n: unknown) => typeof n === 'number' ? Math.max(0, Math.min(100, n)) : 50;
-      const kw = clamp01(sb.keywords), fmt = clamp01(sb.format), quant = clamp01(sb.quantification);
-      const total = analysis.atsScoreEstimate;
-      // Three weighted components + a residual bucket so items always sum to the score.
-      const kwPts = Math.round(kw * 0.35), fmtPts = Math.round(fmt * 0.30), quantPts = Math.round(quant * 0.25);
-      const residual = total - kwPts - fmtPts - quantPts;
-      const missingCount = ((responseData.keywords as unknown[] | undefined) || []).length;
-      const flagCount = sortedRedFlags.length;
-      const items = [
-        { label: 'Keyword coverage', earned: kwPts, possible: 35, detail: missingCount > 0 ? `${missingCount} expected ${benchmarkIndustry} keywords missing` : 'Strong keyword coverage for your industry' },
-        { label: 'Format & parseability', earned: fmtPts, possible: 30, detail: typeof analysis.formatIssue === 'string' && analysis.formatIssue ? analysis.formatIssue : 'No blocking format issues found' },
-        { label: 'Quantified impact', earned: quantPts, possible: 25, detail: `${bulletAnalysis.quantRate}% of your bullets carry a number — recruiters anchor on metrics` },
-        { label: 'Content signals', earned: Math.max(0, Math.min(10, residual)), possible: 10, detail: flagCount > 0 ? `${flagCount} red flag${flagCount === 1 ? '' : 's'} weighed against strengths` : 'Verbs, structure, and section depth' },
-      ];
-      return { total, items };
-    })();
+    responseData.scoreAudit = buildScoreAudit({
+      total: analysis.atsScoreEstimate,
+      breakdown: (responseData.scoreBreakdown ?? null) as { keywords?: unknown; format?: unknown; quantification?: unknown } | null,
+      details: {
+        keywords: ((responseData.keywords as unknown[] | undefined) || []).length > 0
+          ? `${((responseData.keywords as unknown[] | undefined) || []).length} expected ${benchmarkIndustry} keywords missing`
+          : 'Strong keyword coverage for your industry',
+        format: typeof analysis.formatIssue === 'string' && analysis.formatIssue ? analysis.formatIssue : 'No blocking format issues found',
+        quantification: `${bulletAnalysis.quantRate}% of your bullets carry a number — recruiters anchor on metrics`,
+        content: sortedRedFlags.length > 0 ? `${sortedRedFlags.length} red flag${sortedRedFlags.length === 1 ? '' : 's'} weighed against strengths` : 'Verbs, structure, and section depth',
+      },
+    });
 
     // Critical-field repair: an incomplete report gets missing essentials
     // synthesized from rule-based data instead of shipping thin.
@@ -4497,14 +4550,19 @@ ${resumeText.substring(0, 20000)}
       }
     }
 
-    // Log successful completion metric
+    // Log the completion. A partial report (the rule-based fallback, or a thin
+    // model reply) is not a valid AI output: it was logged outputValid true,
+    // so the metrics could not tell a scan the model wrote from one it did
+    // not (S11-028). The reason rides along.
     logScanMetric(metricCtx, 'completed', {
-      outputValid: true,
+      outputValid: !partialReport,
       responseScore: analysis.atsScoreEstimate,
-      metadata: { 
-        industry: analysis.industry, 
+      metadata: {
+        industry: analysis.industry,
         experienceLevel: analysis.experienceLevel?.level,
-        formatGrade: analysis.formatGrade
+        formatGrade: analysis.formatGrade,
+        partialReason: partialReport ? (responseData.partialReason ?? null) : null,
+        usedFallback: usedRuleBasedFallback,
       }
     });
     
@@ -4532,6 +4590,10 @@ ${resumeText.substring(0, 20000)}
       );
     }
     
+    // Every fixed choice and list the page draws holds a value it can draw,
+    // before the report is cached or sealed (S11-029).
+    normalizeScanReport(responseData);
+
     // Cache the finished report for identical rescans (full AI reports only —
     // fallback/partial reports would freeze a degraded experience for 7 days).
     if (!isOwnProbe && !usedRuleBasedFallback && !responseData.partialResults) {
@@ -4558,7 +4620,7 @@ ${resumeText.substring(0, 20000)}
     // THE ONE PLACE a reserved credit is kept: a full report about to be
     // returned. Every other exit refunds it in the finally, and anything that
     // throws from here on lands in the catch, which un-keeps it.
-    creditDelivered = !usedRuleBasedFallback;
+    creditDelivered = !partialReport;
     await attachScanMailSeal(responseData, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
     return new Response(
       JSON.stringify(responseData),

@@ -244,9 +244,13 @@ export function LayoffPartitionSection() {
     if (arm?.computedAt) parts.push(t("ghostIndex.layoffComputed", "computed {{computedAt}}", { computedAt: stamp(arm.computedAt) }));
     return `${parts.join("; ")}.`;
   };
+  // WHAT THE FIGURE IS (S8-096): public_date - event_date, and public_date is
+  // the state's own received/posted stamp (warn.ts visibleDate). When the
+  // consolidated feed got the notice is never measured, so the sentence names
+  // the state's stamp and says the rest is unmeasured.
   const lag = (arm: LayoffPartitionArm | null) =>
     arm && arm.warnLagP50Days !== null && (arm.warnLagN ?? 0) > 0 && arm.computedAt
-      ? t("ghostIndex.layoffLag", "State notices reach the consolidated feed a median {{p50}} days after the notice date (measured {{measuredOn}}).", {
+      ? t("ghostIndex.layoffLag", "State agencies stamp a notice a median {{p50}} days after its notice date (measured {{measuredOn}}); when it reaches us after that is not measured.", {
         p50: Math.round(arm.warnLagP50Days), measuredOn: stamp(arm.computedAt),
       })
       : null;

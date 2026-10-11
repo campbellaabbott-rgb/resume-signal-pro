@@ -8,9 +8,12 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { SUBSCRIPTIONS } from "@/config/products";
-import { AUTO_VENDORS, CLICK_VENDORS } from "@/config/ats-vendors";
+import { ATS_VENDORS } from "@/config/ats-vendors";
+import { PREPARED_ONLY_VENDORS, SENDABLE_ATS_VENDORS } from "@/config/sendable-vendors";
 import { useAgentSender } from "@/hooks/useAgentSender";
 import { checkoutContext } from "@/lib/track-transport";
+import { consentWasRequired, purchaseTerms } from "@/lib/purchase-terms";
+import { PurchaseTerms } from "@/components/PurchaseTerms";
 
 type AgentCheckoutAnswer = {
   url?: string;
@@ -42,7 +45,7 @@ type AgentCheckoutAnswer = {
  * bill beside the agent (to the billing portal).
  */
 export function AgentSubscriptionCard() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -50,13 +53,28 @@ export function AgentSubscriptionCard() {
   const { online } = useAgentSender();
   const price = SUBSCRIPTIONS.agent.priceUsd;
   const proPrice = SUBSCRIPTIONS.pro.priceUsd;
+  // Sending is claimed only on the sendable list; everything else is prepared
+  // for the person to send, and with the sender offline that is every system.
+  const preparedNames = (online ? PREPARED_ONLY_VENDORS : ATS_VENDORS).map((v) => v.label).join(", ");
 
   const toSignIn = () => navigate(`/auth?next=${encodeURIComponent(`${location.pathname}${location.search}`)}`);
 
+  // The portal's answer is shown whatever it is (S11-015): a refusal used to
+  // leave the button doing nothing at all.
   const openPortal = async () => {
-    const { data } = await supabase.functions.invoke("create-portal-session", { body: {} });
-    const url = (data as { url?: string } | null)?.url;
-    if (url) window.location.href = url;
+    const { data, error } = await supabase.functions.invoke("create-portal-session", { body: {} });
+    let answer = (data ?? {}) as { url?: string; error?: string };
+    if (error && !answer.url && !answer.error) {
+      try {
+        const ctx = (error as { context?: { json?: () => Promise<unknown> } }).context;
+        if (ctx?.json) answer = ((await ctx.json()) ?? {}) as typeof answer;
+      } catch { /* no body: the generic line below */ }
+    }
+    if (answer.url) {
+      window.location.href = answer.url;
+      return;
+    }
+    toast.error(answer.error || t("agentPlan.portalFailed"));
   };
 
   const subscribe = async () => {
@@ -67,8 +85,14 @@ export function AgentSubscriptionCard() {
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("create-agent-checkout", {
-        body: { ...checkoutContext() },
+        // The page's language: Stripe shows the trial and renewal terms in it.
+        body: { language: i18n.language, ...checkoutContext(), ...purchaseTerms() },
       });
+      if (await consentWasRequired(error, data)) {
+        setLoading(false);
+        toast.error(t("purchaseTerms.consentNeeded"));
+        return;
+      }
       const status = (error as { context?: { status?: number } } | null)?.context?.status;
       if (status === 401) {
         setLoading(false);
@@ -150,7 +174,7 @@ export function AgentSubscriptionCard() {
             <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
             <span>
               {t("agentPlan.perkAutoApply", "Applies for you automatically on {{names}}", {
-                names: AUTO_VENDORS.map((v) => v.label).join(", "),
+                names: SENDABLE_ATS_VENDORS.map((v) => v.label).join(", "),
               })}
             </span>
           </li>
@@ -159,7 +183,7 @@ export function AgentSubscriptionCard() {
           <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
           <span>
             {t("agentPlan.perkOneClick", "Applications filled in and ready to send on {{names}}", {
-              names: CLICK_VENDORS.map((v) => v.label).join(", "),
+              names: preparedNames,
             })}
           </span>
         </li>
@@ -185,6 +209,8 @@ export function AgentSubscriptionCard() {
         </li>
       </ul>
 
+      {/* The trial, the renewal and the Terms, above the button (item 11, 12). */}
+      <PurchaseTerms kind="subscription" plan="agent" className="mb-3 text-center" />
       <Button className="w-full gap-2" onClick={subscribe} disabled={loading}>
         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bot className="w-4 h-4" />}
         {t("agentPlan.cta", "Start the agent")}

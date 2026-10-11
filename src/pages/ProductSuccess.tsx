@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { productFeatures } from "@/lib/product-features";
+import { useReportEnumLabel } from "@/hooks/use-report-enum-label";
 import { 
   CheckCircle2, 
   Loader2, 
@@ -42,7 +44,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useConversionTracking } from "@/hooks/use-conversion-tracking";
-import { useFunnelTracking } from "@/hooks/use-funnel-tracking";
+import { reachedInThisTab, useFunnelTracking } from "@/hooks/use-funnel-tracking";
 import { clearReferralCode } from "@/hooks/use-affiliate-auth";
 import { getResumeFromSession, hasResumeInSession, getMultiColumnDetectedFromSession } from "@/hooks/use-session-resume";
 import { InterviewCoach } from "@/components/InterviewCoach";
@@ -54,9 +56,6 @@ import { ApplyAssistantResults, ApplyPackageData } from "@/components/ApplyAssis
 import { normalizeBuilderResume } from "@/types/resume-builder";
 import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
 import { AIGenerationProgress } from "@/components/AIGenerationProgress";
-import { useStreamingGeneration } from "@/hooks/use-streaming-generation";
-import { StreamingContentDisplay } from "@/components/StreamingContentDisplay";
-import { autoFixContent } from "@/lib/content-autofix";
 import { CREDITS_UPDATED_EVENT, fetchProvenCredits, rememberCreditSession } from "@/hooks/use-scan-credits";
 
 // Map product keys to icons
@@ -144,8 +143,41 @@ interface PremiumPackageData {
   jobDetails: { title: string; company: string };
 }
 
+/**
+ * THE PRODUCTS WHOSE SAVED COPY THIS PAGE RENDERS AS IT IS (sweep S8-009):
+ * verify-product-purchase is asked for it, and generates it from the résumé
+ * the checkout bound when nothing is saved yet. The tab's own résumé is only
+ * the fallback when the server holds none.
+ *
+ * THE PREMIUM PACKAGE AND THE COVER LETTER ARE AMONG THEM (S11-018, S11-054).
+ * They were streamed from the tab: the streamed copy ran neither the contact
+ * guard nor the figure check, and the webhook (or, after a page-first claim,
+ * the retry sweep) generated a second copy of every sale, so the buyer paid
+ * for two generations and kept two different documents. Now one deliverer
+ * makes each, with the non-stream generator that runs both checks, and this
+ * page renders the saved copy.
+ */
+export const SERVER_RENDERED: ReadonlySet<string> = new Set(['basicKeywordFix', 'atsDefense', 'careerSnapshot', 'graduateGamePlan', 'applyAssistant', 'premiumPackage', 'coverLetter']);
+/**
+ * The waits between asks while the server is still making the product
+ * (S11-140): up to five minutes, the window verify-product-purchase reports a
+ * generation in progress for (GENERATION_IN_PROGRESS_MS). The page used to
+ * stop after about a minute and then regenerate from the tab's résumé while
+ * the server was still generating. verify-product-purchase allows 30 calls an
+ * hour per address: these are 14 asks a load, so a load and a reload stay
+ * inside it, spaced out as the wait grows.
+ */
+export const VERIFY_POLL_DELAYS_MS: readonly number[] = [
+  5000, 10000, 15000, 20000, 25000, 30000, 30000, 30000, 30000, 30000, 30000, 30000, 15000,
+];
+
+/** The language the buyer reads, as i18next stored it. */
+const uiLanguage = (): string => { try { return localStorage.getItem('i18nextLng') || 'en'; } catch { return 'en'; } };
+
 export default function ProductSuccess() {
   const { t } = useTranslation();
+  // A fixed-choice value (the Keyword Fix importance) in the reader's language (S11-149).
+  const enumLabel = useReportEnumLabel();
   const [searchParams] = useSearchParams();
   const [isVerifying, setIsVerifying] = useState(true);
   const [verificationError, setVerificationError] = useState<string | null>(null);
@@ -169,6 +201,14 @@ export default function ProductSuccess() {
   const { toast } = useToast();
   const { trackPurchaseCompleted } = useConversionTracking();
   const { trackPurchaseCompleted: trackFunnelPurchase } = useFunnelTracking();
+  // A Pro member's included tool (a pro_ grant) took no money: it is not a
+  // sale at the catalogue price in either ledger (wave-2 handoff; Success.tsx
+  // already refused it for the full analysis).
+  const recordPurchase = useCallback((key: string | null, priceUsd: number | undefined, id: string | null) => {
+    if (!key || priceUsd === undefined || !id || id.startsWith('pro_')) return;
+    trackPurchaseCompleted(key, priceUsd, id);
+    trackFunnelPurchase(key, priceUsd, id);
+  }, [trackPurchaseCompleted, trackFunnelPurchase]);
   
   // Resume recovery state
   const [isRecoveryMode, setIsRecoveryMode] = useState(false);
@@ -185,11 +225,9 @@ export default function ProductSuccess() {
   const [isRecoveringByEmail, setIsRecoveringByEmail] = useState(false);
   const [showEmailRecovery, setShowEmailRecovery] = useState(false);
   
-  // Streaming state for real-time content generation
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [streamingContent, setStreamingContent] = useState("");
-  const [streamingError, setStreamingError] = useState<string | null>(null);
-  const [streamingComplete, setStreamingComplete] = useState(false);
+  // The product is still being made by the server after the page stopped
+  // asking (S11-140): it is mailed when ready, never regenerated from this tab.
+  const [stillBeingMade, setStillBeingMade] = useState(false);
   // Whether the purchase has an address the confirmation mail goes to.
   const [buyerEmailOnFile, setBuyerEmailOnFile] = useState(false);
 
@@ -218,6 +256,35 @@ export default function ProductSuccess() {
     }
     return null;
   }, []);
+
+  /**
+   * A saved copy, put where this product's view reads it. False when the
+   * product has no view for a saved copy (the coach and the simulator are
+   * widgets that fetch their own) or the copy is empty.
+   */
+  const applySavedContent = useCallback((content: any): boolean => {
+    if (!content || typeof content !== 'object') return false;
+    if (productKey === 'atsDefense') {
+      setAtsDefenseData(content);
+      // The ATS Parse Simulation runs on the résumé this tab scanned, with
+      // the layout flag its upload measured (S11-055): the saved report
+      // alone left the simulation and its PDF section out.
+      const tabResume = getResumeFromSession().resumeText;
+      if (tabResume) {
+        setAtsDefenseResumeText(tabResume);
+        setAtsDefenseMultiColumnDetected(getMultiColumnDetectedFromSession());
+      }
+    }
+    else if (productKey === 'careerSnapshot') setCareerSnapshotData(content);
+    else if (productKey === 'graduateGamePlan') setGraduateGamePlanData(content);
+    else if (productKey === 'applyAssistant') {
+      setApplyPackageData({ ...content, tailoredResume: normalizeBuilderResume(content.tailoredResume) });
+      setApplyCoverLetter(content.coverLetter || null);
+    } else if (productKey === 'basicKeywordFix' || productKey === 'coverLetter' || productKey === 'premiumPackage') {
+      setGeneratedContent(content);
+    } else return false;
+    return true;
+  }, [productKey]);
 
   // Regenerate content with provided resume text
   const regenerateContent = useCallback(async (resumeText: string, jobDescription?: string, targetRoles?: string[]) => {
@@ -294,7 +361,10 @@ export default function ProductSuccess() {
       // means a newly-gated endpoint cannot be forgotten in its own branch —
       // which is precisely how the non-stream generators went ungated while
       // their streaming twins were fixed. Harmless where it is not read.
-      let body: Record<string, unknown> = { resumeText, sessionId };
+      // The buyer's language, once, for every product (S8-074): only the
+      // Apply Assistant branch passed it, so a recovered report came back in
+      // English whatever the buyer read.
+      let body: Record<string, unknown> = { resumeText, sessionId, language: uiLanguage() };
 
       if (productKey === 'basicKeywordFix') {
         endpoint = 'generate-keyword-fix';
@@ -415,172 +485,6 @@ export default function ProductSuccess() {
     }
   }, [productKey, sessionId, toast]);
 
-  // Streaming generation for premium package and cover letter
-  // Ref to track if streaming has started to prevent double-execution
-  const streamingStartedRef = useRef(false);
-
-  const startStreamingGeneration = useCallback(async (resumeText: string, jobDescription?: string) => {
-    // Prevent double-execution
-    if (streamingStartedRef.current) {
-      console.log('[ProductSuccess] Streaming already started, skipping');
-      return;
-    }
-    streamingStartedRef.current = true;
-
-    if (!resumeText || resumeText.length < 50) {
-      toast({
-        title: "Resume too short",
-        description: "Please provide a complete resume with at least 50 characters.",
-        variant: "destructive"
-      });
-      streamingStartedRef.current = false;
-      return;
-    }
-
-    setIsStreaming(true);
-    setStreamingContent("");
-    setStreamingError(null);
-    setStreamingComplete(false);
-
-    try {
-      let endpoint = '';
-      // sessionId proves the purchase to the paid streaming endpoints (they
-      // verify it against used_stripe_sessions). Always present on the success
-      // page; the verify call above has already claimed it by this point.
-      const body: Record<string, unknown> = { resumeText, sessionId };
-
-      if (productKey === 'coverLetter') {
-        endpoint = 'generate-cover-letter-stream';
-        body.jobTitle = 'Target Position';
-        body.tone = 'professional';
-        if (jobDescription) body.jobDescription = jobDescription;
-      } else if (productKey === 'premiumPackage') {
-        endpoint = 'generate-premium-package-stream';
-        body.jobTitle = 'Target Position';
-        if (jobDescription) body.jobDescription = jobDescription;
-      }
-
-      if (!endpoint) {
-        // Fall back to non-streaming for unsupported products
-        streamingStartedRef.current = false;
-        await regenerateContent(resumeText, jobDescription);
-        return;
-      }
-
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      
-      console.log(`[ProductSuccess] Starting streaming generation via ${endpoint}`);
-      
-      const response = await fetch(`${supabaseUrl}/functions/v1/${endpoint}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseKey}`,
-        },
-        body: JSON.stringify(body),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(errorData.error || `HTTP ${response.status}`);
-      }
-
-      const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error('No response body');
-      }
-
-      const decoder = new TextDecoder();
-      let fullContent = '';
-      let buffer = '';
-      // THE SERVER'S VERDICT IS READ, NOT SWALLOWED (platform sweep L3-06).
-      // The error event used to be thrown INSIDE the try that guarded
-      // JSON.parse, whose catch ("Ignore JSON parse errors") ate it, so a
-      // failed or cut-off Premium Package or Cover Letter ran on to "Your
-      // Content Is Ready!" and was tracked as a completed purchase. Parsing
-      // has its own try now; the events are handled outside it, and the
-      // content is complete only when the server says so.
-      let streamError: string | null = null;
-      let sawComplete = false;
-
-      reading: while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          const jsonStr = line.slice(6).trim();
-          if (!jsonStr) continue;
-
-          let event: { type?: string; content?: string; message?: string } | null = null;
-          try {
-            event = JSON.parse(jsonStr);
-          } catch {
-            // A partial or non-JSON line carries nothing to act on.
-            continue;
-          }
-
-          if (event?.type === 'content' && event.content) {
-            fullContent += event.content;
-            setStreamingContent(fullContent);
-          } else if (event?.type === 'complete' || event?.type === 'done') {
-            sawComplete = true;
-          } else if (event?.type === 'error') {
-            streamError = event.message || 'Generation failed on the server';
-            try { await reader.cancel(); } catch { /* already closed */ }
-            break reading;
-          }
-        }
-      }
-
-      if (streamError) throw new Error(streamError);
-      if (!sawComplete) {
-        // The stream ended without the server's 'complete': the connection
-        // dropped or the generator stopped mid-way. What arrived stays on the
-        // screen, but it is not called finished and not counted as delivered.
-        throw new Error('Generation was interrupted before it finished. Your purchase is safe — press regenerate to try again.');
-      }
-
-      // Apply auto-fix to the complete content before marking as complete
-      if (fullContent) {
-        const originalResume = resumeText || undefined;
-        const { fixed, corrections } = autoFixContent(fullContent, originalResume);
-        if (corrections.length > 0) {
-          console.log(`[ProductSuccess] Applied ${corrections.length} auto-fixes to streamed content`);
-          setStreamingContent(fixed);
-        }
-      }
-
-      setStreamingComplete(true);
-      setIsStreaming(false);
-      streamingStartedRef.current = false; // Allow re-generation after successful stream
-
-      // Track success
-      if (productKey && product) {
-        trackPurchaseCompleted(productKey, product.priceUsd, sessionId);
-        trackFunnelPurchase(productKey, product.priceUsd, sessionId || undefined);
-        clearReferralCode();
-      }
-
-    } catch (error) {
-      console.error('[ProductSuccess] Streaming error:', error);
-      setStreamingError(error instanceof Error ? error.message : 'Unknown error');
-      setIsStreaming(false);
-      streamingStartedRef.current = false; // Allow retry on error
-      toast({
-        title: "Generation Error",
-        description: error instanceof Error ? error.message : 'Something went wrong',
-        variant: "destructive"
-      });
-    }
-  }, [productKey, product, sessionId, toast, regenerateContent, trackPurchaseCompleted, trackFunnelPurchase]);
-
   // Handle file upload for recovery
   const handleRecoveryFileUpload = useCallback(async (file: File) => {
     setRecoveryFile(file);
@@ -638,6 +542,46 @@ export default function ProductSuccess() {
     }
   }, [toast]);
 
+  // THE SAVED COPY OF A PURCHASE, PUT ON THE PAGE. recover-purchase answers
+  // with every row saved under a reference; the one for this page's product
+  // is shown. False when there is none (the caller decides what follows).
+  // interviewCoach/careerPathSimulator and the scan products have no stored
+  // blob to restore: they are not in the map.
+  const applyRecoveredPurchase = (purchases: Array<{ productType?: string; generatedContent?: unknown }> | undefined): boolean => {
+    const productTypeMap: Record<string, string> = {
+      basicKeywordFix: 'basic_keyword_fix',
+      coverLetter: 'cover_letter',
+      premiumPackage: 'premium_package',
+      atsDefense: 'ats_defense',
+      careerSnapshot: 'career_snapshot',
+      graduateGamePlan: 'graduate_gameplan',
+      applyAssistant: 'apply_assistant'
+    };
+    const targetType = productTypeMap[productKey || ''];
+    const content = targetType
+      ? (purchases ?? []).find((p) => p?.productType === targetType && p?.generatedContent)?.generatedContent as any
+      : null;
+    if (!content) return false;
+    // The same setters verify-product-purchase's copy goes through.
+    if (!applySavedContent(content)) setGeneratedContent(content);
+    return true;
+  };
+
+  // OPENED FROM THE PURCHASE EMAIL, ON ANY DEVICE (commercial-readiness
+  // 2026-10-08, item 3). The mail's button carries the session; when the
+  // product was already made and saved under it, that copy is shown, not an
+  // upload form on a device that never held the resume, and nothing is made
+  // twice. Best-effort: a failed lookup falls through to what the page did.
+  const showSavedPurchase = async (reference: string): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('recover-purchase', { body: { sessionId: reference } });
+      if (error || !data?.found) return false;
+      return applyRecoveredPurchase(data.purchases);
+    } catch {
+      return false;
+    }
+  };
+
   // Ref to track if verification has run to prevent double-execution
   const verificationStartedRef = useRef(false);
 
@@ -656,17 +600,35 @@ export default function ProductSuccess() {
 
       verificationStartedRef.current = true;
 
+      // An owner re-delivery is not a Stripe session, so verify-product-
+      // purchase cannot read it: its saved copy is the purchase.
+      if (sessionId.startsWith('manual_regen_')) {
+        if (!(await showSavedPurchase(sessionId))) setIsRecoveryMode(true);
+        setIsVerifying(false);
+        return;
+      }
+
       try {
-        // For premium package and cover letter, use streaming generation for real-time UX
-        const useStreaming = productKey === 'premiumPackage' || productKey === 'coverLetter';
-        
-        // Verify purchase first (don't generate content if we'll stream)
-        const { data, error } = await supabase.functions.invoke('verify-product-purchase', {
-          body: { 
-            sessionId, 
-            generateContent: !useStreaming && (productKey === 'basicKeywordFix')
-          }
-        });
+        // The saved copy, or one made from the résumé the checkout bound
+        // (S8-009). While the webhook is still making it the answer is
+        // inProgress, and the page asks again rather than making it twice.
+        let data: Record<string, any> | null = null;
+        let error: { message: string } | null = null;
+        for (let tries = 0; ; tries++) {
+          const answer = await supabase.functions.invoke('verify-product-purchase', {
+            body: { sessionId, generateContent: SERVER_RENDERED.has(productKey ?? '') }
+          });
+          // A later ask refused (its hourly budget, a blip) after the purchase
+          // was confirmed in progress: keep that answer and take the same path
+          // as when the asks run out, never "could not verify" for a paid one.
+          if (answer.error && data?.inProgress) break;
+          data = answer.data as Record<string, any> | null;
+          error = answer.error as { message: string } | null;
+          // Only a product shown from the saved copy waits for it: the Coach and
+          // the Career Path widgets make their own (review of S11-054).
+          if (error || !data?.inProgress || !SERVER_RENDERED.has(productKey ?? '') || tries >= VERIFY_POLL_DELAYS_MS.length) break;
+          await new Promise((r) => setTimeout(r, VERIFY_POLL_DELAYS_MS[tries]));
+        }
 
         if (error) {
           console.error('Verification error:', error);
@@ -675,7 +637,32 @@ export default function ProductSuccess() {
           return;
         }
         setBuyerEmailOnFile(Boolean(data?.customerEmail));
-        
+        // The roles an ATS Defense buyer named at checkout (S11-074): the
+        // recovery form starts from them, and a fallback generation sends them.
+        const boughtRoles: string[] = Array.isArray(data?.targetRoles)
+          ? (data!.targetRoles as unknown[]).filter((r): r is string => typeof r === 'string' && r.trim().length > 0).slice(0, 3)
+          : [];
+        if (boughtRoles.length) setRecoveryTargetRoles(boughtRoles);
+
+        // STILL BEING MADE AFTER FIVE MINUTES OF ASKING (S11-140): the server
+        // is generating it and mails it when it is ready. Nothing is made
+        // again from this tab's résumé while that generation runs.
+        // A RÉSUMÉ WAS BOUND AND THE SERVER COULD NOT MAKE IT YET (review of
+        // S11-054): the delivery is left generation_failed and the retry sweep
+        // makes it from that résumé, saves it and mails it. A copy made here
+        // from this tab's résumé would be a second generation and a second,
+        // different document. Said the same way as one still being made.
+        const sweepMakesIt = !data?.generatedContent && data?.hasResumeData === true && SERVER_RENDERED.has(productKey ?? '');
+        if (SERVER_RENDERED.has(productKey ?? '') && ((data?.inProgress && !data?.generatedContent) || sweepMakesIt)) {
+          setStillBeingMade(true);
+          if (productKey && product && (reachedInThisTab('checkout_started') || data.isFirstUse !== false)) {
+            recordPurchase(productKey, product.priceUsd, sessionId);
+            clearReferralCode();
+          }
+          setIsVerifying(false);
+          return;
+        }
+
         // SCAN CREDITS: CONFIRMED WHOEVER CREDITED THEM (register L3-05). The
         // webhook almost always claims a scan-pack purchase first, and the
         // verifier then answers with no generated content, so the
@@ -700,37 +687,58 @@ export default function ProductSuccess() {
           window.dispatchEvent(new CustomEvent(CREDITS_UPDATED_EVENT));
         }
 
-        // If we already have generated content from the verification, use it
-        if (data?.generatedContent) {
-          setGeneratedContent(data.generatedContent);
+        // ALREADY MADE AND SAVED, and verify-product-purchase answered
+        // without it (a product it does not render, or a reference it cannot
+        // read): recover-purchase's saved copy, not a second generation.
+        if (!data?.generatedContent && productKey !== 'scanPack' && await showSavedPurchase(sessionId)) {
+          // A sale only in the tab that started this checkout (the webhook
+          // finished first). The purchase email opened later, here or on
+          // another device, is a revisit: the trackers dedupe per tab and per
+          // visitor, never per session. A Pro grant is not a sale (recordPurchase).
+          if (productKey && product && reachedInThisTab('checkout_started')) {
+            recordPurchase(productKey, product.priceUsd, sessionId);
+          }
+          setIsVerifying(false);
+          return;
+        }
 
-          // Track purchase completion
+        // The server's copy, rendered into the product's own view (S8-009).
+        // verify-product-purchase now answers the saved copy whatever the page
+        // asked, so a revisit from the purchase email lands here too: it is a
+        // sale only in the tab that started the checkout, or when this answer
+        // was the purchase's first use (the email-ops rule above, wave 3
+        // integration).
+        if (productKey !== 'scanPack' && data?.generatedContent && applySavedContent(data.generatedContent)) {
+          if (productKey && product && (reachedInThisTab('checkout_started') || data.isFirstUse !== false)) {
+            recordPurchase(productKey, product.priceUsd, sessionId);
+            clearReferralCode();
+          }
+          setIsVerifying(false);
+          return;
+        }
+        if (productKey === 'scanPack' && data?.generatedContent) {
+          setGeneratedContent(data.generatedContent);
           if (productKey && product) {
-            trackPurchaseCompleted(productKey, product.priceUsd, sessionId);
-            trackFunnelPurchase(productKey, product.priceUsd, sessionId || undefined);
+            recordPurchase(productKey, product.priceUsd, sessionId);
             clearReferralCode();
           }
           setIsVerifying(false);
           return;
         }
         
-        // For streaming products, get resume from session and start streaming
-        if (useStreaming) {
-          console.log('[ProductSuccess] Starting streaming generation for', productKey);
+        // Nothing saved and nothing bound to make it from: the premium package
+        // and the cover letter are made from this tab's résumé by the same
+        // checked, non-stream generators (S11-018), or the form asks for it.
+        if ((productKey === 'premiumPackage' || productKey === 'coverLetter') && !data?.generatedContent) {
           const sessionData = getResumeFromSession();
-          
           if (sessionData.resumeText) {
-            setIsVerifying(false); // Stop showing verifying, will show streaming UI
-            startStreamingGeneration(sessionData.resumeText, sessionData.jobDescriptionText);
+            const success = await regenerateContent(sessionData.resumeText, sessionData.jobDescriptionText || undefined);
+            if (!success) setIsRecoveryMode(true);
           } else {
-            // No resume in session, try recovery
-            console.log('[ProductSuccess] No resume in session, entering recovery mode');
             setIsRecoveryMode(true);
-            setIsVerifying(false);
           }
-          return;
         }
-        
+
         // For basicKeywordFix without generated content, try recovery
         if (productKey === 'basicKeywordFix' && !data?.generatedContent) {
           console.log('[ProductSuccess] No content generated for keyword fix, attempting recovery');
@@ -754,7 +762,7 @@ export default function ProductSuccess() {
               body: {
                 sessionId,
                 resumeText: sessionData.resumeText,
-                targetRoles: [],
+                targetRoles: boughtRoles,
                 language: (() => { try { return localStorage.getItem('i18nextLng') || 'en'; } catch { return 'en'; } })()
               }
             });
@@ -914,9 +922,8 @@ export default function ProductSuccess() {
           }
         }
         
-        if (productKey && product && !useStreaming) {
-          trackPurchaseCompleted(productKey, product.priceUsd, sessionId);
-          trackFunnelPurchase(productKey, product.priceUsd, sessionId || undefined);
+        if (productKey && product) {
+          recordPurchase(productKey, product.priceUsd, sessionId);
           clearReferralCode();
         }
       } catch (err) {
@@ -954,65 +961,24 @@ export default function ProductSuccess() {
     productKey === 'careerPathSimulator'
   );
 
-  // A failed or interrupted stream is retried from the résumé this browser
-  // holds; without one, the recovery form asks for it. Nothing here is a new
-  // purchase: the session's claim already proves this one.
-  const retryStreaming = () => {
-    const sessionData = getResumeFromSession();
-    if (sessionData.resumeText) {
-      void startStreamingGeneration(sessionData.resumeText, sessionData.jobDescriptionText);
-    } else {
-      setStreamingError(null);
-      setStreamingContent("");
-      setIsRecoveryMode(true);
-    }
-  };
-
-  // Show streaming UI for real-time generation - keep showing even after
-  // complete, and after a failure, which must stay on screen with its retry.
-  if (isStreaming || streamingContent || streamingError) {
+  // STILL BEING MADE (S11-140). The server is generating this purchase and
+  // mails it when it is ready; the page says so instead of making a second
+  // copy from this tab's résumé.
+  if (stillBeingMade) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <main className="pt-16 pb-20">
-          <div className="container max-w-4xl">
-            {/* Streaming Header */}
-            <div className="text-center mb-8">
-              <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/30 mb-6">
-                <Brain className={cn("w-10 h-10 text-primary", isStreaming && "animate-pulse")} />
+        <main className="pt-32 pb-20">
+          <div className="container max-w-2xl text-center" data-testid="still-being-made">
+            <div className="space-y-4">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 border border-primary/30">
+                <Clock className="w-8 h-8 text-primary" />
               </div>
-              <Badge className="mb-4 bg-primary/10 text-primary border-primary/30">
-                <Sparkles className="w-3 h-3 mr-1" />
-                {streamingComplete ? 'GPT-5 Generation Complete' : 'GPT-5 Generating Live'}
-              </Badge>
-              <h1 className="text-3xl font-bold mb-2">
-                {streamingComplete ? 'Your Content Is Ready!' : 'Watch Your Content Generate'}
-              </h1>
+              <h1 className="text-2xl font-bold">{t('productSuccess.stillBeingMade.title', { product: productDisplayName || t('productSuccess.yourContent') })}</h1>
               <p className="text-muted-foreground">
-                {streamingComplete 
-                  ? `Your ${product?.name || 'content'} has been generated successfully`
-                  : `Your ${product?.name || 'content'} is being created in real-time`
-                }
+                {buyerEmailOnFile ? t('productSuccess.stillBeingMade.emailed') : t('productSuccess.stillBeingMade.refresh')}
               </p>
             </div>
-
-            {/* Streaming Content Display */}
-            <StreamingContentDisplay
-              content={streamingContent}
-              isStreaming={isStreaming}
-              isComplete={streamingComplete}
-              error={streamingError}
-              title={streamingComplete ? `Your ${product?.name || 'content'}` : `Generating ${product?.name || 'content'}...`}
-              subtitle={streamingComplete ? "Copy or download your content below" : "Watch your personalized content appear word by word"}
-            />
-            {streamingError && !isStreaming && (
-              <div className="mt-6 text-center">
-                <Button onClick={retryStreaming} className="gap-2">
-                  <RefreshCw className="w-4 h-4" />
-                  Regenerate — no extra charge
-                </Button>
-              </div>
-            )}
           </div>
         </main>
         <Footer />
@@ -1214,7 +1180,7 @@ export default function ProductSuccess() {
                             <div className="flex items-center gap-2 mb-1">
                               <span className="font-semibold">{kw.keyword}</span>
                               <Badge variant={kw.importance === 'critical' ? 'destructive' : kw.importance === 'high' ? 'default' : 'secondary'} className="text-xs">
-                                {kw.importance}
+                                {enumLabel(kw.importance)}
                               </Badge>
                               <Badge variant="outline" className="text-xs">{kw.category}</Badge>
                             </div>
@@ -1764,43 +1730,10 @@ export default function ProductSuccess() {
                                 if (error) throw error;
                                 
                                 if (data?.found && data?.purchases?.length > 0) {
-                                  // Find most recent purchase matching this product type.
-                                  // Note: scanPack/careerBundle aren't here — those are recovered
-                                  // via the email lookup in the "My Credits" widget instead, since
-                                  // there's no generatedContent blob to restore for credits. interviewCoach/
-                                  // careerPathSimulator aren't here either — they're self-contained widgets
-                                  // that only need resumeText (recovered via the upload form above), not a
-                                  // pre-generated content blob.
-                                  const productTypeMap: Record<string, string> = {
-                                    basicKeywordFix: 'basic_keyword_fix',
-                                    coverLetter: 'cover_letter',
-                                    premiumPackage: 'premium_package',
-                                    atsDefense: 'ats_defense',
-                                    careerSnapshot: 'career_snapshot',
-                                    graduateGamePlan: 'graduate_gameplan',
-                                    applyAssistant: 'apply_assistant'
-                                  };
-                                  const targetType = productTypeMap[productKey || ''];
-                                  const matchingPurchase = data.purchases.find(
-                                    (p: any) => p.productType === targetType
-                                  );
-
-                                  if (matchingPurchase?.generatedContent) {
-                                    if (productKey === 'atsDefense') {
-                                      setAtsDefenseData(matchingPurchase.generatedContent);
-                                    } else if (productKey === 'careerSnapshot') {
-                                      setCareerSnapshotData(matchingPurchase.generatedContent);
-                                    } else if (productKey === 'graduateGamePlan') {
-                                      setGraduateGamePlanData(matchingPurchase.generatedContent);
-                                    } else if (productKey === 'applyAssistant') {
-                                      setApplyPackageData({
-                                        ...matchingPurchase.generatedContent,
-                                        tailoredResume: normalizeBuilderResume(matchingPurchase.generatedContent.tailoredResume),
-                                      });
-                                      setApplyCoverLetter(matchingPurchase.generatedContent.coverLetter || null);
-                                    } else {
-                                      setGeneratedContent(matchingPurchase.generatedContent);
-                                    }
+                                  // The saved copy for this page's product
+                                  // (scan credits are recovered from the
+                                  // "My Credits" widget instead).
+                                  if (applyRecoveredPurchase(data.purchases)) {
                                     setShowEmailRecovery(false);
                                     toast({
                                       title: t('productSuccess.recovery.contentRecoveredTitle'),
@@ -2042,14 +1975,11 @@ export default function ProductSuccess() {
                         size="lg"
                         className="w-full gap-2"
                         disabled={
-                          !recoveryResumeText || recoveryResumeText.length < 50 || isRegenerating || isStreaming ||
+                          !recoveryResumeText || recoveryResumeText.length < 50 || isRegenerating ||
                           (isApplyAssistant && recoveryJobDescription.trim().length < 30)
                         }
                         onClick={() => {
-                          // Use streaming for premium package and cover letter
-                          if (isPremiumPackage || isCoverLetter) {
-                            startStreamingGeneration(recoveryResumeText, recoveryJobDescription || undefined);
-                          } else if (isInterviewCoach || isCareerPathSimulator) {
+                          if (isInterviewCoach || isCareerPathSimulator) {
                             // These are self-contained widgets that generate their own
                             // content on demand — just hand them the resume text.
                             setCoachResumeText(recoveryResumeText);
@@ -2062,7 +1992,7 @@ export default function ProductSuccess() {
                           }
                         }}
                       >
-                        {isRegenerating || isStreaming ? (
+                        {isRegenerating ? (
                           <>
                             <Loader2 className="w-4 h-4 animate-spin" />
                             {t('productSuccess.recovery.generating')}
@@ -2189,7 +2119,7 @@ export default function ProductSuccess() {
             </div>
 
             <div className="grid sm:grid-cols-2 gap-3">
-              {product.features.map((feature, index) => (
+              {productFeatures(t, productKey ?? "", product.features).map((feature, index) => (
                 <div 
                   key={index}
                   className="flex items-center gap-3 p-3 rounded-lg bg-card/50 border border-border/50"

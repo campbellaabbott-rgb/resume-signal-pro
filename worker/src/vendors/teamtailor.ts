@@ -231,7 +231,8 @@ export const teamtailor: VendorAdapter = {
     // NULL, not []. The attribute is set on 3 of 78 controls, so counting empty
     // required fields would answer "nothing missing" on a form full of required
     // questions. A guard that always passes is worse than no guard: the caller
-    // counts it as protection. The question matcher covers this properly, using
+    // counts it as protection. The enumerator reads requiredness from the label
+    // (enumerate-dom.ts, sweep S8-046) and the matcher blocks on it, using
     // the labels, which is where this vendor states requiredness.
     return null;
   },

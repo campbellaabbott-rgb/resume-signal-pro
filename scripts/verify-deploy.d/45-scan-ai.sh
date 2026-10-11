@@ -32,11 +32,12 @@ for FN in free-keyword-scan free-keyword-scan-stream scan-credits parse-pdf pars
   W1_H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$FN" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r')
   W1_S=$(printf '%s' "$W1_H" | head -1 | awk '{print $2}')
   W1_V=$(printf '%s' "$W1_H" | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//')
-  case "$W1_V" in
-    "$FN".2026-10-0[5-9].*|"$FN".2026-1[1-2]-*) echo "PASS  $FN preflight x-fn-build = $W1_V";;
-    "") echo "FAIL  $FN preflight (HTTP $W1_S) carries no x-fn-build: not deployed (scan-credits is new: 404 until published)";;
-    *) echo "FAIL  $FN preflight x-fn-build = $W1_V (want $FN.2026-10-05.N or later): the previous bundle is still serving";;
-  esac
+  # build_ge, not a date pattern: the pattern accepted 2026-10-05..09 and
+  # November-December only, so a rebuild dated 2026-10-10..31 or in 2027 read
+  # "previous bundle still serving" (S8-126).
+  if [ -z "$W1_V" ]; then echo "FAIL  $FN preflight (HTTP $W1_S) carries no x-fn-build: not deployed (scan-credits is new: 404 until published)"
+  elif build_ge "$FN" "$W1_V" 2026-10-05 1; then echo "PASS  $FN preflight x-fn-build = $W1_V ($FN.2026-10-05.1 or later)"
+  else echo "FAIL  $FN preflight x-fn-build = $W1_V (want $FN.2026-10-05.1 or later): the previous bundle is still serving"; fi
 done
 
 # scan-credits: a caller with no session and no account proves nothing and is
@@ -50,8 +51,8 @@ esac
 # The credit reader and the new readers: pure reads, so a refusal probe is
 # safe even if a revoke had not landed. 42501 = closed by name.
 probe get_scan_credits '{"p_email":"verify-deploy-probe@example.invalid"}'
-probe scan_credit_balance '{"p_email":"verify-deploy-probe@example.invalid","p_session_hashes":null,"p_user_id":null}'
-probe scan_credit_grants_bought '{"p_session_hashes":null}'
+probe scan_credit_balance '{"p_email":"verify-deploy-probe@example.invalid","p_session_hashes":[],"p_user_id":"00000000-0000-4000-8000-000000000000"}'
+probe scan_credit_grants_bought '{"p_session_hashes":[]}'
 probe scan_credit_account_grants '{"p_user_id":"00000000-0000-4000-8000-000000000000"}'
 echo "INFO  use_scan_credit, add_scan_credits, scan_credit_redeem/refund/grant_record/grant_claim and store_temp_resume write, so they are not called here; section 40's census and src/test/a-scan-credit-is-spent-only-by-whoever-proved-the-purchase.test.ts / a-stored-resume-can-be-read-again-and-the-store-has-a-ceiling.test.ts prove them"
 

@@ -73,13 +73,15 @@ import { useBoardTotals, roundedFloor } from "@/hooks/use-board-totals";
 import {
   MCP_TOOLS, MCP_HOSTS, MCP_PAGE_HOSTS, MCP_PAGE_HOST_IDS, MCP_OTHER_AGENTS_LINE, MCP_COPY_THE_PROMPT, MCP_READ_TOOLS, MCP_PAID_TOOLS,
   MCP_APPLY_TOOLS, MCP_ANON_TOOLS, MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS, MCP_FREE_KEY_DAILY_QUOTA, MCP_PROMPTS, MCP_RESOURCES,
-  MCP_SERVER_ADDRESS_NOTE, MCP_ADDRESS_GLOSS, MCP_NEEDS_ACCOUNT_LINE, MCP_INSTALL_REPO_URL, MCP_TEST_QUERY, MCP_TROUBLESHOOTING,
+  MCP_SERVER_ADDRESS_NOTE, MCP_ADDRESS_GLOSS, MCP_NEEDS_ACCOUNT_LINE, MCP_WITHHELD_NOTE, MCP_INSTALL_REPO_URL, MCP_TEST_QUERY, MCP_TROUBLESHOOTING,
   MCP_SIGN_IN_META_KEY, troubleRowsFor, stepSegments, hostTakesKey, curlInitialize, SIGN_IN_UNKNOWN, andList,
   type McpHost, type McpHostId, type McpStep, type McpMoreHost, type SignInFact, type TroubleRow,
 } from "@/config/mcp-tools";
 import { MCP_URL, runServerTest, describeTest, readSignInFromServer } from "@/lib/mcp-test";
 import { rememberedHostChoice, rememberHostName } from "@/lib/agent-handoff";
 import { postTrackEvent, getVisitorId, checkoutContext } from "@/lib/track-transport";
+import { consentWasRequired, purchaseTerms } from "@/lib/purchase-terms";
+import { PurchaseTerms } from "@/components/PurchaseTerms";
 import { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "@/config/sendable-vendors";
 import { PASS, SUBSCRIPTIONS } from "@/config/products";
 import { FREE_KEY_RATE_PER_MIN } from "@/config/free-key-limits";
@@ -172,7 +174,11 @@ export function usePassStatus(sessionId?: string | null) {
  * browser is on its way to Stripe, or to a generic failure line.
  */
 export async function startPassCheckout(): Promise<string | null> {
-  const { data, error } = await supabase.functions.invoke("create-pass-checkout", { body: { ...checkoutContext() } });
+  const { data, error } = await supabase.functions.invoke("create-pass-checkout", { body: { ...checkoutContext(), ...purchaseTerms() } });
+  // A refusal for the EU/UK box is the server saying its switch is on: the
+  // box shows beside the button from now on, whenever this page was loaded
+  // (review of S11-142). The refusal's own sentence is still what is shown.
+  await consentWasRequired(error, data);
   if (error) {
     const ctx = (error as { context?: { json?: () => Promise<unknown> } }).context;
     let message: string | null = null;
@@ -561,7 +567,12 @@ export function MintAgentKey({ onMinted, next }: { onMinted?: (key: string) => v
 /**
  * THE PASS CARD. Sign-in sits before the buy button, always: the pass binds
  * to user_id, never to an email or a key, and the sign-in link carries
- * ?next=/agents?buy=pass so the buyer lands back here with the button armed.
+ * ?next=/agents?buy=pass so the buyer lands back here at the Buy button, with
+ * its Terms line beside it. Coming back starts nothing: the checkout opens
+ * only on a press of that button, so the press records the Terms version
+ * (and, with the EU/UK switch on, the box). It used to open by itself on
+ * return, and the buyer reached Stripe without the line ever on screen
+ * (review of the integration, 2026-10-10).
  * Signed in, the Buy control appears only once agent-pass-status has
  * answered (so nothing here can 404 ahead of the function deploy), and it
  * reads the answer: an open pass links to /agents/pass instead of selling a
@@ -586,7 +597,7 @@ export function PassCard() {
   const { status } = usePassStatus();
   const [busy, setBusy] = useState(false);
   const [refusal, setRefusal] = useState<string | null>(null);
-  const autoFired = useRef(false);
+  const buyButton = useRef<HTMLButtonElement>(null);
 
   const buy = useCallback(async () => {
     setBusy(true); setRefusal(null);
@@ -596,16 +607,15 @@ export function PassCard() {
     } finally { setBusy(false); }
   }, [t]);
 
-  // The buyer who clicked Buy signed out and came back through /auth: fire
-  // the checkout once, and only once the status endpoint has answered that
-  // there is nothing open on the account.
+  // The buyer came back from /auth meaning to buy: once the status endpoint
+  // has answered, bring the Buy button (and the Terms line above it) into
+  // view and focus it. Nothing is bought until it is pressed.
   useEffect(() => {
-    if (!wantsBuy || !session || !status || autoFired.current) return;
-    if (status.pass.state === "unactivated" || status.pass.state === "live") return;
-    autoFired.current = true;
+    if (!wantsBuy || !session || !status) return;
     const p = new URLSearchParams(params); p.delete("buy"); setParams(p, { replace: true });
-    void buy();
-  }, [wantsBuy, session, status, params, setParams, buy]);
+    const el = buyButton.current;
+    if (el) { el.scrollIntoView?.({ block: "center" }); el.focus(); }
+  }, [wantsBuy, session, status, params, setParams]);
 
   const open = status && (status.pass.state === "unactivated" || status.pass.state === "live");
   const host = hostName ? MCP_PAGE_HOSTS.find((h) => h.name === hostName) : undefined;
@@ -618,6 +628,9 @@ export function PassCard() {
       <h3 className="font-semibold mb-2 flex items-center gap-2"><Ticket className="w-4 h-4 text-primary" /> {t("agentPass.cardTitle", "A pass for your agent")}</h3>
       <p className="text-lg font-medium mb-2">
         {t("agentPass.cardBody", "{{passHours}} hours with your agent, {{passApplications}} applications, ${{passPrice}}. Never renews.", PASS_COPY)}
+      </p>
+      <p className="text-sm text-muted-foreground mb-2">
+        {t("agentPass.cardCharge", "It counts only jobs your agent can submit itself. Anything else is refused and costs nothing.")}
       </p>
       <p className="text-sm text-muted-foreground mb-2">
         {t("agentPass.cardClock", "The clock starts at your agent's first call, not at purchase. An unstarted pass keeps for {{passShelfDays}} days.", PASS_COPY)}
@@ -652,12 +665,15 @@ export function PassCard() {
           <Ticket className="w-4 h-4" /> {t("agentPass.holdOpen", "You hold a pass — open it")}
         </Link>
       ) : (
+        <>
+        <PurchaseTerms kind="payment" className="mb-2" />
         <button
-          type="button" onClick={buy} disabled={busy}
+          ref={buyButton} type="button" onClick={buy} disabled={busy}
           className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
         >
           {busy ? <><Loader2 className="w-4 h-4 animate-spin" /> {t("agentPass.buying", "Opening checkout…")}</> : <><Ticket className="w-4 h-4" /> {t("agentPass.buy", "Buy the pass — ${{passPrice}}", PASS_COPY)}</>}
         </button>
+        </>
       )}
     </div>
   );
@@ -814,11 +830,13 @@ export default function AgentConnect() {
                       <code className="text-xs">Authorization: Bearer rb_live_…</code> — tool discovery works
                       without one, so an agent can see what's here before you decide to mint anything.{" "}
                       {names(MCP_ANON_TOOLS)} answer with no key at all, {MCP_ANON_CAPS.perAddressPerDay} calls a
-                      day per network address (search capped at {MCP_ANON_CAPS.searchRows} rows), each answer saying how
+                      day per network address (from ChatGPT, per person; from Claude, a shared pool of{" "}
+                      {MCP_ANON_CAPS.hostPoolPerDay} first; search capped at {MCP_ANON_CAPS.searchRows} rows), each answer saying how
                       many are left; every other tool call needs a credential — the key, or the sign-in a
                       chat host performs for you while the server's sign-in service is on. Press Test the server above for today's state;
                       the initialize result carries it under <code className="text-xs">{`_meta["${MCP_SIGN_IN_META_KEY}"].state`}</code>.
                     </p>
+                    <p className="text-sm text-muted-foreground mt-3">{MCP_WITHHELD_NOTE}</p>
                   </div>
 
                   <div>

@@ -7,10 +7,13 @@ import { assertPaidSession } from "../_shared/paid-session.ts";
 import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
 import { REFUNDED_PURCHASE_MESSAGE, sessionWasRefunded } from "../_shared/payment-revocation.ts";
+import { purchaseSpendGate } from "../_shared/model-spend-gate.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-ats-defense.2026-10-08.1";
+const FN_BUILD = "generate-ats-defense.2026-10-09.3";
+/** Reports one purchase may generate in a day (regenerations included). */
+const ATS_DEFENSE_PER_PURCHASE_DAY = 10;
 
 // The product_type create-product-checkout writes for this product; the
 // session's metadata must carry it, and the claim records it.
@@ -337,7 +340,12 @@ serve(async (req) => {
     });
 
     if (rlError) {
+      // A limiter that cannot answer is not a pass (sweep S8-063).
       console.error("[ATS-DEFENSE] Rate limit check error:", rlError);
+      return new Response(
+        JSON.stringify({ error: ERROR_MESSAGES.SERVICE_UNAVAILABLE }),
+        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     } else if (!allowed) {
       console.log("[ATS-DEFENSE] Rate limit exceeded");
       return new Response(
@@ -464,6 +472,12 @@ serve(async (req) => {
       );
     }
     if (claimError) console.log("[ATS-DEFENSE] Session already claimed by its caller; generating");
+
+    // One purchase buys a day of reports, not unlimited gpt-5 runs from a
+    // pool of addresses (sweep S8-063): the same per-purchase day every
+    // purchase-gated generator counts.
+    const purchaseRefused = await purchaseSpendGate(supabase, 'generate-ats-defense', sessionId, ATS_DEFENSE_PER_PURCHASE_DAY, corsHeaders);
+    if (purchaseRefused) return purchaseRefused;
 
     // Call AI for analysis
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");

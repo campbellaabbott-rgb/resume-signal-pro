@@ -72,9 +72,11 @@ describe("agent_claim_submission — the last gate before an employer", () => {
     // Counting in-flight here would make the packet being claimed count against
     // itself: nothing would ever be claimable, and a total outage would present
     // as an empty queue.
+    // A send pressed and not confirmed is a submission too (S11-044,
+    // 20261009124000): it is counted by its uncertain_at, never by a release.
     const i = code.indexOf("auto_apply_daily_cap");
     const clause = code.slice(Math.max(0, i - 600), i);
-    expect(clause).toMatch(/d\.submitted_at >= date_trunc\('day', now\(\)\)/);
+    expect(clause).toMatch(/coalesce\(d\.submitted_at, d\.uncertain_at\) >= date_trunc\('day', now\(\)\)/);
     expect(clause).not.toMatch(/d\.released_at/);
   });
 
@@ -90,8 +92,10 @@ describe("agent_claim_submission — the last gate before an employer", () => {
     expect(code).toMatch(/m\.active = true/);
     expect(code).toMatch(/m\.paused_until IS NULL OR m\.paused_until <= now\(\)/);
     // Funding by the ACCOUNT (agent_subscription_live, 20261005130000) — the
-    // key apply-broker reads too, never an address.
-    expect(code).toMatch(/c\.pass_id IS NOT NULL OR public\.agent_subscription_live\(c\.user_id\)/);
+    // key apply-broker reads too, never an address. The pass leg reads the
+    // refund receipt (agent_packet_pass_funds, 20261009121000): a given-back
+    // application goes out only while its pass can charge it again.
+    expect(code).toMatch(/public\.agent_packet_pass_funds\(c\.pass_id, c\.pass_refunded_at\) OR public\.agent_subscription_live\(c\.user_id\)/);
   });
 
   it("a released packet for an employer the candidate has since blocked is parked, never handed out", () => {

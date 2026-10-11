@@ -399,6 +399,19 @@ try {
   record("agent server sign-in honesty", false, String(e));
 }
 
+// ---- 9. Tell search engines what this publish changed (SEO report S3) ----
+// IndexNow pings were manual-only, so Bing (which feeds ChatGPT search and
+// Copilot) heard of a change at its next crawl. A CLEAN pass now submits the
+// URLs whose sitemap date is the publish day plus the posting URLs the
+// publish retired, read from the live sitemap and ledger. Only on a clean
+// pass: a broken publish is not one to advertise. NO_INDEXNOW=1 skips it.
+if (results.every((r) => r.ok) && !process.env.NO_INDEXNOW) {
+  const { submitChanged } = await import("./indexnow-ping.mjs");
+  const r = await submitChanged();
+  record("IndexNow told what this publish changed", !(r.submitted && !r.ok),
+    r.submitted ? `${r.submitted} URL(s), HTTP ${r.status}` : `nothing submitted (${r.reason})`);
+}
+
 // ---- Verdict ----
 const failures = results.filter((r) => !r.ok);
 console.log(failures.length === 0

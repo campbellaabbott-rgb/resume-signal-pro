@@ -485,20 +485,24 @@ describe("2. the hand-offs on /jobs, judged by the request body", () => {
 
 describe("2. the header", () => {
   afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
-  it("carries an Agents item right after Jobs, an icon-only twin where the nav is hidden, and both fire nav_agents under testName nav", async () => {
+  it("carries an Agents item right after Jobs, a twin in the phone menu where the nav is hidden, and both fire nav_agents under testName nav", async () => {
     const fetchSpy = hookFetch();
     render(<MemoryRouter><Header /></MemoryRouter>);
+    // The wide nav's item; the phone menu is closed.
+    expect(screen.getAllByRole("link", { name: "Agents" }).length).toBe(1);
+    const wide = screen.getByRole("link", { name: "Agents" });
+    expect(wide.getAttribute("href")).toBe("/agents");
+    // Order in the wide nav: Jobs, then Agents.
+    const jobs = screen.getByRole("link", { name: "Jobs" });
+    expect(jobs.compareDocumentPosition(wide) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // The twin is the one that renders under 640px: in the phone menu (which
+    // replaced the icon-only link, S8-093).
+    fireEvent.click(screen.getByRole("button", { name: "Menu" }));
     const links = screen.getAllByRole("link", { name: "Agents" });
     expect(links.length).toBe(2);
     for (const l of links) expect(l.getAttribute("href")).toBe("/agents");
-    // Order in the wide nav: Jobs, then Agents.
-    const wide = links.find((l) => (l.textContent ?? "").trim() === "Agents")!;
-    const jobs = screen.getByRole("link", { name: "Jobs" });
-    expect(jobs.compareDocumentPosition(wide) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    // The twin is the one that renders under 640px: icon-only, labelled.
-    const twin = links.find((l) => (l.textContent ?? "").trim() === "")!;
-    expect(twin.className).toMatch(/\bsm:hidden\b/);
-    expect(twin.getAttribute("aria-label")).toBe("Agents");
+    const twin = links.find((l) => l !== wide)!;
+    expect(twin.closest("#phone-nav"), "the twin lives in the phone menu").toBeTruthy();
     fireEvent.click(wide);
     await waitFor(() => expect(tracked(fetchSpy).length).toBe(1), SLOW);
     expect(tracked(fetchSpy)[0]).toMatchObject({ testName: "nav", variant: "nav_agents", eventType: "view" });
@@ -506,14 +510,20 @@ describe("2. the header", () => {
     // given identity once per tab session once the server has kept it (the
     // writer would answer "duplicate" and the visitor's budget was charged on
     // the attempt -- 2026-09-27), so a second click sends nothing...
+    // A navigation closes the phone menu, so the twin is re-found in a freshly
+    // opened one before each click.
+    const twinNow = () => {
+      if (!document.getElementById("phone-nav")) fireEvent.click(screen.getByRole("button", { name: "Menu" }));
+      return screen.getAllByRole("link", { name: "Agents" }).find((l) => l.closest("#phone-nav"))!;
+    };
     await new Promise((r) => setTimeout(r, 0));
-    fireEvent.click(twin);
+    fireEvent.click(twinNow());
     await new Promise((r) => setTimeout(r, 20));
     expect(tracked(fetchSpy).length, "a repeat of an acknowledged identity is not re-sent").toBe(1);
     // ...and with the tab's sent map cleared, the twin proves it is wired to
     // the same event.
     sessionStorage.clear();
-    fireEvent.click(twin);
+    fireEvent.click(twinNow());
     await waitFor(() => expect(tracked(fetchSpy).length).toBe(2), SLOW);
     expect(tracked(fetchSpy)[1]).toMatchObject({ testName: "nav", variant: "nav_agents", eventType: "view" });
   });
@@ -551,7 +561,10 @@ describe("3. no typed rate or quota remains on the pages this lane touched", () 
     expect(page).toMatch(/\{\{ratePerMin\}\} requests a minute and \{\{dailyQuota\}\} calls a day; a live pass raises both/);
     expect(page).not.toMatch(/Both (kinds )?meter identically/);
     const bake = strip(read("scripts/prerender-seo.mjs"));
-    expect(bake).toMatch(/const FREE_KEY_RATE_SENTENCE = `\$\{D\.FREE_KEY_RATE_PER_MIN\} requests a minute and \$\{D\.MCP_FREE_KEY_DAILY_QUOTA\.toLocaleString\("en-US"\)\} calls a day per key; a live pass raises both for its hours`;/);
+    // L9-11 (wave 3): the bake prints this sentence on /data-api and in the
+    // llms-full /v1 line, where a pass raises nothing: it is scoped to the
+    // MCP server, the only place the pass overlay applies.
+    expect(bake).toMatch(/const FREE_KEY_RATE_SENTENCE = `\$\{D\.FREE_KEY_RATE_PER_MIN\} requests a minute and \$\{D\.MCP_FREE_KEY_DAILY_QUOTA\.toLocaleString\("en-US"\)\} calls a day per key; on the MCP server, a live Agent Pass on an account-linked key raises both for its hours, and it never raises them on \/v1`;/);
     expect(bake.match(/\$\{FREE_KEY_RATE_SENTENCE\}/g)?.length).toBe(3);
     expect(bake).not.toMatch(/meter identically/);
     // The data entry the bake bundles exports both mirrors.

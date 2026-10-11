@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-04T22:00Z
+// deploy-stamp: 2026-10-09T14:00Z
 // Sends the free scan summary to the user's email — our first lead-capture
 // touchpoint. Uses the same Resend setup as send-analysis-email and stores
 // the address in the leads table so follow-up campaigns have a source.
@@ -53,10 +53,14 @@ import { mailSafeText } from "../_shared/mail-text.ts";
 import { openDripLink, signDripLink, type DripPlan } from "../_shared/scan-drip-link.ts";
 import { alertOwnerOnce } from "../_shared/owner-alert.ts";
 import { redirectToConfirm, unsubscribeParams, unsubscribePageUrl } from "../_shared/unsubscribe-link.ts";
+import { sellerFooterHtml } from "../_shared/seller.ts";
+import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "send-scan-report.2026-10-08.1";
+// 2026-10-09.24: no change of its own; _shared/unsubscribe-link.ts gained the
+// agent-digest list it imports beside (S11-132).
+const FN_BUILD = "send-scan-report.2026-10-09.24";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -253,7 +257,7 @@ async function queueDrip(admin: Admin, plan: DripPlan): Promise<void> {
   const score = plan.score;
   const rescanUrl = `${SITE_URL}/?utm_source=email&utm_medium=scan_report&utm_campaign=rescan`;
   const unsubUrl = unsubscribePageUrl("scan-report", { token: token ?? "" });
-  const footer = `<p style="font-size:11px;color:#94a3b8;text-align:center;margin-top:18px">Part of the fix-plan emails started from the button in your scan report from resumebooster.work. <a href="${unsubUrl}" style="color:#94a3b8">Unsubscribe</a> any time — remaining emails cancel too.</p>`;
+  const footer = `<p style="font-size:11px;color:#94a3b8;text-align:center;margin-top:18px">Part of the fix-plan emails started from the button in your scan report from resumebooster.work. <a href="${unsubUrl}" style="color:#94a3b8">Unsubscribe</a> any time — remaining emails cancel too.</p>${sellerFooterHtml()}`;
   const wrap = (inner: string) => `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f1f5f9;font-family:Helvetica,Arial,sans-serif"><div style="max-width:560px;margin:0 auto;padding:24px 16px"><div style="background:#fff;border-radius:14px;padding:26px 24px;border:1px solid #e2e8f0">${inner}</div>${footer}</div></body></html>`;
 
   const steps = plan.steps;
@@ -301,6 +305,7 @@ async function queueDrip(admin: Admin, plan: DripPlan): Promise<void> {
         message_id: crypto.randomUUID(),
         to: email,
         from: FROM,
+        reply_to: CUSTOMER_REPLY_TO,
         sender_domain: "notify.resumebooster.work",
         subject: d.subject,
         html: d.html,
@@ -655,12 +660,14 @@ Deno.serve(async (req) => {
       You received this because this address was entered for a scan report at resumebooster.work. If that wasn't you, ignore it.<br>
       Follow-up emails come only if the button for them in this email is pressed, and every one has an unsubscribe link.
     </p>
+    ${sellerFooterHtml()}
   </div>
 </body></html>`;
 
     const { error } = await resend.emails.send({
       from: FROM,
       to: [email],
+      reply_to: CUSTOMER_REPLY_TO,
       subject: body.sealed
         ? `Your resume scored ${Math.round(body.score)}/100 — here's your fix plan`
         : `Your resume scored ${Math.round(body.score)}/100 — your scan summary`,

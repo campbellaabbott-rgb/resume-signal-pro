@@ -60,6 +60,7 @@ const LEARNABLE = new Set([
   "full-name",
   "relocation",
   "role-location",
+  "country-of-residence",
 ]);
 
 /**
@@ -105,6 +106,13 @@ export function learnedKey(label: string): string {
     .toLowerCase()
     .replace(/\*\s*(required|requis|erforderlich|obligatorisk)\b/gi, " ")
     .replace(/[*∗]/g, " ")
+    // C#, C++ and C were one key once every symbol became a space, so a learned
+    // "Yes" for C# answered the C++ radio and the second pending question was
+    // never shown (sweep S8-048). The symbols that name a different technology
+    // become words first: c++ -> cplusplus, c#/f# -> csharp/fsharp, .net -> dotnet.
+    .replace(/(\p{L})\+\+/gu, "$1plusplus")
+    .replace(/(\p{L})#/gu, "$1sharp")
+    .replace(/(^|[^\p{L}\p{N}])\.(\p{L})/gu, "$1dot$2")
     .replace(/[^\p{L}\p{N}\s]/gu, " ")
     .replace(/\s+/g, " ")
     .trim()
@@ -122,6 +130,25 @@ export type LearnedAnswer = {
 };
 
 export type LearnedAnswers = ReadonlyMap<string, LearnedAnswer>;
+
+/**
+ * The broker's rows, keyed by TODAY'S key of the question as it was worded,
+ * never by the stored key. A row written before learnedKey stopped merging
+ * C#, C++ and C (S8-048) carries the merged key, and its own label says which
+ * one it was; re-keying here means no stored key has to be rewritten for a
+ * lookup to be right, and no second (SQL) copy of this normaliser can drift.
+ */
+export function learnedFromRows(
+  rows: ReadonlyArray<{ key: string; label?: string | null; kind: LearnedAnswer["kind"]; value?: string | null }> | null | undefined,
+): LearnedAnswers {
+  const m = new Map<string, LearnedAnswer>();
+  for (const r of rows ?? []) {
+    if (!r?.key) continue;
+    const key = (r.label ? learnedKey(r.label) : "") || r.key;
+    m.set(key, { key, label: r.label ?? "", kind: r.kind, value: r.value ?? "" });
+  }
+  return m;
+}
 
 /**
  * Resolve a question from what the candidate has already told us.

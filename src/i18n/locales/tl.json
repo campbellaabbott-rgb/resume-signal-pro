@@ -26,18 +26,20 @@
     "guides": "Mga Gabay",
     "jobs": "Trabaho",
     "explore": "Tuklasin",
-    "agents": "Mga Agent"
+    "agents": "Mga Agent",
+    "menu": "Menu",
+    "closeMenu": "Isara ang menu",
+    "phoneNavAriaLabel": "Menu ng site",
+    "signIn": "Mag-sign in",
+    "account": "Account"
   },
   "hero": {
     "badge": "Live job board — bawat posting verified mula sa sariling sistema ng kumpanya",
     "freeScan": "Libreng Scan",
     "heading": "Huwag nang hulaan.",
     "headingHighlight": "Simulan na ang makakuha ng interview.",
-    "subheading": "Parehong dokumento, parehong iskor, tuwing susubukan — ikinumpara sa tunay na mga scan sa iyong industriya, bawat sipi beripikado laban sa iyong resume. Hindi opinyon ng ChatGPT o Claude.",
-    "price": "$25",
     "oneTime": "isang beses lang",
     "nofees": "Isang beses na bayad • Walang auto-renew • Instant na resulta",
-    "roi": "Isang interview = Bawi na ang $25",
     "trusted": "Pinagkakatiwalaan ng",
     "jobSeekers": "mga naghahanap ng trabaho",
     "seeSample": "Tingnan ang Sample Analysis",
@@ -46,7 +48,6 @@
     "mainHeading": "Ang resume mo ba ay",
     "mainHeadingHighlight": "hindi nakikita ng mga recruiter?",
     "atsTooltip": "Ginagawang database ng ATS (Applicant Tracking Systems) ang resume mo na hinahanapan ng mga recruiter. Bihira silang awtomatikong tumanggi — pero ang maling parsing o kulang na keywords ay nangangahulugang hindi ka kailanman lalabas sa paghahanap. Mahigit 98% ng Fortune 500 ang gumagamit nito.",
-    "mainSubheading": "Alamin sa 30 segundo. Kunin ang iyong ATS score at tingnan kung ano ang nagpapababa ng iyong mga interview.",
     "ctaButton": "I-scan ang resume ko nang libre",
     "freeBadge": "LIBRE",
     "noSignup": "Walang kailangang mag-sign-up",
@@ -55,8 +56,7 @@
     "private": "100% private",
     "headline": {
       "get": "Ang job board na may",
-      "recruiterGrade": "zero ghost jobs",
-      "feedback": "— 550,000+ verified na trabaho, tugma sa resume mo",
+      "recruiterGrade": "mga live na trabaho mula mismo sa sariling hiring system ng mga employer",
       "feedbackLive": "— {{n}}+ beripikadong bakante, itinugma sa resume mo",
       "feedbackPlain": "— bawat bakante beripikado, itinugma sa resume mo"
     },
@@ -106,12 +106,11 @@
     },
     "trust": {
       "secure": "Secure at Private",
-      "results": "Resulta sa 30 segundo",
       "approved": "Recruiter-approved"
     },
     "socialFirst": {
-      "joinThousands": "Libreng scan · Walang sign-up · Resulta sa humigit-kumulang 60 segundo",
-      "subheading": "I-upload ang iyong resume at makakuha ng nauulit na iskor — ikinumpara sa tunay na mga scan sa iyong industriya, bawat sipi beripikado. Hindi opinyon ng chatbot.",
+      "joinThousands": "Libreng scan · Walang sign-up · Resulta sa loob ng {{seconds}} segundo",
+      "subheading": "I-upload ang iyong resume at makakuha ng iskor na masusuri mo: i-scan muli ang parehong file laban sa parehong job posting sa loob ng {{days}} araw at pareho ang ulat (gumagawa ng bago ang “Suriin ulit”) — ikinumpara sa tunay na mga scan sa iyong industriya, bawat sipi beripikado. Hindi opinyon ng chatbot.",
       "recentActivityCount": "{{count}} katao",
       "recentActivityText": "ang nag-scan ng kanilang resume sa huling oras"
     },
@@ -122,7 +121,7 @@
       "painSubheading": "Bago pa man makita ng tao. Isa ba ang iyo sa mga ito?",
       "solutionLabel": "Ang solusyon",
       "solutionHeadingHighlight": "instant na ATS-proof na ayos",
-      "solutionHeadingSuffix": "sa 60 segundo",
+      "solutionHeadingSuffix": "sa loob ng {{seconds}} segundo",
       "solutionSubheading": "Hinahanap ng aming AI scanner ang eksaktong sumasala sa iyong resume at ipinapakita kung paano ito ayusin."
     },
     "ultraCompactDescription": "ATS-optimized na rewrites • Red-flag warnings • Keyword improvements",
@@ -144,12 +143,10 @@
     "testimonialQuote": "Naayos ang resume ko sa loob ng 10 minuto. Nakakuha ng 3 interview call sa parehong linggo.",
     "testimonialAuthorName": "— Sarah K., Software Engineer",
     "transparentScoring": "transparent na AI scoring, walang black box",
-    "factGdpr": "Sumusunod sa GDPR",
     "factAutoDelete": "Binubura ang resume sa loob ng 7 araw",
     "factNoStorage": "Hindi kailanman ibinebenta",
     "measureStrip": "Sukat, hindi opinyon · Bawat sipi beripikado · Iskor na nagpapakita ng trabaho nito",
     "jobsCta": "Live na job board — i-check ang fit mo bago mag-apply →",
-    "browseJobs": "Tingnan ang 550,000+ verified na trabaho",
     "browseJobsLive": "Tingnan ang {{n}}+ beripikadong trabaho",
     "browseJobsPlain": "Tingnan ang beripikadong job board"
   },
@@ -178,7 +175,7 @@
       },
       "analysis": {
         "title": "2. AI Analysis",
-        "description": "Nagsasagawa ang aming AI ng 24 na iba't ibang pagsusuri sa ~10 segundo."
+        "description": "Nagsasagawa ang aming AI ng {{checks}} na iba't ibang pagsusuri sa loob ng {{seconds}} segundo."
       },
       "results": {
         "title": "3. Kumuha ng Resulta",
@@ -213,7 +210,7 @@
     },
     "footer": {
       "realAi": "Tunay na AI analysis",
-      "results": "Resulta sa ~10 seg",
+      "results": "Resulta sa loob ng {{seconds}} segundo",
       "private": "100% private"
     }
   },
@@ -340,9 +337,17 @@
       "excelCsv": "Excel/CSV",
       "googleSheets": "Google Sheets"
     },
-    "jobUrlPlaceholder": "https://linkedin.com/jobs/... o career page URL ng kumpanya",
-    "jobUrlTip": "💡 I-paste ang URL ng job listing mula sa LinkedIn, Indeed, Glassdoor, o anumang career page ng kumpanya",
-    "jobUrlNotesPlaceholder": "Opsyonal: Magdagdag ng karagdagang tala tungkol sa role...",
+    "jobUrlPlaceholder": "I-paste ang link ng trabaho, gaya ng https://jobs.lever.co/…",
+    "jobUrlTip": "💡 Gumagana sa mga link papunta sa job board ng employer (Greenhouse, Lever, Ashby, Workday at iba pa). Para sa LinkedIn, Indeed at ibang site, i-paste na lang ang job description.",
+    "jobUrlFetch": "Kunin ang job description",
+    "jobUrlFetching": "Binabasa…",
+    "jobUrlLoadedTitle": "Na-load ang job description",
+    "jobUrlLoadedDesc": "{{title}}. Tingnan ito sa kahon, saka mag-scan.",
+    "jobUrlUnsupported": "Hindi namin mabasa ang mga job page mula sa site na ito. I-paste na lang ang job description.",
+    "jobUrlFailed": "Hindi namin nabasa ang job page na iyon. I-paste na lang ang job description.",
+    "jobUrlLimited": "Masyadong maraming link ang nabasa mula sa koneksyon mo ngayon. I-paste na lang ang job description, o subukan ulit mamaya.",
+    "jobUrlPasteInstead": "I-paste ang text",
+    "jobUrlInPasteBox": "Link iyan, hindi job description. Kaya naming basahin ang job page para sa iyo.",
     "otherJobsAvailable_one": "{{count}} pang job na available",
     "otherJobsAvailable_other": "{{count}} pang mga job na available",
     "changeSelection": "baguhin ang pinili",
@@ -361,7 +366,6 @@
     "gsheetsStep2Anyone": "Anyone with the link",
     "gsheetsStep3": "Kopyahin ang URL at i-paste sa itaas",
     "jdAdded": "Naidagdag ang job description",
-    "jobUrlAdded": "Naidagdag ang job URL",
     "linkedinAddHintPrefix": "Magdagdag ng LinkedIn para makakuha ng",
     "linkedinAddHintHighlight": "skill gap analysis at mga tip sa profile",
     "scanChips": {
@@ -370,7 +374,7 @@
       "redFlags": "Red Flags",
       "plusMore": "+12 pa"
     },
-    "scanFooter": "Resulta sa ~90 segundo • 7 libreng scan kada araw",
+    "scanFooter": "Resulta sa loob ng {{seconds}} segundo • 7 libreng scan kada araw",
     "getFreeAnalysis": "Kumuha ng Libreng Resume Analysis",
     "orGetCompleteAnalysis": "O kunin ang kumpletong analysis sa halagang",
     "securePaymentStripe": "Secure na bayad gamit ang Stripe",
@@ -395,7 +399,7 @@
       },
       "subscription": {
         "question": "Ito ba ay subscription?",
-        "answer": "Meron parehong opsyon, at ikaw ang pipili. Ang bawat report at tool ay isang beses na bayad na hindi na uulit. Bukod dito, may dalawang optional na monthly plan: ang Pro sa ${{proPrice}}/buwan para sa walang limitasyong resume scan at lahat ng tool, at ang Morning Queue sa ${{agentPrice}}/buwan, kung saan inihahanda ng Apply Agent ang isang shortlist para sa iyo magdamag. Libre pa rin ang resume scan at ang job board sa dalawang paraan, at walang awtomatikong nag-a-upgrade sa iyo."
+        "answer": "Meron parehong opsyon, at ikaw ang pipili. Ang bawat report at tool ay isang beses na bayad na hindi na uulit. Bukod dito, may dalawang optional na monthly plan: ang Pro sa ${{proPrice}}/buwan para sa walang limitasyong resume scan at lahat ng tool, at ang Morning Queue sa ${{agentPrice}}/buwan, kung saan inihahanda ng Apply Agent ang isang shortlist para sa iyo magdamag. Libre pa rin ang resume scan at ang job board sa dalawang paraan. Parehong nire-renew ang dalawang plan bawat buwan hanggang kanselahin mo, at ang libreng trial ng Morning Queue para sa mga unang beses na subscriber ay nagiging bayad na plan pagkatapos nito maliban kung kanselahin mo bago iyon. Wala nang ibang awtomatikong nag-a-upgrade sa iyo."
       },
       "share": {
         "question": "Maaari ko bang ibahagi ang aking pagsusuri sa iba?",
@@ -407,7 +411,7 @@
       },
       "dataStorage": {
         "question": "Iniimbak ba ninyo ang aking resume data?",
-        "answer": "Sandali lang, at may takdang oras. Kapag nag-upload o nag-paste ka ng resume, iniimbak ang text nito nang 24 oras para magamit ng checkout, saka binubura. Ang libre mong report, na sumisipi ng mga linya mula sa resume mo, ay iniimbak nang 7 araw para pareho ang report ng parehong file, saka binubura. Ang bayad na pagsusuri ay nananatili sa likod ng pribadong link nito nang 90 araw, maliban kung burahin mo ito nang mas maaga. Mas matagal lang naming iniimbak ang resume kapag hiniling mo: isang bersyong sine-save mo sa account mo, ang resume na itinakda mo para sa job matching, o ang CV na ibinigay mo sa apply agent, na ipinapadala ito sa mga employer na inaaplayan nito para sa iyo. Hindi namin ito kailanman ibinebenta. Nakalista sa aming Trust page ang bawat kopya at ang takdang oras nito."
+        "answer": "Sandali lang, at may takdang oras. Kapag nag-upload o nag-paste ka ng resume, iniimbak ang text nito nang 24 oras para magamit ng checkout, saka binubura. Ang libre mong report, na sumisipi ng mga linya mula sa resume mo, ay iniimbak nang 7 araw para pareho ang report kapag ni-rescan ang parehong file laban sa parehong job posting, saka binubura. Ang bayad na pagsusuri ay nananatili sa likod ng pribadong link nito nang 90 araw, maliban kung burahin mo ito nang mas maaga. Mas matagal lang naming iniimbak ang resume kapag hiniling mo: isang bersyong sine-save mo sa account mo, ang resume na itinakda mo para sa job matching, o ang CV na ibinigay mo sa apply agent, na ipinapadala ito sa mga employer na inaaplayan nito para sa iyo. Hindi namin ito kailanman ibinebenta. Nakalista sa aming Trust page ang bawat kopya at ang takdang oras nito."
       },
       "vsChatGPT": {
         "question": "Bakit ito mas maganda kaysa ChatGPT o resume templates?",
@@ -426,7 +430,6 @@
     "feature": "Feature",
     "templates": "Templates",
     "free": "Libre",
-    "cta": "Subukan Ngayon — $25",
     "ctaText": "Subukan Ngayon",
     "features": {
       "atsScoring": "5-Kategoryang ATS Scoring",
@@ -462,8 +465,7 @@
         "quote": "Ang serbisyo ay super nakakatulong at kapaki-pakinabang.",
         "role": "Reddit User • Nagbayad na Customer"
       }
-    },
-    "trustMessage": "Sumali sa libu-libong naghahanap ng trabaho na nagpabuti ng kanilang resume gamit ang tapat at recruiter-grade na feedback."
+    }
   },
   "trustIndicators": {
     "badges": {
@@ -473,15 +475,11 @@
       },
       "ssl": {
         "label": "256-bit SSL",
-        "description": "Bank-level encryption"
+        "description": "Naka-encrypt habang ipinapadala"
       },
       "autoDelete": {
         "label": "Binubura sa 7 araw",
         "description": "Iyong data, iyong kontrol"
-      },
-      "gdpr": {
-        "label": "GDPR Compliant",
-        "description": "Privacy muna"
       },
       "zeroStorage": {
         "label": "Hindi ibinebenta",
@@ -489,7 +487,7 @@
       },
       "instant": {
         "label": "Instant Delivery",
-        "description": "Resulta sa 30 segundo"
+        "description": "Resulta sa loob ng {{seconds}} segundo"
       }
     },
     "methodology": {
@@ -519,7 +517,7 @@
     "actionPlan": "Action Plan",
     "redFlags": "Mga Red Flag",
     "linkedinAnalysis": "LinkedIn Analysis",
-    "includedFree": "Kasama nang Libre",
+    "includedInFullAnalysis": "Kasama sa Full Analysis",
     "strength": "lakas",
     "suggestedHeadline": "Iminumungkahing Headline",
     "aboutSection": "About Section",
@@ -569,7 +567,6 @@
       "title": "I-unlock ang Iyong Buong Pagsusuri",
       "description": "Kumuha ng komprehensibong feedback na may detalyadong bullet rewrites, ATS optimization strategies, at prioritized na action plan.",
       "button": "Kumuha ng Buong Pagsusuri",
-      "price": "$25",
       "processing": "Pinoproseso..."
     }
   },
@@ -698,14 +695,11 @@
   },
   "stickyCta": {
     "title": "Handa nang makakuha ng mas maraming interview?",
-    "subtitle": "Makakuha ng recruiter-grade feedback sa 30 segundo",
     "mobileTitle": "I-analyze ang iyong resume →",
     "button": "I-analyze ang Aking Resume",
     "ctaButton": "Tingnan Lahat ng Packages",
-    "premiumFrom": "Premium packages mula sa",
-    "from": "Mula sa",
-    "features": "Buong rewrites + LinkedIn optimization + job-specific tailoring",
-    "featuresMobile": "Rewrites + LinkedIn optimization"
+    "features": "Inilalapat ang mga ayos mula sa libre mong scan sa sarili mong resume. Isang bayad, walang subscription.",
+    "featuresMobile": "Mga ayos ng scan mo, nailapat na. Isang bayad."
   },
   "finalCta": {
     "urgency": "Maaaring nawawalan ka ng mga interview dahil sa iyong resume ngayon",
@@ -735,7 +729,7 @@
     "oneTime": "isang beses lang",
     "guarantee": "Instant na resulta • Isang beses na bayad",
     "button": "Kunin ang Aking Analysis Ngayon",
-    "roi": "Isang interview = $25 na-recover"
+    "roi": "Isang interview = {{price}} na-recover"
   },
   "scanProgress": {
     "title": "AI Analysis na Ginagawa",
@@ -1067,7 +1061,25 @@
       "tooManyAttempts": "Sobrang dami ng pagsubok",
       "tooManyAttemptsDescription": "Maghintay ng ilang minuto bago subukan ulit.",
       "serviceTemporarilyUnavailable": "Pansamantalang hindi available ang serbisyo",
-      "serviceTemporarilyUnavailableDescription": "Pansamantalang down ang aming payment service. Pakisubukan ulit sa ilang minuto."
+      "serviceTemporarilyUnavailableDescription": "Pansamantalang down ang aming payment service. Pakisubukan ulit sa ilang minuto.",
+      "fileDamaged": "Hindi mabasa ang file na ito",
+      "fileDamagedDescription": "Mukhang sira ito o hindi tunay na PDF o .docx. I-save ulit, subukan ang ibang format, o i-paste ang teksto ng iyong resume.",
+      "fontUnreadable": "Hindi mabasa ang mga titik ng PDF na ito",
+      "fontUnreadableDescription": "Hindi tumutugma sa tunay na mga karakter ang font nito. Mag-upload na lang ng .docx o i-paste ang teksto ng iyong resume.",
+      "unreadCharacters": "May ilang karakter na hindi nabasa",
+      "unreadCharactersDescription": "Nilaktawan namin ang {{count}} karakter na hindi pinangalanan ng PDF na ito. Para sa pinakatumpak na scan, mag-upload ng .docx o i-paste ang teksto ng iyong resume."
+    },
+    "reportCrash": {
+      "title": "May nagkamali sa pagpapakita ng iyong ulat",
+      "body": "Tapos na ang iyong scan, pero hindi maipakita ang ulat. Suriin ulit para mag-scan muli at gumawa ng bagong ulat."
+    },
+    "partialResults": {
+      "title": "Bahagyang resulta:",
+      "ruleBased": "saglit na hindi available ang aming AI reviewer, kaya awtomatikong pagsusuri lang ang gamit ng ulat na ito. Mag-scan muli pagkalipas ng ilang minuto para sa buong bersyong naka-personalize ng AI.",
+      "thin": "may ilang seksyong iniwang blangko ang AI review, kaya pinunan ang mga ito ng awtomatikong pagsusuri. Hindi na-save ang bersyong ito, kaya gagawa ng bago ang muling pag-scan.",
+      "thinUnfilled": "may ilang seksyong iniwang blangko ang AI review, kaya nakatago ang mga ito. Mag-scan muli pagkalipas ng ilang minuto para sa buong ulat.",
+      "fallback": "hindi available ang aming pangunahing scanner, kaya isang mas simpleng backup ang gumawa ng ulat na ito. Wala itong \"Bakit ang score na ito\", at hindi sinuri ang score nito laban sa aming rule-based na score. Mag-scan muli pagkalipas ng ilang minuto para sa buong ulat.",
+      "fallbackHidden": "Nakatago ang mga seksyong iniwang blangko ng backup."
     }
   },
   "miniPricingCards": {
@@ -1404,15 +1416,13 @@
     "getJobSpecificAnalysis": "Kunin ang Job-Specific na Analysis",
     "personalizedInsightsForRole": "Kumuha ng personalized na insight para sa target role mo",
     "oneTimePaymentInstantAccess": "Isang-beses na bayad • Agarang access",
-    "oneInterviewPaidForItself": "Isang interview = {{price}} ay nabayaran na",
     "unlockWithFullAnalysis": "I-unlock sa Full Analysis",
     "premiumFeatures": {
       "completeAtsAnalysis": "Kumpletong ATS analysis",
       "aiRewrittenResume": "AI-rewritten na resume",
       "customCoverLetter": "Custom na cover letter",
       "beforeAfterComparison": "Before/after comparison",
-      "keywordOptimization": "Keyword optimization",
-      "priorityProcessing": "Priority processing"
+      "keywordOptimization": "Keyword optimization"
     },
     "keywordFixFeatures": {
       "fullAtsBreakdown": "Buong breakdown ng ATS score",
@@ -1471,9 +1481,10 @@
       "doNotApply": "✗ Mahinang Angkop — Isaalang-alang ang Iba pang mga Papel"
     },
     "atsBanner": {
-      "require60": "Karamihan sa ATS ay nangangailangan ng 60+ para pumasa",
-      "require75": "Ang 75+ ay nagpapataas ng callback rate",
-      "targetScore": "75+"
+      "belowMedian": "Mas mababa sa median na {{median}} sa {{n}} resume sa {{industry}} na na-scan dito. Hindi tumatanggi ang mga pangunahing ATS platform dahil sa numerong ito, pero itinataas ito ng mga ayos sa ibaba.",
+      "belowTopQuarter": "Mas mataas sa median na {{median}}; ang nangungunang ikaapat ng {{n}} resume sa {{industry}} na na-scan dito ay may score na {{p75}} o higit pa.",
+      "noPassMark": "Hindi ito pasadong marka: hindi tinatanggihan ng mga pangunahing ATS platform ang resume dahil sa score. Itinataas ito ng mga ayos sa ibaba.",
+      "topQuarter": "Nangungunang ikaapat: {{p75}}+"
     },
     "eliteSignals": {
       "title": "Mga Senyales na Nakakaakit ng mga Recruiter"
@@ -1548,8 +1559,7 @@
       "badge": "Libreng halimbawa",
       "before": "❌ BAGO (mula sa iyong resume)",
       "after": "✅ PAGKATAPOS (na-optimize)",
-      "whyBetter": "Bakit mas maganda:",
-      "cta": "Ipasulat ang lahat ng iyong mga bullet sa kumpletong {{price}} na pagsusuri"
+      "whyBetter": "Bakit mas maganda:"
     },
     "lockedInsights": {
       "bulletLine1": "• Palitan ang 'Responsable sa pamamahala ng team ng 5' → 'Nanguna sa cross-functional team ng 5, nagdulot ng 32% na pagtaas ng kahusayan'",
@@ -1559,10 +1569,14 @@
       "bulletWithData1": "• Mula sa iyong resume: \"{{bullet}}\" — walang nasusukat na epekto na nakasaad",
       "bulletWithData2": "• {{weak}} sa iyong {{total}} na mga bullet ay kulang ng quantification",
       "bulletWithData3": "• Ipasulat ang bawat isa na may mga sukatan at mas malakas na power verb",
-      "kwHard": "• {{count}} kritikal na hard skill ang nawawala sa iyong resume",
-      "kwCerts": "• {{count}} sertipikasyon sa industriya na banggitin (kahit nasa proseso pa)",
-      "kwTools": "• {{count}} tool na karaniwang nakalista sa iyong larangan na nawawala sa iyo",
-      "kwMethodology": "• {{count}} keyword ng metodolohiya na ginagamit ng iyong mga kakumpitensya",
+      "kwHard_one": "• {{count}} kritikal na hard skill ang nawawala sa iyong resume",
+      "kwHard_other": "• {{count}} kritikal na hard skill ang nawawala sa iyong resume",
+      "kwCerts_one": "• {{count}} sertipikasyon sa industriya na banggitin (kahit nasa proseso pa)",
+      "kwCerts_other": "• {{count}} sertipikasyon sa industriya na banggitin (kahit nasa proseso pa)",
+      "kwTools_one": "• {{count}} tool na karaniwang nakalista sa iyong larangan na nawawala sa iyo",
+      "kwTools_other": "• {{count}} tool na karaniwang nakalista sa iyong larangan na nawawala sa iyo",
+      "kwMethodology_one": "• {{count}} keyword ng metodolohiya na ginagamit ng iyong mga kakumpitensya",
+      "kwMethodology_other": "• {{count}} keyword ng metodolohiya na ginagamit ng iyong mga kakumpitensya",
       "kwPlacement": "• Saan ilalagay ang iyong pinakamalakas na mga keyword para sa maximum na timbang ng ATS",
       "kwVerbs": "• Mga action verb na mas mahusay kaysa sa iyong kasalukuyang mga pagpipilian ng salita",
       "kwDensity": "• Paano nagkukumpara ang iyong keyword density sa mga nangungunang resume sa iyong larangan",
@@ -1591,7 +1605,7 @@
       "footnote": "Kumpletong package: ATS-optimized na resume + personalized na cover letter na handang ipadala sa mga employer"
     },
     "emailCapture": {
-      "joinMessage": "Sumali sa mahigit 10,000 naghahanap ng trabaho na tumatanggap ng lingguhang mga tip para talunin ang ATS at makakuha ng mga interview.",
+      "joinMessage": "Sumali sa mga naghahanap ng trabaho na tumatanggap ng lingguhang mga tip para talunin ang ATS at makakuha ng mga interview.",
       "noSpam": "Walang spam. Mag-unsubscribe anumang oras."
     },
     "coverLetterCta": {
@@ -1611,8 +1625,7 @@
     "cta": {
       "fixIssues": "Tingnan kung ano ang pumipigil sa mga interview — {{price}}",
       "getFullAnalysis": "Kunin ang aking recruiter-ready na resume — {{price}}",
-      "socialProof": "{{count}} resume ang na-scan ngayong araw",
-      "resultsExpiry": "Ang iyong mga resulta ay naka-save pa ng {{hours}} oras"
+      "socialProof": "{{count}} resume ang na-scan ngayong araw"
     },
     "enterprise": {
       "verdictLabel": "Ang Hatol",
@@ -1627,7 +1640,7 @@
       "emailSend": "Ipadala",
       "emailSent": "Naipadala! Tingnan ang iyong inbox.",
       "emailPrivacy": "Tanging mga resulta ng pagsusuri lang ang ipinapadala — hindi kailanman ang iyong resume. Walang spam.",
-      "pulseOptIn": "Padalhan din ako ng buwanang market pulse: ang mga tumataas na keyword sa aking industriya, may libreng rescan link. Mag-unsubscribe anumang oras.",
+      "pulseOptIn": "Padalhan din ako ng buwanang market pulse: ang mga pangunahing keyword para sa aking industriya mula sa aming keyword guide, may libreng rescan link. Mag-unsubscribe anumang oras.",
       "pulseConfirmSent": "Kung hindi pa nakukumpirma ng address na ito ang buwanang market pulse, pinadalhan namin ito ng confirmation link. Magsisimula lang ang pulse kapag na-click na ang link na iyon.",
       "pulseNotCovered": "Hindi pa sakop ng buwanang market pulse ang iyong larangan, kaya walang ipinadalang kumpirmasyon.",
       "dripConfirmSent": "May button ang email ng iyong report para simulan ang mga email ng fix plan. Walang ibang ipapadala hangga't hindi mo ito pinipindot.",
@@ -1652,10 +1665,6 @@
       "cta": "I-rescan laban sa posting na ito",
       "tooShort": "I-paste ang buong posting para sa totoong paghahambing"
     },
-    "applyBridge": {
-      "title": "Ihanda ang eksaktong aplikasyong ito",
-      "desc": "Kakatapos mo lang itapat sa totoong posting — ginagawa itong aplikasyon ng Apply Assistant: resume mong naka-angkop sa trabahong ito, akmang cover letter, at tapat na listahan ng kakulangan. Tingnan muna ang sample mula sa sarili mong resume."
-    },
     "matches": {
       "title": "Mga live na opening na tugma sa resume na ito",
       "titleSearching": "Naghahanap ng mga live na opening para sa resume na ito",
@@ -1666,6 +1675,16 @@
       "loading": "Nira-rank ang mga live na opening laban sa resume mo…",
       "apply": "Mag-apply",
       "seeAll": "Tingnan ang lahat ng tugma sa job board — mag-save ng paghahanap, subaybayan ang aplikasyon"
+    },
+    "nextSteps": {
+      "eyebrow": "Susunod na hakbang",
+      "title": "Kung gusto mo ng tulong sa mga ayos sa itaas",
+      "body": "Kumpleto at libre ang diagnosis sa itaas. Ito ang dalawang bayad na opsyon na gagawa ng trabaho para sa iyo.",
+      "fullAnalysisName": "Full Analysis",
+      "fullAnalysisDesc": "Inilalapat ang mga ayos mula sa ulat na ito sa nilalaman ng sarili mong resume. Isang bayad, walang subscription.",
+      "proName": "Pro",
+      "proDesc": "Buwanang plan: walang limitasyong scan at bawat bayad na tool, kasama ang Full Analysis. Puwedeng i-cancel kahit kailan mula sa iyong account.",
+      "proPrice": "${{price}}/buwan"
     }
   },
   "analysisPreviewSample": {
@@ -1727,12 +1746,12 @@
     "rows": {
       "timeToResults": {
         "feature": "Oras bago makuha ang resulta",
-        "us": "Mas mababa sa 60 segundo",
+        "us": "Sa loob ng {{seconds}} segundo",
         "them": "3-7 araw ng trabaho"
       },
       "cost": {
         "feature": "Gastos",
-        "us": "$5 – $25 isang-beses",
+        "us": "Libreng scan · Full Analysis ${{price}} isang-beses",
         "them": "$150 – $500+"
       },
       "atsOptimization": {
@@ -1773,7 +1792,7 @@
     "goToHome": "Pumunta sa Home",
     "creditsAdded_one": "{{count}} Credit Idinagdag!",
     "creditsAdded_other": "{{count}} Credits Idinagdag!",
-    "creditsLiveOn": "Aktibo na ang iyong mga credit sa account para sa",
+    "creditsLiveOn": "Ipinapadala ang resibo para sa mga credit na ito sa",
     "creditsBalancePrefix": "Makikita mo ang iyong balanse sa",
     "myCredits": "Aking Credits",
     "creditsBalanceSuffix": "button sa header sa device na ito — hindi na kailangang ilagay ulit ang iyong email.",
@@ -1978,11 +1997,10 @@
       },
       "atsDefense": {
         "howItWorks": [
-          "Nagsagawa ang aming AI ng komprehensibong ATS compatibility audit",
-          "Sinuri namin ang iyong resume laban sa 50+ ATS platform",
-          "Na-optimize ang mga keyword para sa hanggang 3 target role",
-          "Na-restructure ang format para sa maximum na parseability",
-          "Kasama ang mga tip sa LinkedIn alignment"
+          "Sinuri namin kung paano binabasa ng mga applicant tracking system ang iyong resume",
+          "Itinugma namin ang iyong mga keyword sa mga posisyong binanggit mo (hanggang 3)",
+          "Inayos namin ang mga seksyon para mabasa nang malinis",
+          "Nagdagdag kami ng mga tip para maitugma ang iyong LinkedIn profile"
         ],
         "nextSteps": [
           {
@@ -2172,6 +2190,11 @@
         "deliveryTime": "Instant",
         "deliveryMethod": "Sa Pahinang Ito"
       }
+    },
+    "stillBeingMade": {
+      "title": "Ginagawa pa ang iyong {{product}}",
+      "emailed": "Mas matagal ito kaysa karaniwan. Ie-email namin ito sa iyo sa sandaling handa na, kaya puwede mo nang isara ang pahinang ito.",
+      "refresh": "Mas matagal ito kaysa karaniwan. I-refresh ang pahinang ito pagkalipas ng ilang minuto para makita ito."
     }
   },
   "analysisResults": {
@@ -2508,22 +2531,19 @@
     "privacyMatters": "Mahalaga ang Iyong Privacy",
     "titlePrefix": "Ang Iyong Resume ay",
     "titleHighlight": "Ligtas Sa Amin",
-    "heroSubtitle": "Binuo namin ang Resume Booster gamit ang mga prinsipyong security-first. Ang iyong mga dokumento sa karera ay karapat-dapat sa proteksyon sa antas ng bangko, at ito mismo ang ibinibigay namin.",
+    "heroSubtitle": "Ano ang itinatago namin, gaano katagal, kanino ito napupunta, at paano ito ipabura — nakasulat, para masuri mo.",
     "badges": {
       "ssl": "256-bit SSL",
-      "retention": "Nakalathalang Retention",
-      "gdpr": "GDPR Compliant"
+      "retention": "Nakalathalang Retention"
     },
     "stats": {
       "resumesAnalyzed": "Na-analyze na Resume",
-      "betterResults": "Nag-report ng Mas Magandang Resulta",
-      "avgDelivery": "Average na Oras ng Paghahatid",
-      "dataBreaches": "Data Breach"
+      "betterResults": "Nag-report ng Mas Magandang Resulta"
     },
     "security": {
       "ssl": {
         "title": "256-bit SSL Encryption",
-        "description": "Protektado ang iyong resume gamit ang encryption sa antas ng bangko habang nag-upload at nagproseso. Ginagamit namin ang parehong security standard ng mga malalaking institusyong pinansyal."
+        "description": "Dumarating ang resume mo sa amin at sa mga serbisyong nagpoproseso nito sa mga naka-encrypt na koneksyon (HTTPS/TLS)."
       },
       "freeScan": {
         "title": "Ano ang Iniimbak ng Libreng Scan",
@@ -2534,8 +2554,8 @@
         "description": "Tumatakbo ang mga deletion job kada 15 minuto para sa pansamantalang storage at kada oras para sa report cache, AI cache at mga bayad na pagsusuri, kaya walang lumalampas sa nakasaad na oras nito nang higit sa isang oras."
       },
       "gdpr": {
-        "title": "GDPR Compliant",
-        "description": "Sinusunod namin ang mahigpit na European data protection standard. Maaari kang humiling ng pagtanggal ng anumang data anumang oras."
+        "title": "Ang Iyong Karapatan sa Data",
+        "description": "Saan ka man nakatira, maaari kang humingi anumang oras ng kopya ng data namin tungkol sa iyo, o ng pagbura nito."
       },
       "neverSold": {
         "title": "Hindi Kailanman Ibinebenta",
@@ -2636,7 +2656,7 @@
     "trustedByTitle": "Pinagkakatiwalaan ng mga Job Seeker sa Nangungunang Kumpanya",
     "trustedBySubtitle": "Ginagamit ng mga propesyonal mula sa nangungunang kumpanya ang Resume Booster upang makuha ang trabahong kanilang pinangarap.",
     "ctaTitle": "Handa na Pahusayin ang Iyong Resume?",
-    "ctaSubtitle": "Sumali sa libu-libong job seeker na nagpahusay ng kanilang resume gamit ang aming AI-powered analysis.",
+    "ctaSubtitle": "Libreng scan, walang sign-up. Sinusuri ang bawat sinipi na linya sa report laban sa sarili mong resume.",
     "ctaButton": "Kunin ang Iyong Libreng Scan",
     "dataFence": {
       "badge": "Kalayaan ng datos",
@@ -2653,20 +2673,18 @@
     "transparentResearchBased": "Transparent at Batay sa Pananaliksik",
     "titlePrefix": "Ang Aming ATS Analysis",
     "titleHighlight": "Methodology",
-    "heroSubtitle": "Aming nireverse-engineer kung paano nina-parse at sino-score ng 50+ Applicant Tracking System (ATS) ang mga resume. Ito mismo ang eksaktong paggana ng aming pagsusuri.",
-    "platformsAnalyzed": "50+ ATS platform na na-analyze",
+    "heroSubtitle": "Paano ginagawang score ng scan ang resume mo, isinulat mula sa code na nagkukuwenta nito.",
     "resumesProcessed": "{{total}} resume na naproseso",
-    "updatedMonthly": "Buwanang in-update",
     "howAnalysisWorks": "Paano Gumagana ang Aming Pagsusuri",
     "step": "HAKBANG {{number}}",
     "steps": {
       "parsing": {
         "title": "Pag-parse ng Dokumento",
-        "description": "Kinukuha namin ang teksto habang pinapanatili ang structure, hinahandle ang mga PDF at DOCX file gamit ang parehong parsing logic na ginagamit ng mga malalaking ATS platform."
+        "description": "Kinukuha namin ang teksto mula sa iyong PDF o DOCX at pinapanatili ang istruktura nito: mga seksyon, petsa at bullet."
       },
       "aiAnalysis": {
         "title": "AI Analysis",
-        "description": "Ginagaya ng aming AI kung paano babasahin ng bawat ATS ang iyong resume, tinutukoy ang mga section, keyword, at formatting na posibleng maging dahilan ng parsing failure."
+        "description": "Binabasa ng aming AI ang resume tulad ng isang parser, hinahanap ang mga seksyon, keyword at format na maaaring makasira sa pagbasa."
       },
       "keywordMatching": {
         "title": "Keyword Matching",
@@ -2674,101 +2692,47 @@
       },
       "scoringAlgorithm": {
         "title": "Scoring Algorithm",
-        "description": "Ang iyong ATS score ay kinakalkula base sa 50+ na factor kabilang ang keyword density, formatting, kumpletuhan ng section, at mga red flag."
-      }
-    },
-    "atsPlatforms": {
-      "0": {
-        "description": "Pag-parse ng section header, keyword extraction, validation ng date format",
-        "marketShare": "Malalaking enterprise"
-      },
-      "1": {
-        "description": "Mga algorithm sa pagtugma ng skill, scoring ng antas ng karanasan, mga indicator ng cultural fit",
-        "marketShare": "Tech at startup"
-      },
-      "2": {
-        "description": "Validation ng contact info, consistency ng formatting, organisasyon ng section",
-        "marketShare": "Mid-market"
-      },
-      "3": {
-        "description": "Pagsusuri ng keyword density, pagtugma ng job title, scoring ng kwalipikasyon",
-        "marketShare": "Fortune 500"
-      },
-      "4": {
-        "description": "Pag-parse ng edukasyon, detection ng certification, pagtugma ng skills taxonomy",
-        "marketShare": "Healthcare at retail"
-      },
-      "5": {
-        "description": "Pagsusuri ng structure ng resume, validation ng timeline ng karanasan",
-        "marketShare": "SMB"
-      },
-      "6": {
-        "description": "Keyword optimization, mga algorithm sa ranking ng applicant",
-        "marketShare": "Maliit na negosyo"
-      },
-      "7": {
-        "description": "Integration ng social profile, referral tracking, skills assessment",
-        "marketShare": "Enterprise"
-      },
-      "8": {
-        "description": "AI-powered matching, mga indicator ng diversity, global compliance",
-        "marketShare": "Pandaigdigang enterprise"
-      },
-      "9": {
-        "description": "Staffing-specific parsing, detection ng contractor, scoring ng availability",
-        "marketShare": "Mga staffing agency"
+        "description": "Binibigyan ng AI ng score ang resume gamit ang timbang para sa iyong industriya, at ang score nito ay pinananatili sa loob ng {{band}} puntos ng isang rule-based na score mula sa parehong dokumento. Hinahati ng audit trail ang resulta sa apat na bahagi sa ibaba. Kapag hindi available ang pangunahing scanner, isang mas simpleng backup ang sasagot: sinasabi ito ng ulat nito sa itaas at wala itong audit trail."
       }
     },
     "atsPlatformsTitle": "Mga ATS Platform na Aming Sinusuri",
-    "atsPlatformsSubtitle": "Ang aming pagsusuri ay batay sa mga parsing rule at scoring algorithm mula sa mga malalaking ATS platform na ito, sumasaklaw sa mahigit 90% ng job market.",
-    "moreAtsPlatforms": "+ 40 pang regional at industry-specific na ATS platform",
+    "atsPlatformsSubtitle": "Sinusuri ng scan kung paano malamang na babasahin ng bawat isa sa {{count}} system na ito ang resume mo. Ito ang mga system na pinangangalanan nito; walang inaangking bahagi ng job market dito.",
     "scoreCalculatedTitle": "Paano Kinakalkula ang Iyong ATS Score",
-    "scoreCalculatedSubtitle": "Ang iyong score ay isang weighted na kombinasyon ng maramihang factor na tumutukoy kung gaano kahusay magpepresenta ang iyong resume sa mga ATS system.",
-    "scoringFactors": {
-      "keywordOptimization": {
-        "factor": "Keyword Optimization",
-        "description": "Mga binanggit na keyword at skill na kaugnay sa industriya"
-      },
-      "formatCompatibility": {
-        "factor": "Format Compatibility",
-        "description": "Malinis na structure na maayos na mai-parse ng ATS"
-      },
-      "sectionCompleteness": {
-        "factor": "Kumpletuhan ng Section",
-        "description": "Lahat ng inaasahang section ay naroroon at maayos na nakalagyan ng label"
-      },
-      "experienceClarity": {
-        "factor": "Kalinawan ng Karanasan",
-        "description": "Malinaw na job title, petsa, at tagumpay"
-      },
-      "actionVerbUsage": {
-        "factor": "Paggamit ng Action Verb",
-        "description": "Malakas na mga action verb na nagpapakita ng epekto"
-      },
-      "quantifiedAchievements": {
-        "factor": "May Sukat na Tagumpay",
-        "description": "Mga numero at metric na nagpapatunay ng resulta"
-      },
-      "redFlagAbsence": {
-        "factor": "Walang Red Flag",
-        "description": "Walang isyu sa formatting o content"
-      }
-    },
+    "scoreCalculatedSubtitle": "Hinahati ng \"Bakit ang score na ito\" ng bawat buong report ang score sa apat na bahaging ito, mula sa 100 puntos.",
     "continuousResearchTitle": "Tuloy-tuloy na Pananaliksik",
-    "continuousResearchSubtitle": "Patuloy namin sinusuri ang mga job posting, ATS update, at trend sa hiring upang mapanatili ang katumpakan at pagiging up-to-date ng aming pagsusuri.",
+    "continuousResearchSubtitle": "Nagbabago ang mga keyword table at mga patakaran habang natututo kami, at may petsa ang bawat pagbabago sa pampublikong changelog.",
     "continuousResearch": {
-      "monthlyUpdates": "Buwanang algorithm update",
-      "keywordDatabases": "Industry-specific na keyword database",
-      "recruiterFeedback": "Integration ng tunay na recruiter feedback"
+      "monthlyUpdates": "Mga pagbabago sa patakaran na may petsa sa changelog",
+      "keywordDatabases": "Industry-specific na keyword database"
     },
-    "validatedByResultsTitle": "Pinagtibay ng mga Resulta",
-    "validatedByResultsSubtitle": "Ang aming methodology ay pinagtibay ng tunay na resulta mula sa libu-libong job seeker na nagpahusay ng kanilang resume gamit ang aming pagsusuri.",
+    "validatedByResultsTitle": "Ang hindi inaangkin ng pahinang ito",
+    "validatedByResultsSubtitle": "Walang survey ng resulta, kaya walang inaangking interview rate dito. Ang sinusukat ay kung ilang resume ang nabasa ng scanner.",
     "validatedByResults": {
       "resumesAnalyzed": "{{total}} resume na na-analyze"
     },
     "ctaTitle": "Handa na Makita ang Iyong ATS Score?",
-    "ctaSubtitle": "Kumuha ng libreng pagsusuri ng iyong resume gamit ang aming napatunayang methodology.",
-    "ctaButton": "Suriin ang Aking Resume nang Libre"
+    "ctaSubtitle": "Kumuha ng libreng pagsusuri ng iyong resume gamit ang paraang inilalarawan ng pahinang ito.",
+    "ctaButton": "Suriin ang Aking Resume nang Libre",
+    "atsCount": "{{count}} ATS system na sinusuri ayon sa pangalan",
+    "pointsOf": "{{points}} sa 100 puntos",
+    "audit": {
+      "keywords": {
+        "label": "Saklaw ng keyword",
+        "description": "Ang mga inaasahang keyword para sa iyong industriya na nasa resume"
+      },
+      "format": {
+        "label": "Format at kakayahang mabasa",
+        "description": "Kung mababasa ng parser ang istruktura nang hindi nawawala ang mga seksyon"
+      },
+      "impact": {
+        "label": "Nasukat na epekto",
+        "description": "Ilan sa iyong mga bullet ang may numero"
+      },
+      "content": {
+        "label": "Mga senyales ng nilalaman",
+        "description": "Mga pandiwa, istruktura at lalim ng seksyon, tinimbang laban sa mga red flag"
+      }
+    }
   },
   "pricingPage": {
     "metaTitle": "Pagpepresyo — Resume Booster",
@@ -2776,7 +2740,7 @@
     "noSubscriptions": "Isang-pagkakataong bayad • Hindi awtomatikong nagre-renew",
     "titlePrefix": "Piliin ang Iyong",
     "titleHighlight": "Resume Boost",
-    "subtitle": "Mula sa mabilisang ayos hanggang kumpletong career package. Magbayad isang beses, gamitin habambuhay.",
+    "subtitle": "Mula sa mabilisang ayos hanggang kumpletong career package. Isang beses binabayaran ang mga one-time na produkto; ang Pro at ang Agent plan ay nire-renew buwan-buwan hanggang kanselahin mo.",
     "secureCheckout": "Secure na checkout",
     "instantAccess": "Instant na access",
     "stripeProtected": "Protektado ng Stripe",
@@ -2802,7 +2766,7 @@
     "ladderSpecialistDesc": "Para sa mga nagpapalit ng karera: freelance, gig, at side-hustle na trabaho na isinalin sa recruiter-grade na karanasan.",
     "allToolsToggle": "Tingnan ang lahat ng tool ({{count}} pa)",
     "guarantee": "Sakop ang bawat bayad na tool: hindi masaya sa resulta? Ire-regenerate namin ito nang libre — sumagot lang sa iyong resibo.",
-    "passLine": "O isang one-off na pass para sa sarili mong AI agent: ${{passPrice}} para sa {{passHours}} oras at {{passApplications}} aplikasyon. Hindi kailanman nagre-renew.",
+    "passLine": "O isang one-off na pass para sa sarili mong AI agent: ${{passPrice}} para sa {{passHours}} oras at {{passApplications}} aplikasyon, na binibilang lang kapag kaya niyang ipadala. Hindi kailanman nagre-renew.",
     "passLink": "Ikonekta ang iyong agent"
   },
   "scanPackPurchase": {
@@ -2816,7 +2780,7 @@
     "creditsNeverExpire": "Hindi nag-expire ang mga credit",
     "emailToReceive": "Email para tanggapin ang credits",
     "emailPlaceholder": "iyong@email.com",
-    "creditsTiedToEmail": "Ang mga credit ay nakakabit sa iyong email address",
+    "creditsTiedToEmail": "Gumagana ang iyong mga credit sa browser na ito, at sa iyong account kung naka-sign in ka rito. Para sa resibo mo ang email.",
     "processing": "Pinoproseso...",
     "buyCreditsFor_one": "Bilhin ang {{count}} Credit para sa {{price}}",
     "buyCreditsFor_other": "Bilhin ang {{count}} Credits para sa {{price}}",
@@ -2924,11 +2888,13 @@
     "neverExpire": "ay hindi nag-expire",
     "fullAtsEachScan": "Buong ATS analysis sa bawat scan",
     "emailPlaceholder": "iyong@email.com",
-    "creditsLinkedToEmail": "Ang mga credit ay ikakabit sa email na ito",
+    "creditsLinkedToEmail": "Gumagana ang iyong mga credit sa browser na ito, at sa iyong account kung naka-sign in ka rito. Para sa resibo mo ang email.",
     "processing": "Pinoproseso...",
     "getCreditsFor_one": "Kunin ang {{count}} Credit para sa {{price}}",
     "getCreditsFor_other": "Kunin ang {{count}} Credits para sa {{price}}",
-    "noThanks": "Salamat na lang, hihintayin ko ang pag-reset ng aking libreng scan"
+    "noThanks": "Salamat na lang, hihintayin ko ang pag-reset ng aking libreng scan",
+    "fewerCredits": "Bawasan ang credits",
+    "moreCredits": "Dagdagan ang credits"
   },
   "changelogPage": {
     "metaTitle": "Changelog — Resume Booster",
@@ -3374,32 +3340,6 @@
     "standOut": "Maging natatangi sa ibang mga kandidato",
     "foundCount": "{{count}} keyword na tukoy sa papel na nahanap"
   },
-  "scorePackage": {
-    "autoRejected": "⚠️ Ang iyong resume ay awtomatikong tinatanggihan",
-    "filtered": "Ang mga ATS system ay nafi-filter ka bago makita ng mga recruiter ang iyong aplikasyon",
-    "critical": "Kritikal",
-    "stat75": "Ang mga resume na mababa ang score ay mas malamang na hindi mapansin sa paghahanap bago pa ang anumang pagsusuri ng tao",
-    "rewriteDesc": "Kumpletong muling pagsulat + ATS optimization + cover letter",
-    "rewriteGain": "30-40 puntos",
-    "quickFix": "Mabilis na ATS keyword optimization",
-    "roomForImprovement": "May pagkakataon pa ang iyong resume para mapabuti",
-    "targetedFix": "Ang naka-target na pag-aayos ay maaaring makabuluhang mapataas ang iyong marka",
-    "addKeywords": "Magdagdag ng mga nawawalang keyword + pagbutihin ang mga bullet point",
-    "midGain": "15-25 puntos",
-    "completeOverhaul": "Para sa kumpletong propesyonal na pagbabago",
-    "alreadyStrong": "Malakas na ang iyong resume!",
-    "fineTune": "I-fine-tune ito para sa mga tiyak na aplikasyon sa trabaho",
-    "detailedRewrites": "Makakuha ng detalyadong muling pagsulat + job-specific na pag-aayos",
-    "fineTuneGain": "5-15 puntos",
-    "completePackage": "Kumpletuhin ang iyong application package",
-    "stronglyRecommended": "Lubos na Inirerekomenda",
-    "recommended": "Inirerekomenda",
-    "estimatedGain": "Tinatayang kita: {{gain}}",
-    "fixNow": "Ayusin Ngayon",
-    "viewDetails": "Tingnan ang mga detalye",
-    "compareAll": "Ihambing ang lahat ng pakete",
-    "fixBefore": "Ayusin bago ang iyong susunod na aplikasyon"
-  },
   "shareableCard": {
     "excellent": "Kahusay",
     "good": "Mabuti",
@@ -3584,7 +3524,9 @@
       "education": "Edukasyon",
       "skills": "Mga Kasanayan",
       "certifications": "Mga Sertipikasyon"
-    }
+    },
+    "replaceWithFixes": "Palitan ang kasalukuyang draft mo sa builder ng resume mula sa scan mo, kasama ang mga ayos mula sa report?",
+    "replaceWithLatestScan": "May draft ka mula sa naunang resume. Palitan ito ng resume mula sa pinakabago mong scan?"
   },
   "jobsPage": {
     "seoTitle": "Live na trabaho mismo mula sa mga kumpanya — suriin ang iyong fit bago mag-apply",
@@ -3642,6 +3584,9 @@
     "companySeoTitle": "Mga trabaho sa {{company}} — Tunay, beripikadong bakante",
     "companySeoDescription": "Tingnan ang mga bukas na trabaho sa {{company}}, kinuha mismo mula sa job board ng {{company}} at muling bineberipika buong araw — walang aggregator, walang re-post. Libreng suriin kung paano tugma ang iyong resume sa anumang posisyon, tapos mag-apply sa site ng {{company}}.",
     "companyH1": "Mga bukas na posisyon sa {{company}}",
+    "uncarriedH1": "Wala sa amin ang {{company}}",
+    "uncarriedSeoTitle": "Wala sa amin ang {{company}}",
+    "uncarriedBody": "Wala ang {{company}} sa aming job board. Ipinapakita lang namin ang mga trabaho mula sa mga job board ng employer na binabasa namin.",
     "companySubtitle": "Bawat bakante sa {{company}} rito ay galing mismo sa hiring system ng {{company}} — beripikado, bukas pa, at muling sinusuri sa mismong sandaling mag-apply ka.",
     "companyResultsSummary": "Ipinapakita ang {{shown}} sa {{total}} bukas na posisyon sa {{company}}",
     "openRoles": "{{count}} bukas na posisyon",
@@ -3687,6 +3632,7 @@
     "saveTip": "I-save ang posting na ito sa iyong application tracker",
     "saveSearch": "I-save ang paghahanap na ito",
     "searchExists": "Na-save mo na ang paghahanap na ito.",
+    "searchAlertsOn": "Naka-on na ang mga alerto",
     "searchSaved": "Na-save ang paghahanap",
     "searchSavedDesc": "Ipinapakita ng account mo kung ilang bagong posting ang tumugma mula noong huli kang tumingin.",
     "freshAll": "Anumang petsa",
@@ -3888,7 +3834,9 @@
       "policyLink": "Bakit?",
       "emailPlaceholder": "ikaw@kumpanya.com",
       "send": "Ipadala ang link",
-      "sentNote": "Tingnan ang iyong inbox — nagpadala kami ng verification link sa {{email}}. I-click ito at tapos na ang claim.",
+      "sentNote": "Tingnan ang iyong inbox — nagpadala kami ng verification link sa {{email}}. Buksan ito at pindutin ang Kumpirmahin para tapusin ang claim.",
+      "confirmPrompt": "Binuksan mo ang link para kumpirmahin ang iyong claim sa {{company}}. Pindutin ang button para tapusin.",
+      "confirmButton": "Kumpirmahin ang aking claim",
       "sendFail": "Hindi maipadala ang verification email — pakisubukan muli.",
       "verifiedChip": "Beripikadong employer",
       "verifiedTip": "Isang contact sa kumpanyang ito ang nag-verify ng work email sa domain nito. Pagkakakilanlan lang ang kinukumpirma ng beripikasyon — hinding-hindi nito binabago ang hiring data na ipinapakita rito.",
@@ -3990,7 +3938,7 @@
     "tailorLimitTitle": "Naabot na ang limitasyon kada oras",
     "tailorLimit": "Nagamit mo na ang mga resume-tailoring run ngayong oras — magre-reset ito sa loob ng isang oras. Naka-save ang lahat ng nagawa mo.",
     "savedMilestone": "{{n}} trabaho na sa pipeline mo",
-    "savedMilestoneDesc": "Kayang ihanda ng Apply Agent ang mga naka-angkop na sagot para sa lahat nang sabay-sabay — {{trialDays}}-araw na libreng trial para sa mga unang beses na subscriber, at ikaw pa rin ang laging magpapadala.",
+    "savedMilestoneDesc": "Kayang ihanda ng Apply Agent ang mga naka-angkop na sagot para sa lahat nang sabay-sabay — {{trialDays}}-araw na libreng trial para sa mga unang beses na subscriber. Sa review mode, ang default, walang ipinapadala hangga't hindi mo inaaprubahan.",
     "sortRelevance": "Kaugnayan",
     "companyNotHiring": "Hindi sa ngayon — walang bukas na posisyon ang {{company}} sa kanilang job board. I-watch ang kumpanya sa ibaba at mag-eemail kami kapag may lumabas na bagong posisyon.",
     "companyYesHiringCapped": "Oo — mahigit {{n}} verified na bukas na posisyon ngayon mismo, direkta mula sa job board ng {{company}}.",
@@ -4096,6 +4044,11 @@
     "budgetContact": "Kung naghahanap ka ng trabaho at nakaharang ito sa iyo, sumulat sa {{email}} at aayusin namin.",
     "clearSearch": "I-clear ang search",
     "zeroTitle": "Walang verified na opening na tumutugma sa lahat ng iyan",
+    "sortNoStatedPayTitle": "Wala sa mga tugmang ito ang nagsasabi ng sahod, kaya walang maiaayos ayon sa sahod",
+    "sortNoStatedPayBody": "Ang pag-aayos ayon sa sahod ay nagpapakita lang ng mga posting na may halagang maihahambing namin. Nandoon pa rin ang mga tugma sa ibang ayos.",
+    "sortPayFailedTitle": "Hindi namin nabasa ang sahod para sa paghahanap na ito ngayon",
+    "sortPayFailedBody": "Hindi sumagot ang ayos ayon sa sahod ngayon. Nandoon pa rin ang mga tugma sa ibang ayos, o subukan ulit maya-maya.",
+    "sortShowNewest": "Ipakita ang pinakabago muna",
     "zeroTitleDegraded": "Walang eksaktong tugma — at hindi natapos ang aming paghahanap ayon sa kahulugan",
     "zeroBody": "Mga posting lang na verified mula sa sariling sistema ng mga kumpanya ang inililista namin — walang dinadagdag na pampuno. Makakatulong ang pagluluwag ng isang filter:",
     "zeroBodyDegraded": "Hinahanap ng ikalawang pasada na iyon ang mga trabahong kapareho ng kahulugan ng tinipa mo, at nag-time out ito ngayon. Subukan ulit maya-maya, o magluwag ng isang salaan:",
@@ -4111,7 +4064,6 @@
     "benchmarkTip": "Median ng mga annualized na lower bound na inilalathala mismo ng mga kumpanya (naka-annualize ang hourly at monthly rates), kinalkula sa dominanteng nakasaad na currency lang ng field na ito — hindi kailanman kino-convert, hindi hinahalo. Live mula sa board na ito — hindi survey o pagtatantya.",
     "benchmarkLine": "Naka-anunsyong sahod sa field na ito: median floor {{symbol}}{{median}} ({{currency}}) — mula sa {{n}} posting dito na nagsasaad ng sahod",
     "seenLastVisit": "naka-post bago ang huli mong pagbisita",
-    "urgencyTipFills": "Batay sa {{n}} tunay na fill sa aming tracking (mga role na naka-post nang isang linggo o higit pa, saka nagsara sa loob ng 30 araw mula nang i-post), karaniwang nagsasara ang isang role dito sa humigit-kumulang {{d}} araw — sulit mag-apply nang maaga.",
     "urgencyChip": "Karaniwang napupunan sa ~{{d}} araw",
     "repostTipTracked": "In-relist ng kumpanyang ito ang parehong role title nang {{n}} beses sa aming tracking. Maaaring routine na pag-repost iyon o mga role na paulit-ulit na nagbubukas — mabuting malaman bago ka maglaan ng oras sa aplikasyon.",
     "repostChipTracked": "Madalas mag-relist ng role ({{n}}×)",
@@ -4213,6 +4165,10 @@
     "coverageExperience": "antas ng karanasan sa {{pct}}%",
     "coverageCountry": "bansa sa {{pct}}%",
     "intentFilters": "Binasa ang {{phrases}} bilang filter at inilapat ito, sa halip na hanapin ang mga salitang iyon.",
+    "intentUndo": "Hanapin na lang ang mga salitang iyon bilang teksto",
+    "intentUndone": "Hinanap ang {{phrases}} bilang mga salita, hindi bilang filter.",
+    "intentRedo": "Ilapat ulit bilang mga filter",
+    "facetWithheld": "Walang bilang sa tabi ng mga larangan sa paghahanap ng teksto: iba ang paraan ng pagbilang namin dito kaysa sa listahan, kaya hindi ito tutugma.",
     "excludedTerms": "Itinatago ang mga resultang bumabanggit ng {{terms}}. Alisin ang “not” o ang “-” para makita ang mga ito.",
     "salaryStatedOnly": "Nakaayos ayon sa sahod — kaya ang mga trabahong may nakasaad na sahod lang ang lumalabas dito.",
     "locationExpanded": "Hinanap ang {{from}} bilang {{places}}.",
@@ -4258,6 +4214,10 @@
     "fieldsAtMax": "Tatlong larangan lang nang sabay — mas marami pa ay sobrang bagal kaysa gumawa ng pangalawang paghahanap.",
     "countriesAtMax": "Limang bansa lang nang sabay.",
     "sameLocationOpenings": "{{count}} bakante sa lokasyong ito",
+    "hideOpenings": "Itago ang ibang bakante",
+    "moreOpenings_one": "{{count}} pang bakante para sa tungkuling ito",
+    "moreOpenings_other": "{{count}} pang bakante para sa tungkuling ito",
+    "seeAllOpenings": "Tingnan ang lahat ng {{count}} bakante para sa tungkuling ito",
     "a11yLoading": "Nilo-load ang mga trabaho…",
     "a11yError": "Hindi ma-load ang mga trabaho. Subukan ulit.",
     "a11yNoResults": "Walang trabahong tumutugma sa mga filter na ito.",
@@ -4273,7 +4233,7 @@
     "maxYearsFieldLabel": "Pinakamataas na taon ng karanasang hinihingi",
     "anyMaxYears": "Anumang hinihinging taon",
     "maxYearsOption": "Humihingi ng {{n}} taon pababa",
-    "maxYearsTip": "Itinatago ang mga posting na humihingi ng mas maraming taon kaysa rito. Ang mga may nakasaad na bilang lang ang matutugma — 29% ng board — kaya nakatago ang iba habang naka-on ito.",
+    "maxYearsTip": "Itinatago ang mga posting na humihingi ng mas maraming taon kaysa rito. Ang mga may nakasaad na bilang lang ang matutugma, kaya nakatago ang iba habang naka-on ito.",
     "payFieldLabel": "Sahod",
     "salaryCeilingFieldLabel": "Pinakamataas na nakasaad na sahod",
     "anyCeiling": "Walang maximum",
@@ -4307,7 +4267,7 @@
     "coverageVendor": "kung anong sistema sila nagpo-post sa {{pct}}%",
     "savedWithoutFilters": "Nalalapat ang mga ito sa board pero wala pa sa email, kaya hindi kasama ang mga ito sa alerto: {{filters}}.",
     "inclUnstatedPay": "Kasama ang walang nakasaad na sahod",
-    "inclUnstatedPayTip": "Panatilihin ang mga trabahong hindi naglalathala ng sahod. Humigit-kumulang ikalima lamang ng mga employer ang nagsasaad nito, kaya itinatago ng pinakamababang sahod ang iba — ibinabalik ito ng opsyong ito.",
+    "inclUnstatedPayTip": "Panatilihin ang mga trabahong hindi naglalathala ng sahod. Maraming employer ang hindi nagsasaad nito, kaya itinatago ng pinakamababang sahod ang kanilang mga posting — ibinabalik ito ng opsyong ito.",
     "industriesAll": "Lahat ng industriya",
     "industriesLess": "Bawasan",
     "trackedCorpus": "{{n}} trabahong sinusubaybayan, kasama ang mga sarado",
@@ -4426,6 +4386,7 @@
     "lcaBasis": "Pinagmulan: {{file}}, inilathala noong {{published}} — US Department of Labor, Office of Foreign Labor Certification. Datos na public domain; hindi ine-endorso ng Departamento ang site na ito.",
     "lcaMinNote": "Ipinapakita lamang kapag may hindi bababa sa {{min}} sertipikadong aplikasyon sa likod ng bilang.",
     "layoffChipSec": "May inihaing pagbawas ng tauhan",
+    "layoffChipSecExit": "May nakatalang paghahain ng gastos sa paglabas",
     "layoffTip": "Inihain ng {{filer}} ang paghahaing ito noong {{eventDate}}. Isa itong naitalang pangyayari tungkol sa employer sa petsang iyon, hindi tungkol sa posisyong ito. Sadyang katabi ito ng hiring badge: ang badge na iyon ay ang naobserbahan lang namin sa board na ito — mga posisyong inalis at hindi na ibinalik, o mas maraming posisyong ipinaskil — at hindi ito binabago ng paghahaing ginawa sa ibang lugar. Wala sa dalawa ang nagsasabing may natanggap sa trabaho. Binasa mula sa {{sourceName}} {{readAgo}}.",
     "layoffLineWarnNoticed": "{{filer}} ay naghain ng abiso ng tanggalan sa {{state}} na may petsang {{noticeDate}}: {{workers}} posisyon sa {{site}}{{effectiveClause}}{{kindClause}} · inilista ng {{agency}} noong {{visibleDate}} · {{sourceName}} ↗",
     "layoffLineWarnReceived": "{{filer}} ay naghain ng abiso ng tanggalan na natanggap ng {{agency}} noong {{visibleDate}}: {{workers}} posisyon sa {{site}}{{effectiveClause}}{{kindClause}} · {{sourceName}} ↗",
@@ -4435,6 +4396,7 @@
     "layoffLineSecPct": "{{filer}} ay nag-ulat ng pagbawas ng tauhan na humigit-kumulang {{pct}}% sa isang 8-K (Item 2.05) na may petsang {{reportDate}}, inihain sa SEC noong {{filedDate}} · {{sourceName}} ↗",
     "layoffLineSecCount": "{{filer}} ay nag-ulat ng pagbawas ng tauhan na humigit-kumulang {{headcount}} posisyon sa isang 8-K (Item 2.05) na may petsang {{reportDate}}, inihain sa SEC noong {{filedDate}} · {{sourceName}} ↗",
     "layoffLineSecNoNumber": "{{filer}} ay nag-ulat ng pagbawas ng tauhan sa isang 8-K (Item 2.05) na may petsang {{reportDate}}, inihain sa SEC noong {{filedDate}} · {{sourceName}} ↗",
+    "layoffLineSecExit": "{{filer}} ay naghain ng 8-K sa ilalim ng Item 2.05 (mga gastos sa paglabas o pagbebenta ng isang aktibidad) na may petsang {{reportDate}}, inihain sa SEC noong {{filedDate}} · {{sourceName}} ↗",
     "layoffSecFilingLink": "Paghahain sa SEC",
     "layoffParent": "{{filer}}, ang parent company ng employer ng board na ito, {{line}}",
     "layoffRead": "binasa mula sa {{sourceName}} {{readAgo}}",
@@ -4464,7 +4426,7 @@
     "deleteAccount": "Burahin ang account",
     "welcome": "Welcome! Kunin natin ang unang score mo 🎯",
     "trackerEmpty": "I-track kung saan ka nag-apply — status, petsa, at score na ipinadala, sa isang lugar.",
-    "trackerEmptyCta": "Tingnan ang 550,000+ verified na trabaho — ang pag-save ng isa ay magsisimula ng tracker mo",
+    "trackerEmptyCta": "Tingnan ang mga verified na trabaho — ang pag-save ng isa ay magsisimula ng tracker mo",
     "status": {
       "saved": "Naka-save",
       "applied": "Naipasa",
@@ -4505,7 +4467,7 @@
     "setupTrack": "I-save o mag-apply sa unang posisyon",
     "setupDismiss": "Isara",
     "bridgeTitle": "Ang iyong Morning Queue",
-    "bridgeBlurb": "Sinusuri ng Apply Agent ang libu-libong bagong posting magdamag at pinipili ang karapat-dapat sa iyong umaga — laktawan ang mga kumpanyang paulit-ulit magre-relist, unahin ang tunay na kumukuha, bawat isa may dahilan. Ikaw pa rin ang laging magpapadala.",
+    "bridgeBlurb": "Sinusuri ng Apply Agent ang libu-libong bagong posting magdamag at pinipili ang karapat-dapat sa iyong umaga — laktawan ang mga kumpanyang paulit-ulit magre-relist, unahin ang tunay na kumukuha, bawat isa may dahilan. Sa review mode, ang default, walang ipinapadala hangga't hindi mo inaaprubahan.",
     "bridgeGap": "Alam din nito ang iyong kasalukuyang pinakamalaking kakulangan ({{gap}}) at tinitimbang ito.",
     "bridgeCta": "Buksan ang queue ↓",
     "notifTitle": "Mga email at alerto",
@@ -4552,7 +4514,7 @@
     "acNothingNew": "Walang bagong ihahanda — hindi maiangkop ang mga naka-save na posting (walang paglalarawan o grounding check). Magdagdag ng job posting at subukan muli.",
     "acTitle": "Katuwang sa aplikasyon",
     "acPreppedCount": "{{done}}/{{total}} naihanda",
-    "acBlurb": "Iniaangkop namin ang resume at cover letter sa bawat naka-save na posting — nakabatay sa totoo mong resume, walang imbentong detalye. Ikaw ang susuri at mag-a-apply sa sariling site ng kumpanya.",
+    "acBlurb": "Para sa bawat naka-save na trabaho, gumagawa kami ng iniangkop na resume at cover letter mula sa totoo mong resume, walang imbento. Ikaw ang susuri at mag-a-apply sa sariling site ng employer.",
     "acPrepProgress": "Inihahanda ang {{i}} ng {{total}} — {{company}}…",
     "acPrepAll_one": "Ihanda ang {{count}} iniangkop na aplikasyon",
     "acPrepAll_other": "Ihanda ang {{count}} iniangkop na aplikasyon",
@@ -4601,7 +4563,35 @@
     "replyWindowFill": "nag-apply {{d}} araw na ang nakalipas — {{pct}}% ng mga posisyon ng employer na ito ay tuluyang naaalis, hindi na muling ipino-post, sa loob ng {{h}} araw mula nang i-post",
     "replyWindowFillPast": "nag-apply {{d}} araw na ang nakalipas — lampas na sa {{h}} araw kung saan {{pct}}% ng mga posisyon ng employer na ito ay tuluyan nang naalis; makatuwiran ang mag-follow up",
     "replyWindowFillCensored": "nag-apply {{d}} araw na ang nakalipas — mahigit kalahati ng mga posisyon ng employer na ito ay nakapaskil pa rin 30 araw matapos i-post",
-    "replyWindowFillCoverage": "sa {{pct}}% ng mga posisyon nito na may petsa ng pag-post mula mismo sa kumpanya"
+    "replyWindowFillCoverage": "sa {{pct}}% ng mga posisyon nito na may petsa ng pag-post mula mismo sa kumpanya",
+    "deleteAccountBody": "Permanenteng binubura ang iyong account, kasaysayan ng scan, checklist, layunin, mga aplikasyon at anumang CV na in-upload mo para sa agent, at kinakansela ang anumang subscription na binabayaran ng account na ito, kaya wala nang sisingilin. Itinatago ang mga rekord ng pagbili para sa accounting. Hindi na ito maibabalik.",
+    "deleteUnlinkedPlan": "May subscription ang address na ito na hindi naka-link sa account na ito. Kanselahin muna ito sa billing page ng Stripe, saka burahin ang account. Walang nabura.",
+    "deleteRetry": "Hindi nabura ang iyong account: hindi namin natapos ang pag-alis ng iyong naka-save na CV o ang pagkansela ng iyong subscription. Pakisubukang muli makalipas ang isang minuto.",
+    "deletePlanCancelled": "Kinansela namin ang isang subscription sa account na ito, kaya hindi ka na nito sisingilin, pero hindi nabura ang account mismo. Pakisubukang muli makalipas ang isang minuto, o makipag-ugnayan sa support kung pumalya ulit.",
+    "deleteAgentStopped": "Naka-off na ang iyong apply agent.",
+    "deleteCvRemoved": "Natanggal na ang iyong naka-save na CV.",
+    "deleteFailed": "Nabigo ang pagbura ng account. Makipag-ugnayan sa support.",
+    "lifecycleGoingDown": "Sa huli naming pagsusuri, wala na ang posting na ito sa board ng employer. Lalagyan namin ito ng petsa kapag nakumpirmang tinanggal na.",
+    "getMoreCredits": "Kumuha ng mas maraming credit →",
+    "purchasesEmpty": "Wala pang binili. Lalabas dito ang mga report at tool na binili gamit ang email na ito, at ang mga Agent Pass na binili sa account na ito.",
+    "passRow": "Agent Pass",
+    "passState": {
+      "unactivated": "hindi pa nagsisimula",
+      "live": "tumatakbo",
+      "closed": "tapos na"
+    },
+    "withdraw": {
+      "title": "Mag-withdraw sa loob ng {{days}} araw",
+      "body": "Bumili ng Pro o ng Morning Queue sa nakaraang {{days}} araw mula sa EU o UK? Puwede kang mag-withdraw: kakanselahin agad ang plan, at ibabalik ang ibinayad mo, bawas ang mga araw na naibigay na.",
+      "button": "I-withdraw ang plan ko",
+      "confirm": "I-withdraw ang plan mo? Kakanselahin ito ngayon, at ibabalik sa card mo ang refund para sa mga araw na hindi pa naibibigay.",
+      "done": "Na-withdraw na. Kanselado na ang plan at ibinabalik ang {{amount}} sa card mo. May kumpirmasyong darating sa email.",
+      "doneNoRefund": "Na-withdraw na. Kanselado na ang plan; walang siningil para dito, kaya walang ibabalik.",
+      "none": "Walang plan sa account na ito na nagsimula sa nakaraang {{days}} araw.",
+      "notLinked": "May plan sa email address mo na hindi naka-link sa account na ito. Sumulat sa amin at kami ang bahala sa pag-withdraw.",
+      "outsideTerritory": "Ang {{days}}-araw na pag-withdraw ay para sa mga plan na sinisingil sa address sa EU, EEA o UK, at sa ibang lugar sinisingil ang plan na ito. Maaari mo pa rin itong kanselahin anumang oras.",
+      "failed": "Hindi natuloy ang pag-withdraw. Pakisubukan ulit pagkalipas ng isang minuto."
+    }
   },
   "applyAgent": {
     "badge": "Ang iyong AI apply agent",
@@ -4615,7 +4605,7 @@
     "f3Body": "Hindi kailanman nag-iimbento ang agent ng karanasang wala ka. Bawat pahayag ay sinusuri laban sa resume mo bago mo pa makita ang draft.",
     "f4Title": "Naghahanda, sumusubaybay, nagpapaalala",
     "f4Body": "Paghahanda sa interview kada aplikasyon, pipeline na nagsasabi ng susunod na hakbang, at paalala kapag oras na para mag-follow-up.",
-    "control": "Ikaw ang may kontrol: nagdadraft ang agent, ikaw ang nag-aapruba, at ikaw ang nagpapadala sa sariling site ng kumpanya.",
+    "control": "Ikaw ang may kontrol: sa review mode, ang default, nagdadraft ang agent at walang lumalabas hangga't hindi mo inaaprubahan. Ang auto mode, na nagsusumite para sa iyo, ay switch na ikaw ang nagbubukas.",
     "cta": "Pumili ng trabaho at panoorin itong gumana"
   },
   "boardHero": {
@@ -4783,7 +4773,8 @@
     "anyRole": "Kahit anong role",
     "searchLimitHit": "Hanggang 10 aktibong search lang. I-pause ang isa para makapagdagdag.",
     "searchLastRun": "Huling takbo: {{scanned}} na-scan, {{picked}} naka-queue.",
-    "passFunds": "Ang iyong Agent Pass ang nagpopondo sa agent na ito: {{left}} aplikasyon pa ang natitira. I-on ang agent sa ibaba, at makakahiling ng aplikasyon ang naka-connect mong AI."
+    "passFunds": "Ang iyong Agent Pass ang nagpopondo sa agent na ito: {{left}} aplikasyon pa ang natitira. I-on ang agent sa ibaba, at makakahiling ng aplikasyon ang naka-connect mong AI.",
+    "trackerFull": "Itinabi, pero puno na ang iyong tracker (2,000 entry). Mag-alis ng mga lumang entry para makadagdag pa."
   },
   "applyProfile": {
     "authorized": "May pahintulot ka bang magtrabaho kung saan ka nag-a-apply?",
@@ -4843,7 +4834,11 @@
     "coverNotePlaceholder": "hal. Isa akong data engineer na walong taon nang gumagawa ng pipelines sa Python at dbt, at naghahanap ng senior na papel kung saan maaari kong pangasiwaan ang isang platform mula simula hanggang dulo.",
     "coverNoteCount": "{{n}} sa 2000 na karakter",
     "coverNoteHintTailored": "Opsyonal. May mga form na hindi maisusumite kung wala ito, at hihinto ang ahente sa halip na magpadala ng blangko. Dahil naka-on ang pag-angkop, ina-angkop ito ng ahente sa bawat posisyon gamit lamang ang aktuwal na nakasaad sa iyong résumé at sa anunsyo — at kung hindi niya iyon magawa nang tapat, ipapadala ang iyong nota nang eksakto sa pagkakasulat mo.",
-    "tailorCoverNote": "Iangkop ang notang ito sa bawat posisyon. Isinusulat itong muli ng ahente batay sa anunsyo gamit lamang ang mga bagay na nasa iyong résumé na — hindi siya makakadagdag ng employer, paaralan, kasanayan o numerong wala roon, at hindi niya kusang binabanggit ang iyong visa status, sahod o petsa ng pagsisimula. Ang hindi niya mapatunayan ay inaalis niya: ang iyong nota ang ipapadala nang buo."
+    "tailorCoverNote": "Iangkop ang notang ito sa bawat posisyon. Isinusulat itong muli ng ahente batay sa anunsyo gamit lamang ang mga bagay na nasa iyong résumé na — hindi siya makakadagdag ng employer, paaralan, kasanayan o numerong wala roon, at hindi niya kusang binabanggit ang iyong visa status, sahod o petsa ng pagsisimula. Ang hindi niya mapatunayan ay inaalis niya: ang iyong nota ang ipapadala nang buo.",
+    "suggestedTitle": "Mula sa iyong CV, pero hindi kami sigurado. Suriin bago ito gamitin:",
+    "useSuggested": "Gamitin ito",
+    "dismissSuggested": "Hindi tama",
+    "uploadedCheck": "Na-save. Suriin sa ibaba ang nabasa namin mula sa iyong CV bago ito gamitin ng ahente."
   },
   "applyQueue": {
     "title": "Mga inihandang aplikasyon",
@@ -4884,7 +4879,11 @@
     "decideAgentOff": "I-on muna ang iyong agent — hinihintay iyon ng naaprubahang aplikasyon.",
     "decideBlockedCompany": "Nasa listahan mo ng hindi kailanman aaplayan ang employer na ito, kaya hindi magpapadala rito ang agent.",
     "decideInFlight": "Hawak na ito ng sender ngayon — huli na para baguhin ito.",
-    "decideFailed": "Hindi ito nagawa — i-refresh at subukang muli."
+    "decideFailed": "Hindi ito nagawa — i-refresh at subukang muli.",
+    "notArrived": "Hindi ito dumating",
+    "recordedNotSent": "Naitala: hindi ito naipadala.",
+    "retryNotTransient": "Hindi maaayos ng pag-ulit kung bakit ito huminto. Buksan ito para makita kung bakit.",
+    "retryNotFunded": "Wala nang natitirang aplikasyon ang iyong pass para ipadala ito ulit."
   },
   "agentPlan": {
     "badge": "Siya ang mag-a-apply para sa iyo",
@@ -4894,8 +4893,8 @@
     "includesPro": "Kasama ang lahat ng nasa Pro (${{proPrice}}/buwan)",
     "perkAutoApply": "Awtomatikong nag-a-apply para sa iyo sa {{names}}",
     "perkOneClick": "Mga aplikasyong napunan na at handang ipadala sa {{names}}",
-    "perkMorningQueue": "Morning Queue: sa magdamag, pinapatakbo ng agent ang iyong paghahanap at nag-iiwan ng shortlist sa iyong account para sa umaga",
-    "perkQueue": "May listahang puwede mong suriin muna, o hayaang tumakbo mag-isa — ikaw ang pipili, mababago anumang oras",
+    "perkMorningQueue": "Morning Queue: tuwing umaga, may shortlist ng mga bagong tugmang trabaho na naghihintay sa iyong account",
+    "perkQueue": "Suriin ang bawat aplikasyon bago ito ipadala, o hayaan itong kusang maipadala. Mababago anumang oras.",
     "perkCap": "Ikaw ang nagtatakda ng pang-araw-araw na limitasyon, at hindi ito mag-a-apply nang dalawang beses sa iisang trabaho",
     "perkHonest": "Hindi ito kailanman gumagawa-gawa ng sagot. Kung kailangan ka ng isang tanong, hihinto ito at magtatanong.",
     "cta": "Simulan ang agent",
@@ -4907,11 +4906,15 @@
     "signInFirst": "Magsa-sign in ka muna — gumagana ang agent mula sa iyong account.",
     "alreadySubscribed": "Mayroon ka nang agent — dadalhin ka namin doon.",
     "needsPaymentUpdate": "May nakabinbing bayad ang iyong plano. I-update ang iyong card sa halip na magsimula ng bagong plano.",
-    "hasPro": "Naka-Pro ka, na kasama na sa agent. Kanselahin muna ang Pro sa Manage subscription, saka simulan ang agent — para hindi ka masingil sa dalawa."
+    "hasPro": "Naka-Pro ka, na kasama na sa agent. Kanselahin muna ang Pro sa Manage subscription, saka simulan ang agent — para hindi ka masingil sa dalawa.",
+    "portalFailed": "Hindi namin mabuksan ang billing. Pakisubukang muli pagkalipas ng isang minuto."
   },
   "proPlan": {
     "trialing": "Naka-on ang iyong trial: bukas na ngayon ang walang-limitasyong scan at ang sabayang paghahanda ng mga aplikasyon. Kasama ang mga bayad na tool simula sa iyong unang bayad.",
-    "linkPending": "May plan ang address na ito na hindi pa naka-link sa account na ito. Mag-sign in gamit ang Google sa address na iyon para magamit ito rito."
+    "linkPending": "May plan ang address na ito na hindi pa naka-link sa account na ito. Mag-sign in gamit ang Google sa address na iyon para magamit ito rito.",
+    "confirmed": "Salamat: kumpirmado na ang iyong Pro subscription.",
+    "confirming": "Kinukumpirma ang iyong subscription sa Stripe. Ilang segundo lang ito.",
+    "notConfirmedYet": "Hindi pa namin makumpirma ang iyong subscription. I-refresh ang page na ito makalipas ang isang minuto, o makipag-ugnayan sa support kung hindi lumabas ang iyong plan."
   },
   "atsCoverage": {
     "heading": "Ginawa para sa mga sistemang talagang ginagamit ng mga employer",
@@ -4919,7 +4922,8 @@
     "autoTitle": "Kami ang mag-a-apply para sa iyo",
     "autoBlurb": "Ang agent mismo ang bubuo at magpapadala ng aplikasyon.",
     "clickTitle": "Napunan na, ikaw ang pipindot ng send",
-    "clickBlurb": "May CAPTCHA o pagsusuri ng tao ang mga ito. Hindi namin nilulutas o nilalampasan, kaya handa nang dumating ang aplikasyon mo at ikaw ang magpapadala.",
+    "clickBlurb": "May CAPTCHA o pagsusuri ng tao ang mga ito na hindi namin kailanman nilulutas o nilalampasan, o form na hindi pa kayang tapusin ng agent nang mag-isa. Alinman dito, handa nang dumating ang aplikasyon mo at ikaw ang magpapadala.",
+    "stripLegend": "Ipinapadala ng agent ang mga ito para sa iyo. Sa iba pang sistemang nasukat namin, pinupunan nito ang aplikasyon at ikaw ang pipindot ng send: may ilang gumagamit ng pagsusuri ng tao na hindi namin nilalampasan, at sa ilan ay hindi pa nito kayang tapusin ang form. Nakalista ang {{unmeasured}} dahil doon nagmumula ang kanilang mga trabaho; hindi pa nasusukat ang abot ng agent sa mga iyon.",
     "unmeasuredTitle": "Binabasa rin namin ang mga ito",
     "unmeasuredBlurb": "Nasa board ang kanilang mga trabaho. Hindi pa namin nasusuri ang kanilang mga application form, kaya wala kaming inaangkin tungkol sa abot ng agent.",
     "allTitle": "Mga aplikasyong inihanda para sa iyo",
@@ -4959,13 +4963,13 @@
   },
   "applyRefusal": {
     "sender-offline": "Offline ang aming tagapagpadala, kaya walang naipadala. Naka-queue ito at aalis pagbalik niya — wala kang kailangang gawin.",
-    "fit-unknown": "Hindi namin nasukat ito laban sa iyong résumé, kaya hindi namin ipinadala nang walang bantay. Maaari mo itong ipadala mismo.",
+    "fit-unknown": "Hindi namin nasukat ito laban sa iyong résumé, kaya hindi ito ipinadala ng agent nang mag-isa. Aprubahan ito para maipadala.",
     "not-ready": "May tinatanong ang employer na hindi namin sasagutin para sa iyo. Buksan ito at punan ang mga kulang.",
     "review-mode": "Handa na at naghihintay na pindutin mo ang send — nasa review mode ang iyong ahente, kaya hindi ito kusang nagpapadala.",
     "vendor-not-allowed": "Hindi mo pa binubuksan ang walang-bantay na pag-aaplay para sa job site na ito.",
     "already-submitted": "Naipadala na. Hindi namin kailanman ipinapadala nang dalawang beses ang parehong aplikasyon.",
     "duplicate": "Nag-apply ka na sa posisyong ito, kaya hindi namin ito ginalaw.",
-    "fit-below-floor": "Mas mababa sa fit floor na itinakda mo. Ibaba ito kung gusto mong maipadala rin ang mga borderline.",
+    "fit-below-floor": "Mas mahina ang tugma kaysa sa ipinapadala ng agent nang mag-isa. Aprubahan ito para maipadala.",
     "daily-cap": "Ubos na ang limitasyon ngayong araw. Aalis ito bukas, o taasan ang iyong pang-araw-araw na limitasyon.",
     "vendor-needs-human": "May hakbang ang site na tao lang ang makakagawa — kadalasan ay isang checkbox na hindi namin tatakan para sa iyo."
   },
@@ -4995,7 +4999,8 @@
     "held": "Handa na, hindi pa naipapadala.",
     "ready": "Handa — wala kang kailangang gawin.",
     "blocked": "May kailangan dito mula sa iyo.",
-    "preparing": "Inihahanda…"
+    "preparing": "Inihahanda…",
+    "not-arrived": "Tiningnan mo, at hindi ito dumating. Hindi na ito ipapadala ulit ng agent."
   },
   "agentHero": {
     "badge": "Ang iyong AI apply agent",
@@ -5019,9 +5024,9 @@
   },
   "homeHero": {
     "badge": "Live na job board + AI apply agent",
-    "headlinePre": "Totoo ang bawat trabaho rito.",
+    "headlinePre": "Mga live na trabaho, mula mismo sa sariling hiring system ng mga employer.",
     "headlineHighlight": "Nag-a-apply ang agent para sa iyo.",
-    "sub": "Mga bakanteng galing mismo sa sariling hiring system ng mga kumpanya — hindi kailanman scraped, sinusuri buong araw. I-upload ang CV mo: inaayos ng agent ang bawat isa laban dito, isinusulat nang tapat ang bawat aplikasyon, at isinusumite kung saan pinapayagan ng employer.",
+    "sub": "Mga bakanteng binasa mula sa sariling hiring system ng mga kumpanya at sinusuri buong araw. I-upload ang CV mo: inaayos ng agent ang bawat isa laban dito, isinusulat nang tapat ang bawat aplikasyon, at isinusumite kung saan pinapayagan ng employer.",
     "statOpenings": "beripikadong bakante",
     "statCompanies": "kumpanya",
     "statSendable": "kayang isumite ng agent para sa iyo",
@@ -5033,10 +5038,10 @@
   },
   "homeAgent": {
     "lead": "Dalhin ang sarili mong AI agent.",
-    "passLine": "Ang ${{passPrice}} na pass ay nagbibigay dito ng {{passHours}} oras sa buong bilis para mag-research sa job board at mag-apply sa {{passApplications}} trabaho para sa iyo. Hindi kailanman nagre-renew; mag-sign in para bumili.",
+    "passLine": "Ang ${{passPrice}} na pass ay nagbibigay sa iyong agent ng {{passHours}} oras para maghanap sa job board at mag-apply para sa iyo sa {{passApplications}} trabaho. Binibilang lang ang trabaho kapag kaya ng agent na ipadala ang aplikasyon. Hindi kailanman nagre-renew; mag-sign in para bumili.",
     "connectCta": "Ikonekta ang iyong agent",
     "passCta": "Bumili o buksan ang iyong pass",
-    "connectLine2": "Ikonekta ito nang libre at walang account — {{freeCallsPerDay}} na tawag bawat araw bawat network address para tumingin-tingin sa job board (ang isang opisina, koneksyon sa bahay, o ang sariling mga server ng isang chat service ay binibilang bilang isang address, kaya maaaring magsimula sa mas mababa sa {{freeCallsPerDay}} ang natitira kapag may ibang gumagamit nito)."
+    "connectLine2": "Ikonekta ito nang libre at walang account — {{freeCallsPerDay}} na tawag bawat araw bawat network address para tumingin-tingin sa job board (ang isang opisina o koneksyon sa bahay ay binibilang bilang isang address; mula sa ChatGPT may sariling {{freeCallsPerDay}} ang bawat tao, at mula sa Claude, nauuna ang pang-araw-araw na pool na pinagsasaluhan ng lahat ng gumagamit ng Claude)."
   },
   "ghostIndex": {
     "stillUp30WithheldLead": "{{n}} sa {{total}} larangang nakalista rito ang walang sukat ng bahaging nakapaskil pa rin sa aming 30-araw na hangganan. Bawat isa ay ipinagpapaliban nang may nakasaad na dahilan — kakulangan ito sa aming sariling tala, hindi kailanman paghatol sa larangan.",
@@ -5061,7 +5066,7 @@
     "layoffReasonUnwritten": "hindi pa nakakalkula ang pagbasa",
     "layoffReasonArithmetic": "hindi umabot sa isa ang kabuuan ng tatlong bahagi ng grupong iyon sa pagbasang ito, kaya ipinagpaliban ito",
     "layoffSampleSoFar": "Hanggang sa puntong ito, {{nFiled}} ganoong posisyon sa {{eFiled}} employer ang umabot sa aming 30-araw na hangganan.",
-    "layoffLag": "Umaabot ang mga abiso ng estado sa pinagsamang feed sa median na {{p50}} araw pagkatapos ng petsa ng abiso (sinukat noong {{measuredOn}}).",
+    "layoffLag": "Tinatatakan ng mga ahensya ng estado ang isang abiso sa median na {{p50}} araw pagkatapos ng petsa nito (sinukat noong {{measuredOn}}); hindi sinusukat kung kailan ito umaabot sa amin pagkatapos noon.",
     "layoffCadence": "Mga paghahaing binasa {{cadenceEdgar}} mula sa SEC EDGAR at {{cadenceWarn}} mula sa mga abiso ng estado na pinagsama ng Big Local News",
     "layoffNewest": "ang pinakabagong paghahaing hawak ay may petsang {{newestFiling}}, binasa {{filingsReadAt}}",
     "layoffComputed": "kinalkula {{computedAt}}",
@@ -5110,7 +5115,7 @@
     "clockShelfExpired": "Napaso nang hindi nagagamit ang iyong huling pass noong {{date}}.",
     "clockNone": "Wala pang pass sa account na ito.",
     "applications": "{{left}} sa {{passApplications}} aplikasyon",
-    "applicationsBasis": "Bawat tinanggap na kahilingan ay gumagastos ng isa. Ang kahilingang tinanggihan ng isang gate ay walang gastos, at ang pagpapadalang hindi kailanman nangyari ay nagbabalik ng aplikasyon nito.",
+    "applicationsBasis": "Binibilang lang ang aplikasyon para sa trabahong kayang padalhan ng agent. Walang bayad ang kahilingang tinanggihan, o ang pagpapadalang hindi nangyari.",
     "buyAnother": "Bumili ng pass",
     "whichAgent": "Aling agent?",
     "handoffTitle": "Ibigay ito sa iyong agent",
@@ -5132,14 +5137,16 @@
     "connectorPassGate": "Mula sa {{host}}, magagamit lang ang pass kapag naka-on na ang sign-in; ngayon, gamitin ito mula sa {{headerHosts}} gamit ang iyong agent key.",
     "repairSecondPass": "Hindi lumikha ng ikalawang pass ang bayad na ito: isang bukas na pass lang ang hawak ng isang account sa bawat pagkakataon, at nakikita rito ang sa iyo nang walang pagbabago. Naabisuhan na kami at ire-refund ang bayad na ito — kung hindi ito bumalik sa card mo sa loob ng ilang araw, sumulat sa resumeboostersupp@gmail.com.",
     "repairNotYours": "Ang checkout na ito ay sa ibang account kaysa sa naka-sign in ka, at nasa account na iyon ang pass nito. Mag-sign in sa account na nagbayad para makita ito.",
-    "repairRefunded": "Na-refund ang bayad na ito, kaya hindi ito nagbubukas ng pass."
+    "repairRefunded": "Na-refund ang bayad na ito, kaya hindi ito nagbubukas ng pass.",
+    "cardCharge": "Binibilang lang ang mga trabahong kaya mismong i-submit ng iyong agent. Ang iba ay tinatanggihan at walang bayad."
   },
   "oauthConsent": {
     "title": "Ikonekta ang iyong agent",
     "metaDescription": "Payagan ang isang agent host na kumilos bilang ikaw sa Resume Booster MCP server.",
     "asks": "Humihiling ang {{client}} na kumilos bilang ikaw sa Resume Booster MCP server.",
     "scopes": "Makikita nito: {{scopes}}.",
-    "returnsTo": "Pagkatapos mong payagan, babalik ka sa {{host}}.",
+    "sendsTo": "Kapag pinayagan mo, makakakuha ng access sa account mo ang {{host}}. Payagan lang kung iyan ang serbisyong ikinokonekta mo.",
+    "noHost": "Hindi sinasabi ng kahilingang ito kung saan mapupunta ang access. Payagan lang kung ikaw mismo ang nagsimula nito ngayon mula sa Claude, ChatGPT o Claude Code.",
     "signedInAs": "Naka-sign in bilang {{email}}.",
     "allow": "Payagan",
     "deny": "Tanggihan",
@@ -5213,9 +5220,12 @@
     "applyCta": "Mag-apply sa sariling site ng {{company}}",
     "applyCtaPlain": "Mag-apply sa sariling site ng employer",
     "applyNote": "Ang aplikasyon ay nangyayari sa sariling hiring system ng employer. Hindi kailanman muling ipina-post ng board na ito ang isang trabaho at hindi ito pumapagitna sa inyo ng employer.",
+    "scoreCta": "I-score ang aking résumé para sa trabahong ito (libre)",
+    "scoreNote": "Binubuksan ang libreng scanner na nakapuno na ang paglalarawan ng posting na ito.",
     "descHeading": "Ang sariling paglalarawan ng employer",
-    "sourceNote": "Diretso mula sa sariling hiring system ng {{company}} — hindi kailanman aggregator, hindi kailanman repost. Ang posting na may petsa ay ipinapakita nang hanggang {{days}} araw at inaalis sa sandaling wala na ito sa feed ng employer.",
-    "theEmployer": "ang employer"
+    "sourceNote": "Diretso mula sa sariling hiring system ng {{company}} — hindi kailanman aggregator, hindi kailanman repost. Ang posting na may petsa ay ipinapakita nang hanggang {{days}} araw mula sa petsang sinabi ng employer, at muling sinusuri ito ng board kapag binuksan mo.",
+    "theEmployer": "ang employer",
+    "theEmployerPossessive": "ng employer"
   },
   "pulseConfirm": {
     "title": "Kumpirmahin ang iyong buwanang market pulse",
@@ -5250,7 +5260,27 @@
     "invalid": "Hindi wasto ang link na ito. Gamitin ang unsubscribe link sa mismong email.",
     "missing": "Kailangan ng pahinang ito ang unsubscribe link mula sa isa sa aming mga email.",
     "error": "Hindi ito natigil ngayon. Subukan muli ang button maya-maya.",
-    "home": "Bumalik sa Resume Booster"
+    "home": "Bumalik sa Resume Booster",
+    "agentDigest": "Itigil ang mga email ng shortlist tuwing umaga. Patuloy na tatakbo ang iyong agent, at mananatili sa iyong account ang mga pinili nito."
+  },
+  "purchaseTerms": {
+    "agree": "Sa pagpapatuloy, sumasang-ayon ka sa <terms>Mga Tuntunin ng Serbisyo</terms> at sa <privacy>Patakaran sa Privacy</privacy>.",
+    "renewal": "{{price}} bawat buwan, awtomatikong nire-renew hanggang kanselahin mo. Kanselahin kahit kailan mula sa iyong account.",
+    "agentTrial": "Ang mga unang beses na subscriber ay may {{days}} araw na libre, pagkatapos ay {{price}} bawat buwan, awtomatikong nire-renew hanggang kanselahin mo. Kanselahin bago matapos ang trial at hindi ka sisingilin. Ang dating subscriber ay nagbabayad mula sa unang araw.",
+    "waiver": "Gusto kong maihatid na ngayon ang binili ko, at nauunawaan kong mawawala ang aking {{days}}-araw na karapatang umatras kapag naihatid na ito.",
+    "serviceStart": "Hinihiling kong magsimula na ngayon ang serbisyo. Kung aatras ako sa loob ng {{days}} araw, babayaran ko ang mga araw na nagamit na.",
+    "consentNeeded": "Lagyan ng tsek ang kahon sa itaas ng button para magpatuloy."
+  },
+  "freelanceBoost": {
+    "startNewPurchase": "Bibili para sa ibang posisyon? Magsimula ng bagong pagbili.",
+    "boughtHereTitle": "3. Ang iyong experience section — nabili na sa device na ito",
+    "openYourLink": "Para makita o mabuo ito, buksan ang link sa iyong purchase email. Hindi ka na sisingilin ulit."
+  },
+  "seller": {
+    "soldBy": "Ibinebenta ng {{name}}, {{address}}.",
+    "termsParty": "Ang mga Tuntuning ito ay kasunduan sa pagitan mo at ng {{name}}, {{address}}.",
+    "terms": "Ang mga Tuntuning ito ay kasunduan sa pagitan mo at ng {{name}}, {{address}}.",
+    "controller": "Ang controller ng iyong personal na data ay ang {{name}}, {{address}}."
   },
   "affiliates": {
     "commission": {
@@ -5274,5 +5304,61 @@
       "requestedTitle": "Na-request ang payout",
       "requestedBody": "Mag-e-email kami para ayusin ang bayad."
     }
+  },
+  "careerReportEnum": {
+    "strong": "Malakas",
+    "mixed": "Halo-halo",
+    "risky": "Mapanganib",
+    "weak": "Mahina",
+    "growth": "Paglago",
+    "stable": "Matatag",
+    "stagnant": "Hindi umuusad",
+    "unclear": "Hindi malinaw",
+    "high": "Mataas",
+    "medium": "Katamtaman",
+    "low": "Mababa",
+    "entry": "Baguhan",
+    "mid": "Gitna",
+    "senior": "Senior",
+    "executive": "Ehekutibo",
+    "aligned": "Tugma",
+    "stretch": "Mapaghamon",
+    "mismatch": "Hindi tugma",
+    "readyToApply": "Handa nang mag-apply",
+    "fixTheseFirst": "Ayusin muna ang mga ito",
+    "easy": "Madali",
+    "hard": "Mahirap",
+    "lead": "Lead",
+    "director": "Direktor",
+    "vp": "VP",
+    "behavioral": "Pag-uugali",
+    "technical": "Teknikal",
+    "situational": "Sitwasyonal",
+    "cultureFit": "Pagkakatugma sa kultura",
+    "critical": "Kritikal",
+    "fiveMinutes": "5 minuto",
+    "fifteenMinutes": "15 minuto",
+    "thirtyMinutes": "30 minuto"
+  },
+  "atsRoles": {
+    "title": "Anong mga posisyon ang inaaplayan mo?",
+    "description": "Maglagay ng hanggang {{count}} job title. Tinutugunan ng iyong ATS Defense report ang bawat isa.",
+    "roleLabel": "Posisyon {{n}}",
+    "example1": "hal., Data Analyst",
+    "example2": "hal., Business Analyst (opsyonal)",
+    "example3": "hal., Reporting Analyst (opsyonal)",
+    "cancel": "Kanselahin",
+    "continue": "Magpatuloy sa checkout"
+  },
+  "productFeatures": {
+    "atsDefense": [
+      "ATS compatibility audit (score bago at pagkatapos)",
+      "Pagsusuri at pag-optimize ng mga kulang na keyword",
+      "Pag-aayos ng format para mabasa nang malinis ng ATS",
+      "Tinutugunan ang hanggang 3 posisyong ibibigay mo bago mag-checkout",
+      "Mga tip para maitugma ang iyong LinkedIn profile",
+      "Keyword bank para sa iyong industriya",
+      "30-araw na garantiya ng muling pag-optimize"
+    ]
   }
 }

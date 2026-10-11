@@ -66,7 +66,8 @@ function fakeClient(handle: (q: Q) => Answer) {
     };
     return b;
   };
-  const deleted = () => calls.filter((c) => c.op === "delete");
+  // Posting deletes; a tombstone drop (job_board_aged_out) is not a posting leaving.
+  const deleted = () => calls.filter((c) => c.op === "delete" && c.table === "job_board_postings");
   return { client: { from }, calls, deleted };
 }
 const idsOf = (q: Q) => (q.filters.find((f) => f[0] === "in" && f[1] === "id")?.[2] ?? []) as string[];
@@ -97,7 +98,7 @@ describe("the closure prune deletes only rows whose ledger row landed (L13-71)",
     });
     const background: Promise<unknown>[] = [];
     const fn = build<(c: unknown, s: unknown, chunk: string[], ctx: unknown) => Promise<string[]>>(
-      [lifted("settleInsertError"), lifted("insertExits"), lifted("closeVanishedChunk")],
+      [lifted("settleInsertError"), lifted("insertExits"), lifted("closeVanishedChunk"), lifted("dropTombstones", "function")],
       {
         LIFECYCLE_SELECT: "*",
         EXIT_OPTIONAL_COLS: OPTIONAL("EXIT_OPTIONAL_COLS"),
@@ -172,9 +173,9 @@ describe("a whole-board prune deletes only what the exit log holds (L13-71)", ()
       return {};
     });
     const fn = build<(c: unknown, token: string, reason: string, source: string | null) => Promise<{ logged: number; complete: boolean }>>(
-      [lifted("settleInsertError"), lifted("insertExits"), lifted("logWholeBoardExit"), lifted("pruneWholeBoard")],
+      [lifted("settleInsertError"), lifted("insertExits"), lifted("logWholeBoardExit"), lifted("pruneWholeBoard"), lifted("dropTombstones", "function")],
       {
-        LIFECYCLE_SELECT: "*", EXIT_OPTIONAL_COLS: [], tenureDays: () => ({ days: 1, basis: "stated" }), lifecycleFacets: () => ({}),
+        LIFECYCLE_SELECT: "*", EXIT_OPTIONAL_COLS: [], tenureDays: () => ({ days: 1, basis: "stated" }), lifecycleFacets: () => ({}), waitUntil: () => {},
         console: { warn: () => {}, log: () => {} },
       },
       "pruneWholeBoard",
@@ -290,7 +291,7 @@ describe("a deep visit that failed twice running starts the next one from the to
     expect(cursorAfterFailure(5_200, 0)).toBe(5_200);
     expect(cursorAfterFailure(5_200, 1)).toBe(0);
     expect(cursorAfterFailure(0, 4)).toBe(0);
-    expect(CODE).toMatch(/if \(cursorAfterFailure\(cur, streak\) !== cur\) \{ deepCursors\.delete\(s\.token\); deepCursorsDirty = true; \}/);
+    expect(CODE).toMatch(/if \(cursorAfterFailure\(cur, streak, since, Date\.now\(\)\) !== cur\) \{ deepCursors\.delete\(s\.token\); deepCursorsDirty = true; \}/);
   });
 });
 
@@ -337,7 +338,7 @@ describe("failure state is kept per board on a shared token (L13-49)", () => {
 
   it("index.ts folds, skips and prunes by board key, and prunes a board's own vendor only", () => {
     expect(CODE).toMatch(/okTokens: okKeys,/);
-    expect(CODE).toMatch(/if \(skipTokens\.has\(boardKeyOf\(s\)\)\) continue;/);
+    expect(CODE).toMatch(/if \(skipTokens\.has\(boardKeyOf\(s\)\)\) \{ baseConsumed\.add\(boardKeyOf\(s\)\); continue; \}/);
     expect(CODE).toMatch(/retryBoards = dueKeys\s*\.map\(boardByKey\)/);
     expect(CODE).toMatch(/await pruneWholeBoard\(client, tk, "board_dormant", board\?\.source \?\? keySource\(key\)\)/);
     expect(CODE).toMatch(/\}, SHARED_TOKENS\)\.state;/);

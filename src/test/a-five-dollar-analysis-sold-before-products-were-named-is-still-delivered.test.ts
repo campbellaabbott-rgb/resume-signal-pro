@@ -29,11 +29,12 @@
  *   - and a legacy session is still redeemed once, never for another product,
  *     never unpaid.
  */
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { codeOf } from "./helpers/strip-comments";
 import { assertPaidSession } from "../../supabase/functions/_shared/paid-session";
+import { policyMetadata, TERMS_VERSION } from "../../supabase/functions/_shared/checkout-policy";
 import {
   analyzeResumeHarness,
   fullAnalysisSession,
@@ -115,8 +116,17 @@ describe("a legacy session is redeemed once, for this product, and only paid", (
     h.aiPlan.push(gate, gate);
     const a = ask(id);
     const b = ask(id, `${RESUME} second tab`);
-    for (let i = 0; i < 200 && h.aiCalls() < 2; i++) await new Promise((r) => setImmediate(r));
-    expect(h.aiCalls(), "both requests must be inside the AI call at once").toBe(2);
+    // A WALL-CLOCK budget. It was 200 event-loop turns, which is no time at
+    // all on a loaded runner: CI run 37207688995 saw 0 calls, and the gate it
+    // never opened left both requests hanging into the next case (3 AI calls
+    // where 1 was asserted). The gate is released whatever happens here.
+    try {
+      await vi.waitFor(() => expect(h.aiCalls(), "both requests must be inside the AI call at once").toBe(2), { timeout: 3_000, interval: 5 });
+    } catch (e) {
+      open();
+      await Promise.allSettled([a, b]);
+      throw e;
+    }
     open();
     const [ra, rb] = await Promise.all([a, b]);
     expect([ra.status, rb.status]).toEqual([200, 200]);
@@ -221,6 +231,12 @@ function balanced(src: string, start: number): string {
   throw new Error("unbalanced");
 }
 
+/** Every key the shared policy can put on a session: Terms shown, a referral, both EU/UK consents. */
+const POLICY_KEYS = Object.keys(policyMetadata(
+  { termsVersion: TERMS_VERSION, referralCode: "ab12", withdrawalWaiver: true, serviceStartConsent: true },
+  (k) => (k === "EU_UK_SALES" ? "on" : undefined),
+));
+
 /** Top-level `key: value` (or shorthand `key`) entries of an object literal. */
 function entriesOf(obj: string): Array<[string, string]> {
   const body = obj.slice(1, -1);
@@ -235,10 +251,12 @@ function entriesOf(obj: string): Array<[string, string]> {
     else if (ch === "," && depth === 0) { parts.push(body.slice(last, i)); last = i + 1; }
   }
   parts.push(body.slice(last));
-  return parts.map((p) => p.trim()).filter(Boolean).map((p) => {
+  return parts.map((p) => p.trim()).filter(Boolean).flatMap((p): Array<[string, string]> => {
+    // The shared checkout policy's spread (wave 3): every key it can add.
+    if (p === "...policy") return POLICY_KEYS.map((k) => [k, `policy.${k}`]);
     const m = /^([A-Za-z_]\w*)\s*(?::\s*([\s\S]*))?$/.exec(p);
     if (!m) throw new Error(`unreadable metadata entry: ${p}`);
-    return [m[1], (m[2] ?? m[1]).trim()];
+    return [[m[1], (m[2] ?? m[1]).trim()]];
   });
 }
 

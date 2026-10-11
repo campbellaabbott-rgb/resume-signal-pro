@@ -2,10 +2,20 @@
 // see their credits and purchases. Supabase email auth; session persists
 // via the supabase client's built-in storage.
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
+import { TERMS_VERSION } from "@/config/terms";
+
+/**
+ * WHAT A NEW ACCOUNT AGREED TO (commercial-readiness plan item 12). The sign-up
+ * button carries "By continuing you agree to the Terms"; the account stores
+ * which Terms and when, in its own metadata, with no new table.
+ */
+export function termsAcceptance(now: Date = new Date()): { terms_version: string; terms_accepted_at: string } {
+  return { terms_version: TERMS_VERSION, terms_accepted_at: now.toISOString() };
+}
 
 /**
  * WHERE TO GO AFTER SIGNING IN. Every sign-in path used to hard-navigate to
@@ -27,6 +37,28 @@ export function safeNextPath(raw: string | null | undefined): string {
   const s = raw.trim();
   if (!s.startsWith("/") || s.startsWith("//") || /[\\\s]/.test(s) || /^\/[^/?#]*:/.test(s)) return DEFAULT_AFTER_AUTH;
   return s;
+}
+
+/**
+ * A DELIBERATE SIGN-OUT, SHARED WITH THIS BROWSER'S OTHER TABS (S11-145).
+ * auth-js broadcasts SIGNED_OUT to every open tab, and the flag the sign-out
+ * button sets lives in one tab's memory, so every other tab called the
+ * person's own sign-out (or account deletion) an expiry. The button now also
+ * writes the time to localStorage, which every tab of this site reads; a
+ * session that vanishes within a minute of that mark is a sign-out.
+ */
+export const SIGN_OUT_MARK_KEY = "rb_signed_out_at";
+const SIGN_OUT_MARK_MS = 60_000;
+function markDeliberateSignOut(): void {
+  try { localStorage.setItem(SIGN_OUT_MARK_KEY, String(Date.now())); } catch { /* storage blocked: this tab's flag still holds */ }
+}
+export function signOutWasDeliberate(now: number = Date.now()): boolean {
+  try {
+    const at = Number(localStorage.getItem(SIGN_OUT_MARK_KEY));
+    return Number.isFinite(at) && at > 0 && now >= at && now - at < SIGN_OUT_MARK_MS;
+  } catch {
+    return false;
+  }
 }
 
 interface AuthContextValue {
@@ -57,16 +89,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [sessionExpired, setSessionExpired] = useState(false);
+  const userSignedOut = useRef(false);
 
   useEffect(() => {
     // Listener FIRST, then getSession — avoids missing an auth event
     // that fires between the two calls.
     let hadSession = false;
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
-      // A session vanishing without an explicit sign-out = expiry/revocation.
-      // Surfacing it lets the auth page say "session expired" instead of
-      // silently dumping the user to a logged-out state.
-      if (hadSession && !s && event !== "SIGNED_OUT") setSessionExpired(true);
+      // A session vanishing without THE USER signing out = expiry/revocation.
+      // auth-js reports a failed refresh as SIGNED_OUT too, so the event name
+      // cannot tell the two apart (platform sweep L3-20: this never fired);
+      // the sign-out button sets userSignedOut first, and only that is quiet,
+      // in this tab and (through its shared mark) in every other one.
+      if (hadSession && !s && !userSignedOut.current && !signOutWasDeliberate()) setSessionExpired(true);
+      if (!s) { hadSession = false; userSignedOut.current = false; }
       if (s) {
         hadSession = true;
         setSessionExpired(false);
@@ -86,7 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: `${window.location.origin}${safeNextPath(next)}` },
+      options: { emailRedirectTo: `${window.location.origin}${safeNextPath(next)}`, data: termsAcceptance() },
     });
     return { error: error?.message ?? null };
   };
@@ -105,6 +141,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    userSignedOut.current = true;
+    markDeliberateSignOut();
     await supabase.auth.signOut();
   };
 

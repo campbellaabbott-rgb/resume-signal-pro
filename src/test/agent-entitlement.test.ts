@@ -146,16 +146,17 @@ describe("no consumer asks the easier question", () => {
     "supabase/functions/agent-runner/index.ts",
     "supabase/functions/agent-access/index.ts",
     "supabase/functions/agent-mcp/index.ts",
+    // The last reader by address, moved 2026-10-09 (sweep S8-076); its
+    // behaviour is run in the-morning-shortlist-looked-up-the-plan-by-an-
+    // address-the-account-had-changed.
+    "supabase/functions/send-agent-digest/index.ts",
   ];
-  // send-agent-digest only mails the queue agent-runner built, and agent-runner
-  // reads by account; it still reads the row by address, which is the
-  // remaining reader named in the branch's open issues.
-  const BY_ADDRESS = ["supabase/functions/send-agent-digest/index.ts"];
+  const BY_ADDRESS: string[] = [];
 
   it.each(BY_ACCOUNT)("%s reads the subscription by account id, never the table by an address", (rel) => {
     const src = readFileSync(resolve(root, rel), "utf8");
     const code = src.split("\n").filter((l) => !l.trim().startsWith("//") && !l.trim().startsWith("*")).join("\n");
-    expect(code).toMatch(/client\.rpc\(ACCOUNT_SUBSCRIPTION_RPC|service\.rpc\(ACCOUNT_SUBSCRIPTION_RPC/);
+    expect(code).toMatch(/(client|service|supabase)\.rpc\(ACCOUNT_SUBSCRIPTION_RPC/);
     expect(code, `${rel} reads agent_subscribers directly`).not.toContain('.from("agent_subscribers")');
   });
 
@@ -171,7 +172,11 @@ describe("no consumer asks the easier question", () => {
     expect(ACCOUNT_SUBSCRIPTION_RPC).toBe("agent_subscription_rows");
   });
 
-  it.each(BY_ADDRESS)("%s reads the entitlement columns and the shared predicate", (rel) => {
+  it("no agent gate is left reading the plan by an address", () => {
+    expect(BY_ADDRESS).toEqual([]);
+  });
+
+  it.skipIf(BY_ADDRESS.length === 0).each(BY_ADDRESS)("%s reads the entitlement columns and the shared predicate", (rel) => {
     const src = readFileSync(resolve(root, rel), "utf8");
     expect(src, "must import the one definition").toContain("_shared/agent-entitlement.ts");
 
@@ -335,32 +340,17 @@ describe("isEntitled asks the set the way the set was built", () => {
 describe("no consumer re-derives the comparison", () => {
   // Written against the CLASS, not the two known instances. The last time a
   // guard here was written against specific filenames, the identical bug in a
-  // sibling file survived the fix. agent-runner no longer builds an address
-  // set at all: its set holds user ids from agent_subscription_rows.
-  const CONSUMERS = [
+  // sibling file survived the fix. agent-runner and, since 2026-10-09
+  // (S8-076), send-agent-digest no longer build an address set at all: their
+  // sets hold user ids from agent_subscription_rows.
+  it.each([
+    "supabase/functions/agent-runner/index.ts",
     "supabase/functions/send-agent-digest/index.ts",
-  ];
-
-  it("agent-runner asks its entitled set by user id, built by the shared helper", () => {
-    const src = readFileSync(resolve(__dirname, "../..", "supabase/functions/agent-runner/index.ts"), "utf8");
+  ])("%s asks its entitled set by user id, built by the shared helper", (rel) => {
+    const src = readFileSync(resolve(__dirname, "../..", rel), "utf8");
     expect(src).toMatch(/entitled = entitledAccounts\(subs\)/);
     expect(src).toMatch(/entitled\.has\(m\.user_id\)/);
     expect(src).not.toMatch(/entitled\.has\(m\.email\)|isEntitled\(entitled, m\.email\)/);
-  });
-  const root = resolve(__dirname, "../..");
-
-  it.each(CONSUMERS)("%s never queries the entitled set with a raw address", (rel) => {
-    const src = readFileSync(resolve(root, rel), "utf8");
-    // Strip comments — the prose above each fix quotes the old broken line, and
-    // a guard that cannot tell code from a description of code is not a guard.
-    const code = src.split("\n").filter((l) => !l.trim().startsWith("//") && !l.trim().startsWith("*")).join("\n");
-    const raw = [...code.matchAll(/entitled\.has\(([^)]*)\)/g)].map((m) => m[1].trim());
-    expect(raw, `${rel} calls entitled.has(...) directly; use isEntitled(entitled, email)`).toEqual([]);
-  });
-
-  it.each(CONSUMERS)("%s imports the shared helper", (rel) => {
-    const src = readFileSync(resolve(root, rel), "utf8");
-    expect(src).toMatch(/import\s*\{[^}]*\bisEntitled\b[^}]*\}\s*from\s*"\.\.\/_shared\/agent-entitlement\.ts"/);
   });
 });
 

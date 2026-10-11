@@ -67,9 +67,11 @@
 //     inventing it. The chip states the comparison; its title states the
 //     observation window and the horizon the share was read at.
 //
-// The three original constants are untouched: REPOST_FLAG_MIN,
 // ACTIVELY_HIRING_MIN_CLOSED and URGENT_FILL_MAX_DAYS are the same numbers,
-// read in the same order.
+// read in the same order. The card's own event-count caution (three same-title
+// re-list events) is gone (S8-092, 2026-10-09): it cautioned employers the
+// compare drawer praised. The card asks relistCaution, the drawer's and the
+// pane's rule, which can never be true beside a "closes" verdict.
 //
 // Behavioural, with the board mocked, because a grep for a class name proves
 // nothing about what a reader sees.
@@ -166,8 +168,9 @@ const ROWS = [
 // fill_rate_14 and tracking_days, and a row missing one of them is refused for
 // the wrong reason — which would make this guard pass on a broken fixture.
 //
-// acme: fills fast AND relists often — it qualifies for BOTH the caution and
-//       the praise, which is the one case the single slot has to get right.
+// acme: a fast fill record whose roles come back more often than they stay
+//       down (24 back, 20 down): the caution's case, and the branch order
+//       still puts it ahead of every praise branch.
 // beta: the same fast-fill record with no churn, so the slot speaks well of it
 //       — which is how we know the caution won on merit rather than because
 //       the praise branch is dead.
@@ -187,7 +190,7 @@ const ROWS = [
 //       the slot now.
 const CURVE = [
   {
-    company_token: "acme", open_roles: 12, fills_90d: 20, relists_90d: 7, filled_roles_90d: 20, relisted_roles_90d: 7, ageouts_90d: 2,
+    company_token: "acme", open_roles: 12, fills_90d: 20, relists_90d: 30, filled_roles_90d: 20, relisted_roles_90d: 24, ageouts_90d: 2,
     n_at_risk_14: 60, fills_le_14: 14,
     fill_rate_14: 0.62, fill_rate_14_lo: 0.55, fill_rate_14_hi: 0.69,
     relist_rate_14: 0.10, still_open_14: 0.28, fill_rate_7: 0.30, fill_rate_30: 0.80,
@@ -339,7 +342,7 @@ describe("a card that shows nine chips shows nothing", () => {
     // per company per day, so the true number can only be higher — "(7×)" was
     // an equality claim over a deduped count and the "×+" is the correction,
     // not decoration. If the marker ever goes away this must fail.
-    await waitFor(() => expect(text()).toContain("Re-lists roles often (7×+)"), SLOW);
+    await waitFor(() => expect(text()).toContain("Re-lists roles often (24×+)"), SLOW);
     await waitFor(() => expect(text()).toContain("Fills fast — 58% within 14d"), SLOW);
     // SCOPED TO THE CARDS, not the document: "Actively hiring" is the filter
     // control's label as well as the chip's, and a document-wide wait would be
@@ -509,10 +512,9 @@ describe("a card that shows nine chips shows nothing", () => {
     // sitting four lines below its own anchor. A precedence guard that can
     // become vacuous by a rename is worse than no guard: it reports a lost
     // behaviour that was never lost, and next time it will report nothing.
-    const anchor = JOBS.indexOf("const churn = hh.relists_90d;");
+    const anchor = JOBS.indexOf("const hh = curveByToken[job.token];");
     expect(anchor, "the one-slot IIFE moved — RE-ANCHOR this guard, do not delete it").toBeGreaterThan(-1);
     const slot = JOBS.slice(anchor);
-    const iChurn = slot.indexOf("churn >= REPOST_FLAG_MIN");
     // Anchored on the BRANCH CONDITION, not on a constant name: the praise
     // branch's tooltip interpolates URGENT_FILL_MAX_DAYS too, so the old
     // anchor found the copy rather than the gate and an ordering assertion
@@ -525,7 +527,6 @@ describe("a card that shows nine chips shows nothing", () => {
     const iFast = slot.indexOf('hiringRecordVerdict(hh) === "closes" && canStateFillRate');
     const iRoles = slot.indexOf("relistCaution(hh)");
     const iActive = slot.indexOf("isActivelyHiring(job.token)");
-    expect(iChurn, "the caution branch is missing").toBeGreaterThan(-1);
     expect(iRoles, "the role caution branch is missing").toBeGreaterThan(-1);
     expect(iRoles, "praise is read before the role caution").toBeLessThan(iFast);
     expect(iRoles).toBeLessThan(iActive);
@@ -534,13 +535,10 @@ describe("a card that shows nine chips shows nothing", () => {
     // reads as a precedence bug and sends the next reader to the wrong place.
     expect(iFast, "the fills-fast branch is missing").toBeGreaterThan(-1);
     expect(iActive, "the actively-hiring branch is missing").toBeGreaterThan(-1);
-    expect(iChurn, "praise is read before the caution").toBeLessThan(iFast);
-    expect(iChurn).toBeLessThan(iActive);
     // And every gate is still the shared constant, not a number typed again.
     // NOTE these read JOBS (comment-stripped) and not RAW: the block comment
-    // directly above the slot spells `churn >= REPOST_FLAG_MIN` out in prose,
-    // so a raw-source assertion would pass over a deleted branch.
-    expect(JOBS).toMatch(/const REPOST_FLAG_MIN = 3;/);
+    // directly above the slot spells its gates out in prose, so a raw-source
+    // assertion would pass over a deleted branch.
     expect(JOBS).toMatch(/const ACTIVELY_HIRING_MIN_CLOSED = 3;/);
     expect(JOBS).toMatch(/const URGENT_FILL_MAX_DAYS = 14;/);
     // THE GATE THE CHANGE ADDED IN FRONT OF THE PRAISE BRANCH. The old chip

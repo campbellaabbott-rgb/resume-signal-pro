@@ -26,18 +26,20 @@
     "guides": "Guias",
     "jobs": "Vagas",
     "explore": "Explorar",
-    "agents": "Agentes"
+    "agents": "Agentes",
+    "menu": "Menu",
+    "closeMenu": "Fechar menu",
+    "phoneNavAriaLabel": "Menu do site",
+    "signIn": "Entrar",
+    "account": "Conta"
   },
   "hero": {
     "badge": "Quadro de vagas ao vivo — cada vaga verificada no sistema da própria empresa",
     "freeScan": "Experimentar Análise Grátis",
     "heading": "Pare de adivinhar.",
     "headingHighlight": "Comece a conseguir entrevistas.",
-    "subheading": "Mesmo documento, mesma pontuação, sempre — comparada com escaneamentos reais do seu setor, com cada citação verificada contra o seu currículo. Não é a opinião do ChatGPT nem do Claude.",
-    "price": "$25",
     "oneTime": "pagamento único",
     "nofees": "Pagamento único • Sem renovação automática • Resultados instantâneos",
-    "roi": "Uma entrevista = $25 que se paga sozinho",
     "trusted": "Confiado por",
     "jobSeekers": "candidatos",
     "seeSample": "Ver Análise de Exemplo",
@@ -46,7 +48,6 @@
     "mainHeading": "Seu currículo está",
     "mainHeadingHighlight": "invisível para os recrutadores?",
     "atsTooltip": "Os ATS (sistemas de rastreamento de candidatos) transformam seu currículo em um banco de dados que os recrutadores pesquisam. Raramente rejeitam automaticamente — mas um parsing ruim ou palavras-chave ausentes fazem as buscas nunca mostrarem você. Mais de 98% das empresas Fortune 500 os usam.",
-    "mainSubheading": "Descubra em 30 segundos. Obtenha a sua pontuação ATS e veja exatamente o que lhe está a custar entrevistas.",
     "ctaButton": "Escanear meu currículo grátis",
     "freeBadge": "GRÁTIS",
     "noSignup": "Sem registo necessário",
@@ -55,8 +56,7 @@
     "private": "100% privado",
     "headline": {
       "get": "O quadro de vagas com",
-      "recruiterGrade": "zero vagas fantasma",
-      "feedback": "— mais de 550.000 vagas verificadas, combinadas com o seu currículo",
+      "recruiterGrade": "vagas ao vivo direto dos sistemas de contratação dos empregadores",
       "feedbackLive": "— {{n}}+ vagas verificadas, comparadas com o seu CV",
       "feedbackPlain": "— cada vaga verificada, comparada com o seu CV"
     },
@@ -106,12 +106,11 @@
     },
     "trust": {
       "secure": "Seguro e Privado",
-      "results": "Resultados em 30 segundos",
       "approved": "Aprovado por recrutadores"
     },
     "socialFirst": {
-      "joinThousands": "Análise grátis · Sem cadastro · Resultados em cerca de 60 segundos",
-      "subheading": "Envie seu currículo e receba uma pontuação reproduzível — comparada com escaneamentos reais do seu setor, cada citação verificada. Não é a opinião de um chatbot.",
+      "joinThousands": "Análise grátis · Sem cadastro · Resultados em até {{seconds}} segundos",
+      "subheading": "Envie seu currículo e receba uma pontuação que você pode conferir: escaneie o mesmo arquivo com a mesma vaga de novo em até {{days}} dias e receba o mesmo relatório (“Reanalisar” cria um novo) — comparada com escaneamentos reais do seu setor, cada citação verificada. Não é a opinião de um chatbot.",
       "recentActivityCount": "{{count}} pessoas",
       "recentActivityText": "verificaram o currículo na última hora"
     },
@@ -122,7 +121,7 @@
       "painSubheading": "Antes de um humano sequer vê-los. O seu é um deles?",
       "solutionLabel": "A solução",
       "solutionHeadingHighlight": "correções instantâneas à prova de ATS",
-      "solutionHeadingSuffix": "em 60 segundos",
+      "solutionHeadingSuffix": "em até {{seconds}} segundos",
       "solutionSubheading": "O nosso scanner de IA encontra exatamente o que está bloqueando o seu currículo e mostra como corrigir."
     },
     "ultraCompactDescription": "Reescritas otimizadas para ATS • Alertas de sinais de risco • Melhorias de palavras-chave",
@@ -144,12 +143,10 @@
     "testimonialQuote": "Corrigi o meu currículo em 10 minutos. Recebi 3 chamadas de entrevista na mesma semana.",
     "testimonialAuthorName": "— Sarah K., Engenheira de Software",
     "transparentScoring": "pontuação de IA transparente, sem caixa preta",
-    "factGdpr": "Compatível com GDPR",
     "factAutoDelete": "Currículo apagado no prazo de 7 dias",
     "factNoStorage": "Nunca vendido",
     "measureStrip": "Medições, não opiniões · Cada citação verificada · Uma pontuação que mostra seu trabalho",
     "jobsCta": "Mural de vagas ao vivo — cheque seu encaixe antes de se candidatar →",
-    "browseJobs": "Ver mais de 550.000 vagas verificadas",
     "browseJobsLive": "Explore {{n}}+ vagas verificadas",
     "browseJobsPlain": "Explore o mural verificado"
   },
@@ -178,7 +175,7 @@
       },
       "analysis": {
         "title": "2. Análise IA",
-        "description": "A nossa IA realiza 24 verificações distintas em ~10 segundos."
+        "description": "A nossa IA realiza {{checks}} verificações distintas em até {{seconds}} segundos."
       },
       "results": {
         "title": "3. Obtenha Resultados",
@@ -213,7 +210,7 @@
     },
     "footer": {
       "realAi": "Análise IA real",
-      "results": "Resultados em ~10 seg",
+      "results": "Resultados em até {{seconds}} segundos",
       "private": "100% privado"
     }
   },
@@ -340,9 +337,17 @@
       "excelCsv": "Excel/CSV",
       "googleSheets": "Google Sheets"
     },
-    "jobUrlPlaceholder": "https://linkedin.com/jobs/... ou página de carreiras da empresa",
-    "jobUrlTip": "💡 Cole o URL da vaga do LinkedIn, Indeed, Glassdoor ou qualquer página de carreiras de empresa",
-    "jobUrlNotesPlaceholder": "Opcional: adicione notas extra sobre a vaga...",
+    "jobUrlPlaceholder": "Cole um link da vaga, como https://jobs.lever.co/…",
+    "jobUrlTip": "💡 Funciona com links para os portais de vagas dos empregadores (Greenhouse, Lever, Ashby, Workday e outros). Para LinkedIn, Indeed e outros sites, cole a descrição da vaga.",
+    "jobUrlFetch": "Buscar a descrição",
+    "jobUrlFetching": "Lendo…",
+    "jobUrlLoadedTitle": "Descrição da vaga carregada",
+    "jobUrlLoadedDesc": "{{title}}. Confira no campo e depois faça o scan.",
+    "jobUrlUnsupported": "Não conseguimos ler vagas deste site. Cole a descrição da vaga.",
+    "jobUrlFailed": "Não conseguimos ler essa vaga. Cole a descrição da vaga.",
+    "jobUrlLimited": "Muitos links foram lidos a partir da sua conexão agora. Cole a descrição da vaga ou tente mais tarde.",
+    "jobUrlPasteInstead": "Colar o texto",
+    "jobUrlInPasteBox": "Isso é um link, não uma descrição da vaga. Podemos ler a página da vaga para você.",
     "otherJobsAvailable_one": "{{count}} outra vaga disponível",
     "otherJobsAvailable_other": "{{count}} outras vagas disponíveis",
     "changeSelection": "alterar seleção",
@@ -361,7 +366,6 @@
     "gsheetsStep2Anyone": "Qualquer pessoa com o link",
     "gsheetsStep3": "Copie o URL e cole acima",
     "jdAdded": "Descrição da vaga adicionada",
-    "jobUrlAdded": "URL da vaga adicionado",
     "linkedinAddHintPrefix": "Adicione o LinkedIn para obter",
     "linkedinAddHintHighlight": "análise de lacunas de competências e dicas de perfil",
     "scanChips": {
@@ -370,7 +374,7 @@
       "redFlags": "Sinais de Alerta",
       "plusMore": "+12 mais"
     },
-    "scanFooter": "Resultados em ~90 segundos • 7 verificações gratuitas por dia",
+    "scanFooter": "Resultados em até {{seconds}} segundos • 7 verificações gratuitas por dia",
     "getFreeAnalysis": "Obter Análise Gratuita do Currículo",
     "orGetCompleteAnalysis": "Ou obtenha a análise completa por",
     "securePaymentStripe": "Pagamento seguro via Stripe",
@@ -396,7 +400,7 @@
       },
       "subscription": {
         "question": "Isto é uma subscrição?",
-        "answer": "As duas opções existem, e você escolhe. Cada relatório e ferramenta é um pagamento único que nunca se renova. Separadamente, há dois planos mensais opcionais: o Pro por ${{proPrice}}/mês, com verificações ilimitadas e todas as ferramentas, e a Fila da Manhã por ${{agentPrice}}/mês, em que o agente de candidatura prepara uma lista de vagas selecionadas para você durante a noite. A verificação de currículo e o quadro de vagas continuam gratuitos de qualquer forma, e nada faz upgrade da sua conta automaticamente."
+        "answer": "As duas opções existem, e você escolhe. Cada relatório e ferramenta é um pagamento único que nunca se renova. Separadamente, há dois planos mensais opcionais: o Pro por ${{proPrice}}/mês, com verificações ilimitadas e todas as ferramentas, e a Fila da Manhã por ${{agentPrice}}/mês, em que o agente de candidatura prepara uma lista de vagas selecionadas para você durante a noite. A verificação de currículo e o quadro de vagas continuam gratuitos de qualquer forma. Os dois planos são renovados todo mês até você cancelar, e o teste gratuito da Fila da Manhã para novos assinantes vira o plano pago quando termina, a menos que você cancele antes. Fora isso, nada faz upgrade da sua conta automaticamente."
       },
       "share": {
         "question": "Posso partilhar a minha análise com outros?",
@@ -408,7 +412,7 @@
       },
       "dataStorage": {
         "question": "Armazenam os dados do meu currículo?",
-        "answer": "Apenas por pouco tempo, e com prazo. Quando carrega ou cola um currículo, o texto é guardado durante 24 horas para que um pagamento o possa usar, e depois apagado. O seu relatório gratuito, que cita linhas do seu currículo, é guardado durante 7 dias para que o mesmo ficheiro receba o mesmo relatório, e depois apagado. Uma análise paga fica atrás da sua ligação privada durante 90 dias, a menos que a apague antes. Só guardamos um currículo durante mais tempo quando nos pede: uma versão que guarda na sua conta, o currículo que define para a correspondência de vagas ou o CV que entrega ao agente de candidaturas, que o envia aos empregadores a que se candidata por si. Nunca o vendemos. A nossa página de Confiança lista cada cópia e o respetivo prazo."
+        "answer": "Apenas por pouco tempo, e com prazo. Quando carrega ou cola um currículo, o texto é guardado durante 24 horas para que um pagamento o possa usar, e depois apagado. O seu relatório gratuito, que cita linhas do seu currículo, é guardado durante 7 dias para que uma nova análise do mesmo ficheiro com a mesma vaga receba o mesmo relatório, e depois apagado. Uma análise paga fica atrás da sua ligação privada durante 90 dias, a menos que a apague antes. Só guardamos um currículo durante mais tempo quando nos pede: uma versão que guarda na sua conta, o currículo que define para a correspondência de vagas ou o CV que entrega ao agente de candidaturas, que o envia aos empregadores a que se candidata por si. Nunca o vendemos. A nossa página de Confiança lista cada cópia e o respetivo prazo."
       },
       "vsChatGPT": {
         "question": "Porque é isto melhor que o ChatGPT ou modelos de currículo?",
@@ -426,7 +430,6 @@
     "feature": "Funcionalidade",
     "templates": "Modelos",
     "free": "Grátis",
-    "cta": "Experimente Agora — $25",
     "ctaText": "Experimente Agora",
     "features": {
       "atsScoring": "Pontuação ATS de 5 Categorias",
@@ -462,8 +465,7 @@
         "quote": "O serviço é super útil e prático.",
         "role": "Utilizador Reddit • Cliente pagante"
       }
-    },
-    "trustMessage": "Junte-se a milhares de candidatos que melhoraram os seus currículos com feedback honesto e de nível profissional."
+    }
   },
   "trustIndicators": {
     "badges": {
@@ -473,15 +475,11 @@
       },
       "ssl": {
         "label": "SSL 256-bit",
-        "description": "Criptografia nível bancário"
+        "description": "Encriptado em trânsito"
       },
       "autoDelete": {
         "label": "Apagado em 7 dias",
         "description": "Seus dados, seu controle"
-      },
-      "gdpr": {
-        "label": "Conforme LGPD",
-        "description": "Privacidade primeiro"
       },
       "zeroStorage": {
         "label": "Nunca vendido",
@@ -489,7 +487,7 @@
       },
       "instant": {
         "label": "Entrega Instantânea",
-        "description": "Resultados em 30 segundos"
+        "description": "Resultados em até {{seconds}} segundos"
       }
     },
     "methodology": {
@@ -519,7 +517,7 @@
     "actionPlan": "Plano de Ação",
     "redFlags": "Sinais de Alerta",
     "linkedinAnalysis": "Análise do LinkedIn",
-    "includedFree": "Incluído Grátis",
+    "includedInFullAnalysis": "Na Análise Completa",
     "strength": "força",
     "suggestedHeadline": "Título Sugerido",
     "aboutSection": "Secção Sobre",
@@ -569,7 +567,6 @@
       "title": "Desbloqueie a Sua Análise Completa",
       "description": "Obtenha feedback abrangente com reescritas detalhadas de tópicos, estratégias de otimização ATS e um plano de ação prioritizado.",
       "button": "Obter Análise Completa",
-      "price": "$25",
       "processing": "A processar..."
     }
   },
@@ -698,14 +695,11 @@
   },
   "stickyCta": {
     "title": "Pronto para conseguir mais entrevistas?",
-    "subtitle": "Obtenha feedback de recrutador em 30 segundos",
     "mobileTitle": "Analise o seu currículo →",
     "button": "Analisar o Meu Currículo",
     "ctaButton": "Ver Todos os Pacotes",
-    "premiumFrom": "Pacotes premium a partir de",
-    "from": "A partir de",
-    "features": "Reescritas completas + otimização LinkedIn + personalização por vaga",
-    "featuresMobile": "Reescritas + otimização LinkedIn"
+    "features": "Aplica as correções do seu escaneamento grátis ao seu próprio currículo. Pagamento único, sem assinatura.",
+    "featuresMobile": "As correções do seu escaneamento, aplicadas. Pagamento único."
   },
   "finalCta": {
     "urgency": "O seu currículo pode estar a perder-lhe entrevistas agora mesmo",
@@ -735,7 +729,7 @@
     "oneTime": "pagamento único",
     "guarantee": "Resultados instantâneos • Pagamento único",
     "button": "Obter a Minha Análise Agora",
-    "roi": "Uma entrevista = $25 que se paga sozinho"
+    "roi": "Uma entrevista = {{price}} que se paga sozinho"
   },
   "scanProgress": {
     "title": "Análise IA em Progresso",
@@ -1067,7 +1061,25 @@
       "tooManyAttempts": "Muitas tentativas",
       "tooManyAttemptsDescription": "Aguarde alguns minutos antes de tentar novamente.",
       "serviceTemporarilyUnavailable": "Serviço temporariamente indisponível",
-      "serviceTemporarilyUnavailableDescription": "O nosso serviço de pagamento está temporariamente fora do ar. Tente novamente em alguns minutos."
+      "serviceTemporarilyUnavailableDescription": "O nosso serviço de pagamento está temporariamente fora do ar. Tente novamente em alguns minutos.",
+      "fileDamaged": "Não foi possível ler este ficheiro",
+      "fileDamagedDescription": "Parece estar danificado ou não é um PDF ou .docx verdadeiro. Guarde-o novamente, experimente o outro formato ou cole o texto do seu currículo.",
+      "fontUnreadable": "Não é possível ler as letras deste PDF",
+      "fontUnreadableDescription": "O tipo de letra não corresponde a caracteres reais. Carregue antes um .docx ou cole o texto do seu currículo.",
+      "unreadCharacters": "Não foi possível ler alguns caracteres",
+      "unreadCharactersDescription": "Ignorámos {{count}} caracteres que este PDF não identifica. Para a análise mais precisa, carregue um .docx ou cole o texto do seu currículo."
+    },
+    "reportCrash": {
+      "title": "Algo deu errado ao exibir seu relatório",
+      "body": "Sua análise terminou, mas o relatório não pôde ser exibido. Reanalise para escanear de novo e gerar um relatório novo."
+    },
+    "partialResults": {
+      "title": "Resultados parciais:",
+      "ruleBased": "nosso revisor de IA ficou indisponível por um momento, então este relatório usa apenas análise automática. Analise de novo em alguns minutos para a versão completa personalizada por IA.",
+      "thin": "a revisão de IA deixou algumas seções vazias, então a análise automática as preencheu. Esta versão não foi salva, então uma nova análise gera outra.",
+      "thinUnfilled": "a revisão de IA deixou algumas seções vazias, então elas estão ocultas. Analise de novo em alguns minutos para obter o relatório completo.",
+      "fallback": "nosso analisador principal estava fora do ar, então um analisador reserva mais simples gerou este relatório. Ele não tem o «Porquê esta pontuação», e a pontuação dele não é conferida com a nossa pontuação baseada em regras. Analise de novo em alguns minutos para o relatório completo.",
+      "fallbackHidden": "As seções que o analisador reserva deixou vazias estão ocultas."
     }
   },
   "miniPricingCards": {
@@ -1404,15 +1416,13 @@
     "getJobSpecificAnalysis": "Obter Análise Específica da Vaga",
     "personalizedInsightsForRole": "Obtenha informações personalizadas para a sua função pretendida",
     "oneTimePaymentInstantAccess": "Pagamento único • Acesso instantâneo",
-    "oneInterviewPaidForItself": "Uma entrevista = {{price}} amortizado",
     "unlockWithFullAnalysis": "Desbloquear com Análise Completa",
     "premiumFeatures": {
       "completeAtsAnalysis": "Análise ATS completa",
       "aiRewrittenResume": "Currículo reescrito por IA",
       "customCoverLetter": "Carta de apresentação personalizada",
       "beforeAfterComparison": "Comparação antes/depois",
-      "keywordOptimization": "Otimização de palavras-chave",
-      "priorityProcessing": "Processamento prioritário"
+      "keywordOptimization": "Otimização de palavras-chave"
     },
     "keywordFixFeatures": {
       "fullAtsBreakdown": "Análise completa da pontuação ATS",
@@ -1471,9 +1481,10 @@
       "doNotApply": "✗ Má adequação — Considere outros cargos"
     },
     "atsBanner": {
-      "require60": "A maioria dos ATS exige 60+ para passar",
-      "require75": "75+ aumenta a taxa de retorno de ligações",
-      "targetScore": "75+"
+      "belowMedian": "Abaixo da mediana de {{median}} entre {{n}} currículos de {{industry}} analisados aqui. As principais plataformas de ATS não rejeitam por este número, mas as correções abaixo aumentam-no.",
+      "belowTopQuarter": "Acima da mediana de {{median}}; o quartil superior dos {{n}} currículos de {{industry}} analisados aqui pontua {{p75}} ou mais.",
+      "noPassMark": "Não é uma nota de aprovação: as principais plataformas de ATS não rejeitam um currículo por uma pontuação. As correções abaixo aumentam-na.",
+      "topQuarter": "Quartil superior: {{p75}}+"
     },
     "eliteSignals": {
       "title": "Sinais que atraem recrutadores"
@@ -1548,8 +1559,7 @@
       "badge": "Prévia gratuita",
       "before": "❌ ANTES (do seu currículo)",
       "after": "✅ DEPOIS (otimizado)",
-      "whyBetter": "Por que é melhor:",
-      "cta": "Faça todos os seus marcadores serem reescritos na análise completa de {{price}}"
+      "whyBetter": "Por que é melhor:"
     },
     "lockedInsights": {
       "bulletLine1": "• Substitua 'Responsável por gerenciar equipe de 5' → 'Liderou equipe multifuncional de 5, gerando ganho de eficiência de 32%'",
@@ -1559,10 +1569,14 @@
       "bulletWithData1": "• Do seu currículo: \"{{bullet}}\" — nenhum impacto mensurável declarado",
       "bulletWithData2": "• {{weak}} dos seus {{total}} marcadores carecem de quantificação",
       "bulletWithData3": "• Faça cada um ser reescrito com métricas e um verbo de ação mais forte",
-      "kwHard": "• {{count}} habilidade{{plural}} técnica{{plural}} crítica{{plural}} faltando no seu currículo",
-      "kwCerts": "• {{count}} certificação{{plural}} do setor para mencionar (mesmo em andamento)",
-      "kwTools": "• {{count}} ferramenta{{plural}} comumente listada{{plural}} na sua área que você está faltando",
-      "kwMethodology": "• {{count}} palavra{{plural}}-chave de metodologia que seus concorrentes estão usando",
+      "kwHard_one": "• {{count}} habilidade técnica crítica faltando no seu currículo",
+      "kwHard_other": "• {{count}} habilidades técnicas críticas faltando no seu currículo",
+      "kwCerts_one": "• {{count}} certificação do setor para mencionar (mesmo em andamento)",
+      "kwCerts_other": "• {{count}} certificações do setor para mencionar (mesmo em andamento)",
+      "kwTools_one": "• {{count}} ferramenta comumente listada na sua área que está faltando",
+      "kwTools_other": "• {{count}} ferramentas comumente listadas na sua área que estão faltando",
+      "kwMethodology_one": "• {{count}} palavra-chave de metodologia que seus concorrentes estão usando",
+      "kwMethodology_other": "• {{count}} palavras-chave de metodologia que seus concorrentes estão usando",
       "kwPlacement": "• Onde colocar suas palavras-chave mais fortes para máximo peso ATS",
       "kwVerbs": "• Verbos de ação que superam suas escolhas de palavras atuais",
       "kwDensity": "• Como sua densidade de palavras-chave se compara aos melhores currículos na sua área",
@@ -1591,7 +1605,7 @@
       "footnote": "Pacote completo: currículo otimizado para ATS + carta de apresentação personalizada pronta para enviar aos empregadores"
     },
     "emailCapture": {
-      "joinMessage": "Junte-se a mais de 10.000 buscadores de emprego que recebem dicas semanais para superar o ATS e conseguir entrevistas.",
+      "joinMessage": "Junte-se a buscadores de emprego que recebem dicas semanais para superar o ATS e conseguir entrevistas.",
       "noSpam": "Sem spam. Cancele a inscrição a qualquer momento."
     },
     "coverLetterCta": {
@@ -1611,8 +1625,7 @@
     "cta": {
       "fixIssues": "Ver o que está custando entrevistas — {{price}}",
       "getFullAnalysis": "Obter meu currículo pronto para recrutadores — {{price}}",
-      "socialProof": "{{count}} currículos analisados hoje",
-      "resultsExpiry": "Seus resultados ficam salvos por mais {{hours}} horas"
+      "socialProof": "{{count}} currículos analisados hoje"
     },
     "enterprise": {
       "verdictLabel": "O Veredito",
@@ -1627,7 +1640,7 @@
       "emailSend": "Enviar",
       "emailSent": "Enviado! Verifique sua caixa de entrada.",
       "emailPrivacy": "Apenas os resultados da análise são enviados — nunca seu currículo. Sem spam.",
-      "pulseOptIn": "Envie-me também um pulso de mercado mensal: as palavras-chave em alta no meu setor, com um link de reescaneamento grátis. Cancele quando quiser.",
+      "pulseOptIn": "Envie-me também um pulso de mercado mensal: as principais palavras-chave do meu setor segundo o nosso guia de palavras-chave, com um link de reescaneamento grátis. Cancele quando quiser.",
       "pulseConfirmSent": "Se este endereço ainda não confirmou o pulso mensal do mercado, enviamos a ele um link de confirmação. O pulso só começa depois que esse link for clicado.",
       "pulseNotCovered": "O pulso mensal do mercado ainda não cobre sua área, então nenhuma confirmação foi enviada.",
       "dripConfirmSent": "O e-mail do seu relatório tem um botão para iniciar os e-mails do plano de ajustes. Nada mais é enviado até você clicar nele.",
@@ -1652,10 +1665,6 @@
       "cta": "Reescanear contra esta vaga",
       "tooShort": "Cole a vaga completa para uma comparação real"
     },
-    "applyBridge": {
-      "title": "Prepare esta candidatura exata",
-      "desc": "Você acabou de se comparar com uma vaga real — o Apply Assistant a transforma em candidatura: seu currículo adaptado a esta vaga, uma carta combinando e uma lista honesta de lacunas. Veja antes uma amostra a partir do seu próprio currículo."
-    },
     "matches": {
       "title": "Vagas ao vivo que combinam com este currículo",
       "titleSearching": "Procurando vagas ao vivo para este currículo",
@@ -1666,6 +1675,16 @@
       "loading": "Classificando vagas ao vivo contra seu currículo…",
       "apply": "Candidatar",
       "seeAll": "Ver todas as combinações no mural — salve buscas e acompanhe candidaturas"
+    },
+    "nextSteps": {
+      "eyebrow": "Próximos passos",
+      "title": "Se quiser ajuda com as correções acima",
+      "body": "O diagnóstico acima está completo e é grátis. Estas são as duas opções pagas que fazem o trabalho por você.",
+      "fullAnalysisName": "Análise completa",
+      "fullAnalysisDesc": "Aplica as correções deste relatório ao conteúdo do seu próprio currículo. Pagamento único, sem assinatura.",
+      "proName": "Pro",
+      "proDesc": "Plano mensal: análises ilimitadas e todas as ferramentas pagas, incluindo a Análise completa. Cancele quando quiser na sua conta.",
+      "proPrice": "${{price}}/mês"
     }
   },
   "analysisPreviewSample": {
@@ -1727,12 +1746,12 @@
     "rows": {
       "timeToResults": {
         "feature": "Tempo até aos resultados",
-        "us": "Menos de 60 segundos",
+        "us": "Em até {{seconds}} segundos",
         "them": "3-7 dias úteis"
       },
       "cost": {
         "feature": "Custo",
-        "us": "$5 – $25 pagamento único",
+        "us": "Análise gratuita · Análise completa ${{price}} pagamento único",
         "them": "$150 – $500+"
       },
       "atsOptimization": {
@@ -1773,7 +1792,7 @@
     "goToHome": "Ir para a Página Inicial",
     "creditsAdded_one": "{{count}} crédito adicionado!",
     "creditsAdded_other": "{{count}} créditos adicionados!",
-    "creditsLiveOn": "Os seus créditos já estão ativos na conta de",
+    "creditsLiveOn": "O recibo destes créditos é enviado para",
     "creditsBalancePrefix": "Verá o seu saldo no botão",
     "myCredits": "Os Meus Créditos",
     "creditsBalanceSuffix": "no cabeçalho neste dispositivo — não precisa de introduzir o seu e-mail novamente.",
@@ -1978,11 +1997,10 @@
       },
       "atsDefense": {
         "howItWorks": [
-          "A nossa IA realizou uma auditoria completa de compatibilidade com ATS",
-          "Analisámos o seu currículo em relação a mais de 50 plataformas ATS",
-          "Palavras-chave otimizadas para até 3 vagas pretendidas",
-          "Formato reestruturado para máxima capacidade de análise",
-          "Inclui dicas de alinhamento com o LinkedIn"
+          "Verificámos como os sistemas de recrutamento leem o seu currículo",
+          "Ajustámos as suas palavras-chave às funções que indicou (até 3)",
+          "Reorganizámos secções para serem lidas sem erros",
+          "Acrescentámos dicas para alinhar o seu perfil do LinkedIn"
         ],
         "nextSteps": [
           {
@@ -2172,6 +2190,11 @@
         "deliveryTime": "Instantâneo",
         "deliveryMethod": "Nesta página"
       }
+    },
+    "stillBeingMade": {
+      "title": "O seu {{product}} ainda está a ser preparado",
+      "emailed": "Está a demorar mais do que o habitual. Vamos enviá-lo por e-mail assim que estiver pronto, por isso pode fechar esta página.",
+      "refresh": "Está a demorar mais do que o habitual. Atualize esta página daqui a alguns minutos para o ver."
     }
   },
   "analysisResults": {
@@ -2508,22 +2531,19 @@
     "privacyMatters": "A sua privacidade importa",
     "titlePrefix": "O seu currículo está",
     "titleHighlight": "seguro connosco",
-    "heroSubtitle": "Construímos o Resume Booster com princípios de segurança em primeiro lugar. Os seus documentos de carreira merecem proteção ao nível bancário, e é exatamente isso que oferecemos.",
+    "heroSubtitle": "O que guardamos, durante quanto tempo, para quem vai e como pedir a eliminação — por escrito, para que possa verificar.",
     "badges": {
       "ssl": "SSL de 256 bits",
-      "retention": "Prazos publicados",
-      "gdpr": "Conforme com o RGPD"
+      "retention": "Prazos publicados"
     },
     "stats": {
       "resumesAnalyzed": "Currículos analisados",
-      "betterResults": "Reportam melhores resultados",
-      "avgDelivery": "Tempo médio de entrega",
-      "dataBreaches": "Violações de dados"
+      "betterResults": "Reportam melhores resultados"
     },
     "security": {
       "ssl": {
         "title": "Encriptação SSL de 256 bits",
-        "description": "O seu currículo é protegido com encriptação ao nível bancário durante o carregamento e processamento. Usamos o mesmo padrão de segurança das principais instituições financeiras."
+        "description": "O seu currículo chega até nós e aos serviços que o processam por ligações encriptadas (HTTPS/TLS)."
       },
       "freeScan": {
         "title": "O que a análise gratuita guarda",
@@ -2534,8 +2554,8 @@
         "description": "As tarefas de eliminação correm a cada 15 minutos no armazenamento temporário e a cada hora na cache de relatórios, na cache de IA e nas análises pagas, por isso nenhum deles ultrapassa o prazo indicado em mais de uma hora."
       },
       "gdpr": {
-        "title": "Conforme com o RGPD",
-        "description": "Seguimos padrões europeus rigorosos de proteção de dados. Pode solicitar a eliminação de quaisquer dados em qualquer momento."
+        "title": "Os seus direitos sobre os dados",
+        "description": "Onde quer que viva, pode pedir a qualquer momento uma cópia dos dados que temos sobre si, ou a sua eliminação."
       },
       "neverSold": {
         "title": "Nunca vendido",
@@ -2636,7 +2656,7 @@
     "trustedByTitle": "A confiança de candidatos nas melhores empresas",
     "trustedBySubtitle": "Profissionais de empresas líderes usam o Resume Booster para conseguir os seus empregos de sonho.",
     "ctaTitle": "Pronto para melhorar o seu currículo?",
-    "ctaSubtitle": "Junte-se a milhares de candidatos que melhoraram os seus currículos com a nossa análise alimentada por IA.",
+    "ctaSubtitle": "Análise grátis, sem registo. Cada linha citada no relatório é verificada contra o seu próprio currículo.",
     "ctaButton": "Obtenha a sua verificação gratuita",
     "dataFence": {
       "badge": "Independência dos dados",
@@ -2653,20 +2673,18 @@
     "transparentResearchBased": "Transparente e baseado em investigação",
     "titlePrefix": "A nossa metodologia de",
     "titleHighlight": "análise ATS",
-    "heroSubtitle": "Fizemos engenharia inversa de como mais de 50 Sistemas de Acompanhamento de Candidatos (ATS) analisam e pontuam currículos. Eis exatamente como funciona a nossa análise.",
-    "platformsAnalyzed": "Mais de 50 plataformas ATS analisadas",
+    "heroSubtitle": "Como uma análise transforma o seu currículo numa pontuação, escrito a partir do código que a calcula.",
     "resumesProcessed": "{{total}} currículos processados",
-    "updatedMonthly": "Atualizado mensalmente",
     "howAnalysisWorks": "Como funciona a nossa análise",
     "step": "PASSO {{number}}",
     "steps": {
       "parsing": {
         "title": "Análise do documento",
-        "description": "Extraímos o texto preservando a estrutura, processando ficheiros PDF e DOCX com a mesma lógica de análise usada pelas principais plataformas ATS."
+        "description": "Extraímos o texto do seu PDF ou DOCX e mantemos a estrutura: secções, datas e marcadores."
       },
       "aiAnalysis": {
         "title": "Análise por IA",
-        "description": "A nossa IA simula como cada ATS lê o seu currículo, identificando secções, palavras-chave e formatação que podem causar falhas de análise."
+        "description": "A nossa IA lê o currículo como um analisador o faria, procurando secções, palavras-chave e formatação que possam estragar a leitura."
       },
       "keywordMatching": {
         "title": "Correspondência de palavras-chave",
@@ -2674,101 +2692,47 @@
       },
       "scoringAlgorithm": {
         "title": "Algoritmo de pontuação",
-        "description": "A sua pontuação ATS é calculada com base em mais de 50 fatores, incluindo densidade de palavras-chave, formatação, integridade das secções e sinais de alerta."
-      }
-    },
-    "atsPlatforms": {
-      "0": {
-        "description": "Análise de cabeçalhos de secção, extração de palavras-chave, validação do formato de data",
-        "marketShare": "Grandes empresas"
-      },
-      "1": {
-        "description": "Algoritmos de correspondência de competências, pontuação do nível de experiência, indicadores de adequação cultural",
-        "marketShare": "Tecnologia e startups"
-      },
-      "2": {
-        "description": "Validação de informações de contacto, consistência de formatação, organização de secções",
-        "marketShare": "Mercado intermédio"
-      },
-      "3": {
-        "description": "Análise de densidade de palavras-chave, correspondência de cargos, pontuação de qualificações",
-        "marketShare": "Fortune 500"
-      },
-      "4": {
-        "description": "Análise de formação académica, deteção de certificações, correspondência de taxonomia de competências",
-        "marketShare": "Saúde e retalho"
-      },
-      "5": {
-        "description": "Análise da estrutura do currículo, validação da linha temporal de experiência",
-        "marketShare": "PME"
-      },
-      "6": {
-        "description": "Otimização de palavras-chave, algoritmos de classificação de candidatos",
-        "marketShare": "Pequenas empresas"
-      },
-      "7": {
-        "description": "Integração de perfis sociais, acompanhamento de referências, avaliação de competências",
-        "marketShare": "Empresas grandes"
-      },
-      "8": {
-        "description": "Correspondência alimentada por IA, indicadores de diversidade, conformidade global",
-        "marketShare": "Empresas globais"
-      },
-      "9": {
-        "description": "Análise específica para recrutamento, deteção de contratados, pontuação de disponibilidade",
-        "marketShare": "Agências de recrutamento"
+        "description": "A IA pontua o currículo com pesos para o seu setor, e a pontuação fica a menos de {{band}} pontos de uma pontuação baseada em regras calculada a partir do mesmo documento. O registo de auditoria divide depois o resultado nas quatro partes abaixo. Se o analisador principal estiver fora do ar, responde no lugar dele um analisador reserva mais simples: o relatório avisa isso no topo e não tem registo de auditoria."
       }
     },
     "atsPlatformsTitle": "Plataformas ATS contra as quais analisamos",
-    "atsPlatformsSubtitle": "A nossa análise baseia-se nas regras de análise e algoritmos de pontuação destas grandes plataformas ATS, cobrindo mais de 90% do mercado de trabalho.",
-    "moreAtsPlatforms": "+ 40 plataformas ATS regionais e específicas da indústria",
+    "atsPlatformsSubtitle": "A análise avalia como cada um destes {{count}} sistemas deverá ler o seu currículo. São os sistemas que nomeia; aqui não se reivindica nenhuma quota do mercado de trabalho.",
     "scoreCalculatedTitle": "Como a sua pontuação ATS é calculada",
-    "scoreCalculatedSubtitle": "A sua pontuação é uma combinação ponderada de múltiplos fatores que determinam o desempenho do seu currículo em sistemas ATS.",
-    "scoringFactors": {
-      "keywordOptimization": {
-        "factor": "Otimização de palavras-chave",
-        "description": "Palavras-chave e competências relevantes para a indústria mencionadas"
-      },
-      "formatCompatibility": {
-        "factor": "Compatibilidade de formato",
-        "description": "Estrutura limpa que o ATS consegue analisar corretamente"
-      },
-      "sectionCompleteness": {
-        "factor": "Integridade das secções",
-        "description": "Todas as secções esperadas presentes e devidamente rotuladas"
-      },
-      "experienceClarity": {
-        "factor": "Clareza da experiência",
-        "description": "Cargos, datas e conquistas claras"
-      },
-      "actionVerbUsage": {
-        "factor": "Uso de verbos de ação",
-        "description": "Verbos de ação fortes que demonstram impacto"
-      },
-      "quantifiedAchievements": {
-        "factor": "Conquistas quantificadas",
-        "description": "Números e métricas que comprovam resultados"
-      },
-      "redFlagAbsence": {
-        "factor": "Ausência de sinais de alerta",
-        "description": "Sem problemas de formatação ou conteúdo"
-      }
-    },
+    "scoreCalculatedSubtitle": "O «Porquê esta pontuação» de cada relatório completo divide a pontuação nestas quatro partes, em 100 pontos.",
     "continuousResearchTitle": "Investigação contínua",
-    "continuousResearchSubtitle": "Analisamos continuamente ofertas de emprego, atualizações de ATS e tendências de contratação para manter a nossa análise precisa e atualizada.",
+    "continuousResearchSubtitle": "As tabelas de palavras-chave e as regras mudam à medida que aprendemos, e cada alteração fica datada no registo público de alterações.",
     "continuousResearch": {
-      "monthlyUpdates": "Atualizações mensais do algoritmo",
-      "keywordDatabases": "Bases de dados de palavras-chave específicas da indústria",
-      "recruiterFeedback": "Integração de feedback real de recrutadores"
+      "monthlyUpdates": "Alterações de regras datadas no registo de alterações",
+      "keywordDatabases": "Bases de dados de palavras-chave específicas da indústria"
     },
-    "validatedByResultsTitle": "Validado por resultados",
-    "validatedByResultsSubtitle": "A nossa metodologia é validada por resultados reais de milhares de candidatos que melhoraram os seus currículos usando a nossa análise.",
+    "validatedByResultsTitle": "O que esta página não afirma",
+    "validatedByResultsSubtitle": "Não há inquérito de resultados, por isso aqui não se afirma nenhuma taxa de entrevistas. O que se mede é quantos currículos o leitor analisou.",
     "validatedByResults": {
       "resumesAnalyzed": "{{total}} currículos analisados"
     },
     "ctaTitle": "Pronto para ver a sua pontuação ATS?",
-    "ctaSubtitle": "Obtenha uma análise gratuita do seu currículo usando a nossa metodologia comprovada.",
-    "ctaButton": "Analisar o meu currículo gratuitamente"
+    "ctaSubtitle": "Obtenha uma análise gratuita do seu currículo com o método que esta página descreve.",
+    "ctaButton": "Analisar o meu currículo gratuitamente",
+    "atsCount": "{{count}} sistemas ATS verificados pelo nome",
+    "pointsOf": "{{points}} de 100 pontos",
+    "audit": {
+      "keywords": {
+        "label": "Cobertura de palavras-chave",
+        "description": "As palavras-chave esperadas para o seu setor que o currículo contém"
+      },
+      "format": {
+        "label": "Formato e legibilidade",
+        "description": "Se um analisador consegue ler a estrutura sem perder secções"
+      },
+      "impact": {
+        "label": "Impacto quantificado",
+        "description": "Quantos dos seus marcadores incluem um número"
+      },
+      "content": {
+        "label": "Sinais de conteúdo",
+        "description": "Verbos, estrutura e profundidade das secções, pesados contra sinais de alerta"
+      }
+    }
   },
   "pricingPage": {
     "metaTitle": "Preços — Resume Booster",
@@ -2776,7 +2740,7 @@
     "noSubscriptions": "Pagamentos únicos • Nunca renovam automaticamente",
     "titlePrefix": "Escolha o seu",
     "titleHighlight": "Impulso de Currículo",
-    "subtitle": "De correções rápidas a pacotes de carreira completos. Pague uma vez, use para sempre.",
+    "subtitle": "De correções rápidas a pacotes de carreira completos. Os produtos avulsos pagam-se uma vez; o Pro e o plano Agent renovam todos os meses até cancelar.",
     "secureCheckout": "Checkout seguro",
     "instantAccess": "Acesso instantâneo",
     "stripeProtected": "Protegido pela Stripe",
@@ -2802,7 +2766,7 @@
     "ladderSpecialistDesc": "Para quem muda de carreira: trabalho freelance e por projetos traduzido em experiência de nível profissional.",
     "allToolsToggle": "Ver todas as ferramentas ({{count}} a mais)",
     "guarantee": "Toda ferramenta paga está coberta: não gostou do resultado? Regeneramos grátis — basta responder ao seu recibo.",
-    "passLine": "Ou um passe único para o seu próprio agente de IA: {{passPrice}} $ por {{passHours}} horas e {{passApplications}} candidaturas. Nunca renova.",
+    "passLine": "Ou um passe único para o seu próprio agente de IA: {{passPrice}} $ por {{passHours}} horas e {{passApplications}} candidaturas, que só contam quando ele as pode enviar. Nunca renova.",
     "passLink": "Ligue o seu agente"
   },
   "scanPackPurchase": {
@@ -2816,7 +2780,7 @@
     "creditsNeverExpire": "Os créditos nunca expiram",
     "emailToReceive": "E-mail para receber os créditos",
     "emailPlaceholder": "seu@email.com",
-    "creditsTiedToEmail": "Os créditos estão vinculados ao seu endereço de e-mail",
+    "creditsTiedToEmail": "Os seus créditos funcionam neste navegador e na sua conta se tiver sessão iniciada aqui. O e-mail é para o seu recibo.",
     "processing": "A processar...",
     "buyCreditsFor_one": "Comprar {{count}} crédito por {{price}}",
     "buyCreditsFor_other": "Comprar {{count}} créditos por {{price}}",
@@ -2924,11 +2888,13 @@
     "neverExpire": "nunca expiram",
     "fullAtsEachScan": "Análise ATS completa em cada verificação",
     "emailPlaceholder": "seu@email.com",
-    "creditsLinkedToEmail": "Os créditos serão vinculados a este e-mail",
+    "creditsLinkedToEmail": "Os seus créditos funcionam neste navegador e na sua conta se tiver sessão iniciada aqui. O e-mail é para o seu recibo.",
     "processing": "A processar...",
     "getCreditsFor_one": "Obter {{count}} crédito por {{price}}",
     "getCreditsFor_other": "Obter {{count}} créditos por {{price}}",
-    "noThanks": "Não, obrigado, vou esperar pela reinicialização das minhas verificações gratuitas"
+    "noThanks": "Não, obrigado, vou esperar pela reinicialização das minhas verificações gratuitas",
+    "fewerCredits": "Menos créditos",
+    "moreCredits": "Mais créditos"
   },
   "changelogPage": {
     "metaTitle": "Registo de alterações — Resume Booster",
@@ -3374,32 +3340,6 @@
     "standOut": "Destaque-se de outros candidatos",
     "foundCount": "{{count}} palavras-chave específicas do cargo encontradas"
   },
-  "scorePackage": {
-    "autoRejected": "⚠️ Seu currículo está sendo automaticamente rejeitado",
-    "filtered": "Sistemas ATS estão filtrando você antes que recrutadores vejam sua candidatura",
-    "critical": "Crítico",
-    "stat75": "Currículos com pontuação baixa têm muito mais chance de passar despercebidos nas buscas antes de qualquer revisão humana",
-    "rewriteDesc": "Reescrita completa + otimização ATS + carta de apresentação",
-    "rewriteGain": "30-40 pontos",
-    "quickFix": "Otimização rápida de palavras-chave ATS",
-    "roomForImprovement": "Seu currículo tem espaço para melhoria",
-    "targetedFix": "Uma correção direcionada pode aumentar significativamente sua pontuação",
-    "addKeywords": "Adicionar palavras-chave ausentes + melhorar pontos",
-    "midGain": "15-25 pontos",
-    "completeOverhaul": "Para uma revisão profissional completa",
-    "alreadyStrong": "Seu currículo já é forte!",
-    "fineTune": "Ajuste-o para candidaturas específicas",
-    "detailedRewrites": "Obtenha reescritas detalhadas + adaptação específica ao cargo",
-    "fineTuneGain": "5-15 pontos",
-    "completePackage": "Complete seu pacote de candidatura",
-    "stronglyRecommended": "Altamente Recomendado",
-    "recommended": "Recomendado",
-    "estimatedGain": "Ganho estimado: {{gain}}",
-    "fixNow": "Corrigir Agora",
-    "viewDetails": "Ver detalhes",
-    "compareAll": "Comparar todos os pacotes",
-    "fixBefore": "Corrigir antes da próxima candidatura"
-  },
   "shareableCard": {
     "excellent": "Excelente",
     "good": "Bom",
@@ -3584,7 +3524,9 @@
       "education": "Formação",
       "skills": "Habilidades",
       "certifications": "Certificações"
-    }
+    },
+    "replaceWithFixes": "Substituir o rascunho atual do editor pelo currículo da sua verificação, com as correções do relatório aplicadas?",
+    "replaceWithLatestScan": "Você tem um rascunho de um currículo anterior. Substituí-lo pelo currículo da sua verificação mais recente?"
   },
   "jobsPage": {
     "seoTitle": "Vagas ao vivo direto dos sites das próprias empresas — confira seu encaixe antes de se candidatar",
@@ -3642,6 +3584,9 @@
     "companySeoTitle": "Vagas na {{company}} — Vagas reais e verificadas",
     "companySeoDescription": "Explore as vagas da {{company}}, tiradas diretamente do site de carreira da {{company}} e reverificadas o dia todo — sem agregadores, sem republicações. Confira grátis o encaixe do seu currículo em qualquer vaga e candidate-se no site da {{company}}.",
     "companyH1": "Vagas abertas na {{company}}",
+    "uncarriedH1": "Não acompanhamos {{company}}",
+    "uncarriedSeoTitle": "Não acompanhamos {{company}}",
+    "uncarriedBody": "{{company}} não está no nosso quadro de vagas. Só mostramos vagas dos portais de empregadores que lemos.",
     "companySubtitle": "Cada vaga da {{company}} aqui vem diretamente do sistema de recrutamento da {{company}} — verificada, ainda aberta e conferida no momento em que você se candidata.",
     "companyResultsSummary": "Mostrando {{shown}} de {{total}} vagas na {{company}}",
     "openRoles": "{{count}} vagas abertas",
@@ -3687,6 +3632,7 @@
     "saveTip": "Guarde esta vaga no seu rastreador de candidaturas",
     "saveSearch": "Salvar esta busca",
     "searchExists": "Você já salvou esta busca.",
+    "searchAlertsOn": "Alertas ativados",
     "searchSaved": "Busca salva",
     "searchSavedDesc": "Sua conta mostra quantas vagas novas surgiram desde sua última olhada.",
     "freshAll": "Qualquer data",
@@ -3888,7 +3834,9 @@
       "policyLink": "Por quê?",
       "emailPlaceholder": "voce@empresa.com",
       "send": "Enviar link",
-      "sentNote": "Confira sua caixa de entrada — enviamos um link de verificação para {{email}}. Clique nele e a reivindicação está feita.",
+      "sentNote": "Confira sua caixa de entrada — enviamos um link de verificação para {{email}}. Abra-o e pressione Confirmar para concluir a reivindicação.",
+      "confirmPrompt": "Você abriu um link para confirmar sua reivindicação de {{company}}. Pressione o botão para concluir.",
+      "confirmButton": "Confirmar minha reivindicação",
       "sendFail": "Não foi possível enviar o e-mail de verificação — tente novamente.",
       "verifiedChip": "Empregador verificado",
       "verifiedTip": "Um contato desta empresa verificou um e-mail de trabalho no domínio dela. A verificação confirma identidade apenas — nunca altera os dados de contratação mostrados aqui.",
@@ -3990,7 +3938,7 @@
     "tailorLimitTitle": "Limite por hora atingido",
     "tailorLimit": "Usou os ajustes de currículo desta hora — repõem-se dentro de uma hora. Tudo o que gerou fica guardado.",
     "savedMilestone": "Já são {{n}} vagas no seu pipeline",
-    "savedMilestoneDesc": "O Apply Agent pode preparar respostas personalizadas para todas de uma vez — teste grátis de {{trialDays}} dias para novos assinantes, e é sempre você quem envia.",
+    "savedMilestoneDesc": "O Apply Agent pode preparar respostas personalizadas para todas de uma vez — teste grátis de {{trialDays}} dias para novos assinantes. No modo de revisão, o padrão, nada é enviado até você aprovar.",
     "sortRelevance": "Relevância",
     "companyNotHiring": "Agora não — a {{company}} não tem vagas abertas no seu portal neste momento. Siga a empresa abaixo e enviaremos um e-mail quando surgirem novas vagas.",
     "companyYesHiringCapped": "Sim — mais de {{n}} vagas abertas verificadas agora mesmo, diretamente do portal da {{company}}.",
@@ -4096,6 +4044,11 @@
     "budgetContact": "Se você está procurando trabalho e isso está atrapalhando, escreva para {{email}} e nós resolvemos.",
     "clearSearch": "Limpar a pesquisa",
     "zeroTitle": "Nenhuma oferta verificada corresponde a todos esses critérios",
+    "sortNoStatedPayTitle": "Nenhum destes resultados indica o salário, por isso não há nada para ordenar por salário",
+    "sortNoStatedPayBody": "Ordenar por salário mostra só ofertas com um valor que podemos comparar. Os resultados continuam lá noutra ordem.",
+    "sortPayFailedTitle": "Não conseguimos ler o salário desta pesquisa agora",
+    "sortPayFailedBody": "A ordem por salário não respondeu desta vez. Os resultados continuam lá noutra ordem, ou tente de novo daqui a pouco.",
+    "sortShowNewest": "Mostrar as mais recentes primeiro",
     "zeroTitleDegraded": "Sem correspondências exatas — e a nossa pesquisa por significado não terminou",
     "zeroBody": "Só listamos anúncios verificados nos sistemas das próprias empresas — nada é acrescentado para encher. Aliviar um filtro ajuda:",
     "zeroBodyDegraded": "Essa segunda passagem procura vagas que signifiquem o mesmo que escreveu, e desta vez esgotou o tempo. Tente de novo daqui a pouco ou alivie um filtro:",
@@ -4111,7 +4064,6 @@
     "benchmarkTip": "Mediana dos limites inferiores anualizados que as próprias empresas publicam (valores à hora e ao mês anualizados), calculada apenas na moeda dominante indicada nesta área — nunca convertida, nunca misturada. Em direto desta plataforma — não é um inquérito nem uma estimativa.",
     "benchmarkLine": "Salário anunciado nesta área: mediana dos mínimos {{symbol}}{{median}} ({{currency}}) — com base em {{n}} anúncios daqui que indicam salário",
     "seenLastVisit": "publicado antes da sua última visita",
-    "urgencyTipFills": "Com base em {{n}} preenchimentos genuínos na nossa monitorização (vagas publicadas uma semana ou mais e depois fechadas nos 30 dias após a publicação), uma vaga típica aqui fecha em cerca de {{d}} dias — vale a pena candidatar-se cedo.",
     "urgencyChip": "Costuma fechar em ~{{d}} dias",
     "repostTipTracked": "Esta empresa republicou o mesmo título de vaga {{n}} vezes durante a nossa monitorização. Pode significar republicação de rotina ou vagas que reabrem constantemente — vale a pena saber antes de investir numa candidatura.",
     "repostChipTracked": "Republica vagas com frequência ({{n}}×)",
@@ -4213,6 +4165,10 @@
     "coverageExperience": "o nível de experiência em {{pct}} %",
     "coverageCountry": "um país em {{pct}} %",
     "intentFilters": "Interpretámos {{phrases}} como um filtro e aplicámos, em vez de procurar essas palavras.",
+    "intentUndo": "Pesquisar essas palavras como texto",
+    "intentUndone": "Pesquisámos {{phrases}} como palavras, não como um filtro.",
+    "intentRedo": "Voltar a aplicá-las como filtros",
+    "facetWithheld": "Sem números ao lado das áreas numa pesquisa de texto: contá-los-íamos de outra forma que a lista, por isso não coincidiriam com ela.",
     "excludedTerms": "A ocultar resultados que mencionam {{terms}}. Remova o “not” ou o “-” para os ver.",
     "salaryStatedOnly": "Ordenado por salário — só aparecem aqui as vagas que o indicam.",
     "locationExpanded": "Pesquisámos {{from}} como {{places}}.",
@@ -4258,6 +4214,10 @@
     "fieldsAtMax": "Três áreas de cada vez — mais do que isso é tão lento que compensa fazer outra pesquisa.",
     "countriesAtMax": "Cinco países de cada vez.",
     "sameLocationOpenings": "{{count}} vagas neste local",
+    "hideOpenings": "Ocultar as outras vagas",
+    "moreOpenings_one": "Mais {{count}} vaga desta função",
+    "moreOpenings_other": "Mais {{count}} vagas desta função",
+    "seeAllOpenings": "Ver todas as {{count}} vagas desta função",
     "a11yLoading": "Carregando vagas…",
     "a11yError": "Não foi possível carregar as vagas. Tente novamente.",
     "a11yNoResults": "Nenhuma vaga corresponde a estes filtros.",
@@ -4273,7 +4233,7 @@
     "maxYearsFieldLabel": "Máximo de anos de experiência exigidos",
     "anyMaxYears": "Qualquer exigência de anos",
     "maxYearsOption": "Pede {{n}} anos ou menos",
-    "maxYearsTip": "Esconde os anúncios que pedem mais anos do que isto. Só os anúncios que indicam um número podem ser comparados — 29% do quadro — pelo que os restantes ficam ocultos enquanto isto estiver ativo.",
+    "maxYearsTip": "Esconde os anúncios que pedem mais anos do que isto. Só os anúncios que indicam um número podem ser comparados, pelo que os restantes ficam ocultos enquanto isto estiver ativo.",
     "payFieldLabel": "Remuneração",
     "salaryCeilingFieldLabel": "Remuneração máxima informada",
     "anyCeiling": "Sem máximo",
@@ -4307,7 +4267,7 @@
     "coverageVendor": "em que sistema publicam em {{pct}} %",
     "savedWithoutFilters": "Estes aplicam-se no quadro mas ainda não no e-mail, por isso o alerta deixa-os de fora: {{filters}}.",
     "inclUnstatedPay": "Incl. sem salário indicado",
-    "inclUnstatedPayTip": "Mantém as vagas que não publicam salário. Apenas cerca de um quinto dos empregadores o indica, por isso um piso salarial esconde o resto — isto traz-nas de volta.",
+    "inclUnstatedPayTip": "Mantém as vagas que não publicam salário. Muitos empregadores não o indicam, por isso um piso salarial esconde as suas vagas — isto traz-nas de volta.",
     "industriesAll": "Todos os setores",
     "industriesLess": "Menos",
     "trackedCorpus": "{{n}} vagas acompanhadas, incluindo as encerradas",
@@ -4426,6 +4386,7 @@
     "lcaBasis": "Fonte: {{file}}, publicado em {{published}} — US Department of Labor, Office of Foreign Labor Certification. Dados de domínio público; o Departamento não endossa este site.",
     "lcaMinNote": "Mostrado apenas quando há pelo menos {{min}} pedidos certificados por trás do número.",
     "layoffChipSec": "Redução de efetivos declarada",
+    "layoffChipSecExit": "Declaração de custos de saída registada",
     "layoffTip": "{{filer}} apresentou esta declaração em {{eventDate}}. É um facto sobre o empregador nessa data, não sobre esta vaga. Está ao lado do selo de contratação de propósito: esse selo é apenas o que observámos neste quadro — vagas retiradas e não repostas, ou mais vagas publicadas — e uma declaração apresentada noutro lado não o altera. Nenhum dos dois diz que alguém foi contratado. Lido de {{sourceName}} {{readAgo}}.",
     "layoffLineWarnNoticed": "{{filer}} apresentou um aviso de despedimento junto de {{state}} datado de {{noticeDate}}: {{workers}} postos em {{site}}{{effectiveClause}}{{kindClause}} · listado por {{agency}} em {{visibleDate}} · {{sourceName}} ↗",
     "layoffLineWarnReceived": "{{filer}} apresentou um aviso de despedimento recebido por {{agency}} em {{visibleDate}}: {{workers}} postos em {{site}}{{effectiveClause}}{{kindClause}} · {{sourceName}} ↗",
@@ -4435,6 +4396,7 @@
     "layoffLineSecPct": "{{filer}} declarou uma redução de efetivos de cerca de {{pct}}% num 8-K (Item 2.05) datado de {{reportDate}}, apresentado à SEC em {{filedDate}} · {{sourceName}} ↗",
     "layoffLineSecCount": "{{filer}} declarou uma redução de efetivos de cerca de {{headcount}} postos num 8-K (Item 2.05) datado de {{reportDate}}, apresentado à SEC em {{filedDate}} · {{sourceName}} ↗",
     "layoffLineSecNoNumber": "{{filer}} declarou uma redução de efetivos num 8-K (Item 2.05) datado de {{reportDate}}, apresentado à SEC em {{filedDate}} · {{sourceName}} ↗",
+    "layoffLineSecExit": "{{filer}} apresentou um 8-K ao abrigo do Item 2.05 (custos de saída ou alienação de uma atividade) datado de {{reportDate}}, apresentado à SEC em {{filedDate}} · {{sourceName}} ↗",
     "layoffSecFilingLink": "Documento na SEC",
     "layoffParent": "{{filer}}, a empresa-mãe do empregador deste quadro, {{line}}",
     "layoffRead": "lido de {{sourceName}} {{readAgo}}",
@@ -4464,7 +4426,7 @@
     "deleteAccount": "Excluir conta",
     "welcome": "Bem-vindo! Vamos à sua primeira pontuação 🎯",
     "trackerEmpty": "Acompanhe onde você se candidatou — status, datas e a pontuação enviada, tudo em um lugar.",
-    "trackerEmptyCta": "Explore mais de 550.000 vagas verificadas — salvar uma inicia seu rastreador",
+    "trackerEmptyCta": "Explore vagas verificadas — salvar uma inicia seu rastreador",
     "status": {
       "saved": "Salva",
       "applied": "Enviada",
@@ -4505,7 +4467,7 @@
     "setupTrack": "Salve ou candidate-se à primeira vaga",
     "setupDismiss": "Dispensar",
     "bridgeTitle": "Sua Fila da Manhã",
-    "bridgeBlurb": "O Agente revisa milhares de vagas novas durante a noite e pré-seleciona as que valem sua manhã — empresas que republicam descartadas, contratantes genuínos primeiro, cada uma com suas razões. Você sempre aperta enviar.",
+    "bridgeBlurb": "O Agente revisa milhares de vagas novas durante a noite e pré-seleciona as que valem sua manhã — empresas que republicam descartadas, contratantes genuínos primeiro, cada uma com suas razões. No modo de revisão, o padrão, nada é enviado até você aprovar.",
     "bridgeGap": "Ele também conhece sua principal lacuna atual ({{gap}}) e a pondera.",
     "bridgeCta": "Abrir a fila ↓",
     "notifTitle": "E-mails e alertas",
@@ -4552,7 +4514,7 @@
     "acNothingNew": "Nada novo para preparar — as vagas salvas não puderam ser adaptadas (falta descrição ou verificação). Adicione a vaga e tente de novo.",
     "acTitle": "Copiloto de candidatura",
     "acPreppedCount": "{{done}}/{{total}} preparadas",
-    "acBlurb": "Adaptamos currículo e carta a cada vaga salva — com base no seu currículo real, sem inventar nada. Você revisa e se candidata no site da empresa.",
+    "acBlurb": "Para cada vaga salva, escrevemos um currículo adaptado e uma carta de apresentação a partir do seu currículo real, sem inventar nada. Você revisa e se candidata no site do empregador.",
     "acPrepProgress": "Preparando {{i}} de {{total}} — {{company}}…",
     "acPrepAll_one": "Preparar {{count}} candidatura adaptada",
     "acPrepAll_other": "Preparar {{count}} candidaturas adaptadas",
@@ -4601,7 +4563,35 @@
     "replyWindowFill": "candidatou-se há {{d}} dias — {{pct}}% das vagas deste empregador são retiradas em definitivo, sem voltarem a ser publicadas, em até {{h}} dias após a publicação",
     "replyWindowFillPast": "candidatou-se há {{d}} dias — para lá dos {{h}} dias em que {{pct}}% das vagas deste empregador já tinham sido retiradas em definitivo; um seguimento é razoável",
     "replyWindowFillCensored": "candidatou-se há {{d}} dias — mais de metade das vagas deste empregador continuava publicada 30 dias depois",
-    "replyWindowFillCoverage": "sobre os {{pct}}% das suas vagas que indicam uma data de publicação da própria empresa"
+    "replyWindowFillCoverage": "sobre os {{pct}}% das suas vagas que indicam uma data de publicação da própria empresa",
+    "deleteAccountBody": "Exclui para sempre a sua conta, o histórico de análises, a lista de tarefas, o objetivo, as candidaturas e qualquer CV enviado para o agente, e cancela qualquer assinatura paga por esta conta, para que nada mais seja cobrado. Os registos de compra são mantidos para fins contabilísticos. Não pode ser desfeito.",
+    "deleteUnlinkedPlan": "Este endereço tem uma assinatura que não está ligada a esta conta. Cancele-a primeiro na página de faturação da Stripe e depois exclua a conta. Nada foi excluído.",
+    "deleteRetry": "A sua conta não foi excluída: não conseguimos terminar de remover o seu CV guardado ou de cancelar a sua assinatura. Tente novamente daqui a um minuto.",
+    "deletePlanCancelled": "Cancelámos uma assinatura desta conta, por isso não lhe será cobrada novamente, mas a conta em si não foi excluída. Tente novamente daqui a um minuto ou contacte o suporte se voltar a falhar.",
+    "deleteAgentStopped": "O seu agente de candidaturas foi desligado.",
+    "deleteCvRemoved": "O seu CV guardado foi removido.",
+    "deleteFailed": "A exclusão da conta falhou. Contacte o suporte.",
+    "lifecycleGoingDown": "Na nossa última verificação, esta vaga já não estava no site da empresa. Vamos datá-la quando for confirmado que foi retirada.",
+    "getMoreCredits": "Obter mais créditos →",
+    "purchasesEmpty": "Nenhuma compra ainda. Relatórios e ferramentas comprados com este e-mail, e Agent Passes comprados nesta conta, aparecem aqui.",
+    "passRow": "Agent Pass",
+    "passState": {
+      "unactivated": "ainda não iniciado",
+      "live": "em andamento",
+      "closed": "encerrado"
+    },
+    "withdraw": {
+      "title": "Desistir em até {{days}} dias",
+      "body": "Comprou o Pro ou a Fila da Manhã nos últimos {{days}} dias a partir da UE ou do Reino Unido? Você pode desistir: o plano é cancelado na hora, e o que você pagou, menos os dias já prestados, é reembolsado.",
+      "button": "Desistir do meu plano",
+      "confirm": "Desistir do seu plano? Ele é cancelado agora, e o reembolso dos dias ainda não prestados volta para o seu cartão.",
+      "done": "Desistência feita. O plano está cancelado e {{amount}} está sendo reembolsado no seu cartão. Uma confirmação está a caminho por e-mail.",
+      "doneNoRefund": "Desistência feita. O plano está cancelado; nada foi cobrado por ele, então não há nada a reembolsar.",
+      "none": "Nenhum plano desta conta começou nos últimos {{days}} dias.",
+      "notLinked": "Um plano no seu e-mail não está vinculado a esta conta. Escreva para nós e cuidaremos da desistência.",
+      "outsideTerritory": "A desistência em {{days}} dias aplica-se a planos faturados para um endereço na UE, no EEE ou no Reino Unido, e este plano foi faturado noutro local. Pode cancelá-lo a qualquer momento.",
+      "failed": "A desistência não foi concluída. Tente de novo em um minuto."
+    }
   },
   "applyAgent": {
     "badge": "Seu agente de IA para candidaturas",
@@ -4615,7 +4605,7 @@
     "f3Body": "O agente nunca inventa experiência que você não tem. Cada afirmação é verificada contra o seu currículo antes de você ver o rascunho.",
     "f4Title": "Prepara, acompanha e lembra você",
     "f4Body": "Preparação de entrevista por candidatura, um pipeline que diz o próximo passo e um lembrete quando é hora do follow-up.",
-    "control": "Você no controle: o agente rascunha, você aprova e envia no site da própria empresa.",
+    "control": "Você no controle: no modo de revisão, o padrão, o agente rascunha e nada sai até você aprovar. O modo automático, que envia por você, é uma opção que você liga.",
     "cta": "Escolha uma vaga e veja-o trabalhar"
   },
   "boardHero": {
@@ -4783,7 +4773,8 @@
     "anyRole": "Qualquer cargo",
     "searchLimitHit": "Você pode ter até 10 buscas ativas. Pause uma para adicionar outra.",
     "searchLastRun": "Última execução: {{scanned}} analisadas, {{picked}} na fila.",
-    "passFunds": "O seu Agent Pass financia este agente: restam {{left}} candidaturas. Ative o agente abaixo e a sua IA conectada poderá pedir candidaturas."
+    "passFunds": "O seu Agent Pass financia este agente: restam {{left}} candidaturas. Ative o agente abaixo e a sua IA conectada poderá pedir candidaturas.",
+    "trackerFull": "Guardado, mas o seu acompanhamento está cheio (2000 entradas). Remova entradas antigas para adicionar mais."
   },
   "applyProfile": {
     "authorized": "Tens autorização para trabalhar onde te candidatas?",
@@ -4843,7 +4834,11 @@
     "coverNotePlaceholder": "ex. Sou engenheiro de dados com oito anos a construir pipelines em Python e dbt e procuro um cargo sénior onde possa ser responsável por uma plataforma de ponta a ponta.",
     "coverNoteCount": "{{n}} de 2000 caracteres",
     "coverNoteHintTailored": "Opcional. Alguns formulários não são enviados sem ela, e o agente para em vez de enviar um campo em branco. Como a personalização está ativada, o agente adapta-a a cada vaga usando apenas o que o seu currículo e o anúncio realmente dizem — e se não conseguir fazê-lo com honestidade, a sua nota é enviada exatamente como a escreveu.",
-    "tailorCoverNote": "Adaptar esta nota a cada vaga. O agente reescreve-a com base no anúncio usando apenas factos que já constam do seu currículo: não pode acrescentar uma empresa, uma escola, uma competência ou um número que não esteja lá, e nunca menciona por iniciativa própria o seu estatuto de visto, salário ou data de início. O que não conseguir fundamentar, descarta: a sua nota segue tal como está."
+    "tailorCoverNote": "Adaptar esta nota a cada vaga. O agente reescreve-a com base no anúncio usando apenas factos que já constam do seu currículo: não pode acrescentar uma empresa, uma escola, uma competência ou um número que não esteja lá, e nunca menciona por iniciativa própria o seu estatuto de visto, salário ou data de início. O que não conseguir fundamentar, descarta: a sua nota segue tal como está.",
+    "suggestedTitle": "Do teu CV, mas não temos a certeza. Confirma antes de ser usado:",
+    "useSuggested": "Usar",
+    "dismissSuggested": "Não está certo",
+    "uploadedCheck": "Guardado. Confirma abaixo o que lemos do teu CV antes de o agente o usar."
   },
   "applyQueue": {
     "title": "Candidaturas preparadas",
@@ -4884,7 +4879,11 @@
     "decideAgentOff": "Ative primeiro o seu agente — uma candidatura aprovada espera por isso.",
     "decideBlockedCompany": "Este empregador está na sua lista de nunca candidatar, por isso o agente não lhe envia nada.",
     "decideInFlight": "O envio está a tratar desta agora — já é tarde para a alterar.",
-    "decideFailed": "Não foi possível — atualize a página e tente de novo."
+    "decideFailed": "Não foi possível — atualize a página e tente de novo.",
+    "notArrived": "Não chegou",
+    "recordedNotSent": "Registado: esta não seguiu.",
+    "retryNotTransient": "Tentar de novo não resolve o motivo da paragem. Abra-a para ver porquê.",
+    "retryNotFunded": "O seu passe já não tem candidaturas para a enviar de novo."
   },
   "agentPlan": {
     "badge": "Candidata-se por si",
@@ -4894,8 +4893,8 @@
     "includesPro": "Inclui tudo o que está no Pro ({{proPrice}} $/mês)",
     "perkAutoApply": "Candidata-se automaticamente por si em {{names}}",
     "perkOneClick": "Candidaturas preenchidas e prontas a enviar em {{names}}",
-    "perkMorningQueue": "Fila da manhã: durante a noite, o agente faz a sua pesquisa e deixa uma lista curta na sua conta para a manhã",
-    "perkQueue": "Uma fila que pode rever primeiro, ou deixar correr sozinha — a escolha é sua e pode mudá-la quando quiser",
+    "perkMorningQueue": "Fila da manhã: todas as manhãs, uma lista curta de vagas novas à sua medida espera na sua conta",
+    "perkQueue": "Reveja cada candidatura antes de seguir, ou deixe-a ser enviada sozinha. Pode mudar quando quiser.",
     "perkCap": "Um limite diário definido por si, e nunca se candidata duas vezes à mesma vaga",
     "perkHonest": "Nunca inventa uma resposta. Se uma pergunta precisar de si, pára e pergunta.",
     "cta": "Ativar o agente",
@@ -4907,11 +4906,15 @@
     "signInFirst": "Vai entrar primeiro — o agente funciona a partir da sua conta.",
     "alreadySubscribed": "Você já tem o agente — vamos levá-lo até ele.",
     "needsPaymentUpdate": "O seu plano tem um pagamento pendente. Atualize o cartão em vez de iniciar um novo plano.",
-    "hasPro": "Você tem o Pro, que o agente inclui. Cancele o Pro em Gerir assinatura e depois inicie o agente — assim nunca paga os dois."
+    "hasPro": "Você tem o Pro, que o agente inclui. Cancele o Pro em Gerir assinatura e depois inicie o agente — assim nunca paga os dois.",
+    "portalFailed": "Não foi possível abrir a faturação. Tente novamente daqui a um minuto."
   },
   "proPlan": {
     "trialing": "Seu teste está ativo: análises ilimitadas e a preparação de candidaturas em lote já estão liberadas. As ferramentas pagas ficam incluídas a partir do seu primeiro pagamento.",
-    "linkPending": "Este endereço tem um plano que ainda não está vinculado a esta conta. Entre com o Google usando esse endereço para usá-lo aqui."
+    "linkPending": "Este endereço tem um plano que ainda não está vinculado a esta conta. Entre com o Google usando esse endereço para usá-lo aqui.",
+    "confirmed": "Obrigado: a sua assinatura Pro está confirmada.",
+    "confirming": "A confirmar a sua assinatura com a Stripe. Demora alguns segundos.",
+    "notConfirmedYet": "Ainda não conseguimos confirmar a sua assinatura. Atualize esta página daqui a um minuto ou contacte o suporte se o seu plano não aparecer."
   },
   "atsCoverage": {
     "heading": "Feito para os sistemas que os empregadores usam mesmo",
@@ -4919,7 +4922,8 @@
     "autoTitle": "Candidatamo-nos por si",
     "autoBlurb": "O agente preenche e submete a candidatura sozinho.",
     "clickTitle": "Preenchida, você carrega em enviar",
-    "clickBlurb": "Estes usam CAPTCHA ou uma verificação humana. Nunca os resolvemos nem contornamos, por isso a candidatura chega pronta e é você que a envia.",
+    "clickBlurb": "Estes usam CAPTCHA ou uma verificação humana que nunca resolvemos nem contornamos, ou um formulário que o agente ainda não consegue concluir sozinho. Em qualquer caso, a candidatura chega pronta e é você que a envia.",
+    "stripLegend": "O agente envia estas por você. Nos outros sistemas que medimos, ele preenche a candidatura e você clica em enviar: alguns usam uma verificação humana que não contornamos e, em outros, ele ainda não consegue concluir o formulário. {{unmeasured}} aparecem porque as vagas vêm deles; o alcance do agente neles ainda não foi medido.",
     "unmeasuredTitle": "Também lemos estas",
     "unmeasuredBlurb": "As vagas deles estão no quadro. Não analisámos os seus formulários de candidatura, por isso não fazemos qualquer afirmação sobre o alcance do agente.",
     "allTitle": "Candidaturas preparadas para si",
@@ -4959,13 +4963,13 @@
   },
   "applyRefusal": {
     "sender-offline": "O nosso emissor está offline, por isso nada saiu. Está em fila e segue assim que voltar — não precisa de fazer nada.",
-    "fit-unknown": "Não conseguimos avaliar esta vaga face ao seu currículo, por isso não a enviámos sem supervisão. Pode enviá-la você.",
+    "fit-unknown": "Não conseguimos avaliar esta vaga face ao seu currículo, por isso o agente não a enviou sozinho. Aprove-a para a enviar.",
     "not-ready": "Este empregador pergunta algo que não responderemos por si. Abra e preencha o que falta.",
     "review-mode": "Pronta e à espera de que carregue em enviar — o seu agente está em modo de revisão, por isso nunca envia sozinho.",
     "vendor-not-allowed": "Não ativou a candidatura sem supervisão para este portal de emprego.",
     "already-submitted": "Já enviada. Nunca enviamos a mesma candidatura duas vezes.",
     "duplicate": "Já se tinha candidatado a esta vaga, por isso não lhe tocámos.",
-    "fit-below-floor": "Abaixo do limiar de adequação que definiu. Baixe-o se quiser que as vagas limítrofes também sigam.",
+    "fit-below-floor": "Uma adequação mais fraca do que o agente envia sozinho. Aprove-a para a enviar.",
     "daily-cap": "O limite de hoje esgotou. Segue amanhã, ou aumente o seu limite diário.",
     "vendor-needs-human": "Este portal exige um passo que só uma pessoa pode dar — normalmente uma caixa que não assinalaremos por si."
   },
@@ -4995,7 +4999,8 @@
     "held": "Preparada, ainda não enviada.",
     "ready": "Pronta — não precisa de si.",
     "blocked": "Aqui é preciso algo seu.",
-    "preparing": "A preparar…"
+    "preparing": "A preparar…",
+    "not-arrived": "Verificou e não chegou. O agente não a vai enviar de novo."
   },
   "agentHero": {
     "badge": "O seu agente de candidaturas com IA",
@@ -5019,9 +5024,9 @@
   },
   "homeHero": {
     "badge": "Mural ao vivo + agente de IA",
-    "headlinePre": "Cada vaga aqui é real.",
+    "headlinePre": "Vagas ao vivo, direto dos sistemas de contratação dos empregadores.",
     "headlineHighlight": "O agente candidata-se por si.",
-    "sub": "Vagas retiradas diretamente dos sistemas de recrutamento das empresas — nunca raspadas, reverificadas o dia todo. Carregue o seu CV: o agente classifica todas, escreve cada candidatura com honestidade e submete onde o empregador permite.",
+    "sub": "Vagas lidas dos próprios sistemas de recrutamento das empresas e reverificadas o dia todo. Carregue o seu CV: o agente classifica todas, escreve cada candidatura com honestidade e submete onde o empregador permite.",
     "statOpenings": "vagas verificadas",
     "statCompanies": "empresas",
     "statSendable": "o agente pode submeter por si",
@@ -5033,10 +5038,10 @@
   },
   "homeAgent": {
     "lead": "Traga o seu próprio agente de IA.",
-    "passLine": "Um passe de {{passPrice}} $ dá-lhe {{passHours}} horas a toda a velocidade para pesquisar o quadro e candidatar-se a {{passApplications}} vagas por si. Nunca renova; inicie sessão para comprar.",
+    "passLine": "Um passe de {{passPrice}} $ dá ao seu agente {{passHours}} horas para pesquisar o quadro e candidatar-se por si a {{passApplications}} vagas. Uma vaga só conta quando o agente pode enviar a candidatura. Nunca renova; inicie sessão para comprar.",
     "connectCta": "Ligar o seu agente",
     "passCta": "Comprar ou abrir o seu passe",
-    "connectLine2": "Conecte-o grátis e sem conta — {{freeCallsPerDay}} chamadas por dia por endereço de rede para explorar o quadro de vagas (um escritório, uma conexão doméstica ou os servidores de um serviço de chat contam como um só endereço, então o número restante pode começar abaixo de {{freeCallsPerDay}} quando outros o compartilham)."
+    "connectLine2": "Conecte-o grátis e sem conta — {{freeCallsPerDay}} chamadas por dia por endereço de rede para explorar o quadro de vagas (um escritório ou uma conexão doméstica conta como um só endereço; pelo ChatGPT cada pessoa tem as suas próprias {{freeCallsPerDay}}, e pelo Claude vem primeiro uma cota diária que todos os usuários do Claude compartilham)."
   },
   "ghostIndex": {
     "stillUp30WithheldLead": "{{n}} das {{total}} áreas listadas aqui não têm medida da parcela ainda anunciada ao atingir o nosso limite de 30 dias. Cada uma é retida por um motivo declarado — uma ausência no nosso próprio registo, nunca uma conclusão sobre a área.",
@@ -5061,7 +5066,7 @@
     "layoffReasonUnwritten": "a leitura ainda não foi calculada",
     "layoffReasonArithmetic": "as três parcelas desse grupo não somaram um nesta leitura, pelo que é retida",
     "layoffSampleSoFar": "Até à data, {{nFiled}} dessas vagas em {{eFiled}} empregadores atingiram o nosso limite de 30 dias.",
-    "layoffLag": "Os avisos estaduais chegam ao feed consolidado uma mediana de {{p50}} dias após a data do aviso (medido em {{measuredOn}}).",
+    "layoffLag": "As agências estaduais carimbam um aviso uma mediana de {{p50}} dias após a data do aviso (medido em {{measuredOn}}); quando ele nos chega depois disso não é medido.",
     "layoffCadence": "Declarações lidas {{cadenceEdgar}} de SEC EDGAR e {{cadenceWarn}} dos avisos estaduais consolidados pela Big Local News",
     "layoffNewest": "a declaração mais recente que guardamos está datada de {{newestFiling}}, lida {{filingsReadAt}}",
     "layoffComputed": "calculado {{computedAt}}",
@@ -5110,7 +5115,7 @@
     "clockShelfExpired": "O seu último passe expirou sem uso a {{date}}.",
     "clockNone": "Ainda não há passe nesta conta.",
     "applications": "{{left}} de {{passApplications}} candidaturas",
-    "applicationsBasis": "Cada pedido aceite gasta uma. Um pedido recusado por um filtro não gasta nada, e um envio que nunca aconteceu devolve a sua candidatura.",
+    "applicationsBasis": "Uma candidatura só conta para uma vaga a que o agente a pode enviar. Um pedido recusado, ou um envio que nunca aconteceu, não custa nada.",
     "buyAnother": "Comprar um passe",
     "whichAgent": "Qual agente?",
     "handoffTitle": "Entregue-o ao seu agente",
@@ -5132,14 +5137,16 @@
     "connectorPassGate": "A partir de {{host}} o passe só poderá ser usado quando o login estiver ativado; hoje, use-o a partir de {{headerHosts}} com sua chave de agente.",
     "repairSecondPass": "Este pagamento não criou um segundo passe: uma conta tem um passe aberto de cada vez, e o seu aparece aqui sem alterações. Já fomos avisados e este pagamento será reembolsado — se não voltar ao seu cartão dentro de alguns dias, escreva para resumeboostersupp@gmail.com.",
     "repairNotYours": "Esta compra pertence a uma conta diferente daquela em que tem sessão iniciada, e o passe está nessa conta. Inicie sessão na conta que pagou para o ver.",
-    "repairRefunded": "Este pagamento foi reembolsado, por isso não abre nenhum passe."
+    "repairRefunded": "Este pagamento foi reembolsado, por isso não abre nenhum passe.",
+    "cardCharge": "Só contam as vagas a que o seu agente consegue candidatar-se sozinho. O resto é recusado e não custa nada."
   },
   "oauthConsent": {
     "title": "Ligue o seu agente",
     "metaDescription": "Permita que um anfitrião de agente atue em seu nome no servidor MCP do Resume Booster.",
     "asks": "{{client}} pede para atuar em seu nome no servidor MCP do Resume Booster.",
     "scopes": "Verá: {{scopes}}.",
-    "returnsTo": "Depois de permitir, regressa a {{host}}.",
+    "sendsTo": "Se permitir, {{host}} terá acesso à sua conta. Permita apenas se for esse o serviço que está a ligar.",
+    "noHost": "Este pedido não diz para onde vai o acesso. Permita apenas se o iniciou agora mesmo a partir do Claude, ChatGPT ou Claude Code.",
     "signedInAs": "Sessão iniciada como {{email}}.",
     "allow": "Permitir",
     "deny": "Recusar",
@@ -5213,9 +5220,12 @@
     "applyCta": "Candidate-se no site da {{company}}",
     "applyCtaPlain": "Candidate-se no site do próprio empregador",
     "applyNote": "A candidatura decorre no sistema de recrutamento do próprio empregador. Este quadro nunca republica uma vaga nem se coloca entre si e o empregador.",
+    "scoreCta": "Avaliar o meu currículo para esta vaga (grátis)",
+    "scoreNote": "Abre o analisador gratuito com a descrição desta vaga já preenchida.",
     "descHeading": "A descrição do próprio empregador",
-    "sourceNote": "Diretamente do sistema de recrutamento da {{company}} — nunca um agregador, nunca uma republicação. Uma vaga datada é apresentada no máximo {{days}} dias e desaparece assim que o feed do empregador deixa de a incluir.",
-    "theEmployer": "o empregador"
+    "sourceNote": "Diretamente do sistema de recrutamento da {{company}} — nunca um agregador, nunca uma republicação. Uma vaga datada é apresentada no máximo {{days}} dias a partir da data indicada pelo empregador, e o portal volta a verificá-la quando você a abre.",
+    "theEmployer": "o empregador",
+    "theEmployerPossessive": "do empregador"
   },
   "pulseConfirm": {
     "title": "Confirme seu pulso mensal do mercado",
@@ -5250,7 +5260,27 @@
     "invalid": "Este link não é válido. Use o link para cancelar a inscrição do próprio e-mail.",
     "missing": "Esta página precisa do link para cancelar a inscrição de um dos nossos e-mails.",
     "error": "Não foi possível cancelar agora. Tente o botão novamente daqui a pouco.",
-    "home": "Voltar ao Resume Booster"
+    "home": "Voltar ao Resume Booster",
+    "agentDigest": "Parar os e-mails da seleção da manhã. O seu agente continua a funcionar e as escolhas dele ficam na sua conta."
+  },
+  "purchaseTerms": {
+    "agree": "Ao continuar, você concorda com os <terms>Termos de Serviço</terms> e a <privacy>Política de Privacidade</privacy>.",
+    "renewal": "{{price}} por mês, com renovação automática até você cancelar. Cancele quando quiser na sua conta.",
+    "agentTrial": "Quem assina pela primeira vez tem {{days}} dias grátis; depois, {{price}} por mês, com renovação automática até você cancelar. Cancele antes do fim do teste e nada será cobrado. Quem já assinou antes paga desde o primeiro dia.",
+    "waiver": "Quero receber minha compra agora e entendo que perco meu direito de desistência de {{days}} dias depois da entrega.",
+    "serviceStart": "Peço que o serviço comece agora. Se eu desistir em até {{days}} dias, pago pelos dias já usados.",
+    "consentNeeded": "Marque a caixa acima do botão para continuar."
+  },
+  "freelanceBoost": {
+    "startNewPurchase": "Vai comprar para outra função? Comece uma nova compra.",
+    "boughtHereTitle": "3. A sua secção de experiência — já comprada neste dispositivo",
+    "openYourLink": "Para a ver ou gerar, abra a ligação no seu e-mail de compra. Não lhe será cobrado novamente."
+  },
+  "seller": {
+    "soldBy": "Vendido por {{name}}, {{address}}.",
+    "termsParty": "Estes Termos são um acordo entre si e {{name}}, {{address}}.",
+    "terms": "Estes Termos são um acordo entre você e {{name}}, {{address}}.",
+    "controller": "O controlador dos seus dados pessoais é {{name}}, {{address}}."
   },
   "affiliates": {
     "commission": {
@@ -5274,5 +5304,61 @@
       "requestedTitle": "Pagamento pedido",
       "requestedBody": "Vamos enviar um e-mail para combinar o pagamento."
     }
+  },
+  "careerReportEnum": {
+    "strong": "Forte",
+    "mixed": "Misto",
+    "risky": "Arriscado",
+    "weak": "Fraco",
+    "growth": "Crescimento",
+    "stable": "Estável",
+    "stagnant": "Estagnado",
+    "unclear": "Pouco claro",
+    "high": "Alta",
+    "medium": "Média",
+    "low": "Baixa",
+    "entry": "Inicial",
+    "mid": "Pleno",
+    "senior": "Sênior",
+    "executive": "Executivo",
+    "aligned": "Alinhado",
+    "stretch": "Desafio",
+    "mismatch": "Incompatível",
+    "readyToApply": "Pronto para se candidatar",
+    "fixTheseFirst": "Corrija isto primeiro",
+    "easy": "Fácil",
+    "hard": "Difícil",
+    "lead": "Líder",
+    "director": "Diretor",
+    "vp": "VP",
+    "behavioral": "Comportamental",
+    "technical": "Técnica",
+    "situational": "Situacional",
+    "cultureFit": "Fit cultural",
+    "critical": "Crítica",
+    "fiveMinutes": "5 minutos",
+    "fifteenMinutes": "15 minutos",
+    "thirtyMinutes": "30 minutos"
+  },
+  "atsRoles": {
+    "title": "A que funções se está a candidatar?",
+    "description": "Indique até {{count}} cargos. O seu relatório ATS Defense é feito para cada um.",
+    "roleLabel": "Função {{n}}",
+    "example1": "p. ex., Analista de dados",
+    "example2": "p. ex., Analista de negócio (opcional)",
+    "example3": "p. ex., Analista de relatórios (opcional)",
+    "cancel": "Cancelar",
+    "continue": "Continuar para o pagamento"
+  },
+  "productFeatures": {
+    "atsDefense": [
+      "Auditoria de compatibilidade ATS (pontuação antes/depois)",
+      "Análise e otimização das palavras-chave em falta",
+      "Reestruturação do formato para leitura pelos ATS",
+      "Foca até 3 funções que indica antes do pagamento",
+      "Dicas para alinhar o seu perfil do LinkedIn",
+      "Banco de palavras-chave do seu setor",
+      "Garantia de reotimização de 30 dias"
+    ]
   }
 }

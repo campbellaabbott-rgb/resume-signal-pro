@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-04T13:00Z
+// deploy-stamp: 2026-10-09T09:00Z
 // Shortlist evaluation: redact → score → persist the audit row.
 //
 // Compliance-critical properties (see COMPLIANCE.md):
@@ -16,7 +16,8 @@ import { modelSpendGate } from "../_shared/model-spend-gate.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "shortlist-evaluate.2026-10-10.1";
+// 2026-10-10.62 (wave-3 fix round integration): carries both 2026-10-10.4 and the payments-account group's 2026-10-10.61.
+const FN_BUILD = "shortlist-evaluate.2026-10-10.62";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,6 +27,8 @@ const corsHeaders = {
 
 const PROMPT_VERSION = "shortlist-v1";
 const MODEL_ID = "google/gemini-2.5-flash";
+/** The evaluations one account may hold: owner_row_cap on shortlist_candidates (20261009134200). */
+const SHORTLIST_CANDIDATE_CAP = 10_000;
 
 // Any signed-in account can own a role, and signing up is free, so a sign-in
 // is not a spending limit: an address allowance sized for an employer
@@ -55,26 +58,54 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     const roleId: string | null = typeof body.roleId === "string" ? body.roleId : null;
-    const jdText: string = typeof body.jdText === "string" ? body.jdText.slice(0, 20000) : "";
     const resumeText: string = typeof body.resumeText === "string" ? body.resumeText.slice(0, 40000) : "";
     const fileName: string | null = typeof body.fileName === "string" ? body.fileName.slice(0, 200) : null;
     const jurisdiction: string = ["NYC", "IL", "CA", "EU", "OTHER"].includes(body.jurisdiction) ? body.jurisdiction : "OTHER";
     const redactionConfig: RedactionConfig = body.redactionConfig && typeof body.redactionConfig === "object" ? body.redactionConfig : {};
+    const altReview = body.altReview === true;
+    const json = (o: unknown, status = 200) =>
+      new Response(JSON.stringify(o), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-    if (!roleId || jdText.length < 30 || resumeText.length < 100) {
-      return new Response(JSON.stringify({ error: "roleId, jdText (30+ chars) and resumeText (100+ chars) required" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (!roleId || (!altReview && resumeText.length < 100)) {
+      return json({ error: "roleId and resumeText (100+ chars) required" }, 400);
     }
 
-    // Verify role ownership (RLS would also enforce on insert, but fail early)
+    // The role, read through the employer's own RLS: ownership, and the JD.
+    // The JD scored is the role's stored text, never the body's: the audit row
+    // records which version it was and the text itself (sweep S8-110).
     const { data: role } = await anonClient
-      .from("shortlist_roles").select("id, jd_version").eq("id", roleId).maybeSingle();
-    if (!role) {
-      return new Response(JSON.stringify({ error: "Role not found" }), {
-        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      .from("shortlist_roles").select("id, jd_text, jd_version").eq("id", roleId).maybeSingle();
+    if (!role) return json({ error: "Role not found" }, 404);
+    const jdText = typeof role.jd_text === "string" ? role.jd_text.slice(0, 20000) : "";
+
+    // Evaluations are written by the service role only (20261009111000); the
+    // owner is the verified caller.
+    const service = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
+
+    // ONE ACCOUNT HOLDS AT MOST SHORTLIST_CANDIDATE_CAP EVALUATIONS (S11-139).
+    // The database's cap (20261009134200) applies to this writer too; asked
+    // here first, a full account is told so before any model call is spent.
+    const { count: held } = await service.from("shortlist_candidates")
+      .select("id", { count: "exact", head: true }).eq("owner_id", user.id);
+    if (typeof held === "number" && held >= SHORTLIST_CANDIDATE_CAP) {
+      return json({ error: `This account holds ${SHORTLIST_CANDIDATE_CAP.toLocaleString("en-US")} evaluations, the most it can. Delete roles you no longer need to evaluate more.`, code: "candidate_cap" }, 409);
     }
+
+    // Alternative review (ADA / accommodation) before any scoring: a record
+    // with no score and its logged request, and no model call (sweep S8-111).
+    if (altReview) {
+      const { data: candidate, error } = await service.from("shortlist_candidates").insert({
+        role_id: roleId, owner_id: user.id, file_name: fileName, jd_version: role.jd_version ?? 1, candidate_jurisdiction: jurisdiction,
+      }).select().single();
+      if (error || !candidate) return json({ error: "Could not record the alternative review" }, 500);
+      const { error: logErr } = await service.from("shortlist_decisions").insert({
+        candidate_id: candidate.id, owner_id: user.id, actor_email: user.email ?? null, action: "alt_review_requested",
+        reason: "Routed to non-automated alternative review before any scoring (ADA / accommodation path)",
+      });
+      if (logErr) return json({ error: "Could not log the alternative review" }, 500);
+      return json({ success: true, candidate, altReview: true });
+    }
+    if (jdText.length < 30) return json({ error: "The role's job description must be at least 30 characters" }, 400);
 
     // ── Proxy-variable exclusion BEFORE scoring ─────────────────────────────
     const { redacted, exclusionsApplied } = redactForScoring(resumeText, redactionConfig);
@@ -88,12 +119,8 @@ Deno.serve(async (req) => {
     }
 
     // check_rate_limit is granted to the service role only, so the count runs
-    // on a service client; everything the employer reads or writes stays on
-    // their own (RLS-scoped) client above.
-    const refused = await modelSpendGate(
-      createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""),
-      req, "shortlist-evaluate", SHORTLIST_LIMITS, corsHeaders,
-    );
+    // on the service client; the employer's reads stay on their RLS client.
+    const refused = await modelSpendGate(service, req, "shortlist-evaluate", SHORTLIST_LIMITS, corsHeaders);
     if (refused) return refused;
 
     const systemPrompt = `You are an employment screening assistant that evaluates how well a REDACTED resume matches a job description. You assist a HUMAN reviewer — you never decide.
@@ -188,8 +215,8 @@ Return via the submit_evaluation tool.`;
     }
     const score = Math.max(0, Math.min(100, Math.round(evaluation.matchScore as number)));
 
-    // ── Persist the audit row (owner-scoped via RLS) ────────────────────────
-    const { data: candidate, error: insertErr } = await anonClient
+    // ── Persist the audit row (service role; the owner is the verified caller)
+    const { data: candidate, error: insertErr } = await service
       .from("shortlist_candidates")
       .insert({
         role_id: roleId,
@@ -205,6 +232,7 @@ Return via the submit_evaluation tool.`;
         level_read: typeof evaluation.levelRead === "string" ? evaluation.levelRead.slice(0, 200) : null,
         model_version: `${MODEL_ID}/${PROMPT_VERSION}`,
         jd_version: role.jd_version ?? 1,
+        jd_text_scored: jdText,
         candidate_jurisdiction: jurisdiction,
       })
       .select()

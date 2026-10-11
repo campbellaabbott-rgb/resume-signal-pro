@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { lapTotal } from "../../supabase/functions/job-board/read-window";
+import { emptyInsideLapTotal, lapTotal } from "../../supabase/functions/job-board/read-window";
 
 /**
  * A PAGE CAP MUST NOT FORGE A CLOSURE, AND MUST NOT FORBID ONE FOREVER.
@@ -122,6 +122,7 @@ const isLapProvenWith = new Function(
   "LAP_COVERAGE_MIN",
   "LAP_TAIL_SLACK",
   "lapTotal",
+  "emptyInsideLapTotal",
   `${provenPre}\nreturn !!(${provenSrc});`,
 ) as (
   r: { nextOffset: number | undefined; feedTotal: number | null; feedEnded?: boolean },
@@ -131,6 +132,7 @@ const isLapProvenWith = new Function(
   min: number,
   slack: number,
   lapTotalFn: typeof lapTotal,
+  emptyFn: typeof emptyInsideLapTotal,
 ) => boolean;
 const isLapProven = (
   r: { nextOffset: number | undefined; feedTotal: number | null; feedEnded?: boolean },
@@ -139,7 +141,7 @@ const isLapProven = (
   lapSeen: number,
   min: number,
   slack: number,
-) => isLapProvenWith(r, cursorBefore, rec, lapSeen, min, slack, lapTotal);
+) => isLapProvenWith(r, cursorBefore, rec, lapSeen, min, slack, lapTotal, emptyInsideLapTotal);
 
 /** A wrap that satisfies everything, so a scenario only has to say what it breaks. */
 const cleanWrap = (over: Partial<{ nextOffset: number; feedTotal: number | null; feedEnded: boolean }> = {}) =>

@@ -5,7 +5,8 @@
 // ChatGPT, Claude Code's /mcp — asks to act as them on the MCP server. The
 // page does exactly three things: signs the person in if they are not (and
 // comes back here with the request intact, via /auth?next=), shows what is
-// being asked (the client's name, the scopes, where they return to), and
+// being asked (the client's name, the scopes, and where Allow sends access when
+// the request says so: see pendingRedirectHost), and
 // hands the decision to the Supabase client's own consent API —
 // getAuthorizationDetails / approveAuthorization / denyAuthorization on
 // supabase.auth.oauth (supabase-js 2.87.1). The redirect back to the host is
@@ -30,16 +31,37 @@ import { Footer } from "@/components/Footer";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePassStatus } from "./AgentConnect";
+import { PurchaseTerms } from "@/components/PurchaseTerms";
 
 interface Details {
   client: { name?: string; uri?: string };
   scope: string;
   redirect_url?: string;
+  /** Host of the PENDING redirect (where the code goes on Allow), when the
+   *  auth server's details carry it. Never the client's own homepage. */
+  sendsToHost: string;
 }
 
 const hostOf = (uri: string | undefined): string => {
   try { return uri ? new URL(uri).hostname : ""; } catch { return ""; }
 };
+
+/**
+ * Where Allow actually sends the authorization code (sweep S8-081).
+ *
+ * The page used to name the host of client.uri as "where you return to", but
+ * client_uri is the client's self-declared homepage: a registered client called
+ * "Claude" with client_uri claude.ai and redirect_uri evil.example read "you
+ * return to claude.ai" while Allow sent the code to evil.example. Only the
+ * pending redirect_uri says where the code goes; auth-js 2.87.1 does not type
+ * it, so it is read from the raw details when the server sends it, and when it
+ * does not, no return host is named at all.
+ */
+export function pendingRedirectHost(raw: unknown): string {
+  if (!raw || typeof raw !== "object") return "";
+  const r = raw as { redirect_uri?: unknown };
+  return typeof r.redirect_uri === "string" ? hostOf(r.redirect_uri) : "";
+}
 
 export default function OAuthConsent() {
   const { t } = useTranslation();
@@ -70,7 +92,7 @@ export default function OAuthConsent() {
       // A redirect_url on the details means consent was already given for
       // this client — send the person straight back rather than asking twice.
       if (data.redirect_url) { window.location.assign(data.redirect_url); return; }
-      setDetails({ client: data.client ?? {}, scope: data.scope ?? "", redirect_url: data.redirect_url });
+      setDetails({ client: data.client ?? {}, scope: data.scope ?? "", redirect_url: data.redirect_url, sendsToHost: pendingRedirectHost(data) });
     })();
     return () => { live = false; };
   }, [session, authorizationId]);
@@ -125,15 +147,21 @@ export default function OAuthConsent() {
                 <p className="text-sm text-muted-foreground mb-1">
                   {t("oauthConsent.scopes", "It will see: {{scopes}}.", { scopes: details.scope.split(/\s+/).filter(Boolean).join(", ") || "—" })}
                 </p>
-                {hostOf(details.client.uri) && (
+                {details.sendsToHost ? (
+                  <p className="text-sm text-foreground mb-1">
+                    {t("oauthConsent.sendsTo", "If you allow, access to your account goes to {{host}}. Allow only if that is the host you are connecting.", { host: details.sendsToHost })}
+                  </p>
+                ) : (
                   <p className="text-sm text-muted-foreground mb-1">
-                    {t("oauthConsent.returnsTo", "After you allow, you return to {{host}}.", { host: hostOf(details.client.uri) })}
+                    {t("oauthConsent.noHost", "This request does not say where access will go. Allow only if you started it just now from Claude, ChatGPT or Claude Code.")}
                   </p>
                 )}
                 {user?.email && (
                   <p className="text-xs text-muted-foreground mb-4">{t("oauthConsent.signedInAs", "Signed in as {{email}}.", { email: user.email })}</p>
                 )}
                 {error && <p className="text-sm text-destructive mb-3">{error}</p>}
+                {/* Connecting a host is agreeing to act under the Terms (item 12). */}
+                <PurchaseTerms kind="signup" className="mb-3" />
                 <div className="flex gap-2">
                   <button
                     type="button" onClick={() => decide("approve")} disabled={busy !== null}

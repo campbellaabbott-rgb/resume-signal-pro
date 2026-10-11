@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-08T13:00Z
+// deploy-stamp: 2026-10-09T13:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
@@ -6,10 +6,12 @@ import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-star
 import { rememberCheckoutResume, tempResumeIdOf } from "../_shared/checkout-resume-ref.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
 import { accountProStanding, addressProStanding } from "../_shared/pro.ts";
+import { checkoutOrigin, euConsentAnswer, euConsentRefusal, policyMetadata, sessionPolicy } from "../_shared/checkout-policy.ts";
+import { targetRolesMetadata } from "../_shared/target-roles.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-product-checkout.2026-10-08.1";
+const FN_BUILD = "create-product-checkout.2026-10-09.61";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -124,7 +126,7 @@ serve(async (req) => {
       );
     }
 
-    const { email, productId, sessionId, jobTitle, jobCompany, referralCode, language } = body;
+    const { email, productId, sessionId, jobTitle, jobCompany, language } = body;
 
     // Validate product ID (fast sync check)
     const product = PRODUCTS[productId];
@@ -137,13 +139,16 @@ serve(async (req) => {
 
     // OPTIMIZATION: Get Stripe instance (reused from module-level)
     const stripe = getStripe();
-    const origin = req.headers.get("origin") || "https://lovable.dev";
+    const env = (k: string) => Deno.env.get(k);
+    // Only our own hosts get the buyer back (S8-060).
+    const origin = checkoutOrigin(req.headers.get("origin"), env);
 
     // Sanitize inputs (pure CPU, very fast)
     const normalizedEmail = email?.includes?.('@') ? email.toLowerCase().trim() : null;
     const sanitizedJobTitle = typeof jobTitle === 'string' ? jobTitle.slice(0, 100).replace(/[<>]/g, '') : '';
     const sanitizedJobCompany = typeof jobCompany === 'string' ? jobCompany.slice(0, 100).replace(/[<>]/g, '') : '';
-    const sanitizedReferralCode = typeof referralCode === 'string' ? referralCode.slice(0, 20).replace(/[^a-f0-9]/gi, '') : '';
+    // ATS Defense targets up to three roles the buyer names (S11-074).
+    const targetRoles = product.productType === 'ats_defense' ? targetRolesMetadata(body.targetRoles) : null;
     // Allowlist against the site's actual supported languages — this flows
     // into an AI prompt server-side later (generation happens from the
     // webhook, which has no access to the browser's i18n state), so it must
@@ -223,23 +228,41 @@ serve(async (req) => {
           console.log("[CREATE-PRODUCT-CHECKOUT] Trialing plan: no grant minted while the trial runs");
         }
         if (standing.consumables) {
-          const { data: grant, error: grantError } = await supabase
+          const grantFields = {
+            // The account the redeemer re-checks (20261008130000).
+            user_id: proUserId,
+            product_id: productId,
+            product_type: product.productType,
+            product_name: product.name,
+            credits: product.credits ?? null,
+            resume_session_id: sessionId || null,
+            job_title: sanitizedJobTitle || null,
+            job_company: sanitizedJobCompany || null,
+            language: sanitizedLanguage,
+          };
+          let { data: grant, error: grantError } = await supabase
             .from("pro_grants")
             .insert({
               email: proEmail,
-              // The account the redeemer re-checks (20261008130000).
-              user_id: proUserId,
-              product_id: productId,
-              product_type: product.productType,
-              product_name: product.name,
-              credits: product.credits ?? null,
-              resume_session_id: sessionId || null,
-              job_title: sanitizedJobTitle || null,
-              job_company: sanitizedJobCompany || null,
-              language: sanitizedLanguage,
+              ...grantFields,
+              // The roles an ATS Defense grant targets (S11-074).
+              ...(targetRoles ? { target_roles: targetRoles } : {}),
             })
             .select("id")
             .single();
+          // A database without the target_roles column yet (20261009134300
+          // not applied): the grant is minted without the roles rather than
+          // sending a member to Stripe for a tool their plan includes.
+          if (grantError && targetRoles && (grantError.code === "42703" || grantError.code === "PGRST204")) {
+            ({ data: grant, error: grantError } = await supabase
+              .from("pro_grants")
+              .insert({
+                email: proEmail,
+                ...grantFields,
+              })
+              .select("id")
+              .single());
+          }
           if (!grantError && grant) {
             console.log(`[CREATE-PRODUCT-CHECKOUT] Pro grant ${grant.id} issued to ${proEmail} for ${product.name}`);
             return new Response(
@@ -296,6 +319,19 @@ serve(async (req) => {
       }
     }
 
+    // The EU/UK switch (off by default): delivery at once needs the waiver.
+    const consentMissing = euConsentRefusal(env, "payment", body);
+    if (consentMissing) {
+      return new Response(
+        JSON.stringify(euConsentAnswer(consentMissing)),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      );
+    }
+    // The referral this catalogue pays on, the Terms shown, the waiver.
+    const policy = policyMetadata(body, env, { commissioned: true });
+    // A signed-in buyer's verified address before a typed one, for the receipt.
+    const receiptEmail = proEmail ?? normalizedEmail;
+
     // Create Stripe session - THE ONLY blocking call
     const session = await stripe.checkout.sessions.create({
       customer_email: normalizedEmail || undefined,
@@ -314,7 +350,9 @@ serve(async (req) => {
       ],
       mode: "payment",
       allow_promotion_codes: true,
-      automatic_tax: { enabled: false },
+      // The receipt, and tax only with the EU/UK switch on (it was off here
+      // by a literal; it still is unless the owner turns the switch on).
+      ...sessionPolicy({ mode: "payment", env, receiptEmail }),
       // Freelance Boost is a guided flow — return the buyer to it so
       // generation runs against their saved intake, not the generic page.
       success_url: productId.startsWith('freelance')
@@ -328,8 +366,11 @@ serve(async (req) => {
         credits: product.credits?.toString() || "",
         job_title: sanitizedJobTitle,
         job_company: sanitizedJobCompany,
-        referral_code: sanitizedReferralCode,
         language: sanitizedLanguage,
+        // The roles an ATS Defense buyer named (S11-074): every deliverer
+        // reads them. Empty for any other product, which Stripe stores as none.
+        target_roles: targetRoles ?? "",
+        ...policy,
       },
     });
 
@@ -373,7 +414,7 @@ serve(async (req) => {
       currency: session.currency,
       mode: session.mode,
       context: checkoutContextOf(body),
-      metadata: { language: sanitizedLanguage, referral: !!sanitizedReferralCode, credits: product.credits ?? null },
+      metadata: { language: sanitizedLanguage, referral: !!policy.referral_code, credits: product.credits ?? null, termsVersion: policy.terms_version || null, withdrawalWaiver: policy.withdrawal_waiver ?? null },
     });
 
     console.log(`[CREATE-PRODUCT-CHECKOUT] Session created: ${session.id} for ${product.name}`);

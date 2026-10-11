@@ -33,3 +33,17 @@ export async function alertOwnerOnce(admin: Rpc, door: string, what: string, sen
     console.warn("[OWNER-ALERT] could not alert:", e instanceof Error ? e.message.slice(0, 120) : String(e));
   }
 }
+
+/**
+ * THE AGENT PASS REFUND ALERT, ONCE PER SESSION FOR 30 DAYS, ON A DOOR OF ITS
+ * OWN. It shared alertOwnerOnce's door with a 30-day window against that
+ * door's one day, and mail_door_take sweeps a door by the CALLER's window: a
+ * day later any ceiling alert could delete the pass row, and the buyer's next
+ * status poll mailed "refund it" again (S8-101). True only for the first knock.
+ */
+export async function firstPassAlert(admin: Rpc, bucket: string): Promise<boolean> {
+  const { data, error } = await admin.rpc("mail_door_take", {
+    p_door: "owner-alert:pass", p_bucket: bucket.slice(0, 64), p_max: 1, p_window_minutes: 43200,
+  });
+  return !error && data === true;
+}

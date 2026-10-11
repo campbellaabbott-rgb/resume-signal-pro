@@ -99,7 +99,11 @@ describe("the broker's wall action refuses what the table refuses", () => {
 
 describe("the weekly run can actually persist", () => {
   it("the workflow passes the broker credentials (optional, labelled)", () => {
-    expect(WORKFLOW).toMatch(/APPLY_BROKER_URL: \$\{\{ secrets\.APPLY_BROKER_URL \}\}/);
+    // The URL is derived from the committed .env since 2026-10-10: the
+    // APPLY_BROKER_URL secret it used to read was never set, so every run was
+    // a dry run. botwall-sweep.test.ts RUNS that step and checks the sweep
+    // receives it; the secret still comes from the repo's secrets.
+    expect(WORKFLOW).toMatch(/APPLY_BROKER_URL=\$\{URL%\/\}\/functions\/v1\/apply-broker/);
     expect(WORKFLOW).toMatch(/APPLY_WORKER_SECRET: \$\{\{ secrets\.APPLY_WORKER_SECRET \}\}/);
   });
 

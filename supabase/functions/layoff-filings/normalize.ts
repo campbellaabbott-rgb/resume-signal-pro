@@ -94,6 +94,28 @@ export function readDate(v: unknown): string | null {
   return null;
 }
 
+/**
+ * EVERY readable date in a cell, in the order written. Illinois lists
+ * "Notification Date(s)" newest first ("8/10/2026, 5/1/2026"); its notice
+ * date is the earliest, never the first (S8-025).
+ */
+export function datesIn(v: unknown): string[] {
+  if (v == null) return [];
+  if (v instanceof Date || typeof v === "number") { const d = readDate(v); return d ? [d] : []; }
+  const out: string[] = [];
+  for (const m of String(v).matchAll(/(\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}|[A-Za-z]+\.?\s+\d{1,2},?\s+\d{4})/g)) {
+    const d = readDate(m[1]);
+    if (d) out.push(d);
+  }
+  return out;
+}
+
+/** The earliest readable date in a cell; null when it holds none. */
+export function earliestDateIn(v: unknown): string | null {
+  const all = datesIn(v).sort();
+  return all.length ? all[0] : null;
+}
+
 /** The first readable date inside a free-text cell ("beginning 11/16/2026, ending 4/1/2027"). */
 export function firstDateIn(v: unknown): string | null {
   if (v == null) return null;
@@ -132,10 +154,12 @@ export function readCount(v: unknown): number | null {
 
 // ── the filer string ───────────────────────────────────────────────────────
 
+// The affix may be wrapped in punctuation: Massachusetts writes
+// "*UPDATED* Schneider Electric" and "*Updated* Revvity" (S8-109).
 const AMEND_LEAD =
-  /^\s*(?:(update|updated|amended|amendment|correction|corrected|revised|revision|rescinded|rescission)\b[\s#:\-]*(?:\d+|to|of)?[\s:\-]*)+/i;
+  /^\s*(?:[*_\[(]*\s*(update|updated|amended|amendment|correction|corrected|revised|revision|rescinded|rescission)\b\s*[*_\])]*[\s#:\-]*(?:\d+|to|of)?[\s:\-]*)+/i;
 const AMEND_TRAIL =
-  /\s*[-–—(]\s*(rescinded|rescission|amended|amendment|updated?|update\s*\d*|correction|revised)\s*\)?\s*$/i;
+  /\s*[-–—(*]\s*(rescinded|rescission|amended|amendment|updated?|update\s*\d*|correction|revised)\s*[)*]*\s*$/i;
 /** "Public Storage Correction to 7/22/26 WARN" — the affix trails without a dash. */
 const AMEND_TRAIL_TO = /\s+(correction|corrected|amendment|revision)\s+(?:to|of)\b.*$/i;
 
@@ -161,7 +185,9 @@ function leadAffix(raw: string): RegExpExecArray | null {
   const m = AMEND_LEAD.exec(raw);
   if (!m) return null;
   const w = m[1];
-  if (/^updated?$/i.test(w) && w !== w.toUpperCase() && !/^\s*updated?\s*[\d#:\-]/i.test(raw)) return null;
+  // Wrapped in punctuation ("*Updated* Revvity") is the state's affix, not a name.
+  const wrapped = /^\s*[*_\[(]/.test(raw);
+  if (/^updated?$/i.test(w) && w !== w.toUpperCase() && !wrapped && !/^\s*updated?\s*[\d#:\-]/i.test(raw)) return null;
   return m;
 }
 

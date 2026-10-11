@@ -93,7 +93,7 @@ describe("the AI fallback test", () => {
 
   it("is not run on load nor by the 30-second refresh; only its buttons run it", async () => {
     page();
-    await waitFor(() => expect(invoke).toHaveBeenCalledWith("health-check"));
+    await waitFor(() => expect(invoke.mock.calls.some(([fn]) => fn === "health-check")).toBe(true));
     expect(aiTests(), "the page spent a model call on load").toEqual([]);
     expect(intervals.length).toBeGreaterThan(0);
     for (const tick of intervals) tick();

@@ -1,12 +1,13 @@
-// deploy-stamp: 2026-10-05T11:00Z
+// deploy-stamp: 2026-10-09T14:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { FULL_ANALYSIS_PRODUCT_TYPE } from "../_shared/full-analysis.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
+import { targetRolesOf } from "../_shared/target-roles.ts";
 
 // Provable from outside without running a sweep: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "retry-failed-deliveries.2026-10-05.1";
+const FN_BUILD = "retry-failed-deliveries.2026-10-09.61";
 
 // WHAT THIS SWEEP CAN DELIVER. A row for anything else (a subscription, the
 // six-hour pass, the Freelance Boost tiers, an unknown type) is taken off the
@@ -29,6 +30,72 @@ const corsHeaders = {
 const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[RETRY-FAILED-DELIVERIES] ${step}`, details ? JSON.stringify(details) : '');
 };
+
+type DeliveryRow = { id: string; stripe_session_id: string; product_type: string; customer_email: string | null };
+// deno-lint-ignore no-explicit-any
+type Db = { rpc: (fn: string, args: Record<string, unknown>) => any; from: (t: string) => any };
+
+/**
+ * A FAILED TRY, AND THE ALARM WHEN IT WAS THE LAST (S11-014; owner decision
+ * 2026-10-11). update_delivery_retry (20261009134100) decides what the
+ * failure costs: an outage (a 402, 429, 5xx, timeout) is retried on the
+ * day-long schedule without spending a try, a real failure spends one, and a
+ * row whose tries are spent, or whose next try would fall after the résumé's
+ * 24 hours, is done. A row that just ran out used to go quiet: now the owner
+ * is mailed once for it, with the buyer's address, so the sale can be made
+ * good by hand.
+ */
+async function recordFailedTry(
+  supabase: Db,
+  delivery: DeliveryRow,
+  args: { p_id: string; p_status: string; p_error: string; p_increment_retry: boolean },
+): Promise<void> {
+  await supabase.rpc('update_delivery_retry', args);
+  try {
+    const { data: row } = await supabase.from('product_deliveries')
+      .select('retry_count, max_retries, next_retry_at').eq('id', delivery.id).maybeSingle();
+    if (!row || Number(row.retry_count) < Number(row.max_retries)) return;
+    await alertDeliverySpent(supabase, delivery, args.p_error);
+  } catch (e) {
+    logStep("Could not read the row back for the spent-delivery alarm", { id: delivery.id, error: e instanceof Error ? e.message : String(e) });
+  }
+}
+
+const escapeHtml = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c] as string));
+
+/** One mail per spent delivery, to the owner (a door of its own, held 30 days). Never throws. */
+async function alertDeliverySpent(supabase: Db, delivery: DeliveryRow, lastError: string): Promise<void> {
+  try {
+    const { data: first, error } = await supabase.rpc('mail_door_take', {
+      p_door: 'owner-alert:delivery', p_bucket: String(delivery.id).slice(0, 64), p_max: 1, p_window_minutes: 43200,
+    });
+    if (error || first !== true) return;
+    const apiKey = Deno.env.get('RESEND_API_KEY');
+    if (!apiKey) {
+      console.error(`[RETRY-FAILED-DELIVERIES] delivery ${delivery.id} ran out of retries and RESEND_API_KEY is not set: nobody can be told`);
+      return;
+    }
+    const to = Deno.env.get('OWNER_NOTIFY_EMAIL') ?? 'resumeboostersupp@gmail.com';
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: 'Resume Booster <reports@resumebooster.work>',
+        to: [to],
+        subject: `Paid delivery ran out of retries: ${String(delivery.product_type).slice(0, 40)}`,
+        html: `<div style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#111">
+          <p>A paid order was not delivered, and the retry sweep has stopped trying.</p>
+          <p>Product: <b>${escapeHtml(delivery.product_type)}</b><br>Buyer: ${escapeHtml(delivery.customer_email ?? '(no address on the row)')}<br>Checkout session: ${escapeHtml(delivery.stripe_session_id)}<br>Last error: ${escapeHtml(String(lastError).slice(0, 300))}</p>
+          <p>Deliver it with admin-regenerate-delivery, or refund it in Stripe.</p>
+        </div>`,
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) console.error(`[RETRY-FAILED-DELIVERIES] spent-delivery alarm refused by Resend: ${res.status}`);
+  } catch (e) {
+    console.warn('[RETRY-FAILED-DELIVERIES] spent-delivery alarm not sent:', e instanceof Error ? e.message.slice(0, 120) : String(e));
+  }
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -63,9 +130,11 @@ serve(async (req) => {
       });
     }
 
-    // Get failed deliveries that need retry
+    // Get failed deliveries that need retry. This build handles a 'generating'
+    // row nobody finished, so it asks for them; the old build did not
+    // (20261009140000, S11-146).
     const { data: failedDeliveries, error: fetchError } = await supabase
-      .rpc('get_failed_deliveries_for_retry', { p_limit: 5 });
+      .rpc('get_failed_deliveries_for_retry', { p_limit: 5, p_include_generating: true });
 
     if (fetchError) {
       logStep("Error fetching failed deliveries", { error: fetchError.message });
@@ -104,8 +173,11 @@ serve(async (req) => {
         const metadata = delivery.metadata as Record<string, unknown> || {};
         const resumeSessionId = metadata.resume_session_id as string;
         
-        // Handle based on current status
-        if (delivery.status === 'payment_received' || delivery.status === 'generation_failed') {
+        // Handle based on current status. A 'generating' row reaches here only
+        // when its generation began 15+ minutes ago and never finished
+        // (20261009140000): nothing is still writing it, so it is generated
+        // again like a payment that was never started.
+        if (delivery.status === 'payment_received' || delivery.status === 'generation_failed' || delivery.status === 'generating') {
           // Need to generate content
           
           // For scan packs, just add credits
@@ -196,7 +268,7 @@ serve(async (req) => {
           // For content products, check if we have resume data
           if (!resumeSessionId) {
             // No resume data available - mark as permanently failed
-            await supabase.rpc('update_delivery_retry', {
+            await recordFailedTry(supabase, delivery, {
               p_id: delivery.id,
               p_status: 'generation_failed',
               p_error: 'Resume session ID not available - cannot generate content',
@@ -216,7 +288,7 @@ serve(async (req) => {
             .rpc('get_temp_resume', { p_session_id: resumeSessionId });
 
           if (resumeError || !resumeData || resumeData.length === 0) {
-            await supabase.rpc('update_delivery_retry', {
+            await recordFailedTry(supabase, delivery, {
               p_id: delivery.id,
               p_status: 'generation_failed',
               p_error: 'Resume data expired',
@@ -274,6 +346,8 @@ serve(async (req) => {
               checklist: packageResult.checklist,
               coverLetter: coverLetterResult?.data?.coverLetter || null,
               modelUsed: packageResult.modelUsed,
+              // What the fact check removed, shown with the saved copy (S11-055).
+              groundingReport: packageResult.groundingReport ?? null,
             };
           } else {
             // Generate content
@@ -309,7 +383,8 @@ serve(async (req) => {
               // Without it, this call always 401s.
               endpoint = 'generate-ats-defense';
               body.sessionId = delivery.stripe_session_id;
-              body.targetRoles = [];
+              // The roles named at checkout (S11-074), kept on the row by the webhook or the verifier.
+              body.targetRoles = targetRolesOf((metadata as { target_roles?: unknown }).target_roles);
             } else if (delivery.product_type === 'interview_coach') {
               endpoint = 'generate-interview-coach';
               body.isPremium = true;
@@ -381,7 +456,9 @@ serve(async (req) => {
                 email: delivery.customer_email,
                 productType: delivery.product_type,
                 productName: delivery.product_name,
-                generatedContent
+                generatedContent,
+                // The link that reopens the purchase, and its id (S8-015).
+                sessionId: delivery.stripe_session_id
               })
             });
 
@@ -403,7 +480,7 @@ serve(async (req) => {
               // resends it from the stored copy. Thrown, it kept its old
               // status and the next sweep paid for the generation again.
               const failure = `Email failed: ${emailResponse.status}`;
-              await supabase.rpc('update_delivery_retry', {
+              await recordFailedTry(supabase, delivery, {
                 p_id: delivery.id,
                 p_status: 'email_failed',
                 p_error: failure,
@@ -445,7 +522,9 @@ serve(async (req) => {
                 email: delivery.customer_email,
                 productType: delivery.product_type,
                 productName: delivery.product_name,
-                generatedContent
+                generatedContent,
+                // The link that reopens the purchase, and its id (S8-015).
+                sessionId: delivery.stripe_session_id
               })
             });
 
@@ -471,16 +550,19 @@ serve(async (req) => {
         const errorMessage = retryError instanceof Error ? retryError.message : String(retryError);
         logStep("Retry failed", { id: delivery.id, error: errorMessage });
 
-        await supabase.rpc('update_delivery_retry', {
+        // A stuck generation that failed again is a failed generation, not
+        // one still in flight.
+        const failedStatus = delivery.status === 'generating' ? 'generation_failed' : delivery.status;
+        await recordFailedTry(supabase, delivery, {
           p_id: delivery.id,
-          p_status: delivery.status,
+          p_status: failedStatus,
           p_error: errorMessage,
           p_increment_retry: true
         });
 
         results.push({ 
           id: delivery.id, 
-          status: delivery.status, 
+          status: failedStatus, 
           success: false, 
           error: errorMessage 
         });

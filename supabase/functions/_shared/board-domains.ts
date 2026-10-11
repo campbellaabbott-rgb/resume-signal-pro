@@ -18,6 +18,10 @@ export const WORK_MODES = ["remote", "hybrid", "onsite"] as const;
 
 export const EXPERIENCE_BANDS = ["entry", "mid", "senior", "expert"] as const;
 
+/** The column CHECK's domain, mirrored from job-board/filters.ts EMPLOYMENT_TYPES
+ *  (a test holds the two equal) so /v1 can refuse an unknown value (S8-078). */
+export const EMPLOYMENT_TYPES = ["full_time", "part_time", "contract", "temporary", "internship"] as const;
+
 export const BOARD_VENDORS = [
   "greenhouse",
   "lever",

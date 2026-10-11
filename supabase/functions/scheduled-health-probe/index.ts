@@ -1,14 +1,15 @@
-// deploy-stamp: 2026-10-08T12:00Z
+// deploy-stamp: 2026-10-09T14:00Z
 import { getServiceClient } from "../_shared/supabase-client.ts";
+import { isProbeOperator } from "../_shared/probe-caller.ts";
 
 // A KEY THAT IS REFUSED IS NOT A HEALTHY SERVICE (register L13-67): the same
 // change as health-check. Stripe passes only on a 200; a missing key or a
 // 401/402/403 from Stripe or the AI gateway is unhealthy.
-const FN_BUILD = "scheduled-health-probe.2026-10-08.1";
+const FN_BUILD = "scheduled-health-probe.2026-10-09.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-admin-key, x-email-cron",
   "Access-Control-Expose-Headers": "x-fn-build",
   "x-fn-build": FN_BUILD,
 };
@@ -186,6 +187,13 @@ Deno.serve(async (req) => {
     isWarmup = body?._warmup === true;
   } catch {
     // ignore
+  }
+
+  // The live probes (Stripe with the live key, the AI gateway) and the
+  // heartbeat write are for the owner's key, the cron key and the service
+  // role (S8-061); anyone else gets the database-only answer below.
+  if (!isWarmup && !(await isProbeOperator(req.headers, supabase, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '', Deno.env.get('ADMIN_API_KEY') ?? ''))) {
+    isWarmup = true;
   }
 
   if (isWarmup) {

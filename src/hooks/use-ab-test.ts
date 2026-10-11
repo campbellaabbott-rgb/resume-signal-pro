@@ -81,6 +81,9 @@ const getVariant = <T extends TestName>(testName: T): VariantOf<T> => {
   return variant as VariantOf<T>;
 };
 
+/** The test name a CTA click is recorded under: never the test's own, whose 'conversion' is the purchase. */
+export const clickTestName = (testName: string): string => `${testName}__click`;
+
 // Track event via batched queue (reduces network calls)
 const trackEvent = (
   testName: string,
@@ -109,14 +112,19 @@ export function useABTest<T extends TestName>(testName: T) {
     }
   }, [testName, variant]);
 
-  // Track conversion
-  const trackConversion = useCallback((metadata?: Record<string, unknown>) => {
-    trackEvent(testName, variant, 'conversion', metadata);
+  // A CTA CLICK IS NOT A CONVERSION (S8-122). Clicks went out as
+  // [test, variant, 'conversion'], the same key a purchase sends, so the
+  // purchase that followed was dropped as a duplicate (12 hours in the
+  // browser, 90 days on the server) and every readout measured click-through.
+  // A click is a view under its own test name; 'conversion' is left to the
+  // purchase (useABConversion).
+  const trackClick = useCallback((metadata?: Record<string, unknown>) => {
+    trackEvent(clickTestName(testName), variant, 'view', metadata);
   }, [testName, variant]);
 
   return {
     variant,
-    trackConversion,
+    trackClick,
     isVariant: (v: VariantOf<T>) => variant === v,
   };
 }

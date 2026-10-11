@@ -17,7 +17,7 @@ if (typeof window !== "undefined") {
   };
   Object.defineProperty(window, "localStorage", { value: localStorageMock, writable: true });
 }
-import { readdirSync, unlinkSync } from "fs";
+import { strayPdfSweeper } from "./helpers/stray-test-pdfs";
 
 // Initialize i18n with the bundled English resources so components using
 // useTranslation() render real English text in tests instead of raw keys.
@@ -47,16 +47,10 @@ if (typeof window !== "undefined" && !window.matchMedia) {
 // individual export test files. They got committed once before this was
 // caught (see git history). Belt-and-suspenders cleanup here, independent of
 // whatever the exact mechanism turns out to be, plus a /*.pdf .gitignore
-// entry as a second safety net if cleanup itself ever fails.
-function cleanupStrayTestPdfs() {
-  try {
-    for (const file of readdirSync(".")) {
-      if (file.endsWith(".pdf")) unlinkSync(file);
-    }
-  } catch {
-    // Best-effort — never let cleanup itself fail a test run.
-  }
-}
+// entry as a second safety net if cleanup itself ever fails. It deletes only
+// PDFs that appeared after this file loaded: a PDF someone keeps in the
+// project root is theirs (helpers/stray-test-pdfs.ts).
+const cleanupStrayTestPdfs = strayPdfSweeper(".");
 
 afterEach(cleanupStrayTestPdfs);
 afterAll(cleanupStrayTestPdfs);
@@ -83,6 +77,14 @@ globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
   const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
   if (url && url.includes("/rest/v1/rpc/agent_sender_public_status")) {
     return Promise.resolve(new Response("false", {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    }));
+  }
+  // Every Terms line asks create-checkout once whether the EU/UK switch is on
+  // (S11-142). The same narrow rule: answered "off", the switch's default.
+  if (url && url.includes("/functions/v1/create-checkout") && (init?.method ?? "GET").toUpperCase() === "GET") {
+    return Promise.resolve(new Response(JSON.stringify({ euUkSales: false, withdrawalDays: 14, waiverVersion: "2026-10-09" }), {
       status: 200,
       headers: { "content-type": "application/json" },
     }));

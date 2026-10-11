@@ -143,6 +143,7 @@ function isolate() {
     OVERSIZE_CAP: constNum("OVERSIZE_CAP"),
     LIFECYCLE_SELECT: "id, source, company_token, company, title, category, posted_at, first_seen",
     FRESH_PRUNE_MAX: constNum("FRESH_PRUNE_MAX"),
+    PASS_END_SWEEP_UNTIL_MS: constNum("PASS_END_SWEEP_UNTIL_MS"),
     FRESH_WINDOW_DAYS: constNum("FRESH_WINDOW_DAYS"),
     breadcrumb: async () => {},
     waitUntil: () => {},

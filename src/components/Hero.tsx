@@ -9,6 +9,8 @@ import { useBoardTotals, roundedFloor } from "@/hooks/use-board-totals";
 import { useCurrency } from "@/hooks/use-currency";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PRODUCTS } from "@/config/products";
+import { SCAN_RESULTS_WITHIN_SECONDS } from "@/config/scan-timing";
+import { REPORT_CACHE_DAYS } from "@/lib/resume-retention";
 import { useABTest } from "@/hooks/use-ab-test";
 import { SampleReportPreview } from "./SampleReportPreview";
 
@@ -158,8 +160,8 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
   const [showAtsInfo, setShowAtsInfo] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   
-  const { variant: socialProofVariant, trackConversion: trackSocialProof } = useABTest('social_proof_placement');
-  const { variant: layoutVariant, trackConversion: trackLayout } = useABTest('hero_layout');
+  const { variant: socialProofVariant, trackClick: trackSocialProof } = useABTest('social_proof_placement');
+  const { variant: layoutVariant, trackClick: trackLayout } = useABTest('hero_layout');
 
   const fullAnalysisPrice = PRODUCTS.fullAnalysis.priceUsd;
 
@@ -361,7 +363,7 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
             <div className="mb-5 animate-fade-in">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-success/10 border border-success/30 mb-4">
                 <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-                <span className="text-sm font-medium text-success">{t('hero.socialFirst.joinThousands')}</span>
+                <span className="text-sm font-medium text-success">{t('hero.socialFirst.joinThousands', { seconds: SCAN_RESULTS_WITHIN_SECONDS })}</span>
               </div>
               <HeroStatsBar />
             </div>
@@ -371,14 +373,14 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
               <h1 id="hero-heading" className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight mb-3 leading-tight">
                 {t('hero.headline.get', 'The job board with')}{" "}
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-success via-emerald-400 to-success">
-                  {t('hero.headline.recruiterGrade', 'zero ghost jobs')}
+                  {t('hero.headline.recruiterGrade', "live jobs straight from employers' own hiring systems")}
                 </span>{" "}
                 {boardTotals
                 ? t('hero.headline.feedbackLive', '— {{n}}+ verified openings, matched to your resume', { n: roundedFloor(boardTotals.jobs).toLocaleString() })
                 : t('hero.headline.feedbackPlain', '— every opening verified, matched to your resume')}
               </h1>
               <p className="text-sm sm:text-base text-muted-foreground max-w-xl mx-auto">
-                {t('hero.socialFirst.subheading')}
+                {t('hero.socialFirst.subheading', { days: REPORT_CACHE_DAYS })}
               </p>
             </div>
 
@@ -449,7 +451,7 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-success via-emerald-400 to-success">
                   {t('hero.benefitLed.solutionHeadingHighlight')}
                 </span>{" "}
-                {t('hero.benefitLed.solutionHeadingSuffix')}
+                {t('hero.benefitLed.solutionHeadingSuffix', { seconds: SCAN_RESULTS_WITHIN_SECONDS })}
               </h1>
               <p className="text-xs sm:text-sm text-muted-foreground max-w-lg mx-auto">
                 {t('hero.benefitLed.solutionSubheading')}
@@ -507,7 +509,7 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
             >
               {t('hero.headline.get', 'The job board with')}{" "}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-success via-emerald-400 to-success">
-                {t('hero.headline.recruiterGrade', 'zero ghost jobs')}
+                {t('hero.headline.recruiterGrade', "live jobs straight from employers' own hiring systems")}
               </span>{" "}
               {boardTotals
                 ? t('hero.headline.feedbackLive', '— {{n}}+ verified openings, matched to your resume', { n: roundedFloor(boardTotals.jobs).toLocaleString() })
@@ -678,10 +680,6 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
               endorsement wall, which read as fake and undercut trust */}
           <div className="animate-fade-in hidden sm:block" style={{ animationDelay: "0.35s" }}>
             <div className="flex flex-wrap justify-center items-center gap-x-6 gap-y-2 text-xs text-muted-foreground/70">
-              <span className="flex items-center gap-1.5">
-                <Shield className="w-3.5 h-3.5 text-success/70" />
-                {t('hero.factGdpr', 'GDPR compliant')}
-              </span>
               <span className="flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-success/70" />
                 {t('hero.factAutoDelete', 'Resume deleted within 7 days')}

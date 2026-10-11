@@ -57,6 +57,14 @@ const CORPUS: Row[] = JSON.parse(
  * Both readings are defensible; `demographic` is the safer one, and it is what
  * this classifier's own precedence rule already says — "Protected self-ID wins
  * over everything — even if phrased oddly." The old answer was the anomaly.
+ *
+ * A SECOND ROW, 2026-10-09 (sweep S8-044). "This role will be hired on a
+ * hybrid contract basis with a requirement to work from our Dean Street office
+ * in London ... Please confirm that you are aware of and can commit this
+ * requirement." was `identity`, because "Street" is an identity token. It is a
+ * commitment the candidate makes, and an identity token inside a sentence no
+ * longer makes a field, so it is now `consent`. Both block a required send;
+ * only `consent` tells the candidate why.
  */
 describe("the classifier over 103 live vendor questions", () => {
   it("has a corpus worth replaying", () => {

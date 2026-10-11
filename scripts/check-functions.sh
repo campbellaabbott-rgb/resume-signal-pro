@@ -58,3 +58,11 @@ else
   echo "$fails function(s) failed deno check"
   exit 1
 fi
+
+# Typechecked above, and RUN here: a test that compiles is not a test that passes.
+if ! bash "$(dirname "$0")/deno-tests.sh" >/tmp/check-functions-deno-tests.log 2>&1; then
+  sed 's/\x1b\[[0-9;]*m//g' /tmp/check-functions-deno-tests.log | grep -E "FAILED|=> |error" | head -20
+  echo "FAIL: the Deno tests beside the functions (bash scripts/deno-tests.sh)"
+  exit 1
+fi
+echo "OK: the Deno tests beside the functions pass"

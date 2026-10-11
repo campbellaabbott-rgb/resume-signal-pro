@@ -50,7 +50,7 @@ import { learnedKey } from "../../worker/src/questions/learned.ts";
 function fakeBrowser() {
   const locator = () => ({ evaluateAll: async () => 0 });
   const page = {
-    waitForTimeout: async () => {}, waitForLoadState: async () => {},
+    waitForTimeout: async () => {}, waitForLoadState: async () => {}, on: () => {},
     textContent: async () => "Apply for this role", content: async () => "<form></form>",
     evaluate: async () => false, locator, url: () => "https://acme.breezy.hr/p/1/apply",
     screenshot: async () => Buffer.from(""),

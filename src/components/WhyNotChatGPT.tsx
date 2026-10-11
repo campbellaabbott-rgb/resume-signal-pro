@@ -1,4 +1,5 @@
 import { Ruler, FileSearch, BarChart3, History, FileDown, MessageSquareOff } from "lucide-react";
+import { REPORT_CACHE_DAYS } from "@/lib/resume-retention";
 
 // Answers the question skeptical visitors actually ask: "why not just paste
 // my resume into ChatGPT?" Every claim here must be structurally true — things
@@ -21,7 +22,8 @@ const DIFFERENCES = [
     icon: BarChart3,
     title: "A score that shows its work",
     chat: "Ask for a score and it invents one on the spot — different each time.",
-    us: "Your score is anchored to a rule-based calculation with an audit trail — every point accounted for, reproducible on rescan.",
+    // The model's score repeats because the report is cached, so the claim names the cache's window.
+    us: `Your score is anchored to a rule-based calculation with an audit trail — every point accounted for, and a rescan of the same file against the same posting within ${REPORT_CACHE_DAYS} days returns the same report.`,
   },
   {
     icon: History,

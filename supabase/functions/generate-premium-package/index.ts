@@ -6,10 +6,13 @@ import { clipField, clipText, modelSpendGate } from "../_shared/model-spend-gate
 import { checkInputLimits, MAX_JOB_DESCRIPTION_LENGTH } from "../_shared/input-limits.ts";
 import { looksLikeBrokenJson, UnusableModelOutput } from "../_shared/ai-fallback.ts";
 import { autoFixContent, validateContent } from "./auto-fix.ts";
+import { stripInventedContact } from "../_shared/contact-guard.ts";
+import { validateProseClaims } from "../_shared/resume-grounding.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-premium-package.2026-10-05.1";
+// 2026-10-09.62 (wave-3 fix round integration): carries both 2026-10-09.4 and the payments-account group's 2026-10-09.61.
+const FN_BUILD = "generate-premium-package.2026-10-09.62";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -571,34 +574,8 @@ Write a cover letter that sounds like it was written by this specific person - c
       logStep("Cover letter auto-fixed", { corrections: coverLetterFix.corrections.length });
     }
 
-    // Contact-integrity guard: deterministically strip any URL, email, or
-    // phone-shaped string in the output that does not appear in the original
-    // resume. The prompt forbids inventing contact details, but the audit
-    // caught a fabricated linkedin.com/in/... slipping through — prompts ask,
-    // code enforces (same philosophy as the free scan's grounding filter).
-    const stripInventedContact = (text: string, original: string): { text: string; removed: string[] } => {
-      const removed: string[] = [];
-      const origLower = original.toLowerCase();
-      const patterns = [
-        /(?:https?:\/\/)?(?:www\.)?linkedin\.com\/[^\s|,)]+/gi,
-        /(?:https?:\/\/)?(?:www\.)?(?:github\.com|behance\.net|dribbble\.com)\/[^\s|,)]+/gi,
-        /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi,
-        /(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}/g,
-      ];
-      let out = text;
-      for (const re of patterns) {
-        out = out.replace(re, (match) => {
-          if (origLower.includes(match.toLowerCase())) return match;
-          removed.push(match);
-          return '';
-        });
-      }
-      // Tidy contact-line separators left dangling by a removal (" | | ", trailing "|")
-      if (removed.length > 0) {
-        out = out.replace(/\s*\|\s*(?=\||$)/gm, '').replace(/\|\s*$/gm, '').replace(/^\s*\|\s*/gm, '');
-      }
-      return { text: out, removed };
-    };
+    // Contact-integrity guard (contact-guard.ts): strip any URL, email or
+    // phone the original résumé does not contain, compared in canonical form.
     const resumeContactGuard = stripInventedContact(resumeResult.rewrittenResume || '', resumeText);
     if (resumeContactGuard.removed.length > 0) {
       resumeResult.rewrittenResume = resumeContactGuard.text;
@@ -608,6 +585,29 @@ Write a cover letter that sounds like it was written by this specific person - c
     if (letterContactGuard.removed.length > 0) {
       coverLetterResult.coverLetter = letterContactGuard.text;
       logStep("Contact-integrity guard (letter) removed invented items", { removed: letterContactGuard.removed });
+    }
+
+    // THE FIGURE CHECK, AS THE COVER LETTER RUNS IT (S11-018). The package
+    // ran only the contact guard: a rewrite could add "$250,000" or "10,000
+    // users" the candidate never claimed and ship it. Every impact figure in
+    // the résumé must come from the résumé; the letter may also cite the
+    // posting's own numbers. A draft that fails is refused (retryable), never
+    // delivered: the deliverers record the failure and try again.
+    const figureContext = [jobDescription, jobTitle, jobCompany].filter(Boolean).join("\n");
+    const figureIssues = [
+      ...validateProseClaims(resumeText, resumeResult.rewrittenResume || ''),
+      ...validateProseClaims(resumeText, coverLetterResult.coverLetter || '', figureContext),
+    ];
+    if (figureIssues.length > 0) {
+      logStep("Premium package rejected by the figure check", { issues: figureIssues.slice(0, 5) });
+      return new Response(
+        JSON.stringify({
+          error: "The draft cited figures that are not on your resume, so we refused to deliver it. Try again — regeneration is free.",
+          retryable: true,
+          groundingIssues: figureIssues.slice(0, 5),
+        }),
+        { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Validate after auto-fix to see remaining issues

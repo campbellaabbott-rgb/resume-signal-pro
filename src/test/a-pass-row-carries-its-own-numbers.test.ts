@@ -65,9 +65,16 @@ function sqlCode(sql: string): string {
 function integerLiterals(code: string): number[] {
   return [...code.matchAll(/(?<![\w.$])(\d+)(?![\w.])/g)].map((m) => Number(m[1]));
 }
+/**
+ * The claim's lease length is a worker setting, not a pass number, and its
+ * default equals PASS_APPLICATIONS by coincidence. 20261009121000 (a pass
+ * migration by name) redefines agent_claim_submission with that default, so
+ * exactly these two spellings of the lease are set aside, nothing else.
+ */
+const LEASE_DEFAULT = /\bp_lease_minutes integer DEFAULT \d+|coalesce\(p_lease_minutes, \d+\)/g;
 /** Which of the pass numbers a migration's code spells. */
 function spelledPassNumbers(sql: string): string[] {
-  const found = new Set(integerLiterals(sqlCode(sql)));
+  const found = new Set(integerLiterals(sqlCode(sql).replace(LEASE_DEFAULT, " ")));
   return PASS_NUMBER_NAMES.filter((n) => found.has(PASS_NUMBERS[n]));
 }
 
@@ -152,6 +159,14 @@ describe("teeth", () => {
     expect(spelledPassNumbers(inComment)).toEqual([]);
     expect(spelledPassNumbers(inString)).toEqual([]);
     expect(spelledPassNumbers(`${table}\nSELECT ${n};\n`)).toEqual(["PASS_APPLICATIONS"]);
+  });
+  it("only the claim's lease is set aside: the same number anywhere else in that migration is reported", () => {
+    const n = PASS_NUMBERS.PASS_APPLICATIONS;
+    const claim = read("20261009121000_a_refunded_pass_application_is_sent_only_if_it_is_paid_for_again.sql");
+    expect(sqlCode(claim)).toMatch(new RegExp(LEASE_DEFAULT.source));
+    expect(spelledPassNumbers(claim)).toEqual([]);
+    expect(spelledPassNumbers(`${claim}\nSELECT ${n};\n`)).toEqual(["PASS_APPLICATIONS"]);
+    expect(spelledPassNumbers(claim.replace("p_lease_minutes integer DEFAULT", `p_applications integer DEFAULT ${n}, p_lease_minutes integer DEFAULT`))).toEqual(["PASS_APPLICATIONS"]);
   });
   it("an empty pass.ts fails loudly rather than pinning nothing", () => {
     expect(() => numberOf("", "PASS_PRICE_CENTS")).toThrow(/not found/);

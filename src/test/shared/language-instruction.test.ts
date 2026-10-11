@@ -13,7 +13,7 @@ describe("buildLanguageInstruction", () => {
   it("returns a clear instruction naming the language for Spanish", () => {
     const result = buildLanguageInstruction("es");
     expect(result).toContain("Spanish");
-    expect(result.toLowerCase()).toContain("respond entirely in");
+    expect(result.toLowerCase()).toContain("respond in spanish");
   });
 
   it("maps every supported locale code to a real language name, not the raw code", () => {

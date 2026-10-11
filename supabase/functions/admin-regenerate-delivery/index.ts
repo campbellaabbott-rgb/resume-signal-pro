@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-05T11:00Z
+// deploy-stamp: 2026-10-09T14:00Z
 //
 // The owner's support tool (x-admin-key): regenerate a customer's Premium
 // Package and email it to them. Platform sweep L6-23 found it would quietly
@@ -14,10 +14,12 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { keyMatches } from "../_shared/admin-key.ts";
+import { purchaseLinkFor } from "../_shared/purchase-links.ts";
+import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 
 // Provable from outside without the key: every response, the preflight
 // included, carries this in x-fn-build.
-const FN_BUILD = "admin-regenerate-delivery.2026-10-05.1";
+const FN_BUILD = "admin-regenerate-delivery.2026-10-09.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -341,11 +343,12 @@ ${jobDescription ? `JOB REQUIREMENTS:\n${jobDescription}` : ''}`;
     logStep("Sending email");
     
     const resend = new Resend(resendApiKey);
-    const emailHtml = generatePremiumPackageEmail(email, generatedContent);
+    const emailHtml = generatePremiumPackageEmail(email, generatedContent, newSessionId);
     
     const { data: emailData, error: emailError } = await resend.emails.send({
       from: "Resume Booster <reports@resumebooster.work>",
       to: [email],
+      reply_to: CUSTOMER_REPLY_TO,
       subject: "👑 Your Regenerated Premium Package is Ready! (GPT-5 Enhanced)",
       html: emailHtml,
     });
@@ -442,7 +445,7 @@ function escapeHtml(text: string | number | undefined | null): string {
     .replace(/'/g, '&#039;');
 }
 
-function generatePremiumPackageEmail(email: string, generatedContent: any): string {
+function generatePremiumPackageEmail(email: string, generatedContent: any, sessionId: string): string {
   const resume = generatedContent.resume;
   const coverLetter = generatedContent.coverLetter;
   
@@ -519,9 +522,10 @@ function generatePremiumPackageEmail(email: string, generatedContent: any): stri
               </div>
 
               <div style="text-align: center; margin-top: 32px;">
-                <a href="https://resumebooster.work" style="display: inline-block; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; text-decoration: none; padding: 16px 36px; border-radius: 8px; font-weight: 600; font-size: 16px;">
-                  Visit Resume Booster →
+                <a href="${escapeHtml(purchaseLinkFor("premium_package", sessionId))}" style="display: inline-block; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; text-decoration: none; padding: 16px 36px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                  Open your package →
                 </a>
+                <p style="color: #6b7280; font-size: 12px; margin: 16px 0 0;">Order reference: <span style="font-family: 'Courier New', monospace;">${escapeHtml(sessionId)}</span></p>
               </div>
             </td>
           </tr>

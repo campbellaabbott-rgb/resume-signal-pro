@@ -55,13 +55,17 @@ describe("a bucket shared by every customer is nobody's allowance", () => {
     expect(fn).toMatch(/req\.headers\.get\("x-rb-bucket"\)/);
     expect(fn, "the name is believed only under the service-role bearer").toMatch(/Deno\.env\.get\("SUPABASE_SERVICE_ROLE_KEY"\)/);
     expect(fn, "an unset service key must never let an empty bearer match").toMatch(/named && service && bearer === service/);
-    expect(fn, "the IP fallback the site relies on").toMatch(/req\.headers\.get\("x-forwarded-for"\)\?\.split\(","\)\[0\]\?\.trim\(\) \|\| "unknown"/);
-    expect(fn).toMatch(/max: FIT_KEY_MAX, scope: "key"/);
-    expect(fn).toMatch(/max: FIT_IP_MAX, scope: "ip"/);
-    expect(FIT, "the site's allowance is untouched").toMatch(/const FIT_IP_MAX = 120;/);
+    // The address fallback is the PLATFORM's address since .92 (S8-062): the
+    // first x-forwarded-for hop was caller-written. Run in
+    // the-fit-scorer-the-site-calls-let-each-caller-name-its-own-bucket.
+    expect(fn, "the address fallback the site relies on").toMatch(/id: spendAddressKey\(req\.headers\)/);
+    expect(fn, "never the caller-written first hop").not.toMatch(/split\(","\)\[0\]/);
+    expect(fn).toMatch(/max: FIT_KEY_MAX, scope: "key", windowMinutes: 1440/);
+    expect(fn).toMatch(/max: FIT_PER_ADDRESS_HOUR, scope: "ip", windowMinutes: 60/);
+    expect(FIT, "the site's allowance is job-board's hourly one").toMatch(/const FIT_PER_ADDRESS_HOUR = 60;/);
     expect(FIT, "a key's allowance is the RPC's ceiling, equal to a default key's daily quota").toMatch(/const FIT_KEY_MAX = 1000;/);
     expect(FIT, "check_rate_limit raises above 45 chars of p_ip").toMatch(/\/\^key:\[A-Za-z0-9-\]\{1,41\}\$\//);
-    expect(FIT).toMatch(/p_function: "job-board-fit", p_ip: bucket\.id, p_max_requests: bucket\.max, p_window_minutes: 1440/);
+    expect(FIT).toMatch(/p_function: "job-board-fit", p_ip: bucket\.id, p_max_requests: bucket\.max, p_window_minutes: bucket\.windowMinutes/);
     expect(FIT, "no IP-keyed rpc may survive beside it").not.toMatch(/p_ip: clientIp/);
     expect(FIT, "a browser must not be able to send the header").not.toMatch(/Access-Control-Allow-Headers":[^\n]*x-rb-bucket/);
   });
@@ -111,8 +115,8 @@ describe("a bucket shared by every customer is nobody's allowance", () => {
     expect(MCP).toMatch(/import \{ hasFitAccess, isPaidKeyTier \} from "\.\.\/_shared\/key-tier\.ts";/);
     expect(API, "the predicate must be the one /v1/fit applies").toMatch(/import \{ isPaidKeyTier \} from "\.\.\/_shared\/key-tier\.ts";/);
     expect(API).toMatch(/const paid = isPaidKeyTier\(tier\);/);
-    expect(MCP).toMatch(/callTool\(client, d\.api_key_id \?\? "", d\.key_tier, toolName, toolArgs\)/);
-    expect(MCP).toMatch(/tier: string \| null,\s*name: string,\s*args: Record<string, unknown>,\s*\): Promise<unknown>/);
+    expect(MCP).toMatch(/callTool\(client, d\.api_key_id \?\? "", d\.key_tier, toolName, toolArgs, shop\)/);
+    expect(MCP).toMatch(/tier: string \| null,\s*name: string,\s*args: Record<string, unknown>,\s*shop: Shop,\s*\): Promise<unknown>/);
     const dispatch = between(MCP, 'case "fit_resume":', 'case "check_apply_support":');
     expect(dispatch).toMatch(/if \(!hasFitAccess\(tier\)\)/);
     expect(dispatch).toMatch(/return toolErr\(\s*"fit_resume is a paid feature/);
@@ -122,7 +126,7 @@ describe("a bucket shared by every customer is nobody's allowance", () => {
     // checked on the raw line that opens the string — a line of code, not a
     // comment — and that line must sit inside the dispatch case.
     const pointer = MCP_RAW.split("\n").find((l) => l.includes("Upgrade the key at "));
-    expect(pointer, "the same upgrade pointer /v1/fit gives").toMatch(/^\s*"Upgrade the key at https:\/\/resumebooster\.work\/data-api/);
+    expect(pointer, "the same upgrade pointer /v1/fit gives").toMatch(/^\s*forSale\(shop, "Upgrade the key at https:\/\/resumebooster\.work\/data-api/);
     expect(MCP_RAW.indexOf("Upgrade the key at ")).toBeGreaterThan(MCP_RAW.indexOf('case "fit_resume":'));
     expect(MCP_RAW.indexOf("Upgrade the key at ")).toBeLessThan(MCP_RAW.indexOf('case "check_apply_support":'));
     const tool = between(MCP, 'name: "fit_resume"', 'name: "board_stats"');

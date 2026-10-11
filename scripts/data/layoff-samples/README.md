@@ -9,6 +9,8 @@ run from the repository with no network and no environment variable.
   feed and full-text-search responses. Public domain (17 U.S.C. § 105).
 - `bln-*.csv`, `bln-jobs.json`, `bln-runs.json` — Big Local News `warn-github-flow`
   raw per-state files and workflow status. Apache-2.0; see BLN-LICENSE.
+  `bln-raw-or.csv` was fetched later, on 2026-10-10 (1,374 rows), when the
+  Oregon map was pinned to its header.
 - `ca-warn_report1.xlsx`, `tx-2026.xlsx`, `il-export.xlsx`, `fl-2026.html`,
   `ny-tableau.csv`, `oh-2026.csv`, `wa-search.html` — state workforce-agency
   WARN publications, fetched directly. Public records.

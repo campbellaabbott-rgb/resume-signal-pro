@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { hasUnsupportedPdfCharacters } from "@/lib/pdf-text-support";
+import { useReportEnumLabel } from "@/hooks/use-report-enum-label";
 
 interface InterviewCoachProps {
   resumeText: string;
@@ -76,6 +77,8 @@ const categoryColors: Record<string, string> = {
 
 export function InterviewCoach({ resumeText, industry, currentRole, isPremium, sessionId }: InterviewCoachProps) {
   const { t } = useTranslation();
+  // Difficulty and category arrive in English (the colours key on them); shown in the reader's language.
+  const enumLabel = useReportEnumLabel();
   const [data, setData] = useState<InterviewData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [activeQuestion, setActiveQuestion] = useState<number | null>(null);
@@ -164,7 +167,7 @@ export function InterviewCoach({ resumeText, industry, currentRole, isPremium, s
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-xs font-semibold text-foreground">{data.interviewProfile?.targetRole}</span>
         <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted/50 text-muted-foreground">
-          {data.interviewProfile?.difficulty}
+          {enumLabel(data.interviewProfile?.difficulty ?? "")}
         </span>
         <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted/50 text-muted-foreground">
           {data.interviewProfile?.interviewType}
@@ -222,7 +225,7 @@ export function InterviewCoach({ resumeText, industry, currentRole, isPremium, s
                 className="w-full flex items-center gap-2 p-3 text-left hover:bg-muted/20 transition-colors"
               >
                 <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0", categoryColors[q.category] || "bg-muted/50 text-muted-foreground")}>
-                  {q.category}
+                  {enumLabel(q.category)}
                 </span>
                 <span className="text-xs font-medium text-foreground flex-1">{q.question}</span>
                 <div className="flex items-center gap-1 shrink-0">
@@ -234,7 +237,7 @@ export function InterviewCoach({ resumeText, industry, currentRole, isPremium, s
                     )}>{evaluation.grade}</span>
                   )}
                   <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full", difficultyColors[q.difficulty as keyof typeof difficultyColors] || "bg-muted/50 text-muted-foreground")}>
-                    {q.difficulty}
+                    {enumLabel(q.difficulty)}
                   </span>
                   <ChevronRight className={cn("w-3.5 h-3.5 text-muted-foreground transition-transform", isActive && "rotate-90")} />
                 </div>

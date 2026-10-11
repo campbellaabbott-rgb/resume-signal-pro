@@ -21,12 +21,19 @@ import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 import { checkInputLimits } from "../_shared/input-limits.ts";
 import { clipField, clipText, modelSpendGate } from "../_shared/model-spend-gate.ts";
-import { classifyQuestion, selectDraftable, roleGuidance, type AppQuestion } from "../_shared/application-questions.ts";
+import { classifyQuestion, selectDraftable, roleGuidance, shapeModelAnswers, type AppQuestion } from "../_shared/application-questions.ts";
 import { coverNotePrompt, validateCoverNote, gateCanCheck, COVER_NOTE_VERSION } from "../_shared/cover-note.ts";
+import { toAskedLabels } from "../_shared/draft-reply.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-application-answers.2026-10-10.1";
+// 2026-10-10.4: the parsers-scan group's model-spend-gate change (S11-083's proven-caller rule).
+// 2026-10-10.24: a reply that is not the JSON asked for answers 502 instead of
+// 200 with no answers, and the model's echo of a question is matched to the
+// label asked by case, spacing and list number (S11-040).
+// 2026-10-10.25 (wave-3 fix round integration): carries both of the above.
+// 2026-10-10.62 (wave-3 fix round integration): carries both 2026-10-10.25 and the payments-account group's 2026-10-10.61.
+const FN_BUILD = "generate-application-answers.2026-10-10.62";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -231,24 +238,27 @@ ${inferred ? "" : `\nQUESTIONS TO ANSWER (draft each, grounded strictly in the r
 
     const result = await response.json();
     const content: string = result?.choices?.[0]?.message?.content ?? "";
-    let parsed: { answers?: Array<{ question?: string; answer?: string; supported?: boolean; note?: string }> } = {};
+    let parsed: { answers?: unknown } = {};
     try { parsed = JSON.parse(content); }
     catch { try { parsed = JSON.parse(content.match(/\{[\s\S]*\}/)?.[0] ?? "{}"); } catch { parsed = {}; } }
+    // A reply that is not the JSON asked for is a failed call, not "no
+    // answers": read as [], every required question became "nothing in your
+    // résumé supports an answer" for good (S11-040).
+    if (!parsed || !Array.isArray(parsed.answers)) {
+      console.error("[APPLICATION-ANSWERS] the model's reply was not the JSON asked for");
+      return json({ error: "Couldn't draft answers right now." }, 502);
+    }
 
     const draftLabels = new Set(draftable.map((q) => (q.label ?? "").trim()));
-    const answers = (parsed.answers ?? [])
-      .filter((a) => typeof a?.answer === "string" && a.answer.trim() && typeof a?.question === "string" && a.question.trim())
-      .map((a) => ({
-        question: String(a.question).trim(),
-        answer: String(a.answer).trim(),
-        supported: a.supported !== false,
-        note: a.supported === false ? String(a.note ?? "Add specifics from your own experience.").trim() : "",
-        anticipated: inferred,
-      }))
-      // In explicit mode, drop anything the model answered that we didn't ask
-      // (or that we filtered as non-draftable). In inferred mode, keep its list.
-      .filter((a) => inferred || draftLabels.has(a.question))
-      .slice(0, 12);
+    // The model's echo of each question is matched to the label asked the way
+    // the packet matches labels (case, spacing, a list number), and carries
+    // the asked label verbatim from here on (S11-040).
+    const echoed = inferred ? parsed.answers : toAskedLabels(parsed.answers, [...draftLabels]);
+    // Support is a literal true, and an invented question is classified before
+    // it is answered (S8-008): see shapeModelAnswers.
+    const shaped = shapeModelAnswers(echoed, { inferred, askedLabels: draftLabels, limit: 12 });
+    const answers = shaped.answers;
+    skipped.push(...shaped.skipped);
 
     console.log(`[APPLICATION-ANSWERS] mode=${inferred ? "inferred" : "explicit"}; drafted ${answers.length}; ${answers.filter((a) => !a.supported).length} gaps; ${skipped.length} for candidate`);
     return json({ answers, skipped, inferred });

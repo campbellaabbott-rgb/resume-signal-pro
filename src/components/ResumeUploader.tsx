@@ -1,6 +1,7 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Upload, FileText, X, Loader2, CheckCircle2, Sparkles, CreditCard, Linkedin, Target, Zap, Link, Table2, Download, ChevronDown, ChevronUp, ArrowDown } from "lucide-react";
 import { WalletPaymentBadge } from "./WalletPaymentBadge";
+import { SCAN_RESULTS_WITHIN_SECONDS } from "@/config/scan-timing";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -14,6 +15,8 @@ import { useToast } from "@/hooks/use-toast";
 import { ScanGuideArrow } from "@/components/ScanGuideArrow";
 import { useScanPrefetch } from "@/hooks/use-scan-prefetch";
 import { ScanProgressStages } from "@/components/ScanProgressStages";
+import { PurchaseTerms } from "@/components/PurchaseTerms";
+import { looksLikeLink, scannableJobDescription } from "@/lib/job-description-input";
 // Step indicator component for better UX guidance
 interface StepIndicatorProps {
   number: number;
@@ -155,6 +158,7 @@ interface ResumeUploaderProps {
   onClearResume?: () => void;
   isLoading?: boolean;
   isFreeScanLoading?: boolean;
+  /** Kept for callers; the page's own résumé text now decides (S11-030). */
   hasContent?: boolean;
   resumeText?: string;
   linkedInText?: string;
@@ -162,6 +166,14 @@ interface ResumeUploaderProps {
   jobDescriptionText?: string;
   onJobDescriptionTextChange?: (text: string) => void;
   onJobsChange?: (jobs: JobEntry[]) => void;
+  /**
+   * The page's word that the picked file is gone (register S11-030): bumped on
+   * a failed parse and on Clear, so this box never shows "uploaded" over a
+   * résumé the page does not hold.
+   */
+  uploadResetSignal?: number;
+  /** Bumped on Clear: the paste box empties with the page's résumé. */
+  pasteResetSignal?: number;
   streamingProgress?: {
     stage: string;
     message: string;
@@ -178,13 +190,14 @@ export function ResumeUploader({
   onClearResume,
   isLoading,
   isFreeScanLoading,
-  hasContent,
   resumeText = "",
   linkedInText = "",
   onLinkedInTextChange,
   jobDescriptionText = "",
   onJobDescriptionTextChange,
   onJobsChange,
+  uploadResetSignal = 0,
+  pasteResetSignal = 0,
   streamingProgress
 }: ResumeUploaderProps) {
   const { t } = useTranslation();
@@ -197,18 +210,41 @@ export function ResumeUploader({
   const [resumeMode, setResumeMode] = useState<"upload" | "paste">("upload");
   const [linkedInMode, setLinkedInMode] = useState<"upload" | "paste">("upload");
 
-  // Keep parent in sync with paste textarea so the UI matches the upload flow
+  // Keep parent in sync with paste textarea so the UI matches the upload flow.
+  //
+  // ONLY A CHANGED DRAFT IS SENT (register S11-031). The effect re-ran whenever
+  // the parent's handler changed identity, and that handler depends on the
+  // job description, so "Check against a posting" (which sets the JD) re-sent
+  // the unchanged draft and the handler nulled the report mid-rescan. And
+  // switching to an empty Paste tab sent "", erasing an uploaded résumé. The
+  // last value sent is remembered; an unchanged one, or an empty box nothing
+  // was ever typed into, is not sent.
+  const lastSentDraft = useRef<string | null>(null);
   useEffect(() => {
     if (!onResumeDraftChange) return;
     if (resumeMode !== "paste") return;
 
     const trimmed = textInput.trim();
+    if (trimmed === (lastSentDraft.current ?? "")) return;
     const timer = window.setTimeout(() => {
+      lastSentDraft.current = trimmed;
       onResumeDraftChange(trimmed);
     }, 250);
 
     return () => window.clearTimeout(timer);
   }, [resumeMode, textInput, onResumeDraftChange]);
+
+  // The page's resets (S11-030): a failed parse or Clear drops the picked
+  // file, and Clear empties the paste box too. The first render is no reset.
+  useEffect(() => {
+    if (uploadResetSignal > 0) setSelectedFile(null);
+  }, [uploadResetSignal]);
+  useEffect(() => {
+    if (pasteResetSignal > 0) {
+      lastSentDraft.current = "";
+      setTextInput("");
+    }
+  }, [pasteResetSignal]);
   const [linkedInFile, setLinkedInFile] = useState<File | null>(null);
   const [localLinkedInText, setLocalLinkedInText] = useState("");
   // Collapse optional sections by default on mobile
@@ -288,8 +324,11 @@ export function ResumeUploader({
     }
   }, [onFileSelect]);
 
+  // Removing the file removes the résumé it gave the page (S11-030): the scan
+  // and the $5 button follow the page's text, which would otherwise stay.
   const clearFile = () => {
     setSelectedFile(null);
+    onClearResume?.();
   };
 
   const handleLinkedInFileUpload = async (file: File) => {
@@ -441,12 +480,58 @@ export function ResumeUploader({
     }
   };
 
-  const getFinalJobDescriptionText = () => {
-    if (jobDescriptionMode === "url" && jobDescriptionUrl.trim()) {
-      return `[Job URL: ${jobDescriptionUrl.trim()}]\n\n${localJobDescriptionText}`;
-    }
-    return localJobDescriptionText || jobDescriptionText;
+  // THE JOB URL TAB READS THE POSTING (sweep S11-032). It used to send
+  // "[Job URL: <link>]" as the job description, so the scan and the $5
+  // analysis were scored against a link. A link now goes to fetch-job-posting,
+  // which reads the posting from the employer's job board; the text it returns
+  // lands in the paste box, where the person can see and edit it. A site it
+  // cannot read asks for the text instead. A link is never sent as the
+  // description (scannableJobDescription), and the servers ignore one anyway.
+  type UrlFetchState = "idle" | "loading" | "unsupported" | "failed" | "limited";
+  const [urlFetch, setUrlFetch] = useState<UrlFetchState>("idle");
+  /** The link waiting to be read: the Job URL box, or a bare link pasted into the text box. */
+  const pendingJobLink = (): string => {
+    if (jobDescriptionMode === "url") return jobDescriptionUrl.trim();
+    if (jobDescriptionMode === "paste" && looksLikeLink(localJobDescriptionText)) return localJobDescriptionText.trim();
+    return "";
   };
+  /** Read a posting link; the posting's text, or null (the box then says why and asks for the text). */
+  const reading = useRef(false);
+  const readJobLink = async (link: string): Promise<string | null> => {
+    // One read at a time: a second press while the first is out spends no lookup.
+    if (reading.current) return null;
+    reading.current = true;
+    setUrlFetch("loading");
+    const result = await resilientCallers.fetchJobPosting({ url: link }).finally(() => { reading.current = false; });
+    const data = (result.data ?? null) as { ok?: boolean; text?: string; title?: string | null; company?: string | null; url?: string; reason?: string } | null;
+    if (data?.ok && typeof data.text === "string" && data.text.trim()) {
+      const head = [
+        data.title ? `Job Title: ${data.title}` : "",
+        data.company ? `Company: ${data.company}` : "",
+        `Source: ${data.url ?? link}`,
+      ].filter(Boolean).join("\n");
+      const text = `${head}\n\nJob Description:\n${data.text.trim()}`;
+      setLocalJobDescriptionText(text);
+      setJobDescriptionUrl("");
+      setJobDescriptionMode("paste");
+      setShowJobDescription(true);
+      setUrlFetch("idle");
+      toast({
+        title: t('uploader.jobUrlLoadedTitle'),
+        description: data.title ? t('uploader.jobUrlLoadedDesc', { title: data.title }) : undefined,
+      });
+      return text;
+    }
+    const reason = data?.reason ?? String(result.errorBody?.reason ?? "");
+    setUrlFetch(
+      reason === "unsupported_host" || reason === "not_https" || reason === "bad_url" ? "unsupported"
+        : reason === "rate_limited" || reason === "board_budget" || result.httpStatus === 429 ? "limited"
+        : "failed",
+    );
+    return null;
+  };
+  const getFinalJobDescriptionText = () =>
+    scannableJobDescription(localJobDescriptionText || jobDescriptionText).trim();
 
   // THE JOB DESCRIPTION THE FREE SCAN USES IS THE ONE IN THIS BOX (register
   // L13-31). The box kept its text in local state and the scan button sent
@@ -456,22 +541,34 @@ export function ResumeUploader({
   // its own content is the truth: empty means no JD. An import failure
   // message shown in the box is not a job description.
   const jobDescriptionForScan = (): string => {
-    const own = jobDescriptionMode === "url" && jobDescriptionUrl.trim()
-      ? `[Job URL: ${jobDescriptionUrl.trim()}]\n\n${localJobDescriptionText}`
-      : localJobDescriptionText;
+    const own = localJobDescriptionText;
     const failure = own.startsWith("Error:") ||
       own === t('uploader.gsheetsImportFailed') || own === t('uploader.gsheetsImportFailedShared');
-    return failure ? "" : own.trim();
+    return failure ? "" : scannableJobDescription(own.trim()).trim();
   };
 
   const handleFreeScanClick = () => {
     if (!onFreeScan) return;
-    const jd = jobDescriptionForScan();
-    onJobDescriptionTextChange?.(jd);
-    onFreeScan(resumeMode === "paste" ? textInput.trim() : undefined, jd);
+    const resumeOverride = resumeMode === "paste" ? textInput.trim() : undefined;
+    const scan = (jd: string) => {
+      onJobDescriptionTextChange?.(jd);
+      onFreeScan(resumeOverride, jd);
+    };
+    // A link still waiting to be read is read first, and the scan runs on
+    // the posting's text; a link that cannot be read stops here, and the box
+    // asks for the text rather than scanning against nothing the person meant.
+    const link = pendingJobLink();
+    if (!link) { scan(jobDescriptionForScan()); return; }
+    void readJobLink(link).then((read) => { if (read !== null) scan(scannableJobDescription(read).trim()); });
   };
 
+  // A PAID PATH NEVER BUYS AGAINST A LINK. A link still waiting to be read is
+  // read first and the press stops there: the posting lands in the box, and
+  // the next press buys with the text the buyer can see. Synchronous
+  // otherwise, so the press that started a checkout is the one it records.
   const handleTextPaste = () => {
+    const link = pendingJobLink();
+    if (link) { void readJobLink(link); return; }
     if (textInput.trim()) {
       const finalLinkedInText = linkedInMode === "paste" ? localLinkedInText : linkedInText;
       const finalJobDescriptionText = getFinalJobDescriptionText();
@@ -480,12 +577,25 @@ export function ResumeUploader({
   };
 
   const handleCheckoutClick = () => {
+    const link = pendingJobLink();
+    if (link) { void readJobLink(link); return; }
     const finalLinkedInText = linkedInMode === "paste" ? localLinkedInText : linkedInText;
     const finalJobDescriptionText = getFinalJobDescriptionText();
     onCheckout(finalLinkedInText || undefined, finalJobDescriptionText || undefined);
   };
 
-  const canProceed = resumeMode === "upload" ? !!selectedFile : !!textInput.trim();
+  // THE PAGE'S TEXT IS THE TRUTH (register S11-030). This used to be
+  // `!!selectedFile`, the box's own pick: a click mid-parse, a failed parse,
+  // Clear, or parses landing out of order scanned nothing ("No resume
+  // provided" under "uploaded") or the PREVIOUS résumé, and sent it to the $5
+  // checkout. Now the upload side may proceed only once the page holds a
+  // résumé (a parsed file, or one it restored on reload or from the board)
+  // and is not still reading one.
+  const pageHasResume = resumeText.trim().length >= 100;
+  const canProceed = resumeMode === "upload" ? pageHasResume && !isLoading : !!textInput.trim();
+  // "Uploaded" only over a file the page has finished reading into a résumé.
+  const uploadReady = !!selectedFile && pageHasResume && !isLoading;
+  const uploadReading = !!selectedFile && !!isLoading;
   const hasLinkedInContent = linkedInMode === "upload" ? !!linkedInText : !!localLinkedInText.trim();
   const hasJobDescriptionContent = !!localJobDescriptionText.trim() || !!jobDescriptionText || !!jobDescriptionUrl.trim() || !!jobDescriptionFile;
 
@@ -579,10 +689,16 @@ export function ResumeUploader({
                   dragOver 
                     ? "border-primary bg-primary/5 scale-[1.01]" 
                     : "border-border/50 hover:border-primary/40 hover:bg-card/80 active:bg-card/90",
-                  selectedFile && "border-success/50 bg-success/5"
+                  uploadReady && "border-success/50 bg-success/5"
                 )}
               >
-                {selectedFile ? (
+                {uploadReading ? (
+                  <div className="space-y-3 animate-scale-in" aria-live="polite">
+                    <Loader2 className="w-7 h-7 text-primary animate-spin mx-auto" />
+                    <p className="text-sm font-medium text-foreground">{t('uploader.actions.processing')}</p>
+                    <p className="text-xs text-muted-foreground truncate">{selectedFile?.name}</p>
+                  </div>
+                ) : uploadReady && selectedFile ? (
                   <div className="space-y-4 animate-scale-in">
                     <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-success/10">
                       <CheckCircle2 className="w-7 h-7 text-success" />
@@ -617,12 +733,14 @@ export function ResumeUploader({
                     </div>
                   </div>
                 ) : (
-                  <label className="block cursor-pointer">
+                  <label className="block cursor-pointer rounded-2xl focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 focus-within:ring-offset-background">
+                    {/* sr-only, not display:none: keyboard and screen-reader users reach the chooser (sweep S8-116). */}
                     <input
                       type="file"
                       accept=".pdf,.txt,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                       onChange={handleFileChange}
-                      className="hidden"
+                      className="sr-only"
+                      aria-label={t('uploader.tapToUpload')}
                     />
                     <div className="inline-flex items-center justify-center w-16 h-16 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 mb-4">
                       <Upload className="w-8 h-8 sm:w-7 sm:h-7 text-primary" />
@@ -818,32 +936,73 @@ export function ResumeUploader({
                     </div>
                   </div>
                 )}
+                {/* A bare link pasted as the description is read, not sent. */}
+                {jobDescriptionMode === "paste" && looksLikeLink(localJobDescriptionText) && urlFetch !== "unsupported" && urlFetch !== "failed" && urlFetch !== "limited" && (
+                  <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl bg-muted/50 border border-border">
+                    <span className="text-sm text-foreground">{t('uploader.jobUrlInPasteBox')}</span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={urlFetch === "loading"}
+                      onClick={() => void readJobLink(localJobDescriptionText.trim())}
+                    >
+                      {urlFetch === "loading" ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                      {urlFetch === "loading" ? t('uploader.jobUrlFetching') : t('uploader.jobUrlFetch')}
+                    </Button>
+                  </div>
+                )}
 
-                {/* URL Mode */}
+                {/* URL Mode: the link is read by fetch-job-posting, and the
+                    posting's text lands in the paste box (S11-032). */}
                 {jobDescriptionMode === "url" && (
                   <div className="space-y-3">
-                    <div className="relative">
-                      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
-                        <Link className="w-4 h-4" />
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <div className="relative flex-1">
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
+                          <Link className="w-4 h-4" />
+                        </div>
+                        <input
+                          type="url"
+                          value={jobDescriptionUrl}
+                          onChange={(e) => { setJobDescriptionUrl(e.target.value); setUrlFetch("idle"); }}
+                          onKeyDown={(e) => { if (e.key === "Enter" && jobDescriptionUrl.trim()) { e.preventDefault(); void readJobLink(jobDescriptionUrl.trim()); } }}
+                          placeholder={t('uploader.jobUrlPlaceholder')}
+                          aria-label={t('uploader.modeTabs.jobUrl')}
+                          className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-success/50 focus:border-success/50 text-sm transition-all"
+                        />
                       </div>
-                      <input
-                        type="url"
-                        value={jobDescriptionUrl}
-                        onChange={(e) => setJobDescriptionUrl(e.target.value)}
-                        placeholder={t('uploader.jobUrlPlaceholder')}
-                        className="w-full h-12 pl-11 pr-4 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-success/50 focus:border-success/50 text-sm transition-all"
-                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-12 shrink-0"
+                        disabled={!jobDescriptionUrl.trim() || urlFetch === "loading"}
+                        onClick={() => void readJobLink(jobDescriptionUrl.trim())}
+                      >
+                        {urlFetch === "loading" ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                        {urlFetch === "loading" ? t('uploader.jobUrlFetching') : t('uploader.jobUrlFetch')}
+                      </Button>
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {t('uploader.jobUrlTip')}
                     </p>
-                    {/* Optional: additional notes textarea */}
-                    <textarea
-                      value={localJobDescriptionText}
-                      onChange={(e) => setLocalJobDescriptionText(e.target.value)}
-                      placeholder={t('uploader.jobUrlNotesPlaceholder')}
-                      className="w-full h-24 p-4 rounded-xl bg-card border border-border text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-success/50 focus:border-success/50 resize-none text-sm leading-relaxed transition-all"
-                    />
+                  </div>
+                )}
+                {/* Why a link could not be read, and the way on: paste the text. */}
+                {(urlFetch === "unsupported" || urlFetch === "failed" || urlFetch === "limited") && (
+                  <div role="status" className="flex flex-wrap items-center gap-2 p-3 rounded-xl bg-muted/50 border border-border">
+                    <span className="text-sm text-foreground">
+                      {urlFetch === "unsupported" ? t('uploader.jobUrlUnsupported')
+                        : urlFetch === "limited" ? t('uploader.jobUrlLimited')
+                        : t('uploader.jobUrlFailed')}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => { setJobDescriptionMode("paste"); setUrlFetch("idle"); if (looksLikeLink(localJobDescriptionText)) setLocalJobDescriptionText(""); }}
+                      className="text-sm font-medium text-primary hover:underline"
+                    >
+                      {t('uploader.jobUrlPasteInstead')}
+                    </button>
                   </div>
                 )}
 
@@ -903,7 +1062,7 @@ export function ResumeUploader({
                       </div>
                     ) : parsedJobs.length === 0 && !jobDescriptionFile ? (
                       <label className={cn(
-                        "flex flex-col items-center justify-center p-6 rounded-xl border-2 border-dashed cursor-pointer transition-all",
+                        "flex flex-col items-center justify-center p-6 rounded-xl border-2 border-dashed cursor-pointer transition-all focus-within:ring-2 focus-within:ring-success",
                         isParsingJobDescription 
                           ? "border-success/50 bg-success/5" 
                           : "border-border/50 hover:border-success/40 hover:bg-success/5"
@@ -915,7 +1074,8 @@ export function ResumeUploader({
                             const file = e.target.files?.[0];
                             if (file) handleJobDescriptionSpreadsheetUpload(file);
                           }}
-                          className="hidden"
+                          className="sr-only"
+                          aria-label={t('uploader.uploadSpreadsheet')}
                           disabled={isParsingJobDescription}
                         />
                         {isParsingJobDescription ? (
@@ -1041,25 +1201,12 @@ export function ResumeUploader({
                 )}
 
                 {/* Success indicator */}
-                {hasJobDescriptionContent && jobDescriptionMode === "paste" && localJobDescriptionText.trim() && (
+                {hasJobDescriptionContent && jobDescriptionMode === "paste" && localJobDescriptionText.trim() && !looksLikeLink(localJobDescriptionText) && (
                   <div className="flex items-center gap-2 p-3 rounded-xl bg-success/5 border border-success/20">
                     <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
                     <span className="text-sm text-success">{t('uploader.jdAdded')}</span>
                     <button
                       onClick={() => setLocalJobDescriptionText("")}
-                      className="ml-auto p-1 hover:bg-success/10 rounded-lg transition-colors"
-                    >
-                      <X className="w-3 h-3 text-success" />
-                    </button>
-                  </div>
-                )}
-                
-                {jobDescriptionMode === "url" && jobDescriptionUrl.trim() && (
-                  <div className="flex items-center gap-2 p-3 rounded-xl bg-success/5 border border-success/20">
-                    <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-                    <span className="text-sm text-success">{t('uploader.jobUrlAdded')}</span>
-                    <button
-                      onClick={() => setJobDescriptionUrl("")}
                       className="ml-auto p-1 hover:bg-success/10 rounded-lg transition-colors"
                     >
                       <X className="w-3 h-3 text-success" />
@@ -1152,7 +1299,7 @@ export function ResumeUploader({
                       </div>
                     ) : (
                       <label className={cn(
-                        "flex flex-col items-center justify-center p-6 rounded-xl border-2 border-dashed cursor-pointer transition-all",
+                        "flex flex-col items-center justify-center p-6 rounded-xl border-2 border-dashed cursor-pointer transition-all focus-within:ring-2 focus-within:ring-[#0A66C2]",
                         isParsingLinkedIn 
                           ? "border-[#0A66C2]/50 bg-[#0A66C2]/5" 
                           : "border-border/50 hover:border-[#0A66C2]/40 hover:bg-[#0A66C2]/5"
@@ -1164,7 +1311,8 @@ export function ResumeUploader({
                             const file = e.target.files?.[0];
                             if (file) handleLinkedInFileUpload(file);
                           }}
-                          className="hidden"
+                          className="sr-only"
+                          aria-label={t('uploader.linkedin.uploadPdf')}
                           disabled={isParsingLinkedIn}
                         />
                         {isParsingLinkedIn ? (
@@ -1200,25 +1348,19 @@ export function ResumeUploader({
           </div>
 
 
-          {/* Job Comparison CTAs - show when jobs are uploaded */}
+          {/* Role chips, shown once a sheet of jobs is imported. A chip picks
+              the role the scan compares against and buys nothing: it named no
+              price and sat under no Terms line, yet it started the paid Full
+              Analysis checkout (review of the integration, 2026-10-10). The
+              free scan and the priced Full Analysis link below, under their
+              Terms line, use the role picked here. */}
           {parsedJobs.length > 0 && canProceed && (
             <div className="p-4 rounded-xl border border-primary/20 bg-primary/5">
               <JobComparisonCTA
                 jobTitles={parsedJobs.map(j => j.title)}
                 onGetStarted={(jobTitle) => {
-                  // Find and select the job if a specific title was clicked
-                  if (jobTitle) {
-                    const job = parsedJobs.find(j => j.title === jobTitle);
-                    if (job) {
-                      handleJobSelect(job);
-                    }
-                  }
-                  // Trigger checkout
-                  if (resumeMode === "paste") {
-                    handleTextPaste();
-                  } else {
-                    handleCheckoutClick();
-                  }
+                  const job = jobTitle ? parsedJobs.find(j => j.title === jobTitle) : undefined;
+                  if (job) handleJobSelect(job);
                 }}
                 isLoading={isLoading}
               />
@@ -1255,12 +1397,13 @@ export function ResumeUploader({
                     </div>
 
                     <p className="text-xs text-muted-foreground/70">
-                      {t('uploader.scanFooter')}
+                      {t('uploader.scanFooter', { seconds: SCAN_RESULTS_WITHIN_SECONDS })}
                     </p>
                   </div>
                 )}
 
-                {/* Secondary: Full Analysis link */}
+                {/* Secondary: Full Analysis link, under the Terms line. */}
+                {onFreeScan && <PurchaseTerms kind="payment" className="text-center" />}
                 {onFreeScan && (
                   <button
                     onClick={resumeMode === "paste" ? handleTextPaste : handleCheckoutClick}
@@ -1281,6 +1424,7 @@ export function ResumeUploader({
                 {/* Fallback if no free scan available */}
                 {!onFreeScan && (
                   <div className="space-y-3">
+                    <PurchaseTerms kind="payment" className="text-center" />
                     <Button
                       variant="hero"
                       size="xl"

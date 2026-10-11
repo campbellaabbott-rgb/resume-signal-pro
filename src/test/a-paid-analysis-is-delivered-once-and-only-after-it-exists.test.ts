@@ -24,7 +24,7 @@
  * the analysis exists leaves the session redeemable; and nothing the
  * redemption records can be presented as a purchase of another product.
  */
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { assertPaidSession } from "../../supabase/functions/_shared/paid-session";
 import { analyzeResumeHarness, fullAnalysisSession, RESUME, type Harness } from "./helpers/analyze-resume-harness";
 
@@ -135,8 +135,17 @@ describe("one session, one analysis", () => {
     h.aiPlan.push(gate, gate);
     const a = h.call({ resumeText: RESUME, sessionId: id });
     const b = h.call({ resumeText: `${RESUME} second tab`, sessionId: id });
-    for (let i = 0; i < 200 && h.aiCalls() < 2; i++) await new Promise((r) => setImmediate(r));
-    expect(h.aiCalls(), "both requests must be inside the AI call at once for this to be a race").toBe(2);
+    // A WALL-CLOCK budget. It was 200 event-loop turns, which is no time at
+    // all on a loaded runner: CI run 37207688995 saw 0 calls, and the gate it
+    // never opened left both requests hanging into the next case (3 AI calls
+    // where 1 was asserted). The gate is released whatever happens here.
+    try {
+      await vi.waitFor(() => expect(h.aiCalls(), "both requests must be inside the AI call at once for this to be a race").toBe(2), { timeout: 3_000, interval: 5 });
+    } catch (e) {
+      open();
+      await Promise.allSettled([a, b]);
+      throw e;
+    }
     open();
     const [ra, rb] = await Promise.all([a, b]);
     expect([ra.status, rb.status]).toEqual([200, 200]);
@@ -250,5 +259,35 @@ describe("the redemption verdict, case by case (the pure rule the handler applie
     expect(fullAnalysisRefusal({ payment_status: "paid", metadata: {} })).toMatch(/names no product/);
     expect(fullAnalysisRefusal({ payment_status: "no_payment_required", metadata: { product_type: "full_analysis" } })).toMatch(/payment_status/);
     expect(fullAnalysisRefusal(null)).toBe("no session");
+  });
+});
+
+/**
+ * S11-016: the success page asks by the session alone when its tab no longer
+ * holds the résumé. A redeemed session is answered from its saved copy; one
+ * with nothing delivered still needs the résumé; no session, no answer.
+ */
+describe("a redeemed session asked without a résumé", () => {
+  it("is answered with the analysis it already received, and nothing is made again", async () => {
+    const id = buy("cs_live_reload_no_resume");
+    const first = await h.call({ resumeText: RESUME, sessionId: id });
+    expect(first.status).toBe(200);
+    await h.settle();
+    const again = await h.call({ resumeText: "", sessionId: id });
+    expect(again.status, `a delivered analysis asked by its session was answered ${again.status}: ${JSON.stringify(again.json).slice(0, 120)}`).toBe(200);
+    expect(again.json.alreadyDelivered).toBe(true);
+    expect(again.json.shareId).toBe(first.json.shareId);
+    expect(h.aiCalls()).toBe(1);
+  });
+
+  it("a session with nothing delivered yet still needs the résumé, and no model is asked", async () => {
+    const id = buy("cs_live_nothing_delivered");
+    const r = await h.call({ resumeText: "", sessionId: id });
+    expect(r.status).toBe(400);
+    expect(h.aiCalls()).toBe(0);
+  });
+
+  it("no résumé and no session is refused at once", async () => {
+    expect((await h.call({ resumeText: "" })).status).toBe(400);
   });
 });

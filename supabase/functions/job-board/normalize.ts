@@ -715,6 +715,67 @@ function countryWordNamesAUsTown(s: string): boolean {
 // the state-NAME pattern: Georgia is also a country.
 const P_US_STATE_CODE_LEADING =
   /^(AK|AR|AZ|CT|FL|IA|KS|KY|MN|NC|ND|NH|NJ|NM|NV|NY|RI|SD|TN|TX|UT|VT|WI|WV|WY|IL|MO)\s*[-–—]?\s+[A-Za-z]/;
+
+// THE STATE-FIRST FORM WRITTEN WITH ITS PUNCTUATION (register S11-027).
+//
+// "SD, Aberdeen", "MN, Alexandria", "WV, Ghent", "OH, Lima", "VA - Richmond":
+// the short list above wants whitespace after the code and leaves out VA, MA,
+// CA, PA, GA and OH, so these reached the bare-city table and were filed in
+// Britain, Egypt, Belgium and Peru (Sanford alone: 23 rows served as GB, 2 as
+// EG), and about 1.8k such rows carried no region_code, which the WARN filing
+// gate requires. An upper-case code followed by a comma or a dash is not an
+// English word in that position, so all fifty-one count here, and the US-
+// prefixed structured form ("US-TX-Houston") too. Four readings still win over
+// it:
+//   - a Canadian province after the code, as its code or its name ("CA - ON,
+//     Ottawa", "CA, Ontario, London");
+//   - the leading code's own country's city in ANY later segment, split on the
+//     dash as well as the comma ("IN, Chennai", "CA - Toronto - Office", "DE -
+//     HQ - Berlin");
+//   - a string that names a country in words ("SD, Jinan, China");
+//   - for a code that is also a country the board carries in volume (below),
+//     no place we can read after it at all. "CA - BROSSARD BUILDING (PQBRO)",
+//     "IN, Bangalore Kar" and "DE - KOELN (COLOGNE) CENTER (DEKOL)" are
+//     Canada, India and Germany; read as states they were filed US-CA, US-IN
+//     and US-DE, and the ingest rewrote the stored CA/IN/DE with them.
+// A city the table files in a THIRD country stays evidence for the state:
+// that is the US town named after a city abroad ("SD, Aberdeen", "MN,
+// Alexandria", "PA, Ghent") this rule exists for.
+const P_US_STATE_CODE_LEADING_PUNCT = new RegExp(`^(${[...US_STATE_CODES].join("|")})\\s*[,\\-–—]\\s*(?=[A-Za-z])`);
+const P_US_PREFIXED_STATE = new RegExp(`^(?:US|USA)\\s*[-–—,]\\s*(${[...US_STATE_CODES].join("|")})\\s*(?:[-–—,]|$)`);
+// The state codes that are also ISO countries with real board volume. Read
+// live 2026-10-11 (job-board list, countOnly, by country): CA, DE and IN at
+// the 10,000 cap, ID 1,835, CO 1,797, AR 1,139, IL 982, MA 402, TN 168, PA
+// 142, MO 124, MT 56, KY 45, AZ 38, AL 21. The other collisions served under
+// 20 each (GA 3, MN 6, SD 6, VA 0), so a leading code there stays the state.
+const STATE_CODES_THAT_ARE_COUNTRIES_WE_CARRY: ReadonlySet<string> = new Set([
+  "AL", "AR", "AZ", "CA", "CO", "DE", "ID", "IL", "IN", "KY", "MA", "MO", "MT", "PA", "TN",
+]);
+const P_CA_PROV_SEGMENT = /^(?:ON|QC|BC|AB|MB|SK|NS|NB|PE|NL|YT|NT|NU)$/;
+const P_US_WORDS = /\b(?:US|USA|United States)\b/;
+
+/** The state a location's punctuated state-first form names ("SD, Aberdeen"), or null. */
+function leadingPunctuatedState(s: string): string | null {
+  const m = P_US_STATE_CODE_LEADING_PUNCT.exec(s);
+  if (!m) return null;
+  const code = m[1];
+  const rest = s.slice(m[0].length);
+  const segments = rest.split(/[-–—,;·|/]/).map((x) => x.trim()).filter(Boolean);
+  if (segments.some((x) => P_CA_PROV_SEGMENT.test(x)) || P_CA_PROV_NAME.test(rest)) return null;
+  const places = segments.map((x) => cityCountry(x));
+  if (places.includes(code)) return null;
+  for (const [re, c] of COUNTRY_PATTERNS) if (c !== "US" && re.test(s)) return null;
+  if (STATE_CODES_THAT_ARE_COUNTRIES_WE_CARRY.has(code)) {
+    const placed = places.some((c) => c !== null) || P_US_STATE_NAME.test(rest) || P_US_WORDS.test(rest);
+    if (!placed) return null;
+  }
+  return code;
+}
+
+/** The state a location's leading form states outright: "US-TX-Houston" or "SD, Aberdeen". */
+function leadingStatedState(s: string): string | null {
+  return P_US_PREFIXED_STATE.exec(s)?.[1] ?? leadingPunctuatedState(s);
+}
 const P_US_STATE_NAME = /\b(?:alabama|alaska|arizona|arkansas|california|colorado|connecticut|delaware|florida|hawaii|idaho|illinois|indiana|iowa|kansas|kentucky|louisiana|maine|maryland|massachusetts|michigan|minnesota|mississippi|missouri|montana|nebraska|nevada|new hampshire|new jersey|new mexico|new york|north carolina|north dakota|ohio|oklahoma|oregon|pennsylvania|rhode island|south carolina|south dakota|tennessee|texas|utah|vermont|virginia|washington|west virginia|wisconsin|wyoming)\b/i;
 const P_CA_PROV_NAME = /\b(?:ontario|quebec|british columbia|alberta|manitoba|saskatchewan|nova scotia|new brunswick|newfoundland)\b/i;
 
@@ -740,7 +801,16 @@ const P_CA_PROV_NAME = /\b(?:ontario|quebec|british columbia|alberta|manitoba|sa
 // vendor's own structured country, written by the Workday place reader below
 // through the detail sweeps — measured agreeing with 136 of 136 rows we had
 // already placed correctly, and disagreeing only where we were wrong.
-export const COUNTRY_MAP_VERSION = 7;
+// 8 (2026-10-09, L7-14): a trailing ", XX" naming the city table's own
+// country wins ("Bangalore, IN", "Berlin, DE", "Toronto, ON, CA"), and an
+// upper-case trailing US state code beats a country word earlier in the
+// string ("Mexico, MO", "Lake Wales, FL", "... Albany, NY"); "tunis" added.
+// 9 (S11-027): a leading state code followed by a comma or a dash, any of the
+// fifty-one, and the "US-XX-" form, are the US ahead of the bare-city table
+// ("SD, Aberdeen" was GB, "OH, Lima" PE). Stored rows are re-derived as each
+// board is read again (the ingest recomputes country and region_code from the
+// location on every read); the backfill sweep re-runs the null-country rows.
+export const COUNTRY_MAP_VERSION = 9;
 const CITY_COUNTRY = new Map<string, string>([
   ["aarhus", "DK"],
   ["aberdeen", "GB"],
@@ -1044,6 +1114,7 @@ const CITY_COUNTRY = new Map<string, string>([
   ["tokyo", "JP"],
   ["torino", "IT"],
   ["toronto", "CA"],
+  ["tunis", "TN"],
   ["toulouse", "FR"],
   ["trondheim", "NO"],
   ["tucson", "US"],
@@ -1076,17 +1147,53 @@ export function cityCountry(location: string): string | null {
   return null;
 }
 
+/** The trailing ", XX" (optionally a ZIP after it) a location ends with, upper case as written. */
+const P_TRAILING_CODE = /,\s*([A-Z]{2})(?:\s+\d{5}(?:-\d{4})?)?\s*$/;
+
 export function detectCountry(location: string | null | undefined): string | null {
+  return countryOf(location, true);
+}
+
+/**
+ * The country a location STATES, with no bare-city guess (register S11-027).
+ * The vendor's own alpha-2 code is refused when the display location
+ * contradicts it; a city-table reading of "Aberdeen" or "Alexandria" is a
+ * guess, not a contradiction, so it must never veto the employer's code.
+ */
+export function statedCountry(location: string | null | undefined): string | null {
+  return countryOf(location, false);
+}
+
+function countryOf(location: string | null | undefined, guessFromCity: boolean): string | null {
   if (!location) return null;
   const s = String(location).slice(0, 300);
   // The two measured US towns whose names are countries — see the docblock on
   // countryWordNamesAUsTown for why this is a named pair and not a reordering.
   if (countryWordNamesAUsTown(s)) return "US";
+  // THE LAST TWO LETTERS FIRST (L7-14). A trailing ", XX" collides between a
+  // US state and an ISO country: "Bangalore, IN", "Berlin, DE", "Jakarta, ID",
+  // "Bogota, CO" were filed US, and "Toronto, ON, CA" too. When the leading
+  // segment is a city the table places in XX, XX is that country. Otherwise an
+  // upper-case state code at the very end is the US, ahead of a country word
+  // earlier in the string: "Mexico, MO" was MX, "Lake Wales, FL" GB.
+  const tail = P_TRAILING_CODE.exec(s);
+  if (tail) {
+    const city = cityCountry(s.split(",")[0]);
+    if (city !== null && city === tail[1]) return city;
+    if (US_STATE_CODES.has(tail[1])) {
+      // ...unless the string names that same country in words: "India, IN".
+      for (const [re, code] of COUNTRY_PATTERNS) if (code === tail[1] && re.test(s)) return code;
+      return "US";
+    }
+  }
+  // The state-first form with its punctuation (S11-027), ahead of the country
+  // words only because it already refuses a string that names a country.
+  if (leadingStatedState(s) !== null) return "US";
   for (const [re, code] of COUNTRY_PATTERNS) if (re.test(s)) return code;
   if (P_US_STATE_CODE.test(s) || P_US_STATE_NAME.test(s) || P_US_STATE_CODE_LEADING.test(s)) return "US";
   if (P_CA_PROV_CODE.test(s) || P_CA_PROV_NAME.test(s)) return "CA";
   if (/\bUS\b/.test(s)) return "US"; // "Remote - US", "US Remote" — after state codes so ", USA" paths won
-  return cityCountry(s);
+  return guessFromCity ? cityCountry(s) : null;
 }
 
 // ── THE SUBDIVISION WE ALREADY PARSED AND THREW AWAY ────────────────────────
@@ -1129,7 +1236,12 @@ export function detectCountry(location: string | null | undefined): string | nul
 // sweep if one is ever built. Cost of leaving them, from the review walk of
 // 2026-09-23 (6,144 live rows A/B-tested against both rules): 1,033 reach the
 // spelled-out-name branch and 17 of those — 1.65% — change under version 2.
-export const REGION_MAP_VERSION = 2;
+// 3 (S11-027): the "US-XX-City" form and the punctuated state-first form
+// ("SD, Sioux Falls") name their state; a leading code and a spelled-out state
+// that disagree name none. The list read's put("region_code", ...) in the
+// ingest writes a re-derived non-null region over a stored one on the board's
+// next visit, which is how the ~1.8k "ST, City" rows with no region get one.
+export const REGION_MAP_VERSION = 3;
 
 // The SAME 49 names P_US_STATE_NAME carries, as a map so the match can be
 // turned into a code. Georgia is absent here for the reason it is absent
@@ -1254,11 +1366,19 @@ export function detectRegion(
   // is unambiguous and trailing, and "Kansas City, MO" already resolves to MO
   // through it. The province branch is not changed either — of 180 rows that
   // reached it, zero named two different provinces.
+  // The structured "US-TX-Houston" form states its state outright (S11-027):
+  // ahead of the names, so "US-DC-Washington" is not read as Washington State.
+  const prefixed = P_US_PREFIXED_STATE.exec(s);
+  if (prefixed?.[1]) return `US-${prefixed[1]}`;
   const named = new Set<string>();
   for (const m of s.matchAll(new RegExp(P_US_STATE_NAME_CAP.source, "gi"))) {
     const c = US_STATE_NAME_TO_CODE[String(m[1]).toLowerCase()];
     if (c) named.add(c);
   }
+  // The punctuated state-first form ("SD, Sioux Falls") names its state
+  // unless a spelled-out state elsewhere in the string disagrees with it.
+  const lead = leadingPunctuatedState(s);
+  if (lead) return named.size === 0 || (named.size === 1 && named.has(lead)) ? `US-${lead}` : null;
   if (named.size > 1) return null;
   if (named.size === 1) return `US-${[...named][0]}`;
   const leading = P_US_STATE_CODE_LEADING.exec(s);
@@ -1435,7 +1555,17 @@ export function workdayDetailPlace(payload: unknown): WorkdayDetailPlace {
   // The two readings of the SAME claim: the country the payload names beside
   // the display location, and the country the display location itself names.
   const fromDescriptor = typeof descRaw === "string" ? detectCountry(descRaw) : null;
-  const fromLocation = location ? detectCountry(location) : null;
+  // What the display location STATES, never a bare-city guess (S11-027): the
+  // city table read "SD, Aberdeen" as Britain and nulled the vendor's own US.
+  // A location that leads with the vendor's own code ("CA - Brossard" beside
+  // alpha-2 CA) names that country first, not a state: only what follows the
+  // code can contradict it.
+  const lead = location ? P_US_STATE_CODE_LEADING_PUNCT.exec(location) : null;
+  const fromLocation = !location
+    ? null
+    : lead && code && code !== "US" && lead[1] === code
+      ? statedCountry(location.slice(lead[0].length))
+      : statedCountry(location);
   let country: string | null;
   if (code && (fromDescriptor || fromLocation)) {
     // Stated twice, disagreeing on either reading — refuse.
@@ -1583,11 +1713,36 @@ interface LeverJob {
 }
 
 const CURRENCY_SYMBOL: Record<string, string> = { USD: "$", EUR: "€", GBP: "£", CAD: "CA$", AUD: "A$" };
-const fmtAmount = (n: number) => (n >= 1000 ? `${Math.round(n / 1000)}k` : String(n));
+// EXACT FIGURES (L7-05). This rounded every end to the nearest thousand
+// ("£4k–4k" for £3,700 a month, "$1k–1k" for $1,200-$1,300), and the annual
+// columns were parsed from that text: azul stored 48,000 against a true 44,400.
+const fmtAmount = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+
+/** A vendor's pay-interval word to the board's period, or null when it names none. */
+export function vendorPayPeriod(v: unknown): StatedPayPeriod | null {
+  const s = String(v ?? "").toLowerCase();
+  if (/hour/.test(s)) return "hour";
+  if (/\bday|daily/.test(s)) return "day";
+  if (/week/.test(s)) return "week";
+  if (/month/.test(s)) return "month";
+  if (/year|annual|annum/.test(s)) return "year";
+  return null;
+}
 
 export function leverSalary(r?: { min?: number; max?: number; currency?: string; interval?: string }): string | null {
   if (!r || (!r.min && !r.max)) return null;
+  // A one-time payment is not a rate of pay.
+  if (/one[- ]?time/i.test(r.interval ?? "")) return null;
   const sym = CURRENCY_SYMBOL[r.currency ?? ""] ?? (r.currency ? `${r.currency} ` : "");
+  const min = typeof r.min === "number" && r.min > 0 ? r.min : null;
+  const max = typeof r.max === "number" && r.max > 0 ? r.max : null;
+  // The vendor's own interval, through the one formatter whose output the
+  // parser reads back to the same figures (statedPayText), when it maps.
+  const period = vendorPayPeriod(r.interval);
+  if (period !== null) {
+    const stated = statedPayText(period, min ?? max, min !== null ? max : null, r.currency ?? null, CURRENCY_SYMBOL[r.currency ?? ""] ?? null);
+    if (stated !== null) return stated;
+  }
   const range = [r.min, r.max].filter((n): n is number => typeof n === "number" && n > 0).map(fmtAmount).join("–");
   if (!range) return null;
   const interval = r.interval ? `/${r.interval.replace(/-time|ly$/i, (m) => (m.toLowerCase() === "ly" ? "" : m))}` : "";
@@ -2180,7 +2335,7 @@ interface RecruiteeOffer {
   published_at?: string | null;
   created_at?: string | null;
   employment_type_code?: string | null;
-  salary?: { min?: string | number | null; max?: string | number | null; type?: string | null; currency?: string | null } | null;
+  salary?: { min?: string | number | null; max?: string | number | null; period?: string | null; type?: string | null; currency?: string | null } | null;
 }
 
 export function normalizeRecruitee(raw: { offers?: RecruiteeOffer[] }, company: string, token: string): JobPosting[] {
@@ -2188,8 +2343,18 @@ export function normalizeRecruitee(raw: { offers?: RecruiteeOffer[] }, company: 
     .map((o) => {
       const location = o.location || [o.city, o.country].filter(Boolean).join(", ");
       const sal = o.salary;
+      // THE PERIOD IS salary.period (L7-04). This read salary.type, which the
+      // API does not send, so "EUR 1350 - 1575" lost its month: a monthly
+      // figure under 20k got no annual value and one of 20k+ was read as
+      // annual at a twelfth (nts CZK 35,000/month stored 35,000 a year).
+      const salPeriod = sal ? vendorPayPeriod(sal.period ?? sal.type) : null;
+      const salMin = sal ? statedPayFigure(sal.min) : null;
+      const salMax = sal ? statedPayFigure(sal.max) : null;
       const salary = sal && sal.min && sal.max
-        ? `${sal.currency ? sal.currency + " " : ""}${sal.min} - ${sal.max}${sal.type ? ` ${sal.type}` : ""}`.trim()
+        ? (salPeriod !== null && salMin !== null
+            ? statedPayText(salPeriod, salMin, salMax, sal.currency ?? null, null)
+              ?? `${sal.currency ? sal.currency + " " : ""}${sal.min} - ${sal.max} ${STATED_PAY_PERIOD_WORD[salPeriod]}`.trim()
+            : `${sal.currency ? sal.currency + " " : ""}${sal.min} - ${sal.max}${sal.type ? ` ${sal.type}` : ""}`.trim())
         : null;
       // Hybrid first — see the SmartRecruiters note; Recruitee exposes all
       // three booleans and a hybrid offer commonly sets `remote` too.
@@ -2376,6 +2541,30 @@ function icimsSalary(d: IcimsJobData): string | null {
   return null;
 }
 
+/**
+ * iCIMS' own ISO-2 stands, unless the posting's FIRST site (the text before
+ * any ";") names a US state or a Canadian province and the code is another
+ * country: Smoothie King's stores at "KCMO, MO" arrived as FR (L7-15).
+ *
+ * Not the whole location through detectCountry (S11-059): that tests country
+ * words ahead of spelled-out states, so "China Lake, California" read CN,
+ * "Peru, Illinois" PE, "Rome, Georgia" IT, "Dublin, Georgia" IE, and a
+ * multi-site "New York, New York; Toronto, Canada" CA, each over the feed's
+ * correct US. A two-letter code that is also the feed's own code ("Bangalore,
+ * IN", "Amsterdam, NL") is the feed's country, not a state or province.
+ * Without a feed code, the text decides as everywhere else.
+ */
+export function icimsCountry(feedCode: unknown, location: string | null | undefined): string | null {
+  const code = /^[A-Za-z]{2}$/.test(String(feedCode ?? "")) ? String(feedCode).toUpperCase() : null;
+  if (code === null) return detectCountry(location);
+  const first = String(location ?? "").split(";")[0].slice(0, 300);
+  const notOwn = (m: RegExpExecArray | null) => !!m?.[1] && m[1] !== code;
+  const us = notOwn(P_US_STATE_CODE.exec(first)) || P_US_STATE_NAME.test(first) || notOwn(P_US_STATE_CODE_LEADING.exec(first));
+  const ca = notOwn(P_CA_PROV_CODE.exec(first)) || P_CA_PROV_NAME.test(first);
+  const site = us && !ca ? "US" : ca && !us ? "CA" : null;
+  return site !== null && site !== code ? site : code;
+}
+
 export function normalizeIcims(raw: IcimsJobItem[], company: string, token: string): JobPosting[] {
   return (Array.isArray(raw) ? raw : [])
     .map((item) => {
@@ -2413,7 +2602,10 @@ export function normalizeIcims(raw: IcimsJobItem[], company: string, token: stri
         salary: icimsSalary(d),
         // country_code is the FEED's own ISO-2 — better than location-text
         // detection, same treatment Rippling gets.
-        country: /^[A-Za-z]{2}$/.test(String(d.country_code ?? "")) ? String(d.country_code).toUpperCase() : null,
+        // ...UNLESS the location text says plainly somewhere else (L7-15): the
+        // Smoothie King tenant's stores at "KCMO, MO" and "Indian Land, SC"
+        // carried country_code FR.
+        country: icimsCountry(d.country_code, location),
         // The feed's apply_url ends in /login — an email-collection wall with
         // NO job content (verified live 2026-07-26: 9/9 sampled). The sibling
         // /job path renders the actual posting; never send a seeker to a
@@ -3483,42 +3675,82 @@ export function sortJobs(jobs: JobPosting[]): JobPosting[] {
  *  NOT AGENT-SENDABLE: federal applications run through USAJOBS accounts and
  *  agency assessments. The board must never badge these as agent-ready.
  */
-interface UsajobsRemuneration { MinimumRange?: unknown; MaximumRange?: unknown }
+interface UsajobsRemuneration { MinimumRange?: unknown; MaximumRange?: unknown; RateIntervalCode?: unknown; Description?: unknown }
+/** UserArea.Details: where the API puts the summary, the duties and the telework fields (S8-023). */
+interface UsajobsDetails { JobSummary?: unknown; MajorDuties?: unknown; TeleworkEligible?: unknown; RemoteIndicator?: unknown }
 interface UsajobsDescriptor {
   PositionID?: unknown; PositionTitle?: unknown; OrganizationName?: unknown; DepartmentName?: unknown;
-  PositionLocation?: Array<{ LocationName?: unknown }>; PositionLocationDisplay?: unknown;
+  PositionLocation?: Array<{ LocationName?: unknown; CountryCode?: unknown }>; PositionLocationDisplay?: unknown;
   RemoteIndicator?: unknown; TeleworkEligible?: unknown; PublicationStartDate?: unknown;
   PositionRemuneration?: UsajobsRemuneration[]; JobCategory?: Array<{ Name?: unknown }>;
-  PositionSchedule?: Array<{ Name?: unknown }>;
+  PositionSchedule?: Array<{ Name?: unknown }>; QualificationSummary?: unknown;
   ApplyURI?: unknown[]; PositionURI?: unknown;
+  UserArea?: { Details?: UsajobsDetails };
 }
 interface UsajobsItem { MatchedObjectId?: unknown; MatchedObjectDescriptor?: UsajobsDescriptor }
 
+const usajobsId = (wrap: UsajobsItem, d: UsajobsDescriptor) => String(wrap?.MatchedObjectId ?? d.PositionID ?? "").trim();
+const statedBool = (v: unknown): boolean | null => (v === true || v === "true" || v === "True" ? true : v === false || v === "false" || v === "False" ? false : null);
+// RateIntervalCode -> the words the salary parser reads; "WC" (without compensation) states no pay.
+const USAJOBS_RATE: Record<string, string> = { PA: "per year", PH: "per hour", PD: "per day", PW: "per week", PM: "per month" };
+
+/** The posting body the feed carries: Details.JobSummary, Details.MajorDuties, QualificationSummary. */
+export function usajobsDescriptions(items: unknown, token: string): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const wrap of (Array.isArray(items) ? items : []) as UsajobsItem[]) {
+    const d = (wrap?.MatchedObjectDescriptor ?? {}) as UsajobsDescriptor;
+    const det = d.UserArea?.Details ?? {};
+    const duties = Array.isArray(det.MajorDuties) ? det.MajorDuties.map(String).join("\n") : String(det.MajorDuties ?? "");
+    const text = [det.JobSummary, duties, d.QualificationSummary]
+      .map((x) => htmlToText(String(x ?? "").slice(0, 200_000)).trim())
+      .filter(Boolean)
+      .join("\n\n");
+    const id = usajobsId(wrap, d);
+    if (id && text) out.set(`usajobs:${token}:${id}`, text);
+  }
+  return out;
+}
+
+const USAJOBS_US_TERRITORY = /^(puerto rico|guam|american samoa|northern mariana islands|(u\.?s\.? )?virgin islands(,? u\.?s\.?)?|wake island|midway islands?|johnston atoll)$/i;
 export function normalizeUsajobs(items: UsajobsItem[], _company: string, token: string): JobPosting[] {
   return (Array.isArray(items) ? items : [])
     .map((wrap) => {
       const d = (wrap?.MatchedObjectDescriptor ?? {}) as UsajobsDescriptor;
-      const externalId = String(wrap?.MatchedObjectId ?? d.PositionID ?? "").trim();
+      const det = d.UserArea?.Details ?? {};
+      const externalId = usajobsId(wrap, d);
       const title = String(d.PositionTitle ?? "").trim();
       // The agency IS the employer here; OrganizationName is the parent
       // department, DepartmentName the sub-agency. Prefer the specific one.
       const agency = String(d.OrganizationName ?? d.DepartmentName ?? "").trim();
-      const loc = Array.isArray(d.PositionLocation) && d.PositionLocation.length
-        ? String(d.PositionLocation[0]?.LocationName ?? "").trim()
-        : String(d.PositionLocationDisplay ?? "").trim();
-      // Federal remote/telework is stated structurally; text detection only
-      // fills the gap, never overrides the government's own field.
-      const stated = d.RemoteIndicator === true ? "remote" as const
-        : String(d.TeleworkEligible ?? "").toLowerCase() === "true" ? "hybrid" as const
+      const first = Array.isArray(d.PositionLocation) && d.PositionLocation.length ? d.PositionLocation[0] : null;
+      const loc = first ? String(first.LocationName ?? "").trim() : String(d.PositionLocationDisplay ?? "").trim();
+      // Federal remote/telework is stated structurally (under UserArea.Details;
+      // the top level carries neither), and text detection only fills the gap.
+      // Both stated false is a stated on-site post.
+      const remoteSaid = statedBool(det.RemoteIndicator ?? d.RemoteIndicator);
+      const teleworkSaid = statedBool(det.TeleworkEligible ?? d.TeleworkEligible);
+      const stated = remoteSaid === true ? "remote" as const
+        : teleworkSaid === true ? "hybrid" as const
+        : remoteSaid === false && teleworkSaid === false ? "onsite" as const
         : null;
       const workMode = stated ?? detectWorkMode(loc, title);
       const posted = safeIso(d.PublicationStartDate);
       const pay = Array.isArray(d.PositionRemuneration) ? d.PositionRemuneration[0] : null;
       const min = Number(pay?.MinimumRange) || 0;
       const max = Number(pay?.MaximumRange) || 0;
-      const salary = min > 0 && max > 0
-        ? `$${Math.round(min).toLocaleString("en-US")} - $${Math.round(max).toLocaleString("en-US")}`
+      const code = String(pay?.RateIntervalCode ?? "").trim().toUpperCase();
+      const per = USAJOBS_RATE[code] ?? (/^per (year|hour|day|week|month)$/i.test(String(pay?.Description ?? "").trim()) ? String(pay?.Description).trim().toLowerCase() : "");
+      const money = (n: number) => (per === "per hour" || !Number.isInteger(n)
+        ? `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        : `$${Math.round(n).toLocaleString("en-US")}`);
+      const salary = min > 0 && max > 0 && code !== "WC"
+        ? `${money(min)} - ${money(max)}${per ? ` ${per}` : ""}`
         : null;
+      // The country the posting names (CountryCode carries a country NAME,
+      // "Germany"), else the place; a post that states neither, or names a US
+      // territory (its own CountryCode), is US (S8-083).
+      const cc = String(first?.CountryCode ?? "").trim();
+      const country = (cc ? detectCountry(cc) : null) ?? detectCountry(loc) ?? (!cc || /united states/i.test(cc) || USAJOBS_US_TERRITORY.test(cc) ? "US" : null);
       return {
         id: `usajobs:${token}:${externalId}`,
         source: "usajobs" as const,
@@ -3534,8 +3766,7 @@ export function normalizeUsajobs(items: UsajobsItem[], _company: string, token: 
         salary,
         // PositionSchedule Name: "Full-time"/"Part-time"/"Intermittent" etc.
         employmentType: normalizeEmploymentType(String(d.PositionSchedule?.[0]?.Name ?? "")),
-        // Federal postings are US by definition; the feed also states it.
-        country: "US",
+        country,
         applyUrl: safeUrl(String(d.ApplyURI?.[0] ?? d.PositionURI ?? "")),
       };
     })

@@ -3,6 +3,9 @@
 // (pricing MODEL, core workflow focus) with an as-of framing — no invented
 // numbers, no trash talk, and every page names where the competitor wins.
 
+import { oneTimePriceRangeUsd } from "../config/products";
+import { LANGUAGE_COUNT } from "../i18n/languages";
+
 export interface CompetitorRow {
   dim: string;
   us: string;
@@ -22,17 +25,21 @@ export interface Competitor {
 }
 
 const US_FREE = "Full diagnostic report — score with audit trail, bullets graded and rewritten, recruiter panel, interview questions, per-vendor ATS checks. 7 scans/day (15 with a free account).";
-const US_HONESTY = "Score shown with its modeling band, a point-by-point audit trail, and a reproducible report ID; every quoted line verified against your actual resume.";
-const US_PRICING = "Free scan; paid tools $3–29 one-time; optional all-access subscription.";
+const US_HONESTY = "Score shown with its modeling band, a point-by-point audit trail, and a report ID that a rescan of the same file within 7 days returns again; every quoted line verified against your actual resume.";
+// L4-08: the range is the catalogue's own (it said "$3–29" while /pricing
+// ran $2 to $59). Relative import: the bake bundles this with esbuild.
+const RANGE = oneTimePriceRangeUsd();
+export const US_PRICE_RANGE = `$${RANGE.min}–${RANGE.max}`;
+const US_PRICING = `Free scan; paid tools ${US_PRICE_RANGE} one-time; optional all-access subscription.`;
 
 export const COMPETITORS: Record<string, Competitor> = {
   chatgpt: {
     slug: "chatgpt",
     name: "ChatGPT & Claude",
     intro:
-      "ChatGPT and Claude are what we're most often compared to — fairly, because they're genuinely excellent at resume advice. The honest difference is category: they are conversationalists, this is an instrument. Ask a chatbot to rate your resume five times and you'll get five different answers; an instrument gives the same reading for the same document and tells you where that reading sits among real ones.",
+      "ChatGPT and Claude are what we're most often compared to — fairly, because they're genuinely excellent at resume advice. The honest difference is category: they are conversationalists, this is an instrument. Ask a chatbot to rate your resume five times and you'll get five different answers; an instrument returns the same report for the same file and posting (within the 7 days a report is kept) and tells you where that reading sits among real ones.",
     pricingNote:
-      "ChatGPT and Claude both have generous free tiers, with paid plans around $20/month (as of mid-2026). Resume Booster's diagnostic scan is free with no sign-up; paid tools are $3–29 one-time with an optional all-access subscription.",
+      "ChatGPT and Claude both have generous free tiers, with paid plans around $20/month (as of mid-2026). Resume Booster's diagnostic scan is free with no sign-up; paid tools are " + US_PRICE_RANGE + " one-time with an optional all-access subscription.",
     rows: [
       { dim: "Reproducible score", us: US_HONESTY, them: "Ask five times, get five different numbers — chat output isn't calibrated or repeatable, and there is no fixed score to track between edits.", usWins: true },
       { dim: "Real benchmarks", us: "Your score is placed against a live corpus of real scans — published medians and quartiles per industry, with sample sizes.", them: "No corpus. A chatbot can estimate what a 'good' resume looks like, but it cannot place yours in a real distribution.", usWins: true },
@@ -90,7 +97,7 @@ export const COMPETITORS: Record<string, Competitor> = {
       { dim: "ATS analysis", us: US_FREE, them: "A resume checker exists, but the product's center of gravity is the builder.", usWins: true },
       { dim: "Score honesty", us: US_HONESTY, them: "Checker feedback without a verified audit trail.", usWins: true },
       { dim: "Pricing model", us: US_PRICING, them: "Freemium with subscription for premium templates and AI (as of mid-2026).", usWins: true },
-      { dim: "Languages", us: "10 languages including full Spanish resume detection.", them: "Multi-language templates — broadly comparable here.", usWins: false },
+      { dim: "Languages", us: `An interface in ${LANGUAGE_COUNT} languages, plus full Spanish resume detection.`, them: "Multi-language templates — broadly comparable here.", usWins: false },
     ],
   },
   enhancv: {

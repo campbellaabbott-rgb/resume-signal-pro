@@ -5,6 +5,8 @@ import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { PRODUCTS } from "@/config/products";
+import { TERMS_UPDATED } from "@/config/terms";
+import { SellerIdentity } from "@/components/SellerIdentity";
 
 export default function Terms() {
   const { t, i18n } = useTranslation();
@@ -26,7 +28,11 @@ export default function Terms() {
           </Link>
           
           <h1 className="text-4xl font-bold mb-8">{t('terms.title')}</h1>
-          <p className="text-muted-foreground mb-4">{t('common.lastUpdated')}: {new Date().toLocaleDateString(dateLocale, { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+          {/* The date the text last changed, which is the version every "By
+              continuing you agree" line records (src/config/terms.ts). It
+              printed today's date on every visit. */}
+          <p className="text-muted-foreground mb-4">{t('common.lastUpdated')}: {TERMS_UPDATED.toLocaleDateString(dateLocale, { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}</p>
+          <SellerIdentity variant="terms" className="text-muted-foreground mb-4" />
           <p className="text-sm text-muted-foreground/80 mb-8 italic">{t('terms.legalNotice')}</p>
 
           <div className="prose prose-invert max-w-none space-y-8">

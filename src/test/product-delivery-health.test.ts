@@ -145,7 +145,7 @@ describe("what counts as undelivered", () => {
 describe("the heartbeat carries it", () => {
   it("is reported on every run", () => {
     expect(hb).toMatch(/const productDelivery = await evaluateProductDelivery\(supabase\)/);
-    expect(hb).toMatch(/^\s*productDelivery\s*$/m);
+    expect(hb).toMatch(/^\s*productDelivery,?\s*$/m);
   });
 
   it("a missing RPC degrades to a reason, never a failed heartbeat", () => {

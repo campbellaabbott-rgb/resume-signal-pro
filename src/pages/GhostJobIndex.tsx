@@ -996,7 +996,7 @@ export default function GhostJobIndex() {
         </p>
         <p className="text-xs text-muted-foreground mb-8">
           Every figure below is computed from the full lifecycle of postings on companies' <b>official</b> job boards
-          ({SERVING_SOURCE_LIST}) — never an aggregator or a scrape.
+          ({SERVING_SOURCE_LIST}) — never an aggregator.
         </p>
 
         {/* Headline stats — always true */}

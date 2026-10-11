@@ -4,10 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { PRODUCTS, ProductId } from "@/config/products";
+import { productFeatures } from "@/lib/product-features";
 import { isPreviewable } from "@/config/product-previews";
 import { useProductPreview } from "@/hooks/use-product-preview";
 import { useProductCheckout } from "@/hooks/use-product-checkout";
 import { useCurrency } from "@/hooks/use-currency";
+import { PurchaseTerms } from "@/components/PurchaseTerms";
 
 interface ProductPreviewProps {
   productId: ProductId;
@@ -98,7 +100,7 @@ export function ProductPreview({
   }
 
   const isDiff = preview!.kind === "diff" && preview!.before;
-  const features = product.features.slice(0, 4);
+  const features = productFeatures(t, productId, product.features).slice(0, 4);
 
   return (
     <div
@@ -158,6 +160,7 @@ export function ProductPreview({
             </li>
           ))}
         </ul>
+        <PurchaseTerms kind="payment" className="mb-2" />
         <div className="flex items-center gap-3">
           <Button onClick={buy} disabled={isCheckingOut} size="sm" className="gap-2">
             <Lock className="w-3.5 h-3.5" />

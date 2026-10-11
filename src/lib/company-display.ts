@@ -10,6 +10,10 @@
 // Never invents or expands a name: "Nshs" becomes "NSHS", never "North Shore
 // Health System".
 
+// Relative, not "@/": scripts/prerender-seo.mjs bundles this module with
+// esbuild, which knows no alias.
+import { boardDisplayName, employerDisplayName, employerNameOverride } from "../../supabase/functions/_shared/employer-names";
+
 // Short all-consonant tokens are the tell. English words of 3+ letters
 // essentially always carry a vowel (y counts), so a vowel-less token is an
 // initialism that lost its capitals in transit.
@@ -64,6 +68,93 @@ export function companyDisplayName(name: string | null | undefined): string {
     .split(/(\s+)/)
     .map((part) => (/^\s+$/.test(part) ? part : fixToken(part)))
     .join("");
+}
+
+/**
+ * The name to print for an employer board, everywhere a reader or a crawler
+ * sees one: the database's override for the board's token when it has one
+ * (supabase/functions/_shared/employer-names.ts mirrors that table), then the
+ * entity decode and the initialism fix above. "Ms" on ms~wd5~external is
+ * Morgan Stanley; a stored name no override covers passes through as before.
+ */
+export function employerName(token: string | null | undefined, stored: string | null | undefined): string {
+  return companyDisplayName(decodeNameEntities(employerDisplayName(token, stored)));
+}
+
+/** The same for a whole board (a lander's title, a directory row): a multi-employer feed's own name first. */
+export function boardName(token: string | null | undefined, stored: string | null | undefined): string {
+  return companyDisplayName(decodeNameEntities(boardDisplayName(token, stored)));
+}
+
+/**
+ * "X's", never "X's's". A name that already ends in a possessive (Domino's,
+ * Macy's, Raising Cane's) is its own possessive; one ending in s takes a bare
+ * apostrophe (Siemens'); anything else takes 's.
+ */
+export function possessive(name: string): string {
+  const n = String(name ?? "").trim();
+  if (!n) return n;
+  if (/['’]s$/i.test(n)) return n;
+  if (/s$/i.test(n)) return `${n}'`;
+  return `${n}'s`;
+}
+
+/**
+ * Real employer names that happen to equal their vendor tenant code with a
+ * capital letter, so the code-shape test below must not flag them. Each is the
+ * name the employer prints on its own careers site. Grows only from a read of
+ * that site, never from a guess that a code "looks like" a word.
+ */
+const REAL_TENANT_NAMES = new Set([
+  "abbott", "accenture", "adobe", "alcon", "allstate", "aptiv", "arrow", "babilou", "barclays", "baxter",
+  "benchmark", "boeing", "bunnings", "cox", "ecolab", "entegris", "extendicare", "ferguson",
+  "ferrovial", "freudenberg", "geisinger", "greystar", "humana", "kyndryl", "labcorp", "manulife",
+  "marmon", "mars", "michaels", "micron", "moog", "nike", "novartis", "parsons", "puma",
+  "regeneron", "saks", "salesforce", "sandvik", "santander", "skechers", "stryker", "swarovski",
+  "target", "uline", "unilever", "wegmans", "whataburger", "xylem",
+]);
+
+/**
+ * Tenant codes a reviewer read on the employer's own careers site and found
+ * to be a code, not the name it uses (docs/wave3/seo-content.md, SEO F1, the
+ * 24 on the committed snapshot, plus BCBS). Grows only from such a read. A
+ * code here that gains an override in _shared/employer-names.ts is named by
+ * the override and stops being flagged.
+ */
+const REVIEWED_TENANT_CODES = new Set([
+  "uoflhealth", "rhe", "iff", "agecare", "alliancewd", "jcrew", "nationwidechildrens", "synnex",
+  "oshkoshcorporation", "ironmountain", "r1rcm", "capitalhealth", "blackrock", "erm", "loganhealth",
+  "abercrombie", "fogo", "onelineage", "gohealthuc", "sasllc", "shm", "pfg", "wnc", "snc", "bcbs",
+]);
+
+/**
+ * True when the name a page would print for a board is still the vendor's
+ * tenant code: a compound token (tenant~dc~site, Workday and Oracle) whose
+ * printed name is that tenant code in some letter case, no override names
+ * it, and EITHER a reviewer found the code is not the employer's name
+ * (REVIEWED_TENANT_CODES) OR it cannot be a name at all: a vowelless code the
+ * display left in lower case ("Bb", "Db", "Bcbsnc"). A printed initialism
+ * ("GSK", "3M") is the employer's own style.
+ *
+ * Everything else prints the stored name (S11-013). A one-word employer named
+ * by its code is the common case, not the exception: Intel, Mastercard,
+ * Medtronic, Tapestry and Menasha are all intel~, mastercard~ ... tokens, and
+ * the earlier rule (any name equal to the code, bar a 49-name allowlist)
+ * noindexed their company pages and refused their posting pages. A name with
+ * a space or punctuation was written by someone and never matches. A
+ * single-segment token is the board name the employer chose on its vendor,
+ * and is not judged here.
+ */
+export function isCodeShapedName(token: string | null | undefined, name: string | null | undefined): boolean {
+  const t = String(token ?? "").trim();
+  const n = String(name ?? "").trim();
+  if (!t.includes("~") || !n) return false;
+  // An override is the employer's own words, even when they equal the code ("Maersk").
+  if (employerNameOverride(t) !== null) return false;
+  const slug = t.split("~")[0].toLowerCase();
+  if (!slug || REAL_TENANT_NAMES.has(slug) || n.toLowerCase() !== slug) return false;
+  if (REVIEWED_TENANT_CODES.has(slug)) return true;
+  return !/[aeiouy]/.test(slug) && n !== n.toUpperCase();
 }
 
 // Feeds occasionally double-escape HTML ("Bob's Auto &amp; Towing") — the

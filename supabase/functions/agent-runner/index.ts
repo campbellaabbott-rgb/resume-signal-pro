@@ -48,7 +48,7 @@ import { applyCategory, applyCountries, applyMaxAge, applyServingFences, searchR
 // 2026-10-05.1: each saved search's own countries reach its run (L9-04).
 // 2026-10-05.2: entitlement read by user id (agent_subscription_rows), never
 // by the mandate's address.
-const BUILD_VERSION = "2026-10-05.2";
+const BUILD_VERSION = "2026-10-09.2";
 // Provable from outside with no key: the preflight carries it.
 const FN_BUILD = `agent-runner.${BUILD_VERSION}`;
 

@@ -29,6 +29,8 @@ import { parseCountries } from "../../../supabase/functions/_shared/mandate-reac
 // an uploaded CV", wrapping parse-pdf/parse-docx.
 import { resumeTextFrom } from "@/lib/resumeText";
 import { checkoutContext } from "@/lib/track-transport";
+import { consentWasRequired, purchaseTerms } from "@/lib/purchase-terms";
+import { PurchaseTerms } from "@/components/PurchaseTerms";
 import { SUBSCRIPTIONS } from "@/config/products";
 
 const sb = supabase as unknown as {
@@ -180,7 +182,7 @@ const agentTerms = { agentPrice: SUBSCRIPTIONS.agent.priceUsd, trialDays: SUBSCR
 export function MorningQueuePanel({ userId, email, defaultResume }: {
   userId: string; email: string | null; defaultResume: string | null;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   // Same source the marketing surfaces use. Defaults to false and treats any
   // error as offline, so a first paint can understate the product but never
@@ -428,15 +430,16 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
   const subscribe = useCallback(async () => {
     if (!email) return;
     setBusy(true);
-    const { data, error } = await sb.functions.invoke("create-agent-checkout", { body: { email, ...checkoutContext() } });
+    const { data, error } = await sb.functions.invoke("create-agent-checkout", { body: { email, language: i18n.language, ...checkoutContext(), ...purchaseTerms() } });
     setBusy(false);
+    if (await consentWasRequired(error, data)) { toast.error(t("purchaseTerms.consentNeeded")); return; }
     if (error || !data?.url) {
       if (data?.alreadySubscribed) { setAgentActive(true); return; }
       toast.error(t("agentQueue.checkoutError", "Couldn't open checkout — please try again."));
       return;
     }
     window.location.href = data.url;
-  }, [email, t]);
+  }, [email, t, i18n]);
 
   /**
    * THE RÉSUMÉ THE AGENT WILL SCORE AGAINST — one definition, used by both the
@@ -550,6 +553,9 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
           fit_pct: it.fit_pct,
         });
         if (!insErr) toast.success(t("agentQueue.keptTracked", "Kept — added to your tracker below."));
+        // A full tracker is said, not swallowed (S11-139): the pick is kept,
+        // but it is not in the tracker.
+        else if ((insErr as { code?: string }).code === "54000") toast.error(t("agentQueue.trackerFull"));
       }
     }
   }, [queue, userId, t]);
@@ -807,6 +813,7 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
               ? t("agentQueue.payBoundary", "The agent prepares, explains, and never invents an answer. In review mode — the default — nothing goes out until you press send. Switch it to auto and it submits the ones it can complete on its own, and hands you the rest. ${{agentPrice}}/month, everything in Pro included; first-time subscribers start with {{trialDays}} days free, and Pro's paid tools come with the first payment. Cancel anytime.", agentTerms)
               : t("agentQueue.payBoundaryOffline", "The agent prepares, explains, and never invents an answer — every application arrives ready for you to send. Unattended sending is not running right now. ${{agentPrice}}/month, everything in Pro included; first-time subscribers start with {{trialDays}} days free, and Pro's paid tools come with the first payment. Cancel anytime.", agentTerms)}
           </p>
+          <PurchaseTerms kind="subscription" plan="agent" className="mb-3" />
           <button onClick={() => void subscribe()} disabled={busy || !email}
             className="inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold px-4 py-2 hover:bg-primary/90 disabled:opacity-50">
             <Sparkles className="w-4 h-4" /> {t("agentQueue.payCta", "Start the Apply Agent — {{trialDays}} days free for first-time subscribers", agentTerms)}

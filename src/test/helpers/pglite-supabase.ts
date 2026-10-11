@@ -12,7 +12,7 @@
  * ships.
  *
  * It speaks the slice of PostgREST the agent functions use: select with a
- * column list (or count/head), eq / is / in / not-is / gt / lt / order /
+ * column list (or count/head), eq / neq / like / is / in / not-is / gt / lt / order /
  * limit, insert / update / upsert / delete with returning, maybeSingle /
  * single, and rpc with named arguments (a set-returning function answers rows,
  * a scalar one its value — PostgREST's own rule). A jsonb column is sent as
@@ -182,6 +182,9 @@ class PgQuery implements PromiseLike<Result> {
     return this;
   }
   eq(col: string, v: unknown) { return this.where(col, "=", v); }
+  /** PostgREST neq is SQL <>, so a NULL never matches (job-board's name-sync lane reads it). */
+  neq(col: string, v: unknown) { return this.where(col, "<>", v); }
+  like(col: string, pattern: string) { return this.where(col, "LIKE", pattern); }
   gt(col: string, v: unknown) { return this.where(col, ">", v); }
   lt(col: string, v: unknown) { return this.where(col, "<", v); }
   gte(col: string, v: unknown) { return this.where(col, ">=", v); }

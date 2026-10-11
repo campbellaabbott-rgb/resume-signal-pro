@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { parseEdgeFunctionError, ParsedEdgeFunctionError } from '@/lib/edge-function-errors';
 import { isNetworkRetryable } from '@/lib/resilient-edge-function';
+import { scannableJobDescription } from '@/lib/job-description-input';
 import { 
   validateResumeBeforeSend, 
   validateExperienceEstimate,
@@ -71,6 +72,12 @@ function getClientCachedResult(cacheKey: string): StreamingScanResult | null {
       return null;
     }
 
+    // A partial report is never replayed (S11-147): one cached before this
+    // rule is dropped, so the next scan builds the whole report.
+    if (result && typeof result === 'object' && (result as { partialResults?: unknown }).partialResults === true) {
+      localStorage.removeItem(cacheKey);
+      return null;
+    }
     console.log('[StreamingScan] Client cache HIT for key:', cacheKey.substring(0, 20));
     return result;
   } catch {
@@ -155,6 +162,12 @@ interface StreamingScanOptions {
   targetCountry?: string;
   maxRetries?: number;
   retryDelay?: number;
+  /**
+   * Epoch ms by which the scan must answer: no attempt or retry starts after
+   * it, and a running one is aborted at it (S11-150: the scan's own window,
+   * src/lib/scan-fallback.ts). Without it each attempt has two minutes.
+   */
+  deadlineAt?: number;
   onProgress?: (progress: StreamProgress) => void;
   onComplete?: (result: StreamingScanResult) => void;
   onError?: (error: ParsedEdgeFunctionError) => void;
@@ -252,7 +265,9 @@ export function useStreamingScan() {
     
     let lastError: unknown = null;
     
+    const leftMs = () => (typeof options?.deadlineAt === 'number' ? options.deadlineAt - Date.now() : Infinity);
     for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+      if (leftMs() <= 0) break;
       // Only create new abort controller for retries, first attempt uses the one we created above
       if (attempt > 1) {
         abortControllerRef.current = new AbortController();
@@ -272,7 +287,7 @@ export function useStreamingScan() {
       // the user staring at a spinner indefinitely since `reader.read()` has no
       // timeout of its own. Capture this attempt's controller specifically so a late
       // timer firing can't abort a *different* attempt's controller.
-      const STREAM_TIMEOUT_MS = 120_000;
+      const STREAM_TIMEOUT_MS = Math.min(120_000, leftMs());
       const controllerForThisAttempt = abortControllerRef.current;
       const timeoutId = setTimeout(() => {
         console.warn('[StreamingScan] Client-side timeout — aborting stalled request');
@@ -294,7 +309,8 @@ export function useStreamingScan() {
           },
           body: JSON.stringify({
             resumeText,
-            jobDescriptionText: options?.jobDescriptionText,
+            // Never a link (src/lib/job-description-input.ts, S11-032).
+            jobDescriptionText: scannableJobDescription(options?.jobDescriptionText) || undefined,
             honeypot: options?.honeypot,
             skipCache: options?.skipCache,
             targetCountry: options?.targetCountry,
@@ -393,8 +409,10 @@ export function useStreamingScan() {
                     }
                   }
                   
-                  // Cache successful result in localStorage for instant repeat scans
-                  if (result.success !== false) {
+                  // Cache successful result in localStorage for instant repeat scans;
+                  // never a partial one, which the server does not cache either
+                  // and which a rescan should replace (S11-147).
+                  if (result.success !== false && (result as { partialResults?: unknown }).partialResults !== true) {
                     setClientCachedResult(clientCacheKey, result, resumeText);
                   }
                   
@@ -462,7 +480,7 @@ export function useStreamingScan() {
         }
 
         // Check if we should retry
-        const shouldRetry = attempt <= maxRetries && isNetworkRetryable(error);
+        const shouldRetry = attempt <= maxRetries && isNetworkRetryable(error) && leftMs() > retryDelay * attempt;
         
         if (shouldRetry) {
           console.log(`[StreamingScan] Network error, retrying in ${retryDelay * attempt}ms`);

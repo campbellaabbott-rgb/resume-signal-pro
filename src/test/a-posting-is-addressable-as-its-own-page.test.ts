@@ -9,6 +9,7 @@ import {
   postingPagePath,
   postingPathParts,
 } from "@/components/jobs/posting-page";
+import { skipWithoutDist } from "./helpers/built-output";
 
 /**
  * A POSTING HAS AN ADDRESS, AND THAT ADDRESS SERVES THE POSTING.
@@ -150,9 +151,13 @@ describe("the route and the generator agree about where a posting lives", () => 
     // canonical — which is the defect this whole page family exists to end.
     //
     // The property is that the carry set is asked about DIRECTLY. Assert the
-    // shape that makes that true: the ids come out of the committed sitemap
-    // and go into the detail fetch, never through the pool.
-    expect(GEN).toMatch(/const carriedDetailed = await fetchDetails\(carried\.slice\(0, POSTING_PAGE_CARRY_MAX\)\)/);
+    // shape that makes that true: the ids come out of what the LIVE site
+    // published (its sitemap and ledger, postingCarryBase) and go into the
+    // detail read, every one of them, never through the pool. The carry base
+    // itself is run against fixtures in
+    // a-published-posting-url-fell-back-to-the-homepage.test.ts.
+    expect(GEN).toMatch(/const carriedPaths = \[\.\.\.carryBase\.recheck\.keys\(\)\];/);
+    expect(GEN).toMatch(/const carriedChecks = await readDetails\(carriedPaths\.map\(/);
     expect(
       GEN,
       "the carried set is filtered against the pool again — a published URL only survives if it is " +
@@ -198,7 +203,10 @@ describe("the route and the generator agree about where a posting lives", () => 
     // agencies on every row (NOT NULL, on the list payload, with a badge and a
     // documented opt-out filter) and nothing here read it, so for an agency row
     // both statements were false. The eligibility filter is where that belongs.
-    expect(GEN, "the bake still writes pages for staffing-agency rows").toMatch(/j\.agency !== true/);
+    // The predicate is postingRowEligible (scripts/prerender-pages.mjs) since
+    // the reviewer pass of 2026-10-10; the bake must still call it.
+    expect(GEN, "the bake no longer judges rows by postingRowEligible").toMatch(/const eligibleRow = \(j\) => postingRowEligible\(j, D\);/);
+    expect(codeOf(read("scripts/prerender-pages.mjs")), "the bake still writes pages for staffing-agency rows").toMatch(/j\.agency !== true/);
   });
 
   it("bounds the set with a cap it states, not with hope", () => {
@@ -211,16 +219,25 @@ describe("the route and the generator agree about where a posting lives", () => 
     expect(n).toBeLessThanOrEqual(5000);
     // Some of the budget is always reserved for postings that have never had a
     // page, or the carried-over set freezes and nothing new is ever addressable.
-    const carry = /const POSTING_PAGE_CARRY_MAX = (\d+)/.exec(GEN);
-    expect(carry, "the generator declares no bound on carried-over pages").toBeTruthy();
-    expect(Number(carry![1])).toBeLessThan(n);
+    // The carried set itself has NO cap any more: a published URL is re-checked
+    // until the board says it is gone (a 300 cap under a 400 page cap dropped
+    // up to 100 published URLs a bake, unread, L13-36).
+    const reserve = /const POSTING_FRESH_RESERVE = (\d+)/.exec(GEN);
+    expect(reserve, "the generator reserves nothing for new postings").toBeTruthy();
+    expect(Number(reserve![1])).toBeGreaterThan(0);
+    expect(Number(reserve![1])).toBeLessThan(n);
+    const ceiling = /const POSTING_PAGE_CEILING = (\d+)/.exec(GEN);
+    expect(ceiling, "no new page has a ceiling").toBeTruthy();
+    expect(Number(ceiling![1])).toBeGreaterThanOrEqual(n);
+    expect(Number(ceiling![1])).toBeLessThanOrEqual(5000);
+    expect(GEN, "the carry cap is gone").not.toMatch(/POSTING_PAGE_CARRY_MAX/);
   });
 });
 
 const DIST = resolve(ROOT, "dist/index.html");
 const built = existsSync(DIST);
 
-describe.skipIf(!built)("every posting URL in the built sitemap serves the posting", () => {
+describe.skipIf(skipWithoutDist(built))("every posting URL in the built sitemap serves the posting", () => {
   const xml = readFileSync(
     existsSync(resolve(ROOT, "dist/sitemap.xml")) ? resolve(ROOT, "dist/sitemap.xml") : resolve(ROOT, "public/sitemap.xml"),
     "utf8",

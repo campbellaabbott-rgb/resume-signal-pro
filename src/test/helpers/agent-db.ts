@@ -121,6 +121,8 @@ export const AGENT_STAND_INS = `
     pass_id uuid REFERENCES public.agent_passes(id), pass_refunded_at timestamptz,
     blockers jsonb NOT NULL DEFAULT '[]', sent_answers jsonb, sent_evidence text,
     created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
+    -- 20261009124000 adds it; the live agent_sent_today loaded below reads it.
+    uncertain_at timestamptz,
     UNIQUE (user_id, posting_id)
   );
   REVOKE UPDATE ON public.agent_submissions FROM authenticated;

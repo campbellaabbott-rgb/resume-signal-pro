@@ -95,7 +95,8 @@
  */
 import type { DomQuestion } from "../vendors/enumerate-dom.js";
 import { fromLearned, isLearnable, type LearnedAnswers } from "./learned.js";
-import { coverage } from "./countries.js";
+import { coverage, toCode } from "./countries.js";
+import { isProtectedQuestion } from "./protected.js";
 
 /** What the candidate has told us. Booleans are TRINARY: null = never stated. */
 export type StandingAnswers = {
@@ -129,6 +130,10 @@ export type StandingAnswers = {
    *  Defaults false: agreeing to a legal notice on someone's behalf is an act
    *  they have to authorise, not a default they discover afterwards. */
   consentToProcessing: boolean;
+  /** The country of the POSTING, from the board row (S11-060). Not the
+   *  candidate's: it is what "authorised to work in this country?" and "where
+   *  this role is based" are about. Unknown means such a question is refused. */
+  postingCountry?: string | null;
 };
 
 export type Resolution =
@@ -157,8 +162,12 @@ const has = (s: string | null | undefined): s is string => !!s && s.trim().lengt
 const isPlaceholder = (o: string) =>
   !o.trim() || /^(please\s+)?(select|choose)\b|^-+$|^\s*—\s*$/i.test(o.trim());
 
-const YES_RE = /^\s*(yes|y|true|i\s+(am|do|have|will|confirm|agree)|affirmative)\b/i;
+const YES_RE = /^\s*(yes|y|true|i\s+(am|do|have|will|confirm|agree|accept|consent)|affirmative)\b/i;
 const NO_RE = /^\s*(no|n|false|i\s+(am|do|have|will)\s*not|i\s+don'?t|negative)\b/i;
+/** A first-person option that negates itself. YES_RE's boundary after
+ *  "I do" is satisfied by the space before "not", so "I do not require
+ *  sponsorship" and "I do not consent" read as yes (sweep S8-043). */
+const NEGATED_RE = /\b(not|never|cannot|decline|refuse)\b|n['’]t\b/i;
 const DECLINE_RE =
   /prefer\s+not|wish\s+not|don'?t\s+wish|do\s+not\s+wish|decline|choose\s+not|rather\s+not|not\s+to\s+(answer|say|disclose|specify)|no\s+response/i;
 
@@ -180,7 +189,19 @@ function chooseBoolean(q: DomQuestion, want: boolean, category: string): Resolut
       ? { kind: "check", category }
       : { kind: "unanswerable", category, why: "a single checkbox cannot express 'no'" };
   }
-  const opt = want ? pick(q.options, YES_RE) : pick(q.options, NO_RE);
+  let opt: string | null;
+  if (want) {
+    // A yes is an option that says yes and does not take it back. Two of them
+    // ("I am authorized", "I am authorized with sponsorship") is a choice
+    // between real alternatives, and guessing between them is refused.
+    const yes = q.options.filter((o) => !isPlaceholder(o) && YES_RE.test(o) && !NEGATED_RE.test(o));
+    if (yes.length > 1) {
+      return { kind: "unanswerable", category, why: `${yes.length} options mean yes (${yes.slice(0, 3).join(" / ")}) — ambiguous` };
+    }
+    opt = yes[0] ?? null;
+  } else {
+    opt = pick(q.options, NO_RE);
+  }
   if (opt) return { kind: "choose", category, option: opt };
   if (q.type === "text" || q.type === "textarea") {
     return { kind: "fill", category, value: want ? "Yes" : "No" };
@@ -218,19 +239,81 @@ const RE_PREFERRED_NAME = /preferred\s+(first\s+)?name|name\s+you\s+(go\s+by|pre
  */
 const RE_SALARY_CURRENT =
   /\b(current|present|existing|latest|most\s+recent)\b[^?]{0,40}\b(salary|compensation|package|ctc|cost\s+to\s+company|remuneration|pay|earnings|wage)|(salary|compensation|package|ctc|remuneration|earnings)\b[^?]{0,20}\b(current|present)\b/i;
+// A bare "rate" is pay only right after the word that makes it one ("expected
+// rate", "desired hourly rate"); "What is your target close rate?" is a sales
+// question and was answered with the salary expectation (S8-044).
 const RE_SALARY_EXPECTED =
-  /\b(desired|expected|expectation|expectations|required|requirement|target|minimum|asking|anticipated)\b[^?]{0,40}\b(salary|compensation|package|ctc|cost\s+to\s+company|remuneration|pay|rate|wage)|\b(salary|compensation|package|ctc|remuneration|pay|rate)\b[^?]{0,30}\b(expectation|expectations|requirement|requirements|range|desired|expected)\b/i;
+  /\b(desired|expected|expectation|expectations|required|requirement|target|minimum|asking|anticipated)\b[^?]{0,40}\b(salary|compensation|package|ctc|cost\s+to\s+company|remuneration|pay|wage)|\b(desired|expected|required|minimum|asking)\s+(?:(?:hourly|daily|day)\s+)?rate\b|\b(?:hourly|daily|day)\s+rate\b[^?]{0,30}\b(expectation|expectations|requirement|requirements|range|desired|expected)\b|\b(salary|compensation|package|ctc|remuneration|pay)\b[^?]{0,30}\b(expectation|expectations|requirement|requirements|range|desired|expected)\b/i;
 
+// "legally able to work in the United States" is the sheet's work question
+// too; read as no question here, it went to the drafted-answer path.
 const RE_WORK_AUTH =
-  /legally\s+(authori[sz]ed|entitled|eligible|permitted)|(authori[sz]ed|eligible|entitled|permitted)\s+to\s+work|work\s+authori[sz]ation|right\s+to\s+work|permission\s+to\s+work/i;
+  /legally\s+(authori[sz]ed|entitled|eligible|permitted)|legally\s+(?:able|allowed)\s+to\s+(?:live\s+and\s+)?work|(authori[sz]ed|eligible|entitled|permitted)\s+to\s+work|work\s+authori[sz]ation|right\s+to\s+work|permission\s+to\s+work/i;
 
-const RE_SPONSORSHIP =
-  /\bsponsor(ship|ing|ed)?\b|immigration\s+(case|petition|process|filing)|(require|need)[^?]{0,30}\b(work\s+)?(visa|permit)\b/i;
-/** "…without sponsorship" / "…able to work without needing sponsorship" flips
- *  the sense of the answer. Missing this states the exact opposite of the
- *  truth, on a question employers filter hard on. */
-const RE_SPONSOR_INVERTED =
-  /without\s+(the\s+need\s+for\s+)?(visa\s+)?sponsor|not\s+require\s+sponsor|no\s+sponsorship\s+(required|needed)|free\s+from\s+(any\s+)?(visa|immigration)/i;
+// ── SPONSORSHIP QUESTION: one rule, byte-identical in worker/src/questions/match.ts and supabase/functions/_shared/submission-packet.ts ──
+// Which labels ask about sponsorship, and which way round. "Will you require
+// sponsorship?" is answered from requiresSponsorship; "...work without (the
+// need of / needing) a visa or sponsorship?" asks the opposite (S8-006); a
+// "without" neither reading parses goes to the candidate. A sponsor word in a
+// résumé prompt or with no immigration word beside it ("sponsorship and
+// partnership programs") is not one (S8-044). The employer's own notice in the
+// label ("Please note we are unable to sponsor visas") is taken out before the
+// label is read, and the question left is what gets answered: read whole, an
+// authorisation question carrying that notice was answered from the sponsorship
+// flag, so a citizen said No and a visa-needer said Yes (S11-012). Sponsorship
+// the candidate has had or has now ("Have you ever been sponsored for an
+// H-1B?") is history the profile does not hold, and goes to the candidate.
+// Rationale: docs/wave3/agents-api.md.
+export const RE_SPONSORSHIP =
+  /\bsponsor(ship|ing|ed)?\b|immigration\s+(case|petition|process|filing)|(requir\w*|need\w*)[^?]{0,30}\b(work\s+)?(visa|permit)\b/i;
+export const RE_SPONSOR_INVERTED =
+  /without\s+(?:the\s+need\s+(?:for|of)\s+|needing\s+|requiring\s+)?(?:an?\s+|any\s+)?(?:visa\s+|work\s+)?(?:sponsor|visa\b|permit\b)|not\s+require\s+sponsor|no\s+sponsorship\s+(required|needed)|free\s+from\s+(any\s+)?(visa|immigration)/i;
+const SP_CONTEXT = /visa|immigration|permit|authori[sz]|employment|to\s+work|requir|need|without|status|h-?1b|petition|\bsponsor\s+you\b/i;
+const SP_PROSE = /^\s*(?:please\s+)?(?:describe|tell|explain|share|walk|discuss|elaborate|outline|how|why|what\s+(?:experience|is\s+your\s+experience))\b/i;
+const SP_NOTICE_NEG = /\b(?:unable|cannot|can\s*not|can['’]?t|not|no|never|won['’]?t|don['’]?t|doesn['’]?t|isn['’]?t|aren['’]?t)\b/i;
+const SP_NOTICE_WHO = /\b(?:we|we['’]re|our|company|employer|organi[sz]ation|role|position|job|vacancy|opening|sponsorship)\b/i;
+const SP_ASKS_YOU = /^\s*(?:please\s+)?(?:are|do|does|did|will|would|have|has|had|can|could|is|was|were|should|may|confirm|indicate|select|state|tell|acknowledge)\b|\byou(?:r|rs|rself)?\b/i;
+const SP_HISTORY =
+  /\b(?:have|has)\s+(?:you\s+)?(?:ever\s+|previously\s+|already\s+)?been\s+sponsored\b|\b(?:were|was)\s+you\s+(?:ever\s+|previously\s+)?sponsored\b|\bare\s+you\s+(?:currently\s+|presently\s+|now\s+)?(?:being\s+)?sponsored\b|\b(?:ever|previously|already)\s+(?:been\s+)?sponsored\b|\bsponsored\s+(?:before|previously|in\s+the\s+past)\b|\b(?:current|previous|prior|former|past)\s+employer\s+(?:has\s+|have\s+|had\s+)?sponsor|\b(?:did|has|does)\s+(?:your\s+|an?\s+)?(?:current\s+|previous\s+|prior\s+|former\s+)?employer\s+sponsor|\b(?:currently|presently)\s+(?:hold|have|on)\s+(?:an?\s+)?sponsored\b/i;
+export type SponsorshipSense = "asks" | "inverted" | "unread" | "history";
+// The notice also comes inside the question's own clause ("...the United
+// States as we are unable to sponsor visas?"), so a clause opened by as, since,
+// because or so is split off and read on its own. A condition ("if you require
+// sponsorship") or an instruction ("please do not apply") is the employer
+// talking, never the question, whatever "you" it holds. And an authorisation
+// question whose sponsor words left after that are not the candidate's own
+// need ("will you require sponsorship") is not read as either: it goes to the
+// candidate (review of S11-012).
+const SP_CONDITION = /^\s*(?:and\s+|but\s+)?(?:if|should|in\s+case|where|when)\s+you\b/i;
+const SP_INSTRUCTION = /\b(?:do\s+not|don['’]?t|should\s+not|need\s+not|refrain\s+from)\s+apply|\bwill\s+not\s+be\s+considered\b/i;
+const SP_AUTH_ASKED =
+  /legally\s+(authori[sz]ed|entitled|eligible|permitted)|legally\s+(?:able|allowed)\s+to\s+(?:live\s+and\s+)?work|(authori[sz]ed|eligible|entitled|permitted)\s+to\s+work|work\s+authori[sz]ation|right\s+to\s+work|permission\s+to\s+work/i;
+const SP_OWN_NEED =
+  /\b(?:requir|need)\w*\s+(?:\S+\s+){0,4}?(?:sponsor|(?:work\s+)?visa\b|(?:work\s+)?permit\b)|\bsponsor\w*\s+(?:\S+\s+){0,3}?(?:requir|need)\w*/i;
+/** The label without the employer's sponsorship notice: what is actually asked. */
+export function withoutSponsorNotice(label: string): string {
+  return label
+    .split(/([.?!;:,()[\]]|\s[-–—]\s|\s(?:as|since|because|so)\s)/i)
+    .filter((part) => {
+      const s = part.replace(/\bsponsor\w*\s+(?:you|your\s+\w+)\b/gi, "sponsor");
+      if (/\bsponsor/i.test(s) && (SP_CONDITION.test(s) || SP_INSTRUCTION.test(s))) return false;
+      return !(/\bsponsor/i.test(s) && SP_NOTICE_NEG.test(s) && SP_NOTICE_WHO.test(s)
+        && !SP_ASKS_YOU.test(s) && !RE_SPONSOR_INVERTED.test(part));
+    })
+    .join("")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+export function sponsorshipSense(label: string): SponsorshipSense | null {
+  const asked = withoutSponsorNotice(label);
+  if (!RE_SPONSORSHIP.test(asked) || SP_PROSE.test(asked)) return null;
+  if (!SP_CONTEXT.test(asked) && asked.trim().split(/\s+/).length > 3) return null;
+  if (SP_HISTORY.test(asked)) return "history";
+  if (RE_SPONSOR_INVERTED.test(asked)) return "inverted";
+  if (/\bwithout\b/i.test(asked)) return "unread";
+  return SP_AUTH_ASKED.test(asked) && !SP_OWN_NEED.test(asked) ? "unread" : "asks";
+}
+// ── end of the sponsorship rule ──
 
 /**
  * CONTACT DETAILS BY LABEL.
@@ -248,7 +331,48 @@ const RE_SPONSOR_INVERTED =
 const RE_EMAIL = /\be-?mail\b/i;
 const RE_PHONE = /\b(phone|mobile|cell|telephone)\b|contact\s+number|\btel\b/i;
 const RE_LINKEDIN = /linkedin/i;
-const RE_PORTFOLIO = /portfolio|personal\s+(web)?site|your\s+website|social\s+media\s+profile/i;
+const RE_PORTFOLIO = /portfolio(?!\s+(?:management|manager|analy|optimi|construct|strateg|review|compan))|personal\s+(web)?site|your\s+website|social\s+media\s+profile/i;
+
+/**
+ * WHICH LABELS ARE CONTACT FIELDS AT ALL (sweep S8-044). The patterns above
+ * ran before the prepared draft was consulted: "How would you address a
+ * conflict" got the home address, "experience with mobile app development"
+ * the phone number, "portfolio management experience" the LinkedIn URL, and
+ * "Emergency contact" the candidate's own phone. contactLabelIsAField decides;
+ * the review sheet's classifier carries the same block.
+ */
+// ── CONTACT FIELD OR ESSAY: one rule, byte-identical in worker/src/questions/match.ts and supabase/functions/_shared/application-questions.ts ──
+// A contact pattern is an ordinary word ("address a conflict", "mobile app
+// development"), so it counts only on a label that IS a field: one that says
+// whose detail it wants, one that opens with the detail and then ends or gives
+// a hint ("Phone number (include area code)", "Phone number where we can reach
+// you"), or a short label ending on it. Never a question, a prose prompt, or
+// somebody else's detail. A long-text control does not make a bare field
+// ("Phone", "LinkedIn") prose; on one, only the shortest labels count by their
+// last word. Rationale: docs/wave3/agents-api.md.
+const CF_PROSE = /^\s*(?:please\s+)?(?:describe|tell|explain|share|walk|discuss|elaborate|outline|how|why|what\s+(?:experience|is\s+your\s+experience))\b/i;
+const CF_QUESTION = /^\s*(?:do|does|did|are|is|have|has|can|could|will|would|was|were)\b/i;
+const CF_SOMEONE_ELSE = /\b(emergency|next\s+of\s+kin|reference|referee|manager|supervisor|spouse|parent|guardian|recruiter|referr\w*)\b/i;
+const CF_OWN =
+  /\byour\s+(?:(?:current|home|residential|full|postal|mailing|permanent|primary|personal|mobile|cell|contact|best|preferred)\s+)*(?:e-?mail|phone|mobile|cell|telephone|contact\s+number|address|linkedin|github|twitter|website|portfolio|zip|post(?:al)?\s*code|city|town)\b|linkedin\s+(?:profile\s+)?(?:url|link|profile)|(?:profile|portfolio|website|github)\s+(?:url|link)|\bwhich\s+(?:city|town)\b|(?:city|town)\s+of\s+residence/i;
+const CF_HEAD =
+  /^\s*(?:(?:home|mobile|cell|primary|secondary|personal|best|preferred|daytime|work|current|permanent|mailing|postal|residential|street|contact|legal)\s+)*(?:e-?mail(?:\s+address)?|phone(?:\s+number)?|mobile(?:\s+(?:phone|number))?|cell(?:\s+phone)?(?:\s+number)?|telephone(?:\s+number)?|contact\s+(?:phone\s+)?number|address(?:\s+(?:line\s*)?\d)?|street|linkedin(?:\s+(?:profile|url|link))*|github(?:\s+(?:profile|url|link))*|twitter(?:\s+handle)?|website|portfolio(?:\s+(?:url|link|website))?|zip(?:\s+code)?|post(?:al)?\s*code|city|(?:(?:full|first|last|middle|given|family|preferred)\s+)+name)\s*(?:$|[(\[:,;*?]|[–—]|\s-\s|\s(?:where|we|for|so|that)\b)/i;
+const CF_TAIL = /(?:e-?mail|phone|telephone|number|address|linkedin|github|twitter|website|portfolio|url|link|profile|code|zip|city|town|name|handle)$/i;
+export function contactLabelIsAField(label: string, fieldType: string): boolean {
+  if (CF_SOMEONE_ELSE.test(label)) return false;
+  if (CF_OWN.test(label)) return true;
+  if (CF_PROSE.test(label) || CF_QUESTION.test(label)) return false;
+  if (CF_HEAD.test(label)) return true;
+  const type = fieldType.toLowerCase();
+  const most = type.includes("textarea") || type === "longtext" ? 3 : 6;
+  const words = label.replace(/\([^)]*\)|\[[^\]]*\]/g, " ").split(/[^\p{L}\p{N}'-]+/u).filter(Boolean);
+  return words.length > 0 && words.length <= most && CF_TAIL.test(words[words.length - 1]!);
+}
+// ── end of the contact-field rule ──
+/** The words a contact field is about; a drafted answer never goes into one. */
+const RE_CONTACT_WORD = /\b(?:e-?mail|phone|mobile|cell|telephone|linkedin|github|twitter|portfolio|website|url|zip|post(?:al)?\s*code|city|town|street|address)\b/i;
+/** Line 2 of an address is not the address again. */
+const RE_ADDRESS_LATER_LINE = /\baddress\s+(?:line\s*)?[2-9]\b/i;
 const RE_CITY = /^(city|town)$|city\s*\/\s*town|which\s+city|city\s+of\s+residence|^city\b/i;
 const RE_POSTCODE = /zip\s*code|zipcode|^zip\b|post(al)?\s*code/i;
 const RE_ADDRESS = /\baddress\b/i;
@@ -298,7 +422,23 @@ const RE_NOTICE =
 const RE_ROLE_LOCATION =
   /which\s+(office|location|site|branch|region|country|city)|location[^?]{0,20}(applying|apply|prefer|interested)|preferred\s+(office|location|work\s+location|site)/i;
 
-const RE_RELOCATE = /willing\s+to\s+relocate|open\s+to\s+relocat|able\s+to\s+relocate|relocat(e|ion)/i;
+const RE_RESIDENCE_COUNTRY =
+  /(?:which|what)\s+country\s+(?:are\s+you|do\s+you)\s+(?:currently\s+)?(?:based|live|living|located|reside|residing)|country\s+of\s+(?:residence|residency)|(?:your|current)\s+country\s+of\s+(?:residence|residency)|^\s*(?:your\s+)?(?:current\s+)?country\s*[:*?]?\s*$/i;
+
+/** A place, compared as a whole: lower case, no dots, no generic office words. */
+const GENERIC_PLACE = new Set(["office", "hq", "headquarters", "campus", "hub", "site", "area", "metro", "metropolitan", "region", "greater", "hybrid", "remote", "onsite", "on-site", "city", "downtown"]);
+function placeKey(s: string): string {
+  return String(s ?? "").toLowerCase().replace(/\./g, "").split(/\s+/)
+    .filter((w) => w && !GENERIC_PLACE.has(w)).join(" ").trim();
+}
+/** "New York, NY (Hybrid)" -> ["new york", "ny"]: the parts a city must equal.
+ *  A hyphen splits only when spaced ("London - Hybrid"): "Winston-Salem" and
+ *  "Stoke-on-Trent" are one place each. */
+function placeParts(option: string): string[] {
+  return option.split(/\s+-\s+|[,()[\]|/–—]+/).map(placeKey).filter(Boolean);
+}
+
+const RE_RELOCATE =/willing\s+to\s+relocate|open\s+to\s+relocat|able\s+to\s+relocate|relocat(e|ion)/i;
 
 /** "Are you an internal applicant?" / "Are you a current employee?"
  *
@@ -464,37 +604,41 @@ function matchStanding(
   // --- Contact details, by label ---------------------------------------
   // Email FIRST: "Email Address" contains "address", and a street address in an
   // email field is a submitted application nobody can reply to.
-  if (RE_EMAIL.test(label)) {
+  const contact = contactLabelIsAField(label, q.type);
+  if (contact && RE_EMAIL.test(label)) {
     return has(a.email) ? { kind: "fill", category: "email", value: a.email }
                         : text("email", "no email on file");
   }
-  if (RE_PHONE.test(label)) {
+  if (contact && RE_PHONE.test(label)) {
     return has(a.phone) ? { kind: "fill", category: "phone", value: a.phone }
                         : text("phone", "no phone number on file");
   }
-  if (RE_LINKEDIN.test(label)) {
+  if (contact && RE_LINKEDIN.test(label)) {
     return has(a.linkedin) ? { kind: "fill", category: "linkedin", value: a.linkedin }
                            : text("linkedin", "no LinkedIn profile on file");
   }
-  if (RE_PORTFOLIO.test(label)) {
+  if (contact && RE_PORTFOLIO.test(label)) {
     // A personal site and a LinkedIn profile are both honest answers to "your
     // online presence"; the website is preferred and LinkedIn is the fallback.
     const url = has(a.website) ? a.website : a.linkedin;
     return has(url) ? { kind: "fill", category: "portfolio", value: url }
                     : text("portfolio", "no website or profile URL on file");
   }
-  if (RE_POSTCODE.test(label)) {
+  if (contact && RE_POSTCODE.test(label)) {
     // NOT derived from the address. Parsing a postcode out of free text is a
     // guess, and a wrong postcode on an application is worse than a blank —
     // so an empty field refuses rather than improvising one.
     return has(a.postcode) ? { kind: "fill", category: "postcode", value: a.postcode }
                            : text("postcode", "no postcode on file — it is not parsed out of the address");
   }
-  if (RE_CITY.test(label)) {
+  if (contact && RE_CITY.test(label)) {
     return has(a.city) ? { kind: "fill", category: "city", value: a.city }
                        : text("city", "no city on file");
   }
-  if (RE_ADDRESS.test(label)) {
+  if (contact && RE_ADDRESS_LATER_LINE.test(label)) {
+    return q.required ? text("address", "a later address line is not held apart from the address, and repeating it is wrong") : null;
+  }
+  if (contact && RE_ADDRESS.test(label)) {
     return has(a.address) ? { kind: "fill", category: "address", value: a.address }
                           : text("address", "no address on file");
   }
@@ -524,8 +668,12 @@ function matchStanding(
   // practice — "authorized to work in the US", "require sponsorship for a UK
   // visa" — and a single global boolean answering them produced false claims
   // about a real person's immigration status. See ./countries.ts.
-  if (RE_SPONSORSHIP.test(label) || RE_WORK_AUTH.test(label)) {
-    const isSponsor = RE_SPONSORSHIP.test(label);
+  // The employer's "we are unable to sponsor" notice is not the question: the
+  // question left once it is out is what is read and answered (S11-012).
+  const workQuestion = withoutSponsorNotice(label);
+  const sense = sponsorshipSense(label);
+  if (sense || RE_WORK_AUTH.test(workQuestion)) {
+    const isSponsor = sense !== null;
     const category = isSponsor ? "sponsorship" : "work-authorization";
     const stated = isSponsor ? a.requiresSponsorship : a.workAuthorized;
     if (stated === null) {
@@ -533,8 +681,20 @@ function matchStanding(
         ? "candidate has not stated whether they need sponsorship"
         : "candidate has not stated whether they are authorised to work");
     }
+    if (sense === "unread") {
+      return text(category, /\bwithout\b/i.test(workQuestion)
+        ? "the question turns on a \"without\" this rule cannot read, so either answer could state the opposite of the truth"
+        : "it asks about authorisation and names sponsorship without asking the candidate's own need, so either answer could state the opposite of the truth");
+    }
+    if (sense === "history") {
+      return text(category, "it asks about sponsorship the candidate has had or has now, and the profile states only whether they will need it");
+    }
 
-    const cov = coverage(label, a.workAuthorizedCountries, a.country);
+    // "Authorised in the UK or the EU?" is met by either; "require
+    // sponsorship for the UK or the EU?" is not: a No there speaks for both.
+    // "This country" is the posting's own (S11-060).
+    const cov = coverage(workQuestion, a.workAuthorizedCountries, a.country,
+      { orMeansAny: !isSponsor, postingCountry: a.postingCountry ?? null });
     if (cov.kind === "not-covered") {
       // The honest refusal. Saying "yes" here claims a right to work in a
       // country nobody has said they hold, which is a false statement with
@@ -545,8 +705,7 @@ function matchStanding(
     }
 
     if (isSponsor) {
-      const inverted = RE_SPONSOR_INVERTED.test(label);
-      return chooseBoolean(q, inverted ? !a.requiresSponsorship! : a.requiresSponsorship!, category);
+      return chooseBoolean(q, sense === "inverted" ? !a.requiresSponsorship! : a.requiresSponsorship!, category);
     }
     return chooseBoolean(q, a.workAuthorized!, category);
   }
@@ -568,6 +727,24 @@ function matchStanding(
     return chooseBoolean(q, false, "internal-applicant");
   }
 
+  // --- Where the candidate lives (not which office) ---------------------
+  // "Which country are you based in?" is about the candidate, and the role-
+  // location rule below used to take it (S8-045). It is the identity country.
+  if (RE_RESIDENCE_COUNTRY.test(label)) {
+    const own = has(a.country) ? toCode(a.country) : null;
+    const real = q.options.filter((o) => !isPlaceholder(o));
+    if (!real.length) {
+      return has(a.country) ? { kind: "fill", category: "country-of-residence", value: a.country }
+                            : text("country-of-residence", "no country on file");
+    }
+    const hits = own ? real.filter((o) => toCode(o) === own) : [];
+    return hits.length === 1
+      ? { kind: "choose", category: "country-of-residence", option: hits[0]! }
+      : text("country-of-residence", hits.length
+          ? `"${a.country}" matches ${hits.length} of the offered countries — ambiguous`
+          : `none of the offered countries is the candidate's stated country`);
+  }
+
   // --- Which advertised location ---------------------------------------
   // This asks which posting/office the candidate wants, NOT where they live.
   // The two coincide often enough to be worth answering and not always, so an
@@ -585,12 +762,18 @@ function matchStanding(
     if (q.required && real.length === 1) {
       return { kind: "choose", category: "role-location", option: real[0]! };
     }
-    for (const mine of [a.city, a.country]) {
-      if (!has(mine)) continue;
-      const hits = real.filter((o) => {
-        const lo = o.toLowerCase(), lm = mine.toLowerCase();
-        return lo.includes(lm) || lm.includes(lo);
-      });
+    // WHOLE PLACES, never substrings (sweep S8-045). Two-way containment chose
+    // "Ukraine" for "UK", "New York, NY" for York, "LA" for Atlanta and
+    // "Australia" for "US". A city matches an option only when one of the
+    // option's comma/bracket parts IS that city; a country only through
+    // toCode() on both sides, so "UK" is the United Kingdom and nothing else.
+    const city = placeKey(a.city);
+    const own = has(a.country) ? toCode(a.country) : null;
+    const tries: Array<[string, (o: string) => boolean]> = [];
+    if (city) tries.push([a.city, (o) => placeParts(o).includes(city)]);
+    if (own) tries.push([a.country, (o) => toCode(o) === own]);
+    for (const [mine, matches] of tries) {
+      const hits = real.filter(matches);
       if (hits.length === 1) return { kind: "choose", category: "role-location", option: hits[0]! };
       if (hits.length > 1) {
         return text("role-location", `"${mine}" matches ${hits.length} of the offered locations — ambiguous`);
@@ -666,10 +849,32 @@ export function matchQuestion(
     }
   }
 
-  // LAST, AND ONLY FOR `unrecognised`. See PreparedAnswers.
+  // LAST, AND ONLY FOR `unrecognised`. See PreparedAnswers. Never for a
+  // protected question (criminal record, age, citizenship, pay, health): those
+  // stop for the candidate even when a "supported" draft arrived (S8-008).
   if (standing.category === "unrecognised") {
+    if (isProtectedQuestion(q.label)) {
+      return { ...standing, why: `"${q.label.slice(0, 80)}" is the candidate's to answer; a drafted answer is never sent for it` };
+    }
+    // A contact field is the profile's or nobody's: the model never writes one.
+    if (contactLabelIsAField(q.label, q.type) && RE_CONTACT_WORD.test(q.label)) {
+      return { ...standing, why: `"${q.label.slice(0, 80)}" is a contact detail the profile does not hold; a drafted answer is never sent for it` };
+    }
     const drafted = fromPrepared(q, prepared);
-    if (drafted) return { kind: "fill", category: "unrecognised", value: drafted };
+    if (drafted) {
+      // Prose goes into prose boxes only (S8-047). A draft "filled" into a
+      // radio or select is refused by Playwright, the stage was read as a
+      // control refusal that nothing ever lifts, and the posting was lost for
+      // good, exactly when the model said the candidate qualifies. A draft that
+      // opens with a plain yes/no is put onto the form's own options; anything
+      // else keeps the refusal, so the question goes to the candidate.
+      if (q.type === "text" || q.type === "textarea") return { kind: "fill", category: "unrecognised", value: drafted };
+      const lead = /^\s*(yes|no)\b/i.exec(drafted);
+      if (lead && (q.type === "radio" || q.type === "select" || q.type === "checkbox")) {
+        const r = chooseBoolean(q, lead[1]!.toLowerCase() === "yes", "unrecognised");
+        if (r.kind !== "unanswerable" && r.kind !== "fill") return r;
+      }
+    }
   }
   return standing;
 }

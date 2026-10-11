@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { 
   ChevronDown, 
@@ -27,77 +27,15 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { exportGraduateGamePlanPDF } from '@/lib/pdf-export';
 import { hasUnsupportedPdfCharacters } from '@/lib/pdf-text-support';
+import { CardErrorBoundary } from '@/components/CardErrorBoundary';
+import { reportTone, shapeGamePlan, type GamePlanShape } from '@/lib/career-report-shape';
+import { useReportEnumLabel } from '@/hooks/use-report-enum-label';
 
-interface ResumeReadinessGate {
-  verdict: 'Ready to Apply' | 'Fix These First';
-  confidence: 'High' | 'Medium';
-  summary: string;
-  quickFixes: string[];
-}
-
-interface PriorityRole {
-  title: string;
-  whyFit: string;
-}
-
-interface RoleToAvoid {
-  title: string;
-  reason: string;
-}
-
-interface ApplicationChannel {
-  channel: string;
-  priority: 'High' | 'Medium' | 'Low';
-  tip: string;
-}
-
-interface StoryPrompt {
-  type: string;
-  prompt: string;
-}
-
-interface WeekPlan {
-  focus: string;
-  tasks: string[];
-}
-
-interface GraduateGamePlanData {
-  resumeReadinessGate: ResumeReadinessGate;
-  roleTargetingMap: {
-    summary: string;
-    priorityRoles: PriorityRole[];
-    rolesToAvoid: RoleToAvoid[];
-  };
-  applicationStrategy: {
-    weeklyTarget: string;
-    whereToApply: ApplicationChannel[];
-    whatToAvoid: string[];
-    keyInsight: string;
-  };
-  networkingPlaybook: {
-    approach: string;
-    outreachScript: {
-      scenario: string;
-      script: string;
-    };
-    linkedInTips: string[];
-  };
-  interviewReadiness: {
-    summary: string;
-    storiesToPrepare: StoryPrompt[];
-    whyThisRole: string;
-    projectTalkingPoints: string[];
-  };
-  thirtyDayPlan: {
-    week1: WeekPlan;
-    week2: WeekPlan;
-    week3: WeekPlan;
-    week4: WeekPlan;
-  };
-}
+type WeekPlan = GamePlanShape['thirtyDayPlan']['week1'];
 
 interface GraduateGamePlanResultsProps {
-  data: GraduateGamePlanData;
+  /** The stored or generated plan, in whatever shape it was saved; it is shaped before anything reads it (sweep S8-073). */
+  data: unknown;
 }
 
 const ExpandableSection = ({ 
@@ -210,9 +148,11 @@ const WeekCard = ({ weekNum, plan }: { weekNum: number; plan: WeekPlan }) => {
   );
 };
 
-export function GraduateGamePlanResults({ data }: GraduateGamePlanResultsProps) {
+export function GraduateGamePlanResults({ data: stored }: GraduateGamePlanResultsProps) {
   const { t } = useTranslation();
-  const isReady = data.resumeReadinessGate.verdict === 'Ready to Apply';
+  const enumLabel = useReportEnumLabel();
+  const data: GamePlanShape = useMemo(() => shapeGamePlan(stored).data, [stored]);
+  const isReady = reportTone(data.resumeReadinessGate.verdict) === 'positive';
 
   const handleExportPDF = () => {
     try {
@@ -240,6 +180,7 @@ export function GraduateGamePlanResults({ data }: GraduateGamePlanResultsProps) 
       </div>
 
       {/* Resume Readiness Gate */}
+      <CardErrorBoundary section="game-plan-readiness">
       <Card className={cn(
         "border-2",
         isReady 
@@ -268,7 +209,7 @@ export function GraduateGamePlanResults({ data }: GraduateGamePlanResultsProps) 
               "text-sm px-4 py-1",
               isReady ? "bg-success text-success-foreground" : "bg-warning text-warning-foreground"
             )}>
-              {data.resumeReadinessGate.verdict}
+              {enumLabel(data.resumeReadinessGate.verdict)}
             </Badge>
           </div>
         </CardHeader>
@@ -288,8 +229,10 @@ export function GraduateGamePlanResults({ data }: GraduateGamePlanResultsProps) 
           )}
         </CardContent>
       </Card>
+      </CardErrorBoundary>
 
       {/* Role Targeting Map */}
+      <CardErrorBoundary section="game-plan-roles">
       <ExpandableSection title={t('graduateGamePlan.roleTargeting.title')} icon={Target} defaultOpen accentColor="primary">
         <p className="text-muted-foreground mb-4">{data.roleTargetingMap.summary}</p>
 
@@ -324,8 +267,10 @@ export function GraduateGamePlanResults({ data }: GraduateGamePlanResultsProps) 
           </div>
         </div>
       </ExpandableSection>
+      </CardErrorBoundary>
 
       {/* Application Strategy */}
+      <CardErrorBoundary section="game-plan-applications">
       <ExpandableSection title={t('graduateGamePlan.applicationStrategy.title')} icon={Briefcase} accentColor="primary">
         <div className="space-y-6">
           <div className="bg-primary/5 p-4 rounded-lg border border-primary/20">
@@ -338,12 +283,14 @@ export function GraduateGamePlanResults({ data }: GraduateGamePlanResultsProps) 
             <div className="space-y-3">
               {data.applicationStrategy.whereToApply.map((channel, i) => (
                 <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-accent/50 border border-border/50">
-                  <Badge variant={
-                    channel.priority === 'High' ? 'default' : 
-                    channel.priority === 'Medium' ? 'secondary' : 'outline'
-                  } className="mt-0.5">
-                    {channel.priority}
-                  </Badge>
+                  {channel.priority && (
+                    <Badge variant={
+                      channel.priority === 'High' ? 'default' :
+                      channel.priority === 'Medium' ? 'secondary' : 'outline'
+                    } className="mt-0.5">
+                      {enumLabel(channel.priority)}
+                    </Badge>
+                  )}
                   <div>
                     <p className="font-medium text-foreground">{channel.channel}</p>
                     <p className="text-sm text-muted-foreground mt-1">{channel.tip}</p>
@@ -374,8 +321,10 @@ export function GraduateGamePlanResults({ data }: GraduateGamePlanResultsProps) 
           </div>
         </div>
       </ExpandableSection>
+      </CardErrorBoundary>
 
       {/* Networking Playbook */}
+      <CardErrorBoundary section="game-plan-networking">
       <ExpandableSection title={t('graduateGamePlan.networking.title')} icon={Users} accentColor="primary">
         <div className="space-y-6">
           <p className="text-muted-foreground">{data.networkingPlaybook.approach}</p>
@@ -413,8 +362,10 @@ export function GraduateGamePlanResults({ data }: GraduateGamePlanResultsProps) 
           </div>
         </div>
       </ExpandableSection>
+      </CardErrorBoundary>
 
       {/* Interview Readiness */}
+      <CardErrorBoundary section="game-plan-interview">
       <ExpandableSection title={t('graduateGamePlan.interview.title')} icon={BookOpen} accentColor="primary">
         <div className="space-y-6">
           <p className="text-muted-foreground">{data.interviewReadiness.summary}</p>
@@ -454,8 +405,10 @@ export function GraduateGamePlanResults({ data }: GraduateGamePlanResultsProps) 
           </div>
         </div>
       </ExpandableSection>
+      </CardErrorBoundary>
 
       {/* 30-Day Action Plan */}
+      <CardErrorBoundary section="game-plan-thirty-days">
       <ExpandableSection title={t('graduateGamePlan.thirtyDay.title')} icon={Calendar} badge={t('graduateGamePlan.thirtyDay.badge')} accentColor="success">
         <div className="space-y-4">
           <Progress value={0} className="h-2 mb-6" />
@@ -466,6 +419,7 @@ export function GraduateGamePlanResults({ data }: GraduateGamePlanResultsProps) 
           <WeekCard weekNum={4} plan={data.thirtyDayPlan.week4} />
         </div>
       </ExpandableSection>
+      </CardErrorBoundary>
     </div>
   );
 }

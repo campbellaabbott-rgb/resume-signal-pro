@@ -98,3 +98,14 @@ export function advanceProgress(params: {
 export function isPassDone(p: RefreshProgress, hotListLen: number, coldSlicesPerPass: number): boolean {
   return p.hot >= hotListLen && p.coldDone >= coldSlicesPerPass;
 }
+
+/**
+ * How many base boards the cold cursor passes after a slice that survived: up
+ * to the first one neither started nor skipped as dormant. A count of starts
+ * re-read the board after each dormant skip, and passed a board deferred ahead
+ * of later starts (sweep S8-087; rationale n446 in docs/job-board-index-notes.md).
+ */
+export function baseConsumedPrefix(baseKeys: readonly string[], consumed: ReadonlySet<string>): number {
+  const i = baseKeys.findIndex((k) => !consumed.has(k));
+  return i === -1 ? baseKeys.length : i;
+}

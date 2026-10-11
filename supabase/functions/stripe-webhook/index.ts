@@ -1,5 +1,5 @@
 // force-deploy: 2026-07-30T22:29:25Z
-// deploy-stamp: 2026-10-08T13:00Z
+// deploy-stamp: 2026-10-10T15:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -7,7 +7,7 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 // Price identity for the $99 apply agent, and the entitlement writer.
 // Static import: the dynamic one inside the handler typechecked as `any`,
 // which is how a rename would have reached production silently.
-import { AGENT_PRICE_CENTS, checkAgentByEmail, isAgentPriced, subscriptionBuyer } from "../_shared/agent.ts";
+import { AGENT_PRICE_CENTS, AGENT_PRODUCT_NAME, checkAgentByEmail, isAgentPriced, subscriptionBuyer } from "../_shared/agent.ts";
 // The six-hour pass: identified by product_type ONLY (Freelance Boost bills
 // the same amount), granted through one idempotent RPC with every number
 // copied in from this module — never spelled here, never matched on.
@@ -25,7 +25,12 @@ import {
 import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
 // The Pro cache, written when a Pro payment lands and on every subscription
 // change -- nothing wrote it before, so a new subscriber read as inactive.
-import { checkProByEmail } from "../_shared/pro.ts";
+import { checkProByEmail, PRO_PRODUCT_NAME } from "../_shared/pro.ts";
+// The mail a new subscriber is owed: terms, cancellation, the trial's end.
+import { noticeMail, sendLegalNotice, WITHDRAWAL_CANCEL_COMMENT, WITHDRAWAL_DAYS, type NoticeFacts, type NoticeKind } from "../_shared/subscription-notice.ts";
+import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
+import { euUkSalesOn } from "../_shared/checkout-policy.ts";
+import { inWithdrawalTerritory } from "../_shared/withdrawal.ts";
 // Who paid, as Stripe recorded it: customer_details first (anonymous buyers).
 import { buyerEmailOf } from "../_shared/buyer-email.ts";
 // The full analysis is delivered by analyze-resume on the success page; the
@@ -35,10 +40,12 @@ import { FULL_ANALYSIS_PRODUCT_TYPE } from "../_shared/full-analysis.ts";
 import { withoutResumeText } from "../_shared/webhook-payload.ts";
 // Which résumé a product is delivered from: kept on our side, never in Stripe.
 import { resumeSessionForCheckout } from "../_shared/checkout-resume-ref.ts";
+// The roles an ATS Defense buyer named at checkout (S11-074).
+import { targetRolesOf } from "../_shared/target-roles.ts";
 
 // Provable from outside without a purchase or a signature: every response,
 // the 405 a GET receives included, carries this in x-fn-build.
-const FN_BUILD = "stripe-webhook.2026-10-08.2";
+const FN_BUILD = "stripe-webhook.2026-10-09.61";
 const BUILD_HEADER = { "x-fn-build": FN_BUILD };
 
 // Declare EdgeRuntime for background tasks
@@ -313,6 +320,123 @@ async function grantAgentPass(session: Stripe.Checkout.Session, supabase: Supaba
   return { granted: r?.granted_ok === true, reason, passId: r?.granted_pass_id ?? null };
 }
 
+/**
+ * A PROMOTION ON THE PLAN (the plan checkouts allow promotion codes): the
+ * first charge Stripe computed (the paid first invoice, or a trial's upcoming
+ * one) and how long the discount lasts. Null when the plan has none or it
+ * leaves the first charge at the list price.
+ */
+async function promotionOf(stripe: Stripe, sub: Stripe.Subscription, listAmount: number): Promise<NoticeFacts["promo"]> {
+  const loose = sub as unknown as { discounts?: unknown[]; discount?: unknown };
+  if (!(Array.isArray(loose.discounts) && loose.discounts.length) && !loose.discount) return null;
+  const full = await stripe.subscriptions.retrieve(sub.id, { expand: ["discounts.source.coupon", "latest_invoice"] }) as unknown as {
+    id: string; status: string; discounts?: unknown[]; latest_invoice?: unknown;
+  };
+  let first: number | null = null;
+  if (full.status === "trialing") {
+    first = Number((await stripe.invoices.createPreview({ subscription: full.id }) as { amount_due?: number }).amount_due);
+  } else if (full.latest_invoice && typeof full.latest_invoice === "object") {
+    first = Number((full.latest_invoice as { amount_paid?: number }).amount_paid);
+  }
+  if (first === null || !Number.isFinite(first) || first >= listAmount) return null;
+  let until: number | null = null;
+  let forever = false;
+  for (const d of (full.discounts ?? []) as Array<{ end?: number | null; source?: { coupon?: unknown }; coupon?: unknown } | string>) {
+    if (!d || typeof d !== "object") continue;
+    const coupon = (d.source?.coupon ?? d.coupon) as { duration?: string } | string | null | undefined;
+    if (coupon && typeof coupon === "object" && coupon.duration === "forever") forever = true;
+    else if (typeof d.end === "number") until = Math.max(until ?? 0, d.end);
+  }
+  return { amount: first, until: !forever && until ? new Date(until * 1000).toISOString() : null, forever };
+}
+
+/**
+ * SEND A SUBSCRIPTION NOTICE ONCE (wave 3; Cal. B&P 17602; the notices are
+ * described in _shared/subscription-notice.ts). Sent directly through Resend
+ * with the notice's idempotency key and recorded only after a 2xx (S11-053;
+ * owner decision 2026-10-11): the queue is not used for them. A notice the
+ * ledger records as sent is not sent again; a send that fails records nothing
+ * and throws, so the handler answers 500 and Stripe redelivers the event.
+ * Every figure is read from Stripe, never from the clock, so a redelivery
+ * sends Resend the same mail under the same key.
+ */
+async function sendSubscriptionNotice(
+  // deno-lint-ignore no-explicit-any
+  supabase: SupabaseClient<any, any, any>,
+  stripe: Stripe,
+  kind: NoticeKind,
+  sub: Stripe.Subscription,
+  email: string | null,
+  /** The billing country the checkout collected: the 14-day paragraph is for EU/EEA/UK buyers only. */
+  buyerCountry: string | null = null,
+): Promise<"sent" | "already" | "skipped" | "suppressed"> {
+  const price = sub.items?.data?.[0]?.price;
+  if (!email || !price || typeof price.unit_amount !== "number") return "skipped";
+  // Already sent: nothing to compute and no Stripe call to spend.
+  const { data: prior } = await supabase.from("subscription_notices")
+    .select("sent_at").eq("subscription_id", sub.id).eq("kind", kind).maybeSingle();
+  if (prior?.sent_at) return "already";
+  // The withdrawal period runs from the day the plan began, not from this delivery.
+  const startedMs = Number(sub.start_date ?? sub.created) * 1000;
+  const promo = await promotionOf(stripe, sub, price.unit_amount);
+  const trialEnd = sub.status === "trialing" && sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null;
+  if (kind === "trial_ending" && !trialEnd) return "skipped";
+  const env = (k: string) => Deno.env.get(k);
+  const loginUrl = env("STRIPE_PORTAL_LOGIN_URL") ?? "";
+  const mail = noticeMail(kind, {
+    planName: isAgentPriced(sub.items?.data as ReadonlyArray<{ price?: unknown }> | undefined) ? AGENT_PRODUCT_NAME : PRO_PRODUCT_NAME,
+    amount: price.unit_amount,
+    currency: price.currency ?? "usd",
+    interval: price.recurring?.interval ?? "month",
+    trialEnd,
+    accountUrl: "https://resumebooster.work/account",
+    portalLoginUrl: /^https:\/\/billing\.stripe\.com\//.test(loginUrl) ? loginUrl : null,
+    withdrawal: kind === "confirmation" && euUkSalesOn(env) && inWithdrawalTerritory(buyerCountry)
+      ? { until: new Date((Number.isFinite(startedMs) && startedMs > 0 ? startedMs : Date.now()) + WITHDRAWAL_DAYS * 86_400_000).toISOString(), contact: env("SUPPORT_EMAIL") ?? "resumeboostersupp@gmail.com" }
+      : null,
+    promo,
+  });
+  const sent = await sendLegalNotice(supabase, {
+    subscriptionId: sub.id, kind, to: email, mail,
+    apiKey: env("RESEND_API_KEY"), replyTo: CUSTOMER_REPLY_TO,
+  });
+  if (sent.outcome === "failed") throw new Error(`subscription notice not sent (${sent.status}): ${sent.error}`);
+  if (sent.outcome === "suppressed") {
+    logStep("Subscription notice not sent: the address bounced or complained", { kind, subscription: sub.id, reason: sent.reason });
+    return "suppressed";
+  }
+  logStep(sent.outcome === "sent" ? "Subscription notice sent" : "Subscription notice already sent", { kind, subscription: sub.id });
+  return sent.outcome;
+}
+
+/**
+ * A WITHDRAWAL'S ACKNOWLEDGEMENT, WHEN ITS FIRST SEND FAILED (S11-053).
+ * withdraw-subscription writes the mail into the ledger (pending_mail) before
+ * it cancels the plan, then sends it. The cancel makes Stripe send
+ * customer.subscription.deleted, and Stripe redelivers that event until it is
+ * answered 2xx: so a pending acknowledgement is sent here, and a failure
+ * throws for a redelivery. Only a plan the withdrawal itself cancelled (its
+ * comment) is acknowledged.
+ */
+async function sendPendingWithdrawal(
+  // deno-lint-ignore no-explicit-any
+  supabase: SupabaseClient<any, any, any>,
+  sub: Stripe.Subscription,
+): Promise<void> {
+  const comment = (sub as unknown as { cancellation_details?: { comment?: string | null } }).cancellation_details?.comment ?? "";
+  if (comment !== WITHDRAWAL_CANCEL_COMMENT) return;
+  const { data: row } = await supabase.from("subscription_notices")
+    .select("email, sent_at, pending_mail").eq("subscription_id", sub.id).eq("kind", "withdrawal").maybeSingle();
+  const mail = row?.pending_mail as { subject?: unknown; html?: unknown; text?: unknown } | null | undefined;
+  if (!row || row.sent_at || !mail || typeof mail.subject !== "string" || typeof mail.html !== "string" || typeof mail.text !== "string") return;
+  const sent = await sendLegalNotice(supabase, {
+    subscriptionId: sub.id, kind: "withdrawal", to: String(row.email), mail: { subject: mail.subject, html: mail.html, text: mail.text },
+    apiKey: Deno.env.get("RESEND_API_KEY"), replyTo: CUSTOMER_REPLY_TO,
+  });
+  if (sent.outcome === "failed") throw new Error(`withdrawal acknowledgement not sent (${sent.status}): ${sent.error}`);
+  logStep("Pending withdrawal acknowledgement", { subscription: sub.id, outcome: sent.outcome });
+}
+
 /** The id of a Stripe reference that may arrive expanded or as a bare id. */
 const refId = (v: unknown): string | null =>
   typeof v === "string" && v ? v : (v && typeof v === "object" && typeof (v as { id?: unknown }).id === "string" ? (v as { id: string }).id : null);
@@ -387,6 +511,30 @@ async function revocationTarget(
 
 // Trigger product delivery for a completed checkout
 // deno-lint-ignore no-explicit-any
+/**
+ * A PRODUCT MADE ON ITS OWN PAGE STILL GETS A MAIL AT PAYMENT. The Full
+ * Analysis and Freelance Boost are made after Checkout, on the page it
+ * returns to; a buyer who closed that tab had no mail and no way back
+ * (commercial-readiness 2026-10-08, item 3). The mail's button opens that
+ * page with the session. Background and best-effort: the page is the
+ * delivery, and send-product-email logs the send either way.
+ */
+function mailThePurchaseLink(
+  supabaseUrl: string, email: string | null, productType: string, productName: string, sessionId: string,
+): void {
+  if (!email) return;
+  EdgeRuntime.waitUntil(
+    fetch(`${supabaseUrl}/functions/v1/send-product-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
+      body: JSON.stringify({ email, productType, productName, sessionId }),
+    }).then(
+      (r) => { if (!r.ok) logStep("Purchase-link mail refused", { productType, status: r.status }); },
+      (e) => logStep("Purchase-link mail threw", { productType, error: String(e).slice(0, 200) }),
+    ),
+  );
+}
+
 async function triggerProductDelivery(
   session: Stripe.Checkout.Session,
   supabase: SupabaseClient<any, any, any>,
@@ -444,6 +592,7 @@ async function triggerProductDelivery(
       job_company: session.metadata?.job_company,
       referral_code: session.metadata?.referral_code,
       language: session.metadata?.language,
+      target_roles: session.metadata?.target_roles || null,
       ...(isScanProduct ? { credits: creditsBoughtBy(session) } : {}),
     }
   }).select().single();
@@ -505,6 +654,13 @@ async function triggerProductDelivery(
   // generation-failed retry queue. The intake page owns delivery.
   if (productType === 'freelance_boost' || productType === 'freelance_transition_pro') {
     logStep("Freelance product — fulfilled via intake page; deferring webhook generation", { productType });
+    // THE ONLY WAY BACK TO A $29 / $59 PURCHASE (S8-016; commercial-readiness
+    // item 3). It existed only in the success URL: no mail was sent, so a
+    // buyer who closed the tab before the intake, or whose generation failed,
+    // had nothing to return with and was shown the buy buttons again. The
+    // mail carries the link that reopens it on any device. Background: the
+    // payment is already recorded.
+    mailThePurchaseLink(supabaseUrl, customerEmail, productType, productName || "Freelance Boost", sessionId);
     return { success: true, productType, deferred: 'freelance_intake' };
   }
 
@@ -521,6 +677,7 @@ async function triggerProductDelivery(
   // not-yet-delivered and redeems the session itself, once.
   if (productType === FULL_ANALYSIS_PRODUCT_TYPE) {
     logStep("Full analysis — delivered by analyze-resume on the success page; nothing to generate here", { sessionId });
+    mailThePurchaseLink(supabaseUrl, customerEmail, productType, productName || 'Full Resume Analysis', sessionId);
     return { success: true, productType, deferred: 'success_page' };
   }
 
@@ -576,15 +733,54 @@ async function triggerProductDelivery(
   // server-side with no access to the browser's i18n state.
   const language = session.metadata?.language || 'en';
 
-  // Update status to generating (background)
-  EdgeRuntime.waitUntil(
-    Promise.resolve(
-      supabase.from('product_deliveries')
-        .update({ status: 'generating', content_generation_started_at: new Date().toISOString() })
-        .eq('id', deliveryRecord.data?.id)
-    )
-  );
+  // STRIPE IS ANSWERED BEFORE THE MODEL IS. Generation takes up to ~90 s and
+  // Stripe wants its 2xx within seconds; awaiting it here held every product
+  // sale's acknowledgement on the AI writer (commercial-readiness 2026-10-08,
+  // item 2). The claim, the delivery row and the 'generating' stamp are
+  // written first; the generation, the saved copy and the mail finish in the
+  // background. A finish that dies leaves the row 'generating', which the
+  // retry sweep picks up after 15 minutes (20261009140000).
+  await supabase.from('product_deliveries')
+    .update({ status: 'generating', content_generation_started_at: new Date().toISOString() })
+    .eq('id', deliveryRecord.data?.id);
 
+  EdgeRuntime.waitUntil(
+    generateAndDeliver({
+      supabase, supabaseUrl, sessionId, productType, productName, customerEmail,
+      deliveryId: deliveryRecord.data?.id, resumeText: resume_text, jobDescriptionText: job_description_text,
+      jobTitle, jobCompany, language, targetRoles: targetRolesOf(session.metadata?.target_roles),
+    }).then(
+      (r) => logStep("Background delivery finished", r),
+      (e) => logStep("Background delivery threw; the sweeper retries the row", { error: String(e).slice(0, 300) }),
+    ),
+  );
+  return { success: true, productType, deferred: 'generating' };
+}
+
+interface GenerationJob {
+  // deno-lint-ignore no-explicit-any
+  supabase: SupabaseClient<any, any, any>;
+  supabaseUrl: string;
+  sessionId: string;
+  productType: string | undefined;
+  productName: string | undefined;
+  customerEmail: string | null;
+  deliveryId: string | undefined;
+  resumeText: string;
+  jobDescriptionText: string | null;
+  jobTitle: string;
+  jobCompany: string;
+  language: string;
+  /** The ATS Defense roles named at checkout (S11-074). */
+  targetRoles: string[];
+}
+
+/** The generation, the saved copy and the delivery mail: run after Stripe has its answer. */
+async function generateAndDeliver(job: GenerationJob) {
+  const { supabase, supabaseUrl, sessionId, productType, productName, customerEmail, jobTitle, jobCompany, language } = job;
+  const resume_text = job.resumeText;
+  const job_description_text = job.jobDescriptionText;
+  const deliveryRecord = { data: { id: job.deliveryId } };
   const generationStart = Date.now();
   let generatedContent: any = null;
   let generationError: string | null = null;
@@ -632,6 +828,8 @@ async function triggerProductDelivery(
         checklist: packageResult.checklist,
         coverLetter: coverLetterResult?.data?.coverLetter || null,
         modelUsed: packageResult.modelUsed,
+        // What the fact check removed, shown with the saved copy (S11-055).
+        groundingReport: packageResult.groundingReport ?? null,
       };
       logStep("Content generated", { productType });
     } else {
@@ -666,7 +864,7 @@ async function triggerProductDelivery(
         // other product here, which trusts this webhook call implicitly.
         // Without it, this call always 401s and silently falls through to
         // the frontend's manual recovery flow on the success page instead.
-        case 'ats_defense': endpoint = 'generate-ats-defense'; body.sessionId = sessionId; body.targetRoles = []; break;
+        case 'ats_defense': endpoint = 'generate-ats-defense'; body.sessionId = sessionId; body.targetRoles = job.targetRoles; break;
         case 'interview_coach': endpoint = 'generate-interview-coach'; body.isPremium = true; break;
         case 'career_path_simulator': endpoint = 'generate-career-path'; body.isPremium = true; break;
         default: throw new Error(`Unknown product type: ${productType}`);
@@ -755,7 +953,7 @@ async function triggerProductDelivery(
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`
             },
-            body: JSON.stringify({ email: customerEmail, productType, productName, generatedContent })
+            body: JSON.stringify({ email: customerEmail, productType, productName, generatedContent, sessionId })
           });
 
           if (emailResponse.ok) {
@@ -919,6 +1117,21 @@ serve(async (req) => {
             session.customer as string | { id?: string } | null,
             event.type,
           );
+          // THE CONFIRMATION A NEW SUBSCRIBER IS OWED (item 11): terms,
+          // renewal, the trial's end, how to cancel. Once per subscription;
+          // a failure answers 500 so Stripe redelivers, and everything above
+          // and below is safe to run again.
+          const subId = refId(session.subscription);
+          if (subId) {
+            try {
+              const sub = await stripe.subscriptions.retrieve(subId);
+              await sendSubscriptionNotice(supabase, stripe, "confirmation", sub, buyerEmailOf(session), session.customer_details?.address?.country ?? null);
+            } catch (err) {
+              processingError = String(err).slice(0, 500);
+              mustRetry = true;
+              logStep("Subscription confirmation not sent; Stripe will redeliver", { subscription: subId, error: processingError });
+            }
+          }
         }
 
         // The paid gate: 'paid', or a payment-mode session a promotion code
@@ -981,7 +1194,10 @@ serve(async (req) => {
               // career_path_simulator entirely, and would have defaulted
               // apply_assistant to the $5 tier on a $7 sale).
               const lowCommission = ['basic_keyword_fix', 'cover_letter', 'scan_pack', 'scan_credits', 'career_bundle', 'interview_coach', 'career_path_simulator', 'apply_assistant'];
-              const commissionCents = lowCommission.includes(productType || '') ? 100 : 500;
+              // Every checkout now carries the code; the ones the affiliate
+              // page promises nothing for mark it "none" and are recorded at
+              // $0 (_shared/checkout-policy.ts policyMetadata).
+              const commissionCents = session.metadata?.referral_commission === "none" ? 0 : lowCommission.includes(productType || '') ? 100 : 500;
               
               // verify-product-purchase (triggered from the success page) can also
               // record this same conversion — the table's UNIQUE constraint on
@@ -1161,6 +1377,17 @@ serve(async (req) => {
       case "customer.subscription.updated":
       case "customer.subscription.deleted": {
         const sub = event.data.object as Stripe.Subscription;
+        // A withdrawal's acknowledgement whose first send failed (S11-053):
+        // a failure answers 500 so Stripe redelivers this event.
+        if (event.type === "customer.subscription.deleted") {
+          try {
+            await sendPendingWithdrawal(supabase, sub);
+          } catch (err) {
+            processingError = String(err).slice(0, 500);
+            mustRetry = true;
+            logStep("Withdrawal acknowledgement not sent; Stripe will redeliver", { sub: sub.id, error: processingError });
+          }
+        }
         // A subscription event carries no email, only a customer reference.
         await refreshProEntitlement(
           stripe, supabase,
@@ -1178,6 +1405,29 @@ serve(async (req) => {
           sub.customer as string | { id?: string } | null,
           event.type,
         );
+        break;
+      }
+
+      // THREE DAYS BEFORE A TRIAL ENDS Stripe sends this (once the owner adds
+      // it to the endpoint): the subscriber is told the date and amount of
+      // the first charge and how to cancel before it. A trial already set to
+      // cancel is told nothing; a failure answers 500 so Stripe redelivers.
+      case "customer.subscription.trial_will_end": {
+        const sub = event.data.object as Stripe.Subscription;
+        if (sub.status !== "trialing" || sub.cancel_at_period_end || sub.cancel_at) {
+          logStep("Trial ending: no reminder for a trial that will not convert", { sub: sub.id, status: sub.status });
+          break;
+        }
+        try {
+          const customerId = refId(sub.customer);
+          const customer = customerId ? await stripe.customers.retrieve(customerId) : null;
+          const email = customer && !(customer as { deleted?: boolean }).deleted ? (customer as Stripe.Customer).email ?? null : null;
+          await sendSubscriptionNotice(supabase, stripe, "trial_ending", sub, email);
+        } catch (err) {
+          processingError = String(err).slice(0, 500);
+          mustRetry = true;
+          logStep("Trial reminder not sent; Stripe will redeliver", { sub: sub.id, error: processingError });
+        }
         break;
       }
 

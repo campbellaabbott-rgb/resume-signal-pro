@@ -8,7 +8,7 @@ import { ArrowRight, Check, Minus } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { COMPETITORS } from "@/data/competitors";
+import { COMPETITORS, US_PRICE_RANGE } from "@/data/competitors";
 
 export default function VsCompetitor() {
   const { slug } = useParams();
@@ -37,7 +37,7 @@ export default function VsCompetitor() {
     },
     {
       q: `How much does Resume Booster cost compared to ${c.name}?`,
-      a: c.pricingNote ?? `Resume Booster's diagnostic scan is free with no sign-up; paid tools are $3–29 one-time with an optional all-access subscription. ${c.name} uses a subscription model (as of mid-2026 — check their site for current pricing).`,
+      a: c.pricingNote ?? `Resume Booster's diagnostic scan is free with no sign-up; paid tools are ${US_PRICE_RANGE} one-time with an optional all-access subscription. ${c.name} uses a subscription model (as of mid-2026 — check their site for current pricing).`,
     },
   ];
 

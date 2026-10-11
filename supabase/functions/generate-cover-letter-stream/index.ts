@@ -1,5 +1,6 @@
 // deploy-stamp: 2026-10-04T13:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { resolveLanguageName } from "../_shared/language-instruction.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { checkInputLimits } from "../_shared/input-limits.ts";
 import { assertPaidSession } from "../_shared/paid-session.ts";
@@ -8,7 +9,7 @@ import { createGatewayDeltaReader } from "../_shared/ai-fallback.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-cover-letter-stream.2026-10-05.1";
+const FN_BUILD = "generate-cover-letter-stream.2026-10-09.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -75,7 +76,7 @@ serve(async (req) => {
 
     const toneDesc = toneDescriptions[tone] || toneDescriptions.professional;
 
-    const systemPrompt = `You are a senior executive recruiter who writes cover letters that sound authentically human. Respond in ${language || "the resume's"} language.
+    const systemPrompt = `You are a senior executive recruiter who writes cover letters that sound authentically human. Respond in ${resolveLanguageName(language) ?? "the resume's"} language.
 
 Write a cover letter that is ${toneDesc}.
 

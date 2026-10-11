@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-04T22:00Z
+// deploy-stamp: 2026-10-09T14:00Z
 // Feature 4 — weekly saved-search digest. Each opted-in saved search gets an
 // email counting how many NEW postings match it since the search's last
 // digest, with the freshest handful listed and a link back to the live board.
@@ -27,11 +27,17 @@ import { boardReaderHeader } from "../_shared/board-reader-key.ts";
 import { isScheduledCaller } from "../_shared/email-cron.ts";
 import { sameSecret } from "../_shared/service-caller.ts";
 import { oneClickHeaders, oneClickUrl, redirectToConfirm, unsubscribeParams, unsubscribePageUrl } from "../_shared/unsubscribe-link.ts";
+import { sellerFooterHtml } from "../_shared/seller.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "send-search-digest.2026-10-08.1";
+// 2026-10-09.6 (S11-005): asks the board with groupSimilar off, so a folded card never hides the postings it mails about.
+// 2026-10-09.24: _shared/unsubscribe-link.ts gained the agent-digest list it
+// imports beside (S11-132).
+// 2026-10-09.25 (wave-3 fix round integration): carries both of the above.
+const FN_BUILD = "send-search-digest.2026-10-09.25";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -45,7 +51,31 @@ const SITE_URL = "https://resumebooster.work";
 // email a day, drift-proof against cron jitter); weekly keeps the old rhythm.
 // These floors live in search_digest_claim_batch (20261004100000), where the
 // claim is atomic: daily = 20 hours, anything else = 6 days.
-const CLAIM_BATCH = 400;
+// THE RUN HAS A CLOCK (S8-052). Claiming 400 at once and working them one by
+// one ran past the ~150 s isolate limit, and every claimed row left behind
+// lost its window (and its first-match mail, which needs a NULL stamp). Now
+// rows are claimed 25 at a time, nothing new starts after 100 s, and a row
+// claimed but not started is handed back.
+// A HANDED-BACK ROW WAITS AT THE BACK OF THE QUEUE (review of the wave-3
+// integration, 2026-10-10; 20261009144000). The claim used to order by the
+// window stamp alone, NULLS FIRST, so a search handed back with its old stamp
+// led the next claim: within a run it stopped the run, and across runs the
+// same failing searches (a board that cannot count them, a send that keeps
+// failing) took the clock or the 400 and nothing behind them was ever reached.
+// The claim now orders by digest_attempted_at first and stamps it, so a search
+// the run worked, whatever came of it, goes behind every search not yet
+// worked. A give-back after an attempt restores only the window stamp, and is
+// written at once (an isolate killed mid-run used to leave every give-back of
+// that run unwritten, the windows lost). A row claimed but never started gets
+// both stamps back, and keeps its place. A suppressed or mailbox-less owner
+// keeps the claim's stamps and is looked at a cadence later.
+const CLAIM_BATCH = 25;
+const RUN_MAX = 400;
+const RUN_BUDGET_MS = 100_000;
+// No board call outlives the isolate (~150 s): each gets at most 20 s, and
+// never past 140 s into the run.
+const BOARD_CALL_MS = 20_000;
+const RUN_HARD_MS = 140_000;
 /** Rows read per search: the window's newest, deduped against what was already mailed. */
 const CANDIDATES = 60;
 
@@ -162,40 +192,77 @@ Deno.serve(async (req) => {
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
     const readerProof = await boardReaderHeader(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
 
-    // THE CLAIM IS THE SELECTION. Each row comes back already stamped (its
-    // own cadence decided in SQL), with the stamp it had before, which is the
-    // "new since" window and what a give-back restores.
-    const { data: claimed, error } = await supabase.rpc("search_digest_claim_batch", { p_limit: CLAIM_BATCH });
-    if (error) throw error;
-    const searches = ((claimed ?? []) as Array<{
-      sd_id: string; sd_user_id: string; sd_name: string; sd_params: unknown;
-      sd_prev_sent_at: string | null; sd_fit_threshold: number | null; sd_cadence: string | null;
-    }>).map((r) => ({
-      id: r.sd_id, user_id: r.sd_user_id, name: r.sd_name, params: r.sd_params,
-      digest_last_sent_at: r.sd_prev_sent_at, fit_threshold: r.sd_fit_threshold, digest_cadence: r.sd_cadence,
-    }));
-    /** Hand a claim back: the search is due again next run, as if never claimed. */
-    const giveBack = (s: { id: string; digest_last_sent_at: string | null }) =>
-      supabase.from("user_job_searches").update({ digest_last_sent_at: s.digest_last_sent_at }).eq("id", s.id);
+    const startedAt = Date.now();
+    const overBudget = () => Date.now() - startedAt >= RUN_BUDGET_MS;
+    type Claimed = { id: string; digest_last_sent_at: string | null; attempted?: { prev: string | null } };
+    /**
+     * Hand a claim back, written now. The window stamp returns to what it was,
+     * so the search is due again with its window intact. A search this run
+     * worked keeps the claim's attempt stamp and so waits behind the rest of
+     * the queue; one never started (`untouched`) gets that stamp back too,
+     * and keeps its place. The attempt stamp is written only when the claim
+     * returned it (a claim from before 20261009144000 does not).
+     */
+    const giveBack = async (s: Claimed, untouched = false) => {
+      const patch: Record<string, string | null> = { digest_last_sent_at: s.digest_last_sent_at };
+      if (untouched && s.attempted) patch.digest_attempted_at = s.attempted.prev;
+      const { error: gbErr } = await supabase.from("user_job_searches").update(patch).eq("id", s.id);
+      if (gbErr) console.error(`[SEARCH-DIGEST] claim on ${s.id} not handed back:`, gbErr.message);
+    };
+    /** A board call's clock: 20 s, and never past the run's hard limit. */
+    const boardClock = () => Math.max(1_000, Math.min(BOARD_CALL_MS, RUN_HARD_MS - (Date.now() - startedAt)));
 
     // Suppressed addresses (global unsubscribes) are honored too.
     const { data: suppressedRows } = await supabase.from("suppressed_emails").select("email");
     const suppressed = new Set((suppressedRows ?? []).map((r) => (r.email as string).toLowerCase()));
 
-    let sent = 0, skipped = 0;
-    for (const s of searches ?? []) {
+    let sent = 0, skipped = 0, considered = 0, handedBack = 0;
+    const seen = new Set<string>();
+    claiming: while (considered < RUN_MAX && !overBudget()) {
+    // THE CLAIM IS THE SELECTION. Each row comes back already stamped (its
+    // own cadence decided in SQL), with the stamps it had before: the window
+    // stamp is the "new since" window, and both are what a give-back restores.
+    const { data: claimed, error } = await supabase.rpc("search_digest_claim_batch", { p_limit: Math.min(CLAIM_BATCH, RUN_MAX - considered) });
+    if (error) { if (considered === 0) throw error; console.error("[SEARCH-DIGEST] a later claim failed:", error.message); break; }
+    const searches = ((claimed ?? []) as Array<{
+      sd_id: string; sd_user_id: string; sd_name: string; sd_params: unknown;
+      sd_prev_sent_at: string | null; sd_fit_threshold: number | null; sd_cadence: string | null;
+      sd_prev_attempted_at?: string | null;
+    }>).map((r) => ({
+      id: r.sd_id, user_id: r.sd_user_id, name: r.sd_name, params: r.sd_params,
+      digest_last_sent_at: r.sd_prev_sent_at, fit_threshold: r.sd_fit_threshold, digest_cadence: r.sd_cadence,
+      attempted: "sd_prev_attempted_at" in r ? { prev: r.sd_prev_attempted_at ?? null } : undefined,
+    }));
+    // A row this run already took is never worked twice: should a claim
+    // return one again, that claim is undone.
+    const fresh = searches.filter((x) => !seen.has(x.id));
+    for (const again of searches) if (seen.has(again.id)) await giveBack(again, true);
+    if (fresh.length === 0) break;
+    for (const x of fresh) seen.add(x.id);
+    considered += fresh.length;
+    for (let i = 0; i < fresh.length; i++) {
+      const s = fresh[i];
+      if (overBudget()) {
+        // Claimed, never started: back to due, window and place intact.
+        for (const rest of fresh.slice(i)) { await giveBack(rest, true); handedBack++; }
+        break claiming;
+      }
       const p = (s.params ?? {}) as SearchParams;
       const since = (s.digest_last_sent_at as string | null) ?? new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
 
       // Resolve the recipient email (service-role admin lookup by user_id).
-      const { data: userRes } = await supabase.auth.admin.getUserById(s.user_id as string);
+      // A lookup that failed is passing (the claim goes back); an owner with
+      // no mailbox or a suppressed one keeps the claim's stamp.
+      const { data: userRes, error: userErr } = await supabase.auth.admin.getUserById(s.user_id as string);
       const email = userRes?.user?.email?.toLowerCase();
-      if (!email || suppressed.has(email)) { await giveBack(s); skipped++; continue; }
+      if (userErr && !email) { await giveBack(s); skipped++; continue; }
+      if (!email || suppressed.has(email)) { skipped++; continue; }
 
       // Count NEW matches since last digest, and pull the freshest few.
       const callBoard = (extra: Record<string, unknown>) =>
         fetch(boardBase, {
           method: "POST",
+          signal: AbortSignal.timeout(boardClock()),
           headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}`, "Content-Type": "application/json", ...searchCallerHeader("digest"), ...readerProof },
           // EVERY field the board can filter on, or the digest mails a wider
           // search than the one saved. The seven that were hand-list-dropped
@@ -229,6 +296,10 @@ Deno.serve(async (req) => {
             // the alert mails postings the saved screen hid.
             excludeAgencies: p.excludeAgencies || undefined,
             includeFacets: false,
+            // Postings, not folded cards (S11-005): a fold keeps one row of a
+            // role posted in many places, so the mail named one store's posting
+            // for twenty-two.
+            groupSimilar: false,
             ...extra,
           }),
         }).then((r) => (r.ok ? r.json() : null)).then((j) => windowAnswer(j, since)).catch(() => null);
@@ -400,7 +471,7 @@ Deno.serve(async (req) => {
     </div>
     <p style="font-size:11px;color:#94a3b8;text-align:center;margin:14px 0 0">
       You turned on the digest for this saved search. <a href="${escapeHtml(unsubUrl)}" style="color:#94a3b8">Turn it off</a>.
-    </p>
+    </p>${sellerFooterHtml()}
   </div>
 </body></html>`;
 
@@ -423,7 +494,7 @@ Deno.serve(async (req) => {
           : strongMode
             ? `${shownCount} new strong ${newCount === 1 ? "match" : "matches"} for you — ${s.name}`
             : `${shownCount} new ${catLabel} ${newCount === 1 ? "match" : "matches"} — ${s.name}`;
-        const { error: sendErr } = await resend.emails.send({ from: "Resume Booster <reports@resumebooster.work>", to: email, subject, html, headers: unsubHeaders });
+        const { error: sendErr } = await resend.emails.send({ from: "Resume Booster <reports@resumebooster.work>", to: email, reply_to: CUSTOMER_REPLY_TO, subject, html, headers: unsubHeaders });
         if (sendErr) throw new Error(String((sendErr as { message?: string }).message ?? "send refused"));
         sent++;
         // Remembered so a re-dated or re-discovered posting is not mailed
@@ -439,7 +510,8 @@ Deno.serve(async (req) => {
         skipped++;
       }
     }
-    return new Response(JSON.stringify({ ok: true, sent, skipped, considered: (searches ?? []).length }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    return new Response(JSON.stringify({ ok: true, sent, skipped, considered, handedBack }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("[SEARCH-DIGEST] error:", e instanceof Error ? e.message : e);
     return new Response(JSON.stringify({ error: "digest run failed" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });

@@ -39,6 +39,18 @@ export function shouldRetryScan(error: unknown): boolean {
   return error instanceof FunctionsFetchError || error instanceof FunctionsRelayError;
 }
 
+/**
+ * The file parsers' retry rule (register S11-033): the same, retry only a
+ * request that never got an answer. A 500 or a 422 about the FILE answers the
+ * same way for the same bytes, so a retry re-uploaded it, spent another of the
+ * visitor's 20 hourly parse slots and, at the third failure, opened the
+ * parse circuit: the visitor was told the parser was down and their next,
+ * valid file was refused unsent. A 429 is a reached limit, not a blip.
+ */
+export function shouldRetryParse(error: unknown): boolean {
+  return shouldRetryScan(error);
+}
+
 export interface ResilientCallOptions {
   /** Maximum number of retry attempts (default: 3) */
   maxRetries?: number;
@@ -534,24 +546,41 @@ export const resilientCallers = {
     initialDelay: 1000,
   }),
 
-  /** Parse PDF - file processing needs time */
+  /** Parse PDF - file processing needs time; retries only an unanswered request (shouldRetryParse) */
   parsePdf: createResilientCaller('parse-pdf', {
     maxRetries: 2,
     timeout: 60000,
     initialDelay: 1000,
+    shouldRetry: shouldRetryParse,
   }),
 
-  /** Parse DOCX */
+  /** Parse DOCX; retries only an unanswered request (shouldRetryParse) */
   parseDocx: createResilientCaller('parse-docx', {
     maxRetries: 2,
     timeout: 60000,
     initialDelay: 1000,
+    shouldRetry: shouldRetryParse,
   }),
 
-  /** Parse Spreadsheet (Excel/CSV/Google Sheets) */
+  /** Parse Spreadsheet (Excel/CSV/Google Sheets); retries only an unanswered request (shouldRetryParse) */
   parseSpreadsheet: createResilientCaller('parse-spreadsheet', {
     maxRetries: 2,
     timeout: 60000,
     initialDelay: 1000,
+    shouldRetry: shouldRetryParse,
+  }),
+
+  /**
+   * Read a posting link (the scanner's Job URL tab, S11-032). The function
+   * holds every fetch to its own 9-second deadline; one retry, and only for a
+   * request that never got an answer.
+   */
+  fetchJobPosting: createResilientCaller('fetch-job-posting', {
+    maxRetries: 1,
+    timeout: 25000,
+    initialDelay: 1000,
+    // A meter's refusal (429, 503) is an answer: asking again spends the next lookup.
+    shouldRetry: (e) => isNetworkRetryable(e)
+      && !(e instanceof FunctionsHttpError && [429, 503].includes(Number(e.context?.status))),
   }),
 };

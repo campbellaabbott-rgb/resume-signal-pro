@@ -38,6 +38,18 @@ export interface Guide {
 }
 
 /** The byline's grounding line, with the résumé-guide default. One source, two renderers. */
+/**
+ * The /guides index's one claim about every guide, spelled once for the page
+ * and the bake. It was "every guide grounded in the checks our scanner runs",
+ * true of the résumé guides and false the moment the apply-agent guide joined
+ * them; the page retracted it and the bake kept serving it (L4-10).
+ */
+export const GUIDES_INTRO =
+  "No recycled folklore. Every guide below is grounded in something this product actually does — the checks our scanner runs, the documented behavior of real ATS parsers, or what our apply agent will and will not do on your behalf. Where the popular advice is wrong, we say so.";
+export const GUIDES_INDEX_TITLE = "Resume, ATS & Apply Agent Guides — From Real Data";
+export const GUIDES_INDEX_DESCRIPTION =
+  "How ATS systems actually work, how resumes really get rejected, how to fix yours, and how our apply agent works — grounded in what the product does, not folklore.";
+
 export const GUIDE_GROUNDING_DEFAULT =
   "Grounded in the checks our scanner runs on every resume";
 export function guideGrounding(g: Pick<Guide, "grounding">): string {
@@ -509,7 +521,7 @@ export const GUIDES: Record<string, Guide> = {
       {
         h2: "Scores you should distrust",
         paras: [
-          "Distrust any score that arrives without an itemized explanation, any score that can't be reproduced (rescan the same file — consistent tools produce consistent results; ours prints a report ID so you can check), and any 'match rate' that punishes you for not pasting keywords you don't have. And distrust cross-tool comparisons entirely: a 70 in one tool and a 78 in another measure different models, not progress.",
+          "Distrust any score that arrives without an itemized explanation, any score that can't be reproduced (rescan the same file — consistent tools produce consistent results; ours returns the same report, under the same report ID, for the same file and posting for 7 days, so you can check), and any 'match rate' that punishes you for not pasting keywords you don't have. And distrust cross-tool comparisons entirely: a 70 in one tool and a 78 in another measure different models, not progress.",
           "The honest use of any scoring tool is the same: run it, read the findings, fix what's real, rescan to confirm the fix registered, and then go apply. The interview pipeline is the only score that ultimately counts.",
         ],
       },

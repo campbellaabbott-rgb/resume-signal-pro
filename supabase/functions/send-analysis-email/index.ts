@@ -1,11 +1,12 @@
-// deploy-stamp: 2026-10-04T12:00Z
+// deploy-stamp: 2026-10-09T14:00Z
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isServiceRoleCaller } from "../_shared/service-caller.ts";
+import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "send-analysis-email.2026-10-06.1";
+const FN_BUILD = "send-analysis-email.2026-10-09.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -274,6 +275,7 @@ Deno.serve(async (req) => {
     const { data, error } = await resend.emails.send({
       from: "Resume Booster <reports@resumebooster.work>",
       to: [requestData.email],
+      reply_to: CUSTOMER_REPLY_TO,
       subject: `Your Resume Analysis is Ready! (ATS Score: ${safeAtsScore}/100)`,
       html,
     });
