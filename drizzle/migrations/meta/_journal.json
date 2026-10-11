@@ -890,6 +890,13 @@
       "when": 1791678600877,
       "tag": "0126_20261008131500_a_signed_in_account_reads_its_pass_and_never_writes_it",
       "breakpoints": true
+    },
+    {
+      "idx": 127,
+      "version": "7",
+      "when": 1791678676114,
+      "tag": "0127_20261008132000_a_closed_pass_gives_back_every_application_it_never_sent",
+      "breakpoints": true
     }
   ]
 }
