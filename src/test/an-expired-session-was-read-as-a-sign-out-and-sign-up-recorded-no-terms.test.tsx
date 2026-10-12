@@ -107,6 +107,9 @@ describe("a sign-out pressed in one tab is not an expiry in the others (S11-145)
 });
 
 describe("the sign-up page", () => {
+  // R1 made this one Continue screen (src/pages/Auth.tsx): a new address
+  // becomes an account, an existing one goes on to sign in, and there is no
+  // emailed sign-in link any more. The Terms rule is unchanged.
   const mount = (at = "/auth?next=%2Fagent%3Fwelcome%3D1") =>
     render(<MemoryRouter initialEntries={[at]}><AuthProvider><Auth /></AuthProvider></MemoryRouter>);
 
@@ -115,28 +118,29 @@ describe("the sign-up page", () => {
     expect(screen.getByText((_, el) => el?.tagName === "P" && el.textContent === en.purchaseTerms.agree.replace(/<\/?(terms|privacy)>/g, ""))).toBeTruthy();
     fireEvent.change(screen.getByPlaceholderText("you@example.com"), { target: { value: "new@example.com" } });
     fireEvent.change(screen.getByPlaceholderText("At least 8 characters"), { target: { value: "longenough1" } });
-    await act(async () => { fireEvent.click(screen.getByRole("button", { name: /Create free account/ })); });
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: /^Continue$/ })); });
     const opts = (h.signUp.mock.calls[0] as unknown as [{ options: { data: Record<string, string>; emailRedirectTo: string } }])[0].options;
     expect(opts.data.terms_version).toBe(TERMS_VERSION);
     expect(Number.isNaN(Date.parse(opts.data.terms_accepted_at))).toBe(false);
   });
 
-  it("a sign-in link that creates the account records the Terms too", async () => {
+  it("no emailed sign-in link remains to create an account without the Terms (the emailed code records them: r1-signin-flags-on)", async () => {
     mount();
-    fireEvent.change(screen.getByPlaceholderText("you@example.com"), { target: { value: "new@example.com" } });
-    await act(async () => { fireEvent.click(screen.getByRole("button", { name: /sign-in link/ })); });
-    const opts = (h.signInWithOtp.mock.calls[0] as unknown as [{ options: { data: Record<string, string> } }])[0].options;
-    expect(opts.data.terms_version).toBe(TERMS_VERSION);
-  });
-
-  it("Resend confirmation sends the link back to the page the sign-up was headed to", async () => {
-    mount();
-    fireEvent.click(screen.getByRole("button", { name: /Already have an account/ }));
+    expect(screen.queryByRole("button", { name: /sign-in link/ })).toBeNull();
     fireEvent.change(screen.getByPlaceholderText("you@example.com"), { target: { value: "new@example.com" } });
     fireEvent.change(screen.getByPlaceholderText("At least 8 characters"), { target: { value: "longenough1" } });
-    await act(async () => { fireEvent.click(screen.getByRole("button", { name: /^Sign in$/ })); });
-    await act(async () => { fireEvent.click(await screen.findByRole("button", { name: /Resend confirmation email/ })); });
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: /^Continue$/ })); });
+    expect(h.signInWithOtp).not.toHaveBeenCalled();
+  });
+
+  it("Resend confirmation sends the link to the confirm step, carrying the page the sign-up was headed to", async () => {
+    h.signUp.mockResolvedValueOnce({ error: { message: "User already registered" } } as never);
+    mount();
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), { target: { value: "new@example.com" } });
+    fireEvent.change(screen.getByPlaceholderText("At least 8 characters"), { target: { value: "longenough1" } });
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: /^Continue$/ })); });
+    await act(async () => { fireEvent.click(await screen.findByRole("button", { name: /Email the confirmation link again/ })); });
     const arg = (h.resend.mock.calls[0] as unknown as [{ options?: { emailRedirectTo?: string } }])[0];
-    expect(arg.options?.emailRedirectTo).toBe(`${window.location.origin}/agent?welcome=1`);
+    expect(arg.options?.emailRedirectTo).toBe(`${window.location.origin}/auth?mode=confirm&next=%2Fagent%3Fwelcome%3D1`);
   });
 });

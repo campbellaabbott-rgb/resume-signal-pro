@@ -1,0 +1,100 @@
+{
+  "auth": {
+    "back": "Terug naar inloggen",
+    "checkEmail": "Kijk in je mailbox",
+    "code": {
+      "instead": "Liever een inlogcode per e-mail",
+      "invalid": "Die code werkte niet. Controleer hem of vraag een nieuwe aan.",
+      "label": "Code uit de e-mail",
+      "onItsWay": "Als dit adres kan inloggen, is er een code onderweg. Die komt meestal binnen een minuut aan.",
+      "placeholder": "123456",
+      "resend": "Nieuwe code aanvragen",
+      "resendIn": "Je kunt over {{seconds}} s een nieuwe code aanvragen.",
+      "send": "Inlogcode per e-mail ontvangen",
+      "stillNothing": "Nog steeds niets? Kijk in je spammap of mail naar",
+      "tooShort": "Vul de volledige code uit de e-mail in.",
+      "verify": "Inloggen",
+      "wrongAddress": "Verkeerd adres?"
+    },
+    "confirm": {
+      "body": "Druk op Doorgaan om het inloggen af te ronden. De link werkt maar één keer.",
+      "emailChangeBody": "Druk op Doorgaan om je nieuwe e-mailadres te bevestigen.",
+      "emailChanged": "Je e-mailwijziging is bevestigd. Heeft je andere adres ook een link gekregen, gebruik die dan ook.",
+      "expired": "Deze link is verlopen of al gebruikt. Log opnieuw in om een nieuwe te krijgen.",
+      "recoveryBody": "Druk op Doorgaan om een nieuw wachtwoord te kiezen.",
+      "title": "Inloggen afronden",
+      "working": "Je wordt ingelogd…"
+    },
+    "confirmationOnItsWay": "Als dit adres kan inloggen, is er een bevestigingsmail onderweg. Die komt meestal binnen een minuut aan.",
+    "continue": "Doorgaan",
+    "email": {
+      "invalid": "Vul een geldig e-mailadres in.",
+      "label": "E-mail",
+      "placeholder": "jij@voorbeeld.nl",
+      "remembered": "Doorgaan als {{email}}",
+      "useDifferent": "Een ander adres gebruiken"
+    },
+    "footnote": "Een account bewaart je scores, credits en aankopen, en een cv alleen als je er een opslaat.",
+    "forgot": "Wachtwoord vergeten?",
+    "genericError": "Er ging iets mis. Probeer het opnieuw.",
+    "google": {
+      "continue": "Doorgaan met Google"
+    },
+    "guard": {
+      "passwordCleared": "We hebben een wachtwoord gewist dat voor dit adres was ingesteld voordat je aantoonde dat het van jou is. Stel als je wilt een nieuw in bij je accountinstellingen.",
+      "passwordClearedTitle": "Je oude wachtwoord is gewist"
+    },
+    "help": "Lukt inloggen niet? Mail naar",
+    "interstitial": {
+      "body": "Deze inlog kwam via een link waar deze browser niet om vroeg. Ga alleen door als dit jouw account is.",
+      "continue": "Doorgaan",
+      "notYou": "Niet jij? Uitloggen",
+      "title": "Je bent ingelogd als {{email}}"
+    },
+    "mismatch": "We konden je niet inloggen met dit e-mailadres en wachtwoord.",
+    "mismatchShort": "We konden je niet inloggen met dit e-mailadres en wachtwoord. Een nieuw account heeft minstens 8 tekens nodig.",
+    "notConfirmed": "Dit adres is nog niet bevestigd. Gebruik de link in de bevestigingsmail (die kan in je spam staan).",
+    "or": "of",
+    "password": {
+      "hide": "Wachtwoord verbergen",
+      "label": "Wachtwoord",
+      "missing": "Vul een wachtwoord in.",
+      "placeholder": "Minstens 8 tekens",
+      "show": "Wachtwoord tonen"
+    },
+    "privacy": "Privacy",
+    "provider": {
+      "failed": "Die inlog is niet afgerond. Probeer het opnieuw of gebruik je wachtwoord."
+    },
+    "rateLimited": "Te veel pogingen in korte tijd. Wacht een paar minuten en probeer het opnieuw.",
+    "resendConfirmation": "De bevestigingslink opnieuw ontvangen",
+    "reset": {
+      "blocked": "We konden dit adres nu niet bevestigen, dus er is geen wachtwoord ingesteld. Probeer het over een paar minuten opnieuw of mail naar",
+      "checking": "Je account wordt gecontroleerd…",
+      "done": "Je nieuwe wachtwoord is ingesteld.",
+      "doneOthers": "Je nieuwe wachtwoord is ingesteld en al je andere apparaten zijn uitgelogd.",
+      "intro": "Vul je e-mailadres in. Als er een account bij hoort, krijg je per e-mail een code waarmee je een nieuw wachtwoord kiest.",
+      "newPassword": "Nieuw wachtwoord",
+      "onItsWay": "Als er een account bij dit adres hoort, is er een herstelcode onderweg. Die komt meestal binnen een minuut aan.",
+      "proven": "Dit adres is bevestigd. Kies een nieuw wachtwoord.",
+      "retry": "Opnieuw proberen",
+      "save": "Nieuw wachtwoord instellen",
+      "send": "Herstelcode per e-mail ontvangen",
+      "signedIn": "Je bent ingelogd. Je kunt je wachtwoord wijzigen in je accountinstellingen.",
+      "title": "Wachtwoord opnieuw instellen",
+      "toAccount": "Naar je account",
+      "tooShort": "Gebruik minstens 8 tekens.",
+      "verify": "Doorgaan"
+    },
+    "return": {
+      "failed": "Het inloggen is niet afgerond. Probeer het opnieuw."
+    },
+    "samePassword": "Kies een wachtwoord dat je hier nog niet hebt gebruikt.",
+    "sessionExpired": "Je sessie is verlopen. Log opnieuw in om verder te gaan waar je was.",
+    "subtitle": "Volg je cv-scores in de loop van de tijd, bewaar je scangeschiedenis en zie je credits en aankopen op één plek. Voor altijd gratis.",
+    "title": "Log in of maak je gratis account aan",
+    "usePassword": "Liever een wachtwoord gebruiken",
+    "weakPassword": "Dat wachtwoord is te zwak of te gangbaar. Gebruik minstens 8 tekens die moeilijk te raden zijn.",
+    "whatWeKeep": "Wat we bewaren"
+  }
+}

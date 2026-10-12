@@ -1,6 +1,43 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script>
+      /* THE FIRST SCRIPT ON EVERY PAGE, AND IT MUST STAY FIRST: inline, classic
+         (no src, no module, no defer, no async), so it runs before the host's
+         deferred analytics records the address and before the app reads it.
+         It moves the credentials a URL can carry into this tab's
+         sessionStorage (key rb_url_stash) and rewrites the address without
+         them. src/lib/auth-fragment.ts reads them back; the keys are listed
+         there, and src/test/r1-signin-stash.test.ts runs this script. */
+      (function () {
+        try {
+          var L = location, P = L.pathname.replace(/\/+$/, "") || "/", W = sessionStorage, K = "rb_url_stash";
+          var A = "access_token refresh_token expires_at expires_in token_type provider_token provider_refresh_token type error error_code error_description".split(" ");
+          var G = A.concat("token_hash", "code"), Q = ["token_hash", "code"];
+          var N = {}, n = 0, m = 0, h = L.hash.slice(1), g = h, q = new URLSearchParams(L.search), i, k, v, f, o;
+          if (/^\/(email\/unsubscribe|market-pulse\/confirm|fix-plan\/confirm)$/.test(P)) {
+            if (h) { N.fragment = "#" + h; n = 1; g = ""; }
+          } else if (/(^|&)(access_token|refresh_token|provider_token|error\w*)=/.test(h)) {
+            f = new URLSearchParams(h);
+            for (i = 0; i < A.length; i++) { k = A[i]; v = f.get(k); if (v !== null) { N[k] = v; f["delete"](k); n = 1; } }
+            g = f.toString();
+          }
+          if (q.has("token_hash") || q.has("code") || P === "/auth" || q.has("error_code") || q.has("error_description")) Q.push("type", "error", "error_code", "error_description");
+          if (P === "/product-success" || P === "/success") Q.push("session_id");
+          for (i = 0; i < Q.length; i++) { k = Q[i]; v = q.get(k); if (v !== null) { N[k] = v; q["delete"](k); m = 1; } }
+          if (!n && !m) return;
+          try { o = JSON.parse(W.getItem(K)); } catch (e) { o = null; }
+          o = o && typeof o === "object" ? o : {};
+          for (i = 0; i < G.length; i++) if (G[i] in N) { for (k = 0; k < G.length; k++) delete o[G[k]]; break; }
+          if (N.session_id) N.session_id_path = P;
+          for (k in N) o[k] = N[k];
+          o._at = Date.now(); o._path = P;
+          W.setItem(K, JSON.stringify(o));
+          k = q.toString();
+          history.replaceState(history.state, "", L.pathname + (m ? (k ? "?" + k : "") : L.search) + (g !== h ? (g ? "#" + g : "") : L.hash));
+        } catch (e) { /* storage blocked or no URLSearchParams: the address keeps its parts and pages read them there */ }
+      })();
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
     <meta name="theme-color" content="#0c1222" media="(prefers-color-scheme: dark)" />
