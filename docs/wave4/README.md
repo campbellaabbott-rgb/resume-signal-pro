@@ -159,12 +159,12 @@ fake curl whose free connector answers come from the real agent-mcp handler
   (no price, plan, checkout or tag; forms for Greenhouse and Recruitee only),
   the four keyless prompts (no CV argument), and each read tool answering
   with no key. A malformed id costs nothing.
-- **84, applying yourself:** a live Greenhouse posting's real form, who
+- **84, applying yourself:** the public-api and two generator builds, a live Greenhouse posting's real form, who
   answers each question, no choice question drafted, the person submitting,
   the forms pool spent rather than a lookup, the markdown packet's five
   headings, Workday not-published, SmartRecruiters restricted, the `/v1` twin
   (200 and 451, with `RB_API_KEY`), and the cache closed to anon.
-- **85, allowance and protocol:** the counted search's share (other,
+- **85, allowance and protocol:** the api-key-request build, the counted search's share (other,
   connection, 100 / 4,000 / 20,000), the guide's figures including the
   per-minute caps and the forms pool, the counters and readers refusing anon,
   a null body answering -32600, CORS, and the protected-resource document's

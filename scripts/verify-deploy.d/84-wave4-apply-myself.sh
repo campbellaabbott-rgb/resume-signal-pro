@@ -25,6 +25,18 @@
 # which PostgREST runs read-only.
 echo "== 84. wave 4 apply myself: the employer's real form, who answers each question, nothing submitted =="
 
+# The builds that carry it: public-api's /v1 twin (and the fit rule it shares
+# with the connector), and the two generators that import the widened question
+# classifier (termination, reasons for leaving, gaps, references and grades go
+# to the person).
+for VD84_PAIR in "public-api|2026-10-11|2" "generate-application-answers|2026-10-11|1" "generate-apply-package|2026-10-11|1"; do
+  VD84_FN=${VD84_PAIR%%|*}; VD84_REST=${VD84_PAIR#*|}; VD84_D=${VD84_REST%%|*}; VD84_N=${VD84_REST#*|}
+  VD84_H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$VD84_FN" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
+  if [ -z "$VD84_H" ]; then echo "FAIL  $VD84_FN preflight carries no x-fn-build (not deployed, or the previous bundle is serving)"
+  elif build_ge "$VD84_FN" "$VD84_H" "$VD84_D" "$VD84_N"; then echo "PASS  $VD84_FN preflight x-fn-build = $VD84_H ($VD84_FN.$VD84_D.$VD84_N or later)"
+  else echo "FAIL  $VD84_FN preflight x-fn-build = $VD84_H (want $VD84_FN.$VD84_D.$VD84_N or later: the wave-4 bundle is not serving)"; fi
+done
+
 VD84_GH=$(J '{"action":"list","vendor":"greenhouse","limit":3}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const r=(JSON.parse(s).jobs||[]).find((x)=>x&&x.source==="greenhouse"&&typeof x.id==="string");process.stdout.write(r?r.id:"")}catch{process.stdout.write("")}})')
 VD84_WD=$(J '{"action":"list","vendor":"workday","limit":1}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const r=(JSON.parse(s).jobs||[])[0];process.stdout.write(r&&r.source==="workday"?r.id:"")}catch{process.stdout.write("")}})')
 VD84_SR=$(J '{"action":"list","vendor":"smartrecruiters","limit":1}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const r=(JSON.parse(s).jobs||[])[0];process.stdout.write(r&&r.source==="smartrecruiters"?r.id:"")}catch{process.stdout.write("")}})')

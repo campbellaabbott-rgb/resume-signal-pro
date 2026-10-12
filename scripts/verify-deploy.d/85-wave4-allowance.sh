@@ -28,6 +28,12 @@
 # mcp_anon_check_v2 itself), and the guide's statement of the caps is read here.
 echo "== 85. wave 4 allowance: the split by platform, the per-minute caps, the closed counters, the protocol fixes =="
 
+# api-key-request: the key it mints states its free fit allowance (limits.fitPerDay) beside its request limits.
+VD85_AK=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/api-key-request" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
+if [ -z "$VD85_AK" ]; then echo "FAIL  api-key-request preflight carries no x-fn-build (not deployed, or the previous bundle is serving)"
+elif build_ge api-key-request "$VD85_AK" "2026-10-11" "1"; then echo "PASS  api-key-request preflight x-fn-build = $VD85_AK (api-key-request.2026-10-11.1 or later)"
+else echo "FAIL  api-key-request preflight x-fn-build = $VD85_AK (want api-key-request.2026-10-11.1 or later)"; fi
+
 MC -d '{"jsonrpc":"2.0","id":1,"method":"resources/read","params":{"uri":"resumebooster://guide"}}' > /tmp/vd_85_guide.json
 VD85_PRE=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/agent-mcp" -H "apikey: $K" -H "Origin: https://claude.ai" -H "Access-Control-Request-Method: POST" | tr -d '\r')
 printf '%s' "$VD85_PRE" > /tmp/vd_85_pre.h

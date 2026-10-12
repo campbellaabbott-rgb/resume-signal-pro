@@ -200,6 +200,10 @@ function healthy(over: Record<string, Route | null> = {}): Route[] {
   const base: Record<string, Route> = {
     "opt:mcp": fromReal("options", `^OPTIONS ${esc(MCP)} `),
     "opt:jb": { match: "^OPTIONS https://p\\.supabase\\.co/functions/v1/job-board ", headers: { "x-fn-build": "job-board.2026-09-09.93" } },
+    "opt:api": { match: "^OPTIONS https://p\\.supabase\\.co/functions/v1/public-api ", headers: { "x-fn-build": "public-api.2026-10-11.2" } },
+    "opt:gaa": { match: "^OPTIONS https://p\\.supabase\\.co/functions/v1/generate-application-answers ", headers: { "x-fn-build": "generate-application-answers.2026-10-11.1" } },
+    "opt:gap": { match: "^OPTIONS https://p\\.supabase\\.co/functions/v1/generate-apply-package ", headers: { "x-fn-build": "generate-apply-package.2026-10-11.1" } },
+    "opt:akr": { match: "^OPTIONS https://p\\.supabase\\.co/functions/v1/api-key-request ", headers: { "x-fn-build": "api-key-request.2026-10-11.1" } },
     init: fromReal("init", `^POST ${esc(MCP)} ua= .*"method":"initialize"`),
     toolsGpt: fromReal("toolsGpt", `^POST ${esc(MCP)} ua=ChatGPT.*"method":"tools/list"`),
     tools: fromReal("tools", `^POST ${esc(MCP)} ua= .*"method":"tools/list"`),
@@ -310,6 +314,8 @@ describe("84: applying yourself", () => {
     const { lines } = run(["84-wave4-apply-myself.sh"], healthy(), { rb: "rb_live_test" });
     expect(fails(lines), show(lines)).toEqual([]);
     for (const re of [
+      /public-api preflight x-fn-build = public-api\.2026-10-11\.2/, /generate-application-answers preflight x-fn-build = generate-application-answers\.2026-10-11\.1/,
+      /generate-apply-package preflight x-fn-build = generate-apply-package\.2026-10-11\.1/,
       /returns the employer-published Greenhouse form/, /every question says who answers it/, /draft_from_your_cv \(default-deny/,
       /each choice question carries its options/, /route\.submitter is "you"/, /forms pool, never the lookups/, /five headings/,
       /Workday posting answers not-published/, /SmartRecruiters posting is restricted/, /\/v1\/jobs\/\{id\}\/application -> 200/,
@@ -334,6 +340,13 @@ describe("84: applying yourself", () => {
     expect(has(g, "FAIL", /returns the employer-published Greenhouse form/), show(g)).toBe(true);
   });
 
+  it("a generator still on the wave-3 classifier FAILs its build", () => {
+    const { lines } = run(["84-wave4-apply-myself.sh"], healthy({
+      "opt:gaa": { match: "^OPTIONS https://p\\.supabase\\.co/functions/v1/generate-application-answers ", headers: { "x-fn-build": "generate-application-answers.2026-10-10.62" } },
+    }));
+    expect(has(lines, "FAIL", /generate-application-answers preflight x-fn-build = generate-application-answers\.2026-10-10\.62/), show(lines)).toBe(true);
+  });
+
   it("a markdown packet missing a heading, a readable cache and a callable writer FAIL; no key is INFO", () => {
     const { lines } = run(["84-wave4-apply-myself.sh"], healthy({
       "am:md": { match: `${tool("apply_myself")}.*"format":"markdown"`, body: result({ jobId: "greenhouse:acme:1", state: "open", markdown: "## The posting\n\n## Where to apply", unkeyed: FORM_UNKEYED }) },
@@ -352,6 +365,7 @@ describe("85: the allowance and the protocol fixes", () => {
     const { lines } = run(["82-wave4-keyless-surface.sh", "85-wave4-allowance.sh"], healthy());
     expect(fails(lines), show(lines)).toEqual([]);
     for (const re of [
+      /api-key-request preflight x-fn-build = api-key-request\.2026-10-11\.1/,
       /counted as one connection in the other share/, /the day and its split/, /ChatGPT per person and without an id/, /everyone else per connection/,
       /the per-minute caps/, /the forms pool/, /the keyless page/, /guide names no price/,
       /CORS allows mcp-session-id/, /CORS exposes WWW-Authenticate/, /null JSON-RPC body answers -32600/, /protected-resource document answers 404 while sign-in is off/,
