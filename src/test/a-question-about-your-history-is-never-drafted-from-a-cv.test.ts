@@ -155,3 +155,99 @@ describe("the corpus replay", () => {
     expect(topicOf("Favourite colour?")).toBe("other");
   });
 });
+
+/**
+ * The review of 9fe3bc0d found three ways a factual question still came back
+ * draft_from_your_cv: a work-done prompt carrying a second ask about the
+ * person ("…, including your reasons for leaving each role"), a later
+ * sentence the work-done check read only for the protected list ("Describe
+ * your experience; why did you leave your last job?"), and a motivation
+ * opening carrying a second question the factual list missed ("When could
+ * you start?", "Have you previously applied to us?", "interested in
+ * leaving"). None of these labels may be drafted, on any free-text control,
+ * and the markdown packet must not print them under the drafting heading.
+ */
+const COMPOUND_MUST_NOT_DRAFT = [
+  "Tell us about your previous work experience, including your reasons for leaving each role.",
+  "Please describe your work experience, including any gaps in employment.",
+  "Describe your relevant experience and list two professional references.",
+  "Describe your experience; why did you leave your last job?",
+  "Describe your experience and the minimum hourly rate you would accept.",
+  "Why do you want to work here? When could you start?",
+  "Why are you interested in leaving your current position?",
+  "Explain your experience in finance and your GPA",
+  "Describe your experience and how much you currently earn",
+  "Describe your experience working remotely and the time zone you are in",
+  "Why did you apply? Have you previously applied to us?",
+  "Explain any gaps in your employment history and your experience",
+  "Why do you want this role? Are you happy to work weekends?",
+];
+
+/** Work done in the same words, and a motivation question with a plain second sentence, are still drafted. */
+const COMPOUND_STILL_DRAFTED = [
+  "Describe your experience with immigration law and visa petitions",
+  "Tell us about your experience processing payroll and wages",
+  "Describe your experience handling employee terminations and exit interviews",
+  "Describe your experience with payroll, including wages and overtime",
+  "Describe a project where you worked with a distributed team across time zones",
+  "Why do you want to work at Acme? Tell us in a few sentences.",
+];
+
+describe("a second ask inside a drafted question makes the whole question the person's", () => {
+  it.each(COMPOUND_MUST_NOT_DRAFT)("%s", (label) => {
+    for (const type of ["paragraph", "textarea", "input_text"]) {
+      expect(whoAnswers({ label, required: true, type }, 1).answeredBy, `${label} (${type})`).not.toBe("draft_from_your_cv");
+    }
+  });
+
+  it.each(COMPOUND_STILL_DRAFTED)("still drafted: %s", (label) => {
+    expect(whoAnswers({ label, required: false, type: "paragraph" }, 1).answeredBy).toBe("draft_from_your_cv");
+  });
+
+  it("the packet prints none of them under the drafting heading", async () => {
+    const { applyMyselfMarkdown, applyMyselfAnswer } = await import("../../supabase/functions/agent-mcp/apply-myself.ts");
+    const posting = { id: "greenhouse:acme:1", title: "Analyst", company: "Acme", location: "Leeds", pay: null, postedAt: null, applyUrl: "https://boards.greenhouse.io/acme/jobs/1", siteUrl: "https://resumebooster.work/jobs?job=greenhouse:acme:1" };
+    const read = { kind: "read", vendor: "greenhouse", readAt: "2026-10-12T00:00:00Z", form: { questions: COMPOUND_MUST_NOT_DRAFT.map((label) => ({ label, required: true, type: "paragraph" })), documents: [], alsoOnForm: [] } };
+    const md: string = applyMyselfMarkdown(applyMyselfAnswer(posting, read as never, []));
+    const drafting = md.split(/^## /m).find((s) => /^Questions your AI may draft/.test(s)) ?? "";
+    for (const label of COMPOUND_MUST_NOT_DRAFT) expect(drafting, label).not.toContain(label);
+  });
+});
+
+/**
+ * A truthfulness attestation that names the résumé is classified `file` (the
+ * word "resume"), and the file class mapped every such question to "a
+ * document you attach". Three live Greenhouse questions (viagogo 4981622101,
+ * and two postings of world4822stri986des) offer it as a choice ("I agree";
+ * Yes/No; "I understand and agree"/"I do not agree"): it is the person's
+ * declaration to make, never a document, and the AI never ticks it. Labels
+ * read verbatim from the public board API on 2026-10-12 and pinned in the
+ * consent corpus.
+ */
+describe("an attestation offered as a choice is the person's, not a document", () => {
+  const AFFIRM = CORPUS.find((r) => r.label.startsWith("By submitting this application, I affirm"))!;
+  const TRUE_CORRECT = CORPUS.find((r) => r.label.startsWith("The information provided in this application/resume"))!;
+
+  it("the three live questions are answered by the person", () => {
+    expect(AFFIRM && TRUE_CORRECT, "the live labels are in the consent corpus").toBeTruthy();
+    const cases: Array<[Row, string[]]> = [
+      [AFFIRM, ["I agree"]],
+      [TRUE_CORRECT, ["Yes", "No"]],
+      [TRUE_CORRECT, ["I understand and agree", "I do not agree"]],
+    ];
+    for (const [r, options] of cases) {
+      expect(whoAnswers({ label: r.label, required: true, type: r.type, options }, 1).answeredBy, r.label.slice(0, 60)).toBe("you");
+    }
+  });
+
+  it("every file-class corpus label on a choice control goes to the person", () => {
+    for (const r of CORPUS.filter((x) => x.expect === "file" && /select|radio|check|bool/i.test(x.type))) {
+      expect(whoAnswers({ label: r.label, required: true, type: r.type }, 1).answeredBy, r.label.slice(0, 60)).toBe("you");
+    }
+  });
+
+  it("an upload slot is still a document you attach", () => {
+    expect(whoAnswers({ label: "Resume/CV", required: true, type: "input_file" }, 1).answeredBy).toBe("your_documents");
+    expect(whoAnswers({ label: "Please upload your NYSC Certificate (Discharge or Exemption)", required: true, type: "input_file" }, 1).answeredBy).toBe("your_documents");
+  });
+});

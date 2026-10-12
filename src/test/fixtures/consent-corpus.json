@@ -513,5 +513,15 @@
   "label": "EyeCare Partners and it's affiliated companies are an equal opportunity employer. EyeCare Partners does not discriminate in employment on account of race, color, religion, national origin, citizenship status, ancestry, age, sex (including sexual harassment), sexual orientation, marital status, physical or mental disability, military status or unfavorable discharge from military service. I understa",
   "type": "input_text",
   "expect": "demographic"
+ },
+ {
+  "label": "By submitting this application, I affirm that all statements and information provided in my application, resume, and any supporting documents are accurate and truthful to the best of my knowledge. I understand that any falsification, misrepresentation, or omission may result in disqualification from the hiring process or termination if employed.",
+  "type": "multi_value_multi_select",
+  "expect": "file"
+ },
+ {
+  "label": "The information provided in this application/resume for employment is true, correct and complete to the best of my knowledge. If employed, any misstatement or omission of fact on this application, any resume furnished to us, or any interviews may result in dismissal. I authorize investigation of all statements contained in this application for employment as may be necessary in arriving at any employment decision. As applicable, I understand that satisfactorily passing a background check is required prior to employment.",
+  "type": "multi_value_single_select",
+  "expect": "file"
  }
 ]

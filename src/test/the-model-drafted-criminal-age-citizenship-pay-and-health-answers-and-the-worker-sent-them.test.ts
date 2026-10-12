@@ -3,8 +3,13 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   ABOUT_WORK_DONE,
+  asksAboutWorkDone,
+  CLAUSE_BREAK,
   classifyQuestion,
+  FACTUAL,
   OWN_STATUS,
+  PERSONAL_HISTORY,
+  SECOND_ASK,
   PROTECTED_DEMOGRAPHIC,
   PROTECTED_FACTUAL,
   RESUME_PROMPT,
@@ -183,6 +188,44 @@ describe("the two runtimes hold one list", () => {
     expect(workerProtected.ABOUT_WORK_DONE.source).toBe(ABOUT_WORK_DONE.source);
     expect(workerProtected.OWN_STATUS.source).toBe(OWN_STATUS.source);
     expect(workerProtected.SENTENCE_BREAK.source).toBe(SENTENCE_BREAK.source);
+  });
+
+  // The review of 9fe3bc0d: the parity check read PROTECTED_FACTUAL alone, so
+  // it stayed green while the worker lacked the person's own history and the
+  // work-done exemption's clause rule. Both now ride the same check.
+  it("the person's own history and the work-done clause rule are the server's too", () => {
+    expect(workerProtected.PERSONAL_HISTORY.source).toBe(PERSONAL_HISTORY.source);
+    expect(workerProtected.FACTUAL.source).toBe(FACTUAL.source);
+    expect(workerProtected.CLAUSE_BREAK.source).toBe(CLAUSE_BREAK.source);
+    expect(workerProtected.SECOND_ASK.source).toBe(SECOND_ASK.source);
+  });
+
+  const HISTORY_AND_COMPOUND = [
+    "Have you ever been terminated from a job?",
+    "Please list two professional references",
+    "Please explain any gaps in your employment history",
+    "What was your GPA?",
+    "Tell us about your previous work experience, including your reasons for leaving each role.",
+    "Please describe your work experience, including any gaps in employment.",
+    "Describe your relevant experience and list two professional references.",
+    "Describe your experience; why did you leave your last job?",
+    "Describe your experience and the minimum hourly rate you would accept.",
+    "Explain your experience in finance and your GPA",
+    "Explain any gaps in your employment history and your experience",
+  ];
+
+  it("both runtimes read the work-done exemption the same way, over history, compound and résumé labels", () => {
+    for (const label of [...HISTORY_AND_COMPOUND, ...PROTECTED, ...STAYS_DRAFTABLE]) {
+      expect(workerProtected.asksAboutWorkDone(label), label).toBe(asksAboutWorkDone(label));
+    }
+  });
+
+  it("the worker sends no drafted answer for the person's own history, alone or inside a résumé prompt", () => {
+    for (const label of HISTORY_AND_COMPOUND) {
+      expect(workerProtected.isProtectedQuestion(label), label).toBe(true);
+      const r = sent(label);
+      expect(r && r.kind === "fill" ? r.value : null, label).not.toBe(MODEL_TEXT);
+    }
   });
 });
 

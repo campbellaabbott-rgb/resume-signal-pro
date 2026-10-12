@@ -21,7 +21,13 @@
  *     naming the work, asking nothing of the person's own status), or it is
  *     one of a short list of motivation questions (why this role or employer,
  *     cover-letter text, "anything else you'd like us to know") that asks
- *     nothing of the person's status either.
+ *     nothing of the person's status either;
+ *   - and it is ONE ask: no word about leaving a job anywhere in it, and every
+ *     sentence after the first a plain instruction ("Tell us in a few
+ *     sentences.") rather than a second question or anything factual. The
+ *     review of 9fe3bc0d found a motivation opening carrying "When could you
+ *     start?", "Have you previously applied to us?" and "interested in
+ *     leaving", and work-done prompts carrying a second ask, all drafted whole.
  * Everything else goes to the person: identity fields to "your_details",
  * attachments to "your_documents", demographic questions (voluntary, never
  * drafted), consents (the AI never ticks one), factual questions with their
@@ -36,6 +42,7 @@
  */
 import {
   OWN_STATUS,
+  PERSONAL_HISTORY,
   PROTECTED_FACTUAL,
   asksAboutWorkDone,
   classifyQuestion,
@@ -117,13 +124,32 @@ export function topicOf(label: string): string {
   return "other";
 }
 
+/** Sentences, each keeping its own closing mark, so a later one can be read for a question mark. */
+const SENTENCES = /(?<=[?!;])\s+|(?<=[a-z]{3}\.)\s+(?=[A-Z])/;
+
+/** Leaving a job is the person's history, whatever question it sits in. */
+const LEAVING = /\b(?:leav\w*|left)\b/i;
+
+/**
+ * True when every sentence after the first is a plain instruction: not a
+ * question, nothing the classifier keeps from a model, and no factual topic.
+ */
+export function laterSentencesArePlain(label: string): boolean {
+  return label.split(SENTENCES).slice(1).every((s) =>
+    !s.includes("?") && classifyQuestion(s, "textarea") === "draftable" && topicOf(s) === "other");
+}
+
 /** True when the label is one of the motivation questions and asks nothing of the person's status. */
 export function isMotivationQuestion(label: string): boolean {
-  if (!MOTIVATION.test(label) || PROTECTED_FACTUAL.test(label)) return false;
+  if (!MOTIVATION.test(label) || PROTECTED_FACTUAL.test(label) || PERSONAL_HISTORY.test(label) || LEAVING.test(label)) return false;
+  if (!laterSentencesArePlain(label)) return false;
   return !OWN_STATUS.test(label.replace(MOTIVATION_OPENING, " "));
 }
 
 const COVER_LETTER = /cover\s*-?\s*letter|motivation(?:al)?\s+letter|letter\s+of\s+motivation/i;
+
+/** A control the person picks from: never an upload slot, whatever its label names. */
+const CHOICE_TYPE = /select|radio|check|bool|yes_?no/i;
 
 /** One question, with who answers it and why. */
 export function whoAnswers(q: SelfApplyInput, n: number): SelfApplyQuestion {
@@ -151,6 +177,10 @@ export function whoAnswers(q: SelfApplyInput, n: number): SelfApplyQuestion {
       // A text box that wants the cover letter itself is motivation text the
       // AI may draft; an upload slot is the person's document.
       if (free && COVER_LETTER.test(label) && isMotivationQuestion(label)) return { ...base, answeredBy: "draft_from_your_cv" };
+      // A label naming the résumé on a control with options ("I affirm that my
+      // application, resume ... are accurate": I agree) is the person's own
+      // declaration, which the AI never ticks; only an upload slot is a document.
+      if ((q.options && q.options.length) || CHOICE_TYPE.test(type)) return { ...base, answeredBy: "you" };
       return { ...base, answeredBy: "your_documents" };
     case "demographic":
       return { ...base, answeredBy: "you", voluntary: true };
@@ -160,7 +190,7 @@ export function whoAnswers(q: SelfApplyInput, n: number): SelfApplyQuestion {
       return { ...base, answeredBy: "you", ...factualExtras };
     case "draftable":
     default: {
-      if (free && (asksAboutWorkDone(label) || isMotivationQuestion(label))) {
+      if (free && !LEAVING.test(label) && laterSentencesArePlain(label) && (asksAboutWorkDone(label) || isMotivationQuestion(label))) {
         return { ...base, answeredBy: "draft_from_your_cv" };
       }
       // A sponsorship or country word in a question the classifier let through
