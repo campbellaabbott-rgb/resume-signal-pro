@@ -472,6 +472,7 @@ const FN_BUILD = "free-keyword-scan.2026-10-14.1";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Expose-Headers': 'x-fn-build',
   'x-fn-build': FN_BUILD,
 };
 

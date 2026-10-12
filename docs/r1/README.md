@@ -114,6 +114,12 @@ steps:
 2. **Functions**: auth-email-hook, process-email-queue, resend-webhook,
    auth-signed-in, verify-product-purchase. Each is built 2026-10-14.1 and
    sends it in `x-fn-build`.
+   - The ledger also lists create-portal-session, delete-account,
+     free-keyword-scan, get-account-data and scan-credits at 2026-10-14.1.
+     Their behaviour is unchanged. Each imports `_shared/mailbox-proof.ts`,
+     which R1 changed (added exports only), and a build string may not name
+     two versions of a function's code (DEPLOY-LEDGER.md §2).
+   - The three of them that did not expose `x-fn-build` to browsers now do.
 3. **Migration 20261014100000** (mail drain), once process-email-queue answers
    2026-10-14.1 (section 94 shows it). The drain's posts carry `x-email-cron`,
    which only that build reads, and only that build has the Resend fallback.
