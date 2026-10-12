@@ -568,38 +568,70 @@ const EXCLUSION_STOPWORDS: ReadonlySet<string> = new Set([
   "for", "the", "a", "an", "of", "in", "at", "to", "on",
 ]);
 
+/**
+ * S12-017: A PHRASE IS ONE EXCLUSION. -"team lead" was split on its spaces into
+ * the token -"team (excluded) and lead" (kept), so it returned team leads; and
+ * "nurse not night shift" excluded "night" and REQUIRED "shift", returning
+ * night shifts. A quoted phrase is one token, negated whole by a leading "-"
+ * or a "not"; and "not" before more than one word negates those words as one
+ * phrase to the end of the query (or the next operator), never the first word
+ * alone. "not requiring night shifts" drops the verb. A stopword after "not"
+ * still vetoes the operator ("director not for profit").
+ */
+const NOT_VERBS = /^(?:requiring|requires|require|involving|involves|including|includes|with|doing)$/i;
+const cleanTerm = (e: string): string =>
+  e.split(/\s+/).map((w) => w.replace(/[^a-z0-9+#.]/gi, "").toLowerCase()).filter(Boolean).join(" ");
+
 export function splitExclusions(raw: string): { positive: string; excluded: string[] } {
   const text = String(raw ?? "").trim();
   if (!text) return { positive: text, excluded: [] };
 
-  const words = text.split(/\s+/);
+  // Tokens: a quoted phrase (with any leading "-") is one; an unclosed quote
+  // stays an ordinary word.
+  const words = text.match(/-?"[^"]*"|\S+/g) ?? [];
+  const quoted = (w: string) => /^-?".*"$/.test(w);
   const positive: string[] = [];
   const excluded: string[] = [];
-  let pendingNot: string | null = null;
-  for (const w of words) {
-    if (pendingNot !== null) {
-      // "not" marks exactly this one token — never the whole remainder — and
-      // a stopword-grade token vetoes the operator reading entirely.
-      if (EXCLUSION_STOPWORDS.has(w.toLowerCase())) positive.push(pendingNot, w);
-      else excluded.push(w.toLowerCase());
-      pendingNot = null;
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i];
+    if (/^not$/i.test(w) && i + 1 < words.length) {
+      const next = words[i + 1];
+      if (EXCLUSION_STOPWORDS.has(next.toLowerCase())) { positive.push(w, next); i++; continue; }
+      if (quoted(next) && !next.startsWith("-")) { excluded.push(next.slice(1, -1)); i++; continue; }
+      // The words after "not", up to the next operator, are one phrase.
+      let j = i + 1;
+      const phrase: string[] = [];
+      while (j < words.length && !/^not$/i.test(words[j]) && !words[j].startsWith("-") && !quoted(words[j])) phrase.push(words[j++]);
+      while (phrase.length > 1 && NOT_VERBS.test(phrase[0])) phrase.shift();
+      if (phrase.length) { excluded.push(phrase.join(" ")); i = j - 1; continue; }
+      positive.push(w);
       continue;
     }
-    if (/^not$/i.test(w)) { pendingNot = w; continue; }
-    if (w.length > 1 && w.startsWith("-")) { excluded.push(w.slice(1).toLowerCase()); continue; }
+    if (w.length > 1 && w.startsWith("-")) {
+      excluded.push(quoted(w) ? w.slice(2, -1) : w.slice(1));
+      continue;
+    }
     positive.push(w);
   }
-  const cleanExcluded = [...new Set(excluded.map((e) => e.replace(/[^a-z0-9+#.]/gi, "").toLowerCase()).filter((e) => e.length >= 2))];
+  const cleanExcluded = [...new Set(excluded.map(cleanTerm).filter((e) => e.replace(/ /g, "").length >= 2))];
   // Nothing left to search means the exclusion has eaten the query. Run what
   // they typed instead of returning the entire board.
   if (!positive.length || !cleanExcluded.length) return { positive: text, excluded: [] };
   return { positive: positive.join(" "), excluded: cleanExcluded };
 }
 
-/** Does a title contain any excluded term? Word-ish match, so "manager" does
+const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+/** One excluded word as a pattern: its plural or singular too ("shifts" strikes "Night Shift"). */
+const wordForm = (w: string): string => {
+  if (!/[a-z]$/i.test(w) || w.length <= 3) return esc(w);
+  const base = /[^s]s$/i.test(w) ? w.slice(0, -1) : w;
+  return `${esc(base)}(?:s|es)?`;
+};
+
+/** Does a title contain any excluded term or phrase? Word-ish match, so "manager" does
  *  not strike out "management-adjacent" by coincidence of substring. */
 export function titleExcluded(title: string, excluded: readonly string[]): boolean {
   if (!excluded.length) return false;
   const t = String(title ?? "").toLowerCase();
-  return excluded.some((e) => new RegExp(`(^|[^a-z0-9])${e.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z0-9]|$)`, "i").test(t));
+  return excluded.some((e) => new RegExp(`(^|[^a-z0-9])${e.split(" ").map(wordForm).join("[^a-z0-9]+")}([^a-z0-9]|$)`, "i").test(t));
 }
