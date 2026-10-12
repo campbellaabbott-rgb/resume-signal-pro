@@ -32,6 +32,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePassStatus } from "./AgentConnect";
 import { PurchaseTerms } from "@/components/PurchaseTerms";
+import { AGENT_PRODUCTS_ON_SALE } from "../../supabase/functions/_shared/apply-agent-switch";
 
 interface Details {
   client: { name?: string; uri?: string };
@@ -181,8 +182,11 @@ export default function OAuthConsent() {
           </div>
 
           {/* The pass strip: informative, never a gate on Allow. Rendered only
-              off an answer from agent-pass-status. */}
-          {session && pass && (
+              off an answer from agent-pass-status, and only while the agent's
+              products are on sale: since the apply pivot (owner decision
+              2026-10-11) a pass funds nothing and none is sold, so the strip
+              and its buy link stay dormant behind the switch. */}
+          {AGENT_PRODUCTS_ON_SALE && session && pass && (
             <div className="mt-4 rounded-xl border border-border bg-muted/30 p-4 text-sm flex items-start gap-2">
               <Ticket className="w-4 h-4 text-primary mt-0.5 shrink-0" />
               <div>

@@ -357,7 +357,7 @@ describe("the consent route /oauth/consent", () => {
     expect(screen.queryByRole("button", { name: /allow/i })).toBeNull();
   });
 
-  it("renders the client, the scopes and the pass strip, and Allow goes through the SDK's consent API", async () => {
+  it("renders the client and the scopes, no pass strip while no pass is sold, and Allow goes through the SDK's consent API", async () => {
     invoke.mockResolvedValue({ data: { pass: openRow("unactivated", PASS.applications), key: { live: true, prefix: "rb_live_ab", createdAt: null } }, error: null });
     oauthApi.getAuthorizationDetails.mockResolvedValue({ data: { client: { name: "Claude", uri: "https://claude.ai" }, scope: "email" }, error: null });
     oauthApi.approveAuthorization.mockResolvedValue({ data: { redirect_url: "https://claude.ai/callback?code=x" }, error: null });
@@ -368,9 +368,14 @@ describe("the consent route /oauth/consent", () => {
     // (S8-081); with no pending redirect in the details, no host is named.
     expect(screen.queryByText(/claude\.ai/)).toBeNull();
     expect(screen.getByText(/does not say where access will go/)).toBeInTheDocument();
-    // Consent is never gated on purchase: the strip informs, Allow is enabled.
-    expect(await screen.findByText(new RegExp(`Pass not started · ${PASS.applications} applications`))).toBeInTheDocument();
-    const allow = screen.getByRole("button", { name: /allow/i });
+    // Consent is never gated on purchase, and since the apply pivot (owner
+    // decision 2026-10-11) the pass strip and its buy link are dormant: a pass
+    // funds nothing and none is sold, so an account holding an unstarted one
+    // is not told applications are waiting.
+    const allow = await screen.findByRole("button", { name: /allow/i });
+    await waitFor(() => expect(invoke).toHaveBeenCalled());
+    expect(screen.queryByText(/Pass not started|Pass running|applications waiting/)).toBeNull();
+    expect(screen.queryByRole("link", { name: /Buy a pass|Your pass/ })).toBeNull();
     expect(allow).not.toBeDisabled();
     fireEvent.click(allow);
     await waitFor(() => expect(oauthApi.approveAuthorization).toHaveBeenCalledWith("auth_1", { skipBrowserRedirect: true }));
