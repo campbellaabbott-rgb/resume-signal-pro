@@ -7339,7 +7339,8 @@ function JobsBoard({ boardId }: { boardId: string }) {
               <div className="flex-1 min-w-0">
                 <h2 className="text-lg font-bold leading-snug">{detailJob.title}</h2>
                 <p className="text-sm text-muted-foreground">
-                  <Link to={companyLanderPath(detailJob.token)} className="text-primary hover:underline" onClick={(e) => leavePanelFor(e, companyLanderPath(detailJob.token))}>
+                  {/* Underlined at rest: in this sentence colour alone marked it (axe link-in-text-block, 1.08:1). */}
+                  <Link to={companyLanderPath(detailJob.token)} className="text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary" onClick={(e) => leavePanelFor(e, companyLanderPath(detailJob.token))}>
                     {detailJob.company}
                   </Link>
                   {detailLoc.text ? <> · {detailLoc.text}</> : null}
@@ -11978,7 +11979,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                           </Link>
                           <p className="text-[13px] text-muted-foreground mt-0.5">
                             {job.token
-                              ? <Link to={companyLanderPath(job.token)} className="hover:text-primary hover:underline">{job.company}</Link>
+                              ? <Link to={companyLanderPath(job.token)} className="inline-flex min-h-6 items-center hover:text-primary hover:underline">{job.company}</Link>
                               : job.company}
                             {/* The tidied place, with the employer's own string
                                 one hover away whenever the two differ. A span

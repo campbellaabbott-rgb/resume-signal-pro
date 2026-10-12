@@ -6,7 +6,9 @@
  * `text-primary hover:underline`, marked by colour alone at 1.08:1 against
  * the body text in dark. The design system has an underlined-at-rest `.link`
  * class (src/index.css); the money path's in-text links use it, or an
- * explicit resting underline.
+ * explicit resting underline. The home page's two "benchmark study" links
+ * (LiveScanStats) had the same pattern and are held too; so is the board
+ * pane's employer link, which sits in a sentence in Jobs.tsx.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -14,7 +16,7 @@ import { resolve } from "node:path";
 import { codeOf } from "./helpers/strip-comments";
 
 const ROOT = resolve(__dirname, "../..");
-const FILES = ["src/pages/Pricing.tsx", "src/pages/JobPosting.tsx", "src/components/jobs/listing/MoreRolesAtEmployer.tsx"];
+const FILES = ["src/pages/Pricing.tsx", "src/pages/JobPosting.tsx", "src/components/jobs/listing/MoreRolesAtEmployer.tsx", "src/components/LiveScanStats.tsx"];
 
 /** Link classNames whose only link cue is colour: a primary colour, an underline only on hover. */
 export function colourOnlyLinks(src: string): string[] {
@@ -30,6 +32,13 @@ export function colourOnlyLinks(src: string): string[] {
 describe("in-text links carry more than colour", () => {
   it.each(FILES)("%s", (f) => {
     expect(colourOnlyLinks(readFileSync(resolve(ROOT, f), "utf8"))).toEqual([]);
+  });
+
+  it("the board pane's employer link is underlined at rest", () => {
+    const jobs = codeOf(readFileSync(resolve(ROOT, "src/pages/Jobs.tsx"), "utf8"));
+    const pane = /<Link to=\{companyLanderPath\(detailJob\.token\)\} className="([^"]*)"/.exec(jobs);
+    expect(pane, "the pane's employer link moved: re-point this guard").not.toBeNull();
+    expect(pane![1].split(/\s+/)).toContain("underline");
   });
 
   it("the rule catches what it names", () => {
