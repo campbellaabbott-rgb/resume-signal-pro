@@ -219,10 +219,18 @@ merges to main.
 ## Shared files
 
 `node scripts/deploy-ledger.mjs --overlap origin/wave4/integration
-origin/profiles/integration` lists ten files both change: `public/llms.txt`
-and the nine locale files. No function is changed by both. company-profiles
-deploys first (deployOrder 2), so it owns those files in `sharedFiles`. Wave 4
-owns its own keys and lines in them and re-applies only those when it rebases:
+origin/profiles/integration` lists twelve files both change, every one
+declared, and no function both change:
+
+- `docs/deploy-ledger.json` and `docs/DEPLOY-LEDGER.md` were already owned by
+  wave3. profiles/integration predates main's ledger and conflicts with main
+  there whether or not wave 4 merges; wave 4's own entries are its migration
+  order rules, its hold and `w4/` in its reservation.
+- `public/llms.txt` and the nine locale files are owned by company-profiles,
+  which deploys first (deployOrder 2), so its version is the base.
+
+Wave 4 owns its own keys and lines in those ten files, and re-applies only
+those when it rebases:
 
 - 57 en keys added or changed and 67 removed, under agentConnect, agentPass,
   homeAgent, homeHero, pricingPage, dataApiPage, faq, agentMatches,
@@ -231,7 +239,8 @@ owns its own keys and lines in them and re-applies only those when it rebases:
   Builder API.
 
 A `git merge-tree` of the two tips merged all ten files without a conflict.
-No `design/*` branch is on origin.
+No `design/*` branch is on origin. The local `design/*` branches are built on
+profiles and share only these files with wave 4.
 
 ## Left for other owners (files wave 4 may not touch)
 
@@ -277,6 +286,12 @@ No `design/*` branch is on origin.
 - **Pro's model-backed tools** come after sign-in, which stays off in this
   wave. Nothing built here blocks them.
 - **`employer_profile`** depends on the unmerged profiles branch (R7).
+- **The worker's copy of the classifier.** `worker/src/questions/protected.ts`
+  mirrors `PROTECTED_FACTUAL` and `PROTECTED_DEMOGRAPHIC`, but not the new
+  `PERSONAL_HISTORY` that `w4/mcp` added to `_shared/application-questions.ts`.
+  The worker is the switched-off apply agent's sender, so nothing runs it
+  today. Mirror the regex, with its parity test and the worker harness,
+  before the agent is ever switched back on.
 
 ## Checks run on this branch
 
@@ -301,4 +316,9 @@ No `design/*` branch is on origin.
   - The other eight failed on 100-900 s timeouts, and the two forks hit the
     worker start timeout. All ten pass when rerun alone, as do the three
     fixed files.
-- The pre-push hook runs the whole suite again before the push.
+- The pre-push hook ran the whole battery before the push of `7b2a9647`:
+  - the first try was blocked by one 5 s timeout in
+    `the-job-description-box-reaches-the-free-scan` (ResumeUploader, which
+    wave 4 does not touch; it passes alone);
+  - the second try passed: 946 files passed, 1 skipped (12,009 tests), with
+    the typecheck and the Deno gate.
