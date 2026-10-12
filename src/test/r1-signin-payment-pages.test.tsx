@@ -180,6 +180,10 @@ describe("the checkout prefill", () => {
     expect(await checkoutPrefillEmail()).toBeUndefined();
     h.invoke.mockResolvedValue({ data: null, error: null });
     const { result } = renderHook(() => useProductCheckout());
+    // A session ended here (the last address is kept only then): the first press
+    // asks a Pro member to sign in first and starts nothing (S12-087); the next buys.
+    await act(async () => { await result.current.purchaseProduct("coverLetter"); });
+    expect(h.invoke.mock.calls.some((c) => c[0] === "create-product-checkout")).toBe(false);
     await act(async () => { await result.current.purchaseProduct("coverLetter"); });
     const call = h.invoke.mock.calls.find((c) => c[0] === "create-product-checkout");
     expect(call, "the checkout was never asked for").toBeTruthy();
