@@ -2560,7 +2560,7 @@
       },
       "neverSold": {
         "title": "Hindi Kailanman Ibinebenta",
-        "description": "Hindi namin kailanman ibinebenta ang resume mo o ipinapakita sa mga recruiter. Lumalabas lang ito sa amin papunta sa AI provider na sumusulat ng report mo, sa email provider na naghahatid ng report na ipinadala mo sa sarili mo at ng bayad na pagsusuri na ine-email namin sa iyo, at, kung bubuksan mo ang apply agent, sa mga employer na inaaplayan nito para sa iyo. Ang Stripe ang humahawak ng bayad at walang natatanggap na text ng resume."
+        "description": "Hindi namin kailanman ibinebenta ang resume mo o ipinapakita sa mga recruiter. Lumalabas lang ito sa amin papunta sa AI provider na sumusulat ng report mo, at sa email provider na naghahatid ng report na ipinadala mo sa sarili mo at ng bayad na pagsusuri na ine-email namin sa iyo. Naka-off ang aming apply agent at wala itong ipinapadala sa mga employer. Ang Stripe ang humahawak ng bayad at walang natatanggap na text ng resume."
       },
       "transparent": {
         "title": "Transparent na Pagproseso",
@@ -2634,7 +2634,7 @@
         "agent": {
           "what": "Ang CV na ibinigay mo sa apply agent: ang file at ang text nito",
           "where": "Pribadong storage na ikaw lang at ang agent ang makakabasa",
-          "howLong": "Habang ginagamit mo ang agent, na ipinapadala ito sa mga employer na inaaplayan nito para sa iyo. Binubura ng pagbura sa account mo ang text; mag-email sa {{email}} para ipabura ang file."
+          "howLong": "Naka-off ang apply agent at hindi nito ipinapadala ito kaninuman. Ang CV na ibinigay mo rito dati ay itinatago hanggang burahin mo ang account mo o hilingin mong burahin ito: binubura ng pagbura sa account mo ang text; mag-email sa {{email}} para ipabura ang file."
         },
         "payment": {
           "what": "Ang bayad mo",
@@ -5136,6 +5136,7 @@
     "rateLine2": "Ang libreng key ay may {{ratePerMin}} request bawat minuto at {{dailyQuota}} tawag bawat araw.",
     "applyTitle": "Mag-apply nang ikaw mismo, sa tulong ng iyong AI",
     "selfApplyFree": "Libre ang mag-apply nang ikaw mismo. Binabasa ng iyong AI ang job posting at, kung {{vendors}} ang gamit ng employer, pati ang application form. Sinasabihan ito ng Resume Booster na itanong sa iyo ang bawat factual na tanong at gumawa lang ng draft ng mga bukas na sagot mula sa iyong CV; ikaw ang susuri sa lahat at pipindot ng submit.",
+    "selfApplyChatgpt": "Sa loob ng ChatGPT, binabasa lang ng iyong AI ang application form kapag {{vendors}} ang gamit ng employer.",
     "applyStep1": "Ibigay ang iyong CV sa iyong AI sa chat: i-paste o i-attach ito.",
     "applyStep2": "Hilingin ditong tulungan kang mag-apply sa isang trabaho: i-paste ang link ng trabaho mula sa board, o pumili ng isa mula sa paghahanap.",
     "applyStep3": "Sinasabihan ng Resume Booster ang iyong AI na itanong sa iyo ang bawat factual na tanong — work authorization, sponsorship, sahod, petsa ng pagsisimula, references, mga puwang sa trabaho — at gamitin ang iyong mga salita; huwag kailanman sagutin para sa iyo ang mga demographic na tanong o i-tick ang mga consent box; at gumawa lang ng draft ng mga sagot tungkol sa iyong trabaho, mula sa iyong CV, at ipakita muna sa iyo ang bawat draft.",

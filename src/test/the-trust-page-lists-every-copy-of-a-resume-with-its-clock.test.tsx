@@ -63,3 +63,40 @@ describe("/trust retention table", { timeout: 30_000 }, () => {
     expect(container.textContent).not.toMatch(/never stored|zero storage|immediately discarded|in memory/i);
   });
 });
+
+/**
+ * The review of 9fe3bc0d: the Trust page still said, in all nine locales, that
+ * a CV leaves us for "the employers it applies to for you" when the apply
+ * agent is turned on, and kept it "while you use the agent, which sends it to
+ * the employers it applies to for you". The agent is switched off (the
+ * 2026-10-11 apply pivot); both sentences now say so, and say how long a CV
+ * given to it earlier is kept.
+ */
+describe("/trust says the apply agent is switched off and sends nothing", () => {
+  const LOCALES = ["en", "en-GB", "de", "es", "fr", "hi", "nl", "pt", "tl"] as const;
+  // The old send claim, as each locale spelled it.
+  const OLD: Record<(typeof LOCALES)[number], RegExp> = {
+    en: /applies to for you/, "en-GB": /applies to for you/, de: /bei denen er sich für dich bewirbt/,
+    es: /se postula por ti/, fr: /il postule pour vous/, hi: /आपकी ओर से आवेदन करता है/,
+    nl: /namens jou solliciteert/, pt: /se candidata por si/, tl: /inaaplayan nito para sa iyo/,
+  };
+  const OFF: Record<(typeof LOCALES)[number], RegExp> = {
+    en: /switched off/, "en-GB": /switched off/, de: /abgeschaltet/, es: /desactivado/, fr: /désactivé/,
+    hi: /बंद है/, nl: /staat uit/, pt: /desligado/, tl: /Naka-off/,
+  };
+
+  it.each(LOCALES)("%s: neither sentence says the agent applies for the person, and both say it is off", async (l) => {
+    const { default: d } = await import(`../i18n/locales/${l}.json`);
+    for (const v of [d.trustPage.security.neverSold.description, d.trustPage.retention.rows.agent.howLong] as string[]) {
+      expect(v).not.toMatch(OLD[l]);
+      expect(v).toMatch(OFF[l]);
+    }
+    expect(d.trustPage.retention.rows.agent.howLong).toContain("{{email}}");
+  });
+
+  it("the rendered page says the agent sends nothing to employers", () => {
+    const { container } = renderTrust();
+    expect(container.textContent).toMatch(/Our apply agent is switched off and sends nothing to employers/);
+    expect(container.textContent).not.toMatch(/applies to for you/);
+  });
+});

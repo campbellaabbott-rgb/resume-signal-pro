@@ -2560,7 +2560,7 @@
       },
       "neverSold": {
         "title": "Nooit verkocht",
-        "description": "We verkopen je cv nooit en laten het aan geen enkele recruiter zien. Het verlaat ons alleen richting de AI-aanbieder die je rapport schrijft, de e-mailprovider die een rapport aflevert dat je naar jezelf stuurt en de betaalde analyse die we je mailen en, als je de sollicitatieagent aanzet, de werkgevers waar hij namens jou solliciteert. Stripe verwerkt de betaling en ontvangt geen cv-tekst."
+        "description": "We verkopen je cv nooit en laten het aan geen enkele recruiter zien. Het verlaat ons alleen richting de AI-aanbieder die je rapport schrijft en de e-mailprovider die een rapport aflevert dat je naar jezelf stuurt en de betaalde analyse die we je mailen. Onze sollicitatieagent staat uit en stuurt niets naar werkgevers. Stripe verwerkt de betaling en ontvangt geen cv-tekst."
       },
       "transparent": {
         "title": "Transparante verwerking",
@@ -2634,7 +2634,7 @@
         "agent": {
           "what": "Het cv dat je aan de sollicitatieagent geeft: het bestand en de tekst",
           "where": "Privéopslag die alleen jij en de agent kunnen lezen",
-          "howLong": "Zolang je de agent gebruikt; die stuurt het naar de werkgevers waar hij namens jou solliciteert. Je account verwijderen wist de tekst; mail {{email}} om het bestand te laten wissen."
+          "howLong": "De sollicitatieagent staat uit en stuurt het naar niemand. Een cv dat je hem eerder gaf, bewaren we tot je je account verwijdert of om wissing vraagt: je account verwijderen wist de tekst; mail {{email}} om het bestand te laten wissen."
         },
         "payment": {
           "what": "Je betaling",
@@ -5136,6 +5136,7 @@
     "rateLine2": "Een gratis sleutel staat {{ratePerMin}} verzoeken per minuut en {{dailyQuota}} aanroepen per dag toe.",
     "applyTitle": "Zelf solliciteren, met hulp van je AI",
     "selfApplyFree": "Zelf solliciteren is gratis. Je AI leest de vacature en, als de werkgever {{vendors}} gebruikt, ook het sollicitatieformulier. Resume Booster vraagt je AI om je elke feitelijke vraag te stellen en alleen open antwoorden op basis van je cv te schrijven; jij controleert alles en drukt zelf op verzenden.",
+    "selfApplyChatgpt": "In ChatGPT leest je AI het sollicitatieformulier alleen als de werkgever {{vendors}} gebruikt.",
     "applyStep1": "Geef je AI je cv in de chat: plak het of voeg het toe als bijlage.",
     "applyStep2": "Vraag je AI je te helpen solliciteren: plak de link van de vacature van het bord, of kies er een uit een zoekopdracht.",
     "applyStep3": "Resume Booster vraagt je AI om je elke feitelijke vraag te stellen — werkvergunning, sponsoring, salaris, startdatum, referenties, onderbrekingen — en jouw woorden te gebruiken; nooit demografische vragen voor je te beantwoorden of toestemmingsvakjes aan te vinken; en alleen antwoorden over je werk te schrijven, op basis van je cv, en je elk concept eerst te laten zien.",

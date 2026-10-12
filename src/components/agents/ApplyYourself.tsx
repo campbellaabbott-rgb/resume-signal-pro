@@ -24,7 +24,7 @@
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { ClipboardCheck, Globe, ShieldCheck } from "lucide-react";
-import { formVendorPhrase, MCP_STEPS_CHECKED } from "@/config/mcp-tools";
+import { formVendorPhrase, MCP_FORM_VENDORS_ON_CHATGPT, MCP_STEPS_CHECKED } from "@/config/mcp-tools";
 
 /** The checked date in the reader's language, from the mirror's ISO day. */
 const checkedOn = (lang: string) =>
@@ -45,7 +45,12 @@ export function ApplyYourself() {
         <ClipboardCheck className="w-5 h-5 text-primary" aria-hidden /> {t("agentConnect.applyTitle", "Apply yourself, with your AI's help")}
       </h2>
       <p className="text-muted-foreground mb-4" data-self-apply-free>
-        {t("agentConnect.selfApplyFree", "Applying yourself is free. Your AI reads the posting and, when the employer uses {{vendors}}, the application form too. Resume Booster tells it to ask you every factual question and to draft only open-ended answers from your CV; you check everything and press submit.", { vendors: formVendorPhrase(lang) })}
+        {t("agentConnect.selfApplyFree", "Applying yourself is free. Your AI reads the posting and, when the employer uses {{vendors}}, the application form too. Resume Booster tells it to ask you every factual question and to draft only open-ended answers from your CV; you check everything and press submit.", { vendors: formVendorPhrase(lang) })}{" "}
+        {/* Owner decision R2: inside ChatGPT the server reads only the
+            public-API vendors' forms, so the sentence above is scoped here. */}
+        <span data-self-apply-chatgpt>
+          {t("agentConnect.selfApplyChatgpt", "Inside ChatGPT, your AI reads the application form only when the employer uses {{vendors}}.", { vendors: formVendorPhrase(lang, MCP_FORM_VENDORS_ON_CHATGPT) })}
+        </span>
       </p>
       <ol className="list-decimal pl-5 space-y-2 text-sm text-muted-foreground mb-4">
         {steps.map((s, i) => <li key={i} className="pl-1">{s}</li>)}

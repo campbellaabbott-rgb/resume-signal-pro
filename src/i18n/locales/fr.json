@@ -2560,7 +2560,7 @@
       },
       "neverSold": {
         "title": "Jamais vendu",
-        "description": "Nous ne vendons jamais votre CV et ne le montrons à aucun recruteur. Il ne nous quitte que vers le fournisseur d'IA qui rédige votre rapport, le prestataire d'e-mail qui livre le rapport que vous vous envoyez et l'analyse payante que nous vous envoyons et, si vous activez l'agent de candidature, les employeurs auxquels il postule pour vous. Stripe gère le paiement et ne reçoit aucun texte de CV."
+        "description": "Nous ne vendons jamais votre CV et ne le montrons à aucun recruteur. Il ne nous quitte que vers le fournisseur d'IA qui rédige votre rapport et le prestataire d'e-mail qui livre le rapport que vous vous envoyez et l'analyse payante que nous vous envoyons. Notre agent de candidature est désactivé et n'envoie rien aux employeurs. Stripe gère le paiement et ne reçoit aucun texte de CV."
       },
       "transparent": {
         "title": "Traitement transparent",
@@ -2634,7 +2634,7 @@
         "agent": {
           "what": "Le CV confié à l'agent de candidature : le fichier et son texte",
           "where": "Un stockage privé que seuls vous et l'agent pouvez lire",
-          "howLong": "Tant que vous utilisez l'agent, qui l'envoie aux employeurs auxquels il postule pour vous. Supprimer votre compte efface le texte ; écrivez à {{email}} pour faire effacer le fichier."
+          "howLong": "L'agent de candidature est désactivé et ne l'envoie à personne. Un CV que vous lui avez confié auparavant est conservé jusqu'à ce que vous supprimiez votre compte ou demandiez son effacement : supprimer votre compte efface le texte ; écrivez à {{email}} pour faire effacer le fichier."
         },
         "payment": {
           "what": "Votre paiement",
@@ -5136,6 +5136,7 @@
     "rateLine2": "Une clé gratuite permet {{ratePerMin}} requêtes par minute et {{dailyQuota}} appels par jour.",
     "applyTitle": "Postulez vous-même, avec l'aide de votre IA",
     "selfApplyFree": "Postuler vous-même est gratuit. Votre IA lit l'offre et, si l'employeur utilise {{vendors}}, le formulaire de candidature aussi. Resume Booster lui demande de vous poser toutes les questions factuelles et de ne rédiger que les réponses ouvertes à partir de votre CV ; vous vérifiez tout et c'est vous qui cliquez sur Envoyer.",
+    "selfApplyChatgpt": "Dans ChatGPT, votre IA ne lit le formulaire de candidature que si l'employeur utilise {{vendors}}.",
     "applyStep1": "Donnez votre CV à votre IA dans la conversation : collez-le ou joignez-le.",
     "applyStep2": "Demandez-lui de vous aider à postuler à une offre : collez le lien de l'offre depuis le tableau, ou choisissez-en une dans une recherche.",
     "applyStep3": "Resume Booster demande à votre IA de vous poser toutes les questions factuelles — autorisation de travail, parrainage de visa, salaire, date de début, références, périodes sans emploi — et d'utiliser vos mots ; de ne jamais répondre à votre place aux questions démographiques ni cocher de cases de consentement ; et de ne rédiger que des réponses sur votre travail, à partir de votre CV, en vous montrant chaque brouillon d'abord.",

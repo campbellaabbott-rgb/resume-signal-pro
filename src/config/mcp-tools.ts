@@ -330,8 +330,10 @@ export const MCP_NEEDS_ACCOUNT_LINE =
  * formatter, so no locale string spells the names or their conjunction (a
  * name list typed into nine files is nine lists that drift).
  */
-export function formVendorPhrase(lang: string): string {
-  const labels = MCP_FORM_VENDORS.map((v) => v.label);
+export function formVendorPhrase(lang: string, only?: readonly string[]): string {
+  // `only` narrows the list to some vendor keys: the ChatGPT surface reads
+  // just MCP_FORM_VENDORS_ON_CHATGPT (owner decision R2).
+  const labels = MCP_FORM_VENDORS.filter((v) => !only || only.includes(v.key)).map((v) => v.label);
   try {
     // Intl.ListFormat is ES2021; the app's lib target predates it, so it is
     // reached through a narrow cast and the fallback covers a runtime without it.

@@ -2560,7 +2560,7 @@
       },
       "neverSold": {
         "title": "Never Sold",
-        "description": "We never sell your resume or show it to recruiters. It leaves us only for the AI provider that writes your report, the email provider that delivers any report you send yourself and the paid analysis we email you, and, if you turn on the apply agent, the employers it applies to for you. Stripe handles payment and receives no resume text."
+        "description": "We never sell your resume or show it to recruiters. It leaves us only for the AI provider that writes your report, and the email provider that delivers any report you send yourself and the paid analysis we email you. Our apply agent is switched off and sends nothing to employers. Stripe handles payment and receives no resume text."
       },
       "transparent": {
         "title": "Transparent Processing",
@@ -2634,7 +2634,7 @@
         "agent": {
           "what": "The CV you give the apply agent: the file and its text",
           "where": "Private storage that only you and the agent can read",
-          "howLong": "While you use the agent, which sends it to the employers it applies to for you. Deleting your account erases the text; email {{email}} to have the file erased."
+          "howLong": "The apply agent is switched off and sends it to no one. A CV given to it earlier is kept until you delete your account or ask for erasure: deleting your account erases the text; email {{email}} to have the file erased."
         },
         "payment": {
           "what": "Your payment",
@@ -5136,6 +5136,7 @@
     "rateLine2": "A free key meters at {{ratePerMin}} requests a minute and {{dailyQuota}} calls a day.",
     "applyTitle": "Apply yourself, with your AI's help",
     "selfApplyFree": "Applying yourself is free. Your AI reads the posting and, when the employer uses {{vendors}}, the application form too. Resume Booster tells it to ask you every factual question and to draft only open-ended answers from your CV; you check everything and press submit.",
+    "selfApplyChatgpt": "Inside ChatGPT, your AI reads the application form only when the employer uses {{vendors}}.",
     "applyStep1": "Give your AI your CV in the chat: paste it or attach it.",
     "applyStep2": "Ask it to help you apply to a job: paste the job's link from the board, or pick one from a search.",
     "applyStep3": "Resume Booster tells your AI to ask you every factual question — work authorisation, sponsorship, salary, start date, references, gaps — and to use your words; never to answer demographic questions or tick consent boxes for you; and to draft only answers about your work, from your CV, showing you each draft first.",

@@ -2560,7 +2560,7 @@
       },
       "neverSold": {
         "title": "Nie verkauft",
-        "description": "Wir verkaufen deinen Lebenslauf nie und zeigen ihn keinem Recruiter. Er verlässt uns nur an den KI-Anbieter, der deinen Bericht schreibt, an den E-Mail-Anbieter, der einen Bericht zustellt, den du dir selbst schickst, und die bezahlte Analyse, die wir dir mailen, und – wenn du den Bewerbungsagenten einschaltest – an die Arbeitgeber, bei denen er sich für dich bewirbt. Stripe wickelt die Zahlung ab und erhält keinen Lebenslauftext."
+        "description": "Wir verkaufen deinen Lebenslauf nie und zeigen ihn keinem Recruiter. Er verlässt uns nur an den KI-Anbieter, der deinen Bericht schreibt, und an den E-Mail-Anbieter, der einen Bericht zustellt, den du dir selbst schickst, und die bezahlte Analyse, die wir dir mailen. Unser Bewerbungsagent ist abgeschaltet und sendet nichts an Arbeitgeber. Stripe wickelt die Zahlung ab und erhält keinen Lebenslauftext."
       },
       "transparent": {
         "title": "Transparente Verarbeitung",
@@ -2634,7 +2634,7 @@
         "agent": {
           "what": "Der Lebenslauf, den du dem Bewerbungsagenten gibst: die Datei und ihr Text",
           "where": "Privater Speicher, den nur du und der Agent lesen können",
-          "howLong": "Solange du den Agenten nutzt; er sendet ihn an die Arbeitgeber, bei denen er sich für dich bewirbt. Das Löschen deines Kontos entfernt den Text; schreib an {{email}}, um die Datei löschen zu lassen."
+          "howLong": "Der Bewerbungsagent ist abgeschaltet und sendet ihn an niemanden. Ein Lebenslauf, den du ihm früher gegeben hast, bleibt gespeichert, bis du dein Konto löschst oder die Löschung verlangst: Das Löschen deines Kontos entfernt den Text; schreib an {{email}}, um die Datei löschen zu lassen."
         },
         "payment": {
           "what": "Deine Zahlung",
@@ -5136,6 +5136,7 @@
     "rateLine2": "Ein kostenloser Schlüssel erlaubt {{ratePerMin}} Anfragen pro Minute und {{dailyQuota}} Aufrufe pro Tag.",
     "applyTitle": "Selbst bewerben, mit Hilfe deiner KI",
     "selfApplyFree": "Selbst bewerben ist kostenlos. Deine KI liest die Stellenanzeige und, wenn der Arbeitgeber {{vendors}} nutzt, auch das Bewerbungsformular. Resume Booster weist sie an, dir jede Sachfrage zu stellen und nur offene Antworten aus deinem Lebenslauf zu entwerfen; du prüfst alles und klickst selbst auf Absenden.",
+    "selfApplyChatgpt": "In ChatGPT liest deine KI das Bewerbungsformular nur, wenn der Arbeitgeber {{vendors}} nutzt.",
     "applyStep1": "Gib deiner KI im Chat deinen Lebenslauf: einfügen oder anhängen.",
     "applyStep2": "Bitte sie, dir bei einer Bewerbung zu helfen: Füge den Link der Stelle von der Jobbörse ein oder wähle eine aus einer Suche.",
     "applyStep3": "Resume Booster weist deine KI an, dir jede Sachfrage zu stellen – Arbeitserlaubnis, Visumsunterstützung, Gehalt, Starttermin, Referenzen, Lücken – und deine Worte zu verwenden; niemals demografische Fragen für dich zu beantworten oder Einwilligungsfelder anzukreuzen; und nur Antworten über deine Arbeit aus deinem Lebenslauf zu entwerfen und dir jeden Entwurf zuerst zu zeigen.",

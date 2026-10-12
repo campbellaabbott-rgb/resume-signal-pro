@@ -2560,7 +2560,7 @@
       },
       "neverSold": {
         "title": "Nunca se vende",
-        "description": "Nunca vendemos tu currículum ni se lo mostramos a reclutadores. Solo sale de aquí hacia el proveedor de IA que redacta tu informe, el proveedor de correo que entrega el informe que te envíes y el análisis de pago que te enviamos y, si activas el agente de candidaturas, las empresas a las que se postula por ti. Stripe gestiona el pago y no recibe ningún texto de tu currículum."
+        "description": "Nunca vendemos tu currículum ni se lo mostramos a reclutadores. Solo sale de aquí hacia el proveedor de IA que redacta tu informe y el proveedor de correo que entrega el informe que te envíes y el análisis de pago que te enviamos. Nuestro agente de candidaturas está desactivado y no envía nada a ninguna empresa. Stripe gestiona el pago y no recibe ningún texto de tu currículum."
       },
       "transparent": {
         "title": "Procesamiento transparente",
@@ -2634,7 +2634,7 @@
         "agent": {
           "what": "El CV que das al agente de candidaturas: el archivo y su texto",
           "where": "Almacenamiento privado que solo tú y el agente pueden leer",
-          "howLong": "Mientras uses el agente, que lo envía a las empresas a las que se postula por ti. Eliminar tu cuenta borra el texto; escribe a {{email}} para que borremos el archivo."
+          "howLong": "El agente de candidaturas está desactivado y no lo envía a nadie. Un CV que le diste antes se conserva hasta que elimines tu cuenta o pidas que lo borremos: eliminar tu cuenta borra el texto; escribe a {{email}} para que borremos el archivo."
         },
         "payment": {
           "what": "Tu pago",
@@ -5136,6 +5136,7 @@
     "rateLine2": "Una clave gratuita permite {{ratePerMin}} solicitudes por minuto y {{dailyQuota}} llamadas al día.",
     "applyTitle": "Postúlate por tu cuenta, con la ayuda de tu IA",
     "selfApplyFree": "Postularte por tu cuenta es gratis. Tu IA lee la oferta y, si el empleador usa {{vendors}}, también el formulario de solicitud. Resume Booster le indica que te haga todas las preguntas sobre datos y que redacte solo las respuestas abiertas a partir de tu CV; tú lo revisas todo y pulsas enviar.",
+    "selfApplyChatgpt": "Dentro de ChatGPT, tu IA lee el formulario de solicitud solo si el empleador usa {{vendors}}.",
     "applyStep1": "Dale tu CV a tu IA en el chat: pégalo o adjúntalo.",
     "applyStep2": "Pídele que te ayude a postularte a un empleo: pega el enlace de la oferta desde la bolsa de empleo o elige una de una búsqueda.",
     "applyStep3": "Resume Booster le indica a tu IA que te haga todas las preguntas sobre datos —permiso de trabajo, patrocinio de visado, salario, fecha de inicio, referencias, períodos sin empleo— y que use tus palabras; que nunca responda por ti preguntas demográficas ni marque casillas de consentimiento; y que redacte solo respuestas sobre tu trabajo, a partir de tu CV, mostrándote primero cada borrador.",

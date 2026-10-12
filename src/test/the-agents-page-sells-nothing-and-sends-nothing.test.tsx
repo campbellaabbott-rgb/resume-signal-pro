@@ -50,7 +50,7 @@ function stubTable() {
 }
 
 import AgentConnect, { HostPanel } from "../pages/AgentConnect";
-import { MCP_FORM_VENDORS, MCP_HOSTS, MCP_PAGE_HOSTS, MCP_OFF_PAGE_HOSTS, MCP_ADD_TO_CLAUDE_LIVE, SIGN_IN_UNKNOWN, claudeInstallLink, claudeAdminInstallLink, formVendorPhrase } from "../config/mcp-tools";
+import { MCP_FORM_VENDORS, MCP_FORM_VENDORS_ON_CHATGPT, MCP_HOSTS, MCP_PAGE_HOSTS, MCP_OFF_PAGE_HOSTS, MCP_ADD_TO_CLAUDE_LIVE, SIGN_IN_UNKNOWN, claudeInstallLink, claudeAdminInstallLink, formVendorPhrase } from "../config/mcp-tools";
 import { MCP_URL } from "../lib/mcp-test";
 import { SENDABLE_VENDOR_LABELS } from "../config/sendable-vendors";
 
@@ -87,9 +87,23 @@ describe("the apply section", () => {
     await i18n.changeLanguage("de");
     mount();
     const free = document.querySelector("[data-self-apply-free]")!.textContent!;
-    expect(free).toBe(de.agentConnect.selfApplyFree.replace("{{vendors}}", formVendorPhrase("de")));
+    expect(free.startsWith(de.agentConnect.selfApplyFree.replace("{{vendors}}", formVendorPhrase("de")))).toBe(true);
     expect(formVendorPhrase("de")).toMatch(/ oder Pinpoint$/);
+    expect(document.querySelector("[data-self-apply-chatgpt]")!.textContent).toBe(
+      de.agentConnect.selfApplyChatgpt.replace("{{vendors}}", formVendorPhrase("de", MCP_FORM_VENDORS_ON_CHATGPT)));
     expect(document.querySelector("[data-we-never-submit]")!.textContent!.trim()).toBe(de.agentConnect.applyNever);
+  });
+
+  // The review of 9fe3bc0d: the five-vendor sentence read to every visitor,
+  // while inside ChatGPT the server reads only the public-API pair (R2).
+  it("says that inside ChatGPT only the public-API vendors' forms are read, named from the mirror", () => {
+    mount();
+    const clause = document.querySelector("[data-apply-yourself] [data-self-apply-chatgpt]")!.textContent!;
+    expect(clause).toMatch(/^Inside ChatGPT, your AI reads the application form only when the employer uses /);
+    const onChatgpt = MCP_FORM_VENDORS.filter((v) => MCP_FORM_VENDORS_ON_CHATGPT.includes(v.key));
+    for (const v of onChatgpt) expect(clause).toContain(v.label);
+    for (const v of MCP_FORM_VENDORS.filter((x) => !MCP_FORM_VENDORS_ON_CHATGPT.includes(x.key))) expect(clause).not.toContain(v.label);
+    expect(clause).toContain(formVendorPhrase("en", MCP_FORM_VENDORS_ON_CHATGPT));
   });
 
   it("points a past buyer at the retirement notice, and nowhere at a purchase", () => {
