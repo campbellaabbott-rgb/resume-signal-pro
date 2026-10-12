@@ -1039,15 +1039,63 @@ export type FilterViolation = { field: string; want: string; got: string };
 // comparison runs on salary_rank_usd, an approximate-USD generated column the
 // mapped row does not carry; checking the raw figure would fail legitimately
 // passing SEK/JPY rows.
+/**
+ * S12-020: "TODAY" IS A CALENDAR DAY. maxAgeDays was a rolling 24 hours per
+ * day, and most vendors state a date with no time (stored 00:00Z), so a US
+ * visitor choosing Today at 8pm EDT (00:00Z) lost every posting dated that
+ * same day: countOnly 2,879 -> 1,200 across midnight UTC. The window now
+ * starts at the earlier of the rolling bound and the start of the viewer's own
+ * calendar day N-1 days back, read as the date a date-only stamp names.
+ * `tzOffset` is the viewer's Date#getTimezoneOffset() in minutes (positive
+ * west of UTC); without one the latest date line's (UTC-12, 720) is used, so
+ * no visitor anywhere loses a posting dated their today. Never narrower than
+ * the rolling window; at most a day wider.
+ */
+/**
+ * S12-124: THE TWO TEXT FILTERS ARE TEXT, AND A FILTER THAT VANISHES IS NAMED.
+ * location ["Austin","Dallas"] was coerced to the string "Austin,Dallas" and
+ * matched nothing; a q or location of nothing but stripped characters ("%%")
+ * dropped silently; and a NUL in any string reached Postgres as 22P05 and
+ * answered 500. Before any other reader sees the body: NULs go from every
+ * top-level string, a q or location that is not a string is dropped and named
+ * in ignoredFilters, and so is one with nothing left to search for.
+ */
+export function textFieldShape(body: Record<string, unknown>, locationTermsOf: (raw: unknown) => { terms: string[] }): { body: Record<string, unknown>; ignored: string[] } {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(body)) out[k] = typeof v === "string" ? v.replace(/\u0000/g, "") : v;
+  const ignored: string[] = [];
+  for (const k of ["q", "location"] as const) {
+    const v = out[k];
+    if (v === undefined || v === null) continue;
+    if (typeof v !== "string") { ignored.push(k); delete out[k]; continue; }
+    if (!v.trim()) continue;
+    const empty = k === "q" ? !/[\p{L}\p{N}]/u.test(v) : locationTermsOf(v).terms.length === 0;
+    if (empty) { ignored.push(k); delete out[k]; }
+  }
+  return { body: out, ignored };
+}
+
+export const DEFAULT_TZ_OFFSET_MIN = 720;
+export function viewerTzOffset(raw: unknown): number {
+  const n = typeof raw === "number" ? raw : typeof raw === "string" && raw.trim() !== "" ? Number(raw) : NaN;
+  return Number.isInteger(n) && n >= -840 && n <= 720 ? n : DEFAULT_TZ_OFFSET_MIN;
+}
+export function ageCutoffMs(maxAgeDays: number, now: number, tzOffset?: unknown): number {
+  const local = new Date(now - viewerTzOffset(tzOffset) * 60_000);
+  const dayStart = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()) - (maxAgeDays - 1) * 86_400_000;
+  return Math.min(now - maxAgeDays * 86_400_000, dayStart);
+}
+
 export function filterViolations(
   rows: Array<Record<string, unknown>>,
   a: AppliedFilters,
+  ageCutoff?: number,
 ): FilterViolation[] {
   const out: FilterViolation[] = [];
   const push = (field: string, want: string, got: unknown) => {
     if (out.length < 20) out.push({ field, want, got: String(got ?? "null") });
   };
-  const cutoff = a.maxAgeDays === null ? null : Date.now() - a.maxAgeDays * 86_400_000;
+  const cutoff = a.maxAgeDays === null ? null : ageCutoff ?? ageCutoffMs(a.maxAgeDays, Date.now());
   // SPLIT, NEVER COMPARED WHOLE. country/workMode/category/employmentType are
   // comma-joined multi-selects now (the Remote+Hybrid toggles are a mainstream
   // gesture), and testing a row by EQUALITY against the joined string flagged

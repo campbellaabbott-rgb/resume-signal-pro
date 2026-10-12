@@ -202,6 +202,19 @@ export async function pageCeiling(h: Headers, serviceKey: string): Promise<numbe
 }
 
 /**
+ * S12-122: THE DEEPEST OFFSET A CALLER WITHOUT A SECRET MAY ASK FOR. A raw
+ * OFFSET makes the database read and throw away every row before it:
+ * country=US at offset 400,000 spent 5,664 ms in page_query, a cheap lever
+ * for anyone. Past this the page is refused (400 offset_too_deep), and a
+ * browse pages on by nextCursor; our servers and the service key are not
+ * capped. 10,000 is also where every count stops.
+ */
+export const ANON_OFFSET_CEILING = 10_000;
+export async function offsetCeiling(h: Headers, serviceKey: string): Promise<number> {
+  return (await exemptKind(h, serviceKey)) ? Number.POSITIVE_INFINITY : ANON_OFFSET_CEILING;
+}
+
+/**
  * In order: the service key (exempt), our servers' reader proof (exempt), then
  * a counted address. A declared api/mcp/digest caller WITHOUT the proof is
  * still counted at the address cap; its kind only makes a deploy skew visible.

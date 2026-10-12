@@ -330,7 +330,8 @@ describe("structural: the list action has ONE filter derivation", () => {
   // Property: every exit that returns jobs also returns the honesty fields.
   it("every list exit that returns jobs carries the honesty fields", () => {
     expect(code).toContain("const honesty = (jobs:");
-    expect(code).toContain("filterViolations(jobs, applied)");
+    // The age cutoff rides along since S12-020, so the check reads the same calendar day the query bound.
+    expect(code).toMatch(/filterViolations\(jobs, applied(?:, ageCutoff \?\? undefined)?\)/);
     const exits = (code.match(/\.\.\.honesty\(/g) ?? []).length;
     expect(exits, "ranked, fuzzy, semantic and recency must all call it").toBeGreaterThanOrEqual(4);
   });

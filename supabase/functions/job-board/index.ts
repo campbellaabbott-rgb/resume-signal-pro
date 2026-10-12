@@ -89,7 +89,7 @@ import { decideRekick } from "./chain-watchdog.ts";
 import { advanceProgress, baseConsumedPrefix, isPassDone, type RefreshProgress } from "./rotation.ts";
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
 import { detectExperience, isExperienceBand } from "./experience.ts";
-import { categoryParam, COMPANY_TOKEN_SHAPE, extraFilterParams, filterViolations, isUnfiltered, normalizeFilters, payParams, rpcBlindFilters, rescueVendorsParam, SALARIED_PERIODS, sendableSourcesParam, splitPage, salaryFromQueryText, salaryTokenInQuery, WIDENING_FILTERS } from "./filters.ts";
+import { ageCutoffMs, textFieldShape, categoryParam, COMPANY_TOKEN_SHAPE, extraFilterParams, filterViolations, isUnfiltered, normalizeFilters, payParams, rpcBlindFilters, rescueVendorsParam, SALARIED_PERIODS, sendableSourcesParam, splitPage, salaryFromQueryText, salaryTokenInQuery, WIDENING_FILTERS } from "./filters.ts";
 import { foldName, foldTypeahead, pickRoute, rerankWindow, RETRIEVER_FOR, ringWordPattern, simpleRouteFilters, singularReading, splitExclusions, startsWithWord, stopwordTokens, titleExcluded, withLiveBrands, type TitleFilter } from "./search-routing.ts";
 import { planRankedPage, RANKED_WINDOW, RING_WINDOW, rowsReached, symbolLiteralRows } from "./paging.ts";
 import { collapseClusters, GROUP_OVERFETCH, interleaveByCompany, rowClusterKey, visibleCategories, mergeCompanyFacet } from "./clusters.ts";
@@ -101,7 +101,7 @@ import { parseBreezyQuestions, parsePinpointQuestions, breezyApplyUrl, pinpointA
 import { realQuestionVendors, SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
 import { beforeDeadline, SLIM_SPECS, streamSlim } from "./slim-stream.ts";
 import { withWorkdayLanguage } from "./request-headers.ts";
-import { anonBudgetGate, anonBudgetStatus, budgetEcho, BUDGETED_ACTIONS, callerAddress, exemptKind, pageCeiling } from "./anon-budget.ts";
+import { ANON_OFFSET_CEILING, anonBudgetGate, anonBudgetStatus, budgetEcho, BUDGETED_ACTIONS, callerAddress, exemptKind, offsetCeiling, pageCeiling } from "./anon-budget.ts";
 import { boardPassAction } from "./board-pass.ts";
 import {
   addressAllowance, admitDemand, CLICK_PER_ADDRESS_HOUR, DEMAND_QUEUE_KEY, demandLaneStatus, FIT_PER_ADDRESS_HOUR, incidentRows, readDemand,
@@ -3008,6 +3008,9 @@ async function routeAliasesFor(client: SupabaseClient): Promise<typeof EMPLOYER_
     return EMPLOYER_ALIASES;
   }
 }
+
+/** The longest id `exists` reads (S12-123): every posting id is source:token:externalId, well under this. */
+const EXISTS_ID_MAX = 300;
 
 /** A maintenance credential (.88): the chain secret in the body, or the service key itself. */
 async function isMaintenance(req: Request, body: Record<string, unknown>): Promise<boolean> {
@@ -8224,6 +8227,11 @@ async function handleRequest(req: Request): Promise<Response> {
     }
     return json({ error: "Invalid JSON" }, 400);
   }
+  // S12-123: JSON that is not an object (null, a number, a list) is a malformed
+  // request, not a server fault: it reached body.action and answered 500.
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return json({ error: "The request body must be a JSON object" }, 400);
+  }
   const action = String(body.action ?? "list");
   const client = db();
 
@@ -9716,7 +9724,7 @@ async function handleRequest(req: Request): Promise<Response> {
       // NULLs. Rows whose stored values already match the current parse are
       // skipped, so a re-sweep only writes actual corrections.
       const groups = new Map<string, { annualMin: number | null; annualMax: number | null; period: string | null; currency: string | null; ids: string[] }>();
-      const remined: Array<{ id: string; patch: Record<string, unknown> }> = [];
+      const remined: Array<{ id: string; fields: Record<string, unknown> }> = [];
       const PAGES = 6;
       for (let page = 0; page < PAGES; page++) {
         let q = client
@@ -9748,7 +9756,7 @@ async function handleRequest(req: Request): Promise<Response> {
             const parsed = reMined ? parseSalaryStructured(reMined, row.country, { title: (r as { title?: string | null }).title ?? null, description: rowDesc, employmentType: row.employment_type ?? null }) : null;
             // The same refusal the column sweep honours: no annual this lane cannot see the schedule for.
             const rp = parsed && sweepRefusesAnnual(row.source, null, parsed.annualMin ?? null, parsed.period ?? null) ? null : parsed;
-            remined.push({ id: row.id, patch: { salary: reMined, salary_min_annual: rp?.annualMin ?? null, salary_max_annual: rp?.annualMax ?? null, salary_period: rp?.period ?? null, salary_currency: rp?.currency ?? null } });
+            remined.push({ id: row.id, fields: { salary: reMined, salary_min_annual: rp?.annualMin ?? null, salary_max_annual: rp?.annualMax ?? null, salary_period: rp?.period ?? null, salary_currency: rp?.currency ?? null } });
             continue;
           }
           // THE SAME CONTEXT THE TWO INGEST PARSES GET, as far as a row can carry
@@ -9791,7 +9799,7 @@ async function handleRequest(req: Request): Promise<Response> {
         }
       }
       for (const m of remined) {
-        const { error } = await client.from("job_board_postings").update(m.patch).eq("id", m.id);
+        const { error } = await client.from("job_board_postings").update(m.fields).eq("id", m.id);
         if (error) throw error;
         updated++;
       }
@@ -9983,6 +9991,14 @@ async function handleRequest(req: Request): Promise<Response> {
       // sent, for anyone without a secret (anon-budget.ts pageCeiling).
       const rowCap = await pageCeiling(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
       if (Number(body.limit) > rowCap) body.limit = rowCap;
+      // S12-122: no raw offset past ANON_OFFSET_CEILING without a secret (anon-budget.ts offsetCeiling).
+      if (Number(body.offset) > await offsetCeiling(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "")) {
+        return json({
+          error: "offset_too_deep",
+          maxOffset: ANON_OFFSET_CEILING,
+          message: `Pages past the first ${ANON_OFFSET_CEILING.toLocaleString("en-US")} results are not served by offset: narrow the search, or page on with the nextCursor a browse response carries.`,
+        }, 400);
+      }
 
       if (!meta) {
         // Rationale: docs/job-board-index-notes.md#n240-metatimedout-waituntil-runrefresh-clie
@@ -11167,10 +11183,13 @@ async function handleRequest(req: Request): Promise<Response> {
       // Feature 7: the tracker asks which of a user's saved/applied job ids
       // are still live. A missing id means the company took the posting down
       // (refresh deletes vanished ids within the hour). Read-only, cheap.
-      const ids = Array.isArray(body.ids) ? body.ids.filter((x): x is string => typeof x === "string").slice(0, 200) : [];
-      if (ids.length === 0) return json({ open: {} });
+      const asked = Array.isArray(body.ids) ? body.ids.filter((x): x is string => typeof x === "string").slice(0, 200) : [];
+      if (asked.length === 0) return json({ open: {} });
       const openMap: Record<string, boolean> = {};
-      for (const id of ids) openMap[id] = false;
+      for (const id of asked) openMap[id] = false;
+      // S12-123: no posting id is longer than EXISTS_ID_MAX; a longer one is
+      // not open and is never put in the read (a 100 KB id answered 500).
+      const ids = asked.filter((id) => id.length <= EXISTS_ID_MAX);
       for (let i = 0; i < ids.length; i += 200) {
         const { data, error } = await client
           .from("job_board_postings")
@@ -11639,6 +11658,9 @@ async function serveList(
 ) {
   // The curly apostrophe a phone types reads as the ASCII one stored (S11-021).
   body = foldTypedText(body);
+  // S12-124: q and location are text, NUL-free, and named when dropped (filters.ts textFieldShape).
+  const textShape = textFieldShape(body, locationTerms);
+  body = textShape.body;
   // Rationale: docs/job-board-index-notes.md#n280-limitraw
   const limitRaw = Number(body.limit);
   const limit = Number.isFinite(limitRaw) && limitRaw >= 1 ? Math.min(Math.floor(limitRaw), 200) : 60;
@@ -11689,6 +11711,19 @@ async function serveList(
   const { applied, ignored: ignoredFilters, maxAgeClamped } = (intentLift || excludedTerms.length)
     ? normalizeFilters(body, JOB_SOURCES.length)
     : preFilters;
+  for (const f of textShape.ignored) if (!ignoredFilters.includes(f)) ignoredFilters.push(f);
+  // S12-020: the age window as a calendar day in the viewer's own zone (filters.ts
+  // ageCutoffMs), bound as one instant on every path: buildQuery's gte and the
+  // RPCs' p_posted_after (strict, so one millisecond earlier), never the RPCs'
+  // rolling p_max_age_days.
+  const ageCutoff = applied.maxAgeDays === null ? null : ageCutoffMs(applied.maxAgeDays, Date.now(), body.tzOffset);
+  const ageCutoffIso = ageCutoff === null ? null : new Date(ageCutoff).toISOString();
+  const postedAfterBound = ((): string | null => {
+    const age = ageCutoff === null ? null : new Date(ageCutoff - 1).toISOString();
+    if (!applied.postedAfter) return age;
+    if (!age) return applied.postedAfter;
+    return Date.parse(applied.postedAfter) > Date.parse(age) ? applied.postedAfter : age;
+  })();
 
   // SEARCH TELEMETRY. One id per list response, echoed back by the client on a
   // click, which is the only thing that makes position-aware relevance
@@ -11833,7 +11868,7 @@ async function serveList(
   const REQUEST_BUDGET_MS = 9_000;
   const budgetLeft = () => Math.max(300, REQUEST_BUDGET_MS - (Date.now() - budgetStart));
   const honesty = (jobs: Array<Record<string, unknown>>): Record<string, unknown> => {
-    const v = filterViolations(jobs, applied);
+    const v = filterViolations(jobs, applied, ageCutoff ?? undefined);
     if (v.length) {
       console.error(
         `[JOB-BOARD] filter integrity: ${v.length} violation(s) on ${jobs.length} rows ` +
@@ -12066,9 +12101,7 @@ async function serveList(
     // "Posted this week" quick filter: company-stated dates ONLY (posted_at,
     // never first_seen — our discovery time can't make a posting fresh).
     // Undated postings are excluded by the filter, honestly; the UI says so.
-    if (applied.maxAgeDays !== null) {
-      q = q.gte("posted_at", new Date(Date.now() - applied.maxAgeDays * 86_400_000).toISOString());
-    }
+    if (ageCutoffIso !== null) q = q.gte("posted_at", ageCutoffIso);
     return q;
   };
   const missingColumn = (e: { message?: string } | null) => !!e?.message?.includes("effective_posted");
@@ -12103,8 +12136,8 @@ async function serveList(
         p_experience: applied.experience.length ? applied.experience : null,
         p_salary_floor: applied.salaryFloor,
         p_companies: applied.companies.length ? applied.companies : null,
-        p_posted_after: applied.postedAfter,
-        p_max_age_days: applied.maxAgeDays,
+        p_posted_after: postedAfterBound,
+        p_max_age_days: null,
         ...payParams(applied),
         ...extraFilterParams(applied),
         p_work_mode: applied.workMode,
@@ -12301,8 +12334,8 @@ async function serveList(
           p_experience: applied.experience.length ? applied.experience : null,
           p_salary_floor: applied.salaryFloor,
           p_companies: applied.companies.length ? applied.companies : null,
-          p_posted_after: applied.postedAfter,
-          p_max_age_days: applied.maxAgeDays,
+          p_posted_after: postedAfterBound,
+          p_max_age_days: null,
           ...payParams(applied),
           ...extraFilterParams(applied),
           ...(applied.workMode ? { p_work_mode: applied.workMode } : {}),
@@ -12462,7 +12495,9 @@ async function serveList(
           .not("salary_rank_usd", "is", null)
           .order("salary_rank_usd", { ascending: false })
           .order("id", { ascending: true })
-          .range(offset, offset + limit - 1),
+          // S12-035: over-fetched like every other folding route; a page of exactly
+          // `limit` rows folded to a quarter-to-half-empty page ("cashier" 44 of 60).
+          .range(offset, offset + fetchLimit - 1),
         7_000,
       ) as { data: unknown[] | null; error?: unknown };
       if (!res.error && Array.isArray(res.data)) salRows = res.data;
@@ -12489,7 +12524,7 @@ async function serveList(
         // into one stable ordering — no window to fall off the end of.
         total: null,
         countUnavailable: true,
-        hasMore: salJobs.length >= limit,
+        hasMore: salJobs.length >= fetchLimit || salGrouped.rawConsumed < salJobs.length,
         nextOffset: offset + salGrouped.rawConsumed,
         searchRoute: "SALARY",
         searchRouteReason: salaryEmployer
@@ -12806,8 +12841,8 @@ async function serveList(
         p_experience: applied.experience.length ? applied.experience : null,
         p_salary_floor: applied.salaryFloor,
         p_companies: applied.companies.length ? applied.companies : null,
-        p_posted_after: applied.postedAfter,
-        p_max_age_days: applied.maxAgeDays,
+        p_posted_after: postedAfterBound,
+        p_max_age_days: null,
         ...payParams(applied),
         ...extraFilterParams(applied),
         // Rationale: docs/job-board-index-notes.md#n349-applied-workmode-p-work-mode-applied-wo
@@ -12969,8 +13004,8 @@ async function serveList(
           p_experience: applied.experience.length ? applied.experience : null,
           p_salary_floor: applied.salaryFloor,
           p_companies: applied.companies.length ? applied.companies : null,
-          p_posted_after: applied.postedAfter,
-          p_max_age_days: applied.maxAgeDays,
+          p_posted_after: postedAfterBound,
+          p_max_age_days: null,
           ...payParams(applied),
           ...extraFilterParams(applied),
           p_work_mode: applied.workMode,
@@ -13013,8 +13048,8 @@ async function serveList(
                     p_experience: applied.experience.length ? applied.experience : null,
                     p_salary_floor: applied.salaryFloor,
                     p_companies: applied.companies.length ? applied.companies : null,
-                    p_posted_after: applied.postedAfter,
-                    p_max_age_days: applied.maxAgeDays,
+                    p_posted_after: postedAfterBound,
+                    p_max_age_days: null,
                     ...payParams(applied),
                     ...extraFilterParams(applied),
                     ...(applied.workMode ? { p_work_mode: applied.workMode } : {}),
