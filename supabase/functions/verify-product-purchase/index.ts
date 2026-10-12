@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-09T14:00Z
+// deploy-stamp: 2026-10-14T11:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -9,20 +9,50 @@ import { buyerEmailOf } from "../_shared/buyer-email.ts";
 import { proGrantRefusal } from "../_shared/pro.ts";
 import { REFUNDED_PURCHASE_MESSAGE, sessionWasRefunded } from "../_shared/payment-revocation.ts";
 import { targetRolesOf } from "../_shared/target-roles.ts";
+import { hasMailboxProof, maskEmail } from "../_shared/mailbox-proof.ts";
+import { jwtClaims, requireWebsiteSession } from "../_shared/website-session.ts";
+import { bearerOf } from "../_shared/service-caller.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "verify-product-purchase.2026-10-09.71";
+const FN_BUILD = "verify-product-purchase.2026-10-14.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "x-fn-build": FN_BUILD,
+  "Access-Control-Expose-Headers": "x-fn-build",
 };
 
 const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[VERIFY-PRODUCT-PURCHASE] ${step}`, details ? JSON.stringify(details) : '');
 };
+
+/**
+ * THE BUYER'S ADDRESS IS SHOWN ONLY TO WHOEVER PROVED THAT MAILBOX (R1,
+ * 2026-10-14). A success link carries the Stripe session id, travels in mail
+ * and in a host's analytics, and anybody holding it can call this function,
+ * so the address in the answer is masked (j***@gmail.com). It is shown in full
+ * only to a caller who sent a website session (never a connector's token)
+ * whose account has proven that exact address (account_mailbox_proofs). A
+ * caller with the publishable key costs no auth round trip; any failure
+ * masks.
+ */
+async function callerProvedMailbox(req: Request, admin: unknown, email: string | null | undefined): Promise<boolean> {
+  if (!email) return false;
+  try {
+    const claims = jwtClaims(bearerOf(req.headers));
+    if (!claims || claims.role !== "authenticated") return false;
+    const anon = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const session = await requireWebsiteSession(req, { auth: anon.auth });
+    if (session instanceof Response) return false;
+    return await hasMailboxProof(admin as Parameters<typeof hasMailboxProof>[0], session.user.id, email);
+  } catch {
+    return false;
+  }
+}
 
 const SCAN_CREDIT_PRODUCT_TYPES = ['scan_pack', 'scan_credits', 'career_bundle'];
 // The products this path can generate when asked: the Apply Assistant and
@@ -644,7 +674,7 @@ serve(async (req) => {
       // matches stripe-webhook (creditsBoughtBy above).
       const credits = purchasedCredits ?? creditsBoughtBy(session);
 
-      logStep("Adding scan pack credits", { credits, email: customerEmail, productType });
+      logStep("Adding scan pack credits", { credits, email: maskEmail(customerEmail), productType });
 
       const { error: creditError } = await supabase.rpc('add_scan_credits', {
         p_email: customerEmail,
@@ -655,7 +685,7 @@ serve(async (req) => {
         logStep("Error adding scan pack credits", { error: creditError.message });
         await recordUndelivered(`add_scan_credits: ${creditError.message}`);
       } else {
-        logStep("Scan pack credits added successfully", { credits, email: customerEmail });
+        logStep("Scan pack credits added successfully", { credits, email: maskEmail(customerEmail) });
         generatedContent = { credits, message: `${credits} scan credits added to your account` };
       }
     }
@@ -663,7 +693,7 @@ serve(async (req) => {
     // Handle credits for career bundle
     if (productType === 'career_bundle' && isFirstUse && customerEmail) {
       const credits = purchasedCredits ?? creditsBoughtBy(session);
-      logStep("Adding career bundle credits", { credits, email: customerEmail });
+      logStep("Adding career bundle credits", { credits, email: maskEmail(customerEmail) });
 
       const { error: creditError } = await supabase.rpc('add_scan_credits', {
         p_email: customerEmail,
@@ -674,7 +704,7 @@ serve(async (req) => {
         logStep("Error adding career bundle credits", { error: creditError.message });
         await recordUndelivered(`add_scan_credits: ${creditError.message}`);
       } else {
-        logStep("Career bundle credits added successfully", { credits, email: customerEmail });
+        logStep("Career bundle credits added successfully", { credits, email: maskEmail(customerEmail) });
         generatedContent = { credits, message: `${credits} scan credits added to your account` };
       }
     }
@@ -812,7 +842,7 @@ serve(async (req) => {
 
         if (emailResponse.ok) {
           emailSent = true;
-          logStep("Confirmation email sent", { email: customerEmail });
+          logStep("Confirmation email sent", { email: maskEmail(customerEmail) });
           
           // Log email sent successfully
           await supabase.rpc('log_delivery_step', {
@@ -845,6 +875,9 @@ serve(async (req) => {
       }
     }
 
+    // Masked unless this caller's own account proved that mailbox (R1).
+    const showBuyerEmail = await callerProvedMailbox(req, supabase, customerEmail);
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -852,7 +885,8 @@ serve(async (req) => {
         isFirstUse,
         productType,
         productName,
-        customerEmail,
+        customerEmail: showBuyerEmail ? customerEmail : maskEmail(customerEmail),
+        customerEmailMasked: !!customerEmail && !showBuyerEmail,
         // Whether THIS call mailed the confirmation. When the webhook claimed
         // the session first it sends the mail itself, to customerEmail; with
         // no address on the purchase nobody sends anything, and the page must
