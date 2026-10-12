@@ -37,7 +37,10 @@ export const APPLY_YOURSELF_LINE = "Search the board from your own AI (Claude, C
  * each role; "zero ghost").
  */
 export const RETIRED_CLAIMS = [
-  ["the Apply Agent's $99 a month", /\$\s?99(?!\d|[,.]\d)/],
+  // A monthly $99, or $99 beside the plan's names: an employer's own "$99
+  // per visit" in a listed job title is not the plan's price (measured on a
+  // live bake, 2026-10-12).
+  ["the Apply Agent's $99 a month", /\$\s?99(?!\d|[,.]\d)(?:\s?\/\s?mo(?:nth)?\b|\s+(?:a|per)\s+month\b)|\b(?:Agent|plan|Morning Queue)\b[^.<]{0,40}\$\s?99(?!\d|[,.]\d)|\$\s?99(?!\d|[,.]\d)[^.<]{0,40}\b(?:Agent|plan|Morning Queue)\b/i],
   ["the $29 Agent Pass", /\$\s?29(?!\d|[,.]\d)[^.<]{0,60}\bpass\b|\bpass\b[^.<]{0,60}\$\s?29(?!\d|[,.]\d)/i],
   ["the $7 Apply Assistant", /\$\s?7\b[^.<\d]{0,80}Apply Assistant|Apply Assistant[^.<]{0,80}\$\s?7\b/i],
   ["the Premium Resume Package", /\bPremium (?:Resume )?Package\b/i],

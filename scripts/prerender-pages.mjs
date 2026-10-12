@@ -146,7 +146,7 @@ export function postingFreshBudget({ carriedLive, target = POSTING_PAGE_TARGET, 
  */
 export function postingCeilingSplit(carried, { ceiling = POSTING_PAGE_CEILING, dateOf }) {
   const list = Array.isArray(carried) ? carried : [];
-  if (list.length <= ceiling) return { keep: list, retire: [] };
+  if (list.length <= ceiling) return { keep: [...list], retire: [] };
   const ranked = list.map((x, i) => ({ x, i, d: String(dateOf(x) ?? "") })).sort((a, b) => (a.d === b.d ? a.i - b.i : a.d < b.d ? -1 : 1));
   const retire = new Set(ranked.slice(0, list.length - ceiling).map((r) => r.i));
   return { keep: list.filter((_, i) => !retire.has(i)), retire: list.filter((_, i) => retire.has(i)) };

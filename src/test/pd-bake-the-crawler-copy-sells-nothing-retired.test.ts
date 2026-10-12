@@ -160,8 +160,10 @@ describe("no page, block or llms file sells or describes a retired product", () 
     expect(retiredClaimsIn(`${home} 900,000+ verified openings`).map(([c]) => c)).toContain("'verified openings'");
     expect(retiredClaimsIn(`${home} Zero ghost jobs.`).map(([c]) => c)).toContain("'zero ghost'");
     expect(retiredClaimsIn(`${home} The agent applies for you.`).map(([c]) => c)).toContain("an agent that applies for you");
-    // And an employer's pay figure is not the plan's price.
+    // And an employer's pay figure, or a job title's own rate, is not the plan's price.
     expect(retiredClaimsIn("Pay: $99,000 to $120,000 a year.")).toEqual([]);
+    expect(retiredClaimsIn("Ariat Merchandiser - $99 per visit, one-time project")).toEqual([]);
+    expect(retiredClaimsIn("the Morning Queue at $99 a month").map(([c]) => c)).toContain("the Apply Agent's $99 a month");
   });
 });
 

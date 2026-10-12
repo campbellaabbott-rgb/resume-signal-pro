@@ -11,7 +11,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   COMPANY_STUB_KEEP_DAYS, POSTING_STUB_KEEP_DAYS, companyCarryState, companyLedgerEntry, companyStubPage, companyTokenOf,
-  contentFingerprint, duplicateSkeletonGroups, onceCompanyPaths, pageDates, postingCarryBase, postingStubPage,
+  contentFingerprint, duplicateSkeletonGroups, onceCompanyPaths, pageDates, postingCarryBase, postingCeilingSplit, postingStubPage,
   resolveDuplicateGroups, seedPostingLedger, tombstoneHtml, COUNT_BEARING, FINGERPRINT_VERSION,
 } from "../../scripts/prerender-pages.mjs";
 import { bakeEmployerName, repairEmployerName, unpublishableNameReason } from "../../scripts/prerender-names.mjs";
@@ -61,6 +61,18 @@ describe("SEO-002: a published posting URL never falls back to the homepage", ()
     expect(seed.content).not.toMatch(/still on the live board/);
     const ceiling = postingStubPage({ path: P1, id: "workday:acme~wd1~ext:R1", state: "retired", basis: "ceiling", ceiling: 500, title: "Analyst", company: "Acme", windowDays: 30, esc });
     expect(ceiling.content).toMatch(/keeps at most 500 posting pages/);
+  });
+
+  it("the ceiling split hands back its own lists, so emptying the input keeps every carried page", () => {
+    // MEASURED on a live bake, 2026-10-12: the split returned the input array
+    // itself when nothing passed the ceiling, the bake emptied that array to
+    // refill it, and every one of 506 carried live pages became a stub.
+    const list = Array.from({ length: 3 }, (_, i) => ({ d: `2026-10-0${i + 1}` }));
+    const split = postingCeilingSplit(list, { ceiling: 500, dateOf: (x: { d: string }) => x.d });
+    expect(split.keep).not.toBe(list);
+    list.length = 0;
+    expect(split.keep.length).toBe(3);
+    expect(split.retire).toEqual([]);
   });
 
   it("a tombstone is under a kilobyte, noindex, and links the board", () => {

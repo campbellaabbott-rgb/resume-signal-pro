@@ -2145,9 +2145,10 @@ export { isCollidedToken } from "../src/lib/board-collisions";
       // the oldest employer date first, to the "retired" page that says why.
       {
         const split = postingCeilingSplit(detailed, { ceiling: POSTING_PAGE_CEILING, dateOf: (d) => d.job?.postedAt });
+        const keep = [...split.keep];
         for (const d of split.retire) stubs.push({ id: d.job.id, path: D.postingPagePath(d.job.id), state: "retired", basis: "ceiling", job: d.job, title: d.job.title, company: d.job.company });
         detailed.length = 0;
-        detailed.push(...split.keep);
+        detailed.push(...keep);
       }
       const carriedLive = detailed.length;
 
