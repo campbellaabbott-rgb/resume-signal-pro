@@ -134,7 +134,7 @@ export function ResetFlow({ next, initialSession }: { next: string; initialSessi
     setBusy(true);
     setPendingSignIn(next, undefined, addr);
     try {
-      const { error: err } = await supabase.auth.resetPasswordForEmail(addr, { redirectTo: `${window.location.origin}/auth?mode=reset${mailLanguageParam()}` });
+      const { error: err } = await supabase.auth.resetPasswordForEmail(addr, { redirectTo: `${window.location.origin}/auth?mode=reset${next !== DEFAULT_AFTER_AUTH ? `&next=${encodeURIComponent(next)}` : ""}${mailLanguageParam()}` });
       if (err) { clearPendingSignIn(); const m = err.message; setError((t) => explainSendError(t, m)); setStep("request"); return; }
       setStep("code");
     } catch (e2) {

@@ -12,6 +12,7 @@ import {
   Text,
 } from 'npm:@react-email/components@0.0.22'
 import { container, footer, h1, main, text } from './auth-parts.tsx'
+import { authMailLanguage, authStrings } from './auth-strings.ts'
 
 /**
  * THE OTHER ADDRESS HEARS ABOUT AN EMAIL CHANGE, WITH NOTHING TO CLICK.
@@ -28,6 +29,8 @@ interface EmailChangeNoticeEmailProps {
   newEmail: string
   /** The address the confirmation link is for, masked unless it is this recipient's own. */
   confirmedAt: string
+  /** The reader's language (auth-strings.ts); English by default. */
+  lng?: string | null
 }
 
 export const EmailChangeNoticeEmail = ({
@@ -35,30 +38,25 @@ export const EmailChangeNoticeEmail = ({
   oldEmail,
   newEmail,
   confirmedAt,
-}: EmailChangeNoticeEmailProps) => (
-  <Html lang="en" dir="ltr">
-    <Head />
-    <Preview>An email change was requested on {siteName}</Preview>
-    <Body style={main}>
-      <Container style={container}>
-        <Heading style={h1}>An email change was requested</Heading>
-        <Text style={text}>
-          Someone asked to change the email address on a {siteName} account
-          from {oldEmail || 'its current address'} to {newEmail || 'a new address'}.
-          The link that confirms it goes only to {confirmedAt}. This mail
-          confirms nothing.
-        </Text>
-        <Text style={text}>
-          If this was you, there is nothing to do here. If it wasn't, reply to
-          this mail straight away so a person can secure the account.
-        </Text>
-        <Text style={footer}>
-          You are getting this because this address is the old or the new
-          address on that account.
-        </Text>
-      </Container>
-    </Body>
-  </Html>
-)
+  lng,
+}: EmailChangeNoticeEmailProps) => {
+  const s = authStrings(lng)
+  return (
+    <Html lang={authMailLanguage(lng)} dir="ltr">
+      <Head />
+      <Preview>{s.notice.preview(siteName)}</Preview>
+      <Body style={main}>
+        <Container style={container}>
+          <Heading style={h1}>{s.notice.heading}</Heading>
+          <Text style={text}>
+            {s.notice.body(siteName, oldEmail || s.notice.itsAddress, newEmail || s.notice.newAddress, confirmedAt)}
+          </Text>
+          <Text style={text}>{s.notice.ifYou}</Text>
+          <Text style={footer}>{s.notice.why}</Text>
+        </Container>
+      </Body>
+    </Html>
+  )
+}
 
 export default EmailChangeNoticeEmail

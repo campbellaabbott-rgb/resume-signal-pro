@@ -12,7 +12,8 @@ import {
   Preview,
   Text,
 } from 'npm:@react-email/components@0.0.22'
-import { CodeBlock, IGNORE_LINE, button, container, footer, h1, main, text, type CodeProps } from './auth-parts.tsx'
+import { CodeBlock, button, container, footer, h1, main, text, type CodeProps } from './auth-parts.tsx'
+import { authMailLanguage, authStrings } from './auth-strings.ts'
 
 /**
  * The confirmation for an email change. It goes ONLY to payload.data.email,
@@ -41,29 +42,31 @@ export const EmailChangeEmail = ({
   confirmationUrl,
   token,
   expiryMinutes,
-}: EmailChangeEmailProps) => (
-  <Html lang="en" dir="ltr">
-    <Head />
-    <Preview>Confirm your email change for {siteName}</Preview>
-    <Body style={main}>
-      <Container style={container}>
-        <Heading style={h1}>Confirm your email change</Heading>
-        <Text style={text}>
-          Someone asked to change the email address on your {siteName} account
-          from {oldEmail || 'your current address'} to {newEmail || 'a new address'}.
-        </Text>
-        <CodeBlock token={token} expiryMinutes={expiryMinutes} lead="Enter this code to confirm the change:" />
-        <Text style={text}>{token ? 'Or confirm in your browser:' : 'Press the button to confirm the change:'}</Text>
-        <Button style={button} href={confirmationUrl}>
-          Confirm the change
-        </Button>
-        <Text style={footer}>
-          {IGNORE_LINE} If you think someone else is using your account, reply
-          to this mail so a person can secure it.
-        </Text>
-      </Container>
-    </Body>
-  </Html>
-)
+  lng,
+}: EmailChangeEmailProps) => {
+  const s = authStrings(lng)
+  return (
+    <Html lang={authMailLanguage(lng)} dir="ltr">
+      <Head />
+      <Preview>{s.change.preview(siteName)}</Preview>
+      <Body style={main}>
+        <Container style={container}>
+          <Heading style={h1}>{s.change.heading}</Heading>
+          <Text style={text}>
+            {s.change.body(siteName, oldEmail || s.change.currentAddress, newEmail || s.change.newAddress)}
+          </Text>
+          <CodeBlock token={token} expiryMinutes={expiryMinutes} lng={lng} lead={s.change.lead} />
+          <Text style={text}>{token ? s.change.orBrowser : s.change.noToken}</Text>
+          <Button style={button} href={confirmationUrl}>
+            {s.change.button}
+          </Button>
+          <Text style={footer}>
+            {s.ignore} {s.change.worried}
+          </Text>
+        </Container>
+      </Body>
+    </Html>
+  )
+}
 
 export default EmailChangeEmail

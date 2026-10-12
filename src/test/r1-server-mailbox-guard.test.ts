@@ -547,15 +547,76 @@ describe("the guard", () => {
     expect(gotrue.adminRotations).toEqual([id]);
     expect(await proofs(id)).toHaveLength(1);
 
-    // With the proof refused, no admin rotation: the claim is given back for a retry.
-    const id2 = await gotrue.createUser("fallback2@example.com", { password: "kept" });
+    // With the proof refused for an account change (a stranger's script editing
+    // the account, and an MFA or reauthentication rule failing the session's own
+    // update), the admin API still rotates (S12-086): the log vouched the code
+    // reached the mailbox, so the stranger's password must not survive. No proof;
+    // the claim stays, so this session never rotates again.
+    const id2 = await gotrue.createUser("fallback2@example.com", { password: "strangers-2" });
     const t = T();
     const b = await gotrue.signIn(id2, "otp", t);
     await gotrue.audit(id2, "fallback2@example.com", "user_modified", t + 1000);
     const r2 = await runMailboxGuard(deps(), gotrue.session(await gotrue.user(id2), b.jwt));
-    expect(r2).toMatchObject({ status: 503, body: { reason: "rotation_failed" } });
-    expect(gotrue.adminRotations).toEqual([id]);
-    expect((await pg.query(`SELECT count(*)::int AS n FROM public.account_password_clears WHERE user_id = $1`, [id2])).rows).toEqual([{ n: 0 }]);
+    expect(r2).toMatchObject({ status: 409, body: { proven: false, passwordCleared: true, signedOut: true, reason: "changed_since_sign_in" } });
+    expect(gotrue.adminRotations).toEqual([id, id2]);
+    expect(await gotrue.passwordOf(id2)).not.toBe("bcrypt:strangers-2");
+    expect(await proofs(id2)).toEqual([]);
+    expect((await pg.query(`SELECT count(*)::int AS n FROM public.account_password_clears WHERE user_id = $1`, [id2])).rows).toEqual([{ n: 1 }]);
+  });
+
+  it("a timeout or a 5xx on the session's own update rotates nothing through the admin API and answers 503 (minor: every failure ended every session)", async () => {
+    for (const failure of [{ ok: false, status: 0, code: "network" }, { ok: false, status: 502, code: undefined }] as RotateResult[]) {
+      const id = await gotrue.createUser(`slow${failure.status}@example.com`, { password: "kept-on-timeout" });
+      const { jwt } = await gotrue.signIn(id, "otp", T());
+      const r = await runMailboxGuard(deps({ rotateAsSession: async () => failure }), gotrue.session(await gotrue.user(id), jwt));
+      expect(r, String(failure.status)).toMatchObject({ status: 503, body: { proven: false, reason: "rotation_failed" } });
+      expect(r.body.signedOut).toBeUndefined();
+      expect(gotrue.adminRotations, "the admin API ended every session on a timeout").toEqual([]);
+      expect(await gotrue.passwordOf(id)).toBe("bcrypt:kept-on-timeout");
+      expect(await proofs(id), "a proof stood without its rotation").toEqual([]);
+      expect((await pg.query(`SELECT count(*)::int AS n FROM public.account_password_clears WHERE user_id = $1`, [id])).rows).toEqual([{ n: 0 }]);
+    }
+  });
+
+  it("a proof that cannot be written stops the call before anything is rotated, and the retry proves and rotates once (minor: a rotation without its proof refused every later call)", async () => {
+    const id = await gotrue.createUser("proofless@example.com", { password: "strangers-3" });
+    const { jwt } = await gotrue.signIn(id, "otp", T());
+    let failOnce = true;
+    const base = deps().admin as unknown as { from: (t: string) => Record<string, unknown> };
+    const flaky = new Proxy(base, {
+      get: (t, k) => (k === "from"
+        ? (table: string) => {
+            const q = t.from(table);
+            if (table !== "account_mailbox_proofs") return q;
+            return new Proxy(q, { get: (qt, qk) => (qk === "insert" && failOnce
+              ? () => { failOnce = false; return Promise.resolve({ data: null, error: { code: "XX000", message: "disk full" } }); }
+              : Reflect.get(qt, qk)) });
+          }
+        : Reflect.get(t, k)),
+    }) as unknown as GuardAdmin;
+    const s = () => gotrue.user(id).then((u) => gotrue.session(u, jwt));
+    const first = await runMailboxGuard(deps({ admin: flaky }), await s());
+    expect(first).toMatchObject({ status: 503, body: { proven: false, passwordCleared: false, reason: "proof_not_recorded" } });
+    expect(await gotrue.passwordOf(id), "the password was rotated though its proof was never written").toBe("bcrypt:strangers-3");
+    expect(gotrue.sessionRotations).toEqual([]);
+    const second = await runMailboxGuard(deps({ admin: flaky }), await s());
+    expect(second).toEqual({ status: 200, body: { proven: true, passwordCleared: true } });
+    expect(gotrue.sessionRotations).toHaveLength(1);
+    expect(await proofs(id)).toEqual([{ email: "proofless@example.com", method: "otp", password_cleared: true }]);
+  });
+
+  it("an account already proven at another address keeps the password its owner set (S12-177)", async () => {
+    const id = await gotrue.createUser("first@example.com");
+    const a = await gotrue.signIn(id, "otp", T() - 300_000);
+    expect((await runMailboxGuard(deps(), gotrue.session(await gotrue.user(id), a.jwt))).body).toMatchObject({ proven: true });
+    await gotrue.setPassword(id, "owners-chosen", Date.now() - 180_000);
+    await gotrue.changeEmail(id, "second@example.com", Date.now() - 120_000);
+    const b = await gotrue.signIn(id, "otp", T());
+    const r = await runMailboxGuard(deps(), gotrue.session(await gotrue.user(id), b.jwt));
+    expect(r).toEqual({ status: 200, body: { proven: true, passwordCleared: false } });
+    expect(await gotrue.passwordOf(id), "the proven owner's own password was cleared at their new address").toBe("bcrypt:owners-chosen");
+    expect(gotrue.sessionRotations).toEqual([]);
+    expect((await proofs(id)).map((p) => p.email).sort()).toEqual(["first@example.com", "second@example.com"]);
   });
 
   it("names the newest sign-in method from amr, and the rotation secret fits bcrypt and any strength rule", () => {
@@ -584,6 +645,7 @@ describe("the shipped auth-signed-in handler", () => {
   };
   let rateAllowed: unknown = true;
   const tokensSeen: string[] = [];
+  const rateKeys: string[] = [];
 
   beforeAll(async () => {
     const g = globalThis as Record<string, unknown>;
@@ -593,7 +655,7 @@ describe("the shipped auth-signed-in handler", () => {
       const rpc = (admin.rpc as (n: string, a: Record<string, unknown>) => unknown).bind(admin);
       return new Proxy(admin, {
         get: (t, k) => (k === "rpc"
-          ? (n: string, a: Record<string, unknown>) => (n === "check_rate_limit" ? Promise.resolve({ data: rateAllowed, error: null }) : rpc(n, a))
+          ? (n: string, a: Record<string, unknown>) => (n === "check_rate_limit" ? (rateKeys.push(String(a.p_ip)), Promise.resolve({ data: rateAllowed, error: null })) : rpc(n, a))
           : Reflect.get(t, k)),
       });
     };
@@ -623,7 +685,7 @@ describe("the shipped auth-signed-in handler", () => {
     });
   }, 180_000);
 
-  beforeEach(() => { rateAllowed = true; tokensSeen.length = 0; });
+  beforeEach(() => { rateAllowed = true; tokensSeen.length = 0; rateKeys.length = 0; });
 
   const call = (method: string, headers: Record<string, string> = {}) =>
     handler(new Request("https://harness.supabase.co/functions/v1/auth-signed-in", { method, headers: { "content-type": "application/json", ...headers }, body: method === "POST" ? "{}" : undefined }));
@@ -682,5 +744,15 @@ describe("the shipped auth-signed-in handler", () => {
     const limited = await call("POST", { authorization: `Bearer ${jwt}` });
     expect(limited.status).toBe(403);
     expect(await limited.json()).toMatchObject({ reason: "rate_limited" });
+  });
+
+  it("counts the allowance per session, so a stranger's sessions of the same account cannot spend the owner's (S12-086)", async () => {
+    const id = await gotrue.createUser("h3@example.com");
+    const mine = await gotrue.signIn(id, "otp", Date.now() - 2000);
+    const theirs = await gotrue.signIn(id, "password", Date.now() - 2000);
+    await call("POST", { authorization: `Bearer ${theirs.jwt}` });
+    await call("POST", { authorization: `Bearer ${mine.jwt}` });
+    expect(rateKeys).toEqual([`session:${theirs.sessionId}`, `session:${mine.sessionId}`]);
+    expect(rateKeys.some((k) => k.startsWith("user:")), "the allowance is still the account's").toBe(false);
   });
 });
