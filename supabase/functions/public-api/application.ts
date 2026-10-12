@@ -81,7 +81,7 @@ export type V1Form = {
   questions: SelfApplyQuestion[];
   documents: VendorForm["documents"];
   alsoOnForm: string[];
-  reason?: "no-reader" | "no-form-read";
+  reason?: "no-reader" | "no-form-read" | "no-questions-found";
   note?: string;
 };
 
@@ -105,6 +105,18 @@ export function formBlock(read: FormRead): V1Form | null {
         alsoOnForm: read.form.alsoOnForm,
       };
     case "absent":
+      // A Breezy or Pinpoint apply page that answered with no question the
+      // reader found: the page exists, so the note says it was read.
+      if (read.pageRead) {
+        return {
+          source: "not-published",
+          vendor: read.vendor,
+          readAt: read.readAt,
+          questions: [], documents: [{ name: "Resume / CV", required: false }], alsoOnForm: [],
+          reason: "no-questions-found",
+          note: "The employer's application page was read and found no questions beyond the person's details and CV, or they could not be read. Check the form at apply_url before applying; the person attaches their CV there.",
+        };
+      }
       return {
         source: "not-published",
         vendor: read.vendor,

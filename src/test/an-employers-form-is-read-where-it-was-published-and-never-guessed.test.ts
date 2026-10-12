@@ -204,3 +204,57 @@ describe("the module stays light", () => {
     expect(src).not.toMatch(/JOB_SOURCES/);
   });
 });
+
+/**
+ * A Breezy or Pinpoint apply page that answers 200 with no screening
+ * questions was answered as if the hiring system published no form ("does
+ * not publish its application form where we can read it"), and the CV dropped
+ * out of the documents. The review of 9fe3bc0d saw it on about half the Breezy
+ * postings it sampled (breezy:mktg:a9bbdb4bcf25-brand-ambassador: 21,863
+ * bytes, no questions). It still fails closed (no empty form), but says the
+ * page was read, and names the CV to attach; the cache keeps the distinction.
+ */
+describe("an apply page read with no questions on it is not 'no published form'", () => {
+  const PAGE = "<html><body><h1>Brand Ambassador</h1><form><input name='name'><input type='file' name='resume'></form></body></html>";
+
+  it("Breezy and Pinpoint answer absent with pageRead, and the cache remembers it", async () => {
+    for (const [id, url] of [
+      ["breezy:mktg:a9bbdb4bcf25-brand-ambassador", "https://mktg.breezy.hr/p/a9bbdb4bcf25-brand-ambassador"],
+      ["pinpoint:dnata:2", "https://dnata.pinpointhq.com/en/postings/2"],
+    ] as const) {
+      const { cache, puts } = memoryCache();
+      // The memory cache stamps its rows with the wall clock, so this reads by it too.
+      const r = await readApplicationForm(ref(id, url), { fetch: fetchFrom(() => new Response(PAGE, { status: 200 })).f, cache, now: Date.now });
+      expect(r, id).toMatchObject({ kind: "absent", pageRead: true });
+      expect(puts[0], id).toMatchObject({ ok: false, form: { pageRead: true } });
+      const again = await readApplicationForm(ref(id, url), { fetch: fetchFrom(() => { throw new Error("no fetch on a fresh row"); }).f, cache, now: Date.now });
+      expect(again, id).toMatchObject({ kind: "absent", pageRead: true, cached: true });
+    }
+  });
+
+  it("a 404 apply page, or an off-domain URL, is plain absent, as before", async () => {
+    const gone = await readApplicationForm(ref("breezy:mktg:x", "https://mktg.breezy.hr/p/x"), { fetch: fetchFrom(() => new Response("", { status: 404 })).f, now: () => NOW });
+    expect(gone.kind).toBe("absent");
+    expect((gone as { pageRead?: boolean }).pageRead).toBeUndefined();
+  });
+
+  it("apply_myself says the page was read and names the CV, instead of saying no form is published", async () => {
+    const { applyMyselfAnswer } = await import("../../supabase/functions/agent-mcp/apply-myself.ts");
+    const posting = { id: "breezy:mktg:a9bbdb4bcf25-brand-ambassador", title: "Brand Ambassador", company: "MKTG", location: null, pay: null, postedAt: null, applyUrl: "https://mktg.breezy.hr/p/a9bbdb4bcf25-brand-ambassador", siteUrl: "https://resumebooster.work/jobs?job=breezy:mktg:a9bbdb4bcf25-brand-ambassador" };
+    const a = applyMyselfAnswer(posting, { kind: "absent", vendor: "breezy", readAt: "2026-10-12T10:00:00.000Z", cached: false, pageRead: true }, []);
+    expect(a.form.note).not.toMatch(/does not publish/);
+    expect(a.form.note).toMatch(/found no questions beyond your details and CV/);
+    expect(a.form.documents).toEqual([{ name: "Resume / CV", required: false }]);
+    expect(a.form.questions).toEqual([]);
+    const plain = applyMyselfAnswer(posting, { kind: "absent", vendor: "breezy", readAt: "2026-10-12T10:00:00.000Z", cached: false }, []);
+    expect(plain.form.note).toMatch(/does not publish/);
+  });
+
+  it("/v1 says the same, with its own reason", async () => {
+    const { formBlock } = await import("../../supabase/functions/public-api/application.ts");
+    const b = formBlock({ kind: "absent", vendor: "pinpoint", readAt: "2026-10-12T10:00:00.000Z", cached: false, pageRead: true })!;
+    expect(b.reason).toBe("no-questions-found");
+    expect(b.note).toMatch(/found no questions beyond the person's details and CV/);
+    expect(b.documents).toEqual([{ name: "Resume / CV", required: false }]);
+  });
+});

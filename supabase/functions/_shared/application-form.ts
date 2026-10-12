@@ -26,7 +26,11 @@
  *     fetched.
  *   - Invent. A payload that does not parse, or parses to nothing, is "no form
  *     could be read" -- never an empty form, which would tell a person the
- *     employer asks nothing.
+ *     employer asks nothing. A Breezy or Pinpoint apply page that answered
+ *     but carried no screening questions is still no form, marked pageRead:
+ *     the page was there, it showed nothing beyond the person's details and
+ *     CV (or nothing this reader could parse), which is not the same as a
+ *     hiring system that publishes no form at all.
  *
  * Reads go through a 24-hour cache (application_form_cache, 20261011100000)
  * when the caller hands one in: a fresh row is the answer, a stale or missing
@@ -69,7 +73,7 @@ export type VendorForm = {
 
 export type FormRead =
   | { kind: "read"; vendor: string; readAt: string; cached: boolean; form: VendorForm }
-  | { kind: "absent"; vendor: string; readAt: string; cached: boolean }
+  | { kind: "absent"; vendor: string; readAt: string; cached: boolean; pageRead?: true }
   | { kind: "no-reader"; vendor: string }
   | { kind: "withheld"; vendor: string }
   | { kind: "unreachable"; vendor: string };
@@ -80,7 +84,7 @@ export type PostingRef = { id: string; source: string; token: string; applyUrl: 
 export type FormCacheRow = { vendor: string; ok: boolean; form: unknown; read_at: string };
 export type FormCache = {
   get(postingId: string): Promise<FormCacheRow | null>;
-  put(postingId: string, vendor: string, ok: boolean, form: VendorForm | Record<string, never>): Promise<void>;
+  put(postingId: string, vendor: string, ok: boolean, form: VendorForm | { pageRead: true } | Record<string, never>): Promise<void>;
 };
 
 export type ReadOptions = {
@@ -237,7 +241,10 @@ function onVendorDomain(url: string, domain: string): boolean {
   }
 }
 
-async function readHtmlForm(o: ReadOptions, p: PostingRef, vendor: "breezy" | "pinpoint"): Promise<VendorForm | null> {
+/** An apply page that answered but carried no question this reader found. */
+const PAGE_WITHOUT_QUESTIONS = Symbol("page without questions");
+
+async function readHtmlForm(o: ReadOptions, p: PostingRef, vendor: "breezy" | "pinpoint"): Promise<VendorForm | null | typeof PAGE_WITHOUT_QUESTIONS> {
   const posting = String(p.applyUrl ?? "");
   const domain = vendor === "breezy" ? "breezy.hr" : "pinpointhq.com";
   if (!posting || !onVendorDomain(posting, domain)) return null;
@@ -247,14 +254,15 @@ async function readHtmlForm(o: ReadOptions, p: PostingRef, vendor: "breezy" | "p
   let html = "";
   try { html = await res.text(); } catch { return null; }
   const raw = vendor === "breezy" ? parseBreezyQuestions(html) : parsePinpointQuestions(html);
-  // Nothing found is equally consistent with a changed page: no form read.
+  // Nothing found is equally consistent with a changed page: no form read,
+  // but a page that was read.
   return finish(raw.map((q) => ({
     label: strip(q.label),
     required: q.required,
     type: q.type,
     ...(q.options ? { options: q.options } : {}),
     ...(q.hint ? { hint: strip(q.hint) } : {}),
-  })));
+  }))) ?? PAGE_WITHOUT_QUESTIONS;
 }
 
 /** The form a cached row holds, when it holds one in the shape this module writes. */
@@ -284,7 +292,10 @@ export async function readApplicationForm(p: PostingRef, o: ReadOptions): Promis
       if (row && row.vendor === vendor && age >= 0 && age < FORM_CACHE_MS) {
         const form = row.ok ? formOfRow(row) : null;
         if (row.ok && form) return { kind: "read", vendor, readAt: row.read_at, cached: true, form };
-        if (!row.ok) return { kind: "absent", vendor, readAt: row.read_at, cached: true };
+        if (!row.ok) {
+          const pageRead = (row.form as { pageRead?: unknown } | null)?.pageRead === true;
+          return { kind: "absent", vendor, readAt: row.read_at, cached: true, ...(pageRead ? { pageRead: true as const } : {}) };
+        }
       }
     } catch {
       // An unreadable cache is a slower answer, never a wrong one.
@@ -292,18 +303,22 @@ export async function readApplicationForm(p: PostingRef, o: ReadOptions): Promis
   }
 
   let form: VendorForm | null;
+  let pageRead = false;
   try {
-    form = vendor === "greenhouse" ? await readGreenhouse(o, p, ext)
+    const got = vendor === "greenhouse" ? await readGreenhouse(o, p, ext)
       : vendor === "ashby" ? await readAshby(o, p, ext)
       : vendor === "recruitee" ? await readRecruitee(o, p, ext)
       : await readHtmlForm(o, p, vendor as "breezy" | "pinpoint");
+    pageRead = got === PAGE_WITHOUT_QUESTIONS;
+    form = got === PAGE_WITHOUT_QUESTIONS ? null : got;
   } catch (e) {
     if (e instanceof Transient) return { kind: "unreachable", vendor };
     return { kind: "unreachable", vendor };
   }
   const readAt = new Date(now()).toISOString();
   if (o.cache) {
-    try { await o.cache.put(p.id, vendor, !!form, form ?? {}); } catch { /* the answer stands without the cache */ }
+    try { await o.cache.put(p.id, vendor, !!form, form ?? (pageRead ? { pageRead: true } : {})); } catch { /* the answer stands without the cache */ }
   }
-  return form ? { kind: "read", vendor, readAt, cached: false, form } : { kind: "absent", vendor, readAt, cached: false };
+  if (form) return { kind: "read", vendor, readAt, cached: false, form };
+  return { kind: "absent", vendor, readAt, cached: false, ...(pageRead ? { pageRead: true as const } : {}) };
 }

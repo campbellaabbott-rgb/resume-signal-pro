@@ -60,6 +60,13 @@ const NOTES: Record<Exclude<FormSource, "employer-published">, string> = {
     "The employer's hiring system did not answer just now. Try again later, or open applyUrl and read the form there.",
 };
 
+/** A Breezy or Pinpoint apply page that answered with no question this reader found. */
+const PAGE_READ_NOTE =
+  "We read the employer's application page and found no questions beyond your details and CV, or could not read them. Open applyUrl to check the form before you apply; attach your CV there.";
+
+/** What such a page still asks for: the CV, whose requirement the page did not show us. */
+const PAGE_READ_DOCUMENTS = [{ name: "Resume / CV", required: false }];
+
 /** What applying needs from the person on this hiring system, from the measured vendor table. */
 export function routeFor(vendor: string): ApplyMyselfAnswer["route"] {
   const fact = automationFor(vendor);
@@ -89,6 +96,7 @@ export function applyMyselfAnswer(posting: ApplyPosting, read: FormRead, posting
     };
   }
   const source: FormSource = read.kind === "withheld" ? "not-read-on-this-surface" : read.kind === "unreachable" ? "unreachable" : "not-published";
+  const pageRead = read.kind === "absent" && read.pageRead === true;
   return {
     ...base,
     form: {
@@ -96,9 +104,9 @@ export function applyMyselfAnswer(posting: ApplyPosting, read: FormRead, posting
       vendor,
       readAt: read.kind === "absent" ? read.readAt : null,
       questions: [],
-      documents: [],
+      documents: pageRead ? PAGE_READ_DOCUMENTS.map((d) => ({ ...d })) : [],
       alsoOnForm: [],
-      note: NOTES[source],
+      note: pageRead ? PAGE_READ_NOTE : NOTES[source],
     },
   };
 }
