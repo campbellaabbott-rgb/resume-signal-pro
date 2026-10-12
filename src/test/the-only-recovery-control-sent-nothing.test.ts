@@ -54,7 +54,7 @@ describe("the only recovery control sent nothing", () => {
     // which owns the behaviour. Here, only that the old spelling stays dead.
     expect(JOBS).toMatch(/\.filter\(\(c\) => \(railCounts \? railCount\(c\) !== 0 : c !== "other"\)\)/);
     expect(JOBS).toMatch(/return \(railCount\(b\) \?\? -1\) - \(railCount\(a\) \?\? -1\);/);
-    expect(JOBS).toMatch(/\{typeof n === "number" && <span className="opacity-70">\{fmtFacet\(n\)\}<\/span>\}/);
+    expect(JOBS).toMatch(/\{typeof n === "number" && <span className="text-subtle-foreground">\{fmtFacet\(n\)\}<\/span>\}/);
   });
 
   it("a parse rate limit is not reported as a bad file", () => {
