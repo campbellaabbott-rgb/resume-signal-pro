@@ -17,6 +17,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { ACCOUNT_SUBSCRIPTION_RPC, accountSubscription, normalizeEmail, packetIsFunded } from "../_shared/agent-entitlement.ts";
 import { HANDBACK_HOLD_MINUTES, retryClaimableAt } from "../_shared/apply-retry.ts";
 import { ownResumePath } from "../_shared/resume-path.ts";
+import { APPLY_AGENT_ON } from "../_shared/apply-agent-switch.ts";
 
 // 2026-10-05.1: a claim handed back unworked spends no attempt (L9-02); the
 // subscription is read by the ACCOUNT's address (1.07); the claim itself now
@@ -32,7 +33,13 @@ import { ownResumePath } from "../_shared/resume-path.ts";
 // 2026-10-09.24: the claimed packet carries the posting's own country, so the
 // worker answers "authorised to work in this country?" about the posting, and
 // refuses it when the country is not known (S11-060).
-const BUILD_VERSION = "2026-10-09.24";
+// 2026-10-11.13: SWITCHED OFF (wave 4, the apply pivot; APPLY_AGENT_ON in
+// _shared/apply-agent-switch.ts). A claim hands out nothing and takes no
+// lease, whichever host the worker runs on (Actions, a laptop, fly); a ping
+// records no heartbeat, so nothing reads the sender as alive; a peek says
+// there is nothing to run. release, uncertain, pending and wall still work,
+// so a packet a worker already held is recorded truthfully.
+const BUILD_VERSION = "2026-10-11.13";
 // Provable from outside with no secret: the preflight and every response carry it.
 const FN_BUILD = `apply-broker.${BUILD_VERSION}`;
 const LEASE_MINUTES = 10;
@@ -116,6 +123,9 @@ serve(async (req) => {
 
   try {
     if (action === "ping") {
+      // Switched off: no heartbeat, because a live heartbeat is what the
+      // account page reads as "a sender is up".
+      if (!APPLY_AGENT_ON) return json({ ok: true, build: BUILD_VERSION, switchedOff: true });
       const { error } = await client.rpc("agent_worker_ping", {
         p_worker: str(body.worker_id) || "unknown",
         p_version: str(body.version),
@@ -138,13 +148,19 @@ serve(async (req) => {
       const p = (data ?? {}) as { pending?: number; should_run?: boolean; oldest_wait_minutes?: number };
       return json({
         pending: Number(p.pending ?? 0),
-        shouldRun: p.should_run === true,
+        // Switched off, a claim hands out nothing, so there is never a reason to run.
+        shouldRun: APPLY_AGENT_ON && p.should_run === true,
         oldestWaitMinutes: Number(p.oldest_wait_minutes ?? 0),
         build: BUILD_VERSION,
+        ...(APPLY_AGENT_ON ? {} : { switchedOff: true }),
       });
     }
 
     if (action === "claim") {
+      // Switched off: an empty answer, which the worker reads as an empty
+      // queue and leaves. No lease is taken and no heartbeat recorded, so no
+      // packet's attempts are spent and nothing reads the sender as alive.
+      if (!APPLY_AGENT_ON) return json({ packet: null, switchedOff: true });
       const worker = str(body.worker_id) || "unknown";
       // Heartbeat on claim too: a worker that is polling is a worker that is up.
       await client.rpc("agent_worker_ping", {

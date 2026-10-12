@@ -32,6 +32,7 @@
  */
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+import { APPLY_AGENT_SWITCH_ON } from "./helpers/apply-agent-switch-on";
 import { TERMS_VERSION } from "@/config/terms";
 import { TERMS_VERSION as SERVER_TERMS_VERSION } from "../../supabase/functions/_shared/checkout-policy";
 import { SUBSCRIPTIONS } from "@/config/products";
@@ -95,8 +96,9 @@ beforeAll(async () => {
   handlers["create-product-checkout"] = await loadEdgeHandler("create-product-checkout", { ...SERVE, ...stripe, "https://esm.sh/@supabase/supabase-js@2.39.3": CLIENT });
   handlers["create-scan-pack-checkout"] = await loadEdgeHandler("create-scan-pack-checkout", { ...SERVE, ...stripe, "https://esm.sh/@supabase/supabase-js@2": CLIENT });
   handlers["create-subscription-checkout"] = await loadEdgeHandler("create-subscription-checkout", { ...SERVE, ...stripe, "https://esm.sh/@supabase/supabase-js@2.39.3": CLIENT });
-  handlers["create-agent-checkout"] = await loadEdgeHandler("create-agent-checkout", { ...SERVE, ...stripe, "https://esm.sh/@supabase/supabase-js@2.39.3": CLIENT });
-  handlers["create-pass-checkout"] = await loadEdgeHandler("create-pass-checkout", { ...stripe, "https://esm.sh/@supabase/supabase-js@2.45.0": CLIENT });
+  // The two retired agent checkouts, with their dormant purchase code switched on.
+  handlers["create-agent-checkout"] = await loadEdgeHandler("create-agent-checkout", { ...SERVE, ...stripe, "https://esm.sh/@supabase/supabase-js@2.39.3": CLIENT, ...APPLY_AGENT_SWITCH_ON });
+  handlers["create-pass-checkout"] = await loadEdgeHandler("create-pass-checkout", { ...stripe, "https://esm.sh/@supabase/supabase-js@2.45.0": CLIENT, ...APPLY_AGENT_SWITCH_ON });
 }, 240_000);
 
 beforeEach(() => {

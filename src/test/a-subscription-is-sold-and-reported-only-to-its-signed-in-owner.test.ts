@@ -27,6 +27,7 @@
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+import { APPLY_AGENT_SWITCH_ON } from "./helpers/apply-agent-switch-on";
 import { buildIsAtLeast } from "./helpers/fn-build";
 
 vi.setConfig({ testTimeout: 30_000, hookTimeout: 120_000 });
@@ -98,7 +99,9 @@ beforeAll(async () => {
   const g = globalThis as Record<string, unknown>;
   g.Deno = { env: { get: (k: string) => env[k] } };
   for (const fn of ["check-subscription", "create-subscription-checkout", "create-agent-checkout", "create-product-checkout"]) {
-    handlers[fn] = await loadEdgeHandler(fn, STUBS);
+    // The agent plan is retired; its dormant purchase code is what this
+    // proves, so the switch is stubbed on (only create-agent-checkout reads it).
+    handlers[fn] = await loadEdgeHandler(fn, { ...STUBS, ...APPLY_AGENT_SWITCH_ON });
   }
 }, 120_000);
 

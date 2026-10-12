@@ -34,13 +34,17 @@ import {
 import { passSessionSettled } from "../_shared/pass-settlement.ts";
 import { paymentRevocationState } from "../_shared/payment-revocation.ts";
 import { firstPassAlert } from "../_shared/owner-alert.ts";
+import { APPLY_AGENT_ON } from "../_shared/apply-agent-switch.ts";
 
 // Provable from outside without signing in: the preflight carries it. The
 // name and the date sit on separate lines on purpose: a guard reads every line
 // that names the product for a spelled pass number, and a build date's "10"
-// is not one.
+// is not one. 2026-10-11.13: the answer carries agentSwitchedOff while the
+// server-side apply agent is off (wave 4), so the page never reads a bought
+// pass's applications as something that will be sent; the read and the
+// success-page repair are unchanged.
 const FN_NAME = "agent-pass-status";
-const FN_BUILD = `${FN_NAME}.2026-10-09.2`;
+const FN_BUILD = `${FN_NAME}.2026-10-11.13`;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -266,6 +270,9 @@ Deno.serve(async (req) => {
         ? { live: true, prefix: key.key_prefix ?? null, createdAt: key.created_at ?? null }
         : { live: false },
       ...(repair ? { repair, repairTerminal: TERMINAL_REPAIRS.has(repair) } : {}),
+      // A pass bought earlier still reads, and still repairs, exactly as it
+      // did; this says that nothing will be prepared or sent with it.
+      ...(APPLY_AGENT_ON ? {} : { agentSwitchedOff: true }),
     });
   } catch (e) {
     console.error("[AGENT-PASS-STATUS] failed:", String((e as Error)?.message ?? e).slice(0, 200));

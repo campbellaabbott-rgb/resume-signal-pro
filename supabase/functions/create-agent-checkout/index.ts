@@ -35,7 +35,16 @@
 // the same Stripe read the double-billing guard makes). A read that fails
 // offers no trial.
 
-// deploy-stamp: 2026-10-09T18:00Z
+// NO LONGER SOLD (owner decision 2026-10-11, the apply pivot). While
+// AGENT_PRODUCTS_ON_SALE is off, every POST is answered 410 with the sentence
+// from _shared/apply-agent-retired.ts, BEFORE identity, the rate limiter or
+// Stripe: nobody is asked to sign in to be told it is gone, and nothing is
+// counted or charged. The purchase code below stays as it was, dormant, and
+// its tests run it with the switch stubbed on. A plan bought earlier keeps
+// reading as it did (agent-access, stripe-webhook and the portal are not
+// touched by this), and the owner honours or refunds it.
+
+// deploy-stamp: 2026-10-11T13:00Z
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
@@ -46,10 +55,13 @@ import { clientAddressOr } from "../_shared/client-address.ts";
 import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-start.ts";
 import { bearerOf } from "../_shared/service-caller.ts";
 import { checkoutLanguageOf, checkoutOrigin, euConsentAnswer, euConsentRefusal, policyMetadata, renewalTerms, sessionPolicy } from "../_shared/checkout-policy.ts";
+import { AGENT_PRODUCTS_ON_SALE } from "../_shared/apply-agent-switch.ts";
+import { retiredCheckoutAnswer } from "../_shared/apply-agent-retired.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-agent-checkout.2026-10-09.61";
+// 2026-10-11.13: retired; a POST is a 410 naming applying yourself (wave 4).
+const FN_BUILD = "create-agent-checkout.2026-10-11.13";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -63,6 +75,19 @@ const json = (body: unknown, status = 200) =>
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  // Retired: see the note above the imports. The body is read off a clone
+  // only for the page's language.
+  if (!AGENT_PRODUCTS_ON_SALE) {
+    const asked = await req.clone().json().catch(() => ({}));
+    const answer = retiredCheckoutAnswer("agent_plan", {
+      body: asked,
+      acceptLanguage: req.headers.get("accept-language"),
+      origin: checkoutOrigin(req.headers.get("origin"), (k: string) => Deno.env.get(k)),
+    });
+    console.log("[CREATE-AGENT-CHECKOUT] refused: the Agent plan is no longer sold");
+    return json(answer.body, answer.status);
+  }
 
   try {
     const supabase = createClient(

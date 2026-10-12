@@ -23,6 +23,7 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+import { APPLY_AGENT_SWITCH_ON } from "./helpers/apply-agent-switch-on";
 import { buildIsAtLeast } from "./helpers/fn-build";
 import { CHECKOUT_LANGUAGES, renewalTerms } from "../../supabase/functions/_shared/checkout-policy";
 import { SUBSCRIPTIONS } from "@/config/products";
@@ -70,7 +71,8 @@ beforeAll(async () => {
     "https://esm.sh/@supabase/supabase-js@2.39.3": "export function createClient(...a) { return globalThis.__langClient(...a); }",
   };
   handlers.pro = await loadEdgeHandler("create-subscription-checkout", stubs);
-  handlers.agent = await loadEdgeHandler("create-agent-checkout", stubs);
+  // The plan is retired; its dormant purchase code is what this proves.
+  handlers.agent = await loadEdgeHandler("create-agent-checkout", { ...stubs, ...APPLY_AGENT_SWITCH_ON });
 }, 240_000);
 
 beforeEach(() => {

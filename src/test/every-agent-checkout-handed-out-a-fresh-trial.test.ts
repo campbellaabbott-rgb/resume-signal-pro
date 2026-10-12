@@ -19,6 +19,7 @@
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+import { APPLY_AGENT_SWITCH_ON } from "./helpers/apply-agent-switch-on";
 import { SUBSCRIPTIONS } from "@/config/products";
 
 vi.setConfig({ testTimeout: 30_000, hookTimeout: 120_000 });
@@ -54,6 +55,8 @@ beforeAll(async () => {
     "https://deno.land/std@0.190.0/http/server.ts": "export function serve(h) { globalThis.__edgeHandler = h; }",
     "https://esm.sh/stripe@18.5.0": STRIPE_STUB,
     "https://esm.sh/@supabase/supabase-js@2.39.3": "export function createClient() { return globalThis.__trialClient; }",
+    // The plan is retired; its dormant purchase code is what this proves.
+    ...APPLY_AGENT_SWITCH_ON,
   });
 }, 120_000);
 
