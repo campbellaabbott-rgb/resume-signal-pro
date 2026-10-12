@@ -680,12 +680,37 @@ echo "== 7c. the writer's key names the variant: later funnel stages leave zero 
 R get_funnel_cohort_stats '{"p_cohort_dimension":"trafficSource","p_days_back":1}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j;try{j=JSON.parse(s)}catch{return console.log("FAIL  cohort reader non-JSON: "+s.slice(0,120))}if(!Array.isArray(j))return console.log("FAIL  cohort reader: "+JSON.stringify(j).slice(0,160));const sum=k=>j.reduce((a,r)=>a+Number(r[k]||0),0);const later=["upload_started","scan_started","results_viewed","product_clicked","checkout_started","purchase_completed"];const t={};for(const k of ["landing_view",...later])t[k]=sum(k);console.log("INFO  24h stages: "+JSON.stringify(t)+" (baseline 2026-09-27: landing 136,048/30d, every later stage 0)");const any=later.some(k=>t[k]>0);console.log((any?"PASS":"INFO")+"  a later stage is non-zero"+(any?"":" -- not yet: judge this a day after deploy, not on the hour"))})'
 
 echo "== 7d. the crawler reads the prices: /pricing and /agents carry the plan and pass figures =="
+# WAVE 4 retired the Agent plan ($99) and the Agent Pass ($29) (the apply
+# pivot, owner decision 2026-10-11). From agent-mcp 2026-10-11.1 on, those two
+# figures are judged as retired: absent is a PASS, and a bake still printing
+# them is INFO naming its owner (scripts/prerender-seo.mjs, company-profiles,
+# which wave 4 may not touch) until that bake moves. Pro's $45 is still sold
+# and still required.
+VD7D_MCP=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/agent-mcp" -H "apikey: $K" | tr -d '\r' | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//')
+VD7D_W4=0; build_ge agent-mcp "${VD7D_MCP:-}" "2026-10-11" "1" && VD7D_W4=1
+VD7D_GAP="a known gap until the bake owner (scripts/prerender-seo.mjs, company-profiles) removes it: docs/wave4/README.md, Left for other owners"
 PR=$(curl -s -m 30 -A "$UA" "$SITE/pricing")
-for T in 45 99 29; do N=$(printf '%s' "$PR" | grep -o "\$$T" | wc -l | tr -d ' '); [ "$N" -ge 5 ] && echo "PASS  /pricing carries \$$T x$N (want >= 5; baseline 0 for 45 and 99)" || echo "FAIL  /pricing carries \$$T x$N (want >= 5)"; done
+for T in 45 99 29; do N=$(printf '%s' "$PR" | grep -o "\$$T" | wc -l | tr -d ' ')
+  if [ "$VD7D_W4" = 1 ] && [ "$T" != 45 ]; then
+    if [ "$N" -eq 0 ]; then echo "PASS  /pricing carries no \$$T: the product wave 4 retired is not sold"; else echo "INFO  /pricing still carries \$$T x$N, a product wave 4 retired: $VD7D_GAP"; fi
+  else
+    [ "$N" -ge 5 ] && echo "PASS  /pricing carries \$$T x$N (want >= 5; baseline 0 for 45 and 99)" || echo "FAIL  /pricing carries \$$T x$N (want >= 5)"
+  fi
+done
 DESC=$(printf '%s' "$PR" | grep -o '<meta name="description" content="[^"]*"' | head -1)
-case "$DESC" in *"pass for your own agent."\") echo "PASS  /pricing description ends with the pass sentence";; *) echo "FAIL  /pricing description: ${DESC:0:200} (baseline: cut at 'purchases (\"')";; esac
+if [ "$VD7D_W4" = 1 ]; then
+  case "$DESC" in *"pass for your own agent."\") echo "INFO  /pricing description still ends with the retired pass sentence: $VD7D_GAP";; *) echo "PASS  /pricing description no longer offers the retired pass";; esac
+else
+  case "$DESC" in *"pass for your own agent."\") echo "PASS  /pricing description ends with the pass sentence";; *) echo "FAIL  /pricing description: ${DESC:0:200} (baseline: cut at 'purchases (\"')";; esac
+fi
 AG=$(curl -s -m 30 -A "$UA" "$SITE/agents")
-for T in 99 29; do N=$(printf '%s' "$AG" | grep -o "\$$T" | wc -l | tr -d ' '); [ "$N" -ge 5 ] && echo "PASS  /agents carries \$$T x$N (want >= 5; baseline 0)" || echo "FAIL  /agents carries \$$T x$N (want >= 5)"; done
+for T in 99 29; do N=$(printf '%s' "$AG" | grep -o "\$$T" | wc -l | tr -d ' ')
+  if [ "$VD7D_W4" = 1 ]; then
+    if [ "$N" -eq 0 ]; then echo "PASS  /agents carries no \$$T: the product wave 4 retired is not sold"; else echo "INFO  /agents still carries \$$T x$N, a product wave 4 retired: $VD7D_GAP"; fi
+  else
+    [ "$N" -ge 5 ] && echo "PASS  /agents carries \$$T x$N (want >= 5; baseline 0)" || echo "FAIL  /agents carries \$$T x$N (want >= 5)"
+  fi
+done
 
 echo "== 7e. the retired job sitemap is GONE, terminally (the ~733k-URL crawl trap) =="
 # .82's claim. Removing the robots.txt line on 2026-09-23 removed the sign; the

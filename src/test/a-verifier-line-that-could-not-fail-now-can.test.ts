@@ -46,12 +46,12 @@ return r?new Response(r.body??"",{status:r.status??200}):new Response("",{status
 `;
 
 /** Source one section in bash: node's fetch answers from `routes`, and gh/curl are fakes on PATH. */
-function runSection(file: string, opts: { routes?: Route[]; home?: Record<string, string>; gh?: string; rewriteTmp?: boolean } = {}) {
+function runSection(file: string, opts: { routes?: Route[]; home?: Record<string, string>; gh?: string; curl?: string; rewriteTmp?: boolean } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "vd-s11-"));
   dirs.push(dir);
   mkdirSync(join(dir, "bin"));
   mkdirSync(join(dir, "home"));
-  writeFileSync(join(dir, "bin", "curl"), "#!/bin/sh\nexit 0\n");
+  writeFileSync(join(dir, "bin", "curl"), opts.curl ?? "#!/bin/sh\nexit 0\n");
   chmodSync(join(dir, "bin", "curl"), 0o755);
   writeFileSync(join(dir, "bin", "gh"), opts.gh ?? "#!/bin/sh\nexit 1\n");
   chmodSync(join(dir, "bin", "gh"), 0o755);
@@ -309,5 +309,29 @@ describe("section 77 finds the phone menu in the chunk that renders the header, 
     const lines = runSection("77-wave3-board-data-ingest.sh", { routes: site77({ preload: ["Stray-dddddddd.js"], chunks: { "Stray-dddddddd.js": MENU } }) });
     expect(has(lines, "FAIL", /no chunk reachable from the entry renders the header \(header\.mainNavAriaLabel, after reading \d+ chunks\): the phone menu cannot be judged/), show(lines)).toBe(true);
     expect(menuLine(lines).some((l) => l.startsWith("PASS")), show(lines)).toBe(false);
+  });
+});
+
+// ── review of 9fe3bc0d: L1-08 judges the retired products as retired ────────
+/** A curl that answers agent-mcp's preflight with a build, and nothing else. */
+const curlServing = (build: string) => `#!/bin/sh\ncase "$*" in *agent-mcp*) printf 'HTTP/2 200\\r\\nx-fn-build: ${build}\\r\\n\\r\\n';; esac\nexit 0\n`;
+const homeWith = (prices: string[]) => HOME.replace("</head>", `<script type="application/ld+json">${JSON.stringify({ "@context": "https://schema.org", "@type": "Service", name: "AI apply agent", offers: prices.map((p) => ({ "@type": "Offer", price: p, priceCurrency: "USD" })) })}</script></head>`);
+const withHome = (home: string) => [route("/", home), ...site76().filter((r) => r.match !== `^${esc(SITE + "/")}$`)];
+
+describe("L1-08: once wave 4 serves, the homepage Service is judged as retired", () => {
+  it("a Service still offering $99 and $29 is INFO naming the bake's owner, never PASS", () => {
+    const lines = runSection("76-wave3-seo-content.sh", { routes: withHome(homeWith(["99", "29"])), curl: curlServing("agent-mcp.2026-10-11.2") });
+    expect(has(lines, "INFO", /homepage Service offers still carry \["99","29"\], products wave 4 retired: .*prerender-seo\.mjs, company-profiles/), show(lines)).toBe(true);
+    expect(lines.some((l) => l.startsWith("PASS") && /\$99 and \$29 \(L1-08\)/.test(l)), show(lines)).toBe(false);
+  });
+
+  it("a Service offering neither PASSes", () => {
+    const lines = runSection("76-wave3-seo-content.sh", { routes: withHome(homeWith([])), curl: curlServing("agent-mcp.2026-10-11.2") });
+    expect(has(lines, "PASS", /homepage Service offers no retired product/), show(lines)).toBe(true);
+  });
+
+  it("before the wave-4 build the wave-3 requirement holds: no prices is a FAIL", () => {
+    const lines = runSection("76-wave3-seo-content.sh", { routes: withHome(homeWith([])), curl: curlServing("agent-mcp.2026-10-09.71") });
+    expect(has(lines, "FAIL", /homepage Service offers carry \[\] \(L1-08/), show(lines)).toBe(true);
   });
 });

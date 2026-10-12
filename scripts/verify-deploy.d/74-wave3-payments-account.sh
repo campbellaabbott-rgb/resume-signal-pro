@@ -102,6 +102,13 @@ case "$LC74" in
 esac
 echo "INFO  20261009133000 (a constraint, not readable as anon): SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = 'subscription_notices_kind_check'; -- want kind IN ('confirmation','trial_ending','withdrawal')"
 
+# WAVE 4 retired the Agent plan, the Agent Pass and the Apply Assistant (the
+# apply pivot, owner decision 2026-10-11). From agent-mcp 2026-10-11.1 on,
+# the lines below that describe a retired product are judged by what
+# replaced it, so a correct wave-4 deploy does not read FAIL here.
+VD74_MCP=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/agent-mcp" -H "apikey: $K" | tr -d '\r' | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//')
+VD74_W4=0; build_ge agent-mcp "${VD74_MCP:-}" "2026-10-11" "1" && VD74_W4=1
+
 # The copy the browser loads (the English strings chunk the main bundle names).
 EN74=""
 MAIN74=$(curl -s -m 30 "$SITE/" | grep -o '/assets/index-[^"]*\.js' | head -1)
@@ -116,7 +123,7 @@ else
   for PAIR in "By continuing you agree to the|every buy and sign-up button names the Terms (item 12)" \
               "renewing automatically until you cancel|the Pro button names its renewal (item 11)" \
               "First-time subscribers get|the agent button names its trial and how not to be charged (item 11)" \
-              "turns into the paid plan when it ends|the FAQ no longer says nothing upgrades a trial (item 11)" \
+              "$( [ "$VD74_W4" = 1 ] && echo "there is one optional monthly plan|the FAQ names the one plan left and says it renews until cancelled (wave 4 retired the Morning Queue trial)" || echo "turns into the paid plan when it ends|the FAQ no longer says nothing upgrades a trial (item 11)" )" \
               "Agent Passes bought on this account|Purchases lists the pass and says what shows up (L6-12)" \
               "Withdraw within|the withdrawal panel's copy ships (renders only with the switch on)" \
               "billed to an address in the EU, the EEA or the UK|a plan billed elsewhere is told the withdrawal is not its right (review fix)" \
@@ -130,12 +137,20 @@ else
     if printf '%s' "$EN74" | grep -qF "$S"; then echo "PASS  English strings carry \"$S\": $WHY"
     else echo "FAIL  English strings lack \"$S\": $WHY -- the frontend with this wave is not published"; fi
   done
+  if [ "$VD74_W4" = 1 ]; then
+    if printf '%s' "$EN74" | grep -qF "turns into the paid plan"; then echo "FAIL  English strings still say a trial turns into the paid plan: the Morning Queue trial wave 4 retired"
+    else echo "PASS  English strings no longer say a trial turns into the paid plan (wave 4 retired the Morning Queue trial)"; fi
+  fi
 fi
 
 # The page a crawler reads for /pricing (Googlebot UA, read-only GET): the
 # prerender bakes the FAQ's subscription answer from en.json.
 PR74=$(curl -s -m 30 -A "$UA" "$SITE/pricing")
-if printf '%s' "$PR74" | grep -qF "turns into the paid plan"; then echo "PASS  /pricing as served to a crawler says the plans renew and the trial becomes the paid plan"
+if [ "$VD74_W4" = 1 ]; then
+  if printf '%s' "$PR74" | grep -qF "turns into the paid plan"; then echo "FAIL  /pricing as served to a crawler still says a trial turns into the paid plan: the Morning Queue trial wave 4 retired (the prerender with wave 4 is not published)"
+  elif printf '%s' "$PR74" | grep -qF "there is one optional monthly plan"; then echo "PASS  /pricing as served to a crawler names the one plan left and says it renews until cancelled (wave 4)"
+  else echo "FAIL  /pricing as served to a crawler carries neither FAQ sentence ($(printf '%s' "$PR74" | wc -c | tr -d ' ') bytes)"; fi
+elif printf '%s' "$PR74" | grep -qF "turns into the paid plan"; then echo "PASS  /pricing as served to a crawler says the plans renew and the trial becomes the paid plan"
 elif printf '%s' "$PR74" | grep -qF "nothing upgrades you automatically"; then echo "FAIL  /pricing as served to a crawler still says nothing upgrades you automatically (the prerender with this wave is not published)"
 else echo "FAIL  /pricing as served to a crawler carries neither FAQ sentence ($(printf '%s' "$PR74" | wc -c | tr -d ' ') bytes)"; fi
 

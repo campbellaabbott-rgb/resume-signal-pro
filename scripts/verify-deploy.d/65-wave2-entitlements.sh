@@ -69,6 +69,13 @@ case "$PR65" in
   *) echo "FAIL  payment_revocations as anon -> ${PR65:0:160}";;
 esac
 
+# WAVE 4 retired the Agent plan, the Agent Pass and the Apply Assistant (the
+# apply pivot, owner decision 2026-10-11). From agent-mcp 2026-10-11.1 on,
+# the lines below that describe a retired product are judged by what
+# replaced it, so a correct wave-4 deploy does not read FAIL here.
+VD65_MCP=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/agent-mcp" -H "apikey: $K" | tr -d '\r' | grep -i '^x-fn-build:' | sed -E 's/^[^:]+: *//')
+VD65_W4=0; build_ge agent-mcp "${VD65_MCP:-}" "2026-10-11" "1" && VD65_W4=1
+
 # The copy the browser loads (the English strings chunk the main bundle names).
 EN65=""
 MAIN65=$(curl -s -m 30 "$SITE/" | grep -o '/assets/index-[^"]*\.js' | head -1)
@@ -84,7 +91,7 @@ else
               "first-time subscribers|the board names the trial for first-time subscribers only (L6-29)" \
               "first-time subscribers start with|the agent paywall names the trial for first-time subscribers only (L6-29)" \
               "welcomeTitleTrial|the welcome banner names a trial only when the checkout gave one (L6-29)" \
-              "repairRefunded|the pass page says a refunded payment opens no pass (L6-18)" \
+              "$( [ "$VD65_W4" = 1 ] && echo "Bought one before? We will refund it or honour it|the retired pass page tells a past buyer they are refunded or honoured (wave 4 replaced the pass page and its repair sentence)" || echo "repairRefunded|the pass page says a refunded payment opens no pass (L6-18)" )" \
               "Your trial is on|the Pro card tells a trial what is on now (L6-08)"; do
     S=${PAIR%%|*}; WHY=${PAIR#*|}
     if printf '%s' "$EN65" | grep -qF "$S"; then echo "PASS  English strings carry \"$S\": $WHY"
@@ -94,7 +101,12 @@ fi
 
 # The page a crawler reads for /agent (Googlebot UA, read-only GET).
 AG65=$(curl -s -m 30 -A "$UA" "$SITE/agent")
-if printf '%s' "$AG65" | grep -qF "days free for first-time subscribers"; then echo "PASS  /agent as served to a crawler names the trial for first-time subscribers (L6-29)"
+if [ "$VD65_W4" = 1 ]; then
+  # The plan and its trial are retired: a trial named there is the bake
+  # (scripts/prerender-seo.mjs, company-profiles) still selling it.
+  if printf '%s' "$AG65" | grep -qE "[0-9]+ days free"; then echo "INFO  /agent as served to a crawler still names the retired plan's free days: a known gap until the bake owner (scripts/prerender-seo.mjs, company-profiles) removes it (docs/wave4/README.md)"
+  else echo "PASS  /agent as served to a crawler offers no trial of the retired plan"; fi
+elif printf '%s' "$AG65" | grep -qF "days free for first-time subscribers"; then echo "PASS  /agent as served to a crawler names the trial for first-time subscribers (L6-29)"
 elif printf '%s' "$AG65" | grep -qE "[0-9]+ days free"; then echo "FAIL  /agent as served to a crawler still promises free days to everyone (the prerender with this wave is not published)"
 else echo "FAIL  /agent as served to a crawler names no trial at all ($(printf '%s' "$AG65" | wc -c | tr -d ' ') bytes)"; fi
 
