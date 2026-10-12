@@ -115,7 +115,7 @@ import { clearOversize, heldOversize, loadOversizeEntries, noteOversize, oversiz
 import { startGate } from "./start-gate.ts";
 import { addLightReread, lightReread, lightRereadStats, type LightRereadStats } from "./light-reread.ts";
 import { selectDeepLane } from "./deep-lane.ts";
-import { nameSyncTarget, overrideFor, overrideTable } from "./name-sync.ts";
+import { nameSyncQueue, nameSyncTarget, overrideFor, overrideTable, type NameSyncProgress } from "./name-sync.ts";
 import { foldApostrophes, foldTypedText, sameButApostrophes } from "./typed-text.ts";
 import { carriedCountsAt } from "./facet-carry.ts";
 
@@ -5671,12 +5671,12 @@ async function runPassEndStep(client: SupabaseClient, step: PassEndStep, started
   } catch (e) {
     r = { ok: false, detail: `threw: ${String((e as Error)?.message ?? e).slice(0, 160)}` };
   }
-  const hops = step === "sweep" ? (begun.prior.hops ?? 0) + 1 : undefined;
+  const hops = step === "sweep" || step === "names" ? (begun.prior.hops ?? 0) + 1 : undefined;
   const next = nextPassEndStep(step, hops !== undefined && r.stop !== undefined ? { stop: r.stop, hops } : undefined);
   const doneAt = new Date().toISOString();
   await passEndReceipt(
     client, startedAt, step,
-    { doneAt, ms: Date.now() - t0, ok: r.ok, detail: r.detail.slice(0, 200), ...(hops !== undefined ? { hops, dropped: (begun.prior.dropped ?? 0) + (r.swept ?? 0) } : {}) },
+    { doneAt, ms: Date.now() - t0, ok: r.ok, detail: r.detail.slice(0, 200), ...(hops !== undefined ? { hops, ...(step === "sweep" ? { dropped: (begun.prior.dropped ?? 0) + (r.swept ?? 0) } : {}) } : {}) },
     next ? { next, nextKickedAt: doneAt } : { next: null, refreshedAt: ctx.refreshedAt, doneAt, ms: Date.now() - Date.parse(startedAt) },
   );
   console.log(`[JOB-BOARD] pass-end ${step}: ${r.detail}${next ? ` -> ${next}` : " (tail finished)"}`);
@@ -6406,7 +6406,7 @@ async function passEndCapacity(client: SupabaseClient): Promise<{ ok: boolean; d
 }
 
 /** Step "names": the name-sync lane, a board at a time on this step's clock. */
-async function passEndNames(client: SupabaseClient, sliceWallStart: number): Promise<{ ok: boolean; detail: string }> {
+async function passEndNames(client: SupabaseClient, sliceWallStart: number): Promise<{ ok: boolean; detail: string; stop?: string }> {
   // One-time name sync: ~48 rung-3 census names shipped HTML-escaped
   // ("Bob's Main Street Auto &amp; Towing") and were decoded in the catalog —
   // but the refresh is INSERT-ONLY by design (existing rows are never
@@ -6420,89 +6420,105 @@ async function passEndNames(client: SupabaseClient, sliceWallStart: number): Pro
   // transaction. The lane does it here instead, a board at a time, by the
   // trigger's own precedence over company_name_overrides (name-sync.ts),
   // into the closure rollup as well (S11-135). It runs LAST in the tail and
-  // stops taking boards at NAME_SYNC_UNTIL_MS from the hop's start; a board
-  // it did not reach waits, unstamped, for the next pass, and the boards it
-  // already renamed cost one cheap read each then.
+  // stops taking boards at NAME_SYNC_UNTIL_MS from the hop's start.
+  //
+  // S12-015, S12-084: A CURSOR, AND NO GREEN RECEIPT WHILE BOARDS WAIT. The
+  // lane walked every token from the first each pass, so it re-read 444 boards
+  // it had already renamed and never reached the m's (Loblaw's tenant still
+  // read "Myview" on 7,312 rows), and it answered ok:true with 90 s a pass.
+  // name_sync_progress keeps the last token it finished and the tokens that
+  // failed; a hop resumes after the one and retries the others first. While a
+  // board waits the step answers ok:false with stop "clock" and runs again
+  // (pass-end.ts PASS_END_NAME_HOPS), and the receipt says how far it got.
   const { data: nsVer } = await client.from("job_board_meta").select("v").eq("k", "name_sync_version").maybeSingle();
   if ((nsVer?.v as { version?: number } | null)?.version !== NAME_SYNC_VERSION) {
-    try {
-      const { data: ovRows, error: ovErr } = await client.from("company_name_overrides").select("slug, display_name");
-      if (ovErr) throw new Error(`company_name_overrides unreadable: ${ovErr.message}`);
-      const overrides = overrideTable(ovRows as Array<{ slug?: unknown; display_name?: unknown }> | null);
-      const tokens = new Set<string>();
-      for (const pat of ["%&amp;%", "%&#039;%"]) {
-        const { data: escRows } = await client.from("job_board_postings").select("company_token").like("company", pat).limit(1000);
-        for (const r of escRows ?? []) tokens.add(r.company_token as string);
-      }
-      // Boards whose catalog display name was CORRECTED rather than merely
-      // escaped. Same insert-only problem, same cure: stored rows keep the
-      // old name forever unless something rewrites them, so a rename in
-      // sources.ts is invisible on the site without this sweep.
-      for (const tk of RENAMED_TOKENS) tokens.add(tk);
-      for (const s of JOB_SOURCES) if (overrideFor(s.token, overrides) !== null) tokens.add(s.token);
-      const nameSyncUntil = sliceWallStart + NAME_SYNC_UNTIL_MS;
-      // Rationale: docs/job-board-index-notes.md#n165-fixed
-      let fixed = 0, failed = 0, already = 0, waiting = 0;
-      for (const tk of [...tokens].sort()) {
-        // Each board on the token, by its own vendor: a twin never takes the
-        // other vendor's name (n417).
-        for (const src of JOB_SOURCES.filter((s) => s.token === tk)) {
-          if (Date.now() >= nameSyncUntil) { waiting++; continue; }
-          const target = nameSyncTarget(src, overrides);
-          // (a) SKIP BOARDS ALREADY CORRECT. Makes every retry cheaper than the
-          //     last, so successive passes get further instead of re-doing the
-          //     same expensive updates and dying in the same place. The trigger
-          //     renames a posting on every write, so the postings of a board
-          //     that was re-read can be right while its closures are not: both
-          //     are read.
-          const { data: stale } = await client.from("job_board_postings")
-            .select("company_token").eq("company_token", tk).eq("source", src.source).neq("company", target).limit(1);
-          const { data: staleClosed } = await client.from("job_board_closures")
-            .select("company_token").eq("company_token", tk).eq("source", src.source).neq("company", target).limit(1);
-          if (!stale?.length && !staleClosed?.length) { already++; continue; }
-          // (b) NARROW THE UPDATE to rows that actually differ. The old
-          //     statement rewrote every row for the token including ones already
-          //     carrying the right name, which is what made the big boards time
-          //     out in the first place.
-          const { error: e1 } = await client.from("job_board_postings")
-            .update({ company: target }).eq("company_token", tk).eq("source", src.source).neq("company", target);
-          const { error: e2 } = await client.from("job_board_closures")
-            .update({ company: target }).eq("company_token", tk).eq("source", src.source).neq("company", target);
-          // The snapshots and the closure rollup are keyed by token alone, so
-          // a token another vendor shares keeps what its rows already say.
-          let e3: { message?: string } | null = null;
-          let e4: { message?: string } | null = null;
-          if (!SHARED_TOKENS.has(tk)) {
-            ({ error: e3 } = await client.from("job_board_company_snapshots")
-              .update({ company: target }).eq("company_token", tk).neq("company", target));
-            ({ error: e4 } = await client.from("job_board_closure_rollup")
-              .update({ company: target }).eq("company_token", tk).neq("company", target));
-          }
-          if (e1 || e2 || e3 || e4) {
-            failed++;
-            console.warn(`[JOB-BOARD] name sync: ${src.source}:${tk} failed:`, (e1 ?? e2 ?? e3 ?? e4)?.message?.slice(0, 120));
-          } else fixed++;
-        }
-      }
-      // (c) STAMP ONLY ON A CLEAN RUN. Leaving it unstamped costs one more
-      //     pass; stamping over failures costs the rename permanently. A run
-      //     the clock stopped is not clean either.
-      if (waiting > 0) {
-        console.log(`[JOB-BOARD] name sync v${NAME_SYNC_VERSION} paused on its clock: ${fixed} renamed, ${failed} failed, ${already} already correct, ${waiting} board(s) wait for the next pass`);
-      } else if (failed === 0) {
-        await client.from("job_board_meta").upsert(
-          { k: "name_sync_version", v: { version: NAME_SYNC_VERSION, fixed, already, sweptAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
-          { onConflict: "k" },
-        );
-        console.log(`[JOB-BOARD] name sync v${NAME_SYNC_VERSION} complete: ${fixed} renamed, ${already} already correct`);
-      } else {
-        console.warn(`[JOB-BOARD] name sync v${NAME_SYNC_VERSION} INCOMPLETE: ${fixed} renamed, ${failed} failed, ${already} already correct — version left unstamped so the next pass resumes`);
-      }
-    } catch (e) {
-      console.warn("[JOB-BOARD] name sync failed (retries next pass):", String(e).slice(0, 150));
+  try {
+    const { data: ovRows, error: ovErr } = await client.from("company_name_overrides").select("slug, display_name");
+    if (ovErr) throw new Error(`company_name_overrides unreadable: ${ovErr.message}`);
+    const overrides = overrideTable(ovRows as Array<{ slug?: unknown; display_name?: unknown }> | null);
+    const tokens = new Set<string>();
+    for (const pat of ["%&amp;%", "%&#039;%"]) {
+      const { data: escRows } = await client.from("job_board_postings").select("company_token").like("company", pat).limit(1000);
+      for (const r of escRows ?? []) tokens.add(r.company_token as string);
     }
+    // Boards whose catalog display name was CORRECTED rather than merely
+    // escaped. Same insert-only problem, same cure: stored rows keep the
+    // old name forever unless something rewrites them, so a rename in
+    // sources.ts is invisible on the site without this sweep.
+    for (const tk of RENAMED_TOKENS) tokens.add(tk);
+    for (const s of JOB_SOURCES) if (overrideFor(s.token, overrides) !== null) tokens.add(s.token);
+    const { data: progRow } = await client.from("job_board_meta").select("v").eq("k", "name_sync_progress").maybeSingle();
+    const prior = (progRow?.v ?? null) as NameSyncProgress | null;
+    const queue = nameSyncQueue([...tokens], prior, NAME_SYNC_VERSION);
+    const nameSyncUntil = sliceWallStart + NAME_SYNC_UNTIL_MS;
+    // Rationale: docs/job-board-index-notes.md#n165-fixed
+    let fixed = 0, failed = 0, already = 0, waiting = 0;
+    const failedTokens: string[] = [];
+    let after = queue.resumeAfter;
+    for (const tk of queue.tokens) {
+      if (Date.now() >= nameSyncUntil) { waiting += JOB_SOURCES.filter((s) => s.token === tk).length || 1; continue; }
+      let tokenFailed = false;
+      // Each board on the token, by its own vendor: a twin never takes the
+      // other vendor's name (n417).
+      for (const src of JOB_SOURCES.filter((s) => s.token === tk)) {
+        const target = nameSyncTarget(src, overrides);
+        // (a) SKIP BOARDS ALREADY CORRECT. The trigger renames a posting on
+        //     every write, so the postings of a board that was re-read can be
+        //     right while its closures are not: both are read.
+        const { data: stale } = await client.from("job_board_postings")
+          .select("company_token").eq("company_token", tk).eq("source", src.source).neq("company", target).limit(1);
+        const { data: staleClosed } = await client.from("job_board_closures")
+          .select("company_token").eq("company_token", tk).eq("source", src.source).neq("company", target).limit(1);
+        if (!stale?.length && !staleClosed?.length) { already++; continue; }
+        // (b) NARROW THE UPDATE to rows that actually differ.
+        const { error: e1 } = await client.from("job_board_postings")
+          .update({ company: target }).eq("company_token", tk).eq("source", src.source).neq("company", target);
+        const { error: e2 } = await client.from("job_board_closures")
+          .update({ company: target }).eq("company_token", tk).eq("source", src.source).neq("company", target);
+        // The snapshots and the closure rollup are keyed by token alone, so
+        // a token another vendor shares keeps what its rows already say.
+        let e3: { message?: string } | null = null;
+        let e4: { message?: string } | null = null;
+        if (!SHARED_TOKENS.has(tk)) {
+          ({ error: e3 } = await client.from("job_board_company_snapshots")
+            .update({ company: target }).eq("company_token", tk).neq("company", target));
+          ({ error: e4 } = await client.from("job_board_closure_rollup")
+            .update({ company: target }).eq("company_token", tk).neq("company", target));
+        }
+        if (e1 || e2 || e3 || e4) {
+          failed++;
+          tokenFailed = true;
+          console.warn(`[JOB-BOARD] name sync: ${src.source}:${tk} failed:`, (e1 ?? e2 ?? e3 ?? e4)?.message?.slice(0, 120));
+        } else fixed++;
+      }
+      if (tokenFailed) failedTokens.push(tk);
+      if (!queue.retry.has(tk) && tk > after) after = tk;
+    }
+    const doneAt = new Date().toISOString();
+    // (c) STAMP ONLY ON A CLEAN WALK. Leaving it unstamped costs one more hop;
+    //     stamping over failures costs the rename permanently. A walk the clock
+    //     stopped is not clean either: it keeps its place and runs again.
+    if (waiting > 0 || failed > 0) {
+      const progress: NameSyncProgress = { version: NAME_SYNC_VERSION, after, retry: failedTokens.slice(0, 200), at: doneAt };
+      await client.from("job_board_meta").upsert({ k: "name_sync_progress", v: progress, updated_at: doneAt }, { onConflict: "k" });
+      const detail = `name sync v${NAME_SYNC_VERSION}: ${fixed} renamed, ${already} already correct, ${failed} failed, ${waiting} waiting (resumes after ${after || "the first board"})`;
+      console.log(`[JOB-BOARD] ${detail}`);
+      return { ok: false, detail, stop: waiting > 0 ? "clock" : "failed" };
+    } else if (failed === 0) {
+      await client.from("job_board_meta").upsert(
+        { k: "name_sync_version", v: { version: NAME_SYNC_VERSION, fixed, already, sweptAt: doneAt }, updated_at: doneAt },
+        { onConflict: "k" },
+      );
+      await client.from("job_board_meta").delete().eq("k", "name_sync_progress");
+      console.log(`[JOB-BOARD] name sync v${NAME_SYNC_VERSION} complete: ${fixed} renamed, ${already} already correct`);
+      return { ok: true, detail: `name sync v${NAME_SYNC_VERSION} complete: ${fixed} renamed, ${already} already correct`, stop: "done" };
+    }
+  } catch (e) {
+    console.warn("[JOB-BOARD] name sync failed (retries next pass):", String(e).slice(0, 150));
+    return { ok: false, detail: `name sync failed: ${String((e as Error)?.message ?? e).slice(0, 120)}`, stop: "error" };
   }
-  return { ok: true, detail: "name sync checked" };
+  }
+  return { ok: true, detail: `name sync v${NAME_SYNC_VERSION} done`, stop: "done" };
 }
 
 // Rationale: docs/job-board-index-notes.md#n167-verify-grace-ms

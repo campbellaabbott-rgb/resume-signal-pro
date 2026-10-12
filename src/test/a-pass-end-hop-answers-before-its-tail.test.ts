@@ -6,6 +6,7 @@ import {
   nextPassEndStep, PASS_END_RETRIES, PASS_END_STALL_MS, PASS_END_STEPS, PASS_END_SWEEP_HOPS,
   stalledPassEndStep, withStepReceipt, type PassEndRow,
 } from "../../supabase/functions/job-board/pass-end";
+import { nameSyncQueue } from "../../supabase/functions/job-board/name-sync";
 
 /**
  * S11-001: THE PASS-END TAIL DIED, FIRST AT THE GATEWAY, THEN IN THE BACKGROUND.
@@ -205,6 +206,7 @@ function world(opts: { aged?: number; now?: () => number } = {}) {
     overrideTable: () => new Map(),
     overrideFor: () => null,
     nameSyncTarget: (s: { name: string }) => s.name,
+    nameSyncQueue,
     withStepReceipt,
     nextPassEndStep,
     PASS_END_STEPS,

@@ -22,6 +22,13 @@ export type PassEndStep = typeof PASS_END_STEPS[number];
 
 /** Freshness-sweep hops a pass may take, each on its own clock and cap. */
 export const PASS_END_SWEEP_HOPS = 3;
+/**
+ * Name-sync hops a pass may take (S12-084): a names step its clock stopped
+ * with boards waiting runs again, each hop on its own NAME_SYNC_UNTIL_MS,
+ * resuming after the last board it finished. Four hops of 90 s keep the tail
+ * inside the heartbeat's 30 minutes.
+ */
+export const PASS_END_NAME_HOPS = 4;
 /** A step neither started nor finished this long after its kick is re-kicked. */
 export const PASS_END_STALL_MS = 10 * 60_000;
 /** Re-kicks per step per pass. */
@@ -38,9 +45,10 @@ export type PassEndRow = {
 
 export const isPassEndStep = (s: unknown): s is PassEndStep => (PASS_END_STEPS as readonly unknown[]).includes(s);
 
-/** The step after `s`, or "sweep" again while its clock keeps stopping it and hops remain; null after the last. */
+/** The step after `s`, or "sweep" / "names" again while its clock keeps stopping it and hops remain; null after the last. */
 export function nextPassEndStep(s: PassEndStep, sweep?: { stop: string; hops: number }): PassEndStep | null {
   if (s === "sweep" && sweep && sweep.stop === "clock" && sweep.hops < PASS_END_SWEEP_HOPS) return "sweep";
+  if (s === "names" && sweep && sweep.stop === "clock" && sweep.hops < PASS_END_NAME_HOPS) return "names";
   return PASS_END_STEPS[PASS_END_STEPS.indexOf(s) + 1] ?? null;
 }
 
