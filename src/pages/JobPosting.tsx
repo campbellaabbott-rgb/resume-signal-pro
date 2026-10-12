@@ -41,7 +41,7 @@
  * seeker reads print one posting the same way.
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { companyLanderPath } from "@/lib/public-href";
 import { useTranslation } from "react-i18next";
@@ -69,7 +69,45 @@ import { possessive } from "@/lib/company-display";
 import { postingLiveness, shownPosting } from "@/lib/listing/liveness";
 import { listingEmployer } from "@/lib/listing/employer";
 import { PostingDetail } from "@/components/jobs/listing/PostingDetail";
-import { MoreRolesAtEmployer } from "@/components/jobs/listing/MoreRolesAtEmployer";
+import { moreRolesAllowed } from "@/lib/listing/more-roles";
+
+// BELOW THE FOLD, SO NOT IN THE FIRST LOAD. The section and the card it
+// prints are fetched only when their place nears the viewport (MoreRolesSlot).
+const MoreRolesAtEmployer = lazy(() =>
+  import("@/components/jobs/listing/MoreRolesAtEmployer").then((m) => ({ default: m.MoreRolesAtEmployer })),
+);
+
+/**
+ * Loads the "More roles" section's code once its place is within a screen of
+ * the viewport, or at once where IntersectionObserver is missing (the section
+ * then offers its link and makes no list call, as before).
+ */
+function MoreRolesSlot(props: { token: string; employer: string; excludeId: string; source: string | null }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [near, setNear] = useState(() => typeof window === "undefined" || typeof window.IntersectionObserver !== "function");
+  useEffect(() => {
+    if (near) return;
+    const node = ref.current;
+    if (!node) return;
+    const io = new window.IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) {
+        setNear(true);
+        io.disconnect();
+      }
+    }, { rootMargin: "600px 0px" });
+    io.observe(node);
+    return () => io.disconnect();
+  }, [near]);
+  return (
+    <div ref={ref} data-more-roles-slot="">
+      {near && (
+        <Suspense fallback={null}>
+          <MoreRolesAtEmployer {...props} />
+        </Suspense>
+      )}
+    </div>
+  );
+}
 
 const SITE = "https://resumebooster.work";
 
@@ -403,7 +441,11 @@ export default function JobPosting() {
                   employer hiring. A claim we cannot make is omitted rather than
                   softened, which needs no new copy to be honest. The bake goes
                   further and gives an agency row no static page at all. */}
-              {shown.agency !== true && (
+              {/* Nor over a USAJOBS row: the federal feed is a listing site
+                  every agency posts to, not one employer's own system
+                  (usajobs-is-a-listing-site-not-an-employer.test.tsx), so
+                  "never an aggregator" is not ours to say there either. */}
+              {shown.agency !== true && shown.source !== "usajobs" && (
                 <p className="mt-6 text-xs text-muted-foreground">
                   {t("jobPostingPage.sourceNote", {
                     defaultValue:
@@ -415,8 +457,12 @@ export default function JobPosting() {
                 </p>
               )}
 
-              {/* ONE LAZY READ, on scroll, of four more roles at this employer. */}
-              {shown.token && company && <MoreRolesAtEmployer token={shown.token} employer={company} excludeId={shown.id} />}
+              {/* ONE LAZY READ, on scroll, of four more roles at this employer —
+                  never on a token two hiring systems share or on USAJOBS,
+                  where a token-wide list is not one employer's roles. */}
+              {shown.token && company && moreRolesAllowed(shown.token, shown.source ?? null) && (
+                <MoreRolesSlot token={shown.token} employer={company} excludeId={shown.id} source={shown.source ?? null} />
+              )}
             </>
           )}
         </div>

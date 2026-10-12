@@ -12,6 +12,20 @@
  *
  * A failed read is silent here: the link stays, nothing claims the employer
  * has no other roles.
+ *
+ * ONE EMPLOYER OR NO SECTION. The list is asked by board token, and a token is
+ * not an employer: two hiring systems can carry the same token for two
+ * different companies (src/lib/board-collisions.ts: "clear" is BambooHR's
+ * Clear and Greenhouse's CLEAR - Corporate), and every USAJOBS row shares the
+ * token "usajobs" across hundreds of agencies. The cards hide their employer
+ * line under a heading that names one employer, so a row from anyone else
+ * would be printed as this employer's role. So:
+ *   - on a collided token or on USAJOBS the section does not render at all
+ *     (moreRolesAllowed), and the page does not mount it;
+ *   - as a backstop, only rows from the posting's own hiring system whose
+ *     employer name is the posting's are kept; if the reply held anyone
+ *     else's row, the "see every open role" link is left out too (the token's
+ *     page is not one employer's), and with no row left the section goes.
  */
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
@@ -20,22 +34,31 @@ import { boardBudgetRefusal, markBoardBudgetRefused, readBoardBudgetRefusal } fr
 import { invokeJobBoard } from "@/lib/invoke-job-board";
 import { companyLanderPath } from "@/lib/public-href";
 import { postingPagePath } from "@/components/jobs/posting-page";
+import { moreRolesAllowed, sameEmployerRows } from "@/lib/listing/more-roles";
 import type { ListingJob } from "@/lib/listing/types";
 import { JobCard } from "./JobCard";
 
 /** Roles shown; one more is asked for so the current posting can be dropped without leaving a gap. */
 export const MORE_ROLES_SHOWN = 4;
 
-export function MoreRolesAtEmployer({ token, employer, excludeId }: { token: string; employer: string; excludeId: string }) {
+export function MoreRolesAtEmployer({ token, employer, excludeId, source = null }: {
+  token: string;
+  employer: string;
+  excludeId: string;
+  /** The posting's hiring system (job_board_postings.source). */
+  source?: string | null;
+}) {
   const { t } = useTranslation();
   const ref = useRef<HTMLElement | null>(null);
   const [rows, setRows] = useState<ListingJob[] | null>(null);
+  const [mixed, setMixed] = useState(false);
   const [loading, setLoading] = useState(false);
   const asked = useRef(false);
+  const allowed = moreRolesAllowed(token, source);
 
   useEffect(() => {
     const node = ref.current;
-    if (!node || asked.current) return;
+    if (!allowed || !node || asked.current) return;
     if (typeof window === "undefined" || typeof window.IntersectionObserver !== "function") return;
     let cancelled = false;
     const observer = new window.IntersectionObserver((entries) => {
@@ -55,7 +78,11 @@ export function MoreRolesAtEmployer({ token, employer, excludeId }: { token: str
             return;
           }
           const jobs = Array.isArray(res.data?.jobs) ? res.data!.jobs : [];
-          if (!cancelled) setRows(jobs.filter((j) => j && typeof j.id === "string" && j.id !== excludeId).slice(0, MORE_ROLES_SHOWN));
+          const kept = sameEmployerRows(jobs, { source, employer, excludeId });
+          if (!cancelled) {
+            setMixed(kept.mixed);
+            setRows(kept.rows.slice(0, MORE_ROLES_SHOWN));
+          }
         } catch {
           /* silent: the link below needs no read */
         } finally {
@@ -65,7 +92,12 @@ export function MoreRolesAtEmployer({ token, employer, excludeId }: { token: str
     }, { rootMargin: "200px 0px" });
     observer.observe(node);
     return () => { cancelled = true; observer.disconnect(); };
-  }, [token, excludeId]);
+  }, [allowed, token, excludeId, source, employer]);
+
+  if (!allowed) return null;
+  // Anyone else's row came back under this token and none of this employer's:
+  // there is nothing this heading may truthfully list, and no single page to send the reader to.
+  if (mixed && rows && rows.length === 0) return null;
 
   return (
     <section ref={ref} className="mt-10 border-t border-border pt-6" data-more-roles="" aria-labelledby="more-roles-heading">
@@ -85,9 +117,11 @@ export function MoreRolesAtEmployer({ token, employer, excludeId }: { token: str
           ))}
         </ul>
       )}
-      <Link to={companyLanderPath(token)} className="text-sm text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary">
-        {t("listing.more.seeAll", { defaultValue: "See every open role at {{employer}}", employer })}
-      </Link>
+      {!mixed && (
+        <Link to={companyLanderPath(token)} className="text-sm text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary" data-more-roles-all="">
+          {t("listing.more.seeAll", { defaultValue: "See every open role at {{employer}}", employer })}
+        </Link>
+      )}
     </section>
   );
 }
