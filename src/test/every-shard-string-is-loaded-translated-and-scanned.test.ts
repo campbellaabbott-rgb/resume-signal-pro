@@ -5,7 +5,8 @@
  * src/i18n/shards/<group>/<lng>.json (design spec, section 1) so no two
  * groups share a file. That only works if:
  *   1. each shard has all nine languages with IDENTICAL key sets (a key in
- *      English alone renders English to a German reader);
+ *      English alone renders English to a German reader), a plural group
+ *      counting as one key;
  *   2. no shard redefines a key main or another shard defines (which text
  *      wins would depend on merge order), and each writes only under its own
  *      root key ("listing", "companyProfile");
@@ -50,9 +51,13 @@ describe("the shards on disk", () => {
   for (const name of names) {
     describe(`shard "${name}"`, () => {
       it("has all nine languages, with identical key sets", () => {
+        // A plural group is one key here, as in the main-locale parity test
+        // (src/i18n/index.test.ts): Spanish, French and Portuguese carry a
+        // "many" form English does not use, and the plural test below holds
+        // each language to the forms it needs.
         const sets = LOCALE_FILES.map((f) => {
           const s = readShards(f).find((x) => x.name === name);
-          return [f, s ? leafKeys(s.bundle).sort() : null] as const;
+          return [f, s ? [...new Set(leafKeys(s.bundle).map((k) => k.replace(PLURAL_SUFFIX, "")))].sort() : null] as const;
         });
         const missing = sets.filter(([, k]) => k === null).map(([f]) => f);
         expect(missing, `shard ${name} is missing languages`).toEqual([]);
