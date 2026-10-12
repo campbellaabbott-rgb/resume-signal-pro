@@ -1,0 +1,1 @@
+SELECT public._mig_exec(sql) FROM public._mig_stage WHERE name = '20261009160100_an_illinois_notice_dated_after_its_stamp_is_not_a_notice_date.sql';
