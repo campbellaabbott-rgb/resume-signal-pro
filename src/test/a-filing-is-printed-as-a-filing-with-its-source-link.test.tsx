@@ -293,17 +293,27 @@ describe("a filing is printed as a filing, with its source link -- or not at all
         <Routes><Route path="/jobs/company/:companyToken" element={<Jobs />} /></Routes>
       </MemoryRouter>,
     );
+    // Two shapes while the wiring pass swaps the lander's regions: the
+    // legacy "Also on record:" item in the Hiring Health card, or the company
+    // page's Public records rows (design spec 5.5f), outside the record.
     const item = await waitFor(() => {
-      const el = document.querySelector<HTMLElement>('[data-layoff-filing="record"]');
+      const el = document.querySelector<HTMLElement>('[data-layoff-filing="record"], [data-layoff-filing="records"]');
       expect(el).toBeTruthy();
       return el!;
     }, SLOW);
-    expect(item.tagName).toBe("LI");
-    expect(item.textContent).toContain("Also on record:");
     const anchors = Array.from(item.querySelectorAll<HTMLAnchorElement>("a[data-layoff-source]"));
     expect(anchors.map((x) => x.getAttribute("href"))).toEqual([WARN_ACME.lf_source_url, SEC_BETA.lf_source_url]);
-    expect(item.textContent).toContain("ACME LOGISTICS LLC filed a layoff notice with California dated Sep 10, 2026");
-    expect(item.textContent).toContain("Beta Holdings, Inc. reported a workforce reduction of about 12.5%");
+    if (item.getAttribute("data-layoff-filing") === "record") {
+      expect(item.tagName).toBe("LI");
+      expect(item.textContent).toContain("Also on record:");
+      expect(item.textContent).toContain("ACME LOGISTICS LLC filed a layoff notice with California dated Sep 10, 2026");
+      expect(item.textContent).toContain("Beta Holdings, Inc. reported a workforce reduction of about 12.5%");
+    } else {
+      expect(item.closest("[data-public-records]"), "the rows sit in Public records").not.toBeNull();
+      expect(item.closest("[data-hiring-record]"), "and never inside the hiring record").toBeNull();
+      expect(item.textContent).toContain("ACME LOGISTICS LLC · WARN notice · California · 120 workers · filed Sep 10, 2026");
+      expect(item.textContent).toContain("Beta Holdings, Inc. · SEC 8-K Item 2.05 · filed Sep 11, 2026");
+    }
     // The reader asked for THIS token and nothing else, once.
     const calls = rpc.mock.calls.filter(([fn]) => fn === "get_employer_layoff_filings_all");
     expect(calls.length).toBe(1);

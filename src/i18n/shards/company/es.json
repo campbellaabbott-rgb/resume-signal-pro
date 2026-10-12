@@ -34,7 +34,7 @@
       "emailLabel": "Correo del trabajo"
     },
     "collision": {
-      "basis": "Se cuentan las ofertas que el feed de cada portal sigue publicando, a fecha de {{when}}.",
+      "basis": "Ofertas que publica el feed de cada portal, contadas {{when}}.",
       "board_one": "Portal en {{system}} · {{n}} vacante abierta ahora",
       "board_other": "Portal en {{system}} · {{n}} vacantes abiertas ahora",
       "board_many": "Portal en {{system}} · {{n}} vacantes abiertas ahora",
@@ -44,6 +44,7 @@
       "lead_one": "{{n}} sistema de contratación tiene un portal con este nombre. Nada de lo que tenemos indica si son un solo empleador, así que esta página no muestra datos de empleador.",
       "lead_other": "{{n}} sistemas de contratación tienen un portal con este nombre. Nada de lo que tenemos indica si son un solo empleador, así que esta página no muestra datos de empleador.",
       "lead_many": "{{n}} sistemas de contratación tienen un portal con este nombre. Nada de lo que tenemos indica si son un solo empleador, así que esta página no muestra datos de empleador.",
+      "panelTitle": "Portales con este nombre",
       "showOnly_one": "Mostrar solo esta vacante",
       "showOnly_other": "Mostrar solo estas {{n}} vacantes",
       "showOnly_many": "Mostrar solo estas {{n}} vacantes",

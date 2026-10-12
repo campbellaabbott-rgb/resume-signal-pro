@@ -33,7 +33,7 @@
       "emailLabel": "Zakelijk e-mailadres"
     },
     "collision": {
-      "basis": "Geteld worden vacatures die de feed van elk bord nog aanbiedt, per {{when}}.",
+      "basis": "Vacatures die de feed van elk bord aanbiedt, geteld {{when}}.",
       "board_one": "Vacaturebord bij {{system}} · nu {{n}} open vacature",
       "board_other": "Vacaturebord bij {{system}} · nu {{n}} open vacatures",
       "boardUnavailable": "Vacaturebord bij {{system}} · aantal niet beschikbaar",
@@ -41,6 +41,7 @@
       "h1": "Open vacatures op vacatureborden met de naam ‘{{token}}’",
       "lead_one": "{{n}} wervingssysteem heeft een vacaturebord met deze naam. Niets in onze gegevens zegt of het om één werkgever gaat, dus deze pagina toont geen werkgeversgegevens.",
       "lead_other": "{{n}} wervingssystemen hebben een vacaturebord met deze naam. Niets in onze gegevens zegt of het om één werkgever gaat, dus deze pagina toont geen werkgeversgegevens.",
+      "panelTitle": "Vacatureborden met deze naam",
       "showOnly_one": "Alleen deze vacature tonen",
       "showOnly_other": "Alleen deze {{n}} vacatures tonen",
       "showOnlyUncounted": "Alleen de vacatures van dit bord tonen"

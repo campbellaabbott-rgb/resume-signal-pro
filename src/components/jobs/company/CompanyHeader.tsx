@@ -63,7 +63,7 @@ export function openRolesLine(t: TFunction, v: OpenRolesValue | null, lang: stri
 export function CompanyBreadcrumb({ name }: { name: string | null }) {
   const { t } = useTranslation();
   return (
-    <nav aria-label={t("companyProfile.breadcrumbLabel", "Breadcrumb")} className="hidden sm:block mb-2 text-meta text-muted-foreground">
+    <nav aria-label={t("companyProfile.breadcrumbLabel", "Breadcrumb")} className="hidden sm:block text-meta text-muted-foreground">
       <ol className="flex flex-wrap items-center gap-1">
         <li><Link to="/jobs" className="underline decoration-border-strong underline-offset-2 hover:text-primary hover:decoration-primary">{t("companyProfile.breadcrumbJobs", "Jobs")}</Link></li>
         <li aria-hidden="true"><ChevronRight className="h-3.5 w-3.5" /></li>
@@ -238,24 +238,27 @@ export function CompanyHeader({ model, token, system, countries = [], workMode, 
         </div>
       </div>
       {status}
-      {facts.length > 0 && (
-        <dl className="hidden sm:flex flex-wrap gap-x-4 gap-y-1 text-meta text-muted-foreground" aria-label={t("companyProfile.factsLabel", "About this board")}>
-          {facts.map(([k, label, value]) => (
-            <div key={k} data-fact={k} className="flex flex-wrap gap-x-1">
-              <dt className="font-medium text-foreground">{label}</dt>
-              <dd>{value}</dd>
-            </div>
-          ))}
-        </dl>
-      )}
-      <HeaderActions
-        watchLabel={watchLabel}
-        menuLabel={t("companyProfile.actions.more", "More actions for {{name}}", { name: displayName })}
-        onWatch={onWatch}
-        onClaim={model.sections.claim && name ? () => setClaimOpen(true) : undefined}
-        onCopyLink={onCopyLink}
-        note={t("jobsPage.watchNote", "Your account will count their new postings since your last look.")}
-      />
+      {/* At sm and up the facts and the actions share one row, so the first
+          card stays inside the desktop fold budget. */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-6 sm:gap-y-2">
+        {facts.length > 0 && (
+          <dl className="hidden sm:flex flex-wrap gap-x-4 gap-y-1 text-meta text-muted-foreground" aria-label={t("companyProfile.factsLabel", "About this board")}>
+            {facts.map(([k, label, value]) => (
+              <div key={k} data-fact={k} className="flex flex-wrap gap-x-1">
+                <dt className="font-medium text-foreground">{label}</dt>
+                <dd>{value}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+        <HeaderActions
+          watchLabel={watchLabel}
+          menuLabel={t("companyProfile.actions.more", "More actions for {{name}}", { name: displayName })}
+          onWatch={onWatch}
+          onClaim={model.sections.claim && name ? () => setClaimOpen(true) : undefined}
+          onCopyLink={onCopyLink}
+        />
+      </div>
       {model.sections.claim && name && (
         <CompanyClaim companyToken={token} companyName={name} variant="menu" open={claimOpen} onOpenChange={setClaimOpen} />
       )}

@@ -33,7 +33,7 @@
       "emailLabel": "Work email"
     },
     "collision": {
-      "basis": "Counts are postings each board's own feed still serves, as of {{when}}.",
+      "basis": "Postings each board's feed serves, counted {{when}}.",
       "board_one": "{{system}} board · {{n}} open role now",
       "board_other": "{{system}} board · {{n}} open roles now",
       "boardUnavailable": "{{system}} board · count not available",
@@ -41,6 +41,7 @@
       "h1": "Open roles on boards named “{{token}}”",
       "lead_one": "{{n}} hiring system carries a board with this name. Nothing we hold says whether they are one employer, so this page shows no employer facts.",
       "lead_other": "{{n}} hiring systems carry a board with this name. Nothing we hold says whether they are one employer, so this page shows no employer facts.",
+      "panelTitle": "Boards with this name",
       "showOnly_one": "Show only this role",
       "showOnly_other": "Show only these {{n}} roles",
       "showOnlyUncounted": "Show only this board's roles"

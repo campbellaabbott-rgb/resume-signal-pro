@@ -33,7 +33,7 @@
       "emailLabel": "Email sa trabaho"
     },
     "collision": {
-      "basis": "Ang binibilang ay mga posting na inihahain pa ng sariling feed ng bawat board, hanggang {{when}}.",
+      "basis": "Mga posting na inihahain ng feed ng bawat board, binilang {{when}}.",
       "board_one": "Board sa {{system}} · {{n}} bukas na role ngayon",
       "board_other": "Board sa {{system}} · {{n}} bukas na role ngayon",
       "boardUnavailable": "Board sa {{system}} · walang bilang",
@@ -41,6 +41,7 @@
       "h1": "Mga bukas na role sa mga board na may pangalang “{{token}}”",
       "lead_one": "{{n}} hiring system ang may board na may ganitong pangalan. Walang nagsasabi sa hawak naming datos kung iisang employer sila, kaya walang ipinapakitang detalye ng employer ang page na ito.",
       "lead_other": "{{n}} hiring system ang may board na may ganitong pangalan. Walang nagsasabi sa hawak naming datos kung iisang employer sila, kaya walang ipinapakitang detalye ng employer ang page na ito.",
+      "panelTitle": "Mga board na may ganitong pangalan",
       "showOnly_one": "Ipakita lang ang role na ito",
       "showOnly_other": "Ipakita lang ang {{n}} role na ito",
       "showOnlyUncounted": "Ipakita lang ang mga role ng board na ito"

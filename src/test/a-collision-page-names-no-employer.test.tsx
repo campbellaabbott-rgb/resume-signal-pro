@@ -98,7 +98,9 @@ describe("the model of a shared board name", () => {
         />
       </MemoryRouter>,
     );
-    await waitFor(() => expect(screen.getByText("BambooHR board · 3 open roles now")).toBeInTheDocument(), QUICK);
+    // The boards print in the header for phones and in the desktop column, from one read.
+    await waitFor(() => expect(screen.getAllByText("BambooHR board · 3 open roles now")).toHaveLength(2), QUICK);
+    expect(document.querySelector("[data-collision-panel]")).not.toBeNull();
     const asked = rpc.mock.calls.map(([fn]) => fn as string);
     expect(asked.filter((fn) => EMPLOYER_LEVEL.includes(fn))).toEqual([]);
     // The intel reader is asked once, though the header reads it.

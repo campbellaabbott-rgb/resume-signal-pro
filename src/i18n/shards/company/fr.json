@@ -34,7 +34,7 @@
       "emailLabel": "E-mail professionnel"
     },
     "collision": {
-      "basis": "Les décomptes portent sur les offres que le flux de chaque site diffuse encore, au {{when}}.",
+      "basis": "Offres diffusées par le flux de chaque site, comptées {{when}}.",
       "board_one": "Site sur {{system}} · {{n}} poste ouvert actuellement",
       "board_other": "Site sur {{system}} · {{n}} postes ouverts actuellement",
       "board_many": "Site sur {{system}} · {{n}} postes ouverts actuellement",
@@ -44,6 +44,7 @@
       "lead_one": "{{n}} système de recrutement héberge un site portant ce nom. Rien dans nos données n'indique s'il s'agit d'un seul employeur : cette page n'affiche donc aucune information sur l'employeur.",
       "lead_other": "{{n}} systèmes de recrutement hébergent un site portant ce nom. Rien dans nos données n'indique s'il s'agit d'un seul employeur : cette page n'affiche donc aucune information sur l'employeur.",
       "lead_many": "{{n}} systèmes de recrutement hébergent un site portant ce nom. Rien dans nos données n'indique s'il s'agit d'un seul employeur : cette page n'affiche donc aucune information sur l'employeur.",
+      "panelTitle": "Sites carrières portant ce nom",
       "showOnly_one": "Afficher uniquement ce poste",
       "showOnly_other": "Afficher uniquement ces {{n}} postes",
       "showOnly_many": "Afficher uniquement ces {{n}} postes",

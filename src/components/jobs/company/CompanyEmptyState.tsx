@@ -22,12 +22,15 @@ import type { LanderModel } from "@/lib/company/lander-model";
 import { ago as fmtAgo } from "@/lib/company/format";
 import { SimilarCompaniesView, type SimilarRow } from "@/components/jobs/SimilarCompanies";
 
-export function CompanyEmptyState({ model, token, boardReadAt, similar = [], onWatch }: {
+export function CompanyEmptyState({ model, token, boardReadAt, similar = [], onWatch, underHeader = false }: {
   model: LanderModel;
   token: string;
   boardReadAt: string | null;
   similar?: SimilarRow[];
+  /** Offer Watch here. Leave it out when the page header (which has its own Watch) is on screen. */
   onWatch?: () => void;
+  /** The company header above already says "No open roles right now · board read …": the title is kept for screen readers only. */
+  underHeader?: boolean;
 }) {
   const { t, i18n } = useTranslation();
   const lang = i18n.language || "en";
@@ -82,7 +85,7 @@ export function CompanyEmptyState({ model, token, boardReadAt, similar = [], onW
 
   return (
     <section data-company-empty="zero" aria-labelledby="company-empty-title" className="rounded-lg border border-border bg-card p-4 space-y-3">
-      <div>
+      <div className={underHeader ? "sr-only" : undefined}>
         <h2 id="company-empty-title" className="text-base font-semibold text-foreground">{title}</h2>
         {read && (
           <p className="text-meta text-muted-foreground">{t("companyProfile.boardReadAgo", "board read {{ago}}", { ago: read })}</p>

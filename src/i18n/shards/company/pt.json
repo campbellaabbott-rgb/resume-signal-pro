@@ -34,7 +34,7 @@
       "emailLabel": "E-mail de trabalho"
     },
     "collision": {
-      "basis": "Contam-se os anúncios que o feed de cada portal ainda publica, a {{when}}.",
+      "basis": "Anúncios que o feed de cada portal publica, contados {{when}}.",
       "board_one": "Portal no {{system}} · {{n}} vaga aberta agora",
       "board_other": "Portal no {{system}} · {{n}} vagas abertas agora",
       "board_many": "Portal no {{system}} · {{n}} vagas abertas agora",
@@ -44,6 +44,7 @@
       "lead_one": "{{n}} sistema de recrutamento tem um portal com este nome. Nada do que temos diz se são um único empregador, por isso esta página não mostra dados de empregador.",
       "lead_other": "{{n}} sistemas de recrutamento têm um portal com este nome. Nada do que temos diz se são um único empregador, por isso esta página não mostra dados de empregador.",
       "lead_many": "{{n}} sistemas de recrutamento têm um portal com este nome. Nada do que temos diz se são um único empregador, por isso esta página não mostra dados de empregador.",
+      "panelTitle": "Portais com este nome",
       "showOnly_one": "Mostrar só esta vaga",
       "showOnly_other": "Mostrar só estas {{n}} vagas",
       "showOnly_many": "Mostrar só estas {{n}} vagas",

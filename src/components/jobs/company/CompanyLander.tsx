@@ -28,7 +28,7 @@ import type { LanderModel, OpenRolesValue } from "@/lib/company/lander-model";
 import { ago as fmtAgo, count as fmtCount } from "@/lib/company/format";
 import { tPlural } from "@/lib/company/plural";
 import { CompanyHeader, type WorkModeSplit } from "./CompanyHeader";
-import { CollisionHeader } from "./CollisionHeader";
+import { CollisionBoardsPanel, CollisionHeader } from "./CollisionHeader";
 import { UsajobsHubHeader } from "./UsajobsHubHeader";
 import { CompanyEmptyState } from "./CompanyEmptyState";
 import { AboutEmployerAccordion, AboutEmployerRail, type AboutEmployerProps, type CompanyProfileData } from "./AboutEmployer";
@@ -65,12 +65,14 @@ export interface CompanyLanderHeaderProps {
   /** Collision pages: set the vendor filter to one board. */
   onShowOnly: (source: string) => void;
   onCopyLink?: () => void;
+  /** Collision pages: the rail region shows the boards at lg and up, so the header lists them for phones only. */
+  boardsInPanel?: boolean;
 }
 
 /** The header region: the variant's own header. */
 export function CompanyLanderHeader(p: CompanyLanderHeaderProps) {
   if (p.model.variant === "collision") {
-    return <CollisionHeader token={p.token} boards={p.model.boards} labelOf={p.labelOf} onShowOnly={p.onShowOnly} onWatch={p.onWatch} onCopyLink={p.onCopyLink} />;
+    return <CollisionHeader token={p.token} boards={p.model.boards} labelOf={p.labelOf} onShowOnly={p.onShowOnly} onWatch={p.onWatch} onCopyLink={p.onCopyLink} boardsInPanel={p.boardsInPanel} />;
   }
   if (p.model.variant === "usajobs") {
     return <UsajobsHubHeader model={p.model} onWatch={p.onWatch} onCopyLink={p.onCopyLink} />;
@@ -134,8 +136,16 @@ export function CompanyResultsLine({ model, shown, matching, boardReadAt }: {
   );
 }
 
-/** The desktop rail. */
-export function CompanyLanderRail(p: AboutEmployerProps) {
+/**
+ * The desktop rail: the employer profile, or on a board name two hiring
+ * systems share (which has no employer profile) the boards themselves.
+ */
+export function CompanyLanderRail(p: AboutEmployerProps & { labelOf?: (source: string) => string | null; onShowOnly?: (source: string) => void }) {
+  if (p.model.variant === "collision") {
+    return p.labelOf && p.onShowOnly
+      ? <CollisionBoardsPanel token={p.token} boards={p.model.boards} labelOf={p.labelOf} onShowOnly={p.onShowOnly} />
+      : null;
+  }
   return <AboutEmployerRail {...p} />;
 }
 
@@ -150,15 +160,19 @@ export function CompanySimilarAfterFirstPage({ model, profile }: { model: Lander
   return <SimilarCompaniesView rows={profile.similar} variant="inline" limit={6} />;
 }
 
-/** The empty list column of a zero or uncarried page. */
-export function CompanyLanderEmpty({ model, token, profile, boardReadAt, onWatch }: {
+/**
+ * The empty list column of a zero or uncarried page, under the company
+ * header: the header already answers "No open roles right now · board read …"
+ * and carries Watch, so the column adds the way out (similar employers, the
+ * whole board) without repeating either.
+ */
+export function CompanyLanderEmpty({ model, token, profile, boardReadAt }: {
   model: LanderModel;
   token: string;
   profile: CompanyProfileData;
   boardReadAt: string | null;
-  onWatch?: () => void;
 }) {
-  return <CompanyEmptyState model={model} token={token} boardReadAt={boardReadAt} similar={profile.similar} onWatch={onWatch} />;
+  return <CompanyEmptyState model={model} token={token} boardReadAt={boardReadAt} similar={profile.similar} underHeader />;
 }
 
 export interface CompanyLanderProps extends Omit<CompanyLanderHeaderProps, "profile"> {
@@ -193,12 +207,12 @@ export function CompanyLander(p: CompanyLanderProps) {
   };
   return (
     <div data-company-lander={p.model.variant}>
-      <CompanyLanderHeader {...p} profile={profile} />
+      <CompanyLanderHeader {...p} profile={profile} boardsInPanel />
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="min-w-0 space-y-3">
           {!empty && p.filterBar}
           {empty ? (
-            <CompanyLanderEmpty model={p.model} token={p.token} profile={profile} boardReadAt={p.boardReadAt} onWatch={p.onWatch} />
+            <CompanyLanderEmpty model={p.model} token={p.token} profile={profile} boardReadAt={p.boardReadAt} />
           ) : (
             <>
               <CompanyResultsLine model={p.model} shown={p.cards.length} matching={p.matching} boardReadAt={p.boardReadAt} />
@@ -214,8 +228,18 @@ export function CompanyLander(p: CompanyLanderProps) {
         </div>
         {p.model.variant !== "uncarried" && (
           <div className="hidden lg:block">
-            <div className="sticky top-20 space-y-3">
-              {p.detail ?? <CompanyLanderRail {...about} profile={p.model.variant === "zero" ? { ...profile, similar: [] } : profile} />}
+            {/* Only an opened job sticks: the profile rail is taller than the
+                screen, and a sticky element taller than the viewport hides its
+                own lower sections until the list ends. */}
+            <div className={p.detail ? "sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto space-y-3" : "space-y-3"}>
+              {p.detail ?? (
+                <CompanyLanderRail
+                  {...about}
+                  profile={p.model.variant === "zero" ? { ...profile, similar: [] } : profile}
+                  labelOf={p.labelOf}
+                  onShowOnly={p.onShowOnly}
+                />
+              )}
             </div>
           </div>
         )}

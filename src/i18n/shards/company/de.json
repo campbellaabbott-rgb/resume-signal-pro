@@ -33,7 +33,7 @@
       "emailLabel": "Geschäftliche E-Mail"
     },
     "collision": {
-      "basis": "Gezählt werden Anzeigen, die der Feed jedes Jobboards noch ausliefert, Stand {{when}}.",
+      "basis": "Anzeigen, die der Feed jedes Jobboards ausliefert, gezählt {{when}}.",
       "board_one": "Jobboard bei {{system}} · {{n}} offene Stelle jetzt",
       "board_other": "Jobboard bei {{system}} · {{n}} offene Stellen jetzt",
       "boardUnavailable": "Jobboard bei {{system}} · Anzahl nicht verfügbar",
@@ -41,6 +41,7 @@
       "h1": "Offene Stellen auf Jobboards namens „{{token}}“",
       "lead_one": "{{n}} Bewerbungssystem führt ein Jobboard mit diesem Namen. Nichts in unseren Daten sagt, ob es sich um einen Arbeitgeber handelt, daher zeigt diese Seite keine Arbeitgeberangaben.",
       "lead_other": "{{n}} Bewerbungssysteme führen ein Jobboard mit diesem Namen. Nichts in unseren Daten sagt, ob es sich um einen Arbeitgeber handelt, daher zeigt diese Seite keine Arbeitgeberangaben.",
+      "panelTitle": "Jobboards mit diesem Namen",
       "showOnly_one": "Nur diese Stelle zeigen",
       "showOnly_other": "Nur diese {{n}} Stellen zeigen",
       "showOnlyUncounted": "Nur die Stellen dieses Jobboards zeigen"
