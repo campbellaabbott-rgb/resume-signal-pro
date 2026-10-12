@@ -12,8 +12,9 @@ import {
   Preview,
   Text,
 } from 'npm:@react-email/components@0.0.22'
+import { CodeBlock, IGNORE_LINE, button, container, footer, h1, main, text, type CodeProps } from './auth-parts.tsx'
 
-interface MagicLinkEmailProps {
+interface MagicLinkEmailProps extends CodeProps {
   siteName: string
   confirmationUrl: string
 }
@@ -21,50 +22,26 @@ interface MagicLinkEmailProps {
 export const MagicLinkEmail = ({
   siteName,
   confirmationUrl,
+  token,
+  expiryMinutes,
 }: MagicLinkEmailProps) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>Your login link for {siteName}</Preview>
+    <Preview>Your sign-in code for {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>Your login link</Heading>
+        <Heading style={h1}>Your sign-in code</Heading>
+        <CodeBlock token={token} expiryMinutes={expiryMinutes} lead={`Enter this code on the ${siteName} sign-in page:`} />
         <Text style={text}>
-          Click the button below to log in to {siteName}. This link will expire
-          shortly.
+          {token ? 'Or continue in your browser:' : `Press the button to sign in to ${siteName}. It expires shortly.`}
         </Text>
         <Button style={button} href={confirmationUrl}>
-          Log In
+          Continue
         </Button>
-        <Text style={footer}>
-          If you didn't request this link, you can safely ignore this email.
-        </Text>
+        <Text style={footer}>{IGNORE_LINE}</Text>
       </Container>
     </Body>
   </Html>
 )
 
 export default MagicLinkEmail
-
-const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
-const container = { padding: '20px 25px' }
-const h1 = {
-  fontSize: '22px',
-  fontWeight: 'bold' as const,
-  color: '#000000',
-  margin: '0 0 20px',
-}
-const text = {
-  fontSize: '14px',
-  color: '#55575d',
-  lineHeight: '1.5',
-  margin: '0 0 25px',
-}
-const button = {
-  backgroundColor: '#000000',
-  color: '#ffffff',
-  fontSize: '14px',
-  borderRadius: '8px',
-  padding: '12px 20px',
-  textDecoration: 'none',
-}
-const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }

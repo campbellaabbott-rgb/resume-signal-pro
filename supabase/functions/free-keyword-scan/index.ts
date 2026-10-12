@@ -465,11 +465,14 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 // 2026-10-09.5 (wave-3 fix round integration): parsers-scan (S11-019's hourly
 // ceiling, S11-083), fetcher-frontend (S11-032, a link is no job description)
 // and seo-ingest-ops (S11-028/150) each stamped .4 on different code.
-const FN_BUILD = "free-keyword-scan.2026-10-09.5";
+// 2026-10-14.1 (R1 integration): _shared/mailbox-proof.ts gained the proof-row
+// readers and maskEmail; provenMailbox, the import here, is unchanged.
+const FN_BUILD = "free-keyword-scan.2026-10-14.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Expose-Headers': 'x-fn-build',
   'x-fn-build': FN_BUILD,
 };
 

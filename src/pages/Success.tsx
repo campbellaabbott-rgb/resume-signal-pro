@@ -51,6 +51,7 @@ import { useFunnelTracking } from "@/hooks/use-funnel-tracking";
 import { usePersonalization } from "@/hooks/use-personalization";
 import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
 import { PRODUCTS } from "@/config/products";
+import { stashedSessionIdFor } from "@/lib/auth-fragment";
 
 const Success = () => {
   const { t } = useTranslation();
@@ -88,7 +89,13 @@ const Success = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const sessionId = searchParams.get("session_id");
+  // The Stripe session id: the first script in index.html moves it out of the
+  // address before any analytics can record it (src/lib/auth-fragment.ts).
+  // Read once, so clearing this browser's data mid-page does not unmount the purchase.
+  const [stashedSession] = useState(() => stashedSessionIdFor("/success", null).id);
+  const urlSessionId = searchParams.get("session_id");
+  const sessionId = urlSessionId || stashedSession;
+  const sessionIdStashed = !urlSessionId && !!stashedSession;
   const shareIdParam = searchParams.get("share");
 
   // Simulate progress steps during loading. The timers are CLEARED when the
@@ -119,7 +126,11 @@ const Success = () => {
    */
   const rememberShareInUrl = (newShareId: unknown) => {
     if (typeof newShareId !== "string" || !newShareId || !sessionId) return;
-    navigate(`/success?session_id=${encodeURIComponent(sessionId)}&share=${encodeURIComponent(newShareId)}`, { replace: true });
+    // A session id the first script stashed stays out of the address: the
+    // tab's stash still holds it for a reload.
+    navigate(sessionIdStashed
+      ? `/success?share=${encodeURIComponent(newShareId)}`
+      : `/success?session_id=${encodeURIComponent(sessionId)}&share=${encodeURIComponent(newShareId)}`, { replace: true });
   };
 
   /**

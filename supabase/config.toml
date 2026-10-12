@@ -112,6 +112,8 @@ project_id = "bwhdazbotpblihdxcmho"
     verify_jwt = false
   [functions.recover-purchase]
     verify_jwt = false
+  [functions.resend-webhook]
+    verify_jwt = false
   [functions.retry-failed-deliveries]
     verify_jwt = false
   [functions.save-lead]

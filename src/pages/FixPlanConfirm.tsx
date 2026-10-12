@@ -18,17 +18,18 @@ import { Check, Loader2, Mail } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { supabase } from "@/integrations/supabase/client";
 import { dripTokenFromHash, forgetConfirmFragment } from "@/lib/confirm-link";
+import { stashedFragment, takeStashed } from "@/lib/auth-fragment";
 
 type State = "ready" | "confirming" | "done" | "already" | "optedOut" | "invalid" | "error" | "errorFinal" | "missing";
 
 export default function FixPlanConfirm() {
   const { t } = useTranslation();
   const [token] = useState<string | null>(() =>
-    typeof window === "undefined" ? null : dripTokenFromHash(window.location.hash));
+    typeof window === "undefined" ? null : dripTokenFromHash(stashedFragment(window.location.hash)));
   const [state, setState] = useState<State>(token ? "ready" : "missing");
 
   useEffect(() => {
-    if (state === "done" || state === "already" || state === "optedOut" || state === "invalid") forgetConfirmFragment();
+    if (state === "done" || state === "already" || state === "optedOut" || state === "invalid") { forgetConfirmFragment(); takeStashed("fragment"); }
   }, [state]);
 
   const confirm = async () => {

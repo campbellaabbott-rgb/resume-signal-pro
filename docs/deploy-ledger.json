@@ -100,9 +100,17 @@
     "20261011103000": {
       "after": "fn:job-board@2026-09-09.93",
       "why": "wave 4, HELD until wave 4 verifies (holdUntilVerified): it schedules the nightly 30-day prune of the connector's searches (owner decision 2026-10-11), an irreversible delete of raw rows that is the retention the Privacy draft states only beside job-board .93's write side (an mcp search event keeps its words and no shown ids; a ChatGPT search with the reader proof writes nothing). Release it once section 86 passes"
+    },
+    "20261014100000": {
+      "after": "fn:process-email-queue@2026-10-14.1",
+      "why": "R1 mail: it schedules the 10-second 'process-email-queue' drain, whose posts carry x-email-cron. Only process-email-queue 2026-10-14.1 accepts that header and falls back to Resend when Lovable refuses; an older build drains with the service-role bearer but without the fallback (verify section 94 shows the build)"
+    },
+    "20261014110000": {
+      "before": ["fn:auth-signed-in", "fn:verify-product-purchase"],
+      "why": "R1 sign-in server: auth-signed-in reads and writes account_password_clears and calls auth_changed_since, auth_sign_in_addresses and auth_user_has_password, which this migration creates, and verify-product-purchase reads account_mailbox_proofs (hasMailboxProof) to decide whether a success link may show the buyer's full address. Deployed before it, every guard call answers 503 and clears nothing, and every success link shows the masked address"
     }
   },
-  "_reservationsNote": "Listed in deploy order from 2026-10-11 (deployOrder; docs/DEPLOY-LEDGER.md §3): the wave 3 closeout, company profiles phases 0-2, wave 4, company profiles phase 3. A migration stamp need not sort in deploy order (wave 4's 20261011* deploys after profiles' 20261012*): the ledger lists what the staged runner has not recorded, whatever sorts first. A function stamped on a later day by an earlier deploy takes that day with a higher sequence (§3).",
+  "_reservationsNote": "Listed in deploy order from 2026-10-11 (deployOrder; docs/DEPLOY-LEDGER.md §3): the wave 3 closeout, R1 (critical-path), company profiles phases 0-2, wave 4, company profiles phase 3. A migration stamp need not sort in deploy order (wave 4's 20261011* deploys after profiles' 20261012*, and R1's 20261014* deploys before both): the ledger lists what the staged runner has not recorded, whatever sorts first. A function stamped on a later day by an earlier deploy takes that day with a higher sequence (§3). 2026-10-12: the owner moved R1 (sign-in, password recovery, auth mail and the masked purchase address) out of wave 4 into its own reservation, critical-path, deploying after the wave 3 closeout and before company profiles (deployOrder 1.5; decision D13 of the critical-path plan). Its functions are stamped 2026-10-14.1: auth-email-hook, process-email-queue, resend-webhook, auth-signed-in and verify-product-purchase, plus create-portal-session, delete-account, free-keyword-scan, get-account-data and scan-credits, whose code is unchanged but whose _shared/mailbox-proof.ts gained exports. A later deploy that changes any of the ten stamps 2026-10-14 with a higher sequence or a later day. Verify-deploy sections 94, 95 and 96 are R1's (94-r1-mail.sh, 95-r1-signin.sh, 96-r1-signin-server.sh); wave 4's critical-path plan had planned 94-96 for CP-A, CP-B and CP-C, and those groups now pick other numbers.",
   "reservations": {
     "wave2": {
       "branches": ["wave2/", "wave2-integration"],
@@ -119,6 +127,14 @@
       "status": "deployed 2026-10-11 (verifiedDeploys 35559389); the closeout is the post-wave-3 tooling PR (post-wave3/), then the three released migrations in a second message",
       "deployOrder": 1
     },
+    "critical-path": {
+      "branches": ["r1/"],
+      "migrations": "20261014*",
+      "jobBoard": "none",
+      "fnBuildDate": "2026-10-14",
+      "status": "R1: sign-in, recovery, auth mail and the masked purchase address; ships first, by owner decision 2026-10-12",
+      "deployOrder": 1.5
+    },
     "company-profiles": {
       "branches": ["profiles/"],
       "migrations": "20261012*",
@@ -128,7 +144,7 @@
       "deployOrder": 2
     },
     "wave4": {
-      "branches": ["wave4/", "w4/", "connect-apply/"],
+      "branches": ["wave4/", "w4/", "w4b/", "connect-apply/"],
       "migrations": "20261011*",
       "jobBoard": "2026-09-09.93",
       "fnBuildDate": "2026-10-11",
@@ -144,11 +160,11 @@
       "deployOrder": 4
     },
     "next": {
-      "migrations": "20261014* and later, one day per workstream",
+      "migrations": "20261015* and later, one day per workstream",
       "jobBoard": "2026-09-09.95+"
     }
   },
-  "_sharedFilesNote": "File ownership while branches run in parallel (docs/DEPLOY-LEDGER.md §6): path -> the workstream (a reservations key) that owns it. A key ending in / covers its folder; fn:<name> covers a function. node scripts/deploy-ledger.mjs --overlap <ref> ... exits 4 on any file or function two refs change that this map does not give a reservation-named owner. The other branch rebases onto the owner's version and re-applies only its own entries. 2026-10-11: post-wave3/tooling (wave3) and profiles/integration both change the four files below. wave3 merges first and owns the ledger policy and its rules doc; profiles' hold (20261012111000) and its reservation are re-applied by profiles on that version. company-profiles owns the bake, and keeps this PR's postingFreshBudget and per-page carried flag when it rebases. 2026-10-12 (wave 4 integration): wave4/integration and profiles/integration both change public/llms.txt and the nine locale files. company-profiles deploys first (deployOrder 2), so its version of those files is the base and it owns them; wave 4 owns ITS OWN keys and lines in them (the 57 en keys it added or changed and the 67 it removed under agentConnect, agentPass, homeAgent, homeHero, pricingPage, dataApiPage, faq, agentMatches, atsCoverage, jobsPage and privacy, the same in every locale; and the llms.txt lines on connecting, applying yourself, paid tools and the Builder API) and re-applies only those when it rebases onto profiles. A git merge-tree of the two tips on 2026-10-12 merged all ten files without a conflict. 2026-10-12 (wave 4 review): the local design/* branches are built on profiles/integration (design/integration contains its tip) and deploy after it as a frontend publish; design/integration and wave4/integration both change src/test/the-board-hands-a-job-and-a-search-to-the-agent.test.tsx (design the header-link assertions, wave 4 the hand-off assertions). company-profiles, whose line design builds on and which deploys first, owns it; wave 4 re-applies its hunks on rebase. git merge-file of the two edits is clean.",
+  "_sharedFilesNote": "File ownership while branches run in parallel (docs/DEPLOY-LEDGER.md §6): path -> the workstream (a reservations key) that owns it. A key ending in / covers its folder; fn:<name> covers a function. node scripts/deploy-ledger.mjs --overlap <ref> ... exits 4 on any file or function two refs change that this map does not give a reservation-named owner. The other branch rebases onto the owner's version and re-applies only its own entries. 2026-10-11: post-wave3/tooling (wave3) and profiles/integration both change the four files below. wave3 merges first and owns the ledger policy and its rules doc; profiles' hold (20261012111000) and its reservation are re-applied by profiles on that version. company-profiles owns the bake, and keeps this PR's postingFreshBudget and per-page carried flag when it rebases. 2026-10-12 (wave 4 integration): wave4/integration and profiles/integration both change public/llms.txt and the nine locale files. company-profiles deploys first (deployOrder 2), so its version of those files is the base and it owns them; wave 4 owns ITS OWN keys and lines in them (the 57 en keys it added or changed and the 67 it removed under agentConnect, agentPass, homeAgent, homeHero, pricingPage, dataApiPage, faq, agentMatches, atsCoverage, jobsPage and privacy, the same in every locale; and the llms.txt lines on connecting, applying yourself, paid tools and the Builder API) and re-applies only those when it rebases onto profiles. A git merge-tree of the two tips on 2026-10-12 merged all ten files without a conflict. 2026-10-12 (wave 4 review): the local design/* branches are built on profiles/integration (design/integration contains its tip) and deploy after it as a frontend publish; design/integration and wave4/integration both change src/test/the-board-hands-a-job-and-a-search-to-the-agent.test.tsx (design the header-link assertions, wave 4 the hand-off assertions). company-profiles, whose line design builds on and which deploys first, owns it; wave 4 re-applies its hunks on rebase. git merge-file of the two edits is clean. 2026-10-12 (R1 integration): R1 (critical-path) deploys before company profiles, design and wave 4, so its version of two shared files is the base. supabase/config.toml: critical-path owns only its two lines, the [functions.resend-webhook] block with verify_jwt = false (Resend posts carry no JWT; the Svix signature is the function's door); profiles' and design's [functions.employer-profiles] block is theirs and is re-applied on rebase. index.html: critical-path owns only the first script in <head>, the inline classic stash script that moves URL credentials into sessionStorage before any other script (the host's analytics included) can read the address; it must stay the first child of <head>, and wave 4's SEO group owns the rest of the head. src/test/the-ledger-message-kept-no-order-and-hid-what-it-could-not-check.test.ts: R1's two migrationOrder rules (20261014100000, 20261014110000) failed its 'every rule names a stamp that exists' check, which looked only at 20261009* files. R1 carries wave 4's broadening of that check line for line (any migration file counts), so critical-path owns the file and wave 4 re-applies only its own added test of the 20261011* order on rebase. 2026-10-12 (w4b/base, wave 4 round 2): wave 4 builds on R1, so w4b/base merges r1/integration into wave4/integration; this ledger is the union of both sides (every migrationOrder rule, reservation, shared file and hold), and the ledger-message test takes R1's version, which already carries wave 4's broadened stamp check, plus wave 4's own 20261011* order test. Round 2's builder branches are w4b/, so the wave4 reservation names that prefix too.",
   "sharedFiles": {
     "docs/deploy-ledger.json": "wave3",
     "docs/DEPLOY-LEDGER.md": "wave3",
@@ -156,7 +172,10 @@
     "scripts/prerender-pages.mjs": "company-profiles",
     "public/llms.txt": "company-profiles",
     "src/i18n/locales/": "company-profiles",
-    "src/test/the-board-hands-a-job-and-a-search-to-the-agent.test.tsx": "company-profiles"
+    "src/test/the-board-hands-a-job-and-a-search-to-the-agent.test.tsx": "company-profiles",
+    "supabase/config.toml": "critical-path",
+    "index.html": "critical-path",
+    "src/test/the-ledger-message-kept-no-order-and-hid-what-it-could-not-check.test.ts": "critical-path"
   },
   "_baselineNote": "Lovable's staged-runner stubs (drizzle/migrations) name every migration from 20260923 on; earlier ones were applied before that record was complete and were judged applied by behaviour (2026-10-10 check: 20260917170000, 20260918101000, 20260918200000, 20260921120000 have no stub).",
   "verifiedDeploys": [

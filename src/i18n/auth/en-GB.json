@@ -1,0 +1,100 @@
+{
+  "auth": {
+    "back": "Back to sign in",
+    "checkEmail": "Check your email",
+    "code": {
+      "instead": "Email me a sign-in code instead",
+      "invalid": "That code didn't work. Check it, or ask for a new one.",
+      "label": "Code from the email",
+      "onItsWay": "If this address can sign in, a code is on its way. It usually arrives within a minute.",
+      "placeholder": "123456",
+      "resend": "Ask for a new code",
+      "resendIn": "You can ask for a new code in {{seconds}} s.",
+      "send": "Email me a sign-in code",
+      "stillNothing": "Still nothing? Check your spam folder, or email",
+      "tooShort": "Enter the whole code from the email.",
+      "verify": "Sign in",
+      "wrongAddress": "Wrong address?"
+    },
+    "confirm": {
+      "body": "Press Continue to finish signing in. The link works once.",
+      "emailChangeBody": "Press Continue to confirm your new email address.",
+      "emailChanged": "Your email change is confirmed. If your other address also received a link, use that one too.",
+      "expired": "This link has expired or was already used. Sign in again to get a new one.",
+      "recoveryBody": "Press Continue to choose a new password.",
+      "title": "Finish signing in",
+      "working": "Signing you in…"
+    },
+    "confirmationOnItsWay": "If this address can sign in, a confirmation email is on its way. It usually arrives within a minute.",
+    "continue": "Continue",
+    "email": {
+      "invalid": "Enter a valid email address.",
+      "label": "Email",
+      "placeholder": "you@example.com",
+      "remembered": "Continue as {{email}}",
+      "useDifferent": "Use a different address"
+    },
+    "footnote": "An account keeps your scores, credits and purchases, and a CV only if you save one.",
+    "forgot": "Forgot password?",
+    "genericError": "Something went wrong. Please try again.",
+    "google": {
+      "continue": "Continue with Google"
+    },
+    "guard": {
+      "passwordCleared": "We cleared a password set on this address before you proved you own it. Set a new one in your account settings if you want one.",
+      "passwordClearedTitle": "Your old password was cleared"
+    },
+    "help": "Can't sign in? Email",
+    "interstitial": {
+      "body": "This sign-in came from a link this browser didn't ask for. Continue only if this is your account.",
+      "continue": "Continue",
+      "notYou": "Not you? Sign out",
+      "title": "You're signed in as {{email}}"
+    },
+    "mismatch": "We couldn't sign you in with that email and password.",
+    "mismatchShort": "We couldn't sign you in with that email and password. A new account needs at least 8 characters.",
+    "notConfirmed": "This address isn't confirmed yet. Use the link in the confirmation email (it may be in spam).",
+    "or": "or",
+    "password": {
+      "hide": "Hide password",
+      "label": "Password",
+      "missing": "Enter a password.",
+      "placeholder": "At least 8 characters",
+      "show": "Show password"
+    },
+    "privacy": "Privacy",
+    "provider": {
+      "failed": "That sign-in didn't finish. Try again, or use your password."
+    },
+    "rateLimited": "Too many attempts in a short time. Please wait a few minutes and try again.",
+    "resendConfirmation": "Email the confirmation link again",
+    "reset": {
+      "blocked": "We couldn't confirm this address just now, so no password was set. Try again in a few minutes, or email",
+      "checking": "Checking your account…",
+      "done": "Your new password is set.",
+      "doneOthers": "Your new password is set, and every other device was signed out.",
+      "intro": "Enter your email. If it has an account, we'll email a code you can use to choose a new password.",
+      "newPassword": "New password",
+      "onItsWay": "If an account exists for this address, a reset code is on its way. It usually arrives within a minute.",
+      "proven": "This address is confirmed. Choose a new password.",
+      "retry": "Try again",
+      "save": "Set new password",
+      "send": "Email me a reset code",
+      "signedIn": "You're signed in. You can change your password in your account settings.",
+      "title": "Reset your password",
+      "toAccount": "Go to your account",
+      "tooShort": "Use at least 8 characters.",
+      "verify": "Continue"
+    },
+    "return": {
+      "failed": "Sign-in didn't finish. Please try again."
+    },
+    "samePassword": "Choose a password you haven't used here before.",
+    "sessionExpired": "Your session expired. Sign back in to pick up where you left off.",
+    "subtitle": "Track your CV scores over time, keep your scan history, and see your credits and purchases in one place. Free forever.",
+    "title": "Sign in or create your free account",
+    "usePassword": "Use a password instead",
+    "weakPassword": "That password is too weak or too common. Use at least 8 characters that are hard to guess.",
+    "whatWeKeep": "What we keep"
+  }
+}

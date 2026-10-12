@@ -1,0 +1,1 @@
+SELECT public._mig_exec(sql) FROM public._mig_stage WHERE name = '20261009112000_a_shortlist_evaluation_is_closed_to_the_browser_once_no_live_code_writes_it_from_there.sql';
