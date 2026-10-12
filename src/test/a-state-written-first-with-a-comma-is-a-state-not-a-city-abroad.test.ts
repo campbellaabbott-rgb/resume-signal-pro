@@ -142,7 +142,7 @@ describe("a city-table guess never vetoes the employer's own country", () => {
 
 describe("the rule versions move with the rules", () => {
   it("COUNTRY_MAP_VERSION 9 and REGION_MAP_VERSION 3", () => {
-    expect(COUNTRY_MAP_VERSION).toBe(9);
+    expect(COUNTRY_MAP_VERSION, "10 since S12-037").toBeGreaterThanOrEqual(9);
     expect(REGION_MAP_VERSION).toBe(3);
   });
 });

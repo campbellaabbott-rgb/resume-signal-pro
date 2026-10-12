@@ -772,6 +772,17 @@ function leadingPunctuatedState(s: string): string | null {
   return code;
 }
 
+/** Australian state codes a trailing two-letter code can carry (the others are three letters). */
+const AU_STATE_CODES: ReadonlySet<string> = new Set(["WA", "SA", "NT"]);
+
+/** "IL - Tel Aviv", "IN, Chennai": a leading code followed by a city the table files in the country that code names. */
+function leadingCodeItsOwnCountry(s: string): string | null {
+  const m = P_US_STATE_CODE_LEADING_PUNCT.exec(s);
+  if (!m) return null;
+  const places = s.slice(m[0].length).split(/[-–—,;·|/]/).map((x) => cityCountry(x.trim())).filter((c) => c !== null);
+  return places.includes(m[1]) ? m[1] : null;
+}
+
 /** The state a location's leading form states outright: "US-TX-Houston" or "SD, Aberdeen". */
 function leadingStatedState(s: string): string | null {
   return P_US_PREFIXED_STATE.exec(s)?.[1] ?? leadingPunctuatedState(s);
@@ -810,7 +821,10 @@ const P_CA_PROV_NAME = /\b(?:ontario|quebec|british columbia|alberta|manitoba|sa
 // ("SD, Aberdeen" was GB, "OH, Lima" PE). Stored rows are re-derived as each
 // board is read again (the ingest recomputes country and region_code from the
 // location on every read); the backfill sweep re-runs the null-country rows.
-export const COUNTRY_MAP_VERSION = 9;
+// 10 (S12-037): ", AB, CA" with a province before the code is Canada, "WA"
+// after an Australian city is Australia, and a leading code followed by a city
+// in the country that code names is that country ("IL - Tel Aviv").
+export const COUNTRY_MAP_VERSION = 10;
 const CITY_COUNTRY = new Map<string, string>([
   ["aarhus", "DK"],
   ["aberdeen", "GB"],
@@ -1176,10 +1190,18 @@ function countryOf(location: string | null | undefined, guessFromCity: boolean):
   // segment is a city the table places in XX, XX is that country. Otherwise an
   // upper-case state code at the very end is the US, ahead of a country word
   // earlier in the string: "Mexico, MO" was MX, "Lake Wales, FL" GB.
+  // S12-037: "Perth, WA 6000" -- an Australian city, its state, its four-digit postcode.
+  if (/,\s*(?:WA|SA|NT)(?:\s+\d{4})?\s*$/.test(s) && cityCountry(s.split(",")[0]) === "AU") return "AU";
   const tail = P_TRAILING_CODE.exec(s);
   if (tail) {
     const city = cityCountry(s.split(",")[0]);
     if (city !== null && city === tail[1]) return city;
+    // S12-037: a province before a trailing ", CA" makes it Canada ("Red Deer,
+    // AB, CA" was California), and "WA" after an Australian city is Western
+    // Australia ("Perth, WA" was Washington).
+    const segs = s.split(",").map((x) => x.trim());
+    if (tail[1] === "CA" && segs.length >= 3 && (P_CA_PROV_SEGMENT.test(segs[segs.length - 2]) || P_CA_PROV_NAME.test(segs[segs.length - 2]))) return "CA";
+    if (city === "AU" && AU_STATE_CODES.has(tail[1])) return "AU";
     if (US_STATE_CODES.has(tail[1])) {
       // ...unless the string names that same country in words: "India, IN".
       for (const [re, code] of COUNTRY_PATTERNS) if (code === tail[1] && re.test(s)) return code;
@@ -1189,6 +1211,11 @@ function countryOf(location: string | null | undefined, guessFromCity: boolean):
   // The state-first form with its punctuation (S11-027), ahead of the country
   // words only because it already refuses a string that names a country.
   if (leadingStatedState(s) !== null) return "US";
+  // S12-037: a leading code the state reading refused because the city after
+  // it lies in the country that code names is that country: "IL - Tel Aviv"
+  // is Israel, not Illinois (it fell through to the short leading-code list).
+  const refused = leadingCodeItsOwnCountry(s);
+  if (refused !== null) return refused;
   for (const [re, code] of COUNTRY_PATTERNS) if (re.test(s)) return code;
   if (P_US_STATE_CODE.test(s) || P_US_STATE_NAME.test(s) || P_US_STATE_CODE_LEADING.test(s)) return "US";
   if (P_CA_PROV_CODE.test(s) || P_CA_PROV_NAME.test(s)) return "CA";
