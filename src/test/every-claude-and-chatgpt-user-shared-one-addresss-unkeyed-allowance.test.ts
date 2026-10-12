@@ -42,6 +42,10 @@ let db: PGlite;
 let pg: PgSupabase;
 let boardMode: "ok" | "timeout" | "unreachable" | "unknown-id";
 let boardCalls: Array<Record<string, unknown>>;
+/** A board that takes this long to answer, and how many of its reads ran at once at most. */
+let boardDelayMs = 0;
+let boardInFlight = 0;
+let boardMaxInFlight = 0;
 
 const hex16 = (s: string) => createHash("sha256").update(s).digest("hex").slice(0, 16);
 const today = () => new Date().toISOString().slice(0, 10);
@@ -92,6 +96,13 @@ beforeAll(async () => {
     if (String(url).endsWith("/functions/v1/job-board")) {
       const body = JSON.parse(String(init.body ?? "{}")) as Record<string, unknown>;
       boardCalls.push(body);
+      boardInFlight++;
+      boardMaxInFlight = Math.max(boardMaxInFlight, boardInFlight);
+      try {
+        if (boardDelayMs) await new Promise((r) => setTimeout(r, boardDelayMs));
+      } finally {
+        boardInFlight--;
+      }
       if (boardMode === "unreachable") throw new TypeError("fetch failed");
       if (boardMode === "timeout") return new Response(JSON.stringify({ error: "canceling statement due to statement timeout" }), { status: 504 });
       if (body.action === "detail") {
@@ -117,6 +128,8 @@ beforeAll(async () => {
 beforeEach(async () => {
   boardMode = "ok";
   boardCalls = [];
+  boardDelayMs = 0;
+  boardMaxInFlight = 0;
   await db.exec("DELETE FROM public.mcp_anon_rate; DELETE FROM public.mcp_calls_daily;");
 });
 
@@ -342,5 +355,64 @@ describe("the adoption reader counts addresses, not a host's own buckets", () =>
       "SELECT unkeyed_calls, unkeyed_addresses, unkeyed_address_calls_max, unkeyed_addresses_at_max FROM public.agent_adoption_metrics(1)",
     );
     expect(rows[0]).toEqual({ unkeyed_calls: 530, unkeyed_addresses: 1, unkeyed_address_calls_max: 7, unkeyed_addresses_at_max: 1 });
+  });
+});
+
+/**
+ * The review of 9fe3bc0d, three probes of the shipped handler:
+ *   - ninety concurrent board_stats calls on a cold isolate made ninety facet
+ *     reads (the cache helped only calls that came one after another);
+ *   - sixty keyless searches sent at once ran sixty board reads at once, all
+ *     inside the per-minute caps;
+ *   - one keyless search_jobs with 300 token-shaped employer names was counted
+ *     once and forwarded all 300 names to the board.
+ */
+describe("a burst is bounded in this isolate, and a long employer list is refused before it is counted", () => {
+  it("concurrent board_stats misses share one board read", async () => {
+    const later = Date.now() + 2 * A.boardStatsCacheMs;
+    const spy = vi.spyOn(Date, "now").mockReturnValue(later);
+    try {
+      boardDelayMs = 80;
+      const all = await Promise.all(Array.from({ length: 90 }, (_, i) =>
+        callFrom(`2001:db8:${(i % 3) + 1}:1::${i + 1}`, { name: "board_stats", args: {} })));
+      expect(all.filter((r) => r.refused)).toHaveLength(0);
+      expect(boardCalls.filter((b) => b.includeFacets === true)).toHaveLength(1);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("sixty keyless searches sent at once never run more than the isolate's turns on the board at the same time", async () => {
+    boardDelayMs = 80;
+    const calls = [
+      ...Array.from({ length: 30 }, () => callFrom(CLAUDE_ADDR)),
+      ...Array.from({ length: 20 }, (_, i) => callFrom(CHATGPT_ADDR, { meta: { "openai/subject": `v1/burst-${i}` } })),
+      ...Array.from({ length: 10 }, (_, i) => callFrom(`203.0.113.${100 + i}`)),
+    ];
+    const all = await Promise.all(calls);
+    expect(all.filter((r) => r.refused).map((r) => r.text)).toEqual([]);
+    expect(boardCalls.length).toBe(60);
+    expect(boardMaxInFlight).toBeLessThanOrEqual(A.inFlightPerIsolate);
+    expect(boardMaxInFlight).toBeGreaterThan(1);
+  });
+
+  it("a search naming 300 employers is an argument error: nothing counted, nothing sent to the board", async () => {
+    const companies = Array.from({ length: 300 }, (_, i) => `zz-nobody-${i}`);
+    const r = await callFrom(OTHER_ADDR, { args: { query: "nurse", companies } });
+    expect(r.refused).toBe(true);
+    expect(r.text).toMatch(/one search takes up to 50/);
+    expect(await callsIn(`ip:${hex16(OTHER_ADDR)}`)).toBe(0);
+    expect(boardCalls).toHaveLength(0);
+  });
+});
+
+describe("only a call from OpenAI's published egress keeps its search out of the demand log", () => {
+  it("a ChatGPT user agent or an openai/ _meta key from anywhere else is logged like any other search", async () => {
+    await callFrom(OTHER_ADDR, { ua: "ChatGPT-probe/1.0" });
+    await callFrom(OTHER_ADDR, { meta: { "openai/anything": "x" } });
+    expect(boardCalls.map((b) => b.noLog)).toEqual([undefined, undefined]);
+    boardCalls = [];
+    await callFrom(CHATGPT_ADDR, { meta: { "openai/subject": "v1/real-person" } });
+    expect(boardCalls.map((b) => b.noLog)).toEqual([true]);
   });
 });

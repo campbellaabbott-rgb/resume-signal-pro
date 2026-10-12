@@ -39,6 +39,10 @@ beforeAll(async () => {
   const env: Record<string, string> = { SUPABASE_URL: "https://harness.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "service_harness", SUPABASE_ANON_KEY: "anon_harness" };
   g.Deno = { env: { get: (k: string) => env[k] }, serve: (h: unknown) => { g.__edgeHandler = h; } };
   g.fetch = async (url: string, init: { body?: string } = {}) => {
+    // TEST-NET-2 stands in for an OpenAI egress block.
+    if (String(url) === "https://openai.com/chatgpt-connectors.json") {
+      return new Response(JSON.stringify({ creationTime: "2026-10-06T23:18:01", prefixes: [{ ipv4Prefix: "198.51.100.0/24" }] }), { status: 200 });
+    }
     if (String(url).endsWith("/functions/v1/job-board")) {
       const body = JSON.parse(String(init.body ?? "{}")) as Record<string, unknown>;
       boardBodies.push(body);
@@ -123,13 +127,17 @@ describe("a keyless page says where it stops", () => {
 
 describe("a ChatGPT search is not logged; everyone else's is", () => {
   it("ChatGPT's searches carry the no-log flag to the board; a Claude or script search does not", async () => {
-    await call("search_jobs", { query: "nurse" }, { "user-agent": "openai-mcp/1.0 (ChatGPT)" });
-    await call("search", { query: "nurse" }, { "user-agent": "openai-mcp/1.0 (ChatGPT)" });
+    const chatgpt = { "user-agent": "openai-mcp/1.0 (ChatGPT)", "x-forwarded-for": "198.51.100.20" };
+    await call("search_jobs", { query: "nurse" }, chatgpt);
+    await call("search", { query: "nurse" }, chatgpt);
     expect(boardBodies.map((b) => b.noLog)).toEqual([true, true]);
     boardBodies = [];
     await call("search_jobs", { query: "nurse" });
     await call("search_jobs", { query: "nurse" }, { "x-forwarded-for": "160.79.105.10" });
-    expect(boardBodies.map((b) => b.noLog)).toEqual([undefined, undefined]);
+    // The review of 9fe3bc0d: the flag followed the edition, which any caller
+    // can claim with a user agent; only OpenAI's published egress keeps it now.
+    await call("search_jobs", { query: "nurse" }, { "user-agent": "openai-mcp/1.0 (ChatGPT)" });
+    expect(boardBodies.map((b) => b.noLog)).toEqual([undefined, undefined, undefined]);
   });
 });
 

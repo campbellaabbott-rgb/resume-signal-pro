@@ -63,6 +63,16 @@ export const ANON_ALLOWANCE = {
   checkJobsOpenIds: 50,
   /** Transport failures and unknown ids given back, at most, per bucket per day. */
   refundsPerBucket: 5,
+  /**
+   * Keyless calls running at once in one isolate, and how long one waits for
+   * a turn before it is turned away uncounted (review of 9fe3bc0d). The
+   * per-minute caps bound a minute's total, not how many searches hit the
+   * board together: sixty could arrive at once, on the worker pool job-board
+   * shares with ingest. Isolates multiply this, so it bounds a burst rather
+   * than the whole service.
+   */
+  inFlightPerIsolate: 6,
+  inFlightWaitMs: 8_000,
 } as const;
 
 /** The three shares of the day, by verified source. */

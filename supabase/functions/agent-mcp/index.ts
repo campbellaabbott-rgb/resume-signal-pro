@@ -2221,6 +2221,16 @@ const companyTokens = (v: unknown): string[] =>
     .filter(Boolean);
 
 /**
+ * Employers one search may name (review of 9fe3bc0d). A token-shaped entry
+ * the catalogue does not carry is read by job-board as a name, and 300 of
+ * them in one keyless call cost the board seconds of CPU before any cap; the
+ * board now looks up five names a call, and this refuses a longer list as an
+ * argument error, before the call is counted, rather than trimming it
+ * silently.
+ */
+const COMPANIES_PER_CALL = 50;
+
+/**
  * A job id as sent, or the argument error that says what an id looks like —
  * raised before a keyless call is counted. A pasted resumebooster.work/jobs
  * link is read for its ?job= id, which is the same id.
@@ -2255,6 +2265,12 @@ function idsArg(v: unknown, cap: number): string[] {
 function searchBody(args: Record<string, unknown>): Record<string, unknown> {
   const limit = Math.max(1, Math.min(KEYED_SEARCH_LIMIT, Number(args.limit ?? 20) || 20));
   const companies = companyTokens(args.companies);
+  if (companies.length > COMPANIES_PER_CALL) {
+    throw new ToolArgumentError(
+      `companies names ${companies.length} employers; one search takes up to ${COMPANIES_PER_CALL}.`,
+      "Send the employers you care about most, or search without companies and read companyToken off the cards.",
+    );
+  }
   // ASKED FOR BY NAME, AND REFUSED BY NAME. A vendor filter naming a system
   // this server may not redistribute would bind a filter that can only ever
   // select rows the runners then drop, and the agent would read the empty
@@ -2928,11 +2944,27 @@ async function runApplyMyself(client: SupabaseClient, args: Record<string, unkno
  * serves the last answer it had, marked stale, rather than nothing.
  */
 let boardStatsCache: { at: number; value: Record<string, unknown> } | null = null;
+/**
+ * The one board read a cold or expired cache is waiting on (review of
+ * 9fe3bc0d): ninety concurrent misses each started their own facet read, and
+ * board_stats is never counted, so callers that arrive together now share
+ * one read. Cleared when it settles; a failed read still serves the stale copy.
+ */
+let boardStatsInFlight: Promise<unknown> | null = null;
 async function runCachedBoardStats(): Promise<unknown> {
   const hit = boardStatsCache;
   if (hit && Date.now() - hit.at < ANON_ALLOWANCE.boardStatsCacheMs) return hit.value;
+  if (!boardStatsInFlight) {
+    boardStatsInFlight = (async () => {
+      try {
+        return await runBoardStats();
+      } finally {
+        boardStatsInFlight = null;
+      }
+    })();
+  }
   try {
-    return await runBoardStats();
+    return await boardStatsInFlight;
   } catch (e) {
     if (hit) return { ...hit.value, stale: true };
     throw e;
@@ -4003,6 +4035,39 @@ function maybeAlert(client: SupabaseClient, share: string, used: number, cap: nu
   })());
 }
 
+/**
+ * A TURN TO RUN A KEYLESS CALL (review of 9fe3bc0d): at most
+ * ANON_ALLOWANCE.inFlightPerIsolate run at once in this isolate; the rest wait
+ * in arrival order for up to inFlightWaitMs, and a call that gets no turn is
+ * turned away before it is counted. Resolves to the release, or null.
+ */
+let keylessRunning = 0;
+const keylessWaiting: Array<() => void> = [];
+function keylessRelease(): () => void {
+  let done = false;
+  return () => {
+    if (done) return;
+    done = true;
+    keylessRunning--;
+    keylessWaiting.shift()?.();
+  };
+}
+function keylessTurn(waitMs: number = ANON_ALLOWANCE.inFlightWaitMs): Promise<(() => void) | null> {
+  if (keylessRunning < ANON_ALLOWANCE.inFlightPerIsolate) {
+    keylessRunning++;
+    return Promise.resolve(keylessRelease());
+  }
+  return new Promise((resolve) => {
+    const grant = () => { clearTimeout(timer); keylessRunning++; resolve(keylessRelease()); };
+    const timer = setTimeout(() => {
+      const i = keylessWaiting.indexOf(grant);
+      if (i >= 0) keylessWaiting.splice(i, 1);
+      resolve(null);
+    }, waitMs);
+    keylessWaiting.push(grant);
+  });
+}
+
 /** board_stats calls this minute per connection, in this isolate: it is never counted, so this alone bounds it. */
 const boardStatsMinute = new Map<string, { minute: number; n: number }>();
 function boardStatsAllowed(connection: string, now: number = Date.now()): boolean {
@@ -4067,8 +4132,11 @@ async function answerUnkeyed(
   const A = ANON_ALLOWANCE;
   const address = callerAddress(req.headers);
   const edition = editionOf(req.headers, params);
-  const ctx: Ctx = { edition, noLog: edition === "chatgpt", keyless: true };
   const host = await egressHost(address, isChatGptCaller(req.headers, params));
+  // Not logged only for a call from OpenAI's published egress (review of
+  // 9fe3bc0d): the edition follows what a caller says it is, and a script
+  // anywhere could otherwise keep its searches out of the demand log.
+  const ctx: Ctx = { edition, noLog: host === "chatgpt", keyless: true };
   const partition: Partition = host ?? "other";
   const connection = connectionOf(address);
 
@@ -4095,107 +4163,128 @@ async function answerUnkeyed(
     };
   }
 
-  // A ChatGPT caller stamps its user as `openai/subject` in _meta. It keys
-  // that user's own bucket only on a call from OpenAI's published egress;
-  // from anywhere else it is the caller's own word and keys nothing. Logged
-  // hashed and alone: never beside an address.
-  const subject = host === "chatgpt" ? openaiSubjectOf(params) : "";
-  const subjectHash = subject ? (await sha256Hex(subject)).slice(0, 16) : "";
-  if (subject) console.log(`[AGENT-MCP] keyless subject ${subjectHash} (${toolName})`);
-  // Measurement for a later claude.ai-versus-API sub-share: the user agent
-  // of calls from Anthropic's range. A hint, never a credential.
-  if (host === "claude") console.log(`[AGENT-MCP] claude-range ${toolName} ua=${(req.headers.get("user-agent") ?? "").slice(0, 80)}`);
-  const lookups = lookupBucket(host, subjectHash, (await sha256Hex(connection)).slice(0, 16));
-  const forms = toolName === "apply_myself";
-  const m: AllowanceBucket = forms ? formsBucket(lookups) : lookups;
-
-  const { data, error } = await client
-    .rpc("mcp_anon_check_v2", {
-      p_bucket: m.bucket,
-      p_bucket_cap: m.bucketCap,
-      p_global_bucket: m.share,
-      p_global_cap: m.shareCap,
-      // A forms call's overall row is the forms pool, never the lookups' day.
-      p_overall_cap: forms ? A.forms.overall : A.overallPerDay,
-      p_minute_cap: m.minuteCap,
-      p_overall_minute_cap: forms ? A.perMinute.forms : A.perMinute.overall,
-      p_overall_bucket: forms ? FORMS_POOL : "global",
-    })
-    .maybeSingle();
-  if (error || !data) {
-    console.error("[AGENT-MCP] keyless allowance check failed:", error?.message?.slice(0, 160));
-    countCall(client, partition, "keyless", toolName, "error");
-    return { rpc: rpcError(rpcId, -32603, "The keyless allowance is temporarily unavailable. Retry shortly."), headers: {} };
-  }
-  const d = data as MeterDecision;
-  if (!d.allowed) {
-    const minute = d.refused_by === "minute" || d.refused_by === "overall_minute";
-    countCall(client, partition, "keyless", toolName, minute ? "refused_minute" : "refused_day");
-    const [message, fix] = spentRefusal(d, m, edition, keylessTwin(toolName, args), MINT_URL, FREE_KEY_DAILY_QUOTA);
+  // A TURN FIRST: a call waits for one before it is counted, so a call
+  // turned away from a busy isolate costs nothing.
+  const release = await keylessTurn();
+  if (!release) {
+    countCall(client, partition, "keyless", toolName, "refused_minute");
     return {
-      rpc: rpcResult(rpcId, toolErr(message, fix)),
-      headers: { "Retry-After": String(minute ? secondsLeftInMinute() : secondsToMidnightUtc()) },
+      rpc: rpcResult(rpcId, toolErr(
+        "Too many keyless calls are running on this server at once. Nothing was counted for this call.",
+        `Try again in a few seconds. Meanwhile ${keylessTwin(toolName, args)} needs nothing.`,
+      )),
+      headers: { "Retry-After": "3" },
     };
   }
-  maybeAlert(client, m.share, d.share_used, d.share_cap);
-  maybeAlert(client, forms ? FORMS_POOL : "global", d.overall_used, d.overall_cap);
-
-  const giveBack = (why: string) => {
-    background((async () => {
-      const { data: back } = await client.rpc("mcp_anon_refund", { p_bucket: m.bucket, p_global_bucket: m.share, p_overall: true, p_max: A.refundsPerBucket, p_overall_bucket: forms ? FORMS_POOL : "global" });
-      console.log(`[AGENT-MCP] keyless ${toolName} ${why}: ${back === true ? "given back" : "not given back (daily limit)"}`);
-    })());
-  };
-
-  // One page of ten, whatever was asked (the offset was bounded before the call was counted).
-  const clamped = { ...args, limit: Math.max(1, Math.min(ANON_SEARCH_LIMIT, Number(args.limit ?? ANON_SEARCH_LIMIT) || ANON_SEARCH_LIMIT)) };
-  let out: Record<string, unknown>;
   try {
-    switch (toolName) {
-      case "search_jobs": out = await runSearchJobs(clamped, ctx) as Record<string, unknown>; break;
-      case "search": out = await runSearchAlias(args, ctx) as Record<string, unknown>; break;
-      case "fetch": out = await runFetchAlias(args, ctx) as Record<string, unknown>; break;
-      case "get_job": out = await runGetJob(args, ctx) as Record<string, unknown>; break;
-      case "get_jobs": out = await runGetJobs(args, ctx) as Record<string, unknown>; break;
-      case "check_jobs_open": out = await runCheckJobsOpen(args, ctx) as Record<string, unknown>; break;
-      case "employer_hiring_record": out = await runEmployerHiringRecord(client, args) as Record<string, unknown>; break;
-      case "employer_growth": out = await runEmployerGrowth(client, args) as Record<string, unknown>; break;
-      case "apply_myself": out = await runApplyMyself(client, args, ctx) as Record<string, unknown>; break;
-      default: return { rpc: rpcError(rpcId, -32602, `unknown tool: ${toolName} — call tools/list for the names`), headers: {} };
-    }
-  } catch (e) {
-    countCall(client, partition, "keyless", toolName, "error");
-    if (e instanceof BoardTransportError) giveBack("transport fault");
-    throw e;
+    return await meteredRun();
+  } finally {
+    release();
   }
-  if (answeredNotFound(toolName, out)) giveBack("unknown id");
-  countCall(client, partition, "keyless", toolName, "ok");
 
-  const bucketLeft = Math.max(0, d.bucket_cap - d.bucket_used);
-  const shareLeft = Math.max(0, d.share_cap - d.share_used);
-  const overallLeft = Math.max(0, d.overall_cap - d.overall_used);
-  const left = Math.min(bucketLeft, shareLeft, overallLeft);
-  const what = forms ? "application-form reads" : "lookups";
-  const world = left < bucketLeft ? `; ${left} left for everyone sharing this allowance` : "";
-  const keyClause = edition === "other" ? `; a free key gives ${FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} (${MINT_URL})` : "";
-  const note = `keyless: ${bucketLeft} of ${d.bucket_cap.toLocaleString("en-US")} ${what} left today ${m.owner}${world}; resets at midnight UTC${keyClause}`;
-  const unkeyed = {
-    callsLeftToday: bucketLeft,
-    // The cap of the bucket that answered: a connection's, a ChatGPT user's, or a host's pool.
-    ipCap: d.bucket_cap,
-    allowance: m.kind,
-    ...(forms ? { pool: "forms" } : {}),
-    partition: m.partition,
-    partitionLeftToday: shareLeft,
-    partitionCap: d.share_cap,
-    // For a forms call: the whole forms pool, which the platform's part sits inside.
-    globalLeftToday: overallLeft,
-    globalCap: d.overall_cap,
-    resetsInSeconds: secondsToMidnightUtc(),
-  };
-  // The allowance's sentence rides in the unkeyed block, never over the
-  // tool's own `note` (a closed posting's note is the answer).
-  return { rpc: rpcResult(rpcId, toolOk({ ...out, unkeyed: { ...unkeyed, note } })), headers: { "X-Unkeyed-Remaining": String(left) } };
+  async function meteredRun(): Promise<{ rpc: unknown; headers: Record<string, string> }> {
+    // A ChatGPT caller stamps its user as `openai/subject` in _meta. It keys
+    // that user's own bucket only on a call from OpenAI's published egress;
+    // from anywhere else it is the caller's own word and keys nothing. Logged
+    // hashed and alone: never beside an address.
+    const subject = host === "chatgpt" ? openaiSubjectOf(params) : "";
+    const subjectHash = subject ? (await sha256Hex(subject)).slice(0, 16) : "";
+    if (subject) console.log(`[AGENT-MCP] keyless subject ${subjectHash} (${toolName})`);
+    // Measurement for a later claude.ai-versus-API sub-share: the user agent
+    // of calls from Anthropic's range. A hint, never a credential.
+    if (host === "claude") console.log(`[AGENT-MCP] claude-range ${toolName} ua=${(req.headers.get("user-agent") ?? "").slice(0, 80)}`);
+    const lookups = lookupBucket(host, subjectHash, (await sha256Hex(connection)).slice(0, 16));
+    const forms = toolName === "apply_myself";
+    const m: AllowanceBucket = forms ? formsBucket(lookups) : lookups;
+
+    const { data, error } = await client
+      .rpc("mcp_anon_check_v2", {
+        p_bucket: m.bucket,
+        p_bucket_cap: m.bucketCap,
+        p_global_bucket: m.share,
+        p_global_cap: m.shareCap,
+        // A forms call's overall row is the forms pool, never the lookups' day.
+        p_overall_cap: forms ? A.forms.overall : A.overallPerDay,
+        p_minute_cap: m.minuteCap,
+        p_overall_minute_cap: forms ? A.perMinute.forms : A.perMinute.overall,
+        p_overall_bucket: forms ? FORMS_POOL : "global",
+      })
+      .maybeSingle();
+    if (error || !data) {
+      console.error("[AGENT-MCP] keyless allowance check failed:", error?.message?.slice(0, 160));
+      countCall(client, partition, "keyless", toolName, "error");
+      return { rpc: rpcError(rpcId, -32603, "The keyless allowance is temporarily unavailable. Retry shortly."), headers: {} };
+    }
+    const d = data as MeterDecision;
+    if (!d.allowed) {
+      const minute = d.refused_by === "minute" || d.refused_by === "overall_minute";
+      countCall(client, partition, "keyless", toolName, minute ? "refused_minute" : "refused_day");
+      const [message, fix] = spentRefusal(d, m, edition, keylessTwin(toolName, args), MINT_URL, FREE_KEY_DAILY_QUOTA);
+      return {
+        rpc: rpcResult(rpcId, toolErr(message, fix)),
+        headers: { "Retry-After": String(minute ? secondsLeftInMinute() : secondsToMidnightUtc()) },
+      };
+    }
+    maybeAlert(client, m.share, d.share_used, d.share_cap);
+    maybeAlert(client, forms ? FORMS_POOL : "global", d.overall_used, d.overall_cap);
+
+    const giveBack = (why: string) => {
+      background((async () => {
+        const { data: back } = await client.rpc("mcp_anon_refund", { p_bucket: m.bucket, p_global_bucket: m.share, p_overall: true, p_max: A.refundsPerBucket, p_overall_bucket: forms ? FORMS_POOL : "global" });
+        console.log(`[AGENT-MCP] keyless ${toolName} ${why}: ${back === true ? "given back" : "not given back (daily limit)"}`);
+      })());
+    };
+
+    // One page of ten, whatever was asked (the offset was bounded before the call was counted).
+    const clamped = { ...args, limit: Math.max(1, Math.min(ANON_SEARCH_LIMIT, Number(args.limit ?? ANON_SEARCH_LIMIT) || ANON_SEARCH_LIMIT)) };
+    let out: Record<string, unknown>;
+    try {
+      switch (toolName) {
+        case "search_jobs": out = await runSearchJobs(clamped, ctx) as Record<string, unknown>; break;
+        case "search": out = await runSearchAlias(args, ctx) as Record<string, unknown>; break;
+        case "fetch": out = await runFetchAlias(args, ctx) as Record<string, unknown>; break;
+        case "get_job": out = await runGetJob(args, ctx) as Record<string, unknown>; break;
+        case "get_jobs": out = await runGetJobs(args, ctx) as Record<string, unknown>; break;
+        case "check_jobs_open": out = await runCheckJobsOpen(args, ctx) as Record<string, unknown>; break;
+        case "employer_hiring_record": out = await runEmployerHiringRecord(client, args) as Record<string, unknown>; break;
+        case "employer_growth": out = await runEmployerGrowth(client, args) as Record<string, unknown>; break;
+        case "apply_myself": out = await runApplyMyself(client, args, ctx) as Record<string, unknown>; break;
+        default: return { rpc: rpcError(rpcId, -32602, `unknown tool: ${toolName} — call tools/list for the names`), headers: {} };
+      }
+    } catch (e) {
+      countCall(client, partition, "keyless", toolName, "error");
+      if (e instanceof BoardTransportError) giveBack("transport fault");
+      throw e;
+    }
+    if (answeredNotFound(toolName, out)) giveBack("unknown id");
+    countCall(client, partition, "keyless", toolName, "ok");
+
+    const bucketLeft = Math.max(0, d.bucket_cap - d.bucket_used);
+    const shareLeft = Math.max(0, d.share_cap - d.share_used);
+    const overallLeft = Math.max(0, d.overall_cap - d.overall_used);
+    const left = Math.min(bucketLeft, shareLeft, overallLeft);
+    const what = forms ? "application-form reads" : "lookups";
+    const world = left < bucketLeft ? `; ${left} left for everyone sharing this allowance` : "";
+    const keyClause = edition === "other" ? `; a free key gives ${FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} (${MINT_URL})` : "";
+    const note = `keyless: ${bucketLeft} of ${d.bucket_cap.toLocaleString("en-US")} ${what} left today ${m.owner}${world}; resets at midnight UTC${keyClause}`;
+    const unkeyed = {
+      callsLeftToday: bucketLeft,
+      // The cap of the bucket that answered: a connection's, a ChatGPT user's, or a host's pool.
+      ipCap: d.bucket_cap,
+      allowance: m.kind,
+      ...(forms ? { pool: "forms" } : {}),
+      partition: m.partition,
+      partitionLeftToday: shareLeft,
+      partitionCap: d.share_cap,
+      // For a forms call: the whole forms pool, which the platform's part sits inside.
+      globalLeftToday: overallLeft,
+      globalCap: d.overall_cap,
+      resetsInSeconds: secondsToMidnightUtc(),
+    };
+    // The allowance's sentence rides in the unkeyed block, never over the
+    // tool's own `note` (a closed posting's note is the answer).
+    return { rpc: rpcResult(rpcId, toolOk({ ...out, unkeyed: { ...unkeyed, note } })), headers: { "X-Unkeyed-Remaining": String(left) } };
+  }
 }
 
 /** Carried in the unkeyed block when a key was sent and not recognised, and the call ran without it. */
@@ -4670,7 +4759,9 @@ Deno.serve(async (req) => {
     }
   }
 
-  const ctx: Ctx = { edition, noLog: edition === "chatgpt", keyless: false };
+  // As for a keyless call: not logged only from OpenAI's published egress.
+  const verifiedHost = await egressHost(callerAddress(req.headers), isChatGptCaller(req.headers, params));
+  const ctx: Ctx = { edition, noLog: verifiedHost === "chatgpt", keyless: false };
   try {
     if (!d) {
       // No key, one of ANON_TOOLS: counted by mcp_anon_check_v2, then
@@ -4680,7 +4771,7 @@ Deno.serve(async (req) => {
     }
     // A live pass on a key: record how it was activated, once.
     await noteActivatedVia(client, d, oauthSub ? oauthVia(oauthClient) : "key", req.headers.get("user-agent") ?? "");
-    const host: Partition = (await egressHost(callerAddress(req.headers), isChatGptCaller(req.headers, params))) ?? "other";
+    const host: Partition = verifiedHost ?? "other";
     // A credentialed read, metered above like a tool, answered in its own shape.
     if (read) return json(rpcResult(id, await answerRead(client, read, d, ctx)), 200, rateHeaders);
     // key_status is answered HERE and not in callTool because what it reports
