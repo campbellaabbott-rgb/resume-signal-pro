@@ -57,6 +57,10 @@ beforeAll(async () => {
         ? { allowed: true, refused_by: null, bucket_used: 1, bucket_cap: Number(args.p_bucket_cap), share_used: 1, share_cap: Number(args.p_global_cap), overall_used: 1, overall_cap: Number(args.p_overall_cap ?? 0), minute_used: 1, minute_cap: Number(args.p_minute_cap ?? 0) }
         : name === "api_key_check"
         ? { is_allowed: true, deny_reason: "", api_key_id: "key-1", key_tier: "free", rate_limit: 60, rate_used: 1, quota_limit: 1000, quota_used: 1, pass_ends_at: null, pass_apps_left: null }
+        : name === "v1_withheld_company_tokens" ? []
+        : name === "get_company_hiring_health" ? [{ company_token: "acme", open_roles: 3, closed_90d: 1, superseded_90d: 0, tracking_days: 40, feed_total: 3 }]
+        : name === "get_company_growth" ? [{ company_token: "acme", verdict: "unknown", unknown_reason: "too_small" }]
+        : name === "get_employer_layoff_filings" ? [{ lf_company_token: "acme", lf_source: null }]
         : null;
       const r = Promise.resolve({ data, error: null });
       return Object.assign(r, { maybeSingle: () => r, single: () => r });
@@ -155,6 +159,21 @@ describe("tools/list shows a caller only what it can call", () => {
     expect(text).not.toMatch(/\$\d/);
     expect(text).not.toMatch(/\bPAID\b/);
     expect(text).not.toMatch(/apply agent can submit|submit an application to this job|on (?:the|your) behalf/i);
+  });
+});
+
+describe("every listed keyless tool answers valid arguments with no key", () => {
+  it("each of the keyless tools succeeds (no isError) on a valid call", async () => {
+    const valid: Record<string, Record<string, unknown>> = {
+      board_stats: {}, search_jobs: { query: "nurse" }, search: { query: "nurse" }, fetch: { id: "greenhouse:acme:1" },
+      get_job: { id: "greenhouse:acme:1" }, get_jobs: { ids: ["greenhouse:acme:1"] }, check_jobs_open: { ids: ["greenhouse:acme:1"] },
+      employer_hiring_record: { companyTokens: ["acme"] }, employer_growth: { companyTokens: ["acme"] }, apply_myself: { id: "greenhouse:acme:1" },
+    };
+    expect(Object.keys(valid).sort()).toEqual([...KEYLESS].sort());
+    for (const [name, args] of Object.entries(valid)) {
+      const { body } = await rpc("tools/call", { name, arguments: args });
+      expect(body.result?.isError, `${name}: ${JSON.stringify(body).slice(0, 300)}`).toBeFalsy();
+    }
   });
 });
 
