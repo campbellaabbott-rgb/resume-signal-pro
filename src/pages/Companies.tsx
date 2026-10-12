@@ -137,11 +137,6 @@ export default function Companies() {
               ? tPlural(t, "companyProfile.directory.h1Count", openBoards, { n: fmtCount(openBoards, { lng: lang }) }, "{{n}} company job board hiring now", "{{n}} company job boards hiring now")
               : t("companyProfile.directory.h1", "Companies hiring now")}
           </h1>
-          {counted && (openBoards || companies.some((c) => typeof c.open === "number")) ? (
-            <p className="mb-3 text-sm text-muted-foreground" data-directory-counted="">
-              {t("companyProfile.directory.countedAgo", "Counts from the board's last count, {{ago}}.", { ago: counted })}
-            </p>
-          ) : null}
           {budgetRefusal && <BoardBudgetNotice refusal={budgetRefusal} variant="banner" />}
           <p className="text-muted-foreground mb-8">
             {t("companyProfile.directory.intro2", "Each board is read from its own hiring system: most are employers' own, staffing-agency boards are labelled on their pages, and USAJOBS is the federal government's listing site, where agencies post their roles. The largest boards are below.")}{" "}
@@ -150,6 +145,15 @@ export default function Companies() {
             </Link>{" "}
             {t("companyProfile.directory.searchTail", "to filter any employer by role, pay, or location.")}
           </p>
+          {/* Under the intro, not above it: the line arrives with the reply,
+              and above the intro it pushed the paragraph down under the
+              reader (CLS 0.008 -> 0.025 at 375px). Here it arrives with the
+              list it dates. */}
+          {counted && (openBoards || companies.some((c) => typeof c.open === "number")) ? (
+            <p className="-mt-5 mb-4 text-sm text-muted-foreground" data-directory-counted="">
+              {t("companyProfile.directory.countedAgo", "Counts from the board's last count, {{ago}}.", { ago: counted })}
+            </p>
+          ) : null}
           {companies.length > 0 && (
             <ul className="grid gap-x-6 gap-y-1.5 sm:grid-cols-2 text-sm">
               {companies.map((c) => (
