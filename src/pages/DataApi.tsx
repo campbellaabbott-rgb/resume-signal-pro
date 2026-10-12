@@ -15,7 +15,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Database, ShieldCheck, Scale, Newspaper, FlaskConical, Building2, CheckCircle2, XCircle, Mail, KeyRound, Terminal, Copy, Check, Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { Database, ShieldCheck, Scale, Newspaper, FlaskConical, Building2, CheckCircle2, XCircle, Mail, KeyRound, Terminal, Copy, Check, Loader2, Blocks } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -26,6 +27,7 @@ import { CLOSURE_RECORD_WINDOW_DAYS, closureCountSpanDays } from "@/lib/hiring-t
 import { apiKeyTokenFromHash, errorBodyOf, forgetConfirmFragment } from "@/lib/confirm-link";
 import { PurchaseTerms } from "@/components/PurchaseTerms";
 import { purchaseTerms } from "@/lib/purchase-terms";
+import { BUILDER_PLAN_ANCHOR, BUILDER_PLAN_MAIL_SUBJECT, BUILDER_PLAN_PRICE_USD } from "@/config/builder-plan";
 
 const rpc = (fn: string, args?: Record<string, unknown>) =>
   (supabase as unknown as { rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }> }).rpc(fn, args);
@@ -258,6 +260,42 @@ function GetAKeyBody({ box }: { box: React.RefObject<HTMLDivElement> }) {
 function GetAKey() {
   const box = useRef<HTMLDivElement>(null);
   return <div ref={box}><GetAKeyBody box={box} /></div>;
+}
+
+/**
+ * THE BUILDER API CARD — planned, and a demand test (owner decision
+ * 2026-10-11). It names the planned price and what the tier would include,
+ * and its only action is an email asking for it: there is no checkout, no
+ * Stripe link and no sign-up behind it, and billing is built only after a
+ * written request arrives (src/config/builder-plan.ts). The /v1 refusals
+ * point here by its anchor. Its sentences are i18n keys in all nine locales;
+ * the price is interpolated from the constant.
+ */
+function BuilderCard() {
+  const { t } = useTranslation();
+  return (
+    <div id={BUILDER_PLAN_ANCHOR} data-builder-card className="p-6 rounded-2xl bg-card border border-primary/30 flex flex-col scroll-mt-24">
+      <div className="p-3 rounded-xl bg-primary/10 w-fit mb-4">
+        <Blocks className="w-6 h-6 text-primary" />
+      </div>
+      <h3 className="text-lg font-semibold">{t("dataApiPage.builderName", "Builder API (planned)")}</h3>
+      <div className="text-2xl font-bold text-primary mb-3">
+        {t("dataApiPage.builderPrice", "${{price}} a month, planned", { price: BUILDER_PLAN_PRICE_USD })}
+      </div>
+      <p className="text-sm text-muted-foreground mb-3 flex-1">
+        {t("dataApiPage.builderBody", "Ranked search, résumé fit scoring at volume and 180 days of closures, for display inside your own product with attribution. No feeds or resale; those are the commercial licence. Tell us if you'd use it.")}
+      </p>
+      <p className="text-xs text-muted-foreground mb-6">
+        {t("dataApiPage.builderNotYet", "Not on sale yet: nothing is charged, and we reply to every request by email.")}
+      </p>
+      <a
+        href={`mailto:${CONTACT}?subject=${encodeURIComponent(BUILDER_PLAN_MAIL_SUBJECT)}`}
+        className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
+      >
+        <Mail className="w-4 h-4" /> {t("dataApiPage.builderCta", "Request Builder")}
+      </a>
+    </div>
+  );
 }
 
 export default function DataApi() {
@@ -520,7 +558,7 @@ export default function DataApi() {
                 every request gets a human reply, usually within a day.
               </p>
             </div>
-            <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
               {tiers.map((tier) => {
                 const Icon = tier.icon;
                 return (
@@ -540,6 +578,7 @@ export default function DataApi() {
                   </div>
                 );
               })}
+              <BuilderCard />
             </div>
             <p className="text-center text-sm text-muted-foreground mt-8">
               Free press access requires attribution to Resume Booster with a link. That's the whole price.

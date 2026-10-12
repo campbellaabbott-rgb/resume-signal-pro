@@ -399,7 +399,7 @@
       },
       "subscription": {
         "question": "Ito ba ay subscription?",
-        "answer": "Meron parehong opsyon, at ikaw ang pipili. Ang bawat report at tool ay isang beses na bayad na hindi na uulit. Bukod dito, may dalawang optional na monthly plan: ang Pro sa ${{proPrice}}/buwan para sa walang limitasyong resume scan at lahat ng tool, at ang Morning Queue sa ${{agentPrice}}/buwan, kung saan inihahanda ng Apply Agent ang isang shortlist para sa iyo magdamag. Libre pa rin ang resume scan at ang job board sa dalawang paraan. Parehong nire-renew ang dalawang plan bawat buwan hanggang kanselahin mo, at ang libreng trial ng Morning Queue para sa mga unang beses na subscriber ay nagiging bayad na plan pagkatapos nito maliban kung kanselahin mo bago iyon. Wala nang ibang awtomatikong nag-a-upgrade sa iyo."
+        "answer": "Meron parehong opsyon, at ikaw ang pipili. Ang bawat report at tool ay isang beses na bayad na hindi na uulit. Bukod dito, may isang optional na monthly plan: ang Pro sa ${{proPrice}}/buwan para sa walang limitasyong resume scan at lahat ng tool. Nire-renew ito bawat buwan hanggang kanselahin mo. Libre pa rin ang resume scan, ang job board at ang pagkonekta ng sarili mong AI sa anumang paraan. Wala nang ibang awtomatikong nag-a-upgrade sa iyo."
       },
       "share": {
         "question": "Maaari ko bang ibahagi ang aking pagsusuri sa iba?",
@@ -411,7 +411,7 @@
       },
       "dataStorage": {
         "question": "Iniimbak ba ninyo ang aking resume data?",
-        "answer": "Sandali lang, at may takdang oras. Kapag nag-upload o nag-paste ka ng resume, iniimbak ang text nito nang 24 oras para magamit ng checkout, saka binubura. Ang libre mong report, na sumisipi ng mga linya mula sa resume mo, ay iniimbak nang 7 araw para pareho ang report kapag ni-rescan ang parehong file laban sa parehong job posting, saka binubura. Ang bayad na pagsusuri ay nananatili sa likod ng pribadong link nito nang 90 araw, maliban kung burahin mo ito nang mas maaga. Mas matagal lang naming iniimbak ang resume kapag hiniling mo: isang bersyong sine-save mo sa account mo, ang resume na itinakda mo para sa job matching, o ang CV na ibinigay mo sa apply agent, na ipinapadala ito sa mga employer na inaaplayan nito para sa iyo. Hindi namin ito kailanman ibinebenta. Nakalista sa aming Trust page ang bawat kopya at ang takdang oras nito."
+        "answer": "Sandali lang, at may takdang oras. Kapag nag-upload o nag-paste ka ng resume, iniimbak ang text nito nang 24 oras para magamit ng checkout, saka binubura. Ang libre mong report, na sumisipi ng mga linya mula sa resume mo, ay iniimbak nang 7 araw para pareho ang report kapag ni-rescan ang parehong file laban sa parehong job posting, saka binubura. Ang bayad na pagsusuri ay nananatili sa likod ng pribadong link nito nang 90 araw, maliban kung burahin mo ito nang mas maaga. Mas matagal lang naming iniimbak ang resume kapag hiniling mo: isang bersyong sine-save mo sa account mo, ang resume na itinakda mo para sa job matching, o isang CV na ibinigay mo sa aming apply agent bago ito pinatay. Hindi namin ito kailanman ibinebenta. Nakalista sa aming Trust page ang bawat kopya at ang takdang oras nito."
       },
       "vsChatGPT": {
         "question": "Bakit ito mas maganda kaysa ChatGPT o resume templates?",
@@ -419,7 +419,7 @@
       },
       "bringYourAgent": {
         "question": "Magagamit ba ito ng sarili kong AI agent?",
-        "answer": "Oo. Ang pagbabasa ng job board ay hindi nangangailangan ng anumang key sa unang tawag, at binubuksan ng libreng key ang bawat read tool. Para makapag-request ng mga application ang iyong agent, ang pass na ${{passPrice}} ay nagbibigay dito ng {{passHours}} oras at {{passApplications}} application, simula sa una nitong tawag at hindi kailanman nagre-renew; ganoon din ang ginagawa ng Agent plan buwan-buwan at nagre-renew ito. Bawat posting at bawat paghahanap sa board ay may kontrol na kumokopya ng prompt para sa iyong agent, at ang setup para sa bawat host ay nasa /agents."
+        "answer": "Oo, nang libre. Ikonekta ang Resume Booster sa Claude, ChatGPT o Claude Code, at kaya ng iyong AI na maghanap sa board, basahin nang buo ang mga posting at tulungan kang mag-apply sa sariling site ng employer; hindi kailangan ng key o account para basahin ang board. Gumagawa ng draft ang iyong AI at ikaw ang nagpapasya: hindi kami kailanman nagsusumite ng application para sa iyo. Bawat posting at bawat paghahanap sa board ay may kontrol na kumokopya ng prompt para sa iyong AI, at ang setup para sa bawat app ay nasa /agents."
       }
     },
     "stillHaveQuestions": "May iba ka pang tanong?"
@@ -664,7 +664,8 @@
       "jurisdictionsEea": "16.1 European Economic Area",
       "jurisdictionsCa": "16.2 California",
       "jurisdictionsNv": "16.3 Nevada",
-      "contactUs": "17. Makipag-ugnayan sa Amin"
+      "contactUs": "17. Makipag-ugnayan sa Amin",
+      "mcp": "Paggamit ng Resume Booster mula sa sarili mong AI"
     }
   },
   "terms": {
@@ -2736,11 +2737,11 @@
   },
   "pricingPage": {
     "metaTitle": "Pagpepresyo — Resume Booster",
-    "metaDescription": "Mga isang-beses na tool mula ${{lowPrice}} hanggang ${{highPrice}} na hindi nagre-renew, o buwanang plano mula ${{proPrice}} kasama ang lahat ng tool. Mga resume rewrite sa antas ng recruiter.",
+    "metaDescription": "Mga isang-beses na tool mula ${{lowPrice}} hanggang ${{highPrice}} na hindi nagre-renew, o Pro sa ${{proPrice}} bawat buwan kasama ang lahat ng tool. Mga resume rewrite sa antas ng recruiter.",
     "noSubscriptions": "Isang-pagkakataong bayad • Hindi awtomatikong nagre-renew",
     "titlePrefix": "Piliin ang Iyong",
     "titleHighlight": "Resume Boost",
-    "subtitle": "Mula sa mabilisang ayos hanggang kumpletong career package. Isang beses binabayaran ang mga one-time na produkto; ang Pro at ang Agent plan ay nire-renew buwan-buwan hanggang kanselahin mo.",
+    "subtitle": "Mula sa mabilisang ayos hanggang kumpletong career package. Isang beses binabayaran ang mga one-time na produkto; ang Pro ay nire-renew buwan-buwan hanggang kanselahin mo.",
     "secureCheckout": "Secure na checkout",
     "instantAccess": "Instant na access",
     "stripeProtected": "Protektado ng Stripe",
@@ -2753,7 +2754,7 @@
     "requiresUpload": "Kailangang i-upload ang iyong resume para masuri",
     "whyResumeBooster": "Bakit Resume Booster?",
     "questions": "Mga Tanong?",
-    "allProductsOneTime": "Bawat tool ay isang-beses na bili na may instant na access at hindi nagre-renew. Ang Pro at ang Apply Agent ay buwanang plano na puwede mong kanselahin anumang oras.",
+    "allProductsOneTime": "Bawat tool ay isang-beses na bili na may instant na access at hindi nagre-renew. Ang Pro ay buwanang plano na puwede mong kanselahin anumang oras.",
     "freeScanLink": "libreng scan",
     "seeScoreFirst": "para makita muna ang iyong score.",
     "tryFreeScanFirst": "Subukan Muna ang Libreng Scan",
@@ -2766,8 +2767,8 @@
     "ladderSpecialistDesc": "Para sa mga nagpapalit ng karera: freelance, gig, at side-hustle na trabaho na isinalin sa recruiter-grade na karanasan.",
     "allToolsToggle": "Tingnan ang lahat ng tool ({{count}} pa)",
     "guarantee": "Sakop ang bawat bayad na tool: hindi masaya sa resulta? Ire-regenerate namin ito nang libre — sumagot lang sa iyong resibo.",
-    "passLine": "O isang one-off na pass para sa sarili mong AI agent: ${{passPrice}} para sa {{passHours}} oras at {{passApplications}} aplikasyon, na binibilang lang kapag kaya niyang ipadala. Hindi kailanman nagre-renew.",
-    "passLink": "Ikonekta ang iyong agent"
+    "passLine": "Libre ang pagkonekta ng sarili mong Claude o ChatGPT: maghanap sa board sa iyong chat at mag-apply nang ikaw mismo sa sariling site ng employer, sa tulong ng iyong AI. Hindi kami kailanman nagsusumite ng application para sa iyo.",
+    "passLink": "Ikonekta ang iyong AI"
   },
   "scanPackPurchase": {
     "topUpCredits": "I-top Up ang Credits",
@@ -4364,7 +4365,7 @@
     "countLineNoFeeds": "{{total}} live na opening — bawat isa'y direkta mula sa sariling hiring system ng kumpanya.",
     "uncatCountLine2": "{{total}} bukas na posisyon na hindi namin naiuri sa isang larangan — karaniwang posisyon na hindi nakikilala ng sarili naming mga panuntunan sa larangan, bawat isa ay direkta mula sa sariling hiring system ng kumpanya.",
     "openInAgent": "Buksan sa iyong agent",
-    "openInAgentTip": "Kopyahin ang isang-linyang prompt para sa sarili mong AI agent: pinangangalanan nito ang id ng posting na ito at ang aming MCP server, at hinihiling sa agent na basahin ang posting at sabihin kung maaari itong mag-apply.",
+    "openInAgentTip": "Kopyahin ang isang-linyang prompt para sa sarili mong AI agent: pinangangalanan nito ang id ng posting na ito at ang aming MCP server, at hinihiling sa agent na basahin ang posting at ibigay sa iyo ang apply link ng employer. Ikaw mismo ang mag-a-apply.",
     "agentPromptCopied": "Nakopya ang prompt — i-paste ito sa iyong agent. Pinangangalanan nito ang posting na ito at ang aming MCP server.",
     "agentPromptFailed": "Hindi makopya ang prompt",
     "whichAgent": "Aling agent?",
@@ -4919,15 +4920,8 @@
   "atsCoverage": {
     "heading": "Ginawa para sa mga sistemang talagang ginagamit ng mga employer",
     "sub": "Direktang binabasa namin ang mga trabaho mula sa {{count}} applicant tracking system — hindi kinuha sa search engine.",
-    "autoTitle": "Kami ang mag-a-apply para sa iyo",
-    "autoBlurb": "Ang agent mismo ang bubuo at magpapadala ng aplikasyon.",
-    "clickTitle": "Napunan na, ikaw ang pipindot ng send",
-    "clickBlurb": "May CAPTCHA o pagsusuri ng tao ang mga ito na hindi namin kailanman nilulutas o nilalampasan, o form na hindi pa kayang tapusin ng agent nang mag-isa. Alinman dito, handa nang dumating ang aplikasyon mo at ikaw ang magpapadala.",
-    "stripLegend": "Ipinapadala ng agent ang mga ito para sa iyo. Sa iba pang sistemang nasukat namin, pinupunan nito ang aplikasyon at ikaw ang pipindot ng send: may ilang gumagamit ng pagsusuri ng tao na hindi namin nilalampasan, at sa ilan ay hindi pa nito kayang tapusin ang form. Nakalista ang {{unmeasured}} dahil doon nagmumula ang kanilang mga trabaho; hindi pa nasusukat ang abot ng agent sa mga iyon.",
-    "unmeasuredTitle": "Binabasa rin namin ang mga ito",
-    "unmeasuredBlurb": "Nasa board ang kanilang mga trabaho. Hindi pa namin nasusuri ang kanilang mga application form, kaya wala kaming inaangkin tungkol sa abot ng agent.",
-    "allTitle": "Mga aplikasyong inihanda para sa iyo",
-    "allBlurb": "Direktang kinukuha namin ang mga trabaho sa mga sistemang ito at inihahanda ang aplikasyon mo sa bawat isa."
+    "readTitle": "Binasa mismo mula sa sariling system ng employer",
+    "readBlurb": "Bawat posting sa board ay galing sa isa sa mga system na ito, at sa sariling site ng employer ka mag-a-apply. Hindi kami kailanman nagsusumite ng application para sa iyo."
   },
   "pendingQ": {
     "title": "Mga tanong na hindi nasagot ng agent",
@@ -5015,33 +5009,31 @@
     "proofTracks": "Sinusubaybayan ang bawat aplikasyon at sinasabi kung ano ang nangyari"
   },
   "agentMatches": {
-    "headlineCounted": "Nakakita ako ng {{total}}{{plus}} bakanteng tumutugma sa “{{q}}” na kaya kong isumite nang buo",
-    "headline": "Mga bakanteng tumutugma sa “{{q}}” na kaya kong isumite nang buo",
-    "sub": "Live na mga posting mula sa sariling board ng mga employer, sa mga sistemang kaya kong tapusin ang aplikasyon para sa iyo. Ang pinakamahusay na tugma:",
-    "sendableBadge": "Kayang isumite ito ng agent",
-    "ctaSetup": "Iatas ang agent sa mga ito",
-    "ctaBrowse": "Tingnan lahat"
+    "ctaBrowse": "Tingnan lahat",
+    "headlineCounted2": "{{total}}{{plus}} live na bakante ang tugma sa “{{q}}”",
+    "headline2": "Mga live na bakanteng tugma sa “{{q}}”",
+    "sub2": "Mga live na posting mula mismo sa mga hiring system ng mga employer. Sa sariling site ng employer ka mag-a-apply, sa tulong ng sarili mong AI kung gusto mo. Narito ang mga pinakatugma:",
+    "ctaYourAi": "Mag-apply sa tulong ng sarili mong AI"
   },
   "homeHero": {
-    "badge": "Live na job board + AI apply agent",
     "headlinePre": "Mga live na trabaho, mula mismo sa sariling hiring system ng mga employer.",
-    "headlineHighlight": "Nag-a-apply ang agent para sa iyo.",
-    "sub": "Mga bakanteng binasa mula sa sariling hiring system ng mga kumpanya at sinusuri buong araw. I-upload ang CV mo: inaayos ng agent ang bawat isa laban dito, isinusulat nang tapat ang bawat aplikasyon, at isinusumite kung saan pinapayagan ng employer.",
     "statOpenings": "beripikadong bakante",
     "statCompanies": "kumpanya",
-    "statSendable": "kayang isumite ng agent para sa iyo",
     "ctaPrimary": "I-upload ang CV mo — libre",
     "ctaSecondary": "Tingnan ang board",
     "reassure": "Libreng scan · walang card, walang signup",
     "exploreCta": "Tuklasin ayon sa larangan",
-    "statCompanyBoards": "job board ng kumpanyang naghi-hire"
+    "statCompanyBoards": "job board ng kumpanyang naghi-hire",
+    "badge2": "Live na job board + sarili mong AI",
+    "headlineHighlight2": "Mag-apply nang ikaw mismo, sa tulong ng sarili mong AI.",
+    "sub2": "Mga bakanteng binasa mula mismo sa mga hiring system ng mga kumpanya at sinusuri muli buong araw. I-scan nang libre ang iyong CV, maghanap sa board dito o mula sa Claude o ChatGPT, at mag-apply nang ikaw mismo, sa tulong ng iyong AI kung gusto mo. Hindi kami kailanman nagsusumite ng anuman para sa iyo."
   },
   "homeAgent": {
-    "lead": "Dalhin ang sarili mong AI agent.",
-    "passLine": "Ang ${{passPrice}} na pass ay nagbibigay sa iyong agent ng {{passHours}} oras para maghanap sa job board at mag-apply para sa iyo sa {{passApplications}} trabaho. Binibilang lang ang trabaho kapag kaya ng agent na ipadala ang aplikasyon. Hindi kailanman nagre-renew; mag-sign in para bumili.",
-    "connectCta": "Ikonekta ang iyong agent",
-    "passCta": "Bumili o buksan ang iyong pass",
-    "connectLine2": "Ikonekta ito nang libre at walang account — {{freeCallsPerDay}} na tawag bawat araw bawat network address para tumingin-tingin sa job board (ang isang opisina o koneksyon sa bahay ay binibilang bilang isang address; mula sa ChatGPT may sariling {{freeCallsPerDay}} ang bawat tao, at mula sa Claude, nauuna ang pang-araw-araw na pool na pinagsasaluhan ng lahat ng gumagamit ng Claude)."
+    "lead": "Gamitin ito mula sa sarili mong AI.",
+    "passLine": "Gumagawa ng draft ang iyong AI at ikaw ang nagpapasya: hindi kailanman nagsusumite ang Resume Booster ng application para sa iyo.",
+    "connectCta": "Ikonekta ang iyong AI",
+    "connectLine2": "Ikonekta nang libre at walang account ang Resume Booster sa Claude o ChatGPT: maghanap sa board sa iyong chat, basahin nang buo ang mga posting, at mag-apply nang ikaw mismo sa sariling site ng employer sa tulong ng iyong AI, sa loob ng libreng pang-araw-araw na limit.",
+    "addToClaude": "Idagdag sa Claude"
   },
   "ghostIndex": {
     "stillUp30WithheldLead": "{{n}} sa {{total}} larangang nakalista rito ang walang sukat ng bahaging nakapaskil pa rin sa aming 30-araw na hangganan. Bawat isa ay ipinagpapaliban nang may nakasaad na dahilan — kakulangan ito sa aming sariling tala, hindi kailanman paghatol sa larangan.",
@@ -5091,54 +5083,15 @@
     "layoffReasonPrecision": "ang saklaw ay mahigit {{maxRel}}% kalawak ng bahagdan ng mga tungkuling sinasabi nitong inalis, kaya hindi nito naitutukoy ang bahagdang iyon"
   },
   "agentPass": {
-    "cardTitle": "Isang pass para sa iyong agent",
-    "cardBody": "{{passHours}} oras kasama ang iyong agent, {{passApplications}} aplikasyon, ${{passPrice}}. Hindi kailanman nagre-renew.",
-    "cardClock": "Nagsisimula ang orasan sa unang tawag ng iyong agent, hindi sa pagbili. Ang hindi pa nasisimulang pass ay tumatagal ng {{passShelfDays}} araw.",
-    "cardIncludes": "Kasama ang résumé scorer habang tumatakbo. Libre pa rin ang pagbabasa ng board; ganoon din ang ginagawa ng Agent plan buwan-buwan at nagre-renew — ang pass, hindi kailanman.",
-    "buy": "Bilhin ang pass — ${{passPrice}}",
-    "buying": "Binubuksan ang checkout…",
-    "signInToBuy": "Mag-sign in para bilhin ang pass",
-    "signInWhy": "Nakatali ang pass sa iyong account — hindi sa email address, hindi sa key.",
-    "holdOpen": "May pass ka — buksan ito",
-    "checkoutFailed": "Hindi mabuksan ang checkout — subukan muli.",
-    "cancelled": "Kinansela ang checkout — walang siningil.",
-    "pageTitle": "Ang iyong Agent Pass",
-    "metaDescription": "Ang iyong pass — ang orasan nito, ang mga aplikasyon nito, at ang isang block na kailangan ng iyong agent.",
     "checkingSignIn": "Sinusuri ang sign-in…",
-    "reading": "Binabasa ang iyong pass…",
-    "readFailed": "Hindi mabasa ang iyong pass ngayon. Kung kakabayad mo lang, walang nawala — nakatala ang pagbili sa Stripe at lalabas dito kapag nagtagumpay ang pagbasa.",
-    "retry": "Subukan muli",
-    "repairPending": "Hindi pa naitutugma ang checkout na ito sa isang pass ({{reason}}). Kung kakabayad mo lang, maghintay ng isang minuto at subukan muli — kusang darating ang resibo.",
-    "clockUnstarted": "Hindi pa nagsisimula. Magsisimula ang iyong {{passHours}} oras sa unang tawag ng iyong agent — mapapaso nang hindi nagagamit sa {{date}}.",
-    "clockLive": "Tumatakbo — {{hours}}o {{minutes}}m na lang sa {{passHours}} oras, magtatapos sa {{date}}.",
-    "clockEnded": "Natapos ang iyong huling pass noong {{date}}.",
-    "clockShelfExpired": "Napaso nang hindi nagagamit ang iyong huling pass noong {{date}}.",
-    "clockNone": "Wala pang pass sa account na ito.",
-    "applications": "{{left}} sa {{passApplications}} aplikasyon",
-    "applicationsBasis": "Binibilang lang ang aplikasyon para sa trabahong kayang padalhan ng agent. Walang bayad ang kahilingang tinanggihan, o ang pagpapadalang hindi nangyari.",
-    "buyAnother": "Bumili ng pass",
-    "whichAgent": "Aling agent?",
-    "handoffTitle": "Ibigay ito sa iyong agent",
-    "keyMintFirst": "Gumawa muna ng iyong agent key — isang beses lang ito ipinapakita at napupunan sa block sa ibaba.",
-    "keyCarries": "Dala na ng iyong kasalukuyang agent key ang pass — walang kailangang i-paste.",
-    "keyDetail": "Key {{prefix}}…, ginawa noong {{date}}.",
-    "mintNew": "Gumawa ng bago (babawiin ang luma)",
-    "connectorOauth": "Piliin ang Sign in when needed, pagkatapos ay i-click ang Connect sa chat at Allow.",
-    "checklistTitle": "Bago ang unang aplikasyon",
-    "expectHold": "Ang iyong unang {{holdFirstN}} release ay pinipigil hanggang aprubahan mo sa Account.",
-    "expectHoldPlain": "Ang iyong mga unang release ay pinipigil hanggang aprubahan mo sa Account.",
-    "expectPrepare": "Inihahanda ang mga packet sa loob ng humigit-kumulang isang minuto mula sa kahilingan.",
-    "expectLapse": "Ang mga aplikasyong hindi mo nagamit ay mawawala kapag natapos ang orasan.",
-    "expectFinish": "Ang mga pagpapadalang nahiling na ay natatapos kahit natapos na ang orasan.",
-    "toAgent": "Buksan ang agent",
-    "stepsTitle": "Mga hakbang para sa {{host}}:",
-    "keyedTitle": "Pagkatapos ay idagdag ang iyong agent key — dala nito ang pass:",
-    "connectorNoOauth2": "Hindi pa naka-on ang sign-in para sa host na ito, kaya mula rito ay ang mga tool lang na walang key ang sumasagot. Para magamit ang pass, kumonekta mula sa {{headerHosts}} gamit ang iyong agent key.",
-    "connectorPassGate": "Mula sa {{host}}, magagamit lang ang pass kapag naka-on na ang sign-in; ngayon, gamitin ito mula sa {{headerHosts}} gamit ang iyong agent key.",
-    "repairSecondPass": "Hindi lumikha ng ikalawang pass ang bayad na ito: isang bukas na pass lang ang hawak ng isang account sa bawat pagkakataon, at nakikita rito ang sa iyo nang walang pagbabago. Naabisuhan na kami at ire-refund ang bayad na ito — kung hindi ito bumalik sa card mo sa loob ng ilang araw, sumulat sa resumeboostersupp@gmail.com.",
-    "repairNotYours": "Ang checkout na ito ay sa ibang account kaysa sa naka-sign in ka, at nasa account na iyon ang pass nito. Mag-sign in sa account na nagbayad para makita ito.",
-    "repairRefunded": "Na-refund ang bayad na ito, kaya hindi ito nagbubukas ng pass.",
-    "cardCharge": "Binibilang lang ang mga trabahong kaya mismong i-submit ng iyong agent. Ang iba ay tinatanggihan at walang bayad."
+    "retiredPageTitle": "Itinigil na ang Agent Pass",
+    "retiredMeta": "Hindi na namin ibinebenta ang Agent Pass o ang Agent plan, at hindi kami nagpapadala ng mga application. Narito kung ano ang nagbago, at ang libreng paraan ng pag-apply gamit ang sarili mong AI.",
+    "retiredBadge": "Itinigil na",
+    "retiredBody": "Hindi na namin ibinebenta ang Agent Pass, ang Agent plan o ang Apply Assistant, at naka-off ang sarili naming apply agent: hindi nagpapadala ang Resume Booster ng application para kaninuman.",
+    "retiredBuyers": "Nakabili ka na ba dati? Ire-refund namin ito o tutuparin. Sumulat sa amin mula sa address na ginamit mo sa pagbabayad:",
+    "freePathTitle": "Ang libreng paraan: mag-apply nang ikaw mismo, gamit ang sarili mong AI",
+    "freePathBody": "Ikonekta nang walang bayad ang Resume Booster sa Claude o ChatGPT. Naghahanap ang iyong AI sa board kasama mo, binabasa ang posting — at, kung inilalathala ito ng system ng employer, ang application form — at tinutulungan kang isulat ang iyong mga sagot. Ikaw ang susuri sa lahat at pipindot ng Submit sa sariling site ng employer.",
+    "freePathCta": "Ikonekta ang iyong AI"
   },
   "oauthConsent": {
     "title": "Ikonekta ang iyong agent",
@@ -5166,7 +5119,6 @@
     "welcomeBody": "Isa na lang: kailangan ng agent ang CV mo at isang aktibong mandate bago ito makapaghanap. Mga isang minuto lang ang checklist sa ibaba, at walang tatakbo hangga't hindi ito tapos."
   },
   "agentConnect": {
-    "rateLine": "Ang libreng key ay limitado sa {{ratePerMin}} request bawat minuto at {{dailyQuota}} tawag bawat araw; itinataas ng aktibong pass ang dalawa sa loob ng mga oras nito.",
     "attachTitle": "Mga prompt at resource na maaaring ilista ng iyong host",
     "attachLead": "Bukod sa mga tool, nagrerehistro ang server ng mga handa nang prompt at ilang nababasang dokumento. Ang mga host na naglilista ng mga ito (ang attach menu ng claude.ai, ang slash list ng Claude Code, ang panel ng Cursor) ay nagpapakita ng mga ito sa ilalim ng pangalan ng server; walang gastos na tawag ang paglilista at hindi nangangailangan ng key.",
     "promptsHeading": "Mga prompt",
@@ -5174,7 +5126,27 @@
     "resourceKeyed": "kailangan ng key o sign-in",
     "resourceUnkeyed": "nababasa nang walang key",
     "handoffLead": "Sa job board, bawat posting at bawat paghahanap ay may kontrol na kumokopya ng prompt para sa iyong agent — pinangangalanan nito ang id ng posting o ang mga argument ng paghahanap at ang URL ng server na ito.",
-    "handoffCta": "Buksan ang job board"
+    "handoffCta": "Buksan ang job board",
+    "badge": "Ikonekta ang sarili mong AI",
+    "heroTitle": "Maghanap ng trabaho at mag-apply nang ikaw mismo, gamit ang sarili mong AI",
+    "heroSubCount": "Ikonekta nang libre ang Resume Booster sa Claude o ChatGPT. Maghanap sa {{n}}+ live na posting mula mismo sa mga hiring system ng mga employer, basahin ang mga ito nang buo, at mag-apply sa sariling site ng employer sa tulong ng iyong AI.",
+    "heroSubNoCount": "Ikonekta nang libre ang Resume Booster sa Claude o ChatGPT. Maghanap ng mga live na posting mula mismo sa mga hiring system ng mga employer, basahin ang mga ito nang buo, at mag-apply sa sariling site ng employer sa tulong ng iyong AI.",
+    "manualSteps": "O idagdag ito nang mano-mano",
+    "stepsChecked": "Sinuri ang mga hakbang na ito laban sa sariling page ng vendor noong {{date}}:",
+    "rateLine2": "Ang libreng key ay may {{ratePerMin}} request bawat minuto at {{dailyQuota}} tawag bawat araw.",
+    "applyTitle": "Mag-apply nang ikaw mismo, sa tulong ng iyong AI",
+    "selfApplyFree": "Libre ang mag-apply nang ikaw mismo. Binabasa ng iyong AI ang job posting at, kung {{vendors}} ang gamit ng employer, pati ang application form. Sinasabihan ito ng Resume Booster na itanong sa iyo ang bawat factual na tanong at gumawa lang ng draft ng mga bukas na sagot mula sa iyong CV; ikaw ang susuri sa lahat at pipindot ng submit.",
+    "applyStep1": "Ibigay ang iyong CV sa iyong AI sa chat: i-paste o i-attach ito.",
+    "applyStep2": "Hilingin ditong tulungan kang mag-apply sa isang trabaho: i-paste ang link ng trabaho mula sa board, o pumili ng isa mula sa paghahanap.",
+    "applyStep3": "Sinasabihan ng Resume Booster ang iyong AI na itanong sa iyo ang bawat factual na tanong — work authorization, sponsorship, sahod, petsa ng pagsisimula, references, mga puwang sa trabaho — at gamitin ang iyong mga salita; huwag kailanman sagutin para sa iyo ang mga demographic na tanong o i-tick ang mga consent box; at gumawa lang ng draft ng mga sagot tungkol sa iyong trabaho, mula sa iyong CV, at ipakita muna sa iyo ang bawat draft.",
+    "applyStep4": "Ikaw ang magsusumite sa sariling site ng employer: nang mano-mano, o kasama ang Claude in Chrome o ang agent ng ChatGPT na pumupuno nito kasama mo. Ikaw ang mag-a-attach ng CV, gagawa ng anumang account sa employer at pipindot ng Submit.",
+    "applyNever": "Hindi kailanman nagsusumite ang Resume Booster ng anuman para sa iyo.",
+    "applyBrowsersTitle": "Kung kayang gumamit ng browser ng iyong AI",
+    "applyChrome": "Claude in Chrome (mga bayad na Claude plan, Chrome sa computer): piliin ang manual approval para sa mga application form. Maaaring magtanong muna si Claude bago ilagay ang iyong mga detalye. Ikaw na ang mag-attach ng CV kung hindi kaya ni Claude. Ikaw ang gagawa ng mga account sa employer at sasagot sa mga CAPTCHA. Sinasabihan ng Resume Booster si Claude na huminto bago ang Submit.",
+    "applyChatgpt": "Nagtatanong muna ang browser ng ChatGPT bago magsumite at hindi ito makapag-upload ng file, kaya ikaw na ang mag-attach ng CV.",
+    "applyFreePlans": "Mga libreng plan at telepono: hingin sa iyong AI ang mga sagot bilang listahan, at ikaw na ang mag-paste ng mga ito sa form ng employer.",
+    "applyChecked": "Sinuri laban sa mga help page ng Anthropic at OpenAI noong {{date}}.",
+    "retiredLink": "Bumili ka ba dati ng pass o plan sa amin? Basahin kung ano ang nagbago."
   },
   "ontarioEsa": {
     "title": "Ano ang sinasabi ng job posting na ito sa ilalim ng batas ng Ontario",
@@ -5360,5 +5332,12 @@
       "Keyword bank para sa iyong industriya",
       "30-araw na garantiya ng muling pag-optimize"
     ]
+  },
+  "dataApiPage": {
+    "builderName": "Builder API (nakaplano)",
+    "builderPrice": "${{price}} bawat buwan, nakaplano",
+    "builderBody": "Naka-rank na paghahanap, resume fit scoring nang maramihan at 180 araw ng mga pagsasara, para ipakita sa loob ng sarili mong produkto nang may attribution. Walang feed o muling pagbebenta; para doon ang commercial license. Sabihin sa amin kung gagamitin mo ito.",
+    "builderNotYet": "Hindi pa ibinebenta: walang sinisingil, at sinasagot namin ang bawat request sa email.",
+    "builderCta": "Humiling ng Builder"
   }
 }

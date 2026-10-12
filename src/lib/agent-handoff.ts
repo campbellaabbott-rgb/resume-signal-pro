@@ -30,7 +30,7 @@
 // rather than opening a prompt. The link is rendered only after the person
 // has said which agent they use, because a claude:// URL with no app behind
 // it has no documented fallback.
-import { MCP_PAGE_HOSTS, MCP_TOOL_NAMES } from "@/config/mcp-tools";
+import { MCP_PAGE_HOSTS, MCP_TOOL_NAMES, MCP_ADD_TO_CLAUDE_LIVE, claudeInstallLink } from "@/config/mcp-tools";
 import { MCP_URL } from "@/lib/mcp-test";
 
 /**
@@ -81,28 +81,43 @@ export function tool(name: string): string {
 export interface HandoffJob {
   /** The board's posting id — `source:token:externalId` — passed verbatim. */
   id: string;
-  /** Whether the apply agent's adapter covers this posting's vendor. */
-  sendable: boolean;
+  /**
+   * Whether the retired apply agent's adapter covered this posting's vendor.
+   * IGNORED since the apply pivot (owner decision 2026-10-11): the apply
+   * agent is switched off, so no posting is "sendable" and every prompt is
+   * the same. Kept on the type so the board's call sites compile unchanged.
+   */
+  sendable?: boolean;
 }
 
 /**
  * The one-line prompt for a posting. It opens with a tool that answers with
  * NO key (the fetch alias — get_job needs a key or a sign-in, and a prompt
- * whose first call walls the person is the wall in a new coat), then names
- * the keyed check behind an "if this connection holds a key or is signed
- * in" clause. The sendable variant names the apply tool too, because that
- * is the one card where the agent can finish the job — and says the
- * person's yes comes first, which is the pipeline's own rule (a mandate and
- * a per-job confirmation gate every request). The guard asserts the FIRST
- * tool each prompt names is in the unkeyed set.
+ * whose first call walls the person is the wall in a new coat), shows the
+ * posting, then asks for the employer's own apply link and what the posting
+ * asks applicants for — and says the person applies themselves. It names no
+ * apply-agent tool and asks nothing to be sent: the server-side apply agent
+ * is switched off, and applying yourself is the only apply path (connect
+ * spec D1). The guard asserts the FIRST tool each prompt names is in the
+ * unkeyed set, and that no prompt names a dormant apply tool.
  */
 export function agentPrompt(job: HandoffJob): string {
-  const head =
+  return (
     `Using the resumebooster MCP server (${MCP_URL}), call ${tool("fetch")} with job id "${job.id}" and show me the posting; ` +
-    `then, if this connection holds a key or is signed in, call ${tool("check_apply_support")} for it and tell me whether you can apply and what it needs.`;
-  return job.sendable
-    ? `${head} If it can be sent for me, ${tool("request_application")} needs my explicit yes first.`
-    : head;
+    "then give me the employer's apply link and list what the posting asks applicants for. I will apply myself, on the employer's site."
+  );
+}
+
+/**
+ * The one-click install link for a host, or null. Only Claude documents
+ * one (claude.ai/customize/connectors?modal=add-custom-connector&…), and
+ * only while MCP_ADD_TO_CLAUDE_LIVE is on — the owner's check of that link
+ * comes first, because Claude's authentication choice cannot be changed
+ * after a connector is added. `live` is a parameter so the guard can render
+ * both states; every caller leaves it to the flag.
+ */
+export function installLinkFor(hostName: string, live: boolean = MCP_ADD_TO_CLAUDE_LIVE): string | null {
+  return live && hostName === "Claude" ? claudeInstallLink(MCP_URL) : null;
 }
 
 /**
@@ -171,7 +186,7 @@ export function toSearchJobsArgs(body: Record<string, unknown>, sort?: SearchSor
 export function searchPrompt(args: Record<string, unknown>, opts: { activelyHiring?: boolean } = {}): string {
   const head =
     `Using the resumebooster MCP server (${MCP_URL}), call ${tool("search_jobs")} with ${JSON.stringify(args)} ` +
-    `and show me the top results; then, if this connection holds a key or is signed in, ${tool("check_apply_support")} on the ones I like.`;
+    "and show me the top results, each with the employer's apply link.";
   return opts.activelyHiring
     ? `${head} The board's "Actively hiring" filter is applied in the browser, not by ${tool("search_jobs")}, so it is not included here.`
     : head;

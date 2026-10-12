@@ -101,13 +101,15 @@ describe("the subscription FAQ tells the truth in every language", () => {
       const answer: string = JSON.parse(readFileSync(resolve(localeDir, file), "utf8"))
         .faq.questions.subscription.answer;
 
-      // Naming both plans is what makes the answer honest. Because the prices
-      // are interpolated rather than typed into the copy, a translator cannot
-      // drop a plan without dropping its placeholder, and cannot state a stale
-      // price at all.
-      it("names both recurring plans via interpolation", () => {
+      // Naming every plan ON SALE is what makes the answer honest. Because the
+      // prices are interpolated rather than typed into the copy, a translator
+      // cannot drop a plan without dropping its placeholder, and cannot state a
+      // stale price at all. Since the apply pivot (owner decision 2026-10-11)
+      // the Agent plan is retired and Pro is the one recurring plan: the answer
+      // names Pro once and the retired plan's price not at all.
+      it("names the one recurring plan on sale via interpolation, and not the retired one", () => {
         expect(answer.split("{{proPrice}}").length - 1).toBe(1);
-        expect(answer.split("{{agentPrice}}").length - 1).toBe(1);
+        expect(answer.split("{{agentPrice}}").length - 1).toBe(0);
       });
 
       it("does not hardcode a price that could go stale", () => {

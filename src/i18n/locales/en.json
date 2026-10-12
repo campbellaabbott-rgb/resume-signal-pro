@@ -399,7 +399,7 @@
       },
       "subscription": {
         "question": "Is this a subscription?",
-        "answer": "Both options exist, and you choose. Every report and tool is a one-time payment that never renews. Separately, two optional monthly plans are available: Pro at ${{proPrice}}/month for unlimited scans and every tool, and the Morning Queue at ${{agentPrice}}/month, where the apply agent prepares a shortlist for you overnight. The resume scan and the job board stay free either way. Both plans renew every month until you cancel, and the Morning Queue's free trial for first-time subscribers turns into the paid plan when it ends unless you cancel before then. Nothing else upgrades you automatically."
+        "answer": "Both options exist, and you choose. Every report and tool is a one-time payment that never renews. Separately, there is one optional monthly plan: Pro at ${{proPrice}}/month for unlimited scans and every tool. It renews every month until you cancel. The resume scan, the job board and connecting your own AI stay free either way. Nothing else upgrades you automatically."
       },
       "share": {
         "question": "Can I share my analysis with others?",
@@ -411,7 +411,7 @@
       },
       "dataStorage": {
         "question": "Do you store my resume data?",
-        "answer": "Only briefly, and on a clock. When you upload or paste a resume, its text is held for 24 hours so a checkout can use it, then deleted. Your free report, which quotes lines from your resume, is kept for 7 days so a rescan of the same file against the same posting gets the same report, then deleted. A paid analysis stays behind its private link for 90 days unless you delete it sooner. We keep a resume longer only when you ask us to: a version you save to your account, the resume you set for job matching, or the CV you give the apply agent, which sends it to the employers it applies to for you. We never sell it. Our Trust page lists every copy and its clock."
+        "answer": "Only briefly, and on a clock. When you upload or paste a resume, its text is held for 24 hours so a checkout can use it, then deleted. Your free report, which quotes lines from your resume, is kept for 7 days so a rescan of the same file against the same posting gets the same report, then deleted. A paid analysis stays behind its private link for 90 days unless you delete it sooner. We keep a resume longer only when you ask us to: a version you save to your account, the resume you set for job matching, or a CV you gave our apply agent before it was switched off. We never sell it. Our Trust page lists every copy and its clock."
       },
       "vsChatGPT": {
         "question": "Why is this better than ChatGPT or resume templates?",
@@ -419,7 +419,7 @@
       },
       "bringYourAgent": {
         "question": "Can my own AI agent use this?",
-        "answer": "Yes. Reading the board needs no key at all for a first call, and a free key opens every read tool. To have your agent request applications, a ${{passPrice}} pass gives it {{passHours}} hours and {{passApplications}} applications, starting at its first call and never renewing; the Agent plan does the same monthly and renews. Every posting and every search on the board has a control that copies a prompt for your agent, and the setup for each host is at /agents."
+        "answer": "Yes, for free. Connect Resume Booster to Claude, ChatGPT or Claude Code, and your AI can search the board, read postings in full and help you apply on the employer's own site; reading the board needs no key and no account. Your AI drafts and you decide: we never submit an application for you. Every posting and every search on the board has a control that copies a prompt for your AI, and the setup for each app is at /agents."
       }
     },
     "stillHaveQuestions": "Still have questions?"
@@ -664,7 +664,8 @@
       "jurisdictionsEea": "16.1 European Economic Area",
       "jurisdictionsCa": "16.2 California",
       "jurisdictionsNv": "16.3 Nevada",
-      "contactUs": "17. Contact Us"
+      "contactUs": "17. Contact Us",
+      "mcp": "Using Resume Booster from your own AI"
     }
   },
   "terms": {
@@ -2736,11 +2737,11 @@
   },
   "pricingPage": {
     "metaTitle": "Pricing — Resume Booster",
-    "metaDescription": "One-time tools from ${{lowPrice}} to ${{highPrice}} that never renew, or monthly plans from ${{proPrice}} with every tool included. Recruiter-grade resume rewrites.",
+    "metaDescription": "One-time tools from ${{lowPrice}} to ${{highPrice}} that never renew, or Pro at ${{proPrice}} a month with every tool included. Recruiter-grade resume rewrites.",
     "noSubscriptions": "One-time payments • Never auto-renew",
     "titlePrefix": "Choose Your",
     "titleHighlight": "Resume Boost",
-    "subtitle": "From quick fixes to complete career packages. One-time products are paid once; Pro and the Agent plan renew monthly until you cancel.",
+    "subtitle": "From quick fixes to complete career packages. One-time products are paid once; Pro renews monthly until you cancel.",
     "secureCheckout": "Secure checkout",
     "instantAccess": "Instant access",
     "stripeProtected": "Stripe protected",
@@ -2753,7 +2754,7 @@
     "requiresUpload": "Requires uploading your resume to analyze",
     "whyResumeBooster": "Why Resume Booster?",
     "questions": "Questions?",
-    "allProductsOneTime": "Every tool is a one-time purchase with instant access, and never renews. Pro and the Apply Agent are monthly plans you can cancel any time.",
+    "allProductsOneTime": "Every tool is a one-time purchase with instant access, and never renews. Pro is a monthly plan you can cancel any time.",
     "freeScanLink": "free scan",
     "seeScoreFirst": "to see your score first.",
     "tryFreeScanFirst": "Try Free Scan First",
@@ -2766,8 +2767,8 @@
     "ladderSpecialistDesc": "For career changers: freelance, gig, and side-hustle work translated into recruiter-grade experience.",
     "allToolsToggle": "See every tool ({{count}} more)",
     "guarantee": "Every paid tool is covered: not happy with the output? We'll regenerate it free — just reply to your receipt.",
-    "passLine": "Or a one-off pass for your own AI agent: ${{passPrice}} for {{passHours}} hours and {{passApplications}} applications, counted only when it can send them. Never renews.",
-    "passLink": "Connect your agent"
+    "passLine": "Connecting your own Claude or ChatGPT is free: search the board in your chat and apply yourself on the employer's own site, with your AI's help. We never submit an application for you.",
+    "passLink": "Connect your AI"
   },
   "scanPackPurchase": {
     "topUpCredits": "Top Up Credits",
@@ -4364,7 +4365,7 @@
     "countLineNoFeeds": "{{total}} live openings — every one straight from the company's own hiring system.",
     "uncatCountLine2": "{{total}} live openings we could not sort into a field — ordinary roles our own field rules do not recognise, every one straight from the company's own hiring system.",
     "openInAgent": "Open in your agent",
-    "openInAgentTip": "Copy a one-line prompt for your own AI agent: it names this posting's id and our MCP server, and asks the agent to read the posting and say whether it can apply.",
+    "openInAgentTip": "Copy a one-line prompt for your own AI agent: it names this posting's id and our MCP server, and asks the agent to read the posting and give you the employer's apply link. You apply yourself.",
     "agentPromptCopied": "Prompt copied — paste it to your agent. It names this posting and our MCP server.",
     "agentPromptFailed": "Couldn't copy the prompt",
     "whichAgent": "Which agent?",
@@ -4919,15 +4920,8 @@
   "atsCoverage": {
     "heading": "Built for the systems employers actually use",
     "sub": "We read jobs straight from {{count}} applicant tracking systems — not scraped from a search engine.",
-    "autoTitle": "We apply for you",
-    "autoBlurb": "The agent completes and submits the application itself.",
-    "clickTitle": "Filled in, you press send",
-    "clickBlurb": "These use a CAPTCHA or a human check we never solve or bypass, or a form the agent cannot finish on its own yet. Either way your application arrives ready and you send it.",
-    "stripLegend": "The agent submits these for you. On the other systems it has measured, it fills the application in and you press send: some use a human check we will not bypass, and on some it cannot finish the form yet. {{unmeasured}} are listed for where their jobs come from; the agent's reach on them is not yet measured.",
-    "unmeasuredTitle": "We read these too",
-    "unmeasuredBlurb": "Their postings are on the board. We have not sampled their application forms, so we make no claim about the agent's reach on them.",
-    "allTitle": "Applications prepared for you",
-    "allBlurb": "We pull jobs directly from these systems and prepare your application for each one."
+    "readTitle": "Read straight from the employer's own system",
+    "readBlurb": "Every posting on the board comes from one of these systems, and you apply on the employer's own site. We never submit an application for you."
   },
   "pendingQ": {
     "title": "Questions the agent stopped on",
@@ -5015,33 +5009,31 @@
     "proofTracks": "Tracks every application and tells you what happened"
   },
   "agentMatches": {
-    "headlineCounted": "I found {{total}}{{plus}} openings matching “{{q}}” that I can submit end-to-end",
-    "headline": "Openings matching “{{q}}” that I can submit end-to-end",
-    "sub": "Live postings from employers' own boards, on systems where I can complete the application for you. Here are the top matches:",
-    "sendableBadge": "Agent can submit this one",
-    "ctaSetup": "Set the agent on these",
-    "ctaBrowse": "Browse all of them"
+    "ctaBrowse": "Browse all of them",
+    "headlineCounted2": "{{total}}{{plus}} live openings match “{{q}}”",
+    "headline2": "Live openings matching “{{q}}”",
+    "sub2": "Live postings from employers' own hiring systems. You apply on the employer's own site, with your own AI's help if you like. Here are the top matches:",
+    "ctaYourAi": "Apply with your own AI's help"
   },
   "homeHero": {
-    "badge": "Live job board + AI apply agent",
     "headlinePre": "Live jobs, straight from employers' own hiring systems.",
-    "headlineHighlight": "The agent applies for you.",
-    "sub": "Openings read from companies' own hiring systems and re-checked all day. Upload your CV and the agent ranks every one against it, writes each application honestly, and submits where employers allow.",
     "statOpenings": "verified openings",
     "statCompanies": "companies",
-    "statSendable": "the agent can submit for you",
     "ctaPrimary": "Upload your CV — free",
     "ctaSecondary": "Browse the board",
     "reassure": "Free scan · no card, no signup",
     "exploreCta": "Explore by field",
-    "statCompanyBoards": "company job boards hiring"
+    "statCompanyBoards": "company job boards hiring",
+    "badge2": "Live job board + your own AI",
+    "headlineHighlight2": "Apply yourself, with your own AI's help.",
+    "sub2": "Openings read from companies' own hiring systems and re-checked all day. Scan your CV for free, search the board here or from Claude or ChatGPT, and apply yourself, with your AI's help if you like. We never submit anything for you."
   },
   "homeAgent": {
-    "lead": "Bring your own AI agent.",
-    "passLine": "A ${{passPrice}} pass gives your agent {{passHours}} hours to search the board and apply to {{passApplications}} jobs for you. A job counts only when the agent can send the application. Never renews; sign in to buy.",
-    "connectCta": "Connect your agent",
-    "passCta": "Buy or open your pass",
-    "connectLine2": "Connect it free with no account — {{freeCallsPerDay}} calls a day per network address to look around the board (an office or a home connection counts as one address; from ChatGPT each person has their own {{freeCallsPerDay}}, and from Claude a daily pool every Claude user shares comes first)."
+    "lead": "Use it from your own AI.",
+    "passLine": "Your AI drafts and you decide: Resume Booster never submits an application for you.",
+    "connectCta": "Connect your AI",
+    "connectLine2": "Connect Resume Booster to Claude or ChatGPT for free, with no account: search the board in your chat, read postings in full, and apply yourself on the employer's own site with your AI's help, within a free daily allowance.",
+    "addToClaude": "Add to Claude"
   },
   "ghostIndex": {
     "stillUp30WithheldLead": "{{n}} of the {{total}} fields listed here have no reading of the share still advertised at our 30-day cap. Each is withheld for a stated reason — an absence in our own record, never a finding about the field.",
@@ -5091,54 +5083,15 @@
     "layoffReasonPrecision": "the interval is more than {{maxRel}}% as wide as the share of roles it says came down, so it does not pin that share"
   },
   "agentPass": {
-    "cardTitle": "A pass for your agent",
-    "cardBody": "{{passHours}} hours with your agent, {{passApplications}} applications, ${{passPrice}}. Never renews.",
-    "cardClock": "The clock starts at your agent's first call, not at purchase. An unstarted pass keeps for {{passShelfDays}} days.",
-    "cardIncludes": "Includes the résumé scorer while it runs. Reading the board stays free; the Agent plan does the same every month and renews — the pass never does.",
-    "buy": "Buy the pass — ${{passPrice}}",
-    "buying": "Opening checkout…",
-    "signInToBuy": "Sign in to buy the pass",
-    "signInWhy": "A pass is bound to your account — not to an email address, not to a key.",
-    "holdOpen": "You hold a pass — open it",
-    "checkoutFailed": "Could not open checkout — please try again.",
-    "cancelled": "Checkout cancelled — nothing was charged.",
-    "pageTitle": "Your Agent Pass",
-    "metaDescription": "Your pass — its clock, its applications, and the one block your agent needs.",
     "checkingSignIn": "Checking sign-in…",
-    "reading": "Reading your pass…",
-    "readFailed": "Could not read your pass right now. If you just paid, nothing is lost — the purchase is on Stripe's record and shows here once the read succeeds.",
-    "retry": "Retry",
-    "repairPending": "This checkout is not matched to a pass yet ({{reason}}). If you just paid, give it a minute and retry — the receipt arrives on its own.",
-    "clockUnstarted": "Not started. Your {{passHours}} hours begin at your agent's first call — expires unused on {{date}}.",
-    "clockLive": "Running — {{hours}}h {{minutes}}m of {{passHours}} hours left, ends {{date}}.",
-    "clockEnded": "Your last pass ended on {{date}}.",
-    "clockShelfExpired": "Your last pass expired unused on {{date}}.",
-    "clockNone": "No pass on this account yet.",
-    "applications": "{{left}} of {{passApplications}} applications",
-    "applicationsBasis": "An application counts only for a job the agent can send it to. A refused request, or a send that never happened, costs nothing.",
-    "buyAnother": "Buy a pass",
-    "whichAgent": "Which agent?",
-    "handoffTitle": "Hand it to your agent",
-    "keyMintFirst": "Mint your agent key first — it is shown once and fills into the block below.",
-    "keyCarries": "Your existing agent key already carries the pass — nothing to paste.",
-    "keyDetail": "Key {{prefix}}…, minted {{date}}.",
-    "mintNew": "Mint a new one (revokes the old)",
-    "connectorOauth": "Choose Sign in when needed, then click Connect in the chat and Allow.",
-    "checklistTitle": "Before the first application",
-    "expectHold": "Your first {{holdFirstN}} releases are held for your approval in Account.",
-    "expectHoldPlain": "Your first few releases are held for your approval in Account.",
-    "expectPrepare": "Packets are prepared within about a minute of a request.",
-    "expectLapse": "Applications you do not use lapse when the clock ends.",
-    "expectFinish": "Sends already requested finish even after the clock ends.",
-    "toAgent": "Open the agent",
-    "stepsTitle": "Steps for {{host}}:",
-    "keyedTitle": "Then add your agent key — it carries the pass:",
-    "connectorNoOauth2": "Sign-in for this host is not switched on yet, so from here only the unkeyed tools answer. To spend the pass, connect from {{headerHosts}} with your agent key.",
-    "connectorPassGate": "From {{host}} the pass can be used only once sign-in is switched on; today, use it from {{headerHosts}} with your agent key.",
-    "repairSecondPass": "This payment did not create a second pass: an account holds one open pass at a time, and yours is shown here, unchanged. We have been told, and this payment will be refunded — if it is not back on your card within a few days, write to resumeboostersupp@gmail.com.",
-    "repairNotYours": "This checkout belongs to a different account from the one you are signed in to, and its pass is on that account. Sign in to the account that paid to see it.",
-    "repairRefunded": "This payment was refunded, so it does not open a pass.",
-    "cardCharge": "It counts only jobs your agent can submit itself. Anything else is refused and costs nothing."
+    "retiredPageTitle": "The Agent Pass is retired",
+    "retiredMeta": "We no longer sell the Agent Pass or the Agent plan, and we do not send applications. Here is what changed, and the free way to apply with your own AI.",
+    "retiredBadge": "Retired",
+    "retiredBody": "We no longer sell the Agent Pass, the Agent plan or the Apply Assistant, and our own apply agent is switched off: Resume Booster does not send applications for anyone.",
+    "retiredBuyers": "Bought one before? We will refund it or honour it. Write to us from the address you paid with:",
+    "freePathTitle": "The free way: apply yourself, with your own AI",
+    "freePathBody": "Connect Resume Booster to Claude or ChatGPT at no cost. Your AI searches the board with you, reads the posting — and, where the employer's system publishes it, the application form — and helps you write your answers. You check everything and press Submit on the employer's own site.",
+    "freePathCta": "Connect your AI"
   },
   "oauthConsent": {
     "title": "Connect your agent",
@@ -5166,7 +5119,6 @@
     "welcomeBody": "One thing left: the agent needs your CV and an active mandate before it can look for anything. The checklist below takes about a minute, and nothing runs until it is done."
   },
   "agentConnect": {
-    "rateLine": "A free key meters at {{ratePerMin}} requests a minute and {{dailyQuota}} calls a day; a live pass raises both for its hours.",
     "attachTitle": "Prompts and resources your host can list",
     "attachLead": "Beside the tools, the server registers ready-made prompts and a few readable documents. Hosts that list them (claude.ai's attach menu, Claude Code's slash list, Cursor's panel) show them under the server's name; listing costs no call and needs no key.",
     "promptsHeading": "Prompts",
@@ -5174,7 +5126,27 @@
     "resourceKeyed": "needs a key or sign-in",
     "resourceUnkeyed": "reads with no key",
     "handoffLead": "On the board, every posting and every search has a control that copies a prompt for your agent — it names the posting's id or the search's arguments and this server's URL.",
-    "handoffCta": "Open the board"
+    "handoffCta": "Open the board",
+    "badge": "Connect your own AI",
+    "heroTitle": "Search jobs and apply yourself, with your own AI",
+    "heroSubCount": "Connect Resume Booster to Claude or ChatGPT for free. Search {{n}}+ live postings from employers' own hiring systems, read them in full, and apply on the employer's own site with your AI's help.",
+    "heroSubNoCount": "Connect Resume Booster to Claude or ChatGPT for free. Search live postings from employers' own hiring systems, read them in full, and apply on the employer's own site with your AI's help.",
+    "manualSteps": "Or add it by hand",
+    "stepsChecked": "These steps were checked against the vendor's own page on {{date}}:",
+    "rateLine2": "A free key meters at {{ratePerMin}} requests a minute and {{dailyQuota}} calls a day.",
+    "applyTitle": "Apply yourself, with your AI's help",
+    "selfApplyFree": "Applying yourself is free. Your AI reads the posting and, when the employer uses {{vendors}}, the application form too. Resume Booster tells it to ask you every factual question and to draft only open-ended answers from your CV; you check everything and press submit.",
+    "applyStep1": "Give your AI your CV in the chat: paste it or attach it.",
+    "applyStep2": "Ask it to help you apply to a job: paste the job's link from the board, or pick one from a search.",
+    "applyStep3": "Resume Booster tells your AI to ask you every factual question — work authorisation, sponsorship, salary, start date, references, gaps — and to use your words; never to answer demographic questions or tick consent boxes for you; and to draft only answers about your work, from your CV, showing you each draft first.",
+    "applyStep4": "You submit on the employer's own site: by hand, or with Claude in Chrome or ChatGPT's agent filling it in with you. You attach your CV, create any employer account and press Submit.",
+    "applyNever": "Resume Booster never submits anything for you.",
+    "applyBrowsersTitle": "If your AI can use a browser",
+    "applyChrome": "Claude in Chrome (paid Claude plans, Chrome on a computer): choose manual approval for application forms. Claude may ask before entering your details. Attach your CV yourself if Claude can't. You create employer accounts and solve CAPTCHAs. Resume Booster tells Claude to stop before Submit.",
+    "applyChatgpt": "ChatGPT's browser asks before submitting and can't upload files, so attach your CV yourself.",
+    "applyFreePlans": "Free plans and phones: ask your AI for the answers as a list, and paste them into the employer's form yourself.",
+    "applyChecked": "Checked against Anthropic's and OpenAI's help pages on {{date}}.",
+    "retiredLink": "Bought a pass or a plan from us before? Read what changed."
   },
   "ontarioEsa": {
     "title": "What this posting states under Ontario law",
@@ -5360,5 +5332,12 @@
       "Industry keyword bank",
       "30-day re-optimize guarantee"
     ]
+  },
+  "dataApiPage": {
+    "builderName": "Builder API (planned)",
+    "builderPrice": "${{price}} a month, planned",
+    "builderBody": "Ranked search, résumé fit scoring at volume and 180 days of closures, for display inside your own product with attribution. No feeds or resale; those are the commercial license. Tell us if you'd use it.",
+    "builderNotYet": "Not on sale yet: nothing is charged, and we reply to every request by email.",
+    "builderCta": "Request Builder"
   }
 }

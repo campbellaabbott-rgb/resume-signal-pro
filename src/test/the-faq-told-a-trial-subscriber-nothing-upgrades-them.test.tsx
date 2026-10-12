@@ -7,6 +7,11 @@
  * the Morning Queue's first-time trial becomes the paid plan unless it is
  * cancelled before it ends. The answer, as the homepage renders it, now says
  * both.
+ *
+ * 2026-10-11, the apply pivot: the Morning Queue (the Agent plan) is retired
+ * and Pro, which has no trial at checkout, is the one plan on sale. The
+ * answer must still say the plan renews until cancelled, and must no longer
+ * describe a plan or a trial nobody can buy.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
@@ -20,15 +25,17 @@ import { FAQ } from "@/components/FAQ";
 afterEach(cleanup);
 
 describe("the subscription answer", () => {
-  it("says the plans renew until cancelled and the trial turns into the paid plan", () => {
+  it("says the one plan on sale renews until cancelled, and describes no retired plan and no trial", () => {
     render(<FAQ />);
     fireEvent.click(screen.getByText(en.faq.questions.subscription.question));
     const answer = screen.getByText((_, el) => !!el && el.textContent?.startsWith("Both options exist") === true && el.children.length === 0);
     const text = answer.textContent ?? "";
     expect(text).toContain(`$${SUBSCRIPTIONS.pro.priceUsd}/month`);
-    expect(text).toMatch(/renew every month until you cancel/);
-    expect(text).toMatch(/free trial[^.]*turns into the paid plan[^.]*unless you cancel before/);
+    expect(text).toMatch(/renews every month until you cancel/);
     expect(text).not.toMatch(/and nothing upgrades you automatically/);
+    // Retired by the apply pivot: no price, plan name or trial of the agent's.
+    expect(text).not.toContain(`$${SUBSCRIPTIONS.agent.priceUsd}`);
+    expect(text).not.toMatch(/Morning Queue|Agent plan|apply agent|free trial/i);
   });
 
 });

@@ -399,7 +399,7 @@
       },
       "subscription": {
         "question": "Ist das ein Abo?",
-        "answer": "Beide Optionen gibt es, und du entscheidest. Jeder Bericht und jedes Tool ist eine einmalige Zahlung, die sich nie automatisch verlängert. Separat gibt es zwei optionale monatliche Pläne: Pro für ${{proPrice}}/Monat mit unbegrenzten Scans und allen Tools, sowie die Morning Queue für ${{agentPrice}}/Monat, bei der der Bewerbungs-Agent über Nacht eine Vorauswahl für dich vorbereitet. Der Lebenslauf-Scan und die Jobbörse bleiben in jedem Fall kostenlos. Beide Pläne verlängern sich jeden Monat, bis du kündigst, und die kostenlose Testphase der Morning Queue für Erstabonnenten geht an ihrem Ende in den bezahlten Plan über, wenn du nicht vorher kündigst. Sonst stuft dich nichts automatisch hoch."
+        "answer": "Beide Optionen gibt es, und du entscheidest. Jeder Bericht und jedes Tool ist eine einmalige Zahlung, die sich nie automatisch verlängert. Separat gibt es einen optionalen Monatsplan: Pro für ${{proPrice}}/Monat mit unbegrenzten Scans und allen Tools. Er verlängert sich jeden Monat, bis du kündigst. Der Lebenslauf-Scan, die Jobbörse und das Verbinden deiner eigenen KI bleiben in jedem Fall kostenlos. Sonst stuft dich nichts automatisch hoch."
       },
       "share": {
         "question": "Kann ich meine Analyse teilen?",
@@ -411,7 +411,7 @@
       },
       "dataStorage": {
         "question": "Speichern Sie meine Lebenslaufdaten?",
-        "answer": "Nur kurz und mit Ablaufdatum. Wenn Sie einen Lebenslauf hochladen oder einfügen, wird sein Text 24 Stunden lang aufbewahrt, damit ein Kauf darauf zugreifen kann, und dann gelöscht. Ihr kostenloser Bericht, der Zeilen aus Ihrem Lebenslauf zitiert, wird 7 Tage lang aufbewahrt, damit ein erneuter Scan derselben Datei mit derselben Stellenanzeige denselben Bericht erhält, und dann gelöscht. Eine bezahlte Analyse bleibt 90 Tage hinter ihrem privaten Link, sofern Sie sie nicht früher löschen. Länger behalten wir einen Lebenslauf nur, wenn Sie es wünschen: eine Version, die Sie in Ihrem Konto speichern, den Lebenslauf für das Job-Matching oder den Lebenslauf, den Sie dem Bewerbungsagenten geben – er sendet ihn an die Arbeitgeber, bei denen er sich für Sie bewirbt. Wir verkaufen ihn nie. Unsere Vertrauensseite listet jede Kopie und ihre Frist auf."
+        "answer": "Nur kurz und mit Ablaufdatum. Wenn Sie einen Lebenslauf hochladen oder einfügen, wird sein Text 24 Stunden lang aufbewahrt, damit ein Kauf darauf zugreifen kann, und dann gelöscht. Ihr kostenloser Bericht, der Zeilen aus Ihrem Lebenslauf zitiert, wird 7 Tage lang aufbewahrt, damit ein erneuter Scan derselben Datei mit derselben Stellenanzeige denselben Bericht erhält, und dann gelöscht. Eine bezahlte Analyse bleibt 90 Tage hinter ihrem privaten Link, sofern Sie sie nicht früher löschen. Länger behalten wir einen Lebenslauf nur, wenn Sie es wünschen: eine Version, die Sie in Ihrem Konto speichern, den Lebenslauf für das Job-Matching oder einen Lebenslauf, den Sie unserem Bewerbungsagenten gegeben haben, bevor er abgeschaltet wurde. Wir verkaufen ihn nie. Unsere Vertrauensseite listet jede Kopie und ihre Frist auf."
       },
       "vsChatGPT": {
         "question": "Warum ist das besser als ChatGPT?",
@@ -419,7 +419,7 @@
       },
       "bringYourAgent": {
         "question": "Kann mein eigener KI-Agent das nutzen?",
-        "answer": "Ja. Zum Lesen der Jobbörse braucht ein erster Aufruf gar keinen Schlüssel, und ein kostenloser Schlüssel öffnet jedes Lese-Tool. Damit dein Agent Bewerbungen anfordern kann, gibt ihm ein Pass für {{passPrice}} $ {{passHours}} Stunden und {{passApplications}} Bewerbungen, ab seinem ersten Aufruf und ohne Verlängerung; der Agent-Plan bietet dasselbe monatlich und verlängert sich. Jede Stelle und jede Suche auf der Jobbörse hat ein Bedienelement, das einen Prompt für deinen Agenten kopiert, und die Einrichtung je Host steht unter /agents."
+        "answer": "Ja, kostenlos. Verbinde Resume Booster mit Claude, ChatGPT oder Claude Code, und deine KI kann die Jobbörse durchsuchen, Stellenanzeigen vollständig lesen und dir helfen, dich auf der Website des Arbeitgebers zu bewerben; zum Lesen der Jobbörse brauchst du weder Schlüssel noch Konto. Deine KI entwirft, du entscheidest: Wir senden niemals eine Bewerbung für dich ab. Jede Stelle und jede Suche auf der Jobbörse hat ein Bedienelement, das einen Prompt für deine KI kopiert, und die Einrichtung für jede App steht unter /agents."
       }
     },
     "stillHaveQuestions": "Noch Fragen?"
@@ -664,7 +664,8 @@
       "jurisdictionsEea": "16.1 Europäischer Wirtschaftsraum",
       "jurisdictionsCa": "16.2 Kalifornien",
       "jurisdictionsNv": "16.3 Nevada",
-      "contactUs": "17. Kontaktiere uns"
+      "contactUs": "17. Kontaktiere uns",
+      "mcp": "Resume Booster mit Ihrer eigenen KI nutzen"
     }
   },
   "terms": {
@@ -2736,11 +2737,11 @@
   },
   "pricingPage": {
     "metaTitle": "Preise — Resume Booster",
-    "metaDescription": "Einmal-Tools von ${{lowPrice}} bis ${{highPrice}}, die sich nie verlängern, oder Monatspläne ab ${{proPrice}} mit allen Tools inklusive. Lebenslauf auf Recruiter-Niveau.",
+    "metaDescription": "Einmal-Tools von ${{lowPrice}} bis ${{highPrice}}, die sich nie verlängern, oder Pro für ${{proPrice}} im Monat mit allen Tools inklusive. Lebenslauf auf Recruiter-Niveau.",
     "noSubscriptions": "Einmalzahlungen • Verlängern sich nie automatisch",
     "titlePrefix": "Wähle deinen",
     "titleHighlight": "Lebenslauf-Boost",
-    "subtitle": "Von schnellen Korrekturen bis zu kompletten Karrierepaketen. Einmalprodukte zahlen Sie einmal; Pro und der Agent-Plan verlängern sich monatlich, bis Sie kündigen.",
+    "subtitle": "Von schnellen Korrekturen bis zu kompletten Karrierepaketen. Einmalprodukte zahlen Sie einmal; Pro verlängert sich monatlich, bis Sie kündigen.",
     "secureCheckout": "Sicherer Checkout",
     "instantAccess": "Sofortiger Zugang",
     "stripeProtected": "Durch Stripe geschützt",
@@ -2753,7 +2754,7 @@
     "requiresUpload": "Erfordert das Hochladen deines Lebenslaufs zur Analyse",
     "whyResumeBooster": "Warum Resume Booster?",
     "questions": "Fragen?",
-    "allProductsOneTime": "Jedes Tool ist ein Einmalkauf mit sofortigem Zugang und verlängert sich nie. Pro und der Apply Agent sind Monatspläne, jederzeit kündbar.",
+    "allProductsOneTime": "Jedes Tool ist ein Einmalkauf mit sofortigem Zugang und verlängert sich nie. Pro ist ein Monatsplan, jederzeit kündbar.",
     "freeScanLink": "kostenlosen Scan",
     "seeScoreFirst": "um zuerst deine Punktzahl zu sehen.",
     "tryFreeScanFirst": "Zuerst kostenlosen Scan ausprobieren",
@@ -2766,8 +2767,8 @@
     "ladderSpecialistDesc": "Für Quereinsteiger: Freelance-, Gig- und Projektarbeit übersetzt in Recruiter-taugliche Berufserfahrung.",
     "allToolsToggle": "Alle Tools ansehen ({{count}} weitere)",
     "guarantee": "Jedes kostenpflichtige Tool ist abgesichert: nicht zufrieden mit dem Ergebnis? Wir generieren es kostenlos neu — antworten Sie einfach auf Ihre Quittung.",
-    "passLine": "Oder ein einmaliger Pass für deinen eigenen KI-Agenten: {{passPrice}} $ für {{passHours}} Stunden und {{passApplications}} Bewerbungen, die nur zählen, wenn er sie abschicken kann. Verlängert sich nie.",
-    "passLink": "Verbinde deinen Agenten"
+    "passLine": "Ihr eigenes Claude oder ChatGPT zu verbinden ist kostenlos: Durchsuchen Sie die Jobbörse im Chat und bewerben Sie sich selbst auf der Website des Arbeitgebers, mit Hilfe Ihrer KI. Wir senden niemals eine Bewerbung für Sie ab.",
+    "passLink": "Verbinden Sie Ihre KI"
   },
   "scanPackPurchase": {
     "topUpCredits": "Credits aufladen",
@@ -4364,7 +4365,7 @@
     "countLineNoFeeds": "{{total}} offene Stellen — jede einzelne direkt aus dem eigenen Recruiting-System des Unternehmens.",
     "uncatCountLine2": "{{total}} offene Stellen, die wir keinem Bereich zuordnen konnten — ganz gewöhnliche Stellen, die unsere eigenen Bereichsregeln nicht kennen, jede direkt aus dem Bewerbersystem des Unternehmens.",
     "openInAgent": "In deinem Agenten öffnen",
-    "openInAgentTip": "Kopiert einen einzeiligen Prompt für deinen eigenen KI-Agenten: Er nennt die ID dieser Stelle und unseren MCP-Server und bittet den Agenten, die Stelle zu lesen und zu sagen, ob er sich bewerben kann.",
+    "openInAgentTip": "Kopiert einen einzeiligen Prompt für deinen eigenen KI-Agenten: Er nennt die ID dieser Stelle und unseren MCP-Server und bittet den Agenten, die Stelle zu lesen und dir den Bewerbungslink des Arbeitgebers zu geben. Bewerben tust du dich selbst.",
     "agentPromptCopied": "Prompt kopiert — füge ihn bei deinem Agenten ein. Er nennt diese Stelle und unseren MCP-Server.",
     "agentPromptFailed": "Prompt konnte nicht kopiert werden",
     "whichAgent": "Welcher Agent?",
@@ -4919,15 +4920,8 @@
   "atsCoverage": {
     "heading": "Gebaut für die Systeme, die Arbeitgeber wirklich nutzen",
     "sub": "Wir lesen Stellen direkt aus {{count}} Bewerbermanagement-Systemen – nicht aus einer Suchmaschine.",
-    "autoTitle": "Wir bewerben uns für Sie",
-    "autoBlurb": "Der Agent füllt die Bewerbung selbst aus und sendet sie ab.",
-    "clickTitle": "Ausgefüllt, Sie drücken senden",
-    "clickBlurb": "Diese nutzen ein CAPTCHA oder eine menschliche Prüfung, die wir nie lösen oder umgehen, oder ein Formular, das der Agent noch nicht selbst abschließen kann. So oder so kommt Ihre Bewerbung fertig an und Sie senden sie.",
-    "stripLegend": "Diese sendet der Agent für Sie ab. Bei den anderen gemessenen Systemen füllt er die Bewerbung aus und Sie drücken auf Senden: Manche nutzen eine menschliche Prüfung, die wir nicht umgehen, bei manchen kann er das Formular noch nicht abschließen. {{unmeasured}} sind aufgeführt, weil ihre Stellen von dort stammen; die Reichweite des Agenten dort ist noch nicht gemessen.",
-    "unmeasuredTitle": "Diese lesen wir ebenfalls",
-    "unmeasuredBlurb": "Ihre Stellenanzeigen sind auf dem Board. Wir haben ihre Bewerbungsformulare nicht geprüft und machen daher keine Aussage über die Reichweite des Agenten.",
-    "allTitle": "Bewerbungen für Sie vorbereitet",
-    "allBlurb": "Wir holen Stellen direkt aus diesen Systemen und bereiten Ihre Bewerbung für jede einzelne vor."
+    "readTitle": "Direkt aus dem eigenen System des Arbeitgebers gelesen",
+    "readBlurb": "Jede Stellenanzeige auf der Jobbörse stammt aus einem dieser Systeme, und du bewirbst dich auf der Website des Arbeitgebers. Wir senden niemals eine Bewerbung für dich ab."
   },
   "pendingQ": {
     "title": "Fragen, bei denen der Agent gestoppt hat",
@@ -5015,33 +5009,31 @@
     "proofTracks": "Verfolgt jede Bewerbung und sagt Ihnen, was daraus wurde"
   },
   "agentMatches": {
-    "headlineCounted": "Ich habe {{total}}{{plus}} Stellen zu „{{q}}“ gefunden, die ich vollständig einreichen kann",
-    "headline": "Stellen zu „{{q}}“, die ich vollständig einreichen kann",
-    "sub": "Live-Anzeigen von den Boards der Arbeitgeber selbst, auf Systemen, wo ich die Bewerbung für Sie abschließen kann. Die besten Treffer:",
-    "sendableBadge": "Der Agent kann diese einreichen",
-    "ctaSetup": "Agenten darauf ansetzen",
-    "ctaBrowse": "Alle durchsehen"
+    "ctaBrowse": "Alle durchsehen",
+    "headlineCounted2": "{{total}}{{plus}} aktuelle Stellen passen zu „{{q}}“",
+    "headline2": "Aktuelle Stellen passend zu „{{q}}“",
+    "sub2": "Aktuelle Stellenanzeigen aus den eigenen Bewerbungssystemen der Arbeitgeber. Du bewirbst dich auf der Website des Arbeitgebers, auf Wunsch mit Hilfe deiner eigenen KI. Hier die besten Treffer:",
+    "ctaYourAi": "Mit Hilfe deiner eigenen KI bewerben"
   },
   "homeHero": {
-    "badge": "Live-Stellenboard + KI-Bewerbungsagent",
     "headlinePre": "Live-Stellen, direkt aus den Bewerbungssystemen der Arbeitgeber.",
-    "headlineHighlight": "Der Agent bewirbt sich für Sie.",
-    "sub": "Stellen, gelesen aus den eigenen Bewerbersystemen der Unternehmen und den ganzen Tag neu geprüft. Laden Sie Ihren Lebenslauf hoch: der Agent bewertet jede Stelle, schreibt jede Bewerbung ehrlich und reicht ein, wo Arbeitgeber es zulassen.",
     "statOpenings": "verifizierte Stellen",
     "statCompanies": "Unternehmen",
-    "statSendable": "kann der Agent für Sie einreichen",
     "ctaPrimary": "Lebenslauf hochladen — kostenlos",
     "ctaSecondary": "Board durchsuchen",
     "reassure": "Kostenloser Scan · ohne Karte, ohne Anmeldung",
     "exploreCta": "Nach Bereich erkunden",
-    "statCompanyBoards": "Unternehmens-Jobportale mit offenen Stellen"
+    "statCompanyBoards": "Unternehmens-Jobportale mit offenen Stellen",
+    "badge2": "Live-Jobbörse + deine eigene KI",
+    "headlineHighlight2": "Bewirb dich selbst, mit Hilfe deiner eigenen KI.",
+    "sub2": "Stellen direkt aus den eigenen Bewerbungssystemen der Unternehmen, den ganzen Tag über neu geprüft. Scanne deinen Lebenslauf kostenlos, durchsuche die Jobbörse hier oder mit Claude oder ChatGPT und bewirb dich selbst, auf Wunsch mit Hilfe deiner KI. Wir senden niemals etwas für dich ab."
   },
   "homeAgent": {
-    "lead": "Bring deinen eigenen KI-Agenten mit.",
-    "passLine": "Ein Pass für {{passPrice}} $ gibt deinem Agenten {{passHours}} Stunden, um die Jobbörse zu durchsuchen und sich für dich auf {{passApplications}} Stellen zu bewerben. Eine Stelle zählt nur, wenn der Agent die Bewerbung abschicken kann. Verlängert sich nie; zum Kauf anmelden.",
-    "connectCta": "Agenten verbinden",
-    "passCta": "Pass kaufen oder öffnen",
-    "connectLine2": "Kostenlos und ohne Konto verbinden — {{freeCallsPerDay}} Aufrufe pro Tag und Netzwerkadresse, um sich auf der Jobbörse umzusehen (ein Büro oder ein Heimanschluss zählt als eine Adresse; aus ChatGPT hat jede Person ihre eigenen {{freeCallsPerDay}}, und aus Claude kommt zuerst ein Tageskontingent, das alle Claude-Nutzer teilen)."
+    "lead": "Nutze es mit deiner eigenen KI.",
+    "passLine": "Deine KI entwirft, du entscheidest: Resume Booster sendet niemals eine Bewerbung für dich ab.",
+    "connectCta": "Verbinde deine KI",
+    "connectLine2": "Verbinde Resume Booster kostenlos und ohne Konto mit Claude oder ChatGPT: Durchsuche die Jobbörse im Chat, lies Stellenanzeigen vollständig und bewirb dich mit Hilfe deiner KI selbst auf der Website des Arbeitgebers, im Rahmen eines kostenlosen Tageskontingents.",
+    "addToClaude": "Zu Claude hinzufügen"
   },
   "ghostIndex": {
     "stillUp30WithheldLead": "{{n}} der {{total}} hier aufgeführten Bereiche haben keinen Wert für den Anteil, der an unserer 30-Tage-Grenze noch ausgeschrieben war. Jeder wird mit genanntem Grund zurückgehalten — eine Lücke in unserer eigenen Aufzeichnung, nie eine Aussage über den Bereich.",
@@ -5091,54 +5083,15 @@
     "layoffReasonPrecision": "das Intervall ist mehr als {{maxRel}}% so breit wie der Anteil der Stellen, die es als entfernt ausweist, und legt diesen Anteil damit nicht fest"
   },
   "agentPass": {
-    "cardTitle": "Ein Pass für deinen Agenten",
-    "cardBody": "{{passHours}} Stunden mit deinem Agenten, {{passApplications}} Bewerbungen, {{passPrice}} $. Verlängert sich nie.",
-    "cardClock": "Die Uhr startet beim ersten Aufruf deines Agenten, nicht beim Kauf. Ein nicht gestarteter Pass bleibt {{passShelfDays}} Tage gültig.",
-    "cardIncludes": "Enthält den Lebenslauf-Scorer, solange er läuft. Das Lesen des Boards bleibt kostenlos; der Agent-Plan bietet dasselbe jeden Monat und verlängert sich — der Pass nie.",
-    "buy": "Pass kaufen — {{passPrice}} $",
-    "buying": "Kasse wird geöffnet…",
-    "signInToBuy": "Anmelden, um den Pass zu kaufen",
-    "signInWhy": "Ein Pass ist an dein Konto gebunden — nicht an eine E-Mail-Adresse, nicht an einen Schlüssel.",
-    "holdOpen": "Du hast einen Pass — öffne ihn",
-    "checkoutFailed": "Kasse konnte nicht geöffnet werden — bitte erneut versuchen.",
-    "cancelled": "Kauf abgebrochen — nichts wurde berechnet.",
-    "pageTitle": "Dein Agent-Pass",
-    "metaDescription": "Dein Pass — seine Uhr, seine Bewerbungen und der eine Block, den dein Agent braucht.",
     "checkingSignIn": "Anmeldung wird geprüft…",
-    "reading": "Pass wird gelesen…",
-    "readFailed": "Dein Pass konnte gerade nicht gelesen werden. Falls du eben bezahlt hast, geht nichts verloren — der Kauf ist bei Stripe verzeichnet und erscheint hier, sobald das Lesen gelingt.",
-    "retry": "Erneut versuchen",
-    "repairPending": "Dieser Kauf ist noch keinem Pass zugeordnet ({{reason}}). Falls du eben bezahlt hast, warte eine Minute und versuche es erneut — die Quittung kommt von selbst.",
-    "clockUnstarted": "Nicht gestartet. Deine {{passHours}} Stunden beginnen beim ersten Aufruf deines Agenten — verfällt ungenutzt am {{date}}.",
-    "clockLive": "Läuft — noch {{hours}} h {{minutes}} min von {{passHours}} Stunden, endet am {{date}}.",
-    "clockEnded": "Dein letzter Pass endete am {{date}}.",
-    "clockShelfExpired": "Dein letzter Pass ist ungenutzt am {{date}} verfallen.",
-    "clockNone": "Noch kein Pass auf diesem Konto.",
-    "applications": "{{left}} von {{passApplications}} Bewerbungen",
-    "applicationsBasis": "Eine Bewerbung zählt nur bei einer Stelle, an die der Agent sie abschicken kann. Eine abgelehnte Anfrage oder ein Versand, der nie stattfand, kostet nichts.",
-    "buyAnother": "Pass kaufen",
-    "whichAgent": "Welcher Agent?",
-    "handoffTitle": "Übergib ihn deinem Agenten",
-    "keyMintFirst": "Erzeuge zuerst deinen Agentenschlüssel — er wird einmal angezeigt und in den Block unten eingesetzt.",
-    "keyCarries": "Dein bestehender Agentenschlüssel trägt den Pass bereits — nichts zu kopieren.",
-    "keyDetail": "Schlüssel {{prefix}}…, erzeugt am {{date}}.",
-    "mintNew": "Neuen erzeugen (widerruft den alten)",
-    "connectorOauth": "Wähle Bei Bedarf anmelden, klicke dann im Chat auf Verbinden und auf Erlauben.",
-    "checklistTitle": "Vor der ersten Bewerbung",
-    "expectHold": "Deine ersten {{holdFirstN}} Freigaben werden bis zu deiner Bestätigung im Konto zurückgehalten.",
-    "expectHoldPlain": "Deine ersten Freigaben werden bis zu deiner Bestätigung im Konto zurückgehalten.",
-    "expectPrepare": "Pakete werden etwa eine Minute nach der Anfrage vorbereitet.",
-    "expectLapse": "Nicht genutzte Bewerbungen verfallen, wenn die Uhr abläuft.",
-    "expectFinish": "Bereits angeforderte Versendungen werden auch nach Ablauf der Uhr abgeschlossen.",
-    "toAgent": "Agent öffnen",
-    "stepsTitle": "Schritte für {{host}}:",
-    "keyedTitle": "Dann Ihren Agenten-Schlüssel hinzufügen — er trägt den Pass:",
-    "connectorNoOauth2": "Die Anmeldung für diesen Host ist noch nicht eingeschaltet, daher antworten von hier aus nur die Werkzeuge ohne Schlüssel. Um den Pass zu nutzen, verbinden Sie sich von {{headerHosts}} aus mit Ihrem Agenten-Schlüssel.",
-    "connectorPassGate": "Von {{host}} aus lässt sich der Pass erst nutzen, wenn die Anmeldung eingeschaltet ist; nutzen Sie ihn heute von {{headerHosts}} aus mit Ihrem Agenten-Schlüssel.",
-    "repairSecondPass": "Diese Zahlung hat keinen zweiten Pass erzeugt: Ein Konto hat immer nur einen offenen Pass, und deiner wird hier unverändert angezeigt. Wir sind informiert, und diese Zahlung wird erstattet — falls sie nicht innerhalb weniger Tage auf deiner Karte zurück ist, schreib an resumeboostersupp@gmail.com.",
-    "repairNotYours": "Dieser Kauf gehört zu einem anderen Konto als dem, mit dem du angemeldet bist, und sein Pass liegt auf jenem Konto. Melde dich mit dem Konto an, das bezahlt hat, um ihn zu sehen.",
-    "repairRefunded": "Diese Zahlung wurde erstattet, deshalb öffnet sie keinen Pass.",
-    "cardCharge": "Gezählt werden nur Stellen, bei denen dein Agent die Bewerbung selbst abschicken kann. Alles andere wird abgelehnt und kostet nichts."
+    "retiredPageTitle": "Der Agent Pass wird nicht mehr angeboten",
+    "retiredMeta": "Wir verkaufen den Agent Pass und den Agent-Plan nicht mehr und versenden keine Bewerbungen. Hier steht, was sich geändert hat, und wie du dich kostenlos mit deiner eigenen KI bewirbst.",
+    "retiredBadge": "Eingestellt",
+    "retiredBody": "Wir verkaufen den Agent Pass, den Agent-Plan und den Apply Assistant nicht mehr, und unser eigener Bewerbungs-Agent ist abgeschaltet: Resume Booster versendet für niemanden Bewerbungen.",
+    "retiredBuyers": "Schon einen gekauft? Wir erstatten ihn oder lösen ihn ein. Schreib uns von der Adresse, mit der du bezahlt hast:",
+    "freePathTitle": "Der kostenlose Weg: selbst bewerben, mit deiner eigenen KI",
+    "freePathBody": "Verbinde Resume Booster kostenlos mit Claude oder ChatGPT. Deine KI durchsucht mit dir die Jobbörse, liest die Stellenanzeige – und, wo das System des Arbeitgebers es veröffentlicht, das Bewerbungsformular – und hilft dir, deine Antworten zu schreiben. Du prüfst alles und klickst auf der Website des Arbeitgebers selbst auf Absenden.",
+    "freePathCta": "Verbinde deine KI"
   },
   "oauthConsent": {
     "title": "Verbinde deinen Agenten",
@@ -5166,7 +5119,6 @@
     "welcomeBody": "Eins fehlt noch: Der Agent braucht deinen Lebenslauf und ein aktives Mandat, bevor er nach etwas suchen kann. Die Checkliste unten dauert etwa eine Minute, und bis sie erledigt ist, läuft nichts."
   },
   "agentConnect": {
-    "rateLine": "Ein kostenloser Schlüssel ist auf {{ratePerMin}} Anfragen pro Minute und {{dailyQuota}} Aufrufe pro Tag begrenzt; ein laufender Pass hebt beides für seine Stunden an.",
     "attachTitle": "Prompts und Ressourcen, die dein Host auflisten kann",
     "attachLead": "Neben den Tools registriert der Server fertige Prompts und einige lesbare Dokumente. Hosts, die sie auflisten (das Anhängen-Menü von claude.ai, die Slash-Liste von Claude Code, das Panel von Cursor), zeigen sie unter dem Namen des Servers; das Auflisten kostet keinen Aufruf und braucht keinen Schlüssel.",
     "promptsHeading": "Prompts",
@@ -5174,7 +5126,27 @@
     "resourceKeyed": "braucht einen Schlüssel oder eine Anmeldung",
     "resourceUnkeyed": "lesbar ohne Schlüssel",
     "handoffLead": "Auf der Jobbörse hat jede Stelle und jede Suche ein Bedienelement, das einen Prompt für deinen Agenten kopiert — er nennt die ID der Stelle oder die Argumente der Suche und die URL dieses Servers.",
-    "handoffCta": "Jobbörse öffnen"
+    "handoffCta": "Jobbörse öffnen",
+    "badge": "Verbinde deine eigene KI",
+    "heroTitle": "Jobs suchen und selbst bewerben, mit deiner eigenen KI",
+    "heroSubCount": "Verbinde Resume Booster kostenlos mit Claude oder ChatGPT. Durchsuche {{n}}+ aktuelle Stellenanzeigen aus den eigenen Bewerbungssystemen der Arbeitgeber, lies sie vollständig und bewirb dich mit Hilfe deiner KI auf der Website des Arbeitgebers.",
+    "heroSubNoCount": "Verbinde Resume Booster kostenlos mit Claude oder ChatGPT. Durchsuche aktuelle Stellenanzeigen aus den eigenen Bewerbungssystemen der Arbeitgeber, lies sie vollständig und bewirb dich mit Hilfe deiner KI auf der Website des Arbeitgebers.",
+    "manualSteps": "Oder von Hand hinzufügen",
+    "stepsChecked": "Diese Schritte wurden am {{date}} mit der Seite des Anbieters abgeglichen:",
+    "rateLine2": "Ein kostenloser Schlüssel erlaubt {{ratePerMin}} Anfragen pro Minute und {{dailyQuota}} Aufrufe pro Tag.",
+    "applyTitle": "Selbst bewerben, mit Hilfe deiner KI",
+    "selfApplyFree": "Selbst bewerben ist kostenlos. Deine KI liest die Stellenanzeige und, wenn der Arbeitgeber {{vendors}} nutzt, auch das Bewerbungsformular. Resume Booster weist sie an, dir jede Sachfrage zu stellen und nur offene Antworten aus deinem Lebenslauf zu entwerfen; du prüfst alles und klickst selbst auf Absenden.",
+    "applyStep1": "Gib deiner KI im Chat deinen Lebenslauf: einfügen oder anhängen.",
+    "applyStep2": "Bitte sie, dir bei einer Bewerbung zu helfen: Füge den Link der Stelle von der Jobbörse ein oder wähle eine aus einer Suche.",
+    "applyStep3": "Resume Booster weist deine KI an, dir jede Sachfrage zu stellen – Arbeitserlaubnis, Visumsunterstützung, Gehalt, Starttermin, Referenzen, Lücken – und deine Worte zu verwenden; niemals demografische Fragen für dich zu beantworten oder Einwilligungsfelder anzukreuzen; und nur Antworten über deine Arbeit aus deinem Lebenslauf zu entwerfen und dir jeden Entwurf zuerst zu zeigen.",
+    "applyStep4": "Du sendest die Bewerbung auf der Website des Arbeitgebers ab: von Hand oder mit Claude in Chrome bzw. dem Agenten von ChatGPT, der das Formular mit dir ausfüllt. Du hängst deinen Lebenslauf an, legst ein eventuelles Arbeitgeberkonto an und klickst auf Absenden.",
+    "applyNever": "Resume Booster sendet niemals etwas für dich ab.",
+    "applyBrowsersTitle": "Wenn deine KI einen Browser bedienen kann",
+    "applyChrome": "Claude in Chrome (bezahlte Claude-Pläne, Chrome auf einem Computer): Wähle für Bewerbungsformulare die manuelle Freigabe. Claude fragt eventuell, bevor es deine Angaben einträgt. Hänge deinen Lebenslauf selbst an, wenn Claude es nicht kann. Arbeitgeberkonten legst du selbst an und CAPTCHAs löst du selbst. Resume Booster weist Claude an, vor dem Absenden anzuhalten.",
+    "applyChatgpt": "Der Browser von ChatGPT fragt vor dem Absenden und kann keine Dateien hochladen, also hänge deinen Lebenslauf selbst an.",
+    "applyFreePlans": "Kostenlose Pläne und Smartphones: Lass dir die Antworten von deiner KI als Liste geben und füge sie selbst in das Formular des Arbeitgebers ein.",
+    "applyChecked": "Am {{date}} mit den Hilfeseiten von Anthropic und OpenAI abgeglichen.",
+    "retiredLink": "Hast du früher einen Pass oder einen Plan bei uns gekauft? Lies, was sich geändert hat."
   },
   "ontarioEsa": {
     "title": "Was diese Stellenanzeige nach dem Recht von Ontario angibt",
@@ -5360,5 +5332,12 @@
       "Keyword-Sammlung für deine Branche",
       "30-Tage-Garantie auf erneute Optimierung"
     ]
+  },
+  "dataApiPage": {
+    "builderName": "Builder-API (geplant)",
+    "builderPrice": "${{price}} im Monat, geplant",
+    "builderBody": "Gerankte Suche, Lebenslauf-Passungsbewertung in großem Umfang und 180 Tage Schließungsdaten, zur Anzeige in Ihrem eigenen Produkt mit Quellenangabe. Keine Feeds und kein Weiterverkauf; dafür gibt es die kommerzielle Lizenz. Sagen Sie uns, ob Sie es nutzen würden.",
+    "builderNotYet": "Noch nicht im Verkauf: Es wird nichts berechnet, und wir beantworten jede Anfrage per E-Mail.",
+    "builderCta": "Builder anfragen"
   }
 }

@@ -400,7 +400,7 @@
       },
       "subscription": {
         "question": "Isto é uma subscrição?",
-        "answer": "As duas opções existem, e você escolhe. Cada relatório e ferramenta é um pagamento único que nunca se renova. Separadamente, há dois planos mensais opcionais: o Pro por ${{proPrice}}/mês, com verificações ilimitadas e todas as ferramentas, e a Fila da Manhã por ${{agentPrice}}/mês, em que o agente de candidatura prepara uma lista de vagas selecionadas para você durante a noite. A verificação de currículo e o quadro de vagas continuam gratuitos de qualquer forma. Os dois planos são renovados todo mês até você cancelar, e o teste gratuito da Fila da Manhã para novos assinantes vira o plano pago quando termina, a menos que você cancele antes. Fora isso, nada faz upgrade da sua conta automaticamente."
+        "answer": "As duas opções existem, e você escolhe. Cada relatório e ferramenta é um pagamento único que nunca se renova. Separadamente, há um plano mensal opcional: o Pro por ${{proPrice}}/mês, com verificações ilimitadas e todas as ferramentas. Ele é renovado todo mês até você cancelar. A verificação de currículo, o quadro de vagas e conectar a sua própria IA continuam gratuitos de qualquer forma. Fora isso, nada faz upgrade da sua conta automaticamente."
       },
       "share": {
         "question": "Posso partilhar a minha análise com outros?",
@@ -412,7 +412,7 @@
       },
       "dataStorage": {
         "question": "Armazenam os dados do meu currículo?",
-        "answer": "Apenas por pouco tempo, e com prazo. Quando carrega ou cola um currículo, o texto é guardado durante 24 horas para que um pagamento o possa usar, e depois apagado. O seu relatório gratuito, que cita linhas do seu currículo, é guardado durante 7 dias para que uma nova análise do mesmo ficheiro com a mesma vaga receba o mesmo relatório, e depois apagado. Uma análise paga fica atrás da sua ligação privada durante 90 dias, a menos que a apague antes. Só guardamos um currículo durante mais tempo quando nos pede: uma versão que guarda na sua conta, o currículo que define para a correspondência de vagas ou o CV que entrega ao agente de candidaturas, que o envia aos empregadores a que se candidata por si. Nunca o vendemos. A nossa página de Confiança lista cada cópia e o respetivo prazo."
+        "answer": "Apenas por pouco tempo, e com prazo. Quando carrega ou cola um currículo, o texto é guardado durante 24 horas para que um pagamento o possa usar, e depois apagado. O seu relatório gratuito, que cita linhas do seu currículo, é guardado durante 7 dias para que uma nova análise do mesmo ficheiro com a mesma vaga receba o mesmo relatório, e depois apagado. Uma análise paga fica atrás da sua ligação privada durante 90 dias, a menos que a apague antes. Só guardamos um currículo durante mais tempo quando nos pede: uma versão que guarda na sua conta, o currículo que define para a correspondência de vagas ou um CV que entregou ao nosso agente de candidaturas antes de ele ser desligado. Nunca o vendemos. A nossa página de Confiança lista cada cópia e o respetivo prazo."
       },
       "vsChatGPT": {
         "question": "Porque é isto melhor que o ChatGPT ou modelos de currículo?",
@@ -420,7 +420,7 @@
       },
       "bringYourAgent": {
         "question": "O meu próprio agente de IA pode usar isto?",
-        "answer": "Sim. Ler o quadro de vagas não exige nenhuma chave numa primeira chamada, e uma chave gratuita abre todas as ferramentas de leitura. Para que o seu agente solicite candidaturas, um passe de ${{passPrice}} dá a ele {{passHours}} horas e {{passApplications}} candidaturas, a partir da primeira chamada e sem nunca renovar; o plano Agent faz o mesmo mensalmente e renova. Cada vaga e cada busca no quadro tem um controle que copia um prompt para o seu agente, e a configuração de cada host está em /agents."
+        "answer": "Sim, de graça. Conecte o Resume Booster ao Claude, ao ChatGPT ou ao Claude Code, e a sua IA pode buscar no quadro, ler as vagas por completo e ajudar você a se candidatar no site do empregador; ler o quadro não exige chave nem conta. A sua IA faz o rascunho e você decide: nunca enviamos uma candidatura por você. Cada vaga e cada busca no quadro tem um controle que copia um prompt para a sua IA, e a configuração de cada app está em /agents."
       }
     }
   },
@@ -664,7 +664,8 @@
       "jurisdictionsEea": "16.1 Espaço Económico Europeu",
       "jurisdictionsCa": "16.2 Califórnia",
       "jurisdictionsNv": "16.3 Nevada",
-      "contactUs": "17. Contacte-nos"
+      "contactUs": "17. Contacte-nos",
+      "mcp": "Usar o Resume Booster pela sua própria IA"
     }
   },
   "terms": {
@@ -2736,11 +2737,11 @@
   },
   "pricingPage": {
     "metaTitle": "Preços — Resume Booster",
-    "metaDescription": "Ferramentas de pagamento único de ${{lowPrice}} a ${{highPrice}} que nunca renovam, ou planos mensais a partir de ${{proPrice}} com todas as ferramentas incluídas. Reescritas de currículo ao nível de recrutador.",
+    "metaDescription": "Ferramentas de pagamento único de ${{lowPrice}} a ${{highPrice}} que nunca renovam, ou o Pro por ${{proPrice}} por mês com todas as ferramentas incluídas. Reescritas de currículo ao nível de recrutador.",
     "noSubscriptions": "Pagamentos únicos • Nunca renovam automaticamente",
     "titlePrefix": "Escolha o seu",
     "titleHighlight": "Impulso de Currículo",
-    "subtitle": "De correções rápidas a pacotes de carreira completos. Os produtos avulsos pagam-se uma vez; o Pro e o plano Agent renovam todos os meses até cancelar.",
+    "subtitle": "De correções rápidas a pacotes de carreira completos. Os produtos avulsos pagam-se uma vez; o Pro renova todos os meses até cancelar.",
     "secureCheckout": "Checkout seguro",
     "instantAccess": "Acesso instantâneo",
     "stripeProtected": "Protegido pela Stripe",
@@ -2753,7 +2754,7 @@
     "requiresUpload": "Requer o envio do seu currículo para análise",
     "whyResumeBooster": "Porquê o Resume Booster?",
     "questions": "Dúvidas?",
-    "allProductsOneTime": "Cada ferramenta é uma compra única com acesso instantâneo e nunca renova. O Pro e o Apply Agent são planos mensais que pode cancelar a qualquer momento.",
+    "allProductsOneTime": "Cada ferramenta é uma compra única com acesso instantâneo e nunca renova. O Pro é um plano mensal que pode cancelar a qualquer momento.",
     "freeScanLink": "verificação gratuita",
     "seeScoreFirst": "para ver primeiro a sua pontuação.",
     "tryFreeScanFirst": "Experimentar primeiro a verificação gratuita",
@@ -2766,8 +2767,8 @@
     "ladderSpecialistDesc": "Para quem muda de carreira: trabalho freelance e por projetos traduzido em experiência de nível profissional.",
     "allToolsToggle": "Ver todas as ferramentas ({{count}} a mais)",
     "guarantee": "Toda ferramenta paga está coberta: não gostou do resultado? Regeneramos grátis — basta responder ao seu recibo.",
-    "passLine": "Ou um passe único para o seu próprio agente de IA: {{passPrice}} $ por {{passHours}} horas e {{passApplications}} candidaturas, que só contam quando ele as pode enviar. Nunca renova.",
-    "passLink": "Ligue o seu agente"
+    "passLine": "Conectar o seu próprio Claude ou ChatGPT é grátis: busque vagas no seu chat e candidate-se por conta própria no site do empregador, com a ajuda da sua IA. Nunca enviamos uma candidatura por você.",
+    "passLink": "Conecte a sua IA"
   },
   "scanPackPurchase": {
     "topUpCredits": "Recarregar créditos",
@@ -4364,7 +4365,7 @@
     "countLineNoFeeds": "{{total}} ofertas ativas — todas diretamente do sistema de recrutamento de cada empresa.",
     "uncatCountLine2": "{{total}} vagas ativas que não conseguimos classificar numa área — funções correntes que as nossas próprias regras de área não reconhecem, todas diretamente do próprio sistema de recrutamento da empresa.",
     "openInAgent": "Abrir no seu agente",
-    "openInAgentTip": "Copia um prompt de uma linha para o seu próprio agente de IA: ele nomeia o id desta vaga e o nosso servidor MCP, e pede ao agente que leia a vaga e diga se consegue candidatar-se.",
+    "openInAgentTip": "Copia um prompt de uma linha para o seu próprio agente de IA: ele nomeia o id desta vaga e o nosso servidor MCP, e pede ao agente que leia a vaga e lhe dê o link de candidatura do empregador. A candidatura é feita por você.",
     "agentPromptCopied": "Prompt copiado — cole-o no seu agente. Ele nomeia esta vaga e o nosso servidor MCP.",
     "agentPromptFailed": "Não foi possível copiar o prompt",
     "whichAgent": "Qual agente?",
@@ -4919,15 +4920,8 @@
   "atsCoverage": {
     "heading": "Feito para os sistemas que os empregadores usam mesmo",
     "sub": "Lemos as vagas diretamente de {{count}} sistemas de gestão de candidaturas — não de um motor de busca.",
-    "autoTitle": "Candidatamo-nos por si",
-    "autoBlurb": "O agente preenche e submete a candidatura sozinho.",
-    "clickTitle": "Preenchida, você carrega em enviar",
-    "clickBlurb": "Estes usam CAPTCHA ou uma verificação humana que nunca resolvemos nem contornamos, ou um formulário que o agente ainda não consegue concluir sozinho. Em qualquer caso, a candidatura chega pronta e é você que a envia.",
-    "stripLegend": "O agente envia estas por você. Nos outros sistemas que medimos, ele preenche a candidatura e você clica em enviar: alguns usam uma verificação humana que não contornamos e, em outros, ele ainda não consegue concluir o formulário. {{unmeasured}} aparecem porque as vagas vêm deles; o alcance do agente neles ainda não foi medido.",
-    "unmeasuredTitle": "Também lemos estas",
-    "unmeasuredBlurb": "As vagas deles estão no quadro. Não analisámos os seus formulários de candidatura, por isso não fazemos qualquer afirmação sobre o alcance do agente.",
-    "allTitle": "Candidaturas preparadas para si",
-    "allBlurb": "Retiramos as vagas diretamente destes sistemas e preparamos a sua candidatura para cada uma."
+    "readTitle": "Lidas diretamente do próprio sistema do empregador",
+    "readBlurb": "Cada vaga do quadro vem de um destes sistemas, e você se candidata no site do empregador. Nunca enviamos uma candidatura por você."
   },
   "pendingQ": {
     "title": "Perguntas em que o agente parou",
@@ -5015,33 +5009,31 @@
     "proofTracks": "Acompanha cada candidatura e diz-lhe o que aconteceu"
   },
   "agentMatches": {
-    "headlineCounted": "Encontrei {{total}}{{plus}} vagas para «{{q}}» que posso submeter de ponta a ponta",
-    "headline": "Vagas para «{{q}}» que posso submeter de ponta a ponta",
-    "sub": "Anúncios vivos dos murais dos próprios empregadores, em sistemas onde posso concluir a candidatura por si. As melhores correspondências:",
-    "sendableBadge": "O agente pode submeter esta",
-    "ctaSetup": "Ponha o agente nestas",
-    "ctaBrowse": "Ver todas"
+    "ctaBrowse": "Ver todas",
+    "headlineCounted2": "{{total}}{{plus}} vagas ativas correspondem a “{{q}}”",
+    "headline2": "Vagas ativas que correspondem a “{{q}}”",
+    "sub2": "Vagas ativas dos próprios sistemas de contratação dos empregadores. Você se candidata no site do empregador, com a ajuda da sua própria IA se quiser. Estas são as melhores correspondências:",
+    "ctaYourAi": "Candidate-se com a ajuda da sua IA"
   },
   "homeHero": {
-    "badge": "Mural ao vivo + agente de IA",
     "headlinePre": "Vagas ao vivo, direto dos sistemas de contratação dos empregadores.",
-    "headlineHighlight": "O agente candidata-se por si.",
-    "sub": "Vagas lidas dos próprios sistemas de recrutamento das empresas e reverificadas o dia todo. Carregue o seu CV: o agente classifica todas, escreve cada candidatura com honestidade e submete onde o empregador permite.",
     "statOpenings": "vagas verificadas",
     "statCompanies": "empresas",
-    "statSendable": "o agente pode submeter por si",
     "ctaPrimary": "Carregue o seu CV — grátis",
     "ctaSecondary": "Explorar o mural",
     "reassure": "Análise grátis · sem cartão, sem registo",
     "exploreCta": "Explorar por área",
-    "statCompanyBoards": "portais de emprego de empresas a contratar"
+    "statCompanyBoards": "portais de emprego de empresas a contratar",
+    "badge2": "Quadro de vagas ao vivo + a sua própria IA",
+    "headlineHighlight2": "Candidate-se por conta própria, com a ajuda da sua IA.",
+    "sub2": "Vagas lidas dos próprios sistemas de contratação das empresas e reverificadas o dia todo. Analise o seu currículo de graça, busque no quadro aqui ou pelo Claude ou ChatGPT e candidate-se por conta própria, com a ajuda da sua IA se quiser. Nunca enviamos nada por você."
   },
   "homeAgent": {
-    "lead": "Traga o seu próprio agente de IA.",
-    "passLine": "Um passe de {{passPrice}} $ dá ao seu agente {{passHours}} horas para pesquisar o quadro e candidatar-se por si a {{passApplications}} vagas. Uma vaga só conta quando o agente pode enviar a candidatura. Nunca renova; inicie sessão para comprar.",
-    "connectCta": "Ligar o seu agente",
-    "passCta": "Comprar ou abrir o seu passe",
-    "connectLine2": "Conecte-o grátis e sem conta — {{freeCallsPerDay}} chamadas por dia por endereço de rede para explorar o quadro de vagas (um escritório ou uma conexão doméstica conta como um só endereço; pelo ChatGPT cada pessoa tem as suas próprias {{freeCallsPerDay}}, e pelo Claude vem primeiro uma cota diária que todos os usuários do Claude compartilham)."
+    "lead": "Use pela sua própria IA.",
+    "passLine": "A sua IA faz o rascunho e você decide: o Resume Booster nunca envia uma candidatura por você.",
+    "connectCta": "Conecte a sua IA",
+    "connectLine2": "Conecte o Resume Booster ao Claude ou ao ChatGPT de graça e sem conta: busque vagas no seu chat, leia as vagas por completo e candidate-se por conta própria no site do empregador com a ajuda da sua IA, dentro de uma cota diária gratuita.",
+    "addToClaude": "Adicionar ao Claude"
   },
   "ghostIndex": {
     "stillUp30WithheldLead": "{{n}} das {{total}} áreas listadas aqui não têm medida da parcela ainda anunciada ao atingir o nosso limite de 30 dias. Cada uma é retida por um motivo declarado — uma ausência no nosso próprio registo, nunca uma conclusão sobre a área.",
@@ -5091,54 +5083,15 @@
     "layoffReasonPrecision": "o intervalo é mais de {{maxRel}}% tão largo como a proporção de vagas que diz retiradas, pelo que não fixa essa proporção"
   },
   "agentPass": {
-    "cardTitle": "Um passe para o seu agente",
-    "cardBody": "{{passHours}} horas com o seu agente, {{passApplications}} candidaturas, {{passPrice}} $. Nunca renova.",
-    "cardClock": "O relógio arranca na primeira chamada do seu agente, não na compra. Um passe não iniciado conserva-se {{passShelfDays}} dias.",
-    "cardIncludes": "Inclui o avaliador de currículo enquanto estiver ativo. Ler o quadro continua gratuito; o plano Agente faz o mesmo todos os meses e renova — o passe nunca.",
-    "buy": "Comprar o passe — {{passPrice}} $",
-    "buying": "A abrir o pagamento…",
-    "signInToBuy": "Inicie sessão para comprar o passe",
-    "signInWhy": "Um passe fica ligado à sua conta — não a um e-mail, não a uma chave.",
-    "holdOpen": "Tem um passe — abra-o",
-    "checkoutFailed": "Não foi possível abrir o pagamento — tente novamente.",
-    "cancelled": "Pagamento cancelado — nada foi cobrado.",
-    "pageTitle": "O seu passe de agente",
-    "metaDescription": "O seu passe — o relógio, as candidaturas e o único bloco de que o seu agente precisa.",
     "checkingSignIn": "A verificar a sessão…",
-    "reading": "A ler o seu passe…",
-    "readFailed": "Não foi possível ler o seu passe agora. Se acabou de pagar, nada se perde — a compra está registada no Stripe e aparece aqui assim que a leitura funcionar.",
-    "retry": "Tentar de novo",
-    "repairPending": "Este pagamento ainda não está ligado a um passe ({{reason}}). Se acabou de pagar, aguarde um minuto e tente de novo — o recibo chega sozinho.",
-    "clockUnstarted": "Não iniciado. As suas {{passHours}} horas começam na primeira chamada do seu agente — expira sem uso a {{date}}.",
-    "clockLive": "A decorrer — faltam {{hours}}h {{minutes}}m de {{passHours}} horas, termina a {{date}}.",
-    "clockEnded": "O seu último passe terminou a {{date}}.",
-    "clockShelfExpired": "O seu último passe expirou sem uso a {{date}}.",
-    "clockNone": "Ainda não há passe nesta conta.",
-    "applications": "{{left}} de {{passApplications}} candidaturas",
-    "applicationsBasis": "Uma candidatura só conta para uma vaga a que o agente a pode enviar. Um pedido recusado, ou um envio que nunca aconteceu, não custa nada.",
-    "buyAnother": "Comprar um passe",
-    "whichAgent": "Qual agente?",
-    "handoffTitle": "Entregue-o ao seu agente",
-    "keyMintFirst": "Gere primeiro a sua chave de agente — é mostrada uma única vez e preenche o bloco abaixo.",
-    "keyCarries": "A sua chave de agente atual já transporta o passe — nada a colar.",
-    "keyDetail": "Chave {{prefix}}…, gerada a {{date}}.",
-    "mintNew": "Gerar uma nova (revoga a antiga)",
-    "connectorOauth": "Escolha Iniciar sessão quando necessário, depois clique em Ligar no chat e em Permitir.",
-    "checklistTitle": "Antes da primeira candidatura",
-    "expectHold": "Os seus primeiros {{holdFirstN}} envios ficam retidos até à sua aprovação em Conta.",
-    "expectHoldPlain": "Os seus primeiros envios ficam retidos até à sua aprovação em Conta.",
-    "expectPrepare": "Os pacotes são preparados cerca de um minuto após o pedido.",
-    "expectLapse": "As candidaturas que não usar caducam quando o relógio termina.",
-    "expectFinish": "Os envios já pedidos concluem-se mesmo depois de o relógio terminar.",
-    "toAgent": "Abrir o agente",
-    "stepsTitle": "Passos para {{host}}:",
-    "keyedTitle": "Depois adicione sua chave de agente — ela carrega o passe:",
-    "connectorNoOauth2": "O login para este host ainda não está ativado, então daqui só respondem as ferramentas sem chave. Para gastar o passe, conecte-se a partir de {{headerHosts}} com sua chave de agente.",
-    "connectorPassGate": "A partir de {{host}} o passe só poderá ser usado quando o login estiver ativado; hoje, use-o a partir de {{headerHosts}} com sua chave de agente.",
-    "repairSecondPass": "Este pagamento não criou um segundo passe: uma conta tem um passe aberto de cada vez, e o seu aparece aqui sem alterações. Já fomos avisados e este pagamento será reembolsado — se não voltar ao seu cartão dentro de alguns dias, escreva para resumeboostersupp@gmail.com.",
-    "repairNotYours": "Esta compra pertence a uma conta diferente daquela em que tem sessão iniciada, e o passe está nessa conta. Inicie sessão na conta que pagou para o ver.",
-    "repairRefunded": "Este pagamento foi reembolsado, por isso não abre nenhum passe.",
-    "cardCharge": "Só contam as vagas a que o seu agente consegue candidatar-se sozinho. O resto é recusado e não custa nada."
+    "retiredPageTitle": "O Agent Pass foi descontinuado",
+    "retiredMeta": "Não vendemos mais o Agent Pass nem o plano Agent, e não enviamos candidaturas. Veja o que mudou e a forma gratuita de se candidatar com a sua própria IA.",
+    "retiredBadge": "Descontinuado",
+    "retiredBody": "Não vendemos mais o Agent Pass, o plano Agent nem o Apply Assistant, e o nosso próprio agente de candidatura está desligado: o Resume Booster não envia candidaturas por ninguém.",
+    "retiredBuyers": "Comprou um antes? Vamos reembolsar ou honrar a compra. Escreva para nós a partir do endereço com que pagou:",
+    "freePathTitle": "O caminho gratuito: candidate-se por conta própria, com a sua própria IA",
+    "freePathBody": "Conecte o Resume Booster ao Claude ou ao ChatGPT sem custo. A sua IA busca vagas com você, lê a vaga — e, quando o sistema do empregador o publica, o formulário de candidatura — e ajuda você a escrever as respostas. Você confere tudo e clica em Enviar no site do empregador.",
+    "freePathCta": "Conecte a sua IA"
   },
   "oauthConsent": {
     "title": "Ligue o seu agente",
@@ -5166,7 +5119,6 @@
     "welcomeBody": "Falta uma coisa: o agente precisa do seu currículo e de um mandato ativo antes de procurar qualquer coisa. A lista abaixo leva cerca de um minuto, e nada roda até ela estar concluída."
   },
   "agentConnect": {
-    "rateLine": "Uma chave gratuita é limitada a {{ratePerMin}} solicitações por minuto e {{dailyQuota}} chamadas por dia; um passe ativo eleva ambos durante as suas horas.",
     "attachTitle": "Prompts e recursos que o seu host pode listar",
     "attachLead": "Além das ferramentas, o servidor registra prompts prontos e alguns documentos legíveis. Os hosts que os listam (o menu de anexar do claude.ai, a lista de comandos do Claude Code, o painel do Cursor) mostram-nos sob o nome do servidor; listar não custa nenhuma chamada e não exige chave.",
     "promptsHeading": "Prompts",
@@ -5174,7 +5126,27 @@
     "resourceKeyed": "exige chave ou login",
     "resourceUnkeyed": "lê-se sem chave",
     "handoffLead": "No quadro de vagas, cada vaga e cada busca tem um controle que copia um prompt para o seu agente — ele nomeia o id da vaga ou os argumentos da busca e a URL deste servidor.",
-    "handoffCta": "Abrir o quadro de vagas"
+    "handoffCta": "Abrir o quadro de vagas",
+    "badge": "Conecte a sua própria IA",
+    "heroTitle": "Busque vagas e candidate-se por conta própria, com a sua própria IA",
+    "heroSubCount": "Conecte o Resume Booster ao Claude ou ao ChatGPT de graça. Busque entre {{n}}+ vagas ativas dos próprios sistemas de contratação dos empregadores, leia-as por completo e candidate-se no site do empregador com a ajuda da sua IA.",
+    "heroSubNoCount": "Conecte o Resume Booster ao Claude ou ao ChatGPT de graça. Busque vagas ativas dos próprios sistemas de contratação dos empregadores, leia-as por completo e candidate-se no site do empregador com a ajuda da sua IA.",
+    "manualSteps": "Ou adicione manualmente",
+    "stepsChecked": "Estes passos foram conferidos na página do próprio fornecedor em {{date}}:",
+    "rateLine2": "Uma chave gratuita permite {{ratePerMin}} solicitações por minuto e {{dailyQuota}} chamadas por dia.",
+    "applyTitle": "Candidate-se por conta própria, com a ajuda da sua IA",
+    "selfApplyFree": "Candidatar-se por conta própria é grátis. Sua IA lê a vaga e, se o empregador usa {{vendors}}, também o formulário de candidatura. O Resume Booster orienta a IA a fazer a você todas as perguntas factuais e a redigir só as respostas abertas a partir do seu currículo; você confere tudo e clica em enviar.",
+    "applyStep1": "Dê o seu currículo à sua IA no chat: cole-o ou anexe-o.",
+    "applyStep2": "Peça que ela ajude você a se candidatar a uma vaga: cole o link da vaga do quadro ou escolha uma em uma busca.",
+    "applyStep3": "O Resume Booster orienta a sua IA a fazer a você todas as perguntas factuais — autorização de trabalho, patrocínio de visto, salário, data de início, referências, períodos sem trabalho — e a usar as suas palavras; a nunca responder por você perguntas demográficas nem marcar caixas de consentimento; e a redigir só respostas sobre o seu trabalho, a partir do seu currículo, mostrando cada rascunho antes.",
+    "applyStep4": "Você envia no site do próprio empregador: à mão, ou com o Claude in Chrome ou o agente do ChatGPT preenchendo com você. Você anexa o currículo, cria a conta no empregador se precisar e clica em Enviar.",
+    "applyNever": "O Resume Booster nunca envia nada por você.",
+    "applyBrowsersTitle": "Se a sua IA puder usar um navegador",
+    "applyChrome": "Claude in Chrome (planos pagos do Claude, Chrome em um computador): escolha a aprovação manual para formulários de candidatura. O Claude pode perguntar antes de inserir seus dados. Anexe o currículo você mesmo se o Claude não conseguir. Você cria as contas nos empregadores e resolve os CAPTCHAs. O Resume Booster orienta o Claude a parar antes de Enviar.",
+    "applyChatgpt": "O navegador do ChatGPT pergunta antes de enviar e não consegue carregar arquivos, então anexe o currículo você mesmo.",
+    "applyFreePlans": "Planos gratuitos e celulares: peça à sua IA as respostas em forma de lista e cole-as você mesmo no formulário do empregador.",
+    "applyChecked": "Conferido nas páginas de ajuda da Anthropic e da OpenAI em {{date}}.",
+    "retiredLink": "Comprou um passe ou um plano conosco antes? Veja o que mudou."
   },
   "ontarioEsa": {
     "title": "O que este anúncio declara à luz da lei de Ontário",
@@ -5360,5 +5332,12 @@
       "Banco de palavras-chave do seu setor",
       "Garantia de reotimização de 30 dias"
     ]
+  },
+  "dataApiPage": {
+    "builderName": "API Builder (planejada)",
+    "builderPrice": "${{price}} por mês, planejado",
+    "builderBody": "Busca ranqueada, pontuação de compatibilidade de currículo em escala e 180 dias de encerramentos, para exibir no seu próprio produto com atribuição. Sem feeds nem revenda; isso é a licença comercial. Diga-nos se você usaria.",
+    "builderNotYet": "Ainda não está à venda: nada é cobrado, e respondemos a cada pedido por e-mail.",
+    "builderCta": "Solicitar o Builder"
   }
 }

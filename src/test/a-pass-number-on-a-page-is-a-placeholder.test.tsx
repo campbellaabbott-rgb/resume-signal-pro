@@ -25,6 +25,17 @@
 // must spell none of the pass numbers beside the words pass/hour/application
 // (proven on a mutated copy), and the crawler copy in scripts/prerender-seo.mjs
 // must be the same en.json sentences filled from the same mirrors.
+//
+// 2026-10-11, THE APPLY PIVOT (owner decision): the Agent Pass, the Agent
+// plan and the Apply Assistant are retired and the server-side apply agent is
+// switched off. The pass is sold nowhere now, so the guards that pinned HOW
+// it was sold become guards that it is NOT: the homepage strip, /pricing and
+// /agents name no pass number and no plan as on offer, /agents renders no
+// pass card in any auth state, /agents/pass is a retirement notice that reads
+// and mints nothing, and the locale walk still holds every remaining pass
+// string (the consent screen's strip for a past buyer) to placeholders. The
+// crawler bakes are owned elsewhere; where they still sell the pass, the
+// divergence is DECLARED below and expires on its own.
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
@@ -32,8 +43,7 @@ import { HelmetProvider } from "react-helmet-async";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { PASS } from "../config/products";
-import { TERMS_VERSION } from "../config/terms";
-import { MCP_HOSTS, MCP_PAGE_HOSTS, MCP_OFF_PAGE_HOSTS } from "../config/mcp-tools";
+import { MCP_HOSTS, claudeInstallLink } from "../config/mcp-tools";
 
 const ROOT = resolve(__dirname, "../..");
 const read = (p: string) => readFileSync(resolve(ROOT, p), "utf8");
@@ -83,15 +93,20 @@ function offences(locale: string, key: string, value: string, english: string): 
 describe("every sentence that names the pass interpolates its numbers, in every locale", () => {
   const enPass = new Map(passKeys(EN));
 
-  it("finds the pass copy (an empty walk would pass everything below vacuously)", () => {
+  it("finds the pass copy that remains, and the homepage and pricing strings name no pass number", () => {
+    // Not vacuous: the consent screen's pass strip, the retirement notice,
+    // the homepage strip and the pricing line are all in the walk.
     expect(enPass.size).toBeGreaterThan(20);
     const used = new Set([...enPass.values()].flatMap(placeholders));
-    for (const p of ["passPrice", "passHours", "passApplications", "passShelfDays", "holdFirstN", "freeCallsPerDay"]) {
-      expect(used.has(p), `no pass string interpolates {{${p}}}`).toBe(true);
+    expect(used.has("left"), "the consent screen's pass strip still interpolates what is left").toBe(true);
+    for (const ns of ["homeAgent.", "pricingPage.", "agentPass."]) {
+      expect([...enPass.keys()].filter((k) => k.startsWith(ns)).length, `${ns} is in the walk`).toBeGreaterThanOrEqual(2);
     }
-    // The homepage namespace is in the walk (an absent namespace would be
-    // skipped silently by `?? {}` and the strip would go unguarded).
-    expect([...enPass.keys()].filter((k) => k.startsWith("homeAgent.")).length).toBeGreaterThanOrEqual(2);
+    // The apply pivot: nothing on the homepage, on /pricing or on the
+    // retirement notice interpolates a pass number, because no pass is sold.
+    for (const [k, v] of enPass) {
+      if (/^(homeAgent|pricingPage|agentPass)\./.test(k)) expect(placeholders(v).filter((x) => /^pass/.test(x)), `${k} still prices a pass`).toEqual([]);
+    }
   });
 
   for (const file of LOCALES) {
@@ -121,7 +136,8 @@ describe("every sentence that names the pass interpolates its numbers, in every 
   });
 
   it("teeth: a typed price, a dropped placeholder and a spelled-out count each fail", () => {
-    const en = EN.agentPass.cardBody as string;
+    // The retired card's sentence, kept here as the fixture the rule is proven on.
+    const en = "{{passHours}} hours with your agent, {{passApplications}} applications, ${{passPrice}}. Never renews.";
     expect(offences("en.json", "agentPass.cardBody", en, en)).toEqual([]);
     expect(offences("de.json", "agentPass.cardBody", en.replace("{{passPrice}}", String(PASS.priceUsd)), en).length).toBeGreaterThan(0);
     expect(offences("fr.json", "agentPass.cardBody", en.replace("{{passHours}} hours", "some hours"), en).length).toBeGreaterThan(0);
@@ -131,58 +147,47 @@ describe("every sentence that names the pass interpolates its numbers, in every 
   });
 });
 
-describe("the 'Agent plan only' sentences on /agents now name the pass", () => {
+describe("the /agents page names no pass and no plan as on offer", () => {
   const PAGE = strip(read("src/pages/AgentConnect.tsx"));
   const MCP = strip(read("supabase/functions/agent-mcp/index.ts"));
-  const sentenceWith = (anchor: string) => {
-    const i = PAGE.indexOf(anchor);
-    expect(i, `anchor "${anchor}" present`).toBeGreaterThanOrEqual(0);
-    return PAGE.slice(Math.max(0, i - 400), i + anchor.length + 400);
-  };
-  it("the meta description", () => {
+  it("the meta description sells nothing", () => {
     const desc = /description=\{`([^`]*)`\}/.exec(PAGE)?.[1] ?? "";
-    expect(desc).toMatch(/Agent plan/);
-    expect(desc).toMatch(/pass/i);
+    expect(desc.length).toBeGreaterThan(0);
+    expect(desc).not.toMatch(/Agent plan|\bpass\b|\$\d/i);
+    expect(desc).toMatch(/apply yourself/);
   });
-  it("the hero sentence about asking the apply agent", () => {
-    expect(sentenceWith("ask your apply agent")).toMatch(/pass/i);
+  it("no sentence asks an apply agent or says what applying requires on our side", () => {
+    expect(PAGE).not.toMatch(/ask your apply agent|applying also requires/);
   });
-  it("the apply-tools sentence about what the key alone is not enough for", () => {
-    expect(sentenceWith("applying also requires")).toMatch(/live pass/i);
-  });
-  // The served HTML for /agents is the prerender, not the SPA: a crawler or a
-  // curl with a Googlebot UA reads scripts/prerender-seo.mjs's copy. The
-  // three sentences it shares with the page must say the same thing (review
-  // C-1: the page said "or a live pass" while the bake still said "Agent plan
-  // only", on the same push).
-  describe("and the prerendered /agents says the same", () => {
+  // The served HTML for /agents is the prerender (scripts/prerender-seo.mjs),
+  // which the profiles and design branches own; this wave may not change it.
+  // Until its owner bakes the new copy, the divergence is DECLARED here and
+  // checked to still be real, so the flag cannot outlive its reason: the day
+  // the bake says what the page says, this fails until the flag is cleared,
+  // and the word-for-word check returns.
+  describe("and the prerendered /agents", () => {
+    const BAKE_STILL_SELLS_THE_PASS = true;
     const BAKE = read("scripts/prerender-seo.mjs");
     const block = BAKE.slice(BAKE.indexOf('path: "/agents",'), BAKE.indexOf("</section>", BAKE.indexOf("Two kinds of key", BAKE.indexOf('path: "/agents",'))));
-    it("the meta description is the page's, word for word", () => {
+    it("the meta description is the page's, word for word — or the bake's pass-selling divergence is declared and still real", () => {
       const page = /description=\{`([^`]*)`\}/.exec(PAGE)?.[1] ?? "";
       const bake = /description: `([^`]*)`/.exec(block)?.[1] ?? "";
       expect(page.length).toBeGreaterThan(0);
-      expect(bake).toBe(page);
-    });
-    it("the hero sentence names the pass", () => {
-      const i = block.indexOf("ask your apply agent");
-      expect(i).toBeGreaterThan(-1);
-      expect(block.slice(i - 200, i)).toMatch(/live pass/);
-    });
-    it("the apply-tools sentence names the pass beside the Agent plan", () => {
-      const i = block.indexOf('<a href="/agent">Agent plan</a>');
-      expect(i).toBeGreaterThan(-1);
-      expect(block.slice(i, i + 160)).toMatch(/live pass/);
+      expect(bake.length).toBeGreaterThan(0);
+      if (BAKE_STILL_SELLS_THE_PASS) {
+        expect(bake, "the bake no longer differs: clear BAKE_STILL_SELLS_THE_PASS so the word-for-word check returns").not.toBe(page);
+        expect(bake, "the declared reason (the bake sells the pass) is gone: clear the flag").toMatch(/pass/i);
+      } else {
+        expect(bake).toBe(page);
+        expect(block).not.toMatch(/\bAgent Pass\b|live pass/);
+      }
     });
   });
 
-  it("the page renders the pass card beside the mint, from the mirror", () => {
-    expect(PAGE).toMatch(/<PassCard \/>/);
-    expect(PAGE).toMatch(/from "@\/config\/products"/);
-    expect(PAGE).toMatch(/passPrice: PASS\.priceUsd/);
-    expect(PAGE).toMatch(/passHours: PASS\.sessionHours/);
-    expect(PAGE).toMatch(/passApplications: PASS\.applications/);
-    expect(PAGE).toMatch(/passShelfDays: PASS\.shelfLifeDays/);
+  it("the page renders no pass card and reads no pass mirror", () => {
+    expect(PAGE).not.toMatch(/<PassCard\b/);
+    expect(PAGE).not.toMatch(/from "@\/config\/products"/);
+    expect(PAGE).not.toMatch(/\bPASS\./);
   });
   it("the host table carries the oauth flag and the page reads it — and no rendered sentence branches on the flag alone", () => {
     for (const h of MCP_HOSTS) expect(typeof h.oauth, `${h.name} has no oauth flag`).toBe("boolean");
@@ -194,11 +199,9 @@ describe("the 'Agent plan only' sentences on /agents now name the pass", () => {
       expect(unknown, `${h.name} unknown`).not.toBe(on);
       expect(off, `${h.name} off names sign-in as off`).toMatch(/not switched on|sign-in is off/i);
     }
-    // The pass card's gate sentence and the receipt page's line read the fact, not the flag.
-    expect(PAGE).toMatch(/signIn\.state !== "on"/);
-    const pass = strip(read("src/pages/AgentPass.tsx"));
-    expect(pass).toMatch(/fact\.state === "on"/);
-    expect(pass).not.toMatch(/host\.oauth\s*\?/);
+    // The host panel's sign-in line reads the server's fact, not the flag.
+    expect(PAGE).toMatch(/host\.signIn\(fact\.state\)/);
+    expect(PAGE).not.toMatch(/host\.oauth\s*\?/);
   });
   it("a host claims sign-in only when the server answers the handshake: the flag agrees with the dispatcher", () => {
     // The flag was false on every host until the integration lane wired the
@@ -289,7 +292,7 @@ function stubTable() {
   return th;
 }
 
-import { PassCard, MCP_URL } from "../pages/AgentConnect";
+import AgentConnect, { MCP_URL } from "../pages/AgentConnect";
 import AgentPass from "../pages/AgentPass";
 import OAuthConsent from "../pages/OAuthConsent";
 import Index, { AgentOfferStrip } from "../pages/Index";
@@ -307,180 +310,39 @@ const openRow = (state: "unactivated" | "live", left: number) => ({
   applicationsUsed: PASS.applications - left, applicationsLeft: left, activatedVia: null,
 });
 
-describe("the pass card on /agents", () => {
+describe("/agents sells nothing in any auth state", () => {
   beforeEach(() => { invoke.mockReset(); auth.session = null; auth.loading = false; });
+  const PASS_ROW = { data: { pass: openRow("live", 3), key: { live: true, prefix: "rb_live_ab", createdAt: null } }, error: null };
 
-  it("signed out: a sign-in link that comes back to buy, and no function call at all", () => {
-    mount(<PassCard />);
-    const link = screen.getByRole("link", { name: /sign in/i });
-    expect(link.getAttribute("href")).toBe(`/auth?next=${encodeURIComponent("/agents?buy=pass")}`);
-    expect(invoke).not.toHaveBeenCalled();
-    // The card states the mirror's numbers, and states them from the mirror.
-    expect(screen.getByText(new RegExp(`\\$${PASS.priceUsd}\\b`))).toBeInTheDocument();
-    expect(screen.getByText(new RegExp(`${PASS.sessionHours} hours`))).toBeInTheDocument();
-    expect(screen.getByText(new RegExp(`${PASS.applications} applications`))).toBeInTheDocument();
-    expect(screen.getByText(new RegExp(`${PASS.shelfLifeDays} days`))).toBeInTheDocument();
-  });
-
-  it("signed in but the status endpoint fails: no buy control, so nothing can 404 after a click", async () => {
-    auth.session = { user: USER };
-    invoke.mockResolvedValue({ data: null, error: new Error("404") });
-    mount(<PassCard />);
-    await waitFor(() => expect(calls("agent-pass-status").length).toBe(1));
-    expect(screen.queryByRole("button", { name: /buy/i })).toBeNull();
-    expect(screen.queryByRole("link", { name: /open it/i })).toBeNull();
-    expect(calls("create-pass-checkout").length).toBe(0);
-  });
-
-  it("signed in with nothing open: the buy button calls create-pass-checkout, and a refusal is shown from the function's own JSON", async () => {
-    auth.session = { user: USER };
-    invoke.mockImplementation(async (fn: string) => {
-      if (fn === "agent-pass-status") return { data: { pass: { state: "none" }, key: { live: false } }, error: null };
-      if (fn === "create-pass-checkout") return { data: { alreadySubscribed: true, error: "Your Agent plan already includes applications — from the function" }, error: null };
-      return { data: null, error: null };
+  for (const signedIn of [false, true]) {
+    it(`${signedIn ? "signed in, holding a pass from before the retirement" : "signed out"}: no buy control, no price, no pass call`, async () => {
+      auth.session = signedIn ? { user: USER } : null;
+      invoke.mockImplementation(async (fn: string) => (fn === "agent-pass-status" ? PASS_ROW : { data: null, error: null }));
+      mount(<AgentConnect />, "/agents?buy=pass");
+      await screen.findByRole("heading", { level: 1 });
+      expect(screen.queryByRole("button", { name: /buy|pass/i })).toBeNull();
+      expect(screen.queryByRole("link", { name: /buy|sign in to buy|your pass/i })).toBeNull();
+      expect(calls("agent-pass-status").length, "the page asks the pass endpoint").toBe(0);
+      expect(calls("create-pass-checkout").length).toBe(0);
+      expect(document.body.textContent ?? "").not.toContain(`$${PASS.priceUsd}`);
+      // A past buyer is pointed at the notice, never at a purchase.
+      expect(screen.getByRole("link", { name: /bought a pass or a plan/i }).getAttribute("href")).toBe("/agents/pass");
     });
-    mount(<PassCard />);
-    const btn = await screen.findByRole("button", { name: new RegExp(`buy.*\\$${PASS.priceUsd}`, "i") });
-    fireEvent.click(btn);
-    await waitFor(() => expect(calls("create-pass-checkout").length).toBe(1));
-    expect(await screen.findByText(/from the function/)).toBeInTheDocument();
-  });
-
-  it("signed in with a pass open: links to the pass page instead of selling a second one", async () => {
-    auth.session = { user: USER };
-    invoke.mockResolvedValue({ data: { pass: openRow("live", 7), key: { live: true, prefix: "rb_live_ab", createdAt: "2026-09-01T00:00:00Z" } }, error: null });
-    mount(<PassCard />);
-    const link = await screen.findByRole("link", { name: /open it/i });
-    expect(link.getAttribute("href")).toBe("/agents/pass");
-    expect(screen.queryByRole("button", { name: /buy/i })).toBeNull();
-  });
-
-  // Coming back from sign-in used to open the checkout by itself, so a buyer
-  // reached Stripe for the pass with no Terms line ever on screen, and the
-  // session recorded no Terms version (review of the integration,
-  // 2026-10-10). Now the return lands on the Buy button and its line, and
-  // only a press opens checkout.
-  it("returning from sign-in with ?buy=pass opens nothing by itself: the Buy button and its Terms line wait for a press", async () => {
-    auth.session = { user: USER };
-    invoke.mockImplementation(async (fn: string) => {
-      if (fn === "agent-pass-status") return { data: { pass: { state: "none" }, key: { live: false } }, error: null };
-      if (fn === "create-pass-checkout") return { data: { error: "refused for the test" }, error: null };
-      return { data: null, error: null };
-    });
-    mount(<PassCard />, "/agents?buy=pass");
-    const btn = await screen.findByRole("button", { name: new RegExp(`buy.*\\$${PASS.priceUsd}`, "i") });
-    await new Promise((r) => setTimeout(r, 50));
-    expect(calls("create-pass-checkout").length, "the checkout opened with no press").toBe(0);
-    expect(btn.parentElement?.querySelector('[data-testid="purchase-terms"]'), "the Buy button came back without its Terms line").toBeTruthy();
-    expect(document.activeElement, "the return did not land on the Buy button").toBe(btn);
-    fireEvent.click(btn);
-    await waitFor(() => expect(calls("create-pass-checkout").length).toBe(1));
-    expect((calls("create-pass-checkout")[0][1] as { body: Record<string, unknown> }).body).toMatchObject({ termsVersion: TERMS_VERSION });
-    await screen.findByText(/refused for the test/);
-  });
+  }
 });
 
-describe("the post-purchase page /agents/pass", () => {
-  // The page reads the sign-in fact off one free initialize when it has a
-  // pass to hand over; here the "server" answers a result with no _meta, so
-  // the fact is `unknown` and nothing leaves the test runner.
-  beforeEach(() => {
-    invoke.mockReset(); auth.session = { user: USER }; auth.loading = false;
-    try { localStorage.clear(); } catch { /* blocked */ }
-    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ jsonrpc: "2.0", id: 1, result: { serverInfo: { name: "stub" } } }), { status: 200 })));
-  });
-  afterEach(() => { vi.unstubAllGlobals(); });
+describe("the old post-purchase address /agents/pass is a retirement notice", () => {
+  beforeEach(() => { invoke.mockReset(); auth.session = { user: USER }; auth.loading = false; });
 
-  it("reads the pass with the session id, never mints a key on load, and shows the row's numbers with one hand-off block", async () => {
-    invoke.mockImplementation(async (fn: string) => {
-      if (fn === "agent-pass-status") return { data: { pass: openRow("unactivated", PASS.applications), key: { live: false } }, error: null };
-      return { data: null, error: null };
-    });
+  it("arriving from an old Stripe receipt: reads nothing, mints nothing, hands nothing to an agent, and says what changed", async () => {
+    invoke.mockResolvedValue({ data: { pass: openRow("unactivated", PASS.applications), key: { live: false } }, error: null });
     mount(<AgentPass />, "/agents/pass?session_id=cs_test_123");
-    await screen.findByText(/Not started/);
-    expect(calls("agent-pass-status")[0][1]).toEqual({ body: { session_id: "cs_test_123" } });
-    expect(calls("agent-connect").length, "the page must never mint a key on load").toBe(0);
-    expect(screen.getByText(`${PASS.applications} of ${PASS.applications} applications`)).toBeInTheDocument();
-    // Exactly one hand-off block: the first TILE's steps (the page list's
-    // order, so the chat host with no key field), and no keyed block for it.
-    // The picker offers the page's tiles and nothing the page sends to GitHub.
-    const tabs = screen.getAllByRole("tab").map((el) => el.textContent);
-    expect(tabs).toEqual(MCP_PAGE_HOSTS.map((h) => h.name));
-    for (const h of MCP_OFF_PAGE_HOSTS) expect(tabs, `${h.name} offered though the page has no tile for it`).not.toContain(h.name);
-    const first = MCP_PAGE_HOSTS[0];
-    expect(first).toBe(MCP_HOSTS[0]);
-    expect(first.header).toBe(false);
-    expect(screen.getByText(`Steps for ${first.name}:`)).toBeInTheDocument();
-    expect(document.querySelectorAll("[data-handoff]").length).toBe(1);
-    expect(document.querySelector("[data-handoff]")!.getAttribute("data-handoff")).toBe(first.id);
-    expect(screen.queryByText(/carries the pass:/)).toBeNull();
-    // A chat host with no key field offers no mint; the key rides on sign-in.
-    expect(screen.queryByRole("button", { name: /mint agent key/i })).toBeNull();
-    expect(calls("agent-connect").length).toBe(0);
-  });
-
-  it("a live key already carries the pass: says so, offers a deliberate re-mint, still mints nothing", async () => {
-    invoke.mockImplementation(async (fn: string) => {
-      if (fn === "agent-pass-status") return { data: { pass: openRow("live", 4), key: { live: true, prefix: "rb_live_ab", createdAt: "2026-09-01T00:00:00Z" } }, error: null };
-      return { data: null, error: null };
-    });
-    localStorage.setItem("rb_pass_host", MCP_PAGE_HOSTS.find((h) => h.header)!.name);
-    mount(<AgentPass />, "/agents/pass");
-    await screen.findByText(/already carries the pass/);
-    expect(screen.getByText(`4 of ${PASS.applications} applications`)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /mint agent key/i })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /mint a new one/i }));
-    expect(screen.getByRole("button", { name: /mint agent key/i })).toBeInTheDocument();
-    expect(calls("agent-connect").length).toBe(0);
-  });
-
-  it("switching host swaps the single block and is remembered; a chat host's sign-in line follows the server's fact, never the flag alone", async () => {
-    invoke.mockImplementation(async (fn: string) => {
-      if (fn === "agent-pass-status") return { data: { pass: openRow("unactivated", PASS.applications), key: { live: false } }, error: null };
-      return { data: null, error: null };
-    });
-    mount(<AgentPass />, "/agents/pass");
-    await screen.findByText(/Not started/);
-    // The key-carrying TILE (Claude Code — a host the page sends to GitHub has no tab here).
-    const keyHost = MCP_PAGE_HOSTS.find((h) => h.header)!;
-    fireEvent.click(screen.getByRole("tab", { name: keyHost.name }));
-    // The host's own steps from the shared builders, keyless (no key was
-    // minted on this page), and its keyed sub-steps behind them with an
-    // EMPTY export line — never a placeholder inside an Authorization value.
-    const pres = Array.from(document.querySelectorAll("pre")).map((p) => p.textContent ?? "");
-    const firstCopy = keyHost.steps({ url: MCP_URL }).find((st) => st.copy !== undefined)!.copy!;
-    expect(pres.some((t) => t.includes(firstCopy))).toBe(true);
-    expect(pres.join("\n")).not.toMatch(/Bearer rb_live_/);
-    expect(pres.join("\n")).toMatch(/export RESUMEBOOSTER_KEY=$/m);
-    expect(screen.getByText(/carries the pass:/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /mint agent key/i })).toBeInTheDocument();
-    expect(localStorage.getItem("rb_pass_host")).toBe(keyHost.name);
-    // A remembered host with no tile falls back to the first tile — it is never rendered as the pick.
-    document.body.innerHTML = "";
-    localStorage.setItem("rb_pass_host", MCP_OFF_PAGE_HOSTS[0].name);
-    mount(<AgentPass />, "/agents/pass");
-    await screen.findByText(/Not started/);
-    expect(document.querySelector("[data-handoff]")!.getAttribute("data-handoff")).toBe(MCP_PAGE_HOSTS[0].id);
-    expect(screen.queryByRole("tab", { name: MCP_OFF_PAGE_HOSTS[0].name })).toBeNull();
-    // A chat host: no server answered initialize in this test (the stubbed
-    // fetch is absent), so the fact is `unknown` and the "choose Sign in
-    // when needed" line must NOT render even though the host's oauth flag
-    // is true — the flag is a capability, the fact is today's truth.
-    const connector = MCP_HOSTS.find((h) => !h.header && h.oauth)!;
-    fireEvent.click(screen.getByRole("tab", { name: connector.name }));
-    expect(screen.getByText(/only the unkeyed tools answer/)).toBeInTheDocument();
-    expect(screen.queryByText(/Choose Sign in when needed/)).toBeNull();
-    expect(document.querySelector("[data-sign-in]")!.getAttribute("data-sign-in")).toBe("unknown");
-    expect(screen.queryByRole("button", { name: /mint agent key/i })).toBeNull();
-  });
-
-  it("with no pass: offers a purchase and no hand-off block", async () => {
-    invoke.mockResolvedValue({ data: { pass: { state: "none" }, key: { live: false } }, error: null });
-    mount(<AgentPass />, "/agents/pass");
-    await screen.findByText(/No pass on this account yet/);
-    expect(screen.getByRole("button", { name: /buy a pass/i })).toBeInTheDocument();
-    expect(document.querySelectorAll("pre").length).toBe(0);
-    expect(calls("create-pass-checkout").length).toBe(0);
+    await screen.findByRole("heading", { level: 1, name: EN.agentPass.retiredPageTitle as string });
+    expect(invoke).not.toHaveBeenCalled();
+    expect(document.querySelectorAll("pre").length, "a hand-off block").toBe(0);
+    expect(document.querySelector("main")!.querySelector("button"), "a control on the notice").toBeNull();
+    const buyers = document.querySelector("[data-pass-buyers]")!;
+    expect(buyers.querySelector("a")!.getAttribute("href")).toBe("mailto:resumeboostersupp@gmail.com");
   });
 });
 
@@ -531,89 +393,71 @@ function spelledPassNumbers(code: string): string[] {
   return strip(code).match(re) ?? [];
 }
 
-describe("the agent offer on the homepage", () => {
+describe("the connect-your-AI strip on the homepage", () => {
   const INDEX_RAW = read("src/pages/Index.tsx");
-  const allowed = new Set([PASS.priceUsd, PASS.sessionHours, PASS.applications, MCP_ANON_CAPS.perAddressPerDay].map(String));
-  const digitRuns = (s: string) => s.match(/\d+/g) ?? [];
 
   beforeEach(() => {
     invoke.mockReset();
     // The page's live reads (board status, totals) answer nothing; the strip
-    // must stand without them, from the mirrors alone.
+    // must stand without them.
     invoke.mockResolvedValue({ data: null, error: null });
     auth.session = null; auth.loading = false;
   });
 
-  it("mounts the whole homepage and renders the strip inside the hero band, every number from a mirror", () => {
+  it("mounts the whole homepage and renders the strip inside the hero band, with no number and no price", () => {
     mount(<Index />, "/");
     const hero = document.querySelector('section[aria-labelledby="home-hero-heading"]');
     expect(hero, "the fused hero is on the page").not.toBeNull();
     const el = hero!.querySelector("[data-agent-offer]");
     expect(el, "the strip is INSIDE the hero band, not a second hero").not.toBeNull();
     const text = el!.textContent ?? "";
-    expect(text).toContain(`$${PASS.priceUsd}`);
-    expect(text).toContain(`${PASS.sessionHours} hours`);
-    expect(text).toContain(`${PASS.applications} jobs`);
-    expect(text).toContain(`${MCP_ANON_CAPS.perAddressPerDay} calls a day`);
-    const stray = digitRuns(text).filter((n) => !allowed.has(n));
-    expect(stray, "a digit the mirrors did not supply").toEqual([]);
-    // The strip is one strip: it lives under the hero's single h1 and adds
-    // no heading and no second primary-weight button of its own.
+    // Count-free on purpose: the allowance's figures move with an owner
+    // decision, and no pass is sold.
+    expect(text).not.toMatch(/\d/);
+    expect(text).toMatch(/no account/i);
+    expect(text).toMatch(/never submits an application for you/);
     expect(el!.querySelector("h1, h2, h3")).toBeNull();
     expect(el!.querySelector("button")).toBeNull();
     expect(document.querySelectorAll("h1").length).toBe(1);
+    // The hero itself claims no submissions either.
+    expect(hero!.textContent ?? "").not.toMatch(/applies for you|can submit for you|submits where/i);
   });
 
-  it("names sign-in as the condition for the pass, never for connecting, and links to /agents for everyone", () => {
-    mount(<AgentOfferStrip />, "/");
-    const el = document.querySelector("[data-agent-offer]")!;
-    const [connect, pass] = Array.from(el.querySelectorAll("p")).map((p) => p.textContent ?? "");
-    expect(connect).toMatch(/no account/i);
-    expect(connect).not.toMatch(/sign in/i);
-    expect(pass).toMatch(/sign in/i);
-    expect(pass).toMatch(/never renews/i);
-    expect(screen.getByRole("link", { name: /connect your agent/i }).getAttribute("href")).toBe("/agents");
-    expect(screen.queryByRole("link", { name: /pass/i }), "no pass-page link while signed out").toBeNull();
+  for (const signedIn of [false, true]) {
+    it(`${signedIn ? "signed in" : "signed out"}: links /agents, offers no pass page, and calls nothing`, () => {
+      auth.session = signedIn ? { user: USER } : null;
+      mount(<AgentOfferStrip />, "/");
+      expect(screen.getByRole("link", { name: /connect your ai/i }).getAttribute("href")).toBe("/agents");
+      expect(screen.queryByRole("link", { name: /pass/i })).toBeNull();
+      expect(invoke).not.toHaveBeenCalled();
+    });
+  }
+
+  it("Add to Claude appears only behind its flag, as the documented install link", () => {
+    const { unmount } = mount(<AgentOfferStrip />, "/");
+    expect(document.querySelector("[data-add-to-claude]"), "the button shows while the flag is off").toBeNull();
+    unmount();
+    mount(<AgentOfferStrip addToClaude />, "/");
+    const a = document.querySelector("[data-add-to-claude]");
+    expect(a).not.toBeNull();
+    expect(a!.getAttribute("href")).toBe(claudeInstallLink(MCP_URL));
   });
 
-  it("signed in, adds one link to the pass page and no checkout call", () => {
-    auth.session = { user: USER };
-    mount(<AgentOfferStrip />, "/");
-    expect(screen.getByRole("link", { name: /pass/i }).getAttribute("href")).toBe("/agents/pass");
-    expect(screen.getByRole("link", { name: /connect your agent/i }).getAttribute("href")).toBe("/agents");
-    expect(calls("create-pass-checkout").length).toBe(0);
-    expect(calls("agent-pass-status").length, "the homepage never asks the status endpoint").toBe(0);
-  });
-
-  it("Index.tsx renders the strip from the mirrors and spells none of the pass numbers beside pass/hour/application", () => {
+  it("Index.tsx reads no pass mirror and spells none of the pass numbers beside pass/hour/application", () => {
     const code = strip(INDEX_RAW);
-    expect(code).toMatch(/from "@\/config\/products"/);
-    expect(code).toMatch(/from "@\/config\/mcp-tools"/);
-    expect(code).toMatch(/passPrice: PASS\.priceUsd/);
-    expect(code).toMatch(/passHours: PASS\.sessionHours/);
-    expect(code).toMatch(/passApplications: PASS\.applications/);
-    expect(code).toMatch(/freeCallsPerDay: MCP_ANON_CAPS\.perAddressPerDay/);
+    expect(code).not.toMatch(/\bPASS\b/);
+    expect(code).not.toMatch(/\{\{pass\w*\}\}/);
     expect(code).toMatch(/<HomeHero agentOffer=\{<AgentOfferStrip \/>\} \/>/);
-    // Not vacuous: the placeholders are there to be replaced.
-    for (const p of ["{{passPrice}}", "{{passHours}}", "{{passApplications}}", "{{freeCallsPerDay}}"]) expect(code).toContain(p);
     expect(spelledPassNumbers(INDEX_RAW)).toEqual([]);
   });
 
-  it("teeth: a copy of Index.tsx with the price, the hours or the applications spelled fails", () => {
-    const priced = INDEX_RAW.replace("${{passPrice}}", `$${PASS.priceUsd}`);
-    expect(priced).not.toBe(INDEX_RAW);
-    expect(spelledPassNumbers(priced).length).toBeGreaterThan(0);
-    const houred = INDEX_RAW.replace("{{passHours}} hours", `${PASS.sessionHours} hours`);
-    expect(houred).not.toBe(INDEX_RAW);
-    expect(spelledPassNumbers(houred).length).toBeGreaterThan(0);
-    const applied = INDEX_RAW.replace("apply to {{passApplications}} jobs", `apply to ${PASS.applications} jobs — that is ${PASS.applications} applications`);
-    expect(applied).not.toBe(INDEX_RAW);
-    expect(spelledPassNumbers(applied).length).toBeGreaterThan(0);
-    // And a spelling inside a comment alone does NOT fail it — the rule is
-    // about what renders, and a comment is where the reasoning lives.
-    const commented = INDEX_RAW.replace("export function AgentOfferStrip()", `/* the pass costs $${PASS.priceUsd} */\nexport function AgentOfferStrip()`);
-    expect(commented).not.toBe(INDEX_RAW);
-    expect(spelledPassNumbers(commented)).toEqual([]);
+  it("teeth: a copy of Index.tsx with the price, the hours or the applications spelled fails, and a comment does not", () => {
+    const at = "export function AgentOfferStrip(";
+    expect(INDEX_RAW).toContain(at);
+    for (const line of [`const X = "a $${PASS.priceUsd} pass";`, `const X = "${PASS.sessionHours} hours";`, `const X = "${PASS.applications} applications";`]) {
+      expect(spelledPassNumbers(INDEX_RAW.replace(at, `${line}\n${at}`)).length, line).toBeGreaterThan(0);
+    }
+    expect(spelledPassNumbers(INDEX_RAW.replace(at, `/* the pass cost $${PASS.priceUsd} */\n${at}`))).toEqual([]);
   });
 
   describe("and the crawler copy for / says the same, from the same mirrors", () => {
@@ -642,16 +486,16 @@ describe("the agent offer on the homepage", () => {
     it("the bundle entry exports the PASS mirror", () => {
       expect(BAKE).toMatch(/export \{[^}]*\bPASS\b[^}]*\} from "\.\.\/src\/config\/products"/);
     });
-    it("the sentences are en.json's homeAgent lines with the mirrors filled in", () => {
+    it("the sentences are en.json's homeAgent lines — the new ones, under the names the bake reads — and sell nothing", () => {
       expect(offer.connect).toBe(fill(homeAgent.connectLine2));
       expect(offer.pass).toBe(fill(homeAgent.passLine));
       expect(offer.lead).toBe(homeAgent.lead);
-      expect(offer.pass).toContain(`$${PASS.priceUsd}`);
-      expect(offer.pass).toContain(`${PASS.sessionHours} hours`);
-      expect(offer.pass).toContain(`${PASS.applications} jobs`);
-      expect(offer.connect).toContain(`${MCP_ANON_CAPS.perAddressPerDay} calls a day`);
+      expect(offer.cta).toBe(homeAgent.connectCta);
+      // The apply pivot: the line the bake calls "pass" now says we never
+      // submit, and neither sentence carries a number or a price.
+      expect(offer.pass).toMatch(/never submits an application for you/);
+      for (const t of [offer.connect, offer.pass]) expect(t).not.toMatch(/\d|\$/);
       expect(offer.connect).toMatch(/no account/i);
-      expect(offer.pass).toMatch(/sign in/i);
     });
     it("a placeholder with no mirror throws instead of baking a raw brace", () => {
       const start = BAKE.indexOf("const AGENT_OFFER = (() => {");

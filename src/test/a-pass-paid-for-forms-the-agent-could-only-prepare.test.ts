@@ -212,10 +212,16 @@ describe("no place that says what opens the scorer names a plan, a pass or a pri
     expect(text).not.toMatch(/withKey|\bAgent (?:Pass|plan)\b|paid key/);
   });
 
-  it("llms.txt says the same as the server (src owner: the frontend)", async () => {
+  // llms.txt since the apply pivot (owner decision 2026-10-11): the Agent Pass
+  // and the Agent plan are retired, so the crawler file no longer names them
+  // as what opens the scorer. It says the scorer is gated as POST /v1/fit is,
+  // which stays true whichever key tiers that gate admits (src owner: the frontend).
+  it("llms.txt says the same as the server", async () => {
     const { readFileSync } = await import("node:fs");
     const { resolve } = await import("node:path");
     const txt = readFileSync(resolve(__dirname, "../../public/llms.txt"), "utf8");
+    expect(txt).toMatch(/résumé fit scoring is gated exactly as POST \/v1\/fit is/);
+    expect(txt).not.toMatch(/\bAgent (?:Pass|plan)\b/);
     expect(txt).not.toMatch(/a paid key, a live Agent Pass or the Agent plan on the key's account opens résumé fit scoring/);
   });
 });

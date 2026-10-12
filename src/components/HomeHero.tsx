@@ -10,10 +10,11 @@
 //
 // THE DESIGN RULES THIS FOLLOWS, in the order they matter for conversion:
 //
-//   ONE claim. The board and the agent are not two products to be pitched in
-//   sequence; they are one sentence — every job here is real, and the agent
-//   applies to them for you. Two heroes made a visitor read the pitch twice
-//   and believe it half as much.
+//   ONE claim: every job here is real, read straight from the employer's own
+//   hiring system. Since the apply pivot (owner decision 2026-10-11) the
+//   claim no longer says that anything applies for you — the server-side
+//   apply agent is switched off and nothing here submits an application. The
+//   person applies on the employer's own site, by hand or with their own AI.
 //
 //   ONE primary action, styled as the only one. Uploading a CV is the step
 //   that leads to a paid customer; browsing the board is engagement. The
@@ -25,15 +26,14 @@
 //   what lets a sceptic check it without scrolling. This is the single most
 //   differentiating thing the product can say and it was below the fold.
 //
-//   EVERY NUMBER MEASURED OR ABSENT. Board totals, agent-submittable count and
-//   the per-vendor tallies all come from live payloads. Nothing here renders a
+//   EVERY NUMBER MEASURED OR ABSENT. Board totals and the per-vendor tallies
+//   all come from live payloads. Nothing here renders a
 //   literal, and a failed read renders no sentence rather than a stale or zero
 //   one — the rule the rest of this codebase already enforces.
-import { useEffect, useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Upload, Briefcase, ArrowRight, ShieldCheck, Bot, Sparkles } from "lucide-react";
-import { invokeJobBoard } from "@/lib/invoke-job-board";
+import { Upload, Briefcase, ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
 import { AtsCoverage } from "@/components/AtsCoverage";
 import { useBoardTotals } from "@/hooks/use-board-totals";
 
@@ -57,27 +57,15 @@ const FIELDS = [
 ] as const;
 
 /**
- * `agentOffer` is the one strip the page hands into this band for the agent
- * half of the claim — connect your own agent free, or buy it a pass. It
- * renders last, under the board's proof and its entries, so it never competes
- * with the single primary action and never pushes the proof strip down; the
- * copy and its numbers live with the page (src/pages/Index.tsx), where the
- * pass guard reads them.
+ * `agentOffer` is the one strip the page hands into this band: connect your
+ * own Claude or ChatGPT for free. It renders last, under the board's proof
+ * and its entries, so it never competes with the single primary action and
+ * never pushes the proof strip down; its copy lives with the page
+ * (src/pages/Index.tsx).
  */
 export function HomeHero({ agentOffer }: { agentOffer?: ReactNode } = {}) {
   const { t, i18n } = useTranslation();
   const totals = useBoardTotals();
-  const [sendable, setSendable] = useState<number | null>(null);
-
-  useEffect(() => {
-    let dead = false;
-    void invokeJobBoard({ body: { action: "status" } }).then(({ data }) => {
-      if (dead || !data || typeof data !== "object") return;
-      const n = (data as { sendable?: { postings?: number } }).sendable?.postings;
-      if (typeof n === "number" && n > 0) setSendable(n);
-    }).catch(() => { /* the hero stands without it */ });
-    return () => { dead = true; };
-  }, []);
 
   const nf = (n: number) => n.toLocaleString(i18n.language);
 
@@ -92,7 +80,7 @@ export function HomeHero({ agentOffer }: { agentOffer?: ReactNode } = {}) {
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary/10 border border-primary/25 mb-5">
             <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" aria-hidden />
             <span className="text-[13px] font-semibold text-primary">
-              {t("homeHero.badge", "Live job board + AI apply agent")}
+              {t("homeHero.badge2", "Live job board + your own AI")}
             </span>
           </div>
 
@@ -103,15 +91,15 @@ export function HomeHero({ agentOffer }: { agentOffer?: ReactNode } = {}) {
           >
             {t("homeHero.headlinePre", "Live jobs, straight from employers' own hiring systems.")}{" "}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-primary to-success">
-              {t("homeHero.headlineHighlight", "The agent applies for you.")}
+              {t("homeHero.headlineHighlight2", "Apply yourself, with your own AI's help.")}
             </span>
           </h1>
 
           <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed mb-5">
-            {t("homeHero.sub", "Openings read from companies' own hiring systems and re-checked all day. Upload your CV and the agent ranks every one against it, writes each application honestly, and submits where employers allow.")}
+            {t("homeHero.sub2", "Openings read from companies' own hiring systems and re-checked all day. Scan your CV for free, search the board here or from Claude or ChatGPT, and apply yourself, with your AI's help if you like. We never submit anything for you.")}
           </p>
 
-          {/* THE THREE NUMBERS THAT MATTER, and only once measured. Reserved
+          {/* THE NUMBERS THAT MATTER, and only once measured. Reserved
               height so the buttons below never jump when they land. */}
           <div className="min-h-[30px] mb-6 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-sm">
             {totals && (
@@ -137,14 +125,6 @@ export function HomeHero({ agentOffer }: { agentOffer?: ReactNode } = {}) {
                 <span className="text-border" aria-hidden>·</span>{" "}
                 <span className="font-bold text-foreground tabular-nums">{nf(totals.feeds)}</span>{" "}
                 {t("homeHero.statCompanyBoards", "company job boards hiring")}
-              </span>
-            )}
-            {sendable !== null && (
-              <span className="text-muted-foreground">
-                <span className="text-border" aria-hidden>·</span>{" "}
-                <Bot className="inline w-3.5 h-3.5 text-success -mt-0.5" aria-hidden />{" "}
-                <span className="font-bold text-foreground tabular-nums">{nf(sendable)}</span>{" "}
-                {t("homeHero.statSendable", "the agent can submit for you")}
               </span>
             )}
           </div>

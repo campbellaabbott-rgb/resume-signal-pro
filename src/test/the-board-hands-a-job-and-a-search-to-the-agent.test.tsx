@@ -122,25 +122,29 @@ const FULL_STATE: BoardFilterState = {
 
 describe("1. the posting prompt", () => {
   const JOB = { id: "greenhouse:acme:1", sendable: false };
-  it("carries the id verbatim, the MCP URL, an unkeyed tool first and the keyed check behind its clause, and never a key", () => {
+  it("carries the id verbatim, the MCP URL, an unkeyed tool first, asks for the employer's apply link, and never a key", () => {
     const p = agentPrompt(JOB);
     expect(p).toContain(`job id "${JOB.id}"`);
     expect(p).toContain(MCP_URL);
     // The first call answers with no key (the wall was a prompt whose first
-    // tool needed one); the keyed check follows behind its condition.
+    // tool needed one). Since the apply pivot (owner decision 2026-10-11) the
+    // prompt then asks for the employer's apply link and says the person
+    // applies: no keyed check, no apply tool, nothing to be sent.
     expect(p).toMatch(/call fetch with job id/);
-    expect(p).toMatch(/if this connection holds a key or is signed in, call check_apply_support/);
+    expect(p).toMatch(/employer's apply link/);
+    expect(p).toMatch(/I will apply myself, on the employer's site/);
+    expect(p).not.toMatch(/check_apply_support|request_application|send it|sent for me/);
     expect(p).not.toMatch(/rb_live_/);
-    expect(p).not.toMatch(/request_application/);
     expect(p.length).toBeLessThan(14_000); // the claude:// prefill cap
   });
-  it("names the apply tool only on a sendable posting, and puts the person's yes first", () => {
+  it("a posting the retired apply agent could send gets the same prompt: no apply tool, nothing sent", () => {
     const p = agentPrompt({ ...JOB, sendable: true });
-    expect(p).toMatch(/request_application needs my explicit yes first/);
+    expect(p).toBe(agentPrompt(JOB));
+    expect(p).not.toMatch(/request_application/);
   });
   it("every tool a prompt names is one the mirror registers, and tool() refuses one it does not", () => {
     for (const p of [agentPrompt(JOB), agentPrompt({ ...JOB, sendable: true }), searchPrompt({ query: "x" }, { activelyHiring: true })]) {
-      const named = [...p.matchAll(/\b([a-z]+_[a-z_]+)\b/g)].map((m) => m[1]);
+      const named = [...p.matchAll(/\b([a-z]+_[a-z_]+|fetch)\b/g)].map((m) => m[1]);
       expect(named.length).toBeGreaterThan(0);
       for (const n of named) expect(MCP_TOOL_NAMES, `${n} is not a registered tool`).toContain(n);
     }
@@ -171,8 +175,11 @@ describe("1. the posting prompt", () => {
     // that had to be edited in lockstep. Now the key literal lives in
     // agent-handoff.ts alone and both pages import the functions.
     const src = (p: string) => strip(read(p));
+    // /agents/pass became the retirement notice (the apply pivot): it hands
+    // nothing to an agent, so it reads and writes no host at all — checked
+    // below by the literal walk, which allows the key in agent-handoff only.
+    expect(src("src/pages/AgentPass.tsx")).not.toMatch(/rememberedHost|rememberHostName|localStorage/);
     for (const [page, fns] of [
-      ["src/pages/AgentPass.tsx", ["rememberedHostName", "rememberHostName"]],
       ["src/pages/AgentConnect.tsx", ["rememberedHostChoice", "rememberHostName"]],
       ["src/pages/Jobs.tsx", ["rememberedHostName", "rememberHostName"]],
     ] as const) {
@@ -334,8 +341,10 @@ describe("2. the hand-offs on /jobs, judged by the request body", () => {
     expect(copied).toContain('job id "breezy:acme:1"');
     expect(copied).toContain(`(${MCP_URL})`);
     expect(copied).not.toMatch(/rb_live_/);
-    // breezy IS a sendable vendor, so the prompt names the apply tool.
-    expect(copied).toMatch(/request_application/);
+    // breezy was a sendable vendor; since the apply pivot the prompt is the
+    // same for every posting: no apply tool, and the person applies.
+    expect(copied).not.toMatch(/request_application/);
+    expect(copied).toMatch(/I will apply myself/);
     await waitFor(() => expect(tracked(fetchSpy).length).toBe(before + 1), SLOW);
     const ev = tracked(fetchSpy).at(-1)!;
     expect(ev.testName).toBe("job_board");
@@ -555,16 +564,20 @@ describe("3. no typed rate or quota remains on the pages this lane touched", () 
     expect(FREE_KEY_RATE_PER_MIN).toBe(Number(m![1]));
     expect(RATE_COPY).toEqual({ ratePerMin: FREE_KEY_RATE_PER_MIN, dailyQuota: MCP_FREE_KEY_DAILY_QUOTA });
   });
-  it("the rate sentence on /agents and in the prerender is interpolated from the two mirrors, and says the pass raises both", () => {
+  it("the rate sentence on /agents and in the prerender is interpolated from the two mirrors, and the page credits no pass with raising it", () => {
     const page = strip(read("src/pages/AgentConnect.tsx"));
-    expect(page.match(/agentConnect\.rateLine/g)?.length).toBe(2);
-    expect(page).toMatch(/\{\{ratePerMin\}\} requests a minute and \{\{dailyQuota\}\} calls a day; a live pass raises both/);
+    expect(page.match(/agentConnect\.rateLine2/g)?.length).toBe(1);
+    expect(page).toMatch(/t\("agentConnect\.rateLine2", "A free key meters at \{\{ratePerMin\}\} requests a minute and \{\{dailyQuota\}\} calls a day\.", RATE_COPY\)/);
+    // The Agent Pass is retired (the apply pivot): nothing on the page says a
+    // pass raises the limits.
+    expect(page).not.toMatch(/pass raises/i);
     expect(page).not.toMatch(/Both (kinds )?meter identically/);
     const bake = strip(read("scripts/prerender-seo.mjs"));
     // L9-11 (wave 3): the bake prints this sentence on /data-api and in the
-    // llms-full /v1 line, where a pass raises nothing: it is scoped to the
-    // MCP server, the only place the pass overlay applies.
-    expect(bake).toMatch(/const FREE_KEY_RATE_SENTENCE = `\$\{D\.FREE_KEY_RATE_PER_MIN\} requests a minute and \$\{D\.MCP_FREE_KEY_DAILY_QUOTA\.toLocaleString\("en-US"\)\} calls a day per key; on the MCP server, a live Agent Pass on an account-linked key raises both for its hours, and it never raises them on \/v1`;/);
+    // llms-full /v1 line. Its rate and quota are the two mirrors; what it
+    // says after them belongs to the bake's owner (its pass clause is listed
+    // for removal in the apply pivot's hand-off).
+    expect(bake).toMatch(/const FREE_KEY_RATE_SENTENCE = `\$\{D\.FREE_KEY_RATE_PER_MIN\} requests a minute and \$\{D\.MCP_FREE_KEY_DAILY_QUOTA\.toLocaleString\("en-US"\)\} calls a day per key/);
     expect(bake.match(/\$\{FREE_KEY_RATE_SENTENCE\}/g)?.length).toBe(3);
     expect(bake).not.toMatch(/meter identically/);
     // The data entry the bake bundles exports both mirrors.
@@ -588,7 +601,7 @@ describe("3. the pass sentences this lane added interpolate in every locale", ()
   const EN = doc("en.json");
   const get = (d: Doc, path: string) =>
     path.split(".").reduce<unknown>((o, k) => (o && typeof o === "object" ? (o as Record<string, unknown>)[k] : undefined), d) as string | undefined;
-  const KEYS = ["agentPage.connectInstead", "faq.questions.bringYourAgent.answer", "agentConnect.rateLine"];
+  const KEYS = ["agentPage.connectInstead", "faq.questions.bringYourAgent.answer", "agentConnect.rateLine2"];
   const placeholders = (s: string) => [...s.matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]).sort();
   it("finds nine locale files", () => expect(files.length).toBe(9));
   for (const f of files) {
@@ -605,15 +618,18 @@ describe("3. the pass sentences this lane added interpolate in every locale", ()
       expect(get(d, "jobsPage.agentAppliesTip2")).toBeTruthy();
     });
   }
-  it("en's placeholders are the pass mirror's names, and the /agent line and the FAQ are wired to it", () => {
+  it("en's placeholders are the pass mirror's names where a pass is still named, and the FAQ names none since the apply pivot", () => {
     expect(placeholders(get(EN, "agentPage.connectInstead")!)).toEqual(["passHours", "passPrice"]);
-    expect(placeholders(get(EN, "faq.questions.bringYourAgent.answer")!)).toEqual(["passApplications", "passHours", "passPrice"]);
+    // The FAQ's own-AI answer sells nothing since the apply pivot: no pass
+    // placeholder, no price, and it says we never submit.
+    expect(placeholders(get(EN, "faq.questions.bringYourAgent.answer")!)).toEqual([]);
+    expect(get(EN, "faq.questions.bringYourAgent.answer")!).toMatch(/never submit an application/);
     const agent = strip(read("src/pages/Agent.tsx"));
     expect(agent).toMatch(/agentPage\.connectInstead[\s\S]{0,300}\{ passHours: PASS\.sessionHours, passPrice: PASS\.priceUsd \}/);
     expect(agent).toMatch(/to="\/agents"/);
     const faq = strip(read("src/components/FAQ.tsx"));
     expect(faq).toMatch(/"bringYourAgent",/);
-    expect(faq).toMatch(/passPrice: PASS\.priceUsd,\s*passHours: PASS\.sessionHours,\s*passApplications: PASS\.applications,/);
+    expect(faq).not.toMatch(/\bPASS\b/);
     expect([PASS.priceUsd, PASS.sessionHours, PASS.applications].every((n) => Number.isFinite(n))).toBe(true);
   });
 });

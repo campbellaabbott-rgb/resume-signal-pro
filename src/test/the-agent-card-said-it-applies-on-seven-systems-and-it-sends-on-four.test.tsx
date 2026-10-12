@@ -69,25 +69,24 @@ describe("the $99 card names only the systems the agent can send on", () => {
   });
 });
 
-describe("the front page's split says the same thing", () => {
-  it("the 'We apply for you' card holds exactly the sendable systems", async () => {
-    render(<AtsCoverage />);
-    const heading = await screen.findByText(en.atsCoverage.autoTitle);
-    const card = heading.closest("div.rounded-xl") as HTMLElement;
-    const names = [...card.querySelectorAll("li span[title]")].map((s) => s.getAttribute("title")!).sort();
-    expect(names).toEqual(SENDABLE_LABELS);
-    const prepared = (await screen.findByText(en.atsCoverage.clickTitle)).closest("div.rounded-xl") as HTMLElement;
-    const preparedNames = [...prepared.querySelectorAll("li span[title]")].map((s) => s.getAttribute("title")!);
-    for (const n of NOT_SENDABLE_LABELS) expect(preparedNames, `${n} must be under "you press send"`).toContain(n);
+// THE FRONT PAGE'S HALF OF THIS GUARD, after the apply pivot (owner decision
+// 2026-10-11): the server-side apply agent is switched off, so the platform
+// panel names no system as one "we apply" on — not the sendable four, not the
+// seven — even with the sender reporting online. (The $99 card above is no
+// longer rendered on any page; its own claims stay pinned for the day the
+// owner revives it.)
+describe("the front page claims sending on no system, with the sender online", () => {
+  it("the full panel has no 'We apply for you' card and no 'you press send' card", async () => {
+    const { container } = render(<AtsCoverage />);
+    await waitFor(() => expect(screen.getByText("Workday")).toBeTruthy());
+    const text = container.textContent ?? "";
+    expect(text).not.toMatch(/We apply for you|Filled in, you press send|submits the application/i);
+    for (const n of [...SENDABLE_LABELS, ...NOT_SENDABLE_LABELS]) expect(screen.getAllByText(n).length, `${n} still listed as a source`).toBeGreaterThan(0);
   });
 
-  it("the strip marks only the sendable systems with the agent's icon", async () => {
+  it("the strip marks no system with the agent's icon", async () => {
     const { container } = render(<AtsCoverage variant="strip" />);
     await waitFor(() => expect(screen.getByText("Workday")).toBeTruthy());
-    const marked = [...container.querySelectorAll("li")]
-      .filter((li) => li.querySelector("svg.lucide-bot"))
-      .map((li) => li.textContent!.trim())
-      .sort();
-    expect(marked).toEqual(SENDABLE_LABELS);
+    expect(container.querySelectorAll("li svg.lucide-bot").length).toBe(0);
   });
 });

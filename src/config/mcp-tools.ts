@@ -16,10 +16,12 @@
 //
 // `tier` is what the SERVER enforces, mirrored from its dispatch:
 //   read  — any free data-API key; nothing about the caller's account.
-//   paid  — the same paid-tier gate as POST /v1/fit, OR a live pass on the
-//           key's account (the pass opens the scorer and nothing on /v1).
-//   apply — refuses a key that is not linked to an account; funded by an
-//           Agent plan or a live pass.
+//   paid  — the same gate as POST /v1/fit (the shared fit predicate in
+//           key-tier.ts).
+//   apply — refuses a key that is not linked to an account. DORMANT: these
+//           drove the server-side apply agent, switched off by the apply
+//           pivot (owner decision 2026-10-11); nothing is sold that opens
+//           them and no copy may say they send anything.
 
 export type McpToolTier = "read" | "paid" | "apply";
 
@@ -64,7 +66,7 @@ export const MCP_TOOLS: readonly McpTool[] = [
   {
     name: "check_apply_support",
     tier: "read",
-    body: "Whether the apply agent can submit to this job on your behalf, and what that requires. Non-supported jobs still return their direct apply URL for you to use.",
+    body: "The employer's direct apply link for a job, and what its hiring system requires of an applicant (an employer account, a CAPTCHA). You apply on the employer's own site; Resume Booster sends nothing for you.",
   },
   {
     name: "board_stats",
@@ -84,7 +86,7 @@ export const MCP_TOOLS: readonly McpTool[] = [
   {
     name: "key_status",
     tier: "read",
-    body: "What this key is and may do: tier, requests left this minute, calls left today, whether the paid tools are open on it, and whether the apply tools would work — with any blocker named, so nothing has to be discovered by refusal.",
+    body: "What this key is and may do: tier, requests left this minute, calls left today and which tools answer on it — with any blocker named, so nothing has to be discovered by refusal.",
   },
   {
     name: "debug_search",
@@ -104,17 +106,17 @@ export const MCP_TOOLS: readonly McpTool[] = [
   {
     name: "fit_resume",
     tier: "paid",
-    body: "Score a résumé against the board — the site's résumé drop for an agent holding a CV. Reads the occupation out of the text, searches for it, and scores up to 20 results with matched and missing terms. Paid keys, exactly like POST /v1/fit — and a live pass.",
+    body: "Score a résumé against the board — the site's résumé drop for an agent holding a CV. Reads the occupation out of the text, searches for it, and scores up to 20 results with matched and missing terms. Gated exactly like POST /v1/fit on the data API.",
   },
   {
     name: "request_application",
     tier: "apply",
-    body: "Ask your apply agent to submit an application to a job — on an Agent plan, or on a live pass that pays for it at accept. Passes through every gate of the signed-in flow — mandate, honesty classifier, vendor boundary, daily cap.",
+    body: "Dormant. It belonged to our server-side apply agent, which is switched off: Resume Booster does not send applications, so this tool sends nothing. You apply yourself, on the employer's own site.",
   },
   {
     name: "application_status",
     tier: "apply",
-    body: "Status of the applications your agent has requested — queued, submitted, refused (with the refusing gate named), or failed.",
+    body: "Dormant, with request_application: the status of requests made to the switched-off apply agent.",
   },
 ];
 
@@ -212,13 +214,18 @@ export const MCP_INSTALL_REPO_URL = "https://github.com/campbellaabbott-rgb/resu
 export const MCP_SERVER_ADDRESS_NOTE = "This address is on Supabase, the company that hosts our server; it is ours. Paste it exactly as it is.";
 
 /**
- * The gloss of "address", used once per panel where the cap is first named.
- * A chat service's own servers carry all its users, so a call from ChatGPT's
- * or Claude's published egress has the host's own allowance first (agent-mcp
- * ANON_HOST_POOL_PER_DAY): per person from ChatGPT, one pool from Claude.
+ * The gloss of the free allowance, said once per panel. COUNT-FREE ON
+ * PURPOSE: the seeker-facing sentence states the shape of the allowance (free,
+ * daily, reset at midnight UTC, shared by Claude's users because Claude's
+ * servers carry every one of them, counted on every answer) and never a
+ * figure. The figures are the server's constants and change with an owner
+ * decision (2026-10-11 moved them from one shared pool to a split by host);
+ * a number in this sentence would be the claim that goes false the day they
+ * move. The developer disclosure on /agents prints the figures from
+ * MCP_ANON_CAPS, which the first-call guard pins to the server.
  */
 export const MCP_ADDRESS_GLOSS =
-  `${MCP_ANON_CAPS.perAddressPerDay} free calls a day per network address — an office or a home connection counts as one address. From ChatGPT each person has their own ${MCP_ANON_CAPS.perAddressPerDay}; from Claude, whose servers carry every user, calls come first from a pool of ${MCP_ANON_CAPS.hostPoolPerDay} a day that all Claude users share, then from the address's own ${MCP_ANON_CAPS.perAddressPerDay}.`;
+  "Free with no key and no account, within a daily allowance that resets at midnight UTC; every answer says how many free calls are left. Claude's servers carry every Claude user, so Claude users share one allowance.";
 
 /**
  * The hiring systems the connector and /v1 do not hand on: NO_REDISTRIBUTION_SOURCES
@@ -229,19 +236,109 @@ export const MCP_WITHHELD_SOURCES: readonly string[] = ["usajobs", "smartrecruit
 export const MCP_WITHHELD_NOTE =
   "Two hiring systems on the job board are not handed on by this server or the data API: the U.S. federal job feed, whose terms forbid redistributing it as a data feed, and SmartRecruiters, withheld until SmartRecruiters (SAP) permits it. Their postings stay on the job board, where you can open them yourself.";
 
-/** The three things that need an account, said under every host's steps. */
-export const MCP_NEEDS_ACCOUNT_LINE =
-  "The three things that need your account (a key or a sign-in): opening a posting in full through get_job (fetch works without), checking that a shortlist is still open, and applying.";
-
-/** The tools a free key opens beyond the unkeyed four — every read tool outside the unkeyed set. */
-export const MCP_KEY_ONLY_READ_TOOLS = MCP_READ_TOOLS.filter((t) => !MCP_ANON_TOOL_NAMES.includes(t.name));
-
-/** "a, b and c" for prose; items carrying their own " and " are joined with semicolons so no list reads "and … and". */
+/** "a, b and c" for prose; items carrying their own " and " are joined with semicolons so no list reads "and … and". Declared above every sentence built with it (a const cannot be read above its line). */
 export const andList = (xs: readonly string[]): string => {
   if (xs.length < 2) return xs.join("");
   if (xs.some((x) => / and /.test(x))) return `${xs.slice(0, -1).join("; ")}; and ${xs[xs.length - 1]}`;
   return `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`;
 };
+
+/** The tools a free key opens beyond the unkeyed set — every read tool outside it. */
+export const MCP_KEY_ONLY_READ_TOOLS = MCP_READ_TOOLS.filter((t) => !MCP_ANON_TOOL_NAMES.includes(t.name));
+
+/**
+ * What needs a key, said under every host's steps. GENERATED from the
+ * unkeyed set, never typed: the line once named three keyed things by hand
+ * (and "applying" among them), so it would have gone false the day the
+ * unkeyed set grew. Applying yourself needs no key and no account at all —
+ * the person submits on the employer's own site; we send nothing.
+ */
+export const MCP_NEEDS_ACCOUNT_LINE =
+  `With no key and no sign-in, ${andList(MCP_ANON_TOOL_NAMES.map((n) => `\`${n}\``))} answer. The other read tools need a free key, or a sign-in once it is switched on. Applying yourself needs neither: you submit on the employer's own site, and Resume Booster sends nothing for you.`;
+
+// ───────────────────────── APPLYING YOURSELF ──────────────────────────────
+//
+// The apply pivot (owner decision 2026-10-11): the Agent plan, the Agent Pass
+// and the Apply Assistant are retired, the server-side apply agent is switched
+// off, and the person's own AI helping them apply is the only apply path. We
+// never submit anything. These constants are what every surface that
+// describes that path reads.
+
+/**
+ * The hiring systems whose application form a connected AI can read: the
+ * vendors whose real questions the board harvests, realQuestionVendors() in
+ * supabase/functions/_shared/apply-automation.ts, pinned equal (keys, and a
+ * label for each) by src/test/the-agents-page-sells-nothing-and-sends-nothing
+ * .test.tsx. Everywhere else the AI reads the posting and the person fills in
+ * the employer's form. Order: the spec's (Greenhouse first, by volume).
+ */
+export const MCP_FORM_VENDORS: ReadonlyArray<{ key: string; label: string }> = [
+  { key: "greenhouse", label: "Greenhouse" },
+  { key: "ashby", label: "Ashby" },
+  { key: "recruitee", label: "Recruitee" },
+  { key: "breezy", label: "Breezy" },
+  { key: "pinpoint", label: "Pinpoint" },
+];
+
+/**
+ * The form vendors as one phrase in the reader's language — "Greenhouse,
+ * Ashby, Recruitee, Breezy or Pinpoint" — joined by the platform's own list
+ * formatter, so no locale string spells the names or their conjunction (a
+ * name list typed into nine files is nine lists that drift).
+ */
+export function formVendorPhrase(lang: string): string {
+  const labels = MCP_FORM_VENDORS.map((v) => v.label);
+  try {
+    // Intl.ListFormat is ES2021; the app's lib target predates it, so it is
+    // reached through a narrow cast and the fallback covers a runtime without it.
+    const ListFormat = (Intl as unknown as { ListFormat?: new (l: string, o: { style: string; type: string }) => { format: (xs: string[]) => string } }).ListFormat;
+    if (!ListFormat) throw new Error("no Intl.ListFormat");
+    return new ListFormat(lang || "en", { style: "long", type: "disjunction" }).format(labels);
+  } catch {
+    return `${labels.slice(0, -1).join(", ")} or ${labels[labels.length - 1]}`;
+  }
+}
+
+/**
+ * The first question every page suggests. It names a tool that answers with
+ * no key (search_jobs) and hands the place over as its own argument: "nurse
+ * jobs in Texas" in the query found 107 of the 1,584 the location filter
+ * finds (connect spec §1), so no example may put the place in the query
+ * until the server splits it out itself.
+ */
+export const MCP_EXAMPLE_QUESTION =
+  `Using ${MCP_CONNECTOR_NAME}, call search_jobs with query "${MCP_TEST_QUERY}" and location "Texas", and show me the first ten.`;
+
+/**
+ * THE ONE-CLICK CONNECT. Claude documents an install link that opens its
+ * custom-connector dialog with the name and the address already filled in
+ * (claude.com/docs/connectors/building/directory-vs-custom); it only
+ * prefills — the person still confirms, and a signed-out person signs in
+ * first. The admin variant is the same query on the organization settings
+ * page, for a Team or Enterprise Owner.
+ */
+export const MCP_CLAUDE_CONNECTORS_URL = "https://claude.ai/customize/connectors";
+export const MCP_CLAUDE_ADMIN_CONNECTORS_URL = "https://claude.ai/admin-settings/connectors";
+const claudeInstallQuery = (url: string) =>
+  `?modal=add-custom-connector&connectorName=${encodeURIComponent(MCP_CONNECTOR_NAME)}&connectorUrl=${encodeURIComponent(url)}`;
+/** The documented install link for this server's address. Carries the name and the address, never a key. */
+export const claudeInstallLink = (url: string) => `${MCP_CLAUDE_CONNECTORS_URL}${claudeInstallQuery(url)}`;
+/** The same link for a Team or Enterprise Owner, who adds the connector for the organization. */
+export const claudeAdminInstallLink = (url: string) => `${MCP_CLAUDE_ADMIN_CONNECTORS_URL}${claudeInstallQuery(url)}`;
+
+/**
+ * THE FLAG BEHIND "ADD TO CLAUDE". Off until the owner's 5-minute check
+ * (connect spec, owner action 1) has shown, on a signed-in Claude account,
+ * that the link opens prefilled and that "Sign in when needed" connects and
+ * searches. Claude's authentication choice cannot be changed after a
+ * connector is added, so a button that sent people through an untested
+ * dialog could strand every early install. Flip to true after that check;
+ * nothing else changes — the Claude steps and the button both read it.
+ */
+export const MCP_ADD_TO_CLAUDE_LIVE = false;
+
+/** The day the Claude and ChatGPT steps were last read against the vendors' own pages. */
+export const MCP_STEPS_CHECKED = "2026-10-11";
 
 // ───────────────────────── THE HOSTS AND THEIR STEPS ──────────────────────
 //
@@ -283,6 +380,12 @@ export interface McpCtx {
   key?: string;
   /** The sign-in fact's state where a host's steps depend on it (Zed); absent — the prerender, the receipt — reads as not on. */
   signIn?: SignInState;
+  /**
+   * Whether the one-click "Add to Claude" path is live (MCP_ADD_TO_CLAUDE_LIVE,
+   * handed in by the page). Absent — the prerender, the install repo — reads
+   * as off, so those surfaces carry the manual steps that work either way.
+   */
+  addToClaude?: boolean;
 }
 
 /** One numbered step: a sentence (with **label** and `code` marks), and, when there is something to paste, the exact text of it. */
@@ -307,6 +410,8 @@ export interface McpKeyed {
 export interface McpDeepLink {
   label: string;
   href: string;
+  /** A second-weight link under the primary one (the admin variant of Add to Claude). */
+  secondary?: boolean;
 }
 
 export interface McpHost {
@@ -336,9 +441,18 @@ export interface McpHost {
   how: string;
   /** The documents the labels in `steps` are quoted from. */
   docs: readonly string[];
+  /** The day the steps were last read against `docs` (MCP_STEPS_CHECKED), printed beside the steps with the first document. */
+  checked?: string;
   steps: (ctx: McpCtx) => McpStep[];
   keyed?: McpKeyed;
   deeplinks?: (ctx: McpCtx) => McpDeepLink[];
+  /**
+   * The manual route, for a host whose `steps` lead with a one-click route
+   * when one is live (Claude, behind MCP_ADD_TO_CLAUDE_LIVE). The page shows it
+   * collapsed under the one-click steps; with the one-click route off, `steps`
+   * already is the manual route and this is not shown.
+   */
+  fallbackSteps?: (ctx: McpCtx) => McpStep[];
   /** The sign-in sentence for this host, by the server's fact. */
   signIn: (state: SignInState) => string;
   /** How you know it worked — judged by the server's own answer, never a pixel. */
@@ -411,6 +525,45 @@ const addressStep = (ctx: McpCtx, into: string): McpStep => ({
   note: MCP_SERVER_ADDRESS_NOTE,
 });
 
+/**
+ * Claude's authentication sentence, ONE spelling for both routes: the owner's
+ * check (connect spec, owner action 1) reads the dialog this sentence
+ * describes, and whatever it finds is changed here once. Claude cannot change
+ * the choice after the connector is added, which is why it says not to pick
+ * No sign-in.
+ */
+const CLAUDE_AUTH_STEP: McpStep = {
+  text: "If Claude asks about **Authentication**, choose **Sign in when needed**. If it asks about **OAuth client**, choose **Register automatically**. (Claude may already show these as \"Detected\" — leave them. Do not choose **No sign-in**: Claude cannot change that later, so the tools that need your account would stay off until you remove the connector and add it again.)",
+  note: "**Sign in when needed** means search works at once, and Claude asks you to sign in only when a tool needs your account. **Register automatically** is the only OAuth-client choice this server supports; **Use Claude's published identity** does not work here even though Claude marks it recommended.",
+};
+const CLAUDE_SWITCH_ON_STEP: McpStep = {
+  text: `In a chat, click **+**, open **Connectors**, and switch **${MCP_CONNECTOR_NAME}** on.`,
+  note: "Claude asks before each tool's first use; allow the read tools — none of them acts on your account.",
+};
+const CLAUDE_ASK_STEP: McpStep = { text: "Ask Claude:", copy: MCP_EXAMPLE_QUESTION, copyLabel: "the first question" };
+
+/** The manual route: the connector dialog by hand. What every surface without the one-click link carries. */
+const claudeManualSteps = (ctx: McpCtx): McpStep[] => [
+  { text: "In Claude, open **Customize**, then **Connectors**." },
+  { text: "Click **Add custom connector**.", note: "On the Free plan you can add one custom connector. On a Team or Enterprise plan there is no such button: an owner adds the connector under **Organization settings > Connectors** (**Add**, then **Custom**; if it asks for the connector type, **Web**), and you then find it under **Customize > Connectors** with the \"Custom\" label and click **Connect**." },
+  { text: "If it asks for a **Name**, type:", copy: MCP_CONNECTOR_NAME, copyLabel: "the connector name" },
+  addressStep(ctx, "**MCP server URL**"),
+  CLAUDE_AUTH_STEP,
+  { text: "Click **Add**." },
+  CLAUDE_SWITCH_ON_STEP,
+  CLAUDE_ASK_STEP,
+];
+
+/** The one-click route: the documented install link opens the dialog filled in; the person checks and confirms. */
+const claudeOneClickSteps = (ctx: McpCtx): McpStep[] => [
+  { text: "Click **Add to Claude** above. Claude opens its connector dialog with the name and the address filled in; sign in to Claude first if it asks." },
+  { text: `Check that the name is **${MCP_CONNECTOR_NAME}** and the address is this one:`, copy: ctx.url, copyLabel: "the server address", note: MCP_SERVER_ADDRESS_NOTE },
+  CLAUDE_AUTH_STEP,
+  { text: "Click **Add**.", note: "On the Free plan you can add one custom connector. On a Team or Enterprise plan, an Owner adds it for everyone with the organization link under the button." },
+  CLAUDE_SWITCH_ON_STEP,
+  CLAUDE_ASK_STEP,
+];
+
 /** The "with a free key" sub-steps for the CLI hosts: mint, paste, export, add with the variable, verify. */
 const cliKeyed = (add: (url: string) => string, reconnect: string): McpKeyed => ({
   takesKey: true,
@@ -437,23 +590,21 @@ export const MCP_HOSTS: readonly McpHost[] = [
     header: false,
     oauth: true,
     how: "paste the address as a custom connector and choose Sign in when needed — while the server's sign-in is on, the first tool that needs your account shows a Connect card that signs you in through OAuth; the dialog has no field for a key (a static header is an org-admin beta), and with No sign-in only the unkeyed tools answer",
-    docs: ["https://claude.com/docs/connectors/custom/remote-mcp"],
-    steps: (ctx) => [
-      { text: "In Claude, open **Customize**, then **Connectors**." },
-      { text: "Click **Add custom connector**.", note: "On a Team or Enterprise plan there is no such button: an owner adds the connector under **Organization settings > Connectors** (**Add**, then **Custom**; if it asks for the connector type, **Web**), and you then find it under **Customize > Connectors** with the \"Custom\" label and click **Connect**." },
-      { text: "If it asks for a **Name**, type:", copy: MCP_CONNECTOR_NAME, copyLabel: "the connector name" },
-      addressStep(ctx, "**MCP server URL**"),
-      {
-        text: "If Claude asks about **Authentication**, choose **Sign in when needed**. If it asks about **OAuth client**, choose **Register automatically**. (Claude may already show these as \"Detected\" — leave them. Do not choose **No sign-in**: Claude cannot change that later, so the tools that need your account would stay off until you remove the connector and add it again.)",
-        note: "**Sign in when needed** means search works at once, and Claude asks you to sign in only when a tool needs your account. **Register automatically** is the only OAuth-client choice this server supports; **Use Claude's published identity** does not work here even though Claude marks it recommended.",
-      },
-      { text: "Click **Add**." },
-      { text: `In a chat, click **+**, open **Connectors**, and switch **${MCP_CONNECTOR_NAME}** on.` },
-      { text: "Ask Claude:", copy: `Using ${MCP_CONNECTOR_NAME}, ${ASK_STATS} and tell me how many jobs are open right now.`, copyLabel: "the first question" },
-    ],
+    docs: ["https://claude.com/docs/connectors/custom/remote-mcp", "https://claude.com/docs/connectors/building/directory-vs-custom"],
+    checked: MCP_STEPS_CHECKED,
+    // One-click when the flag is live and the page says so; the manual route
+    // otherwise, and always for a surface that hands no flag in.
+    steps: (ctx) => (ctx.addToClaude ? claudeOneClickSteps(ctx) : claudeManualSteps(ctx)),
+    fallbackSteps: claudeManualSteps,
+    deeplinks: (ctx) => (ctx.addToClaude
+      ? [
+          { label: "Add to Claude", href: claudeInstallLink(ctx.url) },
+          { label: "Team or Enterprise Owner: add it for your organization", href: claudeAdminInstallLink(ctx.url), secondary: true },
+        ]
+      : []),
     signIn: (s) =>
       s === "on"
-        ? `The first time Claude needs your account — to open a posting in full, to check a shortlist, or to apply — a **Connect** card appears in the chat. Click it, sign in to ${MCP_CONNECTOR_NAME}, press **Allow**, and Claude continues where it stopped.`
+        ? `The first time Claude needs your account — to open a posting in full or to check a shortlist — a **Connect** card appears in the chat. Click it, sign in to ${MCP_CONNECTOR_NAME}, press **Allow**, and Claude continues where it stopped.`
         : s === "off" ? chatOff("Claude") : UNKNOWN_LINE,
     verify: `Under **+ → Connectors**, ${MCP_CONNECTOR_NAME} is on. Ask "${ASK_STATS}": the answer names the number of open postings and a note that begins "unkeyed:" and says how many anonymous calls are left today.`,
   },
@@ -461,30 +612,33 @@ export const MCP_HOSTS: readonly McpHost[] = [
     id: "chatgpt",
     page: true,
     name: "ChatGPT",
-    small: "developer mode",
+    small: "chatgpt.com",
     header: false,
     oauth: true,
-    how: "add the address as a connector in developer mode; there is no field for an API key, and search and fetch (the names its research connector calls) answer with no sign-in — while the server's sign-in is on, a tool that needs your account shows ChatGPT's own OAuth sign-in and you press Allow on the consent page",
+    how: "add the address as a custom MCP server under chatgpt.com/plugins with No authentication; there is no field for an API key — while the server's sign-in is on, a tool that needs your account shows ChatGPT's own OAuth sign-in and you press Allow on the consent page",
     docs: ["https://developers.openai.com/apps-sdk/deploy/connect-chatgpt", "https://developers.openai.com/apps-sdk/build/auth"],
+    checked: MCP_STEPS_CHECKED,
+    // OpenAI's documented flow and nothing more (connect spec D1): no plan
+    // list, no developer-mode step, no tool count to check against.
     steps: (ctx) => [
-      { text: "In ChatGPT, open **Settings**, choose **Security and login**, and turn on **Developer mode**. (If you do not see it, your account or workspace does not allow it yet.)" },
-      { text: "Go to this page and click the **+** button:", copy: "https://chatgpt.com/plugins", copyLabel: "the ChatGPT plugins link" },
-      { text: "Type a name —", copy: MCP_CONNECTOR_NAME, copyLabel: "the connector name", note: "— and a description: `Live job board: search real openings from employers' own hiring systems.`" },
+      { text: "Go to this page and click **+**:", copy: "https://chatgpt.com/plugins", copyLabel: "the ChatGPT plugins link" },
+      { text: "Choose **Add custom MCP server**.", note: "If it is not there, your account or workspace does not allow custom servers yet." },
+      { text: "Type the name:", copy: MCP_CONNECTOR_NAME, copyLabel: "the connector name" },
       {
-        text: "Under **Connection**, paste this address as the MCP server URL. Paste it exactly as it is — do not add `/mcp` at the end.",
+        text: "Paste this address as the server address, exactly as it is — do not add `/mcp` at the end:",
         copy: ctx.url,
         copyLabel: "the server address",
         note: MCP_SERVER_ADDRESS_NOTE,
       },
-      { text: `Create the connection, and check the list of tools it found — there should be ${MCP_TOOLS.length}.` },
-      { text: `Start a new chat and add **${MCP_CONNECTOR_NAME}** from the tools menu.` },
-      { text: "Ask:", copy: `Search ${MCP_CONNECTOR_NAME} for nurse jobs in Texas and show me the first ten.`, copyLabel: "the first question", note: `ChatGPT's own search uses two of the tools, \`search\` and \`fetch\`: ${MCP_ANON_CAPS.searchRows} results per search, and the full text of any result. That works with no sign-in.` },
+      { text: "For **Authentication**, choose **No authentication**, then click **I understand and want to continue**." },
+      { text: "Click **Create as a plugin**, then install it." },
+      { text: `Start a new chat, type **@**, pick **${MCP_CONNECTOR_NAME}**, and ask:`, copy: MCP_EXAMPLE_QUESTION, copyLabel: "the first question" },
     ],
     signIn: (s) =>
       s === "on"
         ? `When a tool needs your account, ChatGPT shows its sign-in for ${MCP_CONNECTOR_NAME}; sign in and press **Allow**.`
         : s === "off" ? chatOff("ChatGPT") : UNKNOWN_LINE,
-    verify: `Ask it to search for "nurse in Texas": ${MCP_ANON_CAPS.searchRows} results with ids come back.`,
+    verify: `Ask the first question: ${MCP_ANON_CAPS.searchRows} results with ids come back.`,
   },
   {
     id: "claude-code",
@@ -839,9 +993,9 @@ export const MCP_TROUBLESHOOTING: readonly TroubleRow[] = [
   },
   {
     id: "allowance-spent",
-    see: `"The unkeyed allowance is spent — ${MCP_ANON_CAPS.perAddressPerDay} unkeyed calls a day from one address…"`,
-    why: "Your network address used its free calls today; an office or a chat service counts as one address.",
-    fix: `Get a free key at ${MCP_MINT_PATH} (${MCP_FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} calls a day, no account) and add it to your app. Resets at midnight UTC.`,
+    see: "\"The unkeyed allowance is spent…\"",
+    why: "Today's free calls are used up: yours, or — from Claude, whose servers carry every user — the allowance all Claude users share.",
+    fix: `It resets at midnight UTC; meanwhile every posting is on the board at /jobs. In Claude Code, a free key from ${MCP_MINT_PATH} gives ${MCP_FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} calls a day.`,
     source: { kind: "server", pin: "The unkeyed allowance is spent", file: "index.ts" },
   },
   {
@@ -862,7 +1016,7 @@ export const MCP_TROUBLESHOOTING: readonly TroubleRow[] = [
     id: "quota-used",
     see: `"Daily quota of ${MCP_FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} requests used."`,
     why: "The free key's day is spent.",
-    fix: "Wait for midnight UTC; the unkeyed tools still answer; an Agent Pass raises the limit for its hours.",
+    fix: "Wait for midnight UTC; the unkeyed tools still answer.",
     source: { kind: "server", pin: "Daily quota of", file: "index.ts" },
   },
   {
@@ -871,34 +1025,6 @@ export const MCP_TROUBLESHOOTING: readonly TroubleRow[] = [
     why: "Too many calls in one minute.",
     fix: "Wait one minute.",
     source: { kind: "server", pin: "requests/minute.", file: "index.ts" },
-  },
-  {
-    id: "fit-paid",
-    see: "\"fit_resume is a paid feature…\"",
-    why: "Résumé fit scoring needs a paid key, a live Agent Pass or the Agent plan.",
-    fix: `${MCP_MINT_PATH} for a paid key, or /agents/pass — search keeps working.`,
-    source: { kind: "server", pin: "fit_resume is a paid feature", file: "index.ts" },
-  },
-  {
-    id: "apply-plan",
-    see: "\"The apply agent needs an active Agent plan or a live pass.\"",
-    why: "Applying is paid.",
-    fix: "/agents/pass (sign in first) or /agent for the plan.",
-    source: { kind: "server", pin: "The apply agent needs an active Agent plan or a live pass.", file: "index.ts" },
-  },
-  {
-    id: "mandate",
-    see: "\"No agent mandate on this account.\" / \"Your agent is switched off.\" / \"No resume on file\"",
-    why: "The apply agent is not set up, is off, or has no CV.",
-    fix: "Account → set up the apply agent (turn it on, choose countries and field, add the CV). The off switch always wins.",
-    source: { kind: "server", pin: "No agent mandate on this account.", file: "index.ts" },
-  },
-  {
-    id: "pass",
-    see: "\"The pass on this account is not live.\" / \"No applications left on this pass.\"",
-    why: "The pass ended or its applications are used.",
-    fix: "Search keeps working; buy another pass when the clock ends.",
-    source: { kind: "server", pin: "The pass on this account is not live.", file: "index.ts" },
   },
   {
     id: "job-id",
@@ -915,17 +1041,10 @@ export const MCP_TROUBLESHOOTING: readonly TroubleRow[] = [
     source: { kind: "server", pin: "This is an MCP server for AI agents, not a web page", file: "index.ts", since: "2026-09-04.7" },
   },
   {
-    id: "zero-tools",
-    see: "Cursor / VS Code / Cline: server listed, zero tools",
-    why: "Wrong transport (Cline: not `sse`; VS Code: `\"type\": \"http\"`) or `/mcp` appended to the address.",
-    fix: "The address ends in `/agent-mcp` exactly; the transport is HTTP (Cline: \"Streamable HTTP\").",
-    source: { kind: "vendor", doc: "https://code.visualstudio.com/docs/agents/reference/mcp-configuration" },
-  },
-  {
-    id: "chatgpt-search-only",
-    see: "ChatGPT only ever searches and fetches",
-    why: `By design: ChatGPT's search calls \`search\` and \`fetch\`, ${MCP_ANON_CAPS.searchRows} results a page.`,
-    fix: "For filters (pay, remote, seniority), use an app that calls `search_jobs`.",
+    id: "chatgpt-auth",
+    see: "ChatGPT asks which **Authentication** to use",
+    why: "Searching and reading postings need no sign-in.",
+    fix: "Choose **No authentication**, then **I understand and want to continue**.",
     source: { kind: "vendor", doc: "https://developers.openai.com/apps-sdk/deploy/connect-chatgpt" },
   },
   {
@@ -970,17 +1089,17 @@ export const MCP_PROMPTS: readonly McpPrompt[] = [
   {
     name: "find_roles_for_my_cv",
     title: "Find roles that fit my CV",
-    body: "Reads the occupation out of a CV, searches the live board without a key, then verifies the shortlist is still open — the one step that needs a key or a sign-in. Never invents a CV and never requests an application without a yes per job.",
+    body: "Reads the occupation out of the CV you give your AI in the chat, searches the live board without a key, then re-checks that the shortlist is still open. Never invents a CV.",
   },
   {
     name: "apply_to_my_shortlist",
     title: "Apply to my shortlist",
-    body: "Asks what this connection may do first (plan or pass, mandate, résumé on file, applications left), checks each job's hiring system, shows the cards, and requests one application per job only after the person confirms it.",
+    body: "Dormant, with the server-side apply agent it drove: that agent is switched off, so nothing is sent. You apply yourself, on each employer's own site.",
   },
   {
     name: "what_can_my_key_do",
     title: "What can this connection do right now",
-    body: "One status call, explained in plain words: tier, calls left, whether the paid scorer and the apply tools would answer, and what would change each closed answer — the gate, never a price.",
+    body: "One status call, explained in plain words: tier, calls left, which tools would answer, and what would change each closed answer — the gate, never a price.",
   },
 ];
 
@@ -1029,7 +1148,7 @@ export const MCP_RESOURCES: readonly McpResource[] = [
     title: "This key's limits and powers",
     mimeType: "application/json",
     keyed: true,
-    body: "The same payload as key_status: tier, calls left, which tools would answer, and the pass if the account holds one.",
+    body: "The same payload as key_status: tier, calls left, and which tools would answer.",
   },
 ];
 

@@ -227,12 +227,17 @@ describe("the strip at the top of the page is a narrower layout, not a weaker cl
     expect(screen.queryByText(/measured/i)).not.toBeInTheDocument();
   });
 
-  it("still states the auto/click split when the sender is live", async () => {
-    // Compacting the layout must not quietly drop the one claim that says we
-    // do not bypass a human check.
+  it("states no apply split and marks no platform, even with the sender live", async () => {
+    // The apply pivot (owner decision 2026-10-11): the server-side apply
+    // agent is switched off, so neither layout may say the agent submits on
+    // any platform — and a sender that came back on must not bring the claim
+    // back. The strip says where the jobs come from, and nothing else.
     route(facets({ workday: 12 }), true);
-    render(<AtsCoverage variant="strip" />);
-    await waitFor(() => expect(screen.getByText(/press send/i)).toBeInTheDocument());
+    const { container } = render(<AtsCoverage variant="strip" />);
+    await waitFor(() => expect(screen.getByText("12")).toBeInTheDocument());
+    const text = container.textContent ?? "";
+    expect(text).not.toMatch(/submits? these for you|we apply for you|press send|fills the application/i);
+    expect(container.querySelector("svg.lucide-bot"), "a platform marked as one the agent submits on").toBeNull();
   });
 });
 
@@ -451,13 +456,13 @@ describe("the strip names every source the board serves, and its sentence counts
     expect(screen.queryByText(/Read directly from all 15 /)).toBeNull();
   });
 
-  it("the legend names how many sources carry no measured agent tier, rather than claiming reach on them", async () => {
+  it("claims no agent reach on any source, measured or not — the legend that split them is gone", async () => {
     route(facets(live), true);
-    render(<AtsCoverage variant="strip" />);
+    const { container } = render(<AtsCoverage variant="strip" />);
     await waitFor(() => expect(screen.getByText("1,000")).toBeInTheDocument());
-    const legend = screen.getByText(/The agent submits these for you/);
-    expect(legend.textContent).toMatch(new RegExp(`${UNMEASURED_ATS_SOURCES.length} are listed for where their jobs come from`));
-    expect(legend.textContent).not.toMatch(/The rest it fills in completely/);
+    expect(container.textContent ?? "").not.toMatch(/the agent/i);
+    // Every unmeasured source is still named, for where its jobs come from.
+    for (const v of UNMEASURED_ATS_SOURCES) expect(screen.getByText(v.label)).toBeInTheDocument();
   });
 
   it("maps the serving list, not the measured fifteen (comment-stripped)", () => {
@@ -469,7 +474,10 @@ describe("the strip names every source the board serves, and its sentence counts
   });
 });
 
-describe("the two-card layout counts the platforms it actually shows", () => {
+describe("the full layout counts the platforms it actually shows, with the sender live", () => {
+  // Since the apply pivot the full layout is ONE card whatever the sender
+  // says; these cases still render with the sender live, the state that once
+  // drew the two-card split, so a split coming back reads as itself.
   // EVERY TEST ABOVE RENDERS THE OFFLINE BRANCH. `route()` defaults
   // senderOnline to false, and that branch renders ONE card built from
   // SERVING_SOURCES — which is why "names every platform the config carries"

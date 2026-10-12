@@ -1,8 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { Bot, MousePointerClick, Database } from "lucide-react";
-import { ATS_VENDORS, SERVING_SOURCES, UNMEASURED_ATS_SOURCES, type AtsVendor, type BoardSource } from "@/config/ats-vendors";
-import { PREPARED_ONLY_VENDORS, SENDABLE_ATS_VENDORS, SENDABLE_VENDOR_KEYS } from "@/config/sendable-vendors";
-import { useAgentSender } from "@/hooks/useAgentSender";
+import { Database } from "lucide-react";
+import { SERVING_SOURCES, type BoardSource } from "@/config/ats-vendors";
 import { useBoardVendorCounts } from "@/hooks/useBoardVendorCounts";
 
 /**
@@ -31,15 +29,20 @@ import { useBoardVendorCounts } from "@/hooks/useBoardVendorCounts";
  * measure. Same rule the whole codebase runs on, and the reason this component
  * degrades in only one direction.
  *
- * The auto-apply split only appears when a worker is live. Otherwise every
- * platform is shown as prepared-for-one-click, which is what is true then.
+ * NO APPLY SPLIT ANY MORE. This panel used to divide the platforms into "we
+ * apply for you" and "filled in, you press send" whenever the apply worker was
+ * live. The apply pivot (owner decision 2026-10-11) switched the server-side
+ * apply agent off and retired everything it was sold in, so the panel says
+ * only what is true of every platform: the postings are read straight from
+ * it, and the person applies on the employer's own site. It no longer reads
+ * the sender's status at all, so a worker that came back on could not bring
+ * the sending claim back with it.
  */
 
 /** Vendor pill: the platform name, and its live count when we have one. */
-function VendorPill({ v, count, auto = false }: { v: BoardSource; count?: number; auto?: boolean }) {
+function VendorPill({ v, count }: { v: BoardSource; count?: number }) {
   return (
     <li className="rounded-lg border bg-background px-3 py-2 flex items-baseline gap-2 min-w-0">
-      {auto && <Bot className="w-3.5 h-3.5 text-primary self-center flex-shrink-0" aria-hidden />}
       {/* THE COUNT NEVER CLIPS; THE NAME MAY. A pill is a name plus a measured
           number inside a fixed grid cell, and "SmartRecruiters 75,100" is wider
           than a third of a card: measured on the live page, four pills had
@@ -67,15 +70,11 @@ export function AtsCoverage({
    * `strip` is the top-of-page version: all fifteen platforms in one flowing
    * row, immediately, before anything asks the visitor for a file. It carries
    * the same counts and the same as-of line — it is a narrower LAYOUT, not a
-   * weaker claim. The auto/click split survives as an icon plus a legend
-   * rather than two cards, because two cards at the top of the page push the
-   * scanner below the fold and that split is the one thing here we must not
-   * quietly drop.
+   * weaker claim.
    */
   variant?: "full" | "strip";
 }) {
   const { t } = useTranslation();
-  const { online } = useAgentSender();
   const { counts, openTotal, asOf, ready } = useBoardVendorCounts();
 
   // Biggest first once we can measure — the ordering itself is informative, and
@@ -94,15 +93,8 @@ export function AtsCoverage({
   // "where these jobs come from" that omits a source is false by omission;
   // this list is that rule applied. Dormant sources (serving: false, USAJOBS
   // while its secrets are unset) are not here, because their absence is the
-  // point. The bot mark means the agent submits there (sendable-vendors.ts); an unmeasured source
-  // shows no mark and the legend says why.
-  const tierOf = new Map<string, AtsVendor["tier"]>(ATS_VENDORS.map((v) => [v.key, v.tier]));
+  // point.
   const stripSources = order(SERVING_SOURCES);
-  // Serving, but carrying no measured apply tier — so neither auto nor click
-  // card can hold them. DERIVED from the same two lists the cards are built
-  // from rather than re-listed by hand: a vendor added to ATS_VENDORS leaves
-  // this set automatically, and one added to the board without a tier joins it.
-  const unmeasuredServing = SERVING_SOURCES.filter((v) => !tierOf.has(v.key));
 
   // Counts are of a live, churning table. Saying when they were true is the
   // difference between a measurement and a decoration.
@@ -146,9 +138,6 @@ export function AtsCoverage({
                 key={v.key}
                 className="inline-flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full border border-border bg-card/60 hover:border-primary/40 transition-colors"
               >
-                {online && SENDABLE_VENDOR_KEYS.includes(v.key) && (
-                  <Bot className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-success shrink-0" aria-hidden />
-                )}
                 <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">{v.label}</span>
                 {n !== undefined && (
                   <span className="text-xs sm:text-sm font-bold text-foreground tabular-nums">
@@ -180,81 +169,23 @@ export function AtsCoverage({
             })}
           </p>
 
-          {/* The split is a product claim, not decoration — it survives the
-              compact layout as a legend rather than being dropped with the
-              second card.
-
-              FLEX ON THE ROW, TEXT IN ITS OWN SPAN. Written first as an
-              inline-flex `p` with the sentence as a bare flex CHILD, which made
-              the icon a flex item in its own right: it broke onto a line of its
-              own, centred above the text, and read as a stray glyph. The icon
-              needs to sit beside the paragraph, not inside its wrap. */}
-          {online && (
-            <p className="mt-1.5 flex items-start justify-center gap-1.5 max-w-xl mx-auto text-xs text-muted-foreground">
-              <Bot className="w-3.5 h-3.5 text-success shrink-0 mt-0.5" aria-hidden />
-              <span className="text-left sm:text-center">
-                {t("atsCoverage.stripLegend", "The agent submits these for you. On the other systems it has measured, it fills the application in and you press send: some use a human check we will not bypass, and on some it cannot finish the form yet. {{unmeasured}} are listed for where their jobs come from; the agent's reach on them is not yet measured.", { unmeasured: UNMEASURED_ATS_SOURCES.length })}
-              </span>
-            </p>
-          )}
-
           {asOfLine && <p className="mt-1.5 text-[11px] text-muted-foreground/70">{asOfLine}</p>}
         </div>
       </section>
     );
   }
 
-  const groups = online
-    ? [
-        {
-          key: "auto",
-          Icon: Bot,
-          title: t("atsCoverage.autoTitle", "We apply for you"),
-          blurb: t("atsCoverage.autoBlurb", "The agent completes and submits the application itself."),
-          // The sendable list, not the CAPTCHA tier: Workday, SmartRecruiters
-          // and Oracle show no CAPTCHA but have no adapter that reaches a submit.
-          vendors: order(SENDABLE_ATS_VENDORS),
-        },
-        {
-          key: "click",
-          Icon: MousePointerClick,
-          title: t("atsCoverage.clickTitle", "Filled in, you press send"),
-          blurb: t("atsCoverage.clickBlurb", "These use a CAPTCHA or a human check we never solve or bypass, or a form the agent cannot finish on its own yet. Either way your application arrives ready and you send it."),
-          vendors: order(PREPARED_ONLY_VENDORS),
-        },
-        // THE SAME FIX THE STRIP ALREADY CARRIES, APPLIED TO THE LAYOUT THAT
-        // ACTUALLY QUOTES A TOTAL. The comment above records that the strip
-        // once showed fifteen sources under a nineteen-source claim and was
-        // corrected to SERVING_SOURCES; this branch was not, so the sentence
-        // read "read straight from the 19 applicant tracking systems BELOW"
-        // over two cards holding fifteen. Worse here than in the strip,
-        // because this variant also prints openTotal: the headline counted
-        // nineteen sources while the breakdown under it could only account for
-        // fifteen, so the pills could never sum to the number above them
-        // (~754,763 against ~666,000 on the live page, the ~88,000 gap being
-        // exactly these four). A reader adding up the tiles finds the panel
-        // contradicting itself, which is the one thing a "checkable figures"
-        // panel must not do. Their absence is not a tier claim: they have no
-        // measured apply tier, and the blurb says so instead of implying one.
-        ...(unmeasuredServing.length
-          ? [{
-              key: "unmeasured",
-              Icon: Database,
-              title: t("atsCoverage.unmeasuredTitle", "We read these too"),
-              blurb: t("atsCoverage.unmeasuredBlurb", "Their postings are on the board. We have not sampled their application forms, so we make no claim about the agent's reach on them."),
-              vendors: order(unmeasuredServing),
-            }]
-          : []),
-      ]
-    : [
-        {
-          key: "all",
-          Icon: MousePointerClick,
-          title: t("atsCoverage.allTitle", "Applications prepared for you"),
-          blurb: t("atsCoverage.allBlurb", "We pull jobs directly from these systems and prepare your application for each one."),
-          vendors: order(SERVING_SOURCES),
-        },
-      ];
+  // ONE group: every platform the board serves, and what is true of all of
+  // them. The count of pills equals the count the sentence above quotes.
+  const groups = [
+    {
+      key: "all",
+      Icon: Database,
+      title: t("atsCoverage.readTitle", "Read straight from the employer's own system"),
+      blurb: t("atsCoverage.readBlurb", "Every posting on the board comes from one of these systems, and you apply on the employer's own site. We never submit an application for you."),
+      vendors: order(SERVING_SOURCES),
+    },
+  ];
 
   return (
     <section className={className} aria-labelledby="ats-coverage-heading">
@@ -281,7 +212,7 @@ export function AtsCoverage({
         </p>
       </div>
 
-      <div className={online ? "grid md:grid-cols-2 gap-6" : ""}>
+      <div>
         {groups.map(({ key, Icon, title, blurb, vendors }) => (
           <div key={key} className="rounded-xl border bg-card p-5">
             <div className="flex items-center gap-2 mb-1">

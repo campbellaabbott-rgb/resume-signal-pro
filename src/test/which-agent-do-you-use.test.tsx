@@ -744,20 +744,26 @@ describe("G9: the switchboard's clicks, judged by the request body", () => {
     expect(rows()).not.toContain("sign-in-off");
   });
 
-  it("the pass card's gate sentence renders for a chat host while the fact is not on, and never for a key host", async () => {
-    hookFetch("off");
-    localStorage.setItem("rb_pass_host", "Claude");
-    mount();
-    await waitFor(() => expect(document.querySelector("[data-pass-gate]")).not.toBeNull(), SLOW);
-    const gate = document.querySelector("[data-pass-gate]")!.textContent!;
-    expect(gate).toMatch(/From Claude the pass can be used only once sign-in is switched on/);
-    // "use it from …": the key-carrying TILE, never a host the page sends to GitHub.
-    for (const h of MCP_PAGE_HOSTS.filter((x) => x.header)) expect(gate).toContain(h.name);
-    for (const h of MCP_OFF_PAGE_HOSTS) expect(gate, `${h.name} is not a tile`).not.toContain(h.name);
-    fireEvent.click(screen.getByRole("button", { name: /^Claude Code/ }));
-    expect(document.querySelector("[data-pass-gate]")).toBeNull();
-    // The Buy control itself is never gated on the fact (signed out here: the sign-in link stands).
-    expect(screen.getByRole("link", { name: /sign in to buy/i })).toBeInTheDocument();
+  // THE APPLY PIVOT (owner decision 2026-10-11) retired the Agent Pass and
+  // the Agent plan: the pass card this test once drove is gone, and the page
+  // must sell nothing in any state. Judged on the rendered page, for every
+  // tile, in both sign-in states.
+  it("sells nothing in any state: no pass card, no buy control, no price, no plan name, for every tile", async () => {
+    for (const state of ["off", "on"] as const) {
+      hookFetch(state);
+      const { unmount } = mount();
+      for (const h of MCP_PAGE_HOSTS) {
+        fireEvent.click(document.querySelector(`[data-host="${h.id}"]`)!);
+        await waitFor(() => expect(document.querySelector(`section#${h.id}`)).not.toBeNull(), SLOW);
+        const text = document.body.textContent ?? "";
+        expect(document.querySelector("[data-pass-gate]"), `${h.id}/${state}: a pass gate`).toBeNull();
+        expect(text, `${h.id}/${state}: a price`).not.toMatch(/\$\d/);
+        expect(text, `${h.id}/${state}: a retired product named as on offer`).not.toMatch(/\bAgent (?:Pass|plan)\b(?! is retired)/);
+        expect(screen.queryByRole("link", { name: /buy|checkout|sign in to buy/i }), `${h.id}/${state}: a buy link`).toBeNull();
+        expect(screen.queryByRole("button", { name: /buy|checkout/i }), `${h.id}/${state}: a buy button`).toBeNull();
+      }
+      unmount();
+    }
   });
 });
 
@@ -765,14 +771,18 @@ describe("G9: the switchboard's clicks, judged by the request body", () => {
 
 describe("G10: the hand-off prompts' first tool answers with no key", () => {
   const firstTool = (p: string) => [...p.matchAll(/\b([a-z]+_[a-z_]+|fetch|search)\b/g)].map((m) => m[1]).find((n) => MCP_TOOL_NAMES.includes(n))!;
-  it("a job hands over fetch first, a search search_jobs first, and the keyed check waits on its clause", () => {
+  it("a job hands over fetch first, a search search_jobs first, and neither names a tool that needs a key", () => {
+    // Since the apply pivot the prompts ask for the employer's apply link and
+    // say the person applies; they name no keyed check and no apply tool.
+    const named = (p: string) => [...p.matchAll(/\b([a-z]+_[a-z_]+|fetch|search)\b/g)].map((m) => m[1]).filter((n) => MCP_TOOL_NAMES.includes(n));
     for (const p of [agentPrompt({ id: "greenhouse:acme:1", sendable: false }), agentPrompt({ id: "greenhouse:acme:1", sendable: true })]) {
       expect(MCP_ANON_TOOL_NAMES).toContain(firstTool(p));
-      expect(p).toMatch(/if this connection holds a key or is signed in, call check_apply_support/);
+      for (const n of named(p)) expect(MCP_ANON_TOOL_NAMES, `${n} needs a key`).toContain(n);
+      expect(p).toMatch(/apply myself/i);
     }
     const s = searchPrompt({ query: "x" });
     expect(firstTool(s)).toBe("search_jobs");
-    expect(s).toMatch(/if this connection holds a key or is signed in, check_apply_support/);
+    for (const n of named(s)) expect(MCP_ANON_TOOL_NAMES, `${n} needs a key`).toContain(n);
   });
   it("teeth: a prompt that opens with get_job fails the property", () => {
     const broken = agentPrompt({ id: "x", sendable: false }).replace("call fetch with", "call get_job with");

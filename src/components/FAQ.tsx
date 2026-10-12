@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
-import { PRODUCTS, SUBSCRIPTIONS, PASS } from "@/config/products";
+import { PRODUCTS, SUBSCRIPTIONS } from "@/config/products";
 import {
   Accordion,
   AccordionContent,
@@ -17,8 +17,9 @@ const faqKeys = [
   "whoWrites",
   "dataStorage",
   "vsChatGPT",
-  // Bringing your own agent: the pass and the board's hand-off controls.
-  // Every number in the answer is the PASS mirror, interpolated below.
+  // Bringing your own AI: connecting it for free, applying yourself with its
+  // help, and the board's hand-off controls. Since the apply pivot (owner
+  // decision 2026-10-11) the answer sells nothing and says we never submit.
   "bringYourAgent",
 ];
 
@@ -31,13 +32,10 @@ export function FAQ() {
   const getLocalizedAnswer = (key: string) => {
     // Subscription prices are interpolated rather than written into the copy:
     // the "is this a subscription?" answer used to deny that any recurring
-    // charge existed while Pro and the Morning Queue were both on sale.
+    // charge existed while Pro and the Morning Queue were both on sale. Pro is
+    // the one plan on sale since the apply pivot retired the agent's.
     let answer = t(`faq.questions.${key}.answer`, {
       proPrice: SUBSCRIPTIONS.pro.priceUsd,
-      agentPrice: SUBSCRIPTIONS.agent.priceUsd,
-      passPrice: PASS.priceUsd,
-      passHours: PASS.sessionHours,
-      passApplications: PASS.applications,
     });
     // Replace any hardcoded $25 references with actual price
     if (answer.includes('$25')) {
