@@ -157,12 +157,16 @@ async function askGuard(accessToken: string): Promise<GuardResult> {
     }
     const ctx = (error as { context?: { status?: number; clone?: () => { json: () => Promise<unknown> } } } | null)?.context;
     let reason: string | null = error ? "error" : "unreadable_answer";
+    // A refused proof (409 changed_since_sign_in) can still have cleared the
+    // pre-proof password, and the body says so: that is explained like a 200's.
+    let passwordCleared = false;
     try {
-      const body = ctx?.clone ? (await ctx.clone().json()) as { reason?: unknown; error?: unknown } : null;
+      const body = ctx?.clone ? (await ctx.clone().json()) as { reason?: unknown; error?: unknown; passwordCleared?: unknown } : null;
       if (typeof body?.reason === "string") reason = body.reason;
       else if (typeof body?.error === "string") reason = body.error;
+      passwordCleared = body?.passwordCleared === true;
     } catch { /* no body */ }
-    return { state: "failed", proven: false, passwordCleared: false, reason, status: typeof ctx?.status === "number" ? ctx.status : null };
+    return { state: "failed", proven: false, passwordCleared, reason, status: typeof ctx?.status === "number" ? ctx.status : null };
   } catch {
     return { state: "failed", proven: false, passwordCleared: false, reason: "network", status: null };
   }
@@ -283,7 +287,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (currentKey.current === key) setGuardResult({ ...GUARD_IDLE, state: "pending" });
     const run = askGuard(target.access_token).then((r) => {
       const recovery = newestAmr(target.access_token) === "recovery";
-      const showNotice = r.state === "done" && r.passwordCleared && !recovery;
+      const showNotice = r.passwordCleared && !recovery;
       writeGuardCache({ ...r, key, at: Date.now() });
       // A failed ask is asked again once its cache window passes; an answer
       // stays this tab's answer for the session (and survives blocked storage).

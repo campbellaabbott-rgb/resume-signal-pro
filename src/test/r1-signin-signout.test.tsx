@@ -188,6 +188,16 @@ describe("the account guard", () => {
     await waitFor(() => expect(screen.getByTestId("guard").textContent).toBe("failed:false:false"));
   });
 
+  it("a refused proof that still cleared the pre-proof password (409 changed_since_sign_in) is explained, and stays unproven", async () => {
+    h.invoke.mockResolvedValueOnce({ data: null, error: { message: "Edge Function returned a non-2xx status code", context: { status: 409, clone: () => ({ json: async () => ({ error: "The account changed after this sign-in.", reason: "changed_since_sign_in", proven: false, passwordCleared: true }) }) } } });
+    render(<AuthProvider><Probe /></AuthProvider>);
+    emit("SIGNED_IN", sessionFor("member@example.com", "sid-409"));
+    await flush();
+    await waitFor(() => expect(screen.getByTestId("guard").textContent).toBe("failed:false:true"));
+    expect(h.toast).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(h.toast.mock.calls[0][0])).toMatch(/cleared a password set on this address before you proved you own it/);
+  });
+
   it("never blocks the app: a guard that never answers leaves the session usable", async () => {
     h.invoke.mockReturnValue(new Promise(() => {}));
     render(<AuthProvider><Probe /></AuthProvider>);
