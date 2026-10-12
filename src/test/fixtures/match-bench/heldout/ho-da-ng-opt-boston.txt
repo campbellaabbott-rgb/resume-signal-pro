@@ -1,0 +1,23 @@
+Hyun-woo Park
+Data Analyst | MS Business Analytics
+Boston, MA | hyunwoo.park@example.com | (617) 555-0142 | github.com/hwpark-data
+Work authorization: F-1 STEM OPT through 2029; will need H-1B visa sponsorship in the future. Willing to relocate anywhere in the United States.
+
+EDUCATION
+Master of Science in Business Analytics - Boston University Questrom School of Business | Aug 2025 - May 2026 | GPA 3.9
+Bachelor of Business Administration - Yonsei University, Seoul, South Korea | 2023
+
+EXPERIENCE
+Data Analytics Intern - Commonwealth Mutual Insurance, Boston, MA | Jan 2026 - May 2026
+- Built a claims-severity dashboard in Power BI used by 30 adjusters; automated the weekly refresh with Python.
+- SQL (Snowflake) cohort analysis of policy lapses; found two retention levers adopted in Q2.
+
+Business Analyst - Hanbit Retail Co., Seoul, South Korea | Jan 2023 - Jun 2025
+- Weekly sales and inventory reporting for 80 stores (SQL, Excel, Tableau).
+- Demand forecast for seasonal items (Prophet) cut stockouts by 12%.
+
+PROJECTS
+MBTA ridership recovery analysis (Python, geopandas) - capstone, presented to the city's transit office.
+
+SKILLS
+SQL, Python (pandas, statsmodels, scikit-learn), R, Power BI, Tableau, Excel, Snowflake, A/B testing, forecasting, Korean (native)

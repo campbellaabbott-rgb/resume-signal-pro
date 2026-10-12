@@ -1,0 +1,24 @@
+Tasha Robinson
+Junior Data Analyst (transitioning from logistics operations)
+Memphis, TN | tasha.robinson@example.com | (901) 555-0139
+U.S. citizen. Seeking entry-level data analyst, operations analyst or reporting analyst roles in Memphis or remote.
+
+SUMMARY
+Seven years coordinating freight taught me that the spreadsheet is where operations problems hide. I completed the Google Data Analytics certificate and an SQL course in 2025, and I now build the reporting my team runs on. Ready to move into analytics full time.
+
+EXPERIENCE
+Logistics Coordinator - Mid-South Freight Partners, Memphis, TN | Mar 2019 - Present
+- Coordinate 180 truckload shipments a week across 40 carriers; on-time delivery 96%.
+- Built the team's carrier scorecard in Excel and Power BI (2025); now used in quarterly carrier reviews.
+- Wrote SQL queries against the TMS database to find detention charges; recovered $210K in 2025.
+
+Dispatcher - Riverbend Transport, West Memphis, AR | Jun 2017 - Feb 2019
+Customer Service Representative - Bluff City Shipping, Memphis, TN | 2015 - 2017
+
+EDUCATION AND TRAINING
+Google Data Analytics Professional Certificate - 2025
+SQL for Data Analysis (Udacity) - 2025
+B.A. Business Administration - University of Memphis | 2015
+
+SKILLS
+SQL, Excel (Power Query, pivot tables), Power BI, Tableau (basic), Python (learning), data cleaning, KPI reporting, transportation management systems
