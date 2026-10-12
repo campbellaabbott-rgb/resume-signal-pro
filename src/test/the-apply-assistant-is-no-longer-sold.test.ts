@@ -16,7 +16,8 @@
  */
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
-import { APPLY_AGENT_SWITCH_ON } from "./helpers/apply-agent-switch-on";
+import { APPLY_AGENT_SWITCH_ON, APPLY_ASSISTANT_SWITCH_ON } from "./helpers/apply-agent-switch-on";
+import { APPLY_ASSISTANT_ON_SALE } from "../../supabase/functions/_shared/apply-agent-switch";
 import { buildIsAtLeast } from "./helpers/fn-build";
 import { retiredSentence } from "../../supabase/functions/_shared/apply-agent-retired";
 
@@ -63,11 +64,13 @@ const STUBS: Record<string, string> = {
 
 let shipped: EdgeHandler;
 let switchedOn: EdgeHandler;
+let agentBackOnSale: EdgeHandler;
 
 beforeAll(async () => {
   g.Deno = { env: { get: (k: string) => env[k] }, serve: (h: unknown) => { g.__edgeHandler = h; } };
   shipped = await loadEdgeHandler(FN, STUBS);
-  switchedOn = await loadEdgeHandler(FN, { ...STUBS, ...APPLY_AGENT_SWITCH_ON });
+  switchedOn = await loadEdgeHandler(FN, { ...STUBS, ...APPLY_ASSISTANT_SWITCH_ON });
+  agentBackOnSale = await loadEdgeHandler(FN, { ...STUBS, ...APPLY_AGENT_SWITCH_ON });
 }, 240_000);
 beforeEach(() => { touched = []; g.__assistantTouched = touched; });
 
@@ -112,6 +115,16 @@ describe("a purchase of the Apply Assistant is refused before anything is counte
     expect(touched).toContain("rpc:check_rate_limit");
   });
 
+  // The review of 9fe3bc0d: the row read AGENT_PRODUCTS_ON_SALE, so putting
+  // the Pass back on sale after a first proven submission would quietly have
+  // reopened the Apply Assistant to any direct POST.
+  it("putting the agent and its Pass back on sale does not reopen the Apply Assistant", async () => {
+    expect(APPLY_ASSISTANT_ON_SALE).toBe(false);
+    const res = await buy(agentBackOnSale, { productId: "applyAssistant", email: "buyer@example.com" });
+    expect(res.status).toBe(410);
+    expect(touched).toEqual([]);
+  });
+
   it("a body that is not JSON is not mistaken for the Apply Assistant and keeps its old answer", async () => {
     const res = await shipped(new Request(`https://harness.supabase.co/functions/v1/${FN}`, {
       method: "POST", headers: { "content-type": "application/json" }, body: "{not json",
@@ -121,6 +134,6 @@ describe("a purchase of the Apply Assistant is refused before anything is counte
 
   it("the preflight answers this build, so the deploy is provable", async () => {
     const res = await shipped(new Request(`https://harness.supabase.co/functions/v1/${FN}`, { method: "OPTIONS" }));
-    expect(buildIsAtLeast(res.headers.get("x-fn-build"), FN, "2026-10-11", 1), String(res.headers.get("x-fn-build"))).toBe(true);
+    expect(buildIsAtLeast(res.headers.get("x-fn-build"), FN, "2026-10-11", 2), String(res.headers.get("x-fn-build"))).toBe(true);
   });
 });

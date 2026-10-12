@@ -10,9 +10,10 @@
 #     410 product_retired: the sentence says nothing was charged and names
 #     applying yourself, in the buyer's language, links /agents, and carries no
 #     Stripe url;
-#   - create-product-checkout serves 2026-10-11.1 or later and answers a
+#   - create-product-checkout serves 2026-10-11.2 or later and answers a
 #     purchase of the Apply Assistant (one row of its shared product table,
-#     wired by the wave-4 integration) with the same 410;
+#     wired by the wave-4 integration to a switch of its own,
+#     APPLY_ASSISTANT_ON_SALE) with the same 410;
 #   - 20261011130000 applied: get_cron_health lists neither apply-agent-hourly
 #     nor agent-runner-nightly, while agent-queue-retention (left on purpose)
 #     is still listed in the same read;
@@ -41,8 +42,8 @@ done
 # integration rather than the retire branch, so its floor is its own.
 VD93_H=$(vd93_build create-product-checkout)
 if [ -z "$VD93_H" ]; then echo "FAIL  create-product-checkout preflight carries no x-fn-build (the function is not deployed, or its preflight does not answer)"
-elif build_ge create-product-checkout "$VD93_H" "2026-10-11" "1"; then echo "PASS  create-product-checkout preflight x-fn-build = $VD93_H (create-product-checkout.2026-10-11.1 or later: the Apply Assistant is retired)"; VD93_LIVE="${VD93_LIVE}create-product-checkout "
-else echo "FAIL  create-product-checkout preflight x-fn-build = $VD93_H (want create-product-checkout.2026-10-11.1 or later: the Apply Assistant is still sold in the bundle serving)"; fi
+elif build_ge create-product-checkout "$VD93_H" "2026-10-11" "2"; then echo "PASS  create-product-checkout preflight x-fn-build = $VD93_H (create-product-checkout.2026-10-11.2 or later: the Apply Assistant is retired on its own switch)"; VD93_LIVE="${VD93_LIVE}create-product-checkout "
+else echo "FAIL  create-product-checkout preflight x-fn-build = $VD93_H (want create-product-checkout.2026-10-11.2 or later: the Apply Assistant is still sold, or retired only with the agent's products, in the bundle serving)"; fi
 
 vd93_buy() { # $1 fn, $2 product, $3 body, $4 Accept-Language, $5 expected language, $6 a phrase of that language's free sentence
   case "$VD93_LIVE" in
@@ -109,4 +110,4 @@ console.log("INFO  job-board status applyAgent: lastRunAt "+(a?a.lastRunAt:"?")+
 console.log("INFO  job-board status agentRunner: lastRunAt "+(r?r.lastRunAt:"?")+", lastCronAt "+(r?r.lastCronAt:"?")+" -- it stops advancing from this deploy for the same reason");'
 
 echo "INFO  not provable from here (each needs a secret this run does not hold): an authorised apply-agent or agent-runner run answers switchedOff:true; apply-broker claim answers packet null and ping records no heartbeat; agent-access approve and retry answer 409 agent_switched_off; agent-access and agent-pass-status status reads carry agentSwitchedOff:true for a buyer"
-echo "INFO  owner, in Stripe: (1) list active subscriptions at 99 USD a month named Resume Booster Apply Agent, and every paid checkout session whose metadata product_type is agent_pass or apply_assistant; (2) honour or refund each, and cancel each subscription at period end or now with a prorated refund; (3) expire any checkout session still open for the three products (they live 24 hours and a payment on one still grants); (4) there is no dashboard Price to archive: all three bill inline price_data, so archive only any Product the catalogue lists under those names"
+echo "INFO  owner, in Stripe: (1) list the Agent plan subscriptions (99 USD a month, named Resume Booster Apply Agent) in ALL THREE billable states, because Stripe's active filter leaves out the other two: stripe subscriptions list --status=active, then --status=trialing, then --status=past_due; and every paid checkout session whose metadata product_type is agent_pass or apply_assistant; (2) cancel each trialing subscription now, which charges nothing (the plan was sold with a 7-day first-time trial, so one started in the week before this deploy turns into a 99 USD charge for an agent that is switched off); decide each past_due one before Stripe's next retry charges it; honour or refund each active one, cancelling at period end or now with a prorated refund; honour or refund each pass and Apply Assistant buyer; (3) expire any checkout session still open for the three products (they live 24 hours and a payment on one still grants); (4) there is no dashboard Price to archive: all three bill inline price_data, so archive only any Product the catalogue lists under those names"

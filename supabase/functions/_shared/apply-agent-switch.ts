@@ -12,7 +12,8 @@
 // or settings, so the deployed behaviour is readable from the repository and
 // changing it is a reviewed commit plus a deploy of the functions that import
 // this file. Each value is typed `boolean` rather than its literal, so the
-// dormant branches still type-check as reachable.
+// dormant branches still type-check as reachable. There are three, and each
+// names every checkout or function it controls.
 //
 //   APPLY_AGENT_ON          apply-agent prepares and releases packets,
 //                           agent-runner fills the morning queue, apply-broker
@@ -32,8 +33,16 @@
 //                           agent-pass-status, stripe-webhook are unchanged in
 //                           what they report and grant).
 //
-// The two are separate on purpose: switching the agent back on to prove one
-// real submission must not put anything back on sale.
+//   APPLY_ASSISTANT_ON_SALE create-product-checkout's applyAssistant row (the
+//                           $7 Apply Assistant), retired outright with the
+//                           other two. Off: a purchase of that row is
+//                           refused the same way; every other product in
+//                           that function still sells.
+//
+// They are separate on purpose: switching the agent back on to prove one
+// real submission must not put anything back on sale, and putting the Pass or
+// the plan back on sale must not quietly reopen the Apply Assistant, which the
+// owner retired on its own terms.
 //
 // Tests that exercise the dormant code stub this module (the edge harness
 // replaces `_shared/apply-agent-switch.ts`); the tests of the switched-off
@@ -41,3 +50,4 @@
 
 export const APPLY_AGENT_ON: boolean = false;
 export const AGENT_PRODUCTS_ON_SALE: boolean = false;
+export const APPLY_ASSISTANT_ON_SALE: boolean = false;

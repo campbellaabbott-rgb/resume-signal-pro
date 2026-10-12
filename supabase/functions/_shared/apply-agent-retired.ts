@@ -1,15 +1,16 @@
 // WHAT A BUYER IS TOLD WHEN THEY TRY TO BUY A RETIRED AGENT PRODUCT.
 //
 // The Agent plan, the Agent Pass and the Apply Assistant are no longer sold
-// (owner decision 2026-10-11; the switch is AGENT_PRODUCTS_ON_SALE in
-// apply-agent-switch.ts). Their checkouts answer with this instead of opening
+// (owner decision 2026-10-11; the switches are AGENT_PRODUCTS_ON_SALE and
+// APPLY_ASSISTANT_ON_SALE in apply-agent-switch.ts). Their checkouts answer
+// with this instead of opening
 // Stripe: HTTP 410, a machine-readable reason the page can key on, and one
 // sentence in the buyer's language that says nothing was charged and names
 // the free way to apply, which is the person's own AI (Claude or ChatGPT)
 // reading the posting and, where the hiring system publishes it, the
 // employer's form. The Apply Assistant is one row of create-product-checkout's
-// shared product table, so its sentence is here, ready for that function to
-// answer with, but that function is not wired to it in this change.
+// shared product table; that function answers a purchase of the row with its
+// sentence here while APPLY_ASSISTANT_ON_SALE is off.
 //
 // The sentence is shown verbatim by the pass card (it renders a checkout
 // refusal's `error`), so it carries the site's nine languages, chosen as the

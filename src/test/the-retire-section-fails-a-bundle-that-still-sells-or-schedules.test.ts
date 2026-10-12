@@ -94,7 +94,7 @@ const healthy = (over: Partial<Record<string, Route>> = {}): Route[] => [
   ...FNS.map((fn) => over[`pre:${fn}`] ?? pre(fn, `${fn}.2026-10-11.13`)),
   over["post:create-agent-checkout"] ?? refusal("create-agent-checkout", AGENT_410),
   over["post:create-pass-checkout"] ?? refusal("create-pass-checkout", PASS_410),
-  over["pre:create-product-checkout"] ?? pre("create-product-checkout", "create-product-checkout.2026-10-11.1"),
+  over["pre:create-product-checkout"] ?? pre("create-product-checkout", "create-product-checkout.2026-10-11.2"),
   over["post:create-product-checkout"] ?? refusal("create-product-checkout", ASSIST_410),
   over.wf ?? wf(WF_OFF),
 ];
@@ -110,7 +110,7 @@ describe("section 93: the retire deploy", { timeout: 60_000 }, () => {
     for (const fn of FNS) expect(has(lines, "PASS", new RegExp(`^PASS  ${fn} preflight`)), `${fn}${show(lines)}`).toBe(true);
     expect(has(lines, "PASS", /create-agent-checkout answers a purchase 410 product_retired in de/), show(lines)).toBe(true);
     expect(has(lines, "PASS", /create-pass-checkout answers a purchase 410 product_retired in nl/), show(lines)).toBe(true);
-    expect(has(lines, "PASS", /^PASS  create-product-checkout preflight x-fn-build = create-product-checkout\.2026-10-11\.1/), show(lines)).toBe(true);
+    expect(has(lines, "PASS", /^PASS  create-product-checkout preflight x-fn-build = create-product-checkout\.2026-10-11\.2/), show(lines)).toBe(true);
     expect(has(lines, "PASS", /create-product-checkout answers a purchase 410 product_retired in fr/), show(lines)).toBe(true);
     expect(has(lines, "PASS", /apply-agent-hourly .* is unscheduled/), show(lines)).toBe(true);
     expect(has(lines, "PASS", /agent-runner-nightly .* is unscheduled/), show(lines)).toBe(true);
@@ -131,6 +131,22 @@ describe("section 93: the retire deploy", { timeout: 60_000 }, () => {
     expect(has(lines, "FAIL", /^FAIL  create-product-checkout preflight x-fn-build = create-product-checkout\.2026-10-09\.61/), show(lines)).toBe(true);
     expect(has(lines, "INFO", /create-product-checkout was not asked to sell/), show(lines)).toBe(true);
     expect(calls.filter((c) => c.startsWith("POST ") && c.includes("create-product-checkout"))).toEqual([]);
+  });
+
+  // The review of 9fe3bc0d: .1 refused the Apply Assistant only while the
+  // agent's products were off; .2 reads a switch of its own.
+  it("a product checkout that retired the Apply Assistant only with the agent's products FAILs its build", () => {
+    const { lines } = run(healthy({ "pre:create-product-checkout": pre("create-product-checkout", "create-product-checkout.2026-10-11.1") }), CRON_OFF);
+    expect(has(lines, "FAIL", /^FAIL  create-product-checkout preflight x-fn-build = create-product-checkout\.2026-10-11\.1/), show(lines)).toBe(true);
+  });
+
+  // The plan was sold with a 7-day first-time trial: a subscription still in
+  // it is "trialing", which Stripe's active filter leaves out.
+  it("the owner's Stripe step names every billable subscription state, not only active", () => {
+    const { lines } = run(healthy(), CRON_OFF);
+    const stripe = lines.find((l) => l.startsWith("INFO  owner, in Stripe:")) ?? "";
+    for (const status of ["active", "trialing", "past_due"]) expect(stripe, status).toContain(`--status=${status}`);
+    expect(stripe).toMatch(/cancel each trialing subscription now, which charges nothing/);
   });
 
   it("an Apply Assistant purchase that still opens Stripe FAILs", () => {
