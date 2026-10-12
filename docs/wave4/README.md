@@ -290,4 +290,15 @@ No `design/*` branch is on origin.
   shares, as its reservation allows.
 - `--message` refuses on this branch (exit 5: HEAD is not origin/main), and
   never exits 2; `--draft` prints the message above.
-- The full vitest suite: see the push.
+- The full vitest suite, once, on 2026-10-12 (13:54-14:20Z, 945 files, at a
+  load average near 26 from other workflows): 933 passed and 11 failed, with
+  2 forks that never started.
+  - Three files failed for real, and the next commit fixes them:
+    - `llms.txt` named `apply_myself` and a call count;
+    - the adoption-reader guard did not know the fit reader's `p_endpoint`;
+    - the checkout-visitor guard required a live caller for the retired pass
+      checkout.
+  - The other eight failed on 100-900 s timeouts, and the two forks hit the
+    worker start timeout. All ten pass when rerun alone, as do the three
+    fixed files.
+- The pre-push hook runs the whole suite again before the push.

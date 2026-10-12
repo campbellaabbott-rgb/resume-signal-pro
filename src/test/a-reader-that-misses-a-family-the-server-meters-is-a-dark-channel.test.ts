@@ -134,7 +134,13 @@ describe("the adoption reader classifies every endpoint family the server meters
     // whose literal the parser reads), so no spelling can bypass the parser.
     const args = meterArguments(MCP);
     expect(args.length).toBeGreaterThan(0);
-    expect(args.filter((a) => a !== "`/mcp/${toolName}`"), "a p_endpoint spelled outside the tool builder").toEqual([]);
+    // ONE OTHER p_endpoint, AND IT METERS NOTHING (wave-4 integration): the
+    // free fit allowance's reader, api_key_fit_allowance (20261011110000),
+    // takes the tool's own metered endpoint to count today's fit_resume calls.
+    // Its single spelling is a tool-family literal, so the reader classifies it.
+    expect(MCP).toMatch(/const FIT_ENDPOINT = "\/mcp\/fit_resume";/);
+    expect(MCP).toMatch(/client\.rpc\("api_key_fit_allowance", \{ p_key_id: apiKeyId, p_endpoint: FIT_ENDPOINT \}\)/);
+    expect(args.filter((a) => a !== "`/mcp/${toolName}`" && a !== "FIT_ENDPOINT"), "a p_endpoint spelled outside the tool builder").toEqual([]);
     // The family parser sees the prefix constant's spellings as well as literals.
     expect(MCP).toMatch(/const MCP_ENDPOINT_PREFIX = "\/mcp\/";/);
   });
@@ -198,7 +204,7 @@ describe("the adoption reader classifies every endpoint family the server meters
     // A p_endpoint spelled outside the tool builder is reported as such.
     const bypass = MCP.replace("p_endpoint: `/mcp/${toolName}`", 'p_endpoint: "/mcp/" + toolName');
     expect(bypass).not.toBe(MCP);
-    expect(meterArguments(bypass).filter((a) => a !== "`/mcp/${toolName}`")).toEqual(['"/mcp/" + toolName']);
+    expect(meterArguments(bypass).filter((a) => a !== "`/mcp/${toolName}`" && a !== "FIT_ENDPOINT")).toEqual(['"/mcp/" + toolName']);
 
     const dropped = READER.replace(/\s*WHEN u\.endpoint LIKE '\/mcp\/resource\/%' THEN 'resource'/, "");
     expect(dropped).not.toBe(READER);

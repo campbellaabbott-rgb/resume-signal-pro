@@ -39,6 +39,7 @@ import { join, relative, resolve } from "node:path";
 import { codeOf } from "./helpers/strip-comments";
 import { checkoutContext, getVisitorId } from "../lib/track-transport";
 import { checkoutContextOf } from "../../supabase/functions/_shared/checkout-start";
+import { AGENT_PRODUCTS_ON_SALE } from "../../supabase/functions/_shared/apply-agent-switch";
 
 const ROOT = resolve(__dirname, "../..");
 const CHOKEPOINT = "src/lib/track-transport.ts";
@@ -105,6 +106,16 @@ function liveMinters(): string[] {
     })
     .sort();
 }
+
+/**
+ * A minter whose WHOLE purchase path is retired (the apply pivot, owner
+ * decision 2026-10-11): while the agent's products are off sale, every POST
+ * answers the retired 410 before any session is opened, so no page offers it
+ * and it needs no live caller. Read off the code, not a list: the guard is the
+ * switch and the retired answer at the top of the handler.
+ */
+const retiredWhole = (n: string): boolean =>
+  !AGENT_PRODUCTS_ON_SALE && /if \(!AGENT_PRODUCTS_ON_SALE\) \{[\s\S]{0,400}?retiredCheckoutAnswer\("agent_(?:plan|pass)"/.test(code(`supabase/functions/${n}/index.ts`));
 
 /** Every application source file under src: no tests, no declarations, not the chokepoint. */
 function appFiles(): string[] {
@@ -177,12 +188,19 @@ function siteViolations(site: CallSite, fileCode: string): string[] {
 }
 
 describe("every client call of every live minter carries the visitor and the page", () => {
-  const minters = liveMinters();
+  // Every function that can open a session, the retired two included: their
+  // dormant call sites must still carry the visitor, but only a minter that
+  // still sells must have a caller.
+  const all = liveMinters();
+  const retired = all.filter(retiredWhole);
+  const minters = all.filter((m) => !retired.includes(m));
   const files = appFiles();
-  const sites = callSites(minters, files);
+  const sites = callSites(all, files);
 
-  it("the derivation reads the tree: six minters, each with at least one caller", () => {
-    expect(minters.length).toBeGreaterThanOrEqual(6);
+  it("the derivation reads the tree: six minters, the two retired by the apply pivot named, each one still selling with at least one caller", () => {
+    expect(all.length).toBeGreaterThanOrEqual(6);
+    expect(retired).toEqual(["create-agent-checkout", "create-pass-checkout"]);
+    expect(minters.length).toBeGreaterThanOrEqual(4);
     expect(minters).toContain("create-checkout");
     expect(minters).not.toContain("create-test-checkout");
     for (const m of minters) {
@@ -191,14 +209,15 @@ describe("every client call of every live minter carries the visitor and the pag
     expect(sites.some((s) => s.via.startsWith("resilientCallers.")), "the resilient caller for create-checkout was not found").toBe(true);
   });
 
-  for (const site of callSites(minters, files)) {
+  for (const site of callSites(all, files)) {
     it(`${site.file} -> ${site.minter} (${site.via})`, () => {
       expect(siteViolations(site, code(site.file))).toEqual([]);
     });
   }
 
   it("TEETH: a call site with the spread removed fails, and a body that spells the keys by hand instead of spreading the producer fails too", () => {
-    const site = sites.find((s) => s.minter === "create-pass-checkout")!;
+    // A live minter's own call site (the pass checkout, the old example, is retired).
+    const site = sites.find((s) => s.minter === "create-product-checkout" && s.via === "invoke")!;
     expect(site).toBeDefined();
     const fileCode = code(site.file);
     const cut = { ...site, text: site.text.replace(SPREAD, "") };
