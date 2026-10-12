@@ -2232,10 +2232,14 @@ const VENDOR_ZERO_RESET = 0.3; // hysteresis: quarantine lifts below this
 const VENDOR_MIN_ATTEMPTS = 20; // never judge a vendor on a handful of fetches
 const VENDOR_STATS_DECAY = 0.8; // per-slice decay — recent slices dominate
 
-// Experience-band rules version: bump to re-derive bands from richer text later.
-// The one-time backfill fills existing rows (experience_band IS NULL) once; new
-// rows carry a band from ingestion, so this only fires the sweep on first deploy.
-const EXPERIENCE_VERSION = 1;
+// Experience-band rules version. A bump re-derives EVERY stored row from its
+// title and stored description (backfill-experience, progress in
+// job_board_meta experience_backfill) and writes the rows whose band or
+// minimum changed, "unspecified"/NULL included.
+// v2 (S12-013): v1 only filled NULL bands, so the L8-15/L7-09 parser fixes
+// reached new rows and nothing else: 0 of 24 stored minimum-age figures
+// reproduced, and Domino's served 4,018 Expert rows against 1,359 Entry.
+const EXPERIENCE_VERSION = 2;
 // Rationale: docs/job-board-index-notes.md#n043-salary-parse-version
 const SALARY_PARSE_VERSION = 10; // v10 (2026-10-09, wave 3 board-data-ingest, docs/wave3/board-data-ingest.md): NT$/AR$/CL$/COL$/RD$/$U and a bare $ in TW/AR/CL/CO/DO/UY are not USD; a figure in millions is no wage; "up to X" alone is no floor; "$17/hr - $38/hr" is a range. // v9 (2026-09-27): A COMMA IS A DECIMAL POINT IN MOST OF EUROPE and the money pattern read it as a thousands group, so the figure split in half: P_RANGE is two money patterns with a dash between them, and on "€14,61 — €14,61" (ouihelp's own greenhouse pay footer) the grouped alternative could not match a 2-digit group, the plain one matched the bare "14", no separator followed, and the engine restarted INSIDE the number — taking the decimal tail 61 as the low end and the next figure's 14 as the high end. A €14.61/hour rate was read as a range from 61 down to 14. Where the halves descended, annualisation refused and the columns stored NULL (643 of 684 rows); where they ascended, the WRONG pair annualised cleanly — smartrecruiters/Securitas "€ 18,10 – € 19,51" stored 20,800-39,520 and workday/Assurant "$ 19,08 - $ 30,53" stored a floor of 16,640 against a true 39,686, 58% low, in the column salary_rank_usd is generated from (41 rows). Worst single shape: smartrecruiters/Flink "€15,96 - €17,14 per hour" read min 96 WITH a stated period and annualised to 199,680 — a €33k job published as a €200k one at the top of the pay sort. THE TAIL LENGTH DECIDES, NOT THE SEPARATOR AND NOT THE LOCALE: no thousands group has two digits, while three genuinely is ambiguous, so the v8 rule below and parseMoney's European reading are untouched (1,715 dot-3 rows in the census, zero changed) and the fix is unconditional — 29 of the 74 shape-carrying rows found by the country census have country NULL, so a locale-gated rule would have missed most of the population. Lookaheads refuse a tail followed by another separator (ashby/Oscilar's Indian lakh grouping "₹66,21,800") or by a period and a digit. MEASURED LIVE 2026-09-27 with the anon key: 684 rows carry the shape on NINE boards (greenhouse ouihelp 550 / joya 114, smartrecruiters Securitas 8 / Flink 5, workday Ia 2 / Assurant 2 / Enzazaden 1, oracle CareOne 1 / IHG 1), found by censusing every servable posting placed in any of the 64 comma-decimal countries the board holds (80,006 rows, cluster fold off) and then walking each discovered board to its exact countOnly total; an independent 60,000-row offset sample of the whole board found one further board and nothing else. Re-parsing 178,591 real stored salary strings with the old reader and the new one: 683 rows change, 638 NULL to a value, 45 a wrong value to a right one, ZERO a value to NULL. Boards, not one board, and never a token condition — the same lesson as v8. // v8 (2026-09-26): a 3-decimal HOURLY rate was read as a thousands group — Saskatchewan Health Authority's own field says "RequisitionType": "Hourly" beside "Pay Band 12 $23.170 to $24.840", and the board stored $23.17/hr as a $23,170 ANNUAL salary (under SK minimum wage, ~29% of real pay). Measured live over 176,575 rows: 1,404 rows on FIVE boards / two vendors — oracle HealthCareersInSask.ca 1,294, oracle DPS 96, workday Scarborough Health Network 11, workday Richmond University Medical Center 2, oracle Northwell 1 — of which 1,323 hold a wrong stored annual and 81 stored NULL. Every salary floor, ceiling and the pay sort read salary_rank_usd off salary_min_annual, so all of them filtered and sorted at ~half their true pay. See readsDotThreeAsRate: the European thousands reading ('€45.000' = 45,000) is deliberately kept, so the re-read is conditioned on the posting's locale, not the separator. // v7 (2026-08-25): day rates (x260) + a part-time/casual guard that REFUSES to annualise a load-dependent rate — {"q":"teacher","salaryFloor":90000} was serving 14 hourly part-timers out of 15, incl. $44/hr read as 91,520 and a $160/day substitute read as 332,800
 // v6 (2026-08-24): // v6 (2026-08-24): "an hour"/"a year" vocabulary + unambiguous-hourly inference for parity currencies in [7,200) — 17,641 workday vendor-stated ranges sat unannualized; whole-dollar rounding
@@ -6057,17 +6061,24 @@ async function passEndServe(client: SupabaseClient, ctx: PassEndCtx, sliceWallSt
 
 /** Step "kicks": the backfill sweeps and the filter audit, each only when due. */
 async function passEndKicks(client: SupabaseClient): Promise<{ ok: boolean; detail: string }> {
-  // Experience bands not yet backfilled (fresh column on existing rows)? Fill
-  // the NULL tail in a self-chaining sweep with its own compute budget. Stamped
-  // on completion so it runs once; new rows already carry a band from ingestion.
+  // Experience rules newer than the corpus? Re-derive every row in a
+  // self-chaining sweep, resumed from its own frontier (S12-013): a chain
+  // that died mid-table is not restarted from the first id, and a live one
+  // is left alone.
   const { data: expVer } = await client.from("job_board_meta").select("v").eq("k", "experience_version").maybeSingle();
   if ((expVer?.v as { version?: number } | null)?.version !== EXPERIENCE_VERSION) {
-    const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
-    waitUntil(chainKey().then((key) => fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "backfill-experience", chainKey: key }),
-    })).then((r) => discardBody(r)).catch(() => {}));
+    const { data: xb } = await client.from("job_board_meta").select("v, updated_at").eq("k", "experience_backfill").maybeSingle();
+    const xbv = (xb?.v ?? {}) as { startedUnder?: number; cursor?: string };
+    const xbAlive = !!xb?.updated_at && Date.now() - Date.parse(String(xb.updated_at)) < MAINTENANCE_STALL_MS;
+    const resume = Number(xbv.startedUnder) === EXPERIENCE_VERSION && typeof xbv.cursor === "string" ? xbv.cursor : "";
+    if (!xbAlive) {
+      const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
+      waitUntil(chainKey().then((key) => fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "backfill-experience", chainKey: key, rulesVersion: EXPERIENCE_VERSION, ...(resume ? { cursor: resume } : {}) }),
+      })).then((r) => discardBody(r)).catch(() => {}));
+    }
   }
   // Country not yet backfilled (fresh column on existing rows)? Same
   // self-chaining sweep pattern; new rows carry country from ingestion.
@@ -9329,21 +9340,35 @@ async function handleRequest(req: Request): Promise<Response> {
     }
 
     if (action === "backfill-experience") {
-      // One-time sweep populating experience_band on rows that predate the column
-      // (experience_band IS NULL). chainKey-gated + self-chaining like
-      // recategorize; stamps experience_version when the NULL tail is exhausted.
+      // S12-013: re-derive EVERY stored row under the current rules and write
+      // the rows whose band or minimum changed, NULL included ("unspecified",
+      // min_years NULL), so a parser fix reaches the rows ingested before it.
+      // chainKey-gated, self-chaining on an id cursor kept in
+      // experience_backfill, so a dead chain resumes from its frontier; a hop
+      // of older rules stands down.
       if (typeof body.chainKey !== "string" || body.chainKey !== await chainKey()) {
         return json({ error: "backfill-experience is a maintenance action" }, 403);
       }
+      const hopVersion = Number(body.rulesVersion);
+      if (Number.isFinite(hopVersion) && hopVersion !== EXPERIENCE_VERSION) {
+        return json({ ok: false, superseded: true, current: EXPERIENCE_VERSION });
+      }
       let cursor = typeof body.cursor === "string" ? body.cursor : "";
+      const { data: xbRow } = await client.from("job_board_meta").select("v").eq("k", "experience_backfill").maybeSingle();
+      const xbPrev = (xbRow?.v ?? {}) as { startedUnder?: number; scanned?: number; updated?: number };
+      const carried = Number(xbPrev.startedUnder) === EXPERIENCE_VERSION && cursor ? xbPrev : { scanned: 0, updated: 0 };
+      const progress = (v: Record<string, unknown>) => client.from("job_board_meta").upsert(
+        { k: "experience_backfill", v: { version: EXPERIENCE_VERSION, startedUnder: EXPERIENCE_VERSION, at: new Date().toISOString(), ...v }, updated_at: new Date().toISOString() },
+        { onConflict: "k" },
+      );
+      await progress({ cursor, scanned: Number(carried.scanned) || 0, updated: Number(carried.updated) || 0 });
       let scanned = 0;
       const groups = new Map<string, string[]>(); // "band|minYears" -> ids
       const PAGES = 6;
       for (let page = 0; page < PAGES; page++) {
         let q = client
           .from("job_board_postings")
-          .select("id,title,description")
-          .is("experience_band", null)
+          .select("id,title,description,experience_band,min_years")
           .order("id")
           .limit(1000);
         if (cursor) q = q.gt("id", cursor);
@@ -9351,13 +9376,14 @@ async function handleRequest(req: Request): Promise<Response> {
         if (error) throw error;
         for (const r of rows ?? []) {
           scanned++;
-          const exp = detectExperience(
-            (r as { title?: string }).title ?? "",
-            (r as { description?: string | null }).description ?? null,
-          );
-          const key = `${exp.band ?? "unspecified"}|${exp.minYears ?? ""}`;
+          const row = r as { id: string; title?: string | null; description?: string | null; experience_band?: string | null; min_years?: number | string | null };
+          const exp = detectExperience(row.title ?? "", row.description ?? null);
+          const band = exp.band ?? "unspecified";
+          const min = exp.minYears ?? null;
+          if (row.experience_band === band && (row.min_years == null ? null : Number(row.min_years)) === min) continue;
+          const key = `${band}|${min ?? ""}`;
           if (!groups.has(key)) groups.set(key, []);
-          groups.get(key)!.push(r.id as string);
+          groups.get(key)!.push(row.id);
         }
         if (!rows || rows.length < 1000) { cursor = ""; break; }
         cursor = rows[rows.length - 1].id as string;
@@ -9372,20 +9398,24 @@ async function handleRequest(req: Request): Promise<Response> {
           updated += Math.min(200, ids.length - i);
         }
       }
+      const totals = { scanned: (Number(carried.scanned) || 0) + scanned, updated: (Number(carried.updated) || 0) + updated };
       if (cursor) {
+        await progress({ cursor, ...totals });
         const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
         waitUntil(chainKey().then((key) => fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "backfill-experience", chainKey: key, cursor }),
+          body: JSON.stringify({ action: "backfill-experience", chainKey: key, cursor, rulesVersion: EXPERIENCE_VERSION }),
         })).then((r) => discardBody(r)).catch(() => {}));
         return json({ ok: true, scanned, updated, nextCursor: cursor });
       }
+      const doneAt = new Date().toISOString();
+      await progress({ cursor: "", ...totals, doneAt });
       await client.from("job_board_meta").upsert(
-        { k: "experience_version", v: { version: EXPERIENCE_VERSION, sweptAt: new Date().toISOString() }, updated_at: new Date().toISOString() },
+        { k: "experience_version", v: { version: EXPERIENCE_VERSION, sweptAt: doneAt, ...totals }, updated_at: doneAt },
         { onConflict: "k" },
       );
-      console.log(`[JOB-BOARD] experience backfill complete: ${scanned} scanned, ${updated} filled (v${EXPERIENCE_VERSION})`);
+      console.log(`[JOB-BOARD] experience re-derive complete: ${totals.scanned} scanned, ${totals.updated} rewritten (v${EXPERIENCE_VERSION})`);
       return json({ ok: true, scanned, updated, done: true });
     }
 
