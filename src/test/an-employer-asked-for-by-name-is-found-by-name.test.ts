@@ -119,6 +119,20 @@ describe("the shipped list resolves a name and names what it could not", () => {
     expect(board.db.queries.some((q: Query) => q.rpc === "search_jobs" || q.table === "job_board_postings"), "the board was searched without the scope").toBe(false);
   });
 
+  // The review of 9fe3bc0d: 300 token-shaped names, forwarded uncapped,
+  // were each matched against every employer before any cap.
+  it("a body naming 500 employers looks up five, names the rest as not looked up, and searches nothing", async () => {
+    board.reset();
+    withFacet();
+    const names = Array.from({ length: 500 }, (_, i) => `zz-nobody-${i}`);
+    const r = await board.post({ action: "list", companies: names, limit: 10 });
+    expect((r.companiesUnresolved as Array<{ asked: string }>)?.map((u) => u.asked)).toEqual(names.slice(0, 5));
+    expect(r.companiesNotLookedUp).toEqual(names.slice(5));
+    expect(r.ignoredFilters).toContain("companies");
+    expect(r.total).toBe(0);
+    expect(board.db.queries.some((q: Query) => q.rpc === "search_jobs" || q.table === "job_board_postings"), "the board was searched").toBe(false);
+  });
+
   it("a resolved name beside a refused one serves the resolved boards and names the refusal", async () => {
     board.reset();
     withFacet();

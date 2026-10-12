@@ -2942,7 +2942,7 @@ const HOST_SWEEP_ANON_GAP_MS = 50 * 60_000;
  * 1.3-1.6MB refresh row for two of its keys. The facet changes once a pass.
  */
 const SUGGEST_MEMO_MS = 60_000;
-let suggestMemo: { at: number; facet: unknown; open: unknown } | null = null;
+let suggestMemo: { at: number; facet: unknown; open: unknown; merged?: ReturnType<typeof mergeCompanyFacet> } | null = null;
 /** company-suggest's employers, one row per employer with its open count; the list resolves names from the same rows. */
 async function suggestEmployers(client: SupabaseClient): Promise<ReturnType<typeof mergeCompanyFacet>> {
   // Rationale: docs/job-board-index-notes.md#n273-const-data-metarow-await-client-from-job
@@ -2950,6 +2950,8 @@ async function suggestEmployers(client: SupabaseClient): Promise<ReturnType<type
   // SUGGEST_MEMO_MS -- an autocomplete re-read the whole refresh row per keystroke.
   let suggestV: Record<string, unknown>;
   if (suggestMemo && Date.now() - suggestMemo.at < SUGGEST_MEMO_MS) {
+    // The merged list too, so company-names' folded index lives as long as the memo.
+    if (suggestMemo.merged) return suggestMemo.merged;
     suggestV = { companiesFacet: suggestMemo.facet, companiesOpen: suggestMemo.open };
   } else {
     const { data: metaRow, error: metaErr } = await client.from("job_board_meta")
@@ -2965,11 +2967,16 @@ async function suggestEmployers(client: SupabaseClient): Promise<ReturnType<type
   // OWN keys only: the map is keyed by board token, and a token named
   // 'constructor' (a real ashby board) reads Object.prototype.constructor
   // from a bare bracket — a function served as an open-roles count.
-  return mergeCompanyFacet(
-    openMap
-      ? facet.map((c) => ({ ...c, open: typeof c.token === "string" && Object.prototype.hasOwnProperty.call(openMap, c.token) ? openMap[c.token] : 0 }))
-      : facet,
-  );
+  const fold = () => {
+    return mergeCompanyFacet(
+      openMap
+        ? facet.map((c) => ({ ...c, open: typeof c.token === "string" && Object.prototype.hasOwnProperty.call(openMap, c.token) ? openMap[c.token] : 0 }))
+        : facet,
+    );
+  };
+  const merged = fold();
+  if (suggestMemo) suggestMemo.merged = merged;
+  return merged;
 }
 
 /** A maintenance credential (.88): the chain secret in the body, or the service key itself. */
@@ -9819,11 +9826,11 @@ async function handleRequest(req: Request): Promise<Response> {
       const askedNames = askedByName(body, CATALOGUE_TOKENS);
       if (askedNames) {
         named = resolveCompanyNames(askedNames, CATALOGUE_TOKENS, await suggestEmployers(client));
-        if (named.resolved.length || named.unresolved.length) body = { ...body, companies: named.companies };
+        if (named.resolved.length || named.unresolved.length || named.skipped.length) body = { ...body, companies: named.companies };
         // Every name refused and nothing else asked: the empty scope, never the whole board. A value no
         // token could be (a space, a quote) is a refused filter value, named as normalizeFilters names it.
-        if (named.unresolved.length && !named.companies.length) {
-          const notToken = named.unresolved.some((u) => !COMPANY_TOKEN_SHAPE.test(u.asked));
+        if ((named.unresolved.length || named.skipped.length) && !named.companies.length) {
+          const notToken = named.skipped.length > 0 || named.unresolved.some((u) => !COMPANY_TOKEN_SHAPE.test(u.asked));
           return json({ ...uncarriedListReply(named.unresolved.map((u) => u.asked)), ...companyNameNotes(named), ...(notToken ? { ignoredFilters: ["companies"] } : {}) });
         }
       }
@@ -11523,19 +11530,20 @@ function companyNameNotes(n: CompanyScope): Record<string, unknown> {
   return {
     ...(n.resolved.length ? { companiesResolved: n.resolved } : {}),
     ...(n.unresolved.length ? { companiesUnresolved: n.unresolved } : {}),
+    ...(n.skipped.length ? { companiesNotLookedUp: n.skipped } : {}),
   };
 }
 
 /** A list answer with the name scope said on it; a refused name is a dropped filter value, so "companies" is ignored too. */
 async function withCompanyNames(res: Response, n: CompanyScope | null): Promise<Response> {
-  if (!n || (!n.resolved.length && !n.unresolved.length)) return res;
+  if (!n || (!n.resolved.length && !n.unresolved.length && !n.skipped.length)) return res;
   const out = await boundBody(res.clone(), MAX_REQUEST_BYTES).json().catch(() => null) as Record<string, unknown> | null;
   if (!out || typeof out !== "object") return res;
   const ig = Array.isArray(out.ignoredFilters) ? out.ignoredFilters as string[] : [];
   return json({
     ...out,
     ...companyNameNotes(n),
-    ...(n.unresolved.length ? { ignoredFilters: [...new Set([...ig, "companies"])] } : {}),
+    ...(n.unresolved.length || n.skipped.length ? { ignoredFilters: [...new Set([...ig, "companies"])] } : {}),
   }, res.status);
 }
 
