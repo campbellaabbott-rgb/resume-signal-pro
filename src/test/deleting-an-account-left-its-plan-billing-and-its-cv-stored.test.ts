@@ -24,8 +24,8 @@ const USER_ID = "00000000-0000-4000-8000-0000000de1e7";
 const OTHER_ID = "00000000-0000-4000-8000-0000000de1e8";
 const EMAIL = "leaving@example.com";
 const b64 = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64url");
-const PASSWORD_JWT = `${b64({ alg: "none" })}.${b64({ sub: USER_ID, amr: [{ method: "password" }] })}.sig`;
-const GOOGLE_JWT = `${b64({ alg: "none" })}.${b64({ sub: USER_ID, amr: [{ method: "oauth" }] })}.sig`;
+const PASSWORD_JWT = `${b64({ alg: "none" })}.${b64({ sub: USER_ID, role: "authenticated", aud: "authenticated", amr: [{ method: "password" }] })}.sig`;
+const GOOGLE_JWT = `${b64({ alg: "none" })}.${b64({ sub: USER_ID, role: "authenticated", aud: "authenticated", amr: [{ method: "oauth" }] })}.sig`;
 
 type Sub = { id: string; customer: string; status: string; metadata: Record<string, string> };
 const state = {
@@ -46,6 +46,7 @@ export default class Stripe {
     const s = () => globalThis.__delState;
     this.customers = { list: async () => ({ data: [{ id: "cus_1" }], has_more: false }) };
     this.subscriptions = {
+      search: async () => ({ data: [], has_more: false }),
       list: async () => { if (s().stripeFails) throw new Error("stripe down"); return { data: s().subs, has_more: false }; },
       cancel: async (id) => { s().cancelled.push(id); s().order.push("cancel"); return {}; },
     };
@@ -96,6 +97,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   db = new FakeDb();
+  db.rpcs.account_erase_personal_data = () => ({ data: { keys_revoked: 0 }, error: null });
   Object.assign(state, {
     subs: [], cancelled: [], removed: [], deleted: [], order: [], stripeFails: false, storageFails: false, identities: [],
     files: [`${USER_ID}/Jane_CV.pdf`, `${USER_ID}/Jane_CV_2026.pdf`, `${OTHER_ID}/Someone_else.pdf`],

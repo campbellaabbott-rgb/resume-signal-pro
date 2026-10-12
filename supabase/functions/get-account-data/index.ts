@@ -1,33 +1,47 @@
-// deploy-stamp: 2026-10-09T13:00Z
-// Account data for the signed-in user: scan credits and purchase history.
-// Both are keyed by email in service-role tables, so this function verifies
-// the caller's JWT and reads on their behalf.
-// verify_jwt stays at the default (true) — Supabase rejects anonymous calls.
+// deploy-stamp: 2026-10-11T17:00Z
+// Account data for the signed-in user: scan credits, orders and passes.
+// Credits and one-off purchases are keyed by email in service-role tables, so
+// this function verifies the caller's website session and reads on their
+// behalf. verify_jwt stays at the default (true).
 //
 // AN ADDRESS ON THE SESSION IS NOT PROOF (review of claude/w1-scan-ai,
-// 2026-10-05). Sign-ups are auto-confirmed (mailer_autoconfirm = true), so
-// anybody can sign up as a buyer's address and hold a session for it. This
-// function used to answer that session with the address's whole credit
-// balance and its purchase history (defect sweep 1.26 through the JWT). Now:
-//   - credits: what the account's user id claimed (purchases a signed-in
-//     browser holding their Stripe session presented), plus the address's
-//     pool ONLY when the session proved its mailbox (_shared/mailbox-proof.ts:
-//     a verified Google/Apple sign-in today);
-//   - purchases by address: only for a proven mailbox, else none, with
-//     mailboxProven: false so the page can say why;
-//   - the account's Agent Passes (agent_passes, by the verified user id): a
-//     pass is never a purchased_content row, so the Purchases box said "No
-//     purchases yet" to a $29 buyer (platform sweep L6-12).
+// 2026-10-05). Sign-ups are auto-confirmed, so anybody can sign up as a
+// buyer's address and hold a session for it. So:
+//   - credits: what the account's user id claimed, plus the address's pool
+//     ONLY when the account has proven that mailbox;
+//   - orders by address: only for a proven mailbox, with mailboxProven false
+//     so the page can say why;
+//   - the account's Agent Passes and Pro grants, by the verified user id.
+//
+// A PROOF RECORDED ONCE KEEPS COUNTING (S12-002, plan CP-047). The only proof
+// this read accepted was a Google sign-in made in THIS session, and no Google
+// button existed, so every account saw an empty Purchases box and copy telling
+// it to "sign in with Google". It now reads _shared/account-proof.ts: a
+// provider sign-in, confirmation once required, or R1's account_mailbox_proofs
+// row written when a fresh emailed code proved the address.
+//
+// ORDERS, NOT JUST NAMES (plan CP-022, CP-050). Each row now says what it is,
+// when it was bought, its status (preparing, ready, needs your résumé,
+// couldn't be made, refunded, included with Pro), the amount when we hold it,
+// and the Stripe session the page links to. A one-off bought while signed in
+// is joined by its checkout_buyers row when that table exists (the checkout
+// writes it), with no proof needed.
+//
+// A WEBSITE SESSION ONLY (plan CP-J): a token minted for a connected app is
+// refused (_shared/website-session.ts).
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { provenMailbox } from "../_shared/mailbox-proof.ts";
+import { accountProvenEmail } from "../_shared/account-proof.ts";
+import type { MailboxEnv } from "../_shared/mailbox-proof.ts";
 import { isAuthUserId, scanCreditBalance, type CreditDb } from "../_shared/scan-credits.ts";
+import { requireWebsiteSession } from "../_shared/website-session.ts";
 
 // Provable from outside: every response, the CORS preflight included, carries
-// this in x-fn-build.
-// 2026-10-14.1 (R1 integration): _shared/mailbox-proof.ts gained the proof-row
-// readers and maskEmail; provenMailbox, the one import here, is unchanged.
-const FN_BUILD = "get-account-data.2026-10-14.1";
+// this in x-fn-build. It imports _shared/mailbox-proof.ts, which R1 stamped
+// 2026-10-14.1, so this build sorts after that day.
+// 2026-10-14.25 (wave 4 round 2): the account proof rule, orders with status,
+// amount and link, a website session only.
+const FN_BUILD = "get-account-data.2026-10-14.25";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -39,48 +53,133 @@ const corsHeaders = {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
+export type OrderStatus = "preparing" | "ready" | "needs_resume" | "failed" | "refunded" | "included";
+
+export type AccountOrder = {
+  /** The Stripe session for a one-off; the grant id for a Pro inclusion. */
+  id: string;
+  sessionId: string | null;
+  product: string;
+  productType: string | null;
+  date: string;
+  status: OrderStatus;
+  amountCents: number | null;
+  currency: string | null;
+};
+
+type DeliveryRow = {
+  stripe_session_id: string; product_name?: string | null; product_type?: string | null; status?: string | null;
+  amount_cents?: number | null; created_at: string; payment_completed_at?: string | null;
+  generation_error?: string | null; last_retry_error?: string | null;
+};
+type ContentRow = { stripe_session_id?: string | null; product_name?: string | null; product_type?: string | null; created_at: string };
+type GrantRow = { id: string; product_name?: string | null; product_type?: string | null; created_at: string; revoked_at?: string | null };
+
+const RESUME_MISSING = /r[eé]sum[eé][^.]{0,40}(expired|linked|missing|required|gone)|no r[eé]sum[eé]/i;
+
+/** A delivery row's status, as the buyer reads it. */
+export function orderStatusOf(d: Pick<DeliveryRow, "status" | "generation_error" | "last_retry_error">, hasContent: boolean): OrderStatus {
+  const s = String(d.status ?? "").toLowerCase();
+  if (s === "refunded" || s === "refund_due") return "refunded";
+  if (hasContent || s === "delivered" || s === "content_generated" || s === "generated" || s === "email_failed") return "ready";
+  if (s === "failed" || s === "permanently_failed" || s === "expired") {
+    return RESUME_MISSING.test(`${d.generation_error ?? ""} ${d.last_retry_error ?? ""}`) ? "needs_resume" : "failed";
+  }
+  return "preparing";
+}
+
+/** A read that found the table missing is no rows; any other failure is an error. */
+const missingTable = (e: unknown) => {
+  const code = String((e as { code?: unknown } | null)?.code ?? "");
+  return code === "42P01" || code === "PGRST205" || /does not exist|schema cache/i.test(String((e as { message?: unknown } | null)?.message ?? ""));
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const jwt = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
-    const service = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-      { auth: { persistSession: false } },
-    );
-    const { data: { user }, error: userErr } = await service.auth.getUser(jwt);
-    if (userErr || !user?.email || !isAuthUserId(user.id)) return json({ error: "Not authenticated" }, 401);
+    const url = Deno.env.get("SUPABASE_URL") ?? "";
+    const anon = createClient(url, Deno.env.get("SUPABASE_ANON_KEY") ?? "", { auth: { persistSession: false } });
+    const session = await requireWebsiteSession(req, { auth: anon.auth, headers: corsHeaders });
+    if (session instanceof Response) return session;
+    const user = session.user;
+    if (!user?.email || !isAuthUserId(user.id)) return json({ error: "Not authenticated" }, 401);
 
-    // The switch is the mailbox_proof_settings row; the secret only answers
-    // when that row cannot be read.
-    const provenEmail = await provenMailbox(user, jwt, {
+    const service = createClient(url, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", { auth: { persistSession: false } });
+    const proofEnv: MailboxEnv = {
       db: service,
       confirmedSince: Deno.env.get("EMAIL_CONFIRMED_SINCE") ?? null,
-      supabaseUrl: Deno.env.get("SUPABASE_URL") ?? "",
+      supabaseUrl: url,
       anonKey: Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-    });
+    };
+    const provenEmail = await accountProvenEmail(user, session.jwt, proofEnv);
 
-    const [credits, purchasesRes, passesRes] = await Promise.all([
+    // A one-off bought while signed in: its session is bound to this account.
+    const boundRes = await service.from("checkout_buyers").select("stripe_session_id").eq("user_id", user.id).limit(100);
+    if (boundRes.error && !missingTable(boundRes.error)) throw new Error(`checkout_buyers: ${String(boundRes.error.message ?? "").slice(0, 120)}`);
+    const boundSessions = ((boundRes.data ?? []) as Array<{ stripe_session_id?: unknown }>)
+      .map((r) => r.stripe_session_id).filter((v): v is string => typeof v === "string" && !!v);
+
+    const DELIVERY_COLS = "stripe_session_id, product_name, product_type, status, amount_cents, created_at, payment_completed_at, generation_error, last_retry_error";
+    const none = Promise.resolve({ data: [] as unknown[], error: null });
+    const [credits, deliveriesByAddress, deliveriesBound, contentByAddress, contentBound, grantsRes, passesRes] = await Promise.all([
       scanCreditBalance(service as unknown as CreditDb, { provenEmail, userId: user.id, sessionHashes: [] }),
-      provenEmail
-        ? service.from("purchased_content")
-          .select("product_name, product_type, created_at")
-          .eq("customer_email", provenEmail)
-          .order("created_at", { ascending: false })
-          .limit(50)
-        : Promise.resolve({ data: [] as unknown[] }),
+      provenEmail ? service.from("product_deliveries").select(DELIVERY_COLS).eq("customer_email", provenEmail).order("created_at", { ascending: false }).limit(50) : none,
+      boundSessions.length ? service.from("product_deliveries").select(DELIVERY_COLS).in("stripe_session_id", boundSessions).limit(100) : none,
+      provenEmail ? service.from("purchased_content").select("stripe_session_id, product_name, product_type, created_at").eq("customer_email", provenEmail).order("created_at", { ascending: false }).limit(50) : none,
+      boundSessions.length ? service.from("purchased_content").select("stripe_session_id, product_name, product_type, created_at").in("stripe_session_id", boundSessions).limit(100) : none,
+      service.from("pro_grants").select("id, product_name, product_type, created_at, revoked_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(50),
       service.from("agent_passes")
         .select("purchased_at, shelf_expires_at, activated_at, expires_at, closed_at")
         .eq("user_id", user.id)
         .order("purchased_at", { ascending: false })
         .limit(20),
     ]);
+    for (const r of [deliveriesByAddress, deliveriesBound, contentByAddress, contentBound, grantsRes] as Array<{ error?: unknown }>) {
+      if (r.error && !missingTable(r.error)) throw new Error(`orders read: ${String((r.error as { message?: string }).message ?? "").slice(0, 120)}`);
+    }
 
-    const purchases = ((purchasesRes as { data?: unknown[] | null }).data ?? []).map((row) => {
-      const p = row as { product_name?: string | null; product_type?: string; created_at: string };
-      return { product: p.product_name ?? p.product_type ?? "Purchase", date: p.created_at };
-    });
+    // One row per Stripe session: the delivery row decides the status, the
+    // saved copy proves it is ready.
+    const contentBySession = new Map<string, ContentRow>();
+    const orphanContent: ContentRow[] = [];
+    for (const c of [...((contentByAddress.data ?? []) as ContentRow[]), ...((contentBound.data ?? []) as ContentRow[])]) {
+      if (c.stripe_session_id) contentBySession.set(c.stripe_session_id, c);
+      else orphanContent.push(c);
+    }
+    const orders = new Map<string, AccountOrder>();
+    for (const d of [...((deliveriesByAddress.data ?? []) as DeliveryRow[]), ...((deliveriesBound.data ?? []) as DeliveryRow[])]) {
+      if (!d.stripe_session_id || orders.has(d.stripe_session_id)) continue;
+      const c = contentBySession.get(d.stripe_session_id);
+      orders.set(d.stripe_session_id, {
+        id: d.stripe_session_id,
+        sessionId: d.stripe_session_id,
+        product: d.product_name ?? c?.product_name ?? d.product_type ?? "Purchase",
+        productType: d.product_type ?? c?.product_type ?? null,
+        date: d.payment_completed_at ?? d.created_at,
+        status: orderStatusOf(d, !!c),
+        amountCents: typeof d.amount_cents === "number" ? d.amount_cents : null,
+        currency: typeof d.amount_cents === "number" ? "usd" : null,
+      });
+    }
+    for (const [sid, c] of contentBySession) {
+      if (orders.has(sid)) continue;
+      orders.set(sid, { id: sid, sessionId: sid, product: c.product_name ?? c.product_type ?? "Purchase", productType: c.product_type ?? null, date: c.created_at, status: "ready", amountCents: null, currency: null });
+    }
+    for (const g of (grantsRes.data ?? []) as GrantRow[]) {
+      orders.set(`grant:${g.id}`, {
+        id: `grant:${g.id}`, sessionId: null,
+        product: g.product_name ?? g.product_type ?? "Included with Pro", productType: g.product_type ?? null,
+        date: g.created_at, status: g.revoked_at ? "refunded" : "included", amountCents: 0, currency: null,
+      });
+    }
+    const orderList = [...orders.values()].sort((a, b) => Date.parse(b.date) - Date.parse(a.date)).slice(0, 100);
+
+    // The plain list the export and older pages read.
+    const purchases = [
+      ...orderList.filter((o) => o.sessionId).map((o) => ({ product: o.product, date: o.date })),
+      ...orphanContent.map((c) => ({ product: c.product_name ?? c.product_type ?? "Purchase", date: c.created_at })),
+    ];
 
     // State from the timestamps, as agent-pass-status derives it (its lazy
     // close may not have run yet).
@@ -92,7 +191,7 @@ Deno.serve(async (req) => {
       return { date: p.purchased_at, state: ended ? "closed" : p.activated_at ? "live" : "unactivated" };
     });
 
-    return json({ credits: credits ?? 0, purchases, passes, mailboxProven: !!provenEmail });
+    return json({ credits: credits ?? 0, purchases, orders: orderList, passes, mailboxProven: !!provenEmail });
   } catch (e) {
     console.error("[GET-ACCOUNT-DATA] Uncaught:", e instanceof Error ? e.message : String(e));
     return json({ error: "Unexpected error" }, 500);

@@ -28,7 +28,7 @@ import en from "../i18n/locales/en.json";
 
 const USER_ID = "00000000-0000-4000-8000-0000000de1e9";
 const b64 = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64url");
-const JWT = `${b64({ alg: "none" })}.${b64({ sub: USER_ID, amr: [{ method: "password" }] })}.sig`;
+const JWT = `${b64({ alg: "none" })}.${b64({ sub: USER_ID, role: "authenticated", aud: "authenticated", amr: [{ method: "password" }] })}.sig`;
 
 const state = {
   subs: [] as Array<{ id: string; customer: string; status: string; metadata: Record<string, string> }>,
@@ -47,6 +47,7 @@ export default class Stripe {
     const s = () => globalThis.__refusedDel;
     this.customers = { list: async () => { if (s().readFails) throw new Error("stripe down"); return { data: [{ id: "cus_1" }], has_more: false }; } };
     this.subscriptions = {
+      search: async () => ({ data: [], has_more: false }),
       list: async () => ({ data: s().subs, has_more: false }),
       cancel: async (id) => {
         if (s().cancelFailsOn === id) throw new Error("cancel refused");
@@ -87,6 +88,7 @@ beforeAll(async () => {
 }, 120_000);
 
 beforeEach(() => {
+  db.rpcs.account_erase_personal_data = () => ({ data: { keys_revoked: 0 }, error: null });
   Object.assign(state, {
     subs: [
       { id: "sub_pro", customer: "cus_1", status: "active", metadata: { user_id: USER_ID } },

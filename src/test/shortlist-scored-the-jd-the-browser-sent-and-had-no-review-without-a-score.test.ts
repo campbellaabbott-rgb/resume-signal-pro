@@ -82,11 +82,14 @@ beforeEach(() => {
   prompts = [];
 });
 
+/** A token shaped like the employer's website session (plan CP-J: nothing else is accepted). */
+const USER_JWT = ["e30", Buffer.from(JSON.stringify({ sub: "user-1", role: "authenticated", aud: "authenticated" })).toString("base64url"), "sig"].join(".");
 const call = async (body: Record<string, unknown>) => {
   const res = await handler(new Request("https://harness.supabase.co/functions/v1/shortlist-evaluate", {
     method: "POST",
-    headers: { "content-type": "application/json", authorization: "Bearer user-jwt", "cf-connecting-ip": "198.51.100.4" },
-    body: JSON.stringify(body),
+    headers: { "content-type": "application/json", authorization: `Bearer ${USER_JWT}`, "cf-connecting-ip": "198.51.100.4" },
+    // D14: every evaluation carries the uploader's attestation.
+    body: JSON.stringify({ attested: true, ...body }),
   }));
   return { status: res.status, body: (await res.json()) as Record<string, any> };
 };
@@ -139,6 +142,7 @@ describe("alternative review before scoring", () => {
     expect(cand.score ?? null).toBeNull();
     expect(inserted("shortlist_decisions")).toEqual([
       expect.objectContaining({ candidate_id: cand.id, owner_id: "user-1", actor_email: "hr@employer.test", action: "alt_review_requested" }),
+      expect.objectContaining({ candidate_id: cand.id, owner_id: "user-1", action: "note", new_value: expect.stringMatching(/^uploader_attested:/) }),
     ]);
   });
 });

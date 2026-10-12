@@ -76,7 +76,12 @@ type Case = {
   global?: number;
   /** false where the harness cannot get past the function's own purchase check. */
   reachesModel?: boolean;
+  /** A signed-in website session's bearer token, for a function that accepts nothing else (plan CP-J). */
+  auth?: string;
 };
+
+/** A token shaped like a signed-in website session for the harness user (the stub auth server accepts it). */
+const sessionToken = (sub: string) => ["e30", Buffer.from(JSON.stringify({ sub, role: "authenticated", aud: "authenticated" })).toString("base64url"), "sig"].join(".");
 
 const CASES: Case[] = [
   { fn: "generate-summary", perAddress: 30, global: 600, body: { atsScore: 71, formatGrade: "B", industry: "tech", experienceLevel: "mid", topStrength: "Clear metrics", redFlagsCount: 2, quickWins: [{ fix: "Quantify the 2023 launch" }], improvementPotential: { estimatedScoreIncrease: 12 }, candidateName: "Jane Doe" } },
@@ -94,7 +99,7 @@ const CASES: Case[] = [
   { fn: "import-freelance-profile", perAddress: 10, window: 1440, global: 100, body: { profileText: RESUME } },
   { fn: "test-ai-fallback", perAddress: 3, global: 30, body: { mode: "quick" } },
   { fn: "parse-resume-structured", perAddress: 15, window: 1440, global: 150, body: { resumeText: RESUME } },
-  { fn: "shortlist-evaluate", perAddress: 60, global: 300, body: { roleId: "role-1", jdText: POSTING, resumeText: RESUME } },
+  { fn: "shortlist-evaluate", perAddress: 60, global: 300, auth: `Bearer ${sessionToken("user-harness")}`, body: { roleId: "role-1", jdText: POSTING, resumeText: RESUME, attested: true } },
   { fn: "generate-keyword-fix", perAddress: 20, body: { resumeText: RESUME, jobDescription: POSTING, jobTitle: "Engineer", sessionId: PAID } },
   { fn: "generate-career-snapshot", perAddress: 20, body: { resumeText: RESUME, jobDescription: POSTING, jobTitle: "Engineer", sessionId: PAID } },
   { fn: "generate-graduate-gameplan", perAddress: 20, body: { resumeText: RESUME, jobDescription: POSTING, jobTitle: "Engineer", sessionId: PAID } },
@@ -154,7 +159,7 @@ beforeEach(() => {
 async function call(c: Case, headers: Record<string, string>) {
   const res = await handlers.get(c.fn)!(new Request(`https://harness.supabase.co/functions/v1/${c.fn}`, {
     method: "POST",
-    headers: { "content-type": "application/json", authorization: "Bearer anon_harness", apikey: "anon_harness", ...headers },
+    headers: { "content-type": "application/json", authorization: c.auth ?? "Bearer anon_harness", apikey: "anon_harness", ...headers },
     body: JSON.stringify(c.body),
   }));
   const text = await res.text();
@@ -237,7 +242,8 @@ describe("the gate is in front of every public model endpoint", () => {
         }
       });
 
-      it("our own servers (the service-role key) are not counted by address or ceiling", async () => {
+      // A function that answers only a signed-in website session (shortlist-evaluate, plan CP-J) refuses the service key outright.
+      if (!c.auth) it("our own servers (the service-role key) are not counted by address or ceiling", async () => {
         await call(c, { authorization: `Bearer ${SERVICE_KEY}`, apikey: SERVICE_KEY, "cf-connecting-ip": "198.51.100.4" });
         const seen = rateCalls.filter((a) => a.p_function === c.fn);
         expect(seen.filter((a) => !a.p_ip.startsWith("sess:")), "a server call was counted by address or ceiling").toEqual([]);

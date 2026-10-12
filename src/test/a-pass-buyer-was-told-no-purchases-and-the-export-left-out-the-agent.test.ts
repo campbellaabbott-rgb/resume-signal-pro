@@ -28,7 +28,7 @@ import { collectAccountExport, EXPORT_PAGE, OWNER_TABLES, type ExportClient } fr
 
 const USER_ID = "00000000-0000-4000-8000-0000000a55e5";
 const b64 = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64url");
-const PASSWORD_JWT = `${b64({ alg: "none" })}.${b64({ sub: USER_ID, amr: [{ method: "password", timestamp: 1 }] })}.sig`;
+const PASSWORD_JWT = `${b64({ alg: "none" })}.${b64({ sub: USER_ID, role: "authenticated", aud: "authenticated", amr: [{ method: "password", timestamp: 1 }] })}.sig`;
 
 describe("the get-account-data handler lists the account's passes", () => {
   let handler: EdgeHandler;

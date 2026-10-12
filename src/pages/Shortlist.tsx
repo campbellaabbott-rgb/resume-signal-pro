@@ -5,8 +5,10 @@
 // - Every decision and score override is logged append-only with actor+reason
 // - Protected-class proxies are redacted server-side before scoring; the
 //   exclusion audit is visible per candidate
-// - Demographics (optional) live apart from scoring, used only for the
-//   impact-ratio audit view
+// - No demographic data is recorded (owner decision D14, 2026-10-12): the sex
+//   and race fields recorded special-category data about third parties with
+//   no stated basis, so they are gone, and the uploader confirms they may
+//   have each resume scored (shortlist-evaluate refuses without it)
 // - Jurisdiction routing drives candidate-notice templates (NYC/IL/EU)
 
 import { useEffect, useMemo, useState, useCallback } from "react";
@@ -21,7 +23,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { rankCandidates, reviewsFromDecisions, type CandidateReview } from "@/lib/shortlist-review";
-import { computeImpactAnalysis, raceCategory, sexCategory, RACE_CATEGORIES, SEX_CATEGORIES } from "../../supabase/functions/_shared/impact-ratio";
+import { SHORTLIST_ATTESTATION_TEXT } from "../../supabase/functions/_shared/shortlist-attestation";
+import { PLANTED_INSTRUCTIONS_FLAG } from "../../supabase/functions/_shared/planted-instructions";
 
 interface Role {
   id: string;
@@ -46,6 +49,8 @@ interface Candidate {
   jd_version: number | null;
   /** The JD text this candidate was scored against (null before 20261009111000, and for alternative review). */
   jd_text_scored: string | null;
+  /** The resume held text addressed to the scoring tool (S12-151): review by hand. */
+  steered: boolean;
   created_at: string;
 }
 
@@ -75,7 +80,7 @@ const toCandidate = (row: {
   id: string; file_name: string | null; score: number | null; flags: Json | null;
   signals: Json | null; interview_questions: Json | null; level_read: string | null;
   exclusions_applied: Json | null; status: string; model_version: string | null; created_at: string;
-  jd_version?: number | null; jd_text_scored?: string | null;
+  jd_version?: number | null; jd_text_scored?: string | null; parsed_fields?: Json | null;
 }): Candidate => ({
   id: row.id,
   file_name: row.file_name,
@@ -89,6 +94,7 @@ const toCandidate = (row: {
   model_version: row.model_version,
   jd_version: row.jd_version ?? null,
   jd_text_scored: row.jd_text_scored ?? null,
+  steered: (row.parsed_fields as { scoringIntegrity?: { plantedInstructions?: unknown } } | null | undefined)?.scoringIntegrity?.plantedInstructions === true,
   created_at: row.created_at,
 });
 
@@ -139,8 +145,9 @@ export default function Shortlist() {
   const [roles, setRoles] = useState<Role[]>([]);
   const [activeRole, setActiveRole] = useState<Role | null>(null);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
-  const [demographics, setDemographics] = useState<Record<string, { sex?: string; race_ethnicity?: string }>>({});
   const [reviews, setReviews] = useState<Record<string, CandidateReview>>({});
+  /** The uploader's confirmation for the resume in the box (D14); cleared after each candidate. */
+  const [attested, setAttested] = useState(false);
 
   const [newRole, setNewRole] = useState({ title: "", jd: "", jurisdiction: "OTHER" });
   const [showNewRole, setShowNewRole] = useState(false);
@@ -203,10 +210,7 @@ export default function Shortlist() {
   }, []);
 
   const loadCandidates = useCallback(async (roleId: string) => {
-    const [{ data: cands }, { data: demos }] = await Promise.all([
-      supabase.from("shortlist_candidates").select("*").eq("role_id", roleId).order("score", { ascending: false }),
-      supabase.from("shortlist_demographics").select("*"),
-    ]);
+    const { data: cands } = await supabase.from("shortlist_candidates").select("*").eq("role_id", roleId).order("score", { ascending: false });
     const list = cands?.map(toCandidate) ?? [];
     setCandidates(list);
     const { data: logged } = list.length
@@ -214,11 +218,6 @@ export default function Shortlist() {
           .in("candidate_id", list.map(c => c.id)).in("action", ["override_score", "alt_review_requested"])
       : { data: [] };
     setReviews(reviewsFromDecisions((logged as never[]) ?? []));
-    const demoMap: typeof demographics = {};
-    for (const d of (demos as Array<{ candidate_id: string; sex?: string; race_ethnicity?: string }> | null) ?? []) {
-      demoMap[d.candidate_id] = { sex: d.sex, race_ethnicity: d.race_ethnicity };
-    }
-    setDemographics(demoMap);
   }, []);
 
   useEffect(() => { if (session) loadRoles(); }, [session, loadRoles]);
@@ -248,6 +247,7 @@ export default function Shortlist() {
       setError("Paste the candidate's resume text (100+ characters).");
       return;
     }
+    if (!attested) { setError("Confirm you are allowed to have this resume scored first."); return; }
     setEvaluating(true);
     setError(null);
     const { data, error: err } = await supabase.functions.invoke("shortlist-evaluate", {
@@ -256,6 +256,7 @@ export default function Shortlist() {
         resumeText: candidateText,
         fileName: candidateName.trim() || null,
         jurisdiction: activeRole.jurisdiction,
+        attested: true,
       },
     }).catch(() => ({ data: null, error: { message: "network" } }));
     setEvaluating(false);
@@ -265,16 +266,18 @@ export default function Shortlist() {
     }
     setCandidateText("");
     setCandidateName("");
+    setAttested(false);
     loadCandidates(activeRole.id);
   };
 
   // Alternative review before any scoring: a record and its logged request, no model call.
   const routeToAltReview = async () => {
     if (!activeRole) return;
+    if (!attested) { setError("Confirm you are allowed to have this resume scored first."); return; }
     setEvaluating(true);
     setError(null);
     const { data, error: err } = await supabase.functions.invoke("shortlist-evaluate", {
-      body: { roleId: activeRole.id, altReview: true, fileName: candidateName.trim() || null, jurisdiction: activeRole.jurisdiction },
+      body: { roleId: activeRole.id, altReview: true, fileName: candidateName.trim() || null, jurisdiction: activeRole.jurisdiction, attested: true },
     }).catch(() => ({ data: null, error: { message: "network" } }));
     setEvaluating(false);
     if (err || !(data as { success?: boolean })?.success) {
@@ -283,6 +286,7 @@ export default function Shortlist() {
     }
     setCandidateText("");
     setCandidateName("");
+    setAttested(false);
     loadCandidates(activeRole.id);
   };
 
@@ -326,20 +330,6 @@ export default function Shortlist() {
     loadDecisionLog(candidate.id);
   };
 
-  const saveDemographics = async (candidateId: string, field: "sex" | "race_ethnicity", value: string) => {
-    if (!session) return;
-    const current = demographics[candidateId] ?? {};
-    const next = { ...current, [field]: value };
-    setDemographics({ ...demographics, [candidateId]: next });
-    const { error: err } = await supabase.from("shortlist_demographics").upsert({
-      candidate_id: candidateId,
-      owner_id: session.user.id,
-      sex: next.sex || null,
-      race_ethnicity: next.race_ethnicity || null,
-    });
-    if (err) setError(`Demographics not saved: ${err.message}`);
-  };
-
   const requestAltReview = async (candidate: Candidate) => {
     if (!session) return;
     const { error: err } = await supabase.from("shortlist_decisions").insert({
@@ -375,7 +365,7 @@ export default function Shortlist() {
         human_override_score: reviews[c.id]?.overrideScore ?? null,
       })),
       decisions: decisions ?? [],
-      note: "Append-only audit export. Demographics are excluded from this file by design; use the bias-audit export for aggregate analysis.",
+      note: "Append-only audit export. Shortlist records no demographic data about candidates.",
     };
     let blob: Blob;
     let name: string;
@@ -398,17 +388,6 @@ export default function Shortlist() {
     a.href = url; a.download = name; a.click();
     URL.revokeObjectURL(url);
   };
-
-  const biasAnalysis = useMemo(() => {
-    const records = candidates.map(c => ({
-      advanced: c.status === "advanced",
-      pending: c.status === "pending",
-      score: reviews[c.id]?.altReview ? null : c.score,
-      sex: demographics[c.id]?.sex ?? null,
-      raceEthnicity: demographics[c.id]?.race_ethnicity ?? null,
-    }));
-    return computeImpactAnalysis(records);
-  }, [candidates, demographics, reviews]);
 
   const ranked = useMemo(() => rankCandidates(candidates, reviews), [candidates, reviews]);
 
@@ -510,36 +489,14 @@ export default function Shortlist() {
               </div>
             )}
 
-            {/* Bias audit */}
+            {/* Bias audit: no demographic data is recorded here (D14) */}
             {showBias && (
-              <div className="rounded-2xl border border-border bg-card p-5 mb-4">
-                <h3 className="font-semibold text-foreground text-sm mb-1">Selection rates, scoring rates & impact ratios</h3>
-                <p className="text-[11px] text-muted-foreground mb-3">
-                  Selection rates use final HUMAN decisions only ({biasAnalysis.pendingExcluded} pending candidates not counted); scoring rates use the AI scores against the median{biasAnalysis.medianScore != null ? ` (${biasAnalysis.medianScore})` : ""}. {biasAnalysis.recordsWithDemographics}/{biasAnalysis.totalRecords} candidates have demographics{biasAnalysis.unclassified > 0 ? `; ${biasAnalysis.unclassified} recorded values are no EEO-1 category and are left out` : ""}. Demographics are never provided to the scoring model.
+              <div className="rounded-2xl border border-border bg-card p-5 mb-4" data-bias-note>
+                <h3 className="font-semibold text-foreground text-sm mb-1">Bias audit</h3>
+                <p className="text-[11px] text-muted-foreground mb-2">
+                  Shortlist does not record candidates' sex, race or other demographic data. An impact-ratio audit needs candidates' own self-reported data, held in your applicant system or by your auditor: join it to the Audit CSV by candidate ID there. {decided} of {candidates.length} candidates here have a final human decision.
                 </p>
-                {([
-                  ["Selection rate by sex", biasAnalysis.bySex], ["Selection rate by race/ethnicity", biasAnalysis.byRaceEthnicity], ["Selection rate, intersectional", biasAnalysis.intersectional],
-                  ["Scoring rate by sex", biasAnalysis.scoringBySex], ["Scoring rate by race/ethnicity", biasAnalysis.scoringByRaceEthnicity], ["Scoring rate, intersectional", biasAnalysis.scoringIntersectional],
-                ] as const).map(([label, stats]) => (
-                  <div key={label} className="mb-3">
-                    <p className="text-xs font-semibold text-foreground mb-1">{label}</p>
-                    {stats.length === 0 ? <p className="text-[11px] text-muted-foreground">No demographic data yet.</p> : (
-                      <div className="space-y-1">
-                        {stats.map(s => (
-                          <div key={s.group} className="flex items-center gap-2 text-xs">
-                            <span className="text-foreground w-40 truncate">{s.group}</span>
-                            <span className="text-muted-foreground">n={s.total}</span>
-                            <span className="text-muted-foreground">rate {(s.selectionRate * 100).toFixed(1)}%</span>
-                            <span className="text-muted-foreground">ratio {s.impactRatio != null ? s.impactRatio.toFixed(2) : "—"}</span>
-                            {s.fourFifthsFlag && !s.lowSample && <span className="px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive font-semibold">below 4/5</span>}
-                            {s.lowSample && <span className="px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">low sample</span>}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-                <p className="text-[10px] text-muted-foreground">{biasAnalysis.methodologyNote} NYC LL144 additionally requires an INDEPENDENT annual audit — this view prepares the data; it does not replace the auditor.</p>
+                <p className="text-[10px] text-muted-foreground">NYC LL144 requires an independent annual bias audit; this export prepares the decision data, it does not replace the auditor.</p>
               </div>
             )}
 
@@ -559,12 +516,16 @@ export default function Shortlist() {
               </div>
               <textarea value={candidateText} onChange={e => setCandidateText(e.target.value)} rows={5} placeholder="Paste the candidate's resume text…"
                 className="w-full px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+              <label className="flex items-start gap-2 mt-2 text-[11px] text-muted-foreground" data-attestation>
+                <input type="checkbox" className="mt-0.5" checked={attested} onChange={(e) => setAttested(e.target.checked)} />
+                <span>{SHORTLIST_ATTESTATION_TEXT}</span>
+              </label>
               <div className="flex items-center gap-3 mt-2">
-                <button onClick={evaluateCandidate} disabled={evaluating}
+                <button onClick={evaluateCandidate} disabled={evaluating || !attested}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-60 transition-colors">
                   {evaluating && <Loader2 className="w-4 h-4 animate-spin" />} Evaluate
                 </button>
-                <button onClick={routeToAltReview} disabled={evaluating} title="Record the candidate for non-automated review without any AI scoring (ADA / accommodation)"
+                <button onClick={routeToAltReview} disabled={evaluating || !attested} title="Record the candidate for non-automated review without any AI scoring (ADA / accommodation)"
                   className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-border text-xs text-muted-foreground hover:text-foreground disabled:opacity-60 transition-colors">
                   <Accessibility className="w-3.5 h-3.5" /> Alternative review, no AI
                 </button>
@@ -611,10 +572,13 @@ export default function Shortlist() {
                           </div>
                         ))}
                       </div>}
-                      {!reviews[c.id]?.altReview && (c.flags ?? []).length > 0 && (
+                      {c.steered && (
+                        <p className="text-xs text-destructive font-medium" data-steered>{PLANTED_INSTRUCTIONS_FLAG}</p>
+                      )}
+                      {!reviews[c.id]?.altReview && (c.flags ?? []).filter((f) => f !== PLANTED_INSTRUCTIONS_FLAG).length > 0 && (
                         <div>
                           <p className="text-xs font-semibold text-foreground mb-1">Job-related gaps vs JD</p>
-                          {(c.flags ?? []).map((f, i) => <p key={i} className="text-xs text-muted-foreground">• {f}</p>)}
+                          {(c.flags ?? []).filter((f) => f !== PLANTED_INSTRUCTIONS_FLAG).map((f, i) => <p key={i} className="text-xs text-muted-foreground">• {f}</p>)}
                         </div>
                       )}
                       {(c.interview_questions ?? []).length > 0 && (
@@ -631,23 +595,6 @@ export default function Shortlist() {
                             ? (c.exclusions_applied ?? []).map(e => `${e.feature} (${e.count})`).join(" · ")
                             : "None detected"} · model {c.model_version}
                         </p>
-                      </div>
-
-                      {/* Demographics — separate from scoring, audit-only */}
-                      <div className="rounded-lg border border-border/50 bg-muted/10 p-2.5">
-                        <p className="text-[11px] text-muted-foreground mb-1.5">Optional demographics, EEO-1 categories (bias-audit math only — never seen by the model). Best practice: candidate self-report.</p>
-                        <div className="flex gap-2">
-                          <select aria-label="Sex" value={sexCategory(demographics[c.id]?.sex) ?? ""} onChange={e => saveDemographics(c.id, "sex", e.target.value)}
-                            className="flex-1 px-2 py-1 rounded bg-background border border-border text-xs text-foreground">
-                            <option value="">Sex: not recorded</option>
-                            {SEX_CATEGORIES.map(o => <option key={o} value={o}>{o}</option>)}
-                          </select>
-                          <select aria-label="Race/ethnicity" value={raceCategory(demographics[c.id]?.race_ethnicity) ?? ""} onChange={e => saveDemographics(c.id, "race_ethnicity", e.target.value)}
-                            className="flex-1 px-2 py-1 rounded bg-background border border-border text-xs text-foreground">
-                            <option value="">Race/ethnicity: not recorded</option>
-                            {RACE_CATEGORIES.map(o => <option key={o} value={o}>{o}</option>)}
-                          </select>
-                        </div>
                       </div>
 
                       {/* Decision history — the audit trail, human-readable */}

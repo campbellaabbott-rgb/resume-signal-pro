@@ -28,7 +28,7 @@ import en from "../i18n/locales/en.json";
 
 const USER_ID = "00000000-0000-4000-8000-0000000de1ea";
 const b64 = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64url");
-const JWT = `${b64({ alg: "none" })}.${b64({ sub: USER_ID, amr: [{ method: "password" }] })}.sig`;
+const JWT = `${b64({ alg: "none" })}.${b64({ sub: USER_ID, role: "authenticated", aud: "authenticated", amr: [{ method: "password" }] })}.sig`;
 const CV = `${USER_ID}/Jane_CV.pdf`;
 
 const state = {
@@ -45,6 +45,7 @@ export default class Stripe {
     const s = () => globalThis.__cvGone;
     this.customers = { list: async () => ({ data: [{ id: "cus_1" }], has_more: false }) };
     this.subscriptions = {
+      search: async () => ({ data: [], has_more: false }),
       list: async () => ({ data: [{ id: "sub_agent", customer: "cus_1", status: "active", metadata: { user_id: "${USER_ID}" } }], has_more: false }),
       cancel: async (id) => { if (s().cancelFails) throw new Error("cancel refused"); s().cancelled.push(id); return {}; },
     };
@@ -87,6 +88,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   db = new FakeDb();
+  db.rpcs.account_erase_personal_data = () => ({ data: { keys_revoked: 0 }, error: null });
   db.rows("agent_mandates").push({ user_id: USER_ID, active: true, resume_file_url: CV });
   Object.assign(state, { files: [CV], cancelled: [], deleted: [], cancelFails: false, deleteFails: false });
 });

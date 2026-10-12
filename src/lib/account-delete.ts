@@ -17,7 +17,7 @@ export function deleteRefusalKey(body: DeleteRefusal): string {
   const cancelled = Number(body?.subscriptionsCancelled);
   if (code === "subscription_unlinked") return "accountPage.deleteUnlinkedPlan";
   if (Number.isFinite(cancelled) && cancelled > 0) return "accountPage.deletePlanCancelled";
-  if (/^(subscription_cancel_failed|billing_unreadable|files_not_deleted)$/.test(code)) return "accountPage.deleteRetry";
+  if (/^(subscription_cancel_failed|billing_unreadable|files_not_deleted|keys_not_revoked)$/.test(code)) return "accountPage.deleteRetry";
   return "accountPage.deleteFailed";
 }
 
