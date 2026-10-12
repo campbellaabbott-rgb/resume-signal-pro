@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { SellerIdentity } from "@/components/SellerIdentity";
 import { AI_CACHE_MAX_HOURS, SHARED_ANALYSIS_DAYS } from "@/lib/resume-retention";
 import { PRIVACY_LAST_UPDATED } from "@/config/seller";
+import { MCP_PRIVACY_ROWS } from "@/config/mcp-privacy";
 
 export default function Privacy() {
   const { t, i18n } = useTranslation();
@@ -122,6 +123,46 @@ export default function Privacy() {
                 <li><strong className="text-foreground">Log Data:</strong> Retained for up to 90 days for security and debugging purposes</li>
                 <li><strong className="text-foreground">In Your Browser:</strong> The resume text a tab carries between pages is in that tab's session storage until you close it. A resume you build on the site, your recent scan history and recent reports are in this browser's local storage until it is cleared; the Clear Browser Data button on a paid results page clears them, as does clearing this site's data in your browser.</li>
               </ul>
+            </section>
+
+            {/* DRAFT FOR COUNSEL REVIEW (owner action 9, connect spec §3.8): the
+                section below states what each way of reaching us from an AI
+                receives and stores. The rows are src/config/mcp-privacy.ts,
+                the one table the tool descriptions and the directory answers
+                are drawn from too. Counsel must approve the wording before
+                the address on our own domain publishes; until then it is the
+                engineering statement of fact, kept true by the guard that
+                reads this table. Nothing in the visible copy says "draft". */}
+            <section data-privacy-mcp>
+              <h2 className="text-2xl font-semibold mb-4 text-foreground">{t('privacy.sections.mcp', 'Using Resume Booster from your own AI')}</h2>
+              <p className="text-muted-foreground leading-relaxed mb-4">
+                You can connect Resume Booster to Claude, ChatGPT or Claude Code through our MCP server, or call our data API with a key. Your AI provider's own privacy policy covers your conversation with it; we never receive your chat history. This table sets out what reaches us from your AI, and what we keep.
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left text-muted-foreground border-collapse">
+                  <thead>
+                    <tr className="border-b border-border text-foreground">
+                      <th className="py-2 pr-3 font-medium align-top">What</th>
+                      <th className="py-2 pr-3 font-medium align-top">From Claude and other connections</th>
+                      <th className="py-2 pr-3 font-medium align-top">From ChatGPT</th>
+                      <th className="py-2 font-medium align-top">What we keep</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {MCP_PRIVACY_ROWS.map((r) => (
+                      <tr key={r.id} data-privacy-row={r.id} className="border-b border-border align-top">
+                        <td className="py-2 pr-3 text-foreground">{r.what}</td>
+                        <td className="py-2 pr-3">{r.claude}</td>
+                        <td className="py-2 pr-3">{r.chatgpt}</td>
+                        <td className="py-2">{r.kept}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-muted-foreground leading-relaxed mt-4">
+                Resume Booster never submits a job application for you. When your AI helps you apply, it reads the posting and, for some hiring systems, the employer's published application form; you fill in and send the employer's form yourself.
+              </p>
             </section>
 
             <section>
