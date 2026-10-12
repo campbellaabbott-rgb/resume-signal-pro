@@ -442,18 +442,37 @@ describe("the guard", () => {
     expect(await proofs(id)).toEqual([]);
   });
 
-  it("refuses when the auth log holds the sign-in under another address, and when it holds no sign-in at all", async () => {
-    const id = await gotrue.createUser("now@example.com");
+  it("refuses when the auth log holds the sign-in under another address, and when it holds no sign-in at all; neither clears a password", async () => {
+    const id = await gotrue.createUser("now@example.com", { password: "kept-1" });
     const t = T();
     await gotrue.audit(id, "before@example.com", "login", t + 3);
     const a = await gotrue.signIn(id, "otp", t, { log: false });
-    expect((await runMailboxGuard(deps(), gotrue.session(await gotrue.user(id), a.jwt))).body).toMatchObject({ proven: false, reason: "signed_in_for_another_address" });
-    const id2 = await gotrue.createUser("unlogged@example.com");
+    expect((await runMailboxGuard(deps(), gotrue.session(await gotrue.user(id), a.jwt))).body)
+      .toMatchObject({ proven: false, passwordCleared: false, reason: "signed_in_for_another_address" });
+    const id2 = await gotrue.createUser("unlogged@example.com", { password: "kept-2" });
     const b = await gotrue.signIn(id2, "otp", T(), { log: false });
     const r = await runMailboxGuard(deps(), gotrue.session(await gotrue.user(id2), b.jwt));
-    expect(r).toMatchObject({ status: 409, body: { proven: false, reason: "audit_unconfirmed" } });
-    expect(await proofs(id) ).toEqual([]);
+    expect(r).toMatchObject({ status: 409, body: { proven: false, passwordCleared: false, reason: "audit_unconfirmed" } });
+    expect(await proofs(id)).toEqual([]);
     expect(await proofs(id2)).toEqual([]);
+    expect(await gotrue.passwordOf(id)).toBe("bcrypt:kept-1");
+    expect(await gotrue.passwordOf(id2)).toBe("bcrypt:kept-2");
+    expect(gotrue.sessionRotations).toEqual([]);
+  });
+
+  it("the session an address-change confirmation mints (amr otp, no sign-in entry) clears no password and proves nothing", async () => {
+    const id = await gotrue.createUser("mover@example.com", { password: "my-own-password" });
+    const t = T();
+    // verify.go emailChangeVerify: user_modified under the old address, then a
+    // session with amr otp and no login entry of its own.
+    await gotrue.changeEmail(id, "moved@example.com", t - 2);
+    const { jwt } = await gotrue.signIn(id, "otp", t, { log: false });
+    const r = await runMailboxGuard(deps(), gotrue.session(await gotrue.user(id), jwt));
+    expect(r.status).toBe(409);
+    expect(r.body).toMatchObject({ proven: false, passwordCleared: false });
+    expect(await gotrue.passwordOf(id)).toBe("bcrypt:my-own-password");
+    expect(gotrue.sessionRotations).toEqual([]);
+    expect(await proofs(id)).toEqual([]);
   });
 
   it("refuses a mismatched identity email, a token issued for another address, and an account with no email sign-in", async () => {

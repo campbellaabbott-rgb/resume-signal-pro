@@ -16,29 +16,30 @@
  *     (amr otp, magiclink, recovery) or Google/Apple for the account's own
  *     verified address (amr oauth) is acted on, and only within 15 minutes
  *     of that sign-in. Anything else answers "not proven" and changes nothing.
- *  3. If the account has a password, it is replaced by a random one AS THIS
- *     SESSION (PUT /auth/v1/user with the caller's own token), which ends
- *     every other session and keeps this one, and other sessions are then
- *     signed out once more by the admin API. Once per session at most (the
+ *  3. If the auth log VOUCHES for the sign-in (it holds the sign-in's own
+ *     entry, under the address the account carries now) and the account has
+ *     a password, the password is replaced by a random one AS THIS SESSION
+ *     (PUT /auth/v1/user with the caller's own token), which ends every other
+ *     session and keeps this one, and other sessions are then signed out once
+ *     more by the admin API. Once per session at most (the
  *     account_password_clears claim), so a password the person sets after
  *     the guard answered is never touched by a later call.
- *  4. The proof row is written only when the sign-in vouches for the address
- *     the account carries NOW: the token's address and the email identity
- *     match it, the auth log holds this sign-in under that address, and the
- *     auth log shows no account change since the sign-in. Otherwise 409,
- *     and no proof.
+ *  4. The proof row is written only when, besides that, the token's address
+ *     and the email identity match the account's address and the auth log
+ *     shows no account change since the sign-in. Otherwise 409, and no proof.
  *
- * WHY THE PASSWORD IS CLEARED EVEN WHEN THE PROOF IS REFUSED (a deliberate
- * departure from the plan's order, which refused before rotating). The
- * account-change check reads entries any session of the account can write.
- * Refusing to rotate on them would let the stranger who pre-registered the
- * address keep a script editing the account's metadata every few seconds, so
- * that every sign-in by the real owner is refused and the stranger's password
- * survives. Rotation is safe whenever the newest sign-in is an emailed code,
- * a link or the provider's verified address: whoever holds such a session
- * either reads the account's mailbox or already holds the account, so a
- * password set before it protects nobody but a stranger. What the log guards
- * is the PROOF, which opens things keyed by the address.
+ * WHY THE PASSWORD IS CLEARED EVEN WHEN THE PROOF IS REFUSED FOR AN ACCOUNT
+ * CHANGE (a deliberate departure from the plan's order, which refused before
+ * rotating). The account-change check reads entries any session of the
+ * account can write. Refusing to rotate on them would let the stranger who
+ * pre-registered the address keep a script editing the account's metadata
+ * every few seconds, so that every sign-in by the real owner is refused and
+ * the stranger's password survives. Once the log vouches that the code or
+ * link went to the address the account carries, whoever holds the session
+ * reads that mailbox, so a password set before it protects nobody but a
+ * stranger. What the change check guards is the PROOF, which opens things
+ * keyed by the address. A session the log does not vouch for (an
+ * address-change confirmation, a log not written to Postgres) clears nothing.
  *
  * WHY THE ADMIN API DOES NOT ROTATE (another departure). GoTrue v2.197.0, the
  * version /auth/v1/health reports, ends EVERY session when an admin sets a
@@ -231,32 +232,41 @@ async function guardOnce(deps: GuardDeps, session: WebsiteSession): Promise<Guar
   if (!sessionId) return answer(409, { proven: false, passwordCleared: false, reason: "no_session", error: REFUSAL_TEXT.no_session });
   const amrAt = new Date(newest.atMs);
 
-  // 4 (read first, before anything of ours is written to the auth log):
-  // does this sign-in vouch for the address the account carries now?
+  // Read first, before anything of ours is written to the auth log. The log
+  // VOUCHES for this sign-in when it holds the sign-in's own entry and every
+  // such entry names the address the account carries now. An address-change
+  // confirmation mints a session with amr otp and writes no sign-in entry, so
+  // its session is never vouched for: it clears nothing and proves nothing.
+  const signIns = await admin.rpc("auth_sign_in_addresses", { p_user_id: userId, p_at: amrAt.toISOString() });
+  if (signIns.error || !Array.isArray(signIns.data)) return unavailable("unavailable");
+  const addresses = (signIns.data as unknown[]).map(normalize);
+  const vouched = addresses.length > 0 && addresses.every((a) => a === email);
+
+  // 4. Does this sign-in prove the address the account carries now?
   let refusal: string | null = null;
-  if (normalize(claims.email) !== email) refusal = "token_email_mismatch";
   const emailIdentity = (user.identities ?? []).find((i) => i?.provider === "email");
-  if (!refusal && newest.method !== "oauth" && !emailIdentity) refusal = "no_email_identity";
-  if (!refusal && emailIdentity && normalize(emailIdentity.identity_data?.email) !== email) refusal = "identity_mismatch";
-  if (!refusal) {
-    const { data, error } = await admin.rpc("auth_sign_in_addresses", { p_user_id: userId, p_at: amrAt.toISOString() });
-    if (error || !Array.isArray(data)) return unavailable("unavailable");
-    const addresses = (data as unknown[]).map(normalize);
-    if (addresses.length === 0) refusal = "audit_unconfirmed";
-    else if (addresses.some((a) => a !== email)) refusal = "signed_in_for_another_address";
-  }
-  if (!refusal) {
+  if (normalize(claims.email) !== email) refusal = "token_email_mismatch";
+  else if (newest.method !== "oauth" && !emailIdentity) refusal = "no_email_identity";
+  else if (emailIdentity && normalize(emailIdentity.identity_data?.email) !== email) refusal = "identity_mismatch";
+  else if (addresses.length === 0) refusal = "audit_unconfirmed";
+  else if (!vouched) refusal = "signed_in_for_another_address";
+  else {
     const since = new Date(newest.atMs - CHANGE_MARGIN_SECONDS * 1000).toISOString();
     const { data, error } = await admin.rpc("auth_changed_since", { p_user_id: userId, p_since: since });
     if (error || typeof data !== "boolean") return unavailable("unavailable");
     if (data !== false) refusal = "changed_since_sign_in";
   }
 
-  // 3. A password set before the address was proven does not survive it.
-  const { data: hasPassword, error: pwError } = await admin.rpc("auth_user_has_password", { p_user_id: userId });
-  if (pwError || typeof hasPassword !== "boolean") return unavailable("unavailable");
+  // 3. A password set before the address was proven does not survive a
+  // sign-in the log vouches for, whatever else the account did since.
   let passwordCleared = false;
   let signedOut = false;
+  let hasPassword = false;
+  if (vouched) {
+    const { data, error } = await admin.rpc("auth_user_has_password", { p_user_id: userId });
+    if (error || typeof data !== "boolean") return unavailable("unavailable");
+    hasPassword = data;
+  }
   if (hasPassword) {
     // Another call may have proven the address meanwhile; then nothing is rotated.
     const again = await mailboxProofState(admin, userId, email);
