@@ -50,8 +50,9 @@ import { type JobEntry } from "@/components/JobSelector";
 import { HowItWorks } from "@/components/HowItWorks";
 import { HomeHero } from "@/components/HomeHero";
 import { Bot, ArrowRight } from "lucide-react";
-import { PASS, PRODUCTS } from "@/config/products";
-import { MCP_ANON_CAPS } from "@/config/mcp-tools";
+import { PRODUCTS } from "@/config/products";
+import { MCP_ADD_TO_CLAUDE_LIVE, claudeInstallLink } from "@/config/mcp-tools";
+import { MCP_URL } from "@/lib/mcp-test";
 import { AgentMatchesPanel } from "@/components/AgentMatchesPanel";
 import { MiniPricingCards } from "@/components/MiniPricingCards";
 import { TrustIndicators } from "@/components/TrustIndicators";
@@ -396,32 +397,32 @@ interface FreeKeywordResult {
 const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024; // Matches parse-pdf/parse-docx's server-side limit
 
 /**
- * THE AGENT OFFER ON THE FRONT PAGE. Two sentences inside the hero band, where
- * the agent half of the fused hero already speaks: anyone can point their own
- * AI agent at the board for free with no account (the unkeyed tier), and a
- * one-off pass buys that agent a fixed session to research at full speed and
- * apply to a fixed number of jobs. Every number here is interpolated from the
- * mirrors — the pass from PASS (src/config/products.ts, pinned to the Deno
- * source by pricing-truth.test.ts) and the free daily allowance from
- * MCP_ANON_CAPS (pinned to the server by a-first-call-with-no-key…) — and the
- * copy never types a digit, in any locale; src/test/a-pass-number-on-a-page-
- * is-a-placeholder.test.tsx renders this strip and reads this file to prove
- * both. Sign-in is the condition for the PASS (applications are keyed to an
- * account), never for connecting, and the sentences say so in that order.
- * The strip is exported so the guard can mount it on its own as well as
- * inside the page; the copy object is not (a non-component export breaks fast
- * refresh, and the guard reads these bindings from source, not by import).
+ * THE CONNECT-YOUR-AI STRIP ON THE FRONT PAGE, inside the hero band. Since
+ * the apply pivot (owner decision 2026-10-11) it sells nothing: the Agent
+ * plan, the Agent Pass and the Apply Assistant are retired and the
+ * server-side apply agent is switched off, so the strip says the one thing
+ * that is on offer — connect your own Claude or ChatGPT for free, search the
+ * board, and apply yourself on the employer's own site with your AI's help —
+ * and links to the page that sets it up.
+ *
+ * COUNT-FREE ON PURPOSE. The free allowance's figures are the server's
+ * constants and move with an owner decision; the sentence states its shape
+ * (free, no account, a daily allowance) and never a figure, so it cannot go
+ * false the day they move. The figures live on /agents' developer disclosure,
+ * read off the mirror the first-call guard pins to the server.
+ *
+ * "Add to Claude" sits behind MCP_ADD_TO_CLAUDE_LIVE (off until the owner's
+ * check of the documented install link), exactly as on /agents.
+ *
+ * THE KEY NAMES ARE KEPT, THE SENTENCES ARE NEW in all nine locales: the
+ * homepage's crawler bake (scripts/prerender-seo.mjs, AGENT_OFFER) reads
+ * homeAgent.lead, .connectLine2, .passLine and .connectCta by name, so new
+ * values under the same names reach a Googlebot fetch of / with no change to
+ * the bake. .passLine now carries the "never submits" sentence; no pass is
+ * sold.
  */
-const AGENT_OFFER_COPY = {
-  passPrice: PASS.priceUsd,
-  passHours: PASS.sessionHours,
-  passApplications: PASS.applications,
-  freeCallsPerDay: MCP_ANON_CAPS.perAddressPerDay,
-} as const;
-
-export function AgentOfferStrip() {
+export function AgentOfferStrip({ addToClaude = MCP_ADD_TO_CLAUDE_LIVE }: { addToClaude?: boolean } = {}) {
   const { t } = useTranslation();
-  const { session } = useAuth();
   return (
     <div
       data-agent-offer
@@ -430,21 +431,21 @@ export function AgentOfferStrip() {
       <Bot className="hidden sm:block w-5 h-5 text-primary shrink-0 mt-0.5" aria-hidden />
       <div className="text-sm text-muted-foreground leading-relaxed">
         <p>
-          <span className="font-semibold text-foreground">{t("homeAgent.lead", "Bring your own AI agent.")}</span>{" "}
-          {t("homeAgent.connectLine2", "Connect it free with no account — {{freeCallsPerDay}} calls a day per network address to look around the board (an office or a home connection counts as one address; from ChatGPT each person has their own {{freeCallsPerDay}}, and from Claude a daily pool every Claude user shares comes first).", AGENT_OFFER_COPY)}
+          <span className="font-semibold text-foreground">{t("homeAgent.lead", "Use it from your own AI.")}</span>{" "}
+          {t("homeAgent.connectLine2", "Connect Resume Booster to Claude or ChatGPT for free, with no account: search the board in your chat, read postings in full, and apply yourself on the employer's own site with your AI's help, within a free daily allowance.")}
         </p>
         <p className="mt-1">
-          {t("homeAgent.passLine", "A ${{passPrice}} pass gives your agent {{passHours}} hours to search the board and apply to {{passApplications}} jobs for you. A job counts only when the agent can send the application. Never renews; sign in to buy.", AGENT_OFFER_COPY)}
+          {t("homeAgent.passLine", "Your AI drafts and you decide: Resume Booster never submits an application for you.")}
         </p>
         <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[13px] font-medium">
-          <Link to="/agents" className="inline-flex items-center gap-1 text-primary hover:underline">
-            {t("homeAgent.connectCta", "Connect your agent")} <ArrowRight className="w-3.5 h-3.5" aria-hidden />
-          </Link>
-          {session && (
-            <Link to="/agents/pass" className="inline-flex items-center gap-1 text-primary hover:underline">
-              {t("homeAgent.passCta", "Buy or open your pass")} <ArrowRight className="w-3.5 h-3.5" aria-hidden />
-            </Link>
+          {addToClaude && (
+            <a href={claudeInstallLink(MCP_URL)} data-add-to-claude className="inline-flex items-center gap-1 text-primary hover:underline">
+              {t("homeAgent.addToClaude", "Add to Claude")} <ArrowRight className="w-3.5 h-3.5" aria-hidden />
+            </a>
           )}
+          <Link to="/agents" className="inline-flex items-center gap-1 text-primary hover:underline">
+            {t("homeAgent.connectCta", "Connect your AI")} <ArrowRight className="w-3.5 h-3.5" aria-hidden />
+          </Link>
         </p>
       </div>
     </div>
@@ -2094,13 +2095,12 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
                 board's — put 6,807px and four competing calls to action
                 between a visitor and anything they could do; the upload tool,
                 the only path to a paying customer, began at 10,546px. HomeHero
-                fuses the claim (every job real, the agent applies for you),
-                states the three live numbers, offers ONE primary action, and
+                fuses the claim (every job real, straight from the employer),
+                states the live numbers, offers ONE primary action, and
                 puts the fifteen hiring systems and their counts directly
                 underneath — proof under the claim, where a sceptic can check
-                it without scrolling. The agent offer — connect free, or
-                buy the pass — is ONE strip handed into that band, not a
-                second hero above the scanner. */}
+                it without scrolling. Connecting your own AI is ONE strip
+                handed into that band, not a second hero above the scanner. */}
             <HomeHero agentOffer={<AgentOfferStrip />} />
           </>
         )}
@@ -2320,11 +2320,9 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
                 <PartialResultsNotice reason={freeKeywordResult.partialReason} hidden={freeKeywordResult.partialHidden} />
               )}
               {/* THE 60-SECOND PAYOFF. The scan just proved the machine read
-                  this CV; this panel is the agent acting on that read — live
-                  sendable roles matching the visitor's own extracted role,
-                  above the report so the agent's offer is the first thing the
-                  result screen says. Absent (never a shell) when the search
-                  yields nothing or errors. */}
+                  this CV; this panel acts on that read — live roles matching
+                  the visitor's own extracted role, above the report. Absent
+                  (never a shell) when the search yields nothing or errors. */}
               <CardErrorBoundary section="agent-matches" fallback={<></>}>
                 <AgentMatchesPanel
                   currentRole={freeKeywordResult.currentRole}

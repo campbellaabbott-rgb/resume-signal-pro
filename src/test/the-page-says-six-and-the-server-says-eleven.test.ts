@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { MCP_TOOLS, MCP_HOSTS } from "../config/mcp-tools";
+import { MCP_TOOLS, MCP_HOSTS, MCP_FORM_VENDORS } from "../config/mcp-tools";
 import { SENDABLE_VENDOR_KEYS, SENDABLE_VENDOR_LABELS } from "../config/sendable-vendors";
 
 /**
@@ -37,6 +37,7 @@ const strip = (s: string) =>
 
 const MCP = strip(read("supabase/functions/agent-mcp/index.ts"));
 const PAGE = strip(read("src/pages/AgentConnect.tsx"));
+const APPLY_SECTION = strip(read("src/components/agents/ApplyYourself.tsx"));
 const PRERENDER = strip(read("scripts/prerender-seo.mjs"));
 const APPLY = strip(read("supabase/functions/_shared/apply-automation.ts"));
 
@@ -201,13 +202,25 @@ describe("the page says six and the server says eleven", () => {
     expect(SENDABLE_VENDOR_LABELS.length).toBe(deno.length);
   });
 
-  it("the page names the sendable vendors from the mirror and spells neither the names nor their count", () => {
-    expect(PAGE).toMatch(/from "@\/config\/sendable-vendors"/);
-    expect(PAGE).toMatch(/SENDABLE_VENDOR_(?:SENTENCE|LABELS)/);
-    expect(PAGE).toMatch(/SENDABLE_VENDOR_(?:KEYS|LABELS)\.length/);
-    const spelledName = SENDABLE_VENDOR_LABELS.filter((label) => new RegExp(`\\b${label}\\b`).test(PAGE));
-    expect(spelledName, "vendor names spelled on the page instead of rendered from the mirror").toEqual([]);
-    expect(/\b(?:four|five|six|seven|\d+) hiring systems\b/i.exec(PAGE)?.[0], "a spelled vendor count").toBeUndefined();
+  // THE APPLY PIVOT (owner decision 2026-10-11): the server-side apply agent
+  // is switched off, so the page no longer names the systems "the agent can
+  // send on" at all — it names the systems whose application form a person's
+  // own AI can read. Those names come from the mirror (MCP_FORM_VENDORS),
+  // which must equal the Deno vendors whose real questions are harvested, and
+  // the page and its apply section spell neither a name nor a count.
+  it("the page names no sendable vendor, and names the form vendors only through the mirror the Deno list pins", () => {
+    expect(PAGE, "the page still reads the sendable-vendor mirror").not.toMatch(/from "@\/config\/sendable-vendors"/);
+    expect(PAGE).not.toMatch(/SENDABLE_VENDOR_/);
+    const realQ = /realQuestions:\s*true/;
+    const deno = [...APPLY.matchAll(/\n\s*([a-z0-9_]+):\s*\{[^}]*\}/g)].filter((m) => realQ.test(m[0])).map((m) => m[1]).sort();
+    expect(deno.length, "no real-question vendor parsed from apply-automation.ts").toBeGreaterThan(2);
+    expect(MCP_FORM_VENDORS.map((v) => v.key).sort()).toEqual(deno);
+    for (const src of [PAGE, APPLY_SECTION]) {
+      const spelledName = [...MCP_FORM_VENDORS.map((v) => v.label), ...SENDABLE_VENDOR_LABELS].filter((label) => new RegExp(`\\b${label}\\b`).test(src));
+      expect(spelledName, "vendor names spelled on the page instead of rendered from the mirror").toEqual([]);
+      expect(/\b(?:four|five|six|seven|\d+) hiring systems\b/i.exec(src)?.[0], "a spelled vendor count").toBeUndefined();
+    }
+    expect(APPLY_SECTION).toMatch(/formVendorPhrase\(/);
   });
 
   it("the crawler-facing copy is baked from the same mirrors", () => {

@@ -14,9 +14,16 @@
  *   as absence, never as zero and never as yesterday's figure.
  *
  *   THE SILENTLY-DROPPED FILTER — the panel's "browse all" link must carry
- *   the parameter Jobs.tsx actually reads (`agentOnly=1`). The first draft
- *   shipped `agent=1`, which Jobs ignores: the button would have promised the
- *   agent's inventory and delivered the unfiltered board.
+ *   the parameter Jobs.tsx actually reads. The first draft shipped `agent=1`,
+ *   which Jobs ignores: the button would have promised the agent's inventory
+ *   and delivered the unfiltered board.
+ *
+ * 2026-10-11, THE APPLY PIVOT: the server-side apply agent is switched off
+ * and its products retired, so the hero and the panel no longer claim that
+ * anything submits for the visitor. The hero prints no "the agent can submit"
+ * count and reads no sendable inventory; the panel searches the whole board
+ * for the CV's role, links the board with the query it ran, and sends the
+ * visitor to /agents to apply with their own AI.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -69,14 +76,14 @@ describe("the agent opens the page", () => {
       .not.toMatch(/<ApplyAgentShowcase/);
   });
 
-  it("speaks with measured inventory or with none", () => {
-    // The line renders only when BOTH numbers arrived; no fallback figures.
+  it("speaks with measured inventory or with none, and claims no submissions", () => {
     // Each stat renders only when its own payload arrived.
     expect(heroCode).toMatch(/\{totals && \(/);
-    expect(heroCode).toMatch(/\{sendable !== null && \(/);
-    // Payload gating: a number must be > 0 to be trusted — a zero from a
-    // half-written status payload must read as absence, not "0 openings".
-    expect(heroCode).toMatch(/typeof n === "number" && n > 0/);
+    // The apply pivot: no sendable count, no status read for one, and no
+    // sentence that says the agent applies or submits for the visitor.
+    expect(heroCode).not.toMatch(/sendable/i);
+    expect(heroCode).not.toMatch(/action: "status"/);
+    expect(heroCode).not.toMatch(/applies for you|submit for you|submits where/i);
     // And no literal inventory anywhere: five-or-more-digit numbers in the
     // hero are claims only a payload may make.
     expect(heroCode.replace(/\d{1,2}\b/g, "")).not.toMatch(/\b\d{3,}(?:,\d{3})*\b/);
@@ -93,8 +100,10 @@ describe("the agent opens the page", () => {
 });
 
 describe("the matches panel acts on the CV and only on real data", () => {
-  it("asks for sendable postings only", () => {
-    expect(panelCode).toMatch(/sendableOnly: true/);
+  it("searches the whole board for the CV's role, not the retired agent's sendable slice", () => {
+    expect(panelCode).not.toMatch(/sendableOnly/);
+    expect(panelCode).toMatch(/body: \{ q: query, limit: 5, page: 1 \}/);
+    expect(panelCode).not.toMatch(/can submit|to="\/agent"/);
   });
 
   it("renders absence on empty or error, never a shell", () => {
@@ -107,10 +116,12 @@ describe("the matches panel acts on the CV and only on real data", () => {
     expect(panelCode).toMatch(/d\.countCapped === true/);
   });
 
-  it("links to the board with the parameter Jobs actually reads", () => {
-    expect(panelCode).toMatch(/agentOnly=1/);
-    expect(JOBS, "Jobs.tsx no longer reads agentOnly — the panel's link silently drops its filter")
-      .toMatch(/get\("agentOnly"\)/);
+  it("links to the board with the query it ran, which Jobs actually reads, and to /agents to apply with your own AI", () => {
+    expect(panelCode).toMatch(/to=\{`\/jobs\?q=\$\{encodeURIComponent\(q\)\}`\}/);
+    expect(panelCode).not.toMatch(/agentOnly/);
+    expect(JOBS, "Jobs.tsx no longer reads q — the panel's link silently drops its search")
+      .toMatch(/get\("q"\)/);
+    expect(panelCode).toMatch(/to="\/agents"/);
   });
 
   it("mounts only after a scan, fed by the scan's own extraction", () => {

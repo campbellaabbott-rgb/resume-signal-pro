@@ -6,8 +6,8 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, Sparkles, FileText, Crown, Package, Loader2, ArrowRight, Star, Shield, Zap, ShieldCheck, Flame, MessageSquare, TrendingUp, Send, Briefcase, ChevronDown } from "lucide-react";
-import { PRODUCTS, SUBSCRIPTIONS, PASS, ProductId, isProductHidden } from "@/config/products";
+import { Check, Sparkles, FileText, Crown, Package, Loader2, ArrowRight, Star, Shield, Zap, ShieldCheck, Flame, MessageSquare, TrendingUp, Briefcase, ChevronDown } from "lucide-react";
+import { PRODUCTS, SUBSCRIPTIONS, ProductId, isProductHidden } from "@/config/products";
 import { useProductCheckout } from "@/hooks/use-product-checkout";
 import { cn } from "@/lib/utils";
 import { ValueComparison } from "@/components/ValueComparison";
@@ -16,7 +16,6 @@ import { useScrollDepth } from "@/hooks/use-scroll-depth";
 import { useTimeOnPage } from "@/hooks/use-time-on-page";
 import { AddOnsShowcase } from "@/components/AddOnsShowcase";
 import { ProSubscriptionCard } from "@/components/ProSubscriptionCard";
-import { AgentSubscriptionCard } from '@/components/AgentSubscriptionCard';
 import { AtsCoverage } from '@/components/AtsCoverage';
 import { ProductPreview } from "@/components/ProductPreview";
 import { getResumeFromSession } from "@/hooks/use-session-resume";
@@ -37,7 +36,6 @@ const productIcons: Record<string, React.ElementType> = {
   resumeRoast: Flame,
   interviewCoach: MessageSquare,
   careerPathSimulator: TrendingUp,
-  applyAssistant: Send,
   freelanceBoost: Briefcase,
 };
 
@@ -47,14 +45,23 @@ const productIcons: Record<string, React.ElementType> = {
 // (rewritten resume content) earns the first slot.
 // premiumPackage + freelanceBoost live in the ladder above the fold; the
 // collapsed catalog carries the rest.
+//
+// THE APPLY PIVOT (owner decision 2026-10-11) retired the $7 Apply Assistant,
+// the Agent plan and the Agent Pass. None of them is offered on this page:
+// the Apply Assistant is out of the catalogue and out of the price range the
+// structured data quotes, the Agent plan's card is not rendered, and the
+// pass line is gone. A buyer from before the retirement is honoured or
+// refunded by the owner. RETIRED_HERE is the page's own list until the
+// catalogue mirror (src/config/products.ts) hides the product itself.
+const RETIRED_HERE: readonly ProductId[] = ['applyAssistant'];
+const offeredHere = (id: ProductId) => !isProductHidden(id) && !RETIRED_HERE.includes(id);
 const productOrder: ProductId[] = ([
   'atsDefense',
   'careerSnapshot',
   'graduateGamePlan',
-  'applyAssistant',
   'fullAnalysis',
   'coverLetter',
-] as ProductId[]).filter((id) => !isProductHidden(id));
+] as ProductId[]).filter(offeredHere);
 
 export default function Pricing() {
   const { t } = useTranslation();
@@ -71,14 +78,14 @@ export default function Pricing() {
   useTimeOnPage('pricing');
 
   // The JSON-LD price range is DERIVED from the catalog it describes — every
-  // visible one-time product, both recurring plans and the one-off pass — so
-  // the offer can never state a ceiling the catalog has outgrown (it once
-  // typed a high price while the catalog's ceiling sat above it).
-  const visibleProducts = (Object.keys(PRODUCTS) as ProductId[]).filter((k) => !isProductHidden(k));
+  // one-time product this page offers and the one recurring plan on sale (Pro)
+  // — so the offer can never state a ceiling the catalog has outgrown (it once
+  // typed a high price while the catalog's ceiling sat above it), nor a price
+  // for a product the page no longer sells.
+  const visibleProducts = (Object.keys(PRODUCTS) as ProductId[]).filter(offeredHere);
   const offerPrices = [
     ...visibleProducts.map((k) => PRODUCTS[k].priceUsd),
-    ...Object.values(SUBSCRIPTIONS).map((s) => s.priceUsd),
-    PASS.priceUsd,
+    SUBSCRIPTIONS.pro.priceUsd,
   ];
   // THE DESCRIPTION'S RANGE IS THE CATALOGUE'S, by the same derivation
   // (platform sweep L3-18). It used to interpolate the HIDDEN $3 Keyword Fix
@@ -91,7 +98,6 @@ export default function Pricing() {
     highPrice: Math.max(...oneTimePrices),
     proPrice: SUBSCRIPTIONS.pro.priceUsd,
   };
-  const passCopy = { passPrice: PASS.priceUsd, passHours: PASS.sessionHours, passApplications: PASS.applications };
 
   const handlePurchase = async (productId: ProductId) => {
     const product = PRODUCTS[productId];
@@ -123,7 +129,7 @@ export default function Pricing() {
         url: "https://resumebooster.work",
         applicationCategory: "BusinessApplication",
         operatingSystem: "Web",
-        description: "Free diagnostic resume scan plus one-time paid tools, two optional subscriptions and a one-off pass for your own AI agent.",
+        description: "Free diagnostic resume scan plus one-time paid tools and one optional subscription.",
         offers: {
           "@type": "AggregateOffer",
           priceCurrency: "USD",
@@ -208,23 +214,23 @@ export default function Pricing() {
             </div>
           </div>
 
-          {/* The two recurring plans, side by side. The agent is a superset of
-              Pro and priced accordingly, so they belong next to each other —
-              seeing $45 alone invites the question this answers. */}
-          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto mb-4 items-start">
+          {/* The one recurring plan. Pro is presented by what it does today
+              (src/config/pro-perks.ts, every line a shipped capability); the
+              Agent plan's card is not rendered since the apply pivot. */}
+          <div className="max-w-xl mx-auto mb-4">
             <ProSubscriptionCard />
-            <AgentSubscriptionCard />
           </div>
-          {/* The pass: one line beside the two recurring cards, never on the
-              SKU wall — it is a third way to hold one entitlement, not a
-              fourteenth deliverable. Numbers from the PASS mirror. */}
-          <p className="text-center text-sm text-muted-foreground max-w-4xl mx-auto mb-12">
-            {t('pricingPage.passLine', 'Or a one-off pass for your own AI agent: ${{passPrice}} for {{passHours}} hours and {{passApplications}} applications. Never renews.', passCopy)}{' '}
-            <Link to="/agents" className="text-primary hover:underline">{t('pricingPage.passLink', 'Connect your agent')}</Link>
+          {/* Connecting your own AI costs nothing and is not a product: one
+              line, no price, pointing at the page that sets it up. The key
+              keeps its old name (pricingPage.passLine) with a new sentence in
+              all nine locales, because the /pricing crawler bake reads it by
+              name; no pass is sold. */}
+          <p className="text-center text-sm text-muted-foreground max-w-4xl mx-auto mb-12" data-connect-free>
+            {t('pricingPage.passLine', 'Connecting your own Claude or ChatGPT is free: search the board in your chat and apply yourself on the employer\'s own site, with your AI\'s help. We never submit an application for you.')}{' '}
+            <Link to="/agents" className="text-primary hover:underline">{t('pricingPage.passLink', 'Connect your AI')}</Link>
           </p>
 
-          {/* Which platforms, and what happens on each. Directly under the
-              plans because "it applies for you" immediately raises "where?" */}
+          {/* Where every posting comes from, directly under the plans. */}
           <AtsCoverage className="max-w-4xl mx-auto mb-16" />
 
           {/* Everything else, collapsed: the SKU wall demonstrably converts ~0 */}

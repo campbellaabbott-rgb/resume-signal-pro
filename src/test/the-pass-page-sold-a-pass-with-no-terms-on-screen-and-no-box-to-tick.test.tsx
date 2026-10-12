@@ -2,17 +2,17 @@
  * THE PASS PAGE SOLD A PASS WITH NO TERMS ON SCREEN AND NO BOX TO TICK (wave 3
  * review of payments-account).
  *
- * WHAT WAS WRONG. /agents/pass offers "Buy a pass" to an account with no open
- * pass, and the button had no "By continuing you agree to the Terms" line
- * above it. With no line on screen purchaseTerms() sends no Terms version, so
- * the purchase was recorded with no assent; and with the EU/UK switch on,
- * create-pass-checkout refuses a body without the withdrawal waiver, which
- * this page never rendered, so the buyer was told to tick a box that was not
- * there and could not buy here at all.
+ * WHAT WAS WRONG THEN. /agents/pass offered "Buy a pass" with no Terms line
+ * above the button and, with the EU/UK switch on, no waiver box: the buyer was
+ * told to tick a box that was not there.
  *
- * WHAT HOLDS NOW, the page mounted for real with only the backend and auth
- * faked: the line is above the button, the call carries the Terms version it
- * showed, and with the switch on the waiver box is there and its tick is sent.
+ * WHAT HOLDS NOW (the apply pivot, owner decision 2026-10-11). The Agent Pass
+ * is retired, so the page sells nothing at all — which is the stronger form
+ * of the old property: there is no button to buy, so there is no purchase
+ * without terms. Mounted for real, signed in, with the EU/UK switch both ways:
+ * no buy control, no Terms line pretending to precede one, no checkout or
+ * pass-status call, and the page says the pass is retired, how a past buyer
+ * reaches the owner, and links the free path.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -20,7 +20,6 @@ import { MemoryRouter } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { MOUNT_TEST_BUDGET } from "./helpers/mount-budget";
 import en from "../i18n/locales/en.json";
-import { TERMS_VERSION } from "@/config/terms";
 
 const { invoke, sw } = vi.hoisted(() => ({ invoke: vi.fn(), sw: { on: false } }));
 vi.mock("@/contexts/AuthContext", () => ({
@@ -64,25 +63,30 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 const mount = () => render(<HelmetProvider><MemoryRouter initialEntries={["/agents/pass"]}><AgentPass /></MemoryRouter></HelmetProvider>);
 
-describe("buying a pass from /agents/pass", () => {
-  it("names the Terms above the button, and the checkout call carries the version it showed", async () => {
-    mount();
-    const buy = await screen.findByRole("button", { name: /buy a pass/i });
-    const line = screen.getByText((_, el) => el?.tagName === "P" && el.textContent === AGREE);
-    expect([...line.querySelectorAll("a")].map((a) => a.getAttribute("href"))).toEqual(["/terms", "/privacy"]);
-    fireEvent.click(buy);
-    await waitFor(() => expect(checkoutBodies()).toHaveLength(1));
-    expect(checkoutBodies()[0].termsVersion).toBe(TERMS_VERSION);
-  });
+const SUPPORT = "resumeboostersupp@gmail.com";
 
-  it("with the EU/UK switch on, shows the waiver box the server requires and sends its tick", async () => {
-    sw.on = true;
+describe("/agents/pass after the retirement", () => {
+  for (const on of [false, true]) {
+    it(`sells nothing and calls nothing, with the EU/UK switch ${on ? "on" : "off"}`, async () => {
+      sw.on = on;
+      mount();
+      await screen.findByRole("heading", { level: 1, name: en.agentPass.retiredPageTitle });
+      expect(screen.queryByRole("button", { name: /buy|pass|checkout/i })).toBeNull();
+      expect(document.querySelector("main")!.querySelector("button"), "a control on the notice").toBeNull();
+      expect(screen.queryByRole("checkbox")).toBeNull();
+      expect(screen.queryByText((_, el) => el?.tagName === "P" && el.textContent === AGREE)).toBeNull();
+      expect(checkoutBodies()).toHaveLength(0);
+      expect(invoke.mock.calls.map(([fn]) => fn)).toEqual([]);
+      expect(document.body.textContent ?? "").not.toMatch(/\$\d/);
+    });
+  }
+
+  it("tells a past buyer how to reach the owner, and links the free path", async () => {
     mount();
-    const buy = await screen.findByRole("button", { name: /buy a pass/i });
-    const box = screen.getByRole("checkbox", { name: en.purchaseTerms.waiver.replace("{{days}}", "14") });
-    fireEvent.click(box);
-    fireEvent.click(buy);
-    await waitFor(() => expect(checkoutBodies()).toHaveLength(1));
-    expect(checkoutBodies()[0].withdrawalWaiver).toBe(true);
+    await screen.findByRole("heading", { level: 1, name: en.agentPass.retiredPageTitle });
+    expect(screen.getByText(en.agentPass.retiredBody)).toBeInTheDocument();
+    const buyers = document.querySelector("[data-pass-buyers]")!;
+    expect(buyers.querySelector("a")!.getAttribute("href")).toBe(`mailto:${SUPPORT}`);
+    expect(screen.getByRole("link", { name: new RegExp(en.agentPass.freePathCta) }).getAttribute("href")).toBe("/agents");
   });
 });

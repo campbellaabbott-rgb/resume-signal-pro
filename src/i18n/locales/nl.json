@@ -399,7 +399,7 @@
       },
       "subscription": {
         "question": "Is dit een abonnement?",
-        "answer": "Beide opties bestaan, en jij kiest. Elk rapport en elke tool is een eenmalige betaling die nooit wordt verlengd. Daarnaast zijn er twee optionele maandabonnementen: Pro voor ${{proPrice}}/maand voor onbeperkte scans en alle tools, en de Ochtendwachtrij voor ${{agentPrice}}/maand, waarbij de sollicitatie-agent 's nachts een shortlist voor je klaarzet. De cv-scan en de vacaturebank blijven in beide gevallen gratis. Beide abonnementen worden elke maand verlengd tot je opzegt, en de gratis proefperiode van de Ochtendwachtrij voor nieuwe abonnees gaat aan het einde over in het betaalde abonnement, tenzij je vóór die tijd opzegt. Verder word je nooit automatisch geüpgraded."
+        "answer": "Beide opties bestaan, en jij kiest. Elk rapport en elke tool is een eenmalige betaling die nooit wordt verlengd. Daarnaast is er één optioneel maandabonnement: Pro voor ${{proPrice}}/maand voor onbeperkte scans en alle tools. Het wordt elke maand verlengd tot je opzegt. De cv-scan, de vacaturebank en het koppelen van je eigen AI blijven hoe dan ook gratis. Verder word je nooit automatisch geüpgraded."
       },
       "share": {
         "question": "Kan ik mijn analyse delen?",
@@ -411,7 +411,7 @@
       },
       "dataStorage": {
         "question": "Slaan jullie mijn CV-gegevens op?",
-        "answer": "Alleen kort, en met een vervaldatum. Als je een cv uploadt of plakt, wordt de tekst 24 uur bewaard zodat een betaling hem kan gebruiken, en daarna verwijderd. Je gratis rapport, dat regels uit je cv citeert, wordt 7 dagen bewaard zodat een nieuwe scan van hetzelfde bestand met dezelfde vacature hetzelfde rapport krijgt, en daarna verwijderd. Een betaalde analyse blijft 90 dagen achter de privélink, tenzij je hem eerder verwijdert. Langer bewaren we een cv alleen als jij daarom vraagt: een versie die je in je account opslaat, het cv dat je instelt voor vacaturematching, of het cv dat je aan de sollicitatieagent geeft, die het naar de werkgevers stuurt waar hij namens jou solliciteert. We verkopen het nooit. Onze Vertrouwen-pagina somt elke kopie en de termijn ervan op."
+        "answer": "Alleen kort, en met een vervaldatum. Als je een cv uploadt of plakt, wordt de tekst 24 uur bewaard zodat een betaling hem kan gebruiken, en daarna verwijderd. Je gratis rapport, dat regels uit je cv citeert, wordt 7 dagen bewaard zodat een nieuwe scan van hetzelfde bestand met dezelfde vacature hetzelfde rapport krijgt, en daarna verwijderd. Een betaalde analyse blijft 90 dagen achter de privélink, tenzij je hem eerder verwijdert. Langer bewaren we een cv alleen als jij daarom vraagt: een versie die je in je account opslaat, het cv dat je instelt voor vacaturematching, of een cv dat je aan onze sollicitatieagent gaf voordat die werd uitgeschakeld. We verkopen het nooit. Onze Vertrouwen-pagina somt elke kopie en de termijn ervan op."
       },
       "vsChatGPT": {
         "question": "Waarom is dit beter dan ChatGPT?",
@@ -419,7 +419,7 @@
       },
       "bringYourAgent": {
         "question": "Kan mijn eigen AI-agent dit gebruiken?",
-        "answer": "Ja. Het vacaturebord lezen vereist bij een eerste aanroep helemaal geen sleutel, en een gratis sleutel opent elke leestool. Om je agent sollicitaties te laten aanvragen geeft een pas van ${{passPrice}} hem {{passHours}} uur en {{passApplications}} sollicitaties, vanaf zijn eerste aanroep en zonder ooit te verlengen; het Agent-abonnement doet hetzelfde maandelijks en verlengt wel. Elke vacature en elke zoekopdracht op het bord heeft een knop die een prompt voor je agent kopieert, en de instelling per host staat op /agents."
+        "answer": "Ja, gratis. Koppel Resume Booster aan Claude, ChatGPT of Claude Code, en je AI kan het bord doorzoeken, vacatures volledig lezen en je helpen solliciteren op de site van de werkgever; voor het lezen van het bord heb je geen sleutel en geen account nodig. Je AI schrijft een concept en jij beslist: we versturen nooit een sollicitatie namens jou. Elke vacature en elke zoekopdracht op het bord heeft een knop die een prompt voor je AI kopieert, en de instelling per app staat op /agents."
       }
     },
     "stillHaveQuestions": "Nog vragen?"
@@ -664,7 +664,8 @@
       "jurisdictionsEea": "16.1 Europese Economische Ruimte",
       "jurisdictionsCa": "16.2 Californië",
       "jurisdictionsNv": "16.3 Nevada",
-      "contactUs": "17. Neem contact met ons op"
+      "contactUs": "17. Neem contact met ons op",
+      "mcp": "Resume Booster gebruiken vanuit je eigen AI"
     }
   },
   "terms": {
@@ -2736,11 +2737,11 @@
   },
   "pricingPage": {
     "metaTitle": "Prijzen — Resume Booster",
-    "metaDescription": "Eenmalige tools van ${{lowPrice}} tot ${{highPrice}} die nooit verlengen, of maandplannen vanaf ${{proPrice}} met alle tools inbegrepen. Cv-herschrijvingen op recruiterniveau.",
+    "metaDescription": "Eenmalige tools van ${{lowPrice}} tot ${{highPrice}} die nooit verlengen, of Pro voor ${{proPrice}} per maand met alle tools inbegrepen. Cv-herschrijvingen op recruiterniveau.",
     "noSubscriptions": "Eenmalige betalingen • Verlengen nooit automatisch",
     "titlePrefix": "Kies je",
     "titleHighlight": "Cv-boost",
-    "subtitle": "Van snelle correcties tot complete carrièrepakketten. Eenmalige producten betaalt u één keer; Pro en het Agent-abonnement verlengen maandelijks tot u opzegt.",
+    "subtitle": "Van snelle correcties tot complete carrièrepakketten. Eenmalige producten betaalt u één keer; Pro verlengt maandelijks tot u opzegt.",
     "secureCheckout": "Veilig afrekenen",
     "instantAccess": "Direct toegang",
     "stripeProtected": "Beschermd door Stripe",
@@ -2753,7 +2754,7 @@
     "requiresUpload": "Vereist het uploaden van je cv voor analyse",
     "whyResumeBooster": "Waarom Resume Booster?",
     "questions": "Vragen?",
-    "allProductsOneTime": "Elke tool is een eenmalige aankoop met directe toegang en verlengt nooit. Pro en de Apply Agent zijn maandplannen die je altijd kunt opzeggen.",
+    "allProductsOneTime": "Elke tool is een eenmalige aankoop met directe toegang en verlengt nooit. Pro is een maandplan dat je altijd kunt opzeggen.",
     "freeScanLink": "gratis scan",
     "seeScoreFirst": "om eerst je score te zien.",
     "tryFreeScanFirst": "Probeer eerst de gratis scan",
@@ -2766,8 +2767,8 @@
     "ladderSpecialistDesc": "Voor carrièreswitchers: freelance-, gig- en projectwerk vertaald naar ervaring op recruiterniveau.",
     "allToolsToggle": "Bekijk alle tools ({{count}} meer)",
     "guarantee": "Elke betaalde tool is gedekt: niet blij met het resultaat? We regenereren het gratis — beantwoord gewoon je bon.",
-    "passLine": "Of een eenmalige pas voor je eigen AI-agent: ${{passPrice}} voor {{passHours}} uur en {{passApplications}} sollicitaties, die alleen tellen als hij ze kan versturen. Verlengt nooit.",
-    "passLink": "Verbind je agent"
+    "passLine": "Je eigen Claude of ChatGPT koppelen is gratis: doorzoek het bord in je chat en solliciteer zelf op de site van de werkgever, met hulp van je AI. We versturen nooit een sollicitatie namens jou.",
+    "passLink": "Koppel je AI"
   },
   "scanPackPurchase": {
     "topUpCredits": "Credits opwaarderen",
@@ -4919,15 +4920,8 @@
   "atsCoverage": {
     "heading": "Gebouwd voor de systemen die werkgevers echt gebruiken",
     "sub": "We lezen vacatures rechtstreeks uit {{count}} sollicitatiesystemen — niet geschraapt van een zoekmachine.",
-    "autoTitle": "Wij solliciteren voor je",
-    "autoBlurb": "De agent vult de sollicitatie zelf in en verstuurt hem.",
-    "clickTitle": "Ingevuld, jij drukt op versturen",
-    "clickBlurb": "Deze gebruiken een CAPTCHA of een menselijke controle die we nooit oplossen of omzeilen, of een formulier dat de agent nog niet zelf kan afronden. Hoe dan ook komt je sollicitatie kant-en-klaar aan en verstuur jij hem.",
-    "stripLegend": "Deze verstuurt de agent voor je. Op de andere systemen die we hebben gemeten vult hij de sollicitatie in en druk jij op verzenden: sommige gebruiken een menselijke controle die we niet omzeilen, en op sommige kan hij het formulier nog niet afronden. {{unmeasured}} staan erbij omdat hun vacatures daarvandaan komen; het bereik van de agent daarop is nog niet gemeten.",
-    "unmeasuredTitle": "Deze lezen we ook",
-    "unmeasuredBlurb": "Hun vacatures staan op het bord. We hebben hun sollicitatieformulieren niet onderzocht, dus we doen geen uitspraak over het bereik van de agent.",
-    "allTitle": "Sollicitaties voor je klaargezet",
-    "allBlurb": "We halen vacatures rechtstreeks uit deze systemen en zetten je sollicitatie voor elke vacature klaar."
+    "readTitle": "Rechtstreeks uit het eigen systeem van de werkgever gelezen",
+    "readBlurb": "Elke vacature op het bord komt uit een van deze systemen, en je solliciteert op de site van de werkgever. We versturen nooit een sollicitatie namens jou."
   },
   "pendingQ": {
     "title": "Vragen waarbij de agent is gestopt",
@@ -5015,33 +5009,31 @@
     "proofTracks": "Volgt elke sollicitatie en vertelt wat ermee gebeurde"
   },
   "agentMatches": {
-    "headlineCounted": "Ik vond {{total}}{{plus}} vacatures voor „{{q}}” die ik volledig kan indienen",
-    "headline": "Vacatures voor „{{q}}” die ik volledig kan indienen",
-    "sub": "Live vacatures van de borden van werkgevers zelf, op systemen waar ik de sollicitatie voor u kan afronden. De beste matches:",
-    "sendableBadge": "De agent kan deze indienen",
-    "ctaSetup": "Zet de agent hierop",
-    "ctaBrowse": "Bekijk ze allemaal"
+    "ctaBrowse": "Bekijk ze allemaal",
+    "headlineCounted2": "{{total}}{{plus}} actuele vacatures passen bij ‘{{q}}’",
+    "headline2": "Actuele vacatures die passen bij ‘{{q}}’",
+    "sub2": "Actuele vacatures uit de eigen wervingssystemen van werkgevers. Je solliciteert op de site van de werkgever, als je wilt met hulp van je eigen AI. Dit zijn de beste treffers:",
+    "ctaYourAi": "Solliciteer met hulp van je eigen AI"
   },
   "homeHero": {
-    "badge": "Live vacaturebord + AI-sollicitatieagent",
     "headlinePre": "Live vacatures, rechtstreeks uit de wervingssystemen van werkgevers.",
-    "headlineHighlight": "De agent solliciteert voor u.",
-    "sub": "Vacatures gelezen uit de eigen wervingssystemen van bedrijven en de hele dag opnieuw gecontroleerd. Upload uw cv: de agent rangschikt ze allemaal, schrijft elke sollicitatie eerlijk en dient in waar de werkgever het toestaat.",
     "statOpenings": "geverifieerde vacatures",
     "statCompanies": "bedrijven",
-    "statSendable": "kan de agent voor u indienen",
     "ctaPrimary": "Upload uw cv — gratis",
     "ctaSecondary": "Bekijk het bord",
     "reassure": "Gratis scan · geen kaart, geen registratie",
     "exploreCta": "Verkennen op vakgebied",
-    "statCompanyBoards": "vacaturesites van bedrijven met openstaande vacatures"
+    "statCompanyBoards": "vacaturesites van bedrijven met openstaande vacatures",
+    "badge2": "Live vacaturebord + je eigen AI",
+    "headlineHighlight2": "Solliciteer zelf, met hulp van je eigen AI.",
+    "sub2": "Vacatures rechtstreeks uit de eigen wervingssystemen van bedrijven, de hele dag opnieuw gecontroleerd. Scan je cv gratis, zoek op het bord hier of vanuit Claude of ChatGPT, en solliciteer zelf, als je wilt met hulp van je AI. We versturen nooit iets namens jou."
   },
   "homeAgent": {
-    "lead": "Neem je eigen AI-agent mee.",
-    "passLine": "Een pas van ${{passPrice}} geeft je agent {{passHours}} uur om de vacaturebank te doorzoeken en voor jou op {{passApplications}} vacatures te solliciteren. Een vacature telt alleen als de agent de sollicitatie kan versturen. Verlengt nooit; log in om te kopen.",
-    "connectCta": "Verbind je agent",
-    "passCta": "Pas kopen of openen",
-    "connectLine2": "Verbind hem gratis en zonder account — {{freeCallsPerDay}} aanroepen per dag per netwerkadres om het vacaturebord te verkennen (een kantoor of een thuisverbinding telt als één adres; vanuit ChatGPT heeft iedereen zijn eigen {{freeCallsPerDay}}, en vanuit Claude gaat eerst een dagelijkse pot voor die alle Claude-gebruikers delen)."
+    "lead": "Gebruik het vanuit je eigen AI.",
+    "passLine": "Je AI schrijft een concept en jij beslist: Resume Booster verstuurt nooit een sollicitatie namens jou.",
+    "connectCta": "Koppel je AI",
+    "connectLine2": "Koppel Resume Booster gratis en zonder account aan Claude of ChatGPT: doorzoek het bord in je chat, lees vacatures volledig en solliciteer met hulp van je AI zelf op de site van de werkgever, binnen een gratis daglimiet.",
+    "addToClaude": "Toevoegen aan Claude"
   },
   "ghostIndex": {
     "stillUp30WithheldLead": "{{n}} van de {{total}} hier genoemde vakgebieden hebben geen meting van het aandeel gedateerde functies dat bij onze grens van 30 dagen nog geadverteerd stond. Elk wordt om een genoemde reden ingehouden — een leemte in onze eigen registratie, nooit een uitspraak over het vakgebied.",
@@ -5091,54 +5083,15 @@
     "layoffReasonPrecision": "het interval is meer dan {{maxRel}}% zo breed als het aandeel vacatures dat het als verwijderd opgeeft, en legt dat aandeel dus niet vast"
   },
   "agentPass": {
-    "cardTitle": "Een pas voor je agent",
-    "cardBody": "{{passHours}} uur met je agent, {{passApplications}} sollicitaties, ${{passPrice}}. Verlengt nooit.",
-    "cardClock": "De klok start bij de eerste aanroep van je agent, niet bij aankoop. Een niet-gestarte pas blijft {{passShelfDays}} dagen geldig.",
-    "cardIncludes": "Inclusief de cv-scorer zolang hij loopt. Het bord lezen blijft gratis; het Agent-plan doet hetzelfde elke maand en verlengt — de pas nooit.",
-    "buy": "Koop de pas — ${{passPrice}}",
-    "buying": "Afrekenen openen…",
-    "signInToBuy": "Log in om de pas te kopen",
-    "signInWhy": "Een pas is gekoppeld aan je account — niet aan een e-mailadres, niet aan een sleutel.",
-    "holdOpen": "Je hebt een pas — open hem",
-    "checkoutFailed": "Afrekenen kon niet worden geopend — probeer het opnieuw.",
-    "cancelled": "Afrekenen geannuleerd — er is niets in rekening gebracht.",
-    "pageTitle": "Je Agent-pas",
-    "metaDescription": "Je pas — zijn klok, zijn sollicitaties en het ene blok dat je agent nodig heeft.",
     "checkingSignIn": "Aanmelding controleren…",
-    "reading": "Je pas lezen…",
-    "readFailed": "Je pas kon nu niet worden gelezen. Als je net hebt betaald, gaat er niets verloren — de aankoop staat bij Stripe en verschijnt hier zodra het lezen lukt.",
-    "retry": "Opnieuw",
-    "repairPending": "Deze betaling is nog niet aan een pas gekoppeld ({{reason}}). Als je net hebt betaald, wacht een minuut en probeer opnieuw — het bewijs komt vanzelf.",
-    "clockUnstarted": "Niet gestart. Je {{passHours}} uur begint bij de eerste aanroep van je agent — vervalt ongebruikt op {{date}}.",
-    "clockLive": "Loopt — nog {{hours}}u {{minutes}}m van {{passHours}} uur, eindigt op {{date}}.",
-    "clockEnded": "Je laatste pas eindigde op {{date}}.",
-    "clockShelfExpired": "Je laatste pas verviel ongebruikt op {{date}}.",
-    "clockNone": "Nog geen pas op dit account.",
-    "applications": "{{left}} van {{passApplications}} sollicitaties",
-    "applicationsBasis": "Een sollicitatie telt alleen voor een vacature waar de agent hem kan versturen. Een geweigerde aanvraag, of een verzending die nooit plaatsvond, kost niets.",
-    "buyAnother": "Koop een pas",
-    "whichAgent": "Welke agent?",
-    "handoffTitle": "Geef hem aan je agent",
-    "keyMintFirst": "Maak eerst je agentsleutel aan — hij wordt één keer getoond en wordt in het blok hieronder ingevuld.",
-    "keyCarries": "Je bestaande agentsleutel draagt de pas al — niets om te plakken.",
-    "keyDetail": "Sleutel {{prefix}}…, aangemaakt op {{date}}.",
-    "mintNew": "Een nieuwe aanmaken (trekt de oude in)",
-    "connectorOauth": "Kies Inloggen wanneer nodig, klik dan in de chat op Verbinden en op Toestaan.",
-    "checklistTitle": "Vóór de eerste sollicitatie",
-    "expectHold": "Je eerste {{holdFirstN}} verzendingen worden vastgehouden tot je ze goedkeurt in Account.",
-    "expectHoldPlain": "Je eerste verzendingen worden vastgehouden tot je ze goedkeurt in Account.",
-    "expectPrepare": "Pakketten worden binnen ongeveer een minuut na een aanvraag voorbereid.",
-    "expectLapse": "Sollicitaties die je niet gebruikt vervallen als de klok afloopt.",
-    "expectFinish": "Al aangevraagde verzendingen worden ook na het aflopen van de klok afgerond.",
-    "toAgent": "Open de agent",
-    "stepsTitle": "Stappen voor {{host}}:",
-    "keyedTitle": "Voeg dan je agentsleutel toe — die draagt de pas:",
-    "connectorNoOauth2": "Inloggen voor deze host staat nog niet aan, dus vanaf hier antwoorden alleen de tools zonder sleutel. Om de pas te gebruiken, verbind je vanuit {{headerHosts}} met je agentsleutel.",
-    "connectorPassGate": "Vanuit {{host}} is de pas pas te gebruiken zodra inloggen aanstaat; gebruik hem vandaag vanuit {{headerHosts}} met je agentsleutel.",
-    "repairSecondPass": "Deze betaling heeft geen tweede pass gemaakt: een account heeft steeds één open pass, en de jouwe staat hier ongewijzigd. We zijn op de hoogte en deze betaling wordt terugbetaald — staat hij over een paar dagen niet terug op je kaart, mail dan naar resumeboostersupp@gmail.com.",
-    "repairNotYours": "Deze aankoop hoort bij een ander account dan waarmee je bent ingelogd, en de pass staat op dat account. Log in met het account dat heeft betaald om hem te zien.",
-    "repairRefunded": "Deze betaling is terugbetaald, dus er opent geen pas mee.",
-    "cardCharge": "Alleen vacatures waar je agent zelf kan solliciteren tellen mee. De rest wordt geweigerd en kost niets."
+    "retiredPageTitle": "De Agent Pass is stopgezet",
+    "retiredMeta": "We verkopen de Agent Pass en het Agent-abonnement niet meer en versturen geen sollicitaties. Hier lees je wat er is veranderd, en hoe je gratis solliciteert met je eigen AI.",
+    "retiredBadge": "Stopgezet",
+    "retiredBody": "We verkopen de Agent Pass, het Agent-abonnement en de Apply Assistant niet meer, en onze eigen sollicitatie-agent staat uit: Resume Booster verstuurt voor niemand sollicitaties.",
+    "retiredBuyers": "Er al een gekocht? We betalen het terug of komen het na. Schrijf ons vanaf het adres waarmee je hebt betaald:",
+    "freePathTitle": "De gratis manier: zelf solliciteren, met je eigen AI",
+    "freePathBody": "Koppel Resume Booster kosteloos aan Claude of ChatGPT. Je AI zoekt samen met je op het bord, leest de vacature — en, waar het systeem van de werkgever het publiceert, het sollicitatieformulier — en helpt je je antwoorden te schrijven. Jij controleert alles en drukt zelf op Verzenden op de site van de werkgever.",
+    "freePathCta": "Koppel je AI"
   },
   "oauthConsent": {
     "title": "Verbind je agent",
@@ -5166,7 +5119,6 @@
     "welcomeBody": "Nog één ding: de agent heeft je cv en een actief mandaat nodig voordat hij iets kan zoeken. De checklist hieronder kost ongeveer een minuut, en niets draait tot die af is."
   },
   "agentConnect": {
-    "rateLine": "Een gratis sleutel is begrensd op {{ratePerMin}} verzoeken per minuut en {{dailyQuota}} aanroepen per dag; een actieve pas verhoogt beide voor de duur van zijn uren.",
     "attachTitle": "Prompts en bronnen die je host kan tonen",
     "attachLead": "Naast de tools registreert de server kant-en-klare prompts en enkele leesbare documenten. Hosts die ze tonen (het bijvoegmenu van claude.ai, de slash-lijst van Claude Code, het paneel van Cursor) laten ze zien onder de naam van de server; tonen kost geen aanroep en vereist geen sleutel.",
     "promptsHeading": "Prompts",
@@ -5174,7 +5126,27 @@
     "resourceKeyed": "vereist een sleutel of aanmelding",
     "resourceUnkeyed": "leesbaar zonder sleutel",
     "handoffLead": "Op het vacaturebord heeft elke vacature en elke zoekopdracht een knop die een prompt voor je agent kopieert — hij noemt het id van de vacature of de argumenten van de zoekopdracht en de URL van deze server.",
-    "handoffCta": "Vacaturebord openen"
+    "handoffCta": "Vacaturebord openen",
+    "badge": "Koppel je eigen AI",
+    "heroTitle": "Zoek vacatures en solliciteer zelf, met je eigen AI",
+    "heroSubCount": "Koppel Resume Booster gratis aan Claude of ChatGPT. Doorzoek {{n}}+ actuele vacatures uit de eigen wervingssystemen van werkgevers, lees ze volledig en solliciteer met hulp van je AI op de site van de werkgever.",
+    "heroSubNoCount": "Koppel Resume Booster gratis aan Claude of ChatGPT. Doorzoek actuele vacatures uit de eigen wervingssystemen van werkgevers, lees ze volledig en solliciteer met hulp van je AI op de site van de werkgever.",
+    "manualSteps": "Of voeg het handmatig toe",
+    "stepsChecked": "Deze stappen zijn op {{date}} gecontroleerd aan de hand van de pagina van de leverancier:",
+    "rateLine2": "Een gratis sleutel staat {{ratePerMin}} verzoeken per minuut en {{dailyQuota}} aanroepen per dag toe.",
+    "applyTitle": "Zelf solliciteren, met hulp van je AI",
+    "selfApplyFree": "Zelf solliciteren is gratis. Je AI leest de vacature en, als de werkgever {{vendors}} gebruikt, ook het sollicitatieformulier. Resume Booster vraagt je AI om je elke feitelijke vraag te stellen en alleen open antwoorden op basis van je cv te schrijven; jij controleert alles en drukt zelf op verzenden.",
+    "applyStep1": "Geef je AI je cv in de chat: plak het of voeg het toe als bijlage.",
+    "applyStep2": "Vraag je AI je te helpen solliciteren: plak de link van de vacature van het bord, of kies er een uit een zoekopdracht.",
+    "applyStep3": "Resume Booster vraagt je AI om je elke feitelijke vraag te stellen — werkvergunning, sponsoring, salaris, startdatum, referenties, onderbrekingen — en jouw woorden te gebruiken; nooit demografische vragen voor je te beantwoorden of toestemmingsvakjes aan te vinken; en alleen antwoorden over je werk te schrijven, op basis van je cv, en je elk concept eerst te laten zien.",
+    "applyStep4": "Jij verstuurt de sollicitatie op de site van de werkgever: met de hand, of met Claude in Chrome of de agent van ChatGPT die het formulier met je invult. Jij voegt je cv toe, maakt een eventueel werkgeversaccount aan en drukt op Verzenden.",
+    "applyNever": "Resume Booster verstuurt nooit iets namens jou.",
+    "applyBrowsersTitle": "Als je AI een browser kan gebruiken",
+    "applyChrome": "Claude in Chrome (betaalde Claude-abonnementen, Chrome op een computer): kies handmatige goedkeuring voor sollicitatieformulieren. Claude kan het eerst vragen voordat het je gegevens invult. Voeg je cv zelf toe als Claude dat niet kan. Werkgeversaccounts maak je zelf aan en CAPTCHA's los je zelf op. Resume Booster vraagt Claude om vóór Verzenden te stoppen.",
+    "applyChatgpt": "De browser van ChatGPT vraagt het voordat hij iets verstuurt en kan geen bestanden uploaden, dus voeg je cv zelf toe.",
+    "applyFreePlans": "Gratis abonnementen en telefoons: vraag je AI om de antwoorden als lijst en plak ze zelf in het formulier van de werkgever.",
+    "applyChecked": "Op {{date}} gecontroleerd aan de hand van de hulppagina's van Anthropic en OpenAI.",
+    "retiredLink": "Eerder een pas of abonnement bij ons gekocht? Lees wat er is veranderd."
   },
   "ontarioEsa": {
     "title": "Wat deze vacature volgens de wet van Ontario vermeldt",
@@ -5360,5 +5332,12 @@
       "Trefwoordenbank voor je branche",
       "30 dagen garantie op heroptimalisatie"
     ]
+  },
+  "dataApiPage": {
+    "builderName": "Builder-API (gepland)",
+    "builderPrice": "${{price}} per maand, gepland",
+    "builderBody": "Gerangschikt zoeken, cv-matchscores op grote schaal en 180 dagen aan sluitingen, om in je eigen product te tonen met bronvermelding. Geen feeds of doorverkoop; daarvoor is de commerciële licentie. Laat ons weten of je het zou gebruiken.",
+    "builderNotYet": "Nog niet te koop: er wordt niets in rekening gebracht, en we beantwoorden elk verzoek per e-mail.",
+    "builderCta": "Builder aanvragen"
   }
 }
