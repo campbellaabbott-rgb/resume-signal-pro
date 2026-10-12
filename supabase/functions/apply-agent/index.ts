@@ -66,7 +66,11 @@ import { APPLY_AGENT_ON } from "../_shared/apply-agent-switch.ts";
 // reads no mandate, prepares nothing, releases nothing, wakes no worker and
 // writes no run stamp; the hourly cron is unscheduled by name in
 // 20261011130000. The code below is kept, dormant, with its tests.
-const BUILD_VERSION = "2026-10-11.13";
+// 2026-10-11.14 (the wave-4 integration): the same switched-off code, carrying
+// w4/mcp's widened question classifier (_shared/application-questions.ts:
+// termination, reasons for leaving, gaps, references and grades go to the
+// person), so the dormant agent and the live connector classify alike.
+const BUILD_VERSION = "2026-10-11.14";
 // Provable from outside with no key: the CORS preflight and every response
 // carry this in x-fn-build.
 const FN_BUILD = `apply-agent.${BUILD_VERSION}`;

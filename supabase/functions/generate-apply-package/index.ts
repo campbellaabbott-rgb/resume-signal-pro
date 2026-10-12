@@ -17,7 +17,11 @@ import { purchaseSpendGate, spendRefusal } from "../_shared/model-spend-gate.ts"
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
 // 2026-10-09.62 (wave-3 fix round integration): carries both 2026-10-09.5 and the payments-account group's 2026-10-09.61.
-const FN_BUILD = "generate-apply-package.2026-10-09.62";
+// 2026-10-11.1 (wave-4 integration): _shared/application-questions.ts, which
+// this function imports for roleGuidance alone, gained w4/mcp's widened
+// classifier; roleGuidance is unchanged, and the stamp moves so the deployed
+// bundle and the repository's are the same code.
+const FN_BUILD = "generate-apply-package.2026-10-11.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

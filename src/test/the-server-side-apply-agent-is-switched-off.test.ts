@@ -137,7 +137,7 @@ describe("apply-agent: an authorised run does nothing and says so", () => {
       const res = await call(h["apply-agent"], "apply-agent", body, { "x-maintenance-key": env.MAINTENANCE_KEY! });
       expect(res.status).toBe(200);
       const j = await res.json();
-      expect(j).toMatchObject({ switchedOff: true, version: "2026-10-11.13", trigger: trigger === "cron" ? "cron" : "manual" });
+      expect(j).toMatchObject({ switchedOff: true, version: "2026-10-11.14", trigger: trigger === "cron" ? "cron" : "manual" });
       expect(j).not.toHaveProperty("prepared");
       expect(hit("from:agent_mandates")).toEqual([]);
       expect(hit("from:agent_submissions")).toEqual([]);
@@ -152,7 +152,7 @@ describe("apply-agent: an authorised run does nothing and says so", () => {
   it("a stranger still gets the 403 with the build and nothing else", async () => {
     const res = await call(h["apply-agent"], "apply-agent", { source: "cron" });
     expect(res.status).toBe(403);
-    expect(await res.json()).toEqual({ error: "apply-agent is a maintenance action", version: "2026-10-11.13" });
+    expect(await res.json()).toEqual({ error: "apply-agent is a maintenance action", version: "2026-10-11.14" });
     expect(touched.filter((x) => x !== "createClient")).toEqual([]);
   });
 

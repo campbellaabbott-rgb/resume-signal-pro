@@ -128,7 +128,7 @@
       "deployOrder": 2
     },
     "wave4": {
-      "branches": ["wave4/", "connect-apply/"],
+      "branches": ["wave4/", "w4/", "connect-apply/"],
       "migrations": "20261011*",
       "jobBoard": "2026-09-09.93",
       "fnBuildDate": "2026-10-11",

@@ -33,7 +33,11 @@ import { toAskedLabels } from "../_shared/draft-reply.ts";
 // label asked by case, spacing and list number (S11-040).
 // 2026-10-10.25 (wave-3 fix round integration): carries both of the above.
 // 2026-10-10.62 (wave-3 fix round integration): carries both 2026-10-10.25 and the payments-account group's 2026-10-10.61.
-const FN_BUILD = "generate-application-answers.2026-10-10.62";
+// 2026-10-11.1 (wave-4 integration): carries w4/mcp's widened classifier in
+// _shared/application-questions.ts, so termination, reasons for leaving, gaps,
+// references, grades, commuting, time zone and prior employment by the
+// employer are factual (the person answers) and never drafted here.
+const FN_BUILD = "generate-application-answers.2026-10-11.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
