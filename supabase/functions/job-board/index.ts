@@ -71,7 +71,7 @@ import {
 } from "./normalize.ts";
 import { categorize, CATEGORIZE_VERSION, JOB_CATEGORIES } from "./categories.ts";
 import { computeFit, resumeRoleTerms, scanResume } from "../_shared/fit-score.ts";
-import { sanitizeTerm } from "../_shared/location-terms.ts";
+import { METRO_ALIASES, sanitizeTerm, STATE_ALIASES } from "../_shared/location-terms.ts";
 // The board's place terms: _shared's aliases, and "City, ST" as the city in that state (query-place.ts).
 import { liftTrailingPlace, placeTerms as locationTerms, rankedPlaceParam as rankedLocationParam } from "./query-place.ts";
 import { askedByName, resolveCompanyNames, type CompanyScope } from "./company-names.ts";
@@ -90,7 +90,7 @@ import { advanceProgress, baseConsumedPrefix, isPassDone, type RefreshProgress }
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
 import { detectExperience, isExperienceBand } from "./experience.ts";
 import { categoryParam, COMPANY_TOKEN_SHAPE, extraFilterParams, filterViolations, isUnfiltered, normalizeFilters, payParams, rpcBlindFilters, rescueVendorsParam, SALARIED_PERIODS, sendableSourcesParam, splitPage, salaryFromQueryText, salaryTokenInQuery, WIDENING_FILTERS } from "./filters.ts";
-import { foldName, foldTypeahead, pickRoute, rerankWindow, RETRIEVER_FOR, ringWordPattern, simpleRouteFilters, singularReading, splitExclusions, startsWithWord, stopwordTokens, titleExcluded, type TitleFilter } from "./search-routing.ts";
+import { foldName, foldTypeahead, pickRoute, rerankWindow, RETRIEVER_FOR, ringWordPattern, simpleRouteFilters, singularReading, splitExclusions, startsWithWord, stopwordTokens, titleExcluded, withLiveBrands, type TitleFilter } from "./search-routing.ts";
 import { planRankedPage, RANKED_WINDOW, RING_WINDOW, rowsReached, symbolLiteralRows } from "./paging.ts";
 import { collapseClusters, GROUP_OVERFETCH, interleaveByCompany, rowClusterKey, visibleCategories, mergeCompanyFacet } from "./clusters.ts";
 import { EMPLOYER_ALIASES } from "./employer-aliases.ts";
@@ -2981,6 +2981,32 @@ async function suggestEmployers(client: SupabaseClient): Promise<ReturnType<type
   const merged = fold();
   if (suggestMemo) suggestMemo.merged = merged;
   return merged;
+}
+
+/**
+ * S12-014: the router's employer keys, the alias table plus keys read from
+ * the live employer list (search-routing.ts withLiveBrands), per isolate for
+ * SUGGEST_MEMO_MS. A list read slower than ROUTE_ALIAS_DEADLINE_MS, or one
+ * that fails, routes on the table alone and is asked again next call.
+ */
+const ROUTE_ALIAS_DEADLINE_MS = 800;
+/** Words no live employer key may claim: role abbreviations, places, filler, and the job acronyms people type. */
+const LIVE_KEY_REFUSE: ReadonlySet<string> = new Set([
+  ...Object.keys(ROLE_ALIASES), ...Object.keys(STATE_ALIASES), ...Object.keys(METRO_ALIASES).map((k) => foldName(k)),
+  "cna", "lpn", "lvn", "rn", "np", "pa", "cpa", "cdl", "hvac", "emt", "pta", "ota", "slp", "bcba", "rbt", "csr", "sdr",
+  "bdr", "qc", "dba", "cfo", "ceo", "cto", "coo", "cmo", "vp", "gm", "crna", "cst", "phd", "mba", "aws", "sap", "erp",
+  "crm", "seo", "ehs", "hse", "osha", "dot", "cad", "plc", "rf", "mep", "bim", "cnc", "pmp", "lmsw", "lcsw", "msw",
+]);
+async function routeAliasesFor(client: SupabaseClient): Promise<typeof EMPLOYER_ALIASES> {
+  try {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const late = new Promise<null>((r) => { timer = setTimeout(() => r(null), ROUTE_ALIAS_DEADLINE_MS); });
+    const merged = await Promise.race([suggestEmployers(client), late]).finally(() => clearTimeout(timer));
+    if (!merged || merged.length === 0) return EMPLOYER_ALIASES;
+    return withLiveBrands(EMPLOYER_ALIASES, merged, LIVE_KEY_REFUSE);
+  } catch {
+    return EMPLOYER_ALIASES;
+  }
 }
 
 /** A maintenance credential (.88): the chain secret in the body, or the service key itself. */
@@ -7718,8 +7744,12 @@ function titleStemmed<T extends { textSearch: (...a: any[]) => T }>(qb: T, q: st
 
 /** The SIMPLE route's split title match, one wfts filter each (search-routing.ts simpleRouteFilters; n481). */
 // deno-lint-ignore no-explicit-any
-function titleFilters<T extends { textSearch: (...a: any[]) => T }>(qb: T, filters: readonly TitleFilter[]): T {
-  return filters.reduce((b, f) => b.textSearch(f.column, f.query, { type: "websearch", config: f.config }), qb);
+function titleFilters<T extends { textSearch: (...a: any[]) => T; or: (f: string) => T }>(qb: T, filters: readonly TitleFilter[]): T {
+  const quoted = (v: string) => `"${v.replace(/["\\]/g, "")}"`;
+  return filters.reduce((b, f) => f.orCompanyTokens?.length
+    // S12-014: the title words OR the employer's own boards, one indexed arm each.
+    ? b.or(`${f.column}.wfts(${f.config}).${quoted(f.query)},company_token.in.(${f.orCompanyTokens.map(quoted).join(",")})`)
+    : b.textSearch(f.column, f.query, { type: "websearch", config: f.config }), qb);
 }
 
 /**
@@ -12099,6 +12129,10 @@ async function serveList(
   // phraseText, not a plain join: a quoted phrase is one term here and must
   // reach the tsquery parser back inside its quotes, or the tip is a lie.
   const qText = phraseText(qt.terms).slice(0, 200) || (qt.liftedSalary ? "" : String(body.q ?? "").trim().slice(0, 200));
+  // The router's employer keys: the table, plus the live employer list's (S12-014).
+  const routeAliases = qText ? await routeAliasesFor(client) : EMPLOYER_ALIASES;
+  /** The SIMPLE route's split title match, with an employer's boards beside its key (S12-014). */
+  const simpleSplit = (q: string) => simpleRouteFilters(ftsSafe(q), ROLE_ALIASES, routeAliases);
 
   if (body.facetCounts === true) {
     // A text query's chips were counted by substring (the capped-count RPC, or the
@@ -12106,7 +12140,7 @@ async function serveList(
     // legal 1,159 over a legal list of 8 (L13-24). An employer query counts the
     // list's own matcher, its tokens; any other text query withholds the numbers
     // rather than publish a different population's (n433).
-    const facetRoute = qText ? pickRoute(qText, EMPLOYER_ALIASES, QUERY_FILLER) : null;
+    const facetRoute = qText ? pickRoute(qText, routeAliases, QUERY_FILLER) : null;
     const facetTokens = facetRoute?.route === "EMPLOYER" && facetRoute.tokens?.length ? facetRoute.tokens : null;
     if (!facetTokens && qText) {
       return json({
@@ -12169,7 +12203,7 @@ async function serveList(
   }
 
   // Rationale: docs/job-board-index-notes.md#n318-qclass
-  const qClass = qText ? pickRoute(qText, EMPLOYER_ALIASES, QUERY_FILLER) : null;
+  const qClass = qText ? pickRoute(qText, routeAliases, QUERY_FILLER) : null;
   const qClassRetriever = qClass ? RETRIEVER_FOR[qClass.route] : null;
   const onlyQuery = isUnfiltered({ ...applied, q: "" });
   // Routed with or without filters: buildQuery binds every filter in SQL BEFORE
@@ -12216,7 +12250,7 @@ async function serveList(
         // ternary exactly, including the ftsSafe/ftsQuery split.
         const rcExpand = routedRetriever === "company" ? { q: qText, expansions: [] as string[] } : expandQuery(qText);
         // The list's own split title match (S11-004, n481), or its whole-query one.
-        const rcSplit = routedRetriever === "simple" ? simpleRouteFilters(ftsSafe(qText), ROLE_ALIASES) : null;
+        const rcSplit = routedRetriever === "simple" ? simpleSplit(qText) : null;
         rqC = routedRetriever === "company" && routeDecision.tokens?.length
           ? rqC.in("company_token", routeDecision.tokens)
           : rcSplit
@@ -12410,7 +12444,7 @@ async function serveList(
   const salaryTextSort = !countOnly && !!qText && body.sort === "salary";
   const salaryEmployer = qClass?.route === "EMPLOYER" && !!qClass.tokens?.length ? qClass.tokens : null;
   const salaryExpand = salaryEmployer ? { q: qText, expansions: [] as string[] } : expandQuery(qText);
-  const salarySplit = qClass?.route === "SIMPLE" && !salaryEmployer ? simpleRouteFilters(ftsSafe(qText), ROLE_ALIASES) : null;
+  const salarySplit = qClass?.route === "SIMPLE" && !salaryEmployer ? simpleSplit(qText) : null;
 
   if (salaryTextSort) {
     const t_salary_sorted = Date.now();
@@ -12496,7 +12530,7 @@ async function serveList(
   if (newestTextSort) try {
     const t_newest_sorted = Date.now();
     const newestExpand = expandQuery(qText);
-    const newestSplit = qClass?.route === "SIMPLE" ? simpleRouteFilters(ftsSafe(qText), ROLE_ALIASES) : null;
+    const newestSplit = qClass?.route === "SIMPLE" ? simpleSplit(qText) : null;
     const newestBase = buildQuery("effective_posted", false, undefined, { skipTerms: true });
     const { data: newRows, error: newErr } = await withDeadline(
       (qClass?.route === "RANKED"
@@ -12581,7 +12615,7 @@ async function serveList(
     const blockStart = Math.floor(offset / ROUTE_WINDOW) * ROUTE_WINDOW;
     const routedExpand = routedRetriever === "company" ? { q: qText, expansions: [] as string[] } : expandQuery(qText);
     // Short and stop tokens literal, the rest stemmed (S11-004, n481); null keeps the whole-query match.
-    const routedSplit = routedRetriever === "simple" ? simpleRouteFilters(ftsSafe(qText), ROLE_ALIASES) : null;
+    const routedSplit = routedRetriever === "simple" ? simpleSplit(qText) : null;
     const routedAliases = routedSplit ? routedSplit.expansions : routedExpand.expansions;
     let rq = buildQuery("effective_posted", false, undefined, { skipTerms: true });
     rq = routedRetriever === "company" && routeDecision.tokens?.length
