@@ -552,8 +552,14 @@ describe("a median drawn from a window that cannot hold one — the seven-day fl
     // re-observation, and the company curve gained role-level counts beside
     // its event counts. The seven-day-floor property is untouched; the pins
     // follow the definitions that run.
-    const COMPANY_CURVE = "20261008110000_a_role_is_counted_once_and_a_posting_seen_again_never_came_down.sql";
-    const CATEGORY_CURVE = "20261008110500_a_field_pools_a_posting_seen_again_after_a_dark_batch_once.sql";
+    // MOVED, NOT DROPPED, an eighth time, both curves together: on
+    // 2026-10-12 (ghost spec Track 1, A4 and A5) both chains of both curves
+    // take delayed entry, the 14-day pools read only boards that can see a
+    // takedown, the field's day-30 pool admits by evidence from before the
+    // cohort, and the 14-day interval is carried by R(14). The seven-day-floor
+    // property is untouched; the pins follow the definitions that run.
+    const COMPANY_CURVE = "20261012121000_a_fill_share_counts_only_roles_the_board_was_watched_for.sql";
+    const CATEGORY_CURVE = "20261012122000_a_field_admits_a_board_by_what_it_could_see_before_the_cohort.sql";
     expect(LIVE.get("get_company_fill_curve")?.file).toBe(COMPANY_CURVE);
     expect(LIVE.get("get_category_fill_curve")?.file).toBe(CATEGORY_CURVE);
   });
@@ -729,8 +735,17 @@ describe("a median drawn from a window that cannot hold one — a floor is rende
     expect(offenders, "the exact-count sentences were replaced, not kept as a fallback").toEqual([]);
 
     const en = JSON.parse(read("src/i18n/locales/en.json")) as { jobsPage: Record<string, string> };
-    for (const key of ["verdictChurnFloor", "hhRepostsFloor", "repostChipFloor"]) {
+    for (const key of ["hhRepostsFloor", "repostChipFloor"]) {
       expect(en.jobsPage[key], `jobsPage.${key} must carry its floor marker`).toMatch(FLOOR_MARKER);
+    }
+    // THE NEUTRAL SENTENCE (ghost spec Track 1, A2; owner decision GD6(a),
+    // 2026-10-11) states the roles we logged and drops the floor word, which
+    // read as a claim that more re-posting was hiding; the card chip above
+    // keeps its marker and the public API keeps declaring the figures floors.
+    // It still names the count, so it is never an unquantified accusation.
+    for (const key of ["verdictChurnFloor", "repostTipRoles"]) {
+      expect(en.jobsPage[key], `jobsPage.${key} states the count`).toMatch(/\{\{n\}\}/);
+      expect(en.jobsPage[key], `jobsPage.${key} is the neutral sentence`).not.toMatch(/at least/);
     }
   });
 

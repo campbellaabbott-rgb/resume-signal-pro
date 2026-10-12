@@ -57,6 +57,7 @@ const curve = (token: string, o: { relists_90d: number; filled: number; relisted
   median_days_to_fill: 11, median_censored: false,
   dated_coverage: 0.80, dated_n: 40, undated_n: 10,
   fill_through: 0.70, churn: 0.26, absorption: 0.10, tracking_days: 90, sufficient: true,
+  observability_bucket: "full_read", watched_from: "2026-08-01", multi_site_title_share: 0,
 });
 // big: re-lists 44 titles, but 448 roles came down and stayed down against 30
 //      that came back: verdict "closes", and the drawer praises it.
@@ -93,13 +94,13 @@ beforeEach(() => {
 describe("an employer the drawer praised was cautioned on its card", () => {
   it("positive control: roles back outnumber roles down, and the card cautions", async () => {
     mount();
-    await waitFor(() => expect(card("Churnco")).toContain("Re-lists roles often"), SLOW);
+    await waitFor(() => expect(card("Churnco")).toContain("Back or same title live"), SLOW);
   });
 
   it("an employer whose roles stay down is not cautioned for re-list events the drawer does not count", async () => {
     mount();
-    await waitFor(() => expect(card("Churnco")).toContain("Re-lists roles often"), SLOW);
+    await waitFor(() => expect(card("Churnco")).toContain("Back or same title live"), SLOW);
     await waitFor(() => expect(card("Bigco")).toMatch(/Fills fast|Actively hiring/), SLOW);
-    expect(card("Bigco"), "the card cautioned an employer whose verdict is closes").not.toContain("Re-lists roles often");
+    expect(card("Bigco"), "the card cautioned an employer whose verdict is closes").not.toContain("Back or same title live");
   });
 });

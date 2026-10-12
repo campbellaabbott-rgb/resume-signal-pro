@@ -88,9 +88,9 @@
       "titleListings": "Vagas publicadas sobretudo em"
     },
     "nameLoading": "A carregar o nome do empregador",
-    "openRoles_one": "{{n}} vaga aberta",
-    "openRoles_other": "{{n}} vagas abertas",
-    "openRoles_many": "{{n}} vagas abertas",
+    "openRoles_one": "{{n}} vaga com data nos últimos {{days}} dias",
+    "openRoles_other": "{{n}} vagas com data nos últimos {{days}} dias",
+    "openRoles_many": "{{n}} vagas com data nos últimos {{days}} dias",
     "openRolesCapped": "contamos até {{cap}}",
     "pay": {
       "basis": "Valores anuais a partir das faixas salariais que os seus anúncios abertos indicam; anúncios sem salário não são contados.",
@@ -142,9 +142,9 @@
     },
     "results": {
       "boardRead": "este portal lido {{ago}}",
-      "showing_one": "A mostrar {{shown}} de {{total}} vaga aberta",
-      "showing_other": "A mostrar {{shown}} de {{total}} vagas abertas",
-      "showing_many": "A mostrar {{shown}} de {{total}} vagas abertas",
+      "showing_one": "Mostrando {{shown}} de {{total}} vaga com data nos últimos {{days}} dias",
+      "showing_other": "Mostrando {{shown}} de {{total}} vagas com data nos últimos {{days}} dias",
+      "showing_many": "Mostrando {{shown}} de {{total}} vagas com data nos últimos {{days}} dias",
       "showingMatching_one": "A mostrar {{shown}} de {{total}} vaga correspondente",
       "showingMatching_other": "A mostrar {{shown}} de {{total}} vagas correspondentes",
       "showingMatching_many": "A mostrar {{shown}} de {{total}} vagas correspondentes"
@@ -178,11 +178,26 @@
     },
     "zero": {
       "allRoles": "Pesquisar todas as vagas abertas",
-      "answer": "Sem vagas abertas neste momento",
+      "answer": "Nenhuma vaga com data nos últimos {{days}} dias",
       "body": "Acompanhe este portal e a sua conta contará os novos anúncios quando aparecerem.",
-      "title": "Sem vagas abertas na {{name}} neste momento",
-      "titleBoard": "Sem vagas abertas neste portal neste momento"
+      "title": "Nenhuma vaga na {{name}} com data nos últimos {{days}} dias",
+      "titleBoard": "Nenhuma vaga neste portal com data nos últimos {{days}} dias",
+      "older_one": "A {{total}} vaga do portal da {{company}} não tem data nos últimos {{days}} dias (lido em {{date}}).",
+      "older_other": "Nenhuma das {{total}} vagas do portal da {{company}} tem data nos últimos {{days}} dias (lido em {{date}}).",
+      "older_many": "Nenhuma das {{total}} vagas do portal da {{company}} tem data nos últimos {{days}} dias (lido em {{date}}).",
+      "olderBoard_one": "A {{total}} vaga deste portal não tem data nos últimos {{days}} dias (lido em {{date}}).",
+      "olderBoard_other": "Nenhuma das {{total}} vagas deste portal tem data nos últimos {{days}} dias (lido em {{date}}).",
+      "olderBoard_many": "Nenhuma das {{total}} vagas deste portal tem data nos últimos {{days}} dias (lido em {{date}}).",
+      "basis": "Mostramos vagas com data nos últimos {{days}} dias.",
+      "empty": "Nenhuma vaga no portal da {{company}} quando o lemos {{ago}}.",
+      "emptyBoard": "Nenhuma vaga neste portal quando o lemos {{ago}}.",
+      "unread": "Não lemos o portal completo da {{company}} recentemente.",
+      "unreadBoard": "Não lemos este portal completo recentemente."
     },
-    "countedAgo": "contado {{ago}}"
+    "countedAgo": "contado {{ago}}",
+    "undatedMore": "(mais {{u}} sem data)",
+    "boardTotal_one": "O portal listava {{total}} vaga no total quando o lemos {{ago}}.",
+    "boardTotal_other": "O portal listava {{total}} vagas no total quando o lemos {{ago}}.",
+    "boardTotal_many": "O portal listava {{total}} vagas no total quando o lemos {{ago}}."
   }
 }

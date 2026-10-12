@@ -18,7 +18,7 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import type { LanderModel } from "@/lib/company/lander-model";
+import { SERVED_WINDOW_DAYS, type LanderModel } from "@/lib/company/lander-model";
 import { ago as fmtAgo } from "@/lib/company/format";
 import { SimilarCompaniesView, type SimilarRow } from "@/components/jobs/SimilarCompanies";
 
@@ -80,8 +80,8 @@ export function CompanyEmptyState({ model, token, boardReadAt, similar = [], onW
   const name = model.name.name;
   const read = boardReadAt ? fmtAgo(boardReadAt, { lng: lang }) : "";
   const title = !name || model.name.generic
-    ? t("companyProfile.zero.titleBoard", "No open roles on this board right now")
-    : t("companyProfile.zero.title", "No open roles at {{name}} right now", { name });
+    ? t("companyProfile.zero.titleBoard", "No roles on this board dated in the last {{days}} days", { days: SERVED_WINDOW_DAYS })
+    : t("companyProfile.zero.title", "No roles at {{name}} dated in the last {{days}} days", { name, days: SERVED_WINDOW_DAYS });
 
   return (
     <section data-company-empty="zero" aria-labelledby="company-empty-title" className="rounded-lg border border-border bg-card p-4 space-y-3">

@@ -2087,7 +2087,16 @@ export default function Explore() {
    *  A hit means "this employer cleared a rate gate of 5 re-lists per affected
    *  role on 25+ events". A MISS means only that it did not, which includes
    *  every employer whose board we have watched for a week. So there is no "no
-   *  re-posting detected", no green tick and no clean-bill styling anywhere. */
+   *  re-posting detected", no green tick and no clean-bill styling anywhere.
+   *
+   *  NEUTRAL, AND ONLY WHERE THE TEST CAN BE TRUSTED (Track 1, A2). The count
+   *  is title-only: a takedown is a "re-posting" when a posting with the same
+   *  title was live anywhere on the board at that moment, so an employer that
+   *  lists one title at many sites (Centria Autism, BAYADA) read as re-listing
+   *  constantly while the lander, through the shared gate, withheld the same
+   *  count. get_repost_index (20261012120000) now names only boards read in
+   *  full whose titles are not spread over many locations, and the line says
+   *  what the test saw, not what it supposedly means, in a neutral tone. */
   const repostWarn = (token: string | undefined): string | null => {
     if (!token) return null;
     const hit = repostIndex[token];
@@ -2097,7 +2106,7 @@ export default function Explore() {
     // A FLOOR, MARKED IN THE VALUE RATHER THAN IN THE SENTENCE — this file's
     // own idiom ("10,000+" on the tiles), so every translation of
     // explore.repostWarn becomes a floor at once.
-    return t("explore.repostWarn", "Re-lists roles: {{events}} re-postings across {{roles}} roles in {{d}}d", {
+    return t("explore.repostWarn", "{{events}} takedowns here had another posting with the same title live, across {{roles}} titles in {{d}} days", {
       events: `${nf(events)}+`, roles: `${nf(roles)}+`, d: days,
     });
   };
@@ -3284,7 +3293,7 @@ export default function Explore() {
                           {t("explore.checkFeeds", "{{n}} job boards", { n: h.tokens.length })}
                         </span>
                       )}
-                      {worst && <span className="block text-[11px] text-warning mt-0.5">{worst}</span>}
+                      {worst && <span className="block text-[11px] text-muted-foreground mt-0.5">{worst}</span>}
                     </span>
                     <ArrowRight className="w-4 h-4 text-muted-foreground/50 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
                   </Link>

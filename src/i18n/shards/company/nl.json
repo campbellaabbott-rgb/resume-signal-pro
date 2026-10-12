@@ -82,8 +82,8 @@
       "titleListings": "Vacatures vooral geplaatst in"
     },
     "nameLoading": "Naam van de werkgever wordt geladen",
-    "openRoles_one": "{{n}} open vacature",
-    "openRoles_other": "{{n}} open vacatures",
+    "openRoles_one": "{{n}} vacature gedateerd in de afgelopen {{days}} dagen",
+    "openRoles_other": "{{n}} vacatures gedateerd in de afgelopen {{days}} dagen",
     "openRolesCapped": "we tellen tot {{cap}}",
     "pay": {
       "basis": "Jaarbedragen uit de salarisschalen die hun open vacatures vermelden; vacatures zonder salaris tellen niet mee.",
@@ -131,8 +131,8 @@
     },
     "results": {
       "boardRead": "dit vacaturebord gelezen {{ago}}",
-      "showing_one": "{{shown}} van {{total}} open vacature getoond",
-      "showing_other": "{{shown}} van {{total}} open vacatures getoond",
+      "showing_one": "{{shown}} van {{total}} vacature gedateerd in de afgelopen {{days}} dagen",
+      "showing_other": "{{shown}} van {{total}} vacatures gedateerd in de afgelopen {{days}} dagen",
       "showingMatching_one": "{{shown}} van {{total}} passende vacature getoond",
       "showingMatching_other": "{{shown}} van {{total}} passende vacatures getoond"
     },
@@ -164,11 +164,23 @@
     },
     "zero": {
       "allRoles": "Alle open vacatures doorzoeken",
-      "answer": "Op dit moment geen open vacatures",
+      "answer": "Geen vacatures gedateerd in de afgelopen {{days}} dagen",
       "body": "Volg dit vacaturebord en je account telt nieuwe vacatures zodra ze verschijnen.",
-      "title": "Op dit moment geen open vacatures bij {{name}}",
-      "titleBoard": "Op dit moment geen open vacatures op dit vacaturebord"
+      "title": "Geen vacatures bij {{name}} gedateerd in de afgelopen {{days}} dagen",
+      "titleBoard": "Geen vacatures op dit vacaturebord gedateerd in de afgelopen {{days}} dagen",
+      "older_one": "De {{total}} vacature op het vacaturebord van {{company}} is niet gedateerd in de afgelopen {{days}} dagen (gelezen {{date}}).",
+      "older_other": "Geen van de {{total}} vacatures op het vacaturebord van {{company}} is gedateerd in de afgelopen {{days}} dagen (gelezen {{date}}).",
+      "olderBoard_one": "De {{total}} vacature op dit vacaturebord is niet gedateerd in de afgelopen {{days}} dagen (gelezen {{date}}).",
+      "olderBoard_other": "Geen van de {{total}} vacatures op dit vacaturebord is gedateerd in de afgelopen {{days}} dagen (gelezen {{date}}).",
+      "basis": "We tonen vacatures gedateerd in de afgelopen {{days}} dagen.",
+      "empty": "Geen vacatures op het vacaturebord van {{company}} toen we het {{ago}} lazen.",
+      "emptyBoard": "Geen vacatures op dit vacaturebord toen we het {{ago}} lazen.",
+      "unread": "We hebben het vacaturebord van {{company}} de laatste tijd niet helemaal gelezen.",
+      "unreadBoard": "We hebben dit vacaturebord de laatste tijd niet helemaal gelezen."
     },
-    "countedAgo": "geteld {{ago}}"
+    "countedAgo": "geteld {{ago}}",
+    "undatedMore": "({{u}} meer zonder datum)",
+    "boardTotal_one": "Hun vacaturebord toonde in totaal {{total}} vacature toen we het {{ago}} lazen.",
+    "boardTotal_other": "Hun vacaturebord toonde in totaal {{total}} vacatures toen we het {{ago}} lazen."
   }
 }

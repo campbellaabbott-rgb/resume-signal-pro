@@ -171,6 +171,7 @@ type Curve = {
   open_roles: number; fills_90d: number; relists_90d: number; filled_roles_90d: number; relisted_roles_90d: number; ageouts_90d: number;
   fill_through: number; churn: number; absorption: number;
   tracking_days: number; sufficient: boolean;
+  observability_bucket?: string; watched_from?: string | null; multi_site_title_share?: number;
 };
 const curve = (over: Partial<Curve> = {}): Curve => ({
   company_token: "acme", n_at_risk_14: 120, fills_le_14: 64,
@@ -180,7 +181,7 @@ const curve = (over: Partial<Curve> = {}): Curve => ({
   dated_coverage: 0.78, dated_n: 210, undated_n: 59,
   open_roles: 5, fills_90d: 14, relists_90d: 0, filled_roles_90d: 14, relisted_roles_90d: 0, ageouts_90d: 3,
   fill_through: 0.6, churn: 0, absorption: 0.1,
-  tracking_days: 63, sufficient: true, ...over,
+  tracking_days: 63, sufficient: true, observability_bucket: "full_read", watched_from: "2026-08-01", multi_site_title_share: 0, ...over,
 });
 
 function mount(

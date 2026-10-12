@@ -1,11 +1,11 @@
--- A FILL SHARE COUNTS ONLY ROLES THE BOARD WAS WATCHED FOR (ghost spec Track 1, A4).
+-- A FILL SHARE COUNTS ONLY ROLES THE BOARD WAS WATCHED FOR (accuracy spec Track 1, A4).
 --
 -- get_company_fill_curve, re-issued from its live text (20261008110000) with
 -- four changes and nothing else:
 --
 -- 1. DELAYED ENTRY ON BOTH CHAINS. The 14-day chain counted every row as at
 --    risk from age 0, so a role first seen at day 9 was credited nine days it
---    never showed us. Simulated on a flat hazard (ghost spec, 2026-10-11),
+--    never showed us. Simulated on a flat hazard (accuracy spec, 2026-10-11),
 --    boards first watched 21, 30, 45 and 60 days ago printed 0.57, 0.65, 0.73
 --    and 0.79 of the true 14-day share; 208 of the 337 top boards that passed
 --    canStateFillRate had under 60 days of tracking. Now both chains read
@@ -655,7 +655,7 @@ AS $$
   -- began reading after it was posted, or one we read every few days) was
   -- credited nine days it never showed us, and on boards first watched 21,
   -- 30, 45 and 60 days ago the printed share ran 0.57, 0.65, 0.73 and 0.79 of
-  -- the truth (simulated, ghost spec 2026-10-11). Now:
+  -- the truth (simulated, accuracy spec 2026-10-11). Now:
   --   * only rows posted after the board's watch floor (in_watch30, the same
   --     expression the day-30 chain clips on), so the chain is empty on a
   --     board we cannot date and on every board read in laps, which the
@@ -1011,7 +1011,7 @@ AS $$
   ),
   -- Rows of the day-30 cohort, posted while the board was watched, that we
   -- first saw more than one read interval plus a day after their stated
-  -- date: the date-validity audit's input (ghost spec Q3). Reported only.
+  -- date: the date-validity audit's input (accuracy spec Q3). Reported only.
   late30 AS (
     SELECT r.tok, count(*) FILTER (WHERE r.late)::int AS n
     FROM raw r
@@ -1092,7 +1092,7 @@ AS $$
     -- AND THE TRACKING FLOOR (20261012121000): 21 days of watching, 28 on a
     -- lap_proven board, the floor the page and the shared gate already
     -- applied on their own side. Before it, four lap_proven boards read
-    -- sufficient on fewer days than that (ghost spec, before-bug 15).
+    -- sufficient on fewer days than that (accuracy spec, before-bug 15).
     (COALESCE(e.n14, 0) >= 25
        AND COALESCE(e.fills14, 0) >= 5
        AND (e.r_hi - e.r_lo) / 2 <= 0.15

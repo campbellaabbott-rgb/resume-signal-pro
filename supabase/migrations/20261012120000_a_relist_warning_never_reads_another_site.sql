@@ -1,4 +1,4 @@
--- A RELIST WARNING NEVER READS ANOTHER SITE (ghost spec Track 1, A2).
+-- A RELIST WARNING NEVER READS ANOTHER SITE (accuracy spec Track 1, A2).
 --
 -- The collector calls a takedown "superseded" (re-listed) when a posting with
 -- the same normalised title is live on the board at the moment it closes

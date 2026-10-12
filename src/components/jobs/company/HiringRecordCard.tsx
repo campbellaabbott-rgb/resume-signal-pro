@@ -31,6 +31,7 @@ import {
   HIRING_RECORD_GATE_COPY,
   coverageBand,
   hiringRecordGate,
+  type HiringRecordGateCopyKey,
   type HiringRecordRow,
 } from "@/lib/hiring-record-gate";
 import { count as fmtCount, date as fmtDate, dateTime as fmtDateTime } from "@/lib/company/format";
@@ -133,18 +134,28 @@ export function recordLead(t: TFunction, input: HiringRecordInput, lang: string)
   return t("companyProfile.record.leadUnknown", "No reliable hiring signal yet");
 }
 
-function countsWhy(t: TFunction, c: RecordCurve, reason: string | null, minDays: number, lap: boolean, lang: string): string {
-  if (reason === "relist detection unproven") {
-    return t("jobsPage.hhGate.relist", HIRING_RECORD_GATE_COPY.relist, { n: fmtCount(num(c.filled_roles_90d) || 0, { lng: lang }), d: num(c.tracking_days) || 0 });
+// THE GATE NAMES THE SENTENCE (Track 1, A1/GD5). Each refusal the shared gate
+// makes carries the key of the sentence that explains it (countsCopy,
+// paceCopy), so a lap-read board, an unproven read, a re-post test that reads
+// other sites and a reply missing a column each say their own reason here.
+function countsWhy(t: TFunction, c: RecordCurve, copy: HiringRecordGateCopyKey | null, minDays: number, lang: string): string {
+  const d = num(c.tracking_days) || 0;
+  switch (copy) {
+    case "relist": return t("jobsPage.hhGate.relist", HIRING_RECORD_GATE_COPY.relist, { n: fmtCount(num(c.filled_roles_90d) || 0, { lng: lang }), d });
+    case "relistLap": return t("jobsPage.hhGate.relistLap", HIRING_RECORD_GATE_COPY.relistLap);
+    case "unprovenReadCounts": return t("jobsPage.hhGate.unprovenReadCounts", HIRING_RECORD_GATE_COPY.unprovenReadCounts);
+    case "otherSites": return t("jobsPage.hhGate.otherSites", HIRING_RECORD_GATE_COPY.otherSites);
+    case "unread": return t("jobsPage.hhGate.unread", HIRING_RECORD_GATE_COPY.unread);
+    case "countsTrackingLap": return t("jobsPage.hhGate.countsTrackingLap", HIRING_RECORD_GATE_COPY.countsTrackingLap, { d, min: minDays });
+    default: return t("jobsPage.hhGate.countsTracking", HIRING_RECORD_GATE_COPY.countsTracking, { d, min: minDays });
   }
-  return lap
-    ? t("jobsPage.hhGate.countsTrackingLap", HIRING_RECORD_GATE_COPY.countsTrackingLap, { d: num(c.tracking_days) || 0, min: minDays })
-    : t("jobsPage.hhGate.countsTracking", HIRING_RECORD_GATE_COPY.countsTracking, { d: num(c.tracking_days) || 0, min: minDays });
 }
 
 function paceWhy(t: TFunction, c: RecordCurve, reason: string | null): string {
   const tracking = num(c.tracking_days) || 0;
   if (reason === "lap") return t("jobsPage.hhGate.lap", HIRING_RECORD_GATE_COPY.lap);
+  if (reason === "unproven read") return t("jobsPage.hhGate.unprovenRead", HIRING_RECORD_GATE_COPY.unprovenRead);
+  if (reason === "interval") return t("jobsPage.hhGate.interval", HIRING_RECORD_GATE_COPY.interval);
   if (reason === "coverage") return t("jobsPage.hhGate.coverage", HIRING_RECORD_GATE_COPY.coverage, { pct: pct(c.dated_coverage) });
   if (reason === "tracking" && tracking > 0) return t("jobsPage.hhGate.paceTracking", HIRING_RECORD_GATE_COPY.paceTracking, { d: tracking, min: FILL_RATE_MIN_TRACKING_DAYS });
   return tracking > 0
@@ -163,7 +174,6 @@ export function HiringRecordCard({ input, floorOnly = false, headingLevel = 2 }:
   const lang = i18n.language || "en";
   const c = input.curve!;
   const gate = hiringRecordGate(c);
-  const lap = c.observability_bucket === "lap_proven";
   const filled = num(c.filled_roles_90d);
   const relisted = num(c.relisted_roles_90d);
   const tracking = num(c.tracking_days) || 0;
@@ -198,20 +208,29 @@ export function HiringRecordCard({ input, floorOnly = false, headingLevel = 2 }:
     return (
       <li>
         <WhyDisclosure label={why} stub={t("companyProfile.record.countsWithheld", "We do not print how many roles came down and stayed down.")} data-hh-gate={gate.counts90.reason ?? undefined}>
-          {countsWhy(t, c, gate.counts90.reason, gate.countsMinTrackingDays, lap, lang)}
+          {countsWhy(t, c, gate.countsCopy, gate.countsMinTrackingDays, lang)}
         </WhyDisclosure>
       </li>
     );
   })();
 
+  // The "up to" figure is the gate's ceiling: the fill share where the re-post
+  // test files fills as fills, and every takedown (1 - S14) where it reads
+  // other sites or cannot say, which has no fill interval to print.
   const pace = gate.share14.ok ? (
-    <li data-record="pace">
-      {t("jobsPage.hhFillRateDated", "Up to {{pct}}% of its roles come down for good within {{d}} days ({{lo}}–{{hi}}% either way), measured over the {{n}} roles that carry the company's own posting date.", {
-        pct: pct(c.fill_rate_14), d: input.bars.shareDays, lo: pct(c.fill_rate_14_lo), hi: pct(c.fill_rate_14_hi), n: fmtCount(num(c.dated_n) || 0, { lng: lang }),
-      })}
-      {!gate.median.ok ? null : c.median_censored ? (
+    <li data-record="pace" data-ceiling={gate.ceilingBasis ?? undefined}>
+      {gate.ceilingBasis === "fills"
+        ? t("jobsPage.hhFillRateDated", "Up to {{pct}}% of its roles come down for good within {{d}} days ({{lo}}–{{hi}}% either way), measured over the {{n}} roles that carry the company's own posting date.", {
+            pct: pct(c.fill_rate_14), d: input.bars.shareDays, lo: pct(c.fill_rate_14_lo), hi: pct(c.fill_rate_14_hi), n: fmtCount(num(c.dated_n) || 0, { lng: lang }),
+          })
+        : t("jobsPage.hhTakedownRateDated", "Up to {{pct}}% of its roles came down within {{d}} days, counting every takedown, measured over the {{n}} roles that carry the company's own posting date.", {
+            pct: pct(gate.ceiling14 ?? 0), d: input.bars.shareDays, n: fmtCount(num(c.dated_n) || 0, { lng: lang }),
+          })}
+      {/* The bound "fewer than half came down" is read from S through the
+          gate (neverHalf); a censored fill median alone says nothing here. */}
+      {!gate.median.ok ? null : c.median_censored ? (gate.neverHalf.ok ? (
         <> {t("jobsPage.hhMedianCensored", "We did not see half of them come down inside {{d}} days, so there is no typical figure to give.", { d: input.bars.supportDays })}</>
-      ) : (
+      ) : null) : (
         <> {t("companyProfile.record.median", "Half of these roles were taken down by day {{n}}.", { n: Math.round(num(c.median_days_to_fill)) })}</>
       )}
       {coverageBand(num(c.dated_coverage)) === "qualified" && (
@@ -278,7 +297,7 @@ export function HiringRecordCard({ input, floorOnly = false, headingLevel = 2 }:
           {counts}
           {gate.counts90.ok && input.relistCaution && (
             <li className="text-foreground" data-record="relist-caution">
-              {t("jobsPage.repostTipRoles", "In the last {{days}} days at least {{n}} of this company's roles that we watched come off the board came back — closed more than once, re-listed under the same title, or on its board again today — against {{f}} that stayed down. We only see a role come back under its own posting, so the real number can be higher. Worth knowing before you invest in an application.", {
+              {t("jobsPage.repostTipRoles", "In the last {{days}} days, {{n}} roles we watched come down here came back under the same posting or had another posting with the same title live when they came down; {{f}} came down and have not come back.", {
                 days: input.bars.closedWindowDays, n: fmtCount(relisted || 0, { lng: lang }), f: fmtCount(filled || 0, { lng: lang }),
               })}
             </li>

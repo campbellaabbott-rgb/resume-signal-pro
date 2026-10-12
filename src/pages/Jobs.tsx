@@ -62,7 +62,7 @@ import { CompanyIntelPanel } from "@/components/jobs/CompanyIntelPanel";
 import { CompanyPerks } from "@/components/jobs/CompanyPerks";
 import { PublicCompanyCard } from "@/components/jobs/PublicCompanyCard";
 import { EmployerContext } from "@/components/jobs/EmployerContext";
-import { HIRING_RECORD_GATE_COPY, LAP_BUCKET, hiringRecordGate, type HiringRecordRefusal } from "@/lib/hiring-record-gate";
+import { HIRING_RECORD_GATE_COPY, LAP_BUCKET, feedReadStatable, hiringRecordGate, type HiringRecordRefusal } from "@/lib/hiring-record-gate";
 import { datedHeadcount } from "@/lib/headcount";
 import { SavedSearchPills } from "@/components/jobs/SavedSearchPills";
 import { LayoffFilingChip, LayoffFilingLine, LayoffFilingsOnRecord, useEmployerLayoffFilings, useEmployerLayoffFilingsAll } from "@/components/jobs/LayoffFilingLine";
@@ -372,9 +372,16 @@ export const RELIST_CAUTION_MIN = 10;
  * its detail pane warned "re-lists roles often (at least 20x)".
  */
 export function relistCaution(
-  h: Pick<FillCurve, "filled_roles_90d" | "relisted_roles_90d"> | null | undefined,
+  h: Pick<FillCurve, "filled_roles_90d" | "relisted_roles_90d"> & Partial<FillCurve> | null | undefined,
 ): boolean {
   if (!h) return false;
+  // THROUGH THE GATE FIRST (Track 1, A2). The count behind this caution is the
+  // re-post test's, and the gate refuses that count wherever the test cannot
+  // be trusted: a lap-read board, a board we cannot say we read, and a board
+  // whose test reads another location's posting of the same title as a
+  // re-post (Centria Autism, Bayada, Carvana: one title live at many sites).
+  // A caution built on a count the employer page withholds is not printed.
+  if (!hiringRecordGate(h).counts90.ok) return false;
   const back = h.relisted_roles_90d ?? 0;
   return back > (h.filled_roles_90d ?? 0) && back >= RELIST_CAUTION_MIN;
 }
@@ -842,6 +849,24 @@ export function canStateFillRate(
  */
 export const lapCertified = (h: Pick<FillCurve, "observability_bucket"> | null | undefined): boolean =>
   h?.observability_bucket === LAP_BUCKET;
+/**
+ * THE PACE THROUGH THE SHARED GATE'S WHITELIST (Track 1, A1). Every
+ * employer-grain pace claim on this page asked canStateFillRate plus the lap
+ * term, so a lap_pending board printed a fourteen-day share it cannot measure.
+ * This is the gate's own share14: a full read with a watch floor, then
+ * canStateFillRate's terms, then the share inside its own interval.
+ */
+export const paceStatable = (h: FillCurve | null | undefined): h is FillCurve => !!h && hiringRecordGate(h).share14.ok;
+/**
+ * A FILL share ("for good", "Fills fast") needs the re-post test to file fills
+ * as fills on this board. Where it reads other sites, or the row cannot say,
+ * the only ceiling left is every takedown, which these sentences do not state.
+ */
+export const fillShareStatable = (h: FillCurve | null | undefined): h is FillCurve => {
+  if (!h) return false;
+  const g = hiringRecordGate(h);
+  return g.share14.ok && g.ceilingBasis === "fills";
+};
 /** A 0..1 share as whole percent, for copy. Never a fraction on screen. */
 const asPct = (x: number) => Math.round(Math.max(0, Math.min(1, x)) * 100);
 
@@ -3344,9 +3369,16 @@ function JobsBoard({ boardId }: { boardId: string }) {
   // badge, the detail pane and the compare drawer all say the same thing.
   const withheldWhy = (h: FillCurve): string => {
     const g = hiringRecordGate(h);
-    if (g.counts90.reason === "relist detection unproven") {
+    if (g.countsCopy === "relist") {
       return t("jobsPage.hhGate.relist", HIRING_RECORD_GATE_COPY.relist, { n: (h.filled_roles_90d ?? 0).toLocaleString(), d: h.tracking_days });
     }
+    // The gate names the sentence for every other refusal it can make (the
+    // lap-read board, the unproven read, the test that reads other sites, a
+    // column the reply lacks); the depth floor keeps its two sentences below.
+    if (g.countsCopy === "relistLap") return t("jobsPage.hhGate.relistLap", HIRING_RECORD_GATE_COPY.relistLap);
+    if (g.countsCopy === "unprovenReadCounts") return t("jobsPage.hhGate.unprovenReadCounts", HIRING_RECORD_GATE_COPY.unprovenReadCounts);
+    if (g.countsCopy === "otherSites") return t("jobsPage.hhGate.otherSites", HIRING_RECORD_GATE_COPY.otherSites);
+    if (g.countsCopy === "unread") return t("jobsPage.hhGate.unread", HIRING_RECORD_GATE_COPY.unread);
     return lapCertified(h)
       ? t("jobsPage.hhGate.countsTrackingLap", HIRING_RECORD_GATE_COPY.countsTrackingLap, { d: h.tracking_days, min: g.countsMinTrackingDays })
       : t("jobsPage.hhGate.countsTracking", HIRING_RECORD_GATE_COPY.countsTracking, { d: h.tracking_days, min: g.countsMinTrackingDays });
@@ -7395,7 +7427,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                     old chip was showing discovery time under a tooltip claiming
                     re-verification. Absent => render nothing rather than
                     substitute a weaker value. */}
-                {detailJob.recheckedAt && (
+                {detailJob.recheckedAt && feedReadStatable(detailJob.token ? curveByToken[detailJob.token] : undefined) && (
                   <span
                     className="text-muted-foreground"
                     title={t("jobsPage.recheckedTip", "When we last re-read this company's own feed")}
@@ -8061,10 +8093,12 @@ function JobsBoard({ boardId }: { boardId: string }) {
                 const dgv = growthVerdict(dg);
                 if (dg && dgv === "grew") clauses.push(t("jobsPage.verdictGrew", "its board served {{latest}} roles on {{latestDay}} against {{baseline}} on {{baselineDay}} — {{pct}}% more, counted from our own daily observation", growthFigures(dg)));
                 if (dg && dgv === "unknown") clauses.push(t("jobsPage.verdictGrowthUnread", "we could not read its posting rate — {{reason}}", { reason: growthWhy(growthUnknownReason(dg)) }));
-                // "at least": the collector logs a relisted title once a day per
-                // company, so this count is a floor and never an exact tally.
-                if (relistCaution(hh)) clauses.push(t("jobsPage.verdictChurnFloor", "re-lists roles often (at least {{n}}×) — responses may be slow", { n: churn }));
-                if (canStateFillRate(hh, hh?.tracking_days) && !lapCertified(hh) && hh!.fill_rate_14 >= URGENT_FILL_RATE_MIN) {
+                // The neutral re-post sentence (Track 1, A2): what the test saw,
+                // with no reading of the employer's intent, and only where the
+                // gate lets the count print at all (relistCaution asks it).
+                if (relistCaution(hh)) clauses.push(t("jobsPage.verdictChurnFloor", "{{n}} roles we watched come down came back under the same posting or had another posting with the same title live when they came down", { n: churn }));
+                const paceGate = paceStatable(hh) ? hiringRecordGate(hh) : null;
+                if (paceGate && paceGate.ceiling14 !== null && paceGate.ceiling14 >= URGENT_FILL_RATE_MIN) {
                   // "up to", and the coverage share named when it is thin.
                   // The fill share is a CEILING for the same reason the relist
                   // counts are floors: the collector logs one superseded
@@ -8073,17 +8107,20 @@ function JobsBoard({ boardId }: { boardId: string }) {
                   // larger share of a smaller cohort. And this clause used to
                   // state the rate flat while the panel two blocks below stated
                   // the same number with its coverage qualifier attached — one
-                  // page, one number, two standards of honesty.
-                  clauses.push(t("jobsPage.verdictFillRateCeiling", "takes up to {{pct}}% of its roles down for good within {{d}} days", {
-                    pct: asPct(hh!.fill_rate_14), d: URGENT_FILL_MAX_DAYS,
-                  }) + (coverageBand(hh!.dated_coverage) === "qualified"
+                  // page, one number, two standards of honesty. Where the
+                  // re-post test files fills as re-posts (or cannot say), the
+                  // gate's ceiling is every takedown, and the clause says so.
+                  clauses.push((paceGate.ceilingBasis === "fills"
+                    ? t("jobsPage.verdictFillRateCeiling", "takes up to {{pct}}% of its roles down for good within {{d}} days", { pct: asPct(paceGate.ceiling14), d: URGENT_FILL_MAX_DAYS })
+                    : t("jobsPage.verdictTakedownCeiling", "takes up to {{pct}}% of its roles down within {{d}} days, counting every takedown", { pct: asPct(paceGate.ceiling14), d: URGENT_FILL_MAX_DAYS }))
+                    + (coverageBand(hh!.dated_coverage) === "qualified"
                     ? " " + t("jobsPage.fillCoverageQualifierClause", "(across the {{pct}}% of its roles that carry the company's own posting date)", { pct: asPct(hh!.dated_coverage) })
                     : ""));
-                } else if (canStateFillRate(hh, hh?.tracking_days) && !lapCertified(hh) && hh!.median_censored) {
-                  // The honest opposite of "fills fast", and the only thing that
-                  // may be said when the curve never reaches half inside the
-                  // days we can see: a bound, never a number.
-                  clauses.push(t("jobsPage.verdictSlowFill", "we never see half its roles come down inside {{d}} days", { d: FILL_SUPPORT_MAX_DAYS }));
+                } else if (paceGate && paceGate.neverHalf.ok) {
+                  // The honest opposite of "fills fast": a bound, never a
+                  // number, and read from S (every takedown) through the gate,
+                  // not from a censored fill median alone.
+                  clauses.push(t("jobsPage.verdictSlowFill", "we never see half its roles come down and stay down inside {{d}} days", { d: FILL_SUPPORT_MAX_DAYS }));
                 }
                 if (clauses.length === 0) return null;
                 const caution = relistCaution(hh);
@@ -8143,7 +8180,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                 const field = canStateFillRate(rawField, rawField?.window_days) ? rawField : null;
                 const fieldQualified = !!field && coverageBand(field.dated_coverage) === "qualified";
                 const hh = detailJob.token ? curveByToken[detailJob.token] : undefined;
-                const employer = canStateFillRate(hh, hh?.tracking_days) && !lapCertified(hh) ? hh! : null;
+                const employer = paceStatable(hh) ? hh : null;
                 // Only when this posting has actually been up longer than the
                 // horizon the employer usually resolves roles inside, and only
                 // when that employer's record can carry the claim at all.
@@ -8442,12 +8479,12 @@ function JobsBoard({ boardId }: { boardId: string }) {
         title={landerCategory
           ? t("jobsPage.landerSeoTitle", "Live {{category}} Jobs — From Official Company Job Boards", { category: t(`jobsPage.categories.${landerCategory}`, landerCategory) })
           : landerCompany
-          ? t("jobsPage.companySeoTitle", "Is {{company}} hiring? — Real, verified open roles", { company: landerCompanyName })
+          ? t("jobsPage.companySeoTitle", "{{company}} Jobs — Live From Its Own Hiring System", { company: landerCompanyName })
           : t("jobsPage.seoTitle", "Live Jobs From Companies' Own Boards — Check Your Fit Before You Apply")}
         description={landerCategory
           ? t("jobsPage.landerSeoDescription", "Live {{category}} openings pulled straight from companies' own official job boards — no aggregators, no reposts, re-verified all day. Check your resume's fit free, then apply on the company's own site.", { category: t(`jobsPage.categories.${landerCategory}`, landerCategory) })
           : landerCompany
-          ? t("jobsPage.companySeoDescription", "Browse {{companyPossessive}} open roles, pulled straight from {{companyPossessive}} own job board and re-verified all day — no aggregators, no reposts. Check your resume's fit against any role free, then apply on {{companyPossessive}} own site.", { company: landerCompanyName, companyPossessive: possessive(landerCompanyName ?? "") })
+          ? t("jobsPage.companySeoDescription", "Browse the roles on {{companyPossessive}} own job board that are dated in the last 30 days, read straight from its hiring system. Check your resume's fit against any role free, then apply on {{companyPossessive}} own site.", { company: landerCompanyName, companyPossessive: possessive(landerCompanyName ?? "") })
           : t("jobsPage.seoDescription", "Real openings pulled straight from thousands of companies' own official job boards — no aggregators, no reposts, re-verified all day and checked live when you apply. See how your resume fits any posting free, then apply on the company's own site.")}
         path={landerCompany ? companyLanderPath(landerCompany) : landerCategory ? `/jobs/field/${landerCategory}` : "/jobs"}
         canonicalPath={landerCompany && bakedPrimary ? companyLanderPath(bakedPrimary) : undefined}
@@ -8521,12 +8558,12 @@ function JobsBoard({ boardId }: { boardId: string }) {
               {data.countCapped
                 // Past the count cap the true figure is HIGHER — "10,000+" is
                 // the honest rendering; the exact-looking bare number was not.
-                ? t("jobsPage.companyYesHiringCapped", "Yes — {{n}}+ verified open roles right now, straight from {{companyPossessive}} own job board.", {
+                ? t("jobsPage.companyYesHiringCapped", "Yes — {{n}}+ roles dated in the last 30 days, straight from {{companyPossessive}} own job board.", {
                     n: data.total.toLocaleString(),
                     company: landerCompanyName,
                     companyPossessive: possessive(landerCompanyName ?? ""),
                   })
-                : t("jobsPage.companyYesHiring", "Yes — {{count}} verified open {{roleWord}} right now, straight from {{companyPossessive}} own job board.", {
+                : t("jobsPage.companyYesHiring", "Yes — {{count}} {{roleWord}} dated in the last 30 days, straight from {{companyPossessive}} own job board.", {
                     count: data.total,
                     roleWord: data.total === 1 ? "role" : "roles",
                     company: landerCompanyName,
@@ -8549,12 +8586,12 @@ function JobsBoard({ boardId }: { boardId: string }) {
                 question unanswered rather than answer it wrongly. */}
             {landerHiringAnswer === "no" && (
             <p className="text-sm font-semibold text-muted-foreground mb-1">
-              {t("jobsPage.companyNotHiring", "Not right now — {{company}} has no open roles on their job board at the moment. Watch the company below and we'll email you when new roles appear.", { company: landerCompanyName })}
+              {t("jobsPage.companyNotHiring", "We show roles dated in the last 30 days, and the {{company}} job board has none right now. Watch the company below and we'll email you when new roles appear.", { company: landerCompanyName })}
             </p>
           )}
           <p className="text-sm text-muted-foreground mb-2">
             {landerCompany
-              ? t("jobsPage.companySubtitle", "Every {{company}} opening here comes straight from {{companyPossessive}} own careers system — verified, still open, and re-checked the moment you apply.", { company: landerCompanyName, companyPossessive: possessive(landerCompanyName ?? "") })
+              ? t("jobsPage.companySubtitle", "Every {{company}} role here comes straight from {{companyPossessive}} own hiring system, and we show the ones dated in the last 30 days.", { company: landerCompanyName, companyPossessive: possessive(landerCompanyName ?? "") })
               // A category lander's headline count must be THAT category's —
               // the board-wide 574k under an "Engineering jobs" H1 claimed
               // 574k engineering openings (scope-integrity finding).
@@ -8872,7 +8909,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                         rows means the fetch was windowed and our count is a
                         floor, so say "N+" rather than claim false precision. */}
                     <span className="text-foreground font-semibold">{hiringCurve.open_roles}{(landerFeedTotal ?? 0) > hiringCurve.open_roles ? "+" : ""}</span>{" "}
-                    {t("jobsPage.hhOpen", "open roles verified on the board right now")}
+                    {t("jobsPage.hhOpen", "roles on its board dated in the last 30 days")}
                   </li>
                 )}
                 {/* ROLES, NOT EVENTS (20261008110000): a role that came down
@@ -8920,17 +8957,25 @@ function JobsBoard({ boardId }: { boardId: string }) {
                   <li>
                     {/* dated_n, not n_at_risk_14 — the cohort the durations
                         were computed over, not the roles that had not yet done
-                        anything by day 14. See employerOutlivedCurveBounded. */}
-                    {t("jobsPage.hhFillRateDated", "Up to {{pct}}% of its roles come down for good within {{d}} days ({{lo}}–{{hi}}% either way), measured over the {{n}} roles that carry the company's own posting date.", {
-                      pct: asPct(hiringCurve.fill_rate_14),
-                      d: URGENT_FILL_MAX_DAYS,
-                      lo: asPct(hiringCurve.fill_rate_14_lo),
-                      hi: asPct(hiringCurve.fill_rate_14_hi),
-                      n: hiringCurve.dated_n.toLocaleString(),
-                    })}
-                    {!landerGate.median.ok ? null : hiringCurve.median_censored ? (
+                        anything by day 14. See employerOutlivedCurveBounded.
+                        Where the re-post test files fills as re-posts, the
+                        gate's ceiling is every takedown and has no fill interval. */}
+                    {landerGate.ceilingBasis === "fills"
+                      ? t("jobsPage.hhFillRateDated", "Up to {{pct}}% of its roles come down for good within {{d}} days ({{lo}}–{{hi}}% either way), measured over the {{n}} roles that carry the company's own posting date.", {
+                          pct: asPct(hiringCurve.fill_rate_14),
+                          d: URGENT_FILL_MAX_DAYS,
+                          lo: asPct(hiringCurve.fill_rate_14_lo),
+                          hi: asPct(hiringCurve.fill_rate_14_hi),
+                          n: hiringCurve.dated_n.toLocaleString(),
+                        })
+                      : t("jobsPage.hhTakedownRateDated", "Up to {{pct}}% of its roles came down within {{d}} days, counting every takedown, measured over the {{n}} roles that carry the company's own posting date.", {
+                          pct: asPct(landerGate.ceiling14 ?? 0),
+                          d: URGENT_FILL_MAX_DAYS,
+                          n: hiringCurve.dated_n.toLocaleString(),
+                        })}
+                    {!landerGate.median.ok ? null : hiringCurve.median_censored ? (landerGate.neverHalf.ok ? (
                       <> {t("jobsPage.hhMedianCensored", "We did not see half of them come down inside {{d}} days, so there is no typical figure to give.", { d: FILL_SUPPORT_MAX_DAYS })}</>
-                    ) : (
+                    ) : null) : (
                       <> {t("jobsPage.hhMedian", "Half of these roles are filled by day {{d}}.", { d: Math.round(hiringCurve.median_days_to_fill ?? 0) })}</>
                     )}
                     {coverageBand(hiringCurve.dated_coverage) === "qualified" && (
@@ -8941,6 +8986,10 @@ function JobsBoard({ boardId }: { boardId: string }) {
                   <li className="italic text-muted-foreground/80" data-hh-gate={landerGate.share14.reason}>
                     {landerGate.share14.reason === "lap"
                       ? t("jobsPage.hhGate.lap", HIRING_RECORD_GATE_COPY.lap)
+                      : landerGate.share14.reason === "unproven read"
+                      ? t("jobsPage.hhGate.unprovenRead", HIRING_RECORD_GATE_COPY.unprovenRead)
+                      : landerGate.share14.reason === "interval"
+                      ? t("jobsPage.hhGate.interval", HIRING_RECORD_GATE_COPY.interval)
                       : landerGate.share14.reason === "coverage"
                         ? t("jobsPage.hhGate.coverage", HIRING_RECORD_GATE_COPY.coverage, { pct: asPct(hiringCurve.dated_coverage) })
                         : landerGate.share14.reason === "tracking" && hiringCurve.tracking_days > 0
@@ -8956,7 +9005,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                   <li className="text-warning/90">
                     {/* The card's and the drawer's rule (relistCaution), with
                         the card tooltip's words: roles back against roles down. */}
-                    {t("jobsPage.repostTipRoles", "In the last {{days}} days at least {{n}} of this company's roles that we watched come off the board came back — closed more than once, re-listed under the same title, or on its board again today — against {{f}} that stayed down. We only see a role come back under its own posting, so the real number can be higher. Worth knowing before you invest in an application.", { days: ACTIVELY_HIRING_WINDOW_DAYS, n: hiringCurve.relisted_roles_90d ?? 0, f: hiringCurve.filled_roles_90d ?? 0 })}
+                    {t("jobsPage.repostTipRoles", "In the last {{days}} days, {{n}} roles we watched come down here came back under the same posting or had another posting with the same title live when they came down; {{f}} came down and have not come back.", { days: ACTIVELY_HIRING_WINDOW_DAYS, n: hiringCurve.relisted_roles_90d ?? 0, f: hiringCurve.filled_roles_90d ?? 0 })}
                   </li>
                 )}
               </ul>
@@ -10527,10 +10576,10 @@ function JobsBoard({ boardId }: { boardId: string }) {
                       direction the board moves. When the read fails the
                       question still works without a number in front of it. */}
                   {data?.totalAllCompanies
-                    ? t("jobsPage.orientTitle", "{{total}} verified openings — where do you want to start?", {
+                    ? t("jobsPage.orientTitle", "{{total}} live openings — where do you want to start?", {
                         total: data.totalAllCompanies.toLocaleString(),
                       })
-                    : t("jobsPage.orientTitlePlain", "Verified openings — where do you want to start?")}
+                    : t("jobsPage.orientTitlePlain", "Live openings — where do you want to start?")}
                 </h2>
               </div>
               <p className="text-[13px] text-muted-foreground mb-3">
@@ -11169,7 +11218,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
               <p className="font-semibold text-foreground mb-1">
                 {data?.semanticDegraded
                   ? t("jobsPage.zeroTitleDegraded", "No exact matches — and our meaning-match search didn't finish")
-                  : t("jobsPage.zeroTitle", "No verified openings match all of that")}
+                  : t("jobsPage.zeroTitle", "No openings match all of that")}
               </p>
               <p className="text-sm text-muted-foreground mb-3">
                 {data?.semanticDegraded
@@ -11328,7 +11377,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                         })
                       : t("jobsPage.resultsSummaryNoTotal", "Showing {{shown}} matching openings", { shown: shownCount }))
                   : landerCompany
-                  ? t("jobsPage.companyResultsSummary", "Showing {{shown}} of {{total}} open roles at {{company}}", {
+                  ? t("jobsPage.companyResultsSummary", "Showing {{shown}} of {{total}} roles at {{company}} dated in the last 30 days", {
                       shown: shownCount,
                       // The two branches below already do both of these; this one
                       // did neither, so a company lander printed a bare capped
@@ -12272,8 +12321,8 @@ function JobsBoard({ boardId }: { boardId: string }) {
                             <span
                               className="inline-flex items-center gap-1 font-medium text-success"
                               title={ats
-                                ? t("jobsPage.trustBadgeAtsTip", "This posting was read straight out of {{company}}'s own {{ats}} job feed — the same system their recruiters post into. Not an aggregator, not a scraped copy. Re-checked live when you click Apply.", { company: companyDisplayName(job.company), ats })
-                                : t("jobsPage.trustBadgeTip", "Pulled directly from this company's official applicant-tracking feed — not an aggregator or a scraped copy. Re-checked live when you click Apply.")}
+                                ? t("jobsPage.trustBadgeAtsTip", "This posting was read straight out of {{company}}'s own {{ats}} job feed — the same system their recruiters post into. Not an aggregator, not a scraped copy. Re-checked when you apply, where the employer's system allows it.", { company: companyDisplayName(job.company), ats })
+                                : t("jobsPage.trustBadgeTip", "Pulled directly from this company's official applicant-tracking feed — not an aggregator or a scraped copy. Re-checked when you apply, where the employer's system allows it.")}
                             >
                               <ShieldCheck className="w-3 h-3 text-success shrink-0" />
                               {ats
@@ -12290,12 +12339,12 @@ function JobsBoard({ boardId }: { boardId: string }) {
                                 payload (attachRecheckedAt), so this costs no extra
                                 query. Absent => render nothing; a missing stamp must
                                 never be dressed up as a weaker one. */}
-                            {job.recheckedAt && !job.missingSince && (
+                            {job.recheckedAt && !job.missingSince && feedReadStatable(job.token ? curveByToken[job.token] : undefined) && (
                               <span
                                 className="whitespace-nowrap"
                                 title={t("jobsPage.recheckedTip", "When we last re-read this company's own feed")}
                               >
-                                {t("jobsPage.verifiedAgo", "checked {{ago}}", { ago: agoLabel(job.recheckedAt, t) })}
+                                {t("jobsPage.verifiedAgo", "feed read {{ago}}", { ago: agoLabel(job.recheckedAt, t) })}
                               </span>
                             )}
                             {/* ── ONE SLOT FOR WHAT THIS EMPLOYER ACTUALLY DOES ──
@@ -12346,10 +12395,10 @@ function JobsBoard({ boardId }: { boardId: string }) {
                                 return (
                                   <span
                                     className="inline-flex items-center gap-1 whitespace-nowrap"
-                                    title={t("jobsPage.repostTipRoles", "In the last {{days}} days at least {{n}} of this company's roles that we watched come off the board came back — closed more than once, re-listed under the same title, or on its board again today — against {{f}} that stayed down. We only see a role come back under its own posting, so the real number can be higher. Worth knowing before you invest in an application.", { days: ACTIVELY_HIRING_WINDOW_DAYS, n: back, f: hh.filled_roles_90d ?? 0 })}
+                                    title={t("jobsPage.repostTipRoles", "In the last {{days}} days, {{n}} roles we watched come down here came back under the same posting or had another posting with the same title live when they came down; {{f}} came down and have not come back.", { days: ACTIVELY_HIRING_WINDOW_DAYS, n: back, f: hh.filled_roles_90d ?? 0 })}
                                   >
                                     <RefreshCw className="w-3 h-3 shrink-0" />
-                                    {t("jobsPage.repostChipFloor", "Re-lists roles often ({{n}}×+)", { n: back })}
+                                    {t("jobsPage.repostChipFloor", "Back or same title live ({{n}}×+)", { n: back })}
                                   </span>
                                 );
                               }
@@ -12368,7 +12417,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                               // why a count gate stopped implying it). POSITIVE-ONLY: any
                               // other verdict falls through to the branches below, where the
                               // third state is named.
-                              if (gatedVerdict(hh) === "closes" && canStateFillRate(hh, hh.tracking_days) && !lapCertified(hh)
+                              if (gatedVerdict(hh) === "closes" && canStateFillRate(hh, hh.tracking_days) && fillShareStatable(hh)
                                 && hh.fill_rate_14 >= URGENT_FILL_RATE_MIN) {
                                 return (
                                   <span
@@ -13512,7 +13561,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                         return null;
                       })()}
                       {hh && relistCaution(hh) && (
-                        <li className="text-warning">{t("jobsPage.verdictChurnFloor", "re-lists roles often (at least {{n}}×) — responses may be slow", { n: hh.relisted_roles_90d ?? 0 })}</li>
+                        <li className="text-warning">{t("jobsPage.verdictChurnFloor", "{{n}} roles we watched come down came back under the same posting or had another posting with the same title live when they came down", { n: hh.relisted_roles_90d ?? 0 })}</li>
                       )}
                       {/* The pace, where the record can carry it. A share at a
                           fixed horizon, never a midpoint drawn from a window
@@ -13526,7 +13575,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                           panel printed the same number with both. A comparison
                           made on the point estimates of two overlapping
                           intervals is a comparison of noise. */}
-                      {canStateFillRate(hh, hh?.tracking_days) && !lapCertified(hh) && (
+                      {fillShareStatable(hh) && (
                         <li>
                           {t("jobsPage.compareFillRateBounded", "up to {{pct}}% of its roles come down for good within {{d}}d ({{lo}}–{{hi}}%)", { pct: asPct(hh!.fill_rate_14), d: URGENT_FILL_MAX_DAYS, lo: asPct(hh!.fill_rate_14_lo), hi: asPct(hh!.fill_rate_14_hi) })}
                           {coverageBand(hh!.dated_coverage) === "qualified" && (

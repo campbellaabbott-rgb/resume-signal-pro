@@ -54,9 +54,9 @@ const LIVE: Record<string, HiringRecordRow & { token: string; fill_rate_14: numb
 
 /** A board we read in full, watched long enough, with a record that can speak. */
 const FULL_READ: HiringRecordRow = {
-  observability_bucket: "full_read", tracking_days: 40, sufficient: true, dated_coverage: 0.8,
+  observability_bucket: "full_read", watched_from: "2026-08-01", tracking_days: 40, sufficient: true, dated_coverage: 0.8,
   median_days_to_fill: 12, median_censored: false, sufficient_30: true, insufficient_reason_30: null,
-  filled_roles_90d: 60, relisted_roles_90d: 9,
+  filled_roles_90d: 60, relisted_roles_90d: 9, multi_site_title_share: 0.05,
 };
 
 describe("one gate in two runtimes", () => {
@@ -96,11 +96,13 @@ describe("canStateFillRate is the page's own, term for term", () => {
     expect(n).toBe(sufficients.length * coverages.length * depths.length);
   });
 
-  it("the fourteen-day share is canStateFillRate plus the lap term and nothing else", () => {
-    const buckets = ["full_read", "lap_proven", "lap_pending", "unprovable", null, undefined];
-    for (const b of buckets) for (const s of [true, false]) for (const c of [0.1, 0.45, 0.9]) for (const d of [5, 20, 21, 60]) {
-      const row: HiringRecordRow = { observability_bucket: b, sufficient: s, dated_coverage: c, tracking_days: d, median_censored: true };
-      const want = gateCanState({ sufficient: s, dated_coverage: c }, d) && b !== "lap_proven";
+  it("the fourteen-day share is canStateFillRate plus the read whitelist (a full read with a watch floor) and nothing else", () => {
+    // Track 1, A1: the lap term refused lap_proven alone, so lap_pending,
+    // unprovable and an absent bucket printed a share they cannot measure.
+    const buckets = ["full_read", "lap_proven", "lap_pending", "unprovable", "unobserved", "weird", null, undefined];
+    for (const b of buckets) for (const w of ["2026-08-01", null]) for (const s of [true, false]) for (const c of [0.1, 0.45, 0.9]) for (const d of [5, 20, 21, 60]) {
+      const row: HiringRecordRow = { observability_bucket: b, watched_from: w, sufficient: s, dated_coverage: c, tracking_days: d, median_censored: true };
+      const want = gateCanState({ sufficient: s, dated_coverage: c }, d) && b === "full_read" && w !== null;
       expect(hiringRecordGate(row).share14.ok, JSON.stringify(row)).toBe(want);
     }
   });
@@ -174,21 +176,29 @@ describe("the relist positive control and the depth floor on the ninety-day coun
     expect(at(0, 0).ok, "no events is not the control's case; the verdict calls it unknown").toBe(true);
   });
 
-  it("O'Reilly and Dollar Tree: watched too briefly on a lap board for a takedown to have had time to come back", () => {
+  it("O'Reilly and Dollar Tree: a lap-read board's re-post test sees one visit's window, so no count prints at any depth (GD5)", () => {
+    // Owner decision GD5(a), superseding profiles D16(a) for lap boards: the
+    // ninety-day counts are refused on every board read in laps until the
+    // re-post test is proven there, with the reason section 91 reads.
     const o = hiringRecordGate(LIVE.oreilly);
-    expect(o.counts90).toEqual({ ok: false, reason: "tracking" });
+    expect(o.counts90).toEqual({ ok: false, reason: "relist detection unproven" });
+    expect(o.countsCopy).toBe("relistLap");
     expect(o.countsMinTrackingDays).toBe(ROLE_COUNT_MIN_TRACKING_DAYS_LAP);
-    expect(hiringRecordGate(LIVE.dollartree).counts90).toEqual({ ok: false, reason: "tracking" });
+    expect(hiringRecordGate(LIVE.dollartree).counts90).toEqual({ ok: false, reason: "relist detection unproven" });
+    expect(hiringRecordGate({ ...LIVE.oreilly, tracking_days: 90 }).counts90).toEqual({ ok: false, reason: "relist detection unproven" });
   });
 
-  it("the floor is 21 days, 28 on a lap board", () => {
+  it("the floor is 21 days on a board read in full; a lap-read board refuses before the floor is read", () => {
     expect(ROLE_COUNT_MIN_TRACKING_DAYS).toBe(21);
     expect(ROLE_COUNT_MIN_TRACKING_DAYS_LAP).toBe(28);
-    const at = (bucket: string, d: number) => hiringRecordGate({ ...FULL_READ, observability_bucket: bucket, tracking_days: d }).counts90.ok;
-    expect(at("full_read", 20)).toBe(false);
-    expect(at("full_read", 21)).toBe(true);
-    expect(at("lap_proven", 27)).toBe(false);
-    expect(at("lap_proven", 28)).toBe(true);
+    const at = (bucket: string, d: number) => hiringRecordGate({ ...FULL_READ, observability_bucket: bucket, tracking_days: d }).counts90;
+    expect(at("full_read", 20).ok).toBe(false);
+    expect(at("full_read", 21).ok).toBe(true);
+    for (const b of ["lap_proven", "lap_pending", "unprovable"]) {
+      expect(at(b, 27), b).toEqual({ ok: false, reason: "relist detection unproven" });
+      expect(at(b, 90), b).toEqual({ ok: false, reason: "relist detection unproven" });
+    }
+    expect(at("unobserved", 90)).toEqual({ ok: false, reason: "unproven read" });
   });
 
   it("an absent role column is our deploy gap, and a numeric string is a number", () => {
@@ -221,7 +231,7 @@ describe("the refusals in plain words are one set of sentences", () => {
   });
 
   it("no refusal reads as a fact about the employer, and the relist sentence names our detector", () => {
-    for (const k of ["lap", "relist"] as const) {
+    for (const k of ["lap", "relist", "unprovenRead", "unprovenReadCounts", "relistLap", "otherSites", "interval", "unread"] as const) {
       expect(HIRING_RECORD_GATE_COPY[k]).toMatch(/not a fact about the employer/);
     }
     expect(HIRING_RECORD_GATE_COPY.relist).toMatch(/re-list detection is not working here/);

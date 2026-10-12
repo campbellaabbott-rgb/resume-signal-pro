@@ -82,8 +82,8 @@
       "titleListings": "Karamihan ng role ay nakalista sa"
     },
     "nameLoading": "Nilo-load ang pangalan ng employer",
-    "openRoles_one": "{{n}} bukas na role",
-    "openRoles_other": "{{n}} bukas na role",
+    "openRoles_one": "{{n}} role na may petsa sa nakaraang {{days}} araw",
+    "openRoles_other": "{{n}} role na may petsa sa nakaraang {{days}} araw",
     "openRolesCapped": "hanggang {{cap}} lang ang binibilang namin",
     "pay": {
       "basis": "Taunang halaga mula sa mga saklaw ng sahod na nakasaad sa mga bukas nilang posting; hindi binibilang ang mga posting na walang sahod.",
@@ -131,8 +131,8 @@
     },
     "results": {
       "boardRead": "nabasa ang board na ito {{ago}}",
-      "showing_one": "Ipinapakita ang {{shown}} sa {{total}} bukas na role",
-      "showing_other": "Ipinapakita ang {{shown}} sa {{total}} bukas na role",
+      "showing_one": "Ipinapakita ang {{shown}} sa {{total}} role na may petsa sa nakaraang {{days}} araw",
+      "showing_other": "Ipinapakita ang {{shown}} sa {{total}} role na may petsa sa nakaraang {{days}} araw",
       "showingMatching_one": "Ipinapakita ang {{shown}} sa {{total}} tugmang role",
       "showingMatching_other": "Ipinapakita ang {{shown}} sa {{total}} tugmang role"
     },
@@ -164,11 +164,23 @@
     },
     "zero": {
       "allRoles": "Maghanap sa lahat ng bukas na role",
-      "answer": "Walang bukas na role ngayon",
+      "answer": "Walang role na may petsa sa nakaraang {{days}} araw",
       "body": "Bantayan ang board na ito at bibilangin ng account mo ang mga bagong posting kapag lumabas ang mga ito.",
-      "title": "Walang bukas na role sa {{name}} ngayon",
-      "titleBoard": "Walang bukas na role sa board na ito ngayon"
+      "title": "Walang role sa {{name}} na may petsa sa nakaraang {{days}} araw",
+      "titleBoard": "Walang role sa board na ito na may petsa sa nakaraang {{days}} araw",
+      "older_one": "Ang {{total}} role sa board ng {{company}} ay walang petsa sa nakaraang {{days}} araw (nabasa {{date}}).",
+      "older_other": "Wala sa {{total}} role sa board ng {{company}} ang may petsa sa nakaraang {{days}} araw (nabasa {{date}}).",
+      "olderBoard_one": "Ang {{total}} role sa board na ito ay walang petsa sa nakaraang {{days}} araw (nabasa {{date}}).",
+      "olderBoard_other": "Wala sa {{total}} role sa board na ito ang may petsa sa nakaraang {{days}} araw (nabasa {{date}}).",
+      "basis": "Ipinapakita namin ang mga role na may petsa sa nakaraang {{days}} araw.",
+      "empty": "Walang role sa job board ng {{company}} nang basahin namin ito {{ago}}.",
+      "emptyBoard": "Walang role sa board na ito nang basahin namin ito {{ago}}.",
+      "unread": "Hindi pa namin nababasa nang buo ang board ng {{company}} kamakailan.",
+      "unreadBoard": "Hindi pa namin nababasa nang buo ang board na ito kamakailan."
     },
-    "countedAgo": "binilang {{ago}}"
+    "countedAgo": "binilang {{ago}}",
+    "undatedMore": "({{u}} pa ang walang petsa)",
+    "boardTotal_one": "{{total}} role ang nakalista sa kabuuan sa board nila nang basahin namin ito {{ago}}.",
+    "boardTotal_other": "{{total}} role ang nakalista sa kabuuan sa board nila nang basahin namin ito {{ago}}."
   }
 }

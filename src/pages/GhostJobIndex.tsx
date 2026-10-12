@@ -30,6 +30,10 @@ import { SERVING_SOURCE_LIST, servingSourceSummary } from "@/config/ats-vendors"
 // longer pruned. The days the count covers are defined once, beside the
 // ceiling /hiring-trends divides by the same span.
 import { CLOSURE_RECORD_WINDOW_DAYS, closureCountSpanDays } from "@/lib/hiring-trends-trust";
+// The leaderboard's fill share passes the same whitelist the employer page
+// does (Track 1, A1/A2): a board read to its end with a watch floor, a share
+// inside its own interval, and a re-post test that files fills as fills.
+import { hiringRecordGate, type HiringRecordRow } from "@/lib/hiring-record-gate";
 
 interface Stats {
   total_open: number;
@@ -166,7 +170,7 @@ export const readCachedLeaderboard = (cache: Record<string, unknown> | null): Ca
  *  Where the curve answers, its count is what renders. Where it does not (RPC
  *  not deployed, request failed), the row shows open roles alone rather than a
  *  fill claim from the unguarded source. */
-interface LeaderCurve {
+interface LeaderCurve extends HiringRecordRow {
   company_token: string;
   /** ONE ROW PER CLOSURE EVENT, NOT PER ROLE — the curve's own body says so:
    *  "named for a window of events and stay a window of events". This page
@@ -180,6 +184,18 @@ interface LeaderCurve {
   dated_coverage: number | string | null;
   sufficient: boolean;
 }
+/** THE LEADERBOARD'S FILL SHARE, THROUGH THE SHARED GATE (Track 1, A2). A
+ *  row prints its share, and is ranked on it, only where the employer page
+ *  would print the same share: the gate's share14 passes (a full read with a
+ *  watch floor, sufficient, dated, deep enough, inside its own interval) and
+ *  its ceiling is the fill share, which it stops being where the re-post test
+ *  files real takedowns as re-posts (one title live at many sites) or the row
+ *  cannot say. A row without a curve row prints nothing. */
+export const leaderFillStatable = (g: LeaderCurve | null | undefined): boolean => {
+  if (!g) return false;
+  const gate = hiringRecordGate(g);
+  return gate.share14.ok && gate.ceilingBasis === "fills";
+};
 /** One category's row from get_category_fill_curve — the Aalen–Johansen
  *  cumulative incidence of a genuine fill, per docs/hiring-health-model.md §4.
  *  This is what replaced `median_days_open` on this page. */
@@ -258,6 +274,9 @@ interface FillCurveRow {
    *  absence it is: nothing reached the cap, or things reached it and none of
    *  them was admitted (three tests since the watch floor, 20261002121843). */
   dated_cohort_n_30?: number | string | null;
+  /** How many boards the day-30 pool holds (20261012122000): printed as
+   *  "pooled over N employers whose boards we read in full". */
+  admitted_boards_30?: number | string | null;
 }
 /** THE DAY-30 GATE, RE-APPLIED HERE RATHER THAN TRUSTED. Every one of these is
  *  a term of the server's own sufficient_30, and each is checked again on the
@@ -296,7 +315,7 @@ export const SUM_CHECK_TOLERANCE_30 = 0.000001;
 export type Day30Row = Pick<FillCurveRow,
   "sufficient_30" | "still_open_30" | "still_open_30_lo" | "still_open_30_hi"
   | "taken_down_30" | "relist_rate_30" | "n_at_risk_30" | "cohort_from" | "cohort_to" | "events_30"
-  | "fills_30" | "relists_30" | "gate_share_30" | "top_board_share_30" | "dated_cohort_n_30">;
+  | "fills_30" | "relists_30" | "gate_share_30" | "top_board_share_30" | "dated_cohort_n_30" | "admitted_boards_30">;
 /** THE DAY-30 READING FOR ONE ROW, or null. This is the ONLY route by which a
  *  day-30 figure reaches the screen, and it renders on two conditions, not
  *  one: the RPC's own sufficiency finding is the boolean true, AND every term
@@ -333,6 +352,8 @@ export interface Day30Reading {
    *  a field. */
   gateShare: number | null;
   topBoardShare: number | null;
+  /** How many employers' boards the pool holds; absent where the row does not say. */
+  boards?: number;
 }
 /** ROUNDING THAT CANNOT OVERSTATE WHAT WE KNOW. Every percentage on this line
  *  is a specific kind of claim, and nearest-integer rounding turns some of them
@@ -389,10 +410,12 @@ export const day30Reading = (row: Day30Row): Day30Reading | null => {
   if (row.cohort_from.length === 0 || row.cohort_to.length === 0) return null;
   const gs = numOr(row.gate_share_30);
   const tb = numOr(row.top_board_share_30);
+  const nb = numOr(row.admitted_boards_30);
   return {
     pct: pctPoint(s), lo: pctFloor(lo), hi: pctCeil(hi), hw: pctCeil((hi - lo) / 2),
     r: pctCeil(r), x: pctFloor(x), n: Math.round(n), cohortFrom: row.cohort_from, cohortTo: row.cohort_to,
     gateShare: gs === null ? null : pctPoint(gs), topBoardShare: tb === null ? null : pctPoint(tb),
+    ...(nb === null || nb <= 0 ? {} : { boards: Math.round(nb) }),
   };
 };
 /** WHY A ROW DREW NOTHING, in the order the terms are checked. Each of these
@@ -919,6 +942,9 @@ export default function GhostJobIndex() {
    *  R(14) is a share of one employer's own risk set at one fixed horizon, so
    *  every row answers the same question over the same number of days. */
   const leaderRate = (c: Leader): { rate: number; ceiling: number | null; days: number | null; coverage: number | null } | null => {
+    // The gate first, on the curve row; the two-source rule below then
+    // decides which source's figure prints.
+    if (!leaderFillStatable(leaderCurve[c.company_token])) return null;
     const own = numOr(c.fill_incidence_14d);
     if (own !== null) {
       // The RPC gates on the curve's `sufficient` in its own WHERE and has no
@@ -938,7 +964,9 @@ export default function GhostJobIndex() {
   /** The leaders this page lists, and the three bars they clear to be listed —
    *  the same three `shownCurve` applies to the field table ten lines above,
    *  which were never applied here. Ranked on the rate that renders. */
-  const shownLeaders = (curveGuardRan || leaders.some((c) => numOr(c.fill_incidence_14d) !== null))
+  // Until the curve answers (or when it fails) no row can pass the gate, so
+  // the list stays in the RPC's order with no figure on any row.
+  const shownLeaders = curveGuardRan
     ? leaders
         .map((c) => ({ c, m: leaderRate(c) }))
         .filter((x): x is { c: Leader; m: NonNullable<ReturnType<typeof leaderRate>> } =>
@@ -1541,9 +1569,23 @@ export default function GhostJobIndex() {
                           THAT one board holds, because a share computed almost
                           entirely on one employer is that employer's answer
                           wearing a field's name. */}
-                      {t("ghostIndex.stillUp30Row2",
-                        "{{pct}}% of dated {{field}} roles posted {{cohortFrom}} to {{cohortTo}} were still advertised when they reached our 30-day cap (n={{n}}, ±{{hw}} points); at most {{r}}% had been taken down for good and at least {{x}}% re-listed. Counted only on boards we read to the end whose own roles we saw come down or go back up in this cohort.",
+                      {/* ADMISSION BY EVIDENCE FROM BEFORE THE COHORT
+                          (20261012122000): the pool is the boards read to the
+                          end that showed takedowns in the 90 days before the
+                          cohort, no longer the boards whose own cohort
+                          produced events, so the basis clause is a new key
+                          (stillUp30Row3) and the pool's size is printed. */}
+                      {t("ghostIndex.stillUp30Row3",
+                        "{{pct}}% of dated {{field}} roles posted {{cohortFrom}} to {{cohortTo}} were still advertised when they reached our 30-day cap (n={{n}}, ±{{hw}} points); at most {{r}}% had been taken down for good and at least {{x}}% re-listed. Counted only on boards we read to the end that showed us takedowns in the 90 days before this cohort began.",
                         { pct: d.pct, field: r.category.replace(/_/g, " "), cohortFrom: d.cohortFrom, cohortTo: d.cohortTo, n: d.n.toLocaleString(), hw: d.hw, r: d.r, x: d.x })}
+                      {typeof d.boards === "number" && (
+                        <>
+                          {" "}
+                          {t("ghostIndex.stillUp30Boards",
+                            "Pooled over {{n}} employers whose boards we read in full.",
+                            { n: d.boards!.toLocaleString() })}
+                        </>
+                      )}
                       {d.gateShare !== null && (
                         <>
                           {" "}

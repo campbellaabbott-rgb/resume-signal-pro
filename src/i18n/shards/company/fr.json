@@ -88,9 +88,9 @@
       "titleListings": "Postes publiés surtout en"
     },
     "nameLoading": "Chargement du nom de l'employeur",
-    "openRoles_one": "{{n}} poste ouvert",
-    "openRoles_other": "{{n}} postes ouverts",
-    "openRoles_many": "{{n}} postes ouverts",
+    "openRoles_one": "{{n}} poste daté des {{days}} derniers jours",
+    "openRoles_other": "{{n}} postes datés des {{days}} derniers jours",
+    "openRoles_many": "{{n}} postes datés des {{days}} derniers jours",
     "openRolesCapped": "nous comptons jusqu'à {{cap}}",
     "pay": {
       "basis": "Montants annuels tirés des fourchettes de salaire indiquées dans leurs offres ouvertes ; les offres sans salaire ne sont pas comptées.",
@@ -142,9 +142,9 @@
     },
     "results": {
       "boardRead": "ce site lu {{ago}}",
-      "showing_one": "{{shown}} affiché sur {{total}} poste ouvert",
-      "showing_other": "{{shown}} affichés sur {{total}} postes ouverts",
-      "showing_many": "{{shown}} affichés sur {{total}} postes ouverts",
+      "showing_one": "Affichage de {{shown}} sur {{total}} poste daté des {{days}} derniers jours",
+      "showing_other": "Affichage de {{shown}} sur {{total}} postes datés des {{days}} derniers jours",
+      "showing_many": "Affichage de {{shown}} sur {{total}} postes datés des {{days}} derniers jours",
       "showingMatching_one": "{{shown}} affiché sur {{total}} poste correspondant",
       "showingMatching_other": "{{shown}} affichés sur {{total}} postes correspondants",
       "showingMatching_many": "{{shown}} affichés sur {{total}} postes correspondants"
@@ -178,11 +178,26 @@
     },
     "zero": {
       "allRoles": "Rechercher tous les postes ouverts",
-      "answer": "Aucun poste ouvert pour le moment",
+      "answer": "Aucun poste daté des {{days}} derniers jours",
       "body": "Suivez ce site et votre compte comptera ses nouvelles offres dès leur parution.",
-      "title": "Aucun poste ouvert chez {{name}} pour le moment",
-      "titleBoard": "Aucun poste ouvert sur ce site pour le moment"
+      "title": "Aucun poste chez {{name}} daté des {{days}} derniers jours",
+      "titleBoard": "Aucun poste sur ce site daté des {{days}} derniers jours",
+      "older_one": "Le {{total}} poste du site de {{company}} n'est pas daté des {{days}} derniers jours (lu le {{date}}).",
+      "older_other": "Aucun des {{total}} postes du site de {{company}} n'est daté des {{days}} derniers jours (lu le {{date}}).",
+      "older_many": "Aucun des {{total}} postes du site de {{company}} n'est daté des {{days}} derniers jours (lu le {{date}}).",
+      "olderBoard_one": "Le {{total}} poste de ce site n'est pas daté des {{days}} derniers jours (lu le {{date}}).",
+      "olderBoard_other": "Aucun des {{total}} postes de ce site n'est daté des {{days}} derniers jours (lu le {{date}}).",
+      "olderBoard_many": "Aucun des {{total}} postes de ce site n'est daté des {{days}} derniers jours (lu le {{date}}).",
+      "basis": "Nous affichons les postes datés des {{days}} derniers jours.",
+      "empty": "Aucun poste sur le site carrières de {{company}} quand nous l'avons lu {{ago}}.",
+      "emptyBoard": "Aucun poste sur ce site quand nous l'avons lu {{ago}}.",
+      "unread": "Nous n'avons pas lu tout le site de {{company}} récemment.",
+      "unreadBoard": "Nous n'avons pas lu tout ce site récemment."
     },
-    "countedAgo": "compté {{ago}}"
+    "countedAgo": "compté {{ago}}",
+    "undatedMore": "({{u}} de plus sans date)",
+    "boardTotal_one": "Son site affichait {{total}} poste en tout quand nous l'avons lu {{ago}}.",
+    "boardTotal_other": "Son site affichait {{total}} postes en tout quand nous l'avons lu {{ago}}.",
+    "boardTotal_many": "Son site affichait {{total}} postes en tout quand nous l'avons lu {{ago}}."
   }
 }

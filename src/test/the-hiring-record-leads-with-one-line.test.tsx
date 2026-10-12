@@ -24,6 +24,7 @@ import { codeOf } from "./helpers/strip-comments";
 const BARS = { growthMinRatePct: 25, growthWindowDays: 7, closedWindowDays: 90, shareDays: 14, supportDays: 30 };
 const FULL: RecordCurve = {
   open_roles: 12, filled_roles_90d: 20, relisted_roles_90d: 7, tracking_days: 90, observability_bucket: "full_read",
+  watched_from: "2026-08-01", multi_site_title_share: 0,
   sufficient: true, dated_coverage: 0.8, fill_rate_14: 0.62, fill_rate_14_lo: 0.55, fill_rate_14_hi: 0.69, dated_n: 40,
   median_days_to_fill: 11, median_censored: false,
 };

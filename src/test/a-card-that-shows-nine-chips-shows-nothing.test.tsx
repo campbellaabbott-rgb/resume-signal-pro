@@ -197,6 +197,7 @@ const CURVE = [
     median_days_to_fill: 11, median_censored: false,
     dated_coverage: 0.80, dated_n: 40, undated_n: 10,
     fill_through: 0.70, churn: 0.26, absorption: 0.10, tracking_days: 90, sufficient: true,
+    observability_bucket: "full_read", watched_from: "2026-08-01", multi_site_title_share: 0,
   },
   {
     company_token: "beta", open_roles: 4, fills_90d: 11, relists_90d: 0, filled_roles_90d: 11, relisted_roles_90d: 0, ageouts_90d: 1,
@@ -206,6 +207,7 @@ const CURVE = [
     median_days_to_fill: 12, median_censored: false,
     dated_coverage: 0.80, dated_n: 33, undated_n: 8,
     fill_through: 0.90, churn: 0, absorption: 0.05, tracking_days: 90, sufficient: true,
+    observability_bucket: "full_read", watched_from: "2026-08-01", multi_site_title_share: 0,
   },
   {
     company_token: "gamma", open_roles: 3, fills_90d: 6, relists_90d: 1, filled_roles_90d: 6, relisted_roles_90d: 1, ageouts_90d: 4,
@@ -215,6 +217,7 @@ const CURVE = [
     median_days_to_fill: null, median_censored: true,
     dated_coverage: 0.80, dated_n: 29, undated_n: 7,
     fill_through: 0.50, churn: 0.14, absorption: 0.20, tracking_days: 90, sufficient: true,
+    observability_bucket: "full_read", watched_from: "2026-08-01", multi_site_title_share: 0,
   },
   {
     company_token: "delta", open_roles: 900, fills_90d: 0, relists_90d: 0, filled_roles_90d: 0, relisted_roles_90d: 0, ageouts_90d: 0,
@@ -342,7 +345,7 @@ describe("a card that shows nine chips shows nothing", () => {
     // per company per day, so the true number can only be higher — "(7×)" was
     // an equality claim over a deduped count and the "×+" is the correction,
     // not decoration. If the marker ever goes away this must fail.
-    await waitFor(() => expect(text()).toContain("Re-lists roles often (24×+)"), SLOW);
+    await waitFor(() => expect(text()).toContain("Back or same title live (24×+)"), SLOW);
     await waitFor(() => expect(text()).toContain("Fills fast — 58% within 14d"), SLOW);
     // SCOPED TO THE CARDS, not the document: "Actively hiring" is the filter
     // control's label as well as the chip's, and a document-wide wait would be
@@ -356,7 +359,7 @@ describe("a card that shows nine chips shows nothing", () => {
     const acme = cards().find((c) => (c.textContent ?? "").includes("Acme"));
     expect(acme, "Acme's card is not on the page").toBeTruthy();
     const acmeText = acme!.textContent ?? "";
-    expect(acmeText, "the caution must take the slot").toContain("Re-lists roles often");
+    expect(acmeText, "the caution must take the slot").toContain("Back or same title live");
     expect(acmeText, "praise must not sit beside the caution about the same employer")
       .not.toContain("Fills fast");
     expect(acmeText, "praise must not sit beside the caution about the same employer")
@@ -371,11 +374,11 @@ describe("a card that shows nine chips shows nothing", () => {
     // the slot with a muted "No closure record" and is asserted separately
     // below. Three positive-or-caution statements over four cards. Counted over
     // the CARDS only, for the reason above.
-    expect(listHits("Re-lists roles often") + listHits("Fills fast") + listHits("Actively hiring")).toBe(3);
+    expect(listHits("Back or same title live") + listHits("Fills fast") + listHits("Actively hiring")).toBe(3);
     // And no card carries two of them.
     for (const c of cards()) {
       const t = c.textContent ?? "";
-      const said = ["Re-lists roles often", "Fills fast", "Actively hiring"].filter((x) => t.includes(x));
+      const said = ["Back or same title live", "Fills fast", "Actively hiring"].filter((x) => t.includes(x));
       expect(said.length, `two employer statements on one card: ${said.join(" + ")}`).toBeLessThanOrEqual(1);
     }
     // ── THE THIRD STATE HAS THE SLOT IT USED TO LEAVE EMPTY ────────────────
@@ -391,7 +394,7 @@ describe("a card that shows nine chips shows nothing", () => {
     expect(deltaText, "an unreadable record must never render as the positive one")
       .not.toContain("Actively hiring");
     expect(deltaText).not.toContain("Fills fast");
-    expect(deltaText).not.toContain("Re-lists roles often");
+    expect(deltaText).not.toContain("Back or same title live");
   });
 
   it("behaviour: the field-window comparison appears only on a posting the EMPLOYER dated", async () => {

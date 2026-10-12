@@ -62,6 +62,7 @@ const curve = (token: string, over: Record<string, unknown>) => ({
   median_days_to_fill: null, median_censored: true, dated_coverage: 0.9, dated_n: 900, undated_n: 100,
   fill_through: 0.5, churn: 0, absorption: 0.1, tracking_days: 40, sufficient: true,
   observability_bucket: "full_read", sufficient_30: false, insufficient_reason_30: "events",
+  watched_from: "2026-08-01", multi_site_title_share: 0,
   ...over,
 });
 
@@ -161,11 +162,11 @@ describe("an employer page prints no figure its board cannot measure", () => {
     expect(gateLine("relist detection unproven")!.textContent).toContain("our re-list detection is not working here");
   });
 
-  it("O'Reilly says how long a lap board must be watched before its counts print", async () => {
+  it("O'Reilly (a lap board) prints no count at any depth and says why (owner decision GD5)", async () => {
     mount("oreillyauto~wd1~oreilly", { curve: LAP.oreilly });
-    await waitFor(() => expect(gateLine("tracking")).not.toBeNull(), SLOW);
-    expect(gateLine("tracking")!.textContent).toContain("We have watched this board for 10 days");
-    expect(gateLine("tracking")!.textContent).toContain("only after 28 days of watching here");
+    await waitFor(() => expect(gateLine("relist detection unproven")).not.toBeNull(), SLOW);
+    expect(gateLine("relist detection unproven")!.textContent).toContain("our re-post test sees only the part read on one visit");
+    expect(gateLine("relist detection unproven")!.textContent).toContain("not a fact about the employer");
   });
 
   it("Eurofins: 1,293 taken down and none back prints no 'not re-listed' count, and no share or median either", async () => {

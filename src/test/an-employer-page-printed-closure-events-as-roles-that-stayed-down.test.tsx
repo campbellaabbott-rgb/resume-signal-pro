@@ -61,6 +61,7 @@ const CURVE = {
   relist_rate_14: 0.05, still_open_14: 0.73, fill_rate_7: 0.10, fill_rate_30: 0.40,
   median_days_to_fill: null, median_censored: true, dated_coverage: 0.9, dated_n: 900, undated_n: 100,
   fill_through: 0.5, churn: 0.002, absorption: 0.1, tracking_days: 33, sufficient: true,
+  observability_bucket: "full_read", watched_from: "2026-08-01", multi_site_title_share: 0,
 };
 /** The same row as a deploy that predates the role columns returns it. */
 const { filled_roles_90d: _f, relisted_roles_90d: _r, ...OLD_ROW } = CURVE;

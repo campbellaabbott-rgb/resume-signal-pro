@@ -32,6 +32,13 @@ import type { HiringRecordRefusal } from "@/lib/hiring-record-gate";
 
 /** The served list counts up to this many rows and then says countCapped (job-board serveList). */
 export const LIST_COUNT_CAP = 10_000;
+/**
+ * The board serves a role while its date (the employer's, or for an undated
+ * role the day we first saw it) is inside this many days: every open-roles
+ * figure on the page counts roles "dated in the last 30 days" (Track 1, A3),
+ * and the copy prints this constant, never a typed 30.
+ */
+export const SERVED_WINDOW_DAYS = 30;
 /** USAJOBS answers at most this many results per query (job-board USAJOBS_RESULT_CAP). */
 export const USAJOBS_RESULT_CAP = 10_000;
 /** The source key of the federal feed. */
@@ -121,7 +128,43 @@ export interface LanderInput {
    * and with neither time it carries no date and the header prints no count.
    */
   listAnsweredAt?: string | null;
+  /**
+   * EXTENSION (Track 1, A3): the employer's own stated total from the last
+   * complete read, as get_company_fill_curve answers it (feed_total,
+   * feed_read_at, feed_state, feed_capped; 20261012121000). undefined: the
+   * curve has not answered yet. null: it answered without the columns (an
+   * older reader), which is never a zero.
+   */
+  boardTotal?: BoardTotalInput | null;
+  /** EXTENSION (A3): served roles with no employer date (get_company_fill_curve.undated_open). */
+  undatedOpen?: number | null;
+  /** EXTENSION: the clock the 48-hour freshness rule reads (tests pin it). */
+  now?: number;
 }
+
+/** The board's own total, from the curve's feed columns, as the page receives it (numbers may be strings). */
+export interface BoardTotalInput {
+  total: number | string | null | undefined;
+  readAt: string | null | undefined;
+  state: string | null | undefined;
+  capped: boolean | null | undefined;
+}
+
+/** A board total the page may print: stated on a complete read no more than 48 hours ago, not a vendor's cap. */
+export interface BoardTotalFact {
+  total: number;
+  readAt: string;
+}
+
+/**
+ * What a page with nothing dated in the last 30 days may say about the board
+ * (Track 1, A3): "older" (a complete read listed roles, none dated in our
+ * window), "empty" (a complete read listed none), "unread" (no complete read
+ * we can stand on: stale, capped, an error, or never), or null while the
+ * curve has not answered. Never "has no open roles" while older ones are
+ * listed.
+ */
+export type ZeroReading = "older" | "empty" | "unread";
 
 export interface LanderName {
   /** The name to print, or null: render a skeleton bar, never the token. */
@@ -161,6 +204,42 @@ export interface LanderModel {
   sections: LanderSections;
   /** The visitor set a filter: the end-of-list "narrow filters" copy may speak, the company scope never counts. */
   visitorFiltered: boolean;
+  /** The board's own total and its read time, when a complete, fresh, uncapped read stated one. */
+  boardTotal: BoardTotalFact | null;
+  /** Served roles carrying no employer date, when the curve says (A3's "({{u}} more carry no date)"). */
+  undatedOpen: number | null;
+  /** On the zero page only: what may be said about the board. */
+  zeroReading: ZeroReading | null;
+}
+
+/** A board total is printed only when its read is no older than this. */
+export const BOARD_TOTAL_MAX_AGE_MS = 48 * 3_600_000;
+/** The read states that are a complete read: ok, or empty (every role older than our window). */
+const COMPLETE_READ_STATES = new Set(["ok", "empty"]);
+
+/**
+ * The board's own total, if the page may print it: a complete read (state ok
+ * or empty) that stated a total, no more than 48 hours old, and not a
+ * vendor's cap (Workday answers at most 2,000). A capped or unknown-cap read
+ * prints no total. Never paired with a stamp that moves on every visit.
+ */
+export function boardTotalFact(input: BoardTotalInput | null | undefined, now: number = Date.now()): BoardTotalFact | null {
+  if (!input) return null;
+  const total = typeof input.total === "string" ? Number(input.total) : input.total;
+  if (typeof total !== "number" || !Number.isFinite(total) || total < 0) return null;
+  if (!input.readAt || !COMPLETE_READ_STATES.has(String(input.state ?? ""))) return null;
+  if (input.capped !== false) return null;
+  const at = Date.parse(input.readAt);
+  if (!Number.isFinite(at) || now - at > BOARD_TOTAL_MAX_AGE_MS || at - now > 5 * 60_000) return null;
+  return { total, readAt: input.readAt };
+}
+
+/** The zero page's reading: older roles listed, an empty board, or a board we have not read in full recently. */
+export function zeroReadingOf(input: Pick<LanderInput, "boardTotal" | "now">): ZeroReading | null {
+  if (input.boardTotal === undefined) return null;
+  const fact = boardTotalFact(input.boardTotal, input.now ?? Date.now());
+  if (!fact) return "unread";
+  return fact.total > 0 ? "older" : "empty";
 }
 
 const finite = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n);
@@ -305,6 +384,11 @@ export function buildLanderModel(input: LanderInput): LanderModel {
   const variant = pickVariant(input);
   const answerable = !input.loading && !input.error && !input.budgetRefusal && finite(input.listTotal) && input.visitorFilters.length === 0;
   const openRoles = variant === "uncarried" || variant === "zero" ? null : chooseOpenRoles(input);
+  const undated = typeof input.undatedOpen === "number" && Number.isFinite(input.undatedOpen) && input.undatedOpen >= 0
+    ? input.undatedOpen : null;
+  // A collision page names no employer and USAJOBS is not one board, so
+  // neither prints a board total; the zero reading belongs to the zero page.
+  const employerBoard = variant !== "collision" && variant !== "usajobs" && variant !== "uncarried";
   return {
     variant,
     name: landerName(input),
@@ -313,5 +397,8 @@ export function buildLanderModel(input: LanderInput): LanderModel {
     boards: variant === "collision" ? [...(input.collision ?? [])] : [],
     sections: sectionsFor(variant, input, openRoles),
     visitorFiltered: input.visitorFilters.length > 0,
+    boardTotal: employerBoard ? boardTotalFact(input.boardTotal, input.now ?? Date.now()) : null,
+    undatedOpen: employerBoard ? undated : null,
+    zeroReading: variant === "zero" ? zeroReadingOf(input) : null,
   };
 }

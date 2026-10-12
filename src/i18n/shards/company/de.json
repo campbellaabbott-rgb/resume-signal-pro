@@ -82,8 +82,8 @@
       "titleListings": "Stellen vor allem ausgeschrieben in"
     },
     "nameLoading": "Name des Arbeitgebers wird geladen",
-    "openRoles_one": "{{n}} offene Stelle",
-    "openRoles_other": "{{n}} offene Stellen",
+    "openRoles_one": "{{n}} Stelle mit Datum in den letzten {{days}} Tagen",
+    "openRoles_other": "{{n}} Stellen mit Datum in den letzten {{days}} Tagen",
     "openRolesCapped": "wir zählen bis {{cap}}",
     "pay": {
       "basis": "Jahreswerte aus den Gehaltsspannen, die ihre offenen Anzeigen nennen; Anzeigen ohne Gehaltsangabe werden nicht gezählt.",
@@ -131,8 +131,8 @@
     },
     "results": {
       "boardRead": "dieses Jobboard gelesen {{ago}}",
-      "showing_one": "{{shown}} von {{total}} offenen Stelle angezeigt",
-      "showing_other": "{{shown}} von {{total}} offenen Stellen angezeigt",
+      "showing_one": "{{shown}} von {{total}} Stelle mit Datum in den letzten {{days}} Tagen",
+      "showing_other": "{{shown}} von {{total}} Stellen mit Datum in den letzten {{days}} Tagen",
       "showingMatching_one": "{{shown}} von {{total}} passenden Stelle angezeigt",
       "showingMatching_other": "{{shown}} von {{total}} passenden Stellen angezeigt"
     },
@@ -164,11 +164,23 @@
     },
     "zero": {
       "allRoles": "Alle offenen Stellen durchsuchen",
-      "answer": "Derzeit keine offenen Stellen",
+      "answer": "Keine Stellen mit Datum in den letzten {{days}} Tagen",
       "body": "Beobachten Sie dieses Jobboard, und Ihr Konto zählt neue Anzeigen, sobald sie erscheinen.",
-      "title": "Derzeit keine offenen Stellen bei {{name}}",
-      "titleBoard": "Derzeit keine offenen Stellen auf diesem Jobboard"
+      "title": "Keine Stellen bei {{name}} mit Datum in den letzten {{days}} Tagen",
+      "titleBoard": "Keine Stellen auf diesem Jobboard mit Datum in den letzten {{days}} Tagen",
+      "older_one": "Die {{total}} Stelle auf dem Jobboard von {{company}} ist nicht in den letzten {{days}} Tagen datiert (gelesen {{date}}).",
+      "older_other": "Keine der {{total}} Stellen auf dem Jobboard von {{company}} ist in den letzten {{days}} Tagen datiert (gelesen {{date}}).",
+      "olderBoard_one": "Die {{total}} Stelle auf diesem Jobboard ist nicht in den letzten {{days}} Tagen datiert (gelesen {{date}}).",
+      "olderBoard_other": "Keine der {{total}} Stellen auf diesem Jobboard ist in den letzten {{days}} Tagen datiert (gelesen {{date}}).",
+      "basis": "Wir zeigen Stellen mit Datum in den letzten {{days}} Tagen.",
+      "empty": "Keine Stellen auf dem Jobboard von {{company}}, als wir es {{ago}} gelesen haben.",
+      "emptyBoard": "Keine Stellen auf diesem Jobboard, als wir es {{ago}} gelesen haben.",
+      "unread": "Wir haben das Jobboard von {{company}} in letzter Zeit nicht vollständig gelesen.",
+      "unreadBoard": "Wir haben dieses Jobboard in letzter Zeit nicht vollständig gelesen."
     },
-    "countedAgo": "gezählt {{ago}}"
+    "countedAgo": "gezählt {{ago}}",
+    "undatedMore": "({{u}} weitere ohne Datum)",
+    "boardTotal_one": "Das Jobboard führte insgesamt {{total}} Stelle, als wir es {{ago}} gelesen haben.",
+    "boardTotal_other": "Das Jobboard führte insgesamt {{total}} Stellen, als wir es {{ago}} gelesen haben."
   }
 }

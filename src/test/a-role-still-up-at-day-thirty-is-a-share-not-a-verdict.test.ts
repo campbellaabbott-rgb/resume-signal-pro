@@ -87,8 +87,19 @@ const TABLE_FILE = "20260909217800_the_bucket_we_computed_and_threw_away.sql";
 // company file restates the drop and the contract again, so it is all three
 // nouns at once; the category file restates the contract, the shape is
 // unchanged. Every day-30 property pinned here is carried verbatim.
+// MOVED AGAIN 2026-10-12 (ghost spec Track 1, A4 and A5), both curves: delayed
+// entry on both chains, the 14-day pools read only boards that can see a
+// takedown, the 14-day interval carried by R(14), the company curve's
+// sufficient carries the tracking floor (its one projection line that moves,
+// by design: CHANGED_PROJECTIONS below) and both gain appended columns. Both
+// files drop the catalogue and restate the contract, so each is all three
+// nouns at once. Every day-30 property pinned here holds in them; two of the
+// spellings (agg30's age-out sum and the risk set at day 30) are read in
+// either form because delayed entry builds them from per-day entries.
+const SEEN_AGAIN_COMPANY_FILE = "20261008110000_a_role_is_counted_once_and_a_posting_seen_again_never_came_down.sql";
+const SEEN_AGAIN_CATEGORY_FILE = "20261008110500_a_field_pools_a_posting_seen_again_after_a_dark_batch_once.sql";
 const WATCH_FLOOR_COMPANY_FILE = "20261002121417_a_board_is_judged_at_day_thirty_only_on_roles_posted_while_we_were_reading_it_in_full.sql";
-const LIVE_COMPANY_FILE = "20261008110000_a_role_is_counted_once_and_a_posting_seen_again_never_came_down.sql";
+const LIVE_COMPANY_FILE = "20261012121000_a_fill_share_counts_only_roles_the_board_was_watched_for.sql";
 // TWO NOUNS, BECAUSE A RE-ISSUE CAN MOVE ONE WITHOUT THE OTHER. On 2026-09-27
 // the category curve was re-issued a third time with ONLY its own header
 // raised (its sixty seconds had become a blank section on two pages); the
@@ -101,16 +112,23 @@ const LIVE_COMPANY_FILE = "20261008110000_a_role_is_counted_once_and_a_posting_s
 // shape file. A check below computes all three from the migration lane rather
 // than trusting any constant.
 const WATCH_FLOOR_CATEGORY_FILE = "20261002121843_a_field_pools_only_the_roles_whose_whole_thirty_days_we_could_see.sql";
-const LIVE_CATEGORY_FILE = "20261008110500_a_field_pools_a_posting_seen_again_after_a_dark_batch_once.sql";
+const LIVE_CATEGORY_FILE = "20261012122000_a_field_admits_a_board_by_what_it_could_see_before_the_cohort.sql";
 /** The re-issues that repeat the observability table's DDL without owning it. */
 const WATCH_FLOOR_FILES = [
   WATCH_FLOOR_COMPANY_FILE,
   WATCH_FLOOR_CATEGORY_FILE,
   "20261002122309_the_layoff_arms_get_the_same_watch_floor_as_the_field_table_beside_them.sql",
+  SEEN_AGAIN_COMPANY_FILE,
+  SEEN_AGAIN_CATEGORY_FILE,
   LIVE_COMPANY_FILE,
   LIVE_CATEGORY_FILE,
 ];
-const SHAPE_CATEGORY_FILE = "20260925163842_a_field_pooled_over_boards_that_never_showed_us_an_event_is_not_a_field.sql";
+const SHAPE_CATEGORY_FILE = "20261012122000_a_field_admits_a_board_by_what_it_could_see_before_the_cohort.sql";
+/** Projection lines a re-issue changed on purpose, with the file that says why. */
+const CHANGED_PROJECTIONS: Record<string, string[]> = {
+  // 20261012121000: sufficient also needs 21 days of tracking (28 on lap_proven).
+  get_company_fill_curve: ["sufficient"],
+};
 
 /** Executable text only: `--` to end of line, and block comments. */
 const stripSql = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "\n").replace(/--[^\n]*/g, "");
@@ -190,13 +208,13 @@ function dayThirtyViolations(code: string, grain: "tok" | "cat"): string[] {
   for (const c of [...NEW_COLUMNS, extra]) if (!cols.includes(c)) v.push(`column:${c}`);
 
   // agg carries the age-out count: sum(is_ageout) AS d_ageout.
-  if (!/sum\(\s*r\.is_ageout\s*\)::int\s+AS d_ageout/.test(code)) v.push("d_ageout");
+  if (!/sum\(\s*(?:r\.is_ageout|x\.d_ageout)\s*\)::int\s+AS d_ageout/.test(code)) v.push("d_ageout");
 
   // at_h at the cap, in the file's own form.
   if (!/COALESCE\(min\(c\.s\)\s+FILTER \(WHERE c\.tt <= 30\), 1\) AS s30/.test(code)) v.push("s30");
   if (!/COALESCE\(max\(c\.x_cif\) FILTER \(WHERE c\.tt <= 30\), 0\) AS x30/.test(code)) v.push("x30");
   if (!/COALESCE\(max\(c\.gw\)\s+FILTER \(WHERE c\.tt <= 30\), 0\) AS gw30/.test(code)) v.push("gw30");
-  if (!/COALESCE\(sum\(c\.cnt\)\s+FILTER \(WHERE c\.tt >= 30\), 0\)::int AS n30/.test(code)) v.push("n30");
+  if (!/COALESCE\(sum\(c\.cnt\)\s+FILTER \(WHERE c\.tt >= 30\), 0\)::int AS n30|COALESCE\(sum\(a\.cnt - a\.ent\) FILTER \(WHERE a\.tt >= 30\), 0\)::int AS n30/.test(code)) v.push("n30");
   if (!/COALESCE\(sum\(c\.d_ageout\) FILTER \(WHERE c\.tt >= 30\), 0\)::int AS ageouts30/.test(code))
     v.push("ageouts30");
 
@@ -247,7 +265,7 @@ function dayThirtyViolations(code: string, grain: "tok" | "cat"): string[] {
     }
     if (!/COALESCE\(ob\.admitted\s+AND/.test(code)) v.push("gate-in-sufficient");
   } else {
-    if (!/AND r\.tt >= 0 AND r\.admitted\s+GROUP BY r\.cat, r\.tt/.test(code)) v.push("gate-in-risk-set");
+    if (!/AND r\.tt >= 0 AND r\.admitted(?:\s+GROUP BY r\.cat, r\.tt| AND r\.entry_tt < r\.tt)/.test(code)) v.push("gate-in-risk-set");
     if (!/count\(\*\) FILTER \(WHERE r\.in_cohort30 AND r\.dated AND r\.admitted\)::int AS admitted_dated_n/.test(code))
       v.push("gate-share");
     if (!/round\(g30\.admitted_dated_n::numeric \/ NULLIF\(g30\.dated_n30, 0\), 4\) AS gate_share_30/.test(code))
@@ -379,6 +397,7 @@ describe("still advertised at day 30 is published as a share, gated, and never p
           const was = projectionLine(prior.code, col);
           const now = projectionLine(live.code, col);
           expect(was, `prior projection for ${col} not found`).not.toBeNull();
+          if ((CHANGED_PROJECTIONS[fn] ?? []).includes(col)) { expect(now, `${col} has no projection line`).not.toBeNull(); continue; }
           expect(now, `${col} lost its projection line`).toBe(was);
         }
       });
@@ -492,7 +511,7 @@ describe("still advertised at day 30 is published as a share, gated, and never p
       // curve, because the two now move independently: the company curve's
       // re-issue sorts after the category curve's shape file, and that order
       // between the two curves carries no meaning.
-      expect(TABLE_FILE < SHAPE_CATEGORY_FILE && SHAPE_CATEGORY_FILE < LIVE_CATEGORY_FILE).toBe(true);
+      expect(TABLE_FILE < SHAPE_CATEGORY_FILE && SHAPE_CATEGORY_FILE <= LIVE_CATEGORY_FILE).toBe(true);
       expect(TABLE_FILE < LIVE_COMPANY_FILE).toBe(true);
       for (const { fn, file } of CURVES) {
         const earlier = ALL_FILES.filter((f) => f !== file && definitionsIn(f).has(fn));
@@ -605,7 +624,7 @@ describe("the day-30 checker can actually fail", () => {
   });
 
   it("fires when the field risk set stops gating on the bucket", () => {
-    const code = LIVE.get("get_category_fill_curve")!.code.replace(" AND r.tt >= 0 AND r.admitted\n", " AND r.tt >= 0\n");
+    const code = LIVE.get("get_category_fill_curve")!.code.replace(/ AND r\.tt >= 0 AND r\.admitted\b/g, " AND r.tt >= 0");
     expect(dayThirtyViolations(code, "cat")).toContain("gate-in-risk-set");
   });
 

@@ -58,6 +58,9 @@ const curve = (token: string, over: Record<string, unknown>) => ({
   median_days_to_fill: null, median_censored: true, dated_coverage: 0.9, dated_n: 900, undated_n: 100,
   fill_through: 0.5, churn: 0, absorption: 0.1, tracking_days: 40, sufficient: true,
   observability_bucket: "full_read", sufficient_30: false, insufficient_reason_30: "events",
+  // Track 1 (A1): the gate reads a watch floor and the multi-site share; a
+  // board read in full and dated, whose titles are not spread over sites.
+  watched_from: "2026-08-01", multi_site_title_share: 0,
   ...over,
 });
 const DOMINOS = curve("dominos", { open_roles: 21829, observability_bucket: "lap_proven", tracking_days: 10, fill_rate_14: 0.0053, insufficient_reason_30: "lap", filled_roles_90d: 13347, relisted_roles_90d: 0, fills_90d: 13347, dated_coverage: 0.9979 });
@@ -119,7 +122,9 @@ describe("a card and a detail pane print no count the employer page withholds", 
   for (const [name, token, row, why] of [
     ["Domino's (13,347 down, none back)", "dominos", DOMINOS, /re-list detection is not working here/],
     ["Eurofins (1,293 down, none back, read in full)", "Eurofins", EUROFINS, /re-list detection is not working here/],
-    ["O'Reilly (watched 10 days on a lap board)", "oreillyauto~wd1~oreilly", OREILLY, /only after 28 days of watching here/],
+    // GD5(a): a lap-read board's re-post test sees one visit's window, so its
+    // counts are withheld at any depth, with the lap sentence.
+    ["O'Reilly (a lap board)", "oreillyauto~wd1~oreilly", OREILLY, /our re-post test sees only the part read on one visit/],
   ] as const) {
     it(`${name}: the card is badged withheld with the gate's reason, and neither it nor the detail pane prints the count`, async () => {
       mount(token, row);
@@ -151,7 +156,7 @@ describe("a card and a detail pane print no count the employer page withholds", 
 describe("the verdict through the gate, as every surface reads it", () => {
   it("a record the gate refuses is unknown with the gate's reason; an empty record is unknown with none; a readable one keeps its verdict", () => {
     expect(gatedHiringRecord(DOMINOS as never)).toEqual({ verdict: "unknown", withheld: "relist detection unproven" });
-    expect(gatedHiringRecord(OREILLY as never)).toEqual({ verdict: "unknown", withheld: "tracking" });
+    expect(gatedHiringRecord(OREILLY as never)).toEqual({ verdict: "unknown", withheld: "relist detection unproven" });
     expect(gatedHiringRecord(FULL as never)).toEqual({ verdict: "closes", withheld: null });
     expect(gatedHiringRecord(curve("q", { filled_roles_90d: 0, relisted_roles_90d: 0 }) as never)).toEqual({ verdict: "unknown", withheld: null });
     expect(gatedHiringRecord(undefined)).toEqual({ verdict: "unknown", withheld: null });

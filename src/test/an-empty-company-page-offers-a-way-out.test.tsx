@@ -49,14 +49,14 @@ describe("a carried board with no open roles", () => {
     const m = buildLanderModel(input());
     expect(m.variant).toBe("zero");
     render(<MemoryRouter><CompanyLanderHeader model={m} token="blackstone" labelOf={() => "Workday"} source="workday" boardReadAt={minsAgo(46)} onWatch={() => {}} onShowOnly={() => {}} /></MemoryRouter>);
-    expect(document.querySelector("[data-company-answer]")?.textContent).toBe("No open roles right now · board read 46 min ago");
+    expect(document.querySelector("[data-company-answer]")?.textContent).toBe("No roles dated in the last 30 days · board read 46 min ago");
   });
 
   it("says so with the read time, offers Watch and three similar employers, and never uses filter copy", () => {
     const onWatch = vi.fn();
     const m = buildLanderModel(input());
     render(<MemoryRouter><CompanyEmptyState model={m} token="blackstone" boardReadAt={minsAgo(46)} similar={[1, 2, 3, 4, 5].map(sim)} onWatch={onWatch} /></MemoryRouter>);
-    expect(screen.getByRole("heading", { level: 2, name: "No open roles at Blackstone right now" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "No roles at Blackstone dated in the last 30 days" })).toBeInTheDocument();
     expect(screen.getByText("board read 46 min ago")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Watch Blackstone" }));
     expect(onWatch).toHaveBeenCalledTimes(1);
@@ -83,7 +83,7 @@ describe("a carried board with no open roles", () => {
     expect(m.sections.employerChip).toBe(false);
     render(<MemoryRouter><CompanyLanderHeader model={m} token="blackstone" labelOf={() => "Workday"} source="workday" boardReadAt={minsAgo(46)} onWatch={() => {}} onShowOnly={() => {}} /></MemoryRouter>);
     const header = document.querySelector("[data-company-header]")?.textContent ?? "";
-    expect(header).toContain("No open roles right now");
+    expect(header).toContain("No roles dated in the last 30 days");
     expect(header).not.toMatch(/Actively hiring/);
     expect(header).not.toMatch(/Live jobs straight from/);
     expect(document.querySelector("[data-employer-chip]")).toBeNull();

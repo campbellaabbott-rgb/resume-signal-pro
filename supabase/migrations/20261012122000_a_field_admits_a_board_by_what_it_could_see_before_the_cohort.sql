@@ -1,4 +1,4 @@
--- A FIELD ADMITS A BOARD BY WHAT IT COULD SEE BEFORE THE COHORT (ghost spec
+-- A FIELD ADMITS A BOARD BY WHAT IT COULD SEE BEFORE THE COHORT (accuracy spec
 -- Track 1, A5).
 --
 -- get_category_fill_curve, re-issued from its live text (20261008110500):
@@ -8,7 +8,7 @@
 --    that never came down: 33 of 39 lap_pending boards with 1,000+ open roles
 --    showed a 14-day share of 0 (Abbott 0 against 983 age-outs, Target 0
 --    against 812), and CVS (lap_proven) 0 from 40,125 at risk (2026-10-11).
---    GhostJobIndex ranks fields by that figure. Now only rows on a full_read
+--    the Job Index page ranks fields by that figure. Now only rows on a full_read
 --    board with a watch floor, posted after it, with delayed entry (the
 --    company grain's rule, 20261012121000).
 -- 2. DAY-30 ADMISSION BY EVIDENCE FROM BEFORE THE COHORT, not by the cohort's
@@ -544,7 +544,7 @@ AS $$
   -- as roles that never came down: 33 of 39 lap_pending boards with 1,000 or
   -- more open roles showed a 14-day share of 0 (Abbott 0 against 983
   -- age-outs, Target 0 against 812), CVS (lap_proven) 0 from 40,125 at risk,
-  -- and GhostJobIndex ranked fields by the result. Now a row is pooled only
+  -- and the Job Index page ranked fields by the result. Now a row is pooled only
   -- when raw.admitted holds (a full_read board with a watch floor, posted
   -- after it), and it enters at entry_tt, its age on the later of its first
   -- sighting and the day after the floor, by the company grain's rule

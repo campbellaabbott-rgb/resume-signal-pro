@@ -45,7 +45,7 @@ import { CompanyClaim } from "@/components/jobs/CompanyClaim";
 import { possessive } from "@/lib/company-display";
 import { ago as fmtAgo, count as fmtCount, date as fmtDate } from "@/lib/company/format";
 import { tPlural } from "@/lib/company/plural";
-import type { LanderModel, OpenRolesValue } from "@/lib/company/lander-model";
+import { SERVED_WINDOW_DAYS, type LanderModel, type OpenRolesValue } from "@/lib/company/lander-model";
 import { AgencyBanner } from "./AgencyBanner";
 import { CompanyChip } from "./parts";
 
@@ -62,18 +62,82 @@ export function openRolesBasis(t: TFunction, v: Pick<OpenRolesValue, "asOf" | "b
 }
 
 /**
- * "1,653 open roles · read 46 min ago" / "10,000+ open roles · we count up to
- * 10,000 · read 5 min ago". Null when there is no figure, and null when the
- * figure has no date: a count that cannot say when it was true is not printed.
+ * "1,653 roles dated in the last 30 days · read 46 min ago" / "10,000+ roles
+ * dated in the last 30 days · we count up to 10,000 · read 5 min ago". Null
+ * when there is no figure, and null when the figure has no date: a count that
+ * cannot say when it was true is not printed.
+ *
+ * THE FIGURE STATES ITS BASIS (Track 1, A3). The list serves roles dated in
+ * the last 30 days, and the page used to call them all of the employer's open
+ * roles (Stripe 260 against 727 on its own board, 2026-10-11). An undated role
+ * is served by the day we first saw it, so where the reply says how many carry
+ * no date (undated), they are split off: "240 roles dated in the last 30 days
+ * (20 more carry no date)". A floor is never split.
  */
-export function openRolesLine(t: TFunction, v: OpenRolesValue | null, lang: string): string | null {
+export function openRolesLine(t: TFunction, v: OpenRolesValue | null, lang: string, undated?: number | null): string | null {
   if (!v) return null;
   const dated = openRolesBasis(t, v, lang);
   if (!dated) return null;
-  const n = fmtCount(v.value, { floor: v.floor, lng: lang });
-  const head = tPlural(t, "companyProfile.openRoles", v.value, { n }, "{{n}} open role", "{{n}} open roles");
+  const u = !v.floor && typeof undated === "number" && Number.isFinite(undated) && undated > 0 && undated <= v.value ? undated : 0;
+  const datedN = v.value - u;
+  const n = fmtCount(datedN, { floor: v.floor, lng: lang });
+  const head = tPlural(t, "companyProfile.openRoles", datedN, { n, days: SERVED_WINDOW_DAYS }, "{{n}} role dated in the last {{days}} days", "{{n}} roles dated in the last {{days}} days")
+    + (u > 0 ? ` ${t("companyProfile.undatedMore", "({{u}} more carry no date)", { u: fmtCount(u, { lng: lang }) })}` : "");
   if (v.capped) return `${head} · ${t("companyProfile.openRolesCapped", "we count up to {{cap}}", { cap: fmtCount(v.value, { lng: lang }) })} · ${dated}`;
   return `${head} · ${dated}`;
+}
+
+/**
+ * "Their board listed 727 roles in all when we read it 2 hr ago." The
+ * employer's own total from the last complete read, printed only when the
+ * model let it through (fresh, complete, not a vendor's cap); null otherwise.
+ */
+export function boardTotalLine(t: TFunction, model: Pick<LanderModel, "boardTotal">, lang: string): string | null {
+  const b = model.boardTotal;
+  if (!b) return null;
+  const ago = fmtAgo(b.readAt, { lng: lang });
+  if (!ago) return null;
+  return tPlural(t, "companyProfile.boardTotal", b.total, { total: fmtCount(b.total, { lng: lang }), ago },
+    "Their board listed {{total}} role in all when we read it {{ago}}.",
+    "Their board listed {{total}} roles in all when we read it {{ago}}.");
+}
+
+/**
+ * THE ZERO PAGE'S ANSWER (Track 1, A3). "No open roles right now" was said of
+ * boards that list older roles (BASS ABA: none served, 31 on its own board,
+ * 38 to 101 days old, 2026-10-11). Now:
+ *   older  -> "None of the 31 roles on BASS ABA's board is dated in the last
+ *             30 days (read Oct 12). We show roles dated in the last 30 days."
+ *   empty  -> "No roles on BASS ABA's job board when we read it 5 hr ago."
+ *   unread -> "We have not read BASS ABA's whole board recently."
+ *   null (the curve has not answered) -> "No roles dated in the last 30 days",
+ *             which the list itself supports.
+ * A generic board label ("Corporate") never takes a possessive.
+ */
+export function zeroAnswer(t: TFunction, model: Pick<LanderModel, "zeroReading" | "boardTotal" | "name">, lang: string): string {
+  const { name, generic } = model.name;
+  const own = !!name && !generic;
+  const companyPossessive = own ? possessive(name!) : "";
+  const b = model.boardTotal;
+  if (model.zeroReading === "older" && b) {
+    const vars = { total: fmtCount(b.total, { lng: lang }), date: fmtDate(b.readAt, { lng: lang }), company: name ?? "", companyPossessive, days: SERVED_WINDOW_DAYS };
+    const head = own
+      ? tPlural(t, "companyProfile.zero.older", b.total, vars, "The {{total}} role on {{companyPossessive}} board is not dated in the last {{days}} days (read {{date}}).", "None of the {{total}} roles on {{companyPossessive}} board is dated in the last {{days}} days (read {{date}}).")
+      : tPlural(t, "companyProfile.zero.olderBoard", b.total, vars, "The {{total}} role on this board is not dated in the last {{days}} days (read {{date}}).", "None of the {{total}} roles on this board is dated in the last {{days}} days (read {{date}}).");
+    return `${head} ${t("companyProfile.zero.basis", "We show roles dated in the last {{days}} days.", { days: SERVED_WINDOW_DAYS })}`;
+  }
+  if (model.zeroReading === "empty" && b) {
+    const ago = fmtAgo(b.readAt, { lng: lang });
+    return own
+      ? t("companyProfile.zero.empty", "No roles on {{companyPossessive}} job board when we read it {{ago}}.", { company: name, companyPossessive, ago })
+      : t("companyProfile.zero.emptyBoard", "No roles on this board when we read it {{ago}}.", { ago });
+  }
+  if (model.zeroReading === "unread") {
+    return own
+      ? t("companyProfile.zero.unread", "We have not read {{companyPossessive}} whole board recently.", { company: name, companyPossessive })
+      : t("companyProfile.zero.unreadBoard", "We have not read this whole board recently.");
+  }
+  return t("companyProfile.zero.answer", "No roles dated in the last {{days}} days", { days: SERVED_WINDOW_DAYS });
 }
 
 /** Jobs › Companies › {name}, at sm and up. */
@@ -190,11 +254,15 @@ export function CompanyHeader({ model, token, system, countries = [], workMode, 
           : t("companyProfile.h1Generic", "Roles on the “{{label}}” board", { label: name }))
       : name;
 
+  // The zero page says what the last complete read of the board saw (A3);
+  // only the list's own "none dated in our window" carries the list's read.
+  const zeroLine = zero ? zeroAnswer(t, model, lang) : null;
   const answer = zero
-    ? (boardReadAt && fmtAgo(boardReadAt, { lng: lang })
-        ? `${t("companyProfile.zero.answer", "No open roles right now")} · ${t("companyProfile.boardReadAgo", "board read {{ago}}", { ago: fmtAgo(boardReadAt, { lng: lang }) })}`
-        : t("companyProfile.zero.answer", "No open roles right now"))
-    : openRolesLine(t, model.openRoles, lang);
+    ? (model.zeroReading === null && boardReadAt && fmtAgo(boardReadAt, { lng: lang })
+        ? `${zeroLine} · ${t("companyProfile.boardReadAgo", "board read {{ago}}", { ago: fmtAgo(boardReadAt, { lng: lang }) })}`
+        : zeroLine)
+    : openRolesLine(t, model.openRoles, lang, model.undatedOpen);
+  const totalLine = zero ? null : boardTotalLine(t, model, lang);
 
   // Not on the zero variant: "Live jobs straight from X's own hiring system"
   // under "No open roles right now" promises jobs the page does not have.
@@ -258,6 +326,7 @@ export function CompanyHeader({ model, token, system, countries = [], workMode, 
           {answer
             ? <p className="text-sm font-medium text-foreground sm:text-base" data-company-answer="">{answer}</p>
             : !model.openRoles && (model.answerable || !name) ? <span aria-hidden="true" className="block h-5 w-56 max-w-full rounded-md bg-muted animate-pulse motion-reduce:animate-none" /> : null}
+          {answer && totalLine && <p className="text-meta text-muted-foreground" data-company-board-total="">{totalLine}</p>}
           {subtitle && <p className="hidden sm:block text-sm text-muted-foreground">{subtitle}</p>}
         </div>
       </div>

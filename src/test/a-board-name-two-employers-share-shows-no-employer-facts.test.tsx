@@ -70,6 +70,7 @@ const CURVE = (token: string) => ({
   n_at_risk_14: 10, fills_le_14: 2, fill_rate_14: 0.2, fill_rate_14_lo: 0.1, fill_rate_14_hi: 0.3, relist_rate_14: 0,
   still_open_14: 0.8, fill_rate_7: 0.1, fill_rate_30: 0.3, median_days_to_fill: null, median_censored: true,
   dated_coverage: 0.9, dated_n: 9, undated_n: 1, fill_through: 0.5, churn: 0, absorption: 0, tracking_days: 40, sufficient: false,
+  observability_bucket: "full_read", watched_from: "2026-08-01", multi_site_title_share: 0,
 });
 const LCA = (token: string) => ({
   ow_company_token: token, ow_soc_code: "15-1252", ow_soc_title: "Software Developers", ow_worksite_state: "CA",

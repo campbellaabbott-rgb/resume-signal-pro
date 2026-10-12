@@ -144,8 +144,10 @@ describe("a relist figure never renders as an equality", () => {
     const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!;
     setter.call(input, "churny");
     input.dispatchEvent(new Event("input", { bubbles: true }));
-    await waitFor(() => expect(pageText()).toMatch(/Re-lists roles/), { timeout: 3000 });
-    const warn = pageText().match(/Re-lists roles:[^·]*?49d/)?.[0] ?? "";
+    // Track 1, A2: the sentence says what the title-only test saw, neutrally;
+    // the floor stays on the values.
+    await waitFor(() => expect(pageText()).toMatch(/takedowns here had another posting with the same title live/), { timeout: 3000 });
+    const warn = pageText().match(/[\d,]+\+ takedowns here had another posting with the same title live[^·]*?49 days/)?.[0] ?? "";
     expect(warn, "the churn warning did not render").not.toBe("");
     expect(warn, "the event count is stated as an equality").toMatch(/2,242\+/);
     expect(warn, "the affected-role count is stated as an equality").toMatch(/182\+/);

@@ -34,7 +34,12 @@ const base = (k: string) => k.replace(PLURAL, "");
 const placeholders = (s: string) => [...s.matchAll(/\{\{\s*(\w+)\s*\}\}/g)].map((m) => m[1]).sort();
 const shardFlat = (l: string) => new Map(flatten((companyShard(l) as { companyProfile: Record<string, unknown> }).companyProfile));
 /** Placeholders a translation may use beyond English's: the component passes both forms of the name. */
-const EXTRA: Record<string, string[]> = { subtitle: ["company", "companyPossessive"] };
+const EXTRA: Record<string, string[]> = {
+  subtitle: ["company", "companyPossessive"],
+  // Track 1 (A3): the zero page's sentences get both forms of the name too.
+  "zero.older_one": ["company", "companyPossessive"], "zero.older_other": ["company", "companyPossessive"], "zero.older_many": ["company", "companyPossessive"],
+  "zero.empty": ["company", "companyPossessive"], "zero.unread": ["company", "companyPossessive"],
+};
 
 afterAll(async () => { await i18n.changeLanguage("en"); });
 
@@ -160,16 +165,16 @@ describe("the answer line in three languages", () => {
     const at = minsAgo(46);
     const head = (value: number, lng: string) => openRolesLine(i18n.t.bind(i18n), { value, floor: false, asOf: at, basis: "read" }, lng)!.split(" · ")[0];
     await i18n.changeLanguage("de");
-    expect(head(1943, "de")).toBe("1.943 offene Stellen");
-    expect(head(1, "de")).toBe("1 offene Stelle");
-    expect(openRolesLine(i18n.t.bind(i18n), { value: 1943, floor: true, asOf: at, basis: "counted" }, "de")).toMatch(/^1\.943\+ offene Stellen · gezählt vor 46 Min/);
+    expect(head(1943, "de")).toBe("1.943 Stellen mit Datum in den letzten 30 Tagen");
+    expect(head(1, "de")).toBe("1 Stelle mit Datum in den letzten 30 Tagen");
+    expect(openRolesLine(i18n.t.bind(i18n), { value: 1943, floor: true, asOf: at, basis: "counted" }, "de")).toMatch(/^1\.943\+ Stellen mit Datum in den letzten 30 Tagen · gezählt vor 46 Min/);
     await i18n.changeLanguage("hi");
     const hi = openRolesLine(i18n.t.bind(i18n), { value: 847, floor: false, asOf: at, basis: "read" }, "hi")!;
-    expect(hi.split(" · ")[0]).toBe("847 खुले रोल");
+    expect(hi.split(" · ")[0]).toBe("पिछले 30 दिनों की तारीख़ वाले 847 रोल");
     expect(hi).not.toMatch(/\broles?\b/);
     await i18n.changeLanguage("es");
-    expect(head(1_000_000, "es")).toBe("1.000.000 vacantes abiertas");
-    expect(head(1, "es")).toBe("1 vacante abierta");
+    expect(head(1_000_000, "es")).toBe("1.000.000 vacantes con fecha en los últimos 30 días");
+    expect(head(1, "es")).toBe("1 vacante con fecha en los últimos 30 días");
     await i18n.changeLanguage("en");
   });
 
@@ -178,7 +183,7 @@ describe("the answer line in three languages", () => {
     await i18n.changeLanguage("de");
     const { container } = render(<MemoryRouter><CompanyHeader model={buildLanderModel(input())} token="clera" system="Ashby" boardReadAt={minsAgo(46)} onWatch={() => {}} /></MemoryRouter>);
     const answer = container.querySelector("[data-company-answer]")?.textContent ?? "";
-    expect(answer).toMatch(/^1\.943 offene Stellen · gelesen vor 46 Min\.?/);
+    expect(answer).toMatch(/^1\.943 Stellen mit Datum in den letzten 30 Tagen · gelesen vor 46 Min\.?/);
     expect(answer).not.toMatch(/\broles?\b/);
     await i18n.changeLanguage("en");
   });

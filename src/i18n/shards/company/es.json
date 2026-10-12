@@ -88,9 +88,9 @@
       "titleListings": "Vacantes publicadas sobre todo en"
     },
     "nameLoading": "Cargando el nombre del empleador",
-    "openRoles_one": "{{n}} vacante abierta",
-    "openRoles_other": "{{n}} vacantes abiertas",
-    "openRoles_many": "{{n}} vacantes abiertas",
+    "openRoles_one": "{{n}} vacante con fecha en los últimos {{days}} días",
+    "openRoles_other": "{{n}} vacantes con fecha en los últimos {{days}} días",
+    "openRoles_many": "{{n}} vacantes con fecha en los últimos {{days}} días",
     "openRolesCapped": "contamos hasta {{cap}}",
     "pay": {
       "basis": "Cifras anuales a partir de los rangos salariales que indican sus ofertas abiertas; las ofertas sin salario no se cuentan.",
@@ -142,9 +142,9 @@
     },
     "results": {
       "boardRead": "este portal leído {{ago}}",
-      "showing_one": "Mostrando {{shown}} de {{total}} vacante abierta",
-      "showing_other": "Mostrando {{shown}} de {{total}} vacantes abiertas",
-      "showing_many": "Mostrando {{shown}} de {{total}} vacantes abiertas",
+      "showing_one": "Mostrando {{shown}} de {{total}} vacante con fecha en los últimos {{days}} días",
+      "showing_other": "Mostrando {{shown}} de {{total}} vacantes con fecha en los últimos {{days}} días",
+      "showing_many": "Mostrando {{shown}} de {{total}} vacantes con fecha en los últimos {{days}} días",
       "showingMatching_one": "Mostrando {{shown}} de {{total}} vacante que coincide",
       "showingMatching_other": "Mostrando {{shown}} de {{total}} vacantes que coinciden",
       "showingMatching_many": "Mostrando {{shown}} de {{total}} vacantes que coinciden"
@@ -178,11 +178,26 @@
     },
     "zero": {
       "allRoles": "Buscar todas las vacantes abiertas",
-      "answer": "Ahora mismo no hay vacantes abiertas",
+      "answer": "Ninguna vacante con fecha en los últimos {{days}} días",
       "body": "Sigue este portal y tu cuenta contará sus nuevas ofertas cuando aparezcan.",
-      "title": "Ahora mismo no hay vacantes abiertas en {{name}}",
-      "titleBoard": "Ahora mismo no hay vacantes abiertas en este portal"
+      "title": "Ninguna vacante en {{name}} con fecha en los últimos {{days}} días",
+      "titleBoard": "Ninguna vacante en este portal con fecha en los últimos {{days}} días",
+      "older_one": "La {{total}} vacante del portal de {{company}} no tiene fecha en los últimos {{days}} días (leído el {{date}}).",
+      "older_other": "Ninguna de las {{total}} vacantes del portal de {{company}} tiene fecha en los últimos {{days}} días (leído el {{date}}).",
+      "older_many": "Ninguna de las {{total}} vacantes del portal de {{company}} tiene fecha en los últimos {{days}} días (leído el {{date}}).",
+      "olderBoard_one": "La {{total}} vacante de este portal no tiene fecha en los últimos {{days}} días (leído el {{date}}).",
+      "olderBoard_other": "Ninguna de las {{total}} vacantes de este portal tiene fecha en los últimos {{days}} días (leído el {{date}}).",
+      "olderBoard_many": "Ninguna de las {{total}} vacantes de este portal tiene fecha en los últimos {{days}} días (leído el {{date}}).",
+      "basis": "Mostramos vacantes con fecha en los últimos {{days}} días.",
+      "empty": "Ninguna vacante en el portal de {{company}} cuando lo leímos {{ago}}.",
+      "emptyBoard": "Ninguna vacante en este portal cuando lo leímos {{ago}}.",
+      "unread": "No hemos leído el portal completo de {{company}} recientemente.",
+      "unreadBoard": "No hemos leído este portal completo recientemente."
     },
-    "countedAgo": "contado {{ago}}"
+    "countedAgo": "contado {{ago}}",
+    "undatedMore": "({{u}} más sin fecha)",
+    "boardTotal_one": "Su portal listaba {{total}} vacante en total cuando lo leímos {{ago}}.",
+    "boardTotal_other": "Su portal listaba {{total}} vacantes en total cuando lo leímos {{ago}}.",
+    "boardTotal_many": "Su portal listaba {{total}} vacantes en total cuando lo leímos {{ago}}."
   }
 }

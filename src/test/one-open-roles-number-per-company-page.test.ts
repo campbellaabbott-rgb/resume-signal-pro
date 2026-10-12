@@ -74,9 +74,9 @@ describe("the figure is chosen once", () => {
 
 describe("every surface prints the same object the same way", () => {
   it("formats the count in the reader's language, with '+' only on a floor, and names its date basis", () => {
-    expect(openRolesLine(t, { value: 967, floor: false, asOf: minsAgo(46), basis: "read" }, "en")).toBe("967 open roles · read 46 min ago");
-    expect(openRolesLine(t, { value: 21_067, floor: true, asOf: minsAgo(212), basis: "counted" }, "en")).toBe("21,067+ open roles · counted 3 hr 32 min ago");
-    expect(openRolesLine(t, { value: 10_000, floor: true, asOf: minsAgo(5), basis: "read", capped: true }, "en")).toBe("10,000+ open roles · we count up to 10,000 · read 5 min ago");
+    expect(openRolesLine(t, { value: 967, floor: false, asOf: minsAgo(46), basis: "read" }, "en")).toBe("967 roles dated in the last 30 days · read 46 min ago");
+    expect(openRolesLine(t, { value: 21_067, floor: true, asOf: minsAgo(212), basis: "counted" }, "en")).toBe("21,067+ roles dated in the last 30 days · counted 3 hr 32 min ago");
+    expect(openRolesLine(t, { value: 10_000, floor: true, asOf: minsAgo(5), basis: "read", capped: true }, "en")).toBe("10,000+ roles dated in the last 30 days · we count up to 10,000 · read 5 min ago");
     expect(openRolesLine(t, { value: 1, floor: false, asOf: null }, "en"), "a count with no date is not printed").toBeNull();
     expect(openRolesLine(t, null, "en")).toBeNull();
   });
@@ -96,7 +96,7 @@ describe("every surface prints the same object the same way", () => {
     cleanup();
     const dated = buildLanderModel(input({ boardReadAt: null, listAnsweredAt: answered }));
     render(createElement(MemoryRouter, null, createElement(CompanyHeader, { model: dated, token: "acme", system: null, boardReadAt: null, onWatch: () => {} })));
-    expect(document.querySelector("[data-company-answer]")?.textContent).toBe("967 open roles · counted 0 min ago");
+    expect(document.querySelector("[data-company-answer]")?.textContent).toBe("967 roles dated in the last 30 days · counted 0 min ago");
   });
 
   it("the answer line and the results line render one model's figure identically", () => {
@@ -107,8 +107,8 @@ describe("every surface prints the same object the same way", () => {
     ));
     const answer = container.querySelector("[data-company-answer]")?.textContent ?? "";
     const results = container.querySelector("[data-company-results]")?.textContent ?? "";
-    expect(answer).toContain("19,936+ open roles");
-    expect(results).toContain("Showing 69 of 19,936+ open roles");
+    expect(answer).toContain("19,936+ roles dated in the last 30 days");
+    expect(results).toContain("Showing 69 of 19,936+ roles dated in the last 30 days");
     // The board-level count is dated by its computation in BOTH places, never as a "read".
     expect(answer).toContain("counted 30 min ago");
     expect(results).toContain("counted 30 min ago");

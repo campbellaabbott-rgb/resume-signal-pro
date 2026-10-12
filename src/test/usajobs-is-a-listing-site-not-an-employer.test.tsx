@@ -49,7 +49,7 @@ describe("the USAJOBS hub", () => {
     );
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Federal openings listed on USAJOBS");
     expect(screen.getByText("Up to 10,000 results per query; not every federal opening.")).toBeInTheDocument();
-    expect(document.querySelector("[data-company-answer]")?.textContent).toMatch(/^9,303 open roles/);
+    expect(document.querySelector("[data-company-answer]")?.textContent).toMatch(/^9,303 roles dated in the last 30 days/);
     const text = document.body.textContent ?? "";
     expect(text).not.toMatch(/own job board|own careers system|Open roles at USAJOBS|Work at USAJOBS/);
     await user.click(screen.getByRole("button", { name: "More actions for USAJOBS" }));
@@ -59,7 +59,7 @@ describe("the USAJOBS hub", () => {
 
   it("its hiring record prints only the tracking-floor reason", () => {
     const rec: HiringRecordInput = {
-      curve: { open_roles: 9303, filled_roles_90d: 120, relisted_roles_90d: 30, tracking_days: 10, observability_bucket: "full_read", sufficient: true, dated_coverage: 0.9 },
+      curve: { open_roles: 9303, filled_roles_90d: 120, relisted_roles_90d: 30, tracking_days: 10, observability_bucket: "full_read", watched_from: "2026-08-01", multi_site_title_share: 0, sufficient: true, dated_coverage: 0.9 },
       gated: { verdict: "unknown", withheld: "tracking" }, actively: "unknown", admitted: null, relistCaution: false,
       growth: { verdict: "unknown", row: null, why: "we set this board aside ourselves" },
       bars: { growthMinRatePct: 25, growthWindowDays: 7, closedWindowDays: 90, shareDays: 14, supportDays: 30 },

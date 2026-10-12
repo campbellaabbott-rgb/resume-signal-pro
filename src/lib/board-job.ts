@@ -188,4 +188,23 @@ export interface FillCurve {
   observability_bucket?: string | null;
   sufficient_30?: boolean | null;
   insufficient_reason_30?: string | null;
+  /** The watch floor: the last day this board's takedowns were not yet
+   *  observable. The gate prints a pace only on a full_read board that has one. */
+  watched_from?: string | null;
+  /** The thirty-day share's lower bound; "never half" is read from it (S, every takedown). */
+  still_open_30_lo?: number | string | null;
+  /** Share of live rows whose title is live at another location on the board
+   *  (20261012121000); with the counts it says whether the re-post test reads
+   *  other sites. Absent before that migration: the gate then refuses the counts. */
+  multi_site_title_share?: number | string | null;
+  multi_site_n?: number | string | null;
+  /** The employer's own stated total from the last complete read (state ok or
+   *  empty, a total stated), its time and state; feed_capped where Workday caps
+   *  the total at 2,000 (20261012121000). Never paired with a per-visit stamp. */
+  feed_total?: number | string | null;
+  feed_read_at?: string | null;
+  feed_state?: string | null;
+  feed_capped?: boolean | null;
+  /** Served roles carrying no employer date, counted by first sighting. */
+  undated_open?: number | string | null;
 }

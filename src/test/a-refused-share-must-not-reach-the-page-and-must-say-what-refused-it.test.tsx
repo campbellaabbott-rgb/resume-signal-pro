@@ -376,7 +376,8 @@ describe("a refused share must not reach the page — the page re-applies the se
     // VALUE beats an inline default, and editing the old key in place would
     // leave every translation stating "boards we read to the end" alone.
     expect(en.ghostIndex, "the single-term basis sentence is retired").not.toHaveProperty("stillUp30Row");
-    expect(en.ghostIndex.stillUp30Row2).toContain("whose own roles we saw come down or go back up");
+    expect(en.ghostIndex, "the cohort-event basis sentence is retired (20261012122000)").not.toHaveProperty("stillUp30Row2");
+    expect(en.ghostIndex.stillUp30Row3).toContain("that showed us takedowns in the 90 days before this cohort began");
   });
 });
 

@@ -24,7 +24,7 @@ import { useCompanyFinancials } from "@/components/jobs/PublicCompanyCard";
 import { useLcaFiledWages } from "@/components/jobs/LcaFiledWagesLine";
 import { SimilarCompaniesView, useSimilarCompanies } from "@/components/jobs/SimilarCompanies";
 import type { LayoffFiling } from "@/components/jobs/LayoffFilingLine";
-import type { LanderModel, OpenRolesValue } from "@/lib/company/lander-model";
+import { SERVED_WINDOW_DAYS, type LanderModel, type OpenRolesValue } from "@/lib/company/lander-model";
 import { ago as fmtAgo, count as fmtCount } from "@/lib/company/format";
 import { tPlural } from "@/lib/company/plural";
 import { CompanyHeader, openRolesBasis, type WorkModeSplit } from "./CompanyHeader";
@@ -126,10 +126,10 @@ export function CompanyResultsLine({ model, shown, matching, boardReadAt }: {
   const lang = i18n.language || "en";
   const total: { value: number; floor: boolean } | null = model.visitorFiltered ? (matching ?? null) : (model.openRoles as OpenRolesValue | null);
   if (!total || shown <= 0) return null;
-  const vars = { shown: fmtCount(shown, { lng: lang }), total: fmtCount(total.value, { floor: total.floor, lng: lang }) };
+  const vars = { shown: fmtCount(shown, { lng: lang }), total: fmtCount(total.value, { floor: total.floor, lng: lang }), days: SERVED_WINDOW_DAYS };
   const head = model.visitorFiltered
     ? tPlural(t, "companyProfile.results.showingMatching", total.value, vars, "Showing {{shown}} of {{total}} matching role", "Showing {{shown}} of {{total}} matching roles")
-    : tPlural(t, "companyProfile.results.showing", total.value, vars, "Showing {{shown}} of {{total}} open role", "Showing {{shown}} of {{total}} open roles");
+    : tPlural(t, "companyProfile.results.showing", total.value, vars, "Showing {{shown}} of {{total}} role dated in the last {{days}} days", "Showing {{shown}} of {{total}} roles dated in the last {{days}} days");
   // The figure's own date: a board-level count says when it was counted, so
   // the header and this line never print two different "read" times.
   const read = boardReadAt ? fmtAgo(boardReadAt, { lng: lang }) : "";

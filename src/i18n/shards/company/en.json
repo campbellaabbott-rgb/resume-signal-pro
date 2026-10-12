@@ -82,8 +82,8 @@
       "titleListings": "Roles listed mostly in"
     },
     "nameLoading": "Loading the employer's name",
-    "openRoles_one": "{{n}} open role",
-    "openRoles_other": "{{n}} open roles",
+    "openRoles_one": "{{n}} role dated in the last {{days}} days",
+    "openRoles_other": "{{n}} roles dated in the last {{days}} days",
     "openRolesCapped": "we count up to {{cap}}",
     "pay": {
       "basis": "Yearly figures from the pay ranges their open postings state; postings that state no pay are not counted.",
@@ -131,8 +131,8 @@
     },
     "results": {
       "boardRead": "this board read {{ago}}",
-      "showing_one": "Showing {{shown}} of {{total}} open role",
-      "showing_other": "Showing {{shown}} of {{total}} open roles",
+      "showing_one": "Showing {{shown}} of {{total}} role dated in the last {{days}} days",
+      "showing_other": "Showing {{shown}} of {{total}} roles dated in the last {{days}} days",
       "showingMatching_one": "Showing {{shown}} of {{total}} matching role",
       "showingMatching_other": "Showing {{shown}} of {{total}} matching roles"
     },
@@ -164,11 +164,23 @@
     },
     "zero": {
       "allRoles": "Search all open roles",
-      "answer": "No open roles right now",
+      "answer": "No roles dated in the last {{days}} days",
       "body": "Watch this board and your account will count its new postings when they appear.",
-      "title": "No open roles at {{name}} right now",
-      "titleBoard": "No open roles on this board right now"
+      "title": "No roles at {{name}} dated in the last {{days}} days",
+      "titleBoard": "No roles on this board dated in the last {{days}} days",
+      "older_one": "The {{total}} role on {{companyPossessive}} board is not dated in the last {{days}} days (read {{date}}).",
+      "older_other": "None of the {{total}} roles on {{companyPossessive}} board is dated in the last {{days}} days (read {{date}}).",
+      "olderBoard_one": "The {{total}} role on this board is not dated in the last {{days}} days (read {{date}}).",
+      "olderBoard_other": "None of the {{total}} roles on this board is dated in the last {{days}} days (read {{date}}).",
+      "basis": "We show roles dated in the last {{days}} days.",
+      "empty": "No roles on {{companyPossessive}} job board when we read it {{ago}}.",
+      "emptyBoard": "No roles on this board when we read it {{ago}}.",
+      "unread": "We have not read {{companyPossessive}} whole board recently.",
+      "unreadBoard": "We have not read this whole board recently."
     },
-    "countedAgo": "counted {{ago}}"
+    "countedAgo": "counted {{ago}}",
+    "undatedMore": "({{u}} more carry no date)",
+    "boardTotal_one": "Their board listed {{total}} role in all when we read it {{ago}}.",
+    "boardTotal_other": "Their board listed {{total}} roles in all when we read it {{ago}}."
   }
 }
