@@ -7,6 +7,9 @@
 // (100 for each IPv4 address or IPv6 /64). Per minute: 60 overall, Claude 30,
 // ChatGPT 20, other 15. Applying yourself draws on a pool of its own, 5,000 a
 // day at 20 a minute, so reading an employer's form never spends a lookup.
+// That pool is split by platform the same way (review of 9fe3bc0d): Claude
+// 2,000 a day at 10 a minute, ChatGPT 2,000 at 6, everyone else 1,000 at 4,
+// so a scraper outside both platforms can spend only its own part of it.
 // Timeouts are never given back. board_stats is served from a five-minute
 // cache and is not counted at all.
 //
@@ -34,8 +37,20 @@ export const ANON_ALLOWANCE = {
   /** One IPv4 address, or one IPv6 /64, outside both platforms. */
   otherPerConnection: 100,
   perMinute: { overall: 60, claude: 30, chatgpt: 20, other: 15, forms: 20 },
-  /** apply_myself: a pool outside the 20,000. A host pool (Claude, ChatGPT without a subject) gets `pool`, a person or a connection `perBucket`. */
-  forms: { perBucket: 100, pool: 2_000, overall: 5_000 },
+  /**
+   * apply_myself: a pool outside the 20,000. A host pool (Claude, ChatGPT
+   * without a subject) gets `pool`, a person or a connection `perBucket`.
+   * Each platform's part of the pool (`shares`, a day; `perMinute`) sits
+   * inside `overall` and perMinute.forms, so no platform's callers can spend
+   * another's.
+   */
+  forms: {
+    perBucket: 100,
+    pool: 2_000,
+    overall: 5_000,
+    shares: { claude: 2_000, chatgpt: 2_000, other: 1_000 },
+    perMinute: { claude: 10, chatgpt: 6, other: 4 },
+  },
   /** board_stats, never counted: one cached answer for this long, and this many calls a minute per address in one isolate. */
   boardStatsCacheMs: 300_000,
   boardStatsPerMinute: 30,
@@ -175,7 +190,15 @@ export function lookupBucket(host: "claude" | "chatgpt" | null, subjectHash: str
   };
 }
 
-/** The same caller's bucket in the forms pool (apply_myself), which never touches the lookups. */
+/** The forms pool's own day row: the overall row of a forms call, never a share. */
+export const FORMS_POOL = "global:forms";
+
+/**
+ * The same caller's bucket in the forms pool (apply_myself), which never
+ * touches the lookups: its platform's part of the pool as the share
+ * ('global:forms:claude', ':chatgpt', ':other', each with its own minute
+ * row), and the pool itself (FORMS_POOL) as the overall row.
+ */
 export function formsBucket(b: AllowanceBucket): AllowanceBucket {
   const A = ANON_ALLOWANCE;
   const pool = b.kind === "claude" || b.kind === "chatgpt";
@@ -183,11 +206,14 @@ export function formsBucket(b: AllowanceBucket): AllowanceBucket {
     ...b,
     bucket: `f:${b.bucket}`,
     bucketCap: pool ? A.forms.pool : A.forms.perBucket,
-    share: "global:forms",
-    shareCap: A.forms.overall,
-    minuteCap: A.perMinute.forms,
+    share: `${FORMS_POOL}:${b.partition}`,
+    shareCap: A.forms.shares[b.partition],
+    minuteCap: A.forms.perMinute[b.partition],
   };
 }
+
+/** True for a forms call's bucket. */
+export const isFormsBucket = (b: AllowanceBucket): boolean => b.share.startsWith(`${FORMS_POOL}:`);
 
 /** mcp_anon_check_v2's answer (its OUT columns). */
 export type MeterDecision = {
@@ -234,20 +260,23 @@ export function spentRefusal(
   const hours = hoursUntilReset(now);
   if (d.refused_by === "minute" || d.refused_by === "overall_minute") {
     const secs = secondsLeftInMinute(now);
+    const forms = isFormsBucket(b);
+    const from = b.partition === "claude" ? "from Claude" : b.partition === "chatgpt" ? "from ChatGPT" : "from outside Claude and ChatGPT";
     const whose = d.refused_by === "minute"
-      ? (b.share === "global:forms" ? "for reading application forms" : b.partition === "claude" ? "from Claude" : b.partition === "chatgpt" ? "from ChatGPT" : "from outside Claude and ChatGPT")
-      : "across every keyless caller";
+      ? (forms ? `for reading application forms ${from}` : from)
+      : (forms ? "for reading application forms, across every keyless caller" : "across every keyless caller");
     return [
       `Too many keyless calls this minute ${whose} (${d.minute_used} of ${d.minute_cap}). Nothing was counted for this call.`,
       `Try again in ${secs} seconds. Meanwhile ${twin} needs nothing.`,
     ];
   }
-  const forms = b.share === "global:forms";
+  const forms = isFormsBucket(b);
+  const shareOwner = b.partition === "claude" ? "shared by every Claude user" : b.partition === "chatgpt" ? "shared by every ChatGPT user" : "for everyone outside Claude and ChatGPT";
   const which = d.refused_by === "bucket"
     ? `${d.bucket_cap.toLocaleString("en-US")} ${forms ? "application-form reads" : "lookups"} a day ${b.owner}`
     : d.refused_by === "share"
-    ? `${d.share_cap.toLocaleString("en-US")} ${forms ? "application-form reads a day for everyone" : `lookups a day ${b.partition === "claude" ? "shared by every Claude user" : b.partition === "chatgpt" ? "shared by every ChatGPT user" : "for everyone outside Claude and ChatGPT"}`}`
-    : `${d.overall_cap.toLocaleString("en-US")} keyless lookups a day for everyone`;
+    ? `${d.share_cap.toLocaleString("en-US")} ${forms ? "application-form reads" : "lookups"} a day ${shareOwner}`
+    : `${d.overall_cap.toLocaleString("en-US")} ${forms ? "application-form reads a day for everyone" : "keyless lookups a day for everyone"}`;
   const message = `The unkeyed allowance is spent: ${which}. It resets at midnight UTC, in about ${hours} hour${hours === 1 ? "" : "s"}.`;
   const site = `Meanwhile ${twin} needs nothing.`;
   if (edition !== "other") return [message, site];

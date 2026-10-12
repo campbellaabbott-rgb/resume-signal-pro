@@ -129,7 +129,8 @@ describe("apply_myself returns the employer's real form, every question marked w
   it("draws on the forms pool only, and a second ask is answered from the form cache", async () => {
     await call({ id: "greenhouse:acme:1" });
     const meter = rpcCalls.find((c) => c.name === "mcp_anon_check_v2")!;
-    expect(meter.args).toMatchObject({ p_global_bucket: "global:forms", p_overall_cap: null, p_overall_minute_cap: null, p_minute_cap: 20 });
+    // Its platform's part of the pool (this caller is outside both platforms), and the pool's own day and minute.
+    expect(meter.args).toMatchObject({ p_global_bucket: "global:forms:other", p_global_cap: 1000, p_minute_cap: 4, p_overall_bucket: "global:forms", p_overall_cap: 5000, p_overall_minute_cap: 20 });
     expect(String(meter.args.p_bucket)).toMatch(/^f:/);
     const vendorCalls = () => fetched.filter((u) => u.startsWith("https://boards-api.greenhouse.io")).length;
     expect(vendorCalls()).toBe(1);

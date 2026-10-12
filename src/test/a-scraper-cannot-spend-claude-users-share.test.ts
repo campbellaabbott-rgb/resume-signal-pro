@@ -16,6 +16,12 @@
  * what earlier steps counted, the forms pool never touches the overall day,
  * and a refund gives a call back at most p_max times a day and never a minute.
  * The adoption reader keeps counting addresses, not shares.
+ *
+ * The review of 9fe3bc0d found the forms pool was one share and one minute row
+ * for every caller, so a scraper outside both platforms could refuse every
+ * Claude and ChatGPT user's apply_myself. A forms call now counts against its
+ * platform's part of the pool ('global:forms:<platform>', its own minute) and
+ * the pool's own day and minute as the overall row ('global:forms').
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
@@ -35,13 +41,23 @@ const today = () => new Date().toISOString().slice(0, 10);
 const check = async (
   bucket: string, bucketCap: number, share: string, shareCap: number,
   overallCap: number | null = 20000, minuteCap: number | null = null, overallMinuteCap: number | null = null,
+  overallBucket = "global",
 ): Promise<Decision> =>
   (await db.query<Decision>(
-    "SELECT * FROM public.mcp_anon_check_v2($1, $2, $3, $4, $5, $6, $7)",
-    [bucket, bucketCap, share, shareCap, overallCap, minuteCap, overallMinuteCap],
+    "SELECT * FROM public.mcp_anon_check_v2($1, $2, $3, $4, $5, $6, $7, $8)",
+    [bucket, bucketCap, share, shareCap, overallCap, minuteCap, overallMinuteCap, overallBucket],
   )).rows[0];
-const refund = async (bucket: string, share: string, overall: boolean, max = 5) =>
-  (await db.query<{ ok: boolean }>("SELECT public.mcp_anon_refund($1, $2, $3, $4) AS ok", [bucket, share, overall, max])).rows[0].ok;
+const refund = async (bucket: string, share: string, overall: boolean, max = 5, overallBucket = "global") =>
+  (await db.query<{ ok: boolean }>("SELECT public.mcp_anon_refund($1, $2, $3, $4, $5) AS ok", [bucket, share, overall, max, overallBucket])).rows[0].ok;
+/** Calls on today's rows whose name matches a Postgres regular expression. */
+const rowsMatching = async (re: string) =>
+  (await db.query<{ calls: number }>("SELECT calls FROM public.mcp_anon_rate WHERE day = $1::date AND bucket ~ $2", [today(), re])).rows.reduce((n, r) => n + r.calls, 0);
+/** A forms call as agent-mcp makes it: the platform's part of the pool, and the pool as the overall row. */
+const formsCheck = (bucket: string, platform: "claude" | "chatgpt" | "other", bucketCap = 100) => {
+  const shares = { claude: 2000, chatgpt: 2000, other: 1000 } as const;
+  const minutes = { claude: 10, chatgpt: 6, other: 4 } as const;
+  return check(`f:${bucket}`, bucketCap, `global:forms:${platform}`, shares[platform], 5000, minutes[platform], 20, "global:forms");
+};
 const callsIn = async (bucket: string) =>
   (await db.query<{ calls: number }>("SELECT calls FROM public.mcp_anon_rate WHERE day = $1::date AND bucket = $2", [today(), bucket])).rows[0]?.calls ?? 0;
 const seed = (bucket: string, calls: number, day = today()) =>
@@ -147,20 +163,49 @@ describe("a script cannot hold the database for a minute", () => {
   });
 });
 
-describe("the forms pool is a pool of its own", () => {
-  it("a forms call (no overall cap) never counts on the overall day or the overall minute", async () => {
-    const d = await check("f:host:claude", 2000, "global:forms", 5000, null, 20, 60);
-    expect(d).toMatchObject({ allowed: true, share_used: 1, overall_used: 0 });
+describe("the forms pool is a pool of its own, split by platform", () => {
+  it("a forms call counts on its platform's part, the pool's day and the pool's minute, never the lookups' day or minute", async () => {
+    const d = await formsCheck("host:claude", "claude", 2000);
+    expect(d).toMatchObject({ allowed: true, share_used: 1, share_cap: 2000, overall_used: 1, overall_cap: 5000 });
     expect(await callsIn("global")).toBe(0);
-    expect(await minuteRows("min:global:0")).toBe(0);
-    expect(await minuteRows("min:global:1")).toBe(0);
-    expect(await minuteRows("min:global:2")).toBe(0);
-    expect(await minuteRows("min:global:forms:")).toBe(1);
+    expect(await callsIn("global:forms")).toBe(1);
+    expect(await callsIn("global:forms:claude")).toBe(1);
+    expect(await rowsMatching("^min:global:forms:claude:[0-9]{4}$")).toBe(1);
+    expect(await rowsMatching("^min:global:forms:[0-9]{4}$")).toBe(1);
+    expect(await rowsMatching("^min:global:[0-9]{4}$")).toBe(0);
   });
 
-  it("a spent overall day does not stop a forms call", async () => {
+  it("a spent lookups day does not stop a forms call", async () => {
     await seed("global", 20000);
-    expect((await check("f:aaaaaaaaaaaaaaaa", 100, "global:forms", 5000, null, 20)).allowed).toBe(true);
+    expect((await formsCheck("aaaaaaaaaaaaaaaa", "other")).allowed).toBe(true);
+  });
+
+  it("a scraper that spends the 'other' part of the pool for the day leaves Claude's and ChatGPT's parts answering", async () => {
+    await seed("global:forms:other", 1000);
+    const scraper = await formsCheck("bbbbbbbbbbbbbbbb", "other");
+    expect(scraper).toMatchObject({ allowed: false, refused_by: "share" });
+    expect((await formsCheck("host:claude", "claude", 2000)).allowed).toBe(true);
+    expect((await formsCheck("u:chatgpt:abcd", "chatgpt")).allowed).toBe(true);
+  });
+
+  it("a scraper that fills the 'other' minute leaves Claude's and ChatGPT's minutes answering", async () => {
+    for (let i = 0; i < 4; i++) expect((await formsCheck(`c${i}cccccccccccccc`, "other")).allowed).toBe(true);
+    expect(await formsCheck("dddddddddddddddd", "other")).toMatchObject({ allowed: false, refused_by: "minute" });
+    expect((await formsCheck("host:claude", "claude", 2000)).allowed).toBe(true);
+    expect((await formsCheck("host:chatgpt", "chatgpt", 2000)).allowed).toBe(true);
+  });
+
+  it("the pool's own day still binds every platform, and a refusal hands back the platform's part", async () => {
+    await seed("global:forms", 5000);
+    expect(await formsCheck("host:claude", "claude", 2000)).toMatchObject({ allowed: false, refused_by: "overall" });
+    expect(await callsIn("global:forms:claude")).toBe(0);
+    expect(await callsIn("ip:f:host:claude")).toBe(0);
+  });
+
+  it("only the two overall rows may be named as one, and neither as a share", async () => {
+    expect(await check("f:aaaaaaaaaaaaaaaa", 100, "global:forms", 5000, null, 20)).toMatchObject({ allowed: false, refused_by: "cap" });
+    expect(await check("f:aaaaaaaaaaaaaaaa", 100, "global:forms:other", 1000, 5000, 4, 20, "global:claude")).toMatchObject({ allowed: false, refused_by: "cap" });
+    expect(await check("aaaaaaaaaaaaaaaa", 100, "global:other", 4000, 20000, 15, 60, "global:forms")).toMatchObject({ allowed: true });
   });
 });
 
@@ -182,18 +227,24 @@ describe("a refund is for a fault in transit, and it is bounded", () => {
     expect(await callsIn("ip:aaaaaaaaaaaaaaaa")).toBe(2);
   });
 
-  it("cannot give back a call that was never counted, or a forms call to the overall day", async () => {
+  it("cannot give back a call that was never counted, or a forms call to the lookups' day", async () => {
     expect(await refund("neverseen0000000", "global:other", true)).toBe(false);
     await seed("global", 5);
-    await check("f:aaaaaaaaaaaaaaaa", 100, "global:forms", 5000, null);
-    expect(await refund("f:aaaaaaaaaaaaaaaa", "global:forms", false)).toBe(true);
+    await formsCheck("aaaaaaaaaaaaaaaa", "other");
+    expect(await refund("f:aaaaaaaaaaaaaaaa", "global:forms:other", true, 5, "global:forms")).toBe(true);
     expect(await callsIn("global")).toBe(5);
+    expect(await callsIn("global:forms")).toBe(0);
+    expect(await callsIn("global:forms:other")).toBe(0);
+    expect(await refund("f:aaaaaaaaaaaaaaaa", "global:forms", true, 5, "global:forms"), "the pool is never a share").toBe(false);
   });
 });
 
 describe("who may call it, and what the reader counts", () => {
   it("only the service role runs either function; the table stays closed to the client roles", async () => {
-    for (const sig of ["public.mcp_anon_check_v2(text, integer, text, integer, integer, integer, integer)", "public.mcp_anon_refund(text, text, boolean, integer)"]) {
+    for (const old of ["public.mcp_anon_check_v2(text, integer, text, integer, integer, integer, integer)", "public.mcp_anon_refund(text, text, boolean, integer)"]) {
+      expect((await db.query<{ p: string | null }>("SELECT to_regprocedure($1)::text AS p", [old])).rows[0].p, `the unreleased shape ${old} is dropped`).toBeNull();
+    }
+    for (const sig of ["public.mcp_anon_check_v2(text, integer, text, integer, integer, integer, integer, text)", "public.mcp_anon_refund(text, text, boolean, integer, text)"]) {
       for (const role of ["anon", "authenticated"]) {
         const r = await db.query<{ ok: boolean }>("SELECT has_function_privilege($1, $2, 'EXECUTE') AS ok", [role, sig]);
         expect(r.rows[0].ok, `${role} on ${sig}`).toBe(false);

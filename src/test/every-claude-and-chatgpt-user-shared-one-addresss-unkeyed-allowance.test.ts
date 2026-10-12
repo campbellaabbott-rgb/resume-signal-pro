@@ -271,11 +271,46 @@ describe("board_stats and applying yourself spend no lookup", () => {
   it("apply_myself draws on the forms pool, never the lookups or the overall day", async () => {
     const r = await callFrom(OTHER_ADDR, { name: "apply_myself", args: { id: "greenhouse:acme:1" } });
     expect(r.refused, r.text).toBe(false);
-    expect(r.sc.unkeyed).toMatchObject({ pool: "forms", ipCap: A.forms.perBucket, partitionCap: A.forms.overall });
+    expect(r.sc.unkeyed).toMatchObject({ pool: "forms", ipCap: A.forms.perBucket, partitionCap: A.forms.shares.other, globalCap: A.forms.overall });
     expect(await callsIn(`ip:f:${hex16(OTHER_ADDR)}`)).toBe(1);
+    expect(await callsIn("global:forms:other")).toBe(1);
     expect(await callsIn("global:forms")).toBe(1);
     expect(await callsIn("global")).toBe(0);
     expect(await callsIn(`ip:${hex16(OTHER_ADDR)}`)).toBe(0);
+  });
+});
+
+/**
+ * The review of 9fe3bc0d, as its probe ran it: twenty apply_myself calls from
+ * two IPv6 /64s outside both platforms filled the forms pool's one minute row,
+ * and the next Claude and ChatGPT callers were refused "for reading
+ * application forms (20 of 20)"; a spent pool day refused them until midnight.
+ * Each platform now has its own part of the pool, by the day and the minute.
+ */
+describe("a scraper cannot spend Claude's or ChatGPT's part of the forms pool", () => {
+  const OPENAI_META = { "openai/subject": "v1/forms-person" };
+  it("twenty calls from outside both platforms leave Claude's and ChatGPT's apply_myself answering", async () => {
+    const outcomes: boolean[] = [];
+    for (let i = 0; i < 10; i++) {
+      outcomes.push((await callFrom(`2001:db8:aaaa:1::${i + 1}`, { name: "apply_myself", args: { id: "greenhouse:acme:1" } })).refused);
+      outcomes.push((await callFrom(`2001:db8:aaaa:2::${i + 1}`, { name: "apply_myself", args: { id: "greenhouse:acme:1" } })).refused);
+    }
+    // The 'other' part of the pool takes its own minute and no more.
+    expect(outcomes.filter((x) => !x)).toHaveLength(A.forms.perMinute.other);
+    const claude = await callFrom(CLAUDE_ADDR, { name: "apply_myself", args: { id: "greenhouse:acme:1" } });
+    const chatgpt = await callFrom(CHATGPT_ADDR, { name: "apply_myself", args: { id: "greenhouse:acme:1" }, meta: OPENAI_META });
+    expect(claude.refused, claude.text).toBe(false);
+    expect(chatgpt.refused, chatgpt.text).toBe(false);
+  });
+
+  it("a spent 'other' part of the pool for the day leaves Claude and ChatGPT answering", async () => {
+    await seed("global:forms:other", A.forms.shares.other - 1);
+    expect((await callFrom(OTHER_ADDR, { name: "apply_myself", args: { id: "greenhouse:acme:1" } })).refused).toBe(false);
+    const next = await callFrom(V6_OTHER_64, { name: "apply_myself", args: { id: "greenhouse:acme:1" } });
+    expect(next.refused).toBe(true);
+    expect(next.text).toMatch(/1,000 application-form reads a day for everyone outside Claude and ChatGPT/);
+    expect((await callFrom(CLAUDE_ADDR, { name: "apply_myself", args: { id: "greenhouse:acme:1" } })).refused).toBe(false);
+    expect((await callFrom(CHATGPT_ADDR, { name: "apply_myself", args: { id: "greenhouse:acme:1" }, meta: OPENAI_META })).refused).toBe(false);
   });
 });
 

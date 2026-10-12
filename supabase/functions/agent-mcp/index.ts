@@ -106,6 +106,7 @@ import {
   ANON_ALLOWANCE,
   connectionOf,
   formsBucket,
+  FORMS_POOL,
   hoursUntilReset,
   lookupBucket,
   secondsLeftInMinute,
@@ -1933,7 +1934,7 @@ function guideText(edition: Edition): string {
     ``,
     `- Lookups: ${n(A.overallPerDay)} a day for everyone together, split by where the call comes from: Claude ${n(A.shares.claude)} (shared by every Claude user), ChatGPT ${n(A.shares.chatgpt)} (${n(A.chatgptPerPerson)} for each person ChatGPT identifies, ${n(A.chatgptNoSubject)} shared by calls that identify nobody), and ${n(A.shares.other)} for everyone else (${n(A.otherPerConnection)} for each internet connection).`,
     `- Per minute: ${A.perMinute.overall} for everyone together; Claude ${A.perMinute.claude}, ChatGPT ${A.perMinute.chatgpt}, everyone else ${A.perMinute.other}.`,
-    `- \`${tool("apply_myself")}\` reads application forms from a pool of its own (${n(A.forms.overall)} a day, ${A.perMinute.forms} a minute), so applying never spends a lookup. \`${tool("board_stats")}\` is cached and never counted.`,
+    `- \`${tool("apply_myself")}\` reads application forms from a pool of its own (${n(A.forms.overall)} a day, ${A.perMinute.forms} a minute; Claude ${n(A.forms.shares.claude)} at ${A.forms.perMinute.claude} a minute, ChatGPT ${n(A.forms.shares.chatgpt)} at ${A.forms.perMinute.chatgpt}, everyone else ${n(A.forms.shares.other)} at ${A.forms.perMinute.other}), so applying never spends a lookup. \`${tool("board_stats")}\` is cached and never counted.`,
     `- A keyless search is one page of ${ANON_SEARCH_LIMIT} rows to offset ${A.maxOffset}; \`${tool("check_jobs_open")}\` takes ${A.checkJobsOpenIds} ids and \`${tool("get_jobs")}\` ${GET_JOBS_MAX}.`,
     `- Every answer says how many lookups are left and whose they are. Everything resets at midnight UTC. A call that timed out is never given back.`,
     ``,
@@ -4114,9 +4115,11 @@ async function answerUnkeyed(
       p_bucket_cap: m.bucketCap,
       p_global_bucket: m.share,
       p_global_cap: m.shareCap,
-      p_overall_cap: forms ? null : A.overallPerDay,
+      // A forms call's overall row is the forms pool, never the lookups' day.
+      p_overall_cap: forms ? A.forms.overall : A.overallPerDay,
       p_minute_cap: m.minuteCap,
-      p_overall_minute_cap: forms ? null : A.perMinute.overall,
+      p_overall_minute_cap: forms ? A.perMinute.forms : A.perMinute.overall,
+      p_overall_bucket: forms ? FORMS_POOL : "global",
     })
     .maybeSingle();
   if (error || !data) {
@@ -4135,11 +4138,11 @@ async function answerUnkeyed(
     };
   }
   maybeAlert(client, m.share, d.share_used, d.share_cap);
-  if (!forms) maybeAlert(client, "global", d.overall_used, d.overall_cap);
+  maybeAlert(client, forms ? FORMS_POOL : "global", d.overall_used, d.overall_cap);
 
   const giveBack = (why: string) => {
     background((async () => {
-      const { data: back } = await client.rpc("mcp_anon_refund", { p_bucket: m.bucket, p_global_bucket: m.share, p_overall: !forms, p_max: A.refundsPerBucket });
+      const { data: back } = await client.rpc("mcp_anon_refund", { p_bucket: m.bucket, p_global_bucket: m.share, p_overall: true, p_max: A.refundsPerBucket, p_overall_bucket: forms ? FORMS_POOL : "global" });
       console.log(`[AGENT-MCP] keyless ${toolName} ${why}: ${back === true ? "given back" : "not given back (daily limit)"}`);
     })());
   };
@@ -4170,8 +4173,8 @@ async function answerUnkeyed(
 
   const bucketLeft = Math.max(0, d.bucket_cap - d.bucket_used);
   const shareLeft = Math.max(0, d.share_cap - d.share_used);
-  const overallLeft = forms ? null : Math.max(0, d.overall_cap - d.overall_used);
-  const left = Math.min(bucketLeft, shareLeft, overallLeft ?? Infinity);
+  const overallLeft = Math.max(0, d.overall_cap - d.overall_used);
+  const left = Math.min(bucketLeft, shareLeft, overallLeft);
   const what = forms ? "application-form reads" : "lookups";
   const world = left < bucketLeft ? `; ${left} left for everyone sharing this allowance` : "";
   const keyClause = edition === "other" ? `; a free key gives ${FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} (${MINT_URL})` : "";
@@ -4185,8 +4188,9 @@ async function answerUnkeyed(
     partition: m.partition,
     partitionLeftToday: shareLeft,
     partitionCap: d.share_cap,
-    globalLeftToday: overallLeft ?? shareLeft,
-    globalCap: forms ? d.share_cap : d.overall_cap,
+    // For a forms call: the whole forms pool, which the platform's part sits inside.
+    globalLeftToday: overallLeft,
+    globalCap: d.overall_cap,
     resetsInSeconds: secondsToMidnightUtc(),
   };
   // The allowance's sentence rides in the unkeyed block, never over the

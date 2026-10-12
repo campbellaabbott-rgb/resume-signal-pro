@@ -11,16 +11,27 @@
 -- WHAT THIS ADDS (owner decision 2026-10-11, economics 1(b)). One new meter,
 -- mcp_anon_check_v2, which counts ONE call against, in order:
 --   1. the share's minute row     'min:<share>:<HHMI>'       (p_minute_cap)
---   2. the overall minute row     'min:global:<HHMI>'        (p_overall_minute_cap)
+--   2. the overall minute row     'min:<overall>:<HHMI>'     (p_overall_minute_cap)
 --   3. the caller's bucket        'ip:<p_bucket>'            (p_bucket_cap)
 --   4. the host's share of the day <p_global_bucket>         (p_global_cap)
---   5. the overall day            'global'                   (p_overall_cap)
+--   5. the overall day            <overall>                  (p_overall_cap)
+-- where <overall> is p_overall_bucket: 'global' (the 20,000 lookups, the
+-- default) or 'global:forms' (the apply-yourself pool).
 -- and is allowed only when every counter is at or under its cap after
 -- counting. A counter at its cap is never incremented again (the cap sits in
 -- the ON CONFLICT update's own WHERE), and a refusal at any step hands back
 -- the counts the earlier steps took, so a refused call is charged to nobody.
--- A NULL p_overall_cap skips steps 2 and 5: the apply-yourself forms are a
--- pool of their own (5,000 a day at 20 a minute), outside the 20,000.
+-- A NULL p_overall_cap skips steps 2 and 5.
+--
+-- THE FORMS POOL IS SPLIT BY HOST TOO (review of 9fe3bc0d, 2026-10-12). The
+-- apply-yourself forms are a pool of their own (5,000 a day at 20 a minute),
+-- outside the 20,000, and were first one share and one minute row for every
+-- caller, so a scraper outside both platforms could refuse every Claude and
+-- ChatGPT user's apply_myself for the minute or the day. agent-mcp now
+-- counts a forms call against its host's forms share ('global:forms:claude',
+-- ':chatgpt', ':other', each with its own minute row) and against the pool
+-- itself as the overall row: p_overall_bucket 'global:forms', so the pool's
+-- day and minute ('min:global:forms:<HHMI>') are never the lookups' rows.
 --
 -- The caps are the caller's parameters, never this file's: agent-mcp's
 -- ANON_ALLOWANCE is the one place they are set, so a cut is a one-constant
@@ -60,6 +71,13 @@
 
 ALTER TABLE public.mcp_anon_rate ADD COLUMN IF NOT EXISTS cap integer;
 
+-- The first shape of these two functions (seven and four arguments, before
+-- the forms pool had an overall row of its own) was never released; dropped
+-- so a re-run against a database that has it leaves one function of each
+-- name, never two overloads PostgREST could not choose between.
+DROP FUNCTION IF EXISTS public.mcp_anon_check_v2(text, integer, text, integer, integer, integer, integer);
+DROP FUNCTION IF EXISTS public.mcp_anon_refund(text, text, boolean, integer);
+
 COMMENT ON COLUMN public.mcp_anon_rate.cap IS
   'The cap the newest count on this row was measured against. Written on share rows and the overall row by mcp_anon_check_v2; NULL on every other row.';
 
@@ -70,7 +88,8 @@ CREATE OR REPLACE FUNCTION public.mcp_anon_check_v2(
   p_global_cap integer,
   p_overall_cap integer DEFAULT 20000,
   p_minute_cap integer DEFAULT NULL,
-  p_overall_minute_cap integer DEFAULT NULL
+  p_overall_minute_cap integer DEFAULT NULL,
+  p_overall_bucket text DEFAULT 'global'
 )
 RETURNS TABLE (
   allowed boolean,
@@ -94,7 +113,8 @@ DECLARE
   v_bucket text := 'ip:' || coalesce(nullif(btrim(p_bucket), ''), 'unknown');
   v_share text := coalesce(nullif(btrim(p_global_bucket), ''), 'global:other');
   v_min text;
-  v_omin text := 'min:global:' || to_char(now() AT TIME ZONE 'UTC', 'HH24MI');
+  v_overall text := coalesce(nullif(btrim(p_overall_bucket), ''), 'global');
+  v_omin text := 'min:' || coalesce(nullif(btrim(p_overall_bucket), ''), 'global') || ':' || to_char(now() AT TIME ZONE 'UTC', 'HH24MI');
   v_counts_overall boolean := p_overall_cap IS NOT NULL;
   v_m integer;
   v_om integer;
@@ -107,7 +127,8 @@ BEGIN
   DELETE FROM public.mcp_anon_rate r WHERE r.day < v_today - 7;
 
   IF p_bucket_cap IS NULL OR p_global_cap IS NULL OR p_bucket_cap < 1 OR p_global_cap < 1
-     OR (v_counts_overall AND p_overall_cap < 1) OR v_share = 'global' OR v_share LIKE 'min:%' THEN
+     OR (v_counts_overall AND p_overall_cap < 1) OR v_share IN ('global', 'global:forms') OR v_share LIKE 'min:%'
+     OR v_overall NOT IN ('global', 'global:forms') THEN
     RETURN QUERY SELECT false, 'cap'::text, 0, coalesce(p_bucket_cap, 0), 0, coalesce(p_global_cap, 0),
       0, coalesce(p_overall_cap, 0), 0, coalesce(p_minute_cap, 0);
     RETURN;
@@ -123,7 +144,7 @@ BEGIN
       SELECT r.calls INTO v_m FROM public.mcp_anon_rate r WHERE r.day = v_today AND r.bucket = v_min;
       SELECT r.calls INTO v_b FROM public.mcp_anon_rate r WHERE r.day = v_today AND r.bucket = v_bucket;
       SELECT r.calls INTO v_s FROM public.mcp_anon_rate r WHERE r.day = v_today AND r.bucket = v_share;
-      SELECT r.calls INTO v_g FROM public.mcp_anon_rate r WHERE r.day = v_today AND r.bucket = 'global';
+      SELECT r.calls INTO v_g FROM public.mcp_anon_rate r WHERE r.day = v_today AND r.bucket = v_overall;
       RETURN QUERY SELECT false, 'minute'::text, coalesce(v_b, 0), p_bucket_cap, coalesce(v_s, 0), p_global_cap,
         coalesce(v_g, 0), coalesce(p_overall_cap, 0), coalesce(v_m, 0), p_minute_cap;
       RETURN;
@@ -144,7 +165,7 @@ BEGIN
       SELECT r.calls INTO v_om FROM public.mcp_anon_rate r WHERE r.day = v_today AND r.bucket = v_omin;
       SELECT r.calls INTO v_b FROM public.mcp_anon_rate r WHERE r.day = v_today AND r.bucket = v_bucket;
       SELECT r.calls INTO v_s FROM public.mcp_anon_rate r WHERE r.day = v_today AND r.bucket = v_share;
-      SELECT r.calls INTO v_g FROM public.mcp_anon_rate r WHERE r.day = v_today AND r.bucket = 'global';
+      SELECT r.calls INTO v_g FROM public.mcp_anon_rate r WHERE r.day = v_today AND r.bucket = v_overall;
       RETURN QUERY SELECT false, 'overall_minute'::text, coalesce(v_b, 0), p_bucket_cap, coalesce(v_s, 0), p_global_cap,
         coalesce(v_g, 0), p_overall_cap, coalesce(v_om, 0), p_overall_minute_cap;
       RETURN;
@@ -171,7 +192,7 @@ BEGIN
     END IF;
     SELECT r.calls INTO v_b FROM public.mcp_anon_rate r WHERE r.day = v_today AND r.bucket = v_bucket;
     SELECT r.calls INTO v_s FROM public.mcp_anon_rate r WHERE r.day = v_today AND r.bucket = v_share;
-    SELECT r.calls INTO v_g FROM public.mcp_anon_rate r WHERE r.day = v_today AND r.bucket = 'global';
+    SELECT r.calls INTO v_g FROM public.mcp_anon_rate r WHERE r.day = v_today AND r.bucket = v_overall;
     RETURN QUERY SELECT false, 'bucket'::text, coalesce(v_b, 0), p_bucket_cap, coalesce(v_s, 0), p_global_cap,
       coalesce(v_g, 0), coalesce(p_overall_cap, 0), greatest(coalesce(v_m, 0) - 1, 0), coalesce(p_minute_cap, 0);
     RETURN;
@@ -191,7 +212,7 @@ BEGIN
       UPDATE public.mcp_anon_rate r SET calls = greatest(r.calls - 1, 0) WHERE r.day = v_today AND r.bucket = v_omin;
     END IF;
     SELECT r.calls INTO v_s FROM public.mcp_anon_rate r WHERE r.day = v_today AND r.bucket = v_share;
-    SELECT r.calls INTO v_g FROM public.mcp_anon_rate r WHERE r.day = v_today AND r.bucket = 'global';
+    SELECT r.calls INTO v_g FROM public.mcp_anon_rate r WHERE r.day = v_today AND r.bucket = v_overall;
     RETURN QUERY SELECT false, 'share'::text, greatest(v_b - 1, 0), p_bucket_cap, coalesce(v_s, 0), p_global_cap,
       coalesce(v_g, 0), coalesce(p_overall_cap, 0), greatest(coalesce(v_m, 0) - 1, 0), coalesce(p_minute_cap, 0);
     RETURN;
@@ -200,7 +221,7 @@ BEGIN
   -- 5. the overall day.
   IF v_counts_overall THEN
     INSERT INTO public.mcp_anon_rate AS r (day, bucket, calls, cap)
-    VALUES (v_today, 'global', 1, p_overall_cap)
+    VALUES (v_today, v_overall, 1, p_overall_cap)
     ON CONFLICT (day, bucket) DO UPDATE SET calls = r.calls + 1, cap = excluded.cap WHERE r.calls < p_overall_cap
     RETURNING r.calls INTO v_g;
     IF v_g IS NULL THEN
@@ -212,7 +233,7 @@ BEGIN
       IF v_om IS NOT NULL THEN
         UPDATE public.mcp_anon_rate r SET calls = greatest(r.calls - 1, 0) WHERE r.day = v_today AND r.bucket = v_omin;
       END IF;
-      SELECT r.calls INTO v_g FROM public.mcp_anon_rate r WHERE r.day = v_today AND r.bucket = 'global';
+      SELECT r.calls INTO v_g FROM public.mcp_anon_rate r WHERE r.day = v_today AND r.bucket = v_overall;
       RETURN QUERY SELECT false, 'overall'::text, greatest(v_b - 1, 0), p_bucket_cap, greatest(v_s - 1, 0), p_global_cap,
         coalesce(v_g, 0), p_overall_cap, greatest(coalesce(v_m, 0) - 1, 0), coalesce(p_minute_cap, 0);
       RETURN;
@@ -224,17 +245,18 @@ BEGIN
 END;
 $$;
 
-COMMENT ON FUNCTION public.mcp_anon_check_v2(text, integer, text, integer, integer, integer, integer) IS
-  'Counts one keyless MCP call against its share''s minute, the overall minute, the caller''s bucket, the host''s share of the day and the overall day (the last two minute and day steps skipped when p_overall_cap is NULL), and says whether it is allowed and which counter refused. A counter at its cap is never incremented; a refusal hands back what the earlier steps took. Service-role only.';
+COMMENT ON FUNCTION public.mcp_anon_check_v2(text, integer, text, integer, integer, integer, integer, text) IS
+  'Counts one keyless MCP call against its share''s minute, the overall minute, the caller''s bucket, the host''s share of the day and the overall day (the overall minute and day skipped when p_overall_cap is NULL; the overall row is p_overall_bucket, ''global'' for lookups or ''global:forms'' for the apply-yourself pool), and says whether it is allowed and which counter refused. A counter at its cap is never incremented; a refusal hands back what the earlier steps took. Service-role only.';
 
-REVOKE ALL ON FUNCTION public.mcp_anon_check_v2(text, integer, text, integer, integer, integer, integer) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.mcp_anon_check_v2(text, integer, text, integer, integer, integer, integer) TO service_role;
+REVOKE ALL ON FUNCTION public.mcp_anon_check_v2(text, integer, text, integer, integer, integer, integer, text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.mcp_anon_check_v2(text, integer, text, integer, integer, integer, integer, text) TO service_role;
 
 CREATE OR REPLACE FUNCTION public.mcp_anon_refund(
   p_bucket text,
   p_global_bucket text,
   p_overall boolean,
-  p_max integer DEFAULT 5
+  p_max integer DEFAULT 5,
+  p_overall_bucket text DEFAULT 'global'
 )
 RETURNS boolean
 LANGUAGE plpgsql
@@ -245,9 +267,10 @@ DECLARE
   v_today date := (now() AT TIME ZONE 'UTC')::date;
   v_bucket text := 'ip:' || coalesce(nullif(btrim(p_bucket), ''), 'unknown');
   v_share text := coalesce(nullif(btrim(p_global_bucket), ''), 'global:other');
+  v_overall text := coalesce(nullif(btrim(p_overall_bucket), ''), 'global');
   v_n integer;
 BEGIN
-  IF p_max IS NULL OR p_max < 1 OR v_share = 'global' THEN
+  IF p_max IS NULL OR p_max < 1 OR v_share IN ('global', 'global:forms') OR v_overall NOT IN ('global', 'global:forms') THEN
     RETURN false;
   END IF;
   -- Only a call that was counted can be given back.
@@ -264,17 +287,17 @@ BEGIN
   UPDATE public.mcp_anon_rate r SET calls = greatest(r.calls - 1, 0) WHERE r.day = v_today AND r.bucket = v_bucket;
   UPDATE public.mcp_anon_rate r SET calls = greatest(r.calls - 1, 0) WHERE r.day = v_today AND r.bucket = v_share;
   IF p_overall THEN
-    UPDATE public.mcp_anon_rate r SET calls = greatest(r.calls - 1, 0) WHERE r.day = v_today AND r.bucket = 'global';
+    UPDATE public.mcp_anon_rate r SET calls = greatest(r.calls - 1, 0) WHERE r.day = v_today AND r.bucket = v_overall;
   END IF;
   RETURN true;
 END;
 $$;
 
-COMMENT ON FUNCTION public.mcp_anon_refund(text, text, boolean, integer) IS
-  'Gives one counted keyless call back to its bucket, its share and (p_overall) the overall day, never a minute row, at most p_max times a UTC day per bucket. For transport failures and unknown ids only; a timeout is never given back. Service-role only.';
+COMMENT ON FUNCTION public.mcp_anon_refund(text, text, boolean, integer, text) IS
+  'Gives one counted keyless call back to its bucket, its share and (p_overall) the overall row p_overall_bucket (''global'' or ''global:forms''), never a minute row, at most p_max times a UTC day per bucket. For transport failures and unknown ids only; a timeout is never given back. Service-role only.';
 
-REVOKE ALL ON FUNCTION public.mcp_anon_refund(text, text, boolean, integer) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.mcp_anon_refund(text, text, boolean, integer) TO service_role;
+REVOKE ALL ON FUNCTION public.mcp_anon_refund(text, text, boolean, integer, text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.mcp_anon_refund(text, text, boolean, integer, text) TO service_role;
 
 -- SELF-CHECK: the meter and the refund exist, are closed to the client roles
 -- and open to the service role; one call counts once on every counter it
@@ -289,8 +312,8 @@ DECLARE
   v_ok boolean;
 BEGIN
   FOREACH v_sig IN ARRAY ARRAY[
-    'public.mcp_anon_check_v2(text, integer, text, integer, integer, integer, integer)',
-    'public.mcp_anon_refund(text, text, boolean, integer)'
+    'public.mcp_anon_check_v2(text, integer, text, integer, integer, integer, integer, text)',
+    'public.mcp_anon_refund(text, text, boolean, integer, text)'
   ] LOOP
     IF to_regprocedure(v_sig) IS NULL THEN
       RAISE EXCEPTION 'self-check: % was not created', v_sig;
@@ -320,6 +343,15 @@ BEGIN
   END IF;
   IF public.mcp_anon_refund('zz-selfcheck-20261011102000', 'global:zz-selfcheck-20261011102000', false, 1) THEN
     RAISE EXCEPTION 'self-check: a refund past its daily limit was given';
+  END IF;
+  -- Only the two overall rows may be named as one, and neither as a share.
+  SELECT * INTO v_r FROM public.mcp_anon_check_v2('zz-selfcheck-20261011102000', 2, 'global:zz-selfcheck-20261011102000', 5, 5, NULL, NULL, 'global:claude');
+  IF v_r.allowed OR v_r.refused_by <> 'cap' THEN
+    RAISE EXCEPTION 'self-check: a share was accepted as the overall row (%)', row_to_json(v_r);
+  END IF;
+  SELECT * INTO v_r FROM public.mcp_anon_check_v2('zz-selfcheck-20261011102000', 2, 'global:forms', 5, NULL, NULL, NULL);
+  IF v_r.allowed OR v_r.refused_by <> 'cap' THEN
+    RAISE EXCEPTION 'self-check: the forms pool was accepted as a share (%)', row_to_json(v_r);
   END IF;
 
   DELETE FROM public.mcp_anon_rate r

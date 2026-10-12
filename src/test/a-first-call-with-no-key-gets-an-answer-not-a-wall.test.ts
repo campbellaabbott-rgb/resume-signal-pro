@@ -255,8 +255,9 @@ describe("the caps are named constants, mirrored, and the only numbers the keyle
   it("the keyless branch hands the named figures to mcp_anon_check_v2 and clamps with the named limit", () => {
     // One bucket, built from the verified address by allowance.ts, counted
     // against its share's minute, the overall minute, the bucket, the share
-    // and the overall day — the forms pool skips the two overall counters.
-    expect(UNKEYED).toMatch(/\.rpc\("mcp_anon_check_v2", \{\s*p_bucket: m\.bucket,\s*p_bucket_cap: m\.bucketCap,\s*p_global_bucket: m\.share,\s*p_global_cap: m\.shareCap,\s*p_overall_cap: forms \? null : A\.overallPerDay,\s*p_minute_cap: m\.minuteCap,\s*p_overall_minute_cap: forms \? null : A\.perMinute\.overall,/);
+    // and the overall day — for the forms pool, the pool's own day and minute
+    // (FORMS_POOL) stand where the lookups' overall counters do.
+    expect(UNKEYED).toMatch(/\.rpc\("mcp_anon_check_v2", \{\s*p_bucket: m\.bucket,\s*p_bucket_cap: m\.bucketCap,\s*p_global_bucket: m\.share,\s*p_global_cap: m\.shareCap,\s*(?:\/\/[^\n]*\n\s*)?p_overall_cap: forms \? A\.forms\.overall : A\.overallPerDay,\s*p_minute_cap: m\.minuteCap,\s*p_overall_minute_cap: forms \? A\.perMinute\.forms : A\.perMinute\.overall,\s*p_overall_bucket: forms \? FORMS_POOL : "global",/);
     expect(UNKEYED).not.toMatch(/p_\w+_cap: \d|Math\.min\(\d/);
     expect(UNKEYED).toMatch(/Math\.min\(ANON_SEARCH_LIMIT,/);
     // Every cap in allowance.ts's buckets is read off ANON_ALLOWANCE.
@@ -350,10 +351,10 @@ describe("the keyless branch is counted in its own table and nowhere else", () =
     // share or the day is the tighter counter, that is its own clause.
     expect(UNKEYED).toMatch(/const bucketLeft = Math\.max\(0, d\.bucket_cap - d\.bucket_used\);/);
     expect(UNKEYED).toMatch(/const shareLeft = Math\.max\(0, d\.share_cap - d\.share_used\);/);
-    expect(UNKEYED).toMatch(/const left = Math\.min\(bucketLeft, shareLeft, overallLeft \?\? Infinity\);/);
+    expect(UNKEYED).toMatch(/const left = Math\.min\(bucketLeft, shareLeft, overallLeft\);/);
     expect(UNKEYED).toMatch(/const note = `keyless: \$\{bucketLeft\} of \$\{d\.bucket_cap\.toLocaleString\("en-US"\)\} \$\{what\} left today \$\{m\.owner\}\$\{world\}; resets at midnight UTC\$\{keyClause\}`/);
     expect(UNKEYED).toMatch(/callsLeftToday: bucketLeft,/);
-    expect(UNKEYED).toMatch(/globalLeftToday: overallLeft \?\? shareLeft,/);
+    expect(UNKEYED).toMatch(/globalLeftToday: overallLeft,/);
     expect(UNKEYED).toMatch(/toolOk\(\{ \.\.\.out, unkeyed: \{ \.\.\.unkeyed, note \} \}\)/);
     // The free key is offered only outside the two chat platforms.
     expect(UNKEYED).toMatch(/const keyClause = edition === "other" \?/);
@@ -367,9 +368,9 @@ describe("the keyless branch is counted in its own table and nowhere else", () =
     expect(mig).not.toMatch(/CREATE POLICY/);
     expect(mig).toMatch(/SECURITY DEFINER/);
     const v2 = newestDefining("mcp_anon_check_v2");
-    expect(v2).toMatch(/REVOKE ALL ON FUNCTION public\.mcp_anon_check_v2\(text, integer, text, integer, integer, integer, integer\) FROM PUBLIC, anon, authenticated;/);
-    expect(v2).toMatch(/GRANT EXECUTE ON FUNCTION public\.mcp_anon_check_v2\(text, integer, text, integer, integer, integer, integer\) TO service_role;/);
-    expect(v2).toMatch(/REVOKE ALL ON FUNCTION public\.mcp_anon_refund\(text, text, boolean, integer\) FROM PUBLIC, anon, authenticated;/);
+    expect(v2).toMatch(/REVOKE ALL ON FUNCTION public\.mcp_anon_check_v2\(text, integer, text, integer, integer, integer, integer, text\) FROM PUBLIC, anon, authenticated;/);
+    expect(v2).toMatch(/GRANT EXECUTE ON FUNCTION public\.mcp_anon_check_v2\(text, integer, text, integer, integer, integer, integer, text\) TO service_role;/);
+    expect(v2).toMatch(/REVOKE ALL ON FUNCTION public\.mcp_anon_refund\(text, text, boolean, integer, text\) FROM PUBLIC, anon, authenticated;/);
     expect(v2).toMatch(/SECURITY DEFINER/);
   });
 });

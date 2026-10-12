@@ -12,7 +12,8 @@
 #     / ChatGPT 6,000 (200 a person, 2,000 for calls that name nobody) /
 #     other 4,000 (100 a connection), per minute 60 overall with Claude 30,
 #     ChatGPT 20 and other 15, and the forms pool at 5,000 a day and 20 a
-#     minute, and a keyless page to offset 200;
+#     minute, split Claude 2,000 at 10 / ChatGPT 2,000 at 6 / everyone else
+#     1,000 at 4 (review of 9fe3bc0d), and a keyless page to offset 200;
 #   - mcp_anon_check_v2, mcp_anon_refund, mcp_count_call, the alert claim, the
 #     two owner readers and api_key_fit_allowance refuse anon (42501), and
 #     mcp_calls_daily and mcp_allowance_alerts are closed tables;
@@ -24,8 +25,10 @@
 # section 82's search); the guide, the preflight, the null body and the PRM
 # read are unmetered; the probes are GETs, which PostgREST runs read-only. A
 # per-minute refusal itself cannot be provoked without spending 60 calls: it is
-# proved in pglite (a-script-cannot-hold-the-database-for-a-minute, which runs
-# mcp_anon_check_v2 itself), and the guide's statement of the caps is read here.
+# proved in pglite (a-scraper-cannot-spend-claude-users-share, which runs
+# mcp_anon_check_v2 itself, and the end-to-end
+# every-claude-and-chatgpt-user-shared-one-addresss-unkeyed-allowance), and the
+# guide's statement of the caps is read here.
 echo "== 85. wave 4 allowance: the split by platform, the per-minute caps, the closed counters, the protocol fixes =="
 
 # api-key-request: the key it mints states its free fit allowance (limits.fitPerDay) beside its request limits.
@@ -59,7 +62,7 @@ const raw=(f)=>{try{return fs.readFileSync(f,"utf8")}catch{return ""}};
       ["ChatGPT per person and without an id","ChatGPT 6,000 (200 for each person ChatGPT identifies, 2,000 shared by calls that identify nobody)"],
       ["everyone else per connection","4,000 for everyone else (100 for each internet connection)"],
       ["the per-minute caps","Per minute: 60 for everyone together; Claude 30, ChatGPT 20, everyone else 15."],
-      ["the forms pool","(5,000 a day, 20 a minute), so applying never spends a lookup"],
+      ["the forms pool, split by platform","(5,000 a day, 20 a minute; Claude 2,000 at 10 a minute, ChatGPT 2,000 at 6, everyone else 1,000 at 4), so applying never spends a lookup"],
       ["the keyless page","one page of 10 rows to offset 200"],
     ];
     for(const [what,s] of want)ok(t.includes(s),"the guide states "+what+": "+JSON.stringify(s));
@@ -89,5 +92,5 @@ for VD85_T in mcp_calls_daily mcp_allowance_alerts; do
   code=$(curl -s -m 30 -o /dev/null -w '%{http_code}' "$B/rest/v1/$VD85_T?select=*&limit=1" -H "apikey: $K" -H "Authorization: Bearer $K")
   { [ "$code" = "401" ] || [ "$code" = "403" ]; } && echo "PASS  $VD85_T SELECT as anon -> $code" || echo "FAIL  $VD85_T SELECT as anon -> $code (want 401 or 403: service-role only)"
 done
-echo "INFO  the per-minute refusal (Retry-After, nothing counted) and the share partitions under load are proved in pglite: a-script-cannot-hold-the-database-for-a-minute and a-scraper-cannot-spend-claude-users-share run mcp_anon_check_v2 itself"
+echo "INFO  the per-minute refusal (Retry-After, nothing counted), the share partitions and the forms pool's split by platform are proved in pglite: a-scraper-cannot-spend-claude-users-share runs mcp_anon_check_v2 itself, and every-claude-and-chatgpt-user-shared-one-addresss-unkeyed-allowance runs agent-mcp against it"
 echo "INFO  owner, service role: SELECT host, surface, tool, outcome, sum(calls) FROM mcp_calls_daily WHERE day = current_date GROUP BY 1,2,3,4 -- the connector's calls by host and outcome, never by who; mcp_connector_report(7) and mcp_free_key_leads(7) are the two readers"
