@@ -110,7 +110,7 @@ console.log("\n[/v1] discovery + shapes");
   const r = await api("/v1");
   const eps = r.body?.endpoints ?? [];
   ok(r.status === 200, "root answers", `HTTP ${r.status}`);
-  for (const e of ["/v1/jobs", "/v1/jobs/{id}", "/v1/changes", "/v1/companies", "/v1/stats", "/v1/usage"]) {
+  for (const e of ["/v1/jobs", "/v1/jobs/{id}", "/v1/jobs/{id}/application", "/v1/changes", "/v1/companies", "/v1/stats", "/v1/usage"]) {
     ok(eps.includes(e), `root advertises ${e}`);
   }
 }
@@ -134,6 +134,20 @@ let firstId = null;
 {
   const r = await api(`/v1/jobs/${firstId}`);
   ok(r.status === 200 && r.body?.data?.id === firstId, "/v1/jobs/{id} returns that job");
+}
+{
+  // 2026-10-11.1: the apply-myself twin. A live posting answers its form (or
+  // says no form is published, or 503 when the hiring system did not answer),
+  // never a posting lookup for "<id>/application"; a withheld system is 451.
+  const r = await api(`/v1/jobs/${encodeURIComponent(firstId)}/application`);
+  const src = r.body?.data?.form?.source;
+  ok((r.status === 200 && ["employer-published", "not-published"].includes(src) && r.body?.data?.route?.submitter === "you")
+    || (r.status === 503 && r.body?.error?.code === "form_unreachable"),
+    "/v1/jobs/{id}/application answers the form or says why not", r.status === 200 ? src : (r.body?.error?.code ?? `HTTP ${r.status}`));
+  const drafted = (r.body?.data?.form?.questions ?? []).filter((x) => x.answeredBy === "draft_from_your_cv" && Array.isArray(x.options) && x.options.length);
+  ok(drafted.length === 0, "no question with options is handed to a drafter", drafted.map((x) => x.label).join(" | "));
+  const sr = await api("/v1/jobs/smartrecruiters:x:1/application");
+  ok(sr.status === 451, "a withheld system's form is refused by name", `HTTP ${sr.status}`);
 }
 {
   // A filter that is accepted must be APPLIED — the board's own cardinal rule.
@@ -320,6 +334,7 @@ let firstId = null;
   ok(r.status === 200, "/v1/usage answers", `HTTP ${r.status}`);
   ok(Number.isFinite(r.body?.limits?.perMinute) && Number.isFinite(r.body?.limits?.perDay), "/v1/usage states both limits");
   ok(Number.isFinite(r.body?.remaining?.today), "/v1/usage states what is left");
+  ok(r.body?.fit && "leftToday" in r.body.fit && "dailyLimit" in r.body.fit, "/v1/usage states what is left of the fit allowance", JSON.stringify(r.body?.fit ?? null));
 }
 
 // ── the 2026-09-02 MCP-parity params ──────────────────────────────────────
@@ -371,18 +386,27 @@ console.log("\n[/v1] MCP-parity filters");
 console.log("\n[/v1] 2026-09-03 upgrades");
 {
   const root = await api("/v1");
-  ok(root.body?.apiVersion === "2026-10-09.1", "apiVersion is 2026-10-09.1", root.body?.apiVersion ?? "none");
+  ok(root.body?.apiVersion === "2026-10-11.1", "apiVersion is 2026-10-11.1", root.body?.apiVersion ?? "none");
   ok((root.body?.endpoints ?? []).includes("POST /v1/fit"), "root advertises POST /v1/fit");
   const loc = await api("/v1/jobs?location=London&limit=10");
   ok(loc.status === 200, "location is ACCEPTED on the default engine now", `HTTP ${loc.status} ${loc.body?.error?.code ?? ""}`);
   const rows = loc.body?.data ?? [];
   ok(rows.length > 0 && rows.every((x) => /london/i.test(String(x.location ?? ""))), "location is APPLIED", `${rows.length} rows, ${rows.filter((x) => !/london/i.test(String(x.location ?? ""))).length} off`);
-  // The one POST route: refused without payment, never a 5xx, and GET stays 405.
+  // The one POST route. FREE FAIR USE SINCE 2026-10-11.1: RB_API_KEY is a
+  // free key, so it scores (25 calls a UTC day when its email was confirmed),
+  // or names the allowance it spent, or names the confirmation it lacks; the
+  // old paid gate (402 upgrade_required) is the one answer it may not give.
   const post = await fetch(BASE + "public-api/v1/fit", { method: "POST", headers: { Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({ resumeText: "Jane Doe - Senior Software Engineer. ".repeat(6) }), signal: AbortSignal.timeout(45_000) });
   const pb = await post.json().catch(() => null);
   ok(post.status < 500, "POST /v1/fit is not a server error", `HTTP ${post.status}`);
-  ok(post.status === 402 && pb?.error?.code === "upgrade_required", "POST /v1/fit is paid: free key gets 402 upgrade_required", pb?.error?.code ?? `HTTP ${post.status}`);
+  const fitAnswer = post.status === 200
+    ? (pb?.allowance?.basis === "free" && pb?.allowance?.dailyLimit === 25)
+    : post.status === 402
+      ? (pb?.error?.code === "fit_allowance_used" && /data-api#builder/.test(pb?.error?.message ?? ""))
+      : post.status === 403 && pb?.error?.code === "confirmed_key_required";
+  ok(fitAnswer, "POST /v1/fit on a free key scores on its 25-a-day allowance, or names the allowance or the confirmation it lacks",
+    post.status === 200 ? `scored, ${pb?.allowance?.leftToday ?? "?"} left today` : (pb?.error?.code ?? `HTTP ${post.status}`));
   const get = await api("/v1/fit");
   ok(get.status === 405, "GET /v1/fit is 405 — the résumé must not ride a query string", `HTTP ${get.status}`);
 }

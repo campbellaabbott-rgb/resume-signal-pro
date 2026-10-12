@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-09T14:00Z
+// deploy-stamp: 2026-10-11T00:00Z
 // Self-serve issuance for the public data API -- behind a mailbox.
 //
 // THE KEY USED TO BE HANDED TO WHOEVER TYPED AN ADDRESS (defect sweep 1.43).
@@ -46,8 +46,18 @@ import { termsVersionOf } from "../_shared/checkout-policy.ts";
 import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 
 // Provable from outside without minting anything: every response, the CORS
-// preflight included, carries this in x-fn-build.
-const FN_BUILD = "api-key-request.2026-10-09.61";
+// preflight included, carries this in x-fn-build. 2026-10-11.1: the minted
+// key states its free fit allowance beside its request limits.
+const FN_BUILD = "api-key-request.2026-10-11.1";
+
+/**
+ * Résumé fit scoring calls a UTC day on the key this door mints (owner
+ * decision 2026-10-11). Every key minted here is a free key behind a confirmed
+ * mailbox, which is exactly what POST /v1/fit's free allowance asks for. The
+ * number is _shared/fit-allowance.ts's (the connector and /v1 share it); this
+ * door only reports it, and a test holds the two equal.
+ */
+const FREE_KEY_FIT_PER_DAY = 25;
 
 const SITE = "https://resumebooster.work";
 
@@ -158,7 +168,9 @@ Deno.serve(async (req) => {
       key: raw,
       shownOnce: true,
       tier: d.ik_tier,
-      limits: { perMinute: d.ik_rate, perDay: d.ik_quota },
+      // The request limits are the row's (api_key_issue); fitPerDay is the
+      // free fit allowance the same key carries on POST /v1/fit.
+      limits: { perMinute: d.ik_rate, perDay: d.ik_quota, fitPerDay: FREE_KEY_FIT_PER_DAY },
       retiredPrefixes: d.ik_retired ?? [],
       docs: `${SITE}/data-api`,
     });

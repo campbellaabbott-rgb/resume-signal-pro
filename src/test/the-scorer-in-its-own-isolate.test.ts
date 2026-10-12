@@ -72,7 +72,7 @@ describe("the scorer in its own isolate", () => {
     expect(fn).toMatch(/Deno\.env\.get\("SUPABASE_ANON_KEY"\)/);
   });
 
-  it("(5) POST /v1/fit is the one non-GET route, paid, and scored by job-fit", () => {
+  it("(5) POST /v1/fit is the one non-GET route, gated by its allowance, and scored by job-fit", () => {
     expect(API).toMatch(/const isFitPost = req\.method === "POST" && path\.replace\(\/\\\/\+\$\/, ""\) === "\/v1\/fit";/);
     expect(API).toMatch(/if \(req\.method !== "GET" && !isFitPost\) return fail\(405/);
     expect(API).toMatch(/if \(path === "\/v1\/fit" \|\| path === "\/v1\/fit\/"\) \{\s*if \(req\.method !== "POST"\) return fail\(405/);
@@ -84,7 +84,13 @@ describe("the scorer in its own isolate", () => {
     expect(API.indexOf("const isFitPost ="), "gate before the stripped path").toBeGreaterThan(API.indexOf('const path = url.pathname.replace('));
     expect(API, "no other raw-pathname comparison may sneak in").not.toMatch(/new URL\(req\.url\)\.pathname\.replace\([^)]*\) === "\/v1\/fit"/);
     const fn = API.slice(API.indexOf("async function fitResume"), API.indexOf("async function stats("));
-    expect(fn).toMatch(/fail\(402, "upgrade_required"/);
+    // FREE FAIR USE SINCE 2026-10-11 (owner decision): the gate is the
+    // allowance (25 a day on a confirmed key, run in
+    // a-confirmed-free-key-scores-fit-twenty-five-times-a-day), judged before
+    // the body is read, and a call past it is the 402 naming the Builder card.
+    expect(fn).toMatch(/const gate = await fitAllowance\(db\(\), tier, apiKeyId\);\s*if \(!gate\.open\) return fitRefusal\(gate, headers\);/);
+    expect(fn.indexOf("fitRefusal(gate, headers)"), "refused before the body is read").toBeLessThan(fn.indexOf("await req.json()"));
+    expect(fn).toMatch(/fail\(402, "fit_allowance_used"/);
     expect(fn).toMatch(/\/functions\/v1\/job-fit`/);
     expect(API).toMatch(/"POST \/v1\/fit"/);
     // RE-POINTED, NOT SHRUNK. This pins the CURRENT version and forbids the
@@ -115,8 +121,10 @@ describe("the scorer in its own isolate", () => {
     // them suspectBatch (register 1.70 / L13-56).
     // 2026-10-09.1 NARROWS every row-returning endpoint: SmartRecruiters is
     // withheld beside the federal feed (owner decision 2026-10-08).
-    expect(API, "a new endpoint or field is a new API version").toMatch(/"2026-10-09\.1"/);
-    for (const old of ["2026-08-26\\.1", "2026-09-03\\.1", "2026-09-09\\.1", "2026-09-17\\.1", "2026-09-23\\.1", "2026-09-27\\.1", "2026-09-30\\.1", "2026-10-08\\.1"]) {
+    // 2026-10-11.1 adds GET /v1/jobs/{id}/application and opens POST /v1/fit
+    // to a confirmed free key at 25 calls a day (owner decisions 2026-10-11).
+    expect(API, "a new endpoint or field is a new API version").toMatch(/"2026-10-11\.1"/);
+    for (const old of ["2026-08-26\\.1", "2026-09-03\\.1", "2026-09-09\\.1", "2026-09-17\\.1", "2026-09-23\\.1", "2026-09-27\\.1", "2026-09-30\\.1", "2026-10-08\\.1", "2026-10-09\\.1"]) {
       expect(API, `the API still reports the superseded version ${old}`)
         .not.toMatch(new RegExp(`"${old}"`));
     }

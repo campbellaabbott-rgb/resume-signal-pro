@@ -32,6 +32,14 @@ import { boardReaderHeader } from "../_shared/board-reader-key.ts";
 // the pass is sold as "your agent", never "your script" — which the shared
 // predicate guarantees and three inline copies could not.
 import { isPaidKeyTier } from "../_shared/key-tier.ts";
+// A live paid plan opens POST /v1/fit at the scorer's own ceiling, read by the
+// key's ACCOUNT through the one rule every other gate uses (import-free).
+import { accountProStanding } from "../_shared/pro-standing.ts";
+import { FIT_FREE_DAILY, FIT_PAID_DAILY, fitGate, fitStandingFrom, type FitGate } from "./fit-allowance.ts";
+import { APPLICATION_ENDPOINT, FIT_ENDPOINT, applicationIdSegment, meteredEndpoint } from "./endpoint.ts";
+// THE APPLY-MYSELF TWIN: the /v1 shape around the shared form reader and the
+// shared default-deny who-answers rule (./application.ts), deciding nothing.
+import { ANSWERED_BY_MEANS, APPLICATION_DESCRIPTION, APPLICATION_NOTE, FORM_UNREACHABLE_RETRY_S, applicationData, formBlock, readV1Form } from "./application.ts";
 import { fillCurveFromCache } from "./fill-curve-cache.ts";
 import { intParam as intQ, isInvalid, isoParam as isoQ, numParam as numQ, type Parsed, secondsToMidnightUtc } from "./params.ts";
 import { companyPage } from "./company-walk.ts";
@@ -98,7 +106,24 @@ import { BOARD_VENDORS, EMPLOYMENT_TYPES, EXPERIENCE_BANDS, JOB_CATEGORIES, WORK
 // beside the title one and each row's matchScope, and refuses remote=false and
 // non-boolean flags; employment_type, max_years and max_age_days parse the same
 // way on both engines; a state-code location binds at a boundary.
-const API_VERSION = "2026-10-09.1";
+//
+// 2026-10-11.1 ADDS AN ENDPOINT AND OPENS ONE (owner decisions 2026-10-11):
+// GET /v1/jobs/{id}/application returns the employer's application form for a
+// live posting, with the same who-answers-what rule the MCP apply_myself flow
+// uses; POST /v1/fit scores 25 calls a day on a confirmed free key instead of
+// answering 402. Paid-tier refusals now name the planned Builder API card.
+const API_VERSION = "2026-10-11.1";
+
+/** Where every paid-tier refusal points: the planned Builder API card (owner decision 2026-10-11). */
+const BUILDER_URL = "https://resumebooster.work/data-api#builder";
+/** The limits api_key_issue mints a free key with (20261004100000: c_quota, c_rate). Reported, never enforced here: api_key_check reads the key's own row. */
+const FREE_KEY_ISSUED = { perDay: 1000, perMinute: 60 } as const;
+/** The Builder card's proposed request limits (MCP economics, tier 3). Proposed: nothing enforces them until a key can be bought. */
+const BUILDER_PROPOSED = { perDay: 5000, perMinute: 120 } as const;
+
+/** What POST /v1/fit does, as the /v1 index states it. Written from fit-allowance.ts. */
+const FIT_DESCRIPTION =
+  `POST /v1/fit — résumé-to-job fit scoring: a résumé in, the board's best matches out with matched and missing terms; nothing is stored. ${FIT_FREE_DAILY} scored calls a UTC day on a free key whose email address was confirmed (or whose account has proven its mailbox); paid keys, and keys on an account with a live paid plan, score up to ${FIT_PAID_DAILY} a day. Past the free allowance it answers 402 with a Retry-After to midnight UTC, naming the planned Builder API (${BUILDER_URL}).`;
 const FRESH_WINDOW_DAYS = 30;
 const MAX_LIMIT = 100;
 /** How far back a PAID key may ask for closure history. The free tier gets the
@@ -321,12 +346,18 @@ const LIST_FILTERS = [
 // suspectBatch is null, not false, on a closure nobody assessed.
 // 2026-10-09.6: a state filter also matches a code that leads the place
 // ("TX - Houston", "US-TX-Houston"), _shared/location-match.ts (S11-003).
-const FN_BUILD = "public-api.2026-10-09.71";
+// 2026-10-11.1: GET /v1/jobs/{id}/application; POST /v1/fit free 25 a day on
+// a confirmed key (api_key_fit_allowance, 20261011110000); 402s name the
+// Builder card; /v1/fit/ and /v1/fit meter as one endpoint.
+const FN_BUILD = "public-api.2026-10-11.1";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, if-none-match",
-  "Access-Control-Allow-Methods": "GET, OPTIONS",
+  // POST because /v1/fit takes one: a browser's preflight for a JSON POST was
+  // refused by a list naming only GET, so no page could call the one route
+  // a free key now scores on.
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Expose-Headers":
     "ETag, Retry-After, X-RateLimit-Limit, X-RateLimit-Remaining, X-Quota-Limit, X-Quota-Remaining, X-Api-Version",
   "x-fn-build": FN_BUILD,
@@ -426,13 +457,41 @@ Deno.serve(async (req) => {
     return json({
       apiVersion: API_VERSION,
       docs: "https://resumebooster.work/data-api",
-      endpoints: ["/v1/jobs", "/v1/jobs/{id}", "/v1/changes", "/v1/companies", "/v1/stats", "/v1/usage", "POST /v1/fit"],
+      endpoints: ["/v1/jobs", "/v1/jobs/{id}", APPLICATION_ENDPOINT, "/v1/changes", "/v1/companies", "/v1/stats", "/v1/usage", "POST /v1/fit"],
       auth: "Authorization: Bearer <your key>",
       modes: {
         explain: "/v1/jobs?explain=1 — appends a diagnostics block explaining what the query did.",
-        rankedEngine: "/v1/jobs?engine=ranked (paid) — the site's full relevance/rescue engine instead of the default title match.",
+        rankedEngine: `/v1/jobs?engine=ranked (paid) — the site's full relevance/rescue engine instead of the default title match. On a free key it answers 402 naming the planned Builder API (${BUILDER_URL}).`,
         include: `/v1/jobs?include=description — adds the posting body to every row, and caps that request at ${MAX_LIMIT_WITH_DESCRIPTION} rows a page.`,
         multiValue: "country, category, company_token, work_mode, source, experience_band and employment_type take comma lists (e.g. country=US,GB). An unknown value in a closed set is a 400, never an empty page.",
+        // The two descriptions below are what the routes do, written from
+        // the code that answers them (fit-allowance.ts; applicationForm).
+        fit: FIT_DESCRIPTION,
+        applicationForm: APPLICATION_DESCRIPTION,
+      },
+      // WHAT A FREE KEY INCLUDES, beside what it does not. The per-minute and
+      // daily limits are the key's own (api_keys), so they are reported on
+      // every response's headers and by /v1/usage rather than typed here.
+      tiers: {
+        free: {
+          limits: "Your key's per-minute and daily limits are in the X-RateLimit-* and X-Quota-* headers of every response, and in /v1/usage.",
+          // What api_key_issue (20261004100000, c_quota and c_rate) gives a
+          // key minted from the data-api page; a test holds the two equal.
+          issuedWith: { perDay: FREE_KEY_ISSUED.perDay, perMinute: FREE_KEY_ISSUED.perMinute },
+          fitPerDay: FIT_FREE_DAILY,
+          closureHistoryDays: CLOSURES_MAX_DAYS_FREE,
+          openedHistoryDays: FRESH_WINDOW_DAYS,
+          rankedEngine: false,
+        },
+        // PLANNED, NOT SOLD (owner decision 2026-10-11): a demand test. No
+        // key can be bought at this tier yet, so these are the proposed
+        // terms, and every paid-tier refusal points at the card that says so.
+        builder: {
+          status: "planned",
+          proposed: { perDay: BUILDER_PROPOSED.perDay, perMinute: BUILDER_PROPOSED.perMinute, fitPerDay: FIT_PAID_DAILY, closureHistoryDays: CHANGES_MAX_DAYS_PAID, rankedEngine: true },
+          note: "Ranked search, fit scoring at volume and 180 days of closure history, for display inside your own product with attribution. No feeds, bulk export or resale; those are the commercial licence. It is not on sale yet; the card says how to tell us you would use it.",
+          url: BUILDER_URL,
+        },
       },
       // DOCUMENTED WHERE A CONSUMER LOOKS FIRST. A caller who finds this
       // vendor in the board's own source list and not in this API's rows must
@@ -441,7 +500,7 @@ Deno.serve(async (req) => {
       restrictions: {
         excludedSources: [...NO_REDISTRIBUTION_SOURCES],
         reason: NO_REDISTRIBUTION_REASON,
-        note: "Rows from these hiring systems are absent from /v1/jobs, /v1/jobs/{id}, /v1/changes and POST /v1/fit. Naming one in ?source= answers HTTP 451 rather than an empty page.",
+        note: `Rows from these hiring systems are absent from /v1/jobs, /v1/jobs/{id}, ${APPLICATION_ENDPOINT}, /v1/changes and POST /v1/fit. Naming one in ?source=, or asking for the application form of one of their postings, answers HTTP 451 rather than an empty page.`,
       },
     });
   }
@@ -453,7 +512,10 @@ Deno.serve(async (req) => {
   }
 
   const client = db();
-  const endpoint = path.startsWith("/v1/jobs/") ? "/v1/jobs/{id}" : path;
+  // ONE METERED NAME PER ROUTE (./endpoint.ts): the application path is its
+  // own endpoint, not a posting lookup, and /v1/fit/ is /v1/fit, because the
+  // free fit allowance is read back from this row.
+  const endpoint = meteredEndpoint(path);
 
   const { data: dec, error: decErr } = await client
     .rpc("api_key_check", { p_key_hash: await sha256Hex(raw), p_endpoint: endpoint })
@@ -519,6 +581,18 @@ Deno.serve(async (req) => {
 
   try {
     if (path === "/v1/jobs") return await conditional(await listJobs(client, url, rateHeaders, d.key_tier));
+    // BEFORE the /v1/jobs/ prefix, or the form route is a posting lookup for
+    // the id "<id>/application" and answers 404.
+    const applicationSegment = applicationIdSegment(path);
+    if (applicationSegment !== null) {
+      let jobId: string;
+      try {
+        jobId = decodeURIComponent(applicationSegment);
+      } catch {
+        return fail(400, "bad_id", "The posting id is not valid percent-encoding.", rateHeaders);
+      }
+      return await conditional(await applicationForm(client, url, jobId, rateHeaders));
+    }
     if (path.startsWith("/v1/jobs/")) {
       // decodeURIComponent THROWS on malformed percent-encoding, which reached
       // the outer catch and came back as a 500 — telling a machine client to
@@ -538,7 +612,7 @@ Deno.serve(async (req) => {
     if (req.method !== "POST") return fail(405, "method_not_allowed", "POST a JSON body to /v1/fit — a résumé cannot ride a query string.", rateHeaders);
     return await fitResume(req, rateHeaders, d.key_tier, d.api_key_id);
   }
-    if (path === "/v1/usage") return await usage(client, d.api_key_id, rateHeaders);
+    if (path === "/v1/usage") return await usage(client, d.api_key_id, rateHeaders, d.key_tier);
     return fail(404, "no_such_endpoint", `Unknown path ${path}. See /v1 for the endpoint list.`, rateHeaders);
   } catch (e) {
     console.error("[PUBLIC-API] handler threw:", e instanceof Error ? `${e.name}: ${e.message}` : String(e));
@@ -973,7 +1047,7 @@ async function listJobs(client: SupabaseClient, url: URL, headers: Record<string
   if (engine === "ranked") {
     const paid = isPaidKeyTier(tier);
     if (!paid) {
-      return fail(402, "upgrade_required", "engine=ranked is a paid feature — the site's full relevance/rescue engine. The default engine stays available on your key. See https://resumebooster.work/data-api.", headers);
+      return fail(402, "upgrade_required", `engine=ranked is a paid feature — the site's full relevance/rescue engine. The default engine stays available on your key. Ranked search is part of the planned Builder API, which is not on sale yet: ${BUILDER_URL}`, headers);
     }
     return await listJobsRanked(url, headers, lists);
   }
@@ -1467,6 +1541,67 @@ async function oneJob(client: SupabaseClient, id: string, headers: Record<string
 }
 
 /**
+ * GET /v1/jobs/{id}/application — THE APPLY-MYSELF TWIN (owner decision
+ * 2026-10-11, the apply pivot). The employer's own application form for a
+ * live posting, so a developer's tool can help a person apply on the
+ * employer's site the way the MCP apply_myself flow does. This API reads the
+ * form; it never fills or submits anything, and route.submitter is "you".
+ *
+ * THE SAME POSTING FENCES AS EVERY OTHER READ HERE: a withdrawn posting, one
+ * past the 30-day window, or one from a hiring system this API may not hand
+ * on has no form to serve. The withheld systems are refused by name (451)
+ * before any read, exactly as ?source= refuses them.
+ *
+ * WHO ANSWERS EACH QUESTION is the shared default-deny rule, not a rule of
+ * this file: only open questions about work done, and a short list of
+ * motivation questions, are draft_from_your_cv; every factual question
+ * (authorisation, sponsorship, pay, references, gaps, terminations), every
+ * demographic question and every consent box is the person's own.
+ */
+async function applicationForm(client: SupabaseClient, url: URL, id: string, headers: Record<string, string>) {
+  const bad = rejectUnknownParams(url, [], headers);
+  if (bad) return bad;
+  const [vendor, token, ...rest] = id.split(":");
+  if (!vendor || !token || !rest.join(":")) {
+    return fail(400, "bad_id", "A posting id has the form <source>:<company_token>:<external id>, as /v1/jobs returns it.", headers);
+  }
+  if (isNoRedistributionSource(vendor)) {
+    return fail(451, "source_not_redistributable", `"${vendor.toLowerCase()}" postings cannot be served by this API. ${NO_REDISTRIBUTION_REASON}`, headers);
+  }
+  const { data: posting, error } = await client
+    .from("job_board_postings")
+    .select(`${JOB_FIELDS},description`)
+    .eq("id", id)
+    .is("missing_since", null)                        // fence: withdrawn by the employer
+    .gte("effective_posted", freshCutoff())           // fence: past the serving window
+    .not("source", "in", NO_REDISTRIBUTION_IN)        // fence: the redistribution boundary
+    .maybeSingle();
+  if (error) {
+    console.error("[PUBLIC-API] /v1/jobs/{id}/application failed:", error.message?.slice(0, 160));
+    return fail(500, "query_failed", "The query could not be completed.", headers);
+  }
+  if (!posting) {
+    return fail(404, "not_found", "No live posting with that id. It may have been withdrawn by the employer or aged past the 30-day window, so there is no form to read.", headers);
+  }
+  const row = posting as unknown as Record<string, unknown>;
+  const form = formBlock(await readV1Form(row, client));
+  // NOT READ IS NOT "ASKS NOTHING". The hiring system did not answer (a
+  // timeout, a 429 or a 5xx, none of them cached), so there is no form to
+  // serve and no honest empty one: the client retries.
+  if (!form) {
+    return fail(503, "form_unreachable",
+      `The employer's hiring system (${String(row.source ?? "")}) did not answer just now, so the form could not be read. Retry shortly, or apply at the posting's apply_url.`,
+      { ...headers, "Retry-After": String(FORM_UNREACHABLE_RETRY_S) });
+  }
+  return json({
+    apiVersion: API_VERSION,
+    data: applicationData(row, form),
+    answeredByMeans: ANSWERED_BY_MEANS,
+    note: APPLICATION_NOTE,
+  }, 200, headers);
+}
+
+/**
  * /v1/changes — what OPENED and what CLOSED since a timestamp.
  *
  * This is the endpoint the rest of the API exists to make credible. Anyone can
@@ -1537,7 +1672,7 @@ async function changes(
       "since_too_old",
       paid
         ? `since must be within the last ${maxDays} days.`
-        : `since must be within the last ${maxDays} days on this key. Paid keys reach ${CHANGES_MAX_DAYS_PAID} days of closure history.`,
+        : `since must be within the last ${maxDays} days on this key. Paid keys reach ${CHANGES_MAX_DAYS_PAID} days of closure history, as the planned Builder API would: ${BUILDER_URL}`,
       headers,
     );
   }
@@ -1732,8 +1867,11 @@ async function changes(
 }
 
 /** /v1/usage — a customer can see what they have spent before an invoice does. */
-async function usage(client: SupabaseClient, keyId: string | null, headers: Record<string, string>) {
+async function usage(client: SupabaseClient, keyId: string | null, headers: Record<string, string>, tier: string | null) {
   if (!keyId) return fail(500, "no_key_context", "Key context unavailable.", headers);
+  // What is left of the fit allowance, by the same gate POST /v1/fit applies.
+  // This call is metered as /v1/usage, so the count it reads is fit's alone.
+  const fit = fitAllowanceBody(await fitAllowance(client, tier, keyId));
   const since = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
   const { data, error } = await client
     .from("api_usage")
@@ -1755,6 +1893,7 @@ async function usage(client: SupabaseClient, keyId: string | null, headers: Reco
     // another's consumption by guessing an id.
     limits: { perMinute: Number(headers["X-RateLimit-Limit"]), perDay: Number(headers["X-Quota-Limit"]) },
     remaining: { thisMinute: Number(headers["X-RateLimit-Remaining"]), today: Number(headers["X-Quota-Remaining"]) },
+    fit,
     byDay,
     byEndpoint: rows,
   }, 200, headers);
@@ -1882,7 +2021,9 @@ async function companies(client: SupabaseClient, url: URL, headers: Record<strin
  * POST /v1/fit — the résumé drop, as an endpoint. Reads the occupation out of
  * resumeText, searches the board for it (or for `q`), scores up to 20 results
  * against the résumé and returns them with fit, matched and missing terms.
- * Paid, like engine=ranked: it is the site's differentiating feature. Scoring
+ * FREE FAIR USE SINCE 2026-10-11 (owner decision): FIT_FREE_DAILY scored calls
+ * a UTC day on a confirmed free key, the scorer's own ceiling (FIT_PAID_DAILY)
+ * on a paid key or an account with a live paid plan (./fit-allowance.ts). Scoring
  * goes to job-fit, the scorer's own isolate — never to job-board, which shares
  * a worker pool with the ingest and answered 546 to readers for that reason.
  *
@@ -1896,10 +2037,10 @@ async function companies(client: SupabaseClient, url: URL, headers: Record<strin
  * Retry-After shape their key's own limits use.
  */
 async function fitResume(req: Request, headers: Record<string, string>, tier: string | null, apiKeyId: string | null) {
-  const paid = isPaidKeyTier(tier);
-  if (!paid) {
-    return fail(402, "upgrade_required", "POST /v1/fit is a paid feature — résumé-to-job fit scoring. See https://resumebooster.work/data-api.", headers);
-  }
+  // Judged before the body is read: a refused key learns why without first
+  // sending a résumé this call would not score.
+  const gate = await fitAllowance(db(), tier, apiKeyId);
+  if (!gate.open) return fitRefusal(gate, headers);
   let body: { resumeText?: unknown; q?: unknown; limit?: unknown; country?: unknown; remote?: unknown };
   try { body = await req.json(); } catch { return fail(400, "invalid_json", "Send a JSON body: { resumeText, q?, limit?, country?, remote? }.", headers); }
   const resumeText = typeof body.resumeText === "string" ? body.resumeText.slice(0, 50000) : "";
@@ -1950,7 +2091,64 @@ async function fitResume(req: Request, headers: Record<string, string>, tier: st
     apiVersion: API_VERSION, terms, query: q,
     data: jobs.map((j) => ({ id: j.id, title: j.title, company: j.company, company_token: j.token, location: j.location,
       apply_url: j.applyUrl, fit: fits[String(j.id)] ?? null, matched: matched[String(j.id)] ?? [], missing: missing[String(j.id)] ?? [] })),
+    // Which allowance scored this call, and what is left of it today. null
+    // limits mean the scorer's own per-key ceiling rather than the free one.
+    allowance: fitAllowanceBody(gate),
   }), { status: 200, headers: { "Content-Type": "application/json", ...headers } });
+}
+
+/** The fit gate for this key. The rule is ./fit-allowance.ts; this reads the three facts it needs. */
+async function fitAllowance(client: SupabaseClient, tier: string | null, apiKeyId: string | null): Promise<FitGate> {
+  const paid = isPaidKeyTier(tier);
+  if (paid) return fitGate({ paid, plan: false, standing: null });
+  if (!apiKeyId) return fitGate({ paid, plan: false, standing: null });
+  let data: unknown = null;
+  let failed = false;
+  try {
+    const r = await client.rpc("api_key_fit_allowance", { p_key_id: apiKeyId, p_endpoint: FIT_ENDPOINT });
+    data = r.data;
+    if (r.error) {
+      failed = true;
+      console.error("[PUBLIC-API] fit allowance read failed:", String(r.error.message ?? "").slice(0, 160));
+    }
+  } catch (e) {
+    failed = true;
+    console.error("[PUBLIC-API] fit allowance read threw:", e instanceof Error ? e.message.slice(0, 160) : String(e));
+  }
+  const standing = fitStandingFrom(data, failed);
+  // A live paid plan, by the key's ACCOUNT. A read that fails is no plan
+  // (accountProStanding answers known:false with nothing unlocked), and the
+  // free allowance still applies.
+  const plan = standing?.userId ? (await accountProStanding(client, standing.userId)).pro : false;
+  return fitGate({ paid, plan, standing });
+}
+
+/** A refused fit call, with the reason a machine can branch on. */
+function fitRefusal(gate: Extract<FitGate, { open: false }>, headers: Record<string, string>): Response {
+  if (gate.reason === "spent") {
+    return fail(402, "fit_allowance_used",
+      `This key's free fit allowance (${gate.limit} scored calls a UTC day) is used; it resets at midnight UTC. Fit scoring at volume is part of the planned Builder API, which is not on sale yet: ${BUILDER_URL}`,
+      { ...headers, "Retry-After": String(secondsToMidnightUtc()) });
+  }
+  if (gate.reason === "unconfirmed") {
+    return fail(403, "confirmed_key_required",
+      `POST /v1/fit scores ${gate.limit} calls a UTC day on a free key whose email address was confirmed. This key was not issued through a confirmed link and its account has not proven its mailbox. Get a key at https://resumebooster.work/data-api (we email you a link).`,
+      headers);
+  }
+  return fail(503, "fit_allowance_unavailable", "This key's fit allowance could not be read just now. Retry shortly.", { ...headers, "Retry-After": "30" });
+}
+
+/** The allowance block a scored call and /v1/usage both report. */
+function fitAllowanceBody(gate: FitGate): Record<string, unknown> {
+  if (gate.open && gate.basis !== "free") {
+    return { basis: gate.basis, dailyLimit: FIT_PAID_DAILY, usedToday: null, leftToday: null, note: `Scored under the scorer's own per-key ceiling of ${FIT_PAID_DAILY} calls a day, not the free allowance.` };
+  }
+  if (gate.open) return { basis: "free", dailyLimit: gate.limit, usedToday: gate.used, leftToday: gate.left };
+  if (gate.reason === "spent") return { basis: "free", dailyLimit: gate.limit, usedToday: gate.used, leftToday: 0 };
+  if (gate.reason === "unconfirmed") {
+    return { basis: "none", dailyLimit: 0, usedToday: gate.used, leftToday: 0, note: "Fit scoring needs a key whose email address was confirmed, or a paid key." };
+  }
+  return { basis: "unknown", dailyLimit: null, usedToday: null, leftToday: null, note: "The fit allowance could not be read just now." };
 }
 
 /**

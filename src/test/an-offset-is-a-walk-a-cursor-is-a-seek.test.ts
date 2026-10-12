@@ -102,7 +102,9 @@ describe("the endpoints that make the API worth paying for", () => {
 
   it("/v1/usage can only ever read the calling key's own usage", () => {
     // key_id comes from the authenticated decision, never the query string.
-    expect(CODE).toMatch(/usage\(client, d\.api_key_id, rateHeaders\)/);
+    // The tier rides along since 2026-10-11 so the fit allowance can be
+    // reported; the key id is still the authenticated decision's.
+    expect(CODE).toMatch(/usage\(client, d\.api_key_id, rateHeaders, d\.key_tier\)/);
     expect(CODE).toMatch(/\.eq\("key_id", keyId\)/);
     expect(CODE, "usage reads a key id supplied by the caller").not.toMatch(/searchParams\.get\("key_id"\)/);
   });
