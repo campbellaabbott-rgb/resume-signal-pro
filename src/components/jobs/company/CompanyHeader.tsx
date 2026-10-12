@@ -99,11 +99,12 @@ export function HeaderActions({ watchLabel, menuLabel, onWatch, onClaim, onCopyL
     } catch { /* no clipboard */ }
   });
   return (
-    <div className="flex flex-wrap items-center gap-2" data-company-actions="">
+    <div className="flex items-center gap-2" data-company-actions="">
+      {/* Watch wraps its own label instead of pushing the ⋯ menu to a row of its own (CP11). */}
       <button
         type="button"
         onClick={onWatch}
-        className="inline-flex min-h-9 max-w-full items-center gap-1.5 whitespace-normal rounded-md border border-border-strong bg-secondary px-3 py-1.5 text-left text-sm font-medium text-secondary-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="inline-flex min-h-9 min-w-0 max-w-full shrink items-center gap-1.5 whitespace-normal rounded-md border border-border-strong bg-secondary px-3 py-1.5 text-left text-sm font-medium text-secondary-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         <BookmarkCheck className="h-4 w-4 shrink-0" aria-hidden="true" />
         <span className="min-w-0 break-words">{watchLabel}</span>
