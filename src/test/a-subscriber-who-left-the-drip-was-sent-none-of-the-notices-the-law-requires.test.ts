@@ -28,12 +28,13 @@ import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harnes
 import { buildIsAtLeast } from "./helpers/fn-build";
 
 const SUBSCRIBER = "subscriber@example.com";
-const SERVICE_JWT = `x.${Buffer.from(JSON.stringify({ role: "service_role" })).toString("base64url")}.y`;
+// The service-role key itself: process-email-queue runs with verify_jwt = false (R1) and opens only to that key or the cron key.
+const SERVICE_JWT = "service_role_key_for_the_queue_harness_0123456789";
 const ENV: Record<string, string> = {
   STRIPE_WEBHOOK_SECRET: "whsec_harness",
   STRIPE_SECRET_KEY: "sk_test_harness",
   SUPABASE_URL: "https://harness.supabase.co",
-  SUPABASE_SERVICE_ROLE_KEY: "service_harness",
+  SUPABASE_SERVICE_ROLE_KEY: SERVICE_JWT,
   SUPABASE_ANON_KEY: "anon_harness",
   LOVABLE_API_KEY: "lov",
   RESEND_API_KEY: "re_harness",

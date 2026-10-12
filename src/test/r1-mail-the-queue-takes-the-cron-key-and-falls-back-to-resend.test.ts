@@ -11,15 +11,23 @@
  *
  * WHAT HOLDS NOW, by running the shipped handler with Lovable, Resend (fetch)
  * and the database faked:
- *   - the publishable key alone is refused (403) before the queue is read; a
- *     wrong cron key is refused; the vault cron key (email_cron_key_matches)
- *     runs the drain;
+ *   - verify_jwt is false for this function (review of R1, decision 5), so its
+ *     own check is the door: no key, the publishable key, a wrong cron key and
+ *     a forged service-role JWT are each refused (403, the body naming the
+ *     function, which the drain's cron reads back) before the queue is read;
+ *     the vault cron key alone, with NO bearer, runs the drain, and so does
+ *     the service-role key itself; the cron's {"queues":["auth_emails"]}
+ *     drains sign-in mail only;
  *   - a Lovable 403 on an auth mail ends in ONE Resend send, from
  *     account@resumebooster.work, with the payload's idempotency key and the
  *     reply address, and in no dead-letter; the send's 'sent' row carries
  *     Resend's id;
  *   - a third transient Lovable failure does the same; the first does not;
- *   - when Resend refuses too, the refused mail dead-letters naming both;
+ *   - when Resend refuses too, PERMANENTLY, the refused mail dead-letters
+ *     naming both; a Resend 429, 5xx or timeout leaves it on the queue for
+ *     the next tick (it once dead-lettered after one hiccup), until the code
+ *     inside it expires (a sign-in mail is bounded by its TTL, not the retry
+ *     count);
  *   - transactional_emails keeps today's behaviour exactly.
  *
  * Lovable's "set up emails" step can regenerate this function; this file is
@@ -29,8 +37,9 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
 
 const jwt = (claims: Record<string, unknown>) => `x.${Buffer.from(JSON.stringify(claims)).toString("base64url")}.y`;
-const SERVICE_JWT = jwt({ role: "service_role" });
+const FORGED_SERVICE_JWT = jwt({ role: "service_role" });
 const ANON_JWT = jwt({ role: "anon" });
+const SERVICE_KEY = "svc-key-that-is-long-enough-to-compare-0000";
 const CRON_KEY = "c".repeat(64);
 
 const db = new FakeDb();
@@ -43,7 +52,7 @@ let verdict: (p: Record<string, unknown>) => { status: number; message: string }
 let resendAnswer: () => Response = () => new Response(JSON.stringify({ id: "re_123" }), { status: 200 });
 let queues: Record<string, Array<{ msg_id: number; read_ct: number; message: Record<string, unknown> }>> = {};
 const env: Record<string, string> = {
-  SUPABASE_URL: "https://harness.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "svc-key-that-is-long-enough-to-compare-0000",
+  SUPABASE_URL: "https://harness.supabase.co", SUPABASE_SERVICE_ROLE_KEY: SERVICE_KEY,
   LOVABLE_API_KEY: "lov", RESEND_API_KEY: "re_test_key", CUSTOMER_REPLY_TO: "help@example.net",
 };
 let handler: EdgeHandler;
@@ -94,44 +103,63 @@ const authMsg = (id: number, extra: Record<string, unknown> = {}) => ({
     queued_at: new Date().toISOString(), ...extra,
   },
 });
-const run = (headers: Record<string, string> = { authorization: `Bearer ${SERVICE_JWT}` }) =>
-  handler(new Request("https://harness.supabase.co/functions/v1/process-email-queue", { method: "POST", headers }));
+const run = (headers: Record<string, string> = { authorization: `Bearer ${SERVICE_KEY}` }, body?: unknown) =>
+  handler(new Request("https://harness.supabase.co/functions/v1/process-email-queue", { method: "POST", headers, ...(body === undefined ? {} : { body: JSON.stringify(body) }) }));
 const rowsFor = (id: string) => db.rows("email_send_log").filter((r) => r.message_id === id).map((r) => r.status);
 
-describe("who may run the drain", () => {
-  it("no bearer at all is a 401", async () => {
+describe("who may run the drain (verify_jwt false: this check is the door)", () => {
+  const refusedHere = async (res: Response) => {
+    expect(res.status).toBe(403);
+    expect(await res.json(), "the refusal must name the drain, or its cron cannot read it back").toEqual({ error: "Forbidden", refusedBy: "process-email-queue" });
+  };
+
+  it("no key at all is refused by the function itself, before the queue is read", async () => {
     install();
-    expect((await run({})).status).toBe(401);
+    await refusedHere(await run({}));
     expect(reads).toEqual([]);
   });
 
   it("the publishable key alone is refused before the queue is read", async () => {
     install();
     queues = { auth_emails: [authMsg(1)] };
-    const res = await run({ authorization: `Bearer ${ANON_JWT}` });
-    expect(res.status).toBe(403);
+    await refusedHere(await run({ authorization: `Bearer ${ANON_JWT}` }));
     expect(reads, "the queue was read for a caller who holds only the publishable key").toEqual([]);
     expect(lovable).toEqual([]);
   });
 
-  it("a wrong cron key is refused", async () => {
+  it("a forged service-role token proves nothing: no gateway checked its signature", async () => {
     install();
-    const res = await run({ authorization: `Bearer ${ANON_JWT}`, "x-email-cron": "w".repeat(64) });
-    expect(res.status).toBe(403);
+    queues = { auth_emails: [authMsg(3)] };
+    await refusedHere(await run({ authorization: `Bearer ${FORGED_SERVICE_JWT}` }));
     expect(reads).toEqual([]);
   });
 
-  it("the vault cron key runs the drain, behind the gateway's JWT", async () => {
+  it("a wrong cron key is refused", async () => {
+    install();
+    await refusedHere(await run({ "x-email-cron": "w".repeat(64) }));
+    expect(reads).toEqual([]);
+  });
+
+  it("the vault cron key alone, with no bearer at all, runs the drain (review major: the cron's post never reached the queue)", async () => {
     install();
     queues = { auth_emails: [authMsg(2)] };
-    const res = await run({ authorization: `Bearer ${ANON_JWT}`, "x-email-cron": CRON_KEY });
+    const res = await run({ "x-email-cron": CRON_KEY });
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ processed: 1 });
     expect(reads).toEqual(["auth_emails", "transactional_emails"]);
     expect(lovable.map((p) => p.message_id)).toEqual(["m-2"]);
   });
 
-  it("the service role still runs it", async () => {
+  it("the cron's body drains sign-in mail only: the drip waits for CP-G", async () => {
+    install();
+    queues = { auth_emails: [authMsg(4)], transactional_emails: [authMsg(5, { label: "fix-plan-drip" })] };
+    const res = await run({ "x-email-cron": CRON_KEY, "content-type": "application/json" }, { source: "cron", queues: ["auth_emails"] });
+    expect(await res.json()).toEqual({ processed: 1 });
+    expect(reads).toEqual(["auth_emails"]);
+    expect(lovable.map((p) => p.message_id)).toEqual(["m-4"]);
+  });
+
+  it("the service-role key itself still runs it", async () => {
     install();
     expect((await run()).status).toBe(200);
   });
@@ -202,6 +230,47 @@ describe("an auth mail Lovable refuses goes out through Resend before anything d
     expect(why).toContain("notify.resumebooster.work");
     expect(why).toContain("domain is not verified");
     expect(String(db.rows("email_send_log").filter((r) => r.status === "failed").pop()!.error_message)).toContain("resend 422");
+  });
+});
+
+describe("a transient Resend failure waits for the next tick (review major: one hiccup dead-lettered a sign-in)", () => {
+  it("Lovable 403 then Resend 429: the mail stays on the queue, nothing dead-letters; the next tick sends it", async () => {
+    install();
+    queues = { auth_emails: [authMsg(40)] };
+    verdict = () => ({ status: 403, message: "sender domain not verified" });
+    resendAnswer = () => new Response(JSON.stringify({ statusCode: 429, name: "rate_limit_exceeded", message: "Too many requests" }), { status: 429 });
+    expect(await (await run()).json()).toEqual({ processed: 0, resendFailed: 1 });
+    expect(dlq, "a rate-limited fallback dead-lettered a sign-in mail whose code still works").toEqual([]);
+    expect(deleted).toEqual([]);
+    resendAnswer = () => new Response(JSON.stringify({ id: "re_after" }), { status: 200 });
+    expect(await (await run()).json()).toEqual({ processed: 1, viaResend: 1 });
+    expect(deleted).toEqual([40]);
+    expect(dlq).toEqual([]);
+  });
+
+  it("Lovable 401 then Resend 500, or no answer: the mail stays on the queue", async () => {
+    install();
+    queues = { auth_emails: [authMsg(41)] };
+    verdict = () => ({ status: 401, message: "unauthorized" });
+    resendAnswer = () => new Response("upstream", { status: 500 });
+    expect(await (await run()).json()).toEqual({ processed: 0, resendFailed: 1 });
+    expect(dlq).toEqual([]);
+    resendAnswer = () => { throw new TypeError("fetch failed"); };
+    expect(await (await run()).json()).toEqual({ processed: 0, resendFailed: 1 });
+    expect(dlq).toEqual([]);
+  });
+
+  it("a sign-in mail is bounded by its expiry, not by the retry count", async () => {
+    install();
+    for (let i = 0; i < 8; i++) db.rows("email_send_log").push({ message_id: "m-42", template_name: "magiclink", recipient_email: "u42@example.com", status: "failed" });
+    queues = { auth_emails: [authMsg(42)] };
+    verdict = () => ({ status: 403, message: "sender domain not verified" });
+    resendAnswer = () => new Response("busy", { status: 503 });
+    await run();
+    expect(dlq, "a fresh sign-in mail was dead-lettered by the retry count").toEqual([]);
+    queues = { auth_emails: [authMsg(43, { queued_at: new Date(Date.now() - 16 * 60_000).toISOString() })] };
+    await run();
+    expect(dlq.map((d) => d.message_id)).toEqual([43]);
   });
 });
 

@@ -5,12 +5,16 @@
 #
 # READ-ONLY. DNS is read over DNS-over-HTTPS (dns.google). Builds are read from
 # OPTIONS preflights. get_cron_health is read with a GET (PostgREST runs it in
-# a read-only transaction). The two POSTs write nothing on the build they are
-# sent to, and are sent only once that build serves: an unsigned event to
+# a read-only transaction). The three POSTs write nothing on the build they
+# are sent to, and are sent only once that build serves: an unsigned event to
 # resend-webhook (refused before any database access: 503 while
-# RESEND_WEBHOOK_SECRET is unset, 401 once it is), and the publishable key to
-# process-email-queue (refused 403 before any database access: the drain
-# answers the service role and the cron key only).
+# RESEND_WEBHOOK_SECRET is unset, 401 once it is), and to process-email-queue
+# one post with no JWT and one with the publishable key, each refused 403
+# before any database access (the drain answers the service-role key and the
+# cron key only; with no x-email-cron header its key check reads nothing).
+# The drain job is judged by its last run as well as its failures: its
+# command fails a run itself when the vault holds no cron key or the drain
+# refused one of its posts (review of R1, decision 5).
 echo "== 94. R1 mail: the sending DNS, the hook/queue/webhook builds, the drain job, the anon refusals =="
 
 vd94_dns() { curl -s -m 20 "https://dns.google/resolve?name=$1&type=$2" -H 'accept: application/dns-json'; }
@@ -59,8 +63,9 @@ const fs=require("fs");let j;try{j=JSON.parse(fs.readFileSync("/tmp/vd_94_cron.j
 if(!Array.isArray(j)){console.log("INFO  get_cron_health unreadable: "+JSON.stringify(j).slice(0,140));process.exit(0)}
 const q=j.find((x)=>x.ch_jobname==="process-email-queue");
 if(!q){console.log("FAIL  no process-email-queue cron job: queued sign-in mail is never sent (20261014100000 not applied, or the job was removed)");process.exit(0)}
-const ok=q.ch_active&&Number(q.ch_runs)>0&&Number(q.ch_failed)===0;
-console.log((ok?"PASS":"FAIL")+"  process-email-queue cron: schedule "+JSON.stringify(q.ch_schedule)+", active "+q.ch_active+", runs "+q.ch_runs+"/1h, failed "+q.ch_failed+", last "+q.ch_last_status+" (want active, runs > 0, failed 0; a failed run with mail waiting means the vault holds neither key)");'
+const last=String(q.ch_last_status??"");
+const ok=q.ch_active&&Number(q.ch_runs)>0&&Number(q.ch_failed)===0&&last==="succeeded";
+console.log((ok?"PASS":"FAIL")+"  process-email-queue cron: schedule "+JSON.stringify(q.ch_schedule)+", active "+q.ch_active+", runs "+q.ch_runs+"/1h, failed "+q.ch_failed+", last run "+(last||"none")+" (want active, runs > 0, failed 0, last run succeeded; the command fails its own run when the vault holds no email_cron_key or when the drain refused one of its posts in the last two minutes, since pg_net alone reads every refused post as a success)");'
 
 # The stuck count: email_delivery_health is service-role only since 20261004110000,
 # so no anonymous reader of it exists. Prove it stays closed; the count itself is
@@ -80,6 +85,18 @@ else
   echo "INFO  resend-webhook is not serving 2026-10-14.1: the unsigned-event probe is not sent"
 fi
 if [ "$VD94_PEQ" = 1 ]; then
+  # No JWT at all: the drain's cron posts none. 403 naming the drain = the
+  # gateway let it through (verify_jwt = false) and the function's own check
+  # refused it; a 401 from the gateway = verify_jwt is still on, and every
+  # cron post would be refused there, unheard.
+  C94=$(curl -s -m 30 -o /tmp/vd_94_peq.json -w '%{http_code}' -X POST "$B/functions/v1/process-email-queue" -H "Content-Type: application/json" -d '{}')
+  if [ "$C94" = "403" ] && grep -q '"refusedBy":"process-email-queue"' /tmp/vd_94_peq.json; then
+    echo "PASS  process-email-queue: a post with no JWT reaches the function (verify_jwt off) and its own check refuses it (403, before the queue is read)"
+  elif [ "$C94" = "401" ]; then
+    echo "FAIL  process-email-queue: the gateway refused a post with no JWT (401): verify_jwt is still on, so the drain's cron posts (x-email-cron, no bearer) are refused unheard. Deploy supabase/config.toml's [functions.process-email-queue] verify_jwt = false"
+  else
+    echo "FAIL  process-email-queue answered a post with no JWT with HTTP $C94: $(head -c 160 /tmp/vd_94_peq.json) (want 403 naming process-email-queue)"
+  fi
   C94=$(curl -s -m 30 -o /tmp/vd_94_peq.json -w '%{http_code}' -X POST "$B/functions/v1/process-email-queue" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -d '{}')
   [ "$C94" = "403" ] && echo "PASS  process-email-queue refuses the publishable key without the cron key (403, before the queue is read)" \
     || echo "FAIL  process-email-queue answered the publishable key with HTTP $C94: $(head -c 160 /tmp/vd_94_peq.json) (want 403)"

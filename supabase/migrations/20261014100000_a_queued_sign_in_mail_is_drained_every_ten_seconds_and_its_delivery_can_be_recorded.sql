@@ -24,31 +24,44 @@
 --      stamps delivered and delayed on the sent row's metadata rather than
 --      writing rows in those states (see that function's header).
 --   3. Schedules the cron job 'process-email-queue' every 10 seconds, ONLY IF
---      cron.job has no job by that name. A job Lovable made, or this file made
---      on an earlier run, is left exactly as it is, and so is the trigger and
---      the vault key Lovable's setup keeps outside our migrations. The job's
---      command posts only while pgmq.metrics shows a message in auth_emails or
---      transactional_emails that is visible now (a drip mail delayed for days
---      is not a reason to post every 10 seconds), and not during a provider
---      cooldown (email_send_state.retry_after_until). It sends the vault email
---      cron key as x-email-cron (email_cron_key, 20261004100000), which
---      process-email-queue.2026-10-14.1 accepts. That function keeps
---      verify_jwt = true, and the only JWT the database holds is the
---      service-role key Lovable's setup stores in the vault as
---      email_queue_service_role_key, so it goes as the bearer for the gateway
---      when present. A run with mail waiting and neither key fails loudly (the
---      job's run reads 'failed' in get_cron_health).
+--      cron.job has no job by that name. A job Lovable made is left exactly as
+--      it is, and so is the trigger and the vault key Lovable's setup keeps
+--      outside our migrations; a job this file made on an earlier run with an
+--      older command is re-scheduled with this one. The job's command posts
+--      only while pgmq.metrics shows a sign-in mail in auth_emails that is
+--      visible now, and not during a provider cooldown
+--      (email_send_state.retry_after_until). R1 drains sign-in mail only: the
+--      post names {"queues":["auth_emails"]}, and the fix-plan drip in
+--      transactional_emails waits for CP-G (its text part, marketing purpose,
+--      seller footer and apex sender) where it is.
+--      THE POST CARRIES NO JWT AND CANNOT BE REFUSED UNHEARD (review of R1,
+--      decision 5; S12-179). It sends only the vault email cron key as
+--      x-email-cron (email_cron_key, created by 20261004100000), and
+--      process-email-queue runs with verify_jwt = false (supabase/config.toml)
+--      and checks that key itself, so no gateway bearer (the vault's
+--      email_queue_service_role_key, which no migration creates) is needed.
+--      net.http_post only queues the request and every run reads 'succeeded'
+--      whatever the answer, so the command reads the answers back: a refusal
+--      from the drain in the last two minutes (its body names refusedBy
+--      process-email-queue) fails the run instead of posting again, and so
+--      does a missing cron key. Verify section 94 reads the job's last run
+--      status and its failures, and proves the gateway no longer asks for a
+--      JWT (a POST with none is refused by the function's own check).
 --   4. Self-check: the column and index exist, the CHECK names all ten
 --      statuses and is the only check on status, no queue wrapper is open, and
 --      the job exists; if it is this file's, its command still posts to the
---      function with the cron key behind the pgmq.metrics test.
+--      function with the cron key behind the pgmq.metrics test, reads the
+--      drain's refusals back, and sends no bearer.
 --
 -- Safe to run twice. Creates no table and no function.
 --
--- APPLY ORDER: after process-email-queue.2026-10-14.1 serves (verify-deploy
--- section 94). The job's posts carry x-email-cron, which an older build of
--- that function ignores; with the service-role bearer present the older build
--- would still drain, but without the Resend fallback.
+-- APPLY ORDER: after process-email-queue.2026-10-14.1 serves with
+-- verify_jwt = false (verify-deploy section 94). The job's posts carry only
+-- x-email-cron, which an older build ignores, and an older build's gateway
+-- (verify_jwt = true) refuses them for want of a JWT in words that do not
+-- name the drain, which this command cannot tell from any other 401. So it
+-- is applied only once section 94 shows both the build and the gateway's
+-- answer to a post with no JWT.
 
 -- ── 0. No drain while a queue wrapper is open to clients ────────────────────
 DO $$
@@ -137,65 +150,79 @@ END $$;
 DO $$
 DECLARE
   v_cmd text;
+  v_existing text;
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'cron') THEN
     RAISE NOTICE 'r1 mail: pg_cron is not installed here; no drain job scheduled';
     RETURN;
   END IF;
-  IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'process-email-queue') THEN
-    RAISE NOTICE 'r1 mail: a process-email-queue job already exists (Lovable''s, or this file''s from an earlier run); left exactly as it is';
+  v_existing := (SELECT j.command FROM cron.job j WHERE j.jobname = 'process-email-queue' LIMIT 1);
+  IF v_existing IS NOT NULL AND position('r1-mail-drain 20261014100000' IN v_existing) = 0 THEN
+    RAISE NOTICE 'r1 mail: a process-email-queue job already exists that this file did not write (Lovable''s); left exactly as it is';
     RETURN;
   END IF;
   v_cmd := $cmd$
 DO $drain$
 DECLARE
-  v_marker constant text := 'r1-mail-drain 20261014100000';
-  v_q text;
+  v_marker constant text := 'r1-mail-drain 20261014100000 refusedBy';
   v_n bigint;
   v_visible boolean;
-  v_due boolean := false;
   v_cron_key text;
-  v_bearer text;
+  v_refused integer := 0;
 BEGIN
   IF EXISTS (SELECT 1 FROM public.email_send_state s WHERE s.retry_after_until > now()) THEN
     RETURN;
   END IF;
-  FOREACH v_q IN ARRAY ARRAY['auth_emails', 'transactional_emails'] LOOP
+  v_n := 0;
+  BEGIN
+    SELECT m.queue_length INTO v_n FROM pgmq.metrics('auth_emails') m;
+  EXCEPTION WHEN OTHERS THEN
     v_n := 0;
-    BEGIN
-      SELECT m.queue_length INTO v_n FROM pgmq.metrics(v_q) m;
-    EXCEPTION WHEN OTHERS THEN
-      v_n := 0;
-    END;
-    IF COALESCE(v_n, 0) > 0 THEN
-      BEGIN
-        EXECUTE format('SELECT EXISTS (SELECT 1 FROM pgmq.%I q WHERE q.vt <= now())', 'q_' || v_q) INTO v_visible;
-      EXCEPTION WHEN OTHERS THEN
-        v_visible := true;
-      END;
-      v_due := v_due OR COALESCE(v_visible, true);
-    END IF;
-  END LOOP;
-  IF NOT v_due THEN
+  END;
+  IF COALESCE(v_n, 0) = 0 THEN
+    RETURN;
+  END IF;
+  BEGIN
+    EXECUTE 'SELECT EXISTS (SELECT 1 FROM pgmq.q_auth_emails q WHERE q.vt <= now())' INTO v_visible;
+  EXCEPTION WHEN OTHERS THEN
+    v_visible := true;
+  END;
+  IF NOT COALESCE(v_visible, true) THEN
     RETURN;
   END IF;
   SELECT s.decrypted_secret INTO v_cron_key FROM vault.decrypted_secrets s WHERE s.name = 'email_cron_key' LIMIT 1;
-  SELECT s.decrypted_secret INTO v_bearer FROM vault.decrypted_secrets s WHERE s.name = 'email_queue_service_role_key' LIMIT 1;
-  IF v_cron_key IS NULL AND v_bearer IS NULL THEN
-    RAISE EXCEPTION 'process-email-queue (%): mail is waiting and the vault holds neither email_cron_key nor email_queue_service_role_key', v_marker;
+  IF v_cron_key IS NULL THEN
+    RAISE EXCEPTION 'process-email-queue (%): sign-in mail is waiting and the vault holds no email_cron_key (20261004100000 creates it)', v_marker;
+  END IF;
+  BEGIN
+    IF to_regclass('net._http_response') IS NOT NULL THEN
+      EXECUTE $q$SELECT count(*)::int FROM net._http_response r
+                  WHERE r.created > now() - interval '2 minutes'
+                    AND r.status_code IN (401, 403)
+                    AND r.content::text LIKE '%"refusedBy":"process-email-queue"%'$q$ INTO v_refused;
+    END IF;
+  EXCEPTION WHEN OTHERS THEN
+    v_refused := 0;
+  END;
+  IF COALESCE(v_refused, 0) > 0 THEN
+    RAISE EXCEPTION 'process-email-queue (%): the drain refused % post(s) in the last two minutes; the cron key it was sent no longer opens it', v_marker, v_refused;
   END IF;
   PERFORM net.http_post(
     url := 'https://bwhdazbotpblihdxcmho.supabase.co/functions/v1/process-email-queue',
-    headers := jsonb_strip_nulls(jsonb_build_object(
-      'Content-Type', 'application/json',
-      'x-email-cron', v_cron_key,
-      'Authorization', CASE WHEN v_bearer IS NOT NULL THEN 'Bearer ' || v_bearer END
-    )),
-    body := jsonb_build_object('source', 'cron')
+    headers := jsonb_build_object('Content-Type', 'application/json', 'x-email-cron', v_cron_key),
+    body := jsonb_build_object('source', 'cron', 'queues', jsonb_build_array('auth_emails'))
   );
 END
 $drain$;
 $cmd$;
+  IF v_existing IS NOT NULL THEN
+    IF v_existing = v_cmd THEN
+      RAISE NOTICE 'r1 mail: this file''s process-email-queue job is already in place';
+      RETURN;
+    END IF;
+    PERFORM cron.unschedule('process-email-queue');
+    RAISE NOTICE 'r1 mail: replacing this file''s earlier process-email-queue command';
+  END IF;
   PERFORM cron.schedule('process-email-queue', '10 seconds', v_cmd);
   RAISE NOTICE 'r1 mail: scheduled process-email-queue every 10 seconds';
 END $$;
@@ -261,6 +288,12 @@ BEGIN
          OR position('email_cron_key' IN v_cmd) = 0
          OR position('pgmq.metrics' IN v_cmd) = 0 THEN
         RAISE EXCEPTION 'self-check: the process-email-queue command no longer posts to the function with the cron key behind the pgmq.metrics test: %', left(v_cmd, 300);
+      END IF;
+      IF position('net._http_response' IN v_cmd) = 0 OR position('"refusedBy":"process-email-queue"' IN v_cmd) = 0 THEN
+        RAISE EXCEPTION 'self-check: the process-email-queue command no longer reads the drain''s refusals back, so a refused post would read as a success';
+      END IF;
+      IF position('Authorization' IN v_cmd) > 0 OR position('email_queue_service_role_key' IN v_cmd) > 0 THEN
+        RAISE EXCEPTION 'self-check: the process-email-queue command sends a bearer the gateway could refuse unheard';
       END IF;
     ELSE
       RAISE NOTICE 'self-check: process-email-queue is a job this file did not write (Lovable''s); left as it is';

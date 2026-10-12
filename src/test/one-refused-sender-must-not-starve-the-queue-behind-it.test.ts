@@ -30,7 +30,8 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
 import { bootEmailOpsDb, migration, rows } from "./helpers/email-ops-db";
 
-const SERVICE_JWT = `x.${Buffer.from(JSON.stringify({ role: "service_role" })).toString("base64url")}.y`;
+// The service-role key itself: process-email-queue runs with verify_jwt = false (R1) and opens only to that key or the cron key.
+const SERVICE_JWT = "service_role_key_for_the_queue_harness_0123456789";
 const db = new FakeDb();
 const attempts: Array<Record<string, unknown>> = [];
 const dlq: Array<Record<string, unknown>> = [];
@@ -42,7 +43,7 @@ let handler: EdgeHandler;
 
 beforeAll(async () => {
   const g = globalThis as Record<string, unknown>;
-  const env: Record<string, string> = { SUPABASE_URL: "https://harness.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "svc", LOVABLE_API_KEY: "lov" };
+  const env: Record<string, string> = { SUPABASE_URL: "https://harness.supabase.co", SUPABASE_SERVICE_ROLE_KEY: SERVICE_JWT, LOVABLE_API_KEY: "lov" };
   g.__fakeSupabase = db;
   g.__peqSend = async (p: Record<string, unknown>) => {
     attempts.push(p);

@@ -17,11 +17,15 @@
  *   - the file refuses (and changes nothing) while queue_wrapper_exposure()
  *     reports an open wrapper, or, without that reader, while a named wrapper
  *     is executable by anon;
- *   - the command posts only while a message is visible in auth_emails or
- *     transactional_emails (a drip delayed for days does not count), never
- *     during a provider cooldown, with x-email-cron from the vault and the
- *     vault's service-role key as the gateway bearer when it holds one; with
- *     neither key it fails loudly;
+ *   - the command posts only while a sign-in mail is visible in auth_emails
+ *     (R1 drains sign-in mail only; the drip waits for CP-G), never during a
+ *     provider cooldown, with x-email-cron from the vault and NO bearer (the
+ *     drain runs with verify_jwt = false and checks the key itself, so no
+ *     missing or stale vault bearer can have the gateway refuse it unheard:
+ *     review of R1, decision 5; S12-179), naming {"queues":["auth_emails"]};
+ *   - a run fails loudly, posting nothing, when the vault holds no cron key, or
+ *     when the drain refused a post in the last two minutes (its refusal names
+ *     it in pg_net's answers), so get_cron_health and section 94 see it;
  *   - provider_message_id and its index exist, the status CHECK accepts
  *     delivered and delayed, keeps any value a drifted constraint allowed, and
  *     stays the only check on status; the file is safe to run twice.
@@ -50,6 +54,7 @@ const STAND_INS = `
   CREATE TABLE vault.decrypted_secrets (name text PRIMARY KEY, decrypted_secret text);
   CREATE SCHEMA net;
   CREATE TABLE net.calls (id serial PRIMARY KEY, url text, headers jsonb, body jsonb);
+  CREATE TABLE net._http_response (id bigserial PRIMARY KEY, status_code integer, content text, timed_out boolean, created timestamptz NOT NULL DEFAULT now());
   CREATE FUNCTION net.http_post(url text, body jsonb DEFAULT '{}'::jsonb, params jsonb DEFAULT '{}'::jsonb,
                                 headers jsonb DEFAULT '{}'::jsonb, timeout_milliseconds int DEFAULT 5000)
     RETURNS bigint LANGUAGE sql AS $$ INSERT INTO net.calls (url, headers, body) VALUES ($1, $4, $2) RETURNING id::bigint $$;
@@ -65,7 +70,7 @@ async function boot(opts: { cron?: boolean; exposureReader?: boolean; seed?: str
 const apply = (pg: PGlite) => pg.exec(migration(FILE));
 const job = async (pg: PGlite) =>
   (await rows<{ schedule: string; command: string }>(pg, "SELECT schedule, command FROM cron.job WHERE jobname = 'process-email-queue'"))[0];
-const calls = (pg: PGlite) => rows<{ url: string; headers: Record<string, string> }>(pg, "SELECT url, headers FROM net.calls ORDER BY id");
+const calls = (pg: PGlite) => rows<{ url: string; headers: Record<string, string>; body: Record<string, unknown> }>(pg, "SELECT url, headers, body FROM net.calls ORDER BY id");
 const hasColumn = async (pg: PGlite) =>
   (await rows(pg, "SELECT 1 FROM information_schema.columns WHERE table_name = 'email_send_log' AND column_name = 'provider_message_id'")).length === 1;
 const statusDef = async (pg: PGlite) =>
@@ -96,7 +101,7 @@ describe("the drain job", () => {
   });
 });
 
-describe("the command posts only when mail is waiting", () => {
+describe("the command posts only when sign-in mail is waiting", () => {
   async function ready(secrets: Record<string, string> = { email_cron_key: CRON_KEY, email_queue_service_role_key: "svc.jwt" }) {
     const pg = await boot();
     await apply(pg);
@@ -111,7 +116,7 @@ describe("the command posts only when mail is waiting", () => {
     expect(await calls(pg)).toEqual([]);
   });
 
-  it("a visible sign-in mail: one post to the function with the cron key and the vault bearer", async () => {
+  it("a visible sign-in mail: one post with the cron key, NO bearer, naming the auth queue only (decision 5, S12-179)", async () => {
     const { pg, tick } = await ready();
     await pg.exec("INSERT INTO pgmq.q_auth_emails (message) VALUES ('{}')");
     await tick();
@@ -119,17 +124,22 @@ describe("the command posts only when mail is waiting", () => {
     expect(c).toHaveLength(1);
     expect(c[0].url).toBe("https://bwhdazbotpblihdxcmho.supabase.co/functions/v1/process-email-queue");
     expect(c[0].headers["x-email-cron"]).toBe(CRON_KEY);
-    expect(c[0].headers.Authorization).toBe("Bearer svc.jwt");
+    expect(c[0].headers, "the post depends on a vault bearer the gateway could refuse unheard").not.toHaveProperty("Authorization");
+    expect(c[0].body).toEqual({ source: "cron", queues: ["auth_emails"] });
   });
 
-  it("a drip mail delayed for days is not a reason to post; one that is due is", async () => {
+  it("a drip mail, due or not, is no reason to post: R1 drains sign-in mail only (the drip waits for CP-G)", async () => {
     const { pg, tick } = await ready();
-    await pg.exec("INSERT INTO pgmq.q_transactional_emails (vt, message) VALUES (now() + interval '2 days', '{}')");
-    await tick();
-    expect(await calls(pg)).toEqual([]);
     await pg.exec("INSERT INTO pgmq.q_transactional_emails (vt, message) VALUES (now() - interval '1 second', '{}')");
     await tick();
-    expect(await calls(pg)).toHaveLength(1);
+    expect(await calls(pg)).toEqual([]);
+  });
+
+  it("a sign-in mail not yet visible (being retried) is no reason to post", async () => {
+    const { pg, tick } = await ready();
+    await pg.exec("INSERT INTO pgmq.q_auth_emails (vt, message) VALUES (now() + interval '20 seconds', '{}')");
+    await tick();
+    expect(await calls(pg)).toEqual([]);
   });
 
   it("during a provider cooldown: no post", async () => {
@@ -139,20 +149,29 @@ describe("the command posts only when mail is waiting", () => {
     expect(await calls(pg)).toEqual([]);
   });
 
-  it("only the cron key in the vault: the post goes without a bearer (the gateway then decides)", async () => {
-    const { pg, tick } = await ready({ email_cron_key: CRON_KEY });
+  it("only the service-role key in the vault is not enough: the run fails loudly instead of posting", async () => {
+    const { pg, tick } = await ready({ email_queue_service_role_key: "svc.jwt" });
     await pg.exec("INSERT INTO pgmq.q_auth_emails (message) VALUES ('{}')");
-    await tick();
-    const [c] = await calls(pg);
-    expect(c.headers["x-email-cron"]).toBe(CRON_KEY);
-    expect(c.headers).not.toHaveProperty("Authorization");
+    await expect(tick()).rejects.toThrow(/holds no email_cron_key/);
+    expect(await calls(pg)).toEqual([]);
   });
 
-  it("mail waiting and neither key in the vault: the run fails loudly instead of posting nothing", async () => {
-    const { pg, tick } = await ready({});
+  it("a refusal from the drain in the last two minutes fails the run and posts nothing (review major: a refused post read as success)", async () => {
+    const { pg, tick } = await ready();
     await pg.exec("INSERT INTO pgmq.q_auth_emails (message) VALUES ('{}')");
-    await expect(tick()).rejects.toThrow(/neither email_cron_key nor email_queue_service_role_key/);
+    await pg.exec(`INSERT INTO net._http_response (status_code, content, created) VALUES (403, '{"error":"Forbidden","refusedBy":"process-email-queue"}', now() - interval '30 seconds')`);
+    await expect(tick()).rejects.toThrow(/the drain refused 1 post\(s\) in the last two minutes/);
     expect(await calls(pg)).toEqual([]);
+  });
+
+  it("an older refusal, or another function's 401, does not stop the post", async () => {
+    const { pg, tick } = await ready();
+    await pg.exec("INSERT INTO pgmq.q_auth_emails (message) VALUES ('{}')");
+    await pg.exec(`INSERT INTO net._http_response (status_code, content, created) VALUES
+      (403, '{"error":"Forbidden","refusedBy":"process-email-queue"}', now() - interval '3 minutes'),
+      (401, '{"code":401,"message":"Invalid JWT"}', now() - interval '10 seconds')`);
+    await tick();
+    expect(await calls(pg)).toHaveLength(1);
   });
 });
 
@@ -201,6 +220,15 @@ describe("the log can hold what Resend says", () => {
     const defs = await statusDef(pg);
     expect(defs).toHaveLength(1);
     for (const s of ["queued", "delivered", "delayed", "rate_limited"]) expect(defs[0]).toContain(`'${s}'`);
+  });
+
+  it("an earlier version of this file's own job is replaced by this command", async () => {
+    const old = "DO $d$ BEGIN PERFORM 1; END $d$; -- r1-mail-drain 20261014100000 Authorization email_queue_service_role_key";
+    const pg = await boot({ seed: `SELECT cron.schedule('process-email-queue', '10 seconds', $c$${old}$c$);` });
+    await apply(pg);
+    const j = await job(pg);
+    expect(j.command).not.toContain("Authorization");
+    expect(j.command).toContain('"refusedBy":"process-email-queue"');
   });
 
   it("runs twice: one status CHECK, one job, the same command", async () => {

@@ -212,8 +212,8 @@ describe("the other customer mails carry the reply address", () => {
     db.rpcs.read_email_batch = (a) => ({ data: msgs[String(a.queue_name)] ?? [], error: null });
     db.rpcs.delete_email = () => ({ data: true, error: null });
     db.rpcs.move_to_dlq = () => ({ data: 1, error: null });
-    const jwt = `x.${Buffer.from(JSON.stringify({ role: "service_role" })).toString("base64url")}.y`;
-    await handlers["process-email-queue"](new Request("https://harness.supabase.co/functions/v1/process-email-queue", { method: "POST", headers: { authorization: `Bearer ${jwt}` } }));
+    // The service-role key itself (process-email-queue runs with verify_jwt = false since R1).
+    await handlers["process-email-queue"](new Request("https://harness.supabase.co/functions/v1/process-email-queue", { method: "POST", headers: { authorization: `Bearer ${SERVICE}` } }));
     expect(queued.map((q) => q.to).sort()).toEqual(["u@example.com", "v@example.com"]);
     for (const q of queued) expect(q.reply_to, `queued ${String(q.label)} has no reply address`).toBe(REPLY);
   });
