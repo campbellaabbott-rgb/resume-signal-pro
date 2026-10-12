@@ -209,8 +209,11 @@ describe("intent becomes a filter, and a filter says what it hides", () => {
   it("counts coverage once per ingest pass, never per request", () => {
     // Four exact counts on a 600k table is nothing once a pass and unaffordable
     // on every search.
-    // Six spaces since S11-001: the pass-end tail runs inside its own closure.
-    const blk = /const coverage = await \(async \(\) => \{[\s\S]*?\n {6}\}\)\(\);/.exec(FN)?.[0] ?? "";
+    // Two spaces since .93: the pass-end tail's serve step is its own
+    // function (S11-001), and the count still runs only there.
+    const blk = /const coverage = await \(async \(\) => \{[\s\S]*?\n {2}\}\)\(\);/.exec(FN)?.[0] ?? "";
+    const serve = FN.slice(FN.indexOf("async function passEndServe("), FN.indexOf("async function passEndKicks("));
+    expect(serve, "the coverage count left the pass-end serve step").toContain(blk || "\u0000");
     expect(blk, "coverage is not computed in the refresh pass").not.toBe("");
     expect(blk).toContain('head: true');
     expect(/catch \{ return undefined; \}/.test(blk), "a counting failure must leave coverage absent").toBe(true);

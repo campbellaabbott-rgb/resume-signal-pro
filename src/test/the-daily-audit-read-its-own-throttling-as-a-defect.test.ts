@@ -1,19 +1,20 @@
 // @vitest-environment node
 /**
- * THE DAILY AUDIT READ ITS OWN THROTTLING AS A BOARD DEFECT (L1-07, old 2.27).
+ * THE DAILY AUDIT READ ITS OWN THROTTLING AS A BOARD DEFECT (L1-07, old 2.27),
+ * AND THEN COULD NOT FINISH (wave 4, job-board .93).
  *
- * Every daily filter audit recorded three "paging ... request-failed: offset 0:
- * RateLimitError: Rate limit exceeded for trace ..." findings with
- * throttledCases 0 and clean:false. The runtime refuses a self-call by
- * THROWING RateLimitError; the probe called a throttle only an HTTP 429, and
- * the three paging walks ran together, a burst of self-calls. So the check that
- * backs "audits its own accuracy daily" was a permanent false red.
+ * Every daily filter audit recorded three "paging ... offset 0: RateLimitError:
+ * Rate limit exceeded for trace ..." findings. .91 learned to call that
+ * "throttled" and the run "incomplete" instead of broken, which made the
+ * report honest and left the audit unfinished: on 2026-10-12 it still ran
+ * incomplete with RateLimitError on the same three paging walks. The limiter
+ * is the runtime's, on self-calls within one trace, and no pacing on our side
+ * removes it.
  *
- * Now a thrown RateLimitError (and a 429/503/546) is a refusal, retried once
- * after a pause and then recorded as "throttled"; the walks run one at a time,
- * paced; an ignore-case probe that was refused is not a "silent-drop"; and a
- * run whose every finding is a refusal says incomplete:true. Run through the
- * shipped handler with its self-calls answered here.
+ * .93 asks the list action in-process: each probe is a Request handed to this
+ * bundle's own handler, the code a network self-call would have reached, with
+ * no network and so no per-trace limit. Run through the shipped handler, with
+ * every network call refused the way the runtime refused them.
  */
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { createHash } from "node:crypto";
@@ -31,42 +32,40 @@ function rateLimitError(): Error {
   return e;
 }
 
-async function audit(answer: (payload: Record<string, unknown>) => Promise<Response>) {
+type AuditAnswer = { findings: Array<{ case: string; kind: string }>; throttledCases: number; incomplete: boolean; clean: boolean };
+
+/** One audit with every network call refused as the runtime refused the self-calls; counts the list probes that tried the network. */
+async function audit(): Promise<{ r: AuditAnswer; networkProbes: number }> {
   const realFetch = globalThis.fetch;
-  globalThis.fetch = (async (_u: unknown, init?: { body?: unknown }) => answer(JSON.parse(String(init?.body ?? "{}")))) as typeof fetch;
+  let networkProbes = 0;
+  globalThis.fetch = (async (_u: unknown, init?: { body?: unknown }) => {
+    const p = JSON.parse(String(init?.body ?? "{}")) as { action?: string };
+    if (p.action === "list") networkProbes++;
+    throw rateLimitError();
+  }) as typeof fetch;
   try {
-    return await board.post({ action: "filter-audit", chainKey }) as { findings: Array<{ case: string; kind: string }>; throttledCases: number; incomplete: boolean; clean: boolean };
+    board.reset();
+    return { r: await board.post({ action: "filter-audit", chainKey }) as AuditAnswer, networkProbes };
   } finally {
     globalThis.fetch = realFetch;
   }
 }
 
 describe("the filter audit", () => {
-  it("records a thrown RateLimitError as throttled, and walks the pages one at a time", async () => {
-    let inFlight = 0;
-    let maxInFlight = 0;
-    const r = await audit(async (p) => {
-      if (typeof p.offset === "number") {
-        inFlight++;
-        maxInFlight = Math.max(maxInFlight, inFlight);
-        await new Promise((res) => setTimeout(res, 20));
-        inFlight--;
-        throw rateLimitError();
-      }
-      return new Response(JSON.stringify({ jobs: [], total: 0 }), { status: 200 });
-    });
-    const paging = r.findings.filter((f) => f.case.startsWith("paging"));
-    expect(paging.map((f) => f.kind)).toEqual(["throttled", "throttled", "throttled"]);
-    expect(maxInFlight, "the three walks never overlap").toBe(1);
-    expect(r.throttledCases).toBeGreaterThanOrEqual(3);
-    expect(r.incomplete, "other findings were measured, so the run is not merely incomplete").toBe(false);
+  it("asks its own handler in-process, so the runtime's limit on self-calls cannot refuse a probe", async () => {
+    const { r, networkProbes } = await audit();
+    expect(networkProbes, "a probe went over the network, where the runtime caps self-calls per trace").toBe(0);
+    const refused = r.findings.filter((f) => f.kind === "throttled" || f.kind === "request-failed");
+    expect(refused, JSON.stringify(refused.slice(0, 3))).toEqual([]);
+    expect(r.throttledCases).toBe(0);
+    expect(r.incomplete, "the audit finished").toBe(false);
   });
 
-  it("a run the runtime refused throughout says incomplete, not broken", async () => {
-    const r = await audit(async () => { throw rateLimitError(); });
-    expect(r.findings.length).toBeGreaterThan(0);
-    expect(r.findings.every((f) => f.kind === "throttled"), JSON.stringify(r.findings.filter((f) => f.kind !== "throttled").slice(0, 3))).toBe(true);
-    expect(r.incomplete).toBe(true);
-    expect(r.clean).toBe(false);
+  it("every probe is answered by the shipped list action, attributed to maintenance", async () => {
+    await audit();
+    const logged = board.db.on("job_board_search_events", "insert")
+      .map((q) => (q.calls.find(([m]) => m === "insert")?.[1][0] ?? {}) as { caller?: string; offset_n?: number });
+    expect(logged.length, "no probe reached the list action").toBeGreaterThan(20);
+    expect(logged.every((e) => e.caller === "maintenance"), "a probe was logged as demand").toBe(true);
   });
 });

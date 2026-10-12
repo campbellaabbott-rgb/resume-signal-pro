@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import ts from "typescript";
 import { NEGATED_REMOTE_SOURCE } from "../../supabase/functions/job-board/normalize.ts";
+import { liftTrailingPlace } from "../../supabase/functions/job-board/query-place.ts";
+import { sanitizeTerm } from "../../supabase/functions/_shared/location-terms.ts";
 
 /**
  * A QUOTED PHRASE, OR A TRADE TERM, WAS READ AS A WORK MODE (L8-06).
@@ -26,11 +28,12 @@ const lift = (() => {
   const src = [
     pick(/const INTENT_FILTERS: Array<[\s\S]*?\n\];/, "INTENT_FILTERS"),
     pick(/const INTENT_CONFLICTS: Record<string, string\[\]> = \{[\s\S]*?\n\};/, "INTENT_CONFLICTS"),
+    pick(/const QUERY_FILLER = new Set\(\[[\s\S]*?\n\]\);/, "QUERY_FILLER"),
     pick(/function liftIntentFilters\([\s\S]*?\n\}/, "liftIntentFilters"),
     "return liftIntentFilters;",
   ].join("\n");
   const js = ts.transpileModule(src, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
-  return new Function("NEGATED_REMOTE_SOURCE", js)(NEGATED_REMOTE_SOURCE) as (q: unknown, body: Record<string, unknown>) => { patch: Record<string, unknown>; labels: string[]; residualQ: string } | null;
+  return new Function("NEGATED_REMOTE_SOURCE", "liftTrailingPlace", "sanitizeTerm", js)(NEGATED_REMOTE_SOURCE, liftTrailingPlace, sanitizeTerm) as (q: unknown, body: Record<string, unknown>) => { patch: Record<string, unknown>; labels: string[]; residualQ: string } | null;
 })();
 
 describe("a trade term keeps its first word", () => {
@@ -44,6 +47,16 @@ describe("a trade term keeps its first word", () => {
     expect(lift("remote nurse", {})).toEqual({ patch: { workMode: "remote" }, labels: ["remote"], residualQ: "nurse" });
     expect(lift("hybrid data analyst", {})?.patch).toEqual({ workMode: "hybrid" });
     expect(lift("work from home customer service", {})?.residualQ).toBe("customer service");
+  });
+});
+
+describe("a trailing place rides the same lift (.93)", () => {
+  it("moves a known place into the location filter, names it, and yields to a location the caller set", () => {
+    expect(lift("remote nurse jobs in Texas", {})).toEqual({ patch: { workMode: "remote", location: "Texas" }, labels: ["remote", "in Texas"], residualQ: "nurse jobs" });
+    expect(lift("nurse jobs in Texas", { location: "Ohio" }), "the caller's own location wins").toBeNull();
+    expect(lift("nurse jobs in Texas", { country: "US" })).toBeNull();
+    expect(lift("nurse jobs in Texas", { noIntent: true }), "the undo reads every word as text").toBeNull();
+    expect(lift('"engineer in Texas"', {}), "a quoted place is a phrase").toBeNull();
   });
 });
 
