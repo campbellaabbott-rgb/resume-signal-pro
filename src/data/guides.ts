@@ -45,10 +45,10 @@ export interface Guide {
  * them; the page retracted it and the bake kept serving it (L4-10).
  */
 export const GUIDES_INTRO =
-  "No recycled folklore. Every guide below is grounded in something this product actually does — the checks our scanner runs, the documented behavior of real ATS parsers, or what our apply agent will and will not do on your behalf. Where the popular advice is wrong, we say so.";
-export const GUIDES_INDEX_TITLE = "Resume, ATS & Apply Agent Guides — From Real Data";
+  "No recycled folklore. Every guide below is grounded in something this product actually does — the checks our scanner runs, the documented behavior of real ATS parsers, or how the board reads employers' own hiring systems. Where the popular advice is wrong, we say so.";
+export const GUIDES_INDEX_TITLE = "Resume & ATS Guides, and Applying With Your Own AI — From Real Data";
 export const GUIDES_INDEX_DESCRIPTION =
-  "How ATS systems actually work, how resumes really get rejected, how to fix yours, and how our apply agent works — grounded in what the product does, not folklore.";
+  "How ATS systems actually work, how resumes really get rejected, how to fix yours, and how to apply with your own AI — grounded in what the product does, not folklore.";
 
 export const GUIDE_GROUNDING_DEFAULT =
   "Grounded in the checks our scanner runs on every resume";
@@ -501,7 +501,7 @@ export const GUIDES: Record<string, Guide> = {
       "Resume scores are estimates with error bars, not verdicts. How scoring works, why we show a range, and how to use a score without being fooled by it.",
     tldr:
       "A resume score is a model's estimate built from proxies (parseability, keyword coverage, structure), not a measurement of hiring odds — two reasonable tools will disagree on the same resume by several points. Use scores for prioritization: below ~50 usually means a structural or parsing problem to fix first; above ~80 means stop polishing and start applying. Trust only scores that come with an itemized explanation.",
-    updated: "2026-07-06",
+    updated: "2026-10-10",
     minutes: 5,
     sections: [
       {
@@ -543,132 +543,102 @@ export const GUIDES: Record<string, Guide> = {
       { label: "Why resumes get rejected", href: "/guides/why-resumes-get-rejected" },
     ],
   },
-  // THE ONE GUIDE ABOUT A THING THAT ACTS ON YOUR BEHALF, so the honesty bar is
-  // higher than the rest of this file rather than lower.
+  // THE GUIDE TO A THING THAT USED TO ACT ON YOUR BEHALF, AND NO LONGER DOES.
   //
-  // NO VOLATILE NUMBERS LIVE HERE. How many postings the agent can submit to
-  // moves every day, and AgentReachNote reads it live — from job-board's
-  // `status.sendable`, since the `agent_reach()` RPC it used to call times out
-  // on every request — rendering NOTHING when the call fails, precisely so a
-  // stale constant cannot outlive the data. Repeating a figure like "3.5% of the board" in a
-  // prerendered SEO page would reintroduce that failure in the one place nobody
-  // re-reads. This page states STRUCTURE and points at the app for quantities.
+  // Owner decision 2026-10-11 (the apply pivot): the server-side Apply Agent
+  // and the plan and pass sold with it are retired, and applying happens
+  // through the person's own AI. This page keeps its address, because the
+  // sitemap and the app link to it, and now says what is true: Resume Booster
+  // prepares and sends nothing, and the one apply path is the person applying
+  // on the employer's own site, with their AI's help if they want it.
   //
-  // The defaults it does state — review mode, the first three held, the 1-10
-  // daily cap — are pinned to the migrations by
-  // src/test/apply-agent-guide.test.ts, so if somebody changes a default the
-  // guide fails the build instead of quietly lying.
+  // It describes no feature of the connector beyond searching and reading,
+  // and no instruction the server gives a model: those belong to the
+  // connector's own page and change with it. src/test/apply-agent-guide.test.ts
+  // pins the retirement, the absence of any sentence saying we submit for
+  // anyone, and the three hosts it may name.
   "how-the-apply-agent-works": {
     slug: "how-the-apply-agent-works",
-    title: "How the Apply Agent Works (and What It Won't Do)",
-    h1: "How the Apply Agent works",
+    title: "The Apply Agent Is Retired: Apply With Your Own AI",
+    h1: "The Apply Agent is retired",
     description:
-      "Set your search once. Every night it scans new postings, scores them against your CV, and prepares applications — submitting the ones it can finish and handing you the rest.",
+      "Resume Booster no longer runs an agent that applies to jobs on your behalf. Here is how to search the board from your own AI and apply yourself on the employer's site.",
     tldr:
-      "You upload a CV and describe the roles you want. Every night the agent scans postings that are new to the board, scores each against your CV, skips employers whose listings are mostly re-posts, and prepares the best few with the reasons it picked them. It starts in review mode, where nothing is sent until you press send. Switch it to auto and it submits the applications it can complete on its own — and still hands back anything that asks a question your profile cannot honestly answer.",
-    updated: "2026-08-05",
-    minutes: 8,
-    grounding: "Describes what the agent actually does, including what it refuses to do",
+      "We retired our Apply Agent and stopped selling the plan and the pass that came with it: Resume Booster does not prepare or send applications any more. To apply, connect Claude, ChatGPT or Claude Code at resumebooster.work/agents. Your AI can search the board and read each posting in full; you apply on the employer's own site, check every answer and press submit yourself.",
+    updated: "2026-10-12",
+    minutes: 4,
+    grounding: "Describes what changed, and how applying works now",
     sections: [
       {
-        h2: "Setting it up: two things",
+        h2: "What changed",
         paras: [
-          "Setup is deliberately short, because most of what an application form wants is already in your CV. Go to the Apply Agent page and the checklist shows what is still outstanding.",
-          "First, upload your CV. That is the whole of the profile step — your name, email, phone and LinkedIn are read straight off the document, and nothing legal or personal (work authorisation, sponsorship, salary, notice period) is ever inferred from it. Those get asked only at the moment a real form needs them.",
-          "Second, tell it what you are looking for. Job titles, location, and how many picks you want each morning. When your CV is uploaded, the form offers the roles it found in the document as chips you can accept or ignore — each one shows the line it came from, so you can see where it got the idea.",
-          "Naming employers to skip is optional but worth the minute. Your current employer above all: it is the one thing that cannot be undone after the fact.",
+          "Our Apply Agent was a service that prepared applications overnight and could send some of them. It is retired, and it prepares and sends nothing. We also stopped selling the plan and the pass built around it.",
+          "If you bought one of them, write to resumeboostersupp@gmail.com from the address you paid with.",
+          "Your account keeps what it had. The application tracker, your saved jobs and anything the agent prepared before stay where they were, and none of it will be sent.",
+        ],
+      },
+      {
+        h2: "How to apply now: with your own AI",
+        paras: [
+          "Connect Claude, ChatGPT or Claude Code to Resume Booster at resumebooster.work/agents. It is free and needs no account. Then ask your AI to search the board for the roles you want, or paste the link of a job you found on the board.",
+          "Your AI reads the posting in full and can help you decide whether to apply and how to word your answers. The application itself happens on the employer's own site: every posting's apply link opens the employer's own hiring system.",
         ],
         bullets: [
-          "Job titles are comma-separated — \"Product Manager, Programme Manager\" searches both",
-          "So are locations — \"London, Manchester, Remote\"",
-          "You can run several saved searches with different criteria and different salary floors",
-          "Picks per morning defaults to 5; start lower until you have seen its work",
+          "Claude: Claude on the web, the desktop app and Claude Code",
+          "ChatGPT: a custom connector, added once",
+          "The steps for each are on resumebooster.work/agents",
         ],
       },
       {
-        h2: "What happens overnight",
+        h2: "Who answers each question",
         paras: [
-          "The nightly run looks only at postings that are genuinely new to the board, so the same job does not reappear in your queue every morning. Each candidate is scored against your CV, and anything below the fit floor is dropped rather than padded in to fill the day's quota.",
-          "Two pieces of the platform's own data then do the triage. Employers whose takedowns are mostly re-listings of the same role are skipped entirely — that is the churn pattern behind most ghost-job complaints. Employers with a track record of roles that stayed posted and then genuinely closed get a small boost, and the queue tells you which.",
-          "Every pick arrives with its reasons attached: the match percentage and the terms that matched, whether the employer has filled roles in our tracking, how fresh the posting is, whether it clears your salary floor, and whether the agent can submit that one for you.",
-        ],
-      },
-      {
-        h2: "Review mode and auto mode",
-        paras: [
-          "The agent starts in review mode, and that is the default for everyone. It prepares the application — drafted answers, tailored CV, cover note — and nothing leaves until you press send. If you never change the setting, the agent never submits anything on its own.",
-          "Auto mode is the opt-in. In auto, the agent submits the applications it can complete end to end without you, and hands back everything else. The first few releases are held for your approval regardless of the setting, so you can see exactly what it intends to send before it sends anything unattended. That is the feature working, not a fault — a run that only holds on day one is the expected shape.",
-          "You can pause the whole thing with a date it comes back on, so a pause you meant to last a week does not quietly become permanent.",
-        ],
-      },
-      {
-        h2: "Where it can submit for you, and where it cannot",
-        paras: [
-          "This is the part most worth understanding before you subscribe, because the honest answer is that unattended submission covers a minority of the board and always will.",
-          "Applications are submitted by driving the employer's real application form in a real browser. Some applicant-tracking systems put bot protection on that form — a CAPTCHA, an invisible score, or a required candidate account with that specific employer. Where that protection exists, the agent stops. It does not solve CAPTCHAs, spoof a browser fingerprint, or route around detection, and it will not, because those are the exact behaviours that get applications binned and accounts banned.",
-          "So the board splits in two. On the vendors with no such wall, the agent can fill and submit. On the rest — which includes the single largest ATS by volume — it prepares everything and you press submit. The Apply Agent page shows the current split as a live count taken from the board itself, not an estimate, and the job board marks individual postings the agent can finish with an \"Agent can apply\" chip so you can see it before you save a job.",
-        ],
-      },
-      {
-        h2: "What it will never do",
-        paras: [
-          "The refusals are the product, not the missing half of it. An agent that guesses on your behalf is worse than no agent, because you find out at the interview.",
+          "You do. An AI can help you draft an answer about the work you have done, from your CV, and you check it before you use it. Everything factual is yours to answer, in your own words.",
         ],
         bullets: [
-          "It never invents an answer. If an employer asks something your CV and standing answers do not support, that application is handed back with the question named",
-          "It never answers identity, nationality, demographic or document-number questions — those are yours to give, per application",
-          "It never solves or evades a CAPTCHA, and never pretends to be a different browser",
-          "It never applies to an employer on your skip list, and it spaces out applications to the same employer",
-          "It never sends twice — the tracker is checked, and an ambiguous submit is escalated to you rather than retried",
+          "Work authorisation and visa sponsorship",
+          "Salary, start date, notice period and relocation",
+          "References, employment gaps and why you left a job",
+          "Identity, nationality, demographic and equal-opportunity questions: never let an AI answer these for you",
+          "Consent and declaration boxes: never let an AI tick these for you",
         ],
       },
       {
-        h2: "When it looks like it is doing nothing",
+        h2: "You press submit",
         paras: [
-          "\"No applications\" and \"no matching jobs\" look identical from the outside, so this is the list worth checking first. Almost every quiet morning has one of these behind it.",
-          "The mandate is paused or was never activated. The Apply Agent page states the status directly; an inactive mandate produces nothing and says so.",
-          "The CV used for matching is too short or was never saved. The agent scores every posting against it, so it will not activate without one.",
-          "A category is set. Choosing a field excludes postings whose role could not be classified from the title, which is a substantial slice of the board — there is a checkbox to include them, and with job titles set it costs you almost nothing.",
-          "A salary floor is set. Only postings that state their pay can clear a floor, and most postings do not state it, so a floor is a much narrower filter than it looks.",
-          "A posting-age limit is set. It applies to the date the employer states, and postings published without a date fall outside it, because we do not guess an age.",
-          "Everything it found needs an answer you have not given. Filling in notice period, work authorisation, salary expectation and postcode once turns a large share of refusals into sent applications — a measured dry run went from five blockers to one on the same form purely by completing the profile.",
+          "Resume Booster does not submit applications. You submit on the employer's own site, after you have read every answer.",
+          "Never let a tool create an employer account for you, enter a password, or solve or get around a CAPTCHA. If an employer asks for something you do not have, say so rather than let an AI invent it.",
         ],
       },
       {
-        h2: "What you get each morning",
+        h2: "What the board gives you",
         paras: [
-          "A shortlist on the Apply Agent page, and an email if you want one — sent only when there is something new, never an empty list. Each pick shows its reasons and which of your saved searches found it.",
-          "Keep a pick and it enters your application tracker, where the rest of the account already works from: the tailored CV, the drafted answers, the cover note, and afterwards the interview date. Dismiss it and it goes away. Unactioned picks expire on their own rather than piling up.",
-          "Once an application is in the tracker you get something no other job site can tell you: what actually happened to that exact posting. We record the day it came down from the employer's own careers feed, so after an interview the tracker can say whether the ad was withdrawn and has stayed down, or whether the same role has gone back up. That is a fact about the posting, not a verdict on you — but it is the only observable signal in the silence after an interview.",
+          "Every posting on the board is read from the employer's own hiring system, and a posting with no date shows no age rather than a guessed one. Searching it is free, here or from your AI.",
+          "Before you apply, the free resume scan shows how your CV reads to an applicant-tracking system, with every finding quoted from your own document.",
         ],
       },
     ],
     faqs: [
       {
-        q: "Does it apply to jobs without me seeing them first?",
-        a: "Only if you turn on auto mode, which is off by default. In review mode it prepares everything and nothing is sent until you press send. Even in auto mode the first few releases are held for your approval.",
+        q: "Does Resume Booster still apply to jobs for me?",
+        a: "No. The Apply Agent is retired and Resume Booster does not send applications. You apply yourself, with your own AI's help if you want it.",
       },
       {
-        q: "Will employers know an agent applied?",
-        a: "The application is submitted through the employer's own form with your real details and answers grounded in your CV — there is nothing hidden about it. What we refuse to do is defeat bot protection, because that is what gets applications auto-binned and accounts banned.",
+        q: "I paid for the agent's plan or pass. What happens now?",
+        a: "Write to resumeboostersupp@gmail.com from the address you paid with.",
       },
       {
-        q: "Why did it hand back a job instead of applying?",
-        a: "Either the employer's form has bot protection the agent will not cross, or the form asked something your profile cannot honestly answer. Both cases name the reason, and the second is usually fixed once by completing your apply profile.",
+        q: "Which AI can I use?",
+        a: "Claude (on the web, the desktop app or Claude Code) or ChatGPT. The steps for each are on resumebooster.work/agents.",
       },
       {
-        q: "Can it apply to every job on the board?",
-        a: "No, and any tool claiming otherwise is either solving CAPTCHAs or not telling you what it skipped. Unattended submission works on the vendors without bot protection on the apply form; everything else is prepared for you to send. The live split is shown on the Apply Agent page.",
-      },
-      {
-        q: "What happens if I stop paying?",
-        a: "The nightly run stops preparing new applications. Everything already in your tracker — applications, tailored CVs, drafted answers, interview dates — stays in your account.",
+        q: "Will my AI fill in the whole application for me?",
+        a: "No. It can help you draft answers about your work from your CV. You answer everything factual, check every answer, attach your CV and press submit yourself.",
       },
     ],
     related: [
+      { label: "Connect Claude or ChatGPT", href: "/agents" },
       { label: "See the live job board", href: "/jobs" },
-      { label: "Plans and pricing", href: "/pricing" },
-      { label: "How we verify every posting", href: "/methodology" },
+      { label: "How the board reads and re-checks postings", href: "/methodology" },
       { label: "Why resumes get rejected", href: "/guides/why-resumes-get-rejected" },
     ],
   },

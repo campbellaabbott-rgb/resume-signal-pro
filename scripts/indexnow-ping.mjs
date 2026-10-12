@@ -39,7 +39,11 @@ export function changedUrls({ sitemapXml, ledger }) {
   }
   const postings = ledger.postings && typeof ledger.postings === "object" ? ledger.postings : {};
   for (const [path, e] of Object.entries(postings)) {
-    if (e && e.state !== "live" && e.since === day && path.startsWith("/")) out.add(`${SITE}${path}`);
+    // A page nobody re-read is never reported as a removal (S11-155): an
+    // "unchecked" page, and a seeded one (a URL published before the ledger
+    // existed, carried as "no longer has a page of its own" without a read).
+    if (!e || e.state === "live" || e.state === "unchecked" || e.seed === true) continue;
+    if (e.since === day && path.startsWith("/")) out.add(`${SITE}${path}`);
   }
   return [...out];
 }

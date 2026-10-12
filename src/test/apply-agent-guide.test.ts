@@ -8,19 +8,24 @@
  *
  * A prerendered SEO guide is the worst case of that pattern, because it is the
  * copy least likely to be re-read and the most likely to be the first thing a
- * stranger believes. So every factual claim in the guide is pinned here to the
- * code or the migration that makes it true.
+ * stranger believes. So every factual claim in the guide is pinned here.
  *
- * The rule the guide follows, and this file enforces: STRUCTURE may be stated,
- * QUANTITIES may not. How many postings the agent can submit to changes daily;
- * AgentReachNote reads it live and renders nothing rather than show a stale
- * number. A figure baked into a prerendered page would defeat that.
+ * SINCE THE APPLY PIVOT (owner decision 2026-10-11) the server-side agent and
+ * the plan and pass sold with it are retired, and the guide at this address
+ * says so. The old pins on review mode, the held releases and the nightly
+ * defaults are replaced by the claims the page now makes: the agent is
+ * retired, no sentence says we submit or send for anyone, the person submits
+ * on the employer's site, and the hosts it names are only Claude, ChatGPT and
+ * Claude Code. It describes nothing of the connector beyond searching and
+ * reading, and no instruction the server gives a model: those change with the
+ * connector, and wave 4's guide states them once its server ships them.
  */
 import { describe, expect, it } from "vitest";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { GUIDES } from "@/data/guides";
+import { GUIDES, GUIDES_INDEX_DESCRIPTION, GUIDES_INDEX_TITLE, GUIDES_INTRO } from "@/data/guides";
 import { SENDABLE_VENDORS } from "../../supabase/functions/_shared/apply-automation";
+import { RETIRED_CLAIMS } from "../../scripts/prerender-retired.mjs";
 
 const guide = GUIDES["how-the-apply-agent-works"];
 const prose = (() => {
@@ -29,10 +34,6 @@ const prose = (() => {
   for (const f of guide.faqs ?? []) parts.push(f.q, f.a);
   return parts.join("\n");
 })();
-
-const DIR = resolve(__dirname, "../../supabase/migrations");
-const allSql = readdirSync(DIR).filter((f) => f.endsWith(".sql"))
-  .map((f) => readFileSync(resolve(DIR, f), "utf8")).join("\n");
 
 describe("the guide exists and is wired like every other one", () => {
   it("is registered under its own slug", () => {
@@ -53,46 +54,63 @@ describe("the guide exists and is wired like every other one", () => {
   });
 });
 
-describe("what the guide promises matches what the code does", () => {
-  it("says review mode is the default, and the migration agrees", () => {
-    // If somebody flips this default, the guide becomes a false statement about
-    // whether applications go out without being seen — the single highest-stakes
-    // sentence on the page.
-    expect(allSql).toMatch(/apply_mode text NOT NULL DEFAULT 'review'/);
-    expect(prose).toMatch(/starts in review mode/i);
-    expect(prose).toMatch(/off by default|default for everyone/i);
+describe("what the guide says is the retirement, and only that", () => {
+  it("says the agent is retired, in its title, its heading and its short answer", () => {
+    expect(guide.title).toMatch(/retired/i);
+    expect(guide.h1).toMatch(/retired/i);
+    expect(guide.tldr).toMatch(/does not prepare or send applications any more/);
   });
 
-  it("says the first releases are held, and hold_first_n still exists", () => {
-    expect(allSql).toMatch(/hold_first_n integer NOT NULL DEFAULT 3/);
-    expect(prose).toMatch(/held for your approval/i);
+  it("no sentence says we, or an agent of ours, submit or send an application", () => {
+    for (const re of [
+      /\b(it|agent|we)\b[^.]*\b(submits|sends) (the )?applications?\b/i,
+      /can fill and submit/i,
+      /submit (it |them )?for you/i,
+      /switch it to auto/i,
+      /\bauto mode\b/i,
+      /every night (the agent|it) scans/i,
+    ]) {
+      expect(prose, `the guide still claims a send (${re})`).not.toMatch(re);
+    }
+    expect(prose).toMatch(/Resume Booster does not submit applications/);
+    expect(prose).toMatch(/You submit on the employer's own site/);
   });
 
-  it("states the daily-pick default the migration actually sets", () => {
-    expect(allSql).toMatch(/daily_count integer NOT NULL DEFAULT 5 CHECK \(daily_count BETWEEN 1 AND 10\)/);
-    expect(prose).toMatch(/defaults to 5/);
+  it("carries none of the claims the crawler copy may no longer make", () => {
+    // The same list the bake checks its own output against.
+    for (const [claim, re] of RETIRED_CLAIMS) expect(prose, `the guide carries ${claim}`).not.toMatch(re);
   });
 
-  it("describes comma-separated terms, which is how the runner reads them", () => {
-    const runner = readFileSync(
-      resolve(__dirname, "../../supabase/functions/agent-runner/index.ts"), "utf8");
-    expect(runner).toMatch(/split\(","\)/);
-    expect(prose).toMatch(/comma-separated/i);
+  it("names no product it retired by its sale name, and no price", () => {
+    expect(prose).not.toMatch(/Agent Pass|Agent plan|Morning Queue|Apply Assistant/);
+    expect(prose).not.toMatch(/\$\d/);
   });
 
-  it("describes the uncategorised opt-in that now exists", () => {
-    // Added the same day as this guide. If the checkbox is ever removed, the
-    // troubleshooting step telling people to tick it becomes a dead end.
-    expect(allSql).toMatch(/include_uncategorised/);
-    expect(prose).toMatch(/could not be classified/i);
+  it("names only Claude, ChatGPT and Claude Code as hosts", () => {
+    for (const ide of [/Cursor/, /VS ?Code/, /Cline/, /Windsurf/, /Zed\b/, /Gemini/, /Copilot/]) {
+      expect(prose, `the guide names an IDE or other host (${ide})`).not.toMatch(ide);
+    }
+    expect(prose).toMatch(/Claude, ChatGPT or Claude Code/);
+  });
+
+  it("describes no connector feature beyond searching and reading, and no instruction to a model", () => {
+    // Those belong to the connector's page and move with it.
+    expect(prose).not.toMatch(/Resume Booster tells your AI|application form, question by question|default-deny/);
+  });
+
+  it("tells a past buyer where to write", () => {
+    expect(prose).toMatch(/resumeboostersupp@gmail\.com/);
+  });
+
+  it("the guides index no longer sells the agent either", () => {
+    for (const s of [GUIDES_INDEX_TITLE, GUIDES_INDEX_DESCRIPTION, GUIDES_INTRO]) {
+      expect(s).not.toMatch(/apply agent/i);
+    }
   });
 });
 
 describe("it does not bake in a number that will go stale", () => {
   it("quotes no posting counts or percentages of the board", () => {
-    // AgentReachNote exists BECAUSE a hardcoded "30,000+" outliving its data is
-    // the failure to avoid. A prerendered page cannot re-read the board, so it
-    // must not claim a quantity at all.
     const offenders = [
       /\b\d{1,3}(,\d{3})+\s*(postings|jobs)/i,   // "29,522 postings"
       /\b\d+(\.\d+)?\s*%\s*of the board/i,        // "3.5% of the board"
@@ -103,31 +121,18 @@ describe("it does not bake in a number that will go stale", () => {
     }
   });
 
-  it("names no vendor as auto-submittable, since that list moves", () => {
-    // SENDABLE_VENDORS changes whenever an adapter lands or a vendor puts up a
-    // wall. Naming one here would be a claim with no test between it and a
-    // stranger — and the board's own chip already says it per posting.
+  it("names no vendor the old sender drove", () => {
     for (const v of SENDABLE_VENDORS) {
-      expect(prose.toLowerCase(), `the guide must not name ${v} as auto-submittable`)
-        .not.toContain(v.toLowerCase());
+      expect(prose.toLowerCase(), `the guide names ${v}`).not.toContain(v.toLowerCase());
     }
-  });
-
-  it("points at the live surface for the split instead", () => {
-    expect(prose).toMatch(/live count|shows the current split|Apply Agent page/i);
   });
 });
 
 describe("somebody can actually find it", () => {
   const read = (rel: string) => readFileSync(resolve(__dirname, rel), "utf8");
 
-  it("is linked from the agent page itself, on every tab", () => {
-    // A guide nobody can reach from the product is an SEO page, not
-    // instructions. The link sits next to the h1 rather than inside a tab.
+  it("is still linked from the agent page and the setup checklist", () => {
     expect(read("../pages/Agent.tsx")).toMatch(/\/guides\/how-the-apply-agent-works/);
-  });
-
-  it("is linked from the setup checklist, where people are most lost", () => {
     expect(read("../components/account/AgentSetupChecklist.tsx"))
       .toMatch(/\/guides\/how-the-apply-agent-works/);
   });
@@ -145,9 +150,6 @@ describe("somebody can actually find it", () => {
 
 describe("the byline says what THIS guide is grounded in", () => {
   it("does not inherit the résumé-scanner default", () => {
-    // The byline was hardcoded in GuideArticle.tsx AND prerender-seo.mjs as
-    // "Grounded in the checks our scanner runs on every resume". True of eight
-    // résumé guides; false of this one, and it would have shipped under it.
     expect(guide.grounding, "this guide must state its own grounding").toBeTruthy();
     expect(guide.grounding).not.toMatch(/scanner runs on every resume/);
   });
@@ -163,30 +165,20 @@ describe("the byline says what THIS guide is grounded in", () => {
   });
 });
 
-describe("the refusals are stated, because they are the product", () => {
-  it("promises no CAPTCHA solving or fingerprint evasion", () => {
-    // The hard product boundary. If this sentence ever stops being true, the
-    // change should be loud.
-    expect(prose).toMatch(/does not solve CAPTCHAs|never solves or evades a CAPTCHA/i);
-    expect(prose).toMatch(/fingerprint|spoof/i);
+describe("the advice keeps the person in charge", () => {
+  it("leaves every factual and identity question with the person", () => {
+    expect(prose).toMatch(/Everything factual is yours to answer/);
+    expect(prose).toMatch(/Identity, nationality, demographic/);
+    for (const topic of [/Work authorisation/, /sponsorship/, /Salary/, /References/, /employment gaps/, /why you left a job/, /Consent/]) {
+      expect(prose).toMatch(topic);
+    }
   });
 
-  it("promises it never invents an answer", () => {
-    expect(prose).toMatch(/never invents an answer/i);
-  });
-
-  it("promises identity and demographic questions stay with the candidate", () => {
-    expect(prose).toMatch(/identity, nationality, demographic/i);
-  });
-
-  it("promises no duplicate applications", () => {
-    expect(prose).toMatch(/never sends twice/i);
+  it("never sends the person around a CAPTCHA, an account or a password", () => {
+    expect(prose).toMatch(/Never let a tool create an employer account for you, enter a password, or solve or get around a CAPTCHA/);
   });
 
   it("does not claim a success rate or an interview outcome", () => {
-    // Zero applications have been submitted to date. Any performance claim on a
-    // public page would be unfounded, and this is the page a stranger reads
-    // first.
     for (const re of [/\d+\s*%\s*(success|response|interview)/i, /guaranteed/i, /land(s)? you (a|an) (job|interview)/i]) {
       expect(prose, `the guide must not claim outcomes (${re})`).not.toMatch(re);
     }

@@ -147,7 +147,8 @@ describe("the bake is wired to the live site's record and writes the next one", 
     expect(read).toBeGreaterThan(-1);
     expect(ledger).toBeGreaterThan(-1);
     expect(read).toBeLessThan(firstWrite);
-    expect(bake).toMatch(/sitemaps: carrySitemaps\(\{ ledgerSource, liveSitemap, committedSitemap \}\)/);
+    expect(bake).toMatch(/const carrySitemapsNow = carrySitemaps\(\{ ledgerSource, liveSitemap, committedSitemap \}\);/);
+    expect(bake).toMatch(/sitemaps: carrySitemapsNow,/);
     expect(bake).toMatch(/writeFileSync\(join\(dist, PRERENDER_LEDGER_PATH\.slice\(1\)\), ledgerJson\)/);
   });
 });
