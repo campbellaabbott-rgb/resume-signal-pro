@@ -1435,7 +1435,15 @@ const PINNED = {
   // (S8-090). Employer display names: 20261009100100; the federal feed's
   // name: 20261009100200.
   // sources.ts UNCHANGED.
-  buildVersion: "2026-09-09.92",
+  // 2026-09-09.93: wave 4. A search our servers ask not to log writes no
+  // search event or miss (the reader proof only), and an AI's search keeps no
+  // shown ids; "nurse jobs in Texas" is the location filter and "City, ST"
+  // the city in that state (query-place.ts); an employer asked for by name
+  // resolves or is named with candidates (company-names.ts); the filter audit
+  // calls its own handler in-process; the pass-end tail runs as its own hops
+  // with a receipt per step (pass-end.ts, S11-001).
+  // sources.ts UNCHANGED.
+  buildVersion: "2026-09-09.93",
 };
 
 /**

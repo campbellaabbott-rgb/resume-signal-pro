@@ -52,10 +52,13 @@ describe("a control input must not be best-effort", () => {
   });
 
   it("every terminal slice return awaits it", () => {
-    // The three returns already had to record; what is new is that they wait
-    // for the record to land before the hop ends.
+    // The returns already had to record; what is new is that they wait for
+    // the record to land before the hop ends. TWO since .93: the hop that ends
+    // a pass and the hop that ends a slice. The pass-end tail's cold-database
+    // corner was the third, and the tail now runs as its own hops
+    // (pass-end.ts), so it is no slice's terminal return.
     const awaited = FN.match(/await recordSliceStats\(client, sliceWallStart, inHotPhase\);/g) ?? [];
-    expect(awaited.length, "a terminal return that does not await can still lose the write").toBe(3);
+    expect(awaited.length, "a terminal return that does not await can still lose the write").toBe(2);
     // And nothing may call it without awaiting.
     const bare = FN.match(/(?<!await )recordSliceStats\(client, sliceWallStart, inHotPhase\);/g) ?? [];
     expect(bare.length, "an un-awaited call reintroduces exactly the dropped write").toBe(0);
