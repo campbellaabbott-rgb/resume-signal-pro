@@ -8,8 +8,12 @@ export function displaySalary(raw: string): string {
   let s = raw.trim();
   // ".00" cents on whole amounts are noise at card size.
   s = s.replace(/(\d),?\.00\b/g, "$1");
-  // Feed-specific period suffixes → plain words.
+  // Feed-specific period suffixes → plain words. The hyphenated slug is a
+  // vendor's enum value, not prose ("$1,200-1,600 per-month-salary" reached a
+  // card verbatim, audit JL5), so it is matched with or without its slash and
+  // for all five periods; the spaced forms below keep their original scope.
   s = s
+    .replace(/\s*\/?\s*per-(year|month|week|day|hour)-(?:salary|rate|wage)\b/gi, (_m, p: string) => `/${p.toLowerCase()}`)
     .replace(/\/\s*per[-\s]?year[-\s]?salary\b/gi, "/year")
     .replace(/\/\s*per[-\s]?month[-\s]?salary\b/gi, "/month")
     .replace(/\/\s*per[-\s]?hour[-\s]?(salary|rate)\b/gi, "/hour")
