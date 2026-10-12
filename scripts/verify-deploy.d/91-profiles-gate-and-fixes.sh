@@ -192,6 +192,11 @@ if (prof.status === 200) {
   try { dated = JSON.parse(prof.body); } catch { dated = []; }
   out("PASS", "headcount: company_profiles.as_of exists (20261012102000 applied)");
   out("INFO", `headcount: ${Array.isArray(dated) && dated.length ? "at least one row is dated now" : "no row is dated, so no headcount prints anywhere"}`);
+} else if ((prof.status === 401 || prof.status === 403) && /"42501"/.test(String(prof.body))) {
+  // 20261012130000 took the table away from clients; its own self-check
+  // raises unless company_profiles.as_of exists, and section 81 proves the
+  // lock is live, so the refusal itself says the column is there.
+  out("PASS", "headcount: company_profiles is refused to anon (42501, locked by 20261012130000, whose self-check requires as_of; section 81 checks the lock)");
 } else out("FAIL", `headcount: company_profiles.as_of answered HTTP ${prof.status} (${String(prof.body).slice(0, 120)}): 20261012102000 is not applied`);
 if (served && has("jobsPage.intel.asOf")) out("PASS", "headcount: the served chunk prints a count only beside its date (jobsPage.intel.asOf)");
 else out("FAIL", "headcount: the served chunk lacks jobsPage.intel.asOf: an undated headcount may still print");
