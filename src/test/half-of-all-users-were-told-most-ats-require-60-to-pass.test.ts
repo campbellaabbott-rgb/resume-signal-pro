@@ -82,17 +82,19 @@ describe("the agent copy says review is the default and auto is a switch", () =>
     const at = bake.indexOf('path: "/agent",');
     const block = bake.slice(at, bake.indexOf("write({", at + 10));
     expect(block).not.toMatch(/submits real applications/);
-    expect(block).toMatch(/In review mode, the default, nothing is sent until you approve it/);
+    // The agent is retired (the apply pivot, 2026-10-11): /agent now says so and offers no mode at all.
+    expect(block).toMatch(/The Apply Agent is retired/);
+    expect(block).not.toMatch(/review mode|auto mode/i);
   });
 });
 
-describe("the pass's limits are stated where they apply", () => {
-  it("the free-key sentence scopes the pass to the MCP server and denies it on /v1", () => {
+describe("the retired pass is named nowhere in the free-key sentence", () => {
+  it("the free-key sentence states the key's two limits and no pass", () => {
     const bake = codeOf(read("scripts/prerender-seo.mjs"));
     const m = /const FREE_KEY_RATE_SENTENCE = `([^`]+)`;/.exec(bake);
     expect(m).toBeTruthy();
-    expect(m![1]).toMatch(/on the MCP server, a live Agent Pass/);
-    expect(m![1]).toMatch(/never raises them on \/v1/);
+    expect(m![1]).toMatch(/requests a minute and .* calls a day per key/);
+    expect(m![1]).not.toMatch(/pass/i);
   });
 });
 

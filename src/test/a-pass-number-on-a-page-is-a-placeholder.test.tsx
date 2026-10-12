@@ -150,29 +150,25 @@ describe("the 'Agent plan only' sentences on /agents now name the pass", () => {
   it("the apply-tools sentence about what the key alone is not enough for", () => {
     expect(sentenceWith("applying also requires")).toMatch(/live pass/i);
   });
-  // The served HTML for /agents is the prerender, not the SPA: a crawler or a
-  // curl with a Googlebot UA reads scripts/prerender-seo.mjs's copy. The
-  // three sentences it shares with the page must say the same thing (review
-  // C-1: the page said "or a live pass" while the bake still said "Agent plan
-  // only", on the same push).
-  describe("and the prerendered /agents says the same", () => {
+  // THE PRERENDERED /agents NO LONGER SELLS EITHER (the apply pivot,
+  // 2026-10-11): the plan and the pass are retired, and the crawler copy
+  // names neither, whatever this page still renders until wave 4 rewrites
+  // it. The rendered page is read for the same thing by
+  // src/test/pd-bake-the-crawler-copy-sells-nothing-retired.test.ts.
+  describe("and the prerendered /agents sells neither the plan nor the pass", () => {
     const BAKE = read("scripts/prerender-seo.mjs");
-    const block = BAKE.slice(BAKE.indexOf('path: "/agents",'), BAKE.indexOf("</section>", BAKE.indexOf("Two kinds of key", BAKE.indexOf('path: "/agents",'))));
-    it("the meta description is the page's, word for word", () => {
-      const page = /description=\{`([^`]*)`\}/.exec(PAGE)?.[1] ?? "";
-      const bake = /description: `([^`]*)`/.exec(block)?.[1] ?? "";
-      expect(page.length).toBeGreaterThan(0);
-      expect(bake).toBe(page);
+    const block = BAKE.slice(BAKE.indexOf('path: "/agents",'), BAKE.indexOf('path: "/mcp",'));
+    it("reads the /agents block, not an empty string", () => {
+      expect(block.length).toBeGreaterThan(1000);
     });
-    it("the hero sentence names the pass", () => {
-      const i = block.indexOf("ask your apply agent");
-      expect(i).toBeGreaterThan(-1);
-      expect(block.slice(i - 200, i)).toMatch(/live pass/);
-    });
-    it("the apply-tools sentence names the pass beside the Agent plan", () => {
-      const i = block.indexOf('<a href="/agent">Agent plan</a>');
-      expect(i).toBeGreaterThan(-1);
-      expect(block.slice(i, i + 160)).toMatch(/live pass/);
+    it("its description and hero name no plan, no pass and no agent that submits", () => {
+      const desc = /description: `([^`]*)`/.exec(block)?.[1] ?? "";
+      expect(desc.length).toBeGreaterThan(0);
+      for (const s of [desc, block]) {
+        expect(s).not.toMatch(/Agent plan|live pass|ask your apply agent/);
+        expect(s).not.toMatch(/D\.PASS\.|SUBSCRIPTIONS\.agent/);
+      }
+      expect(block).toMatch(/APPLY_YOURSELF_LINE/);
     });
   });
 
@@ -642,30 +638,30 @@ describe("the agent offer on the homepage", () => {
     it("the bundle entry exports the PASS mirror", () => {
       expect(BAKE).toMatch(/export \{[^}]*\bPASS\b[^}]*\} from "\.\.\/src\/config\/products"/);
     });
-    it("the sentences are en.json's homeAgent lines with the mirrors filled in", () => {
+    it("the sentences are en.json's homeAgent lines with the mirror filled in, and the pass line is not baked", () => {
       expect(offer.connect).toBe(fill(homeAgent.connectLine2));
-      expect(offer.pass).toBe(fill(homeAgent.passLine));
       expect(offer.lead).toBe(homeAgent.lead);
-      expect(offer.pass).toContain(`$${PASS.priceUsd}`);
-      expect(offer.pass).toContain(`${PASS.sessionHours} hours`);
-      expect(offer.pass).toContain(`${PASS.applications} jobs`);
-      expect(offer.connect).toContain(`${MCP_ANON_CAPS.perAddressPerDay} calls a day`);
+      expect(offer.cta).toBe(homeAgent.connectCta);
+      // The strip's pass line sold a retired product (the apply pivot,
+      // 2026-10-11); the crawler copy does not carry it.
+      expect(Object.keys(offer)).not.toContain("pass");
       expect(offer.connect).toMatch(/no account/i);
-      expect(offer.pass).toMatch(/sign in/i);
     });
     it("a placeholder with no mirror throws instead of baking a raw brace", () => {
       const start = BAKE.indexOf("const AGENT_OFFER = (() => {");
       const end = BAKE.indexOf("})();", start) + "})();".length;
-      const D = { EN_LOCALE: { homeAgent: { ...homeAgent, passLine: "{{passSomethingElse}} hours" } }, PASS, MCP_ANON_CAPS };
+      const D = { EN_LOCALE: { homeAgent: { ...homeAgent, connectLine2: "{{passSomethingElse}} hours" } }, PASS, MCP_ANON_CAPS };
       expect(() => new Function("D", `${FILLER}\n${BAKE.slice(start, end)}; return AGENT_OFFER;`)(D)).toThrow(/no mirror/);
     });
-    it("the homepage block and the llms-full MCP line both emit them", () => {
+    it("the homepage block and the llms-full MCP line emit the connect line and the apply-yourself line, never the pass line", () => {
       const home = BAKE.slice(BAKE.indexOf('path: "/",'), BAKE.indexOf('path: "/cv-standards"'));
       expect(home).toContain("${esc(AGENT_OFFER.connect)}");
-      expect(home).toContain("${esc(AGENT_OFFER.pass)}");
+      expect(home).not.toContain("AGENT_OFFER.pass");
+      expect(home).toContain("${esc(APPLY_YOURSELF_LINE)}");
       expect(home).toContain('<a href="/agents"');
       const llms = BAKE.slice(BAKE.indexOf('lines.push("## Free tools");'), BAKE.indexOf('writeFileSync(join(dist, "llms-full.txt")'));
-      expect(llms).toContain("${AGENT_OFFER.connect} ${AGENT_OFFER.pass}");
+      expect(llms).toContain("${AGENT_OFFER.connect} ${APPLY_YOURSELF_LINE}");
+      expect(llms).not.toContain("AGENT_OFFER.pass");
     });
     it("no crawler sentence spells a pass number of its own", () => {
       // The template must interpolate; a typed price beside the pass in the

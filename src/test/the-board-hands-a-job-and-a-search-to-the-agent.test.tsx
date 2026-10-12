@@ -563,9 +563,10 @@ describe("3. no typed rate or quota remains on the pages this lane touched", () 
     expect(page).not.toMatch(/Both (kinds )?meter identically/);
     const bake = strip(read("scripts/prerender-seo.mjs"));
     // L9-11 (wave 3): the bake prints this sentence on /data-api and in the
-    // llms-full /v1 line, where a pass raises nothing: it is scoped to the
-    // MCP server, the only place the pass overlay applies.
-    expect(bake).toMatch(/const FREE_KEY_RATE_SENTENCE = `\$\{D\.FREE_KEY_RATE_PER_MIN\} requests a minute and \$\{D\.MCP_FREE_KEY_DAILY_QUOTA\.toLocaleString\("en-US"\)\} calls a day per key; on the MCP server, a live Agent Pass on an account-linked key raises both for its hours, and it never raises them on \/v1`;/);
+    // llms-full /v1 line. Its rate and quota are the two mirrors; what it
+    // says after them belongs to the bake's owner (its pass clause is listed
+    // for removal in the apply pivot's hand-off).
+    expect(bake).toMatch(/const FREE_KEY_RATE_SENTENCE = `\$\{D\.FREE_KEY_RATE_PER_MIN\} requests a minute and \$\{D\.MCP_FREE_KEY_DAILY_QUOTA\.toLocaleString\("en-US"\)\} calls a day per key/);
     expect(bake.match(/\$\{FREE_KEY_RATE_SENTENCE\}/g)?.length).toBe(3);
     expect(bake).not.toMatch(/meter identically/);
     // The data entry the bake bundles exports both mirrors.
@@ -665,12 +666,15 @@ describe("3. the prerender links the hand-off and lists the attach menu from the
     expect(jobs).toMatch(/<a href="\/agents">connect your agent<\/a>/);
     expect(jobs).toMatch(/\/jobs\?job=&lt;id&gt;<\/code> link's id is the argument/);
   });
-  it("the /agents block renders prompts and resources off D.MCP_PROMPTS and D.MCP_RESOURCES, after the tools and before the boundary", () => {
+  it("the /agents block renders prompts and resources off D.MCP_PROMPTS and D.MCP_RESOURCES, after the tools and before the apply-yourself section", () => {
     const agents = between('path: "/agents",', 'path: "/freelance-boost",');
-    const tools = agents.indexOf("D.MCP_TOOLS.map(");
-    const prompts = agents.indexOf("D.MCP_PROMPTS.map(");
-    const resources = agents.indexOf("D.MCP_RESOURCES.map(");
-    const boundary = agents.indexOf("What your agent can and cannot do");
+    const tools = agents.indexOf("keptTools.map(");
+    const prompts = agents.indexOf("keptPrompts.map(");
+    const resources = agents.indexOf("D.MCP_RESOURCES.filter(");
+    const boundary = agents.indexOf("Applying stays yours");
+    // Both lists come off the mirrors, less what served the retired agent.
+    expect(BAKE).toMatch(/const keptTools = D\.MCP_TOOLS\.filter\(toolKept\)/);
+    expect(BAKE).toMatch(/const keptPrompts = D\.MCP_PROMPTS\.filter\(/);
     expect(tools).toBeGreaterThan(-1);
     expect(prompts).toBeGreaterThan(tools);
     expect(resources).toBeGreaterThan(prompts);

@@ -25,12 +25,29 @@ import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 import {
   PRERENDER_LEDGER_PATH, POSTING_STUB_KEEP_DAYS, callBudget, companyLanderPage, contentFingerprint, landerFacts, landerHasOwnContent, landerRobots, landerThinBreaker,
-  bakeLanders, employerBoardsOf, employerPageOf, carrySitemaps, pageLastmod, postingCarryBase, postingCheckState, postingRowEligible, postingStubEntry, postingStubPage,
+  bakeLanders, employerBoardsOf, employerPageOf, carrySitemaps, pageLastmod, postingCarryBase, postingCheckState, postingFreshBudget, postingRowEligible, postingStubEntry, postingStubPage,
   LANDER_OPENINGS_READS, LANDER_OPENINGS_SHOWN, LLMS_TXT_COMPANIES, companiesLlmsLine, llmsTxtCompaniesCount, duplicateSkeletons, landerBreakers, landerOpenings, landerSkeleton, nextOpeningsCache, openingsFromList, openingsToRead,
 } from "./prerender-pages.mjs";
+// The once-published pages, the ceiling, the dates and the duplicate groups
+// (SEO-002, SEO-025, SEO-036 and decision 5 of the design upgrade's README).
+import {
+  pageDates, postingCeilingSplit, capPostingEntries, seedPostingLedger, tombstoneHtml,
+  COUNT_BEARING, companyTokenOf, onceCompanyPaths, companyCarryState, companyLedgerEntry, companyStubPage, duplicateSkeletonGroups, resolveDuplicateGroups,
+} from "./prerender-pages.mjs";
+import { bakeEmployerName, repairEmployerName } from "./prerender-names.mjs";
+import { RETIRED_PRODUCT_IDS, APPLY_YOURSELF_LINE, retiredClaimsIn, crawlerText } from "./prerender-retired.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const dist = join(root, "dist");
+// A BAKE CAN BE POINTED AWAY FROM THE CHECKOUT. PRERENDER_OUT names a
+// directory that takes every file the bake writes (dist/, the public/ copies,
+// the data bundle), and PRERENDER_OFFLINE=1 makes no network read at all, so a
+// test can run the real bake and read the pages it writes
+// (src/test/pd-bake-the-crawler-copy-sells-nothing-retired.test.ts) without
+// rewriting the committed public/ files or reaching production.
+const OUT = process.env.PRERENDER_OUT ? resolve(process.env.PRERENDER_OUT) : null;
+const OFFLINE = process.env.PRERENDER_OFFLINE === "1";
+const dist = OUT ? join(OUT, "dist") : join(root, "dist");
+const publicOut = OUT ? join(OUT, "public") : join(root, "public");
 const SITE = "https://resumebooster.work";
 
 // ---- Substitution that inserts its value as-is ----
@@ -148,16 +165,24 @@ export const composeHtml = (
   // replaces this element on hydration rather than adding a second entity
   // beside it, and removes it outright when the posting has gone stale since
   // the bake. It finds it by id, and until now there was none to find.
+  // THE HOMEPAGE'S OWN BLOCKS ARE TAGGED, AND THE FALLBACK TAKES THEM OFF
+  // (SEO-033). The root index.html is also the file the host serves for every
+  // address with no page of its own, so the homepage's WebApplication block
+  // was served as the structured data of any unknown URL. Each block of the
+  // fallback page carries data-home-only, and the fallback's script removes
+  // them on any path but "/": that helps a crawler that runs scripts; one that
+  // does not reads the canonical to "/", which says the same thing.
   for (const ld of jsonLd) {
     const tagId = ld && ld["@type"] === "JobPosting" ? ` id="${D.POSTING_LD_TAG_ID}"` : "";
-    headExtra += `<script type="application/ld+json"${tagId}>${JSON.stringify(ld).replace(/</g, "\\u003c")}</script>\n`;
+    const homeOnly = isFallback ? ' data-home-only="1"' : "";
+    headExtra += `<script type="application/ld+json"${tagId}${homeOnly}>${JSON.stringify(ld).replace(/</g, "\\u003c")}</script>\n`;
   }
   // Preload hints last in the head, so they cannot displace the meta tags
   // above them if the template shape ever shifts.
   headExtra += preloadFor(path);
   html = putVerbatim(html, "</head>", `${headExtra}</head>`);
   const clearScript = isFallback
-    ? `<script>if(location.pathname!=="/"){var r=document.getElementById("root");if(r)r.innerHTML="";var c=document.querySelector('link[rel="canonical"]');if(c)c.remove();}</script>`
+    ? `<script>if(location.pathname!=="/"){var r=document.getElementById("root");if(r)r.innerHTML="";var c=document.querySelector('link[rel="canonical"]');if(c)c.remove();document.querySelectorAll('script[data-home-only]').forEach(function(s){s.remove();});}</script>`
     : "";
   html = putVerbatim(html, '<div id="root"></div>', `<div id="root">${shell(content, lang)}</div>${clearScript}`);
   return html;
@@ -177,8 +202,12 @@ const isMain = Boolean(process.argv[1]) && isMainModule(process.argv[1], import.
 
 if (isMain) try {
   // ---- Bundle the pure-data modules for Node import ----
-  const entry = join(root, "scripts", ".prerender-data-entry.ts");
-  writeFileSync(entry, `
+  // Under PRERENDER_OUT the entry and its bundle live in that directory, with
+  // every import made absolute, so a test bake writes nothing into scripts/.
+  if (OUT) { mkdirSync(OUT, { recursive: true }); mkdirSync(publicOut, { recursive: true }); }
+  const entry = OUT ? join(OUT, ".prerender-data-entry.ts") : join(root, "scripts", ".prerender-data-entry.ts");
+  const entryImports = (text) => (OUT ? text.replace(/from "\.\.\//g, `from "${root.replace(/\\/g, "/")}/`) : text);
+  writeFileSync(entry, entryImports(`
 export { INDUSTRY_KEYWORDS, SUB_INDUSTRY_TAXONOMY } from "../supabase/functions/free-keyword-scan/industry-detection";
 export { ONET_EXPECTATIONS } from "../supabase/functions/free-keyword-scan/onet-expectations";
 export { onetForRole } from "../src/lib/onet-match";
@@ -206,12 +235,11 @@ export { MCP_TOOLS, MCP_HOSTS, MCP_READ_TOOLS, MCP_PAID_TOOLS, MCP_APPLY_TOOLS, 
 export { MCP_MORE_HOSTS, MCP_TROUBLESHOOTING, MCP_SIGN_IN_NEUTRAL, MCP_SERVER_ADDRESS_NOTE, MCP_ADDRESS_GLOSS, MCP_NEEDS_ACCOUNT_LINE, MCP_WITHHELD_NOTE, MCP_INSTALL_REPO_URL, MCP_TEST_QUERY, MCP_SIGN_IN_META_KEY, stepSegments, curlInitialize, andList } from "../src/config/mcp-tools";
 export { MCP_PAGE_HOSTS, MCP_OFF_PAGE_HOSTS, MCP_OTHER_AGENTS_LINE, MCP_COPY_THE_PROMPT } from "../src/config/mcp-tools";
 export { FREE_KEY_RATE_PER_MIN } from "../src/config/free-key-limits";
-export { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "../src/config/sendable-vendors";
 export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPostingLive, jdParagraphs, postingEmployer, postingIdFromPath, postingIdentity, postingJsonLd, postingPageDescription, postingPagePath, postingPageTitle, postingPathParts } from "../src/components/jobs/posting-page";
 export { boardName, employerName, isCodeShapedName, possessive } from "../src/lib/company-display";
 export { isCollidedToken } from "../src/lib/board-collisions";
-`);
-  const bundle = join(root, "scripts", ".prerender-data.mjs");
+`));
+  const bundle = OUT ? join(OUT, ".prerender-data.mjs") : join(root, "scripts", ".prerender-data.mjs");
   execSync(`npx esbuild "${entry}" --bundle --format=esm --outfile="${bundle}" --log-level=error`, { cwd: root, stdio: "inherit" });
   const D = await import(bundle + `?t=${Date.now()}`);
   // EVERY BOARD READ THIS BAKE MAKES IS COUNTED HERE: the facets rung, the
@@ -234,6 +262,7 @@ export { isCollidedToken } from "../src/lib/board-collisions";
   // commits what it writes, so the committed copies are only the fallback for
   // a build that cannot reach the site (SEO report 2026-10-08, F2a and S3).
   const fetchText = async (url) => {
+    if (OFFLINE) return null;
     try {
       const r = await fetch(url, { signal: AbortSignal.timeout(15000), headers: { "User-Agent": "resumebooster-prerender" } });
       return r.ok ? await r.text() : null;
@@ -253,14 +282,13 @@ export { isCollidedToken } from "../src/lib/board-collisions";
   // migration constants, and false for a pass holder. Every sentence
   // below that states the free key's limits reads this, and the pass clause
   // rides with it because the row is what api_key_check enforces.
-  // L9-11: a live pass raises the limits on the MCP server only, for an
-  // account-linked key (api_key_check's overlay reads /mcp/ endpoints), never
-  // on /v1, where both of these sentences are printed.
+  // The pass clause that rode here is gone with the pass (the apply pivot,
+  // 2026-10-11): the crawler copy sells nothing retired.
   // The server's name in the official MCP registry (listed since 2026-09-18).
   // No served page named it (SEO report 2026-10-08), so an agent or a person
   // searching the registry could not tie the listing to this site.
   const MCP_REGISTRY_NAME = "work.resumebooster/jobs";
-  const FREE_KEY_RATE_SENTENCE = `${D.FREE_KEY_RATE_PER_MIN} requests a minute and ${D.MCP_FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} calls a day per key; on the MCP server, a live Agent Pass on an account-linked key raises both for its hours, and it never raises them on /v1`;
+  const FREE_KEY_RATE_SENTENCE = `${D.FREE_KEY_RATE_PER_MIN} requests a minute and ${D.MCP_FREE_KEY_DAILY_QUOTA.toLocaleString("en-US")} calls a day per key`;
 
   // ---- Live benchmark numbers for llms-full.txt (GEO: AI engines cite
   // numbers with provenance). Graceful skip offline/CI — the build never
@@ -286,7 +314,7 @@ export { isCollidedToken } from "../src/lib/board-collisions";
     // Local builds read .env; CI/hosted builders inject process.env instead.
     let envText = "";
     try { envText = readFileSync(join(root, ".env"), "utf8"); } catch { /* no .env on hosted builders */ }
-    const grab = (k) => process.env[k] || (envText.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
+    const grab = (k) => OFFLINE ? undefined : process.env[k] || (envText.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
     const supaUrl = grab("VITE_SUPABASE_URL");
     const supaKey = grab("VITE_SUPABASE_PUBLISHABLE_KEY");
     if (supaUrl && supaKey) {
@@ -336,7 +364,7 @@ export { isCollidedToken } from "../src/lib/board-collisions";
   // pages actually consume.
   try {
     const envText2 = (() => { try { return readFileSync(join(root, ".env"), "utf8"); } catch { return ""; } })();
-    const grab2 = (k) => process.env[k] || (envText2.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
+    const grab2 = (k) => OFFLINE ? undefined : process.env[k] || (envText2.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
     const supaUrl2 = grab2("VITE_SUPABASE_URL");
     const supaKey2 = grab2("VITE_SUPABASE_PUBLISHABLE_KEY");
     if (!boardFacets && supaUrl2 && supaKey2 && boardBudget.take()) {
@@ -446,7 +474,7 @@ export { isCollidedToken } from "../src/lib/board-collisions";
       // new list is at least as usable as the one it overwrites.
       if (trimmed.length <= 100) {
         console.log(`[prerender-seo] facet read produced only ${trimmed.length} usable company entries — keeping the committed snapshot rather than overwriting it`);
-      } else writeFileSync(FACETS_SNAPSHOT, JSON.stringify({
+      } else if (!OUT) writeFileSync(FACETS_SNAPSHOT, JSON.stringify({
         // L4-03: BOTH numbers, each by its own name. The snapshot used to keep
         // only `total` (the TRACKED corpus since the RPC changed shape), and
         // the reader, finding no openTotal, took it for the servable count: a
@@ -495,7 +523,7 @@ export { isCollidedToken } from "../src/lib/board-collisions";
   let auditRow = null;
   try {
     const envText4 = (() => { try { return readFileSync(join(root, ".env"), "utf8"); } catch { return ""; } })();
-    const grab4 = (k) => process.env[k] || (envText4.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
+    const grab4 = (k) => OFFLINE ? undefined : process.env[k] || (envText4.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
     const supaUrl4 = grab4("VITE_SUPABASE_URL");
     const supaKey4 = grab4("VITE_SUPABASE_PUBLISHABLE_KEY");
     if (supaUrl4 && supaKey4) {
@@ -673,7 +701,7 @@ export { isCollidedToken } from "../src/lib/board-collisions";
       const span = g ? num(g.observed_days) : null;
       const coverage = g ? num(g.posted_coverage_pct) : null;
       const stock = group("What the board holds right now", [
-        { value: openN, label: "verified open roles — postings the employer's own feed still serves, whose company-stated date falls inside the last 30 days" },
+        { value: openN, label: "open roles — postings the employer's own feed still serves, whose company-stated date falls inside the last 30 days" },
         { value: g ? fmt(g.total_company_names) : null, label: "employers with at least one of them, sub-boards merged by employer name" },
         // THE COVERAGE FIGURE IS PRINTED AS MEASURED, NOT ROUNDED. It is 99.5
         // today, and rounding it prints 100% — an absolute, about the one
@@ -1151,6 +1179,7 @@ export { isCollidedToken } from "../src/lib/board-collisions";
   // and then nothing renders: an identity is never invented.
   const SELLER_ID = D.sellerIdentity();
   const SELLER_LINE = SELLER_ID ? `<p class="mt-4 text-center text-xs text-muted-foreground">Sold by ${esc(SELLER_ID.legalName)}, ${esc(SELLER_ID.postalAddress)}.</p>` : "";
+  const FOOTER_AGENTS_LABEL = D.EN_LOCALE?.footer?.links?.agents || "Connect your agent";
   // Static shell around page content: simple header/footer so crawlers see
   // site-wide internal links. The SPA replaces all of it on hydration.
   const shell = (contentHtml, lang) => `
@@ -1186,12 +1215,12 @@ export { isCollidedToken } from "../src/lib/board-collisions";
                a sitemap-only orphan — the exact condition Footer.tsx warns about. -->
           <a href="/explore" class="hover:text-foreground">Explore employers</a>
           <!-- /companies is the directory that keeps 500 company pages from
-               being sitemap-only orphans (387 measured, audit 2026-08-28);
-               /agent was on the same orphan list — the money page, linked from
-               no prerendered page at all. -->
+               being sitemap-only orphans (387 measured, audit 2026-08-28). The
+               last link is the app footer's own: connecting your own AI, under
+               the label the app prints (footer.links.agents). -->
           <a href="/companies" class="hover:text-foreground">All companies</a>
           <a href="/pay-transparency" class="hover:text-foreground">Pay Transparency Index</a>
-          <a href="/agent" class="hover:text-foreground">Apply Agent</a>
+          <a href="/agents" class="hover:text-foreground">${esc(FOOTER_AGENTS_LABEL)}</a>
         </nav>
         ${SELLER_LINE}
       </div></footer>
@@ -1247,13 +1276,29 @@ export { isCollidedToken } from "../src/lib/board-collisions";
   // index it is a contradiction Search Console reports as an error.
   /** path -> { fp, stated } for every page this bake wrote. */
   const pageFingerprints = new Map();
+  /** Retired claims found in what this bake wrote, outside the employers' own posting text: logged at the end, loudly. */
+  const retiredFound = [];
+  const checkRetired = (path, text, sales = false) => {
+    const found = retiredClaimsIn(text, { sales });
+    if (found.length) retiredFound.push({ path, found });
+  };
   const write = (page) => {
     renderFile(page);
+    // Not the posting pages (the employer's own text) and not /changelog (a
+    // dated record of what was announced, not a live offer).
+    if (!String(page.path).startsWith("/jobs/posting/") && page.path !== "/changelog") {
+      checkRetired(page.path, crawlerText(`${page.title} ${page.description} ${page.content} ${JSON.stringify(page.jsonLd ?? [])}`), page.path === "/" || page.path === "/pricing");
+    }
     if (!page.canonical && !page.robots) writtenPaths.push(page.path);
     // S3: what the page says, blind to its date stamps, so the sitemap date
-    // moves only when the page does (prerender-pages.mjs pageLastmod).
+    // moves only when the page does; SEO-025: blind to its counts too on a
+    // page whose numbers are measured at the build (prerender-pages.mjs
+    // pageDates). The old fingerprint rides along so the switch itself
+    // re-dates nothing.
+    const said = `${page.title}\n${page.description}\n${page.content}`;
     pageFingerprints.set(page.path, {
-      fp: contentFingerprint(`${page.title}\n${page.description}\n${page.content}`),
+      fp: contentFingerprint(said, { blindCounts: COUNT_BEARING(page.path) }),
+      legacyFp: contentFingerprint(said),
       stated: typeof page.lastmod === "string" ? page.lastmod : null,
     });
     count++;
@@ -1512,7 +1557,7 @@ export { isCollidedToken } from "../src/lib/board-collisions";
   let scanInsights = null;
   let scanTotals = null;
   try {
-    const env = readFileSync(join(root, ".env"), "utf8");
+    const env = OFFLINE ? "" : readFileSync(join(root, ".env"), "utf8");
     const supaUrl = env.match(/^VITE_SUPABASE_URL\s*=\s*"?([^"\s]+)/m)?.[1];
     const anonKey = env.match(/^VITE_SUPABASE_PUBLISHABLE_KEY\s*=\s*"?([^"\s]+)/m)?.[1];
     if (supaUrl && anonKey) {
@@ -1607,17 +1652,23 @@ export { isCollidedToken } from "../src/lib/board-collisions";
   }
 
   // ---- Homepage (also the SPA fallback — see renderFile notes) ----
-  // THE AGENT OFFER, the same two sentences the hero strip renders
-  // (src/pages/Index.tsx AgentOfferStrip): read from en.json's homeAgent keys
-  // and filled from the PASS and MCP_ANON_CAPS mirrors — never a second
-  // spelling of the price, the hours, the applications or the daily
-  // allowance, so a Googlebot-UA curl of / says exactly what the page says.
+  // THE CONNECT LINE, the sentences the hero strip renders (src/pages/Index.tsx
+  // AgentOfferStrip): read from en.json's homeAgent keys and filled from the
+  // MCP_ANON_CAPS mirror, never a second spelling of the daily allowance, so a
+  // Googlebot-UA curl of / says what the page says. The strip's third line
+  // sold a pass for an agent; it is not baked (the apply pivot, 2026-10-11).
   const AGENT_OFFER = (() => {
     const A = (D.EN_LOCALE && D.EN_LOCALE.homeAgent) || {};
-    const vals = { passPrice: D.PASS.priceUsd, passHours: D.PASS.sessionHours, passApplications: D.PASS.applications, freeCallsPerDay: D.MCP_ANON_CAPS.perAddressPerDay };
+    const vals = { freeCallsPerDay: D.MCP_ANON_CAPS.perAddressPerDay };
     const fillIn = (s) => fillCopy(s, vals, "homeAgent");
-    return { lead: fillIn(A.lead), connect: fillIn(A.connectLine2), pass: fillIn(A.passLine), cta: fillIn(A.connectCta) };
+    return { lead: fillIn(A.lead), connect: fillIn(A.connectLine2), cta: fillIn(A.connectCta) };
   })();
+  // THE DAY THE HEADLINE COUNTS WERE TAKEN, printed beside them: a live read
+  // is this build's day; a snapshot-fed build is the day its snapshot was
+  // written, or no day at all when the snapshot carries none.
+  const COUNTS_BASIS = facetsSource === "snapshot"
+    ? (facetsSavedAt ? `counted ${facetsSavedAt}, by the last build that could reach the board` : "counted by the last build that could reach the board")
+    : `counted ${TODAY}, when this page was built`;
   write({
     isFallback: true,
     path: "/",
@@ -1628,10 +1679,8 @@ export { isCollidedToken } from "../src/lib/board-collisions";
       ? `Resume Booster — ${plusClaim(BOARD_TOTAL, 50000)} Live Jobs Straight From Employers`
       : "Resume Booster — Live Jobs Straight From Employers",
     // KEEP THIS UNDER 160 CHARACTERS. The previous one ran to 279 and the
-    // clamp below cut it at "…Upload your CV and an AI…" — the snippet Google
-    // shows literally trailed off before the word "agent", so the change that
-    // made the agent the homepage's headline never reached the search result.
-    description: "Live jobs straight from employers' own hiring systems, re-checked all day. An AI agent ranks them to your CV and applies where employers allow.",
+    // clamp below cut it mid-sentence with nothing saying so.
+    description: "Live jobs straight from employers' own hiring systems, re-checked all day. Search free, here or from your own AI, and apply on the employer's site.",
     jsonLd: [
       {
         "@context": "https://schema.org",
@@ -1650,40 +1699,18 @@ export { isCollidedToken } from "../src/lib/board-collisions";
       // the block that does not declare it. The SearchAction now lives on the
       // template's single block instead; see index.html.
       //
-      // The agent, though, has no entity anywhere else — without this the
-      // structured data described only the resume scanner while the title and
-      // the page both led with the job board and the agent.
-      {
-        "@context": "https://schema.org",
-        "@type": "Service",
-        name: "AI apply agent",
-        serviceType: "Automated job application assistance",
-        provider: { "@type": "Organization", name: "Resume Booster", url: SITE },
-        areaServed: "Worldwide",
-        description: "Reads your CV, ranks live verified openings against it, writes a tailored application for each, answers the employer's own screening questions, and submits on hiring systems that permit it. It never fabricates experience and never solves a CAPTCHA or evades a bot check.",
-        // L1-08: the offer said "Included with a Resume Booster account" with
-        // no price, for a $99-a-month plan. Both ways to buy it, from the
-        // products mirror the checkouts read.
-        offers: [
-          { "@type": "Offer", price: String(D.SUBSCRIPTIONS.agent.priceUsd), priceCurrency: "USD", description: `Agent plan, billed monthly until cancelled`, url: `${SITE}/agent` },
-          { "@type": "Offer", price: String(D.PASS.priceUsd), priceCurrency: "USD", description: `Agent Pass: ${D.PASS.sessionHours} hours for an agent you bring yourself`, url: `${SITE}/agents/pass` },
-        ],
-      },
+      // NO Service BLOCK EITHER. It described an agent that applied for you,
+      // with its plan and its pass as Offers; the agent and both products are
+      // retired (owner, 2026-10-11), and a Service whose own description says
+      // it submits is a false offer however its prices are dropped.
     ],
     content: `
-      <h1 class="text-3xl font-bold mb-3">Live jobs, straight from employers' own hiring systems. The agent applies for you.</h1>
-      <p class="text-muted-foreground mb-6">${BOARD_TOTAL ? `${plusClaim(BOARD_TOTAL, 50000)} verified openings` : "Verified openings"}${BOARD_COMPANIES ? ` from ${plusClaim(BOARD_COMPANIES, 1000)} company job boards with roles open now` : ""}${BOARD_TRACKED ? ` — ${plusClaim(BOARD_TRACKED, 50000)} roles tracked in all, including the ones we have watched close` : ""}, every one read from the employer's own hiring system and re-checked all day, with no dated posting older than 30 days. Where a company publishes no date we keep the posting and show no age rather than guess one. Upload your CV and an AI apply agent ranks every opening against it, writes each application honestly (it will state what you do not have rather than invent it), and submits on the systems where employers allow it. <a href="/jobs" class="text-primary">Browse the live board →</a></p>
+      <h1 class="text-3xl font-bold mb-3">Live jobs, straight from employers' own hiring systems.</h1>
+      <p class="text-muted-foreground mb-6">${BOARD_TOTAL ? `${plusClaim(BOARD_TOTAL, 50000)} open roles` : "Open roles"}${BOARD_COMPANIES ? ` from ${plusClaim(BOARD_COMPANIES, 1000)} company job boards with roles open now` : ""}${BOARD_TRACKED ? ` — ${plusClaim(BOARD_TRACKED, 50000)} roles tracked in all, including the ones we have watched close` : ""}${BOARD_TOTAL || BOARD_COMPANIES ? ` (${esc(COUNTS_BASIS)})` : ""}, every one read from the employer's own hiring system and re-checked all day, with no dated posting older than 30 days. Where a company publishes no date we keep the posting and show no age rather than guess one. <a href="/jobs" class="text-primary">Browse the live board →</a></p>
       <section class="mt-8 mb-8">
-        <h2 class="text-xl font-bold mb-3">What the AI apply agent does</h2>
-        <ul class="space-y-1.5">
-          <li class="text-sm text-muted-foreground">✓ Reads your CV and scores every live opening against it</li>
-          <li class="text-sm text-muted-foreground">✓ Writes a tailored application per role — never one blast sent everywhere</li>
-          <li class="text-sm text-muted-foreground">✓ Answers the employer's real screening questions, harvested from the actual form</li>
-          <li class="text-sm text-muted-foreground">✓ Refuses to fabricate: asked about experience you lack, it says so</li>
-          <li class="text-sm text-muted-foreground">✓ Submits end-to-end where the employer's system permits; never solves a CAPTCHA or evades a bot check</li>
-          <li class="text-sm text-muted-foreground">✓ Tracks every application and tells you when a role comes down</li>
-        </ul>
-        <p class="text-sm text-muted-foreground mt-4"><strong class="text-foreground">${esc(AGENT_OFFER.lead)}</strong> ${esc(AGENT_OFFER.connect)} ${esc(AGENT_OFFER.pass)} <a href="/agents" class="text-primary">${esc(AGENT_OFFER.cta)} →</a></p>
+        <h2 class="text-xl font-bold mb-3">Search and apply through your own AI</h2>
+        <p class="text-sm text-muted-foreground">${esc(APPLY_YOURSELF_LINE)}</p>
+        <p class="text-sm text-muted-foreground mt-4"><strong class="text-foreground">${esc(AGENT_OFFER.lead)}</strong> ${esc(AGENT_OFFER.connect)} <a href="/agents" class="text-primary">${esc(AGENT_OFFER.cta)} →</a></p>
       </section>
       <h2 class="text-xl font-bold mb-3">Your resume's real score — measured, not guessed</h2>
       <p class="text-muted-foreground mb-6">Rescan the same file against the same posting within ${D.REPORT_CACHE_DAYS} days and you get the same report (Re-analyze builds a fresh one) — benchmarked against real scans in your industry, with every quoted line verified against your actual resume. Not a ChatGPT or Claude opinion: a reading with a full audit trail, missing keywords, weak bullets rewritten, and per-vendor parsing checks for Workday, Greenhouse, Lever, and iCIMS. No sign-up; your resume is deleted within 7 days. <a href="/vs/chatgpt" class="text-primary">How this differs from asking a chatbot →</a></p>
@@ -1819,7 +1846,35 @@ export { isCollidedToken } from "../src/lib/board-collisions";
   // company_name_overrides mirror), and a board whose name is still its vendor
   // tenant code ("Uoflhealth") gets a page but never an indexable one, until
   // the job-board group's override table names it.
-  const LANDERS = bakeLanders(Array.isArray(boardFacets?.companiesFacet) ? boardFacets.companiesFacet : [], { D, openOf: openRolesOf });
+  //
+  // SEO-006, REPAIR FIRST: the name is then repaired (a career-site label
+  // off its end: "Chubb External" prints as "Chubb") and judged
+  // (scripts/prerender-names.mjs). A name that cannot be anyone's (logo text,
+  // a careers subdomain, a bare generic word) refuses a page NEW to the index;
+  // a page indexable on the live site today keeps its index this round (owner
+  // decision D7) and goes on the dry-run list instead.
+  const NAME_PARTS = { boardName: D.boardName, isCodeShapedName: D.isCodeShapedName };
+  const LANDERS = bakeLanders(Array.isArray(boardFacets?.companiesFacet) ? boardFacets.companiesFacet : [], {
+    D, openOf: openRolesOf, nameOf: (c) => bakeEmployerName(c.token, c.name, NAME_PARTS).name,
+  });
+  const NAME_GATE = new Map(LANDERS.map((c) => [c.token, bakeEmployerName(c.token, c.stored, NAME_PARTS)]));
+  // WHAT IS INDEXABLE ON THE LIVE SITE TODAY: the company pages the live
+  // sitemap lists (the committed one when the live one could not be read),
+  // and any the previous ledger recorded as live. D7 protects exactly these.
+  const sitemapCompanyPaths = (xml) => new Set([...String(xml || "").matchAll(/<loc>([^<]+)<\/loc>/g)]
+    .map((m) => m[1].trim().replace(/^https?:\/\/[^/]+/, "").replace(/\/+$/, "")).filter((p) => companyTokenOf(p)));
+  const priorCompanies = ledgerIn && ledgerIn.companies && typeof ledgerIn.companies === "object" ? ledgerIn.companies : {};
+  const INDEXABLE_TODAY = (() => {
+    const live = liveSitemap ? sitemapCompanyPaths(liveSitemap) : new Set();
+    if (live.size) return live;
+    let committed = "";
+    try { committed = readFileSync(join(root, "public/sitemap.xml"), "utf8"); } catch { /* none */ }
+    return sitemapCompanyPaths(committed);
+  })();
+  for (const [p, e] of Object.entries(priorCompanies)) if (e && e.state === "live") INDEXABLE_TODAY.add(p.replace(/\/+$/, ""));
+  const wasIndexable = (token) => INDEXABLE_TODAY.has(`/jobs/company/${token}`);
+  /** The dry run the owner signs under D7: every page indexable today that a stricter rule would drop. */
+  const nameGateDryRun = [];
   const landerByToken = new Map(LANDERS.map((c) => [c.token, c]));
   /** The indexable employer page for a board token, when this bake writes one. */
   const landerFor = (token) => {
@@ -1902,6 +1957,11 @@ export { isCollidedToken } from "../src/lib/board-collisions";
   //      cannot reach is "unchecked", never dropped. The ceiling is sized to
   //      fit: the facets head, 500 re-checks, 20 pool pages and 100 new
   //      postings is the 621 (it was 600 when the listings had no reads).
+  //   7. THE CEILING BINDS THE CARRIED PAGES TOO. Carried pages past
+  //      POSTING_PAGE_CEILING give up their page, the oldest employer date
+  //      first, to the honest "retired" page (postingCeilingSplit), and the
+  //      sitemap never names more posting pages than the ceiling
+  //      (capPostingEntries), so the live set's bound is the ceiling itself.
   const POSTING_PAGE_CAP = 400;
   const POSTING_FRESH_RESERVE = 100;
   const POSTING_PAGE_CEILING = 500;
@@ -1924,9 +1984,31 @@ export { isCollidedToken } from "../src/lib/board-collisions";
   let landerOpeningsCache = ledgerIn && ledgerIn.openings && typeof ledgerIn.openings === "object" ? ledgerIn.openings : {};
   /** Every posting path this bake accounted for and its state, published as the ledger. */
   const postingLedger = {};
+  /** Every company path this site has published, and what it is now (SEO-002), published as the ledger's companies map. */
+  const companyLedger = {};
+  /** Tombstones written (under a kilobyte each, never in the sitemap), counted for the log. */
+  let tombstonesWritten = 0;
+  const writeTombstone = (path, token = null) => {
+    const html = tombstoneHtml({ token, esc });
+    const outDir = join(dist, ...path.split("/").filter(Boolean));
+    mkdirSync(outDir, { recursive: true });
+    writeFileSync(join(outDir, "index.html"), html);
+    writeFileSync(join(dist, ...path.split("/").filter(Boolean)) + ".html", html);
+    tombstonesWritten++;
+  };
+  // THE URLS PUBLISHED BEFORE THE LEDGER EXISTED (SEO-002): every company and
+  // posting path the committed sitemaps of the last months and the live
+  // captures held (scripts/seo-seed/, generated by
+  // scripts/prerender-seed-history.mjs). Each served the homepage copy; each
+  // now gets a noindex page of its own. Read, never fetched.
+  const seedList = (name) => {
+    try { return readFileSync(join(root, "scripts", "seo-seed", name), "utf8").split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#")); } catch { return []; }
+  };
+  const SEED_COMPANY_PATHS = seedList("published-company-paths.txt");
+  const SEED_POSTING_PATHS = seedList("published-posting-paths.txt");
   {
     const envText5 = (() => { try { return readFileSync(join(root, ".env"), "utf8"); } catch { return ""; } })();
-    const grab5 = (k) => process.env[k] || (envText5.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
+    const grab5 = (k) => OFFLINE ? undefined : process.env[k] || (envText5.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
     const supaUrl5 = grab5("VITE_SUPABASE_URL");
     const supaKey5 = grab5("VITE_SUPABASE_PUBLISHABLE_KEY");
     // The HTTP status rides back with the body: a refusal, an error and "no
@@ -1953,6 +2035,55 @@ export { isCollidedToken } from "../src/lib/board-collisions";
     const boardRead = async (body) => {
       const r = await boardCall(body);
       return r.status >= 200 && r.status < 300 ? r.body : null;
+    };
+    // RULE 2 — THE CARRY SET IS WHAT THE LIVE SITE PUBLISHED, RESOLVED BY ID.
+    //
+    // It was the COMMITTED sitemap, which a hosted publish never updates, cut
+    // at 300 of 400 (measured 2026-10-08: 364 of 371 published posting URLs
+    // served the homepage copy). Before that it was an intersection with the
+    // newest window, which kept 2 of 397. Every carried id is asked about
+    // directly, and what the board answers decides the page. The URLs
+    // published before the ledger existed join it once, as "retired" pages
+    // never re-read (seedPostingLedger, SEO-002). Decided BEFORE any board
+    // read: the kept pages and the tombstones need none, so a bake that cannot
+    // reach the board still writes them and still carries the ledger forward.
+    let committedSitemap = "";
+    try { committedSitemap = readFileSync(join(root, "public/sitemap.xml"), "utf8"); } catch { /* first build */ }
+    const carrySitemapsNow = carrySitemaps({ ledgerSource, liveSitemap, committedSitemap });
+    const seededPostings = seedPostingLedger({ ledger: ledgerIn, seedPaths: SEED_POSTING_PATHS, sitemaps: carrySitemapsNow, idFromPath: D.postingIdFromPath, today: TODAY });
+    const carryBase = postingCarryBase({
+      ledger: seededPostings.ledger,
+      sitemaps: carrySitemapsNow,
+      idFromPath: D.postingIdFromPath,
+      today: TODAY,
+    });
+    const priorPostingOf = (path) => (seededPostings.ledger.postings && seededPostings.ledger.postings[path]) || {};
+    const writeStub = (s) => {
+      if (!s.path) return;
+      const e = postingStubEntry({
+        stub: s, prior: priorPostingOf(s.path), today: TODAY, first: carryBase.recheck.get(s.path),
+        employerName: D.employerName, tokenOf: (id) => D.postingPathParts(id)?.token ?? null,
+      });
+      write(postingStubPage({
+        path: s.path, id: s.id, state: s.state, since: s.state === "gone" ? e.since : null,
+        title: e.title, company: e.company, windowDays: D.BOARD_FRESH_WINDOW_DAYS, duplicateOf: s.duplicateOf ?? null,
+        basis: s.seed || (e.seed && s.state === "retired") ? "seed" : (s.basis ?? null), ceiling: POSTING_PAGE_CEILING, esc,
+        companyLink: e.token ? companyLinkHtml(e.token, e.company || "this employer") : "",
+      }));
+      postingLedger[s.path] = e;
+    };
+    /** The pages the ledger keeps without a board read: gone and seeded ones in their window, then tombstones. */
+    let keptPostingPagesWritten = false;
+    const writeKeptPostingPages = () => {
+      if (keptPostingPagesWritten) return;
+      keptPostingPagesWritten = true;
+      for (const [path, e] of carryBase.stubs) {
+        writeStub({ id: D.postingIdFromPath(path), path, state: e.state === "gone" ? "gone" : "retired", seed: e.seed === true, title: e.title ?? null, company: e.company ?? null });
+      }
+      for (const [path, e] of carryBase.tombstones) {
+        writeTombstone(path, null);
+        postingLedger[path] = { ...e, state: "tombstone", since: e.state === "tombstone" && typeof e.since === "string" ? e.since : TODAY };
+      }
     };
     try {
       if (!supaUrl5 || !supaKey5) throw new Error("no board credentials — posting pages skipped");
@@ -1992,21 +2123,7 @@ export { isCollidedToken } from "../src/lib/board-collisions";
         return out;
       };
 
-      // RULE 2 — THE CARRY SET IS WHAT THE LIVE SITE PUBLISHED, RESOLVED BY ID.
-      //
-      // It was the COMMITTED sitemap, which a hosted publish never updates, cut
-      // at 300 of 400 (measured 2026-10-08: 364 of 371 published posting URLs
-      // served the homepage copy). Before that it was an intersection with the
-      // newest window, which kept 2 of 397. Every carried id is asked about
-      // directly, and what the board answers decides the page.
-      let committedSitemap = "";
-      try { committedSitemap = readFileSync(join(root, "public/sitemap.xml"), "utf8"); } catch { /* first build */ }
-      const carryBase = postingCarryBase({
-        ledger: ledgerIn,
-        sitemaps: carrySitemaps({ ledgerSource, liveSitemap, committedSitemap }),
-        idFromPath: D.postingIdFromPath,
-        today: TODAY,
-      });
+      // Rule 2's carry set (carryBase, above), re-checked by id.
       const carriedPaths = [...carryBase.recheck.keys()];
       const carriedChecks = await readDetails(carriedPaths.map((p) => D.postingIdFromPath(p)));
       const firstSeen = (path) => carryBase.recheck.get(path) ?? TODAY;
@@ -2026,10 +2143,19 @@ export { isCollidedToken } from "../src/lib/board-collisions";
             continue;
           }
           takenIdentity.set(k, path);
-          detailed.push({ job: c.job, description: c.description, first: firstSeen(path) });
+          detailed.push({ job: c.job, description: c.description, first: firstSeen(path), carried: true });
         } else {
           stubs.push({ ...c, path, state: c.state === "found" ? "retired" : c.state });
         }
+      }
+      // Rule 7 — the ceiling. Carried live pages past it give up their page,
+      // the oldest employer date first, to the "retired" page that says why.
+      {
+        const split = postingCeilingSplit(detailed, { ceiling: POSTING_PAGE_CEILING, dateOf: (d) => d.job?.postedAt });
+        const keep = [...split.keep];
+        for (const d of split.retire) stubs.push({ id: d.job.id, path: D.postingPagePath(d.job.id), state: "retired", basis: "ceiling", job: d.job, title: d.job.title, company: d.job.company });
+        detailed.length = 0;
+        detailed.push(...keep);
       }
       const carriedLive = detailed.length;
 
@@ -2055,7 +2181,7 @@ export { isCollidedToken } from "../src/lib/board-collisions";
       //     offset. The id-dedupe below is what actually prevents a duplicate
       //     from an offset page shifting under us, and it is asserted rather
       //     than described.
-      const freshBudget = Math.max(0, Math.min(POSTING_PAGE_CEILING - carriedLive, Math.max(POSTING_PAGE_CAP - carriedLive, POSTING_FRESH_RESERVE)));
+      const freshBudget = postingFreshBudget({ carriedLive, cap: POSTING_PAGE_CAP, reserve: POSTING_FRESH_RESERVE, ceiling: POSTING_PAGE_CEILING });
       const pool = [];
       const seenIds = new Set();
       let offset = 0;
@@ -2075,10 +2201,16 @@ export { isCollidedToken } from "../src/lib/board-collisions";
       }
       if (poolDuplicates) console.warn(`[prerender-seo] posting pool: ${poolDuplicates} duplicate row(s) across offset pages — the board shifted under the walk; deduped by id`);
 
+      // SEO-006: a NEW posting page is refused when its employer's name cannot
+      // be anyone's (logo text, a careers subdomain, a bare generic word); a
+      // carried one keeps its page this round (owner decision D7).
+      const postingName = (job) => bakeEmployerName(job.token ?? D.postingPathParts(job.id)?.token ?? null, job.company, { boardName: D.employerName, isCodeShapedName: D.isCodeShapedName });
+      let freshNameRefused = 0;
       const fresh = [];
       for (const j of pool) {
         if (fresh.length >= freshBudget) break;
         if (!eligibleRow(j)) continue;
+        if (postingName(j).reason) { freshNameRefused++; continue; }
         if (carryBase.recheck.has(D.postingPagePath(j.id)) || carryBase.stubs.has(D.postingPagePath(j.id))) continue;
         const k = D.postingIdentity(j);
         if (takenIdentity.has(k)) continue;
@@ -2088,13 +2220,23 @@ export { isCollidedToken } from "../src/lib/board-collisions";
       let freshWritten = 0;
       for (const c of await readDetails(fresh.map((j) => j.id))) {
         if (c.state !== "found" || !eligibleRow(c.job) || !describedEnough(c.description)) continue;
-        detailed.push({ job: c.job, description: c.description, first: TODAY });
+        detailed.push({ job: c.job, description: c.description, first: TODAY, carried: false });
         freshWritten++;
       }
       const eligible = pool.filter(eligibleRow);
 
+      // SEO-006: the repaired employer name is the one every part of a
+      // posting page prints, its markup's hiringOrganization included; a
+      // carried page whose name the gate would refuse keeps its page this
+      // round (D7) and goes on the dry-run list.
+      for (const d of detailed) {
+        const named = postingName(d.job);
+        if (named.reason) nameGateDryRun.push({ path: D.postingPagePath(d.job.id), kind: "posting", token: d.job.token ?? null, name: named.name, shown: named.shown, reason: named.reason, would: "lose its JobPosting markup and be marked noindex" });
+        if (named.repaired) d.job = { ...d.job, company: named.name };
+      }
+
       let withPay = 0;
-      for (const { job, description, first } of detailed) {
+      for (const { job, description, first, carried } of detailed) {
         const path = D.postingPagePath(job.id);
         const ld = D.postingJsonLd(job, description, { site: SITE });
         // A page whose markup we cannot stand behind is not written as a live
@@ -2141,30 +2283,19 @@ export { isCollidedToken } from "../src/lib/board-collisions";
           if (!postingsByToken.has(job.token)) postingsByToken.set(job.token, []);
           postingsByToken.get(job.token).push({ id: job.id, path, title: String(job.title).trim(), place });
         }
-        postingLedger[path] = { state: "live", since: TODAY, first, title: job.title, company: nm, token: job.token ?? null };
+        // `carried` says which side of rule 3 the page came from: re-checked
+        // from what the live site published, or new under postingFreshBudget.
+        // The built-output guard judges the ceiling from it (the bound on the
+        // live set is max(ceiling, carried), never POSTING_PAGE_CAP).
+        postingLedger[path] = { state: "live", since: TODAY, first, carried, title: job.title, company: nm, token: job.token ?? null };
       }
 
       // The URLs this site published that get no live page: each keeps a
       // noindex page saying why (postingStubPage), and the ledger remembers
-      // it, so the next bake neither re-checks a gone posting nor forgets it.
-      const priorOf = (path) => (ledgerIn && ledgerIn.postings && ledgerIn.postings[path]) || {};
-      const writeStub = (s) => {
-        if (!s.path) return;
-        const e = postingStubEntry({
-          stub: s, prior: priorOf(s.path), today: TODAY, first: carryBase.recheck.get(s.path),
-          employerName: D.employerName, tokenOf: (id) => D.postingPathParts(id)?.token ?? null,
-        });
-        write(postingStubPage({
-          path: s.path, id: s.id, state: s.state, since: s.state === "gone" ? e.since : null,
-          title: e.title, company: e.company, windowDays: D.BOARD_FRESH_WINDOW_DAYS, duplicateOf: s.duplicateOf ?? null, esc,
-          companyLink: e.token ? companyLinkHtml(e.token, e.company || "this employer") : "",
-        }));
-        postingLedger[s.path] = e;
-      };
+      // it, so the next bake neither re-checks a gone posting nor forgets it
+      // (writeStub and writeKeptPostingPages, above the board reads).
       for (const s of stubs) writeStub(s);
-      for (const [path, e] of carryBase.stubs) {
-        writeStub({ id: D.postingIdFromPath(path), path, state: "gone", title: e.title ?? null, company: e.company ?? null });
-      }
+      writeKeptPostingPages();
       const stubCount = (st) => Object.values(postingLedger).filter((e) => e.state === st).length;
 
       // SITEMAP-ONLY ORPHANS ARE A KNOWN DEFECT HERE — 387 company pages sat in
@@ -2185,7 +2316,7 @@ export { isCollidedToken } from "../src/lib/board-collisions";
             </ul>
           </section>`;
       }
-      console.log(`[prerender-seo] posting pages: carried ${carriedPaths.length} / live ${postingPaths.length} (${carriedLive} carried, ${freshWritten} new from a pool of ${pool.length}, ${eligible.length} eligible) / tombstoned ${stubCount("gone")} / retired ${stubCount("retired")} / unchecked ${stubCount("unchecked")}; ${withPay} carry employer-stated pay; carry base: live sitemap ${liveSitemap ? "read" : "UNREAD"}, ledger ${ledgerSource}`);
+      console.log(`[prerender-seo] posting pages: carried ${carriedPaths.length} / live ${postingPaths.length} of a ceiling of ${POSTING_PAGE_CEILING} (${carriedLive} carried, ${freshWritten} new from a pool of ${pool.length}, ${eligible.length} eligible, ${freshNameRefused} new refused for an employer name that cannot be printed) / gone ${stubCount("gone")} / retired ${stubCount("retired")} / seeded ${stubCount("seeded")} (published before the ledger, never re-read; ${seededPostings.added} added this bake) / unchecked ${stubCount("unchecked")} / tombstones ${stubCount("tombstone")}; ${withPay} carry employer-stated pay; carry base: live sitemap ${liveSitemap ? "read" : "UNREAD"}, ledger ${ledgerSource}`);
       // A carried page the board did not answer for is the symptom to look at
       // first: it is an "unchecked" noindex page until a later bake reaches it.
       if (stubCount("unchecked")) {
@@ -2196,7 +2327,18 @@ export { isCollidedToken } from "../src/lib/board-collisions";
       // posting URL in the sitemap. Losing pages for a build is recoverable;
       // advertising URLs that serve the homepage is the defect this exists to
       // end, so there is no fallback rung here on purpose.
+      //
+      // BUT NOTHING THE LEDGER KNOWS IS FORGOTTEN. The pages it keeps without a
+      // board read (gone and seeded ones in their window, and the tombstones)
+      // are written all the same, and every posting it was carrying is carried
+      // forward unchanged, so the next bake that reaches the board re-checks
+      // them instead of finding an empty ledger.
       console.warn(`[prerender-seo] posting pages SKIPPED (${e?.message || e}) — no posting URL enters the sitemap on this bake`);
+      try {
+        writeKeptPostingPages();
+        for (const path of carryBase.recheck.keys()) if (!postingLedger[path]) postingLedger[path] = { ...priorPostingOf(path) };
+        console.log(`[prerender-seo] posting ledger carried forward: ${carryBase.recheck.size} to re-check next bake, ${carryBase.stubs.size} kept pages, ${carryBase.tombstones.size} tombstones (${seededPostings.added} seeded this bake)`);
+      } catch (e2) { console.warn(`[prerender-seo] posting ledger carry-forward failed: ${e2?.message || e2}`); }
     }
   }
 
@@ -2281,7 +2423,7 @@ export { isCollidedToken } from "../src/lib/board-collisions";
           "@context": "https://schema.org",
           "@type": "CollectionPage",
           name: `Live ${label} jobs`,
-          description: `Live ${label} openings from companies' official job boards, re-verified throughout the day.`,
+          description: `Live ${label} openings from companies' official job boards, re-checked throughout the day.`,
           url: `${SITE}/jobs/field/${slug}`,
           isPartOf: { "@type": "WebSite", name: "Resume Booster", url: SITE },
         }, {
@@ -2316,7 +2458,7 @@ export { isCollidedToken } from "../src/lib/board-collisions";
     // code goes out as noindex, off the sitemap (landerRobots).
     {
       const envText6 = (() => { try { return readFileSync(join(root, ".env"), "utf8"); } catch { return ""; } })();
-      const grab6 = (k) => process.env[k] || (envText6.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
+      const grab6 = (k) => OFFLINE ? undefined : process.env[k] || (envText6.match(new RegExp(`^${k}=(.*)$`, "m")) || [])[1]?.trim().replace(/^["']|["']$/g, "");
       const supaUrl6 = grab6("VITE_SUPABASE_URL");
       const supaKey6 = grab6("VITE_SUPABASE_PUBLISHABLE_KEY");
       const intelOf = new Map();
@@ -2365,7 +2507,17 @@ export { isCollidedToken } from "../src/lib/board-collisions";
           } catch { openingsUnread++; }
         }));
       }
-      if (listedTokens.length) landerOpeningsCache = nextOpeningsCache({ prior: landerOpeningsCache, reads: openingsReads, tokens: listedTokens, today: TODAY });
+      // SEO-002: every company path this site has published (the previous
+      // ledger, the live and committed sitemaps, the seed). One this bake did
+      // not choose keeps its own noindex page below; its listing, if the
+      // cache holds a young one, rides along in the cache with no new read.
+      let committedSitemapC = "";
+      try { committedSitemapC = readFileSync(join(root, "public/sitemap.xml"), "utf8"); } catch { /* first build */ }
+      const onceCompany = onceCompanyPaths({ ledger: ledgerIn, sitemaps: [liveSitemap ?? "", committedSitemapC], seedPaths: SEED_COMPANY_PATHS });
+      const seedCompanySet = new Set(SEED_COMPANY_PATHS.map((p) => String(p).trim().replace(/\/+$/, "")));
+      const carriedCompanyPaths = [...onceCompany].filter((p) => !landerByToken.has(companyTokenOf(p)));
+      const priorOpenings = landerOpeningsCache;
+      if (listedTokens.length) landerOpeningsCache = nextOpeningsCache({ prior: landerOpeningsCache, reads: openingsReads, tokens: [...listedTokens, ...carriedCompanyPaths.map(companyTokenOf)], today: TODAY });
       const regionNames = (() => { try { return new Intl.DisplayNames(["en"], { type: "region" }); } catch { return null; } })();
       const countryName = (code) => { try { return regionNames?.of(String(code).toUpperCase()) ?? null; } catch { return null; } };
       const fieldLabelOf = (slug) => CATEGORY_LANDERS.find(([s]) => s === slug)?.[1] ?? null;
@@ -2379,10 +2531,14 @@ export { isCollidedToken } from "../src/lib/board-collisions";
       let thin = 0;
       let codeNamed = 0;
       let duplicated = 0;
-      const pageOf = (c, info, robots) => {
+      let nameRefused = 0;
+      let nameRepaired = 0;
+      // The day the counts on these pages were taken, printed beside them.
+      const COUNTED_ON = facetsSource === "snapshot" ? facetsSavedAt : (boardFacets ? TODAY : null);
+      const pageOf = (c, info, robots, canonicalTo = null) => {
         const openN = openRolesOf(c);
         return companyLanderPage({
-          token: c.token, name: c.name, primaryToken: info.primary.token, robots, openN, facts: info.facts,
+          token: c.token, name: c.name, primaryToken: info.primary.token, robots, canonicalTo, openN, countedOn: COUNTED_ON, facts: info.facts,
           openings: info.openings, openingsAt: info.at, sources: D.SERVING_SOURCE_LIST, boardCompanies,
           site: SITE, esc, possessive, fmt: (n) => fmt(n), href: landerPath,
         });
@@ -2405,7 +2561,21 @@ export { isCollidedToken } from "../src/lib/board-collisions";
       // out says nothing of its own (the report's measure: 485 of 487 did).
       const candidates = LANDERS.filter((c) => c.primary === c.token && !c.unreadable);
       const skeletonOf = new Map(candidates.map((c) => [c.token, landerSkeleton(pageOf(c, landerInfo.get(c.token), null).content, [c.name, possessive(c.name), esc(c.name), esc(possessive(c.name))])]));
-      const dupes = duplicateSkeletons(candidates.map((c) => ({ key: c.token, skeleton: skeletonOf.get(c.token) })));
+      // SEO-036: one member of each duplicate group keeps its index (the one
+      // indexable today, every one of them if several are, else the one with
+      // the most open roles); the rest canonicalise to it under the same name,
+      // or go noindex with no canonical under another (prerender-pages.mjs
+      // resolveDuplicateGroups).
+      const dupeGroups = duplicateSkeletonGroups(candidates.map((c) => ({ key: c.token, skeleton: skeletonOf.get(c.token) })));
+      const dupes = new Set(dupeGroups.flat());
+      const nameKeyOfToken = (t) => String(landerByToken.get(t)?.name ?? "").toLowerCase().replace(/\s+/g, " ").trim();
+      const dupeRole = resolveDuplicateGroups({
+        groups: dupeGroups,
+        wasIndexable,
+        openOf: (t) => openRolesOf(landerByToken.get(t)) ?? 0,
+        nameKeyOf: nameKeyOfToken,
+        failsGate: (t) => !!NAME_GATE.get(t)?.reason,
+      });
       // A CIRCUIT BREAKER ON "NOTHING OF ITS OWN". Every employer here has 8+
       // open roles, so a listing with fewer than three is rare; when more
       // than a quarter of the answered primaries say so (or match another
@@ -2419,22 +2589,119 @@ export { isCollidedToken } from "../src/lib/board-collisions";
       });
       if (thinBreaker) console.warn(`[prerender-seo] company pages: ${thinPrimaries.length} of ${answeredPrimaries.length} answered listings had too few openings — treated as a broken read, none noindexed for it this bake`);
       if (dupeBreaker) console.warn(`[prerender-seo] company pages: ${dupes.size} of ${candidates.length} match another page's text — treated as a cold listing cache, none noindexed for it this bake`);
+      // The stricter rule (one keeper per group) would demote a second member
+      // indexable today; under D7 it keeps its index and is listed instead.
+      for (const g of dupeBreaker ? [] : dupeGroups) {
+        const today = g.filter((t) => wasIndexable(t));
+        if (today.length < 2) continue;
+        const best = today.reduce((a, b) => ((openRolesOf(landerByToken.get(b)) ?? 0) > (openRolesOf(landerByToken.get(a)) ?? 0) ? b : a), today[0]);
+        for (const t of today.filter((x) => x !== best)) {
+          nameGateDryRun.push({ path: `/jobs/company/${t}`, kind: "company", token: t, name: landerByToken.get(t)?.name ?? null, shown: null, reason: `same text as /jobs/company/${best} once names and numbers are out`, would: nameKeyOfToken(t) === nameKeyOfToken(best) ? `canonicalise to /jobs/company/${best}` : "be marked noindex (a different employer name: no canonical)" });
+        }
+      }
+      let dupesKept = 0;
+      for (const g of dupeGroups) if (!dupeBreaker && g.some((t) => dupeRole.get(t)?.role === "keep")) dupesKept++;
       for (const c of LANDERS) {
         const isPrimary = c.primary === c.token;
         if (!isPrimary && c.sameEmployer !== false) consolidated++;
         if (!isPrimary && c.sameEmployer === false) nameShared++;
         const info = landerInfo.get(c.token);
         const answered = info.answered && !thinBreaker;
-        const duplicate = !dupeBreaker && dupes.has(c.token);
-        const robots = landerRobots({ isPrimary, unreadable: c.unreadable, answered, ownContent: info.ownContent, duplicate });
+        const role = !dupeBreaker && dupes.has(c.token) ? dupeRole.get(c.token) : null;
+        const duplicate = role?.role === "noindex";
+        const canonicalTo = isPrimary && role?.role === "canonical" ? role.to : null;
+        let robots = landerRobots({ isPrimary, unreadable: c.unreadable, answered, ownContent: info.ownContent, duplicate });
+        // The name gate: a NEW page with a name that cannot be anyone's is
+        // refused its index; a page indexable today keeps it (D7) and is listed.
+        const gate = NAME_GATE.get(c.token);
+        if (gate?.repaired) nameRepaired++;
+        if (isPrimary && !c.unreadable && gate?.reason) {
+          if (wasIndexable(c.token)) {
+            nameGateDryRun.push({ path: `/jobs/company/${c.token}`, kind: "company", token: c.token, name: gate.name, shown: gate.shown, reason: gate.reason, would: "be marked noindex" });
+          } else if (!robots && !canonicalTo) {
+            robots = "noindex, follow";
+            nameRefused++;
+          }
+        }
         if (isPrimary && c.unreadable) codeNamed++;
         else if (isPrimary && answered && !info.ownContent) thin++;
         else if (isPrimary && duplicate) duplicated++;
-        if (isPrimary && !robots) indexable.add(c.token);
-        write(pageOf(c, info, robots));
+        if (isPrimary && !robots && !canonicalTo) indexable.add(c.token);
+        const page = pageOf(c, info, robots, canonicalTo);
+        write(page);
+        const path = `/jobs/company/${c.token}`;
+        companyLedger[path] = companyLedgerEntry({
+          prior: priorCompanies[path], today: TODAY, token: c.token, name: c.name, title: page.title,
+          state: !isPrimary || canonicalTo ? "canonical" : robots ? "noindex" : "live",
+        });
       }
       const distinct = new Set([...indexable].map((t) => skeletonOf.get(t))).size;
-      console.log(`[prerender-seo] company pages: ${LANDERS.length} (${consolidated} canonicalized to a larger board of the same employer; ${nameShared} canonicalized to a larger, different employer under the same name; ${indexable.size} indexable, ${distinct} distinct once names and numbers are out; noindex: ${thin} with too few openings of their own, ${duplicated} matching another page, ${codeNamed} still named by a tenant code${codeNamed ? `: ${LANDERS.filter((c) => c.primary === c.token && c.unreadable).slice(0, 40).map((c) => c.token).join(", ")}` : ""}); intel read for ${intelOf.size} of ${primaries0.length}; listings read ${openingsReads.size} of ${toRead.length} (${openingsUnread} unread), ${Object.keys(landerOpeningsCache).length} of ${listedTokens.length} carried`);
+      console.log(`[prerender-seo] company pages: ${LANDERS.length} (${consolidated} canonicalized to a larger board of the same employer; ${nameShared} canonicalized to a larger, different employer under the same name; ${indexable.size} indexable, ${distinct} distinct once names and numbers are out; noindex: ${thin} with too few openings of their own, ${duplicated} matching another page, ${codeNamed} still named by a tenant code${codeNamed ? `: ${LANDERS.filter((c) => c.primary === c.token && c.unreadable).slice(0, 40).map((c) => c.token).join(", ")}` : ""}, ${nameRefused} new pages refused for a name that cannot be printed; ${nameRepaired} names repaired); duplicates: kept ${dupesKept} of ${dupeGroups.length} groups${dupeBreaker ? " (breaker on: none demoted)" : ""}; intel read for ${intelOf.size} of ${primaries0.length}; listings read ${openingsReads.size} of ${toRead.length} (${openingsUnread} unread), ${Object.keys(landerOpeningsCache).length} of ${listedTokens.length} carried`);
+
+      // ---- Once-published company pages this bake did not choose (SEO-002) ----
+      //
+      // Each keeps a page of its own, marked noindex, follow, and none enters
+      // the sitemap: its old page from a young cached listing while the board
+      // still carries the token (no new board read), else a stub that says it
+      // no longer has a page of its own, kept COMPANY_STUB_KEEP_DAYS, then a
+      // tombstone of under a kilobyte. A path that re-enters the chosen set
+      // went straight back to live in the loop above, with no stub between.
+      {
+        const facetByToken = new Map((Array.isArray(boardFacets?.companiesFacet) ? boardFacets.companiesFacet : []).filter((c) => c && typeof c.token === "string").map((c) => [c.token, c]));
+        const tally = { noindex: 0, stub: 0, tombstone: 0 };
+        // A BAKE THAT CHOSE (ALMOST) NOTHING IS A BROKEN READ, NOT 500
+        // EMPLOYERS LEAVING. With fewer than 100 employer pages chosen, a page
+        // indexable today is left unwritten (it keeps last bake's sitemap
+        // entry, which the ratchet below holds) rather than stubbed noindex
+        // on the strength of a failed facet read.
+        const choseEnough = LANDERS.length >= 100;
+        let heldForBrokenRead = 0;
+        for (const path of carriedCompanyPaths) {
+          const token = companyTokenOf(path);
+          if (!token) continue;
+          if (!choseEnough && INDEXABLE_TODAY.has(path)) { heldForBrokenRead++; if (priorCompanies[path]) companyLedger[path] = priorCompanies[path]; continue; }
+          const prior = priorCompanies[path];
+          const f = facetByToken.get(token);
+          const openN = f ? openRolesOf(f) : null;
+          const onBoard = !!f && ((typeof openN === "number" ? openN : (f.count ?? 0)) > 0);
+          const listed = landerOpenings({ postings: postingsByToken.get(token) ?? [], cached: priorOpenings[token], today: TODAY });
+          const state = companyCarryState({ prior, today: TODAY, onBoard, cachedYoung: listed.answered });
+          const name = f ? bakeEmployerName(token, f.name, NAME_PARTS).name : (prior && typeof prior.name === "string" ? prior.name : null);
+          const seed = !prior && seedCompanySet.has(path);
+          tally[state]++;
+          if (state === "tombstone") {
+            writeTombstone(path, token);
+            companyLedger[path] = companyLedgerEntry({ prior, state, today: TODAY, token, name, seed });
+            continue;
+          }
+          const page = state === "noindex" && name
+            ? companyLanderPage({
+              token, name, primaryToken: token, robots: "noindex, follow", openN: typeof openN === "number" ? openN : null, countedOn: COUNTED_ON, facts: null,
+              openings: listed.openings, openingsAt: listed.at, sources: D.SERVING_SOURCE_LIST, boardCompanies,
+              site: SITE, esc, possessive, fmt: (n) => fmt(n), href: landerPath,
+            })
+            : companyStubPage({ path, token, name, esc });
+          write(page);
+          companyLedger[path] = companyLedgerEntry({ prior, state: state === "noindex" && name ? "noindex" : "stub", today: TODAY, token, name, title: page.title, seed });
+        }
+        console.log(`[prerender-seo] company pages: carried ${carriedCompanyPaths.length} once-published paths this bake did not choose / noindex ${tally.noindex} / stubbed ${tally.stub} / tombstoned ${tally.tombstone}${heldForBrokenRead ? ` / ${heldForBrokenRead} indexable today held unwritten (only ${LANDERS.length} chosen: a broken facet read)` : ""}; ${seedCompanySet.size} seed paths, ${INDEXABLE_TODAY.size} indexable on the live site today`);
+      }
+      // THE NAME GATE'S DRY RUN (owner decision D7): every page indexable on
+      // the live site today that a stricter rule would drop, with the reason.
+      // Logged, and written as JSON where PRERENDER_NAME_GATE_REPORT points
+      // (scripts/prerender-name-gate-report.mjs turns it into the owner's
+      // list, docs/company-profiles/name-gate-dry-run.md). Nothing on it is
+      // dropped in this round.
+      console.log(`[prerender-seo] name gate dry run: ${nameGateDryRun.length} page(s) indexable today that a stricter rule would drop, kept this round (D7)${nameGateDryRun.length ? `: ${nameGateDryRun.slice(0, 12).map((x) => `${x.path} (${x.reason})`).join(", ")}` : ""}`);
+      if (process.env.PRERENDER_NAME_GATE_REPORT) {
+        try {
+          writeFileSync(resolve(process.env.PRERENDER_NAME_GATE_REPORT), JSON.stringify({
+            builtAt: TODAY, facetsSource, indexableToday: INDEXABLE_TODAY.size, entries: nameGateDryRun,
+            repaired: LANDERS.filter((c) => NAME_GATE.get(c.token)?.repaired).map((c) => ({ path: `/jobs/company/${c.token}`, shown: NAME_GATE.get(c.token).shown, printed: c.name, indexableToday: wasIndexable(c.token) })),
+            refusedNew: LANDERS.filter((c) => c.primary === c.token && !c.unreadable && NAME_GATE.get(c.token)?.reason && !wasIndexable(c.token)).map((c) => ({ path: `/jobs/company/${c.token}`, name: c.name, reason: NAME_GATE.get(c.token).reason })),
+          }, null, 1));
+        } catch (e) { console.warn(`[prerender-seo] name gate report not written: ${e?.message || e}`); }
+      }
       // The SEO report's bar for this family: at least 400 pages that say
       // something of their own. Below it the listings have not filled in yet
       // (the first bakes) or the reads are being refused.
@@ -2469,11 +2736,11 @@ export { isCollidedToken } from "../src/lib/board-collisions";
         COMPANY_PAGE_COUNT = primaries.length;
         write({
           path: "/companies",
-          title: `${fmt(primaries.length)} Companies Hiring Now — Verified Job Boards`,
+          title: `${fmt(primaries.length)} Companies Hiring Now, From Their Own Hiring Systems`,
           description: `The ${fmt(primaries.length)} employers on the board with a page of their own, each pulled straight from its own official career system and re-checked continuously.`,
           content: `
             <h1 class="text-2xl font-bold mb-3">Companies hiring on the board</h1>
-            <p class="text-muted-foreground mb-6">The ${fmt(primaries.length)} employers with a page of their own, listed A–Z; the board itself carries far more (${boardCompanies ? `${fmt(boardCompanies)} company job boards with roles open now` : "every one is searchable"} on <a href="/jobs" class="text-primary underline">the live board</a>). Every posting comes from the company's own hiring system. Where a count is shown it means postings the employer has not taken down, dated inside the last 30 days: the same rule the linked page serves, measured when this index was last built.</p>
+            <p class="text-muted-foreground mb-6">The ${fmt(primaries.length)} employers with a page of their own, listed A–Z; the board itself carries far more (${boardCompanies ? `${fmt(boardCompanies)} company job boards with roles open now` : "every one is searchable"} on <a href="/jobs" class="text-primary underline">the live board</a>). Every posting comes from the company's own hiring system. Where a count is shown it means postings the employer has not taken down whose date falls inside the last 30 days (the employer's own date, or for a posting with no date, the day we last saw it): the same rule the linked page serves, measured when this index was last built${COUNTED_ON ? `, ${esc(COUNTED_ON)}` : ""}.</p>
             ${sections}`,
         });
       }
@@ -2520,7 +2787,7 @@ export { isCollidedToken } from "../src/lib/board-collisions";
           "@context": "https://schema.org",
           "@type": "CollectionPage",
           name: "Live job board",
-          description: `Live openings from companies' official job boards (${D.SERVING_SOURCE_LIST}), re-verified throughout the day — no aggregators, no dated posting older than 30 days.`,
+          description: `Live openings from companies' official job boards (${D.SERVING_SOURCE_LIST}), re-checked throughout the day — no aggregators, no dated posting older than 30 days.`,
           url: `${SITE}/jobs`,
           isPartOf: { "@type": "WebSite", name: "Resume Booster", url: SITE },
         }],
@@ -2543,7 +2810,7 @@ export { isCollidedToken } from "../src/lib/board-collisions";
         description: DATA_FIGURES.ghost.desc ?? "A live measure of job-posting reality: how many roles are open, how long postings stay up, how often they come down, and a daily re-check against employers' own systems.",
         content: `
           <h1>The Ghost Job Index</h1>
-          <p>Ghost jobs — postings that are stale, already filled, or never real — waste job seekers' time everywhere. This page is our live, honest measure of the opposite: postings that are verified, fresh, and from companies actually hiring.</p>
+          <p>Ghost jobs — postings that are stale, already filled, or never real — waste job seekers' time everywhere. This page is our live, honest measure of the opposite: how fresh the postings on this board are, read from companies' own hiring systems, and how often they come down.</p>
           <p>Every figure is computed from the full lifecycle of postings on companies' official job boards (${D.SERVING_SOURCE_LIST}), never an aggregator. Any posting whose company-stated date passes 30 days is dropped automatically, we log every takedown we see (a takedown is never called a hire: a hire, a withdrawal and a cancelled requisition look the same from a feed), and we sample listings daily and re-check them against the companies' own systems. Where a company states no date at all we can't judge the posting old, so we keep it and show no age rather than guess one.</p>
           ${DATA_FIGURES.ghost.html}
           <p><a href="/jobs">Browse the live board</a> — or check any posting against your resume with the <a href="/">free resume scan</a> first.</p>
@@ -2569,7 +2836,7 @@ export { isCollidedToken } from "../src/lib/board-collisions";
           <p>"Entry-level, 5 years' experience required" is a running joke for a reason. This page counts the real thing: openings whose own titles and requirements say early-career — internships, junior, graduate, and 0–2 year roles — and ranks each job board by the SHARE of its open roles that are early-career, with the raw count as the tie-break. Not by who posts the most, which only ever ranks the largest boards. One row per board, so an employer running several counts once per board.</p>
           <p>Every count comes live from companies' official job boards (${D.SERVING_SOURCE_LIST}) — never an aggregator, and no dated posting older than 30 days (undated ones show no age rather than a guessed one). A role counts as entry-level when its own title or stated requirements say so; we never guess.</p>
           ${DATA_FIGURES.entry.html}
-          <p><a href="/jobs?experience=entry">Browse all verified entry-level openings</a>, check the <a href="/hiring-trends">weekly hiring trends</a>, or scan your resume against any posting with the <a href="/">free resume scan</a>.</p>
+          <p><a href="/jobs?experience=entry">Browse all entry-level openings</a>, check the <a href="/hiring-trends">weekly hiring trends</a>, or scan your resume against any posting with the <a href="/">free resume scan</a>.</p>
         `,
         jsonLd: [datasetLd({
           name: "The Entry-Level Index",
@@ -2786,44 +3053,28 @@ export { isCollidedToken } from "../src/lib/board-collisions";
     });
 
     // ---- /agent ----
-    // FOUND 2026-08-18 by the post-recovery SEO sweep: /agent — the page the
-    // agent plan's checkout, the board pitch, and the welcome redirect all
-    // land on — served the HOMEPAGE SHELL, byte-identical (16,183B), homepage
-    // title, homepage description, no canonical. To a crawler the money page
-    // was a duplicate of the front page; to an answer engine the price, the
-    // trial, the four-vendor scope and the CAPTCHA boundary were INVISIBLE,
-    // because they existed only in JS. The claims below are the SAME countable
-    // claims the board pitch makes (Jobs.tsx, agent-is-visible-on-the-board
-    // guard) — a crawler and a visitor must read the same product.
-    // The figure is the mirror's, the one pricing-truth pins to the checkout
-    // function's constant; it was typed here three times.
-    const agentMonthly = D.SUBSCRIPTIONS.agent.priceUsd;
-    // The trial is offered once per customer (L6-29); its length is the
-    // mirror of AGENT_TRIAL_DAYS, and the page says who gets it.
-    const agentTrialDays = D.SUBSCRIPTIONS.agent.trialDays;
+    // THE ADDRESS STAYS; WHAT IT SAYS IS THE RETIREMENT. /agent was the Apply
+    // Agent's sales page (its price, its trial, the hiring systems it
+    // submitted on). Owner decision 2026-10-11 (the apply pivot): the
+    // server-side agent and the plan and pass sold with it are retired, and
+    // applying happens through the person's own AI. The page keeps its URL,
+    // its index and its sitemap entry, so a search engine re-reads it and an
+    // old link lands on the truth, not on the homepage copy. It names no
+    // price and no product, and the only path it offers is applying yourself.
     write({
       path: "/agent",
-      title: `Apply Agent — $${agentMonthly}/mo, Applications Prepared For You`,
-      // The vendor count is RENDERED from the sendable mirror (pinned to the
-      // Deno list by the-page-says-six guard), never typed: this line said
-      // "four" for weeks while the list held five (project_claim_drift). The
-      // board share is not on hand at bake time (no per-vendor facet here),
-      // so it is absent rather than a stale figure — the SPA derives it live.
-      description: `The agent prepares an application for each matching posting; you approve before it sends unless you turn on auto. $${agentMonthly}/mo; ${agentTrialDays} days free for first-time subscribers.`,
-      jsonLd: [breadcrumbLd([{ name: "Home", path: "/" }, { name: "Apply Agent", path: "/agent" }])],
+      title: "The Apply Agent is retired: apply with your own AI",
+      description: "Resume Booster no longer runs an agent that applies to jobs on your behalf. Search the board from your own AI and apply on the employer's own site.",
+      jsonLd: [breadcrumbLd([{ name: "Home", path: "/" }, { name: "Apply Agent (retired)", path: "/agent" }])],
       content: `
-        ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Apply Agent" }])}
-        <h1 class="text-3xl font-bold mb-3">The agent applies. You interview.</h1>
-        <p class="text-muted-foreground mb-8">Tell it the roles you want and it watches the board for you — every morning it queues fresh, matching postings with your resume and answers prepared. In review mode, the default, nothing is sent until you approve it. Switch on auto mode and it submits for you on the hiring systems it can drive end to end, holding your first releases for review.</p>
-        <section class="mb-8"><h2 class="text-xl font-bold mb-3">What it costs, and what you get</h2>
-          <div class="rounded-xl border border-border bg-card p-4 mb-2"><p class="text-sm font-semibold text-foreground mb-1">$${agentMonthly}/month; ${agentTrialDays} days free for first-time subscribers</p><p class="text-xs text-muted-foreground">Cancel any time. The trial runs the same pipeline as the paid plan — real applications, not samples. A returning subscriber is charged from the first day.</p></div>
-          <div class="rounded-xl border border-border bg-card p-4"><p class="text-sm font-semibold text-foreground mb-1">A morning queue, not a spray</p><p class="text-xs text-muted-foreground">Matches come from the same live board the site serves — fresh postings only, matched against your resume, deduplicated against everything already sent.</p></div>
+        ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Apply Agent (retired)" }])}
+        <h1 class="text-3xl font-bold mb-3">The Apply Agent is retired</h1>
+        <p class="text-muted-foreground mb-8">Resume Booster no longer runs an agent that prepares or sends applications, and no longer sells the plans and passes that came with it. If you bought one of them, write to <a href="mailto:${D.PRIVACY_EMAIL}">${D.PRIVACY_EMAIL}</a> from the address you paid with. Your account keeps what it had: your saved jobs and the application tracker stay where they were.</p>
+        <section class="mb-8"><h2 class="text-xl font-bold mb-3">How to apply now: with your own AI</h2>
+          <p class="text-sm text-muted-foreground mb-3">${esc(APPLY_YOURSELF_LINE)}</p>
+          <p class="text-sm text-muted-foreground">Connecting your AI to the board is free and needs no account. The steps for Claude, ChatGPT and Claude Code are on <a href="/agents" class="text-primary">${esc(FOOTER_AGENTS_LABEL)}</a>; the board itself is at <a href="/jobs" class="text-primary">/jobs</a>.</p>
         </section>
-        <section class="mb-8"><h2 class="text-xl font-bold mb-3">The limits, stated up front</h2>
-          <div class="rounded-xl border border-border bg-card p-4 mb-2"><p class="text-sm font-semibold text-foreground mb-1">${D.SENDABLE_VENDOR_LABELS.length} hiring systems: ${D.SENDABLE_VENDOR_SENTENCE}</p><p class="text-xs text-muted-foreground">The agent submits only where it can complete a real application end to end. The board labels every posting it can send to, so the scope is countable on the page, not a claim.</p></div>
-          <div class="rounded-xl border border-border bg-card p-4"><p class="text-sm font-semibold text-foreground mb-1">It never solves CAPTCHAs or evades bot checks</p><p class="text-xs text-muted-foreground">Where a site gates applying, the agent prepares the application — answers, resume, cover note — and you press send. That boundary is permanent.</p></div>
-        </section>
-        ${cta("Set up the agent", `Upload a resume, pick your targets, and the first morning queue is ready tomorrow. ${agentTrialDays} days free for first-time subscribers.`, "Start the agent")}`,
+        ${cta("Check your resume first", "See how your resume reads to an applicant-tracking system before you apply anywhere: free, no signup.", "Scan my resume free")}`,
     });
 
     // ---- /agents: the MCP server's human page ----
@@ -2861,14 +3112,37 @@ export { isCollidedToken } from "../src/lib/board-collisions";
         || (envText3.match(/^VITE_SUPABASE_URL=(.*)$/m) || [])[1]?.trim().replace(/^["']|["']$/g, "");
       const mcpUrl = supaUrl3 ? `${supaUrl3}/functions/v1/agent-mcp` : null;
       const h = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-      const badge = { read: "any free key", paid: "paid key", apply: "agent key" };
+      const badge = { read: "any free key", paid: "paid key" };
       const codes = (arr) => arr.map((t) => `<code>${t.name}</code>`).join(", ");
       const countClause = BOARD_TOTAL ? `${plusClaim(BOARD_TOTAL, 50000)} live postings` : "the live postings";
-      // What applying costs, from the mirrors — the page named the plan and
-      // the pass and served neither figure to a crawler.
-      const agentPlanPrice = D.SUBSCRIPTIONS.agent.priceUsd;
-      const passPrice = D.PASS.priceUsd;
-      const passHours = D.PASS.sessionHours;
+      // NOTHING RETIRED IS BAKED (the apply pivot, 2026-10-11). The server-side
+      // agent, its plan and its pass are retired; applying is the person's own,
+      // on the employer's site, with their AI's help. The mirror below
+      // (src/config/mcp-tools.ts) describes what the server registers, so the
+      // crawler copy takes the retired clauses out of each mirror string and
+      // leaves out a tool, prompt or troubleshooting row whose purpose was the
+      // retired agent. DECLARED HERE, inside the block: the guard executes this
+      // block alone (which-agent-do-you-use.test.tsx).
+      const RETIRED_CLAUSES = [
+        /\s*[;,]?\s*an Agent Pass raises the limit for its hours/gi,
+        /\s*[—–-]\s*and a live pass\b/gi,
+        /,?\s*or a live (?:Agent )?pass\b/gi,
+        /,?\s*or \/agents\/pass\b/gi,
+        /,?\s*and the pass if the account holds one/gi,
+      ];
+      const RETIRED_MENTION = /\bapply agent\b|\bagent plan\b|\bagent pass\b|\blive pass\b|\bthe pass\b|\/agents\/pass|\bmandate\b|\brequests? (?:one |an )?applications?\b|\bsubmit/i;
+      const scrubRetired = (text) => {
+        let s = String(text ?? "");
+        for (const re of RETIRED_CLAUSES) s = s.replace(re, "");
+        return s.split(/(?<=[.!?])\s+/).filter((x) => x && !RETIRED_MENTION.test(x)).join(" ").trim();
+      };
+      const firstSentence = (text) => String(text ?? "").split(/(?<=[.!?])\s+/)[0];
+      const toolKept = (t) => t.tier !== "apply" && !RETIRED_MENTION.test(firstSentence(t.body));
+      const keptTools = D.MCP_TOOLS.filter(toolKept);
+      const keptPrompts = D.MCP_PROMPTS.filter((p) => !RETIRED_MENTION.test(p.title ?? "") && scrubRetired(p.body));
+      const keptTrouble = D.MCP_TROUBLESHOOTING
+        .map((r) => ({ ...r, see: scrubRetired(r.see), why: scrubRetired(r.why), fix: scrubRetired(r.fix) }))
+        .filter((r) => r.see && r.why && r.fix);
       // The joiner the mirror exports: commas and one final "and", and
       // semicolons when an item carries its own "and" — never "and … and".
       const andList = D.andList;
@@ -2878,10 +3152,10 @@ export { isCollidedToken } from "../src/lib/board-collisions";
       // The unkeyed tier: names and caps from the same mirror the server's
       // constants are pinned to (a-first-call-with-no-key guard), never typed.
       // DECLARED BEFORE THE TWO SENTENCES THAT READ THEM (the 2026-09-16 bake).
-      const unkeyedNames = codes(D.MCP_ANON_TOOLS);
+      const unkeyedNames = codes(D.MCP_ANON_TOOLS.filter(toolKept));
       const unkeyedCaps = `${D.MCP_ANON_CAPS.perAddressPerDay} calls a day per network address (from ChatGPT, per person; from Claude, a shared pool of ${D.MCP_ANON_CAPS.hostPoolPerDay} first), search capped at ${D.MCP_ANON_CAPS.searchRows} rows`;
       const signInSentence = withSignIn
-        ? ` From ${h(withSignIn)}: a sign-in instead of a key, while the server's sign-in service is on — the call then runs on your own account key (the same row, quota and pass a pasted key would use); before sign-in, or while it is off, the unkeyed tools — ${unkeyedNames} — still answer, ${unkeyedCaps}.`
+        ? ` From ${h(withSignIn)}: a sign-in instead of a key, while the server's sign-in service is on — the call then runs on your own account key (the same row and quota a pasted key would use); before sign-in, or while it is off, the unkeyed tools — ${unkeyedNames} — still answer, ${unkeyedCaps}.`
         : "";
       const unkeyedOnlySentence = withoutHeader
         ? ` From ${h(withoutHeader)}: the unkeyed tools only, under the same caps — there is no field for the key and no sign-in.`
@@ -2920,16 +3194,16 @@ export { isCollidedToken } from "../src/lib/board-collisions";
       const hostButtons = D.MCP_PAGE_HOSTS.map((x) => `<a href="#${x.id}" class="block p-3 rounded-2xl border border-border"><span class="block font-semibold text-foreground">${h(x.name)}</span>${x.small ? `<span class="block text-xs text-muted-foreground">${h(x.small)}</span>` : ""}</a>`).join("");
       const otherAgentsLine = `<p class="text-sm text-muted-foreground text-center mb-6">${h(D.MCP_OTHER_AGENTS_LINE.lead)} <a href="${h(D.MCP_OTHER_AGENTS_LINE.href)}">${h(D.MCP_OTHER_AGENTS_LINE.link)}</a></p>`;
       const whenLabel = (r) => (r.when === "on" ? " (while sign-in is on)" : r.when === "off" ? " (while sign-in is off)" : "");
-      const troubleRows = D.MCP_TROUBLESHOOTING.map((r) => `<tr class="border-b border-border align-top"><td class="py-2 pr-3 text-foreground">${inline(r.see)}${whenLabel(r)}</td><td class="py-2 pr-3 text-muted-foreground">${inline(r.why)}</td><td class="py-2 text-muted-foreground">${inline(r.fix)}</td></tr>`).join("");
+      const troubleRows = keptTrouble.map((r) => `<tr class="border-b border-border align-top"><td class="py-2 pr-3 text-foreground">${inline(r.see)}${whenLabel(r)}</td><td class="py-2 pr-3 text-muted-foreground">${inline(r.why)}</td><td class="py-2 text-muted-foreground">${inline(r.fix)}</td></tr>`).join("");
       write({
         path: "/agents",
         title: "Connect Your Agent — MCP Server for the Live Job Board",
-        description: `Point any MCP-capable AI agent at ${countClause} from employers' own hiring systems. Search free; apply on the $${agentPlanPrice}/month Agent plan or a $${passPrice} pass.`,
+        description: `Connect Claude, ChatGPT or Claude Code to ${countClause} from employers' own hiring systems. Search free; apply yourself on the employer's site.`,
         jsonLd: [breadcrumbLd([{ name: "Home", path: "/" }, { name: "Connect your agent", path: "/agents" }])],
         content: `
           ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Connect your agent" }])}
           <h1 class="text-3xl font-bold mb-3">Your AI agent can use this job board directly</h1>
-          <p class="text-muted-foreground mb-8">Search ${countClause} from employers' own hiring systems, read full postings, check a shortlist is still open, and — on the Agent plan ($${agentPlanPrice}/month) or a live pass ($${passPrice} for ${passHours} hours) — ask your apply agent to submit applications for you. The server is listed in the official MCP registry as <code>work.resumebooster/jobs</code>.</p>
+          <p class="text-muted-foreground mb-8">Search ${countClause} from employers' own hiring systems, read full postings and check a shortlist is still open, from the AI you already use. ${h(APPLY_YOURSELF_LINE)} The server is listed in the official MCP registry as <code>work.resumebooster/jobs</code>.</p>
           <section class="mb-8"><h2 class="text-xl font-bold mb-2">Which agent do you use?</h2>
             <p class="text-sm text-muted-foreground mb-3">Pick one. You will see only the steps for that app.</p>
             <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">${hostButtons}</div>
@@ -2952,35 +3226,28 @@ export { isCollidedToken } from "../src/lib/board-collisions";
             <p class="text-sm text-muted-foreground mt-2">${h(D.MCP_WITHHELD_NOTE)}</p>
           </section>
           <section class="mb-8"><h2 class="text-xl font-bold mb-3">Two kinds of key</h2>
-            <p class="text-sm text-muted-foreground mb-2">Read tools — ${codes(D.MCP_READ_TOOLS)} — work with any free API key from <a href="/data-api">Hiring Data &amp; API</a>: no account, no card.${paidSentence}</p>
-            <p class="text-sm text-muted-foreground">Apply tools — ${codes(D.MCP_APPLY_TOOLS)} — act on your account, so they need an agent key minted from a signed-in session on this page, plus an active <a href="/agent">Agent plan</a> ($${agentPlanPrice}/month) or a live pass ($${passPrice} for ${passHours} hours, sold on the page) and the mandate set up in Account. Read-only keys stay read-only by design. A free key meters at ${FREE_KEY_RATE_SENTENCE}.</p>
+            <p class="text-sm text-muted-foreground mb-2">Read tools — ${codes(D.MCP_READ_TOOLS.filter(toolKept))} — work with any free API key from <a href="/data-api">Hiring Data &amp; API</a>: no account, no card.${paidSentence}</p>
+            <p class="text-sm text-muted-foreground">Read-only keys stay read-only by design. A free key meters at ${FREE_KEY_RATE_SENTENCE}.</p>
           </section>
           <section class="mb-8"><h2 class="text-xl font-bold mb-3">Which hosts can reach which tools</h2>
             <p class="text-sm text-muted-foreground mb-2">Every keyed tool call carries a credential, and hosts hold it two ways. From ${h(withHeader)}: the key in an Authorization header — every tool your key's tier allows.${signInSentence}${unkeyedOnlySentence} Each host's own note below says which.</p>
             <ul class="space-y-1.5">${D.MCP_HOSTS.map((x) => `<li class="text-sm text-muted-foreground"><strong class="text-foreground">${h(x.name)}</strong> — ${hostBadge(x)}: ${h(x.how)}.</li>`).join("")}</ul>
           </section>
-          <section class="mb-8"><h2 class="text-xl font-bold mb-3">All ${D.MCP_TOOLS.length} tools</h2>
-            <ul class="space-y-1.5">${D.MCP_TOOLS.map((t) => `<li class="text-sm text-muted-foreground"><code>${t.name}</code> (${badge[t.tier]}${D.MCP_ANON_TOOL_NAMES.includes(t.name) ? `; answers with no key, ${D.MCP_ANON_CAPS.perAddressPerDay}/day per network address` : ""}) — ${h(t.body)}</li>`).join("")}</ul>
+          <section class="mb-8"><h2 class="text-xl font-bold mb-3">The search and read tools</h2>
+            <ul class="space-y-1.5">${keptTools.map((t) => `<li class="text-sm text-muted-foreground"><code>${t.name}</code> (${badge[t.tier] ?? "key"}${D.MCP_ANON_TOOL_NAMES.includes(t.name) ? `; answers with no key, ${D.MCP_ANON_CAPS.perAddressPerDay}/day per network address` : ""}) — ${h(scrubRetired(t.body))}</li>`).join("")}</ul>
           </section>
           <section class="mb-8"><h2 class="text-xl font-bold mb-3">Prompts and resources your host can list</h2>
             <p class="text-sm text-muted-foreground mb-2">Beside the tools, the server registers ready-made prompts and a few readable documents. Hosts that list them show them under the server's name; listing costs no call and needs no key.</p>
             <h3 class="text-sm font-semibold mt-3 mb-1">Prompts</h3>
-            <ul class="space-y-1.5">${D.MCP_PROMPTS.map((p) => `<li class="text-sm text-muted-foreground"><code>${p.name}</code> — ${h(p.title)}: ${h(p.body)}</li>`).join("")}</ul>
+            <ul class="space-y-1.5">${keptPrompts.map((p) => `<li class="text-sm text-muted-foreground"><code>${p.name}</code> — ${h(p.title)}: ${h(scrubRetired(p.body))}</li>`).join("")}</ul>
             <h3 class="text-sm font-semibold mt-3 mb-1">Resources</h3>
-            <ul class="space-y-1.5">${D.MCP_RESOURCES.map((r) => `<li class="text-sm text-muted-foreground"><code>${h(r.uri)}</code> (${r.keyed ? "needs a key or sign-in" : "reads with no key"}) — ${h(r.body)}</li>`).join("")}</ul>
+            <ul class="space-y-1.5">${D.MCP_RESOURCES.filter((r) => scrubRetired(r.body)).map((r) => `<li class="text-sm text-muted-foreground"><code>${h(r.uri)}</code> (${r.keyed ? "needs a key or sign-in" : "reads with no key"}) — ${h(scrubRetired(r.body))}</li>`).join("")}</ul>
             <p class="text-sm text-muted-foreground mt-3">On the <a href="/jobs">board</a>, every posting and every search has a control that copies a prompt for your agent — it names the posting's id or the search's arguments and this server's URL.</p>
           </section>
-          <section class="mb-8"><h2 class="text-xl font-bold mb-3">What your agent can and cannot do</h2>
-            <p class="text-sm text-muted-foreground mb-2">Applications requested here go through the exact same pipeline as the signed-in flow — the MCP layer is a translator, never a bypass. Your agent can do at most what you could do yourself, signed in.</p>
-            <ul class="space-y-1.5">
-              <li class="text-sm text-muted-foreground"><strong class="text-foreground">Your mandate's off switch always wins.</strong> Agent switched off or paused in Account? Every request refuses, including from this endpoint.</li>
-              <li class="text-sm text-muted-foreground"><strong class="text-foreground">The honesty classifier never invents answers.</strong> Application answers are drawn from your own profile; any answer it cannot support blocks the send and waits for you.</li>
-              <li class="text-sm text-muted-foreground"><strong class="text-foreground">Only ${D.SENDABLE_VENDOR_LABELS.length} hiring systems are agent-submittable today:</strong> ${h(D.SENDABLE_VENDOR_SENTENCE)}. Jobs on other systems get prepared for you to send yourself — <code>check_apply_support</code> tells you which is which before you ask.</li>
-              <li class="text-sm text-muted-foreground"><strong class="text-foreground">Daily caps apply.</strong> The same release caps as the signed-in agent — a connected agent does not get a bigger allowance.</li>
-              <li class="text-sm text-muted-foreground"><strong class="text-foreground">Every refusal is named.</strong> A request that does not go out shows up in <code>application_status</code> with the refusing gate stated, not a silent disappearance.</li>
-            </ul>
+          <section id="apply-yourself" class="mb-8"><h2 class="text-xl font-bold mb-3">Applying stays yours</h2>
+            <p class="text-sm text-muted-foreground">${h(APPLY_YOURSELF_LINE)} Your AI can read a posting in full and help you draft; you check every answer before it goes anywhere.</p>
           </section>
-          <p class="text-sm text-muted-foreground">Rather integrate with code? The plain JSON API at <a href="/data-api">Hiring Data &amp; API</a> (/v1) covers the same data with cursors and ETags. The install blocks for every host — the apps above and the rest — are published as a repository with a README that says the same things in the same order: <a href="${h(D.MCP_INSTALL_REPO_URL)}">${h(D.MCP_INSTALL_REPO_URL)}</a>. The board itself is at <a href="/jobs">/jobs</a>; the apply agent is described at <a href="/agent">/agent</a>.</p>`,
+          <p class="text-sm text-muted-foreground">Rather integrate with code? The plain JSON API at <a href="/data-api">Hiring Data &amp; API</a> (/v1) covers the same data with cursors and ETags. The install blocks for every host — the apps above and the rest — are published as a repository with a README that says the same things in the same order: <a href="${h(D.MCP_INSTALL_REPO_URL)}">${h(D.MCP_INSTALL_REPO_URL)}</a>. The board itself is at <a href="/jobs">/jobs</a>.</p>`,
       });
 
       // /mcp is NOT the server address. Measured 2026-09-16: the branded URL
@@ -3087,7 +3354,7 @@ export { isCollidedToken } from "../src/lib/board-collisions";
             <li class="rounded-xl border border-border bg-card p-4"><span class="font-semibold text-foreground">Paid monthly</span>, with per-referral detail in your dashboard.</li>
           </ul>
         </section>
-        <p class="text-sm text-muted-foreground mb-8">What you would be referring people to: a resume scanner whose full diagnostic is free with no signup, and a job board of verified openings pulled straight from employers' own hiring systems. Sign-up and login are on this page in the app.</p>
+        <p class="text-sm text-muted-foreground mb-8">What you would be referring people to: a resume scanner whose full diagnostic is free with no signup, and a job board of live openings pulled straight from employers' own hiring systems. Sign-up and login are on this page in the app.</p>
         ${cta("See the product first", "Run the free scan yourself before you recommend it — that is the honest order.", "Scan my resume free")}`,
     });
   }
@@ -3127,30 +3394,27 @@ export { isCollidedToken } from "../src/lib/board-collisions";
   // (audit 2026-07-25): the money page had no pricing title/description/
   // canonical in served HTML, and /explore wasn't in the sitemap at all.
   {
-    const paid = D.getAllProducts().filter((p) => typeof p.priceUsd === "number" && p.priceUsd > 0);
+    // ONLY WHAT IS ON SALE. The products mirror (src/config/products.ts) still
+    // carries the retired one-time products and the agent's plan and pass, for
+    // the checkouts and the records of past buyers; a crawler must not be
+    // offered any of them (the apply pivot, 2026-10-11, and the Premium
+    // package's retirement, 2026-10-12). RETIRED_PRODUCT_IDS
+    // (scripts/prerender-retired.mjs) leaves them out of the list and the
+    // offer range, and the one monthly plan baked is Pro.
+    const paid = D.getAllProducts().filter((p) => typeof p.priceUsd === "number" && p.priceUsd > 0 && !RETIRED_PRODUCT_IDS.includes(p.id));
     const minP = Math.min(...paid.map((p) => p.priceUsd));
     const maxP = Math.max(...paid.map((p) => p.priceUsd));
-    // THE TWO MONTHLY PLANS AND THE PASS, FROM THE MIRRORS THE CHECKOUT
-    // FUNCTIONS ARE PINNED TO (pricing-truth), never typed. Until now this
-    // page told a crawler the plans existed and sent it to the app for the
-    // figure — so the page a pricing query lands on served no monthly price
-    // to anything that does not run JavaScript. The sentences are the app's
-    // own locale strings with the same placeholders filled from the same
-    // mirrors; the plan rows read the mirror directly, so the prices stand
-    // even if a locale key goes missing.
+    // THE MONTHLY PLAN, FROM THE MIRROR THE CHECKOUT FUNCTIONS ARE PINNED TO
+    // (pricing-truth), never typed: the page a pricing query lands on states
+    // the monthly price to anything that does not run JavaScript.
     const proPlan = D.SUBSCRIPTIONS.pro;
-    const agentPlan = D.SUBSCRIPTIONS.agent;
-    const passCopy = { passPrice: D.PASS.priceUsd, passHours: D.PASS.sessionHours, passApplications: D.PASS.applications };
-    const subscriptionAnswer = fillCopy(D.EN_LOCALE?.faq?.questions?.subscription?.answer, { proPrice: proPlan.priceUsd, agentPrice: agentPlan.priceUsd }, "faq.subscription");
-    const passLine = fillCopy(D.EN_LOCALE?.pricingPage?.passLine, passCopy, "pricingPage.passLine");
-    // The offer range mirrors Pricing.tsx: every visible one-time product,
-    // both plans and the pass — a ceiling the catalogue has outgrown is a
-    // rich result that lies.
-    const offerPrices = [...paid.map((p) => p.priceUsd), proPlan.priceUsd, agentPlan.priceUsd, D.PASS.priceUsd];
+    // The offer range: every one-time product still on sale and Pro. A
+    // ceiling the catalogue has moved past is a rich result that lies.
+    const offerPrices = [...paid.map((p) => p.priceUsd), proPlan.priceUsd];
     write({
       path: "/pricing",
       title: `Pricing — Free Resume Scan, One-Time Tools from $${minP}`,
-      description: `The diagnostic resume scan is free — 7 scans a day, no signup. One-time tools $${minP}–$${maxP}; Pro $${proPlan.priceUsd}/month; Apply Agent $${agentPlan.priceUsd}/month; a $${D.PASS.priceUsd} pass for your own agent.`,
+      description: `The diagnostic resume scan and the job board are free, 7 scans a day with no signup. One-time tools $${minP}–$${maxP}; Pro $${proPlan.priceUsd}/month.`,
       jsonLd: [
         breadcrumbLd([{ name: "Home", path: "/" }, { name: "Pricing", path: "/pricing" }]),
         {
@@ -3172,17 +3436,16 @@ export { isCollidedToken } from "../src/lib/board-collisions";
       content: `
         ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Pricing" }])}
         <h1 class="text-3xl font-bold mb-3">Pricing</h1>
-        <p class="text-muted-foreground mb-6">The core product is free: the full diagnostic resume scan — score with audit trail, missing keywords, weakest bullets rewritten, ATS vendor checks — costs nothing, 7 scans a day with no signup (15 with a free account). The job board and its filters are free too. Paid tools are one-time purchases, not subscriptions; an optional Pro plan covers everything for people applying at volume.</p>
+        <p class="text-muted-foreground mb-6">The core product is free: the full diagnostic resume scan — score with audit trail, missing keywords, weakest bullets rewritten, ATS vendor checks — costs nothing, 7 scans a day with no signup (15 with a free account). The job board and its filters are free too, and so is connecting your own AI to it. Paid tools are one-time purchases, not subscriptions; an optional Pro plan covers everything for people applying at volume.</p>
         <section class="mb-8"><h2 class="text-xl font-bold mb-3">One-time tools</h2>
           <div class="space-y-2">${paid.map((p) => `<div class="rounded-xl border border-border bg-card p-4 flex items-start justify-between gap-4"><div><p class="text-sm font-semibold text-foreground">${esc(p.name)}</p><p class="text-xs text-muted-foreground mt-0.5">${esc(p.description || "")}</p></div><p class="text-sm font-bold text-foreground whitespace-nowrap">$${p.priceUsd}</p></div>`).join("")}</div>
         </section>
-        <section class="mb-8"><h2 class="text-xl font-bold mb-3">Two monthly plans, and a pass</h2>
+        <section class="mb-8"><h2 class="text-xl font-bold mb-3">One monthly plan</h2>
           <div class="space-y-2">
             <div class="rounded-xl border border-border bg-card p-4 flex items-start justify-between gap-4"><div><p class="text-sm font-semibold text-foreground">${esc(proPlan.name)}</p><p class="text-xs text-muted-foreground mt-0.5">Unlimited scans and every paid tool included.</p></div><p class="text-sm font-bold text-foreground whitespace-nowrap">$${proPlan.priceUsd}/${esc(proPlan.interval)}</p></div>
-            <div class="rounded-xl border border-border bg-card p-4 flex items-start justify-between gap-4"><div><p class="text-sm font-semibold text-foreground">Apply Agent (${esc(agentPlan.name)})</p><p class="text-xs text-muted-foreground mt-0.5">Includes everything in Pro; the agent prepares a shortlist for you overnight.</p></div><p class="text-sm font-bold text-foreground whitespace-nowrap">$${agentPlan.priceUsd}/${esc(agentPlan.interval)}</p></div>
           </div>
-          <p class="text-sm text-muted-foreground mt-3">${esc(subscriptionAnswer)}</p>
-          <p class="text-sm text-muted-foreground mt-2">${esc(passLine)} <a href="/agents" class="text-primary">Connect your agent →</a></p>
+          <p class="text-sm text-muted-foreground mt-3">Every report and tool above is a one-time payment that never renews. Pro renews every month until you cancel; nothing else upgrades you automatically. The resume scan and the job board stay free either way.</p>
+          <p class="text-sm text-muted-foreground mt-2">${esc(APPLY_YOURSELF_LINE)} <a href="/agents" class="text-primary">${esc(FOOTER_AGENTS_LABEL)} →</a></p>
         </section>
         <p class="text-sm text-muted-foreground mb-8">Current bundle discounts are shown live on this page in the app.</p>
         ${cta("Start with the free scan", "See the full diagnostic before spending anything — most people need nothing else.", "Scan my resume free")}`,
@@ -3337,7 +3600,7 @@ export { isCollidedToken } from "../src/lib/board-collisions";
     // nothing: a snapshot-fed bake prints no board total here (L4-03).
     if (BOARD_TOTAL && facetsSource !== "snapshot") {
       lines.push("");
-      lines.push(`> Live job board (/jobs): ${Number(BOARD_TOTAL).toLocaleString("en-US")} live postings${BOARD_TRACKED ? ` (${Number(BOARD_TRACKED).toLocaleString("en-US")} tracked in all, including roles since closed)` : ""} from ${BOARD_COMPANIES ? `${BOARD_COMPANIES.toLocaleString("en-US")} company job boards that have roles open right now, read through their` : "company job boards, read through their"} OFFICIAL job-board APIs (${D.SERVING_SOURCE_LIST}), no aggregators; the largest boards are re-checked most often and the rotation runs continuously (how far behind it is right now is a measurement rather than a promise — live median and 95th-percentile re-check ages: ${SITE}/ghost-job-index). Per-field pages at /jobs/field/{engineering,healthcare,finance,...}. Free deterministic resume-fit scoring against any posting.`);
+      lines.push(`> Live job board (/jobs): ${Number(BOARD_TOTAL).toLocaleString("en-US")} live postings${BOARD_TRACKED ? ` (${Number(BOARD_TRACKED).toLocaleString("en-US")} tracked in all, including roles since closed)` : ""} from ${BOARD_COMPANIES ? `${BOARD_COMPANIES.toLocaleString("en-US")} company job boards that have roles open right now, read from their` : "company job boards, read from their"} own hiring systems (${D.SERVING_SOURCE_LIST}), no aggregators; the largest boards are re-checked most often and the rotation runs continuously (how far behind it is right now is a measurement rather than a promise — live median and 95th-percentile re-check ages: ${SITE}/ghost-job-index). Per-field pages at /jobs/field/{engineering,healthcare,finance,...}. Free deterministic resume-fit scoring against any posting.`);
     }
     lines.push("");
     lines.push("## Guides (full text)");
@@ -3380,6 +3643,10 @@ export { isCollidedToken } from "../src/lib/board-collisions";
     // Host names carry their own "and" (claude.ai and Claude Desktop): commas
     // and one final "and", the same joiner the /agents page and its prerender use.
     const andHosts = (xs) => (xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`);
+    // The tools the crawler copy describes: the search and read ones. A tool
+    // whose purpose was the retired apply agent is not offered here, the same
+    // rule the /agents page applies (the apply pivot, 2026-10-11).
+    const LLMS_TOOLS = D.MCP_TOOLS.filter((t) => t.tier !== "apply" && !/\bapply agent\b|\bsubmit/i.test(String(t.body ?? "").split(/(?<=[.!?])\s+/)[0]));
     lines.push("## The live job board and its data pages (from the board's own lifecycle log)");
     lines.push(`- Live job board: ${SITE}/jobs — every posting read from the employer's own hiring system (${D.SERVING_SOURCE_LIST}); no aggregators; no dated posting older than 30 days, undated ones shown with no age rather than a guessed one. Per-field pages at /jobs/field/{slug}, per-employer pages at /jobs/company/{token}.`);
     lines.push(`- Ghost Job Index: ${SITE}/ghost-job-index — the board's live measure of posting reality: how many roles are open, how long postings stay up, how fast they come down, and which employers are actively hiring, from the closure log the board keeps for every posting it has watched. A posting coming down is never called a hire — a hire, a withdrawal, a cancelled requisition and a retitle are indistinguishable from the feed.`);
@@ -3388,7 +3655,7 @@ export { isCollidedToken } from "../src/lib/board-collisions";
     lines.push(`- Pay Transparency Index: ${SITE}/pay-transparency — the share of postings that state pay, by field, hiring system and large employer, counted from the postings' own text and ATS fields; never estimated or modelled, and placement cannot be bought.`);
     lines.push(companiesLlmsLine({ site: SITE, count: COMPANY_PAGE_COUNT }));
     lines.push(`- Hiring Data & API: ${SITE}/data-api — a read-only JSON API (/v1) over the live board with free self-serve keys (${FREE_KEY_RATE_SENTENCE}): GET /v1/jobs, /v1/jobs/{id}, /v1/changes (what opened and closed since a timestamp, and whether each close was a genuine takedown or a re-list), /v1/companies, /v1/stats (headline counts, closure log, feed freshness p50/p95/max), /v1/usage, and POST /v1/fit (paid). Cursor pagination and ETags. Licensing beyond the free tier: free for journalists with attribution, at cost for research, custom for commercial feeds.`);
-    lines.push(`- MCP server for AI agents: ${SITE}/agents (listed in the official MCP registry as ${MCP_REGISTRY_NAME}) — ${D.MCP_TOOLS.length} tools (${D.MCP_TOOLS.map((t) => t.name).join(", ")}) over the same board, over Streamable HTTP. ${D.MCP_ANON_TOOLS.map((t) => t.name).join(", ")} answer with no key at all (${D.MCP_ANON_CAPS.perAddressPerDay} calls a day per network address — an office or a home connection counts as one; from ChatGPT each person has their own ${D.MCP_ANON_CAPS.perAddressPerDay}, and Claude's users share ${D.MCP_ANON_CAPS.hostPoolPerDay} a day first — ${D.MCP_ANON_CAPS.globalPerDay} a day across every unkeyed caller, search capped at ${D.MCP_ANON_CAPS.searchRows} rows), so any host can use those before sign-in; every other read tool needs a free key, ${D.MCP_PAID_TOOLS.map((t) => t.name).join(", ")} a paid key or a live Agent Pass, and the apply tools (${D.MCP_APPLY_TOOLS.map((t) => t.name).join(", ")}) an account-linked key with an Agent plan or a live Agent Pass, plus a standing mandate. A key travels in an Authorization header, so the keyed tools are reachable from ${andHosts(D.MCP_HOSTS.filter((x) => x.header).map((x) => x.name))} with a pasted key; ${andHosts(D.MCP_HOSTS.filter((x) => !x.header && x.oauth).map((x) => x.name))} have no field for a key and sign a person in instead — but only while the server's sign-in service is switched on: then a keyed tool called with no credential answers a sign-in challenge, the host shows its Connect card, and after Allow on ${SITE}/oauth/consent the call runs on that account's own key; when it is off, the same call answers in words (no card) and the unkeyed tools still answer. Today's state: the Test the server button on ${SITE}/agents, or the initialize result's _meta["${D.MCP_SIGN_IN_META_KEY}"].state; the page's own steps are at ${SITE}/agents#<host> for ${D.MCP_PAGE_HOSTS.map((x) => x.id).join(", ")}; setup for ${andHosts(D.MCP_OFF_PAGE_HOSTS.map((x) => x.name))} and every other client is in the install repository's README at ${D.MCP_INSTALL_REPO_URL}. ${AGENT_OFFER.lead} ${AGENT_OFFER.connect} ${AGENT_OFFER.pass}`);
+    lines.push(`- MCP server for AI agents: ${SITE}/agents (listed in the official MCP registry as ${MCP_REGISTRY_NAME}) — search and read tools (${LLMS_TOOLS.map((t) => t.name).join(", ")}) over the same board, over Streamable HTTP. ${D.MCP_ANON_TOOLS.map((t) => t.name).join(", ")} answer with no key at all (${D.MCP_ANON_CAPS.perAddressPerDay} calls a day per network address — an office or a home connection counts as one; from ChatGPT each person has their own ${D.MCP_ANON_CAPS.perAddressPerDay}, and Claude's users share ${D.MCP_ANON_CAPS.hostPoolPerDay} a day first — ${D.MCP_ANON_CAPS.globalPerDay} a day across every unkeyed caller, search capped at ${D.MCP_ANON_CAPS.searchRows} rows), so any host can use those before sign-in; every other read tool needs a free key, and ${D.MCP_PAID_TOOLS.map((t) => t.name).join(", ")} a paid key. A key travels in an Authorization header, so the keyed tools are reachable from ${andHosts(D.MCP_HOSTS.filter((x) => x.header).map((x) => x.name))} with a pasted key; ${andHosts(D.MCP_HOSTS.filter((x) => !x.header && x.oauth).map((x) => x.name))} have no field for a key and sign a person in instead — but only while the server's sign-in service is switched on: then a keyed tool called with no credential answers a sign-in challenge, the host shows its Connect card, and after Allow on ${SITE}/oauth/consent the call runs on that account's own key; when it is off, the same call answers in words (no card) and the unkeyed tools still answer. Today's state: the Test the server button on ${SITE}/agents, or the initialize result's _meta["${D.MCP_SIGN_IN_META_KEY}"].state; the page's own steps are at ${SITE}/agents#<host> for ${D.MCP_PAGE_HOSTS.map((x) => x.id).join(", ")}; setup for ${andHosts(D.MCP_OFF_PAGE_HOSTS.map((x) => x.name))} and every other client is in the install repository's README at ${D.MCP_INSTALL_REPO_URL}. ${AGENT_OFFER.lead} ${AGENT_OFFER.connect} ${APPLY_YOURSELF_LINE}`);
     lines.push("");
     if (insights?.overall?.n) {
       const o = insights.overall;
@@ -3406,6 +3673,7 @@ export { isCollidedToken } from "../src/lib/board-collisions";
     }
     lines.push("Citation policy: everything above is publishable product truth — keyword tables are the scanner's real detection data, O*NET data is U.S. public domain, and vendor behaviors are the documented checks the scanner runs. Cite freely with a link.");
     writeFileSync(join(dist, "llms-full.txt"), lines.join("\n"));
+    checkRetired("/llms-full.txt", lines.join("\n"));
 
     // llms.txt headline counts: rewritten from live data each bake so the
     // hand-written overview can't drift 100k+ behind the board again
@@ -3470,8 +3738,9 @@ export { isCollidedToken } from "../src/lib/board-collisions";
         // false one.
         console.warn(`[prerender-seo] llms.txt figure patterns matched nothing — those numbers are now ORPHANED and will not refresh: ${missed.join(", ")}`);
       }
-      writeFileSync(join(root, "public/llms.txt"), lt);
+      writeFileSync(join(publicOut, "llms.txt"), lt);
       writeFileSync(join(dist, "llms.txt"), lt);
+      checkRetired("/llms.txt", lt);
     } catch { /* llms.txt absent — nothing to refresh */ }
   }
 
@@ -3488,7 +3757,7 @@ export { isCollidedToken } from "../src/lib/board-collisions";
       { path: "/builder", changefreq: "monthly", priority: "0.8" },
       { path: "/methodology", changefreq: "monthly", priority: "0.7" },
       { path: "/trust", changefreq: "monthly", priority: "0.6" },
-      { path: "/agent", changefreq: "weekly", priority: "0.9" }, // the money page — was fallback-only and sitemap-absent until 2026-08-18
+      { path: "/agent", changefreq: "monthly", priority: "0.5" }, // the retired Apply Agent's address: it says what changed (the apply pivot, 2026-10-11)
       { path: "/agents", changefreq: "weekly", priority: "0.7" }, // the MCP page — fallback-only and sitemap-absent until 2026-09-15
       { path: "/affiliates", changefreq: "monthly", priority: "0.6" },
       // /shortlist deliberately absent: it is an auth wall with no public
@@ -3512,11 +3781,15 @@ export { isCollidedToken } from "../src/lib/board-collisions";
         priority: postingPage ? "0.5" : "0.7",
       });
     }
-    const lastmodOf = (path) => {
+    const datesOf = new Map();
+    const pageDatesOf = (path) => {
+      if (datesOf.has(path)) return datesOf.get(path);
       const fp = pageFingerprints.get(path);
-      if (!fp) return TODAY;
-      return pageLastmod({ fingerprint: fp.fp, prior: priorPages[path], today: TODAY, stated: fp.stated });
+      const d = fp ? pageDates({ fp: fp.fp, legacyFp: fp.legacyFp, prior: priorPages[path], today: TODAY, stated: fp.stated }) : null;
+      datesOf.set(path, d);
+      return d;
     };
+    const lastmodOf = (path) => pageDatesOf(path)?.lastmod ?? TODAY;
     // THE LEDGER THE NEXT BAKE READS (F2a, S3): every posting URL this bake
     // accounted for and what became of it, and every page's fingerprint with
     // the date it last changed. Served beside the sitemap, so the next
@@ -3529,11 +3802,15 @@ export { isCollidedToken } from "../src/lib/board-collisions";
       builtAt: TODAY,
       postings: postingLedger,
       openings: landerOpeningsCache,
-      pages: Object.fromEntries([...pageFingerprints.entries()].map(([path, fp]) => [path, { fp: fp.fp, lastmod: lastmodOf(path) }])),
+      companies: companyLedger,
+      pages: Object.fromEntries([...pageFingerprints.keys()].map((path) => {
+        const d = pageDatesOf(path);
+        return [path, { fp: d.fp, fpv: d.fpv, lastmod: d.lastmod, changed: d.changed }];
+      })),
     };
     const ledgerJson = JSON.stringify(ledgerOut);
     writeFileSync(join(dist, PRERENDER_LEDGER_PATH.slice(1)), ledgerJson);
-    writeFileSync(join(root, "public", PRERENDER_LEDGER_PATH.slice(1)), ledgerJson);
+    writeFileSync(join(publicOut, PRERENDER_LEDGER_PATH.slice(1)), ledgerJson);
     console.log(`[prerender-seo] ${PRERENDER_LEDGER_PATH} written: ${Object.keys(postingLedger).length} posting URLs, ${pageFingerprints.size} pages (read from: ${ledgerSource})`);
 
     // THE SITEMAP MAY NOT NAME A POSTING URL THIS BAKE DID NOT WRITE.
@@ -3561,6 +3838,15 @@ export { isCollidedToken } from "../src/lib/board-collisions";
         console.warn(`[prerender-seo] DROPPING ${unwritten.length} posting URL(s) from the sitemap with no prerendered file — each would serve the homepage shell: ${unwritten.slice(0, 5).join(", ")}`);
         const drop = new Set(unwritten);
         entries = entries.filter((e) => !drop.has(e.path));
+      }
+      // AND IT NEVER NAMES MORE POSTING PAGES THAN THE CEILING THE GENERATOR
+      // STATES (POSTING_PAGE_CEILING): the bake that logged 454 against a
+      // stated 400 is the case. The posting rule above already keeps the live
+      // set under it; this is the last word, and it says so when it acts.
+      const capped = capPostingEntries(entries, { isPosting: (e) => e.path.startsWith(`${D.POSTING_PATH_PREFIX}/`), ceiling: POSTING_PAGE_CEILING });
+      if (capped.dropped.length) {
+        console.warn(`[prerender-seo] DROPPING ${capped.dropped.length} posting URL(s) past the ceiling of ${POSTING_PAGE_CEILING} from the sitemap`);
+        entries = capped.kept;
       }
     }
     if (entries.length < 100) throw new Error(`sitemap suspiciously small (${entries.length} URLs) — refusing to overwrite`);
@@ -3608,11 +3894,20 @@ export { isCollidedToken } from "../src/lib/board-collisions";
       ...entries.map((e) => `  <url>\n    <loc>${SITE}${publicHref(e.path)}</loc>\n    <lastmod>${lastmodOf(e.path)}</lastmod>\n    <changefreq>${e.changefreq}</changefreq>\n    <priority>${e.priority}</priority>\n  </url>`),
       `</urlset>`,
     ].join("\n");
-    writeFileSync(join(root, "public/sitemap.xml"), xml);
+    writeFileSync(join(publicOut, "sitemap.xml"), xml);
     writeFileSync(join(dist, "sitemap.xml"), xml);
     console.log(`[prerender-seo] sitemap.xml regenerated: ${entries.length} URLs (public/ + dist/), ${new Set(entries.map((e) => lastmodOf(e.path))).size} distinct lastmod dates`);
 
   }
+
+  // THE CRAWLER COPY SELLS NOTHING RETIRED, and the bake reads its own output
+  // to say so (scripts/prerender-retired.mjs): a page that still carries a
+  // retired product, a price for one, or a sentence that says we apply for
+  // the person is named here. Not fatal (a publish is never blocked), and the
+  // tests that run this bake fail on it.
+  if (retiredFound.length) {
+    console.error(`[prerender-seo] RETIRED CLAIMS in ${retiredFound.length} written page(s): ${retiredFound.slice(0, 20).map((r) => `${r.path}: ${r.found.map(([c, m]) => `${c} (${JSON.stringify(m)})`).join("; ")}`).join(" | ")}`);
+  } else console.log("[prerender-seo] retired-claim check: no written page outside the employers' posting text sells or describes a retired product");
 
   // Say out loud what the clamp had to cut. Silent truncation is how the
   // homepage shipped a snippet ending "…Upload your CV and an AI…".

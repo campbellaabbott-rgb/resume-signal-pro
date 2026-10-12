@@ -2527,14 +2527,30 @@ describe("no surface may opt out of the freshness claim by not being listed", ()
   const INTERVAL = /(\d+\s*[–-]\s*\d+|\bevery\s+\d+)\s*(minutes?|minutos?|minuto|minuten|min\b|मिनट)/i;
   const RECHECK = /re-?check|re-?verif|revisan|vérifi|geprüft|reverific|gecheckt|जांचे|sinusuri/i;
 
+  // A DOTFILE IS A BUILD CACHE, NOT A SURFACE. The bake bundles the app's
+  // modules (old changelog entries included) into the gitignored
+  // scripts/.prerender-data.mjs, so after any local build this sweep read
+  // that generated copy and failed on text no page serves; on CI, where the
+  // file never exists, the same sweep passed (design upgrade README,
+  // decision 5). Dot-named files and folders are skipped everywhere.
+  const swept = (name: string, isDir: boolean) =>
+    !name.startsWith(".") && (isDir ? name !== "node_modules" && name !== "test" : /\.(tsx?|jsx?|mjs|json|txt|html|md|sql)$/.test(name));
   const walk = (dir: string, out: string[] = []): string[] => {
     for (const e of readdirSync(resolve(ROOT, dir), { withFileTypes: true })) {
       const rel = `${dir}/${e.name}`;
-      if (e.isDirectory()) { if (e.name !== "node_modules" && e.name !== "test") walk(rel, out); }
-      else if (/\.(tsx?|jsx?|mjs|json|txt|html|md|sql)$/.test(e.name)) out.push(rel);
+      if (!swept(e.name, e.isDirectory())) continue;
+      if (e.isDirectory()) walk(rel, out);
+      else out.push(rel);
     }
     return out;
   };
+
+  it("never reads the bake's generated bundle, and still reads the bake", () => {
+    expect(swept(".prerender-data.mjs", false), "the generated bundle is swept").toBe(false);
+    expect(swept(".prerender-data-entry.ts", false)).toBe(false);
+    expect(swept("prerender-seo.mjs", false), "the bake itself is no longer swept").toBe(true);
+    expect(swept("seo-seed", true)).toBe(true);
+  });
 
   // ONE walk, every claim. Adding a claim here costs a line; adding a file to
   // a per-claim list is the thing that keeps failing.

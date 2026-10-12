@@ -661,7 +661,8 @@ describe("a refused share must not reach the page — the prerendered HTML", () 
     // ...and the three groups the real bake has, so the fixture exercises what
     // it claims to: the stock counts, the closure record, and the rotation.
     const baked = asText(built.ghost.html);
-    expect(baked, "the stock group").toContain("verified open roles");
+    expect(baked, "the stock group").toContain("open roles — postings the employer");
+    expect(baked, "the board reads employers' feeds; it does not verify each role").not.toMatch(/verified open/i);
     expect(baked, "the closure group").toContain("the board");
     expect(baked, "the re-check-rotation group, which a mis-keyed fixture dropped entirely")
       .toContain("91 minutes");

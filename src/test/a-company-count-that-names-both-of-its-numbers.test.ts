@@ -225,10 +225,12 @@ describe("no reader-facing surface publishes companiesFacet.count", () => {
       href: (t: string) => `/jobs/company/${t}`,
     });
     const withN = page(2119);
-    expect(withN.title).toBe("PwC Jobs — 2,119 Verified Openings");
-    expect(withN.description).toMatch(/^Browse 2,119 open roles at PwC/);
-    expect(withN.content).toMatch(/2,119 verified PwC openings right now/);
-    expect(withN.content, "the page states the rule the number was counted under").toMatch(/has not taken down and whose date falls inside the last 30 days/);
+    // Never "verified": the board reads each employer's feed; it does not
+    // verify each role (owner, 2026-10-12).
+    expect(withN.title).toBe("PwC jobs: 2,119 open roles from their own hiring system");
+    expect(withN.description).toMatch(/^2,119 open roles at PwC/);
+    expect(withN.content).toMatch(/2,119 open PwC roles/);
+    expect(withN.content, "the page states the rule the number was counted under").toMatch(/has not taken down whose date falls inside the last 30 days/);
     const without = page(null);
     for (const s of [without.title, without.description, without.content]) expect(s.replace(/<[^>]*>/g, " ")).not.toMatch(/\d/);
   });
