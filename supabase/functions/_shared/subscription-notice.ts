@@ -20,9 +20,10 @@
  * the queue's sender domain had no DNS: the notices were lost for good while
  * the ledger said each went once. Now sendLegalNotice (below) sends each
  * through Resend, the path and key paid deliveries use, with an idempotency
- * key, and writes sent_at only after a 2xx. A send that fails records
- * nothing: the webhook answers 500 and Stripe redelivers the event, and
- * Resend's idempotency key keeps a redelivery from mailing twice.
+ * key, and writes sent_at only after a 2xx. A send that fails leaves the row
+ * unsent with the body it tried (pending_mail): the webhook answers 500,
+ * Stripe redelivers the event, and the redelivery sends that same body under
+ * the same idempotency key, which keeps it from mailing twice (S12-102).
  *
  * Every figure is read from the subscription Stripe holds, never typed. A
  * promotion code (the plan checkouts allow them) changes what the buyer pays:
@@ -174,17 +175,34 @@ type NoticeDb = {
   from: (t: string) => any;
 };
 
+/** A stored body ({subject, html, text}) read back, or null when the value is not one. */
+export function storedNoticeMail(v: unknown): { subject: string; html: string; text: string } | null {
+  const m = v as { subject?: unknown; html?: unknown; text?: unknown } | null | undefined;
+  return m && typeof m.subject === "string" && typeof m.html === "string" && typeof m.text === "string"
+    ? { subject: m.subject, html: m.html, text: m.text }
+    : null;
+}
+
 /**
  * SEND ONE LEGAL NOTICE NOW, AND RECORD IT ONLY AFTER RESEND ACCEPTED IT.
  *
  *   1. A notice the ledger already records as sent is not sent again.
  *   2. A bounced or complained address gets nothing (as the queue did); an
  *      unsubscribe from the drip does not stop a notice the law requires.
- *   3. Resend is called with the notice's idempotency key, so a retry of a
+ *   3. THE BODY IS RENDERED ONCE (S12-102, plan K10). The first attempt writes
+ *      the mail it is about to send into the row (pending_mail) BEFORE it
+ *      calls Resend, and every later attempt sends exactly that stored body.
+ *      A redelivered Stripe event used to render the notice again: a figure
+ *      that moved (a promotion read, the portal link) changed the body under
+ *      the same 24-hour idempotency key, which Resend refuses with a 409 on
+ *      every retry until the key expires, and then mails a second copy.
+ *   4. Resend is called with the notice's idempotency key, so a retry of a
  *      send that went through (its record failed, or Stripe redelivered)
- *      returns the first answer instead of a second mail.
- *   4. Only a 2xx writes sent_at. A row a withdrawal left waiting (its mail in
- *      pending_mail) is stamped; otherwise one is inserted.
+ *      returns the first answer instead of a second mail. A 409 that says the
+ *      key was already used by a request with a different body means an
+ *      earlier send was accepted: it is recorded as sent (with the earlier
+ *      provider id when the row holds one), never sent again.
+ *   5. Only a 2xx (or that 409) writes sent_at, and clears pending_mail.
  * Never throws: every failure is an outcome the caller acts on.
  */
 export async function sendLegalNotice(
@@ -202,8 +220,9 @@ export async function sendLegalNotice(
   const to = n.to.trim().toLowerCase();
   const label = NOTICE_LABEL[n.kind];
   try {
-    const { data: prior, error: readError } = await db.from("subscription_notices")
-      .select("sent_at").eq("subscription_id", n.subscriptionId).eq("kind", n.kind).maybeSingle();
+    const readPrior = () => db.from("subscription_notices")
+      .select("sent_at, pending_mail, provider_message_id").eq("subscription_id", n.subscriptionId).eq("kind", n.kind).maybeSingle();
+    const { data: prior, error: readError } = await readPrior();
     if (readError) return { outcome: "failed", status: 0, error: `subscription_notices read: ${String(readError.message ?? readError).slice(0, 160)}` };
     if (prior?.sent_at) return { outcome: "already" };
 
@@ -214,6 +233,31 @@ export async function sendLegalNotice(
     }
 
     if (!n.apiKey) return { outcome: "failed", status: 0, error: "RESEND_API_KEY is not set" };
+
+    // 3. The body this notice is sent with, from the row when an earlier
+    // attempt stored one; otherwise this attempt's, stored before the send.
+    let mail = storedNoticeMail(prior?.pending_mail);
+    let earlierProviderId: string | null = typeof prior?.provider_message_id === "string" ? prior.provider_message_id : null;
+    if (!mail) {
+      const body = { subject: n.mail.subject, html: n.mail.html, text: n.mail.text };
+      const { error: storeError } = prior
+        ? await db.from("subscription_notices").update({ pending_mail: body }).eq("subscription_id", n.subscriptionId).eq("kind", n.kind)
+        : await db.from("subscription_notices").insert({ subscription_id: n.subscriptionId, kind: n.kind, email: to, pending_mail: body });
+      if (storeError?.code === "23505") {
+        // A concurrent delivery stored its body first: send that one.
+        const { data: racer, error: racerError } = await readPrior();
+        if (racerError) return { outcome: "failed", status: 0, error: `subscription_notices read: ${String(racerError.message ?? racerError).slice(0, 160)}` };
+        if (racer?.sent_at) return { outcome: "already" };
+        mail = storedNoticeMail(racer?.pending_mail);
+        earlierProviderId = typeof racer?.provider_message_id === "string" ? racer.provider_message_id : earlierProviderId;
+        if (!mail) return { outcome: "failed", status: 0, error: "a concurrent delivery holds the notice with no body stored" };
+      } else if (storeError) {
+        return { outcome: "failed", status: 0, error: `the notice could not be stored before its send: ${String(storeError.message ?? storeError).slice(0, 160)}` };
+      } else {
+        mail = body;
+      }
+    }
+
     let res: Response;
     try {
       res = await (n.fetchImpl ?? fetch)(RESEND_EMAILS_URL, {
@@ -223,25 +267,28 @@ export async function sendLegalNotice(
           "Content-Type": "application/json",
           "Idempotency-Key": noticeKey(n.subscriptionId, n.kind),
         },
-        body: JSON.stringify({ from: NOTICE_FROM, to: [to], reply_to: n.replyTo, subject: n.mail.subject, html: n.mail.html, text: n.mail.text }),
+        body: JSON.stringify({ from: NOTICE_FROM, to: [to], reply_to: n.replyTo, subject: mail.subject, html: mail.html, text: mail.text }),
         signal: AbortSignal.timeout(RESEND_TIMEOUT_MS),
       });
     } catch (e) {
       return { outcome: "failed", status: 0, error: `resend unreachable: ${String(e instanceof Error ? e.message : e).slice(0, 160)}` };
     }
     const body = await res.json().catch(() => null) as { id?: unknown; message?: unknown; name?: unknown } | null;
-    if (res.status < 200 || res.status >= 300) {
+    // 4. The key was already used by a request with another body: an earlier
+    // send of this notice was accepted, so it counts as sent. A 409 for a
+    // request still in flight under the key is transient and retried.
+    const keyAlreadySent = res.status === 409 && body?.name === "invalid_idempotent_request";
+    if ((res.status < 200 || res.status >= 300) && !keyAlreadySent) {
       return { outcome: "failed", status: res.status, error: String(body?.message ?? body?.name ?? `resend answered ${res.status}`).slice(0, 200) };
     }
-    const id = typeof body?.id === "string" ? body.id : null;
+    const id = keyAlreadySent ? earlierProviderId : (typeof body?.id === "string" ? body.id : null);
     const stamp = { sent_at: new Date().toISOString(), provider_message_id: id };
-    const { error: recordError } = prior
-      ? await db.from("subscription_notices").update({ ...stamp, pending_mail: null }).eq("subscription_id", n.subscriptionId).eq("kind", n.kind)
-      : await db.from("subscription_notices").insert({ subscription_id: n.subscriptionId, kind: n.kind, email: to, ...stamp });
-    // 23505: a concurrent delivery recorded the same send (Resend answered
-    // both from one idempotency key). Anything else is retried, and the
-    // retry's send is answered from that key, not mailed again.
-    if (recordError && recordError.code !== "23505") {
+    // The row exists: this attempt or an earlier one stored the body in it.
+    const { error: recordError } = await db.from("subscription_notices")
+      .update({ ...stamp, pending_mail: null }).eq("subscription_id", n.subscriptionId).eq("kind", n.kind);
+    // A failed record is retried, and the retry sends the same stored body
+    // under the same key, which Resend answers without mailing again.
+    if (recordError) {
       return { outcome: "failed", status: res.status, error: `sent but not recorded: ${String(recordError.message ?? recordError).slice(0, 160)}` };
     }
     await db.from("email_send_log").insert({ message_id: noticeKey(n.subscriptionId, n.kind), template_name: label, recipient_email: to, status: "sent" });
