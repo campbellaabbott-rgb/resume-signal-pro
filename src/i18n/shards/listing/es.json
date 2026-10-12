@@ -20,12 +20,12 @@
       "postedDaysAgo_other": "publicada hace {{count}} días",
       "feedRead": "{{system}} · feed leído {{ago}}",
       "feedReadNoSystem": "Feed leído {{ago}}",
-      "feedReadTip": "La última vez que leímos el feed de empleo propio de este empleador. Una oferta que el empleador retira sale del tablón en la siguiente lectura de su feed.",
+      "feedReadTip": "La última vez que leímos el feed de empleo propio de este empleador. Una oferta que el empleador retira sale del tablón cuando una lectura de todo su feed ya no la encuentra; en un tablón demasiado grande para una sola lectura, eso puede tardar varias lecturas.",
       "agencyBoard": "Tablón de una agencia de empleo",
       "agencyBoardTip": "Este tablón pertenece a una agencia de empleo o de selección. Marcamos el tablón, no cada oferta, así que estos puestos suelen ser para clientes de la agencia y no para la propia agencia.",
-      "annualEstimate": "≈ {{amount}}{{period}}",
+      "annualEstimate": "≈ {{amount}}{{period}} (estimación nuestra)",
       "checkFit": "Comprobar encaje",
-      "checkFitLabel": "Comprobar tu encaje con {{title}}"
+      "checkFitLabel": "Comprobar encaje: {{title}}"
     },
     "menu": {
       "report": "Reportar",
@@ -34,12 +34,12 @@
       "copyLink": "Copiar enlace"
     },
     "status": {
-      "live": "Activa en el origen · feed leído {{ago}}",
-      "liveTip": "El feed propio del empleador incluía esta oferta la última vez que lo leímos.",
       "partial": "Solo pudimos leer parte de este tablón",
       "partialTip": "El tablón de este empleador es más grande de lo que alcanza una lectura, así que no podemos confirmar cada oferta en cada lectura.",
-      "gone": "El empleador ya no la publica · retirada el {{date}}",
-      "goneUndated": "El empleador ya no la publica"
+      "gone": "El empleador ya no la publica · ausente de su feed desde el {{date}}",
+      "goneUndated": "El empleador ya no la publica",
+      "read": "Feed del empleador leído {{ago}}",
+      "readTip": "Esa lectura abarca todo el tablón del empleador. No es una comprobación de esta oferta en concreto."
     },
     "actions": {
       "apply": "Postúlate en el sitio de {{employer}}",
@@ -62,7 +62,21 @@
       "system": "Sistema de selección",
       "systemValue": "El enlace para postularte abre {{system}}",
       "department": "Departamento",
-      "feedRead": "Feed leído"
+      "ourEstimate": "≈ {{amount}}{{period}}, estimación nuestra ({{rule}})",
+      "estimateRule": {
+        "hour": "× 2080 horas",
+        "day": "× 260 días",
+        "week": "× 52 semanas",
+        "month": "× 12 meses"
+      },
+      "band": {
+        "entry": "Nivel inicial",
+        "mid": "Nivel medio",
+        "senior": "Senior",
+        "expert": "Experto"
+      },
+      "bandNote": "nuestra lectura del título y los requisitos, no una etiqueta del empleador",
+      "minYearsNote": "según pide la oferta"
     },
     "description": {
       "loading": "Cargando la descripción…",
@@ -74,7 +88,8 @@
       "continuesOnSitePlain": "La oferta continúa en el sitio del empleador",
       "collapsed_one": "Omitimos {{count}} párrafo que repetía otro palabra por palabra.",
       "collapsed_many": "Omitimos {{count}} párrafos que repetían otros palabra por palabra.",
-      "collapsed_other": "Omitimos {{count}} párrafos que repetían otros palabra por palabra."
+      "collapsed_other": "Omitimos {{count}} párrafos que repetían otros palabra por palabra.",
+      "cutShort": "Puede que nuestra copia no llegue al final de la oferta."
     },
     "detail": {
       "back": "Volver a {{name}}",

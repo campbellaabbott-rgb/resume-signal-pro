@@ -28,9 +28,21 @@ beforeAll(() => { i18n.addResourceBundle("en", "translation", enListing, true, t
 afterEach(cleanup);
 
 describe("where the posting stands at its source", () => {
-  it("live, with the read time beside the claim", () => {
+  it("says only when the employer's feed was read: no claim that this posting was in that read", () => {
     mount();
-    expect(document.querySelector("[data-live-status='live']")?.textContent).toBe("Live at source · feed read 46 min ago");
+    const line = document.querySelector("[data-live-status='read']")!;
+    expect(line.textContent).toBe("Employer's feed read 46 min ago. That read covers the employer's whole board. It is not a check of this one posting.");
+    expect(document.querySelector("[data-live-status='live']")).toBeNull();
+    expect(document.body.textContent).not.toMatch(/Live at source|listed this posting/);
+    expect(line.className).not.toMatch(/success/);
+  });
+  it("a stale read is still only a read: five days old, and no green claim", () => {
+    mount({ job: { ...JOB, recheckedAt: "2026-10-07T12:00:00Z" } });
+    expect(document.querySelector("[data-live-status='read']")?.textContent).toMatch(/^Employer's feed read 5 days ago/);
+  });
+  it("the read time is said once: the facts carry no second Feed read row", () => {
+    mount();
+    expect(document.querySelector("[data-posting-facts]")?.textContent).not.toMatch(/Feed read/);
   });
   it("partial read is a caution, with an icon and words", () => {
     mount({ served: { recheckedAt: JOB.recheckedAt, partialRead: true } });
@@ -38,12 +50,13 @@ describe("where the posting stands at its source", () => {
     expect(chip.textContent).toContain("We could read only part of this board");
     expect(chip.querySelector("svg")).not.toBeNull();
   });
-  it("gone, with the day the employer's feed stopped listing it", () => {
+  it("gone, with the day WE first found it missing -- never worded as the employer's takedown date", () => {
     mount({ served: { missingSince: "2026-10-10T08:00:00Z" } });
-    expect(document.querySelector("[data-live-status='gone']")?.textContent).toBe("No longer listed by the employer · taken down Oct 10, 2026");
+    expect(document.querySelector("[data-live-status='gone']")?.textContent).toBe("No longer listed by the employer · first missing from its feed Oct 10, 2026");
+    expect(document.body.textContent).not.toMatch(/taken down/);
     expect(document.body.textContent).not.toMatch(/feed read/);
   });
-  it("no read time, no live claim", () => {
+  it("no read time, no line", () => {
     mount({ served: { recheckedAt: null } });
     expect(document.querySelector("[data-live-status]")).toBeNull();
   });
@@ -79,11 +92,35 @@ describe("the facts", () => {
     expect(facts).not.toMatch(/per-month-salary/);
     expect(facts).toContain("from the employer's feed");
     expect(facts).not.toMatch(/own words|not converted/);
-    expect(facts).toContain("≈ $48K–$60K/yr");
+    // Our estimate is its own line, and says so in visible words.
+    expect(document.querySelector("[data-pay-estimate]")?.textContent).toBe("≈ $48K–$60K/yr, our estimate (× 12 months)");
+    // The basis line sits directly under the employer's figure, before our estimate.
+    expect(facts.indexOf("from the employer's feed")).toBeLessThan(facts.indexOf("our estimate"));
     expect(facts).toContain("Remote");
     expect(facts).toContain("Contract");
     expect(facts).toContain("Oct 9, 2026, as the employer's system states it");
     expect(document.querySelector("[data-fact='system']")?.textContent).toBe("Apply link opens on Greenhouse");
+  });
+  it("an hourly rate's estimate names the 2,080-hour rule in visible words", () => {
+    mount({ job: { ...JOB, salary: "$29.92 - $38.07", salaryPeriod: "hour", salaryMinAnnual: 62_234, salaryMaxAnnual: 79_186 } });
+    expect(document.querySelector("[data-pay-estimate]")?.textContent).toBe("≈ $62K–$79K/yr, our estimate (× 2,080 hours)");
+  });
+  it("experience: the employer's own minimum when it states one, never beside our bucket's years range", () => {
+    mount({ job: { ...JOB, experienceBand: "mid", minYears: 5 } });
+    const row = document.querySelector("[data-fact='experience']")!;
+    expect(row.textContent).toBe("5+ yrsas the posting asks");
+    expect(row.textContent).not.toMatch(/Mid level|3–5/);
+  });
+  it("experience: our bucket, without a range and marked as ours, when the posting states no minimum", () => {
+    mount({ job: { ...JOB, experienceBand: "mid", minYears: null } });
+    const row = document.querySelector("[data-fact='experience']")!;
+    expect(row.textContent).toBe("Mid levelour reading of the title and requirements, not the employer's label");
+  });
+  it("below sm the facts stack, label over value; from sm, two columns", () => {
+    mount();
+    const cls = document.querySelector("[data-posting-facts]")!.className;
+    expect(cls).toMatch(/(^|\s)grid-cols-1(\s|$)/);
+    expect(cls).toMatch(/sm:grid-cols-\[minmax\(0,auto\)_minmax\(0,1fr\)\]/);
   });
   it("names the host when the apply link leaves the system we read the posting from", () => {
     mount({ job: { ...JOB, applyUrl: "https://careers.acme.example/jobs/1" } });

@@ -10,21 +10,39 @@
  *                a system that moves its date (Breezy, Paylocity, UKG): the
  *                FEED date with the hedge; undated: one sentence saying the
  *                employer's system states none. Never a first-seen date.
- *   Pay          "from the employer's feed" — never a claim that it is the
+ *   Pay          the employer's figure with "from the employer's feed"
+ *                directly under it — never a claim that it is the
  *                employer's verbatim words (displaySalary tidies the
  *                notation) and never a raw vendor slug such as
- *                "/per-month-salary".
+ *                "/per-month-salary". Our annual estimate, where the period
+ *                allows one, is its own line and says in visible words that
+ *                it is our estimate and by what rule ("× 2,080 hours"); a
+ *                title attribute reaches neither a finger nor most screen
+ *                readers, so it never carries that disclosure alone.
+ *   Experience   the employer's own minimum ("5+ yrs, as the posting asks")
+ *                when it states one; otherwise our seniority reading, without
+ *                a years range (our bucket "Mid level (3–5 yrs)" beside the
+ *                employer's "5+ yrs" read as a contradiction), and marked in
+ *                visible words as our reading.
  *   Hiring system  "Apply link opens on {system}", read off the apply link
  *                itself, which is the system the reader will actually meet.
+ *
+ * The feed's read time is not a row here: the status line above the facts
+ * (LiveStatus) prints it, so it is said once.
+ *
+ * Below sm the list stacks, label over value: a long localized label in an
+ * auto-width column squeezed the values into a strip (Tagalog "Lokasyon,
+ * mismong nakasulat" left ~125px at 375px, and the no-pay sentence ran to
+ * ten lines).
  */
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { decodeListingText } from "@/lib/listing/text";
 import { applySystem, cleanApplyUrl } from "@/lib/listing/apply-url";
 import { allListingPlaces, countryLabelOrNull, displayLocation } from "@/lib/listing/location";
-import { listingPay, PAY_BASIS_FALLBACK } from "@/lib/listing/pay";
+import { listingPay, PAY_BASIS_FALLBACK, statedPeriod, type PayBasisKey } from "@/lib/listing/pay";
 import { EMPLOYMENT_TYPE_FALLBACK, statedEmploymentType, statedWorkMode, type ListingJob } from "@/lib/listing/types";
-import { agoText, periodSuffix, postedFactText } from "./listing-text";
+import { periodSuffix, postedFactText } from "./listing-text";
 import { AgencyBoardChip } from "./AgencyBoardChip";
 
 export interface PostingFactsProps {
@@ -39,8 +57,15 @@ export interface PostingFactsProps {
 }
 
 const DT = "pt-0.5 text-xs text-muted-foreground";
-const DD = "min-w-0 text-sm text-foreground";
+const DD = "mb-1.5 min-w-0 text-sm text-foreground last:mb-0 sm:mb-0";
 const NOTE = "block text-xs text-muted-foreground";
+
+/** The rule behind our annual estimate, by the employer's period (the same arithmetic as jobsPage.annualizedBasisTip). */
+const ESTIMATE_RULE_FALLBACK: Record<Exclude<PayBasisKey, "year">, string> = {
+  hour: "× 2,080 hours", day: "× 260 days", week: "× 52 weeks", month: "× 12 months",
+};
+/** Our seniority buckets, named without the years range the board's filter labels carry. */
+const BAND_FALLBACK: Record<string, string> = { entry: "Entry level", mid: "Mid level", senior: "Senior", expert: "Expert" };
 
 export function PostingFacts({ job, showPayAbsence, payContext, onCategory, now }: PostingFactsProps) {
   const { t, i18n } = useTranslation();
@@ -53,13 +78,13 @@ export function PostingFacts({ job, showPayAbsence, payContext, onCategory, now 
   const country = countryLabelOrNull(job.country, lng);
   const system = applySystem(cleanApplyUrl(job.applyUrl));
   const department = decodeListingText(job.department);
-  const read = job.missingSince ? null : agoText(t, job.recheckedAt, lng, now);
+  const period = statedPeriod(job.salaryPeriod);
   const band = job.experienceBand && job.experienceBand !== "unspecified" ? job.experienceBand : null;
   const years = typeof job.minYears === "number" && job.minYears > 0 ? job.minYears : null;
   const category = typeof job.category === "string" && job.category ? job.category : null;
 
   return (
-    <dl className="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] gap-x-4 gap-y-2.5" data-posting-facts="">
+    <dl className="grid grid-cols-1 gap-y-0.5 sm:grid-cols-[minmax(0,auto)_minmax(0,1fr)] sm:gap-x-4 sm:gap-y-2.5" data-posting-facts="">
       {(pay || showPayAbsence) && (
         <>
           <dt className={DT}>{t("jobsPage.factPay", "Pay")}</dt>
@@ -71,16 +96,17 @@ export function PostingFacts({ job, showPayAbsence, payContext, onCategory, now 
                 {pay.basis && (
                   <span className="text-muted-foreground"> · {t(`jobsPage.payBasis.${pay.basis}`, PAY_BASIS_FALLBACK[pay.basis])}</span>
                 )}
-                {pay.annual && job.salaryPeriod && (
-                  <span
-                    className="text-muted-foreground"
-                    title={t("jobsPage.annualizedBasisTip", "Our arithmetic, not the employer's: an hourly rate × 2,080 hours (40 hours a week, 52 weeks), a daily rate × 260 days, a monthly rate × 12. The figure to its left is what the posting actually says.")}
-                  >
-                    {" · "}
-                    {t("listing.card.annualEstimate", { defaultValue: "≈ {{amount}}{{period}}", amount: pay.annual, period: periodSuffix(t, "year") })}
+                <span className={NOTE}>{t("listing.facts.payBasis", "from the employer's feed")}</span>
+                {pay.annual && period && period !== "year" && (
+                  <span className={NOTE} data-pay-estimate="">
+                    {t("listing.facts.ourEstimate", {
+                      defaultValue: "≈ {{amount}}{{period}}, our estimate ({{rule}})",
+                      amount: pay.annual,
+                      period: periodSuffix(t, "year"),
+                      rule: t(`listing.facts.estimateRule.${period}`, ESTIMATE_RULE_FALLBACK[period]),
+                    })}
                   </span>
                 )}
-                <span className={NOTE}>{t("listing.facts.payBasis", "from the employer's feed")}</span>
                 {payContext}
               </>
             ) : (
@@ -156,17 +182,18 @@ export function PostingFacts({ job, showPayAbsence, payContext, onCategory, now 
       {(band || years) && (
         <>
           <dt className={DT}>{t("jobsPage.factExperience", "Experience")}</dt>
-          <dd className={DD}>
-            {band && (
-              <span title={t("jobsPage.experienceProvenance", "Our seniority bucket for this posting, read from its title and requirements — not a label the employer chose.")}>
-                {t(`jobsPage.experience.${band}`, band)}
-              </span>
-            )}
-            {years && (
-              <span className="text-muted-foreground" title={t("jobsPage.minYearsProvenance", "The minimum years the posting itself asks for, in the employer's own words.")}>
-                {band ? " · " : ""}{t("jobsPage.minYears", { defaultValue: "{{n}}+ yrs", n: years })}
-              </span>
-            )}
+          <dd className={DD} data-fact="experience">
+            {years ? (
+              <>
+                {t("jobsPage.minYears", { defaultValue: "{{n}}+ yrs", n: years })}
+                <span className={NOTE}>{t("listing.facts.minYearsNote", "as the posting asks")}</span>
+              </>
+            ) : band ? (
+              <>
+                {t(`listing.facts.band.${band}`, BAND_FALLBACK[band] ?? band)}
+                <span className={NOTE}>{t("listing.facts.bandNote", "our reading of the title and requirements, not the employer's label")}</span>
+              </>
+            ) : null}
           </dd>
         </>
       )}
@@ -186,14 +213,6 @@ export function PostingFacts({ job, showPayAbsence, payContext, onCategory, now 
         <>
           <dt className={DT}>{t("jobsPage.factEmployer", "Employer")}</dt>
           <dd className={DD}><AgencyBoardChip /></dd>
-        </>
-      )}
-      {read && (
-        <>
-          <dt className={DT}>{t("listing.facts.feedRead", "Feed read")}</dt>
-          <dd className={DD} title={t("listing.card.feedReadTip", "When we last read this employer's own job feed. A posting the employer takes down leaves the board at the next read of its feed.")}>
-            {read}
-          </dd>
         </>
       )}
     </dl>

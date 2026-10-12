@@ -7,6 +7,8 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import i18n from "@/i18n";
 import enListing from "@/i18n/shards/listing/en.json";
 import { JobCard, type CardContext } from "./JobCard";
@@ -61,7 +63,8 @@ describe("the four rows", () => {
     const pay = screen.getByText("$29.92–$38.07 per hour");
     expect(pay.className).not.toMatch(/text-success/);
     expect(pay.getAttribute("title")).toBe("$29.92 - $38.07 per hour");
-    expect(text).toContain("≈ $62K–$79K/yr");
+    // Our arithmetic says so in visible words, not only in a title a finger cannot reach.
+    expect(text).toContain("≈ $62K–$79K/yr (our estimate)");
     expect(text).toContain("Hybrid");
     expect(text).toContain("Full-time");
     expect(text).toContain("Greenhouse · feed read 46 min ago");
@@ -150,10 +153,20 @@ describe("controls", () => {
     expect(save.getAttribute("aria-pressed")).toBe("true");
     fireEvent.click(save);
     expect(onToggleSave).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByRole("button", { name: "Check your fit for Staff Accountant" }));
+    fireEvent.click(screen.getByRole("button", { name: "Check fit: Staff Accountant" }));
     expect(onCheckFit).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("link", { name: /apply/i })).toBeNull();
   });
+
+  it.each(["en", "en-GB", "de", "es", "fr", "hi", "nl", "pt", "tl"])(
+    "%s: the Check fit button's name starts with its visible label (WCAG 2.5.3 Label in Name)",
+    (lng) => {
+      const shard = (readFileSync(resolve(__dirname, `../../../i18n/shards/listing/${lng}.json`), "utf8"));
+      const card = (JSON.parse(shard) as { listing: { card: Record<string, string> } }).listing.card;
+      const name = card.checkFitLabel.replace("{{title}}", "Staff Accountant");
+      expect(name.startsWith(card.checkFit), `${lng}: "${name}" does not start with "${card.checkFit}"`).toBe(true);
+    },
+  );
 
   it("the ⋯ menu holds report reasons, Hide (not a second ✕), Compare, Open in Claude or ChatGPT and Copy link", async () => {
     const user = userEvent.setup();
@@ -165,6 +178,9 @@ describe("controls", () => {
     const names = [...list.querySelectorAll("[role=menuitem], [role=menuitemcheckbox]")].map((n) => n.textContent?.trim());
     expect(names).toEqual(["Posting is gone", "Looks misleading", "Something else", "Hide this posting", "Compare", "Open in Claude or ChatGPT", "Copy link"]);
     expect(within(list).getByRole("menuitemcheckbox", { name: /Compare/ }).getAttribute("aria-checked")).toBe("true");
+    // The reasons sit in a group named by the visible "Report" label.
+    const group = within(list).getByRole("group", { name: "Report" });
+    expect(within(group).getAllByRole("menuitem").map((n) => n.textContent?.trim())).toEqual(["Posting is gone", "Looks misleading", "Something else"]);
     await user.click(within(list).getByRole("menuitem", { name: "Looks misleading" }));
     expect(menu.onReport).toHaveBeenCalledWith(expect.objectContaining({ id: "greenhouse:acme:4012345" }), "misleading");
   });

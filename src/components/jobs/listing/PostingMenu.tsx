@@ -13,6 +13,7 @@
  * back to the trigger). The design-system pass adds an OverflowMenu
  * primitive; the wiring table swaps the shell, not the items.
  */
+import { useId } from "react";
 import { Bot, Columns2, EyeOff, Flag, Link as LinkIcon, MoreHorizontal } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
@@ -50,6 +51,9 @@ const ITEM = "gap-2 min-h-9";
 
 export function PostingMenu({ job, title, menu }: { job: ListingJob; title: string; menu: PostingMenuActions }) {
   const { t } = useTranslation();
+  // The report reasons are a group named by the visible "Report" label, so a
+  // screen reader hears "Report, group: Posting is gone", not three bare reasons.
+  const reportLabelId = useId();
   if (!hasMenuItems(menu)) return null;
   return (
     <DropdownMenu modal={false}>
@@ -62,8 +66,8 @@ export function PostingMenu({ job, title, menu }: { job: ListingJob; title: stri
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-60" onClick={(e) => e.stopPropagation()}>
         {menu.onReport && (
-          <DropdownMenuGroup>
-            <DropdownMenuLabel className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+          <DropdownMenuGroup aria-labelledby={reportLabelId}>
+            <DropdownMenuLabel id={reportLabelId} className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
               <Flag className="h-3.5 w-3.5" aria-hidden="true" />
               {menu.reported ? t("jobsPage.reportedBadge", "Reported — thanks") : t("listing.menu.report", "Report")}
             </DropdownMenuLabel>

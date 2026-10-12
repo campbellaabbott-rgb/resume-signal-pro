@@ -166,6 +166,12 @@ export function PostingDescription({ description, employer, applyUrl, highlight,
           <SiteLink href={href} employer={employer} kind="continues" />
         </p>
       )}
+      {!capped && prepared.cutShort && (
+        <p className="mt-3 text-sm text-muted-foreground" data-description-cut="">
+          {t("listing.description.cutShort", "Our copy may stop short of the full posting.")}{" "}
+          <SiteLink href={href} employer={employer} kind="read" />
+        </p>
+      )}
     </section>
   );
 }

@@ -82,9 +82,18 @@ describe("the translations", () => {
   });
 
   it("are really translated in the seven non-English locales", () => {
-    const FORMULA = new Set(["listing.card.annualEstimate", "listing.page.jobs", "listing.page.breadcrumb", "listing.facts.system"]);
+    const FORMULA = new Set(["listing.page.jobs", "listing.page.breadcrumb", "listing.facts.system"]);
+    // Seniority words these languages borrow from English, exactly as the main
+    // locale's own jobsPage.experience labels do ("Senior (6–9 Jahre)",
+    // "Expert (10+ ans)", "Entry level (0–2 taon)"): the same word is the translation.
+    const LOANWORD: Record<string, string[]> = {
+      "listing.facts.band.senior": ["de", "es", "fr", "nl", "tl"],
+      "listing.facts.band.expert": ["fr", "nl"],
+      "listing.facts.band.entry": ["tl"],
+      "listing.facts.band.mid": ["tl"],
+    };
     for (const l of ["de", "es", "fr", "hi", "nl", "pt", "tl"]) {
-      const same = Object.keys(FLAT[l]).filter((k) => !FORMULA.has(k) && FLAT[l][k] === EN[k]);
+      const same = Object.keys(FLAT[l]).filter((k) => !FORMULA.has(k) && !LOANWORD[k]?.includes(l) && FLAT[l][k] === EN[k]);
       expect(same, `${l} still carries English for: ${same.join(", ")}`).toEqual([]);
     }
   });

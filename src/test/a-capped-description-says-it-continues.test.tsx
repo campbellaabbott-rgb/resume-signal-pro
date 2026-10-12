@@ -87,3 +87,42 @@ describe("a body handed to us twice", () => {
     expect(p.sections?.map((s) => s.title)).toEqual([null, "Responsibilities", "Requirements"]);
   });
 });
+
+describe("a stored copy that stops mid-sentence under the cap", () => {
+  // The live job-board's stored copy of greenhouse:bayada:8883416002 (2,220
+  // characters), as the detail action returned it on 2026-10-12: its tail.
+  const BAYADA = [
+    "Ready to make a difference as an RN? ",
+    "Join our compassionate home care team in Minnesota – apply today!",
+    "SER-MN",
+    "As an accredited, regulated, certified, and licensed home health care provider, BAYADA complies with all state/local mandates. ",
+    "BAYADA is celebrating 50 years of compassion, ex",
+  ].join("\n");
+
+  it("says our copy may stop short and links the employer's posting", () => {
+    expect(prepareDescription(BAYADA).cutShort).toBe(true);
+    mount(BAYADA);
+    const note = document.querySelector("[data-description-cut]");
+    expect(note?.textContent).toContain("Our copy may stop short of the full posting.");
+    expect(screen.getByRole("link", { name: /Read it on Acme's site/ }).getAttribute("href")).toBe("https://boards.greenhouse.io/acme/jobs/1");
+    expect(document.querySelector("[data-description-capped]"), "not the cap's note: it is not at the cap").toBeNull();
+  });
+
+  it("never reads a sentence, a sign-off, a heading or a bullet as cut", () => {
+    for (const ending of [
+      "Join our compassionate home care team in Minnesota – apply today!",
+      "SER-MN",
+      "Equal Opportunity Employer",
+      "• Medical, dental and vision insurance from day one",
+      "- Paid time off and twelve paid holidays every year",
+      "2) Experience with month-end close and reconciliations",
+      "We value every applicant (see our policy)",
+      "हम सभी आवेदकों का स्वागत करते हैं।",
+    ]) {
+      const text = `We are hiring a nurse.\n${ending}`;
+      expect(prepareDescription(text).cutShort, ending).toBe(false);
+    }
+    mount("We are hiring a staff accountant to own month-end close.");
+    expect(document.querySelector("[data-description-cut]")).toBeNull();
+  });
+});

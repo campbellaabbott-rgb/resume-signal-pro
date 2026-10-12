@@ -19,12 +19,12 @@
       "postedDaysAgo_other": "posted {{count}} days ago",
       "feedRead": "{{system}} · feed read {{ago}}",
       "feedReadNoSystem": "Feed read {{ago}}",
-      "feedReadTip": "When we last read this employer's own job feed. A posting the employer takes down leaves the board at the next read of its feed.",
+      "feedReadTip": "When we last read this employer's own job feed. A posting the employer takes down leaves the board once a read of its whole feed finds it missing; on a board too big for one read, that can take several reads.",
       "agencyBoard": "Staffing agency board",
       "agencyBoardTip": "This board belongs to a staffing or recruiting agency. We flag the board, not each posting, so the roles here are usually for the agency's clients rather than for the agency itself.",
-      "annualEstimate": "≈ {{amount}}{{period}}",
+      "annualEstimate": "≈ {{amount}}{{period}} (our estimate)",
       "checkFit": "Check fit",
-      "checkFitLabel": "Check your fit for {{title}}"
+      "checkFitLabel": "Check fit: {{title}}"
     },
     "menu": {
       "report": "Report",
@@ -33,12 +33,12 @@
       "copyLink": "Copy link"
     },
     "status": {
-      "live": "Live at source · feed read {{ago}}",
-      "liveTip": "The employer's own feed listed this posting the last time we read it.",
       "partial": "We could read only part of this board",
       "partialTip": "This employer's board is bigger than one read reaches, so we cannot confirm every posting on it at every read.",
-      "gone": "No longer listed by the employer · taken down {{date}}",
-      "goneUndated": "No longer listed by the employer"
+      "gone": "No longer listed by the employer · first missing from its feed {{date}}",
+      "goneUndated": "No longer listed by the employer",
+      "read": "Employer's feed read {{ago}}",
+      "readTip": "That read covers the employer's whole board. It is not a check of this one posting."
     },
     "actions": {
       "apply": "Apply on {{employerPossessive}} site",
@@ -61,7 +61,21 @@
       "system": "Hiring system",
       "systemValue": "Apply link opens on {{system}}",
       "department": "Department",
-      "feedRead": "Feed read"
+      "ourEstimate": "≈ {{amount}}{{period}}, our estimate ({{rule}})",
+      "estimateRule": {
+        "hour": "× 2,080 hours",
+        "day": "× 260 days",
+        "week": "× 52 weeks",
+        "month": "× 12 months"
+      },
+      "band": {
+        "entry": "Entry level",
+        "mid": "Mid level",
+        "senior": "Senior",
+        "expert": "Expert"
+      },
+      "bandNote": "our reading of the title and requirements, not the employer's label",
+      "minYearsNote": "as the posting asks"
     },
     "description": {
       "loading": "Loading the description…",
@@ -72,7 +86,8 @@
       "continuesOnSite": "The posting continues on {{employerPossessive}} site",
       "continuesOnSitePlain": "The posting continues on the employer's site",
       "collapsed_one": "We left out {{count}} paragraph that repeated another word for word.",
-      "collapsed_other": "We left out {{count}} paragraphs that repeated others word for word."
+      "collapsed_other": "We left out {{count}} paragraphs that repeated others word for word.",
+      "cutShort": "Our copy may stop short of the full posting."
     },
     "detail": {
       "back": "Back to {{name}}",

@@ -20,12 +20,12 @@
       "postedDaysAgo_other": "publiée il y a {{count}} jours",
       "feedRead": "{{system}} · flux lu {{ago}}",
       "feedReadNoSystem": "Flux lu {{ago}}",
-      "feedReadTip": "La dernière fois que nous avons lu le flux d'offres de cet employeur. Une offre que l'employeur retire quitte le tableau à la lecture suivante de son flux.",
+      "feedReadTip": "La dernière fois que nous avons lu le flux d'offres de cet employeur. Une offre que l'employeur retire quitte le tableau dès qu'une lecture de tout son flux ne la trouve plus ; sur un tableau trop grand pour une seule lecture, cela peut prendre plusieurs lectures.",
       "agencyBoard": "Tableau d'une agence de recrutement",
       "agencyBoardTip": "Ce tableau appartient à une agence d'intérim ou de recrutement. Nous signalons le tableau, pas chaque offre : les postes ici sont en général pour les clients de l'agence, et non pour l'agence elle-même.",
-      "annualEstimate": "≈ {{amount}}{{period}}",
+      "annualEstimate": "≈ {{amount}}{{period}} (notre estimation)",
       "checkFit": "Vérifier l'adéquation",
-      "checkFitLabel": "Vérifier votre adéquation pour {{title}}"
+      "checkFitLabel": "Vérifier l'adéquation : {{title}}"
     },
     "menu": {
       "report": "Signaler",
@@ -34,12 +34,12 @@
       "copyLink": "Copier le lien"
     },
     "status": {
-      "live": "En ligne à la source · flux lu {{ago}}",
-      "liveTip": "Le flux propre de l'employeur listait cette offre lors de notre dernière lecture.",
       "partial": "Nous n'avons pu lire qu'une partie de ce tableau",
       "partialTip": "Le tableau de cet employeur est plus grand que ce qu'une lecture atteint, nous ne pouvons donc pas confirmer chaque offre à chaque lecture.",
-      "gone": "Plus listée par l'employeur · retirée le {{date}}",
-      "goneUndated": "Plus listée par l'employeur"
+      "gone": "Plus listée par l'employeur · absente de son flux depuis le {{date}}",
+      "goneUndated": "Plus listée par l'employeur",
+      "read": "Flux de l'employeur lu {{ago}}",
+      "readTip": "Cette lecture porte sur tout le tableau de l'employeur. Ce n'est pas une vérification de cette offre en particulier."
     },
     "actions": {
       "apply": "Postuler sur le site de {{employer}}",
@@ -62,7 +62,21 @@
       "system": "Système de recrutement",
       "systemValue": "Le lien de candidature ouvre {{system}}",
       "department": "Service",
-      "feedRead": "Flux lu"
+      "ourEstimate": "≈ {{amount}}{{period}}, notre estimation ({{rule}})",
+      "estimateRule": {
+        "hour": "× 2 080 heures",
+        "day": "× 260 jours",
+        "week": "× 52 semaines",
+        "month": "× 12 mois"
+      },
+      "band": {
+        "entry": "Débutant",
+        "mid": "Intermédiaire",
+        "senior": "Senior",
+        "expert": "Expert"
+      },
+      "bandNote": "notre lecture de l'intitulé et des exigences, pas une étiquette de l'employeur",
+      "minYearsNote": "comme le demande l'offre"
     },
     "description": {
       "loading": "Chargement de la description…",
@@ -74,7 +88,8 @@
       "continuesOnSitePlain": "L'offre continue sur le site de l'employeur",
       "collapsed_one": "Nous avons omis {{count}} paragraphe qui en répétait un autre mot pour mot.",
       "collapsed_many": "Nous avons omis {{count}} paragraphes qui en répétaient d'autres mot pour mot.",
-      "collapsed_other": "Nous avons omis {{count}} paragraphes qui en répétaient d'autres mot pour mot."
+      "collapsed_other": "Nous avons omis {{count}} paragraphes qui en répétaient d'autres mot pour mot.",
+      "cutShort": "Notre copie s'arrête peut-être avant la fin de l'offre."
     },
     "detail": {
       "back": "Retour à {{name}}",

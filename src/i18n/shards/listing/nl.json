@@ -19,12 +19,12 @@
       "postedDaysAgo_other": "{{count}} dagen geleden geplaatst",
       "feedRead": "{{system}} · feed {{ago}} gelezen",
       "feedReadNoSystem": "Feed {{ago}} gelezen",
-      "feedReadTip": "Wanneer we de eigen vacaturefeed van deze werkgever het laatst lazen. Een vacature die de werkgever weghaalt, verdwijnt bij de volgende lezing van die feed van het bord.",
+      "feedReadTip": "Wanneer we de eigen vacaturefeed van deze werkgever het laatst lazen. Een vacature die de werkgever weghaalt, verdwijnt van het bord zodra een lezing van de hele feed hem niet meer vindt; bij een bord dat te groot is voor één lezing kan dat meerdere lezingen duren.",
       "agencyBoard": "Bord van een uitzend- of wervingsbureau",
       "agencyBoardTip": "Dit bord is van een uitzend- of wervingsbureau. We markeren het bord, niet elke vacature, dus de functies hier zijn meestal voor klanten van het bureau en niet voor het bureau zelf.",
-      "annualEstimate": "≈ {{amount}}{{period}}",
+      "annualEstimate": "≈ {{amount}}{{period}} (onze schatting)",
       "checkFit": "Match checken",
-      "checkFitLabel": "Je match met {{title}} checken"
+      "checkFitLabel": "Match checken: {{title}}"
     },
     "menu": {
       "report": "Melden",
@@ -33,12 +33,12 @@
       "copyLink": "Link kopiëren"
     },
     "status": {
-      "live": "Live bij de bron · feed {{ago}} gelezen",
-      "liveTip": "De eigen feed van de werkgever vermeldde deze vacature toen we hem het laatst lazen.",
       "partial": "We konden maar een deel van dit bord lezen",
       "partialTip": "Het bord van deze werkgever is groter dan één lezing bereikt, dus we kunnen niet bij elke lezing elke vacature erop bevestigen.",
-      "gone": "Niet meer vermeld door de werkgever · verwijderd op {{date}}",
-      "goneUndated": "Niet meer vermeld door de werkgever"
+      "gone": "Niet meer vermeld door de werkgever · sinds {{date}} niet meer in de feed gevonden",
+      "goneUndated": "Niet meer vermeld door de werkgever",
+      "read": "Feed van de werkgever {{ago}} gelezen",
+      "readTip": "Die lezing gaat over het hele bord van de werkgever. Het is geen controle van deze ene vacature."
     },
     "actions": {
       "apply": "Solliciteer op de site van {{employer}}",
@@ -61,7 +61,21 @@
       "system": "Wervingssysteem",
       "systemValue": "De sollicitatielink opent {{system}}",
       "department": "Afdeling",
-      "feedRead": "Feed gelezen"
+      "ourEstimate": "≈ {{amount}}{{period}}, onze schatting ({{rule}})",
+      "estimateRule": {
+        "hour": "× 2.080 uur",
+        "day": "× 260 dagen",
+        "week": "× 52 weken",
+        "month": "× 12 maanden"
+      },
+      "band": {
+        "entry": "Startersniveau",
+        "mid": "Medior",
+        "senior": "Senior",
+        "expert": "Expert"
+      },
+      "bandNote": "onze lezing van de titel en de eisen, geen label van de werkgever",
+      "minYearsNote": "zoals de vacature vraagt"
     },
     "description": {
       "loading": "Omschrijving laden…",
@@ -72,7 +86,8 @@
       "continuesOnSite": "De vacature gaat verder op de site van {{employer}}",
       "continuesOnSitePlain": "De vacature gaat verder op de site van de werkgever",
       "collapsed_one": "We lieten {{count}} alinea weg die een andere woord voor woord herhaalde.",
-      "collapsed_other": "We lieten {{count}} alinea's weg die andere woord voor woord herhaalden."
+      "collapsed_other": "We lieten {{count}} alinea's weg die andere woord voor woord herhaalden.",
+      "cutShort": "Onze kopie stopt mogelijk voor het einde van de vacature."
     },
     "detail": {
       "back": "Terug naar {{name}}",

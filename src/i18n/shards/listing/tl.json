@@ -19,12 +19,12 @@
       "postedDaysAgo_other": "na-post {{count}} araw na ang nakalipas",
       "feedRead": "{{system}} · nabasa ang feed {{ago}}",
       "feedReadNoSystem": "Nabasa ang feed {{ago}}",
-      "feedReadTip": "Kung kailan namin huling nabasa ang sariling job feed ng employer na ito. Ang posting na tinanggal ng employer ay mawawala sa board sa susunod na pagbasa ng kanyang feed.",
+      "feedReadTip": "Kung kailan namin huling nabasa ang sariling job feed ng employer na ito. Ang posting na tinanggal ng employer ay mawawala sa board kapag hindi na ito nakita ng pagbasa sa buong feed nito; sa board na masyadong malaki para sa isang pagbasa, maaaring abutin iyon ng ilang pagbasa.",
       "agencyBoard": "Board ng isang staffing agency",
       "agencyBoardTip": "Ang board na ito ay pag-aari ng isang staffing o recruiting agency. Ang board ang minamarkahan namin, hindi ang bawat posting, kaya ang mga trabaho rito ay kadalasang para sa mga kliyente ng agency at hindi para sa agency mismo.",
-      "annualEstimate": "≈ {{amount}}{{period}}",
+      "annualEstimate": "≈ {{amount}}{{period}} (tantiya namin)",
       "checkFit": "I-check ang fit",
-      "checkFitLabel": "I-check ang fit mo para sa {{title}}"
+      "checkFitLabel": "I-check ang fit: {{title}}"
     },
     "menu": {
       "report": "I-report",
@@ -33,12 +33,12 @@
       "copyLink": "Kopyahin ang link"
     },
     "status": {
-      "live": "Live sa pinagmulan · nabasa ang feed {{ago}}",
-      "liveTip": "Nakalista ang posting na ito sa sariling feed ng employer noong huli namin itong nabasa.",
       "partial": "Bahagi lang ng board na ito ang nabasa namin",
       "partialTip": "Mas malaki ang board ng employer na ito kaysa naaabot ng isang pagbasa, kaya hindi namin makukumpirma ang bawat posting dito sa bawat pagbasa.",
-      "gone": "Hindi na nakalista ng employer · tinanggal noong {{date}}",
-      "goneUndated": "Hindi na nakalista ng employer"
+      "gone": "Hindi na nakalista ng employer · unang hindi nakita sa feed nito noong {{date}}",
+      "goneUndated": "Hindi na nakalista ng employer",
+      "read": "Nabasa ang feed ng employer {{ago}}",
+      "readTip": "Sakop ng pagbasang iyon ang buong board ng employer. Hindi ito pagsuri sa iisang posting na ito."
     },
     "actions": {
       "apply": "Mag-apply sa site ng {{employer}}",
@@ -61,7 +61,21 @@
       "system": "Hiring system",
       "systemValue": "Bubukas ang apply link sa {{system}}",
       "department": "Departamento",
-      "feedRead": "Nabasa ang feed"
+      "ourEstimate": "≈ {{amount}}{{period}}, tantiya namin ({{rule}})",
+      "estimateRule": {
+        "hour": "× 2,080 oras",
+        "day": "× 260 araw",
+        "week": "× 52 linggo",
+        "month": "× 12 buwan"
+      },
+      "band": {
+        "entry": "Entry level",
+        "mid": "Mid level",
+        "senior": "Senior",
+        "expert": "Eksperto"
+      },
+      "bandNote": "aming pagbasa sa titulo at mga kailangan, hindi label ng employer",
+      "minYearsNote": "ayon sa hinihingi ng posting"
     },
     "description": {
       "loading": "Nilo-load ang paglalarawan…",
@@ -72,7 +86,8 @@
       "continuesOnSite": "Nagpapatuloy ang posting sa site ng {{employer}}",
       "continuesOnSitePlain": "Nagpapatuloy ang posting sa site ng employer",
       "collapsed_one": "Inalis namin ang {{count}} talata na eksaktong umuulit sa isa pa.",
-      "collapsed_other": "Inalis namin ang {{count}} talata na eksaktong umuulit sa iba."
+      "collapsed_other": "Inalis namin ang {{count}} talata na eksaktong umuulit sa iba.",
+      "cutShort": "Maaaring huminto ang aming kopya bago matapos ang buong posting."
     },
     "detail": {
       "back": "Bumalik sa {{name}}",

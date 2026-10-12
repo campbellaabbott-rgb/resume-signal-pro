@@ -19,12 +19,12 @@
       "postedDaysAgo_other": "vor {{count}} Tagen ausgeschrieben",
       "feedRead": "{{system}} · Feed {{ago}} gelesen",
       "feedReadNoSystem": "Feed {{ago}} gelesen",
-      "feedReadTip": "Wann wir den eigenen Job-Feed dieses Arbeitgebers zuletzt gelesen haben. Eine Stelle, die der Arbeitgeber entfernt, verlässt das Board beim nächsten Lesen seines Feeds.",
+      "feedReadTip": "Wann wir den eigenen Job-Feed dieses Arbeitgebers zuletzt gelesen haben. Eine Stelle, die der Arbeitgeber entfernt, verlässt das Board, sobald ein Lesen seines ganzen Feeds sie nicht mehr findet; bei einem Board, das für ein Lesen zu groß ist, kann das mehrere Lesevorgänge dauern.",
       "agencyBoard": "Board einer Personalagentur",
       "agencyBoardTip": "Dieses Board gehört einer Personal- oder Recruiting-Agentur. Wir kennzeichnen das Board, nicht jede einzelne Stelle; die Stellen hier sind meist für Kunden der Agentur, nicht für die Agentur selbst.",
-      "annualEstimate": "≈ {{amount}}{{period}}",
+      "annualEstimate": "≈ {{amount}}{{period}} (unsere Schätzung)",
       "checkFit": "Passung prüfen",
-      "checkFitLabel": "Passung für {{title}} prüfen"
+      "checkFitLabel": "Passung prüfen: {{title}}"
     },
     "menu": {
       "report": "Melden",
@@ -33,12 +33,12 @@
       "copyLink": "Link kopieren"
     },
     "status": {
-      "live": "Live an der Quelle · Feed {{ago}} gelesen",
-      "liveTip": "Der eigene Feed des Arbeitgebers führte diese Stelle, als wir ihn zuletzt gelesen haben.",
       "partial": "Wir konnten nur einen Teil dieses Boards lesen",
       "partialTip": "Das Board dieses Arbeitgebers ist größer, als ein einzelner Lesevorgang erreicht; deshalb können wir nicht bei jedem Lesen jede Stelle darauf bestätigen.",
-      "gone": "Vom Arbeitgeber nicht mehr gelistet · entfernt am {{date}}",
-      "goneUndated": "Vom Arbeitgeber nicht mehr gelistet"
+      "gone": "Vom Arbeitgeber nicht mehr gelistet · seit {{date}} nicht mehr im Feed gefunden",
+      "goneUndated": "Vom Arbeitgeber nicht mehr gelistet",
+      "read": "Feed des Arbeitgebers {{ago}} gelesen",
+      "readTip": "Dieses Lesen betrifft das ganze Board des Arbeitgebers. Es ist keine Prüfung dieser einen Stelle."
     },
     "actions": {
       "apply": "Auf der Website von {{employer}} bewerben",
@@ -61,7 +61,21 @@
       "system": "Bewerbungssystem",
       "systemValue": "Der Bewerbungslink öffnet {{system}}",
       "department": "Abteilung",
-      "feedRead": "Feed gelesen"
+      "ourEstimate": "≈ {{amount}}{{period}}, unsere Schätzung ({{rule}})",
+      "estimateRule": {
+        "hour": "× 2.080 Stunden",
+        "day": "× 260 Tage",
+        "week": "× 52 Wochen",
+        "month": "× 12 Monate"
+      },
+      "band": {
+        "entry": "Einstiegslevel",
+        "mid": "Mittleres Level",
+        "senior": "Senior",
+        "expert": "Experte"
+      },
+      "bandNote": "unsere Einschätzung aus Titel und Anforderungen, keine Angabe des Arbeitgebers",
+      "minYearsNote": "wie die Stelle es verlangt"
     },
     "description": {
       "loading": "Beschreibung wird geladen …",
@@ -72,7 +86,8 @@
       "continuesOnSite": "Die Anzeige geht auf der Website von {{employer}} weiter",
       "continuesOnSitePlain": "Die Anzeige geht auf der Website des Arbeitgebers weiter",
       "collapsed_one": "Wir haben {{count}} Absatz weggelassen, der einen anderen Wort für Wort wiederholte.",
-      "collapsed_other": "Wir haben {{count}} Absätze weggelassen, die andere Wort für Wort wiederholten."
+      "collapsed_other": "Wir haben {{count}} Absätze weggelassen, die andere Wort für Wort wiederholten.",
+      "cutShort": "Unsere Kopie endet möglicherweise vor dem Ende der Anzeige."
     },
     "detail": {
       "back": "Zurück zu {{name}}",

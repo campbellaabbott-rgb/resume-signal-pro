@@ -19,6 +19,14 @@
  * pane says so instead of letting the reader assume the posting ends where
  * our copy does. A mirror of a constant in another runtime goes false in
  * silence, so a test reads the edge file and fails when the two disagree.
+ *
+ * SHORT OF THE CAP BUT CUT. Some feeds hand us a body that stops mid-word
+ * well under the cap (greenhouse:bayada:8883416002: 2,220 characters ending
+ * "BAYADA is celebrating 50 years of compassion, ex"), so the cap alone
+ * misses them. A text whose last line reads as prose (five or more words, not
+ * a bullet) and ends without sentence punctuation may continue on the
+ * employer's site; the pane says so in hedged words ("may stop short") and
+ * links the posting, because a complete description can end that way too.
  */
 import { decodeJdEntities } from "@/components/jobs/posting-page";
 
@@ -51,6 +59,24 @@ export function descriptionMayContinue(raw: string | null | undefined): boolean 
   return typeof raw === "string" && raw.length >= STORED_DESC_CAP;
 }
 
+/** A line that closes a sentence or a quotation (Latin, Devanagari and CJK full stops included). */
+const SENTENCE_END = /[.!?…:;)\]}"'”’»।。！？]$/;
+/** A line that opens as a list item: a bullet, a dash, or "1." / "a)". */
+const LIST_ITEM = /^(?:[•·▪◦‣*–—-]|\(?[0-9a-z]{1,2}[.)])\s/i;
+
+/**
+ * The text's last line reads as prose and stops without sentence punctuation,
+ * so our copy may stop short of the posting. Headings, sign-offs ("SER-MN",
+ * "Equal Opportunity Employer") and bullets are never read as cut.
+ */
+export function descriptionEndsMidSentence(text: string | null | undefined): boolean {
+  if (typeof text !== "string") return false;
+  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+  const last = lines[lines.length - 1];
+  if (!last || SENTENCE_END.test(last) || LIST_ITEM.test(last)) return false;
+  return last.split(/\s+/).length >= 5;
+}
+
 /**
  * Lines that open a section. Conservative: a short standalone line matching a
  * known heading (EN plus the highest-frequency DE/FR/ES ones on the board).
@@ -65,6 +91,8 @@ export interface PreparedDescription {
   /** The employer's own sections, when it has at least two recognisable headings; null otherwise. */
   sections: Array<{ title: string | null; text: string }> | null;
   mayContinue: boolean;
+  /** Under the cap, but the last line stops mid-sentence (descriptionEndsMidSentence). */
+  cutShort: boolean;
 }
 
 export function prepareDescription(raw: string): PreparedDescription {
@@ -84,5 +112,6 @@ export function prepareDescription(raw: string): PreparedDescription {
           .map((s) => ({ title: s.title, text: s.body.join("\n").trim() }))
           .filter((s) => s.title !== null || s.text.length > 0),
     mayContinue: descriptionMayContinue(raw),
+    cutShort: !descriptionMayContinue(raw) && descriptionEndsMidSentence(text),
   };
 }

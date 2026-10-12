@@ -20,12 +20,12 @@
       "postedDaysAgo_other": "publicada há {{count}} dias",
       "feedRead": "{{system}} · feed lido {{ago}}",
       "feedReadNoSystem": "Feed lido {{ago}}",
-      "feedReadTip": "A última vez que lemos o feed de vagas do próprio empregador. Uma vaga que o empregador retira sai do quadro na leitura seguinte do feed.",
+      "feedReadTip": "A última vez que lemos o feed de vagas do próprio empregador. Uma vaga que o empregador retira sai do quadro quando uma leitura de todo o feed deixa de a encontrar; num quadro grande demais para uma só leitura, isso pode levar várias leituras.",
       "agencyBoard": "Quadro de uma agência de recrutamento",
       "agencyBoardTip": "Este quadro pertence a uma agência de trabalho temporário ou de recrutamento. Marcamos o quadro, não cada vaga, por isso as funções aqui costumam ser para clientes da agência e não para a própria agência.",
-      "annualEstimate": "≈ {{amount}}{{period}}",
+      "annualEstimate": "≈ {{amount}}{{period}} (estimativa nossa)",
       "checkFit": "Checar encaixe",
-      "checkFitLabel": "Checar o seu encaixe com {{title}}"
+      "checkFitLabel": "Checar encaixe: {{title}}"
     },
     "menu": {
       "report": "Sinalizar",
@@ -34,12 +34,12 @@
       "copyLink": "Copiar link"
     },
     "status": {
-      "live": "Ativa na origem · feed lido {{ago}}",
-      "liveTip": "O feed do próprio empregador listava esta vaga na última vez que o lemos.",
       "partial": "Só conseguimos ler parte deste quadro",
       "partialTip": "O quadro deste empregador é maior do que uma leitura alcança, por isso não conseguimos confirmar cada vaga em cada leitura.",
-      "gone": "Já não está listada pelo empregador · retirada em {{date}}",
-      "goneUndated": "Já não está listada pelo empregador"
+      "gone": "Já não está listada pelo empregador · ausente do feed desde {{date}}",
+      "goneUndated": "Já não está listada pelo empregador",
+      "read": "Feed do empregador lido {{ago}}",
+      "readTip": "Essa leitura abrange todo o quadro do empregador. Não é uma verificação desta vaga em particular."
     },
     "actions": {
       "apply": "Candidate-se no site da {{employer}}",
@@ -62,7 +62,21 @@
       "system": "Sistema de recrutamento",
       "systemValue": "O link de candidatura abre no {{system}}",
       "department": "Departamento",
-      "feedRead": "Feed lido"
+      "ourEstimate": "≈ {{amount}}{{period}}, estimativa nossa ({{rule}})",
+      "estimateRule": {
+        "hour": "× 2.080 horas",
+        "day": "× 260 dias",
+        "week": "× 52 semanas",
+        "month": "× 12 meses"
+      },
+      "band": {
+        "entry": "Nível inicial",
+        "mid": "Nível médio",
+        "senior": "Sênior",
+        "expert": "Especialista"
+      },
+      "bandNote": "a nossa leitura do título e dos requisitos, não um rótulo do empregador",
+      "minYearsNote": "conforme pede a vaga"
     },
     "description": {
       "loading": "Carregando a descrição…",
@@ -74,7 +88,8 @@
       "continuesOnSitePlain": "A vaga continua no site do empregador",
       "collapsed_one": "Omitimos {{count}} parágrafo que repetia outro palavra por palavra.",
       "collapsed_many": "Omitimos {{count}} parágrafos que repetiam outros palavra por palavra.",
-      "collapsed_other": "Omitimos {{count}} parágrafos que repetiam outros palavra por palavra."
+      "collapsed_other": "Omitimos {{count}} parágrafos que repetiam outros palavra por palavra.",
+      "cutShort": "A nossa cópia pode parar antes do fim da vaga."
     },
     "detail": {
       "back": "Voltar para {{name}}",

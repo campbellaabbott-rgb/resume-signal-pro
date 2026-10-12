@@ -233,7 +233,7 @@ export function JobCard({
                   className="text-muted-foreground"
                   title={t("jobsPage.annualizedBasisTip", "Our arithmetic, not the employer's: an hourly rate × 2,080 hours (40 hours a week, 52 weeks), a daily rate × 260 days, a monthly rate × 12. The figure to its left is what the posting actually says.")}
                 >
-                  {t("listing.card.annualEstimate", { defaultValue: "≈ {{amount}}{{period}}", amount: pay.annual, period: periodSuffix(t, "year") })}
+                  {t("listing.card.annualEstimate", { defaultValue: "≈ {{amount}}{{period}} (our estimate)", amount: pay.annual, period: periodSuffix(t, "year") })}
                 </span>
               ) : null,
               mode ? (
@@ -268,7 +268,7 @@ export function JobCard({
             className="mt-1.5 flex flex-wrap items-baseline text-xs text-muted-foreground"
             items={[
               system || read ? (
-                <span key="r" title={read ? t("listing.card.feedReadTip", "When we last read this employer's own job feed. A posting the employer takes down leaves the board at the next read of its feed.") : undefined} data-card-read="">
+                <span key="r" title={read ? t("listing.card.feedReadTip", "When we last read this employer's own job feed. A posting the employer takes down leaves the board once a read of its whole feed finds it missing; on a board too big for one read, that can take several reads.") : undefined} data-card-read="">
                   {system && read
                     ? t("listing.card.feedRead", { defaultValue: "{{system}} · feed read {{ago}}", system, ago: read })
                     : read
@@ -303,7 +303,7 @@ export function JobCard({
                 <button
                   type="button"
                   disabled={checkFitBusy}
-                  aria-label={t("listing.card.checkFitLabel", { defaultValue: "Check your fit for {{title}}", title })}
+                  aria-label={t("listing.card.checkFitLabel", { defaultValue: "Check fit: {{title}}", title })}
                   onClick={(e) => { e.stopPropagation(); onCheckFit(job); }}
                   className="min-h-6 text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary disabled:cursor-wait"
                 >
