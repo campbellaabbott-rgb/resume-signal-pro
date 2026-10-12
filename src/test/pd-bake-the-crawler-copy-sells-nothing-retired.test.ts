@@ -254,6 +254,28 @@ describe("a once-published URL outside this bake's set keeps a noindex page of i
     }
   });
 
+  it("S12-022: the company URLs the sweep found serving the homepage each get a page of their own", () => {
+    // Live on 2026-10-12, as Googlebot: each of these answered the homepage
+    // file (index, canonical "/"), though the employers still hire. Whether
+    // this bake chose a path or not, it writes the path's own page; one out
+    // of the sitemap is noindex.
+    const sitemap = readFileSync(join(DIST, "sitemap.xml"), "utf8");
+    const named = ["/jobs/company/MattelInc", "/jobs/company/10kbi", "/jobs/company/1800gotjunk", "/jobs/company/ABOUTYOUGmbH", "/jobs/company/APMGroup"];
+    let outOfSet = 0;
+    for (const path of named) {
+      const html = page(path);
+      expect(/<link rel="canonical" href="([^"]*)"/.exec(html)?.[1], path).toBe(`https://resumebooster.work${path}`);
+      expect(html, path).not.toMatch(/<h1[^>]*>Live jobs, straight from employers/);
+      if (!sitemap.includes(`${path}<`)) {
+        outOfSet++;
+        expect(html, path).toMatch(/<meta name="robots" content="noindex, follow"/);
+      }
+    }
+    // The offline data's top set leaves at least three of them out, so the
+    // carry, not the choice, wrote those.
+    expect(outOfSet).toBeGreaterThanOrEqual(3);
+  });
+
   it("a seeded posting path is the honest 'retired' page that says nothing was checked, never 'gone'", () => {
     const seeded = Object.entries(ledger().postings).filter(([, e]) => e.state === "seeded" && e.seed);
     expect(seeded.length, "the seed reached the posting carry").toBeGreaterThan(100);
