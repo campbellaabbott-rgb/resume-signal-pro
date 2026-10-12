@@ -183,6 +183,9 @@ export function JobCard({
                 {title}
               </Link>
             </h3>
+            {/* 36px targets that do not push the employer line down: the
+                negative margin keeps the row as tall as the title. */}
+            <div className="-my-1.5 -mr-2 flex shrink-0 items-center">
             {onToggleSave && (
               <button
                 type="button"
@@ -196,6 +199,7 @@ export function JobCard({
               </button>
             )}
             {menu && <PostingMenu job={job} title={title} menu={menu} />}
+            </div>
           </div>
 
           <Dotted
@@ -276,7 +280,11 @@ export function JobCard({
             ]}
           />
 
-          {chips.length > 0 && <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">{chips}</div>}
+          {chips.length > 0 && (
+            <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
+              {chips.map((chip, i) => <Fragment key={i}>{chip}</Fragment>)}
+            </div>
+          )}
 
           {(tier || fit?.kind === "unscored" || applied || onCheckFit) && (
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">

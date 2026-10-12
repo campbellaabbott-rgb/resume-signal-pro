@@ -1,5 +1,5 @@
 /**
- * THE DECISION ROW: one filled primary, Apply on the employer's own site; the
+ * THE DECISION ROW: one solid primary, Apply on the employer's own site; the
  * free fit check as the secondary; Save as a named icon. Each caption sits
  * under its own button, so no sentence is left describing the wrong control.
  *

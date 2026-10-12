@@ -3,7 +3,7 @@
  * sheet's body and the posting page's article, from one component.
  *
  * Order, top to bottom: the header; where the posting stands at its source;
- * the decision (Apply on the employer's site, filled; the free fit check;
+ * the decision (Apply on the employer's site, solid; the free fit check;
  * Save); the facts; what the employer's public records say, kept apart from
  * the facts of the job; how applying works; the employer's description; and
  * the employer context.

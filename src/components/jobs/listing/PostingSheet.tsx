@@ -4,7 +4,7 @@
  * What it replaces (Jobs.tsx's hand-rolled drawer): a fixed aside with
  * role="dialog" but no focus trap, no inert background and no focus return,
  * at z-50 beside a header at z-[60] that painted over its title; its pinned
- * bar filled the fit scan and outlined Apply under a bare "Apply".
+ * bar gave the fit scan the solid style and outlined Apply under a bare "Apply".
  *
  * Here, on the Radix dialog the site already ships:
  *   - focus moves into the sheet, is trapped there, Escape closes it, and on
@@ -53,6 +53,13 @@ export function PostingSheet({ job, open, onClose, children, onApply, onCheckFit
           className="fixed inset-0 z-50 flex min-w-0 flex-col bg-background focus:outline-none"
           data-posting-sheet=""
           aria-describedby={undefined}
+          // Focus lands on the sheet itself, so a screen reader announces the
+          // posting by its title and Tab starts at Back — rather than a ring
+          // appearing on Back the instant a tap opens the sheet.
+          onOpenAutoFocus={(e) => {
+            e.preventDefault();
+            (e.currentTarget as HTMLElement | null)?.focus();
+          }}
           onCloseAutoFocus={(e) => {
             if (returnFocusTo && document.contains(returnFocusTo)) {
               e.preventDefault();

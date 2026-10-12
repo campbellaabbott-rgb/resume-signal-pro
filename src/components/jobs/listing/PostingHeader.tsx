@@ -7,7 +7,7 @@
  * The title is cleaned and decoded here (listingTitle decodes named and
  * numeric entities, then folds a doubled leading phrase), so a row that
  * reaches the pane without the board's normalizeRow still prints "R&D
- * Engineer – Batteries", not "R&amp;D Engineer &#8211; Batteries".
+ * Engineer – Batteries", never the escaped ampersand and dash it arrived with.
  */
 import type { MouseEvent } from "react";
 import { Link } from "react-router-dom";
