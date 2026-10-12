@@ -227,3 +227,68 @@ export async function provenMailbox(
   if (confirmedSinceEnforcement(user, jwt, since) && await autoconfirmIsOff(env)) return email;
   return null;
 }
+
+/*
+ * A MAILBOX PROVEN ONCE, BY THE ACCOUNT THAT RECEIVED THE CODE (R1, 2026-10-14).
+ *
+ * auth-signed-in (_shared/mailbox-guard.ts) writes one public.account_mailbox_proofs
+ * row per (account, address) when a fresh code, link or Google sign-in proved
+ * the address the account carries (migration 20261014110000). The two readers
+ * below are the whole read side for now; R4 folds the row into provenMailbox
+ * above, under one rule shared with the SQL reader.
+ */
+
+/** What a read of the proof row found. "error" is never read as either answer. */
+export type ProofRowState = "present" | "absent" | "error";
+
+/**
+ * Whether account_mailbox_proofs holds a row for (userId, lower(email)). A
+ * failed read (no client, an error, the table missing) is "error", so a caller
+ * that is about to change something (the guard) can stop instead of guessing.
+ */
+export async function mailboxProofState(
+  admin: MailboxSwitchDb | null | undefined,
+  userId: string,
+  email: string,
+): Promise<ProofRowState> {
+  const address = normalize(email);
+  if (!admin || typeof userId !== "string" || !userId || !address.includes("@")) return "error";
+  try {
+    const { data, error } = await admin
+      .from("account_mailbox_proofs")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("email", address)
+      .maybeSingle();
+    if (error) return "error";
+    return data ? "present" : "absent";
+  } catch {
+    return "error";
+  }
+}
+
+/**
+ * True only when a proof row exists for (userId, lower(email)). Any failure,
+ * a missing table included, is false: a reader that opens something to an
+ * address fails closed. (Contract 2 of the R1 plan.)
+ */
+export async function hasMailboxProof(
+  admin: MailboxSwitchDb | null | undefined,
+  userId: string,
+  email: string,
+): Promise<boolean> {
+  return (await mailboxProofState(admin, userId, email)) === "present";
+}
+
+/**
+ * An address as a bearer link may show it: the first character, three stars
+ * and the domain (j***@gmail.com). null for no address; "***" for a value
+ * that is not an address, so nothing of it is shown.
+ */
+export function maskEmail(email: string | null | undefined): string | null {
+  const address = normalize(email);
+  if (!address) return null;
+  const at = address.lastIndexOf("@");
+  if (at < 1 || at === address.length - 1) return "***";
+  return `${address[0]}***${address.slice(at)}`;
+}
