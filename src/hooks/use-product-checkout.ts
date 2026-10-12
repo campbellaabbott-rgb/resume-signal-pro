@@ -191,6 +191,26 @@ async function storeCopy(inputs: PurchaseInputs): Promise<string | null> {
   }
 }
 
+/**
+ * THE ADDRESS A CHECKOUT IS PREFILLED WITH: THE SIGNED-IN ACCOUNT'S, OR NONE
+ * (register CP-012, Account UX spec 9). The checkout used to send whatever
+ * address this browser had stored (the scan-pack address, the last sign-in),
+ * which on a shared computer is the previous person's: Stripe opened with
+ * their address, and the receipt and the purchase went to it. A stored value
+ * cannot say whether the person now at the keyboard typed it, so a signed-out
+ * checkout sends no address and Stripe asks for one. A Pro member is
+ * recognised by their signed-in account, never by a stored address.
+ */
+export async function checkoutPrefillEmail(): Promise<string | undefined> {
+  try {
+    const { data } = await supabase.auth.getSession();
+    const email = data?.session?.user?.email;
+    return typeof email === 'string' && email.includes('@') ? email : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export type ResumeBinding = { sessionId?: string; refused?: boolean };
 
 /**
@@ -281,9 +301,8 @@ export function useProductCheckout() {
       const { data, error } = await supabase.functions.invoke('create-product-checkout', {
         body: {
           productId: productId,
-          // Known email lets the server include the product free for active
-          // Pro subscribers (and prefills Stripe checkout otherwise).
-          email: localStorage.getItem('scanCreditsEmail') || localStorage.getItem('rb_last_email') || undefined,
+          // The signed-in account's address, or none (see checkoutPrefillEmail).
+          email: await checkoutPrefillEmail(),
           sessionId: binding.sessionId,
           jobTitle: opts.jobTitle,
           jobCompany: opts.jobCompany,
