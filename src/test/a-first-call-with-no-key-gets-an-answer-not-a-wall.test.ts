@@ -3,13 +3,16 @@ import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   MCP_ANON_TOOL_NAMES, MCP_ANON_CAPS, MCP_FREE_KEY_DAILY_QUOTA, MCP_TOOL_NAMES,
-  MCP_PAID_TOOLS, MCP_APPLY_TOOLS,
+  MCP_PAID_TOOLS, MCP_APPLY_TOOLS, MCP_FORM_VENDORS, MCP_FORM_VENDORS_ON_CHATGPT,
+  MCP_FIT_FREE_PER_DAY, MCP_FIT_FULL_PER_DAY,
   MCP_PAGE_HOSTS, MCP_OFF_PAGE_HOSTS, MCP_MORE_HOSTS, MCP_INSTALL_REPO_URL,
 } from "../config/mcp-tools";
 import {
   MCP_URL, OAUTH_SCOPE, PRM_PATH, RESOURCE_METADATA_URL, isProtectedResourceMetadataPath, unauthorized,
 } from "../../supabase/functions/agent-mcp/oauth";
 import { ANON_ALLOWANCE } from "../../supabase/functions/agent-mcp/allowance";
+import { FORM_READER_VENDORS, PUBLIC_API_FORM_VENDORS } from "../../supabase/functions/_shared/application-form";
+import { FIT_FREE_PER_DAY, FIT_FULL_PER_DAY } from "../../supabase/functions/_shared/fit-allowance";
 
 /**
  * A FIRST CALL WITH NO KEY GETS AN ANSWER, NOT A WALL.
@@ -224,6 +227,29 @@ describe("the caps are named constants, mirrored, and the only numbers the keyle
       chatgptNoSubject: A.chatgptNoSubject, otherPerConnection: A.otherPerConnection,
       perMinute: A.perMinute, forms: { overall: A.forms.overall }, searchRows: A.searchRows,
     });
+    // The rest of the page's figures, field by field (the integration of wave 4
+    // moved the mirror onto the new shape; a figure only the page carried would
+    // drift unseen).
+    expect(MCP_ANON_CAPS.forms).toEqual(A.forms);
+    expect(MCP_ANON_CAPS.maxOffset).toBe(A.maxOffset);
+    expect(MCP_ANON_CAPS.checkJobsOpenIds).toBe(A.checkJobsOpenIds);
+  });
+
+  it("the page's form vendors, its ChatGPT subset and its fit figures are the server's", () => {
+    expect(MCP_FORM_VENDORS.map((v) => v.key).sort()).toEqual([...FORM_READER_VENDORS].sort());
+    expect([...MCP_FORM_VENDORS_ON_CHATGPT].sort()).toEqual([...PUBLIC_API_FORM_VENDORS].sort());
+    expect([MCP_FIT_FREE_PER_DAY, MCP_FIT_FULL_PER_DAY]).toEqual([FIT_FREE_PER_DAY, FIT_FULL_PER_DAY]);
+  });
+
+  it("the old shape's names survive only for the off-limits bake, carrying the nearest true figure", () => {
+    // scripts/prerender-seo.mjs (owned by the company-profiles branch) still
+    // reads these three; until it moves, each must say something true of the
+    // new allowance rather than the retired 25/500/2,000.
+    expect(MCP_ANON_CAPS.perAddressPerDay).toBe(ANON_ALLOWANCE.otherPerConnection);
+    expect(MCP_ANON_CAPS.hostPoolPerDay).toBe(ANON_ALLOWANCE.shares.claude);
+    expect(MCP_ANON_CAPS.globalPerDay).toBe(ANON_ALLOWANCE.overallPerDay);
+    const pages = ["src/pages/AgentConnect.tsx", "src/pages/Index.tsx", "src/lib/mcp-test.ts"].map((f) => read(f)).join("\n");
+    expect(pages).not.toMatch(/MCP_ANON_CAPS\.(?:perAddressPerDay|hostPoolPerDay|globalPerDay)/);
   });
 
   it("the keyless branch hands the named figures to mcp_anon_check_v2 and clamps with the named limit", () => {
@@ -504,7 +530,8 @@ describe("initialize.instructions: no tier block, every name off the registry, a
 describe("the page, the prerender and llms.txt derive the tier from the mirror", () => {
   it("the page renders the unkeyed tools and caps from the mirror and types neither", () => {
     expect(PAGE).toMatch(/MCP_ANON_TOOLS/);
-    expect(PAGE).toMatch(/MCP_ANON_CAPS\.perAddressPerDay/);
+    expect(PAGE).toMatch(/MCP_ANON_CAPS\.shares\.claude/);
+    expect(PAGE).toMatch(/MCP_ANON_CAPS\.otherPerConnection/);
     expect(PAGE).toMatch(/MCP_ANON_CAPS\.searchRows/);
     expect(PAGE).not.toMatch(/\b\d+ calls a day/);
   });

@@ -140,19 +140,25 @@ export function agentDeepLink(hostName: string, prompt: string): string | null {
 }
 
 /**
- * THE FOUR RENAMES AND THE ONE DROP between the board's own request body
+ * THE THREE RENAMES AND THE TWO DROPS between the board's own request body
  * (boardFilterBody in Jobs.tsx) and the server's search_jobs arguments.
  * Everything else travels under its own name; `companies` is the board's
  * array and the server's comma list, so it is joined.
  */
 export const SEARCH_ARG_RENAMES: Readonly<Record<string, string>> = {
   q: "query",
-  sendableOnly: "agentReadyOnly",
   salaryFloor: "salaryMin",
   salaryCeiling: "salaryMax",
 };
-/** A board key with no search_jobs argument: it WIDENS a category, and the server has no such switch. */
-export const SEARCH_ARG_DROPS: readonly string[] = ["includeUncategorised"];
+/**
+ * Board keys with no search_jobs argument. includeUncategorised WIDENS a
+ * category, and the server has no such switch. sendableOnly was the board's
+ * "agent-ready" filter, the postings the server-side apply agent could send
+ * to: that agent is retired (owner decision 2026-10-11), the server no longer
+ * declares agentReadyOnly, and a hand-off must carry only arguments the server
+ * declares.
+ */
+export const SEARCH_ARG_DROPS: readonly string[] = ["includeUncategorised", "sendableOnly"];
 
 export type SearchSort = "relevance" | "newest" | "salary";
 

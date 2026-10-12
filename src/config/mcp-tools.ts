@@ -15,15 +15,82 @@
 // prices. Never spell the count anywhere; read MCP_TOOLS.length.
 //
 // `tier` is what the SERVER enforces, mirrored from its dispatch:
-//   read  — any free data-API key; nothing about the caller's account.
-//   paid  — the same gate as POST /v1/fit (the shared fit predicate in
-//           key-tier.ts).
-//   apply — refuses a key that is not linked to an account. DORMANT: these
+//   read  — answers any key; most read tools also answer with no key at all
+//           (MCP_ANON_TOOL_NAMES).
+//   paid  — the fit allowance, the same gate as POST /v1/fit: a confirmed
+//           free key scores MCP_FIT_FREE_PER_DAY times a day, a paid tier, a
+//           pass, the Agent plan or Pro MCP_FIT_FULL_PER_DAY (owner decision
+//           2026-10-11; _shared/fit-allowance.ts).
+//   apply — refuses a key that is not linked to an account. RETIRED: these
 //           drove the server-side apply agent, switched off by the apply
-//           pivot (owner decision 2026-10-11); nothing is sold that opens
-//           them and no copy may say they send anything.
+//           pivot (owner decision 2026-10-11). The server lists them to
+//           nobody, so the mirror lists none; the type keeps the word so a
+//           guard can assert the tier is empty on both sides.
 
 export type McpToolTier = "read" | "paid" | "apply";
+
+/**
+ * The hiring systems whose application form a connected AI can read: the
+ * vendors whose real questions the board harvests, realQuestionVendors() in
+ * supabase/functions/_shared/apply-automation.ts, pinned equal (keys, and a
+ * label for each) by src/test/the-agents-page-sells-nothing-and-sends-nothing
+ * .test.tsx. Everywhere else the AI reads the posting and the person fills in
+ * the employer's form. Order: the spec's (Greenhouse first, by volume).
+ * Declared above the tool list, whose apply_myself sentence reads it.
+ */
+export const MCP_FORM_VENDORS: ReadonlyArray<{ key: string; label: string }> = [
+  { key: "greenhouse", label: "Greenhouse" },
+  { key: "ashby", label: "Ashby" },
+  { key: "recruitee", label: "Recruitee" },
+  { key: "breezy", label: "Breezy" },
+  { key: "pinpoint", label: "Pinpoint" },
+];
+
+/**
+ * The form vendors read inside ChatGPT: only the two with published public
+ * APIs (owner decision R2; the server's PUBLIC_API_FORM_VENDORS, pinned by
+ * the first-call guard).
+ */
+export const MCP_FORM_VENDORS_ON_CHATGPT: readonly string[] = ["greenhouse", "recruitee"];
+
+/** "a, b or c" for the English mirror bodies; the page's locale copy uses formVendorPhrase. */
+const orList = (xs: readonly string[]): string => (xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} or ${xs[xs.length - 1]}`);
+
+/**
+ * THE KEYLESS ALLOWANCE, mirrored from the server's ANON_ALLOWANCE
+ * (supabase/functions/agent-mcp/allowance.ts; owner decision 2026-10-11,
+ * economics 1(b)): 20,000 keyless calls a day split by the platform the call
+ * came from, per-minute caps, and a pool of its own for reading application
+ * forms. Pinned field by field to the Deno constant by
+ * src/test/a-first-call-with-no-key-gets-an-answer-not-a-wall.test.ts.
+ * Declared above the tool list because a body below reads it.
+ *
+ * perAddressPerDay, hostPoolPerDay and globalPerDay are the OLD shape's
+ * names, kept only because scripts/prerender-seo.mjs (owned by the
+ * company-profiles branch, off-limits to wave 4) still reads them: they carry
+ * the nearest true figure of the new allowance (a connection's own 100, the
+ * Claude share, the overall day) until that bake moves to the new names, and
+ * no wave-4 surface reads them.
+ */
+export const MCP_ANON_CAPS = {
+  overallPerDay: 20_000,
+  shares: { claude: 10_000, chatgpt: 6_000, other: 4_000 },
+  chatgptPerPerson: 200,
+  chatgptNoSubject: 2_000,
+  otherPerConnection: 100,
+  perMinute: { overall: 60, claude: 30, chatgpt: 20, other: 15, forms: 20 },
+  forms: { perBucket: 100, pool: 2_000, overall: 5_000 },
+  searchRows: 10,
+  maxOffset: 200,
+  checkJobsOpenIds: 50,
+  perAddressPerDay: 100,
+  hostPoolPerDay: 10_000,
+  globalPerDay: 20_000,
+} as const;
+
+/** Fit scorings a day on a confirmed free key, and with a paid plan: _shared/fit-allowance.ts, mirrored and pinned. */
+export const MCP_FIT_FREE_PER_DAY = 25;
+export const MCP_FIT_FULL_PER_DAY = 1000;
 
 /**
  * The two caps a keyed read carries — rows per search page and ids per
@@ -61,12 +128,12 @@ export const MCP_TOOLS: readonly McpTool[] = [
   {
     name: "check_jobs_open",
     tier: "read",
-    body: `Are these postings still on the board? Up to ${MCP_KEYED_CAPS.checkJobsOpenIds} ids per call, answered from the board's index rather than the employer's site at that instant — it names that basis so a shortlist is re-verified honestly.`,
+    body: `Are these postings still on the board? Up to ${MCP_KEYED_CAPS.checkJobsOpenIds} ids per call with a key (${MCP_ANON_CAPS.checkJobsOpenIds} with none), answered from the board's index rather than the employer's site at that instant — it names that basis so a shortlist is re-verified honestly.`,
   },
   {
-    name: "check_apply_support",
+    name: "apply_myself",
     tier: "read",
-    body: "The employer's direct apply link for a job, and what its hiring system requires of an applicant (an employer account, a CAPTCHA). You apply on the employer's own site; Resume Booster sends nothing for you.",
+    body: `Help a person apply to one posting themselves, on the employer's own site. When the employer uses ${orList(MCP_FORM_VENDORS.map((v) => v.label))}, it returns the employer's real application form: every question with its options, and who answers it — the person for every factual, demographic and consent question, their AI only for open questions about work done or motivation. Otherwise it returns the posting's apply link and the terms the posting uses. Inside ChatGPT it reads the form only for ${orList(MCP_FORM_VENDORS.filter((v) => MCP_FORM_VENDORS_ON_CHATGPT.includes(v.key)).map((v) => v.label))}. Resume Booster never submits anything.`,
   },
   {
     name: "board_stats",
@@ -106,17 +173,7 @@ export const MCP_TOOLS: readonly McpTool[] = [
   {
     name: "fit_resume",
     tier: "paid",
-    body: "Score a résumé against the board — the site's résumé drop for an agent holding a CV. Reads the occupation out of the text, searches for it, and scores up to 20 results with matched and missing terms. Gated exactly like POST /v1/fit on the data API.",
-  },
-  {
-    name: "request_application",
-    tier: "apply",
-    body: "Dormant. It belonged to our server-side apply agent, which is switched off: Resume Booster does not send applications, so this tool sends nothing. You apply yourself, on the employer's own site.",
-  },
-  {
-    name: "application_status",
-    tier: "apply",
-    body: "Dormant, with request_application: the status of requests made to the switched-off apply agent.",
+    body: `Score a résumé against the board — the site's résumé drop for an agent holding a CV. Reads the occupation out of the text, searches for it, and scores up to 20 results with matched and missing terms. Needs a key: ${MCP_FIT_FREE_PER_DAY} scorings a day on a confirmed free key, ${MCP_FIT_FULL_PER_DAY.toLocaleString("en-US")} on an account with a paid plan — the same allowance as POST /v1/fit. Never offered inside ChatGPT, and the CV is never stored.`,
   },
 ];
 
@@ -126,19 +183,21 @@ export const MCP_PAID_TOOLS = MCP_TOOLS.filter((t) => t.tier === "paid");
 export const MCP_APPLY_TOOLS = MCP_TOOLS.filter((t) => t.tier === "apply");
 
 /**
- * THE UNKEYED TIER, mirrored from the server's ANON_TOOLS and the caps beside
- * it. These tools answer a tools/call that carries no Authorization header at
- * all, which is what makes claude.ai, Claude Desktop and ChatGPT — hosts whose
- * connector dialogs have no field for a key — usable on a first call. The
- * caps are per address per UTC day and across every unkeyed caller per day
- * (both, because those hosts share egress addresses), and an unkeyed search
- * is one page. Pinned to the Deno constants, and the free-key quota to the
- * minting function's own constant, by
+ * THE UNKEYED TIER, mirrored from the server's ANON_TOOLS. These tools answer
+ * a tools/call that carries no credential at all, which is what makes
+ * claude.ai, Claude Desktop and ChatGPT — hosts whose connector dialogs have
+ * no field for a key — usable on a first call. Wave 4 (owner decisions
+ * 2026-10-11): every read tool, the per-employer hiring aggregates (public on
+ * the site already, R8) and applying yourself. They draw on MCP_ANON_CAPS.
+ * Pinned to the Deno constant, and the free-key quota to the minting
+ * function's own constant, by
  * src/test/a-first-call-with-no-key-gets-an-answer-not-a-wall.test.ts.
  */
-export const MCP_ANON_TOOL_NAMES: readonly string[] = ["board_stats", "search_jobs", "search", "fetch"];
+export const MCP_ANON_TOOL_NAMES: readonly string[] = [
+  "board_stats", "search_jobs", "search", "fetch", "get_job", "get_jobs", "check_jobs_open",
+  "employer_hiring_record", "employer_growth", "apply_myself",
+];
 export const MCP_ANON_TOOLS = MCP_TOOLS.filter((t) => MCP_ANON_TOOL_NAMES.includes(t.name));
-export const MCP_ANON_CAPS = { perAddressPerDay: 25, hostPoolPerDay: 500, globalPerDay: 2000, searchRows: 10 } as const;
 /** Calls a day on a free key — api_key_issue's c_quota (migration 20260826214700), mirrored. */
 export const MCP_FREE_KEY_DAILY_QUOTA = 1000;
 
@@ -254,7 +313,7 @@ export const MCP_KEY_ONLY_READ_TOOLS = MCP_READ_TOOLS.filter((t) => !MCP_ANON_TO
  * the person submits on the employer's own site; we send nothing.
  */
 export const MCP_NEEDS_ACCOUNT_LINE =
-  `With no key and no sign-in, ${andList(MCP_ANON_TOOL_NAMES.map((n) => `\`${n}\``))} answer. The other read tools need a free key, or a sign-in once it is switched on. Applying yourself needs neither: you submit on the employer's own site, and Resume Booster sends nothing for you.`;
+  `With no key and no sign-in, ${andList(MCP_ANON_TOOL_NAMES.map((n) => `\`${n}\``))} answer. The other read tools need a free key, or a sign-in once it is switched on. Applying yourself needs neither: you submit on the employer's own site, and Resume Booster never submits anything for you.`;
 
 // ───────────────────────── APPLYING YOURSELF ──────────────────────────────
 //
@@ -264,21 +323,6 @@ export const MCP_NEEDS_ACCOUNT_LINE =
 // never submit anything. These constants are what every surface that
 // describes that path reads.
 
-/**
- * The hiring systems whose application form a connected AI can read: the
- * vendors whose real questions the board harvests, realQuestionVendors() in
- * supabase/functions/_shared/apply-automation.ts, pinned equal (keys, and a
- * label for each) by src/test/the-agents-page-sells-nothing-and-sends-nothing
- * .test.tsx. Everywhere else the AI reads the posting and the person fills in
- * the employer's form. Order: the spec's (Greenhouse first, by volume).
- */
-export const MCP_FORM_VENDORS: ReadonlyArray<{ key: string; label: string }> = [
-  { key: "greenhouse", label: "Greenhouse" },
-  { key: "ashby", label: "Ashby" },
-  { key: "recruitee", label: "Recruitee" },
-  { key: "breezy", label: "Breezy" },
-  { key: "pinpoint", label: "Pinpoint" },
-];
 
 /**
  * The form vendors as one phrase in the reader's language — "Greenhouse,
@@ -606,7 +650,7 @@ export const MCP_HOSTS: readonly McpHost[] = [
       s === "on"
         ? `The first time Claude needs your account — to open a posting in full or to check a shortlist — a **Connect** card appears in the chat. Click it, sign in to ${MCP_CONNECTOR_NAME}, press **Allow**, and Claude continues where it stopped.`
         : s === "off" ? chatOff("Claude") : UNKNOWN_LINE,
-    verify: `Under **+ → Connectors**, ${MCP_CONNECTOR_NAME} is on. Ask "${ASK_STATS}": the answer names the number of open postings and a note that begins "unkeyed:" and says how many anonymous calls are left today.`,
+    verify: `Under **+ → Connectors**, ${MCP_CONNECTOR_NAME} is on. Ask the first question: ${MCP_ANON_CAPS.searchRows} results with ids come back, and the answer's note begins "keyless:" and says how many free lookups are left today.`,
   },
   {
     id: "chatgpt",
@@ -651,14 +695,14 @@ export const MCP_HOSTS: readonly McpHost[] = [
     steps: (ctx) => [
       { text: "Copy this line and run it in your terminal:", copy: claudeCodeAdd(ctx.url), copyLabel: "the add command", note: `\`--scope user\` makes it available in every folder, not just this one. ${MCP_SERVER_ADDRESS_NOTE}` },
       { text: `Start \`claude\` and type \`/mcp\` — \`${MCP_SERVER_KEY}\` is listed as connected.` },
-      { text: `Ask: \`${ASK_STATS}\` — the answer names the number of open postings and says how many free calls are left today.` },
+      { text: `Ask: \`${ASK_STATS}\` — the answer names the number of open postings (board_stats is never counted against the free allowance).` },
     ],
     keyed: cliKeyed(claudeCodeAdd, "Type `/mcp` and reconnect"),
     signIn: (s) =>
       s === "on"
         ? `Without a key, the first tool that needs your account makes \`/mcp\` show \`! Needs authentication\`; type \`/mcp\` and sign in in the browser (Claude Code 2.1.186 or newer can also run \`claude mcp login ${MCP_SERVER_KEY}\`).`
         : s === "off" ? cliOff : cliUnknown,
-    verify: `\`/mcp\` lists \`${MCP_SERVER_KEY}\` as connected; "${ASK_STATS}" answers with the count and the unkeyed note; with a key, "${ASK_KEY}" names your tier and calls left.`,
+    verify: `\`/mcp\` lists \`${MCP_SERVER_KEY}\` as connected; "${ASK_STATS}" answers with the count; with a key, "${ASK_KEY}" names your tier and calls left.`,
   },
   {
     id: "cursor",
@@ -690,7 +734,7 @@ export const MCP_HOSTS: readonly McpHost[] = [
       s === "on"
         ? "Without a key, a tool that needs your account answers a sign-in challenge; what Cursor shows for it is not described in a document we have read, so add a free key (below) to use those tools."
         : s === "off" ? cliOff : cliUnknown,
-    verify: `Ask the chat "${ASK_STATS}" — the same count and note. (Cursor's own status indicator is not described in a document we have read, so this page does not describe it.)`,
+    verify: `Ask the chat "${ASK_STATS}" — the same count. (Cursor's own status indicator is not described in a document we have read, so this page does not describe it.)`,
   },
   {
     id: "vscode",
@@ -725,7 +769,7 @@ export const MCP_HOSTS: readonly McpHost[] = [
       s === "on"
         ? "Without a key, a tool that needs your account answers a sign-in challenge; what VS Code shows for it is not described in a document we have read, so add a free key (below) to use those tools."
         : s === "off" ? cliOff : cliUnknown,
-    verify: `If you used the mcp.json block, VS Code asks for the key at start — leave it empty (the link declares no key, so it asks nothing). Either way, ask the chat "${ASK_STATS}" — the same count and note.`,
+    verify: `If you used the mcp.json block, VS Code asks for the key at start — leave it empty (the link declares no key, so it asks nothing). Either way, ask the chat "${ASK_STATS}" — the same count.`,
   },
   {
     id: "more",
@@ -1027,6 +1071,13 @@ export const MCP_TROUBLESHOOTING: readonly TroubleRow[] = [
     source: { kind: "server", pin: "requests/minute.", file: "index.ts" },
   },
   {
+    id: "fit-free-spent",
+    see: "\"fit_resume's free daily allowance is used…\"",
+    why: `A confirmed free key scores a CV ${MCP_FIT_FREE_PER_DAY} times a day (${MCP_FIT_FULL_PER_DAY.toLocaleString("en-US")} on an account with a paid plan).`,
+    fix: "It resets at midnight UTC. The search tools keep working on the key, and the job board scores a CV against a posting, free.",
+    source: { kind: "server", pin: "fit_resume's free daily allowance is used", file: "index.ts" },
+  },
+  {
     id: "job-id",
     see: "\"That is not a job id from this board.\"",
     why: "You passed a link or a title.",
@@ -1083,23 +1134,36 @@ export interface McpPrompt {
   title: string;
   /** One sentence for a human reading the page. */
   body: string;
+  /** Listed only to a connection holding a key (the server's `keyed`): its body needs one. */
+  keyed?: boolean;
 }
 
 export const MCP_PROMPTS: readonly McpPrompt[] = [
   {
+    name: "browse_jobs",
+    title: "Browse jobs",
+    body: "Searches the live board for a role and a place with no key, reads postings, re-checks that a shortlist is still open, and hands any posting to apply_myself.",
+  },
+  {
     name: "find_roles_for_my_cv",
     title: "Find roles that fit my CV",
-    body: "Reads the occupation out of the CV you give your AI in the chat, searches the live board without a key, then re-checks that the shortlist is still open. Never invents a CV.",
+    body: "Your AI reads the job titles out of the CV you give it in the chat and searches the live board for them with no key. The CV itself is never sent to the server, and the prompt never invents one.",
+  },
+  {
+    name: "apply_myself",
+    title: "Help me apply myself",
+    body: "Reads the employer's own application form where its hiring system publishes one, asks you every factual question, drafts only the open answers about your work from your CV, and stops before Submit. Nothing is ever submitted for you.",
   },
   {
     name: "apply_to_my_shortlist",
-    title: "Apply to my shortlist",
-    body: "Dormant, with the server-side apply agent it drove: that agent is switched off, so nothing is sent. You apply yourself, on each employer's own site.",
+    title: "Apply to my shortlist, one at a time",
+    body: "Re-checks which saved jobs are still open, then helps you apply to each open one yourself through apply_myself, one at a time. Nothing is ever submitted for you.",
   },
   {
     name: "what_can_my_key_do",
-    title: "What can this connection do right now",
-    body: "One status call, explained in plain words: tier, calls left, which tools would answer, and what would change each closed answer — the gate, never a price.",
+    title: "What can this key do right now",
+    body: "One status call, explained in plain words: tier, calls left and fit scorings left today, and what would change a closed answer — the gate, never a price. Listed only to a connection holding a key.",
+    keyed: true,
   },
 ];
 

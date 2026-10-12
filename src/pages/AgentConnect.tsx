@@ -60,7 +60,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Bot, KeyRound, Terminal, Copy, Check, Loader2, ShieldCheck, Search, Plug, MessageSquareText, FileText, ExternalLink, PauseCircle } from "lucide-react";
+import { Bot, KeyRound, Terminal, Copy, Check, Loader2, ShieldCheck, Search, Plug, MessageSquareText, FileText, ExternalLink } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -601,10 +601,16 @@ export default function AgentConnect() {
                       {MCP_SERVER_ADDRESS_NOTE} Streamable HTTP transport, stateless, POST only. Your agent sends its key as{" "}
                       <code className="text-xs">Authorization: Bearer rb_live_…</code> — tool discovery works
                       without one, so an agent can see what's here before you decide to mint anything.{" "}
-                      {names(MCP_ANON_TOOLS)} answer with no key at all, {MCP_ANON_CAPS.perAddressPerDay} calls a
-                      day per network address (from ChatGPT, per person; from Claude, a shared pool of{" "}
-                      {MCP_ANON_CAPS.hostPoolPerDay} first; search capped at {MCP_ANON_CAPS.searchRows} rows), each answer saying how
-                      many are left; every other tool call needs a credential — the key, or the sign-in a
+                      {names(MCP_ANON_TOOLS)} answer with no key at all, within a daily allowance split by where
+                      the call comes from: Claude's users share {MCP_ANON_CAPS.shares.claude.toLocaleString("en-US")}; ChatGPT's
+                      share {MCP_ANON_CAPS.shares.chatgpt.toLocaleString("en-US")} ({MCP_ANON_CAPS.chatgptPerPerson} for each
+                      person when ChatGPT's call names them, {MCP_ANON_CAPS.chatgptNoSubject.toLocaleString("en-US")} shared by calls
+                      that name nobody); every other caller has {MCP_ANON_CAPS.otherPerConnection} per internet connection (an IPv4
+                      address or an IPv6 /64); {MCP_ANON_CAPS.overallPerDay.toLocaleString("en-US")} a day in all, and at
+                      most {MCP_ANON_CAPS.perMinute.overall} a minute across every keyless caller. Reading an application form
+                      draws on a separate pool of {MCP_ANON_CAPS.forms.overall.toLocaleString("en-US")} a day. A keyless search
+                      returns {MCP_ANON_CAPS.searchRows} rows a page, to offset {MCP_ANON_CAPS.maxOffset}; board_stats is never
+                      counted; each answer says how many are left. Every other tool call needs a credential — the key, or the sign-in a
                       chat host performs for you while the server's sign-in service is on. Press Test the server above for today's state;
                       the initialize result carries it under <code className="text-xs">{`_meta["${MCP_SIGN_IN_META_KEY}"].state`}</code>.
                     </p>
@@ -636,14 +642,16 @@ export default function AgentConnect() {
                           <KeyRound className="w-4 h-4" /> Get a free key at Hiring Data &amp; API
                         </Link>
                       </div>
-                      <div className="p-5 rounded-2xl bg-background border border-border" data-dormant-tools>
-                        <h3 className="font-semibold mb-2 flex items-center gap-2"><PauseCircle className="w-4 h-4 text-muted-foreground" /> Dormant tools</h3>
+                      {/* The apply agent's tools are retired (owner decision 2026-10-11):
+                          the server lists them to nobody, so the mirror has none and this box
+                          names what replaced them, from the same mirror. */}
+                      <div className="p-5 rounded-2xl bg-background border border-border" data-keyless-tools>
+                        <h3 className="font-semibold mb-2 flex items-center gap-2"><Plug className="w-4 h-4 text-primary" /> No key at all</h3>
                         <p className="text-sm text-muted-foreground">
-                          {MCP_APPLY_TOOLS.map((tool, i) => (
-                            <span key={tool.name}>{i > 0 && (i === MCP_APPLY_TOOLS.length - 1 ? " and " : ", ")}<code className="text-xs">{tool.name}</code></span>
-                          ))}{" "}
-                          belonged to our server-side apply agent. That agent is switched off, so they send nothing:
-                          Resume Booster does not send applications. You apply yourself, on the employer's own site.
+                          {names(MCP_ANON_TOOLS)} answer with no key and no account, within the allowance above.{" "}
+                          <code className="text-xs">apply_myself</code> returns the employer's own application form where its
+                          hiring system publishes one, with who answers each question. You submit on the employer's own site:
+                          Resume Booster never submits anything for you.
                         </p>
                       </div>
                     </div>
@@ -688,7 +696,7 @@ export default function AgentConnect() {
                             </span>
                             {MCP_ANON_TOOL_NAMES.includes(tool.name) && (
                               <span className="text-xs px-2 py-0.5 rounded-full border border-success/40 bg-success/10 text-success">
-                                answers with no key ({MCP_ANON_CAPS.perAddressPerDay}/day per network address)
+                                answers with no key
                               </span>
                             )}
                           </div>

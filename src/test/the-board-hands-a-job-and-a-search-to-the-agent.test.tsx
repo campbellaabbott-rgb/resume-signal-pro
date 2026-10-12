@@ -214,14 +214,17 @@ describe("1. the search mapper", () => {
     expect(Object.keys(body).length).toBeGreaterThanOrEqual(20);
     const args = toSearchJobsArgs(body, "salary");
     for (const k of Object.keys(args)) expect(server, `${k} is not a search_jobs argument`).toContain(k);
-    // The four renames landed under the server's names and nothing under the board's.
+    // The renames landed under the server's names and nothing under the board's.
     for (const [from, to] of Object.entries(SEARCH_ARG_RENAMES)) {
       expect(body, `${from} is not in the board body — the rename is stale`).toHaveProperty(from);
       expect(args).toHaveProperty(to);
       expect(args).not.toHaveProperty(from);
     }
     expect(args.query).toBe("nurse -travel");
-    expect(args.agentReadyOnly).toBe(true);
+    // The retired agent's filter is dropped, never renamed into an argument
+    // the server no longer declares (owner decision 2026-10-11).
+    expect(args).not.toHaveProperty("agentReadyOnly");
+    expect(args).not.toHaveProperty("sendableOnly");
     expect(args.salaryMin).toBe(90000);
     expect(args.salaryMax).toBe(150000);
     // The widening switch has no argument and is dropped, not renamed.
@@ -427,10 +430,11 @@ describe("2. the hand-offs on /jobs, judged by the request body", () => {
     const json = /search_jobs with (\{.*?\}) and show me/.exec(copied)?.[1] ?? "";
     expect(json, "no JSON argument object in the copied prompt").not.toBe("");
     const args = JSON.parse(json) as Body;
-    // EXACTLY the arguments for this state: the four renames, the widening
-    // switch dropped, the on-screen sort, nothing the state did not carry.
+    // EXACTLY the arguments for this state: the renames, the widening switch
+    // and the retired agent-ready filter dropped, the on-screen sort, nothing
+    // the state did not carry.
     expect(args).toEqual({
-      query: "nurse", location: "austin", remote: true, category: "healthcare", agentReadyOnly: true,
+      query: "nurse", location: "austin", remote: true, category: "healthcare",
       country: "US,GB", salaryMin: 90000, salaryMax: 150000, excludeAgencies: true, maxAgeDays: 7, sort: "salary",
     });
     expect(copied).toContain(MCP_URL);

@@ -784,8 +784,11 @@ describe("G10: the hand-off prompts' first tool answers with no key", () => {
     expect(firstTool(s)).toBe("search_jobs");
     for (const n of named(s)) expect(MCP_ANON_TOOL_NAMES, `${n} needs a key`).toContain(n);
   });
-  it("teeth: a prompt that opens with get_job fails the property", () => {
-    const broken = agentPrompt({ id: "x", sendable: false }).replace("call fetch with", "call get_job with");
+  // get_job answers with no key since wave 4 (owner decision 2026-10-11), so
+  // the broken copy opens with a tool that still needs one.
+  it("teeth: a prompt that opens with a keyed tool (key_status) fails the property", () => {
+    const broken = agentPrompt({ id: "x", sendable: false }).replace("call fetch with", "call key_status with");
+    expect(firstTool(broken)).toBe("key_status");
     expect(MCP_ANON_TOOL_NAMES).not.toContain(firstTool(broken));
   });
 });

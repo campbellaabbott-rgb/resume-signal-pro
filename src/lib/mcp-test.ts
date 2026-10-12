@@ -193,7 +193,7 @@ export function describeTest(r: McpTestReport): string {
   const head = `The server answered: ${r.serverName ?? "unnamed"}, version ${r.serverVersion ?? "unknown"} — ${r.toolCount ?? "?"} tools, ${r.promptCount ?? "?"} prompts.`;
   let searchLine: string;
   if (r.search?.ok) {
-    const left = r.search.left !== null ? `${r.search.left} of ${r.search.ipCap ?? MCP_ANON_CAPS.perAddressPerDay}` : "an unknown number of";
+    const left = r.search.left !== null ? `${r.search.left} of ${r.search.ipCap ?? MCP_ANON_CAPS.otherPerConnection}` : "an unknown number of";
     const world = r.search.left !== null && r.search.globalLeft !== null && r.search.globalLeft < r.search.left ? ` (${r.search.globalLeft} across every unkeyed caller — that number binds first)` : "";
     searchLine = `Search works with no key: asked for the ${MCP_ANON_CAPS.searchRows} results an unkeyed search allows for "${MCP_TEST_QUERY}" and got ${r.search.rows}; ${left} free calls left today from your network address${world}.`;
   } else if (r.search && r.search.ok === false) {
