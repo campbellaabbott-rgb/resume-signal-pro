@@ -96,12 +96,17 @@ CREATE TABLE IF NOT EXISTS public.employer_perk_postings (
   quote_line_hash   text[],
   extractor_version smallint NOT NULL,
   extracted_at      timestamptz NOT NULL DEFAULT now(),
+  text_hash         text CHECK (text_hash IS NULL OR text_hash ~ '^[0-9a-f]{32}$'),
   CONSTRAINT employer_perk_postings_one_status_per_key
     CHECK (perks_y & perks_q = 0 AND perks_y & perks_n = 0 AND perks_q & perks_n = 0),
   CONSTRAINT employer_perk_postings_unread_states_nothing
     CHECK (readable OR (perks_y = 0 AND perks_q = 0 AND perks_n = 0))
 );
 ALTER TABLE public.employer_perk_postings ADD COLUMN IF NOT EXISTS english boolean NOT NULL DEFAULT false;
+-- The md5 of the title and description the sweep read (S12-188): a posting
+-- whose text changes is read again, so a re-dated posting that dropped a perk
+-- stops counting it.
+ALTER TABLE public.employer_perk_postings ADD COLUMN IF NOT EXISTS text_hash text CHECK (text_hash IS NULL OR text_hash ~ '^[0-9a-f]{32}$');
 CREATE INDEX IF NOT EXISTS employer_perk_postings_board_idx
   ON public.employer_perk_postings (company_token, source, country);
 
@@ -333,8 +338,12 @@ CREATE TABLE IF NOT EXISTS public.employer_perk_rollup_state (
   chunks          integer NOT NULL DEFAULT 0,
   boards          integer NOT NULL DEFAULT 0,
   rows_written    integer NOT NULL DEFAULT 0,
+  ms_per_krow     numeric CHECK (ms_per_krow IS NULL OR ms_per_krow >= 0),
   updated_at      timestamptz NOT NULL DEFAULT now()
 );
+-- The slowest chunk of the last tick, in milliseconds per 1,000 perk rows
+-- (S12-186): the next tick sizes its chunks and keeps its headroom by it.
+ALTER TABLE public.employer_perk_rollup_state ADD COLUMN IF NOT EXISTS ms_per_krow numeric CHECK (ms_per_krow IS NULL OR ms_per_krow >= 0);
 INSERT INTO public.employer_perk_rollup_state (id) VALUES (true) ON CONFLICT (id) DO NOTHING;
 
 -- ── 6. every table private ────────────────────────────────────────────────
@@ -424,14 +433,18 @@ $$;
 --
 -- employer_perk_sweep_take walks the queue in priority order (open roles
 -- descending) and returns up to p_limit serving postings that have no row
--- under this extractor version, or whose text arrived after an unreadable
--- read. A board with nothing pending is marked swept here and the walk moves
+-- under this extractor version, whose text arrived after an unreadable read,
+-- or whose title or description changed since the read (S12-188: the md5 it
+-- answers as text_hash is echoed back to employer_perk_store, so a re-dated
+-- posting that dropped dental is read again and stops counting it). A board with nothing pending is marked swept here and the walk moves
 -- on, so a call is never spent on finished boards. The queue is refilled
 -- from the newest daily company snapshot when it is more than 20 hours old,
 -- which puts every board back in line once a day for its new postings.
 
+-- The answer gained text_hash, and a return type cannot be changed in place.
+DROP FUNCTION IF EXISTS public.employer_perk_sweep_take(integer, smallint, integer);
 CREATE OR REPLACE FUNCTION public.employer_perk_sweep_take(p_limit integer, p_version smallint, p_budget_ms integer DEFAULT 3000)
-RETURNS TABLE (company_token text, posting_id text, source text, country text, agency boolean, title text, body text)
+RETURNS TABLE (company_token text, posting_id text, source text, country text, agency boolean, title text, body text, text_hash text)
 LANGUAGE plpgsql
 VOLATILE
 SECURITY DEFINER
@@ -474,7 +487,8 @@ BEGIN
   LOOP
     EXIT WHEN v_left <= 0 OR clock_timestamp() > v_deadline;
     RETURN QUERY
-      SELECT p.company_token, p.id, p.source, p.country, p.agency, p.title, p.description
+      SELECT p.company_token, p.id, p.source, p.country, p.agency, p.title, p.description,
+             md5(COALESCE(p.title, '') || E'\n' || COALESCE(p.description, ''))
         FROM public.job_board_postings p
         LEFT JOIN public.employer_perk_postings e ON e.posting_id = p.id
        WHERE p.company_token = b.token
@@ -484,7 +498,11 @@ BEGIN
          AND (b.cursor_id IS NULL OR p.id > b.cursor_id)
          AND (e.posting_id IS NULL
               OR e.extractor_version < p_version
-              OR (NOT e.readable AND p.description IS NOT NULL AND octet_length(p.description) >= 200))
+              OR (NOT e.readable AND p.description IS NOT NULL AND octet_length(p.description) >= 200)
+              -- a row stored without a hash (a sweep that sent none) is never
+              -- re-read on it, so such a sweep cannot loop on its own rows
+              OR (e.text_hash IS NOT NULL
+                  AND e.text_hash <> md5(COALESCE(p.title, '') || E'\n' || COALESCE(p.description, ''))))
        ORDER BY p.id
        LIMIT v_left;
     GET DIAGNOSTICS v_got = ROW_COUNT;
@@ -560,6 +578,7 @@ BEGIN
              CASE WHEN (x.value ->> 'y') ~ '^[0-9]{1,10}$' THEN (x.value ->> 'y')::bigint END AS y,
              CASE WHEN (x.value ->> 'q') ~ '^[0-9]{1,10}$' THEN (x.value ->> 'q')::bigint END AS q,
              CASE WHEN (x.value ->> 'n') ~ '^[0-9]{1,10}$' THEN (x.value ->> 'n')::bigint END AS n,
+             CASE WHEN (x.value ->> 'text_hash') ~ '^[0-9a-f]{32}$' THEN x.value ->> 'text_hash' END AS text_hash,
              CASE WHEN jsonb_typeof(x.value -> 'quote_line_hash') = 'array' THEN
                ARRAY(SELECT CASE WHEN h.value ~ '^[0-9a-f]{16}$' THEN h.value END
                        FROM jsonb_array_elements_text(x.value -> 'quote_line_hash') WITH ORDINALITY AS h(value, ord)
@@ -569,11 +588,11 @@ BEGIN
        WHERE jsonb_typeof(x.value) = 'object'
     )
     INSERT INTO public.employer_perk_postings AS e
-      (posting_id, source, company_token, country, readable, english, franchise, agency, perks_y, perks_q, perks_n, quote_line_hash, extractor_version, extracted_at)
+      (posting_id, source, company_token, country, readable, english, franchise, agency, perks_y, perks_q, perks_n, quote_line_hash, extractor_version, extracted_at, text_hash)
     SELECT DISTINCT ON (s.posting_id)
            s.posting_id, s.source, p_token, s.country, s.readable, s.english, s.franchise, s.agency,
            s.y::integer, s.q::integer, s.n::integer,
-           CASE WHEN s.readable THEN s.hashes[1:31] END, p_version, now()
+           CASE WHEN s.readable THEN s.hashes[1:31] END, p_version, now(), s.text_hash
       FROM shaped s
      WHERE COALESCE(s.posting_id, '') <> ''
        AND s.token = p_token
@@ -589,7 +608,7 @@ BEGIN
           readable = EXCLUDED.readable, english = EXCLUDED.english, franchise = EXCLUDED.franchise, agency = EXCLUDED.agency,
           perks_y = EXCLUDED.perks_y, perks_q = EXCLUDED.perks_q, perks_n = EXCLUDED.perks_n,
           quote_line_hash = EXCLUDED.quote_line_hash, extractor_version = EXCLUDED.extractor_version,
-          extracted_at = EXCLUDED.extracted_at;
+          extracted_at = EXCLUDED.extracted_at, text_hash = EXCLUDED.text_hash;
     GET DIAGNOSTICS v_rows = ROW_COUNT;
   END IF;
 
@@ -612,12 +631,24 @@ $$;
 -- One tick reads perk rows in company_token order from the persisted cursor,
 -- 50,000 at a time (the last board of a window is taken whole), and for the
 -- boards in the window: prunes rows whose posting left the serving set,
--- writes the franchise and agency flags, then the claim rows. It stops at
--- its budget (90 s from the cron) between chunks, well inside the cron's
--- own 110 s statement_timeout, so a tick is never cancelled mid-write and
--- the cursor always moves. A lap that finished today waits for tomorrow; the
--- end of a lap clears claim rows for boards with no perk rows left and lines
--- nobody has quoted in 45 days.
+-- writes the franchise and agency flags, then the claim rows. A lap that
+-- finished today waits for tomorrow; the end of a lap clears claim rows for
+-- boards with no perk rows left and lines nobody has quoted in 45 days.
+--
+-- HEADROOM, NOT JUST A DEADLINE (S12-186). The tick is one transaction, and
+-- the cron cancels it at 110 s; checking the 90 s budget only between chunks
+-- let a chunk start at 85 s, run past 110 s and take the whole tick's work
+-- with it, every night, so the lap never moved. Now the tick measures each
+-- chunk (milliseconds per 1,000 perk rows, the last board's whole board
+-- counted), keeps the slowest in employer_perk_rollup_state.ms_per_krow for
+-- the next tick, sizes its chunks so one is expected to take at most a third
+-- of the budget, and never starts a chunk that 1.5 times the slowest seen
+-- would carry past the budget. The first chunk of a tick always runs, so the
+-- cursor always moves.
+--
+-- THE READ DATE IS THE OLDEST READ (S12-188). A claim row's as_of was the
+-- rollup's own time, printed as "read {date}" beside postings read days
+-- before; it is now the oldest extracted_at among the n postings counted.
 
 CREATE OR REPLACE FUNCTION public.employer_perk_rollup_tick(p_budget_ms integer DEFAULT 90000)
 RETURNS jsonb
@@ -642,10 +673,20 @@ DECLARE
   v_rows     integer := 0;
   v_pruned   integer := 0;
   v_state    text := 'budget';
+  v_budget   numeric := LEAST(GREATEST(COALESCE(p_budget_ms, 90000), 1000), 100000);
+  v_est      numeric;
+  v_slowest  numeric := 0;
+  v_t0       timestamptz;
+  v_work     integer;
 BEGIN
   INSERT INTO public.employer_perk_rollup_state (id) VALUES (true) ON CONFLICT (id) DO NOTHING;
-  SELECT s.lap_cursor, s.lap_started_at, s.lap_finished_at INTO v_cursor, v_lap_started, v_lap_finished
+  SELECT s.lap_cursor, s.lap_started_at, s.lap_finished_at, COALESCE(s.ms_per_krow, 0)
+    INTO v_cursor, v_lap_started, v_lap_finished, v_est
     FROM public.employer_perk_rollup_state s WHERE s.id FOR UPDATE;
+  -- One chunk is expected to take at most a third of the budget.
+  IF v_est > 0 THEN
+    v_chunk := GREATEST(1000, LEAST(v_chunk, floor((v_budget / 3.0) / v_est * 1000)::integer));
+  END IF;
 
   IF v_cursor IS NULL AND v_lap_finished IS NOT NULL AND v_lap_finished >= date_trunc('day', now()) THEN
     RETURN jsonb_build_object('ok', true, 'state', 'lap_done_today', 'lap_finished_at', v_lap_finished);
@@ -663,6 +704,13 @@ BEGIN
       v_state := 'budget';
       EXIT;
     END IF;
+    -- Never start a chunk the slowest one seen would carry past the budget.
+    IF v_chunks > 0
+       AND clock_timestamp() + make_interval(secs => 1.5 * GREATEST(v_est, v_slowest) * v_chunk / 1000.0 / 1000.0) > v_deadline THEN
+      v_state := 'budget';
+      EXIT;
+    END IF;
+    v_t0 := clock_timestamp();
 
     SELECT array_agg(DISTINCT w.company_token), max(w.company_token) INTO v_tokens, v_last
       FROM (SELECT e.company_token FROM public.employer_perk_postings e
@@ -682,6 +730,8 @@ BEGIN
       v_state := 'lap_finished';
       EXIT;
     END IF;
+
+    SELECT count(*)::integer INTO v_work FROM public.employer_perk_postings e WHERE e.company_token = ANY (v_tokens);
 
     -- Rows whose posting left the serving set are not "open postings".
     DELETE FROM public.employer_perk_postings e
@@ -717,7 +767,7 @@ BEGIN
     ON CONFLICT DO NOTHING;
 
     WITH base AS (
-      SELECT e.posting_id, e.source, e.company_token, e.country, e.perks_y, e.perks_q, e.perks_n, e.quote_line_hash
+      SELECT e.posting_id, e.source, e.company_token, e.country, e.perks_y, e.perks_q, e.perks_n, e.quote_line_hash, e.extracted_at
         FROM public.employer_perk_postings e
        WHERE e.company_token = ANY (v_tokens)
          AND e.readable AND e.english AND NOT e.franchise AND NOT e.agency
@@ -726,7 +776,7 @@ BEGIN
                           WHERE f.company_token = e.company_token AND f.source = e.source)
     ),
     grp AS (
-      SELECT b.source, b.company_token, b.country, count(*)::integer AS n
+      SELECT b.source, b.company_token, b.country, count(*)::integer AS n, min(b.extracted_at) AS read_from
         FROM base b
        GROUP BY b.source, b.company_token, b.country
       HAVING count(*) >= 5
@@ -760,7 +810,7 @@ BEGIN
     SELECT a.source, a.company_token, a.country, a.perk, a.k, g.n,
            COALESCE(m.cnt * 5 >= a.k * 4, false),
            round(a.q::numeric / a.k, 3),
-           m.qh, m.pid, now()
+           m.qh, m.pid, g.read_from
       FROM agg a
       JOIN grp g ON g.source = a.source AND g.company_token = a.company_token AND g.country = a.country
       LEFT JOIN modal m ON m.source = a.source AND m.company_token = a.company_token AND m.country = a.country AND m.perk = a.perk
@@ -772,18 +822,22 @@ BEGIN
     v_chunks := v_chunks + 1;
     v_boards := v_boards + COALESCE(cardinality(v_tokens), 0);
     v_cursor := v_last;
+    v_slowest := GREATEST(v_slowest,
+      extract(epoch FROM clock_timestamp() - v_t0) * 1000.0 * 1000.0 / GREATEST(v_work, 1));
   END LOOP;
 
   UPDATE public.employer_perk_rollup_state s
      SET lap_cursor = v_cursor, lap_started_at = v_lap_started, lap_finished_at = v_lap_finished,
          chunks = s.chunks + v_chunks, boards = s.boards + v_boards, rows_written = s.rows_written + v_rows,
+         ms_per_krow = CASE WHEN v_chunks > 0 THEN round(v_slowest, 3) ELSE s.ms_per_krow END,
          updated_at = now()
    WHERE s.id;
   INSERT INTO public.employer_profile_runs (kind, started_at, finished_at, ok, boards, postings_written, note)
   VALUES ('rollup', v_started, clock_timestamp(), true, v_boards, v_rows,
           format('state=%s chunks=%s pruned=%s cursor=%s', v_state, v_chunks, v_pruned, COALESCE(v_cursor, '(lap done)')));
   RETURN jsonb_build_object('ok', true, 'state', v_state, 'chunks', v_chunks, 'boards', v_boards, 'rows', v_rows,
-                            'pruned', v_pruned, 'cursor', v_cursor, 'ms', round(extract(epoch FROM clock_timestamp() - v_started) * 1000));
+                            'pruned', v_pruned, 'cursor', v_cursor, 'chunk_rows', v_chunk, 'ms_per_krow', round(v_slowest, 3),
+                            'ms', round(extract(epoch FROM clock_timestamp() - v_started) * 1000));
 END;
 $$;
 
@@ -791,6 +845,10 @@ $$;
 
 -- 60 random publishable rows of one candidate key, each with its quote, the
 -- posting it came from, and a spot check of 3 random postings among its k.
+-- A NEGATION STRATUM (S12-091): up to a quarter of the draw is taken first
+-- from rows whose quoted line carries a negating word ("not", "no",
+-- "without", "excluding", "ineligible", a "n't"), the lines the extractor
+-- once read as offers; each drawn row says which stratum it came from.
 CREATE OR REPLACE FUNCTION public.employer_perk_audit_draw(p_perk text, p_rows integer DEFAULT 60)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -808,19 +866,40 @@ BEGIN
   IF k.perk IS NULL OR p_perk NOT IN ('health', 'dental', 'vision', 'life_dis', 'retire', 'pto', 'parental', 'equity', 'visa_not_offered') THEN
     RAISE EXCEPTION 'not a candidate key: %', p_perk USING ERRCODE = '22023';
   END IF;
-  WITH pick AS (
-    SELECT r.* FROM public.employer_perk_rollups r
+  WITH eligible AS (
+    SELECT r.*,
+           (r.perk <> 'visa_not_offered'
+            AND EXISTS (SELECT 1 FROM public.employer_perk_lines ln
+                         WHERE ln.line_hash = r.quote_hash
+                           AND ln.line ~* '(n''t|\mnot\M|\mno\M|\mwithout\M|\mexcluding\M|\mineligible\M|\mexclusive of\M)')) AS negation_near
+      FROM public.employer_perk_rollups r
      WHERE r.perk = k.perk
        AND NOT (r.source = ANY (v_skip))
        AND NOT EXISTS (SELECT 1 FROM public.employer_perk_board_flags f WHERE f.company_token = r.company_token AND f.source = r.source)
        AND NOT EXISTS (SELECT 1 FROM public.employer_perk_postings e2 WHERE e2.company_token = r.company_token AND e2.source <> r.source)
        AND (r.perk <> 'visa_not_offered' OR r.k >= 3)
+  ),
+  want AS (SELECT LEAST(GREATEST(COALESCE(p_rows, 60), 1), 200) AS n),
+  strat AS (
+    SELECT el.*, 'negation_near'::text AS stratum FROM eligible el WHERE el.negation_near
      ORDER BY random()
-     LIMIT LEAST(GREATEST(COALESCE(p_rows, 60), 1), 200)
+     LIMIT (SELECT GREATEST(1, ceil(w.n / 4.0))::integer FROM want w)
+  ),
+  pick AS (
+    SELECT * FROM strat
+    UNION ALL
+    SELECT * FROM (
+      SELECT el.*, 'random'::text AS stratum FROM eligible el
+       WHERE NOT EXISTS (SELECT 1 FROM strat st WHERE st.company_token = el.company_token AND st.source = el.source
+                                               AND st.country = el.country AND st.perk = el.perk)
+       ORDER BY random()
+       LIMIT (SELECT GREATEST(0, w.n - (SELECT count(*) FROM strat))::integer FROM want w)
+    ) rest
   )
   SELECT COALESCE(jsonb_agg(jsonb_build_object(
            'source', pk.source, 'company_token', pk.company_token, 'country', pk.country, 'perk', pk.perk,
            'k', pk.k, 'n', pk.n, 'qualified_share', pk.qualified_share, 'standard_text', pk.standard_text, 'as_of', pk.as_of,
+           'stratum', pk.stratum,
            'employer', jp.company, 'quote', l.line, 'quote_posting_id', pk.quote_posting_id,
            'quote_title', jp.title, 'quote_link', jp.apply_url,
            'spot_check', (

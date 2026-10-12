@@ -35,6 +35,8 @@ export interface TakenRow {
   agency: boolean | null;
   title: string | null;
   body: string | null;
+  /** md5 of the title and description the take handed out; echoed to the store so a changed text is read again (S12-188). */
+  text_hash?: string | null;
 }
 
 export interface BoardBatch {
@@ -84,6 +86,8 @@ export interface StoredRow {
   n: number;
   quote_line_hash: Array<string | null> | null;
   extractor_version: number;
+  /** The text the read was made from (the take's md5); null where the take sent none. */
+  text_hash: string | null;
 }
 
 /** One quoted line as employer_perk_store takes it; a leave line also carries the days it states. */
@@ -136,6 +140,7 @@ export async function encodeBoard(
       n: read.n,
       quote_line_hash: read.readable ? hashes : null,
       extractor_version: EXTRACTOR_VERSION,
+      text_hash: typeof r.text_hash === "string" && /^[0-9a-f]{32}$/.test(r.text_hash) ? r.text_hash : null,
     });
   }
   return { rows, lines: [...lines.values()], extractMs };

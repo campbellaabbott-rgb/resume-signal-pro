@@ -196,6 +196,13 @@ export function extract(title: string, description: string): Extraction {
           const pre = s.slice(Math.max(0, m.index - 28), m.index);
           const localNeg = /\b(no|not|without|non|kein\w*|sin|sans)\b[\s\w-]{0,14}$/i.test(pre);
           const negated = negationFor(perk, clause, s) || (localNeg && perk !== "visa");
+          // A negation that governs a list the hit sits in (S12-091): the
+          // employer states it does NOT offer this, so the posting reads N,
+          // and its quoted line can never be shown as an offer.
+          if (!negated && perk !== "visa" && listNegated(s, m.index, m[0].length)) {
+            mentions.push({ perk, status: "N", inSection, line: i, text: s.slice(0, 200), sentence: s, at: m.index });
+            break;
+          }
           if (perk === "visa") {
             // visa is ONLY ever a negation or an explicit offer
             if (negated) { mentions.push({ perk, status: "N", inSection, line: i, text: s.slice(0, 200), sentence: s, at: m.index }); }
@@ -253,6 +260,46 @@ function isShortListItem(lines: string[], i: number): boolean {
   return near >= (lines[i].length < 90 ? 1 : 2);
 }
 
+/**
+ * A NEGATION THAT GOVERNS A LIST (S12-091). "This temporary position does not
+ * include medical, dental, or vision benefits" names three things the
+ * employer does NOT offer, but the clause split leaves "dental" and "or vision
+ * benefits" without their verb and the 28-character look-back stops at the
+ * comma, so both read as offered and the quoted line said the opposite. A hit
+ * is negated when, in its own sentence:
+ *   - a negating cue comes before it with only list text between (no
+ *     contrast word, no sentence end, colon or semicolon, no new subject
+ *     offering something): "does not include", "not eligible for",
+ *     "excluding"; a pay figure's own scope ("the range does not include
+ *     bonus or equity") is not a denial of the benefit;
+ *     the weak cues ("no", "without", "excluding", "not including") reach
+ *     across at most 60 characters, the verbs across 120;
+ *   - or a cue after it says the item is not offered, with no contrast word
+ *     between: "medical, dental and vision benefits are not offered".
+ */
+const NEG_STRONG = /\b(?:(?:does|do|will|shall|would|can|did)\s*(?:not|n['’]t)\s+(?:include|offer|provide|receive|come with|qualify (?:you )?for|cover|carry|have access to|have|get|be eligible for|be entitled to)|(?:is|are|was|were)\s+not\s+(?:eligible|entitled)\s+(?:for|to(?: receive| participate in)?)|(?:isn['’]t|aren['’]t)\s+(?:eligible|entitled)\s+(?:for|to(?: receive| participate in)?)|(?:in|not\s+)eligible\s+(?:for|to(?: receive| participate in)?)|not\s+entitled\s+to|no\s+access\s+to|(?:cannot|can['’]t|won['’]t)\s+(?:offer|provide|receive))\b/gi;
+const NEG_WEAK = /\b(?:no|without(?:\s+any)?|excluding|exclusive\s+of|not\s+including)\b/gi;
+const NEG_CONTRAST = /\b(?:but|however|although|though|except|while|whereas|instead|yet|plus|also)\b|[;:]|[.!?](?:\s|$)/i;
+/** "The range ... does not include bonus, equity or benefits": a pay figure's scope, not a denial of the benefit. */
+const NEG_PAY_SUBJECT = /\b(?:range|ranges|salary|salaries|base pay|pay|compensation|rate|rates|wage|wages|figure|amount|estimate)\b[^.;:!?]{0,60}$/i;
+const NEG_NEW_OFFER = /\b(?:we|you|employees|associates|staff)\s+(?:will\s+|also\s+)?(?:offer|provide|get|receive|enjoy|have)\b|\byou['’]ll\b/i;
+const NEG_AFTER = /^([^.;:!?]{0,80}?)\b(?:(?:is|are|will be|be)\s+not|isn['’]t|aren['’]t)\s+(?:offered|provided|available|included|covered)\b/i;
+export function listNegated(sentence: string, at: number, len: number): boolean {
+  const before = sentence.slice(0, at);
+  for (const [re, reach] of [[NEG_STRONG, 120], [NEG_WEAK, 60]] as const) {
+    re.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    let last: RegExpExecArray | null = null;
+    while ((m = re.exec(before)) !== null) last = m;
+    if (!last) continue;
+    if (NEG_PAY_SUBJECT.test(before.slice(0, last.index))) continue;
+    const gap = before.slice(last.index + last[0].length);
+    if (gap.length <= reach && !NEG_CONTRAST.test(gap) && !NEG_NEW_OFFER.test(gap)) return true;
+  }
+  const a = NEG_AFTER.exec(sentence.slice(at + len));
+  return !!a && !NEG_CONTRAST.test(a[1]);
+}
+
 function negationFor(perk: PerkKey, clause: string, sentence: string): boolean {
   if (perk === "visa") {
     return /\b(not (eligible for|available for|able to|provide|offer|sponsor)|(unable|cannot|can.t|won.t|will not|does not|do not|doesn.t|don.t) (to )?(provide |offer |support |take over )?(sponsor|visa)|without (the )?(need (for|of) )?(\w+ )?(visa |employment )?sponsorship|no (visa )?sponsorship|sponsorship (is )?(not|unavailable)|unavailable|not (be )?(able|provid)|must be (legally )?authori[sz]ed to work|authori[sz]ed to work (in|for) .*without|does not provide (any )?(such )?sponsorship|not require sponsorship|now or in the future (require|need)|eligible to work in)\b/i.test(sentence)
@@ -277,7 +324,7 @@ function negationFor(perk: PerkKey, clause: string, sentence: string): boolean {
  * Bumped whenever a change in this file could change what a posting reads
  * as. The sweep re-reads every row stored under an older version.
  */
-export const EXTRACTOR_VERSION = 1;
+export const EXTRACTOR_VERSION = 2;
 
 /** The bit each key occupies in the stored masks. Append only: a stored row is decoded by position. */
 export const PERK_KEYS: readonly PerkKey[] = [
@@ -410,6 +457,44 @@ export const ENGLISH_MIN_RATIO = 3;
 /** Letters outside the Latin script (Chinese, Japanese, Cyrillic, Devanagari...) above this share: not English. */
 export const ENGLISH_MAX_OTHER_SCRIPT = 0.1;
 
+/**
+ * Benefit words of the other languages the extractor reads, which a short
+ * benefits line often carries without any function word ("30 Tage Urlaub").
+ */
+const OTHER_BENEFIT_WORDS = new Set([
+  "tage", "urlaub", "urlaubstage", "jahr", "mutuelle", "prévoyance", "congés", "jours", "vacaciones", "días", "seguro",
+  "vakantie", "vakantiedagen", "dagen", "dagar", "semesterdagar", "urlopu", "dni", "ferie", "giorni",
+]);
+/** Letters only these languages use, among the ones the extractor reads. */
+const OTHER_LETTERS = /[äöüßåøæłąęśżźćńñãõ]/i;
+
+/**
+ * ONE QUOTED LINE, IN ANOTHER LANGUAGE (S12-187). The posting-level flag
+ * (isEnglishText) lets an English posting through whole, so a German benefits
+ * block inside it was counted and quoted ("30 Tage Urlaub im Jahr") although
+ * nothing has measured how the extractor reads German. A line is another
+ * language's when it is mostly another script, or when the words only the
+ * other languages use are at least as many as the English function words in
+ * it (and there is at least one). A line with neither ("Dental insurance")
+ * is not.
+ */
+export function isOtherLanguageLine(line: string): boolean {
+  let letters = 0, otherScript = 0;
+  for (const ch of line) {
+    if (!/\p{L}/u.test(ch)) continue;
+    letters++;
+    if (!/\p{Script=Latin}/u.test(ch)) otherScript++;
+  }
+  if (letters && otherScript > ENGLISH_MAX_OTHER_SCRIPT * letters) return true;
+  let en = 0, other = 0;
+  for (const w of line.toLowerCase().split(/[^\p{L}]+/u)) {
+    if (!w) continue;
+    if (EN_WORDS.has(w)) en++;
+    else if (OTHER_WORDS.has(w) || OTHER_BENEFIT_WORDS.has(w) || OTHER_LETTERS.test(w)) other++;
+  }
+  return other >= 1 && other >= en;
+}
+
 export function isEnglishText(text: string): boolean {
   let letters = 0, otherScript = 0;
   for (const ch of text) {
@@ -472,14 +557,23 @@ export function readPosting(title: string, description: string | null | undefine
   const e = extract(title, text);
   let y = 0, q = 0, n = 0;
   for (const key of PERK_KEYS) {
-    const status = e.perks[key];
+    // EACH QUOTE'S OWN LANGUAGE (S12-187): a key is read only from the lines
+    // written in English, and its status is aggregated again over those
+    // lines alone (N only where nothing positive is left; Y beats Q). A key
+    // stated only in another language's lines is not read at all.
+    const own = e.mentions.filter((m) => m.perk === key && !isOtherLanguageLine(m.sentence));
+    let status: Status | undefined;
+    for (const m of own) {
+      if (!status || (status === "N" && m.status !== "N") || (status === "Q" && m.status === "Y")) status = m.status;
+    }
+    if (key === "generic" && !status && e.perks.generic) status = e.perks.generic;
     if (!status) continue;
     const bit = PERK_BIT[key];
     if (status === "Y") y |= 1 << bit;
     else if (status === "Q") q |= 1 << bit;
     else n |= 1 << bit;
     // The first mention carrying the final status, a benefits-section one first.
-    const same = e.mentions.filter((m) => m.perk === key && m.status === status);
+    const same = own.filter((m) => m.status === status);
     const pick = same.find((m) => m.inSection) ?? same[0];
     if (pick) quotes[bit] = quoteOf(pick);
   }
