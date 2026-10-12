@@ -31,7 +31,12 @@
     "closeMenu": "Close menu",
     "phoneNavAriaLabel": "Site menu",
     "signIn": "Sign in",
-    "account": "Account"
+    "account": "Account",
+    "credits": "My credits",
+    "companies": "Companies",
+    "forAiChats": "For AI chats",
+    "more": "More",
+    "language": "Language"
   },
   "hero": {
     "badge": "Live job board — every posting verified from the company's own system",
@@ -160,7 +165,28 @@
     "changelog": "What's New",
     "navAriaLabel": "Footer navigation",
     "jobs": "Job board",
-    "explore": "Explore by field"
+    "explore": "Explore by field",
+    "resourcesAriaLabel": "Resources",
+    "links": {
+      "companies": "Companies hiring",
+      "trust": "Trust & transparency",
+      "resumeChecker": "Free CV checker",
+      "atsTest": "ATS CV test",
+      "resumeScore": "CV score",
+      "industries": "CV keywords by industry",
+      "guides": "CV & ATS guides",
+      "workday": "Workday ATS guide",
+      "greenhouse": "Greenhouse guide",
+      "lever": "Lever guide",
+      "icims": "iCIMS guide",
+      "vsJobscan": "vs Jobscan",
+      "freelanceBoost": "Freelance Boost",
+      "builder": "CV Builder",
+      "methodology": "Methodology",
+      "dataApi": "Hiring Data & API",
+      "agents": "Connect your agent",
+      "payTransparency": "Pay Transparency Index"
+    }
   },
   "howItWorks": {
     "badge": "AI-Powered Analysis",
@@ -3060,7 +3086,9 @@
   },
   "floatingHelpButton": {
     "needHelp": "Need Help?",
-    "questionsOrFeedback": "Questions or feedback? Email us:"
+    "questionsOrFeedback": "Questions or feedback? Email us:",
+    "getHelp": "Get help",
+    "closeHelp": "Close help"
   },
   "atsParseSimulator": {
     "title": "ATS Parse Simulation",
@@ -5343,5 +5371,64 @@
     "technical": "Technical",
     "situational": "Situational",
     "cultureFit": "Culture Fit"
+  },
+  "format": {
+    "ago": "{{duration}} ago",
+    "justNow": "just now",
+    "period": {
+      "hour": "/hr",
+      "day": "/day",
+      "week": "/wk",
+      "month": "/mo",
+      "year": "/yr"
+    }
+  },
+  "ds": {
+    "tryAgain": "Try again",
+    "lightTheme": "Light theme",
+    "asOf": {
+      "read": "read {{when}}",
+      "loaded": "loaded {{when}}",
+      "filed": "filed {{when}}",
+      "asOf": "as of {{when}}",
+      "posted": "posted {{when}}"
+    }
+  },
+  "howApply": {
+    "heading": "How applying works here",
+    "through": "Applications go through {{system}}.",
+    "captchaClick": "In our check of {{pages}} apply pages ({{date}}), {{system}} forms usually showed a human-verification step.",
+    "captchaAuto": "In our check of {{pages}} apply pages ({{date}}), {{system}} forms showed no human-verification step in that sample.",
+    "agentSubmits": "The Apply Agent can submit applications here.",
+    "agentPrepares": "The Apply Agent prepares your answers here; you send them.",
+    "questions": "We read this posting's own screening questions.",
+    "recheck": "We re-check the posting is still live when you press Apply."
+  },
+  "filterBar": {
+    "keywordLabel": "Search jobs by title or keyword",
+    "keywordPlaceholder": "Title or keyword",
+    "companyKeywordPlaceholder_one": "Search {{n}} role at {{name}}",
+    "companyKeywordPlaceholder_other": "Search {{n}} roles at {{name}}",
+    "companyKeywordPlaceholderNoCount": "Search roles at {{name}}",
+    "locationLabel": "Location",
+    "locationPlaceholder": "City, region or country",
+    "filters": "Filters",
+    "filtersCount": "Filters ({{n}})",
+    "search": "Search",
+    "activeFilters": "Active filters",
+    "removeFilter": "Remove filter: {{label}}",
+    "clearAll": "Clear all filters",
+    "sheetTitle": "Filters",
+    "done": "Done",
+    "postedWithin": "Posted within",
+    "field": "Field",
+    "seniority": "Seniority",
+    "payStated": "Pay stated",
+    "payStatedOnly": "Only postings that state pay",
+    "payStatedChip": "States pay",
+    "hiringSystem": "Hiring system",
+    "country": "Country",
+    "agencies": "Staffing agencies",
+    "agenciesHiddenChip": "No staffing agencies"
   }
 }

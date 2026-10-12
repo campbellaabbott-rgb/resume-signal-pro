@@ -84,6 +84,7 @@ describe("locale files", () => {
   }
 
   const enKeys = new Set(flattenKeys(JSON.parse(readFileSync(join(localesDir, "en.json"), "utf8"))));
+  const pluralBase = (k: string) => k.replace(/_(zero|one|two|few|many|other)$/, "_<plural>");
 
   /* A COPY CHANGE THAT LANDS IN ENGLISH BEFORE ITS TRANSLATION, DECLARED
    * RATHER THAN TOLERATED.
@@ -228,9 +229,15 @@ describe("locale files", () => {
     if (file === "en.json") continue;
 
     it(`${file} has the same translation keys as en.json (no missing, no extra)`, () => {
-      const keys = new Set(flattenKeys(JSON.parse(readFileSync(join(localesDir, file), "utf8"))));
-      const missing = [...enKeys].filter((k) => !keys.has(k) && !PENDING_TRANSLATION.includes(k));
-      const extra = [...keys].filter((k) => !enKeys.has(k) && !RETIRED_PENDING.includes(k));
+      // PLURAL FORMS ARE ONE KEY HERE. Spanish, French and Portuguese carry a
+      // third plural form (_many) that English does not use, so a plural
+      // group is compared by its base; that every group carries each form its
+      // language uses is held by every-plural-key-has-every-category-its-
+      // locale-uses.test.ts.
+      const keys = new Set([...flattenKeys(JSON.parse(readFileSync(join(localesDir, file), "utf8")))].map(pluralBase));
+      const enBases = new Set([...enKeys].map(pluralBase));
+      const missing = [...enBases].filter((k) => !keys.has(k) && !PENDING_TRANSLATION.includes(k));
+      const extra = [...keys].filter((k) => !enBases.has(k) && !RETIRED_PENDING.includes(k));
       expect(missing, `${file} is missing keys present in en.json (will silently fall back to English text)`).toEqual([]);
       expect(extra, `${file} has keys not present in en.json (likely a typo, or en.json itself is missing this key)`).toEqual([]);
     });

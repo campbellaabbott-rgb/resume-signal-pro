@@ -31,7 +31,12 @@
     "closeMenu": "मेन्यू बंद करें",
     "phoneNavAriaLabel": "साइट मेन्यू",
     "signIn": "साइन इन करें",
-    "account": "खाता"
+    "account": "खाता",
+    "credits": "मेरे क्रेडिट",
+    "companies": "कंपनियाँ",
+    "forAiChats": "AI चैट के लिए",
+    "more": "और",
+    "language": "भाषा"
   },
   "hero": {
     "badge": "लाइव जॉब बोर्ड — हर पोस्टिंग कंपनी के अपने सिस्टम से सत्यापित",
@@ -160,7 +165,28 @@
     "changelog": "नया क्या है",
     "navAriaLabel": "फ़ुटर नेविगेशन",
     "jobs": "जॉब बोर्ड",
-    "explore": "क्षेत्र के अनुसार देखें"
+    "explore": "क्षेत्र के अनुसार देखें",
+    "resourcesAriaLabel": "संसाधन",
+    "links": {
+      "companies": "भर्ती कर रही कंपनियाँ",
+      "trust": "भरोसा और पारदर्शिता",
+      "resumeChecker": "मुफ़्त रिज़्यूमे चेकर",
+      "atsTest": "ATS रिज़्यूमे टेस्ट",
+      "resumeScore": "रिज़्यूमे स्कोर",
+      "industries": "उद्योग के अनुसार रिज़्यूमे कीवर्ड",
+      "guides": "रिज़्यूमे और ATS गाइड",
+      "workday": "Workday ATS गाइड",
+      "greenhouse": "Greenhouse गाइड",
+      "lever": "Lever गाइड",
+      "icims": "iCIMS गाइड",
+      "vsJobscan": "बनाम Jobscan",
+      "freelanceBoost": "Freelance Boost",
+      "builder": "रिज़्यूमे बिल्डर",
+      "methodology": "पद्धति",
+      "dataApi": "भर्ती डेटा और API",
+      "agents": "अपना एजेंट जोड़ें",
+      "payTransparency": "वेतन पारदर्शिता सूचकांक"
+    }
   },
   "howItWorks": {
     "badge": "AI-संचालित विश्लेषण",
@@ -3060,7 +3086,9 @@
   },
   "floatingHelpButton": {
     "needHelp": "मदद चाहिए?",
-    "questionsOrFeedback": "प्रश्न या फ़ीडबैक? हमें ईमेल करें:"
+    "questionsOrFeedback": "प्रश्न या फ़ीडबैक? हमें ईमेल करें:",
+    "getHelp": "मदद लें",
+    "closeHelp": "मदद बंद करें"
   },
   "atsParseSimulator": {
     "title": "ATS पार्स सिमुलेशन",
@@ -5343,5 +5371,64 @@
     "technical": "तकनीकी",
     "situational": "परिस्थितिजन्य",
     "cultureFit": "सांस्कृतिक अनुकूलता"
+  },
+  "format": {
+    "ago": "{{duration}} पहले",
+    "justNow": "अभी-अभी",
+    "period": {
+      "hour": "/घंटा",
+      "day": "/दिन",
+      "week": "/सप्ताह",
+      "month": "/माह",
+      "year": "/वर्ष"
+    }
+  },
+  "ds": {
+    "tryAgain": "फिर से कोशिश करें",
+    "lightTheme": "लाइट थीम",
+    "asOf": {
+      "read": "{{when}} पढ़ा गया",
+      "loaded": "{{when}} लोड किया गया",
+      "filed": "{{when}} दाखिल किया गया",
+      "asOf": "{{when}} तक",
+      "posted": "{{when}} पोस्ट किया गया"
+    }
+  },
+  "howApply": {
+    "heading": "यहाँ आवेदन कैसे होता है",
+    "through": "आवेदन {{system}} के ज़रिए जाते हैं।",
+    "captchaClick": "{{pages}} आवेदन पेजों की हमारी जाँच ({{date}}) में, {{system}} फ़ॉर्म में आम तौर पर मानव-सत्यापन का एक चरण दिखा।",
+    "captchaAuto": "{{pages}} आवेदन पेजों की हमारी जाँच ({{date}}) में, उस नमूने में {{system}} फ़ॉर्म में कोई मानव-सत्यापन चरण नहीं दिखा।",
+    "agentSubmits": "Apply Agent यहाँ आवेदन भेज सकता है।",
+    "agentPrepares": "Apply Agent यहाँ आपके जवाब तैयार करता है; उन्हें भेजते आप हैं।",
+    "questions": "हम इस पोस्टिंग के अपने स्क्रीनिंग प्रश्न पढ़ते हैं।",
+    "recheck": "जब आप Apply दबाते हैं, तब हम दोबारा जाँचते हैं कि पोस्टिंग अब भी लाइव है।"
+  },
+  "filterBar": {
+    "keywordLabel": "पद या कीवर्ड से नौकरियाँ खोजें",
+    "keywordPlaceholder": "पद या कीवर्ड",
+    "companyKeywordPlaceholder_one": "{{name}} की {{n}} भूमिका में खोजें",
+    "companyKeywordPlaceholder_other": "{{name}} की {{n}} भूमिकाओं में खोजें",
+    "companyKeywordPlaceholderNoCount": "{{name}} की भूमिकाओं में खोजें",
+    "locationLabel": "स्थान",
+    "locationPlaceholder": "शहर, क्षेत्र या देश",
+    "filters": "फ़िल्टर",
+    "filtersCount": "फ़िल्टर ({{n}})",
+    "search": "खोजें",
+    "activeFilters": "सक्रिय फ़िल्टर",
+    "removeFilter": "फ़िल्टर हटाएँ: {{label}}",
+    "clearAll": "सभी फ़िल्टर हटाएँ",
+    "sheetTitle": "फ़िल्टर",
+    "done": "हो गया",
+    "postedWithin": "इतने समय में पोस्ट",
+    "field": "क्षेत्र",
+    "seniority": "वरिष्ठता",
+    "payStated": "वेतन बताया गया",
+    "payStatedOnly": "केवल वे पोस्टिंग जिनमें वेतन बताया गया है",
+    "payStatedChip": "वेतन बताया गया",
+    "hiringSystem": "हायरिंग सिस्टम",
+    "country": "देश",
+    "agencies": "स्टाफ़िंग एजेंसियाँ",
+    "agenciesHiddenChip": "स्टाफ़िंग एजेंसियाँ नहीं"
   }
 }

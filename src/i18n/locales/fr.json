@@ -31,7 +31,12 @@
     "closeMenu": "Fermer le menu",
     "phoneNavAriaLabel": "Menu du site",
     "signIn": "Se connecter",
-    "account": "Compte"
+    "account": "Compte",
+    "credits": "Mes crédits",
+    "companies": "Entreprises",
+    "forAiChats": "Pour les chats IA",
+    "more": "Plus",
+    "language": "Langue"
   },
   "hero": {
     "badge": "Tableau d'offres en direct — chaque annonce vérifiée sur le système de l'entreprise",
@@ -160,7 +165,28 @@
     "changelog": "Nouveautés",
     "navAriaLabel": "Navigation du pied de page",
     "jobs": "Offres d'emploi",
-    "explore": "Explorer par domaine"
+    "explore": "Explorer par domaine",
+    "resourcesAriaLabel": "Ressources",
+    "links": {
+      "companies": "Entreprises qui recrutent",
+      "trust": "Confiance et transparence",
+      "resumeChecker": "Vérificateur de CV gratuit",
+      "atsTest": "Test ATS de CV",
+      "resumeScore": "Score du CV",
+      "industries": "Mots-clés de CV par secteur",
+      "guides": "Guides CV et ATS",
+      "workday": "Guide ATS Workday",
+      "greenhouse": "Guide Greenhouse",
+      "lever": "Guide Lever",
+      "icims": "Guide iCIMS",
+      "vsJobscan": "vs Jobscan",
+      "freelanceBoost": "Freelance Boost",
+      "builder": "Créateur de CV",
+      "methodology": "Méthodologie",
+      "dataApi": "Données de recrutement et API",
+      "agents": "Connecter votre agent",
+      "payTransparency": "Indice de transparence salariale"
+    }
   },
   "howItWorks": {
     "badge": "Analyse par IA",
@@ -372,7 +398,8 @@
     "orGetCompleteAnalysis": "Ou obtenez l'analyse complète pour",
     "securePaymentStripe": "Paiement sécurisé via Stripe",
     "gsheetsImportFailed": "Échec de l'importation depuis Google Sheets. Veuillez réessayer.",
-    "gsheetsImportFailedShared": "Échec de l'importation depuis Google Sheets. Assurez-vous que la feuille est partagée avec « Tous les utilisateurs disposant du lien »."
+    "gsheetsImportFailedShared": "Échec de l'importation depuis Google Sheets. Assurez-vous que la feuille est partagée avec « Tous les utilisateurs disposant du lien ».",
+    "otherJobsAvailable_many": "{{count}} autres postes disponibles"
   },
   "faq": {
     "title": "Questions fréquentes",
@@ -823,7 +850,10 @@
       "good": "Bon",
       "needsImprovement": "À améliorer",
       "poor": "Faible"
-    }
+    },
+    "eliteSignal_many": "{{count}} signaux d'élite",
+    "issue_many": "{{count}} problèmes",
+    "quickFix_many": "{{count}} corrections rapides"
   },
   "careerSnapshot": {
     "downloadPdf": "Télécharger le rapport PDF",
@@ -846,14 +876,16 @@
     "topStrengths": {
       "title": "Principaux atouts",
       "identified_one": "{{count}} identifié",
-      "identified_other": "{{count}} identifiés"
+      "identified_other": "{{count}} identifiés",
+      "identified_many": "{{count}} identifiés"
     },
     "careerRisks": {
       "title": "Risques de carrière et questions",
       "count_one": "{{count}} risque",
       "count_other": "{{count}} risques",
       "recruiterWillAsk": "Le recruteur demandera :",
-      "howToAddress": "Comment y répondre :"
+      "howToAddress": "Comment y répondre :",
+      "count_many": "{{count}} risques"
     },
     "positioning": {
       "title": "Guide de positionnement",
@@ -1576,7 +1608,11 @@
       "careerDescDefault": "Conseils de négociation salariale, voies de progression et points de discussion pour {{industry}}",
       "kwDescWithStats": "{{count}} mots clés manquants trouvés spécifiques à {{industry}} que les systèmes ATS recherchent",
       "kwDescGood": "Bonne couverture de mots clés pour {{industry}} — obtenez des conseils de formulation et de placement pour les faire compter encore plus",
-      "kwDescDefault": "Mots clés manquants spécifiques à {{industry}} que les systèmes ATS recherchent"
+      "kwDescDefault": "Mots clés manquants spécifiques à {{industry}} que les systèmes ATS recherchent",
+      "kwHard_many": "• {{count}} compétences techniques critiques manquantes dans votre CV",
+      "kwCerts_many": "• {{count}} certifications du secteur à mentionner (même en cours)",
+      "kwTools_many": "• {{count}} outils couramment cités dans votre domaine qui vous manquent",
+      "kwMethodology_many": "• {{count}} mots-clés de méthodologie qu'utilisent vos concurrents"
     },
     "premiumCta": {
       "package": "Package Premium",
@@ -2175,7 +2211,8 @@
         "deliveryTime": "Instantané",
         "deliveryMethod": "Sur cette page"
       }
-    }
+    },
+    "creditsAdded_many": "{{count}} crédits ajoutés !"
   },
   "analysisResults": {
     "copied": "Copié !",
@@ -2366,7 +2403,8 @@
     "analysisProcessingDescription": "Nous n'avons pas pu extraire de recommandations détaillées de votre CV. Cela peut arriver si le format du CV est inhabituel ou si un problème est survenu lors du traitement.",
     "bottomCta": "Appliquez ces changements à votre CV et observez votre taux d'entretien s'améliorer !",
     "bottomCtaWithLinkedIn": "Appliquez ces changements à votre CV et votre profil LinkedIn et observez votre taux d'entretien s'améliorer !",
-    "analysisSaved": "Cette analyse est conservée {{analysisDays}} jours derrière le lien de partage ci-dessus, puis supprimée. Téléchargez-la en PDF pour garder votre propre copie."
+    "analysisSaved": "Cette analyse est conservée {{analysisDays}} jours derrière le lien de partage ci-dessus, puis supprimée. Téléchargez-la en PDF pour garder votre propre copie.",
+    "pageCount_many": "{{count}} pages"
   },
   "personalization": {
     "experience": {
@@ -2503,7 +2541,8 @@
     "industryKeywordsToInclude": "Mots-clés sectoriels à inclure",
     "valuableCertifications": "Certifications précieuses :",
     "recommendedLength_one": "Longueur de CV recommandée : {{count}} page pour les professionnels de niveau {{level}}",
-    "recommendedLength_other": "Longueur de CV recommandée : {{count}} pages pour les professionnels de niveau {{level}}"
+    "recommendedLength_other": "Longueur de CV recommandée : {{count}} pages pour les professionnels de niveau {{level}}",
+    "recommendedLength_many": "Longueur de CV recommandée : {{count}} pages pour les professionnels de niveau {{level}}"
   },
   "trustPage": {
     "metaTitle": "Confiance et sécurité — Resume Booster",
@@ -2765,7 +2804,9 @@
     "buyCreditsFor_one": "Acheter {{count}} crédit pour {{price}}",
     "buyCreditsFor_other": "Acheter {{count}} crédits pour {{price}}",
     "maybeLater": "Peut-être plus tard",
-    "dialogTitle": "Acheter des crédits de scan"
+    "dialogTitle": "Acheter des crédits de scan",
+    "resumeScans_many": "{{count}} scans de CV",
+    "buyCreditsFor_many": "Acheter {{count}} crédits pour {{price}}"
   },
   "addOnsShowcase": {
     "powerUpAddOns": "Modules complémentaires",
@@ -2874,7 +2915,10 @@
     "getCreditsFor_other": "Obtenir {{count}} crédits pour {{price}}",
     "noThanks": "Non merci, j'attendrai la réinitialisation de mes scans gratuits",
     "fewerCredits": "Moins de crédits",
-    "moreCredits": "Plus de crédits"
+    "moreCredits": "Plus de crédits",
+    "hour_many": "{{count}} heures",
+    "credits_many": "{{count}} scans de CV",
+    "getCreditsFor_many": "Obtenir {{count}} crédits pour {{price}}"
   },
   "changelogPage": {
     "metaTitle": "Journal des modifications — Resume Booster",
@@ -3060,7 +3104,9 @@
   },
   "floatingHelpButton": {
     "needHelp": "Besoin d’aide ?",
-    "questionsOrFeedback": "Des questions ou des commentaires ? Écrivez-nous :"
+    "questionsOrFeedback": "Des questions ou des commentaires ? Écrivez-nous :",
+    "getHelp": "Obtenir de l'aide",
+    "closeHelp": "Fermer l'aide"
   },
   "atsParseSimulator": {
     "title": "Simulation d’analyse ATS",
@@ -3194,7 +3240,9 @@
     "notStated": "Non déclaré explicitement (Opportunité ATS)",
     "highImpact": "Mots-clés à fort impact à ajouter :",
     "plusMore": "+{{count}} autres",
-    "foundCount": "{{count}} mots-clés trouvés dans votre CV"
+    "foundCount": "{{count}} mots-clés trouvés dans votre CV",
+    "criticalGap_many": "{{count}} mots-clés non déclarés explicitement — opportunité d'optimisation ATS",
+    "goodCoverage_many": "Bonne couverture — {{count}} mots-clés à fort impact pourraient renforcer votre correspondance"
   },
   "interactiveChecklist": {
     "quickWin": "Gain rapide",
@@ -3235,7 +3283,8 @@
     "softSkills": "Compétences relationnelles",
     "tools": "Outils et logiciels",
     "certifications": "Certifications",
-    "methodologies": "Méthodologies"
+    "methodologies": "Méthodologies",
+    "gapCount_many": "({{count}} lacunes)"
   },
   "recruiterView": {
     "seeThrough": "Voyez votre CV à travers les yeux d'un recruteur",
@@ -3318,7 +3367,9 @@
     "advancedToHighlight": "Compétences avancées à mettre en avant",
     "plusMore": "+{{count}} autres",
     "standOut": "Démarquez-vous des autres candidats",
-    "foundCount": "{{count}} mots-clés spécifiques au rôle trouvés"
+    "foundCount": "{{count}} mots-clés spécifiques au rôle trouvés",
+    "missingCore_many": "Il manque {{count}} mots-clés centraux attendus des {{role}}s",
+    "goodFoundation_many": "Bonne base ! Ajoutez {{count}} mots-clés avancés pour vous démarquer"
   },
   "shareableCard": {
     "excellent": "Excellent",
@@ -4423,7 +4474,11 @@
     "layoffRead": "lu depuis {{sourceName}} {{readAgo}}",
     "layoffReadStale": "dernière lecture {{readAt}}",
     "layoffMore": "+{{more}} de plus sur la page de l'employeur",
-    "hhAlsoOnRecord": "Également au dossier :"
+    "hhAlsoOnRecord": "Également au dossier :",
+    "alsoInLocations_many": "Recrute aussi dans {{count}} autres lieux",
+    "sourcesDown_many": "{{count}} flux d'entreprises sont injoignables pour le moment",
+    "sourcesDownAtLeast_many": "au moins {{count}} flux d'entreprises sont injoignables pour le moment",
+    "moreLocations_many": "Même poste dans {{count}} autres lieux"
   },
   "accountPage": {
     "statusSaveFailed": "Impossible d'enregistrer ce statut — réessayez.",
@@ -4612,7 +4667,13 @@
       "notLinked": "Une formule liée à votre adresse e-mail n'est pas rattachée à ce compte. Écrivez-nous et nous traiterons la rétractation.",
       "outsideTerritory": "La rétractation sous {{days}} jours s'applique aux formules facturées à une adresse dans l'UE, l'EEE ou au Royaume-Uni, et cette formule a été facturée ailleurs. Vous pouvez toujours la résilier à tout moment.",
       "failed": "La rétractation n'a pas abouti. Réessayez dans une minute."
-    }
+    },
+    "closedHeading_many": "{{count}} de vos candidatures se sont fermées — voici des offres fraîches",
+    "ssSavedCount_many": "{{count}} enregistrées",
+    "ssNewHeadline_many": "{{count}} nouvelles offres correspondent à vos recherches depuis votre dernière visite",
+    "acPreppedToast_many": "{{count}} candidatures préparées — relisez et postulez ci-dessous.",
+    "acPrepAll_many": "Préparer {{count}} candidatures adaptées",
+    "acGoPro_many": "Passez Pro pour préparer {{count}} offres enregistrées"
   },
   "applyAgent": {
     "badge": "Votre agent IA de candidature",
@@ -5343,5 +5404,65 @@
     "technical": "Technique",
     "situational": "Situationnelle",
     "cultureFit": "Adéquation culturelle"
+  },
+  "format": {
+    "ago": "il y a {{duration}}",
+    "justNow": "à l'instant",
+    "period": {
+      "hour": "/h",
+      "day": "/jour",
+      "week": "/semaine",
+      "month": "/mois",
+      "year": "/an"
+    }
+  },
+  "ds": {
+    "tryAgain": "Réessayer",
+    "lightTheme": "Thème clair",
+    "asOf": {
+      "read": "lu {{when}}",
+      "loaded": "chargé {{when}}",
+      "filed": "déposé {{when}}",
+      "asOf": "mis à jour {{when}}",
+      "posted": "publié {{when}}"
+    }
+  },
+  "howApply": {
+    "heading": "Comment postuler ici",
+    "through": "Les candidatures passent par {{system}}.",
+    "captchaClick": "Lors de notre contrôle de {{pages}} pages de candidature ({{date}}), les formulaires {{system}} affichaient le plus souvent une étape de vérification humaine.",
+    "captchaAuto": "Lors de notre contrôle de {{pages}} pages de candidature ({{date}}), les formulaires {{system}} n'affichaient aucune étape de vérification humaine dans cet échantillon.",
+    "agentSubmits": "L'Apply Agent peut envoyer des candidatures ici.",
+    "agentPrepares": "L'Apply Agent prépare ici vos réponses ; c'est vous qui les envoyez.",
+    "questions": "Nous lisons les questions de présélection propres à cette offre.",
+    "recheck": "Nous revérifions que l'offre est toujours en ligne lorsque vous appuyez sur Postuler."
+  },
+  "filterBar": {
+    "keywordLabel": "Rechercher des offres par intitulé ou mot-clé",
+    "keywordPlaceholder": "Intitulé ou mot-clé",
+    "companyKeywordPlaceholder_one": "Rechercher parmi {{n}} poste chez {{name}}",
+    "companyKeywordPlaceholder_other": "Rechercher parmi {{n}} postes chez {{name}}",
+    "companyKeywordPlaceholderNoCount": "Rechercher des postes chez {{name}}",
+    "locationLabel": "Lieu",
+    "locationPlaceholder": "Ville, région ou pays",
+    "filters": "Filtres",
+    "filtersCount": "Filtres ({{n}})",
+    "search": "Rechercher",
+    "activeFilters": "Filtres actifs",
+    "removeFilter": "Retirer le filtre : {{label}}",
+    "clearAll": "Effacer tous les filtres",
+    "sheetTitle": "Filtres",
+    "done": "Terminé",
+    "postedWithin": "Publié dans",
+    "field": "Domaine",
+    "seniority": "Niveau d'expérience",
+    "payStated": "Salaire indiqué",
+    "payStatedOnly": "Seulement les offres qui indiquent le salaire",
+    "payStatedChip": "Salaire indiqué",
+    "hiringSystem": "Système de recrutement",
+    "country": "Pays",
+    "agencies": "Agences de recrutement",
+    "agenciesHiddenChip": "Sans agences de recrutement",
+    "companyKeywordPlaceholder_many": "Rechercher parmi {{n}} postes chez {{name}}"
   }
 }
