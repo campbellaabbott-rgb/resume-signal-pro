@@ -152,9 +152,29 @@ describe("S11-049: a migration sits in the step its constraint names", () => {
     const g = p.pre.find((m) => m.file.startsWith("20261009144000"));
     expect(g?.note).toMatch(/before send-search-digest and send-agent-digest/);
     expect(p.pre.find((m) => m.file.startsWith("20261009130000"))?.note).toMatch(/before stripe-webhook/);
-    // every rule names a stamp that exists, so none is silently inert
+    // every rule names a stamp that exists, so none is silently inert (any
+    // wave's: wave 4 added rules for its own 20261011* migrations)
+    const all = readdirSync(resolve(ROOT, "supabase/migrations")).filter((f) => /^\d{14}_/.test(f));
     const stamps = Object.keys(POLICY.migrationOrder).filter((k) => !k.startsWith("_"));
-    for (const s of stamps) expect(wave3.some((f) => f.startsWith(s)), `${s} names no migration file`).toBe(true);
+    for (const s of stamps) expect(all.some((f) => f.startsWith(s)), `${s} names no migration file`).toBe(true);
+  });
+
+  it("wave 4's allowance, counter, form-cache and fit-reader migrations go before the functions that call them", () => {
+    const wave4 = readdirSync(resolve(ROOT, "supabase/migrations")).filter((f) => /^20261011\d{6}_/.test(f)).sort();
+    const fnDir = resolve(ROOT, "supabase/functions");
+    const rows: Row[] = readdirSync(fnDir).filter((d) => d !== "_shared").flatMap((fn) => {
+      let src = ""; try { src = readFileSync(join(fnDir, fn, "index.ts"), "utf8"); } catch { return []; }
+      const want = L.buildOf(fn, src);
+      return [{ fn, want, have: null, state: want ? "deploy (no live header)" : "no-marker" }];
+    });
+    const p = L.migrationPhases(wave4, POLICY, rows);
+    expect(p.errors).toEqual([]);
+    const note = (stamp: string) => p.pre.find((m) => m.file.startsWith(stamp))?.note ?? "";
+    for (const s of ["20261011100000", "20261011101000", "20261011102000", "20261011102100", "20261011110000"]) {
+      expect(note(s), `${s} must precede agent-mcp`).toMatch(/agent-mcp/);
+    }
+    expect(note("20261011100000")).toMatch(/public-api/);
+    expect(note("20261011110000")).toMatch(/public-api/);
   });
 });
 
