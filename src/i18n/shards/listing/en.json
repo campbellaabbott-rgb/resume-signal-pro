@@ -1,0 +1,96 @@
+{
+  "listing": {
+    "ago": {
+      "now": "just now",
+      "since": "{{duration}} ago"
+    },
+    "period": {
+      "hour": "/hr",
+      "day": "/day",
+      "week": "/wk",
+      "month": "/mo",
+      "year": "/yr"
+    },
+    "card": {
+      "moreActions": "More actions for {{title}}",
+      "save": "Save {{title}}",
+      "postedToday": "posted today",
+      "postedDaysAgo_one": "posted {{count}} day ago",
+      "postedDaysAgo_other": "posted {{count}} days ago",
+      "feedRead": "{{system}} · feed read {{ago}}",
+      "feedReadNoSystem": "Feed read {{ago}}",
+      "feedReadTip": "When we last read this employer's own job feed. A posting the employer takes down leaves the board at the next read of its feed.",
+      "agencyBoard": "Staffing agency board",
+      "agencyBoardTip": "This board belongs to a staffing or recruiting agency. We flag the board, not each posting, so the roles here are usually for the agency's clients rather than for the agency itself.",
+      "annualEstimate": "≈ {{amount}}{{period}}",
+      "checkFit": "Check fit",
+      "checkFitLabel": "Check your fit for {{title}}"
+    },
+    "menu": {
+      "report": "Report",
+      "compare": "Compare",
+      "aiHandoff": "Open in Claude or ChatGPT",
+      "copyLink": "Copy link"
+    },
+    "status": {
+      "live": "Live at source · feed read {{ago}}",
+      "liveTip": "The employer's own feed listed this posting the last time we read it.",
+      "partial": "We could read only part of this board",
+      "partialTip": "This employer's board is bigger than one read reaches, so we cannot confirm every posting on it at every read.",
+      "gone": "No longer listed by the employer · taken down {{date}}",
+      "goneUndated": "No longer listed by the employer"
+    },
+    "actions": {
+      "apply": "Apply on {{employerPossessive}} site",
+      "applyPlain": "Apply on the employer's site",
+      "applyShort": "Apply on employer site",
+      "newTab": "(opens in a new tab)",
+      "applyCaption": "Opens on {{system}}, in a new tab.",
+      "applyCaptionPlain": "Opens the employer's own site, in a new tab.",
+      "checkFit": "Check my fit, free",
+      "checkFitCaption": "Scores your résumé against this posting's own description."
+    },
+    "facts": {
+      "payBasis": "from the employer's feed",
+      "postedDated": "{{date}}, as the employer's system states it",
+      "postedRedated": "Feed date {{date}}; {{system}} can move this date when a posting is edited, so it may be older",
+      "postedRedatedPlain": "Feed date {{date}}; this hiring system can move this date when a posting is edited, so it may be older",
+      "postedUndated": "The employer's system states no posting date",
+      "location": "Location",
+      "locations": "Locations",
+      "system": "Hiring system",
+      "systemValue": "Apply link opens on {{system}}",
+      "department": "Department",
+      "feedRead": "Feed read"
+    },
+    "description": {
+      "loading": "Loading the description…",
+      "unavailable": "We couldn't load the full description here.",
+      "readOnSite": "Read it on {{employerPossessive}} site",
+      "readOnSitePlain": "Read it on the employer's site",
+      "capped": "Our copy stops at {{cap}} characters.",
+      "continuesOnSite": "The posting continues on {{employerPossessive}} site",
+      "continuesOnSitePlain": "The posting continues on the employer's site",
+      "collapsed_one": "We left out {{count}} paragraph that repeated another word for word.",
+      "collapsed_other": "We left out {{count}} paragraphs that repeated others word for word."
+    },
+    "detail": {
+      "back": "Back to {{name}}",
+      "openRoles_one": "See all {{n}} open role at {{name}}",
+      "openRoles_other": "See all {{n}} open roles at {{name}}",
+      "openRolesFloor": "See all {{n}}+ open roles at {{name}}"
+    },
+    "sheet": {
+      "back": "Back to the list"
+    },
+    "page": {
+      "breadcrumb": "Breadcrumb",
+      "jobs": "Jobs"
+    },
+    "more": {
+      "heading": "More roles at {{employer}}",
+      "seeAll": "See every open role at {{employer}}",
+      "loading": "Loading more roles…"
+    }
+  }
+}

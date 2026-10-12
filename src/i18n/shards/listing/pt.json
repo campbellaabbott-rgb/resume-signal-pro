@@ -1,0 +1,99 @@
+{
+  "listing": {
+    "ago": {
+      "now": "agora mesmo",
+      "since": "há {{duration}}"
+    },
+    "period": {
+      "hour": "/h",
+      "day": "/dia",
+      "week": "/sem.",
+      "month": "/mês",
+      "year": "/ano"
+    },
+    "card": {
+      "moreActions": "Mais ações para {{title}}",
+      "save": "Guardar {{title}}",
+      "postedToday": "publicada hoje",
+      "postedDaysAgo_one": "publicada há {{count}} dia",
+      "postedDaysAgo_many": "publicada há {{count}} dias",
+      "postedDaysAgo_other": "publicada há {{count}} dias",
+      "feedRead": "{{system}} · feed lido {{ago}}",
+      "feedReadNoSystem": "Feed lido {{ago}}",
+      "feedReadTip": "A última vez que lemos o feed de vagas do próprio empregador. Uma vaga que o empregador retira sai do quadro na leitura seguinte do feed.",
+      "agencyBoard": "Quadro de uma agência de recrutamento",
+      "agencyBoardTip": "Este quadro pertence a uma agência de trabalho temporário ou de recrutamento. Marcamos o quadro, não cada vaga, por isso as funções aqui costumam ser para clientes da agência e não para a própria agência.",
+      "annualEstimate": "≈ {{amount}}{{period}}",
+      "checkFit": "Checar encaixe",
+      "checkFitLabel": "Checar o seu encaixe com {{title}}"
+    },
+    "menu": {
+      "report": "Sinalizar",
+      "compare": "Comparar",
+      "aiHandoff": "Abrir no Claude ou no ChatGPT",
+      "copyLink": "Copiar link"
+    },
+    "status": {
+      "live": "Ativa na origem · feed lido {{ago}}",
+      "liveTip": "O feed do próprio empregador listava esta vaga na última vez que o lemos.",
+      "partial": "Só conseguimos ler parte deste quadro",
+      "partialTip": "O quadro deste empregador é maior do que uma leitura alcança, por isso não conseguimos confirmar cada vaga em cada leitura.",
+      "gone": "Já não está listada pelo empregador · retirada em {{date}}",
+      "goneUndated": "Já não está listada pelo empregador"
+    },
+    "actions": {
+      "apply": "Candidate-se no site da {{employer}}",
+      "applyPlain": "Candidate-se no site do empregador",
+      "applyShort": "Candidate-se no site do empregador",
+      "newTab": "(abre numa nova aba)",
+      "applyCaption": "Abre no {{system}}, numa nova aba.",
+      "applyCaptionPlain": "Abre o site do próprio empregador, numa nova aba.",
+      "checkFit": "Checar meu encaixe, grátis",
+      "checkFitCaption": "Compara o seu currículo com a descrição desta própria vaga."
+    },
+    "facts": {
+      "payBasis": "do feed do empregador",
+      "postedDated": "{{date}}, como o sistema do empregador indica",
+      "postedRedated": "Data do feed {{date}}; o {{system}} pode mudar esta data quando uma vaga é editada, por isso ela pode ser mais antiga",
+      "postedRedatedPlain": "Data do feed {{date}}; este sistema de recrutamento pode mudar a data quando uma vaga é editada, por isso ela pode ser mais antiga",
+      "postedUndated": "O sistema do empregador não indica data de publicação",
+      "location": "Local",
+      "locations": "Locais",
+      "system": "Sistema de recrutamento",
+      "systemValue": "O link de candidatura abre no {{system}}",
+      "department": "Departamento",
+      "feedRead": "Feed lido"
+    },
+    "description": {
+      "loading": "Carregando a descrição…",
+      "unavailable": "Não conseguimos carregar aqui a descrição completa.",
+      "readOnSite": "Leia-a no site da {{employer}}",
+      "readOnSitePlain": "Leia-a no site do empregador",
+      "capped": "A nossa cópia para em {{cap}} caracteres.",
+      "continuesOnSite": "A vaga continua no site da {{employer}}",
+      "continuesOnSitePlain": "A vaga continua no site do empregador",
+      "collapsed_one": "Omitimos {{count}} parágrafo que repetia outro palavra por palavra.",
+      "collapsed_many": "Omitimos {{count}} parágrafos que repetiam outros palavra por palavra.",
+      "collapsed_other": "Omitimos {{count}} parágrafos que repetiam outros palavra por palavra."
+    },
+    "detail": {
+      "back": "Voltar para {{name}}",
+      "openRoles_one": "Ver a {{n}} vaga aberta na {{name}}",
+      "openRoles_many": "Ver as {{n}} vagas abertas na {{name}}",
+      "openRoles_other": "Ver as {{n}} vagas abertas na {{name}}",
+      "openRolesFloor": "Ver as {{n}}+ vagas abertas na {{name}}"
+    },
+    "sheet": {
+      "back": "Voltar à lista"
+    },
+    "page": {
+      "breadcrumb": "Trilha de navegação",
+      "jobs": "Vagas"
+    },
+    "more": {
+      "heading": "Mais vagas na {{employer}}",
+      "seeAll": "Ver todas as vagas abertas na {{employer}}",
+      "loading": "Carregando mais vagas…"
+    }
+  }
+}

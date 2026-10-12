@@ -1,0 +1,99 @@
+{
+  "listing": {
+    "ago": {
+      "now": "à l'instant",
+      "since": "il y a {{duration}}"
+    },
+    "period": {
+      "hour": "/h",
+      "day": "/jour",
+      "week": "/sem.",
+      "month": "/mois",
+      "year": "/an"
+    },
+    "card": {
+      "moreActions": "Autres actions pour {{title}}",
+      "save": "Enregistrer {{title}}",
+      "postedToday": "publiée aujourd'hui",
+      "postedDaysAgo_one": "publiée il y a {{count}} jour",
+      "postedDaysAgo_many": "publiée il y a {{count}} jours",
+      "postedDaysAgo_other": "publiée il y a {{count}} jours",
+      "feedRead": "{{system}} · flux lu {{ago}}",
+      "feedReadNoSystem": "Flux lu {{ago}}",
+      "feedReadTip": "La dernière fois que nous avons lu le flux d'offres de cet employeur. Une offre que l'employeur retire quitte le tableau à la lecture suivante de son flux.",
+      "agencyBoard": "Tableau d'une agence de recrutement",
+      "agencyBoardTip": "Ce tableau appartient à une agence d'intérim ou de recrutement. Nous signalons le tableau, pas chaque offre : les postes ici sont en général pour les clients de l'agence, et non pour l'agence elle-même.",
+      "annualEstimate": "≈ {{amount}}{{period}}",
+      "checkFit": "Vérifier l'adéquation",
+      "checkFitLabel": "Vérifier votre adéquation pour {{title}}"
+    },
+    "menu": {
+      "report": "Signaler",
+      "compare": "Comparer",
+      "aiHandoff": "Ouvrir dans Claude ou ChatGPT",
+      "copyLink": "Copier le lien"
+    },
+    "status": {
+      "live": "En ligne à la source · flux lu {{ago}}",
+      "liveTip": "Le flux propre de l'employeur listait cette offre lors de notre dernière lecture.",
+      "partial": "Nous n'avons pu lire qu'une partie de ce tableau",
+      "partialTip": "Le tableau de cet employeur est plus grand que ce qu'une lecture atteint, nous ne pouvons donc pas confirmer chaque offre à chaque lecture.",
+      "gone": "Plus listée par l'employeur · retirée le {{date}}",
+      "goneUndated": "Plus listée par l'employeur"
+    },
+    "actions": {
+      "apply": "Postuler sur le site de {{employer}}",
+      "applyPlain": "Postuler sur le site de l'employeur",
+      "applyShort": "Postuler sur le site de l'employeur",
+      "newTab": "(s'ouvre dans un nouvel onglet)",
+      "applyCaption": "S'ouvre sur {{system}}, dans un nouvel onglet.",
+      "applyCaptionPlain": "Ouvre le site propre de l'employeur, dans un nouvel onglet.",
+      "checkFit": "Vérifier mon adéquation, gratuit",
+      "checkFitCaption": "Compare votre CV à la description propre de cette offre."
+    },
+    "facts": {
+      "payBasis": "issue du flux de l'employeur",
+      "postedDated": "{{date}}, telle que l'indique le système de l'employeur",
+      "postedRedated": "Date du flux {{date}} ; {{system}} peut déplacer cette date quand une offre est modifiée, elle peut donc être plus ancienne",
+      "postedRedatedPlain": "Date du flux {{date}} ; ce système de recrutement peut déplacer la date quand une offre est modifiée, elle peut donc être plus ancienne",
+      "postedUndated": "Le système de l'employeur n'indique aucune date de publication",
+      "location": "Lieu",
+      "locations": "Lieux",
+      "system": "Système de recrutement",
+      "systemValue": "Le lien de candidature ouvre {{system}}",
+      "department": "Service",
+      "feedRead": "Flux lu"
+    },
+    "description": {
+      "loading": "Chargement de la description…",
+      "unavailable": "Nous n'avons pas pu charger ici la description complète.",
+      "readOnSite": "Lisez-la sur le site de {{employer}}",
+      "readOnSitePlain": "Lisez-la sur le site de l'employeur",
+      "capped": "Notre copie s'arrête à {{cap}} caractères.",
+      "continuesOnSite": "L'offre continue sur le site de {{employer}}",
+      "continuesOnSitePlain": "L'offre continue sur le site de l'employeur",
+      "collapsed_one": "Nous avons omis {{count}} paragraphe qui en répétait un autre mot pour mot.",
+      "collapsed_many": "Nous avons omis {{count}} paragraphes qui en répétaient d'autres mot pour mot.",
+      "collapsed_other": "Nous avons omis {{count}} paragraphes qui en répétaient d'autres mot pour mot."
+    },
+    "detail": {
+      "back": "Retour à {{name}}",
+      "openRoles_one": "Voir le {{n}} poste ouvert chez {{name}}",
+      "openRoles_many": "Voir les {{n}} postes ouverts chez {{name}}",
+      "openRoles_other": "Voir les {{n}} postes ouverts chez {{name}}",
+      "openRolesFloor": "Voir les {{n}}+ postes ouverts chez {{name}}"
+    },
+    "sheet": {
+      "back": "Retour à la liste"
+    },
+    "page": {
+      "breadcrumb": "Fil d'Ariane",
+      "jobs": "Offres"
+    },
+    "more": {
+      "heading": "Autres postes chez {{employer}}",
+      "seeAll": "Voir tous les postes ouverts chez {{employer}}",
+      "loading": "Chargement d'autres postes…"
+    }
+  }
+}

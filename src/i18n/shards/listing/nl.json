@@ -1,0 +1,96 @@
+{
+  "listing": {
+    "ago": {
+      "now": "zojuist",
+      "since": "{{duration}} geleden"
+    },
+    "period": {
+      "hour": "/uur",
+      "day": "/dag",
+      "week": "/week",
+      "month": "/mnd",
+      "year": "/jaar"
+    },
+    "card": {
+      "moreActions": "Meer acties voor {{title}}",
+      "save": "{{title}} bewaren",
+      "postedToday": "vandaag geplaatst",
+      "postedDaysAgo_one": "{{count}} dag geleden geplaatst",
+      "postedDaysAgo_other": "{{count}} dagen geleden geplaatst",
+      "feedRead": "{{system}} · feed {{ago}} gelezen",
+      "feedReadNoSystem": "Feed {{ago}} gelezen",
+      "feedReadTip": "Wanneer we de eigen vacaturefeed van deze werkgever het laatst lazen. Een vacature die de werkgever weghaalt, verdwijnt bij de volgende lezing van die feed van het bord.",
+      "agencyBoard": "Bord van een uitzend- of wervingsbureau",
+      "agencyBoardTip": "Dit bord is van een uitzend- of wervingsbureau. We markeren het bord, niet elke vacature, dus de functies hier zijn meestal voor klanten van het bureau en niet voor het bureau zelf.",
+      "annualEstimate": "≈ {{amount}}{{period}}",
+      "checkFit": "Match checken",
+      "checkFitLabel": "Je match met {{title}} checken"
+    },
+    "menu": {
+      "report": "Melden",
+      "compare": "Vergelijken",
+      "aiHandoff": "Openen in Claude of ChatGPT",
+      "copyLink": "Link kopiëren"
+    },
+    "status": {
+      "live": "Live bij de bron · feed {{ago}} gelezen",
+      "liveTip": "De eigen feed van de werkgever vermeldde deze vacature toen we hem het laatst lazen.",
+      "partial": "We konden maar een deel van dit bord lezen",
+      "partialTip": "Het bord van deze werkgever is groter dan één lezing bereikt, dus we kunnen niet bij elke lezing elke vacature erop bevestigen.",
+      "gone": "Niet meer vermeld door de werkgever · verwijderd op {{date}}",
+      "goneUndated": "Niet meer vermeld door de werkgever"
+    },
+    "actions": {
+      "apply": "Solliciteer op de site van {{employer}}",
+      "applyPlain": "Solliciteer op de site van de werkgever",
+      "applyShort": "Solliciteer bij de werkgever",
+      "newTab": "(opent in een nieuw tabblad)",
+      "applyCaption": "Opent op {{system}}, in een nieuw tabblad.",
+      "applyCaptionPlain": "Opent de eigen site van de werkgever, in een nieuw tabblad.",
+      "checkFit": "Check mijn match, gratis",
+      "checkFitCaption": "Vergelijkt je cv met de eigen omschrijving van deze vacature."
+    },
+    "facts": {
+      "payBasis": "uit de feed van de werkgever",
+      "postedDated": "{{date}}, zoals het systeem van de werkgever het vermeldt",
+      "postedRedated": "Feeddatum {{date}}; {{system}} kan deze datum verschuiven als een vacature wordt bewerkt, dus hij kan ouder zijn",
+      "postedRedatedPlain": "Feeddatum {{date}}; dit wervingssysteem kan de datum verschuiven als een vacature wordt bewerkt, dus hij kan ouder zijn",
+      "postedUndated": "Het systeem van de werkgever vermeldt geen plaatsingsdatum",
+      "location": "Locatie",
+      "locations": "Locaties",
+      "system": "Wervingssysteem",
+      "systemValue": "De sollicitatielink opent {{system}}",
+      "department": "Afdeling",
+      "feedRead": "Feed gelezen"
+    },
+    "description": {
+      "loading": "Omschrijving laden…",
+      "unavailable": "We konden de volledige omschrijving hier niet laden.",
+      "readOnSite": "Lees hem op de site van {{employer}}",
+      "readOnSitePlain": "Lees hem op de site van de werkgever",
+      "capped": "Onze kopie stopt na {{cap}} tekens.",
+      "continuesOnSite": "De vacature gaat verder op de site van {{employer}}",
+      "continuesOnSitePlain": "De vacature gaat verder op de site van de werkgever",
+      "collapsed_one": "We lieten {{count}} alinea weg die een andere woord voor woord herhaalde.",
+      "collapsed_other": "We lieten {{count}} alinea's weg die andere woord voor woord herhaalden."
+    },
+    "detail": {
+      "back": "Terug naar {{name}}",
+      "openRoles_one": "Bekijk de {{n}} open functie bij {{name}}",
+      "openRoles_other": "Bekijk alle {{n}} open functies bij {{name}}",
+      "openRolesFloor": "Bekijk alle {{n}}+ open functies bij {{name}}"
+    },
+    "sheet": {
+      "back": "Terug naar de lijst"
+    },
+    "page": {
+      "breadcrumb": "Kruimelpad",
+      "jobs": "Vacatures"
+    },
+    "more": {
+      "heading": "Meer functies bij {{employer}}",
+      "seeAll": "Bekijk elke open functie bij {{employer}}",
+      "loading": "Meer functies laden…"
+    }
+  }
+}

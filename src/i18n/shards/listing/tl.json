@@ -1,0 +1,96 @@
+{
+  "listing": {
+    "ago": {
+      "now": "ngayon lang",
+      "since": "{{duration}} na ang nakalipas"
+    },
+    "period": {
+      "hour": "/oras",
+      "day": "/araw",
+      "week": "/linggo",
+      "month": "/buwan",
+      "year": "/taon"
+    },
+    "card": {
+      "moreActions": "Iba pang aksyon para sa {{title}}",
+      "save": "I-save ang {{title}}",
+      "postedToday": "na-post ngayon",
+      "postedDaysAgo_one": "na-post {{count}} araw na ang nakalipas",
+      "postedDaysAgo_other": "na-post {{count}} araw na ang nakalipas",
+      "feedRead": "{{system}} · nabasa ang feed {{ago}}",
+      "feedReadNoSystem": "Nabasa ang feed {{ago}}",
+      "feedReadTip": "Kung kailan namin huling nabasa ang sariling job feed ng employer na ito. Ang posting na tinanggal ng employer ay mawawala sa board sa susunod na pagbasa ng kanyang feed.",
+      "agencyBoard": "Board ng isang staffing agency",
+      "agencyBoardTip": "Ang board na ito ay pag-aari ng isang staffing o recruiting agency. Ang board ang minamarkahan namin, hindi ang bawat posting, kaya ang mga trabaho rito ay kadalasang para sa mga kliyente ng agency at hindi para sa agency mismo.",
+      "annualEstimate": "≈ {{amount}}{{period}}",
+      "checkFit": "I-check ang fit",
+      "checkFitLabel": "I-check ang fit mo para sa {{title}}"
+    },
+    "menu": {
+      "report": "I-report",
+      "compare": "Ikumpara",
+      "aiHandoff": "Buksan sa Claude o ChatGPT",
+      "copyLink": "Kopyahin ang link"
+    },
+    "status": {
+      "live": "Live sa pinagmulan · nabasa ang feed {{ago}}",
+      "liveTip": "Nakalista ang posting na ito sa sariling feed ng employer noong huli namin itong nabasa.",
+      "partial": "Bahagi lang ng board na ito ang nabasa namin",
+      "partialTip": "Mas malaki ang board ng employer na ito kaysa naaabot ng isang pagbasa, kaya hindi namin makukumpirma ang bawat posting dito sa bawat pagbasa.",
+      "gone": "Hindi na nakalista ng employer · tinanggal noong {{date}}",
+      "goneUndated": "Hindi na nakalista ng employer"
+    },
+    "actions": {
+      "apply": "Mag-apply sa site ng {{employer}}",
+      "applyPlain": "Mag-apply sa site ng employer",
+      "applyShort": "Mag-apply sa site ng employer",
+      "newTab": "(bubukas sa bagong tab)",
+      "applyCaption": "Bubukas sa {{system}}, sa bagong tab.",
+      "applyCaptionPlain": "Bubuksan ang sariling site ng employer, sa bagong tab.",
+      "checkFit": "I-check ang fit ko, libre",
+      "checkFitCaption": "Ikinukumpara ang iyong résumé sa sariling paglalarawan ng posting na ito."
+    },
+    "facts": {
+      "payBasis": "mula sa feed ng employer",
+      "postedDated": "{{date}}, ayon sa nakasaad sa system ng employer",
+      "postedRedated": "Petsa sa feed {{date}}; maaaring baguhin ng {{system}} ang petsang ito kapag na-edit ang posting, kaya maaaring mas luma ito",
+      "postedRedatedPlain": "Petsa sa feed {{date}}; maaaring baguhin ng hiring system na ito ang petsa kapag na-edit ang posting, kaya maaaring mas luma ito",
+      "postedUndated": "Walang nakasaad na petsa ng pag-post sa system ng employer",
+      "location": "Lokasyon",
+      "locations": "Mga lokasyon",
+      "system": "Hiring system",
+      "systemValue": "Bubukas ang apply link sa {{system}}",
+      "department": "Departamento",
+      "feedRead": "Nabasa ang feed"
+    },
+    "description": {
+      "loading": "Nilo-load ang paglalarawan…",
+      "unavailable": "Hindi namin na-load dito ang buong paglalarawan.",
+      "readOnSite": "Basahin ito sa site ng {{employer}}",
+      "readOnSitePlain": "Basahin ito sa site ng employer",
+      "capped": "Humihinto ang aming kopya sa {{cap}} na character.",
+      "continuesOnSite": "Nagpapatuloy ang posting sa site ng {{employer}}",
+      "continuesOnSitePlain": "Nagpapatuloy ang posting sa site ng employer",
+      "collapsed_one": "Inalis namin ang {{count}} talata na eksaktong umuulit sa isa pa.",
+      "collapsed_other": "Inalis namin ang {{count}} talata na eksaktong umuulit sa iba."
+    },
+    "detail": {
+      "back": "Bumalik sa {{name}}",
+      "openRoles_one": "Tingnan ang {{n}} bukas na trabaho sa {{name}}",
+      "openRoles_other": "Tingnan ang lahat ng {{n}} bukas na trabaho sa {{name}}",
+      "openRolesFloor": "Tingnan ang lahat ng {{n}}+ bukas na trabaho sa {{name}}"
+    },
+    "sheet": {
+      "back": "Bumalik sa listahan"
+    },
+    "page": {
+      "breadcrumb": "Breadcrumb",
+      "jobs": "Mga trabaho"
+    },
+    "more": {
+      "heading": "Iba pang trabaho sa {{employer}}",
+      "seeAll": "Tingnan ang bawat bukas na trabaho sa {{employer}}",
+      "loading": "Nilo-load ang iba pang trabaho…"
+    }
+  }
+}

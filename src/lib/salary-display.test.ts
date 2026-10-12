@@ -16,6 +16,15 @@ describe("displaySalary", () => {
     expect(displaySalary("USD 105,000 - 135,000")).toBe("USD 105,000–135,000");
     expect(displaySalary("USD $85,000 to $95,000")).toBe("$85,000–$95,000");
   });
+  it("never leaves a hyphenated vendor slug on the page, for any period", () => {
+    expect(displaySalary("$1,200-1,600 per-month-salary")).toBe("$1,200–1,600/month");
+    expect(displaySalary("$160-160/per-day-wage")).toBe("$160–160/day");
+    expect(displaySalary("$900 /per-week-salary")).toBe("$900/week");
+    expect(displaySalary("$22.50/per-hour-salary")).toBe("$22.50/hour");
+  });
+  it("keeps real cents", () => {
+    expect(displaySalary("$29.92 - $38.07 per hour")).toBe("$29.92–$38.07 per hour");
+  });
   it("leaves clean strings untouched", () => {
     expect(displaySalary("CAD 90,000–110,000 per year")).toBe("CAD 90,000–110,000 per year");
   });

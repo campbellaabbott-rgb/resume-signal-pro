@@ -1,0 +1,99 @@
+{
+  "listing": {
+    "ago": {
+      "now": "ahora mismo",
+      "since": "hace {{duration}}"
+    },
+    "period": {
+      "hour": "/h",
+      "day": "/día",
+      "week": "/sem.",
+      "month": "/mes",
+      "year": "/año"
+    },
+    "card": {
+      "moreActions": "Más acciones para {{title}}",
+      "save": "Guardar {{title}}",
+      "postedToday": "publicada hoy",
+      "postedDaysAgo_one": "publicada hace {{count}} día",
+      "postedDaysAgo_many": "publicada hace {{count}} días",
+      "postedDaysAgo_other": "publicada hace {{count}} días",
+      "feedRead": "{{system}} · feed leído {{ago}}",
+      "feedReadNoSystem": "Feed leído {{ago}}",
+      "feedReadTip": "La última vez que leímos el feed de empleo propio de este empleador. Una oferta que el empleador retira sale del tablón en la siguiente lectura de su feed.",
+      "agencyBoard": "Tablón de una agencia de empleo",
+      "agencyBoardTip": "Este tablón pertenece a una agencia de empleo o de selección. Marcamos el tablón, no cada oferta, así que estos puestos suelen ser para clientes de la agencia y no para la propia agencia.",
+      "annualEstimate": "≈ {{amount}}{{period}}",
+      "checkFit": "Comprobar encaje",
+      "checkFitLabel": "Comprobar tu encaje con {{title}}"
+    },
+    "menu": {
+      "report": "Reportar",
+      "compare": "Comparar",
+      "aiHandoff": "Abrir en Claude o ChatGPT",
+      "copyLink": "Copiar enlace"
+    },
+    "status": {
+      "live": "Activa en el origen · feed leído {{ago}}",
+      "liveTip": "El feed propio del empleador incluía esta oferta la última vez que lo leímos.",
+      "partial": "Solo pudimos leer parte de este tablón",
+      "partialTip": "El tablón de este empleador es más grande de lo que alcanza una lectura, así que no podemos confirmar cada oferta en cada lectura.",
+      "gone": "El empleador ya no la publica · retirada el {{date}}",
+      "goneUndated": "El empleador ya no la publica"
+    },
+    "actions": {
+      "apply": "Postúlate en el sitio de {{employer}}",
+      "applyPlain": "Postúlate en el sitio del empleador",
+      "applyShort": "Postúlate en el sitio del empleador",
+      "newTab": "(se abre en una pestaña nueva)",
+      "applyCaption": "Se abre en {{system}}, en una pestaña nueva.",
+      "applyCaptionPlain": "Se abre el sitio propio del empleador, en una pestaña nueva.",
+      "checkFit": "Comprobar mi encaje, gratis",
+      "checkFitCaption": "Compara tu currículum con la descripción propia de esta oferta."
+    },
+    "facts": {
+      "payBasis": "del feed del empleador",
+      "postedDated": "{{date}}, según lo indica el sistema del empleador",
+      "postedRedated": "Fecha del feed {{date}}; {{system}} puede cambiar esta fecha cuando se edita una oferta, así que puede ser más antigua",
+      "postedRedatedPlain": "Fecha del feed {{date}}; este sistema de selección puede cambiar la fecha cuando se edita una oferta, así que puede ser más antigua",
+      "postedUndated": "El sistema del empleador no indica fecha de publicación",
+      "location": "Ubicación",
+      "locations": "Ubicaciones",
+      "system": "Sistema de selección",
+      "systemValue": "El enlace para postularte abre {{system}}",
+      "department": "Departamento",
+      "feedRead": "Feed leído"
+    },
+    "description": {
+      "loading": "Cargando la descripción…",
+      "unavailable": "No pudimos cargar aquí la descripción completa.",
+      "readOnSite": "Léela en el sitio de {{employer}}",
+      "readOnSitePlain": "Léela en el sitio del empleador",
+      "capped": "Nuestra copia se corta a los {{cap}} caracteres.",
+      "continuesOnSite": "La oferta continúa en el sitio de {{employer}}",
+      "continuesOnSitePlain": "La oferta continúa en el sitio del empleador",
+      "collapsed_one": "Omitimos {{count}} párrafo que repetía otro palabra por palabra.",
+      "collapsed_many": "Omitimos {{count}} párrafos que repetían otros palabra por palabra.",
+      "collapsed_other": "Omitimos {{count}} párrafos que repetían otros palabra por palabra."
+    },
+    "detail": {
+      "back": "Volver a {{name}}",
+      "openRoles_one": "Ver el {{n}} puesto abierto en {{name}}",
+      "openRoles_many": "Ver los {{n}} puestos abiertos en {{name}}",
+      "openRoles_other": "Ver los {{n}} puestos abiertos en {{name}}",
+      "openRolesFloor": "Ver los {{n}}+ puestos abiertos en {{name}}"
+    },
+    "sheet": {
+      "back": "Volver a la lista"
+    },
+    "page": {
+      "breadcrumb": "Ruta de navegación",
+      "jobs": "Empleos"
+    },
+    "more": {
+      "heading": "Más puestos en {{employer}}",
+      "seeAll": "Ver todos los puestos abiertos en {{employer}}",
+      "loading": "Cargando más puestos…"
+    }
+  }
+}
