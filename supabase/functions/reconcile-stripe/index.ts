@@ -37,7 +37,7 @@ import { buyerEmailOf } from "../_shared/buyer-email.ts";
 // The only external tell of which bundle is live. Bump on every deploy — twice
 // this month a fix was "deployed" and the old code was still answering, and the
 // version marker is the single thing that separates that from a job not running.
-const BUILD_VERSION = "2026-10-05.1";
+const BUILD_VERSION = "2026-10-11.22";
 const FN_BUILD = `reconcile-stripe.${BUILD_VERSION}`;
 
 const MAX_PAGES = 20;
@@ -143,15 +143,25 @@ serve(async (req) => {
         const rows = orphans.map((o) =>
           `<tr><td>${o.createdIso}</td><td><code>${esc(o.id)}</code></td><td>${esc(o.email)}</td><td>${o.amountCents != null ? (o.amountCents / 100).toFixed(2) + " " + o.currency.toUpperCase() : "—"}</td><td>${esc(o.product)}</td></tr>`,
         ).join("");
-        await new Resend(resendKey).emails.send({
-          from: "Resume Booster Alerts <onboarding@resend.dev>",
-          to: [adminEmail],
-          subject: `⚠️ ${orphans.length} paid Stripe session(s) with no delivery`,
-          html: `<h2>Stripe reconciliation: ${orphans.length} unfulfilled paid session(s)</h2>`
-            + `<p>These were PAID in Stripe in the last ${lookbackHours}h but have no <code>used_stripe_sessions</code> marker — the webhook (and the success-page fallback) both missed them. Recover each via the <code>recover-purchase</code> function.</p>`
-            + `<table border="1" cellpadding="6" style="border-collapse:collapse"><tr><th>Created</th><th>Session</th><th>Email</th><th>Amount</th><th>Product</th></tr>${rows}</table>`,
-        }).then(() => { alerted = true; })
-          .catch((e) => { alerted = false; console.error("[RECONCILE-STRIPE] owner email failed:", e); });
+        const subject = `⚠️ ${orphans.length} paid Stripe session(s) with no delivery`;
+        const html = `<h2>Stripe reconciliation: ${orphans.length} unfulfilled paid session(s)</h2>`
+          + `<p>These were PAID in Stripe in the last ${lookbackHours}h but have no <code>used_stripe_sessions</code> marker — the webhook (and the success-page fallback) both missed them. Recover each via the <code>recover-purchase</code> function.</p>`
+          + `<table border="1" cellpadding="6" style="border-collapse:collapse"><tr><th>Created</th><th>Session</th><th>Email</th><th>Amount</th><th>Product</th></tr>${rows}</table>`;
+        // ALERTED MEANS ACCEPTED (CP-027). The SDK answers a refusal as
+        // {error} without throwing, so "alerted: true" was recorded for a mail
+        // Resend refused. Our own domain first, then Resend's onboarding
+        // sender (which reaches only ADMIN_EMAIL); true only on an acceptance.
+        const resend = new Resend(resendKey);
+        alerted = false;
+        for (const from of ["Resume Booster Alerts <alerts@resumebooster.work>", "Resume Booster Alerts <onboarding@resend.dev>"]) {
+          try {
+            const sent = await resend.emails.send({ from, to: [adminEmail], subject, html }) as { error?: { message?: string } | null } | undefined;
+            if (!sent?.error) { alerted = true; break; }
+            console.error(`[RECONCILE-STRIPE] owner email refused from ${from}:`, sent.error.message ?? "refused");
+          } catch (e) {
+            console.error(`[RECONCILE-STRIPE] owner email from ${from} failed:`, e);
+          }
+        }
       } else {
         alerted = false;
         console.error("[RECONCILE-STRIPE] RESEND_API_KEY not set — cannot alert on orphans");

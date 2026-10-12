@@ -4,10 +4,12 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isServiceRoleCaller } from "../_shared/service-caller.ts";
 import { purchaseLinkFor, purchaseReferenceIn } from "../_shared/purchase-links.ts";
 import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
+import { SITE_ORIGIN } from "../_shared/purchase-links.ts";
+import { isKeptProduct, isNeedsReason, MAIL_COPY, mailLanguageOf, type MailLanguage, type NeedsReason } from "./copy.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "send-product-email.2026-10-09.2";
+const FN_BUILD = "send-product-email.2026-10-11.22";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -32,6 +34,15 @@ interface ProductEmailRequest {
   generatedContent?: any;
   /** The purchase's Stripe session (or Pro grant): the button opens the purchase with it. */
   sessionId?: string;
+  /** The buyer's language as the checkout recorded it (S12-114); English when absent or unknown. */
+  language?: string;
+  /**
+   * What this mail is. "purchase" (the default) is the delivery or the link
+   * back to it; "needs_input" asks the buyer for what an order is missing
+   * (reason); "payment_failed" says a delayed payment did not complete.
+   */
+  kind?: "purchase" | "needs_input" | "payment_failed";
+  reason?: NeedsReason;
 }
 
 // Product-specific info
@@ -273,15 +284,35 @@ const productInfo: Record<string, {
  * goes: its subject says the purchase is waiting behind the button.
  */
 const MADE_ON_ITS_PAGE = new Set(["full_analysis", "freelance_boost", "freelance_transition_pro"]);
-function subjectFor(productType: string, productName: string): string {
+function subjectFor(productType: string, productName: string, language: MailLanguage = "en"): string {
+  if (isKeptProduct(productType)) {
+    const copy = MAIL_COPY[language];
+    return copy.shell.subjectOpen(copy.kept[productType].name);
+  }
   return MADE_ON_ITS_PAGE.has(productType)
     ? `Your ${productName}: open your purchase`
     : `Your ${productName} is Ready!`;
 }
 
+/**
+ * The product's name as the buyer reads it: the still-sold products in the
+ * buyer's language, every other one as the purchase recorded it.
+ */
+function displayNameFor(productType: string, productName: string, language: MailLanguage): string {
+  return isKeptProduct(productType) ? MAIL_COPY[language].kept[productType].name : productName;
+}
+
 function generateProductEmailHtml(data: ProductEmailRequest): string {
-  const { productName, productType, generatedContent } = data;
-  const info = productInfo[productType] || productInfo.basic_keyword_fix;
+  const { productType, generatedContent } = data;
+  const language = mailLanguageOf(data.language);
+  const copy = MAIL_COPY[language];
+  const shell = copy.shell;
+  const productName = displayNameFor(productType, data.productName, language);
+  // The still-sold products speak the buyer's language; the retired ones keep
+  // the English copy their past buyers were sold with.
+  const info = isKeptProduct(productType)
+    ? { emoji: productInfo[productType].emoji, ...copy.kept[productType] }
+    : productInfo[productType] || productInfo.basic_keyword_fix;
   // BACK TO WHAT WAS BOUGHT, never the homepage (commercial-readiness
   // 2026-10-08, item 3): the page Checkout returned the buyer to, with the
   // purchase on it, and the reference the recovery form takes.
@@ -387,11 +418,11 @@ function generateProductEmailHtml(data: ProductEmailRequest): string {
 
   return `
 <!DOCTYPE html>
-<html>
+<html lang="${escapeHtml(language)}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${escapeHtml(subjectFor(productType, productName))}</title>
+  <title>${escapeHtml(subjectFor(productType, productName, language))}</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6;">
   <table role="presentation" style="width: 100%; border-collapse: collapse;">
@@ -404,7 +435,7 @@ function generateProductEmailHtml(data: ProductEmailRequest): string {
             <td style="background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 32px; border-radius: 16px 16px 0 0; text-align: center;">
               <div style="font-size: 48px; margin-bottom: 12px;">${info.emoji}</div>
               <h1 style="margin: 0; color: white; font-size: 24px; font-weight: 700;">
-                Thank You for Your Purchase!
+                ${escapeHtml(shell.thanks)}
               </h1>
               <p style="margin: 12px 0 0; color: rgba(255,255,255,0.9); font-size: 16px;">
                 ${escapeHtml(productName)}
@@ -429,7 +460,7 @@ function generateProductEmailHtml(data: ProductEmailRequest): string {
               <!-- How It Works -->
               <div style="margin-bottom: 32px;">
                 <h2 style="color: #1f2937; font-size: 18px; font-weight: 600; margin: 0 0 16px; padding-bottom: 12px; border-bottom: 2px solid #e5e7eb;">
-                  📋 How It Works
+                  📋 ${escapeHtml(shell.howItWorks)}
                 </h2>
                 <table role="presentation" style="width: 100%; border-collapse: collapse; background: #f9fafb; border-radius: 12px; overflow: hidden;">
                   ${howItWorksHtml}
@@ -439,7 +470,7 @@ function generateProductEmailHtml(data: ProductEmailRequest): string {
               <!-- Next Steps -->
               <div style="margin-bottom: 32px;">
                 <h2 style="color: #1f2937; font-size: 18px; font-weight: 600; margin: 0 0 16px; padding-bottom: 12px; border-bottom: 2px solid #e5e7eb;">
-                  🚀 Your Next Steps
+                  🚀 ${escapeHtml(shell.nextSteps)}
                 </h2>
                 <ul style="margin: 0; padding-left: 0; list-style: none;">
                   ${nextStepsHtml}
@@ -450,11 +481,11 @@ function generateProductEmailHtml(data: ProductEmailRequest): string {
               <div style="text-align: center; margin-top: 32px;">
                 <a href="${escapeHtml(purchaseUrl)}"
                    style="display: inline-block; background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
-                  Open your purchase →
+                  ${escapeHtml(shell.open)}
                 </a>
               </div>
               ${reference ? `<p style="color: #6b7280; font-size: 12px; text-align: center; margin: 16px 0 0;">
-                Keep this email: the button opens your purchase on any device, and the recovery form on that page accepts this reference. Order reference (session ID):<br>
+                ${escapeHtml(shell.keep)}<br>
                 <strong style="font-family: 'Courier New', monospace; color: #374151; word-break: break-all;">${escapeHtml(reference)}</strong>
               </p>` : ''}
 
@@ -465,10 +496,10 @@ function generateProductEmailHtml(data: ProductEmailRequest): string {
           <tr>
             <td style="background: #f9fafb; padding: 24px; border-radius: 0 0 16px 16px; text-align: center;">
               <p style="margin: 0 0 8px; color: #6b7280; font-size: 14px;">
-                Questions? Reply to this email or contact support.
+                ${escapeHtml(shell.questions)}
               </p>
               <p style="margin: 0; color: #9ca3af; font-size: 12px;">
-                Resume Booster - Land your dream job with an ATS-optimized resume
+                ${escapeHtml(shell.brand)}
               </p>
             </td>
           </tr>
@@ -480,6 +511,60 @@ function generateProductEmailHtml(data: ProductEmailRequest): string {
 </body>
 </html>
   `;
+}
+
+/** Where a buyer whose delayed payment failed can buy again. */
+function buyAgainLink(productType: string): string {
+  if (productType === "freelance_boost" || productType === "freelance_transition_pro") return `${SITE_ORIGIN}/freelance-boost`;
+  if (productType === "full_analysis") return `${SITE_ORIGIN}/`;
+  return `${SITE_ORIGIN}/pricing`;
+}
+
+/**
+ * THE TWO SHORT NOTICES (CP-C item 4, CP-029), in the buyer's language:
+ *   needs_input     an order no retry can make (no résumé, the stored one
+ *                   gone, an Apply Assistant with no posting); the buyer is
+ *                   asked for what is missing, and the button reopens the
+ *                   purchase. Never "ready": nothing was made.
+ *   payment_failed  a delayed payment that did not complete: nothing was
+ *                   charged, nothing delivered, and where to try again.
+ */
+function noticeMail(
+  kind: "needs_input" | "payment_failed",
+  data: ProductEmailRequest,
+  language: MailLanguage,
+): { subject: string; html: string; logSubject: string } {
+  const copy = MAIL_COPY[language];
+  const name = displayNameFor(data.productType, data.productName, language);
+  let subject: string;
+  let paragraphs: string[];
+  let button: { href: string; label: string };
+  if (kind === "needs_input") {
+    const reason = data.reason as NeedsReason;
+    subject = copy.needs.subject(name);
+    paragraphs = [copy.needs.lead[reason](name), reason === "job_posting_required" ? copy.needs.action.job : copy.needs.action.resume];
+    button = { href: purchaseLinkFor(data.productType, data.sessionId), label: copy.shell.open };
+  } else {
+    subject = copy.failed.subject(name);
+    paragraphs = [copy.failed.body, copy.failed.action];
+    button = { href: buyAgainLink(data.productType), label: copy.failed.button };
+  }
+  const reference = purchaseReferenceIn(data.sessionId ?? "");
+  const html = `<!DOCTYPE html>
+<html lang="${escapeHtml(language)}">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${escapeHtml(subject)}</title></head>
+<body style="margin: 0; padding: 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6;">
+  <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; padding: 32px;">
+    ${paragraphs.map((p) => `<p style="color: #374151; font-size: 15px; line-height: 1.6; margin: 0 0 16px;">${escapeHtml(p)}</p>`).join("")}
+    <div style="text-align: center; margin: 24px 0;">
+      <a href="${escapeHtml(button.href)}" style="display: inline-block; background: #6366f1; color: white; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600;">${escapeHtml(button.label)}</a>
+    </div>
+    ${reference && kind === "needs_input" ? `<p style="color: #6b7280; font-size: 12px; margin: 0 0 12px;">${escapeHtml(copy.shell.keep)} <strong style="font-family: 'Courier New', monospace; color: #374151; word-break: break-all;">${escapeHtml(reference)}</strong></p>` : ""}
+    <p style="color: #6b7280; font-size: 13px; margin: 16px 0 0;">${escapeHtml(copy.shell.questions)}</p>
+  </div>
+</body>
+</html>`;
+  return { subject, html, logSubject: subject };
 }
 
 Deno.serve(async (req) => {
@@ -529,20 +614,38 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`[SEND-PRODUCT-EMAIL] Sending ${productType} email to ${email}`);
+    const kind = requestData.kind ?? "purchase";
+    if (kind !== "purchase" && kind !== "needs_input" && kind !== "payment_failed") {
+      return new Response(
+        JSON.stringify({ error: "Unknown mail kind" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    if (kind === "needs_input" && !isNeedsReason(requestData.reason)) {
+      return new Response(
+        JSON.stringify({ error: "A needs_input mail names what is missing (reason)" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log(`[SEND-PRODUCT-EMAIL] Sending ${kind} ${productType} email`);
 
     const resend = new Resend(resendApiKey);
-    const html = generateProductEmailHtml(requestData);
-
-    const info = productInfo[productType];
-    const emoji = info?.emoji || "✨";
+    const language = mailLanguageOf(requestData.language);
+    const rendered = kind === "purchase"
+      ? {
+        subject: `${productInfo[productType]?.emoji || "✨"} ${subjectFor(productType, productName, language)}`,
+        html: generateProductEmailHtml(requestData),
+        logSubject: subjectFor(productType, productName, language),
+      }
+      : noticeMail(kind, requestData, language);
 
     const { data, error } = await resend.emails.send({
       from: "Resume Booster <reports@resumebooster.work>",
       to: [email],
       reply_to: CUSTOMER_REPLY_TO,
-      subject: `${emoji} ${subjectFor(productType, productName)}`,
-      html,
+      subject: rendered.subject,
+      html: rendered.html,
     });
 
     // Log email send to database
@@ -555,9 +658,9 @@ Deno.serve(async (req) => {
       
       // Log failed email
       await supabase.rpc('log_email_send', {
-        p_email_type: `product_${productType}`,
+        p_email_type: kind === "purchase" ? `product_${productType}` : `product_${kind}`,
         p_recipient: email,
-        p_subject: subjectFor(productType, productName),
+        p_subject: rendered.logSubject,
         p_status: 'failed',
         p_error_message: error.message,
       });
@@ -572,9 +675,9 @@ Deno.serve(async (req) => {
 
     // Log successful email
     await supabase.rpc('log_email_send', {
-      p_email_type: `product_${productType}`,
+      p_email_type: kind === "purchase" ? `product_${productType}` : `product_${kind}`,
       p_recipient: email,
-      p_subject: subjectFor(productType, productName),
+      p_subject: rendered.logSubject,
       p_status: 'sent',
       p_metadata: { resend_id: data?.id },
     });

@@ -42,10 +42,17 @@ import { withoutResumeText } from "../_shared/webhook-payload.ts";
 import { resumeSessionForCheckout } from "../_shared/checkout-resume-ref.ts";
 // The roles an ATS Defense buyer named at checkout (S11-074).
 import { targetRolesOf } from "../_shared/target-roles.ts";
+// What wave 4 retired (2026-10-11): the Agent plan, the Agent Pass and the $7
+// Apply Assistant. Read here so a session opened before the switch and paid
+// after it is recorded and told, never granted or generated (S12-169), and a
+// plan sold before it is never renewed for a dead product (S12-079).
+import { AGENT_PRODUCTS_ON_SALE, APPLY_AGENT_ON, APPLY_ASSISTANT_ON_SALE } from "../_shared/apply-agent-switch.ts";
+// One way out for a mail to a buyer, with its log row (R1's transport).
+import { sendMail } from "../_shared/send-mail.ts";
 
 // Provable from outside without a purchase or a signature: every response,
 // the 405 a GET receives included, carries this in x-fn-build.
-const FN_BUILD = "stripe-webhook.2026-10-09.61";
+const FN_BUILD = "stripe-webhook.2026-10-11.22";
 const BUILD_HEADER = { "x-fn-build": FN_BUILD };
 
 // Declare EdgeRuntime for background tasks
@@ -58,6 +65,7 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
 
 // OPTIMIZATION: Module-level singletons for reuse across warm invocations
 let stripeInstance: Stripe | null = null;
+let testStripeInstance: Stripe | null = null;
 // deno-lint-ignore no-explicit-any
 let supabaseInstance: SupabaseClient<any, any, any> | null = null;
 
@@ -66,6 +74,79 @@ function getStripe(): Stripe {
     stripeInstance = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, { apiVersion: "2025-12-15.clover" });
   }
   return stripeInstance;
+}
+
+/**
+ * THE TEST-MODE CLIENT, for an event signed with STRIPE_TEST_WEBHOOK_SECRET
+ * (critical-path CP-033: the owner's test-mode rehearsal before a live
+ * purchase). Only a key that is really a test key is used; without one a
+ * test event is acknowledged and nothing is delivered.
+ */
+function getTestStripe(): Stripe | null {
+  const key = Deno.env.get("STRIPE_TEST_SECRET_KEY") ?? "";
+  if (!key.startsWith("sk_test_")) return null;
+  if (!testStripeInstance) testStripeInstance = new Stripe(key, { apiVersion: "2025-12-15.clover" });
+  return testStripeInstance;
+}
+
+/**
+ * THE OWNER'S ALERTS LEAVE FROM OUR OWN DOMAIN, AND A REFUSAL IS READ
+ * (critical-path CP-027). They went out from Resend's test sender, and the
+ * SDK answers a refusal as {error} rather than throwing, so a refused alert
+ * was logged as nothing at all. Our verified domain first; Resend's onboarding
+ * sender to ADMIN_EMAIL (the only address it can reach) when that is refused.
+ */
+const OWNER_ALERT_SENDERS = [
+  "Resume Booster Alerts <alerts@resumebooster.work>",
+  "Resume Booster Alerts <onboarding@resend.dev>",
+];
+async function sendOwnerMail(subject: string, html: string): Promise<{ ok: boolean; error: string | null }> {
+  const resendKey = Deno.env.get("RESEND_API_KEY");
+  const to = Deno.env.get("ADMIN_EMAIL") || Deno.env.get("OWNER_NOTIFY_EMAIL") || "resumeboostersupp@gmail.com";
+  if (!resendKey) {
+    console.error(`[STRIPE-WEBHOOK] owner alert not sent (RESEND_API_KEY is not set): ${subject.slice(0, 120)}`);
+    return { ok: false, error: "RESEND_API_KEY is not set" };
+  }
+  const resend = new Resend(resendKey);
+  let last = "no sender tried";
+  for (const from of OWNER_ALERT_SENDERS) {
+    try {
+      const sent = await resend.emails.send({ from, to: [to], subject, html }) as { error?: { message?: string } | null } | undefined;
+      if (!sent?.error) return { ok: true, error: null };
+      last = `${from}: ${sent.error.message ?? "refused"}`;
+    } catch (e) {
+      last = `${from}: ${String(e).slice(0, 200)}`;
+    }
+  }
+  console.error(`[STRIPE-WEBHOOK] owner alert refused by every sender (${last}): ${subject.slice(0, 120)}`);
+  return { ok: false, error: last };
+}
+
+/** Stripe's copy of something a buyer typed is printed as text, never markup. */
+const escapeText = (v: unknown) =>
+  String(v ?? "N/A").replace(/[<>&"']/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&#39;" }[c]!));
+
+/**
+ * ONE OWNER ALERT PER THING, AND ONLY ONCE IT LEFT. The door (mail_door_take,
+ * 30 days) is taken before the send so two deliveries of one event cannot both
+ * mail, and given back when no sender accepted it, so the next delivery
+ * tries again. Never throws.
+ */
+// deno-lint-ignore no-explicit-any
+async function ownerAlertOnce(supabase: SupabaseClient<any, any, any>, door: string, bucket: string, subject: string, html: string): Promise<boolean> {
+  const slot = bucket.slice(0, 64);
+  try {
+    const { data: first, error } = await supabase.rpc("mail_door_take", {
+      p_door: door, p_bucket: slot, p_max: 1, p_window_minutes: 43200,
+    });
+    if (error || first !== true) return false;
+    const sent = await sendOwnerMail(subject, html);
+    if (!sent.ok) await supabase.from("mail_door_counts").delete().eq("door", door).eq("bucket", slot);
+    return sent.ok;
+  } catch (e) {
+    console.error("[STRIPE-WEBHOOK] owner alert failed:", String(e).slice(0, 200));
+    return false;
+  }
 }
 
 // deno-lint-ignore no-explicit-any
@@ -92,23 +173,13 @@ function sendFailureAlertBackground(details: {
   subjectLead?: string;
 }) {
   EdgeRuntime.waitUntil((async () => {
-    const resendKey = Deno.env.get("RESEND_API_KEY");
-    const adminEmail = Deno.env.get("ADMIN_EMAIL");
-    if (!resendKey || !adminEmail) return;
-
-    const resend = new Resend(resendKey);
     const formattedAmount = (details.amount / 100).toFixed(2);
     // Every value below is Stripe's copy of something a buyer typed (a billing
     // address, a decline message), so it is printed as text, never markup.
-    const esc = (v: string | null | undefined) =>
-      String(v ?? "N/A").replace(/[<>&"']/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;", "'": "&#39;" }[c]!));
-
-    try {
-      await resend.emails.send({
-        from: "Resume Booster <alerts@resend.dev>",
-        to: [adminEmail],
-        subject: `⚠️ ${details.subjectLead ?? "Payment Failed"} - $${formattedAmount} ${details.currency.toUpperCase()}`,
-        html: `
+    const esc = (v: string | null | undefined) => escapeText(v);
+    await sendOwnerMail(
+      `⚠️ ${details.subjectLead ?? "Payment Failed"} - $${formattedAmount} ${details.currency.toUpperCase()}`,
+      `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <h2 style="color: #dc2626;">${esc(details.subjectLead ?? "Payment Failure")} Alert</h2>
             <p><strong>${esc(details.type)}</strong></p>
@@ -119,11 +190,169 @@ function sendFailureAlertBackground(details: {
             <a href="https://dashboard.stripe.com/payments/${encodeURIComponent(details.paymentIntentId)}">View in Stripe</a>
           </div>
         `,
-      });
-    } catch (e) {
-      console.error("[STRIPE-WEBHOOK] Alert email failed:", e);
-    }
+    );
   })());
+}
+
+/**
+ * A CUSTOMER DELETED IN STRIPE (the owner's fraud tool) ENDS ITS PLANS HERE
+ * TOO (S12-100). Both caches keep stripe_customer_id, so every row of that
+ * customer is lapsed: status canceled, no period left. The id itself is kept
+ * (a later lookup still knows whose row it was). Manual grants carry no
+ * customer id and are never touched. Never throws.
+ */
+async function lapseDeletedCustomer(
+  // deno-lint-ignore no-explicit-any
+  supabase: SupabaseClient<any, any, any>,
+  customerId: string,
+): Promise<{ pro: number; agent: number }> {
+  const out = { pro: 0, agent: 0 };
+  if (!/^cus_[A-Za-z0-9]+$/.test(customerId)) return out;
+  const lapsed = { status: "canceled", current_period_end: null, updated_at: new Date().toISOString() };
+  for (const [table, key] of [["pro_subscribers", "pro"], ["agent_subscribers", "agent"]] as const) {
+    try {
+      const { data, error } = await supabase.from(table).update(lapsed).eq("stripe_customer_id", customerId).select("email");
+      if (error) logStep("Could not lapse a deleted customer's rows", { table, error: error.message });
+      else out[key] = Array.isArray(data) ? data.length : 0;
+    } catch (e) {
+      logStep("Could not lapse a deleted customer's rows", { table, error: String(e).slice(0, 200) });
+    }
+  }
+  return out;
+}
+
+/**
+ * WHY A RETIRED PRODUCT'S SALE CANNOT BE DELIVERED, or null when it can.
+ * The switches are wave 4's (apply-agent-switch.ts): while they are off, a
+ * checkout opened before the switch and paid after it (Stripe keeps a session
+ * open for 24 hours) is recorded as undeliverable_retired and the owner is
+ * told, instead of a pass being granted, a plan seeded or an Apply Assistant
+ * generated and marked delivered (S12-169). No refund is made by code
+ * (owner decision 2026-10-12: all sales are final); the owner settles it.
+ */
+function retiredReasonOf(productType: string | null | undefined, session: { mode?: string | null; amount_total?: number | null }): string | null {
+  if (productType === "apply_assistant" && !APPLY_ASSISTANT_ON_SALE) {
+    return "the Apply Assistant is no longer sold; nothing was generated";
+  }
+  if (productType === PASS_PRODUCT_TYPE && !AGENT_PRODUCTS_ON_SALE) {
+    return "the Agent Pass is no longer sold and the apply agent is switched off; no pass was granted";
+  }
+  if (isRetiredAgentPlan(productType, session)) {
+    return "the Apply Agent plan is no longer sold and the agent is switched off; the plan was set to end at its period end without renewing";
+  }
+  return null;
+}
+
+/** The owner hears once per session that a retired product was paid for. */
+async function alertRetiredSale(
+  // deno-lint-ignore no-explicit-any
+  supabase: SupabaseClient<any, any, any>,
+  session: Stripe.Checkout.Session,
+  productType: string | null | undefined,
+  customerEmail: string | null,
+  reason: string,
+): Promise<void> {
+  await ownerAlertOnce(
+    supabase, "owner-alert:retired-sale", session.id,
+    `Paid for a retired product: ${String(productType ?? "unknown").slice(0, 40)} (${session.id.slice(0, 24)})`,
+    `<div style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#111">
+      <p>A checkout for a product wave 4 retired was paid after it stopped being sold (a session stays open for 24 hours).</p>
+      <p>Product: <b>${escapeText(productType)}</b><br>Buyer: ${escapeText(customerEmail ?? "(no address)")}<br>Amount: ${escapeText(((session.amount_total ?? 0) / 100).toFixed(2))} ${escapeText((session.currency ?? "usd").toUpperCase())}<br>Checkout session: ${escapeText(session.id)}</p>
+      <p>${escapeText(reason)}. Nothing was refunded. Settle it by hand${productType === "apply_assistant" ? " (an Apply Assistant can be made with generate-apply-package)" : ""}.</p>
+    </div>`,
+  );
+}
+
+/** The $99 Agent plan's checkout, while it is not sold. */
+function isRetiredAgentPlan(productType: string | null | undefined, session: { mode?: string | null; amount_total?: number | null }): boolean {
+  if (AGENT_PRODUCTS_ON_SALE || session.mode !== "subscription") return false;
+  return productType === "apply_agent" || (session.amount_total ?? 0) === AGENT_PRICE_CENTS;
+}
+
+const RETIRED_NOTICE_FROM = "Resume Booster <billing@resumebooster.work>";
+
+/**
+ * A RETIRED AGENT PLAN ENDS AT ITS PERIOD END, AND ITS SUBSCRIBER IS TOLD SO
+ * (S12-079). While the Agent plan is not sold and the agent is off, a trial
+ * would convert into a $99 charge for a product that does nothing, and the
+ * trial reminder used to announce that charge. Instead:
+ *   - a trialing or active plan is set to cancel at its period end (a trial
+ *     then ends without any charge; a paid month runs out and never renews);
+ *   - the subscriber gets one plain notice of that, never the charge reminder;
+ *   - the owner is told once per plan, with what Stripe says (a past_due plan
+ *     is left to the owner: wave 4 README step 4).
+ * Idempotent: the update triggers customer.subscription.updated, which finds
+ * the plan already ending and the doors already taken. A Stripe update that
+ * fails throws, so the handler answers 500 and Stripe redelivers.
+ */
+async function retireAgentPlan(
+  stripe: Stripe,
+  // deno-lint-ignore no-explicit-any
+  supabase: SupabaseClient<any, any, any>,
+  sub: Stripe.Subscription,
+  email: string | null,
+  eventType: string,
+): Promise<"ended" | "already_ending" | "owner_decides" | "closed"> {
+  if (sub.status === "canceled" || sub.status === "incomplete_expired") return "closed";
+  const periodEndSec = Number(
+    (sub as unknown as { current_period_end?: number }).current_period_end
+      ?? (sub.items?.data?.[0] as unknown as { current_period_end?: number } | undefined)?.current_period_end
+      ?? sub.trial_end ?? 0,
+  );
+  const endsOn = periodEndSec > 0 ? new Date(periodEndSec * 1000).toISOString().slice(0, 10) : null;
+  const trialing = sub.status === "trialing";
+  let outcome: "ended" | "already_ending" | "owner_decides" = "owner_decides";
+  if (sub.status === "trialing" || sub.status === "active") {
+    if (sub.cancel_at_period_end || sub.cancel_at) {
+      outcome = "already_ending";
+    } else {
+      await stripe.subscriptions.update(sub.id, { cancel_at_period_end: true });
+      outcome = "ended";
+    }
+  }
+  logStep("Retired agent plan", { sub: sub.id, status: sub.status, outcome, eventType });
+
+  if (outcome !== "owner_decides" && email) {
+    const slot = sub.id.slice(0, 64);
+    const { data: first } = await supabase.rpc("mail_door_take", {
+      p_door: "agent-retired-notice", p_bucket: slot, p_max: 1, p_window_minutes: 43200,
+    });
+    if (first === true) {
+      const when = endsOn ? ` on ${endsOn}` : " at the end of the current period";
+      const lead = trialing
+        ? `Your free trial ends${when}, and it will not turn into a paid plan: you will not be charged.`
+        : `Your current month runs until${endsOn ? ` ${endsOn}` : " the end of the period"}, and the plan will not renew: you will not be charged again.`;
+      const text = [
+        "The Resume Booster Apply Agent is no longer sold, and the agent that prepared applications is switched off.",
+        lead,
+        "You can still apply yourself, free: connect Claude or ChatGPT at https://resumebooster.work/agents. Your AI reads the posting and drafts open answers from your CV; you check everything and press submit.",
+        "Questions? Reply to this email.",
+      ].join("\n\n");
+      const html = text.split("\n\n").map((p) => `<p style="font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#111">${escapeText(p)}</p>`).join("");
+      const sent = await sendMail({
+        cls: "transactional", kind: "agent-plan-retired", to: email, from: RETIRED_NOTICE_FROM,
+        subject: "Your Apply Agent plan ends without a charge", html, text,
+        replyTo: CUSTOMER_REPLY_TO, idempotencyKey: `agent-retired:${sub.id}`,
+      }, { admin: supabase });
+      if (!sent.ok && !sent.suppressed) {
+        await supabase.from("mail_door_counts").delete().eq("door", "agent-retired-notice").eq("bucket", slot);
+        throw new Error(`retired-plan notice not sent (${sent.status}): ${sent.error ?? "refused"}`);
+      }
+    }
+  }
+
+  await ownerAlertOnce(
+    supabase, "owner-alert:agent-retired", sub.id,
+    `Retired Apply Agent plan ${outcome === "owner_decides" ? "needs your decision" : "set to end"}: ${sub.id}`,
+    `<div style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:#111">
+      <p>A $99 Apply Agent plan is still live in Stripe while the agent is retired (wave 4).</p>
+      <p>Subscription: ${escapeText(sub.id)}<br>Status: ${escapeText(sub.status)}<br>Subscriber: ${escapeText(email ?? "(no address)")}<br>Period ends: ${escapeText(endsOn ?? "unknown")}</p>
+      <p>${outcome === "owner_decides"
+        ? "It is not trialing or active (for example past_due), so nothing was changed: decide it in Stripe (wave 4 README, owner step 4)."
+        : "It was set to cancel at its period end, so it will not renew, and the subscriber was told. Nothing was refunded; anything already paid is yours to settle."}</p>
+    </div>`,
+  );
+  return outcome;
 }
 
 /**
@@ -156,11 +385,14 @@ async function refreshAgentEntitlement(
         return;
       }
       const customer = await stripe.customers.retrieve(customerId);
-      // A deleted customer comes back as { deleted: true } with no email. There
-      // is nothing to look up, and nothing to revoke that Stripe has not already
-      // revoked via the subscription event itself.
+      // A deleted customer comes back as { deleted: true } with no email, so
+      // there is no address to re-read Stripe for. Its cached rows used to be
+      // left as they were, and an active row kept the agent sending until the
+      // cached period ended (S12-100): they are lapsed by the customer id
+      // instead, the one thing the event still names.
       if ((customer as { deleted?: boolean }).deleted) {
-        logStep("Agent entitlement refresh skipped (customer deleted)", { eventType, customerId });
+        const lapsed = await lapseDeletedCustomer(supabase, customerId);
+        logStep("Agent entitlement lapsed (customer deleted)", { eventType, customerId, ...lapsed });
         return;
       }
       email = (customer as Stripe.Customer).email ?? "";
@@ -210,7 +442,12 @@ async function refreshProEntitlement(
       const customerId = typeof customerRef === "string" ? customerRef : customerRef?.id;
       if (!customerId) return;
       const customer = await stripe.customers.retrieve(customerId);
-      if ((customer as { deleted?: boolean }).deleted) return;
+      if ((customer as { deleted?: boolean }).deleted) {
+        // No address left to re-read: lapse the cached rows by customer id (S12-100).
+        const lapsed = await lapseDeletedCustomer(supabase, customerId);
+        logStep("Pro entitlement lapsed (customer deleted)", { eventType, customerId, ...lapsed });
+        return;
+      }
       email = (customer as Stripe.Customer).email ?? "";
     }
     if (!email) return;
@@ -441,6 +678,19 @@ async function sendPendingWithdrawal(
 const refId = (v: unknown): string | null =>
   typeof v === "string" && v ? v : (v && typeof v === "object" && typeof (v as { id?: unknown }).id === "string" ? (v as { id: string }).id : null);
 
+/** A customer's address, read from Stripe; null for a deleted customer or a failed read. */
+async function customerEmailOf(stripe: Stripe, customerRef: unknown): Promise<string | null> {
+  const id = refId(customerRef);
+  if (!id) return null;
+  try {
+    const customer = await stripe.customers.retrieve(id);
+    if ((customer as { deleted?: boolean }).deleted) return null;
+    return (customer as Stripe.Customer).email ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** What a refunded or disputed payment bought, as payment_revoke needs it. */
 type RevocationTarget = {
   sessionId: string | null;
@@ -516,23 +766,49 @@ async function revocationTarget(
  * Analysis and Freelance Boost are made after Checkout, on the page it
  * returns to; a buyer who closed that tab had no mail and no way back
  * (commercial-readiness 2026-10-08, item 3). The mail's button opens that
- * page with the session. Background and best-effort: the page is the
- * delivery, and send-product-email logs the send either way.
+ * page with the session.
+ *
+ * AND ITS OUTCOME IS RECORDED (S12-104). It was fire-and-forget on a row the
+ * sweep never schedules (next_retry_at infinity): when Resend refused it, the
+ * buyer who had closed the tab had no way back and nothing said so. Now a
+ * sent mail stamps email_sent_at, and a refused one is recorded through
+ * update_delivery_retry as email_failed with its next try scheduled, so
+ * retry-failed-deliveries resends the link (and only the link). An order the
+ * page has already delivered stays delivered (20261011140000). Background:
+ * Stripe has its answer first.
  */
 function mailThePurchaseLink(
-  supabaseUrl: string, email: string | null, productType: string, productName: string, sessionId: string,
+  // deno-lint-ignore no-explicit-any
+  supabase: SupabaseClient<any, any, any>,
+  supabaseUrl: string, deliveryId: string | undefined, email: string | null,
+  productType: string, productName: string, sessionId: string, language: string | null,
 ): void {
   if (!email) return;
-  EdgeRuntime.waitUntil(
-    fetch(`${supabaseUrl}/functions/v1/send-product-email`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
-      body: JSON.stringify({ email, productType, productName, sessionId }),
-    }).then(
-      (r) => { if (!r.ok) logStep("Purchase-link mail refused", { productType, status: r.status }); },
-      (e) => logStep("Purchase-link mail threw", { productType, error: String(e).slice(0, 200) }),
-    ),
-  );
+  EdgeRuntime.waitUntil((async () => {
+    let failure: string | null = null;
+    try {
+      const r = await fetch(`${supabaseUrl}/functions/v1/send-product-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
+        body: JSON.stringify({ email, productType, productName, sessionId, ...(language ? { language } : {}) }),
+      });
+      if (!r.ok) failure = `send-product-email answered ${r.status}`;
+    } catch (e) {
+      failure = `send-product-email threw: ${String(e).slice(0, 200)}`;
+    }
+    if (!deliveryId) {
+      if (failure) logStep("Purchase-link mail failed and no delivery row records it", { productType, failure });
+      return;
+    }
+    if (failure) {
+      logStep("Purchase-link mail failed; the sweep resends it", { productType, failure });
+      await supabase.rpc('update_delivery_retry', { p_id: deliveryId, p_status: 'email_failed', p_error: failure, p_increment_retry: true });
+    } else {
+      await supabase.from('product_deliveries')
+        .update({ email_sent_at: new Date().toISOString(), email_success: true })
+        .eq('id', deliveryId);
+    }
+  })().catch((e) => logStep("Purchase-link mail bookkeeping threw", { productType, error: String(e).slice(0, 200) })));
 }
 
 async function triggerProductDelivery(
@@ -566,6 +842,13 @@ async function triggerProductDelivery(
   if (claimError) {
     if (claimError.code === '23505') {
       logStep("Session already claimed by another process (race avoided)", { sessionId });
+      // The success page claimed a retired product's sale first and recorded
+      // it undeliverable (S12-169); the owner hears of it from here, the one
+      // place every paid session reaches. The door is per session.
+      const retiredFirst = retiredReasonOf(productType, session);
+      if (retiredFirst && !isRetiredAgentPlan(productType, session)) {
+        await alertRetiredSale(supabase, session, productType, customerEmail, retiredFirst);
+      }
     } else {
       logStep("Error claiming session, aborting delivery", { error: claimError.message });
     }
@@ -573,7 +856,11 @@ async function triggerProductDelivery(
   }
 
   const isScanProduct = SCAN_CREDIT_PRODUCT_TYPES.includes(productType ?? '');
-  const isEntitlement = ENTITLEMENT_PRODUCT_TYPES.includes(productType ?? '');
+  // A retired product's sale (S12-169) is written closed as undeliverable
+  // from the start: an entitlement row written 'delivered' first could never
+  // be corrected (a delivered order stays delivered, 20261011140000).
+  const retired = retiredReasonOf(productType, session);
+  const isEntitlement = ENTITLEMENT_PRODUCT_TYPES.includes(productType ?? '') && !retired;
   const deliveredAt = new Date().toISOString();
   const deliveryRecord = await supabase.from('product_deliveries').insert({
     stripe_session_id: sessionId,
@@ -586,6 +873,10 @@ async function triggerProductDelivery(
     // See ENTITLEMENT_PRODUCT_TYPES / DELIVERED_ELSEWHERE_PRODUCT_TYPES above.
     ...(DELIVERED_ELSEWHERE_PRODUCT_TYPES.includes(productType ?? '') ? { next_retry_at: 'infinity' } : {}),
     ...(isEntitlement ? { status: 'delivered', generation_success: true, content_generation_completed_at: deliveredAt } : {}),
+    ...(retired ? {
+      status: 'generation_failed', generation_success: false, max_retries: 0, next_retry_at: null,
+      generation_error: `undeliverable_retired: ${retired}`,
+    } : {}),
     metadata: {
       resume_session_id: resumeSessionId,
       job_title: session.metadata?.job_title,
@@ -594,12 +885,28 @@ async function triggerProductDelivery(
       language: session.metadata?.language,
       target_roles: session.metadata?.target_roles || null,
       ...(isScanProduct ? { credits: creditsBoughtBy(session) } : {}),
+      // A test-mode purchase (the owner's rehearsal, CP-033) is tagged so
+      // revenue and health readers can leave it out.
+      ...(session.livemode === false ? { livemode: false } : {}),
     }
   }).select().single();
 
   if (deliveryRecord.error) {
     logStep("Failed to create delivery record", { error: deliveryRecord.error.message, sessionId });
     // Continue processing — payment was received, delivery tracking failure shouldn't block fulfillment
+  }
+
+  // A RETIRED PRODUCT IS RECORDED AND TOLD, NEVER DELIVERED (S12-169). The
+  // claim above stays (it is the proof of payment reconcile-stripe reads);
+  // the row was written closed as a failure no sweep retries (max_retries 0),
+  // with the reason, and the owner is mailed once. The pass and the plan were
+  // never granted (the handler checks the same switch before it grants).
+  if (retired) {
+    // A retired plan is told to the owner once per subscription by
+    // retireAgentPlan; everything else once per session here.
+    if (!isRetiredAgentPlan(productType, session)) await alertRetiredSale(supabase, session, productType, customerEmail, retired);
+    logStep("Retired product paid after its switch: recorded, not delivered", { sessionId, productType });
+    return { success: false, productType, deferred: 'undeliverable_retired', error: retired };
   }
 
   // A subscription is its own delivery: the row above is already closed, and
@@ -660,7 +967,7 @@ async function triggerProductDelivery(
     // had nothing to return with and was shown the buy buttons again. The
     // mail carries the link that reopens it on any device. Background: the
     // payment is already recorded.
-    mailThePurchaseLink(supabaseUrl, customerEmail, productType, productName || "Freelance Boost", sessionId);
+    mailThePurchaseLink(supabase, supabaseUrl, deliveryRecord.data?.id, customerEmail, productType, productName || "Freelance Boost", sessionId, session.metadata?.language ?? null);
     return { success: true, productType, deferred: 'freelance_intake' };
   }
 
@@ -677,7 +984,7 @@ async function triggerProductDelivery(
   // not-yet-delivered and redeems the session itself, once.
   if (productType === FULL_ANALYSIS_PRODUCT_TYPE) {
     logStep("Full analysis — delivered by analyze-resume on the success page; nothing to generate here", { sessionId });
-    mailThePurchaseLink(supabaseUrl, customerEmail, productType, productName || 'Full Resume Analysis', sessionId);
+    mailThePurchaseLink(supabase, supabaseUrl, deliveryRecord.data?.id, customerEmail, productType, productName || 'Full Resume Analysis', sessionId, session.metadata?.language ?? null);
     return { success: true, productType, deferred: 'success_page' };
   }
 
@@ -1009,23 +1316,46 @@ serve(async (req) => {
       return new Response("Configuration error", { status: 500, headers: BUILD_HEADER });
     }
 
-    const stripe = getStripe();
+    const liveStripe = getStripe();
     const body = await req.text();
     const signature = req.headers.get("stripe-signature");
-    
+
     if (!signature) {
       return new Response("Missing signature", { status: 400, headers: BUILD_HEADER });
     }
 
-    let event: Stripe.Event;
+    // THE LIVE ENDPOINT'S SECRET, THEN THE TEST ENDPOINT'S (CP-033). The
+    // owner's test-mode rehearsal posts to this same function from Stripe's
+    // test-mode webhook, signed with STRIPE_TEST_WEBHOOK_SECRET. An event
+    // verified by the test secret must say livemode false, and is handled with
+    // the test-mode client, so a rehearsal never reads or changes live data.
+    let event: Stripe.Event | null = null;
+    let testMode = false;
     try {
-      event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
-    } catch (err) {
+      event = await liveStripe.webhooks.constructEventAsync(body, signature, webhookSecret);
+    } catch {
+      const testSecret = Deno.env.get("STRIPE_TEST_WEBHOOK_SECRET") ?? "";
+      if (testSecret) {
+        try {
+          event = await liveStripe.webhooks.constructEventAsync(body, signature, testSecret);
+          testMode = true;
+        } catch { /* refused below */ }
+      }
+    }
+    if (!event || (testMode && (event as { livemode?: boolean }).livemode !== false)) {
       logStep("Signature verification failed");
       return new Response("Webhook signature verification failed", { status: 400, headers: BUILD_HEADER });
     }
+    const testStripe = testMode ? getTestStripe() : null;
+    if (testMode && !testStripe) {
+      logStep("Test-mode event acknowledged: STRIPE_TEST_SECRET_KEY is not a test key, so nothing is delivered", { type: event.type });
+      return new Response(JSON.stringify({ received: true, testMode: true, delivered: false }), {
+        headers: { "Content-Type": "application/json", ...BUILD_HEADER }, status: 200,
+      });
+    }
+    const stripe: Stripe = testStripe ?? liveStripe;
 
-    logStep("Event verified", { type: event.type, id: event.id });
+    logStep("Event verified", { type: event.type, id: event.id, testMode });
 
     const supabase = getSupabase();
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -1052,9 +1382,16 @@ serve(async (req) => {
     let mustRetry = false;
 
     switch (event.type) {
-      case "checkout.session.completed": {
+      // A DELAYED PAYMENT METHOD (a bank debit) completes the session unpaid
+      // and pays it later with checkout.session.async_payment_succeeded
+      // (CP-029). That event was unhandled, so such a purchase was never
+      // claimed, recorded or mailed. It now runs the same block: the paid
+      // gate below lets it through once Stripe says paid, and everything in
+      // the block is safe to run twice for one session.
+      case "checkout.session.completed":
+      case "checkout.session.async_payment_succeeded": {
         const session = event.data.object as Stripe.Checkout.Session;
-        
+
         // THE AGENT ENTITLEMENT IS GRANTED BEFORE THE PAYMENT TEST, and it has to be.
         //
         // create-agent-checkout attaches a trial to a FIRST-TIME subscriber's
@@ -1073,11 +1410,30 @@ serve(async (req) => {
         // The isAgent test cannot rely on amount_total for the same reason (it is 0
         // on a trial); create-agent-checkout sets metadata.product_type =
         // "apply_agent", which is the durable signal.
+        // WHILE THE PLAN IS NOT SOLD (wave 4), a plan checkout opened before
+        // the switch and completed after it is neither seeded nor kicked: it
+        // is set to end at its period end and its subscriber is told
+        // (S12-169, S12-079). A failure answers 500 so Stripe redelivers.
+        const retiredPlan = isRetiredAgentPlan(session.metadata?.product_type, session);
+        if (retiredPlan) {
+          const subId = refId(session.subscription);
+          if (subId) {
+            try {
+              const sub = await stripe.subscriptions.retrieve(subId);
+              await retireAgentPlan(stripe, supabase, sub, buyerEmailOf(session), event.type);
+            } catch (err) {
+              processingError = String(err).slice(0, 500);
+              mustRetry = true;
+              logStep("Retired agent plan not ended; Stripe will redeliver", { subscription: subId, error: processingError });
+            }
+          }
+        }
+
         try {
           const paidEmail = session.customer_details?.email ?? session.customer_email ?? "";
           const isAgent = (session.amount_total ?? 0) === AGENT_PRICE_CENTS
             || session.metadata?.product_type === "apply_agent";
-          if (paidEmail && isAgent) {
+          if (paidEmail && isAgent && !retiredPlan) {
             const seeded = await checkAgentByEmail(stripe, supabase, paidEmail);
             logStep("Agent entitlement seeded from webhook", {
               email: paidEmail, active: seeded.active, status: seeded.status,
@@ -1097,7 +1453,8 @@ serve(async (req) => {
             //
             // Same non-fatal treatment as the seeding above: a failure here
             // must not 500 a webhook whose payment already succeeded.
-            if (seeded.active) {
+            // Nothing to prepare while the agent itself is switched off.
+            if (seeded.active && APPLY_AGENT_ON) {
               const { data: kicked, error: kickErr } = await supabase.rpc("agent_prepare_now");
               logStep("Prepare kicked", { kicked: kicked === true, error: kickErr?.message ?? null });
             }
@@ -1121,8 +1478,10 @@ serve(async (req) => {
           // renewal, the trial's end, how to cancel. Once per subscription;
           // a failure answers 500 so Stripe redelivers, and everything above
           // and below is safe to run again.
+          // A retired plan's subscriber was sent the plan-ends notice above
+          // instead: a confirmation would promise a renewal that never comes.
           const subId = refId(session.subscription);
-          if (subId) {
+          if (subId && !retiredPlan) {
             try {
               const sub = await stripe.subscriptions.retrieve(subId);
               await sendSubscriptionNotice(supabase, stripe, "confirmation", sub, buyerEmailOf(session), session.customer_details?.address?.country ?? null);
@@ -1172,12 +1531,18 @@ serve(async (req) => {
           // due later, unlike the trial subscription seeded above it.
           let passGrant: { granted: boolean; reason: string } | null = null;
           if (session.metadata?.product_type === PASS_PRODUCT_TYPE) {
-            try {
-              passGrant = await grantAgentPass(session, supabase);
-            } catch (err) {
-              passGrant = { granted: false, reason: `threw: ${String(err).slice(0, 200)}` };
-              processingError = String(err);
-              logStep("Agent pass grant failed", { error: processingError });
+            // Never while the pass is not sold: triggerProductDelivery
+            // records that sale as undeliverable_retired instead (S12-169).
+            if (!AGENT_PRODUCTS_ON_SALE) {
+              logStep("Agent pass not granted: the pass is no longer sold", { sessionId: session.id });
+            } else {
+              try {
+                passGrant = await grantAgentPass(session, supabase);
+              } catch (err) {
+                passGrant = { granted: false, reason: `threw: ${String(err).slice(0, 200)}` };
+                processingError = String(err);
+                logStep("Agent pass grant failed", { error: processingError });
+              }
             }
           }
 
@@ -1371,6 +1736,23 @@ serve(async (req) => {
           invoice.customer as string | { id?: string } | null,
           event.type,
         );
+        // A RENEWAL OF A RETIRED PLAN (S12-079): the month just paid runs
+        // out and the plan never renews again; the owner is told the charge
+        // happened. A failure answers 500 so Stripe redelivers.
+        if (!AGENT_PRODUCTS_ON_SALE && event.type === "invoice.payment_succeeded") {
+          const subId = refId(invoice.parent?.subscription_details?.subscription)
+            ?? refId((invoice as unknown as { subscription?: unknown }).subscription);
+          if (subId) {
+            try {
+              const sub = await stripe.subscriptions.retrieve(subId);
+              await retireAgentPlan(stripe, supabase, sub, invoice.customer_email ?? await customerEmailOf(stripe, invoice.customer), event.type);
+            } catch (err) {
+              processingError = String(err).slice(0, 500);
+              mustRetry = true;
+              logStep("Retired agent plan not ended at renewal; Stripe will redeliver", { subscription: subId, error: processingError });
+            }
+          }
+        }
         break;
       }
 
@@ -1405,6 +1787,62 @@ serve(async (req) => {
           sub.customer as string | { id?: string } | null,
           event.type,
         );
+        // A retired plan still set to renew is set to end (S12-079). The
+        // update this makes comes back as this same event and finds it ending.
+        if (!AGENT_PRODUCTS_ON_SALE && event.type === "customer.subscription.updated"
+            && (sub.status === "trialing" || sub.status === "active") && !sub.cancel_at_period_end && !sub.cancel_at) {
+          try {
+            await retireAgentPlan(stripe, supabase, sub, await customerEmailOf(stripe, sub.customer), event.type);
+          } catch (err) {
+            processingError = String(err).slice(0, 500);
+            mustRetry = true;
+            logStep("Retired agent plan not ended; Stripe will redeliver", { sub: sub.id, error: processingError });
+          }
+        }
+        break;
+      }
+
+      // A CUSTOMER DELETED IN STRIPE (S12-100), when the endpoint carries
+      // the event: every cached plan of that customer lapses at once.
+      case "customer.deleted": {
+        const customer = event.data.object as { id?: string };
+        if (customer.id) {
+          const lapsed = await lapseDeletedCustomer(supabase, customer.id);
+          logStep("Customer deleted: cached plans lapsed", { customer: customer.id, ...lapsed });
+        }
+        break;
+      }
+
+      // A DELAYED PAYMENT THAT FAILED (CP-029): nothing was charged and
+      // nothing is delivered, and the buyer is told so once, with the way to
+      // try again. The session was never claimed (it never passed the paid
+      // gate), so no delivery row exists to close.
+      case "checkout.session.async_payment_failed": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        const email = buyerEmailOf(session);
+        EdgeRuntime.waitUntil((async () => {
+          await supabase.from('payment_failures').insert({
+            payment_intent_id: refId(session.payment_intent) ?? session.id,
+            amount: session.amount_total || 0,
+            currency: session.currency || 'usd',
+            failure_code: 'async_payment_failed',
+            failure_message: 'A delayed payment did not complete',
+            customer_email: email,
+            metadata: { session_id: session.id, product_type: session.metadata?.product_type },
+          });
+          if (!email) return;
+          const r = await fetch(`${supabaseUrl}/functions/v1/send-product-email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
+            body: JSON.stringify({
+              kind: 'payment_failed', email, sessionId: session.id,
+              productType: session.metadata?.product_type || 'unknown',
+              productName: session.metadata?.product_name || 'your purchase',
+              ...(session.metadata?.language ? { language: session.metadata.language } : {}),
+            }),
+          }).catch((e) => { logStep("Failed-payment mail threw", { error: String(e).slice(0, 200) }); return null; });
+          if (r && !r.ok) logStep("Failed-payment mail refused", { status: r.status });
+        })());
         break;
       }
 
@@ -1414,6 +1852,18 @@ serve(async (req) => {
       // cancel is told nothing; a failure answers 500 so Stripe redelivers.
       case "customer.subscription.trial_will_end": {
         const sub = event.data.object as Stripe.Subscription;
+        // A RETIRED PLAN'S TRIAL (S12-079) ends without converting: never the
+        // reminder of a coming charge, the plan-ends notice instead.
+        if (!AGENT_PRODUCTS_ON_SALE && isAgentPriced(sub.items?.data as ReadonlyArray<{ price?: unknown }> | undefined)) {
+          try {
+            await retireAgentPlan(stripe, supabase, sub, await customerEmailOf(stripe, sub.customer), event.type);
+          } catch (err) {
+            processingError = String(err).slice(0, 500);
+            mustRetry = true;
+            logStep("Retired agent trial not ended; Stripe will redeliver", { sub: sub.id, error: processingError });
+          }
+          break;
+        }
         if (sub.status !== "trialing" || sub.cancel_at_period_end || sub.cancel_at) {
           logStep("Trial ending: no reminder for a trial that will not convert", { sub: sub.id, status: sub.status });
           break;

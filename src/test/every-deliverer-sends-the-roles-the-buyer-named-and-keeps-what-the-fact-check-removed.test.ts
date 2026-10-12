@@ -17,6 +17,9 @@
  * Run against the shipped handlers with only their network faked.
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+// The Apply Assistant is retired (wave 4): the saved-kit cases run its dormant
+// delivery path with the switch on (helpers/apply-agent-switch-on.ts).
+import { APPLY_ASSISTANT_SWITCH_ON } from "./helpers/apply-agent-switch-on";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
 
 vi.setConfig({ testTimeout: 30_000, hookTimeout: 180_000 });
@@ -76,9 +79,9 @@ beforeAll(async () => {
     if (url.includes("/functions/v1/generate-")) return new Response(JSON.stringify({ success: true, data: { beforeScore: { overall: 40 } } }), { status: 200 });
     return new Response("{}", { status: 200 });
   };
-  webhook = await loadEdgeHandler("stripe-webhook", STUBS);
+  webhook = await loadEdgeHandler("stripe-webhook", { ...STUBS, ...APPLY_ASSISTANT_SWITCH_ON });
   sweeper = await loadEdgeHandler("retry-failed-deliveries", STUBS);
-  verify = await loadEdgeHandler("verify-product-purchase", STUBS);
+  verify = await loadEdgeHandler("verify-product-purchase", { ...STUBS, ...APPLY_ASSISTANT_SWITCH_ON });
 }, 180_000);
 
 beforeEach(() => {

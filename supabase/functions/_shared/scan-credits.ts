@@ -83,6 +83,7 @@ export async function sessionHash(id: string): Promise<string> {
 }
 
 import { checkoutSessionSettled } from "./pass-settlement.ts";
+import { buyerEmailOf } from "./buyer-email.ts";
 
 export type StripeCheckoutSession = {
   id?: string;
@@ -90,17 +91,22 @@ export type StripeCheckoutSession = {
   mode?: string | null;
   amount_total?: number | null;
   customer_email?: string | null;
+  customer_details?: { email?: string | null } | null;
   metadata?: Record<string, string | undefined> | null;
   line_items?: { data?: Array<{ quantity?: number | null }> } | null;
 };
 
 /**
- * The address the verifiers credited, in their order: customer_email, then
- * metadata.customer_email (create-scan-pack-checkout names the customer
- * instead of customer_email when one exists). add_scan_credits lowercases.
+ * The address the verifiers credited, in THEIR order (buyer-email.ts):
+ * customer_details.email first, then customer_email, then
+ * metadata.customer_email. A pack bought without a typed address before
+ * Checkout has only customer_details (S12-103); the webhook credited that
+ * address, and this used to read only the other two, so the purchase
+ * recorded nothing and its credits could never be spent. add_scan_credits
+ * lowercases.
  */
 export const creditedEmailOf = (s: StripeCheckoutSession): string =>
-  normalizeCreditEmail(s.customer_email || s.metadata?.customer_email || "");
+  normalizeCreditEmail(buyerEmailOf(s) ?? "");
 
 /**
  * How many credits the purchase bought: metadata.credits, else the line
@@ -186,12 +192,21 @@ export async function resolveCreditSessions(db: CreditDb, ids: string[], opts: R
   try {
     const hashes = await Promise.all(wanted.map(sessionHash));
     const byHash = new Map<string, string>();
-    const known = await db.from("scan_credit_session_grants").select("session_hash, email").in("session_hash", hashes);
-    for (const row of ((known.data ?? []) as Array<{ session_hash: string; email: string }>)) {
+    const known = await db.from("scan_credit_session_grants").select("session_hash, email, claimed_by").in("session_hash", hashes);
+    // A purchase an account has claimed answers only that account (S12-154):
+    // on a shared browser the next person still holds the id, and must see
+    // neither its balance nor its address. Left out of byHash, it is also
+    // never looked up again with Stripe below.
+    const claimedElsewhere = new Set<string>();
+    for (const row of ((known.data ?? []) as Array<{ session_hash: string; email: string; claimed_by?: string | null }>)) {
+      if (row.claimed_by && row.claimed_by !== opts.claimFor) {
+        claimedElsewhere.add(row.session_hash);
+        continue;
+      }
       byHash.set(row.session_hash, normalizeCreditEmail(row.email));
     }
 
-    const unknown = wanted.filter((_, i) => !byHash.has(hashes[i]));
+    const unknown = wanted.filter((_, i) => !byHash.has(hashes[i]) && !claimedElsewhere.has(hashes[i]));
     if (unknown.length > 0) {
       const claimed = await db.from("used_stripe_sessions").select("session_id, product_type").in("session_id", unknown);
       const claimRows = (claimed.data ?? []) as Array<{ session_id: string; product_type: string | null }>;
@@ -301,7 +316,9 @@ export async function reserveScanCredit(
       // The proven pool was just asked; a purchase under the same address
       // draws on that same pool and would only repeat the answer.
       if (proven && g.email === proven) continue;
-      const { data } = await db.rpc("scan_credit_redeem", { p_email: g.email, p_session_hash: g.hash });
+      // The caller's verified user id: a purchase another account claimed is
+      // refused by the database too (20261011141000), not only left out above.
+      const { data } = await db.rpc("scan_credit_redeem", { p_email: g.email, p_session_hash: g.hash, p_user_id: userId });
       if (data === true) return { email: g.email, sessionHash: g.hash, via: "purchase" };
     }
   } catch (e) {

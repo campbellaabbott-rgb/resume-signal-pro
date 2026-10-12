@@ -12,10 +12,34 @@ import { targetRolesOf } from "../_shared/target-roles.ts";
 import { hasMailboxProof, maskEmail } from "../_shared/mailbox-proof.ts";
 import { jwtClaims, requireWebsiteSession } from "../_shared/website-session.ts";
 import { bearerOf } from "../_shared/service-caller.ts";
+// The $7 Apply Assistant is retired (wave 4): a session opened before the
+// switch and paid after it is recorded, never generated (S12-169).
+import { APPLY_ASSISTANT_ON_SALE } from "../_shared/apply-agent-switch.ts";
 
 // Provable from outside without a purchase: every response, the CORS
-// preflight included, carries this in x-fn-build.
-const FN_BUILD = "verify-product-purchase.2026-10-14.1";
+// preflight included, carries this in x-fn-build. R1 stamped this function
+// 2026-10-14.1 and deploys first, so wave 4 keeps R1's day with a higher
+// sequence (docs/deploy-ledger.json, _reservationsNote).
+const FN_BUILD = "verify-product-purchase.2026-10-14.22";
+
+/** Why a sale of this product cannot be delivered while it is not sold, or null. */
+function retiredReasonOf(productType: string | null | undefined): string | null {
+  return productType === "apply_assistant" && !APPLY_ASSISTANT_ON_SALE
+    ? "the Apply Assistant is no longer sold; nothing was generated"
+    : null;
+}
+
+/**
+ * THE STRIPE KEY FOR THIS SESSION (CP-033): a cs_test_ session is read with
+ * the test-mode key when one is configured (the owner's test rehearsal), and
+ * every other session, a test one included when no test key exists, with the
+ * live key as before.
+ */
+function stripeKeyFor(sessionId: unknown): string | undefined {
+  const testKey = Deno.env.get("STRIPE_TEST_SECRET_KEY") ?? "";
+  if (typeof sessionId === "string" && sessionId.startsWith("cs_test_") && testKey.startsWith("sk_test_")) return testKey;
+  return Deno.env.get("STRIPE_SECRET_KEY");
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -169,7 +193,7 @@ serve(async (req) => {
     logStep("Verifying purchase", { sessionId: sessionId.substring(0, 20) + "..." });
 
     // Initialize Stripe
-    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+    const stripeKey = stripeKeyFor(sessionId);
     if (!stripeKey) {
       throw new Error("STRIPE_SECRET_KEY not configured");
     }
@@ -411,6 +435,44 @@ serve(async (req) => {
       else logStep("Delivery tracking started");
     }
 
+    // A RETIRED PRODUCT'S SALE IS RECORDED, NEVER MADE (S12-169). Claimed
+    // here first (the webhook was late), it is a payment taken after the
+    // product stopped being sold: the row is closed as undeliverable_retired,
+    // a failure no sweep retries, and the webhook, which still receives the
+    // event, tells the owner (its door is per session). Claimed by the
+    // webhook first, the row it wrote says so. A sale from before the switch
+    // (a saved copy, or a row with any other history) is served as it always
+    // was.
+    const retired = retiredReasonOf(productType);
+    let retiredSale = false;
+    if (retired) {
+      if (isFirstUse) {
+        retiredSale = true;
+        const { error: closeError } = await supabase.from('product_deliveries')
+          .update({ status: 'generation_failed', generation_success: false, max_retries: 0, next_retry_at: null, generation_error: `undeliverable_retired: ${retired}` })
+          .eq('stripe_session_id', sessionId);
+        if (closeError) logStep("Retired sale could not be recorded", { error: closeError.message });
+      } else {
+        const { data: row } = await supabase.from('product_deliveries')
+          .select('generation_error').eq('stripe_session_id', sessionId).maybeSingle();
+        retiredSale = String((row as { generation_error?: unknown } | null)?.generation_error ?? '').startsWith('undeliverable_retired');
+      }
+    }
+    if (retiredSale) {
+      logStep("Retired product: recorded, not generated", { sessionId: sessionId.substring(0, 20), productType });
+      const showRetiredBuyer = await callerProvedMailbox(req, supabase, customerEmail);
+      return new Response(
+        JSON.stringify({
+          success: true, verified: true, isFirstUse, productType, productName,
+          customerEmail: showRetiredBuyer ? customerEmail : maskEmail(customerEmail),
+          customerEmailMasked: !!customerEmail && !showRetiredBuyer,
+          emailSent: false, generatedContent: null, inProgress: false, hasResumeData: false,
+          retired: true,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // If content generation is requested and we have resume data
     let generatedContent: any = null;
     // WHAT THIS REQUEST OWED THE BUYER AND COULD NOT DO: a credit grant or a
@@ -452,6 +514,11 @@ serve(async (req) => {
     let inProgress = false;
     // Set when the bound résumé could not be read: the sweep cannot make it either.
     let resumeUnreadable = false;
+    // An Apply Assistant bought with no job posting (S12-054): nothing can
+    // make it until the buyer sends the posting, so the page must not say it
+    // is on its way. The retry sweep spends the row, asks the buyer for the
+    // posting and tells the owner.
+    let needsJobPosting = false;
     if (GENERATED_PRODUCT_TYPES.includes(productType ?? '') && !generatedContent) {
       try {
         const { data: priorRows } = await supabase
@@ -524,7 +591,21 @@ serve(async (req) => {
         const language = session.metadata?.language || 'en';
 
         // Generate content based on product type
-        if (productType === 'apply_assistant' && resume_text && job_description_text) {
+        if (productType === 'apply_assistant' && resume_text && !job_description_text) {
+          needsJobPosting = true;
+          logStep("Apply Assistant has no job posting: it cannot be made; the sweep asks the buyer for it", { sessionId: sessionId.substring(0, 20) });
+          // generation_failed with the reason, due now: the next sweep spends
+          // the row, mails the buyer once for the posting and tells the owner.
+          await supabase.rpc('log_delivery_step', {
+            p_stripe_session_id: sessionId,
+            p_step: 'generation_completed',
+            p_success: false,
+            p_error: 'job_posting_required: no job posting is attached to this Apply Assistant purchase',
+          });
+          await supabase.from('product_deliveries').update({ next_retry_at: new Date().toISOString() })
+            .eq('stripe_session_id', sessionId).eq('status', 'generation_failed');
+          undelivered = 'job_posting_required';
+        } else if (productType === 'apply_assistant' && resume_text && job_description_text) {
           logStep("Calling generate-apply-package + generate-cover-letter");
           const [packageResponse, coverLetterResponse] = await Promise.all([
             // The session is the generator's proof of purchase (a cs_ id is
@@ -897,7 +978,9 @@ serve(async (req) => {
         inProgress,
         // A résumé is bound AND readable: the retry sweep can make the product
         // from it, so the page makes nothing of its own (review of S11-054).
-        hasResumeData: !!resumeSessionId && !resumeUnreadable,
+        hasResumeData: !!resumeSessionId && !resumeUnreadable && !needsJobPosting,
+        // Nothing can make it until the buyer sends the posting (S12-054).
+        ...(needsJobPosting ? { needsJobPosting: true } : {}),
         // The ATS Defense roles named at checkout, for the page's own fallback (S11-074).
         ...(productType === 'ats_defense' ? { targetRoles: boughtRoles } : {}),
       }),

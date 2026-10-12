@@ -145,12 +145,15 @@ describe("alerted separates three states that were one", () => {
     expect(fn.slice(i - 200, i)).toMatch(/alerted = false/);
   });
 
-  it("goes true only after the send resolves", () => {
-    expect(fn).toMatch(/\.then\(\(\) => \{ alerted = true; \}\)/);
+  it("goes true only for a send Resend accepted: a refusal answered as {error} is not an alert (CP-027)", () => {
+    expect(fn).toMatch(/if \(!sent\?\.error\) \{ alerted = true; break; \}/);
+    expect(fn).not.toMatch(/\.then\(\(\) => \{ alerted = true; \}\)/);
   });
 
-  it("goes false when the send rejects", () => {
-    expect(fn).toMatch(/catch\(\(e\) => \{ alerted = false;/);
+  it("starts false before the senders are tried, so a refusal or a throw from every sender leaves it false", () => {
+    expect(fn).toMatch(/alerted = false;\s*\n\s*for \(const from of \[/);
+    const loop = fn.slice(fn.indexOf("for (const from of ["), fn.indexOf("RESEND_API_KEY not set"));
+    expect(loop.match(/alerted = true/g) ?? []).toHaveLength(1);
   });
 });
 

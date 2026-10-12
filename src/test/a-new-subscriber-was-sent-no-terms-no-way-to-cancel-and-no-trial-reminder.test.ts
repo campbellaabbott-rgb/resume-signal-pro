@@ -30,6 +30,10 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+// The $99 plan is retired (wave 4): its trial notices are the dormant plan's, run
+// with the switch on. What ships (the plan set to end, never the charge reminder)
+// is held by w4b-payments-the-webhook-records-retired-sales-ends-retired-plans-and-says-what-happened.
+import { APPLY_AGENT_SWITCH_ON } from "./helpers/apply-agent-switch-on";
 import { SUBSCRIPTIONS } from "@/config/products";
 
 const ENV: Record<string, string> = {
@@ -90,6 +94,7 @@ beforeAll(async () => {
     "https://esm.sh/stripe@18.5.0": STRIPE_STUB,
     "https://esm.sh/@supabase/supabase-js@2": "export const createClient = () => globalThis.__noticeDb; export class SupabaseClient {}",
     "https://esm.sh/resend@2.0.0": "export class Resend { constructor() { this.emails = { send: async () => ({ data: null, error: null }) }; } }",
+    ...APPLY_AGENT_SWITCH_ON,
   });
 }, 120_000);
 

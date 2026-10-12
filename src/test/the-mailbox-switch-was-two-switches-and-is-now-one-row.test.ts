@@ -36,7 +36,7 @@ vi.setConfig({ testTimeout: 60_000, hookTimeout: 180_000 });
 
 const b64url = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64url");
 const passwordJwt = (sub: string) =>
-  `${b64url({ alg: "HS256", typ: "JWT" })}.${b64url({ sub, role: "authenticated", amr: [{ method: "password", timestamp: Math.floor(Date.now() / 1000) }] })}.sig`;
+  `${b64url({ alg: "HS256", typ: "JWT" })}.${b64url({ sub, role: "authenticated", aud: "authenticated", amr: [{ method: "password", timestamp: Math.floor(Date.now() / 1000) }] })}.sig`;
 
 const USER = "00000000-0000-4000-8000-0000000000f1";
 const SWITCHED_ON = new Date(Date.now() - 6 * 3600_000).toISOString();
