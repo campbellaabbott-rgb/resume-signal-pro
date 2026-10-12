@@ -140,7 +140,7 @@ merges had no conflicts. The integration needed two fixes of its own:
 | Frontend-only limit (`git diff --name-only origin/profiles/integration..HEAD`) | nothing under supabase/, scripts/, public/, job-board, worker/, index.html, package files |
 | `npm run typecheck` | clean |
 | eslint on the 170 changed .ts/.tsx files | 14 errors, 13 already in the base (Jobs.tsx, SavedSearchPills, textarea, published-claims, the moved `require` in tailwind.config.ts); the one new error fixed in `2d6f11a7` |
-| Full vitest suite | 902 files, 11,812 tests: 2 failed (the shard guard), fixed in `38482b30`; the push gate re-runs the suite |
+| Full vitest suite | first run: 2 failed (the shard guard), fixed in `38482b30`, and 3 of the 905 files never started (fork workers timed out under load). The push gate's run at `2a58e804`: 905 files, 11,817 passed, 23 skipped, 0 failed |
 | `npm run build` | built in 36s; the bake wrote 1,672 pages. The bake also rewrites `public/sitemap.xml`, `public/llms.txt` and `scripts/board-facets-snapshot.json` and writes `public/prerender-ledger.json` in the working tree; those were restored or removed and are not committed |
 
 **Bundle size against the base** (`823da0c4` built without the bake; only
