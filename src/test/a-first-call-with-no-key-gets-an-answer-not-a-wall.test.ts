@@ -297,13 +297,20 @@ describe("the keyless branch is counted in its own table and nowhere else", () =
   it("counts the call BEFORE any runner runs, and judges its arguments before counting it", () => {
     const counted = UNKEYED.indexOf('.rpc("mcp_anon_check_v2"');
     const lookupsFrom = UNKEYED.indexOf("const lookups = lookupBucket(");
-    const ran = UNKEYED.slice(lookupsFrom).search(/await run[A-Za-z]+\(/) + lookupsFrom;
-    expect(counted).toBeGreaterThan(lookupsFrom);
-    expect(ran).toBeGreaterThan(counted);
-    // board_stats, the one runner before the meter, is cached and never counted.
-    const stats = UNKEYED.slice(UNKEYED.indexOf('if (toolName === "board_stats") {'), lookupsFrom);
+    // board_stats, the one runner before the meter, is cached and never
+    // counted; since S12-176 it is bounded per allowance bucket, so the bucket
+    // is worked out before it.
+    const statsFrom = UNKEYED.indexOf('if (toolName === "board_stats") {');
+    const statsEnd = UNKEYED.indexOf("const release = await keylessTurn();");
+    expect(lookupsFrom).toBeGreaterThan(-1);
+    expect(statsFrom).toBeGreaterThan(lookupsFrom);
+    expect(statsEnd).toBeGreaterThan(statsFrom);
+    const stats = UNKEYED.slice(statsFrom, statsEnd);
     expect(stats).toMatch(/await runCachedBoardStats\(\)/);
     expect(stats).not.toMatch(/mcp_anon_check/);
+    const ran = UNKEYED.slice(statsEnd).search(/await run[A-Za-z]+\(/) + statsEnd;
+    expect(counted).toBeGreaterThan(statsEnd);
+    expect(ran).toBeGreaterThan(counted);
     // Owner decision 2026-10-11 (spec D2 §2.1): an argument the caller got
     // wrong is answered before anything is counted.
     const judged = MCP.indexOf("checkArgs(toolName, toolArgs, !bearer);");
@@ -314,9 +321,14 @@ describe("the keyless branch is counted in its own table and nowhere else", () =
   it("the address is hashed and truncated, never stored as itself", () => {
     // A connection (full IPv4, or IPv6 /64) is hashed before it becomes a bucket.
     expect(UNKEYED).toMatch(/const address = callerAddress\(req\.headers\);/);
-    expect(UNKEYED).toMatch(/lookupBucket\(host, subjectHash, \(await sha256Hex\(connection\)\)\.slice\(0, 16\)\)/);
+    // Since S12-175 the hash is keyed and changes daily (allowance.ts
+    // bucketHash): a plain SHA-256 of an IPv4 address is reversible by
+    // hashing the whole address space.
+    expect(UNKEYED).toMatch(/lookupBucket\(host, subjectHash, await bucketHash\(secret, utcDay\(\), connection\)\)/);
+    expect(UNKEYED).toMatch(/const secret = bucketSecret\(\);/);
+    expect(UNKEYED).not.toMatch(/sha256Hex\((?:connection|subject|address)\)/);
     // A ChatGPT user's bucket is keyed by a hash of the subject, never the subject.
-    expect(UNKEYED).toMatch(/const subjectHash = subject \? \(await sha256Hex\(subject\)\)\.slice\(0, 16\) : "";/);
+    expect(UNKEYED).toMatch(/const subjectHash = subject \? await bucketHash\(secret, utcDay\(\), subject\) : "";/);
     expect(ALLOWANCE).toMatch(/bucket: `u:chatgpt:\$\{subjectHash\}`/);
     expect(UNKEYED).not.toMatch(/p_bucket: (address|subject|connection)\b/);
     // And the subject's log line carries no address beside it.

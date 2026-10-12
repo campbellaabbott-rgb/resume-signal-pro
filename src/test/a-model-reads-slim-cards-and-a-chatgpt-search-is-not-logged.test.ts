@@ -134,10 +134,13 @@ describe("a ChatGPT search is not logged; everyone else's is", () => {
     boardBodies = [];
     await call("search_jobs", { query: "nurse" });
     await call("search_jobs", { query: "nurse" }, { "x-forwarded-for": "160.79.105.10" });
-    // The review of 9fe3bc0d: the flag followed the edition, which any caller
-    // can claim with a user agent; only OpenAI's published egress keeps it now.
+    expect(boardBodies.map((b) => b.noLog)).toEqual([undefined, undefined]);
+    // Sweep S12-085: tied to OpenAI's published egress, a ChatGPT search was
+    // logged whenever that list could not be read. Fail-closed: the claim
+    // alone keeps a search out of the log (it never picks who pays).
+    boardBodies = [];
     await call("search_jobs", { query: "nurse" }, { "user-agent": "openai-mcp/1.0 (ChatGPT)" });
-    expect(boardBodies.map((b) => b.noLog)).toEqual([undefined, undefined, undefined]);
+    expect(boardBodies.map((b) => b.noLog)).toEqual([true]);
   });
 });
 
