@@ -62,6 +62,8 @@ const read = (p: string) => readFileSync(resolve(ROOT, p), "utf8");
 const RAW = read("src/pages/Jobs.tsx");
 // Code literals against comment-stripped source; a comment's prose against RAW.
 const JOBS = RAW.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
+// The BoardJob row type moved to a shared module (design pass A); Jobs.tsx imports it.
+const BOARD_JOB = read("src/lib/board-job.ts").replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
 const BOARD = read("supabase/functions/job-board/index.ts")
   .replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
 
@@ -94,7 +96,7 @@ describe("the board held five facts and said none of them", () => {
     // exit selects the column; rowToJob emits it under this exact spelling.
     expect(BOARD, "rowToJob emits it").toMatch(/source: r\.source,/);
     expect(BOARD, "the browse SELECT names it").toMatch(/"id,source,company_token/);
-    expect(JOBS, "and the client row type finally declares it").toMatch(/source\?: string \| null;/);
+    expect(BOARD_JOB, "and the client row type finally declares it").toMatch(/source\?: string \| null;/);
   });
 
   it("a pay figure names its basis — unless the employer's own words already do", () => {

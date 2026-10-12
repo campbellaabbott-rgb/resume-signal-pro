@@ -25,6 +25,8 @@ const ROOT = resolve(__dirname, "../..");
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
 const read = (p: string) => readFileSync(resolve(ROOT, p), "utf8");
 const JOBS = strip(read("src/pages/Jobs.tsx"));
+// The BoardJob row type moved to a shared module (design pass A); Jobs.tsx imports it.
+const BOARD_JOB = strip(read("src/lib/board-job.ts"));
 const BOARD = strip(read("supabase/functions/job-board/index.ts"));
 
 const TYPES = ["full_time", "part_time", "contract", "temporary", "internship"] as const;
@@ -33,7 +35,8 @@ describe("a card that never says what kind of job it is", () => {
   it("the client declares the field the server has been sending all along", () => {
     // Same spelling as the wire, or the row arrives and nothing can read it.
     expect(BOARD, "the server emits it").toMatch(/employmentType: r\.employment_type \?\? null/);
-    expect(JOBS, "and the client's row type finally declares it").toMatch(/employmentType\?: string \| null;/);
+    expect(BOARD_JOB, "and the client's row type finally declares it").toMatch(/employmentType\?: string \| null;/);
+    expect(JOBS, "the board reads that row type").toMatch(/import type \{ BoardJob, FillCurve \} from "@\/lib\/board-job";/);
   });
 
   it("only the five values the filter offers are labelled — everything else, including null, renders nothing", () => {

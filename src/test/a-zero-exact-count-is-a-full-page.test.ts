@@ -48,6 +48,8 @@ import { resolve } from "node:path";
 const ROOT = resolve(__dirname, "../..");
 const FN = readFileSync(resolve(ROOT, "supabase/functions/job-board/index.ts"), "utf8");
 const JOBS = readFileSync(resolve(ROOT, "src/pages/Jobs.tsx"), "utf8");
+// The BoardJob row type moved out of Jobs.tsx (design pass A) so components can share it.
+const BOARD_JOB = readFileSync(resolve(ROOT, "src/lib/board-job.ts"), "utf8");
 
 describe("a zero exact count is not an empty page", () => {
   it("the rescue gate counts ROWS, not the headline", () => {
@@ -132,7 +134,8 @@ describe("a zero exact count is not an empty page", () => {
   });
 
   it("a description-only row says so, once", () => {
-    expect(JOBS).toMatch(/matchScope\?: "title" \| "description";/);
+    expect(BOARD_JOB).toMatch(/matchScope\?: "title" \| "description";/);
+    expect(JOBS, "Jobs.tsx reads its row type from the shared module").toMatch(/import type \{ BoardJob, FillCurve \} from "@\/lib\/board-job";/);
     expect(JOBS).toMatch(/jobsPage\.descriptionMatchChip/);
     // Not on a row that already carries the close-match hedge — two hedges on
     // one card say less than one.
