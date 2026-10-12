@@ -50,13 +50,14 @@
       "h1": "Mga kumpanyang nagha-hire ngayon",
       "h1Count_one": "{{n}} job board ng kumpanya na nagha-hire ngayon",
       "h1Count_other": "{{n}} job board ng mga kumpanya na nagha-hire ngayon",
-      "intro": "Bawat posting ay galing sa sariling hiring system ng employer — walang aggregator, walang repost. Nasa ibaba ang pinakamalalaking board.",
       "rowOpen_one": "{{n}} bukas na role",
       "rowOpen_other": "{{n}} bukas na role",
       "searchLink": "Maghanap sa live board",
       "searchTail": "para i-filter ang kahit anong employer ayon sa role, sahod, o lokasyon.",
       "seoDescription": "Bawat employer sa board ay binabasa nang direkta mula sa sarili nitong hiring system. Tingnan ang pinakamalalaking board, o maghanap sa live board.",
-      "seoTitle": "Mga kumpanyang nagha-hire ngayon — live na trabaho mula sa sarili nilang hiring system"
+      "seoTitle": "Mga kumpanyang nagha-hire ngayon — live na trabaho mula sa sarili nilang hiring system",
+      "countedAgo": "Mga bilang mula sa huling pagbilang ng board, {{ago}}.",
+      "intro2": "Binabasa ang bawat board mula sa sarili nitong hiring system: karamihan ay sariling system ng mga employer, may marka sa kanilang page ang mga board ng staffing agency, at ang USAJOBS ay ang listing site ng pederal na gobyerno ng US, kung saan nagpo-post ang mga ahensya ng kanilang mga role. Nasa ibaba ang pinakamalalaking board."
     },
     "facts": {
       "countriesLabel": "Karamihan ng role sa",
@@ -167,6 +168,7 @@
       "body": "Bantayan ang board na ito at bibilangin ng account mo ang mga bagong posting kapag lumabas ang mga ito.",
       "title": "Walang bukas na role sa {{name}} ngayon",
       "titleBoard": "Walang bukas na role sa board na ito ngayon"
-    }
+    },
+    "countedAgo": "binilang {{ago}}"
   }
 }

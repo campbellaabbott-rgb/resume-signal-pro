@@ -155,17 +155,21 @@ describe("the answer line in three languages", () => {
 
   it("German, Hindi and Spanish print their own word for roles, the grouped figure, and no English", async () => {
     loadCompanyShard();
-    const v = { value: 1943, floor: false, asOf: null };
+    // Every figure carries its date now (an undated count prints no line), so
+    // the count word is read off the head of the line, before " · ".
+    const at = minsAgo(46);
+    const head = (value: number, lng: string) => openRolesLine(i18n.t.bind(i18n), { value, floor: false, asOf: at, basis: "read" }, lng)!.split(" · ")[0];
     await i18n.changeLanguage("de");
-    expect(openRolesLine(i18n.t.bind(i18n), v, "de")).toBe("1.943 offene Stellen");
-    expect(openRolesLine(i18n.t.bind(i18n), { value: 1, floor: false, asOf: null }, "de")).toBe("1 offene Stelle");
+    expect(head(1943, "de")).toBe("1.943 offene Stellen");
+    expect(head(1, "de")).toBe("1 offene Stelle");
+    expect(openRolesLine(i18n.t.bind(i18n), { value: 1943, floor: true, asOf: at, basis: "counted" }, "de")).toMatch(/^1\.943\+ offene Stellen · gezählt vor 46 Min/);
     await i18n.changeLanguage("hi");
-    const hi = openRolesLine(i18n.t.bind(i18n), { value: 847, floor: false, asOf: null }, "hi")!;
-    expect(hi).toBe("847 खुले रोल");
+    const hi = openRolesLine(i18n.t.bind(i18n), { value: 847, floor: false, asOf: at, basis: "read" }, "hi")!;
+    expect(hi.split(" · ")[0]).toBe("847 खुले रोल");
     expect(hi).not.toMatch(/\broles?\b/);
     await i18n.changeLanguage("es");
-    expect(openRolesLine(i18n.t.bind(i18n), { value: 1_000_000, floor: false, asOf: null }, "es")).toBe("1.000.000 vacantes abiertas");
-    expect(openRolesLine(i18n.t.bind(i18n), { value: 1, floor: false, asOf: null }, "es")).toBe("1 vacante abierta");
+    expect(head(1_000_000, "es")).toBe("1.000.000 vacantes abiertas");
+    expect(head(1, "es")).toBe("1 vacante abierta");
     await i18n.changeLanguage("en");
   });
 

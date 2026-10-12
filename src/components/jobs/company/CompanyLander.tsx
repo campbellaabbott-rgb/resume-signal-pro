@@ -27,7 +27,7 @@ import type { LayoffFiling } from "@/components/jobs/LayoffFilingLine";
 import type { LanderModel, OpenRolesValue } from "@/lib/company/lander-model";
 import { ago as fmtAgo, count as fmtCount } from "@/lib/company/format";
 import { tPlural } from "@/lib/company/plural";
-import { CompanyHeader, type WorkModeSplit } from "./CompanyHeader";
+import { CompanyHeader, openRolesBasis, type WorkModeSplit } from "./CompanyHeader";
 import { CollisionBoardsPanel, CollisionHeader } from "./CollisionHeader";
 import { UsajobsHubHeader } from "./UsajobsHubHeader";
 import { CompanyEmptyState } from "./CompanyEmptyState";
@@ -58,6 +58,8 @@ export interface CompanyLanderHeaderProps {
   source: string | null;
   profile?: CompanyProfileData | null;
   workMode?: WorkModeSplit | null;
+  /** When the work-mode split was counted; the board's read when absent. */
+  workModeAsOf?: string | null;
   payStated?: PayStated | null;
   employerChipTip?: string;
   boardReadAt: string | null;
@@ -85,6 +87,7 @@ export function CompanyLanderHeader(p: CompanyLanderHeaderProps) {
       system={p.source ? p.labelOf(p.source) : null}
       countries={(p.profile?.intel.intel?.countries ?? []).map((c) => c.country)}
       workMode={p.workMode}
+      workModeAsOf={p.workModeAsOf}
       payStated={p.payStated}
       employerChipTip={p.employerChipTip}
       boardReadAt={p.boardReadAt}
@@ -127,11 +130,15 @@ export function CompanyResultsLine({ model, shown, matching, boardReadAt }: {
   const head = model.visitorFiltered
     ? tPlural(t, "companyProfile.results.showingMatching", total.value, vars, "Showing {{shown}} of {{total}} matching role", "Showing {{shown}} of {{total}} matching roles")
     : tPlural(t, "companyProfile.results.showing", total.value, vars, "Showing {{shown}} of {{total}} open role", "Showing {{shown}} of {{total}} open roles");
+  // The figure's own date: a board-level count says when it was counted, so
+  // the header and this line never print two different "read" times.
   const read = boardReadAt ? fmtAgo(boardReadAt, { lng: lang }) : "";
+  const counted = !model.visitorFiltered && model.openRoles?.basis === "counted" ? openRolesBasis(t, model.openRoles, lang) : "";
+  const dated = counted || (read ? t("companyProfile.results.boardRead", "this board read {{ago}}", { ago: read }) : "");
+  if (!dated) return null;
   return (
     <p className="text-meta text-muted-foreground" data-company-results="" aria-live="off">
-      <span className="text-foreground">{head}</span>
-      {read && <> · {t("companyProfile.results.boardRead", "this board read {{ago}}", { ago: read })}</>}
+      <span className="text-foreground">{head}</span> · {dated}
     </p>
   );
 }

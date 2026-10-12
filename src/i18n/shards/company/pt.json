@@ -55,14 +55,15 @@
       "h1Count_one": "{{n}} portal de emprego de empresa a contratar agora",
       "h1Count_other": "{{n}} portais de emprego de empresas a contratar agora",
       "h1Count_many": "{{n}} portais de emprego de empresas a contratar agora",
-      "intro": "Cada anúncio vem do próprio sistema de recrutamento do empregador — sem agregadores, sem republicações. Os maiores portais estão abaixo.",
       "rowOpen_one": "{{n}} vaga aberta",
       "rowOpen_other": "{{n}} vagas abertas",
       "rowOpen_many": "{{n}} vagas abertas",
       "searchLink": "Pesquisar no portal ao vivo",
       "searchTail": "para filtrar qualquer empregador por função, salário ou local.",
       "seoDescription": "Cada empregador do portal é lido diretamente do seu próprio sistema de recrutamento. Veja os maiores portais ou pesquise no portal ao vivo.",
-      "seoTitle": "Empresas a contratar agora — vagas ao vivo dos seus próprios sistemas de recrutamento"
+      "seoTitle": "Empresas a contratar agora — vagas ao vivo dos seus próprios sistemas de recrutamento",
+      "countedAgo": "Números da última contagem do portal, {{ago}}.",
+      "intro2": "Cada portal é lido do seu próprio sistema de recrutamento: a maioria é dos próprios empregadores, os portais de agências de recrutamento estão assinalados nas suas páginas, e o USAJOBS é o site de vagas do governo federal dos EUA, onde as agências publicam as suas vagas. Os maiores portais estão abaixo."
     },
     "facts": {
       "countriesLabel": "A maioria das vagas em",
@@ -181,6 +182,7 @@
       "body": "Acompanhe este portal e a sua conta contará os novos anúncios quando aparecerem.",
       "title": "Sem vagas abertas na {{name}} neste momento",
       "titleBoard": "Sem vagas abertas neste portal neste momento"
-    }
+    },
+    "countedAgo": "contado {{ago}}"
   }
 }

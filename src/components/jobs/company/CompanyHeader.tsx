@@ -12,9 +12,15 @@
 //
 // ONE OPEN-ROLES FIGURE (CP7, CP10, CP3). The answer line prints the model's
 // OpenRolesValue in one plural sentence, formatted in the reader's language,
-// with its date basis: "1,653 open roles · read 46 min ago", or "10,000+ open
-// roles · we count up to 10,000" at the list's cap. No "verified", no
-// "{{roleWord}}" filled with English.
+// with its date basis named for what it dates: "1,653 open roles · read 46 min
+// ago" (this board's feed read), "21,067+ open roles · counted 1 hr ago" (a
+// count computed apart from the read), or "10,000+ open roles · we count up to
+// 10,000 · read 5 min ago" at the list's cap. A figure with no date prints no
+// line at all. No "verified", no "{{roleWord}}" filled with English.
+//
+// EVERY FACT IS DATED. The pay share prints the date its pair was read, and
+// the work-mode split the read it was counted from; a fact without one is left
+// out rather than printed bare.
 //
 // THE NAME NEVER COMES FROM THE TOKEN (CP15, CP16). The model hands a name
 // from data or none; none renders a skeleton bar the height of the H1. A
@@ -37,7 +43,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { CompanyClaim } from "@/components/jobs/CompanyClaim";
 import { possessive } from "@/lib/company-display";
-import { ago as fmtAgo, count as fmtCount } from "@/lib/company/format";
+import { ago as fmtAgo, count as fmtCount, date as fmtDate } from "@/lib/company/format";
 import { tPlural } from "@/lib/company/plural";
 import type { LanderModel, OpenRolesValue } from "@/lib/company/lander-model";
 import { AgencyBanner } from "./AgencyBanner";
@@ -46,17 +52,28 @@ import { CompanyChip } from "./parts";
 /** A measured work-mode split; "not stated" is counted, never folded into a mode. */
 export interface WorkModeSplit { remote: number; hybrid: number; onsite: number; unstated: number }
 
-/** "1,653 open roles · read 46 min ago" / "10,000+ open roles · we count up to 10,000". Null when there is no figure. */
+/** The words for a figure's date: "read 46 min ago" or "counted 1 hr ago". Empty when it has none. */
+export function openRolesBasis(t: TFunction, v: Pick<OpenRolesValue, "asOf" | "basis">, lang: string): string {
+  const when = v.asOf ? fmtAgo(v.asOf, { lng: lang }) : "";
+  if (!when) return "";
+  return v.basis === "counted"
+    ? t("companyProfile.countedAgo", "counted {{ago}}", { ago: when })
+    : t("companyProfile.readAgo", "read {{ago}}", { ago: when });
+}
+
+/**
+ * "1,653 open roles · read 46 min ago" / "10,000+ open roles · we count up to
+ * 10,000 · read 5 min ago". Null when there is no figure, and null when the
+ * figure has no date: a count that cannot say when it was true is not printed.
+ */
 export function openRolesLine(t: TFunction, v: OpenRolesValue | null, lang: string): string | null {
   if (!v) return null;
+  const dated = openRolesBasis(t, v, lang);
+  if (!dated) return null;
   const n = fmtCount(v.value, { floor: v.floor, lng: lang });
   const head = tPlural(t, "companyProfile.openRoles", v.value, { n }, "{{n}} open role", "{{n}} open roles");
-  if (v.capped) return `${head} · ${t("companyProfile.openRolesCapped", "we count up to {{cap}}", { cap: fmtCount(v.value, { lng: lang }) })}`;
-  if (v.asOf) {
-    const when = fmtAgo(v.asOf, { lng: lang });
-    if (when) return `${head} · ${t("companyProfile.readAgo", "read {{ago}}", { ago: when })}`;
-  }
-  return head;
+  if (v.capped) return `${head} · ${t("companyProfile.openRolesCapped", "we count up to {{cap}}", { cap: fmtCount(v.value, { lng: lang }) })} · ${dated}`;
+  return `${head} · ${dated}`;
 }
 
 /** Jobs › Companies › {name}, at sm and up. */
@@ -148,6 +165,8 @@ export interface CompanyHeaderProps {
   countries?: string[];
   workMode?: WorkModeSplit | null;
   payStated?: { k: number; n: number; asOf: string | null } | null;
+  /** When the work-mode split was counted; this board's own read when absent. */
+  workModeAsOf?: string | null;
   /** The chip's basis, the page's hiringBadgeTip. */
   employerChipTip?: string;
   /** This board's own last read. */
@@ -156,7 +175,7 @@ export interface CompanyHeaderProps {
   onCopyLink?: () => void;
 }
 
-export function CompanyHeader({ model, token, system, countries = [], workMode, payStated, employerChipTip, boardReadAt, onWatch, onCopyLink }: CompanyHeaderProps) {
+export function CompanyHeader({ model, token, system, countries = [], workMode, payStated, workModeAsOf, employerChipTip, boardReadAt, onWatch, onCopyLink }: CompanyHeaderProps) {
   const { t, i18n } = useTranslation();
   const lang = i18n.language || "en";
   const [claimOpen, setClaimOpen] = useState(false);
@@ -177,7 +196,9 @@ export function CompanyHeader({ model, token, system, countries = [], workMode, 
         : t("companyProfile.zero.answer", "No open roles right now"))
     : openRolesLine(t, model.openRoles, lang);
 
-  const subtitle = !name ? null : generic
+  // Not on the zero variant: "Live jobs straight from X's own hiring system"
+  // under "No open roles right now" promises jobs the page does not have.
+  const subtitle = !name || zero ? null : generic
     ? t("companyProfile.subtitleGeneric", "Live jobs straight from this board's own hiring system.")
     : t("companyProfile.subtitle", "Live jobs straight from {{companyPossessive}} own hiring system.", { company: name, companyPossessive: possessive(name) });
 
@@ -204,14 +225,16 @@ export function CompanyHeader({ model, token, system, countries = [], workMode, 
   const facts: Array<[key: string, label: string, value: string]> = [];
   if (system) facts.push(["system", t("companyProfile.facts.systemLabel", "Hiring system"), system]);
   if (countryNames.length > 0) facts.push(["countries", t("companyProfile.facts.countriesLabel", "Most roles in"), listFormat(countryNames)]);
-  if (workMode && workMode.remote + workMode.hybrid + workMode.onsite + workMode.unstated > 0) {
-    facts.push(["workMode", t("companyProfile.facts.workModeLabel", "Work mode"), t("companyProfile.facts.workMode", "{{remote}} remote · {{hybrid}} hybrid · {{onsite}} on-site · {{unstated}} not stated", {
+  const workModeRead = openRolesBasis(t, { asOf: workModeAsOf ?? boardReadAt, basis: workModeAsOf ? "counted" : "read" }, lang);
+  if (workMode && workModeRead && workMode.remote + workMode.hybrid + workMode.onsite + workMode.unstated > 0) {
+    facts.push(["workMode", t("companyProfile.facts.workModeLabel", "Work mode"), `${t("companyProfile.facts.workMode", "{{remote}} remote · {{hybrid}} hybrid · {{onsite}} on-site · {{unstated}} not stated", {
       remote: fmtCount(workMode.remote, { lng: lang }), hybrid: fmtCount(workMode.hybrid, { lng: lang }),
       onsite: fmtCount(workMode.onsite, { lng: lang }), unstated: fmtCount(workMode.unstated, { lng: lang }),
-    })]);
+    })} · ${workModeRead}`]);
   }
-  if (payStated && payStated.n > 0) {
-    facts.push(["pay", t("companyProfile.facts.payLabel", "Pay stated on"), t("companyProfile.facts.payValue", "{{k}} of {{n}}", { k: fmtCount(payStated.k, { lng: lang }), n: fmtCount(payStated.n, { lng: lang }) })]);
+  const payRead = payStated?.asOf ? fmtDate(payStated.asOf, { lng: lang }) : "";
+  if (payStated && payStated.n > 0 && payRead) {
+    facts.push(["pay", t("companyProfile.facts.payLabel", "Pay stated on"), `${t("companyProfile.facts.payValue", "{{k}} of {{n}}", { k: fmtCount(payStated.k, { lng: lang }), n: fmtCount(payStated.n, { lng: lang }) })} · ${t("companyProfile.pay.read", "read {{date}}", { date: payRead })}`]);
   }
 
   const displayName = name ?? token;
@@ -234,7 +257,7 @@ export function CompanyHeader({ model, token, system, countries = [], workMode, 
           <h1 className="text-2xl font-semibold tracking-tight text-foreground break-words sm:text-3xl">{h1}</h1>
           {answer
             ? <p className="text-sm font-medium text-foreground sm:text-base" data-company-answer="">{answer}</p>
-            : model.answerable || !name ? <span aria-hidden="true" className="block h-5 w-56 max-w-full rounded-md bg-muted animate-pulse motion-reduce:animate-none" /> : null}
+            : !model.openRoles && (model.answerable || !name) ? <span aria-hidden="true" className="block h-5 w-56 max-w-full rounded-md bg-muted animate-pulse motion-reduce:animate-none" /> : null}
           {subtitle && <p className="hidden sm:block text-sm text-muted-foreground">{subtitle}</p>}
         </div>
       </div>

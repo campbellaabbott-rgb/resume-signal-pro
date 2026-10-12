@@ -136,3 +136,20 @@ describe("activation opens it; focus never does", () => {
     expect(panelOf(health).className).not.toMatch(/\b(absolute|fixed)\b/);
   });
 });
+
+describe("the quote is marked as English (WCAG 3.1.2 Language of Parts)", () => {
+  it("the panel's blockquote and the hover preview's quote carry lang=en, whatever the page language", async () => {
+    const user = userEvent.setup();
+    show();
+    const health = screen.getByRole("button", { name: /Health insurance/ });
+    await user.click(health);
+    const quote = panelOf(health).querySelector("blockquote")!;
+    expect(quote.getAttribute("lang")).toBe("en");
+    expect(quote.textContent).toContain("Comprehensive medical, dental and vision insurance");
+    const dental = screen.getByRole("button", { name: /Dental/ });
+    await user.hover(dental);
+    const preview = dental.closest("li")!.querySelector<HTMLElement>("[data-perk-preview]")!;
+    expect(preview).toBeTruthy();
+    expect(preview.querySelector("p[lang='en']")?.textContent).toContain("Dental from day one");
+  });
+});

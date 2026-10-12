@@ -50,13 +50,14 @@
       "h1": "Unternehmen, die jetzt einstellen",
       "h1Count_one": "{{n}} Unternehmens-Jobboard mit offenen Stellen",
       "h1Count_other": "{{n}} Unternehmens-Jobboards mit offenen Stellen",
-      "intro": "Jede Anzeige stammt aus dem eigenen Bewerbungssystem des Arbeitgebers – keine Aggregatoren, keine Weiterveröffentlichungen. Die größten Jobboards stehen unten.",
       "rowOpen_one": "{{n}} offene Stelle",
       "rowOpen_other": "{{n}} offene Stellen",
       "searchLink": "Live-Jobbörse durchsuchen",
       "searchTail": "und jeden Arbeitgeber nach Stelle, Gehalt oder Ort filtern.",
       "seoDescription": "Jeder Arbeitgeber auf der Jobbörse wird direkt aus seinem eigenen Bewerbungssystem gelesen. Die größten Jobboards ansehen oder die Live-Jobbörse durchsuchen.",
-      "seoTitle": "Unternehmen, die jetzt einstellen – Live-Jobs aus ihren eigenen Bewerbungssystemen"
+      "seoTitle": "Unternehmen, die jetzt einstellen – Live-Jobs aus ihren eigenen Bewerbungssystemen",
+      "countedAgo": "Zahlen aus der letzten Zählung der Jobbörse, {{ago}}.",
+      "intro2": "Jedes Jobboard wird aus seinem eigenen Bewerbungssystem gelesen: Die meisten gehören Arbeitgebern selbst, Jobboards von Personalvermittlern sind auf ihren Seiten gekennzeichnet, und USAJOBS ist die Stellenplattform der US-Bundesregierung, auf der Behörden ihre Stellen veröffentlichen. Die größten Jobboards stehen unten."
     },
     "facts": {
       "countriesLabel": "Die meisten Stellen in",
@@ -167,6 +168,7 @@
       "body": "Beobachten Sie dieses Jobboard, und Ihr Konto zählt neue Anzeigen, sobald sie erscheinen.",
       "title": "Derzeit keine offenen Stellen bei {{name}}",
       "titleBoard": "Derzeit keine offenen Stellen auf diesem Jobboard"
-    }
+    },
+    "countedAgo": "gezählt {{ago}}"
   }
 }

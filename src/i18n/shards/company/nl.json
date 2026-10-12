@@ -50,13 +50,14 @@
       "h1": "Bedrijven die nu werven",
       "h1Count_one": "{{n}} vacaturebord van een bedrijf dat nu werft",
       "h1Count_other": "{{n}} vacatureborden van bedrijven die nu werven",
-      "intro": "Elke vacature komt uit het eigen wervingssysteem van de werkgever: geen aggregators, geen herplaatsingen. De grootste vacatureborden staan hieronder.",
       "rowOpen_one": "{{n}} open vacature",
       "rowOpen_other": "{{n}} open vacatures",
       "searchLink": "Doorzoek de live vacaturebank",
       "searchTail": "om elke werkgever te filteren op functie, salaris of locatie.",
       "seoDescription": "Elke werkgever wordt rechtstreeks uit zijn eigen wervingssysteem gelezen. Bekijk de grootste vacatureborden of doorzoek de live vacaturebank.",
-      "seoTitle": "Bedrijven die nu werven – live vacatures uit hun eigen wervingssystemen"
+      "seoTitle": "Bedrijven die nu werven – live vacatures uit hun eigen wervingssystemen",
+      "countedAgo": "Aantallen uit de laatste telling van de vacaturebank, {{ago}}.",
+      "intro2": "Elk vacaturebord wordt uit zijn eigen wervingssysteem gelezen: de meeste zijn van werkgevers zelf, borden van uitzend- en wervingsbureaus zijn op hun pagina gemarkeerd, en USAJOBS is de vacaturesite van de Amerikaanse federale overheid, waar overheidsdiensten hun vacatures plaatsen. De grootste vacatureborden staan hieronder."
     },
     "facts": {
       "countriesLabel": "De meeste vacatures in",
@@ -167,6 +168,7 @@
       "body": "Volg dit vacaturebord en je account telt nieuwe vacatures zodra ze verschijnen.",
       "title": "Op dit moment geen open vacatures bij {{name}}",
       "titleBoard": "Op dit moment geen open vacatures op dit vacaturebord"
-    }
+    },
+    "countedAgo": "geteld {{ago}}"
   }
 }

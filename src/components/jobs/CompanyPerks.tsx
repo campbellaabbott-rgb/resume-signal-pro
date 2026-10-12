@@ -237,7 +237,8 @@ function PerkItem({
           className="absolute left-0 top-full z-10 mt-1 w-72 max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-popover p-3 text-xs leading-snug text-popover-foreground shadow-md"
         >
           <p className="text-foreground">{sentence}</p>
-          <p className="mt-1 italic text-foreground break-words">“{claim.quote}”</p>
+          {/* The reader reads English postings only (the block's own basis line), so the quote is English on every page. */}
+          <p lang="en" className="mt-1 italic text-foreground break-words">“{claim.quote}”</p>
         </div>
       )}
       <div
@@ -248,7 +249,7 @@ function PerkItem({
         <p id={countId} className="text-foreground">{sentence}</p>
         <figure className="space-y-0.5">
           <figcaption className="text-muted-foreground">{t("jobsPage.perks.quoteLabel", "In their words:")}</figcaption>
-          <blockquote className="border-l-2 border-border-strong pl-2 italic text-foreground break-words">“{claim.quote}”</blockquote>
+          <blockquote lang="en" className="border-l-2 border-border-strong pl-2 italic text-foreground break-words">“{claim.quote}”</blockquote>
         </figure>
         {claim.postingId ? (
           <Link to={perkPostingHref(claim.postingId)} className="inline-block text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary">

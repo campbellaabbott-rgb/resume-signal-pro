@@ -55,14 +55,15 @@
       "h1Count_one": "{{n}} site carrières d'entreprise qui recrute",
       "h1Count_other": "{{n}} sites carrières d'entreprises qui recrutent",
       "h1Count_many": "{{n}} sites carrières d'entreprises qui recrutent",
-      "intro": "Chaque offre provient du propre système de recrutement de l'employeur : ni agrégateur, ni republication. Les plus grands sites carrières figurent ci-dessous.",
       "rowOpen_one": "{{n}} poste ouvert",
       "rowOpen_other": "{{n}} postes ouverts",
       "rowOpen_many": "{{n}} postes ouverts",
       "searchLink": "Rechercher dans les offres en direct",
       "searchTail": "pour filtrer n'importe quel employeur par poste, salaire ou lieu.",
       "seoDescription": "Chaque employeur est lu directement depuis son propre système de recrutement. Parcourez les plus grands sites carrières ou recherchez dans les offres en direct.",
-      "seoTitle": "Entreprises qui recrutent : offres en direct depuis leurs propres systèmes de recrutement"
+      "seoTitle": "Entreprises qui recrutent : offres en direct depuis leurs propres systèmes de recrutement",
+      "countedAgo": "Chiffres issus du dernier comptage du site, {{ago}}.",
+      "intro2": "Chaque site carrières est lu depuis son propre système de recrutement : la plupart appartiennent aux employeurs eux-mêmes, ceux des agences de recrutement sont signalés sur leur page, et USAJOBS est le site d'offres du gouvernement fédéral américain, où les agences publient leurs postes. Les plus grands sites carrières figurent ci-dessous."
     },
     "facts": {
       "countriesLabel": "La plupart des postes en",
@@ -181,6 +182,7 @@
       "body": "Suivez ce site et votre compte comptera ses nouvelles offres dès leur parution.",
       "title": "Aucun poste ouvert chez {{name}} pour le moment",
       "titleBoard": "Aucun poste ouvert sur ce site pour le moment"
-    }
+    },
+    "countedAgo": "compté {{ago}}"
   }
 }

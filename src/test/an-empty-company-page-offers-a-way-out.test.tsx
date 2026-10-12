@@ -10,7 +10,12 @@
  *   - a visitor's filter that empties the list is NOT the zero variant;
  *   - a token we do not carry says so, with a search and the directory link,
  *     and only when the page knows it is not carried (unknown is never
- *     "uncarried").
+ *     "uncarried");
+ *   - an empty board is not "Actively hiring", whatever the 90-day verdict
+ *     says (the verdict reads fills and relists only; the legacy lander's
+ *     chip needed open_roles > 0), and it carries no "Live jobs straight
+ *     from X's own hiring system" subtitle (honesty review of 3ebdcbb2: the
+ *     zero header read "No open roles right now · … · Actively hiring").
  */
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
@@ -70,6 +75,32 @@ describe("a carried board with no open roles", () => {
 
   it("a description-only match is not an empty board either", () => {
     expect(buildLanderModel(input({ relatedTotal: 1314 })).variant).toBe("standard");
+  });
+
+  it("is never 'Actively hiring' and promises no live jobs, even with a positive 90-day verdict", () => {
+    const m = buildLanderModel(input({ verdict: "positive", gated: { verdict: "closes", withheld: null } }));
+    expect(m.variant).toBe("zero");
+    expect(m.sections.employerChip).toBe(false);
+    render(<MemoryRouter><CompanyLanderHeader model={m} token="blackstone" labelOf={() => "Workday"} source="workday" boardReadAt={minsAgo(46)} onWatch={() => {}} onShowOnly={() => {}} /></MemoryRouter>);
+    const header = document.querySelector("[data-company-header]")?.textContent ?? "";
+    expect(header).toContain("No open roles right now");
+    expect(header).not.toMatch(/Actively hiring/);
+    expect(header).not.toMatch(/Live jobs straight from/);
+    expect(document.querySelector("[data-employer-chip]")).toBeNull();
+  });
+
+  it("positive control: a board with open roles and the same verdict shows the chip and the subtitle", () => {
+    const m = buildLanderModel(input({ listTotal: 847, feedTotal: 847, verdict: "positive", gated: { verdict: "closes", withheld: null } }));
+    expect(m.variant).toBe("standard");
+    expect(m.sections.employerChip).toBe(true);
+    render(<MemoryRouter><CompanyLanderHeader model={m} token="blackstone" labelOf={() => "Workday"} source="workday" boardReadAt={minsAgo(46)} onWatch={() => {}} onShowOnly={() => {}} /></MemoryRouter>);
+    expect(document.querySelector("[data-employer-chip]")?.textContent).toBe("Actively hiring");
+    expect(document.querySelector("[data-company-header]")?.textContent).toContain("Live jobs straight from Blackstone's own hiring system.");
+  });
+
+  it("an agency board or a board past every gate but with a zero figure never gets the chip", () => {
+    expect(buildLanderModel(input({ listTotal: 847, agency: true, verdict: "positive" })).sections.employerChip).toBe(false);
+    expect(buildLanderModel(input({ listTotal: null, loading: true, feedTotal: 0, verdict: "positive" })).sections.employerChip).toBe(false);
   });
 });
 

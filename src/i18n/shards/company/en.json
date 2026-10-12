@@ -50,13 +50,14 @@
       "h1": "Companies hiring now",
       "h1Count_one": "{{n}} company job board hiring now",
       "h1Count_other": "{{n}} company job boards hiring now",
-      "intro": "Every posting comes from the employer's own hiring system — no aggregators, no reposts. The largest boards are below.",
       "rowOpen_one": "{{n}} open role",
       "rowOpen_other": "{{n}} open roles",
       "searchLink": "Search the live board",
       "searchTail": "to filter any employer by role, pay, or location.",
       "seoDescription": "Every employer on the board is read straight from its own hiring system. Browse the largest boards, or search the live board.",
-      "seoTitle": "Companies Hiring Now — Live Jobs From Their Own Hiring Systems"
+      "seoTitle": "Companies Hiring Now — Live Jobs From Their Own Hiring Systems",
+      "countedAgo": "Counts from the board's last count, {{ago}}.",
+      "intro2": "Each board is read from its own hiring system: most are employers' own, staffing-agency boards are labelled on their pages, and USAJOBS is the federal government's listing site, where agencies post their roles. The largest boards are below."
     },
     "facts": {
       "countriesLabel": "Most roles in",
@@ -167,6 +168,7 @@
       "body": "Watch this board and your account will count its new postings when they appear.",
       "title": "No open roles at {{name}} right now",
       "titleBoard": "No open roles on this board right now"
-    }
+    },
+    "countedAgo": "counted {{ago}}"
   }
 }

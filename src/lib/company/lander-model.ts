@@ -47,6 +47,14 @@ export interface OpenRolesValue {
   asOf: string | null;
   /** Whether the floor is the list's own count cap (copy says "we count up to N"). */
   capped?: boolean;
+  /**
+   * What `asOf` dates, so the page words it truly: "read" is this board's own
+   * feed read (the list's figure), "counted" is when a count was computed (the
+   * board-level fill-curve count, or the moment the list answered when the
+   * board's read time is missing). One screen used to print the fill curve's
+   * computation time as "read 1 hr ago" beside "this board read 46 min ago".
+   */
+  basis?: "read" | "counted";
 }
 
 /** The gated closure verdict, as Jobs.tsx's gatedHiringRecord returns it. */
@@ -106,6 +114,13 @@ export interface LanderInput {
   lastUnfiltered?: OpenRolesValue | null;
   /** EXTENSION: the description-only segment of an unfiltered reply (a lander with only those is not empty). */
   relatedTotal?: number | null;
+  /**
+   * EXTENSION: when the served list answered. The job-board leaves recheckedAt
+   * ABSENT when its stamp lookup fails, so boardReadAt can be null on a live
+   * reply; the list's figure is then dated by its answer ("counted just now"),
+   * and with neither time it carries no date and the header prints no count.
+   */
+  listAnsweredAt?: string | null;
 }
 
 export interface LanderName {
@@ -213,27 +228,42 @@ export function landerName(input: Pick<LanderInput, "storedName" | "bakedName" |
  * With a visitor filter on, the list no longer describes the board, so the
  * board-level count (unaffected by filters) or the last unfiltered figure
  * stands in, and with neither there is no figure.
+ *
+ * Each figure carries the basis of its date: the list's figure is "read" at
+ * the board's read time (or "counted" when the list answered, if the read time
+ * is missing); the board-level figure is "counted" when it was computed.
  */
 export function chooseOpenRoles(input: Pick<LanderInput,
-  "listTotal" | "listFloor" | "feedTotal" | "feedFloor" | "feedAsOf" | "boardReadAt" | "visitorFilters" | "lastUnfiltered" | "loading" | "error">,
+  "listTotal" | "listFloor" | "feedTotal" | "feedFloor" | "feedAsOf" | "boardReadAt" | "visitorFilters" | "lastUnfiltered" | "loading" | "error" | "listAnsweredAt">,
 ): OpenRolesValue | null {
-  const feed = finite(input.feedTotal) && input.feedTotal >= 0
-    ? { value: input.feedTotal, floor: !!input.feedFloor, asOf: input.feedAsOf ?? null }
+  const feed: OpenRolesValue | null = finite(input.feedTotal) && input.feedTotal >= 0
+    ? { value: input.feedTotal, floor: !!input.feedFloor, asOf: input.feedAsOf ?? null, basis: "counted" }
     : null;
   if (input.visitorFilters.length > 0 || input.loading || input.error || !finite(input.listTotal)) {
     return input.lastUnfiltered ?? (feed && feed.value > 0 ? feed : null);
   }
   const list = input.listTotal;
+  const dated: Pick<OpenRolesValue, "asOf" | "basis"> = input.boardReadAt
+    ? { asOf: input.boardReadAt, basis: "read" }
+    : { asOf: input.listAnsweredAt ?? null, basis: "counted" };
   if (!input.listFloor && list < LIST_COUNT_CAP) {
-    return { value: list, floor: false, asOf: input.boardReadAt ?? null };
+    return { value: list, floor: false, ...dated };
   }
   if (feed && feed.value >= list) return feed;
-  return { value: list, floor: true, asOf: input.boardReadAt ?? null, capped: true };
+  return { value: list, floor: true, ...dated, capped: true };
 }
 
 // ── THE VARIANT AND ITS SECTIONS ─────────────────────────────────────────────
 
-function sectionsFor(variant: LanderVariant, input: LanderInput): LanderSections {
+/**
+ * THE "ACTIVELY HIRING" CHIP NEEDS OPEN ROLES. The verdict it rests on
+ * (activelyHiringVerdict) reads only fills and relists over 90 days, so a
+ * board with none open today can still pass it; the legacy lander guarded the
+ * chip with open_roles > 0 ("a dead board is not hiring"), and a page reading
+ * "No open roles right now" beside "Actively hiring" contradicts itself. So
+ * the chip needs the standard variant AND a figure above zero.
+ */
+function sectionsFor(variant: LanderVariant, input: LanderInput, openRoles: OpenRolesValue | null): LanderSections {
   const shared = !!input.collision;
   const agency = input.agency && !shared;
   const usajobs = input.isUsajobs && !shared;
@@ -250,7 +280,7 @@ function sectionsFor(variant: LanderVariant, input: LanderInput): LanderSections
     claim: employer && variant !== "uncarried",
     similar: !shared && variant !== "uncarried",
     howApplying: !shared && variant !== "uncarried" && variant !== "zero",
-    employerChip: employer && input.verdict === "positive",
+    employerChip: employer && variant === "standard" && input.verdict === "positive" && !!openRoles && openRoles.value > 0,
   };
 }
 
@@ -274,13 +304,14 @@ export function pickVariant(input: LanderInput): LanderVariant {
 export function buildLanderModel(input: LanderInput): LanderModel {
   const variant = pickVariant(input);
   const answerable = !input.loading && !input.error && !input.budgetRefusal && finite(input.listTotal) && input.visitorFilters.length === 0;
+  const openRoles = variant === "uncarried" || variant === "zero" ? null : chooseOpenRoles(input);
   return {
     variant,
     name: landerName(input),
-    openRoles: variant === "uncarried" || variant === "zero" ? null : chooseOpenRoles(input),
+    openRoles,
     answerable,
     boards: variant === "collision" ? [...(input.collision ?? [])] : [],
-    sections: sectionsFor(variant, input),
+    sections: sectionsFor(variant, input, openRoles),
     visitorFiltered: input.visitorFilters.length > 0,
   };
 }
