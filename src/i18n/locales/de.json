@@ -4365,7 +4365,7 @@
     "countLineNoFeeds": "{{total}} offene Stellen — jede einzelne direkt aus dem eigenen Recruiting-System des Unternehmens.",
     "uncatCountLine2": "{{total}} offene Stellen, die wir keinem Bereich zuordnen konnten — ganz gewöhnliche Stellen, die unsere eigenen Bereichsregeln nicht kennen, jede direkt aus dem Bewerbersystem des Unternehmens.",
     "openInAgent": "In deinem Agenten öffnen",
-    "openInAgentTip": "Kopiert einen einzeiligen Prompt für deinen eigenen KI-Agenten: Er nennt die ID dieser Stelle und unseren MCP-Server und bittet den Agenten, die Stelle zu lesen und zu sagen, ob er sich bewerben kann.",
+    "openInAgentTip": "Kopiert einen einzeiligen Prompt für deinen eigenen KI-Agenten: Er nennt die ID dieser Stelle und unseren MCP-Server und bittet den Agenten, die Stelle zu lesen und dir den Bewerbungslink des Arbeitgebers zu geben. Bewerben tust du dich selbst.",
     "agentPromptCopied": "Prompt kopiert — füge ihn bei deinem Agenten ein. Er nennt diese Stelle und unseren MCP-Server.",
     "agentPromptFailed": "Prompt konnte nicht kopiert werden",
     "whichAgent": "Welcher Agent?",

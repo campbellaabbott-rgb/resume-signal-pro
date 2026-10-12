@@ -4365,7 +4365,7 @@
     "countLineNoFeeds": "{{total}} live na opening — bawat isa'y direkta mula sa sariling hiring system ng kumpanya.",
     "uncatCountLine2": "{{total}} bukas na posisyon na hindi namin naiuri sa isang larangan — karaniwang posisyon na hindi nakikilala ng sarili naming mga panuntunan sa larangan, bawat isa ay direkta mula sa sariling hiring system ng kumpanya.",
     "openInAgent": "Buksan sa iyong agent",
-    "openInAgentTip": "Kopyahin ang isang-linyang prompt para sa sarili mong AI agent: pinangangalanan nito ang id ng posting na ito at ang aming MCP server, at hinihiling sa agent na basahin ang posting at sabihin kung maaari itong mag-apply.",
+    "openInAgentTip": "Kopyahin ang isang-linyang prompt para sa sarili mong AI agent: pinangangalanan nito ang id ng posting na ito at ang aming MCP server, at hinihiling sa agent na basahin ang posting at ibigay sa iyo ang apply link ng employer. Ikaw mismo ang mag-a-apply.",
     "agentPromptCopied": "Nakopya ang prompt — i-paste ito sa iyong agent. Pinangangalanan nito ang posting na ito at ang aming MCP server.",
     "agentPromptFailed": "Hindi makopya ang prompt",
     "whichAgent": "Aling agent?",

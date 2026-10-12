@@ -4365,7 +4365,7 @@
     "countLineNoFeeds": "{{total}} ofertas ativas — todas diretamente do sistema de recrutamento de cada empresa.",
     "uncatCountLine2": "{{total}} vagas ativas que não conseguimos classificar numa área — funções correntes que as nossas próprias regras de área não reconhecem, todas diretamente do próprio sistema de recrutamento da empresa.",
     "openInAgent": "Abrir no seu agente",
-    "openInAgentTip": "Copia um prompt de uma linha para o seu próprio agente de IA: ele nomeia o id desta vaga e o nosso servidor MCP, e pede ao agente que leia a vaga e diga se consegue candidatar-se.",
+    "openInAgentTip": "Copia um prompt de uma linha para o seu próprio agente de IA: ele nomeia o id desta vaga e o nosso servidor MCP, e pede ao agente que leia a vaga e lhe dê o link de candidatura do empregador. A candidatura é feita por você.",
     "agentPromptCopied": "Prompt copiado — cole-o no seu agente. Ele nomeia esta vaga e o nosso servidor MCP.",
     "agentPromptFailed": "Não foi possível copiar o prompt",
     "whichAgent": "Qual agente?",

@@ -4365,7 +4365,7 @@
     "countLineNoFeeds": "{{total}} offres en ligne — chacune issue directement du système de recrutement de l'entreprise.",
     "uncatCountLine2": "{{total}} offres actives que nous n'avons pas pu classer dans un domaine — des postes ordinaires que nos propres règles de domaine ne reconnaissent pas, toutes issues directement du système de recrutement de l'entreprise.",
     "openInAgent": "Ouvrir dans votre agent",
-    "openInAgentTip": "Copie une consigne d'une ligne pour votre propre agent IA : elle nomme l'identifiant de cette offre et notre serveur MCP, et demande à l'agent de lire l'offre et de dire s'il peut postuler.",
+    "openInAgentTip": "Copie une consigne d'une ligne pour votre propre agent IA : elle nomme l'identifiant de cette offre et notre serveur MCP, et demande à l'agent de lire l'offre et de vous donner le lien de candidature de l'employeur. C'est vous qui postulez.",
     "agentPromptCopied": "Consigne copiée — collez-la dans votre agent. Elle nomme cette offre et notre serveur MCP.",
     "agentPromptFailed": "Impossible de copier la consigne",
     "whichAgent": "Quel agent ?",

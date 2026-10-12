@@ -4365,7 +4365,7 @@
     "countLineNoFeeds": "{{total}} actuele vacatures — stuk voor stuk rechtstreeks uit het eigen wervingssysteem van het bedrijf.",
     "uncatCountLine2": "{{total}} openstaande functies die we niet in een vakgebied konden indelen — doodgewone functies die onze eigen vakgebiedregels niet herkennen, allemaal rechtstreeks uit het wervingssysteem van het bedrijf zelf.",
     "openInAgent": "Openen in je agent",
-    "openInAgentTip": "Kopieer een prompt van één regel voor je eigen AI-agent: hij noemt het id van deze vacature en onze MCP-server, en vraagt de agent de vacature te lezen en te zeggen of hij kan solliciteren.",
+    "openInAgentTip": "Kopieer een prompt van één regel voor je eigen AI-agent: hij noemt het id van deze vacature en onze MCP-server, en vraagt de agent de vacature te lezen en je de sollicitatielink van de werkgever te geven. Solliciteren doe je zelf.",
     "agentPromptCopied": "Prompt gekopieerd — plak hem in je agent. Hij noemt deze vacature en onze MCP-server.",
     "agentPromptFailed": "Kon de prompt niet kopiëren",
     "whichAgent": "Welke agent?",

@@ -4365,7 +4365,7 @@
     "compareFillRateBounded": "hasta un {{pct}}% de sus vacantes se retira definitivamente en {{d}}d ({{lo}}–{{hi}}%)",
     "countLineNoFeeds": "{{total}} vacantes activas — todas directo del sistema de contratación de cada empresa.",
     "openInAgent": "Abrir en tu agente",
-    "openInAgentTip": "Copia una instrucción de una línea para tu propio agente de IA: nombra el id de esta oferta y nuestro servidor MCP, y pide al agente que lea la oferta y diga si puede postularse.",
+    "openInAgentTip": "Copia una instrucción de una línea para tu propio agente de IA: nombra el id de esta oferta y nuestro servidor MCP, y pide al agente que lea la oferta y te dé el enlace de solicitud del empleador. Te postulas tú.",
     "agentPromptCopied": "Instrucción copiada — pégala en tu agente. Nombra esta oferta y nuestro servidor MCP.",
     "agentPromptFailed": "No se pudo copiar la instrucción",
     "whichAgent": "¿Qué agente?",
