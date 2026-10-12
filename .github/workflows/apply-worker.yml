@@ -7,6 +7,8 @@
 # forever — not a bug, an unmade decision, deliberately left open because
 # wake-sender was written host-agnostic.
 #
+# (Switched off since 2026-10-11: see STARTED BY HAND ONLY below.)
+#
 # WHY ACTIONS AND NOT A SERVER. The worker needs a real browser (Playwright);
 # Supabase edge functions are Deno with no browser, so it cannot live there. It
 # also does nothing at all most of the time — applications arrive in bursts
@@ -41,10 +43,22 @@
 # a `ref` and rejects a body without one with 422. wake-sender's default body is
 # a human-readable reason, which GitHub will not accept.
 #
-# IF THE WAKE NEVER FIRES, NOTHING IS LOST. The schedule below sweeps every 30
-# minutes, so a packet whose wake failed is sent late rather than never. That is
-# the same reasoning as wake-sender swallowing its own errors: waking is an
-# optimisation on a system that already drains without it.
+# STARTED BY HAND ONLY, SINCE 2026-10-11. The owner switched the server-side
+# apply agent off (wave 4, the apply pivot: people apply themselves through
+# their own AI, and nothing is submitted for them). The six-hourly backstop
+# schedule that used to sit under `on:` is removed, so this workflow never
+# starts on its own, and apply-broker hands a worker no packet while
+# APPLY_AGENT_ON in supabase/functions/_shared/apply-agent-switch.ts is off.
+# workflow_dispatch stays, so the owner can still start a run by hand (Actions,
+# "Run workflow", or `gh workflow run apply-worker.yml`) while working through
+# worker/FIRST-SUBMISSION.md; that procedure's own submit runs locally with
+# src/dryrun.ts and does not go through the broker. apply-agent, which held
+# the wake, is switched off too, so nothing dispatches this automatically.
+#
+# Turning the agent back on is three changes, each reviewed: the switch, the
+# crons (unscheduled by name in 20261011130000), and a schedule here. The
+# backstop it had was `17 */6 * * *`, priced at about 120 runs and 480 billable
+# minutes a month (an npm install and a Chromium download per run).
 
 name: Apply worker
 
@@ -55,20 +69,6 @@ on:
         description: "Why this run was started (recorded in the log)"
         required: false
         default: "manual"
-  schedule:
-    # BACKSTOP ONLY, and priced deliberately.
-    #
-    # Every run pays for an npm install and a Chromium download whether or not
-    # a single application is waiting — about four billable minutes. At the
-    # */30 this originally used, that is ~1,440 runs and ~5,800 minutes a
-    # month against a 2,000-minute quota on a private repo: roughly three times
-    # over, burned almost entirely on empty queues.
-    #
-    # Every six hours is ~120 runs and ~480 minutes, comfortably inside the
-    # quota. The cost of the longer gap is only paid when the WAKE has failed,
-    # because workflow_dispatch is the real path — a purchase pokes this within
-    # seconds. Widening the backstop does not slow the normal case down at all.
-    - cron: "17 */6 * * *"
 
 # One worker at a time. Two runners claiming the same queue is not corruption —
 # claims are atomic — but it doubles the request rate against employers' forms

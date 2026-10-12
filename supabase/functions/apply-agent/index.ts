@@ -29,6 +29,7 @@ import { classifyQuestion, cleanQuestionLabel } from "../_shared/application-que
 import { ACCOUNT_SUBSCRIPTION_RPC, accountSubscription, effectiveDailyCap, normalizeEmail, packetIsFunded, rowIsEntitled } from "../_shared/agent-entitlement.ts";
 import { PASS_TIER } from "../_shared/pass.ts";
 import { nextRunStamp } from "../_shared/run-stamp.ts";
+import { APPLY_AGENT_ON } from "../_shared/apply-agent-switch.ts";
 
 // Bumped whenever this function's behaviour changes. It rides along in the run
 // stamp so "the new code has not deployed yet" and "the code deployed but has
@@ -60,7 +61,12 @@ import { nextRunStamp } from "../_shared/run-stamp.ts";
 // 2026-10-09.71: a notice inside the question's own clause is not the
 // question, "the country in which you are applying" is the posting's, and a
 // waiting packet stores today's refusal (review of S11-012, S11-060, S11-042).
-const BUILD_VERSION = "2026-10-09.71";
+// 2026-10-11.13: SWITCHED OFF (wave 4, the apply pivot; APPLY_AGENT_ON in
+// _shared/apply-agent-switch.ts). An authorised run answers switchedOff and
+// reads no mandate, prepares nothing, releases nothing, wakes no worker and
+// writes no run stamp; the hourly cron is unscheduled by name in
+// 20261011130000. The code below is kept, dormant, with its tests.
+const BUILD_VERSION = "2026-10-11.13";
 // Provable from outside with no key: the CORS preflight and every response
 // carry this in x-fn-build.
 const FN_BUILD = `apply-agent.${BUILD_VERSION}`;
@@ -264,6 +270,22 @@ serve(async (req) => {
     return new Response(JSON.stringify({ resumesBucket: await ensureResumeBucket() }), {
       headers: { "content-type": "application/json", "x-fn-build": FN_BUILD },
     });
+  }
+
+  // SWITCHED OFF (see BUILD_VERSION). Answered to an authorised caller only,
+  // after the gate above, so a stranger still learns nothing but the build.
+  // Nothing past this line runs: no mandate is read, no packet is prepared or
+  // released, no worker is woken. The purchase kick (agent_prepare_now) and a
+  // hand run land here too. The run stamp is left as it was, so job-board's
+  // status shows the last real run and lastCronAt stops advancing.
+  if (!APPLY_AGENT_ON) {
+    console.log(`[APPLY-AGENT] switched off: a ${trigger} run did nothing`);
+    return new Response(JSON.stringify({
+      switchedOff: true,
+      version: BUILD_VERSION,
+      trigger,
+      note: "The server-side apply agent is switched off (owner decision 2026-10-11). Nothing was read, prepared or released.",
+    }), { headers: { "content-type": "application/json", "x-fn-build": FN_BUILD } });
   }
   const bucketState = await ensureResumeBucket();
 

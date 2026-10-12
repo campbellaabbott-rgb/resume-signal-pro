@@ -51,6 +51,7 @@ import { checkAgentByEmail } from "../_shared/agent.ts";
 import { ACCOUNT_SUBSCRIPTION_RPC, accountSubscription, normalizeEmail, rowIsEntitled, type AccountSubscriptionRow } from "../_shared/agent-entitlement.ts";
 import { isSendableVendor } from "../_shared/apply-automation.ts";
 import { networkBucket } from "../_shared/network-bucket.ts";
+import { APPLY_AGENT_ON } from "../_shared/apply-agent-switch.ts";
 
 // Provable from outside without signing in: the preflight carries it.
 // 2026-10-05.2: the subscription is the account's by user id
@@ -60,7 +61,13 @@ import { networkBucket } from "../_shared/network-bucket.ts";
 // 2026-10-10.24: two more decisions through agent_packet_decide: retry a
 // released packet that stopped for a transient reason (S11-043), and record
 // that an unconfirmed send did not arrive (S11-044).
-const FN_BUILD = "agent-access.2026-10-10.24";
+// 2026-10-11.13: the server-side apply agent is switched off (wave 4, the
+// apply pivot): approve and retry, the two decisions that hand a packet to a
+// worker, answer 409 agent_switched_off, because no worker will claim it and
+// "released" would read as "on its way". cancel and not_sent are unchanged;
+// the status read of a plan or a pass reports it as before and adds
+// agentSwitchedOff, so a page can say nothing will be sent for it.
+const FN_BUILD = "agent-access.2026-10-11.13";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -153,6 +160,11 @@ serve(async (req) => {
     if (action === "approve" || action === "cancel" || action === "retry" || action === "not_sent") {
       const id = Number(body.id);
       if (!Number.isInteger(id) || id <= 0) return json({ ok: false, reason: "bad_request" }, 400);
+      // Switched off (_shared/apply-agent-switch.ts): nothing would ever
+      // claim a released packet, so none is released.
+      if ((action === "approve" || action === "retry") && !APPLY_AGENT_ON) {
+        return json({ ok: false, reason: "agent_switched_off" }, 409);
+      }
       if (action === "approve" || action === "retry") {
         // Only a vendor the worker can complete may be released: a packet for
         // any other is prepared for the candidate to send by hand, and
@@ -245,6 +257,10 @@ serve(async (req) => {
       pass,
       ...(stale ? { cached: true } : {}),
       ...(unbound ? { subscriptionUnbound: true } : {}),
+      // What a plan or pass bought earlier can no longer do: nothing is
+      // prepared or sent for it. `active` still reports the entitlement, so
+      // the account page keeps its cancel and portal controls.
+      ...(APPLY_AGENT_ON ? {} : { agentSwitchedOff: true }),
     });
   } catch (error) {
     console.error("[AGENT-ACCESS] Error:", String((error as Error)?.message ?? error).slice(0, 200));

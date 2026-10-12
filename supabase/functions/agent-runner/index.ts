@@ -26,6 +26,7 @@ import { nextRunStamp } from "../_shared/run-stamp.ts";
 // and never able to prove what it does. These two decide whether a subscriber
 // sees a quarter of the board, which is worth more than a text match.
 import { applyCategory, applyCountries, applyMaxAge, applyServingFences, searchRunRow } from "../_shared/mandate-reach.ts";
+import { APPLY_AGENT_ON } from "../_shared/apply-agent-switch.ts";
 
 // Bumped whenever this function changes shape, so a 403 can say WHICH bundle
 // refused — the difference between "the gate is live" and "the old open build
@@ -48,7 +49,12 @@ import { applyCategory, applyCountries, applyMaxAge, applyServingFences, searchR
 // 2026-10-05.1: each saved search's own countries reach its run (L9-04).
 // 2026-10-05.2: entitlement read by user id (agent_subscription_rows), never
 // by the mandate's address.
-const BUILD_VERSION = "2026-10-09.2";
+// 2026-10-11.13: SWITCHED OFF (wave 4, the apply pivot; APPLY_AGENT_ON in
+// _shared/apply-agent-switch.ts). An authorised run answers switchedOff and
+// scans nothing, scores nothing, queues nothing and writes no run stamp; the
+// nightly cron is unscheduled by name in 20261011130000. The code below is
+// kept, dormant, with its tests.
+const BUILD_VERSION = "2026-10-11.13";
 // Provable from outside with no key: the preflight carries it.
 const FN_BUILD = `agent-runner.${BUILD_VERSION}`;
 
@@ -179,6 +185,19 @@ serve(async (req) => {
   let body: Record<string, unknown> = {};
   try { body = await req.json(); } catch { /* empty body is a hand run */ }
   const trigger = body?.source === "cron" ? "cron" : "manual";
+
+  // SWITCHED OFF (see BUILD_VERSION), answered after the gate above. Nothing
+  // past this line runs, the queue hygiene included (agent-queue-retention,
+  // which stays scheduled, expires and prunes the queue on its own).
+  if (!APPLY_AGENT_ON) {
+    console.log(`[AGENT-RUNNER] switched off: a ${trigger} run did nothing`);
+    return json({
+      switchedOff: true,
+      version: BUILD_VERSION,
+      trigger,
+      note: "The server-side apply agent is switched off (owner decision 2026-10-11). No posting was scanned and nothing was queued.",
+    });
+  }
 
   // Queue hygiene first: unactioned picks older than 48h expire (the cron
   // retention job also does this; doing it here keeps a manual run honest).

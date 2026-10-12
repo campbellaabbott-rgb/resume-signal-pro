@@ -22,6 +22,7 @@ import type { PGlite } from "@electric-sql/pglite";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+import { APPLY_AGENT_SWITCH_ON } from "./helpers/apply-agent-switch-on";
 import { agentDb } from "./helpers/agent-db";
 import { PgSupabase } from "./helpers/pglite-supabase";
 
@@ -61,6 +62,9 @@ const STUBS: Record<string, string> = {
   "https://esm.sh/stripe@18.5.0": STRIPE_STUB,
   "https://esm.sh/@supabase/supabase-js@2.39.3": CLIENT_STUB,
   "https://esm.sh/@supabase/supabase-js@2": CLIENT_STUB,
+  // The agent is switched off and its plan retired (2026-10-11); this suite
+  // proves the dormant code, so it runs with the switch on.
+  ...APPLY_AGENT_SWITCH_ON,
 };
 
 const W = "77777777-7777-7777-7777-777777777777"; // a subscriber whose plan is bound to her account

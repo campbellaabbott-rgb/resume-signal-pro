@@ -44,17 +44,29 @@ import {
 } from "../_shared/pass.ts";
 import { checkoutContextFromRequest, recordCheckoutStart } from "../_shared/checkout-start.ts";
 import { checkoutOrigin, euConsentAnswer, euConsentRefusal, policyMetadata, sessionPolicy } from "../_shared/checkout-policy.ts";
+import { AGENT_PRODUCTS_ON_SALE } from "../_shared/apply-agent-switch.ts";
+import { retiredCheckoutAnswer } from "../_shared/apply-agent-retired.ts";
 
-// deploy-stamp: 2026-10-09T13:00Z
+// NO LONGER SOLD (owner decision 2026-10-11, the apply pivot). While
+// AGENT_PRODUCTS_ON_SALE is off, every POST is answered 410 with the sentence
+// from _shared/apply-agent-retired.ts, BEFORE the token check, the rate bucket
+// or Stripe: a signed-out visitor is not sent to sign in to learn it is gone,
+// and nothing is counted or charged. The purchase code below is unchanged and
+// dormant; its tests run it with the switch stubbed on. A pass bought earlier
+// still reads and repairs exactly as before (agent-pass-status and the webhook
+// are untouched), so a checkout paid in the minutes around this deploy still
+// becomes a pass the owner can honour or refund.
+
+// deploy-stamp: 2026-10-11T13:00Z
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
 // The name and the build sit on separate lines, as in agent-pass-status: the
 // pass guard reads a standalone number on any line naming the pass, and an
 // October date carries one. 2026-10-09.62 (wave-3 fix round integration)
 // sorts after every branch's string, wave3/payments-account's 2026-10-09.1
-// included, which a September date could not.
+// included, which a September date could not. 2026-10-11.13: retired (wave 4).
 const FN_NAME = "create-pass-checkout";
-const FN_BUILD = `${FN_NAME}.2026-10-09.62`;
+const FN_BUILD = `${FN_NAME}.2026-10-11.13`;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -110,6 +122,19 @@ type OpenPass = {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
+
+  // Retired: see the note above. The body is read off a clone only for the
+  // page's language; identity is never read from it.
+  if (!AGENT_PRODUCTS_ON_SALE) {
+    const asked = await req.clone().json().catch(() => ({}));
+    const answer = retiredCheckoutAnswer("agent_pass", {
+      body: asked,
+      acceptLanguage: req.headers.get("accept-language"),
+      origin: checkoutOrigin(req.headers.get("origin"), (k: string) => Deno.env.get(k)),
+    });
+    console.log("[CREATE-PASS-CHECKOUT] refused: no longer sold");
+    return json(answer.body, answer.status);
+  }
 
   // The buyer, from the VERIFIED token — the anon-key client validates the
   // JWT; the body is never consulted for identity.
