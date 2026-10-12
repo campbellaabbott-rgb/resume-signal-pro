@@ -12,6 +12,10 @@
  *     seven pills half-clipped (axe: partially obscured targets);
  *   - the orientation box's field pills arrive with the counts at ~2.3s and
  *     grew the box 145 -> 183px under the reader: /jobs CLS 0.063 -> 0.106.
+ *     The after-audit traced the rest of that shift: on a desktop the board
+ *     opens its first posting by itself ~1.4s in, which wrote it into the
+ *     recent-jobs list and hid the "Try:" starting points (a 38px row) above
+ *     the box, mid-visit. The row now asks the history as it stood on arrival.
  * Held on the source: jsdom computes no layout; the after-audit measures it.
  */
 import { describe, expect, it } from "vitest";
@@ -53,5 +57,17 @@ describe("the orientation box does not grow when its counts arrive", () => {
   it("its pill row holds one row open before exactCats answers", () => {
     const box = JOBS.slice(JOBS.indexOf('t("jobsPage.orientSub"'));
     expect(box.slice(0, 600)).toMatch(/className="flex flex-wrap gap-2 mb-3 min-h-\[34px\]"/);
+  });
+});
+
+describe("the first-visit starting points do not vanish when the board opens a posting itself", () => {
+  it("the Try: row reads the recent-jobs count captured on arrival, not the live list", () => {
+    expect(JOBS).toMatch(/const recentAtArrival = useRef\(recentJobs\.length\)\.current;/);
+    const before = JOBS.slice(0, JOBS.indexOf('t("jobsPage.tryLabel"'));
+    const cond = before.slice(before.lastIndexOf("&& ("), before.length).length < 400
+      ? before.slice(Math.max(0, before.lastIndexOf("&& (") - 120))
+      : "";
+    expect(cond, "the Try: row's condition moved: re-point this guard").toMatch(/recentAtArrival === 0 && !q && activeBoardFilterKeys\(filterState\)\.length === 0/);
+    expect(cond).not.toMatch(/recentJobs\.length === 0/);
   });
 });

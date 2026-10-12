@@ -2928,6 +2928,13 @@ function JobsBoard({ boardId }: { boardId: string }) {
   const [recentJobs, setRecentJobs] = useState<Array<{ id: string; title: string; company: string }>>(() => {
     try { return JSON.parse(localStorage.getItem("rb_recent_jobs") ?? "[]"); } catch { return []; }
   });
+  // The visitor's history AS IT STOOD ON ARRIVAL. On a desktop the board opens
+  // its first posting by itself ~1.4s in, which wrote it into rb_recent_jobs
+  // and hid the "Try:" starting points mid-visit: the row vanished under the
+  // reader and pulled the orientation box and the list up 38px (CLS 0.06 of
+  // /jobs's 0.10 at 1280). The row's question is "is this a first visit?",
+  // which a posting the board opened for them does not answer.
+  const recentAtArrival = useRef(recentJobs.length).current;
   // U2: honest "posted today" headline count (company-stated dates only).
   const [newToday, setNewToday] = useState<number | null>(null);
   // The board caps counting for speed, so a broad window comes back as exactly
@@ -10265,7 +10272,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                 at all — including the six added since this line was written —
                 means the visitor has expressed an intent and does not need the
                 orientation panel. */}
-            {recentJobs.length === 0 && !q && activeBoardFilterKeys(filterState).length === 0 && (
+            {recentAtArrival === 0 && !q && activeBoardFilterKeys(filterState).length === 0 && (
               <span className="hidden sm:inline-flex flex-wrap items-center gap-2 ml-1">
                 <span className="text-[11px] text-muted-foreground">{t("jobsPage.tryLabel", "Try:")}</span>
                 <button type="button" onClick={() => { setWorkMode("remote"); setRemoteOnly(false); setExperience("entry"); setCountry("US"); }}
