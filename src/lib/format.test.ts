@@ -41,7 +41,7 @@ describe("count", () => {
 describe("money", () => {
   it("compacts a headline figure in the reader's language", () => {
     expect(money(14.5e9, "USD", { compact: true, lng: "en" })).toBe("$14.5B");
-    expect(money(14.5e9, "USD", { compact: true, lng: "de" }).replace(/ /g, " ")).toBe("14,5 Mrd. $");
+    expect(money(14.5e9, "USD", { compact: true, lng: "de" }).replace(/\u00a0/g, " ")).toBe("14,5 Mrd. $");
   });
 
   it("keeps cents only when the figure has them", () => {
