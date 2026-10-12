@@ -20,6 +20,18 @@ import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { TERMS_VERSION } from "@/config/terms";
 import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
 
+// The page as it ships FIRST, whatever the switches read today: the follow-up
+// publish (branch r1/flags) turns Google and recovery on in the config alone,
+// and this file must keep proving the off path (r1-signin-flags-on.test.tsx
+// proves the on path the same way).
+vi.mock("@/config/auth-providers", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/config/auth-providers")>()),
+  GOOGLE_SIGN_IN_LIVE: false,
+  CODE_SIGN_IN_LIVE: false,
+  RECOVERY_LIVE: false,
+  APPLE_SIGN_IN_LIVE: false,
+}));
+
 const h = vi.hoisted(() => ({
   listeners: [] as Array<(event: string, s: unknown) => void>,
   session: null as unknown,
