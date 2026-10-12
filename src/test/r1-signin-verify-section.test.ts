@@ -134,6 +134,18 @@ describe("section 95: the Auth chunk and the switches", () => {
     expect(late.filter((l) => l.startsWith("FAIL")), show(late)).toEqual([]);
   });
 
+  it("a live page offering Google or Forgot password before auth-signed-in serves fails on the controls themselves, marks or not (S12-057 deploy order)", () => {
+    // Even with marks that read "off" or cannot be read, the controls in the
+    // bundle say what the page offers.
+    const offers = site({ marks: `${marks()},"rb-auth:google=on","rb-auth:recovery=on"`, authExtra: `const g="Continue with Google",f="Forgot password?";` });
+    const early = run(offers, "auth-signed-in.2026-10-13.4").lines;
+    expect(has(early, "FAIL", /offers Google and "Forgot password\?" while auth-signed-in does not serve its R1 build: the frontend was published before section 96 passed/), show(early)).toBe(true);
+    const late = run(offers, "auth-signed-in.2026-10-14.1").lines;
+    expect(has(late, "PASS", /offers Google and "Forgot password\?", and auth-signed-in serves its R1 build/), show(late)).toBe(true);
+    const plain = run(site(), "auth-signed-in.2026-10-13.4").lines;
+    expect(plain.some((l) => /offers Google|Forgot password/.test(l)), "a page offering neither was judged on them").toBe(false);
+  });
+
   it("Apple on always fails", () => {
     expect(has(run(site({ marks: marks({ apple: "on" }) }), "auth-signed-in.2026-10-14.1").lines, "FAIL", /Apple sign-in is ON: owner decision D10/)).toBe(true);
   });

@@ -234,6 +234,16 @@ describe("password recovery: the guard is awaited before the new password", () =
     expect(h.toast, "the 'old password cleared' notice popped up over the reset form").not.toHaveBeenCalled();
   });
 
+  it("a guard whose auth log cannot vouch (audit_unconfirmed) clears nothing ever, so the reset goes on (no lock-out while GoTrue's log is unproven)", async () => {
+    h.invoke.mockResolvedValue({ data: null, error: { message: "refused", context: { status: 409, clone: () => ({ json: async () => ({ error: "unconfirmed", reason: "audit_unconfirmed", proven: false, passwordCleared: false }) }) } } });
+    h.updateUser.mockResolvedValue({ data: {}, error: null });
+    await reachChecking();
+    const field = await screen.findByLabelText("New password", {}, SLOW);
+    fireEvent.change(field, { target: { value: "a-new-long-password" } });
+    await press("Set new password");
+    expect(h.updateUser).toHaveBeenCalledWith({ password: "a-new-long-password" });
+  });
+
   it("a guard that refuses sets no password", async () => {
     h.invoke.mockResolvedValue({ data: null, error: { message: "refused", context: { status: 409, clone: () => ({ json: async () => ({ error: "conflict", reason: "email_changed_after_proof" }) }) } } });
     await reachChecking();

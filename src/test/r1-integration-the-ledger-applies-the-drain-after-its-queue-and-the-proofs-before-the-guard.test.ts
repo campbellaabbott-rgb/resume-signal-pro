@@ -139,6 +139,26 @@ describe("the critical-path reservation", () => {
 });
 
 describe("the two shared files R1 declared are R1's where it says, and the code behind each runs", () => {
+  it("the three pages R1 declared (S12-090) are R1's, and each one reads from the stash what the first script moved", () => {
+    const reads: Record<string, RegExp> = {
+      "src/pages/AgentPass.tsx": /stashedSessionIdFor\("\/agents\/pass", null\)/,
+      "src/pages/DataApi.tsx": /apiKeyTokenFromHash\(stashedFragment\(window\.location\.hash, "\/data-api"\)\)/,
+      "src/pages/Index.tsx": /stashedSessionIdFor\("\/", searchParams\.get\("session_id"\)\)/,
+    };
+    for (const [file, re] of Object.entries(reads)) {
+      expect(L.sharedOwner(POLICY.sharedFiles, file), file).toBe("critical-path");
+      expect(codeOf(readFileSync(resolve(ROOT, file), "utf8")), file).toMatch(re);
+    }
+    const html = readFileSync(resolve(ROOT, "index.html"), "utf8");
+    expect(html, "the first script no longer moves session_id on every path").toMatch(/v = q\.get\("session_id"\); if \(v !== null\)/);
+  });
+
+  it("the proofs' order rule names the frontend gate the first publish needs (Google and recovery on: S12-057)", () => {
+    const why = String(POLICY.migrationOrder["20261014110000"]?.why ?? "");
+    expect(why).toMatch(/frontend is published only once verify section 96 PASSes/);
+    expect(why).toMatch(/section 95 FAILs a live sign-in page that offers Google or Forgot password/);
+  });
+
   it("supabase/config.toml: owned by critical-path, and each block it opens leads to a function that checks its own caller", () => {
     expect(L.sharedOwner(POLICY.sharedFiles, "supabase/config.toml")).toBe("critical-path");
     const toml = readFileSync(resolve(ROOT, "supabase/config.toml"), "utf8");

@@ -114,7 +114,14 @@ export function ResetFlow({ next, initialSession }: { next: string; initialSessi
       setNotice((t) => t("auth.reset.signedOut", "For your security every device was signed out. Ask for a new code to finish."));
       return "request";
     }
-    return r.state === "done" && r.proven ? "password" : "blocked";
+    if (r.state === "done" && r.proven) return "password";
+    // The auth log could not vouch for this sign-in (GoTrue may not write it
+    // to Postgres at all: unproven until live). Then the guard clears nothing,
+    // now or on any later call, so the new password is safe to set, and
+    // setting it as this session ends every other session anyway. Blocking
+    // here would lock out exactly the accounts recovery exists for.
+    if (r.state === "failed" && r.status === 409 && r.reason === "audit_unconfirmed") return "password";
+    return "blocked";
   };
 
   useEffect(() => {

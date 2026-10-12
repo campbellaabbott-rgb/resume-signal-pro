@@ -89,6 +89,15 @@ judge("code",flags.code,"Emailed sign-in code");
 judge("recovery",flags.recovery,"Password recovery");
 judge("apple",flags.apple,"Apple sign-in");
 if(flags.google==="on"&&!googleUi)say("FAIL","Google is on but the bundle has no auth.google.continue control");
+// THE DEPLOY ORDER, READ FROM THE BUNDLE ITSELF (S12-057: Google and recovery
+// ship in the first publish). Whatever the marks say, a live sign-in page that
+// offers Google or "Forgot password?" while auth-signed-in does not serve its
+// R1 build has been published before section 96 passed: a Google sign-in or a
+// reset proves a mailbox no guard acts on.
+const forgotUi=/auth\.forgot|Forgot password\?/.test(corpus);
+const googleCopy=googleUi||/Continue with Google/.test(corpus);
+if(r1&&!guard&&(forgotUi||googleCopy))say("FAIL","the live sign-in page offers "+[googleCopy?"Google":"",forgotUi?"\"Forgot password?\"":""].filter(Boolean).join(" and ")+" while auth-signed-in does not serve its R1 build: the frontend was published before section 96 passed (deploy order: migration 20261014110000 and the functions first, section 96 PASS, then the frontend)");
+else if(r1&&guard&&(forgotUi||googleCopy))say("PASS","the live sign-in page offers "+[googleCopy?"Google":"",forgotUi?"\"Forgot password?\"":""].filter(Boolean).join(" and ")+", and auth-signed-in serves its R1 build");
 if(flags.code==="on")say("INFO","the emailed code is the main button: confirm the owner P0 test and the three-codes-in-ten-minutes rate check passed first (D2)");
 if(flags.recovery==="on")say(resetUi&&codeUi?"PASS":"FAIL","recovery is on: the bundle "+(resetUi&&codeUi?"carries":"lacks")+" the reset form and the one-time-code field");
 }catch(e){say("INFO","section 95 stopped early: "+String(e).slice(0,160))}
