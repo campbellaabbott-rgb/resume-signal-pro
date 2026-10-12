@@ -158,7 +158,12 @@ describe("no reader-facing surface publishes companiesFacet.count", () => {
     const from = c.indexOf('if (action === "company-suggest")');
     expect(from).toBeGreaterThan(-1);
     const block = c.slice(from, c.indexOf('if (action === "exists")', from));
-    expect(block).toMatch(/companiesOpen/);
+    // Since .93 the employer rows are read by suggestEmployers, which the list's
+    // name resolution shares; the open map is read there.
+    expect(block).toMatch(/const merged = await suggestEmployers\(client\);/);
+    const reader = c.slice(c.indexOf("async function suggestEmployers("), c.indexOf("async function isMaintenance("));
+    expect(reader).toMatch(/companiesOpen/);
+    expect(reader, "the employer rows are folded per employer").toMatch(/return mergeCompanyFacet\(/);
     const emitted = block.slice(block.indexOf("companies: hit.slice(0, 12)"));
     expect(emitted).toMatch(/typeof c\.open === "number"/);
     expect(emitted, "the forbidden number must not be returned").not.toMatch(/count: c\.count/);

@@ -74,7 +74,7 @@ import { computeFit, resumeRoleTerms, scanResume } from "../_shared/fit-score.ts
 import { sanitizeTerm } from "../_shared/location-terms.ts";
 // The board's place terms: _shared's aliases, and "City, ST" as the city in that state (query-place.ts).
 import { liftTrailingPlace, placeTerms as locationTerms, rankedPlaceParam as rankedLocationParam } from "./query-place.ts";
-import { resolveCompanyNames, type CompanyScope } from "./company-names.ts";
+import { askedByName, resolveCompanyNames, type CompanyScope } from "./company-names.ts";
 import { nextPassEndStep, PASS_END_RETRIES, PASS_END_STEPS, stalledPassEndStep, withStepReceipt, isPassEndStep, type PassEndRow, type PassEndStep, type StepReceipt } from "./pass-end.ts";
 import {
   POSTED_BACKFILL_VERSION,
@@ -89,7 +89,7 @@ import { decideRekick } from "./chain-watchdog.ts";
 import { advanceProgress, baseConsumedPrefix, isPassDone, type RefreshProgress } from "./rotation.ts";
 import { CANARIES, rawItemCount, aggregateVendorHealth, type CanaryResult } from "./vendor-canary.ts";
 import { detectExperience, isExperienceBand } from "./experience.ts";
-import { categoryParam, extraFilterParams, filterViolations, isUnfiltered, normalizeFilters, payParams, rpcBlindFilters, rescueVendorsParam, SALARIED_PERIODS, sendableSourcesParam, splitPage, salaryFromQueryText, salaryTokenInQuery, WIDENING_FILTERS } from "./filters.ts";
+import { categoryParam, COMPANY_TOKEN_SHAPE, extraFilterParams, filterViolations, isUnfiltered, normalizeFilters, payParams, rpcBlindFilters, rescueVendorsParam, SALARIED_PERIODS, sendableSourcesParam, splitPage, salaryFromQueryText, salaryTokenInQuery, WIDENING_FILTERS } from "./filters.ts";
 import { foldName, foldTypeahead, pickRoute, rerankWindow, RETRIEVER_FOR, ringWordPattern, simpleRouteFilters, singularReading, splitExclusions, startsWithWord, stopwordTokens, titleExcluded, type TitleFilter } from "./search-routing.ts";
 import { planRankedPage, RANKED_WINDOW, RING_WINDOW, rowsReached, symbolLiteralRows } from "./paging.ts";
 import { collapseClusters, GROUP_OVERFETCH, interleaveByCompany, rowClusterKey, visibleCategories, mergeCompanyFacet } from "./clusters.ts";
@@ -7618,7 +7618,7 @@ function liftIntentFilters(
   }
   // "nurse jobs in Texas": a trailing place the board knows becomes the
   // location filter (query-place.ts), unless the caller already set one.
-  const place = sanitizeTerm(String(body.location ?? "")) || body.country ? null : liftTrailingPlace(residual, QUERY_FILLER);
+  const place = ["location", "country"].some((f) => sanitizeTerm(String(body[f] ?? ""))) ? null : liftTrailingPlace(residual, QUERY_FILLER);
   if (place) {
     residual = place.head;
     Object.assign(patch, place.patch);
@@ -9019,10 +9019,8 @@ async function handleRequest(req: Request): Promise<Response> {
           // anyway; saying it explicitly means the attribution does not depend
           // on which credential this probe happens to use.)
           const body = JSON.stringify({ action: "list", limit: 60, groupSimilar: false, caller: "maintenance", ...payload });
-          // IN-PROCESS (wave 4): the request goes to this bundle's own handler,
-          // not over the network. The runtime caps self-calls per trace, and the
-          // audit's three paging walks were refused as RateLimitError on
-          // 2026-10-12, leaving it incomplete. Same handler, same answer.
+          // IN-PROCESS (.93): this bundle's own handler, not the network, whose
+          // per-trace cap on self-calls left the audit incomplete on 2026-10-12.
           const send = () => handleRequest(new Request(self, {
             method: "POST",
             headers: { "content-type": "application/json", apikey: svc, Authorization: `Bearer ${svc}` },
@@ -9818,11 +9816,16 @@ async function handleRequest(req: Request): Promise<Response> {
       // An employer asked for by NAME resolves to its boards, or is named as
       // unresolved with candidates (company-names.ts); only a name costs a read.
       let named: CompanyScope | null = null;
-      if (Array.isArray(body.companies) && body.companies.some((c) => typeof c === "string" && !CATALOGUE_TOKENS.has(c))) {
-        named = resolveCompanyNames(body.companies, CATALOGUE_TOKENS, await suggestEmployers(client));
-        if (named.resolved.length || named.unresolved.length) body.companies = named.companies;
-        // Every name refused and nothing else asked: the empty scope below, never the whole board.
-        if (named.unresolved.length && !named.companies.length) return json({ ...uncarriedListReply(named.unresolved.map((u) => u.asked)), ...companyNameNotes(named) });
+      const askedNames = askedByName(body, CATALOGUE_TOKENS);
+      if (askedNames) {
+        named = resolveCompanyNames(askedNames, CATALOGUE_TOKENS, await suggestEmployers(client));
+        if (named.resolved.length || named.unresolved.length) body = { ...body, companies: named.companies };
+        // Every name refused and nothing else asked: the empty scope, never the whole board. A value no
+        // token could be (a space, a quote) is a refused filter value, named as normalizeFilters names it.
+        if (named.unresolved.length && !named.companies.length) {
+          const notToken = named.unresolved.some((u) => !COMPANY_TOKEN_SHAPE.test(u.asked));
+          return json({ ...uncarriedListReply(named.unresolved.map((u) => u.asked)), ...companyNameNotes(named), ...(notToken ? { ignoredFilters: ["companies"] } : {}) });
+        }
       }
       // An employer scope the catalogue does not carry is named, never read
       // as an employer with no openings (uncarried.ts, sweep S11-020).
@@ -11526,7 +11529,7 @@ function companyNameNotes(n: CompanyScope): Record<string, unknown> {
 /** A list answer with the name scope said on it; a refused name is a dropped filter value, so "companies" is ignored too. */
 async function withCompanyNames(res: Response, n: CompanyScope | null): Promise<Response> {
   if (!n || (!n.resolved.length && !n.unresolved.length)) return res;
-  const out = await res.clone().json().catch(() => null) as Record<string, unknown> | null;
+  const out = await boundBody(res.clone(), MAX_REQUEST_BYTES).json().catch(() => null) as Record<string, unknown> | null;
   if (!out || typeof out !== "object") return res;
   const ig = Array.isArray(out.ignoredFilters) ? out.ignoredFilters as string[] : [];
   return json({

@@ -115,6 +115,7 @@ describe("the shipped list resolves a name and names what it could not", () => {
     expect(r.unknownCompanies).toEqual(["Humana Hospitals Worldwide"]);
     expect(r.total).toBe(0);
     expect((r.companiesUnresolved as Array<{ asked: string }>)?.[0]?.asked).toBe("Humana Hospitals Worldwide");
+    expect(r.ignoredFilters, "a value no token could be is a refused filter value").toContain("companies");
     expect(board.db.queries.some((q: Query) => q.rpc === "search_jobs" || q.table === "job_board_postings"), "the board was searched without the scope").toBe(false);
   });
 

@@ -1,23 +1,15 @@
 /**
  * A PLACE TYPED INTO THE SEARCH BOX IS A PLACE (wave 4, job-board .93).
  *
- * "nurse jobs in Texas" searched titles for nurse AND texas: 104 rows, against
- * 1,592 for q "nurse" with location "Texas" (live 2026-10-12), and it is the
- * first thing a person types into Claude or ChatGPT. A trailing
- * "in / near / around <place>" now moves into the location filter (a country
- * into the country filter), but only when the board already knows the place by
- * name: a US state or Canadian province, a metro alias, a city in
- * normalize.ts's city table, "City, ST", or a country. Anything else stays
- * search text, so "Engineer in Training", "Head of Growth in Fintech" and
- * "Sign in specialist" are untouched. The move is named in intentFilters and
- * undone by noIntent, like every other lift.
+ * "nurse jobs in Texas" matched 104 titles; q "nurse" + location "Texas" 1,592
+ * (live 2026-10-12). A trailing "in / near / around <place>" moves into the
+ * location (or country) filter only when the board knows the place by name: a
+ * state or province, a metro alias, normalize.ts's city table, "City, ST" or a
+ * country. "Engineer in Training" stays text. Named in intentFilters, undone
+ * by noIntent.
  *
- * "City, ST" IS THE CITY IN THAT STATE, HOWEVER THE EMPLOYER SPELLS IT.
- * Location "Austin, TX" matched the literal substring only: 2,564 rows, while
- * "Austin, Texas" held 1,297 more and "Austin" alone 5,505, Austin MN and
- * Austintown OH among them (live 2026-10-12). placeTerms searches every
- * spelling of the pair and says so in locationSearched; the bare city would be
- * wider than what was asked.
+ * "City, ST" is the city in that state under every spelling: "Austin, TX" held
+ * 2,564 rows, "Austin, Texas" 1,297 more, bare "Austin" 5,505 with Austin MN.
  *
  * Pure, so vitest walks it.
  */

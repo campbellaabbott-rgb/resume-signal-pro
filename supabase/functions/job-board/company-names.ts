@@ -23,6 +23,12 @@ export type CompanyScope = {
   unresolved: Array<{ asked: string; candidates: Candidate[] }>;
 };
 
+/** The scope a request asks for, when it names an employer by name rather than by token; null otherwise. */
+export function askedByName(body: Record<string, unknown>, catalogue: ReadonlySet<string>): unknown[] | null {
+  const asked = body.companies;
+  return Array.isArray(asked) && asked.some((c) => typeof c === "string" && !catalogue.has(c)) ? asked : null;
+}
+
 const PAREN_TAIL = /\s*\(([^()]*)\)\s*$/;
 const tokensOf = (e: FacetEmployer): string[] => (e.tokens?.length ? e.tokens : e.token ? [e.token] : []);
 const candidate = (e: FacetEmployer): Candidate => ({ token: e.token ?? "", name: e.name ?? "", ...(typeof e.open === "number" ? { open: e.open } : {}) });

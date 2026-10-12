@@ -96,7 +96,10 @@ describe("slice timing measures the whole slice", () => {
     // finding). One recorder, called at every completed-slice return.
     expect(BOARD).toMatch(/function recordSliceStats/);
     const calls = BOARD.match(/recordSliceStats\(client, sliceWallStart, inHotPhase\);/g) ?? [];
-    expect(calls.length, "every terminal slice return must record — a missing one biases the EMA").toBe(3);
+    // TWO since .93: the hop that ends a pass and the hop that ends a slice.
+    // The pass-end tail runs as its own hops (pass-end.ts), so its cold-database
+    // corner is no longer a slice's terminal return.
+    expect(calls.length, "every terminal slice return must record — a missing one biases the EMA").toBe(2);
   });
 
   it("documents the accepted force-race rather than pretending it away", () => {
