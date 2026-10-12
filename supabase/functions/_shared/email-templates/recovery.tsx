@@ -12,8 +12,9 @@ import {
   Preview,
   Text,
 } from 'npm:@react-email/components@0.0.22'
+import { CodeBlock, IGNORE_LINE, button, container, footer, h1, main, text, type CodeProps } from './auth-parts.tsx'
 
-interface RecoveryEmailProps {
+interface RecoveryEmailProps extends CodeProps {
   siteName: string
   confirmationUrl: string
 }
@@ -21,6 +22,8 @@ interface RecoveryEmailProps {
 export const RecoveryEmail = ({
   siteName,
   confirmationUrl,
+  token,
+  expiryMinutes,
 }: RecoveryEmailProps) => (
   <Html lang="en" dir="ltr">
     <Head />
@@ -29,15 +32,15 @@ export const RecoveryEmail = ({
       <Container style={container}>
         <Heading style={h1}>Reset your password</Heading>
         <Text style={text}>
-          We received a request to reset your password for {siteName}. Click
-          the button below to choose a new password.
+          Someone asked to reset the password for your {siteName} account.
         </Text>
+        <CodeBlock token={token} expiryMinutes={expiryMinutes} lead="Enter this code on the reset page to choose a new password:" />
+        <Text style={text}>{token ? 'Or continue in your browser:' : 'Press the button to choose a new password:'}</Text>
         <Button style={button} href={confirmationUrl}>
-          Reset Password
+          Choose a new password
         </Button>
         <Text style={footer}>
-          If you didn't request a password reset, you can safely ignore this
-          email. Your password will not be changed.
+          {IGNORE_LINE} Your password stays as it is.
         </Text>
       </Container>
     </Body>
@@ -45,27 +48,3 @@ export const RecoveryEmail = ({
 )
 
 export default RecoveryEmail
-
-const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
-const container = { padding: '20px 25px' }
-const h1 = {
-  fontSize: '22px',
-  fontWeight: 'bold' as const,
-  color: '#000000',
-  margin: '0 0 20px',
-}
-const text = {
-  fontSize: '14px',
-  color: '#55575d',
-  lineHeight: '1.5',
-  margin: '0 0 25px',
-}
-const button = {
-  backgroundColor: '#000000',
-  color: '#ffffff',
-  fontSize: '14px',
-  borderRadius: '8px',
-  padding: '12px 20px',
-  textDecoration: 'none',
-}
-const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }

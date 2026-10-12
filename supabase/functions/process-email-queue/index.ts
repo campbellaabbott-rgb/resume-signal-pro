@@ -1,11 +1,39 @@
-// deploy-stamp: 2026-10-09T18:00Z
+// deploy-stamp: 2026-10-14T10:00Z
 import { sendLovableEmail } from 'npm:@lovable.dev/email-js'
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
+import { isScheduledCaller } from "../_shared/email-cron.ts";
+import { sendMail } from "../_shared/send-mail.ts";
+
+/**
+ * THE QUEUE DRAIN, WITH A SECOND WAY OUT FOR A SIGN-IN MAIL (R1 mail, CP-A
+ * item 3; owner decision D1: auth mail keeps Lovable's queue, with a Resend
+ * fallback when Lovable refuses).
+ *
+ *   - Callers: the service-role bearer, as Lovable scaffolds it, OR the vault
+ *     email cron key in x-email-cron (email_cron_key_matches, the key the
+ *     other email crons send). verify_jwt stays true, so the gateway still
+ *     asks every caller for a JWT first.
+ *   - Every message goes to Lovable first. An auth_emails message Lovable
+ *     refuses as a sender (401 or 403), or one that has failed transiently
+ *     three times, is sent through Resend (sendMail: From
+ *     account@resumebooster.work, reply_to CUSTOMER_REPLY_TO, the payload's
+ *     idempotency key) BEFORE anything dead-letters it. Only when Resend also
+ *     fails does it go on as before: a refused one to the DLQ, a transient one
+ *     back to the queue for its next try. One dead-letter stays as it was: a
+ *     sign-in mail that waited past its TTL (15 minutes) unsent is not sent
+ *     late by either provider, because the code inside it has expired.
+ *   - transactional_emails keeps its behaviour exactly.
+ *
+ * LOVABLE CAN REGENERATE THIS FILE (its "set up emails" step replaced it on
+ * 2026-10-12). The guard
+ * src/test/r1-mail-the-queue-takes-the-cron-key-and-falls-back-to-resend.test.ts
+ * runs this handler and fails CI if the cron key or the fallback goes missing.
+ */
 
 // Provable from outside without a key: every response, the preflight
 // included, carries this in x-fn-build.
-const FN_BUILD = 'process-email-queue.2026-10-09.2'
+const FN_BUILD = 'process-email-queue.2026-10-14.1'
 const BUILD_HEADERS = { 'x-fn-build': FN_BUILD, 'Access-Control-Expose-Headers': 'x-fn-build' }
 const reply = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...BUILD_HEADERS } })
@@ -15,6 +43,12 @@ const DEFAULT_BATCH_SIZE = 10
 const DEFAULT_SEND_DELAY_MS = 200
 const DEFAULT_AUTH_TTL_MINUTES = 15
 const DEFAULT_TRANSACTIONAL_TTL_MINUTES = 60
+
+/** The fallback sender: the apex domain Resend has verified (send.resumebooster.work is its return path). */
+export const AUTH_FALLBACK_FROM = 'Resume Booster <account@resumebooster.work>'
+/** Transient Lovable failures an auth mail takes before Resend is tried. */
+export const AUTH_FALLBACK_AFTER_FAILURES = 3
+const AUTH_FALLBACK_TIMEOUT_MS = 8_000
 
 // Check if an error is a rate-limit (429) response.
 // Uses EmailAPIError.status when available (email-js >=0.x with structured errors),
@@ -33,6 +67,16 @@ function isForbidden(error: unknown): boolean {
     return (error as { status: number }).status === 403
   }
   return error instanceof Error && error.message.includes('403')
+}
+
+// A 401 or 403 from Lovable: it will not send as this sender, so another try
+// through Lovable cannot help. For an auth mail that is the cue for Resend.
+function isSenderRefusal(error: unknown): boolean {
+  if (error && typeof error === 'object' && 'status' in error) {
+    const s = (error as { status: number }).status
+    return s === 401 || s === 403
+  }
+  return error instanceof Error && /\b(401|403)\b/.test(error.message)
 }
 
 // Extract Retry-After seconds from a structured EmailAPIError, or default to 60s.
@@ -88,6 +132,46 @@ async function moveToDlq(
 }
 
 /**
+ * SEND ONE QUEUED AUTH MAIL THROUGH RESEND. The reply address is
+ * CUSTOMER_REPLY_TO from the environment when it is set, else the payload's,
+ * else the shared constant every customer mail carries. The idempotency key is
+ * the payload's ('auth:'+run_id from the hook), or one derived from the
+ * message id for a message queued before the hook set it. sendMail writes the
+ * attempt's email_send_log row under the message's own id, so a 'sent' row
+ * supersedes the hook's 'pending' one.
+ */
+async function sendAuthThroughResend(
+  supabase: any,
+  payload: Record<string, unknown>,
+  why: string,
+) {
+  const envReplyTo = Deno.env.get('CUSTOMER_REPLY_TO')
+  const replyTo = envReplyTo
+    ? envReplyTo
+    : typeof payload.reply_to === 'string' && payload.reply_to ? payload.reply_to : CUSTOMER_REPLY_TO
+  const idempotencyKey = typeof payload.idempotency_key === 'string' && payload.idempotency_key
+    ? payload.idempotency_key
+    : `auth:${String(payload.message_id ?? payload.run_id ?? '')}`
+  return await sendMail(
+    {
+      cls: 'auth',
+      kind: String(payload.label || 'auth_emails'),
+      to: String(payload.to ?? ''),
+      from: AUTH_FALLBACK_FROM,
+      subject: String(payload.subject ?? ''),
+      html: String(payload.html ?? ''),
+      text: typeof payload.text === 'string' ? payload.text : undefined,
+      replyTo,
+      idempotencyKey,
+      timeoutMs: AUTH_FALLBACK_TIMEOUT_MS,
+      messageId: typeof payload.message_id === 'string' ? payload.message_id : undefined,
+      metadata: { fallback_from: 'lovable', fallback_reason: why.slice(0, 200) },
+    },
+    { admin: supabase },
+  )
+}
+
+/**
  * WHEN A QUEUED MESSAGE IS DUE (register L13-39). The fix-plan drip is
  * enqueued with delays of 2-14 days, and its payload stamps queued_at as the
  * moment it becomes due (send-scan-report since 2026-10-08). Before that it
@@ -136,16 +220,17 @@ Deno.serve(async (req) => {
     return reply({ error: 'Unauthorized' }, 401)
   }
 
+  const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
   // Defense in depth: verify_jwt=true already requires a valid JWT at the
-  // gateway layer. This adds an explicit role check so only service-role
-  // callers can trigger queue processing.
+  // gateway layer. Past it, only the service role or the scheduler's cron key
+  // (x-email-cron, checked by email_cron_key_matches) may run the drain: the
+  // publishable key alone is every visitor's.
   const token = authHeader.slice('Bearer '.length).trim()
   const claims = parseJwtClaims(token)
-  if (claims?.role !== 'service_role') {
+  if (claims?.role !== 'service_role' && !(await isScheduledCaller(req.headers, supabase, supabaseServiceKey))) {
     return reply({ error: 'Forbidden' }, 403)
   }
-
-  const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
   // 1. Check rate-limit cooldown and read queue config
   const { data: state } = await supabase
@@ -166,6 +251,8 @@ Deno.serve(async (req) => {
 
   let totalProcessed = 0
   let forbidden = 0
+  let viaResend = 0
+  let resendFailed = 0
 
   // 2. Process auth_emails first (priority), then transactional_emails
   for (const queue of ['auth_emails', 'transactional_emails']) {
@@ -383,6 +470,49 @@ Deno.serve(async (req) => {
           return reply({ processed: totalProcessed, stopped: 'rate_limited' })
         }
 
+        // AN AUTH MAIL HAS A SECOND WAY OUT (D1). A sender refusal (401/403)
+        // or a third transient failure sends it through Resend before any
+        // dead-letter. Resend's own failure leaves the old paths below in
+        // charge: a refusal still dead-letters (naming both refusals), a
+        // transient failure still waits for its next try.
+        const refused = isSenderRefusal(error)
+        if (queue === 'auth_emails' && (refused || failedAttempts + 1 >= AUTH_FALLBACK_AFTER_FAILURES)) {
+          const why = refused
+            ? `Lovable refused sender ${String(payload.sender_domain ?? payload.from ?? 'unknown')}: ${errorMsg}`
+            : `Lovable failed ${failedAttempts + 1} times: ${errorMsg}`
+          await supabase.from('email_send_log').insert({
+            message_id: payload.message_id,
+            template_name: payload.label || queue,
+            recipient_email: payload.to,
+            status: 'failed',
+            error_message: why.slice(0, 1000),
+          })
+          if (payload?.message_id && typeof payload.message_id === 'string') {
+            failedAttemptsByMessageId.set(payload.message_id, failedAttempts + 1)
+          }
+          const fb = await sendAuthThroughResend(supabase, payload, why)
+          if (fb.ok) {
+            viaResend++
+            totalProcessed++
+            const { error: delError } = await supabase.rpc('delete_email', { queue_name: queue, message_id: msg.msg_id })
+            if (delError) {
+              console.error('Failed to delete a message Resend sent', { queue, msg_id: msg.msg_id, error: delError })
+            }
+          } else {
+            if (fb.status !== 0 || fb.error !== 'not_configured') resendFailed++
+            console.error('Resend fallback did not send the auth mail', { msg_id: msg.msg_id, status: fb.status, error: fb.error })
+            if (refused) {
+              forbidden++
+              await moveToDlq(
+                supabase, queue, msg,
+                `${isForbidden(error) ? 403 : 401} from the provider for sender ${String(payload.sender_domain ?? payload.from ?? 'unknown')}: ${errorMsg}; Resend fallback: ${fb.error ?? 'refused'}`.slice(0, 1000),
+              )
+            }
+          }
+          if (i < messages.length - 1) await new Promise((r) => setTimeout(r, sendDelayMs))
+          continue
+        }
+
         // A 403 is a refusal of THIS message's sender (register L10-01: the
         // auth mails and the drip send as notify.resumebooster.work, whose DNS
         // was gone). Only this message goes to the DLQ, with the sender named,
@@ -425,5 +555,10 @@ Deno.serve(async (req) => {
     }
   }
 
-  return reply({ processed: totalProcessed, ...(forbidden ? { forbidden } : {}) })
+  return reply({
+    processed: totalProcessed,
+    ...(forbidden ? { forbidden } : {}),
+    ...(viaResend ? { viaResend } : {}),
+    ...(resendFailed ? { resendFailed } : {}),
+  })
 })
