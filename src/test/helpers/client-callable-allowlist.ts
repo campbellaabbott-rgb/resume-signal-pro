@@ -268,11 +268,11 @@ export const CLOSED_BY_CENSUS: Array<{ sig: string; why: string; served: string 
  * Tables a client role can read every row of, on purpose. The census test
  * holds that no OTHER table is readable or writable that way.
  */
+// company_financials, company_name_overrides, company_profiles and
+// showcase_excluded left this list on 2026-10-12: 20261012130000 took them
+// from every client role, and the company page reads them only through its
+// SECURITY DEFINER readers.
 export const OPEN_TABLES: Array<{ table: string; access: string; why: string }> = [
-  { table: "company_financials", access: "anon SELECT", why: "public SEC figures" },
-  { table: "company_name_overrides", access: "anon SELECT", why: "display names" },
-  { table: "company_profiles", access: "anon SELECT", why: "employee counts from public records" },
-  { table: "showcase_excluded", access: "anon SELECT", why: "the list of staffing agencies kept off leaderboards" },
   { table: "daily_scan_stats", access: "anon SELECT", why: "one count per day" },
   { table: "job_board_stats_rollup", access: "anon SELECT", why: "aggregates; get_freshness_stats and get_date_coverage read it with INVOKER rights for public pages" },
 ];

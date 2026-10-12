@@ -105,7 +105,7 @@ describe("a secondary board's lander keeps the one canonical the bake chose", ()
     expect(canonicals()[0]).toBe(`${SITE}/jobs/company/pwc~wd3~Global_Experienced_Careers`);
     expect(descriptions().length, `two descriptions: ${descriptions().join(" | ")}`).toBe(1);
     // The one left is the page's own, not the bake's stale count.
-    await waitFor(() => expect(descriptions()[0]).toMatch(/^Browse PwC's open roles/), SLOW);
+    await waitFor(() => expect(descriptions()[0]).toMatch(/^Browse the roles on PwC's own job board/), SLOW);
   });
 
   it("positive control: a primary board keeps its own canonical, once", async () => {
