@@ -1,0 +1,171 @@
+{
+  "companyProfile": {
+    "about": {
+      "summaryApplying": "how applying works",
+      "summaryMix": "hiring mix",
+      "summaryPay": "pay",
+      "summaryPayStated": "pay stated on {{k}} of {{n}}",
+      "summaryPerks_one": "{{n}} perk stated",
+      "summaryPerks_other": "{{n}} perks stated",
+      "summaryRecord": "hiring record",
+      "summaryRecords": "public records",
+      "title": "About this employer",
+      "titleBoard": "About this board"
+    },
+    "actions": {
+      "claim": "Claim this profile",
+      "copied": "Link copied",
+      "copyLink": "Copy link",
+      "more": "More actions for {{name}}",
+      "watchBoards": "Watch boards named “{{token}}”",
+      "watchGeneric": "Watch the “{{label}}” board",
+      "watchThis": "Watch this board"
+    },
+    "agency": {
+      "banner": "This is a staffing agency's board. Roles here are usually for its clients."
+    },
+    "ago": "{{duration}} ago",
+    "boardReadAgo": "board read {{ago}}",
+    "breadcrumbCompanies": "Companies",
+    "breadcrumbJobs": "Jobs",
+    "breadcrumbLabel": "Breadcrumb",
+    "claim": {
+      "emailLabel": "Work email"
+    },
+    "collision": {
+      "basis": "Counts are postings each board's own feed still serves, as of {{when}}.",
+      "board_one": "{{system}} board · {{n}} open role now",
+      "board_other": "{{system}} board · {{n}} open roles now",
+      "boardUnavailable": "{{system}} board · count not available",
+      "countUnavailable": "count not available",
+      "h1": "Open roles on boards named “{{token}}”",
+      "lead_one": "{{n}} hiring system carries a board with this name. Nothing we hold says whether they are one employer, so this page shows no employer facts.",
+      "lead_other": "{{n}} hiring systems carry a board with this name. Nothing we hold says whether they are one employer, so this page shows no employer facts.",
+      "showOnly_one": "Show only this role",
+      "showOnly_other": "Show only these {{n}} roles",
+      "showOnlyUncounted": "Show only this board's roles"
+    },
+    "directory": {
+      "h1": "Companies hiring now",
+      "h1Count_one": "{{n}} company job board hiring now",
+      "h1Count_other": "{{n}} company job boards hiring now",
+      "intro": "Every posting comes from the employer's own hiring system — no aggregators, no reposts. The largest boards are below.",
+      "rowOpen_one": "{{n}} open role",
+      "rowOpen_other": "{{n}} open roles",
+      "searchLink": "Search the live board",
+      "searchTail": "to filter any employer by role, pay, or location.",
+      "seoDescription": "Every employer on the board is read straight from its own hiring system. Browse the largest boards, or search the live board.",
+      "seoTitle": "Companies Hiring Now — Live Jobs From Their Own Hiring Systems"
+    },
+    "facts": {
+      "countriesLabel": "Most roles in",
+      "payLabel": "Pay stated on",
+      "payValue": "{{k}} of {{n}}",
+      "systemLabel": "Hiring system",
+      "workMode": "{{remote}} remote · {{hybrid}} hybrid · {{onsite}} on-site · {{unstated}} not stated",
+      "workModeLabel": "Work mode"
+    },
+    "factsLabel": "About this board",
+    "h1Generic": "Roles on the “{{label}}” board",
+    "h1GenericSystem": "Roles on the “{{label}}” board ({{system}})",
+    "mix": {
+      "basis": "The largest groups among the open roles we read on {{date}}; roles in no field we recognize are left out.",
+      "basisUndated": "The largest groups among the open roles we read; roles in no field we recognize are left out.",
+      "countries": "Countries",
+      "fields": "Fields",
+      "group": "Group",
+      "roles": "Open roles",
+      "tableCaption": "Open roles by field and by country",
+      "title": "Hiring mix",
+      "titleListings": "Roles listed mostly in"
+    },
+    "nameLoading": "Loading the employer's name",
+    "openRoles_one": "{{n}} open role",
+    "openRoles_other": "{{n}} open roles",
+    "openRolesCapped": "we count up to {{cap}}",
+    "pay": {
+      "basis": "Yearly figures from the pay ranges their open postings state; postings that state no pay are not counted.",
+      "floor_one": "Typical bottom of the stated pay range: {{amount}} · median across {{m}} {{currency}} posting",
+      "floor_other": "Typical bottom of the stated pay range: {{amount}} · median across {{m}} {{currency}} postings",
+      "read": "read {{date}}",
+      "stated": "Pay stated on {{k}} of {{n}} postings",
+      "title": "Pay"
+    },
+    "perks": {
+      "basis": "Read from the text of their own open postings written in English; postings in other languages are not read yet. A check means at least {{strongPct}}% of the postings we could read in that country state it; a dot means at least {{minK}} of at least {{minN}} postings, and at least {{minPct}}%, do. We list only perks whose reading we have checked. \"At least\" because our reader can miss a mention.",
+      "lead": "Not listed doesn't mean not offered. Tap a perk to see how many postings state it.",
+      "someTitle": "In some of their postings"
+    },
+    "readAgo": "read {{ago}}",
+    "record": {
+      "asOf": "Figures as of {{when}}.",
+      "countsWithheld": "We do not print how many roles came down and stayed down.",
+      "growthGrew": "A rise of {{pct}}% in rows served: {{a}} on {{d1}}, {{b}} on {{d2}}.",
+      "growthLabel": "Rows served on our daily read, counted differently from open roles.",
+      "growthNone": "Not a rise of {{minRate}}% or more: {{a}} on {{d1}}, {{b}} on {{d2}}.",
+      "growthUnread": "No posting rate for this board yet.",
+      "leadCloses_one": "We watched {{n}} of its roles come off the board and stay off in the last {{days}} days.",
+      "leadCloses_other": "We watched {{n}} of its roles come off the board and stay off in the last {{days}} days.",
+      "leadGrew": "Its board served {{pct}}% more roles on {{latestDay}} than on {{baselineDay}}.",
+      "leadNegative": "We read this board and saw neither a rise of {{minRate}}% or more in roles served nor a pattern of roles taken down and left down.",
+      "leadUnknown": "No reliable hiring signal yet",
+      "median": "Half of these roles were taken down by day {{n}}.",
+      "noTakedowns": "No roles taken down and left down to count yet.",
+      "paceWithheld": "We do not state how fast roles come down here.",
+      "takenDown_one": "{{n}} role taken down (not relisted) in {{d}} days of tracking",
+      "takenDown_other": "{{n}} roles taken down (not relisted) in {{d}} days of tracking",
+      "title": "Hiring record",
+      "why": "Why?"
+    },
+    "records": {
+      "layoffsTitle": "Layoff filings",
+      "noProof": "No match in these records is not proof of anything.",
+      "parentFiler": "{{filer}} (parent company)",
+      "secExitRow": "SEC 8-K Item 2.05, exit or disposal costs · filed {{date}}",
+      "secRow": "SEC 8-K Item 2.05 · filed {{date}}",
+      "title": "Public records",
+      "warnRow_one": "WARN notice · {{state}} · {{workers}} worker · filed {{date}}",
+      "warnRow_other": "WARN notice · {{state}} · {{workers}} workers · filed {{date}}"
+    },
+    "results": {
+      "boardRead": "this board read {{ago}}",
+      "showing_one": "Showing {{shown}} of {{total}} open role",
+      "showing_other": "Showing {{shown}} of {{total}} open roles",
+      "showingMatching_one": "Showing {{shown}} of {{total}} matching role",
+      "showingMatching_other": "Showing {{shown}} of {{total}} matching roles"
+    },
+    "sec": {
+      "fiscalYear": "Fiscal year",
+      "loaded": "Figures loaded {{date}}.",
+      "revenue": "Revenue"
+    },
+    "similar": {
+      "openRolesAsOf_one": "{{n}} open role · as of {{date}}",
+      "openRolesAsOf_other": "{{n}} open roles · as of {{date}}",
+      "title": "Also hiring in {{field}} (any country)"
+    },
+    "subtitle": "Live jobs straight from {{companyPossessive}} own hiring system.",
+    "subtitleGeneric": "Live jobs straight from this board's own hiring system.",
+    "uncarried": {
+      "body": "Search the live board for this employer, or browse the companies we read.",
+      "companiesLink": "Browse the companies we read",
+      "searchButton": "Search",
+      "searchLabel": "Search jobs",
+      "searchPlaceholder": "Employer or job title",
+      "searchTitle": "Look for this employer on the live board",
+      "title": "We don't read a board called “{{token}}” yet"
+    },
+    "usajobs": {
+      "cap": "Up to {{cap}} results per query; not every federal opening.",
+      "h1": "Federal openings listed on USAJOBS",
+      "subtitle": "USAJOBS lists openings from many federal agencies; each role names its agency."
+    },
+    "zero": {
+      "allRoles": "Search all open roles",
+      "answer": "No open roles right now",
+      "body": "Watch this board and your account will count its new postings when they appear.",
+      "title": "No open roles at {{name}} right now",
+      "titleBoard": "No open roles on this board right now"
+    }
+  }
+}

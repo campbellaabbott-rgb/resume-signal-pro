@@ -1,0 +1,185 @@
+{
+  "companyProfile": {
+    "about": {
+      "summaryApplying": "comment postuler",
+      "summaryMix": "répartition des postes",
+      "summaryPay": "salaire",
+      "summaryPayStated": "salaire indiqué dans {{k}} sur {{n}}",
+      "summaryPerks_one": "{{n}} avantage indiqué",
+      "summaryPerks_other": "{{n}} avantages indiqués",
+      "summaryPerks_many": "{{n}} avantages indiqués",
+      "summaryRecord": "bilan des recrutements",
+      "summaryRecords": "registres publics",
+      "title": "À propos de cet employeur",
+      "titleBoard": "À propos de ce site carrières"
+    },
+    "actions": {
+      "claim": "Revendiquer ce profil",
+      "copied": "Lien copié",
+      "copyLink": "Copier le lien",
+      "more": "Plus d'actions pour {{name}}",
+      "watchBoards": "Suivre les sites carrières nommés « {{token}} »",
+      "watchGeneric": "Suivre le site carrières « {{label}} »",
+      "watchThis": "Suivre ce site carrières"
+    },
+    "agency": {
+      "banner": "Ce site carrières est celui d'une agence de recrutement. Les postes proposés ici sont généralement pour ses clients."
+    },
+    "ago": "il y a {{duration}}",
+    "boardReadAgo": "site lu {{ago}}",
+    "breadcrumbCompanies": "Entreprises",
+    "breadcrumbJobs": "Offres",
+    "breadcrumbLabel": "Fil d'Ariane",
+    "claim": {
+      "emailLabel": "E-mail professionnel"
+    },
+    "collision": {
+      "basis": "Les décomptes portent sur les offres que le flux de chaque site diffuse encore, au {{when}}.",
+      "board_one": "Site sur {{system}} · {{n}} poste ouvert actuellement",
+      "board_other": "Site sur {{system}} · {{n}} postes ouverts actuellement",
+      "board_many": "Site sur {{system}} · {{n}} postes ouverts actuellement",
+      "boardUnavailable": "Site sur {{system}} · décompte non disponible",
+      "countUnavailable": "décompte non disponible",
+      "h1": "Postes ouverts sur les sites carrières nommés « {{token}} »",
+      "lead_one": "{{n}} système de recrutement héberge un site portant ce nom. Rien dans nos données n'indique s'il s'agit d'un seul employeur : cette page n'affiche donc aucune information sur l'employeur.",
+      "lead_other": "{{n}} systèmes de recrutement hébergent un site portant ce nom. Rien dans nos données n'indique s'il s'agit d'un seul employeur : cette page n'affiche donc aucune information sur l'employeur.",
+      "lead_many": "{{n}} systèmes de recrutement hébergent un site portant ce nom. Rien dans nos données n'indique s'il s'agit d'un seul employeur : cette page n'affiche donc aucune information sur l'employeur.",
+      "showOnly_one": "Afficher uniquement ce poste",
+      "showOnly_other": "Afficher uniquement ces {{n}} postes",
+      "showOnly_many": "Afficher uniquement ces {{n}} postes",
+      "showOnlyUncounted": "Afficher uniquement les postes de ce site"
+    },
+    "directory": {
+      "h1": "Entreprises qui recrutent",
+      "h1Count_one": "{{n}} site carrières d'entreprise qui recrute",
+      "h1Count_other": "{{n}} sites carrières d'entreprises qui recrutent",
+      "h1Count_many": "{{n}} sites carrières d'entreprises qui recrutent",
+      "intro": "Chaque offre provient du propre système de recrutement de l'employeur : ni agrégateur, ni republication. Les plus grands sites carrières figurent ci-dessous.",
+      "rowOpen_one": "{{n}} poste ouvert",
+      "rowOpen_other": "{{n}} postes ouverts",
+      "rowOpen_many": "{{n}} postes ouverts",
+      "searchLink": "Rechercher dans les offres en direct",
+      "searchTail": "pour filtrer n'importe quel employeur par poste, salaire ou lieu.",
+      "seoDescription": "Chaque employeur est lu directement depuis son propre système de recrutement. Parcourez les plus grands sites carrières ou recherchez dans les offres en direct.",
+      "seoTitle": "Entreprises qui recrutent : offres en direct depuis leurs propres systèmes de recrutement"
+    },
+    "facts": {
+      "countriesLabel": "La plupart des postes en",
+      "payLabel": "Salaire indiqué dans",
+      "payValue": "{{k}} sur {{n}}",
+      "systemLabel": "Système de recrutement",
+      "workMode": "{{remote}} en télétravail · {{hybrid}} en hybride · {{onsite}} sur site · {{unstated}} non précisés",
+      "workModeLabel": "Mode de travail"
+    },
+    "factsLabel": "À propos de ce site carrières",
+    "h1Generic": "Postes sur le site « {{label}} »",
+    "h1GenericSystem": "Postes sur le site « {{label}} » ({{system}})",
+    "mix": {
+      "basis": "Les groupes les plus importants parmi les postes ouverts lus le {{date}} ; les postes d'un domaine que nous ne reconnaissons pas sont exclus.",
+      "basisUndated": "Les groupes les plus importants parmi les postes ouverts que nous avons lus ; les postes d'un domaine que nous ne reconnaissons pas sont exclus.",
+      "countries": "Pays",
+      "fields": "Domaines",
+      "group": "Groupe",
+      "roles": "Postes ouverts",
+      "tableCaption": "Postes ouverts par domaine et par pays",
+      "title": "Répartition des postes",
+      "titleListings": "Postes publiés surtout en"
+    },
+    "nameLoading": "Chargement du nom de l'employeur",
+    "openRoles_one": "{{n}} poste ouvert",
+    "openRoles_other": "{{n}} postes ouverts",
+    "openRoles_many": "{{n}} postes ouverts",
+    "openRolesCapped": "nous comptons jusqu'à {{cap}}",
+    "pay": {
+      "basis": "Montants annuels tirés des fourchettes de salaire indiquées dans leurs offres ouvertes ; les offres sans salaire ne sont pas comptées.",
+      "floor_one": "Bas habituel de la fourchette de salaire indiquée : {{amount}} · médiane sur {{m}} offre en {{currency}}",
+      "floor_other": "Bas habituel de la fourchette de salaire indiquée : {{amount}} · médiane sur {{m}} offres en {{currency}}",
+      "floor_many": "Bas habituel de la fourchette de salaire indiquée : {{amount}} · médiane sur {{m}} offres en {{currency}}",
+      "read": "lu le {{date}}",
+      "stated": "Salaire indiqué dans {{k}} offres sur {{n}}",
+      "title": "Salaire"
+    },
+    "perks": {
+      "basis": "Lu dans le texte de leurs propres offres ouvertes rédigées en anglais ; les offres dans d'autres langues ne sont pas encore lues. Une coche signifie qu'au moins {{strongPct}} % des offres que nous avons pu lire dans ce pays le mentionnent ; un point signifie qu'au moins {{minK}} offres sur au moins {{minN}}, et au moins {{minPct}} %, le mentionnent. Nous n'affichons que les avantages dont nous avons contrôlé la lecture. « Au moins » car notre lecteur peut manquer une mention.",
+      "lead": "Ne pas figurer ici ne veut pas dire ne pas être proposé. Touchez un avantage pour voir combien d'offres le mentionnent.",
+      "someTitle": "Dans certaines de leurs offres"
+    },
+    "readAgo": "lu {{ago}}",
+    "record": {
+      "asOf": "Chiffres au {{when}}.",
+      "countsWithheld": "Nous n'affichons pas combien de postes ont été retirés et le sont restés.",
+      "growthGrew": "Une hausse de {{pct}} % des lignes diffusées : {{a}} le {{d1}}, {{b}} le {{d2}}.",
+      "growthLabel": "Lignes diffusées lors de notre lecture quotidienne, comptées autrement que les postes ouverts.",
+      "growthNone": "Pas une hausse de {{minRate}} % ou plus : {{a}} le {{d1}}, {{b}} le {{d2}}.",
+      "growthUnread": "Pas encore de rythme de publication pour ce site.",
+      "leadCloses_one": "Nous avons vu {{n}} de ses postes quitter le site et ne pas revenir au cours des {{days}} derniers jours.",
+      "leadCloses_other": "Nous avons vu {{n}} de ses postes quitter le site et ne pas revenir au cours des {{days}} derniers jours.",
+      "leadCloses_many": "Nous avons vu {{n}} de ses postes quitter le site et ne pas revenir au cours des {{days}} derniers jours.",
+      "leadGrew": "Son site a diffusé {{pct}} % de postes de plus le {{latestDay}} que le {{baselineDay}}.",
+      "leadNegative": "Nous avons lu ce site et n'avons vu ni hausse de {{minRate}} % ou plus des postes diffusés, ni tendance de postes retirés restés retirés.",
+      "leadUnknown": "Pas encore de signal de recrutement fiable",
+      "median": "La moitié de ces postes avaient été retirés au jour {{n}}.",
+      "noTakedowns": "Pas encore de postes retirés et restés retirés à compter.",
+      "paceWithheld": "Nous n'indiquons pas ici à quelle vitesse les postes sont retirés.",
+      "takenDown_one": "{{n}} poste retiré (non republié) en {{d}} jours de suivi",
+      "takenDown_other": "{{n}} postes retirés (non republiés) en {{d}} jours de suivi",
+      "takenDown_many": "{{n}} postes retirés (non republiés) en {{d}} jours de suivi",
+      "title": "Bilan des recrutements",
+      "why": "Pourquoi ?"
+    },
+    "records": {
+      "layoffsTitle": "Déclarations de licenciements",
+      "noProof": "L'absence de résultat dans ces registres ne prouve rien.",
+      "parentFiler": "{{filer}} (société mère)",
+      "secExitRow": "SEC 8-K, Item 2.05, coûts de sortie ou de cession · déposé le {{date}}",
+      "secRow": "SEC 8-K, Item 2.05 · déposé le {{date}}",
+      "title": "Registres publics",
+      "warnRow_one": "Avis WARN · {{state}} · {{workers}} salarié · déposé le {{date}}",
+      "warnRow_other": "Avis WARN · {{state}} · {{workers}} salariés · déposé le {{date}}",
+      "warnRow_many": "Avis WARN · {{state}} · {{workers}} salariés · déposé le {{date}}"
+    },
+    "results": {
+      "boardRead": "ce site lu {{ago}}",
+      "showing_one": "{{shown}} affiché sur {{total}} poste ouvert",
+      "showing_other": "{{shown}} affichés sur {{total}} postes ouverts",
+      "showing_many": "{{shown}} affichés sur {{total}} postes ouverts",
+      "showingMatching_one": "{{shown}} affiché sur {{total}} poste correspondant",
+      "showingMatching_other": "{{shown}} affichés sur {{total}} postes correspondants",
+      "showingMatching_many": "{{shown}} affichés sur {{total}} postes correspondants"
+    },
+    "sec": {
+      "fiscalYear": "Exercice",
+      "loaded": "Chiffres chargés le {{date}}.",
+      "revenue": "Chiffre d'affaires"
+    },
+    "similar": {
+      "openRolesAsOf_one": "{{n}} poste ouvert · au {{date}}",
+      "openRolesAsOf_other": "{{n}} postes ouverts · au {{date}}",
+      "openRolesAsOf_many": "{{n}} postes ouverts · au {{date}}",
+      "title": "Recrutent aussi en {{field}} (tous pays)"
+    },
+    "subtitle": "Offres en direct, issues du propre système de recrutement de {{company}}.",
+    "subtitleGeneric": "Offres en direct, issues du propre système de recrutement de ce site.",
+    "uncarried": {
+      "body": "Recherchez cet employeur dans les offres en direct ou parcourez les entreprises que nous lisons.",
+      "companiesLink": "Parcourir les entreprises que nous lisons",
+      "searchButton": "Rechercher",
+      "searchLabel": "Rechercher des offres",
+      "searchPlaceholder": "Employeur ou intitulé de poste",
+      "searchTitle": "Chercher cet employeur dans les offres en direct",
+      "title": "Nous ne lisons pas encore de site nommé « {{token}} »"
+    },
+    "usajobs": {
+      "cap": "Jusqu'à {{cap}} résultats par requête ; pas tous les postes fédéraux.",
+      "h1": "Postes fédéraux publiés sur USAJOBS",
+      "subtitle": "USAJOBS publie les offres de nombreuses agences fédérales américaines ; chaque poste indique son agence."
+    },
+    "zero": {
+      "allRoles": "Rechercher tous les postes ouverts",
+      "answer": "Aucun poste ouvert pour le moment",
+      "body": "Suivez ce site et votre compte comptera ses nouvelles offres dès leur parution.",
+      "title": "Aucun poste ouvert chez {{name}} pour le moment",
+      "titleBoard": "Aucun poste ouvert sur ce site pour le moment"
+    }
+  }
+}

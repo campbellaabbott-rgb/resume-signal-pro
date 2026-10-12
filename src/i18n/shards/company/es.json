@@ -1,0 +1,185 @@
+{
+  "companyProfile": {
+    "about": {
+      "summaryApplying": "cómo funciona la solicitud",
+      "summaryMix": "distribución de vacantes",
+      "summaryPay": "salario",
+      "summaryPayStated": "salario indicado en {{k}} de {{n}}",
+      "summaryPerks_one": "{{n}} beneficio indicado",
+      "summaryPerks_other": "{{n}} beneficios indicados",
+      "summaryPerks_many": "{{n}} beneficios indicados",
+      "summaryRecord": "historial de contratación",
+      "summaryRecords": "registros públicos",
+      "title": "Sobre este empleador",
+      "titleBoard": "Sobre este portal"
+    },
+    "actions": {
+      "claim": "Reclamar este perfil",
+      "copied": "Enlace copiado",
+      "copyLink": "Copiar enlace",
+      "more": "Más acciones para {{name}}",
+      "watchBoards": "Seguir los portales llamados «{{token}}»",
+      "watchGeneric": "Seguir el portal «{{label}}»",
+      "watchThis": "Seguir este portal"
+    },
+    "agency": {
+      "banner": "Este es el portal de una agencia de empleo. Las vacantes de aquí suelen ser para sus clientes."
+    },
+    "ago": "hace {{duration}}",
+    "boardReadAgo": "portal leído {{ago}}",
+    "breadcrumbCompanies": "Empresas",
+    "breadcrumbJobs": "Empleos",
+    "breadcrumbLabel": "Ruta de navegación",
+    "claim": {
+      "emailLabel": "Correo del trabajo"
+    },
+    "collision": {
+      "basis": "Se cuentan las ofertas que el feed de cada portal sigue publicando, a fecha de {{when}}.",
+      "board_one": "Portal en {{system}} · {{n}} vacante abierta ahora",
+      "board_other": "Portal en {{system}} · {{n}} vacantes abiertas ahora",
+      "board_many": "Portal en {{system}} · {{n}} vacantes abiertas ahora",
+      "boardUnavailable": "Portal en {{system}} · recuento no disponible",
+      "countUnavailable": "recuento no disponible",
+      "h1": "Vacantes abiertas en portales llamados «{{token}}»",
+      "lead_one": "{{n}} sistema de contratación tiene un portal con este nombre. Nada de lo que tenemos indica si son un solo empleador, así que esta página no muestra datos de empleador.",
+      "lead_other": "{{n}} sistemas de contratación tienen un portal con este nombre. Nada de lo que tenemos indica si son un solo empleador, así que esta página no muestra datos de empleador.",
+      "lead_many": "{{n}} sistemas de contratación tienen un portal con este nombre. Nada de lo que tenemos indica si son un solo empleador, así que esta página no muestra datos de empleador.",
+      "showOnly_one": "Mostrar solo esta vacante",
+      "showOnly_other": "Mostrar solo estas {{n}} vacantes",
+      "showOnly_many": "Mostrar solo estas {{n}} vacantes",
+      "showOnlyUncounted": "Mostrar solo las vacantes de este portal"
+    },
+    "directory": {
+      "h1": "Empresas que contratan ahora",
+      "h1Count_one": "{{n}} portal de empleo de empresa contratando ahora",
+      "h1Count_other": "{{n}} portales de empleo de empresas contratando ahora",
+      "h1Count_many": "{{n}} portales de empleo de empresas contratando ahora",
+      "intro": "Cada oferta procede del propio sistema de contratación del empleador: sin agregadores ni republicaciones. Abajo están los portales más grandes.",
+      "rowOpen_one": "{{n}} vacante abierta",
+      "rowOpen_other": "{{n}} vacantes abiertas",
+      "rowOpen_many": "{{n}} vacantes abiertas",
+      "searchLink": "Busca en el portal en vivo",
+      "searchTail": "para filtrar cualquier empleador por puesto, salario o ubicación.",
+      "seoDescription": "Cada empleador del portal se lee directamente de su propio sistema de contratación. Explora los portales más grandes o busca en el portal en vivo.",
+      "seoTitle": "Empresas que contratan ahora: empleos en vivo de sus propios sistemas de contratación"
+    },
+    "facts": {
+      "countriesLabel": "La mayoría de las vacantes en",
+      "payLabel": "Salario indicado en",
+      "payValue": "{{k}} de {{n}}",
+      "systemLabel": "Sistema de contratación",
+      "workMode": "{{remote}} en remoto · {{hybrid}} híbridas · {{onsite}} presenciales · {{unstated}} sin indicar",
+      "workModeLabel": "Modalidad"
+    },
+    "factsLabel": "Sobre este portal",
+    "h1Generic": "Vacantes en el portal «{{label}}»",
+    "h1GenericSystem": "Vacantes en el portal «{{label}}» ({{system}})",
+    "mix": {
+      "basis": "Los grupos más grandes entre las vacantes abiertas que leímos el {{date}}; las vacantes de ningún campo que reconozcamos quedan fuera.",
+      "basisUndated": "Los grupos más grandes entre las vacantes abiertas que leímos; las vacantes de ningún campo que reconozcamos quedan fuera.",
+      "countries": "Países",
+      "fields": "Campos",
+      "group": "Grupo",
+      "roles": "Vacantes abiertas",
+      "tableCaption": "Vacantes abiertas por campo y por país",
+      "title": "Distribución de vacantes",
+      "titleListings": "Vacantes publicadas sobre todo en"
+    },
+    "nameLoading": "Cargando el nombre del empleador",
+    "openRoles_one": "{{n}} vacante abierta",
+    "openRoles_other": "{{n}} vacantes abiertas",
+    "openRoles_many": "{{n}} vacantes abiertas",
+    "openRolesCapped": "contamos hasta {{cap}}",
+    "pay": {
+      "basis": "Cifras anuales a partir de los rangos salariales que indican sus ofertas abiertas; las ofertas sin salario no se cuentan.",
+      "floor_one": "Parte baja típica del rango salarial indicado: {{amount}} · mediana de {{m}} oferta en {{currency}}",
+      "floor_other": "Parte baja típica del rango salarial indicado: {{amount}} · mediana de {{m}} ofertas en {{currency}}",
+      "floor_many": "Parte baja típica del rango salarial indicado: {{amount}} · mediana de {{m}} ofertas en {{currency}}",
+      "read": "leído el {{date}}",
+      "stated": "Salario indicado en {{k}} de {{n}} ofertas",
+      "title": "Salario"
+    },
+    "perks": {
+      "basis": "Leído del texto de sus propias ofertas abiertas escritas en inglés; las ofertas en otros idiomas aún no se leen. Una marca de verificación significa que al menos el {{strongPct}} % de las ofertas que pudimos leer en ese país lo indican; un punto significa que lo indican al menos {{minK}} de al menos {{minN}} ofertas, y al menos el {{minPct}} %. Solo mostramos beneficios cuya lectura hemos comprobado. «Al menos» porque nuestro lector puede pasar por alto una mención.",
+      "lead": "Que no aparezca no significa que no se ofrezca. Toca un beneficio para ver cuántas ofertas lo indican.",
+      "someTitle": "En algunas de sus ofertas"
+    },
+    "readAgo": "leído {{ago}}",
+    "record": {
+      "asOf": "Cifras a fecha de {{when}}.",
+      "countsWithheld": "No mostramos cuántas vacantes se retiraron y siguieron retiradas.",
+      "growthGrew": "Un aumento del {{pct}} % en las filas publicadas: {{a}} el {{d1}}, {{b}} el {{d2}}.",
+      "growthLabel": "Filas publicadas en nuestra lectura diaria, contadas de otra forma que las vacantes abiertas.",
+      "growthNone": "No es un aumento del {{minRate}} % o más: {{a}} el {{d1}}, {{b}} el {{d2}}.",
+      "growthUnread": "Todavía no hay ritmo de publicación para este portal.",
+      "leadCloses_one": "Vimos cómo {{n}} de sus vacantes salía del portal y no volvía en los últimos {{days}} días.",
+      "leadCloses_other": "Vimos cómo {{n}} de sus vacantes salían del portal y no volvían en los últimos {{days}} días.",
+      "leadCloses_many": "Vimos cómo {{n}} de sus vacantes salían del portal y no volvían en los últimos {{days}} días.",
+      "leadGrew": "Su portal publicó un {{pct}} % más de vacantes el {{latestDay}} que el {{baselineDay}}.",
+      "leadNegative": "Leímos este portal y no vimos ni un aumento del {{minRate}} % o más en las vacantes publicadas ni un patrón de vacantes retiradas que siguieran retiradas.",
+      "leadUnknown": "Aún no hay una señal de contratación fiable",
+      "median": "La mitad de estas vacantes se retiró antes del día {{n}}.",
+      "noTakedowns": "Aún no hay vacantes retiradas y que sigan retiradas que contar.",
+      "paceWithheld": "Aquí no indicamos con qué rapidez se retiran las vacantes.",
+      "takenDown_one": "{{n}} vacante retirada (no republicada) en {{d}} días de seguimiento",
+      "takenDown_other": "{{n}} vacantes retiradas (no republicadas) en {{d}} días de seguimiento",
+      "takenDown_many": "{{n}} vacantes retiradas (no republicadas) en {{d}} días de seguimiento",
+      "title": "Historial de contratación",
+      "why": "¿Por qué?"
+    },
+    "records": {
+      "layoffsTitle": "Notificaciones de despidos",
+      "noProof": "No encontrar nada en estos registros no prueba nada.",
+      "parentFiler": "{{filer}} (empresa matriz)",
+      "secExitRow": "SEC 8-K, Item 2.05, costes de salida o cesión · presentado el {{date}}",
+      "secRow": "SEC 8-K, Item 2.05 · presentado el {{date}}",
+      "title": "Registros públicos",
+      "warnRow_one": "Aviso WARN · {{state}} · {{workers}} trabajador · presentado el {{date}}",
+      "warnRow_other": "Aviso WARN · {{state}} · {{workers}} trabajadores · presentado el {{date}}",
+      "warnRow_many": "Aviso WARN · {{state}} · {{workers}} trabajadores · presentado el {{date}}"
+    },
+    "results": {
+      "boardRead": "este portal leído {{ago}}",
+      "showing_one": "Mostrando {{shown}} de {{total}} vacante abierta",
+      "showing_other": "Mostrando {{shown}} de {{total}} vacantes abiertas",
+      "showing_many": "Mostrando {{shown}} de {{total}} vacantes abiertas",
+      "showingMatching_one": "Mostrando {{shown}} de {{total}} vacante que coincide",
+      "showingMatching_other": "Mostrando {{shown}} de {{total}} vacantes que coinciden",
+      "showingMatching_many": "Mostrando {{shown}} de {{total}} vacantes que coinciden"
+    },
+    "sec": {
+      "fiscalYear": "Año fiscal",
+      "loaded": "Cifras cargadas el {{date}}.",
+      "revenue": "Ingresos"
+    },
+    "similar": {
+      "openRolesAsOf_one": "{{n}} vacante abierta · a fecha de {{date}}",
+      "openRolesAsOf_other": "{{n}} vacantes abiertas · a fecha de {{date}}",
+      "openRolesAsOf_many": "{{n}} vacantes abiertas · a fecha de {{date}}",
+      "title": "También contratan en {{field}} (cualquier país)"
+    },
+    "subtitle": "Empleos en vivo directamente del propio sistema de contratación de {{company}}.",
+    "subtitleGeneric": "Empleos en vivo directamente del propio sistema de contratación de este portal.",
+    "uncarried": {
+      "body": "Busca a este empleador en el portal en vivo o explora las empresas que leemos.",
+      "companiesLink": "Explorar las empresas que leemos",
+      "searchButton": "Buscar",
+      "searchLabel": "Buscar empleos",
+      "searchPlaceholder": "Empleador o puesto",
+      "searchTitle": "Busca a este empleador en el portal en vivo",
+      "title": "Todavía no leemos un portal llamado «{{token}}»"
+    },
+    "usajobs": {
+      "cap": "Hasta {{cap}} resultados por consulta; no todas las vacantes federales.",
+      "h1": "Vacantes federales publicadas en USAJOBS",
+      "subtitle": "USAJOBS publica vacantes de muchas agencias federales de EE. UU.; cada vacante indica su agencia."
+    },
+    "zero": {
+      "allRoles": "Buscar todas las vacantes abiertas",
+      "answer": "Ahora mismo no hay vacantes abiertas",
+      "body": "Sigue este portal y tu cuenta contará sus nuevas ofertas cuando aparezcan.",
+      "title": "Ahora mismo no hay vacantes abiertas en {{name}}",
+      "titleBoard": "Ahora mismo no hay vacantes abiertas en este portal"
+    }
+  }
+}

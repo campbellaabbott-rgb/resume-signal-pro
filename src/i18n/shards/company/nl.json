@@ -1,0 +1,171 @@
+{
+  "companyProfile": {
+    "about": {
+      "summaryApplying": "zo werkt solliciteren",
+      "summaryMix": "vacaturemix",
+      "summaryPay": "salaris",
+      "summaryPayStated": "salaris vermeld bij {{k}} van {{n}}",
+      "summaryPerks_one": "{{n}} voordeel vermeld",
+      "summaryPerks_other": "{{n}} voordelen vermeld",
+      "summaryRecord": "wervingsgeschiedenis",
+      "summaryRecords": "openbare registers",
+      "title": "Over deze werkgever",
+      "titleBoard": "Over dit vacaturebord"
+    },
+    "actions": {
+      "claim": "Dit profiel claimen",
+      "copied": "Link gekopieerd",
+      "copyLink": "Link kopiëren",
+      "more": "Meer acties voor {{name}}",
+      "watchBoards": "Vacatureborden met de naam ‘{{token}}’ volgen",
+      "watchGeneric": "Het vacaturebord ‘{{label}}’ volgen",
+      "watchThis": "Dit vacaturebord volgen"
+    },
+    "agency": {
+      "banner": "Dit is het vacaturebord van een uitzend- of detacheringsbureau. De vacatures hier zijn meestal voor zijn klanten."
+    },
+    "ago": "{{duration}} geleden",
+    "boardReadAgo": "vacaturebord gelezen {{ago}}",
+    "breadcrumbCompanies": "Bedrijven",
+    "breadcrumbJobs": "Vacatures",
+    "breadcrumbLabel": "Kruimelpad",
+    "claim": {
+      "emailLabel": "Zakelijk e-mailadres"
+    },
+    "collision": {
+      "basis": "Geteld worden vacatures die de feed van elk bord nog aanbiedt, per {{when}}.",
+      "board_one": "Vacaturebord bij {{system}} · nu {{n}} open vacature",
+      "board_other": "Vacaturebord bij {{system}} · nu {{n}} open vacatures",
+      "boardUnavailable": "Vacaturebord bij {{system}} · aantal niet beschikbaar",
+      "countUnavailable": "aantal niet beschikbaar",
+      "h1": "Open vacatures op vacatureborden met de naam ‘{{token}}’",
+      "lead_one": "{{n}} wervingssysteem heeft een vacaturebord met deze naam. Niets in onze gegevens zegt of het om één werkgever gaat, dus deze pagina toont geen werkgeversgegevens.",
+      "lead_other": "{{n}} wervingssystemen hebben een vacaturebord met deze naam. Niets in onze gegevens zegt of het om één werkgever gaat, dus deze pagina toont geen werkgeversgegevens.",
+      "showOnly_one": "Alleen deze vacature tonen",
+      "showOnly_other": "Alleen deze {{n}} vacatures tonen",
+      "showOnlyUncounted": "Alleen de vacatures van dit bord tonen"
+    },
+    "directory": {
+      "h1": "Bedrijven die nu werven",
+      "h1Count_one": "{{n}} vacaturebord van een bedrijf dat nu werft",
+      "h1Count_other": "{{n}} vacatureborden van bedrijven die nu werven",
+      "intro": "Elke vacature komt uit het eigen wervingssysteem van de werkgever: geen aggregators, geen herplaatsingen. De grootste vacatureborden staan hieronder.",
+      "rowOpen_one": "{{n}} open vacature",
+      "rowOpen_other": "{{n}} open vacatures",
+      "searchLink": "Doorzoek de live vacaturebank",
+      "searchTail": "om elke werkgever te filteren op functie, salaris of locatie.",
+      "seoDescription": "Elke werkgever wordt rechtstreeks uit zijn eigen wervingssysteem gelezen. Bekijk de grootste vacatureborden of doorzoek de live vacaturebank.",
+      "seoTitle": "Bedrijven die nu werven – live vacatures uit hun eigen wervingssystemen"
+    },
+    "facts": {
+      "countriesLabel": "De meeste vacatures in",
+      "payLabel": "Salaris vermeld bij",
+      "payValue": "{{k}} van {{n}}",
+      "systemLabel": "Wervingssysteem",
+      "workMode": "{{remote}} op afstand · {{hybrid}} hybride · {{onsite}} op locatie · {{unstated}} niet vermeld",
+      "workModeLabel": "Werkvorm"
+    },
+    "factsLabel": "Over dit vacaturebord",
+    "h1Generic": "Vacatures op het vacaturebord ‘{{label}}’",
+    "h1GenericSystem": "Vacatures op het vacaturebord ‘{{label}}’ ({{system}})",
+    "mix": {
+      "basis": "De grootste groepen onder de open vacatures die we op {{date}} lazen; vacatures in een vakgebied dat we niet herkennen, tellen niet mee.",
+      "basisUndated": "De grootste groepen onder de open vacatures die we lazen; vacatures in een vakgebied dat we niet herkennen, tellen niet mee.",
+      "countries": "Landen",
+      "fields": "Vakgebieden",
+      "group": "Groep",
+      "roles": "Open vacatures",
+      "tableCaption": "Open vacatures per vakgebied en per land",
+      "title": "Vacaturemix",
+      "titleListings": "Vacatures vooral geplaatst in"
+    },
+    "nameLoading": "Naam van de werkgever wordt geladen",
+    "openRoles_one": "{{n}} open vacature",
+    "openRoles_other": "{{n}} open vacatures",
+    "openRolesCapped": "we tellen tot {{cap}}",
+    "pay": {
+      "basis": "Jaarbedragen uit de salarisschalen die hun open vacatures vermelden; vacatures zonder salaris tellen niet mee.",
+      "floor_one": "Gangbare onderkant van de vermelde salarisschaal: {{amount}} · mediaan over {{m}} vacature in {{currency}}",
+      "floor_other": "Gangbare onderkant van de vermelde salarisschaal: {{amount}} · mediaan over {{m}} vacatures in {{currency}}",
+      "read": "gelezen op {{date}}",
+      "stated": "Salaris vermeld bij {{k}} van {{n}} vacatures",
+      "title": "Salaris"
+    },
+    "perks": {
+      "basis": "Gelezen uit de tekst van hun eigen open vacatures in het Engels; vacatures in andere talen lezen we nog niet. Een vinkje betekent dat minstens {{strongPct}}% van de vacatures die we in dat land konden lezen het vermeldt; een stip betekent dat minstens {{minK}} van minstens {{minN}} vacatures, en minstens {{minPct}}%, het vermelden. We tonen alleen voordelen waarvan we de herkenning hebben gecontroleerd. ‘Minstens’ omdat onze lezer een vermelding kan missen.",
+      "lead": "Niet vermeld betekent niet dat het niet wordt aangeboden. Tik op een voordeel om te zien hoeveel vacatures het vermelden.",
+      "someTitle": "In sommige van hun vacatures"
+    },
+    "readAgo": "gelezen {{ago}}",
+    "record": {
+      "asOf": "Cijfers per {{when}}.",
+      "countsWithheld": "We tonen niet hoeveel vacatures zijn verwijderd en verwijderd bleven.",
+      "growthGrew": "Een stijging van {{pct}}% in aangeboden regels: {{a}} op {{d1}}, {{b}} op {{d2}}.",
+      "growthLabel": "Regels aangeboden bij onze dagelijkse lezing, anders geteld dan open vacatures.",
+      "growthNone": "Geen stijging van {{minRate}}% of meer: {{a}} op {{d1}}, {{b}} op {{d2}}.",
+      "growthUnread": "Nog geen plaatsingstempo voor dit vacaturebord.",
+      "leadCloses_one": "We zagen {{n}} van zijn vacatures de afgelopen {{days}} dagen van het bord gaan en weg blijven.",
+      "leadCloses_other": "We zagen {{n}} van zijn vacatures de afgelopen {{days}} dagen van het bord gaan en weg blijven.",
+      "leadGrew": "Zijn vacaturebord bood op {{latestDay}} {{pct}}% meer vacatures aan dan op {{baselineDay}}.",
+      "leadNegative": "We lazen dit vacaturebord en zagen geen stijging van {{minRate}}% of meer in aangeboden vacatures en geen patroon van vacatures die werden verwijderd en weg bleven.",
+      "leadUnknown": "Nog geen betrouwbaar wervingssignaal",
+      "median": "De helft van deze vacatures was op dag {{n}} verwijderd.",
+      "noTakedowns": "Nog geen verwijderde en weggebleven vacatures om te tellen.",
+      "paceWithheld": "Hier vermelden we niet hoe snel vacatures worden verwijderd.",
+      "takenDown_one": "{{n}} vacature verwijderd (niet opnieuw geplaatst) in {{d}} dagen volgen",
+      "takenDown_other": "{{n}} vacatures verwijderd (niet opnieuw geplaatst) in {{d}} dagen volgen",
+      "title": "Wervingsgeschiedenis",
+      "why": "Waarom?"
+    },
+    "records": {
+      "layoffsTitle": "Meldingen van ontslagen",
+      "noProof": "Geen treffer in deze registers bewijst niets.",
+      "parentFiler": "{{filer}} (moederbedrijf)",
+      "secExitRow": "SEC 8-K, Item 2.05, kosten van beëindiging of afstoting · ingediend op {{date}}",
+      "secRow": "SEC 8-K, Item 2.05 · ingediend op {{date}}",
+      "title": "Openbare registers",
+      "warnRow_one": "WARN-melding · {{state}} · {{workers}} werknemer · ingediend op {{date}}",
+      "warnRow_other": "WARN-melding · {{state}} · {{workers}} werknemers · ingediend op {{date}}"
+    },
+    "results": {
+      "boardRead": "dit vacaturebord gelezen {{ago}}",
+      "showing_one": "{{shown}} van {{total}} open vacature getoond",
+      "showing_other": "{{shown}} van {{total}} open vacatures getoond",
+      "showingMatching_one": "{{shown}} van {{total}} passende vacature getoond",
+      "showingMatching_other": "{{shown}} van {{total}} passende vacatures getoond"
+    },
+    "sec": {
+      "fiscalYear": "Boekjaar",
+      "loaded": "Cijfers geladen op {{date}}.",
+      "revenue": "Omzet"
+    },
+    "similar": {
+      "openRolesAsOf_one": "{{n}} open vacature · per {{date}}",
+      "openRolesAsOf_other": "{{n}} open vacatures · per {{date}}",
+      "title": "Werven ook in {{field}} (elk land)"
+    },
+    "subtitle": "Live vacatures rechtstreeks uit het eigen wervingssysteem van {{company}}.",
+    "subtitleGeneric": "Live vacatures rechtstreeks uit het eigen wervingssysteem van dit vacaturebord.",
+    "uncarried": {
+      "body": "Zoek deze werkgever in de live vacaturebank of bekijk de bedrijven die we lezen.",
+      "companiesLink": "Bekijk de bedrijven die we lezen",
+      "searchButton": "Zoeken",
+      "searchLabel": "Vacatures zoeken",
+      "searchPlaceholder": "Werkgever of functietitel",
+      "searchTitle": "Zoek deze werkgever in de live vacaturebank",
+      "title": "We lezen nog geen vacaturebord met de naam ‘{{token}}’"
+    },
+    "usajobs": {
+      "cap": "Tot {{cap}} resultaten per zoekopdracht; niet elke federale vacature.",
+      "h1": "Federale vacatures op USAJOBS",
+      "subtitle": "USAJOBS toont vacatures van veel Amerikaanse federale instanties; elke vacature noemt haar instantie."
+    },
+    "zero": {
+      "allRoles": "Alle open vacatures doorzoeken",
+      "answer": "Op dit moment geen open vacatures",
+      "body": "Volg dit vacaturebord en je account telt nieuwe vacatures zodra ze verschijnen.",
+      "title": "Op dit moment geen open vacatures bij {{name}}",
+      "titleBoard": "Op dit moment geen open vacatures op dit vacaturebord"
+    }
+  }
+}

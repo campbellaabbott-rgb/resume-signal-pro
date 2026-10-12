@@ -50,6 +50,23 @@ export const PERK_ROW_THRESHOLDS = { minReadable: 5, minStated: 2, minShare: 0.1
 /** A stated visa limit needs this many postings saying it (plan section 4). Mirrors the reader. */
 export const VISA_LIMIT_MIN_STATED = 3;
 
+/**
+ * THE CHECKMARK IS FOR MOST POSTINGS, NOT FOR SOME (design spec 5.5a,
+ * 2026-10-12). The claim threshold above lets a perk through at 2 of 20
+ * postings, and a bare check beside "Health insurance" reads as "offered".
+ * So a check marks a perk stated in at least half of the postings we could
+ * read in that country; a perk above the threshold but under half sits in an
+ * "In some of their postings" group with a hollow dot. Both open the same
+ * count and quote.
+ */
+export const PERK_CHECK_MIN_SHARE = 0.5;
+export type PerkMark = "check" | "some";
+
+/** "check" when at least half the postings we could read state it, "some" otherwise. Whole numbers, as the SQL states shares. */
+export function perkMark(c: Pick<PerkClaim, "k" | "n">): PerkMark {
+  return c.n > 0 && c.k * Math.round(1 / PERK_CHECK_MIN_SHARE) >= c.n ? "check" : "some";
+}
+
 /** The eligibility tag shows once at least this share of the k postings hedge the perk or limit who gets it. */
 export const QUALIFIED_TAG_MIN_SHARE = 1 / 3;
 

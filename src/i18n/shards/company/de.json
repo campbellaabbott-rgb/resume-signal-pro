@@ -1,0 +1,171 @@
+{
+  "companyProfile": {
+    "about": {
+      "summaryApplying": "so funktioniert die Bewerbung",
+      "summaryMix": "Stellenmix",
+      "summaryPay": "Gehalt",
+      "summaryPayStated": "Gehalt angegeben in {{k}} von {{n}}",
+      "summaryPerks_one": "{{n}} Zusatzleistung genannt",
+      "summaryPerks_other": "{{n}} Zusatzleistungen genannt",
+      "summaryRecord": "Einstellungsbilanz",
+      "summaryRecords": "öffentliche Unterlagen",
+      "title": "Über diesen Arbeitgeber",
+      "titleBoard": "Über dieses Jobboard"
+    },
+    "actions": {
+      "claim": "Dieses Profil beanspruchen",
+      "copied": "Link kopiert",
+      "copyLink": "Link kopieren",
+      "more": "Weitere Aktionen für {{name}}",
+      "watchBoards": "Jobboards namens „{{token}}“ beobachten",
+      "watchGeneric": "Das Jobboard „{{label}}“ beobachten",
+      "watchThis": "Dieses Jobboard beobachten"
+    },
+    "agency": {
+      "banner": "Dies ist das Jobboard einer Personalvermittlung. Die Stellen hier sind meist für deren Kunden."
+    },
+    "ago": "vor {{duration}}",
+    "boardReadAgo": "Jobboard gelesen {{ago}}",
+    "breadcrumbCompanies": "Unternehmen",
+    "breadcrumbJobs": "Jobs",
+    "breadcrumbLabel": "Brotkrümelnavigation",
+    "claim": {
+      "emailLabel": "Geschäftliche E-Mail"
+    },
+    "collision": {
+      "basis": "Gezählt werden Anzeigen, die der Feed jedes Jobboards noch ausliefert, Stand {{when}}.",
+      "board_one": "Jobboard bei {{system}} · {{n}} offene Stelle jetzt",
+      "board_other": "Jobboard bei {{system}} · {{n}} offene Stellen jetzt",
+      "boardUnavailable": "Jobboard bei {{system}} · Anzahl nicht verfügbar",
+      "countUnavailable": "Anzahl nicht verfügbar",
+      "h1": "Offene Stellen auf Jobboards namens „{{token}}“",
+      "lead_one": "{{n}} Bewerbungssystem führt ein Jobboard mit diesem Namen. Nichts in unseren Daten sagt, ob es sich um einen Arbeitgeber handelt, daher zeigt diese Seite keine Arbeitgeberangaben.",
+      "lead_other": "{{n}} Bewerbungssysteme führen ein Jobboard mit diesem Namen. Nichts in unseren Daten sagt, ob es sich um einen Arbeitgeber handelt, daher zeigt diese Seite keine Arbeitgeberangaben.",
+      "showOnly_one": "Nur diese Stelle zeigen",
+      "showOnly_other": "Nur diese {{n}} Stellen zeigen",
+      "showOnlyUncounted": "Nur die Stellen dieses Jobboards zeigen"
+    },
+    "directory": {
+      "h1": "Unternehmen, die jetzt einstellen",
+      "h1Count_one": "{{n}} Unternehmens-Jobboard mit offenen Stellen",
+      "h1Count_other": "{{n}} Unternehmens-Jobboards mit offenen Stellen",
+      "intro": "Jede Anzeige stammt aus dem eigenen Bewerbungssystem des Arbeitgebers – keine Aggregatoren, keine Weiterveröffentlichungen. Die größten Jobboards stehen unten.",
+      "rowOpen_one": "{{n}} offene Stelle",
+      "rowOpen_other": "{{n}} offene Stellen",
+      "searchLink": "Live-Jobbörse durchsuchen",
+      "searchTail": "und jeden Arbeitgeber nach Stelle, Gehalt oder Ort filtern.",
+      "seoDescription": "Jeder Arbeitgeber auf der Jobbörse wird direkt aus seinem eigenen Bewerbungssystem gelesen. Die größten Jobboards ansehen oder die Live-Jobbörse durchsuchen.",
+      "seoTitle": "Unternehmen, die jetzt einstellen – Live-Jobs aus ihren eigenen Bewerbungssystemen"
+    },
+    "facts": {
+      "countriesLabel": "Die meisten Stellen in",
+      "payLabel": "Gehalt angegeben in",
+      "payValue": "{{k}} von {{n}}",
+      "systemLabel": "Bewerbungssystem",
+      "workMode": "{{remote}} remote · {{hybrid}} hybrid · {{onsite}} vor Ort · {{unstated}} ohne Angabe",
+      "workModeLabel": "Arbeitsmodell"
+    },
+    "factsLabel": "Über dieses Jobboard",
+    "h1Generic": "Stellen auf dem Jobboard „{{label}}“",
+    "h1GenericSystem": "Stellen auf dem Jobboard „{{label}}“ ({{system}})",
+    "mix": {
+      "basis": "Die größten Gruppen unter den offenen Stellen, die wir am {{date}} gelesen haben; Stellen in keinem Feld, das wir erkennen, sind nicht enthalten.",
+      "basisUndated": "Die größten Gruppen unter den offenen Stellen, die wir gelesen haben; Stellen in keinem Feld, das wir erkennen, sind nicht enthalten.",
+      "countries": "Länder",
+      "fields": "Bereiche",
+      "group": "Gruppe",
+      "roles": "Offene Stellen",
+      "tableCaption": "Offene Stellen nach Bereich und nach Land",
+      "title": "Stellenmix",
+      "titleListings": "Stellen vor allem ausgeschrieben in"
+    },
+    "nameLoading": "Name des Arbeitgebers wird geladen",
+    "openRoles_one": "{{n}} offene Stelle",
+    "openRoles_other": "{{n}} offene Stellen",
+    "openRolesCapped": "wir zählen bis {{cap}}",
+    "pay": {
+      "basis": "Jahreswerte aus den Gehaltsspannen, die ihre offenen Anzeigen nennen; Anzeigen ohne Gehaltsangabe werden nicht gezählt.",
+      "floor_one": "Typisches unteres Ende der angegebenen Gehaltsspanne: {{amount}} · Median über {{m}} Anzeige in {{currency}}",
+      "floor_other": "Typisches unteres Ende der angegebenen Gehaltsspanne: {{amount}} · Median über {{m}} Anzeigen in {{currency}}",
+      "read": "gelesen am {{date}}",
+      "stated": "Gehalt angegeben in {{k}} von {{n}} Anzeigen",
+      "title": "Gehalt"
+    },
+    "perks": {
+      "basis": "Aus dem Text ihrer eigenen offenen Anzeigen auf Englisch gelesen; Anzeigen in anderen Sprachen lesen wir noch nicht. Ein Häkchen heißt, dass mindestens {{strongPct}} % der Anzeigen, die wir in diesem Land lesen konnten, sie nennen; ein Punkt heißt, dass es mindestens {{minK}} von mindestens {{minN}} Anzeigen und mindestens {{minPct}} % tun. Wir zeigen nur Zusatzleistungen, deren Erkennung wir geprüft haben. „Mindestens“, weil unser Lesesystem eine Nennung übersehen kann.",
+      "lead": "Nicht aufgeführt heißt nicht, dass es nicht angeboten wird. Tippen Sie auf eine Zusatzleistung, um zu sehen, wie viele Anzeigen sie nennen.",
+      "someTitle": "In einigen ihrer Anzeigen"
+    },
+    "readAgo": "gelesen {{ago}}",
+    "record": {
+      "asOf": "Zahlen mit Stand {{when}}.",
+      "countsWithheld": "Wir zeigen nicht, wie viele Stellen entfernt wurden und entfernt blieben.",
+      "growthGrew": "Ein Anstieg um {{pct}} % bei den ausgelieferten Einträgen: {{a}} am {{d1}}, {{b}} am {{d2}}.",
+      "growthLabel": "Einträge, die bei unserem täglichen Lesen ausgeliefert wurden – anders gezählt als offene Stellen.",
+      "growthNone": "Kein Anstieg um {{minRate}} % oder mehr: {{a}} am {{d1}}, {{b}} am {{d2}}.",
+      "growthUnread": "Für dieses Jobboard gibt es noch keine Veröffentlichungsrate.",
+      "leadCloses_one": "Wir haben gesehen, wie {{n}} seiner Stellen in den letzten {{days}} Tagen vom Jobboard genommen wurde und entfernt blieb.",
+      "leadCloses_other": "Wir haben gesehen, wie {{n}} seiner Stellen in den letzten {{days}} Tagen vom Jobboard genommen wurden und entfernt blieben.",
+      "leadGrew": "Sein Jobboard lieferte am {{latestDay}} {{pct}} % mehr Stellen aus als am {{baselineDay}}.",
+      "leadNegative": "Wir haben dieses Jobboard gelesen und weder einen Anstieg der ausgelieferten Stellen um {{minRate}} % oder mehr noch ein Muster entfernter und entfernt gebliebener Stellen gesehen.",
+      "leadUnknown": "Noch kein verlässliches Einstellungssignal",
+      "median": "Die Hälfte dieser Stellen wurde bis Tag {{n}} entfernt.",
+      "noTakedowns": "Noch keine entfernten und entfernt gebliebenen Stellen zum Zählen.",
+      "paceWithheld": "Wir geben hier nicht an, wie schnell Stellen entfernt werden.",
+      "takenDown_one": "{{n}} Stelle entfernt (nicht neu ausgeschrieben) in {{d}} Tagen Beobachtung",
+      "takenDown_other": "{{n}} Stellen entfernt (nicht neu ausgeschrieben) in {{d}} Tagen Beobachtung",
+      "title": "Einstellungsbilanz",
+      "why": "Warum?"
+    },
+    "records": {
+      "layoffsTitle": "Meldungen zu Stellenabbau",
+      "noProof": "Kein Treffer in diesen Unterlagen ist kein Beweis für irgendetwas.",
+      "parentFiler": "{{filer}} (Muttergesellschaft)",
+      "secExitRow": "SEC 8-K, Item 2.05, Kosten für Ausstieg oder Veräußerung · eingereicht am {{date}}",
+      "secRow": "SEC 8-K, Item 2.05 · eingereicht am {{date}}",
+      "title": "Öffentliche Unterlagen",
+      "warnRow_one": "WARN-Meldung · {{state}} · {{workers}} Beschäftigte · eingereicht am {{date}}",
+      "warnRow_other": "WARN-Meldung · {{state}} · {{workers}} Beschäftigte · eingereicht am {{date}}"
+    },
+    "results": {
+      "boardRead": "dieses Jobboard gelesen {{ago}}",
+      "showing_one": "{{shown}} von {{total}} offenen Stelle angezeigt",
+      "showing_other": "{{shown}} von {{total}} offenen Stellen angezeigt",
+      "showingMatching_one": "{{shown}} von {{total}} passenden Stelle angezeigt",
+      "showingMatching_other": "{{shown}} von {{total}} passenden Stellen angezeigt"
+    },
+    "sec": {
+      "fiscalYear": "Geschäftsjahr",
+      "loaded": "Zahlen geladen am {{date}}.",
+      "revenue": "Umsatz"
+    },
+    "similar": {
+      "openRolesAsOf_one": "{{n}} offene Stelle · Stand {{date}}",
+      "openRolesAsOf_other": "{{n}} offene Stellen · Stand {{date}}",
+      "title": "Stellen auch in {{field}} (beliebiges Land)"
+    },
+    "subtitle": "Live-Jobs direkt aus dem eigenen Bewerbungssystem von {{company}}.",
+    "subtitleGeneric": "Live-Jobs direkt aus dem eigenen Bewerbungssystem dieses Jobboards.",
+    "uncarried": {
+      "body": "Suchen Sie diesen Arbeitgeber auf der Live-Jobbörse oder sehen Sie die Unternehmen an, die wir lesen.",
+      "companiesLink": "Unternehmen ansehen, die wir lesen",
+      "searchButton": "Suchen",
+      "searchLabel": "Jobs suchen",
+      "searchPlaceholder": "Arbeitgeber oder Jobtitel",
+      "searchTitle": "Diesen Arbeitgeber auf der Live-Jobbörse suchen",
+      "title": "Ein Jobboard namens „{{token}}“ lesen wir noch nicht"
+    },
+    "usajobs": {
+      "cap": "Bis zu {{cap}} Ergebnisse pro Abfrage; nicht jede Bundesstelle.",
+      "h1": "Stellen des US-Bundes auf USAJOBS",
+      "subtitle": "USAJOBS listet Stellen vieler US-Bundesbehörden; jede Stelle nennt ihre Behörde."
+    },
+    "zero": {
+      "allRoles": "Alle offenen Stellen durchsuchen",
+      "answer": "Derzeit keine offenen Stellen",
+      "body": "Beobachten Sie dieses Jobboard, und Ihr Konto zählt neue Anzeigen, sobald sie erscheinen.",
+      "title": "Derzeit keine offenen Stellen bei {{name}}",
+      "titleBoard": "Derzeit keine offenen Stellen auf diesem Jobboard"
+    }
+  }
+}
