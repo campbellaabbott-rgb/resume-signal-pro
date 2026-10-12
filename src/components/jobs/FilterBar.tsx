@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import { MapPin, SlidersHorizontal } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -31,6 +31,17 @@ import {
  *
  * A field of BoardFilterState (src/pages/Jobs.tsx) for every control here; the
  * page passes its state in and applies each patch.
+ *
+ * FOCUS NEVER FALLS TO THE TOP OF THE PAGE (WCAG 2.4.3). Removing a chip, or
+ * pressing "Clear all filters", unmounts the button that held focus, and the
+ * browser sent focus to <body>. Focus now moves to the chip that took the
+ * removed one's place (else the one before it), and after the last chip or
+ * "Clear all" to the Filters button.
+ *
+ * The company variant's row wraps: keyword on a row of its own, then
+ * location, Filters and the sort. In the lander's left column (about 560px at
+ * 1024) the single row left the location box 50px wide with its placeholder
+ * gone, and its label is for screen readers only.
  */
 export interface FilterBarValue {
   q: string;
@@ -199,8 +210,36 @@ export function FilterBar({ variant, value, onChange, options, companyLabels, co
     onSubmit?.();
   };
 
+  // Where focus goes once the chip row re-renders: a chip's index, or the Filters button.
+  const filtersRef = useRef<HTMLButtonElement | null>(null);
+  const chipsRef = useRef<HTMLUListElement | null>(null);
+  const pendingFocus = useRef<number | "filters" | null>(null);
+  const chipKeys = chips.map((c) => c.key).join("|");
+  useLayoutEffect(() => {
+    const want = pendingFocus.current;
+    if (want === null) return;
+    pendingFocus.current = null;
+    // Only where focus was lost with the removed button: never pull it away from wherever the reader went since.
+    const active = typeof document !== "undefined" ? document.activeElement : null;
+    if (active && active !== document.body && active.isConnected) return;
+    const removers = Array.from(chipsRef.current?.querySelectorAll<HTMLButtonElement>("[data-chip-remove]") ?? []);
+    const target = want === "filters" || removers.length === 0
+      ? filtersRef.current
+      : removers[Math.min(want, removers.length - 1)];
+    target?.focus();
+  }, [chipKeys]);
+  const removeChip = (index: number, patch: Partial<FilterBarValue>) => {
+    pendingFocus.current = index;
+    onChange(patch);
+  };
+  const clearAll = () => {
+    pendingFocus.current = "filters";
+    onChange(clearAllPatch(variant));
+  };
+
   const filtersButton = (
     <Button
+      ref={filtersRef}
       type="button"
       variant="secondary"
       onClick={() => setOpen(true)}
@@ -216,16 +255,16 @@ export function FilterBar({ variant, value, onChange, options, companyLabels, co
 
   return (
     <div className={cn("space-y-2", className)} data-filter-bar={variant}>
-      <form role="search" onSubmit={submit} className="flex flex-col gap-2 sm:flex-row sm:items-end">
+      <form role="search" onSubmit={submit} className={cn("flex flex-col gap-2 sm:flex-row sm:items-end", variant === "company" && "sm:flex-wrap")}>
         <SearchField
           label={t("filterBar.keywordLabel", "Search jobs by title or keyword")}
           placeholder={keywordPlaceholder}
           value={value.q}
           onChange={(e) => onChange({ q: e.target.value })}
-          wrapperClassName="sm:flex-[2]"
+          wrapperClassName={variant === "company" ? "sm:basis-full" : "sm:flex-[2]"}
           enterKeyHint="search"
         />
-        <div className="flex gap-2 sm:flex-1">
+        <div className={cn("flex gap-2 sm:flex-1", variant === "company" && "sm:min-w-[12rem]")}>
           <SearchField
             label={t("filterBar.locationLabel", "Location")}
             placeholder={t("filterBar.locationPlaceholder", "City, region or country")}
@@ -251,23 +290,24 @@ export function FilterBar({ variant, value, onChange, options, companyLabels, co
             </select>
           </div>
         ) : null}
-        {/* Enter submits; the button is for completeness, hidden visually. */}
-        <button type="submit" className="sr-only">{t("filterBar.search", "Search")}</button>
+        {/* Enter submits; the button is for completeness, hidden visually and
+            out of the Tab order (a Tab stop on a 1px box is focus nobody can see). */}
+        <button type="submit" className="sr-only" tabIndex={-1}>{t("filterBar.search", "Search")}</button>
       </form>
 
       {chips.length ? (
-        <ul className="flex flex-wrap items-center gap-2" aria-label={t("filterBar.activeFilters", "Active filters")}>
-          {chips.map((c) => (
+        <ul ref={chipsRef} className="flex flex-wrap items-center gap-2" aria-label={t("filterBar.activeFilters", "Active filters")}>
+          {chips.map((c, i) => (
             <li key={c.key} className="max-w-full">
               <RemovableChip
                 label={c.label}
                 removeLabel={t("filterBar.removeFilter", { label: c.label, defaultValue: "Remove filter: {{label}}" })}
-                onRemove={() => onChange(c.remove)}
+                onRemove={() => removeChip(i, c.remove)}
               />
             </li>
           ))}
           <li>
-            <Button variant="link" size="sm" onClick={() => onChange(clearAllPatch(variant))}>
+            <Button variant="link" size="sm" onClick={clearAll}>
               {t("filterBar.clearAll", "Clear all filters")}
             </Button>
           </li>

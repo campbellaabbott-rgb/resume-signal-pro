@@ -201,9 +201,18 @@
     @apply border-border;
   }
 
+  /* The header is fixed (h-14, lg:h-16), so whatever the browser scrolls into
+     view -- focus moving backwards, an in-page link -- lands below it instead
+     of under it (WCAG 2.4.11 Focus Not Obscured). */
   html {
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
+    scroll-padding-top: 3.5rem;
+  }
+  @media (min-width: 1024px) {
+    html {
+      scroll-padding-top: 4rem;
+    }
   }
 
   body {
@@ -250,7 +259,29 @@
 
   /* TARGET SIZE BY POINTER, NOT BY TAG. A 44px floor on every <a> and
      <button> made desktop tables and inline links tall and loose; a finger
-     needs 44px, a mouse needs the WCAG 2.2 minimum of 24. */
+     needs 44px, a mouse needs the WCAG 2.2 minimum of 24.
+
+     The 24px floor is for every pointer. Without it the legacy board's
+     controls that size nothing themselves (the pane's Share button, the
+     "Open there" agent link) measured 17px tall under a mouse and failed
+     2.5.8 Target Size. min-height has no effect on an inline link, so a link
+     inside a sentence keeps its line; a link laid out as a box (a flex item,
+     a block) gets the floor.
+
+     44px under a coarse pointer covers buttons, tabs, menu items and selects.
+     Links and controls that size themselves (a utility like min-h-6 wins over
+     this base layer) keep at least 24px, or the spacing 2.5.8 allows. */
+  button,
+  [role="button"],
+  [role="tab"],
+  [role="menuitem"],
+  [role="menuitemcheckbox"],
+  [role="menuitemradio"],
+  select,
+  a[href] {
+    min-height: 24px;
+  }
+
   @media (pointer: coarse) {
     button,
     [role="button"],
@@ -293,6 +324,19 @@
     margin-bottom: 0.5em;
     font-size: 1rem;
     line-height: 1.5rem;
+  }
+}
+
+/* LEGACY HEROES ONLY, UNTIL THEY ARE CLEANED. Hero.tsx, FinalCTA.tsx and
+   JobBoardHero.tsx still draw decorative orbs at blur-[150px] / blur-[100px];
+   on a phone those were held at 50px, and the token pass dropped the rule, so
+   they rendered at full radius there. The design system's own files use no
+   blur; delete this block with the last of those classes. */
+@media (max-width: 767px) {
+  .blur-\[150px\],
+  .blur-\[100px\],
+  .blur-\[80px\] {
+    filter: blur(50px);
   }
 }
 

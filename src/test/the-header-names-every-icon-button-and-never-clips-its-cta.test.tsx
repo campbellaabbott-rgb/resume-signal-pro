@@ -83,6 +83,12 @@ describe.each(LOCALES)("in %s", (lng) => {
     const start = i18n.t("header.start", { lng });
     const phoneCta = within(banner).getByRole("button", { name: start });
     expect(phoneCta.textContent?.trim()).toBe(start);
+    // So is the desktop CTA, in every language: no aria-label that could
+    // drop the visible word (es/pt read "Empezar…"/"Comece agora…" over
+    // "Comenzar"/"Começar").
+    const desktopCta = banner.querySelector(`button[data-header-cta="desktop"]`) as HTMLElement;
+    expect(desktopCta.hasAttribute("aria-label")).toBe(false);
+    expect(desktopCta.textContent?.trim()).toBe(i18n.t("header.getStarted", { lng }));
     cleanup();
   });
 });
@@ -92,8 +98,8 @@ describe("the call to action cannot be clipped", () => {
     await i18n.changeLanguage("de");
     mount();
     const banner = screen.getByRole("banner");
-    // Hidden at phone width (display:none), so found by its label attribute.
-    const desktopCta = banner.querySelector(`button[aria-label="${i18n.t("header.getStartedAriaLabel", { lng: "de" })}"]`) as HTMLElement;
+    // Hidden at phone width (display:none), so found by its marker.
+    const desktopCta = banner.querySelector(`button[data-header-cta="desktop"]`) as HTMLElement;
     expect(desktopCta).toBeTruthy();
     const phoneCta = within(banner).getByRole("button", { name: i18n.t("header.start", { lng: "de" }) });
     for (const cta of [desktopCta, phoneCta]) {

@@ -163,11 +163,15 @@ export function Header() {
             <UserIcon aria-hidden="true" className="h-4 w-4" />
             <span className="sr-only xl:not-sr-only">{accountLabel}</span>
           </Link>
+          {/* Named by its visible word, as the phone's Start is: the old
+              aria-label ("Empezar - desplazarse a la sección de carga") did
+              not contain the visible "Comenzar" in Spanish or Portuguese
+              (WCAG 2.5.3 Label in Name). */}
           <Button
             onClick={scrollToUpload}
             size="sm"
             className="hidden shrink-0 lg:inline-flex"
-            aria-label={t("header.getStartedAriaLabel")}
+            data-header-cta="desktop"
           >
             {t("header.getStarted")}
           </Button>

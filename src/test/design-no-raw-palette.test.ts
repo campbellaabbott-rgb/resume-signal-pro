@@ -98,12 +98,22 @@ const COVERED_FILES = [
  * THE RATCHET. Measured 2026-10-12 on the design-system branch (pass A); the
  * board wiring pass lowers these as it swaps each region onto the listing and
  * company components.
+ *
+ * THE LIGHT THEME WAITS ON THIS LIST. axe at ?theme=light found 60-65 text
+ * contrast failures on the legacy board, lander and home (opacity-70 facet
+ * counts at 3.51:1, text-success/90 at 3.91:1, text-muted-foreground/70 at
+ * 3.51:1), while dark is clean: every one is an opacity-dimmed or /NN text
+ * class these rules count. theme.ts's SYSTEM_DEFAULT_ENABLED stays false until
+ * every figure below is 0. The home components axe flagged are listed too.
  */
 const RATCHET: Record<string, number> = {
-  "src/pages/Jobs.tsx": 134,
+  "src/pages/Jobs.tsx": 132,
   "src/pages/JobPosting.tsx": 0,
   "src/pages/Pricing.tsx": 0,
   "src/pages/Index.tsx": 2,
+  "src/components/Hero.tsx": 17,
+  "src/components/AtsCoverage.tsx": 1,
+  "src/components/FinalCTA.tsx": 1,
 };
 
 const covered = [

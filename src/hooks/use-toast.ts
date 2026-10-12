@@ -7,8 +7,13 @@
  * API, toast({ title, description, variant }) and useToast(), so none of its
  * importers changed, and hands every call to sonner.
  *
- * A destructive toast becomes sonner's error toast, which sonner announces
- * assertively; every other toast is announced politely.
+ * A destructive toast becomes sonner's error toast (its icon and colour).
+ * It is NOT announced assertively: sonner (1.7.4 here) renders one live
+ * region, aria-live="polite", for every toast, so an error is announced
+ * politely -- as it was under the Radix toaster, whose toasts were
+ * role="status". On a phone the stack sits at the bottom of the screen; the
+ * Radix one sat at the top. A test reads sonner's bundle and fails if either
+ * of those changes, so this note cannot go stale in silence.
  */
 import type * as React from "react";
 import { toast as sonner, type ExternalToast } from "sonner";

@@ -219,7 +219,7 @@ export default function Pricing() {
               fourteenth deliverable. Numbers from the PASS mirror. */}
           <p className="text-center text-sm text-muted-foreground max-w-4xl mx-auto mb-12">
             {t('pricingPage.passLine', 'Or a one-off pass for your own AI agent: ${{passPrice}} for {{passHours}} hours and {{passApplications}} applications. Never renews.', passCopy)}{' '}
-            <Link to="/agents" className="text-primary hover:underline">{t('pricingPage.passLink', 'Connect your agent')}</Link>
+            <Link to="/agents" className="link">{t('pricingPage.passLink', 'Connect your agent')}</Link>
           </p>
 
           {/* Which platforms, and what happens on each. Directly under the
@@ -379,7 +379,7 @@ export default function Pricing() {
             <h2 className="text-2xl font-bold mb-4">{t('pricingPage.questions')}</h2>
             <p className="text-muted-foreground mb-6">
               {t('pricingPage.allProductsOneTime')}{' '}
-              <Link to="/" className="text-primary hover:underline">{t('pricingPage.freeScanLink')}</Link> {t('pricingPage.seeScoreFirst')}
+              <Link to="/" className="link">{t('pricingPage.freeScanLink')}</Link> {t('pricingPage.seeScoreFirst')}
             </p>
             <Button variant="outline" asChild>
               <Link to="/">

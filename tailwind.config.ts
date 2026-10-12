@@ -13,7 +13,11 @@ export default {
       "&:is([data-theme=dark] *)",
     ],
   ],
-  content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
+  // index.html carries the skip link, whose focus: utilities (focus:top-4,
+  // focus:z-50, focus:bg-primary...) were never generated while only src/ was
+  // scanned: the first Tab stop on every page focused an invisible link under
+  // the header (WCAG 2.4.7).
+  content: ["./index.html", "./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
   prefix: "",
   theme: {
     container: {

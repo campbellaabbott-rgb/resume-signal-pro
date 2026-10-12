@@ -9015,7 +9015,10 @@ function JobsBoard({ boardId }: { boardId: string }) {
               list scrolls; on mobile the secondary controls collapse behind one
               "Filters" button with an active-count badge, so the first posting
               is on-screen instead of a wall of seven controls. */}
-          <div className="sticky top-16 z-20 -mx-4 px-4 py-2 bg-background/90 backdrop-blur mb-2">
+          {/* top-14 lg:top-16: the header's own heights (h-14, lg:h-16). At
+              top-16 under lg a 7px strip showed cards scrolling between the
+              header and this row. */}
+          <div className="sticky top-14 lg:top-16 z-20 -mx-4 px-4 py-2 bg-background/90 backdrop-blur mb-2">
             <div className="flex gap-2">
               <div className="relative flex-1 min-w-0">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -9838,17 +9841,19 @@ function JobsBoard({ boardId }: { boardId: string }) {
                   the only hint, and the industries past the right edge simply
                   go unseen. sm+ therefore clips to one row and reveals the rest
                   through a control you can see.
-                  44px is MEASURED, not guessed: these pills inherit the board's
-                  44px minimum touch target, so their real height is 44 and not
-                  the 28 that padding plus line-height suggests. Clipping to the
-                  smaller number cut the row in half and left NO pill fully
-                  visible — caught in the browser, not in review. */}
+                  THE CLIP IS THE PILL'S HEIGHT, SET ON THE PILL. The pills are
+                  h-[30px] under a mouse and 44px under a finger (the coarse
+                  pointer's button floor), and the clip follows each:
+                  sm:max-h-[30px], coarse:sm:max-h-11. It used to be a bare 44px
+                  measured when every button had a 44px floor; once that floor
+                  became coarse-only the pills were 30px and the 44px window
+                  showed a 6px sliver of the hidden second row. */}
               {/* min-w-0 IS LOAD-BEARING. A flex item defaults to
                   min-width:auto, so this row refused to shrink below its
                   content and grew to 3,255px inside a 375px viewport — the
                   overflow-x-auto never engaged and THE PAGE scrolled sideways
                   instead of the row. Measured, not reviewed. */}
-              <div className={`min-w-0 flex-1 flex items-center gap-2 flex-nowrap overflow-x-auto pb-1 -mb-1 [mask-image:linear-gradient(to_right,black_92%,transparent)] sm:pb-0 sm:mb-0 sm:flex-wrap sm:[mask-image:none] ${industriesOpen || !worthToggling ? "sm:overflow-visible" : "sm:max-h-[44px] sm:overflow-hidden"}`}>
+              <div className={`min-w-0 flex-1 flex items-center gap-2 flex-nowrap overflow-x-auto pb-1 -mb-1 [mask-image:linear-gradient(to_right,black_92%,transparent)] sm:pb-0 sm:mb-0 sm:flex-wrap sm:[mask-image:none] ${industriesOpen || !worthToggling ? "sm:overflow-visible" : "sm:max-h-[30px] coarse:sm:max-h-11 sm:overflow-hidden"}`}>
                 {cats
                   .map((c) => {
                     const n = railCount(c);
@@ -9857,7 +9862,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                       key={c}
                       type="button"
                       onClick={() => setCategory(category === c ? "" : c)}
-                      className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border whitespace-nowrap transition-colors ${
+                      className={`inline-flex h-[30px] items-center gap-1.5 text-xs px-3 rounded-full border whitespace-nowrap transition-colors ${
                         category === c ? "border-primary bg-primary/10 text-primary font-semibold" : "border-border text-muted-foreground hover:text-foreground"
                       }`}
                     >
@@ -9867,7 +9872,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                           budget did not reach has no count, and printing "0"
                           beside a field with thousands of matching roles is
                           the same lie that used to delete the chip. */}
-                      {typeof n === "number" && <span className="opacity-70">{fmtFacet(n)}</span>}
+                      {typeof n === "number" && <span className="text-subtle-foreground">{fmtFacet(n)}</span>}
                     </button>
                     );
                   })}
@@ -10523,7 +10528,10 @@ function JobsBoard({ boardId }: { boardId: string }) {
               <p className="text-[13px] text-muted-foreground mb-3">
                 {t("jobsPage.orientSub", "Pick a field, drop your résumé below for personal ranking, or just browse the newest.")}
               </p>
-              <div className="flex flex-wrap gap-2 mb-3">
+              {/* min-h holds one row of field pills (34px) open before the
+                  counts arrive, so the box does not grow under the reader at
+                  ~2.3s (it pushed the list down: CLS 0.06 of /jobs's 0.106). */}
+              <div className="flex flex-wrap gap-2 mb-3 min-h-[34px]">
                 {Object.entries(exactCats ?? {})
                   .filter(([c]) => c !== "other")
                   .sort(([, a], [, b]) => (b as number) - (a as number))
@@ -12254,7 +12262,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                                 hold no label for falls back to the un-named
                                 sentence rather than printing a column value. */}
                             <span
-                              className="inline-flex items-center gap-1 font-medium text-success/90"
+                              className="inline-flex items-center gap-1 font-medium text-success"
                               title={ats
                                 ? t("jobsPage.trustBadgeAtsTip", "This posting was read straight out of {{company}}'s own {{ats}} job feed — the same system their recruiters post into. Not an aggregator, not a scraped copy. Re-checked live when you click Apply.", { company: companyDisplayName(job.company), ats })
                                 : t("jobsPage.trustBadgeTip", "Pulled directly from this company's official applicant-tracking feed — not an aggregator or a scraped copy. Re-checked live when you click Apply.")}
