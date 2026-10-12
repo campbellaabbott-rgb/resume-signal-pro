@@ -11,7 +11,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   COMPANY_STUB_KEEP_DAYS, POSTING_STUB_KEEP_DAYS, companyCarryState, companyLedgerEntry, companyStubPage, companyTokenOf,
-  contentFingerprint, duplicateSkeletonGroups, onceCompanyPaths, pageDates, postingCarryBase, postingCeilingSplit, postingStubPage,
+  capPostingEntries, contentFingerprint, duplicateSkeletonGroups, onceCompanyPaths, pageDates, postingCarryBase, postingCeilingSplit, postingFreshBudget, postingStubPage,
   resolveDuplicateGroups, seedPostingLedger, tombstoneHtml, COUNT_BEARING, FINGERPRINT_VERSION,
 } from "../../scripts/prerender-pages.mjs";
 import { bakeEmployerName, repairEmployerName, unpublishableNameReason } from "../../scripts/prerender-names.mjs";
@@ -24,7 +24,7 @@ const P1 = "/jobs/posting/workday/acme~wd1~ext/R1";
 const P2 = "/jobs/posting/workday/acme~wd1~ext/R2";
 
 describe("SEO-002: a published posting URL never falls back to the homepage", () => {
-  it("seeds the pre-ledger URLs once, as 'retired' and never re-read, and leaves what a sitemap or the ledger names alone", () => {
+  it("seeds the pre-ledger URLs once, as 'seeded' (never re-read), and leaves what a sitemap or the ledger names alone", () => {
     const ledger = { postings: { [P1]: { state: "live", since: "2026-10-10", first: "2026-10-01" } } };
     const sitemap = `<urlset><url><loc>https://resumebooster.work${P2}</loc></url></urlset>`;
     const P3 = "/jobs/posting/workday/acme~wd1~ext/R3";
@@ -32,14 +32,14 @@ describe("SEO-002: a published posting URL never falls back to the homepage", ()
     expect(added).toBe(1);
     expect(out.postings[P1].state, "the ledger's own entry wins").toBe("live");
     expect(out.postings[P2], "a sitemap path is the carry rule's").toBeUndefined();
-    expect(out.postings[P3]).toMatchObject({ state: "retired", seed: true, since: TODAY });
+    expect(out.postings[P3]).toMatchObject({ state: "seeded", seed: true, since: TODAY });
     // Idempotent: a second run seeds nothing more.
     expect(seedPostingLedger({ ledger: out, seedPaths: [P3], idFromPath: postingIdFromPath, today: "2026-10-13" }).added).toBe(0);
   });
 
   it("carries a seeded page without a board read for its window, then keeps a tombstone instead of dropping it", () => {
     const ledger = { postings: {
-      [P1]: { state: "retired", seed: true, since: "2026-10-01" },
+      [P1]: { state: "seeded", seed: true, since: "2026-10-01" },
       [P2]: { state: "gone", since: "2026-07-01" },
     } };
     const inWindow = postingCarryBase({ ledger, idFromPath: postingIdFromPath, today: TODAY });
@@ -85,11 +85,43 @@ describe("SEO-002: a published posting URL never falls back to the homepage", ()
 
   it("IndexNow never reports a seeded or an unchecked page as a removal", () => {
     const ledger = { builtAt: TODAY, postings: {
-      [P1]: { state: "retired", seed: true, since: TODAY },
+      [P1]: { state: "seeded", seed: true, since: TODAY },
       [P2]: { state: "unchecked", since: TODAY },
       "/jobs/posting/workday/acme~wd1~ext/R9": { state: "gone", since: TODAY },
     } };
     expect(changedUrls({ sitemapXml: "", ledger })).toEqual(["https://resumebooster.work/jobs/posting/workday/acme~wd1~ext/R9"]);
+  });
+});
+
+describe("the live posting set never passes the ceiling the bake states (design upgrade README, decision 5)", () => {
+  const GEN = readFileSync(resolve(__dirname, "../../scripts/prerender-seo.mjs"), "utf8");
+  const num = (name: string) => Number(new RegExp(`const ${name} = (\\d+);`).exec(GEN)![1]);
+  const CEILING = num("POSTING_PAGE_CEILING");
+  const isPosting = (e: { path: string }) => e.path.startsWith("/jobs/posting/");
+  const entries = (n: number) => [{ path: "/jobs" }, ...Array.from({ length: n }, (_, i) => ({ path: `/jobs/posting/ashby/acme/r${i}` })), { path: "/pricing" }];
+
+  it("the sitemap keeps a set at the ceiling whole and drops one past it (454 against a stated 400 was this case)", () => {
+    expect(capPostingEntries(entries(CEILING), { isPosting, ceiling: CEILING }).dropped).toEqual([]);
+    const over = capPostingEntries(entries(CEILING + 1), { isPosting, ceiling: CEILING });
+    expect(over.dropped.length).toBe(1);
+    expect(over.kept.filter(isPosting).length).toBe(CEILING);
+    expect(over.kept.map((e) => e.path)).toContain("/pricing");
+  });
+
+  it("carried pages past the ceiling give up their page, oldest employer date first", () => {
+    const split = postingCeilingSplit([{ d: "2026-10-01" }, { d: "2026-09-01" }, { d: "2026-10-05" }], { ceiling: 2, dateOf: (x: { d: string }) => x.d });
+    expect(split.retire.map((x) => x.d)).toEqual(["2026-09-01"]);
+    expect(split.keep.map((x) => x.d)).toEqual(["2026-10-01", "2026-10-05"]);
+  });
+
+  it("the bake applies both, and with them the live set's bound is the ceiling, not max(ceiling, carried)", () => {
+    expect(GEN).toMatch(/postingCeilingSplit\(detailed, \{ ceiling: POSTING_PAGE_CEILING/);
+    expect(GEN).toMatch(/capPostingEntries\(entries, \{ isPosting: \(e\) => e\.path\.startsWith\(`\$\{D\.POSTING_PATH_PREFIX\}\/`\), ceiling: POSTING_PAGE_CEILING \}\)/);
+    for (const carriedLive of [0, 354, 400, 454, 500, 700]) {
+      const kept = Math.min(carriedLive, CEILING);
+      const fresh = postingFreshBudget({ carriedLive: kept, cap: num("POSTING_PAGE_CAP"), reserve: num("POSTING_FRESH_RESERVE"), ceiling: CEILING });
+      expect(kept + fresh, `carried ${carriedLive}`).toBeLessThanOrEqual(CEILING);
+    }
   });
 });
 

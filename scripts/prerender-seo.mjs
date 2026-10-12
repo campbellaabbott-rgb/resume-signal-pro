@@ -25,10 +25,14 @@ import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 import {
   PRERENDER_LEDGER_PATH, POSTING_STUB_KEEP_DAYS, callBudget, companyLanderPage, contentFingerprint, landerFacts, landerHasOwnContent, landerRobots, landerThinBreaker,
-  bakeLanders, employerBoardsOf, employerPageOf, carrySitemaps, pageDates, postingCarryBase, postingCheckState, postingRowEligible, postingStubEntry, postingStubPage,
-  LANDER_OPENINGS_READS, LANDER_OPENINGS_SHOWN, LLMS_TXT_COMPANIES, companiesLlmsLine, llmsTxtCompaniesCount, landerBreakers, landerOpenings, landerSkeleton, nextOpeningsCache, openingsFromList, openingsToRead,
-  POSTING_PAGE_TARGET, POSTING_FRESH_RESERVE, POSTING_PAGE_CEILING, postingFreshBudget, postingCeilingSplit, capPostingEntries, seedPostingLedger, tombstoneHtml,
-  COUNT_BEARING, COMPANY_STUB_KEEP_DAYS, companyTokenOf, onceCompanyPaths, companyCarryState, companyLedgerEntry, companyStubPage, duplicateSkeletonGroups, resolveDuplicateGroups,
+  bakeLanders, employerBoardsOf, employerPageOf, carrySitemaps, pageLastmod, postingCarryBase, postingCheckState, postingFreshBudget, postingRowEligible, postingStubEntry, postingStubPage,
+  LANDER_OPENINGS_READS, LANDER_OPENINGS_SHOWN, LLMS_TXT_COMPANIES, companiesLlmsLine, llmsTxtCompaniesCount, duplicateSkeletons, landerBreakers, landerOpenings, landerSkeleton, nextOpeningsCache, openingsFromList, openingsToRead,
+} from "./prerender-pages.mjs";
+// The once-published pages, the ceiling, the dates and the duplicate groups
+// (SEO-002, SEO-025, SEO-036 and decision 5 of the design upgrade's README).
+import {
+  pageDates, postingCeilingSplit, capPostingEntries, seedPostingLedger, tombstoneHtml,
+  COUNT_BEARING, companyTokenOf, onceCompanyPaths, companyCarryState, companyLedgerEntry, companyStubPage, duplicateSkeletonGroups, resolveDuplicateGroups,
 } from "./prerender-pages.mjs";
 import { bakeEmployerName, repairEmployerName } from "./prerender-names.mjs";
 import { RETIRED_PRODUCT_IDS, APPLY_YOURSELF_LINE, retiredClaimsIn, crawlerText } from "./prerender-retired.mjs";
@@ -1933,7 +1937,7 @@ export { isCollidedToken } from "../src/lib/board-collisions";
   //   3. The rest of the budget goes to the newest eligible postings by the
   //      employer's own stated date — the ones whose page will stay valid
   //      longest, since the window closes a fixed number of days after that
-  //      date. The budget is POSTING_PAGE_TARGET less the carried live pages and
+  //      date. The budget is POSTING_PAGE_CAP less the carried live pages and
   //      never below POSTING_FRESH_RESERVE, so the set keeps moving; and no new
   //      page is added past POSTING_PAGE_CEILING live ones. The board's
   //      30-day window retires every page within a month of its date anyway.
@@ -1953,15 +1957,18 @@ export { isCollidedToken } from "../src/lib/board-collisions";
   //      cannot reach is "unchecked", never dropped. The ceiling is sized to
   //      fit: the facets head, 500 re-checks, 20 pool pages and 100 new
   //      postings is the 621 (it was 600 when the listings had no reads).
-  //   7. The target, the reserve and the CEILING are one set of numbers in
-  //      prerender-pages.mjs (POSTING_PAGE_TARGET, POSTING_FRESH_RESERVE,
-  //      POSTING_PAGE_CEILING), which the sitemap guard reads: carried plus
-  //      new live pages never exceed the ceiling, and carried pages past it
-  //      give up their page to the honest "retired" one (postingCeilingSplit).
+  //   7. THE CEILING BINDS THE CARRIED PAGES TOO. Carried pages past
+  //      POSTING_PAGE_CEILING give up their page, the oldest employer date
+  //      first, to the honest "retired" page (postingCeilingSplit), and the
+  //      sitemap never names more posting pages than the ceiling
+  //      (capPostingEntries), so the live set's bound is the ceiling itself.
+  const POSTING_PAGE_CAP = 400;
+  const POSTING_FRESH_RESERVE = 100;
+  const POSTING_PAGE_CEILING = 500;
   const POSTING_FETCH_CONCURRENCY = 8;
   // Twenty pages of 60: the board gives no caller without a secret more than
   // a page's 60 rows a call (job-board .88, anon-budget.ts pageCeiling), and
-  // the pool below stops at three times the page target, 1,200 rows.
+  // the pool below stops at three times the page cap, 1,200 rows.
   const POSTING_LIST_PAGES = 20;
   const POSTING_LIST_PAGE_ROWS = 60;
   const POSTING_MIN_DESCRIPTION = 100;
@@ -2136,7 +2143,7 @@ export { isCollidedToken } from "../src/lib/board-collisions";
             continue;
           }
           takenIdentity.set(k, path);
-          detailed.push({ job: c.job, description: c.description, first: firstSeen(path) });
+          detailed.push({ job: c.job, description: c.description, first: firstSeen(path), carried: true });
         } else {
           stubs.push({ ...c, path, state: c.state === "found" ? "retired" : c.state });
         }
@@ -2174,7 +2181,7 @@ export { isCollidedToken } from "../src/lib/board-collisions";
       //     offset. The id-dedupe below is what actually prevents a duplicate
       //     from an offset page shifting under us, and it is asserted rather
       //     than described.
-      const freshBudget = postingFreshBudget({ carriedLive, target: POSTING_PAGE_TARGET, reserve: POSTING_FRESH_RESERVE, ceiling: POSTING_PAGE_CEILING });
+      const freshBudget = postingFreshBudget({ carriedLive, cap: POSTING_PAGE_CAP, reserve: POSTING_FRESH_RESERVE, ceiling: POSTING_PAGE_CEILING });
       const pool = [];
       const seenIds = new Set();
       let offset = 0;
@@ -2190,7 +2197,7 @@ export { isCollidedToken } from "../src/lib/board-collisions";
         }
         if (!j.hasMore || typeof j.nextOffset !== "number") break;
         offset = j.nextOffset;
-        if (pool.length >= POSTING_PAGE_TARGET * 3) break;
+        if (pool.length >= POSTING_PAGE_CAP * 3) break;
       }
       if (poolDuplicates) console.warn(`[prerender-seo] posting pool: ${poolDuplicates} duplicate row(s) across offset pages — the board shifted under the walk; deduped by id`);
 
@@ -2213,18 +2220,23 @@ export { isCollidedToken } from "../src/lib/board-collisions";
       let freshWritten = 0;
       for (const c of await readDetails(fresh.map((j) => j.id))) {
         if (c.state !== "found" || !eligibleRow(c.job) || !describedEnough(c.description)) continue;
-        detailed.push({ job: c.job, description: c.description, first: TODAY });
+        detailed.push({ job: c.job, description: c.description, first: TODAY, carried: false });
         freshWritten++;
       }
       const eligible = pool.filter(eligibleRow);
 
+      // SEO-006: the repaired employer name is the one every part of a
+      // posting page prints, its markup's hiringOrganization included; a
+      // carried page whose name the gate would refuse keeps its page this
+      // round (D7) and goes on the dry-run list.
+      for (const d of detailed) {
+        const named = postingName(d.job);
+        if (named.reason) nameGateDryRun.push({ path: D.postingPagePath(d.job.id), kind: "posting", token: d.job.token ?? null, name: named.name, shown: named.shown, reason: named.reason, would: "lose its JobPosting markup and be marked noindex" });
+        if (named.repaired) d.job = { ...d.job, company: named.name };
+      }
+
       let withPay = 0;
-      for (const { job: row, description, first } of detailed) {
-        // The repaired employer name is the one every part of the page
-        // prints, its markup's hiringOrganization included (SEO-006).
-        const named = postingName(row);
-        const job = named.repaired ? { ...row, company: named.name } : row;
-        if (named.reason) nameGateDryRun.push({ path: D.postingPagePath(row.id), kind: "posting", token: row.token ?? null, name: named.name, shown: named.shown, reason: named.reason, would: "lose its JobPosting markup and be marked noindex" });
+      for (const { job, description, first, carried } of detailed) {
         const path = D.postingPagePath(job.id);
         const ld = D.postingJsonLd(job, description, { site: SITE });
         // A page whose markup we cannot stand behind is not written as a live
@@ -2271,7 +2283,11 @@ export { isCollidedToken } from "../src/lib/board-collisions";
           if (!postingsByToken.has(job.token)) postingsByToken.set(job.token, []);
           postingsByToken.get(job.token).push({ id: job.id, path, title: String(job.title).trim(), place });
         }
-        postingLedger[path] = { state: "live", since: TODAY, first, title: job.title, company: nm, token: job.token ?? null };
+        // `carried` says which side of rule 3 the page came from: re-checked
+        // from what the live site published, or new under postingFreshBudget.
+        // The built-output guard judges the ceiling from it (the bound on the
+        // live set is max(ceiling, carried), never POSTING_PAGE_CAP).
+        postingLedger[path] = { state: "live", since: TODAY, first, carried, title: job.title, company: nm, token: job.token ?? null };
       }
 
       // The URLs this site published that get no live page: each keeps a

@@ -75,7 +75,7 @@ export function postingCarryBase({ ledger, sitemaps = [], idFromPath, today, kee
     // keeps its "no longer has a page of its own" page without a board read,
     // exactly as a gone one does: re-checking 459 of them a bake would spend the
     // whole read budget on URLs that serve no page either way.
-    if (e.state === "gone" || e.seed === true) {
+    if (e.state === "gone" || e.state === "seeded" || e.seed === true) {
       const age = dayDiff(e.since, today);
       if (age !== null && age >= 0 && age <= keepDays) stubs.set(path, { ...e });
       else tombstones.set(path, { ...e });
@@ -95,7 +95,9 @@ export function postingCarryBase({ ledger, sitemaps = [], idFromPath, today, kee
 
 /**
  * The ledger with every seeded posting URL the ledger does not already name
- * added as a "retired" entry that was never re-read (`seed: true`). The seed
+ * added as a "seeded" entry (`seed: true`): its page says it no longer has a
+ * page of its own, and nothing about the posting, because it was never re-read;
+ * the ledger keeps it apart from a checked removal. The seed
  * is the list of posting URLs this site published before the ledger existed
  * (scripts/seo-seed/), which served the homepage copy. A URL any sitemap still
  * names is left to the carry rule: it may be a live page. Idempotent: a path
@@ -112,39 +114,31 @@ export function seedPostingLedger({ ledger, seedPaths = [], sitemaps = [], idFro
   for (const raw of seedPaths) {
     const path = String(raw ?? "").trim().replace(/^https?:\/\/[^/]+/, "").replace(/\/+$/, "");
     if (!path || !idFromPath(path) || postings[path] || inSitemap.has(path)) continue;
-    postings[path] = { state: "retired", seed: true, since: today, first: today, title: null, company: null, token: null };
+    postings[path] = { state: "seeded", seed: true, since: today, first: today, title: null, company: null, token: null };
     added++;
   }
   return { ledger: { ...base, postings }, added };
 }
 
-// ---- How many posting pages a bake may advertise ----
+// ---- The ceiling on the live posting set ----
 //
-// THE SITEMAP ADVERTISED 454 POSTING PAGES AGAINST A STATED CAP OF 400 (design
-// upgrade README, decision 5): the fresh reserve was added on top of the
-// carried pages with no ceiling between them. The bake keeps three numbers and
-// states them: a target it fills toward (400), a reserve of new pages it adds
-// every bake even when the carried set is at the target (100), and a CEILING
-// no bake ever exceeds (500), which is the cap the sitemap guard reads. When
+// postingFreshBudget (below postingRowEligible) never adds a new page past
+// the bake's POSTING_PAGE_CEILING, but carried pages had no bound at all, so
+// the live set's bound was max(ceiling, carried). These two close it: when
 // the carried pages alone are past the ceiling, the ones whose employer date
 // is oldest (the soonest to leave the 30-day window anyway) give up their
-// page first, to the honest "retired" page, never to the homepage.
-export const POSTING_PAGE_TARGET = 400;
-export const POSTING_FRESH_RESERVE = 100;
-export const POSTING_PAGE_CEILING = 500;
-
-/** How many new posting pages this bake may add on top of the carried live ones. */
-export function postingFreshBudget({ carriedLive, target = POSTING_PAGE_TARGET, reserve = POSTING_FRESH_RESERVE, ceiling = POSTING_PAGE_CEILING }) {
-  const c = Math.max(0, Number(carriedLive) || 0);
-  return Math.max(0, Math.min(ceiling - c, Math.max(target - c, reserve)));
-}
+// page first, to the honest "retired" page, never to the homepage; and the
+// sitemap never names more posting pages than the ceiling, whatever reaches
+// it (the design upgrade's README, decision 5, saw 454 advertised against a
+// stated 400).
 
 /**
  * The carried live pages that must give up their page so the live set fits
- * under the ceiling: the oldest employer-dated first. Returns the ones to keep
- * and the ones to retire, each in the order given.
+ * under the ceiling: the oldest employer-dated first. Returns NEW lists of the
+ * ones to keep and the ones to retire, each in the order given (the caller
+ * empties and refills its own array from them).
  */
-export function postingCeilingSplit(carried, { ceiling = POSTING_PAGE_CEILING, dateOf }) {
+export function postingCeilingSplit(carried, { ceiling, dateOf }) {
   const list = Array.isArray(carried) ? carried : [];
   if (list.length <= ceiling) return { keep: [...list], retire: [] };
   const ranked = list.map((x, i) => ({ x, i, d: String(dateOf(x) ?? "") })).sort((a, b) => (a.d === b.d ? a.i - b.i : a.d < b.d ? -1 : 1));
@@ -153,7 +147,7 @@ export function postingCeilingSplit(carried, { ceiling = POSTING_PAGE_CEILING, d
 }
 
 /** The sitemap's posting entries, never more than the ceiling: the rest are dropped and counted. */
-export function capPostingEntries(entries, { isPosting, ceiling = POSTING_PAGE_CEILING }) {
+export function capPostingEntries(entries, { isPosting, ceiling }) {
   let n = 0;
   const kept = [];
   const dropped = [];
@@ -381,13 +375,15 @@ export function postingStubPage({ path, id, state, since, title, company, compan
  */
 export function postingStubEntry({ stub, prior, today, first = null, employerName, tokenOf }) {
   const p = prior && typeof prior === "object" ? prior : {};
-  const since = p.state === stub.state && typeof p.since === "string" ? p.since : today;
+  const state = stub.seed === true ? "seeded" : stub.state;
+  const since = p.state === state && typeof p.since === "string" ? p.since : today;
   const token = stub.job?.token ?? p.token ?? tokenOf(stub.id) ?? null;
   const company = employerName(token, stub.company ?? p.company ?? null) || null;
-  const out = { state: stub.state, since, first: p.first ?? first ?? today, title: stub.title ?? p.title ?? null, company, token };
-  // A seeded URL stays marked as never re-read for as long as it is carried:
-  // the IndexNow ping never reports it as a removal (S11-155).
-  if (stub.seed === true || (p.seed === true && p.state === stub.state)) out.seed = true;
+  const out = { state, since, first: p.first ?? first ?? today, title: stub.title ?? p.title ?? null, company, token };
+  // A seeded URL keeps its own state ("seeded") and mark while it is carried:
+  // it was never re-read, so the IndexNow ping never reports it as a removal
+  // (scripts/indexnow-ping.mjs pings "gone" and "retired" only, S11-155).
+  if (stub.seed === true || (p.seed === true && p.state === state)) out.seed = true;
   if (typeof stub.basis === "string") out.basis = stub.basis;
   return out;
 }
@@ -549,6 +545,23 @@ export const postingRowEligible = (j, D) => !!(j
   && j.country
   && (j.workMode === "remote" || j.location)
   && D.isPostingLive(j));
+
+/**
+ * HOW MANY NEW POSTING PAGES ONE BAKE MAY ADD (rule 3 of the bake's posting
+ * block). The carried set has no cap: every URL the live site published is
+ * re-checked and keeps its page while the posting lives (L13-36). The budget
+ * for postings that never had a page is `cap` less the carried live pages,
+ * never below `reserve` (so the set keeps moving), and never past `ceiling`
+ * live pages in all. So `cap` is the size the set aims at, NOT a bound on it:
+ * with 300 or more carried pages the reserve takes the set past `cap`, and the
+ * bound on the live set is max(ceiling, carried live).
+ *
+ * The 2026-10-11 bake carried 454 live pages and added 46: 500, the ceiling,
+ * against a `cap` of 400 that a guard still read as the bound.
+ */
+export function postingFreshBudget({ carriedLive, cap, reserve, ceiling }) {
+  return Math.max(0, Math.min(ceiling - carriedLive, Math.max(cap - carriedLive, reserve)));
+}
 
 /**
  * A fixed number of board reads for one bake. Every read takes one; once it

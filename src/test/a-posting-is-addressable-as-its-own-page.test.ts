@@ -209,33 +209,28 @@ describe("the route and the generator agree about where a posting lives", () => 
     expect(codeOf(read("scripts/prerender-pages.mjs")), "the bake still writes pages for staffing-agency rows").toMatch(/j\.agency !== true/);
   });
 
-  it("bounds the set with a cap it states, not with hope", async () => {
-    // The target, the reserve and the ceiling are one set of numbers in
-    // scripts/prerender-pages.mjs, which the bake imports and the sitemap
-    // guard reads: the bake once advertised 454 against a stated 400 because
-    // the reserve sat on top of the carried pages with no ceiling between.
-    const P = await import("../../scripts/prerender-pages.mjs");
-    const n = P.POSTING_PAGE_TARGET;
+  it("bounds the set with a cap it states, not with hope", () => {
+    const cap = /const POSTING_PAGE_CAP = (\d+)/.exec(GEN);
+    expect(cap, "the generator declares no cap on posting pages").toBeTruthy();
+    const n = Number(cap![1]);
     expect(n).toBeGreaterThan(0);
     // The whole corpus is three quarters of a million postings and one board
     // round trip each. A "cap" near that size is not a cap.
     expect(n).toBeLessThanOrEqual(5000);
     // Some of the budget is always reserved for postings that have never had a
     // page, or the carried-over set freezes and nothing new is ever addressable.
-    // The carried set itself has NO cap below the ceiling: a published URL is
-    // re-checked until the board says it is gone (L13-36).
-    expect(P.POSTING_FRESH_RESERVE).toBeGreaterThan(0);
-    expect(P.POSTING_FRESH_RESERVE).toBeLessThan(n);
-    expect(P.POSTING_PAGE_CEILING).toBeGreaterThanOrEqual(n);
-    expect(P.POSTING_PAGE_CEILING).toBeLessThanOrEqual(5000);
+    // The carried set itself has NO cap any more: a published URL is re-checked
+    // until the board says it is gone (a 300 cap under a 400 page cap dropped
+    // up to 100 published URLs a bake, unread, L13-36).
+    const reserve = /const POSTING_FRESH_RESERVE = (\d+)/.exec(GEN);
+    expect(reserve, "the generator reserves nothing for new postings").toBeTruthy();
+    expect(Number(reserve![1])).toBeGreaterThan(0);
+    expect(Number(reserve![1])).toBeLessThan(n);
+    const ceiling = /const POSTING_PAGE_CEILING = (\d+)/.exec(GEN);
+    expect(ceiling, "no new page has a ceiling").toBeTruthy();
+    expect(Number(ceiling![1])).toBeGreaterThanOrEqual(n);
+    expect(Number(ceiling![1])).toBeLessThanOrEqual(5000);
     expect(GEN, "the carry cap is gone").not.toMatch(/POSTING_PAGE_CARRY_MAX/);
-    expect(GEN, "the bake declares its own copy of the numbers").not.toMatch(/const POSTING_PAGE_(?:CAP|CEILING|TARGET) = \d/);
-    expect(GEN).toMatch(/postingFreshBudget\(\{ carriedLive, target: POSTING_PAGE_TARGET, reserve: POSTING_FRESH_RESERVE, ceiling: POSTING_PAGE_CEILING \}\)/);
-    // Carried plus new never pass the ceiling, whatever the carried count.
-    for (const carriedLive of [0, 100, 299, 300, 354, 400, 450, 499, 500, 650]) {
-      const fresh = P.postingFreshBudget({ carriedLive });
-      expect(Math.min(carriedLive, P.POSTING_PAGE_CEILING) + fresh, `carried ${carriedLive}`).toBeLessThanOrEqual(P.POSTING_PAGE_CEILING);
-    }
   });
 });
 

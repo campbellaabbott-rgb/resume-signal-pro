@@ -26,8 +26,17 @@ export const INDEXNOW_HOST = "resumebooster.work";
 const SITE = `https://${INDEXNOW_HOST}`;
 
 /**
+ * Ledger posting states that are a REMOVAL: the board said the posting is
+ * gone ("gone"), or it no longer qualifies for a page ("retired"). Never
+ * "unchecked": the board did not answer (a 429, a 5xx, a spent call budget),
+ * so the posting may well be live, and pinging its noindex stub speeds Bing's
+ * de-indexing of a live posting after one transient refusal (S11-155).
+ */
+const REMOVED_STATES = new Set(["gone", "retired"]);
+
+/**
  * The URLs one publish changed: every sitemap entry whose lastmod is the
- * ledger's build day, plus every posting URL the ledger retired that day.
+ * ledger's build day, plus every posting URL the ledger removed that day.
  * Pure, so the rule is tested without a network.
  */
 export function changedUrls({ sitemapXml, ledger }) {
@@ -39,11 +48,7 @@ export function changedUrls({ sitemapXml, ledger }) {
   }
   const postings = ledger.postings && typeof ledger.postings === "object" ? ledger.postings : {};
   for (const [path, e] of Object.entries(postings)) {
-    // A page nobody re-read is never reported as a removal (S11-155): an
-    // "unchecked" page, and a seeded one (a URL published before the ledger
-    // existed, carried as "no longer has a page of its own" without a read).
-    if (!e || e.state === "live" || e.state === "unchecked" || e.seed === true) continue;
-    if (e.since === day && path.startsWith("/")) out.add(`${SITE}${path}`);
+    if (e && REMOVED_STATES.has(e.state) && e.since === day && path.startsWith("/")) out.add(`${SITE}${path}`);
   }
   return [...out];
 }

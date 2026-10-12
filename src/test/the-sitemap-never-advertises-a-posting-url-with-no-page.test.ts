@@ -4,7 +4,6 @@ import { resolve } from "node:path";
 import { codeOf } from "./helpers/strip-comments";
 import { POSTING_PATH_PREFIX } from "@/components/jobs/posting-page";
 import { skipWithoutDist } from "./helpers/built-output";
-import { POSTING_PAGE_CEILING, capPostingEntries, postingCeilingSplit, postingFreshBudget } from "../../scripts/prerender-pages.mjs";
 
 /**
  * A SITEMAP ENTRY IS A REQUEST TO INDEX THAT URL, SO EVERY ENTRY MUST HAVE A
@@ -173,45 +172,10 @@ describe.skipIf(skipWithoutDist(built))("the built sitemap advertises no posting
   });
 
   it("stays inside the cap the generator states, so the set cannot quietly become unbounded", () => {
-    // The cap is the CEILING the bake states and enforces
-    // (scripts/prerender-pages.mjs). This read the 400 target for weeks while
-    // the bake's limit was 500, and failed every local build (SEO-038).
-    expect(advertisedPostingPaths(xml).length).toBeLessThanOrEqual(POSTING_PAGE_CEILING);
-  });
-});
-
-describe("the generator caps the sitemap's posting entries at the ceiling it states", () => {
-  const isPosting = (e: { path: string }) => e.path.startsWith(`${POSTING_PATH_PREFIX}/`);
-  const entries = (n: number) => [
-    { path: "/jobs" },
-    ...Array.from({ length: n }, (_, i) => ({ path: `${POSTING_PATH_PREFIX}/ashby/acme/r${i}` })),
-    { path: "/pricing" },
-  ];
-
-  it("keeps a set at the ceiling whole, and every other entry", () => {
-    const { kept, dropped } = capPostingEntries(entries(POSTING_PAGE_CEILING), { isPosting });
-    expect(dropped).toEqual([]);
-    expect(kept.filter(isPosting).length).toBe(POSTING_PAGE_CEILING);
-    expect(kept.map((e) => e.path)).toContain("/pricing");
-  });
-
-  it("drops one past the ceiling (teeth: 454 against a stated 400 was this case)", () => {
-    const { kept, dropped } = capPostingEntries(entries(POSTING_PAGE_CEILING + 1), { isPosting });
-    expect(dropped.length).toBe(1);
-    expect(kept.filter(isPosting).length).toBe(POSTING_PAGE_CEILING);
-  });
-
-  it("the bake applies it to the sitemap and adds no more new pages than the ceiling leaves", () => {
-    const GEN = codeOf(readFileSync(resolve(ROOT, "scripts/prerender-seo.mjs"), "utf8"));
-    expect(GEN).toMatch(/capPostingEntries\(entries, \{ isPosting: \(e\) => e\.path\.startsWith\(`\$\{D\.POSTING_PATH_PREFIX\}\/`\), ceiling: POSTING_PAGE_CEILING \}\)/);
-    expect(GEN).toMatch(/postingCeilingSplit\(detailed, \{ ceiling: POSTING_PAGE_CEILING/);
-    for (const carriedLive of [0, 354, 400, 499, 500, 700]) {
-      expect(Math.min(carriedLive, POSTING_PAGE_CEILING) + postingFreshBudget({ carriedLive })).toBeLessThanOrEqual(POSTING_PAGE_CEILING);
-    }
-    // The carried pages past the ceiling give up their page, oldest date first.
-    const split = postingCeilingSplit([{ d: "2026-10-01" }, { d: "2026-09-01" }, { d: "2026-10-05" }], { ceiling: 2, dateOf: (x: { d: string }) => x.d });
-    expect(split.retire.map((x) => x.d)).toEqual(["2026-09-01"]);
-    expect(split.keep.map((x) => x.d)).toEqual(["2026-10-01", "2026-10-05"]);
+    const cap = Number(
+      /const POSTING_PAGE_CAP = (\d+)/.exec(codeOf(readFileSync(resolve(ROOT, "scripts/prerender-seo.mjs"), "utf8")))![1],
+    );
+    expect(advertisedPostingPaths(xml).length).toBeLessThanOrEqual(cap);
   });
 });
 

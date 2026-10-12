@@ -255,7 +255,7 @@ describe("a once-published URL outside this bake's set keeps a noindex page of i
   });
 
   it("a seeded posting path is the honest 'retired' page that says nothing was checked, never 'gone'", () => {
-    const seeded = Object.entries(ledger().postings).filter(([, e]) => e.state === "retired" && e.seed);
+    const seeded = Object.entries(ledger().postings).filter(([, e]) => e.state === "seeded" && e.seed);
     expect(seeded.length, "the seed reached the posting carry").toBeGreaterThan(100);
     for (const [path] of seeded.slice(0, 10)) {
       const html = page(path);
