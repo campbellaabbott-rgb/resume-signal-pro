@@ -126,8 +126,8 @@ describe("a proven caller spends its own allowance and the proven ceiling", () =
     const pass = (await signBoardPass(SERVICE)).pass;
     const db = fakeDb(spentAnonymous);
     expect(await modelSpendGate(db, req({}), "fn-a", LIMITS, CORS, { boardPass: pass })).toBeNull();
+    // Counted by its own name instead of the address (S12-146), then the proven ceiling.
     expect(db.calls.map((c) => [c.p_ip, c.p_max_requests])).toEqual([
-      ["203.0.113.9", 20],
       [`pass:${pass.split(".")[2].slice(0, 16)}`, 20],
       [PROVEN_BUCKET, 200],
     ]);
@@ -144,7 +144,7 @@ describe("a proven caller spends its own allowance and the proven ceiling", () =
     const db = fakeDb(spentAnonymous, { [GOOGLE_TOKEN]: GOOGLE_USER });
     expect(await modelSpendGate(db, req({ authorization: `Bearer ${GOOGLE_TOKEN}` }), "fn-a", LIMITS, CORS)).toBeNull();
     expect(db.lookups).toEqual([GOOGLE_TOKEN]);
-    expect(db.calls.map((c) => c.p_ip)).toEqual(["203.0.113.9", `user:${USER_ID}`, PROVEN_BUCKET]);
+    expect(db.calls.map((c) => c.p_ip)).toEqual([`user:${USER_ID}`, PROVEN_BUCKET]);
     expect(`user:${USER_ID}`.length).toBeLessThanOrEqual(45);
   });
 
@@ -152,7 +152,7 @@ describe("a proven caller spends its own allowance and the proven ceiling", () =
     const live = new Date(Date.now() + 20 * 86400_000).toISOString();
     const paying = fakeDb(spentAnonymous, { [USER_TOKEN]: PASSWORD_USER }, { [USER_ID]: [{ tier: "pro", status: "active", current_period_end: live }] });
     expect(await modelSpendGate(paying, req({ authorization: `Bearer ${USER_TOKEN}` }), "fn-a", LIMITS, CORS)).toBeNull();
-    expect(paying.calls.map((c) => c.p_ip)).toEqual(["203.0.113.9", `user:${USER_ID}`, PROVEN_BUCKET]);
+    expect(paying.calls.map((c) => c.p_ip)).toEqual([`user:${USER_ID}`, PROVEN_BUCKET]);
     for (const row of [{ tier: "pro", status: "trialing", current_period_end: live }, { tier: "pro", status: "canceled", current_period_end: live }]) {
       const db = fakeDb(spentAnonymous, { [USER_TOKEN]: PASSWORD_USER }, { [USER_ID]: [row] });
       const r = await modelSpendGate(db, req({ authorization: `Bearer ${USER_TOKEN}` }), "fn-a", LIMITS, CORS);
@@ -197,6 +197,18 @@ describe("a proven caller spends its own allowance and the proven ceiling", () =
     expect(r?.status).toBe(429);
     expect((await r!.json()).code).toBe("rate_limited_function");
     expect(db.calls.map((c) => c.p_ip)).not.toContain(PROVEN_BUCKET);
+  });
+
+  it("S12-146: a paying account behind an office address its neighbours spent is counted by its own name, not refused", async () => {
+    const live = new Date(Date.now() + 20 * 86400_000).toISOString();
+    // The shared address's hour is spent; the account's own allowance and the proven ceiling are not.
+    const spentAddress = (a: Record<string, unknown>): Verdict => ({ data: a.p_ip !== "203.0.113.9", error: null });
+    const db = fakeDb(spentAddress, { [USER_TOKEN]: PASSWORD_USER }, { [USER_ID]: [{ tier: "pro", status: "active", current_period_end: live }] });
+    expect(await modelSpendGate(db, req({ authorization: `Bearer ${USER_TOKEN}` }), "fn-a", LIMITS, CORS)).toBeNull();
+    expect(db.calls.map((c) => c.p_ip)).not.toContain("203.0.113.9");
+    // A stranger on the same address is still refused by the address's hour.
+    const stranger = fakeDb(spentAddress);
+    expect((await (await modelSpendGate(stranger, req({}), "fn-a", LIMITS, CORS))!.json()).code).toBe("rate_limited_function");
   });
 
   it("the proven ceiling is a ceiling too: the worst an hour costs stays bounded", async () => {

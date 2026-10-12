@@ -41,9 +41,10 @@
  *      one. Two of them: a caller who has PROVEN something -- a browser
  *      holding a board pass (a solved Turnstile challenge), a signed-in
  *      account whose mailbox provenMailbox() accepts, or a paying account --
- *      spends an allowance of its own (`user:` / `pass:`, the address
- *      allowance's size) and then the "proven" ceiling; everyone else spends
- *      the "global" one. A pool that spends the anonymous ceiling therefore
+ *      is counted in an allowance of its own (`user:` / `pass:`, the address
+ *      allowance's size) INSTEAD of its address (S12-146: a Pro member on a
+ *      shared office address was refused for its neighbours' hour), and then
+ *      spends the "proven" ceiling; everyone else spends the "global" one. A pool that spends the anonymous ceiling therefore
  *      cannot lock out a person who proved a mailbox, paid, or proved a
  *      browser, and the worst an hour can cost is still two fixed numbers.
  *      A plain password account is NOT proven (register S11-083, owner
@@ -269,7 +270,7 @@ function countSession(db: SpendDb, fn: string, session: string, perDay: number):
  * this function delivers. A NULL product_type is no purchase here, and neither
  * is another product: a $2 scan pack used to switch off the ceiling.
  */
-async function deliversProduct(db: SpendDb, session: string, products: readonly string[]): Promise<boolean> {
+export async function deliversProduct(db: SpendDb, session: string, products: readonly string[]): Promise<boolean> {
   try {
     const { data, error } = await db.from("used_stripe_sessions")
       .select("session_id, product_type").eq("session_id", session).maybeSingle();
@@ -400,10 +401,15 @@ export async function modelSpendGate(
   const delivers = limits.globalPerHour !== undefined && !!session && !!opts.products && opts.products.length > 0
     && await deliversProduct(db, session, opts.products);
 
-  // 3. The address.
+  // 3. Who is counted. On a free generator a caller who has PROVEN something
+  //    (a proven mailbox, a paying account, a board pass) is counted by that
+  //    name instead of its address (S12-146): a Pro member behind an office
+  //    NAT was refused because neighbours had spent the address's hour, and
+  //    an account bought nothing at the gate. Everyone else by address.
+  const who = limits.globalPerHour !== undefined ? await provenCaller(db, req.headers, opts.boardPass) : null;
   const mine = await counted(db, {
     p_function: fn,
-    p_ip: spendAddressKey(req.headers),
+    p_ip: who ?? spendAddressKey(req.headers),
     p_max_requests: limits.perAddress,
     p_window_minutes: limits.windowMinutes ?? 60,
   });
@@ -424,16 +430,12 @@ export async function modelSpendGate(
   }
   if (mine === false) return spendRefusal("rate_limited_function", limits.perAddress, cors);
 
-  // 5. The function as a whole: proven callers and strangers spend separate allowances.
-  const verdict = await ceilingVerdict(
-    db,
-    req.headers,
-    fn,
-    { max: limits.perAddress, windowMinutes: limits.windowMinutes ?? 60 },
-    { strangers: limits.globalPerHour, proven: limits.globalPerHour },
-    opts.boardPass,
-  );
-  return verdict ? spendRefusal(verdict.code, verdict.limit, cors) : null;
+  // 5. The function as a whole: proven callers and strangers spend separate
+  //    allowances. A proven caller's own allowance was step 3.
+  const world = await counted(db, { p_function: fn, p_ip: who ? PROVEN_BUCKET : GLOBAL_BUCKET, p_max_requests: limits.globalPerHour, p_window_minutes: 60 });
+  if (world === null) return spendRefusal("limiter_unavailable", null, cors);
+  if (world === false) return spendRefusal("rate_limited_global", limits.globalPerHour, cors);
+  return null;
 }
 
 /** Which allowance ran out, or null to go on. */

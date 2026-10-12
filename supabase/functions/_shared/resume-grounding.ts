@@ -299,3 +299,189 @@ export function validateTailoredResume(sourceResume: string, resume: TailoredRes
     cleaned: { ...resume, contact: groundedContact.contact, skills: keptSkills, certifications: keptCerts },
   };
 }
+
+// ── Claims about the candidate in prose: credentials, employers, titles ─────
+//
+// WHAT WAS WRONG (S12-071, S12-062). The cover letter's check read figures
+// only, and accepted any figure the posting carried anywhere, so a letter
+// could say "As an MSN-prepared CCRN, I managed a $40M budget" for a nurse
+// whose résumé has none of it: MSN, CCRN and $40M were all in the posting,
+// and the letter was delivered under "never invent". The screening-answer
+// drafter checked nothing and trusted the model's own supported:true, under
+// a badge that said nothing was invented.
+//
+// THE RULE. A sentence about the candidate (first person: I, my, me, and the
+// same words in the languages the letters are written in) may state a
+// credential, a figure, an employer ("at X") or a title held ("as a X") only
+// when the résumé states it. A sentence about the employer may cite the
+// posting's own figures and requirements. A credential in neither the résumé
+// nor the posting is refused wherever it stands.
+
+/** Credential abbreviations: matched as whole words, dots and hyphens ignored, case as written. */
+const CREDENTIAL_ABBREVIATIONS = [
+  "PhD", "Ph.D.", "DPhil", "EdD", "DNP", "PharmD", "DPT", "MD", "JD", "LLM",
+  "MBA", "MSN", "BSN", "ADN", "MPH", "MHA", "MSW", "MEd", "MSc", "BSc", "MEng", "BEng", "BBA",
+  "CCRN", "CEN", "RN", "LPN", "LVN", "NP", "APRN", "FNP", "CNA", "PA-C", "CRNA",
+  "ACLS", "BLS", "PALS", "NRP", "TNCC",
+  "CPA", "CFA", "CMA", "ACCA", "CIMA", "FRM", "CFP",
+  "PMP", "CAPM", "PRINCE2", "CSM", "CSPO", "PSM", "SAFe", "ITIL",
+  "CISSP", "CISA", "CISM", "CEH", "OSCP", "CCNA", "CCNP", "CCIE", "MCSE", "CompTIA",
+  "PE", "EIT", "LEED", "SHRM-CP", "SHRM-SCP", "PHR", "SPHR", "CPC", "RHIA", "RHIT", "CPhT",
+  "LCSW", "LMFT", "LPC", "BCBA", "OTR", "CDL",
+];
+const ABBREV_KEYS = new Map(CREDENTIAL_ABBREVIATIONS.map((a) => [a.replace(/[.-]/g, ""), a]));
+
+/** Degree words, each with the résumé spellings that support it. */
+const DEGREE_FAMILIES: Array<{ claim: RegExp; label: string; support: RegExp }> = [
+  {
+    claim: /\b(?:doctorate|doctoral degree|doctoral)\b/i,
+    label: "a doctorate",
+    support: /\b(?:ph\.?\s?d\.?|dphil|doctor(?:ate|al)?|ed\.?d|dnp|pharm\.?d|m\.?d\.?|j\.?d\.?|promotion|doktor)\b/i,
+  },
+  {
+    claim: /\bmaster(?:'s|’s|s)?\s+(?:degree|of)\b|\bmaster['’]s\b/i,
+    label: "a master's degree",
+    support: /\b(?:master|masters|msc|m\.sc|m\.s\.|ms|ma|m\.a\.|mba|msn|meng|m\.eng|med|m\.ed|mph|mha|msw|llm|mfa)\b/i,
+  },
+  {
+    claim: /\bbachelor(?:'s|’s|s)?\s+(?:degree|of)\b|\bbachelor['’]s\b/i,
+    label: "a bachelor's degree",
+    support: /\b(?:bachelor|bachelors|bsc|b\.sc|b\.s\.|bs|ba|b\.a\.|bsn|beng|b\.eng|bba|b\.com|bcom|licenciatura|licence|laurea|bachelier)\b/i,
+  },
+];
+
+/** Words that mark a sentence as being about the writer, in the languages letters are written in. */
+const FIRST_PERSON_EN = /\b(?:I|I'm|I’m|I've|I’ve|I'd|I’d|I'll|I’ll|[Mm]y|[Mm]e|[Mm]ine|[Mm]yself)\b/;
+const FIRST_PERSON_OTHER = /(?:^|[\s(])(?:je|j'|j’|mon|mes|moi|ich|mein|meine|meinen|meinem|meiner|mir|mich|ik|mijn|mij|yo|mis|eu|meu|minha|meus|minhas|io|mio|mia|miei)(?=[\s,.;:!?)]|$)/i;
+const isFirstPerson = (s: string) => FIRST_PERSON_EN.test(s) || FIRST_PERSON_OTHER.test(s);
+
+/** Sentences, cut at a full stop, question or exclamation mark, or a line break. */
+function sentencesOf(text: string): string[] {
+  return String(text ?? "").split(/(?<=[.!?])\s+|\n+/).map((s) => s.trim()).filter(Boolean);
+}
+
+/** A text's words with dots and hyphens closed up and lower-cased ("Ph.D." -> "phd", "PA-C" -> "pac"). */
+function compactWords(text: string): Set<string> {
+  return new Set(String(text ?? "").split(/[^\p{L}\p{N}.-]+/u).map((w) => w.replace(/[.-]/g, "").toLowerCase()).filter(Boolean));
+}
+
+/** The credential abbreviations a text names, spelled as the text spells them. */
+export function credentialMentions(text: string): string[] {
+  const out = new Set<string>();
+  for (const raw of String(text ?? "").split(/[^\p{L}\p{N}.-]+/u)) {
+    const word = raw.replace(/^[-]+|[-]+$/g, "").replace(/(?<![A-Za-z]\.[A-Za-z])\.+$/, "");
+    if (ABBREV_KEYS.has(word.replace(/[.-]/g, ""))) { out.add(word); continue; }
+    // "MSN-prepared", "CCRN-certified": the credential before a hyphenated word.
+    const head = word.split("-")[0];
+    if (head !== word && ABBREV_KEYS.has(head)) out.add(head);
+  }
+  return [...out];
+}
+
+function credentialSupported(credential: string, words: Set<string>): boolean {
+  return words.has(credential.replace(/[.-]/g, "").toLowerCase());
+}
+
+const TITLE_STOP = new Set(["at", "in", "for", "with", "where", "and", "who", "which", "that", "to", "on", "of", "from", "since", "during", "over", "i", "my"]);
+const NOT_AN_EMPLOYER = new Set(["the", "a", "an", "least", "first", "last", "all", "once", "times", "home", "work", "night", "scale", "my", "your", "our", "this", "that", "january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]);
+
+/** Up to four words of a title, stopping at a preposition or a clause word. */
+function titleWords(fragment: string): string {
+  const out: string[] = [];
+  for (const w of fragment.trim().split(/\s+/)) {
+    const bare = w.replace(/[^\p{L}\p{N}'-]/gu, "");
+    if (!bare || TITLE_STOP.has(bare.toLowerCase())) break;
+    out.push(bare);
+    if (out.length >= 4 || /[,;:]$/.test(w)) break;
+  }
+  return out.join(" ");
+}
+
+/** Employers a first-person sentence places the writer at ("at Mayo Clinic"). */
+function employersClaimed(sentence: string): string[] {
+  const out: string[] = [];
+  for (const m of sentence.matchAll(/\bat\s+([A-Z][\p{L}\p{N}&'’.-]*(?:\s+(?:[A-Z][\p{L}\p{N}&'’.-]*|of|&|and)){0,4})/gu)) {
+    const name = m[1].replace(/\s+(?:of|&|and)$/i, "").replace(/[.,]+$/, "").trim();
+    if (!name || NOT_AN_EMPLOYER.has(name.toLowerCase())) continue;
+    out.push(name);
+  }
+  return out;
+}
+
+/** Titles a first-person sentence says the writer held ("as a Nurse Manager, I", "worked as a ..."). */
+function titlesClaimed(sentence: string): string[] {
+  const out: string[] = [];
+  const patterns = [
+    /\b(?:worked|served|employed|working|serving|experience|years?|role|time|tenure)\s+as\s+(?:an?\s+|the\s+)?([^.!?;]+)/gi,
+    /^As\s+(?:an?\s+|the\s+)?([A-Z][^,.!?;]+),/g,
+  ];
+  for (const re of patterns) {
+    for (const m of sentence.matchAll(re)) {
+      const t = titleWords(m[1]);
+      if (t && !/^(?:result|well|such|part|soon|long|much|many|needed|required|possible)$/i.test(t)) out.push(t);
+    }
+  }
+  return out;
+}
+
+export interface ClaimContext {
+  /** The job posting: a sentence about the employer may cite it. */
+  posting?: string;
+  /** The role applied for: "as your next <role>" is not a claim to have held it. */
+  jobTitle?: string;
+  /** The employer applied to: "at <company>" is where the writer wants to work. */
+  company?: string;
+  /** Read every sentence as the candidate's own (a screening answer is). */
+  allFirstPerson?: boolean;
+}
+
+/**
+ * The claims in a letter or an answer (any prose about the candidate) that
+ * the résumé does not support, as sentences a person or a repair prompt can
+ * read. Empty when clean. Figures are checked here sentence by sentence; a
+ * letter's whole-text figure check (validateProseClaims) still runs beside it.
+ */
+export function validateCandidateClaims(sourceResume: string, text: string, ctx: ClaimContext = {}): string[] {
+  const issues = new Set<string>();
+  const resumeWords = compactWords(sourceResume);
+  const postingWords = compactWords(ctx.posting ?? "");
+  const hay = " " + normalizeForMatch(sourceResume) + " ";
+  const companyHay = " " + normalizeForMatch(ctx.company ?? "") + " ";
+  const roleHay = " " + normalizeForMatch(ctx.jobTitle ?? "") + " ";
+
+  for (const sentence of sentencesOf(text)) {
+    const aboutMe = ctx.allFirstPerson === true || isFirstPerson(sentence);
+
+    for (const c of credentialMentions(sentence)) {
+      if (credentialSupported(c, resumeWords)) continue;
+      if (!aboutMe && credentialSupported(c, postingWords)) continue;
+      issues.add(aboutMe
+        ? `Credential "${c}" is claimed for the candidate but is not on the résumé`
+        : `Credential "${c}" appears on neither the résumé nor the posting`);
+    }
+
+    if (!aboutMe) continue;
+
+    for (const fam of DEGREE_FAMILIES) {
+      if (fam.claim.test(sentence) && !fam.support.test(sourceResume)) {
+        issues.add(`The candidate is said to hold ${fam.label}, which the résumé does not show`);
+      }
+    }
+    for (const n of unsupportedNumericClaims(sourceResume, sentence)) {
+      issues.add(`Figure "${n}" is stated about the candidate but is not on the résumé`);
+    }
+    for (const employer of employersClaimed(sentence)) {
+      const norm = normalizeForMatch(employer);
+      if (!norm) continue;
+      if (hay.includes(` ${norm} `) || tokensSupported(hay, employer, 1)) continue;
+      if (ctx.company && (companyHay.includes(` ${norm} `) || tokensSupported(companyHay, employer, 0.75))) continue;
+      issues.add(`Employer "${employer}" is not on the résumé`);
+    }
+    for (const title of titlesClaimed(sentence)) {
+      if (tokensSupported(hay, title, 0.5)) continue;
+      if (ctx.jobTitle && tokensSupported(roleHay, title, 0.75)) continue;
+      issues.add(`Title "${title}" is not supported by the résumé`);
+    }
+  }
+  return [...issues];
+}

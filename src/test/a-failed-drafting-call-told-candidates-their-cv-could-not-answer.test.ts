@@ -37,8 +37,13 @@ describe("a failed drafting call is a failure, not an empty answer", () => {
   });
 
   it("a reply that is not the JSON asked for answers 502, not 200 with no answers", () => {
+    // Since S12-148 the questions are drafted in chunks: a chunk whose reply is
+    // not the JSON asked for is a failed chunk, and when no chunk answered the
+    // call is a 502. The handler is run end to end on this in
+    // w4b-every-screening-answer-is-checked-and-a-long-form-is-answered-in-full.
     const fn = read("supabase/functions/generate-application-answers/index.ts");
-    expect(fn).toMatch(/if \(!parsed \|\| !Array\.isArray\(parsed\.answers\)\) \{[\s\S]{0,200}return json\(\{ error: "Couldn't draft answers right now\." \}, 502\);/);
+    expect(fn).toMatch(/if \(!parsed \|\| !Array\.isArray\(parsed\.answers\)\) \{[\s\S]{0,200}return \{ batch, status: 502, answers: null \};/);
+    expect(fn).toMatch(/if \(good\.length === 0\) \{[\s\S]{0,700}return json\(\{ error: "Couldn't draft answers right now\.", code: "draft_failed", retryable: true \}, 502\);/);
   });
 });
 
@@ -58,7 +63,7 @@ describe("the model's echo is matched the way the packet matches labels", () => 
       .toEqual([{ question: ASKED[0].label }]);
     expect(sameQuestion("Q2) Are You Willing To Travel?")).toBe("are you willing to travel?");
     expect(read("supabase/functions/generate-application-answers/index.ts"))
-      .toMatch(/const echoed = inferred \? parsed\.answers : toAskedLabels\(parsed\.answers, \[\.\.\.draftLabels\]\);/);
+      .toMatch(/const echoed = inferred \? raw : toAskedLabels\(raw, \[\.\.\.draftLabels\]\);/);
   });
 });
 

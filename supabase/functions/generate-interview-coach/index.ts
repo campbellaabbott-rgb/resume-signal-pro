@@ -5,17 +5,26 @@ import { checkAiGatewayResponse } from "../_shared/ai-gateway-response.ts";
 import { callAIWithModelFallback } from "../_shared/ai-fallback.ts";
 import { buildLanguageInstruction } from "../_shared/language-instruction.ts";
 import { checkInputLimits } from "../_shared/input-limits.ts";
-import { clipField, clipText, modelSpendGate } from "../_shared/model-spend-gate.ts";
+import { clipField, clipText, deliversProduct, isServiceCaller, modelSpendGate } from "../_shared/model-spend-gate.ts";
 import { assertPaidSession } from "../_shared/paid-session.ts";
 import { isServiceRoleCaller } from "../_shared/service-caller.ts";
+import { refundWriting, signInRequired, writingChain, writingGate, type WritingPass } from "../_shared/writing-allowance.ts";
+import { websiteSessionOf } from "../_shared/website-session.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-interview-coach.2026-10-09.4";
+// 2026-10-11.24 (wave 4 second round, generators): counted by account. A
+// prep set is one of the free account's daily three (Pro: five a day, sixty a
+// month, on the quality chain); scoring a practised answer needs an account
+// and is bounded by the spend gate, not the daily set. Past Interview Coach
+// buyers (a purchase this function delivers) and our own servers are not
+// counted here.
+const FN_BUILD = "generate-interview-coach.2026-10-11.24";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Expose-Headers": "x-fn-build, retry-after",
   "x-fn-build": FN_BUILD,
 };
 
@@ -38,6 +47,10 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
+  // The use taken from the account's allowance, given back if nothing is delivered.
+  let pass: WritingPass | null = null;
 
   try {
     // THE BODY IS READ ONCE. Evaluate mode used to hand the Request on to a
@@ -73,10 +86,11 @@ serve(async (req) => {
       if (answer.length > MAX_ANSWER_LENGTH) return json({ error: `Answer is too long. Please limit to ${MAX_ANSWER_LENGTH.toLocaleString()} characters.` }, 400);
     }
 
-    const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
-
     // Any truthy value selects the paid tier below, so any truthy value is gated.
     const premium = !!isPremium;
+    // The spend gate's rule for "our own servers", so the account gate and
+    // the spend gate never disagree about who is a server.
+    const service = isServiceCaller(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"));
     // THE PAID TIER NEEDS A PAID SESSION (defect sweep 1.60). isPremium:true
     // selects the $5 Interview Coach (model answers, a 9,000-token budget) and
     // was honoured for anyone who sent it. Our own servers (the webhook, the
@@ -87,12 +101,35 @@ serve(async (req) => {
       if (paidError) return json({ error: paidError, retryable: true }, 402);
     }
 
+    // WHO MAY WRITE (owner decision 2026-10-12). A past Interview Coach buyer
+    // (the paid tier passed its check above, or the free tier names that
+    // purchase) and our own servers are not counted by account. Everyone else
+    // needs an account: a prep set is one of a free account's daily three, or
+    // one of Pro's five; scoring an answer needs an account and is bounded by
+    // the spend gate below.
+    const purchase = !service && (premium || (typeof sessionId === "string" && sessionId.length <= 255 && !!sessionId
+      && await deliversProduct(supabase, sessionId, COACH_PRODUCTS)));
+    if (evaluate) {
+      if (!service && !purchase) {
+        const signedIn = await websiteSessionOf(req.headers, supabase.auth);
+        if (!("session" in signedIn)) return signInRequired(corsHeaders);
+      }
+      pass = { kind: service ? "service" : "purchase" };
+    } else {
+      const gate = await writingGate(supabase, req, ["prep"], corsHeaders, { service, purchase, auth: supabase.auth });
+      if ("refused" in gate) return gate.refused;
+      pass = gate.pass;
+    }
+
     const refused = await modelSpendGate(supabase, req, "generate-interview-coach", COACH_LIMITS, corsHeaders, {
       session: sessionId,
       products: COACH_PRODUCTS,
       boardPass: body.boardPass,
     });
-    if (refused) return refused;
+    if (refused) {
+      await refundWriting(supabase, pass);
+      return refused;
+    }
 
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
@@ -102,6 +139,7 @@ serve(async (req) => {
         resumeText, question: question!, answer: answer!, category: clipField(body.category, 40) ?? "General", language,
       });
     }
+    const models = writingChain(pass ?? { kind: "service" });
 
     const role = targetRole || currentRole || "the role matching their background";
 
@@ -161,8 +199,8 @@ Target Role: ${role}
 
 Create questions that reference their ACTUAL experience from the resume.`;
 
-    // Paid deliverable — pro-first, with fallback (pro → flash → gpt-5-mini)
-    // so a transient model error never hard-fails a paying customer.
+    // The quality chain for paid deliveries, past buyers and Pro; Flash for a
+    // free account's daily set. The chain walks on a transient model error.
     const { response } = await callAIWithModelFallback(apiKey, {
       messages: [
         { role: "system", content: systemPrompt },
@@ -171,13 +209,15 @@ Create questions that reference their ACTUAL experience from the resume.`;
       temperature: 0.7,
       maxTokens: premium ? 9000 : 4000,
       jsonResponse: true,
+      models,
       context: "INTERVIEW-COACH",
     });
 
     if (!response.ok) {
+      await refundWriting(supabase, pass);
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limited, please try again shortly." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        return new Response(JSON.stringify({ error: "The AI service is busy. Please try again in a minute.", code: "model_busy", retryable: true }), {
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "60" },
         });
       }
       const errorText = await response.text();
@@ -203,10 +243,12 @@ Create questions that reference their ACTUAL experience from the resume.`;
     );
 
   } catch (error) {
+    await refundWriting(supabase, pass);
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error("[INTERVIEW-COACH] Error:", errorMessage);
+    // No internal message (a model name, a status) reaches the person.
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: "We couldn't prepare your interview questions just now. Please try again.", retryable: true }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

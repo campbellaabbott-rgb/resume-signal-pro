@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams, Link } from "react-router-dom";
-import { Briefcase, Plus, Trash2, Loader2, Check, Copy, ArrowRight } from "lucide-react";
+import { Briefcase, Plus, Trash2, Loader2, Check, Copy, ArrowRight, RotateCcw } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -168,10 +168,20 @@ export default function FreelanceBoost() {
           workMode: d.workMode === "fractional" ? "fractional" : "freelance",
         },
       });
-      if (error || !data?.success) throw new Error(data?.error || error?.message || "Generation failed");
+      if (error || !data?.success) {
+        // On a non-2xx the SDK puts the Response on error.context: the server's
+        // own sentence ("Your purchase is safe — press Generate to try again")
+        // is in its body, not in error.message.
+        let message: string | undefined = data?.error;
+        if (!message && error) {
+          try { message = (await (error as { context?: Response }).context?.json())?.error; } catch { /* no body */ }
+        }
+        throw new Error(message || "Generation failed");
+      }
       setResult(data.data as BoostResult);
     } catch (e) {
-      setGenError(`${e instanceof Error ? e.message : "Generation failed"} — your purchase is safe; press "Generate my section" below to try again.`);
+      const m = e instanceof Error ? e.message : "Generation failed";
+      setGenError(/purchase is safe/i.test(m) ? m : `${m} — your purchase is safe; press "Generate my section" below to try again.`);
     } finally {
       setGenerating(false);
     }
@@ -209,6 +219,19 @@ export default function FreelanceBoost() {
 
   const generateFromForm = () => {
     void generate({ projects, targetRole, jobPosting, employmentTimeline, situation, workMode });
+  };
+
+  // REGENERATE (S12-105): the page promised "we'll regenerate it free" and
+  // offered no way to. The same purchase writes again from the answers on
+  // this device; without them, the form opens to be filled in first.
+  const regenerate = () => {
+    const d = { projects, targetRole, jobPosting, employmentTimeline, situation, workMode };
+    setResult(null);
+    if (draftIsComplete(d)) {
+      void generate(d);
+    } else {
+      setGenError(t("freelanceBoost.regenerateNeedsAnswers", "Your answers aren't on this device. Fill in the form below and press \"Generate my section\" — your purchase covers it."));
+    }
   };
 
   const applyImport = (data: { projects: ProjectIntake[]; suggestedTargetRole: string; employmentTimeline: string; sourceGuess: string }) => {
@@ -387,6 +410,12 @@ export default function FreelanceBoost() {
                   Insert into my resume (builder) <ArrowRight className="w-3.5 h-3.5 ml-1" />
                 </Button>
                 <Button size="sm" variant="outline" asChild><Link to="/?utm_source=freelance_boost">Scan the result free <ArrowRight className="w-3.5 h-3.5 ml-1" /></Link></Button>
+                {sessionId && (
+                  <Button size="sm" variant="outline" onClick={regenerate} disabled={generating} className="gap-1.5">
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    {t("freelanceBoost.regenerate", "Regenerate")}
+                  </Button>
+                )}
               </div>
             </div>
           )}

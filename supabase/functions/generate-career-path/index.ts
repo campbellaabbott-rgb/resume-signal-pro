@@ -8,16 +8,53 @@ import { checkInputLimits } from "../_shared/input-limits.ts";
 import { clipField, modelSpendGate } from "../_shared/model-spend-gate.ts";
 import { assertPaidSession } from "../_shared/paid-session.ts";
 import { isServiceRoleCaller } from "../_shared/service-caller.ts";
+import Stripe from "https://esm.sh/stripe@18.5.0";
+import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
+import { sessionWasRefunded } from "../_shared/payment-revocation.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-career-path.2026-10-09.4";
+// 2026-10-11.24 (wave 4 second round, generators): the Career Path tool is
+// retired (owner decision 2026-10-12): the free tier answers 410; a past
+// buyer's page, which has no stored copy, keeps regenerating for 90 days
+// after the purchase (read from Stripe once the 30-day claim row is gone).
+const FN_BUILD = "generate-career-path.2026-10-11.24";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Expose-Headers": "x-fn-build",
   "x-fn-build": FN_BUILD,
 };
+
+/** How long a past Career Path buyer's page keeps regenerating. */
+export const PAST_BUYER_DAYS = 90;
+
+const retired = (message: string) =>
+  new Response(JSON.stringify({ error: message, code: "retired", retired: true }), {
+    status: 410, headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
+/**
+ * A past buyer whose claim row (kept 30 days) is gone: the Stripe session
+ * itself, paid, for this product, inside PAST_BUYER_DAYS, and not refunded.
+ */
+async function pastBuyerFromStripe(db: Parameters<typeof sessionWasRefunded>[0], sessionId: unknown): Promise<boolean> {
+  if (typeof sessionId !== "string" || !sessionId.startsWith("cs_") || sessionId.length > 255) return false;
+  const key = Deno.env.get("STRIPE_SECRET_KEY");
+  if (!key) return false;
+  try {
+    const stripe = new Stripe(key, { apiVersion: "2025-12-15.clover" });
+    const s = await stripe.checkout.sessions.retrieve(sessionId);
+    const created = Number((s as { created?: number }).created ?? 0) * 1000;
+    if (!checkoutSessionSettled(s)) return false;
+    if (String(s.metadata?.product_type ?? "") !== "career_path_simulator") return false;
+    if (!created || Date.now() - created > PAST_BUYER_DAYS * 86400_000) return false;
+    return !(await sessionWasRefunded(db, sessionId));
+  } catch {
+    return false;
+  }
+}
 
 // Free tier reachable by a stranger: an address allowance plus a
 // function-wide ceiling. A Career Path Simulator purchase (and only that) is
@@ -52,9 +89,16 @@ serve(async (req) => {
     // deliver with the service-role key and name the purchase; a browser must
     // name a Career Path Simulator purchase.
     const premium = !!isPremium;
-    if (premium && !isServiceRoleCaller(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "")) {
+    const service = isServiceRoleCaller(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
+    // THE FREE TIER IS RETIRED (owner decision 2026-10-12: Career Path, paid
+    // and free, is no longer offered). Only a past buyer's page and our own
+    // delivery servers still reach the model.
+    if (!premium && !service) {
+      return retired("The free Career Path tool has been retired.");
+    }
+    if (premium && !service) {
       const paidError = await assertPaidSession(supabase, sessionId, CAREER_PATH_PRODUCTS);
-      if (paidError) {
+      if (paidError && !(await pastBuyerFromStripe(supabase, sessionId))) {
         return new Response(
           JSON.stringify({ error: paidError, retryable: true }),
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }

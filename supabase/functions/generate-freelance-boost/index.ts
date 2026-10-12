@@ -21,10 +21,17 @@ import { proGrantRefusal } from "../_shared/pro.ts";
 import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
 import { buyerEmailOf } from "../_shared/buyer-email.ts";
 import { REFUNDED_PURCHASE_MESSAGE, sessionWasRefunded } from "../_shared/payment-revocation.ts";
+import { BOOST_MAX_TOKENS, decideStructure, readBoostReply, type BoostReply } from "./boost.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-freelance-boost.2026-10-09.2";
+// 2026-10-11.24 (wave 4 second round, generators): 8,000 output tokens, the
+// model chain walked past an unusable reply, and a 502 the page can retry
+// when every model's reply was unusable (S12-055); a Transition Pro reply
+// without its cover letter and LinkedIn About is not a delivery and is never
+// marked delivered (S12-105); one to three projects alongside a job get the
+// Projects section (S12-107).
+const FN_BUILD = "generate-freelance-boost.2026-10-11.24";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -64,50 +71,11 @@ interface BoostRequest {
   workMode?: "freelance" | "fractional";
 }
 
-const BANNED_PHRASES = [/\bhelped with\b/i, /\bworked on\b/i, /\bwas responsible for\b/i, /\bresponsible for\b/i, /\bvarious clients\b/i, /\bmisc\.? projects\b/i];
+// The structure table (decideStructure) and the reading of a reply
+// (readBoostReply) live in ./boost.ts, where the Node tests load them.
 
-// Section 2 of the playbook, verbatim as code.
-function decideStructure(req: BoostRequest): { structure: string; header: string; note: string } {
-  const n = req.projects.length;
-  // Fractional/interim leadership always gets the portfolio umbrella —
-  // concurrent senior engagements under one entry is the convention, and it
-  // preempts the job-hopping misread regardless of situation.
-  if (req.workMode === "fractional") {
-    return {
-      structure: "fractional_portfolio",
-      header: `Fractional ${req.targetRole || "Executive"}`,
-      note: n > 1
-        ? "Fractional leadership: one umbrella portfolio entry with per-engagement scope lines — concurrent engagements are the format, never hidden and never split into look-alike 'jobs'."
-        : "Fractional/interim engagement: umbrella entry with explicit scope — reads as leadership continuity, not a gap or a gig.",
-    };
-  }
-  if (req.overlapsEmployment) {
-    return {
-      structure: "consolidated_part_time",
-      header: "Independent Consultant (part-time)",
-      note: "Freelance overlaps a full-time job: consolidated role labeled (part-time) with dates — the overlap is never hidden.",
-    };
-  }
-  if (req.returningToFullTime && (req.totalClientsOverall ?? n) >= 4) {
-    return {
-      structure: "consolidated_with_scope",
-      header: "Independent Consultant",
-      note: "Long freelance stretch returning to full-time: consolidated role plus a one-line scope statement to preempt the 'gap' read.",
-    };
-  }
-  if (n >= 3 && req.freelanceWasPrimary) {
-    return {
-      structure: "consolidated",
-      header: "Independent Consultant",
-      note: "3+ related projects with freelance as primary experience: one consolidated role covering all work.",
-    };
-  }
-  return {
-    structure: "projects_section",
-    header: "Freelance Projects",
-    note: "1–3 projects alongside employment: a dedicated Projects section below Experience.",
-  };
-}
+const jsonRes = (body: unknown, status: number, extra: Record<string, string> = {}) =>
+  new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json", ...extra } });
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -267,39 +235,43 @@ Duration/when: ${p.duration}
 ${p.paymentBand ? `Payment band (context only, do not display): ${p.paymentBand}` : ""}
 ${p.repeatOrReferral ? `Repeat/referral: ${p.repeatOrReferral}` : ""}`).join("\n")}`;
 
-    // $29 flagship product — pro-first for quality, but NEVER hard-fail a
-    // paying customer on a transient model error: falls back pro → flash →
-    // gpt-5-mini (429 on one model advances to the next; 402 credits stops).
-    const { response: aiRes } = await callAIWithModelFallback(apiKey, {
-      messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
-      temperature: 0.5,
-      maxTokens: 3000,
-      jsonResponse: true,
-      context: "FREELANCE-BOOST",
-    });
-    if (!aiRes.ok) throw new Error(`AI gateway ${aiRes.status}`);
-    const aiJson = await aiRes.json();
-    const content = aiJson.choices?.[0]?.message?.content;
-    if (!content) throw new Error("No content from AI");
-    let out;
-    try { out = JSON.parse(content); } catch { out = JSON.parse(content.match(/\{[\s\S]*\}/)?.[0] ?? "{}"); }
-    if (!Array.isArray(out.projects) || out.projects.length === 0) throw new Error("Malformed generation");
-
-    // ── Server-side enforcement ─────────────────────────────────────────────
-    // 1. Banned-phrase filter (reject the bullet, keep the project)
-    // 2. Posting-keyword grounding: tags must literally appear in the posting
-    const postingNorm = (body.jobPosting ?? "").toLowerCase();
-    for (const proj of out.projects) {
-      proj.bullets = (proj.bullets ?? []).filter((b: string) => typeof b === "string" && !BANNED_PHRASES.some((re) => re.test(b)));
-      if (postingNorm) {
-        proj.keywordsCovered = (proj.keywordsCovered ?? []).filter((k: string) => typeof k === "string" && postingNorm.includes(k.toLowerCase()));
-      } else {
-        proj.keywordsCovered = [];
-      }
+    // A paid product: pro-first for quality, and NEVER a hard failure on one
+    // model's bad reply. Each model in turn gets the whole budget; a reply
+    // that is not a deliverable (truncated JSON, no projects, a Transition
+    // Pro reply missing its letter or About) moves on to the next model
+    // (S12-055, S12-105). The server's own enforcement (banned phrasings,
+    // posting keywords) runs inside readBoostReply, so "usable" means usable
+    // after it.
+    const BOOST_CHAIN = ["google/gemini-2.5-pro", "google/gemini-2.5-flash", "openai/gpt-5-mini"];
+    let out: BoostReply | null = null;
+    const statuses: number[] = [];
+    for (const model of BOOST_CHAIN) {
+      const { response: aiRes } = await callAIWithModelFallback(apiKey, {
+        messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
+        temperature: 0.5,
+        maxTokens: BOOST_MAX_TOKENS,
+        jsonResponse: true,
+        models: [model],
+        context: "FREELANCE-BOOST",
+      }).catch(() => ({ response: new Response(null, { status: 504 }) }));
+      statuses.push(aiRes.status);
+      if (aiRes.status === 402) break; // credits are account-wide: no model will answer
+      if (!aiRes.ok) continue;
+      const aiJson = await aiRes.json().catch(() => null);
+      const read = readBoostReply(aiJson?.choices?.[0]?.message?.content, { transitionPro: isTransitionPro, posting: body.jobPosting });
+      if (read.ok) { out = read.out; break; }
+      console.warn(`[FREELANCE-BOOST] ${model} reply unusable: ${read.reason}`);
     }
-    out.projects = out.projects.filter((p: { bullets: string[] }) => p.bullets.length > 0);
+    if (!out) {
+      // Nothing deliverable: the purchase is untouched, the record stays
+      // open, and the page says to try again.
+      if (statuses.includes(402)) return jsonRes({ error: "The writing service is temporarily unavailable. Your purchase is safe — please try again later.", code: "model_credits", retryable: true }, 503, { "Retry-After": "600" });
+      if (statuses.length > 0 && statuses.every((s) => s === 429)) return jsonRes({ error: "The writing service is busy. Your purchase is safe — please try again in a minute.", code: "model_busy", retryable: true }, 429, { "Retry-After": "60" });
+      return jsonRes({ error: "We couldn't write a complete section this time. Your purchase is safe — press Generate to try again.", code: "draft_unusable", retryable: true }, 502);
+    }
 
     // Keyword coverage vs the posting (deterministic, not model-claimed)
+    const postingNorm = (body.jobPosting ?? "").toLowerCase();
     let keywordCoverage: { covered: string[]; total: number } | null = null;
     if (postingNorm) {
       const covered = [...new Set(out.projects.flatMap((p: { keywordsCovered: string[] }) => p.keywordsCovered))] as string[];
@@ -351,7 +323,8 @@ ${p.repeatOrReferral ? `Repeat/referral: ${p.repeatOrReferral}` : ""}`).join("\n
     );
   } catch (error) {
     console.error("[FREELANCE-BOOST] Error:", error);
-    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), {
+    // No internal message (a model name, a status) reaches the buyer.
+    return new Response(JSON.stringify({ error: "Something went wrong writing your section. Your purchase is safe — please try again.", retryable: true }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

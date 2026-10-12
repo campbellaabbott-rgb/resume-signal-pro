@@ -32,6 +32,10 @@ const STUBS: Record<string, string> = {
   "https://deno.land/std@0.190.0/http/server.ts": SERVE,
   "https://esm.sh/@supabase/supabase-js@2": CLIENT,
   "https://esm.sh/@supabase/supabase-js@2.39.3": CLIENT,
+  // generate-career-path reads a past buyer's session from Stripe once the
+  // 30-day claim row is gone: an unpaid session here, so nothing is opened.
+  "https://esm.sh/stripe@18.5.0":
+    "export default class Stripe { constructor() { this.checkout = { sessions: { retrieve: async (id) => ({ id, created: Math.floor(Date.now() / 1000), payment_status: 'unpaid', metadata: {} }) } }; } }",
 };
 
 const RESUME = "Jane Doe -- Senior software engineer with ten years of TypeScript, Postgres and payments work. Led a team of five. ".repeat(3);
@@ -121,10 +125,12 @@ describe.each(PAID)("$fn: the paid tier", ({ fn, session, budget }) => {
     expect(budgetOf(aiBodies[0])).toBe(budget);
   });
 
-  it("leaves the free tier alone", async () => {
-    await call(fn, { resumeText: RESUME });
-    expect(aiBodies.length).toBeGreaterThan(0);
-    expect(budgetOf(aiBodies[0])).toBe(4000);
+  it("the free tier is not sold as the paid one: a writing tool asks a stranger to sign in, a retired tool says so", async () => {
+    // Owner decision 2026-10-12: interview prep is a writing tool (an
+    // account's daily allowance), and the free Career Path is retired.
+    const r = await call(fn, { resumeText: RESUME });
+    expect(r.status).toBe(fn === "generate-career-path" ? 410 : 401);
+    expect(aiBodies).toEqual([]);
   });
 });
 
