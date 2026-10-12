@@ -1,0 +1,1 @@
+SELECT public._mig_exec(sql) FROM public._mig_stage WHERE name = '20261009100300_a_teamtailor_page_of_a_hundred_wrote_takedowns_nobody_made.sql';
