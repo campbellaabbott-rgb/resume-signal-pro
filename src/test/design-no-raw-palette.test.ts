@@ -107,7 +107,7 @@ const COVERED_FILES = [
  * every figure below is 0. The home components axe flagged are listed too.
  */
 const RATCHET: Record<string, number> = {
-  "src/pages/Jobs.tsx": 132,
+  "src/pages/Jobs.tsx": 128,
   "src/pages/JobPosting.tsx": 0,
   "src/pages/Pricing.tsx": 0,
   "src/pages/Index.tsx": 2,

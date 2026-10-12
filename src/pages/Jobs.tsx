@@ -8953,7 +8953,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                   </li>
                 )}
               </ul>
-              <p className="text-[10px] text-muted-foreground/70 mt-2">
+              <p className="text-xs text-subtle-foreground mt-2">
                 {t("jobsPage.hhFootnoteCurve", "Computed from the full lifecycle of this company's official postings — when they open and when they come down — not a one-time snapshot. Roles still up, and roles that passed our 30-day cap, are counted as unfinished rather than left out.")}
               </p>
             </div>
@@ -11417,7 +11417,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                     <Link to="/agent" className="text-primary underline underline-offset-2">
                       {t("jobsPage.agentPitchCta", "See how it works — {{trialDays}} days free for first-time subscribers, then ${{agentPrice}}/mo", { trialDays: SUBSCRIPTIONS.agent.trialDays, agentPrice: SUBSCRIPTIONS.agent.priceUsd })}
                     </Link>
-                    <span className="block text-[11px] opacity-80 mt-0.5">
+                    <span className="block text-xs text-subtle-foreground mt-0.5">
                       {/* BOTH NUMBERS WERE WRONG, IN ALL NINE LOCALES. This said
                           "four hiring systems — about 6% of the board" while
                           SENDABLE_VENDORS held FIVE and the live figure was 8.2%.
