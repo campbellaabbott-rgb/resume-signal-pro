@@ -5,10 +5,13 @@
 // wording before the MCP address on our own domain publishes.
 //
 // The facts each row states, and where they are made true:
-//   - search words: kept for 30 days from Claude and other connections, with
-//     no record of which postings were shown (the 30-day prune for MCP
-//     searches); NOT written from ChatGPT (job-board .93 honours the no-log
-//     flag agent-mcp sets on the ChatGPT surface, only with the reader proof);
+//   - search words: from Claude and other connections, with no record of
+//     which postings were shown (job-board .93 writes none for connector
+//     searches), kept for 30 days once the connector prune (20261011103000)
+//     runs and, until then, for the demand log's general 180 days (see
+//     MCP_SEARCH_PRUNE_LIVE); NOT written from ChatGPT (job-board .93 honours
+//     the no-log flag agent-mcp sets on the ChatGPT surface, only with the
+//     reader proof);
 //   - the caller's address and ChatGPT's per-person id: only ever a hashed
 //     allowance bucket, the address buckets kept 7 days and ChatGPT's dropped
 //     when their day ends (mcp_anon_rate);
@@ -20,6 +23,23 @@
 // A row that goes false when its mechanism moves is the claim-drift pattern;
 // src/test/the-privacy-page-says-what-each-ai-surface-receives-and-keeps.test.tsx
 // pins the rows the page must carry.
+
+/**
+ * Whether the connector's 30-day search prune runs. Its migration
+ * (20261011103000) is held in docs/deploy-ledger.json holdUntilVerified and
+ * goes out in the second deploy message, after the frontend that carries this
+ * table is published; until then connector searches follow the demand log's
+ * general 180-day prune, and searches logged before job-board .93 still name
+ * the postings shown. The owner sets this true in the frontend publish that
+ * follows the release (docs/wave4/README.md, owner steps), and
+ * src/test/the-privacy-page-says-what-each-ai-surface-receives-and-keeps.test.tsx
+ * fails while it is true and the migration is still held.
+ */
+export const MCP_SEARCH_PRUNE_LIVE: boolean = false;
+
+const SEARCH_KEPT = MCP_SEARCH_PRUNE_LIVE
+  ? "From Claude and other connections: the search words and filters, kept for 30 days, without a record of which postings were shown. From ChatGPT: not kept."
+  : "From Claude and other connections: the search words and filters, kept for up to 180 days, like the site's own search log; searches made after this policy's last update keep no record of which postings were shown. From ChatGPT: not kept.";
 
 export interface McpPrivacyRow {
   id: "search" | "job-ids" | "address" | "chatgpt-id" | "usage" | "cv" | "chat";
@@ -35,7 +55,7 @@ export const MCP_PRIVACY_ROWS: readonly McpPrivacyRow[] = [
     what: "Your search words and filters",
     claude: "Received",
     chatgpt: "Received",
-    kept: "From Claude and other connections: the search words and filters, kept for 30 days, without a record of which postings were shown. From ChatGPT: not kept.",
+    kept: SEARCH_KEPT,
   },
   {
     id: "job-ids",

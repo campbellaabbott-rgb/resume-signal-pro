@@ -18,7 +18,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import en from "../i18n/locales/en.json";
 
@@ -35,7 +35,7 @@ vi.mock("@/integrations/supabase/client", () => ({
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: null, session: null }) }));
 
 import Privacy from "../pages/Privacy";
-import { MCP_PRIVACY_ROWS } from "@/config/mcp-privacy";
+import { MCP_PRIVACY_ROWS, MCP_SEARCH_PRUNE_LIVE } from "@/config/mcp-privacy";
 
 afterEach(cleanup);
 const mount = () => render(<HelmetProvider><MemoryRouter initialEntries={["/privacy"]}><Privacy /></MemoryRouter></HelmetProvider>);
@@ -57,8 +57,23 @@ describe("the MCP section of the Privacy page", () => {
     const [, claude, chatgpt, kept] = cells("search");
     expect(claude).toBe("Received");
     expect(chatgpt).toBe("Received");
-    expect(kept).toMatch(/kept for 30 days, without a record of which postings were shown/);
+    if (MCP_SEARCH_PRUNE_LIVE) {
+      expect(kept).toMatch(/kept for 30 days, without a record of which postings were shown/);
+    } else {
+      // The review of 9fe3bc0d: the 30-day prune is held for the second
+      // deploy message, so until it runs the page must not claim 30 days.
+      expect(kept).not.toMatch(/30 days/);
+      expect(kept).toMatch(/kept for up to 180 days/);
+      expect(kept).toMatch(/searches made after this policy's last update keep no record of which postings were shown/);
+    }
     expect(kept).toMatch(/From ChatGPT: not kept\./);
+  });
+
+  it("claims the 30-day limit only once its prune is released from the ledger's hold", () => {
+    const ledger = JSON.parse(readFileSync(resolve(__dirname, "../../docs/deploy-ledger.json"), "utf8")) as { holdUntilVerified?: Array<{ stamp: string }> };
+    const held = (ledger.holdUntilVerified ?? []).some((h) => h.stamp === "20261011103000");
+    if (held) expect(MCP_SEARCH_PRUNE_LIVE, "the 30-day prune is still held; the page may not claim it").toBe(false);
+    expect(readdirSync(resolve(__dirname, "../../supabase/migrations")).some((f) => f.startsWith("20261011103000_")), "the prune's migration exists").toBe(true);
   });
 
   it("a CV is never requested without a key, and never stored", () => {
