@@ -115,32 +115,26 @@ describe("a bucket shared by every customer is nobody's allowance", () => {
     expect(MCP).toMatch(/import \{ hasFitAccess, isPaidKeyTier \} from "\.\.\/_shared\/key-tier\.ts";/);
     expect(API, "the predicate must be the one /v1/fit applies").toMatch(/import \{ isPaidKeyTier \} from "\.\.\/_shared\/key-tier\.ts";/);
     expect(API).toMatch(/const paid = isPaidKeyTier\(tier\);/);
-    expect(MCP).toMatch(/callTool\(client, d\.api_key_id \?\? "", d\.key_tier, toolName, toolArgs, shop\)/);
-    expect(MCP).toMatch(/tier: string \| null,\s*name: string,\s*args: Record<string, unknown>,\s*shop: Shop,\s*\): Promise<unknown>/);
-    const dispatch = between(MCP, 'case "fit_resume":', 'case "check_apply_support":');
-    expect(dispatch).toMatch(/if \(!hasFitAccess\(tier\)\)/);
-    expect(dispatch).toMatch(/return toolErr\(\s*"fit_resume is a paid feature/);
-    expect(dispatch).toMatch(/return toolOk\(await runFitResume\(args, apiKeyId\)\);/);
-    expect(dispatch.indexOf("hasFitAccess(tier)"), "refused before scoring").toBeLessThan(dispatch.indexOf("runFitResume(args"));
-    // The upgrade pointer holds a `//`, which the stripper would eat; it is
-    // checked on the raw line that opens the string — a line of code, not a
-    // comment — and that line must sit inside the dispatch case.
-    const pointer = MCP_RAW.split("\n").find((l) => l.includes("Upgrade the key at "));
-    expect(pointer, "the same upgrade pointer /v1/fit gives").toMatch(/^\s*forSale\(shop, "Upgrade the key at https:\/\/resumebooster\.work\/data-api/);
-    expect(MCP_RAW.indexOf("Upgrade the key at ")).toBeGreaterThan(MCP_RAW.indexOf('case "fit_resume":'));
-    expect(MCP_RAW.indexOf("Upgrade the key at ")).toBeLessThan(MCP_RAW.indexOf('case "check_apply_support":'));
+    expect(MCP).toMatch(/callTool\(client, d\.api_key_id \?\? "", d\.key_tier, toolName, toolArgs, ctx\)/);
+    expect(MCP).toMatch(/tier: string \| null,\s*name: string,\s*args: Record<string, unknown>,\s*ctx: Ctx = KEYED_CTX,\s*\): Promise<unknown>/);
+    const dispatch = between(MCP, 'case "fit_resume":', 'case "search":');
+    // Owner decision 2026-10-11: free at 25 a day on any key; the fit
+    // predicate (paid tiers and a pass), the plan and Pro open 1,000. The
+    // refusal is the free day's, before any search runs, and sells nothing.
+    expect(dispatch).toMatch(/const standing = hasFitAccess\(tier\) \? fitStanding\(true\) : await fitStandingOf\(client, tier, apiKeyId\);/);
+    expect(dispatch).toMatch(/if \(!fitAllowed\(standing, used\)\) \{\s*return toolErr\(\s*`fit_resume's free daily allowance is used/);
+    expect(dispatch).toMatch(/await runFitResume\(args, apiKeyId\)/);
+    expect(dispatch.indexOf("fitAllowed(standing, used)"), "refused before scoring").toBeLessThan(dispatch.indexOf("runFitResume(args"));
+    expect(dispatch, "never inside ChatGPT").toMatch(/if \(ctx\.edition === "chatgpt"\) \{\s*return toolErr\(/);
+    // The upgrade pointer to a plan nobody can buy is gone (economics, D2 §7).
+    expect(MCP_RAW).not.toMatch(/Upgrade the key at /);
     const tool = between(MCP, 'name: "fit_resume"', 'name: "board_stats"');
-    expect(tool).toMatch(/PAID — needs a paid API key, exactly like POST \/v1\/fit/);
-    // initialize derives its free-key list from KEY_ONLY_READ_TOOLS, which
-    // excludes PAID_TOOLS by construction, and names the paid tier from that
-    // same constant beside the /v1/fit pointer — so fit_resume cannot be
-    // listed as free without the derivation itself changing. (This replaced
-    // two pinned spellings of the old typed sentence, 2026-09-15.)
-    const instructions = between(MCP, "instructions:", "}));");
-    expect(instructions, "the free-key list is derived, never typed").toMatch(/\$\{KEY_ONLY_READ_TOOLS\.join\(", "\)\}/);
-    // The paid tier is named from PAID_TOOLS in the same sentence as the
-    // /v1/fit pointer — the property, not the sentence's spelling.
-    expect(instructions, "PAID_TOOLS interpolated beside the /v1/fit pointer").toMatch(/\$\{PAID_TOOLS\.join\(", "\)\}[^.]*POST \/v1\/fit/);
+    expect(tool).toMatch(/Free on any key: \$\{FIT_FREE_PER_DAY\} scorings a day/);
+    expect(tool).not.toMatch(/PAID|Agent (?:Pass|plan)/);
+    // The instructions name fit_resume only through the registry, and only
+    // to the full edition, beside the free key that opens it.
+    const instructions = between(MCP, "function instructionsFor(edition: Edition): string {", "\n}\n");
+    expect(instructions).toMatch(/edition === "other" \? `A free key \(\$\{MINT_URL\}\)[^`]*\$\{tool\("fit_resume"\)\}/);
     expect(instructions.replace(/\$\{[^}]*\}/g, ""), "a typed fit_resume in the prose is a second list").not.toMatch(/fit_resume/);
     expect(MCP).toMatch(/const PAID_TOOLS: readonly string\[\] = \["fit_resume"\];/);
     expect(MCP).toMatch(/const KEY_ONLY_READ_TOOLS: readonly string\[\] = TOOLS\.map\(\(t\) => t\.name\)\s*\.filter\(\(n\) => !ANON_TOOLS\.includes\(n\) && !PAID_TOOLS\.includes\(n\) && !ACCOUNT_TOOLS\.includes\(n\)\)/);

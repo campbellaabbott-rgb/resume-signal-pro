@@ -188,8 +188,14 @@ describe("MCP protocol surface", () => {
   });
 
   it("declares the tools the docs promise", () => {
-    for (const t of ["search_jobs", "debug_search", "get_job", "check_apply_support", "request_application", "application_status", "board_stats"]) {
+    for (const t of ["search_jobs", "debug_search", "get_job", "board_stats", "apply_myself"]) {
       expect(MCP.includes(`name: "${t}"`), `tool ${t} missing`).toBe(true);
+    }
+    // The apply agent's tools are retired (owner decision 2026-10-11): still
+    // answered, with what replaced them, and never registered or listed.
+    for (const t of ["check_apply_support", "request_application", "application_status"]) {
+      expect(MCP.includes(`name: "${t}"`), `retired tool ${t} still registered`).toBe(false);
+      expect(MCP).toMatch(new RegExp(`const RETIRED_TOOLS: readonly string\\[\\] = \\[[^\\]]*"${t}"`));
     }
   });
 });

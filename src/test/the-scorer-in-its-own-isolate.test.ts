@@ -65,7 +65,7 @@ describe("the scorer in its own isolate", () => {
     expect(MCP).toMatch(/name: "fit_resume"/);
     // 2026-09-04: gated on tier first (a-bucket-shared-by-every-customer-is-
     // nobodys-allowance), then scored under the key's own bucket.
-    expect(MCP).toMatch(/return toolOk\(await runFitResume\(args, apiKeyId\)\);/);
+    expect(MCP).toMatch(/const scored = await runFitResume\(args, apiKeyId\)/);
     const fn = MCP.slice(MCP.indexOf("async function runFitResume"), MCP.indexOf("async function runBoardStats"));
     expect(fn).toMatch(/\/functions\/v1\/job-fit`/);
     expect(fn, "the runner must never send a résumé to the ingest function's copy").not.toMatch(/action: "fit-batch"[\s\S]{0,200}job-board/);

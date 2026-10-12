@@ -127,14 +127,17 @@ describe("the page says six and the server says eleven", () => {
     }
   });
 
-  it("the tier split is non-trivial on both sides", () => {
-    // A dispatch that lost its paid gate or its owner refusal would classify
-    // everything as read, and a mirror that said the same would agree with it.
-    // Both sides must show all three tiers, or the comparison above is moot.
-    for (const tier of ["read", "paid", "apply"] as const) {
+  it("the tier split is non-trivial on both sides, and the retired apply tier is gone from both", () => {
+    // A dispatch that lost its paid gate would classify everything as read,
+    // and a mirror that said the same would agree with it. Both sides must
+    // show the read and the fit-gated tier. The apply tier was retired with
+    // the apply agent (owner decision 2026-10-11): neither side may list one.
+    for (const tier of ["read", "paid"] as const) {
       expect(MCP_TOOLS.some((t) => t.tier === tier), `mirror has a ${tier} tool`).toBe(true);
       expect(SERVER_NAMES.some((n) => serverTier(n) === tier), `server has a ${tier} tool`).toBe(true);
     }
+    expect(MCP_TOOLS.filter((t) => t.tier === "apply").map((t) => t.name), "the mirror still lists the retired apply tools").toEqual([]);
+    expect(SERVER_NAMES.filter((n) => serverTier(n) === "apply")).toEqual([]);
   });
 
   it("the page renders its tool list from the mirror and spells no count", () => {

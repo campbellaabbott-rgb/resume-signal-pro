@@ -40,7 +40,34 @@ export type HarvestedQuestion = {
   required: boolean;
   /** The vendor's own type name, passed to classifyQuestion by the caller. */
   type: string;
+  /**
+   * The answers the form offers, as the employer wrote them, when the vendor's
+   * payload lists them. ABSENT when it lists none or in a shape not read here:
+   * absent never means "free text" (the type says that), and a reader that
+   * cannot read the options must not invent them.
+   */
+  options?: string[];
+  /** The employer's help text under the question, when the payload carries it. */
+  hint?: string;
 };
+
+/** One option as text: a bare string, or the first text-bearing key of an object. Empty when neither. */
+function optionText(o: unknown): string {
+  if (typeof o === "string") return o.trim();
+  if (!o || typeof o !== "object") return "";
+  const r = o as Record<string, unknown>;
+  for (const k of ["text", "label", "name", "title", "value", "body"]) {
+    if (typeof r[k] === "string" && (r[k] as string).trim()) return (r[k] as string).trim();
+  }
+  return "";
+}
+
+/** The options of a payload array, or undefined when it is not one or holds no readable text. */
+export function optionsOf(raw: unknown): string[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const out = raw.map(optionText).filter(Boolean).slice(0, 100);
+  return out.length ? out : undefined;
+}
 
 /**
  * The apply routes, derived from the POSTING'S OWN URL — never rebuilt from the
@@ -123,10 +150,11 @@ export function parseBreezyQuestions(html: string): HarvestedQuestion[] {
     if (!Array.isArray(arr)) continue;
     const out: HarvestedQuestion[] = [];
     for (const raw of arr) {
-      const q = raw as { text?: unknown; required?: unknown; type?: { id?: unknown } };
+      const q = raw as { text?: unknown; required?: unknown; type?: { id?: unknown }; options?: unknown; choices?: unknown };
       const label = String(q?.text ?? "").trim();
       if (!label) continue;
-      out.push({ label, required: q?.required === true, type: String(q?.type?.id ?? "") });
+      const options = optionsOf(q?.options) ?? optionsOf(q?.choices);
+      out.push({ label, required: q?.required === true, type: String(q?.type?.id ?? ""), ...(options ? { options } : {}) });
     }
     if (out.length) return out;
   }
@@ -151,16 +179,27 @@ export function parsePinpointQuestions(html: string): HarvestedQuestion[] {
   let m: RegExpExecArray | null;
   while ((m = re.exec(html)) !== null) {
     if (!m[1].includes("Form::Questions::")) continue;
-    let parsed: { questionDetails?: { title?: unknown; questionType?: unknown; required?: unknown } };
+    let parsed: { questionDetails?: Record<string, unknown> };
     try { parsed = JSON.parse(m[2]); } catch { continue; }
     const qd = parsed?.questionDetails;
     const label = String(qd?.title ?? "").trim();
     if (!label || seen.has(label)) continue;
     seen.add(label);
+    const type = String(qd?.questionType ?? "");
+    // A yes/no question offers exactly two answers; the employer may relabel
+    // them. Any other option list is read only from a plain array in the
+    // payload (unverified on a live multiple-choice fixture), never guessed.
+    const yesNo = /yes.?no|boolean/i.test(type)
+      ? [String(qd?.yesLabel ?? "").trim() || "Yes", String(qd?.noLabel ?? "").trim() || "No"]
+      : undefined;
+    const options = yesNo ?? optionsOf(qd?.options) ?? optionsOf(qd?.choices);
+    const hint = [qd?.hint, qd?.helpText, qd?.description].find((h) => typeof h === "string" && h.trim()) as string | undefined;
     out.push({
       label,
       required: qd?.required === true,
-      type: String(qd?.questionType ?? ""),
+      type,
+      ...(options ? { options } : {}),
+      ...(hint ? { hint: hint.trim().slice(0, 500) } : {}),
     });
   }
   return out;

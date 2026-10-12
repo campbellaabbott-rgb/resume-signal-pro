@@ -13,6 +13,15 @@
  *    was told it was ready and spent a pass on packets that block.
  *  - S11-121. Agent-plan keys are minted 'free', and fit_resume refused them
  *    with a pass upsell, while /agents sells the scorer with the plan.
+ *
+ * THE APPLY PIVOT (owner decision 2026-10-11) supersedes S11-039 and S11-041
+ * on this surface: the Agent plan, the Agent Pass and the apply agent are
+ * retired, nothing is sent for anyone, and apply_myself is the only apply
+ * path. The pass and résumé-file gates live on, dormant, inside the
+ * enqueue seam; through the connector every apply-agent tool now answers its
+ * retirement, writes nothing and spends nothing. Fit scoring is free at 25 a
+ * day on any key, and the plan, a pass, a paid tier or Pro open the full
+ * 1,000 (S11-121's property, kept: the plan still opens the scorer).
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
@@ -23,7 +32,7 @@ const USER = "55555555-5555-4555-8555-555555555555";
 const KEY = "rb_live_harness_key_0123456789";
 let handler: EdgeHandler;
 let rpcCalls: Array<{ name: string; args: Record<string, unknown> }>;
-let state: { subscribed: boolean; pass: boolean; resumeFile: string };
+let state: { subscribed: boolean; pass: boolean; resumeFile: string; pro: boolean; fitUsed: number };
 
 function chain(result: unknown): unknown {
   const p: unknown = new Proxy({}, {
@@ -53,7 +62,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   rpcCalls = [];
-  state = { subscribed: false, pass: true, resumeFile: `${USER}/cv.pdf` };
+  state = { subscribed: false, pass: true, resumeFile: `${USER}/cv.pdf`, pro: false, fitUsed: 1 };
   const later = new Date(Date.now() + 3 * 3_600_000).toISOString();
   (globalThis as Record<string, unknown>).__mcpDb = {
     rpc: (name: string, args: Record<string, unknown> = {}) => {
@@ -66,6 +75,7 @@ beforeEach(() => {
         : name === "agent_queue_enqueue"
           ? { enqueued_ok: true, enqueue_reason: "queued", queued_row_id: 7, pass_apps_left: 8 }
         : name === "agent_employer_in_cooldown" ? false
+        : name === "pro_entitlement_rows" ? (state.pro ? [{ status: "active", current_period_end: later, bound: true }] : [])
         : name === "mcp_anon_check" ? { allowed: true, global_used: 1, ip_used: 1, ip_cap: 25, global_cap: 2000 }
         : null;
       const r = Promise.resolve({ data, error: null });
@@ -80,6 +90,7 @@ beforeEach(() => {
           blocked_companies: [], employer_cooldown_days: 0, last_prepare_kick_at: new Date().toISOString(),
         }
         : table === "agent_passes" ? (state.pass ? { activated_at: new Date().toISOString(), expires_at: later, closed_at: null, shelf_expires_at: later, applications_total: 10, applications_used: 1 } : null)
+        : table === "api_usage" ? { calls: state.fitUsed }
         : table === "job_board_postings" ? { id: "x", title: "Staff Nurse", company: "Acme Health", company_token: "acme", location: "Leeds", country: "GB", apply_url: "https://x", salary: "", salary_min_annual: null, category: "healthcare", posted_at: new Date().toISOString(), description: "Registered nurse wanted." }
         : null,
       error: null,
@@ -88,10 +99,10 @@ beforeEach(() => {
   };
 });
 
-const call = async (name: string, args: Record<string, unknown>) => {
+const call = async (name: string, args: Record<string, unknown>, key: string | null = KEY) => {
   const res = await handler(new Request("https://harness.supabase.co/functions/v1/agent-mcp", {
     method: "POST",
-    headers: { "content-type": "application/json", accept: "application/json, text/event-stream", authorization: `Bearer ${KEY}`, "x-forwarded-for": "203.0.113.7" },
+    headers: { "content-type": "application/json", accept: "application/json, text/event-stream", ...(key ? { authorization: `Bearer ${key}` } : {}), "x-forwarded-for": "203.0.113.7" },
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name, arguments: args } }),
   }));
   const body = await res.json() as { result?: { structuredContent?: Record<string, unknown>; content?: Array<{ text: string }>; isError?: boolean } };
@@ -101,134 +112,110 @@ const call = async (name: string, args: Record<string, unknown>) => {
   return { sc, raw: JSON.stringify(body), isError: body.result?.isError === true };
 };
 const enqueued = () => rpcCalls.filter((c) => c.name === "agent_queue_enqueue");
+const rpc = async (method: string, params: Record<string, unknown> = {}, key: string | null = KEY) => {
+  const res = await handler(new Request("https://harness.supabase.co/functions/v1/agent-mcp", {
+    method: "POST",
+    headers: { "content-type": "application/json", accept: "application/json, text/event-stream", ...(key ? { authorization: `Bearer ${key}` } : {}), "x-forwarded-for": "203.0.113.7" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+  }));
+  return await res.json() as { result?: Record<string, unknown> };
+};
 
-describe("S11-039: a pass is spent only on a job the agent can submit", () => {
-  it("a Workday job on a pass is refused, and nothing is written or spent", async () => {
-    const { sc } = await call("request_application", { jobId: "workday:acme:R123" });
-    expect(sc).toMatchObject({ accepted: false, refusedBy: "vendor" });
-    expect(String(sc.fix)).toMatch(/Nothing was spent/);
+describe("the apply pivot: the apply agent's tools are retired, and nothing is sent or spent", () => {
+  it("request_application on a pass, on the plan, for any hiring system, answers the retirement and writes nothing", async () => {
+    for (const [subscribed, pass] of [[false, true], [true, false]] as const) {
+      state.subscribed = subscribed; state.pass = pass;
+      for (const jobId of ["teamtailor:acme:123", "workday:acme:R123"]) {
+        const r = await call("request_application", { jobId });
+        expect(r.isError).toBe(true);
+        expect(r.raw).toMatch(/retired/);
+        expect(r.raw).toMatch(/apply_myself/);
+      }
+    }
     expect(enqueued()).toHaveLength(0);
+    // Not even metered: a retired tool is answered before the key check.
+    expect(rpcCalls.filter((c) => c.name === "api_key_check")).toHaveLength(0);
   });
 
-  it("a Teamtailor job on a pass is accepted and charged to the pass", async () => {
-    const { sc } = await call("request_application", { jobId: "teamtailor:acme:123" });
-    expect(sc).toMatchObject({ accepted: true });
-    expect(enqueued()).toHaveLength(1);
-    expect(enqueued()[0]!.args).toMatchObject({ p_pass_funded: true });
+  it("no caller is listed an apply-agent tool, and no listed text sells a pass or the plan", async () => {
+    const r = await rpc("tools/list");
+    const tools = (r.result?.tools ?? []) as Array<{ name: string; description: string }>;
+    for (const n of ["request_application", "application_status", "check_apply_support"]) expect(tools.map((t) => t.name)).not.toContain(n);
+    expect(JSON.stringify(tools)).not.toMatch(/\bAgent (?:Pass|plan)\b|agents\/pass/);
   });
 
-  it("on the Agent plan a Workday job is still prepared for the person, and nothing is counted", async () => {
-    state.subscribed = true; state.pass = false;
-    const { sc } = await call("request_application", { jobId: "workday:acme:R123" });
-    expect(sc).toMatchObject({ accepted: true });
-    expect(enqueued()[0]!.args).toMatchObject({ p_pass_funded: false });
-  });
-
-  it("the tool description states the rule", async () => {
-    const res = await handler(new Request("https://harness.supabase.co/functions/v1/agent-mcp", {
-      method: "POST",
-      headers: { "content-type": "application/json", accept: "application/json, text/event-stream", "x-forwarded-for": "203.0.113.7" },
-      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
-    }));
-    const tools = ((await res.json()) as { result: { tools: Array<{ name: string; description: string }> } }).result.tools;
-    const d = tools.find((t) => t.name === "request_application")!.description;
-    expect(d).toMatch(/On a pass, only a job the agent can submit itself \(agentReady true[^)]*\) uses an application; any other job is refused and nothing is spent\./);
+  it("key_status reports no apply readiness and no place to buy a pass", async () => {
+    state.resumeFile = "";
+    const { sc } = await call("key_status", {});
+    expect(sc.apply).toBeUndefined();
+    expect(JSON.stringify(sc)).not.toMatch(/agents\/pass|\bupgrade\b|request_application/);
+    expect((sc.features as Record<string, unknown>).request_application).toBeUndefined();
   });
 });
 
-describe("S11-041: a résumé on file is the file, not only its text", () => {
-  it("key_status says a text-only account is not ready, and names the fix", async () => {
-    state.resumeFile = "";
-    const { sc } = await call("key_status", {});
-    const apply = sc.apply as { ready: boolean; resumeOnFile: boolean; blockers: string[] };
-    expect(apply.ready).toBe(false);
-    expect(apply.resumeOnFile).toBe(false);
-    expect(apply.blockers.join(" ")).toMatch(/Upload your CV in Account → Apply profile/);
-    expect((sc.features as { request_application: boolean }).request_application).toBe(false);
-  });
-
-  it("request_application refuses it before anything is spent", async () => {
-    state.resumeFile = "";
-    const { sc } = await call("request_application", { jobId: "teamtailor:acme:123" });
-    expect(sc).toMatchObject({ accepted: false, refusedBy: "resume" });
-    expect(enqueued()).toHaveLength(0);
-  });
-
-  it("a file in another account's folder is not this account's file", async () => {
-    state.resumeFile = "99999999-9999-4999-8999-999999999999/cv.pdf";
-    const { sc } = await call("request_application", { jobId: "teamtailor:acme:123" });
-    expect(sc).toMatchObject({ accepted: false, refusedBy: "resume" });
-  });
-
-  it("with the file in its own folder, the account is ready", async () => {
-    const { sc } = await call("key_status", {});
-    expect((sc.apply as { resumeOnFile: boolean }).resumeOnFile).toBe(true);
-  });
-});
-
-describe("S11-121: the Agent plan opens the résumé scorer", () => {
+describe("S11-121, kept: the Agent plan opens the scorer, and fit is free at 25 a day on any key", () => {
   const cv = { resumeText: "Registered nurse with ICU experience, patient care and triage. ".repeat(4) };
 
-  it("an Agent-plan key (minted 'free') is not refused, and key_status says so", async () => {
-    state.subscribed = true; state.pass = false;
+  it("an Agent-plan key (minted 'free') gets the full allowance, and key_status says so", async () => {
+    state.subscribed = true; state.pass = false; state.fitUsed = 500;
     const r = await call("fit_resume", cv);
-    expect(r.raw).not.toMatch(/fit_resume is a paid feature/);
+    expect(r.isError).toBe(false);
+    expect(r.sc.fitFreeLeftToday).toBeUndefined();
     const { sc } = await call("key_status", {});
-    expect((sc.features as { fit_resume: boolean }).fit_resume).toBe(true);
+    expect(sc.features).toMatchObject({ fit_resume: true, fitDailyLimit: 1000, fitFreeLeftToday: null });
   });
 
-  it("a free key with neither plan nor pass is still refused", async () => {
-    state.subscribed = false; state.pass = false;
+  it("a Pro account's key gets the full allowance too", async () => {
+    state.subscribed = false; state.pass = false; state.pro = true; state.fitUsed = 300;
     const r = await call("fit_resume", cv);
-    expect(r.raw).toMatch(/fit_resume is a paid feature/);
+    expect(r.isError).toBe(false);
+    expect(r.sc.fitFreeLeftToday).toBeUndefined();
+  });
+
+  it("a free key with neither plan, pass nor Pro scores 25 a day, says how many are left, and is refused past that", async () => {
+    state.subscribed = false; state.pass = false; state.pro = false;
+    state.fitUsed = 25;
+    const ok = await call("fit_resume", cv);
+    expect(ok.isError, ok.raw).toBe(false);
+    expect(ok.sc.fitFreeLeftToday).toBe(0);
+    state.fitUsed = 26;
+    const refused = await call("fit_resume", cv);
+    expect(refused.isError).toBe(true);
+    expect(refused.raw).toMatch(/free daily allowance is used \(25 scorings a day\)/);
+    expect(refused.raw).not.toMatch(/paid feature|agents\/pass|data-api/);
     const { sc } = await call("key_status", {});
-    expect((sc.features as { fit_resume: boolean }).fit_resume).toBe(false);
+    expect(sc.features).toMatchObject({ fit_resume: true, fitDailyLimit: 25, fitFreeLeftToday: 0 });
   });
 });
 
-// Review of S11-121: the dispatcher opened the scorer to Agent-plan keys, but
-// initialize, the guide and board_stats still told an agent it needed a paid
-// key or a pass, so an Agent-plan agent reading them would never call it.
-describe("S11-121: every place that says what opens the scorer names the Agent plan", () => {
-  const rpc = async (method: string, params: Record<string, unknown> = {}) => {
-    const res = await handler(new Request("https://harness.supabase.co/functions/v1/agent-mcp", {
-      method: "POST",
-      headers: { "content-type": "application/json", accept: "application/json, text/event-stream", authorization: `Bearer ${KEY}`, "x-forwarded-for": "203.0.113.7" },
-      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
-    }));
-    return await res.json() as { result?: Record<string, unknown> };
-  };
-
+describe("no place that says what opens the scorer names a plan, a pass or a price", () => {
   it("initialize's instructions", async () => {
     const r = await rpc("initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "t", version: "1" } });
-    const line = String(r.result?.instructions ?? "").split("\n").find((l) => l.includes("fit_resume")) ?? "";
-    expect(line).toMatch(/Agent plan/);
+    const text = String(r.result?.instructions ?? "");
+    expect(text).not.toMatch(/\bAgent (?:Pass|plan)\b|\$\d|paid key/);
   });
 
   it("the guide", async () => {
     const r = await rpc("resources/read", { uri: "resumebooster://guide" });
     const text = JSON.stringify(r.result ?? {});
-    expect(text).toMatch(/opens the paid scorer/);
-    expect(text).not.toMatch(/A pass also opens the paid scorer\./);
-    expect(text).toMatch(/An Agent plan or a live pass also opens the paid scorer/);
+    expect(text).toMatch(/25 scorings a day/);
+    expect(text).not.toMatch(/\bAgent (?:Pass|plan)\b|\$\d|agents\/pass/);
   });
 
-  it("board_stats' withKey, as an unkeyed caller reads it", async () => {
+  it("board_stats, as a keyless caller reads it, sells nothing", async () => {
     const res = await handler(new Request("https://harness.supabase.co/functions/v1/agent-mcp", {
       method: "POST",
       headers: { "content-type": "application/json", accept: "application/json, text/event-stream", "x-forwarded-for": "203.0.113.7" },
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "board_stats", arguments: {} } }),
     }));
-    const body = await res.json() as { result?: { structuredContent?: Record<string, unknown>; content?: Array<{ text: string }> } };
-    const sc = body.result?.structuredContent ?? JSON.parse(body.result?.content?.[0]?.text ?? "{}");
-    const adds = String((sc.withKey as { adds?: string } | undefined)?.adds ?? "");
-    expect(adds).toMatch(/fit_resume needs a paid key, a live Agent Pass or the Agent plan on the key's account/);
+    const text = await res.text();
+    expect(text).not.toMatch(/withKey|\bAgent (?:Pass|plan)\b|paid key/);
   });
 
-  it("llms.txt", async () => {
+  it("llms.txt says the same as the server (src owner: the frontend)", async () => {
     const { readFileSync } = await import("node:fs");
     const { resolve } = await import("node:path");
     const txt = readFileSync(resolve(__dirname, "../../public/llms.txt"), "utf8");
-    expect(txt).toMatch(/a paid key, a live Agent Pass or the Agent plan on the key's account opens résumé fit scoring/);
+    expect(txt).not.toMatch(/a paid key, a live Agent Pass or the Agent plan on the key's account opens résumé fit scoring/);
   });
 });

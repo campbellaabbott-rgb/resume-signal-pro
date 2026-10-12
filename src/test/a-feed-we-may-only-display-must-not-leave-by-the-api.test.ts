@@ -324,7 +324,9 @@ describe("a feed we may only display must not leave by the API", () => {
     // one of the slots a checkable id needed.
     const body = fnBody(MCP, "async function runCheckJobsOpen(");
     const heldOut = body.indexOf("isNoRedistributionSource(vendorOfId(id))");
-    const capped = body.indexOf("slice(0, CHECK_JOBS_OPEN_MAX)");
+    // The cap is CHECK_JOBS_OPEN_MAX keyed, the allowance's figure keyless (wave 4).
+    expect(body).toMatch(/const cap = ctx\.keyless \? ANON_ALLOWANCE\.checkJobsOpenIds : CHECK_JOBS_OPEN_MAX;/);
+    const capped = body.indexOf("slice(0, cap)");
     expect(heldOut, "the liveness tool checks no id against the restricted list").toBeGreaterThan(-1);
     expect(capped, "the liveness cap moved — RE-ANCHOR this guard").toBeGreaterThan(-1);
     expect(heldOut, "restricted ids are held out only after the cap has already spent slots on them")

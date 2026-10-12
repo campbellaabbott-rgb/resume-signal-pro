@@ -202,13 +202,14 @@ describe("every tool declares the shape it returns", () => {
     }
   });
 
-  it("the five tools that lacked a schema on 2026-09-04 declare one, and each says what its runner returns", () => {
+  it("the tools that lacked a schema on 2026-09-04 and are still registered declare one, and so does apply_myself", () => {
+    // check_apply_support, request_application and application_status were
+    // retired with the apply agent (owner decision 2026-10-11): no longer
+    // registered, answered by RETIRED_TOOLS with what replaced them.
     const expected: Record<string, string[]> = {
-      check_apply_support: ["jobId", "agentReady", "vendor", "requirements"],
-      request_application: ["accepted"],
-      application_status: [],
       board_stats: ["servablePostings", "openCompanyBoards", "openCompanyBoardsBasis", "categories", "freshnessWindowDays"],
       debug_search: ["decision", "outcome"],
+      apply_myself: ["jobId", "state"],
     };
     for (const [name, keys] of Object.entries(expected)) {
       const t = tools.find((x) => x.name === name);
@@ -216,9 +217,14 @@ describe("every tool declares the shape it returns", () => {
       const req = requiredKeysOf(outputSchemaOf(t!)!);
       expect(req.top, `${name} top-level required keys`).toEqual(keys);
     }
-    // The two runners that answer a union declare it as one.
-    expect(requiredKeysOf(outputSchemaOf(tools.find((x) => x.name === "request_application")!)!).branches.length).toBe(3);
-    expect(requiredKeysOf(outputSchemaOf(tools.find((x) => x.name === "application_status")!)!).branches.length).toBe(2);
+    // The runner that answers a union declares it as one: the form for an
+    // open posting, or the posting's state with a note.
+    expect(requiredKeysOf(outputSchemaOf(tools.find((x) => x.name === "apply_myself")!)!).branches).toEqual([
+      ["jobId", "state", "form", "route", "postingTerms"], ["jobId", "state", "note"],
+    ]);
+    for (const retired of ["check_apply_support", "request_application", "application_status"]) {
+      expect(tools.find((x) => x.name === retired), `${retired} is retired`).toBeUndefined();
+    }
   });
 
   it("every key a schema requires is written by the runner the dispatch hands that tool to", () => {
@@ -238,11 +244,11 @@ describe("every tool declares the shape it returns", () => {
 
 describe("teeth: each property fails on a copy that breaks it", () => {
   it("a tool whose outputSchema is dropped is reported by name", () => {
-    const t = toolsOf(CODE).find((x) => x.name === "check_apply_support")!;
+    const t = toolsOf(CODE).find((x) => x.name === "board_stats")!;
     const broken = CODE.replace(t.src, t.src.replace("outputSchema: {", "outputShape: {"));
     expect(broken).not.toBe(CODE);
     const missing = toolsOf(broken).filter((x) => outputSchemaOf(x) === null).map((x) => x.name);
-    expect(missing).toEqual(["check_apply_support"]);
+    expect(missing).toEqual(["board_stats"]);
   });
 
   it("a runner that stops writing a required key is reported as tool.key", () => {
@@ -252,11 +258,11 @@ describe("teeth: each property fails on a copy that breaks it", () => {
     expect(undeclaredKeys(broken)).toEqual(["search.results"]);
   });
 
-  it("a union branch whose key the delegate stops writing is reported with its branch", () => {
-    const seam = functionText(CODE, "enqueueApplication");
-    const broken = CODE.replace(seam, seam.replace(/\bwhatHappensNext:/, "next:"));
+  it("a union branch whose key the runner stops writing is reported with its branch", () => {
+    const runner = functionText(CODE, "runApplyMyself");
+    const broken = CODE.replace(runner, runner.replace(/\bnote:/g, "notice:"));
     expect(broken).not.toBe(CODE);
-    expect(undeclaredKeys(broken)).toEqual(["request_application.oneOf[2].whatHappensNext"]);
+    expect(undeclaredKeys(broken)).toEqual(["apply_myself.oneOf[1].note"]);
   });
 
   it("the shorthand `{ key, … }` counts as writing the key, and a bare argument does not", () => {

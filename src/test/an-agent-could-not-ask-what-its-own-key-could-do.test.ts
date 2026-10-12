@@ -58,6 +58,14 @@ const between = (src: string, from: string, to: string) => {
   return src.slice(a, b);
 };
 
+/** A top-level function's text, to its own closing brace at column zero. */
+function functionText2(code: string, fn: string): string {
+  const m = new RegExp(`\\n(?:async )?function ${fn}\\(`).exec(code);
+  if (!m) throw new Error(`function ${fn} is not declared`);
+  const end = code.indexOf("\n}\n", m.index);
+  return code.slice(m.index, end < 0 ? code.length : end + 2);
+}
+
 /** Each entry of the TOOLS array, split on its own `name:` line. */
 const TOOLS_SRC = between(MCP, "const TOOLS = [", "\n];");
 const TOOL_BLOCKS = (() => {
@@ -98,13 +106,13 @@ describe("the card carries what the board already parsed", () => {
       .toMatch(/if \(j\[k\] !== undefined && j\[k\] !== null\) out\[k\] = j\[k\];/);
     // Without the employer handle the new `companies` scope is unusable: an
     // agent has nowhere else to learn a token.
-    expect(card).toMatch(/companyToken: j\.token \?\? null,/);
+    expect(card).toMatch(/\["companyToken", j\.token\]/);
   });
 
   it("says in the schema that an absent pay field is unstated, never zero", () => {
     const schema = between(MCP, "const JOB_CARD_SCHEMA = {", "\nconst DISCLOSURE_SCHEMA");
     expect(schema, "the ~76% with no ANNUALISED figure (2026-09-27) must not read as free labour")
-      .toMatch(/ABSENT when the posting states no pay — absence is not zero/);
+      .toMatch(/absent when unstated \(absence is not zero\)/);
     expect(schema).toMatch(/experienceBand: \{ type: "string", enum: \["entry", "mid", "senior", "expert"\]/);
     expect(schema, "the board keeps adding honest fields; a closed schema would reject the next one")
       .toMatch(/additionalProperties: true/);
@@ -118,7 +126,8 @@ describe("the card carries what the board already parsed", () => {
     // nothing; structuredContent with no text block is an empty render on a
     // client that predates it. 2025-06-18 asks for both.
     const ok = between(MCP, "const toolOk = (data: unknown) => (", "const toolErr");
-    expect(ok).toMatch(/content: \[\{ type: "text", text: JSON\.stringify\(data, null, 1\) \}\]/);
+    // Compact since wave 4: a model pays for every space.
+    expect(ok).toMatch(/content: \[\{ type: "text", text: JSON\.stringify\(data\) \}\]/);
     expect(ok).toMatch(/structuredContent: data as Record<string, unknown>/);
     expect(ok, "structuredContent is an object in the schema").toMatch(/typeof data === "object" && !Array\.isArray\(data\)/);
     expect(MCP, "outputSchema and structuredContent are 2025-06-18 features — the one revision this server speaks")
@@ -129,7 +138,7 @@ describe("the card carries what the board already parsed", () => {
 describe("a key can be asked what it is", () => {
   it("key_status reports tier, both windows and the paid features, from the decision that allowed the call", () => {
     const fn = between(MCP, "async function runKeyStatus(", "async function callTool(");
-    expect(fn).toMatch(/async function runKeyStatus\(client: SupabaseClient, d: Decision, shop: Shop\)/);
+    expect(fn).toMatch(/async function runKeyStatus\(client: SupabaseClient, d: Decision, ctx: Ctx = KEYED_CTX\)/);
     for (const f of ["d.rate_limit", "d.rate_used", "d.quota_limit", "d.quota_used", "d.key_tier"]) {
       expect(fn, `${f} must come from the decision, not a second read`).toMatch(new RegExp(f.replace(".", "\\.")));
     }
@@ -146,10 +155,16 @@ describe("a key can be asked what it is", () => {
     // fit_resume follows the fit predicate (open on a pass), rankedEngine the
     // paid one (never on a pass).
     expect(fn).toMatch(/const paid = isPaidKeyTier\(d\.key_tier\)/);
-    expect(fn).toMatch(/const fit = hasFitAccess\(d\.key_tier\)/);
-    expect(fn).toMatch(/fit_resume: fit,/);
+    // Fit's day comes from the same read the fit gate makes (the fit
+    // predicate first, then the plan, then Pro), so the advance answer
+    // cannot disagree with the refusal.
+    expect(fn).toMatch(/const fit = await fitStandingOf\(client, d\.key_tier, apiKeyId\);/);
+    expect(fn).toMatch(/fitDailyLimit: fit\.limit,/);
+    expect(between(MCP, "async function fitStandingOf(", "\n}\n")).toMatch(/if \(hasFitAccess\(tier\)\) return fitStanding\(true\);/);
+    expect(functionText2(MCP, "callTool")).toMatch(/const standing = hasFitAccess\(tier\) \? fitStanding\(true\) : await fitStandingOf\(client, tier, apiKeyId\);/);
     expect(fn).toMatch(/rankedEngine: paid,/);
-    expect(fn).toMatch(/request_application: apply\.ready === true,/);
+    // The apply agent is retired: no readiness, no pass to buy.
+    expect(fn).not.toMatch(/request_application|applyReadiness|PASS_URL/);
     expect(MCP, "the key itself is only ever held as a hash — never echo one").not.toMatch(/key: raw/);
   });
 
@@ -160,8 +175,8 @@ describe("a key can be asked what it is", () => {
     // The tier is handed to callTool and the decision row is not — the shape
     // the free-tier fit_resume hole was closed with. key_status is answered
     // beside it rather than by widening it.
-    expect(MCP).toMatch(/callTool\(client, d\.api_key_id \?\? "", d\.key_tier, toolName, toolArgs, shop\)/);
-    expect(MCP).toMatch(/toolName === "key_status"\s*\n?\s*\? toolOk\(await runKeyStatus\(client, d, shop\)\)/);
+    expect(MCP).toMatch(/callTool\(client, d\.api_key_id \?\? "", d\.key_tier, toolName, toolArgs, ctx\)/);
+    expect(MCP).toMatch(/toolName === "key_status"\s*\n?\s*\? toolOk\(await runKeyStatus\(client, d, ctx\)\)/);
   });
 
   it("apply-readiness asks the gates the seam enforces, with the seam's own predicates", () => {
@@ -199,14 +214,14 @@ describe("annotations say which call needs a human", () => {
     }
   });
 
-  it("exactly one tool is not read-only, and it is the one that acts", () => {
+  it("no registered tool acts: the one that did (request_application) is retired with the apply agent", () => {
+    // Owner decision 2026-10-11: we never submit anything. apply_myself reads
+    // the employer's published form and submits nothing, so it is read-only too.
     const acting = TOOL_BLOCKS.filter((t) => /readOnlyHint: false/.test(annotationsOf(t.src))).map((t) => t.name);
-    expect(acting, "request_application is the only tool here that acts on an account").toEqual(["request_application"]);
-    const ann = annotationsOf(block("request_application"));
-    expect(ann, "an application in front of an employer cannot be recalled — the client should ask first")
-      .toMatch(/destructiveHint: true/);
-    expect(ann, "the queue upsert ignores duplicates, so a retry is safe and should be advertised as such")
-      .toMatch(/idempotentHint: true/);
+    expect(acting).toEqual([]);
+    expect(TOOL_BLOCKS.map((t) => t.name)).not.toContain("request_application");
+    expect(/const RETIRED_TOOLS: readonly string\[\] = \[[^\]]*"request_application"/.test(MCP)).toBe(true);
+    expect(annotationsOf(block("apply_myself"))).toMatch(/readOnlyHint: true/);
     expect(MCP).toMatch(/const READS_THE_BOARD = \{ readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true \};/);
     expect(MCP, "key_status reads this key's own record — that is not an open world")
       .toMatch(/const READS_THE_KEY = \{ readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false \};/);
@@ -216,11 +231,13 @@ describe("annotations say which call needs a human", () => {
 describe("a shortlist costs one call, not twenty", () => {
   it("check_jobs_open rides the board's ids-based liveness path — the read-only one", () => {
     const fn = between(MCP, "async function runCheckJobsOpen(", "async function runFitResume(");
-    expect(fn).toMatch(/board\(\{ action: "exists", ids \}\)/);
-    // The cap is ONE constant here, and it is the board's own cap for that
-    // action (the exists handler's slice), echoed rather than re-chosen —
-    // pinned cross-function so neither side can move alone.
-    expect(fn).toMatch(/asked\.slice\(0, CHECK_JOBS_OPEN_MAX\)/);
+    expect(fn).toMatch(/board\(\{ action: "exists", ids \}, ctx\)/);
+    // The keyed cap is ONE constant here, and it is the board's own cap for
+    // that action (the exists handler's slice), echoed rather than re-chosen —
+    // pinned cross-function so neither side can move alone. A keyless call
+    // takes the allowance's smaller figure.
+    expect(fn).toMatch(/const cap = ctx\.keyless \? ANON_ALLOWANCE\.checkJobsOpenIds : CHECK_JOBS_OPEN_MAX;/);
+    expect(fn).toMatch(/asked\.slice\(0, cap\)/);
     const ours = Number(/const CHECK_JOBS_OPEN_MAX = (\d+);/.exec(MCP)?.[1]);
     const existsAt = BOARD_RAW.indexOf('if (action === "exists")');
     expect(existsAt).toBeGreaterThan(0);
@@ -253,11 +270,11 @@ describe("a shortlist costs one call, not twenty", () => {
     expect(fn, "a per-id failure is a row in `unavailable`, not a dead call").toMatch(/unavailable\.push\(\{/);
     expect(fn, "the detail stays server-side, like every other failure here").toMatch(/console\.error\(`\[AGENT-MCP\] get_jobs detail failed/);
     expect(fn, "overflow ids are named").toMatch(/notFetched/);
-    expect(block("get_jobs")).toMatch(/maxItems: 10/);
+    expect(block("get_jobs")).toMatch(/maxItems: GET_JOBS_MAX/);
   });
 
   it("get_job keeps the exact closure answers it always gave, and stops calling a bad id an internal error", () => {
-    const fn = between(MCP, "async function runGetJob(", "const GET_JOBS_MAX");
+    const fn = between(MCP, "async function runGetJob(", "async function runGetJobs(");
     expect(fn).toMatch(/closed: out\.detail, note: "This posting closed/);
     expect(fn).toMatch(/agedOut: out\.detail, note: "Past the board's 30-day freshness cap\."/);
     // A throw reaches the agent as "hit an internal error. Try again shortly" —
@@ -272,7 +289,7 @@ describe("a shortlist costs one call, not twenty", () => {
     expect(shared, "missing is a RESULT, or one closed posting takes the whole batch with it")
       .toMatch(/return \{ ok: false, id, reason: "closed", detail: r\.closed \};/);
     expect(shared, "the single-job cap is unchanged").toMatch(/descCap > 0/);
-    expect(fn).toMatch(/detailOf\(id, 24_000, "\\n\[truncated\]"\)/);
+    expect(fn).toMatch(/detailOf\(id, 24_000, "\\n\[truncated\]", ctx\)/);
   });
 });
 

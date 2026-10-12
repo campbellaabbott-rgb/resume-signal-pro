@@ -12,7 +12,11 @@
  * key's status resource and the initialize text still carried the pass link.
  *
  * Now each purchase sentence has a ChatGPT edition chosen where the sentence
- * is built; job data is never read by the choice.
+ * is built; job data is never read by the choice. Since the apply pivot
+ * (owner decision 2026-10-11) there is nothing to buy on any edition: the
+ * pass and the plan are retired, so no answer carries a pass link at all.
+ * The edition still chooses the words around the data (a plain siteUrl with
+ * no tracking tags, the forms read inside ChatGPT), never the data.
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
@@ -71,8 +75,8 @@ beforeEach(() => {
   };
   (globalThis as Record<string, unknown>).__mcpDb = {
     rpc: (name: string) => {
-      const data = name === "mcp_anon_check"
-        ? { allowed: true, global_used: 1, ip_used: 1, ip_cap: 25, global_cap: 2000 }
+      const data = name === "mcp_anon_check_v2"
+        ? { allowed: true, refused_by: null, bucket_used: 1, bucket_cap: 100, share_used: 1, share_cap: 4000, overall_used: 1, overall_cap: 20000, minute_used: 1, minute_cap: 15 }
         : name === "api_key_check"
           ? { is_allowed: true, deny_reason: "", api_key_id: "key-1", key_tier: "free", rate_limit: 60, rate_used: 1, quota_limit: 1000, quota_used: 1, pass_ends_at: null, pass_apps_left: null }
           : null;
@@ -120,14 +124,17 @@ describe("inside ChatGPT a job arrives exactly as the board gave it", () => {
         const want = JOBS.map(cardFields);
         expect((gpt.sc.jobs as Array<Record<string, unknown>>).map(cardFields)).toEqual(want);
         expect((gpt.fromText.jobs as Array<Record<string, unknown>>).map(cardFields)).toEqual(want);
-        expect(gpt.sc.jobs).toEqual(plain.sc.jobs);
+        expect((plain.sc.jobs as Array<Record<string, unknown>>).map(cardFields)).toEqual(want);
+        // The edition chooses the link's tags, never the posting it names.
+        for (const j of gpt.sc.jobs as Array<Record<string, unknown>>) expect(String(j.siteUrl)).toBe(`https://resumebooster.work/jobs?job=${encodeURIComponent(String(j.id))}`);
       }
     });
 
     it(`get_job and fetch on such an id answer the posting, description intact (${label})`, async () => {
       const plain = await call("get_job", { id: "lever:upgrade:abc" }, { key: KEY });
       const gpt = await call("get_job", { id: "lever:upgrade:abc" }, { key: KEY, ...opts });
-      expect(gpt.raw).toBe(plain.raw);
+      expect(cardFields(gpt.sc)).toEqual(cardFields(plain.sc));
+      expect(gpt.sc.description).toBe(plain.sc.description);
       expect(cardFields(gpt.sc)).toEqual(cardFields(JOBS[0]));
       expect(gpt.sc.description).toBe(DESCRIPTION);
 
@@ -138,36 +145,35 @@ describe("inside ChatGPT a job arrives exactly as the board gave it", () => {
   }
 });
 
-describe("inside ChatGPT the server's own refusals still say what is needed, with no link to buy", () => {
-  it("request_application's funding refusal names the requirement in both editions and the pass link only outside ChatGPT", async () => {
-    const plain = await call("request_application", { jobId: "greenhouse:bestbuy:1" }, { key: KEY });
-    expect(plain.sc).toMatchObject({ accepted: false, refusedBy: "plan" });
-    expect(String(plain.sc.fix)).toContain("/agents/pass");
-    const gpt = await call("request_application", { jobId: "greenhouse:bestbuy:1" }, { key: KEY, ...IN_CHATGPT_META });
-    expect(gpt.sc).toMatchObject({ accepted: false, refusedBy: "plan", error: "The apply agent needs an active Agent plan or a live pass." });
-    expect(String(gpt.sc.fix)).toMatch(/search tools keep working/i);
-    expect(gpt.raw).not.toMatch(/agents\/pass|\bbuy\b|subscribe at/i);
+describe("no edition is sent to buy anything: the pass and the plan are retired", () => {
+  it("request_application answers its retirement in both editions, with the path that replaced it and no link to buy", async () => {
+    for (const opts of [{ key: KEY }, { key: KEY, ...IN_CHATGPT_META }] as Opts[]) {
+      const r = await call("request_application", { jobId: "greenhouse:bestbuy:1" }, opts);
+      expect(r.raw).toMatch(/retired/);
+      expect(r.raw).toMatch(/apply_myself/);
+      expect(r.raw).not.toMatch(/agents\/pass|\bbuy\b|subscribe at/i);
+    }
   });
 
-  it("key_status inside ChatGPT names each apply blocker in a sentence and carries no buy or upgrade field", async () => {
-    const gpt = await call("key_status", {}, { key: KEY, ...IN_CHATGPT_UA });
-    const apply = gpt.sc.apply as { blockers: string[] };
-    expect(apply.blockers.some((b) => /No live pass and no Agent plan/.test(b))).toBe(true);
-    expect(gpt.sc).not.toHaveProperty("upgrade");
-    expect(gpt.sc.pass).not.toHaveProperty("buy");
-    expect(gpt.raw).not.toMatch(/agents\/pass/);
+  it("key_status carries no buy, upgrade or pass link in either edition", async () => {
+    for (const opts of [{ key: KEY }, { key: KEY, ...IN_CHATGPT_UA }] as Opts[]) {
+      const r = await call("key_status", {}, opts);
+      expect(r.sc).not.toHaveProperty("upgrade");
+      expect(r.sc).not.toHaveProperty("apply");
+      expect(r.raw).not.toMatch(/agents\/pass|\\"buy\\"/);
+    }
   });
 });
 
 describe("the answers that are not tool calls follow the same rule", () => {
-  it("resources/read of the guide and of the key's status carry no pass link inside ChatGPT, and keep it elsewhere", async () => {
+  it("resources/read of the guide and of the key's status carry no pass link on any edition", async () => {
     const guide = (opts: Opts) => rpc("resources/read", { uri: "resumebooster://guide" }, opts);
-    expect((await guide({})).raw).toContain("/agents/pass");
+    expect((await guide({})).raw).not.toMatch(/agents\/pass/);
     expect((await guide(IN_CHATGPT_UA)).raw).not.toMatch(/agents\/pass/);
     expect((await guide(IN_CHATGPT_META)).raw).not.toMatch(/agents\/pass/);
 
     const me = (opts: Opts) => rpc("resources/read", { uri: "resumebooster://me/key" }, { key: KEY, ...opts });
-    expect((await me({})).raw).toContain("/agents/pass");
+    expect((await me({})).raw).not.toMatch(/agents\/pass/);
     const gptMe = await me(IN_CHATGPT_UA);
     expect(gptMe.raw).toContain("contents");
     expect(gptMe.raw).not.toMatch(/agents\/pass|\\"buy\\"/);
@@ -176,11 +182,10 @@ describe("the answers that are not tool calls follow the same rule", () => {
   it("initialize and the tool list carry no pass link for any host", async () => {
     for (const opts of [{}, IN_CHATGPT_UA]) {
       const init = await rpc("initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "t", version: "1" } }, opts);
-      expect(init.raw).toContain("Agent Pass");
-      expect(init.raw).not.toMatch(/agents\/pass/);
+      expect(init.raw).not.toMatch(/Agent Pass|agents\/pass/);
       const list = await rpc("tools/list", {}, opts);
-      expect(list.raw).toContain("request_application");
-      expect(list.raw).not.toMatch(/agents\/pass/);
+      expect(list.raw).not.toContain("request_application");
+      expect(list.raw).not.toMatch(/agents\/pass|Agent Pass/);
     }
   });
 });

@@ -299,7 +299,7 @@ const ORDERED_MARKS = [
   "const { state } = await probeSignIn();",
   "console.log(noCredentialLog(",
   'if (noCredentialAnswer(state, hedgeInBand(params)) === "in_band") {',
-  "const [why, how] = signInNotOn();",
+  "const [why, how] = signInNotOn(edition, toolName);",
   "return read ? readRefused(id, why, how, {}) : json(rpcResult(id, toolErr(why, how)));",
   "hedgeInBand(params)) {",
   "return json(rpcResult(id, inBandChallenge(toolName)));",
@@ -332,69 +332,37 @@ describe("both challenge sites probe first and answer in band unless the fact is
     expect(regions[0]).toMatch(/noCredentialLog\("no bearer", toolName, state, hedgeInBand\(params\)\)/);
   });
 
-  it("the in-band refusal is the spec's two strings, every name and URL read off the registry", () => {
+  it("the in-band refusal is the spec's sentence plus the keyless twin, and only the full edition hears about a key and its header", () => {
     const fn = functionText(MCP, "signInNotOn");
     expect(MCP).toMatch(/const SIGN_IN_NOT_ON = "Sign-in through this server is not switched on yet, so this tool needs a key\.";/);
-    expect(fn).toMatch(/SIGN_IN_NOT_ON,/);
-    const fix = /`([^`]*)`/.exec(fn)?.[1] ?? "";
-    expect(fix).toContain("${ANON_TOOLS.join(\", \")}");
+    // A chat user (Claude, ChatGPT) gets the sentence and the keyless twin, nothing about headers.
+    expect(fn).toMatch(/const twin = keylessTwinOf\(toolName\);/);
+    expect(fn).toMatch(/if \(edition !== "other"\) return \[SIGN_IN_NOT_ON, twin\];/);
+    // Everyone else also hears where a free key comes from and how it travels.
+    const fix = /return \[SIGN_IN_NOT_ON, `([^`]*)`\];/.exec(fn)?.[1] ?? "";
+    expect(fix).toContain("${twin}");
     expect(fix).toContain("${MINT_URL}");
-    const anon = [...(/const ANON_TOOLS: readonly string\[\] = \[([^\]]*)\]/.exec(MCP)?.[1] ?? "").matchAll(/"([a-z_]+)"/g)].map((x) => x[1]);
-    const mint = /const MINT_URL = "([^"]+)";/.exec(MCP)?.[1] ?? "";
-    const rendered = fix.replace("${ANON_TOOLS.join(\", \")}", anon.join(", ")).replace("${MINT_URL}", mint);
-    expect(rendered).toBe(
-      `Tools that answer with no key: ${anon.join(", ")}. A free key (${mint}) works from Claude Code, Cursor, VS Code or any client that can send Authorization: Bearer <key>.`,
-    );
-    // No tool name typed into the fix: the list is the registry's.
+    expect(fix).toMatch(/Claude Code or any client that can send Authorization: Bearer <key> or x-api-key\./);
+    // Never an IDE's name (seeker-facing copy names Claude, ChatGPT and Claude Code only).
+    expect(fn).not.toMatch(/Cursor|VS Code|Cline|Windsurf/);
+    // No tool name typed into the fix: names reach it through the registry.
     expect(fix.replace(/\$\{[^}]*\}/g, "")).not.toMatch(/\b[a-z]+_[a-z_]+\b/);
   });
 
-  it("the metadata document is still served in every state, and the securitySchemes on tools/list are untouched", () => {
+  it("while sign-in is off the metadata document answers 404 and tools/list carries no security schemes", () => {
     const get = between(MCP, 'if (req.method === "GET") {', "405);");
     expect(get).toMatch(/isProtectedResourceMetadataPath\(/);
-    expect(get).not.toMatch(/probeSignIn|cachedSignIn/);
-    const list = between(MCP, 'if (method === "tools/list") {', "\n  }\n");
-    expect(list).toMatch(/securitySchemes = ANON_TOOLS\.includes\(t\.name\) \? \[\{ type: "noauth" \}, withToken\] : \[withToken\]/);
-    expect(list).not.toMatch(/probeSignIn|cachedSignIn/);
+    expect(get).toMatch(/const \{ state \} = await probeSignIn\(\);\s*if \(state === "on"\) return protectedResourceResponse\(cors\);/);
+    expect(get).toMatch(/, 404\);/);
+    const list = functionText(MCP, "listedTools");
+    expect(list).toMatch(/if \(!signInOn\) return listed;/);
+    expect(list).toMatch(/const securitySchemes = ANON_TOOLS\.includes\(t\.name\) \? \[\{ type: "noauth" \}, withToken\] : \[withToken\];/);
+    expect(between(MCP, 'if (method === "tools/list") {', "\n  }\n")).toMatch(/const \{ state \} = await probeSignIn\(\);[\s\S]*listedTools\(!!bearer, edition, state === "on"\)/);
   });
 });
 
 // ── the initialize result ───────────────────────────────────────────────────
 
-/**
- * initialize.instructions rendered as a host receives it: the base
- * paragraph evaluated with the registry's own constants (parsed out of the
- * same source, the way the-attach-menu guard renders it), then the sentence
- * the wrapper appends for a given state.
- */
-function renderInstructions(code: string, state: SignInState): string {
-  const expr = between(code, "instructions:\n", "\n    }));").replace(/^instructions:\n/, "").trim().replace(/,$/, "");
-  const list = (name: string) => [...(new RegExp(`const ${name}: readonly string\\[\\] = \\[([^\\]]*)\\]`).exec(code)?.[1] ?? "").matchAll(/"([a-z_]+)"/g)].map((x) => x[1]);
-  const num = (name: string) => Number(new RegExp(`const ${name} = (\\d+);`).exec(code)?.[1] ?? NaN);
-  const str = (name: string) => new RegExp(`const ${name} = "([^"]+)";`).exec(code)?.[1] ?? "";
-  const tools = [...between(code, "const TOOLS = [", "\n];").matchAll(/\n {4}name: "([a-z_]+)",/g)].map((m) => m[1]);
-  const ANON_TOOLS = list("ANON_TOOLS"), PAID_TOOLS = list("PAID_TOOLS"), ACCOUNT_TOOLS = list("ACCOUNT_TOOLS");
-  const KEY_ONLY_READ_TOOLS = tools.filter((n) => !ANON_TOOLS.includes(n) && !PAID_TOOLS.includes(n) && !ACCOUNT_TOOLS.includes(n));
-  const scheme = /const RESOURCE_SCHEME = "([^"]+)";/.exec(code)?.[1] ?? "";
-  const GUIDE_URI = scheme + (/const GUIDE_URI = `\$\{RESOURCE_SCHEME\}([^`]+)`;/.exec(code)?.[1] ?? "");
-  const DOCS_URL = /websiteUrl: "([^"]+)"/.exec(code)?.[1] ?? "";
-  const tool = (n: string) => { if (!tools.includes(n)) throw new Error(`unregistered ${n}`); return n; };
-  const fn = new Function(
-    "tool", "ANON_TOOLS", "PAID_TOOLS", "ACCOUNT_TOOLS", "KEY_ONLY_READ_TOOLS", "ANON_SEARCH_LIMIT", "ANON_IP_CAP_PER_DAY",
-    "ANON_GLOBAL_CAP_PER_DAY", "FREE_KEY_DAILY_QUOTA", "GET_JOBS_MAX", "KEYED_SEARCH_LIMIT", "CHECK_JOBS_OPEN_MAX",
-    "MINT_URL", "PASS_URL", "DOCS_URL", "GUIDE_URI",
-    `return (${expr});`,
-  );
-  const base = fn(
-    tool, ANON_TOOLS, PAID_TOOLS, ACCOUNT_TOOLS, KEY_ONLY_READ_TOOLS, num("ANON_SEARCH_LIMIT"), num("ANON_IP_CAP_PER_DAY"),
-    num("ANON_GLOBAL_CAP_PER_DAY"), num("FREE_KEY_DAILY_QUOTA"), num("GET_JOBS_MAX"), num("KEYED_SEARCH_LIMIT"), num("CHECK_JOBS_OPEN_MAX"),
-    str("MINT_URL"), str("PASS_URL"), DOCS_URL, GUIDE_URI,
-  ) as string;
-  // The wrapper's own template, applied as written.
-  const wrapper = functionText(code, "initializeResult");
-  expect(wrapper).toMatch(/instructions: `\$\{base\.instructions\}\\n\$\{signInSentence\(signIn\.state, ANON_TOOLS\.length\)\}`,/);
-  return `${base}\n${signInSentence(state, ANON_TOOLS.length)}`;
-}
 const STATES: SignInState[] = ["on", "off", "unknown"];
 
 describe("initialize carries the fact and one sentence for it, under the truncation in every state", () => {
@@ -421,12 +389,12 @@ describe("initialize carries the fact and one sentence for it, under the truncat
     expect(signInSentence("off", 5)).toContain("the five unkeyed tools");
   });
 
-  it("the rendered instructions stay under 2,048 bytes in all three states, and end with the sentence", () => {
-    for (const state of STATES) {
-      const text = renderInstructions(MCP, state);
-      expect(Buffer.byteLength(text, "utf8"), `state ${state}`).toBeLessThan(2048);
-      expect(text.endsWith(signInSentence(state, 4))).toBe(true);
-    }
+  it("the served instructions end with the state's sentence (their length in all three states is measured on the real handler)", () => {
+    const wrapper = functionText(MCP, "initializeResult");
+    expect(wrapper).toMatch(/instructions: `\$\{base\.instructions\}\\n\$\{signInSentence\(signIn\.state, ANON_TOOLS\.length\)\}`,/);
+    expect(between(MCP, 'if (method === "initialize") {', "\n  }\n")).toMatch(/instructions: instructionsFor\(edition\),/);
+    // the-connector-lists-only-what-its-caller-can-call.test.ts serves them in each state and edition.
+    expect(read("src/test/the-connector-lists-only-what-its-caller-can-call.test.ts")).toMatch(/for \(const state of \["on", "off", "unknown"\]/);
   });
 
   it("the guide renders the same sentence and the state's own refusal row, from the verdict the read site probed first", () => {
@@ -443,12 +411,17 @@ describe("initialize carries the fact and one sentence for it, under the truncat
         expect(section).toContain("`a`, `b`");
       }
       expect(section).toContain(words.mintUrl);
+      // The chat edition never mentions a key's header or where to mint one.
+      const chat = signInGuideSection(state, 4, { ...words, chat: true });
+      expect(chat).toContain(signInSentence(state, 4));
+      expect(chat).not.toMatch(/Bearer|Authorization/);
+      expect(chat).not.toContain(words.mintUrl);
     }
     const guide = functionText(MCP, "guideText");
-    expect(guide).toMatch(/signInGuideSection\(cachedSignIn\(\)\?\.state \?\? "unknown", ANON_TOOLS\.length, \{ notOn: SIGN_IN_NOT_ON, unkeyedTools: ANON_TOOLS, mintUrl: MINT_URL \}\)/);
+    expect(guide).toMatch(/signInGuideSection\(cachedSignIn\(\)\?\.state \?\? "unknown", ANON_TOOLS\.length, \{ notOn: SIGN_IN_NOT_ON, unkeyedTools: listed, mintUrl: MINT_URL, chat \}\)/);
     expect(guide).toMatch(/## If something refuses/);
     // Both guide reads warm the cache before the synchronous render.
-    const reads = [...MCP.matchAll(/guideText\(shop\)\)/g)];
+    const reads = [...MCP.matchAll(/guideText\((?:ctx\.)?edition\)\)/g)];
     expect(reads.length).toBe(2);
     for (const site of reads) {
       const before = MCP.slice(Math.max(0, site.index! - 160), site.index!);
@@ -472,10 +445,9 @@ function toolsOf(code: string): ToolReg[] {
   });
 }
 const anonOf = (code: string) => [...(/const ANON_TOOLS: readonly string\[\] = \[([^\]]*)\]/.exec(code)?.[1] ?? "").matchAll(/"([a-z_]+)"/g)].map((x) => x[1]);
-/** Whether a description expression closes with the shared sentence (get_job may add its fetch clause after it). */
+/** Whether a description expression closes with the shared sentence. */
 const closesWithSentence = (t: ToolReg): boolean =>
-  /(?:\+ KEYED_TOOL_SENTENCE|\$\{KEYED_TOOL_SENTENCE\}`)$/.test(t.description) ||
-  (t.name === "get_job" && /\$\{KEYED_TOOL_SENTENCE\} With neither, call fetch with the same id\.`$/.test(t.description));
+  /(?:\+ KEYED_TOOL_SENTENCE|\$\{KEYED_TOOL_SENTENCE\}`)$/.test(t.description);
 
 describe("every keyed tool says what it needs, a shortlist read with no ids is an argument error, and the edge strings say what to do", () => {
   it("every tool outside the unkeyed set closes its description with the one sentence; no unkeyed tool does", () => {
@@ -486,20 +458,21 @@ describe("every keyed tool says what it needs, a shortlist read with no ids is a
     for (const t of tools) {
       expect(closesWithSentence(t), `${t.name}: ${t.description.slice(-80)}`).toBe(!anon.includes(t.name));
     }
-    // get_job's own clause: the keyless reader is sent to the alias that answers.
-    expect(tools.find((t) => t.name === "get_job")!.description).toMatch(/With neither, call fetch with the same id\./);
+    // Wave 4: every read tool answers keyless, so only these three carry it.
+    expect(tools.filter((t) => closesWithSentence(t)).map((t) => t.name).sort()).toEqual(["debug_search", "fit_resume", "key_status"]);
   });
 
-  it("get_jobs with no ids throws the argument error, naming the cap from its constant", () => {
-    const fn = functionText(MCP, "runGetJobs");
-    expect(fn).toMatch(/if \(!asked\.length\) \{\s*throw new ToolArgumentError\(`ids is required — an array of job ids from search_jobs \(up to \$\{GET_JOBS_MAX\}\)\.`, "Send \{ids: \[\.\.\.\]\}\."\);/);
-    expect(fn).not.toMatch(/throw new Error\("ids is required/);
-    expect(fn).not.toMatch(/up to \d+\)/);
-    // The other shortlist tool has the same argument, and the guide's row
-    // names both: a plain Error there would reach the caller as "internal".
+  it("get_jobs and check_jobs_open with no ids throw the argument error, naming the cap from its constant", () => {
+    // One reader for both shortlist tools; a plain Error would reach the
+    // caller as "internal", and a typed cap would drift from its constant.
+    const ids = functionText(MCP, "idsArg");
+    expect(ids).toMatch(/if \(!ids\.length\) throw new ToolArgumentError\(`ids is required — an array of job ids from search_jobs \(up to \$\{cap\}\)\.`, "Send \{ids: \[\.\.\.\]\}\."\);/);
+    expect(functionText(MCP, "runGetJobs")).toMatch(/idsArg\(args\.ids, GET_JOBS_MAX\)/);
     const open = functionText(MCP, "runCheckJobsOpen");
-    expect(open).toMatch(/throw new ToolArgumentError\(`ids is required — an array of job ids from search_jobs \(up to \$\{CHECK_JOBS_OPEN_MAX\}\)\.`, "Send \{ids: \[\.\.\.\]\}\."\);/);
-    expect(MCP).not.toMatch(/throw new Error\(`ids is required/);
+    expect(open).toMatch(/const cap = ctx\.keyless \? ANON_ALLOWANCE\.checkJobsOpenIds : CHECK_JOBS_OPEN_MAX;/);
+    expect(open).toMatch(/idsArg\(args\.ids, cap\)/);
+    expect(MCP).not.toMatch(/throw new Error\(`ids is required|throw new Error\("ids is required/);
+    expect(ids).not.toMatch(/up to \d+\)/);
   });
 
   /**
@@ -524,8 +497,12 @@ describe("every keyed tool says what it needs, a shortlist read with no ids is a
       const secondsToMidnightUtc = () => 1;
       const withUnkeyedNote = (rpc, note) => ({ ...rpc, note });
       const answerUnkeyed = async () => ({ rpc: { unkeyed: true }, headers: { "X-Unkeyed-Remaining": "1" } });
+      const countCall = () => {};
+      const egressHost = async () => null;
+      const callerAddress = () => "";
+      const isChatGptCaller = () => false;
       return async function run(toolName, decision) {
-        const id = 1, read = false, toolArgs = {}, params = {}, keyHash = "hash", shop = "sells";
+        const id = 1, read = false, toolArgs = {}, params = {}, keyHash = "hash", edition = "other";
         const client = { rpc() { return { maybeSingle: async () => ({ data: decision, error: null }) }; } };
         const req = { headers: { get() { return ""; } } };
         let d = null;
@@ -564,12 +541,13 @@ describe("every keyed tool says what it needs, a shortlist read with no ids is a
     // The note lands in the unkeyed block of a real answer, and a refusal is untouched: run the builder itself.
     const src = `${between(MCP, "const toolOk = (data: unknown) =>", "\nconst toolErr")}\n${functionText(MCP, "withUnkeyedNote")}\nreturn withUnkeyedNote;`;
     const js = ts.transpileModule(src, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText;
-    const run = new Function(js)() as (rpc: unknown, note: string) => { result: { content: { type: string; text?: string }[]; structuredContent: { unkeyed: { note?: string; callsLeftToday: number } } } };
-    const answer = { jsonrpc: "2.0", id: 1, result: { content: [{ type: "text", text: "{}" }, { type: "resource_link", uri: "x" }], structuredContent: { jobs: [], unkeyed: { callsLeftToday: 3 } } } };
+    const run = new Function(js)() as (rpc: unknown, note: string) => { result: { content: { type: string; text?: string }[]; structuredContent: { unkeyed: { note?: string; keyNote?: string; callsLeftToday: number } } } };
+    const answer = { jsonrpc: "2.0", id: 1, result: { content: [{ type: "text", text: "{}" }], structuredContent: { jobs: [], unkeyed: { callsLeftToday: 3, note: "allowance" } } } };
     const noted = run(answer, "NOTE");
-    expect(noted.result.structuredContent.unkeyed).toEqual({ callsLeftToday: 3, note: "NOTE" });
-    expect(noted.result.content.map((c) => c.type)).toEqual(["text", "resource_link"]);
-    expect(JSON.parse(noted.result.content[0].text!).unkeyed.note).toBe("NOTE");
+    // Beside the allowance's own sentence, never over it.
+    expect(noted.result.structuredContent.unkeyed).toEqual({ callsLeftToday: 3, note: "allowance", keyNote: "NOTE" });
+    expect(noted.result.content.map((c) => c.type)).toEqual(["text"]);
+    expect(JSON.parse(noted.result.content[0].text!).unkeyed.keyNote).toBe("NOTE");
     const refused = { jsonrpc: "2.0", id: 1, result: { content: [{ type: "text", text: "{}" }], isError: true } };
     expect(run(refused, "NOTE")).toBe(refused);
   });
@@ -646,28 +624,22 @@ describe("teeth: each property fails on a copy that reintroduces the old behavio
     expect(closesWithSentence({ ...boardStats, description: `${boardStats.description} + KEYED_TOOL_SENTENCE` })).toBe(true);
   });
 
-  it("a get_jobs that throws a plain Error again, or types the cap, is caught", () => {
-    const fn = functionText(MCP, "runGetJobs");
+  it("a shortlist reader that throws a plain Error again, or types the cap, is caught", () => {
+    const fn = functionText(MCP, "idsArg");
     const plain = fn.replace("throw new ToolArgumentError(`ids is required", "throw new Error(`ids is required");
     expect(plain).not.toBe(fn);
     expect(plain).not.toMatch(/throw new ToolArgumentError\(`ids is required/);
-    const typed = fn.replace("(up to ${GET_JOBS_MAX})", "(up to 10)");
+    const typed = fn.replace("(up to ${cap})", "(up to 10)");
     expect(typed).not.toBe(fn);
     expect(typed).toMatch(/up to \d+\)/);
   });
 
-  it("instructions that grow past the truncation in the off state are caught on the rendered text", () => {
-    const grown = MCP.replace("`The guide: ${GUIDE_URI}.`,", "`The guide: ${GUIDE_URI}. " + "x".repeat(100) + "`,");
-    expect(grown).not.toBe(MCP);
-    expect(Buffer.byteLength(renderInstructions(grown, "off"), "utf8")).toBeGreaterThanOrEqual(2048);
-  });
-
   it("a guide read that renders before probing is caught", () => {
-    const warmed = "await probeSignIn();\n        return json(rpcResult(id, contentsOf(GUIDE_URI, read.resource.mimeType, guideText(shop))));";
+    const warmed = "await probeSignIn();\n        return json(rpcResult(id, contentsOf(GUIDE_URI, read.resource.mimeType, guideText(edition))));";
     expect(MCP).toContain(warmed);
-    const cold = MCP.replace(warmed, "return json(rpcResult(id, contentsOf(GUIDE_URI, read.resource.mimeType, guideText(shop))));");
+    const cold = MCP.replace(warmed, "return json(rpcResult(id, contentsOf(GUIDE_URI, read.resource.mimeType, guideText(edition))));");
     expect(cold).not.toBe(MCP);
-    const site = cold.indexOf("contentsOf(GUIDE_URI, read.resource.mimeType, guideText(shop))");
+    const site = cold.indexOf("contentsOf(GUIDE_URI, read.resource.mimeType, guideText(edition))");
     expect(cold.slice(Math.max(0, site - 160), site)).not.toMatch(/await probeSignIn\(\);/);
   });
 });
