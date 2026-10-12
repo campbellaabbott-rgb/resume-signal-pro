@@ -30,6 +30,7 @@ for PAIR in "agent-mcp|2026-10-09|71" "apply-agent|2026-10-09|71" "apply-broker|
             "send-market-pulse|2026-10-09|24" "send-scan-report|2026-10-09|24"; do
   W73W_FN=${PAIR%%|*}; W73W_REST=${PAIR#*|}; W73W_D=${W73W_REST%%|*}; W73W_N=${W73W_REST#*|}
   W73W_H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$W73W_FN" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
+  [ "$W73W_FN" = "agent-mcp" ] && W73W_MCP_H="$W73W_H"
   if [ -z "$W73W_H" ]; then echo "FAIL  $W73W_FN preflight carries no x-fn-build (not deployed, or the previous bundle is serving)"
   elif build_ge "$W73W_FN" "$W73W_H" "$W73W_D" "$W73W_N"; then echo "PASS  $W73W_FN preflight x-fn-build = $W73W_H ($W73W_FN.$W73W_D.$W73W_N or later)"
   else echo "FAIL  $W73W_FN preflight x-fn-build = $W73W_H (want $W73W_FN.$W73W_D.$W73W_N or later: the previous bundle is still serving)"; fi
@@ -44,14 +45,24 @@ case "$W73W_TO" in
 esac
 
 MC -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' > /tmp/vd_73w_tools.json
-node -e '
+# From agent-mcp 2026-10-11.1 (wave 4) the pass rule and the plan sentence are
+# gone with the products they described: request_application is listed to
+# nobody, and fit_resume (keyed, so absent from this keyless list) is free at
+# 25 a day. Section 82 judges the wave-4 tool text.
+W73W_W4=0; build_ge agent-mcp "${W73W_MCP_H:-}" "2026-10-11" "1" && W73W_W4=1
+W73W_W4="$W73W_W4" node -e '
 const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);
 let j=null;try{j=JSON.parse(require("fs").readFileSync("/tmp/vd_73w_tools.json","utf8"))}catch{}
 const tools=(j&&j.result&&j.result.tools)||[];
 if(!tools.length){console.log("FAIL  agent-mcp tools/list answered no tools");process.exit(0)}
 const d=(n)=>String((tools.find((t)=>t.name===n)||{}).description||"");
-ok(/On a pass, only a job the agent can submit itself/.test(d("request_application")),"request_application states the pass rule (S11-039)");
-ok(/the Agent plan on the key.s account/.test(d("fit_resume")),"fit_resume names the Agent plan (S11-121)");'
+if(process.env.W73W_W4==="1"){
+  ok(!tools.some((t)=>t.name==="request_application"),"request_application is listed to nobody: the pass rule went with the retired agent (wave 4)");
+  console.log("INFO  fit_resume is keyed and free at 25 a day since wave 4; this keyless list does not show it, and section 82 judges the wave-4 tool text");
+}else{
+  ok(/On a pass, only a job the agent can submit itself/.test(d("request_application")),"request_application states the pass rule (S11-039)");
+  ok(/the Agent plan on the key.s account/.test(d("fit_resume")),"fit_resume names the Agent plan (S11-121)");
+}'
 
 probe agent_packet_decide '{"p_user_id":"00000000-0000-4000-8000-000000000000","p_submission_id":0,"p_decision":"retry"}'
 probe agent_mark_uncertain '{"p_id":0,"p_reason":"verify-deploy"}'

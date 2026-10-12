@@ -43,6 +43,7 @@ echo "== 73. wave 3 agents-api: builds, SmartRecruiters withheld, the host's own
 for PAIR in "agent-mcp|2026-10-09|71" "public-api|2026-10-09|71" "apply-agent|2026-10-09|71" "apply-broker|2026-10-09|24" "send-agent-digest|2026-10-09|24" "generate-application-answers|2026-10-10|62"; do
   W73_FN=${PAIR%%|*}; W73_REST=${PAIR#*|}; W73_D=${W73_REST%%|*}; W73_N=${W73_REST#*|}
   W73_H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$W73_FN" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
+  [ "$W73_FN" = "agent-mcp" ] && W73_MCP_H="$W73_H"
   if [ -z "$W73_H" ]; then echo "FAIL  $W73_FN preflight carries no x-fn-build (not deployed, or the previous bundle is serving)"
   elif build_ge "$W73_FN" "$W73_H" "$W73_D" "$W73_N"; then echo "PASS  $W73_FN preflight x-fn-build = $W73_H ($W73_FN.$W73_D.$W73_N or later)"
   else echo "FAIL  $W73_FN preflight x-fn-build = $W73_H (want $W73_FN.$W73_D.$W73_N or later: the previous bundle is still serving)"; fi
@@ -71,13 +72,19 @@ ok(process.env.W73_SR==="451","/v1/jobs?source=smartrecruiters -> "+process.env.
 ok(process.env.W73_ET==="400","/v1/jobs?employment_type=zzz -> "+process.env.W73_ET+" "+JSON.stringify(e&&e.error||e).slice(0,140)+" (want 400 naming the valid values; 200 = unvalidated)");'
 fi
 
+# WAVE 4 retired the apply agent and its pass, and moved the keyless allowance
+# to a split by platform (section 85). From agent-mcp 2026-10-11.1 on, the
+# three lines below that describe the wave-3 agent are judged by what replaced
+# them, so a correct wave-4 deploy does not read FAIL here.
+W73_W4=0; build_ge agent-mcp "${W73_MCP_H:-}" "2026-10-11" "1" && W73_W4=1
 MC -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}' > /tmp/vd_73_tools.json
 MC -d '{"jsonrpc":"2.0","id":2,"method":"resources/read","params":{"uri":"resumebooster://guide"}}' > /tmp/vd_73_guide.json
 MC -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"search_jobs","arguments":{"query":"engineer","limit":5}}}' > /tmp/vd_73_search.json
 MC -A "openai-mcp/1.0.0" -d '{"jsonrpc":"2.0","id":4,"method":"resources/read","params":{"uri":"resumebooster://guide"}}' > /tmp/vd_73_guide_gpt.json
 MC -d '{"jsonrpc":"2.0","id":5,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"verify-deploy","version":"1"}}}' > /tmp/vd_73_init.json
-node -e '
+W73_W4="$W73_W4" node -e '
 const fs=require("fs");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);const info=(m)=>console.log("INFO  "+m);
+const W4=process.env.W73_W4==="1";
 const rd=(f)=>{try{return JSON.parse(fs.readFileSync(f,"utf8"))}catch{return null}};
 const tl=rd("/tmp/vd_73_tools.json"), gd=rd("/tmp/vd_73_guide.json"), se=rd("/tmp/vd_73_search.json"), gg=rd("/tmp/vd_73_guide_gpt.json"), it=rd("/tmp/vd_73_init.json");
 const tools=((tl||{}).result||{}).tools||[];
@@ -91,7 +98,8 @@ else{
   const pct=tools.filter(t=>COV.test(String(t.description||"")+JSON.stringify(t.inputSchema||{}))).map(t=>t.name);
   ok(pct.length===0,"no tool description or field types a coverage percentage (S8-079)"+(pct.length?": "+pct.join(", "):""));
   const ra=tools.find(t=>t.name==="request_application")||{};
-  ok(ra.description&&!/agents\/pass/.test(String(ra.description)),"the request_application description carries no pass link (every host sees it; present = the old build)");
+  if(W4)ok(!ra.name,"request_application is listed to nobody since wave 4 retired the apply agent (present = the wave-3 bundle)");
+  else ok(ra.description&&!/agents\/pass/.test(String(ra.description)),"the request_application description carries no pass link (every host sees it; present = the old build)");
 }
 const ggt=String(((((gg||{}).result||{}).contents)||[{}])[0].text||"");
 if(!ggt){console.log("FAIL  the guide read as ChatGPT answered no text");}
@@ -103,8 +111,13 @@ const gt=String(((((gd||{}).result||{}).contents)||[{}])[0].text||"");
 if(!gt){console.log("FAIL  the guide resource answered no text");}
 else{
   ok(/SmartRecruiters/.test(gt)&&/federal/.test(gt),"the guide names both withheld systems");
-  ok(/Claude.s users share/.test(gt)&&/each user has their own/.test(gt),"the guide states the host allowance (ChatGPT per user, Claude a shared pool)");
-  ok(/agents\/pass/.test(gt),"the guide read outside ChatGPT still names where a pass is bought");
+  if(W4){
+    info("the allowance in the guide is the wave-4 split by platform, judged figure by figure in section 85");
+    ok(!/agents\/pass/.test(gt),"the guide names no pass link: the Agent Pass is retired (wave 4)");
+  }else{
+    ok(/Claude.s users share/.test(gt)&&/each user has their own/.test(gt),"the guide states the host allowance (ChatGPT per user, Claude a shared pool)");
+    ok(/agents\/pass/.test(gt),"the guide read outside ChatGPT still names where a pass is bought");
+  }
 }
 const r=(se||{}).result||{};
 const sc=r.structuredContent||(()=>{try{return JSON.parse(((r.content||[])[0]||{}).text||"{}")}catch{return{}}})();
@@ -150,9 +163,13 @@ const a=rd("/tmp/vd_73_agents.html"), d=rd("/tmp/vd_73_dataapi.html"), h=rd("/tm
 const W="withheld until SmartRecruiters (SAP) permits it";
 ok(a.includes(W),"/agents crawler copy names the withheld systems");
 ok(d.includes(W),"/data-api crawler copy names the withheld systems");
-ok(/from Claude, whose servers carry every user, calls come first from a pool of \d+ a day/.test(a),"/agents crawler copy states the host allowance (the address gloss)");
-ok(h.includes("from ChatGPT each person has their own"),"/ crawler copy (the agent strip) states the host allowance");
-ok(l.includes("Claude&#39;s users share a larger daily pool first")||l.includes("Claude'"'"'s users share a larger daily pool first"),"llms.txt states the host allowance");'
+// Wave 4 made the seeker-facing allowance sentence count-free (the figures are
+// the server constants and move with an owner decision): either the wave-3
+// sentence or the wave-4 one must be there, so the line holds on either side
+// of the frontend publish and still fails a copy that states neither.
+ok(/from Claude, whose servers carry every user, calls come first from a pool of \d+ a day/.test(a)||a.includes("Claude users share one allowance"),"/agents crawler copy states the host allowance (the address gloss, wave 3 or the count-free wave-4 sentence)");
+ok(h.includes("from ChatGPT each person has their own")||h.includes("within a free daily allowance"),"/ crawler copy (the agent strip) states the host allowance");
+ok(/Claude(&#39;|'"'"')s users share (a larger daily pool first|one allowance)/.test(l),"llms.txt states the host allowance");'
 
 # The agent card and the front-page split are client-rendered; their English
 # copy ships in the main bundle when en.json is in the entry chunk.
