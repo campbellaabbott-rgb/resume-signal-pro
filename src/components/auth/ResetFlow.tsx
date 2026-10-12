@@ -12,6 +12,13 @@
  * once more (the same single call) before it writes. Then every other device
  * is signed out.
  *
+ * "On its way" shows only once the auth server accepted the request; any
+ * refusal is said on the request step, with the support address (review of
+ * R1, decision 6). While this screen is up, the guard's "old password
+ * cleared" notice is silenced (the person is choosing a new one); and when
+ * the guard had to end every session, this one included, the person is sent
+ * back to ask for a new code, with the reason.
+ *
  * Rendered by /auth only for ?mode=reset (which parses to "continue" while
  * RECOVERY_LIVE is false) and for a confirmation link of type recovery (only
  * while RECOVERY_LIVE is true). ForgotPasswordLink renders nothing while the
@@ -22,12 +29,12 @@ import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { Session } from "@supabase/supabase-js";
 import { CheckCircle2, Eye, EyeOff, Lock, Mail, ShieldCheck, Loader2 } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { mailLanguageParam, useAuth, type GuardResult } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { AUTH_SUPPORT_EMAIL, MIN_PASSWORD_LENGTH, RECOVERY_LIVE } from "@/config/auth-providers";
-import { DEFAULT_AFTER_AUTH, clearPendingSignIn, newestAmr, setPendingSignIn } from "@/lib/auth-fragment";
+import { DEFAULT_AFTER_AUTH, clearPendingSignIn, setPendingSignIn } from "@/lib/auth-fragment";
 import { CodeEntry } from "@/components/auth/CodeEntry";
-import { Card, EMAIL_RE, Working, explainAuthError, eyeBtn, inputCls, isRateLimited, primaryBtn, quietBtn } from "@/components/auth/shared";
+import { Card, EMAIL_RE, Working, explainAuthError, explainSendError, eyeBtn, inputCls, primaryBtn, quietBtn, type Msg } from "@/components/auth/shared";
 
 /** The "Forgot password?" link under the password field; nothing while recovery is off. */
 export function ForgotPasswordLink({ next, emphasis = false }: { next: string; emphasis?: boolean }) {
@@ -41,12 +48,28 @@ export function ForgotPasswordLink({ next, emphasis = false }: { next: string; e
   );
 }
 
+/**
+ * "Wrong password? Reset it", after a new account was refused for the address
+ * typed. Says nothing about whether an account exists there; nothing while
+ * recovery is off.
+ */
+export function WrongPasswordLink({ next }: { next: string }) {
+  const { t } = useTranslation();
+  if (!RECOVERY_LIVE) return null;
+  const href = `/auth?mode=reset${next !== DEFAULT_AFTER_AUTH ? `&next=${encodeURIComponent(next)}` : ""}`;
+  return (
+    <p className="text-xs text-muted-foreground mb-3">
+      {t("auth.reset.wrongPassword", "Wrong password?")} <Link to={href} className="underline">{t("auth.reset.resetIt", "Reset it")}</Link>
+    </p>
+  );
+}
+
 type Step = "request" | "code" | "checking" | "password" | "done" | "blocked" | "signedIn";
 
 export function ResetFlow({ next, initialSession }: { next: string; initialSession: Session | null }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { session, loading, stashState, ensureGuard } = useAuth();
+  const { session, loading, stashState, ensureGuard, setResetUnderway } = useAuth();
   const id = useId();
   const emailId = `${id}-email`, passwordId = `${id}-password`, errorId = `${id}-error`;
   const [step, setStep] = useState<Step>(initialSession ? "checking" : "request");
@@ -55,38 +78,70 @@ export function ResetFlow({ next, initialSession }: { next: string; initialSessi
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setErrorState] = useState<Msg | null>(null);
+  const setError = (m: Msg | null) => setErrorState(() => m);
+  const [notice, setNoticeState] = useState<Msg | null>(null);
+  const setNotice = (m: Msg | null) => setNoticeState(() => m);
   const [othersSignedOut, setOthersSignedOut] = useState(false);
+  // The guard ended every session, this one too: the session still held here
+  // is on its way out and is no ordinary sign-in.
+  const [ended, setEnded] = useState(false);
+
+  // The guard's "old password cleared" notice is for a sign-in, not for this screen.
+  useEffect(() => {
+    setResetUnderway(true);
+    return () => setResetUnderway(false);
+  }, [setResetUnderway]);
 
   // A recovery session that came from the emailed link (adopted from the
-  // stash, or accepted at the signed-in-as prompt). Any other session here is
-  // an ordinary sign-in: its password is changed from the account page.
+  // stash, or accepted at the "Is this your account?" prompt). Any other
+  // session here is an ordinary sign-in: its password is changed from the
+  // account page. (A live recovery token's amr says "otp", like any code, so
+  // the token itself cannot say it came from a reset.)
   useEffect(() => {
-    if (recoverySession || loading || !session) return;
+    if (recoverySession || loading || !session || ended) return;
     if (stashState.kind === "adopting" || stashState.kind === "interstitial") return;
-    const fromLink = stashState.kind === "adopted" && stashState.type === "recovery";
-    if (fromLink || newestAmr(session.access_token) === "recovery") { setRecoverySession(session); setStep("checking"); return; }
+    if (stashState.kind === "adopted" && stashState.type === "recovery") { setRecoverySession(session); setStep("checking"); return; }
     if (step === "request") setStep("signedIn");
-  }, [session, loading, stashState, recoverySession, step]);
+  }, [session, loading, stashState, recoverySession, step, ended]);
+
+  /** What the guard's answer means for this screen. */
+  const afterGuard = (r: GuardResult): Step => {
+    if (r.signedOut) {
+      // Every session ended, this one too: a new code finishes the reset.
+      setRecoverySession(null);
+      setEnded(true);
+      setNotice((t) => t("auth.reset.signedOut", "For your security every device was signed out. Ask for a new code to finish."));
+      return "request";
+    }
+    return r.state === "done" && r.proven ? "password" : "blocked";
+  };
 
   useEffect(() => {
     if (step !== "checking" || !recoverySession) return;
     let live = true;
-    void ensureGuard(recoverySession).then((r) => { if (live) setStep(r.state === "done" && r.proven ? "password" : "blocked"); });
+    void ensureGuard(recoverySession).then((r) => { if (live) setStep(afterGuard(r)); });
     return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, recoverySession, ensureGuard]);
 
   const request = async (e?: FormEvent) => {
     e?.preventDefault();
     setError(null);
+    setNotice(null);
     const addr = email.trim();
-    if (!EMAIL_RE.test(addr)) { setError(t("auth.email.invalid", "Enter a valid email address.")); return; }
+    if (!EMAIL_RE.test(addr)) { setError((t) => t("auth.email.invalid", "Enter a valid email address.")); return; }
     setBusy(true);
-    setPendingSignIn(next);
+    setPendingSignIn(next, undefined, addr);
     try {
-      const { error: err } = await supabase.auth.resetPasswordForEmail(addr, { redirectTo: `${window.location.origin}/auth?mode=reset` });
-      if (err && isRateLimited(err.message)) { setError(explainAuthError(t, err.message)); return; }
+      const { error: err } = await supabase.auth.resetPasswordForEmail(addr, { redirectTo: `${window.location.origin}/auth?mode=reset${mailLanguageParam()}` });
+      if (err) { clearPendingSignIn(); const m = err.message; setError((t) => explainSendError(t, m)); setStep("request"); return; }
       setStep("code");
+    } catch (e2) {
+      clearPendingSignIn();
+      const m = e2 instanceof Error ? e2.message : String(e2);
+      setError((t) => explainSendError(t, m));
+      setStep("request");
     } finally {
       setBusy(false);
     }
@@ -97,8 +152,9 @@ export function ResetFlow({ next, initialSession }: { next: string; initialSessi
     setBusy(true);
     try {
       const { data, error: err } = await supabase.auth.verifyOtp({ email: email.trim(), token: code, type: "recovery" });
-      if (err || !data?.session) { setError(t("auth.code.invalid", "That code didn't work. Check it, or ask for a new one.")); return; }
+      if (err || !data?.session) { setError((t) => t("auth.code.invalid", "That code didn't work. Check it, or ask for a new one.")); return; }
       clearPendingSignIn();
+      setEnded(false);
       setRecoverySession(data.session);
       setStep("checking");
     } finally {
@@ -109,14 +165,15 @@ export function ResetFlow({ next, initialSession }: { next: string; initialSessi
   const save = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (password.length < MIN_PASSWORD_LENGTH) { setError(t("auth.reset.tooShort", "Use at least 8 characters.")); return; }
+    if (password.length < MIN_PASSWORD_LENGTH) { setError((t) => t("auth.reset.tooShort", "Use at least 8 characters.")); return; }
     if (!recoverySession) { setStep("request"); return; }
     setBusy(true);
     try {
       const g = await ensureGuard(recoverySession);
-      if (!(g.state === "done" && g.proven)) { setStep("blocked"); return; }
+      const after = afterGuard(g);
+      if (after !== "password") { setStep(after); return; }
       const { error: err } = await supabase.auth.updateUser({ password });
-      if (err) { setError(explainAuthError(t, err.message)); return; }
+      if (err) { const m = err.message; setError((t) => explainAuthError(t, m)); return; }
       try {
         const { error: outErr } = await supabase.auth.signOut({ scope: "others" });
         setOthersSignedOut(!outErr);
@@ -131,7 +188,7 @@ export function ResetFlow({ next, initialSession }: { next: string; initialSessi
     if (!recoverySession) { setStep("request"); return; }
     setStep("checking");
     const r = await ensureGuard(recoverySession, { fresh: true });
-    setStep(r.state === "done" && r.proven ? "password" : "blocked");
+    setStep(afterGuard(r));
   };
 
   const finishTarget = stashState.kind === "adopted" && stashState.next ? stashState.next : next;
@@ -147,13 +204,14 @@ export function ResetFlow({ next, initialSession }: { next: string; initialSessi
       {step === "request" && (
         <form onSubmit={request} noValidate>
           <p className="text-xs text-muted-foreground mb-4">{t("auth.reset.intro", "Enter your email. If it has an account, we'll email a code you can use to choose a new password.")}</p>
+          {notice && <p role="status" className="text-xs text-foreground mb-3">{notice(t)}</p>}
           <label htmlFor={emailId} className="block text-xs font-medium text-foreground mb-1">{t("auth.email.label", "Email")}</label>
           <div className="relative mb-3">
             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
             <input id={emailId} type="email" name="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)}
               placeholder={t("auth.email.placeholder", "you@example.com")} aria-invalid={error ? true : undefined} aria-describedby={error ? errorId : undefined} className={inputCls} />
           </div>
-          {error && <p id={errorId} role="alert" className="text-xs text-destructive mb-3">{error}</p>}
+          {error && <p id={errorId} role="alert" className="text-xs text-destructive mb-3">{error(t)}</p>}
           <button type="submit" disabled={busy} className={primaryBtn}>
             {busy && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
             {t("auth.reset.send", "Email me a reset code")}
@@ -165,7 +223,7 @@ export function ResetFlow({ next, initialSession }: { next: string; initialSessi
         <CodeEntry
           purpose="recovery"
           busy={busy}
-          error={error}
+          error={error ? error(t) : null}
           onSubmit={verify}
           onResend={() => request()}
           onBack={() => { setError(null); setStep("request"); }}
@@ -189,7 +247,7 @@ export function ResetFlow({ next, initialSession }: { next: string; initialSessi
               {showPassword ? <EyeOff className="w-4 h-4" aria-hidden="true" /> : <Eye className="w-4 h-4" aria-hidden="true" />}
             </button>
           </div>
-          {error && <p id={errorId} role="alert" className="text-xs text-destructive mb-3">{error}</p>}
+          {error && <p id={errorId} role="alert" className="text-xs text-destructive mb-3">{error(t)}</p>}
           <button type="submit" disabled={busy} className={primaryBtn}>
             {busy && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
             {t("auth.reset.save", "Set new password")}

@@ -41,6 +41,10 @@ const h = vi.hoisted(() => ({
   setSession: vi.fn(),
   invoke: vi.fn(),
   oauth: vi.fn(),
+  resolveTokens: vi.fn(),
+  verifyLink: vi.fn(),
+  revoke: vi.fn(),
+  toast: vi.fn(),
 }));
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
@@ -62,6 +66,12 @@ vi.mock("@/integrations/supabase/client", () => ({
   },
 }));
 vi.mock("@/integrations/lovable", () => ({ lovable: { auth: { signInWithOAuth: (...a: unknown[]) => h.oauth(...a) } } }));
+vi.mock("@/lib/auth-probe", () => ({
+  resolveTokens: (...a: unknown[]) => h.resolveTokens(...a),
+  verifyLink: (...a: unknown[]) => h.verifyLink(...a),
+  revoke: (...a: unknown[]) => h.revoke(...a),
+}));
+vi.mock("@/hooks/use-toast", () => ({ toast: (...a: unknown[]) => h.toast(...a), useToast: () => ({ toast: h.toast }) }));
 vi.mock("@/components/Header", () => ({ Header: () => null }));
 vi.mock("@/components/Footer", () => ({ Footer: () => null }));
 
@@ -109,7 +119,12 @@ beforeEach(() => {
   h.order = [];
   localStorage.clear();
   sessionStorage.clear();
-  for (const f of [h.signUp, h.signInWithPassword, h.signInWithOtp, h.verifyOtp, h.resetPasswordForEmail, h.updateUser, h.signOut, h.setSession, h.invoke, h.oauth]) f.mockReset();
+  for (const f of [h.signUp, h.signInWithPassword, h.signInWithOtp, h.verifyOtp, h.resetPasswordForEmail, h.updateUser, h.signOut, h.setSession, h.invoke, h.oauth, h.resolveTokens, h.verifyLink, h.revoke, h.toast]) f.mockReset();
+  h.resolveTokens.mockImplementation(async (access: string, refresh: string) => {
+    const c = JSON.parse(atob(access.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+    return { session: { access_token: access, refresh_token: refresh, user: { id: c.sub, email: c.email } }, email: c.email };
+  });
+  h.revoke.mockResolvedValue(undefined);
   h.invoke.mockResolvedValue({ data: { proven: false, passwordCleared: false, reason: "password" }, error: null });
   h.signOut.mockResolvedValue({ error: null });
 });
@@ -169,7 +184,8 @@ describe("the emailed code", () => {
 });
 
 describe("password recovery: the guard is awaited before the new password", () => {
-  const recovery = sessionFor("member@example.com", "sid-r", "recovery");
+  // Live recovery sessions carry amr "otp" (GoTrue v2.197 verify.go), never "recovery".
+  const recovery = sessionFor("member@example.com", "sid-r", "otp");
 
   async function reachChecking() {
     h.resetPasswordForEmail.mockResolvedValue({ data: {}, error: null });
@@ -214,8 +230,8 @@ describe("password recovery: the guard is awaited before the new password", () =
     expect(h.updateUser).toHaveBeenCalledWith({ password: "a-new-long-password" });
     expect(h.invoke, "the guard was asked more than once for one session").toHaveBeenCalledTimes(1);
     expect(h.order).toEqual(["verify", "guard:auth-signed-in:own-token", "guard-answered", "updateUser", 'signOut:{"scope":"others"}']);
-    // The guard cleared a password on its way: no toast for that during a reset.
-    expect(document.body.textContent).not.toMatch(/Your old password was cleared/);
+    // The guard cleared a password on its way: no notice for that during a reset (minor: the amr check could never fire).
+    expect(h.toast, "the 'old password cleared' notice popped up over the reset form").not.toHaveBeenCalled();
   });
 
   it("a guard that refuses sets no password", async () => {
@@ -239,3 +255,93 @@ describe("password recovery: the guard is awaited before the new password", () =
     expect(await screen.findByLabelText("New password", {}, SLOW)).toBeInTheDocument();
   });
 });
+
+describe("'on its way' only once the auth server took the request (review major; decision 6)", () => {
+  it("a reset the auth server refused stays on the request step and names the support address", async () => {
+    h.resetPasswordForEmail.mockResolvedValue({ data: null, error: { message: "Error sending recovery email", status: 500 } });
+    mount("/auth?mode=reset");
+    await screen.findByRole("heading", { name: "Reset your password" });
+    typeIn(/^Email$/, "member@example.com");
+    await press("Email me a reset code");
+    expect(await screen.findByRole("alert")).toHaveTextContent("We couldn't send that just now. Try again in a minute, or email resumeboostersupp@gmail.com.");
+    expect(screen.queryByLabelText("Code from the email"), "the code screen promised a mail the auth server refused").toBeNull();
+    expect(document.body.textContent).not.toMatch(/on its way/);
+    expect(localStorage.getItem("rb_auth_pending")).toBeNull();
+  });
+
+  it("a reset whose request never reached the auth server says so the same way", async () => {
+    h.resetPasswordForEmail.mockRejectedValue(new TypeError("Failed to fetch"));
+    mount("/auth?mode=reset");
+    await screen.findByRole("heading", { name: "Reset your password" });
+    typeIn(/^Email$/, "member@example.com");
+    await press("Email me a reset code");
+    expect(await screen.findByRole("alert")).toHaveTextContent(/We couldn't send that just now/);
+    expect(screen.queryByLabelText("Code from the email")).toBeNull();
+  });
+
+  it("a code the auth server refused to mail shows no code screen", async () => {
+    h.signInWithOtp.mockResolvedValue({ data: null, error: { message: "Error sending magic link email", status: 500 } });
+    mount("/auth");
+    typeIn(/^Email$/, "member@example.com");
+    await press("Email me a sign-in code");
+    expect(await screen.findByRole("alert")).toHaveTextContent(/We couldn't send that just now/);
+    expect(screen.queryByLabelText("Code from the email")).toBeNull();
+  });
+
+  it("a rate limit is still a rate limit", async () => {
+    h.resetPasswordForEmail.mockResolvedValue({ data: null, error: { message: "For security purposes, you can only request this after 37 seconds. 429" } });
+    mount("/auth?mode=reset");
+    await screen.findByRole("heading", { name: "Reset your password" });
+    typeIn(/^Email$/, "member@example.com");
+    await press("Email me a reset code");
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Too many attempts/);
+  });
+});
+
+describe("the reset's other ways out", () => {
+  it("a new account refused for an address that has one offers the reset, and says nothing about the account", async () => {
+    h.signInWithPassword.mockResolvedValue({ data: {}, error: { message: "Invalid login credentials" } });
+    h.signUp.mockResolvedValue({ data: { user: null, session: null }, error: { message: "User already registered" } });
+    mount("/auth");
+    await press("Use a password instead");
+    typeIn(/^Email$/, "member@example.com");
+    typeIn(/^Password$/, "not-my-password");
+    await press(/^Continue$/);
+    await press("Create a new account");
+    expect(await screen.findByRole("alert")).toHaveTextContent("We couldn't create an account with that email and password.");
+    expect(screen.getByText("Wrong password?")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Reset it" })).toHaveAttribute("href", "/auth?mode=reset");
+    expect(document.body.textContent).not.toMatch(/already|exists/i);
+  });
+
+  it("a guard that had to end every session sends the reset back for a new code, with the reason", async () => {
+    h.invoke.mockResolvedValue({ data: { proven: true, passwordCleared: true, signedOut: true, reason: "every_session_ended" }, error: null });
+    h.resetPasswordForEmail.mockResolvedValue({ data: {}, error: null });
+    h.verifyOtp.mockImplementation(async () => { emit("SIGNED_IN", recoveryFor()); return { data: { session: recoveryFor() }, error: null }; });
+    mount("/auth?mode=reset");
+    await screen.findByRole("heading", { name: "Reset your password" });
+    typeIn(/^Email$/, "member@example.com");
+    await press("Email me a reset code");
+    fireEvent.change(await screen.findByLabelText("Code from the email"), { target: { value: "654321" } });
+    await press("Continue");
+    expect(await screen.findByText("For your security every device was signed out. Ask for a new code to finish.", {}, SLOW)).toBeInTheDocument();
+    expect(screen.queryByLabelText("New password")).toBeNull();
+    expect(h.updateUser).not.toHaveBeenCalled();
+    await waitFor(() => expect(h.signOut).toHaveBeenCalledWith({ scope: "local" }));
+  });
+
+  it("a recovery link this browser did not start asks 'Is this your account?' before the reset form (minor: recovery skipped the check)", async () => {
+    sessionStorage.setItem("rb_url_stash", JSON.stringify({ token_hash: "th-rec", type: "recovery", _at: Date.now(), _path: "/auth" }));
+    h.verifyLink.mockResolvedValue({ session: recoveryFor("attacker@evil.example"), email: "attacker@evil.example" });
+    mount("/auth?mode=confirm");
+    await screen.findByRole("heading", { name: "Finish signing in" });
+    await press(/^Continue$/);
+    expect(await screen.findByText("Is this your account?")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Reset your password" })).toBeNull();
+    expect(h.setSession).not.toHaveBeenCalled();
+  });
+});
+
+function recoveryFor(email = "member@example.com") {
+  return sessionFor(email, "sid-r2", "otp");
+}

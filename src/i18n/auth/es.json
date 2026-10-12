@@ -1,6 +1,11 @@
 {
   "auth": {
     "back": "Volver a iniciar sesión",
+    "banner": {
+      "dismiss": "Soy yo",
+      "notYou": "¿No eres tú? Cerrar sesión",
+      "signedInAs": "Sesión iniciada como {{email}}."
+    },
     "checkEmail": "Revisa tu correo",
     "code": {
       "instead": "Prefiero recibir un código de inicio de sesión por correo",
@@ -27,6 +32,12 @@
     },
     "confirmationOnItsWay": "Si esta dirección puede iniciar sesión, un correo de confirmación va en camino. Suele llegar en menos de un minuto.",
     "continue": "Continuar",
+    "create": {
+      "button": "Crear una cuenta nueva",
+      "offer": "¿Eres nuevo? Puedes crear una cuenta para {{email}} con esta contraseña.",
+      "refused": "No pudimos crear una cuenta con ese correo y esa contraseña.",
+      "tooShort": "Una cuenta nueva necesita una contraseña de al menos 8 caracteres."
+    },
     "email": {
       "invalid": "Escribe una dirección de correo válida.",
       "label": "Correo electrónico",
@@ -42,17 +53,19 @@
     },
     "guard": {
       "passwordCleared": "Borramos una contraseña que se había puesto a esta dirección antes de que demostraras que es tuya. Si quieres, crea una nueva en los ajustes de tu cuenta.",
-      "passwordClearedTitle": "Tu contraseña anterior se ha borrado"
+      "passwordClearedTitle": "Tu contraseña anterior se ha borrado",
+      "signedOut": "Borramos una contraseña que se había puesto a esta dirección antes de que demostraras que es tuya, y eso cerró la sesión en todos los dispositivos, también en este.",
+      "signedOutTitle": "Vuelve a iniciar sesión"
     },
     "help": "¿No puedes iniciar sesión? Escribe a",
-    "interstitial": {
-      "body": "Este inicio de sesión llegó desde un enlace que este navegador no pidió. Continúa solo si esta es tu cuenta.",
-      "continue": "Continuar",
-      "notYou": "¿No eres tú? Cerrar sesión",
-      "title": "Has iniciado sesión como {{email}}"
+    "linkCheck": {
+      "body": "Este enlace inicia sesión en la cuenta de abajo. Este navegador no lo pidió, así que no se inicia ninguna sesión hasta que lo confirmes.",
+      "cancel": "No soy yo, cancelar",
+      "cancelled": "No se inició ninguna sesión. Si querías iniciar sesión, pide un enlace nuevo en la página de inicio de sesión.",
+      "continue": "Sí, continuar",
+      "title": "¿Es esta tu cuenta?"
     },
     "mismatch": "No pudimos iniciar tu sesión con ese correo y esa contraseña.",
-    "mismatchShort": "No pudimos iniciar tu sesión con ese correo y esa contraseña. Una cuenta nueva necesita al menos 8 caracteres.",
     "notConfirmed": "Esta dirección aún no está confirmada. Usa el enlace del correo de confirmación (puede estar en spam).",
     "or": "o",
     "password": {
@@ -77,19 +90,23 @@
       "newPassword": "Nueva contraseña",
       "onItsWay": "Si existe una cuenta con esta dirección, un código para restablecer la contraseña va en camino. Suele llegar en menos de un minuto.",
       "proven": "Esta dirección está confirmada. Elige una contraseña nueva.",
+      "resetIt": "Restablécela",
       "retry": "Intentar de nuevo",
       "save": "Guardar la nueva contraseña",
       "send": "Recibir un código para restablecerla",
       "signedIn": "Ya has iniciado sesión. Puedes cambiar la contraseña en los ajustes de tu cuenta.",
+      "signedOut": "Por tu seguridad se cerró la sesión en todos los dispositivos. Pide un código nuevo para terminar.",
       "title": "Restablece tu contraseña",
       "toAccount": "Ir a tu cuenta",
       "tooShort": "Usa al menos 8 caracteres.",
-      "verify": "Continuar"
+      "verify": "Continuar",
+      "wrongPassword": "¿Contraseña incorrecta?"
     },
     "return": {
       "failed": "El inicio de sesión no se completó. Inténtalo de nuevo."
     },
     "samePassword": "Elige una contraseña que no hayas usado aquí antes.",
+    "sendFailed": "No pudimos enviarlo ahora mismo. Inténtalo de nuevo en un minuto o escribe a {{support}}.",
     "sessionExpired": "Tu sesión ha caducado. Vuelve a iniciar sesión para seguir donde lo dejaste.",
     "subtitle": "Sigue la evolución de las puntuaciones de tu currículum, guarda tu historial de análisis y consulta tus créditos y compras en un solo lugar. Gratis para siempre.",
     "title": "Inicia sesión o crea tu cuenta gratuita",

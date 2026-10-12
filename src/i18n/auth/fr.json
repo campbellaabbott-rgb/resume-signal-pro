@@ -1,6 +1,11 @@
 {
   "auth": {
     "back": "Retour à la connexion",
+    "banner": {
+      "dismiss": "C'est moi",
+      "notYou": "Ce n'est pas vous ? Se déconnecter",
+      "signedInAs": "Connecté en tant que {{email}}."
+    },
     "checkEmail": "Consultez votre boîte mail",
     "code": {
       "instead": "Recevoir plutôt un code de connexion par e-mail",
@@ -27,6 +32,12 @@
     },
     "confirmationOnItsWay": "Si cette adresse peut se connecter, un e-mail de confirmation est en route. Il arrive généralement en moins d'une minute.",
     "continue": "Continuer",
+    "create": {
+      "button": "Créer un nouveau compte",
+      "offer": "Nouveau ici ? Vous pouvez créer un compte pour {{email}} avec ce mot de passe.",
+      "refused": "Impossible de créer un compte avec cette adresse e-mail et ce mot de passe.",
+      "tooShort": "Un nouveau compte demande un mot de passe d'au moins 8 caractères."
+    },
     "email": {
       "invalid": "Saisissez une adresse e-mail valide.",
       "label": "E-mail",
@@ -42,17 +53,19 @@
     },
     "guard": {
       "passwordCleared": "Nous avons supprimé un mot de passe défini pour cette adresse avant que vous ne prouviez qu'elle vous appartient. Si vous le souhaitez, définissez-en un nouveau dans les paramètres de votre compte.",
-      "passwordClearedTitle": "Votre ancien mot de passe a été supprimé"
+      "passwordClearedTitle": "Votre ancien mot de passe a été supprimé",
+      "signedOut": "Nous avons supprimé un mot de passe défini pour cette adresse avant que vous ne prouviez qu'elle vous appartient, ce qui a déconnecté tous les appareils, celui-ci compris.",
+      "signedOutTitle": "Veuillez vous reconnecter"
     },
     "help": "Impossible de vous connecter ? Écrivez à",
-    "interstitial": {
-      "body": "Cette connexion provient d'un lien que ce navigateur n'a pas demandé. Ne continuez que s'il s'agit de votre compte.",
-      "continue": "Continuer",
-      "notYou": "Ce n'est pas vous ? Se déconnecter",
-      "title": "Vous êtes connecté en tant que {{email}}"
+    "linkCheck": {
+      "body": "Ce lien connecte au compte ci-dessous. Ce navigateur ne l'a pas demandé : personne n'est connecté tant que vous n'avez pas confirmé.",
+      "cancel": "Ce n'est pas moi, annuler",
+      "cancelled": "Personne n'a été connecté. Si vous vouliez vous connecter, demandez un nouveau lien depuis la page de connexion.",
+      "continue": "Oui, continuer",
+      "title": "Est-ce votre compte ?"
     },
     "mismatch": "Impossible de vous connecter avec cette adresse e-mail et ce mot de passe.",
-    "mismatchShort": "Impossible de vous connecter avec cette adresse e-mail et ce mot de passe. Un nouveau compte demande au moins 8 caractères.",
     "notConfirmed": "Cette adresse n'est pas encore confirmée. Utilisez le lien de l'e-mail de confirmation (il est peut-être dans vos spams).",
     "or": "ou",
     "password": {
@@ -77,19 +90,23 @@
       "newPassword": "Nouveau mot de passe",
       "onItsWay": "Si un compte existe pour cette adresse, un code de réinitialisation est en route. Il arrive généralement en moins d'une minute.",
       "proven": "Cette adresse est confirmée. Choisissez un nouveau mot de passe.",
+      "resetIt": "Le réinitialiser",
       "retry": "Réessayer",
       "save": "Enregistrer le nouveau mot de passe",
       "send": "Recevoir un code de réinitialisation",
       "signedIn": "Vous êtes connecté. Vous pouvez changer votre mot de passe dans les paramètres de votre compte.",
+      "signedOut": "Pour votre sécurité, tous les appareils ont été déconnectés. Demandez un nouveau code pour terminer.",
       "title": "Réinitialiser votre mot de passe",
       "toAccount": "Aller à votre compte",
       "tooShort": "Utilisez au moins 8 caractères.",
-      "verify": "Continuer"
+      "verify": "Continuer",
+      "wrongPassword": "Mot de passe incorrect ?"
     },
     "return": {
       "failed": "La connexion n'a pas abouti. Veuillez réessayer."
     },
     "samePassword": "Choisissez un mot de passe que vous n'avez pas encore utilisé ici.",
+    "sendFailed": "Nous n'avons pas pu l'envoyer pour le moment. Réessayez dans une minute, ou écrivez à {{support}}.",
     "sessionExpired": "Votre session a expiré. Reconnectez-vous pour reprendre là où vous en étiez.",
     "subtitle": "Suivez l'évolution des scores de votre CV, gardez l'historique de vos analyses et retrouvez vos crédits et achats au même endroit. Gratuit pour toujours.",
     "title": "Connectez-vous ou créez votre compte gratuit",

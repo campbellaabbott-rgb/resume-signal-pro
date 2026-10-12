@@ -4,21 +4,22 @@
  * Each switch gates one control on /auth, and nothing else on the site may
  * name a method whose switch is off (src/test/r1-signin-copy-guard.test.ts).
  *
- * - GOOGLE_SIGN_IN_LIVE: Google is enabled on the auth server, but the button
- *   ships off. A separate small publish turns it on once verify section 96
- *   shows auth-signed-in serving, because a Google sign-in is a mailbox proof
- *   and the account guard must be there to act on it.
+ * - GOOGLE_SIGN_IN_LIVE: on in R1's first publish. A Google sign-in is a
+ *   mailbox proof, so the account guard (auth-signed-in) must serve first:
+ *   the deploy order puts migration 20261014110000 and the functions before
+ *   the frontend, verify section 96 must PASS before the frontend is
+ *   published, and section 95 FAILs a live bundle that shows Google while
+ *   auth-signed-in does not serve its R1 build.
  * - APPLE_SIGN_IN_LIVE: off for good (D10: no Apple; D11: no Microsoft).
  * - CODE_SIGN_IN_LIVE: the emailed sign-in code. It becomes the main button
  *   only after the owner's live test and the rate-limit check (D2); until
  *   then the password leads and no code control renders.
- * - RECOVERY_LIVE: "Forgot password?" and /auth?mode=reset. The reset path
- *   needs the account guard serving (the new password is set only after the
- *   guard answered), so it flips in the same follow-up publish as Google.
- *
- * The follow-up publish changes GOOGLE_SIGN_IN_LIVE and RECOVERY_LIVE to true
- * here and nothing else: every string those controls need already ships, in
- * src/i18n/auth/*.json.
+ * - RECOVERY_LIVE: "Forgot password?" and /auth?mode=reset, on in the first
+ *   publish with Google (register S12-057). With the magic link gone, an
+ *   account made by a magic link, or registered by someone else, has no
+ *   password its owner knows: recovery and Google are its only ways in. The
+ *   new password is set only after the guard answered, under the same deploy
+ *   order as Google.
  */
 export const GOOGLE_SIGN_IN_LIVE: boolean = true;
 export const APPLE_SIGN_IN_LIVE: boolean = false;

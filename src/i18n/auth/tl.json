@@ -1,6 +1,11 @@
 {
   "auth": {
     "back": "Bumalik sa pag-sign in",
+    "banner": {
+      "dismiss": "Ako ito",
+      "notYou": "Hindi ikaw? Mag-sign out",
+      "signedInAs": "Naka-sign in bilang {{email}}."
+    },
     "checkEmail": "Tingnan ang iyong email",
     "code": {
       "instead": "Sa halip, kumuha ng sign-in code sa email",
@@ -27,6 +32,12 @@
     },
     "confirmationOnItsWay": "Kung makakapag-sign in ang address na ito, may email ng kumpirmasyon na papunta na. Karaniwan itong dumarating sa loob ng isang minuto.",
     "continue": "Magpatuloy",
+    "create": {
+      "button": "Gumawa ng bagong account",
+      "offer": "Bago ka rito? Puwede kang gumawa ng account para sa {{email}} gamit ang password na ito.",
+      "refused": "Hindi kami makagawa ng account gamit ang email at password na iyan.",
+      "tooShort": "Kailangan ng bagong account ang password na hindi bababa sa 8 character."
+    },
     "email": {
       "invalid": "Maglagay ng wastong email address.",
       "label": "Email",
@@ -42,17 +53,19 @@
     },
     "guard": {
       "passwordCleared": "Binura namin ang password na itinakda sa address na ito bago mo napatunayang sa iyo ito. Kung gusto mo, magtakda ng bago sa settings ng iyong account.",
-      "passwordClearedTitle": "Binura ang luma mong password"
+      "passwordClearedTitle": "Binura ang luma mong password",
+      "signedOut": "Binura namin ang password na itinakda sa address na ito bago mo napatunayang sa iyo ito, at dahil doon na-sign out ang bawat device, pati ito.",
+      "signedOutTitle": "Mag-sign in ulit"
     },
     "help": "Hindi makapag-sign in? Mag-email sa",
-    "interstitial": {
-      "body": "Galing ang sign-in na ito sa link na hindi hiningi ng browser na ito. Magpatuloy lang kung iyo ang account na ito.",
-      "continue": "Magpatuloy",
-      "notYou": "Hindi ikaw? Mag-sign out",
-      "title": "Naka-sign in ka bilang {{email}}"
+    "linkCheck": {
+      "body": "Nagsa-sign in ang link na ito sa account sa ibaba. Hindi ito hiningi ng browser na ito, kaya walang naka-sign in hangga't hindi ka pumapayag.",
+      "cancel": "Hindi ako, kanselahin",
+      "cancelled": "Walang naka-sign in. Kung gusto mong mag-sign in, humingi ng bagong link sa sign-in page.",
+      "continue": "Oo, magpatuloy",
+      "title": "Iyo ba ang account na ito?"
     },
     "mismatch": "Hindi ka namin ma-sign in gamit ang email at password na iyan.",
-    "mismatchShort": "Hindi ka namin ma-sign in gamit ang email at password na iyan. Kailangan ng bagong account ng hindi bababa sa 8 character.",
     "notConfirmed": "Hindi pa kumpirmado ang address na ito. Gamitin ang link sa email ng kumpirmasyon (baka nasa spam ito).",
     "or": "o",
     "password": {
@@ -77,19 +90,23 @@
       "newPassword": "Bagong password",
       "onItsWay": "Kung may account ang address na ito, may reset code na papunta na. Karaniwan itong dumarating sa loob ng isang minuto.",
       "proven": "Kumpirmado ang address na ito. Pumili ng bagong password.",
+      "resetIt": "I-reset ito",
       "retry": "Subukan ulit",
       "save": "Itakda ang bagong password",
       "send": "Kumuha ng reset code sa email",
       "signedIn": "Naka-sign in ka. Puwede mong palitan ang password mo sa settings ng iyong account.",
+      "signedOut": "Para sa seguridad mo, na-sign out ang bawat device. Humingi ng bagong code para matapos.",
       "title": "I-reset ang iyong password",
       "toAccount": "Pumunta sa iyong account",
       "tooShort": "Gumamit ng hindi bababa sa 8 character.",
-      "verify": "Magpatuloy"
+      "verify": "Magpatuloy",
+      "wrongPassword": "Maling password?"
     },
     "return": {
       "failed": "Hindi natapos ang pag-sign in. Pakisubukan ulit."
     },
     "samePassword": "Pumili ng password na hindi mo pa nagamit dito.",
+    "sendFailed": "Hindi namin iyan maipadala ngayon. Subukan ulit pagkalipas ng isang minuto, o mag-email sa {{support}}.",
     "sessionExpired": "Nag-expire ang session mo. Mag-sign in ulit para ituloy kung saan ka huminto.",
     "subtitle": "Subaybayan ang mga score ng iyong resume sa paglipas ng panahon, itago ang kasaysayan ng iyong mga scan, at tingnan ang iyong mga credit at binili sa iisang lugar. Libre habambuhay.",
     "title": "Mag-sign in o gumawa ng libreng account",

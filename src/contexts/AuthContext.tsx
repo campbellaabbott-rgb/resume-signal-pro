@@ -10,20 +10,22 @@ import { lovable } from "@/integrations/lovable";
 import { TERMS_VERSION } from "@/config/terms";
 import { toast } from "@/hooks/use-toast";
 import { clearLocalResumeCopies } from "@/lib/local-resume-copies";
+import { CREDIT_SESSIONS_KEY, FREELANCE_PURCHASE_KEY } from "@/lib/purchase-proofs";
+import { resolveTokens, revoke, type Probed } from "@/lib/auth-probe";
 import {
   DEFAULT_AFTER_AUTH,
   clearPendingSignIn,
   clearStash,
   discardStashedSession,
   jwtClaims,
-  maskEmail,
-  newestAmr,
   peekStashed,
+  pendingMatches,
   readPendingSignIn,
   safeNextPath,
   setPendingSignIn,
 } from "@/lib/auth-fragment";
 import { SignedInAsInterstitial } from "@/components/auth/SignedInAsInterstitial";
+import { LinkSignInBanner } from "@/components/auth/LinkSignInBanner";
 
 /**
  * WHAT A NEW ACCOUNT AGREED TO (commercial-readiness plan item 12). The sign-up
@@ -49,34 +51,47 @@ export { DEFAULT_AFTER_AUTH, safeNextPath };
  * person's own sign-out (or account deletion) an expiry. The button now also
  * writes the time to localStorage, which every tab of this site reads; a
  * session that vanishes within a minute of that mark is a sign-out.
+ *
+ * Two marks: the full one (the person signed out of their own session, so
+ * every tab also clears its personal session copies, S12-181), and a quiet
+ * one (a session a link put here was turned away, or the account guard ended
+ * it), which is no expiry but clears nothing of the visitor's.
  */
 export const SIGN_OUT_MARK_KEY = "rb_signed_out_at";
+export const QUIET_SIGN_OUT_MARK_KEY = "rb_signed_out_quiet_at";
 const SIGN_OUT_MARK_MS = 60_000;
-function markDeliberateSignOut(): void {
-  try { localStorage.setItem(SIGN_OUT_MARK_KEY, String(Date.now())); } catch { /* storage blocked: this tab's flag still holds */ }
+function mark(key: string): void {
+  try { localStorage.setItem(key, String(Date.now())); } catch { /* storage blocked: this tab's flag still holds */ }
 }
-export function signOutWasDeliberate(now: number = Date.now()): boolean {
+function markedWithin(key: string, now: number): boolean {
   try {
-    const at = Number(localStorage.getItem(SIGN_OUT_MARK_KEY));
+    const at = Number(localStorage.getItem(key));
     return Number.isFinite(at) && at > 0 && now >= at && now - at < SIGN_OUT_MARK_MS;
   } catch {
     return false;
   }
 }
+export function signOutWasDeliberate(now: number = Date.now()): boolean {
+  return markedWithin(SIGN_OUT_MARK_KEY, now) || markedWithin(QUIET_SIGN_OUT_MARK_KEY, now);
+}
 
 /**
  * WHAT A DELIBERATE SIGN-OUT LEAVES BEHIND: NOTHING PERSONAL (register CP-012).
  * On a shared computer the next person used to find the last person's email
- * prefilled at checkout and sign-in, their résumé copies and their cached
- * reports. A sign-out pressed on purpose, or an account deletion, now removes
- * every key below; an expired session removes none (the same person comes
- * back to it). Each key is the one its writer uses: a test holds them equal.
+ * prefilled at checkout and sign-in, their résumé copies, their cached
+ * reports, and their purchase proofs (whose credits the next person could
+ * spend, beside the buyer's full address). A sign-out pressed on purpose, or
+ * an account deletion, now removes every key below, in every open tab; an
+ * expired session removes none (the same person comes back to it). Each key
+ * is the one its writer uses: a test holds them equal.
  */
-export const PERSONAL_LOCAL_KEYS = [
+export const PERSONAL_LOCAL_KEYS: readonly string[] = [
   "rb_last_email",      // AuthContext, EmailReportCapture: the last address used here
   "scanCreditsEmail",   // use-scan-credits, use-pro-subscription: an address typed at a checkout
   "rb_guard_seen",      // this module: the account guard's last answer
-] as const;
+  CREDIT_SESSIONS_KEY,  // use-scan-credits: the Stripe session ids of credit purchases made here
+  FREELANCE_PURCHASE_KEY, // FreelanceBoost: that this browser bought one
+];
 export const PERSONAL_SESSION_KEYS = [
   "rb_resume_text", "rb_linkedin_text", "rb_job_description_text", "rb_multi_column_detected", // use-session-resume
   "rb_resume_for_fit", "rb_scan_industry",  // Index
@@ -87,12 +102,35 @@ export const PERSONAL_SESSION_KEYS = [
   "rb_jd_handoff",                          // jd-handoff
 ] as const;
 
+/** The "signed in from a link" banner, per tab (LinkSignInBanner). */
+export const LINK_BANNER_KEY = "rb_link_banner";
+
+/** What one tab holds for the person: its session copies and its stash. */
+function clearThisTabsPersonalData(): void {
+  try { for (const k of PERSONAL_SESSION_KEYS) sessionStorage.removeItem(k); } catch { /* storage blocked: nothing kept */ }
+  try { sessionStorage.removeItem(LINK_BANNER_KEY); } catch { /* nothing kept */ }
+  clearStash();
+}
+
 export function clearPersonalBrowserData(): void {
   try { for (const k of PERSONAL_LOCAL_KEYS) localStorage.removeItem(k); } catch { /* storage blocked: nothing kept */ }
-  try { for (const k of PERSONAL_SESSION_KEYS) sessionStorage.removeItem(k); } catch { /* storage blocked: nothing kept */ }
+  clearThisTabsPersonalData();
   clearLocalResumeCopies();
   clearPendingSignIn();
-  clearStash();
+}
+
+/**
+ * WHAT A SESSION TURNED AWAY LEFT HERE, AND NOTHING ELSE (review of R1). The
+ * person who presses "Not you?" after a link signed them in is NOT that
+ * account's owner: their own builder draft, scans and reports stay. Only what
+ * the rejected session wrote goes: the address it recorded, the guard's
+ * answer for it, the link's parts in the stash, the marker and the banner.
+ */
+function forgetSessionTraces(): void {
+  try { localStorage.removeItem("rb_last_email"); localStorage.removeItem("rb_guard_seen"); } catch { /* storage blocked */ }
+  try { sessionStorage.removeItem(LINK_BANNER_KEY); } catch { /* storage blocked */ }
+  discardStashedSession();
+  clearPendingSignIn();
 }
 
 // ── the account guard (auth-signed-in) ──────────────────────────────────────
@@ -103,16 +141,18 @@ export function clearPersonalBrowserData(): void {
  * provider), and clears a password someone set on the address before that
  * proof (D15). It is asked once per session (keyed by the token's session_id),
  * never blocks the app, and is awaited only by the password reset, which must
- * not set a new password the guard could then clear.
+ * not set a new password the guard could then clear. signedOut: the guard
+ * had to end every session, this one included (the person signs in again).
  */
 export type GuardResult = {
   state: "idle" | "pending" | "done" | "failed";
   proven: boolean;
   passwordCleared: boolean;
+  signedOut: boolean;
   reason: string | null;
   status: number | null;
 };
-export const GUARD_IDLE: GuardResult = { state: "idle", proven: false, passwordCleared: false, reason: null, status: null };
+export const GUARD_IDLE: GuardResult = { state: "idle", proven: false, passwordCleared: false, signedOut: false, reason: null, status: null };
 const GUARD_CACHE_KEY = "rb_guard_seen";
 const GUARD_RECHECK_MS = 60 * 60 * 1000;      // a "not proven" answer is asked again after an hour
 const GUARD_FAILED_RECHECK_MS = 10 * 60 * 1000; // a failed ask, after ten minutes
@@ -132,8 +172,9 @@ function readGuardCache(key: string, now = Date.now()): GuardCache | null {
   try {
     const c = JSON.parse(localStorage.getItem(GUARD_CACHE_KEY) ?? "null") as GuardCache | null;
     if (!c || c.key !== key || typeof c.at !== "number") return null;
-    if (c.state === "done" && (c.proven || now - c.at < GUARD_RECHECK_MS)) return c;
-    if (c.state === "failed" && now - c.at < GUARD_FAILED_RECHECK_MS) return c;
+    const r = { ...c, signedOut: c.signedOut === true };
+    if (r.state === "done" && (r.proven || now - r.at < GUARD_RECHECK_MS)) return r;
+    if (r.state === "failed" && now - r.at < GUARD_FAILED_RECHECK_MS) return r;
     return null;
   } catch {
     return null;
@@ -151,24 +192,26 @@ async function askGuard(accessToken: string): Promise<GuardResult> {
       // This session's own token, never whatever the client holds by the time the call leaves.
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    const d = data as { proven?: unknown; passwordCleared?: unknown; reason?: unknown } | null;
+    const d = data as { proven?: unknown; passwordCleared?: unknown; signedOut?: unknown; reason?: unknown } | null;
     if (!error && d && typeof d.proven === "boolean") {
-      return { state: "done", proven: d.proven, passwordCleared: d.passwordCleared === true, reason: typeof d.reason === "string" ? d.reason : null, status: 200 };
+      return { state: "done", proven: d.proven, passwordCleared: d.passwordCleared === true, signedOut: d.signedOut === true, reason: typeof d.reason === "string" ? d.reason : null, status: 200 };
     }
     const ctx = (error as { context?: { status?: number; clone?: () => { json: () => Promise<unknown> } } } | null)?.context;
     let reason: string | null = error ? "error" : "unreadable_answer";
     // A refused proof (409 changed_since_sign_in) can still have cleared the
     // pre-proof password, and the body says so: that is explained like a 200's.
     let passwordCleared = false;
+    let signedOut = false;
     try {
-      const body = ctx?.clone ? (await ctx.clone().json()) as { reason?: unknown; error?: unknown; passwordCleared?: unknown } : null;
+      const body = ctx?.clone ? (await ctx.clone().json()) as { reason?: unknown; error?: unknown; passwordCleared?: unknown; signedOut?: unknown } : null;
       if (typeof body?.reason === "string") reason = body.reason;
       else if (typeof body?.error === "string") reason = body.error;
       passwordCleared = body?.passwordCleared === true;
+      signedOut = body?.signedOut === true;
     } catch { /* no body */ }
-    return { state: "failed", proven: false, passwordCleared, reason, status: typeof ctx?.status === "number" ? ctx.status : null };
+    return { state: "failed", proven: false, passwordCleared, signedOut, reason, status: typeof ctx?.status === "number" ? ctx.status : null };
   } catch {
-    return { state: "failed", proven: false, passwordCleared: false, reason: "network", status: null };
+    return { state: "failed", proven: false, passwordCleared: false, signedOut: false, reason: "network", status: null };
   }
 }
 
@@ -180,20 +223,26 @@ function tr(key: string, fallback: string): string {
 
 /**
  * WHAT HAPPENED TO A SESSION THE FIRST SCRIPT FOUND IN THE URL (login-CSRF
- * protection). It is adopted without a question only when this browser
- * started a sign-in in the last hour (the pending marker); otherwise the
- * signed-in-as prompt asks first. A stashed error (an expired link, a
- * cancelled provider) is handed to the sign-in page to explain.
+ * protection). The tokens are first resolved through a client that keeps
+ * nothing (src/lib/auth-probe.ts), so the account is the one the auth server
+ * names, never the one the token claims. They are adopted without a question
+ * only when this browser started a sign-in in the last hour for that same
+ * address (the pending marker); otherwise "Is this your account?" asks first,
+ * BEFORE any session exists here. A stashed error (an expired link, a
+ * cancelled provider) is handed to the sign-in page, or explained where the
+ * link landed, once.
  */
 export type StashState =
   | { kind: "none" }
   | { kind: "adopting"; next: string | null; type: string | null }
   | { kind: "adopted"; next: string | null; type: string | null }
-  | { kind: "interstitial"; maskedEmail: string; type: string | null }
+  | { kind: "interstitial"; email: string; type: string | null }
   | { kind: "failed"; type: string | null }
   | { kind: "error"; code: string | null; description: string | null };
 
 const STASH_MAX_AGE_MS = 60 * 60 * 1000;
+/** The link types a banner follows when the marker could not name the address (a provider press). */
+const LINK_TYPES = new Set(["magiclink", "signup", "recovery", "invite", "email_change", "email"]);
 
 function initialStashState(): StashState {
   if (typeof window === "undefined") return { kind: "none" };
@@ -205,10 +254,7 @@ function initialStashState(): StashState {
   // discarded by the provider's first effect.
   if (access && refresh) {
     if (at && Date.now() - at > STASH_MAX_AGE_MS) return { kind: "none" };
-    const pending = readPendingSignIn();
-    if (pending) return { kind: "adopting", next: pending.next, type };
-    const email = jwtClaims(access)?.email;
-    return { kind: "interstitial", maskedEmail: maskEmail(typeof email === "string" ? email : ""), type };
+    return { kind: "adopting", next: readPendingSignIn()?.next ?? null, type };
   }
   const code = peekStashed("error_code") ?? peekStashed("error");
   const description = peekStashed("error_description");
@@ -224,8 +270,12 @@ interface AuthContextValue {
   signUp: (email: string, password: string, next?: string) => Promise<{ error: string | null; hasSession?: boolean; existing?: boolean }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signInWithGoogle: (next?: string) => Promise<{ error: string | null }>;
-  /** This device only unless a scope is named. A deliberate sign-out clears what the person left in this browser. */
-  signOut: (opts?: { scope?: "local" | "others" | "global" }) => Promise<void>;
+  /**
+   * This device only unless a scope is named. A deliberate sign-out clears
+   * what the person left in this browser; keepLocalWork (a session a link put
+   * here, turned away) clears only what that session wrote.
+   */
+  signOut: (opts?: { scope?: "local" | "others" | "global"; keepLocalWork?: boolean }) => Promise<void>;
   /** Every device this account is signed in on. */
   signOutEverywhere: () => Promise<void>;
   /** True when a previously-active session disappeared (token expiry/revocation) */
@@ -234,11 +284,17 @@ interface AuthContextValue {
   guardResult: GuardResult;
   /** Ask the account guard about this session (once per session; concurrent callers share one call). */
   ensureGuard: (session?: Session | null, opts?: { fresh?: boolean }) => Promise<GuardResult>;
+  /** A password reset is on screen: the guard's "password cleared" notice would only confuse it. */
+  setResetUnderway: (on: boolean) => void;
+  /** Hand a session resolved by src/lib/auth-probe.ts to the site's client (the person said yes, or started it). */
+  adoptSession: (p: Probed, opts?: { recovery?: boolean; banner?: boolean }) => Promise<boolean>;
   /** A session that arrived in the URL, and what became of it. */
   stashState: StashState;
-  /** The signed-in-as prompt's Continue. */
+  /** The sign-in page showed the stash's error or failure: it is not shown again. */
+  clearStashOutcome: () => void;
+  /** The "Is this your account?" prompt's Continue. */
   acceptStashedSession: () => Promise<void>;
-  /** The signed-in-as prompt's "Not you?". */
+  /** The prompt's "Not me": nothing was signed in, and the link's session is ended. */
   rejectStashedSession: () => void;
 }
 
@@ -254,10 +310,22 @@ const AuthContext = createContext<AuthContextValue>({
   sessionExpired: false,
   guardResult: GUARD_IDLE,
   ensureGuard: async () => GUARD_IDLE,
+  setResetUnderway: () => {},
+  adoptSession: async () => false,
   stashState: { kind: "none" },
+  clearStashOutcome: () => {},
   acceptStashedSession: async () => {},
   rejectStashedSession: () => {},
 });
+
+function readBanner(): { email: string } | null {
+  try {
+    const b = JSON.parse(sessionStorage.getItem(LINK_BANNER_KEY) ?? "null") as { email?: unknown } | null;
+    return b && typeof b.email === "string" && b.email.includes("@") ? { email: b.email } : null;
+  } catch {
+    return null;
+  }
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
@@ -266,9 +334,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [guardResult, setGuardResult] = useState<GuardResult>(GUARD_IDLE);
   const [stashState, setStashState] = useState<StashState>(initialStashState);
   const [interstitialBusy, setInterstitialBusy] = useState(false);
+  const [banner, setBannerState] = useState<{ email: string } | null>(readBanner);
   const userSignedOut = useRef(false);
   const inflight = useRef(new Map<string, Promise<GuardResult>>());
   const currentKey = useRef<string | null>(null);
+  const resetUnderway = useRef(false);
+  const resolved = useRef<Probed | null>(null);
+
+  const setBanner = useCallback((b: { email: string } | null) => {
+    try {
+      if (b) sessionStorage.setItem(LINK_BANNER_KEY, JSON.stringify(b));
+      else sessionStorage.removeItem(LINK_BANNER_KEY);
+    } catch { /* the banner still shows in this page */ }
+    setBannerState(b);
+  }, []);
+
+  const setResetUnderway = useCallback((on: boolean) => { resetUnderway.current = on; }, []);
+
+  /** The guard ended every session, this one too: leave quietly, keeping the visitor's work. */
+  const leaveEndedSession = useCallback(() => {
+    userSignedOut.current = true;
+    mark(QUIET_SIGN_OUT_MARK_KEY);
+    void supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
+  }, []);
 
   const ensureGuard = useCallback(async (s?: Session | null, opts?: { fresh?: boolean }): Promise<GuardResult> => {
     const target = s ?? (await supabase.auth.getSession()).data.session;
@@ -286,14 +374,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     if (currentKey.current === key) setGuardResult({ ...GUARD_IDLE, state: "pending" });
     const run = askGuard(target.access_token).then((r) => {
-      const recovery = newestAmr(target.access_token) === "recovery";
-      const showNotice = r.passwordCleared && !recovery;
-      writeGuardCache({ ...r, key, at: Date.now() });
+      // Kept only while that session is still this tab's: an answer arriving
+      // after a sign-out is not left behind for the next person.
+      if (currentKey.current === key) writeGuardCache({ ...r, key, at: Date.now() });
       // A failed ask is asked again once its cache window passes; an answer
       // stays this tab's answer for the session (and survives blocked storage).
       if (r.state === "failed") inflight.current.delete(key);
       if (currentKey.current === key) setGuardResult(r);
-      if (showNotice) {
+      // Read when the answer arrives, not when the ask left: a reset screen
+      // that mounted meanwhile still silences the notice (live recovery
+      // sessions carry amr "otp", so the token cannot say it is a reset).
+      const quiet = resetUnderway.current;
+      if (r.signedOut) {
+        if (!quiet) {
+          toast({
+            title: tr("auth.guard.signedOutTitle", "Please sign in again"),
+            description: tr("auth.guard.signedOut", "We cleared a password set on this address before you proved you own it, and that signed out every device, this one too."),
+          });
+        }
+        if (currentKey.current === key) leaveEndedSession();
+      } else if (r.passwordCleared && !quiet) {
         toast({
           title: tr("auth.guard.passwordClearedTitle", "Your old password was cleared"),
           description: tr("auth.guard.passwordCleared", "We cleared a password set on this address before you proved you own it. Set a new one in your account settings if you want one."),
@@ -303,7 +403,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     inflight.current.set(key, run);
     return run;
-  }, []);
+  }, [leaveEndedSession]);
 
   useEffect(() => {
     // Listener FIRST, then getSession — avoids missing an auth event
@@ -319,7 +419,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // the sign-out button sets userSignedOut first, and only that is quiet,
       // in this tab and (through its shared mark) in every other one.
       if (hadSession && !s && !userSignedOut.current && !signOutWasDeliberate()) setSessionExpired(true);
-      if (!s) { hadSession = false; userSignedOut.current = false; currentKey.current = null; setGuardResult(GUARD_IDLE); }
+      // Another tab's deliberate sign-out: this tab's own copies go too (S12-181).
+      if (hadSession && !s && !userSignedOut.current && markedWithin(SIGN_OUT_MARK_KEY, Date.now())) clearThisTabsPersonalData();
+      if (!s) {
+        hadSession = false; userSignedOut.current = false; currentKey.current = null; setGuardResult(GUARD_IDLE);
+        try { sessionStorage.removeItem(LINK_BANNER_KEY); } catch { /* storage blocked */ }
+        setBannerState(null);
+      }
       if (s) {
         hadSession = true;
         setSessionExpired(false);
@@ -346,53 +452,99 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [ensureGuard]);
 
+  // Another tab's deliberate sign-out, heard through the shared mark even
+  // when this tab held no session (S12-181): its personal copies go too.
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === SIGN_OUT_MARK_KEY && e.newValue) clearThisTabsPersonalData();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
   // What the first read left in the stash and will never use: an error it has
-  // now taken, or tokens too old to adopt.
+  // now taken, or tokens too old to adopt. An error that landed anywhere but
+  // the sign-in page is explained where it landed, once (S12-182).
   useEffect(() => {
     if (stashState.kind === "error" || (stashState.kind === "none" && peekStashed("access_token"))) discardStashedSession();
+    if (stashState.kind === "error" && window.location.pathname.replace(/\/+$/, "") !== "/auth") {
+      toast({
+        title: tr("auth.return.failed", "Sign-in didn't finish. Please try again."),
+        description: tr("auth.confirm.expired", "This link has expired or was already used. Sign in again to get a new one."),
+      });
+      setStashState({ kind: "none" });
+    }
     // Once, for the read the provider started with.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // A session the first script found in the URL, from a sign-in this browser
-  // started: adopted now, and the marker is spent.
+  /** Hand a resolved session to the site's own client. */
+  const adoptSession = useCallback(async (p: Probed, opts?: { recovery?: boolean; banner?: boolean }): Promise<boolean> => {
+    if (opts?.recovery) resetUnderway.current = true;
+    try {
+      const { error } = await supabase.auth.setSession({ access_token: p.session.access_token, refresh_token: p.session.refresh_token });
+      if (error) return false;
+      if (opts?.banner) setBanner({ email: p.email });
+      return true;
+    } catch {
+      return false;
+    }
+  }, [setBanner]);
+
+  // A session the first script found in the URL: resolved first, then adopted
+  // only when this browser started a sign-in for that same address.
   const adoptStarted = useRef(false);
   useEffect(() => {
     if (stashState.kind !== "adopting" || adoptStarted.current) return;
     adoptStarted.current = true;
     const access = peekStashed("access_token");
     const refresh = peekStashed("refresh_token");
-    const { next, type } = stashState;
+    const { type } = stashState;
     discardStashedSession();
-    clearPendingSignIn();
     if (!access || !refresh) { setStashState({ kind: "failed", type }); return; }
-    void supabase.auth.setSession({ access_token: access, refresh_token: refresh })
-      .then(({ error }) => setStashState(error ? { kind: "failed", type } : { kind: "adopted", next, type }))
-      .catch(() => setStashState({ kind: "failed", type }));
-  }, [stashState]);
+    void (async () => {
+      const r = await resolveTokens(access, refresh);
+      if ("error" in r) { setStashState({ kind: "failed", type }); return; }
+      const pending = readPendingSignIn();
+      if (!pendingMatches(pending, r.email)) {
+        resolved.current = r;
+        setStashState({ kind: "interstitial", email: r.email, type });
+        return;
+      }
+      clearPendingSignIn();
+      // A link that arrived while a provider sign-in was pending: the marker
+      // could not name the address, so the address is shown until dismissed.
+      const banner = !pending?.email && !!type && LINK_TYPES.has(type);
+      const ok = await adoptSession(r, { recovery: type === "recovery", banner });
+      setStashState(ok ? { kind: "adopted", next: pending?.next ?? null, type } : { kind: "failed", type });
+    })();
+  }, [stashState, adoptSession]);
 
   const acceptStashedSession = useCallback(async () => {
     if (stashState.kind !== "interstitial") return;
     const { type } = stashState;
-    const access = peekStashed("access_token");
-    const refresh = peekStashed("refresh_token");
+    const r = resolved.current;
+    resolved.current = null;
     discardStashedSession();
-    clearPendingSignIn();
-    if (!access || !refresh) { setStashState({ kind: "failed", type }); return; }
+    if (!r) { setStashState({ kind: "failed", type }); return; }
     setInterstitialBusy(true);
     try {
-      const { error } = await supabase.auth.setSession({ access_token: access, refresh_token: refresh });
-      setStashState(error ? { kind: "failed", type } : { kind: "adopted", next: null, type });
-    } catch {
-      setStashState({ kind: "failed", type });
+      const ok = await adoptSession(r, { recovery: type === "recovery" });
+      setStashState(ok ? { kind: "adopted", next: null, type } : { kind: "failed", type });
     } finally {
       setInterstitialBusy(false);
     }
-  }, [stashState]);
+  }, [stashState, adoptSession]);
 
   const rejectStashedSession = useCallback(() => {
+    void revoke(resolved.current?.session);
+    resolved.current = null;
     discardStashedSession();
     setStashState({ kind: "none" });
+  }, []);
+
+  const clearStashOutcome = useCallback(() => {
+    setStashState((s) => (s.kind === "error" || s.kind === "failed" ? { kind: "none" } : s));
   }, []);
 
   const signUp = async (email: string, password: string, next?: string) => {
@@ -426,7 +578,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: result.error?.message ?? null };
   };
 
-  const signOut = async (opts?: { scope?: "local" | "others" | "global" }) => {
+  const signOut = async (opts?: { scope?: "local" | "others" | "global"; keepLocalWork?: boolean }) => {
     const scope = opts?.scope ?? "local";
     if (scope === "others") {
       // Not a sign-out of this device: nothing here is cleared.
@@ -434,7 +586,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     userSignedOut.current = true;
-    markDeliberateSignOut();
+    // A guard answer still in flight for this session is no longer kept.
+    currentKey.current = null;
+    if (opts?.keepLocalWork) {
+      mark(QUIET_SIGN_OUT_MARK_KEY);
+      forgetSessionTraces();
+      try {
+        await supabase.auth.signOut({ scope: "local" });
+      } finally {
+        forgetSessionTraces();
+        setStashState({ kind: "none" });
+        setBanner(null);
+      }
+      return;
+    }
+    mark(SIGN_OUT_MARK_KEY);
     clearPersonalBrowserData();
     try {
       await supabase.auth.signOut({ scope });
@@ -442,6 +608,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // The SIGNED_OUT listener runs inside that call; clear once more after it.
       clearPersonalBrowserData();
       setStashState({ kind: "none" });
+      setBanner(null);
     }
   };
 
@@ -450,15 +617,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider value={{
       session, user: session?.user ?? null, loading, signUp, signIn, signInWithGoogle, signOut, signOutEverywhere,
-      sessionExpired, guardResult, ensureGuard, stashState, acceptStashedSession, rejectStashedSession,
+      sessionExpired, guardResult, ensureGuard, setResetUnderway, adoptSession, stashState, clearStashOutcome,
+      acceptStashedSession, rejectStashedSession,
     }}>
       {children}
       {stashState.kind === "interstitial" && (
         <SignedInAsInterstitial
-          maskedEmail={stashState.maskedEmail}
+          email={stashState.email}
           busy={interstitialBusy}
           onContinue={() => { void acceptStashedSession(); }}
-          onSignOut={rejectStashedSession}
+          onCancel={rejectStashedSession}
+        />
+      )}
+      {banner && session && stashState.kind !== "interstitial" && (
+        <LinkSignInBanner
+          email={banner.email}
+          onDismiss={() => setBanner(null)}
+          onNotYou={() => { void signOut({ keepLocalWork: true }); }}
         />
       )}
     </AuthContext.Provider>
@@ -469,7 +644,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function confirmRedirect(next?: string | null): string {
   const safe = safeNextPath(next);
   const tail = safe === DEFAULT_AFTER_AUTH ? "" : `&next=${encodeURIComponent(safe)}`;
-  return `${window.location.origin}/auth?mode=confirm${tail}`;
+  return `${window.location.origin}/auth?mode=confirm${tail}${mailLanguageParam()}`;
+}
+
+/**
+ * THE LANGUAGE THE AUTH MAIL IS WRITTEN IN (S12-180). The mail is built by the
+ * auth hook from the auth server's payload, which carries no locale, only the
+ * link the page asked for. So the page names its language in that link, and
+ * the hook reads it back from the redirect. English needs no parameter.
+ */
+export const MAIL_LANGUAGES: readonly string[] = ["en-GB", "de", "es", "fr", "hi", "nl", "pt", "tl"];
+export function mailLanguageParam(lng: string | null | undefined = i18next.language): string {
+  const want = String(lng ?? "");
+  const code = MAIL_LANGUAGES.includes(want) ? want : MAIL_LANGUAGES.includes(want.split("-")[0]) ? want.split("-")[0] : null;
+  return code ? `&lng=${encodeURIComponent(code)}` : "";
 }
 
 // eslint-disable-next-line react-refresh/only-export-components

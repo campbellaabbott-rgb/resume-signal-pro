@@ -100,6 +100,15 @@ describe("no copy names a sign-in method whose switch is off", () => {
     });
   }
 
+  it("the first publish ships Google and recovery on, the emailed code off, Apple never (S12-057, D2, D10)", () => {
+    // With the magic link gone, an account made by one (or registered by a
+    // stranger) has no password its owner knows: recovery and Google are its
+    // only ways in, so they ship with the first publish, behind the deploy
+    // order that has auth-signed-in serving first (docs/r1/README.md).
+    expect({ google: GOOGLE_SIGN_IN_LIVE, recovery: RECOVERY_LIVE, code: CODE_SIGN_IN_LIVE, apple: APPLE_SIGN_IN_LIVE })
+      .toEqual({ google: true, recovery: true, code: false, apple: false });
+  });
+
   it("the guard reads what it claims to (positive control)", () => {
     expect(SOURCES).toEqual(expect.arrayContaining(["src/pages/Auth.tsx", "src/components/auth/ProviderButtons.tsx", "src/pages/Account.tsx"]));
     expect(METHODS.google.re.test(codeOf(read("src/components/auth/ProviderButtons.tsx")))).toBe(true);

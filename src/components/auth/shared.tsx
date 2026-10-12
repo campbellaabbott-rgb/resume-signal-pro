@@ -7,6 +7,7 @@
 import type { ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 import { postTrackEvent } from "@/lib/track-transport";
+import { AUTH_SUPPORT_EMAIL } from "@/config/auth-providers";
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -31,6 +32,13 @@ export function Working({ text }: { text: string }) {
 
 export type Tr = (key: string, fallback: string, opts?: Record<string, unknown>) => string;
 
+/**
+ * A message kept as the call that writes it, not as its text, so a notice set
+ * before the reader's language arrived is written in that language on the
+ * next render (S12-183), never frozen in English.
+ */
+export type Msg = (t: Tr) => string;
+
 /** True for the auth server's "slow down" answers. */
 export function isRateLimited(message: string | null | undefined): boolean {
   return /rate limit|too many|429/i.test(String(message ?? ""));
@@ -45,6 +53,18 @@ export function explainAuthError(t: Tr, message: string | null | undefined): str
   if (/invalid login credentials|invalid_credentials/i.test(m)) return t("auth.mismatch", "We couldn't sign you in with that email and password.");
   if (/should be different|same_password/i.test(m)) return t("auth.samePassword", "Choose a password you haven't used here before.");
   return t("auth.genericError", "Something went wrong. Please try again.");
+}
+
+/**
+ * ONE SENTENCE FOR A MAIL THE AUTH SERVER DID NOT ACCEPT (review of R1,
+ * decision 6). "On its way" shows only after the request was accepted; a
+ * refusal that is not a rate limit (the mailer refused, the network failed) is
+ * said plainly, with the address that reaches a person. The auth server
+ * answers an unknown address like a known one, so this reveals no account.
+ */
+export function explainSendError(t: Tr, message: string | null | undefined): string {
+  if (isRateLimited(message)) return t("auth.rateLimited", "Too many attempts in a short time. Please wait a few minutes and try again.");
+  return t("auth.sendFailed", "We couldn't send that just now. Try again in a minute, or email {{support}}.", { support: AUTH_SUPPORT_EMAIL });
 }
 
 /** Auth funnel telemetry: sign-ups fail silently in the wild otherwise. */

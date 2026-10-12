@@ -1,6 +1,11 @@
 {
   "auth": {
     "back": "Zurück zur Anmeldung",
+    "banner": {
+      "dismiss": "Das bin ich",
+      "notYou": "Nicht Sie? Abmelden",
+      "signedInAs": "Angemeldet als {{email}}."
+    },
     "checkEmail": "Sehen Sie in Ihr Postfach",
     "code": {
       "instead": "Stattdessen einen Anmeldecode per E-Mail erhalten",
@@ -27,6 +32,12 @@
     },
     "confirmationOnItsWay": "Wenn sich diese Adresse anmelden kann, ist eine Bestätigungs-E-Mail unterwegs. Sie kommt meist innerhalb einer Minute an.",
     "continue": "Weiter",
+    "create": {
+      "button": "Neues Konto anlegen",
+      "offer": "Neu hier? Sie können mit diesem Passwort ein Konto für {{email}} anlegen.",
+      "refused": "Mit dieser E-Mail-Adresse und diesem Passwort konnten wir kein Konto anlegen.",
+      "tooShort": "Ein neues Konto braucht ein Passwort mit mindestens 8 Zeichen."
+    },
     "email": {
       "invalid": "Geben Sie eine gültige E-Mail-Adresse ein.",
       "label": "E-Mail",
@@ -42,17 +53,19 @@
     },
     "guard": {
       "passwordCleared": "Wir haben ein Passwort gelöscht, das für diese Adresse festgelegt wurde, bevor Sie nachgewiesen haben, dass sie Ihnen gehört. Wenn Sie möchten, legen Sie in Ihren Kontoeinstellungen ein neues fest.",
-      "passwordClearedTitle": "Ihr altes Passwort wurde gelöscht"
+      "passwordClearedTitle": "Ihr altes Passwort wurde gelöscht",
+      "signedOut": "Wir haben ein Passwort gelöscht, das für diese Adresse festgelegt wurde, bevor Sie nachgewiesen haben, dass sie Ihnen gehört. Dadurch wurden alle Geräte abgemeldet, auch dieses.",
+      "signedOutTitle": "Bitte melden Sie sich erneut an"
     },
     "help": "Sie können sich nicht anmelden? Schreiben Sie an",
-    "interstitial": {
-      "body": "Diese Anmeldung kam über einen Link, den dieser Browser nicht angefordert hat. Fahren Sie nur fort, wenn es Ihr Konto ist.",
-      "continue": "Weiter",
-      "notYou": "Nicht Sie? Abmelden",
-      "title": "Sie sind angemeldet als {{email}}"
+    "linkCheck": {
+      "body": "Dieser Link meldet Sie bei dem unten genannten Konto an. Dieser Browser hat ihn nicht angefordert, deshalb wird niemand angemeldet, bevor Sie zustimmen.",
+      "cancel": "Nicht ich, abbrechen",
+      "cancelled": "Es wurde niemand angemeldet. Wenn Sie sich anmelden wollten, fordern Sie auf der Anmeldeseite einen neuen Link an.",
+      "continue": "Ja, weiter",
+      "title": "Ist das Ihr Konto?"
     },
     "mismatch": "Mit dieser E-Mail-Adresse und diesem Passwort konnten wir Sie nicht anmelden.",
-    "mismatchShort": "Mit dieser E-Mail-Adresse und diesem Passwort konnten wir Sie nicht anmelden. Ein neues Konto braucht mindestens 8 Zeichen.",
     "notConfirmed": "Diese Adresse ist noch nicht bestätigt. Verwenden Sie den Link in der Bestätigungs-E-Mail (eventuell im Spam-Ordner).",
     "or": "oder",
     "password": {
@@ -77,19 +90,23 @@
       "newPassword": "Neues Passwort",
       "onItsWay": "Wenn es für diese Adresse ein Konto gibt, ist ein Code zum Zurücksetzen unterwegs. Er kommt meist innerhalb einer Minute an.",
       "proven": "Diese Adresse ist bestätigt. Wählen Sie ein neues Passwort.",
+      "resetIt": "Zurücksetzen",
       "retry": "Erneut versuchen",
       "save": "Neues Passwort festlegen",
       "send": "Code zum Zurücksetzen per E-Mail erhalten",
       "signedIn": "Sie sind angemeldet. Ihr Passwort können Sie in Ihren Kontoeinstellungen ändern.",
+      "signedOut": "Zu Ihrer Sicherheit wurden alle Geräte abgemeldet. Fordern Sie einen neuen Code an, um fortzufahren.",
       "title": "Passwort zurücksetzen",
       "toAccount": "Zu Ihrem Konto",
       "tooShort": "Verwenden Sie mindestens 8 Zeichen.",
-      "verify": "Weiter"
+      "verify": "Weiter",
+      "wrongPassword": "Falsches Passwort?"
     },
     "return": {
       "failed": "Die Anmeldung wurde nicht abgeschlossen. Bitte versuchen Sie es erneut."
     },
     "samePassword": "Wählen Sie ein Passwort, das Sie hier noch nicht verwendet haben.",
+    "sendFailed": "Das konnten wir gerade nicht senden. Versuchen Sie es in einer Minute erneut, oder schreiben Sie an {{support}}.",
     "sessionExpired": "Ihre Sitzung ist abgelaufen. Melden Sie sich wieder an, um dort weiterzumachen, wo Sie aufgehört haben.",
     "subtitle": "Verfolgen Sie Ihre Lebenslauf-Bewertungen über die Zeit, behalten Sie Ihren Scan-Verlauf und sehen Sie Guthaben und Käufe an einem Ort. Für immer kostenlos.",
     "title": "Anmelden oder kostenloses Konto erstellen",

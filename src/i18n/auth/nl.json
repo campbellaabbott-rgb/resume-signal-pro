@@ -1,6 +1,11 @@
 {
   "auth": {
     "back": "Terug naar inloggen",
+    "banner": {
+      "dismiss": "Dat ben ik",
+      "notYou": "Niet jij? Uitloggen",
+      "signedInAs": "Ingelogd als {{email}}."
+    },
     "checkEmail": "Kijk in je mailbox",
     "code": {
       "instead": "Liever een inlogcode per e-mail",
@@ -27,6 +32,12 @@
     },
     "confirmationOnItsWay": "Als dit adres kan inloggen, is er een bevestigingsmail onderweg. Die komt meestal binnen een minuut aan.",
     "continue": "Doorgaan",
+    "create": {
+      "button": "Nieuw account maken",
+      "offer": "Nieuw hier? Je kunt met dit wachtwoord een account maken voor {{email}}.",
+      "refused": "We konden geen account maken met dit e-mailadres en wachtwoord.",
+      "tooShort": "Een nieuw account heeft een wachtwoord van minstens 8 tekens nodig."
+    },
     "email": {
       "invalid": "Vul een geldig e-mailadres in.",
       "label": "E-mail",
@@ -42,17 +53,19 @@
     },
     "guard": {
       "passwordCleared": "We hebben een wachtwoord gewist dat voor dit adres was ingesteld voordat je aantoonde dat het van jou is. Stel als je wilt een nieuw in bij je accountinstellingen.",
-      "passwordClearedTitle": "Je oude wachtwoord is gewist"
+      "passwordClearedTitle": "Je oude wachtwoord is gewist",
+      "signedOut": "We hebben een wachtwoord gewist dat voor dit adres was ingesteld voordat je aantoonde dat het van jou is, en daardoor is elk apparaat uitgelogd, ook dit.",
+      "signedOutTitle": "Log opnieuw in"
     },
     "help": "Lukt inloggen niet? Mail naar",
-    "interstitial": {
-      "body": "Deze inlog kwam via een link waar deze browser niet om vroeg. Ga alleen door als dit jouw account is.",
-      "continue": "Doorgaan",
-      "notYou": "Niet jij? Uitloggen",
-      "title": "Je bent ingelogd als {{email}}"
+    "linkCheck": {
+      "body": "Deze link logt in op het account hieronder. Deze browser heeft er niet om gevraagd, dus er wordt niemand ingelogd tot jij dat zegt.",
+      "cancel": "Niet ik, annuleren",
+      "cancelled": "Er is niemand ingelogd. Wilde je inloggen? Vraag dan een nieuwe link aan op de inlogpagina.",
+      "continue": "Ja, doorgaan",
+      "title": "Is dit jouw account?"
     },
     "mismatch": "We konden je niet inloggen met dit e-mailadres en wachtwoord.",
-    "mismatchShort": "We konden je niet inloggen met dit e-mailadres en wachtwoord. Een nieuw account heeft minstens 8 tekens nodig.",
     "notConfirmed": "Dit adres is nog niet bevestigd. Gebruik de link in de bevestigingsmail (die kan in je spam staan).",
     "or": "of",
     "password": {
@@ -77,19 +90,23 @@
       "newPassword": "Nieuw wachtwoord",
       "onItsWay": "Als er een account bij dit adres hoort, is er een herstelcode onderweg. Die komt meestal binnen een minuut aan.",
       "proven": "Dit adres is bevestigd. Kies een nieuw wachtwoord.",
+      "resetIt": "Stel het opnieuw in",
       "retry": "Opnieuw proberen",
       "save": "Nieuw wachtwoord instellen",
       "send": "Herstelcode per e-mail ontvangen",
       "signedIn": "Je bent ingelogd. Je kunt je wachtwoord wijzigen in je accountinstellingen.",
+      "signedOut": "Voor je veiligheid is elk apparaat uitgelogd. Vraag een nieuwe code aan om af te ronden.",
       "title": "Wachtwoord opnieuw instellen",
       "toAccount": "Naar je account",
       "tooShort": "Gebruik minstens 8 tekens.",
-      "verify": "Doorgaan"
+      "verify": "Doorgaan",
+      "wrongPassword": "Verkeerd wachtwoord?"
     },
     "return": {
       "failed": "Het inloggen is niet afgerond. Probeer het opnieuw."
     },
     "samePassword": "Kies een wachtwoord dat je hier nog niet hebt gebruikt.",
+    "sendFailed": "We konden dat nu niet versturen. Probeer het over een minuut opnieuw, of mail {{support}}.",
     "sessionExpired": "Je sessie is verlopen. Log opnieuw in om verder te gaan waar je was.",
     "subtitle": "Volg je cv-scores in de loop van de tijd, bewaar je scangeschiedenis en zie je credits en aankopen op één plek. Voor altijd gratis.",
     "title": "Log in of maak je gratis account aan",

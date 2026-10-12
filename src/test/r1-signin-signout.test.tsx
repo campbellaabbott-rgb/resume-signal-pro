@@ -39,6 +39,8 @@ vi.mock("@/hooks/use-toast", () => ({ toast: (...a: unknown[]) => h.toast(...a),
 import { AuthProvider, PERSONAL_LOCAL_KEYS, PERSONAL_SESSION_KEYS, guardKey, useAuth } from "@/contexts/AuthContext";
 import { PRESTORED_RESUME_KEY, CHECKOUT_RETRY_KEY } from "@/hooks/use-product-checkout";
 import { JD_HANDOFF_KEY } from "@/lib/jd-handoff";
+import { CREDIT_SESSIONS_KEY, FREELANCE_PURCHASE_KEY } from "@/lib/purchase-proofs";
+import { PURCHASE_KEY as FREELANCE_PAGE_KEY } from "@/pages/FreelanceBoost";
 
 const ROOT = resolve(__dirname, "../..");
 const code = (rel: string) => codeOf(readFileSync(resolve(ROOT, rel), "utf8"));
@@ -54,12 +56,14 @@ const emit = (event: string, s: unknown) => act(() => { for (const cb of h.liste
 const flush = () => act(async () => { await new Promise((r) => setTimeout(r, 10)); });
 
 function Probe() {
-  const { signOut, signOutEverywhere, guardResult } = useAuth();
+  const { signOut, signOutEverywhere, guardResult, setResetUnderway } = useAuth();
   return (
     <div>
       <span data-testid="guard">{`${guardResult.state}:${guardResult.proven}:${guardResult.passwordCleared}`}</span>
       <button onClick={() => void signOut()}>out</button>
       <button onClick={() => void signOutEverywhere()}>everywhere</button>
+      <button onClick={() => void signOut({ keepLocalWork: true })}>reject</button>
+      <button onClick={() => setResetUnderway(true)}>resetting</button>
     </div>
   );
 }
@@ -77,6 +81,7 @@ afterEach(cleanup);
 function fill() {
   const local: Record<string, string> = {
     rb_last_email: "last@example.com", scanCreditsEmail: "buyer@example.com", rb_auth_pending: "{}", rb_guard_seen: "{}",
+    scanCreditsSessions: "[\"cs_live_ABCDEFGHIJKLMNOP\"]", freelanceBoostPurchase: "{\"at\":1}",
     resumeBuilderDraft: "{\"name\":\"Jordan Probe\"}", freelanceBoostIntake: "{}", rb_scan_history: "{}", rb_personalization_profile: "{}",
     resume_scan_cache_v2_abc: "{}", ai_summary_9f_tech: "{}",
     i18nextLng: "de", rb_visitor_id: "v_1", rb_dismissed_jobs: "[]",
@@ -116,9 +121,47 @@ describe("a deliberate sign-out", () => {
   });
 });
 
+describe("a sign-out in another tab, and a session turned away", () => {
+  it("another tab's deliberate sign-out clears this tab's personal session copies too (S12-181)", async () => {
+    fill();
+    render(<AuthProvider><Probe /></AuthProvider>);
+    await act(async () => {
+      window.dispatchEvent(new StorageEvent("storage", { key: "rb_signed_out_at", newValue: String(Date.now()) }));
+    });
+    expect(Array.from({ length: sessionStorage.length }, (_, i) => sessionStorage.key(i))).toEqual(["session_start"]);
+  });
+
+  it("a session this tab held that another tab signed out on purpose takes its copies with it", async () => {
+    fill();
+    render(<AuthProvider><Probe /></AuthProvider>);
+    emit("SIGNED_IN", sessionFor("member@example.com", "sid-tab2"));
+    localStorage.setItem("rb_signed_out_at", String(Date.now()));
+    emit("SIGNED_OUT", null);
+    expect(sessionStorage.getItem("rb_resume_text")).toBeNull();
+    expect(sessionStorage.getItem("session_start")).toBe("1");
+  });
+
+  it("'Not you?' signs that session out of this device and keeps the visitor's own work (review major)", async () => {
+    fill();
+    render(<AuthProvider><Probe /></AuthProvider>);
+    emit("SIGNED_IN", sessionFor("attacker@evil.example", "sid-rej"));
+    await act(async () => { fireEvent.click(screen.getByText("reject")); });
+    expect(h.signOut).toHaveBeenCalledWith({ scope: "local" });
+    expect(localStorage.getItem("resumeBuilderDraft"), "the visitor's own draft was wiped").toContain("Jordan");
+    expect(localStorage.getItem("rb_scan_history")).toBe("{}");
+    expect(sessionStorage.getItem("rb_resume_text")).toBe("Jordan Probe");
+    expect(localStorage.getItem("rb_last_email")).toBeNull();
+    expect(localStorage.getItem("rb_guard_seen")).toBeNull();
+    expect(localStorage.getItem("rb_signed_out_at"), "another tab would clear its copies on this mark").toBeNull();
+  });
+});
+
 describe("every key the sign-out clears is the key its writer uses", () => {
   it("local keys", () => {
-    expect(PERSONAL_LOCAL_KEYS).toEqual(expect.arrayContaining(["rb_last_email", "scanCreditsEmail"]));
+    expect(PERSONAL_LOCAL_KEYS).toEqual(expect.arrayContaining(["rb_last_email", "scanCreditsEmail", CREDIT_SESSIONS_KEY, FREELANCE_PURCHASE_KEY]));
+    expect(code("src/hooks/use-scan-credits.ts")).toContain("localStorage.setItem(CREDIT_SESSIONS_KEY");
+    expect(code("src/hooks/use-scan-credits.ts")).toContain("from '@/lib/purchase-proofs'");
+    expect(FREELANCE_PAGE_KEY).toBe(FREELANCE_PURCHASE_KEY);
     expect(code("src/components/EmailReportCapture.tsx")).toContain('localStorage.setItem("rb_last_email"');
     expect(code("src/hooks/use-scan-credits.ts")).toContain("localStorage.setItem('scanCreditsEmail'");
     expect(code("src/hooks/use-pro-subscription.ts")).toContain('localStorage.setItem("scanCreditsEmail"');
@@ -196,6 +239,27 @@ describe("the account guard", () => {
     await waitFor(() => expect(screen.getByTestId("guard").textContent).toBe("failed:false:true"));
     expect(h.toast).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(h.toast.mock.calls[0][0])).toMatch(/cleared a password set on this address before you proved you own it/);
+  });
+
+  it("during a reset the cleared-password notice stays quiet, judged when the answer arrives (minor: live recovery amr is otp)", async () => {
+    h.invoke.mockResolvedValueOnce({ data: { proven: true, passwordCleared: true }, error: null });
+    render(<AuthProvider><Probe /></AuthProvider>);
+    await act(async () => { fireEvent.click(screen.getByText("resetting")); });
+    emit("SIGNED_IN", sessionFor("member@example.com", "sid-reset", "otp"));
+    await flush();
+    await waitFor(() => expect(screen.getByTestId("guard").textContent).toBe("done:true:true"));
+    expect(h.toast).not.toHaveBeenCalled();
+  });
+
+  it("a guard that ended every session says so and leaves this device quietly, keeping the visitor's work (minor: signedOut was ignored)", async () => {
+    fill();
+    h.invoke.mockResolvedValueOnce({ data: { proven: true, passwordCleared: true, signedOut: true, reason: "every_session_ended" }, error: null });
+    render(<AuthProvider><Probe /></AuthProvider>);
+    emit("SIGNED_IN", sessionFor("member@example.com", "sid-ended"));
+    await flush();
+    await waitFor(() => expect(h.signOut).toHaveBeenCalledWith({ scope: "local" }));
+    expect(JSON.stringify(h.toast.mock.calls[0]?.[0])).toMatch(/signed out every device, this one too/);
+    expect(localStorage.getItem("resumeBuilderDraft")).toContain("Jordan");
   });
 
   it("never blocks the app: a guard that never answers leaves the session usable", async () => {

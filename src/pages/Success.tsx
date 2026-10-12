@@ -51,7 +51,7 @@ import { useFunnelTracking } from "@/hooks/use-funnel-tracking";
 import { usePersonalization } from "@/hooks/use-personalization";
 import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
 import { PRODUCTS } from "@/config/products";
-import { stashedSessionIdFor } from "@/lib/auth-fragment";
+import { stashValueFor, stashedSessionIdFor, stashedValueFor } from "@/lib/auth-fragment";
 
 const Success = () => {
   const { t } = useTranslation();
@@ -96,7 +96,10 @@ const Success = () => {
   const urlSessionId = searchParams.get("session_id");
   const sessionId = urlSessionId || stashedSession;
   const sessionIdStashed = !urlSessionId && !!stashedSession;
-  const shareIdParam = searchParams.get("share");
+  // The share id reads AND deletes this analysis, so the first script keeps it
+  // out of the address too (this tab's stash holds it for a reload).
+  const [stashedShare] = useState(() => stashedValueFor("share", "/success", null).value);
+  const shareIdParam = searchParams.get("share") || stashedShare;
 
   // Simulate progress steps during loading. The timers are CLEARED when the
   // effect re-runs or the page unmounts (platform sweep L12-06): left pending
@@ -126,6 +129,9 @@ const Success = () => {
    */
   const rememberShareInUrl = (newShareId: unknown) => {
     if (typeof newShareId !== "string" || !newShareId || !sessionId) return;
+    // The share id reads and deletes the analysis, so it goes into this tab's
+    // stash, not the address, wherever the stash can be written.
+    if (stashValueFor("share", "/success", newShareId)) return;
     // A session id the first script stashed stays out of the address: the
     // tab's stash still holds it for a reload.
     navigate(sessionIdStashed
