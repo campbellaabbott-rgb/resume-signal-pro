@@ -132,8 +132,11 @@ const DEMOGRAPHIC = /\b(gender|sex|race|ethnic\w*|hispanic|latin[ox]|veteran|dis
  * Neither was a hypothetical: both are verbatim labels from the 5,537-question
  * corpus harvested across all six reader vendors on 2026-08-03.
  */
+// "collect" and a bare "my data" / "my information" added 2026-10-11 (wave-4
+// review): "I agree that GLG may collect and process my data for recruitment"
+// fell through to draftable, so a model was asked to write a consent.
 const CONSENT_DOC =
-  /(privacy\s*(?:notice|policy|statement|declaration)|privacyverklaring|privacybeleid|datenschutz\w*|pol[ií]tica\s+de\s+privacidad|politique\s+de\s+confidentialit|data\s*protection|\bgdpr\b|\bccpa\b|terms\s*(?:and|&)\s*conditions|terms\s*of\s*(?:use|service)|algemene\s*voorwaarden|arbitration\s*agreement|non-?disclosure|\bnda\b|at[-\s]?will\s*employ\w*|(?:interview|call|meeting)\s*record(?:ing|ed)|notetaker|\bdo\s+you\s+consent\b|\bi\s+(?:hereby\s+)?consent\b|consent\w*\s*(?:to|for)\s*(?:the\s*)?(?:receiv|process|stor|retain|record|use)\w*|(?:process|collect|stor)\w*\s+(?:and\s+\w+\s+)?my\s+personal\s+(?:data|information)|persoonsgegevens|\bi\s+attest\b|\battest\s+that\b|accept\s+(?:all\s+)?(?:the\s+)?terms\b|autoriza\w*\s+que\s+seus\s+dados|\blgpd\b|동의|by\s+(?:typing|signing|submitting|selecting|checking|ticking|initial\w*|entering|clicking)\b[\s\S]{0,70}\b(?:i|you)\s+(?:hereby\s+)?(?:acknowledge|confirm|certify|agree|consent)|(?:i|you)\s+(?:hereby\s+)?(?:agree|confirm|certify|acknowledge)\b[\s\S]{0,90}\b(?:true\s+and\s+(?:correct|complete|accurate)|accurate\s+and\s+complete|truthful))/i;
+  /(privacy\s*(?:notice|policy|statement|declaration)|privacyverklaring|privacybeleid|datenschutz\w*|pol[ií]tica\s+de\s+privacidad|politique\s+de\s+confidentialit|data\s*protection|\bgdpr\b|\bccpa\b|terms\s*(?:and|&)\s*conditions|terms\s*of\s*(?:use|service)|algemene\s*voorwaarden|arbitration\s*agreement|non-?disclosure|\bnda\b|at[-\s]?will\s*employ\w*|(?:interview|call|meeting)\s*record(?:ing|ed)|notetaker|\bdo\s+you\s+consent\b|\bi\s+(?:hereby\s+)?consent\b|consent\w*\s*(?:to|for)\s*(?:the\s*)?(?:receiv|process|stor|retain|record|use|collect)\w*|(?:process|collect|stor)\w*\s+(?:and\s+\w+\s+)?my\s+(?:personal\s+)?(?:data|information)|persoonsgegevens|\bi\s+attest\b|\battest\s+that\b|accept\s+(?:all\s+)?(?:the\s+)?terms\b|autoriza\w*\s+que\s+seus\s+dados|\blgpd\b|동의|by\s+(?:typing|signing|submitting|selecting|checking|ticking|initial\w*|entering|clicking)\b[\s\S]{0,70}\b(?:i|you)\s+(?:hereby\s+)?(?:acknowledge|confirm|certify|agree|consent)|(?:i|you)\s+(?:hereby\s+)?(?:agree|confirm|certify|acknowledge)\b[\s\S]{0,90}\b(?:true\s+and\s+(?:correct|complete|accurate)|accurate\s+and\s+complete|truthful))/i;
 
 /**
  * CONSENT_ATTEST — a bare first-person attestation with no document attached.
@@ -210,6 +213,28 @@ const FACTUAL = /(authori[sz]\w*\s*to\s*work|work\s*authori[sz]|legal\s*authori[
  * stays draftable). Mirrored in worker/src/questions/protected.ts.
  */
 export const PROTECTED_FACTUAL = /(convict\w*|felon\w*|misdemeanou?r|criminal\s+(?:case|charge|investigation|history|offen[cs]e|background|proceeding|record)s?|pending\s+(?:criminal\s+)?(?:charges?|cases?)|(?:been|ever\s+been)\s+(?:arrested|charged|convicted|indicted|cautioned)|plead(?:ed)?\s+guilty|drug\s+(?:test|screen)\w*|(?:at\s+least|over|older\s+than|aged?)\s+(?:1[4-9]|2[0-5])\s*(?:years?\s+(?:of\s+age|old)|yrs?\s+old|\?|\)|$)|how\s+old\b|your\s+age\b|minimum\s+age|legal\s+age|\bcitizen\b|permanent\s+resident|green\s+card|immigration|\bsponsor\w*|visa\s+(?:status|type|holder|category)|current\s+visa|\bh-?1b\b|\bf-?1\s+(?:visa|status|student)|\bstem\s+opt\b|\bopt\s+(?:status|extension|ead)|\bon\s+opt\b|\bead\b|passport|right\s+to\s+(?:live\s+(?:and|&)\s+)?work|legally\s+(?:able\s+to\s+)?(?:live\s+(?:and|&)\s+)?work|eligible\s+to\s+(?:live\s+(?:and|&)\s+)?work|work\s+rights|residen(?:cy|ce)\s+(?:status|permit)|settled\s+status|indefinite\s+leave|\bwages?\b|hourly\s+(?:rate|pay)|rate\s+of\s+pay|pay\s+(?:rate|range|requirements?)|day\s+rate|\bote\b|\bctc\b|cost\s+to\s+(?:the\s+)?company|remuneration|medical\s+(?:condition|history|exam\w*|issue|reason|restriction|clearance|certificate|questionnaire|leave|assessment)s?|health\s+(?:condition|issue|problem|declaration|questionnaire|assessment)s?|physical(?:ly)?\s+(?:able|capable|fit|exam\w*|requirements?)|pregnan\w*|(?:need|require|request)\w*\s+(?:any\s+|an?\s+)?(?:reasonable\s+)?accommodat\w*|reasonable\s+accommodat\w*|accommodat\w*\s+(?:during|for|in)\s+(?:the\s+)?(?:interview|hiring|application|recruit\w*|selection)|essential\s+functions|vaccinat\w*|(?:able|willing|available|open)\s+to\s+work\s+(?:[\w,/-]+\s+){0,4}?(?:weekends?|nights?|evenings?|overtime|shifts?|holidays?|on[-\s]?call|rotating)\b|(?:can|could|will|would)\s+you\s+(?:be\s+(?:able|willing|available)\s+to\s+)?work\s+(?:[\w,/-]+\s+){0,4}?(?:weekends?|nights?|evenings?|overtime|shifts?|holidays?|on[-\s]?call)\b|which\s+shifts?|shift\s+(?:preference|availability|pattern)s?|your\s+availability|relatives?\s+(?:who\s+)?(?:work|employed|currently)|know\s+(?:anyone|someone)\s+(?:who\s+)?(?:works?|employed|currently)|tax\s+(?:id|identification|number|file\s+number|code|reference)|\btin\b|\bnif\b|\bdni\b|\bnie\b|\bssn\b|social\s+security|national\s+insurance)/i;
+/**
+ * THE PERSON'S OWN HISTORY AND CIRCUMSTANCES, which no CV establishes (wave-4
+ * review, 2026-10-11). Run over the corpus, the classifier called these
+ * draftable, so a model was asked to answer them in the person's name:
+ *
+ *   "Have you ever been terminated from a job?"
+ *   "Why are you leaving your current role?"
+ *   "Please list two professional references"
+ *   "Please explain any gaps in your employment history"
+ *   "What was your GPA?"
+ *   "Are you able to work on-site three days a week?"
+ *   "What time zone are you in?"  /  "Where are you currently located?"
+ *   "Have you ever worked for us before?"
+ *
+ * Termination, reasons for leaving, gaps, references, grades, commuting,
+ * days on site, time zone and where the person lives, and prior employment by
+ * this employer ("worked for" or "worked at"; "worked with" names a tool or a
+ * team, which a CV does establish). Like PROTECTED_FACTUAL it yields to a question about work
+ * done: "Describe your experience handling employee terminations" is an HR
+ * résumé fact and stays draftable.
+ */
+export const PERSONAL_HISTORY = /(\b(?:been|ever\s+been|were\s+you|was\s+you)\s+(?:terminated|dismissed|fired|discharged|let\s+go|asked\s+to\s+resign|forced\s+to\s+resign)\b|\b(?:termination|dismissal)\s+(?:from|of\s+employment)\b|\breasons?\s+for\s+(?:leaving|departure|wanting\s+to\s+leave|your\s+(?:departure|leaving))\b|\bwhy\s+(?:are|did|do)\s+you\s+(?:want\s+to\s+)?(?:leav\w*|left|looking\s+to\s+leave)\b|\bgaps?\s+in\s+(?:your\s+)?(?:employment|work\s+history|career|cv|resume|résumé)\b|\bemployment\s+gaps?\b|\bcareer\s+(?:gap|break)s?\b|\bexplain\s+any\s+gaps?\b|\breferees?\b|\b(?:professional|personal|employment|work|character|employer)\s+references?\b|\b(?:list|provide|name|give|share|supply|include|add)\b[^?.]{0,40}\breferences?\b|^\s*references?\s*(?:$|[(:*])|\breferences?\s+(?:available|upon\s+request|contact|details|name)\b|\bgpa\b|\bgrade\s+point\s+average\b|\b(?:your|final|overall|average|cumulative|academic|university|college|degree|school)\s+(?:grades?|marks?)\b|\bclass\s+rank\b|\bdegree\s+classification\b|\bcommut\w*|\bon[-\s]?site\s+(?:\w+\s+){0,2}(?:days?|times?)\b|\b(?:\d|one|two|three|four|five)\s+days?\s+(?:a|per|each)\s+week\s+(?:in|at|on)\b|\b(?:work|be)\s+(?:on[-\s]?site|in\s+(?:the|our)\s+office)\b|\breturn\s+to\s+(?:the\s+)?office\b|\btime\s*-?zones?\b|\bwhere\s+(?:are\s+you|do\s+you)\s+(?:currently\s+)?(?:located|based|live|living|reside)\b|\b(?:currently|presently)\s+(?:located|based|living|residing)\b|\b(?:previously|ever)\s+(?:been\s+)?(?:employed\s+by|worked\s+(?:for|at))\b|\bworked\s+(?:for|at|with)\s+(?:us|this\s+(?:company|organi[sz]ation|employer))\b|\b(?:former|previous|past)\s+employee\b|\bre-?hire\b|\beligible\s+for\s+rehire\b)/i;
 /** Protected self-identification the DEMOGRAPHIC list missed (S8-008). */
 export const PROTECTED_DEMOGRAPHIC = /(lgbt\w*|transgender|\btrans\s+(?:man|woman|person)|\bcaste\b|aboriginal|torres\s+strait|\bindigenous\b|first\s+nations|military\s+(?:service|status|spouse|member|background|affiliation)|served\s+in\s+the\s+(?:military|armed\s+forces)|armed\s+forces|\bage\s+(?:range|group|bracket|band))/i;
 /**
@@ -348,6 +373,9 @@ export function classifyQuestion(label: string, fieldType?: string): QuestionCla
   // After the attestations: "I confirm to have a valid DNI" is the candidate's
   // own declaration either way, and stays one.
   if (PROTECTED_FACTUAL.test(l) && !asksAboutWorkDone(l)) return "factual";
+  // The person's own history and circumstances (2026-10-11), under the same
+  // work-done exemption.
+  if (PERSONAL_HISTORY.test(l) && !asksAboutWorkDone(l)) return "factual";
   if (IDENTITY_IF_FIELD.test(l) && (bare.split(" ").length <= 4 || OWN_ATTRIBUTE.test(l))) {
     return "identity";
   }
