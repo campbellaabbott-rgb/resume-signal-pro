@@ -24,13 +24,28 @@
  * — one of the sanctioned ways to retract a posting. No field is invented to
  * fill the schema; a salary we could not read is an absent property, and the
  * page says WE found none — never that the employer stated none.
+ *
+ * AN UNDATED POSTING IS NOT A GONE ONE (job-listings audit JL1, 2026-10-11).
+ * The page used to ask isPostingLive, the bake's question, which answers false
+ * for any posting the employer did not date — so 15 audited live postings were
+ * told they were "no longer live" and noindexed while the board served them.
+ * Liveness is now three states (src/lib/listing/liveness.ts): gone, window
+ * closed, live. An undated live posting renders as live, keeps whatever crawl
+ * directive its file shipped and carries no JobPosting markup (datePosted is
+ * required, and inventing one is the thing this page refuses); whether to
+ * index those pages is the SEO group's call.
+ *
+ * ONE VOCABULARY WITH THE BOARD. The title, the facts, the decision row and the
+ * description are the listing components the board's pane uses
+ * (src/components/jobs/listing), so the page a crawler indexes and the pane a
+ * seeker reads print one posting the same way.
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { companyLanderPath } from "@/lib/public-href";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, Building2, ExternalLink, Loader2, MapPin, Sparkles } from "lucide-react";
+import { ChevronRight, Loader2 } from "lucide-react";
 import { canHandOff, writeJdHandoff } from "@/lib/jd-handoff";
 import { postTrackEvent } from "@/lib/track-transport";
 import { SEO } from "@/components/seo/SEO";
@@ -42,18 +57,19 @@ import { boardBudgetRefusal, httpStatusOf, markBoardBudgetRefused, readBoardBudg
 import { BoardBudgetNotice } from "@/components/jobs/BoardBudgetNotice";
 import {
   BOARD_FRESH_WINDOW_DAYS,
-  isPostingLive,
-  jdParagraphs,
   POSTING_LD_TAG_ID,
   postingIdFromParams,
   postingJsonLd,
   postingPageDescription,
   postingPagePath,
   postingPageTitle,
-  postingEmployer,
   type PostingRow,
 } from "@/components/jobs/posting-page";
 import { possessive } from "@/lib/company-display";
+import { postingLiveness, shownPosting } from "@/lib/listing/liveness";
+import { listingEmployer } from "@/lib/listing/employer";
+import { PostingDetail } from "@/components/jobs/listing/PostingDetail";
+import { MoreRolesAtEmployer } from "@/components/jobs/listing/MoreRolesAtEmployer";
 
 const SITE = "https://resumebooster.work";
 
@@ -152,8 +168,9 @@ export default function JobPosting() {
       setDescription(typeof data.description === "string" ? data.description : null);
       // A row we cannot find, and a row that is no longer live, are the same
       // answer to the only question this URL asks -- but only a watched
-      // closure says anything about the employer's own board.
-      setState(row ? (isPostingLive(row) ? "ready" : "gone") : data.closed ? "gone" : "unlisted");
+      // closure says anything about the employer's own board. "Live" is the
+      // three-state answer: an undated row the board still serves is live.
+      setState(row ? (postingLiveness(row) === "live" ? "ready" : "gone") : data.closed ? "gone" : "unlisted");
     })().catch(() => {
       if (seq.current === mine) setState("failed");
     });
@@ -175,9 +192,16 @@ export default function JobPosting() {
   // retracted one still marked up under a heading saying it is gone. Anything
   // in the head that claims to be a JobPosting is ours to clear before we
   // write, and the block we write is the only one that may survive.
+  //
+  // AN UNDATED LIVE POSTING CARRIES NONE. datePosted is a required property
+  // and the employer stated no date, so there is nothing true to put there;
+  // the block is cleared (an older file may have carried one) and nothing is
+  // written in its place.
+  const shown = useMemo(() => (job ? shownPosting(job) : null), [job]);
+  const dated = !!shown?.postedAt;
   const ld = useMemo(
-    () => (live && job ? postingJsonLd(job, description, { site: SITE }) : null),
-    [live, job, description],
+    () => (live && shown && dated ? postingJsonLd(shown, description, { site: SITE }) : null),
+    [live, shown, dated, description],
   );
   //
   // ONLY "GONE" RETRACTS. While loading, after a failed read and under a
@@ -186,6 +210,7 @@ export default function JobPosting() {
   // as the bake wrote it until there is an answer either way.
   useEffect(() => {
     if (retracted) { clearJobMarkup(); return; }
+    if (live && !dated) { clearJobMarkup(); return; }
     if (!ld) return;
     clearJobMarkup();
     const tag = document.createElement("script");
@@ -194,7 +219,7 @@ export default function JobPosting() {
     tag.textContent = JSON.stringify(ld);
     document.head.appendChild(tag);
     return () => { clearJobMarkup(); };
-  }, [ld, retracted]);
+  }, [ld, retracted, live, dated]);
   // Leaving the page takes any posting markup with it, baked or ours.
   useEffect(() => () => { clearJobMarkup(); }, []);
 
@@ -238,29 +263,28 @@ export default function JobPosting() {
   }
   if (!id) return <Navigate to="/jobs" replace />;
 
-  const paragraphs = description ? jdParagraphs(description) : [];
   const path = postingPagePath(id) ?? "/jobs";
-  // The employer by the name it uses, not its vendor tenant code (F1).
-  const company = job?.company ? postingEmployer(job) : "";
+  // The employer by the name it uses, not its vendor tenant code (F1) — the
+  // same function the board's card and pane ask (one name on every surface).
+  const company = job?.company ? listingEmployer(job) : "";
   const companyPossessive = company ? possessive(company) : "";
   // THE SCANNER ALREADY READS A HAND-OFF (Index.tsx, the board's "Check my
   // fit"): this page holds the description, so it hands it over directly.
   const canScore = live && canHandOff(description);
   const scoreAgainstThisJob = () => {
     if (!job || !description) return;
-    if (!writeJdHandoff({ jd: description, title: job.title ?? undefined, company: company || undefined, applyUrl: job.applyUrl ?? undefined })) return;
+    if (!writeJdHandoff({ jd: description, title: shown?.title ?? undefined, company: company || undefined, applyUrl: job.applyUrl ?? undefined })) return;
     postTrackEvent({ testName: "job_page", variant: "score_against_job", eventType: "view", metadata: { page: path } });
     navigate("/#upload");
   };
-  const heading = live && job?.title ? job.title : t("jobPostingPage.genericHeading", "Job posting");
   // THE GONE COPY IS FOR "GONE" ONLY. It used to cover every state that was
   // not ready, so a renderer that snapshotted while loading, after a transient
   // failure or under a budget refusal read "This posting is no longer live" as
   // the title of a live posting. Until there is an answer the page renders no
   // head of its own and the baked one stands.
-  const seoTitle = live && job ? postingPageTitle(job) : t("jobPostingPage.goneTitle", "This posting is no longer live");
-  const seoDescription = live && job
-    ? postingPageDescription(job)
+  const seoTitle = live && shown ? postingPageTitle(shown) : t("jobPostingPage.goneTitle", "This posting is no longer live");
+  const seoDescription = live && shown
+    ? postingPageDescription(shown)
     : state === "unlisted"
       ? t(
           "jobPostingPage.unlistedMeta",
@@ -277,16 +301,38 @@ export default function JobPosting() {
           already wrote (see the effect above), never as a second one here. */}
       {(live || retracted) && <SEO title={seoTitle} description={seoDescription} path={path} />}
       <Header />
-      <main className="min-h-screen pt-24 pb-20">
-        <div className="container max-w-3xl">
-          <Link to="/jobs" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6">
-            <ArrowLeft className="w-3.5 h-3.5" />
-            {t("jobPostingPage.backToBoard", "All openings")}
-          </Link>
+      <main id="main-content" tabIndex={-1} className="min-h-screen pb-20 pt-24 focus:outline-none">
+        <div className="mx-auto w-full max-w-3xl px-4 sm:px-6">
+          {/* Jobs › {Employer} › {Title}: where this posting sits, each step a link but the last. */}
+          <nav aria-label={t("listing.page.breadcrumb", "Breadcrumb")} className="mb-6 text-sm">
+            <ol className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-muted-foreground">
+              <li>
+                <Link to="/jobs" className="text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary">
+                  {t("listing.page.jobs", "Jobs")}
+                </Link>
+              </li>
+              {live && shown && company && shown.token && (
+                <>
+                  <li aria-hidden="true"><ChevronRight className="h-3.5 w-3.5" /></li>
+                  <li className="min-w-0">
+                    <Link to={companyLanderPath(shown.token)} className="break-words text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary">
+                      {company}
+                    </Link>
+                  </li>
+                </>
+              )}
+              {live && shown?.title && (
+                <>
+                  <li aria-hidden="true"><ChevronRight className="h-3.5 w-3.5" /></li>
+                  <li className="min-w-0 truncate text-foreground" aria-current="page">{shown.title}</li>
+                </>
+              )}
+            </ol>
+          </nav>
 
           {state === "loading" && (
-            <p className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="w-4 h-4 animate-spin" />
+            <p className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
               {t("jobPostingPage.loading", "Loading this posting…")}
             </p>
           )}
@@ -294,22 +340,22 @@ export default function JobPosting() {
           {state === "budget" && budget && <BoardBudgetNotice refusal={budget} />}
 
           {state === "failed" && (
-            <div className="rounded-xl border border-border bg-card p-6">
-              <p className="text-sm text-muted-foreground mb-3">
+            <div className="rounded-lg border border-border bg-card p-6">
+              <p className="mb-3 text-sm text-muted-foreground">
                 {t("jobPostingPage.loadFailed", "We couldn't load this posting just now.")}
               </p>
-              <Button variant="outline" size="sm" onClick={() => setAttempt((n) => n + 1)}>
+              <Button variant="secondary" size="sm" onClick={() => setAttempt((n) => n + 1)}>
                 {t("jobPostingPage.retry", "Try again")}
               </Button>
             </div>
           )}
 
           {retracted && (
-            <div className="rounded-xl border border-border bg-card p-6">
-              <h1 className="text-2xl font-bold mb-3">
+            <div className="rounded-lg border border-border bg-card p-6">
+              <h1 className="mb-3 text-2xl font-semibold">
                 {t("jobPostingPage.goneTitle", "This posting is no longer live")}
               </h1>
-              <p className="text-sm text-muted-foreground mb-4">
+              <p className="mb-4 text-sm text-muted-foreground">
                 {state === "unlisted"
                   ? t("jobPostingPage.unlistedBody", "This board no longer lists this posting. That says nothing about the employer — it may still be open on their own site.")
                   : t("jobPostingPage.goneBody", {
@@ -324,114 +370,29 @@ export default function JobPosting() {
             </div>
           )}
 
-          {live && job && (
-            <article>
-              <h1 className="text-3xl font-bold tracking-tight mb-3">{heading}</h1>
-
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mb-6">
-                {company && (
-                  <span className="inline-flex items-center gap-1.5">
-                    <Building2 className="w-3.5 h-3.5" />
-                    {job.token
-                      ? <Link to={companyLanderPath(job.token)} className="text-primary hover:underline">{company}</Link>
-                      : company}
-                  </span>
-                )}
-                {job.location && (
-                  <span className="inline-flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5" />
-                    {job.location}
-                  </span>
-                )}
-                {/* THE CRAWLER-FACING SURFACE. This page's JSON-LD is built
-                    from the same work_mode, so the line that says whose
-                    statement it is belongs here more than anywhere. Same
-                    sentence and same key as the board's own two readers. */}
-                {job.workMode === "remote" && (
-                  <span title={t("jobsPage.workModeProvenance", "Work mode as the employer states it — the option they chose in their own hiring system, or their own words on the posting: its title, its location or its department. Where those disagree, or where none of them states a mode, the posting shows none: silence is never read as on-site.")}>
-                    {t("jobPostingPage.remote", "Remote")}
-                  </span>
-                )}
+          {live && shown && (
+            <>
+              {/* THE BOARD'S OWN VOCABULARY. Title, place, the decision row,
+                  the facts (each with its basis: the employer's stated date or
+                  the sentence that it states none; pay from the employer's feed
+                  or OUR reading that found none; the work mode with the line
+                  that says whose statement it is) and the description, from
+                  the components the board's pane renders. */}
+              <div className="overflow-hidden rounded-lg border border-border bg-card">
+                <PostingDetail
+                  job={shown}
+                  surface="page"
+                  description={{ text: description, state: description ? "loaded" : "unavailable" }}
+                  showPayAbsence
+                  onCheckFit={canScore ? scoreAgainstThisJob : undefined}
+                  sectionsOpen={99}
+                  descriptionHeading={
+                    <h2 className="mb-3 text-lg font-semibold text-foreground">
+                      {t("jobPostingPage.descHeading", "The employer's own description")}
+                    </h2>
+                  }
+                />
               </div>
-
-              {/* EVERY LINE NAMES ITS BASIS, AND AN ABSENT FACT IS SAID TO BE
-                  ABSENT rather than filled in. A date here is the employer's
-                  own stated date; pay is the employer's own words, verbatim
-                  and unconverted. */}
-              <dl className="grid gap-2 text-sm mb-8 rounded-xl border border-border bg-card p-4">
-                <div className="flex flex-wrap gap-x-2">
-                  <dt className="text-muted-foreground">{t("jobPostingPage.postedLabel", "Posted")}</dt>
-                  <dd className="text-foreground">
-                    {job.postedAt
-                      ? t("jobPostingPage.postedValue", {
-                          defaultValue: "{{date}}, as stated by the employer",
-                          date: job.postedAt.slice(0, 10),
-                        })
-                      : t("jobPostingPage.noDate", "This employer states no posting date, so this page states none.")}
-                  </dd>
-                </div>
-                <div className="flex flex-wrap gap-x-2">
-                  <dt className="text-muted-foreground">{t("jobPostingPage.payLabel", "Pay")}</dt>
-                  <dd className="text-foreground">
-                    {job.salary
-                      ? t("jobPostingPage.payValue", {
-                          defaultValue: "{{salary}} — the employer's own words, not converted or estimated",
-                          salary: job.salary,
-                        })
-                      // OUR READING, NOT THE EMPLOYER'S STATEMENT: the pay
-                      // reader misses forms like "Salary Range: $110,000-140,000",
-                      // so an empty field is not "states no pay".
-                      : t("jobPostingPage.noPayFound", "We found no pay figure on this posting. That is our reading, not a statement by the employer — the description may still name one.")}
-                  </dd>
-                </div>
-              </dl>
-
-              {(job.applyUrl || canScore) && (
-                <div className="mb-8">
-                  <div className="flex flex-wrap gap-3">
-                    {job.applyUrl && (
-                      <Button asChild size="lg">
-                        <a href={job.applyUrl} target="_blank" rel="noopener noreferrer nofollow">
-                          {company
-                            ? t("jobPostingPage.applyCta", { defaultValue: "Apply on {{companyPossessive}} own site", company, companyPossessive })
-                            : t("jobPostingPage.applyCtaPlain", "Apply on the employer's own site")}
-                          <ExternalLink className="w-4 h-4 ml-1.5" />
-                        </a>
-                      </Button>
-                    )}
-                    {canScore && (
-                      <Button size="lg" variant="outline" className="gap-1.5" onClick={scoreAgainstThisJob}>
-                        <Sparkles className="w-4 h-4" aria-hidden="true" />
-                        {t("jobPostingPage.scoreCta", "Score my résumé against this job (free)")}
-                      </Button>
-                    )}
-                  </div>
-                  {canScore && (
-                    <p className="text-xs text-muted-foreground mt-2">
-                      {t("jobPostingPage.scoreNote", "Opens the free scanner with this posting's description already filled in.")}
-                    </p>
-                  )}
-                  {job.applyUrl && (
-                    <p className="text-xs text-muted-foreground mt-2">
-                      {t(
-                        "jobPostingPage.applyNote",
-                        "The application happens on the employer's own hiring system. This board never reposts a job or stands between you and them.",
-                      )}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {paragraphs.length > 0 && (
-                <section>
-                  <h2 className="text-lg font-semibold mb-3">
-                    {t("jobPostingPage.descHeading", "The employer's own description")}
-                  </h2>
-                  <div className="max-w-[72ch] space-y-3 text-sm text-muted-foreground leading-7 whitespace-pre-line">
-                    {paragraphs.map((p, i) => <p key={i}>{p}</p>)}
-                  </div>
-                </section>
-              )}
 
               {/* NOT PRINTED OVER A STAFFING AGENCY. The sentence is
                   categorical — "never an aggregator, never a repost" — and the
@@ -442,8 +403,8 @@ export default function JobPosting() {
                   employer hiring. A claim we cannot make is omitted rather than
                   softened, which needs no new copy to be honest. The bake goes
                   further and gives an agency row no static page at all. */}
-              {job.agency !== true && (
-                <p className="text-xs text-muted-foreground mt-10">
+              {shown.agency !== true && (
+                <p className="mt-6 text-xs text-muted-foreground">
                   {t("jobPostingPage.sourceNote", {
                     defaultValue:
                       "Pulled straight from {{companyPossessive}} own hiring system — never an aggregator, never a repost. A dated posting is served for at most {{days}} days from the date the employer states, and the board re-checks a posting when you open it.",
@@ -453,7 +414,10 @@ export default function JobPosting() {
                   })}
                 </p>
               )}
-            </article>
+
+              {/* ONE LAZY READ, on scroll, of four more roles at this employer. */}
+              {shown.token && company && <MoreRolesAtEmployer token={shown.token} employer={company} excludeId={shown.id} />}
+            </>
           )}
         </div>
       </main>

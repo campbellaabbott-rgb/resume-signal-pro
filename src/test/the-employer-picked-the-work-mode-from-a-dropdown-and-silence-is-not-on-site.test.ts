@@ -443,14 +443,28 @@ describe("the jump from 2.1% to about 45% stated in one vendor is disclosed, not
       ).toContain(PROVENANCE);
     }
     // AND THE CRAWLER-FACING PAGE, which is a different file and the one whose
-    // JSON-LD is built from the same field.
+    // JSON-LD is built from the same field. Since 2026-10-12 it prints the mode
+    // through the listing components the board's pane uses (PostingDetail →
+    // PostingFacts), so the pin follows the mode there: every listing
+    // component that prints a posting's own work mode carries the line, the
+    // render sites DERIVED from the directory so a new surface fails until it
+    // is annotated, and the page is held to rendering through them.
     const POSTING = readFileSync(resolve(HERE, "../pages/JobPosting.tsx"), "utf8");
-    const at = POSTING.indexOf('job.workMode === "remote"');
-    expect(at, "the posting page stopped printing a work mode — re-point this guard").toBeGreaterThan(0);
-    expect(
-      POSTING.slice(at, at + 900),
-      "the baked posting page prints a work mode with no provenance line",
-    ).toContain(PROVENANCE);
+    expect(POSTING, "the posting page no longer renders the listing detail — re-point this guard").toMatch(/<PostingDetail\b/);
+    const LISTING = resolve(HERE, "../components/jobs/listing");
+    const sites: string[] = [];
+    for (const f of readdirSync(LISTING).filter((n) => n.endsWith(".tsx"))) {
+      const code = readFileSync(join(LISTING, f), "utf8");
+      for (const m of code.matchAll(/t\(`jobsPage\.workMode\.\$\{([^}]*)\}/g)) {
+        sites.push(f);
+        expect(
+          code.slice(Math.max(0, m.index! - 900), m.index!),
+          `${f} prints jobsPage.workMode.\${${m[1].trim()}} with no provenance line`,
+        ).toContain(PROVENANCE);
+      }
+    }
+    expect(sites, "the posting facts stopped printing a work mode").toContain("PostingFacts.tsx");
+    expect(sites, "the shared card stopped printing a work mode").toContain("JobCard.tsx");
   });
 
   it("exists as a real sentence in all nine locales, and says where the mode came from", () => {
