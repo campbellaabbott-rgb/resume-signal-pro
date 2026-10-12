@@ -17,12 +17,22 @@
 // paying subscriber their subscription is inactive because a fetch has not
 // returned is the worst thing this band could say, so while the checks are in
 // flight it says it is checking rather than guessing.
+//
+// SWITCHED OFF, IT SAYS NOTHING. While the apply agent is switched off
+// (_shared/apply-agent-switch.ts, the 2026-10-11 apply pivot) every rung of
+// that ladder is untrue: "set it up and it starts working overnight", "our
+// sender is offline and resumes automatically". The page this band sits on
+// already shows the retirement notice (the /agent console and the Morning
+// Queue panel on /account), so the band renders nothing and loads nothing.
+// agent-access says the same in its answer (agentSwitchedOff), which is read
+// too, so a server switched off ahead of the page is not contradicted.
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AlertTriangle, CheckCircle2, Loader2, PauseCircle, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { agentState, needsAttention, type AgentSignals, type AgentVerdict } from "@/lib/agentState";
 import type { ProfileLike } from "@/lib/applyReadiness";
+import { APPLY_AGENT_ON } from "../../../supabase/functions/_shared/apply-agent-switch";
 
 const sb = supabase as unknown as {
   from: (t: string) => any;
@@ -34,6 +44,7 @@ export function AgentStatusBand({ userId, email }: { userId: string; email: stri
   const { t } = useTranslation();
   const [verdict, setVerdict] = useState<AgentVerdict | null>(null);
   const [loading, setLoading] = useState(true);
+  const [switchedOff, setSwitchedOff] = useState(!APPLY_AGENT_ON);
 
   const load = useCallback(async () => {
     // The mandate carries both the profile fields and the apply mode.
@@ -55,6 +66,7 @@ export function AgentStatusBand({ userId, email }: { userId: string; email: stri
         // 2026-10-05 function ignores it.
         try {
           const { data } = await sb.functions.invoke("agent-access", { body: email ? { email } : {} });
+          if (data?.agentSwitchedOff === true) setSwitchedOff(true);
           return typeof data?.active === "boolean" ? data.active : null;
         } catch { return null; }
       })(),
@@ -80,12 +92,13 @@ export function AgentStatusBand({ userId, email }: { userId: string; email: stri
     setLoading(false);
   }, [userId, email]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { if (!switchedOff) void load(); }, [load, switchedOff]);
 
   const goToProfile = () => {
     document.getElementById("apply-profile")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  if (switchedOff) return null;
   if (loading) {
     return (
       <div className="rounded-xl border border-border p-4 flex items-center gap-2 text-sm text-muted-foreground">

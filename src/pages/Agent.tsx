@@ -37,7 +37,7 @@ import { AgentRetiredNotice } from "@/components/agents/AgentRetiredNotice";
 // The one switch, read from the Deno module itself (a pure file, as
 // MorningQueuePanel reads _shared/mandate-reach), so the page cannot disagree
 // with the checkouts about whether the agent's products are sold.
-import { AGENT_PRODUCTS_ON_SALE } from "../../supabase/functions/_shared/apply-agent-switch";
+import { APPLY_AGENT_ON, AGENT_PRODUCTS_ON_SALE } from "../../supabase/functions/_shared/apply-agent-switch";
 
 import { AgentStatusBand } from "@/components/account/AgentStatusBand";
 import { MorningQueuePanel } from "@/components/account/MorningQueuePanel";
@@ -222,12 +222,15 @@ export default function Agent() {
               {/* Setup first, and only while it is genuinely unfinished. An
                   empty queue below an unexplained empty page is how a paid
                   product gets mistaken for a broken one. */}
-              <AgentSetupChecklist userId={userId} onGo={go} />
+              {/* Switched off (the apply pivot), setting the agent up and
+                  the questions it stopped on lead nowhere; the notice above
+                  says why. */}
+              {APPLY_AGENT_ON && <AgentSetupChecklist userId={userId} onGo={go} />}
               {/* Then last night, which is the question a returning subscriber
                   actually has — before the queue that answers it obliquely. */}
               <AgentNightSummary userId={userId} />
               <MorningQueuePanel userId={userId} email={email} defaultResume={null} />
-              <PendingQuestionsPanel userId={userId} />
+              {APPLY_AGENT_ON && <PendingQuestionsPanel userId={userId} />}
             </>
           )}
 

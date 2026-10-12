@@ -2,12 +2,19 @@
 // it serves both audiences: subscribers jump to their queue, everyone else
 // lands on the panel whose own paywall carries the 7-days-free trial. No
 // entitlement query needed up here.
+//
+// While the apply agent is switched off (_shared/apply-agent-switch.ts) there
+// is no queue to bridge to and nothing reviews postings overnight, so the card
+// renders nothing; the Morning Queue panel below it shows the retirement
+// notice.
 
 import { Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { APPLY_AGENT_ON } from "../../../supabase/functions/_shared/apply-agent-switch";
 
 export function AgentBridgeCard({ topGap }: { topGap?: string | null }) {
   const { t } = useTranslation();
+  if (!APPLY_AGENT_ON) return null;
   return (
     <a
       href="#agent"

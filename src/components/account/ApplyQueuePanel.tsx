@@ -12,6 +12,14 @@
 // "blocked" is not. Every blocker the packet carries is printed in full, because
 // a queue that says something is stuck without saying why is a queue people stop
 // reading.
+//
+// SWITCHED OFF (_shared/apply-agent-switch.ts, the 2026-10-11 apply pivot):
+// nothing claims a released packet, so agent-access refuses approve and retry
+// with 409 agent_switched_off. The panel then offers neither, says the
+// retirement notice's own sentence if a stale page asks anyway, drops the
+// lines about what the agent fills in and does overnight, and renders nothing
+// at all for a person who has no packet. A past buyer still sees every packet
+// they had, and can still stop one or record what happened to it.
 import { useCallback, useEffect, useState } from "react";
 import { ApplicationReceipt } from "./ApplicationReceipt";
 import { useTranslation } from "react-i18next";
@@ -22,6 +30,7 @@ import { refusalFace } from "@/lib/refusalCopy";
 import { packetState, needsAttention as packetNeedsAttention } from "@/lib/packetState";
 import { isSendableVendor } from "../../../supabase/functions/_shared/apply-automation";
 import { APPROVABLE_REFUSALS } from "../../../supabase/functions/_shared/apply-release";
+import { APPLY_AGENT_ON } from "../../../supabase/functions/_shared/apply-agent-switch";
 
 const sb = supabase as unknown as {
   from: (t: string) => any;
@@ -157,6 +166,7 @@ export function ApplyQueuePanel({ userId }: { userId: string }) {
       in_flight: t("applyQueue.decideInFlight", "The sender has this one right now — it is too late to change it."),
       not_retryable: t("applyQueue.retryNotTransient", "A retry will not fix why this one stopped. Open it to see why."),
       not_funded: t("applyQueue.retryNotFunded", "Your pass has no application left to send this again."),
+      agent_switched_off: t("agentPass.retiredBody", "We no longer sell the Agent Pass, the Agent plan or the Apply Assistant, and our own apply agent is switched off: Resume Booster does not send applications for anyone."),
     };
     const fallback = action === "retry"
       ? t("applyQueue.retryFailed", "Could not queue that again — try again")
@@ -166,6 +176,7 @@ export function ApplyQueuePanel({ userId }: { userId: string }) {
   }, [load, t]);
 
   if (loading) {
+    if (!APPLY_AGENT_ON) return null;
     return (
       <div className="rounded-xl border border-border p-6 flex items-center gap-2 text-muted-foreground">
         <Loader2 className="w-4 h-4 animate-spin" />
@@ -182,6 +193,8 @@ export function ApplyQueuePanel({ userId }: { userId: string }) {
   // Counted through packetState so there is ONE definition of what these words
   // mean. A second definition here is how a summary and its own list end up
   // disagreeing on screen.
+  if (!APPLY_AGENT_ON && rows.length === 0) return null;
+
   const counts = {
     ready: rows.filter((r) => r.status === "ready").length,
     blocked: rows.filter((r) => r.status === "blocked" && packetState(r).phase !== "uncertain").length,
@@ -197,10 +210,12 @@ export function ApplyQueuePanel({ userId }: { userId: string }) {
           {t("applyQueue.title", "Prepared applications")}
         </h3>
       </div>
-      <p className="text-sm text-muted-foreground mb-4">
-        {t("applyQueue.intro",
-          "Everything the agent has filled in for you. Open any one to read exactly what would be sent before it goes.")}
-      </p>
+      {APPLY_AGENT_ON && (
+        <p className="text-sm text-muted-foreground mb-4">
+          {t("applyQueue.intro",
+            "Everything the agent has filled in for you. Open any one to read exactly what would be sent before it goes.")}
+        </p>
+      )}
 
       {rows.length === 0 ? (
         <div className="text-sm text-muted-foreground py-6 text-center">
@@ -319,7 +334,7 @@ export function ApplyQueuePanel({ userId }: { userId: string }) {
                             <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-[1px]" aria-hidden />
                             <span>
                               {t(st.key, st.fallback)}
-                              {st.canRetry && (
+                              {st.canRetry && APPLY_AGENT_ON && (
                                 <button
                                   type="button"
                                   disabled={busy === p.id}
@@ -364,7 +379,7 @@ export function ApplyQueuePanel({ userId }: { userId: string }) {
                       {p.status === "ready" && !p.submitted_at && (() => {
                         const leased = !!p.claimed_at && Date.now() - Date.parse(p.claimed_at) < 10 * 60_000;
                         if (leased) return null;
-                        const canApprove = !p.released_at && APPROVABLE.has(String(p.release_refusal ?? ""))
+                        const canApprove = APPLY_AGENT_ON && !p.released_at && APPROVABLE.has(String(p.release_refusal ?? ""))
                           && isSendableVendor(p.source);
                         return (
                           <div className="mt-2 flex flex-wrap gap-3">

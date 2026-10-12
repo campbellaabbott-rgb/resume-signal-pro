@@ -20,6 +20,7 @@ import { useAuth } from "@/contexts/AuthContext";
 // Same predicate the board and the nightly runner use — see the note on the
 // import in Jobs.tsx for why this is imported rather than copied.
 import { isSendableVendor } from "../../supabase/functions/_shared/apply-automation";
+import { APPLY_AGENT_ON } from "../../supabase/functions/_shared/apply-agent-switch";
 import { SavedSearchesCard } from "@/components/account/SavedSearchesCard";
 import { ApplyKitPanel } from "@/components/account/ApplyKitPanel";
 import { ApplyCopilotPanel } from "@/components/account/ApplyCopilotPanel";
@@ -1143,10 +1144,14 @@ export default function Account() {
         {/* Directly under the queue: the answers that decide whether a queued
             pick can actually be finished. Blockers here are the single largest
             reason a packet never reaches `ready`. */}
-        {user && <div className="mt-6" id="apply-profile"><ApplyProfilePanel userId={user.id} /></div>}
+        {/* While the apply agent is switched off (the 2026-10-11 apply
+            pivot), its profile ("apply for me automatically") and the
+            questions it stopped on describe sends that cannot happen; a past
+            buyer still finds both on the /agent console. */}
+        {user && APPLY_AGENT_ON && <div className="mt-6" id="apply-profile"><ApplyProfilePanel userId={user.id} /></div>}
         {/* Directly under the profile: these are the questions the profile
             could not answer, so the two belong next to each other. */}
-        {user && <div className="mt-6"><PendingQuestionsPanel userId={user.id} /></div>}
+        {user && APPLY_AGENT_ON && <div className="mt-6"><PendingQuestionsPanel userId={user.id} /></div>}
 
         {/* What the agent actually produced from those answers. Sits below the
             profile so the cause is above the effect: a blocked packet here is
@@ -1428,7 +1433,7 @@ export default function Account() {
                         Only on `saved`. On a row already applied to it would be
                         an offer to do something done, and the duplicate guard
                         would refuse it anyway. */}
-                    {a.status === "saved" && a.job_id && isSendableVendor(a.job_id) && (
+                    {APPLY_AGENT_ON && a.status === "saved" && a.job_id && isSendableVendor(a.job_id) && (
                       <Link
                         to="/agent"
                         className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline mt-0.5"
