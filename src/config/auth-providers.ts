@@ -20,10 +20,10 @@
  * here and nothing else: every string those controls need already ships, in
  * src/i18n/auth/*.json.
  */
-export const GOOGLE_SIGN_IN_LIVE: boolean = false;
+export const GOOGLE_SIGN_IN_LIVE: boolean = true;
 export const APPLE_SIGN_IN_LIVE: boolean = false;
 export const CODE_SIGN_IN_LIVE: boolean = false;
-export const RECOVERY_LIVE: boolean = false;
+export const RECOVERY_LIVE: boolean = true;
 
 /**
  * The flags as one string the live Auth chunk carries, so verify section 95
