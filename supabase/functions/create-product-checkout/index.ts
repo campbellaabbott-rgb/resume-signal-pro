@@ -8,10 +8,14 @@ import { clientAddressOr } from "../_shared/client-address.ts";
 import { accountProStanding, addressProStanding } from "../_shared/pro.ts";
 import { checkoutOrigin, euConsentAnswer, euConsentRefusal, policyMetadata, sessionPolicy } from "../_shared/checkout-policy.ts";
 import { targetRolesMetadata } from "../_shared/target-roles.ts";
+import { AGENT_PRODUCTS_ON_SALE } from "../_shared/apply-agent-switch.ts";
+import { retiredCheckoutAnswer } from "../_shared/apply-agent-retired.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-product-checkout.2026-10-09.61";
+// 2026-10-11.1: the Apply Assistant is retired; its purchase is a 410 naming
+// applying yourself (wave 4, the apply pivot).
+const FN_BUILD = "create-product-checkout.2026-10-11.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -103,6 +107,27 @@ function getStripe(): Stripe {
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // THE APPLY ASSISTANT IS NO LONGER SOLD (owner decision 2026-10-11, the
+  // apply pivot). It is one row of PRODUCTS below, so while
+  // AGENT_PRODUCTS_ON_SALE is off a purchase of that row is answered 410
+  // with the sentence from _shared/apply-agent-retired.ts, BEFORE the client,
+  // the rate limiter, the Pro grant or Stripe: nothing is counted, granted or
+  // charged, and the buyer is told applying yourself is free. Every other
+  // product sells as before. The body is read off a clone, so the purchase
+  // path below still reads the original.
+  if (!AGENT_PRODUCTS_ON_SALE) {
+    const asked = await req.clone().json().catch(() => null);
+    if (asked && typeof asked === "object" && (asked as { productId?: unknown }).productId === "applyAssistant") {
+      const answer = retiredCheckoutAnswer("apply_assistant", {
+        body: asked,
+        acceptLanguage: req.headers.get("accept-language"),
+        origin: checkoutOrigin(req.headers.get("origin"), (k: string) => Deno.env.get(k)),
+      });
+      console.log("[CREATE-PRODUCT-CHECKOUT] refused: the Apply Assistant is no longer sold");
+      return new Response(JSON.stringify(answer.body), { status: answer.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
   }
 
   // The platform's word for the caller's address, never the first forwarded

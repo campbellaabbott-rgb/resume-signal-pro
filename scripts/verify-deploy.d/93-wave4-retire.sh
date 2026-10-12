@@ -10,6 +10,9 @@
 #     410 product_retired: the sentence says nothing was charged and names
 #     applying yourself, in the buyer's language, links /agents, and carries no
 #     Stripe url;
+#   - create-product-checkout serves 2026-10-11.1 or later and answers a
+#     purchase of the Apply Assistant (one row of its shared product table,
+#     wired by the wave-4 integration) with the same 410;
 #   - 20261011130000 applied: get_cron_health lists neither apply-agent-hourly
 #     nor agent-runner-nightly, while agent-queue-retention (left on purpose)
 #     is still listed in the same read;
@@ -34,6 +37,12 @@ for VD93_FN in create-agent-checkout create-pass-checkout agent-pass-status agen
   elif build_ge "$VD93_FN" "$VD93_H" "2026-10-11" "13"; then echo "PASS  $VD93_FN preflight x-fn-build = $VD93_H ($VD93_FN.2026-10-11.13 or later: the retired build)"; VD93_LIVE="$VD93_LIVE$VD93_FN "
   else echo "FAIL  $VD93_FN preflight x-fn-build = $VD93_H (want $VD93_FN.2026-10-11.13 or later: the agent is still on, or its product still sold, in the bundle serving)"; fi
 done
+# The Apply Assistant's checkout is the shared product checkout, stamped by the
+# integration rather than the retire branch, so its floor is its own.
+VD93_H=$(vd93_build create-product-checkout)
+if [ -z "$VD93_H" ]; then echo "FAIL  create-product-checkout preflight carries no x-fn-build (the function is not deployed, or its preflight does not answer)"
+elif build_ge create-product-checkout "$VD93_H" "2026-10-11" "1"; then echo "PASS  create-product-checkout preflight x-fn-build = $VD93_H (create-product-checkout.2026-10-11.1 or later: the Apply Assistant is retired)"; VD93_LIVE="${VD93_LIVE}create-product-checkout "
+else echo "FAIL  create-product-checkout preflight x-fn-build = $VD93_H (want create-product-checkout.2026-10-11.1 or later: the Apply Assistant is still sold in the bundle serving)"; fi
 
 vd93_buy() { # $1 fn, $2 product, $3 body, $4 Accept-Language, $5 expected language, $6 a phrase of that language's free sentence
   case "$VD93_LIVE" in
@@ -66,6 +75,7 @@ let s="";process.stdin.on("data",(d)=>s+=d).on("end",()=>{
 }
 vd93_buy create-agent-checkout agent_plan '{"language":"de"}' "en" de "Selbst bewerben ist kostenlos"
 vd93_buy create-pass-checkout agent_pass '{}' "nl-NL,nl;q=0.9" nl "Zelf solliciteren is gratis"
+vd93_buy create-product-checkout apply_assistant '{"productId":"applyAssistant","language":"fr"}' "en" fr "Postuler vous-même est gratuit"
 
 R get_cron_health '{"p_hours":24}' > /tmp/vd_93_cron.json
 node -e '

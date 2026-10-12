@@ -13,7 +13,10 @@
  *   - a 410 that names no free path, or carries a Stripe url, FAILs;
  *   - a cron list still holding either agent job FAILs, and a list without
  *     agent-queue-retention (the positive control in the same read) is INFO;
- *   - a workflow on main with a schedule FAILs.
+ *   - a workflow on main with a schedule FAILs;
+ *   - the Apply Assistant's shared product checkout is judged the same way,
+ *     on its own build floor (2026-10-11.1): an older bundle FAILs and is
+ *     never POSTed, and a purchase that still opens Stripe FAILs.
  */
 import { afterAll, describe, expect, it } from "vitest";
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -81,6 +84,7 @@ const pre = (fn: string, build: string): Route => ({ match: `^OPTIONS https://p\
 const refusal = (fn: string, body: unknown): Route => ({ match: `^POST https://p\\.supabase\\.co/functions/v1/${fn}$`, status: 410, body: JSON.stringify(body) });
 const AGENT_410 = retiredCheckoutAnswer("agent_plan", { body: { language: "de" }, origin: "https://resumebooster.work" }).body;
 const PASS_410 = retiredCheckoutAnswer("agent_pass", { body: {}, acceptLanguage: "nl-NL,nl;q=0.9", origin: "https://resumebooster.work" }).body;
+const ASSIST_410 = retiredCheckoutAnswer("apply_assistant", { body: { language: "fr" }, origin: "https://resumebooster.work" }).body;
 const WF_OFF = "name: Apply worker\n# schedule: was here\non:\n  workflow_dispatch:\n    inputs: {}\njobs: {}\n";
 const WF_ON = "name: Apply worker\non:\n  workflow_dispatch:\n  schedule:\n    - cron: \"17 */6 * * *\"\njobs: {}\n";
 const wf = (body: string): Route => ({ match: "^GET https://raw\\.githubusercontent\\.com/.*/apply-worker\\.yml$", body });
@@ -90,6 +94,8 @@ const healthy = (over: Partial<Record<string, Route>> = {}): Route[] => [
   ...FNS.map((fn) => over[`pre:${fn}`] ?? pre(fn, `${fn}.2026-10-11.13`)),
   over["post:create-agent-checkout"] ?? refusal("create-agent-checkout", AGENT_410),
   over["post:create-pass-checkout"] ?? refusal("create-pass-checkout", PASS_410),
+  over["pre:create-product-checkout"] ?? pre("create-product-checkout", "create-product-checkout.2026-10-11.1"),
+  over["post:create-product-checkout"] ?? refusal("create-product-checkout", ASSIST_410),
   over.wf ?? wf(WF_OFF),
 ];
 const has = (lines: string[], s: "PASS" | "FAIL" | "INFO", re: RegExp) => lines.some((l) => l.startsWith(`${s}  `) && re.test(l));
@@ -104,6 +110,8 @@ describe("section 93: the retire deploy", { timeout: 60_000 }, () => {
     for (const fn of FNS) expect(has(lines, "PASS", new RegExp(`^PASS  ${fn} preflight`)), `${fn}${show(lines)}`).toBe(true);
     expect(has(lines, "PASS", /create-agent-checkout answers a purchase 410 product_retired in de/), show(lines)).toBe(true);
     expect(has(lines, "PASS", /create-pass-checkout answers a purchase 410 product_retired in nl/), show(lines)).toBe(true);
+    expect(has(lines, "PASS", /^PASS  create-product-checkout preflight x-fn-build = create-product-checkout\.2026-10-11\.1/), show(lines)).toBe(true);
+    expect(has(lines, "PASS", /create-product-checkout answers a purchase 410 product_retired in fr/), show(lines)).toBe(true);
     expect(has(lines, "PASS", /apply-agent-hourly .* is unscheduled/), show(lines)).toBe(true);
     expect(has(lines, "PASS", /agent-runner-nightly .* is unscheduled/), show(lines)).toBe(true);
     expect(has(lines, "PASS", /starts only by hand/), show(lines)).toBe(true);
@@ -116,6 +124,20 @@ describe("section 93: the retire deploy", { timeout: 60_000 }, () => {
     expect(has(lines, "INFO", /create-pass-checkout was not asked to sell/), show(lines)).toBe(true);
     expect(calls.filter((c) => c.startsWith("POST ") && c.includes("create-pass-checkout"))).toEqual([]);
     expect(calls.filter((c) => c.startsWith("POST ") && c.includes("create-agent-checkout")).length).toBe(1);
+  });
+
+  it("an older product checkout FAILs its build and is never asked to sell the Apply Assistant", () => {
+    const { lines, calls } = run(healthy({ "pre:create-product-checkout": pre("create-product-checkout", "create-product-checkout.2026-10-09.61") }), CRON_OFF);
+    expect(has(lines, "FAIL", /^FAIL  create-product-checkout preflight x-fn-build = create-product-checkout\.2026-10-09\.61/), show(lines)).toBe(true);
+    expect(has(lines, "INFO", /create-product-checkout was not asked to sell/), show(lines)).toBe(true);
+    expect(calls.filter((c) => c.startsWith("POST ") && c.includes("create-product-checkout"))).toEqual([]);
+  });
+
+  it("an Apply Assistant purchase that still opens Stripe FAILs", () => {
+    const { lines } = run(healthy({
+      "post:create-product-checkout": { match: "^POST https://p\\.supabase\\.co/functions/v1/create-product-checkout$", status: 200, body: JSON.stringify({ url: "https://checkout.stripe.com/x" }) },
+    }), CRON_OFF);
+    expect(has(lines, "FAIL", /create-product-checkout did not refuse the purchase as retired: HTTP 200/), show(lines)).toBe(true);
   });
 
   it("a 410 that names no free path, or carries a Stripe url, FAILs", () => {
