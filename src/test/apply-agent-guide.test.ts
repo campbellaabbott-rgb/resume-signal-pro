@@ -15,12 +15,22 @@
  * QUANTITIES may not. How many postings the agent can submit to changes daily;
  * AgentReachNote reads it live and renders nothing rather than show a stale
  * number. A figure baked into a prerendered page would defeat that.
+ *
+ * SINCE THE APPLY PIVOT (owner decision 2026-10-11) the agent is switched off
+ * and its products are retired, and the guide at this address says so. The
+ * old pins on review mode, the held releases and the nightly defaults are
+ * replaced by the claims the page now makes: the switch is off, nothing is
+ * sent for anyone (no sentence of ours submits), the form vendors are the
+ * connector mirror's, ChatGPT's subset is the mirror's, the drafting rule is
+ * default-deny, and the hosts named are only Claude, ChatGPT and Claude Code.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { GUIDES } from "@/data/guides";
 import { SENDABLE_VENDORS } from "../../supabase/functions/_shared/apply-automation";
+import { APPLY_AGENT_ON, AGENT_PRODUCTS_ON_SALE } from "../../supabase/functions/_shared/apply-agent-switch";
+import { MCP_FORM_VENDORS, MCP_FORM_VENDORS_ON_CHATGPT } from "@/config/mcp-tools";
 
 const guide = GUIDES["how-the-apply-agent-works"];
 const prose = (() => {
@@ -53,38 +63,63 @@ describe("the guide exists and is wired like every other one", () => {
   });
 });
 
-describe("what the guide promises matches what the code does", () => {
-  it("says review mode is the default, and the migration agrees", () => {
-    // If somebody flips this default, the guide becomes a false statement about
-    // whether applications go out without being seen — the single highest-stakes
-    // sentence on the page.
-    expect(allSql).toMatch(/apply_mode text NOT NULL DEFAULT 'review'/);
-    expect(prose).toMatch(/starts in review mode/i);
-    expect(prose).toMatch(/off by default|default for everyone/i);
+describe("what the guide says matches the switch", () => {
+  it("says the agent is switched off, and the switch ships off", () => {
+    // If the agent is ever switched back on, this page becomes a false
+    // statement in the other direction, and the change should be loud.
+    expect(APPLY_AGENT_ON).toBe(false);
+    expect(AGENT_PRODUCTS_ON_SALE).toBe(false);
+    expect(guide.h1).toMatch(/switched off/i);
+    expect(guide.tldr).toMatch(/does not send applications for anyone/);
   });
 
-  it("says the first releases are held, and hold_first_n still exists", () => {
-    expect(allSql).toMatch(/hold_first_n integer NOT NULL DEFAULT 3/);
-    expect(prose).toMatch(/held for your approval/i);
+  it("no sentence says we, or an agent of ours, submit or send an application", () => {
+    for (const re of [
+      /\b(it|agent|we)\b[^.]*\b(submits|sends) (the )?applications?\b/i,
+      /can fill and submit/i,
+      /submit (it |them )?for you/i,
+      /switch it to auto/i,
+      /\bauto mode\b/i,
+      /every night (the agent|it) scans/i,
+    ]) {
+      expect(prose, `the guide still claims a send (${re})`).not.toMatch(re);
+    }
+    expect(prose).toMatch(/Resume Booster never submits anything/);
+    expect(prose).toMatch(/You submit on the employer's own site/);
   });
 
-  it("states the daily-pick default the migration actually sets", () => {
-    expect(allSql).toMatch(/daily_count integer NOT NULL DEFAULT 5 CHECK \(daily_count BETWEEN 1 AND 10\)/);
-    expect(prose).toMatch(/defaults to 5/);
+  it("names the form vendors off the connector mirror, and ChatGPT's subset", () => {
+    for (const v of MCP_FORM_VENDORS) expect(prose).toContain(v.label);
+    const onChatgpt = MCP_FORM_VENDORS.filter((v) => MCP_FORM_VENDORS_ON_CHATGPT.includes(v.key)).map((v) => v.label);
+    const chatgptLine = prose.split("\n").find((l) => /Inside ChatGPT it reads the form only for/.test(l)) ?? "";
+    for (const label of onChatgpt) expect(chatgptLine).toContain(label);
+    for (const v of MCP_FORM_VENDORS.filter((x) => !MCP_FORM_VENDORS_ON_CHATGPT.includes(x.key))) {
+      expect(chatgptLine.split("Inside ChatGPT")[1] ?? "").not.toContain(v.label);
+    }
   });
 
-  it("describes comma-separated terms, which is how the runner reads them", () => {
-    const runner = readFileSync(
-      resolve(__dirname, "../../supabase/functions/agent-runner/index.ts"), "utf8");
-    expect(runner).toMatch(/split\(","\)/);
-    expect(prose).toMatch(/comma-separated/i);
+  it("states the default-deny drafting rule and the factual list that goes to the person", () => {
+    expect(prose).toMatch(/default-deny/);
+    expect(prose).toMatch(/open questions about the work you have done/);
+    for (const topic of [/Work authorisation/, /sponsorship/, /Salary/, /References/, /employment gaps/, /why you left a job/, /demographic/, /Consent/]) {
+      expect(prose).toMatch(topic);
+    }
   });
 
-  it("describes the uncategorised opt-in that now exists", () => {
-    // Added the same day as this guide. If the checkbox is ever removed, the
-    // troubleshooting step telling people to tick it becomes a dead end.
-    expect(allSql).toMatch(/include_uncategorised/);
-    expect(prose).toMatch(/could not be classified/i);
+  it("says model behaviour is our instruction, not a guarantee", () => {
+    expect(prose).toMatch(/Resume Booster tells your AI/);
+    expect(prose).toMatch(/not a promise about what a model will do/);
+  });
+
+  it("names only Claude, ChatGPT and Claude Code as hosts", () => {
+    for (const ide of [/Cursor/, /VS ?Code/, /Cline/, /Windsurf/, /Zed\b/, /Gemini/, /Copilot/]) {
+      expect(prose, `the guide names an IDE or other host (${ide})`).not.toMatch(ide);
+    }
+  });
+
+  it("tells a past buyer they are refunded or honoured, at the retirement notice's address", () => {
+    expect(prose).toMatch(/refund it or honour it/);
+    expect(prose).toMatch(/resumeboostersupp@gmail\.com/);
   });
 });
 
@@ -103,18 +138,18 @@ describe("it does not bake in a number that will go stale", () => {
     }
   });
 
-  it("names no vendor as auto-submittable, since that list moves", () => {
-    // SENDABLE_VENDORS changes whenever an adapter lands or a vendor puts up a
-    // wall. Naming one here would be a claim with no test between it and a
-    // stranger — and the board's own chip already says it per posting.
+  it("names no vendor as auto-submittable", () => {
+    // The sender's vendors (SENDABLE_VENDORS) may appear only as hiring
+    // systems whose FORM an AI reads; no sentence naming one may say it is
+    // submitted to. The two the sender and the form readers share (Breezy,
+    // Pinpoint) are in the form-reading sentence, built off the mirror.
+    const sentences = prose.split(/(?<=[.:])\s+|\n/);
     for (const v of SENDABLE_VENDORS) {
-      expect(prose.toLowerCase(), `the guide must not name ${v} as auto-submittable`)
-        .not.toContain(v.toLowerCase());
+      for (const sentence of sentences.filter((x) => x.toLowerCase().includes(v.toLowerCase()))) {
+        expect(sentence, `the guide names ${v} beside a send`).not.toMatch(/submit|send/i);
+        expect(sentence).toMatch(/reads/);
+      }
     }
-  });
-
-  it("points at the live surface for the split instead", () => {
-    expect(prose).toMatch(/live count|shows the current split|Apply Agent page/i);
   });
 });
 
@@ -164,23 +199,20 @@ describe("the byline says what THIS guide is grounded in", () => {
 });
 
 describe("the refusals are stated, because they are the product", () => {
-  it("promises no CAPTCHA solving or fingerprint evasion", () => {
-    // The hard product boundary. If this sentence ever stops being true, the
-    // change should be loud.
-    expect(prose).toMatch(/does not solve CAPTCHAs|never solves or evades a CAPTCHA/i);
-    expect(prose).toMatch(/fingerprint|spoof/i);
+  it("tells the AI never to solve or evade a CAPTCHA, create an account or enter a password", () => {
+    expect(prose).toMatch(/Never create an employer account, enter a password, or solve or evade a CAPTCHA/);
   });
 
-  it("promises it never invents an answer", () => {
-    expect(prose).toMatch(/never invents an answer/i);
+  it("tells the AI never to invent an answer", () => {
+    expect(prose).toMatch(/Never invent an answer/);
   });
 
-  it("promises identity and demographic questions stay with the candidate", () => {
+  it("keeps identity and demographic questions with the candidate", () => {
     expect(prose).toMatch(/identity, nationality, demographic/i);
   });
 
-  it("promises no duplicate applications", () => {
-    expect(prose).toMatch(/never sends twice/i);
+  it("leaves the final Submit to the person", () => {
+    expect(prose).toMatch(/stop before the final Submit/);
   });
 
   it("does not claim a success rate or an interview outcome", () => {
