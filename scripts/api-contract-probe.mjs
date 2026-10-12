@@ -28,10 +28,11 @@
 // its own rate limit instead of the API.
 //
 // RB_API_KEY IS A FREE KEY, and several assertions below depend on it: the
-// paid tools must REFUSE it (fit_resume in band, engine=ranked with 402) and
-// key_status must report that refusal in advance. If you point this at a paid
-// key, those three checks are the ones that will "fail" without anything being
-// wrong.
+// ranked engine must refuse it with 402, fit scoring answers it under the free
+// allowance (25 a UTC day on a confirmed key, owner decision 2026-10-11) or
+// names why not, and key_status must say both in advance. If you point this at
+// a paid key, the ranked-engine checks are the ones that will "fail" without
+// anything being wrong.
 
 import { readFileSync } from "node:fs";
 
@@ -567,10 +568,16 @@ console.log("\n[mcp] handshake, catalogue, and the keyed tools");
   const r = await mcp("tools/list");
   const tools = r.body?.result?.tools ?? [];
   const names = tools.map((t) => t.name);
-  for (const t of ["search_jobs", "get_job", "get_jobs", "check_jobs_open", "check_apply_support",
-                   "request_application", "application_status", "board_stats", "key_status",
-                   "debug_search", "fit_resume"]) {
+  // The wave-4 keyed list (2026-10-11): every read tool, apply_myself, fit
+  // and key_status. The apply agent's three tools are retired and listed to
+  // nobody; debug_search answers a key but is never listed.
+  for (const t of ["search_jobs", "get_job", "get_jobs", "check_jobs_open", "apply_myself",
+                   "board_stats", "key_status", "fit_resume", "employer_hiring_record",
+                   "employer_growth", "search", "fetch"]) {
     ok(names.includes(t), `tools/list advertises ${t}`);
+  }
+  for (const t of ["request_application", "application_status", "check_apply_support", "debug_search"]) {
+    ok(!names.includes(t), `tools/list does not list ${t}`);
   }
   const missingSchema = tools.filter((t) => !t.inputSchema).map((t) => t.name);
   ok(missingSchema.length === 0, "every tool ships an inputSchema", missingSchema.join(",") || "all present");
@@ -582,11 +589,8 @@ console.log("\n[mcp] handshake, catalogue, and the keyed tools");
   const missingTitle = tools.filter((t) => !t.title).map((t) => t.name);
   ok(missingTitle.length === 0, "every tool ships a display title", missingTitle.join(",") || "all present");
   const acting = tools.filter((t) => t.annotations?.readOnlyHint !== true).map((t) => t.name);
-  ok(acting.length === 1 && acting[0] === "request_application",
-    "exactly one tool is NOT read-only, and it is request_application", acting.join(",") || "none");
-  const ra = tools.find((t) => t.name === "request_application");
-  ok(ra?.annotations?.destructiveHint === true, "request_application asks the client to confirm (destructiveHint)");
-  ok(ra?.annotations?.idempotentHint === true, "request_application is idempotent — a retry does not apply twice");
+  ok(acting.length === 0,
+    "every listed tool is read-only: since the apply pivot apply_myself reads the employer's form and submits nothing", acting.join(",") || "none");
   // outputSchema is what lets a client parse rows instead of guessing at
   // JSON-in-text; a tool that declares one must also SEND structuredContent,
   // asserted on search_jobs below.
@@ -597,9 +601,8 @@ console.log("\n[mcp] handshake, catalogue, and the keyed tools");
   for (const p of ["companies", "experience", "postedAfter", "includeUnstatedPay"]) {
     ok(Boolean(sj?.inputSchema?.properties?.[p]), `search_jobs advertises ${p}`);
   }
-  const ds = tools.find((t) => t.name === "debug_search");
-  ok(JSON.stringify(ds?.inputSchema?.properties ?? {}) === JSON.stringify(sj?.inputSchema?.properties ?? {}),
-    "debug_search takes the SAME arguments as search_jobs, as its description claims");
+  // debug_search takes the SAME arguments as search_jobs (one SEARCH_PROPERTIES
+  // object in the server, pinned in src/test); it is called below, unlisted.
 }
 {
   const r = await mcp("tools/call", { name: "board_stats", arguments: {} });
@@ -719,14 +722,16 @@ let mcpToken = null;
   ok(Number.isFinite(j?.quota?.limit) && Number.isFinite(j?.quota?.remaining), "key_status states the daily quota and what is left",
     `${j?.quota?.remaining}/${j?.quota?.limit}`);
   ok(Number.isFinite(j?.quota?.resetsInSeconds) && Number.isFinite(j?.rate?.resetsInSeconds), "key_status says when each window resets");
-  // The probe key is FREE, so the paid tools must read false here — and that
-  // must agree with the 402 /v1 gives and the in-band refusal fit_resume gives.
+  // The probe key is FREE: the ranked engine reads false (as /v1's 402 says),
+  // and fit reads the free allowance — answering while a scoring is left on a
+  // confirmed key, otherwise false with the blocker named — matching what
+  // fit_resume answers below.
   ok(j?.key?.paid === false, "the probe key reports as free", String(j?.key?.paid));
-  ok(j?.features?.fit_resume === false && j?.features?.rankedEngine === false,
-    "key_status refuses the paid features in ADVANCE, matching what they answer");
-  ok(typeof j?.apply?.ready === "boolean" && Array.isArray(j?.apply?.blockers),
-    "key_status states apply readiness with the blockers named");
-  ok(j.apply.ready === true || j.apply.blockers.length > 0, "a not-ready answer always names at least one blocker");
+  const f = j?.features ?? {};
+  ok(f.rankedEngine === false && f.fitDailyLimit === 25 && f.fit_resume === (f.fitBlocker === undefined),
+    "key_status states the fit allowance in ADVANCE (25 a day on a free key, the blocker named when it would refuse) and refuses the ranked engine",
+    JSON.stringify({ fit: f.fit_resume, limit: f.fitDailyLimit, left: f.fitFreeLeftToday, blocker: f.fitBlocker, ranked: f.rankedEngine }));
+  ok(j?.apply === undefined, "key_status carries no apply block: the apply agent is retired");
   ok(r.body?.result?.structuredContent?.key !== undefined, "key_status answers with structuredContent too");
 }
 {
@@ -739,29 +744,34 @@ let mcpToken = null;
   ok("applied" in (j?.decision?.filters ?? {}), "trace names the applied filters");
 }
 {
-  // fit_resume: the drop as a tool, and PAID — gated on the key's tier exactly
-  // as POST /v1/fit is. RB_API_KEY is a free key, so the honest answer is the
-  // in-band refusal: a tool RESULT with isError and the upgrade pointer, never
-  // a transport error, and never a silently served score (which is what a
-  // free key got until 2026-09-04, draining the paid customers' scorer
-  // bucket). Scoring itself — the founder résumé resolving to a real role —
-  // is pinned in src/test/a-founders-resume-searched-for-go-to-market.test.ts.
+  // fit_resume: the drop as a tool, FREE FAIR USE since 2026-10-11 under the
+  // same rule as POST /v1/fit (_shared/fit-gate.ts): a confirmed free key
+  // scores 25 times a UTC day and is told how many are left; a key past its
+  // day, or one whose email was never confirmed, gets an in-band refusal that
+  // names which. Never a transport error, and never the old "paid feature"
+  // pointer. Scoring itself is pinned in
+  // src/test/a-founders-resume-searched-for-go-to-market.test.ts.
   const cv = "Campbell Abbott - Founder & CEO, Resume Booster\nEXPERIENCE\nFounder & CEO 2024-2026. Ran go-to-market, hired the team.\nLed go-to-market strategy across three launches; owned roadmap and P&L.\nSKILLS: leadership, strategy, hiring, SQL\nBS, University of Washington";
   const r = await mcp("tools/call", { name: "fit_resume", arguments: { resumeText: cv, limit: 5 } });
   const j = toolJson(r.body);
   ok(r.status === 200 && !!j, "fit_resume answers in-band", j ? "tool result" : `HTTP ${r.status}`);
-  ok(r.body?.result?.isError === true && typeof j?.error === "string", "fit_resume refuses a free key as a tool result, not a server error", j?.error ?? "no error line");
-  ok(/paid/i.test(j?.error ?? ""), "the refusal names it a paid feature", j?.error);
-  ok(/data-api/.test(j?.fix ?? ""), "the refusal points at the upgrade", j?.fix);
-  ok(!Array.isArray(j?.jobs), "no score is served to a free key");
+  const scored = r.body?.result?.isError !== true && Array.isArray(j?.jobs) && Number.isFinite(j?.fitFreeLeftToday);
+  const refused = r.body?.result?.isError === true && /free daily allowance is used|email address was confirmed/.test(j?.error ?? "");
+  ok(scored || refused, "a free key is scored under the free allowance (fitFreeLeftToday), or refused naming the spent day or the missing confirmation",
+    scored ? `${j.jobs.length} scored, ${j.fitFreeLeftToday} left today` : (j?.error ?? "no error line"));
+  ok(!/paid feature|Upgrade the key/i.test(`${j?.error ?? ""} ${j?.fix ?? ""}`), "no refusal sends a free key to buy an upgrade", j?.fix);
 }
 {
-  // An unkeyed tool call must be refused in the MCP way — a result the agent
-  // can read — not a transport error it cannot.
+  // With no key (wave 4): board_stats answers and is never counted, and a
+  // keyed tool (key_status) is refused in the MCP way — a result the agent can
+  // read — not a transport error it cannot.
   const r = await mcp("tools/call", { name: "board_stats", arguments: {} }, { key: null });
   const j = toolJson(r.body);
   ok(r.status < 500, "unkeyed tool call is not a server error", `HTTP ${r.status}`);
-  ok(Boolean(j?.error || r.body?.error), "unkeyed tool call is refused in-band");
+  ok(Number.isFinite(j?.servablePostings) && j?.unkeyed?.counted === false, "unkeyed board_stats answers and is never counted", JSON.stringify(j?.unkeyed ?? null));
+  const k = await mcp("tools/call", { name: "key_status", arguments: {} }, { key: null });
+  const kj = toolJson(k.body);
+  ok(k.status < 500 && (k.status === 401 || k.body?.result?.isError === true || Boolean(kj?.error)), "an unkeyed keyed tool is refused in-band (or with a sign-in challenge while sign-in is on)", `HTTP ${k.status}`);
 }
 
 console.log("\n" + "=".repeat(68));

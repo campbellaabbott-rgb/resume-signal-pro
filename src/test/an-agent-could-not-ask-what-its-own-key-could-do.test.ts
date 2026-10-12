@@ -344,11 +344,13 @@ describe("the surface says it changed, and the live probe checks it", () => {
       expect(PROBE, `the probe must call ${t}`).toMatch(new RegExp(`name: "${t}"`));
     }
     expect(PROBE, "annotations are only useful on the wire").toMatch(/every tool ships annotations with readOnlyHint/);
-    expect(PROBE).toMatch(/exactly one tool is NOT read-only, and it is request_application/);
+    // Re-pinned (wave 4): the apply agent's one acting tool is retired, so
+    // every listed tool is read-only, apply_myself included.
+    expect(PROBE).toMatch(/every listed tool is read-only: since the apply pivot apply_myself reads the employer's form and submits nothing/);
     expect(PROBE, "a declared outputSchema must be matched by a sent structuredContent")
       .toMatch(/answers with structuredContent, not only JSON-in-text/);
-    expect(PROBE, "the probe holds a FREE key, so the paid features must read false in advance")
-      .toMatch(/key_status refuses the paid features in ADVANCE/);
+    expect(PROBE, "the probe holds a FREE key, so key_status must state its fit allowance and refuse the ranked engine in advance")
+      .toMatch(/key_status states the fit allowance in ADVANCE/);
     expect(PROBE, "accepted is not applied — the board's cardinal rule, on this surface too")
       .toMatch(/experience is APPLIED and the band is returned/);
     // RE-PINNED, NOT DELETED (2026-09-27). The old assertion demanded a numeric

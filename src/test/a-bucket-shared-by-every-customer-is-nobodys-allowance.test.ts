@@ -122,9 +122,20 @@ describe("a bucket shared by every customer is nobody's allowance", () => {
     // predicate (paid tiers and a pass), the plan and Pro open 1,000. The
     // refusal is the free day's, before any search runs, and sells nothing.
     expect(dispatch).toMatch(/const standing = hasFitAccess\(tier\) \? fitStanding\(true\) : await fitStandingOf\(client, tier, apiKeyId\);/);
-    expect(dispatch).toMatch(/if \(!fitAllowed\(standing, used\)\) \{\s*return toolErr\(\s*`fit_resume's free daily allowance is used/);
+    // Re-pinned by the wave-4 integration: below the full allowance the free
+    // gate is POST /v1/fit's own rule (_shared/fit-gate.ts, a confirmed key or
+    // a proven account), read through the same SQL reader, and its refusal
+    // still comes before any search runs.
+    expect(dispatch).toMatch(/const gate = standing\.full \? null : await fitFreeGate\(client, apiKeyId\);/);
+    expect(dispatch).toMatch(/if \(gate && !gate\.open\) return fitRefusal\(gate\);/);
     expect(dispatch).toMatch(/await runFitResume\(args, apiKeyId\)/);
-    expect(dispatch.indexOf("fitAllowed(standing, used)"), "refused before scoring").toBeLessThan(dispatch.indexOf("runFitResume(args"));
+    expect(dispatch.indexOf("return fitRefusal(gate)"), "refused before scoring").toBeLessThan(dispatch.indexOf("runFitResume(args"));
+    const refusal = between(MCP, "function fitRefusal(", "\n}\n");
+    expect(refusal).toMatch(/`fit_resume's free daily allowance is used/);
+    expect(refusal).toMatch(/fit_resume needs a key whose email address was confirmed/);
+    expect(refusal).not.toMatch(/Upgrade|paid feature|Agent (?:Pass|plan)/);
+    expect(MCP).toMatch(/import \{ fitGate, fitStandingFrom, type FitGate, type FitKeyStanding \} from "\.\.\/_shared\/fit-gate\.ts";/);
+    expect(API).toMatch(/export \{ fitGate, fitStandingFrom \} from "\.\.\/_shared\/fit-gate\.ts";|from "\.\/fit-allowance\.ts"/);
     expect(dispatch, "never inside ChatGPT").toMatch(/if \(ctx\.edition === "chatgpt"\) \{\s*return toolErr\(/);
     // The upgrade pointer to a plan nobody can buy is gone (economics, D2 §7).
     expect(MCP_RAW).not.toMatch(/Upgrade the key at /);
@@ -140,11 +151,15 @@ describe("a bucket shared by every customer is nobody's allowance", () => {
     expect(MCP).toMatch(/const KEY_ONLY_READ_TOOLS: readonly string\[\] = TOOLS\.map\(\(t\) => t\.name\)\s*\.filter\(\(n\) => !ANON_TOOLS\.includes\(n\) && !PAID_TOOLS\.includes\(n\) && !ACCOUNT_TOOLS\.includes\(n\)\)/);
   });
 
-  it("the live probe, holding a free key, expects the in-band refusal — never a score", () => {
+  // RE-PINNED, NOT DELETED (wave 4 integration): fit is free fair use on a
+  // confirmed key since 2026-10-11, so the live probe holding a free key now
+  // expects a score under the free allowance or a refusal naming the spent day
+  // or the missing confirmation, and never the old paid-feature pointer.
+  it("the live probe, holding a free key, expects the free allowance — a counted score or a refusal that names why — and never an upgrade pointer", () => {
     const block = between(PROBE, 'name: "fit_resume", arguments', "unkeyed tool call");
-    expect(block).toMatch(/isError === true/);
-    expect(block).toMatch(/\/paid\/i\.test\(j\?\.error/);
-    expect(block).toMatch(/!Array\.isArray\(j\?\.jobs\)/);
-    expect(block).not.toMatch(/fit_resume jobs carry a numeric fit/);
+    expect(block).toMatch(/Number\.isFinite\(j\?\.fitFreeLeftToday\)/);
+    expect(block).toMatch(/free daily allowance is used\|email address was confirmed/);
+    expect(block).toMatch(/!\/paid feature\|Upgrade the key\/i\.test/);
+    expect(block).not.toMatch(/\/paid\/i\.test\(j\?\.error/);
   });
 });
