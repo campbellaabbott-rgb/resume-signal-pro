@@ -14,14 +14,15 @@
 import { useTranslation } from "react-i18next";
 import { PauseCircle } from "lucide-react";
 import type { BoardBudgetRefusal } from "@/lib/board-budget";
+import { count } from "@/lib/format";
 
 export const BOARD_BUDGET_CONTACT_EMAIL = "resumeboostersupp@gmail.com";
 
 export function BoardBudgetNotice({ refusal, variant = "panel" }: { refusal: BoardBudgetRefusal; variant?: "panel" | "banner" }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const reset = refusal.resetAt ? new Date(refusal.resetAt) : null;
   const time = reset && Number.isFinite(reset.getTime())
-    ? reset.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
+    ? reset.toLocaleTimeString(i18n.language || undefined, { hour: "numeric", minute: "2-digit" })
     : "00:00 UTC";
   const body = refusal.code === "country"
     ? t("jobsPage.budgetCountry", "Job board reads from your region are paused right now.")
@@ -30,7 +31,7 @@ export function BoardBudgetNotice({ refusal, variant = "panel" }: { refusal: Boa
       : refusal.code === "pass"
         ? t("jobsPage.budgetPass", "Your browser needs to finish a quick check before the job board can load. Reload the page to try again.")
         : t("jobsPage.budgetAddress", "This connection has used today's allowance of {{limit}} job board reads. It resets at {{time}} your time.", {
-            limit: (refusal.limit ?? 0).toLocaleString(),
+            limit: count(refusal.limit ?? 0, { lng: i18n.language }),
             time,
           });
   return (
@@ -38,11 +39,11 @@ export function BoardBudgetNotice({ refusal, variant = "panel" }: { refusal: Boa
       role="status"
       data-board-budget-notice={refusal.code}
       className={variant === "banner"
-        ? "rounded-xl border border-amber-300/60 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700/50 px-4 py-3 mb-4 text-left"
-        : "rounded-2xl border border-border bg-card p-6 my-4 text-left max-w-xl mx-auto"}
+        ? "rounded-lg border border-warning/40 bg-warning-tint px-4 py-3 mb-4 text-left"
+        : "rounded-lg border border-border bg-card p-6 my-4 text-left max-w-xl mx-auto"}
     >
       <p className="flex items-center gap-2 font-semibold text-foreground mb-1">
-        <PauseCircle className="w-4 h-4 shrink-0 text-amber-600" aria-hidden="true" />
+        <PauseCircle className="w-4 h-4 shrink-0 text-warning" aria-hidden="true" />
         {t("jobsPage.budgetTitle", "The job board is paused for this connection")}
       </p>
       <p className="text-sm text-muted-foreground">{body}</p>

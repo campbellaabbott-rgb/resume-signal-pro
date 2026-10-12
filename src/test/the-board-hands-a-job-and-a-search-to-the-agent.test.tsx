@@ -489,8 +489,8 @@ describe("2. the header", () => {
     const fetchSpy = hookFetch();
     render(<MemoryRouter><Header /></MemoryRouter>);
     // The wide nav's item; the phone menu is closed.
-    expect(screen.getAllByRole("link", { name: "Agents" }).length).toBe(1);
-    const wide = screen.getByRole("link", { name: "Agents" });
+    expect(screen.getAllByRole("link", { name: "For AI chats" }).length).toBe(1);
+    const wide = screen.getByRole("link", { name: "For AI chats" });
     expect(wide.getAttribute("href")).toBe("/agents");
     // Order in the wide nav: Jobs, then Agents.
     const jobs = screen.getByRole("link", { name: "Jobs" });
@@ -498,7 +498,8 @@ describe("2. the header", () => {
     // The twin is the one that renders under 640px: in the phone menu (which
     // replaced the icon-only link, S8-093).
     fireEvent.click(screen.getByRole("button", { name: "Menu" }));
-    const links = screen.getAllByRole("link", { name: "Agents" });
+    // The menu is a modal sheet: the wide nav behind it is aria-hidden while it is open.
+    const links = screen.getAllByRole("link", { name: "For AI chats", hidden: true });
     expect(links.length).toBe(2);
     for (const l of links) expect(l.getAttribute("href")).toBe("/agents");
     const twin = links.find((l) => l !== wide)!;
@@ -514,7 +515,7 @@ describe("2. the header", () => {
     // opened one before each click.
     const twinNow = () => {
       if (!document.getElementById("phone-nav")) fireEvent.click(screen.getByRole("button", { name: "Menu" }));
-      return screen.getAllByRole("link", { name: "Agents" }).find((l) => l.closest("#phone-nav"))!;
+      return screen.getAllByRole("link", { name: "For AI chats", hidden: true }).find((l) => l.closest("#phone-nav"))!;
     };
     await new Promise((r) => setTimeout(r, 0));
     fireEvent.click(twinNow());

@@ -86,7 +86,8 @@ const ROWS = [
 // The two variants the hierarchy is made of, read off the class list the
 // Button component actually renders. `from-primary` is the filled default's
 // gradient; `bg-transparent` is the outline's.
-const isFilled = (el: Element) => el.className.includes("from-primary");
+// The filled variant is the flat Ledger primary (design pass A dropped the gradient).
+const isFilled = (el: Element) => /(^|\s)bg-primary(\s|$)/.test(el.className);
 const isOutline = (el: Element) => el.className.includes("bg-transparent");
 
 function mount(path = "/jobs", width = 1280) {
