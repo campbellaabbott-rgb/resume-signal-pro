@@ -72,7 +72,8 @@ describe("L7-09, L8-15: a year count is a requirement only when it is one", () =
   });
   it("a minimum age is not experience", () => {
     expect(parseMinYears("Must be at least 18 years of age.")).toBeNull();
-    expect(parseMinYears("Applicants must be 21 years old or older; 2 years of experience preferred.")).toBe(2);
+    // "preferred" became a wish, not a floor, in S12-126; the age sentence is what this line is about.
+    expect(parseMinYears("Applicants must be 21 years old or older; 2 years of experience required.")).toBe(2);
     expect(detectExperience("Cashier", "Must be at least 18 years of age. No experience needed.").minYears).toBeNull();
   });
   it("positive control: stated requirements still read", () => {
