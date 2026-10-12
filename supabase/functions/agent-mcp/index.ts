@@ -83,7 +83,8 @@ import { PASS_TIER } from "../_shared/pass.ts";
 // disagree; a live pass is fit-capable and NOT paid (see key-tier.ts).
 import { hasFitAccess, isPaidKeyTier } from "../_shared/key-tier.ts";
 // Fit scoring's day, decided once for the connector and POST /v1/fit.
-import { FIT_FREE_PER_DAY, FIT_FULL_PER_DAY, fitAllowed, fitFreeLeft, fitStanding } from "../_shared/fit-allowance.ts";
+import { FIT_FREE_PER_DAY, FIT_FULL_PER_DAY, fitStanding } from "../_shared/fit-allowance.ts";
+import { fitGate, fitStandingFrom, type FitGate, type FitKeyStanding } from "../_shared/fit-gate.ts";
 // Pro opens the full fit allowance, read by the key's ACCOUNT (import-free module).
 import { accountProStanding } from "../_shared/pro-standing.ts";
 // Applying yourself: the employer's own form, read where it was published,
@@ -286,8 +287,13 @@ const SUPPORTED_METHODS = ["initialize", "tools/list", "tools/call", "prompts/li
  *  agent's tools are retired; tools/list lists only what the caller can call;
  *  refusals never tell a chat user about headers; fit_resume is free at 25 a
  *  day on any key and never offered on ChatGPT; ChatGPT searches ask the board
- *  not to log them. */
-const FN_BUILD = "agent-mcp.2026-10-11.1";
+ *  not to log them.
+ *  2026-10-11.2 (the wave-4 integration): fit_resume's free allowance follows
+ *  the one rule POST /v1/fit follows (_shared/fit-gate.ts): a key whose email
+ *  was confirmed or whose account proved its mailbox scores 25 a day; any
+ *  other key is refused and told where a confirmed one comes from, instead of
+ *  scoring on this door and being refused on /v1. */
+const FN_BUILD = "agent-mcp.2026-10-11.2";
 /** Where a free key is minted — the page every refusal in this file points at. */
 const MINT_URL = "https://resumebooster.work/data-api";
 /** Where a pass is bought, signed in — the fix every pass refusal names. */
@@ -1585,7 +1591,7 @@ const TOOLS = [
         features: {
           type: "object",
           properties: {
-            fit_resume: { type: "boolean", description: "True on every key (never inside ChatGPT)." },
+            fit_resume: { type: "boolean", description: "Whether it answers now; fitBlocker says why not." },
             fitDailyLimit: { type: "integer" },
             fitFreeLeftToday: { type: ["integer", "null"], description: "Free scorings left today; null when the key has the full allowance." },
             rankedEngine: { type: "boolean", description: "/v1/jobs?engine=ranked on the data API: paid tiers only." },
@@ -3753,9 +3759,13 @@ async function runKeyStatus(client: SupabaseClient, d: Decision, ctx: Ctx = KEYE
   const paid = isPaidKeyTier(d.key_tier);
   const apiKeyId = d.api_key_id ?? "";
   const userId = apiKeyId ? await keyOwner(client, apiKeyId) : null;
-  // Fit's day for this key: the same read the fit gate makes.
+  // Fit's day for this key: the same reads and the same rule the fit gate uses.
   const fit = await fitStandingOf(client, d.key_tier, apiKeyId);
-  const used = fit.full ? 0 : await fitCallsToday(client, apiKeyId);
+  const gate = fit.full ? null : await fitFreeGate(client, apiKeyId);
+  // The count includes only fit_resume calls already made, so the next one
+  // answers only while a free scoring is left.
+  const freeLeft = gate && gate.open && gate.basis === "free" ? gate.left : 0;
+  const fitBlocker = gate === null ? null : !gate.open ? gate.reason : freeLeft > 0 ? null : "spent";
   return {
     key: {
       tier: d.key_tier ?? "free",
@@ -3780,9 +3790,10 @@ async function runKeyStatus(client: SupabaseClient, d: Decision, ctx: Ctx = KEYE
       resetsInSeconds: secondsToMidnightUtc(),
     },
     features: {
-      fit_resume: ctx.edition !== "chatgpt",
+      fit_resume: ctx.edition !== "chatgpt" && fitBlocker === null,
       fitDailyLimit: fit.limit,
-      fitFreeLeftToday: fit.full ? null : fitFreeLeft(used),
+      fitFreeLeftToday: gate === null ? null : freeLeft,
+      ...(fitBlocker ? { fitBlocker } : {}),
       rankedEngine: paid,
     },
     counted: "These figures include this call — key_status is metered like every other tool.",
@@ -3848,19 +3859,55 @@ async function fitStandingOf(client: SupabaseClient, tier: string | null, apiKey
   return fitStanding(false);
 }
 
+/** The endpoint api_key_check meters fit_resume under, and the one the free-allowance reader counts. */
+const FIT_ENDPOINT = "/mcp/fit_resume";
+
 /**
- * fit_resume calls this key made today, this one included: api_key_check
- * meters every call into api_usage (key, day, endpoint) before the tool runs.
- * An unreadable count is the whole free day, so a read fault refuses rather
- * than scores past the allowance.
+ * The free allowance for a key without the full one: the same reader and the
+ * same rule as POST /v1/fit (api_key_fit_allowance, 20261011110000, through
+ * _shared/fit-gate.ts). The reader answers whether the key came through a
+ * confirmed api-key-request link, whether its account proved its mailbox, and
+ * the fit_resume calls it made today, this one included (api_key_check meters
+ * the call before the tool runs). A key with no row is refused as
+ * unconfirmed; a read that fails is refused as unknown, never scored.
  */
-async function fitCallsToday(client: SupabaseClient, apiKeyId: string): Promise<number> {
-  if (!apiKeyId) return FIT_FREE_PER_DAY + 1;
-  const today = new Date().toISOString().slice(0, 10);
-  const { data, error } = await client.from("api_usage").select("calls")
-    .eq("key_id", apiKeyId).eq("day", today).eq("endpoint", "/mcp/fit_resume").maybeSingle();
-  if (error) return FIT_FREE_PER_DAY + 1;
-  return Number((data as { calls?: unknown } | null)?.calls ?? 0) || 0;
+async function fitFreeGate(client: SupabaseClient, apiKeyId: string): Promise<FitGate> {
+  if (!apiKeyId) return fitGate({ paid: false, plan: false, standing: null });
+  let data: unknown = null;
+  let failed = false;
+  try {
+    const r = await client.rpc("api_key_fit_allowance", { p_key_id: apiKeyId, p_endpoint: FIT_ENDPOINT });
+    data = r.data;
+    if (r.error) {
+      failed = true;
+      console.error("[AGENT-MCP] fit allowance read failed:", String(r.error.message ?? "").slice(0, 160));
+    }
+  } catch (e) {
+    failed = true;
+    console.error("[AGENT-MCP] fit allowance read threw:", e instanceof Error ? e.message.slice(0, 160) : String(e));
+  }
+  const standing: FitKeyStanding | null | undefined = fitStandingFrom(data, failed);
+  return fitGate({ paid: false, plan: false, standing });
+}
+
+/** fit_resume's refusal for a closed free gate, one sentence per reason. */
+function fitRefusal(gate: Extract<FitGate, { open: false }>): unknown {
+  if (gate.reason === "unconfirmed") {
+    return toolErr(
+      "fit_resume needs a key whose email address was confirmed, or an account that has proven its mailbox.",
+      `Get a free key at ${MINT_URL}: we email you a link, and the key it issues scores ${FIT_FREE_PER_DAY} times a day. The search tools keep working on this key, and ${SITE_JOBS_URL} scores a CV against a posting, free.`,
+    );
+  }
+  if (gate.reason === "unknown") {
+    return toolErr(
+      "fit_resume's allowance could not be read just now; nothing was scored.",
+      "Try again in a minute. The search tools keep working on this key.",
+    );
+  }
+  return toolErr(
+    `fit_resume's free daily allowance is used (${FIT_FREE_PER_DAY} scorings a day); it resets at midnight UTC.`,
+    `The search tools keep working on this key, and ${SITE_JOBS_URL} scores a CV against a posting, free.`,
+  );
 }
 
 async function callTool(
@@ -3895,16 +3942,13 @@ async function callTool(
       // The fit predicate first, in this arm (a pass opens the scorer and
       // nothing on /v1; isPaidKeyTier alone would refuse it), then the plan
       // and Pro on the key's account.
+      // Below the full allowance, the free one follows POST /v1/fit's rule
+      // (_shared/fit-gate.ts): a confirmed key or a proven account, 25 a day.
       const standing = hasFitAccess(tier) ? fitStanding(true) : await fitStandingOf(client, tier, apiKeyId);
-      const used = standing.full ? 0 : await fitCallsToday(client, apiKeyId);
-      if (!fitAllowed(standing, used)) {
-        return toolErr(
-          `fit_resume's free daily allowance is used (${FIT_FREE_PER_DAY} scorings a day); it resets at midnight UTC.`,
-          `The search tools keep working on this key, and ${SITE_JOBS_URL} scores a CV against a posting, free.`,
-        );
-      }
+      const gate = standing.full ? null : await fitFreeGate(client, apiKeyId);
+      if (gate && !gate.open) return fitRefusal(gate);
       const scored = await runFitResume(args, apiKeyId) as Record<string, unknown>;
-      return toolOk(standing.full ? scored : { ...scored, fitFreeLeftToday: fitFreeLeft(used) });
+      return toolOk(gate && gate.basis === "free" ? { ...scored, fitFreeLeftToday: gate.left } : scored);
     }
     case "search": return toolOk(await runSearchAlias(args, ctx));
     case "fetch": return toolOk(await runFetchAlias(args, ctx));

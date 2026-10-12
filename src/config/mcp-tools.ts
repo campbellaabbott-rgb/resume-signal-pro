@@ -1078,6 +1078,13 @@ export const MCP_TROUBLESHOOTING: readonly TroubleRow[] = [
     source: { kind: "server", pin: "fit_resume's free daily allowance is used", file: "index.ts" },
   },
   {
+    id: "fit-unconfirmed",
+    see: "\"fit_resume needs a key whose email address was confirmed…\"",
+    why: "The free scorings are for a key that came through the emailed link, or an account that has proven its mailbox — the same rule as POST /v1/fit.",
+    fix: `Get a free key at ${MCP_MINT_PATH}: we email you a link, and the key it issues scores ${MCP_FIT_FREE_PER_DAY} times a day.`,
+    source: { kind: "server", pin: "fit_resume needs a key whose email address was confirmed", file: "index.ts" },
+  },
+  {
     id: "job-id",
     see: "\"That is not a job id from this board.\"",
     why: "You passed a link or a title.",

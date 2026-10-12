@@ -349,7 +349,10 @@ const LIST_FILTERS = [
 // 2026-10-11.1: GET /v1/jobs/{id}/application; POST /v1/fit free 25 a day on
 // a confirmed key (api_key_fit_allowance, 20261011110000); 402s name the
 // Builder card; /v1/fit/ and /v1/fit meter as one endpoint.
-const FN_BUILD = "public-api.2026-10-11.1";
+// 2026-10-11.2 (the wave-4 integration): the fit decision moved to
+// _shared/fit-gate.ts, which fit_resume in agent-mcp now reads too; /v1's
+// behaviour is unchanged.
+const FN_BUILD = "public-api.2026-10-11.2";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",

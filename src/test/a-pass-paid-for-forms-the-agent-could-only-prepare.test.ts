@@ -32,7 +32,7 @@ const USER = "55555555-5555-4555-8555-555555555555";
 const KEY = "rb_live_harness_key_0123456789";
 let handler: EdgeHandler;
 let rpcCalls: Array<{ name: string; args: Record<string, unknown> }>;
-let state: { subscribed: boolean; pass: boolean; resumeFile: string; pro: boolean; fitUsed: number };
+let state: { subscribed: boolean; pass: boolean; resumeFile: string; pro: boolean; fitUsed: number; confirmed: boolean; proven: boolean; fitReadFails: boolean };
 
 function chain(result: unknown): unknown {
   const p: unknown = new Proxy({}, {
@@ -62,7 +62,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   rpcCalls = [];
-  state = { subscribed: false, pass: true, resumeFile: `${USER}/cv.pdf`, pro: false, fitUsed: 1 };
+  state = { subscribed: false, pass: true, resumeFile: `${USER}/cv.pdf`, pro: false, fitUsed: 1, confirmed: true, proven: false, fitReadFails: false };
   const later = new Date(Date.now() + 3 * 3_600_000).toISOString();
   (globalThis as Record<string, unknown>).__mcpDb = {
     rpc: (name: string, args: Record<string, unknown> = {}) => {
@@ -77,7 +77,13 @@ beforeEach(() => {
         : name === "agent_employer_in_cooldown" ? false
         : name === "pro_entitlement_rows" ? (state.pro ? [{ status: "active", current_period_end: later, bound: true }] : [])
         : name === "mcp_anon_check" ? { allowed: true, global_used: 1, ip_used: 1, ip_cap: 25, global_cap: 2000 }
+        // The free fit allowance's reader (20261011110000), shared with POST /v1/fit.
+        : name === "api_key_fit_allowance" ? [{ fa_user_id: USER, fa_confirmed: state.confirmed, fa_proven: state.proven, fa_used: state.fitUsed }]
         : null;
+      if (name === "api_key_fit_allowance" && state.fitReadFails) {
+        const failed = Promise.resolve({ data: null, error: { message: "statement timeout" } });
+        return Object.assign(failed, { maybeSingle: () => failed, single: () => failed });
+      }
       const r = Promise.resolve({ data, error: null });
       return Object.assign(r, { maybeSingle: () => r, single: () => r });
     },
@@ -184,7 +190,39 @@ describe("S11-121, kept: the Agent plan opens the scorer, and fit is free at 25 
     expect(refused.raw).toMatch(/free daily allowance is used \(25 scorings a day\)/);
     expect(refused.raw).not.toMatch(/paid feature|agents\/pass|data-api/);
     const { sc } = await call("key_status", {});
-    expect(sc.features).toMatchObject({ fit_resume: true, fitDailyLimit: 25, fitFreeLeftToday: 0 });
+    expect(sc.features).toMatchObject({ fit_resume: false, fitDailyLimit: 25, fitFreeLeftToday: 0, fitBlocker: "spent" });
+    expect(rpcCalls.some((c) => c.name === "api_key_fit_allowance" && c.args.p_endpoint === "/mcp/fit_resume")).toBe(true);
+  });
+
+  // THE SAME RULE AS POST /v1/fit (the wave-4 integration): the free 25 are for
+  // a key whose email was confirmed or whose account proved its mailbox. Before,
+  // this door scored every live key and /v1 refused the unconfirmed ones.
+  it("an unconfirmed key on an unproven account is refused and told where a confirmed key comes from; key_status says why", async () => {
+    state.subscribed = false; state.pass = false; state.pro = false;
+    state.confirmed = false; state.proven = false; state.fitUsed = 1;
+    const refused = await call("fit_resume", cv);
+    expect(refused.isError).toBe(true);
+    expect(refused.raw).toMatch(/fit_resume needs a key whose email address was confirmed, or an account that has proven its mailbox/);
+    expect(refused.raw).toMatch(/resumebooster\.work\/data-api/);
+    expect(refused.raw).not.toMatch(/paid feature|agents\/pass|\bAgent (?:Pass|plan)\b/);
+    const { sc } = await call("key_status", {});
+    expect(sc.features).toMatchObject({ fit_resume: false, fitDailyLimit: 25, fitBlocker: "unconfirmed" });
+  });
+
+  it("a proven account counts as confirmed, as it does on /v1", async () => {
+    state.subscribed = false; state.pass = false; state.pro = false;
+    state.confirmed = false; state.proven = true; state.fitUsed = 3;
+    const ok = await call("fit_resume", cv);
+    expect(ok.isError, ok.raw).toBe(false);
+    expect(ok.sc.fitFreeLeftToday).toBe(22);
+  });
+
+  it("a reader that fails refuses without scoring, never opens", async () => {
+    state.subscribed = false; state.pass = false; state.pro = false;
+    state.fitReadFails = true;
+    const refused = await call("fit_resume", cv);
+    expect(refused.isError).toBe(true);
+    expect(refused.raw).toMatch(/allowance could not be read just now; nothing was scored/);
   });
 });
 
