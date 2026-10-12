@@ -9,6 +9,7 @@ import {
 import {
   MCP_URL, OAUTH_SCOPE, PRM_PATH, RESOURCE_METADATA_URL, isProtectedResourceMetadataPath, unauthorized,
 } from "../../supabase/functions/agent-mcp/oauth";
+import { ANON_ALLOWANCE } from "../../supabase/functions/agent-mcp/allowance";
 
 /**
  * A FIRST CALL WITH NO KEY GETS AN ANSWER, NOT A WALL.
@@ -165,12 +166,12 @@ function getBranchOf(code: string): string {
   if (a < 0) throw new Error("the GET branch is gone");
   return code.slice(a, code.indexOf("405);", a));
 }
-/** The initialize handler's instructions expression. */
+/** The instructions the initialize handler serves: instructionsFor's body. */
 function instructionsOf(code: string): string {
   const a = code.indexOf('method === "initialize"');
-  const b = code.indexOf("instructions:", a);
+  const b = code.indexOf("instructions: instructionsFor(edition)", a);
   if (a < 0 || b < 0) throw new Error("initialize.instructions is gone");
-  return code.slice(b, code.indexOf("}));", b));
+  return functionText(code, "instructionsFor");
 }
 /** The newest migration defining a function. */
 function newestDefining(fn: string): string {
@@ -180,10 +181,16 @@ function newestDefining(fn: string): string {
 }
 
 const UNKEYED = functionText(MCP, "answerUnkeyed");
+const ALLOWANCE = stripTs(read("supabase/functions/agent-mcp/allowance.ts"));
+/** The keyless set, owner decision 2026-10-11: every read tool, and applying yourself. */
+const WAVE4_KEYLESS = [
+  "board_stats", "search_jobs", "search", "fetch", "get_job", "get_jobs", "check_jobs_open",
+  "employer_hiring_record", "employer_growth", "apply_myself",
+];
 
 describe("the unkeyed set is one constant, mirrored, and registered", () => {
-  it("ANON_TOOLS is exactly the set the plan names", () => {
-    expect(anonToolsOf(MCP)).toEqual(["board_stats", "search_jobs", "search", "fetch"]);
+  it("ANON_TOOLS is exactly the set the owner's decision names (every read tool, and applying yourself)", () => {
+    expect(anonToolsOf(MCP)).toEqual(WAVE4_KEYLESS);
   });
 
   it("the frontend mirror names the same set, and every name is a registered tool", () => {
@@ -199,31 +206,35 @@ describe("the unkeyed set is one constant, mirrored, and registered", () => {
 });
 
 describe("the caps are named constants, mirrored, and the only numbers the keyless branch uses", () => {
-  it("both caps and the search limit are declared once and mirrored on the page side", () => {
-    expect(numberConstOf(MCP, "ANON_IP_CAP_PER_DAY")).toBe(MCP_ANON_CAPS.perAddressPerDay);
-    expect(numberConstOf(MCP, "ANON_HOST_POOL_PER_DAY")).toBe(MCP_ANON_CAPS.hostPoolPerDay);
-    expect(numberConstOf(MCP, "ANON_GLOBAL_CAP_PER_DAY")).toBe(MCP_ANON_CAPS.globalPerDay);
-    expect(numberConstOf(MCP, "ANON_SEARCH_LIMIT")).toBe(MCP_ANON_CAPS.searchRows);
-    // Both must exist: a per-address bucket alone is a global bucket for the
-    // hosts that share egress, and a global bucket alone is one caller's.
-    expect(MCP_ANON_CAPS.globalPerDay).toBeGreaterThan(MCP_ANON_CAPS.perAddressPerDay);
-    // A host's pool is a share of the world, never all of it.
-    expect(MCP_ANON_CAPS.globalPerDay).toBeGreaterThan(MCP_ANON_CAPS.hostPoolPerDay);
+  it("the allowance is one constant, the owner's figures, and mirrored on the page side", () => {
+    const A = ANON_ALLOWANCE;
+    // Owner decision 2026-10-11 (economics 1(b)).
+    expect(A.overallPerDay).toBe(20_000);
+    expect(A.shares).toEqual({ claude: 10_000, chatgpt: 6_000, other: 4_000 });
+    expect(A.shares.claude + A.shares.chatgpt + A.shares.other).toBe(A.overallPerDay);
+    expect([A.chatgptPerPerson, A.chatgptNoSubject, A.otherPerConnection]).toEqual([200, 2_000, 100]);
+    expect(A.perMinute).toEqual({ overall: 60, claude: 30, chatgpt: 20, other: 15, forms: 20 });
+    expect(A.forms.overall).toBe(5_000);
+    expect(A.searchRows).toBe(10);
+    // The server reads its page size off the constant, never a second number.
+    expect(MCP).toMatch(/const ANON_SEARCH_LIMIT = ANON_ALLOWANCE\.searchRows;/);
+    // The page renders the same figures from its mirror (src/config/mcp-tools.ts).
+    expect(MCP_ANON_CAPS).toMatchObject({
+      overallPerDay: A.overallPerDay, shares: A.shares, chatgptPerPerson: A.chatgptPerPerson,
+      chatgptNoSubject: A.chatgptNoSubject, otherPerConnection: A.otherPerConnection,
+      perMinute: A.perMinute, forms: { overall: A.forms.overall }, searchRows: A.searchRows,
+    });
   });
 
-  it("the keyless branch hands the named constants to mcp_anon_check and clamps with the named limit", () => {
-    // Each bucket (a host's own, then the address's) is counted with the
-    // global cap by name and its own cap from the bucket, whose caps are the
-    // named constants.
-    expect(UNKEYED).toMatch(/\.rpc\("mcp_anon_check", \{ p_ip_hash: b\.key, p_global_cap: ANON_GLOBAL_CAP_PER_DAY, p_ip_cap: b\.cap \}\)/);
-    expect(UNKEYED).toMatch(/buckets\.push\(\{ key: ipHash, cap: ANON_IP_CAP_PER_DAY, kind: "address"/);
-    expect(UNKEYED).toMatch(/key: `host:\$\{host\}`, cap: ANON_HOST_POOL_PER_DAY,/);
-    expect(UNKEYED).not.toMatch(/\bcap: \d/);
+  it("the keyless branch hands the named figures to mcp_anon_check_v2 and clamps with the named limit", () => {
+    // One bucket, built from the verified address by allowance.ts, counted
+    // against its share's minute, the overall minute, the bucket, the share
+    // and the overall day — the forms pool skips the two overall counters.
+    expect(UNKEYED).toMatch(/\.rpc\("mcp_anon_check_v2", \{\s*p_bucket: m\.bucket,\s*p_bucket_cap: m\.bucketCap,\s*p_global_bucket: m\.share,\s*p_global_cap: m\.shareCap,\s*p_overall_cap: forms \? null : A\.overallPerDay,\s*p_minute_cap: m\.minuteCap,\s*p_overall_minute_cap: forms \? null : A\.perMinute\.overall,/);
+    expect(UNKEYED).not.toMatch(/p_\w+_cap: \d|Math\.min\(\d/);
     expect(UNKEYED).toMatch(/Math\.min\(ANON_SEARCH_LIMIT,/);
-    // No cap typed as a digit into the meter call, the clamp or the note:
-    // the constant is the only spelling, or the page's mirror describes a
-    // different server.
-    expect(UNKEYED).not.toMatch(/p_global_cap: \d|p_ip_cap: \d|Math\.min\(\d/);
+    // Every cap in allowance.ts's buckets is read off ANON_ALLOWANCE.
+    expect(ALLOWANCE).not.toMatch(/(?:bucketCap|shareCap|minuteCap): \d/);
     const note = /const note = `([^`]*)`/.exec(UNKEYED)?.[1] ?? "";
     expect(note).not.toBe("");
     expect(note.replace(/\$\{[^}]*\}/g, "")).not.toMatch(/\d/);
@@ -247,8 +258,7 @@ describe("the caps are named constants, mirrored, and the only numbers the keyle
     expect(minted, "api_key_issue no longer declares c_quota — RE-ANCHOR this guard").toBeTruthy();
     expect(quota).toBe(Number(minted![1]));
     expect(MCP_FREE_KEY_DAILY_QUOTA).toBe(quota);
-    expect(UNKEYED).toMatch(/a free key raises this to \$\{keyRaisesTo\}/);
-    expect(UNKEYED).toMatch(/const keyRaisesTo = FREE_KEY_DAILY_QUOTA\.toLocaleString\("en-US"\)/);
+    expect(UNKEYED).toMatch(/a free key gives \$\{FREE_KEY_DAILY_QUOTA\.toLocaleString\("en-US"\)\}/);
   });
 });
 
@@ -257,19 +267,34 @@ describe("the keyless branch is counted in its own table and nowhere else", () =
     expect(MCP).not.toMatch(/check_rate_limit|check_global_rate_limit|\brate_limits\b/);
   });
 
-  it("counts the call BEFORE any runner runs, so a refused argument was counted too", () => {
-    const counted = UNKEYED.indexOf('.rpc("mcp_anon_check"');
-    const ran = UNKEYED.search(/await run[A-Za-z]+\(/);
-    expect(counted).toBeGreaterThan(0);
+  it("counts the call BEFORE any runner runs, and judges its arguments before counting it", () => {
+    const counted = UNKEYED.indexOf('.rpc("mcp_anon_check_v2"');
+    const lookupsFrom = UNKEYED.indexOf("const lookups = lookupBucket(");
+    const ran = UNKEYED.slice(lookupsFrom).search(/await run[A-Za-z]+\(/) + lookupsFrom;
+    expect(counted).toBeGreaterThan(lookupsFrom);
     expect(ran).toBeGreaterThan(counted);
+    // board_stats, the one runner before the meter, is cached and never counted.
+    const stats = UNKEYED.slice(UNKEYED.indexOf('if (toolName === "board_stats") {'), lookupsFrom);
+    expect(stats).toMatch(/await runCachedBoardStats\(\)/);
+    expect(stats).not.toMatch(/mcp_anon_check/);
+    // Owner decision 2026-10-11 (spec D2 §2.1): an argument the caller got
+    // wrong is answered before anything is counted.
+    const judged = MCP.indexOf("checkArgs(toolName, toolArgs, !bearer);");
+    expect(judged).toBeGreaterThan(-1);
+    expect(judged).toBeLessThan(MCP.indexOf("await answerUnkeyed(client, req, id, toolName, toolArgs, params)"));
   });
 
   it("the address is hashed and truncated, never stored as itself", () => {
-    expect(UNKEYED).toMatch(/const address = callerAddress\(req\.headers\);\s*const ipHash = \(await sha256Hex\(address\)\)\.slice\(0, 16\);/);
+    // A connection (full IPv4, or IPv6 /64) is hashed before it becomes a bucket.
+    expect(UNKEYED).toMatch(/const address = callerAddress\(req\.headers\);/);
+    expect(UNKEYED).toMatch(/lookupBucket\(host, subjectHash, \(await sha256Hex\(connection\)\)\.slice\(0, 16\)\)/);
     // A ChatGPT user's bucket is keyed by a hash of the subject, never the subject.
     expect(UNKEYED).toMatch(/const subjectHash = subject \? \(await sha256Hex\(subject\)\)\.slice\(0, 16\) : "";/);
-    expect(UNKEYED).toMatch(/key: `u:chatgpt:\$\{subjectHash\}`/);
-    expect(UNKEYED).not.toMatch(/key: (address|subject)\b|p_ip_hash: (address|subject)\b/);
+    expect(ALLOWANCE).toMatch(/bucket: `u:chatgpt:\$\{subjectHash\}`/);
+    expect(UNKEYED).not.toMatch(/p_bucket: (address|subject|connection)\b/);
+    // And the subject's log line carries no address beside it.
+    expect(UNKEYED).toMatch(/console\.log\(`\[AGENT-MCP\] keyless subject \$\{subjectHash\} \(\$\{toolName\}\)`\)/);
+    expect(UNKEYED).not.toMatch(/ipHash/);
   });
 
   it("the address is the platform's word, never the caller's: edge header first, then the LAST forwarded hop", () => {
@@ -285,8 +310,8 @@ describe("the keyless branch is counted in its own table and nowhere else", () =
     expect(MCP).not.toMatch(/function firstHop/);
   });
 
-  it("a refusal is in band with the mint URL and a Retry-After, never a challenge", () => {
-    expect(UNKEYED).toMatch(/if \(!a\.allowed\) \{[\s\S]*?toolErr\([\s\S]*?\$\{MINT_URL\}[\s\S]*?"Retry-After": String\(secondsToMidnightUtc\(\)\)/);
+  it("a refusal is in band, by edition, with a Retry-After, never a challenge", () => {
+    expect(UNKEYED).toMatch(/if \(!d\.allowed\) \{[\s\S]*?spentRefusal\(d, m, edition, keylessTwin\(toolName, args\), MINT_URL, FREE_KEY_DAILY_QUOTA\)[\s\S]*?toolErr\(message, fix\)[\s\S]*?"Retry-After": String\(minute \? secondsLeftInMinute\(\) : secondsToMidnightUtc\(\)\)/);
     expect(UNKEYED).not.toMatch(/unauthorized\(/);
     // The status, the header and the metadata path are spelled in the OAuth
     // module and nowhere in the dispatcher: one builder, reached by name.
@@ -294,26 +319,32 @@ describe("the keyless branch is counted in its own table and nowhere else", () =
   });
 
   it("an answer carries the note in the promised shape plus the figures as numbers", () => {
-    // "N of 25" is about ONE address, so N is the address remainder — never
-    // the smaller of the two buckets under the address cap's denominator.
-    // When the world is the tighter bucket, that is its own clause.
-    expect(UNKEYED).toMatch(/const ipLeft = Math\.max\(0, a\.ip_cap - a\.ip_used\);/);
-    expect(UNKEYED).toMatch(/const globalLeft = Math\.max\(0, a\.global_cap - a\.global_used\);/);
-    expect(UNKEYED).toMatch(/const worldClause = globalLeft < ipLeft \? `; \$\{globalLeft\} across every unkeyed caller` : "";/);
-    expect(UNKEYED).toMatch(/const note = `unkeyed: \$\{ipLeft\} of \$\{a\.ip_cap\} anonymous calls left today\$\{whose\}\$\{worldClause\}; a free key raises this to \$\{keyRaisesTo\}`/);
-    expect(UNKEYED).toMatch(/callsLeftToday: ipLeft,/);
-    expect(UNKEYED).toMatch(/globalLeftToday: globalLeft,/);
-    expect(UNKEYED).toMatch(/toolOk\(\{ \.\.\.out, unkeyed \}\)/);
-    expect(UNKEYED).toMatch(/withKey: \{[\s\S]*?mintUrl: MINT_URL,[\s\S]*?dailyCalls: FREE_KEY_DAILY_QUOTA,/);
+    // "N of CAP" is about ONE bucket, so N is the bucket remainder — never the
+    // smaller of the counters under the bucket cap's denominator. When the
+    // share or the day is the tighter counter, that is its own clause.
+    expect(UNKEYED).toMatch(/const bucketLeft = Math\.max\(0, d\.bucket_cap - d\.bucket_used\);/);
+    expect(UNKEYED).toMatch(/const shareLeft = Math\.max\(0, d\.share_cap - d\.share_used\);/);
+    expect(UNKEYED).toMatch(/const left = Math\.min\(bucketLeft, shareLeft, overallLeft \?\? Infinity\);/);
+    expect(UNKEYED).toMatch(/const note = `keyless: \$\{bucketLeft\} of \$\{d\.bucket_cap\.toLocaleString\("en-US"\)\} \$\{what\} left today \$\{m\.owner\}\$\{world\}; resets at midnight UTC\$\{keyClause\}`/);
+    expect(UNKEYED).toMatch(/callsLeftToday: bucketLeft,/);
+    expect(UNKEYED).toMatch(/globalLeftToday: overallLeft \?\? shareLeft,/);
+    expect(UNKEYED).toMatch(/toolOk\(\{ \.\.\.out, unkeyed: \{ \.\.\.unkeyed, note \} \}\)/);
+    // The free key is offered only outside the two chat platforms.
+    expect(UNKEYED).toMatch(/const keyClause = edition === "other" \?/);
   });
 
-  it("the migration behind mcp_anon_check locks it to the service role by name", () => {
+  it("the migrations behind both meters lock them to the service role by name", () => {
     const mig = newestDefining("mcp_anon_check");
     expect(mig).toMatch(/REVOKE ALL ON FUNCTION public\.mcp_anon_check\(text, integer, integer\) FROM PUBLIC, anon, authenticated;/);
     expect(mig).toMatch(/GRANT EXECUTE ON FUNCTION public\.mcp_anon_check\(text, integer, integer\) TO service_role;/);
     expect(mig).toMatch(/ALTER TABLE public\.mcp_anon_rate ENABLE ROW LEVEL SECURITY;/);
     expect(mig).not.toMatch(/CREATE POLICY/);
     expect(mig).toMatch(/SECURITY DEFINER/);
+    const v2 = newestDefining("mcp_anon_check_v2");
+    expect(v2).toMatch(/REVOKE ALL ON FUNCTION public\.mcp_anon_check_v2\(text, integer, text, integer, integer, integer, integer\) FROM PUBLIC, anon, authenticated;/);
+    expect(v2).toMatch(/GRANT EXECUTE ON FUNCTION public\.mcp_anon_check_v2\(text, integer, text, integer, integer, integer, integer\) TO service_role;/);
+    expect(v2).toMatch(/REVOKE ALL ON FUNCTION public\.mcp_anon_refund\(text, text, boolean, integer\) FROM PUBLIC, anon, authenticated;/);
+    expect(v2).toMatch(/SECURITY DEFINER/);
   });
 });
 
@@ -438,25 +469,27 @@ describe("a keyless call to a keyed tool answers the sign-in challenge while the
 
   it("the dispatch routes an unkeyed call to the unkeyed branch inside the metered try, and keyed calls unchanged", () => {
     expect(MCP).toMatch(/if \(!d\) \{\s*const \{ rpc, headers \} = await answerUnkeyed\(client, req, id, toolName, toolArgs, params\);/);
-    expect(MCP).toMatch(/callTool\(client, d\.api_key_id \?\? "", d\.key_tier, toolName, toolArgs, shop\)/);
+    expect(MCP).toMatch(/callTool\(client, d\.api_key_id \?\? "", d\.key_tier, toolName, toolArgs, ctx\)/);
   });
 });
 
-describe("initialize.instructions names the four tiers from the registry, and the ledger in the site's words", () => {
+describe("initialize.instructions: no tier block, every name off the registry, and the ledger in the site's words", () => {
   const text = instructionsOf(MCP);
 
-  it("derives every tool list from a constant, never a typed name list", () => {
-    for (const c of ["ANON_TOOLS.join", "KEY_ONLY_READ_TOOLS.join", "PAID_TOOLS.join", "ACCOUNT_TOOLS.join"]) {
-      expect(text, `${c} must be interpolated`).toContain(c);
-    }
-    for (const c of ["ANON_SEARCH_LIMIT", "ANON_IP_CAP_PER_DAY", "ANON_GLOBAL_CAP_PER_DAY", "FREE_KEY_DAILY_QUOTA", "MINT_URL", "DOCS_URL"]) {
+  it("derives every tool name and figure from the registry and a constant, never typed", () => {
+    // Owner decisions 2026-10-11 (spec §5.4): no tier block, no price, no
+    // plan; the six rules; the free key named only to the full edition.
+    for (const c of ["FREE_KEY_DAILY_QUOTA", "MINT_URL", "HONESTY_RULES", "GUIDE_URI"]) {
       expect(text, `${c} must be interpolated`).toMatch(new RegExp(`\\$\\{${c}`));
     }
-    // A typed name is a second list. The only tool names allowed in the prose
-    // are the ones a sentence explains (search and fetch as aliases; the two
-    // verification tools; the two employer tools that carry the ledger).
-    const typed = MCP_TOOL_NAMES.filter((n) => new RegExp(`(?<![A-Za-z_])${n}(?![A-Za-z_])`).test(text.replace(/\$\{[^}]*\}/g, "")));
-    expect(typed.sort()).toEqual(["check_jobs_open", "employer_growth", "employer_hiring_record", "fetch", "get_job", "get_jobs", "key_status", "search", "search_jobs"].sort());
+    expect(text).toMatch(/formVendorsFor\(edition\)/);
+    expect(text).toMatch(/edition === "other" \?/);
+    // A typed name is a second list: every tool name reaches the prose through tool().
+    const prose = text.replace(/\$\{[^}]*\}/g, "");
+    // (search and fetch are English words too; the names with an underscore are unambiguous.)
+    const typed = [...new Set([...MCP_TOOL_NAMES, ...WAVE4_KEYLESS])].filter((n) => n.includes("_") && new RegExp(`(?<![A-Za-z_])${n}(?![A-Za-z_])`).test(prose));
+    expect(typed).toEqual([]);
+    expect(prose).not.toMatch(/board_stats first|Four tiers|Agent Pass|Agent plan/);
   });
 
   it("says the moat in the site's words — read off the locale file — and never calls a takedown a fill or a hire", () => {
@@ -532,19 +565,21 @@ describe("teeth: each property fails on a copy that breaks it", () => {
     expect(namesHost("for Claude only", "Claude")).toBe(true);
   });
   it("a copy that widens ANON_TOOLS is caught", () => {
-    const broken = MCP.replace('const ANON_TOOLS: readonly string[] = ["board_stats", "search_jobs", "search", "fetch"]', 'const ANON_TOOLS: readonly string[] = ["board_stats", "search_jobs", "search", "fetch", "get_job"]');
+    const at = MCP.indexOf("const ANON_TOOLS: readonly string[] = [");
+    const broken = MCP.slice(0, at) + MCP.slice(at).replace('"apply_myself",', '"apply_myself", "debug_search",');
     expect(broken).not.toBe(MCP);
-    expect(anonToolsOf(broken)).not.toEqual([...MCP_ANON_TOOL_NAMES]);
+    expect(anonToolsOf(broken)).not.toEqual(WAVE4_KEYLESS);
   });
 
   it("a copy that types a cap or the quota into the keyless branch is caught", () => {
-    const broken = UNKEYED.replace("p_ip_cap: b.cap", "p_ip_cap: 25");
+    const broken = UNKEYED.replace("p_bucket_cap: m.bucketCap", "p_bucket_cap: 100");
     expect(broken).not.toBe(UNKEYED);
-    expect(broken).toMatch(/p_global_cap: \d|p_ip_cap: \d|Math\.min\(\d/);
-    const typedBucket = UNKEYED.replace("cap: ANON_IP_CAP_PER_DAY, kind: \"address\"", "cap: 25, kind: \"address\"");
-    expect(typedBucket).not.toBe(UNKEYED);
-    expect(typedBucket).toMatch(/\bcap: \d/);
-    const typedNote = UNKEYED.replace("a free key raises this to ${keyRaisesTo}", "a free key raises this to 1,000");
+    expect(broken).toMatch(/p_\w+_cap: \d|Math\.min\(\d/);
+    const typedBucket = ALLOWANCE.replace("bucketCap: A.otherPerConnection", "bucketCap: 100");
+    expect(typedBucket).not.toBe(ALLOWANCE);
+    expect(typedBucket).toMatch(/(?:bucketCap|shareCap|minuteCap): \d/);
+    const typedNote = UNKEYED.replace('of ${d.bucket_cap.toLocaleString("en-US")} ${what}', "of 100 ${what}");
+    expect(typedNote).not.toBe(UNKEYED);
     const note = /const note = `([^`]*)`/.exec(typedNote)?.[1] ?? "";
     expect(note.replace(/\$\{[^}]*\}/g, "")).toMatch(/\d/);
   });
@@ -555,16 +590,17 @@ describe("teeth: each property fails on a copy that breaks it", () => {
   });
 
   it("a copy that meters through the rate budget is caught", () => {
-    const broken = MCP.replace('.rpc("mcp_anon_check"', '.rpc("check_rate_limit"');
+    const broken = MCP.replace('.rpc("mcp_anon_check_v2"', '.rpc("check_rate_limit"');
     expect(broken).not.toBe(MCP);
     expect(broken).toMatch(/check_rate_limit/);
   });
 
   it("a copy that runs the tool before counting it is caught", () => {
-    const counted = UNKEYED.indexOf('.rpc("mcp_anon_check"');
-    const ran = UNKEYED.search(/await run[A-Za-z]+\(/);
-    const swapped = UNKEYED.slice(ran) + UNKEYED.slice(counted, ran);
-    expect(swapped.search(/await run[A-Za-z]+\(/)).toBeLessThan(swapped.indexOf('.rpc("mcp_anon_check"'));
+    const counted = UNKEYED.indexOf('.rpc("mcp_anon_check_v2"');
+    const ranAt = UNKEYED.indexOf("case \"search_jobs\": out = await runSearchJobs(");
+    expect(ranAt).toBeGreaterThan(counted);
+    const swapped = UNKEYED.slice(0, counted) + UNKEYED.slice(ranAt) + UNKEYED.slice(counted, ranAt);
+    expect(swapped.indexOf("case \"search_jobs\": out = await runSearchJobs(")).toBeLessThan(swapped.indexOf('.rpc("mcp_anon_check_v2"'));
   });
 
   it("a copy that challenges a quota refusal is caught", () => {
@@ -643,10 +679,10 @@ describe("teeth: each property fails on a copy that breaks it", () => {
     expect(call().exec(typed)![1]).not.toMatch(/query: MCP_TEST_QUERY/);
   });
 
-  it("a copy whose note numerator is the smaller bucket under the address denominator is caught", () => {
-    const mixed = UNKEYED.replace("unkeyed: ${ipLeft} of ${a.ip_cap}", "unkeyed: ${left} of ${a.ip_cap}");
+  it("a copy whose note numerator is the smaller counter under the bucket denominator is caught", () => {
+    const mixed = UNKEYED.replace("keyless: ${bucketLeft} of ${d.bucket_cap", "keyless: ${left} of ${d.bucket_cap");
     expect(mixed).not.toBe(UNKEYED);
-    expect(mixed).not.toMatch(/const note = `unkeyed: \$\{ipLeft\} of \$\{a\.ip_cap\}/);
+    expect(mixed).not.toMatch(/const note = `keyless: \$\{bucketLeft\} of \$\{d\.bucket_cap/);
   });
 
   it("a copy keyed on the caller-written first forwarded hop is caught", () => {

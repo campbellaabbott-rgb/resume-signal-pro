@@ -224,12 +224,19 @@ export function signInSentence(state: SignInState, unkeyedToolCount: number): st
 export function signInGuideSection(
   state: SignInState,
   unkeyedToolCount: number,
-  words: { notOn: string; unkeyedTools: readonly string[]; mintUrl: string },
+  words: { notOn: string; unkeyedTools: readonly string[]; mintUrl: string; chat?: boolean },
 ): string {
   const unkeyed = words.unkeyedTools.map((n) => `\`${n}\``).join(", ");
+  // A chat user's host (Claude, ChatGPT) has no field for a request header,
+  // so the chat edition never tells them about one (wave 4, host-aware).
+  const keyClause = words.chat
+    ? ""
+    : state === "on"
+    ? ` A client with no sign-in sends a free key (${words.mintUrl}) as Authorization: Bearer <key> instead.`
+    : `, and every other tool works from a client that can send a free key (${words.mintUrl}) as Authorization: Bearer <key>`;
   const row = state === "on"
-    ? `- A sign-in challenge, which a host shows as its Connect card — the tool needs your account; complete the host's sign-in and it retries the call itself. A client with no sign-in sends a free key (${words.mintUrl}) as Authorization: Bearer <key> instead.`
-    : `- "${words.notOn}" — the tool needs your account, and sign-in from chat apps is not available today; ${unkeyed} still answer with no key, and every other tool works from a client that can send a free key (${words.mintUrl}) as Authorization: Bearer <key>.`;
+    ? `- A sign-in challenge, which a host shows as its Connect card — the tool needs your account; complete the host's sign-in and it retries the call itself.${keyClause}`
+    : `- "${words.notOn}" — the tool needs your account, and sign-in from chat apps is not available today; ${unkeyed} still answer with no key${keyClause}.`;
   return [
     `## Sign-in today`,
     ``,

@@ -72,8 +72,8 @@ beforeEach(() => {
         ? ["acmesr", "usajobs"]
         : name === "get_company_hiring_health" || name === "get_company_growth"
           ? [{ company_token: "acmesr", closed_90d: 4, superseded_90d: 0, verdict: "unknown", unknown_reason: "no_series" }]
-          : name === "mcp_anon_check"
-        ? { allowed: true, global_used: 1, ip_used: 1, ip_cap: 25, global_cap: 2000 }
+          : name === "mcp_anon_check_v2"
+        ? { allowed: true, refused_by: null, bucket_used: 1, bucket_cap: 100, share_used: 1, share_cap: 4000, overall_used: 1, overall_cap: 20000, minute_used: 1, minute_cap: 15 }
         : name === "api_key_check"
           ? { is_allowed: true, deny_reason: "", api_key_id: "key-1", key_tier: "free", rate_limit: 60, rate_used: 1, quota_limit: 1000, quota_used: 1, pass_ends_at: null, pass_apps_left: null }
           : null;
@@ -148,10 +148,10 @@ describe("a SmartRecruiters employer named by its own token is refused, not answ
   });
 });
 
-describe("inside ChatGPT nothing sends the reader to buy", () => {
-  it("key_status carries no purchase link for a ChatGPT caller, and keeps it for others", async () => {
+describe("nothing sends the reader to buy (inside ChatGPT, and since the apply pivot anywhere)", () => {
+  it("key_status carries no purchase link for any caller", async () => {
     const plain = await call("key_status", {}, { key: "rb_live_harness_key_0123456789" });
-    expect(plain.raw).toContain("/agents/pass");
+    expect(plain.raw).not.toMatch(/agents\/pass/);
     const gpt = await call("key_status", {}, { key: "rb_live_harness_key_0123456789", meta: { "openai/subject": "u-123" } });
     expect(gpt.raw).not.toMatch(/agents\/pass|\bbuy\b|subscribe at/i);
     const byAgent = await call("key_status", {}, { key: "rb_live_harness_key_0123456789", ua: "openai-mcp/1.0.0" });

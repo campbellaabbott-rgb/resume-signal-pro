@@ -105,8 +105,8 @@ function typedToolNames(text: string, names: readonly string[]): string[] {
   return names.filter((n) => n.includes("_")).filter((n) => new RegExp(`(?<![A-Za-z_.])${n}(?![A-Za-z_])`).test(bare));
 }
 
-/** The dispatcher's two listing handlers: from the first to the credential read. */
-const listingsOf = (code: string): string => between(code, 'if (method === "prompts/list")', 'const auth = req.headers.get("authorization")');
+/** The dispatcher's two listing handlers: from the first to the templates listing after them. */
+const listingsOf = (code: string): string => between(code, 'if (method === "prompts/list")', 'if (method === "resources/templates/list")');
 
 /** The families the server meters a credentialed read under: every /mcp/<family>/ literal. */
 const serverFamiliesOf = (code: string): string[] =>
@@ -139,46 +139,17 @@ function hedgeSitesOf(code: string): { guard: string; inside: boolean }[] {
 }
 
 /**
- * initialize.instructions, RENDERED: the template expression evaluated with
- * the server's own constants (parsed out of the same source), tool() as the
- * identity it is for a registered name, so the length and the opening
- * sentence are measured on the text a host receives rather than guessed.
+ * The instructions as written: instructionsFor's body (wave 4: one function
+ * of the caller's edition, served by initialize). Its rendered length in
+ * every edition is measured on the text the real handler serves, in
+ * the-connector-lists-only-what-its-caller-can-call.test.ts.
  */
-function renderInstructions(code: string): string {
-  const expr = between(code, "instructions:\n", "\n    }));").replace(/^instructions:\n/, "").trim().replace(/,$/, "");
-  const list = (name: string) => {
-    const m = new RegExp(`const ${name}: readonly string\\[\\] = \\[([^\\]]*)\\]`).exec(code);
-    if (!m) throw new Error(`${name} is gone`);
-    return [...m[1].matchAll(/"([a-z_]+)"/g)].map((x) => x[1]);
-  };
-  const num = (name: string) => Number(new RegExp(`const ${name} = (\\d+);`).exec(code)?.[1] ?? NaN);
-  const str = (name: string) => new RegExp(`const ${name} = "([^"]+)";`).exec(code)?.[1] ?? "";
-  const tools = toolNamesOf(code);
-  const ANON_TOOLS = list("ANON_TOOLS"), PAID_TOOLS = list("PAID_TOOLS"), ACCOUNT_TOOLS = list("ACCOUNT_TOOLS");
-  const KEY_ONLY_READ_TOOLS = tools.filter((n) => !ANON_TOOLS.includes(n) && !PAID_TOOLS.includes(n) && !ACCOUNT_TOOLS.includes(n));
-  const scheme = /const RESOURCE_SCHEME = "([^"]+)";/.exec(code)?.[1] ?? "";
-  const GUIDE_URI = scheme + (/const GUIDE_URI = `\$\{RESOURCE_SCHEME\}([^`]+)`;/.exec(code)?.[1] ?? "");
-  const DOCS_URL = /websiteUrl: "([^"]+)"/.exec(code)?.[1] ?? "";
-  const tool = (n: string) => { if (!tools.includes(n)) throw new Error(`unregistered ${n}`); return n; };
-  const fn = new Function(
-    "tool", "ANON_TOOLS", "PAID_TOOLS", "ACCOUNT_TOOLS", "KEY_ONLY_READ_TOOLS", "ANON_SEARCH_LIMIT", "ANON_IP_CAP_PER_DAY",
-    "ANON_GLOBAL_CAP_PER_DAY", "FREE_KEY_DAILY_QUOTA", "GET_JOBS_MAX", "KEYED_SEARCH_LIMIT", "CHECK_JOBS_OPEN_MAX",
-    "MINT_URL", "PASS_URL", "DOCS_URL", "GUIDE_URI",
-    `return (${expr});`,
-  );
-  return fn(
-    tool, ANON_TOOLS, PAID_TOOLS, ACCOUNT_TOOLS, KEY_ONLY_READ_TOOLS, num("ANON_SEARCH_LIMIT"), num("ANON_IP_CAP_PER_DAY"),
-    num("ANON_GLOBAL_CAP_PER_DAY"), num("FREE_KEY_DAILY_QUOTA"), num("GET_JOBS_MAX"), num("KEYED_SEARCH_LIMIT"), num("CHECK_JOBS_OPEN_MAX"),
-    str("MINT_URL"), str("PASS_URL"), DOCS_URL, GUIDE_URI,
-  ) as string;
-}
+const instructionsSourceOf = (code: string): string => between(code, "function instructionsFor(edition: Edition): string {", "\n}\n");
 const numberConstOf = (code: string, name: string): number => {
   const m = new RegExp(`const ${name} = (\\d+);`).exec(code);
   if (!m) throw new Error(`${name} is gone — RE-ANCHOR this guard`);
   return Number(m[1]);
 };
-/** The instructions expression as written (before rendering): what the typed-name check reads. */
-const instructionsSourceOf = (code: string): string => between(code, "instructions:\n", "\n    }));");
 
 const TOOL_NAMES = toolNamesOf(MCP);
 const SERVER_PROMPTS = promptsOf(MCP);
@@ -208,15 +179,13 @@ describe("the mirrors name exactly the prompts and resources the server register
     const scheme = /const RESOURCE_SCHEME = "([^"]+)";/.exec(MCP)?.[1];
     const tail = /const JOB_URI_PREFIX = `\$\{RESOURCE_SCHEME\}([^`]+)`;/.exec(MCP)?.[1];
     expect(scheme && tail && scheme + tail).toBe(MCP_JOB_RESOURCE_PREFIX);
-    // Every card of the two card-returning tools carries the link, on the
-    // keyed path and on the unkeyed one.
-    expect(MCP).toMatch(/case "search_jobs": \{[\s\S]*?withCardLinks\(toolOk\(r\), r\.jobs\)/);
-    expect(MCP).toMatch(/case "get_jobs": \{[\s\S]*?withCardLinks\(toolOk\(r\), r\.jobs\)/);
-    expect(MCP).toMatch(/withCardLinks\(toolOk\(\{ \.\.\.out, unkeyed \}\), out\.jobs\)/);
-    // And resources/read resolves the link: a job URI reads through the
-    // fetch alias's runner on both tiers.
-    expect(MCP).toMatch(/case "job": return contentsOf\(read\.uri, "application\/json", await runFetchAlias\(\{ id: read\.id \}\)\)/);
-    expect(MCP).toMatch(/answerUnkeyed\(client, req, id, tool\("fetch"\), \{ id: read\.id \}\)/);
+    // Wave 4 (spec D2 §2.1): results carry no resource_link blocks — a model
+    // pays for every block, and the card's siteUrl names the posting. A job
+    // URI a client built still resolves through the fetch alias's runner on
+    // both tiers.
+    expect(MCP).not.toMatch(/resource_link|withCardLinks/);
+    expect(MCP).toMatch(/case "job": return contentsOf\(read\.uri, "application\/json", await runFetchAlias\(\{ id: read\.id \}, ctx\)\)/);
+    expect(MCP).toMatch(/answerUnkeyed\(client, req, id, tool\("fetch"\), \{ id: read\.id \}, params\)/);
   });
 
   it("the mirrors spell no count and no price", () => {
@@ -246,9 +215,11 @@ describe("the mirrors name exactly the prompts and resources the server register
     expect(numberConstOf(MCP, "CHECK_JOBS_OPEN_MAX")).toBe(MCP_KEYED_CAPS.checkJobsOpenIds);
     // The runner clamps to the constant, the schema declares it, the notes name it.
     expect(MCP).toMatch(/Math\.min\(KEYED_SEARCH_LIMIT, Number\(args\.limit/);
-    expect(MCP).toMatch(/Rows per page, 1-\$\{KEYED_SEARCH_LIMIT\}/);
-    expect(MCP).toMatch(/asked\.slice\(0, CHECK_JOBS_OPEN_MAX\)/);
-    expect(MCP).toMatch(/asked\.slice\(CHECK_JOBS_OPEN_MAX\)/);
+    expect(MCP).toMatch(/Rows per page: \$\{ANON_SEARCH_LIMIT\} with no key, up to \$\{KEYED_SEARCH_LIMIT\} with one\./);
+    // A keyed check reads CHECK_JOBS_OPEN_MAX; a keyless one the allowance's own figure.
+    expect(MCP).toMatch(/const cap = ctx\.keyless \? ANON_ALLOWANCE\.checkJobsOpenIds : CHECK_JOBS_OPEN_MAX;/);
+    expect(MCP).toMatch(/asked\.slice\(0, cap\)/);
+    expect(MCP).toMatch(/asked\.slice\(cap\)/);
     expect(MCP).toMatch(/maxItems: CHECK_JOBS_OPEN_MAX/);
     // No copy of either figure survives as a typed number beside a row/id
     // noun or in the id-list clamp (the minute window's 60 is a different
@@ -274,7 +245,10 @@ describe("a prompt, the guide and the instructions reach a tool's name only thro
 
   it("no prompt description or body types a registered tool name as a bare word", () => {
     for (const p of SERVER_PROMPTS) {
-      expect(typedToolNames(p.src, TOOL_NAMES), `${p.name} types a tool name instead of reading it off the registry`).toEqual([]);
+      // A prompt's own name may be its tool's (apply_myself is both); its
+      // registration line is a name, not prose, and is the one line skipped.
+      const prose = p.src.replace(/^\n    name: "[a-z_]+",/, "");
+      expect(typedToolNames(prose, TOOL_NAMES), `${p.name} types a tool name instead of reading it off the registry`).toEqual([]);
       expect(p.src, `${p.name} must reach at least one tool through tool()`).toMatch(/\btool\("/);
     }
   });
@@ -285,43 +259,42 @@ describe("a prompt, the guide and the instructions reach a tool's name only thro
       expect(p.src).not.toMatch(/\$\s?\d|\b\d+ ?(?:USD|dollars)\b/i);
       expect(p.src).not.toMatch(/PASS_PRICE|priceUsd|PASS_PRICE_CENTS/);
     }
-    // The résumé prompt starts with the unkeyed path and names the keyed step.
+    // The CV prompt searches, then verifies the shortlist; since wave 4 both
+    // steps are keyless, so it never stops for a key, and it takes NO CV
+    // argument (the CV stays in the person's chat; spec §3.8).
     const cv = SERVER_PROMPTS.find((p) => p.name === "find_roles_for_my_cv")!;
     expect(cv.src.indexOf('tool("search_jobs")')).toBeLessThan(cv.src.indexOf('tool("check_jobs_open")'));
-    expect(cv.src).toMatch(/needs a key or a sign-in/);
+    expect(cv.src).not.toMatch(/needs a key|sign-in|and stop\./);
     expect(cv.src).toMatch(/limit = \$\{ANON_SEARCH_LIMIT\}/);
-    expect(cv.src).toMatch(/name: "resume_text"[^}]*required: false/);
+    expect(cv.src).not.toMatch(/resume_text|\bCV:/);
+    expect(cv.src).toMatch(/never send CV text to any tool/);
+    // A prompt that needs a key says so in its registration, and is listed only to a credential.
+    for (const p of SERVER_PROMPTS) {
+      const keyedTools = /tool\("(?:key_status|fit_resume|debug_search)"\)/.test(p.src);
+      expect(/\n    keyed: true,/.test(p.src), `${p.name}: keyed flag vs keyed tools`).toBe(keyedTools);
+    }
   });
 
   it("the guide types no registered tool name either, and is built from the same constants as the tiers", () => {
-    const guide = between(MCP, "function guideText(shop: Shop): string {", "\n}\n");
+    const guide = between(MCP, "function guideText(edition: Edition): string {", "\n}\n");
     expect(typedToolNames(guide, TOOL_NAMES)).toEqual([]);
-    for (const c of ["ANON_TOOLS", "KEY_ONLY_READ_TOOLS", "PAID_TOOLS", "ACCOUNT_TOOLS", "ANON_SEARCH_LIMIT", "ANON_IP_CAP_PER_DAY", "ANON_GLOBAL_CAP_PER_DAY", "FREE_KEY_DAILY_QUOTA", "GET_JOBS_MAX", "MINT_URL", "PASS_URL", "DOCS_URL"]) {
+    for (const c of ["ANON_TOOLS", "KEY_ONLY_READ_TOOLS", "ANON_SEARCH_LIMIT", "ANON_ALLOWANCE", "FREE_KEY_DAILY_QUOTA", "GET_JOBS_MAX", "MINT_URL", "DOCS_URL", "HONESTY_RULES", "FIT_FREE_PER_DAY"]) {
       expect(guide, `${c} must be read, not typed`).toContain(c);
     }
     expect(guide).not.toMatch(/\bhired?\b|\bhires\b|\bfilled\b/i);
     expect(guide).not.toMatch(/\$\s?\d/);
   });
 
-  it("the head of initialize.instructions names the first call through the registry and states the URL-to-id sentence", () => {
+  it("initialize.instructions names the first call through the registry and states the URL-to-id sentence", () => {
     const text = instructionsSourceOf(MCP);
-    expect(text).toMatch(/^instructions:\n\s*`Live job search[^`]*Call \$\{tool\("board_stats"\)\} first/);
-    expect(text).toMatch(/link's id is the argument to \$\{tool\("get_job"\)\}, \$\{tool\("fetch"\)\}, \$\{tool\("check_apply_support"\)\} and \$\{tool\("request_application"\)\}\./);
-    // The HEAD — everything before the tiers — types no registered tool name
-    // as a bare word: each one goes through tool(), so a rename on the
-    // registry throws at module load instead of leaving the head naming a
-    // tool the server lacks. (The tier sentences below it read the names
-    // off the tier lists; search and fetch stay exempt as English words.)
-    const head = text.slice(0, text.indexOf("Four tiers"));
-    expect(head.length).toBeGreaterThan(100);
-    expect(typedToolNames(head, TOOL_NAMES)).toEqual([]);
-    const rendered = renderInstructions(MCP);
-    expect(rendered).toContain("A resumebooster.work/jobs?job=<id> link's id is the argument to get_job, fetch, check_apply_support and request_application.");
-    // Under the two-kilobyte truncation one host applies, and the opening
-    // (everything before the tiers) carries no cap: no digit at all.
-    expect(Buffer.byteLength(rendered, "utf8")).toBeLessThan(2048);
-    expect(rendered.slice(0, rendered.indexOf("Four tiers"))).not.toMatch(/\d/);
-    expect(rendered.indexOf("Four tiers")).toBeGreaterThan(200);
+    // Search first (owner decision 2026-10-11: no "call board_stats first").
+    expect(text).toMatch(/`Live job search over employers' own hiring feeds\. Start with \$\{tool\("search_jobs"\)\}/);
+    expect(text).not.toMatch(/board_stats|Four tiers/);
+    expect(text).toMatch(/A resumebooster\.work\/jobs\?job=<id> link's id is the argument to every job tool\./);
+    // Every tool name goes through tool(), so a rename throws at module load.
+    expect(typedToolNames(text, TOOL_NAMES)).toEqual([]);
+    expect(toolCallsOf(text).length).toBeGreaterThan(4);
+    expect(MCP).toMatch(/instructions: instructionsFor\(edition\),/);
     // get_job's own description carries the sentence too.
     const getJob = between(MCP, 'name: "get_job",', 'name: "get_jobs",');
     expect(getJob).toMatch(/A resumebooster\.work\/jobs\?job=<id> link's id is this argument/);
@@ -348,9 +321,12 @@ describe("listing is free, a credentialed read is metered under its own family, 
 
   it("prompts/list and resources/list answer before the credential is read and touch no meter and no challenge", () => {
     const lists = listingsOf(MCP);
-    expect(lists).toMatch(/prompts: PROMPTS\.map\(/);
-    expect(lists).toMatch(/resources: RESOURCES\.map\(/);
-    expect(lists).not.toMatch(/api_key_check|mcp_anon_check|unauthorized\(|bearer|answerUnkeyed|body:/);
+    // Wave 4: a listing shows only what the caller can use, so it reads
+    // whether a credential is PRESENT (never verified, never metered).
+    expect(lists).toMatch(/prompts: PROMPTS\.filter\(\(p\) => !p\.keyed \|\| !!bearer\)/);
+    expect(lists).toMatch(/resources: RESOURCES\.filter\(\(r\) => !r\.keyed \|\| !!bearer\)/);
+    expect(lists).not.toMatch(/api_key_check|mcp_anon_check|unauthorized\(|answerUnkeyed|verifyOAuthBearer|body:/);
+    expect(lists.replace(/!!bearer/g, "")).not.toMatch(/bearer/);
   });
 
   it("prompts/get is free for every caller: answered before the bearer is consulted, through neither meter, with no prompt endpoint family anywhere on the server", () => {
@@ -376,8 +352,8 @@ describe("listing is free, a credentialed read is metered under its own family, 
   it("an unkeyed guide read is free; the statistics and a job link spend the unkeyed allowance; the key's status is challenged like the tool it wraps", () => {
     const pre = between(MCP, "const read: MeteredRead | null = resolved;", 'if (method !== "tools/call") {');
     expect(pre).toMatch(/if \(read && !bearer\) \{/);
-    expect(pre).toMatch(/contentsOf\(GUIDE_URI, read\.resource\.mimeType, guideText\(shop\)\)/);
-    expect(pre).toMatch(/answerUnkeyed\(client, req, id, tool\("board_stats"\), \{\}\)/);
+    expect(pre).toMatch(/contentsOf\(GUIDE_URI, read\.resource\.mimeType, guideText\(edition\)\)/);
+    expect(pre).toMatch(/answerUnkeyed\(client, req, id, tool\("board_stats"\), \{\}, params\)/);
     expect(pre).not.toMatch(/api_key_check|unauthorized\(/);
     // The keyed resource has no branch here: it falls through to the gate,
     // whose unkeyed set does not include its metered name.
@@ -392,7 +368,7 @@ describe("listing is free, a credentialed read is metered under its own family, 
     const catchAt = pre.indexOf("} catch (e) {");
     expect(tryAt).toBeGreaterThan(-1);
     expect(catchAt).toBeGreaterThan(tryAt);
-    for (const m of pre.matchAll(/answerUnkeyed\(|guideText\(shop\)/g)) {
+    for (const m of pre.matchAll(/answerUnkeyed\(|guideText\(edition\)/g)) {
       expect(m.index!, `${m[0]} must run inside the try`).toBeGreaterThan(tryAt);
       expect(m.index!).toBeLessThan(catchAt);
     }
@@ -414,7 +390,7 @@ describe("listing is free, a credentialed read is metered under its own family, 
     expect(MCP).toMatch(/const RESOURCE_ENDPOINT = \(name: string\) => `\/mcp\/resource\/\$\{name\}`;/);
     // Answered AFTER the check allowed it, inside the metered try, before the tool dispatch.
     const check = MCP.indexOf('.rpc("api_key_check"');
-    const answered = MCP.indexOf("if (read) return json(rpcResult(id, await answerRead(client, read, d, shop)), 200, rateHeaders);");
+    const answered = MCP.indexOf("if (read) return json(rpcResult(id, await answerRead(client, read, d, ctx)), 200, rateHeaders);");
     const dispatched = MCP.indexOf('const result = toolName === "key_status"');
     expect(answered).toBeGreaterThan(check);
     expect(dispatched).toBeGreaterThan(answered);
@@ -469,16 +445,17 @@ describe("the in-band sign-in hedge is the HTTP challenge's own string, in the t
 
   it("the unkeyed path logs the OpenAI subject hashed, and keys a bucket on it only from OpenAI's own addresses", () => {
     const unkeyed = between(MCP, "async function answerUnkeyed(", "\n}\n");
-    expect(unkeyed).toMatch(/const subject = openaiSubjectOf\(params\);/);
-    expect(unkeyed).toMatch(/const subjectHash = subject \? \(await sha256Hex\(subject\)\)\.slice\(0, 16\) : "";/);
-    expect(unkeyed).toMatch(/unkeyed subject \$\{subjectHash\} on address \$\{ipHash\}/);
-    // A subject is the caller's own word: it keys a user's bucket only when the
+    // A subject is the caller's own word: it is read at all only when the
     // platform-seen address is in OpenAI's published egress (egressHost), and
-    // only hashed. Every other caller is metered by the address hash.
+    // keys a bucket only hashed. Its log line carries no address beside it.
     expect(unkeyed).toMatch(/const host = await egressHost\(address, isChatGptCaller\(req\.headers, params\)\);/);
-    expect(unkeyed).toMatch(/if \(host === "chatgpt" && subject\) buckets\.push\(\{ key: `u:chatgpt:\$\{subjectHash\}`/);
-    expect(unkeyed).toMatch(/\.rpc\("mcp_anon_check", \{ p_ip_hash: b\.key, p_global_cap: ANON_GLOBAL_CAP_PER_DAY, p_ip_cap: b\.cap \}\)/);
-    expect(unkeyed).not.toMatch(/p_ip_hash: subject|key: subject\b/);
+    expect(unkeyed).toMatch(/const subject = host === "chatgpt" \? openaiSubjectOf\(params\) : "";/);
+    expect(unkeyed).toMatch(/const subjectHash = subject \? \(await sha256Hex\(subject\)\)\.slice\(0, 16\) : "";/);
+    expect(unkeyed).toMatch(/keyless subject \$\{subjectHash\} \(\$\{toolName\}\)/);
+    expect(unkeyed).not.toMatch(/on address|ipHash/);
+    expect(unkeyed).toMatch(/const lookups = lookupBucket\(host, subjectHash, /);
+    expect(unkeyed).toMatch(/\.rpc\("mcp_anon_check_v2", \{\s*p_bucket: m\.bucket,/);
+    expect(unkeyed).not.toMatch(/p_bucket: subject|bucket: subject\b/);
     const reader = between(MCP, "const openaiSubjectOf = ", "\n};");
     expect(reader).toMatch(/`\$\{OPENAI_META_PREFIX\}subject`/);
     expect(reader).toMatch(/typeof v === "string" \? v\.trim\(\) : ""/);
@@ -487,8 +464,11 @@ describe("the in-band sign-in hedge is the HTTP challenge's own string, in the t
   });
 
   it("tools/list mirrors each tool's securitySchemes into its _meta", () => {
-    const list = between(MCP, 'if (method === "tools/list")', 'if (method === "prompts/list")');
-    expect(list).toMatch(/return \{ \.\.\.t, securitySchemes, _meta: \{ securitySchemes \} \};/);
+    // Only while sign-in is on: until then no listed tool carries a scheme.
+    const list = between(MCP, "function listedTools(", "\n}\n");
+    expect(list).toMatch(/if \(!signInOn\) return listed;/);
+    expect(list).toMatch(/return \{ \.\.\.listed, securitySchemes, _meta: \{ securitySchemes \} \};/);
+    expect(between(MCP, 'if (method === "tools/list")', 'if (method === "prompts/list")')).toMatch(/listedTools\(!!bearer, edition, state === "on"\)/);
   });
 
   it("serverInfo names the bump, a title, the human page and an icon that exists", () => {
@@ -540,7 +520,7 @@ describe("teeth: each property fails on a copy that breaks it", () => {
 
   it("a listing that meters or challenges is reported", () => {
     const lists = listingsOf(MCP);
-    const metered = MCP.replace(lists, lists.replace("prompts: PROMPTS.map(", 'await client.rpc("api_key_check", { p_key_hash: "", p_endpoint: "/mcp/prompts/list" }); prompts: PROMPTS.map('));
+    const metered = MCP.replace(lists, lists.replace("prompts: PROMPTS.filter(", 'await client.rpc("api_key_check", { p_key_hash: "", p_endpoint: "/mcp/prompts/list" }); prompts: PROMPTS.filter('));
     expect(metered).not.toBe(MCP);
     expect(listingsOf(metered)).toMatch(/api_key_check/);
   });
@@ -562,11 +542,10 @@ describe("teeth: each property fails on a copy that breaks it", () => {
     expect(metered).toMatch(/\/mcp\/prompt/);
   });
 
-  it("a bare tool name in the instructions head is reported, and an unkeyed runner moved out of the try is reported", () => {
-    const bare = MCP.replace('then ${tool("search_jobs")}; on a keyed session call ${tool("key_status")} first', "then search_jobs; on a keyed session call key_status first");
+  it("a bare tool name in the instructions is reported, and an unkeyed runner moved out of the try is reported", () => {
+    const bare = MCP.replace('Start with ${tool("search_jobs")}:', "Start with search_jobs:");
     expect(bare).not.toBe(MCP);
-    const head = instructionsSourceOf(bare);
-    expect(typedToolNames(head.slice(0, head.indexOf("Four tiers")), TOOL_NAMES)).toEqual(["search_jobs", "key_status"]);
+    expect(typedToolNames(instructionsSourceOf(bare), TOOL_NAMES)).toEqual(["search_jobs"]);
     const pre = between(MCP, "if (read && !bearer) {", 'if (method !== "tools/call") {');
     const moved = pre.replace("    try {\n", "").replace(/\n    \} catch \(e\) \{\n      return readFailed\(id, read, e, \{\}\);\n    \}/, "");
     expect(moved).not.toBe(pre);
@@ -595,16 +574,9 @@ describe("teeth: each property fails on a copy that breaks it", () => {
     }
   });
 
-  it("an instructions head that opens with the caps, or grows past the truncation, is reported on the rendered text", () => {
-    const capsFirst = MCP.replace(
-      "`Live job search over employers' own hiring feeds, for an agent. Call ${tool(\"board_stats\")} first",
-      "`${ANON_IP_CAP_PER_DAY} calls a day per address. Live job search over employers' own hiring feeds, for an agent. Call ${tool(\"board_stats\")} first",
-    );
-    expect(capsFirst).not.toBe(MCP);
-    const rendered = renderInstructions(capsFirst);
-    expect(rendered.slice(0, rendered.indexOf("Four tiers"))).toMatch(/\d/);
-    const grown = MCP.replace("`The guide: ${GUIDE_URI}.`,", "`The guide: ${GUIDE_URI}. " + "x".repeat(260) + "`,");
-    expect(grown).not.toBe(MCP);
-    expect(Buffer.byteLength(renderInstructions(grown), "utf8")).toBeGreaterThanOrEqual(2048);
+  it("instructions that send the first call to board_stats again are reported", () => {
+    const back = MCP.replace('Start with ${tool("search_jobs")}:', 'Call ${tool("board_stats")} first, then ${tool("search_jobs")}:');
+    expect(back).not.toBe(MCP);
+    expect(instructionsSourceOf(back)).toMatch(/board_stats/);
   });
 });

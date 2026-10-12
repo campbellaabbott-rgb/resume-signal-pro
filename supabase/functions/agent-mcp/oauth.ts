@@ -128,6 +128,9 @@ export const RESOURCE_METADATA_URL = `${MCP_URL}${PRM_PATH}`;
  * transport (the ChatGPT-shaped hedge in index.ts), as the same string in
  * band. Two spellings of one challenge would be two challenges.
  */
+/** The header the challenge travels in, spelled once: the dispatcher exposes it to browser clients by this name. */
+export const CHALLENGE_HEADER = "WWW-Authenticate";
+
 export function bearerChallenge(): string {
   return (
     `Bearer error="invalid_token", error_description="${UNAUTHORIZED_DESCRIPTION}", ` +
@@ -146,7 +149,7 @@ export function bearerChallenge(): string {
 export function unauthorized(cors: Record<string, string>): Response {
   return new Response(JSON.stringify({ error: "invalid_token", error_description: UNAUTHORIZED_DESCRIPTION }), {
     status: 401,
-    headers: { "Content-Type": "application/json", "WWW-Authenticate": bearerChallenge(), ...cors },
+    headers: { "Content-Type": "application/json", [CHALLENGE_HEADER]: bearerChallenge(), ...cors },
   });
 }
 

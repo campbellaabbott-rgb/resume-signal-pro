@@ -89,7 +89,8 @@ describe("the MCP exposes the trace as debug_search", () => {
     // One mapping, wrapped once (2026-10-10) so a withheld employer's own token is refused on both paths.
     expect(MCP).toMatch(/function searchBody\(args: Record<string, unknown>\)/);
     expect(MCP).toMatch(/async function servableSearchBody\(args: Record<string, unknown>\)[^{]*\{\s*const body = searchBody\(args\);/);
-    expect(MCP).toMatch(/const r = await board\(await servableSearchBody\(args\)\)/);
+    // (the caller's context rides beside the body since wave 4: the ChatGPT no-log flag)
+    expect(MCP).toMatch(/const r = await board\(await servableSearchBody\(args\)(?:, ctx)?\)/);
     expect(MCP).toMatch(/const base = await servableSearchBody\(args\)/);
   });
 });
