@@ -833,8 +833,11 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
       )}
 
       {/* Criteria editor — for one saved search, or for the mandate itself on
-          the pre-migration fallback path. */}
-      {(editing || !mandate) ? (
+          the pre-migration fallback path. Nothing of it while the agent is
+          switched off (S12-171): it offered to activate a mandate the agent
+          can never run, and the mandate it activated kept the sender health
+          check alarming. */}
+      {!APPLY_AGENT_ON ? null : (editing || !mandate) ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
           {/* Only when editing a SEARCH. A name is what makes a morning queue
               of eight jobs from three searches readable rather than a list. */}

@@ -104,6 +104,20 @@ describe("the Morning Queue panel, as a customer with no plan sees it", () => {
   });
 });
 
+// S12-171: a subscriber the agent-access read still calls active was offered
+// "Activate mandate" and the search form for an agent that is switched off;
+// the mandate it made kept the sender health check alarming every six hours.
+describe("the Morning Queue panel offers no mandate while the agent is off", () => {
+  it("an active plan sees no search form and no button that activates a mandate", async () => {
+    access.value = { active: true, tier: "agent", status: "active", pass: { state: "none", usable: false } };
+    render(<MemoryRouter><MorningQueuePanel userId="u-5" email="sub@example.com" defaultResume={RESUME} /></MemoryRouter>);
+    await screen.findByText(/our own apply agent is switched off/);
+    await act(async () => { await new Promise((r) => setTimeout(r, 20)); });
+    expect(screen.queryByRole("button", { name: /Activate mandate|Start the agent with these/ })).toBeNull();
+    expect(screen.queryByText(/Picks per morning/)).toBeNull();
+  });
+});
+
 describe("the application kit sells nothing to a member without Pro", () => {
   it("renders nothing without Pro, and the Pro kit button with it", () => {
     const off = render(<MemoryRouter><ApplyKitPanel jobPosting={POSTING} resumeText={RESUME} proActive={false} /></MemoryRouter>);

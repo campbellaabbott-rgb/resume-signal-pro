@@ -12,7 +12,7 @@
  * a-pass-buyer-was-told-no-purchases-and-the-export-left-out-the-agent.test.ts.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import en from "../i18n/locales/en.json";
 
@@ -50,14 +50,12 @@ describe("the account's purchases", () => {
   });
 });
 
+// Scan packs are no longer sold (owner decision 2026-10-12): the card that
+// opened the pack checkout here offers none now. Credits already bought stay.
 describe("getting more credits", () => {
-  it("opens the credit pack here, with the account's address as the receipt address", () => {
-    mount({ credits: 0, purchases: [], passes: [], mailboxProven: true });
-    const cta = screen.getByRole("button", { name: en.accountPage.getMoreCredits });
-    expect(cta.closest("a")).toBeNull();
-    fireEvent.click(cta);
-    expect(screen.getByRole("dialog")).toBeTruthy();
-    expect(screen.getByText(en.scanPackPurchase.topUpCredits)).toBeTruthy();
-    expect(screen.getByDisplayValue("member@example.com")).toBeTruthy();
+  it("offers no scan pack, since packs are no longer sold", () => {
+    mount({ credits: 3, purchases: [], passes: [], mailboxProven: true });
+    expect(screen.queryByRole("button", { name: en.accountPage.getMoreCredits })).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 });
