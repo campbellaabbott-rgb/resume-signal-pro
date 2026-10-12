@@ -12,18 +12,22 @@
 #     INFO, a start with an open step past them is a FAIL naming that step;
 #   - the no-log flag: the two bundles that carry it serve (job-board .93
 #     honours noLog only with the reader proof agent-mcp sends; agent-mcp
-#     2026-10-11.2 sets it for ChatGPT), and a browser-style list that sends
-#     noLog without the proof is answered as before. Whether the row was
-#     written is a service-role read: the owner's SQL is printed with the
-#     nonce this run searched for;
+#     2026-10-11.3 sets it only for a call from OpenAI's published egress),
+#     a browser-style list that sends noLog without the proof is still
+#     answered, and a search with ChatGPT's user agent answers in the
+#     ChatGPT edition. Neither read can show whether a row was written
+#     (honouring the flag changes no answer): that is the owner's
+#     service-role SQL, printed with this run's nonce;
 #   - "nurse jobs in Texas" returns at least 90% of q "nurse" with location
 #     "Texas" and names the place in intentFilters, and so does "software
 #     engineer jobs in new york" against its location form; an employer asked
 #     for by name ("Humana") resolves with companiesResolved.
 #
 # READ-ONLY. job-board reads use the probe budget (anonymous reads of our own
-# tooling); ONE keyless MCP lookup is spent, as ChatGPT's user agent, so the
-# owner can check that search left no row. No write, no maintenance action.
+# tooling); ONE keyless MCP lookup is spent, as ChatGPT's user agent from this
+# machine (outside OpenAI's egress), so the owner can check that a user agent
+# alone no longer keeps a search out of the log. No write, no maintenance
+# action.
 echo "== 86. wave 4 job-board .93: pass-end receipts, the no-log flag, search as asked =="
 
 VD86_JB=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/job-board" -H "x-rb-budget: probe" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
@@ -55,22 +59,22 @@ info("scan-heartbeat job_board_pass_end fails any pass whose start has no finish
 # The no-log flag. The nonce is this run's own, so the owner's SQL finds only it.
 VD86_NONCE="vdnolog$(date +%s)"
 J "{\"action\":\"list\",\"q\":\"nurse\",\"noLog\":true,\"limit\":1}" > /tmp/vd_86_nolog_browser.json
-if build_ge agent-mcp "$VD86_MCP" "2026-10-11" "2"; then
+if build_ge agent-mcp "$VD86_MCP" "2026-10-11" "3"; then
   MC -A "ChatGPT-User/1.0; +https://openai.com/bot" -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"search_jobs\",\"arguments\":{\"query\":\"$VD86_NONCE\",\"limit\":1}}}" > /tmp/vd_86_gpt.json
 else : > /tmp/vd_86_gpt.json; fi
 VD86_LIVE="$VD86_LIVE" VD86_MCP="$VD86_MCP" VD86_NONCE="$VD86_NONCE" node -e '
 const fs=require("fs");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);const info=(m)=>console.log("INFO  "+m);
 const rd=(f)=>{try{return JSON.parse(fs.readFileSync(f,"utf8"))}catch{return null}};
 const b=rd("/tmp/vd_86_nolog_browser.json");
-ok(!!b&&Array.isArray(b.jobs)&&b.jobs.length>0,"a browser-style list that sends noLog without the reader proof is answered as before ("+(b&&Array.isArray(b.jobs)?b.jobs.length+" row":JSON.stringify(b).slice(0,100))+"); the flag is honoured only with the proof");
+ok(!!b&&Array.isArray(b.jobs)&&b.jobs.length>0,"a browser-style list that sends noLog without the reader proof is still answered ("+(b&&Array.isArray(b.jobs)?b.jobs.length+" row":JSON.stringify(b).slice(0,100))+"); whether it was logged is the owner SQL below, not this line");
 const g=rd("/tmp/vd_86_gpt.json");const r=(g&&g.result)||null;
-if(!r)info("the ChatGPT-edition search was not made: agent-mcp "+(process.env.VD86_MCP||"(no build)")+" does not set the no-log flag yet");
+if(!r)info("the ChatGPT-edition search was not made: agent-mcp "+(process.env.VD86_MCP||"(no build)")+" is older than 2026-10-11.3, which sets the no-log flag only from OpenAI egress");
 else{
   const t=String(((r.content||[])[0]||{}).text||"");
   if(r.isError&&/allowance is spent|Too many keyless calls/.test(t))info("the ChatGPT-edition search was refused for the allowance: "+t.slice(0,120));
-  else ok(!r.isError&&!/utm_/.test(t),"a search read as ChatGPT answers (with no tracking tags) and asks the board not to log it");
+  else ok(!r.isError&&!/utm_/.test(t),"a search with the ChatGPT user agent answers in the ChatGPT edition (no tracking tags); whether it was logged is the owner SQL below");
 }
-if(process.env.VD86_LIVE==="1")info("owner, service role, a minute after this run: SELECT count(*) FROM job_board_search_events WHERE q = '\''"+process.env.VD86_NONCE+"'\'' must be 0 (the ChatGPT search was not logged), and SELECT count(*) FROM job_board_search_misses WHERE q = '\''"+process.env.VD86_NONCE+"'\'' must be 0 too (the nonce matches nothing, so a logged search would also have written a miss); once .93 has served an hour, SELECT count(*) FROM job_board_search_events WHERE caller = '\''mcp'\'' AND at > now() - interval '\''1 hour'\'' AND jsonb_array_length(coalesce(shown, '\''[]'\''::jsonb)) > 0 must be 0 (an MCP search keeps its words, never its shown ids)");'
+if(process.env.VD86_LIVE==="1")info("owner, service role, a minute after this run: SELECT count(*) FROM job_board_search_events WHERE q = '\''"+process.env.VD86_NONCE+"'\'' must be 1, and the same count on job_board_search_misses 1 too: this run called from outside OpenAI'\''s published egress, and from agent-mcp 2026-10-11.3 a user agent alone no longer keeps a search out of the log (0 means the flag still follows the user agent); that a search from OpenAI'\''s egress is not logged is proved in the suite (a-model-reads-slim-cards-and-a-chatgpt-search-is-not-logged, every-claude-and-chatgpt-user-shared-one-addresss-unkeyed-allowance) and, live, by SELECT count(*) FROM job_board_search_events WHERE caller = '\''mcp'\'' AND at::date = current_date staying near the Claude and other search_jobs and search calls in mcp_calls_daily for the day, never those plus ChatGPT'\''s; once .93 has served an hour, SELECT count(*) FROM job_board_search_events WHERE caller = '\''mcp'\'' AND at > now() - interval '\''1 hour'\'' AND jsonb_array_length(coalesce(shown, '\''[]'\''::jsonb)) > 0 must be 0 (an MCP search keeps its words, never its shown ids)");'
 
 # Search as asked: the place moved out of the words, and an employer by name.
 J '{"action":"list","q":"nurse jobs in Texas","limit":1}' > /tmp/vd_86_q1.json

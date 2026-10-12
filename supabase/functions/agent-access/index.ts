@@ -67,7 +67,8 @@ import { APPLY_AGENT_ON } from "../_shared/apply-agent-switch.ts";
 // "released" would read as "on its way". cancel and not_sent are unchanged;
 // the status read of a plan or a pass reports it as before and adds
 // agentSwitchedOff, so a page can say nothing will be sent for it.
-const FN_BUILD = "agent-access.2026-10-11.13";
+// 2026-10-11.14: apply-agent-switch.ts gained the Apply Assistant's own switch (APPLY_ASSISTANT_ON_SALE); nothing this function does changed.
+const FN_BUILD = "agent-access.2026-10-11.14";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

@@ -66,7 +66,8 @@ import { retiredCheckoutAnswer } from "../_shared/apply-agent-retired.ts";
 // sorts after every branch's string, wave3/payments-account's 2026-10-09.1
 // included, which a September date could not. 2026-10-11.13: retired (wave 4).
 const FN_NAME = "create-pass-checkout";
-const FN_BUILD = `${FN_NAME}.2026-10-11.13`;
+// 2026-10-11.14: apply-agent-switch.ts gained the Apply Assistant's own switch (APPLY_ASSISTANT_ON_SALE); nothing this function does changed. The retirement sentence module's header was corrected too.
+const FN_BUILD = `${FN_NAME}.2026-10-11.14`;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",

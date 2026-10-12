@@ -21,7 +21,9 @@ import { purchaseSpendGate, spendRefusal } from "../_shared/model-spend-gate.ts"
 // this function imports for roleGuidance alone, gained w4/mcp's widened
 // classifier; roleGuidance is unchanged, and the stamp moves so the deployed
 // bundle and the repository's are the same code.
-const FN_BUILD = "generate-apply-package.2026-10-11.1";
+// 2026-10-11.2: the classifier it imports no longer exempts a second ask inside a work-done
+// prompt, and knows when-could-you-start and current earnings (review of 9fe3bc0d).
+const FN_BUILD = "generate-apply-package.2026-10-11.2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

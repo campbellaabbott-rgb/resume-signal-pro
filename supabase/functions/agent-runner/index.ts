@@ -54,7 +54,8 @@ import { APPLY_AGENT_ON } from "../_shared/apply-agent-switch.ts";
 // scans nothing, scores nothing, queues nothing and writes no run stamp; the
 // nightly cron is unscheduled by name in 20261011130000. The code below is
 // kept, dormant, with its tests.
-const BUILD_VERSION = "2026-10-11.13";
+// 2026-10-11.14: apply-agent-switch.ts gained the Apply Assistant's own switch (APPLY_ASSISTANT_ON_SALE); nothing this function does changed.
+const BUILD_VERSION = "2026-10-11.14";
 // Provable from outside with no key: the preflight carries it.
 const FN_BUILD = `agent-runner.${BUILD_VERSION}`;
 

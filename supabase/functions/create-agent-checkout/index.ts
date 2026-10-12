@@ -61,7 +61,8 @@ import { retiredCheckoutAnswer } from "../_shared/apply-agent-retired.ts";
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
 // 2026-10-11.13: retired; a POST is a 410 naming applying yourself (wave 4).
-const FN_BUILD = "create-agent-checkout.2026-10-11.13";
+// 2026-10-11.14: apply-agent-switch.ts gained the Apply Assistant's own switch (APPLY_ASSISTANT_ON_SALE); nothing this function does changed. The retirement sentence module's header was corrected too.
+const FN_BUILD = "create-agent-checkout.2026-10-11.14";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

@@ -37,7 +37,10 @@ import { toAskedLabels } from "../_shared/draft-reply.ts";
 // _shared/application-questions.ts, so termination, reasons for leaving, gaps,
 // references, grades, commuting, time zone and prior employment by the
 // employer are factual (the person answers) and never drafted here.
-const FN_BUILD = "generate-application-answers.2026-10-11.1";
+// 2026-10-11.2: the classifier it imports no longer exempts a second ask inside a work-done
+// prompt ("..., including your reasons for leaving"), and knows when-could-you-start and
+// current earnings (review of 9fe3bc0d).
+const FN_BUILD = "generate-application-answers.2026-10-11.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

@@ -352,7 +352,11 @@ const LIST_FILTERS = [
 // 2026-10-11.2 (the wave-4 integration): the fit decision moved to
 // _shared/fit-gate.ts, which fit_resume in agent-mcp now reads too; /v1's
 // behaviour is unchanged.
-const FN_BUILD = "public-api.2026-10-11.2";
+// 2026-10-11.3 (review of 9fe3bc0d): the free fit allowance is 25 a key a day
+// across /v1/fit and fit_resume together; the application route says a
+// Breezy or Pinpoint page read with no questions was read, and names the CV;
+// the drafting rule refuses a second ask inside a work-done question.
+const FN_BUILD = "public-api.2026-10-11.3";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",

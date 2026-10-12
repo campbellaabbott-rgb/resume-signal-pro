@@ -137,7 +137,7 @@ describe("apply-agent: an authorised run does nothing and says so", () => {
       const res = await call(h["apply-agent"], "apply-agent", body, { "x-maintenance-key": env.MAINTENANCE_KEY! });
       expect(res.status).toBe(200);
       const j = await res.json();
-      expect(j).toMatchObject({ switchedOff: true, version: "2026-10-11.14", trigger: trigger === "cron" ? "cron" : "manual" });
+      expect(j).toMatchObject({ switchedOff: true, version: "2026-10-11.15", trigger: trigger === "cron" ? "cron" : "manual" });
       expect(j).not.toHaveProperty("prepared");
       expect(hit("from:agent_mandates")).toEqual([]);
       expect(hit("from:agent_submissions")).toEqual([]);
@@ -152,7 +152,7 @@ describe("apply-agent: an authorised run does nothing and says so", () => {
   it("a stranger still gets the 403 with the build and nothing else", async () => {
     const res = await call(h["apply-agent"], "apply-agent", { source: "cron" });
     expect(res.status).toBe(403);
-    expect(await res.json()).toEqual({ error: "apply-agent is a maintenance action", version: "2026-10-11.14" });
+    expect(await res.json()).toEqual({ error: "apply-agent is a maintenance action", version: "2026-10-11.15" });
     expect(touched.filter((x) => x !== "createClient")).toEqual([]);
   });
 
@@ -167,7 +167,7 @@ describe("agent-runner: an authorised run scans and queues nothing", () => {
   it("switchedOff, no queue write, no mandate read, no run stamp", async () => {
     const res = await call(h["agent-runner"], "agent-runner", { source: "cron" }, { "x-maintenance-key": env.AGENT_MAINTENANCE_KEY! });
     expect(res.status).toBe(200);
-    expect(await res.json()).toMatchObject({ switchedOff: true, version: "2026-10-11.13", trigger: "cron" });
+    expect(await res.json()).toMatchObject({ switchedOff: true, version: "2026-10-11.14", trigger: "cron" });
     expect(hit("from:agent_queue")).toEqual([]);
     expect(hit("from:agent_mandates")).toEqual([]);
     expect(hit("from:job_board_postings")).toEqual([]);
@@ -177,7 +177,7 @@ describe("agent-runner: an authorised run scans and queues nothing", () => {
   it("a stranger still gets the 403 with the build", async () => {
     const res = await call(h["agent-runner"], "agent-runner", {});
     expect(res.status).toBe(403);
-    expect(await res.json()).toEqual({ error: "unauthorized", version: "2026-10-11.13" });
+    expect(await res.json()).toEqual({ error: "unauthorized", version: "2026-10-11.14" });
   });
 });
 
@@ -194,7 +194,7 @@ describe("apply-broker: no packet leaves, and nothing reads the sender as alive"
 
   it("a ping records no heartbeat", async () => {
     const res = await call(h["apply-broker"], "apply-broker", { action: "ping", worker_id: "gha-1", version: "w" }, worker);
-    expect(await res.json()).toEqual({ ok: true, build: "2026-10-11.13", switchedOff: true });
+    expect(await res.json()).toEqual({ ok: true, build: "2026-10-11.14", switchedOff: true });
     expect(hit("rpc:agent_worker_ping")).toEqual([]);
   });
 
@@ -280,7 +280,7 @@ describe("agent-pass-status: a bought pass reads as before, and says nothing wil
   it("a signed-out caller is still a 401, and the preflight carries the new build", async () => {
     expect((await call(h["agent-pass-status"], "agent-pass-status", {})).status).toBe(401);
     const pre = await h["agent-pass-status"](new Request("https://harness.supabase.co/functions/v1/agent-pass-status", { method: "OPTIONS" }));
-    expect(pre.headers.get("x-fn-build")).toBe("agent-pass-status.2026-10-11.13");
+    expect(pre.headers.get("x-fn-build")).toBe("agent-pass-status.2026-10-11.14");
   });
 
   it("positive control: with the switch on, the same read carries no switched-off flag", async () => {

@@ -31,8 +31,8 @@ echo "== 82. wave 4 keyless surface: every read tool answers with no key, and to
 VD82_H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/agent-mcp" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
 VD82_LIVE=0
 if [ -z "$VD82_H" ]; then echo "FAIL  agent-mcp preflight carries no x-fn-build (not deployed, or the previous bundle is serving)"
-elif build_ge agent-mcp "$VD82_H" "2026-10-11" "2"; then echo "PASS  agent-mcp preflight x-fn-build = $VD82_H (agent-mcp.2026-10-11.2 or later: the wave-4 connector)"; VD82_LIVE=1
-else echo "FAIL  agent-mcp preflight x-fn-build = $VD82_H (want agent-mcp.2026-10-11.2 or later: the keyless surface is not serving)"; fi
+elif build_ge agent-mcp "$VD82_H" "2026-10-11" "3"; then echo "PASS  agent-mcp preflight x-fn-build = $VD82_H (agent-mcp.2026-10-11.3 or later: the wave-4 connector with the review fixes)"; VD82_LIVE=1
+else echo "FAIL  agent-mcp preflight x-fn-build = $VD82_H (want agent-mcp.2026-10-11.3 or later: the keyless surface, or its review fixes, are not serving)"; fi
 
 MC -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"verify-deploy-82","version":"1"}}}' > /tmp/vd_82_init.json
 MC -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' > /tmp/vd_82_tools.json

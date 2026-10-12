@@ -28,8 +28,10 @@ echo "== 84. wave 4 apply myself: the employer's real form, who answers each que
 # The builds that carry it: public-api's /v1 twin (and the fit rule it shares
 # with the connector), and the two generators that import the widened question
 # classifier (termination, reasons for leaving, gaps, references and grades go
-# to the person).
-for VD84_PAIR in "public-api|2026-10-11|2" "generate-application-answers|2026-10-11|1" "generate-apply-package|2026-10-11|1"; do
+# to the person). The review of 9fe3bc0d raised each: the classifier refuses
+# a second ask inside a work-done prompt (generators .2), and /v1 counts the
+# free fit allowance across both doors (public-api .3).
+for VD84_PAIR in "public-api|2026-10-11|3" "generate-application-answers|2026-10-11|2" "generate-apply-package|2026-10-11|2"; do
   VD84_FN=${VD84_PAIR%%|*}; VD84_REST=${VD84_PAIR#*|}; VD84_D=${VD84_REST%%|*}; VD84_N=${VD84_REST#*|}
   VD84_H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$VD84_FN" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
   if [ -z "$VD84_H" ]; then echo "FAIL  $VD84_FN preflight carries no x-fn-build (not deployed, or the previous bundle is serving)"

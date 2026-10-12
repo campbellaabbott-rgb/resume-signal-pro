@@ -39,7 +39,8 @@ import { APPLY_AGENT_ON } from "../_shared/apply-agent-switch.ts";
 // records no heartbeat, so nothing reads the sender as alive; a peek says
 // there is nothing to run. release, uncertain, pending and wall still work,
 // so a packet a worker already held is recorded truthfully.
-const BUILD_VERSION = "2026-10-11.13";
+// 2026-10-11.14: apply-agent-switch.ts gained the Apply Assistant's own switch (APPLY_ASSISTANT_ON_SALE); nothing this function does changed.
+const BUILD_VERSION = "2026-10-11.14";
 // Provable from outside with no secret: the preflight and every response carry it.
 const FN_BUILD = `apply-broker.${BUILD_VERSION}`;
 const LEASE_MINUTES = 10;

@@ -70,7 +70,9 @@ import { APPLY_AGENT_ON } from "../_shared/apply-agent-switch.ts";
 // w4/mcp's widened question classifier (_shared/application-questions.ts:
 // termination, reasons for leaving, gaps, references and grades go to the
 // person), so the dormant agent and the live connector classify alike.
-const BUILD_VERSION = "2026-10-11.14";
+// 2026-10-11.15: the classifier it imports reads the person's own history inside a work-done prompt
+// as that question (review of 9fe3bc0d), and the switch module gained the Apply Assistant's switch.
+const BUILD_VERSION = "2026-10-11.15";
 // Provable from outside with no key: the CORS preflight and every response
 // carry this in x-fn-build.
 const FN_BUILD = `apply-agent.${BUILD_VERSION}`;

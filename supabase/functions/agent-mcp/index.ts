@@ -293,8 +293,15 @@ const SUPPORTED_METHODS = ["initialize", "tools/list", "tools/call", "prompts/li
  *  the one rule POST /v1/fit follows (_shared/fit-gate.ts): a key whose email
  *  was confirmed or whose account proved its mailbox scores 25 a day; any
  *  other key is refused and told where a confirmed one comes from, instead of
- *  scoring on this door and being refused on /v1. */
-const FN_BUILD = "agent-mcp.2026-10-11.2";
+ *  scoring on this door and being refused on /v1.
+ *  2026-10-11.3 (review of 9fe3bc0d): the drafting rule refuses a second ask
+ *  inside a work-done or motivation question; an attestation offered as a
+ *  choice is the person's; a Breezy or Pinpoint page read with no questions
+ *  says so; the forms pool is split by platform; board_stats misses share one
+ *  read; at most six keyless calls run at once per isolate; a search naming
+ *  more than 50 employers is refused before it is counted; only OpenAI's
+ *  published egress keeps a search out of the demand log. */
+const FN_BUILD = "agent-mcp.2026-10-11.3";
 /** Where a free key is minted — the page every refusal in this file points at. */
 const MINT_URL = "https://resumebooster.work/data-api";
 /** Where a pass is bought, signed in — the fix every pass refusal names. */

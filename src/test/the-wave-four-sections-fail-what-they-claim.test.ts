@@ -200,9 +200,9 @@ function healthy(over: Record<string, Route | null> = {}): Route[] {
   const base: Record<string, Route> = {
     "opt:mcp": fromReal("options", `^OPTIONS ${esc(MCP)} `),
     "opt:jb": { match: "^OPTIONS https://p\\.supabase\\.co/functions/v1/job-board ", headers: { "x-fn-build": "job-board.2026-09-09.93" } },
-    "opt:api": { match: "^OPTIONS https://p\\.supabase\\.co/functions/v1/public-api ", headers: { "x-fn-build": "public-api.2026-10-11.2" } },
-    "opt:gaa": { match: "^OPTIONS https://p\\.supabase\\.co/functions/v1/generate-application-answers ", headers: { "x-fn-build": "generate-application-answers.2026-10-11.1" } },
-    "opt:gap": { match: "^OPTIONS https://p\\.supabase\\.co/functions/v1/generate-apply-package ", headers: { "x-fn-build": "generate-apply-package.2026-10-11.1" } },
+    "opt:api": { match: "^OPTIONS https://p\\.supabase\\.co/functions/v1/public-api ", headers: { "x-fn-build": "public-api.2026-10-11.3" } },
+    "opt:gaa": { match: "^OPTIONS https://p\\.supabase\\.co/functions/v1/generate-application-answers ", headers: { "x-fn-build": "generate-application-answers.2026-10-11.2" } },
+    "opt:gap": { match: "^OPTIONS https://p\\.supabase\\.co/functions/v1/generate-apply-package ", headers: { "x-fn-build": "generate-apply-package.2026-10-11.2" } },
     "opt:akr": { match: "^OPTIONS https://p\\.supabase\\.co/functions/v1/api-key-request ", headers: { "x-fn-build": "api-key-request.2026-10-11.1" } },
     init: fromReal("init", `^POST ${esc(MCP)} ua= .*"method":"initialize"`),
     toolsGpt: fromReal("toolsGpt", `^POST ${esc(MCP)} ua=ChatGPT.*"method":"tools/list"`),
@@ -314,8 +314,8 @@ describe("84: applying yourself", () => {
     const { lines } = run(["84-wave4-apply-myself.sh"], healthy(), { rb: "rb_live_test" });
     expect(fails(lines), show(lines)).toEqual([]);
     for (const re of [
-      /public-api preflight x-fn-build = public-api\.2026-10-11\.2/, /generate-application-answers preflight x-fn-build = generate-application-answers\.2026-10-11\.1/,
-      /generate-apply-package preflight x-fn-build = generate-apply-package\.2026-10-11\.1/,
+      /public-api preflight x-fn-build = public-api\.2026-10-11\.3/, /generate-application-answers preflight x-fn-build = generate-application-answers\.2026-10-11\.2/,
+      /generate-apply-package preflight x-fn-build = generate-apply-package\.2026-10-11\.2/,
       /returns the employer-published Greenhouse form/, /every question says who answers it/, /draft_from_your_cv \(default-deny/,
       /each choice question carries its options/, /route\.submitter is "you"/, /forms pool, never the lookups/, /five headings/,
       /Workday posting answers not-published/, /SmartRecruiters posting is restricted/, /\/v1\/jobs\/\{id\}\/application -> 200/,
@@ -396,11 +396,13 @@ describe("86: job-board .93", () => {
     const { lines } = run(["86-wave4-job-board.sh"], healthy());
     expect(fails(lines), show(lines)).toEqual([]);
     for (const re of [
-      /job-board preflight x-fn-build = job-board\.2026-09-09\.93/, /last pass-end tail finished/, /noLog without the reader proof is answered as before/,
-      /a search read as ChatGPT answers/, /"nurse jobs in Texas" returns 1584 of the location form's 1592/, /"software engineer jobs in new york" returns 437/,
+      /job-board preflight x-fn-build = job-board\.2026-09-09\.93/, /last pass-end tail finished/, /noLog without the reader proof is still answered/,
+      /a search with the ChatGPT user agent answers in the ChatGPT edition/, /"nurse jobs in Texas" returns 1584 of the location form's 1592/, /"software engineer jobs in new york" returns 437/,
       /companies:\["Humana"\] resolves by name/,
     ]) expect(has(lines, "PASS", re), `${re}${show(lines)}`).toBe(true);
-    expect(has(lines, "INFO", /job_board_search_events WHERE q = 'vdnolog\d+' must be 0/), show(lines)).toBe(true);
+    // From agent-mcp 2026-10-11.3 the flag follows OpenAI's egress, and this
+    // run calls from outside it: its nonce must be logged (review of 9fe3bc0d).
+    expect(has(lines, "INFO", /job_board_search_events WHERE q = 'vdnolog\d+' must be 1/), show(lines)).toBe(true);
   });
 
   it("a tail with an open step past 30 minutes FAILs naming it; one in flight is INFO", () => {
