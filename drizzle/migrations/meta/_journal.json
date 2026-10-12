@@ -1128,6 +1128,13 @@
       "when": 1791821311461,
       "tag": "0160_20261009100300_a_teamtailor_page_of_a_hundred_wrote_takedowns_nobody_made",
       "breakpoints": true
+    },
+    {
+      "idx": 161,
+      "version": "7",
+      "when": 1791821325583,
+      "tag": "0161_20261009112000_a_shortlist_evaluation_is_closed_to_the_browser_once_no_live_code_writes_it_from_there",
+      "breakpoints": true
     }
   ]
 }
