@@ -15,6 +15,7 @@
  */
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+import { SELLER_SET_STUB } from "./helpers/seller-set";
 
 const SERVICE = "service_role_key_for_the_harness_0123456789abcdef";
 type Sent = { to: string[]; subject: string; html: string };
@@ -29,6 +30,7 @@ beforeAll(async () => {
   g.__fakeSupabase = db;
   g.Deno = { env: { get: (k: string) => env[k] }, serve: (h: unknown) => { g.__edgeHandler = h; } };
   handler = await loadEdgeHandler("send-agent-digest", {
+    ...SELLER_SET_STUB,
     "https://esm.sh/@supabase/supabase-js@2": "export const createClient = () => globalThis.__fakeSupabase;",
     "https://esm.sh/resend@2.0.0": "export class Resend { constructor() { this.emails = { send: async (m) => { globalThis.__agdSent.push(m); return { data: { id: 'em' }, error: null }; } }; } }",
   });

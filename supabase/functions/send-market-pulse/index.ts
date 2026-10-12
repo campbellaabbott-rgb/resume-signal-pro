@@ -37,17 +37,23 @@ import { alertOwnerOnce } from "../_shared/owner-alert.ts";
 import { oneClickHeaders, oneClickUrl, redirectToConfirm, unsubscribeParams, unsubscribePageUrl } from "../_shared/unsubscribe-link.ts";
 import { sellerFooterHtml } from "../_shared/seller.ts";
 import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
+import { MARKETING_PAUSED, logMarketingPaused, marketingMailHeader, marketingPaused } from "../_shared/marketing-pause.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
 // 2026-10-09.24: no change of its own; _shared/unsubscribe-link.ts gained the
 // agent-digest list it imports beside (S11-132).
-const FN_BUILD = "send-market-pulse.2026-10-09.24";
+// 2026-10-11.25: the monthly batch sends nothing while the seller has no legal
+// name and postal address (S12-010, _shared/marketing-pause.ts); the
+// confirmation a person asks for is not marketing and still goes.
+const FN_BUILD = "send-market-pulse.2026-10-11.25";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Expose-Headers": "x-fn-build, x-marketing-mail",
   "x-fn-build": FN_BUILD,
+  ...marketingMailHeader(),
 };
 
 const SITE_URL = "https://resumebooster.work";
@@ -245,6 +251,12 @@ Deno.serve(async (req) => {
     if (body.action === "send") {
       if (!(await isScheduledCaller(req.headers, supabase, serviceKey))) {
         return json({ error: "The batch send is for the scheduler only." }, 401);
+      }
+      // A MARKETING MAIL NEEDS THE SELLER'S NAME AND POSTAL ADDRESS (S12-010).
+      // Nothing is claimed, so no subscriber loses a month while it waits.
+      if (marketingPaused()) {
+        logMarketingPaused("send-market-pulse", "batch");
+        return json({ success: true, sent: 0, skipped: 0, handedBack: 0, paused: MARKETING_PAUSED });
       }
 
       const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");

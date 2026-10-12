@@ -20,7 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { dripTokenFromHash, forgetConfirmFragment } from "@/lib/confirm-link";
 import { stashedFragment, takeStashed } from "@/lib/auth-fragment";
 
-type State = "ready" | "confirming" | "done" | "already" | "optedOut" | "invalid" | "error" | "errorFinal" | "missing";
+type State = "ready" | "confirming" | "done" | "already" | "optedOut" | "invalid" | "error" | "errorFinal" | "missing" | "paused";
 
 export default function FixPlanConfirm() {
   const { t } = useTranslation();
@@ -47,7 +47,14 @@ export default function FixPlanConfirm() {
       // A failed start the server could not fully undo: the month's slot is
       // spent, so another press could only answer "already started".
       let retry = true;
-      try { retry = ((await ctx?.clone().json()) as { retry?: boolean } | undefined)?.retry !== false; } catch { /* no body */ }
+      let reason: string | undefined;
+      try {
+        const b = (await ctx?.clone().json()) as { retry?: boolean; reason?: string } | undefined;
+        retry = b?.retry !== false;
+        reason = b?.reason;
+      } catch { /* no body */ }
+      // Marketing mail waits for the seller's name and postal address (S12-010).
+      if (reason === "paused_no_seller_identity") { setState("paused"); return; }
       setState(status === 410 || status === 400 ? "invalid" : retry ? "error" : "errorFinal");
     } catch {
       setState("error");
@@ -104,6 +111,9 @@ export default function FixPlanConfirm() {
         )}
         {state === "error" && (
           <p className="text-sm text-destructive">{t("fixPlanConfirm.error", "Could not start it right now. Try the button again shortly.")}</p>
+        )}
+        {state === "paused" && (
+          <p className="text-sm text-muted-foreground" data-state="paused">{t("fixPlanConfirm.paused", "The fix-plan emails are paused for now, so nothing was started. Your report email already holds the whole plan.")}</p>
         )}
         {state === "errorFinal" && (
           <p className="text-sm text-destructive">{t("fixPlanConfirm.errorFinal", "Could not start the whole sequence, and pressing the button again will not restart it this month.")}</p>

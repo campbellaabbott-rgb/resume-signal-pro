@@ -34,6 +34,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { PGlite } from "@electric-sql/pglite";
 import { createHash } from "node:crypto";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+import { SELLER_SET_STUB } from "./helpers/seller-set";
 import { MAIL_DOOR_VERIFY, bootMailDoorDb, h64, rows } from "./helpers/mail-door-db";
 
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
@@ -275,6 +276,7 @@ beforeAll(async () => {
   g.__fakeSupabase = db;
   g.Deno = { env: { get: (k: string) => env[k] }, serve: (h: unknown) => { g.__edgeHandler = h; } };
   handler = await loadEdgeHandler("send-market-pulse", {
+    ...SELLER_SET_STUB,
     "https://esm.sh/@supabase/supabase-js@2": "export const createClient = () => globalThis.__fakeSupabase;",
     "https://esm.sh/resend@2.0.0":
       "export class Resend { constructor() { this.emails = { send: async (m) => { globalThis.__pulseSent.push(m); return globalThis.__pulseFail.has(m.to[0]) ? { data: null, error: { message: 'bounced' } } : { data: { id: 'em' }, error: null }; } }; } }",

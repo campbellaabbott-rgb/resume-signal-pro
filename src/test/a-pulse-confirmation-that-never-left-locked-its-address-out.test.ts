@@ -25,6 +25,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createHash } from "node:crypto";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+import { SELLER_SET_STUB } from "./helpers/seller-set";
 import { bootMailDoorDb, h64, rows } from "./helpers/mail-door-db";
 
 const UNSENT_SQL = readFileSync(resolve(__dirname, "../../supabase/migrations/20261009141000_a_pulse_confirmation_that_never_left_does_not_lock_its_address_out.sql"), "utf8");
@@ -90,6 +91,7 @@ describe("the shipped handler", () => {
     g.__fakeSupabase = db;
     g.Deno = { env: { get: (k: string) => env[k] }, serve: (h: unknown) => { g.__edgeHandler = h; } };
     handler = await loadEdgeHandler("send-market-pulse", {
+      ...SELLER_SET_STUB,
       "https://esm.sh/@supabase/supabase-js@2": "export const createClient = () => globalThis.__fakeSupabase;",
       "https://esm.sh/resend@2.0.0":
         "export class Resend { constructor() { this.emails = { send: async (m) => { globalThis.__unsentSent.push(m); return globalThis.__unsentRefuse() ? { data: null, error: { message: 'provider down' } } : { data: { id: 'em' }, error: null }; } }; } }",
