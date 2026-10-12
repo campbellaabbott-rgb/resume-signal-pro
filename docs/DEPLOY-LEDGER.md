@@ -51,8 +51,18 @@ live. It also lists "CHECK" functions whose `_shared` imports changed after thei
 live stamp; bump them unless the change cannot reach their behaviour (an added
 export, a comment).
 
+Two more exits come from the order a stamp does not show (wave-4 review,
+2026-10-12; spec 2026-10-11 §3.2-3.3). Exit 7: an unapplied migration
+defines, alters or drops an object that an APPLIED migration with a later
+stamp defines (wave 4's 20261011* deploys after profiles' 20261012*), so
+applying it would put the older definition back; the report names both files
+and the objects, and the message is refused. Exit 8: a function answers a
+build LATER than the one main carries, so main is behind production and a
+deploy from it would roll that function back.
+
 `scripts/verify-deploy.d/49-deploy-ledger.sh` runs the same comparison after
-every deploy: anything main has that production does not is a FAIL line.
+every deploy: anything main has that production does not is a FAIL line, and
+so is a late stamp or a function live ahead of main.
 
 ## 2. One deploy at a time, main frozen in between
 

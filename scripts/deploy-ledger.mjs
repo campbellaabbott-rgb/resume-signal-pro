@@ -25,8 +25,12 @@
 // MUST BUMP. Exit 3: --against found a function whose code moved without a
 // later build. Exit 4: a function's preflight did not answer, so the ledger
 // could not check it. Exit 5: --message refused, HEAD is not origin/main.
-// Exit 6: a migrationOrder rule cannot be met. In --overlap mode, exit 4
-// means two refs change a file or a function that sharedFiles gives no owner.
+// Exit 6: a migrationOrder rule cannot be met. Exit 7: an unapplied
+// migration defines or alters an object that an applied migration with a
+// LATER stamp defines (a late-stamped deploy would revert it). Exit 8: a
+// function's live build is later than the one main carries (main is behind
+// production). In --overlap mode, exit 4 means two refs change a file or a
+// function that sharedFiles gives no owner.
 //
 // Importing this module runs nothing: the report runs only when the file is
 // the entry point, so the pure rules below are testable without git or a
@@ -424,6 +428,52 @@ async function pool(items, n, f) {
 
 // ── migrations ──────────────────────────────────────────────────────────────
 /** The staged-runner record Lovable writes (drizzle/migrations): how many stubs, and the newest. */
+// ── late stamps (spec 2026-10-11 §3.3) ──────────────────────────────────────
+const SQL_NAME = String.raw`(?:"?public"?\.)?"?([A-Za-z_][A-Za-z0-9_]*)"?`;
+const DEFINES = new RegExp(String.raw`\bCREATE\s+(?:OR\s+REPLACE\s+)?(?:UNIQUE\s+)?(?:MATERIALIZED\s+VIEW|FUNCTION|PROCEDURE|TABLE|VIEW|TYPE|SEQUENCE|INDEX|TRIGGER)\s+(?:CONCURRENTLY\s+)?(?:IF\s+NOT\s+EXISTS\s+)?${SQL_NAME}`, "gi");
+const ALTERS = new RegExp(String.raw`\b(?:ALTER|DROP)\s+(?:MATERIALIZED\s+VIEW|FUNCTION|PROCEDURE|TABLE|VIEW|TYPE|SEQUENCE|INDEX|TRIGGER)\s+(?:IF\s+EXISTS\s+)?(?:ONLY\s+)?${SQL_NAME}`, "gi");
+
+/**
+ * The objects one migration defines, and every object it defines, alters or
+ * drops, by bare lower-case name (a function by its name alone, whatever its
+ * arguments: two overloads are one name here, which can only over-report).
+ * Comments are removed first, so a name written in prose is no object. Pure.
+ */
+export function objectsOf(sql) {
+  const code = String(sql ?? "").replace(/\/\*[\s\S]*?\*\//g, " ").replace(/--[^\n]*/g, " ");
+  const defines = new Set([...code.matchAll(DEFINES)].map((m) => m[1].toLowerCase()));
+  const touches = new Set([...defines, ...[...code.matchAll(ALTERS)].map((m) => m[1].toLowerCase())]);
+  return { defines, touches };
+}
+
+/**
+ * THE LATE-STAMP RULE (spec 2026-10-11 §3.3). A migration stamp need not sort
+ * in deploy order: wave 4's 20261011* deploys after profiles' 20261012*. An
+ * unapplied migration that defines or alters an object an APPLIED migration
+ * with a later stamp defines would put the older definition back. `pending`
+ * and `applied` are file names; `sqlOf(file)` reads one. Returns every such
+ * pair with the objects they share, in file order. Pure apart from sqlOf.
+ */
+export function lateStampViolations(pending, applied, sqlOf) {
+  const stamp = (f) => f.slice(0, 14);
+  const memo = new Map();
+  const objs = (f) => { if (!memo.has(f)) memo.set(f, objectsOf(sqlOf(f))); return memo.get(f); };
+  const out = [];
+  for (const p of [...pending].sort()) {
+    for (const a of [...applied].sort()) {
+      if (stamp(a) <= stamp(p)) continue;
+      const shared = [...objs(p).touches].filter((o) => objs(a).defines.has(o)).sort();
+      if (shared.length) out.push({ pending: p, applied: a, objects: shared });
+    }
+  }
+  return out;
+}
+
+/** Rows whose live build is LATER than the one main carries: main is behind production (exit 8). Pure. */
+export function liveAheadRows(rows) {
+  return (rows ?? []).filter((r) => r.state === "live-ahead");
+}
+
 function stubRecord() {
   const stubs = readdirSync(DRIZZLE_DIR).filter((f) => f.endsWith(".sql")).sort();
   return { count: stubs.length, newest: stubs[stubs.length - 1] ?? null };
@@ -447,7 +497,12 @@ function migrations(policy) {
   const pending = repo.filter((f) => f >= baseline && !lovableAuthored(f) && !applied.has(f)
     && !policy.neverApply.some((n) => f.startsWith(n)) && !policy.appliedOutsideDrizzle.some((n) => f.startsWith(n)));
   const hold = pending.filter((f) => policy.holdUntilVerified.some((h) => f.startsWith(h.stamp)));
-  return { pending: pending.filter((f) => !hold.includes(f)), hold, neverApplyPresent: repo.filter((f) => policy.neverApply.some((n) => f.startsWith(n))) };
+  const never = (f) => policy.neverApply.some((n) => f.startsWith(n));
+  return {
+    pending: pending.filter((f) => !hold.includes(f)), hold, neverApplyPresent: repo.filter(never),
+    // Everything else on disk is applied: recorded by the runner, applied outside it, before the baseline, or written by Lovable as it applied.
+    applied: repo.filter((f) => !pending.includes(f) && !never(f)),
+  };
 }
 
 // ── order inside one deploy ─────────────────────────────────────────────────
@@ -642,6 +697,8 @@ async function main(argv) {
   const sharedOnly = liveStamped.filter((r) => !unbumped.includes(r));
   const noMarker = rows.filter((r) => r.state === "no-marker");
   const phases = migrationPhases(mig.pending, POLICY, rows);
+  const late = lateStampViolations([...mig.pending, ...mig.hold], mig.applied, (f) => readFileSync(join(MIG_DIR, f), "utf8"));
+  const liveAhead = liveAheadRows(rows);
 
   // Is this checkout GitHub main? (S11-127) Fetched, never assumed.
   let fetched = true;
@@ -660,12 +717,18 @@ async function main(argv) {
   const refusal = checkoutRefusal({ head: headFull, originMain, fetched, behind, ahead, dirty });
   const checkout = { head: headFull, originMain, behind, ahead, refusal };
 
-  // Exit: 5 refused (not main), 6 an order rule cannot be met, 4 a function
-  // could not be checked, 2 MUST BUMP. (3 is --against's.)
-  const exitFor = (withMessage) => (withMessage && refusal ? 5 : phases.errors.length ? 6 : unreachable.length ? 4 : unbumped.length ? 2 : 0);
+  // Exit: 5 refused (not main), 6 an order rule cannot be met, 7 a late-stamped
+  // migration would revert a later one, 8 main is behind a live build, 4 a
+  // function could not be checked, 2 MUST BUMP. (3 is --against's.)
+  const exitFor = (withMessage) => (withMessage && refusal ? 5 : phases.errors.length ? 6 : late.length ? 7 : liveAhead.length ? 8
+    : unreachable.length ? 4 : unbumped.length ? 2 : 0);
 
   if (args.has("--json")) {
-    console.log(JSON.stringify({ head, checkout, stubs, toDeploy, unreachable, unbumped, sharedOnly, noMarker, migrations: mig, phases, rows }, null, 2));
+    // The applied list is the late-stamp rule's input, not the report: hundreds of
+    // names would push the JSON past the 64 KB a pipe takes before exit cuts it
+    // off (section 49 reads it through one), so only its length is printed.
+    const { applied, ...migOut } = mig;
+    console.log(JSON.stringify({ head, checkout, stubs, toDeploy, unreachable, unbumped, sharedOnly, noMarker, migrations: { ...migOut, appliedCount: applied.length }, phases, late, liveAhead, rows }, null, 2));
     process.exit(exitFor(false));
   }
   console.log(`DEPLOY LEDGER at ${head} (${new Date().toISOString()})\n`);
@@ -697,12 +760,22 @@ async function main(argv) {
     console.log(`\nORDER RULES THAT CANNOT BE MET (docs/deploy-ledger.json migrationOrder): no message until they are fixed:`);
     for (const e of phases.errors) console.log(`  ${e}`);
   }
+  if (late.length) {
+    console.log(`\nLATE STAMPS: an unapplied migration defines or alters what an applied migration with a later stamp defines; applying it would put the older definition back (no message until each is resolved):`);
+    for (const v of late) console.log(`  ${v.pending}  touches  ${v.objects.join(", ")}  defined by the later ${v.applied}`);
+  }
+  if (liveAhead.length) {
+    console.log(`\nMAIN IS BEHIND PRODUCTION: these functions answer a build later than the one main carries (a deploy from main would roll them back):`);
+    for (const r of liveAhead) console.log(`  ${r.fn.padEnd(32)} main ${r.want}  live ${r.have}`);
+  }
 
   const wantMessage = args.has("--message") || args.has("--draft");
   if (wantMessage) {
     console.log(`\n──────── Lovable message ────────\n`);
     if (phases.errors.length) {
       console.log(`REFUSED: the order rules above cannot be met, so no order can be printed.`);
+    } else if (late.length) {
+      console.log(`REFUSED: a late-stamped migration above would revert a later one; resolve it before any message is printed.`);
     } else if (args.has("--message") && refusal) {
       console.log(`REFUSED: ${refusal}. Lovable pulls GitHub main, so a message from this checkout would name the wrong commit or re-list migrations already applied. Check out origin/main and re-run (or pass --draft for a labelled preview that is not a deploy message).`);
     } else {

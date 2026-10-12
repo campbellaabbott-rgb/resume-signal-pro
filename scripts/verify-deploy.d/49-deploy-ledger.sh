@@ -21,6 +21,8 @@ let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{
   for(const f of j.migrations.pending) console.log("FAIL  migration not applied: "+f);
   for(const f of j.migrations.hold) console.log("INFO  held until its prerequisites verify: "+f);
   for(const e of ((j.phases||{}).errors||[])) console.log("FAIL  migration order rule cannot be met: "+e);
+  for(const v of (j.late||[])) console.log("FAIL  late stamp: "+v.pending+" touches "+v.objects.join(", ")+", which the later, applied "+v.applied+" defines -- applying it would put the older definition back");
+  for(const r of (j.liveAhead||[])) console.log("FAIL  "+r.fn+" answers "+r.have+", later than the "+r.want+" main carries: main is behind production, and a deploy from it would roll this back");
   if(j.noMarker.length) console.log("INFO  no build marker, so not verifiable: "+j.noMarker.map(r=>r.fn).join(", "));
 });'
 fi
