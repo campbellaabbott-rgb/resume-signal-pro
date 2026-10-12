@@ -7,6 +7,23 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 // fetched on demand below once the actual language is known, instead of forcing
 // every visitor to download all 9 locale files regardless of which one they use.
 import en from './locales/en.json';
+import { mergeShards, shardsFor, type Bundle } from './merge-shards';
+
+// STRING SHARDS (see merge-shards.ts). English shards ride in the bundle with
+// en.json; every other language's shards load in the same Promise.all as that
+// language's main file, so a shard key never flashes its English fallback.
+const enShardModules = import.meta.glob('./shards/*/en.json', { eager: true, import: 'default' }) as Record<string, Bundle>;
+const lazyShardModules = import.meta.glob(['./shards/*/*.json', '!./shards/*/en.json'], { import: 'default' }) as Record<string, () => Promise<Bundle>>;
+
+/** English, with its shards merged in: what the bundle serves and what tests read. */
+export const enTranslation: Bundle = mergeShards(en as Bundle, shardsFor(enShardModules, 'en'));
+
+async function loadShards(lng: string): Promise<ReturnType<typeof shardsFor>> {
+  const want = lng === 'fr-CA' ? 'fr' : lng;
+  const entries = Object.entries(lazyShardModules).filter(([path]) => path.endsWith(`/${want}.json`));
+  const loaded = await Promise.all(entries.map(async ([path, load]) => [path, await load()] as const));
+  return shardsFor(Object.fromEntries(loaded), lng);
+}
 
 export const languages = [
   { code: 'en', name: 'English', flag: '🇺🇸' },
@@ -65,7 +82,7 @@ i18n
   .use(initReactI18next)
   .init({
     resources: {
-      en: { translation: en },
+      en: { translation: enTranslation },
     },
     fallbackLng: 'en',
     supportedLngs: supportedLanguages,
@@ -140,8 +157,8 @@ async function loadLocale(lng: string): Promise<void> {
   if (!loader) return;
 
   try {
-    const module = await loader();
-    i18n.addResourceBundle(lng, 'translation', module.default);
+    const [module, shards] = await Promise.all([loader(), loadShards(lng)]);
+    i18n.addResourceBundle(lng, 'translation', mergeShards(module.default as Bundle, shards));
     // If this is still the active language, trigger a re-render with the
     // now-available translations (changeLanguage emits 'languageChanged').
     if (i18n.language === lng) {

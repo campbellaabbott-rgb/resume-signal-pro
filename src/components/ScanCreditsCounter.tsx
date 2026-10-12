@@ -70,21 +70,23 @@ export function ScanCreditsCounter() {
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <Button
-            variant="outline"
+            variant="secondary"
             size="sm"
-            className="gap-2 min-h-[44px] touch-manipulation bg-success/10 border-success/30 hover:bg-success/20"
+            className="gap-1.5 px-2.5"
           >
-            <Coins className="w-4 h-4 text-success" />
-            <span className="font-semibold text-success">{credits}</span>
-            <span className="text-muted-foreground hidden sm:inline">{t("scanCredits.credits")}</span>
-            <ChevronDown className="w-3 h-3 text-muted-foreground" />
+            <Coins aria-hidden="true" className="w-4 h-4 text-muted-foreground" />
+            {/* Named at every width: "My credits: 5 credits" (header.credits). */}
+            <span className="sr-only">{t("header.credits", "My credits")}: </span>
+            <span className="font-semibold text-foreground">{credits}</span>
+            <span className="sr-only xl:not-sr-only text-muted-foreground">{t("scanCredits.credits")}</span>
+            <ChevronDown aria-hidden="true" className="w-3 h-3 text-muted-foreground" />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-72 p-4" align="end">
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <div className="p-2 rounded-full bg-success/10">
-                <Coins className="w-5 h-5 text-success" />
+              <div className="p-2 rounded-md bg-muted">
+                <Coins aria-hidden="true" className="w-5 h-5 text-muted-foreground" />
               </div>
               <div>
                 <p className="font-semibold">{t("scanCredits.yourScanCredits")}</p>
@@ -92,8 +94,8 @@ export function ScanCreditsCounter() {
               </div>
             </div>
 
-            <div className="p-3 rounded-lg bg-secondary/50 text-center">
-              <p className="text-3xl font-bold text-success">{credits}</p>
+            <div className="p-3 rounded-lg bg-muted text-center">
+              <p className="text-3xl font-semibold text-foreground">{credits}</p>
               <p className="text-sm text-muted-foreground">{t("scanCredits.creditsRemaining")}</p>
             </div>
 
@@ -116,7 +118,7 @@ export function ScanCreditsCounter() {
             {!signedIn && (
               <p className="text-xs text-muted-foreground text-center">
                 {t("scanCredits.signInHint")}{" "}
-                <Link to="/auth" className="text-primary hover:underline" onClick={() => setIsOpen(false)}>
+                <Link to="/auth" className="link" onClick={() => setIsOpen(false)}>
                   {t("scanCredits.signIn")}
                 </Link>
               </p>
@@ -140,10 +142,12 @@ export function ScanCreditsCounter() {
         <Button
           variant="ghost"
           size="sm"
-          className="gap-2 min-h-[44px] touch-manipulation text-muted-foreground hover:text-foreground"
+          className="gap-1.5 px-2.5 text-muted-foreground hover:text-foreground"
         >
-          <Coins className="w-4 h-4" />
-          <span className="hidden sm:inline">{t("scanCredits.myCredits")}</span>
+          <Coins aria-hidden="true" className="w-4 h-4" />
+          {/* An icon button under xl, with its name kept for screen readers
+              (the audit found it unnamed on phones, WCAG 4.1.2). */}
+          <span className="sr-only xl:not-sr-only">{t("header.credits", "My credits")}</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80 p-4" align="end">
@@ -161,7 +165,7 @@ export function ScanCreditsCounter() {
           </div>
 
           {!signedIn && (
-            <div className="p-3 rounded-lg bg-muted/50 space-y-2">
+            <div className="p-3 rounded-lg bg-muted space-y-2">
               <p className="text-xs text-muted-foreground">{t("scanCredits.signInHint")}</p>
               <Button asChild variant="outline" size="sm" className="w-full gap-2">
                 <Link to="/auth" onClick={() => setIsOpen(false)}>

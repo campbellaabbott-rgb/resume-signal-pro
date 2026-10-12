@@ -5,6 +5,7 @@ import { isUnfiltered, normalizeFilters } from "../../supabase/functions/job-boa
 import { BOARD_SOURCE_LIST } from "../config/ats-vendors";
 import { SERVING_SOURCE_LIST, DORMANT_SOURCES } from "../config/ats-vendors";
 import { codeOf } from "./helpers/strip-comments";
+import { readLocale, shardLeaves, LOCALE_FILES, LISTING_BANNED_PHRASES } from "./helpers/locale-strings";
 
 // /trust and /methodology — the two pages whose entire purpose is to be
 // believed — carried the worst claims on the site until 2026-07-27:
@@ -65,13 +66,40 @@ describe("no hand-written corpus counts in any locale", () => {
 
   for (const file of locales) {
     it(`${file} states no hardcoded 'N,000+' scan count`, () => {
-      const offenders = allStrings(readJson(resolve(localeDir, file)))
+      // Main locale AND string shards: what a reader of this language is served.
+      const offenders = allStrings(readLocale(file))
         .filter(([p]) => /^(trustIndicators|methodologyPage|trustPage|freeResults)\b/.test(p))
         .filter(([, v]) => ROUND_BRAG.test(v))
         .map(([p, v]) => `${p} = ${v}`);
       expect(offenders).toEqual([]);
     });
   }
+});
+
+describe("string shards carry no claim the main locales may not", () => {
+  // The listing and company strings live in src/i18n/shards/<group>/<lng>.json
+  // (design spec, section 1). A phrase banned here must not be able to hide
+  // there, so the shard text is swept with the same lists, per language.
+  it("the sweep covers all nine languages", () => {
+    expect(LOCALE_FILES.length).toBe(9);
+  });
+
+  for (const file of LOCALE_FILES) {
+    it(`${file}: no shard string says verified, filled, or early applicants get read`, () => {
+      const hits = shardLeaves(file).flatMap(([k, v]) =>
+        LISTING_BANNED_PHRASES.filter(([, re]) => re.test(v)).map(([name]) => `${k} (${name}): ${v.slice(0, 80)}`));
+      expect(hits).toEqual([]);
+    });
+  }
+
+  it("positive control: the phrase list catches the sentences the audit found", () => {
+    const caught = (t: string) => LISTING_BANNED_PHRASES.some(([, re]) => re.test(t));
+    expect(caught("Yes — 199 verified open roles right now")).toBe(true);
+    expect(caught("posted 0d ago — early applicants get read")).toBe(true);
+    expect(caught("Half of these roles are filled by day 25")).toBe(true);
+    expect(caught("Ja — aktuell 199 verifizierte offene Stellen")).toBe(true);
+    expect(caught("Live at source · feed read 46 min ago")).toBe(false);
+  });
 });
 
 describe("no unsourced efficacy statistics", () => {
@@ -92,7 +120,7 @@ describe("no unsourced efficacy statistics", () => {
     });
 
     it(`${file} claims no "N% report better ..." outcome rate`, () => {
-      const offenders = allStrings(readJson(resolve(localeDir, file)))
+      const offenders = allStrings(readLocale(file))
         .filter(([, v]) => /\d+\s*%[^.]{0,40}\b(report|reported|see|saw|experience)\b/i.test(v))
         .map(([p, v]) => `${p} = ${v}`);
       expect(offenders).toEqual([]);

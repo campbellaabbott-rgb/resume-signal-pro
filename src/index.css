@@ -1,7 +1,17 @@
-/* Font loading with display=swap for performance — @import must precede all other rules.
-   Space Grotesk is the display voice (headings/numbers): geometric, technical,
-   distinctive — the brand's "measured, not marketed" character in type form. */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+/* LEDGER: calm data. Static Inter (400/500/600, 700 for the wordmark only) and
+   JetBrains Mono 400 for ids and codes. Space Grotesk is gone: headings are
+   Inter 600. The @import must precede every other rule. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=swap');
+
+/* A metric-matched local fallback, so the swap to Inter moves no line. */
+@font-face {
+  font-family: "Inter Fallback";
+  src: local("Arial");
+  size-adjust: 107.1%;
+  ascent-override: 90.4%;
+  descent-override: 22.5%;
+  line-gap-override: 0%;
+}
 
 @tailwind base;
 @tailwind components;
@@ -43,86 +53,146 @@
   }
 }
 
-/* Focus visible styles for keyboard navigation */
+/* The one focus ring: 2px primary with a 2px background gap. A control that
+   removes its outline must draw a ring of its own. */
 *:focus-visible {
-  outline: 2px solid hsl(var(--primary));
+  outline: 2px solid hsl(var(--ring));
   outline-offset: 2px;
 }
 
 @layer base {
-  :root {
-    /* Premium dark: deeper base, hue-layered elevation (each surface is a
-       touch lighter AND subtly bluer — depth reads as atmosphere, not gray). */
-    --background: 224 52% 4.5%;
-    --foreground: 213 36% 96%;
+  /* ── DARK: served to everyone ────────────────────────────────────────────
+     The light block below applies only under [data-theme=light], which this
+     release reaches through ?theme=light for QA. Every pair is measured in
+     src/test/design-tokens-contrast.test.ts. */
+  :root,
+  [data-theme="dark"] {
+    color-scheme: dark;
 
-    --card: 223 44% 7.5%;
-    --card-foreground: 213 36% 96%;
+    --background: 217 37% 7%;
+    --foreground: 216 26% 92.5%;
 
-    --popover: 222 42% 9%;
-    --popover-foreground: 213 36% 96%;
+    --card: 220 35% 10%;
+    --card-foreground: 216 26% 92.5%;
 
-    --primary: 217 92% 62%;
-    /* Gradient partner for the primary — electric cyan lean, used by
-       .text-gradient-brand and button glows. */
-    --primary-glow: 199 95% 62%;
-    --primary-foreground: 224 52% 5%;
+    --popover: 219 29% 13.7%;
+    --popover-foreground: 216 26% 92.5%;
 
-    --secondary: 219 32% 15%;
-    --secondary-foreground: 213 36% 96%;
+    --muted: 219 29% 13.7%;
+    --muted-foreground: 217 17% 69%;
+    --subtle-foreground: 217 14% 61%;
 
-    --muted: 220 33% 12%;
-    --muted-foreground: 216 18% 64%;
+    --secondary: 219 29% 13.7%;
+    --secondary-foreground: 216 26% 92.5%;
 
-    --accent: 217 92% 62%;
-    --accent-foreground: 224 52% 5%;
+    /* A neutral hover surface, never a colour that carries meaning. */
+    --accent: 219 27% 16.7%;
+    --accent-foreground: 216 26% 92.5%;
 
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 213 36% 96%;
+    --primary: 218 100% 72%;
+    --primary-foreground: 217 37% 7%;
+    --primary-hover: 218 100% 78%;
+    --primary-tint: 219 49% 15%;
+    /* Kept for the few legacy gradients still in place; equals primary. */
+    --primary-glow: 218 100% 72%;
 
-    --border: 219 30% 14%;
-    --input: 219 30% 16%;
-    --ring: 217 92% 62%;
+    --border: 218 26% 18%;
+    --border-strong: 218 23% 25.5%;
+    --input: 218 15% 43%;
+    --ring: 218 100% 72%;
 
-    --radius: 0.75rem;
+    --success: 151 50% 53%;
+    --success-foreground: 217 37% 7%;
+    --success-tint: 153 41% 11%;
 
-    --success: 152 70% 44%;
-    --success-foreground: 213 36% 96%;
+    --warning: 38 85% 62%;
+    --warning-foreground: 217 37% 7%;
+    --warning-tint: 36 42% 12%;
 
-    --warning: 38 92% 52%;
-    --warning-foreground: 224 52% 5%;
+    --destructive: 4 89% 73%;
+    --destructive-foreground: 217 37% 7%;
+    --destructive-tint: 355 35% 13%;
 
-    --sidebar-background: 222 47% 6%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 217 91% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217 33% 14%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 217 33% 17%;
-    --sidebar-ring: 217 91% 60%;
+    --signal: 243 100% 83%;
+    --signal-foreground: 217 37% 7%;
+    --signal-tint: 242 33% 16.5%;
+
+    --radius: 0.5rem;
+
+    --shadow-xs: 0 1px 2px 0 hsl(220 40% 2% / 0.4);
+    --shadow-overlay: 0 12px 32px -8px hsl(220 40% 2% / 0.6), 0 2px 6px -2px hsl(220 40% 2% / 0.4);
+
+    --sidebar-background: 220 35% 10%;
+    --sidebar-foreground: 216 26% 92.5%;
+    --sidebar-primary: 218 100% 72%;
+    --sidebar-primary-foreground: 217 37% 7%;
+    --sidebar-accent: 219 27% 16.7%;
+    --sidebar-accent-foreground: 216 26% 92.5%;
+    --sidebar-border: 218 26% 18%;
+    --sidebar-ring: 218 100% 72%;
   }
 
-  .dark {
-    --background: 224 52% 4.5%;
-    --foreground: 213 36% 96%;
-    --card: 223 44% 7.5%;
-    --card-foreground: 213 36% 96%;
-    --popover: 222 42% 9%;
-    --popover-foreground: 213 36% 96%;
-    --primary: 217 92% 62%;
-    --primary-glow: 199 95% 62%;
-    --primary-foreground: 224 52% 5%;
-    --secondary: 219 32% 15%;
-    --secondary-foreground: 213 36% 96%;
-    --muted: 220 33% 12%;
-    --muted-foreground: 216 18% 64%;
-    --accent: 217 92% 62%;
-    --accent-foreground: 224 52% 5%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 213 36% 96%;
-    --border: 219 30% 14%;
-    --input: 219 30% 16%;
-    --ring: 217 92% 62%;
+  /* ── LIGHT: reachable for QA only in this release ─────────────────────── */
+  [data-theme="light"] {
+    color-scheme: light;
+
+    --background: 220 23% 97.5%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --muted: 214 26% 94.7%;
+    --muted-foreground: 216 18% 34%;
+    --subtle-foreground: 217 15% 42%;
+
+    --secondary: 214 26% 94.7%;
+    --secondary-foreground: 222 47% 11%;
+
+    --accent: 216 25% 92.2%;
+    --accent-foreground: 222 47% 11%;
+
+    --primary: 218 76% 46.5%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 218 75% 40.6%;
+    --primary-tint: 218 90% 96%;
+    --primary-glow: 218 76% 46.5%;
+
+    --border: 216 21% 90.6%;
+    --border-strong: 215 19% 82%;
+    --input: 218 13% 54%;
+    --ring: 218 76% 46.5%;
+
+    --success: 153 78% 27%;
+    --success-foreground: 0 0% 100%;
+    --success-tint: 146 39% 93%;
+
+    --warning: 35 100% 27%;
+    --warning-foreground: 0 0% 100%;
+    --warning-tint: 37 83% 93%;
+
+    --destructive: 4 77% 40%;
+    --destructive-foreground: 0 0% 100%;
+    --destructive-tint: 6 76% 95%;
+
+    --signal: 243 51% 52%;
+    --signal-foreground: 0 0% 100%;
+    --signal-tint: 244 64% 96%;
+
+    --shadow-xs: 0 1px 2px 0 hsl(222 47% 11% / 0.06);
+    --shadow-overlay: 0 12px 32px -8px hsl(222 47% 11% / 0.18), 0 2px 6px -2px hsl(222 47% 11% / 0.08);
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 218 76% 46.5%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 216 25% 92.2%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 216 21% 90.6%;
+    --sidebar-ring: 218 76% 46.5%;
   }
 }
 
@@ -132,56 +202,39 @@
   }
 
   html {
-    /* Improve scroll performance on mobile */
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
   }
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    /* Mobile performance optimizations */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
-    /* Prevent pull-to-refresh on mobile when not needed */
     overscroll-behavior-y: contain;
     /* Data product: numbers align in columns everywhere by default. */
     font-variant-numeric: tabular-nums;
   }
 
-  /* Signature ambience: a faint brand glow at the top of every page — the
-     one-glance cue that this isn't a default template. Fixed and non-
-     interactive; costs nothing. */
-  body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    background:
-      radial-gradient(60rem 24rem at 50% -8rem, hsl(var(--primary) / 0.09), transparent 70%),
-      radial-gradient(40rem 20rem at 85% -6rem, hsl(var(--primary-glow) / 0.05), transparent 70%);
-  }
-
   h1, h2, h3, h4, h5, h6 {
-    @apply font-display font-semibold tracking-tight;
+    @apply font-sans font-semibold;
+    letter-spacing: -0.011em;
   }
 
   ::selection {
     background: hsl(var(--primary) / 0.28);
   }
 
-  /* Quiet, premium scrollbars (WebKit + Firefox). */
   * {
     scrollbar-width: thin;
-    scrollbar-color: hsl(var(--secondary)) transparent;
+    scrollbar-color: hsl(var(--border-strong)) transparent;
   }
   *::-webkit-scrollbar {
     width: 10px;
     height: 10px;
   }
   *::-webkit-scrollbar-thumb {
-    background: hsl(var(--secondary));
+    background: hsl(var(--border-strong));
     border-radius: 999px;
     border: 3px solid transparent;
     background-clip: padding-box;
@@ -190,78 +243,61 @@
     background: transparent;
   }
 
-  /* Mobile touch optimizations */
   button, a, [role="button"], input, textarea, select {
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
   }
 
-  /* Minimum tap target sizes for accessibility */
-  button, [role="button"], a {
-    min-height: 44px;
-  }
-
-  /* Inline links don't need 44px height */
-  p a, span a, li a {
-    min-height: auto;
-  }
-}
-
-@layer utilities {
-  /* Brand gradient text — hero numbers and headline moments. */
-  .text-gradient-brand {
-    background: linear-gradient(100deg, hsl(var(--primary)) 10%, hsl(var(--primary-glow)) 90%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+  /* TARGET SIZE BY POINTER, NOT BY TAG. A 44px floor on every <a> and
+     <button> made desktop tables and inline links tall and loose; a finger
+     needs 44px, a mouse needs the WCAG 2.2 minimum of 24. */
+  @media (pointer: coarse) {
+    button,
+    [role="button"],
+    [role="tab"],
+    [role="menuitem"],
+    [role="menuitemcheckbox"],
+    [role="menuitemradio"],
+    select {
+      min-height: 44px;
+    }
   }
 }
 
 @layer components {
-  .gradient-border {
-    @apply relative;
-  }
-  
-  .gradient-border::before {
-    content: '';
-    @apply absolute inset-0 rounded-lg p-[1px];
-    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.3) 100%);
-    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    mask-composite: exclude;
-    -webkit-mask-composite: xor;
-    pointer-events: none;
+  /* Links are underlined at rest: colour alone never marks a link. */
+  .link {
+    @apply text-primary underline underline-offset-2 decoration-primary/50 hover:decoration-primary;
   }
 
-  .glow {
-    box-shadow: 0 0 40px -10px hsl(var(--primary) / 0.4);
+  /* A posting's own words: proportional figures, a reading measure. */
+  .prose-posting {
+    max-width: 68ch;
+    font-variant-numeric: normal;
+    line-height: 1.625;
   }
-
-  .upload-zone {
-    @apply relative overflow-hidden transition-all duration-300;
+  .prose-posting :where(p, ul, ol) {
+    margin-top: 0.75em;
+    margin-bottom: 0.75em;
   }
-
-  .upload-zone:hover {
-    @apply border-primary/50;
+  .prose-posting :where(ul) {
+    list-style: disc;
+    padding-left: 1.25em;
   }
-
-  .upload-zone.dragover {
-    @apply border-primary bg-primary/5;
+  .prose-posting :where(ol) {
+    list-style: decimal;
+    padding-left: 1.25em;
   }
-}
-
-@layer utilities {
-  .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-foreground to-muted-foreground;
-  }
-
-  .text-gradient-primary {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70;
+  .prose-posting :where(h2, h3, h4) {
+    margin-top: 1.25em;
+    margin-bottom: 0.5em;
+    font-size: 1rem;
+    line-height: 1.5rem;
   }
 }
 
 /* Print styles for PDF export */
 @media print {
-  /* Hide non-essential elements */
   header,
   footer,
   .no-print,
@@ -271,7 +307,6 @@
     display: none !important;
   }
 
-  /* Reset background and colors for print */
   body,
   .bg-background,
   .bg-card,
@@ -280,23 +315,22 @@
     color: black !important;
   }
 
-  /* Ensure good contrast */
   .text-foreground,
   .text-muted-foreground,
+  .text-subtle-foreground,
   h1, h2, h3, h4, h5, h6, p, span, li {
     color: black !important;
   }
 
-  /* Style cards for print */
   .rounded-2xl,
-  .rounded-xl {
+  .rounded-xl,
+  .rounded-lg {
     border: 1px solid #e5e5e5 !important;
     background: white !important;
     box-shadow: none !important;
     backdrop-filter: none !important;
   }
 
-  /* Primary colored text */
   .text-primary,
   .text-success,
   .text-warning {
@@ -307,13 +341,11 @@
     color: #dc2626 !important;
   }
 
-  /* Keyword pills */
   .bg-primary\/10 {
     background: #dbeafe !important;
     border-color: #93c5fd !important;
   }
 
-  /* Before/After labels */
   .bg-success\/20 {
     background: #dcfce7 !important;
   }
@@ -324,19 +356,16 @@
     background: #f5f5f5 !important;
   }
 
-  /* Red flag cards */
   .bg-destructive\/5,
   .bg-destructive\/10 {
     background: #fef2f2 !important;
     border-color: #fecaca !important;
   }
 
-  /* Page breaks */
   .print-section {
     page-break-inside: avoid;
   }
 
-  /* Prevent page breaks inside analysis cards */
   .pdf-keep-together {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
@@ -347,32 +376,27 @@
     page-break-after: auto;
   }
 
-  /* Proper margins */
   @page {
     margin: 1cm;
     size: A4;
   }
 
-  /* Add print header */
   .print-header {
     display: block !important;
     text-align: center;
     margin-bottom: 2rem;
   }
 
-  /* Ensure line-through shows */
   .line-through {
     text-decoration: line-through !important;
     color: #9ca3af !important;
   }
 
-  /* Hide background effects */
   .absolute,
   .pointer-events-none {
     display: none !important;
   }
 
-  /* Show main content */
   main {
     padding-top: 0 !important;
   }
@@ -383,72 +407,17 @@
   }
 }
 
-/* Custom animations for urgency elements */
-@keyframes pulse-slow {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.85;
-  }
-}
-
-@keyframes bounce-slow {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-3px);
-  }
-}
-
-.animate-pulse-slow {
-  animation: pulse-slow 3s ease-in-out infinite;
-}
-
-.animate-bounce-slow {
-  animation: bounce-slow 2s ease-in-out infinite;
-}
-
-@keyframes pulse-subtle {
-  0%, 100% {
-    box-shadow: 0 10px 25px -5px rgba(34, 197, 94, 0.3);
-  }
-  50% {
-    box-shadow: 0 10px 40px -5px rgba(34, 197, 94, 0.5);
-  }
-}
-
-.animate-pulse-subtle {
-  animation: pulse-subtle 2s ease-in-out infinite;
-}
-
-/* Mobile-specific optimizations */
 @media (max-width: 767px) {
-  /* Larger touch targets on mobile */
-  .mobile-touch-target {
-    min-height: 48px;
-    min-width: 48px;
-  }
-
-  /* Better mobile spacing */
-  .container {
-    padding-left: 1rem;
-    padding-right: 1rem;
-  }
-
-  /* Optimize mobile typography */
   h1 {
-    font-size: clamp(1.75rem, 6vw, 2.5rem);
+    font-size: clamp(1.5rem, 6vw, 2.25rem);
     line-height: 1.2;
   }
 
   h2 {
-    font-size: clamp(1.5rem, 5vw, 2rem);
+    font-size: clamp(1.25rem, 5vw, 1.875rem);
     line-height: 1.25;
   }
 
-  /* Improve mobile scroll */
   .overflow-x-auto {
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
@@ -458,7 +427,6 @@
     display: none;
   }
 
-  /* Safe area insets for notched devices */
   .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom, 20px);
   }
@@ -468,37 +436,8 @@
   }
 }
 
-/* Touch feedback for interactive elements */
-@media (hover: none) and (pointer: coarse) {
-  button:active,
-  [role="button"]:active,
-  a:active {
-    transform: scale(0.98);
-    transition: transform 0.1s ease;
-  }
-
-  /* Larger click areas on touch devices */
-  .touch-expand::before {
-    content: '';
-    position: absolute;
-    top: -8px;
-    right: -8px;
-    bottom: -8px;
-    left: -8px;
-  }
-}
-
-/* Optimize animations for mobile performance */
-@media (max-width: 767px) {
-  .animate-fade-in,
-  .animate-scale-in {
-    animation-duration: 0.2s;
-  }
-  
-  /* Reduce complex blur effects on mobile for performance */
-  .blur-\[150px\],
-  .blur-\[100px\],
-  .blur-\[80px\] {
-    filter: blur(50px);
-  }
+/* The floating help button gives way while a sheet or dialog holds the page
+   (Radix marks the body data-scroll-locked while one is open). */
+body[data-scroll-locked] [data-floating-help] {
+  display: none !important;
 }

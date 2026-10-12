@@ -100,6 +100,9 @@ const ROOT = resolve(__dirname, "../..");
 // against raw source that also carries it in a comment) is this repo's oldest
 // guard bug, and this file's fix writes comments containing its own identifiers.
 const RAW = readFileSync(resolve(ROOT, "src/pages/Jobs.tsx"), "utf8");
+// The FillCurve row type, with its field notes, moved to a shared module
+// (design pass A); Jobs.tsx imports it from there.
+const BOARD_JOB_RAW = readFileSync(resolve(ROOT, "src/lib/board-job.ts"), "utf8");
 const JOBS = RAW.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
 const EXPLORE_RAW = readFileSync(resolve(ROOT, "src/pages/Explore.tsx"), "utf8");
 const EXPLORE = EXPLORE_RAW.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
@@ -507,8 +510,8 @@ describe("a posting age with nothing to measure it against", () => {
     // for. The warning survived the rewrite and got SHARPER: it is now aimed
     // at the live trap (n_at_risk_14, the day-14 risk set) rather than at the
     // retired one (closed_90d), and it names the replacement.
-    expect(RAW).toMatch(/never a number to print beside a rate/);
-    expect(RAW).toMatch(/Print dated_n instead/);
+    expect(BOARD_JOB_RAW).toMatch(/never a number to print beside a rate/);
+    expect(BOARD_JOB_RAW).toMatch(/Print dated_n instead/);
     // A COMMENT IS NOT A GUARD. This repo has seven times shipped a green test
     // over dead code because the spelling it pinned lived in prose, so the
     // property is pinned in CODE as well: the cohort is what reaches the copy.

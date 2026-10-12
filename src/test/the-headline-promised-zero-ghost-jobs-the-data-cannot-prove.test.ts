@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { codeOf } from "./helpers/strip-comments";
+import { readLocale, shardNames } from "./helpers/locale-strings";
 
 /**
  * WHAT WAS WRONG (commercial-readiness plan 2026-10-08, items 8 and 9; owner
@@ -81,11 +82,14 @@ describe("no surface makes a claim the board's own data cannot prove", () => {
     expect(APP.length).toBeGreaterThan(200);
     expect(APP).toContain("src/components/HomeHero.tsx");
     expect(statSync(resolve(ROOT, "public/llms.txt")).size).toBeGreaterThan(1000);
+    // The shard directories are read too (none may exist before the listing
+    // and company groups land; every one that exists is merged per language).
+    expect(Array.isArray(shardNames())).toBe(true);
   });
 
   for (const file of LOCALES) {
-    it(`${file}: no value carries a banned claim`, () => {
-      const hits = leaves(JSON.parse(read(`src/i18n/locales/${file}`)))
+    it(`${file}: no value carries a banned claim (main locale and its string shards)`, () => {
+      const hits = leaves(readLocale(file))
         .flatMap(([k, v]) => BANNED.filter(([, re]) => re.test(v)).map(([name]) => `${k} (${name}): ${v.slice(0, 80)}`));
       expect(hits).toEqual([]);
     });

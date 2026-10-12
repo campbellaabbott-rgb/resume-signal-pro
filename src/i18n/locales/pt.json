@@ -31,7 +31,12 @@
     "closeMenu": "Fechar menu",
     "phoneNavAriaLabel": "Menu do site",
     "signIn": "Entrar",
-    "account": "Conta"
+    "account": "Conta",
+    "credits": "Meus créditos",
+    "companies": "Empresas",
+    "forAiChats": "Para chats de IA",
+    "more": "Mais",
+    "language": "Idioma"
   },
   "hero": {
     "badge": "Quadro de vagas ao vivo — cada vaga verificada no sistema da própria empresa",
@@ -160,7 +165,28 @@
     "changelog": "Novidades",
     "navAriaLabel": "Navegação do rodapé",
     "jobs": "Vagas",
-    "explore": "Explorar por área"
+    "explore": "Explorar por área",
+    "resourcesAriaLabel": "Recursos",
+    "links": {
+      "companies": "Empresas contratando",
+      "trust": "Confiança e transparência",
+      "resumeChecker": "Verificador de currículo grátis",
+      "atsTest": "Teste ATS de currículo",
+      "resumeScore": "Pontuação do currículo",
+      "industries": "Palavras-chave de currículo por setor",
+      "guides": "Guias de currículo e ATS",
+      "workday": "Guia do ATS Workday",
+      "greenhouse": "Guia do Greenhouse",
+      "lever": "Guia do Lever",
+      "icims": "Guia do iCIMS",
+      "vsJobscan": "vs. Jobscan",
+      "freelanceBoost": "Freelance Boost",
+      "builder": "Criador de currículo",
+      "methodology": "Metodologia",
+      "dataApi": "Dados de contratação e API",
+      "agents": "Conecte seu agente",
+      "payTransparency": "Índice de transparência salarial"
+    }
   },
   "howItWorks": {
     "badge": "Análise com IA",
@@ -372,7 +398,8 @@
     "orGetCompleteAnalysis": "Ou obtenha a análise completa por",
     "securePaymentStripe": "Pagamento seguro via Stripe",
     "gsheetsImportFailed": "Falha ao importar do Google Sheets. Tente novamente.",
-    "gsheetsImportFailedShared": "Falha ao importar do Google Sheets. Certifique-se de que a folha está partilhada com 'Qualquer pessoa com o link'."
+    "gsheetsImportFailedShared": "Falha ao importar do Google Sheets. Certifique-se de que a folha está partilhada com 'Qualquer pessoa com o link'.",
+    "otherJobsAvailable_many": "{{count}} outras vagas disponíveis"
   },
   "faq": {
     "title": "Perguntas Frequentes",
@@ -823,7 +850,10 @@
       "good": "Bom",
       "needsImprovement": "Precisa melhorar",
       "poor": "Fraco"
-    }
+    },
+    "eliteSignal_many": "{{count}} sinais de destaque",
+    "issue_many": "{{count}} problemas",
+    "quickFix_many": "{{count}} correções rápidas"
   },
   "careerSnapshot": {
     "downloadPdf": "Baixar relatório em PDF",
@@ -846,14 +876,16 @@
     "topStrengths": {
       "title": "Principais Pontos Fortes",
       "identified_one": "{{count}} identificado",
-      "identified_other": "{{count}} identificados"
+      "identified_other": "{{count}} identificados",
+      "identified_many": "{{count}} identificados"
     },
     "careerRisks": {
       "title": "Riscos de Carreira e Perguntas",
       "count_one": "{{count}} risco",
       "count_other": "{{count}} riscos",
       "recruiterWillAsk": "O recrutador vai perguntar:",
-      "howToAddress": "Como abordar:"
+      "howToAddress": "Como abordar:",
+      "count_many": "{{count}} riscos"
     },
     "positioning": {
       "title": "Orientação de Posicionamento",
@@ -1576,7 +1608,11 @@
       "careerDescDefault": "Orientação para negociação salarial, caminhos de próximo cargo e pontos de conversa para entrevistas para {{industry}}",
       "kwDescWithStats": "{{count}} palavras-chave faltando encontradas específicas de {{industry}} que os sistemas ATS procuram",
       "kwDescGood": "Forte cobertura de palavras-chave para {{industry}} — obtenha dicas de formulação e colocação para fazê-las contar ainda mais",
-      "kwDescDefault": "Palavras-chave faltando específicas de {{industry}} que os sistemas ATS procuram"
+      "kwDescDefault": "Palavras-chave faltando específicas de {{industry}} que os sistemas ATS procuram",
+      "kwHard_many": "• {{count}} habilidades técnicas críticas faltando no seu currículo",
+      "kwCerts_many": "• {{count}} certificações do setor para mencionar (mesmo em andamento)",
+      "kwTools_many": "• {{count}} ferramentas comumente listadas na sua área que estão faltando",
+      "kwMethodology_many": "• {{count}} palavras-chave de metodologia que seus concorrentes estão usando"
     },
     "premiumCta": {
       "package": "Pacote Premium",
@@ -2175,7 +2211,8 @@
         "deliveryTime": "Instantâneo",
         "deliveryMethod": "Nesta página"
       }
-    }
+    },
+    "creditsAdded_many": "{{count}} créditos adicionados!"
   },
   "analysisResults": {
     "copied": "Copiado!",
@@ -2366,7 +2403,8 @@
     "analysisProcessingDescription": "Não foi possível extrair recomendações detalhadas do seu currículo. Isto pode acontecer se o formato do currículo for inusual ou se tiver ocorrido um problema durante o processamento.",
     "bottomCta": "Aplique estas alterações ao seu currículo e veja a sua taxa de entrevistas melhorar!",
     "bottomCtaWithLinkedIn": "Aplique estas alterações ao seu currículo e perfil LinkedIn e veja a sua taxa de entrevistas melhorar!",
-    "analysisSaved": "Esta análise fica guardada {{analysisDays}} dias através do link de partilha acima e depois é apagada. Descarregue-a em PDF para guardar a sua própria cópia."
+    "analysisSaved": "Esta análise fica guardada {{analysisDays}} dias através do link de partilha acima e depois é apagada. Descarregue-a em PDF para guardar a sua própria cópia.",
+    "pageCount_many": "{{count}} páginas"
   },
   "personalization": {
     "experience": {
@@ -2503,7 +2541,8 @@
     "industryKeywordsToInclude": "Palavras-chave da indústria a incluir",
     "valuableCertifications": "Certificações valiosas:",
     "recommendedLength_one": "Extensão de currículo recomendada: {{count}} página para profissionais de nível {{level}}",
-    "recommendedLength_other": "Extensão de currículo recomendada: {{count}} páginas para profissionais de nível {{level}}"
+    "recommendedLength_other": "Extensão de currículo recomendada: {{count}} páginas para profissionais de nível {{level}}",
+    "recommendedLength_many": "Extensão de currículo recomendada: {{count}} páginas para profissionais de nível {{level}}"
   },
   "trustPage": {
     "metaTitle": "Confiança e Segurança — Resume Booster",
@@ -2765,7 +2804,9 @@
     "buyCreditsFor_one": "Comprar {{count}} crédito por {{price}}",
     "buyCreditsFor_other": "Comprar {{count}} créditos por {{price}}",
     "maybeLater": "Talvez mais tarde",
-    "dialogTitle": "Comprar créditos de verificação"
+    "dialogTitle": "Comprar créditos de verificação",
+    "resumeScans_many": "{{count}} verificações de currículo",
+    "buyCreditsFor_many": "Comprar {{count}} créditos por {{price}}"
   },
   "addOnsShowcase": {
     "powerUpAddOns": "Complementos de reforço",
@@ -2874,7 +2915,10 @@
     "getCreditsFor_other": "Obter {{count}} créditos por {{price}}",
     "noThanks": "Não, obrigado, vou esperar pela reinicialização das minhas verificações gratuitas",
     "fewerCredits": "Menos créditos",
-    "moreCredits": "Mais créditos"
+    "moreCredits": "Mais créditos",
+    "hour_many": "{{count}} horas",
+    "credits_many": "{{count}} verificações de currículo",
+    "getCreditsFor_many": "Obter {{count}} créditos por {{price}}"
   },
   "changelogPage": {
     "metaTitle": "Registo de alterações — Resume Booster",
@@ -3060,7 +3104,9 @@
   },
   "floatingHelpButton": {
     "needHelp": "Precisa de ajuda?",
-    "questionsOrFeedback": "Perguntas ou comentários? Envie-nos um e-mail:"
+    "questionsOrFeedback": "Perguntas ou comentários? Envie-nos um e-mail:",
+    "getHelp": "Obter ajuda",
+    "closeHelp": "Fechar ajuda"
   },
   "atsParseSimulator": {
     "title": "Simulação de análise ATS",
@@ -3194,7 +3240,9 @@
     "notStated": "Não declarado explicitamente (Oportunidade ATS)",
     "highImpact": "Palavras-chave de alto impacto a adicionar:",
     "plusMore": "+{{count}} mais",
-    "foundCount": "{{count}} palavras-chave encontradas no seu currículo"
+    "foundCount": "{{count}} palavras-chave encontradas no seu currículo",
+    "criticalGap_many": "{{count}} palavras-chave não declaradas explicitamente — oportunidade de otimização ATS",
+    "goodCoverage_many": "Boa cobertura — {{count}} palavras-chave de alto impacto podem fortalecer sua correspondência"
   },
   "interactiveChecklist": {
     "quickWin": "Vitória Rápida",
@@ -3235,7 +3283,8 @@
     "softSkills": "Habilidades Interpessoais",
     "tools": "Ferramentas e Software",
     "certifications": "Certificações",
-    "methodologies": "Metodologias"
+    "methodologies": "Metodologias",
+    "gapCount_many": "({{count}} lacunas)"
   },
   "recruiterView": {
     "seeThrough": "Veja seu currículo pelos olhos de um recrutador",
@@ -3318,7 +3367,9 @@
     "advancedToHighlight": "Habilidades avançadas a destacar",
     "plusMore": "+{{count}} mais",
     "standOut": "Destaque-se de outros candidatos",
-    "foundCount": "{{count}} palavras-chave específicas do cargo encontradas"
+    "foundCount": "{{count}} palavras-chave específicas do cargo encontradas",
+    "missingCore_many": "Faltando {{count}} palavras-chave centrais esperadas dos {{role}}s",
+    "goodFoundation_many": "Boa base! Adicione {{count}} palavras-chave avançadas para se destacar"
   },
   "shareableCard": {
     "excellent": "Excelente",
@@ -4423,7 +4474,11 @@
     "layoffRead": "lido de {{sourceName}} {{readAgo}}",
     "layoffReadStale": "última leitura {{readAt}}",
     "layoffMore": "+{{more}} mais na página do empregador",
-    "hhAlsoOnRecord": "Também em registo:"
+    "hhAlsoOnRecord": "Também em registo:",
+    "alsoInLocations_many": "Também contratando em mais {{count}} locais",
+    "sourcesDown_many": "{{count}} feeds de empresas estão fora do ar agora",
+    "sourcesDownAtLeast_many": "pelo menos {{count}} feeds de empresas estão fora do ar agora",
+    "moreLocations_many": "A mesma vaga em mais {{count}} localizações"
   },
   "accountPage": {
     "statusSaveFailed": "Não foi possível salvar esse status — tente novamente.",
@@ -4612,7 +4667,13 @@
       "notLinked": "Um plano no seu e-mail não está vinculado a esta conta. Escreva para nós e cuidaremos da desistência.",
       "outsideTerritory": "A desistência em {{days}} dias aplica-se a planos faturados para um endereço na UE, no EEE ou no Reino Unido, e este plano foi faturado noutro local. Pode cancelá-lo a qualquer momento.",
       "failed": "A desistência não foi concluída. Tente de novo em um minuto."
-    }
+    },
+    "closedHeading_many": "{{count}} das suas candidaturas fecharam — aqui estão vagas novas",
+    "ssSavedCount_many": "{{count}} salvas",
+    "ssNewHeadline_many": "{{count}} vagas novas correspondem às suas buscas desde a última visita",
+    "acPreppedToast_many": "{{count}} candidaturas preparadas — revise e candidate-se abaixo.",
+    "acPrepAll_many": "Preparar {{count}} candidaturas adaptadas",
+    "acGoPro_many": "Assine o Pro para preparar {{count}} vagas salvas"
   },
   "applyAgent": {
     "badge": "Seu agente de IA para candidaturas",
@@ -5343,5 +5404,65 @@
     "technical": "Técnica",
     "situational": "Situacional",
     "cultureFit": "Fit cultural"
+  },
+  "format": {
+    "ago": "há {{duration}}",
+    "justNow": "agora mesmo",
+    "period": {
+      "hour": "/h",
+      "day": "/dia",
+      "week": "/semana",
+      "month": "/mês",
+      "year": "/ano"
+    }
+  },
+  "ds": {
+    "tryAgain": "Tentar novamente",
+    "lightTheme": "Tema claro",
+    "asOf": {
+      "read": "lido {{when}}",
+      "loaded": "carregado {{when}}",
+      "filed": "apresentado {{when}}",
+      "asOf": "atualizado {{when}}",
+      "posted": "publicado {{when}}"
+    }
+  },
+  "howApply": {
+    "heading": "Como funciona a candidatura aqui",
+    "through": "As candidaturas passam pelo {{system}}.",
+    "captchaClick": "Na nossa verificação de {{pages}} páginas de candidatura ({{date}}), os formulários do {{system}} costumavam mostrar uma etapa de verificação humana.",
+    "captchaAuto": "Na nossa verificação de {{pages}} páginas de candidatura ({{date}}), os formulários do {{system}} não mostraram nenhuma etapa de verificação humana nessa amostra.",
+    "agentSubmits": "O Apply Agent pode enviar candidaturas aqui.",
+    "agentPrepares": "O Apply Agent prepara aqui as suas respostas; quem envia é você.",
+    "questions": "Lemos as próprias perguntas de triagem desta vaga.",
+    "recheck": "Verificamos de novo se a vaga ainda está no ar quando você clica em Candidatar-se."
+  },
+  "filterBar": {
+    "keywordLabel": "Buscar vagas por cargo ou palavra-chave",
+    "keywordPlaceholder": "Cargo ou palavra-chave",
+    "companyKeywordPlaceholder_one": "Buscar em {{n}} vaga da {{name}}",
+    "companyKeywordPlaceholder_other": "Buscar em {{n}} vagas da {{name}}",
+    "companyKeywordPlaceholderNoCount": "Buscar vagas da {{name}}",
+    "locationLabel": "Local",
+    "locationPlaceholder": "Cidade, região ou país",
+    "filters": "Filtros",
+    "filtersCount": "Filtros ({{n}})",
+    "search": "Buscar",
+    "activeFilters": "Filtros ativos",
+    "removeFilter": "Remover filtro: {{label}}",
+    "clearAll": "Limpar todos os filtros",
+    "sheetTitle": "Filtros",
+    "done": "Concluído",
+    "postedWithin": "Publicado em",
+    "field": "Área",
+    "seniority": "Senioridade",
+    "payStated": "Salário informado",
+    "payStatedOnly": "Só vagas que informam o salário",
+    "payStatedChip": "Informa salário",
+    "hiringSystem": "Sistema de recrutamento",
+    "country": "País",
+    "agencies": "Agências de recrutamento",
+    "agenciesHiddenChip": "Sem agências de recrutamento",
+    "companyKeywordPlaceholder_many": "Buscar em {{n}} vagas da {{name}}"
   }
 }

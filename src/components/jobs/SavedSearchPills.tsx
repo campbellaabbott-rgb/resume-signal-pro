@@ -109,8 +109,8 @@ export function SavedSearchPills() {
 
   return (
     <div className="flex items-center gap-2 flex-wrap mb-2">
-      <span className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
-        <Bookmark className="w-3 h-3" />
+      <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
+        <Bookmark aria-hidden="true" className="w-3.5 h-3.5" />
         {t("jobsPage.pills.label", "Your searches:")}
       </span>
       {searches.map((s) => (
@@ -118,11 +118,11 @@ export function SavedSearchPills() {
           key={s.id}
           type="button"
           onClick={() => openSearch(s)}
-          className="text-xs px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors max-w-[240px] truncate focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+          className="inline-flex h-8 items-center text-sm px-3 rounded-md border border-border-strong bg-card text-foreground hover:bg-accent transition-colors duration-fast max-w-[240px] truncate coarse:h-11 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {s.name}
           {newCounts[s.id] ? (
-            <span className="ml-1.5 text-[10px] font-semibold text-primary">
+            <span className="ml-1.5 text-xs font-semibold text-primary">
               {t("jobsPage.pills.newBadge", "+{{n}} new", { n: newCounts[s.id] > 999 ? "999+" : newCounts[s.id] })}
             </span>
           ) : null}

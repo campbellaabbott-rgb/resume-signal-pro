@@ -1,28 +1,49 @@
-import { Sparkles, CreditCard, Package, Shield, Megaphone, BookOpen, Briefcase, Compass, Bot, Menu, X } from "lucide-react";
+import { Bot, BookOpen, Briefcase, Building2, ChevronDown, Compass, CreditCard, Megaphone, Menu, Shield, User as UserIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Logo } from "@/components/Logo";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import { ScanPackPurchase } from "@/components/ScanPackPurchase";
 import { ScanCreditsCounter } from "@/components/ScanCreditsCounter";
-import { ProductSelectionModal } from "@/components/ProductSelectionModal";
 import { postTrackEvent, getVisitorId } from "@/lib/track-transport";
+import { cn } from "@/lib/utils";
 
+/**
+ * THE SITE HEADER, BY BREAKPOINT (design spec 3.1).
+ *
+ *   lg and up   logo · Jobs, Companies, For AI chats, Pricing, More ▾ ·
+ *               language · credits · Sign in · Get started. Under xl the
+ *               language shows as its code and Sign in as a named icon.
+ *   under lg    logo · credits (a named icon button) · Start · Menu. The menu
+ *               is a sheet holding every link, the language list and the
+ *               account link. From sm up the account icon also stays in the bar.
+ *
+ * The call to action never shrinks and never clips: in German, French, Dutch
+ * and Hindi the measured header at 1024 and 1280 keeps it whole (audit: the
+ * German "Get Started" was cut off at 1280). The phone CTA's accessible name
+ * is its visible word, "Start".
+ *
+ * Layer 40: every sheet and dialog (50) sits above it, so a sheet's close
+ * button can never sit under the header.
+ */
 export function Header() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { session } = useAuth();
   const location = useLocation();
-  const [showScanPackModal, setShowScanPackModal] = useState(false);
-  const [showProductModal, setShowProductModal] = useState(false);
-  // THE PHONE MENU. Under 640px the nav row is hidden (`hidden sm:flex`), and
-  // the only way to Explore, Guides, Pricing, Trust or What's New was the
-  // footer, beneath "Load more". It closes on any navigation and on Escape.
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // The menu closes on any navigation, and on Escape wherever focus is.
   useEffect(() => { setMenuOpen(false); }, [location.pathname, location.search, location.hash]);
   useEffect(() => {
     if (!menuOpen) return;
@@ -30,236 +51,170 @@ export function Header() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [menuOpen]);
-  // The one nav item with an event. /agents was reachable from no page a
-  // visitor lands on (the footer only, beneath "Load more"), so its arrival
-  // here is measured: nav_agents → ab_test_events, read in the owner's SQL
-  // editor, never judged from an anon read. Fire-and-forget, no-op locally.
+
+  // The one nav item with an event: arrivals at /agents from the header are
+  // measured (nav_agents → ab_test_events). Fire-and-forget, no-op locally.
   const trackNavAgents = () => {
     postTrackEvent({ testName: "nav", variant: "nav_agents", eventType: "view", visitorId: getVisitorId() });
   };
-  
+
   const scrollToUpload = () => {
-    // THE UPLOADER ON THIS PAGE FIRST (S8-094). /resume-checker,
-    // /ats-resume-test, /resume-score and /es/revisar-curriculum render the
-    // scanner too, but this navigated anywhere off "/" to "/#upload": the
-    // reused Index instance never re-ran its mount-only hash effect, so the
-    // visitor was dropped at the top of the homepage hero instead of the
-    // uploader they were already on.
-    const uploadSection = document.getElementById('upload');
+    // THE UPLOADER ON THIS PAGE FIRST (S8-094): the scanner landers render
+    // their own uploader, so Start scrolls to it instead of leaving for "/".
+    const uploadSection = document.getElementById("upload");
     if (uploadSection) {
-      uploadSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      uploadSection.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
-    if (location.pathname !== '/') {
-      navigate('/#upload');
+    if (location.pathname !== "/") {
+      navigate("/#upload");
       return;
     }
-    // On "/" before the uploader has mounted: scroll past the hero.
-    window.scrollTo({ top: window.innerHeight, behavior: 'smooth' });
+    window.scrollTo({ top: window.innerHeight, behavior: "smooth" });
   };
 
+  const accountTo = session ? "/account" : "/auth";
+  const accountLabel = session ? t("header.account", "Account") : t("header.signIn", "Sign in");
 
-    return (
-    <>
-      <div className="fixed top-0 left-0 right-0 z-[60]">
-        <header className="bg-background/70 backdrop-blur-xl border-b border-border/60" role="banner">
-        <div className="container">
-        <nav className="flex items-center justify-between h-16" aria-label={t('header.mainNavAriaLabel')}>
-          {/* Left: Logo + Nav Links */}
-          <div className="flex items-center gap-1 sm:gap-2">
-            <Link 
-              to="/" 
-              onClick={(e) => {
-                if (window.location.pathname === '/') {
-                  e.preventDefault();
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }
-              }}
-              className="flex items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
-              aria-label={t('header.homeAriaLabel')}
+  const primary = [
+    { to: "/jobs", label: t("header.jobs", "Jobs"), icon: Briefcase },
+    { to: "/companies", label: t("header.companies", "Companies"), icon: Building2 },
+    { to: "/agents", label: t("header.forAiChats", "For AI chats"), icon: Bot, onClick: trackNavAgents },
+    { to: "/pricing", label: t("header.pricing", "Pricing"), icon: CreditCard },
+  ];
+  const more = [
+    { to: "/explore", label: t("header.explore", "Explore"), icon: Compass },
+    { to: "/guides", label: t("header.guides", "Guides"), icon: BookOpen },
+    { to: "/trust", label: t("header.trust", "Trust"), icon: Shield },
+    { to: "/changelog", label: t("header.changelog", "What's New"), icon: Megaphone },
+  ];
+
+  const isCurrent = (to: string) => location.pathname === to || (to !== "/" && location.pathname.startsWith(`${to}/`));
+
+  return (
+    <header className="fixed inset-x-0 top-0 z-40 border-b border-border bg-background/90 backdrop-blur-sm" role="banner">
+      <div className="container flex h-14 items-center gap-2 lg:h-16 lg:gap-4">
+        <Link
+          to="/"
+          onClick={(e) => {
+            if (window.location.pathname === "/") {
+              e.preventDefault();
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }
+          }}
+          className="flex shrink-0 items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          aria-label={t("header.homeAriaLabel")}
+        >
+          <Logo className="h-7 w-7" />
+          {/* The wordmark gives way under 375px so the actions never clip. */}
+          <span className="text-base font-bold tracking-tight max-[374px]:sr-only lg:text-lg">
+            Resume <span className="text-primary">Booster</span>
+          </span>
+        </Link>
+
+        <nav className="hidden min-w-0 items-center gap-0.5 lg:flex" aria-label={t("header.mainNavAriaLabel")}>
+          {primary.map(({ to, label, onClick }) => (
+            <Link
+              key={to}
+              to={to}
+              onClick={onClick}
+              aria-current={isCurrent(to) ? "page" : undefined}
+              className={cn(
+                "inline-flex h-9 items-center whitespace-nowrap rounded-md px-2.5 text-sm font-medium transition-colors duration-fast hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                isCurrent(to) ? "text-foreground" : "text-muted-foreground",
+              )}
             >
-              <Logo className="w-8 h-8" />
-              {/* The wordmark gives way under 375px (360px Androids): with it the
-                  action cluster overflowed and clipped Start. The link keeps
-                  its accessible name either way. */}
-              <span className="font-bold text-lg tracking-tight max-[374px]:sr-only">
-                Resume <span className="text-primary">Booster</span>
-              </span>
+              {label}
             </Link>
-            
-            <div className="hidden sm:flex items-center">
-              {/* How-it-works now lives inside /trust (methodology summary
-                  embedded there); its slot goes to the guides library. */}
-              {/* Board-first: Jobs leads the nav, styled as the primary
-                  destination rather than one muted item among five. */}
-              <Button
-                variant="ghost"
-                size="sm"
-                asChild
-                className="gap-1.5 text-foreground font-semibold"
+          ))}
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex h-9 items-center gap-1 whitespace-nowrap rounded-md px-2.5 text-sm font-medium text-muted-foreground transition-colors duration-fast hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <Link to="/jobs">
-                  <Briefcase className="w-3.5 h-3.5" />
-                  {t('header.jobs', 'Jobs')}
-                </Link>
-              </Button>
-              {/* AGENTS, right after Jobs: the hand-off from the board (a
-                  posting or a search handed to the person's own agent) is
-                  board-adjacent, and /agents is the page every audience —
-                  seeker, developer, the agent itself — is sent to. It was in
-                  no header at all; one letter from /agent, the $99 plan. */}
-              <Button
-                variant="ghost"
-                size="sm"
-                asChild
-                className="gap-1.5 text-muted-foreground hover:text-foreground"
-              >
-                <Link to="/agents" onClick={trackNavAgents}>
-                  <Bot className="w-3.5 h-3.5" />
-                  {t('header.agents', 'Agents')}
-                </Link>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                asChild
-                className="gap-1.5 text-muted-foreground hover:text-foreground"
-              >
-                <Link to="/explore">
-                  <Compass className="w-3.5 h-3.5" />
-                  {t('header.explore', 'Explore')}
-                </Link>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                asChild
-                className="gap-1.5 text-muted-foreground hover:text-foreground"
-              >
-                <Link to="/guides">
-                  <BookOpen className="w-3.5 h-3.5" />
-                  {t('header.guides')}
-                </Link>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                asChild
-                className="gap-2 text-muted-foreground hover:text-foreground"
-              >
-                <Link to="/pricing">{t('header.pricing')}</Link>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                asChild
-                className="gap-1.5 text-muted-foreground hover:text-foreground"
-              >
-                <Link to="/trust">
-                  <Shield className="w-3.5 h-3.5" />
-                  {t('header.trust')}
-                </Link>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                asChild
-                className="gap-1.5 text-muted-foreground hover:text-foreground"
-              >
-                <Link to="/changelog">
-                  <Megaphone className="w-3.5 h-3.5" />
-                  {t('header.changelog')}
-                </Link>
-              </Button>
-            </div>
-          </div>
-          
-          {/* Right: Actions */}
-          <div className="flex items-center gap-1 sm:gap-2">
+                {t("header.more", "More")}
+                <ChevronDown aria-hidden="true" className="h-3.5 w-3.5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="min-w-[12rem]">
+              {more.map(({ to, label, icon: Icon }) => (
+                <DropdownMenuItem key={to} asChild>
+                  <Link to={to} className="flex items-center gap-2">
+                    <Icon aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
+                    {label}
+                  </Link>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </nav>
+
+        <div className="ml-auto flex shrink-0 items-center gap-1 lg:gap-2">
+          <div className="hidden lg:block">
             <LanguageSwitcher variant="compact" />
-            {/* UNDER 640px THE NAV ABOVE DOES NOT RENDER, so the phone gets the
-                whole nav (and Sign in) behind one menu button. It replaced an
-                icon-only /agents link and the bar's own Sign in, which is what
-                lets the cluster fit: at 375-390px the language picker, the
-                agents icon, Sign in, credits and Start overflowed and clipped
-                Start (S8-093). */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="sm:hidden text-muted-foreground hover:text-foreground min-h-[44px] min-w-[44px] touch-manipulation"
-              aria-label={menuOpen ? t('header.closeMenu', 'Close menu') : t('header.menu', 'Menu')}
-              aria-expanded={menuOpen}
-              aria-controls="phone-nav"
-              onClick={() => setMenuOpen((v) => !v)}
-            >
-              {menuOpen ? <X className="w-4 h-4" aria-hidden="true" /> : <Menu className="w-4 h-4" aria-hidden="true" />}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              asChild
-              className="hidden sm:inline-flex gap-1.5 text-muted-foreground hover:text-foreground min-h-[44px] touch-manipulation"
-              aria-label={session ? t('header.account', 'Account') : t('header.signIn', 'Sign in')}
-            >
-              <Link to={session ? "/account" : "/auth"}>
-                <UserIcon className="w-4 h-4" />
-                <span className="hidden md:inline">{session ? t('header.account', 'Account') : t('header.signIn', 'Sign in')}</span>
-              </Link>
-            </Button>
-            <ScanCreditsCounter />
-            <Button 
-              variant="default" 
-              size="sm" 
-              onClick={scrollToUpload}
-              className="gap-2 shadow-lg shadow-primary/20 min-h-[44px] min-w-[44px] touch-manipulation"
-              aria-label={t('header.getStartedAriaLabel')}
-            >
-              <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
-              <span className="hidden sm:inline">{t('header.getStarted')}</span>
-              <span className="sm:hidden">{t('header.start')}</span>
-            </Button>
           </div>
-        </nav>
+          <ScanCreditsCounter />
+          {/* The account icon: in the bar from sm up, named at every width. */}
+          <Link
+            to={accountTo}
+            className="hidden sm:flex h-9 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-muted-foreground transition-colors duration-fast hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring coarse:h-11"
+          >
+            <UserIcon aria-hidden="true" className="h-4 w-4" />
+            <span className="sr-only xl:not-sr-only">{accountLabel}</span>
+          </Link>
+          <Button
+            onClick={scrollToUpload}
+            size="sm"
+            className="hidden shrink-0 lg:inline-flex"
+            aria-label={t("header.getStartedAriaLabel")}
+          >
+            {t("header.getStarted")}
+          </Button>
+          <Button onClick={scrollToUpload} size="sm" className="shrink-0 lg:hidden">
+            {t("header.start")}
+          </Button>
+          <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+            <SheetTrigger asChild>
+              <IconButton
+                aria-label={t("header.menu", "Menu")}
+                aria-expanded={menuOpen}
+                aria-controls="phone-nav"
+                className="lg:hidden"
+              >
+                <Menu />
+              </IconButton>
+            </SheetTrigger>
+            <SheetContent
+              side="right"
+              title={t("header.phoneNavAriaLabel", "Site menu")}
+              closeLabel={t("header.closeMenu", "Close menu")}
+              closeProps={{ "aria-expanded": true, "aria-controls": "phone-nav" }}
+            >
+              <nav id="phone-nav" aria-label={t("header.phoneNavAriaLabel", "Site menu")}>
+                <ul className="grid gap-1">
+                  {[...primary, ...more, { to: accountTo, label: accountLabel, icon: UserIcon }].map(({ to, label, icon: Icon, onClick }: { to: string; label: string; icon: typeof UserIcon; onClick?: () => void }) => (
+                    <li key={to}>
+                      <Link
+                        to={to}
+                        aria-current={isCurrent(to) ? "page" : undefined}
+                        onClick={() => { onClick?.(); setMenuOpen(false); }}
+                        className="flex min-h-11 items-center gap-3 rounded-md px-3 text-base text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <Icon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                        {label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+              <div className="mt-6 border-t border-border pt-4">
+                <LanguageSwitcher variant="list" />
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
       </div>
-      {menuOpen && (
-        <nav id="phone-nav" aria-label={t('header.phoneNavAriaLabel', 'Site menu')} className="sm:hidden border-t border-border/60 bg-background">
-          <ul className="container py-2 grid grid-cols-2 gap-1 text-sm">
-            {[
-              { to: "/jobs", label: t('header.jobs', 'Jobs'), icon: Briefcase },
-              { to: "/agents", label: t('header.agents', 'Agents'), icon: Bot, onClick: trackNavAgents },
-              { to: "/explore", label: t('header.explore', 'Explore'), icon: Compass },
-              { to: "/guides", label: t('header.guides', 'Guides'), icon: BookOpen },
-              { to: "/pricing", label: t('header.pricing', 'Pricing'), icon: CreditCard },
-              { to: "/trust", label: t('header.trust', 'Trust'), icon: Shield },
-              { to: "/changelog", label: t('header.changelog', "What's New"), icon: Megaphone },
-              { to: session ? "/account" : "/auth", label: session ? t('header.account', 'Account') : t('header.signIn', 'Sign in'), icon: UserIcon },
-            ].map(({ to, label, icon: Icon, onClick }) => (
-              <li key={to}>
-                <Link
-                  to={to}
-                  onClick={() => { onClick?.(); setMenuOpen(false); }}
-                  className="flex items-center gap-2 min-h-[44px] px-3 rounded-lg text-foreground hover:bg-muted/60 touch-manipulation"
-                >
-                  <Icon className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
-                  {label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      )}
-      
-      <ScanPackPurchase 
-        open={showScanPackModal} 
-        onOpenChange={setShowScanPackModal} 
-      />
-      
-      <ProductSelectionModal 
-        open={showProductModal} 
-        onOpenChange={setShowProductModal} 
-      />
-        </header>
-      </div>
-    </>
+    </header>
   );
 }

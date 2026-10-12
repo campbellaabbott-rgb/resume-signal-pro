@@ -31,7 +31,12 @@
     "closeMenu": "Menü schließen",
     "phoneNavAriaLabel": "Seitenmenü",
     "signIn": "Anmelden",
-    "account": "Konto"
+    "account": "Konto",
+    "credits": "Meine Credits",
+    "companies": "Unternehmen",
+    "forAiChats": "Für KI-Chats",
+    "more": "Mehr",
+    "language": "Sprache"
   },
   "hero": {
     "badge": "Live-Jobbörse — jede Stelle direkt im System des Unternehmens verifiziert",
@@ -160,7 +165,28 @@
     "changelog": "Neuigkeiten",
     "navAriaLabel": "Footer-Navigation",
     "jobs": "Jobbörse",
-    "explore": "Nach Bereich erkunden"
+    "explore": "Nach Bereich erkunden",
+    "resourcesAriaLabel": "Ressourcen",
+    "links": {
+      "companies": "Unternehmen, die einstellen",
+      "trust": "Vertrauen & Transparenz",
+      "resumeChecker": "Kostenloser Lebenslauf-Check",
+      "atsTest": "ATS-Lebenslauftest",
+      "resumeScore": "Lebenslauf-Score",
+      "industries": "Lebenslauf-Keywords nach Branche",
+      "guides": "Lebenslauf- & ATS-Ratgeber",
+      "workday": "Workday-ATS-Ratgeber",
+      "greenhouse": "Greenhouse-Ratgeber",
+      "lever": "Lever-Ratgeber",
+      "icims": "iCIMS-Ratgeber",
+      "vsJobscan": "vs. Jobscan",
+      "freelanceBoost": "Freelance Boost",
+      "builder": "Lebenslauf-Editor",
+      "methodology": "Methodik",
+      "dataApi": "Einstellungsdaten & API",
+      "agents": "Deinen Agenten verbinden",
+      "payTransparency": "Gehaltstransparenz-Index"
+    }
   },
   "howItWorks": {
     "badge": "KI-gestützte Analyse",
@@ -3060,7 +3086,9 @@
   },
   "floatingHelpButton": {
     "needHelp": "Brauchst du Hilfe?",
-    "questionsOrFeedback": "Fragen oder Feedback? Schreib uns:"
+    "questionsOrFeedback": "Fragen oder Feedback? Schreib uns:",
+    "getHelp": "Hilfe holen",
+    "closeHelp": "Hilfe schließen"
   },
   "atsParseSimulator": {
     "title": "ATS-Parse-Simulation",
@@ -5343,5 +5371,64 @@
     "technical": "Fachlich",
     "situational": "Situativ",
     "cultureFit": "Kulturelle Passung"
+  },
+  "format": {
+    "ago": "vor {{duration}}",
+    "justNow": "gerade eben",
+    "period": {
+      "hour": "/Std.",
+      "day": "/Tag",
+      "week": "/Woche",
+      "month": "/Monat",
+      "year": "/Jahr"
+    }
+  },
+  "ds": {
+    "tryAgain": "Erneut versuchen",
+    "lightTheme": "Helles Design",
+    "asOf": {
+      "read": "gelesen {{when}}",
+      "loaded": "geladen {{when}}",
+      "filed": "eingereicht {{when}}",
+      "asOf": "Stand: {{when}}",
+      "posted": "veröffentlicht {{when}}"
+    }
+  },
+  "howApply": {
+    "heading": "So funktioniert die Bewerbung hier",
+    "through": "Bewerbungen laufen über {{system}}.",
+    "captchaClick": "Bei unserer Prüfung von {{pages}} Bewerbungsseiten ({{date}}) zeigten {{system}}-Formulare meist einen Schritt, mit dem du bestätigst, dass du ein Mensch bist.",
+    "captchaAuto": "Bei unserer Prüfung von {{pages}} Bewerbungsseiten ({{date}}) zeigten {{system}}-Formulare in dieser Stichprobe keinen Schritt, mit dem du bestätigst, dass du ein Mensch bist.",
+    "agentSubmits": "Der Apply Agent kann hier Bewerbungen absenden.",
+    "agentPrepares": "Der Apply Agent bereitet hier deine Antworten vor; absenden musst du selbst.",
+    "questions": "Wir lesen die eigenen Auswahlfragen dieser Stellenanzeige.",
+    "recheck": "Wir prüfen erneut, ob die Anzeige noch online ist, wenn du auf Bewerben tippst."
+  },
+  "filterBar": {
+    "keywordLabel": "Jobs nach Titel oder Stichwort suchen",
+    "keywordPlaceholder": "Titel oder Stichwort",
+    "companyKeywordPlaceholder_one": "{{n}} Stelle bei {{name}} durchsuchen",
+    "companyKeywordPlaceholder_other": "{{n}} Stellen bei {{name}} durchsuchen",
+    "companyKeywordPlaceholderNoCount": "Stellen bei {{name}} durchsuchen",
+    "locationLabel": "Ort",
+    "locationPlaceholder": "Stadt, Region oder Land",
+    "filters": "Filter",
+    "filtersCount": "Filter ({{n}})",
+    "search": "Suchen",
+    "activeFilters": "Aktive Filter",
+    "removeFilter": "Filter entfernen: {{label}}",
+    "clearAll": "Alle Filter zurücksetzen",
+    "sheetTitle": "Filter",
+    "done": "Fertig",
+    "postedWithin": "Veröffentlicht innerhalb",
+    "field": "Bereich",
+    "seniority": "Erfahrungsstufe",
+    "payStated": "Gehalt angegeben",
+    "payStatedOnly": "Nur Anzeigen mit Gehaltsangabe",
+    "payStatedChip": "Mit Gehaltsangabe",
+    "hiringSystem": "Bewerbungssystem",
+    "country": "Land",
+    "agencies": "Personaldienstleister",
+    "agenciesHiddenChip": "Ohne Personaldienstleister"
   }
 }

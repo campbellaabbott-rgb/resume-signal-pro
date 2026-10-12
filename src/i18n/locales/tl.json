@@ -31,7 +31,12 @@
     "closeMenu": "Isara ang menu",
     "phoneNavAriaLabel": "Menu ng site",
     "signIn": "Mag-sign in",
-    "account": "Account"
+    "account": "Account",
+    "credits": "Aking mga kredito",
+    "companies": "Mga kumpanya",
+    "forAiChats": "Para sa AI chat",
+    "more": "Higit pa",
+    "language": "Wika"
   },
   "hero": {
     "badge": "Live job board — bawat posting verified mula sa sariling sistema ng kumpanya",
@@ -160,7 +165,28 @@
     "changelog": "Bago",
     "navAriaLabel": "Footer navigation",
     "jobs": "Job board",
-    "explore": "Tuklasin ayon sa larangan"
+    "explore": "Tuklasin ayon sa larangan",
+    "resourcesAriaLabel": "Mga mapagkukunan",
+    "links": {
+      "companies": "Mga kumpanyang nagha-hire",
+      "trust": "Tiwala at transparency",
+      "resumeChecker": "Libreng resume checker",
+      "atsTest": "ATS resume test",
+      "resumeScore": "Resume score",
+      "industries": "Mga resume keyword ayon sa industriya",
+      "guides": "Mga gabay sa resume at ATS",
+      "workday": "Gabay sa Workday ATS",
+      "greenhouse": "Gabay sa Greenhouse",
+      "lever": "Gabay sa Lever",
+      "icims": "Gabay sa iCIMS",
+      "vsJobscan": "vs Jobscan",
+      "freelanceBoost": "Freelance Boost",
+      "builder": "Resume Builder",
+      "methodology": "Metodolohiya",
+      "dataApi": "Hiring data at API",
+      "agents": "Ikonekta ang iyong agent",
+      "payTransparency": "Pay Transparency Index"
+    }
   },
   "howItWorks": {
     "badge": "AI-Powered Analysis",
@@ -3060,7 +3086,9 @@
   },
   "floatingHelpButton": {
     "needHelp": "Kailangan ng Tulong?",
-    "questionsOrFeedback": "Mga tanong o feedback? Mag-email sa amin:"
+    "questionsOrFeedback": "Mga tanong o feedback? Mag-email sa amin:",
+    "getHelp": "Humingi ng tulong",
+    "closeHelp": "Isara ang tulong"
   },
   "atsParseSimulator": {
     "title": "Simulation ng ATS Parse",
@@ -5343,5 +5371,64 @@
     "technical": "Teknikal",
     "situational": "Sitwasyonal",
     "cultureFit": "Pagkakatugma sa kultura"
+  },
+  "format": {
+    "ago": "{{duration}} ang nakalipas",
+    "justNow": "ngayon lang",
+    "period": {
+      "hour": "/oras",
+      "day": "/araw",
+      "week": "/linggo",
+      "month": "/buwan",
+      "year": "/taon"
+    }
+  },
+  "ds": {
+    "tryAgain": "Subukang muli",
+    "lightTheme": "Maliwanag na tema",
+    "asOf": {
+      "read": "nabasa {{when}}",
+      "loaded": "na-load {{when}}",
+      "filed": "inihain {{when}}",
+      "asOf": "noong {{when}}",
+      "posted": "nai-post {{when}}"
+    }
+  },
+  "howApply": {
+    "heading": "Paano mag-apply dito",
+    "through": "Dumadaan ang mga aplikasyon sa {{system}}.",
+    "captchaClick": "Sa aming pagsusuri ng {{pages}} pahina ng aplikasyon ({{date}}), karaniwang may hakbang na nagpapatunay na tao ka ang mga form ng {{system}}.",
+    "captchaAuto": "Sa aming pagsusuri ng {{pages}} pahina ng aplikasyon ({{date}}), walang hakbang na nagpapatunay na tao ka ang mga form ng {{system}} sa sample na iyon.",
+    "agentSubmits": "Kayang magsumite ng Apply Agent ng mga aplikasyon dito.",
+    "agentPrepares": "Inihahanda ng Apply Agent ang mga sagot mo dito; ikaw ang magpapadala.",
+    "questions": "Binabasa namin ang sariling mga tanong sa screening ng posting na ito.",
+    "recheck": "Muli naming tinitiyak na live pa ang posting kapag pinindot mo ang Apply."
+  },
+  "filterBar": {
+    "keywordLabel": "Maghanap ng trabaho ayon sa titulo o keyword",
+    "keywordPlaceholder": "Titulo o keyword",
+    "companyKeywordPlaceholder_one": "Maghanap sa {{n}} trabaho sa {{name}}",
+    "companyKeywordPlaceholder_other": "Maghanap sa {{n}} trabaho sa {{name}}",
+    "companyKeywordPlaceholderNoCount": "Maghanap ng trabaho sa {{name}}",
+    "locationLabel": "Lokasyon",
+    "locationPlaceholder": "Lungsod, rehiyon o bansa",
+    "filters": "Mga filter",
+    "filtersCount": "Mga filter ({{n}})",
+    "search": "Maghanap",
+    "activeFilters": "Mga aktibong filter",
+    "removeFilter": "Alisin ang filter: {{label}}",
+    "clearAll": "I-clear ang lahat ng filter",
+    "sheetTitle": "Mga filter",
+    "done": "Tapos na",
+    "postedWithin": "Nai-post sa loob ng",
+    "field": "Larangan",
+    "seniority": "Antas ng karanasan",
+    "payStated": "Nakasaad na sahod",
+    "payStatedOnly": "Mga posting lang na may nakasaad na sahod",
+    "payStatedChip": "May sahod",
+    "hiringSystem": "Hiring system",
+    "country": "Bansa",
+    "agencies": "Mga staffing agency",
+    "agenciesHiddenChip": "Walang staffing agency"
   }
 }

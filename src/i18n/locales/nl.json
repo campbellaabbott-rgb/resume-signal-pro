@@ -31,7 +31,12 @@
     "closeMenu": "Menu sluiten",
     "phoneNavAriaLabel": "Sitemenu",
     "signIn": "Inloggen",
-    "account": "Account"
+    "account": "Account",
+    "credits": "Mijn credits",
+    "companies": "Bedrijven",
+    "forAiChats": "Voor AI-chats",
+    "more": "Meer",
+    "language": "Taal"
   },
   "hero": {
     "badge": "Live vacaturebord — elke vacature geverifieerd in het systeem van het bedrijf zelf",
@@ -160,7 +165,28 @@
     "changelog": "Nieuw",
     "navAriaLabel": "Footer-navigatie",
     "jobs": "Vacaturebank",
-    "explore": "Verkennen op vakgebied"
+    "explore": "Verkennen op vakgebied",
+    "resourcesAriaLabel": "Bronnen",
+    "links": {
+      "companies": "Bedrijven die werven",
+      "trust": "Vertrouwen en transparantie",
+      "resumeChecker": "Gratis cv-check",
+      "atsTest": "ATS-cv-test",
+      "resumeScore": "Cv-score",
+      "industries": "Cv-trefwoorden per branche",
+      "guides": "Cv- en ATS-gidsen",
+      "workday": "Workday ATS-gids",
+      "greenhouse": "Greenhouse-gids",
+      "lever": "Lever-gids",
+      "icims": "iCIMS-gids",
+      "vsJobscan": "vs Jobscan",
+      "freelanceBoost": "Freelance Boost",
+      "builder": "Cv-maker",
+      "methodology": "Methodologie",
+      "dataApi": "Wervingsdata en API",
+      "agents": "Verbind je agent",
+      "payTransparency": "Salaristransparantie-index"
+    }
   },
   "howItWorks": {
     "badge": "AI-gestuurde Analyse",
@@ -3060,7 +3086,9 @@
   },
   "floatingHelpButton": {
     "needHelp": "Hulp nodig?",
-    "questionsOrFeedback": "Vragen of feedback? Stuur ons een e-mail:"
+    "questionsOrFeedback": "Vragen of feedback? Stuur ons een e-mail:",
+    "getHelp": "Hulp krijgen",
+    "closeHelp": "Hulp sluiten"
   },
   "atsParseSimulator": {
     "title": "ATS-parsesimulatie",
@@ -5343,5 +5371,64 @@
     "technical": "Technisch",
     "situational": "Situationeel",
     "cultureFit": "Culturele fit"
+  },
+  "format": {
+    "ago": "{{duration}} geleden",
+    "justNow": "zojuist",
+    "period": {
+      "hour": "/uur",
+      "day": "/dag",
+      "week": "/week",
+      "month": "/maand",
+      "year": "/jaar"
+    }
+  },
+  "ds": {
+    "tryAgain": "Opnieuw proberen",
+    "lightTheme": "Licht thema",
+    "asOf": {
+      "read": "gelezen {{when}}",
+      "loaded": "geladen {{when}}",
+      "filed": "ingediend {{when}}",
+      "asOf": "bijgewerkt {{when}}",
+      "posted": "geplaatst {{when}}"
+    }
+  },
+  "howApply": {
+    "heading": "Zo werkt solliciteren hier",
+    "through": "Sollicitaties lopen via {{system}}.",
+    "captchaClick": "Bij onze controle van {{pages}} sollicitatiepagina's ({{date}}) toonden {{system}}-formulieren meestal een stap waarmee je bevestigt dat je een mens bent.",
+    "captchaAuto": "Bij onze controle van {{pages}} sollicitatiepagina's ({{date}}) toonden {{system}}-formulieren in die steekproef geen stap waarmee je bevestigt dat je een mens bent.",
+    "agentSubmits": "De Apply Agent kan hier sollicitaties versturen.",
+    "agentPrepares": "De Apply Agent bereidt hier je antwoorden voor; jij verstuurt ze.",
+    "questions": "We lezen de eigen screeningsvragen van deze vacature.",
+    "recheck": "We controleren opnieuw of de vacature nog online staat wanneer je op Solliciteren drukt."
+  },
+  "filterBar": {
+    "keywordLabel": "Vacatures zoeken op functie of trefwoord",
+    "keywordPlaceholder": "Functie of trefwoord",
+    "companyKeywordPlaceholder_one": "Zoek in {{n}} vacature bij {{name}}",
+    "companyKeywordPlaceholder_other": "Zoek in {{n}} vacatures bij {{name}}",
+    "companyKeywordPlaceholderNoCount": "Zoek vacatures bij {{name}}",
+    "locationLabel": "Locatie",
+    "locationPlaceholder": "Stad, regio of land",
+    "filters": "Filters",
+    "filtersCount": "Filters ({{n}})",
+    "search": "Zoeken",
+    "activeFilters": "Actieve filters",
+    "removeFilter": "Filter verwijderen: {{label}}",
+    "clearAll": "Alle filters wissen",
+    "sheetTitle": "Filters",
+    "done": "Klaar",
+    "postedWithin": "Geplaatst binnen",
+    "field": "Vakgebied",
+    "seniority": "Ervaringsniveau",
+    "payStated": "Salaris vermeld",
+    "payStatedOnly": "Alleen vacatures met salaris",
+    "payStatedChip": "Met salaris",
+    "hiringSystem": "Wervingssysteem",
+    "country": "Land",
+    "agencies": "Uitzend- en wervingsbureaus",
+    "agenciesHiddenChip": "Zonder bureaus"
   }
 }
