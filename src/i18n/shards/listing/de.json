@@ -1,0 +1,96 @@
+{
+  "listing": {
+    "ago": {
+      "now": "gerade eben",
+      "since": "vor {{duration}}"
+    },
+    "period": {
+      "hour": "/Std.",
+      "day": "/Tag",
+      "week": "/Woche",
+      "month": "/Monat",
+      "year": "/Jahr"
+    },
+    "card": {
+      "moreActions": "Weitere Aktionen für {{title}}",
+      "save": "{{title}} speichern",
+      "postedToday": "heute ausgeschrieben",
+      "postedDaysAgo_one": "vor {{count}} Tag ausgeschrieben",
+      "postedDaysAgo_other": "vor {{count}} Tagen ausgeschrieben",
+      "feedRead": "{{system}} · Feed {{ago}} gelesen",
+      "feedReadNoSystem": "Feed {{ago}} gelesen",
+      "feedReadTip": "Wann wir den eigenen Job-Feed dieses Arbeitgebers zuletzt gelesen haben. Eine Stelle, die der Arbeitgeber entfernt, verlässt das Board beim nächsten Lesen seines Feeds.",
+      "agencyBoard": "Board einer Personalagentur",
+      "agencyBoardTip": "Dieses Board gehört einer Personal- oder Recruiting-Agentur. Wir kennzeichnen das Board, nicht jede einzelne Stelle; die Stellen hier sind meist für Kunden der Agentur, nicht für die Agentur selbst.",
+      "annualEstimate": "≈ {{amount}}{{period}}",
+      "checkFit": "Passung prüfen",
+      "checkFitLabel": "Passung für {{title}} prüfen"
+    },
+    "menu": {
+      "report": "Melden",
+      "compare": "Vergleichen",
+      "aiHandoff": "In Claude oder ChatGPT öffnen",
+      "copyLink": "Link kopieren"
+    },
+    "status": {
+      "live": "Live an der Quelle · Feed {{ago}} gelesen",
+      "liveTip": "Der eigene Feed des Arbeitgebers führte diese Stelle, als wir ihn zuletzt gelesen haben.",
+      "partial": "Wir konnten nur einen Teil dieses Boards lesen",
+      "partialTip": "Das Board dieses Arbeitgebers ist größer, als ein einzelner Lesevorgang erreicht; deshalb können wir nicht bei jedem Lesen jede Stelle darauf bestätigen.",
+      "gone": "Vom Arbeitgeber nicht mehr gelistet · entfernt am {{date}}",
+      "goneUndated": "Vom Arbeitgeber nicht mehr gelistet"
+    },
+    "actions": {
+      "apply": "Auf der Website von {{employer}} bewerben",
+      "applyPlain": "Auf der Website des Arbeitgebers bewerben",
+      "applyShort": "Beim Arbeitgeber bewerben",
+      "newTab": "(öffnet in einem neuen Tab)",
+      "applyCaption": "Öffnet {{system}} in einem neuen Tab.",
+      "applyCaptionPlain": "Öffnet die eigene Website des Arbeitgebers in einem neuen Tab.",
+      "checkFit": "Meine Passung prüfen, kostenlos",
+      "checkFitCaption": "Gleicht deinen Lebenslauf mit der eigenen Beschreibung dieser Stelle ab."
+    },
+    "facts": {
+      "payBasis": "aus dem Feed des Arbeitgebers",
+      "postedDated": "{{date}}, so wie das System des Arbeitgebers es angibt",
+      "postedRedated": "Feed-Datum {{date}}; {{system}} kann dieses Datum verschieben, wenn eine Anzeige bearbeitet wird, die Stelle kann also älter sein",
+      "postedRedatedPlain": "Feed-Datum {{date}}; dieses Bewerbungssystem kann das Datum verschieben, wenn eine Anzeige bearbeitet wird, die Stelle kann also älter sein",
+      "postedUndated": "Das System des Arbeitgebers nennt kein Ausschreibungsdatum",
+      "location": "Standort",
+      "locations": "Standorte",
+      "system": "Bewerbungssystem",
+      "systemValue": "Der Bewerbungslink öffnet {{system}}",
+      "department": "Abteilung",
+      "feedRead": "Feed gelesen"
+    },
+    "description": {
+      "loading": "Beschreibung wird geladen …",
+      "unavailable": "Wir konnten die vollständige Beschreibung hier nicht laden.",
+      "readOnSite": "Lies sie auf der Website von {{employer}}",
+      "readOnSitePlain": "Lies sie auf der Website des Arbeitgebers",
+      "capped": "Unsere Kopie endet nach {{cap}} Zeichen.",
+      "continuesOnSite": "Die Anzeige geht auf der Website von {{employer}} weiter",
+      "continuesOnSitePlain": "Die Anzeige geht auf der Website des Arbeitgebers weiter",
+      "collapsed_one": "Wir haben {{count}} Absatz weggelassen, der einen anderen Wort für Wort wiederholte.",
+      "collapsed_other": "Wir haben {{count}} Absätze weggelassen, die andere Wort für Wort wiederholten."
+    },
+    "detail": {
+      "back": "Zurück zu {{name}}",
+      "openRoles_one": "Alle {{n}} offene Stelle bei {{name}} ansehen",
+      "openRoles_other": "Alle {{n}} offenen Stellen bei {{name}} ansehen",
+      "openRolesFloor": "Alle {{n}}+ offenen Stellen bei {{name}} ansehen"
+    },
+    "sheet": {
+      "back": "Zurück zur Liste"
+    },
+    "page": {
+      "breadcrumb": "Brotkrümelnavigation",
+      "jobs": "Jobs"
+    },
+    "more": {
+      "heading": "Weitere Stellen bei {{employer}}",
+      "seeAll": "Alle offenen Stellen bei {{employer}} ansehen",
+      "loading": "Weitere Stellen werden geladen …"
+    }
+  }
+}

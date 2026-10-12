@@ -21,7 +21,7 @@
  * decision, not this module's.
  */
 import { postingValidThrough, type PostingRow } from "@/components/jobs/posting-page";
-import { cleanJobTitle, decodeNameEntities } from "@/lib/company-display";
+import { listingTitle } from "./text";
 import { dropUnbalancedParenSegments } from "./location";
 import type { ListingJob } from "./types";
 
@@ -36,7 +36,7 @@ import type { ListingJob } from "./types";
 export function shownPosting<T extends PostingRow>(job: T): T {
   return {
     ...job,
-    title: job.title ? cleanJobTitle(decodeNameEntities(job.title)) : job.title,
+    title: job.title ? listingTitle(job.title) : job.title,
     location: job.location ? dropUnbalancedParenSegments(job.location) : job.location,
   };
 }
