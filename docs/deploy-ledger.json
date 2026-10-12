@@ -9,7 +9,12 @@
     "20261008128000"
   ],
   "_appliedOutsideDrizzleNote": "Applied, but no staged-runner stub names them. 20261008125000 and 20261008128000 were released 2026-10-11 after wave 2 step 1 verified, and Lovable applied them without writing a stub, so every later message re-listed them. They are live by behaviour (checked 2026-10-11): get_cron_health lists send-search-digest, industry-corrections-digest and check-error-spikes, and check-error-spikes has run 35+ times.",
-  "holdUntilVerified": [],
+  "holdUntilVerified": [
+    {
+      "stamp": "20261011103000",
+      "until": "wave 4 verified: job-board .93 serving (section 86) and agent-mcp 2026-10-11.2 serving (section 82); it schedules the connector's 30-day search prune"
+    }
+  ],
   "migrationOrder": {
     "_note": "Per migration stamp: `after` is \"fn:<name>@<YYYY-MM-DD.N>\" (apply once that function answers that build or later) or \"frontend\" (apply once the frontend is published); `before` lists \"fn:<name>\" a migration must precede. No entry: before the functions. The ledger prints five steps: migrations before the functions, the functions, migrations after the functions they wait for, the frontend, migrations after the frontend (docs/DEPLOY-LEDGER.md §1).",
     "20261009101000": {
@@ -91,6 +96,10 @@
     "20261011110000": {
       "before": ["fn:public-api", "fn:agent-mcp"],
       "why": "wave 4: POST /v1/fit and fit_resume read the free allowance through api_key_fit_allowance; with the function missing both refuse fit (503 on /v1, an in-band refusal on the connector) rather than score for free"
+    },
+    "20261011103000": {
+      "after": "fn:job-board@2026-09-09.93",
+      "why": "wave 4, HELD until wave 4 verifies (holdUntilVerified): it schedules the nightly 30-day prune of the connector's searches (owner decision 2026-10-11), an irreversible delete of raw rows that is the retention the Privacy draft states only beside job-board .93's write side (an mcp search event keeps its words and no shown ids; a ChatGPT search with the reader proof writes nothing). Release it once section 86 passes"
     }
   },
   "_reservationsNote": "Listed in deploy order from 2026-10-11 (deployOrder; docs/DEPLOY-LEDGER.md §3): the wave 3 closeout, company profiles phases 0-2, wave 4, company profiles phase 3. A migration stamp need not sort in deploy order (wave 4's 20261011* deploys after profiles' 20261012*): the ledger lists what the staged runner has not recorded, whatever sorts first. A function stamped on a later day by an earlier deploy takes that day with a higher sequence (§3).",
@@ -297,5 +306,5 @@
       }
     }
   ],
-  "_holdNote": "20261008125000 and 20261008128000 were released 2026-10-11 after wave 2 step 1 verified (their conditions: job-board .91, send-search-digest, industry-corrections-digest and check-error-spikes serving; /email/unsubscribe live). 20261009100300, 20261009112000 and 20261009160100 were released 2026-10-11 after wave 3 verified (job-board .92 with sliceStats.buildSince 2026-10-11T20:48:26Z; shortlist-evaluate 2026-10-10.62 with the Shortlist page deciding through shortlist_decide; layoff-filings 2026-10-09.3 serving and the old build no longer running). Their conditions stay in migrationOrder as after-rules."
+  "_holdNote": "20261008125000 and 20261008128000 were released 2026-10-11 after wave 2 step 1 verified (their conditions: job-board .91, send-search-digest, industry-corrections-digest and check-error-spikes serving; /email/unsubscribe live). 20261009100300, 20261009112000 and 20261009160100 were released 2026-10-11 after wave 3 verified (job-board .92 with sliceStats.buildSince 2026-10-11T20:48:26Z; shortlist-evaluate 2026-10-10.62 with the Shortlist page deciding through shortlist_decide; layoff-filings 2026-10-09.3 serving and the old build no longer running). Their conditions stay in migrationOrder as after-rules. 20261011103000 (wave 4) is held: it schedules the connector's 30-day search prune, released in the second message once wave 4 verifies and section 86 shows job-board .93 serving."
 }
