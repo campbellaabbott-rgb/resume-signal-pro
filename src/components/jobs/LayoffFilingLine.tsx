@@ -33,18 +33,24 @@
 // it -- the same nothing an unasked token gets, because no surface may ever
 // print an absence (an unread feed is not one either).
 //
-// TWO DATES ON EVERY LINE, AS THE RPC STATES THEM. Date-only strings are
-// printed verbatim -- parsing "2026-09-15" lands at UTC midnight and shifts a
-// day in every western timezone. Our read is a timestamp and renders in the
-// reader's locale; past LAYOFF_STALE_HOURS for that source it prints as an
-// absolute "last read" instead of a relative age.
+// TWO DATES ON EVERY LINE, AS THE RPC STATES THEM, IN THE READER'S LANGUAGE.
+// A filing's dates arrive as YYYY-MM-DD and print as that calendar day in the
+// reader's language ("Sep 10, 2026", "10. Sept. 2026"), never as the raw ISO
+// string beside a US-locale timestamp (audit CP18 found both on one line).
+// They are formatted at UTC noon, never parsed at local midnight, which would
+// shift each one a day in every western timezone. Our read is a timestamp and
+// renders in the reader's language and timezone; past LAYOFF_STALE_HOURS for
+// that source it prints as an absolute "last read" instead of a relative age.
 
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { Link } from "react-router-dom";
+import i18n, { type TFunction } from "i18next";
+import { tPlural } from "@/lib/company/plural";
 import { companyLanderPath } from "@/lib/public-href";
 import { useTranslation } from "react-i18next";
-import { Info } from "lucide-react";
+import { ExternalLink, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { date as fmtDate, dateTime as fmtDateTime } from "@/lib/company/format";
 import { STATE_ALIASES } from "../../../supabase/functions/_shared/location-terms";
 import {
   LAYOFF_MATCHED_VIA,
@@ -299,9 +305,12 @@ export function layoffReadIsStale(row: Pick<LayoffFiling, "source" | "readAt">, 
   return !Number.isFinite(age) || age > bound * 3_600_000;
 }
 
-function readStamp(row: LayoffFiling, t: T): string {
+/** The language a filing's dates print in: the page's, unless a caller names one. */
+const pageLang = (lang?: string) => lang || i18n.language || "en";
+
+function readStamp(row: LayoffFiling, t: T, lang?: string): string {
   return layoffReadIsStale(row)
-    ? t("jobsPage.layoffReadStale", "last read {{readAt}}", { readAt: new Date(row.readAt).toLocaleString() })
+    ? t("jobsPage.layoffReadStale", "last read {{readAt}}", { readAt: fmtDateTime(row.readAt, { lng: pageLang(lang) }) })
     : t("jobsPage.layoffRead", "read from {{sourceName}} {{readAgo}}", { sourceName: row.sourceName, readAgo: readAgoLabel(row.readAt, t) });
 }
 
@@ -325,9 +334,10 @@ const fmtPct = (p: number) => p.toLocaleString(undefined, { maximumFractionDigit
 const LINK_SLOT = "\u0000";
 
 /** The §7.2 sentence for one filing, with LINK_SLOT where its source link
- *  belongs. Exported for the guard. */
-export function layoffLineText(row: LayoffFiling, t: T): { text: string; linkLabel: string } {
+ *  belongs, every date in the reader's language. Exported for the guard. */
+export function layoffLineText(row: LayoffFiling, t: T, lang?: string): { text: string; linkLabel: string } {
   const filer = row.relation === "subsidiary_site" ? "" : row.filer;
+  const day = (d: string) => fmtDate(d, { lng: pageLang(lang) });
   let text: string;
   let linkLabel: string;
   if (row.source === "state_warn") {
@@ -336,18 +346,18 @@ export function layoffLineText(row: LayoffFiling, t: T): { text: string; linkLab
       filer,
       workers: fmtCount(row.workers ?? 0),
       site: row.site ?? t("jobsPage.layoffSiteUnstated", "a site the notice does not name"),
-      effectiveClause: row.effectiveDate ? t("jobsPage.layoffEffective", ", effective {{effectiveDate}}", { effectiveDate: row.effectiveDate }) : "",
+      effectiveClause: row.effectiveDate ? t("jobsPage.layoffEffective", ", effective {{effectiveDate}}", { effectiveDate: day(row.effectiveDate) }) : "",
       kindClause: row.eventType === "closure" ? t("jobsPage.layoffKindClosure", " (site closure)") : "",
       agency: row.sourceName,
-      visibleDate: row.publicDate,
+      visibleDate: day(row.publicDate),
       sourceName: LINK_SLOT,
     };
     text = row.eventBasis === "warn_notice_date"
-      ? t("jobsPage.layoffLineWarnNoticed", "{{filer}} filed a layoff notice with {{state}} dated {{noticeDate}}: {{workers}} positions at {{site}}{{effectiveClause}}{{kindClause}} · listed by {{agency}} on {{visibleDate}} · {{sourceName}} ↗", { ...common, state: layoffStateName(row.state), noticeDate: row.eventDate })
+      ? t("jobsPage.layoffLineWarnNoticed", "{{filer}} filed a layoff notice with {{state}} dated {{noticeDate}}: {{workers}} positions at {{site}}{{effectiveClause}}{{kindClause}} · listed by {{agency}} on {{visibleDate}} · {{sourceName}} ↗", { ...common, state: layoffStateName(row.state), noticeDate: day(row.eventDate) })
       : t("jobsPage.layoffLineWarnReceived", "{{filer}} filed a layoff notice received by {{agency}} on {{visibleDate}}: {{workers}} positions at {{site}}{{effectiveClause}}{{kindClause}} · {{sourceName}} ↗", common);
   } else {
     linkLabel = t("jobsPage.layoffSecFilingLink", "SEC filing");
-    const common = { filer, reportDate: row.eventDate, filedDate: row.publicDate, sourceName: LINK_SLOT };
+    const common = { filer, reportDate: day(row.eventDate), filedDate: day(row.publicDate), sourceName: LINK_SLOT };
     if (layoffIsExitCostOnly(row)) {
       // Item 2.05 is exit or disposal costs; this section describes no
       // workforce event we could read, so it is named, never called a cut.
@@ -432,7 +442,7 @@ interface LineProps {
 export function LayoffFilingChip({ row, country }: LineProps) {
   const { t } = useTranslation();
   if (!row || layoffHidesForCountry(row, country)) return null;
-  const readAgo = layoffReadIsStale(row) ? new Date(row.readAt).toLocaleString() : readAgoLabel(row.readAt, t);
+  const readAgo = layoffReadIsStale(row) ? fmtDateTime(row.readAt, { lng: pageLang() }) : readAgoLabel(row.readAt, t);
   return (
     <a
       href={row.sourceUrl}
@@ -443,7 +453,7 @@ export function LayoffFilingChip({ row, country }: LineProps) {
       data-layoff-filing="chip"
       data-layoff-source={row.source}
       data-layoff-event-date={row.eventDate}
-      title={t("jobsPage.layoffTip", "{{filer}} made this filing on {{eventDate}}. It is a fact about the employer on that date, not about this role. It sits beside the hiring badge on purpose: that badge is only what we watched on this board — roles taken down and left down, or more roles served — and a filing made elsewhere does not change it. Neither one says anyone was hired. Read from {{sourceName}} {{readAgo}}.", { filer: row.filer, eventDate: row.eventDate, sourceName: row.sourceName, readAgo })}
+      title={t("jobsPage.layoffTip", "{{filer}} made this filing on {{eventDate}}. It is a fact about the employer on that date, not about this role. It sits beside the hiring badge on purpose: that badge is only what we watched on this board — roles taken down and left down, or more roles served — and a filing made elsewhere does not change it. Neither one says anyone was hired. Read from {{sourceName}} {{readAgo}}.", { filer: row.filer, eventDate: fmtDate(row.eventDate, { lng: pageLang() }), sourceName: row.sourceName, readAgo })}
     >
       <Info className="w-3 h-3 shrink-0" />
       {row.source === "state_warn"
@@ -460,7 +470,7 @@ export function LayoffFilingLine({ row, country }: LineProps) {
   const { t } = useTranslation();
   if (!row || layoffHidesForCountry(row, country)) return null;
   return (
-    <p className="text-[11px] text-muted-foreground leading-snug -mt-2" data-layoff-filing="line" data-layoff-source={row.source}>
+    <p className="text-xs text-muted-foreground leading-snug -mt-2" data-layoff-filing="line" data-layoff-source={row.source}>
       <FilingSentence row={row} t={t} />
     </p>
   );
@@ -477,11 +487,69 @@ export function LayoffFilingsOnRecord({ rows }: { rows: LayoffFiling[] }) {
       {t("jobsPage.hhAlsoOnRecord", "Also on record:")}
       <ul className="mt-1 space-y-1 pl-3 border-l border-border/60">
         {rows.map((row) => (
-          <li key={`${row.source}:${row.filer}:${row.eventDate}:${row.sourceUrl}`} className="text-[12px]" data-layoff-source={row.source}>
+          <li key={`${row.source}:${row.filer}:${row.eventDate}:${row.sourceUrl}`} className="text-meta" data-layoff-source={row.source}>
             <FilingSentence row={{ ...row, moreN: 0 }} t={t} />
           </li>
         ))}
       </ul>
     </li>
+  );
+}
+
+/** What a compact public-records row says about one filing: its kind, its place, its count and the day it was filed. */
+export function layoffRowText(row: LayoffFiling, t: TFunction, lang?: string): string {
+  const l = pageLang(lang);
+  if (row.source === "state_warn") {
+    const workers = row.workers ?? 0;
+    const filed = fmtDate(row.eventBasis === "warn_notice_date" ? row.eventDate : row.publicDate, { lng: l });
+    return tPlural(t, "companyProfile.records.warnRow", workers,
+      { state: layoffStateName(row.state), workers: workers.toLocaleString(l), date: filed },
+      "WARN notice · {{state}} · {{workers}} worker · filed {{date}}",
+      "WARN notice · {{state}} · {{workers}} workers · filed {{date}}");
+  }
+  const date = fmtDate(row.publicDate, { lng: l });
+  return layoffIsExitCostOnly(row)
+    ? t("companyProfile.records.secExitRow", "SEC 8-K Item 2.05, exit or disposal costs · filed {{date}}", { date })
+    : t("companyProfile.records.secRow", "SEC 8-K Item 2.05 · filed {{date}}", { date });
+}
+
+/**
+ * The employer profile's Public records list: one compact row per qualifying
+ * filing, newest first -- the filer as the source spells it, the kind of
+ * filing, the state and the count a notice states, the day it was filed, the
+ * source link and our read. Renders nothing when there is none, never a
+ * sentence about an absence.
+ */
+export function LayoffFilingRows({ rows }: { rows: LayoffFiling[] }) {
+  const { t, i18n: inst } = useTranslation();
+  if (rows.length === 0) return null;
+  const lang = inst.language || "en";
+  return (
+    <ul className="space-y-2" data-layoff-filing="records">
+      {rows.map((row) => {
+        const link = row.source === "state_warn" ? row.sourceName : t("jobsPage.layoffSecFilingLink", "SEC filing");
+        return (
+          <li key={`${row.source}:${row.filer}:${row.eventDate}:${row.sourceUrl}`} className="text-meta" data-layoff-source={row.source}>
+            <span className="font-medium text-foreground">
+              {row.relation === "subsidiary_site"
+                ? t("companyProfile.records.parentFiler", "{{filer}} (parent company)", { filer: row.filer })
+                : row.filer}
+            </span>
+            <span className="text-muted-foreground">{" · "}{layoffRowText(row, t, lang)}{" · "}</span>
+            <a
+              href={row.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-0.5 text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary"
+              data-layoff-source={row.source}
+            >
+              {link}
+              <ExternalLink className="w-3 h-3" aria-hidden="true" />
+            </a>
+            <span className="block text-xs text-subtle-foreground" data-layoff-read-at={row.readAt}>{readStamp(row, t, lang)}</span>
+          </li>
+        );
+      })}
+    </ul>
   );
 }

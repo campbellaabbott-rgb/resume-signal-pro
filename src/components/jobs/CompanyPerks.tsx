@@ -1,38 +1,45 @@
-// PERKS STATED IN THEIR JOB POSTINGS: the checkmark list on the company lander.
+// PERKS STATED IN THEIR JOB POSTINGS: the checkmark list on the company page.
 //
 // Owner decision D1 (2026-10-11) chose a checkmark list over a count and a
-// quote, to be built honestly. So every check here is a claim with its basis
-// one tap away:
+// quote, to be built honestly. So every mark here is a claim with its basis
+// one activation away:
 //
 //   - the heading says where the perks come from ("stated in their job
-//     postings"), and the line under it says that a perk not listed is not a
-//     perk refused;
-//   - a check appears only for a key whose audit is live and only above the
+//     postings"), and the line under it says that a perk not listed is not
+//     a perk refused;
+//   - a mark appears only for a key whose audit is live and only above the
 //     per-country threshold (src/lib/employer-perks.ts decides which, once);
-//   - tapping, hovering or focusing a check opens its basis: "stated in at
-//     least k of n open <country> postings we could read, read <date>",
-//     the verbatim line, and a link to the posting it came from while that
-//     posting still serves;
+//   - a CHECK means at least half of the postings we could read in that
+//     country state it. A perk above the threshold but under half sits apart,
+//     "In some of their postings", with a hollow dot (design spec 5.5a): a
+//     bare check at 2 of 20 postings read as "offered" (audit CP20);
+//   - activating a mark opens its basis in the flow: "stated in at least k of
+//     n open <country> postings we could read, read <date>", the verbatim
+//     line, and a link to the posting it came from while that posting still
+//     serves;
 //   - eligibility conditions and a possible legal minimum (UK and German
-//     statute only, linked) are tagged on the check itself;
+//     statute only, linked) are tagged on the mark itself;
 //   - a stated visa limit is listed apart, never with a checkmark.
 //
-// THE DISCLOSURE PATTERN. Each check is a real <button> with aria-expanded
-// and aria-controls naming its panel, and aria-describedby naming the count
-// sentence, so a screen reader hears the basis with the perk. Hover (a mouse
-// or pen, never a touch, which would open and close on one tap) and keyboard
-// focus open the panel. A tap or click pins it open and a second one closes
-// it; a keyboard (or screen reader) activation always flips what is shown, so
-// every Enter or Space changes aria-expanded. Focus moving into the panel (its
-// posting link) keeps it open.
+// THE DISCLOSURE PATTERN. Each mark is a real <button> with aria-expanded and
+// aria-controls naming its panel, and aria-describedby naming the count
+// sentence, so a screen reader hears the basis with the perk without opening
+// anything. The panel opens on click, tap, Enter or Space, and on nothing
+// else. FOCUS NEVER OPENS IT: a list that opened as a keyboard user tabbed
+// through it pushed every later check down under them (audit CP20). Every
+// activation flips it, so each one is announced.
 //
-// ONE PANEL AT A TIME, IN THE FLOW. The open check is held by the list, not
-// by each item, so opening one closes any other. The panel sits in normal
-// flow at every width and pushes the list down: it never covers another
-// check, a stated limit or another country's group. Escape anywhere on the
-// page closes it (focus goes back to the check when it was inside the item),
-// and so does a press anywhere outside the open item, so a panel opened by
-// hover or a tap can always be dismissed without moving to it (WCAG 1.4.13).
+// HOVER ONLY PREVIEWS. A mouse or pen resting on a mark shows the count and
+// the quote in a small card laid OVER the list (it never moves the list),
+// without the link, and marked aria-hidden because the same sentence is the
+// mark's description. It stays while the pointer is on the mark or the card,
+// and Escape dismisses it (WCAG 1.4.13).
+//
+// ONE PANEL AT A TIME, IN THE FLOW. The open mark is held by the list, not by
+// each item, so opening one closes any other. The panel sits in normal flow
+// at every width and pushes the list down: it never covers another mark.
+// Escape anywhere closes it (focus goes back to the mark when it was inside
+// the item), and so does a press anywhere outside the open item.
 //
 // NOTHING IS A PLACEHOLDER. Until a key passes its audit the block renders
 // nothing at all; an expired key is a key the reader no longer names. On a
@@ -42,12 +49,16 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Ban, Check, ExternalLink } from "lucide-react";
+import { Ban, Check, Circle, ExternalLink } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { supabase } from "@/integrations/supabase/client";
+import { inflight } from "@/lib/company/inflight";
+import { date as fmtDate, count as fmtCount } from "@/lib/company/format";
 import {
+  PERK_CHECK_MIN_SHARE,
   PERK_ROW_THRESHOLDS,
+  perkMark,
   perkPostingHref,
   perksView,
   qualifiedCount,
@@ -57,6 +68,7 @@ import {
   type PerkClaim,
   type PerkStatute,
   type PerkWithheldReason,
+  type PerksView,
 } from "@/lib/employer-perks";
 
 function countryName(code: string, lang: string): string {
@@ -64,14 +76,6 @@ function countryName(code: string, lang: string): string {
     return new Intl.DisplayNames([lang], { type: "region" }).of(code) ?? code;
   } catch {
     return code;
-  }
-}
-
-function readDate(iso: string, lang: string): string {
-  try {
-    return new Date(iso).toLocaleDateString(lang, { day: "numeric", month: "short", year: "numeric" });
-  } catch {
-    return iso.slice(0, 10);
   }
 }
 
@@ -115,7 +119,7 @@ function StatuteLink({ law }: { law: PerkStatute }) {
         href={law.sourceUrl}
         target="_blank"
         rel="noopener noreferrer nofollow"
-        className="text-primary hover:underline"
+        className="text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary"
       >
         {law.statute}
         <ExternalLink className="inline w-3 h-3 ml-0.5 align-[-1px]" aria-hidden="true" />
@@ -125,54 +129,57 @@ function StatuteLink({ law }: { law: PerkStatute }) {
   );
 }
 
-/** Which check is open, and whether a tap, click or keyboard pinned it. Held by the list: one at a time. */
-interface OpenCheck { id: string; pinned: boolean }
+/** The count sentence a mark opens (and previews), in the reader's language. */
+function countSentence(t: TFunction, claim: PerkClaim, limit: boolean, lang: string): string {
+  const country = countryName(claim.country, lang);
+  const date = fmtDate(claim.asOf, { lng: lang });
+  const k = fmtCount(claim.k, { lng: lang });
+  const n = fmtCount(claim.n, { lng: lang });
+  return limit
+    ? t("jobsPage.perks.countLimit", "Stated as not available in at least {{k}} of {{n}} open {{country}} postings we could read, read {{date}}. The rest are not counted as offering it.", { k, n, country, date })
+    : t("jobsPage.perks.count", "Stated in at least {{k}} of {{n}} open {{country}} postings we could read, read {{date}}.", { k, n, country, date });
+}
 
 function PerkItem({
-  claim, lang, limit, open, pinned, onOpen, onClose,
+  claim, lang, limit, open, onOpen, onClose,
 }: {
   claim: PerkClaim;
   lang: string;
   limit: boolean;
   open: boolean;
-  pinned: boolean;
-  onOpen: (pin: boolean) => void;
+  onOpen: () => void;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
   const item = useRef<HTMLLIElement>(null);
   const button = useRef<HTMLButtonElement>(null);
-  // Whether this check was open when the press that is about to click it
-  // began. A tap focuses the button (which opens it) before its click lands,
-  // so the click must judge the state the person saw, not the one focus made.
-  const press = useRef<boolean | null>(null);
-  // Set while Escape hands focus back to the check, so that focus does not
-  // reopen the panel Escape just closed.
-  const refocusing = useRef(false);
+  const [preview, setPreview] = useState(false);
   const id = useId();
   const panelId = `${id}-basis`;
   const countId = `${id}-count`;
 
-  const country = countryName(claim.country, lang);
-  const date = readDate(claim.asOf, lang);
   const conditions = showsConditions(claim);
   const label = perkLabel(t, claim);
+  const mark = limit ? "limit" : perkMark(claim);
+  const sentence = countSentence(t, claim, limit, lang);
   const hoverable = (pointerType: string) => pointerType === "mouse" || pointerType === "pen";
+  const showPreview = preview && !open;
 
-  // While open: Escape anywhere closes it (focus returns to the check when it
-  // was inside this item), and a press anywhere outside this item closes it.
+  // Escape anywhere closes what is shown (the panel, the preview). Focus goes
+  // back to the mark when it was inside this item. A press outside this item
+  // closes the panel.
   useEffect(() => {
-    if (!open) return;
+    if (!open && !preview) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
+      setPreview(false);
+      if (!open) return;
       const inside = item.current?.contains(document.activeElement) ?? false;
       onClose();
-      if (inside) {
-        refocusing.current = true;
-        try { button.current?.focus(); } finally { refocusing.current = false; }
-      }
+      if (inside) button.current?.focus();
     };
     const onDown = (e: PointerEvent) => {
+      if (!open) return;
       if (item.current && e.target instanceof Node && item.current.contains(e.target)) return;
       onClose();
     };
@@ -182,18 +189,16 @@ function PerkItem({
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("pointerdown", onDown);
     };
-  }, [open, onClose]);
+  }, [open, preview, onClose]);
 
   return (
     <li
       ref={item}
       data-perk={claim.perk}
-      onPointerEnter={(e) => { if (hoverable(e.pointerType) && !open) onOpen(false); }}
-      onPointerLeave={(e) => { if (hoverable(e.pointerType) && open && !pinned) onClose(); }}
-      onFocus={() => { if (!open && !refocusing.current) onOpen(false); }}
-      onBlur={(e) => {
-        if (open && !e.currentTarget.contains(e.relatedTarget as Node | null)) onClose();
-      }}
+      data-perk-mark={mark}
+      className="relative"
+      onPointerEnter={(e) => { if (hoverable(e.pointerType)) setPreview(true); }}
+      onPointerLeave={(e) => { if (hoverable(e.pointerType)) setPreview(false); }}
     >
       <button
         ref={button}
@@ -201,54 +206,52 @@ function PerkItem({
         aria-expanded={open}
         aria-controls={panelId}
         aria-describedby={countId}
-        onPointerDown={() => { press.current = open; }}
         onClick={() => {
-          const pointer = press.current;
-          press.current = null;
-          if (pointer === null) {
-            // Keyboard or assistive technology: every activation flips it.
-            if (open) onClose();
-            else onOpen(true);
-            return;
-          }
-          // A tap or click: open (or opened by the hover or the focus this
-          // same press caused) and not yet pinned pins it; pinned closes it.
-          if (pointer && pinned) onClose();
-          else onOpen(true);
+          setPreview(false);
+          if (open) onClose();
+          else onOpen();
         }}
-        className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-left text-[13px] rounded-sm py-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+        className="inline-flex min-h-8 flex-wrap items-center gap-x-1.5 gap-y-0.5 rounded-sm py-1 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
-        {limit
+        {mark === "limit"
           ? <Ban className="w-4 h-4 text-muted-foreground shrink-0" aria-hidden="true" />
-          : <Check className="w-4 h-4 text-success shrink-0" aria-hidden="true" />}
-        <span className="text-foreground underline decoration-dotted decoration-muted-foreground/60 underline-offset-2">{label}</span>
+          : mark === "check"
+            ? <Check className="w-4 h-4 text-success shrink-0" aria-hidden="true" />
+            : <Circle className="w-3 h-3 mx-0.5 text-muted-foreground shrink-0" aria-hidden="true" />}
+        <span className="text-foreground underline decoration-dotted decoration-border-strong underline-offset-2">{label}</span>
         {conditions && (
-          <span className="text-[10px] font-medium px-1.5 py-px rounded-full bg-muted text-muted-foreground">
+          <span className="text-xs font-medium px-1.5 rounded-sm bg-muted text-muted-foreground">
             {t("jobsPage.perks.conditionsTag", "conditions stated")}
           </span>
         )}
         {claim.baseline && (
-          <span className="text-[10px] font-medium px-1.5 py-px rounded-full bg-muted text-muted-foreground">
+          <span className="text-xs font-medium px-1.5 rounded-sm bg-muted text-muted-foreground">
             {t("jobsPage.perks.legalTag", "may be the legal minimum")}
           </span>
         )}
       </button>
+      {showPreview && (
+        <div
+          aria-hidden="true"
+          data-perk-preview=""
+          className="absolute left-0 top-full z-10 mt-1 w-72 max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-popover p-3 text-xs leading-snug text-popover-foreground shadow-md"
+        >
+          <p className="text-foreground">{sentence}</p>
+          <p className="mt-1 italic text-foreground break-words">“{claim.quote}”</p>
+        </div>
+      )}
       <div
         id={panelId}
         hidden={!open}
-        className="mt-1 rounded-lg border border-border bg-popover text-popover-foreground p-3 text-[12px] leading-snug shadow-sm space-y-1.5"
+        className="mt-1 rounded-lg border border-border bg-popover text-popover-foreground p-3 text-meta leading-snug space-y-1.5"
       >
-        <p id={countId} className="text-foreground">
-          {limit
-            ? t("jobsPage.perks.countLimit", "Stated as not available in at least {{k}} of {{n}} open {{country}} postings we could read, read {{date}}. The rest are not counted as offering it.", { k: claim.k, n: claim.n, country, date })
-            : t("jobsPage.perks.count", "Stated in at least {{k}} of {{n}} open {{country}} postings we could read, read {{date}}.", { k: claim.k, n: claim.n, country, date })}
-        </p>
+        <p id={countId} className="text-foreground">{sentence}</p>
         <figure className="space-y-0.5">
           <figcaption className="text-muted-foreground">{t("jobsPage.perks.quoteLabel", "In their words:")}</figcaption>
-          <blockquote className="border-l-2 border-primary/40 pl-2 italic text-foreground break-words">“{claim.quote}”</blockquote>
+          <blockquote className="border-l-2 border-border-strong pl-2 italic text-foreground break-words">“{claim.quote}”</blockquote>
         </figure>
         {claim.postingId ? (
-          <Link to={perkPostingHref(claim.postingId)} className="inline-block text-primary hover:underline">
+          <Link to={perkPostingHref(claim.postingId)} className="inline-block text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary">
             {t("jobsPage.perks.postingLink", "See the posting this line comes from")}
           </Link>
         ) : (
@@ -274,21 +277,36 @@ function PerkItem({
   );
 }
 
-export function CompanyPerksView({ answer }: { answer: EmployerPerksAnswer | null }) {
+/** How many perk rows the block would print: the accordion's summary counts them. */
+export function perksStatedCount(view: PerksView | null): number {
+  if (!view || view.kind !== "claims") return 0;
+  return view.groups.reduce((n, g) => n + g.checks.length, 0);
+}
+
+export function CompanyPerksView({ answer, headingLevel = 2, bare = false }: {
+  answer: EmployerPerksAnswer | null;
+  /** h2 on the page and in the rail; h3 inside the phone accordion. */
+  headingLevel?: 2 | 3;
+  /** Inside a profile surface: no border of its own. */
+  bare?: boolean;
+}) {
   const { t, i18n } = useTranslation();
   const titleId = useId();
-  const [openCheck, setOpenCheck] = useState<OpenCheck | null>(null);
+  const [openCheck, setOpenCheck] = useState<string | null>(null);
   const close = useCallback(() => setOpenCheck(null), []);
   const view = perksView(answer);
   if (!view) return null;
   const lang = i18n.language || "en";
   const title = t("jobsPage.perks.title", "Perks stated in their job postings");
+  const H = (headingLevel === 3 ? "h3" : "h2") as "h2" | "h3";
+  const sub = (headingLevel === 3 ? "h4" : "h3") as "h3" | "h4";
+  const box = bare ? "" : "rounded-lg border border-border bg-card p-4";
 
   if (view.kind === "withheld") {
     return (
-      <section aria-labelledby={titleId} data-company-perks="withheld" data-perks-withheld={view.reason} className="rounded-xl border border-border bg-card p-3 max-w-xl mb-3">
-        <h2 id={titleId} className="text-[13px] font-semibold text-foreground">{title}</h2>
-        <p className="text-[12px] text-muted-foreground mt-0.5">{withheldLine(t, view.reason, view.share)}</p>
+      <section aria-labelledby={titleId} data-company-perks="withheld" data-perks-withheld={view.reason} className={box}>
+        <H id={titleId} className="text-base font-semibold text-foreground">{title}</H>
+        <p className="text-meta text-muted-foreground mt-1">{withheldLine(t, view.reason, view.share)}</p>
       </section>
     );
   }
@@ -296,49 +314,57 @@ export function CompanyPerksView({ answer }: { answer: EmployerPerksAnswer | nul
   const several = view.groups.length > 1;
   const { minReadable, minStated, minShare } = PERK_ROW_THRESHOLDS;
   return (
-    <section aria-labelledby={titleId} data-company-perks="claims" className="rounded-xl border border-border bg-card p-4 max-w-xl mb-3">
-      <h2 id={titleId} className="text-sm font-semibold text-foreground">{title}</h2>
-      <p className="text-[12px] text-muted-foreground mt-0.5">
-        {t("jobsPage.perks.notListed", "A perk not listed here doesn't mean it isn't offered. We list only perks whose reading we have checked, and only where enough of the postings we could read state them.")}
-      </p>
-      <p className="text-[11px] text-muted-foreground mt-0.5 mb-2">
-        {t("jobsPage.perks.howTo", "Tap, hover or focus a perk to see how many postings state it and the line they use.")}
+    <section aria-labelledby={titleId} data-company-perks="claims" className={box}>
+      <H id={titleId} className="text-base font-semibold text-foreground">{title}</H>
+      <p className="text-meta text-muted-foreground mt-1 mb-2">
+        {t("companyProfile.perks.lead", "Not listed doesn't mean not offered. Tap a perk to see how many postings state it.")}
       </p>
       <div className="space-y-3">
         {view.groups.map((g) => {
-          // One heading level per step: the limits heading sits under a
-          // country h3 when there are several, and directly under the h2
-          // when one country qualifies and its h3 is left out.
-          const LimitsHeading = several ? "h4" : "h3";
+          // One heading level per step: a group heading sits under a country
+          // heading when there are several, and directly under the section
+          // heading when one country qualifies and its heading is left out.
+          const GroupHeading = (several ? (sub === "h3" ? "h4" : "h5") : sub) as "h3" | "h4" | "h5";
+          const strong = g.checks.filter((c) => perkMark(c) === "check");
+          const some = g.checks.filter((c) => perkMark(c) === "some");
           const item = (c: PerkClaim, limit: boolean) => {
             const key = `${g.country}:${c.perk}`;
-            const isOpen = openCheck?.id === key;
             return (
               <PerkItem
                 key={c.perk}
                 claim={c}
                 lang={lang}
                 limit={limit}
-                open={isOpen}
-                pinned={isOpen && openCheck!.pinned}
-                onOpen={(pin) => setOpenCheck({ id: key, pinned: pin })}
+                open={openCheck === key}
+                onOpen={() => setOpenCheck(key)}
                 onClose={close}
               />
             );
           };
+          const CountryHeading = sub;
           return (
             <div key={g.country} data-perks-country={g.country}>
-              {several && <h3 className="text-[12px] font-semibold text-foreground mb-1">{countryName(g.country, lang)}</h3>}
-              {g.checks.length > 0 && (
-                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 items-start">
-                  {g.checks.map((c) => item(c, false))}
+              {several && <CountryHeading className="text-sm font-semibold text-foreground mb-1">{countryName(g.country, lang)}</CountryHeading>}
+              {strong.length > 0 && (
+                <ul className="grid grid-cols-1 gap-x-4 items-start">
+                  {strong.map((c) => item(c, false))}
                 </ul>
+              )}
+              {some.length > 0 && (
+                <div className="mt-2" data-perks-some="">
+                  <GroupHeading className="text-meta font-semibold text-muted-foreground">
+                    {t("companyProfile.perks.someTitle", "In some of their postings")}
+                  </GroupHeading>
+                  <ul className="grid grid-cols-1 gap-x-4 items-start">
+                    {some.map((c) => item(c, false))}
+                  </ul>
+                </div>
               )}
               {g.limits.length > 0 && (
                 <div className="mt-2">
-                  <LimitsHeading className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-0.5">
+                  <GroupHeading className="text-meta font-semibold text-muted-foreground">
                     {t("jobsPage.perks.limitsTitle", "Stated limits")}
-                  </LimitsHeading>
+                  </GroupHeading>
                   <ul className="grid grid-cols-1 gap-y-1">
                     {g.limits.map((c) => item(c, true))}
                   </ul>
@@ -348,8 +374,9 @@ export function CompanyPerksView({ answer }: { answer: EmployerPerksAnswer | nul
           );
         })}
       </div>
-      <p className="text-[10px] text-muted-foreground mt-3">
-        {t("jobsPage.perks.basis", "Read from the text of their own open postings written in English; postings in other languages are not read yet. A check needs at least {{minN}} postings in a country that we could read, with the perk stated in at least {{minK}} of them and in at least {{minPct}}% of them. \"At least\" because our reader can miss a mention.", {
+      <p className="text-xs text-subtle-foreground mt-3">
+        {t("companyProfile.perks.basis", "Read from the text of their own open postings written in English; postings in other languages are not read yet. A check means at least {{strongPct}}% of the postings we could read in that country state it; a dot means at least {{minK}} of at least {{minN}} postings, and at least {{minPct}}%, do. We list only perks whose reading we have checked. \"At least\" because our reader can miss a mention.", {
+          strongPct: Math.round(PERK_CHECK_MIN_SHARE * 100),
           minN: minReadable,
           minK: minStated,
           minPct: Math.round(minShare * 100),
@@ -359,23 +386,31 @@ export function CompanyPerksView({ answer }: { answer: EmployerPerksAnswer | nul
   );
 }
 
-export function CompanyPerks({ companyToken }: { companyToken: string }) {
+/**
+ * The perks reader for one board, asked once while a request is in flight
+ * (the rail and the phone accordion mount together). null until it answers,
+ * and on any failure: an additive block prints nothing and no error.
+ */
+export function useEmployerPerks(companyToken: string | null | undefined, enabled = true): EmployerPerksAnswer | null {
   const [answer, setAnswer] = useState<EmployerPerksAnswer | null>(null);
-
   useEffect(() => {
     let cancelled = false;
     setAnswer(null);
-    (async () => {
-      try {
-        const { data } = await (supabase as unknown as {
-          rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }>;
-        }).rpc("get_employer_perks", { p_token: companyToken });
-        if (!cancelled) setAnswer(readEmployerPerks(data));
-      } catch { /* additive block: a reader that could not load prints nothing, and no error either */ }
-    })();
+    if (!companyToken || !enabled) return;
+    inflight(`get_employer_perks:${companyToken}`, async () => {
+      const { data } = await (supabase as unknown as {
+        rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown }>;
+      }).rpc("get_employer_perks", { p_token: companyToken });
+      return data;
+    }).then((data) => { if (!cancelled) setAnswer(readEmployerPerks(data)); })
+      .catch(() => { /* additive block: nothing, and no error either */ });
     return () => { cancelled = true; };
-  }, [companyToken]);
+  }, [companyToken, enabled]);
+  return answer;
+}
 
+export function CompanyPerks({ companyToken }: { companyToken: string }) {
+  const answer = useEmployerPerks(companyToken);
   return <CompanyPerksView answer={answer} />;
 }
 

@@ -149,17 +149,50 @@ describe("the card order and the lander li", () => {
     expect(code.match(/<LayoffFilingChip /g)?.length).toBe(1);
   });
 
-  it("the lander's 'Also on record' list sits inside the Hiring Health card after the growth lines, and only there", () => {
+  it("the lander's filings render in one place: the legacy 'Also on record' list while Jobs.tsx still mounts it, the Public records section after", () => {
+    // Two shapes while the wiring pass swaps the lander's regions. Before it,
+    // Jobs.tsx renders the "Also on record" list after the growth lines.
+    // After it, the company page's Public records section renders the
+    // filings (design spec 5.5f, audit CP18) and Jobs.tsx renders neither.
     const li = code.indexOf("<LayoffFilingsOnRecord ");
-    expect(li, "the lander list is not rendered").toBeGreaterThan(0);
-    expect(code.match(/<LayoffFilingsOnRecord /g)?.length).toBe(1);
-    const growth = code.lastIndexOf('"jobsPage.hhGrowth', li);
-    expect(growth, "the growth line was not found before the list").toBeGreaterThan(0);
-    expect(li - growth).toBeLessThan(4000);
+    const regions = /<CompanyLander(?:Rail|Accordion)?\b/.test(code);
+    expect(li > 0 || regions, "the lander renders no filing at all").toBe(true);
+    if (li > 0) {
+      expect(code.match(/<LayoffFilingsOnRecord /g)?.length).toBe(1);
+      const growth = code.lastIndexOf('"jobsPage.hhGrowth', li);
+      expect(growth, "the growth line was not found before the list").toBeGreaterThan(0);
+      expect(li - growth).toBeLessThan(4000);
+    }
     // The detail-panel line is its own site, after the closure-record line.
     const line = code.indexOf("<LayoffFilingLine ");
     expect(line).toBeGreaterThan(0);
     expect(code.match(/<LayoffFilingLine /g)?.length).toBe(1);
+  });
+});
+
+describe("the company page holds filings beside the record, never inside it", () => {
+  const RECORD = "src/components/jobs/company/HiringRecordCard.tsx";
+  const RECORDS = "src/components/jobs/company/PublicRecords.tsx";
+  const ABOUT = "src/components/jobs/company/AboutEmployer.tsx";
+
+  it("the hiring record card reads no filing, and Public records renders them through the filing line's own rows", () => {
+    expect(stripTs(read(RECORD))).not.toMatch(/layoff|Layoff/);
+    const records = stripTs(read(RECORDS));
+    expect(records).toMatch(/import \{ LayoffFilingRows, type LayoffFiling \} from "@\/components\/jobs\/LayoffFilingLine";/);
+    expect(records.match(/<LayoffFilingRows /g)?.length).toBe(1);
+    expect(records).not.toMatch(/\b(activelyHiringVerdict|hiringRecordVerdict|growthVerdict|hiringRecordSlot|admittedBy)\b/);
+    // Two sibling sections in the profile: the record and the records, never one inside the other.
+    const about = stripTs(read(ABOUT));
+    const card = about.indexOf("<HiringRecordCard ");
+    const pub = about.indexOf("<PublicRecords");
+    expect(card).toBeGreaterThan(0);
+    expect(pub).toBeGreaterThan(card);
+    expect(about.slice(card, pub)).toMatch(/\/>\}/);
+  });
+
+  it("positive control: the check sees a filing planted in the record card", () => {
+    const planted = read(RECORD).replace("export function HiringRecordCard(", "const layoffRows = [];\nexport function HiringRecordCard(");
+    expect(stripTs(planted)).toMatch(/layoff/);
   });
 });
 

@@ -1,0 +1,172 @@
+{
+  "companyProfile": {
+    "about": {
+      "summaryApplying": "paano mag-apply",
+      "summaryMix": "halo ng mga role",
+      "summaryPay": "sahod",
+      "summaryPayStated": "may sahod sa {{k}} sa {{n}}",
+      "summaryPerks_one": "{{n}} benepisyong nakasaad",
+      "summaryPerks_other": "{{n}} benepisyong nakasaad",
+      "summaryRecord": "rekord ng pag-hire",
+      "summaryRecords": "mga pampublikong rekord",
+      "title": "Tungkol sa employer na ito",
+      "titleBoard": "Tungkol sa board na ito"
+    },
+    "actions": {
+      "claim": "I-claim ang profile na ito",
+      "copied": "Nakopya ang link",
+      "copyLink": "Kopyahin ang link",
+      "more": "Iba pang aksyon para sa {{name}}",
+      "watchBoards": "Bantayan ang mga board na may pangalang “{{token}}”",
+      "watchGeneric": "Bantayan ang board na “{{label}}”",
+      "watchThis": "Bantayan ang board na ito"
+    },
+    "agency": {
+      "banner": "Board ito ng isang staffing agency. Karaniwang para sa mga kliyente nito ang mga role dito."
+    },
+    "ago": "{{duration}} ang nakalipas",
+    "boardReadAgo": "nabasa ang board {{ago}}",
+    "breadcrumbCompanies": "Mga kumpanya",
+    "breadcrumbJobs": "Mga trabaho",
+    "breadcrumbLabel": "Breadcrumb",
+    "claim": {
+      "emailLabel": "Email sa trabaho"
+    },
+    "collision": {
+      "basis": "Mga posting na inihahain ng feed ng bawat board, binilang {{when}}.",
+      "board_one": "Board sa {{system}} · {{n}} bukas na role ngayon",
+      "board_other": "Board sa {{system}} · {{n}} bukas na role ngayon",
+      "boardUnavailable": "Board sa {{system}} · walang bilang",
+      "countUnavailable": "walang bilang",
+      "h1": "Mga bukas na role sa mga board na may pangalang “{{token}}”",
+      "lead_one": "{{n}} hiring system ang may board na may ganitong pangalan. Walang nagsasabi sa hawak naming datos kung iisang employer sila, kaya walang ipinapakitang detalye ng employer ang page na ito.",
+      "lead_other": "{{n}} hiring system ang may board na may ganitong pangalan. Walang nagsasabi sa hawak naming datos kung iisang employer sila, kaya walang ipinapakitang detalye ng employer ang page na ito.",
+      "panelTitle": "Mga board na may ganitong pangalan",
+      "showOnly_one": "Ipakita lang ang role na ito",
+      "showOnly_other": "Ipakita lang ang {{n}} role na ito",
+      "showOnlyUncounted": "Ipakita lang ang mga role ng board na ito"
+    },
+    "directory": {
+      "h1": "Mga kumpanyang nagha-hire ngayon",
+      "h1Count_one": "{{n}} job board ng kumpanya na nagha-hire ngayon",
+      "h1Count_other": "{{n}} job board ng mga kumpanya na nagha-hire ngayon",
+      "intro": "Bawat posting ay galing sa sariling hiring system ng employer — walang aggregator, walang repost. Nasa ibaba ang pinakamalalaking board.",
+      "rowOpen_one": "{{n}} bukas na role",
+      "rowOpen_other": "{{n}} bukas na role",
+      "searchLink": "Maghanap sa live board",
+      "searchTail": "para i-filter ang kahit anong employer ayon sa role, sahod, o lokasyon.",
+      "seoDescription": "Bawat employer sa board ay binabasa nang direkta mula sa sarili nitong hiring system. Tingnan ang pinakamalalaking board, o maghanap sa live board.",
+      "seoTitle": "Mga kumpanyang nagha-hire ngayon — live na trabaho mula sa sarili nilang hiring system"
+    },
+    "facts": {
+      "countriesLabel": "Karamihan ng role sa",
+      "payLabel": "May sahod sa",
+      "payValue": "{{k}} sa {{n}}",
+      "systemLabel": "Hiring system",
+      "workMode": "{{remote}} remote · {{hybrid}} hybrid · {{onsite}} on-site · {{unstated}} hindi nakasaad",
+      "workModeLabel": "Paraan ng trabaho"
+    },
+    "factsLabel": "Tungkol sa board na ito",
+    "h1Generic": "Mga role sa board na “{{label}}”",
+    "h1GenericSystem": "Mga role sa board na “{{label}}” ({{system}})",
+    "mix": {
+      "basis": "Ang pinakamalalaking grupo sa mga bukas na role na nabasa namin noong {{date}}; hindi kasama ang mga role sa larangang hindi namin nakikilala.",
+      "basisUndated": "Ang pinakamalalaking grupo sa mga bukas na role na nabasa namin; hindi kasama ang mga role sa larangang hindi namin nakikilala.",
+      "countries": "Mga bansa",
+      "fields": "Mga larangan",
+      "group": "Grupo",
+      "roles": "Mga bukas na role",
+      "tableCaption": "Mga bukas na role ayon sa larangan at bansa",
+      "title": "Halo ng mga role",
+      "titleListings": "Karamihan ng role ay nakalista sa"
+    },
+    "nameLoading": "Nilo-load ang pangalan ng employer",
+    "openRoles_one": "{{n}} bukas na role",
+    "openRoles_other": "{{n}} bukas na role",
+    "openRolesCapped": "hanggang {{cap}} lang ang binibilang namin",
+    "pay": {
+      "basis": "Taunang halaga mula sa mga saklaw ng sahod na nakasaad sa mga bukas nilang posting; hindi binibilang ang mga posting na walang sahod.",
+      "floor_one": "Karaniwang pinakamababa sa nakasaad na saklaw ng sahod: {{amount}} · median sa {{m}} posting na {{currency}}",
+      "floor_other": "Karaniwang pinakamababa sa nakasaad na saklaw ng sahod: {{amount}} · median sa {{m}} posting na {{currency}}",
+      "read": "nabasa noong {{date}}",
+      "stated": "May sahod sa {{k}} sa {{n}} posting",
+      "title": "Sahod"
+    },
+    "perks": {
+      "basis": "Binasa mula sa teksto ng sarili nilang bukas na posting na nakasulat sa English; hindi pa binabasa ang mga posting sa ibang wika. Ang check ay nangangahulugang hindi bababa sa {{strongPct}}% ng mga posting na nabasa namin sa bansang iyon ang nagsasaad nito; ang tuldok ay nangangahulugang hindi bababa sa {{minK}} sa hindi bababa sa {{minN}} posting, at hindi bababa sa {{minPct}}%, ang nagsasaad nito. Ipinapakita lang namin ang mga benepisyong nasuri na ang pagbasa. \"Hindi bababa\" dahil maaaring makaligtaan ng aming reader ang isang banggit.",
+      "lead": "Kapag wala sa listahan, hindi ibig sabihing hindi ito iniaalok. I-tap ang isang benepisyo para makita kung ilang posting ang nagsasaad nito.",
+      "someTitle": "Sa ilan sa kanilang mga posting"
+    },
+    "readAgo": "nabasa {{ago}}",
+    "record": {
+      "asOf": "Mga numero hanggang {{when}}.",
+      "countsWithheld": "Hindi namin ipinapakita kung ilang role ang inalis at nanatiling alis.",
+      "growthGrew": "Pagtaas na {{pct}}% sa mga hilerang inihain: {{a}} noong {{d1}}, {{b}} noong {{d2}}.",
+      "growthLabel": "Mga hilerang inihain sa araw-araw naming pagbasa, iba ang bilang sa mga bukas na role.",
+      "growthNone": "Hindi pagtaas na {{minRate}}% o higit pa: {{a}} noong {{d1}}, {{b}} noong {{d2}}.",
+      "growthUnread": "Wala pang bilis ng pag-post para sa board na ito.",
+      "leadCloses_one": "Nakita naming inalis sa board at nanatiling alis ang {{n}} sa mga role nito sa nakalipas na {{days}} araw.",
+      "leadCloses_other": "Nakita naming inalis sa board at nanatiling alis ang {{n}} sa mga role nito sa nakalipas na {{days}} araw.",
+      "leadGrew": "Naghain ang board nito ng {{pct}}% mas maraming role noong {{latestDay}} kaysa noong {{baselineDay}}.",
+      "leadNegative": "Binasa namin ang board na ito at wala kaming nakitang pagtaas na {{minRate}}% o higit pa sa mga inihaing role, o pattern ng mga role na inalis at nanatiling alis.",
+      "leadUnknown": "Wala pang maaasahang senyales ng pag-hire",
+      "median": "Kalahati ng mga role na ito ay inalis na pagsapit ng araw {{n}}.",
+      "noTakedowns": "Wala pang role na inalis at nanatiling alis na mabibilang.",
+      "paceWithheld": "Hindi namin sinasabi rito kung gaano kabilis inaalis ang mga role.",
+      "takenDown_one": "{{n}} role na inalis (hindi ini-relist) sa {{d}} araw ng pagsubaybay",
+      "takenDown_other": "{{n}} role na inalis (hindi ini-relist) sa {{d}} araw ng pagsubaybay",
+      "title": "Rekord ng pag-hire",
+      "why": "Bakit?"
+    },
+    "records": {
+      "layoffsTitle": "Mga filing ng tanggalan",
+      "noProof": "Ang walang tugma sa mga rekord na ito ay hindi patunay ng anuman.",
+      "parentFiler": "{{filer}} (parent company)",
+      "secExitRow": "SEC 8-K Item 2.05, gastos sa paglabas o pagbebenta · na-file noong {{date}}",
+      "secRow": "SEC 8-K Item 2.05 · na-file noong {{date}}",
+      "title": "Mga pampublikong rekord",
+      "warnRow_one": "WARN notice · {{state}} · {{workers}} manggagawa · na-file noong {{date}}",
+      "warnRow_other": "WARN notice · {{state}} · {{workers}} manggagawa · na-file noong {{date}}"
+    },
+    "results": {
+      "boardRead": "nabasa ang board na ito {{ago}}",
+      "showing_one": "Ipinapakita ang {{shown}} sa {{total}} bukas na role",
+      "showing_other": "Ipinapakita ang {{shown}} sa {{total}} bukas na role",
+      "showingMatching_one": "Ipinapakita ang {{shown}} sa {{total}} tugmang role",
+      "showingMatching_other": "Ipinapakita ang {{shown}} sa {{total}} tugmang role"
+    },
+    "sec": {
+      "fiscalYear": "Taon ng pananalapi",
+      "loaded": "Na-load ang mga numero noong {{date}}.",
+      "revenue": "Kita"
+    },
+    "similar": {
+      "openRolesAsOf_one": "{{n}} bukas na role · hanggang {{date}}",
+      "openRolesAsOf_other": "{{n}} bukas na role · hanggang {{date}}",
+      "title": "Nagha-hire din sa {{field}} (kahit anong bansa)"
+    },
+    "subtitle": "Live na trabaho nang direkta mula sa sariling hiring system ng {{company}}.",
+    "subtitleGeneric": "Live na trabaho nang direkta mula sa sariling hiring system ng board na ito.",
+    "uncarried": {
+      "body": "Hanapin ang employer na ito sa live board, o tingnan ang mga kumpanyang binabasa namin.",
+      "companiesLink": "Tingnan ang mga kumpanyang binabasa namin",
+      "searchButton": "Maghanap",
+      "searchLabel": "Maghanap ng trabaho",
+      "searchPlaceholder": "Employer o job title",
+      "searchTitle": "Hanapin ang employer na ito sa live board",
+      "title": "Hindi pa namin binabasa ang board na may pangalang “{{token}}”"
+    },
+    "usajobs": {
+      "cap": "Hanggang {{cap}} resulta bawat query; hindi lahat ng federal na bakante.",
+      "h1": "Mga federal na bakanteng nakalista sa USAJOBS",
+      "subtitle": "Inililista ng USAJOBS ang mga bakante mula sa maraming federal agency ng US; bawat role ay nagsasaad ng agency nito."
+    },
+    "zero": {
+      "allRoles": "Maghanap sa lahat ng bukas na role",
+      "answer": "Walang bukas na role ngayon",
+      "body": "Bantayan ang board na ito at bibilangin ng account mo ang mga bagong posting kapag lumabas ang mga ito.",
+      "title": "Walang bukas na role sa {{name}} ngayon",
+      "titleBoard": "Walang bukas na role sa board na ito ngayon"
+    }
+  }
+}

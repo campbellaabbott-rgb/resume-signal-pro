@@ -8,13 +8,26 @@
 // The counts are get_company_intel's open_by_source (20261012101000): open
 // roles on THIS token per hiring system, under both serving rules. Until it
 // answers, or when it cannot, the boards are still named and no count is
-// printed -- a missing count is never a zero.
+// printed -- a missing count is never a zero, and a board the answer does not
+// name says "count not available" rather than "0".
+//
+// The redesigned company page renders CollisionHeader
+// (src/components/jobs/company/CollisionHeader.tsx) in this notice's place,
+// with a "Show only these roles" button per board; this notice stays the
+// lander's until the wiring pass swaps it.
 
-import { useEffect, useState } from "react";
 import { Split } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { supabase } from "@/integrations/supabase/client";
 import type { CollidedBoard } from "@/lib/board-collisions";
+import { useCompanyIntel } from "@/components/jobs/CompanyIntelPanel";
+
+/** Open roles per hiring system from the intel answer, or null when it did not say. */
+export function openBySource(rows: Array<{ source: string; open_roles: number }> | undefined | null): Record<string, number> | null {
+  if (!Array.isArray(rows)) return null;
+  const counts: Record<string, number> = {};
+  for (const r of rows) if (typeof r?.source === "string" && typeof r.open_roles === "number") counts[r.source] = r.open_roles;
+  return counts;
+}
 
 export function BoardCollisionNotice({ companyToken, boards, labelOf }: {
   companyToken: string;
@@ -23,32 +36,12 @@ export function BoardCollisionNotice({ companyToken, boards, labelOf }: {
   labelOf: (source: string) => string | null;
 }) {
   const { t } = useTranslation();
-  const [open, setOpen] = useState<Record<string, number> | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    setOpen(null);
-    (async () => {
-      try {
-        const { data, error } = await (supabase as unknown as {
-          rpc: (f: string, a?: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
-        }).rpc("get_company_intel", { p_token: companyToken });
-        if (cancelled || error || !data || typeof data !== "object") return;
-        const rows = (data as { open_by_source?: unknown }).open_by_source;
-        if (!Array.isArray(rows)) return;
-        const counts: Record<string, number> = {};
-        for (const r of rows as Array<{ source?: unknown; open_roles?: unknown }>) {
-          if (typeof r?.source === "string" && typeof r.open_roles === "number") counts[r.source] = r.open_roles;
-        }
-        setOpen(counts);
-      } catch { /* the boards are still named; no count is printed */ }
-    })();
-    return () => { cancelled = true; };
-  }, [companyToken]);
+  const { intel } = useCompanyIntel(companyToken);
+  const open = openBySource(intel?.open_by_source);
 
   const titleId = `board-collision-${companyToken}`;
   return (
-    <section aria-labelledby={titleId} className="rounded-xl border border-border bg-card p-4 mb-4 max-w-xl text-[13px]">
+    <section aria-labelledby={titleId} className="rounded-lg border border-border bg-card p-4 mb-4 max-w-xl text-meta">
       <div className="flex items-center gap-2 mb-1">
         <Split className="w-4 h-4 text-primary shrink-0" aria-hidden="true" />
         <h2 id={titleId} className="text-sm font-semibold text-foreground">
@@ -68,20 +61,22 @@ export function BoardCollisionNotice({ companyToken, boards, labelOf }: {
               })}
             </span>
             {open && (
-              <span className="text-muted-foreground">
+              <span className="text-muted-foreground" data-collision-count={typeof open[b.source] === "number" ? "known" : "unavailable"}>
                 {" · "}
-                {t("jobsPage.collision.openRoles", "open roles now: {{n}}", { n: (open[b.source] ?? 0).toLocaleString() })}
+                {typeof open[b.source] === "number"
+                  ? t("jobsPage.collision.openRoles", "open roles now: {{n}}", { n: open[b.source].toLocaleString() })
+                  : t("companyProfile.collision.countUnavailable", "count not available")}
               </span>
             )}
           </li>
         ))}
       </ul>
       {open && (
-        <p className="text-[11px] text-muted-foreground/80 mt-2">
+        <p className="text-xs text-subtle-foreground mt-2">
           {t("jobsPage.collision.basis", "Open roles are postings each board's own feed still serves whose date falls inside the last 30 days: the employer's date, or for a posting that carries none, the day we last saw it.")}
         </p>
       )}
-      <p className="text-[11px] text-muted-foreground/80 mt-1">
+      <p className="text-xs text-subtle-foreground mt-1">
         {t("jobsPage.collision.filterHint", "To see one board's roles alone, choose its hiring system in the filters.")}
       </p>
     </section>

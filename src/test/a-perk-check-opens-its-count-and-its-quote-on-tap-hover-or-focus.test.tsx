@@ -7,11 +7,14 @@
  * in one country that we could read state it, read on a date, in these
  * words". So this file renders the block and holds:
  *
- *   1. PUBLISHED KEYS SHOW CHECKS, and a tap, a hover or keyboard focus on a
- *      check shows the count, the verbatim line and a link to the posting it
- *      came from; the heading and the "not listed is not refused" line sit
- *      above the list; countries are grouped only when more than one
+ *   1. PUBLISHED KEYS SHOW CHECKS, and a tap, a click or a keyboard
+ *      activation of a check shows the count, the verbatim line and a link to
+ *      the posting it came from; a mouse hover previews the count and the
+ *      line over the list; the heading and the "not listed is not refused"
+ *      line sit above the list; countries are grouped only when more than one
  *      qualifies; the eligibility and legal-minimum tags are on the check.
+ *      (Focus no longer opens anything: design spec 5.5a, audit CP20. The
+ *      file keeps its name so its history stays readable.)
  *   2. UNPUBLISHED AND EXPIRED KEYS RENDER NOTHING: no placeholder, no
  *      "being checked", no heading. A row the reader returns for a key it
  *      does not name live, or below the threshold, is not a check either.
@@ -19,8 +22,9 @@
  *      reason, and only while some key is live (nothing at all otherwise).
  *   4. ACCESSIBILITY: each check is a button with aria-expanded and
  *      aria-controls naming its panel and aria-describedby naming the count,
- *      reachable by Tab, opened by focus, kept open while focus is inside the
- *      panel, closed by Escape with focus returned to the check.
+ *      reachable by Tab, opened by Enter or Space (never by focus), kept open
+ *      while focus is inside the panel, closed by Escape with focus returned
+ *      to the check.
  *   5. THE PAGE MOUNTS IT on the company lander, and calls the one reader.
  *   6. EVERY STRING IS IN ALL NINE LOCALES with the same placeholders, and no
  *      threshold is typed into the copy.
@@ -81,14 +85,14 @@ describe("published keys show checks, and each opens its basis", () => {
   it("prints the heading, the not-listed line and one check per live key above the threshold", () => {
     show(answer());
     expect(screen.getByRole("heading", { level: 2, name: "Perks stated in their job postings" })).toBeInTheDocument();
-    expect(screen.getByText(/A perk not listed here doesn't mean it isn't offered/)).toBeInTheDocument();
+    expect(screen.getByText(/Not listed doesn't mean not offered/)).toBeInTheDocument();
     const buttons = screen.getAllByRole("button");
     expect(buttons.map((b) => b.textContent)).toEqual(["Health insurance", "Dental coverageconditions stated"]);
     // One country qualifies: no country subheading, the count names it instead.
     expect(screen.queryByRole("heading", { level: 3 })).toBeNull();
   });
 
-  it("a hover shows the count, the verbatim line and a link to the live posting it came from", async () => {
+  it("a click shows the count, the verbatim line and a link to the live posting it came from; a hover previews the count and the line", async () => {
     const user = userEvent.setup();
     show(answer());
     const check = screen.getByRole("button", { name: /Health insurance/ });
@@ -96,13 +100,20 @@ describe("published keys show checks, and each opens its basis", () => {
     expect(panel).not.toBeVisible();
     expect(check).toHaveAttribute("aria-expanded", "false");
     await user.hover(check);
+    // The hover preview: the count and the line, over the list, no link, and the disclosure still closed.
+    const preview = check.closest("li")!.querySelector<HTMLElement>("[data-perk-preview]")!;
+    expect(preview.textContent).toContain("Stated in at least 212 of 240 open United States postings we could read, read Oct 12, 2026.");
+    expect(preview.textContent).toContain("“Comprehensive medical, dental and vision insurance for you and your family”");
+    expect(check).toHaveAttribute("aria-expanded", "false");
+    expect(panel).not.toBeVisible();
+    await user.click(check);
     expect(panel).toBeVisible();
     expect(check).toHaveAttribute("aria-expanded", "true");
     expect(within(panel).getByText(/^Stated in at least 212 of 240 open United States postings we could read, read Oct 12, 2026\.$/)).toBeInTheDocument();
     expect(within(panel).getByText("“Comprehensive medical, dental and vision insurance for you and your family”")).toBeInTheDocument();
     expect(within(panel).getByRole("link", { name: "See the posting this line comes from" })).toHaveAttribute("href", "/jobs/posting/greenhouse/acme/4012345");
     await user.unhover(check);
-    expect(panel).not.toBeVisible();
+    expect(panel, "a clicked panel is pinned: leaving does not close it").toBeVisible();
   });
 
   it("a tap pins it open and a second tap closes it", async () => {
@@ -248,13 +259,16 @@ describe("each check is an accessible disclosure", () => {
     expect(check).toHaveAccessibleDescription(/Stated in at least 212 of 240 open United States postings we could read/);
   });
 
-  it("Tab reaches the check and opens it; Tab into the posting link keeps it open; Escape closes it and returns focus", async () => {
+  it("Tab reaches the check and opens nothing; Enter opens it; Tab into the posting link keeps it open; Escape closes it and returns focus", async () => {
     const user = userEvent.setup();
     show(answer());
     const check = screen.getByRole("button", { name: /Health insurance/ });
     const panel = document.getElementById(check.getAttribute("aria-controls")!)!;
     await user.tab();
     expect(check).toHaveFocus();
+    expect(check, "focus opened the panel: the list moves under a keyboard user").toHaveAttribute("aria-expanded", "false");
+    expect(panel).not.toBeVisible();
+    await user.keyboard("{Enter}");
     expect(check).toHaveAttribute("aria-expanded", "true");
     expect(panel).toBeVisible();
     await user.tab();
@@ -266,50 +280,54 @@ describe("each check is an accessible disclosure", () => {
     expect(check).toHaveAttribute("aria-expanded", "false");
   });
 
-  it("Tab past the panel closes it and opens the next check", async () => {
+  it("Tab moves through the checks without opening any of them", async () => {
     const user = userEvent.setup();
     show(answer());
     const health = screen.getByRole("button", { name: /Health insurance/ });
     const dental = screen.getByRole("button", { name: /Dental coverage/ });
     await user.tab();
     await user.tab();
-    await user.tab();
     expect(dental).toHaveFocus();
     expect(health).toHaveAttribute("aria-expanded", "false");
-    expect(dental).toHaveAttribute("aria-expanded", "true");
+    expect(dental).toHaveAttribute("aria-expanded", "false");
+    expect(document.querySelectorAll("[id$='-basis']:not([hidden])")).toHaveLength(0);
   });
 
-  it("every Enter on a focused check flips what is shown, so each activation is announced", async () => {
+  it("every Enter or Space on a focused check flips what is shown, so each activation is announced", async () => {
     const user = userEvent.setup();
     show(answer());
     const check = screen.getByRole("button", { name: /Health insurance/ });
     const panel = document.getElementById(check.getAttribute("aria-controls")!)!;
     await user.tab();
-    // Focus shows the count (owner decision D1)...
-    expect(check).toHaveAttribute("aria-expanded", "true");
-    // ...and the first Enter is a change a screen reader can announce.
+    expect(check).toHaveAttribute("aria-expanded", "false");
     await user.keyboard("{Enter}");
     expect(check).toHaveFocus();
-    expect(check).toHaveAttribute("aria-expanded", "false");
-    expect(panel).not.toBeVisible();
-    await user.keyboard("{Enter}");
     expect(check).toHaveAttribute("aria-expanded", "true");
     expect(panel).toBeVisible();
-    await user.keyboard(" ");
+    await user.keyboard("{Enter}");
     expect(check).toHaveAttribute("aria-expanded", "false");
+    expect(panel).not.toBeVisible();
+    await user.keyboard(" ");
+    expect(check).toHaveAttribute("aria-expanded", "true");
   });
 });
 
 describe("one panel at a time, in the flow, always dismissible", () => {
   const panelOf = (b: HTMLElement) => document.getElementById(b.getAttribute("aria-controls")!)!;
 
-  it("the panel sits in the flow at every width: it never overlays the checks below it", () => {
+  it("the panel sits in the flow at every width: it never overlays the checks below it; only the aria-hidden hover preview floats", async () => {
+    const user = userEvent.setup();
     show(answer());
     for (const b of screen.getAllByRole("button")) {
       const cls = panelOf(b).className;
       expect(cls, "an absolutely positioned panel covers the checks under it").not.toMatch(/(^|\s)(sm:|md:|lg:)?(absolute|fixed)(\s|$)/);
-      expect(b.closest("li")!.className).not.toMatch(/(^|\s)relative(\s|$)/);
     }
+    const health = screen.getByRole("button", { name: /Health insurance/ });
+    await user.hover(health);
+    const preview = health.closest("li")!.querySelector<HTMLElement>("[data-perk-preview]")!;
+    expect(preview.className).toMatch(/(^|\s)absolute(\s|$)/);
+    expect(preview.getAttribute("aria-hidden")).toBe("true");
+    expect(preview.querySelector("a, button, [tabindex]"), "a floating preview holds nothing to focus").toBeNull();
   });
 
   it("opening a second check closes the first, and a press outside closes the one open", async () => {
@@ -331,23 +349,24 @@ describe("one panel at a time, in the flow, always dismissible", () => {
     expect(health, "a tapped panel survived a tap elsewhere").toHaveAttribute("aria-expanded", "false");
   });
 
-  it("a panel opened by hover closes on Escape while the pointer stays over it and focus is elsewhere (WCAG 1.4.13)", async () => {
+  it("a hover preview closes on Escape while the pointer stays over it and focus is elsewhere (WCAG 1.4.13)", async () => {
     const user = userEvent.setup();
     show(answer());
     const health = screen.getByRole("button", { name: /Health insurance/ });
     await user.hover(health);
-    expect(panelOf(health)).toBeVisible();
+    expect(health.closest("li")!.querySelector("[data-perk-preview]")).not.toBeNull();
     expect(document.activeElement).toBe(document.body);
     await user.keyboard("{Escape}");
-    expect(panelOf(health)).not.toBeVisible();
+    expect(health.closest("li")!.querySelector("[data-perk-preview]")).toBeNull();
     expect(health).toHaveAttribute("aria-expanded", "false");
   });
 
-  it("with several countries, each limits heading sits under its country's h3", () => {
+  it("with several countries, each group heading sits under its country's h3", () => {
     const visa = row({ perk: "visa_not_offered", k: 3, n: 12, quote: "This role is not eligible for visa sponsorship." });
     show(answer({ published_keys: ["health", "pto", "visa_not_offered"], perks: [row({}), visa, UK_PTO] }));
     const outline = Array.from(document.querySelectorAll("h2, h3, h4")).map((h) => `${h.tagName}:${h.textContent}`);
-    expect(outline).toEqual(["H2:Perks stated in their job postings", "H3:United States", "H4:Stated limits", "H3:United Kingdom"]);
+    // The UK leave line is stated in 9 of 30 postings: under half, so it sits in "In some of their postings".
+    expect(outline).toEqual(["H2:Perks stated in their job postings", "H3:United States", "H4:Stated limits", "H3:United Kingdom", "H4:In some of their postings"]);
   });
 });
 
@@ -355,10 +374,11 @@ describe("the block's own sentences claim no more than it knows", () => {
   it("the not-listed line gives no cause for a missing perk: a published key, an unpublished key and a withheld key all look alike", () => {
     // dental is stated in 38 of 40 postings and is simply not a live key here.
     show(answer({ published_keys: ["health"], perks: [row({ k: 30, n: 40 }), row({ perk: "dental", k: 38, n: 40 })] }));
-    const line = screen.getByText(/A perk not listed here doesn't mean it isn't offered/).textContent ?? "";
+    const line = screen.getByText(/Not listed doesn't mean not offered/).textContent ?? "";
     expect(screen.queryByRole("button", { name: /Dental/ })).toBeNull();
     expect(line, "the line says why dental is missing, and the reason is false").not.toMatch(/didn't find it|not stated in enough|stated in too few/);
-    expect(line).toMatch(/We list only perks whose reading we have checked/);
+    // The basis line says which perks are listed at all, without giving a cause for any one missing.
+    expect(screen.getByText(/We list only perks whose reading we have checked/)).toBeInTheDocument();
   });
 
   it("no locale keeps the old causal clause or the collision claim that two employers share the name", () => {
@@ -419,13 +439,28 @@ describe("the lander mounts it and asks the one reader", () => {
     expect(rpcCalls).toEqual([{ fn: "get_employer_perks", args: { p_token: "acme" } }]);
   });
 
-  it("Jobs.tsx mounts it on the company lander, in code and not only in a comment, and never on a token two hiring systems carry", () => {
+  it("the page mounts it on the company lander, in code and not only in a comment, and never on a token two hiring systems carry", () => {
+    // Two shapes, one rule. Until the wiring pass swaps the lander's regions,
+    // Jobs.tsx mounts CompanyPerks itself behind the collision term. After it,
+    // the company page's About regions render it, gated by the model's
+    // sections, which a shared token never opens.
     const jobs = codeOf(readFileSync(resolve(ROOT, "src/pages/Jobs.tsx"), "utf8"));
-    expect(jobs).toMatch(/import \{ CompanyPerks \} from "@\/components\/jobs\/CompanyPerks";/);
-    expect(jobs).toMatch(/\{landerCompany && !landerCollision && <CompanyPerks companyToken=\{landerCompany\} \/>\}/);
-    // Every mount carries the collision term: no second, ungated mount.
-    const mounts = jobs.match(/<CompanyPerks\b/g) ?? [];
-    expect(mounts.length).toBe(1);
+    const about = codeOf(readFileSync(resolve(ROOT, "src/components/jobs/company/AboutEmployer.tsx"), "utf8"));
+    const model = codeOf(readFileSync(resolve(ROOT, "src/lib/company/lander-model.ts"), "utf8"));
+    const direct = (jobs.match(/<CompanyPerks\b/g) ?? []).length;
+    const viaRegions = /<CompanyLander(?:Rail|Accordion)?\b/.test(jobs);
+    expect(direct + (viaRegions ? 1 : 0), "the perks block is mounted nowhere on the lander").toBeGreaterThan(0);
+    if (direct > 0) {
+      expect(jobs).toMatch(/import \{ CompanyPerks \} from "@\/components\/jobs\/CompanyPerks";/);
+      expect(jobs).toMatch(/\{landerCompany && !landerCollision && <CompanyPerks companyToken=\{landerCompany\} \/>\}/);
+      expect(direct, "a second, ungated mount").toBe(1);
+    }
+    // The region path: the view renders only when the plan's perks section does, and the model shuts it on a shared token.
+    expect(about).toMatch(/perks: s\.perks \? perksView\(p\.profile\.perks\) : null/);
+    expect(about).toMatch(/\{plan\.perks && <CompanyPerksView /);
+    expect(model).toMatch(/const shared = !!input\.collision;/);
+    expect(model).toMatch(/perks: employer,/);
+    expect(model).toMatch(/const employer = !shared && !agency && !usajobs;/);
   });
 });
 
@@ -443,6 +478,12 @@ describe("every perks string is in all nine locales", () => {
     expect(calls.length).toBeGreaterThanOrEqual(25);
   });
 
+  // Reworded into the company shard (companyProfile.perks.lead / .basis) and no
+  // longer read here. The design system group's wiring pass deletes them from
+  // the nine main locale files once a grep shows no reader is left; until
+  // then they are the only keys allowed to sit unread.
+  const SUPERSEDED = ["notListed", "howTo", "basis"];
+
   it("every key the component calls is in English, with the component's own default as its value", () => {
     const en = perksOf("en");
     for (const { key, fallback } of calls) {
@@ -450,7 +491,8 @@ describe("every perks string is in all nine locales", () => {
       expect(en[key], `jobsPage.perks.${key}: the inline default and en.json disagree`).toBe(fallback);
     }
     const called = new Set(calls.map((c) => c.key));
-    expect(Object.keys(en).filter((k) => !called.has(k)), "keys in en.json nothing renders").toEqual([]);
+    for (const k of SUPERSEDED) expect(called.has(k), `jobsPage.perks.${k} is superseded and must not be read`).toBe(false);
+    expect(Object.keys(en).filter((k) => !called.has(k) && !SUPERSEDED.includes(k)), "keys in en.json nothing renders").toEqual([]);
   });
 
   it("every locale has every key, with exactly English's placeholders, and is not English left in place", () => {
