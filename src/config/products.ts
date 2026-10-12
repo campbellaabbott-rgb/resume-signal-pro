@@ -230,6 +230,12 @@ export const HIDDEN_PRODUCT_IDS: ProductId[] = [
   // flat fee is 13% of $3), and zero recorded sales — first real use of the
   // pruning mechanism. Existing links/grants keep working.
   "basicKeywordFix",
+  // RETIRED by the apply pivot (owner decision 2026-10-11). Its checkout
+  // answers 410 (create-product-checkout, _shared/apply-agent-retired.ts);
+  // a buyer from before is honoured or refunded by the owner, and its success
+  // page keeps delivering what was bought. Hidden here, it leaves every
+  // pricing, showcase and recommendation surface that reads this list.
+  "applyAssistant",
 ];
 
 export function isProductHidden(id: ProductId): boolean {

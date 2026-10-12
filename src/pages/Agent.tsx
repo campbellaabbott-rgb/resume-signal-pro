@@ -33,6 +33,11 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { Sparkles, Send, SlidersHorizontal, ArrowLeft, Bot } from "lucide-react";
 import { PASS } from "@/config/products";
+import { AgentRetiredNotice } from "@/components/agents/AgentRetiredNotice";
+// The one switch, read from the Deno module itself (a pure file, as
+// MorningQueuePanel reads _shared/mandate-reach), so the page cannot disagree
+// with the checkouts about whether the agent's products are sold.
+import { AGENT_PRODUCTS_ON_SALE } from "../../supabase/functions/_shared/apply-agent-switch";
 
 import { AgentStatusBand } from "@/components/account/AgentStatusBand";
 import { MorningQueuePanel } from "@/components/account/MorningQueuePanel";
@@ -160,12 +165,20 @@ export default function Agent() {
             this page never learned the pass existed. Every number is the
             PASS mirror (pinned to the Deno pass module by pricing-truth),
             interpolated, never typed; the guard walks this key's locales. */}
-        <p className="mt-2 text-sm text-muted-foreground">
-          <Bot className="inline h-3.5 w-3.5 -mt-0.5 mr-1 text-primary" aria-hidden="true" />
-          <Link to="/agents" className="text-primary hover:underline">
-            {t("agentPage.connectInstead", "Already have an agent? Connect it instead — {{passHours}} hours for ${{passPrice}}, never renews; the Agent plan does.", { passHours: PASS.sessionHours, passPrice: PASS.priceUsd })}
-          </Link>
-        </p>
+        {/* THE APPLY PIVOT (owner decision 2026-10-11): the pass is not sold
+            and the agent is switched off, so while AGENT_PRODUCTS_ON_SALE is
+            off this console says so where it offered the pass, and names the
+            free path. The pass line stays, dormant, behind the same switch. */}
+        {AGENT_PRODUCTS_ON_SALE ? (
+          <p className="mt-2 text-sm text-muted-foreground">
+            <Bot className="inline h-3.5 w-3.5 -mt-0.5 mr-1 text-primary" aria-hidden="true" />
+            <Link to="/agents" className="text-primary hover:underline">
+              {t("agentPage.connectInstead", "Already have an agent? Connect it instead — {{passHours}} hours for ${{passPrice}}, never renews; the Agent plan does.", { passHours: PASS.sessionHours, passPrice: PASS.priceUsd })}
+            </Link>
+          </p>
+        ) : (
+          <AgentRetiredNotice className="mt-3" />
+        )}
 
         <div className="mt-4">
           <AgentStatusBand userId={userId} email={email} />

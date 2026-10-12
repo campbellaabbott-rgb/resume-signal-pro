@@ -25,6 +25,12 @@ import { EMPTY_PROPOSAL, proposeMandate, toMandateField, type MandateProposal } 
 // same reason Jobs.tsx imports isSendableVendor out of _shared. Pure TS, no
 // Deno specifiers, so the bundler and vitest both handle it.
 import { parseCountries } from "../../../supabase/functions/_shared/mandate-reach";
+// THE APPLY PIVOT (owner decision 2026-10-11): the switch itself, a pure module,
+// read the same way. While APPLY_AGENT_ON is off this panel does not say what
+// the agent does every night (it does nothing); while AGENT_PRODUCTS_ON_SALE is
+// off it offers no subscription. The dormant copy stays behind both.
+import { APPLY_AGENT_ON, AGENT_PRODUCTS_ON_SALE } from "../../../supabase/functions/_shared/apply-agent-switch";
+import { AgentRetiredNotice } from "@/components/agents/AgentRetiredNotice";
 // The same extractor the scanner and setup use — one definition of "text out of
 // an uploaded CV", wrapping parse-pdf/parse-docx.
 import { resumeTextFrom } from "@/lib/resumeText";
@@ -773,6 +779,9 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
         <h2 className="text-base font-bold text-foreground">{t("agentQueue.title", "Morning Queue")}</h2>
         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">{t("agentQueue.badge", "Apply Agent")}</span>
       </div>
+      {!APPLY_AGENT_ON ? (
+        <AgentRetiredNotice className="mb-4" />
+      ) : (
       <p className="text-[13px] text-muted-foreground mb-4">
         {/* Two modes, two different true sentences. "You review, you send" stopped
             being true for auto mode the moment the agent could finish a form on
@@ -782,16 +791,18 @@ export function MorningQueuePanel({ userId, email, defaultResume }: {
           ? t("agentQueue.subtitleAuto", "Set your search once. Every night the agent scans new postings, scores them against your résumé, skips companies that churn re-listings, and queues the best few — each with its reasons. It submits the ones it can complete on its own and hands you the rest.")
           : t("agentQueue.subtitle", "Set your search once. Every night the agent scans new postings, scores them against your résumé, skips companies that churn re-listings, and queues the best few — each with its reasons. You review, you send.")}
       </p>
+      )}
 
       {/* The pass that funds this agent, said where the paywall would be. */}
-      {agentActive === true && passLeft !== null && (
+      {APPLY_AGENT_ON && agentActive === true && passLeft !== null && (
         <p className="text-[12px] text-muted-foreground mb-3">
           {t("agentQueue.passFunds", "Your Agent Pass funds this agent: {{left}} applications left. Switch the agent on below, and your connected AI can request applications.", { left: passLeft })}
         </p>
       )}
 
-      {/* Paywall — the $99/mo Apply Agent tier (includes Pro). */}
-      {agentActive === false && (
+      {/* Paywall — the $99/mo Apply Agent tier (includes Pro). Not offered
+          while the agent's products are off sale (the apply pivot). */}
+      {AGENT_PRODUCTS_ON_SALE && agentActive === false && (
         <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 mb-4">
           <p className="text-sm text-foreground font-medium mb-1">{t("agentQueue.payPitch", "Wake up to a reviewed shortlist instead of another hour of scrolling.")}</p>
           {/* GATED ON THE CAPABILITY, NOT ON SOMEONE REMEMBERING TO EDIT THIS.

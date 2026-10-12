@@ -37,6 +37,16 @@ vi.mock("@/integrations/supabase/client", () => ({
   },
 }));
 vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast: (t: { title?: string }) => toasts.push(t) }) }));
+// The $7 Apply Assistant is retired by the apply pivot (owner decision
+// 2026-10-11): it is in HIDDEN_PRODUCT_IDS, and the apply-kit panel offers a
+// member without Pro nothing to buy. The kit's purchase path is kept, dormant,
+// and this suite still proves it binds the résumé on screen, so the catalogue
+// here treats the Apply Assistant as on sale. The shipped panel is proved in
+// the-retired-agent-is-sold-nowhere-in-the-console.
+vi.mock("@/config/products", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/config/products")>();
+  return { ...real, isProductHidden: (id: Parameters<typeof real.isProductHidden>[0]) => id !== "applyAssistant" && real.isProductHidden(id) };
+});
 vi.mock("@/hooks/use-conversion-tracking", () => ({ useConversionTracking: () => ({ trackButtonClick: () => {} }) }));
 vi.mock("@/hooks/use-funnel-tracking", () => ({ useFunnelTracking: () => ({ trackProductClicked: () => {}, trackCheckoutStarted: () => {} }) }));
 vi.mock("@/hooks/use-checkout-prefetch", () => ({ useCheckoutPrefetch: () => ({ prefetch: () => {}, prefetchProps: {} }) }));

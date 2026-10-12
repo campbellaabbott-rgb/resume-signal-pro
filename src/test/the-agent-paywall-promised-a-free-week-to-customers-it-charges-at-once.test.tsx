@@ -45,6 +45,12 @@ vi.mock("@/integrations/supabase/client", () => ({
   },
 }));
 vi.mock("@/hooks/useAgentSender", () => ({ useAgentSender: () => ({ online: true }) }));
+// The paywall is DORMANT since the apply pivot (owner decision 2026-10-11): the
+// panel offers it only while the agent's products are on sale. This proves the
+// dormant copy, so it loads the panel with the switch on, as the edge suites
+// do (helpers/apply-agent-switch-on). The shipped panel, switch off, is proved
+// in the-retired-agent-is-sold-nowhere-in-the-console.
+vi.mock("../../supabase/functions/_shared/apply-agent-switch", () => ({ APPLY_AGENT_ON: true, AGENT_PRODUCTS_ON_SALE: true }));
 
 import { MorningQueuePanel } from "../components/account/MorningQueuePanel";
 import { AgentWelcomeBanner, agentWelcomeFrom } from "../components/account/AgentWelcomeBanner";

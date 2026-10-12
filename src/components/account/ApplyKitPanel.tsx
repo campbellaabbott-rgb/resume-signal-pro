@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ProductPreview } from "@/components/ProductPreview";
 import { ApplyAssistantResults, type ApplyPackageData } from "@/components/ApplyAssistantResults";
 import { normalizeBuilderResume } from "@/types/resume-builder";
+import { isProductHidden } from "@/config/products";
 import { toast } from "sonner";
 
 interface ApplyKitPanelProps {
@@ -63,6 +64,10 @@ export function ApplyKitPanel({ jobPosting, resumeText, proActive }: ApplyKitPan
   };
 
   if (!jobPosting || jobPosting.trim().length < 30 || !resumeText || resumeText.trim().length < 50) return null;
+  // THE APPLY ASSISTANT IS RETIRED (owner decision 2026-10-11): the $7 kit is
+  // out of the catalogue (HIDDEN_PRODUCT_IDS), so a member without Pro is not
+  // offered it here. Pro members still generate the kit their plan includes.
+  if (!proActive && isProductHidden("applyAssistant")) return null;
 
   return (
     <div className="mt-2">

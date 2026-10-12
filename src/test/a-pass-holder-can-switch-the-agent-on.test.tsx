@@ -52,6 +52,11 @@ vi.mock("@/integrations/supabase/client", () => ({
   },
 }));
 vi.mock("@/hooks/useAgentSender", () => ({ useAgentSender: () => ({ online: true }) }));
+// The pass and the agent are DORMANT since the apply pivot (owner decision
+// 2026-10-11). This proves the dormant pass-holder path, so it loads the panel
+// with the switch on, as the edge suites do; the shipped panel, switch off, is
+// proved in the-retired-agent-is-sold-nowhere-in-the-console.
+vi.mock("../../supabase/functions/_shared/apply-agent-switch", () => ({ APPLY_AGENT_ON: true, AGENT_PRODUCTS_ON_SALE: true }));
 
 import { MorningQueuePanel } from "../components/account/MorningQueuePanel";
 import { ApplyQueuePanel } from "../components/account/ApplyQueuePanel";
