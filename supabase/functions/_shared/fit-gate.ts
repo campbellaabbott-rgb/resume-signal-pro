@@ -14,7 +14,8 @@
 // scored on the connector and was refused on /v1. The wave-4 integration moved
 // the rule here, out of public-api/fit-allowance.ts (which re-exports it), so
 // both doors read the same SQL reader (20261011110000, endpoints '/v1/fit' and
-// '/mcp/fit_resume') through the same decision.
+// '/mcp/fit_resume') through the same decision. The reader counts the two
+// doors together: 25 a key a day in all, never 25 on each.
 //
 // Pure apart from the import-free fit-allowance.ts, so the Node suite walks it
 // by value and Deno imports it unchanged.
@@ -29,7 +30,7 @@ export type FitKeyStanding = {
   confirmed: boolean;
   /** The bound account has proven its mailbox (account_mailbox_proven). */
   proven: boolean;
-  /** Scored calls this UTC day on the door's endpoint, the one being judged included. */
+  /** Scored calls this UTC day through both doors together, the one being judged included. */
   used: number;
 };
 

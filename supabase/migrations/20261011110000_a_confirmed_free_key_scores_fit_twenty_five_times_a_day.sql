@@ -19,8 +19,11 @@
 --                 (20261004100000 made that the only way to mint one);
 --   fa_proven     the bound account has proven its mailbox
 --                 (account_mailbox_proven, 20261005130000);
---   fa_used       this key's api_usage calls today on p_endpoint, which
---                 api_key_check has ALREADY counted for the call being judged.
+--   fa_used       this key's api_usage calls today on BOTH fit endpoints
+--                 together, which api_key_check has ALREADY counted for the
+--                 call being judged: one allowance of 25 a key a day, spent
+--                 through either door (review of 9fe3bc0d: counted per door,
+--                 a free key scored 25 on each, 50 in all).
 --
 -- No row for an unknown or revoked key: the caller reads that as no standing.
 -- p_endpoint is limited to the two fit endpoints, so this is not a general
@@ -78,10 +81,10 @@ BEGIN
     ),
     (v_user IS NOT NULL AND coalesce(public.account_mailbox_proven(v_user), false)),
     coalesce((
-      SELECT u.calls FROM public.api_usage u
+      SELECT sum(u.calls)::integer FROM public.api_usage u
        WHERE u.key_id = p_key_id
          AND u.day = (now() AT TIME ZONE 'utc')::date
-         AND u.endpoint = p_endpoint
+         AND u.endpoint IN ('/v1/fit', '/mcp/fit_resume')
     ), 0);
 END;
 $$;
@@ -90,7 +93,7 @@ REVOKE ALL ON FUNCTION public.api_key_fit_allowance(uuid, text) FROM PUBLIC, ano
 GRANT EXECUTE ON FUNCTION public.api_key_fit_allowance(uuid, text) TO service_role;
 
 COMMENT ON FUNCTION public.api_key_fit_allowance(uuid, text) IS
-  'Service-role reader for the free fit allowance (owner decision 2026-10-11: 25 scored calls a UTC day on a confirmed key or proven account). Answers the key''s bound account, whether it came through a confirmed api-key-request link, whether that account proved its mailbox, and today''s api_usage calls on /v1/fit or /mcp/fit_resume. Decides nothing; public-api/fit-allowance.ts holds the rule (20261011110000).';
+  'Service-role reader for the free fit allowance (owner decision 2026-10-11: 25 scored calls a UTC day on a confirmed key or proven account). Answers the key''s bound account, whether it came through a confirmed api-key-request link, whether that account proved its mailbox, and today''s api_usage calls on /v1/fit and /mcp/fit_resume together (one allowance across both doors). Decides nothing; public-api/fit-allowance.ts holds the rule (20261011110000).';
 
 -- ── self-check: the catalogue, and an answer that writes nothing ─────────────
 DO $$

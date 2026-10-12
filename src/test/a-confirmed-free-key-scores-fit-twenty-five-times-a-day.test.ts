@@ -156,8 +156,21 @@ describe("api_key_fit_allowance, applied to the tables the key door writes", () 
       ($1, (now() AT TIME ZONE 'utc')::date, '/v1/jobs', 90),
       ($1, (now() AT TIME ZONE 'utc')::date - 1, '/v1/fit', 25),
       ($1, (now() AT TIME ZONE 'utc')::date, '/mcp/fit_resume', 3)`, [key]);
-    expect((await standingOf(db, key))[0].fa_used).toBe(7);
-    expect((await standingOf(db, key, "/mcp/fit_resume"))[0].fa_used, "each door reads its own row").toBe(3);
+    // One allowance across both doors (review of 9fe3bc0d: per door, a free
+    // key scored 25 on each, 50 a day in all).
+    expect((await standingOf(db, key))[0].fa_used).toBe(10);
+    expect((await standingOf(db, key, "/mcp/fit_resume"))[0].fa_used, "both doors read the same total").toBe(10);
+  });
+
+  it("twenty-five calls on one door spend the other door's allowance too", async () => {
+    const key = await mint("both@example.org", h("g"), h("i"));
+    await db.query(`INSERT INTO public.api_usage (key_id, day, endpoint, calls) VALUES ($1, (now() AT TIME ZONE 'utc')::date, '/mcp/fit_resume', 25)`, [key]);
+    const [mcp] = await standingOf(db, key, "/mcp/fit_resume");
+    expect(fitGate({ paid: false, plan: false, standing: fitStandingFrom([mcp], false) })).toMatchObject({ open: true, basis: "free", left: 0 });
+    // The first /v1/fit call of the day is the 26th of the key's day.
+    await db.query(`INSERT INTO public.api_usage (key_id, day, endpoint, calls) VALUES ($1, (now() AT TIME ZONE 'utc')::date, '/v1/fit', 1)`, [key]);
+    const [v1] = await standingOf(db, key, "/v1/fit");
+    expect(fitGate({ paid: false, plan: false, standing: fitStandingFrom([v1], false) })).toMatchObject({ open: false, reason: "spent", used: 26 });
   });
 
   it("a key nobody confirmed is not confirmed; a revoked or unknown key, or another endpoint, has no row", async () => {
