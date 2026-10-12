@@ -693,8 +693,16 @@ const MIGRATIONS = resolve(__dirname, "../../supabase/migrations");
 // re-issue writes none and the stored comment survives it. Both watch-floor
 // re-issues changed what is admitted, so each restates its own, and the
 // assertion checks that the contract it reads is the running file's.
-const COMPANY_SQL = "20261002121417_a_board_is_judged_at_day_thirty_only_on_roles_posted_while_we_were_reading_it_in_full.sql";
-const CATEGORY_SQL = "20261002121843_a_field_pools_only_the_roles_whose_whole_thirty_days_we_could_see.sql";
+// MOVED, NOT DROPPED, a sixth time (the company pin had been left on
+// 20261002121417 through 20261008110000's re-issue): 20261012121000 gives
+// both company chains delayed entry and carries the 14-day bounds by R(14)
+// itself so the share sits inside them. Every other clause mirrored here is
+// unchanged in it; the crossover test below reads either carry. The category
+// pin moves with it to 20261012122000 (the 14-day pool reads only boards that
+// can see a takedown, the day-30 pool admits by evidence from before the
+// cohort, and the interval is carried the same way).
+const COMPANY_SQL ="20261012121000_a_fill_share_counts_only_roles_the_board_was_watched_for.sql";
+const CATEGORY_SQL = "20261012122000_a_field_admits_a_board_by_what_it_could_see_before_the_cohort.sql";
 const FN_OF: Record<string, string> = { [COMPANY_SQL]: "get_company_fill_curve", [CATEGORY_SQL]: "get_category_fill_curve" };
 
 const readRaw = (f: string) => readFileSync(resolve(MIGRATIONS, f), "utf8");
@@ -843,10 +851,20 @@ describe("the shipped SQL mirrors the reference estimator", () => {
         // is the CROSSOVER. R_lo takes S_hi and R_hi takes S_lo, because R
         // rises as S falls. Getting that pair straight-through produces an
         // interval that is inverted and entirely plausible-looking.
-        expect(CODE).toMatch(/fills14::numeric \/ NULLIF\([\w.]+\.fills14 \+ [\w.]+\.relists14, 0\)/);
-        expect(CODE).toMatch(/\* \(1 - [\w.]+\.s_hi\)[\s\S]{0,30}AS r_lo/);
-        expect(CODE).toMatch(/\* \(1 - [\w.]+\.s_lo\)[\s\S]{0,30}AS r_hi/);
-        expect(CODE).not.toMatch(/\* \(1 - [\w.]+\.s_lo\)[\s\S]{0,30}AS r_lo/);
+        // 20261012121000 carries the bounds by R(14) itself, scaled by
+        // (1 - S_hi)/(1 - S(14)) and (1 - S_lo)/(1 - S(14)), so the share
+        // sits inside its own interval; the counted fill share remains the
+        // carry wherever a curve has not been re-issued that way.
+        const scaled = /r14 \* \(1 - [\w.]+\.s_hi\) \/ NULLIF\(1 - [\w.]+\.s14, 0\)/.test(CODE);
+        if (scaled) {
+          expect(CODE).toMatch(/r14 \* \(1 - [\w.]+\.s_lo\) \/ NULLIF\(1 - [\w.]+\.s14, 0\)/);
+          expect(CODE, "S(14) = 1 must not reach the division").toMatch(/WHEN [\w.]+\.s14 >= 1 THEN 0/);
+        } else {
+          expect(CODE).toMatch(/fills14::numeric \/ NULLIF\([\w.]+\.fills14 \+ [\w.]+\.relists14, 0\)/);
+        }
+        expect(CODE).toMatch(/\* \(1 - [\w.]+\.s_hi\)[\s\S]{0,60}AS r_lo/);
+        expect(CODE).toMatch(/\* \(1 - [\w.]+\.s_lo\)[\s\S]{0,60}AS r_hi/);
+        expect(CODE).not.toMatch(/\* \(1 - [\w.]+\.s_lo\)[\s\S]{0,60}AS r_lo/);
       });
     });
   }
