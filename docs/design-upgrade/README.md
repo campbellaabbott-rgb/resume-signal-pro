@@ -209,6 +209,19 @@ under 12px. The legacy home, board and lander still print 9 to 11px text
    `scripts/prerender-pages.mjs` and `jobsPage.companySeoTitle` in the main
    locale), and the legacy lander and home say "verified" open roles. These
    belong to the SEO group and to pass B's copy.
+5. **Two gate failures after any local `npm run build` (the bake's, not this
+   branch's).** With `dist/` and the bake's generated files present, the
+   pre-push suite fails three tests that a clean checkout skips or passes:
+   - `the-sitemap-never-advertises-a-posting-url-with-no-page.test.ts`: the
+     baked sitemap advertised 454 posting URLs against the generator's stated
+     cap of 400 (the bake logged "live 454 (354 carried, 100 new)"). The cap
+     is not applied to carried plus new pages in `scripts/prerender-seo.mjs`.
+   - `published-claims.test.ts` (two freshness sweeps): the bake bundles old
+     `src/data/changelog` entries into the gitignored
+     `scripts/.prerender-data.mjs`, and the sweep of `scripts/` reads that
+     generated copy.
+   Both belong to the SEO group. The push here ran after the build outputs
+   were moved out of the worktree.
 
 ## After-audit checklist (after the publish)
 
