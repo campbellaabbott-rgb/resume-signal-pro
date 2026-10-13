@@ -8,6 +8,7 @@ import { SellerIdentity } from "@/components/SellerIdentity";
 import { AI_CACHE_MAX_HOURS, SHARED_ANALYSIS_DAYS } from "@/lib/resume-retention";
 import { PRIVACY_LAST_UPDATED } from "@/config/seller";
 import { MCP_PRIVACY_ROWS } from "@/config/mcp-privacy";
+import { openConsentChoice } from "@/components/ConsentBanner";
 
 export default function Privacy() {
   const { t, i18n } = useTranslation();
@@ -46,9 +47,9 @@ export default function Privacy() {
               
               <h3 className="text-xl font-medium mb-3 text-foreground">{t('privacy.sections.infoProvide')}</h3>
               <ul className="list-disc pl-6 text-muted-foreground space-y-2 mb-4">
-                <li><strong className="text-foreground">Resume Content:</strong> The text and information contained in resumes you upload or paste (PDF, DOCX, or text format). How long each copy is kept is set out in Section 6 and, store by store, on our <Link to="/trust#retention" className="text-primary underline">Trust page</Link>. In short: the text is held for 24 hours and the free report that quotes it for 7 days, then both are deleted; a resume is kept longer only when you save it to your account or give it to the apply agent.</li>
-                <li><strong className="text-foreground">LinkedIn Profile Data:</strong> Professional information you provide via URL scraping or direct text input. Text you add alongside a resume is held with it in the same temporary store, for the same 24 hours.</li>
-                <li><strong className="text-foreground">Email Address:</strong> If you opt to receive your analysis via email</li>
+                <li><strong className="text-foreground">Resume Content:</strong> The text and information contained in resumes you upload or paste (PDF, DOCX, or text format). How long each copy is kept is set out in Section 6 and, store by store, on our <Link to="/trust#retention" className="text-primary underline">Trust page</Link>. In short: the text is held for 24 hours and the free report that quotes it for 7 days, then both are deleted; a resume is kept longer only when you save it to your account.</li>
+                <li><strong className="text-foreground">Text You Add:</strong> A job description or other text you paste beside a resume. It is held with the resume in the same temporary store, for the same 24 hours.</li>
+                <li><strong className="text-foreground">Email Address:</strong> When you create an account, ask for a report or a purchase by email, or join a mailing list</li>
                 <li><strong className="text-foreground">Payment Information:</strong> Processed by Stripe; we receive confirmation of payment but do not store full credit card numbers</li>
               </ul>
 
@@ -57,7 +58,7 @@ export default function Privacy() {
                 <li><strong className="text-foreground">Device Information:</strong> Browser type, operating system, device identifiers</li>
                 <li><strong className="text-foreground">Usage Data:</strong> Pages visited, time spent, features used, click patterns</li>
                 <li><strong className="text-foreground">Log Data:</strong> IP address, access times, referring URLs, error logs</li>
-                <li><strong className="text-foreground">Cookies:</strong> Session and functionality cookies (see Section 9)</li>
+                <li><strong className="text-foreground">Cookies and Browser Storage:</strong> What keeps you signed in and remembers your settings, and, only if you allow it, an analytics visitor id (see the Cookies section)</li>
               </ul>
             </section>
 
@@ -79,11 +80,11 @@ export default function Privacy() {
                 <li>Providing and delivering resume analysis services</li>
                 <li>Processing payments and preventing fraud</li>
                 <li>Sending analysis results and transactional communications</li>
-                <li>Improving and optimizing our Service and AI algorithms</li>
+                <li>Improving our Service. We do not train AI models on your resume; the AI providers that process it for us do so under their own terms (see Sharing)</li>
                 <li>Responding to inquiries and providing customer support</li>
                 <li>Complying with legal obligations</li>
                 <li>Enforcing our Terms of Service</li>
-                <li>Analyzing usage patterns to improve user experience</li>
+                <li>Analyzing usage patterns to improve user experience, only if you allow analytics</li>
               </ul>
             </section>
 
@@ -94,14 +95,17 @@ export default function Privacy() {
               </p>
               <ul className="list-disc pl-6 text-muted-foreground space-y-2">
                 <li><strong className="text-foreground">Service Providers:</strong> Third parties that help operate our Service:
-                  <ul className="list-disc pl-6 mt-2 space-y-1">
+                  <ul className="list-disc pl-6 mt-2 space-y-1" data-processors>
                     <li>Stripe (payment processing)</li>
-                    <li>AI service providers (resume analysis)</li>
-                    <li>Resend (email delivery)</li>
-                    <li>Cloud hosting providers</li>
+                    <li>Lovable (hosting, and the AI gateway our analysis runs through); its cloud runs on Supabase (database, sign-in and server functions)</li>
+                    <li>Google and OpenAI, whose AI models analyze resume text, reached through Lovable's AI gateway</li>
+                    <li>Lovable Emails, which sends sign-in emails through Mailgun from the EU</li>
+                    <li>Resend (receipts, reports and our other email, from the United States)</li>
+                    <li>ipinfo (the country of the IP address a free scan comes from, to set its limits)</li>
+                    <li>Google Fonts (your browser loads the site's fonts from Google, which sees your IP address)</li>
                   </ul>
                 </li>
-                <li><strong className="text-foreground">Employers You Apply To:</strong> If you turn on the apply agent, it sends your CV and your application answers to the employers it applies to on your behalf</li>
+                <li><strong className="text-foreground">Shortlist:</strong> An employer who screens candidates with Shortlist uploads their resumes and confirms, for each one, that they may have it scored by AI. We remove protected-class proxies before scoring, keep the redacted text and the evaluation for that employer until they delete the role or their account, and record no candidate's sex or race</li>
                 <li><strong className="text-foreground">Legal Requirements:</strong> When required by law, court order, or governmental authority</li>
                 <li><strong className="text-foreground">Protection of Rights:</strong> To protect our rights, privacy, safety, or property</li>
                 <li><strong className="text-foreground">Business Transfers:</strong> In connection with a merger, acquisition, or sale of assets</li>
@@ -113,13 +117,14 @@ export default function Privacy() {
               <h2 className="text-2xl font-semibold mb-4 text-foreground">{t('privacy.sections.retention')}</h2>
               <p className="text-muted-foreground leading-relaxed mb-4">We retain your information as follows:</p>
               <ul className="list-disc pl-6 text-muted-foreground space-y-2">
-                <li><strong className="text-foreground">Resume and LinkedIn Content:</strong> Held in a private temporary store for 24 hours after you upload or paste it, so a checkout can use it, then deleted automatically.</li>
+                <li><strong className="text-foreground">Resume Content:</strong> Held in a private temporary store for 24 hours after you upload or paste it, so a checkout can use it, then deleted automatically.</li>
                 <li><strong className="text-foreground">Free Reports:</strong> A free report quotes lines from your resume, including its first ~600 characters. It is cached for 7 days under a one-way fingerprint of the text, so a rescan of the same file against the same posting gets the same report, then deleted automatically. The fingerprint and the industry detected are kept so a rescan reads the same industry; the fingerprint cannot be turned back into your resume.</li>
                 <li><strong className="text-foreground">Cached AI Output:</strong> The AI-written summary at the top of a free report, and a report written by our backup scanner, are cached for up to {AI_CACHE_MAX_HOURS} hours under a one-way fingerprint of the text, then deleted automatically. A paid analysis is never cached.</li>
                 <li><strong className="text-foreground">Analysis Results:</strong> A paid analysis, which quotes your resume, is kept behind its private share link for {SHARED_ANALYSIS_DAYS} days and then deleted automatically, or sooner if you delete it from the results page; that link is its only copy on our servers, apart from any copy emailed to you. Documents generated for other paid products are kept with your purchase record so you can recover them, until you ask us to erase them.</li>
-                <li><strong className="text-foreground">Account Content:</strong> A resume version you save, the resume you set for job matching, and the CV you give the apply agent (the file and its text) are kept until you delete your account. The apply agent sends that CV to the employers it applies to on your behalf. Deleting your account erases the saved text; to have an uploaded CV file erased, email resumeboostersupp@gmail.com.</li>
-                <li><strong className="text-foreground">Payment Records:</strong> Retained as required by tax and financial regulations (typically 7 years)</li>
-                <li><strong className="text-foreground">Email Address:</strong> If provided, retained only as needed for sending your analysis results</li>
+                <li><strong className="text-foreground">Account Content:</strong> A resume version you save, the resume you set for job matching, any CV file you uploaded, your saved searches and alerts and your tracked applications are kept until you delete your account. Deleting your account erases them all, including the uploaded CV files, and revokes any API or connected-AI key the account created.</li>
+                <li><strong className="text-foreground">Proof of Your Address:</strong> When you sign in with a code or link we email you, or with a provider that verified your address, we record that the address was proven, so purchases made under it can join your account. The record is kept until you delete your account.</li>
+                <li><strong className="text-foreground">Payment Records:</strong> The Stripe reference, amount, date and the address on the receipt, retained as required by tax and financial regulations (typically 7 years), including after an account is deleted</li>
+                <li><strong className="text-foreground">Email Address and Mail:</strong> The monthly market pulse keeps your address until you unsubscribe. We keep a record of each email we send (the address, the time and whether it was delivered) to show delivery and to honour unsubscribes, and a do-not-mail note after you unsubscribe or delete your account, so that no mail already queued reaches you</li>
                 <li><strong className="text-foreground">Log Data:</strong> Retained for up to 90 days for security and debugging purposes</li>
                 <li><strong className="text-foreground">In Your Browser:</strong> The resume text a tab carries between pages is in that tab's session storage until you close it. A resume you build on the site, your recent scan history and recent reports are in this browser's local storage until it is cleared; the Clear Browser Data button on a paid results page clears them, as does clearing this site's data in your browser.</li>
               </ul>
@@ -213,17 +218,20 @@ export default function Privacy() {
               </p>
             </section>
 
-            <section>
+            <section id="cookies" className="scroll-mt-24">
               <h2 className="text-2xl font-semibold mb-4 text-foreground">{t('privacy.sections.cookies')}</h2>
-              <p className="text-muted-foreground leading-relaxed mb-4">We use cookies and similar technologies for:</p>
+              <p className="text-muted-foreground leading-relaxed mb-4">We use cookies and this browser's storage for:</p>
               <ul className="list-disc pl-6 text-muted-foreground space-y-2">
-                <li><strong className="text-foreground">Essential Cookies:</strong> Required for Service functionality (session management, security)</li>
-                <li><strong className="text-foreground">Analytics Cookies:</strong> Help us understand how users interact with the Service</li>
-                <li><strong className="text-foreground">Preference Cookies:</strong> Remember your settings and preferences</li>
+                <li><strong className="text-foreground">Essential:</strong> keeping you signed in, security, and the choice you make below</li>
+                <li><strong className="text-foreground">Preferences:</strong> remembering your settings, recent searches and the resumes and reports you keep in this browser</li>
+                <li><strong className="text-foreground">Analytics, only if you allow it:</strong> an anonymous visitor id kept in this browser, and a record of which pages and steps you use. Until you choose, nothing is stored or sent for analytics; choosing no removes the id</li>
               </ul>
               <p className="text-muted-foreground leading-relaxed mt-4">
-                You can control cookies through your browser settings. Disabling certain cookies may affect Service functionality.
+                Our hosting provider runs its own page-visit counter, which this choice does not control.
               </p>
+              <button type="button" onClick={openConsentChoice} className="mt-4 text-primary underline" data-change-consent>
+                {t('privacy.changeConsent', 'Change my analytics choice')}
+              </button>
             </section>
 
             <section>
@@ -239,6 +247,10 @@ export default function Privacy() {
               <ul className="list-disc pl-6 text-muted-foreground space-y-2">
                 <li><strong className="text-foreground">Stripe:</strong> <a href="https://stripe.com/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">stripe.com/privacy</a></li>
                 <li><strong className="text-foreground">Resend:</strong> <a href="https://resend.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">resend.com/legal/privacy-policy</a></li>
+                <li><strong className="text-foreground">Supabase:</strong> <a href="https://supabase.com/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">supabase.com/privacy</a></li>
+                <li><strong className="text-foreground">Google (AI models and fonts):</strong> <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">policies.google.com/privacy</a></li>
+                <li><strong className="text-foreground">OpenAI:</strong> <a href="https://openai.com/policies/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">openai.com/policies/privacy-policy</a></li>
+                <li><strong className="text-foreground">Lovable, Mailgun and ipinfo:</strong> each publishes its own privacy policy on its website</li>
               </ul>
               <p className="text-muted-foreground leading-relaxed mt-4">
                 We encourage you to review the privacy policies of these third-party services.

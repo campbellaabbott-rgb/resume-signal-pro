@@ -29,3 +29,7 @@ createRoot(document.getElementById("root")!).render(
     </HelmetProvider>
   </StrictMode>
 );
+
+// The analytics choice (S12-011): our own analytics wait for it, and the
+// banner asks in its own root after the app, loaded on its own.
+void import("./components/ConsentBanner").then((m) => m.mountConsentBanner()).catch(() => undefined);

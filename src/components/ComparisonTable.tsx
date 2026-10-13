@@ -12,16 +12,19 @@ interface ComparisonFeature {
   templates: FeatureStatus;
 }
 
-const features: ComparisonFeature[] = [
+// Two rows went (S12-049, 2026-10-12): "privacyFirst" claimed the résumé is
+// never used for training, which the AI providers' terms behind Lovable's
+// gateway were never checked to support; "linkedinAnalysis" named the
+// LinkedIn insights, which are no longer offered.
+export const COMPARISON_FEATURES: ComparisonFeature[] = [
   { key: "atsScoring", resumeBooster: "yes", chatgpt: "no", templates: "no" },
   { key: "industryTemplates", resumeBooster: "yes", chatgpt: "partial", templates: "partial" },
   { key: "consistentOutput", resumeBooster: "yes", chatgpt: "no", templates: "yes" },
-  { key: "linkedinAnalysis", resumeBooster: "yes", chatgpt: "partial", templates: "no" },
   { key: "jobAlignment", resumeBooster: "yes", chatgpt: "partial", templates: "no" },
   { key: "noPromptNeeded", resumeBooster: "yes", chatgpt: "no", templates: "yes" },
   { key: "recruiterCalibrated", resumeBooster: "yes", chatgpt: "no", templates: "no" },
-  { key: "privacyFirst", resumeBooster: "yes", chatgpt: "no", templates: "yes" },
 ];
+const features = COMPARISON_FEATURES;
 
 function StatusIcon({ status }: { status: FeatureStatus }) {
   if (status === "yes") {

@@ -20,6 +20,7 @@
  * link's before its redirect runs.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { allowAnalytics } from "./helpers/analytics-consent";
 import { cleanup, render, waitFor } from "@testing-library/react";
 
 vi.mock("@/integrations/supabase/client", () => {
@@ -61,7 +62,7 @@ function arrive(path: string, referrer: string) {
       .map(([, init]) => JSON.parse(String((init as RequestInit).body)) as Body);
 }
 
-beforeEach(() => { sessionStorage.clear(); localStorage.clear(); });
+beforeEach(() => { sessionStorage.clear(); localStorage.clear(); allowAnalytics(); });
 afterEach(() => { cleanup(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
 describe("a visit records where it came from on the page it starts on", () => {
