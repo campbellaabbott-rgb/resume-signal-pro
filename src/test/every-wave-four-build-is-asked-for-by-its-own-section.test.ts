@@ -12,7 +12,7 @@
  *
  * The property: every function built on 2026-10-11 (wave 4's day) or on
  * job-board's reserved 2026-09-09.93 is asked for by at least one of the
- * wave-4 sections (82-86, 93) through build_ge, at that date with a floor at
+ * wave-4 sections (82-86, 93, and wave 4 round 2's 92-w4b-*) through build_ge, at that date with a floor at
  * or below the build the repository carries (build_ge accepts a later one, so
  * a floor can lag a later fix-round stamp without going stale). A later wave
  * is free of this test.
@@ -45,7 +45,7 @@ function asksOf(src: string): Array<[string, Build]> {
 }
 
 describe("the wave-4 sections ask for every wave-4 build", () => {
-  const sections = readdirSync(SEC_DIR).filter((f) => /^(8[2-6]|93)-/.test(f) && f.endsWith(".sh"));
+  const sections = readdirSync(SEC_DIR).filter((f) => /^(8[2-6]|93|92-w4b)-/.test(f) && f.endsWith(".sh"));
   const asked = new Map<string, Build[]>();
   for (const f of sections) for (const [fn, b] of asksOf(readFileSync(join(SEC_DIR, f), "utf8"))) asked.set(fn, [...(asked.get(fn) ?? []), b]);
 
