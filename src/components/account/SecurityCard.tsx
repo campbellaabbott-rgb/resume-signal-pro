@@ -131,7 +131,7 @@ export function SecurityCard() {
   const button = "shrink-0 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors";
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 mb-6" id="security" data-security-card>
+    <div className="rounded-2xl border border-border bg-card p-5 mb-6 scroll-mt-28" id="security" data-security-card>
       <div className="flex items-center gap-2 mb-3">
         <ShieldCheck className="w-4 h-4 text-primary" />
         <h2 className="font-semibold text-foreground text-sm">{t("accountSettings.title", "Sign-in and security")}</h2>

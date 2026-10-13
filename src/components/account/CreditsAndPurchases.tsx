@@ -74,7 +74,7 @@ export function CreditsAndPurchases({ fetching, account, failed = false, onRetry
   }
 
   return (
-    <div className="grid sm:grid-cols-2 gap-4 mb-6" id="orders">
+    <div className="grid sm:grid-cols-2 gap-4 mb-6 scroll-mt-28" id="orders">
       <div className="rounded-2xl border border-border bg-card p-5">
         <div className="flex items-center gap-2 mb-2">
           <Coins className="w-4 h-4 text-warning" />

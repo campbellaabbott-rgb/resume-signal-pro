@@ -49,6 +49,7 @@ import { CreditsAndPurchases, type AccountPass } from "@/components/account/Cred
 import type { AccountOrder } from "@/components/account/OrdersList";
 import { SecurityCard } from "@/components/account/SecurityCard";
 import { DataPrivacyCard } from "@/components/account/DataPrivacyCard";
+import { AccountSettingsCards } from "@/components/account/ConnectedAIsCard";
 import { importLocalHistory } from "@/lib/account-history-import";
 import { WithdrawalPanel } from "@/components/account/WithdrawalPanel";
 import { collectAccountExport, type ExportClient } from "@/lib/account-export";
@@ -381,7 +382,7 @@ export default function Account() {
         body: { jobPosting: fitPosting, resumeText: version.resume_text },
       });
       if (error || !data?.success) {
-        toast.error("Fit check failed — the feature may still be deploying. Try again shortly.");
+        toast.error(t("accountPage.fitCheckFailed", "Fit check failed. Try again shortly."));
         return;
       }
       const { pct, missing } = data.data as { pct: number | null; missing: string[] };
@@ -1043,24 +1044,24 @@ export default function Account() {
             <h2 className="font-semibold text-foreground text-sm">{t("accountPage.matchingResume", "Matching résumé")}</h2>
             <span className="text-xs text-muted-foreground truncate">
               {matching.text
-                ? `Pasted résumé (${matching.text.length.toLocaleString()} chars)`
+                ? t("accountPage.matchingPasted", "Pasted résumé ({{n}} characters)", { n: matching.text.length.toLocaleString() })
                 : matching.scanId
-                ? (() => { const s = scans.find((x) => x.id === matching.scanId); return s ? `Pinned: ${s.label ?? (s.industry ?? "scan").replace(/_/g, " ")} · ${new Date(s.created_at).toLocaleDateString()}` : "Pinned scan (no longer in your history)"; })()
-                : "Latest scan (default)"}
+                ? (() => { const s = scans.find((x) => x.id === matching.scanId); return s ? t("accountPage.matchingPinned", "Pinned: {{name}} · {{date}}", { name: s.label ?? (s.industry ?? t("accountPage.matchingScan", "scan")).replace(/_/g, " "), date: new Date(s.created_at).toLocaleDateString() }) : t("accountPage.matchingPinnedGone", "Pinned scan (no longer in your history)"); })()
+                : t("accountPage.matchingLatest", "Latest scan (default)")}
             </span>
             <div className="ml-auto flex items-center gap-2">
               {(matching.scanId || matching.text) && (
-                <button onClick={() => void saveMatching({ scanId: null, text: null }, "Back to your latest scan.")} className="text-[11px] text-muted-foreground hover:text-foreground underline">
-                  Reset to latest scan
+                <button onClick={() => void saveMatching({ scanId: null, text: null }, t("accountPage.matchingReset", "Back to your latest scan."))} className="text-[11px] text-muted-foreground hover:text-foreground underline">
+                  {t("accountPage.matchingResetButton", "Reset to latest scan")}
                 </button>
               )}
               <button onClick={() => setPasteOpen((v) => !v)} className="text-[11px] text-primary hover:underline">
-                {pasteOpen ? "Close" : "Paste a résumé"}
+                {pasteOpen ? t("accountPage.matchingClose", "Close") : t("accountPage.matchingPaste", "Paste a résumé")}
               </button>
             </div>
           </div>
           <p className="text-[11px] text-muted-foreground mt-1">
-            The job board's fit ranking, your email match alerts, and the apply agent's drafts are all grounded in this document. Pin a scan below, or paste the exact résumé you're sending out.
+            {t("accountPage.matchingNote", "The job board's fit ranking and your email match alerts are both grounded in this document. Pin a scan below, or paste the exact résumé you're sending out.")}
           </p>
           {pasteOpen && (
             <div className="mt-3">
@@ -1068,19 +1069,19 @@ export default function Account() {
                 value={pasteDraft}
                 onChange={(e) => setPasteDraft(e.target.value)}
                 rows={6}
-                placeholder="Paste your résumé text here (plain text)…"
+                placeholder={t("accountPage.matchingPastePlaceholder", "Paste your résumé text here (plain text)…")}
                 className="w-full rounded-lg border border-border bg-background p-2.5 text-[12px] focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
               <button
                 onClick={() => {
-                  if (pasteDraft.trim().length < 100) { toast.error("That's too short to match against — paste the full résumé."); return; }
-                  void saveMatching({ scanId: null, text: pasteDraft.trim() }, "Saved — matching now uses this résumé.");
+                  if (pasteDraft.trim().length < 100) { toast.error(t("accountPage.matchingTooShort", "That's too short to match against. Paste the full résumé.")); return; }
+                  void saveMatching({ scanId: null, text: pasteDraft.trim() }, t("accountPage.matchingSaved", "Saved. Matching now uses this résumé."));
                   setPasteOpen(false);
                   setPasteDraft("");
                 }}
                 className="mt-2 text-xs font-semibold text-primary-foreground bg-primary rounded-lg px-3 py-1.5 hover:bg-primary/90"
               >
-                Use this résumé for matching
+                {t("accountPage.matchingUse", "Use this résumé for matching")}
               </button>
             </div>
           )}
@@ -1273,21 +1274,21 @@ export default function Account() {
               disabled={!newApp.company.trim()}
               className="shrink-0 inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
-              <Plus className="w-4 h-4" /> Add
+              <Plus className="w-4 h-4" /> {t("accountPage.trackerAdd", "Add")}
             </button>
           </div>
           {scans.length > 0 && (
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-[11px] text-muted-foreground shrink-0">Resume version sent:</span>
+              <span className="text-[11px] text-muted-foreground shrink-0">{t("accountPage.versionSent", "Resume version sent:")}</span>
               <select
                 value={newAppScanId}
                 onChange={(e) => setNewAppScanId(e.target.value)}
                 className="flex-1 min-w-0 px-2 py-1.5 rounded-lg bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-                aria-label="Resume version used for this application"
+                aria-label={t("accountPage.versionSentLabel", "Resume version used for this application")}
               >
-                <option value="latest">Latest scan ({scans[0].ats_score}{scans[0].label ? ` · ${scans[0].label}` : ""})</option>
+                <option value="latest">{t("accountPage.versionLatest", "Latest scan ({{score}}{{label}})", { score: scans[0].ats_score, label: scans[0].label ? ` · ${scans[0].label}` : "" })}</option>
                 {scans.map((s) => (
-                  <option key={s.id} value={s.id}>{versionName(s)} — score {s.ats_score}</option>
+                  <option key={s.id} value={s.id}>{t("accountPage.versionOption", "{{name}}, score {{score}}", { name: versionName(s), score: s.ats_score })}</option>
                 ))}
               </select>
             </div>
@@ -1298,14 +1299,14 @@ export default function Account() {
                 <TrendingUp className="w-4 h-4 text-primary" /> {t("accountPage.appIntelTitle", "Application intelligence")}
               </h3>
               <p className="text-[11px] text-muted-foreground mt-0.5">
-                Interview/offer rate by the fit you applied with, across your {appIntel.applied} tracked applications.
+                {t("accountPage.appIntelBody", "Interview and offer rate by the fit you applied with, across your {{n}} tracked applications.", { n: appIntel.applied })}
               </p>
               <ul className="mt-2 space-y-1">
-                {appIntel.shown.map((t) => {
-                  const { n, adv } = appIntel.tiers[t];
-                  const label = t === "strong" ? "Strong match (20%+)" : t === "possible" ? "Possible match (10–20%)" : "Stretch (<10%)";
+                {appIntel.shown.map((tier) => {
+                  const { n, adv } = appIntel.tiers[tier];
+                  const label = tier === "strong" ? t("accountPage.tierStrong", "Strong match (20%+)") : tier === "possible" ? t("accountPage.tierPossible", "Possible match (10–20%)") : t("accountPage.tierStretch", "Stretch (<10%)");
                   return (
-                    <li key={t} className="flex items-center justify-between text-[12px]">
+                    <li key={tier} className="flex items-center justify-between text-[12px]">
                       <span className="text-muted-foreground">{label}</span>
                       <span className="text-foreground font-semibold">{Math.round((100 * adv) / n)}% <span className="text-muted-foreground font-normal">({adv}/{n})</span></span>
                     </li>
@@ -1315,7 +1316,7 @@ export default function Account() {
               {appIntel.tiers.strong.n >= 3 && appIntel.tiers.stretch.n >= 3 &&
                 (appIntel.tiers.strong.adv / appIntel.tiers.strong.n) > (appIntel.tiers.stretch.adv / appIntel.tiers.stretch.n) && (
                 <p className="text-[11px] text-primary font-medium mt-2">
-                  Your higher-fit applications convert to interviews more often — spend your energy where you actually match.
+                  {t("accountPage.appIntelAdvice", "Your higher-fit applications convert to interviews more often. Spend your energy where you actually match.")}
                 </p>
               )}
             </div>
@@ -1323,10 +1324,10 @@ export default function Account() {
           {skillGap && (
             <div className="rounded-xl border border-border bg-muted/30 p-3 mb-3">
               <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                <Target className="w-4 h-4 text-primary" /> Your skill gaps, from your own applications
+                <Target className="w-4 h-4 text-primary" /> {t("accountPage.skillGapTitle", "Your skill gaps, from your own applications")}
               </h3>
               <p className="text-[11px] text-muted-foreground mt-0.5">
-                The keywords most often missing across the {skillGap.withFit} postings you checked your fit against:
+                {t("accountPage.skillGapBody", "The keywords most often missing across the {{n}} postings you checked your fit against:", { n: skillGap.withFit })}
               </p>
               <ul className="mt-1.5 flex flex-wrap gap-1.5">
                 {skillGap.top.map(([k, n]) => (
@@ -1336,7 +1337,7 @@ export default function Account() {
                 ))}
               </ul>
               <p className="text-[11px] text-muted-foreground mt-2">
-                If you genuinely have these, put them on your résumé — <Link to="/#upload" className="text-primary hover:underline">rescan to see the difference</Link>. If not, they're your clearest learning targets.
+                {t("accountPage.skillGapHave", "If you genuinely have these, put them on your résumé:")} <Link to="/#upload" className="text-primary hover:underline">{t("accountPage.skillGapRescan", "rescan to see the difference")}</Link>. {t("accountPage.skillGapLearn", "If not, they're your clearest learning targets.")}
               </p>
             </div>
           )}
@@ -1674,7 +1675,7 @@ export default function Account() {
                       href={a.apply_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      aria-label="Open the job posting"
+                      aria-label={t("accountPage.openPosting", "Open the job posting")}
                       className="text-muted-foreground hover:text-primary shrink-0"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
@@ -1698,7 +1699,7 @@ export default function Account() {
                   >
                     {APP_STATUSES.map(st => <option key={st} value={st}>{t(`accountPage.status.${st}`, st)}</option>)}
                   </select>
-                  <button onClick={() => deleteApplication(a.id)} aria-label="Delete application" className="text-muted-foreground/50 hover:text-destructive transition-colors">
+                  <button onClick={() => deleteApplication(a.id)} aria-label={t("accountPage.deleteApplication", "Delete application")} className="text-muted-foreground/50 hover:text-destructive transition-colors">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                   </div>
@@ -1712,13 +1713,13 @@ export default function Account() {
                   {fitOpenId === a.id && version?.resume_text && (
                     <div className="mt-2 pt-2 border-t border-border/50">
                       <p className="text-[11px] text-muted-foreground mb-1.5">
-                        Paste the job posting — we check which recognized keywords the version you sent actually covers. Deterministic, no AI.
+                        {t("accountPage.fitIntro", "Paste the job posting: we check which recognized keywords the version you sent actually covers. Deterministic, no AI.")}
                       </p>
                       <textarea
                         value={fitPosting}
                         onChange={(e) => setFitPosting(e.target.value)}
                         rows={3}
-                        placeholder="Paste the job posting here…"
+                        placeholder={t("accountPage.fitPlaceholder", "Paste the job posting here…")}
                         className="w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs text-foreground mb-1.5"
                       />
                       <button
@@ -1726,11 +1727,11 @@ export default function Account() {
                         disabled={fitLoading || fitPosting.trim().length < 100}
                         className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold disabled:opacity-50"
                       >
-                        {fitLoading ? "Checking…" : "Check fit"}
+                        {fitLoading ? t("accountPage.fitChecking", "Checking…") : t("accountPage.fitCheck", "Check fit")}
                       </button>
                       {a.fit_pct != null && (a.fit_missing?.length ?? 0) > 0 && (
                         <div className="mt-2">
-                          <p className="text-[11px] text-muted-foreground mb-1">Missing from the version you sent:</p>
+                          <p className="text-[11px] text-muted-foreground mb-1">{t("accountPage.fitMissing", "Missing from the version you sent:")}</p>
                           <div className="flex flex-wrap gap-1">
                             {(a.fit_missing ?? []).slice(0, 12).map(k => (
                               <span key={k} className="px-2 py-0.5 rounded-full border border-warning/40 text-warning text-[11px]">{k}</span>
@@ -1771,14 +1772,14 @@ export default function Account() {
                   {rows.map((r) => (
                     <div key={r.scan.id} className="flex items-center gap-2 text-xs">
                       <span className="text-foreground font-medium flex-1 truncate">{versionName(r.scan)}</span>
-                      <span className="text-muted-foreground shrink-0">{r.sent} sent</span>
+                      <span className="text-muted-foreground shrink-0">{t("accountPage.versionSentCount", "{{n}} sent", { n: r.sent })}</span>
                       <span className={`shrink-0 font-semibold ${r.interviews > 0 ? "text-success" : "text-muted-foreground"}`}>
-                        {r.interviews} interview{r.interviews !== 1 ? "s" : ""}{r.offers > 0 ? ` · ${r.offers} offer${r.offers !== 1 ? "s" : ""}` : ""}
+                        {t("accountPage.versionInterviews", { count: r.interviews, defaultValue: r.interviews === 1 ? "{{count}} interview" : "{{count}} interviews" })}{r.offers > 0 ? ` · ${t("accountPage.versionOffers", { count: r.offers, defaultValue: r.offers === 1 ? "{{count}} offer" : "{{count}} offers" })}` : ""}
                       </span>
                     </div>
                   ))}
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-2">Update application statuses above — this table learns which version of your resume actually lands interviews.</p>
+                <p className="text-[11px] text-muted-foreground mt-2">{t("accountPage.whichResumeNote", "Update application statuses above: this table learns which version of your resume actually lands interviews.")}</p>
               </div>
             );
           })()}
@@ -1805,26 +1806,26 @@ export default function Account() {
             if (rows.length < 2) return null;
             return (
               <div className="mt-4 rounded-xl border border-border bg-card/60 p-4">
-                <p className="text-xs font-semibold text-foreground mb-2">Your interview rate by score band</p>
+                <p className="text-xs font-semibold text-foreground mb-2">{t("accountPage.bandTitle", "Your interview rate by score band")}</p>
                 <div className="space-y-1.5">
                   {rows.map(r => (
                     <div key={r.label} className="flex items-center gap-2 text-xs">
-                      <span className="text-foreground font-medium w-20 shrink-0">Score {r.label}</span>
+                      <span className="text-foreground font-medium w-20 shrink-0">{t("accountPage.bandScore", "Score {{band}}", { band: r.label === "under 50" ? t("accountPage.bandUnder50", "under 50") : r.label })}</span>
                       <div className="flex-1 h-1.5 rounded-full bg-border overflow-hidden">
                         <div className="h-full bg-success" style={{ width: `${Math.round((r.wins / r.sent) * 100)}%` }} />
                       </div>
-                      <span className="text-muted-foreground shrink-0">{r.wins}/{r.sent} interviews</span>
+                      <span className="text-muted-foreground shrink-0">{t("accountPage.bandWins", "{{wins}}/{{sent}} interviews", { wins: r.wins, sent: r.sent })}</span>
                     </div>
                   ))}
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-2">Measured from your own applications — small samples, so read direction, not decimals.</p>
+                <p className="text-[11px] text-muted-foreground mt-2">{t("accountPage.bandNote", "Measured from your own applications. Small samples, so read direction, not decimals.")}</p>
               </div>
             );
           })()}
         </div>
 
-        {/* Pro subscription */}
-        <div className="mb-6">
+        {/* Pro subscription: the plan, its next charge and Manage or cancel (#plan) */}
+        <div className="mb-6 scroll-mt-28" id="plan">
           <ProSubscriptionCard compact />
         </div>
         {/* EU/UK 14-day withdrawal: renders nothing while the switch is off. */}
@@ -1836,16 +1837,18 @@ export default function Account() {
         {/* Cross-link: the employer-side product */}
         <div className="rounded-2xl border border-border bg-gradient-to-r from-primary/5 to-transparent p-5 mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-3">
           <div className="flex-1">
-            <p className="text-sm font-semibold text-foreground mb-0.5">Hiring? Screen candidates with Shortlist <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-semibold uppercase align-middle ml-1">Beta</span></p>
-            <p className="text-xs text-muted-foreground">Paste a job description and a stack of resumes — get a ranked, explainable shortlist with a built-in compliance audit trail. Free during beta.</p>
+            <p className="text-sm font-semibold text-foreground mb-0.5">{t("accountPage.shortlistTitle", "Hiring? Screen candidates with Shortlist")} <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-semibold uppercase align-middle ml-1">{t("accountPage.shortlistBeta", "Beta")}</span></p>
+            <p className="text-xs text-muted-foreground">{t("accountPage.shortlistBody", "Paste a job description and the resumes you are allowed to have scored: get a ranked, explainable shortlist with an audit trail. Free during beta.")}</p>
           </div>
           <Link to="/shortlist" className="shrink-0 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors">
-            Open Shortlist →
+            {t("accountPage.shortlistOpen", "Open Shortlist →")}
           </Link>
         </div>
 
         {/* Sign-in and security, then the data card: export and delete (S12-060, S12-137, D9) */}
         <SecurityCard />
+        {/* Connected AIs and the mail this account gets (plan CP-H, D12) */}
+        <AccountSettingsCards />
         <DataPrivacyCard onExport={exportData} onDelete={deleteAccount} />
       </main>
       <Footer />

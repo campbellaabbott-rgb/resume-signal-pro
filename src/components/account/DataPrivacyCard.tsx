@@ -35,7 +35,7 @@ export function DataPrivacyCard({ onExport, onDelete }: Props) {
   };
 
   return (
-    <div className="rounded-2xl border border-destructive/20 bg-destructive/[0.03] p-5" id="privacy" data-privacy-card>
+    <div className="rounded-2xl border border-destructive/20 bg-destructive/[0.03] p-5 scroll-mt-28" id="privacy" data-privacy-card>
       <h2 className="font-semibold text-foreground text-sm mb-2">{t("accountPrivacy.title", "Your data")}</h2>
       <button type="button" onClick={() => void onExport()} className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline mb-4">
         <Download className="w-3.5 h-3.5" /> {t("accountPrivacy.export", "Download all my data (JSON)")}
