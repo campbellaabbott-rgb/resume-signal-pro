@@ -93,9 +93,10 @@ const CITIZEN = /\bu\.?s\.? citizen(?:ship)?\b[^.\n]{0,40}\b(?:required|requirem
 const ACTIVE_CLEARANCE = /\b(?:active|current|existing)\b[^.\n]{0,25}\b(?:secret|top secret|ts\/sci|ts|public trust|security)\s+clearance\b|\b(?:secret|top secret|ts\/sci)\s+clearance\b[^.\n]{0,30}\b(?:required|is required|must)\b|\bclearance (?:is )?required\b|\bmust (?:currently )?(?:hold|possess|have) (?:an? )?(?:active )?(?:secret|top secret|ts\/sci|security) clearance\b/i;
 const OBTAIN_CLEARANCE = /\b(?:ability|able|eligib(?:le|ility)) (?:to )?(?:obtain|receive|be granted|for)\b[^.\n]{0,30}\bclearance\b|\bmust be (?:able to )?(?:obtain|granted)\b[^.\n]{0,30}\bclearance\b/i;
 const DEGREES: Array<[DegreeLevel, RegExp]> = [
-  ["doctorate", /\b(?:ph\.?d|doctorate|doctoral degree|pharm\.?d|d\.?p\.?t|md degree)\b/i],
-  ["master", /\b(?:master'?s|m\.s\.|msc|mba|msn|m\.ed|graduate degree)\b/i],
-  ["bachelor", /\b(?:bachelor'?s|b\.s\.|b\.a\.|bsn|bs\/ba|ba\/bs|four[- ]year degree|undergraduate degree|college degree)\b/i],
+  // Dotted forms end in a full stop, where \b cannot match, so they sit outside the word boundaries.
+  ["doctorate", /\b(?:phd|doctorate|doctoral degree|pharmd|dpt|md degree)\b|\b(?:ph|pharm)\.\s?d\.?|\bd\.p\.t\./i],
+  ["master", /\b(?:master'?s|msc|mba|msn|graduate degree)\b|\bm\.(?:s|a|sc|ed)\./i],
+  ["bachelor", /\b(?:bachelor'?s|bsn|bs\/ba|ba\/bs|four[- ]year degree|undergraduate degree|college degree)\b|\bb\.(?:s|a|sc)\./i],
   ["associate", /\b(?:associate'?s degree|associate degree|two[- ]year degree|adn)\b/i],
   ["high_school", /\b(?:high school diploma|ged|high school education)\b/i],
 ];
@@ -125,9 +126,11 @@ function requirementLines(text: string): { must: string[]; nice: string[] } {
     if (line.length <= 60 && NICE_HEAD.test(line)) { mode = "nice"; continue; }
     if (line.length <= 60 && OTHER_HEAD.test(line)) { mode = "other"; continue; }
     if (line.length < 8) continue;
+    // A long paragraph that is not a list item ends the list above it.
+    if (!/^[\s•·*\-–—●▪◦]/.test(raw) && line.length > 120) mode = "other";
     const inlineNice = /\b(?:preferred|a plus|nice to have|desired|bonus)\b/i.test(line);
-    const inlineMust = /\b(?:required|must|minimum|at least|mandatory)\b/i.test(line);
-    const bucket = mode === "nice" || (mode === "other" && inlineNice) ? nice : mode === "must" || inlineMust ? (inlineNice && mode !== "must" ? nice : must) : null;
+    const inlineMust = /\b(?:required|requires|must|minimum|at least|mandatory)\b/i.test(line);
+    const bucket = inlineNice ? nice : mode === "must" || inlineMust ? must : mode === "nice" ? nice : null;
     if (bucket && bucket.length < LINES_MAX) bucket.push(cut(line));
   }
   return { must, nice };

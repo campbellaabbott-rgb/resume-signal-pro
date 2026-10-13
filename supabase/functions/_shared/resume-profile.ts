@@ -162,7 +162,7 @@ function lineSplit(text: string): string[] {
 }
 
 interface Section { head: string; body: string[] }
-const HEADING = /^(?:[A-Z][A-Z &/'-]{3,44}|(?:Professional |Work |Teaching |Clinical |Relevant )?(?:Experience|Employment|Work History|Career History|Education|Skills|Summary|Profile|Objective|Certifications?|Licen[cs]es?|Projects?|Volunteer(?:ing)?|Publications|Awards)):?$/;
+const HEADING = /^(?:[A-ZÀ-Ý][A-ZÀ-Ý &/'-]{3,44}|(?:Professional |Work |Teaching |Clinical |Relevant )?(?:Experience|Employment|Work History|Career History|Education|Skills|Summary|Profile|Objective|Certifications?|Licen[cs]es?|Projects?|Volunteer(?:ing)?|Publications|Awards)):?$/;
 
 export function splitSections(text: string): Section[] {
   const out: Section[] = [];
@@ -180,8 +180,10 @@ export function splitSections(text: string): Section[] {
   out.push(cur);
   return out;
 }
-const isJobSection = (h: string) => /EXPERIENCE|EMPLOYMENT|WORK HISTORY|CAREER HISTORY|PROFESSIONAL BACKGROUND/.test(h) && !/EDUCATION|VOLUNTEER/.test(h);
-const isEduSection = (h: string) => /EDUCATION|CREDENTIAL|QUALIFICATION/.test(h);
+const isJobSection = (h: string) =>
+  /EXPERIENCE|EMPLOYMENT|WORK HISTORY|CAREER HISTORY|PROFESSIONAL BACKGROUND|BERUFSERFAHRUNG|ERFAHRUNG|EXPERIENCIA|EXPÉRIENCE|ESPERIENZ|EXPERIÊNCIA|WERKERVARING|ERVARING/.test(h)
+  && !/EDUCATION|VOLUNTEER|AUSBILDUNG|EDUCACI|FORMATION|FORMAZIONE|OPLEIDING/.test(h);
+const isEduSection = (h: string) => /EDUCATION|CREDENTIAL|QUALIFICATION|AUSBILDUNG|BILDUNG|STUDIUM|EDUCACI|FORMACI|FORMATION|FORMAZIONE|OPLEIDING/.test(h);
 const isSummarySection = (h: string) => /SUMMARY|PROFILE|OBJECTIVE|STATEMENT|ABOUT/.test(h);
 
 // ---------------------------------------------------------------------------
@@ -503,10 +505,11 @@ export function readProfile(rawText: string, opts: { nowYear?: number } = {}): M
   const expected = /\b(?:expected|anticipated|candidate for)\b[^.\n]{0,40}?\b(20\d\d)\b|\b(20\d\d)\s*\(expected\)/i.exec(eduBody);
   const student = !!expected && Number(expected[1] ?? expected[2]) > nowYear;
   let degree: MatchProfile["degree"] = null;
-  if (/\b(?:ph\.?d|doctorate|doctor of|pharm\.?d|d\.?p\.?t|ed\.?d)\b/i.test(eduBody)) degree = "doctorate";
-  else if (/\b(?:master'?s?|m\.s\.|m\.a\.|msc|mba|msn|m\.ed|mph)\b/i.test(eduBody)) degree = "master";
-  else if (/\b(?:bachelor'?s?|b\.s\.|b\.a\.|b\.b\.a\.|bsn|b\.eng|bsc|b\.sc)\b/i.test(eduBody) || /\b(?:BS|BA|BSN|BBA)\b/.test(eduBody)) degree = "bachelor";
-  else if (/\b(?:associate'?s? (?:degree|of)|a\.a\.s?\.|adn)\b/i.test(eduBody)) degree = "associate";
+  // Dotted forms end in a full stop, where \b cannot match, so they sit outside the word boundaries.
+  if (/\b(?:phd|doctorate|doctor of|pharmd|dpt|edd)\b|\b(?:ph|pharm|ed)\.\s?d\.?|\bd\.p\.t\./i.test(eduBody)) degree = "doctorate";
+  else if (/\b(?:master'?s?|msc|mba|msn|mph)\b|\bm\.(?:s|a|sc|ed|eng)\./i.test(eduBody)) degree = "master";
+  else if (/\b(?:bachelor'?s?|bsn|bsc|bba|beng)\b|\bb\.(?:s|a|b\.a|sc|eng)\./i.test(eduBody) || /\b(?:BS|BA|BSN|BBA)\b/.test(eduBody)) degree = "bachelor";
+  else if (/\b(?:associate'?s? (?:degree|of)|adn)\b|\ba\.a\.s?\./i.test(eduBody)) degree = "associate";
   else if (/\b(?:high school|diploma|ged)\b/i.test(eduBody)) degree = "high_school";
   if (degree) basis.degree = degree.replace("_", " ");
 

@@ -768,7 +768,9 @@ export function familyForTitles(titles: readonly string[]): { family: TitleFamil
     const t = title.trim();
     if (!t) continue;
     for (const f of TITLE_FAMILIES) {
-      if ((f.match ?? f.core).test(t)) return { family: f, title: t };
+      // A title the family's own not-list names is another job, on a résumé as on a
+      // posting: a court reporter is not a journalist (fit-score's stenographer case).
+      if ((f.match ?? f.core).test(t) && !f.not?.test(t)) return { family: f, title: t };
     }
   }
   return null;
