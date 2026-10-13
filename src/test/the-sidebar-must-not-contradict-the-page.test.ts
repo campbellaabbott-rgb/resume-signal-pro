@@ -106,7 +106,13 @@ describe("a salary-sorted search is ordered by the database, not by a window", (
     // page 2 led higher than page 1.
     expect(/\.order\("salary_rank_usd", \{ ascending: false \}\)/.test(BLK)).toBe(true);
     // Paging is a plain offset into one stable ordering — no window to fall off.
-    expect(/\.range\(offset, offset \+ limit - 1\)/.test(BLK)).toBe(true);
+    // It reads fetchLimit rows, not limit (S12-035): the page folds clusters
+    // like every other route, and a read of exactly limit rows folded to a
+    // page a quarter to a half empty ("cashier" served 44 of 60); the next
+    // page starts where the fold stopped consuming.
+    expect(/\.range\(offset, offset \+ fetchLimit - 1\)/.test(BLK)).toBe(true);
+    expect(/\.range\(offset, offset \+ limit - 1\)/.test(BLK), "an exact read folds to a short page").toBe(false);
+    expect(/nextOffset: offset \+ salGrouped\.rawConsumed/.test(BLK)).toBe(true);
   });
 
   it("excludes unpriced rows rather than sorting them last", () => {
