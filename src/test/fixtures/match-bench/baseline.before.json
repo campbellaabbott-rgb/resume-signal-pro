@@ -1,0 +1,298 @@
+{
+  "summary": {
+    "generatedAt": "2026-10-12T15:15:36.878Z",
+    "resumes": 24,
+    "exact": 11,
+    "bounded": 13,
+    "exactSet": {
+      "p10": 14.5,
+      "p20": 10,
+      "seniority": 15.9,
+      "location": 85.5,
+      "wrongField": 0,
+      "oldCareer": 0,
+      "poolP": 10.3,
+      "poolSeniority": 16.8,
+      "poolLocation": 84.4,
+      "poolWrongField": 0,
+      "unscoredInTop20": 0
+    },
+    "allSet": {
+      "p20Lower": 4.6,
+      "p20Upper": 9.8,
+      "p10Lower": 6.7,
+      "p10Upper": 17.1,
+      "poolP": 6.5,
+      "poolLocation": 90.6,
+      "poolSeniority": 16.3,
+      "poolWrongField": 7.5,
+      "resumesWithRzero": 6,
+      "resumesWithRunder5": 16,
+      "emptyTerms": 0,
+      "poolsUnder20": 0
+    },
+    "latency": {
+      "listMs": [
+        1235,
+        1235,
+        1235,
+        1528,
+        1528,
+        1670,
+        1118,
+        1181,
+        1867,
+        1148,
+        1148,
+        1386,
+        1109,
+        1207,
+        968,
+        1112,
+        1194,
+        1194,
+        1138,
+        1059,
+        1773,
+        1175,
+        1175,
+        1095
+      ],
+      "termsCpuMsMax": 33.6,
+      "fitCpuMsPerBatchMax": 567.9
+    }
+  },
+  "per": [
+    {
+      "id": "sw-ng-austin",
+      "exact": true,
+      "R": 12,
+      "p10": 30,
+      "p20": 25,
+      "p20Bounds": null
+    },
+    {
+      "id": "sw-mid-toronto",
+      "exact": true,
+      "R": 0,
+      "p10": 0,
+      "p20": 0,
+      "p20Bounds": null
+    },
+    {
+      "id": "sw-sr-seattle",
+      "exact": true,
+      "R": 3,
+      "p10": 0,
+      "p20": 0,
+      "p20Bounds": null
+    },
+    {
+      "id": "rn-ng-phoenix",
+      "exact": true,
+      "R": 5,
+      "p10": 20,
+      "p20": 15,
+      "p20Bounds": null
+    },
+    {
+      "id": "rn-mid-chicago",
+      "exact": true,
+      "R": 3,
+      "p10": 10,
+      "p20": 5,
+      "p20Bounds": null
+    },
+    {
+      "id": "rn-sr-manchester",
+      "exact": false,
+      "R": 1,
+      "p10": null,
+      "p20": null,
+      "p20Bounds": [
+        0,
+        5
+      ]
+    },
+    {
+      "id": "rt-ng-columbus",
+      "exact": false,
+      "R": 1,
+      "p10": null,
+      "p20": null,
+      "p20Bounds": [
+        0,
+        5
+      ]
+    },
+    {
+      "id": "rt-mid-gap-atlanta",
+      "exact": false,
+      "R": 0,
+      "p10": null,
+      "p20": null,
+      "p20Bounds": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "rt-sr-dallas",
+      "exact": false,
+      "R": 6,
+      "p10": null,
+      "p20": null,
+      "p20Bounds": [
+        0,
+        30
+      ]
+    },
+    {
+      "id": "fn-ng-nyc",
+      "exact": false,
+      "R": 5,
+      "p10": null,
+      "p20": null,
+      "p20Bounds": [
+        0,
+        25
+      ]
+    },
+    {
+      "id": "fn-mid-charlotte",
+      "exact": false,
+      "R": 1,
+      "p10": null,
+      "p20": null,
+      "p20Bounds": [
+        0,
+        5
+      ]
+    },
+    {
+      "id": "fn-sr-chicago",
+      "exact": true,
+      "R": 10,
+      "p10": 20,
+      "p20": 15,
+      "p20Bounds": null
+    },
+    {
+      "id": "mk-ng-boston",
+      "exact": false,
+      "R": 3,
+      "p10": null,
+      "p20": null,
+      "p20Bounds": [
+        0,
+        15
+      ]
+    },
+    {
+      "id": "mk-mid-denver",
+      "exact": false,
+      "R": 4,
+      "p10": null,
+      "p20": null,
+      "p20Bounds": [
+        0,
+        20
+      ]
+    },
+    {
+      "id": "mk-ch-journalist-portland",
+      "exact": true,
+      "R": 11,
+      "p10": 30,
+      "p20": 15,
+      "p20Bounds": null
+    },
+    {
+      "id": "tr-ng-hvac-houston",
+      "exact": false,
+      "R": 1,
+      "p10": null,
+      "p20": null,
+      "p20Bounds": [
+        0,
+        5
+      ]
+    },
+    {
+      "id": "tr-mid-brisbane",
+      "exact": false,
+      "R": 0,
+      "p10": null,
+      "p20": null,
+      "p20Bounds": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "tr-ch-cook-to-electrician-philly",
+      "exact": false,
+      "R": 0,
+      "p10": null,
+      "p20": null,
+      "p20Bounds": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "ed-ng-sacramento",
+      "exact": true,
+      "R": 0,
+      "p10": 0,
+      "p20": 0,
+      "p20Bounds": null
+    },
+    {
+      "id": "ed-mid-gap-raleigh",
+      "exact": false,
+      "R": 0,
+      "p10": null,
+      "p20": null,
+      "p20Bounds": [
+        0,
+        0
+      ]
+    },
+    {
+      "id": "ed-ch-teacher-to-id-minneapolis",
+      "exact": true,
+      "R": 13,
+      "p10": 40,
+      "p20": 25,
+      "p20Bounds": null
+    },
+    {
+      "id": "da-ng-opt-sanjose",
+      "exact": true,
+      "R": 8,
+      "p10": 0,
+      "p20": 5,
+      "p20Bounds": null
+    },
+    {
+      "id": "da-mid-pittsburgh",
+      "exact": true,
+      "R": 3,
+      "p10": 10,
+      "p20": 5,
+      "p20Bounds": null
+    },
+    {
+      "id": "da-ch-biochem-to-ds-sandiego",
+      "exact": false,
+      "R": 3,
+      "p10": null,
+      "p20": null,
+      "p20Bounds": [
+        0,
+        15
+      ]
+    }
+  ]
+}
