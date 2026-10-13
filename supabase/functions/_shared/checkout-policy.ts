@@ -185,9 +185,12 @@ export function sessionPolicy(opts: {
     customText.terms_of_service_acceptance = { message: `I agree to the [Terms of Service](${SITE_ORIGIN}/terms).` };
   }
   if (Object.keys(customText).length) out.custom_text = customText;
+  // THE BILLING ADDRESS, ON EVERY SESSION (S12-059). With the switch off it
+  // is the record of where a buyer the territory check could not place
+  // really is, and what the owner's Radar rule reads; with it on, tax needs it.
+  out.billing_address_collection = "required";
   if (euUkSalesOn(opts.env)) {
     out.automatic_tax = { enabled: true };
-    out.billing_address_collection = "required";
     out.tax_id_collection = { enabled: true };
     if (opts.hasCustomer) out.customer_update = { address: "auto", name: "auto" };
   } else {
@@ -284,20 +287,32 @@ export function renewalTerms(priceCents: number, trialDays: number | null, langu
  * THE REFERRAL RIDES EVERY CHECKOUT; THE COMMISSION DOES NOT. Five of six
  * checkouts dropped the affiliate's code, so a referred Pro or Full Analysis
  * sale was invisible. The code is now carried by all of them, and the webhook
- * records the conversion. The affiliate page promises nothing for the Full
- * Resume Analysis, scan credit top-ups, Pro, Morning Queue or the Agent Pass,
- * so those checkouts mark the referral `referral_commission: "none"` and the
- * conversion is recorded at $0: attributed, not paid, until the owner sets a
- * rate (src/config/affiliate-commission.ts says which).
+ * records the conversion. Since the product line of 2026-10-12 an affiliate
+ * earns one thing: a flat amount on a referred customer's first paid Pro
+ * month (_shared/affiliate-commission.ts). Pro's checkout marks its referral
+ * with that rule's name AND the amount in cents (referral_commission_cents),
+ * which is what stripe-webhook and verify-product-purchase pay: a named
+ * amount, never their per-product fallback. Every other checkout marks it
+ * "none", and the conversion is recorded at $0: attributed, not paid.
  */
-export function policyMetadata(body: unknown, env?: Env, opts: { commissioned?: boolean } = {}): Record<string, string> {
+export type ReferralCommission = "none" | "pro_first_month";
+
+export function policyMetadata(
+  body: unknown,
+  env?: Env,
+  opts: { commission?: ReferralCommission; commissionCents?: number } = {},
+): Record<string, string> {
   const md: Record<string, string> = {};
   const shown = termsVersionOf(body);
   if (shown) md.terms_version = shown;
   const referral = referralCodeOf(body);
   if (referral) {
     md.referral_code = referral;
-    if (opts.commissioned !== true) md.referral_commission = "none";
+    md.referral_commission = opts.commission ?? "none";
+    const cents = opts.commissionCents;
+    if (md.referral_commission !== "none" && typeof cents === "number" && Number.isInteger(cents) && cents > 0 && cents <= 10_000) {
+      md.referral_commission_cents = String(cents);
+    }
   }
   if (euUkSalesOn(env)) {
     const c = euConsentOf(body);

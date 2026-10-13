@@ -120,13 +120,17 @@ beforeEach(() => {
 afterEach(() => { state.created.length = 0; });
 
 /** What each minter is sent by its page, signed in where it requires it. */
-const CASES: Array<{ fn: string; body: Record<string, unknown>; signedIn: boolean; mode: "payment" | "subscription"; commissioned: boolean; receipt: string | null }> = [
-  { fn: "create-checkout", body: { currency: "usd" }, signedIn: false, mode: "payment", commissioned: false, receipt: null },
-  { fn: "create-product-checkout", body: { email: "Typed@Example.com", productId: "coverLetter" }, signedIn: false, mode: "payment", commissioned: true, receipt: "typed@example.com" },
-  { fn: "create-scan-pack-checkout", body: { email: "typed@example.com", creditAmount: 10 }, signedIn: false, mode: "payment", commissioned: false, receipt: "typed@example.com" },
-  { fn: "create-subscription-checkout", body: {}, signedIn: true, mode: "subscription", commissioned: false, receipt: null },
-  { fn: "create-agent-checkout", body: {}, signedIn: true, mode: "subscription", commissioned: false, receipt: null },
-  { fn: "create-pass-checkout", body: {}, signedIn: true, mode: "payment", commissioned: false, receipt: BUYER.email },
+// The product line of 2026-10-12: the scan packs and the cut one-offs answer
+// 410 (w4b-the-cut-products-are-sold-nowhere), so the product checkout is run
+// with Freelance Boost, still sold; and the affiliate re-base pays only on
+// Pro's first paid month, so the referral marker is the rule each checkout
+// sells under ("pro_first_month" on Pro, "none" everywhere else).
+const CASES: Array<{ fn: string; body: Record<string, unknown>; signedIn: boolean; mode: "payment" | "subscription"; commission: string; receipt: string | null }> = [
+  { fn: "create-checkout", body: { currency: "usd" }, signedIn: false, mode: "payment", commission: "none", receipt: null },
+  { fn: "create-product-checkout", body: { email: "Typed@Example.com", productId: "freelanceBoost" }, signedIn: false, mode: "payment", commission: "none", receipt: "typed@example.com" },
+  { fn: "create-subscription-checkout", body: {}, signedIn: true, mode: "subscription", commission: "pro_first_month", receipt: null },
+  { fn: "create-agent-checkout", body: {}, signedIn: true, mode: "subscription", commission: "none", receipt: null },
+  { fn: "create-pass-checkout", body: {}, signedIn: true, mode: "payment", commission: "none", receipt: BUYER.email },
 ];
 
 async function call(c: (typeof CASES)[number], extra: Record<string, unknown> = {}, origin = "https://evil.example") {
@@ -162,7 +166,7 @@ describe("the policy every checkout applies", () => {
         const r = await call(c, { referralCode: "ab12cd34", termsVersion: TERMS_VERSION });
         expect(r.session?.metadata?.referral_code).toBe("ab12cd34");
         expect(r.session?.metadata?.terms_version).toBe(TERMS_VERSION);
-        expect(r.session?.metadata?.referral_commission, "the affiliate page promises nothing for this checkout").toBe(c.commissioned ? undefined : "none");
+        expect(r.session?.metadata?.referral_commission, "the referral is stamped with the rule this checkout sells under").toBe(c.commission);
       });
 
       it("a body from a page that showed no Terms line records none", async () => {
@@ -235,13 +239,14 @@ describe("the subscriptions say they renew, beside Stripe's pay button", () => {
 });
 
 describe("the scan-credit checkout attaches nobody's customer (S8-059)", () => {
-  it("an address that already has a Stripe customer is not looked up, and the payment is not attached to it", async () => {
+  // Scan packs are no longer sold (2026-10-12): the checkout answers 410 before
+  // it reads the body's address, so it can attach nobody's customer at all.
+  it("an address that already has a Stripe customer is not looked up, and no session is made", async () => {
     state.customers["typed@example.com"] = [{ id: "cus_subscriber" }];
-    const r = await call(CASES.find((c) => c.fn === "create-scan-pack-checkout")!);
-    expect(r.status).toBe(200);
+    const r = await call({ fn: "create-scan-pack-checkout", body: { email: "typed@example.com", creditAmount: 10 }, signedIn: false, mode: "payment", commission: "none", receipt: null });
+    expect(r.status).toBe(410);
     expect(state.customerLists).toEqual([]);
-    expect(r.session?.customer).toBeUndefined();
-    expect(r.session?.customer_email).toBe("typed@example.com");
+    expect(state.created).toEqual([]);
   });
 });
 
@@ -251,16 +256,18 @@ describe("the scan-credit checkout attaches nobody's customer (S8-059)", () => {
  * the session's metadata, cleaned, for every deliverer to read.
  */
 describe("an ATS Defense checkout carries the roles its buyer named (S11-074)", () => {
-  const ats = { fn: "create-product-checkout", body: { email: "typed@example.com", productId: "atsDefense" }, signedIn: false, mode: "payment" as const, commissioned: true, receipt: "typed@example.com" };
+  // ATS Defense was cut on 2026-10-12: its purchase is refused before any
+  // role reaches Stripe. A product still sold carries no roles.
+  const ats = { fn: "create-product-checkout", body: { email: "typed@example.com", productId: "atsDefense" }, signedIn: false, mode: "payment" as const, commission: "none", receipt: "typed@example.com" };
 
-  it("writes up to three roles, cleaned and without repeats, to the session's metadata", async () => {
-    const r = await call(ats, { targetRoles: [" Data Analyst ", "data analyst", "BI|Developer", "Analytics Engineer", "A fourth role"] });
-    expect(r.status, JSON.stringify(r.json)).toBe(200);
-    expect(r.session?.metadata?.target_roles, "the roles never reached Stripe").toBe("Data Analyst | BI Developer | Analytics Engineer");
+  it("an ATS Defense purchase is refused (cut), and its roles never reach Stripe", async () => {
+    const r = await call(ats, { targetRoles: [" Data Analyst ", "data analyst", "BI|Developer"] });
+    expect(r.status).toBe(410);
+    expect(state.created).toEqual([]);
   });
 
   it("another product carries none", async () => {
-    const r = await call({ ...ats, body: { email: "typed@example.com", productId: "coverLetter" } }, { targetRoles: ["Data Analyst"] });
+    const r = await call({ ...ats, body: { email: "typed@example.com", productId: "freelanceBoost" } }, { targetRoles: ["Data Analyst"] });
     expect(r.session?.metadata?.target_roles ?? "", "a product that targets no roles carried some").toBe("");
   });
 });

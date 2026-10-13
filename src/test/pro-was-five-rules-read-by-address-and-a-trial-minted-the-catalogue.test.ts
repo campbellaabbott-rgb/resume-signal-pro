@@ -262,17 +262,19 @@ const post = (fn: string, body: Record<string, unknown>, bearer?: string) =>
     body: JSON.stringify(body),
   }));
 
+// The products the line still sells (2026-10-12): the cover letter and the
+// scan pack were cut, so the two Freelance tiers stand in for them.
 describe("create-product-checkout mints a grant only for an account whose plan may mint", () => {
   it("a password sign-up as a subscriber's address is sent to Stripe, whatever the address's cache row says", async () => {
     db.rows("pro_subscribers").push({ email: "subscriber@example.com", status: "active", current_period_end: soon() });
-    const body = await (await post("create-product-checkout", { productId: "coverLetter" }, "jwt-squatter")).json();
+    const body = await (await post("create-product-checkout", { productId: "freelanceBoost" }, "jwt-squatter")).json();
     expect(body.proIncluded).toBeUndefined();
     expect(db.rows("pro_grants")).toEqual([]);
     expect(stripe.created).toHaveLength(1);
   });
 
-  it("a trialing plan mints no free one-off product and no scan pack", async () => {
-    for (const productId of ["coverLetter", "scanPack"]) {
+  it("a trialing plan mints no free one-off product", async () => {
+    for (const productId of ["freelanceBoost", "freelanceTransitionPro"]) {
       const body = await (await post("create-product-checkout", { productId }, "jwt-trialist")).json();
       expect(body.proIncluded, productId).toBeUndefined();
     }
@@ -282,16 +284,16 @@ describe("create-product-checkout mints a grant only for an account whose plan m
 
   it("a paid plan, or a comped agent plan, gets the grant, which names the account", async () => {
     for (const [jwt, uid] of [["jwt-owner", OWNER], ["jwt-comped", COMPED]] as const) {
-      const body = await (await post("create-product-checkout", { productId: "coverLetter" }, jwt)).json();
+      const body = await (await post("create-product-checkout", { productId: "freelanceBoost" }, jwt)).json();
       expect(body.proIncluded, jwt).toBe(true);
-      expect(db.rows("pro_grants").at(-1)).toMatchObject({ user_id: uid, product_id: "coverLetter" });
+      expect(db.rows("pro_grants").at(-1)).toMatchObject({ user_id: uid, product_id: "freelanceBoost" });
     }
     expect(stripe.created).toEqual([]);
   });
 
   it("a plan that cannot be read is a 503, never a charge for an included tool", async () => {
     db.rpcs.pro_entitlement_rows = () => ({ data: null, error: { message: "boom" } });
-    const res = await post("create-product-checkout", { productId: "coverLetter" }, "jwt-owner");
+    const res = await post("create-product-checkout", { productId: "freelanceBoost" }, "jwt-owner");
     expect(res.status).toBe(503);
     expect(stripe.created).toEqual([]);
   });

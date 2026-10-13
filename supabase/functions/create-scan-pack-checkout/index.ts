@@ -5,10 +5,14 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-start.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
 import { checkoutOrigin, euConsentAnswer, euConsentRefusal, policyMetadata, sessionPolicy } from "../_shared/checkout-policy.ts";
+import { cutCheckoutAnswer, SCAN_PACKS_ON_SALE } from "../_shared/product-cuts.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-scan-pack-checkout.2026-10-09.61";
+// 2026-10-11.23 (wave 4 round 2, checkout-catalogue): scan packs are no longer
+// sold (owner decision 2026-10-12, the product line); a purchase answers 410
+// before the limiter or Stripe. Credits already bought stay spendable.
+const FN_BUILD = "create-scan-pack-checkout.2026-10-11.23";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -39,6 +43,19 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // SCAN PACKS ARE NO LONGER SOLD: answered before the limiter, the body's
+  // address or Stripe, so nothing is counted or charged.
+  if (!SCAN_PACKS_ON_SALE) {
+    const asked = await req.clone().json().catch(() => null);
+    const answer = cutCheckoutAnswer("scanPack", {
+      body: asked,
+      acceptLanguage: req.headers.get("accept-language"),
+      origin: checkoutOrigin(req.headers.get("origin"), (k: string) => Deno.env.get(k)),
+    });
+    console.log("[CREATE-SCAN-PACK-CHECKOUT] refused: scan packs are no longer sold");
+    return new Response(JSON.stringify(answer.body), { status: answer.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
   // The platform's word for the caller's address, never the first forwarded

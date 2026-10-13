@@ -1,7 +1,8 @@
 // deploy-stamp: 2026-10-09T18:00Z
 // Creates a Stripe Checkout session for Resume Booster Pro — $45/month,
-// all current and future consumer tools included. Uses inline recurring
-// price_data so no Price object needs to exist in the Stripe dashboard.
+// everything in a free account plus the writing tools (the product line of
+// 2026-10-12). Uses inline recurring price_data so no Price object needs to
+// exist in the Stripe dashboard.
 //
 // SIGNED-IN CALLERS ONLY, for their own address (2026-10-04 completeness
 // review). It used to take any address from the body and answer
@@ -36,10 +37,24 @@ import { signedInUser } from "../_shared/signed-in-email.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
 import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-start.ts";
 import { checkoutLanguageOf, checkoutOrigin, euConsentAnswer, euConsentRefusal, policyMetadata, renewalTerms, sessionPolicy } from "../_shared/checkout-policy.ts";
+import { ipinfoLookup, territoryAnswer, territoryRefusal } from "../_shared/sales-territory.ts";
+import { reusableCustomer } from "../_shared/customer-ownership.ts";
+import { recordCheckoutBuyer } from "../_shared/checkout-buyer.ts";
+import { PRO_FIRST_MONTH_COMMISSION_CENTS, PRO_FIRST_MONTH_MARKER } from "../_shared/affiliate-commission.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-subscription-checkout.2026-10-09.61";
+// 2026-10-11.23 (wave 4 round 2, checkout-catalogue): a buyer in the EU, the
+// EEA or the UK is refused while the EU/UK switch is off; the address's
+// existing Stripe customer is reused only when this account provably owns it
+// (S12-099); Pro's Stripe description says what Pro is since the product line
+// (no cut product named); a referral earns the flat first-month commission;
+// the account is written to checkout_buyers; the billing address is collected.
+const FN_BUILD = "create-subscription-checkout.2026-10-11.23";
+
+/** What Stripe's page and receipts say Pro is: the Pro card's lines (src/config/pro-perks.ts), in one sentence. */
+export const PRO_STRIPE_DESCRIPTION =
+  "Everything in a free account, plus the writing tools: a tailored résumé, cover letter and interview prep for your jobs (up to 5 sets a day and 60 a month), batch application prep, the $5 Full Analysis, Freelance Boost and Transition Pro included, and unlimited scans.";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -83,6 +98,16 @@ serve(async (req) => {
     const consentMissing = euConsentRefusal(env, "subscription", body);
     if (consentMissing) return json(euConsentAnswer(consentMissing), 400);
 
+    // NO SALE INTO THE EU, THE EEA OR THE UK WHILE THE SWITCH IS OFF (S12-059).
+    const territory = await territoryRefusal({
+      env, headers: req.headers, body, address: clientAddressOr(req.headers), lookup: ipinfoLookup(env),
+    });
+    if (territory) {
+      const answer = territoryAnswer(territory, { body, acceptLanguage: req.headers.get("accept-language") });
+      console.log(`[CREATE-SUBSCRIPTION-CHECKOUT] refused: the buyer is in the VAT territory (${territory.signal})`);
+      return json(answer.body, answer.status);
+    }
+
     // An account granted the agent by hand already has Pro (the agent includes it).
     if (await manualAgentGrant(supabase, email)) return json({ alreadySubscribed: true, tier: "agent" });
 
@@ -98,7 +123,14 @@ serve(async (req) => {
 
     // Only our own hosts get the buyer back (S8-060); a forged Origin gets the site.
     const origin = checkoutOrigin(req.headers.get("origin"), env);
-    const policy = policyMetadata(body, env);
+    // A referred customer's first paid Pro month is the one sale an affiliate
+    // earns on (_shared/affiliate-commission.ts): Pro sells no trial, so this
+    // session is that month.
+    const policy = policyMetadata(body, env, { commission: PRO_FIRST_MONTH_MARKER, commissionCents: PRO_FIRST_MONTH_COMMISSION_CENTS });
+    // THE ADDRESS'S STRIPE CUSTOMER ONLY IF THIS ACCOUNT OWNS IT (S12-099): a
+    // password sign-up on a former customer's address must not have its plan
+    // billed to that customer and see their invoices in the portal.
+    const reuseCustomerId = await reusableCustomer(supabase, { id: buyer.id, email }, standing.reuseCustomerId);
     // The buyer's user id ON THE SUBSCRIPTION: the copy checkProByEmail reads
     // to bind pro_subscribers.user_id, on every later refresh.
     // The service-start request (EU/UK switch) rides on the plan too: a
@@ -108,7 +140,7 @@ serve(async (req) => {
       ...(policy.service_start_consent ? { service_start_consent: policy.service_start_consent } : {}),
     };
     const session = await stripe.checkout.sessions.create({
-      ...(standing.reuseCustomerId ? { customer: standing.reuseCustomerId } : { customer_email: email }),
+      ...(reuseCustomerId ? { customer: reuseCustomerId } : { customer_email: email }),
       mode: "subscription",
       line_items: [
         {
@@ -118,8 +150,7 @@ serve(async (req) => {
             recurring: { interval: "month" },
             product_data: {
               name: PRO_PRODUCT_NAME,
-              description:
-                "Every Resume Booster tool included — full analysis, keyword fix, cover letters, interview coach, career simulator, premium packages, unlimited scans, plus every new tool we ship.",
+              description: PRO_STRIPE_DESCRIPTION,
             },
           },
           quantity: 1,
@@ -137,7 +168,7 @@ serve(async (req) => {
       // Renewal terms beside Stripe's pay button, tax only with the EU/UK switch on.
       // In the buyer's site language, with Stripe's page in the same one.
       ...sessionPolicy({
-        mode: "subscription", env, hasCustomer: !!standing.reuseCustomerId,
+        mode: "subscription", env, hasCustomer: !!reuseCustomerId,
         renewal: renewalTerms(PRO_PRICE_CENTS, null, checkoutLanguageOf(body)), language: checkoutLanguageOf(body),
       }),
     });
@@ -155,6 +186,10 @@ serve(async (req) => {
       mode: session.mode,
       context: checkoutContextOf(body),
       metadata: { planCents: PRO_PRICE_CENTS, termsVersion: policy.terms_version || null, referral: !!policy.referral_code, serviceStartConsent: policy.service_start_consent ?? null },
+    });
+    // The account behind the session, before the browser has the url (CP-022).
+    await recordCheckoutBuyer(supabase, {
+      stripeSessionId: session.id, caller: { kind: "signed_in", id: buyer.id, email }, checkoutFunction: "create-subscription-checkout", productType: "pro_subscription",
     });
 
     console.log(`[CREATE-SUBSCRIPTION-CHECKOUT] Session ${session.id} created`);

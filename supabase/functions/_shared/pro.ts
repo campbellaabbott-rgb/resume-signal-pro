@@ -51,6 +51,11 @@ export interface ProStatus {
    * stamp (or made in the Stripe dashboard without one).
    */
   boundUserId?: string | null;
+  /**
+   * The live subscription the answer rests on is set to end at its period
+   * end (cancelled in the portal), so it will not renew (S12-076).
+   */
+  cancelAtPeriodEnd?: boolean;
 }
 
 const ACTIVE_STATUSES = LIVE_SUBSCRIPTION_STATUSES;
@@ -126,7 +131,7 @@ export async function checkProByEmail(
   opts: ProRefreshOptions = {},
 ): Promise<ProStatus> {
   const normalized = email.trim().toLowerCase();
-  let result: ProStatus = { active: false, status: "inactive", currentPeriodEnd: null, stripeCustomerId: null };
+  let result: ProStatus = { active: false, status: "inactive", currentPeriodEnd: null, stripeCustomerId: null, cancelAtPeriodEnd: false };
 
   for (const customer of await customersWithSubscriptions(stripe, normalized)) {
     for (const sub of customer.subscriptions) {
@@ -142,6 +147,10 @@ export async function checkProByEmail(
         currentPeriodEnd: live && periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
         stripeCustomerId: customer.id,
         boundUserId: subscriptionBuyer(sub),
+        // CANCELLED, STILL LIVE TO ITS END (S12-076): the portal sets
+        // cancel_at_period_end (or a cancel_at date) and the plan stays active
+        // until then, so the card must say "Ends", not "Renews".
+        cancelAtPeriodEnd: live && subscriptionEnds(sub),
       };
     }
     if (result.active) break;
@@ -151,29 +160,44 @@ export async function checkProByEmail(
     stripe_customer_id: result.stripeCustomerId,
     status: result.status || "inactive",
     current_period_end: result.currentPeriodEnd,
+    cancel_at_period_end: result.cancelAtPeriodEnd === true,
     updated_at: new Date().toISOString(),
   };
+  // A database without the column yet (20261011150000 not applied): the
+  // row is written without it rather than not at all.
+  const withoutCancel = () => {
+    const { cancel_at_period_end: _omit, ...rest } = cached;
+    return rest;
+  };
+  const missingColumn = (error: { code?: string } | null | undefined) => !!error && (error.code === "42703" || error.code === "PGRST204");
   try {
     if (result.stripeCustomerId) {
       // AND WHOSE IT IS (20261008130000): a plan that carries its buyer's user
       // id binds the row to that account, which is how every gate reads it
       // (pro_entitlement_rows). The id is never cleared here: an unstamped
       // plan leaves whatever binding the row already has.
-      await supabase.from("pro_subscribers").upsert({
-        email: normalized,
-        ...cached,
-        ...(result.boundUserId ? { user_id: result.boundUserId } : {}),
-      });
+      const owner = result.boundUserId ? { user_id: result.boundUserId } : {};
+      const first = await supabase.from("pro_subscribers").upsert({ email: normalized, ...cached, ...owner });
+      if (missingColumn(first?.error)) await supabase.from("pro_subscribers").upsert({ email: normalized, ...withoutCancel(), ...owner });
     } else if (opts.seenUpdatedAt !== null) {
       // No subscription anywhere in Stripe for this address: downgrade a row
       // that exists (the one the caller saw, when it says), never create one.
-      let downgrade = supabase.from("pro_subscribers").update(cached).eq("email", normalized);
-      if (typeof opts.seenUpdatedAt === "string") downgrade = downgrade.eq("updated_at", opts.seenUpdatedAt);
-      await downgrade;
+      const downgrade = async (values: Record<string, unknown>) => {
+        let q = supabase.from("pro_subscribers").update(values).eq("email", normalized);
+        if (typeof opts.seenUpdatedAt === "string") q = q.eq("updated_at", opts.seenUpdatedAt);
+        return await q;
+      };
+      const first = await downgrade(cached);
+      if (missingColumn(first?.error)) await downgrade(withoutCancel());
     }
   } catch (_) {
     // Cache refresh is best-effort; the caller already has the live answer.
   }
 
   return result;
+}
+
+/** Is this subscription set to end (cancelled at period end, or a cancel date)? */
+export function subscriptionEnds(sub: { cancel_at_period_end?: boolean | null; cancel_at?: number | null }): boolean {
+  return sub.cancel_at_period_end === true || (typeof sub.cancel_at === "number" && sub.cancel_at > 0);
 }

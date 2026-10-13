@@ -254,6 +254,9 @@ function entriesOf(obj: string): Array<[string, string]> {
   return parts.map((p) => p.trim()).filter(Boolean).flatMap((p): Array<[string, string]> => {
     // The shared checkout policy's spread (wave 3): every key it can add.
     if (p === "...policy") return POLICY_KEYS.map((k) => [k, `policy.${k}`]);
+    // The signed-in buyer's account (wave 4 round 2, _shared/checkout-buyer.ts
+    // buyerMetadata): user_id, and nothing else.
+    if (p === "...buyerMetadata(caller)") return [["user_id", "caller.id"]];
     const m = /^([A-Za-z_]\w*)\s*(?::\s*([\s\S]*))?$/.exec(p);
     if (!m) throw new Error(`unreadable metadata entry: ${p}`);
     return [[m[1], (m[2] ?? m[1]).trim()]];

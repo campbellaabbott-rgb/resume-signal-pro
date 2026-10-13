@@ -43,7 +43,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { checkProByEmail, PRO_ENTITLEMENT_RPC, proStandingFrom, type ProRow } from "../_shared/pro.ts";
+import { checkProByEmail, PRO_ENTITLEMENT_RPC, proRowIsLive, proStandingFrom, type ProRow } from "../_shared/pro.ts";
 import { isOwingStatus } from "../_shared/subscription-standing.ts";
 import { signedInUser } from "../_shared/signed-in-email.ts";
 import { buyerEmailOf } from "../_shared/buyer-email.ts";
@@ -51,7 +51,28 @@ import { clientAddressOr } from "../_shared/client-address.ts";
 
 // Provable from outside without an account: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "check-subscription.2026-10-08.1";
+// 2026-10-11.23 (wave 4 round 2, checkout-catalogue): the answer says when a
+// live plan was cancelled at its period end (cancelAtPeriodEnd, S12-076) and
+// which plan a signed-in account's standing rests on (planTier, S12-168: a
+// retired Agent plan is not shown as Pro); a caller just back from Stripe's
+// billing portal (fresh: true) is answered from Stripe, not a cached row.
+const FN_BUILD = "check-subscription.2026-10-11.23";
+
+/**
+ * Which plan a signed-in account's rows rest on: a live Pro row, else a live
+ * agent row, else a row that owes money (Pro first), else none. The agent
+ * plan is retired (wave 4), so a page shows such an account a retired-plan
+ * card instead of selling or renewing Pro to it.
+ */
+export function planTierOf(rows: ReadonlyArray<ProRow & { tier?: string | null }>, now: number = Date.now()): "pro" | "agent" | null {
+  const live = rows.filter((r) => proRowIsLive(r, now));
+  if (live.some((r) => r.tier === "pro")) return "pro";
+  if (live.some((r) => r.tier === "agent")) return "agent";
+  const owing = rows.filter((r) => isOwingStatus(String(r.status ?? "")));
+  if (owing.some((r) => r.tier === "pro")) return "pro";
+  if (owing.some((r) => r.tier === "agent")) return "agent";
+  return null;
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -76,7 +97,11 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { persistSession: false } },
     );
-    const body = await req.json().catch(() => ({})) as { sessionId?: unknown };
+    const body = await req.json().catch(() => ({})) as { sessionId?: unknown; fresh?: unknown };
+    // BACK FROM STRIPE'S BILLING PORTAL (S12-076): a cancel or a card change
+    // made there is newer than any cached row, so the cache is skipped once.
+    // The live check is still counted against the per-address allowance.
+    const fresh = body.fresh === true;
 
     const caller = await signedInUser(supabase.auth, req.headers, Deno.env.get("SUPABASE_ANON_KEY") ?? "");
     const signedIn = caller?.email ?? null;
@@ -95,12 +120,14 @@ serve(async (req) => {
       } catch (_) {
         return json(addressAnswer, status);
       }
-      const standing = proStandingFrom(liveRow ? [...rows, liveRow] : rows);
+      const all = (liveRow ? [...rows, liveRow] : rows) as Array<ProRow & { tier?: string | null }>;
+      const standing = proStandingFrom(all);
       return json({
         ...addressAnswer,
         active: standing.pro,
         trialing: standing.trialing,
         consumablesIncluded: standing.consumables,
+        planTier: planTierOf(all),
         ...(addressAnswer.active === true && !standing.pro ? { linkPending: true } : {}),
         ...(standing.pro && standing.status && addressAnswer.active !== true ? { status: standing.status } : {}),
       }, status);
@@ -153,11 +180,15 @@ serve(async (req) => {
     // subscribed" is written only where there was none.
     let seenUpdatedAt: string | null | undefined;
     try {
-      const { data: row } = await supabase
-        .from("pro_subscribers")
-        .select("status, current_period_end, updated_at")
-        .eq("email", who)
-        .maybeSingle();
+      type CacheRow = { status: string; current_period_end: string | null; updated_at: string; cancel_at_period_end?: boolean | null };
+      const read = (cols: string) =>
+        supabase.from("pro_subscribers").select(cols).eq("email", who).maybeSingle() as unknown as Promise<{ data: CacheRow | null; error: { code?: string; message?: string } | null }>;
+      let { data: row, error: readError } = await read("status, current_period_end, updated_at, cancel_at_period_end");
+      // A database without the column yet (20261011150000 not applied).
+      if (readError && (readError.code === "42703" || readError.code === "PGRST204")) {
+        ({ data: row, error: readError } = await read("status, current_period_end, updated_at"));
+      }
+      if (readError) throw readError;
       seenUpdatedAt = row ? String(row.updated_at) : null;
       if (row) {
         // The one rule's live test (one grace), over the address's row.
@@ -166,16 +197,21 @@ serve(async (req) => {
           active: live,
           status: row.status,
           currentPeriodEnd: row.current_period_end,
+          cancelAtPeriodEnd: live && row.cancel_at_period_end === true,
           needsPaymentUpdate: isOwingStatus(row.status),
           cached: true,
         };
         const age = Date.now() - new Date(row.updated_at).getTime();
         // A caller holding the checkout they just completed is told the live
-        // answer, never a not-live row written before they paid.
+        // answer, never a not-live row written before they paid; a caller
+        // back from the billing portal likewise.
         const notLiveFor = heldSession ? 0 : NOT_LIVE_CACHE_MS;
-        if (age < (live ? LIVE_CACHE_MS : notLiveFor)) return await answer(cachedAnswer);
+        if (!fresh && age < (live ? LIVE_CACHE_MS : notLiveFor)) return await answer(cachedAnswer);
       }
-    } catch (_) { /* fall through to live check */ }
+    } catch (_) {
+      // Fall through to the live check; the row as read is unknown.
+      seenUpdatedAt = undefined;
+    }
 
     // A session id in the body is not a pass: an invented cs_... string from a
     // signed-in caller used to skip this allowance on every request.
@@ -206,6 +242,7 @@ serve(async (req) => {
       active: status.active,
       status: status.status,
       currentPeriodEnd: status.currentPeriodEnd,
+      cancelAtPeriodEnd: status.active && status.cancelAtPeriodEnd === true,
       needsPaymentUpdate: isOwingStatus(status.status),
     }, 200, boundToCaller ? { tier: "pro", status: status.status, current_period_end: status.currentPeriodEnd } : null);
   } catch (error) {

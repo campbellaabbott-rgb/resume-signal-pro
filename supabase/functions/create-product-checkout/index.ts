@@ -5,11 +5,17 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-start.ts";
 import { rememberCheckoutResume, tempResumeIdOf } from "../_shared/checkout-resume-ref.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
-import { accountProStanding, addressProStanding } from "../_shared/pro.ts";
+import { accountProStanding } from "../_shared/pro.ts";
 import { checkoutOrigin, euConsentAnswer, euConsentRefusal, policyMetadata, sessionPolicy } from "../_shared/checkout-policy.ts";
 import { targetRolesMetadata } from "../_shared/target-roles.ts";
 import { APPLY_ASSISTANT_ON_SALE } from "../_shared/apply-agent-switch.ts";
 import { retiredCheckoutAnswer } from "../_shared/apply-agent-retired.ts";
+import { cutCheckoutAnswer, isCutProduct } from "../_shared/product-cuts.ts";
+import { ipinfoLookup, territoryAnswer, territoryRefusal } from "../_shared/sales-territory.ts";
+import {
+  buyerMetadata, buyerSessionFields, CALLER_UNAVAILABLE_BODY, checkoutCaller, fairUseAnswer, grantCapOf, recordCheckoutBuyer,
+} from "../_shared/checkout-buyer.ts";
+import { planPaid, UNPAID_PLAN_NOTE } from "../_shared/consumable-paid.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -17,7 +23,16 @@ import { retiredCheckoutAnswer } from "../_shared/apply-agent-retired.ts";
 // applying yourself (wave 4, the apply pivot).
 // 2026-10-11.2: its refusal reads a switch of its own (APPLY_ASSISTANT_ON_SALE),
 // so putting the Agent Pass or plan back on sale cannot reopen it.
-const FN_BUILD = "create-product-checkout.2026-10-11.2";
+// 2026-10-11.23 (wave 4 round 2, checkout-catalogue): the cut products answer
+// 410 (product-cuts.ts); a buyer in the EU, the EEA or the UK is refused while
+// the EU/UK switch is off (sales-territory.ts); a Pro grant that cannot be
+// minted, or an auth server that cannot answer, is a 503 and never a Stripe
+// url; a grant over the daily or monthly cap is a fair-use 429; the signed-out
+// "you hold Pro" lookup by a typed address is gone (owner decision D8); the
+// signed-in buyer's verified address and account ride the session and
+// checkout_buyers; the billing address is always collected; a referral here
+// earns nothing (the affiliate re-base).
+const FN_BUILD = "create-product-checkout.2026-10-11.23";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -119,17 +134,30 @@ serve(async (req) => {
   // charged, and the buyer is told applying yourself is free. Every other
   // product sells as before. The body is read off a clone, so the purchase
   // path below still reads the original.
-  if (!APPLY_ASSISTANT_ON_SALE) {
-    const asked = await req.clone().json().catch(() => null);
-    if (asked && typeof asked === "object" && (asked as { productId?: unknown }).productId === "applyAssistant") {
-      const answer = retiredCheckoutAnswer("apply_assistant", {
-        body: asked,
-        acceptLanguage: req.headers.get("accept-language"),
-        origin: checkoutOrigin(req.headers.get("origin"), (k: string) => Deno.env.get(k)),
-      });
-      console.log("[CREATE-PRODUCT-CHECKOUT] refused: the Apply Assistant is no longer sold");
-      return new Response(JSON.stringify(answer.body), { status: answer.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
+  //
+  // THE CUT PRODUCTS ARE NO LONGER SOLD EITHER (owner decision 2026-10-12,
+  // the product line): every row named in _shared/product-cuts.ts answers
+  // 410 here the same way, before anything is counted, granted or charged.
+  // Past buyers keep what they bought; nothing they reach reads this.
+  const asked = await req.clone().json().catch(() => null);
+  const askedId = asked && typeof asked === "object" ? (asked as { productId?: unknown }).productId : undefined;
+  if (!APPLY_ASSISTANT_ON_SALE && askedId === "applyAssistant") {
+    const answer = retiredCheckoutAnswer("apply_assistant", {
+      body: asked,
+      acceptLanguage: req.headers.get("accept-language"),
+      origin: checkoutOrigin(req.headers.get("origin"), (k: string) => Deno.env.get(k)),
+    });
+    console.log("[CREATE-PRODUCT-CHECKOUT] refused: the Apply Assistant is no longer sold");
+    return new Response(JSON.stringify(answer.body), { status: answer.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+  if (isCutProduct(askedId)) {
+    const answer = cutCheckoutAnswer(String(askedId), {
+      body: asked,
+      acceptLanguage: req.headers.get("accept-language"),
+      origin: checkoutOrigin(req.headers.get("origin"), (k: string) => Deno.env.get(k)),
+    });
+    console.log(`[CREATE-PRODUCT-CHECKOUT] refused: ${String(askedId)} is no longer sold`);
+    return new Response(JSON.stringify(answer.body), { status: answer.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 
   // The platform's word for the caller's address, never the first forwarded
@@ -183,91 +211,82 @@ serve(async (req) => {
     const SUPPORTED_LANGUAGES = ['en', 'en-GB', 'es', 'hi', 'tl', 'de', 'fr', 'fr-CA', 'nl', 'pt'];
     const sanitizedLanguage = typeof language === 'string' && SUPPORTED_LANGUAGES.includes(language) ? language : 'en';
 
-    // Pro subscribers get every tool included: instead of a Stripe session,
-    // issue a single-use server-side grant and send them straight to the
-    // success page. Cache-only check keeps this path fast; the cache is
-    // refreshed by check-subscription and the subscription checkout flow.
+    // Pro subscribers get their included tools as a single-use server-side
+    // grant instead of a Stripe session, sent straight to the success page.
     // WHO IS ASKING IS DECIDED BY THE SESSION, NOT BY THE BODY.
     //
-    // This block mints an ENTITLEMENT — a pro_grant redeemable for any product
-    // in the catalog — and it used to key that decision on `normalizedEmail`,
-    // which is just a field in an unauthenticated POST body (verify_jwt = false
-    // for this function, supabase/config.toml:33-34). So anyone who knew the
-    // email address of one active Pro subscriber could mint that subscriber's
-    // whole paid catalogue, for free, as many times as they liked. An email
-    // address is a claim; only a signed token is proof.
+    // This block mints an ENTITLEMENT, and it used to key that decision on
+    // `normalizedEmail`, which is just a field in an unauthenticated POST body
+    // (verify_jwt = false for this function). An email address is a claim;
+    // only a signed token is proof. The anonymous path never pays for an auth
+    // round trip.
     //
-    // Same class as the streamer leak that assertPaidSession closed, but that
-    // helper CANNOT be reused here: it answers "did a purchase happen for this
-    // session id", which says nothing about who is asking, and this function is
-    // UPSTREAM of it — one of the writers that manufactures the proof it
-    // trusts. Calling it here would be circular. The invariant it documents is
-    // restored at the writer instead.
-    //
-    // Pattern copied from check-subscription/index.ts:31-37 ("Prefer the
-    // authenticated user's email over anything in the body"), with the anon-key
-    // discrimination from free-keyword-scan/index.ts:1382-1389 so the anonymous
-    // path never pays for an auth round trip. getUser() on a service-role
-    // client still validates the token against the auth server.
-    let proEmail: string | null = null;
-    let proUserId: string | null = null;
-    const bearer = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
-    if (bearer && bearer !== (Deno.env.get("SUPABASE_ANON_KEY") ?? "")) {
-      try {
-        const { data: authData } = await supabase.auth.getUser(bearer);
-        if (authData?.user?.email) {
-          proEmail = authData.user.email.toLowerCase().trim();
-          proUserId = authData.user.id ?? null;
-        }
-      } catch (authErr) {
-        // A bad token is an anonymous request, not an error. It must never fall
-        // through to the body email — that is the bug this block exists to fix.
-        console.error("[CREATE-PRODUCT-CHECKOUT] token check failed:", authErr);
-      }
+    // THREE ANSWERS (checkout-buyer.ts, CP-025): a token the auth server
+    // refused is an anonymous buyer; an auth server that could not answer is
+    // a 503 and no Stripe url, because sending a member to Stripe then could
+    // charge them for a tool their plan includes.
+    const caller = await checkoutCaller(supabase.auth, req.headers, Deno.env.get("SUPABASE_ANON_KEY") ?? "");
+    if (caller.kind === "unavailable") {
+      console.error("[CREATE-PRODUCT-CHECKOUT] The auth server could not answer; not starting a checkout:", caller.reason);
+      return new Response(JSON.stringify(CALLER_UNAVAILABLE_BODY), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 503 });
     }
+    const proEmail = caller.kind === "signed_in" ? caller.email : null;
+    const proUserId = caller.kind === "signed_in" ? caller.id : null;
 
-    // `normalizedEmail` keeps its OTHER job below (prefilling Stripe's
-    // customer_email at :196), which is a convenience and mints nothing.
     if (proEmail) {
+      // THE ONE RULE (_shared/pro-standing.ts; L6-08, L6-29): the verified
+      // ACCOUNT's plan, from both caches (a $99 or comped agent plan includes
+      // Pro), never the session's address. A grant is a consumable: a trial
+      // unlocks the plan's ongoing features but mints none, so a trialing
+      // member goes to Stripe like anyone else.
+      let standing: Awaited<ReturnType<typeof accountProStanding>>;
       try {
-        const supabase = createClient(
-          Deno.env.get("SUPABASE_URL") ?? "",
-          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-          { auth: { persistSession: false } },
+        standing = await accountProStanding(supabase, proUserId);
+      } catch (proErr) {
+        console.error("[CREATE-PRODUCT-CHECKOUT] Pro check threw:", proErr);
+        standing = { pro: false, trialing: false, consumables: false, status: null, known: false };
+      }
+      if (!standing.known) {
+        // The plan could not be read. Sending a member to Stripe now could
+        // charge them for a tool their plan includes; a retry costs nothing.
+        console.error("[CREATE-PRODUCT-CHECKOUT] The account's plan could not be read; not starting a checkout");
+        return new Response(
+          JSON.stringify({ error: "We couldn't check your plan just now. Please try again in a minute." }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 503 },
         );
-        // THE ONE RULE (_shared/pro-standing.ts; L6-08, L6-29): the verified
-        // ACCOUNT's plan, from both caches (a $99 or comped agent plan
-        // includes Pro), never the session's address -- a password sign-up
-        // can claim a subscriber's address. A grant is a consumable: a trial
-        // unlocks the plan's ongoing features but mints none, so a trialing
-        // member goes to Stripe like anyone else.
-        const standing = await accountProStanding(supabase, proUserId);
-        if (!standing.known) {
-          // The plan could not be read. Sending a member to Stripe now could
-          // charge them for a tool their plan includes; a retry costs nothing.
-          console.error("[CREATE-PRODUCT-CHECKOUT] The account's plan could not be read; not starting a checkout");
-          return new Response(
-            JSON.stringify({ error: "We couldn't check your plan just now. Please try again in a minute." }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 503 },
-          );
-        }
-        if (standing.trialing) {
-          console.log("[CREATE-PRODUCT-CHECKOUT] Trialing plan: no grant minted while the trial runs");
-        }
-        if (standing.consumables) {
-          const grantFields = {
-            // The account the redeemer re-checks (20261008130000).
-            user_id: proUserId,
-            product_id: productId,
-            product_type: product.productType,
-            product_name: product.name,
-            credits: product.credits ?? null,
-            resume_session_id: sessionId || null,
-            job_title: sanitizedJobTitle || null,
-            job_company: sanitizedJobCompany || null,
-            language: sanitizedLanguage,
-          };
-          let { data: grant, error: grantError } = await supabase
+      }
+      if (standing.trialing) {
+        console.log("[CREATE-PRODUCT-CHECKOUT] Trialing plan: no grant minted while the trial runs");
+      }
+      // A TRIAL'S FIRST REAL PAYMENT FIRST (S12-098): the hour between a
+      // trial's end and its first charge reads "active" in the cache.
+      const paid = standing.consumables ? await planPaid(stripe, supabase, proUserId ?? "") : "paid";
+      if (paid !== "paid") {
+        console.log(`[CREATE-PRODUCT-CHECKOUT] No grant: the plan is ${paid}`);
+        return new Response(
+          JSON.stringify(paid === "unpaid"
+            ? { error: UNPAID_PLAN_NOTE, planUnpaid: true }
+            : { error: "We couldn't check your plan just now. Please try again in a minute.", retryable: true }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: paid === "unpaid" ? 409 : 503 },
+        );
+      }
+      if (standing.consumables) {
+        const grantFields = {
+          // The account the redeemer re-checks (20261008130000).
+          user_id: proUserId,
+          product_id: productId,
+          product_type: product.productType,
+          product_name: product.name,
+          credits: product.credits ?? null,
+          resume_session_id: sessionId || null,
+          job_title: sanitizedJobTitle || null,
+          job_company: sanitizedJobCompany || null,
+          language: sanitizedLanguage,
+        };
+        let grant: { id?: string } | null = null;
+        let grantError: { code?: string; message?: string } | null = null;
+        try {
+          ({ data: grant, error: grantError } = await supabase
             .from("pro_grants")
             .insert({
               email: proEmail,
@@ -276,74 +295,64 @@ serve(async (req) => {
               ...(targetRoles ? { target_roles: targetRoles } : {}),
             })
             .select("id")
-            .single();
+            .single());
           // A database without the target_roles column yet (20261009134300
-          // not applied): the grant is minted without the roles rather than
-          // sending a member to Stripe for a tool their plan includes.
+          // not applied): the grant is minted without the roles.
           if (grantError && targetRoles && (grantError.code === "42703" || grantError.code === "PGRST204")) {
             ({ data: grant, error: grantError } = await supabase
               .from("pro_grants")
-              .insert({
-                email: proEmail,
-                ...grantFields,
-              })
+              .insert({ email: proEmail, ...grantFields })
               .select("id")
               .single());
           }
-          if (!grantError && grant) {
-            console.log(`[CREATE-PRODUCT-CHECKOUT] Pro grant ${grant.id} issued to ${proEmail} for ${product.name}`);
-            return new Response(
-              JSON.stringify({
-                url: productId.startsWith('freelance')
-                  ? `${origin}/freelance-boost?session_id=pro_${grant.id}`
-                  : `${origin}/product-success?session_id=pro_${grant.id}&product=${productId}`,
-                sessionId: `pro_${grant.id}`,
-                proIncluded: true,
-              }),
-              { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
-            );
-          }
-          console.error("[CREATE-PRODUCT-CHECKOUT] Pro grant insert failed, falling back to Stripe:", grantError?.message);
+        } catch (insertErr) {
+          grantError = { message: String(insertErr instanceof Error ? insertErr.message : insertErr) };
         }
-      } catch (proErr) {
-        // Pro check is best-effort — never block a paying customer.
-        console.error("[CREATE-PRODUCT-CHECKOUT] Pro check failed:", proErr);
-      }
-    } else if (normalizedEmail) {
-      // A PRO SUBSCRIBER WHO IS SIGNED OUT MUST NOT BE CHARGED FOR WHAT THEY OWN.
-      // Gating the grant on the session would otherwise send them to Stripe to
-      // buy a product their subscription already includes — fixing a way to
-      // take money that should not be taken by creating another one. This
-      // branch mints NOTHING, so it carries none of the entitlement risk: it
-      // only tells the page to ask them to sign in.
-      //
-      // It does reveal whether an address is a Pro subscriber (one bit, from
-      // the cache, no Stripe call, under this function's per-address limit).
-      // Said only when signing in WOULD make the tool free: a trialing plan
-      // mints nothing, so it is not told to sign in for a free copy.
-      // check-subscription no longer answers that for a stranger (2026-10-05),
-      // so this is now the one place that does.
-      //
-      // OWNER DECISION, NOT TAKEN HERE: keep this bit (a signed-out subscriber
-      // is not charged for an included tool) or drop the branch and send every
-      // visitor with a stored address to sign in first (nobody learns anything,
-      // and a signed-out subscriber who skips sign-in pays). Listed as not
-      // fixed in the payments wave's review report and its commit. Until it is
-      // decided the bit is NO WIDER than it was before that wave: it reads
-      // pro_subscribers only, never the agent table, so a $99 plan or a comped
-      // agent account (no Stripe customer, visible nowhere else) is never
-      // revealed by it. The signed-in branch above reads both.
-      try {
-        const standing = await addressProStanding(supabase, normalizedEmail);
-        if (standing.consumables) {
+        if (!grantError && grant?.id) {
+          console.log(`[CREATE-PRODUCT-CHECKOUT] Pro grant ${grant.id} issued for ${product.name}`);
           return new Response(
-            JSON.stringify({ proRequiresSignIn: true }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 },
+            JSON.stringify({
+              url: productId.startsWith('freelance')
+                ? `${origin}/freelance-boost?session_id=pro_${grant.id}`
+                : `${origin}/product-success?session_id=pro_${grant.id}&product=${productId}`,
+              sessionId: `pro_${grant.id}`,
+              proIncluded: true,
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
           );
         }
-      } catch (proErr) {
-        console.error("[CREATE-PRODUCT-CHECKOUT] signed-out Pro check failed:", proErr);
+        // OVER THE CAP (owner decision D7): fair use, never a charge.
+        const cap = grantCapOf(grantError);
+        if (cap) {
+          const answer = fairUseAnswer(cap);
+          console.log(`[CREATE-PRODUCT-CHECKOUT] Pro grant refused by the ${cap} cap`);
+          return new Response(JSON.stringify(answer.body), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: answer.status });
+        }
+        // NEVER A CHARGE FOR AN INCLUDED TOOL (CP-025): a grant that could not
+        // be minted is a retry, not a Stripe page. It used to fall back to Stripe.
+        console.error("[CREATE-PRODUCT-CHECKOUT] Pro grant insert failed; not starting a checkout:", grantError?.message ?? "no id returned");
+        return new Response(
+          JSON.stringify({ error: "We couldn't unlock your included tool just now, so nothing was charged. Please try again in a minute.", retryable: true }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 503 },
+        );
       }
+    }
+    // A SIGNED-OUT VISITOR IS NOT TOLD WHETHER AN ADDRESS HOLDS PRO (owner
+    // decision D8). The body's address used to be looked up in the Pro cache
+    // and answered "sign in to use your plan", which revealed one bit about
+    // any address. The page now sends no address for a signed-out buyer, and
+    // a subscriber who wants their included tool signs in first.
+
+    // NO SALE INTO THE EU, THE EEA OR THE UK WHILE THE SWITCH IS OFF
+    // (S12-059): after the grant (a member's included tool is not a sale),
+    // before Stripe.
+    const territory = await territoryRefusal({
+      env, headers: req.headers, body, address: clientIp, lookup: ipinfoLookup(env),
+    });
+    if (territory) {
+      const answer = territoryAnswer(territory, { body, acceptLanguage: req.headers.get("accept-language") });
+      console.log(`[CREATE-PRODUCT-CHECKOUT] refused: the buyer is in the VAT territory (${territory.signal})`);
+      return new Response(JSON.stringify(answer.body), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: answer.status });
     }
 
     // The EU/UK switch (off by default): delivery at once needs the waiver.
@@ -354,14 +363,16 @@ serve(async (req) => {
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }
-    // The referral this catalogue pays on, the Terms shown, the waiver.
-    const policy = policyMetadata(body, env, { commissioned: true });
-    // A signed-in buyer's verified address before a typed one, for the receipt.
-    const receiptEmail = proEmail ?? normalizedEmail;
+    // The Terms shown, the waiver, and the referral, which earns nothing here
+    // since the affiliate re-base (_shared/affiliate-commission.ts).
+    const policy = policyMetadata(body, env);
+    // THE SIGNED-IN BUYER'S VERIFIED ADDRESS FIRST (CP-012): the body's is
+    // what the page prefilled, and only a signed-in page sends one.
+    const buyerEmail = proEmail ?? normalizedEmail;
 
     // Create Stripe session - THE ONLY blocking call
     const session = await stripe.checkout.sessions.create({
-      customer_email: normalizedEmail || undefined,
+      customer_email: buyerEmail || undefined,
       customer_creation: 'if_required',
       line_items: [
         product.priceId
@@ -379,7 +390,10 @@ serve(async (req) => {
       allow_promotion_codes: true,
       // The receipt, and tax only with the EU/UK switch on (it was off here
       // by a literal; it still is unless the owner turns the switch on).
-      ...sessionPolicy({ mode: "payment", env, receiptEmail }),
+      ...sessionPolicy({ mode: "payment", env, receiptEmail: buyerEmail }),
+      // THE ACCOUNT THAT BOUGHT IT (CP-022): a signed-in buyer's id on the
+      // session and its metadata, and in checkout_buyers below.
+      ...buyerSessionFields(caller),
       // Freelance Boost is a guided flow — return the buyer to it so
       // generation runs against their saved intake, not the generic page.
       success_url: productId.startsWith('freelance')
@@ -389,7 +403,8 @@ serve(async (req) => {
       metadata: {
         product_type: product.productType,
         product_name: product.name,
-        customer_email: normalizedEmail || "",
+        customer_email: buyerEmail || "",
+        ...buyerMetadata(caller),
         credits: product.credits?.toString() || "",
         job_title: sanitizedJobTitle,
         job_company: sanitizedJobCompany,
@@ -442,6 +457,10 @@ serve(async (req) => {
       mode: session.mode,
       context: checkoutContextOf(body),
       metadata: { language: sanitizedLanguage, referral: !!policy.referral_code, credits: product.credits ?? null, termsVersion: policy.terms_version || null, withdrawalWaiver: policy.withdrawal_waiver ?? null },
+    });
+    // The account behind the session, before the browser has the url.
+    await recordCheckoutBuyer(supabase, {
+      stripeSessionId: session.id, caller, checkoutFunction: "create-product-checkout", productType: product.productType,
     });
 
     console.log(`[CREATE-PRODUCT-CHECKOUT] Session created: ${session.id} for ${product.name}`);
