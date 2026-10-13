@@ -1,0 +1,546 @@
+{
+ "recordedAt": "2026-10-13T00:28:58.075Z",
+ "engine": {
+  "ref": "rm/engine a7e910d3 (committed tree, 2026-10-12 20:04 EDT)",
+  "note": "Recorded offline from the frozen corpus with scripts/match-bench/report.ts --save-after."
+ },
+ "corpusVersion": "match-bench-corpus.2026-10-12.1",
+ "rubric": "v2",
+ "tolerance": {
+  "p10Points": 5,
+  "locationPoints": 2,
+  "readerPoints": 5
+ },
+ "extract": {
+  "mode": "extract",
+  "exact11": {
+   "n": 11,
+   "p10": 81.8,
+   "p20": 75.5,
+   "shown": 186,
+   "shortlisted": 166,
+   "precisionShown": 89.2,
+   "location": 1.1,
+   "locationRows": 2,
+   "seniority": 8.2,
+   "seniorityRows": 15,
+   "infield": 183,
+   "wrongField": 1.6,
+   "oldCareer": 0,
+   "licenceFail": 0,
+   "authFail": 1,
+   "descRead": 73,
+   "reviewed": 0,
+   "under10": 2,
+   "under20": 2,
+   "zero": 1
+  },
+  "all24": {
+   "n": 24,
+   "p10": 71.3,
+   "p20": 62.3,
+   "shown": 339,
+   "shortlisted": 299,
+   "precisionShown": 88.2,
+   "location": 0.6,
+   "locationRows": 2,
+   "seniority": 10.4,
+   "seniorityRows": 35,
+   "infield": 336,
+   "wrongField": 0.9,
+   "oldCareer": 0,
+   "licenceFail": 0,
+   "authFail": 1,
+   "descRead": 73,
+   "reviewed": 0,
+   "under10": 8,
+   "under20": 9,
+   "zero": 3
+  },
+  "zero": [
+   "ed-ng-sacramento",
+   "rn-sr-manchester",
+   "tr-ch-cook-to-electrician-philly"
+  ],
+  "perResume": {
+   "sw-ng-austin": {
+    "rows": 20,
+    "shortlisted": 16,
+    "family": "swe",
+    "steps": [
+     0
+    ]
+   },
+   "sw-mid-toronto": {
+    "rows": 20,
+    "shortlisted": 16,
+    "family": "swe",
+    "steps": [
+     0
+    ]
+   },
+   "sw-sr-seattle": {
+    "rows": 20,
+    "shortlisted": 18,
+    "family": "swe_staff",
+    "steps": [
+     0
+    ]
+   },
+   "rn-ng-phoenix": {
+    "rows": 20,
+    "shortlisted": 16,
+    "family": "rn",
+    "steps": [
+     0
+    ]
+   },
+   "rn-mid-chicago": {
+    "rows": 6,
+    "shortlisted": 5,
+    "family": "rn_icu",
+    "steps": [
+     0,
+     1
+    ]
+   },
+   "rn-sr-manchester": {
+    "rows": 0,
+    "shortlisted": 0,
+    "family": "ward_manager",
+    "steps": [
+     0,
+     1
+    ]
+   },
+   "rt-ng-columbus": {
+    "rows": 20,
+    "shortlisted": 14,
+    "family": "cashier",
+    "steps": [
+     0
+    ]
+   },
+   "rt-mid-gap-atlanta": {
+    "rows": 11,
+    "shortlisted": 10,
+    "family": "retail_supervisor",
+    "steps": [
+     0,
+     1
+    ]
+   },
+   "rt-sr-dallas": {
+    "rows": 20,
+    "shortlisted": 17,
+    "family": "store_manager",
+    "steps": [
+     0
+    ]
+   },
+   "fn-ng-nyc": {
+    "rows": 20,
+    "shortlisted": 18,
+    "family": "financial_analyst",
+    "steps": [
+     0
+    ]
+   },
+   "fn-mid-charlotte": {
+    "rows": 20,
+    "shortlisted": 19,
+    "family": "financial_analyst",
+    "steps": [
+     0
+    ]
+   },
+   "fn-sr-chicago": {
+    "rows": 20,
+    "shortlisted": 20,
+    "family": "controller",
+    "steps": [
+     0
+    ]
+   },
+   "mk-ng-boston": {
+    "rows": 9,
+    "shortlisted": 7,
+    "family": "marketing_coordinator",
+    "steps": [
+     0,
+     1
+    ]
+   },
+   "mk-mid-denver": {
+    "rows": 20,
+    "shortlisted": 20,
+    "family": "digital_marketing",
+    "steps": [
+     0
+    ]
+   },
+   "mk-ch-journalist-portland": {
+    "rows": 20,
+    "shortlisted": 20,
+    "family": "content_marketing",
+    "steps": [
+     0
+    ]
+   },
+   "tr-ng-hvac-houston": {
+    "rows": 8,
+    "shortlisted": 6,
+    "family": "hvac_tech",
+    "steps": [
+     0,
+     1
+    ]
+   },
+   "tr-mid-brisbane": {
+    "rows": 4,
+    "shortlisted": 4,
+    "family": "electrician",
+    "steps": [
+     0,
+     1
+    ]
+   },
+   "tr-ch-cook-to-electrician-philly": {
+    "rows": 0,
+    "shortlisted": 0,
+    "family": "apprentice_electrician",
+    "steps": [
+     0,
+     1
+    ]
+   },
+   "ed-ng-sacramento": {
+    "rows": 0,
+    "shortlisted": 0,
+    "family": "elementary_teacher",
+    "steps": [
+     0,
+     1
+    ]
+   },
+   "ed-mid-gap-raleigh": {
+    "rows": 1,
+    "shortlisted": 1,
+    "family": "math_teacher",
+    "steps": [
+     0,
+     1
+    ]
+   },
+   "ed-ch-teacher-to-id-minneapolis": {
+    "rows": 20,
+    "shortlisted": 20,
+    "family": "instructional_designer",
+    "steps": [
+     0
+    ]
+   },
+   "da-ng-opt-sanjose": {
+    "rows": 20,
+    "shortlisted": 18,
+    "family": "data_analyst",
+    "steps": [
+     0
+    ]
+   },
+   "da-mid-pittsburgh": {
+    "rows": 20,
+    "shortlisted": 17,
+    "family": "data_analyst",
+    "steps": [
+     0
+    ]
+   },
+   "da-ch-biochem-to-ds-sandiego": {
+    "rows": 20,
+    "shortlisted": 17,
+    "family": "data_scientist",
+    "steps": [
+     0
+    ]
+   }
+  },
+  "maxWallMs": 919
+ },
+ "oracle": {
+  "mode": "oracle",
+  "exact11": {
+   "n": 11,
+   "p10": 81.8,
+   "p20": 75,
+   "shown": 186,
+   "shortlisted": 165,
+   "precisionShown": 88.7,
+   "location": 1.6,
+   "locationRows": 3,
+   "seniority": 8.7,
+   "seniorityRows": 16,
+   "infield": 184,
+   "wrongField": 1.1,
+   "oldCareer": 0,
+   "licenceFail": 0,
+   "authFail": 2,
+   "descRead": 72,
+   "reviewed": 0,
+   "under10": 2,
+   "under20": 2,
+   "zero": 1
+  },
+  "all24": {
+   "n": 24,
+   "p10": 71.7,
+   "p20": 64,
+   "shown": 350,
+   "shortlisted": 307,
+   "precisionShown": 87.7,
+   "location": 0.9,
+   "locationRows": 3,
+   "seniority": 10.9,
+   "seniorityRows": 38,
+   "infield": 348,
+   "wrongField": 0.6,
+   "oldCareer": 0,
+   "licenceFail": 0,
+   "authFail": 2,
+   "descRead": 73,
+   "reviewed": 0,
+   "under10": 7,
+   "under20": 8,
+   "zero": 3
+  },
+  "zero": [
+   "ed-ng-sacramento",
+   "rn-sr-manchester",
+   "tr-ch-cook-to-electrician-philly"
+  ],
+  "perResume": {
+   "sw-ng-austin": {
+    "rows": 20,
+    "shortlisted": 16,
+    "family": "swe",
+    "steps": [
+     0
+    ]
+   },
+   "sw-mid-toronto": {
+    "rows": 20,
+    "shortlisted": 16,
+    "family": "swe",
+    "steps": [
+     0
+    ]
+   },
+   "sw-sr-seattle": {
+    "rows": 20,
+    "shortlisted": 18,
+    "family": "swe_staff",
+    "steps": [
+     0
+    ]
+   },
+   "rn-ng-phoenix": {
+    "rows": 20,
+    "shortlisted": 16,
+    "family": "rn",
+    "steps": [
+     0
+    ]
+   },
+   "rn-mid-chicago": {
+    "rows": 6,
+    "shortlisted": 5,
+    "family": "rn_icu",
+    "steps": [
+     0,
+     1
+    ]
+   },
+   "rn-sr-manchester": {
+    "rows": 0,
+    "shortlisted": 0,
+    "family": "ward_manager",
+    "steps": [
+     0,
+     1
+    ]
+   },
+   "rt-ng-columbus": {
+    "rows": 20,
+    "shortlisted": 14,
+    "family": "cashier",
+    "steps": [
+     0
+    ]
+   },
+   "rt-mid-gap-atlanta": {
+    "rows": 11,
+    "shortlisted": 10,
+    "family": "retail_supervisor",
+    "steps": [
+     0,
+     1
+    ]
+   },
+   "rt-sr-dallas": {
+    "rows": 20,
+    "shortlisted": 17,
+    "family": "store_manager",
+    "steps": [
+     0
+    ]
+   },
+   "fn-ng-nyc": {
+    "rows": 20,
+    "shortlisted": 18,
+    "family": "financial_analyst",
+    "steps": [
+     0
+    ]
+   },
+   "fn-mid-charlotte": {
+    "rows": 20,
+    "shortlisted": 19,
+    "family": "financial_analyst",
+    "steps": [
+     0
+    ]
+   },
+   "fn-sr-chicago": {
+    "rows": 20,
+    "shortlisted": 20,
+    "family": "controller",
+    "steps": [
+     0
+    ]
+   },
+   "mk-ng-boston": {
+    "rows": 20,
+    "shortlisted": 16,
+    "family": "marketing_coordinator",
+    "steps": [
+     0
+    ]
+   },
+   "mk-mid-denver": {
+    "rows": 20,
+    "shortlisted": 20,
+    "family": "digital_marketing",
+    "steps": [
+     0
+    ]
+   },
+   "mk-ch-journalist-portland": {
+    "rows": 20,
+    "shortlisted": 20,
+    "family": "content_marketing",
+    "steps": [
+     0
+    ]
+   },
+   "tr-ng-hvac-houston": {
+    "rows": 8,
+    "shortlisted": 6,
+    "family": "hvac_tech",
+    "steps": [
+     0,
+     1
+    ]
+   },
+   "tr-mid-brisbane": {
+    "rows": 4,
+    "shortlisted": 4,
+    "family": "electrician",
+    "steps": [
+     0,
+     1
+    ]
+   },
+   "tr-ch-cook-to-electrician-philly": {
+    "rows": 0,
+    "shortlisted": 0,
+    "family": "apprentice_electrician",
+    "steps": [
+     0,
+     1
+    ]
+   },
+   "ed-ng-sacramento": {
+    "rows": 0,
+    "shortlisted": 0,
+    "family": "elementary_teacher",
+    "steps": [
+     0,
+     1
+    ]
+   },
+   "ed-mid-gap-raleigh": {
+    "rows": 1,
+    "shortlisted": 1,
+    "family": "math_teacher",
+    "steps": [
+     0,
+     1
+    ]
+   },
+   "ed-ch-teacher-to-id-minneapolis": {
+    "rows": 20,
+    "shortlisted": 20,
+    "family": "instructional_designer",
+    "steps": [
+     0
+    ]
+   },
+   "da-ng-opt-sanjose": {
+    "rows": 20,
+    "shortlisted": 17,
+    "family": "data_analyst",
+    "steps": [
+     0
+    ]
+   },
+   "da-mid-pittsburgh": {
+    "rows": 20,
+    "shortlisted": 17,
+    "family": "data_analyst",
+    "steps": [
+     0
+    ]
+   },
+   "da-ch-biochem-to-ds-sandiego": {
+    "rows": 20,
+    "shortlisted": 17,
+    "family": "data_scientist",
+    "steps": [
+     0
+    ]
+   }
+  },
+  "maxWallMs": 471
+ },
+ "reader": {
+  "n": 60,
+  "country": 63.3,
+  "countryRight": 38,
+  "city": 61,
+  "cityRight": 36,
+  "cityOf": 59,
+  "cityInvented": 0,
+  "authPrecision": 97.1,
+  "authRight": 33,
+  "authClaimed": 34,
+  "years3": 83.3,
+  "yearsRight": 50,
+  "entryRecall": 59.1,
+  "entryRight": 13,
+  "entryOf": 22,
+  "entryFalsePositives": 0,
+  "sponsorRecall": 75,
+  "sponsorRight": 3,
+  "sponsorOf": 4
+ }
+}

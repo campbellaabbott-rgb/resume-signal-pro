@@ -70,6 +70,8 @@ export interface ResumeTruth {
   licences: string[];
   held: LicenceHeld[];
   clearance: boolean;
+  /** Declares permanent residence (a green card): a "citizens or permanent residents" posting passes. */
+  permanentResident?: boolean;
   notes: string;
 }
 

@@ -1,0 +1,59 @@
+{
+ "sw-ng-austin::ashby:nestmed:3295edf1-a2d5-40f4-9edd-6fa68b1bca9d": {
+  "seniority": "too_senior",
+  "note": "asks 3+ years building and shipping product; stored min_years null"
+ },
+ "sw-ng-austin::ukg:recruiting~MID1029MISO~362b6b1d-f1c3-46f5-9554-4aa90e2bda64:762fff6b-26f4-4ada-b17b-f94525ea6b5c": {
+  "seniority": "ok",
+  "note": "Software Engineer I; the 4+ years is the alternative to a CS degree (min_years misread)"
+ },
+ "sw-sr-seattle::greenhouse:stripe:8267736": {
+  "seniority": "too_junior",
+  "note": "PERM-style ad requiring 2 years: a mid-level seat for a 15-year staff engineer"
+ },
+ "rn-mid-chicago::icims:careers.primehealthcare.com:285183": {
+  "location": "ok",
+  "note": "Joliet IL is Chicagoland (~40 mi); a 12-hour-shift RN commute"
+ },
+ "da-ng-opt-sanjose::paylocity:6ea91ea2-804f-462b-9fd7-63453b2902ab:4558861": {
+  "seniority": "too_senior",
+  "note": "Three (3) years of experience in data analytics; stored min_years null"
+ },
+ "da-ng-opt-sanjose::oracle:fa-ewik-saasfaprod1~ocs~CX_1:1372": {
+  "seniority": "too_senior",
+  "note": "minimum of five (5) years with SSMS/SSRS/Power BI; stored min_years null"
+ },
+ "mk-ch-journalist-portland::bamboohr:mosai:312": {
+  "location": "remote_ok",
+  "note": "description: may be performed remotely (or hybrid Jacksonville/Nashville); its 5 years count journalism"
+ },
+ "mk-ch-journalist-portland::adp:12b42754-ce4b-494b-8ac4-b514a41ae8bf:9200844351143_1": {
+  "location": "remote_ok",
+  "seniority": "too_senior",
+  "note": "US remote, but asks 4+ years of content marketing with strategy ownership; he has about 1"
+ },
+ "ed-ch-teacher-to-id-minneapolis::adp:fde135bd-bf6a-4ebd-965f-43a1d08a2241:9201653669026_1": {
+  "location": "remote_ok",
+  "note": "description: Work Location: Remote or Hybrid, no state restriction stated"
+ },
+ "ed-ch-teacher-to-id-minneapolis::adp:fde135bd-bf6a-4ebd-965f-43a1d08a2241:9201653681853_1": {
+  "location": "remote_ok",
+  "note": "description: Work Location: Remote or Hybrid, no state restriction stated"
+ },
+ "rn-sr-manchester::workday:ramsayhealthcare~wd3~Ramsay_Careers:JR17574": {
+  "role": "adjacent",
+  "note": "Outpatient Manager at a private hospital (Preston) is a nurse-led department lead; description not read"
+ },
+ "mk-mid-denver::workday:devoted~wd1~Devoted:R3698": {
+  "seniority": "too_junior",
+  "note": "Digital Marketing Associate (3 yrs) for an 8-year manager"
+ },
+ "rt-sr-dallas::paylocity:076746ec-d17d-475b-8c76-d5b5c0114065:4572308": {
+  "role": "related",
+  "note": "store manager of an ag-equipment (John Deere) dealership: parts/equipment sales, not big-box retail"
+ },
+ "rt-sr-dallas::smartrecruiters:TheTileShop1:744000154534789": {
+  "seniority": "ok",
+  "note": "specialty-retail store manager; the entry band comes only from a stored 2-year minimum"
+ }
+}

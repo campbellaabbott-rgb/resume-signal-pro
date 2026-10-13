@@ -1,0 +1,22 @@
+Natalia Petrova
+Senior Data Analyst - Business Intelligence and Analytics Engineering
+Pittsburgh, PA | natalia.petrova@example.com | 412-555-0175
+Pittsburgh hybrid or U.S. remote. U.S. permanent resident.
+SUMMARY
+Data analyst with 6 years of experience turning messy operational data into reliable reporting. Strong SQL and dbt;
+I own BI for a 2,000-person healthcare services company.
+EXPERIENCE
+Senior Data Analyst - Allegheny Health Services Group, Pittsburgh, PA | 2022 - Present
+- Own the BI layer: 40 dbt models on Snowflake feeding Tableau dashboards used by 300 managers.
+- Built the patient-access KPI suite (wait times, no-shows, referral leakage); no-show rate down 9%.
+- Partner with finance and operations on forecasting; mentor two junior analysts.
+Data Analyst - Three Rivers Logistics, Pittsburgh, PA | 2020 - 2022
+- SQL Server and Power BI reporting for warehouse throughput and carrier performance.
+Business Analyst - Keystone Insurance, Harrisburg, PA | 2019 - 2020
+- Requirements gathering and Excel/Access reporting for claims operations.
+EDUCATION
+B.S. Statistics, University of Pittsburgh, 2019
+Tableau Desktop Specialist; dbt Fundamentals
+SKILLS
+SQL, dbt, Snowflake, Tableau, Power BI, Python, Excel, data modeling, ETL, A/B testing, stakeholder
+management, Russian (native)

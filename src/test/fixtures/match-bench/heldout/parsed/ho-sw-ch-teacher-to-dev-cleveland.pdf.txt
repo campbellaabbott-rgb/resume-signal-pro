@@ -1,0 +1,26 @@
+Rachel Abernathy
+Junior Full-Stack Developer (former chemistry teacher)
+Cleveland, OH | rachel.abernathy@example.com | (216) 555-0172 | github.com/rabernathy-dev
+U.S. citizen. Looking for junior software developer roles in Greater Cleveland or remote within the US.
+SUMMARY
+After eight years teaching high school chemistry I retrained as a developer. I finished a full-time coding bootcamp
+in 2025 and have spent the last year shipping production code at a small agency. Teaching made me good at
+explaining things, writing clear documentation, and staying calm when a lab (or a deploy) goes sideways.
+TECHNICAL EXPERIENCE
+Software Developer Apprentice - Cuyahoga Web Works, Cleveland, OH | Jan 2026 - Present
+- Build React and Node.js features for client sites; wrote the booking flow for a regional dental group.
+- Added Jest and Playwright tests to a legacy codebase; test coverage from 12% to 61%.
+Full-Stack Web Development Bootcamp - Tech Elevator, Cleveland, OH | Jun 2025 - Oct 2025
+- 600 hours: JavaScript, React, Node, Express, PostgreSQL, Java, Spring Boot.
+- Capstone: a lab-safety inventory app for school science departments.
+TEACHING EXPERIENCE
+Chemistry Teacher - Lakewood City Schools, Lakewood, OH | Aug 2017 - Jun 2025
+- Taught AP and general chemistry to 150 students a year; built the department's online gradebook scripts in
+Google Apps Script.
+Chemistry Teacher - Parma City School District, Parma, OH | Aug 2016 - Jun 2017
+EDUCATION
+M.Ed. Secondary Education - Cleveland State University, 2016
+B.S. Chemistry - Ohio University, 2014
+SKILLS
+JavaScript, TypeScript, React, Node.js, Express, PostgreSQL, Java, Spring Boot, REST APIs, Git, Jest,
+Playwright, HTML, CSS, Agile

@@ -1,0 +1,21 @@
+THOMAS LINDQVIST
+thomas.lindqvist@example.com STAFF SOFTWARE ENGINEER
+(612) 555-0148
+linkedin.com/in/tlindqvist-eng Fourteen years building distributed systems for retail and
+logistics. I lead platform work that other teams build on:
+CORE SKILLS inventory, pricing and order routing at national scale.
+Go, Java, Scala
+Kafka, Flink EXPERIENCE
+PostgreSQL, Cassandra Staff Software Engineer - Northstar Retail Technology, Minneapolis, MN
+Kubernetes, Terraform 2019 - Present
+GCP and AWS - Technical lead for the real-time inventory platform (Go, Kafka,
+Cassandra): 1,900 stores, 2 billion events a day.
+System design - Set the architecture for order routing; cut split shipments by 14%.
+Incident command - Chair the architecture review board; mentor eight senior engineers.
+EDUCATION Senior Software Engineer - Lakeside Freight Systems, St. Paul, MN
+B.S. Computer Science 2014 - 2019
+University of Minnesota - Built the carrier-rating service in Java and Scala; 99.99% availability.
+2012 - Led migration from on-prem Oracle to PostgreSQL on AWS.
+TALKS Software Engineer - Prairie Data Corp, Eden Prairie, MN
+"Backpressure in practice" 2012 - 2014
+GopherCon 2023 - Java services for a healthcare claims pipeline.

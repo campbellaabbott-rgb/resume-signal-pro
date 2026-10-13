@@ -1,0 +1,18 @@
+Wei Zhang
+New York, NY | wei.zhang@example.com | (917) 555-0126 | U.S. citizen
+Entry-Level Financial Analyst
+EDUCATION
+Baruch College, Zicklin School of Business (CUNY) - B.B.A. Finance, Minor in Accounting - May 2026, GPA 3.6
+Relevant coursework: Corporate Finance, Financial Statement Analysis, Valuation, Investments, Financial
+Modeling
+EXPERIENCE
+Financial Analyst Intern - Hudson Mid-Market Partners (corporate finance advisory), New York, NY | Jun 2025 -
+Aug 2025
+- Built three-statement and DCF models for two sell-side engagements; prepared comparable-company tables.
+- Drafted sections of confidential information memoranda and management presentations.
+Accounting Intern - Kim & Lowe CPAs, Flushing, NY | Jan 2025 - May 2025
+- Prepared bank reconciliations, journal entries and 1099s for small-business clients in QuickBooks.
+Peer Tutor, Accounting and Statistics - Baruch Student Academic Consulting Center | 2023 - 2026
+SKILLS
+Excel (INDEX/MATCH, pivot tables, macros), financial modeling, DCF, PowerPoint, QuickBooks, Bloomberg
+Terminal (BMC certified), SQL (basic), Python (pandas, basic). Mandarin (fluent).

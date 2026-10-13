@@ -1,0 +1,20 @@
+Arjun Mehta
+Data Analyst | M.S. Business Analytics
+San Jose, CA | arjun.mehta@example.com | 408-555-0153 | github.com/arjunm-analytics
+Work authorization: F-1 STEM OPT (eligible through 2029); will require H-1B sponsorship in the future. Open to
+relocation anywhere in the U.S.
+EDUCATION
+M.S. Business Analytics - San Jose State University, May 2026 (GPA 3.8)
+B.Tech. Electronics and Communication Engineering - VIT University, Vellore, India, 2023
+EXPERIENCE
+Data Analyst Intern - Silicon Valley Grocers (retail chain), San Jose, CA | May 2025 - Dec 2025
+- Wrote SQL (Snowflake) and Python to analyze 18 months of loyalty data; identified churn drivers that informed a
+win-back campaign (+4% retention).
+- Built Tableau dashboards for weekly category performance used by 12 merchandising managers.
+Graduate Research Assistant - SJSU Department of Marketing and Business Analytics | 2025 - 2026
+- Cleaned and modeled survey data in R; regression and A/B test analysis for a faculty pricing study.
+Associate Software Engineer (trainee) - Infotech Solutions, Pune, India | Jul 2023 - Jul 2024
+- Wrote ETL scripts in Python and SQL Server for a banking client's reporting warehouse.
+SKILLS
+SQL, Python (pandas, scikit-learn), R, Tableau, Power BI, Excel, Snowflake, statistics, A/B testing, regression,
+data visualization, dbt (basics)
