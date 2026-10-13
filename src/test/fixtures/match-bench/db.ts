@@ -16,9 +16,10 @@
 import { PGlite } from "@electric-sql/pglite";
 import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm";
 import { readFileSync, readdirSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const ROOT = resolve(__dirname, "../../../..");
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
 const MIG = resolve(ROOT, "supabase/migrations");
 export const migrationText = (prefix: string): string => {
   const f = readdirSync(MIG).find((x) => x.startsWith(prefix));

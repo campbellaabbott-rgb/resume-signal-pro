@@ -80,9 +80,12 @@ export const TITLE_FAMILIES: readonly TitleFamily[] = [
   },
   {
     key: "rn_icu", label: "ICU registered nurse", onsite: true, headNoun: "nurse", licensed: "rn",
-    q: ["icu nurse", "critical care nurse", "registered nurse icu", "intensive care unit registered nurse", "registered nurse critical care", "icu registered nurse"],
+    // A specialty searches its parent occupation too: an experienced ICU nurse is
+    // shortlisted for most staff RN posts, and a title-only query for ICU words
+    // alone never sees them. ICU titles stay core; the rest are near (Good).
+    q: ["icu nurse", "critical care nurse", "registered nurse icu", "intensive care unit registered nurse", "registered nurse critical care", "icu registered nurse", "registered nurse", "staff nurse"],
     core: /\b(icu|intensive care|critical care|micu|sicu|cvicu|ccu)\b[^,|]*\b(nurse|rn)\b|\b(registered nurse|rn)\b[^,|]*\b(icu|intensive care|critical care|micu|sicu|cvicu|ccu)\b/i,
-    near: /\bregistered nurse\b|\b(rn)\b|\b(progressive care|step[- ]?down|pcu|emergency|ed|er)\b[^,|]*\bnurse\b/i,
+    near: /\bregistered nurse\b|\b(rn)\b|\bstaff nurse\b|\b(progressive care|step[- ]?down|pcu|emergency|ed|er)\b[^,|]*\bnurse\b/i,
     not: NURSE_NOT,
     adjacent: ["registered nurse", "progressive care nurse", "emergency department nurse"],
   },
@@ -447,8 +450,9 @@ export const TITLE_FAMILIES: readonly TitleFamily[] = [
     key: "marketing_coordinator", label: "Marketing coordinator", onsite: false, headNoun: "coordinator",
     q: ["marketing coordinator", "social media coordinator", "marketing assistant", "marketing associate", "social media specialist", "marketing specialist"],
     core: /\b(marketing|social media|digital marketing|brand|content) (coordinator|assistant|associate|specialist)\b/i,
-    near: /\bcommunications (coordinator|assistant)\b|\bmarketing (generalist|intern)\b/i,
-    not: /\b(sales|telemarketing|recruiter|account executive)\b/i,
+    // Order-free, as every near is: "Associate, Performance Marketing", "Event Specialist, Marketing".
+    near: /\b(marketing|social media|brand|content|communications|public relations|events?)\b[^|]*\b(coordinator|assistant|associate|specialist|generalist)\b|\b(coordinator|assistant|associate|specialist|generalist)\b[^|]*\b(marketing|social media|brand|communications|public relations)\b|\bmarketing intern\b/i,
+    not: /\b(sales|telemarketing|recruiter|account executive|architect|engineer|developer|consultant|automation)\b/i,
   },
   {
     key: "digital_marketing", label: "Digital marketing manager", onsite: false, headNoun: "manager",

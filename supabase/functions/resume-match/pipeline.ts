@@ -200,7 +200,8 @@ export function placeRow(row: Candidate, ctx: PlaceContext): { place: PlaceVerdi
   for (const p of ctx.ring) {
     if (!namesPlace(loc, p)) continue;
     const inItsRegion = namesRegionOf(loc, p, named);
-    const conflicting = named.length > 0 && !inItsRegion;
+    // A place the reader named without a region ("Boston or NYC") cannot conflict with one.
+    const conflicting = named.length > 0 && !inItsRegion && !!(p.region || p.regionName);
     if (conflicting) continue;
     if (!country) {
       // A null-country row is kept only when it names the ring place AND that place's state.
