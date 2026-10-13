@@ -1,36 +1,4 @@
-// One normalisation for every board filter, shared by the gate, the row query,
-// the count and the response self-check.
-//
-// WHY THIS FILE EXISTS
-// Every filter defect this board has shipped has had the same shape: two places
-// computed the "same" filter differently, and the disagreement was invisible
-// until somebody counted rows.
-//
-//   * category="Engineering" satisfied the `unfiltered` test (which compared the
-//     RAW casing) while the query lower-cased it. The board concluded no count
-//     was needed and published the whole catalogue's total — 587,793 — above
-//     3,949 correctly filtered results.
-//
-//   * experience=["bogus"] met a gate that only inspected
-//     `typeof body.experience === "string"`, so an array was never examined and
-//     never reported. The query then evaluated
-//     String(["bogus"]).split(",").filter(isExperienceBand) -> [] and bound NO
-//     predicate at all. Measured live on 2026-07-29, before this file existed:
-//     the returned bands were null 15 / entry 12 / mid 8 / senior 4 / expert 1.
-//     That is the unfiltered board, served as though the filter had applied,
-//     with an empty ignoredFilters. The fence in this codebase is that a filter
-//     is NEVER silently ignored; that was a direct breach, and it survived the
-//     morning's fix precisely because that fix patched the string path only.
-//
-// THE RULE ENCODED HERE
-// A filter is REQUESTED when the caller sends anything non-empty for it, and
-// APPLIED only when normalisation yields a value the query can bind. Requested
-// but not applied is ALWAYS named back to the caller.
-//
-// The point is not that this validation is cleverer. It is that the gate, the
-// query, the count and the self-check now read the SAME `applied` object — so
-// they cannot drift apart, not because four sites were each remembered, but
-// because there is only one site.
+// Rationale: docs/job-board-index-notes.md#n1051-import-job_categories-from-categories-ts
 import { JOB_CATEGORIES } from "./categories.ts";
 import { isExperienceBand } from "./experience.ts";
 import { SENDABLE_VENDORS } from "../_shared/apply-automation.ts";
@@ -87,9 +55,7 @@ const _vendorsAreKinds: readonly JobSourceKind[] = BOARD_VENDORS;
 void _vendorsAreKinds;
 
 type _UnlistedKind = Exclude<JobSourceKind, (typeof BOARD_VENDORS)[number]>;
-// If sources.ts gains a vendor this list does not carry, `_UnlistedKind` stops
-// being `never`, this alias becomes a tuple, and `true` no longer assigns —
-// deno check then prints the missing vendor's name in the error.
+// Rationale: docs/job-board-index-notes.md#n1052-type-_kindsarecovered-_unlistedkind-exte
 type _KindsAreCovered = [_UnlistedKind] extends [never] ? true
   : ["BOARD_VENDORS is missing a JobSourceKind:", _UnlistedKind];
 const _kindsAreCovered: _KindsAreCovered = true;
@@ -296,24 +262,15 @@ const RPC_BOUND_FILTERS = new Set<keyof AppliedFilters>([
   "sendableOnly",
   "experience",
   "salaryFloor",
-  // Bound as of 20260901090000. It shipped blind on purpose — no RPC took a
-  // parameter for it — and that cost ranked retrieval to every searcher who
-  // opted out of staffing agencies. The migration binds it in both the search
-  // and the count function, so the trade is gone.
+  // Rationale: docs/job-board-index-notes.md#n1053-excludeagencies
   "excludeAgencies",
-  // Bound as of 20260826041500. Both were previously blind, which meant a
-  // stated-pay search could never use the ranked path at all — it fell through
-  // to recency and lost ranking, the fuzzy tier and the semantic tier with it.
+  // Rationale: docs/job-board-index-notes.md#n1054-hasstatedpay
   "hasStatedPay",
   "includeUnstatedPay",
   "companies",
   "maxAgeDays",
   "postedAfter",
-  // Bound as of 20260827210000. All five were blind, and any ONE of them
-  // routed the search away from ranking, the fuzzy tier, the exact-word tier
-  // and semantic — a pay ceiling turned "nurse" into date-ordered ILIKE.
-  // vendors rides the existing p_sources parameter (merged with sendableOnly
-  // in sendableSourcesParam); the other four have parameters of their own.
+  // Rationale: docs/job-board-index-notes.md#n1055-salaryceiling
   "salaryCeiling",
   "payBasis",
   "maxYears",
@@ -353,23 +310,7 @@ const RPC_BOUND_FILTERS = new Set<keyof AppliedFilters>([
  */
 export function payParams(a: AppliedFilters): Record<string, unknown> {
   return {
-    // p_pay_stated CARRIES THE SAME QUESTION buildQuery ASKS, and the question
-    // is decided in SQL, not here. It asks whether the employer put a figure in
-    // the verbatim pay field — NOT whether we annualised it — in all three
-    // functions that take this parameter (20260927034117). This key is where the
-    // two runtimes meet, so a predicate moved in one and not the other shows up
-    // as a count that describes a different population than the page under it:
-    // the 2026-07-25 work-mode defect. The cross-runtime guard in
-    // src/test/the-pay-controls-say-what-they-compare.test.tsx reads both sides
-    // and fails if the SOURCES ever name different columns again.
-    //
-    // THAT GUARD CANNOT SEE THE DEPLOY WINDOW, and the window is the same defect
-    // on a timer: it reads source files, not deployed versions, and these two
-    // runtimes ship down different pipes. The cover for that is in cappedCount
-    // (job-board index.ts), which stands down from this RPC's count whenever a
-    // stated-pay request would get an answer the two versions could disagree
-    // about, and in the category rail beside it. Both are dated and removable;
-    // verify-deploy's 5y section says when.
+    // Rationale: docs/job-board-index-notes.md#n1056-a-hasstatedpay-p_pay_stated-true
     ...(a.hasStatedPay ? { p_pay_stated: true } : {}),
     ...(a.includeUnstatedPay ? { p_include_unstated: true } : {}),
   };
@@ -399,10 +340,7 @@ export type NormalizedFilters = {
   maxAgeClamped: boolean;
 };
 
-// Accepts both shapes clients actually send: an array (["senior"]) and a comma
-// string ("senior,expert"). The previous code leaned on String(["a","b"])
-// happening to join with a comma — true, but accidental, and it collapsed a
-// single bad member to [] with no signal.
+// Rationale: docs/job-board-index-notes.md#n1057-const-asbands-v-unknown-string
 const asBands = (v: unknown): string[] =>
   (Array.isArray(v) ? v.map((x) => String(x ?? "")) : String(v ?? "").split(","))
     .map((s) => s.trim().toLowerCase())
@@ -503,12 +441,7 @@ export function normalizeFilters(
 ): NormalizedFilters {
   const ignored: string[] = [];
 
-  // MULTI-SELECT, comma-joined, exactly like category — and validated the same
-  // way, per element. Two letters or it never reaches the split. "United
-  // Kingdom" or "GB; drop" cannot become a predicate, and a list whose members
-  // are ALL unusable is a refused filter, which is always named.
-  // Five. Country is cheap by comparison (an indexed equality per member) but
-  // US-heavy sets are not, and nothing on screen will offer more than a handful.
+  // Rationale: docs/job-board-index-notes.md#n1058-const-country_limit
   const COUNTRY_LIMIT = 5;
   // ISO-3166 alpha-2, with "UK" read as GB: "XX" or "UK" matched no row and
   // answered 0 jobs with nothing named (L8-10). An unknown code is dropped and named.
@@ -522,26 +455,10 @@ export function normalizeFilters(
     ? countryAsked.slice(0, COUNTRY_LIMIT).join(",")
     : null;
   if (countryList.length !== countrySent.length) ignored.push("country");
-  // The vendor rule, not the silent slice: a truncated list is REPORTED. Asking
-  // for six countries, getting five, and being told all six applied reads as
-  // "the board carries nothing in the sixth" — the same shape as the
-  // maxAgeDays clamp incident. Only API/URL callers can exceed the cap (the UI
-  // stops at five), and the API caller is exactly who ignoredFilters exists for.
+  // Rationale: docs/job-board-index-notes.md#n1059-if-sent-body-country-country-countryaske
   if (sent(body.country) && (!country || countryAsked.length > COUNTRY_LIMIT) && !ignored.includes("country")) ignored.push("country");
 
-  // MULTI-SELECT, and the trimming is load-bearing rather than tidy: the SQL
-  // splits on a BARE comma and does not trim, so " design , legal " matched
-  // nothing at all — verified live, it returns zero. Every element is trimmed,
-  // lowercased and checked before it is allowed near the query.
-  //
-  // Unknown slugs are dropped rather than named: they cannot match a posting,
-  // and the SQL already treats them as inert. Only a request whose categories
-  // are ALL unusable has had its filter refused, and that one is named.
-  // THREE, AND THE NUMBER IS MEASURED. search_jobs q=manager: 1 field
-  // 0.26-0.35s, 3 fields ~0.45s, 6 big fields 0.75-0.79s; q=nurse across 7
-  // values 1.24-1.89s. Six is the same cost class as the two-value cliff the
-  // two-subset pager exists to avoid, so the cap sits below it rather than at
-  // a round number.
+  // Rationale: docs/job-board-index-notes.md#n1060-const-category_limit
   const CATEGORY_LIMIT = 3;
   const categoryList = (Array.isArray(body.category) ? body.category : String(body.category ?? "").split(","))
     .map((c) => String(c ?? "").trim().toLowerCase())
@@ -553,26 +470,10 @@ export function normalizeFilters(
   // Same truncation-is-reported rule as country above.
   if (sent(body.category) && (!category || categoryAsked.length > CATEGORY_LIMIT)) ignored.push("category");
 
-  // Only meaningful alongside a category — with no category the bucket is
-  // already included, so accepting it there would be a no-op that reads like a
-  // setting.
-  // "other" already IS the unsorted bucket, so asking to add it to a selection
-  // that contains it is a no-op that would read like a setting.
+  // Rationale: docs/job-board-index-notes.md#n1061-const-wantsuncategorised-category-null-c
   const wantsUncategorised = category !== null && !category.split(",").includes("other") && body.includeUncategorised === true;
 
-  // NOT AVAILABLE UNDER A SALARY SORT, and refused out loud rather than served
-  // slowly or as a 500.
-  //
-  // Measured 2026-08-06 against production: `category=other + country=DE +
-  // sort=salary` returns HTTP 500 after 17.7s ON ITS OWN, with no opt-in
-  // involved — ordering the unsorted bucket by salary cannot use the category
-  // index, and `other` is 162,800 rows. That is a PRE-EXISTING defect (`other`
-  // has always been selectable) and it is not fixed here; what is fixed is the
-  // opt-in no longer walking into it, because the two-subset pager queries
-  // `other` as one of its halves.
-  //
-  // Pushed onto `ignored` because this file's contract is that a filter is
-  // never silently dropped — the caller is told which one did not apply.
+  // Rationale: docs/job-board-index-notes.md#n1062-const-sortingbysalary-string-body-sort-s
   const sortingBySalary = String(body.sort ?? "") === "salary";
   const includeUncategorised = wantsUncategorised && !sortingBySalary;
   if (wantsUncategorised && sortingBySalary) ignored.push("includeUncategorised");
@@ -581,47 +482,21 @@ export function normalizeFilters(
   // from a query param must not silently narrow a search to 5.4% of the board.
   const sendableOnly = body.sendableOnly === true;
 
-  // The agency opt-out, literal true only for the same reason — and it may
-  // ONLY ever narrow. A widening reading ("show agencies too") does not
-  // exist: agencies are served by default under the charter, so the flag's
-  // absence is already the widest answer, and any bug that let this admit
-  // rows would be the tier-escalation defect (a filter that widens a search).
+  // Rationale: docs/job-board-index-notes.md#n1063-const-excludeagencies-body-excludeagenci
   const excludeAgencies = body.excludeAgencies === true;
   const hasDescription = body.hasDescription === true;
 
-  // A LIST, LIKE EVERY OTHER CLOSED-SET FILTER HERE.
-  //
-  // category, country, experience and vendor all accept several values; work
-  // mode alone accepted one, so "remote or hybrid" — the ordinary thing a
-  // person wants — could not be asked. Measured 2026-08-27: GB has 1,476 remote
-  // and 3,765 hybrid, so the either-question is 5,241 postings against the
-  // 1,476 a searcher could actually reach.
-  //
-  // STILL A STRING, comma-joined, and that is deliberate: the type stays
-  // `string | null` so isUnfiltered, filterViolations, the contract test and the
-  // RPC signature all need no new shape — and an unchanged p_work_mode signature
-  // is what keeps a PGRST203 overload off the table.
-  //
-  // Validated per element and deduped, capped at the whole domain. A request
-  // whose every element is unusable is named in `ignored`, exactly as before;
-  // a request with one good and one bad element keeps the good one and still
-  // reports, which is the rule `experience` follows two blocks below.
+  // Rationale: docs/job-board-index-notes.md#n1064-const-wmasked-array-isarray-body-workmod
   const wmAsked = (Array.isArray(body.workMode) ? body.workMode : String(body.workMode ?? "").split(","))
     .map((m) => String(m ?? "").trim().toLowerCase())
     .filter((m) => m.length > 0);
   const wmValid = [...new Set(wmAsked.filter((m) => (WORK_MODES as readonly string[]).includes(m)))]
     .slice(0, WORK_MODES.length);
   const workMode = wmValid.length ? wmValid.join(",") : null;
-  // Compare against the DEDUPED asked set, or a request that merely repeats a
-  // valid value ("remote,remote") or varies its case ("Remote,remote") reports
-  // the filter as ignored though every value bound — a false "we couldn't do
-  // that" on a correct request. Casing already folded above; dedup here.
+  // Rationale: docs/job-board-index-notes.md#n1065-if-sent-body-workmode-wmvalid-length
   if (sent(body.workMode) && wmValid.length !== new Set(wmAsked).size) ignored.push("workMode");
 
-  // Employment type: the same validated-comma-list shape, wire name
-  // `employmentType`. Casing folds (Full_Time binds), junk is dropped and
-  // NAMED in ignoredFilters — a filter silently not applied is the five-
-  // filters incident again.
+  // Rationale: docs/job-board-index-notes.md#n1066-const-etasked-array-isarray-body-employm
   const etAsked = (Array.isArray(body.employmentType) ? body.employmentType : String(body.employmentType ?? "").split(","))
     .map((v) => String(v ?? "").trim().toLowerCase())
     .filter(Boolean);
@@ -632,25 +507,12 @@ export function normalizeFilters(
   // report the filter as ignored.
   if (sent(body.employmentType) && etValid.length !== new Set(etAsked).size) ignored.push("employmentType");
 
-  // Report when ANY requested band was dropped, not only when every one was. A
-  // caller asking for senior+bogus gets senior and must still be told bogus did
-  // nothing — reporting only total loss is how ["senior","bogus"] stayed silent.
+  // Rationale: docs/job-board-index-notes.md#n1067-const-bandsasked-asbands-body-experience
   const bandsAsked = asBands(body.experience);
   const experience = bandsAsked.filter(isExperienceBand);
   if (bandsAsked.length && experience.length !== bandsAsked.length) ignored.push("experience");
 
-  // 0 is the UI's "off" position for both of the next two, not a rejected value.
-  // Reporting it would hang a warning on every unfiltered page.
-  // PAY TYPED INTO THE SEARCH BOX becomes this filter, but only when the
-  // visitor did not set it explicitly. Someone who moved the slider to $150k
-  // and then typed "100k engineer" meant the slider; silently lowering their
-  // floor would widen a search they deliberately narrowed.
-  //
-  // Derived HERE rather than at the call site because this file is the single
-  // filter derivation — reading body.salaryFloor anywhere else is exactly what
-  // src/test/board-filter-contract.test.ts forbids, and it forbids it because
-  // two derivations drift and the count starts answering a different question
-  // from the page.
+  // Rationale: docs/job-board-index-notes.md#n1068-const-explicitfloor-number-body-salaryfl
   const explicitFloor = Number(body.salaryFloor);
   const hasExplicit = sent(body.salaryFloor) && Number.isFinite(explicitFloor) && explicitFloor > 0;
   const queryFloor = hasExplicit ? null : salaryFromQueryText(body.q);
@@ -658,15 +520,7 @@ export function normalizeFilters(
   const salaryFloor = Number.isFinite(floorN) && floorN > 0 ? Math.min(floorN, 2_000_000) : null;
   if (sent(body.salaryFloor) && salaryFloor === null && floorN !== 0) ignored.push("salaryFloor");
 
-  // THE OTHER END OF THE BAND, and it is derived AFTER the floor on purpose:
-  // the floor it must clear is the DERIVED one, which can come from the search
-  // box ("100k engineer") rather than from a slider. Comparing against
-  // body.salaryFloor would let {q:"200k nurse", salaryCeiling:150000} through as
-  // a band whose floor is above its ceiling — zero rows, no explanation.
-  //
-  // An inverted band is REFUSED, not served. "0 results" is the board's answer
-  // to a real question about the market; using it as the answer to an
-  // impossible request teaches a searcher something false about the market.
+  // Rationale: docs/job-board-index-notes.md#n1069-const-ceiln-number-body-salaryceiling
   const ceilN = Number(body.salaryCeiling);
   const ceilUsable = Number.isFinite(ceilN) && ceilN > 0;
   const ceilUnderFloor = ceilUsable && salaryFloor !== null && ceilN < salaryFloor;
@@ -675,114 +529,32 @@ export function normalizeFilters(
   // maxAgeDays — a control at rest must not hang a warning on the page.
   if (sent(body.salaryCeiling) && salaryCeiling === null && ceilN !== 0) ignored.push("salaryCeiling");
 
-  // TWO LITERALS, and every casing of a real one binds — the workMode rule.
-  // {workMode:"Remote"} once served the entire unfiltered board to API callers
-  // because a capital R was not a work mode; a capital H must not cost a caller
-  // their pay-basis filter the same way.
+  // Rationale: docs/job-board-index-notes.md#n1070-const-pbraw-string-body-paybasis-trim
   const pbRaw = String(body.payBasis ?? "").trim().toLowerCase();
   const payBasis = (PAY_BASES as readonly string[]).includes(pbRaw) ? pbRaw : null;
   if (sent(body.payBasis) && !payBasis) ignored.push("payBasis");
 
-  // LITERAL true ONLY, and a non-boolean is NAMED — the shape that let
-  // {"sendableOnly":"true"} return 598,066 rows with an empty ignoredFilters.
-  // A string "false" from a query param is truthy in JS, and this filter cuts
-  // the board to a fifth; guessing at it is not an option in either direction.
+  // Rationale: docs/job-board-index-notes.md#n1071-const-hasstatedpay-body-hasstatedpay-tru
   const hasStatedPay = body.hasStatedPay === true;
-  // Literal true only, same contract as includeUncategorised — and like it,
-  // this WIDENS. It relaxes an active floor to admit rows with no stated pay;
-  // with no floor set there is nothing to relax and it is inert. This is what
-  // the caller ASKED; whether it binds is decided below, against hasStatedPay.
+  // Rationale: docs/job-board-index-notes.md#n1072-const-unstatedpayasked-body-includeunsta
   const unstatedPayAsked = body.includeUnstatedPay === true;
   if (body.hasStatedPay !== undefined && body.hasStatedPay !== null && typeof body.hasStatedPay !== "boolean") {
     ignored.push("hasStatedPay");
   }
-  // Same non-boolean guard as its sibling above: a query-string
-  // {"includeUnstatedPay":"true"} is not the literal true this reads, so it
-  // silently fails to widen — and without this line it is never named, the
-  // exact sendableOnly:"true" shape the comment above records.
+  // Rationale: docs/job-board-index-notes.md#n1073-if-body-includeunstatedpay-undefined-bod
   if (body.includeUnstatedPay !== undefined && body.includeUnstatedPay !== null && typeof body.includeUnstatedPay !== "boolean") {
     ignored.push("includeUnstatedPay");
   }
-  // STATES PAY AND THE UNSTATED WIDENING CANNOT BOTH BIND. hasStatedPay ANDs a
-  // NOT-NULL test on the employer's verbatim pay field into the row query; the
-  // widening ORs a rank-IS-NULL arm back into the floor and ceiling. Under that
-  // AND, every row the OR-arm re-admits for stating NO pay is thrown straight
-  // back out — so the page could light both controls, send both keys, and get
-  // a result the widening did not widen, with nothing naming it (the body the
-  // controls guard's C12 case records). A request this file cannot honour is
-  // named, never carried silently: the widening is dropped here and reported.
-  //
-  // THIS CHANGES RESULTS; IT IS NOT PURE DISCLOSURE, and the slice it drops GREW
-  // when the states-pay predicate moved to the pay field (2026-09-27). The rank
-  // column is GENERATED from the annualised figure times a per-currency factor,
-  // ELSE NULL, so two populations now pass the stated-pay AND and fail a bare
-  // floor: a figure in a currency the table cannot convert, and — new — a rate
-  // we declined to annualise at all, which is the part-time and casual wage
-  // population. The OR-arm was re-admitting both; binding false drops both. The
-  // second one is BOARD-WIDE measurable — 33,240 rows carry pay text with no
-  // annual figure (2026-09-27T02:07:00Z) — and it is still UNMEASURED ON THE
-  // PAGE, which is the number that would matter here. payTextWithoutAnnual
-  // counts gap rows among the rows that WERE SERVED, and in exactly this state
-  // (stated pay, a floor bound, the widening dropped) the floor's rank arm
-  // excludes every gap row, so that counter is structurally zero and the page
-  // says nothing about what the drop cost. Reporting it would take a count of
-  // this same body with the rank-NULL arm restored, alongside the ignoredFilters
-  // entry; that is not built. The trade itself is unchanged — that slice for a
-  // body whose every key means what the control beside it says.
-  //
-  // Neither public-api nor nl-search imports this function: public-api
-  // proxies job-board's list over HTTP, and nl-search hands its wire filters
-  // back to the client, which sends them here. Both inherit this rule through
-  // the one list action, which is where every filter is decided.
+  // Rationale: docs/job-board-index-notes.md#n1074-const-includeunstatedpay-unstatedpayaske
   const includeUnstatedPay = unstatedPayAsked && !hasStatedPay;
   if (unstatedPayAsked && hasStatedPay) ignored.push("includeUnstatedPay");
 
-  // 1..20, REFUSED OUTSIDE IT RATHER THAN CLAMPED, which is the opposite of
-  // what maxAgeDays does one block below — and the difference is deliberate.
-  // maxAgeDays clamps because 90 days and 30 days are the same INTENT ("recent")
-  // against a board that only keeps 30; the clamp is then disclosed, because a
-  // silent one reads as "there is nothing older".
-  //
-  // maxYears has no such intent to preserve. Clamping 99 to 20 would turn "I do
-  // not mind how much experience they ask for" into "at most 20 years" — a
-  // NARROWING, invented by us, of a number the caller chose. And 0 is not an
-  // off position: no control's rest state is 0 here, so a 0 is a request we
-  // cannot bind, and a request we cannot bind is always named.
-  //
-  // AND IT MUST BE A WHOLE NUMBER, because min_years is a SMALLINT. A fraction
-  // is not a narrower filter here, it is a 400: PostgREST renders .lte() as a
-  // literal and Postgres casts that literal to the column type. Probed live
-  // 2026-08-25, read-only:
-  //   min_years=lte.3   -> a row
-  //   min_years=lte.3.5 -> {"code":"22P02","message":"invalid input syntax for
-  //                        type smallint: \"3.5\""}
-  // So {"maxYears":3.5} would have taken down the whole list query under a
-  // value that passed every bound above. salaryFloor and salaryCeiling do not
-  // need this — salary_rank_usd is `numeric`, which parses 3.5 and 1e+21 alike
-  // (probed the same day) — which is exactly why the rule belongs on THIS
-  // filter and not as a blanket one.
+  // Rationale: docs/job-board-index-notes.md#n1075-const-yearsn-number-body-maxyears
   const yearsN = Number(body.maxYears);
   const maxYears = Number.isInteger(yearsN) && yearsN >= 1 && yearsN <= 20 ? yearsN : null;
   if (sent(body.maxYears) && maxYears === null) ignored.push("maxYears");
 
-  // ILIKE '%s%', so the ILIKE WILDCARDS COME OUT FIRST. index.ts's sanitizeTerm
-  // strips exactly this set for every other text predicate; a surviving `%`
-  // turns "eng%" into a prefix match nobody asked for, `_` matches any single
-  // character, and `\` escapes the next one. Commas deliberately STAY: this is a
-  // plain .ilike() and not an or() branch, so a comma is data here, and "Sales,
-  // Marketing" is a real department name on this board.
-  //
-  // 60 characters. The longest department in a 50-row live sample was 38
-  // ("680 - Engineering - CoreSuite Platform"); the cap is there so a filter
-  // value cannot become a query-string payload, not to trim real names.
-  //
-  // A NON-STRING IS NAMED, not coerced. String({}) is "[object Object]", which
-  // would bind as a real ILIKE and return an empty page under a filter the
-  // caller never expressed — the `companies` rule ("a non-string member IS
-  // invalid and gets named"), applied to the text filter. A number is allowed
-  // through: departments like "680 - Engineering - CoreSuite Platform" and
-  // "Technology/Imaging 40-065" exist on this board, so a digit is a plausible
-  // thing to search for.
+  // Rationale: docs/job-board-index-notes.md#n1076-const-deptshapeok-typeof-body-department
   const deptShapeOk = typeof body.department === "string" || typeof body.department === "number";
   const DEPARTMENT_LIMIT = 60;
   const department = (deptShapeOk ? String(body.department) : "")
@@ -792,20 +564,7 @@ export function normalizeFilters(
     .trim() || null;
   if (sent(body.department) && !department) ignored.push("department");
 
-  // MULTI-SELECT over a CLOSED set, validated per element like country and
-  // category, and capped like both.
-  //
-  // Unknown members are NAMED, which is the opposite of how an unknown company
-  // token is treated — and the difference is the size of the space. There are
-  // 19,701 company tokens and a caller can legitimately ask about one the board
-  // does not carry, so an empty page is the true answer. There are SIXTEEN
-  // vendors; a name outside that set is a typo or a guess, never a question the
-  // board can answer, and returning an empty page for it would be answering it.
-  //
-  // EIGHT, and the cap follows the experience rule rather than the country one:
-  // a truncated list is reported. Slicing silently would mean a caller asking
-  // for nine systems gets eight and is told they got nine — the same shape as
-  // the clamp that reads as "there is nothing older".
+  // Rationale: docs/job-board-index-notes.md#n1077-const-vendor_limit
   const VENDOR_LIMIT = 8;
   const vendorsAsked = [
     ...new Set(
@@ -825,23 +584,10 @@ export function normalizeFilters(
   // Whole days only: the RPC binds an integer, and 1.5 dropped relevance ranking with 22P02 (L13-68).
   const maxAgeDays = Number.isInteger(ageN) && ageN >= 1 ? Math.min(ageN, 30) : null;
   if (sent(body.maxAgeDays) && maxAgeDays === null && ageN !== 0) ignored.push("maxAgeDays");
-  // A CLAMP IS A NARROWING AND HAS TO BE SAID. maxAgeDays:90, :365 and :30 all
-  // returned identical results with nothing in the body admitting the window
-  // had been cut — the ignoredFilters line above cannot fire, because a clamped
-  // value is non-null and therefore "honoured". A caller asking for 90 days is
-  // told nothing and reasonably concludes the board has no older postings,
-  // rather than that it declined to look.
+  // Rationale: docs/job-board-index-notes.md#n1078-const-maxageclamped-number-isinteger-age
   const maxAgeClamped = Number.isInteger(ageN) && ageN > 30;
 
-  // An unknown company token is not invalid — it matches nothing, and a truthful
-  // empty result is the correct answer to "jobs at a company we don't carry".
-  // A non-string member IS invalid and gets named, and so (.88) is a token
-  // outside the catalogue's alphabet: every one of the 44,519 catalogued tokens
-  // is letters, digits and ~ _ . - (measured 2026-10-04). supabase-js quotes an
-  // .in() member only when it holds , ( or ) and never escapes a quote inside
-  // it, so `"dominos"` reached the list as in.("dominos") -- Domino's rows --
-  // while the count's text[] matched nothing: total 0, and a forged
-  // filter-integrity incident (defect-sweep 2.24).
+  // Rationale: docs/job-board-index-notes.md#n1079-const-compasked-array-isarray-body-compa
   const compAsked = Array.isArray(body.companies) ? body.companies : [];
   const companies = compAsked
     .filter((c): c is string => typeof c === "string" && COMPANY_TOKEN_SHAPE.test(c))
@@ -850,83 +596,23 @@ export function normalizeFilters(
     ignored.push("companies");
   }
 
-  // `remote` and `companies` were the two fields that could be REQUESTED and
-  // dropped without ever being named — the exact breach this file exists to
-  // close, still open in the file that closes it.
-  //
-  //   remote:"true"  (the natural shape from a query string) -> `=== true` is
-  //     false, the filter evaporates, and the caller who asked for remote work
-  //     receives the entire 600k-row board.
-  //   companies:"tok" (a bare token instead of a one-element array) -> the
-  //     Array.isArray guard yields [], the employer scope evaporates, and the
-  //     caller receives every posting under a total they will read as that
-  //     employer's.
-  //
-  // Neither is reachable from a UI control today — every in-repo caller sends a
-  // boolean and an array respectively — but "no first-party surface can reach
-  // it" is a statement about today's callers, not about the contract. The data
-  // API is public, and query strings are where non-booleans come from.
+  // Rationale: docs/job-board-index-notes.md#n1080-if-body-remote-undefined-body-remote
   if (body.remote !== undefined && body.remote !== null && typeof body.remote !== "boolean") {
     ignored.push("remote");
   }
-  // AND THE SECOND WAY A `remote` REQUEST DIES: an explicit workMode wins the
-  // precedence in `applied` below, so remote:true alongside one binds nothing.
-  // The precedence is RIGHT and stays — {country:IE, workMode:onsite,
-  // remote:true} returned 261 onsite rows, the same as workMode alone, not the
-  // 137 remote ones — but it was the only drop path in this file with no name
-  // attached to it, because it lives in the return literal instead of up here
-  // with the others (166, 175, 193, 215, 233, 253, 256, 262 all have one).
-  //
-  // The intent lift makes it worse than an omission. liftIntentFilters injects
-  // {remote:true} for "work from home"/"wfh" and STRIPS the words from the
-  // query, checking only body.remote and never body.workMode: q="work from home
-  // nurse" + workMode=onsite returned 2,205 rows, byte for byte the same as
-  // q="nurse" + workMode=onsite, while the payload claimed intentFilters
-  // ["work from home"]. The phrase was deleted from the search AND its filter
-  // discarded, and the response asserted the opposite.
-  //
-  // EXEMPT workMode:"remote", and this is measured, not assumed. The boolean is
-  // a strict subset of the mode: IE remote=true is 137 rows, of which
-  // work_mode='remote' is 137 and work_mode<>'remote' is ZERO; GB is 1454 and
-  // 1447. Under {workMode:"remote", remote:true} the dropped predicate would
-  // only have removed rows that are remote by work_mode, so every row returned
-  // IS remote — and the only string the UI has says "those results are
-  // unfiltered by it", which would be false. That shape is exactly what
-  // nl-search/index.ts:52 tells the model to emit and what
-  // send-search-digest/index.ts:126 forwards. Trading a silence for a falsehood
-  // is the error this push exists to correct, not to commit.
-  //
-  // `=== true`, not sent(): remote:false is not a request for remote work, and
-  // naming it would hang a warning on every page where the box is off. Disjoint
-  // from the shape guard above (that one requires a NON-boolean), so
-  // {remote:"true", workMode:"onsite"} still names "remote" exactly once.
+  // Rationale: docs/job-board-index-notes.md#n1081-if-body-remote-true-workmode-workmode
   if (body.remote === true && workMode && workMode !== "remote") ignored.push("remote");
   if (body.companies !== undefined && body.companies !== null && !Array.isArray(body.companies)) {
     ignored.push("companies");
   }
-  // sendableOnly AND includeUncategorised were the two that had the `=== true`
-  // strictness WITHOUT the shape guard, so a non-boolean evaporated silently —
-  // the one class of filter this file's own header says cannot happen.
-  //
-  // Proven live on the deployed build: {"sendableOnly":"true"} returned total
-  // 598,066 with ignoredFilters ABSENT and 0 of 25 rows sendable, while the
-  // identical shape {"remote":"true"} returned ignoredFilters ["remote"]. Same
-  // failure, one named and one silent — and the silent one is the filter for
-  // the $99/mo product.
-  //
-  // The `=== true` strictness stays; it just stops being quiet about a value
-  // it refused.
+  // Rationale: docs/job-board-index-notes.md#n1082-if-body-sendableonly-undefined-body-send
   if (body.sendableOnly !== undefined && body.sendableOnly !== null && typeof body.sendableOnly !== "boolean") {
     ignored.push("sendableOnly");
   }
   if (body.includeUncategorised !== undefined && body.includeUncategorised !== null && typeof body.includeUncategorised !== "boolean") {
     ignored.push("includeUncategorised");
   }
-  // Same non-boolean guard as sendableOnly directly above: a query-string
-  // {"excludeAgencies":"true"} is not the literal true the strictness reads,
-  // so it fails to narrow — and a reader who asked to hide agencies and was
-  // silently shown them anyway is the exact person a disclosure feature must
-  // never lie to.
+  // Rationale: docs/job-board-index-notes.md#n1083-if-body-hasdescription-undefined-body-ha
   if (body.hasDescription !== undefined && body.hasDescription !== null && typeof body.hasDescription !== "boolean") {
     ignored.push("hasDescription");
   }
@@ -948,11 +634,7 @@ export function normalizeFilters(
       q: String(body.q ?? "").trim(),
       location: String(body.location ?? "").trim(),
       country,
-      // An explicit workMode BEATS the legacy `remote` boolean, and that decision
-      // belongs here rather than at the query. It used to live only in buildQuery,
-      // so the row query dropped `remote` while the three count RPCs and the
-      // per-page self-check all still bound it — three consumers, three different
-      // questions, from one request. Deciding it once means they cannot disagree.
+      // Rationale: docs/job-board-index-notes.md#n1084-remote-body-remote-true-workmode
       remote: body.remote === true && !workMode,
       workMode,
       employmentType,
@@ -980,13 +662,7 @@ export function normalizeFilters(
   };
 }
 
-// Does this request constrain the catalogue at all?
-//
-// Derived MECHANICALLY from the applied values rather than written out field by
-// field. A hand-maintained conjunction is exactly what published 587,793 over a
-// filtered page, and a hand-maintained one would go stale again the first time
-// somebody adds a filter and updates three sites out of four. Any non-empty
-// applied value means filtered, so a new field is counted the moment it exists.
+// Rationale: docs/job-board-index-notes.md#n1085-block
 /**
  * Toggles that only ever ADMIT rows. They are not narrowings, so they must not
  * make an otherwise-bare request look filtered. The same set serveList's rescue
@@ -1022,23 +698,7 @@ export const isUnfiltered = (a: AppliedFilters): boolean =>
 
 export type FilterViolation = { field: string; want: string; got: string };
 
-// Does a row we are about to return actually satisfy the filters we just told
-// the caller we applied?
-//
-// This runs against rows already in memory, so it costs no query and can run on
-// EVERY request rather than in a nightly job. It is the check that would have
-// caught `country` arriving null on every row while a unit test asserting
-// "rowToJob emits country" passed — that test proved the last link in the chain
-// and nothing about the first.
-//
-// Only exactly-decidable predicates are checked. q and location are deliberately
-// excluded: q matches title OR description via full-text with stemming and
-// aliases (swe -> Software Engineer), and asserting a literal substring would
-// flag correct behaviour as a violation — which is how a bad audit metric scored
-// a working alias at 0/10 earlier today. salaryFloor is excluded because the
-// comparison runs on salary_rank_usd, an approximate-USD generated column the
-// mapped row does not carry; checking the raw figure would fail legitimately
-// passing SEK/JPY rows.
+// Rationale: docs/job-board-index-notes.md#n1086-block
 /**
  * S12-020: "TODAY" IS A CALENDAR DAY. maxAgeDays was a rolling 24 hours per
  * day, and most vendors state a date with no time (stored 00:00Z), so a US
@@ -1096,18 +756,7 @@ export function filterViolations(
     if (out.length < 20) out.push({ field, want, got: String(got ?? "null") });
   };
   const cutoff = a.maxAgeDays === null ? null : ageCutoff ?? ageCutoffMs(a.maxAgeDays, Date.now());
-  // SPLIT, NEVER COMPARED WHOLE. country/workMode/category/employmentType are
-  // comma-joined multi-selects now (the Remote+Hybrid toggles are a mainstream
-  // gesture), and testing a row by EQUALITY against the joined string flagged
-  // every correct row of every multi-select page: workMode="remote,hybrid"
-  // against a row's "remote" produced a violation per row, a false
-  // filterIntegrity block on the payload, a console.error per request, and an
-  // UNSAMPLED incident row overwriting the sensor on every page view —
-  // drowning the one channel built to catch a tier that genuinely serves
-  // filter-violating rows. Verified by executing the old checks: 6 violations
-  // across two perfectly matching rows. The row satisfies the filter when its
-  // value is ANY member of the list, which is exactly the question the SQL's
-  // string_to_array/IN asked.
+  // Rationale: docs/job-board-index-notes.md#n1087-const-wantcountry-a-country-a-country
   const wantCountry = a.country ? a.country.split(",") : null;
   const wantModes = a.workMode ? a.workMode.split(",") : null;
   const wantCats = a.category ? a.category.split(",") : null;
@@ -1118,52 +767,28 @@ export function filterViolations(
     if (wantModes && !wantModes.includes(String(r.workMode ?? "").toLowerCase())) {
       push("workMode", a.workMode as string, r.workMode);
     }
-    // `other` is LEGITIMATE under the opt-in — the two-subset pager returns it
-    // by design. Without this allowance every opted-in page with any `other`
-    // rows logged a false filter-integrity incident, unsampled, and wrote a
-    // permanent red light over a working feature. Found 2026-08-07 while adding
-    // the sendable check below, one day after the opt-in shipped; nothing had
-    // used the opt-in yet, which is the only reason the incident log is clean.
+    // Rationale: docs/job-board-index-notes.md#n1088-if-wantcats-wantcats-includes-string-r
     if (wantCats && !wantCats.includes(String(r.category ?? ""))) {
       const allowedOther = a.includeUncategorised && String(r.category ?? "") === "other";
       if (!allowedOther) push("category", a.category as string, r.category);
     }
-    // The newest filter, checked like workMode: closed domain, list
-    // membership, NULL excluded by the predicate so a NULL row arriving under
-    // the filter is itself the defect. This is the sensor for the next
-    // p_work_mode-shaped regression (an RPC overload drop, a deploy-window
-    // skew) — the 30-NULL-rows-under-a-remote-filter incident class, which
-    // this check turns from a silent page into a reported violation.
+    // Rationale: docs/job-board-index-notes.md#n1089-if-wantet-wantet-includes-string-r
     if (wantEt && !wantEt.includes(String(r.employmentType ?? ""))) {
       push("employmentType", a.employmentType as string, r.employmentType);
     }
-    // postedAfter is exactly decidable the same way maxAgeDays below is —
-    // undated rows are excluded by the predicate, so one arriving under the
-    // filter is the defect.
+    // Rationale: docs/job-board-index-notes.md#n1090-if-postedfloor-null-number-isfinite-post
     if (postedFloor !== null && Number.isFinite(postedFloor)) {
       const pp = r.postedAt ? Date.parse(String(r.postedAt)) : NaN;
       if (!Number.isFinite(pp) || pp < postedFloor) push("postedAfter", `>=${a.postedAfter}`, r.postedAt);
     }
-    // The agent-ready filter, checked against the same mirror the query used.
-    // `source` is the key rowToJob actually emits — verified, not assumed,
-    // because the `token`/`companyToken` mismatch above shipped exactly that way.
+    // Rationale: docs/job-board-index-notes.md#n1091-if-a-sendableonly-sendable_vendors-inclu
     if (a.sendableOnly && !SENDABLE_VENDORS.includes(String(r.source ?? ""))) {
       push("sendableOnly", SENDABLE_VENDORS.join("|"), r.source);
     }
     if (a.experience.length && !a.experience.includes(String(r.experienceBand ?? ""))) {
       push("experience", a.experience.join("|"), r.experienceBand);
     }
-    // THE SIX NEW FILTERS ARE CHECKED HERE BECAUSE ONLY ONE OF THE BOARD'S
-    // QUERY PATHS BINDS THEM. buildQuery does; the ranked search_jobs exit
-    // serves rows straight out of an RPC that has no parameter for any of them.
-    // Until those parameters exist, this self-check is what turns "the filter
-    // was ignored" into a reported filterIntegrity violation instead of a page
-    // that looks correct. See rpcBlindFilters above.
-    //
-    // salaryCeiling is EXCLUDED for the same reason salaryFloor is: both compare
-    // against salary_rank_usd, an approximate-USD generated column the mapped
-    // row does not carry, and checking the raw figure would fail SEK/JPY rows
-    // that legitimately passed.
+    // Rationale: docs/job-board-index-notes.md#n1092-if-a-paybasis
     if (a.payBasis) {
       const per = String(r.salaryPeriod ?? "");
       const ok = a.payBasis === "hourly" ? per === "hour" : (SALARIED_PERIODS as readonly string[]).includes(per);
@@ -1199,16 +824,12 @@ export function filterViolations(
     if (a.hasStatedPay && (typeof r.salary !== "string" || r.salary.trim() === "")) {
       push("hasStatedPay", "stated", r.salary);
     }
-    // An unstated requirement is EXCLUDED by the predicate at the database, so a
-    // row with no min_years arriving under this filter is itself the defect —
-    // the same reading maxAgeDays gives an undated posting.
+    // Rationale: docs/job-board-index-notes.md#n1093-if-a-maxyears-null
     if (a.maxYears !== null) {
       const y = r.minYears;
       if (typeof y !== "number" || y > a.maxYears) push("maxYears", `<=${a.maxYears}`, r.minYears);
     }
-    // Substring, case-insensitive — the same question the ILIKE asked, not a
-    // stricter one. An equality check here would flag "Hardware Engineering"
-    // under department=engineering, which the query deliberately returns.
+    // Rationale: docs/job-board-index-notes.md#n1094-if-a-department-string-r-department
     if (a.department && !String(r.department ?? "").toLowerCase().includes(a.department.toLowerCase())) {
       push("department", a.department, r.department);
     }
@@ -1216,12 +837,7 @@ export function filterViolations(
       push("vendor", a.vendors.join("|"), r.source);
     }
     if (a.remote && r.remote !== true) push("remote", "true", r.remote);
-    // The agency opt-out, checked exactly as strictly as it binds: the column
-    // is NOT NULL so rowToJob always emits a boolean, and a tagged row
-    // arriving under the opt-out is the defect. This is the sensor for the
-    // day an RPC gains rows this filter never reached — the p_work_mode
-    // regression class — since no RPC can bind it yet and the blind-set gate
-    // is the only thing keeping those paths away.
+    // Rationale: docs/job-board-index-notes.md#n1095-if-a-excludeagencies-r-agency-true
     if (a.excludeAgencies && r.agency === true) push("excludeAgencies", "agency=false", r.agency);
     // NO SELF-CHECK FOR hasDescription, deliberately. rowToJob does not emit
     // `description` on list rows — it is the largest field on the table and the

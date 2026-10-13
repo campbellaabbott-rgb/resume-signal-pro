@@ -10476,3 +10476,6902 @@ Deploy order: the migration with or before job-board. Old job-board on the new
 SQL never sends p_title_only (DEFAULT false). New job-board on the old SQL
 sends it only after a missed clock; that call answers PGRST202 and the request
 falls back as it does today.
+
+## n483-const-name_sync_version
+
+In `supabase/functions/job-board/index.ts`, above: `const NAME_SYNC_VERSION = 4;`
+
+STORED NAMES DO NOT HEAL THEMSELVES. The refresh is insert-only by design, so
+correcting a display name in sources.ts changes what NEW postings get and
+nothing else — every existing row keeps the old name indefinitely. The
+version-stamped sweep below is the only path that rewrites them, so a rename
+must arrive with a bump here or it is invisible on the site.
+
+## n484-boards-whose-catalog-display-name-was
+
+In `supabase/functions/job-board/index.ts`, above: `/** Boards whose catalog display name was corrected, for the v2 sweep.`
+
+v4 (S11-133): every board a company_name_overrides row names, including
+wave 3's 179, is renamed here instead of in 20261009100100's one
+transaction, with its closures, snapshots and closure-rollup rows.
+
+## n485-embryriddle-wd1-external
+
+In `supabase/functions/job-board/index.ts`, above: `"embryriddle~wd1~External",`
+
+Both Embry-Riddle boards, confirmed linked from careers.erau.edu: External
+is staff/faculty, AdjunctFacultyOpportunities is adjunct hiring. Same
+employer, so the same name — they are not separate companies.
+
+## n486-const-fetch_timeout_ms-_000
+
+In `supabase/functions/job-board/index.ts`, above: `const FETCH_TIMEOUT_MS = 20_000;`
+
+8s was too tight for large boards: Greenhouse content=true payloads run
+3–4 MB and Ashby 2.5 MB, which from the edge can exceed 8s and fail the fetch
+— repeatedly, so ~100 boards with hundreds of fresh postings each (stone, pei,
+bridgebio, deliveroo…) never ingested at all. A worker only blocks on the
+slow board, and the queue keeps a hop well under the invocation wall-time, so
+a wider ceiling is safe. Descriptions are preserved (unlike light-desc).
+
+## n487-const-desc_sweep_per_hop
+
+In `supabase/functions/job-board/index.ts`, above: `const DESC_SWEEP_PER_HOP = 120;`
+
+desc-sweep: per-posting description backfill. 8 concurrent detail fetches
+matches CONCURRENCY for board fetches; 120/hop keeps a hop well inside the
+edge wall-time limit while still clearing ~406k rows in a few thousand hops.
+
+## n488-const-hot_slice
+
+In `supabase/functions/job-board/index.ts`, above: `const HOT_SLICE = 10;`
+
+Slice sizes are calibrated to the per-invocation compute budget. Hot
+slices are UNIFORMLY giant boards (that's what makes them hot), so they
+must be much smaller than the old mixed slices: the first tiered deploy
+died mid-slice at HOT=30 (one upsert chunk of carvana landed, then the
+worker hit the ceiling and the cron retried the same slice forever).
+
+## n489-const-refused-string
+
+In `supabase/functions/job-board/index.ts`, above: `const refused: string[] = [];`
+
+SWEEP THE ROW, don't merely filter the read. Tokens an older build
+persisted without a vendor test are refused by the set above, which is
+enough to stop them going light again — but leaving them in the row means
+every isolate re-reads and re-refuses them forever, and nobody reading
+the row can tell which boards were stranded. Rewrite it ONCE, naming the
+removals, so the row says what happened and stops repeating itself.
+
+## n490-let-converted
+
+In `supabase/functions/job-board/index.ts`, above: `let converted = 0;`
+
+Builds before .89 persisted bare tokens. Each became light only when
+every board on it was light-capable, so it converts to those boards'
+keys; the row is rewritten once in the new form (n415).
+
+## n491-if-refused-length-console-warn-job
+
+In `supabase/functions/job-board/index.ts`, above: `if (refused.length > 0) console.warn('[JOB-BOARD] light_desc_dynamic swept: ${refused.length} non-light-capable board(s) removed (${refused.`
+
+One write, and only on a dirty row: the next load finds nothing to
+refuse or convert. The stranded boards recover on their own — listUrl
+stops emitting the light form for them, so new postings carry
+descriptions again, and rows already stored NULL are refilled by the
+desc-sweep BOARD lane (workable is in BOARD_DESC_SOURCES), which is the
+lane the maintenance-ladder fix below un-starves.
+
+## n492-https-apply-workable-com-api-v1
+
+In `supabase/functions/job-board/index.ts`, above: `? 'https://apply.workable.com/api/v1/widget/accounts/${s.token}?details=${isLight(s) ? "false" : "true"}'`
+
+details=true returns every posting's FULL description in the SAME
+single call (measured 2026-07-24: 88KB vs 8KB on a 20-job board) —
+complete coverage for Workable boards at zero extra requests.
+Light boards fall back for the same reason Greenhouse giants drop
+content=true: the bulk htmlToText pass is what wedges the isolate.
+Their descriptions arrive via the backfill sweep instead.
+
+## n493-https-s-host-s-token-teamtailor
+
+In `supabase/functions/job-board/index.ts`, above: `? 'https://${s.host ?? '${s.token}.teamtailor.com'}/jobs.rss'`
+
+`host` serves the board from the employer's own domain.
+Teamtailor exposes the identical /jobs.rss there, and it is
+the ONLY reachable route for the 364 custom-domain boards
+whose tenant token no reverse lookup can recover.
+
+## n494-const-first-await-fetchwithtimeout-listu
+
+In `supabase/functions/job-board/index.ts`, above: `const first = await fetchWithTimeout(listUrl(s, startOffset));`
+
+Same rotation as Workday: a board bigger than SR_CAP is read a tranche per
+pass instead of the same first tranche forever. Measured 2026-08-25: one
+board (dominos, 2,080 rows) sits at this cap today, so the win here is
+small — but a ceiling that only bites on the largest employers is exactly
+the one nobody notices until an employer grows into it.
+
+## n495-const-feedtotal-number-page1-totalfound
+
+In `supabase/functions/job-board/index.ts`, above: `const feedTotal = Number(page1.totalFound) || 0;`
+
+The vendor's own advertised count, kept whole — NOT clamped to the cap.
+It rides the verification stamp so the UI can say "4,887 advertised"
+instead of publishing the cap as though it were the company's size, which
+is the false-precision trap Workday's feedTotal was added to close.
+
+## n496-let-srended-page1-content-length-sr_page
+
+In `supabase/functions/job-board/index.ts`, above: `let srEnded = (page1.content ?? []).length < SR_PAGE;`
+
+DID THE FEED RUN OUT, or did we merely stop where `total` told us to? This
+loop is bounded by the advertised total, so without watching page sizes it
+has no way to tell the two apart and would report every stop as an ending.
+A short page is the only end-of-feed observation SmartRecruiters offers.
+
+## n497-const-advancedsr-startoffset-content-len
+
+In `supabase/functions/job-board/index.ts`, above: `const advancedSr = startOffset + content.length;`
+
+windowed, reported the same way Workday and Oracle report it: the company
+holds more than we fetched, so a posting's ABSENCE from our copy proves
+nothing about it being filled. Downstream this suppresses closure logging
+and guards the prune. SR previously had no feedTotal at all, so truncation
+was inferred from `rowsById.size >= SR_CAP` — a proxy that cannot tell a
+board of exactly 2,000 from one of 24,566.
+
+## n498-const-max_request_bytes-_000_000
+
+In `supabase/functions/job-board/index.ts`, above: `const MAX_REQUEST_BYTES = 2_000_000;`
+
+The inbound request. The largest real body is a fit-batch (FIT_BATCH_MAX ids
+x FIT_DESC_CHARS ~= 400KB) or a chain kick carrying a slice's tokens, so 2MB
+is generous against anything this API legitimately receives.
+
+## n499-try
+
+In `supabase/functions/job-board/index.ts`, above: `try {`
+
+`url` is a getter with no setter on a constructed Response, and the
+BambooHR login-page branch reads it to say WHERE a board redirected to.
+Shadow it so that diagnostic survives the wrap.
+
+## n500-if-res-status
+
+In `supabase/functions/job-board/index.ts`, above: `if (res.status === 429) {`
+
+Rate limits: honor Retry-After with one short, capped retry (personio
+429s observed under burst; vendor interleaving spreads the load but a
+vendor can still throttle). Waits longer than 4s aren't worth a slice's
+budget — the board simply retries next rotation.
+
+## n501-async-function-fetchpersonio-s-jobsource
+
+In `supabase/functions/job-board/index.ts`, above: `async function fetchPersonio(s: JobSource): Promise<{ xml: string; host: string }> {`
+
+Personio publishes the same official feed on two hosts depending on the
+company's region setup — try .de first (the majority), fall back to .com.
+The winning host is carried so Apply links land on the right domain.
+
+## n502-const-rippling_page_cap
+
+In `supabase/functions/job-board/index.ts`, above: `const RIPPLING_PAGE_CAP = 10;`
+
+Rippling: the board page embeds page 0 of the job list as structured JSON;
+further pages come from the same page URL with ?page=N. Capped at 10 pages
+(200 jobs) — Rippling boards are small-company boards; a board past the cap
+still ingests its first 200 postings rather than failing.
+
+## n503-async-function-fetchrippling-s-jobsource
+
+In `supabase/functions/job-board/index.ts`, above: `async function fetchRippling(s: JobSource, startOffset = 0): Promise<{ items: unknown[]; raw: string; windowed: boolean; feedTotal: number; `
+
+startOffset is in ITEMS and converts to Rippling's page number. Measured
+2026-08-25 across 198 of 1,051 boards, one exceeds the 10-page cap —
+medcbo-inc at 64 pages, which loses 1,080 postings, roughly 5,700 across the
+catalogue. Concentrated in a handful of large boards rather than spread.
+
+## n504-const-ukg_page
+
+In `supabase/functions/job-board/index.ts`, above: `const UKG_PAGE = 50;`
+
+UKG Pro Recruiting: the candidate portal's own list endpoint, unauthenticated
+(verified live 2026-09-01 on Sub-Zero Group — no cookie, no CSRF token, no
+account). POST { opportunitySearch: { Top, Skip, ... } } answers
+{ opportunities[], totalCount }, so paging is Top/Skip and the board's own
+advertised size arrives on the first page.
+
+## n505-const-responses-await-promise-all-pages
+
+In `supabase/functions/job-board/index.ts`, above: `const responses = await Promise.all(pages.map(async (page) => {`
+
+FETCH concurrently, READ one at a time — see MAX_RESPONSE_BYTES. The
+round trips are what chunking buys; holding four PARSED pages at once
+was memory the per-response bound could never see.
+
+## n506-if-array-isarray-reqs
+
+In `supabase/functions/job-board/index.ts`, above: `if (!Array.isArray(reqs)) {`
+
+A 200 whose body isn't the requisition envelope is drift or a
+bot-wall — the personio/rippling/paylocity line: a FAILED fetch,
+never an empty board. Only page 0 can prove the shape; a later page
+going strange ends the walk with what we already hold.
+
+## n507-if-all-length-feedtotal-throw-new
+
+In `supabase/functions/job-board/index.ts`, above: `if (all.length === 0 && feedTotal > 0) throw new Error('empty page but total=${feedTotal}');`
+
+Same guard as workday/oracle/icims: an empty read against a non-zero
+advertised total is a refusal, not an empty board — throwing keeps the
+orphan prune away from a live tenant.
+
+## n508-const-oracle_site_rank-readonlymap-strin
+
+In `supabase/functions/job-board/index.ts`, above: `const ORACLE_SITE_RANK: ReadonlyMap<string, number> = rankOracleSites(JOB_SOURCES, ORACLE_CANONICAL_SITES);`
+
+Every Oracle site of every multi-site tenant, ranked (0 = canonical). The
+ingest stores one row per tenant requisition under the best-ranked site that
+lists it; see normalize.ts (the rule, its measurement) and sources.ts
+ORACLE_CANONICAL_SITES (the overrides). Single-site tenants are absent and
+pay nothing. The same table is published to job_board_meta each pass so the
+repair SQL (migration 20260909216000) keeps exactly this rule.
+
+## n509-let-oraclereqkeymissinguntil
+
+In `supabase/functions/job-board/index.ts`, above: `let oracleReqKeyMissingUntil = 0;`
+
+Deploy-before-migration: until job_board_postings.req_key exists the holder
+lookup fails naming the column. Back off for ten minutes rather than for the
+isolate's life, so the dedupe switches itself on once the migration lands.
+
+## n510-const-workdaypagecap-math-max-s-pages
+
+In `supabase/functions/job-board/index.ts`, above: `const workdayPageCap = Math.max(1, s.pages ?? WORKDAY_PAGE_CAP);`
+
+Chunked like oracle/icims, for the same wall-time reason: at one POST per
+RTT a 220-page giant would hold a slice for minutes. A per-board pages
+override (the PetSmart contract) widens named giants — a 24-board sample
+measured ~276k postings living past the default window, CVS Health alone
+serving 19,265 against 678 stored. Results consume IN ORDER; a short page
+or shape-drift anywhere in a chunk ends the walk.
+
+## n511-if-body-undefined
+
+In `supabase/functions/job-board/index.ts`, above: `if (body === undefined) {`
+
+An unreadable body used to reject the whole chunk and fail the
+board. Same verdict, kept where it belongs: page 0 proves the shape,
+a later page going strange ends the walk with what we hold.
+
+## n512-if-all-length-max_postings_per_visit-bre
+
+In `supabase/functions/job-board/index.ts`, above: `if (all.length >= MAX_POSTINGS_PER_VISIT) break outer;`
+
+Memory ceiling, NOT an end-of-feed signal: leave `exhausted` false so
+nextOffset resumes here rather than wrapping to 0 and re-reading the
+board from the top.
+
+## n513-let-exhausted-false
+
+In `supabase/functions/job-board/index.ts`, above: `let exhausted = false;`
+
+Exhaustive = we stopped because the feed ran out (a short page), not because
+we hit OUR page cap. This is the honest windowing signal: measured live,
+tenants advertise a TotalJobsCount 1 higher than they actually serve
+(Fortinet 918 advertised / 917 returned, DTCC 406/405), so comparing counts
+would mark a fully-read board "windowed" forever — and windowed boards are
+barred from closure logging, so they'd never contribute fill data.
+
+## n514-const-oraclepagecap-math-max-s-pages
+
+In `supabase/functions/job-board/index.ts`, above: `const oraclePageCap = Math.max(1, s.pages ?? ORACLE_PAGE_CAP);`
+
+Per-board pages override, same contract as icims (the PetSmart precedent):
+named giants get a window sized to what they advertise, everyone else
+keeps the proven default. Kroger advertises 12,350 against the default
+window's 500 (measured 2026-08-30) — the deep cursor alone needs ~25
+passes to see the tail once, and the 30-day sweep is faster than that.
+
+## n515-const-empty-emptyfirstpage-startoffset-a
+
+In `supabase/functions/job-board/index.ts`, above: `const empty = emptyFirstPage(startOffset, all.length, feedTotal);`
+
+Same guard as Workday: an empty read against a non-zero advertised total is
+a refusal (rate-limit/transient), NOT an empty board. Throwing marks the
+board failed so the orphan prune never deletes a live tenant. Past the
+top it wraps instead (n420).
+
+## n516-async-function-fetchicims-s-jobsource-st
+
+In `supabase/functions/job-board/index.ts`, above: `async function fetchIcims(s: JobSource, startOffset: number, pageSize: number): Promise<{ items: unknown[]; windowed: boolean; feedTotal: nu`
+
+RESUMABLE SINCE .28. iCIMS pages 1-based by `page`, so the deep cursor's
+posting offset maps to a starting page; the visit then covers its page budget
+FROM there and reports nextOffset like Workday and Oracle do — which is what
+lets MAX_POSTINGS_PER_VISIT bound it without truncating the board. Before
+this, iCIMS held the single largest per-visit fetch on the board (20,800
+postings) and could not be capped.
+
+## n517-const-fetchpage-async-page-number
+
+In `supabase/functions/job-board/index.ts`, above: `const fetchPage = async (page: number) => {`
+
+Fetch the chunk concurrently; READ the bodies one at a time. An iCIMS
+page of 100 carries description, qualifications and responsibilities
+per item — measured 2.0MB (AccentCare) to 3.3MB (AMD) — so holding
+five parsed pages at once was ~16MB of wire per worker, three times a
+worker's whole allotment, with no single response near the bound. See
+MAX_RESPONSE_BYTES.
+
+## n518-if-over-if-all-length-throw
+
+In `supabase/functions/job-board/index.ts`, above: `if (over) { if (all.length === 0) throw new Error('${OVERSIZE_MARKER} over ${MAX_RESPONSE_BYTES} on page ${pages[i]}'); break outer; }`
+
+Over the byte budget mid-walk is a WINDOW, not a failure: keep
+the pages that landed and leave `exhausted` false so nextOffset
+resumes here. Only a first page bigger than an isolate can hold
+reaches the caller, which retries it smaller or defers the board.
+
+## n519-const-empty-emptyfirstpage-base-all-leng
+
+In `supabase/functions/job-board/index.ts`, above: `const empty = emptyFirstPage(base, all.length, feedTotal);`
+
+Same guard as the other paginated vendors: a page-1 failure that
+returns empty while the feed claims postings must NOT read as "board
+emptied" (the orphan prune would delete a live tenant). Past page 1 it
+wraps instead (n420).
+
+## n520-async-function-fetchusajobs-s-jobsource
+
+In `supabase/functions/job-board/index.ts`, above: `async function fetchUsajobs(s: JobSource, startOffset: number, key: string, ua: string): Promise<{ items: unknown[]; windowed: boolean; feed`
+
+A page of 500 never fit the 4 MB bound, so the federal feed never stored a
+row (register L7-01). Pages of 100 from the cursor's page, capped per visit
+and resumed like iCIMS.
+
+## n521-async-function-fetchboard
+
+In `supabase/functions/job-board/index.ts`, above: `async function fetchBoard(`
+
+onFail receives a COMPACT reason. The reason was already known here and
+thrown away by `return null`, so every failure reached the operator as the
+bare word "(vendor)" — 110 boards reported identically whether they were
+deleted, rate-limited or slow. Diagnosing that cost an afternoon of probing
+each board by hand against its own API, to recover information this
+function had already computed and discarded.
+
+## n522-startoffset
+
+In `supabase/functions/job-board/index.ts`, above: `startOffset = 0,`
+
+Where the previous pass stopped on this board. Only the capped vendors read
+it; everyone else fetches whole feeds and ignores it. `nextOffset` comes
+back on the same shape so the caller can persist it without knowing which
+vendor paginates.
+
+## n523-const-key-deno-env-get-usajobs_api_key
+
+In `supabase/functions/job-board/index.ts`, above: `const key = Deno.env.get("USAJOBS_API_KEY") ?? "";`
+
+Single national feed, paged by fetchUsajobs. The key lives in secrets;
+a MISSING key returns empty rather than throwing, because throwing
+marks the board failed and the dormancy prune would eventually delete
+every federal posting over a config gap.
+
+## n524-if-s-source-smartrecruiters
+
+In `supabase/functions/job-board/index.ts`, above: `if (s.source === "smartrecruiters") {`
+
+SmartRecruiters now reports truncation the way Workday and Oracle do.
+Without this the honest `windowed`/`feedTotal` computed in the fetcher
+died here at the return, and downstream kept inferring truncation from a
+row-count proxy.
+
+## n525-const-http-raw-match-http-d
+
+In `supabase/functions/job-board/index.ts`, above: `const http = raw.match(/HTTP (\d{3})/)?.[1];`
+
+Classify into something countable. An operator needs to tell "the board
+is gone" from "the vendor throttled us" at a glance, because those have
+opposite remedies: one is a registry removal, the other a backoff.
+
+## n526-const-over-raw-match-oversize_body-w
+
+In `supabase/functions/job-board/index.ts`, above: `const over = raw.match(/OVERSIZE_BODY \w+ (\d+)/);`
+
+OVERSIZE IS ITS OWN VERDICT, not a vendor failure. The board answered
+us; its answer was simply bigger than an isolate can hold. The caller
+reads this prefix to DEFER the board (and to enrol a light-capable
+vendor), because a board that is too big this pass is not a board that
+is gone — and the catalog is the product.
+
+## n527-const-fallback_cold_list-interleavebyven
+
+In `supabase/functions/job-board/index.ts`, above: `const FALLBACK_COLD_LIST = interleaveByVendor(JOB_SOURCES.filter((s) => !HOT_TOKENS.has(s.token)));`
+
+Cold list interleaved too: census merges append same-vendor blocks
+(rung 3 added ~3k recruitee/teamtailor/personio/breezy in runs), so an
+uninterleaved 80-board slice can be one vendor end-to-end — burst
+rate-limits (personio 429s observed) and clustered heavy parses. The
+rotation cursor indexes this list, so order changes cost one transient
+partial rotation; the nightly stale-board sweep covers any laggards.
+
+## n528-async-function-tierlists-client-supabase
+
+In `supabase/functions/job-board/index.ts`, above: `async function tierLists(client: SupabaseClient): Promise<{ hotList: JobSource[]; coldList: JobSource[] }> {`
+
+Self-tuning tiers: each completed pass writes the current top boards by
+live posting count (meta k=hot_tokens), so a board that grows gets hot
+cadence automatically instead of drifting from the static snapshot the
+catalog shipped with. The static HOT_TOKENS set stays as the fallback
+for a fresh deploy or a glitched meta row.
+
+## n529-async-function-undatedbacklog-client-sup
+
+In `supabase/functions/job-board/index.ts`, above: `async function undatedBacklog(client: SupabaseClient<any, any, any>): Promise<number | null> {`
+
+`SupabaseClient` untyped-generic, not a hand-written structural type: the
+structural version tripped TS2589 ("type instantiation is excessively deep")
+against the real client, which the deno gate caught and tsc never would have
+— this file is not in the frontend project.
+
+## n530-const-velocity_hot_slots
+
+In `supabase/functions/job-board/index.ts`, above: `const VELOCITY_HOT_SLOTS = 40;`
+
+Velocity tier: boards that ADDED postings recently earn hot cadence even if
+small — a 40-role startup posting daily deserves faster revisits than a
+4,000-role giant that hasn't posted in a month. Blend: velocity leaders get
+guaranteed slots, size leaders fill the rest of HOT_SIZE.
+
+## n531-const-fresh_window_days
+
+In `supabase/functions/job-board/index.ts`, above: `const FRESH_WINDOW_DAYS = 30;`
+
+Freshness cap: the board shows only roles posted within this window. Dated
+postings past it are dropped at ingestion (never stored) and swept from the
+stored corpus each pass; the id-diff prune then keeps them out for good.
+Nearly 100% of feed postings carry a real date, so this is churn-free — a
+dropped dated posting can't re-enter. One constant to dial (30d ≈ 31k live
+board, 45d ≈ 43k, 60d ≈ 50k on the current selection).
+
+## n532-let-res-await-client
+
+In `supabase/functions/job-board/index.ts`, above: `let res = await client`
+
+Widened with the row's facets (see lifecycleFacets): after the delete
+below there is no other copy of this posting's pay, team, geography or
+level anywhere, and this select was already running. Ordered, so the
+pages neither overlap nor skip.
+
+## n533-if-res-error
+
+In `supabase/functions/job-board/index.ts`, above: `if (res.error) {`
+
+Deploy-before-migration: a select naming an absent column fails the
+WHOLE read, which would stop the ledger writing at all. Fall back to
+the pre-.61 column list — a thinner row still beats no row.
+
+## n534-const-exitrow-r-record-string-unknown
+
+In `supabase/functions/job-board/index.ts`, above: `const exitRow = (r: Record<string, unknown>) => {`
+
+origin_basis, not a coalesce: this was one of the two sites feeding
+mixed-clock durations into the hiring-health model's censoring input.
+posted_at rides along verbatim so the employer's own date survives the
+hard delete a few lines below, whatever a reader thinks of our maths.
+
+## n535-if-logres-error
+
+In `supabase/functions/job-board/index.ts`, above: `if (logRes.error) {`
+
+Deploy-before-migration: a select naming an absent column fails
+the WHOLE read, and a failed read here means the closure log —
+the one asset nobody can reproduce — records nothing. Fall back
+to the pre-.61 columns; a thinner row beats no row.
+
+## n536-const-error-agederr-await-insertexits-cl
+
+In `supabase/functions/job-board/index.ts`, above: `const { error: agedErr } = await insertExits(client, agedRows.map(agedExitRow), s.token);`
+
+Through insertExits (one write path for the ledger, so this site
+cannot get a narrower deploy-window retry than the other three),
+and awaited like the closure insert: an aged row whose exit did
+not land stays and is retried next visit, never deleted unrecorded.
+
+## n537-first_seen-r-first_seen-null
+
+In `supabase/functions/job-board/index.ts`, above: `first_seen: r.first_seen ?? null,`
+
+first_seen is OUR DISCOVERY DATE, posted_at the EMPLOYER'S
+STATED one. Both ride raw and separate, which is why this
+table needs no origin_basis: a reader derives whatever
+duration it wants and can always see which clock it used.
+Nothing here coalesces them.
+
+## n538-absence_basis-lapmode
+
+In `supabase/functions/job-board/index.ts`, above: `absence_basis: lapMode`
+
+WHAT KIND OF EVIDENCE ENDED THIS POSTING. 'full_read' is a
+board we can read in one visit, where absence is a fact
+about one fetch; 'lap' is a board over the page cap, where
+it is a fact about a complete pass assembled across visits.
+The two populations are not interchangeable and no
+published number may pool them without saying so.
+
+## n539-const-fresh_prune_max-_000
+
+In `supabase/functions/job-board/index.ts`, above: `const FRESH_PRUNE_MAX = 15_000;`
+
+Cap the aged-tail sweep per pass so a big backlog drains without a giant
+delete (still batched 200/delete below). Raised 6k→15k with
+COLD_SLICES_PER_PASS 48→120: the sweep is per-PASS, so a 2.5x longer pass
+would otherwise cut the drain rate 2.5x and let the >30d tail accumulate.
+
+## n540-let-chainkeypromise-promise-string-null
+
+In `supabase/functions/job-board/index.ts`, above: `let chainKeyPromise: Promise<string> | null = null;`
+
+force=true bypasses the slice lock, so it must not be reachable from the
+open internet (the function serves anonymous traffic): chain hops carry a
+secret derived from the service-role key, and refresh demotes force to a
+lock-guarded run when the secret doesn't match.
+
+## n541-const-fold
+
+In `supabase/functions/job-board/index.ts`, above: `const fold = () => {`
+
+OWN keys only: the map is keyed by board token, and a token named
+'constructor' (a real ashby board) reads Object.prototype.constructor
+from a bare bracket — a function served as an open-roles count.
+
+## n542-const-readonce-async-promise-boolean-nul
+
+In `supabase/functions/job-board/index.ts`, above: `const readOnce = async (): Promise<boolean | null> => {`
+
+Fail-open is DELIBERATE here (a transient meta error must never silently
+stop the ingest for hours) — but an un-honoured operator pause is its own
+incident, so the open must be OBSERVABLE and earned: bounded read, one
+retry, loud warning. On the distressed database where the operator most
+needs the pause, a hung read no longer holds a hop hostage either.
+
+## n543-await-stamp-outcome-kicked
+
+In `supabase/functions/job-board/index.ts`, above: `await stamp({ outcome: "kicked" });`
+
+Stamped BEFORE the fetch, from the same single writer. The outcome
+stamp below requires this parent isolate to survive the child's ENTIRE
+slice (the awaited body), which after a pause is exactly when slices
+run longest — operators watched a stale "paused" for 70 minutes while
+the cursor advanced. "kicked" is overwritten by the real outcome when
+the parent lives to see it, and is honest on its own when it does not.
+
+## n544-const-slice_stats_write_ms-_000
+
+In `supabase/functions/job-board/index.ts`, above: `const SLICE_STATS_WRITE_MS = 5_000;`
+
+Two-tier refresh: HOT boards (heavy inventory) re-verify on every chain
+pass (~10 min); the long tail rotates through cold slices across passes
+(full rotation bounded by tail size / slices-per-pass). Facets come from
+the get_job_board_facets() RPC at pass end — always DB-true, no
+accumulator bookkeeping.
+
+## n545-const-key-phase-hot-workhotemams-workcol
+
+In `supabase/functions/job-board/index.ts`, above: `const key = phase === "hot" ? "workHotEmaMs" : "workColdEmaMs";`
+
+A SEPARATE EMA, because it measures a different span. The hot/cold EMAs
+are whole-slice and their thresholds were calibrated against that; fetch
+time is a strict subset and must never be compared to those numbers.
+This one is collected now so a future calibration has real data instead
+of an estimate — no lever reads it yet.
+
+## n546-let-slicebudgetnote-fetched-number-skipp
+
+In `supabase/functions/job-board/index.ts`, above: `let sliceBudgetNote: { fetched: number; skipped: number; hit: boolean; lastUpsertError: string | null; heapStopped: boolean; wallStopped: bo`
+
+Set by runRefresh the instant its fetch loop closes; read by the recorder
+below in the same invocation. Module state rather than a parameter because a
+guard counts the recorder's exact call literal at its three terminal returns.
+
+## n547-let-currenthop
+
+In `supabase/functions/job-board/index.ts`, above: `let currentHop = 0;`
+
+WHERE A CHAIN DIES IS A NUMBER, NOT A GUESS. Three 546 deaths on 2026-09-03
+sat at hops 6, 7 and 6 while chains otherwise reach hop 9, and the slice
+that died last was a small cold one (6,386 postings, 39s). That is the
+shape of pressure accumulating across hops on a reused isolate, not of one
+heavy slice — and it is a hypothesis until the row carries the hop and the
+heap. Both writers below stamp them; no lever reads them yet.
+
+## n548-const-write-async
+
+In `supabase/functions/job-board/index.ts`, above: `const write = (async () => {`
+
+Settled, never rejecting: the timeout below may win the race, and a
+rejection landing after that would surface as an unhandled rejection in a
+hop that has already returned.
+
+## n549-const-slicewallstart-date-now
+
+In `supabase/functions/job-board/index.ts`, above: `const sliceWallStart = Date.now();`
+
+Wall clock for THIS invocation — one slice. Written to slice_stats below;
+the rotation-tuning rule (memory: judge by measurement, never a window
+inside a hot phase) has so far required hand-run cursor snapshots to get
+this number. Starts after the lock check so skipped invocations record
+nothing.
+
+## n550-slicestalenote-null
+
+In `supabase/functions/job-board/index.ts`, above: `sliceStaleNote = null;`
+
+Reset per slice, like sliceBudgetNote: it is assigned only inside the
+stale lane's fold, so an isolate that served a cold hop and then a hot one
+would otherwise write the cold hop's staleTries onto the hot hop's row.
+
+## n551-await-loadoversizeboards-client
+
+In `supabase/functions/job-board/index.ts`, above: `await loadOversizeBoards(client);`
+
+Loaded in the same invocation that runs the freshness sweep, because the
+sweep reads it: a board we are too small to hold must not have its live
+postings written into the closure log as an employer's closures.
+
+## n552-if-chainhop
+
+In `supabase/functions/job-board/index.ts`, above: `if (chainHop === 0) {`
+
+Hop 0 RESUMES a recent incomplete pass rather than resetting: when a
+slice dies on the resource ceiling, the re-run must move FORWARD, not
+re-die on the same boards (the 13:04-13:38 wedge re-ran slice 0
+forever). A completed or stale (>45 min) pass starts fresh.
+
+## n553-const-diedmidhot-storeddone-hot-hot-hot_
+
+In `supabase/functions/job-board/index.ts`, above: `const diedMidHot = !storedDone && hot > 0 && hot < HOT_LIST.length;`
+
+A stale pass that died MID-HOT keeps its hot cursor. Zeroing it sent
+every 45-minute death back to hot board #0, so under sustained
+distress the rotation re-entered the one phase whose slices could not
+complete, forever — the post-pause "cursor advancing, nothing
+completing" signature. A finished pass still resets fully.
+
+## n554-const-effstaleperslice-shedlevel-shedlev
+
+In `supabase/functions/job-board/index.ts`, above: `const effStalePerSlice = shedLevel === 2 ? 0 : shedLevel === 1 ? 1 : STALE_PER_SLICE;`
+
+The stale lane sheds on the retry lane's ladder, one step smaller (3 ->
+1 -> 0): it fetches boards the rotation has not stamped in three days,
+the least urgent fetch on the slice after the deep lane, and a stale board
+that fails again costs a full FETCH_TIMEOUT exactly as a retry does.
+
+## n555-let-demandboards-jobsource
+
+In `supabase/functions/job-board/index.ts`, above: `let demandBoards: JobSource[] = [];`
+
+Feature 3 (demand-driven freshness): boards a user just opened/verified
+jump the queue. Injected only on COLD slices — hot boards already
+re-check every pass (~10 min), and cold slices have the compute headroom
+that hot slices of giants do not. So a takedown on a viewed cold-board
+job disappears within one pass instead of waiting for its rotation.
+
+## n556-let-demandtaken-string
+
+In `supabase/functions/job-board/index.ts`, above: `let demandTaken: string[] = [];`
+
+.88: one board a slice, a capped number an hour, never a hot board (those
+re-check every pass anyway), and what it took is stamped served -- in the
+refresh's own row, below, only once this slice is admitted.
+abuse-guards.ts has the rules.
+
+## n557-let-bootstrapboards-jobsource
+
+In `supabase/functions/job-board/index.ts`, above: `let bootstrapBoards: JobSource[] = [];`
+
+Bootstrap lane: boards with ZERO rows (fresh catalog merges) jump the
+queue instead of waiting a full rotation at the catalog tail. The queue
+is computed once per deploy (keyed on BUILD_VERSION) via get_empty_boards
+and drained BOOTSTRAP_PER_SLICE per cold slice through the same prepend
+path as demand boards — so failure streaks, the vendor breaker, and
+cursor accounting (advance by baseSlice only) all apply unchanged.
+
+## n558-if-rpcabsent-e-as-code-string
+
+In `supabase/functions/job-board/index.ts`, above: `if (!rpcAbsent(e as { code?: string; message?: string })) throw e;`
+
+Absent RPC -> legacy path below. Anything else is a real failure
+and belongs to the outer catch: the lane is an accelerator and
+must never break the rotation.
+
+## n559-bootstrapappenddone-false
+
+In `supabase/functions/job-board/index.ts`, above: `bootstrapAppendDone = false;`
+
+RETRY NEXT SLICE, LOUDLY. The first version swallowed this and let
+the drain write stamp BUILD_VERSION anyway — one failed RPC (the
+token payload is ~550KB) and the merge's boards silently never
+entered the lane, with nothing logged. Holding the version back
+makes the next slice try again until one append lands.
+
+## n560-queue-queue-slice-bootstraptake
+
+In `supabase/functions/job-board/index.ts`, above: `queue: queue.slice(bootstrapTake),`
+
+bootstrapTake, NOT the constant: the drain must equal
+what was actually SELECTED above or the lane discards boards it
+never fetched — the "drained without being filled" failure this
+block's own comment documents, which shedding would otherwise
+reintroduce every hop.
+
+## n561-const-deepcursors-map-string-number-toke
+
+In `supabase/functions/job-board/index.ts`, above: `const deepCursors: Map<string, number> = tokenMapFromRecord(deepCursorRow);`
+
+A MAP, NOT A RECORD (2026-09-10). Keyed by board token, and a token can be
+a property name of Object.prototype: 'constructor' is a catalogued ashby
+board, and `rec[token] ?? 0` read a FUNCTION for it. token-map.ts is the
+one bridge to the JSON shape the row stores; both directions walk own
+keys, so 'constructor' round-trips as a real entry.
+
+## n562-if-k-includes-continue
+
+In `supabase/functions/job-board/index.ts`, above: `if (!k.includes(":")) continue;`
+
+Pre-rename entries were keyed by bare token (see LapState). They are
+dropped rather than migrated: a lap is only meaningful together with
+the cursor position it was opened at, and a token key cannot say
+which vendor's board that was. The affected boards re-lap on their
+next wrap and prove one lap later, which is the same cost as any
+disarm. Nothing is deleted from job_board_postings by dropping them.
+
+## n563-let-retryboards-jobsource
+
+In `supabase/functions/job-board/index.ts`, above: `let retryBoards: JobSource[] = [];`
+
+THE RETRY LANE. A board that failed gets another attempt in minutes rather
+than in a full rotation — which is the only thing that moves the freshness
+p95, because that tail is failed fetches waiting their turn, not slow
+rotation. Backoff lives in dormancy.ts and recedes per streak, so a feed
+that is genuinely dead walks itself out of this lane and into dormancy
+instead of burning a timeout here every few minutes.
+
+## n564-retrylane
+
+In `supabase/functions/job-board/index.ts`, above: `retryLane = {`
+
+Instrumented for the reason every lane here is: "ran and selected none"
+and "never ran" are otherwise the same observation, and this file has
+guessed at that fork more than once.
+
+## n565-if-rpcerr-code-pgrst202
+
+In `supabase/functions/job-board/index.ts`, above: `if (rpcErr?.code === "PGRST202") {`
+
+A bundle that lands BEFORE the migration meets the (integer, integer)
+signature, and PostgREST answers a named argument no signature takes
+with PGRST202 — not a failure of the lane, a deploy-order gap. Ask
+once more the .70 way (same single call site) so the lane is never
+worse than .70's during the gap; `excluded: 0` on status names it.
+
+## n566-windowfull-rows-length-stale_rpc_limit-c
+
+In `supabase/functions/job-board/index.ts`, above: `windowFull: rows.length >= STALE_RPC_LIMIT && classes.unexplained === 0 && staleBoards.length === 0,`
+
+A full window with nothing fetchable in it is the clogged state,
+named: the tail behind row STALE_RPC_LIMIT is going unexamined.
+Since .71 the window is read AFTER p_exclude, so this can only be
+a class the exclusion does not cover (uncatalogued, quarantined,
+dormant, failing) filling sixty rows — worth a human's eyes, hence
+the warn line below as well as the field.
+
+## n567-const-advanceargs
+
+In `supabase/functions/job-board/index.ts`, above: `const advanceArgs = {`
+
+The cursor rule (advanceProgress) is shared with the post-slice write
+below — see rotation.ts for why it is one function and not two hand-kept
+copies. Both writes emit the WHOLE row it returns.
+
+## n568-hotslice-effhotslice
+
+In `supabase/functions/job-board/index.ts`, above: `hotSlice: effHotSlice,`
+
+The EFFECTIVE hot take, never the constant: advancing by 10 while
+shedding took 3 would skip 7 giants' freshness every shed hop — the
+same skip-by-constant defect rotation.ts documents for the cold side.
+
+## n569-block
+
+In `supabase/functions/job-board/index.ts`, above: `{`
+
+Cursors advance BEFORE processing (optimistic): if this invocation dies
+on the resource ceiling, the next attempt continues with the NEXT
+slice — a died slice's boards go one rotation stale instead of wedging
+the whole pipeline. Failure accounting is finalized after the slice.
+
+## n570-const-basetokens-new-set-baseslice-map
+
+In `supabase/functions/job-board/index.ts`, above: `const baseTokens = new Set(baseSlice.map((b) => b.token));`
+
+The cold cursor advances by THIS, not by the composed length. A board the
+posting budget stopped us reaching was never read, and a cursor that moves
+past it marks it verified when nothing verified it.
+
+## n571-const-oversized-string
+
+In `supabase/functions/job-board/index.ts`, above: `const oversized: string[] = [];`
+
+Boards whose response exceeded MAX_RESPONSE_BYTES this pass — this
+slice's names, for the log line at the end of the loop. The DURABLE record
+is OVERSIZE_BOARDS: slice_stats is one row overwritten every ten minutes,
+which cannot answer "which boards have been too big for a month?", and a
+truncated list on a row like that was the only trace a permanently
+oversize board left.
+
+## n572-if-deeplane-deeptokens-has-s-token
+
+In `supabase/functions/job-board/index.ts`, above: `if (deepLane && deepTokens.has(s.token)) deepLane.visited++;`
+
+AFTER the breadcrumb, deliberately: a-slice-with-no-clock pins
+`++boardsDone` and the stamp as adjacent, because a board counted but
+not stamped is the shape a dying slice leaves behind.
+
+## n573-if-noteoversize-oversize_boards-s-mb-sha
+
+In `supabase/functions/job-board/index.ts`, above: `if (noteOversize(OVERSIZE_BOARDS, s, mb, SHARED_TOKENS)) oversizeDirty = true;`
+
+The durable record. slice_stats is one row overwritten every ten
+minutes; a board that is permanently past the budget has to be
+nameable long after that.
+Keyed by board (n422); dirty on a new board, a moved size or a 12h-old stamp.
+
+## n574-const-cursorbefore-deepcursors-get-s-tok
+
+In `supabase/functions/job-board/index.ts`, above: `const cursorBefore = deepCursors.get(s.token) ?? 0;`
+
+Advance (or wrap) this board's cursor. Written only for boards that
+actually paginate, and cleared the moment one wraps, so the row does
+not accumulate an entry per board in the catalogue.
+
+## n575-const-reached-typeof-r-endoffset-number
+
+In `supabase/functions/job-board/index.ts`, above: `const reached = typeof r.endOffset === "number" && r.endOffset > 0`
+
+The offset this visit reached. `endOffset` is the vendor's own
+`startOffset + items fetched`, exact and independent of the wrap;
+the fallback (older shapes, and any vendor that reports no
+endOffset) uses our normalised count, which can only UNDERSTATE
+coverage — a normaliser may drop a malformed entry the cursor
+counted — and therefore fails closed.
+
+## n576-delete-deeplaps-lapkey
+
+In `supabase/functions/job-board/index.ts`, above: `delete deepLaps[lapKey];`
+
+The board stopped being windowed (or lost its cursor): it is read in
+full now and proves absence within a single visit, so the lap entry
+is deleted rather than left to accumulate one row per catalogue board.
+
+## n577-const-bases-new-set
+
+In `supabase/functions/job-board/index.ts`, above: `const bases = [...new Set(`
+
+Distinct bases, restricted to characters a PostgREST or() pattern
+can carry verbatim — a requisition id with anything stranger is
+left alone rather than escaped creatively.
+
+## n578-if-bases-length-bases-length-try
+
+In `supabase/functions/job-board/index.ts`, above: `if (bases.length > 0 && bases.length <= 120) try {`
+
+The or() is bounded: over 120 branches means an unusually suffixed
+page, and skipping the check for one pass only delays the dedupe —
+the same rows return next refresh. Never a tenant-wide read.
+
+## n579-block
+
+In `supabase/functions/job-board/index.ts`, above: `{`
+
+Vendor circuit breaker: count every feed observation (quarantined or
+not — the rate must keep updating so recovery lifts the quarantine),
+then gate zero-feeds of quarantined vendors out of ALL processing.
+
+## n580-let-descsdeferred-false
+
+In `supabase/functions/job-board/index.ts`, above: `let descsDeferred = false;`
+
+Set when a board is over the content threshold but its vendor has no
+filler, so light mode is refused. The volume that would wedge the
+isolate is the same either way, so the parse is still skipped — but
+for THIS PASS ONLY, with nothing persisted, and the description
+column omitted from the row (see lightDescs) so stored text survives.
+One boolean per board iteration; no allocation, no round trip.
+
+## n581-const-contentchars-ghjobs-reduce-n-j
+
+In `supabase/functions/job-board/index.ts`, above: `const contentChars = ghJobs.reduce((n, j) => n + (j.content?.length ?? 0), 0);`
+
+Self-tuning light mode: measure the raw content volume BEFORE the
+htmlToText pass — that pass is what kills the isolate on giants.
+Past the threshold: enroll the board (persisted), skip extraction
+this pass; postings land desc-less and backfill-desc fills them.
+
+## n582-const-wkjobs-r-raw-as-jobs
+
+In `supabase/functions/job-board/index.ts`, above: `const wkJobs = (r.raw as { jobs?: Array<{ shortcode?: string; description?: string }> }).jobs ?? [];`
+
+Same self-tuning guard as Greenhouse: details=true payloads are ~10x
+bigger, and it's the bulk htmlToText pass — not the fetch — that kills
+the isolate on a giant board. Measure first, enroll, fill via backfill.
+
+## n583-for-const-k-v-of-listpayloaddescriptions
+
+In `supabase/functions/job-board/index.ts`, above: `for (const [k, v] of listPayloadDescriptions(s, r.raw)) descs.set(k, v);`
+
+postings.json — which we already fetch for the listing — carries the
+full posting body. We were parsing it for titles and throwing the
+description away, storing null on every row.
+
+## n584-for-const-k-v-of-listpayloaddescriptions
+
+In `supabase/functions/job-board/index.ts`, above: `for (const [k, v] of listPayloadDescriptions(s, r.raw)) descs.set(k, v);`
+
+Same shape as pinpoint, found the same way a year of nulls later:
+the list payload carries description+qualifications on every item
+and the parser was already written — nothing ever called it at
+ingest. Salary mining and experience detection start working on
+these rows in the same statement (lines below read descs).
+
+## n585-else-if-s-source-personio-typeof
+
+In `supabase/functions/job-board/index.ts`, above: `} else if (s.source === "personio" && typeof r.raw === "string") {`
+
+Breezy has NO description field on its /json list (verified against the
+live API 2026-07-24) — the branch that used to sit here could never
+fire, which is why every Breezy row stored null. Its text lives only on
+the posting page, so it is a backfill-sweep vendor now.
+
+## n586-const-lightdescs-islight-s-descsdeferred
+
+In `supabase/functions/job-board/index.ts`, above: `const lightDescs = isLight(s) || descsDeferred;`
+
+isLight covers the static set, prior auto-enrollments, AND a board
+enrolled seconds ago in this very iteration (descs skipped above).
+descsDeferred covers the board whose enrolment was REFUSED: its descs
+were skipped too, and writing the column would null out text we
+already hold. Omitting it is what makes a deferral recoverable.
+
+## n587-const-agedoutids-new-set-string
+
+In `supabase/functions/job-board/index.ts`, above: `const agedOutIds = new Set<string>();`
+
+Ids the feed still serves but whose REAL stated date crossed the
+30-day window — our freshness cap, not a feed absence. They bypass
+the two-pass grace below and delete this pass, unlogged, as always.
+
+## n588-if-isdatedbefore-posted-freshcutoffms-ag
+
+In `supabase/functions/job-board/index.ts`, above: `if (isDatedBefore(posted, freshCutoffMs)) { agedOutIds.add(j.id); continue; }`
+
+Freshness cap: a posting with a REAL date older than the window is
+dropped here — left out of rowsById, so the id-diff prune deletes it
+if we already had it and never re-adds it (churn-free because it
+won't reappear as "new"). Undated / garbage-dated postings can't be
+judged old, so they're kept and simply carry no displayed date.
+
+## n589-j-source-oracle-req_key-oraclereqkeyofid
+
+In `supabase/functions/job-board/index.ts`, above: `...(j.source === "oracle" ? { req_key: oracleReqKeyOfId(j.id) } : {}),`
+
+The tenant-level identity of an Oracle requisition, `oracle:<tenant>:<reqId>`,
+which the sub-site dedupe below and the repair SQL both key on. Only
+Oracle rows carry it; the column ships in migration 20260909216000 and
+the upsert strips it until then.
+
+## n590-region_code-detectregion-j-location-rowc
+
+In `supabase/functions/job-board/index.ts`, above: `region_code: detectRegion(j.location, rowCountry),`
+
+THE JURISDICTION, which the country patterns already found and
+then dropped on the floor. Pay-disclosure law is state-level, so
+this is the difference between a country-level compliance score
+and one that can name Colorado. Only recoverable while the row is
+live — a closed posting takes its location with it.
+
+## n591-agency-s-agency-true
+
+In `supabase/functions/job-board/index.ts`, above: `agency: s.agency === true,`
+
+AGENCY DISCLOSURE (2026-08-31 charter): the flag rides the
+CATALOG entry, stamped here onto every row — never inferred
+per posting, because a staffing agency is one on all of its
+postings or none. Absent on the entry means false.
+
+## n592-salary-salarytext
+
+In `supabase/functions/job-board/index.ts`, above: `salary: salaryText,`
+
+Salary: the vendor's structured field when present, else mined from
+the posting's own description text (pay-transparency prose) — always
+the company's verbatim words, never an estimate. `|| null` (not ??):
+an empty-string vendor salary must not block extraction.
+
+## n593-let-boardok-true
+
+In `supabase/functions/job-board/index.ts`, above: `let boardOk = true;`
+
+Postings are immutable in practice (companies repost rather than
+edit), so unchanged rows are never rewritten: insert only ids the
+DB doesn't have, delete ids the feed no longer serves. The old
+upsert-everything design rewrote all ~91k rows every pass
+(~450k dead tuples/hour) — enough table bloat that aggregates
+started hitting statement timeouts.
+
+## n594-type-existingrow
+
+In `supabase/functions/job-board/index.ts`, above: `type ExistingRow = {`
+
+Paginated: PostgREST caps responses at 1,000 rows, and the biggest
+boards hold 3,000+ — a truncated id set would re-insert live rows
+and never delete old ones.
+Mutable fields come back with the id diff so an existing row can be
+CORRECTED rather than frozen at the moment it was first inserted.
+
+## n595-if-res-error-message-includes-region_cod
+
+In `supabase/functions/job-board/index.ts`, above: `if (res.error?.message?.includes("region_code")) {`
+
+Same deploy-window rule as the two below, and it must come FIRST so
+its fallback still carries agency: a select naming an absent column
+fails the whole board read.
+
+## n596-if-res-error-message-includes-agency
+
+In `supabase/functions/job-board/index.ts`, above: `if (res.error?.message?.includes("agency")) {`
+
+Deploy-window tolerance for the disclosure column (20260831120000):
+a select naming a column the migration has not created yet fails the
+WHOLE board read, which is a full ingest outage from one optional
+field. Retry without it; the correction guard already treats an
+absent prev value as "do not patch", so the window is quiet.
+
+## n597-first_seen-r-as-first_seen-string-null
+
+In `supabase/functions/job-board/index.ts`, above: `first_seen: (r as { first_seen?: string | null }).first_seen ?? null,`
+
+OUR DISCOVERY DATE, and never a posting age: it rides along only
+so the board-state write below can apply the SAME serving fence
+the site applies (coalesce(posted_at, first_seen) within the
+window). ~24 bytes on a row already carrying title, location and
+salary, bounded by this board's stored size and released with it.
+
+## n598-lap_epoch-r-as-lap_epoch-number-null
+
+In `supabase/functions/job-board/index.ts`, above: `lap_epoch: (r as { lap_epoch?: number | null }).lap_epoch ?? null,`
+
+The lap marker. One integer, read only on boards that have a lap
+open, and the sole thing that lets a wrap tell "absent from every
+window of a full pass" from "displaced past this visit's window".
+
+## n599-faillap
+
+In `supabase/functions/job-board/index.ts`, above: `failLap();`
+
+The cursor already advanced past this window, but nothing here got
+an epoch: those rows would read as never-seen at the wrap. Disarm
+the lap rather than let a database blip become takedowns.
+
+## n600-const-exitedat-new-date-toisostring
+
+In `supabase/functions/job-board/index.ts`, above: `const exitedAt = new Date().toISOString();`
+
+Ledger BEFORE delete, awaited: after the delete there is nothing to read.
+A shed row is OUR action — the employer still lists the
+requisition, on the sibling site we now store it under — so it
+leaves under the same reason as a board dropped from the
+catalog, never as a closure, and never reaches the closure log.
+
+## n601-const-unread-shed-filter-id-holderrows
+
+In `supabase/functions/job-board/index.ts`, above: `const unread = shed.filter((id) => !holderRows.has(id));`
+
+A shed row of THIS site that carries no req_key yet (stored
+before the backfill reached its token) is absent from the
+holder lookup; read it by id so its exit row keeps the title,
+date and facets the ledger exists to keep.
+
+## n602-const-lapmark-missingcolunknown-lapcolun
+
+In `supabase/functions/job-board/index.ts`, above: `const lapMark = missingColUnknown || lapColUnknown ? 0 : lapEpoch;`
+
+The epoch this visit's rows are stamped with, and the ONLY value a
+wrap compares against. Zero disables every lap behaviour — no
+stamping, no proof, no closures — which is what a board without a
+cursor, without an open lap, or read before the migration applied
+gets, byte for byte the behaviour that shipped before this change.
+
+## n603-if-lapmode
+
+In `supabase/functions/job-board/index.ts`, above: `if (lapMode) {`
+
+THE COVERAGE RECEIPT, written where the proof is actually USED rather
+than where it is computed. `lapProven` is decided before the existing
+-rows read, so a wrap that then turned out to be unstampable (lapMark
+0) would otherwise stamp `w` and tell the population function this
+board completed a provable pass on a visit that proved nothing.
+
+## n604-let-absencecount
+
+In `supabase/functions/job-board/index.ts`, above: `let absenceCount = 0;`
+
+Hoisted: the feed-dark guard further down measures the SAME
+population this block prunes on, and the two disagreeing is how a
+stored ratio ends up not matching the verdict it justified.
+
+## n605-if-lapmark-faillap
+
+In `supabase/functions/job-board/index.ts`, above: `if (lapMark > 0) failLap();`
+
+Harmless for the stamp; NOT harmless for the lap. Rows that were
+served keep an older epoch and would read as never-seen at the
+wrap, so this lap forfeits its power to prove absence.
+
+## n606-const-changemarks-number
+
+In `supabase/functions/job-board/index.ts`, above: `const changeMarks: number[] = [];`
+
+changeMarks[k] is how long the change log was once corrections[k] was
+queued, so a failure at correction k can cut the log at exactly the
+patches that did not land. One integer per correction — capped by
+CORRECTIONS_PER_VISIT, never by postings fetched — and released with
+the board's scope.
+
+## n607-let-changecutat
+
+In `supabase/functions/job-board/index.ts`, above: `let changeCutAt = -1;`
+
+Corrections are capped per board visit (see CORRECTIONS_PER_VISIT
+below). The change log has to be cut by the SAME decision, or it
+records an edit that was never applied — and records it a second time
+next visit, when the patch finally lands. Both arrays are built in
+one pass in the same order, so remembering how long the log was when
+the thousandth correction was queued is enough to cut them together.
+
+## n608-const-corrections_per_visit-_000
+
+In `supabase/functions/job-board/index.ts`, above: `const CORRECTIONS_PER_VISIT = 1_000;`
+
+CAPPED PER BOARD-VISIT, because a backfill wave is a denial of
+service against your own database — see the note at the truncation
+below. Declared here so the diff loop can mark the cut point as it
+goes; the truncation itself still happens after the loop.
+
+## n609-if-changecapat-changecapat-corrections-l
+
+In `supabase/functions/job-board/index.ts`, above: `if (changeCapAt < 0) { changeCapAt = corrections.length; changeCapLogAt = logMark; }`
+
+corrections.length is the count of COMPLETED postings: this
+posting's patch has not been pushed yet, so cutting here drops
+it whole rather than half-logging it.
+
+## n610-const-firstvendorread-curpay-null-nextpa
+
+In `supabase/functions/job-board/index.ts`, above: `const firstVendorRead = curPay === null && nextPay !== null && VENDOR_FIELD_FIRST_READ.has('${s.source}:salary');`
+
+The first figure a newly-read vendor field hands us: our reading gained
+an answer, the employer did nothing. See VENDOR_FIELD_FIRST_READ, which
+is a one-shot list and names why it must be removed.
+
+## n611-if-nextmode-prev-work_mode-patch-work_mo
+
+In `supabase/functions/job-board/index.ts`, above: `if (nextMode !== prev.work_mode && patch.work_mode === undefined) {`
+
+`patch.work_mode === undefined` keeps this from re-noting a
+non-null change put() already wrote: two change-log rows for one
+edit would overstate the employer's own edits.
+
+## n612-if-typeof-row-agency-boolean-typeof
+
+In `supabase/functions/job-board/index.ts`, above: `if (typeof row.agency === "boolean" && typeof prev.agency === "boolean" && row.agency !== prev.agency) {`
+
+Catalog-authoritative on every fetch, in BOTH directions: this is
+how the 226 boards tagged on 2026-08-31 reach their EXISTING rows
+(one rotation, capped per visit like any correction wave), and
+how an un-tagged board's rows shed the flag. prev.agency is null
+only in the deploy window before the column exists — no patch
+then, so the window costs nothing.
+
+## n613-if-changecutat-changelog-length-changecu
+
+In `supabase/functions/job-board/index.ts`, above: `if (changeCutAt >= 0) changeLog.length = changeCutAt;`
+
+Cut the change log at the same place. A history row for a patch we
+did not send would claim an edit that never reached the posting,
+and the same edit would be logged a second time on the next visit
+when the patch finally goes through.
+
+## n614-if-cerr-message-includes-apply_posting_c
+
+In `supabase/functions/job-board/index.ts`, above: `if (cErr.message?.includes("apply_posting_corrections") || (cErr as { code?: string }).code === "PGRST202") {`
+
+Deploy-before-migration window: the frontend/function can ship
+ahead of the RPC. Fall back to the old per-row path rather than
+silently dropping corrections — slow beats wrong, and the next
+pass picks up the batched path once the migration lands.
+
+## n615-if-error-message-includes-country
+
+In `supabase/functions/job-board/index.ts`, above: `if (error?.message?.includes("country")) {`
+
+Deploy-before-migration window: the country column may not exist
+yet. Ingestion must NEVER stall on a new optional column — retry
+the chunk without it; the version-gated backfill fills it later.
+
+## n616-if-error-message-includes-agency
+
+In `supabase/functions/job-board/index.ts`, above: `if (error?.message?.includes("agency")) {`
+
+Same deploy-window tolerance for the disclosure flag: the column
+ships in 20260831120000, and until it applies the insert must
+proceed without the field — the corrections path stamps it on the
+board's first post-migration visit, so nothing is lost but time.
+
+## n617-const-stripped-newrows-slice-i-i
+
+In `supabase/functions/job-board/index.ts`, above: `const stripped = newRows.slice(i, i + 250).map((r) => { const { agency: _a, country: _c, ...rest } = r as Record<string, unknown>; return re`
+
+Compose with the country retry: strip BOTH optional columns, so
+a database missing the pair still takes the chunk — mapping the
+original slice here would re-introduce country after its own
+retry already removed it.
+
+## n618-if-error-message-includes-region_code
+
+In `supabase/functions/job-board/index.ts`, above: `if (error?.message?.includes("region_code")) {`
+
+Same rule again for the jurisdiction column (.61). It strips ONLY
+region_code, unlike the pair above: PostgREST names the offending
+column in the message, country and agency have both been applied
+for weeks, and stripping them here as well would silently drop two
+shipped fields from every new row for the length of this window.
+
+## n619-if-error-message-includes-req_key
+
+In `supabase/functions/job-board/index.ts`, above: `if (error?.message?.includes("req_key")) {`
+
+And once more for req_key (migration 20260909216000): only Oracle
+rows carry it, only that column is stripped, and the repair
+function backfills it from the id once the column exists.
+
+## n620-if-vanished-length-truncatedfetch-lapmod
+
+In `supabase/functions/job-board/index.ts`, above: `if (vanished.length && (!truncatedFetch || lapMode)) {`
+
+A TRUNCATED FETCH STILL LOGS NOTHING; A PROVEN LAP DOES.
+`truncatedFetch` is a property of the VISIT and has not changed
+meaning. `lapMode` is the strictly stronger evidence assembled across
+visits, and it is the only thing that opens this branch for a board
+over the page cap.
+
+## n621-let-recentsuperseded-new-set-string
+
+In `supabase/functions/job-board/index.ts`, above: `let recentSuperseded = new Set<string>();`
+
+Relisting-spam dedupe: boards whose automation cycles req ids close
+the SAME title dozens of times a day (live case: one board logged
+"Behavior Technician" 89 times, every one correctly superseded).
+The first superseded closure per title per 24h carries all the
+signal; the rest are noise that bloats the lifecycle table. Real
+fills (non-superseded) always log.
+
+## n622-const-aged-vanished-filter-id-agedoutids
+
+In `supabase/functions/job-board/index.ts`, above: `const aged = vanished.filter((id) => agedOutIds.has(id));`
+
+Truncated fetch with NO completed lap behind it: no closure — this
+visit still cannot distinguish closed from displaced. On a windowed
+board `vanished` holds only ids the freshness cap aged out, which
+is our own rule and no employer event; each leaves its exit row
+first, as on a full read, and only a recorded row goes (S8-084, n416).
+
+## n623-if-clearoversize-oversize_boards-s-share
+
+In `supabase/functions/job-board/index.ts`, above: `if (clearOversize(OVERSIZE_BOARDS, s, SHARED_TOKENS)) oversizeDirty = true;`
+
+A BOARD THAT READ IS NOT AN OVERSIZE BOARD ANY MORE. An enrolled
+greenhouse giant reads fine on its very next visit, and a vendor
+trimming its payload heals the same way. Left in the registry the
+entry would keep this board's genuinely aged-out postings out of the
+closure log forever. Only this board's own entry goes (n422).
+
+## n624-try
+
+In `supabase/functions/job-board/index.ts`, above: `try {`
+
+Stamp verification IMMEDIATELY, per board — not at hop end. Heavy hot
+hops can die post-processing (WORKER_RESOURCE_LIMIT) before hop-end
+code runs, which silently starved every hot board of stamps while the
+light cold hops stamped fine (the 397-stale-boards incident). One tiny
+upsert per successful board; failure is surfaced but never blocks.
+
+## n625-const-stamptotal-stampfeedtotal-r-feedto
+
+In `supabase/functions/job-board/index.ts`, above: `const stampTotal = stampFeedTotal(r.feedTotal, cursorBefore, deepLaps[lapKey]?.t0);`
+
+feed_total: the company's own advertised count (Workday), so the UI
+can render floors as "N+". Deploy-before-migration tolerance: if
+the column doesn't exist yet, retry without it — the stamp itself
+must never be lost to a new optional column (country-column rule).
+A mid-feed zero is the tenant not saying, never "0 open": the lap's t0, else the last stated total stands (n413).
+
+## n626-await-breadcrumb-client-board-stored-boa
+
+In `supabase/functions/job-board/index.ts`, above: `await breadcrumb(client, "board-stored", { boardsDone, token: s.token, rows: rows.length, fetched: fetchedInSlice });`
+
+THE BOARD IS FULLY STORED. The fetch mark above fires 760 lines
+earlier, before the existing-rows paging, the upserts and the
+verification stamp — so a trace that shows "board" and never
+"board-stored" places the death inside a board's DB work rather
+than in its fetch or in the loop's structure, which is the half
+this instrumentation could not previously tell apart.
+
+## n627-const-next-progressafter-wrapped-advance
+
+In `supabase/functions/job-board/index.ts`, above: `const { next: progressAfter, wrapped } = advanceProgress({`
+
+CORRECTED HERE. The pre-loop write advanced optimistically by the composed
+length, which is what stops a dying slice from wedging the rotation on the
+same boards forever. This write happens only when the slice SURVIVED, so
+it can tell the truth: the cursor moves by the boards this slice actually
+started, and boards the posting budget kept us from are left for the next
+slice rather than marked verified.
+
+## n628-if-wrapped
+
+In `supabase/functions/job-board/index.ts`, above: `if (wrapped) {`
+
+The cold cursor just wrapped past the end → the ENTIRE cold tail has now
+been re-verified. Stamp it: this is the direct measurement of freshness
+(max staleness of any cold posting = time since this stamp). The heartbeat
+alerts if it ever falls behind the SLA.
+
+## n629-const-rawwrap-number-isfinite-prevat-mat
+
+In `supabase/functions/job-board/index.ts`, above: `const rawWrap = Number.isFinite(prevAt) ? Math.round((Date.now() - prevAt) / 60_000) : 0;`
+
+>= 1, not merely finite: chain hops run with force=true past the slice
+lock, so two chains wrapping within a minute could stamp wrapMin 0 —
+which the reader would discard anyway. Better never to write it.
+
+## n630-const-budgetskippedset-new-set-budgetski
+
+In `supabase/functions/job-board/index.ts`, above: `const budgetSkippedSet = new Set(budgetSkipped);`
+
+A DEFERRED BOARD WAS NEVER ATTEMPTED. Budget-deferred tokens were
+counted here as consecutive failures — streak, failedAt and
+firstFailedAt advanced for boards no fetch ever touched, feeding the
+retry lane and, sustained, the prune. Reviewed 2026-09-03.
+
+## n631-block
+
+In `supabase/functions/job-board/index.ts`, above: `}`
+
+Deliberately NOT restoring keys we do not hold. `mine` is absent
+for two different reasons — a board another isolate added since
+our read, and a board THIS isolate retired because it stopped
+being windowed — and the fold cannot tell them apart. Resurrecting
+a retired lap is the worse error (it re-arms stamping on a board
+that is read in full), and the cost of the other is one lap.
+
+## n632-if-vendorstats-size-quarantinedvendors-s
+
+In `supabase/functions/job-board/index.ts`, above: `if (vendorStats.size > 0 || quarantinedVendors.size > 0) {`
+
+Vendor circuit-breaker bookkeeping: decay-merge this slice's feed counts
+and recompute the quarantine set (trip at VENDOR_ZERO_TRIP, lift below
+VENDOR_ZERO_RESET). Hop-end placement is fine HERE — losing a heavy hop's
+counters delays the trend by a slice, it never corrupts per-board state
+(which is why stamps write at the success site but this doesn't have to).
+
+## n633-const-passendstartedat-new-date-toisostr
+
+In `supabase/functions/job-board/index.ts`, above: `const passEndStartedAt = new Date().toISOString();`
+
+THE TAIL IS ITS OWN HOPS (S11-001, .93; pass-end.ts). This hop hands
+the pass over and answers: the context goes where a re-kicked step can
+read it, the receipt opens naming the first step, and that step is
+kicked. Every step works inside its own request, on its own clock.
+
+## n634-if-chainhop-chain_cap-chainnextslice-cha
+
+In `supabase/functions/job-board/index.ts`, above: `if (chainHop < CHAIN_CAP) chainNextSlice(chainHop, client, Math.min(MAX_BOARDS_PER_SLICE, boardBudget + BOARDS_RAMP_STEP));`
+
+Earned, not assumed: this hop reached its terminal write, so the next may
+try more. A hop that dies never gets here, and the cron's fresh chain
+carries no budget, so the ramp restarts at the floor.
+
+## n635-pv-sourcesfacet-typeof-pv-sourcesfacet-o
+
+In `supabase/functions/job-board/index.ts`, above: `...(pv.sourcesFacet && typeof pv.sourcesFacet === "object" && !Array.isArray(pv.sourcesFacet)`
+
+The per-source map rides the carry by the same rule: present only
+when the previous row had it, absent otherwise, so the vendor
+dropdown falls silent rather than printing a stale-or-empty map.
+
+## n636-return-ok-true-detail-pass-complete
+
+In `supabase/functions/job-board/index.ts`, above: `return { ok: true, detail: 'pass complete but facets RPC unavailable (${facetsErr?.message ?? "empty result"}) and no previous facets to car`
+
+Cold database AND a failed aggregate: nothing to carry, nothing the
+maintenance below could safely stand on. The original early return
+is still right for exactly this corner.
+
+## n637-const-rankstored-rankrow-v-null-as
+
+In `supabase/functions/job-board/index.ts`, above: `const rankStored = (rankRow?.v ?? null) as { hash?: string; version?: string } | null;`
+
+Written when the hash differs OR the stamped bundle version differs:
+the migration's seed carries the same hash and no version, and the
+repair SQL refuses its delete phase until a bundle that dedupes at
+ingest (this one or later) has stamped `version` here. Without that
+proof the pre-.68 bundle re-inserts every copy the repair deletes.
+
+## n638-console-warn-job-board-orphan-prune
+
+In `supabase/functions/job-board/index.ts`, above: `console.warn("[JOB-BOARD] orphan prune SKIPPED: facets carried, not computed — no deletions from a stale company list");`
+
+Carried facets are yesterday's company list — good enough to SERVE,
+never good enough to DELETE by. A destructive path computes its own
+input (the rule stated on the RPC call above), and a carried input is
+not its own.
+
+## n639-const-freshiso-new-date-date-now
+
+In `supabase/functions/job-board/index.ts`, above: `const freshIso = new Date(Date.now() - FRESH_WINDOW_DAYS * 86_400_000).toISOString();`
+
+The numerator must stand on the SAME population as the denominator.
+`open` below applies the freshness window; this did not, so every
+published fraction was a count over one population divided by the
+size of a smaller one — inflating each by 1.5-3%. A coverage figure
+whose two halves disagree about what the board is cannot be right
+even when it looks plausible.
+
+## n640-const-keep-name-string
+
+In `supabase/functions/job-board/index.ts`, above: `const keep = (name: string) => {`
+
+Same carry-forward contract as the fallback path: a figure the
+scan could not produce keeps last pass's value rather than
+deleting the disclosure.
+
+## n641-salarytext-keep-salarytext
+
+In `supabase/functions/job-board/index.ts`, above: `salaryText: keep("salaryText"),`
+
+THE COLUMN THE STATES-PAY FILTER BINDS, carried through because
+the disclosure has to read it. get_filter_coverage has counted it
+on this same scan since 20260909100000 and nothing stored it, so
+the sentence under a stated-pay page had no way to describe the
+population that page was actually narrowed to. Cost: zero extra
+work — the count was already in the payload being discarded.
+
+## n642-const-prevcov-prevcoverage-as-record-str
+
+In `supabase/functions/job-board/index.ts`, above: `const prevCov = (prevCoverage ?? {}) as Record<string, unknown>;`
+
+A STALE-BUT-REAL FIGURE BEATS AN ABSENT ONE. Overwriting a working
+number with null on a transient failure deletes the caveat entirely,
+and the filter it describes keeps hiding the same share of the board
+with nothing on screen to say so. Coverage moves by fractions of a
+percent between passes, so last pass's figure is still true enough to
+warn with — and it is replaced the moment a count succeeds again.
+
+## n643-const-carrylive-name-string
+
+In `supabase/functions/job-board/index.ts`, above: `const carryLive = (name: string) => {`
+
+THE FIVE LIVE FIGURES THE ONE-SCAN RPC PRODUCES must survive a pass
+where the RPC fails and this fallback runs — the upsert replaces v
+whole, so leaving them out of this return DELETES them and the
+disclosure silently reverts to the dated pinned constants. Carried
+from prevCoverage exactly like a failed count's own figure is.
+
+## n644-salarytext-carrylive-salarytext
+
+In `supabase/functions/job-board/index.ts`, above: `salaryText: carryLive("salaryText"),`
+
+Carried for the same reason as its four neighbours: the upsert
+replaces the whole block, so omitting the figure the states-pay
+disclosure reads deletes it and that sentence goes silent until the
+next successful scan.
+
+## n645-annualwithouttext-carrylive-annualwithou
+
+In `supabase/functions/job-board/index.ts`, above: `annualWithoutText: carryLive("annualWithoutText"),`
+
+Carried for the same reason, and it is a COUNT rather than a
+fraction: this path runs when the one-scan RPC failed, so there is
+nothing to re-measure it from, and dropping it would delete the only
+external evidence for the invariant the states-pay widening rests on.
+
+## n646-catch-return-undefined
+
+In `supabase/functions/job-board/index.ts`, above: `} catch { return undefined; }`
+
+`open` doubles as the honest board total — see the headline note in
+serveList. It is an EXACT count of exactly the rows a visitor can
+page to, taken in the same pass, so it costs nothing extra.
+
+## n647-f-sourcesfacet-typeof-f-sourcesfacet-obj
+
+In `supabase/functions/job-board/index.ts`, above: `...(f.sourcesFacet && typeof f.sourcesFacet === "object" && !Array.isArray(f.sourcesFacet)`
+
+source -> servable count, same pass, same two serving predicates as
+categoriesFacet (migration 20260909214000). Spread only when the pass
+produced it: an absent key is what the vendor dropdown reads as
+"publish no number", and an empty map would read as twenty zeros.
+
+## n648-facetscarried-facetscarried-true
+
+In `supabase/functions/job-board/index.ts`, above: `...(facetsCarried ? { facetsCarried: true } : {}),`
+
+Facet fields above are LAST pass's, carried through an aggregate
+failure so the upsert-replaces-whole-v write cannot clobber them —
+named so a reader of this row can tell a carried total from a fresh one.
+
+## n649-facetscarried-facetscarried-true-facetsc
+
+In `supabase/functions/job-board/index.ts`, above: `...(facetsCarried ? { facetsCarried: true, facetsCarriedAt: facetsCountedAt ?? v.refreshedAt } : {}),`
+
+The carried-facets marker must ride the SERVED row, not only the fat
+one — serving reads refresh_head. Stamped here it left no trace on the
+row anyone actually reads, so a carried (stale) total served as current
+was indistinguishable from a freshly computed one. Now the served row
+says which it is.
+
+## n650-companiesfacet
+
+In `supabase/functions/job-board/index.ts`, above: `companiesFacet: (() => {`
+
+ORDERED BY WHAT IS OPEN, once we know it. The old ordering (raw facet
+count) put a board with 4,000 withdrawn postings and none open at the
+top of the employer dropdown. `count` stays ON the entry — it is what
+mergeCompanyFacet folds sub-boards by and what picks the stable
+primary token for links — but serveList strips it before it reaches
+the wire, so no client can render it.
+
+## n651-if-ranked-length
+
+In `supabase/functions/job-board/index.ts`, above: `if (ranked.length >= 50) {`
+
+(The quiet-set refresh that used to live here went with the quiet lane —
+see the removal note in the cold-phase skip logic. One fewer heavy RPC
+per pass.)
+
+## n652-const-data-expver-await-client-from
+
+In `supabase/functions/job-board/index.ts`, above: `const { data: expVer } = await client.from("job_board_meta").select("v").eq("k", "experience_version").maybeSingle();`
+
+Experience rules newer than the corpus? Re-derive every row in a
+self-chaining sweep, resumed from its own frontier (S12-013): a chain
+that died mid-table is not restarted from the first id, and a live one
+is left alone.
+
+## n653-const-data-pbver-await-client-from
+
+In `supabase/functions/job-board/index.ts`, above: `const { data: pbVer } = await client.from("job_board_meta").select("v").eq("k", "posted_backfill").maybeSingle();`
+
+Undated rows whose vendor feed DOES carry dates? Date them once.
+The kick now (a) stands down while a chain is demonstrably alive
+(hop stamp < 5 min old) instead of spawning a concurrent duplicate,
+and (b) revives a DEAD chain at its stored phase+cursor rather than
+from the beginning — restart-from-scratch is why v2's late phases
+never ran.
+
+## n654-let-agedres-await-client
+
+In `supabase/functions/job-board/index.ts`, above: `let agedRes = await client`
+
+Widened with the lifecycle facets and effective_posted (which the
+tombstone below needs). Same read that was already running; the
+posting is deleted a few lines further on, so this is the last
+moment its pay, team, geography and level exist.
+
+## n655-const-sweptexitrow-r-record-string-unkno
+
+In `supabase/functions/job-board/index.ts`, above: `const sweptExitRow = (r: Record<string, unknown>) => {`
+
+The other site the hiring-health estimator draws censoring times
+from (exit_reason <> 'removed'), and the other one that was
+coalescing posted_at with first_seen per row with no flag. Same
+rule as everywhere else now: emit the duration, name its clock.
+
+## n656-try
+
+In `supabase/functions/job-board/index.ts`, above: `try {`
+
+Tombstones expire, so the table stays bounded and a vendor that
+recycles posting ids eventually gets a second chance. 180 days is far
+past any window in which a re-fetched id could still be the same
+aged-out job.
+
+## n657-await-client-from-job_board_meta-upsert
+
+In `supabase/functions/job-board/index.ts`, above: `await client.from("job_board_meta").upsert(`
+
+Record headroom each pass so the heartbeat can watch the corpus trend
+toward the ceiling before it ever binds. `basis` travels with it: an
+unmeasured corpus must NOT be published as a healthy headroom, which is
+exactly what `corpusSize ?? 0` used to do.
+
+## n658-for-const-tk-of-renamed_tokens-tokens
+
+In `supabase/functions/job-board/index.ts`, above: `for (const tk of RENAMED_TOKENS) tokens.add(tk);`
+
+Boards whose catalog display name was CORRECTED rather than merely
+escaped. Same insert-only problem, same cure: stored rows keep the
+old name forever unless something rewrites them, so a rename in
+sources.ts is invisible on the site without this sweep.
+
+## n659-const-data-stale-await-client-from
+
+In `supabase/functions/job-board/index.ts`, above: `const { data: stale } = await client.from("job_board_postings")`
+
+(a) SKIP BOARDS ALREADY CORRECT. The trigger renames a posting on
+    every write, so the postings of a board that was re-read can be
+    right while its closures are not: both are read.
+
+## n660-if-waiting-failed
+
+In `supabase/functions/job-board/index.ts`, above: `if (waiting > 0 || failed > 0) {`
+
+(c) STAMP ONLY ON A CLEAN WALK. Leaving it unstamped costs one more hop;
+    stamping over failures costs the rename permanently. A walk the clock
+    stopped is not clean either: it keeps its place and runs again.
+
+## n661-if-await-isingestpaused-client-return-re
+
+In `supabase/functions/job-board/index.ts`, above: `if (await isIngestPaused(client)) return { ...report, decision: "paused" };`
+
+A paused ingest is a chain that is SUPPOSED to be silent. runRefresh
+would decline the kick at its own pause check, but a kick every
+SLICE_LOCK_MS on every status call while an operator holds the pause is
+noise dressed as recovery. One bounded meta read, only on this branch.
+
+## n662-const-stampv-at-report-at-pulseagems
+
+In `supabase/functions/job-board/index.ts`, above: `const stampV = { at: report.at, pulseAgeMs: verdict.pulseAgeMs, pulse: verdict.pulse, thresholdMs: verdict.thresholdMs, chainOutcome: verdic`
+
+Stamp BEFORE the kick, the order every chain hop uses: a kick whose
+stamp is lost is a kick that happened, so the throttle reads what was
+sent, not what landed. CONDITIONAL: the row is taken only if it is older
+than the lock (or absent), so of two callers racing here exactly one
+sends.
+
+## n663-await-mayberekickdeadchain-client-inhop
+
+In `supabase/functions/job-board/index.ts`, above: `await maybeRekickDeadChain(client, { inHop: true });`
+
+The dead-chain watchdog first, and it falls through: its own stamp, its
+own SLICE_LOCK_MS floor, never this function's ten-minute gap. In-hop it
+OBSERVES only — this hop is the chain's pulse, and at pass end it is
+reached after a tail that can outlast the window.
+
+## n664-const-es-await-alive-embed_sweep
+
+In `supabase/functions/job-board/index.ts`, above: `const es = await alive("embed_sweep");`
+
+Embedding sweep — the second independent track. In-runtime inference +
+DB writes, no vendor fetches. "Done" only means the backlog is empty
+RIGHT NOW (new postings arrive around the clock, and desc-sweep keeps
+upgrading title-only rows), so a completed sweep re-kicks on a
+60-minute cadence rather than settling for good.
+
+## n665-const-data-catver-await-client-from
+
+In `supabase/functions/job-board/index.ts`, above: `const { data: catVer } = await client.from("job_board_meta").select("v").eq("k", "category_rules_version").maybeSingle();`
+
+Categorization rules changed since the corpus was stamped? Sweep the
+stored "other" rows through the current rules in a fresh invocation
+(own compute budget). Idempotent: the stamp is written only when the
+sweep completes, so a died sweep retries later.
+
+## n666-if-cv-version-categorize_version-number
+
+In `supabase/functions/job-board/index.ts`, above: `if (cv?.version !== CATEGORIZE_VERSION || Number(cv?.startedUnder) !== CATEGORIZE_VERSION) {`
+
+startedUnder is required, not optional: a completion stamp without it
+may have been written by a chain that STARTED under the previous rules
+and straddled the deploy (measured 2026-08-23, v8→v9) — its "done" is
+a lie about every id before its deploy-time cursor. Such stamps re-arm
+one full sweep and are then re-written with provenance.
+
+## n667-const-sameversion-number-prog-v-startedu
+
+In `supabase/functions/job-board/index.ts`, above: `const sameVersion = Number(prog.v?.startedUnder) === CATEGORIZE_VERSION;`
+
+Resume from the dead chain's frontier — but ONLY if that chain
+STARTED under the CURRENT rules. A frontier cut by a v(N-1) chain
+(or by a straddling chain, whose per-hop stamps claim the new
+version) would make the v(N) sweep skip everything before its
+cursor, leaving rows judged only by the old rules.
+
+## n668-const-data-bf-await-client-from
+
+In `supabase/functions/job-board/index.ts`, above: `const { data: bf } = await client.from("job_board_meta").select("v, updated_at").eq("k", "desc_backfill").maybeSingle();`
+
+Light boards' descriptions (they arrive description-less on the refresh
+path). Only when the last backfill is stale, and never concurrent with
+recategorize — staggered by requiring the category stamp to be current.
+
+## n669-const-settled-number-isfinite-doneat-dat
+
+In `supabase/functions/job-board/index.ts`, above: `const settled = Number.isFinite(doneAt) && Date.now() - doneAt < 6 * 60 * 60_000;`
+
+Completed runs settle to a 6-hour cadence (only the delta needs work);
+a dead chain — stale stamp, no doneAt — re-kicks within minutes. vi:0 is
+self-resuming: filled rows have left the description-is-null filter.
+
+## n670-const-detailcache-new-map-string-at
+
+In `supabase/functions/job-board/index.ts`, above: `const detailCache = new Map<string, { at: number; text: string; pay: string | null }>();`
+
+The pay rides in the cache beside the text because a cache HIT must answer the
+same question a miss does. Cached without it, the demand-weighted lane would
+keep the description and lose the employer's stated pay on the second reader of
+the same posting — the leak below, reproduced silently and only sometimes,
+which is worse than the leak.
+
+## n671-const-tenant-region-site-src-token
+
+In `supabase/functions/job-board/index.ts`, above: `const [tenant, region, site] = src.token.split("~");`
+
+Per-requisition detail: a pulled posting returns an empty items array
+rather than a 404, so treat "no item" as gone and a bad status as
+unknown (never as closed).
+
+## n672-const-cxs-applyurl-workdaycxsurl-applyur
+
+In `supabase/functions/job-board/index.ts`, above: `const cxs = applyUrl ? workdayCxsUrl(applyUrl) : null;`
+
+Last word: the CXS detail endpoint, which is authoritative rather than
+index-backed — 200 with a jobPostingInfo is live, 404 is gone. It needs
+the full externalPath, which only apply_url carries, so callers pass it.
+
+## n673-let-workmode-remote-hybrid-onsite-null
+
+In `supabase/functions/job-board/index.ts`, above: `let workMode: "remote" | "hybrid" | "onsite" | null = null;`
+
+Vendor-STRUCTURED work mode, when the same detail payload states one
+(today: workday remoteType). Callers write it as authoritative — a
+structured field always outranks text inference. null = not stated.
+
+## n674-let-postedat-string-null-null
+
+In `supabase/functions/job-board/index.ts`, above: `let postedAt: string | null = null;`
+
+Absolute posting date, where the SAME payload happens to carry one. Free:
+no extra request. Workday's list only exposes a relative bucket ("Posted
+30+ Days Ago") which floors at 30 days — measured as an exactly-30.0-day
+median gap for Workday against ~18 for every other vendor — so its
+absolute startDate is strictly better than what we store. BambooHR's
+43,943 postings are 0% dated and its detail carries datePosted.
+
+## n675-const-cxs-applyurl-workdaycxsurl-applyur
+
+In `supabase/functions/job-board/index.ts`, above: `const cxs = applyUrl ? workdayCxsUrl(applyUrl) : null;`
+
+The list payload has no description and the stored id is a bare
+requisition number, so the CXS detail endpoint is derived from the
+apply_url. Sampled 2026-07-24: 30/30 boards returned a real body,
+median 5,731 chars.
+
+## n676-country-location-additionalcount-additio
+
+In `supabase/functions/job-board/index.ts`, above: `({ country, location, additionalCount: additionalSites } = workdayDetailPlace(j));`
+
+The place, out of bytes this lane has always downloaded and dropped.
+The parse is workdayDetailPlace in normalize.ts, where a guard walks
+real captured payloads against it — the field path is one level
+shallower than it looks and a wrong path fails silently, returning
+undefined on every posting with every local check still green.
+
+## n677-const-res-await-fetchwithtimeout-https-s
+
+In `supabase/functions/job-board/index.ts`, above: `const res = await fetchWithTimeout('https://${src.token}.bamboohr.com/careers/${externalId}/detail');`
+
+Was hard-coded to null on a note that the detail endpoint threw 500s.
+Re-measured 2026-07-24 across 40 distinct boards: 40/40 succeeded,
+median 6,271 chars. The note was stale; 43,956 postings were being
+written off on it.
+
+## n678-const-res-await-fetchwithtimeout-applyur
+
+In `supabase/functions/job-board/index.ts`, above: `const res = await fetchWithTimeout(applyUrl || jazzhrPostingUrl(src, externalId));`
+
+The list carries no description and no date; the posting page carries
+both — a schema.org JobPosting JSON-LD on most boards (datePosted +
+description) and a #job-description container on all of them (8/8
+probed 2026-09-04). TELECOMMUTE in the JSON-LD is the only structured
+work mode the vendor states; nothing is inferred from prose here.
+
+## n679-const-parts-ukgboardparams-src-token
+
+In `supabase/functions/job-board/index.ts`, above: `const parts = ukgBoardParams(src.token);`
+
+The detail page embeds CandidateOpportunityDetail({...}) — the full JD
+and the structured pay the list withholds (4,794 chars on the posting
+this was verified against, 2026-09-01).
+
+## n680-const-res-await-fetchwithtimeout-https-r
+
+In `supabase/functions/job-board/index.ts`, above: `const res = await fetchWithTimeout('https://recruiting.paylocity.com/recruiting/jobs/Details/${externalId}');`
+
+The list payload's Description is a ~110-char teaser; the Details page
+server-renders the full JD in its schema.org JobPosting block (read
+live 2026-08-30: 3,264 of 3,491 chars against the 110-char stub).
+
+## n681-const-cid-ccid-adpboardparams-src-token
+
+In `supabase/functions/job-board/index.ts`, above: `const { cid, ccId } = adpBoardParams(src.token);`
+
+The list payload carries no description at all; the per-requisition
+detail on the same public endpoint serves the full HTML JD (measured
+live 2026-08-31: 6,928 chars on a sampled retail posting against
+nothing in the list row). The requisition id in the posting id is
+exactly what the detail path takes; cid/ccId ride in the token.
+
+## n682-const-res-await-fetchwithtimeout-https-a
+
+In `supabase/functions/job-board/index.ts`, above: `const res = await fetchWithTimeout('https://api.rippling.com/platform/api/ats/v1/board/${src.token}/jobs/${externalId}');`
+
+The list payload carries no JD (re-verified 2026-08-24: __NEXT_DATA__
+job-posts items hold only [department, id, language, locations, name,
+url]) — but the official per-posting API this codebase ALREADY calls
+for createdOn in the posted-date backfill serves the full text:
+description.{company,role}, measured 20-30KB across 3 boards, no auth.
+role is the JD, company is the employer blurb; role leads.
+
+## n683-const-r-await-readboardfordetail-src
+
+In `supabase/functions/job-board/index.ts`, above: `const r = await readBoardForDetail(src);`
+
+Both ship descriptions in the board payload — fetch the board, extract
+the one posting, keep nothing else in memory. A board the byte bound
+refuses answers null here without being asked again (see above).
+
+## n684-if-object-keys-p-some-k
+
+In `supabase/functions/job-board/index.ts`, above: `if (Object.keys(p).some((k) => (INTENT_CONFLICTS[k] ?? [k]).some((f) => body[f] !== undefined && body[f] !== null))) continue;`
+
+Skip when the caller already spoke for this field — BY ANY OF ITS NAMES.
+Leaving the phrase in the query is the honest outcome: the words then go
+through queryTerms like any others and, when they do not appear in job
+titles, come back as droppedTerms, which the page already renders.
+
+## n685-const-restates-object-keys-p-every
+
+In `supabase/functions/job-board/index.ts`, above: `const restates = Object.keys(p).every((k) => k in patch && patch[k] === p[k]);`
+
+A rule that only RESTATES a lift already made (q="wfh remote") still has
+its words removed — leaving them would re-impose the literal-text match —
+but must not be named twice in the disclosure.
+
+## n686-filter-x-a-z0-i-test
+
+In `supabase/functions/job-board/index.ts`, above: `.filter((x) => /[a-z0-9]/i.test(x));`
+
+A TOKEN WITH NO LETTER OR DIGIT CANNOT MATCH ANYTHING, and every term
+here is ANDed against title/company/department — so a stray "-" or "&"
+from a pasted job title made the whole query unsatisfiable. See ftsSafe
+above for the measurement.
+
+## n687-const-money-salarytokeninquery-raw-token
+
+In `supabase/functions/job-board/index.ts`, above: `const money = salaryTokenInQuery(raw)?.token ?? null;`
+
+The money token is lifted into the salary filter by normalizeFilters, so
+it must not also be ANDed against every title — that returned zero for
+"100k engineer".
+Exactly the token the floor came from, never the first bare number before it (L8-03).
+
+## n688-krankenschwester-pflegefachkraft
+
+In `supabase/functions/job-board/index.ts`, above: `"krankenschwester": "pflegefachkraft",`
+
+2026-08-24, live: 1 literal match board-wide; the German nursing pool is
+pflegefachkraft 55 + krankenpfleger|pflegekraft 13. The #1 "related" row
+was a medical-device sales rep.
+
+## n689-manger-manager
+
+In `supabase/functions/job-board/index.ts`, above: `"manger": "manager",`
+
+2026-08-24, live: 101 exact rows, every one an EMPLOYER's typo ("Manger
+Trainee") suppressing the fuzzy tier; the manager pool is ~100x larger.
+A genuine manger search loses nothing — its rows render unchanged.
+
+## n690-const-fromquery-salaryfromquerytext-body
+
+In `supabase/functions/job-board/index.ts`, above: `const fromQuery = salaryFromQueryText(body.q);`
+
+Pay lifted out of the search box into the filter. Read off the DERIVED
+filter, never the raw body — normalizeFilters is the only place that reads
+it, and an explicit slider beats a typed figure, so the two can differ.
+
+## n691-const-l-locationterms-body-location
+
+In `supabase/functions/job-board/index.ts`, above: `const l = locationTerms(body.location);`
+
+We guessed on the visitor's behalf: someone who typed "SF" and gets San
+Francisco results should know why, and someone who meant somewhere else
+needs to see that we substituted.
+
+## n692-if-maxageclamped-out-maxageclampedto
+
+In `supabase/functions/job-board/index.ts`, above: `if (maxAgeClamped) out.maxAgeClampedTo = 30;`
+
+The board looked at a narrower window than it was asked for. Silent
+narrowing reads as "there is nothing older", which is a different claim
+from "we only keep 30 days".
+
+## n693-if-applied-postedafter-out-postedafterus
+
+In `supabase/functions/job-board/index.ts`, above: `if (applied.postedAfter) out.postedAfterUsesStatedDate = true;`
+
+"Posted after X" now means the EMPLOYER posted after X, so postings with no
+stated date are outside the window rather than treated as brand new. Said
+out loud because it changes what the filter returns: the same 24-hour
+question was 467 rows on crawl time and 90 on the company date.
+
+## n694-if-applied-excludeagencies-out-agenciese
+
+In `supabase/functions/job-board/index.ts`, above: `if (applied.excludeAgencies) out.agenciesExcluded = true;`
+
+The agency opt-out, named back like every other row-selecting choice: a
+filter the page cannot show is one the reader cannot take off, and a
+total that quietly omits the disclosed-agency inventory reads as "the
+market has no such openings" — the postedAfter lesson with a charter
+attached. Read off the DERIVED filter, so a refused non-boolean (named
+in ignoredFilters) never claims here to have applied.
+
+## n695-if-applied-salaryceiling-null-typeof-cov
+
+In `supabase/functions/job-board/index.ts`, above: `if (applied.salaryCeiling != null && typeof cov.salaryFloor === "number") out.salaryCeiling = cov.salaryFloor;`
+
+The ceiling compares against salary_rank_usd, the column the floor uses, so
+its coverage IS the floor's — read live rather than pinned as a sixth
+constant. Two constants for one column is how a number goes stale on one of
+its two readers.
+
+## n696-if-applied-workmode-null-applied-remote
+
+In `supabase/functions/job-board/index.ts`, above: `if ((applied.workMode != null || applied.remote === true) && typeof cov.workMode === "number") out.workMode = cov.workMode;`
+
+THE LEGACY remote=1 IS A WORK-MODE FILTER TOO. It binds `remote = true`,
+which is NULL-false for every posting that states no mode — the same
+rows the mode filter hides — so an old saved search or a digest link
+narrowed the board to the stated-mode slice and got no coverage sentence
+for it. Same column, same figure, same disclosure.
+
+## n697-if-object-keys-out-length-return
+
+In `supabase/functions/job-board/index.ts`, above: `if (!Object.keys(out).length) return {};`
+
+THE BASIS DATE RIDES WITH THE FIGURES OR THEY DO NOT GO OUT. Same reply, so
+a stamp cannot be paired with another pass's numbers by a caller — and the
+client withholds every percentage when this key is absent, which is how an
+older deployed bundle degrades to silence rather than to an undated claim
+(this project's >4.5MB deploy serves the previous version while reporting
+success), and how the pinned-fallback pass above degrades too.
+
+## n698-body-await-boundbody-req-max_request_byt
+
+In `supabase/functions/job-board/index.ts`, above: `body = await boundBody(req, MAX_REQUEST_BYTES).json();`
+
+Bounded like every other body this function reads. The inbound request
+is the one allocation a caller controls directly, so it gets the same
+treatment as a vendor feed rather than an exemption.
+
+## n699-if-string-e-as-error-message
+
+In `supabase/functions/job-board/index.ts`, above: `if (String((e as Error)?.message ?? e).includes(OVERSIZE_MARKER)) {`
+
+TOO BIG IS NOT MALFORMED. Answering 400 "Invalid JSON" to a well-formed
+3MB body tells the caller to go looking at their serializer, and nothing
+anywhere records that a size limit was the reason.
+
+## n700-if-budgeted_actions-has-action
+
+In `supabase/functions/job-board/index.ts`, above: `if (BUDGETED_ACTIONS.has(action)) {`
+
+THE ANONYMOUS BUDGET, before any dispatch, so a refused read does no other
+database work. The service key and our own servers' reader proof make no
+counter call at all. anon-budget.ts holds the rules and fails open.
+
+## n701-if-await-ismaintenance-req-body-return
+
+In `supabase/functions/job-board/index.ts`, above: `if (!(await isMaintenance(req, body))) return json({ error: "searchQuality is a maintenance action" }, 403);`
+
+MAINTENANCE ONLY (.88). Daily search volume, zero-result rate, clicks
+and CTR are the aggregate migration 20260821133259 revoked from anon
+("it also reveals traffic volume"); this action handed it back to
+anyone through the service client, uncounted, at up to 90 days of
+aggregation a call. No page, script or function calls it.
+
+## n702-const-ctrl-new-abortcontroller
+
+In `supabase/functions/job-board/index.ts`, above: `const ctrl = new AbortController();`
+
+Any response is life — a 403, a 429, a rejected HEAD are all
+responses. Only a thrown error (DNS, TLS, timeout) counts.
+Deliberately NOT fetchWithTimeout: its 20s budget and 429 retry
+are feed-fetch behavior; a liveness probe wants 6s and no retry.
+
+## n703-const-incensus-new-set-list-map
+
+In `supabase/functions/job-board/index.ts`, above: `const inCensus = new Set(list.map((l) => l.host));`
+
+Publish the dated figure the way freshness already is: sample size,
+basis and timestamp — never a bare number (stat-provenance rule).
+Two consecutive failures is the bar: one can be a blip; two, a full
+sweep cycle apart (hours), is a host that is down.
+
+## n704-await-client-from-job_board_stats_rollup
+
+In `supabase/functions/job-board/index.ts`, above: `await client.from("job_board_stats_rollup").upsert({`
+
+The rollup row is WORLD-READABLE (published stats). Aggregates only:
+naming the failing hosts there would publish the reconnaissance
+surface the census RPC was revoked from anon to protect. Host-level
+detail stays in job_board_meta (service-role-only since 2026-07-22)
+and in the function log below.
+
+## n705-const-error-persisterr-await-client-from
+
+In `supabase/functions/job-board/index.ts`, above: `const { error: persistErr } = await client.from("job_board_meta").upsert(`
+
+An unchecked persist is a tick that silently never happened: the
+response reports the COMPUTED cursor either way, so a failed upsert
+here is indistinguishable from success to every caller. Check it,
+log it, and say so in the response.
+
+## n706-const-anonbudgetread-promise-resolve
+
+In `supabase/functions/job-board/index.ts`, above: `const anonBudgetRead = Promise.resolve(`
+
+Deploy + health introspection. Read-only, zero-cost (meta rows only — no
+feed fetches, no AI). BUILD_VERSION and catalogSize come from the DEPLOYED
+bundle, so a stale/failed publish is visible in ONE call instead of being
+inferred from posting counts over hours (the rung-2 "did it deploy?" pain).
+Also the source of truth for the heartbeat's job_board_deploy check.
+
+## n707-const-passendread-promise-resolve
+
+In `supabase/functions/job-board/index.ts`, above: `const passEndRead = Promise.resolve(`
+
+The pass-end tail's receipt (S11-001), named like the two above and never
+a position in the batch below: {startedAt, doneAt, ms}, so a tail that
+started and never finished is visible from outside without a service key.
+
+## n708-client-from-job_board_meta-select-total
+
+In `supabase/functions/job-board/index.ts`, above: `client.from("job_board_meta").select("total:v->total, updated_at").eq("k", "refresh").maybeSingle(),`
+
+ONE FIELD of the 1.3-1.6MB refresh row, by JSON path (.88): status is
+uncounted and every homepage view calls it, so the whole row was
+~1.5MB of database egress per call to anyone who looped it.
+
+## n709-client-from-job_board_meta-select-v-upda
+
+In `supabase/functions/job-board/index.ts`, above: `client.from("job_board_meta").select("v, updated_at").eq("k", "ingest_paused").maybeSingle(),`
+
+A pause nobody can see is its own outage: without this, "the ingest
+is off" and "the ingest is broken" look identical from status, and
+stale data gets diagnosed for hours before anyone checks the flag.
+
+## n710-client-from-job_board_meta-select-v-upda
+
+In `supabase/functions/job-board/index.ts`, above: `client.from("job_board_meta").select("v, updated_at").eq("k", "filter_integrity_ok").maybeSingle(),`
+
+The filter self-check's two halves. BOTH are read, because reading
+only incidents makes silence ambiguous: "no violations" and "the check
+stopped running" would be indistinguishable, and this board has
+already shipped one diagnostic whose delivery depended on the very
+thing it was diagnosing. `okAgeMin` is the proof of life.
+
+## n711-client-from-job_board_meta-select-v-upda
+
+In `supabase/functions/job-board/index.ts`, above: `client.from("job_board_meta").select("v, updated_at").eq("k", "apply_agent_run").maybeSingle(),`
+
+Has the apply agent ever actually run, and was it the SCHEDULE that
+ran it? See the applyAgent block in the response for why that second
+half is the whole question.
+
+## n712-client-from-job_board_meta-select-v-upda
+
+In `supabase/functions/job-board/index.ts`, above: `client.from("job_board_meta").select("v, updated_at").eq("k", "agent_runner_run").maybeSingle(),`
+
+And the same question for the RUNNER, which is now gated: its cron is
+the only caller holding a key, so a silent schedule failure would
+otherwise look exactly like a quiet night with no queued picks.
+
+## n713-client-from-job_board_meta-select-v-upda
+
+In `supabase/functions/job-board/index.ts`, above: `client.from("job_board_meta").select("v, updated_at").eq("k", "reconcile_stripe_run").maybeSingle(),`
+
+And the same question for the one job where the answer is money: the
+Stripe reconciliation sweep. Two rows because they answer different
+questions and only one of them is trustworthy about the schedule —
+see the paymentReconcile block below.
+
+## n714-client-from-job_board_meta-select-v-upda
+
+In `supabase/functions/job-board/index.ts`, above: `client.from("job_board_meta").select("v, updated_at").eq("k", "host_sweep").maybeSingle(),`
+
+The two maintenance chains that stalled invisibly overnight
+2026-08-23→24: the recategorize sweep died at a cursor wall and the
+host sweep lost nine of ten cron ticks, and BOTH could only be
+diagnosed by inference from posting counts. A chain whose liveness
+is not in status is a chain whose death is a research project.
+
+## n715-client-from-job_board_meta-select-v-upda
+
+In `supabase/functions/job-board/index.ts`, above: `client.from("job_board_meta").select("v, updated_at").eq("k", "deep_cursor").maybeSingle(),`
+
+APPENDED AT THE END ON PURPOSE. This array is positionally destructured
+into 28 names; a query added in the MIDDLE silently shifts every
+variable after it onto the wrong result. It did exactly that here, and
+the typechecker only caught it by luck on an unrelated field. A new
+read goes last, next to the name it feeds.
+
+## n716-client-from-job_board_meta-select-v-upda
+
+In `supabase/functions/job-board/index.ts`, above: `client.from("job_board_meta").select("v, updated_at").eq("k", "chain_kick").maybeSingle(),`
+
+APPENDED AT THE END, like the one above it and for the same reason:
+this array is positionally destructured, so a read inserted in the
+middle silently shifts every variable after it onto the wrong result.
+
+## n717-client-from-job_board_meta-select-v-upda
+
+In `supabase/functions/job-board/index.ts`, above: `client.from("job_board_meta").select("v, updated_at").eq("k", "oversize_boards").maybeSingle(),`
+
+Boards the byte budget defers. On a light-capable vendor that is one
+pass; on the fifteen with no light form it is every pass until the
+vendor grows pagination here, and this is the only place an operator
+can see it — the board never enters failedSources, board_failures or
+job_board_board_state, by design (it did not fail).
+
+## n718-client-from-job_board_meta-select-v-upda
+
+In `supabase/functions/job-board/index.ts`, above: `client.from("job_board_meta").select("v, updated_at").eq("k", "oracle_subsite_repair").maybeSingle(),`
+
+APPENDED AT THE END, same rule: the Oracle sub-site repair's own
+progress row (migration 20260909216000), so the sweep can be
+verified from outside without a service key.
+
+## n719-client-from-job_board_meta-select-v-upda
+
+In `supabase/functions/job-board/index.ts`, above: `client.from("job_board_meta").select("v, updated_at").eq("k", "stale_lane").maybeSingle(),`
+
+APPENDED AT THE END, same rule. The stale lane's last run: verdict
+counts by class, what it fetched, what stamped, and the tries map
+it is carrying — the two classes no fetch can fix (prototype_name,
+unresolved) named here so nobody has to grep a log for them.
+
+## n720-client-from-job_board_stats_rollup-selec
+
+In `supabase/functions/job-board/index.ts`, above: `client.from("job_board_stats_rollup").select("v, computed_at").eq("k", "freshness").maybeSingle(),`
+
+The 'freshness' rollup ROW, beside the RPC that projects four keys
+from it: migration 20260909221000 added dark_boards / dark_max_min
+(stamps whose token holds rows but none live) and the row is the
+only place they exist — get_freshness_stats keeps its signature.
+
+## n721-const-anonbudgetrow-await-anonbudgetread
+
+In `supabase/functions/job-board/index.ts`, above: `const anonBudgetRow = await anonBudgetRead;`
+
+The anonymous budget's setting row (enforce, the country switch, cap
+overrides), reported as stored. Its own named read, started before the
+positional batch above so it runs beside it, and never a position in it.
+
+## n722-const-pbbacklognow-await-undatedbacklog
+
+In `supabase/functions/job-board/index.ts`, above: `const pbBacklogNow = await undatedBacklog(client);`
+
+Undated rows on the vendors the posted-date sweep can fix, and the
+floor it last left behind. `due` below is computed WITH this, so the
+status endpoint answers "is the sweep behind, and will it re-arm" in
+one place instead of leaving it to be inferred from two percentages.
+
+## n723-wakeconfig-v-wakeconfig-null
+
+In `supabase/functions/job-board/index.ts`, above: `wakeConfig: v.wakeConfig ?? null,`
+
+Whether a wake is configured at all. Without it the Actions
+cron is the only path to a sender, which is a ~6h worst case
+when the other host is asleep — and wakeSender never even
+reads the secret unless work is already waiting, so this was
+unobservable until it was too late to matter.
+
+## n724-scheduleproven-cronat-null-agemin-cronat
+
+In `supabase/functions/job-board/index.ts`, above: `scheduleProven: cronAt !== null && (ageMin(cronAt) ?? 1e9) < 120,`
+
+The verdict, so nobody has to re-derive the rule above. Two
+hours of slack on an hourly job absorbs one missed tick
+without crying wolf.
+
+## n725-alerted-run-alerted-null
+
+In `supabase/functions/job-board/index.ts`, above: `alerted: run.alerted ?? null,`
+
+Whether the owner alert actually went out. null = nothing to send.
+false = orphans were found and the email did NOT leave — the worst
+state this system can be in, and previously a console.error.
+
+## n726-scheduleproven-cronat-null-agemin-cronat
+
+In `supabase/functions/job-board/index.ts`, above: `scheduleProven: cronAt !== null && (ageMin(cronAt) ?? 1e9) < 1500,`
+
+Daily at 15:17 UTC, so 25h means one missed run shows up rather
+than being absorbed. Deliberately tighter in spirit than the
+hourly job's two-hour slack: this one guards money, and a day of
+unrecovered payments is worth a false alarm.
+
+## n727-descsweep
+
+In `supabase/functions/job-board/index.ts`, above: `descSweep: {`
+
+Per-posting description sweep: which vendor it's on, and how long
+since it last moved. Lets a deploy be verified without waiting a day
+for coverage numbers to shift.
+
+## n728-lane
+
+In `supabase/functions/job-board/index.ts`, above: `lane: (() => {`
+
+Did the fast lane actually run last cold slice, and how many
+boards did it put in? maxOffset stuck at 500 with a lane that
+selected nothing is a different bug from one that selected 25.
+
+## n729-if-typeof-rec-w0-string-first
+
+In `supabase/functions/job-board/index.ts`, above: `if (typeof rec.w0 === "string" && (!first || rec.w0 < first)) first = rec.w0;`
+
+The earliest board-level observability boundary. Any closure
+cohort whose window spans this date measures a population
+that changed mid-window, and the closures the first laps
+wrote carry a knowingly-late closed_at (absence_basis
+'lap_backfill'). It is the date to exclude around, not a
+health number.
+
+## n730-closurepopulation-closurepop-error-null
+
+In `supabase/functions/job-board/index.ts`, above: `closurePopulation: (closurePop.error ? null : (closurePop.data ?? null)),`
+
+See the RPC's own COMMENT: buckets (3), (4) and (5) are the boards
+whose silence is NOT evidence about the employer, and any number on
+this board derived from job_board_closures describes (1)+(2) only.
+`closuresLapBackfill` is the first laps' thirty-day backlog, whose
+closed_at is knowingly late — a count of events, never a duration.
+
+## n731-oraclesubsiterepair-oraclerepair-error
+
+In `supabase/functions/job-board/index.ts`, above: `oracleSubsiteRepair: oracleRepair.error`
+
+The Oracle sub-site repair (migration 20260909216000): phase,
+counts and the duplicates it still finds, written by the function
+itself each run. null until the migration applies; `phase: "done"`
+with `duplicates_remaining: 0` is the sweep's completion receipt.
+
+## n732-embedsweep
+
+In `supabase/functions/job-board/index.ts`, above: `embedSweep: {`
+
+Embedding sweep liveness — same shape as descSweep. Added 2026-07-25
+when the corpus fill had NO anon-visible progress signal (the meta
+row and the embeddings table are both RLS-hidden), so "is it
+filling?" needed dashboard SQL. A fresh ageMin = chain alive.
+
+## n733-okagemin-okat-null-null-math-round
+
+In `supabase/functions/job-board/index.ts`, above: `okAgeMin: okAt === null ? null : Math.round((Date.now() - okAt) / 60000),`
+
+Minutes since a page was checked and found clean. Sampled ~2% of
+requests, so on a live board this stays small; a large or null
+value means the check is NOT running, which is not the same as
+"no problems found".
+
+## n734-backlog-pbbacklognow
+
+In `supabase/functions/job-board/index.ts`, above: `backlog: pbBacklogNow,`
+
+Undated rows on bamboohr/rippling/greenhouse right now, the
+residue the last completed sweep could not date, and the growth
+between them — which is what actually arms the sweep early.
+
+## n735-const-v-freshrow-data-v-as
+
+In `supabase/functions/job-board/index.ts`, above: `const v = (freshRow.data?.v ?? {}) as { dark_boards?: unknown; dark_max_min?: unknown; population?: unknown };`
+
+POPULATION SINCE 20260909221000: stamps whose token holds at least
+one LIVE posting row. Stamps whose token holds rows but none live
+are the dark bucket, counted separately with their own max, so
+the excluded population is a number on this page and not a
+silence. Absent on a rollup row written before that migration.
+
+## n736-stalelane
+
+In `supabase/functions/job-board/index.ts`, above: `staleLane: (() => {`
+
+THE STALE LANE, VISIBLE. `classes` says why the oldest stamps are
+old — prototype_name and unresolved are the two no fetch can fix —
+`fetched`/`resolved` say what the last cold hop did about the rest,
+and `triesPending` is how many boards it is still spending fetches
+on. rpc != "ok" is the deploy window (migration 20260909218000 not
+yet applied) or a slow read; either way the hop was untouched.
+
+## n737-excluded-typeof-v-excluded-number-v
+
+In `supabase/functions/job-board/index.ts`, above: `excluded: typeof v.excluded === "number" ? v.excluded : null,`
+
+Tokens sent as p_exclude on that hop (.71): 0 means the RPC
+predated the arm and the lane fell back to the unexcluded ask.
+Absent on a pre-.71 row.
+
+## n738-excludedunresolved-unresolvedtokens-read
+
+In `supabase/functions/job-board/index.ts`, above: `excludedUnresolved: unresolvedTokens(readStaleTries(v)),`
+
+Since .71 the tokens at STALE_TRIES_MAX are sent as p_exclude and
+never occupy a window row, so `unresolved` above reads [] once the
+exclusion works. This is the list it hides, read from the tries
+the fold wrote: the boards a human should look at. An entry leaves
+on the slice that stamps its board, whichever lane stamps it.
+
+## n739-chainwatchdog
+
+In `supabase/functions/job-board/index.ts`, above: `chainWatchdog,`
+
+The watchdog's verdict for THIS call (decision, workAgeMs against
+thresholdMs, the chainKick outcome it judged) and the last kick it
+actually sent, so "did it fire" and "why not" are both one read.
+
+## n740-ingestpaused-ingestpaused-as-data-v-paus
+
+In `supabase/functions/job-board/index.ts`, above: `ingestPaused: ((ingestPaused as { data?: { v?: { paused?: boolean } } } | null)?.data?.v?.paused === true) || false,`
+
+Is the ingest deliberately stopped? Without this, "paused" and
+"broken" are indistinguishable from status, and stale data gets
+diagnosed for hours before anyone thinks to check a meta row.
+
+## n741-oversizeboards-oversizestatusrows-overme
+
+In `supabase/functions/job-board/index.ts`, above: `oversizeBoards: oversizeStatusRows((overMeta as { data?: { v?: { boards?: unknown } } } | null)?.data?.v?.boards),`
+
+Boards past MAX_RESPONSE_BYTES: named, sized and dated, largest
+first. A deferral is not a failure, so nothing else on this page
+would ever mention them.
+
+## n742-dccache-data-v-as-unknown-undefined
+
+In `supabase/functions/job-board/index.ts`, above: `: ((dcCache.data?.v as unknown[] | undefined) ?? null),`
+
+Serve the last good copy rather than nothing. Its age is reported
+above, so a reader can decide whether stale is good enough — which
+is a judgement they can only make if they are told.
+
+## n743-console-error-job-board-status-degraded
+
+In `supabase/functions/job-board/index.ts`, above: `console.error("[JOB-BOARD] status degraded:", statusErr);`
+
+The skeleton always answers, because "which bundle is deployed?" is
+a constant in this file and needs no database. Reported at 200 with
+the reason attached: a 500 here tells a caller nothing except that
+something broke in the place built to explain what broke.
+
+## n744-const-ttl_ms-_000
+
+In `supabase/functions/job-board/index.ts`, above: `const TTL_MS = 30 * 60_000;`
+
+Schema-drift canary: probe stable reference boards per vendor through the
+real fetch+normalize path and compare raw feed items to normalized
+postings. Raw present but normalized zero ⇒ that vendor changed its API
+and is silently draining off the board. Result cached 30 min so the
+heartbeat (every ~10 min) doesn't re-probe vendor APIs each run; force
+bypasses the cache for manual checks.
+
+## n745-const-body-json-stringify-action-list
+
+In `supabase/functions/job-board/index.ts`, above: `const body = JSON.stringify({ action: "list", limit: 60, groupSimilar: false, caller: "maintenance", ...payload });`
+
+caller:'maintenance' — these ~31 daily self-calls are the audit
+checking the board's own filters, not people looking for work, and
+they used to land in job_board_search_events indistinguishable from
+real demand. (The service-role Authorization below would label them
+anyway; saying it explicitly means the attribution does not depend
+on which credential this probe happens to use.)
+
+## n746-name-excludeagencies-true-body-excludeag
+
+In `supabase/functions/job-board/index.ts`, above: `{ name: "excludeAgencies=true", body: { excludeAgencies: true } },`
+
+The agency opt-out. No col/val recall pair (exactCount compares
+string equality and this column is boolean); precision is the check
+that matters — a tagged row leaking under the opt-out is the
+violation filterViolations now names.
+
+## n747-const-query_cases-array-q-string-mintota
+
+In `supabase/functions/job-board/index.ts`, above: `const QUERY_CASES: Array<{ q: string; minTotal: number; note: string }> = [`
+
+Relevance corpus. Asserted as PROPERTIES, never as literal substrings:
+`swe` legitimately returns "Software Engineer" through alias expansion,
+and scoring that by looking for the token "swe" in the title graded a
+working feature 0/10 during the manual audit. `minTotal` is a floor a
+healthy catalogue clears, not an exact figure that would go stale.
+
+## n748-const-inbatches-async-t-r-items
+
+In `supabase/functions/job-board/index.ts`, above: `const inBatches = async <T, R>(items: T[], size: number, fn: (t: T) => Promise<R>): Promise<R[]> => {`
+
+BOUNDED PARALLELISM, not a nicety. Sequentially this issues ~40 HTTP
+probes at the 2-5s each measured on this board — 80-200s, past the
+wall clock, so the audit would die before writing its result and the
+status row would sit stale while looking merely "not run yet". Four at
+a time brings it to roughly 25-35s while keeping the synthetic load on
+the board it is watching modest.
+
+## n749-if-i-size-items-length-await
+
+In `supabase/functions/job-board/index.ts`, above: `if (i + size < items.length) await new Promise((r) => setTimeout(r, 500));`
+
+Pace between batches: the 4-wide unpaced burst is what the gateway
+was throttling. ~500ms x ~18 batches adds ~9s of wall to a
+maintenance action; a red-every-day audit cost more.
+
+## n750-for-const-shape-of-category-design
+
+In `supabase/functions/job-board/index.ts`, above: `for (const shape of [{}, { category: "design" }, { q: "nurse" }] as Array<Record<string, unknown>>) {`
+
+PAGINATION INTEGRITY — the interleave regression duplicated rows onto
+page 2 and dropped others forever, and no unit test could see it because
+it only exists across two requests.
+Offsets within one shape must stay ordered. The three shapes walk ONE
+AT A TIME, paced: walked together they burst twelve self-calls and the
+runtime refused them every day as RateLimitError (L1-07).
+
+## n751-if-r-ok
+
+In `supabase/functions/job-board/index.ts`, above: `if (!r.ok) {`
+
+Fail LOUD, not open. Without this an outage reads as a clean walk:
+every request errors, jobs is [], the loop breaks at offset 0, the
+duplicate check trivially passes and the audit writes clean:true —
+a green light during exactly the failure it exists to catch.
+
+## n752-throttledcases-findings-filter-f-f-kind
+
+In `supabase/functions/job-board/index.ts`, above: `throttledCases: findings.filter((f) => f.kind === "throttled").length,`
+
+Distinct from a defect count: probes the gateway refused even after
+the paced retry. clean stays false (the audit did not finish), but
+"could not measure" and "measured broken" are different alarms.
+
+## n753-if-typeof-body-chainkey-string-body
+
+In `supabase/functions/job-board/index.ts`, above: `if (typeof body.chainKey !== "string" || body.chainKey !== await chainKey()) {`
+
+Maintenance sweep, self-invoked at pass end (chainKey-gated like
+force-refresh). Re-runs the CURRENT rules over stored "other" rows
+— the only bucket new rules can rescue — updating rows whose
+category changes. Pages by id cursor; self-chains past the budget.
+
+## n754-if-typeof-body-chainkey-string-body
+
+In `supabase/functions/job-board/index.ts`, above: `if (typeof body.chainKey !== "string" || body.chainKey !== await chainKey()) {`
+
+S12-013: re-derive EVERY stored row under the current rules and write
+the rows whose band or minimum changed, NULL included ("unspecified",
+min_years NULL), so a parser fix reaches the rows ingested before it.
+chainKey-gated, self-chaining on an id cursor kept in
+experience_backfill, so a dead chain resumes from its frontier; a hop
+of older rules stands down.
+
+## n755-const-perposting-phase-bamboohr-phase-ri
+
+In `supabase/functions/job-board/index.ts`, above: `const perPosting = phase === "bamboohr" || phase === "rippling";`
+
+Workday hops fetch up to WORKDAY_PAGE_CAP list pages per board — keep
+the per-hop board count low so a hop stays inside the compute budget.
+BambooHR/Rippling date via ONE detail call PER POSTING (their list
+feeds are dateless, but /careers/{id}/detail states datePosted and
+/jobs/{uuid} states createdOn — both official, both company-stated),
+so those hops budget by posting count, not board count.
+
+## n756-const-data-pbprev-await-client-from
+
+In `supabase/functions/job-board/index.ts`, above: `const { data: pbPrev } = await client.from("job_board_meta").select("v").eq("k", "posted_backfill").maybeSingle();`
+
+Resume state, stamped EVERY hop. Without it a died chain restarted the
+whole phase sequence from scratch on the next maintenance kick, and the
+long phases never finished. `at` doubles as the liveness signal the
+kick uses to avoid spawning a second concurrent chain.
+
+## n757-let-drawfailed-false
+
+In `supabase/functions/job-board/index.ts`, above: `let drawFailed = false;`
+
+Set when the DRAW itself failed (statement timeout), as opposed to the
+phase genuinely running out of rows. The two look identical downstream
+and must not: only the second may write a completion stamp.
+
+## n758-const-m-dateposted-s-s-exec
+
+In `supabase/functions/job-board/index.ts`, above: `const m = /"datePosted"\s*:\s*"([^"]+)"/.exec(html);`
+
+The employer's OWN stated date, never our first_seen. A
+posting that dates older than the 30-day serving window is
+a CORRECT outcome and a desirable one: the freshness cap
+then drops it instead of serving it ageless. Do not null a
+too-old date — that is exactly the laundering the Lever
+incident note in normalize.ts warns about.
+
+## n759-const-pool
+
+In `supabase/functions/job-board/index.ts`, above: `const pool = 5;`
+
+Per-posting official detail endpoints (both company-stated):
+  bamboohr: /careers/{id}/detail → result.jobOpening.datePosted
+  rippling: /jobs/{uuid} → createdOn (uuid verified == board id)
+Small concurrent pool; a 404/parse miss leaves the row NULL.
+
+## n760-const-jobpostings-await-fetchworkday-nam
+
+In `supabase/functions/job-board/index.ts`, above: `const { jobPostings } = await fetchWorkday({ name: company, source: "workday", token: tk } as JobSource);`
+
+Production fetcher + normalizer: emits dated postings from the
+stated relative age; stale (>30d) come back undated and are
+skipped here — those rows age out via the freshness cap anyway.
+
+## n761-if-error-dated
+
+In `supabase/functions/job-board/index.ts`, above: `if (!error) dated++;`
+
+The error was DISCARDED. If every update failed — a constraint, a
+type coercion, anything — `dated` stayed 0 and nothing anywhere
+recorded why, which is indistinguishable from "the vendor gave us
+no dates". Capture the first one; it costs a string.
+
+## n762-lastboarderror-tk-e-instanceof-error-e
+
+In `supabase/functions/job-board/index.ts`, above: `lastBoardError = '${tk}: ${e instanceof Error ? e.message : String(e)}'.slice(0, 160);`
+
+Was silent. Keep the sweep resilient per board, but record the LAST
+failure so "dated 0 of 120" can be told apart from "every vendor
+call threw".
+
+## n763-const-datedtotal-typeof-body-datedtotal
+
+In `supabase/functions/job-board/index.ts`, above: `const datedTotal = (typeof body.datedTotal === "number" ? body.datedTotal : 0) + dated;`
+
+Cumulative across the whole chain, threaded hop to hop. Without this a
+completion stamp records only the LAST hop's numbers, so a chain that
+walked 43,687 rows and dated none is indistinguishable from one that
+dated thousands — which is exactly the ambiguity that let this sweep
+look "done" while bamboohr sat at 0% dated for weeks.
+
+## n764-if-typeof-body-chainkey-string-body
+
+In `supabase/functions/job-board/index.ts`, above: `if (typeof body.chainKey !== "string" || body.chainKey !== await chainKey()) {`
+
+One-time sweep parsing stored salary text into salary_min_annual for
+rows that predate the structured parser. chainKey-gated + self-chaining
+like backfill-experience; stamps salary_parse_version when done.
+Unparseable rows stay NULL — the id cursor walks past them, and the
+completion stamp keeps the sweep from re-scanning them every pass.
+
+## n765-const-groups-new-map-string-annualmin
+
+In `supabase/functions/job-board/index.ts`, above: `const groups = new Map<string, { annualMin: number | null; annualMax: number | null; period: string | null; currency: string | null; ids: st`
+
+Group by the (annualMin, currency) pair so each distinct patch is one
+chunked update. v4 re-parses EVERY salaried row (not just currency-NULL
+ones): earlier detector versions mislabeled MX$/R$/HK$ postings as USD
+and annualized mislabeled monthlies — those rows hold wrong values, not
+NULLs. Rows whose stored values already match the current parse are
+skipped, so a re-sweep only writes actual corrections.
+
+## n766-select-id-source-salary-country-title
+
+In `supabase/functions/job-board/index.ts`, above: `.select("id,source,salary,country,title,description,employment_type,salary_min_annual,salary_max_annual,salary_period,salary_currency")`
+
+`source` and `employment_type` ride along because THE SWEEP'S PARSE
+CONTEXT HAS TO MATCH THE INGEST PARSE'S, or a version bump republishes
+a figure the ingest path deliberately refused. employment_type is the
+only stored record of a posting's schedule, and the part-time guard now
+reads its underscore spelling; `source` is what says whether even that
+is enough (see sweepRefusesAnnual).
+
+## n767-const-rowdesc-r-as-description-string
+
+In `supabase/functions/job-board/index.ts`, above: `const rowDesc = (r as { description?: string | null }).description ?? null;`
+
+S12-019: a figure the miner took from this row's description that
+the current rules refuse as pay is re-mined, text and columns
+together (NULL when nothing in the text is pay). A vendor's own
+salary is never touched here: minedSalaryRefused needs the stored
+text verbatim in the description AND judged not pay.
+
+## n768-const-p-parsesalarystructured-row-salary
+
+In `supabase/functions/job-board/index.ts`, above: `const p = parseSalaryStructured(row.salary, row.country, { title: (row as { title?: string | null }).title ?? null, description: (row as { d`
+
+THE SAME CONTEXT THE TWO INGEST PARSES GET, as far as a row can carry
+it. title and description were always passed; employment_type was not,
+and it is the only column that records a posting's schedule — so this
+sweep recomputed the full-time-load annual on every part-time row whose
+words live in a vendor field and not in its prose.
+
+## n769-if-sweeprefusesannual-row-source-curmin
+
+In `supabase/functions/job-board/index.ts`, above: `if (sweepRefusesAnnual(row.source, curMin, nextMin, nextPer)) continue;`
+
+AND WHERE THIS LANE CANNOT SEE WHAT INGEST SAW, IT WRITES NOTHING. The
+rule is stated and argued at sweepRefusesAnnual; here it is one call,
+placed after the no-change skip so a row it protects is not even
+grouped. It refuses only NULL -> a number, only on a load-dependent
+period, only for a source whose schedule words no column carries.
+
+## n770-if-body-resetcataloghighwater-true
+
+In `supabase/functions/job-board/index.ts`, above: `if (body.resetCatalogHighwater === true) {`
+
+Escape hatch for the stale-bundle guard: an INTENTIONAL catalog shrink
+must lower the high-water mark or the orphan prune stays disabled.
+Maintenance-gated — the mark protects real postings from stale deploys.
+
+## n771-fv-facetscarried-facetscarried-true-face
+
+In `supabase/functions/job-board/index.ts`, above: `...(fv.facetsCarried ? { facetsCarried: true, facetsCarriedAt: (fv.facetsCarriedAt as string) ?? null } : {}),`
+
+Present ONLY when the counts are last pass's, carried through a
+failed aggregate. Absence is the healthy state, so a normal reply
+publishes nothing -- the same shape rankedFellBack uses.
+
+## n772-const-meta_timeout-symbol-meta-timeout
+
+In `supabase/functions/job-board/index.ts`, above: `const META_TIMEOUT = Symbol("meta-timeout");`
+
+A TIMEOUT AND AN ABSENT ROW MUST NOT LOOK THE SAME. withDeadline
+resolves {data:null} on expiry, which is byte-identical to "this row
+does not exist" — and the branch below treats the latter as first boot
+and seeds the table. Conflating them is what turned a slow database
+into a self-inflicted refresh storm, so the marker is explicit.
+
+## n773-const-racemeta-async-q-promiselike-data
+
+In `supabase/functions/job-board/index.ts`, above: `const raceMeta = async (q: PromiseLike<{ data: unknown; error?: unknown }>): Promise<{ data: unknown } | typeof META_TIMEOUT> =>`
+
+A rejected promise AND a resolved-with-.error read both mean "we do
+not know", exactly like a timeout — the .4 fix mapped rejections to
+{data:null}, which is byte-identical to "no such row", so an errored
+read still fell into the first-boot seed the fix existed to stop.
+
+## n774-const-fatres-await-racemeta
+
+In `supabase/functions/job-board/index.ts`, above: `const fatRes = await raceMeta(`
+
+The fat row (1.3-1.6MB) gets what is LEFT of the one budget — never a
+second full one. Skipped entirely if the head read already expired:
+a database too slow to answer the small row will not answer the big
+one, and asking is another second of a visitor's time.
+
+## n775-body-caller-resolvecaller-req-body-undef
+
+In `supabase/functions/job-board/index.ts`, above: `body.caller = resolveCaller(req, body) ?? undefined;`
+
+ATTRIBUTE THE REQUEST ONCE, HERE, and carry it on the body serveList
+already receives — resolveCaller needs the REQUEST (its headers are
+most of the evidence) and serveList only ever sees the body. Writing
+the resolution back over the caller hint the client may have sent is
+the point: from this line on, body.caller is the answer, not a claim.
+
+## n776-body-nolog-body-nolog-true-await
+
+In `supabase/functions/job-board/index.ts`, above: `body.noLog = body.noLog === true && (await exemptKind(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "")) === "reader" ? true : u`
+
+NO LOG, ONLY ON OUR SERVERS' WORD (wave 4): agent-mcp asks it for the
+ChatGPT surface. Without the reader proof the flag is dropped, so a
+browser cannot take its searches out of the demand log.
+
+## n777-if-action-fit-batch
+
+In `supabase/functions/job-board/index.ts`, above: `if (action === "fit-batch") {`
+
+KEPT FOR OLDER BUNDLES. The scorer moved to its own function (job-fit,
+2026-09-03) so a reader's score never competes with the ingest for a
+worker; the site and MCP call job-fit. This copy answers clients that
+have not reloaded yet, with identical semantics.
+
+## n778-const-ids-array-isarray-body-ids
+
+In `supabase/functions/job-board/index.ts`, above: `const ids = Array.isArray(body.ids) ? body.ids.filter((x): x is string => typeof x === "string").slice(0, FIT_BATCH_MAX) : [];`
+
+TWENTY PER CALL. This action runs inside the same function as the
+ingest and shares its worker pool; at 60 ids it failed 2 of 4 live
+calls with WORKER_RESOURCE_LIMIT while 20 succeeded 2 of 2. The client
+sends 20 since the same day; the cap here keeps an older bundle from
+asking for a batch that dies.
+
+## n779-const-resumescan-scanresume-resumetext
+
+In `supabase/functions/job-board/index.ts`, above: `const resumeScan = scanResume(resumeText);`
+
+ONE résumé scan for the whole batch. computeFit(desc, resumeText) in
+this loop re-walked the entire dictionary against the same 50KB résumé
+per posting — the expensive half of the scorer, repeated sixty times
+for an input that cannot change mid-batch.
+
+## n780-const-boards-descbackfillboards
+
+In `supabase/functions/job-board/index.ts`, above: `const BOARDS = descBackfillBoards();`
+
+Greenhouse ONLY: this lane fetches the GH per-job endpoint, so a non-GH
+board here would 404 forever. That is not a filter written twice — it
+is descBackfillBoards(), the same call the maintenance trigger makes,
+so the population measured and the population filled are one
+population. Other vendors fill via the desc-sweep board lane, which
+uses their own list payloads.
+
+## n781-let-remaining
+
+In `supabase/functions/job-board/index.ts`, above: `let remaining = 0;`
+
+How much is still missing? A whole failed board (transient) should
+retry within the hour; a handful of permanently-broken jobs should
+not thrash the sweep — settle to the daily cadence for those.
+
+## n782-select-id-country-title
+
+In `supabase/functions/job-board/index.ts`, above: `.select("id, country, title")`
+
+country rides along: parseSalaryStructured resolves a bare "$" by
+country, so without it a Toronto posting saying "$120,000" is stored
+as USD — inflating its rank ~1.37x and misstating the offer.
+
+## n783-const-minedsalary-extractsalary-text
+
+In `supabase/functions/job-board/index.ts`, above: `const minedSalary = extractSalary(text);`
+
+Backfilled description is also the salary source for these boards
+(GH giants fetch without content, so ingest-time mining never saw
+it). Only set when extraction finds the company's own pay text.
+
+## n784-if-rows-rows-length-per_hop-updated
+
+In `supabase/functions/job-board/index.ts`, above: `if (!rows || rows.length < PER_HOP || updated === 0) ti += 1;`
+
+Advance when the board is drained (short page) OR when a full page
+produced nothing: those rows are permanently unfillable (deleted from
+the vendor, wrong id shape), and staying put re-fetched the same 50
+dead ids every hop forever — a livelock that stalled the whole sweep.
+
+## n785-if-typeof-body-chainkey-string-body
+
+In `supabase/functions/job-board/index.ts`, above: `if (typeof body.chainKey !== "string" || body.chainKey !== await chainKey()) {`
+
+Vector fill for semantic search. Reads its batch from get_embed_batch
+(description-bearing rows first, newest first, including rows whose
+description arrived AFTER a title-only embedding), embeds in-runtime,
+upserts. Ten per hop: each embedding costs ~100-200ms of the 2-second
+per-request CPU budget, and blowing that budget kills the isolate
+mid-batch rather than failing politely.
+
+## n786-if-inserr-console-warn-job-board
+
+In `supabase/functions/job-board/index.ts`, above: `if (insErr) console.warn('[JOB-BOARD] embed seed insert failed: ${insErr.message?.slice(0, 100)}');`
+
+A NOT NULL violation here means the embedding-nullable ALTER
+itself never applied — nothing to do function-side; leave the
+cursor so the seed retries after the migration truly lands.
+
+## n787-if-seedv-done-seeded
+
+In `supabase/functions/job-board/index.ts`, above: `if (!seedV.done && seeded > 0) {`
+
+While the seed is still filling the queue, a batch error (the empty
+queue's phase-2 timeout) must NOT settle the chain for an hour —
+keep chaining so the seed finishes; the settle only happens once
+seeding is complete and the batch still errors.
+
+## n788-if-date-now-hopstart-embed_hop_wall_ms-b
+
+In `supabase/functions/job-board/index.ts`, above: `if (Date.now() - hopStart > EMBED_HOP_WALL_MS) break;`
+
+Budget guard: stop BEFORE the embed that would blow the CPU cap.
+A partial batch still chains below; unfinished rows simply remain
+in the queue for the next hop.
+
+## n789-waituntil-new-promise-r-settimeout-r
+
+In `supabase/functions/job-board/index.ts`, above: `waitUntil(new Promise((r) => setTimeout(r, EMBED_HOP_PAUSE_MS))`
+
+Paced chain: sleep BEFORE the next hop. Back-to-back hops turned this
+sweep into a continuous DB load (2026-07-26 saturation incident) —
+the pause caps the duty cycle so user queries always outrank the fill.
+
+## n790-if-typeof-body-chainkey-string-body
+
+In `supabase/functions/job-board/index.ts`, above: `if (typeof body.chainKey !== "string" || body.chainKey !== await chainKey()) {`
+
+Country for rows whose location never carried one (61.7% coverage when
+built; the country filter was blind to 218k postings). Pure DB work —
+read location, run the same detectCountry ingest uses (now with the
+exact-segment city table), write back. No network, so it is allowed to
+run alongside desc-sweep instead of queueing behind it.
+
+## n791-await-client-from-job_board_meta-upsert
+
+In `supabase/functions/job-board/index.ts`, above: `await client.from("job_board_meta").upsert(`
+
+Also satisfy the LEGACY pass-complete watcher (country_version): the
+original rollout's handler stamped that key, this handler replaced it
+(2026-07-25 — two handlers shared the action name; the legacy one
+shadowed this one AND stamped a key this track never read, which kept
+re-kicking country and starving desc-sweep of its recovery kicks).
+Stamping both keys settles every watcher.
+
+## n792-const-desccursor-typeof-body-cursor-stri
+
+In `supabase/functions/job-board/index.ts`, above: `const descCursor = typeof body.cursor === "string" && body.cursor ? body.cursor : null;`
+
+A WATERMARK, NOT A ROTATION. Newest-first across vendors (.33) made
+the vendor slot meaningless as a selector: a page whose rows all fail
+permanently stays null and comes straight back next hop, walling off
+every vendor's backlog behind it (reviewed 2026-09-03). Each hop now
+walks first_seen downward from the cursor the previous hop handed on;
+failed rows are revisited on the next PASS, after the wrap.
+
+## n793-const-boards-job_sources-filter-s-board_
+
+In `supabase/functions/job-board/index.ts`, above: `const BOARDS = JOB_SOURCES.filter((s) => (BOARD_DESC_SOURCES as readonly string[]).includes(s.source));`
+
+── Phase 2: board-level lane ────────────────────────────────────────
+workable/pinpoint carry their descriptions in the LIST payload, so
+ingest stores them on insert — but ingest is INSERT-ONLY, so the ~25k
+rows that predate the extraction keep their null forever. One board
+fetch fills every null row on that board, where routing them through
+the per-posting phase would re-fetch the whole board PER ROW.
+
+## n794-const-data-nullrows-await-client
+
+In `supabase/functions/job-board/index.ts`, above: `const { data: nullRows } = await client`
+
+Cheap check first: no null rows means no board fetch at all. After the
+initial fill that's the case for nearly every board, so a full pass
+over ~1,700 boards costs almost nothing.
+
+## n795-select-id-source-company_token-apply_url
+
+In `supabase/functions/job-board/index.ts`, above: `.select("id, source, company_token, apply_url, title, location, country, posted_at, work_mode, first_seen, salary")`
+
+`salary` rides along so the vendor-pay write below can be FILL-ONLY
+against what the row already holds, not only against what this hop
+mines. Without it the fill-only rule would be an inference about
+which writers can reach a description-less row rather than a fact
+about this one.
+
+## n796-const-placepatch-placewrite-row-vcountry
+
+In `supabase/functions/job-board/index.ts`, above: `const placePatch = placeWrite(row, vCountry, vLocation, additionalSites);`
+
+Same rules as structured-sweep, stated once here and applied in
+both of this lane's write paths: the vendor's structured country
+replaces our text inference, the vendor's display location only
+fills a placeholder that names nowhere, and a SUBDIVISION is
+written only for a requisition that names one site.
+
+## n797-const-q0-client-from-job_board_postings
+
+In `supabase/functions/job-board/index.ts`, above: `const q0 = client.from("job_board_postings").update(salv).eq("id", row.id);`
+
+The salary guard is added the same way the work-mode one is and
+for the same reason — a fill is only a fill if the row still
+lacks the field when the statement runs — and only when the
+patch actually carries pay, so a row that gains nothing here
+does not gain a predicate that could match nothing.
+
+## n798-const-minedsalary-extractsalary-clean
+
+In `supabase/functions/job-board/index.ts`, above: `const minedSalary = extractSalary(clean);`
+
+Same rule as ingest: the description is also the salary source
+where the vendor gave us no structured pay field. Only ever the
+company's own words — never an estimate.
+
+## n799-const-exp-detectexperience-row-title-cle
+
+In `supabase/functions/job-board/index.ts`, above: `const exp = detectExperience(row.title ?? "", clean);`
+
+The three fields below are DERIVED FROM DESCRIPTION TEXT but were
+only ever computed at ingest, so the description backfill left
+them stale — measured coverage was experience 26.4%, work mode
+9.7%, salary 4.0%. Re-deriving here costs nothing: the text is
+already in hand.
+
+## n800-const-betterdate-postedat-row-source-wor
+
+In `supabase/functions/job-board/index.ts`, above: `const betterDate = postedAt && (row.source === "workday" || !row.posted_at) ? postedAt : null;`
+
+Dates: Workday's stored value is a relative bucket floored at 30
+days, so an absolute startDate is strictly better and replaces
+it. For every other vendor we only fill a gap.
+
+## n801-const-exhausted-queue-length-desc_sweep_
+
+In `supabase/functions/job-board/index.ts`, above: `const exhausted = queue.length < DESC_SWEEP_PER_HOP;`
+
+Advance when this vendor has no more null rows (short page), OR when a
+full page yielded nothing. Without that second condition a vendor whose
+rows all fail permanently would re-select the same page forever: failed
+rows stay null, so they'd come straight back on the next hop.
+
+## n802-const-next-vi-detail_desc_sources-length
+
+In `supabase/functions/job-board/index.ts`, above: `const next = (vi + 1) % DETAIL_DESC_SOURCES.length;`
+
+Wrap: the rotation is complete when it comes back around to the
+vendor it STARTED at, whatever that was; the length sentinel still
+means "enter the boards phase".
+
+## n803-await-client-from-job_board_meta-upsert
+
+In `supabase/functions/job-board/index.ts`, above: `await client.from("job_board_meta").upsert(`
+
+The start-stamp CARRIES ITS CURSOR. Without it, a hop that dies
+mid-flight leaves a row with no cursor, the re-kick reads "" and the
+next attempt restarts from the RANGE START — measured: two dead hops
+in a row both began again at workday:2020companies. With it, a death
+resumes from the hop it died in.
+
+## n804-let-sel-client
+
+In `supabase/functions/job-board/index.ts`, above: `let sel = client`
+
+description IS NOT NULL is the POINT, not an optimisation: those are
+exactly the rows desc-sweep can never revisit. Rows still lacking a
+description are already its job and will pick up the same structured
+fields on the way past, so scanning them here would duplicate a
+per-posting vendor fetch for no gain.
+
+## n805-const-patch-record-string-unknown
+
+In `supabase/functions/job-board/index.ts`, above: `const patch: Record<string, unknown> = {};`
+
+NO `if (!text) continue` HERE. desc-sweep drops the whole row
+when the description comes back empty (:4485) and throws away a
+remoteType and a startDate it successfully parsed on the way. In
+this lane the description is not the payload — the structured
+fields are — so an empty body is not a reason to discard them.
+
+## n806-if-workmode-patch-work_mode-workmode-pat
+
+In `supabase/functions/job-board/index.ts`, above: `if (workMode) { patch.work_mode = workMode; patch.remote = workMode === "remote"; }`
+
+`remote` moves WITH work_mode or the two columns drift: ingest
+sets remote = (workMode === "remote") and the board's Remote
+filter reads the boolean, so writing one without the other makes
+a row that says remote and cannot be found by asking for remote.
+
+## n807-if-postedat-row-posted_at-patch-posted_a
+
+In `supabase/functions/job-board/index.ts`, above: `if (postedAt && !row.posted_at) patch.posted_at = postedAt;`
+
+Fill-only. A stored date here came from the vendor's own list
+payload and this lane has no standing to overwrite it; the
+Workday floored-bucket replacement is desc-sweep's call, made
+where the description write already justifies the fetch.
+
+## n808-const-nextcursor-squeue-length-squeue-sq
+
+In `supabase/functions/job-board/index.ts`, above: `const nextCursor = sQueue.length ? sQueue[sQueue.length - 1].id : "";`
+
+Advance the cursor to the LAST id we selected, never to the last one we
+filled: a page where nothing had a remoteType must still move, or the
+lane re-reads the same page forever. This is the same failure desc-sweep
+guards with `updated === 0`, in the form a keyset walk takes.
+
+## n809-const-cumscanned-passscanned-sseen
+
+In `supabase/functions/job-board/index.ts`, above: `const cumScanned = passScanned + sSeen;`
+
+Totals are CUMULATIVE across the pass, not per-hop: the progress row
+and the done-stamp both report what the whole pass has done so far, so
+finishing no longer erases the evidence of what finished.
+
+## n810-firstid-squeue-id-null-lastid-nextcursor
+
+In `supabase/functions/job-board/index.ts`, above: `firstId: sQueue[0]?.id ?? null, lastId: nextCursor || null,`
+
+The hop's actual id window, kept for the forensics the 17:50 pass
+forced: it "completed" against 148,776 eligible rows, the id
+format assumption checked out, and the only remaining way to see
+WHERE the walk really went is for the walk to say so. firstId and
+lastId of the final page pin the range the select returned; a
+page that comes back short mid-range names its own boundary.
+
+## n811-const-id-string-body-id-slice
+
+In `supabase/functions/job-board/index.ts`, above: `const id = String(body.id ?? "").slice(0, 200);`
+
+Report-a-posting: a user flags a listing as gone/misleading/other.
+We log it (service-role-only table, no client write surface) and the
+frontend follows a "gone" report with the existing verify action —
+a confirmed-dead posting is pruned for everyone on the spot.
+
+## n812-const-sid-a-f-a-f
+
+In `supabase/functions/job-board/index.ts`, above: `const sid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawSid) ? rawSid : null;`
+
+Validated, not trusted: a malformed uuid would make the INSERT fail as
+a whole and lose the click entirely. Anything that is not a uuid is
+stored as null, which still counts the click.
+
+## n813-const-clickstamps-promise-resolve
+
+In `supabase/functions/job-board/index.ts`, above: `const clickStamps = Promise.resolve(`
+
+ONE lookup, and it runs INSIDE waitUntil — never before the response.
+It resolves to nulls on any failure, because an un-stamped click still
+counts and dropping it would bias every rate.
+
+## n814-return-json-ok-true
+
+In `supabase/functions/job-board/index.ts`, above: `return json({ ok: true });`
+
+Answers immediately. The caller is a beacon fired as someone navigates
+away to an employer's site; making it wait on a write would cost the
+click it is trying to record.
+
+## n815-const-ids-array-isarray-body-ids
+
+In `supabase/functions/job-board/index.ts`, above: `const ids = Array.isArray(body.ids) ? body.ids.filter((x): x is string => typeof x === "string").slice(0, VERIFY_MAX_IDS) : [];`
+
+Live-now liveness for a batch of posting ids (verify-on-apply,
+surfaced-match re-check). Confirms against the vendor, prunes ids
+confirmed gone from the DB so they vanish for everyone, and records
+the boards touched as a demand signal for prioritized refresh.
+FIVE, the most any page sends (LiveMatches re-checks its top five; /jobs
+sends one). Each id can cost a vendor fetch, so the batch is the page's.
+
+## n816-const-data-applyrows-await-client
+
+In `supabase/functions/job-board/index.ts`, above: `const { data: applyRows } = await client`
+
+apply_url is what lets the workday probe reach its authoritative detail
+endpoint instead of stopping at the search index; read it once here so
+the per-id probe never has to go back to the DB.
+
+## n817-if-demandtokens-size
+
+In `supabase/functions/job-board/index.ts`, above: `if (demandTokens.size > 0) {`
+
+Demand signal: boards a user just looked at jump the refresh queue --
+one a slice, a capped number an hour, each at most once a cooldown.
+verify writes the queue row only; the served stamps are the refresh's.
+
+## n818-const-applyby-new-map-string-string
+
+In `supabase/functions/job-board/index.ts`, above: `const applyBy = new Map<string, string | null>();`
+
+apply_url rides along with every drawn id: the workday probe needs it to
+reach its authoritative detail endpoint, and a liveness audit that can't
+get an authoritative answer is measuring its own search index.
+
+## n819-const-vendorrows-record-string-number-nu
+
+In `supabase/functions/job-board/index.ts`, above: `const vendorRows: Record<string, number | null> = {};`
+
+Per-vendor corpus sizes, kept so an omitted stratum can be reported
+with its real weight rather than just disappearing. `null` means the
+count was unavailable — deliberately distinct from 0, because "this
+vendor has no postings" and "we could not find out" are opposite facts
+about coverage and collapsing them is what hid nine vendors.
+
+## n820-if-n-continue
+
+In `supabase/functions/job-board/index.ts`, above: `if (n === 0) continue;`
+
+Draw even when the count is unavailable. The draw is a cheap keyset
+read and it — not the count — is what establishes whether this vendor
+can be sampled at all. Letting a failed count skip the draw is the
+precise mechanism that silently dropped nine strata.
+
+## n821-let-live-gone-unknown-pagecappedunknown
+
+In `supabase/functions/job-board/index.ts`, above: `let live = 0, gone = 0, unknown = 0, pageCappedUnknown = 0;`
+
+`unknown` is the whole undecided bucket and stays the total so nothing
+downstream changes meaning; `windowed` is the share of it that was
+fetched successfully and simply read short of the vendor's own
+advertised total. The page prints both, because after .64 the second
+is the LARGER one on capped vendors and calling it "unreachable" would
+be a false statement about a vendor that answered every request.
+
+## n822-const-probeall-async-ids-string-headline
+
+In `supabase/functions/job-board/index.ts`, above: `const probeAll = async (ids: string[], headline: boolean) => {`
+
+`headline` distinguishes the even base draw from the follow-up draws
+below. The published sentence says the sample was "drawn evenly across
+hiring systems", and that is only true of the base draw — folding a
+24-probe re-draw of one vendor into the headline would silently make it
+a differently-weighted number than the one the page describes.
+
+## n823-const-labelaudit-sampled-entrychecked-en
+
+In `supabase/functions/job-board/index.ts`, above: `const labelAudit = { sampled: 0, entryChecked: 0, entryContradicted: 0, remoteChecked: 0, remoteContradicted: 0, categoryChecked: 0, categor`
+
+── Label audit: do our OWN labels survive contact with the posting's
+text? Cross-checks stored experience_band / remote / category against
+the stored description — no network, pure measurement, published
+alongside the liveness number. Contradicted entry labels are demoted
+to "unspecified" (we can't honestly place them); remote flips only on
+the strongest explicit pattern — mislabeled is worse than unlabeled.
+
+## n824-hit-sort-a-b
+
+In `supabase/functions/job-board/index.ts`, above: `hit.sort((a, b) => {`
+
+A name that STARTS with what was typed is what the reader meant; the
+servable count breaks ties beneath that (the raw facet count only when
+there is no servable one to rank by, and it is never published).
+
+## n825-companies-hit-slice-map-c
+
+In `supabase/functions/job-board/index.ts`, above: `companies: hit.slice(0, 12).map((c) => ({`
+
+`tokens` for the same reason facetHead ships it: `open` here is the
+SUM over a merged employer's sub-boards, and a filter set to the
+primary token alone would serve less than the number promised.
+
+## n826-const-asked-array-isarray-body-ids
+
+In `supabase/functions/job-board/index.ts`, above: `const asked = Array.isArray(body.ids) ? body.ids.filter((x): x is string => typeof x === "string").slice(0, 200) : [];`
+
+Feature 7: the tracker asks which of a user's saved/applied job ids
+are still live. A missing id means the company took the posting down
+(refresh deletes vanished ids within the hour). Read-only, cheap.
+
+## n827-const-q-string-body-q-trim
+
+In `supabase/functions/job-board/index.ts`, above: `const q = String(body.q ?? "").trim().slice(0, 200);`
+
+Read-only probe of the semantic tier, used to verify result quality
+against real queries before (and after) the tier is user-visible.
+Bounded and cache-free; returns similarity scores so quality is
+inspectable, not guessed at.
+
+## n828-const-data-jobrow-await-client-from
+
+In `supabase/functions/job-board/index.ts`, above: `const { data: jobRow } = await client.from("job_board_postings").select("*").eq("id", id).is("missing_since", null).maybeSingle();`
+
+missing_since IS NULL here too. 20260728120000 patched buildQuery and both
+search RPCs and its header claimed that "covers every query shape" — it
+did not cover this one, so a Google-indexed deep link to a posting the
+employer's feed already dropped still rendered as a live listing with a
+working apply button. That is precisely the posting the Ghost Job Index
+exists to name.
+
+## n829-if-stored-description-jobrow
+
+In `supabase/functions/job-board/index.ts`, above: `if (!stored && description && jobRow) {`
+
+Demand-weighted fill: a posting someone actually opened is worth more
+than a random row in the sweep, and we've already paid for the fetch.
+Persisting it means the next reader (and fit scoring, and the apply kit)
+gets it for free instead of re-fetching forever. Best-effort — a failed
+write must never break the read.
+
+## n830-const-statedpay-minedsalary-jobrow-salar
+
+In `supabase/functions/job-board/index.ts`, above: `const statedPay = minedSalary ?? (jobRow.salary ? null : vendorPay);`
+
+THE SAME FILL-ONLY EXPRESSION AS THE DESC SWEEP, because this is the
+same payload and the same field. The prose this hop mined wins, then the
+pay the row already holds silences both, and only then the vendor's
+structured node — the precedence inversion is argued at the sweep's own
+write site and is not restated here. Without this the figure was fetched
+and dropped, and the row was then closed to the only lane that reads it.
+
+## n831-const-expread-detectexperience-string-jo
+
+In `supabase/functions/job-board/index.ts`, above: `const expRead = detectExperience(String(jobRow.title ?? ""), description);`
+
+Same re-derivation as the sweep: these fields come from description
+text, so a row that gains a description here should gain them too,
+rather than waiting for the sweep to reach it. Fill-only for work
+mode — a vendor's structured field always outranks inference.
+
+## n832-const-detailjobs-jobrow-await-attachrech
+
+In `supabase/functions/job-board/index.ts`, above: `const detailJobs = jobRow ? await attachRecheckedAt(client, [rowToJob(jobRow) as unknown as Record<string, unknown>]) : [];`
+
+The pane needs the stamp too — it is where the apply decision is made,
+and until now only the list paths attached it. attachRecheckedAt takes
+an array, so the single row goes through as one.
+
+## n833-const-api-greenhouseapi-token
+
+In `supabase/functions/job-board/index.ts`, above: `const api = greenhouseApi(token);`
+
+The id's token half carries the EU routing prefix, and the questions
+endpoint only answers on the tenant's own side — route through the
+helper or every EU posting reads as "no public form".
+
+## n834-const-data-row-await-client
+
+In `supabase/functions/job-board/index.ts`, above: `const { data: row } = await client`
+
+The posting's OWN url, not one rebuilt from the id. Pinpoint's id is
+a numeric key while its apply path is an unrelated UUID — composing
+the path 404'd on 8 of 8 live boards.
+
+## n835-if-raw-length-return-unsupported
+
+In `supabase/functions/job-board/index.ts`, above: `if (raw.length === 0) return unsupported();`
+
+No questions found is NOT the same as "this form has none" — it is
+equally consistent with the markup having changed under us. Reporting
+supported:false keeps the caller on its inferred-question fallback
+rather than asserting an empty form.
+
+## n836-country-r-country-null
+
+In `supabase/functions/job-board/index.ts`, above: `country: r.country ?? null,`
+
+Filterable since the country filter shipped, never returned: 0 of 21
+emitted fields carried it, so the JSON-LD could not state
+applicantLocationRequirements and no card could show where a role is.
+
+## n837-missingsince-r-missing_since-null
+
+In `supabase/functions/job-board/index.ts`, above: `missingSince: r.missing_since ?? null,`
+
+Set when the employer's feed stopped listing this posting. Such a row must
+never show a "re-checked" chip: the feed WAS re-checked and the posting
+was not in it.
+
+## n838-typeof-r-agency-boolean
+
+In `supabase/functions/job-board/index.ts`, above: `...(typeof r.agency === "boolean"`
+
+AGENCY DISCLOSURE (2026-08-31 charter): true when the posting's board is
+a tagged staffing agency — the card badge and the opt-out filter both
+read this. OMITTED when the row does not carry the column, exactly like
+matchScope below: the ranked search_jobs exit serves RPC rows whose
+shape predates the column (and the deploy window has no column at all),
+and a hard-coded false there would be a claim, not a disclosure.
+
+## n839-typeof-r-title_match-boolean
+
+In `supabase/functions/job-board/index.ts`, above: `...(typeof r.title_match === "boolean"`
+
+WHICH SEGMENT THIS ROW IS IN, straight from the predicate rather than from
+a substring test on the title. Present only on the ranked path — the browse
+and rescue retrievers do not select the column. OMITTED rather than
+defaulted to "title", which is also the deploy-window tolerance: if this
+function ships before the migration applies, the column is absent, the key
+is absent, and the client renders exactly today's page.
+
+## n840-const-groupsimilar-body-groupsimilar-fal
+
+In `supabase/functions/job-board/index.ts`, above: `const groupSimilar = body.groupSimilar !== false && !countOnly;`
+
+Location-cluster collapsing is on unless a caller opts out (the lander and
+company views WANT every location listed). Over-fetch so there is material
+to fold: a page of 25 reads up to 75 rows, which is still one indexed page.
+
+## n841-const-agecutoff-applied-maxagedays-null
+
+In `supabase/functions/job-board/index.ts`, above: `const ageCutoff = applied.maxAgeDays === null ? null : ageCutoffMs(applied.maxAgeDays, Date.now(), body.tzOffset);`
+
+S12-020: the age window as a calendar day in the viewer's own zone (filters.ts
+ageCutoffMs), bound as one instant on every path: buildQuery's gte and the
+RPCs' p_posted_after (strict, so one millisecond earlier), never the RPCs'
+rolling p_max_age_days.
+
+## n842-const-searchid-crypto-randomuuid
+
+In `supabase/functions/job-board/index.ts`, above: `const searchId = crypto.randomUUID();`
+
+SEARCH TELEMETRY. One id per list response, echoed back by the client on a
+click, which is the only thing that makes position-aware relevance
+measurable at all. Without it a click can say "someone clicked something"
+and nothing more.
+
+## n843-const-rawcaller-string-body-as-record
+
+In `supabase/functions/job-board/index.ts`, above: `const rawCaller = String((body as Record<string, unknown>).caller ?? "").toLowerCase();`
+
+WHO ASKED, resolved once by resolveCaller in the `list` dispatch and
+carried here on the body. Re-checked against the closed set rather than
+trusted: this function is also reachable with a body nobody resolved (an
+older bundle, a direct call), and an unrecognised value must read as "not
+attributed" rather than reach a CHECK constraint and lose the whole event.
+
+## n844-caller-caller
+
+In `supabase/functions/job-board/index.ts`, above: `...(caller ? { caller } : {}),`
+
+Which surface asked. The key is OMITTED when the resolver could not
+attribute the request, so the column's own DEFAULT ('web', the
+schema's deliberate conservative choice) applies. Writing an explicit
+NULL would be a different claim entirely — the column comment reserves
+NULL for rows that predate it.
+
+## n845-const-msg-string-error-message
+
+In `supabase/functions/job-board/index.ts`, above: `const msg = String(error.message ?? "");`
+
+Deploy-before-migration: an insert naming an absent column loses the
+EVENT itself, and this table is the search log's only record. Write
+the pre-.61 row rather than none; the columns resume on the next
+request once the migration lands.
+
+## n846-const-phaseoutcome-record-string-string
+
+In `supabase/functions/job-board/index.ts`, above: `const phaseOutcome: Record<string, string> = {};`
+
+A DURATION ALONE CANNOT TELL A SUCCESS FROM A DEADLINE. `semantic: 5002`
+and `semantic: 5002` look identical whether the tier answered in five
+seconds or was cut off at its five-second deadline having answered nothing —
+which is how "the rescue ladder was never the cost" got recorded as settled
+while a tier was returning [] on every query. The outcome rides alongside.
+
+## n847-tookms-date-now-reqstart
+
+In `supabase/functions/job-board/index.ts`, above: `tookMs: Date.now() - reqStart,`
+
+Every list exit spreads this helper, so one line gives all seven of
+them a server-side timing that can be read from outside without DB
+access.
+
+## n848-jobs-total-unfiltered-safemetatotal-null
+
+In `supabase/functions/job-board/index.ts`, above: `jobs: [], total: unfiltered ? safeMetaTotal : null, hasMore: false, nextOffset: offset,`
+
+The board-wide count answers the BARE board's question only. This exit
+fired for ANY offset past safeMetaTotal, filtered or not — so
+{"q":"welder","country":"USA","offset":900000} answered an empty page
+under total: 601,760, a headline about a different query. Filtered
+requests get null + countUnavailable, and the disclosure fields ride
+along: the fence holds on every exit or it holds on none.
+
+## n849-searchid-totalallcompanies-safemetatotal
+
+In `supabase/functions/job-board/index.ts`, above: `searchId, totalAllCompanies: safeMetaTotal ?? 0,`
+
+The empty page past the end is still a LIST response, and the client
+renders the same chrome around it. Shipping a short shape here is the
+same defect as the SALARY exit, just on a page with no rows to hide it.
+
+## n850-tookms-date-now-reqstart
+
+In `supabase/functions/job-board/index.ts`, above: `tookMs: Date.now() - reqStart,`
+
+TIMED, BECAUSE THIS IS THE EXIT THAT ISOLATES THE META READ. It does no
+query of its own, so tookMs here is almost entirely the facet-row fetch
+plus transport — the cleanest measurement of the gap the two clocks
+above were split to expose, and it was the one exit reporting nothing.
+honesty() is deliberately not spread: it fires a 2% filter-integrity
+meta upsert, which has no business running on an empty page.
+
+## n851-opts-skipterms-boolean
+
+In `supabase/functions/job-board/index.ts`, above: `opts?: { skipTerms?: boolean },`
+
+skipTerms leaves the free-text predicate OFF so a caller can supply its
+own matcher while still getting every FILTER — country, category,
+experience, salary, companies, work mode, the freshness window and the
+missing_since fence — from this one place. Added for the simple-config
+tier; the alternative was a fifth query path with its own filter binding,
+and this file has five defects in two days that are all that mistake.
+
+## n852-const-locterms-locationterms-body-locati
+
+In `supabase/functions/job-board/index.ts`, above: `const locTerms = locationTerms(body.location).terms;`
+
+Metro shorthand expands to the names that actually appear in the data,
+and a noisy two-letter form is REPLACED rather than ORed in — searching
+%LA% returns Plain City, Ohio.
+
+## n853-else-if-locterms-length-q-q
+
+In `supabase/functions/job-board/index.ts`, above: `else if (locTerms.length > 0) q = q.or(locTerms.map(locationBranch).join(","));`
+
+QUOTED, because a state alias contains a comma. PostgREST separates
+or() branches on commas, so an unquoted `location.ilike.%, TX%` splits
+into two malformed branches — the filter would silently stop meaning
+what it says. Quoting the value is the documented escape for exactly
+this, and sanitizeTerm already removes the characters that could close
+the quote early.
+
+## n854-if-applied-country
+
+In `supabase/functions/job-board/index.ts`, above: `if (applied.country) {`
+
+Country filter: exact match on the deterministically extracted code.
+Postings whose location we couldn't place have country NULL and are
+excluded by the filter — honestly, never guessed (the UI says so).
+Split here too: the RPC splits, and a browse page that binds equality
+against "DE,GB" serves zero rows under a headline that counted both.
+
+## n855-if-applied-sendableonly-q-q-in
+
+In `supabase/functions/job-board/index.ts`, above: `if (applied.sendableOnly) q = q.in("source", [...SENDABLE_VENDORS]);`
+
+"Only jobs the agent can apply to" — a FILTER on source, composing with
+the date-index ORDER BY. Never a sort: ranking by sendability is the
+.order("category") timeout with a different column. The list comes from
+the same SENDABLE_VENDORS mirror the badges and the worker share.
+
+## n856-if-applied-experience-length-q-q
+
+In `supabase/functions/job-board/index.ts`, above: `if (applied.experience.length === 1) q = q.eq("experience_band", applied.experience[0]);`
+
+Experience filter: one of entry/mid/senior/expert. "unspecified" rows are
+never returned by a band filter — we only surface postings we can honestly
+place. Accepts a comma list or an array so a user can widen; anything that
+does not resolve to a real band is reported in ignoredFilters rather than
+dropped, which is the defect this normalisation exists to close.
+
+## n857-q-applied-includeunstatedpay
+
+In `supabase/functions/job-board/index.ts`, above: `q = applied.includeUnstatedPay`
+
+WIDENED ON REQUEST. NULL fails every comparison, so a bare floor also
+discards the ~80% of the board that states no pay — disclosed by
+coverageDisclosure, but until now not declinable. Only fires when the
+caller opts in, so the ordinary floor keeps its single indexed
+predicate rather than paying for an OR arm it does not need.
+
+## n858-if-applied-hasdescription-q-q-not
+
+In `supabase/functions/job-board/index.ts`, above: `if (applied.hasDescription) q = q.not("description", "is", null);`
+
+"Only postings we can actually score." See the field's own note in
+filters.ts: in résumé mode an undescribed row can only ever say "no
+score", and the newest rows — the default browse — are exactly those.
+
+## n859-if-applied-paybasis-hourly-q-q
+
+In `supabase/functions/job-board/index.ts`, above: `if (applied.payBasis === "hourly") q = q.eq("salary_period", "hour");`
+
+Hourly vs salaried. Rows with NO stated period are excluded, exactly as
+work mode excludes rows with no stated mode — 10.6% coverage, published by
+coverageDisclosure whenever this is set, because a scalpel that is not
+named as one gets read as a census.
+
+## n860-if-applied-maxyears-null-q-q
+
+In `supabase/functions/job-board/index.ts`, above: `if (applied.maxYears !== null) q = q.lte("min_years", applied.maxYears);`
+
+"Does not demand more than n years" — min_years <= n. Rows that never
+stated a requirement are excluded by the comparison (NULL <= n is not
+true), honestly rather than guessed: a posting that named no requirement
+cannot be shown to satisfy one. Note 0 IS a stated requirement and passes
+every ceiling, which is the correct reading for a job-seeker.
+
+## n861-if-applied-department-q-q-ilike
+
+In `supabase/functions/job-board/index.ts`, above: `if (applied.department) q = q.ilike("department", '%${applied.department}%');`
+
+Department as its OWN predicate. It has always been reachable through the
+free-text `q` above — which ORs it with title and company — so asking for
+the Legal department also returned every Legal Assistant and every
+company with Legal in its name, with nothing in the response saying which
+matched. Wildcards were stripped in normalizeFilters, so the `%` either
+side are ours.
+
+## n862-if-applied-vendors-length-q-q
+
+In `supabase/functions/job-board/index.ts`, above: `if (applied.vendors.length) q = q.in("source", applied.vendors);`
+
+Hiring-system filter. ANDs with the sendableOnly .in() above rather than
+replacing it — two .in()s on one column intersect, so {sendableOnly:true,
+vendor:"breezy,greenhouse"} is breezy alone, which is the honest reading
+of both requests at once and not a widening of either.
+
+## n863-if-agecutoffiso-null-q-q-gte
+
+In `supabase/functions/job-board/index.ts`, above: `if (ageCutoffIso !== null) q = q.gte("posted_at", ageCutoffIso);`
+
+"Posted this week" quick filter: company-stated dates ONLY (posted_at,
+never first_seen — our discovery time can't make a posting fresh).
+Undated postings are excluded by the filter, honestly; the UI says so.
+
+## n864-const-count_cap-_000
+
+In `supabase/functions/job-board/index.ts`, above: `const COUNT_CAP = 10_000;`
+
+Capped count: stops at COUNT_CAP+1 rows, so cost is bounded by the cap
+instead of by how many rows match. Replaces the exact count that was
+costing 3-9s on broad filters (page itself: ~0.3s) and exceeding the
+statement timeout outright between roughly 150k and 190k matches.
+Returns null when the RPC isn't available (migration not applied), which
+leaves the existing exact-count path in charge.
+
+## n865-const-facetroute-qtext-pickroute-qtext-r
+
+In `supabase/functions/job-board/index.ts`, above: `const facetRoute = qText ? pickRoute(qText, routeAliases, QUERY_FILLER) : null;`
+
+A text query's chips were counted by substring (the capped-count RPC, or the
+ILIKE terms of buildQuery) while the list matches by FTS: q=rn US showed
+legal 1,159 over a legal list of 8 (L13-24). An employer query counts the
+list's own matcher, its tokens; any other text query withholds the numbers
+rather than publish a different population's (n433).
+
+## n866-const-raced-await-withdeadline-chunkwork
+
+In `supabase/functions/job-board/index.ts`, above: `const raced = await withDeadline(chunkWork, chunkBudget);`
+
+withDeadline resolves { data: null } on a miss, not null — the shape
+its other callers destructure. Anything that is not the array we
+awaited means the budget won, and the chunk's categories go unnumbered.
+
+## n867-appliedsignature-json-stringify-applied
+
+In `supabase/functions/job-board/index.ts`, above: `appliedSignature: JSON.stringify(applied),`
+
+Says which filters these counts are FOR, so a stale response arriving
+after the visitor changed a filter can be discarded rather than
+painted over the new selection.
+
+## n868-const-routedecision-qtext-qclass
+
+In `supabase/functions/job-board/index.ts`, above: `const routeDecision = qText && qClass`
+
+Routed with or without filters: buildQuery binds every filter in SQL BEFORE
+the routed window, so a filter no longer sends "IT manager" to the english
+tsquery that drops "it" (L8-04, n432).
+
+## n869-const-route_window
+
+In `supabase/functions/job-board/index.ts`, above: `const ROUTE_WINDOW = 400;`
+
+ONE window constant for both the routed count and the routed list. Two
+copies would drift, and the count would then say countUnavailable at a
+different size than the list slices.
+
+## n870-exclusiondisclosure-excludedterms
+
+In `supabase/functions/job-board/index.ts`, above: `...exclusionDisclosure(excludedTerms),`
+
+Spread LAST in every count exit, so under an exclusion it overrides the
+exit's own total — a count never sees the exclusion predicate (see
+exclusionCountsCaveat), and a relaxation button quoting an unexcluded
+number promises rows the click then hides.
+
+## n871-const-rcexpand-routedretriever-company-q
+
+In `supabase/functions/job-board/index.ts`, above: `const rcExpand = routedRetriever === "company" ? { q: qText, expansions: [] as string[] } : expandQuery(qText);`
+
+THE SAME EXPANSION THE LIST BINDS, or the two answer different
+questions: the routed list searches "k8s OR kubernetes" while this
+count searched the literal token alone — a small exact number
+published over a many-times-larger list, the one-body-two-answers
+defect this block exists to prevent. Mirrors the routed list's
+ternary exactly, including the ftsSafe/ftsQuery split.
+
+## n872-return-json-total-rccapped-null-rcrows
+
+In `supabase/functions/job-board/index.ts`, above: `return json({ total: rcCapped ? null : rcRows.length, ...(rcCapped ? { countUnavailable: true, totalAtLeast: rcRows.length } : {}), ...count`
+
+A full window is a FLOOR, and a floor is a fact even when the
+total is not — the fuzzy tier's own contract, mirrored here so the
+count answers exactly what the list's capped page answers.
+
+## n873-const-cappedc-relc-null-tc-tier2c
+
+In `supabase/functions/job-board/index.ts`, above: `const cappedC = relC === null ? tC >= (tier2C ? 3_000 : 10_000) : tC >= 10_000;`
+
+The headline's ceiling is the title ceiling once the migration is
+live, because the headline is now always the title count. The
+tier-sniff branch is deploy-window cover only — delete it after the
+SQL is verified.
+
+## n874-relc-null-relc
+
+In `supabase/functions/job-board/index.ts`, above: `...(relC === null || relC === 0`
+
+Omitted when the segment was not built, and omitted when it is
+empty. An absent field is "we did not look"; a zero segment header
+over an empty segment is noise.
+
+## n875-if-error-return-json-total-null
+
+In `supabase/functions/job-board/index.ts`, above: `if (error) return json({ total: null, countUnavailable: true, ...countHonesty });`
+
+Same rule as the list path: a count that can't be computed is reported as
+unknown, never as 0. Callers (the disclosure hook, saved-search "new
+since" badges) treat a non-number as "no answer" and show nothing, which
+is right — a 0 here would claim the filter matches nothing.
+
+## n876-const-scoreranked-newestfirst-body-sort
+
+In `supabase/functions/job-board/index.ts`, above: `const scoreRanked = !newestFirst && body.sort !== "salary" && !countOnly;`
+
+Score a relevance-ordered text search. Not when the reader asked for a
+date or pay order — they chose that ordering and it is not ours to
+override — and not on an empty query, which has nothing to score against.
+
+## n877-const-headtermring
+
+In `supabase/functions/job-board/index.ts`, above: `const headTermRing = (() => {`
+
+The stuffing defect lives in short queries: one or two words, where a
+title can repeat the term and outrank an exact match. Longer queries carry
+enough signal that ts_rank finds the right rows on its own.
+
+## n878-rpcblind-rpcblindfilters-applied
+
+In `supabase/functions/job-board/index.ts`, above: `rpcBlind: rpcBlindFilters(applied),`
+
+rpcBlind: filters search_jobs has no parameter for, which force the
+buildQuery path — the single most common "why did my filter behave
+oddly" cause.
+
+## n879-exclusioncountscaveat-excludedterms
+
+In `supabase/functions/job-board/index.ts`, above: `...exclusionCountsCaveat(excludedTerms),`
+
+The SERVABLE board-wide count — the same figure `total` publishes.
+meta.v.total is the pre-sweep refresh counter: it still holds
+missing_since-stamped and aged-out rows, and measured 615,366 against
+a table of 606,295 and a servable set of 601,760. A board-wide number
+larger than the table it describes cannot be true.
+
+## n880-order-posted_at-ascending-false-nullsfir
+
+In `supabase/functions/job-board/index.ts`, above: `.order("posted_at", { ascending: false, nullsFirst: false })`
+
+posted_at with NULLS LAST, not effective_posted: an undated posting
+takes our crawl stamp there, and 57 of 60 rows on the old browse sort
+were undated rows claiming to be the newest thing on the board. The
+FRESHNESS WINDOW stays on effective_posted (buildQuery's dateCol), so
+an undated posting is still served — it just cannot lead a page
+labelled with the employer's own date.
+
+## n881-range-offset-offset-fetchlimit
+
+In `supabase/functions/job-board/index.ts`, above: `.range(offset, offset + fetchLimit - 1),`
+
+fetchLimit, not limit: clustering folds same-role rows, and a page
+that reads only `limit` raw rows hands back 3 cards for 60 rows read.
+rawConsumed below is what advances the offset, so nothing is skipped.
+
+## n882-math-min-routed_deadline_ms-budgetleft
+
+In `supabase/functions/job-board/index.ts`, above: `Math.min(ROUTED_DEADLINE_MS, budgetLeft()),`
+
+Shape-sized (see ROUTED_DEADLINE_MS) and clamped to the request
+budget, like every sibling on the serving path — a bare deadline here
+sums with the entire fall-through pipeline behind it.
+
+## n883-const-orderreadings-qtext-routedsplit-si
+
+In `supabase/functions/job-board/index.ts`, above: `const orderReadings = [qText, ...(routedSplit ? [singularReading(qText)] : []), ...routedAliases];`
+
+An EMPLOYER page is already exactly that employer's jobs, so scoring it
+by title similarity would demote roles for not repeating the company
+name. Recency is the honest order there; every other route is scored.
+Scored against the typed query AND every alias it was expanded to —
+otherwise the rows the expansion just fetched are sorted below the ones
+that literally spell the abbreviation, and the widening is invisible.
+
+## n884-total-knowntotal
+
+In `supabase/functions/job-board/index.ts`, above: `total: knownTotal,`
+
+A REAL count whenever the window came back short of the cap, because
+then the window IS the result set. At the cap it is only a floor, and
+saying "unavailable" beats publishing a window size as a total —
+the defect the fuzzy tier still carries.
+
+## n885-routedretriever-company-ranked-true
+
+In `supabase/functions/job-board/index.ts`, above: `...(routedRetriever === "company" ? {} : { ranked: true }),`
+
+THE PAGE WAS APOLOGISING FOR WORK IT HAD DONE.
+`ordered` above is rerankWindow(mapped, qText) for every non-company
+route — these rows ARE relevance-sorted. Omitting `ranked` made the
+client fall to "Sorted by newest first (relevance ranking briefly
+unavailable)" on every short query: rn, swe, qa, pm, sde. A false
+apology is still a false statement about what the board did.
+
+## n886-routedexpand-expansions-length-aliases-r
+
+In `supabase/functions/job-board/index.ts`, above: `...(routedExpand.expansions.length ? { aliases: routedExpand.expansions } : {}),`
+
+Say which alias phrases were also searched, exactly as the ranked
+path does. Emitted only when an expansion actually bound, so the
+line can never claim a phrase the query did not look for.
+
+## n887-let-rankedfellback-string-null-null
+
+In `supabase/functions/job-board/index.ts`, above: `let rankedFellBack: string | null = null;`
+
+Surfaced on the response so a fallback is observable from outside without
+shell access to the function logs — the same reason `status` echoes the
+deployed bundle. Null on every healthy ranked search.
+
+## n888-const-withopen-list-map-c
+
+In `supabase/functions/job-board/index.ts`, above: `const withOpen = list.map((c) =>`
+
+The head row already folds `open` into its 200 entries; the fat-row
+fallback carries the whole map instead, so fill from it when the entry
+has none of its own. Neither present means neither measured.
+
+## n889-const-q-expandedq-expansions-expandquery
+
+In `supabase/functions/job-board/index.ts`, above: `const { q: expandedQ, expansions } = expandQuery(qText);`
+
+Role-alias expansion (disclosed): "swe" also searches "software
+engineer" etc. The expanded websearch string keeps the original
+spelling as its own OR-branch, and the response names every added
+phrase so the UI can show "also matching: …".
+
+## n890-if-rankerr
+
+In `supabase/functions/job-board/index.ts`, above: `if (rankErr) {`
+
+A RETURNED ERROR WAS CHECKED AND THROWN AWAY. `rankErr` gated the happy
+path and was never read again, so a ranked search that TIMED OUT looked
+exactly like one that was never attempted: rankedFellBack stayed null,
+nothing was logged, and the request quietly served the recency page.
+The catch below already reports thrown failures this way; a RESOLVED
+error is the more common shape and had no reporting at all.
+
+## n891-const-trr-number-ranked-as-total_rows
+
+In `supabase/functions/job-board/index.ts`, above: `const trR = Number((ranked[0] as { total_rows?: number } | undefined)?.total_rows);`
+
+A load-more just past an exactly-full final page must not overwrite
+the client's header with 0 — null is "count unavailable", which the
+client already renders honestly (2026-07-25 audit: a 180-match
+search flipped to "0 matching" above 180 visible results).
+Finiteness, not truthiness — see the note on the countOnly probe
+above. A real zero must survive; only an absent total falls back.
+
+## n892-const-rrr-number-ranked-as-related_rows
+
+In `supabase/functions/job-board/index.ts`, above: `const rrR = Number((ranked[0] as { related_rows?: number | null } | undefined)?.related_rows);`
+
+THE SECOND SEGMENT. `total` above is now the EXACT (title) count on
+every path; this is the description-only count beside it. NULL is
+load-bearing three ways and none of them is zero: the title tier did
+not build the segment, the migration has not applied yet, or the count
+was not computed. Finiteness, not truthiness — a real zero must
+survive, same reason as the line above it.
+
+## n893-const-pagetotal-total-null-null-total
+
+In `supabase/functions/job-board/index.ts`, above: `const pageTotal = total === null ? null : total + (related ?? 0);`
+
+THE PAGINATION FIGURE, WHICH IS NOT THE PUBLISHED FIGURE. Every
+arithmetic use below — has-more, the augmentation gate — asks "how many
+rows can this query reach", and the answer is both segments. Only the
+HEADLINE is the exact count. Conflating the two is how a page of 39
+related rows would report itself finished at row zero.
+
+## n894-const-relatedcapped-related-null-total-r
+
+In `supabase/functions/job-board/index.ts`, above: `const relatedCapped = related !== null && (total ?? 0) + related >= 3_000;`
+
+The related segment reads the newest 3,000 description matches, so a
+related count that fills what is left of that window is a FLOOR, not a
+total, and has to say so.
+
+## n895-if-semfiltered-null
+
+In `supabase/functions/job-board/index.ts`, above: `if (semFiltered === null) {`
+
+withDeadline is Promise.race and resolves { data: null }, which is
+indistinguishable from "the filters removed everything". A tier
+that degrades silently is the bug this codebase keeps finding.
+
+## n896-if-p-l-p-l-s
+
+In `supabase/functions/job-board/index.ts`, above: `if (!/^[\p{L}][\p{L}\s.'-]*$/u.test(place)) continue;`
+
+Letters, spaces and the punctuation real place names carry.
+A tail with digits or symbols is not a city and probing it is
+a wasted round trip.
+
+## n897-math-min-_500-budgetleft
+
+In `supabase/functions/job-board/index.ts`, above: `Math.min(3_500, budgetLeft()),`
+
+Half the exact-word tier's budget. This is a bonus on a page
+that already has rows to serve, so it must never be the
+reason a response is slow — if it does not finish, the
+description-only page below stands.
+
+## n898-let-won-rows-array-record-string
+
+In `supabase/functions/job-board/index.ts`, above: `let won: { rows: Array<Record<string, unknown>>; head: string; place: string; hits: number } | null = null;`
+
+LONGEST SPLIT FIRST, and the acceptance test is TITLE matches —
+total_rows, not row count. A head with only description matches
+inside the location is the same guessing this tier exists to
+replace, so it is not an improvement and is not taken.
+
+## n899-const-splitjobs-excludedterms-length
+
+In `supabase/functions/job-board/index.ts`, above: `const splitJobs = excludedTerms.length`
+
+Exclusions pruned HERE, before the gate and the collapse —
+not left to attachRecheckedAt. Pruning after the
+jobs.length>0 gate let a split whose page was entirely
+excluded ship jobs:[] under total: won.hits ("Showing 0 of
+40") with hasMore:false. attachRecheckedAt still re-filters
+idempotently, so the one spelling of the rule still holds.
+
+## n900-locationsplit-q-won-head-location-won
+
+In `supabase/functions/job-board/index.ts`, above: `locationSplit: { q: won.head, location: won.place },`
+
+A GUESS THE READER CAN SEE AND UNDO. The board changed
+what was asked, so it says so in the same shape
+intentFilters and excludedTerms already use — the rule
+being that a filter nobody can see is a filter nobody can
+remove.
+
+## n901-total-won-hits
+
+In `supabase/functions/job-board/index.ts`, above: `total: won.hits,`
+
+The title count for the SPLIT query, which is the query
+these rows answer. Publishing the original query's zero
+beside a full page is the contradiction this whole tier
+is here to end.
+
+## n902-hasmore-false
+
+In `supabase/functions/job-board/index.ts`, above: `hasMore: false,`
+
+ONE PAGE, HONESTLY. This tier fires only at offset 0, so a
+pager following nextOffset would be answered by the
+ORIGINAL query's ranked path — a different row set wearing
+page two's clothing. Same contract as the exact-word tier:
+no second page rather than an incoherent one. The searcher
+who wants more can accept the split the disclosure offers.
+
+## n903-const-t_simple_config-date-now
+
+In `supabase/functions/job-board/index.ts`, above: `const t_simple_config = Date.now();`
+
+NOTE: withDeadline is Promise.race — on timeout it resolves
+{ data: null } and the SQL KEEPS RUNNING server-side. That is why
+the window is bounded to limit*2 rows and why this only fires on
+an already-empty page: an abandoned query still costs the
+database, so it must be small and rare.
+
+## n904-const-halves-settled-map-r
+
+In `supabase/functions/job-board/index.ts`, above: `const halves = settled.map((r) =>`
+
+A failure on EITHER side is survivable — the other still
+answers. The company index may not exist yet, and a tier that
+dies entirely because half of it is unindexed would be worse
+than the empty page it replaces.
+
+## n905-if-simplerows-null
+
+In `supabase/functions/job-board/index.ts`, above: `if (simpleRows === null) {`
+
+A deadline miss now leaves a trace. withDeadline resolves
+{ data: null }, which is indistinguishable from "no matches" —
+and a tier that silently degrades is exactly the failure this
+codebase keeps rediscovering. The warning is the only way to tell
+"the exact-word tier found nothing" from "it never finished".
+
+## n906-const-seensimple-new-set-string
+
+In `supabase/functions/job-board/index.ts`, above: `const seenSimple = new Set<string>();`
+
+Title first, then company, then dedupe by id — concatenating two
+result sets means a posting matching BOTH appears twice, and the
+ordering above is per-query so the merged list is not sorted as
+a whole. Title leads because a role in the title is what the
+searcher asked for; the employer match is the fallback that
+makes "AT&T" reach AT&T.
+
+## n907-total-null
+
+In `supabase/functions/job-board/index.ts`, above: `total: null,`
+
+No total: this tier reads a bounded window, so any figure it
+could publish would be the window size wearing a total's
+clothing — the defect the fuzzy tier already carries.
+
+## n908-nextoffset-offset-simplegrouped-jobs-len
+
+In `supabase/functions/job-board/index.ts`, above: `nextOffset: offset + simpleGrouped.jobs.length,`
+
+A position that EXISTS. This was 0, which points a pager
+following nextOffset back to the top of the feed — measured
+live on 4 of 6 misspelled queries, each returning a full page
+alongside it. The web client happens to be saved by its
+hasMore gate; an API consumer paging on nextOffset loops.
+
+## n909-exactwordmatch-qtext
+
+In `supabase/functions/job-board/index.ts`, above: `exactWordMatch: qText,`
+
+Named so the client can say WHY these matched, and so the
+tier is visible in telemetry rather than being mistaken for
+the ranked path.
+
+## n910-const-data-fuzzy-error-ferr-await
+
+In `supabase/functions/job-board/index.ts`, above: `const { data: fuzzy, error: fErr } = await withDeadline(`
+
+Bounded like every sibling on this ladder (simple_config, embed,
+semantic, head_ring all clamp to budgetLeft). This tier sits
+AFTER the exact-word tier's measured 7s, and unbounded deadlines
+SUM — the exact failure REQUEST_BUDGET_MS was introduced to cap.
+A miss resolves {data:null}; Array.isArray already treats that as
+"no rescue rows" and the honest empty page below stands.
+
+## n911-if-ferr-array-isarray-fuzzy-fuzzytierpro
+
+In `supabase/functions/job-board/index.ts`, above: `if (!fErr && Array.isArray(fuzzy)) fuzzyTierProvedEmpty = fuzzy.length === 0;`
+
+A resolved, error-free empty answer is a finding: no title on
+the board is even trigram-NEAR the query. A deadline miss
+resolves {data:null} and proves nothing.
+
+## n912-const-fuzzyrows-fuzzy-as-unknown-map
+
+In `supabase/functions/job-board/index.ts`, above: `const fuzzyRows = (fuzzy as unknown[]).map(rowToJob) as Array<Record<string, unknown>>;`
+
+Same-company+title clones flood trigram results exactly like
+the other tiers — collapse them the same way (audit: adjacent
+duplicate cards were measured on typo queries).
+
+## n913-nextoffset-offset-fuzzygrouped-jobs-leng
+
+In `supabase/functions/job-board/index.ts`, above: `nextOffset: offset + fuzzyGrouped.jobs.length,`
+
+A position that EXISTS. This was 0, which points a pager
+following nextOffset back to the top of the feed — measured
+live on 4 of 6 misspelled queries, each returning a full page
+alongside it. The web client happens to be saved by its
+hasMore gate; an API consumer paging on nextOffset loops.
+
+## n914-fzknown
+
+In `supabase/functions/job-board/index.ts`, above: `...(fzKnown ? {} : {`
+
+A FLOOR IS A FACT EVEN WHEN THE TOTAL IS NOT. total_rows at
+the cap proves "at least this many match" — measured live,
+3 of 5 typo queries rendered no denominator at all while
+the RPC had proven one. totalAtLeast is never a total and
+countUnavailable still says so; the client renders "N+".
+
+## n915-categories-visiblecategories-v0-categori
+
+In `supabase/functions/job-board/index.ts`, above: `categories: visibleCategories(v0.categoriesFacet as Record<string, number> | undefined, unfiltered, applied.category),`
+
+Board-wide, from the cached facet row — CORRECT only on the unfiltered
+view. Rendered inside a filtered view it overstated by 15.7x to 45x
+(sum 587,793 shown beside a filtered total of 10,000 or less), which
+is a wrong number on every filtered session. Omit rather than
+mislead: the UI already handles an absent facet, and a count we
+cannot scope to the query is a count we should not publish.
+
+## n916-const-semsource-await-semanticrows-fetch
+
+In `supabase/functions/job-board/index.ts`, above: `const semSource = await semanticRows(fetchLimit, 2_500);`
+
+Retrieval is the shared helper above; this block owns only what
+an EMPTY page should answer with. fetchLimit because a rescue
+that fires on nothing may as well fill the page.
+
+## n917-const-semrows-semsource-as-unknown-map
+
+In `supabase/functions/job-board/index.ts`, above: `const semRows = (semSource as unknown[]).map(rowToJob) as Array<Record<string, unknown>>;`
+
+Same-role-many-locations clones are mutually nearest in
+embedding space, so the top-k is especially prone to being
+one job repeated — collapse exactly like the other tiers.
+
+## n918-nextoffset-offset-semgrouped-jobs-length
+
+In `supabase/functions/job-board/index.ts`, above: `nextOffset: offset + semGrouped.jobs.length,`
+
+Present even though hasMore is false: a client that pages
+on nextOffset rather than hasMore would otherwise read
+undefined and restart at the top of the feed.
+
+## n919-categories-visiblecategories-v0-categori
+
+In `supabase/functions/job-board/index.ts`, above: `categories: visibleCategories(v0.categoriesFacet as Record<string, number> | undefined, unfiltered, applied.category),`
+
+Board-wide, from the cached facet row — CORRECT only on the unfiltered
+view. Rendered inside a filtered view it overstated by 15.7x to 45x
+(sum 587,793 shown beside a filtered total of 10,000 or less), which
+is a wrong number on every filtered session. Omit rather than
+mislead: the UI already handles an absent facet, and a count we
+cannot scope to the query is a count we should not publish.
+
+## n920-const-data-hr-await-headringp
+
+In `supabase/functions/job-board/index.ts`, above: `const { data: hr } = await headRingP;`
+
+Started before search_jobs — see the comment there. By the time we
+get here it has usually already resolved, so this await is free.
+markFrom still measures from when the query was ISSUED, not from
+here, or the phase record would report ~0ms for a real round trip
+and hide the cost it exists to expose.
+
+## n921-const-mergedseen-new-set-string
+
+In `supabase/functions/job-board/index.ts`, above: `const mergedSeen = new Set<string>();`
+
+Deduped by id, prefix first. If the ring fails the page degrades to
+exactly today's ranked result rather than to something incoherent —
+which is the difference between this and the multi-arm fusion three
+judges rejected.
+
+## n922-let-deepringrawused-consumedsurvivors-nu
+
+In `supabase/functions/job-board/index.ts`, above: `let deepRingRawUsed: ((consumedSurvivors: number) => number) | null = null;`
+
+Ring-merged DEEP page: the ring is an EXCLUSION set, not a merge.
+Every ring row is served below the RING_WINDOW seam, so a deep page
+that kept them would re-serve page-one cards as apparent new results
+— the measured seam-duplicate defect. Dropped rows still occupied
+SQL ranks, so nextOffset must advance by RAW rows consumed, dropped
+ones included; this maps "survivors consumed" back to that number.
+
+## n923-n
+
+In `supabase/functions/job-board/index.ts`, above: `n <= 0`
+
+Consumed nothing with survivors available: the walk has not
+advanced. Consumed everything (or the fetch was all ring rows):
+skip past the whole raw fetch — trailing dropped rows must not
+be re-fetched just to be dropped again.
+
+## n924-if-fzerr-array-isarray-fz-fuzzytitlesfor
+
+In `supabase/functions/job-board/index.ts`, above: `if (!fzErr && Array.isArray(fz)) fuzzyTitlesForDym = (fz as Array<{ title?: unknown }>).map((r) => String(r.title ?? ""));`
+
+Captured for the earned did-you-mean below: the derivation reads
+THESE rows instead of paying a second identical RPC (a review
+caught the duplicate call, and with it the class mismatch — this
+block's own pageTotal gate IS the thin-page contract the
+suggestion claims).
+
+## n925-const-havekeys-new-set-rankedgrouped-job
+
+In `supabase/functions/job-board/index.ts`, above: `const haveKeys = new Set(rankedGrouped.jobs.map((j) => {`
+
+Dedupe by CLUSTER, not by id. An id-only check let a fuzzy row
+that is a collapsed sibling of an exact match through (different
+id, same company+title), re-showing a job the grouped card above
+already represents — and the appended rows themselves were never
+collapsed, so one role reposted per location could fill the page
+with near-identical closeMatch cards.
+
+## n926-const-novel-fuzzyrows-filter-r
+
+In `supabase/functions/job-board/index.ts`, above: `const novel = fuzzyRows.filter((r) =>`
+
+Excluded titles pruned BEFORE the extras are counted, or the
+fuzzyExtra banner claims close matches attachRecheckedAt then
+deletes — "10 close-match titles below" over 6 surviving cards.
+
+## n927-offset-countonly-newestfirst-qtext-lengt
+
+In `supabase/functions/job-board/index.ts`, above: `offset === 0 && !countOnly && !newestFirst && qText.length >= 3 &&`
+
+Same !newestFirst as the fuzzy augment above: appending
+meaning-matches to page one of a date walk inserts undated rows
+mid-sequence — page two continues in dates the extras never had.
+
+## n928-const-haveids-new-set-rankedgrouped-jobs
+
+In `supabase/functions/job-board/index.ts`, above: `const haveIds = new Set(rankedGrouped.jobs.map((j) => String((j as Record<string, unknown>).id ?? "")));`
+
+The exclusion set goes IN, so the helper anchors on what survives
+it. Filtering the result afterwards is what let a page of
+unanchored rows ship under an anchored claim.
+
+## n929-const-novelsem-semsource-as-unknown-map
+
+In `supabase/functions/job-board/index.ts`, above: `const novelSem = ((semSource as unknown[]).map(rowToJob) as Array<Record<string, unknown>>)`
+
+Same pre-count prune as the fuzzy extras above: the
+semanticExtra count must describe rows that survive the
+exclusion filter, not rows it is about to delete.
+
+## n930-const-augmented-fuzzyextraout-null-seman
+
+In `supabase/functions/job-board/index.ts`, above: `const augmented = fuzzyExtraOut !== null || semanticExtraOut !== null;`
+
+`total` counts EXACT matches, and the page now holds exact + close +
+meaning. Rather than inventing a combined number — they are not the
+same kind of match and adding them would assert they are — the page
+reports that it has no single honest total, exactly as it already
+does for the close matches.
+
+## n931-const-countedreached-rowsreached
+
+In `supabase/functions/job-board/index.ts`, above: `const countedReached = rowsReached({`
+
+The count and the retriever do not always share a predicate — see
+the note on `total` below. Computed once here so every field in this
+response argues from the same row count.
+Rows reached, not a pool position past the seam jump (L8-16, n431); against both segments.
+
+## n932-const-support-titlewords-filter-ws-ws
+
+In `supabase/functions/job-board/index.ts`, above: `const support = titleWords.filter((ws) => ws.has(w)).length;`
+
+Consistency bar: the correction must appear across the pool,
+not in one lucky title — and must outweigh the typo's own
+corroboration by 3x.
+
+## n933-earneddym-qtext-tolowercase-replace-new
+
+In `supabase/functions/job-board/index.ts`, above: `earnedDym = qText.toLowerCase().replace(new RegExp('(?<=^|[^\\p{L}])${tok}(?=$|[^\\p{L}])', "u"), w);`
+
+Word-boundary, not substring: replace("art", ...) on
+"cart art designer" corrupts "cart" first. \p{L} tokens
+are regex-safe by construction.
+
+## n934-nextoffset-poolexhausted-ring_window-off
+
+In `supabase/functions/job-board/index.ts`, above: `nextOffset: poolExhausted ? RING_WINDOW : offset + rankedGrouped.rawConsumed,`
+
+A ring-merged page that exhausts its pool hands the walk to the SQL
+regime at the FIXED seam — offset+rawConsumed is a pool position,
+and the deep regime would misread it as SQL rank (the hole half of
+the seam defect: SQL ranks between the pool's end and the number it
+happened to reach were skipped forever).
+
+## n935-facethead-fullcompanies0-as-array-token
+
+In `supabase/functions/job-board/index.ts`, above: `? facetHead(fullCompanies0 as Array<{ token?: string; name?: string; count?: number; open?: number }>)`
+
+Ordered by the SERVABLE count (facetHead already ranks on it and
+the merge preserves that order); `count` is not on these rows —
+see facetHead. Re-stated here so the ordering is visible at the
+exit that publishes it.
+
+## n936-companiescount-v0-companiescount-as-numb
+
+In `supabase/functions/job-board/index.ts`, above: `companiesCount: ((v0.companiesCount as number | undefined) ?? fullCompanies0.length),`
+
+NEVER the slice's length. The serving row is refresh_head now,
+whose companiesFacet is deliberately truncated to 200 — deriving
+the count from it published "200 companies" on the homepage the
+first evening the head row qualified. The stored count first, the
+length only for the fat-row fallback whose facet is complete.
+
+## n937-categories-visiblecategories-v0-categori
+
+In `supabase/functions/job-board/index.ts`, above: `categories: visibleCategories(v0.categoriesFacet as Record<string, number> | undefined, unfiltered, applied.category),`
+
+Board-wide, from the cached facet row — CORRECT only on the unfiltered
+view. Rendered inside a filtered view it overstated by 15.7x to 45x
+(sum 587,793 shown beside a filtered total of 10,000 or less), which
+is a wrong number on every filtered session. Omit rather than
+mislead: the UI already handles an absent facet, and a count we
+cannot scope to the query is a count we should not publish.
+
+## n938-semanticdegraded-semanticdegraded
+
+In `supabase/functions/job-board/index.ts`, above: `...(semanticDegraded ? { semanticDegraded } : {}),`
+
+Spread only when set, exactly like rankedFellBack: null on every
+healthy search, so its mere presence is the signal. This is the exit
+a silently-failed rescue actually lands on.
+
+## n939-semanticextraout-semanticextra-semantice
+
+In `supabase/functions/job-board/index.ts`, above: `...(semanticExtraOut ? { semanticExtra: semanticExtraOut } : {}),`
+
+Named separately from fuzzyExtra because they are different claims:
+a close match is "you may have misspelled this", a meaning match is
+"nothing else matched, these are about the same thing". Passing the
+second off as the first would be the tier lying about its evidence.
+
+## n940-console-error-job-board-ranked-path
+
+In `supabase/functions/job-board/index.ts`, above: `console.error('[JOB-BOARD] ranked path failed, serving recency instead: ${e instanceof Error ? '${e.name}: ${e.message}' : String(e)}');`
+
+NOT SILENT ANY MORE. This catch is correct — a broken ranked path must
+still serve the reader from the recency path — but for as long as it
+said nothing, a total ranked-search outage was indistinguishable from
+"that query genuinely has no matches". It hid a ReferenceError for an
+unknown number of days. The fallback stays; the silence does not.
+
+## n941-const-acount-await-buildquery-datecol-tr
+
+In `supabase/functions/job-board/index.ts`, above: `const aCount = await buildQuery(dateCol, true, applied.category!).range(0, 0);`
+
+The chosen category's exact size decides where this page crosses into the
+bucket. EXACT, never estimated: an approximate pivot skips or repeats
+rows at the boundary, which reads as the board simply not having a job.
+
+## n942-let-count-number-null-null
+
+In `supabase/functions/job-board/index.ts`, above: `let count: number | null = null;`
+
+The total is A + B. Only computed when a count was asked for, and a
+failure degrades to null — the client already renders "Showing N" without
+a denominator rather than a wrong one.
+
+## n943-const-racedcount-promise-n-number-capped
+
+In `supabase/functions/job-board/index.ts`, above: `const racedCount: Promise<{ n: number; capped?: boolean } | null> = wantCount`
+
+Hoisted out of the Promise.all below rather than nested inside it. A nested
+array literal there also breaks the guard that checks every destructured
+Promise.all binds every promise it awaits — and that guard exists because
+an unnamed entry silently re-labels every value after it.
+
+## n944-markfrom-count_jobs_capped-t_count_raced
+
+In `supabase/functions/job-board/index.ts`, above: `markFrom("count_jobs_capped", t_count_raced);`
+
+MARK THE RACE, NOT THE RPC. The mark inside cappedCount() keeps running
+after this deadline is lost, because a race does not cancel. Recording
+that settle time under the same name put up to 6.7s of phase against a
+request that waited 1.5s.
+
+## n945-const-needinlinecount-wantcount-cappedre
+
+In `supabase/functions/job-board/index.ts`, above: `const needInlineCount = wantCount && !cappedRes && !countTimedOut;`
+
+Only fall back to the old inline exact count when the capped RPC ISN'T
+THERE (migration not applied yet) — never because it was merely slow. A
+count that could not be produced inside 1.5s is answered with "no count",
+which the client already renders honestly as "Showing 60 of 60+", not by
+going and fetching a slower one.
+
+## n946-console-warn-job-board-capped-count
+
+In `supabase/functions/job-board/index.ts`, above: `console.warn('[JOB-BOARD] capped count exceeded ${COUNT_DEADLINE_MS}ms — serving the page without a total');`
+
+Not silent: a deadline that fires regularly is a signal about the
+database, and the old code left it indistinguishable from a healthy
+response except by tookMs.
+
+## n947-const-nocount-datecol-string-salarycol-s
+
+In `supabase/functions/job-board/index.ts`, above: `const noCount = (dateCol: string, salaryCol: string) => pageWith(dateCol, salaryCol, false);`
+
+Same path as the page above, count suppressed — a second hand-written
+builder here is how the retry ends up filtering differently from the
+query it is retrying.
+
+## n948-const-missq-string-body-q-slice
+
+In `supabase/functions/job-board/index.ts`, above: `const missQ = String(body.q ?? "").slice(0, 120).trim();`
+
+Zero-result telemetry: a first-page search that found nothing is the
+honest demand signal for what the catalog lacks. Logged fire-and-forget
+into a service-role-only table (30-day retention) — never blocks the
+response, and only when the user actually typed something.
+
+## n949-if-count-offset-missq-missloc-nolog
+
+In `supabase/functions/job-board/index.ts`, above: `if (count === 0 && offset === 0 && (missQ || missLoc) && !noLog) {`
+
+`count === 0`, never `count ?? 0`: null means the exact count timed out
+(see the countUnavailable branch above), and calling that "zero results"
+logged a catalog-gap miss for searches that served a full page —
+poisoning the demand census the pool is steered by (bug sweep 2026-07-26).
+
+## n950-const-v-meta-v-as-record
+
+In `supabase/functions/job-board/index.ts`, above: `const v = (meta?.v ?? {}) as Record<string, unknown>;`
+
+(Typo-tolerant fuzzy fallback lives in the ranked path above, where an
+empty result is caught on the fast index-backed path — never here, since
+reaching this point for a no-match term already means the recency
+ILIKE-count is in play, which is exactly what times out.)
+
+## n951-const-includefacets-body-as-includefacet
+
+In `supabase/functions/job-board/index.ts`, above: `const includeFacets = (body as { includeFacets?: boolean }).includeFacets !== false;`
+
+The company facet grows with the catalog (~60 bytes/company); refetches
+that already hold it can opt out instead of re-downloading it per filter
+change. Absent/true keeps the old contract for deployed frontends.
+
+## n952-const-fullcompanies-v-companiesfacet-as
+
+In `supabase/functions/job-board/index.ts`, above: `const fullCompanies = (v.companiesFacet as Array<{ count?: number }>) ?? [];`
+
+At the scaled-up pool (~8.7k companies) the full facet is ~500KB per list
+response and thousands of dropdown nodes — serve the top slice by count and
+report the full number separately so stat displays stay exact. The facets
+RPC (used by prerender/SEO) still returns the complete set.
+
+## n953-let-rawsequence-mappedrows
+
+In `supabase/functions/job-board/index.ts`, above: `let rawSequence = mappedRows;`
+
+The raw, in-order rows the collapse walked. After a top-up this spans BOTH
+fetches, and it is what nextOffset and nextCursor must be derived from —
+reading them off the first fetch alone would send the next page back over
+rows this one already served.
+
+## n954-grouped-merged
+
+In `supabase/functions/job-board/index.ts`, above: `grouped = merged;`
+
+rawConsumed must stay in the ORIGINAL row space for nextOffset to
+mean anything, so it is capped at what the first fetch held plus
+however far into the top-up the collapse actually reached.
+
+## n955-nextoffset-offset-grouped-rawconsumed
+
+In `supabase/functions/job-board/index.ts`, above: `nextOffset: offset + grouped.rawConsumed,`
+
+Raw rows this page swallowed. The client MUST page by this rather than by
+jobs.length once clusters are folded, or the siblings of a collapsed
+result reappear on the next page as if they were new.
+
+## n956-hasmore-data-length-grouped-rawconsumed
+
+In `supabase/functions/job-board/index.ts`, above: `hasMore: (data ?? []).length > grouped.rawConsumed || (data ?? []).length === fetchUsed,`
+
+A full page means there is at least one more; the client needs this to
+keep "load more" alive when it has no total to compare against.
+Compared against fetchUsed, not fetchLimit: the two-subset path fetches
+fewer rows by design, and measuring "was the page full?" against a size
+it never requests answers no every time.
+
+## n957-categories-visiblecategories-v-categorie
+
+In `supabase/functions/job-board/index.ts`, above: `categories: visibleCategories(v.categoriesFacet as Record<string, number> | undefined, unfiltered, applied.category),`
+
+Gated like the other three. A board-wide facet printed beside a FILTERED
+result set promises more jobs than the filter can deliver — "Engineering
+67,898" next to a country=GB page whose entire scope is 19,633. Today's fix
+covered three of the four response sites and its commit message claimed
+all of them; this is the fourth.
+
+## n958-import-type-jobsourcekind-from-sources-t
+
+In `supabase/functions/job-board/normalize.ts`, above: `import type { JobSourceKind } from "./sources.ts";`
+
+Pure normalization + filtering for the job board. No Deno APIs — this
+module is unit-tested by vitest against REAL payload fixtures captured
+from each ATS's public API (src/test/job-board.test.ts).
+
+## n959-import-load_dependent_periods-parsesalar
+
+In `supabase/functions/job-board/normalize.ts`, above: `import { LOAD_DEPENDENT_PERIODS, parseSalaryStructured } from "../_shared/salary-extract.ts";`
+
+The vendor pay formatters below hand their sentence to the shared parser and
+publish nothing it reads back differently — so the per-period magnitude
+windows have exactly one definition, in the module that owns them.
+
+## n960-const-safeurl-u-unknown-string
+
+In `supabase/functions/job-board/normalize.ts`, above: `const safeUrl = (u: unknown): string => {`
+
+Feeds are official vendor APIs, but a posting URL still passes through us
+into an <a href> — http gets upgraded to https (One Medical ships http://
+apply URLs), anything that isn't http(s) becomes "" and the posting drops.
+
+## n961-export-const-posted_at_garbage_floor_ms
+
+In `supabase/functions/job-board/normalize.ts`, above: `export const POSTED_AT_GARBAGE_FLOOR_MS = Date.parse("2010-01-01T00:00:00Z");`
+
+Oldest posted_at we'll trust from a feed. Beyond this it's almost certainly
+bad data (some feeds return epoch-ish or decade-old timestamps — e.g. a
+Palantir role dated 2009) or an evergreen pipeline req that shouldn't wear a
+stale date. Kept here so ingestion and any date-hygiene share one bound.
+Garbage-date floor: only dates before this are feed junk (epoch zeros,
+mis-parsed typos, the live 2009 Palantir date — Lever didn't exist yet).
+A REAL old date — a 3.5-year-old evergreen Lever req — must SURVIVE
+sanitization so the freshness cap can drop the posting. The previous
+~3-year "absurdly old → null" rule laundered exactly those evergreens into
+undated-KEPT postings (live incident: a 1,295-day-old req served on a board
+that promises nothing older than 30 days; 42% of Lever rows were undated
+this way). 2010 predates every ATS we ingest, so anything earlier cannot be
+a real posting date.
+
+## n962-export-function-sanepostedat-iso-string
+
+In `supabase/functions/job-board/normalize.ts`, above: `export function sanePostedAt(iso: string | null | undefined, now: number = Date.now()): string | null {`
+
+A posted_at is trustworthy only if it parses and sits in a sane window: not
+in the future (small clock-skew grace) and not pre-2000 junk. Garbage dates
+collapse to null — so effective_posted falls back to first-seen for sorting
+and the card shows no date instead of "posted 6000 days ago". Real-but-old
+dates pass through untouched: the ingestion freshness cap is what drops
+those postings, and nulling them would keep the posting alive undated.
+
+## n963-if-t-now-return-new-date
+
+In `supabase/functions/job-board/normalize.ts`, above: `if (t > now) return new Date(now).toISOString();`
+
+Inside the grace window, CLAMP to now rather than storing a future date.
+The grace exists because vendors emit date-only values that parse as UTC
+midnight from boards several hours ahead (AU/Asia Workday) — that is skew,
+and the honest reading of skew is "posted now", not "posted tomorrow".
+Storing the future value had two visible consequences: default sort is
+effective_posted DESC so all 23 such rows occupied the entire top of the
+board, and daysAgo() in Jobs.tsx returns null for a negative age, so those
+cards rendered with no posted-age label at all. Measured 2026-07-28: 19
+Workday rows stamped 2026-07-29T00:00:00Z plus 4 Personio rows 1-57 min
+ahead. Nothing is invented here — a posting cannot have been posted later
+than the moment we read it.
+
+## n964-export-function-normalizeclosetitle-titl
+
+In `supabase/functions/job-board/normalize.ts`, above: `export function normalizeCloseTitle(title: string): string {`
+
+Closure "superseded" detection compares a vanished posting's title against
+the board's still-live titles — but companies decorate reposts with req-id
+noise ("Behavior Technician (R-48213)", "Nurse - #10422"), so exact-string
+matching under-detects relisting churn and inflates fill-rate stats. Strip
+only id-shaped noise: bracketed segments containing digits and trailing
+req/id numbers. NEVER strip words (a Senior Engineer closing while Engineer
+stays live is not automatically a repost).
+
+## n965-export-function-safeiso-value-unknown-st
+
+In `supabase/functions/job-board/normalize.ts`, above: `export function safeIso(value: unknown): string | null {`
+
+Convert a feed's raw date value (epoch number, ISO/date string, whatever the
+vendor sends) to an ISO string — WITHOUT throwing. `new Date(x).toISOString()`
+raises a RangeError on an invalid date, and a normalizer that throws fails its
+ENTIRE board upstream (fetchBoard swallows it → the board silently stops
+ingesting, the same class as a fetch timeout). A non-empty garbage date string
+is exactly the input that trips this. Bad or absent values collapse to null;
+window-sanity (future/too-old) stays a separate concern for sanePostedAt.
+
+## n966-export-function-isdatedbefore-sanitizedp
+
+In `supabase/functions/job-board/normalize.ts`, above: `export function isDatedBefore(sanitizedPostedAt: string | null, cutoffMs: number): boolean {`
+
+Freshness-cap decision: a posting is dropped on age ONLY when it carries a
+trustworthy date older than the cutoff. A null (undated or garbage-dated,
+per sanePostedAt) posting is never dropped on age — we can't prove it's old,
+and the vast majority of feeds do date their postings anyway.
+
+## n967-const-unescapeentities-s-string
+
+In `supabase/functions/job-board/normalize.ts`, above: `const unescapeEntities = (s: string) =>`
+
+Greenhouse escapes the HTML it returns (&lt;p&gt;…) — and entities INSIDE
+that HTML arrive double-escaped (&amp;nbsp;), so unescape must run twice:
+once to recover the markup, once to recover the text's own entities.
+Two passes are a no-op on plain text.
+
+## n968-replace-x-a-f-gi-_
+
+In `supabase/functions/job-board/normalize.ts`, above: `.replace(/&#x([0-9a-f]+);/gi, (_, h) => { const c = parseInt(h, 16); return c > 0 && c < 0x110000 ? String.fromCodePoint(c) : " "; })`
+
+Numeric entities — audit 2026-07-25: workday descriptions shipped raw
+&#160;/&#8217; to users because only the named set was decoded. NUL and
+out-of-range code points become spaces (a NUL here would make the row
+grep-invisible and break downstream matching).
+
+## n969-replace-mdash-gi-u2014
+
+In `supabase/functions/job-board/normalize.ts`, above: `.replace(/&mdash;/gi, "\u2014")`
+
+Named entities — audit 2026-08-24: greenhouse's pay-transparency
+footer ships "&mdash;" and the numeric-only decoder left it literal in
+stored text, where it both rendered as garbage to readers AND broke
+salary mining (the range separator never matched: 17/200 sampled rows
+carried an entity-encoded pay block, all unparseable).
+
+## n970-const-p_negated_remote-new-regexp
+
+In `supabase/functions/job-board/normalize.ts`, above: `const P_NEGATED_REMOTE = new RegExp(`
+
+THE MISSING NEGATION ARM (measured live 2026-09-09 against deployed .67).
+
+In "NON-REMOTE" the hyphen is a word boundary, so the bare \bremote\b below
+matched and the board stored the exact inverse of what the employer wrote.
+Two live rows returned under workMode=remote:
+  "Application Analyst II-Full Time- Days - Cupid/Radiant- NON-REMOTE" (workday)
+  "RN (PRN - Not Remote)"                                             (icims)
+This is the SECOND time this board has shipped that inversion — see
+migration 20260817210000 and the index.ts remoteType classifier, whose rule
+is "a classifier built from substrings must answer the NEGATIONS before the
+POSITIVES". That rule lived in one classifier; this one never got it.
+
+The repair is to REMOVE the negated phrase from the string before the
+positive ladder runs, rather than to return a mode from the negation.
+Removal, not an early return, is what keeps the rest of the string readable:
+  "On-site (not remote)"  -> "On-site ()"   -> onsite
+  "Hybrid, non-remote"    -> "Hybrid, "     -> hybrid
+  "Analyst - NON-REMOTE"  -> "Analyst - "   -> null
+The bare case is NULL and not "onsite" on purpose: we know it is not remote,
+we do NOT know whether it is hybrid or onsite, and this file's rule is that
+null means the posting doesn't say and the board shows nothing rather than a
+guess. (index.ts's classifier reads a vendor's structured remoteType ENUM,
+where "Non-Remote Posting" IS Workday's own onsite label, so it may answer
+onsite there. Free text in a title states less, so it resolves to less.)
+
+COVERAGE, stated honestly. The English arms are backed by observed strings
+(the two titles above, plus "Non-Remote Posting"/"Not Remote"/"No Remote"
+from the 2026-08-17 incident). The DE/FR/ES/PT/NL arms are the standard
+negations of the tokens P_REMOTE already carries; they are NOT backed by
+observed feed strings, so they are written narrowly (adjacent negator +
+token only) and no language is covered beyond the five P_REMOTE already
+names. Nothing here invents a token P_REMOTE does not match.
+
+## n971-bremote-s-s-no-none-s
+
+In `supabase/functions/job-board/normalize.ts`, above: `"\\bremote\\s*[:=(–—-]\\s*(?:no|none)\\s*(?=$|[).|,;·/])",`
+
+EN — a FIELD-VALUE negation: "Remote: No", "Remote — None", "Remote(No)".
+
+THE NEGATOR MUST END THE SEGMENT, and that lookahead is the whole point
+of this arm's shape. Written without it — `remote\s*[:=–—-]\s*(?:no|
+none|not)\b` — a hyphen or dash is read as a field separator, but in a
+job TITLE those characters separate SEGMENTS, so the arm fired on the
+extremely common genuinely-remote shapes and deleted the only remote
+token in them:
+  "Registered Nurse - Remote - No Weekends"          -> null (was remote)
+  "Data Entry Clerk - Remote - No Experience Required"-> null
+  "Data Analyst — Remote — No sponsorship"           -> null
+  "Remote: No Cold Calling Sales Rep"                -> null
+That is the mirror image of the incident this file exists to fix: a
+remote role deleted from the Remote filter instead of a non-remote role
+added to it, and the repair migration would have rewritten those rows
+irreversibly. "no experience" in particular is part of this board's own
+vocabulary — index.ts's INTENT_FILTERS carries a rule for it.
+Requiring end-of-string or a delimiter after the negator keeps the real
+field-value form and refuses the segment form. "not" is dropped here
+entirely: it is already carried by the \bnot\s+…remote\b arms above, and
+the "Remote - Not Available" shape is the trailing-negator arm below.
+
+## n972-b-remote-wfh-work-s-from
+
+In `supabase/functions/job-board/normalize.ts`, above: `"\\b(?:remote|wfh|work\\s+from\\s+home|home\\s?office)\\s*[:=–—-]?\\s*(?:not\\s+(?:available|offered|permitted|an\\s+option)|unavailable)\\b`
+
+EN — a TRAILING negator: "Work from home not available", "Remote Not
+Available", "Remote - unavailable". Adjacency is required (the negator
+follows the token directly), so "Remote Support Engineer - not available
+for sponsorship" is untouched and stays remote.
+
+## n973-const-p_hybrid-bhybrid-b-bhybride-b
+
+In `supabase/functions/job-board/normalize.ts`, above: `const P_HYBRID = /\bhybrid\b|\bhybride\b|\bh[íi]brido?\b/i;`
+
+Trinary work-mode detection from explicit title/location text (clear words
+only; descriptions are never inferred from). Negations are stripped FIRST.
+Hybrid then outranks remote ("Hybrid remote" is hybrid); onsite needs the
+explicit phrase. null = the posting doesn't say, and the board shows nothing
+rather than a guess. Multilingual: the board carries DE/FR/ES/NL/PT postings.
+
+## n974-const-vendor_mode-new-map-string-remote
+
+In `supabase/functions/job-board/normalize.ts`, above: `const VENDOR_MODE = new Map<string, "remote" | "hybrid" | "onsite">([`
+
+A Map, not an object literal — the third instance of this hazard in this
+codebase (see NAME_FIXES in company-display.ts and CATEGORY_ACCENT in
+category-accent.ts). `VENDOR_MODE[v]` reaches Object.prototype, so a vendor
+sending WorkplaceTypeCode "constructor" or "toString" would return a
+FUNCTION, and `?? null` does not catch it because a function is not nullish.
+Record<string,...> describes inherited keys as valid values, so TypeScript
+cannot see it.
+
+The ORA_* codes are Oracle Recruiting Cloud's own vocabulary. Measured
+2026-07-29: where a vendor STATES a work mode we disagreed 72.3% of the time
+(598 of 915 stored NULL, 64 stored wrong) — and Oracle was a large share of
+that, because `ORA_REMOTE`.toLowerCase() is `ora_remote`, which matched
+nothing here and fell through to null. 14,678 oracle postings, ~33% of which
+carry a stated code.
+
+## n975-const-country_patterns-readonlyarray-rea
+
+In `supabase/functions/job-board/normalize.ts`, above: `const COUNTRY_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [`
+
+Country from free-text location — deterministic and CONSERVATIVE: an explicit
+country name, a comma-prefixed US state / Canadian province code, or a full
+state/province name. No city geocoding, no guessing: a location we can't
+place stays NULL and is simply excluded from the country filter (disclosed),
+because "London" could be Ontario and "Georgia" could be Tbilisi.
+
+## n976-b-united-kingdom-england-scotland-new
+
+In `supabase/functions/job-board/normalize.ts`, above: `[/\b(?:united kingdom|england|scotland|(?<!new south )wales|northern ireland)\b|\bUK\b/i, "GB"],`
+
+"wales" is guarded against NEW SOUTH WALES, which is in Australia. The GB
+pattern sits at index 1 and the AU pattern at index 7, so on "Sydney, New
+South Wales, Australia" the word Wales won the race and the row shipped as
+United Kingdom. Measured live 2026-08-25: 25 of 25 rows returned for
+location="New South Wales" carried country GB. Plain "South Wales" IS
+Welsh, so only the "new south" prefix is excluded — same shape as the
+(?<!new ) guard on Mexico below.
+
+## n977-b-new-mexico-m-xico-b
+
+In `supabase/functions/job-board/normalize.ts`, above: `[/\b(?<!new )(?:mexico|méxico)\b/i, "MX"],`
+
+(?<!new ): "Albuquerque, New Mexico" is a US state, not the country —
+measured 2026-08-24: 251 of 599 servable "new mexico" locations carried
+country=MX, including rows with an explicit "US," prefix, poisoning the
+country filter in both directions. "Mexico City"/"México" still match.
+
+## n978-b-beth-s-israel-b-i
+
+In `supabase/functions/job-board/normalize.ts`, above: `[/\b(?<!beth\s)israel\b/i, "IL"],`
+
+AN ORGANISATION'S NAME IS NOT A PLACE, and this pattern was the proof.
+Many feeds put a FACILITY name in the location column rather than a town —
+"Beth Israel Deaconess Medical Center" is a Boston hospital, and a bare
+word-boundary test filed it, and every other site in that health system,
+under Israel. Measured live 2026-09-23 by walking the country=IL bucket
+(stated total 725, 682 rows walked): 100 rows = 14.7% of the bucket are
+the Boston-area system, every one of them Workday, every one of them one
+employer token. The seeker asking for jobs in Israel was handed a per-diem
+CT technologist in Massachusetts.
+
+Same shape as the (?<!new south )wales and (?<!new )mexico guards above:
+a narrow, named exception rather than a loosened pattern. "Beth Israel,
+Tel Aviv, Israel" still resolves — the comma-prefixed occurrence is not
+preceded by the qualifier and matches on its own.
+
+IT IS NOT THE ONLY MEMBER OF ITS CLASS, and the first version of this note
+said it was ("the word genuinely is the country everywhere else"). It is
+not: the same ordering — COUNTRY_PATTERNS ahead of the comma-prefixed
+state code — files US towns named after countries abroad. Walked live with
+the anon key on 2026-09-23: the PE bucket (667 rows read) holds "Peru, IN"
+twice and "Peru, IL" once, the TR bucket (504 rows) holds "Turkey, TX"
+twice. Those five rows are handled by a second, equally narrow guard in
+detectCountry rather than here, because the guard has to read the state
+code CASE-SENSITIVELY and these patterns are case-insensitive.
+
+These rows do not merely lose a wrong answer: they gain the right one. The
+same 14 rows fetched live from the vendor's own CXS detail return US on
+14/14, which is the country the Workday place reader below now writes.
+
+## n979-bchina-b-i-cn
+
+In `supabase/functions/job-board/normalize.ts`, above: `[/\bchina\b/i, "CN"],`
+
+THIRTEEN COUNTRIES WHOSE OWN NAME DID NOT RESOLVE TO THEM.
+Found by sampling 5,000 postings that carry location text and no parsed
+country: 38 of them name a country outright and were still filed as
+unplaceable — "China", "Pakistan", "Ecuador". Roughly 1,280 postings
+board-wide. Not inference and not a guess; the text says where it is.
+
+## n980-const-p_us_state_code_leading
+
+In `supabase/functions/job-board/normalize.ts`, above: `const P_US_STATE_CODE_LEADING =`
+
+SOME FEEDS PUT THE STATE FIRST: "AR Hot Springs", "NC - Raleigh". The
+comma-prefixed pattern above cannot see those, and they are the largest
+recoverable class in the unplaced set — 146 of 5,000 sampled, roughly 4,900
+postings board-wide.
+
+THE CODE LIST IS DELIBERATELY SHORTER THAN FIFTY. A leading two-letter token
+is far weaker evidence than a trailing one: "OR Tambo" is an airport in
+Johannesburg, "IN" and "ME" and "OK" and "HI" are English words, "DE" and
+"LA" and "MA" open place names in other languages. Only codes that are not
+words in English or common romance/germanic prefixes are listed, so a miss
+here leaves a posting unplaced — which is the board's stated behaviour — and
+never places it wrongly. GA is absent for the same reason it is absent from
+the state-NAME pattern: Georgia is also a country.
+
+## n981-const-p_us_state_code_leading_punct-new
+
+In `supabase/functions/job-board/normalize.ts`, above: `const P_US_STATE_CODE_LEADING_PUNCT = new RegExp('^(${[...US_STATE_CODES].join("|")})\\s*[,\\-–—]\\s*(?=[A-Za-z])');`
+
+THE STATE-FIRST FORM WRITTEN WITH ITS PUNCTUATION (register S11-027).
+
+"SD, Aberdeen", "MN, Alexandria", "WV, Ghent", "OH, Lima", "VA - Richmond":
+the short list above wants whitespace after the code and leaves out VA, MA,
+CA, PA, GA and OH, so these reached the bare-city table and were filed in
+Britain, Egypt, Belgium and Peru (Sanford alone: 23 rows served as GB, 2 as
+EG), and about 1.8k such rows carried no region_code, which the WARN filing
+gate requires. An upper-case code followed by a comma or a dash is not an
+English word in that position, so all fifty-one count here, and the US-
+prefixed structured form ("US-TX-Houston") too. Four readings still win over
+it:
+  - a Canadian province after the code, as its code or its name ("CA - ON,
+    Ottawa", "CA, Ontario, London");
+  - the leading code's own country's city in ANY later segment, split on the
+    dash as well as the comma ("IN, Chennai", "CA - Toronto - Office", "DE -
+    HQ - Berlin");
+  - a string that names a country in words ("SD, Jinan, China");
+  - for a code that is also a country the board carries in volume (below),
+    no place we can read after it at all. "CA - BROSSARD BUILDING (PQBRO)",
+    "IN, Bangalore Kar" and "DE - KOELN (COLOGNE) CENTER (DEKOL)" are
+    Canada, India and Germany; read as states they were filed US-CA, US-IN
+    and US-DE, and the ingest rewrote the stored CA/IN/DE with them.
+A city the table files in a THIRD country stays evidence for the state:
+that is the US town named after a city abroad ("SD, Aberdeen", "MN,
+Alexandria", "PA, Ghent") this rule exists for.
+
+## n982-const-state_codes_that_are_countries_we_
+
+In `supabase/functions/job-board/normalize.ts`, above: `const STATE_CODES_THAT_ARE_COUNTRIES_WE_CARRY: ReadonlySet<string> = new Set([`
+
+The state codes that are also ISO countries with real board volume. Read
+live 2026-10-11 (job-board list, countOnly, by country): CA, DE and IN at
+the 10,000 cap, ID 1,835, CO 1,797, AR 1,139, IL 982, MA 402, TN 168, PA
+142, MO 124, MT 56, KY 45, AZ 38, AL 21. The other collisions served under
+20 each (GA 3, MN 6, SD 6, VA 0), so a leading code there stays the state.
+
+## n983-export-const-country_map_version
+
+In `supabase/functions/job-board/normalize.ts`, above: `export const COUNTRY_MAP_VERSION = 10;`
+
+City→country fallback for locations with no country/state qualifier at all
+("Kuala Lumpur", "Pune, Maharashtra", bare "London"). Runs LAST, after every
+country pattern and US-state/CA-province check — which is what makes the
+ambiguous names safe: North American feeds essentially always qualify their
+cities ("Melbourne, FL", "London, ON", "Dublin, OH"), so those resolve via
+state/province BEFORE this table is consulted, and a bare segment is the
+non-NA reading. Matching is exact-SEGMENT equality (split on commas etc.),
+never substring — "Santiago de Compostela" does not match "santiago".
+Bump COUNTRY_MAP_VERSION when this table changes; the backfill-country
+sweep re-runs stored null-country rows against the current table.
+6: the country word may no longer be read out of an organisation name — see
+the guarded pattern in COUNTRY_PATTERNS.
+7: nor out of a US town named after a country ("Peru, IN", "Turkey, TX") —
+see countryWordNamesAUsTown.
+
+AND THE BUMP ALONE DOES NOT REPAIR THE ROWS IT INVALIDATES. The backfill
+sweep selects `country IS NULL`: it fills gaps and has never corrected a
+stored wrong answer, so the rows already holding the organisation-name
+reading keep it however often this constant moves. What repairs them is the
+vendor's own structured country, written by the Workday place reader below
+through the detail sweeps — measured agreeing with 136 of 136 rows we had
+already placed correctly, and disagreeing only where we were wrong.
+8 (2026-10-09, L7-14): a trailing ", XX" naming the city table's own
+country wins ("Bangalore, IN", "Berlin, DE", "Toronto, ON, CA"), and an
+upper-case trailing US state code beats a country word earlier in the
+string ("Mexico, MO", "Lake Wales, FL", "... Albany, NY"); "tunis" added.
+9 (S11-027): a leading state code followed by a comma or a dash, any of the
+fifty-one, and the "US-XX-" form, are the US ahead of the bare-city table
+("SD, Aberdeen" was GB, "OH, Lima" PE). Stored rows are re-derived as each
+board is read again (the ingest recomputes country and region_code from the
+location on every read); the backfill sweep re-runs the null-country rows.
+10 (S12-037): ", AB, CA" with a province before the code is Canada, "WA"
+after an Australian city is Australia, and a leading code followed by a city
+in the country that code names is that country ("IL - Tel Aviv").
+
+## n984-if-s-wa-sa-nt-s
+
+In `supabase/functions/job-board/normalize.ts`, above: `if (/,\s*(?:WA|SA|NT)(?:\s+\d{4})?\s*$/.test(s) && cityCountry(s.split(",")[0]) === "AU") return "AU";`
+
+THE LAST TWO LETTERS FIRST (L7-14). A trailing ", XX" collides between a
+US state and an ISO country: "Bangalore, IN", "Berlin, DE", "Jakarta, ID",
+"Bogota, CO" were filed US, and "Toronto, ON, CA" too. When the leading
+segment is a city the table places in XX, XX is that country. Otherwise an
+upper-case state code at the very end is the US, ahead of a country word
+earlier in the string: "Mexico, MO" was MX, "Lake Wales, FL" GB.
+S12-037: "Perth, WA 6000" -- an Australian city, its state, its four-digit postcode.
+
+## n985-const-segs-s-split-map-x
+
+In `supabase/functions/job-board/normalize.ts`, above: `const segs = s.split(",").map((x) => x.trim());`
+
+S12-037: a province before a trailing ", CA" makes it Canada ("Red Deer,
+AB, CA" was California), and "WA" after an Australian city is Western
+Australia ("Perth, WA" was Washington).
+
+## n986-const-refused-leadingcodeitsowncountry-s
+
+In `supabase/functions/job-board/normalize.ts`, above: `const refused = leadingCodeItsOwnCountry(s);`
+
+S12-037: a leading code the state reading refused because the city after
+it lies in the country that code names is that country: "IL - Tel Aviv"
+is Israel, not Illinois (it fell through to the short leading-code list).
+
+## n987-bump-when-the-vocabularies-or-the
+
+In `supabase/functions/job-board/normalize.ts`, above: `/** Bump when the vocabularies or the resolution order below change, exactly as`
+
+── THE SUBDIVISION WE ALREADY PARSED AND THREW AWAY ────────────────────────
+
+detectCountry above runs P_US_STATE_CODE, P_US_STATE_NAME,
+P_US_STATE_CODE_LEADING, P_CA_PROV_CODE and P_CA_PROV_NAME on every posting
+the ingest touches — and then answers "US" or "CA" and DISCARDS which state
+or province it just identified. The work is done; only the result is
+dropped.
+
+WHY THAT MATTERS MORE THAN IT SOUNDS. Pay-disclosure law is state-level, not
+national: Colorado, California, New York, Washington, Illinois, Hawaii,
+Maryland, Minnesota, New Jersey and Vermont each require a salary range on a
+posting; most states require nothing. With only a country column, "does this
+employer disclose pay where it is required to?" cannot be asked at all — the
+board can score a company at country granularity and no finer. The same is
+true of every geographic cut of the fill, churn and ghost numbers.
+
+AND IT IS ONLY RECOVERABLE WHILE THE ROW IS LIVE. The parse runs on the
+location string in the feed payload; once a posting closes, its row is
+deleted and the string goes with it. A subdivision not stamped today is not
+stamped ever.
+
+The country behaviour above is untouched, byte for byte: this is a second,
+additive read of the same string.
+
+## n988-export-const-region_map_version
+
+In `supabase/functions/job-board/normalize.ts`, above: `export const REGION_MAP_VERSION = 3;`
+
+2: the spelled-out-state-name branch refuses a string that names two or more
+different states instead of taking the leftmost one.
+
+AND THE BUMP ALONE REPAIRS NOTHING — the same sentence COUNTRY_MAP_VERSION
+now carries, said here too because a reader comparing the two constants
+would otherwise reasonably infer that this one behaves like the country
+backfill. It does not: there is no region_backfill meta key, no cursor and
+no sweep that re-derives region_code on a version change. A stored region is
+corrected only when a place write happens to touch that row (the detail
+sweeps re-derive it with the pair they write), or by a region re-derive
+sweep if one is ever built. Cost of leaving them, from the review walk of
+2026-09-23 (6,144 live rows A/B-tested against both rules): 1,033 reach the
+spelled-out-name branch and 17 of those — 1.65% — change under version 2.
+3 (S11-027): the "US-XX-City" form and the punctuated state-first form
+("SD, Sioux Falls") name their state; a leading code and a spelled-out state
+that disagree name none. The list read's put("region_code", ...) in the
+ingest writes a re-derived non-null region over a stored one on the board's
+next visit, which is how the ~1.8k "ST, City" rows with no region get one.
+
+## n989-const-us_state_name_to_code-record-strin
+
+In `supabase/functions/job-board/normalize.ts`, above: `const US_STATE_NAME_TO_CODE: Record<string, string> = {`
+
+The SAME 49 names P_US_STATE_NAME carries, as a map so the match can be
+turned into a code. Georgia is absent here for the reason it is absent
+there: it is also a country, and a name match would place an Atlanta-less
+"Georgia" in the United States. A miss leaves the posting's region null,
+which is the board's stated behaviour for anything it cannot place; it never
+places one wrongly.
+
+## n990-const-prefixed-p_us_prefixed_state-exec
+
+In `supabase/functions/job-board/normalize.ts`, above: `const prefixed = P_US_PREFIXED_STATE.exec(s);`
+
+A STATE NAME ONLY DENOTES A STATE WHEN THE STRING NAMES ONE STATE.
+
+This was `P_US_STATE_NAME_CAP.exec(s)` — a leftmost-wins search over the
+whole string, which answers with whichever state name appears EARLIEST
+rather than whichever one the posting is in. Two measured failures, both
+from live location strings (4,500 Workday rows + 4,500 board rows walked
+2026-09-23, 1,253 of which reach this branch):
+
+  "Kansas City, Missouri"            -> US-KS. The state name is inside
+                                       the CITY's name; the state is the
+                                       segment after it. Same for
+                                       "Kansas, Oklahoma", a town in OK.
+  "Chicago, Illinois; New York, New
+   York; Philadelphia, Pennsylvania" -> US-IL. A multi-site requisition
+                                       filed at whichever site the
+                                       employer happened to list first.
+
+The second class is the one worth being careful about: picking the last
+name instead of the first would be just as arbitrary, and a subdivision is
+written into a longitudinal series that outlives the posting. So neither
+is chosen. When the string names two or more DIFFERENT states it does not
+denote one state, and this returns null — the same answer it already gives
+for the ", CA" collision directly above, for the same stated reason.
+
+COST, MEASURED: 14 of 1,253 rows reaching this branch = 1.12%, and every
+one of the 14 is currently either flatly wrong or a multi-site string
+claiming a precision it does not have. Nothing correct is lost. The
+dash-delimited Workday form ("San Antonio-Texas-United States of America")
+names one state and is untouched, as is the repeated-name form ("New York,
+New York"), which names one state twice.
+
+The comma-prefixed CODE branch above is deliberately not changed: a code
+is unambiguous and trailing, and "Kansas City, MO" already resolves to MO
+through it. The province branch is not changed either — of 180 rows that
+reached it, zero named two different provinces.
+The structured "US-TX-Houston" form states its state outright (S11-027):
+ahead of the names, so "US-DC-Washington" is not read as Washington State.
+
+## n991-block
+
+In `supabase/functions/job-board/normalize.ts`, above: `/**`
+
+── THE PLACE THE EMPLOYER STATED AND WE THREW AWAY ─────────────────────────
+
+Workday's LIST payload gives us `locationsText`, which on a multi-site
+requisition is the literal string "2 Locations" — a count, not a place. The
+board stores it verbatim and files the row with no country at all.
+
+The vendor's own CXS job-detail response, which the description and
+structured sweeps ALREADY download for every one of these postings and
+already read remoteType and startDate out of, carries the answer outright:
+a display location string and an ISO 3166-1 alpha-2 country code, both
+employer-stated, neither inferred. Reading them costs zero extra requests.
+
+MEASURED LIVE 2026-09-23, 367 unplaced Workday postings fetched from CXS:
+  367/367 (100%) carry jobPostingInfo.jobRequisitionLocation.country.alpha2Code
+  0/367   (0%)   carry ...jobRequisitionLocation.country.country.alpha2Code
+The second path is the one the proposal specified. Coded as written it would
+have returned undefined on every posting while every local check stayed
+green — which is why the shape below is pinned by a guard that walks real
+captured payloads rather than by a comment.
+
+369 of 370 attempted fetches returned HTTP 200 (one 403, one 404).
+
+## n992-const-lead-location-p_us_state_code_lead
+
+In `supabase/functions/job-board/normalize.ts`, above: `const lead = location ? P_US_STATE_CODE_LEADING_PUNCT.exec(location) : null;`
+
+What the display location STATES, never a bare-city guess (S11-027): the
+city table read "SD, Aberdeen" as Britain and nulled the vendor's own US.
+A location that leads with the vendor's own code ("CA - Brossard" beside
+alpha-2 CA) names that country first, not a state: only what follows the
+code can contradict it.
+
+## n993-if-country
+
+In `supabase/functions/job-board/normalize.ts`, above: `if (country) {`
+
+A FURTHER SITE IN ANOTHER COUNTRY MAKES THE COUNTRY A CLAIM ABOUT ONE
+SITE, NOT ABOUT THE POSTING. Measured on the review walk of 2026-09-23: of
+68 unplaced rows a detail sweep would fill, four gained a country that
+another site of the same requisition contradicts — a resmed requisition
+written US with a Canadian site, a lonza one written MX with US, BE, IN
+and FR sites, a maersk one written PE with a Chilean site, a lego one
+written DK with a London site.
+
+## n994-const-coord_suffix-s-s-d-d
+
+In `supabase/functions/job-board/normalize.ts`, above: `const COORD_SUFFIX = /\s*\|\s*-?\d{1,3}\.\d{3,}(?:\s*\|\s*-?\d{1,3}\.\d{3,})?\s*$/;`
+
+A PLACE NAME IS NOT A LATITUDE. Some Greenhouse employers append the
+geocode to the location string, and the board rendered it verbatim:
+"Waipahu, HI 96797 | 21.396369637 | -158.01142287". Measured 2026-08-24:
+398 of 1,000 sampled pipe-bearing locations carry this suffix, every one of
+them Greenhouse.
+
+The pattern is narrow ON PURPOSE. A pipe in a location is usually REAL —
+"Latin & South America | Remote", "3 Locations   |   PT-Orlando" — so only
+a trailing run of decimal numbers is removed, never the separator itself.
+
+## n995-export-function-greenhouseapi-token-stri
+
+In `supabase/functions/job-board/normalize.ts`, above: `export function greenhouseApi(token: string): { host: string; token: string } {`
+
+Greenhouse and Lever both run separate EU infrastructure with its own API
+and hosted-page hosts, and a tenant lives on exactly one side — the US host
+answers 404 for an EU tenant, verified live 2026-08-31 (asobostudio). EU
+boards carry a compound-token prefix (same pattern as workday's
+tenant~dc~site); everything downstream — posting ids, the catalog, the
+closure log — keeps the FULL prefixed token as the board's identity, and
+only these two helpers ever strip it, at the moment a hostname is derived.
+They live here rather than in index.ts so the fetch paths, the tests, and
+the census tooling's live probes all derive hosts from the same functions.
+
+## n996-const-titlesperurl-new-map-string-set
+
+In `supabase/functions/job-board/normalize.ts`, above: `const titlesPerUrl = new Map<string, Set<string>>();`
+
+AN APPLY LINK SHARED BY FIVE TITLES IS A BOARD INDEX, NOT A JOB.
+
+absolute_url is employer-configured, and some employers point every
+posting at their careers landing page. Measured 2026-08-23: 270 URLs on
+the board were shared by >=5 distinct titles, carrying 11,202 postings —
+BAYADA alone hung 1,601 postings (944 titles) off jobs.bayada.com/en/jobs.
+The button looks fine and lands the reader on a search page.
+
+The per-job page is reconstructible from data already in hand:
+job-boards.greenhouse.io/{token}/jobs/{id}, verified HTTP 200 against a
+live posting. The whole board arrives in one payload, so counting distinct
+titles per URL is free. Five is the audit's measured threshold — a real
+per-job URL is never legitimately shared by five different titles, while
+two or three can be one reposted role.
+
+## n997-const-euboard-token-startswith-eu
+
+In `supabase/functions/job-board/normalize.ts`, above: `const euBoard = token.startsWith("eu~");`
+
+The reconstructed per-job page must sit on the SAME side of the Atlantic
+as the board: an EU tenant's pages are only served by the EU hosted-pages
+host, and the path wants the bare tenant slug, not the routing prefix.
+
+## n998-postedat-j-first_published-null
+
+In `supabase/functions/job-board/normalize.ts`, above: `postedAt: j.first_published ?? null,`
+
+first_published only — updated_at re-stamps on any edit, so using it
+as a posting date silently biases every age stat young. Undated is
+honest; mis-dated is not.
+
+## n999-const-fmtamount-n-number-n-tolocalestrin
+
+In `supabase/functions/job-board/normalize.ts`, above: `const fmtAmount = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 2 });`
+
+EXACT FIGURES (L7-05). This rounded every end to the nearest thousand
+("£4k–4k" for £3,700 a month, "$1k–1k" for $1,200-$1,300), and the annual
+columns were parsed from that text: azul stored 48,000 against a true 44,400.
+
+## n1000-export-type-statedpayperiod-hour-day-wee
+
+In `supabase/functions/job-board/normalize.ts`, above: `export type StatedPayPeriod = "hour" | "day" | "week" | "month" | "year";`
+
+── a vendor's own structured pay → the board's salary TEXT ─────────────────
+
+TWO VENDORS PUBLISH A PAY FIGURE WE NEVER READ, AND THIS IS THE ONE PLACE
+EITHER BECOMES A STRING. Personio's XML feed carries a compensation block on
+13.9% of feed positions (444 of 3,198 over a 200-token random sample);
+Paylocity's and Breezy's posting pages carry a schema.org MonetaryAmount on
+rows that today show nothing at these rates, each with its own denominator
+because they are not one number: PAYLOCITY 90 of 240 pages (37.5%) on the
+first capture and 46 of 150 (30.7%) on an independent second draw, across many
+tenants; BREEZY 33 of 60 (55.0%) then 33 of 80 (41.3%), and 29 of those 33 are
+ONE tenant's duplicate subcontractor postings — the very tenant whose WEEK
+label this reader now refuses. So Breezy's rate is a fact about one employer
+and must never be quoted as a vendor coverage figure. Measured 2026-09-26/27.
+
+FOUR RULES, AND EVERY ONE OF THEM IS A REFUSAL.
+
+1. THE EMPLOYER'S DIGITS, UNCHANGED. Two decimals always, group separators,
+   and an explicit period word. NOT leverSalary: its fmtAmount rounds to "k"
+   above 1,000, so a stated €3,500–€4,000 per month comes out "€4k–4k/month"
+   and parses to an annual floor of 48,000 where the employer said 42,000 —
+   €6,000 of a raise nobody offered. Lever's annual USD ranges happen to
+   survive that rounding, which is why it went unnoticed; Personio's monthly
+   figures sit exactly in the band it destroys.
+
+2. NO ARITHMETIC HERE. The annualisation, the part-time suppression, the
+   per-period magnitude windows and the currency rules all live in
+   parseSalaryStructured and stay there. This function's only job is to hand
+   that parser a sentence in its own vocabulary. Which means the parser is
+   also the arbiter of whether the pair is publishable at all: see rule 4.
+
+3. A SINGLE FIGURE IS A SINGLE BOUND. A node's lone `value`, and a pair whose
+   ends are equal (live: Breezy's Oil Changers team member, 16 to 16 per
+   hour), are one bound. Printing "16.00 – 16.00" would dress one number as a
+   range. A pair whose max is BELOW its min is two readings that disagree and
+   is refused outright rather than resolved to either end.
+
+4. THE TEXT MUST READ BACK AS WHAT WENT IN, or nothing is written. The
+   formatted sentence is parsed before it is returned and refused unless the
+   parser recovers the same floor, the same ceiling, the same period, and a
+   non-null annual figure. That single check does three jobs at once: it is
+   the label/magnitude contradiction gate (the parser's own per-period
+   windows, so there is one source of truth for the thresholds and no copy of
+   them here); it is the proof that no rounding changed the employer's number
+   (a third decimal place cannot survive a two-decimal render, so it is
+   refused instead of published rounded); and it means a future edit to this
+   formatter cannot quietly emit a sentence the parser reads differently.
+
+   Refusing at TEXT level rather than letting the annual columns go null is
+   deliberate and measured: the annual columns are not the only reader of this
+   string. The card prints the text, and the stated-pay predicate tests the
+   text column — so a row whose annual was honestly refused still displays
+   "€1,100.00 – 1,300.00 per year" and still counts as an employer who
+   disclosed pay. Eight of 444 measured Personio blocks (1.8%) are labelled
+   that wrongly, and 3 of 170 measured page nodes (1.8%) are too.
+
+KNOWN AND ACCEPTED LOSS: the parser's monthly ceiling is 90,000 for a
+non-parity currency, which is below a normal monthly wage in several
+high-nominal currencies, so a genuine IDR 47,000,000 per month (live,
+bauhauserde) is refused here. Silence costs a reader a figure; a published
+figure we cannot stand behind costs them the decision. See the salary-extract
+lane for widening that ceiling per currency.
+
+## n1001-if-period-return-null
+
+In `supabase/functions/job-board/normalize.ts`, above: `if (!period) return null;`
+
+No period label, no publishable figure: the vendor states the unit on every
+one of the 170 measured nodes that carry a figure, so this is a refusal of
+an unmeasured shape rather than a branch with a cost.
+
+## n1002-const-workmode-statedworkmode-j-workplac
+
+In `supabase/functions/job-board/normalize.ts`, above: `const workMode = statedWorkMode(j.workplaceType)`
+
+isRemote is Ashby's own boolean, so it outranks free text — but not a
+workplaceType that NEGATES remote, which workModeFrom already refuses
+to let text override. A vendor contradicting itself resolves to null.
+
+## n1003-const-workmode-p-location-hybrid-true
+
+In `supabase/functions/job-board/normalize.ts`, above: `const workMode = p.location?.hybrid === true ? "hybrid" as const`
+
+HYBRID BEFORE REMOTE. SmartRecruiters sets both flags on a hybrid
+posting that also allows remote days; remote-first read those as fully
+remote, inverting detectWorkMode's own documented order ("Hybrid
+remote" is hybrid). Same correction applied to recruitee and rippling.
+
+## n1004-all-tag-tag-block-contents-in
+
+In `supabase/functions/job-board/normalize.ts`, above: `/** All <tag>…</tag> block contents in document order. */`
+
+── Rung-3 vendors ──────────────────────────────────────────────────────────
+Two of these feeds are XML (Personio's official feed, Teamtailor's RSS), so a
+pair of tiny CDATA-aware helpers stands in for a parser dependency. They only
+need to handle the well-formed, machine-generated feeds these vendors emit.
+
+## n1005-const-salperiod-sal-vendorpayperiod-sal
+
+In `supabase/functions/job-board/normalize.ts`, above: `const salPeriod = sal ? vendorPayPeriod(sal.period ?? sal.type) : null;`
+
+THE PERIOD IS salary.period (L7-04). This read salary.type, which the
+API does not send, so "EUR 1350 - 1575" lost its month: a monthly
+figure under 20k got no annual value and one of 20k+ was read as
+annual at a twelfth (nts CZK 35,000/month stored 35,000 a year).
+
+## n1006-employmenttype-normalizeemploymenttype-o
+
+In `supabase/functions/job-board/normalize.ts`, above: `employmentType: normalizeEmploymentType(o.employment_type_code),`
+
+THE CANONICAL HOST, NOT THE EMPLOYER'S VANITY DOMAIN. careers_url is
+a hostname the employer once configured and can abandon — measured
+2026-08-23: 47 vanity hosts NXDOMAIN and 11 more fail TLS, stranding
+233 servable postings behind an Apply button that cannot load (one
+was not even a valid hostname: careers.ferillis, no TLD). The
+canonical {token}.recruitee.com/o/{slug} — which sat here as the
+FALLBACK — answered HTTP 200 for all 233 of them. The vendor
+guarantees the canonical; the vanity host is cosmetics that rots.
+
+## n1007-const-pay-xmlblocks-block-salaryinformat
+
+In `supabase/functions/job-board/normalize.ts`, above: `const pay = xmlBlocks(block, "salaryInformation")[0];`
+
+THE FEED HAS ALWAYS CARRIED COMPENSATION AND THIS LINE SAID IT DID NOT.
+Until now the field below read `null` under a comment asserting the feed
+states no pay, and a repo-wide search for the element's name returned
+nothing — so the claim was both false and load-bearing: Personio was the
+board's least transparent vendor at 0.62% stated pay while the employer's
+own minimum, maximum, currency and period sat unread in a string this
+function was already handed. Verified live 2026-09-27 on five tenants,
+and the element is present on 13.9% of feed positions across a
+200-token random sample (444 of 3,198). Zero extra requests, zero extra
+bytes. Every refusal that keeps this honest lives in personioSalary.
+
+## n1008-employmenttypetext-schedule-null
+
+In `supabase/functions/job-board/normalize.ts`, above: `employmentTypeText: schedule || null,`
+
+The same words, unmapped, so the part-time guard can read them when
+the pay above is an hourly rate. See the field's own docblock for why
+the enum one line up cannot do this job.
+
+## n1009-export-interface-icimsjobdata
+
+In `supabase/functions/job-board/normalize.ts`, above: `export interface IcimsJobData {`
+
+── iCIMS ───────────────────────────────────────────────────────────────────
+iCIMS hosts each employer's modern career site on the employer's OWN domain
+(careers.company.com), and that site's frontend calls a public JSON endpoint:
+  GET https://{careersite-domain}/api/jobs?page={n}&limit=100
+No auth, no cookies, no JS. Each item nests its fields under `data`.
+
+Richest feed of any vendor we ingest: real posted_date (ISO), structured
+city/state/country, employment_type, AND stated salary min/max — the only
+source besides description-mined text that gives us pay directly.
+
+Discovery is two-hop (2026-07-26 census): CDX/CT enumeration finds the
+classic careers-{tenant}.icims.com portal, whose /jobs/search?ss=1&in_iframe=1
+returns a tiny JS redirect naming the modern domain, which is what we store
+as the token. Token = the career-site host itself (dots and all), so the
+fetcher needs no separate mapping.
+
+## n1010-const-workmode-workmodefrom-d-location_t
+
+In `supabase/functions/job-board/normalize.ts`, above: `const workMode = workModeFrom(d.location_type, location, d.title, cat);`
+
+location_type is the vendor's own structured field; text detection only
+fills in when the feed doesn't state one (never guessed from prose).
+
+This arm used to read location_type with its own substring ladder,
+which reproduced BOTH defects of the shared detector's old shape: no
+negation ("Non-Remote" .includes("remote") -> remote, which is how
+"RN (PRN - Not Remote)" reached the Remote filter) and remote tested
+BEFORE hybrid, so location_type "Hybrid Remote" read as remote while
+the identical text in a title read as hybrid. statedWorkMode is the
+one reader now; "office" survives as an onsite word there.
+
+## n1011-country-icimscountry-d-country_code-loca
+
+In `supabase/functions/job-board/normalize.ts`, above: `country: icimsCountry(d.country_code, location),`
+
+country_code is the FEED's own ISO-2 — better than location-text
+detection, same treatment Rippling gets.
+...UNLESS the location text says plainly somewhere else (L7-15): the
+Smoothie King tenant's stores at "KCMO, MO" and "Indian Land, SC"
+carried country_code FR.
+
+## n1012-employmenttype-normalizeemploymenttype-d
+
+In `supabase/functions/job-board/normalize.ts`, above: `employmentType: normalizeEmploymentType(d.employment_type),`
+
+The feed's apply_url ends in /login — an email-collection wall with
+NO job content (verified live 2026-07-26: 9/9 sampled). The sibling
+/job path renders the actual posting; never send a seeker to a
+data-capture page before they can even read the role.
+Already modeled for the salary refusal logic; now a filterable field.
+
+## n1013-export-interface-ripplingjobitem
+
+In `supabase/functions/job-board/normalize.ts`, above: `export interface RipplingJobItem {`
+
+── Rippling ATS ────────────────────────────────────────────────────────────
+Rippling publishes no documented list API; the public board page embeds the
+job list as first-party structured JSON (Next.js __NEXT_DATA__, react-query
+dehydratedState). That's still the vendor's own data channel — user decision
+2026-07-16 to include it — but it's an implementation detail that can move,
+so the vendor canary watches it and the breaker quarantines on drift.
+List items carry NO posted date and NO description (undated postings stay
+honest-undated; boards are light by nature), but DO carry structured
+country codes — better than location-text detection.
+
+## n1014-if-dehydrated-queries-length-return-item
+
+In `supabase/functions/job-board/normalize.ts`, above: `if (dehydrated && queries.length === 0) return { items: [], totalPages: 1 };`
+
+A BOARD WITH NO OPEN ROLES IS NOT A BROKEN PARSER.
+
+Rippling renders a perfectly healthy page for an employer that is not
+hiring: dehydratedState is present and `queries` is an EMPTY ARRAY,
+because there was nothing to prefetch. The old code could not tell that
+from shape drift and returned null for both, so the caller threw
+"rippling payload shape unrecognized" and the board was published to the
+operator as a vendor failure.
+
+Measured 2026-08-25 over 198 of 1,051 rippling boards: 2 hit this (1%),
+matching the 6 standing failures in the live failure list. Both
+whistler-platinum-jobs and elevationcapital return 157KB of valid page
+with dehydratedState present, queries [], zero occurrences of
+"job-posts", and the words "No open" in the rendered text. Neither is
+broken; neither is hiring.
+
+The drift signal is KEPT and made sharper: queries present but carrying
+no job-posts key still returns null, because that is what a real shape
+change looks like. Only the empty array is read as an honest zero — the
+same distinction the personio empty-feed fix drew earlier.
+
+## n1015-const-sitemodes-locs-map-l-statedworkmod
+
+In `supabase/functions/job-board/normalize.ts`, above: `const siteModes = locs.map((l) => statedWorkMode(l.workplaceType));`
+
+Per-location workplaceType read through the shared label reader, so a
+negated or unexpected spelling cannot invert here either. HYBRID is
+asked first: a posting with one hybrid site and one remote site is
+hybrid, matching detectWorkMode's own order.
+`.some(m => m === …)` and not `.includes("…")`: these are already
+CLASSIFIED modes, but a substring call on a work-mode word inside a
+vendor arm is the exact shape of the defect, and the guard that keeps
+a seventh ladder out bans it outright rather than trying to tell the
+two apart by eye.
+
+## n1016-export-interface-paylocityjobitem
+
+In `supabase/functions/job-board/normalize.ts`, above: `export interface PaylocityJobItem {`
+
+── Paylocity ─────────────────────────────────────────────────────────────
+Paylocity publishes no documented list API; the public board page at
+recruiting.paylocity.com/recruiting/jobs/All/{token} embeds the FULL job
+list as first-party JSON in a page-global pageData assignment. A
+Rippling-class source — the vendor's own data channel, but an
+implementation detail that can move, so the extractor's null is a drift
+signal and never an empty board. Live-captured shape 2026-08-30 across
+three boards (24 + 21 + 17 postings): items carry JobId, JobTitle,
+LocationName, a real PublishedDate (ISO with offset), HiringDepartment,
+a structured IsRemote boolean, and a JobLocation whose Country is a
+"USA"-style word, not ISO-2. IndeedRemoteType also rides along but its
+enum is unmeasured (2 on every observed row, remote or not) — only
+IsRemote is trusted, per the trinary-or-nothing work-mode contract.
+
+## n1017-filter-j-j-isinternal-true
+
+In `supabase/functions/job-board/normalize.ts`, above: `.filter((j) => j.IsInternal !== true)`
+
+The public payload can embed internal-only postings; their Details page
+sits behind a login wall, and verify-all already refuses to count them —
+ingest and verify must agree on what a posting is.
+
+## n1018-const-sitename-string-j-locationname-tri
+
+In `supabase/functions/job-board/normalize.ts`, above: `const siteName = String(j.LocationName ?? "").trim();`
+
+LocationName used to win unconditionally over the payload's own
+City/State. On this vendor it is frequently the employer's BUILDING or
+cost centre rather than a place — see isHomeOfficeSiteLabel for the
+39-of-39 census — so a site label yields to the structured fields the
+same payload already carries. Zero extra requests: City and State
+arrive in the list payload fetchPaylocity downloads.
+
+THE SUBSTITUTION IS UNCONDITIONAL ON IsRemote, AND THAT IS A DECISION.
+A vendor-stated-remote row whose LocationName is a site label loses the
+label and is displayed at the City/State from the SAME payload — the
+employer's own structured place, not an inference of ours — while its
+mode stays remote from the flag. A cost-centre code ("1000-Home
+Office") is worth less to a reader than the city the employer typed
+beside it, and every other remote posting on this board already prints
+whatever place its vendor states. Live count of rows this affects: 0
+(IsRemote is false on 39 of 39 census rows), so it is a decided
+behaviour with no shipping footprint, and the guard asserts it.
+
+## n1019-const-modelocation-sitelabel-citystate-l
+
+In `supabase/functions/job-board/normalize.ts`, above: `const modeLocation = siteLabel ? cityState : location;`
+
+IsRemote is the vendor's structured field; text detection only fills
+in when the feed doesn't state one (never guessed from prose). A site
+label is never handed to the detector even when it has to stay as the
+displayed location (no City/State in the payload): the name of a
+building is not a statement about working from home. IsRemote false is
+silence, not onsite — the SmartRecruiters false/false precedent — so
+what these rows resolve to is whatever the TITLE states, or NULL.
+
+AND THE DEPARTMENT IS MASKED TOO, or the fix has a hole exactly the
+shape of the defect. An employer whose site labels read "HOME OFFICE
+DEPARTMENTS" names departments the same way, and the department string
+reached the detector untouched — so the building came back in through
+the other door while the location yielded correctly. A department is a
+unit of the org chart, never a policy; the TITLE is left alone because
+there the phrase is the posting's own words. The repair migration's
+evidence string masks the same column for the same reason, so the two
+runtimes cannot disagree about these rows.
+
+## n1020-salary-null
+
+In `supabase/functions/job-board/normalize.ts`, above: `salary: null,`
+
+The list payload's Description is a ~110-char teaser, not the JD —
+storing it would hand salary mining and the fit scan a stub that
+looks like a document. Null is honest; the detail page carries the
+full text if a sweep ever wants it.
+
+## n1021-country-usa-us-u-s-a
+
+In `supabase/functions/job-board/normalize.ts`, above: `country: /^(?:usa|us|u\.s\.a?\.?|united states(?: of america)?)$/i.test(rawCountry)`
+
+Country arrives structurally but as a word ("USA"), not ISO-2 — map
+the stated value, and fall back to text detection over the whole
+location for anything unrecognized.
+
+## n1022-export-interface-adpnamecodedfield
+
+In `supabase/functions/job-board/normalize.ts`, above: `export interface AdpNameCodedField {`
+
+── ADP Workforce Now ─────────────────────────────────────────────────────
+The career-center SPA at workforcenow.adp.com is a JS shell, but the JSON it
+renders from is a public unauthenticated endpoint on the same host
+(…/careercenter/public/events/staffing/v1/job-requisitions) — the page's own
+data channel, confirmed by watching the live page's network calls
+2026-08-31. First-party but undocumented, so the canary/breaker discipline
+applies, same as rippling and paylocity.
+
+Live-measured shape, 2026-08-31, 100 requisitions across four real boards
+(7 + 13 + 82 + 19): every row carries the requisition id the detail
+endpoint takes, a title and a real posting timestamp; a numeric share id
+arrives in the string custom fields on 79/79 external rows and is the value
+the SPA itself appends to a posting's share link; the employer's own salary
+display string sits beside it on 65/79; department strings existed but were EMPTY on
+all 100 (organizationalUnits: empty on all 100 as well), so department ships
+only when a row actually states one. NOWHERE in any payload — list, detail,
+branding config, page shell — does the employer's NAME appear; the catalog
+entry is the only thing that names the board, exactly the oracle situation.
+
+## n1023-const-adp_salary_freq-record-string-stri
+
+In `supabase/functions/job-board/normalize.ts`, above: `const ADP_SALARY_FREQ: Record<string, string> = { hourly: "per hour", annually: "per year", monthly: "per month", weekly: "per week" };`
+
+The vendor's own salary display string ("22.50 To 26.40 (USD) Hourly",
+"70000.00 To 85000.00 (USD) Annually") — reshaped into the board's idiom
+when it parses, passed through verbatim when the employer typed something
+else. This is the string the SPA itself gates display on, so using it never
+surfaces a range the employer chose not to render; payGradeRange also rides
+the payload but exists on rows whose display string is absent, and mining it
+would publish figures the career site does not show.
+
+## n1024-return-number-isinteger-n-n-tolocalestri
+
+In `supabase/functions/job-board/normalize.ts`, above: `return Number.isInteger(n) ? n.toLocaleString("en-US") : n.toFixed(2);`
+
+Whole figures group ("70,000"); fractional ones keep their cents
+("22.50"), because an hourly rate with the cents lopped off reads as a
+different number.
+
+## n1025-const-us_state_tail-al-ak-az-ar
+
+In `supabase/functions/job-board/normalize.ts`, above: `const US_STATE_TAIL = /^(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|R`
+
+Country never arrives as a structured field — measured 2026-08-31, zero of
+67 requisition locations carried a country code on the address — so it is
+read from the tail of the location display string, which on every
+country-bearing sample ends with a two-letter code (usually preceded by a
+two-letter region). Two traps live here: the two-letter word people write
+for Britain that is NOT its ISO code (normalizePaylocity paid for that one
+already), and the tail of a countryless city-plus-state string being a US
+state that IS some other country's ISO code — California/Canada is only the
+loudest of a dozen such collisions. A state-shaped tail is read as a country
+only when it follows another two-letter code (the measured three-segment
+shape); otherwise the string falls to detectCountry, whose state patterns
+read it as US.
+
+## n1026-filter-j-adpfield-j-customfieldgroup-ind
+
+In `supabase/functions/job-board/normalize.ts`, above: `.filter((j) => adpField(j.customFieldGroup?.indicatorFields, "InternalPostingFlag")?.indicatorValue !== true)`
+
+The public payload marks internal-only postings with an indicator; their
+apply flow sits behind the employee login. Same line paylocity drew:
+ingest and verify must agree on what a posting is, and neither counts
+these.
+
+## n1027-const-shareid-string-adpfield-j-customfi
+
+In `supabase/functions/job-board/normalize.ts`, above: `const shareId = String(adpField(j.customFieldGroup?.stringFields, "ExternalJobID")?.stringValue ?? "").trim();`
+
+The numeric share id the SPA's own URL builder appends to the
+career-center link — confirmed against the app bundle and against
+Google-indexed posting URLs. Distinct from the API's requisition id,
+which the posting id and the detail sweep use. A row without one still
+links to the board page, where the posting is one click away.
+
+## n1028-const-employmenttype-normalizeemployment
+
+In `supabase/functions/job-board/normalize.ts`, above: `const employmentType = normalizeEmploymentType(`
+
+workLevelCode is client-authored ("Part-Time Hourly", "Full Time
+Employee", "Temporary/seasonal" — all measured live); pay-basis and
+filler words are stripped so the shared mapper sees the employment
+kind, and anything it still doesn't recognize stays null.
+
+## n1029-export-interface-ukgopportunity
+
+In `supabase/functions/job-board/normalize.ts`, above: `export interface UkgOpportunity {`
+
+── UKG Pro Recruiting ────────────────────────────────────────────────────
+
+The candidate portal's own list endpoint, unauthenticated. Verified live
+2026-09-01 against Sub-Zero Group: POST .../JobBoardView/LoadSearchResults
+answers { opportunities[], totalCount, locations } with real ISO PostedDate
+values (the sampled board's newest was that morning).
+
+TOKEN IS COMPOUND — `pod~TENANT~boardGuid` — because none of the three parts
+is derivable from the others. UKG runs several recruiting pods and a tenant
+lives on exactly one of them (recruiting vs recruiting2), and the board GUID
+is not guessable: a fabricated one answers 404, which is how this shape was
+confirmed rather than assumed. The census reads all three from the crawled
+URL, so nothing has to be resolved later.
+
+## n1030-joblocationtype-number-null
+
+In `supabase/functions/job-board/normalize.ts`, above: `JobLocationType?: number | null;`
+
+THE EMPLOYER'S OWN DROPDOWN, on every row of the list this lane already
+POSTs. Declared as a number because that is what the payload carries; see
+ukgLocationTypeMode below for the vocabulary and why nothing else is read.
+
+## n1031-localizedname-string-null
+
+In `supabase/functions/job-board/normalize.ts`, above: `LocalizedName?: string | null;`
+
+THE EMPLOYER'S OWN LABEL FOR THIS SITE, and the second half of it. Both
+are present on every location node of every captured row (41,588 nodes,
+33,497 rows, 1,291 boards, 2026-09-27) and either one can be the only
+place the employer's own "Remote - Indianapolis, IN" appears: the name is
+non-empty on 22,713 nodes, the description on 31,935, and 174 rows state
+a mode in the description with the name blank. Reading one and not the
+other is how the contradiction gate below went blind.
+
+## n1032-const-enummode-ukglocationtypemode-j-job
+
+In `supabase/functions/job-board/normalize.ts`, above: `const enumMode = ukgLocationTypeMode(j.JobLocationType);`
+
+THE EMPLOYER CHOSE THIS FROM A DROPDOWN AND WE WERE DROPPING IT. Every
+row of this list carries JobLocationType — present on 33,497 of 33,497
+rows in a CENSUS of every UKG board in JOB_SOURCES (1,291 boards, page 0
+of each, 2026-09-27), 59.1% of them carrying a value (1 -> 16,148,
+null -> 13,703, 0 -> 2,409, 2 -> 1,237, and no other integer at all).
+That is a VENDOR-side share of the rows this lane reads first, not the
+share of our own servable inventory; the note in index.ts states the
+like-with-like reach as a range. The comment that used to sit under
+`workMode` said this list "states no remote flag of its own": false.
+
+## n1033-const-vendorlabels-j-locations
+
+In `supabase/functions/job-board/normalize.ts`, above: `const vendorLabels = (j.Locations ?? [])`
+
+THE EMPLOYER'S OWN LABELS FOR EVERY SITE ON THE REQUISITION, which the
+line above `location` throws away. `location` is the first site's
+City/State and only falls back to a label when that address is empty,
+so on any row the vendor placed properly the employer's own
+"Remote - Indianapolis, IN" was DELETED BEFORE the contradiction check
+below ever saw it — and the check then compared the dropdown against a
+string the remote statement had been removed from and published the
+enum's On-site. MEASURED on the census: 26 rows were served On-site
+while a vendor label on the same requisition carried an explicit remote
+word, and both rows the audit's verifier named as the evidence for
+having this gate at all ("Remote - Indianapolis, IN" and "Remote - Los
+Angeles, CA", dropdown On-site) were among them. With the labels read,
+that count is 0.
+
+## n1034-const-textmode-detectworkmode
+
+In `supabase/functions/job-board/normalize.ts`, above: `const textMode = detectWorkMode(`
+
+THE HEAD-OFFICE TOKEN COMES OUT OF ALL THREE VENDOR STRINGS FIRST, and
+the title keeps it — see withoutHomeOfficeToken for the census. Adding
+the labels unmasked would have printed remote on 130 rows whose label
+names a building, which is the fabrication the other half of this same
+bundle removes from Paylocity.
+
+## n1035-const-workmode-enummode-textmode-enummod
+
+In `supabase/functions/job-board/normalize.ts`, above: `const workMode = enumMode && textMode && enumMode !== textMode ? null : (enumMode ?? textMode);`
+
+REFUSE ON CONTRADICTION — the workdayDetailPlace rule, one field over.
+MEASURED on the census above: both sides speak on 902 rows and agree on
+762 of them (84.5%). The 140 disagreements include 37 where the dropdown
+says On-site while the employer's own label says Remote and 9 where it
+says On-site against their own Hybrid — taking the dropdown
+unconditionally would print In-office on a posting whose own location
+string says Remote, the fabrication this board refuses. So a
+contradiction resolves to null, the documented value for "we know the
+two statements differ, not which is true". The refusal is SYMMETRIC: 42
+of the 140 are a Hybrid dropdown under a label reading Remote and 39 the
+reverse, and both write nothing.
+
+AND `?? textMode`, NEVER THE BARE ENUM: the dropdown is blank on 501 of
+the 1,403 rows whose own words state a mode (35.7%), so returning
+enumMode alone would go dark on them. An existing row is shielded by the
+refresh path's stated-only write, but a NEW arrival is not.
+
+## n1036-salary-null
+
+In `supabase/functions/job-board/normalize.ts`, above: `salary: null,`
+
+BriefDescription is a summary the list ships for free; the full JD
+and the structured pay live on the detail page, which the
+description sweep reads. Storing the summary here would leave the
+sweep nothing to fill, so it is deliberately not stored.
+
+## n1037-export-interface-pinpointposting
+
+In `supabase/functions/job-board/normalize.ts`, above: `export interface PinpointPosting {`
+
+── Pinpoint ──────────────────────────────────────────────────────────────
+Documented public first-party JSON: https://{token}.pinpointhq.com/postings.json
+→ { data: [...] }. Structured compensation (min/max/currency/frequency,
+gated by compensation_visible) and a workplace_type enum; NO posted date —
+undated is honest, like BambooHR. Live-captured shape 2026-07-17
+(agencyanalytics).
+
+## n1038-if-freq-min-_000-return-null
+
+In `supabase/functions/job-board/normalize.ts`, above: `if (!freq && min < 1_000) return null;`
+
+A small figure with NO stated frequency ("31.25") is almost certainly an
+hourly rate we can't prove — displaying it bare would be ambiguous and
+the salary parser could mis-annualize it. When in doubt, leave it out.
+
+## n1039-const-wd_today-b-today-hoy-aujourd
+
+In `supabase/functions/job-board/normalize.ts`, above: `const WD_TODAY = /\b(today|hoy|aujourd'?hui|heute|vandaag|hoje|oggi|i dag|idag|今天|本日)\b|ausgeschrieben heute/i;`
+
+THE 30-DAY CAP WAS ENFORCED IN ENGLISH ONLY.
+
+Every branch of this parser used to require the literal word "posted", and
+Workday localises postedOn per tenant. So a Spanish tenant saying
+"Publicado hace más de 30 días" — the employer stating, in its own feed,
+that the job is past our cap — parsed as null, which means undated, which
+means kept and served with no age under a badge reading "30-day freshness
+cap".
+
+Measured 2026-08-24: 23,944 servable Workday rows carry no date across 203
+boards. Probing the top 90 of those boards (21,206 rows, 88.6%) split them
+cleanly: 60 boards (13,910 rows) genuinely have the field disabled and are
+honestly undated, while 30 boards (7,296 rows) state an age we were
+throwing away. A full census of one of them, barcelo~wd3 (502 rows, 100%
+undated, 100% servable), found 416 of 522 feed items reading "Publicado
+hace más de 30 días" — 79.7%. Pooled across 22 localized boards, 33.1% of
+sampled items state an age past 30 days.
+
+So the parser stops looking for an English verb and looks for what every
+locale actually carries: a NUMBER, a DAY WORD, and optionally a
+MORE-THAN marker. Anything without a day word returns null — one tenant
+(tutorperini~wd12) puts a location in this field, "Menlo Park, CA", and a
+parser that guessed at bare digits would date postings from street
+numbers.
+
+## n1040-const-fetchedat-date-now
+
+In `supabase/functions/job-board/normalize.ts`, above: `const fetchedAt = Date.now();`
+
+ONE CLOCK READING FOR THE WHOLE FETCH, and it is not a micro-optimisation.
+
+Workday states an age in days, so every row reading "Posted 3 Days Ago"
+is the SAME stated date. Calling Date.now() inside the map gave each of
+them a timestamp a few milliseconds apart, which invented an ordering the
+vendor never expressed — and that ordering silently disabled the
+employer-spread weave downstream, which may only permute rows sharing an
+effective_posted (crossing that boundary would claim a recency the row
+does not have). With every tie group reduced to one row, the weave had
+nothing to interleave and a page could fill with one employer: measured
+2026-08-24, runs of 12-14 consecutive rows from cigna and centene under a
+caption promising "spread across employers so one company can't fill the
+page".
+
+Sharing one reading restores the tie groups, which is also simply true:
+these rows are equally recent to the precision the employer published.
+
+## n1041-const-workmode-detectworkmode-loc-string
+
+In `supabase/functions/job-board/normalize.ts`, above: `const workMode = detectWorkMode(loc, String(j.title ?? ""));`
+
+The live inversion of 2026-09-09 came through here: the title
+"Application Analyst II-Full Time- Days - Cupid/Radiant- NON-REMOTE"
+has a word boundary at the hyphen, so the old bare \bremote\b matched.
+
+## n1042-postedat-days-null-new-date-fetchedat
+
+In `supabase/functions/job-board/normalize.ts`, above: `postedAt: days !== null ? new Date(fetchedAt - days * 86_400_000).toISOString() : null,`
+
+Workday's list states a relative age ("Posted 3 Days Ago") — that IS
+the company's stated date, at day precision. Convert to absolute
+(fetch time − N days, ±1d) so these postings carry provenance and
+participate in date filters and the stated-date medians. "30+ Days
+Ago" is unbounded — never dated, dropped via _stale.
+DATED EVEN WHEN PAST THE CAP, and that is the point. A row dropped
+for being stale used to be stripped inside this normalizer, so the
+ingest diff never saw it — an ALREADY-STORED posting simply vanished
+from the feed, which the absence machinery reads as the employer
+taking it down, and (its posted_at being null) logs to the closure
+log as a real takedown. The employer took nothing down; we aged it
+out. Carrying the date lets the shared ingest freshness filter claim
+it as an age-out instead, which is both true and already handled.
+
+For a "30+ days" bucket the exact date is unknowable, so this is a
+LOWER BOUND (31 days), never a precise claim — and the row is
+dropped on that basis, so no reader ever sees the figure.
+
+## n1043-filter-j-j-applyurl-j-title
+
+In `supabase/functions/job-board/normalize.ts`, above: `.filter((j) => j.applyUrl !== "" && j.title !== "" && j.id !== 'workday:${token}:')`
+
+_stale is no longer filtered here: the shared ingest path applies the
+freshness cap to every vendor uniformly (isDatedBefore -> agedOutIds),
+and routing Workday through it is what keeps an aged-out posting out of
+the closure log. The flag stays on the object for callers that want it.
+
+## n1044-export-interface-oraclereq
+
+In `supabase/functions/job-board/normalize.ts`, above: `export interface OracleReq {`
+
+── Oracle Recruiting Cloud (Oracle Fusion HCM) ───────────────────────────
+Large enterprises that run Oracle Fusion HCM publish their careers site off a
+first-party public REST API — the same data the tenant serves its own
+applicants, no auth, no scraping:
+  GET /hcmRestApi/resources/latest/recruitingCEJobRequisitions
+      ?onlyData=true&expand=requisitionList&finder=findReqs;siteNumber=CX_1,limit=N,offset=M
+Token is a compound `tenant~region~site` (the three pieces the host and
+finder need); the host is {tenant}.fa.{region}.oraclecloud.com.
+
+Census note (2026-07-24): identity is NOT in this feed — the tenant is an
+opaque 4-letter code and only ~41% of tenants name themselves anywhere. So
+ORC boards are added ONLY as hand-verified sources.ts entries whose display
+name was confirmed against that tenant's own postings; there is no automatic
+discovery path. One tenant (eubt.fa.us6) serves 78k system-generated template
+requisitions — never add a tenant without reading its titles first.
+
+## n1045-const-city-xmlvalue-item-tt-city
+
+In `supabase/functions/job-board/normalize.ts`, above: `const city = xmlValue(item, "tt:city");`
+
+City first, then country — the same "Place, Country" shape every other
+vendor produces, so detectCountry() downstream resolves it with no
+vendor-specific branch. Either half alone is still worth storing.
+
+## n1046-const-status-xmlvalue-item-remotestatus
+
+In `supabase/functions/job-board/normalize.ts`, above: `const status = (xmlValue(item, "remoteStatus") ?? "").toLowerCase().trim();`
+
+Teamtailor's own vocabulary, matched WHOLE (never by substring), so
+there is no negation surface here: "fully" is its word for remote and
+means nothing to the shared reader. "none"/"temporary" stay null — see
+the sample note above. Anything outside the vocabulary falls through
+to the one shared label reader rather than a second ladder.
+
+## n1047-const-remotesaid-statedbool-det-remotein
+
+In `supabase/functions/job-board/normalize.ts`, above: `const remoteSaid = statedBool(det.RemoteIndicator ?? d.RemoteIndicator);`
+
+Federal remote/telework is stated structurally (under UserArea.Details;
+the top level carries neither), and text detection only fills the gap.
+Both stated false is a stated on-site post.
+
+## n1048-const-cc-string-first-countrycode-trim
+
+In `supabase/functions/job-board/normalize.ts`, above: `const cc = String(first?.CountryCode ?? "").trim();`
+
+The country the posting names (CountryCode carries a country NAME,
+"Germany"), else the place; a post that states neither, or names a US
+territory (its own CountryCode), is US (S8-083).
+
+## n1049-block
+
+In `supabase/functions/job-board/normalize.ts`, above: `/**`
+
+── Oracle sub-sites: one requisition, one stored row ─────────────────────
+An Oracle tenant publishes the SAME requisition on several "career sites"
+(CX_1, CX_3, CX_1001 ...): a French mirror, an audience view (Veterans,
+Apprenticeship), a brand or region partition. Each site is its own catalog
+token and the posting id is `oracle:<token>:<reqId>`, so before 2026-09-09
+every mirror stored its own copy — measured live that day: Clean Harbors
+EN/FR 703 = 703 with 200/200 sampled ids identical, Cummins' seven audience
+views of one ~710-req tenant, Hearst's three 148-row mirrors. Board-wide
+estimate from a 9-tenant/32-token sample: ~23k duplicate servable rows
+(defensible range 12k-52k), every one inflating an employer's open count.
+
+THE RULE IS PER (tenant, reqId), NEVER PER SITE NAME. The same sample
+refuted every name-based shortcut: "French" sites were exact mirrors at
+Clean Harbors and Tremco and DISJOINT at Chartwell and Penske (their own
+reqIds); eexs' "All" site was NOT a superset of its "All Community" site
+(19 of 78 reqs unique to the latter); Coherent's 17 country sites overlap
+0/61. So the identity is the requisition id within the tenant, sites are
+RANKED, and a requisition is stored once, under the best-ranked site that
+lists it. A requisition listed on no better-ranked site survives under
+whichever site carries it, so a sub-site-only req is never lost.
+
+The helpers here are pure so vitest can prove the property without Deno:
+the fetcher (index.ts) supplies the catalog ranks and the rows the database
+currently holds; the plan says what to drop, what to shed, what to keep.
+
+## n1050-const-mine-stored-get-reqid
+
+In `supabase/functions/job-board/normalize.ts`, above: `const mine = stored.get(reqId);`
+
+Stored here, not served here this visit. On a FULL read that is the
+employer no longer listing it on this site; if a live sibling still
+lists it the requisition is open and this copy is shed as our action
+instead of walking into the absence path as a closure. On a windowed
+read nothing can be concluded, and the ordinary grace logic applies.
+
+## n1051-import-job_categories-from-categories-ts
+
+In `supabase/functions/job-board/filters.ts`, above: `import { JOB_CATEGORIES } from "./categories.ts";`
+
+One normalisation for every board filter, shared by the gate, the row query,
+the count and the response self-check.
+
+WHY THIS FILE EXISTS
+Every filter defect this board has shipped has had the same shape: two places
+computed the "same" filter differently, and the disagreement was invisible
+until somebody counted rows.
+
+  * category="Engineering" satisfied the `unfiltered` test (which compared the
+    RAW casing) while the query lower-cased it. The board concluded no count
+    was needed and published the whole catalogue's total — 587,793 — above
+    3,949 correctly filtered results.
+
+  * experience=["bogus"] met a gate that only inspected
+    `typeof body.experience === "string"`, so an array was never examined and
+    never reported. The query then evaluated
+    String(["bogus"]).split(",").filter(isExperienceBand) -> [] and bound NO
+    predicate at all. Measured live on 2026-07-29, before this file existed:
+    the returned bands were null 15 / entry 12 / mid 8 / senior 4 / expert 1.
+    That is the unfiltered board, served as though the filter had applied,
+    with an empty ignoredFilters. The fence in this codebase is that a filter
+    is NEVER silently ignored; that was a direct breach, and it survived the
+    morning's fix precisely because that fix patched the string path only.
+
+THE RULE ENCODED HERE
+A filter is REQUESTED when the caller sends anything non-empty for it, and
+APPLIED only when normalisation yields a value the query can bind. Requested
+but not applied is ALWAYS named back to the caller.
+
+The point is not that this validation is cleverer. It is that the gate, the
+query, the count and the self-check now read the SAME `applied` object — so
+they cannot drift apart, not because four sites were each remembered, but
+because there is only one site.
+
+## n1052-type-_kindsarecovered-_unlistedkind-exte
+
+In `supabase/functions/job-board/filters.ts`, above: `type _KindsAreCovered = [_UnlistedKind] extends [never] ? true`
+
+If sources.ts gains a vendor this list does not carry, `_UnlistedKind` stops
+being `never`, this alias becomes a tuple, and `true` no longer assigns —
+deno check then prints the missing vendor's name in the error.
+
+## n1053-excludeagencies
+
+In `supabase/functions/job-board/filters.ts`, above: `"excludeAgencies",`
+
+Bound as of 20260901090000. It shipped blind on purpose — no RPC took a
+parameter for it — and that cost ranked retrieval to every searcher who
+opted out of staffing agencies. The migration binds it in both the search
+and the count function, so the trade is gone.
+
+## n1054-hasstatedpay
+
+In `supabase/functions/job-board/filters.ts`, above: `"hasStatedPay",`
+
+Bound as of 20260826041500. Both were previously blind, which meant a
+stated-pay search could never use the ranked path at all — it fell through
+to recency and lost ranking, the fuzzy tier and the semantic tier with it.
+
+## n1055-salaryceiling
+
+In `supabase/functions/job-board/filters.ts`, above: `"salaryCeiling",`
+
+Bound as of 20260827210000. All five were blind, and any ONE of them
+routed the search away from ranking, the fuzzy tier, the exact-word tier
+and semantic — a pay ceiling turned "nurse" into date-ordered ILIKE.
+vendors rides the existing p_sources parameter (merged with sendableOnly
+in sendableSourcesParam); the other four have parameters of their own.
+
+## n1056-a-hasstatedpay-p_pay_stated-true
+
+In `supabase/functions/job-board/filters.ts`, above: `...(a.hasStatedPay ? { p_pay_stated: true } : {}),`
+
+p_pay_stated CARRIES THE SAME QUESTION buildQuery ASKS, and the question
+is decided in SQL, not here. It asks whether the employer put a figure in
+the verbatim pay field — NOT whether we annualised it — in all three
+functions that take this parameter (20260927034117). This key is where the
+two runtimes meet, so a predicate moved in one and not the other shows up
+as a count that describes a different population than the page under it:
+the 2026-07-25 work-mode defect. The cross-runtime guard in
+src/test/the-pay-controls-say-what-they-compare.test.tsx reads both sides
+and fails if the SOURCES ever name different columns again.
+
+THAT GUARD CANNOT SEE THE DEPLOY WINDOW, and the window is the same defect
+on a timer: it reads source files, not deployed versions, and these two
+runtimes ship down different pipes. The cover for that is in cappedCount
+(job-board index.ts), which stands down from this RPC's count whenever a
+stated-pay request would get an answer the two versions could disagree
+about, and in the category rail beside it. Both are dated and removable;
+verify-deploy's 5y section says when.
+
+## n1057-const-asbands-v-unknown-string
+
+In `supabase/functions/job-board/filters.ts`, above: `const asBands = (v: unknown): string[] =>`
+
+Accepts both shapes clients actually send: an array (["senior"]) and a comma
+string ("senior,expert"). The previous code leaned on String(["a","b"])
+happening to join with a comma — true, but accidental, and it collapsed a
+single bad member to [] with no signal.
+
+## n1058-const-country_limit
+
+In `supabase/functions/job-board/filters.ts`, above: `const COUNTRY_LIMIT = 5;`
+
+MULTI-SELECT, comma-joined, exactly like category — and validated the same
+way, per element. Two letters or it never reaches the split. "United
+Kingdom" or "GB; drop" cannot become a predicate, and a list whose members
+are ALL unusable is a refused filter, which is always named.
+Five. Country is cheap by comparison (an indexed equality per member) but
+US-heavy sets are not, and nothing on screen will offer more than a handful.
+
+## n1059-if-sent-body-country-country-countryaske
+
+In `supabase/functions/job-board/filters.ts`, above: `if (sent(body.country) && (!country || countryAsked.length > COUNTRY_LIMIT) && !ignored.includes("country")) ignored.push("country");`
+
+The vendor rule, not the silent slice: a truncated list is REPORTED. Asking
+for six countries, getting five, and being told all six applied reads as
+"the board carries nothing in the sixth" — the same shape as the
+maxAgeDays clamp incident. Only API/URL callers can exceed the cap (the UI
+stops at five), and the API caller is exactly who ignoredFilters exists for.
+
+## n1060-const-category_limit
+
+In `supabase/functions/job-board/filters.ts`, above: `const CATEGORY_LIMIT = 3;`
+
+MULTI-SELECT, and the trimming is load-bearing rather than tidy: the SQL
+splits on a BARE comma and does not trim, so " design , legal " matched
+nothing at all — verified live, it returns zero. Every element is trimmed,
+lowercased and checked before it is allowed near the query.
+
+Unknown slugs are dropped rather than named: they cannot match a posting,
+and the SQL already treats them as inert. Only a request whose categories
+are ALL unusable has had its filter refused, and that one is named.
+THREE, AND THE NUMBER IS MEASURED. search_jobs q=manager: 1 field
+0.26-0.35s, 3 fields ~0.45s, 6 big fields 0.75-0.79s; q=nurse across 7
+values 1.24-1.89s. Six is the same cost class as the two-value cliff the
+two-subset pager exists to avoid, so the cap sits below it rather than at
+a round number.
+
+## n1061-const-wantsuncategorised-category-null-c
+
+In `supabase/functions/job-board/filters.ts`, above: `const wantsUncategorised = category !== null && !category.split(",").includes("other") && body.includeUncategorised === true;`
+
+Only meaningful alongside a category — with no category the bucket is
+already included, so accepting it there would be a no-op that reads like a
+setting.
+"other" already IS the unsorted bucket, so asking to add it to a selection
+that contains it is a no-op that would read like a setting.
+
+## n1062-const-sortingbysalary-string-body-sort-s
+
+In `supabase/functions/job-board/filters.ts`, above: `const sortingBySalary = String(body.sort ?? "") === "salary";`
+
+NOT AVAILABLE UNDER A SALARY SORT, and refused out loud rather than served
+slowly or as a 500.
+
+Measured 2026-08-06 against production: `category=other + country=DE +
+sort=salary` returns HTTP 500 after 17.7s ON ITS OWN, with no opt-in
+involved — ordering the unsorted bucket by salary cannot use the category
+index, and `other` is 162,800 rows. That is a PRE-EXISTING defect (`other`
+has always been selectable) and it is not fixed here; what is fixed is the
+opt-in no longer walking into it, because the two-subset pager queries
+`other` as one of its halves.
+
+Pushed onto `ignored` because this file's contract is that a filter is
+never silently dropped — the caller is told which one did not apply.
+
+## n1063-const-excludeagencies-body-excludeagenci
+
+In `supabase/functions/job-board/filters.ts`, above: `const excludeAgencies = body.excludeAgencies === true;`
+
+The agency opt-out, literal true only for the same reason — and it may
+ONLY ever narrow. A widening reading ("show agencies too") does not
+exist: agencies are served by default under the charter, so the flag's
+absence is already the widest answer, and any bug that let this admit
+rows would be the tier-escalation defect (a filter that widens a search).
+
+## n1064-const-wmasked-array-isarray-body-workmod
+
+In `supabase/functions/job-board/filters.ts`, above: `const wmAsked = (Array.isArray(body.workMode) ? body.workMode : String(body.workMode ?? "").split(","))`
+
+A LIST, LIKE EVERY OTHER CLOSED-SET FILTER HERE.
+
+category, country, experience and vendor all accept several values; work
+mode alone accepted one, so "remote or hybrid" — the ordinary thing a
+person wants — could not be asked. Measured 2026-08-27: GB has 1,476 remote
+and 3,765 hybrid, so the either-question is 5,241 postings against the
+1,476 a searcher could actually reach.
+
+STILL A STRING, comma-joined, and that is deliberate: the type stays
+`string | null` so isUnfiltered, filterViolations, the contract test and the
+RPC signature all need no new shape — and an unchanged p_work_mode signature
+is what keeps a PGRST203 overload off the table.
+
+Validated per element and deduped, capped at the whole domain. A request
+whose every element is unusable is named in `ignored`, exactly as before;
+a request with one good and one bad element keeps the good one and still
+reports, which is the rule `experience` follows two blocks below.
+
+## n1065-if-sent-body-workmode-wmvalid-length
+
+In `supabase/functions/job-board/filters.ts`, above: `if (sent(body.workMode) && wmValid.length !== new Set(wmAsked).size) ignored.push("workMode");`
+
+Compare against the DEDUPED asked set, or a request that merely repeats a
+valid value ("remote,remote") or varies its case ("Remote,remote") reports
+the filter as ignored though every value bound — a false "we couldn't do
+that" on a correct request. Casing already folded above; dedup here.
+
+## n1066-const-etasked-array-isarray-body-employm
+
+In `supabase/functions/job-board/filters.ts`, above: `const etAsked = (Array.isArray(body.employmentType) ? body.employmentType : String(body.employmentType ?? "").split(","))`
+
+Employment type: the same validated-comma-list shape, wire name
+`employmentType`. Casing folds (Full_Time binds), junk is dropped and
+NAMED in ignoredFilters — a filter silently not applied is the five-
+filters incident again.
+
+## n1067-const-bandsasked-asbands-body-experience
+
+In `supabase/functions/job-board/filters.ts`, above: `const bandsAsked = asBands(body.experience);`
+
+Report when ANY requested band was dropped, not only when every one was. A
+caller asking for senior+bogus gets senior and must still be told bogus did
+nothing — reporting only total loss is how ["senior","bogus"] stayed silent.
+
+## n1068-const-explicitfloor-number-body-salaryfl
+
+In `supabase/functions/job-board/filters.ts`, above: `const explicitFloor = Number(body.salaryFloor);`
+
+0 is the UI's "off" position for both of the next two, not a rejected value.
+Reporting it would hang a warning on every unfiltered page.
+PAY TYPED INTO THE SEARCH BOX becomes this filter, but only when the
+visitor did not set it explicitly. Someone who moved the slider to $150k
+and then typed "100k engineer" meant the slider; silently lowering their
+floor would widen a search they deliberately narrowed.
+
+Derived HERE rather than at the call site because this file is the single
+filter derivation — reading body.salaryFloor anywhere else is exactly what
+src/test/board-filter-contract.test.ts forbids, and it forbids it because
+two derivations drift and the count starts answering a different question
+from the page.
+
+## n1069-const-ceiln-number-body-salaryceiling
+
+In `supabase/functions/job-board/filters.ts`, above: `const ceilN = Number(body.salaryCeiling);`
+
+THE OTHER END OF THE BAND, and it is derived AFTER the floor on purpose:
+the floor it must clear is the DERIVED one, which can come from the search
+box ("100k engineer") rather than from a slider. Comparing against
+body.salaryFloor would let {q:"200k nurse", salaryCeiling:150000} through as
+a band whose floor is above its ceiling — zero rows, no explanation.
+
+An inverted band is REFUSED, not served. "0 results" is the board's answer
+to a real question about the market; using it as the answer to an
+impossible request teaches a searcher something false about the market.
+
+## n1070-const-pbraw-string-body-paybasis-trim
+
+In `supabase/functions/job-board/filters.ts`, above: `const pbRaw = String(body.payBasis ?? "").trim().toLowerCase();`
+
+TWO LITERALS, and every casing of a real one binds — the workMode rule.
+{workMode:"Remote"} once served the entire unfiltered board to API callers
+because a capital R was not a work mode; a capital H must not cost a caller
+their pay-basis filter the same way.
+
+## n1071-const-hasstatedpay-body-hasstatedpay-tru
+
+In `supabase/functions/job-board/filters.ts`, above: `const hasStatedPay = body.hasStatedPay === true;`
+
+LITERAL true ONLY, and a non-boolean is NAMED — the shape that let
+{"sendableOnly":"true"} return 598,066 rows with an empty ignoredFilters.
+A string "false" from a query param is truthy in JS, and this filter cuts
+the board to a fifth; guessing at it is not an option in either direction.
+
+## n1072-const-unstatedpayasked-body-includeunsta
+
+In `supabase/functions/job-board/filters.ts`, above: `const unstatedPayAsked = body.includeUnstatedPay === true;`
+
+Literal true only, same contract as includeUncategorised — and like it,
+this WIDENS. It relaxes an active floor to admit rows with no stated pay;
+with no floor set there is nothing to relax and it is inert. This is what
+the caller ASKED; whether it binds is decided below, against hasStatedPay.
+
+## n1073-if-body-includeunstatedpay-undefined-bod
+
+In `supabase/functions/job-board/filters.ts`, above: `if (body.includeUnstatedPay !== undefined && body.includeUnstatedPay !== null && typeof body.includeUnstatedPay !== "boolean") {`
+
+Same non-boolean guard as its sibling above: a query-string
+{"includeUnstatedPay":"true"} is not the literal true this reads, so it
+silently fails to widen — and without this line it is never named, the
+exact sendableOnly:"true" shape the comment above records.
+
+## n1074-const-includeunstatedpay-unstatedpayaske
+
+In `supabase/functions/job-board/filters.ts`, above: `const includeUnstatedPay = unstatedPayAsked && !hasStatedPay;`
+
+STATES PAY AND THE UNSTATED WIDENING CANNOT BOTH BIND. hasStatedPay ANDs a
+NOT-NULL test on the employer's verbatim pay field into the row query; the
+widening ORs a rank-IS-NULL arm back into the floor and ceiling. Under that
+AND, every row the OR-arm re-admits for stating NO pay is thrown straight
+back out — so the page could light both controls, send both keys, and get
+a result the widening did not widen, with nothing naming it (the body the
+controls guard's C12 case records). A request this file cannot honour is
+named, never carried silently: the widening is dropped here and reported.
+
+THIS CHANGES RESULTS; IT IS NOT PURE DISCLOSURE, and the slice it drops GREW
+when the states-pay predicate moved to the pay field (2026-09-27). The rank
+column is GENERATED from the annualised figure times a per-currency factor,
+ELSE NULL, so two populations now pass the stated-pay AND and fail a bare
+floor: a figure in a currency the table cannot convert, and — new — a rate
+we declined to annualise at all, which is the part-time and casual wage
+population. The OR-arm was re-admitting both; binding false drops both. The
+second one is BOARD-WIDE measurable — 33,240 rows carry pay text with no
+annual figure (2026-09-27T02:07:00Z) — and it is still UNMEASURED ON THE
+PAGE, which is the number that would matter here. payTextWithoutAnnual
+counts gap rows among the rows that WERE SERVED, and in exactly this state
+(stated pay, a floor bound, the widening dropped) the floor's rank arm
+excludes every gap row, so that counter is structurally zero and the page
+says nothing about what the drop cost. Reporting it would take a count of
+this same body with the rank-NULL arm restored, alongside the ignoredFilters
+entry; that is not built. The trade itself is unchanged — that slice for a
+body whose every key means what the control beside it says.
+
+Neither public-api nor nl-search imports this function: public-api
+proxies job-board's list over HTTP, and nl-search hands its wire filters
+back to the client, which sends them here. Both inherit this rule through
+the one list action, which is where every filter is decided.
+
+## n1075-const-yearsn-number-body-maxyears
+
+In `supabase/functions/job-board/filters.ts`, above: `const yearsN = Number(body.maxYears);`
+
+1..20, REFUSED OUTSIDE IT RATHER THAN CLAMPED, which is the opposite of
+what maxAgeDays does one block below — and the difference is deliberate.
+maxAgeDays clamps because 90 days and 30 days are the same INTENT ("recent")
+against a board that only keeps 30; the clamp is then disclosed, because a
+silent one reads as "there is nothing older".
+
+maxYears has no such intent to preserve. Clamping 99 to 20 would turn "I do
+not mind how much experience they ask for" into "at most 20 years" — a
+NARROWING, invented by us, of a number the caller chose. And 0 is not an
+off position: no control's rest state is 0 here, so a 0 is a request we
+cannot bind, and a request we cannot bind is always named.
+
+AND IT MUST BE A WHOLE NUMBER, because min_years is a SMALLINT. A fraction
+is not a narrower filter here, it is a 400: PostgREST renders .lte() as a
+literal and Postgres casts that literal to the column type. Probed live
+2026-08-25, read-only:
+  min_years=lte.3   -> a row
+  min_years=lte.3.5 -> {"code":"22P02","message":"invalid input syntax for
+                       type smallint: \"3.5\""}
+So {"maxYears":3.5} would have taken down the whole list query under a
+value that passed every bound above. salaryFloor and salaryCeiling do not
+need this — salary_rank_usd is `numeric`, which parses 3.5 and 1e+21 alike
+(probed the same day) — which is exactly why the rule belongs on THIS
+filter and not as a blanket one.
+
+## n1076-const-deptshapeok-typeof-body-department
+
+In `supabase/functions/job-board/filters.ts`, above: `const deptShapeOk = typeof body.department === "string" || typeof body.department === "number";`
+
+ILIKE '%s%', so the ILIKE WILDCARDS COME OUT FIRST. index.ts's sanitizeTerm
+strips exactly this set for every other text predicate; a surviving `%`
+turns "eng%" into a prefix match nobody asked for, `_` matches any single
+character, and `\` escapes the next one. Commas deliberately STAY: this is a
+plain .ilike() and not an or() branch, so a comma is data here, and "Sales,
+Marketing" is a real department name on this board.
+
+60 characters. The longest department in a 50-row live sample was 38
+("680 - Engineering - CoreSuite Platform"); the cap is there so a filter
+value cannot become a query-string payload, not to trim real names.
+
+A NON-STRING IS NAMED, not coerced. String({}) is "[object Object]", which
+would bind as a real ILIKE and return an empty page under a filter the
+caller never expressed — the `companies` rule ("a non-string member IS
+invalid and gets named"), applied to the text filter. A number is allowed
+through: departments like "680 - Engineering - CoreSuite Platform" and
+"Technology/Imaging 40-065" exist on this board, so a digit is a plausible
+thing to search for.
+
+## n1077-const-vendor_limit
+
+In `supabase/functions/job-board/filters.ts`, above: `const VENDOR_LIMIT = 8;`
+
+MULTI-SELECT over a CLOSED set, validated per element like country and
+category, and capped like both.
+
+Unknown members are NAMED, which is the opposite of how an unknown company
+token is treated — and the difference is the size of the space. There are
+19,701 company tokens and a caller can legitimately ask about one the board
+does not carry, so an empty page is the true answer. There are SIXTEEN
+vendors; a name outside that set is a typo or a guess, never a question the
+board can answer, and returning an empty page for it would be answering it.
+
+EIGHT, and the cap follows the experience rule rather than the country one:
+a truncated list is reported. Slicing silently would mean a caller asking
+for nine systems gets eight and is told they got nine — the same shape as
+the clamp that reads as "there is nothing older".
+
+## n1078-const-maxageclamped-number-isinteger-age
+
+In `supabase/functions/job-board/filters.ts`, above: `const maxAgeClamped = Number.isInteger(ageN) && ageN > 30;`
+
+A CLAMP IS A NARROWING AND HAS TO BE SAID. maxAgeDays:90, :365 and :30 all
+returned identical results with nothing in the body admitting the window
+had been cut — the ignoredFilters line above cannot fire, because a clamped
+value is non-null and therefore "honoured". A caller asking for 90 days is
+told nothing and reasonably concludes the board has no older postings,
+rather than that it declined to look.
+
+## n1079-const-compasked-array-isarray-body-compa
+
+In `supabase/functions/job-board/filters.ts`, above: `const compAsked = Array.isArray(body.companies) ? body.companies : [];`
+
+An unknown company token is not invalid — it matches nothing, and a truthful
+empty result is the correct answer to "jobs at a company we don't carry".
+A non-string member IS invalid and gets named, and so (.88) is a token
+outside the catalogue's alphabet: every one of the 44,519 catalogued tokens
+is letters, digits and ~ _ . - (measured 2026-10-04). supabase-js quotes an
+.in() member only when it holds , ( or ) and never escapes a quote inside
+it, so `"dominos"` reached the list as in.("dominos") -- Domino's rows --
+while the count's text[] matched nothing: total 0, and a forged
+filter-integrity incident (defect-sweep 2.24).
+
+## n1080-if-body-remote-undefined-body-remote
+
+In `supabase/functions/job-board/filters.ts`, above: `if (body.remote !== undefined && body.remote !== null && typeof body.remote !== "boolean") {`
+
+`remote` and `companies` were the two fields that could be REQUESTED and
+dropped without ever being named — the exact breach this file exists to
+close, still open in the file that closes it.
+
+  remote:"true"  (the natural shape from a query string) -> `=== true` is
+    false, the filter evaporates, and the caller who asked for remote work
+    receives the entire 600k-row board.
+  companies:"tok" (a bare token instead of a one-element array) -> the
+    Array.isArray guard yields [], the employer scope evaporates, and the
+    caller receives every posting under a total they will read as that
+    employer's.
+
+Neither is reachable from a UI control today — every in-repo caller sends a
+boolean and an array respectively — but "no first-party surface can reach
+it" is a statement about today's callers, not about the contract. The data
+API is public, and query strings are where non-booleans come from.
+
+## n1081-if-body-remote-true-workmode-workmode
+
+In `supabase/functions/job-board/filters.ts`, above: `if (body.remote === true && workMode && workMode !== "remote") ignored.push("remote");`
+
+AND THE SECOND WAY A `remote` REQUEST DIES: an explicit workMode wins the
+precedence in `applied` below, so remote:true alongside one binds nothing.
+The precedence is RIGHT and stays — {country:IE, workMode:onsite,
+remote:true} returned 261 onsite rows, the same as workMode alone, not the
+137 remote ones — but it was the only drop path in this file with no name
+attached to it, because it lives in the return literal instead of up here
+with the others (166, 175, 193, 215, 233, 253, 256, 262 all have one).
+
+The intent lift makes it worse than an omission. liftIntentFilters injects
+{remote:true} for "work from home"/"wfh" and STRIPS the words from the
+query, checking only body.remote and never body.workMode: q="work from home
+nurse" + workMode=onsite returned 2,205 rows, byte for byte the same as
+q="nurse" + workMode=onsite, while the payload claimed intentFilters
+["work from home"]. The phrase was deleted from the search AND its filter
+discarded, and the response asserted the opposite.
+
+EXEMPT workMode:"remote", and this is measured, not assumed. The boolean is
+a strict subset of the mode: IE remote=true is 137 rows, of which
+work_mode='remote' is 137 and work_mode<>'remote' is ZERO; GB is 1454 and
+1447. Under {workMode:"remote", remote:true} the dropped predicate would
+only have removed rows that are remote by work_mode, so every row returned
+IS remote — and the only string the UI has says "those results are
+unfiltered by it", which would be false. That shape is exactly what
+nl-search/index.ts:52 tells the model to emit and what
+send-search-digest/index.ts:126 forwards. Trading a silence for a falsehood
+is the error this push exists to correct, not to commit.
+
+`=== true`, not sent(): remote:false is not a request for remote work, and
+naming it would hang a warning on every page where the box is off. Disjoint
+from the shape guard above (that one requires a NON-boolean), so
+{remote:"true", workMode:"onsite"} still names "remote" exactly once.
+
+## n1082-if-body-sendableonly-undefined-body-send
+
+In `supabase/functions/job-board/filters.ts`, above: `if (body.sendableOnly !== undefined && body.sendableOnly !== null && typeof body.sendableOnly !== "boolean") {`
+
+sendableOnly AND includeUncategorised were the two that had the `=== true`
+strictness WITHOUT the shape guard, so a non-boolean evaporated silently —
+the one class of filter this file's own header says cannot happen.
+
+Proven live on the deployed build: {"sendableOnly":"true"} returned total
+598,066 with ignoredFilters ABSENT and 0 of 25 rows sendable, while the
+identical shape {"remote":"true"} returned ignoredFilters ["remote"]. Same
+failure, one named and one silent — and the silent one is the filter for
+the $99/mo product.
+
+The `=== true` strictness stays; it just stops being quiet about a value
+it refused.
+
+## n1083-if-body-hasdescription-undefined-body-ha
+
+In `supabase/functions/job-board/filters.ts`, above: `if (body.hasDescription !== undefined && body.hasDescription !== null && typeof body.hasDescription !== "boolean") {`
+
+Same non-boolean guard as sendableOnly directly above: a query-string
+{"excludeAgencies":"true"} is not the literal true the strictness reads,
+so it fails to narrow — and a reader who asked to hide agencies and was
+silently shown them anyway is the exact person a disclosure feature must
+never lie to.
+
+## n1084-remote-body-remote-true-workmode
+
+In `supabase/functions/job-board/filters.ts`, above: `remote: body.remote === true && !workMode,`
+
+An explicit workMode BEATS the legacy `remote` boolean, and that decision
+belongs here rather than at the query. It used to live only in buildQuery,
+so the row query dropped `remote` while the three count RPCs and the
+per-page self-check all still bound it — three consumers, three different
+questions, from one request. Deciding it once means they cannot disagree.
+
+## n1085-block
+
+In `supabase/functions/job-board/filters.ts`, above: `/**`
+
+Does this request constrain the catalogue at all?
+
+Derived MECHANICALLY from the applied values rather than written out field by
+field. A hand-maintained conjunction is exactly what published 587,793 over a
+filtered page, and a hand-maintained one would go stale again the first time
+somebody adds a filter and updates three sites out of four. Any non-empty
+applied value means filtered, so a new field is counted the moment it exists.
+
+## n1086-block
+
+In `supabase/functions/job-board/filters.ts`, above: `/**`
+
+Does a row we are about to return actually satisfy the filters we just told
+the caller we applied?
+
+This runs against rows already in memory, so it costs no query and can run on
+EVERY request rather than in a nightly job. It is the check that would have
+caught `country` arriving null on every row while a unit test asserting
+"rowToJob emits country" passed — that test proved the last link in the chain
+and nothing about the first.
+
+Only exactly-decidable predicates are checked. q and location are deliberately
+excluded: q matches title OR description via full-text with stemming and
+aliases (swe -> Software Engineer), and asserting a literal substring would
+flag correct behaviour as a violation — which is how a bad audit metric scored
+a working alias at 0/10 earlier today. salaryFloor is excluded because the
+comparison runs on salary_rank_usd, an approximate-USD generated column the
+mapped row does not carry; checking the raw figure would fail legitimately
+passing SEK/JPY rows.
+
+## n1087-const-wantcountry-a-country-a-country
+
+In `supabase/functions/job-board/filters.ts`, above: `const wantCountry = a.country ? a.country.split(",") : null;`
+
+SPLIT, NEVER COMPARED WHOLE. country/workMode/category/employmentType are
+comma-joined multi-selects now (the Remote+Hybrid toggles are a mainstream
+gesture), and testing a row by EQUALITY against the joined string flagged
+every correct row of every multi-select page: workMode="remote,hybrid"
+against a row's "remote" produced a violation per row, a false
+filterIntegrity block on the payload, a console.error per request, and an
+UNSAMPLED incident row overwriting the sensor on every page view —
+drowning the one channel built to catch a tier that genuinely serves
+filter-violating rows. Verified by executing the old checks: 6 violations
+across two perfectly matching rows. The row satisfies the filter when its
+value is ANY member of the list, which is exactly the question the SQL's
+string_to_array/IN asked.
+
+## n1088-if-wantcats-wantcats-includes-string-r
+
+In `supabase/functions/job-board/filters.ts`, above: `if (wantCats && !wantCats.includes(String(r.category ?? ""))) {`
+
+`other` is LEGITIMATE under the opt-in — the two-subset pager returns it
+by design. Without this allowance every opted-in page with any `other`
+rows logged a false filter-integrity incident, unsampled, and wrote a
+permanent red light over a working feature. Found 2026-08-07 while adding
+the sendable check below, one day after the opt-in shipped; nothing had
+used the opt-in yet, which is the only reason the incident log is clean.
+
+## n1089-if-wantet-wantet-includes-string-r
+
+In `supabase/functions/job-board/filters.ts`, above: `if (wantEt && !wantEt.includes(String(r.employmentType ?? ""))) {`
+
+The newest filter, checked like workMode: closed domain, list
+membership, NULL excluded by the predicate so a NULL row arriving under
+the filter is itself the defect. This is the sensor for the next
+p_work_mode-shaped regression (an RPC overload drop, a deploy-window
+skew) — the 30-NULL-rows-under-a-remote-filter incident class, which
+this check turns from a silent page into a reported violation.
+
+## n1090-if-postedfloor-null-number-isfinite-post
+
+In `supabase/functions/job-board/filters.ts`, above: `if (postedFloor !== null && Number.isFinite(postedFloor)) {`
+
+postedAfter is exactly decidable the same way maxAgeDays below is —
+undated rows are excluded by the predicate, so one arriving under the
+filter is the defect.
+
+## n1091-if-a-sendableonly-sendable_vendors-inclu
+
+In `supabase/functions/job-board/filters.ts`, above: `if (a.sendableOnly && !SENDABLE_VENDORS.includes(String(r.source ?? ""))) {`
+
+The agent-ready filter, checked against the same mirror the query used.
+`source` is the key rowToJob actually emits — verified, not assumed,
+because the `token`/`companyToken` mismatch above shipped exactly that way.
+
+## n1092-if-a-paybasis
+
+In `supabase/functions/job-board/filters.ts`, above: `if (a.payBasis) {`
+
+THE SIX NEW FILTERS ARE CHECKED HERE BECAUSE ONLY ONE OF THE BOARD'S
+QUERY PATHS BINDS THEM. buildQuery does; the ranked search_jobs exit
+serves rows straight out of an RPC that has no parameter for any of them.
+Until those parameters exist, this self-check is what turns "the filter
+was ignored" into a reported filterIntegrity violation instead of a page
+that looks correct. See rpcBlindFilters above.
+
+salaryCeiling is EXCLUDED for the same reason salaryFloor is: both compare
+against salary_rank_usd, an approximate-USD generated column the mapped
+row does not carry, and checking the raw figure would fail SEK/JPY rows
+that legitimately passed.
+
+## n1093-if-a-maxyears-null
+
+In `supabase/functions/job-board/filters.ts`, above: `if (a.maxYears !== null) {`
+
+An unstated requirement is EXCLUDED by the predicate at the database, so a
+row with no min_years arriving under this filter is itself the defect —
+the same reading maxAgeDays gives an undated posting.
+
+## n1094-if-a-department-string-r-department
+
+In `supabase/functions/job-board/filters.ts`, above: `if (a.department && !String(r.department ?? "").toLowerCase().includes(a.department.toLowerCase())) {`
+
+Substring, case-insensitive — the same question the ILIKE asked, not a
+stricter one. An equality check here would flag "Hardware Engineering"
+under department=engineering, which the query deliberately returns.
+
+## n1095-if-a-excludeagencies-r-agency-true
+
+In `supabase/functions/job-board/filters.ts`, above: `if (a.excludeAgencies && r.agency === true) push("excludeAgencies", "agency=false", r.agency);`
+
+The agency opt-out, checked exactly as strictly as it binds: the column
+is NOT NULL so rowToJob always emits a boolean, and a tagged row
+arriving under the opt-out is the defect. This is the sensor for the
+day an RPC gains rows this filter never reached — the p_work_mode
+regression class — since no RPC can bind it yet and the blind-set gate
+is the only thing keeping those paths away.
+
+## n1096-export-const-categorize_version
+
+In `supabase/functions/job-board/categories.ts`, above: `export const CATEGORIZE_VERSION = 10;`
+
+Deterministic field/category mapping so a nurse, an accountant, or a
+warehouse lead can filter straight to their lane. Department is the
+primary signal (ATS departments are human-curated); title keywords refine
+or fill in. Pure module — unit-tested from vitest.
+
+## n1097-export-const-categorize_version
+
+In `supabase/functions/job-board/categories.ts`, above: `export const CATEGORIZE_VERSION = 10;`
+
+Bump on EVERY rules change: a completed refresh pass compares this
+against the version stamped in job_board_meta and, on mismatch, sweeps
+the stored "other" rows through the current rules — so categorization
+improvements reach the existing corpus, not just newly inserted rows
+(the insert-only refresh never rewrites them otherwise).
+v10 (2026-09-14): THE OTHER BUCKET, PHASE 1 — A PROPOSAL PATH, NOT A MOVE.
+  categorize() is byte-for-byte the v9 function: RULES is frozen (the v9
+  header below says why rules growth stopped) and nothing in this version
+  changes what any existing caller receives. What v10 adds sits BESIDE it:
+  proposeCategory() runs the same frozen rules over a NORMALISED title and
+  then, only for titles the frozen rules leave in "other", a closed list of
+  19 gate-passing nouns (V10_TERMS) — and returns a PROPOSAL (field, basis
+  'rule', per-term category_key), never a category. The stored-row sweep
+  that writes `category` still calls categorize(), so the version bump
+  alone moves nothing; a proposal reaches `category` only through
+  promote_category after a written audit (see shadow.ts).
+  Provenance: the 2,576-row stratified sample of the 172,619-row bucket
+  (scratchpad/other-bucket/, 2026-09-10): normalisation replays and 24
+  terms move 416 sample rows, hand-judged 98.6% hard-wrong-free; each term
+  has >= 8 judged matches all correct, >= 2 employers, zero non-target hits
+  on the 3,060 labelled rows when appended last (mechC-gate.txt). WITHHELD,
+  measured: the Mgr/Svc/Dir abbreviation expansion (7 rows, 5/7 — both
+  misses are known misfire classes) and Tech -> Technician (Rad/ER/CT/Med
+  Tech would fall to the bare-technician operations fallback). Refuted
+  terms are a negative test set, not a comment (see the v10 test file).
+v9 (2026-08-23): the ~400-term residue audit, survivors only. Every term
+shipped with a live count inside category=other, a mapped category argued
+against every other reading, and 8+ hand-judged real matches; ambiguity
+resolved toward NOT adding. Two tiers: an English block of \b-anchored
+role terms, and a compound/non-English tier extending the v8 unanchored
+tail across DE/FR/NL/PL/FI/NO/SE/DK/ES/IT/PT. Measured recovery: 22,382
+unique postings (22,807 raw minus 425 live-counted cross-rule overlaps),
+15.3% of the 145,973-row servable "other" pile as of 2026-08-23.
+  EXCLUDED, measured and named — do not re-propose: a researcher fallback
+  extension (head-noun genuinely mixed, no guard list reaches the bar);
+  bare counselor, attendant, handler, helfer, assistenz, berater, adviseur,
+  pedagog, butik/butikk, police, safety, survey, chargé, hoitaja — each
+  splits across fields or marks an employer, not a role; and capital
+  markets, the one precision-check survivor with hard wrong-field errors
+  (2/17 fresh-draw rows were law-firm capital-markets associates —
+  pulled at assembly, ambiguity resolves toward not adding). Known 1-row
+  soft spots accepted without guards: one precision-optics manufacturing
+  row under the optician stem (545/546), one records-custodian row under
+  the custodial family.
+  AFTER THIS PASS, RULES GROWTH STOPS: 56% of the remaining residue is
+  singleton title forms — the next 40 points of recovery cost an order of
+  magnitude more per posting than these did.
+v8 (2026-08-23): the audit's stratified re-measurement, applied. Two classes:
+  * WORD-BOUNDARY MISSES in rules that already name the concept: bare "Audit
+    Manager" (838 board titles unfiltered — the rule required auditOR/ING;
+    the replacement excludes "audition"), "Team/Shift Leader" (1,132 — the
+    rule stopped at "lead"), project/program(me) MANAGEMENT and -leader
+    forms (483), plural "Operators" (56 — \b does not fall between r and s).
+  * COMPOUND AND NON-ENGLISH stems, each sized live before inclusion and
+    appended AFTER the English rules so first-match-wins keeps precedence:
+    técnico 577, techniker 304, pfleg 190 (Pflegefachkraft — the missing-
+    boundary shape v7 fixed for therapist), logistik 159, säljare 141,
+    opérateur 139, ingenieur-in-compound 138, sachbearbeiter 120, myyjä 38,
+    recepcionista 28, vendedor 13, zahnmedizin 9.
+  EXCLUDED, measured and named: bare leiter/charge/berater/responsable/
+  fachkraft/kaufmann — real words with no field in them; "Responsable" is
+  "Manager" in French, and manager is the pile's biggest word for a reason.
+  ALSO A CORRECTION: v7's header claimed 6.5% recovery. A properly
+  stratified sample (per-source allocation, 36 keyset buckets, <=4-row
+  chunks) measures v7 at 4.27% +/- 0.28 — the 3,000-row sample was company-
+  clustered, the exact bias that made "career fair" look 30x too common in
+  another draw from this table. ~6,740 postings, essentially all healthcare,
+  still real.
+v7 (2026-08-22): allied-health compounds, clinical credentials and named
+clinical roles, from a 3,000-row live sample of the 159,153-row "other" pile.
+Measured recovery on that sample: 6.5%, essentially all healthcare — roughly
+10,300 postings board-wide moving from unfilterable into a field. Three
+distinct causes, not one:
+  * COMPOUNDS the \b anchor cannot reach. "Physiotherapist" and
+    "Ultrasonographer" contain therapist and sonograph with no word boundary
+    in front of them, so rules that already name those terms never fired.
+  * CREDENTIALS a clinician actually types: RN alone was 3,267 rows of the
+    bucket, LPN 574, CNA 373.
+  * NAMED ROLES the list simply lacked — Technologist 1,711, Surgical 565,
+    Dentist (the rule said "dental", which does not match "Dentist").
+EXCLUDED ON PURPOSE, having measured them: bare PRN, which marks a healthcare
+EMPLOYER rather than a healthcare role and dragged in "Food Service Worker |
+PRN" and "Scheduling Specialist PRN"; and EMT, which put "Firefighter EMT -
+Wilmington Fire Dept" in healthcare. A credential does not decide the job.
+v6 (2026-07-26): grocery/retail floor roles + Spanish title anchors, from a
+1,000-row live sample of the 164k-row "other" pile. The dominant unclaimed
+clusters were grocery floor titles (clerk 69, stocker 21, deli 19, meat 17,
+produce 16, team member ~53, shopper 13), single-word "Salesperson" (18 —
+\bsales\b never matches inside the compound), delivery associates, and
+Spanish-language titles (ejecutivo 16). "Other" outnumbered engineering.
+
+## n1098-const-rules-array-jobcategory-regexp
+
+In `supabase/functions/job-board/categories.ts`, above: `const RULES: Array<[JobCategory, RegExp]> = [`
+
+Order matters: first match wins. More specific fields come before
+engineering so "Clinical Research Nurse" or "Data Scientist" don't get
+swallowed by broad tech terms; engineering precedes security so
+"Security Engineer" lands in engineering while "SOC Analyst" lands in
+security.
+
+## n1099-healthcare-physio-tele-radio-hydro-chemo
+
+In `supabase/functions/job-board/categories.ts`, above: `["healthcare", /(?:physio|tele|radio|hydro|chemo|onco|psycho|massage)?therap(?:ist|y)|sonograph|ultrasound/i],`
+
+ALLIED-HEALTH COMPOUNDS. Sits after the rule above and matches WITHOUT a
+leading \b, because that is precisely what the rule above cannot do:
+"physiotherapist" and "ultrasonographer" have no boundary before the part
+that names the profession.
+
+## n1100-data_ai-b-data-scien-w-machine
+
+In `supabase/functions/job-board/categories.ts`, above: `["data_ai", /\b(data scien\w*|machine learning scientist|research scientist, (ai|ml))\b/i],`
+
+Ahead of science on purpose: bare "scientist" in the science rule was
+catching "Data Scientist", which belongs with the data roles users
+actually look for.
+
+## n1101-operations-b-cdl-truck-ing-driver
+
+In `supabase/functions/job-board/categories.ts`, above: `["operations", /\b(cdl|truck(ing)? driver|owner[- ]operator|flatbed|reefer|otr\b|dispatcher|superintendent|construction (manager|superintend`
+
+Skilled trades & field services — MUST precede hospitality_retail, or
+"Part-Time Oil Change Team Member" matches "team member" and lands in
+retail. Derived from a 1,250-row sample of the uncategorised pile
+(2026-07-24), which was 35% of the board.
+
+## n1102-hospitality_retail-b-barista-server-chef
+
+In `supabase/functions/job-board/categories.ts`, above: `["hospitality_retail", /\b(barista|server|chef|cook|kitchen|coffee shop|store (manager|associate|lead|team)|retail|restaurant|hotel|housekee`
+
+Grocery/retail floor roles sit AFTER the trades rule on purpose: "Oil
+Change Team Member" must keep landing in operations before "team member"
+is claimed here.
+
+## n1103-operations-btechnician-b-i
+
+In `supabase/functions/job-board/categories.ts`, above: `["operations", /\btechnician\b/i],`
+
+Bare "technician" is the single most common word in the uncategorised pile
+(431 of a 3,000-row sample). It sits HERE, after healthcare, engineering
+and security, so "Patient Care Technician", "Pharmacy Technician" and
+"IT Technician" keep the homes they already had; only the field/service
+technicians nothing else claims land in operations.
+
+## n1104-healthcare-pfleg-zahnmedizin-l-a-hihoita
+
+In `supabase/functions/job-board/categories.ts`, above: `["healthcare", /pfleg|zahnmedizin|l[äa]hihoitaja|sairaanhoitaja/i],`
+
+── v8 COMPOUND AND NON-ENGLISH STEMS ─────────────────────────────────────
+Appended after the English rules on purpose: first match wins, so
+"Tecnico Commerciale" is claimed by the sales rule's commercial\w* before
+the técnico fallback can file it under operations.
+
+## n1105-healthcare-bsocial-work-w-b-bpeer
+
+In `supabase/functions/job-board/categories.ts`, above: `["healthcare", /\bsocial work\w*\b|\bpeer (support|specialist|recovery|counsel(l?or)?)s?\b|\bathletic trainers?\b|\b(addictions?|substance a`
+
+── v9 ENGLISH RESIDUE TERMS ──────────────────────────────────────────────
+Survivors of the ~400-term audit; counts are live inside category=other
+(2026-08-23). First match wins, so the intra-block order below is part
+of the correctness argument, not style.
+Healthcare: social work 292, peer-support family 77 ("peer review"
+cannot fire — reviewer is not in the alternation), athletic trainer 145
+(licensed allied-health; gym "Personal Trainer" stays excluded), the
+clinical-counselor qualifiers 39. Bare counselor stays excluded — it
+splits school/camp/clinical.
+
+## n1106-education-b-admissions-camp-counsel-l
+
+In `supabase/functions/job-board/categories.ts`, above: `["education", /\b(admissions?|camp) counsel(l?or)?s?\b|\b(faculty|adjunct|lecturers?)\b/i],`
+
+Education: admissions/camp counselor 59 — AFTER the clinical-counselor
+rule, and BEFORE the platform rule below (a student-assistance-program
+acronym collides with an ERP vendor name; ordering is the guard).
+faculty/adjunct/lecturer 479.
+
+## n1107-people_hr-bhris-b-bhrm-adviseur-i
+
+In `supabase/functions/job-board/categories.ts`, above: `["people_hr", /\bhris\b|\bhrm?[- ]?adviseur/i],`
+
+people_hr: HRIS 88 — MUST precede the platform rule or Workday-HRIS
+hybrids drift to engineering. Dutch HR adviseur 23 rides along; bare
+adviseur stays excluded (five-category split, measured).
+
+## n1108-data_ai-bbusiness-systems-analysts-b-i
+
+In `supabase/functions/job-board/categories.ts`, above: `["data_ai", /\bbusiness (systems )?analysts?\b/i],`
+
+data_ai: business (systems) analyst 894 — MUST precede the systems-
+analyst and banking rules below; data_ai is the board's home for
+BI/data analysts.
+
+## n1109-science-b-bio-statisticians-biostatist-w
+
+In `supabase/functions/job-board/categories.ts`, above: `["science", /\b((bio)?statisticians?|biostatist\w*|statistical programm\w*)\b/i],`
+
+science: clinical-trials statistics 135; the stem form catches a live
+typo'd spelling. Statistical programmers are new recovery — nothing
+claims bare "programmer".
+
+## n1110-marketing-b-media-events-wedding-planner
+
+In `supabase/functions/job-board/categories.ts`, above: `["marketing", /\b(media|events?|wedding) planners?\b|\beditors?\b|\bpaid (social|media|search)\b/i],`
+
+marketing: media/event/wedding planners 34 — MUST precede the bare-
+planner operations rule at the end of this block (it is that rule's
+carve-out). editors 356 (content production, same family as
+copywriters). paid social/media/search 216 (only the three channel
+nouns can follow "paid", so Paid Training cannot fire).
+
+## n1111-sales-b-account-development-sales-develo
+
+In `supabase/functions/job-board/categories.ts`, above: `["sales", /\b(account development|sales development) (rep\w*|associate|manager)s?\b|\bleasing\b|\binsurance (agents?|advisors?|agency|produc`
+
+sales: account/sales-development family 33, leasing 544 (residential
+property), insurance SELLING roles 249 — MUST precede the bare-insurance
+finance rule below: it carves the selling lane out of 688 raw rows
+first.
+
+## n1112-hospitality_retail-bbeauty-advisors-b-b
+
+In `supabase/functions/job-board/categories.ts`, above: `["hospitality_retail", /\bbeauty advisors?\b|\b(stylists?|salon|barbers?|cosmetolog\w*|nail tech\w*|esthetician)\b|\b(lifeguards?|aquatics?)`
+
+hospitality_retail: beauty advisor 261, stylist/salon family 313,
+lifeguard/aquatics 193, guest-facing attendants 427 — bare "attendant"
+(2,000+ rows) stays excluded, it has no field in it. kokk/kokki 15
+(NO/FI cook; both anchors load-bearing so the Finnish city name cannot
+fire).
+
+## n1113-engineering-bsystems-analysts-b-i
+
+In `supabase/functions/job-board/categories.ts`, above: `["engineering", /\bsystems? analysts?\b/i],`
+
+engineering: systems analyst 333 (AFTER business-analyst above —
+ordering resolves the shared three-word shape), then the platform/ERP
+tier 1743, the largest single recovery in the batch. Sits AFTER the
+HRIS and admissions-counselor rules, BEFORE banking (ERP-finance
+consultants are platform roles first).
+
+## n1114-finance-bbanking-b-bloans-b-binsurance
+
+In `supabase/functions/job-board/categories.ts`, above: `["finance", /\bbanking\b|\bloans?\b|\binsurance\b/i],`
+
+finance: banking 680 (after the analyst/platform rules claim the
+hybrids), loans 219 (lending back office), bare insurance 439 (688 raw
+minus the 249 the sales carve-out claims first).
+
+## n1115-security-bpolice-officer-chief-lieutenan
+
+In `supabase/functions/job-board/categories.ts`, above: `["security", /\bpolice (officer|chief|lieutenant|sergeant|captain|cadet|deputy)s?\b|\b(asset protection|loss prevention)\b/i],`
+
+security: sworn police ranks 82 — bare "police" stays excluded, an
+employer marker (the same trap as PRN). asset protection / loss
+prevention 177 (the data-loss-prevention analyst rows are cyber, which
+is security anyway).
+
+## n1116-operations-binspectors-b-bestimat-or-ors
+
+In `supabase/functions/job-board/categories.ts`, above: `["operations", /\binspectors?\b|\bestimat(or|ors|ing)\b|\bsurveyors?\b|\bschedulers?\b/i],`
+
+operations, the long tail — construction, logistics, facilities,
+transport. Counts: inspectors 892, estimators 651, surveyors 368 (bare
+"survey" stays out), schedulers 341.
+
+## n1117-operations-bbranch-manager-management-b
+
+In `supabase/functions/job-board/categories.ts`, above: `["operations", /\bbranch (manager|management)\b|\bshipping\b|\b(material|package|freight|baggage|cargo|mail|order) handl\w*|\bassemblers?\b|`
+
+branch manager 407 (unit-site P&L leadership, the district-manager
+precedent — bank branches included), shipping 217, qualified handlers
+673 (bare "handler" stays out — claims/complaint handlers), assemblers
+681, inventory 580, purchasing 197, packers/pickers/loaders/forklift
+418, porters 278 (leading boundary verified — transporter and reporter
+cannot match).
+
+## n1118-operations-b-custodian-w-janitor-w
+
+In `supabase/functions/job-board/categories.ts`, above: `["operations", /\b(custodian\w*|janitor\w*|cleaners?|cleaning|groundskeep\w*|landscap\w*|sanitation)\b|\b(car wash|parking|building|laundry|`
+
+custodial/grounds family 939, non-guest attendants 507 (qualifier list
+disjoint from the retail attendant rule above), automotive service lane
+247, pilots 128 (aircraft/marine; program-manager pilots are claimed
+upstream).
+
+## n1119-operations-bplanners-b-i
+
+In `supabase/functions/job-board/categories.ts`, above: `["operations", /\bplanners?\b/i],`
+
+Bare planner 881 raw, ~847 net of the marketing carve above. Weakest
+term in the block (~89-94%); designated FIRST TO DROP if the post-sweep
+precision audit tightens.
+
+## n1120-healthcare-optiker-arzt-rzt-aide-soignan
+
+In `supabase/functions/job-board/categories.ts`, above: `["healthcare", /optiker|arzt|ärzt|aide[- ]soignant|farmacista|sk[öo]tersk|verpleeg|apotek|(ty[öo]terveys|terveyden|hammas|osaston|opetus)hoi`
+
+── v9 COMPOUND AND NON-ENGLISH STEMS ────────────────────────────────────
+Healthcare stems: optiker 546 (DE/Nordic opticians; one wrong-field row
+board-wide, noted in the v9 header, not worth a guard — MUST precede
+filialleit below), arzt/ärzt 73 (physician compounds the v8 anchored
+form cannot reach; both umlaut forms load-bearing), aide-soignant 23,
+farmacista 52, Swedish nurse compounds 124 (no leading boundary on
+purpose), verpleeg 16 (catches a live typo the anchored v8 rule
+misses), apotek 11 (NO pharmacy — MUST precede the Nordic tekniker rule
+below; the German spelling with an h cannot match), Finnish -hoitaja
+prefix whitelist 11 (bare hoitaja stays excluded: hotel-housekeeping
+compounds).
+
+## n1121-legal-anwalt-anw-lt-babogad-w
+
+In `supabase/functions/job-board/categories.ts`, above: `["legal", /anwalt|anwält|\babogad\w*|\bavocate?s?\b/i],`
+
+Legal stems: anwalt/anwält 61 — MUST precede the assistenz rule at the
+end of this tier (legal-office assistant compounds are claimed here
+first; the collision row is live). abogado family 33, avocat 26 (the
+fruit reading does not occur in titles).
+
+## n1122-finance-buchhalt-steuerfach-steuerberat
+
+In `supabase/functions/job-board/categories.ts`, above: `["finance", /buchhalt|steuerfach|steuerberat|steuerassist|steuerrecht|steuerrefer|(umsatz|einkommen|ertrag|lohn)steuer|\bsteuern\b|comptable`
+
+Finance stems: buchhalt 52 (unanchored — accounting compounds beyond
+the v8 anchored reach), the tax enumeration 71 (enumerated on purpose:
+it refuses the steering/control reading, and MUST precede the assistenz
+rule), comptable/contable 149, gestion de patrimoine 93, sinistres 40
+(FR insurance claims — MUST precede the client-relations fragment
+below), paie 30 (anchor verified against the payment noun).
+
+## n1123-sales-verkauf-conseill-e-re-s
+
+In `supabase/functions/job-board/categories.ts`, above: `["sales", /verkauf|conseill[eè]?re?\S*\s+(?:de (?:la )?|aux |à la |a la )?ventes?\b|verkoop|verkoper|selger|s[äa]ljare|(pharma|medizinproduk`
+
+Sales stems: verkauf 108 (MUST precede kundenberater, the warehouse
+stem and the assistenz rule), FR retail sales advisors 238 (MUST
+precede the client-relations fragment; escaped-class accents because JS
+\w misses them), NL verkoop/verkoper 51 (MUST precede the Dutch care
+stem — the care-sales hybrid rows are live), NO selger 50, SE säljare
+104 (MOVED here from the v8 anchored group), pharma/medical-device
+field reps 30 (a selling role, not a treating one; bare berater stays
+excluded).
+
+## n1124-customer-kundenberater-conseill-aux-reto
+
+In `supabase/functions/job-board/categories.ts`, above: `["customer", /kundenberater|conseill[^,–-]{0,10}aux retours?|charg[ée]e?\S*\s+de\s+client[èe]le|\b(?:service|relations?) (?:à la |a la )?cli`
+
+Customer stems: kundenberater 109 (after verkauf; bank/wealth advisors
+resolve to customer on the kundenservice precedent), FR returns-desk
+advisors 137, chargé de clientèle 20 (paired form only — bare chargé
+stays excluded), FR/CA service & client relations 100 (AFTER the sales
+and sinistres fragments — both collision shapes are live; plural
+"Services Client" and reversed order cannot fire), Nordic customer-
+service medarbetare 8 — MUST precede the shop-floor medarbetare rule
+below; the ordering is the point.
+
+## n1125-hospitality_retail-filialleit-butikk-but
+
+In `supabase/functions/job-board/categories.ts`, above: `["hospitality_retail", /filialleit|(butikk|butiks|ferskvare|kj[øo]kken|kafe|kantine|restaurang|service)medarb|butik[ks]{1,2}(sjef|chef|leder`
+
+Retail/hospitality stems: filialleit 40 (39/40 store leadership; one
+live bank-branch row noted), Nordic shop-floor medarbetare 96, butikk
+leadership/consultants 40 (bare butik/butikk stays excluded — the
+store-name and controller traps), cuisinier 35, serveur/serveuse 18
+(the computer reading does not occur, 0/18).
+
+## n1126-education-erzieher-l-a-rare-i
+
+In `supabase/functions/job-board/categories.ts`, above: `["education", /erzieher|l[äa]rare/i],`
+
+Education stems: erzieher 11 (Kita — the preschool-teacher twin),
+lärare 29 (vocational-subject rows teach the subject; same call as
+lehrer/leraar).
+
+## n1127-operations-bezorg-i
+
+In `supabase/functions/job-board/categories.ts`, above: `["operations", /bezorg/i],`
+
+Dutch care block — order load-bearing: delivery-round compounds 20 land
+in operations FIRST; then the care stem 200 (~98%: the sales rule above
+claims the care-sales hybrids; fixed-length lookbehind, Deno-safe);
+then pedagogic roles 21 AFTER the care stem (the live disability-care
+rows must be claimed as care first). Bare pedagog stays excluded.
+
+## n1128-security-ochron-w-rodowisk-i
+
+In `supabase/functions/job-board/categories.ts`, above: `["security", /ochron(?!\w* środowisk)/i],`
+
+Security stem: PL guard posts 55. The lookahead excludes the genitive
+environmental-protection tail — 4 live rows are environmental
+specialists, wrong field.
+
+## n1129-operations-mecha-nik-tronik-er-elektroni
+
+In `supabase/functions/job-board/categories.ts`, above: `["operations", /mecha(nik|tronik)er|elektroniker|elektriker|bauleiter|projektleit/i],`
+
+Operations stems — trades and logistics across DE/NL/PL/FI/NO/SE/DK.
+mechaniker/mechatroniker 337 (skilled trades, the electrician
+precedent), elektroniker/elektriker 220 — ONE merged rule covers the
+German and Scandinavian lanes; the substring is identical and summing
+the lanes double-counts. bauleiter 62 and projektleit 127 — both MUST
+precede the hochbau/tiefbau rule, whose 63 raw rows they claim ~29 of.
+
+## n1130-operations-hochbau-tiefbau-lager-montage
+
+In `supabase/functions/job-board/categories.ts`, above: `["operations", /hochbau|tiefbau|lager|(montage|produktions|inventur|lager|bau|werkstatt)helfer|fahrer|(geräte|maschinen|anlagen?|lok(rangier`
+
+hochbau/tiefbau ~34 net (the only home for the umlauted purchasing
+compounds the v8 stem cannot reach), lager 100 (after verkauf; subsumes
+the warehouse-helper and Nordic warehouse-medarbetare rows — do not sum
+the three counts), the enumerated -helfer compounds 45 (bare helfer
+stays excluded — the split is measured), fahrer 63 (every driver files
+in operations, house convention), the enumerated -führer machine/train
+operators 70 (the enumeration refuses the managing-director compound —
+4 live rows, correctly left behind).
+
+## n1131-operations-chauffeur-sj-a-f-o
+
+In `supabase/functions/job-board/categories.ts`, above: `["operations", /chauffeur|sj[åa]f[øo]r|kierowc|magazyn|kuljettaja|(varasto|tuotanto|rakennus|purku|metalli|logistiikka|betoni|kokoonpano|aht`
+
+chauffeur-compounds 16 (unanchored duplicate of the anchored English
+term; first-match keeps bare chauffeur where it already lands), sjåfør
+13, kierowc 18, magazyn 66 (the English magazine cannot match — vowel
+differs), kuljettaja 29 (always a compound tail), FI blue-collar
+-työntekijä prefix whitelist 35 (the double-i logistics spelling is
+here because the v8 stem breaks on it), Nordic warehouse/production
+medarbetare 27 (optional space verified live).
+
+## n1132-operations-apotek-support-servicedesk-or
+
+In `supabase/functions/job-board/categories.ts`, above: `["operations", /(?<!apotek)(?<!support)(?<!servicedesk)(?<!ortoped)(?<!tand)(?<!\bit[- ])tekniker/i],`
+
+Nordic tekniker 93 — AFTER the pharmacy stem above; the fixed-length
+lookbehind set excludes the pharmacy, IT-support/servicedesk, orthotics
+and dental prefixes (the orthotics compound is live and the English
+orthopedic rule can never claim it — the Swedish spelling has no h).
+One known 1-row IT-infrastructure leak stands, accepted.
+
+## n1133-admin-industriekauf-mann-frau-leute-b
+
+In `supabase/functions/job-board/categories.ts`, above: `["admin", /industriekauf(mann|frau|leute)|bürokauf(mann|frau)|kauf(mann|frau) .{0,12}für büromanagement/i],`
+
+Admin stems: the enumerated commercial office clerks 57 — bare kaufmann
+stays excluded, the measured v8 decision stands. The enumerated
+assistenz heads 48 sit LAST of the German rules on purpose: legal, tax,
+sales and physician compounds are claimed by their field rules above (a
+live legal-office row proves the ordering). Bare assistenz stays
+excluded (~88% measured, splits healthcare/science/education).
+
+## n1134-the-basis-every-proposal-from-this
+
+In `supabase/functions/job-board/categories.ts`, above: `/** The basis every proposal from this file carries. */`
+
+═══════════════════════════════════════════════════════════════════════════
+v10 — THE PROPOSAL PATH. Everything below is reachable ONLY through
+proposeCategory(); categorize() above neither calls nor reads any of it.
+═══════════════════════════════════════════════════════════════════════════
