@@ -205,7 +205,7 @@ const Success = () => {
         toast({
           title: t('success.toast.paymentSuccess'),
           description: wasEmailSent 
-            ? "Your analysis is ready and has been emailed to you!"
+            ? t('success.toast.analysisReadyEmailed', 'Your analysis is ready and has been emailed to you!')
             : data.hasLinkedIn 
               ? t('success.toast.analysisReadyLinkedIn')
               : t('success.toast.analysisReady'),
@@ -233,7 +233,7 @@ const Success = () => {
           if (dbError) throw dbError;
 
           if (!data || data.length === 0) {
-            setError("Analysis not found. The link may be invalid or expired.");
+            setError(t('success.error.analysisNotFound', 'Analysis not found. The link may be invalid or expired.'));
             setIsLoading(false);
             return;
           }
@@ -245,7 +245,7 @@ const Success = () => {
           return;
         } catch (err) {
           console.error("Error loading shared analysis:", err);
-          setError("Failed to load analysis.");
+          setError(t('success.error.loadFailed', 'Failed to load analysis.'));
           setIsLoading(false);
           return;
         }
@@ -482,8 +482,8 @@ const Success = () => {
     sessionStorage.clear();
     setLocalDataCleared(true);
     toast({
-      title: "Browser data cleared",
-      description: "All locally stored resume data has been removed from this device.",
+      title: t('success.toast.browserDataCleared', 'Browser data cleared'),
+      description: t('success.toast.browserDataClearedDesc', 'All locally stored resume data has been removed from this device.'),
     });
   };
 
@@ -598,16 +598,16 @@ const Success = () => {
                           rememberShareInUrl(newShareId);
 
                           toast({
-                            title: "Analysis ready",
-                            description: "Your resume analysis is ready below.",
+                            title: t('success.toast.recoveredReady', 'Analysis ready'),
+                            description: t('success.toast.recoveredReadyDesc', 'Your resume analysis is ready below.'),
                           });
                         })
                         .catch((err) => {
                           console.error("Analysis error:", err);
-                          setError(err instanceof Error ? err.message : "Failed to analyze resume");
+                          setError(err instanceof Error ? err.message : t('success.error.analyzeFailed', 'Failed to analyze resume'));
                           toast({
-                            title: "Analysis failed",
-                            description: "There was an issue analyzing your resume. Please try again.",
+                            title: t('success.toast.analysisFailed', 'Analysis failed'),
+                            description: t('success.toast.analysisFailedRetryDesc', 'There was an issue analyzing your resume. Please try again.'),
                             variant: "destructive",
                           });
                         })
@@ -687,7 +687,7 @@ const Success = () => {
                           {t('success.actions.downloadPdf')}
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          Save your analysis as PDF
+                          {t('success.actions.savePdfHint', 'Save your analysis as PDF')}
                         </p>
                         <Button
                           variant="outline"
@@ -813,12 +813,8 @@ const Success = () => {
                         ) : (
                           <Download className="w-4 h-4" />
                         )}
-                        {isGeneratingPdf ? "Generating..." : "Save as PDF"}
+                        {isGeneratingPdf ? t('success.actions.generatingPdf', 'Generating...') : t('success.actions.savePdf', 'Save as PDF')}
                       </Button>
-                      <div className="flex items-center gap-2 text-success">
-                        <Mail className="w-5 h-5" />
-                        <span className="text-sm">Results emailed to you</span>
-                      </div>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button

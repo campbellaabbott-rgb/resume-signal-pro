@@ -678,6 +678,11 @@ async function sendPendingWithdrawal(
 const refId = (v: unknown): string | null =>
   typeof v === "string" && v ? v : (v && typeof v === "object" && typeof (v as { id?: unknown }).id === "string" ? (v as { id: string }).id : null);
 
+/** The commission a checkout named, in cents (0 to $100), or null when it named none. */
+function namedCommissionOf(raw: unknown): number | null {
+  return typeof raw === "string" && /^\d{1,5}$/.test(raw) && Number(raw) <= 10_000 ? Number(raw) : null;
+}
+
 /** A customer's address, read from Stripe; null for a deleted customer or a failed read. */
 async function customerEmailOf(stripe: Stripe, customerRef: unknown): Promise<string | null> {
   const id = refId(customerRef);
@@ -1561,8 +1566,17 @@ serve(async (req) => {
               const lowCommission = ['basic_keyword_fix', 'cover_letter', 'scan_pack', 'scan_credits', 'career_bundle', 'interview_coach', 'career_path_simulator', 'apply_assistant'];
               // Every checkout now carries the code; the ones the affiliate
               // page promises nothing for mark it "none" and are recorded at
-              // $0 (_shared/checkout-policy.ts policyMetadata).
-              const commissionCents = session.metadata?.referral_commission === "none" ? 0 : lowCommission.includes(productType || '') ? 100 : 500;
+              // $0 (_shared/checkout-policy.ts policyMetadata). A checkout that
+              // names its commission (metadata.referral_commission_cents,
+              // written by our checkout code, never by the buyer) is paid
+              // exactly that: the owner re-based the programme on a flat $10
+              // for a referred customer's first paid Pro month (2026-10-12),
+              // which the subscription checkout names. Otherwise the
+              // per-product amounts the affiliate page lists.
+              const namedCommission = namedCommissionOf(session.metadata?.referral_commission_cents);
+              const commissionCents = session.metadata?.referral_commission === "none" ? 0
+                : namedCommission !== null ? namedCommission
+                : lowCommission.includes(productType || '') ? 100 : 500;
               
               // verify-product-purchase (triggered from the success page) can also
               // record this same conversion — the table's UNIQUE constraint on

@@ -821,8 +821,15 @@ serve(async (req) => {
       // AI generation calls on every affiliate-referred sale.
       const lowCommissionProducts = ['basic_keyword_fix', 'cover_letter', 'scan_pack', 'scan_credits', 'career_bundle', 'interview_coach', 'career_path_simulator', 'apply_assistant'];
       // A checkout the affiliate page promises nothing for marks its referral
-      // "none" (_shared/checkout-policy.ts): recorded at $0, never paid.
-      const commissionCents = session.metadata?.referral_commission === "none" ? 0 : lowCommissionProducts.includes(productType || '') ? 100 : 500;
+      // "none" (_shared/checkout-policy.ts): recorded at $0, never paid. A
+      // checkout that names its commission (metadata.referral_commission_cents,
+      // written by our checkout code) is paid exactly that, as the webhook
+      // pays it (the flat $10 on a referred first Pro month, 2026-10-12).
+      const rawNamed = session.metadata?.referral_commission_cents;
+      const namedCommission = typeof rawNamed === "string" && /^\d{1,5}$/.test(rawNamed) && Number(rawNamed) <= 10_000 ? Number(rawNamed) : null;
+      const commissionCents = session.metadata?.referral_commission === "none" ? 0
+        : namedCommission !== null ? namedCommission
+        : lowCommissionProducts.includes(productType || '') ? 100 : 500;
       logStep("Recording affiliate conversion", { 
         referralCode, 
         amount: session.amount_total,

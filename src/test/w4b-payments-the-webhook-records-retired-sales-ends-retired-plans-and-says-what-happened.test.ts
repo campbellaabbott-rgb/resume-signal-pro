@@ -378,6 +378,31 @@ describe("a delayed payment is delivered when it lands, and told when it fails (
   });
 });
 
+describe("a referred sale earns what its checkout named (the 2026-10-12 affiliate re-base)", () => {
+  const conversions: Array<Record<string, unknown>> = [];
+  const pro = (id: string, metadata: Record<string, string>) => ({
+    id, mode: "subscription", subscription: "sub_ref", customer: "cus_1", payment_status: "paid", status: "complete",
+    amount_total: 4500, currency: "usd", customer_details: { email: "subscriber@example.com" }, metadata,
+  });
+  beforeEach(() => {
+    conversions.length = 0;
+    db.rpcs.record_affiliate_conversion = (a) => { conversions.push(a); return { data: true, error: null }; };
+    world.subs.sub_ref = proSub("sub_ref", { status: "active" });
+  });
+
+  it("a Pro checkout naming 1000 cents records a $10 commission", async () => {
+    await deliver("checkout.session.completed", pro("cs_live_referred_pro_1", { product_type: "pro_subscription", referral_code: "ab12cd34", referral_commission_cents: "1000" }));
+    expect(conversions.map((c) => c.p_commission_override)).toEqual([1000]);
+  });
+
+  it("'none' still records $0, and a checkout that names nothing keeps the listed amounts", async () => {
+    await deliver("checkout.session.completed", pro("cs_live_referred_pro_2", { product_type: "pro_subscription", referral_code: "ab12cd34", referral_commission: "none", referral_commission_cents: "1000" }));
+    await deliver("checkout.session.completed", paidSession("cs_live_referred_fb", { product_type: "freelance_boost", referral_code: "ab12cd34" }, { amount_total: 2900 }));
+    await deliver("checkout.session.completed", paidSession("cs_live_referred_bad", { product_type: "freelance_boost", referral_code: "ab12cd34", referral_commission_cents: "" }, { amount_total: 2900 }));
+    expect(conversions.map((c) => c.p_commission_override)).toEqual([0, 500, 500]);
+  });
+});
+
 describe("the owner's test-mode rehearsal has a way in (CP-033)", () => {
   it("an event signed with the test secret is handled with the test key and its row is tagged", async () => {
     env.STRIPE_TEST_WEBHOOK_SECRET = TEST_SECRET;
