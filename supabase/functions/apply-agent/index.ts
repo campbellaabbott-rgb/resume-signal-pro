@@ -72,7 +72,12 @@ import { APPLY_AGENT_ON } from "../_shared/apply-agent-switch.ts";
 // person), so the dormant agent and the live connector classify alike.
 // 2026-10-11.15: the classifier it imports reads the person's own history inside a work-done prompt
 // as that question (review of 9fe3bc0d), and the switch module gained the Apply Assistant's switch.
-const BUILD_VERSION = "2026-10-11.15";
+// 2026-10-11.27 (wave 4 round 2, the agents API): the same switched-off code,
+// carrying the S12 classifier (_shared/application-questions.ts: a protected
+// status in a later clause of a work-done prompt goes to the person, and the
+// protected list learns visa, rate, accommodation and immunisation asks), so
+// a build string never names two versions of the bundle.
+const BUILD_VERSION = "2026-10-11.27";
 // Provable from outside with no key: the CORS preflight and every response
 // carry this in x-fn-build.
 const FN_BUILD = `apply-agent.${BUILD_VERSION}`;

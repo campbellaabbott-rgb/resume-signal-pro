@@ -3,7 +3,9 @@
 # fixes (branch w4b/agents-api; docs/wave4/README.md).
 #
 # THE CLAIMS, one line each below:
-#   - agent-mcp and public-api serve 2026-10-11.27 or later;
+#   - agent-mcp and public-api serve 2026-10-11.27 or later, and so does the
+#     switched-off apply-agent, whose bundle carries the S12 classifier
+#     (_shared/application-questions.ts, S12-081);
 #   - a keyless tools/list declares countCapped, rankedFellBack and the
 #     board's employer notes (unknownCompanies, companiesUnresolved,
 #     companiesNotLookedUp) on search_jobs (S12-040, S12-041, S12-080), lets
@@ -33,7 +35,7 @@ echo "== 92. wave 4 round 2, agents API: employer names, honest counts, no ChatG
 
 VD92_LIVE=0
 VD92_API=0
-for VD92_FN in agent-mcp public-api; do
+for VD92_FN in agent-mcp public-api apply-agent; do
   VD92_H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$VD92_FN" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
   if [ -z "$VD92_H" ]; then echo "FAIL  $VD92_FN preflight carries no x-fn-build (not deployed, or the previous bundle is serving)"
   elif build_ge "$VD92_FN" "$VD92_H" "2026-10-11" "27"; then

@@ -94,6 +94,7 @@ beforeAll(async () => {
 
 const MCP = "https://p\\.supabase\\.co/functions/v1/agent-mcp";
 const API = "https://p\\.supabase\\.co/functions/v1/public-api";
+const AGENT = "https://p\\.supabase\\.co/functions/v1/apply-agent";
 const result = (sc: Record<string, unknown>, isError = false) => JSON.stringify({ jsonrpc: "2.0", id: 1, result: { content: [{ type: "text", text: JSON.stringify(sc) }], structuredContent: sc, isError } });
 const CVS_REFUSED = { jobs: [], total: 0, unknownCompanies: ["CVS"], companiesUnresolved: [{ asked: "CVS", candidates: [{ token: "cvshealth", name: "CVS Health" }] }] };
 const ROW = { id: "greenhouse:acme:1", first_seen: "2026-09-01T00:00:00Z", last_verified_at: "2026-10-12T09:00:00Z", last_seen: "2026-10-12T09:00:00Z" };
@@ -102,6 +103,7 @@ function healthy(over: Record<string, Route | null> = {}): Route[] {
   const base: Record<string, Route> = {
     optMcp: { match: `^OPTIONS ${MCP} `, headers: { "x-fn-build": "agent-mcp.2026-10-11.27" } },
     optApi: { match: `^OPTIONS ${API} `, headers: { "x-fn-build": "public-api.2026-10-11.27" } },
+    optAgent: { match: `^OPTIONS ${AGENT} `, headers: { "x-fn-build": "apply-agent.2026-10-11.27" } },
     tools: { match: `^POST ${MCP} ua= .*"method":"tools/list"`, body: realTools },
     cvs: { match: `^POST ${MCP} ua= .*"companies":"CVS"`, body: result(CVS_REFUSED) },
     gpt: { match: `^POST ${MCP} ua=openai-mcp.*"name":"search_jobs"`, body: result({ jobs: [], total: 0 }) },
@@ -118,6 +120,7 @@ describe("section 92 on a healthy deploy", () => {
     const { lines } = runSection(healthy());
     expect(fails(lines), show(lines)).toEqual([]);
     expect(has(lines, "PASS", /agent-mcp preflight x-fn-build = agent-mcp\.2026-10-11\.27/), show(lines)).toBe(true);
+    expect(has(lines, "PASS", /apply-agent preflight x-fn-build = apply-agent\.2026-10-11\.27/), show(lines)).toBe(true);
     expect(has(lines, "PASS", /search_jobs declares countCapped, rankedFellBack, unknownCompanies/), show(lines)).toBe(true);
     expect(has(lines, "PASS", /apply_myself route may say null/), show(lines)).toBe(true);
     expect(has(lines, "PASS", /keyless tools\/list is \d+ bytes/), show(lines)).toBe(true);
@@ -138,6 +141,11 @@ describe("section 92 fails each regression", () => {
     const { lines, calls } = runSection(healthy({ optMcp: { match: `^OPTIONS ${MCP} `, headers: { "x-fn-build": "agent-mcp.2026-10-11.3" } } }));
     expect(has(lines, "FAIL", /agent-mcp preflight x-fn-build = agent-mcp\.2026-10-11\.3 \(want/), show(lines)).toBe(true);
     expect(calls.filter((c) => /"name":"search_jobs"/.test(c))).toEqual([]);
+  });
+
+  it("an apply-agent bundle older than the S12 classifier: FAIL on its build", () => {
+    const { lines } = runSection(healthy({ optAgent: { match: `^OPTIONS ${AGENT} `, headers: { "x-fn-build": "apply-agent.2026-10-11.15" } } }));
+    expect(has(lines, "FAIL", /apply-agent preflight x-fn-build = apply-agent\.2026-10-11\.15 \(want/), show(lines)).toBe(true);
   });
 
   it("a schema without countCapped or the employer notes", () => {
