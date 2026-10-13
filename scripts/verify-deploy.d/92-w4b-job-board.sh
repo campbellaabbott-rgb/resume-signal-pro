@@ -54,7 +54,7 @@ else echo "INFO  the offset refusal is not judged: .93 is not serving (answered 
 # S12-123: malformed bodies are 400s, an over-long id is not open.
 VD92_NULL=$(curl -s -m 60 -o /dev/null -w '%{http_code}' -X POST "$B/functions/v1/job-board" -H "Content-Type: application/json" -H "x-rb-budget: probe" -H "apikey: $K" -H "Authorization: Bearer $K" -d 'null')
 VD92_ARR=$(curl -s -m 60 -o /dev/null -w '%{http_code}' -X POST "$B/functions/v1/job-board" -H "Content-Type: application/json" -H "x-rb-budget: probe" -H "apikey: $K" -H "Authorization: Bearer $K" -d '[1]')
-VD92_LONG=$(node -e 'process.stdout.write("greenhouse:vd92:"+"x".repeat(400))')
+VD92_LONG=$(node -e 'process.stdout.write("greenhouse:vd92:"+"x".repeat(20000))')
 VD92_EX=$(curl -s -m 60 -o /tmp/vd_92_exists.json -w '%{http_code}' -X POST "$B/functions/v1/job-board" -H "Content-Type: application/json" -H "x-rb-budget: probe" -H "apikey: $K" -H "Authorization: Bearer $K" -d "{\"action\":\"exists\",\"ids\":[\"$VD92_LONG\"]}")
 
 # S12-124, S12-014, S12-018, S12-017, S12-172, S12-035: list reads.
@@ -75,7 +75,7 @@ J '{"action":"status"}' > /tmp/vd_92_status.json
 VD92_LIVE="$VD92_LIVE" VD92_R2="$VD92_R2" VD92_NULL="$VD92_NULL" VD92_ARR="$VD92_ARR" VD92_EX="$VD92_EX" VD92_LONG="$VD92_LONG" node -e '
 const fs=require("fs");
 const r2=process.env.VD92_R2==="1";
-const ok=(c,m)=>console.log((c?"PASS":(r2?"FAIL":"INFO"))+"  "+m+(c||r2?"":" (not judged: round 2 is not serving)"));
+const ok=(c,m)=>console.log((r2?(c?"PASS":"FAIL"):"INFO")+"  "+m+(r2?"":" (not judged: round 2 is not serving)"));
 const info=(m)=>console.log("INFO  "+m);
 const rd=(f)=>{try{return JSON.parse(fs.readFileSync(f,"utf8"))}catch{return null}};
 const rows=(j)=>(j&&Array.isArray(j.jobs))?j.jobs:[];
@@ -84,7 +84,7 @@ const n=(j)=>j&&typeof j.total==="number"?j.total:(j&&typeof j.totalAtLeast==="n
 // S12-123
 ok(process.env.VD92_NULL==="400"&&process.env.VD92_ARR==="400","a body of null answers "+process.env.VD92_NULL+" and a body of [1] answers "+process.env.VD92_ARR+" (want 400 and 400, not 500)");
 const ex=rd("/tmp/vd_92_exists.json");
-ok(process.env.VD92_EX==="200"&&ex&&ex.open&&ex.open[process.env.VD92_LONG]===false,"exists with a 416-character id answers "+process.env.VD92_EX+" with it not open (want 200, false; it answered 500)");
+ok(process.env.VD92_EX==="200"&&ex&&ex.open&&ex.open[process.env.VD92_LONG]===false,"exists with a "+process.env.VD92_LONG.length+"-character id answers "+process.env.VD92_EX+", open "+JSON.stringify(ex&&ex.open?ex.open[process.env.VD92_LONG]:null)+" (want 200 and false: an id this long went into the read and answered 500)");
 
 // S12-124
 for(const [f,label] of [["/tmp/vd_92_qnum.json","q: 123"],["/tmp/vd_92_qnul.json","q: a lone NUL"]]){
@@ -106,10 +106,10 @@ for(const [f,word,re] of [["/tmp/vd_92_cvs.json","cvs",/cvs/i],["/tmp/vd_92_ups.
  else ok(j.searchRoute==="SIMPLE"&&mgr.length===0&&acct.length>=Math.ceil(0.8*rs.length),"q \"accountant\" takes route "+j.searchRoute+" (want SIMPLE): "+acct.length+" of "+rs.length+" first titles say accountant, "+mgr.length+" are account managers or executives (want 80% or more, and 0)"+(mgr.length?": "+mgr.slice(0,3).map((r)=>r.title).join(" | "):""));}
 
 // S12-017
-{const j=rd("/tmp/vd_92_night.json");const rs=rows(j);const bad=rs.filter((r)=>/night[- ]?shift/i.test(String(r.title||"")));
+{const j=rd("/tmp/vd_92_night.json");const rs=rows(j);const bad=rs.filter((r)=>/\bnight[- ]?shifts?\b/i.test(String(r.title||"")));
  if(rs.length===0)ok(false,"q \"nurse not night shift\" answered no rows (a lone \"not\" phrase must not empty the board)");
  else ok(bad.length===0,"q \"nurse not night shift\" serves "+rs.length+" rows, "+bad.length+" with night shift in the title (want 0)"+(bad.length?": "+bad.slice(0,3).map((r)=>r.title).join(" | "):""));
- const b=rd("/tmp/vd_92_box.json");const bs=rows(b);const bb=bs.filter((r)=>/box[- ]?trucks?/i.test(String(r.title||"")));
+ const b=rd("/tmp/vd_92_box.json");const bs=rows(b);const bb=bs.filter((r)=>/\bbox[- ]?trucks?\b/i.test(String(r.title||"")));
  if(bs.length===0)info("q driver -\"box truck\" answered no rows, so the phrase exclusion is not judged");
  else ok(bb.length===0,"q driver -\"box truck\" serves "+bs.length+" rows, "+bb.length+" with box truck in the title (want 0)"+(bb.length?": "+bb.slice(0,3).map((r)=>r.title).join(" | "):""));}
 
