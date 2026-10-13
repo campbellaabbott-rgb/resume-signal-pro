@@ -133,7 +133,8 @@ function ldJsonBodies(html: string): string[] {
     if (gt < 0) return out;
     const close = lower.indexOf("</script", gt);
     if (close < 0) return out;
-    if (/type\s*=\s*["']?application\/ld\+json/.test(lower.slice(open, gt))) out.push(html.slice(gt + 1, close));
+    // S12-038: USAJOBS writes the plus as an entity, type="application/ld&#x2B;json".
+    if (/type\s*=\s*["']?application\/ld(?:\+|&#x0*2b;|&#0*43;|&plus;)json/.test(lower.slice(open, gt))) out.push(html.slice(gt + 1, close));
     at = close + 8;
   }
 }
@@ -271,12 +272,22 @@ export function apiPlanFor(u: URL, vendor: string): ApiPlan | null {
     };
   }
   if (vendor === "workday") {
-    // {tenant}.wd{n}.myworkdayjobs.com/[{locale}/]{site}/job/{...path}
+    // {tenant}.wd{n}.myworkdayjobs.com/[{locale}/]{site}/job/{...path}, and
+    // (S12-028) the two shapes an address bar shows: /{site}/details/{slug}
+    // and wd{n}.myworkdaysite.com/[{locale}/]recruiting/{tenant}/{site}/....
+    // CXS reads a job by its slug alone (/job/{slug}, measured 2026-10-12 on
+    // CVS Health: the same 12,230-byte posting as /job/{place}/{slug}).
     const m = /^([a-z0-9][a-z0-9-]*)\.(wd\d+)\.myworkdayjobs\.com$/.exec(host);
-    const pm = /^\/(?:[a-z]{2}-[a-z]{2}\/)?([^/?#]+)(\/job\/[^?#]+)$/i.exec(u.pathname);
-    if (!m || !pm) return null;
+    const site = /^(wd\d+)\.myworkdaysite\.com$/.exec(host);
+    const pm = m
+      ? /^\/(?:[a-z]{2}-[a-z]{2}\/)?([^/?#]+)\/(job|details)(\/[^?#]+)$/i.exec(u.pathname)
+      : site ? /^\/(?:[a-z]{2}-[a-z]{2}\/)?recruiting\/([a-z0-9][a-z0-9-]*)\/([^/?#]+)\/(job|details)(\/[^?#]+)$/i.exec(u.pathname) : null;
+    if (!pm) return null;
+    const [tenant, board, kind, rest] = m ? [m[1], pm[1], pm[2], pm[3]] : [pm[1], pm[2], pm[3], pm[4]];
+    const path = kind.toLowerCase() === "details" ? `/job/${rest.split("/").filter(Boolean).pop() ?? ""}` : `/job${rest}`;
+    if (!SAFE.test(tenant) || path === "/job/") return null;
     return {
-      url: `https://${host}/wday/cxs/${m[1]}/${pm[1]}${pm[2]}`,
+      url: `https://${host}/wday/cxs/${tenant}/${board}${path}`,
       read: (b) => {
         const i = (json(b)?.jobPostingInfo ?? null) as Record<string, unknown> | null;
         return i ? posting(i.title, null, str(i.jobDescription)) : null;
@@ -285,9 +296,11 @@ export function apiPlanFor(u: URL, vendor: string): ApiPlan | null {
   }
   if (vendor === "oracle") {
     // {tenant}.fa.{region}.oraclecloud.com/hcmUI/CandidateExperience/{lang}/sites/{site}/job/{id}
+    // S12-028: and .../sites/{site}/requisitions/preview/{id}, the link a preview shows.
     const si = p.indexOf("sites");
     const site = si >= 0 ? p[si + 1] ?? "" : "";
-    const id = si >= 0 && p[si + 2] === "job" ? p[si + 3] ?? "" : "";
+    const id = si < 0 ? "" : p[si + 2] === "job" ? p[si + 3] ?? ""
+      : p[si + 2] === "requisitions" && p[si + 3] === "preview" ? p[si + 4] ?? "" : "";
     if (!SAFE.test(site) || !/^\d{1,15}$/.test(id)) return null;
     const finder = `ById;Id="${id}",siteNumber=${site}`;
     return {
@@ -296,6 +309,18 @@ export function apiPlanFor(u: URL, vendor: string): ApiPlan | null {
         const it = ((json(b)?.items as Array<Record<string, unknown>> | undefined) ?? [])[0];
         return it ? posting(it.Title, null, join(it.ExternalDescriptionStr, it.ExternalResponsibilitiesStr, it.ExternalQualificationsStr)) : null;
       },
+    };
+  }
+  if (vendor === "workable") {
+    // S12-038: apply.workable.com/{account}/j/{shortcode}; the account-less
+    // /j/{shortcode} redirects to it, and readPosting plans again from there.
+    const at = p.indexOf("j");
+    const account = at === 1 ? p[0] : "";
+    const code = at === 1 ? p[2] ?? "" : "";
+    if (host !== "apply.workable.com" || !SAFE.test(account) || !/^[A-Z0-9]{6,20}$/i.test(code)) return null;
+    return {
+      url: `https://apply.workable.com/api/v2/accounts/${encodeURIComponent(account)}/jobs/${code}`,
+      read: (b) => { const j = json(b); return j ? posting(j.title, null, join(j.description, j.requirements, j.benefits)) : null; },
     };
   }
   if (vendor === "adp") {
@@ -310,6 +335,17 @@ export function apiPlanFor(u: URL, vendor: string): ApiPlan | null {
     };
   }
   return null;
+}
+
+/**
+ * S12-028: VENDORS WHOSE PAGES CARRY NO POSTING TEXT (measured 2026-10-11, the
+ * header above): their API is the only way to the description. A link of one
+ * of these vendors that names no API plan cannot be read, so it is answered
+ * before the meters are charged.
+ */
+export const API_ONLY_VENDORS: ReadonlySet<string> = new Set(["greenhouse", "smartrecruiters", "bamboohr", "rippling", "oracle", "adp"]);
+export function unreadableShape(u: URL, vendor: string): boolean {
+  return API_ONLY_VENDORS.has(vendor) && apiPlanFor(u, vendor) === null;
 }
 
 /**

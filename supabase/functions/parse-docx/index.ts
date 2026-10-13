@@ -10,7 +10,7 @@ import { headerFooterLines, withHeaderFooter, type ZipLike } from "./header-foot
 
 // Provable from outside without an upload: every response, the CORS preflight
 // included, carries this in x-fn-build.
-const FN_BUILD = "parse-docx.2026-10-09.1";
+const FN_BUILD = "parse-docx.2026-10-11.26";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };

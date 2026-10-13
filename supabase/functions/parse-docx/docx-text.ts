@@ -52,6 +52,43 @@ export function softBreaksAsNewlines(xml: string): { xml: string; count: number 
   return { xml: out, count };
 }
 
+/**
+ * S12-128: A TEXT BOX WITH NO FALLBACK IS LIFTED INTO THE TEXT. Word writes a
+ * modern text box as mc:AlternateContent: the drawing in mc:Choice and an old
+ * VML copy in mc:Fallback, which is the copy mammoth reads. A box written with
+ * a Choice and no Fallback (some exporters and templates do) was read as
+ * nothing, and a contact block placed in one lost its email address. Each such
+ * block becomes text runs holding its paragraphs, one per line, where it sat.
+ * One pass with indexOf; a block that has a Fallback is left as it is.
+ */
+export function liftChoiceOnlyTextBoxes(xml: string): { xml: string; count: number } {
+  const OPEN = "<mc:AlternateContent";
+  const CLOSE = "</mc:AlternateContent>";
+  let out = "";
+  let at = 0;
+  let count = 0;
+  for (;;) {
+    const start = xml.indexOf(OPEN, at);
+    if (start < 0) return { xml: out + xml.slice(at), count };
+    const end = xml.indexOf(CLOSE, start);
+    if (end < 0) return { xml: out + xml.slice(at), count };
+    const block = xml.slice(start, end + CLOSE.length);
+    out += xml.slice(at, start);
+    at = end + CLOSE.length;
+    if (block.includes("<mc:Fallback") || !block.includes("<w:txbxContent")) { out += block; continue; }
+    const lines: string[] = [];
+    for (const para of block.match(/<w:p[\s>][\s\S]*?<\/w:p>/g) ?? []) {
+      const text = (para.match(/<w:t(?:\s[^>]*)?>[^<]*<\/w:t>/g) ?? []).map((t) => t.replace(/^<w:t(?:\s[^>]*)?>|<\/w:t>$/g, "")).join("");
+      if (text.trim()) lines.push(text);
+    }
+    count++;
+    // The block sits inside a run (<w:r>), so run content replaces it: a text
+    // element per line, a newline element between them.
+    const runs = lines.map((l) => `<w:t xml:space="preserve">${l}</w:t>`).join(NEWLINE_RUN);
+    out += lines.length ? `${NEWLINE_RUN}${runs}${NEWLINE_RUN}` : "";
+  }
+}
+
 /** The main document part the package's relationships name (word/document.xml unless they say otherwise). */
 export async function mainDocumentPath(zip: LoadedZip): Promise<string> {
   const rels = zip.file("_rels/.rels");
@@ -82,8 +119,9 @@ export async function readDocxBody(
   const path = await mainDocumentPath(zip);
   const part = zip.file(path);
   if (part) {
-    const rewritten = softBreaksAsNewlines(await part.async("string"));
-    if (rewritten.count > 0) {
+    const lifted = liftChoiceOnlyTextBoxes(await part.async("string"));
+    const rewritten = softBreaksAsNewlines(lifted.xml);
+    if (rewritten.count > 0 || lifted.count > 0) {
       zip.file(path, rewritten.xml);
       input = await zip.generateAsync({ type: "uint8array" });
       softBreaks = rewritten.count;
