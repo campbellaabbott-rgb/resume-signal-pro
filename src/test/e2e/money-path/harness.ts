@@ -169,6 +169,7 @@ const LIVE_FUNCTIONS = [
   "log_webhook_event", "save_purchased_content", "get_purchased_content_by_session", "get_temp_resume",
   "log_email_send", "mail_door_take", "get_analysis_by_share_id", "check_global_rate_limit",
   "delivery_error_is_transient", "update_delivery_retry", "log_delivery_step", "get_failed_deliveries_for_retry",
+  "product_delivery_health",
 ];
 const live = (fn: string) => `CREATE OR REPLACE ${liveDefinitionOf(fn).body}\n$$;`;
 
@@ -181,7 +182,11 @@ const MIGRATIONS = [
 ];
 
 /** This round's migrations that act on the path, when present (absent on a base without them). */
-export const ROUND_MIGRATIONS = ["20261011140000_a_closed_paid_order_stays_closed.sql"];
+export const ROUND_MIGRATIONS = [
+  "20261011140000_a_closed_paid_order_stays_closed.sql",
+  "20261011143000_a_paid_order_made_but_never_mailed_is_mailed_from_its_copy.sql",
+  "20261011143500_a_paid_order_whose_mail_never_left_counts_as_stuck.sql",
+];
 
 const TABLES_TO_CLEAR = [
   "used_stripe_sessions", "product_deliveries", "purchased_content", "resume_analyses", "webhook_events", "email_logs",
@@ -250,6 +255,8 @@ export type MoneyPath = {
   order: (sessionId: string) => Promise<Record<string, unknown> | undefined>;
   /** Time passes for an order: its next try is due now. */
   dueNow: (sessionId: string) => Promise<void>;
+  /** The orders product_delivery_health counts as stuck (what the heartbeat reads). */
+  stuck: () => Promise<number>;
   reset: () => Promise<void>;
 };
 
@@ -361,6 +368,8 @@ export async function moneyPath(opts: { roundMigrations?: boolean } = {}): Promi
     dueNow: async (sessionId) => {
       await db.query("UPDATE public.product_deliveries SET next_retry_at = now() - interval '1 minute' WHERE stripe_session_id = $1 AND next_retry_at IS NOT NULL AND next_retry_at <> 'infinity'", [sessionId]);
     },
+    stuck: async () => Number((await db.query<{ n: string | number | null }>(
+      "SELECT COALESCE(sum(stuck), 0) AS n FROM public.product_delivery_health(24)")).rows[0]?.n ?? 0),
     reset: async () => {
       await settle();
       await db.exec(`TRUNCATE ${TABLES_TO_CLEAR.map((t) => `public.${t}`).join(", ")} CASCADE`);

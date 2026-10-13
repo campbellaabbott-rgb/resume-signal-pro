@@ -75,7 +75,11 @@ describe("the policy can be met and places both migrations where they work", () 
     expect(m, "140000 waits for a function deploy").toBeDefined();
     expect(m!.note).toMatch(/before retry-failed-deliveries/);
     const sweep = codeOf(readFileSync(resolve(ROOT, "supabase/functions/retry-failed-deliveries/index.ts"), "utf8"));
-    expect(sweep).toMatch(/\.rpc\('get_failed_deliveries_for_retry', \{ p_limit: \d+, p_include_generating: true \}\)/);
+    // The call may also ask for the made-but-unmailed orders: 20261011143000
+    // adds that third argument and, with no ledger rule, also applies before
+    // the functions, so the sweep's call never names a missing function.
+    expect(sweep).toMatch(/\.rpc\('get_failed_deliveries_for_retry', \{ p_limit: \d+, p_include_generating: true(, p_include_unmailed: true)? \}\)/);
+    expect(POLICY.migrationOrder?.["20261011143000"], "20261011143000 must apply before the sweep that passes its third argument").toBeUndefined();
   });
 });
 

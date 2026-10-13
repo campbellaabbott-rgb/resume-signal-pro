@@ -19,7 +19,11 @@
  *       its next try is due the sweep resends the link (only the link), and
  *       the order goes back to waiting for the buyer's page (S12-104);
  *   1c  paid by a delayed method: nothing is claimed while it is unpaid, and
- *       async_payment_succeeded claims it and mails the link (CP-029).
+ *       async_payment_succeeded claims it and mails the link (CP-029);
+ *   1d  a delayed payment that failed: nothing is claimed or made, the buyer is
+ *       told once that nothing was charged (CP-029);
+ *   1e  the success page, opened by whoever holds the link, answers the
+ *       buyer's address masked (R1's masking, kept by this round).
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { mailsTo, moneyPath, OWNER, paidSession, type MoneyPath } from "./harness";
@@ -133,5 +137,35 @@ describe("1c: a delayed payment method", () => {
     expect((await p.order(id))?.status).toBe("payment_received");
     expect((await p.call("analyze-resume", { resumeText: RESUME, sessionId: id })).status).toBe(200);
     expect((await p.order(id))?.status).toBe("delivered");
+  });
+});
+
+describe("1d: a delayed payment that failed", () => {
+  it("nothing is claimed or made, and the buyer is told once that nothing was charged", async () => {
+    const id = "cs_live_fullanalysisfail01";
+    p.stripe.sessions[id] = fullAnalysis(id, { payment_status: "unpaid" });
+    expect((await p.event("checkout.session.async_payment_failed", p.stripe.sessions[id])).status).toBe(200);
+    expect((await p.db.query("SELECT 1 FROM public.used_stripe_sessions WHERE session_id = $1", [id])).rows).toHaveLength(0);
+    expect(await p.order(id)).toBeUndefined();
+    const told = mailsTo(p, BUYER, /did not go through/);
+    expect(told, "the buyer of a failed delayed payment heard nothing").toHaveLength(1);
+    expect(told[0].html).toContain("nothing was charged");
+    expect(linkMails()).toHaveLength(0);
+    expect(p.modelCalls()).toBe(0);
+    const failures = (await p.db.query<{ failure_code: string }>("SELECT failure_code FROM public.payment_failures")).rows;
+    expect(failures.map((f) => f.failure_code)).toEqual(["async_payment_failed"]);
+  });
+});
+
+describe("1e: the success page masks the buyer's address for whoever holds the link", () => {
+  it("answers j***-style, never the address itself", async () => {
+    const id = "cs_live_fullanalysismask01";
+    p.stripe.sessions[id] = fullAnalysis(id);
+    await p.event("checkout.session.completed", p.stripe.sessions[id]);
+    const page = await p.call("verify-product-purchase", { sessionId: id });
+    expect(page.status).toBe(200);
+    expect(page.json.customerEmail, "the link's holder was shown the buyer's address").not.toBe(BUYER);
+    expect(String(page.json.customerEmail)).toMatch(/\*/);
+    expect(page.json.customerEmailMasked).toBe(true);
   });
 });

@@ -47,6 +47,8 @@ const TABLE = `
     product_type text NOT NULL,
     product_name text,
     content_generation_started_at timestamptz,
+    content_generation_completed_at timestamptz,
+    email_sent_at timestamptz,
     status text NOT NULL DEFAULT 'payment_received',
     generation_error text,
     metadata jsonb

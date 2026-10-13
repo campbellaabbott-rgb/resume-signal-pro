@@ -14,13 +14,17 @@
 #     is closed to anon (a GET probe: PostgREST runs it read-only);
 #   - 20261011142000 applied: get_cron_health lists an active mail-watch job,
 #     and once it has run, its runs did not fail;
-#   - what no read here can prove is INFO: 20261011140000's trigger (the owner
-#     reads pg_trigger), the test-mode rehearsal secrets and HC_PING_URL.
+#   - 20261011143000 applied: the retry selector takes p_include_unmailed (the
+#     sweep 2026-10-11.22 passes it; without the migration every sweep names
+#     a missing function) and is closed to anon;
+#   - what no read here can prove is INFO: 20261011140000's trigger and
+#     20261011143500's health count (the owner reads both), the test-mode
+#     rehearsal secrets and HC_PING_URL.
 #
 # READ-ONLY. Preflights run no function logic. mail-watch is POSTed only once
 # its preflight shows this build, and that build refuses before reading
 # anything. The cron read is the anon aggregate section 7m already calls.
-echo "== 92. w4b payments-delivery: retired sales recorded, retired plans ended, orders no retry can make spent and asked for, the purchase mail in the buyer's language, mail-watch =="
+echo "== 92. w4b payments-delivery: retired sales recorded, retired plans ended, orders no retry can make spent and asked for, made orders never mailed are mailed, the purchase mail in the buyer's language, mail-watch =="
 
 vd92_build() { # $1 fn -> the x-fn-build its preflight answers (stripe-webhook answers its 405 with it)
   curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$1" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//'
@@ -51,6 +55,16 @@ esac
 
 probe scan_credit_redeem '{"p_email":"probe@example.invalid","p_session_hash":"0000000000000000000000000000000000000000000000000000000000000000","p_user_id":"00000000-0000-0000-0000-000000000000"}'
 
+# The three-argument selector: 42501 means PostgREST found it and anon may not
+# run it; PGRST202 means no function takes p_include_unmailed (not applied).
+VD92_SEL=$(curl -s -m 60 "$B/rest/v1/rpc/get_failed_deliveries_for_retry?p_limit=1&p_include_generating=false&p_include_unmailed=true" -H "apikey: $K" -H "Authorization: Bearer $K" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const j=JSON.parse(s);console.log(Array.isArray(j)?"ROWS":(j.code||"NOCODE"))}catch{console.log("NONJSON")}})')
+case "$VD92_SEL" in
+  42501) echo "PASS  get_failed_deliveries_for_retry takes p_include_unmailed and anon may not run it (20261011143000 applied)" ;;
+  PGRST202) echo "FAIL  no get_failed_deliveries_for_retry takes p_include_unmailed: 20261011143000 has not applied, and retry-failed-deliveries 2026-10-11.22 names a missing function on every sweep" ;;
+  ROWS) echo "FAIL  get_failed_deliveries_for_retry answered rows to anon: paid orders and buyers' addresses are readable by anyone" ;;
+  *) echo "FAIL  get_failed_deliveries_for_retry probe -> $VD92_SEL (want 42501)" ;;
+esac
+
 R get_cron_health '{"p_hours":24}' > /tmp/vd_92_cron.json
 node -e '
 const fs=require("fs");let rows=null;try{rows=JSON.parse(fs.readFileSync("/tmp/vd_92_cron.json","utf8"))}catch{}
@@ -65,4 +79,5 @@ else if(failed>0)console.log("FAIL  mail-watch ran "+runs+" times in 24 hours an
 else console.log("PASS  mail-watch ran "+runs+" times in 24 hours with no failed run");'
 
 echo "INFO  20261011140000 (a refunded or delivered order never reopens) is proven by the owner's read: select tgname, tgenabled from pg_trigger where tgname = 'product_delivery_stays_closed' (one row, enabled O)"
+echo "INFO  20261011143500 (a paid order whose mail never left counts as stuck; a test purchase never counts) is proven by the owner's read: select position('email_failed' in pg_get_functiondef('public.product_delivery_health(integer)'::regprocedure)) > 0 (true)"
 echo "INFO  the test-mode rehearsal needs STRIPE_TEST_WEBHOOK_SECRET and an sk_test_ STRIPE_TEST_SECRET_KEY (critical-path owner step BEFORE R2 MERGES); mail-watch pings healthchecks.io only once HC_PING_URL is set"

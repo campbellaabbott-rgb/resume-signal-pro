@@ -251,11 +251,13 @@ serve(async (req) => {
 
     // Get failed deliveries that need retry. This build handles a 'generating'
     // row nobody finished, so it asks for them; the old build did not
-    // (20261009140000, S11-146).
+    // (20261009140000, S11-146). It also handles an order made and never
+    // mailed ('generated' or 'content_generated' with no mail sent, 15
+    // minutes on), so it asks for those too (20261011143000, CP-021).
     const { data: failedDeliveries, error: fetchError } = await supabase
       // Two rows a run (CP-031): each paid generation can take a minute, and
       // five one after another ran past the function's wall clock.
-      .rpc('get_failed_deliveries_for_retry', { p_limit: 2, p_include_generating: true });
+      .rpc('get_failed_deliveries_for_retry', { p_limit: 2, p_include_generating: true, p_include_unmailed: true });
 
     if (fetchError) {
       logStep("Error fetching failed deliveries", { error: fetchError.message });
@@ -294,11 +296,27 @@ serve(async (req) => {
         const metadata = delivery.metadata as Record<string, unknown> || {};
         const resumeSessionId = metadata.resume_session_id as string;
         
+        // MADE, NEVER MAILED (CP-021). A 'generated' row (the success page
+        // made it) or a 'content_generated' row (the webhook or a sweep made
+        // it) whose mail never left reaches here 15 minutes after it was made
+        // (20261011143000): the writer that would have mailed it is gone. It
+        // goes through the branch below, which mails the saved copy and never
+        // makes it again. With no address on the order there is nobody to
+        // mail: the buyer saw it on the page, so it leaves the schedule.
+        const madeNotMailed = delivery.status === 'generated' || delivery.status === 'content_generated';
+        if (madeNotMailed && !delivery.customer_email) {
+          await supabase.from('product_deliveries')
+            .update({ next_retry_at: 'infinity', last_retry_error: 'Made and never mailed, and the order carries no address to mail it to (shown on the success page)' })
+            .eq('id', delivery.id).eq('status', delivery.status);
+          results.push({ id: delivery.id, status: delivery.status, success: false, error: 'no address on the order' });
+          continue;
+        }
+
         // Handle based on current status. A 'generating' row reaches here only
         // when its generation began 15+ minutes ago and never finished
         // (20261009140000): nothing is still writing it, so it is generated
         // again like a payment that was never started.
-        if (delivery.status === 'payment_received' || delivery.status === 'generation_failed' || delivery.status === 'generating') {
+        if (delivery.status === 'payment_received' || delivery.status === 'generation_failed' || delivery.status === 'generating' || madeNotMailed) {
           // Need to generate content
           
           // For scan packs, just add credits

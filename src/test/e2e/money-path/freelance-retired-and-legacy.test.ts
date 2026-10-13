@@ -18,6 +18,9 @@
  *   4  a past Apply Assistant with no job posting: the first sweep spends it,
  *      the buyer is asked for the posting once, the owner is told once, no
  *      model call; the success page says the posting is needed (S12-054);
+ *   4b a past order whose stored résumé is gone: the first sweep spends it,
+ *      the buyer is asked once to reply with the résumé, the owner is told
+ *      once, no model call (CP-C item 4);
  *   5  a past order whose copy was saved before its isolate died is mailed
  *      from that copy by the sweep, once, never made again (CP-030), and a
  *      delivered order is never made or mailed again (20261011140000).
@@ -114,6 +117,30 @@ describe("4: a past Apply Assistant bought with no job posting", () => {
     expect(alarm).toHaveLength(1);
     expect(alarm[0].html).toContain("generate-apply-package");
     expect(alarm[0].html, "the alarm sent the owner to the Premium tool").not.toContain("admin-regenerate-delivery");
+  });
+});
+
+describe("4b: a past order whose stored résumé is gone", () => {
+  it("the first sweep spends it, the buyer is asked once for the résumé, the owner told once, no model call", async () => {
+    const id = "cs_live_resumegonelegacy1";
+    const resumeId = await bindResume(id, "A posting");
+    await p.db.query("DELETE FROM public.temp_resume_storage WHERE session_id = $1::uuid", [resumeId]);
+    p.stripe.sessions[id] = paidSession(id, { product_type: "cover_letter", product_name: "Cover Letter" }, { amount_total: 400 });
+    await p.db.query("INSERT INTO public.used_stripe_sessions (session_id, product_type) VALUES ($1, 'cover_letter')", [id]);
+    await p.db.query(
+      `INSERT INTO public.product_deliveries (stripe_session_id, product_type, product_name, customer_email, status, retry_count, next_retry_at, metadata, created_at)
+       VALUES ($1, 'cover_letter', 'Cover Letter', $2, 'generation_failed', 1, now() - interval '1 minute', $3::jsonb, now() - interval '2 hours')`,
+      [id, BUYER, JSON.stringify({ resume_session_id: resumeId, language: "en" })]);
+    await p.sweep();
+    await p.sweep();
+    const order = await p.order(id);
+    expect(order?.max_retries, "an order no retry can make was left to fail all day").toBe(0);
+    expect(String(order?.generation_error)).toMatch(/^resume_expired:/);
+    expect(p.modelCalls()).toBe(0);
+    const asked = mailsTo(p, BUYER, /we need one more thing from you/);
+    expect(asked, "the buyer was never asked for the résumé, or was asked twice").toHaveLength(1);
+    expect(asked[0].html).toContain("Reply to this email with your résumé");
+    expect(mailsTo(p, OWNER, /ran out of retries/)).toHaveLength(1);
   });
 });
 

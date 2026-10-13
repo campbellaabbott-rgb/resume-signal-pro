@@ -429,6 +429,10 @@ serve(async (req) => {
           language: session.metadata?.language || null,
           target_roles: session.metadata?.target_roles || null,
           ...(purchasedCredits != null ? { credits: purchasedCredits } : {}),
+          // A test-mode purchase (the owner's rehearsal, CP-033) is tagged as
+          // the webhook tags it, so the delivery health count leaves it out
+          // (20261011143500).
+          ...((session as { livemode?: boolean }).livemode === false ? { livemode: false } : {}),
         }
       });
       if (trackError) logStep("Delivery record could not be written", { error: trackError.message });
@@ -519,6 +523,10 @@ serve(async (req) => {
     // is on its way. The retry sweep spends the row, asks the buyer for the
     // posting and tells the owner.
     let needsJobPosting = false;
+    // Set when THIS call made the product and saved it. Mailed below whoever
+    // claimed the session first (CP-021): when the webhook claimed it and its
+    // own try failed, the copy this page made was never mailed by anyone.
+    let generatedHere = false;
     if (GENERATED_PRODUCT_TYPES.includes(productType ?? '') && !generatedContent) {
       try {
         const { data: priorRows } = await supabase
@@ -651,6 +659,7 @@ serve(async (req) => {
               p_generated_content: generatedContent
             });
             logStep("Content saved for recovery");
+            generatedHere = true;
 
             await supabase.rpc('log_delivery_step', {
               p_stripe_session_id: sessionId,
@@ -707,6 +716,7 @@ serve(async (req) => {
               });
               if (saveError) logStep("Content could NOT be saved for recovery", { error: saveError.message });
               else logStep("Content saved for recovery");
+              generatedHere = !saveError;
 
               await supabase.rpc('log_delivery_step', {
                 p_stripe_session_id: sessionId,
@@ -905,10 +915,24 @@ serve(async (req) => {
     // again. The row stays at payment_received; the sweeper makes it and
     // mails it.
     const nothingToSend = GENERATED_PRODUCT_TYPES.includes(productType ?? '') && !generatedContent;
+    // A refused mail is the sweep's to resend from the saved copy, at once
+    // (CP-021): email_failed, due now, never waiting on an older schedule.
+    const dueNowForTheSweep = async () => {
+      try {
+        await supabase.from('product_deliveries').update({ next_retry_at: new Date().toISOString() })
+          .eq('stripe_session_id', sessionId).eq('status', 'email_failed');
+      } catch (e) {
+        logStep("Could not make the failed mail due now", { error: String(e) });
+      }
+    };
     if (isFirstUse && customerEmail && !undelivered && nothingToSend) {
       logStep("Confirmation mail held back: nothing has been made yet; the retry sweeper delivers it", { sessionId });
     }
-    if (isFirstUse && customerEmail && !undelivered && !nothingToSend) {
+    // Mailed by the call that claimed the session first, or by the call that
+    // made the product (CP-021: a non-first call that made it used to save it
+    // and mail nobody, leaving a 'generated' row no sweep ever selected).
+    const mailsTheBuyer = isFirstUse || generatedHere;
+    if (mailsTheBuyer && customerEmail && !undelivered && !nothingToSend) {
       try {
         // The service-role key: send-product-email is internal and refuses
         // the publishable key, which every visitor holds.
@@ -948,6 +972,7 @@ serve(async (req) => {
             p_success: false,
             p_error: `Email send failed with status ${emailResponse.status}`
           });
+          await dueNowForTheSweep();
         }
       } catch (emailError) {
         logStep("Email error", { error: String(emailError) });
@@ -959,6 +984,7 @@ serve(async (req) => {
           p_success: false,
           p_error: String(emailError).substring(0, 500)
         });
+        await dueNowForTheSweep();
         // Don't fail the request if email fails
       }
     }

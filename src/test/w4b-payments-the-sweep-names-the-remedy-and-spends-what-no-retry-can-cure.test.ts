@@ -18,7 +18,13 @@
  *   CP-027   the alarm's door is given back when no sender accepted it.
  *   CP-031   two rows a run, not five.
  *   S12-169  the verifier records a retired product's sale, never makes it.
- *   CP-033   the verifier reads a cs_test_ session with the test key.
+ *   CP-033   the verifier reads a cs_test_ session with the test key, and
+ *            tags a test purchase it claims first.
+ *   CP-021   a made order whose mail never left: the sweep mails it from its
+ *            saved copy and never makes it again, an order with no address
+ *            leaves the schedule; and the verifier mails what IT made even
+ *            when another deliverer claimed the session first (it used to
+ *            save it and mail nobody), a refused mail due for the sweep now.
  *
  * The shipped handlers, with Stripe, the database and every network call faked.
  */
@@ -133,7 +139,9 @@ beforeEach(() => {
       let row = db.rows("product_deliveries").find((r) => r.stripe_session_id === a.p_stripe_session_id);
       if (!row) { row = { id: `pd-${a.p_stripe_session_id}`, stripe_session_id: a.p_stripe_session_id, status: a.p_step, retry_count: 0, max_retries: 8 }; db.rows("product_deliveries").push(row); }
       if (a.p_step === "generation_completed") Object.assign(row, { status: a.p_success ? "generated" : "generation_failed", generation_error: a.p_error ?? null });
-      else if (a.p_step === "payment_received") Object.assign(row, { status: "payment_received", product_type: (a.p_metadata as Record<string, unknown>)?.product_type });
+      else if (a.p_step === "payment_received") Object.assign(row, { status: "payment_received", product_type: (a.p_metadata as Record<string, unknown>)?.product_type, metadata: a.p_metadata });
+      else if (a.p_step === "generation_started") Object.assign(row, { status: "generating" });
+      else if (a.p_step === "email_sent") Object.assign(row, a.p_success === false ? { status: "email_failed", email_error: a.p_error } : { status: "delivered", email_sent_at: "now" });
       return { data: row.id, error: null };
     },
   };
@@ -331,5 +339,86 @@ describe("the verifier says what an order needs, and never makes a retired produ
     env.STRIPE_TEST_SECRET_KEY = "sk_test_rehearsal";
     await post({ sessionId: "cs_live_x1" });
     expect(world.keys.at(-1), "a live session was read with the test key").toBe("sk_live_harness");
+  });
+});
+
+describe("an order made and never mailed is mailed, by the sweep and by the verifier that made it (CP-021)", () => {
+  it("the sweep asks for made-but-unmailed orders and mails one from its saved copy, never making it again", async () => {
+    let asked: Record<string, unknown> | null = null;
+    db.rpcs.get_failed_deliveries_for_retry = (a) => { asked = a; return { data: db.rows("product_deliveries").filter((r) => r.status === "content_generated"), error: null }; };
+    due({ id: "pd-made", stripe_session_id: "cs_live_made_unmailed", product_type: "cover_letter", status: "content_generated", metadata: { resume_session_id: RESUME_ID, language: "de" } });
+    db.rows("purchased_content").push({ stripe_session_id: "cs_live_made_unmailed", generated_content: { coverLetter: "Sehr geehrte" } });
+    await sweep();
+    expect(asked, "the sweep never asked for the made-but-unmailed orders").toMatchObject({ p_include_unmailed: true });
+    expect(calls.filter((c) => c.fn.startsWith("generate-")), "a saved order was made again").toEqual([]);
+    const mailed = calls.filter((c) => c.fn === "send-product-email");
+    expect(mailed.map((c) => [c.body.generatedContent, c.body.language])).toEqual([[{ coverLetter: "Sehr geehrte" }, "de"]]);
+    expect(row("pd-made").status).toBe("delivered");
+  });
+
+  it("a made order with no address leaves the schedule and nothing is mailed or made", async () => {
+    db.rpcs.get_failed_deliveries_for_retry = () => ({ data: db.rows("product_deliveries").filter((r) => r.status === "generated" && r.next_retry_at !== "infinity"), error: null });
+    due({ id: "pd-noaddr", stripe_session_id: "cs_live_made_noaddr", product_type: "cover_letter", status: "generated", customer_email: null, metadata: { resume_session_id: RESUME_ID } });
+    await sweep();
+    expect(calls).toEqual([]);
+    expect(row("pd-noaddr")).toMatchObject({ status: "generated", next_retry_at: "infinity" });
+  });
+
+  const post = async (body: Record<string, unknown>) => {
+    const res = await verify(new Request("https://harness.supabase.co/functions/v1/verify-product-purchase", {
+      method: "POST", headers: { "content-type": "application/json", "cf-connecting-ip": "203.0.113.21" }, body: JSON.stringify(body),
+    }));
+    return { status: res.status, json: await res.json() };
+  };
+  const paidLetter = (id: string, extra: Record<string, unknown> = {}) => ({
+    id, payment_status: "paid", mode: "payment", amount_total: 400, currency: "usd", customer_email: null,
+    customer_details: { email: "buyer@example.com" }, metadata: { product_type: "cover_letter", product_name: "Cover Letter" }, ...extra,
+  });
+  /** The webhook claimed the session and its own try failed: the order waits as generation_failed. */
+  const webhookFailed = (id: string) => {
+    db.rows("checkout_resume_refs").push({ stripe_session_id: id, resume_session_id: RESUME_ID });
+    db.rows("used_stripe_sessions").push({ session_id: id, product_type: "cover_letter" });
+    db.rows("product_deliveries").push({ id: `pd-${id}`, stripe_session_id: id, product_type: "cover_letter", customer_email: "buyer@example.com", status: "generation_failed", retry_count: 1, max_retries: 8, next_retry_at: "2099-01-01T00:00:00Z" });
+    world.sessions[id] = paidLetter(id);
+  };
+
+  it("the success page makes it after the webhook failed, and mails it once (it used to save it and mail nobody)", async () => {
+    const id = "cs_live_page_made_it";
+    webhookFailed(id);
+    const r = await post({ sessionId: id, generateContent: true });
+    expect(r.status).toBe(200);
+    expect(r.json.isFirstUse).toBe(false);
+    expect(calls.filter((c) => c.fn.startsWith("generate-")).map((c) => c.fn)).toEqual(["generate-cover-letter"]);
+    const mailed = calls.filter((c) => c.fn === "send-product-email");
+    expect(mailed, "the copy the page made was mailed by nobody").toHaveLength(1);
+    expect(mailed[0].body).toMatchObject({ email: "buyer@example.com", productType: "cover_letter", sessionId: id, generatedContent: { made: "generate-cover-letter" } });
+    expect(r.json.emailSent).toBe(true);
+    expect(row(`pd-${id}`).status).toBe("delivered");
+
+    // Asked again, the page shows the saved copy and mails nothing more.
+    calls.length = 0;
+    const again = await post({ sessionId: id, generateContent: true });
+    expect(again.json.generatedContent).toEqual({ made: "generate-cover-letter" });
+    expect(calls, "a second visit made it or mailed it again").toEqual([]);
+  });
+
+  it("a refused mail leaves the order email_failed and due for the sweep now, not on an older schedule", async () => {
+    const id = "cs_live_page_made_refused";
+    webhookFailed(id);
+    productMailStatus = 502;
+    await post({ sessionId: id, generateContent: true });
+    const pd = row(`pd-${id}`);
+    expect(pd.status).toBe("email_failed");
+    expect(pd.next_retry_at, "the sweep would wait on the old schedule").not.toBe("2099-01-01T00:00:00Z");
+    expect(Date.parse(String(pd.next_retry_at))).toBeLessThanOrEqual(Date.now());
+  });
+
+  it("a test-mode purchase the page claims first is tagged, so health leaves it out (CP-033)", async () => {
+    const id = "cs_test_page_claims_first";
+    world.sessions[id] = paidLetter(id, { livemode: false });
+    env.STRIPE_TEST_SECRET_KEY = "sk_test_rehearsal";
+    await post({ sessionId: id });
+    const pd = db.rows("product_deliveries").find((d) => d.stripe_session_id === id);
+    expect((pd?.metadata as Record<string, unknown> | undefined)?.livemode).toBe(false);
   });
 });
