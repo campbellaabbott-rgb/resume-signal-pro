@@ -26,7 +26,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   commissionCentsFor, LEGACY_OTHER_CENTS, LEGACY_SMALL_TOOL_CENTS, LEGACY_SMALL_TOOL_PRODUCT_TYPES,
-  PRO_FIRST_MONTH_COMMISSION_CENTS, PRO_FIRST_MONTH_MARKER, PRO_PRODUCT_TYPE,
+  PRO_FIRST_MONTH_COMMISSION_CENTS, PRO_FIRST_MONTH_MARKER, PRO_PRODUCT_TYPE, withReferralCommission,
 } from "../../supabase/functions/_shared/affiliate-commission";
 import { policyMetadata } from "../../supabase/functions/_shared/checkout-policy";
 import { AFFILIATE_PRO_FIRST_MONTH_CENTS, COMMISSIONED_CHECKOUTS, REFERRAL_CHECKOUTS } from "@/config/affiliate-commission";
@@ -46,7 +46,7 @@ describe("the rule the server pays by", () => {
   it("a referred first paid Pro month earns the flat amount the Pro checkout names; nothing else does", () => {
     expect(PRO_FIRST_MONTH_COMMISSION_CENTS).toBe(1000);
     // What create-subscription-checkout writes on a referred session, as the payer reads it.
-    const pro = { ...policyMetadata({ referralCode: "ab12cd34" }, undefined, { commission: PRO_FIRST_MONTH_MARKER, commissionCents: PRO_FIRST_MONTH_COMMISSION_CENTS }), product_type: PRO_PRODUCT_TYPE };
+    const pro = { ...withReferralCommission(policyMetadata({ referralCode: "ab12cd34" }), PRO_FIRST_MONTH_MARKER), product_type: PRO_PRODUCT_TYPE };
     expect(pro).toMatchObject({ referral_code: "ab12cd34", referral_commission: "pro_first_month", referral_commission_cents: "1000" });
     expect(commissionCentsFor(pro)).toBe(PRO_FIRST_MONTH_COMMISSION_CENTS);
     // Every other checkout: "none", and no amount named.
@@ -56,8 +56,10 @@ describe("the rule the server pays by", () => {
     // "none" wins over a named amount; a marker with no amount pays nothing.
     expect(commissionCentsFor({ referral_commission: "none", referral_commission_cents: "1000", product_type: PRO_PRODUCT_TYPE })).toBe(0);
     expect(commissionCentsFor({ referral_commission: PRO_FIRST_MONTH_MARKER, product_type: PRO_PRODUCT_TYPE })).toBe(0);
-    // A "none" checkout cannot name an amount even if asked to.
-    expect(policyMetadata({ referralCode: "ab12cd34" }, undefined, { commission: "none", commissionCents: 1000 })).not.toHaveProperty("referral_commission_cents");
+    // A "none" checkout names no amount, even over metadata that carried one.
+    expect(withReferralCommission({ referral_code: "ab12cd34", referral_commission_cents: "1000" }, "none")).toEqual({ referral_code: "ab12cd34", referral_commission: "none" });
+    // An unreferred session is left as it was: nothing to record or pay.
+    expect(withReferralCommission({ terms_version: "x" }, PRO_FIRST_MONTH_MARKER)).toEqual({ terms_version: "x" });
   });
 
   it("a session from before the rule (no marker) is paid by the rule it was sold under", () => {
@@ -73,7 +75,7 @@ describe("the rule the server pays by", () => {
   });
 
   it("the checkout's metadata carries the rule's name: Pro's, or none", () => {
-    expect(policyMetadata({ referralCode: "abc" }, undefined, { commission: PRO_FIRST_MONTH_MARKER })).toMatchObject({ referral_code: "abc", referral_commission: "pro_first_month" });
+    expect(withReferralCommission(policyMetadata({ referralCode: "abc" }), PRO_FIRST_MONTH_MARKER)).toMatchObject({ referral_code: "abc", referral_commission: "pro_first_month" });
     expect(policyMetadata({ referralCode: "abc" })).toMatchObject({ referral_commission: "none" });
     expect(policyMetadata({})).not.toHaveProperty("referral_commission");
   });
@@ -89,13 +91,13 @@ describe("which checkouts carry the code and which pay on it", () => {
   });
 
   it("only the Pro checkout stamps the first-month rule", () => {
-    const paying = minters.filter((d) => /\bpolicyMetadata\([^)]*commission:\s*PRO_FIRST_MONTH_MARKER/.test(src(d))).sort();
+    const paying = minters.filter((d) => /\bwithReferralCommission\(\s*policyMetadata\([^)]*\),\s*PRO_FIRST_MONTH_MARKER\)/.test(src(d))).sort();
     expect(paying).toEqual([...COMMISSIONED_CHECKOUTS].sort());
     for (const d of minters) expect(src(d), d).not.toMatch(/commissioned:\s*true/);
   });
 
-  it("the Pro checkout names the flat amount on its session", () => {
-    expect(src("create-subscription-checkout")).toMatch(/commissionCents:\s*PRO_FIRST_MONTH_COMMISSION_CENTS/);
+  it("the Pro checkout names the flat amount on its session (the stamp above writes it)", () => {
+    expect(withReferralCommission({ referral_code: "abc", referral_commission: "none" }, PRO_FIRST_MONTH_MARKER).referral_commission_cents).toBe(String(PRO_FIRST_MONTH_COMMISSION_CENTS));
   });
 
   for (const file of ["supabase/functions/stripe-webhook/index.ts", "supabase/functions/verify-product-purchase/index.ts"]) {

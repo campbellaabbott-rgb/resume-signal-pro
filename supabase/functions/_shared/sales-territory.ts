@@ -19,9 +19,10 @@
 //     once per /24 (an IPv6 /64) per isolate, with a short timeout.
 //
 // Every signal can ADD a refusal and none can lift one. A lookup that cannot
-// answer refuses nobody: the billing address Stripe now always collects
-// (sessionPolicy) and the owner's Radar rule on the card's country are the
-// backstop for a buyer no signal placed. Nothing is refunded after the fact
+// answer refuses nobody: the billing address Stripe now always collects on
+// the sessions these checkouts mint (withBillingAddress, below) and the
+// owner's Radar rule on the card's country are the backstop for a buyer no
+// signal placed. Nothing is refunded after the fact
 // (refunds: never, owner decision 2026-10-12).
 //
 // The answer says why in the buyer's language: sales there wait for the VAT
@@ -134,6 +135,19 @@ const SENTENCE: Readonly<Record<CheckoutLanguage, string>> = {
 
 /** HTTP 451: refused for a legal reason, not because anything failed. */
 export const TERRITORY_STATUS = 451;
+
+/**
+ * THE BILLING ADDRESS, ON EVERY SESSION A SELLING CHECKOUT MINTS (S12-059).
+ * checkout-policy.ts sessionPolicy asks for it only with the EU/UK switch on,
+ * for tax. With the switch off it is the record of where a buyer the signals
+ * above could not place really is, and what the owner's Radar rule reads.
+ * Applied by the checkouts that import this module (the Full Analysis,
+ * Freelance Boost and Pro), over sessionPolicy's answer, so the shared
+ * policy module and every other function that bundles it are unchanged.
+ */
+export function withBillingAddress<T extends object>(policy: T): T & { billing_address_collection: "required" } {
+  return { ...policy, billing_address_collection: "required" };
+}
 
 export function territoryAnswer(refusal: TerritoryRefusal, opts: { body?: unknown; acceptLanguage?: string | null }): {
   status: typeof TERRITORY_STATUS;

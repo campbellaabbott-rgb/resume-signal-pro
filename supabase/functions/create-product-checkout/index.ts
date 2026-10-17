@@ -11,7 +11,7 @@ import { targetRolesMetadata } from "../_shared/target-roles.ts";
 import { APPLY_ASSISTANT_ON_SALE } from "../_shared/apply-agent-switch.ts";
 import { retiredCheckoutAnswer } from "../_shared/apply-agent-retired.ts";
 import { cutCheckoutAnswer, isCutProduct } from "../_shared/product-cuts.ts";
-import { ipinfoLookup, territoryAnswer, territoryRefusal } from "../_shared/sales-territory.ts";
+import { ipinfoLookup, territoryAnswer, territoryRefusal, withBillingAddress } from "../_shared/sales-territory.ts";
 import {
   buyerMetadata, buyerSessionFields, CALLER_UNAVAILABLE_BODY, checkoutCaller, fairUseAnswer, grantCapOf, recordCheckoutBuyer,
   refusedCallerBody,
@@ -397,8 +397,9 @@ serve(async (req) => {
       mode: "payment",
       allow_promotion_codes: true,
       // The receipt, and tax only with the EU/UK switch on (it was off here
-      // by a literal; it still is unless the owner turns the switch on).
-      ...sessionPolicy({ mode: "payment", env, receiptEmail: buyerEmail }),
+      // by a literal; it still is unless the owner turns the switch on); the
+      // billing address on every session (S12-059, withBillingAddress).
+      ...withBillingAddress(sessionPolicy({ mode: "payment", env, receiptEmail: buyerEmail })),
       // THE ACCOUNT THAT BOUGHT IT (CP-022): a signed-in buyer's id on the
       // session and its metadata, and in checkout_buyers below.
       ...buyerSessionFields(caller),

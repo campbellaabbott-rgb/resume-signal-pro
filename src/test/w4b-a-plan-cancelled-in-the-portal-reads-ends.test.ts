@@ -5,8 +5,10 @@
  * S12-168, S12-053's portal half).
  *
  * Run on the shipped handlers:
- *   - checkProByEmail (the webhook's refresh and check-subscription's live
- *     read) caches cancel_at_period_end, and check-subscription answers it;
+ *   - check-subscription's live read caches cancel_at_period_end and answers
+ *     it, read from the same Stripe answer checkProByEmail gets (no second
+ *     call; _shared/pro.ts is left as it was, so every other function that
+ *     bundles it keeps its build);
  *   - the portal returns to /account?portal=return, and the page's first
  *     check after it (fresh: true) asks Stripe instead of an hour-old row;
  *   - check-subscription says which plan the account's standing rests on
@@ -18,6 +20,7 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { EdgeHandler } from "./helpers/edge-harness";
 import { freshWorld, installDeno, loadCheckouts, post, type W4bWorld } from "./helpers/w4b-checkout-harness";
 import { buildIsAtLeast } from "./helpers/fn-build";
+import { cancelFlagFrom, recordingSubscriptions, significantSubscription, subscriptionEnds } from "../../supabase/functions/_shared/pro-cancel";
 
 const MEMBER = { id: "00000000-0000-4000-8000-0000000b7001", email: "member@example.com" };
 const MOVED = { id: "00000000-0000-4000-8000-0000000b7002", email: "new-address@example.com" };
@@ -61,8 +64,19 @@ describe("the cancel flag is cached and answered (S12-076)", () => {
     world.stripe.customers["member@example.com"] = [{ id: "cus_m" }];
     world.stripe.subs.cus_m = [{ id: "sub_m", status: "active", cancel_at_period_end: true, current_period_end: periodEnd, items: { data: [{ price: { unit_amount: 4500 } }] } }];
     const body = await (await check({ fresh: true })).json();
-    expect(world.stripe.touched).toContain("subscriptions.list");
+    // One lookup, as before the flag existed: the flag is read from its answer.
+    expect(world.stripe.touched).toEqual(["customers.list", "subscriptions.list"]);
     expect(body.cancelAtPeriodEnd).toBe(true);
+    expect(world.db.rows("pro_subscribers")[0].cancel_at_period_end).toBe(true);
+  });
+
+  it("a plan resumed in the portal reads Renews again, and the row says so", async () => {
+    world.db.rows("pro_subscribers").push({ email: "member@example.com", status: "active", current_period_end: new Date(periodEnd * 1000).toISOString(), cancel_at_period_end: true, updated_at: new Date().toISOString() });
+    world.stripe.customers["member@example.com"] = [{ id: "cus_m" }];
+    world.stripe.subs.cus_m = [{ id: "sub_m", status: "active", cancel_at_period_end: false, current_period_end: periodEnd, items: { data: [{ price: { unit_amount: 4500 } }] } }];
+    const body = await (await check({ fresh: true })).json();
+    expect(body.cancelAtPeriodEnd).toBe(false);
+    expect(world.db.rows("pro_subscribers")[0].cancel_at_period_end).toBe(false);
   });
 
   it("the preflight answers the round-2 build", async () => {
@@ -113,5 +127,32 @@ describe("the billing portal (S12-076, S12-053)", () => {
   it("the preflight answers the round-2 build", async () => {
     const res = await h["create-portal-session"](new Request("https://harness.supabase.co/functions/v1/create-portal-session", { method: "OPTIONS" }));
     expect(buildIsAtLeast(res.headers.get("x-fn-build"), "create-portal-session", "2026-10-14", 23)).toBe(true);
+  });
+});
+
+describe("the flag is read beside the one rule, not inside it", () => {
+  it("the recording client keeps each customer's pages and changes nothing it answers", async () => {
+    const calls: unknown[] = [];
+    const stripe = {
+      customers: { list: async () => ({ data: [{ id: "cus_a" }], has_more: false }) },
+      subscriptions: { list: async (p: { customer: string; starting_after?: string }) => { calls.push(p); return p.starting_after ? { data: [{ id: "s2", status: "active", cancel_at: 1 }], has_more: false } : { data: [{ id: "s1", status: "canceled" }], has_more: true }; } },
+    };
+    const r = recordingSubscriptions(stripe);
+    expect(r.stripe.customers).toBe(stripe.customers);
+    const first = await r.stripe.subscriptions.list({ customer: "cus_a" });
+    await r.stripe.subscriptions.list({ customer: "cus_a", starting_after: "s1" });
+    expect(first).toEqual({ data: [{ id: "s1", status: "canceled" }], has_more: true });
+    expect(calls).toHaveLength(2);
+    expect(r.seen.get("cus_a")?.map((s) => (s as { id?: string }).id)).toEqual(["s1", "s2"]);
+    expect(cancelFlagFrom(r.seen, "cus_a")).toBe(true);
+    expect(cancelFlagFrom(r.seen, "cus_unlisted")).toBeNull();
+  });
+
+  it("the plan's own subscription decides: a live one set to end, never an ended one", () => {
+    expect(subscriptionEnds({ cancel_at_period_end: true })).toBe(true);
+    expect(subscriptionEnds({ cancel_at: 1_800_000_000 })).toBe(true);
+    expect(subscriptionEnds({ cancel_at_period_end: false, cancel_at: null })).toBe(false);
+    expect(significantSubscription([{ status: "canceled", cancel_at_period_end: true }, { status: "active" }])?.status).toBe("active");
+    expect(cancelFlagFrom(new Map([["cus_x", [{ status: "canceled", cancel_at_period_end: true }]]]), "cus_x")).toBe(false);
   });
 });

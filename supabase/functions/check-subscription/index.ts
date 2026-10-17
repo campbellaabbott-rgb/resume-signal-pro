@@ -48,6 +48,7 @@ import { isOwingStatus } from "../_shared/subscription-standing.ts";
 import { signedInUser } from "../_shared/signed-in-email.ts";
 import { buyerEmailOf } from "../_shared/buyer-email.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
+import { cacheCancelFlag, cancelFlagFrom, recordingSubscriptions } from "../_shared/pro-cancel.ts";
 
 // Provable from outside without an account: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -222,7 +223,14 @@ serve(async (req) => {
         ? await answer({ ...cachedAnswer, stale: true })
         : json({ active: false, status: "rate_limited" }, 429);
     }
-    const status = await checkProByEmail(stripeClient(), supabase, who, { seenUpdatedAt });
+    // CANCELLED IN THE PORTAL, STILL LIVE TO ITS END (S12-076): read from the
+    // same Stripe answer the one rule's lookup gets (no second call), and kept
+    // on the cache row the cached answer reads. Nothing listed for the plan's
+    // customer keeps the row's flag as it was.
+    const recorder = recordingSubscriptions(stripeClient());
+    const status = await checkProByEmail(recorder.stripe, supabase, who, { seenUpdatedAt });
+    const ends = status.active ? cancelFlagFrom(recorder.seen, status.stripeCustomerId) : false;
+    if (ends !== null && status.stripeCustomerId) await cacheCancelFlag(supabase, who, ends);
     if (signedIn && seenUpdatedAt === null && !status.stripeCustomerId) {
       // Stripe has no subscription for this address, and checkProByEmail
       // wrote nothing: remember that for five minutes. An insert, never an
@@ -242,7 +250,7 @@ serve(async (req) => {
       active: status.active,
       status: status.status,
       currentPeriodEnd: status.currentPeriodEnd,
-      cancelAtPeriodEnd: status.active && status.cancelAtPeriodEnd === true,
+      cancelAtPeriodEnd: status.active && ends === true,
       needsPaymentUpdate: isOwingStatus(status.status),
     }, 200, boundToCaller ? { tier: "pro", status: status.status, current_period_end: status.currentPeriodEnd } : null);
   } catch (error) {

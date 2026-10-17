@@ -81,7 +81,7 @@ describe("Pro's Stripe page says what Pro is, and a referral earns the first-mon
 
   it("the session is stamped with the Pro first-month commission rule and checkout_buyers names the account", async () => {
     await post(h["create-subscription-checkout"], "create-subscription-checkout", { referralCode: "abc123" }, { bearer: "jwt-squatter" });
-    expect(world.stripe.created[0].metadata).toMatchObject({ referral_code: "abc123", referral_commission: "pro_first_month" });
+    expect(world.stripe.created[0].metadata).toMatchObject({ referral_code: "abc123", referral_commission: "pro_first_month", referral_commission_cents: "1000" });
     expect(world.db.rows("checkout_buyers")[0]).toMatchObject({ user_id: SQUATTER.id, checkout_function: "create-subscription-checkout" });
   });
 

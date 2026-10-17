@@ -11,10 +11,10 @@
 // (affiliate-payout-request, send-affiliate-commission-email).
 //
 // HOW A SESSION SAYS WHAT IT EARNS. checkout-policy.ts policyMetadata writes
-// `referral_commission` on every referred session: "pro_first_month" from
-// create-subscription-checkout, which also NAMES the amount
-// (`referral_commission_cents`, PRO_FIRST_MONTH_COMMISSION_CENTS), and "none"
-// from every other checkout. stripe-webhook and verify-product-purchase pay
+// `referral_commission: "none"` on every referred session. Pro's checkout
+// passes its metadata through withReferralCommission, which turns that into
+// "pro_first_month" and NAMES the amount (`referral_commission_cents`,
+// PRO_FIRST_MONTH_COMMISSION_CENTS); every other checkout leaves "none". stripe-webhook and verify-product-purchase pay
 // "none" nothing and a named amount exactly (wave 4 round 2,
 // payments-delivery). A session minted BEFORE this rule shipped carries no
 // marker for the one-off catalogue (the old create-product-checkout passed
@@ -35,8 +35,30 @@ export const PRO_FIRST_MONTH_COMMISSION_CENTS = 1000;
 /** The product type the Pro checkout stamps on its session (create-subscription-checkout metadata). */
 export const PRO_PRODUCT_TYPE = "pro_subscription";
 
-/** The marker Pro's checkout writes; checkout-policy.ts ReferralCommission. */
+/** The marker Pro's checkout writes (withReferralCommission). */
 export const PRO_FIRST_MONTH_MARKER = "pro_first_month";
+
+/** The rules a checkout can stamp on a referred session. */
+export type ReferralCommission = "none" | typeof PRO_FIRST_MONTH_MARKER;
+
+/**
+ * A checkout's metadata with the commission rule it sells under. A session
+ * with no referral code is returned as it was (nothing to pay or record).
+ * A referred one is stamped with the rule's name, and the first-month rule
+ * also names its amount; "none" never names one, whatever came in.
+ */
+export function withReferralCommission<T extends Record<string, string>>(
+  metadata: T,
+  rule: ReferralCommission,
+): T & { referral_commission?: string; referral_commission_cents?: string } {
+  if (!metadata.referral_code) return metadata;
+  const { referral_commission_cents: _dropped, ...rest } = metadata;
+  return {
+    ...rest,
+    referral_commission: rule,
+    ...(rule === PRO_FIRST_MONTH_MARKER ? { referral_commission_cents: String(PRO_FIRST_MONTH_COMMISSION_CENTS) } : {}),
+  } as unknown as T & { referral_commission?: string; referral_commission_cents?: string };
+}
 
 /** The old rule, for sessions minted before this file shipped: the smaller tools. */
 export const LEGACY_SMALL_TOOL_PRODUCT_TYPES: readonly string[] = Object.freeze([

@@ -7,7 +7,7 @@ import { clientAddressOr } from "../_shared/client-address.ts";
 import { accountProStanding } from "../_shared/pro.ts";
 import { FULL_ANALYSIS_PRODUCT_NAME, FULL_ANALYSIS_PRODUCT_TYPE } from "../_shared/full-analysis.ts";
 import { checkoutOrigin, euConsentAnswer, euConsentRefusal, euSalesPolicy, policyMetadata, sessionPolicy } from "../_shared/checkout-policy.ts";
-import { ipinfoLookup, territoryAnswer, territoryPolicy, territoryRefusal } from "../_shared/sales-territory.ts";
+import { ipinfoLookup, territoryAnswer, territoryPolicy, territoryRefusal, withBillingAddress } from "../_shared/sales-territory.ts";
 import {
   buyerMetadata, buyerSessionFields, CALLER_UNAVAILABLE_BODY, checkoutCaller, fairUseAnswer, grantCapOf, recordCheckoutBuyer,
   refusedCallerBody,
@@ -621,7 +621,7 @@ serve(async (req) => {
       // Additional reliability settings
       expires_at: Math.floor(Date.now() / 1000) + 30 * 60, // Session expires in 30 minutes
       // A signed-in buyer's receipt; the billing address; tax only with the EU/UK switch on.
-      ...(sessionPolicy({ mode: "payment", env, receiptEmail }) as Partial<Stripe.Checkout.SessionCreateParams>),
+      ...(withBillingAddress(sessionPolicy({ mode: "payment", env, receiptEmail })) as Partial<Stripe.Checkout.SessionCreateParams>),
     };
 
     if (promotionCodeId) {

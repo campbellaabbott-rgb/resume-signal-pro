@@ -37,10 +37,10 @@ import { signedInUser } from "../_shared/signed-in-email.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
 import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-start.ts";
 import { checkoutLanguageOf, checkoutOrigin, euConsentAnswer, euConsentRefusal, policyMetadata, renewalTerms, sessionPolicy } from "../_shared/checkout-policy.ts";
-import { ipinfoLookup, territoryAnswer, territoryRefusal } from "../_shared/sales-territory.ts";
+import { ipinfoLookup, territoryAnswer, territoryRefusal, withBillingAddress } from "../_shared/sales-territory.ts";
 import { reusableCustomer } from "../_shared/customer-ownership.ts";
 import { recordCheckoutBuyer, refusedCallerBody, websiteTokenRefusal } from "../_shared/checkout-buyer.ts";
-import { PRO_FIRST_MONTH_COMMISSION_CENTS, PRO_FIRST_MONTH_MARKER } from "../_shared/affiliate-commission.ts";
+import { PRO_FIRST_MONTH_MARKER, withReferralCommission } from "../_shared/affiliate-commission.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -131,8 +131,9 @@ serve(async (req) => {
     const origin = checkoutOrigin(req.headers.get("origin"), env);
     // A referred customer's first paid Pro month is the one sale an affiliate
     // earns on (_shared/affiliate-commission.ts): Pro sells no trial, so this
-    // session is that month.
-    const policy = policyMetadata(body, env, { commission: PRO_FIRST_MONTH_MARKER, commissionCents: PRO_FIRST_MONTH_COMMISSION_CENTS });
+    // session is that month. The rule's name and its amount are stamped over
+    // policyMetadata's "none".
+    const policy = withReferralCommission(policyMetadata(body, env), PRO_FIRST_MONTH_MARKER);
     // THE ADDRESS'S STRIPE CUSTOMER ONLY IF THIS ACCOUNT OWNS IT (S12-099): a
     // password sign-up on a former customer's address must not have its plan
     // billed to that customer and see their invoices in the portal.
@@ -173,10 +174,11 @@ serve(async (req) => {
       metadata: { product_type: "pro_subscription", customer_email: email, user_id: buyer.id, ...policy },
       // Renewal terms beside Stripe's pay button, tax only with the EU/UK switch on.
       // In the buyer's site language, with Stripe's page in the same one.
-      ...sessionPolicy({
+      // The billing address on every session (S12-059, withBillingAddress).
+      ...withBillingAddress(sessionPolicy({
         mode: "subscription", env, hasCustomer: !!reuseCustomerId,
         renewal: renewalTerms(PRO_PRICE_CENTS, null, checkoutLanguageOf(body)), language: checkoutLanguageOf(body),
-      }),
+      })),
     });
 
     // The start is on record before the browser has the url, so no
