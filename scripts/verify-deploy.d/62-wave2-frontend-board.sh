@@ -51,10 +51,21 @@ else
   if fb_has "$JOBSJS" "jobsPage.sortDiscovered2" && ! fb_has "$JOBSJS" '"jobsPage.sortDiscovered"'; then echo "PASS  the discovery sort is labelled by what it orders (sortDiscovered2), the 'Recently found by us' key is gone"
   else echo "FAIL  the board chunk still reads jobsPage.sortDiscovered ('Recently found by us')"; fi
 
-  # L2-19 / L2-07 / L2-20: the posting page.
+  # L2-19 / L2-07 / L2-20: the posting page. Since the design upgrade the pay
+  # facts render in the shared posting component, which rollup puts in its
+  # own chunk imported by the posting page and the board, so the posting
+  # chunk and the chunks it imports are read together (FB_POSTGRAPH).
+  FB_POSTGRAPH=$POSTJS
+  FB_POSTIN=$FB_POST
+  if [ -n "$FB_POST" ] && ! fb_has "$POSTJS" "jobPostingPage.noPayFound"; then
+    for FB_REF in $(printf '%s' "$POSTJS" | grep -oE '\./[A-Za-z0-9_.-]+-[A-Za-z0-9_-]{6,}\.js' | sed 's|^\./||' | sort -u | head -40); do
+      FB_REFJS=$(curl -s -m 30 "$SITE/assets/$FB_REF")
+      if fb_has "$FB_REFJS" "jobPostingPage.noPayFound"; then FB_POSTGRAPH="$POSTJS$FB_REFJS"; FB_POSTIN="$FB_REF (imported by $FB_POST)"; break; fi
+    done
+  fi
   if [ -z "$FB_POST" ]; then echo "FAIL  no JobPosting chunk named by the live entry"
-  elif fb_has "$POSTJS" "jobPostingPage.noPayFound"; then echo "PASS  $FB_POST says WE found no pay figure (never 'this employer states no pay'); the gone-only-on-gone fixes ride this chunk"
-  else echo "FAIL  $FB_POST still reads jobPostingPage.noPay: the posting-page fixes (404 retracted, head kept while loading) are not serving"; fi
+  elif fb_has "$FB_POSTGRAPH" "jobPostingPage.noPayFound"; then echo "PASS  $FB_POSTIN says WE found no pay figure (never 'this employer states no pay'); the gone-only-on-gone fixes ride this chunk"
+  else echo "FAIL  $FB_POST (and the chunks it imports) still read jobPostingPage.noPay: the posting-page fixes (404 retracted, head kept while loading) are not serving"; fi
   # A 404 (no row, no recorded closure) is retracted as 'no longer listed on
   # this board', never as the employer's board dropping it.
   if [ -n "$FB_POST" ] && fb_has "$POSTJS" "jobPostingPage.unlistedMeta"; then echo "PASS  $FB_POST retracts a 404 as 'no longer listed on this board' (unlistedMeta), with no claim about the employer's board"
