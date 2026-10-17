@@ -321,7 +321,9 @@ const lineWords = (line: string) => new Set((line.toLowerCase().match(/\p{L}{3,}
  * candidate never claimed is replaced by the résumé line most like it (its
  * words, by Dice overlap of at least 0.35, each résumé line used once), with
  * the draft's own bullet mark; a line the résumé has nothing like is left out.
- * Lines that pass are kept exactly as drafted.
+ * Lines that pass are kept exactly as drafted. A long line (a paragraph) is
+ * worked sentence by sentence, so one invented figure never costs the whole
+ * paragraph.
  */
 export function restoreUnsupportedLines(
   sourceResume: string,
@@ -336,9 +338,9 @@ export function restoreUnsupportedLines(
   const restored: Array<{ from: string; to: string }> = [];
   const dropped: string[] = [];
   const out: string[] = [];
-  lines.forEach((line, i) => {
-    const issues = unsupportedNumericClaims(mask[i] && posting ? `${sourceResume}\n${posting}` : sourceResume, line);
-    if (issues.length === 0) { out.push(line); return; }
+  const restoreUnit = (line: string, inSkills: boolean): string | null => {
+    const issues = unsupportedNumericClaims(inSkills && posting ? `${sourceResume}\n${posting}` : sourceResume, line);
+    if (issues.length === 0) return line;
     const words = lineWords(line);
     let best = -1;
     let bestScore = 0;
@@ -354,10 +356,20 @@ export function restoreUnsupportedLines(
       const mark = (line.match(BULLET_PREFIX)?.[1] ?? "");
       const to = mark + sourceLines[best].replace(BULLET_PREFIX, "");
       restored.push({ from: line.trim(), to: to.trim() });
-      out.push(to);
-    } else {
-      dropped.push(line.trim());
+      return to;
     }
+    dropped.push(line.trim());
+    return null;
+  };
+  lines.forEach((line, i) => {
+    if (line.length <= 240) {
+      const kept = restoreUnit(line, mask[i]);
+      if (kept !== null) out.push(kept);
+      return;
+    }
+    const sentences = line.split(/(?<=[.!?])\s+/);
+    const kept = sentences.map((sentence) => restoreUnit(sentence, mask[i])).filter((x): x is string => x !== null);
+    if (kept.length > 0) out.push(kept.join(" "));
   });
   return { text: out.join("\n"), restored, dropped };
 }

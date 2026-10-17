@@ -147,6 +147,16 @@ describe("a rewrite that adds a figure the candidate never claimed", () => {
     expect(text).not.toMatch(/Mentored 25/);
     expect(text).toContain("- Cut warehouse spend by $120,000 a year");
   });
+
+  it("is refused, retryable, when putting its lines back would leave less than 60% of it", async () => {
+    const gutted = "Jane Doe\n- Mentored 25 junior analysts across three offices\n- Hosted 45 webinars for regional partners\n- Ran 30 onboarding workshops for new hires\n- Wrote 60 runbooks for the support rotation";
+    resumeAnswers = [gutted, gutted];
+    const res = await post();
+    const body = await res.json() as { data?: unknown; retryable?: boolean; groundingIssues?: string[] };
+    expect(res.status, "a package cut to a fraction of itself was delivered").toBe(422);
+    expect(body.data).toBeUndefined();
+    expect(body.retryable).toBe(true);
+  });
 });
 
 describe("a letter that adds a figure the candidate never claimed", () => {

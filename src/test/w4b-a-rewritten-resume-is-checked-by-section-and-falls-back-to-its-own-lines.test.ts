@@ -72,6 +72,16 @@ describe("the last resort after a repair", () => {
     expect(rewrittenResumeFigureIssues(SOURCE, out.text)).toEqual([]);
   });
 
+  it("works a paragraph sentence by sentence, so one invented figure never costs the whole paragraph", () => {
+    const para = "Senior data engineer who builds reliable pipelines for analytics teams and keeps the warehouse lean, with a habit of documenting every runbook. "
+      + "Mentored 25 junior analysts across three offices. "
+      + "Known for calm incident handling, clear written updates, and a steady focus on what the business needs from its data platform every single quarter.";
+    const out = restoreUnsupportedLines(SOURCE, para);
+    expect(out.text).toContain("Senior data engineer who builds reliable pipelines");
+    expect(out.text).toContain("Known for calm incident handling");
+    expect(out.text).not.toMatch(/Mentored 25/);
+  });
+
   it("keeps a skills line that names the posting's number when the posting is given", () => {
     const out = restoreUnsupportedLines(SOURCE, "SKILLS\nPython, ISO 27001", "ISO 27001 experience is a plus.");
     expect(out.text).toBe("SKILLS\nPython, ISO 27001");

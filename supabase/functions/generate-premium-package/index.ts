@@ -671,13 +671,20 @@ Write a cover letter that sounds like it was written by this specific person - c
     // such line put back to the résumé's own line, or left out when the
     // résumé has nothing like it, and is delivered. Only the letter, which has
     // no original line to fall back on, can still be refused.
+    // A fallback that would cut the rewrite below 60% of its length is not a
+    // package worth sending: that draft is refused (retryable) as before.
     if (resumeFigureIssues.length > 0) {
-      const restored = restoreUnsupportedLines(resumeText, String(resumeResult.rewrittenResume || ''), figureContext);
-      resumeResult = { ...resumeResult, rewrittenResume: restored.text };
-      resumeFigureIssues = checkResumeFigures();
+      const drafted = String(resumeResult.rewrittenResume || '');
+      const restored = restoreUnsupportedLines(resumeText, drafted, figureContext);
+      const keepsEnough = restored.text.trim().length >= drafted.trim().length * 0.6;
+      if (keepsEnough) {
+        resumeResult = { ...resumeResult, rewrittenResume: restored.text };
+        resumeFigureIssues = checkResumeFigures();
+      }
       logStep("Resume lines put back to the résumé's own after the repair", {
         restored: restored.restored.length,
         dropped: restored.dropped.length,
+        keepsEnough,
         remaining: resumeFigureIssues.length,
       });
     }
