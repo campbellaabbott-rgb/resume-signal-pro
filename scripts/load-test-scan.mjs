@@ -46,9 +46,16 @@ const results = await Promise.all(
     try {
       const res = await fetch(`${URL_}/functions/v1/free-keyword-scan`, {
         method: "POST",
-        headers: { apikey: KEY, Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" },
         // synthetic:true → logged as scan_type='synthetic', kept out of the
-        // published score stats (get_public_scan_insights and friends).
+        // published score stats (get_public_scan_insights and friends) --
+        // only with our secret since S12-142 (SYNTHETIC_SCAN_SECRET, or the
+        // HEARTBEAT_SECRET the function falls back to); without it the scans
+        // count as visitors'.
+        headers: {
+          apikey: KEY, Authorization: `Bearer ${KEY}`, "Content-Type": "application/json",
+          ...(process.env.SYNTHETIC_SCAN_SECRET || process.env.HEARTBEAT_SECRET
+            ? { "x-synthetic-secret": process.env.SYNTHETIC_SCAN_SECRET || process.env.HEARTBEAT_SECRET } : {}),
+        },
         body: JSON.stringify({ resumeText: makeResume(i), synthetic: true }),
         signal: AbortSignal.timeout(180_000),
       });

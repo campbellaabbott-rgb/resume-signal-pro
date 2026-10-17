@@ -263,17 +263,27 @@ ${inferred ? "" : `\nQUESTIONS TO ANSWER (draft each, grounded strictly in the r
     // ran out of room and the tail was lost (S12-148).
     const batches = inferred ? [[] as AppQuestion[]] : chunked(draftable, ANSWER_CHUNK);
     const replies = await Promise.all(batches.map(async (batch) => {
-      const { response } = await callAIWithModelFallback(apiKey, {
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt(batch) },
-        ],
-        temperature: 0.3,
-        maxTokens: inferred ? 3500 : 4000,
-        jsonResponse: true,
-        models: chainFrom("google/gemini-2.5-flash"),
-        context: "APPLICATION-ANSWERS",
-      });
+      // The fallback THROWS when every model fails (5xx or network), rather
+      // than handing back a response: caught here, so one failed chunk is
+      // named back as undrafted instead of taking the answers the other
+      // chunks wrote down with it as a 500.
+      let response: Response;
+      try {
+        ({ response } = await callAIWithModelFallback(apiKey, {
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt(batch) },
+          ],
+          temperature: 0.3,
+          maxTokens: inferred ? 3500 : 4000,
+          jsonResponse: true,
+          models: chainFrom("google/gemini-2.5-flash"),
+          context: "APPLICATION-ANSWERS",
+        }));
+      } catch (e) {
+        console.error("[APPLICATION-ANSWERS] every model failed for one chunk:", e instanceof Error ? e.message : String(e));
+        return { batch, status: 502, answers: null as unknown[] | null };
+      }
       if (!response.ok) return { batch, status: response.status, answers: null as unknown[] | null };
       const result = await response.json();
       const content: string = result?.choices?.[0]?.message?.content ?? "";

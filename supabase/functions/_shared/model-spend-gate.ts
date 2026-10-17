@@ -114,6 +114,7 @@ export type SpendRefusalCode =
   | "rate_limited_function"
   | "rate_limited_session"
   | "rate_limited_global"
+  | "rate_limited_network"
   | "limiter_unavailable";
 
 // Loose client type so the real SupabaseClient and a test fake both fit. Only
@@ -204,6 +205,7 @@ const MESSAGES: Record<SpendRefusalCode, string> = {
   rate_limited_function: "You've reached the limit for this tool for now. Please try again later.",
   rate_limited_session: "This purchase has been generated as many times as we allow in one day. Please try again tomorrow.",
   rate_limited_global: "This tool is very busy right now. Please try again later.",
+  rate_limited_network: "This tool is very busy on your network right now. Please try again later.",
   limiter_unavailable: "This tool is temporarily unavailable. Please try again in a minute.",
 };
 
@@ -211,8 +213,23 @@ const RETRY_AFTER: Record<SpendRefusalCode, string> = {
   rate_limited_function: "3600",
   rate_limited_session: "86400",
   rate_limited_global: "3600",
+  rate_limited_network: "3600",
   limiter_unavailable: "60",
 };
+
+/**
+ * The network an address belongs to, as one bucket: an IPv4 address's /24,
+ * an IPv6 address's /48 (S12-066). A pool rotating through the addresses of
+ * one provider's block shares one network allowance. "unknown" for no address.
+ */
+export function spendNetworkKey(h: Headers): string {
+  const a = spendAddressKey(h);
+  const v4 = /^(\d{1,3}\.\d{1,3}\.\d{1,3})\.\d{1,3}$/.exec(a);
+  if (v4) return `${v4[1]}.0/24`;
+  const v6 = /^([0-9a-f]{1,4}):([0-9a-f]{1,4}):([0-9a-f]{1,4}):[0-9a-f]{1,4}::\/64$/.exec(a);
+  if (v6) return `${v6[1]}:${v6[2]}:${v6[3]}::/48`;
+  return a;
+}
 
 export function spendRefusal(
   code: SpendRefusalCode,
@@ -450,7 +467,7 @@ async function ceilingVerdict(
   h: Headers,
   fn: string,
   own: { max: number; windowMinutes: number },
-  ceilings: { strangers: number; proven: number },
+  ceilings: { strangers: number; proven: number; strangerNetwork?: number },
   boardPass: unknown,
 ): Promise<CeilingVerdict> {
   const who = await provenCaller(db, h, boardPass);
@@ -458,6 +475,12 @@ async function ceilingVerdict(
     const mine = await counted(db, { p_function: fn, p_ip: who, p_max_requests: own.max, p_window_minutes: own.windowMinutes });
     if (mine === null) return { code: "limiter_unavailable", limit: null };
     if (mine === false) return { code: "rate_limited_function", limit: own.max };
+  } else if (ceilings.strangerNetwork !== undefined) {
+    // A stranger's network (/24, /48) may spend only its share of the
+    // strangers' hour (S12-066): ~43 rotating addresses spent the whole hour.
+    const net = await counted(db, { p_function: fn, p_ip: `net:${spendNetworkKey(h)}`.slice(0, 45), p_max_requests: ceilings.strangerNetwork, p_window_minutes: 60 });
+    if (net === null) return { code: "limiter_unavailable", limit: null };
+    if (net === false) return { code: "rate_limited_network", limit: ceilings.strangerNetwork };
   }
   const max = who ? ceilings.proven : ceilings.strangers;
   const world = await counted(db, { p_function: fn, p_ip: who ? PROVEN_BUCKET : GLOBAL_BUCKET, p_max_requests: max, p_window_minutes: 60 });
@@ -474,6 +497,8 @@ export type FunctionCeiling = {
   provenPerHour: number;
   /** One proven identity's own hourly allowance inside the proven ceiling. */
   perProvenCallerPerHour: number;
+  /** One stranger network's (/24 or /48) share of the strangers' hour (S12-066). */
+  strangerNetworkPerHour?: number;
 };
 
 /**
@@ -499,7 +524,7 @@ export async function functionCeiling(
     req.headers,
     fn,
     { max: limits.perProvenCallerPerHour, windowMinutes: 60 },
-    { strangers: limits.strangersPerHour, proven: limits.provenPerHour },
+    { strangers: limits.strangersPerHour, proven: limits.provenPerHour, strangerNetwork: limits.strangerNetworkPerHour },
     opts.boardPass,
   );
 }

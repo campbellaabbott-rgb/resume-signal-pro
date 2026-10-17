@@ -1,5 +1,6 @@
 // jspdf is dynamically imported inside each export function so it doesn't add
 // weight to whichever chunk InterviewCoach/CareerPathSimulator ship in.
+import { unsupportedPdfCharacters } from "@/lib/pdf-text-support";
 
 interface InterviewQuestion {
   category: string;
@@ -42,7 +43,86 @@ interface CareerPathExportData {
   immediateNextStep: string;
 }
 
-export async function exportInterviewPrepPDF(data: InterviewExportData): Promise<void> {
+const escapeHtml = (s: unknown) => String(s ?? "")
+  .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+
+/** Every text the interview-prep guide prints. */
+function interviewTexts(data: InterviewExportData): string[] {
+  return [
+    data.interviewProfile?.targetRole, data.interviewProfile?.difficulty, data.interviewProfile?.interviewType,
+    ...(data.questions ?? []).flatMap((q) => [q.category, q.question, q.whyAsked, q.sampleOpener, q.modelAnswer ?? "", ...(q.strongAnswerTips ?? []), ...(q.redFlags ?? [])]),
+    ...(data.interviewTips?.beforeInterview ?? []), ...(data.interviewTips?.duringInterview ?? []), ...(data.interviewTips?.closingQuestions ?? []),
+  ].filter((s): s is string => typeof s === "string");
+}
+
+/**
+ * True when jsPDF's built-in fonts cannot draw the guide (S12-029): a Hindi
+ * guide came out as raw bytes in helvetica. Such a guide is printed by the
+ * browser instead, which draws every script with the system's own fonts.
+ */
+export function interviewPrepNeedsPrint(data: InterviewExportData): boolean {
+  return unsupportedPdfCharacters(interviewTexts(data).join("\n")).length > 0;
+}
+
+/** The guide as a standalone printable HTML page (every value escaped). */
+export function interviewPrepHtml(data: InterviewExportData, lang = "en"): string {
+  const list = (items: string[] | undefined) => (items ?? []).map((t) => `<li>${escapeHtml(t)}</li>`).join("");
+  const questions = (data.questions ?? []).map((q, i) => `
+    <section>
+      <h2>${i + 1}. [${escapeHtml(q.category)}] ${escapeHtml(q.question)}</h2>
+      <p class="why">${escapeHtml(q.whyAsked)}</p>
+      <p>“${escapeHtml(q.sampleOpener)}”</p>
+      ${q.modelAnswer ? `<p>${escapeHtml(q.modelAnswer)}</p>` : ""}
+      ${q.strongAnswerTips?.length ? `<ul>${list(q.strongAnswerTips)}</ul>` : ""}
+      ${q.redFlags?.length ? `<ul class="avoid">${list(q.redFlags)}</ul>` : ""}
+    </section>`).join("");
+  return `<!doctype html><html lang="${escapeHtml(lang)}"><head><meta charset="utf-8"><title>Interview Prep Guide</title>
+<style>body{font-family:system-ui,"Noto Sans","Noto Sans Devanagari",sans-serif;margin:18mm;color:#111;font-size:11pt;line-height:1.45}h1{font-size:18pt;margin:0 0 4mm}h2{font-size:12pt;margin:6mm 0 2mm}.why{font-style:italic;color:#444}section{border-top:1px solid #ccc;padding-top:2mm}.avoid{color:#7a1f1f}</style>
+</head><body>
+<h1>Interview Prep Guide</h1>
+<p>${escapeHtml(data.interviewProfile?.targetRole)} • ${escapeHtml(data.interviewProfile?.difficulty)} • ${escapeHtml(data.interviewProfile?.interviewType)}</p>
+${questions}
+<section><ul>${list(data.interviewTips?.beforeInterview)}</ul><ul>${list(data.interviewTips?.duringInterview)}</ul><ul>${list(data.interviewTips?.closingQuestions)}</ul></section>
+</body></html>`;
+}
+
+/** Print an HTML page through a hidden frame, so the browser's "Save as PDF" draws it. */
+function printHtml(html: string): void {
+  const frame = document.createElement("iframe");
+  frame.setAttribute("aria-hidden", "true");
+  frame.style.position = "fixed";
+  frame.style.width = "0";
+  frame.style.height = "0";
+  frame.style.border = "0";
+  document.body.appendChild(frame);
+  const doc = frame.contentDocument;
+  if (!doc || !frame.contentWindow) { frame.remove(); throw new Error("print frame unavailable"); }
+  doc.open();
+  doc.write(html);
+  doc.close();
+  frame.contentWindow.focus();
+  frame.contentWindow.print();
+  setTimeout(() => frame.remove(), 60_000);
+}
+
+/**
+ * The interview-prep guide as a PDF: drawn by jsPDF when its fonts can draw
+ * every character, else handed to the browser's print dialog ("Save as PDF").
+ * Answers which way it went, so the page can say so.
+ */
+export async function exportInterviewPrepPDF(
+  data: InterviewExportData,
+  deps: { print?: (html: string) => void; lang?: string } = {},
+): Promise<{ method: "pdf" | "print" }> {
+  if (interviewPrepNeedsPrint(data)) {
+    (deps.print ?? printHtml)(interviewPrepHtml(data, deps.lang ?? (typeof document !== "undefined" ? document.documentElement.lang || "en" : "en")));
+    return { method: "print" };
+  }
+  await drawInterviewPrepPDF(data);
+  return { method: "pdf" };
+}
+
+async function drawInterviewPrepPDF(data: InterviewExportData): Promise<void> {
   const { default: jsPDF } = await import("jspdf");
   const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pageWidth = pdf.internal.pageSize.getWidth();
@@ -116,7 +196,61 @@ export async function exportInterviewPrepPDF(data: InterviewExportData): Promise
   pdf.save("interview_prep_guide.pdf");
 }
 
-export async function exportCareerPathPDF(data: CareerPathExportData): Promise<void> {
+/** Every text the career roadmap prints. */
+function careerPathTexts(data: CareerPathExportData): string[] {
+  return [
+    data.currentPosition?.title, data.currentPosition?.level, data.immediateNextStep,
+    ...(data.paths ?? []).flatMap((p) => [
+      p.name, p.description, p.probability, p.riskLevel,
+      ...(p.timeline ?? []).flatMap((s) => [s.year, s.role, s.company, s.salaryRange, s.keyMove]),
+      ...(p.requiredSkills ?? []), ...(p.actionPlan90Days ?? []),
+    ]),
+  ].filter((s): s is string => typeof s === "string");
+}
+
+/** True when jsPDF's built-in fonts cannot draw the roadmap (S12-029: a past buyer's Hindi roadmap). */
+export function careerPathNeedsPrint(data: CareerPathExportData): boolean {
+  return unsupportedPdfCharacters(careerPathTexts(data).join("\n")).length > 0;
+}
+
+/** The roadmap as a standalone printable HTML page (every value escaped). */
+export function careerPathHtml(data: CareerPathExportData, lang = "en"): string {
+  const list = (items: string[] | undefined) => (items ?? []).map((t) => `<li>${escapeHtml(t)}</li>`).join("");
+  const paths = (data.paths ?? []).map((p) => `
+    <section>
+      <h2>${escapeHtml(p.name)} (${escapeHtml(p.probability)}, ${escapeHtml(p.riskLevel)})</h2>
+      <p class="why">${escapeHtml(p.description)}</p>
+      <ul>${(p.timeline ?? []).map((s) => `<li><strong>${escapeHtml(s.year)}: ${escapeHtml(s.role)} — ${escapeHtml(s.company)}</strong> (${escapeHtml(s.salaryRange)})<br>${escapeHtml(s.keyMove)}</li>`).join("")}</ul>
+      ${p.requiredSkills?.length ? `<p>${escapeHtml(p.requiredSkills.join(", "))}</p>` : ""}
+      ${p.actionPlan90Days?.length ? `<ol>${list(p.actionPlan90Days)}</ol>` : ""}
+    </section>`).join("");
+  return `<!doctype html><html lang="${escapeHtml(lang)}"><head><meta charset="utf-8"><title>Career Roadmap</title>
+<style>body{font-family:system-ui,"Noto Sans","Noto Sans Devanagari",sans-serif;margin:18mm;color:#111;font-size:11pt;line-height:1.45}h1{font-size:18pt;margin:0 0 4mm}h2{font-size:12pt;margin:6mm 0 2mm}.why{font-style:italic;color:#444}section{border-top:1px solid #ccc;padding-top:2mm}</style>
+</head><body>
+<h1>Career Roadmap</h1>
+<p>${escapeHtml(data.currentPosition?.title)} (${escapeHtml(data.currentPosition?.level)})</p>
+${paths}
+<section><p>${escapeHtml(data.immediateNextStep)}</p></section>
+</body></html>`;
+}
+
+/**
+ * The career roadmap as a PDF: drawn by jsPDF when its fonts can draw every
+ * character, else handed to the browser's print dialog ("Save as PDF").
+ */
+export async function exportCareerPathPDF(
+  data: CareerPathExportData,
+  deps: { print?: (html: string) => void; lang?: string } = {},
+): Promise<{ method: "pdf" | "print" }> {
+  if (careerPathNeedsPrint(data)) {
+    (deps.print ?? printHtml)(careerPathHtml(data, deps.lang ?? (typeof document !== "undefined" ? document.documentElement.lang || "en" : "en")));
+    return { method: "print" };
+  }
+  await drawCareerPathPDF(data);
+  return { method: "pdf" };
+}
+
+async function drawCareerPathPDF(data: CareerPathExportData): Promise<void> {
   const { default: jsPDF } = await import("jspdf");
   const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pageWidth = pdf.internal.pageSize.getWidth();

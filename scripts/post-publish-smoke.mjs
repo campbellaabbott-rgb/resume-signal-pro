@@ -85,12 +85,14 @@ if (process.env.NO_SCAN) {
 } else try {
   const t0 = Date.now();
   // Prefer the heartbeat bypass (guaranteed run, logged as scan_type='heartbeat'
-  // so it stays out of published stats). Without the secret, fall back to
-  // synthetic:true (also excluded from stats) which may hit the per-IP limit.
+  // so it stays out of published stats). Without it, fall back to
+  // synthetic:true, which keeps the scan out of the stats only with our
+  // SYNTHETIC_SCAN_SECRET (S12-142), and may hit the per-IP limit.
+  const SYNTHETIC = process.env.SYNTHETIC_SCAN_SECRET || "";
   const r = await post("free-keyword-scan",
     HEARTBEAT ? { resumeText: CORPUS } : { resumeText: CORPUS, synthetic: true },
     90000,
-    HEARTBEAT ? { "x-heartbeat-secret": HEARTBEAT } : {});
+    HEARTBEAT ? { "x-heartbeat-secret": HEARTBEAT } : SYNTHETIC ? { "x-synthetic-secret": SYNTHETIC } : {});
   const secs = ((Date.now() - t0) / 1000).toFixed(1);
   if (r.status === 429) {
     record("free scan end-to-end", true, `rate-limited from this IP — function alive, report+freshness UNVERIFIED (set HEARTBEAT_SECRET to force) (${secs}s)`);

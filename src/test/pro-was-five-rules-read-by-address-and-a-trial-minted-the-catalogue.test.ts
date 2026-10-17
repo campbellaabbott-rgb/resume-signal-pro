@@ -232,6 +232,10 @@ beforeEach(() => {
   db.rpcs.record_checkout_start = () => ({ data: true, error: null });
   db.rpcs.log_delivery_step = () => ({ data: null, error: null });
   db.rpcs.pro_entitlement_rows = (a) => ({ data: PLANS[String(a.p_user_id)] ?? [], error: null });
+  // A Pro kit takes one tailored résumé from the writing allowance (wave 4
+  // round 2, 20261011160000): allowed here, so this test still reads the plan rule.
+  db.rpcs.take_writing_tools = (a) => ({ data: { allowed: true, use_ids: (a.p_tools as string[]).map((t) => `use-${t}`) }, error: null });
+  db.rpcs.refund_writing_tools = (a) => ({ data: (a.p_use_ids as string[]).length, error: null });
   // The same world in the address caches, as the old readers saw it: so a
   // reader that still asks by address, or still lets a trial mint, is caught.
   db.rows("pro_subscribers").push({ email: "owner@example.com", status: "active", current_period_end: soon(), updated_at: new Date().toISOString() });

@@ -9,17 +9,15 @@ import {
   FileCheck, FileText, AlertTriangle, Type, User, LayoutList, Phone, 
   Trophy, Hash, Pencil, XCircle, CheckCircle, HelpCircle, Briefcase, Download, Apple, X,
   TrendingUp, RefreshCw, Share2, Star, DollarSign, MessageSquare, Lightbulb, Copy, Rocket,
-  BarChart3, Shield, Search, Settings2, Eye, Flame, FileEdit, Send
+  BarChart3, Shield, Search, Settings2, FileEdit, Send
 } from "lucide-react";
 import { LockedPremiumInsight } from "./LockedPremiumInsight";
 import { ScanOutcomeAsk } from "./ScanOutcomeAsk";
 import { SaveResumeVersion } from "./SaveResumeVersion";
 import { PersonalizedInsights } from "./PersonalizedInsights";
-import { ElevatorPitchGenerator } from "./ElevatorPitchGenerator";
-import { RecruiterViewMode } from "./RecruiterViewMode";
-import { ResumeRoast } from "./ResumeRoast";
 import { InterviewCoach } from "./InterviewCoach";
-import { CareerPathSimulator } from "./CareerPathSimulator";
+import { useAuth } from "@/contexts/AuthContext";
+import { WRITING_ALLOWANCE } from "@/config/writing-allowance";
 import { JobKeywordMatcher } from "./JobKeywordMatcher";
 import { ATSParseSimulator } from "./ATSParseSimulator";
 import { PeerBenchmark } from "./PeerBenchmark";
@@ -36,7 +34,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useScanHistory, generateChecklist } from "@/hooks/use-scan-history";
 import { emailSchema } from "@/lib/security-validation";
 import { InteractiveChecklist } from "./InteractiveChecklist";
-import { AISummary } from "./AISummary";
 import { ShareableScoreCard } from "./ShareableScoreCard";
 import { ResumeXRay } from "./ResumeXRay";
 import { ScoreSimulatorCard, AtsVendorChecksCard, WeakestBulletsCard, CareerBridgeCard, ScoreAuditCard, ShareScoreCard, FreelanceGuidanceCard, IndustryChecksCard, CountryStandardsCard, DiagnosticHeader, FindingsIndex, computeVendorChecks, type Finding } from "./ReportInsightCards";
@@ -721,6 +718,8 @@ export function FreeKeywordResults({
   const missingSkillsDetailed = Array.isArray(missingSkillsDetailedProp) ? missingSkillsDetailedProp : [];
   const skillGapActions = Array.isArray(skillGapActionsProp) ? skillGapActionsProp : [];
   const { t } = useTranslation();
+  // Interview prep needs an account (the server counts it by account).
+  const { user } = useAuth();
   const { formatPrice, isLocalCurrency } = useCurrency();
   const { trackButtonClick } = useConversionTracking();
   // trackClick, not trackConversion: a click is not the purchase (S8-122, wave3/email-ops).
@@ -1769,19 +1768,8 @@ export function FreeKeywordResults({
         </div>
       )}
 
-      {/* AI-Generated Summary */}
-      <AISummary
-        candidateName={candidateName}
-        atsScore={atsScoreEstimate}
-        formatGrade={formatGrade}
-        industry={effectiveIndustry}
-        experienceLevel={getExperienceLevelLabel(experienceLevel.level)}
-        topStrength={topStrength?.title ?? ""}
-        redFlagsCount={redFlags.length}
-        quickWins={quickWins}
-        improvementPotential={improvementPotential}
-        resumeHash={currentScan?.resumeHash}
-      />
+      {/* The AI summary is one of the free report extras no longer offered
+          (owner decision 2026-10-12): it is not mounted. */}
 
       {/* Why this score — deterministic audit trail */}
       {scoreAudit && (
@@ -2214,6 +2202,10 @@ export function FreeKeywordResults({
                   <p className="text-xs text-muted-foreground">{t('freeResults.jobMatch.readyToApply.subtitle')}</p>
                 </div>
               </div>
+              {/* The tailored résumé is a writing tool counted by account
+                  (one a day on a free account): a signed-out reader is asked
+                  to sign in, never handed a button the server refuses. */}
+              {user ? (
               <Button
                 onClick={onGenerateTailoredResume}
                 disabled={isGeneratingTailored}
@@ -2232,6 +2224,16 @@ export function FreeKeywordResults({
                   </>
                 )}
               </Button>
+              ) : (
+                <Link
+                  to={`/auth?next=${encodeURIComponent('/')}`}
+                  data-testid="tailored-resume-sign-in"
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-md bg-success px-4 py-2 text-sm font-semibold text-success-foreground hover:bg-success/90"
+                >
+                  {t('freeResults.tailoredSignIn.cta', 'Sign in to tailor your résumé to this job (free: one a day)')}
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              )}
               <p className="text-[10px] text-success/70 mt-2 text-center">
                 {t('freeResults.jobMatch.readyToApply.footnote')}
               </p>
@@ -2310,75 +2312,12 @@ export function FreeKeywordResults({
         </div>
       </CollapsibleSection>
 
-      {/* Elevator Pitch Generator */}
-      {resumeText && (
-        <CollapsibleSection
-          id="elevator-pitch"
-          title={t('freeResults.elevatorPitchSection.title')}
-          subtitle={t('freeResults.elevatorPitchSection.subtitle')}
-          icon={<Rocket className="w-4 h-4" />}
-          defaultOpen={false}
-          badge={
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-              {t('uploader.badges.free')}
-            </span>
-          }
-        >
-          <ElevatorPitchGenerator
-            resumeText={resumeText}
-            industry={industry}
-            currentRole={currentRole}
-            experienceLevel={experienceLevel?.level}
-            candidateName={candidateName || undefined}
-          />
-        </CollapsibleSection>
-      )}
-
-      {/* Recruiter View Mode */}
-      {resumeText && (
-        <CollapsibleSection
-          id="recruiter-view"
-          title={t('freeResults.recruiterViewSection.title')}
-          subtitle={t('freeResults.recruiterViewSection.subtitle')}
-          icon={<Eye className="w-4 h-4" />}
-          defaultOpen={false}
-          badge={
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-              {t('uploader.badges.free')}
-            </span>
-          }
-        >
-          <RecruiterViewMode
-            resumeText={resumeText}
-            industry={industry}
-            currentRole={currentRole}
-          />
-        </CollapsibleSection>
-      )}
-
-      {/* Resume Roast */}
-      {resumeText && (
-        <CollapsibleSection
-          id="resume-roast"
-          title={t('freeResults.resumeRoastSection.title')}
-          subtitle={t('freeResults.resumeRoastSection.subtitle')}
-          icon={<Flame className="w-4 h-4" />}
-          defaultOpen={false}
-          badge={
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-destructive/10 text-destructive font-medium">
-              {t('uploader.badges.free')}
-            </span>
-          }
-        >
-          <ResumeRoast
-            resumeText={resumeText}
-            industry={industry}
-            currentRole={currentRole}
-          />
-        </CollapsibleSection>
-      )}
-
-      {/* Interview Coach */}
+      {/* THE FREE REPORT EXTRAS ARE NO LONGER OFFERED (owner decision
+          2026-10-12): the elevator pitch, the recruiter view, the roast and
+          the free Career Path are not mounted. Interview prep is a writing
+          tool counted by account (one set a day free): a signed-out visitor
+          is asked to sign in instead of being handed a tool the server would
+          refuse. */}
       {resumeText && (
         <CollapsibleSection
           id="interview-coach"
@@ -2386,39 +2325,29 @@ export function FreeKeywordResults({
           subtitle={t('freeResults.interviewCoachSection.subtitle')}
           icon={<MessageSquare className="w-4 h-4" />}
           defaultOpen={false}
-          badge={
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-              {t('uploader.badges.free')}
-            </span>
-          }
         >
-          <InterviewCoach
-            resumeText={resumeText}
-            industry={industry}
-            currentRole={currentRole}
-          />
-        </CollapsibleSection>
-      )}
-
-      {/* Career Path Simulator */}
-      {resumeText && (
-        <CollapsibleSection
-          id="career-path"
-          title={t('freeResults.careerPathSection.title')}
-          subtitle={t('freeResults.careerPathSection.subtitle')}
-          icon={<TrendingUp className="w-4 h-4" />}
-          defaultOpen={false}
-          badge={
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-              {t('uploader.badges.free')}
-            </span>
-          }
-        >
-          <CareerPathSimulator
-            resumeText={resumeText}
-            industry={industry}
-            currentRole={currentRole}
-          />
+          {user ? (
+            <InterviewCoach
+              resumeText={resumeText}
+              industry={industry}
+              currentRole={currentRole}
+            />
+          ) : (
+            <div className="rounded-xl border border-primary/25 bg-primary/5 p-4" data-testid="interview-prep-sign-in">
+              <p className="text-sm font-medium text-foreground">
+                {t('freeResults.interviewPrepSignIn.title', 'Sign in to practise with interview questions for this résumé')}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t('freeResults.interviewPrepSignIn.body', 'A free account includes one interview-prep set, one tailored résumé and one cover letter a day.')}
+              </p>
+              <Link
+                to={`/auth?next=${encodeURIComponent('/')}`}
+                className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+              >
+                {t('freeResults.interviewPrepSignIn.cta', 'Sign in or create a free account')}
+              </Link>
+            </div>
+          )}
         </CollapsibleSection>
       )}
 
@@ -4651,7 +4580,10 @@ export function FreeKeywordResults({
           >
             <span>
               <span className="block text-sm font-medium text-foreground">{t('freeResults.nextSteps.fullAnalysisName')}</span>
-              <span className="block text-xs text-muted-foreground">{t('freeResults.nextSteps.fullAnalysisDesc')}</span>
+              {/* S12-009: the Full Analysis is its own, deeper read of the
+                  résumé; it never receives this report, so it is never sold as
+                  "applying the fixes from this report". */}
+              <span className="block text-xs text-muted-foreground">{t('freeResults.nextSteps.fullAnalysisDescOwn', 'A separate, deeper analysis of your résumé: a full score breakdown, bullet-by-bullet rewrites and a prioritised action plan. One payment, no subscription.')}</span>
             </span>
             <span className="text-sm font-semibold text-primary shrink-0 ml-3">{priceDisplay}</span>
           </button>
@@ -4663,7 +4595,8 @@ export function FreeKeywordResults({
           >
             <span>
               <span className="block text-sm font-medium text-foreground">{t('freeResults.nextSteps.proName')}</span>
-              <span className="block text-xs text-muted-foreground">{t('freeResults.nextSteps.proDesc')}</span>
+              {/* Pro's line (owner decision 2026-10-12), its daily figure the server's own. */}
+              <span className="block text-xs text-muted-foreground">{t('freeResults.nextSteps.proDescWriting', 'Everything in a free account, plus the writing tools: a tailored résumé, cover letter and interview prep for up to {{perDay}} jobs a day. Cancel anytime from your account.', { perDay: WRITING_ALLOWANCE.proPackagesPerDay })}</span>
             </span>
             <span className="text-sm font-semibold text-primary shrink-0 ml-3">{t('freeResults.nextSteps.proPrice', { price: SUBSCRIPTIONS.pro.priceUsd })}</span>
           </Link>

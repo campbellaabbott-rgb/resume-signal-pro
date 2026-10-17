@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { ResumePreview } from "@/components/builder/ResumePreview";
 import { BuilderResume } from "@/types/resume-builder";
 import { useToast } from "@/hooks/use-toast";
-import { hasUnsupportedPdfCharacters } from "@/lib/pdf-text-support";
 import type { ResumeTemplate } from "@/lib/resume-builder-export";
 import { ShieldCheck } from "lucide-react";
 
@@ -38,18 +37,31 @@ export function ApplyAssistantResults({ data, coverLetter }: ApplyAssistantResul
   const [template, setTemplate] = useState<ResumeTemplate>("modern");
   const { toast } = useToast();
 
+  // A résumé with no name is refused by the exporter (no "Your Name" header
+  // goes to an employer, S12-030): the person is asked for it.
+  const missingName = (err: unknown) => (err as { code?: string } | null)?.code === "missing_name";
+  const askForName = () => toast({
+    title: t('applyAssistant.toast.addNameTitle', 'Add your name first'),
+    description: t('applyAssistant.toast.addNameDescription', 'Your résumé needs your name at the top before it can be downloaded.'),
+    variant: "destructive",
+  });
+
   const handleExportPdf = async () => {
     setIsExportingPdf(true);
     try {
-      // The PDF export's standard font only supports Latin-1 + common
-      // punctuation — a non-English resume would otherwise render with
-      // blank/missing glyphs and no explanation.
-      if (hasUnsupportedPdfCharacters(JSON.stringify(data.tailoredResume))) {
-        toast({ title: t('applyAssistant.toast.headsUp'), description: t('applyAssistant.toast.pdfCharWarning') });
-      }
+      // The PDF's built-in fonts draw only Windows-1252. A résumé they cannot
+      // draw (Łukasz, ₹) is saved as a Word file instead, never as a garbled
+      // PDF (S12-006), and the person is told why.
       const { exportResumeBuilderPDF } = await import("@/lib/resume-builder-export");
-      await exportResumeBuilderPDF(data.tailoredResume, { template });
+      const saved = await exportResumeBuilderPDF(data.tailoredResume, { template });
+      if (saved?.format === "docx") {
+        toast({
+          title: t('applyAssistant.toast.savedAsWordTitle', 'Saved as a Word file'),
+          description: t('applyAssistant.toast.savedAsWordDescription', "The PDF's fonts can't draw {{chars}}, so we saved a Word file, which keeps every character.", { chars: saved.unsupported.slice(0, 5).join(" ") }),
+        });
+      }
     } catch (err) {
+      if (missingName(err)) { askForName(); return; }
       console.error("[ApplyAssistantResults] PDF export failed:", err);
       toast({ title: t('applyAssistant.toast.exportFailed'), description: t('applyAssistant.toast.exportPdfFailedDescription'), variant: "destructive" });
     } finally {
@@ -63,6 +75,7 @@ export function ApplyAssistantResults({ data, coverLetter }: ApplyAssistantResul
       const { exportResumeBuilderDocx } = await import("@/lib/resume-builder-export");
       await exportResumeBuilderDocx(data.tailoredResume, { template });
     } catch (err) {
+      if (missingName(err)) { askForName(); return; }
       console.error("[ApplyAssistantResults] DOCX export failed:", err);
       toast({ title: t('applyAssistant.toast.exportFailed'), description: t('applyAssistant.toast.exportDocxFailedDescription'), variant: "destructive" });
     } finally {
@@ -177,9 +190,11 @@ export function ApplyAssistantResults({ data, coverLetter }: ApplyAssistantResul
 
       {/* Tailored resume preview + export */}
       <div>
-        <div className="flex items-center justify-between mb-3">
+        {/* Wraps on a narrow phone (S12-111): in six locales the two labels
+            measured 452px against a 375px screen and pushed the page sideways. */}
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3" data-testid="apply-export-row">
           <h3 className="font-semibold text-sm">{t('applyAssistant.tailoredResume')}</h3>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" className="gap-1.5" disabled={isExportingDocx} onClick={handleExportDocx}>
               {isExportingDocx ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
               {t('applyAssistant.exportDocx')}

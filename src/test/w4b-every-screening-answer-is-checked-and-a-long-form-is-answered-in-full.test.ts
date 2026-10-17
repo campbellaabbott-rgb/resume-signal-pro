@@ -120,7 +120,9 @@ describe("generate-application-answers, run as shipped", () => {
     expect(r.status).toBe(200);
     expect((r.body.answers as unknown[]).length).toBe(ANSWER_CHUNK);
     expect((r.body.undrafted as string[]).length).toBe(15 - ANSWER_CHUNK);
-  });
+    // The failed chunk walked the whole model chain, retries and their
+    // one-second pauses included (_shared/ai-fallback.ts), hence the budget.
+  }, 15_000);
 
   it("a busy model is answered with a code and a Retry-After the page can word", async () => {
     world.reply = () => new Response(JSON.stringify({ error: "busy" }), { status: 429 });

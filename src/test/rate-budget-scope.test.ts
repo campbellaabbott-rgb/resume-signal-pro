@@ -95,7 +95,10 @@ describe("the request budget counts only what it gates", () => {
   it("counted ⊆ enforcers — nothing is charged for a gate it cannot trip", () => {
     const counted = countedInSql();
     expect(counted.length).toBeGreaterThan(0);
-    const strays = counted.filter((c) => !enforcers.includes(c));
+    // A RETIRED function (a 410 stub that counts nothing, scrape-linkedin
+    // since S12-152) writes no row, so the SQL still naming it charges nobody.
+    const retired = (fn: string) => /status: 410/.test(src(fn)) && !/check_rate_limit|check_global_rate_limit/.test(src(fn));
+    const strays = counted.filter((c) => !enforcers.includes(c) && !retired(c));
     expect(strays, `counted but does not enforce the budget: ${strays.join(", ")}`).toEqual([]);
   });
 
@@ -142,13 +145,20 @@ describe("the request budget counts only what it gates", () => {
  * different states.
  */
 describe("a 429 says which limit fired", () => {
-  for (const fn of ["parse-pdf", "parse-docx", "scrape-linkedin", "create-checkout"]) {
+  for (const fn of ["parse-pdf", "parse-docx", "create-checkout"]) {
     it(`${fn} distinguishes the budget from its own ceiling`, () => {
       const body = src(fn);
       expect(body, "budget refusal is unlabelled").toContain("rate_limited_budget");
       expect(body, "per-function refusal is unlabelled").toContain("rate_limited_function");
     });
   }
+
+  it("scrape-linkedin is retired (S12-152): it answers 410 and counts nothing, so it has no limit to label", () => {
+    const body = src("scrape-linkedin");
+    expect(body).toMatch(/status: 410/);
+    expect(body).not.toContain("check_global_rate_limit");
+    expect(body).not.toMatch(/firecrawl\.dev/i);
+  });
 
   it("analyze-resume labels the budget refusal (it enforces but never writes)", () => {
     expect(src("analyze-resume")).toContain("rate_limited_budget");

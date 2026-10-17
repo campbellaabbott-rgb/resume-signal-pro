@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { hasUnsupportedPdfCharacters } from "@/lib/pdf-text-support";
 import { supabase } from "@/integrations/supabase/client";
 import { getResumeFromSession } from "@/hooks/use-session-resume";
 import {
@@ -238,19 +237,32 @@ export default function ResumeBuilder() {
     if (scanned && scanned.trim()) writeImportedFrom(scanned);
   };
 
+  // A résumé with no name is refused by the exporter (no "Your Name" header
+  // goes to an employer, S12-030): the person is asked for it.
+  const missingName = (err: unknown) => (err as { code?: string } | null)?.code === "missing_name";
+  const askForName = () => toast({
+    title: t("resumeBuilder.toast.addNameTitle", "Add your name first"),
+    description: t("resumeBuilder.toast.addNameDescription", "Your résumé needs your name at the top before it can be downloaded."),
+    variant: "destructive",
+  });
+
   const handleExportPdf = async () => {
     setIsExportingPdf(true);
     try {
-      // The PDF export's standard font only supports Latin-1 + common
-      // punctuation — a non-English resume would otherwise render with
-      // blank/missing glyphs and no explanation.
-      if (hasUnsupportedPdfCharacters(JSON.stringify(resume))) {
-        toast({ title: "Heads up", description: "Some characters in your resume may not display correctly in the PDF (limited font support for non-Latin text)." });
-      }
+      // The PDF's built-in fonts draw only Windows-1252. A résumé they cannot
+      // draw (Łukasz, ₹) is saved as a Word file instead, never as a garbled
+      // PDF (S12-006), and the person is told why.
       const { exportResumeBuilderPDF } = await import("@/lib/resume-builder-export");
-      await exportResumeBuilderPDF(resume);
+      const saved = await exportResumeBuilderPDF(resume);
+      if (saved?.format === "docx") {
+        toast({
+          title: t("resumeBuilder.toast.savedAsWordTitle", "Saved as a Word file"),
+          description: t("resumeBuilder.toast.savedAsWordDescription", "The PDF's fonts can't draw {{chars}}, so we saved a Word file, which keeps every character.", { chars: saved.unsupported.slice(0, 5).join(" ") }),
+        });
+      }
       setShowRescanCta(true);
     } catch (err) {
+      if (missingName(err)) { askForName(); return; }
       console.error("[ResumeBuilder] PDF export failed:", err);
       toast({ title: "Export failed", description: "Could not generate the PDF. Please try again.", variant: "destructive" });
     } finally {
@@ -265,6 +277,7 @@ export default function ResumeBuilder() {
       await exportResumeBuilderDocx(resume);
       setShowRescanCta(true);
     } catch (err) {
+      if (missingName(err)) { askForName(); return; }
       console.error("[ResumeBuilder] DOCX export failed:", err);
       toast({ title: "Export failed", description: "Could not generate the Word document. Please try again.", variant: "destructive" });
     } finally {

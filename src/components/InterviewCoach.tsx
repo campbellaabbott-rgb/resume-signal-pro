@@ -8,7 +8,6 @@ import {
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { hasUnsupportedPdfCharacters } from "@/lib/pdf-text-support";
 import { useReportEnumLabel } from "@/hooks/use-report-enum-label";
 
 interface InterviewCoachProps {
@@ -109,14 +108,18 @@ export function InterviewCoach({ resumeText, industry, currentRole, isPremium, s
     if (!data) return;
     setIsExportingPdf(true);
     try {
-      // The PDF export's standard font only supports Latin-1 + common
-      // punctuation — content in other scripts would otherwise render as
-      // blank/missing glyphs with no explanation.
-      if (hasUnsupportedPdfCharacters(JSON.stringify(data))) {
-        toast({ title: t('interviewCoach.toast.headsUp'), description: t('interviewCoach.toast.pdfCharWarning') });
-      }
+      // The PDF's built-in fonts draw only Windows-1252. A guide they cannot
+      // draw (a Hindi guide came out as raw bytes, S12-029) is handed to the
+      // browser's print dialog, which draws every script, and the person is
+      // told to choose "Save as PDF" there.
       const { exportInterviewPrepPDF } = await import("@/lib/career-tools-export");
-      await exportInterviewPrepPDF(data);
+      const saved = await exportInterviewPrepPDF(data);
+      if (saved?.method === "print") {
+        toast({
+          title: t('interviewCoach.toast.printTitle', 'Opened in your print dialog'),
+          description: t('interviewCoach.toast.printDescription', "The PDF's fonts can't draw this guide's script, so choose \"Save as PDF\" in the print dialog to keep it."),
+        });
+      }
     } catch (err) {
       console.error("[InterviewCoach] PDF export failed:", err);
       toast({ title: t('interviewCoach.toast.exportFailed'), description: t('interviewCoach.toast.exportFailedDescription'), variant: "destructive" });

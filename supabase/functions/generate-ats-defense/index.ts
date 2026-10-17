@@ -8,10 +8,11 @@ import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
 import { REFUNDED_PURCHASE_MESSAGE, sessionWasRefunded } from "../_shared/payment-revocation.ts";
 import { purchaseSpendGate } from "../_shared/model-spend-gate.ts";
+import { isServiceRoleCaller } from "../_shared/service-caller.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-ats-defense.2026-10-09.3";
+const FN_BUILD = "generate-ats-defense.2026-10-11.24";
 /** Reports one purchase may generate in a day (regenerations included). */
 const ATS_DEFENSE_PER_PURCHASE_DAY = 10;
 
@@ -331,13 +332,22 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Rate limit check
-    const { data: allowed, error: rlError } = await supabase.rpc('check_rate_limit', {
-      p_ip: clientIp,
-      p_function: 'generate-ats-defense',
-      p_max_requests: 20,
-      p_window_minutes: 60
-    });
+    // THE ADDRESS BUCKET IS A BROWSER'S (critical path CP-030). Our own
+    // servers (the retry sweep, the webhook, the purchase verifier) share one
+    // egress address, so every buyer's server-side delivery shared this one
+    // twenty-an-hour bucket, which anyone could spend by asking warm-up to
+    // ping this function. A caller holding the service-role key is our
+    // server: it skips the address bucket and still pays the purchase's own
+    // day (purchaseSpendGate below), the bound that matters per buyer.
+    const ownServer = isServiceRoleCaller(req.headers, supabaseServiceKey);
+    const { data: allowed, error: rlError } = ownServer
+      ? { data: true, error: null }
+      : await supabase.rpc('check_rate_limit', {
+        p_ip: clientIp,
+        p_function: 'generate-ats-defense',
+        p_max_requests: 20,
+        p_window_minutes: 60
+      });
 
     if (rlError) {
       // A limiter that cannot answer is not a pass (sweep S8-063).

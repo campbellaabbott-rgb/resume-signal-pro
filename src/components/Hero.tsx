@@ -13,6 +13,8 @@ import { SCAN_RESULTS_WITHIN_SECONDS } from "@/config/scan-timing";
 import { REPORT_CACHE_DAYS } from "@/lib/resume-retention";
 import { useABTest } from "@/hooks/use-ab-test";
 import { SampleReportPreview } from "./SampleReportPreview";
+import { DETECTED_INDUSTRY_COUNT } from "@/config/scan-coverage";
+import { LANGUAGE_COUNT } from "@/i18n/languages";
 
 // Animated result preview component - shows what users get
 function AnimatedResultPreview() {
@@ -47,7 +49,7 @@ function AnimatedResultPreview() {
 // Hero stats bar — verifiable product facts, not manufactured social proof.
 // Every number here is checkable in the product itself (industry list, scan
 // report, language picker), which is what actually builds credibility.
-function HeroStatsBar() {
+export function HeroStatsBar() {
   const { t } = useTranslation();
   const totals = useScanTotals();
 
@@ -58,7 +60,8 @@ function HeroStatsBar() {
           <Target className="w-4 h-4 text-primary" />
         </div>
         <div className="text-left">
-          <p className="text-lg sm:text-xl font-bold text-foreground">59</p>
+          {/* Derived, never typed (S12-047): the detection table's count. */}
+          <p className="text-lg sm:text-xl font-bold text-foreground" data-stat="industries">{DETECTED_INDUSTRY_COUNT}</p>
           <p className="text-xs text-muted-foreground">{t('hero.stats.industriesCovered', 'Industries covered')}</p>
         </div>
       </div>
@@ -78,7 +81,8 @@ function HeroStatsBar() {
           <Award className="w-4 h-4 text-warning" />
         </div>
         <div className="text-left">
-          <p className="text-lg sm:text-xl font-bold text-foreground">10</p>
+          {/* Derived, never typed (S12-047): the languages the locale files carry. */}
+          <p className="text-lg sm:text-xl font-bold text-foreground" data-stat="languages">{LANGUAGE_COUNT}</p>
           <p className="text-xs text-muted-foreground">{t('hero.stats.languagesSupported', 'Languages supported')}</p>
         </div>
       </div>
