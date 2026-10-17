@@ -5,6 +5,8 @@ import { useToast } from "@/hooks/use-toast";
 import i18n from "@/i18n";
 import { checkoutContext } from "@/lib/track-transport";
 import { consentWasRequired, purchaseTerms } from "@/lib/purchase-terms";
+import { checkoutRefusalOf } from "@/lib/checkout-refusal";
+import { territoryHint } from "@/lib/checkout-territory";
 
 /** How often, and how many times, a buyer back from Stripe is re-checked until the plan reads live. */
 export const PRO_CONFIRM_INTERVAL_MS = 3000;
@@ -23,6 +25,34 @@ export interface ProSubscriptionState {
   trialing: boolean;
   /** The address holds a live plan this account cannot use yet (not linked, mailbox not proven). */
   linkPending: boolean;
+  /**
+   * The live plan was cancelled at its period end (in Stripe's portal): it
+   * stays on until currentPeriodEnd and does not renew (S12-076).
+   */
+  cancelAtPeriodEnd: boolean;
+  /**
+   * Which plan the account's standing rests on (check-subscription planTier):
+   * "agent" is the retired Apply Agent plan, shown as such and never sold or
+   * renewed as Pro (S12-168).
+   */
+  planTier: "pro" | "agent" | null;
+}
+
+const EMPTY: Omit<ProSubscriptionState, "loading"> = {
+  active: false, status: null, currentPeriodEnd: null, trialing: false, linkPending: false, cancelAtPeriodEnd: false, planTier: null,
+};
+
+/**
+ * BACK FROM STRIPE'S BILLING PORTAL (S12-076): create-portal-session returns
+ * the subscriber to /account?portal=return, and the first check after it asks
+ * Stripe (fresh) instead of a cached row, so a cancel shows at once.
+ */
+export function backFromPortal(): boolean {
+  try {
+    return new URLSearchParams(window.location.search).get("portal") === "return";
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -36,14 +66,9 @@ export interface ProSubscriptionState {
 export function useProSubscription() {
   const { user, session } = useAuth();
   const { toast } = useToast();
-  const [pro, setPro] = useState<ProSubscriptionState>({
-    active: false,
-    status: null,
-    currentPeriodEnd: null,
-    loading: true,
-    trialing: false,
-    linkPending: false,
-  });
+  const [pro, setPro] = useState<ProSubscriptionState>({ ...EMPTY, loading: true });
+  // Read once per mount: only the first check after the portal skips the cache.
+  const [freshOnce] = useState(() => ({ pending: backFromPortal() }));
   const [actionLoading, setActionLoading] = useState(false);
 
   const knownEmail =
@@ -68,12 +93,18 @@ export function useProSubscription() {
 
   const refresh = useCallback(async (): Promise<boolean> => {
     if (!knownEmail && !heldSession) {
-      setPro({ active: false, status: null, currentPeriodEnd: null, loading: false, trialing: false, linkPending: false });
+      setPro({ ...EMPTY, loading: false });
       return false;
     }
     try {
+      const fresh = freshOnce.pending;
+      freshOnce.pending = false;
       const { data, error } = await supabase.functions.invoke("check-subscription", {
-        body: { ...(knownEmail ? { email: knownEmail } : {}), ...(heldSession ? { sessionId: heldSession } : {}) },
+        body: {
+          ...(knownEmail ? { email: knownEmail } : {}),
+          ...(heldSession ? { sessionId: heldSession } : {}),
+          ...(fresh ? { fresh: true } : {}),
+        },
       });
       if (error) throw error;
       setPro({
@@ -83,13 +114,15 @@ export function useProSubscription() {
         loading: false,
         trialing: data?.trialing === true,
         linkPending: data?.linkPending === true,
+        cancelAtPeriodEnd: data?.cancelAtPeriodEnd === true,
+        planTier: data?.planTier === "agent" || data?.planTier === "pro" ? data.planTier : null,
       });
       return !!data?.active;
     } catch {
       setPro((p) => ({ ...p, loading: false }));
       return false;
     }
-  }, [knownEmail, heldSession]);
+  }, [knownEmail, heldSession, freshOnce]);
 
   // The asks ran out with the plan still not live (a late webhook, a payment
   // left incomplete, an old success link): the card stops saying it is
@@ -116,8 +149,8 @@ export function useProSubscription() {
       const email = (emailOverride || knownEmail).trim().toLowerCase();
       if (!email || !email.includes("@")) {
         toast({
-          title: "Email needed",
-          description: "Enter your email so we can attach the subscription to your account.",
+          title: i18n.t("proPlan.toast.emailNeededTitle", "Email needed"),
+          description: i18n.t("proPlan.toast.emailNeededBody", "Enter your email so we can attach the subscription to your account."),
           variant: "destructive",
         });
         return false;
@@ -126,15 +159,21 @@ export function useProSubscription() {
       try {
         const { data, error } = await supabase.functions.invoke("create-subscription-checkout", {
           // The page's language: Stripe shows the renewal terms in it.
-          body: { email, language: i18n.language, ...checkoutContext(), ...purchaseTerms() },
+          body: { email, language: i18n.language, ...checkoutContext(), ...purchaseTerms(), ...territoryHint() },
         });
         if (await consentWasRequired(error, data)) {
           toast({ title: i18n.t("purchaseTerms.consentNeeded"), variant: "destructive" });
           return false;
         }
+        // The territory's 451 (S12-059) carries a sentence for the buyer.
+        const refusal = error ? await checkoutRefusalOf(error) : null;
+        if (refusal) {
+          toast({ title: i18n.t("proPlan.checkoutRefusedTitle", "Couldn't start checkout"), description: refusal.message, variant: "destructive" });
+          return false;
+        }
         if (error) throw error;
         if (data?.alreadySubscribed) {
-          toast({ title: "You're already a Pro member", description: "Every tool is already unlocked for this email." });
+          toast({ title: i18n.t("proPlan.toast.alreadyMemberTitle", "You're already a Pro member"), description: i18n.t("proPlan.toast.alreadyMemberBody", "Your plan is already active on this account.") });
           await refresh();
           return true;
         }
@@ -147,10 +186,10 @@ export function useProSubscription() {
       } catch (e) {
         const raw = e instanceof Error ? e.message : "";
         toast({
-          title: "Couldn't start checkout",
+          title: i18n.t("proPlan.checkoutRefusedTitle", "Couldn't start checkout"),
           description: /edge function|failed to send|fetch/i.test(raw)
-            ? "Subscriptions are briefly unavailable — please try again in a few minutes."
-            : raw || "Please try again.",
+            ? i18n.t("proPlan.toast.briefOutage", "Subscriptions are briefly unavailable — please try again in a few minutes.")
+            : raw || i18n.t("proPlan.toast.tryAgain", "Please try again."),
           variant: "destructive",
         });
         return false;
@@ -163,7 +202,7 @@ export function useProSubscription() {
 
   const manage = useCallback(async () => {
     if (!session) {
-      toast({ title: "Sign in required", description: "Sign in to manage your subscription." });
+      toast({ title: i18n.t("proPlan.toast.signInTitle", "Sign in required"), description: i18n.t("proPlan.toast.signInBody", "Sign in to manage your subscription.") });
       return;
     }
     setActionLoading(true);
@@ -177,8 +216,8 @@ export function useProSubscription() {
       throw new Error(data?.error || "No portal URL returned");
     } catch (e) {
       toast({
-        title: "Couldn't open billing portal",
-        description: e instanceof Error ? e.message : "Please try again.",
+        title: i18n.t("proPlan.toast.portalFailedTitle", "Couldn't open billing portal"),
+        description: e instanceof Error ? e.message : i18n.t("proPlan.toast.tryAgain", "Please try again."),
         variant: "destructive",
       });
     } finally {

@@ -1,97 +1,56 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { productFeatures } from "@/lib/product-features";
 import { SEO } from "@/components/seo/SEO";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, Sparkles, FileText, Crown, Package, Loader2, ArrowRight, Star, Shield, Zap, ShieldCheck, Flame, MessageSquare, TrendingUp, Briefcase, ChevronDown } from "lucide-react";
+import { Check, ArrowRight, Star, Shield, Zap } from "lucide-react";
 import { PRODUCTS, SUBSCRIPTIONS, ProductId, isProductHidden } from "@/config/products";
-import { useProductCheckout } from "@/hooks/use-product-checkout";
-import { cn } from "@/lib/utils";
 import { ValueComparison } from "@/components/ValueComparison";
-import { useCurrency } from "@/hooks/use-currency";
 import { useScrollDepth } from "@/hooks/use-scroll-depth";
 import { useTimeOnPage } from "@/hooks/use-time-on-page";
-import { AddOnsShowcase } from "@/components/AddOnsShowcase";
 import { ProSubscriptionCard } from "@/components/ProSubscriptionCard";
 import { AtsCoverage } from '@/components/AtsCoverage';
 import { ProductPreview } from "@/components/ProductPreview";
 import { getResumeFromSession } from "@/hooks/use-session-resume";
 import { useState } from "react";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { PurchaseTerms } from "@/components/PurchaseTerms";
 
-const productIcons: Record<string, React.ElementType> = {
-  basicKeywordFix: FileText,
-  coverLetter: FileText,
-  premiumPackage: Crown,
-  careerBundle: Package,
-  fullAnalysis: Sparkles,
-  scanPack: Zap,
-  atsDefense: ShieldCheck,
-  careerSnapshot: Package,
-  graduateGamePlan: Star,
-  resumeRoast: Flame,
-  interviewCoach: MessageSquare,
-  careerPathSimulator: TrendingUp,
-  freelanceBoost: Briefcase,
-};
-
-// Premium products (shown in main grid)
-// Flagship-first: the complete rewrite package leads; single-purpose tools
-// follow. Order is a merchandising decision — the strongest deliverable
-// (rewritten resume content) earns the first slot.
-// premiumPackage + freelanceBoost live in the ladder above the fold; the
-// collapsed catalog carries the rest.
-//
-// THE APPLY PIVOT (owner decision 2026-10-11) retired the $7 Apply Assistant,
-// the Agent plan and the Agent Pass. None of them is offered on this page:
-// the Apply Assistant is out of the catalogue and out of the price range the
-// structured data quotes, the Agent plan's card is not rendered, and the
-// pass line is gone. A buyer from before the retirement is honoured or
-// refunded by the owner. RETIRED_HERE is the page's own list until the
-// catalogue mirror (src/config/products.ts) hides the product itself.
-const RETIRED_HERE: readonly ProductId[] = ['applyAssistant'];
-const offeredHere = (id: ProductId) => !isProductHidden(id) && !RETIRED_HERE.includes(id);
-const productOrder: ProductId[] = ([
-  'atsDefense',
-  'careerSnapshot',
-  'graduateGamePlan',
-  'fullAnalysis',
-  'coverLetter',
-] as ProductId[]).filter(offeredHere);
+// THE PRODUCT LINE OF 2026-10-12 (owner decisions). The page sells what is
+// still for sale: free search and scans, the $5 Full Analysis (the only
+// one-off most buyers need), the Freelance Boost tiers, and Pro. The cut
+// products (src/config/products.ts HIDDEN_PRODUCT_IDS: the Premium Package,
+// ATS Defense, Career Snapshot, Graduate Game Plan, Career Path, Keyword Fix,
+// Cover Letter and Interview Coach as one-offs, Scan Packs) are offered
+// nowhere: the "Premium" ladder card and the collapsed catalogue that listed
+// them are gone, and their checkouts answer 410. The apply pivot's retired
+// Apply Assistant, Agent plan and Agent Pass were already gone.
+const offeredHere = (id: ProductId) => !isProductHidden(id);
 
 export default function Pricing() {
   const { t } = useTranslation();
-  const { purchaseProduct, isLoading, currentProduct } = useProductCheckout();
-  const { formatPrice, isLocalCurrency } = useCurrency();
-  // If the visitor scanned a resume this session, every tool can preview itself
-  // with their real content. Read once — sessionStorage doesn't change under us.
+  // If the visitor scanned a resume this session, the Freelance preview can
+  // show itself with their real content. Read once.
   const [sessionResume] = useState(() => getResumeFromSession());
-  
+
   // Track scroll depth for drop-off analysis
   useScrollDepth('pricing');
-  
+
   // Track time on page for engagement analysis
   useTimeOnPage('pricing');
 
   // The JSON-LD price range is DERIVED from the catalog it describes — every
   // one-time product this page offers and the one recurring plan on sale (Pro)
-  // — so the offer can never state a ceiling the catalog has outgrown (it once
-  // typed a high price while the catalog's ceiling sat above it), nor a price
-  // for a product the page no longer sells.
+  // — so the offer can never state a ceiling the catalog has outgrown, nor a
+  // price for a product the page no longer sells.
   const visibleProducts = (Object.keys(PRODUCTS) as ProductId[]).filter(offeredHere);
   const offerPrices = [
     ...visibleProducts.map((k) => PRODUCTS[k].priceUsd),
     SUBSCRIPTIONS.pro.priceUsd,
   ];
   // THE DESCRIPTION'S RANGE IS THE CATALOGUE'S, by the same derivation
-  // (platform sweep L3-18). It used to interpolate the HIDDEN $3 Keyword Fix
-  // and say every product was pay-once, beside two monthly plans; the
-  // crawler's copy (scripts/prerender-seo.mjs) already said "$2–$59; Pro
-  // $45/month", so the bot and the page disagreed.
+  // (platform sweep L3-18).
   const oneTimePrices = visibleProducts.map((k) => PRODUCTS[k].priceUsd);
   const metaPrices = {
     lowPrice: Math.min(...oneTimePrices),
@@ -99,25 +58,12 @@ export default function Pricing() {
     proPrice: SUBSCRIPTIONS.pro.priceUsd,
   };
 
-  const handlePurchase = async (productId: ProductId) => {
-    const product = PRODUCTS[productId];
-    if ('useMainCheckout' in product && product.useMainCheckout) {
-      // Full analysis is performed from the main flow
-      window.location.href = '/#upload';
-      return;
-    }
-
-    await purchaseProduct(productId);
-  };
-
   return (
     <div className="min-h-screen bg-background">
-      {/* Prices come from the catalog, not the copy: this description advertised
-          a "$1 Keyword Fix" that had cost $3 for some time, on the snippet
-          Google shows for /pricing. */}
+      {/* Prices come from the catalog, not the copy. */}
       <SEO
         title={t('pricingPage.metaTitle')}
-        description={t('pricingPage.metaDescription', metaPrices)}
+        description={t('pricingPage.metaDescriptionLine', 'Free job search and résumé scan. One-time tools from ${{lowPrice}} to ${{highPrice}} that never renew, or Pro at ${{proPrice}} a month for the writing tools.', metaPrices)}
         path="/pricing"
       />
       {/* SoftwareApplication + AggregateOffer — eligible for price rich results
@@ -146,13 +92,13 @@ export default function Pricing() {
           <div className="text-center mb-16">
             <Badge variant="secondary" className="mb-4">
               <Star className="w-3 h-3 mr-1" />
-              Pay per tool, or go Pro for everything
+              {t('pricingPage.heroBadgeLine', 'Free to search, $5 for one deep analysis, or Pro for the writing tools')}
             </Badge>
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
               {t('pricingPage.titlePrefix')} <span className="text-primary">{t('pricingPage.titleHighlight')}</span>
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              {t('pricingPage.subtitle')}
+              {t('pricingPage.subtitleLine', 'Search and scan for free. Pay once for one deep résumé analysis, or go Pro for the writing tools on the jobs you apply to.')}
             </p>
           </div>
 
@@ -172,15 +118,15 @@ export default function Pricing() {
             </div>
           </div>
 
-          {/* Risk reversal — the last-step trust flinch is the funnel's known leak */}
+          {/* Risk reversal — the remedy the Terms state (regenerate on request). */}
           <p className="text-center text-sm text-muted-foreground mb-12 max-w-xl mx-auto">
             ✓ {t('pricingPage.guarantee')}
           </p>
 
-          {/* The ladder: three choices convert; thirteen don't. */}
+          {/* The ladder: three choices. */}
           <div className="text-center mb-6">
             <h2 className="text-2xl md:text-3xl font-bold mb-1">{t('pricingPage.ladderTitle')}</h2>
-            <p className="text-muted-foreground">{t('pricingPage.ladderSubtitle')}</p>
+            <p className="text-muted-foreground">{t('pricingPage.ladderSubtitleLine', 'Most people need exactly one of these.')}</p>
           </div>
           <PurchaseTerms kind="payment" className="mb-4 text-center" />
           <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto mb-14">
@@ -192,23 +138,22 @@ export default function Pricing() {
                 <a href="/#upload">{t('pricingPage.ladderFreeCta')}<ArrowRight className="w-4 h-4" /></a>
               </Button>
             </div>
-            <div className="relative flex flex-col p-6 rounded-2xl border-2 border-primary ring-2 ring-primary/20 bg-card shadow-xl">
-              <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground shadow-lg">{PRODUCTS.premiumPackage.badge}</Badge>
-              <h3 className="font-bold text-lg mb-1">{PRODUCTS.premiumPackage.name}</h3>
-              <p className="text-3xl font-bold mb-2">${PRODUCTS.premiumPackage.priceUsd}</p>
-              <p className="text-sm text-muted-foreground mb-4 flex-1">{t('pricingPage.ladderFixDesc')}</p>
-              <Button onClick={() => handlePurchase('premiumPackage')} disabled={isLoading} className="w-full gap-2">
-                {isLoading && currentProduct === 'premiumPackage' ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
-                {t('pricingPage.getProduct', { name: PRODUCTS.premiumPackage.name.split(' ')[0] })}
+            {/* The $5 Full Analysis: bought from the homepage, where the résumé it reads is. */}
+            <div className="relative flex flex-col p-6 rounded-2xl border-2 border-primary ring-2 ring-primary/20 bg-card shadow-xl" data-ladder="fullAnalysis">
+              <h3 className="font-bold text-lg mb-1">{PRODUCTS.fullAnalysis.name}</h3>
+              <p className="text-3xl font-bold mb-2">${PRODUCTS.fullAnalysis.priceUsd}</p>
+              <p className="text-sm text-muted-foreground mb-4 flex-1">{t('pricingPage.ladderAnalysisDesc', 'Every keyword gap and ATS issue in your résumé, scored against the job you paste, with the fix for each. No account needed; included in Pro.')}</p>
+              <Button asChild className="w-full gap-2">
+                <a href="/#upload">{t('pricingPage.buyProduct', 'Get {{name}}', { name: PRODUCTS.fullAnalysis.name })}<ArrowRight className="w-4 h-4" /></a>
               </Button>
-              <ProductPreview productId="premiumPackage" resumeText={sessionResume.resumeText} jobDescription={sessionResume.jobDescriptionText ?? undefined} className="mt-3" />
+              <p className="text-xs text-muted-foreground text-center mt-2">{t('pricingPage.requiresUpload')}</p>
             </div>
             <div className="flex flex-col p-6 rounded-2xl border-2 border-border bg-card hover:border-primary/50 transition-all">
               <h3 className="font-bold text-lg mb-1">{PRODUCTS.freelanceBoost.name}</h3>
               <p className="text-3xl font-bold mb-2">${PRODUCTS.freelanceBoost.priceUsd}</p>
               <p className="text-sm text-muted-foreground mb-4 flex-1">{t('pricingPage.ladderSpecialistDesc')}</p>
               <Button asChild variant="outline" className="w-full gap-2">
-                <Link to="/freelance-boost">{PRODUCTS.freelanceBoost.badge}<ArrowRight className="w-4 h-4" /></Link>
+                <Link to="/freelance-boost">{t('pricingPage.buyProduct', 'Get {{name}}', { name: PRODUCTS.freelanceBoost.name })}<ArrowRight className="w-4 h-4" /></Link>
               </Button>
               <ProductPreview productId="freelanceBoost" resumeText={sessionResume.resumeText} jobDescription={sessionResume.jobDescriptionText ?? undefined} className="mt-3" />
             </div>
@@ -233,146 +178,6 @@ export default function Pricing() {
           {/* Where every posting comes from, directly under the plans. */}
           <AtsCoverage className="max-w-4xl mx-auto mb-16" />
 
-          {/* Everything else, collapsed: the SKU wall demonstrably converts ~0 */}
-          <Collapsible>
-            <div className="text-center mb-10">
-              <CollapsibleTrigger asChild>
-                <Button variant="outline" className="gap-2">
-                  {t('pricingPage.allToolsToggle', { count: productOrder.length + 2 })}
-                  <ChevronDown className="w-4 h-4" />
-                </Button>
-              </CollapsibleTrigger>
-            </div>
-            <CollapsibleContent>
-          {/* $5 Add-Ons Section */}
-          <AddOnsShowcase
-            variant="full"
-            className="mb-12"
-            resumeText={sessionResume.resumeText}
-            jobDescription={sessionResume.jobDescriptionText ?? undefined}
-          />
-
-          {/* Premium Products Grid */}
-          <div className="text-center mb-8">
-            <h2 className="text-2xl md:text-3xl font-bold mb-2">{t('pricingPage.premiumPackages')}</h2>
-            <p className="text-muted-foreground">{t('pricingPage.premiumSubtitle')}</p>
-          </div>
-          <PurchaseTerms kind="payment" className="mb-4 text-center" />
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
-            {productOrder.map((key) => {
-              const product = PRODUCTS[key];
-              const Icon = productIcons[key] || Sparkles;
-              const isPremium = key === 'premiumPackage';
-              const isCareerSnapshot = key === 'careerSnapshot';
-              const isLoadingThis = isLoading && currentProduct === key;
-              
-              return (
-                <div 
-                  key={key}
-                  className={cn(
-                    "relative flex flex-col p-6 rounded-2xl border-2 bg-card transition-all hover:shadow-lg",
-                    isPremium 
-                      ? "border-primary ring-2 ring-primary/20 shadow-xl" 
-                      : "border-border hover:border-primary/50"
-                  )}
-                >
-                  {/* Badge */}
-                  {'badge' in product && product.badge && (
-                    <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground shadow-lg">
-                      {product.badge}
-                    </Badge>
-                  )}
-                  
-                  {/* Header */}
-                  <div className="flex items-start gap-4 mb-4">
-                    <div className={cn(
-                      "flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center",
-                      isPremium ? "bg-primary/20" : "bg-accent"
-                    )}>
-                      <Icon className={cn(
-                        "w-6 h-6",
-                        isPremium ? "text-primary" : "text-muted-foreground"
-                      )} />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-lg">{product.name}</h3>
-                      <p className="text-sm text-muted-foreground">{product.description}</p>
-                    </div>
-                  </div>
-
-                  {/* Price */}
-                  <div className="mb-4">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-4xl font-bold">${product.priceUsd}</span>
-                      <span className="text-muted-foreground">{t('pricingPage.oneTime')}</span>
-                    </div>
-                    {isLocalCurrency && (
-                      <p className="text-sm text-muted-foreground mt-1">
-                        ≈ {formatPrice(product.priceUsd)}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Features */}
-                  <ul className="space-y-2 mb-6 flex-1">
-                    {productFeatures(t, key, product.features).map((feature, i) => (
-                      <li key={i} className="flex items-start gap-2 text-sm">
-                        <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  {/* CTA */}
-                  <Button
-                    onClick={() => handlePurchase(key)}
-                    disabled={isLoading}
-                    className={cn(
-                      "w-full gap-2",
-                      isPremium && "bg-primary hover:bg-primary/90 shadow-lg shadow-primary/30"
-                    )}
-                    variant={isPremium ? "default" : "outline"}
-                  >
-                    {isLoadingThis ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        {t('pricingPage.processing')}
-                      </>
-                    ) : 'useMainCheckout' in product && product.useMainCheckout ? (
-                      <>
-                        {t('pricingPage.uploadResumeFirst')}
-                        <ArrowRight className="w-4 h-4" />
-                      </>
-                    ) : (
-                      <>
-                        {t('pricingPage.getProduct', { name: product.name.split(' ')[0] })}
-                        <ArrowRight className="w-4 h-4" />
-                      </>
-                    )}
-                  </Button>
-
-                  {/* Info text for products requiring resume upload */}
-                  {'useMainCheckout' in product && product.useMainCheckout && (
-                    <p className="text-xs text-muted-foreground text-center mt-2">
-                      {t('pricingPage.requiresUpload')}
-                    </p>
-                  )}
-
-                  {/* Preview-before-pay — shows only when a scanned résumé is in session */}
-                  <ProductPreview
-                    productId={key}
-                    resumeText={sessionResume.resumeText}
-                    jobDescription={sessionResume.jobDescriptionText ?? undefined}
-                    className="mt-3"
-                  />
-                </div>
-              );
-            })}
-          </div>
-
-            </CollapsibleContent>
-          </Collapsible>
-
           {/* Value Comparison */}
           <div className="max-w-2xl mx-auto mb-16">
             <h2 className="text-2xl font-bold text-center mb-6">
@@ -385,7 +190,7 @@ export default function Pricing() {
           <div className="max-w-2xl mx-auto text-center">
             <h2 className="text-2xl font-bold mb-4">{t('pricingPage.questions')}</h2>
             <p className="text-muted-foreground mb-6">
-              {t('pricingPage.allProductsOneTime')}{' '}
+              {t('pricingPage.oneTimeAndProLine', 'One-time tools (the $5 Full Analysis, Freelance Boost and Transition Pro) are paid once and never renew; Pro is a monthly plan you can cancel any time.')}{' '}{t('pricingPage.freeScanLeadIn', 'Not sure yet? Run the')}{' '}
               <Link to="/" className="text-primary hover:underline">{t('pricingPage.freeScanLink')}</Link> {t('pricingPage.seeScoreFirst')}
             </p>
             <Button variant="outline" asChild>
@@ -399,7 +204,7 @@ export default function Pricing() {
       </main>
 
       <Footer />
-      
+
     </div>
   );
 }

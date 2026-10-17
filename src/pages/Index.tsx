@@ -54,13 +54,15 @@ import { PRODUCTS } from "@/config/products";
 import { MCP_ADD_TO_CLAUDE_LIVE, claudeInstallLink } from "@/config/mcp-tools";
 import { MCP_URL } from "@/lib/mcp-test";
 import { AgentMatchesPanel } from "@/components/AgentMatchesPanel";
-import { MiniPricingCards } from "@/components/MiniPricingCards";
 import { TrustIndicators } from "@/components/TrustIndicators";
 import { WhatYouGetSection } from "@/components/WhatYouGetSection";
 import { WhyNotChatGPT } from "@/components/WhyNotChatGPT";
 
 import { FloatingUploadButton, FloatingSeeReportButton } from "@/components/FloatingUploadButton";
 import { CheckoutOverlay, type CheckoutStep } from "@/components/CheckoutOverlay";
+import { FreeReportSignupNudge } from "@/components/FreeReportSignupNudge";
+import { checkoutRefusalOfBody } from "@/lib/checkout-refusal";
+import { territoryHint } from "@/lib/checkout-territory";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/hooks/use-currency";
 import { useScanCredits, creditSessions, CREDITS_UPDATED_EVENT } from "@/hooks/use-scan-credits";
@@ -97,9 +99,6 @@ import { LANGUAGE_COUNT } from "@/i18n/languages";
 import { asFallbackReport, streamFallbackDeadline } from "@/lib/scan-fallback";
 const ScanFeedback = lazy(() =>
   import("@/components/ScanFeedback").then((m) => ({ default: m.ScanFeedback }))
-);
-const LinkedInInsights = lazy(() =>
-  import("@/components/LinkedInInsights").then((m) => ({ default: m.LinkedInInsights }))
 );
 
 // How many industries the scanner's detection table holds (register L4-09:
@@ -533,6 +532,11 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
   const [isLoading, setIsLoading] = useState(false);
   const [isFreeScanLoading, setIsFreeScanLoading] = useState(false);
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
+  // WHICH CHECKOUT PRESS IS STILL WANTED (S12-108, CP-035). Close on the
+  // overlay only hid it: the hand-off already in flight went on and sent the
+  // buyer to Stripe seconds later. Every press takes a number, Close moves the
+  // number on, and each step after an await checks it is still the wanted one.
+  const checkoutAttemptRef = useRef(0);
   const [checkoutStep, setCheckoutStep] = useState<CheckoutStep>('verifying');
   const [checkoutError, setCheckoutError] = useState<string | undefined>();
   const [checkoutUrl, setCheckoutUrl] = useState<string | undefined>(); // Store URL for fallback
@@ -1797,6 +1801,9 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
     const couponFromUrl = searchParams.get("coupon");
     const promoCode = couponFromUrl ? couponFromUrl.trim().toUpperCase() : undefined;
 
+    const attempt = ++checkoutAttemptRef.current;
+    const cancelled = () => checkoutAttemptRef.current !== attempt;
+
     // Reset checkout state
     setCheckoutStep('verifying');
     setCheckoutError(undefined);
@@ -1843,6 +1850,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
       // Step 1: Verify connection
       console.log("[Checkout] Step 1: Verifying connection");
       const isConnected = await checkConnection();
+      if (cancelled()) return;
       if (!isConnected) {
         setCheckoutError(t('homepage.toast.noInternetConnection'));
         setIsCheckoutLoading(false);
@@ -1880,6 +1888,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
           throw new Error("Failed to prepare resume data. Please try uploading your resume again.");
         }
         tempSessionData = data;
+        if (cancelled()) return;
       } else {
         console.log("[Checkout] Using pre-stored session:", tempSessionData);
       }
@@ -1904,7 +1913,12 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         ...checkoutContext(),
         // The affiliate's code, and the Terms line's version while one is shown.
         ...terms,
+        // The browser's time zone: the server may refuse a buyer in the EU,
+        // the EEA or the UK on it while those sales are off (S12-059).
+        ...territoryHint(),
       });
+      // Closed while the server was answering: nothing more happens.
+      if (cancelled()) return;
 
       // The EU/UK box above the button was not ticked (only with the switch
       // on): ask for it, and leave the stored résumé for the next press.
@@ -1912,6 +1926,16 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
       // box beside the button, whenever this page was loaded (review of S11-142).
       if (await consentWasRequired(null, checkoutResult.errorBody)) {
         toast({ title: t('purchaseTerms.consentNeeded'), variant: "destructive" });
+        return;
+      }
+      // A REFUSAL WRITTEN FOR THE BUYER: the EU/UK territory's 451 while
+      // those sales wait for the VAT registration (S12-059), a Pro member's
+      // fair-use 429, a plan whose first payment is not through. Its sentence
+      // is the overlay's message, and nothing is retried.
+      const refusal = checkoutRefusalOfBody(checkoutResult.errorBody, checkoutResult.httpStatus ?? null);
+      if (refusal) {
+        toast({ title: t('homepage.toast.checkoutRefusedTitle', "Couldn't start checkout"), description: refusal.message, variant: "destructive" });
+        setCheckoutError(refusal.message);
         return;
       }
       if (checkoutResult.error) {
@@ -1940,6 +1964,8 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
       
       // Small delay to show the redirecting step
       await new Promise(r => setTimeout(r, 300));
+      // Closed during the hand-off: the buyer stays here, nothing navigates.
+      if (cancelled()) return;
 
       // Handle navigation to Stripe checkout
       if (isMobile) {
@@ -1961,6 +1987,8 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
       window.location.assign(checkoutData.url);
     } catch (error: any) {
       console.error("Checkout error:", error);
+      // A press the buyer closed says nothing more.
+      if (cancelled()) return;
       removeResumeData('tempSessionId');
       forgetPreStored(); // Clear pre-stored session on error
       
@@ -1993,10 +2021,14 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
       
       setCheckoutError(errorDescription);
     } finally {
-      setIsLoading(false);
-      // Don't hide overlay if we have a URL - user needs fallback options
-      if (!hasReceivedUrl) {
-        setIsCheckoutLoading(false);
+      // A press the buyer closed (and maybe pressed again since) leaves the
+      // page to the press that replaced it.
+      if (!cancelled()) {
+        setIsLoading(false);
+        // Don't hide overlay if we have a URL - user needs fallback options
+        if (!hasReceivedUrl) {
+          setIsCheckoutLoading(false);
+        }
       }
     }
   };
@@ -2023,6 +2055,9 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
   };
 
   const handleCloseCheckout = () => {
+    // The press in flight is no longer wanted: no step after it navigates.
+    checkoutAttemptRef.current++;
+    setIsLoading(false);
     setIsCheckoutLoading(false);
     setCheckoutError(undefined);
     setCheckoutUrl(undefined);
@@ -2273,7 +2308,6 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         <HowItWorks />
 
         {/* Mini Pricing Cards - Featured packages */}
-        <MiniPricingCards />
 
         {/* Free Keyword Results */}
         {freeKeywordResult && (
@@ -2287,19 +2321,8 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
             >
             <div className="container space-y-4">
               <ResumeLanguageSuggestion detectedLanguage={freeKeywordResult.detectedLanguage} />
-              {!session && (
-                <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                  <p className="text-xs text-muted-foreground flex-1">
-                    <span className="font-semibold text-foreground">Don't lose this score.</span> Create a free account to track your progress across scans, keep your fix checklist, and get 15 free scans a day instead of 7.
-                  </p>
-                  <Link
-                    to="/auth"
-                    className="shrink-0 inline-block px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors"
-                  >
-                    Create free account
-                  </Link>
-                </div>
-              )}
+              {/* Signing up lands on the account page, which imports this browser's scans (S12-025). */}
+              {!session && <FreeReportSignupNudge />}
               {freeKeywordResult.parseQuality && freeKeywordResult.parseQuality.verdict !== 'good' && (
                 <div className={`rounded-xl border p-4 flex items-start gap-2 ${freeKeywordResult.parseQuality.verdict === 'poor' ? 'border-destructive/30 bg-destructive/5' : 'border-warning/30 bg-warning/5'}`}>
                   <span className="text-sm shrink-0">{freeKeywordResult.parseQuality.verdict === 'poor' ? '🚫' : '⚠️'}</span>
@@ -2468,19 +2491,8 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
               {/* The report's own Next steps section is the only offer here:
                   the Full Analysis and Pro (owner decision 1, 2026-10-08). */}
 
-              {/* LinkedIn insights — shown when user provided their LinkedIn profile */}
-              {linkedInText && (
-                // A malformed analysis degrades this card alone, never the
-                // whole report (register L5-17).
-                <CardErrorBoundary section="linkedin-insights" fallback={<></>}>
-                  <LinkedInInsights
-                    resumeText={resumeText}
-                    linkedinText={linkedInText}
-                    industry={freeKeywordResult.industry || "general"}
-                    resumeAtsScore={freeKeywordResult.atsScoreEstimate || 0}
-                  />
-                </CardErrorBoundary>
-              )}
+              {/* The LinkedIn insights card that stood here is one of the free
+                  report extras cut on 2026-10-12 (the product line). */}
 
               {/* Feedback */}
               <div className="flex justify-center">
@@ -2572,7 +2584,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
       {/* Rate Limit Upsell Modal */}
       {showRateLimitUpsell && (
         <Suspense fallback={null}>
-          <RateLimitUpsell resetHours={rateLimitResetHours} onClose={() => setShowRateLimitUpsell(false)} />
+          <RateLimitUpsell resetHours={rateLimitResetHours} signedIn={!!session} onClose={() => setShowRateLimitUpsell(false)} />
         </Suspense>
       )}
 

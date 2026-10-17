@@ -45,7 +45,7 @@ function asksOf(src: string): Array<[string, Build]> {
 }
 
 describe("the wave-4 sections ask for every wave-4 build", () => {
-  const sections = readdirSync(SEC_DIR).filter((f) => /^(8[2-6]|93)-/.test(f) && f.endsWith(".sh"));
+  const sections = readdirSync(SEC_DIR).filter((f) => /^(8[2-6]|93|92-w4b)-/.test(f) && f.endsWith(".sh"));
   const asked = new Map<string, Build[]>();
   for (const f of sections) for (const [fn, b] of asksOf(readFileSync(join(SEC_DIR, f), "utf8"))) asked.set(fn, [...(asked.get(fn) ?? []), b]);
 

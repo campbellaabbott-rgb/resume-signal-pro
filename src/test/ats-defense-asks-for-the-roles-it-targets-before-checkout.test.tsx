@@ -31,7 +31,7 @@ import { TargetRolesDialog } from "@/components/TargetRolesDialog";
 
 vi.setConfig(MOUNT_TEST_BUDGET);
 
-function Buy({ product }: { product: "atsDefense" | "coverLetter" }) {
+function Buy({ product }: { product: "atsDefense" | "freelanceBoost" }) {
   const { purchaseProduct } = useProductCheckout();
   return <button type="button" onClick={() => { void purchaseProduct(product); }}>buy {product}</button>;
 }
@@ -46,30 +46,21 @@ beforeEach(() => {
 });
 afterEach(() => cleanup());
 
+// ATS Defense was cut on 2026-10-12 (the product line): a press on it, from a
+// page cached before the cut, asks no question and starts no checkout, and
+// the roles question never opens for a product still sold.
 describe("buying ATS Defense", () => {
-  it("asks for the roles first and sends the ones named", async () => {
+  it("is refused before the roles question: no dialog, no checkout", async () => {
     render(<><TargetRolesDialog /><Buy product="atsDefense" /></>);
     fireEvent.click(screen.getByRole("button", { name: "buy atsDefense" }));
-    expect(await screen.findByText(en.atsRoles.title, {}, SLOW)).toBeInTheDocument();
-    expect(checkoutBodies(), "a checkout started before the roles were asked").toEqual([]);
-    fireEvent.change(screen.getByLabelText("Role 1"), { target: { value: "Data Analyst" } });
-    fireEvent.change(screen.getByLabelText("Role 2"), { target: { value: "BI Developer" } });
-    fireEvent.click(screen.getByRole("button", { name: en.atsRoles.continue }));
-    await waitFor(() => expect(checkoutBodies()).toHaveLength(1), SLOW);
-    expect(checkoutBodies()[0], "the roles never reached the checkout").toMatchObject({ productId: "atsDefense", targetRoles: ["Data Analyst", "BI Developer"] });
-  });
-
-  it("starts no checkout when the question is closed", async () => {
-    render(<><TargetRolesDialog /><Buy product="atsDefense" /></>);
-    fireEvent.click(screen.getByRole("button", { name: "buy atsDefense" }));
-    fireEvent.click(await screen.findByRole("button", { name: en.atsRoles.cancel }, SLOW));
     await new Promise((r) => setTimeout(r, 50));
+    expect(screen.queryByText(en.atsRoles.title)).toBeNull();
     expect(checkoutBodies()).toEqual([]);
   });
 
   it("asks nothing for another product", async () => {
-    render(<><TargetRolesDialog /><Buy product="coverLetter" /></>);
-    fireEvent.click(screen.getByRole("button", { name: "buy coverLetter" }));
+    render(<><TargetRolesDialog /><Buy product="freelanceBoost" /></>);
+    fireEvent.click(screen.getByRole("button", { name: "buy freelanceBoost" }));
     await waitFor(() => expect(checkoutBodies()).toHaveLength(1), SLOW);
     expect(screen.queryByText(en.atsRoles.title)).toBeNull();
     expect(checkoutBodies()[0].targetRoles).toBeUndefined();

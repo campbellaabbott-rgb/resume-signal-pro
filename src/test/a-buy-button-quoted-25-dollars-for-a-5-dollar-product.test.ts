@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { codeOf } from "./helpers/strip-comments";
-import { getAddOnProducts, oneTimePriceRangeUsd, PRODUCTS } from "@/config/products";
+import { oneTimePriceRangeUsd, PRODUCTS } from "@/config/products";
 import { COMPETITORS } from "@/data/competitors";
 
 /**
@@ -38,8 +38,11 @@ const NOT_OUR_PRICE: Record<string, string> = {
   "applyProfile.salaryPh": "a salary placeholder",
 };
 /** One of our prices that stays typed, checked against the products it names. */
+// The add-ons this string prices were cut on 2026-10-12, so getAddOnProducts()
+// (what is still on sale) is empty and the showcase renders nothing; the
+// string is still checked against the rows it named.
 const OURS_CHECKED: Record<string, number[]> = {
-  "addOnsShowcase.fiveDollarsEach": getAddOnProducts().map((p) => p.priceUsd),
+  "addOnsShowcase.fiveDollarsEach": [PRODUCTS.interviewCoach.priceUsd, PRODUCTS.careerPathSimulator.priceUsd],
 };
 
 function leaves(o: unknown, pre = ""): Array<[string, string]> {

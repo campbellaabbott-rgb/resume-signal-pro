@@ -1,56 +1,21 @@
 /**
- * WHAT AN AFFILIATE IS PAID, AS THE SERVER PAYS IT (register L13-63).
+ * WHAT AN AFFILIATE IS PAID, AS THE SERVER PAYS IT (register L13-63; the
+ * affiliate re-base of the product line, owner decision 2026-10-12).
  *
- * The affiliate page promised "20% of every sale" while stripe-webhook and
- * verify-product-purchase both credit a FLAT amount: $1 when the sale is one
- * of the smaller tools below, $5 for every other sale. The owner's decision
- * (2026-10-07) was to make the copy say what the server pays, not to change
- * the payouts. These values mirror the two server lists and
- * src/test/an-affiliate-is-promised-what-the-server-pays.test.tsx holds them
- * equal, so the copy cannot drift from the payout again.
+ * The old flat rates ($1 on the smaller tools, $5 on the rest) paid on a
+ * one-off catalogue the product line cut. An affiliate now earns one flat
+ * amount: AFFILIATE_PRO_FIRST_MONTH_CENTS when a referred customer pays for
+ * their first month of Pro. Every other referred purchase is recorded at $0.
+ * Commissions already earned stay earned and are paid as before.
+ *
+ * These values mirror supabase/functions/_shared/affiliate-commission.ts, the
+ * rule the server pays by, and src/test/w4b-an-affiliate-earns-a-flat-amount-
+ * on-a-first-paid-pro-month.test.ts holds the two equal, so the copy cannot
+ * drift from the payout again.
  */
-export const AFFILIATE_COMMISSION_CENTS = {
-  /** A sale of one of SMALL_TOOL_PRODUCT_TYPES. */
-  smallTool: 100,
-  /** Every other referred sale. */
-  other: 500,
-} as const;
+export const AFFILIATE_PRO_FIRST_MONTH_CENTS = 1000;
 
-/** The product types the server credits at the small-tool rate. */
-export const SMALL_TOOL_PRODUCT_TYPES = [
-  "basic_keyword_fix",
-  "cover_letter",
-  "scan_pack",
-  "scan_credits",
-  "career_bundle",
-  "interview_coach",
-  "career_path_simulator",
-  "apply_assistant",
-] as const;
-
-/**
- * WHICH SALES EARN AT ALL. Every checkout now carries the referral code
- * (wave 3: five of six used to drop it, so a referred Pro or Full Analysis
- * sale was invisible), but only create-product-checkout's catalogue is
- * commissioned: the Full Resume Analysis (create-checkout), scan credit
- * top-ups (create-scan-pack-checkout), Pro, Morning Queue and the Agent Pass
- * mark the referral "none" and the conversion is recorded at $0, attributed
- * and unpaid (supabase/functions/_shared/checkout-policy.ts). The copy names
- * the commissioned products and those exclusions; the affiliate test holds
- * this list equal to that checkout's catalogue, the checkouts that carry the
- * code to REFERRAL_CHECKOUTS and the ones that pay on it to
- * COMMISSIONED_CHECKOUTS. To pay on another product is an owner decision:
- * move its checkout into COMMISSIONED_CHECKOUTS, pass commissioned: true, and
- * change the copy in the same commit.
- */
-export const COMMISSIONED_PRODUCT_TYPES = {
-  /** Named in the copy, paid at AFFILIATE_COMMISSION_CENTS.other. */
-  other: ["premium_package", "ats_defense", "career_snapshot", "graduate_gameplan", "freelance_boost", "freelance_transition_pro"],
-  /** The smaller tools the copy lists, paid at AFFILIATE_COMMISSION_CENTS.smallTool. */
-  smallTool: ["basic_keyword_fix", "cover_letter", "scan_pack", "interview_coach", "career_path_simulator", "apply_assistant"],
-} as const;
-
-/** The checkout functions whose Stripe sessions carry referral_code: all six that mint a live session. */
+/** The checkout functions whose Stripe sessions carry referral_code (every one that can mint a live session). */
 export const REFERRAL_CHECKOUTS = [
   "create-agent-checkout",
   "create-checkout",
@@ -60,8 +25,8 @@ export const REFERRAL_CHECKOUTS = [
   "create-subscription-checkout",
 ] as const;
 
-/** The checkouts whose referred sales pay a commission; every other one records the referral at $0. */
-export const COMMISSIONED_CHECKOUTS = ["create-product-checkout"] as const;
+/** The one checkout whose referred sale pays a commission: Pro's first paid month. */
+export const COMMISSIONED_CHECKOUTS = ["create-subscription-checkout"] as const;
 
 /** The dashboard's payout minimum, in cents (affiliate-payout-request holds the same number). */
 export const AFFILIATE_MIN_PAYOUT_CENTS = 2500;

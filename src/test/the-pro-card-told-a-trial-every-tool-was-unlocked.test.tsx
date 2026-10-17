@@ -51,16 +51,22 @@ describe("the Pro card says what the plan unlocks", () => {
     expect(screen.getByText(en.proPlan.trialing)).toBeTruthy();
   });
 
-  it("a paid plan is still told every tool is unlocked", () => {
+  // The product line (2026-10-12): Pro is the writing tools, so a paid plan
+  // is told those are unlocked, never "every tool".
+  it("a paid plan is told the writing tools are unlocked", () => {
     Object.assign(pro, { status: "active", trialing: false });
     mount();
-    expect(screen.getByText(/every tool is unlocked/i)).toBeTruthy();
+    expect(screen.getByText(/the writing tools are unlocked/i)).toBeTruthy();
+    expect(screen.queryByText(/every tool is unlocked/i)).toBeNull();
     expect(screen.queryByText(en.proPlan.trialing)).toBeNull();
   });
 
   it("a plan on the address this account cannot use says why, beside the way to subscribe", () => {
     Object.assign(pro, { active: false, status: "active", trialing: false, linkPending: true });
     mount();
-    expect(screen.getByText(en.proPlan.linkPending)).toBeTruthy();
+    // A new key (S12-002): the old one told people to sign in with Google,
+    // a control the page does not render.
+    expect(screen.getByText(/isn't linked to this account yet/)).toBeTruthy();
+    expect(screen.queryByText(en.proPlan.linkPending)).toBeNull();
   });
 });

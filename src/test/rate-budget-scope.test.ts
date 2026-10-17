@@ -95,7 +95,17 @@ describe("the request budget counts only what it gates", () => {
   it("counted ⊆ enforcers — nothing is charged for a gate it cannot trip", () => {
     const counted = countedInSql();
     expect(counted.length).toBeGreaterThan(0);
-    const strays = counted.filter((c) => !enforcers.includes(c));
+    // A charge is a rate row (check_rate_limit with a literal p_function) the
+    // SQL then sums. A counted function that writes no such row can charge
+    // nobody, so it need not enforce: that is the retired scrape-linkedin,
+    // which answers 410 before any client (wave 4 round 2, the product line's
+    // cut of the LinkedIn insights card). It is named here, not exempted by
+    // shape, so a new stray cannot hide behind the rule; the simplify wave
+    // drops it from the SQL array when it deletes the function.
+    const writers = fnNames.filter((f) => writesOf(f).length > 0);
+    const countedButSilent = counted.filter((c) => !writers.includes(c));
+    expect(countedButSilent, "counted in SQL but writes no rate row").toEqual(["scrape-linkedin"]);
+    const strays = counted.filter((c) => writers.includes(c) && !enforcers.includes(c));
     expect(strays, `counted but does not enforce the budget: ${strays.join(", ")}`).toEqual([]);
   });
 
@@ -142,7 +152,11 @@ describe("the request budget counts only what it gates", () => {
  * different states.
  */
 describe("a 429 says which limit fired", () => {
-  for (const fn of ["parse-pdf", "parse-docx", "scrape-linkedin", "create-checkout"]) {
+  // scrape-linkedin left this list when the product line cut the LinkedIn
+  // insights card (wave 4 round 2): it answers 410 before any limiter, so it
+  // has no 429 to label, and src/test/w4b-the-cut-products-are-sold-nowhere
+  // runs that refusal.
+  for (const fn of ["parse-pdf", "parse-docx", "create-checkout"]) {
     it(`${fn} distinguishes the budget from its own ceiling`, () => {
       const body = src(fn);
       expect(body, "budget refusal is unlabelled").toContain("rate_limited_budget");

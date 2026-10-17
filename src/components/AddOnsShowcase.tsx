@@ -5,7 +5,7 @@ import { Flame, MessageSquare, TrendingUp, ArrowRight, Sparkles } from "lucide-r
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { PRODUCTS, ProductId } from "@/config/products";
+import { PRODUCTS, ProductId, isProductHidden } from "@/config/products";
 import { useCurrency } from "@/hooks/use-currency";
 import { useProductCheckout } from "@/hooks/use-product-checkout";
 import { ProductPreview } from "@/components/ProductPreview";
@@ -36,6 +36,12 @@ export function AddOnsShowcase({ variant = 'compact', sessionId, className, resu
     await purchaseProduct(productId, sessionId);
   };
 
+  // ONLY WHAT IS STILL SOLD (the product line, 2026-10-12): Interview Coach
+  // and Career Path were cut as one-offs, so with the hidden ones removed
+  // this renders nothing rather than selling what the checkout refuses.
+  const offered = addOnProducts.filter(({ key }) => !isProductHidden(key));
+  if (offered.length === 0) return null;
+
   if (variant === 'compact') {
     return (
       <div className={cn("rounded-2xl bg-gradient-to-br from-accent/10 to-primary/5 border border-accent/30 p-5", className)}>
@@ -53,7 +59,7 @@ export function AddOnsShowcase({ variant = 'compact', sessionId, className, resu
         
         <PurchaseTerms kind="payment" className="mb-3" />
         <div className="grid gap-3">
-          {addOnProducts.map(({ key, icon: Icon }) => {
+          {offered.map(({ key, icon: Icon }) => {
             const product = PRODUCTS[key];
             const isLoadingThis = isLoading && currentProduct === key;
             
@@ -122,7 +128,7 @@ export function AddOnsShowcase({ variant = 'compact', sessionId, className, resu
       
       <PurchaseTerms kind="payment" className="mb-3 text-center" />
       <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto">
-        {addOnProducts.map(({ key, icon: Icon }) => {
+        {offered.map(({ key, icon: Icon }) => {
           const product = PRODUCTS[key];
           const isLoadingThis = isLoading && currentProduct === key;
           

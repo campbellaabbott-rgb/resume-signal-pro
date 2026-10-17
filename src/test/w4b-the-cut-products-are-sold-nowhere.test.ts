@@ -16,6 +16,8 @@
  *     path (the control).
  */
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { readdirSync, readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import type { EdgeHandler } from "./helpers/edge-harness";
 import { freshWorld, installDeno, loadCheckouts, post, type W4bWorld } from "./helpers/w4b-checkout-harness";
 import { buildIsAtLeast } from "./helpers/fn-build";
@@ -92,6 +94,45 @@ describe("scan packs and the dev checkout are switched off", () => {
     expect(world.stripe.touched).toEqual([]);
     const pre = await h["create-test-checkout"](new Request("https://harness.supabase.co/functions/v1/create-test-checkout", { method: "OPTIONS" }));
     expect(buildIsAtLeast(pre.headers.get("x-fn-build"), "create-test-checkout", "2026-10-11", 23)).toBe(true);
+  });
+});
+
+describe("the LinkedIn import behind a cut free-report extra is switched off", () => {
+  // scrape-linkedin fed the LinkedIn insights card, one of the free report
+  // extras the product line cut. It was unauthenticated and the only user
+  // of the paid Firecrawl key. The stub below is loaded through the same
+  // harness: a fetch would land in world.fetches, a limiter in the FakeDb.
+  it("scrape-linkedin answers 410 before a limiter, a database client or Firecrawl, and carries the round-2 build", async () => {
+    const sl = (await loadCheckouts(["scrape-linkedin"]))["scrape-linkedin"];
+    let limiterAsked = false;
+    world.db.rpcs.check_global_rate_limit = () => { limiterAsked = true; return { data: true, error: null }; };
+    world.db.rpcs.check_rate_limit = () => { limiterAsked = true; return { data: true, error: null }; };
+    const res = await post(sl, "scrape-linkedin", { url: "https://www.linkedin.com/in/example" });
+    expect(res.status).toBe(410);
+    const body = await res.json();
+    expect(body).toMatchObject({ success: false, retired: true, reason: "linkedin_import_cut" });
+    expect(body.error).toMatch(/no longer offered/);
+    expect(body).not.toHaveProperty("text");
+    expect(limiterAsked, "the refusal counted the caller").toBe(false);
+    expect(world.fetches, "Firecrawl was called").toEqual([]);
+    expect(ran()).toEqual([]);
+    const pre = await sl(new Request("https://harness.supabase.co/functions/v1/scrape-linkedin", { method: "OPTIONS" }));
+    expect(pre.status).toBe(200);
+    expect(buildIsAtLeast(pre.headers.get("x-fn-build"), "scrape-linkedin", "2026-10-11", 23)).toBe(true);
+  });
+
+  it("no page, hook or component calls it any more (the insights card is unmounted)", () => {
+    const callers: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const p = join(dir, entry.name);
+        if (entry.isDirectory()) { if (entry.name !== "test") walk(p); continue; }
+        if (!/\.(ts|tsx)$/.test(entry.name)) continue;
+        if (readFileSync(p, "utf8").includes("scrape-linkedin")) callers.push(p);
+      }
+    };
+    walk(resolve(__dirname, ".."));
+    expect(callers).toEqual([]);
   });
 });
 
