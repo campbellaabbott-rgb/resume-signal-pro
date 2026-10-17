@@ -18,8 +18,8 @@
 -- claimed purchase. A deliberate sign-out also clears the stored ids in the
 -- browser (R1, AuthContext PERSONAL_LOCAL_KEYS); this is the server half.
 --
--- scan_credit_redeem gains p_user_id (default NULL). Every overload is found
--- in the catalogue and dropped first, so the old two-argument call
+-- scan_credit_redeem gains p_user_id (default NULL). Every other overload is
+-- found in the catalogue and dropped first, so the old two-argument call
 -- ({p_email, p_session_hash}) resolves to the new function: an unclaimed
 -- purchase still spends, a claimed one is refused until the scanner that
 -- passes p_user_id is deployed. Apply this file BEFORE that scanner
@@ -33,15 +33,22 @@ SET LOCAL statement_timeout = '2min';
 
 DO $drop_redeem$
 DECLARE
+  -- The one signature that stays: PostgREST resolves an RPC by parameter
+  -- names and refuses two candidates, so every other overload in the
+  -- catalogue is dropped (the same shape as 20260827131500).
+  keep CONSTANT text := 'p_email text, p_session_hash text, p_user_id uuid';
   r record;
 BEGIN
   FOR r IN
     SELECT p.oid::regprocedure AS sig
       FROM pg_proc p
       JOIN pg_namespace ns ON ns.oid = p.pronamespace
-     WHERE ns.nspname = 'public' AND p.proname = 'scan_credit_redeem'
+     WHERE ns.nspname = 'public'
+       AND p.proname = 'scan_credit_redeem'
+       AND pg_get_function_identity_arguments(p.oid) IS DISTINCT FROM keep
   LOOP
-    EXECUTE format('DROP FUNCTION %s', r.sig);
+    RAISE NOTICE 'dropping scan_credit_redeem overload %', r.sig;
+    EXECUTE 'DROP FUNCTION ' || r.sig::text;
   END LOOP;
 END
 $drop_redeem$;
@@ -50,7 +57,7 @@ $drop_redeem$;
 -- signed-in account whose mailbox the edge function proved); with a hash it
 -- also needs that purchase to have a credit left and to be unclaimed or
 -- claimed by p_user_id, and the two move together or neither does.
-CREATE FUNCTION public.scan_credit_redeem(p_email text, p_session_hash text DEFAULT NULL, p_user_id uuid DEFAULT NULL)
+CREATE OR REPLACE FUNCTION public.scan_credit_redeem(p_email text, p_session_hash text DEFAULT NULL, p_user_id uuid DEFAULT NULL)
 RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
