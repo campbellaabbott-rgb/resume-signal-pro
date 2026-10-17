@@ -139,7 +139,7 @@ import("node:fs").then(async (fs) => {
   const outOfSet = seed.filter((p) => !inSitemap.has(p) && !named.includes(p));
   const step = Math.max(1, Math.floor(outOfSet.length / 15));
   const sample = [...named, ...outOfSet.filter((_, i) => i % step === 0).slice(0, 15)];
-  const res = { own: [], homeCopies: [], other: [], back: [] };
+  const res = { own: [], homeCopies: [], other: [], back: [], canon: [] };
   for (let i = 0; i < sample.length; i += 6) {
     await Promise.all(sample.slice(i, i + 6).map(async (p) => {
       const d = await get(urlOf(p), 20000);
@@ -150,10 +150,16 @@ import("node:fs").then(async (fs) => {
         if (/noindex/.test(robots) || pathOf(canon) !== p) res.other.push(`${p} is in the sitemap but robots "${robots}", canonical "${canon}"`);
         else res.back.push(p);
       } else if (/noindex/.test(robots) && canon && pathOf(canon) === p) res.own.push(p);
+      // ONE EMPLOYER, ONE PAGE: a smaller board of an employer
+      // whose larger board carries the page serves its own document with
+      // its canonical on that larger page (the ledger state "canonical").
+      // That is a page of its own, never the homepage file, as long as the
+      // page it points to is one the sitemap names.
+      else if (canon && pathOf(canon) !== p && pathOf(canon) !== "/" && inSitemap.has(pathOf(canon))) res.canon.push(`${p} -> ${pathOf(canon)}`);
       else res.other.push(`${p} is out of the sitemap but robots "${robots}", canonical "${canon || "none"}"`);
     }));
   }
-  const tally = `${sample.length} once-published company URLs (${named.length} named by the S12 sweep, ${sample.length - named.length} from the seed of ${seed.length}): ${res.own.length} own noindex pages, ${res.back.length} back in the sitemap as indexable pages, ${res.homeCopies.length} homepage copies`;
+  const tally = `${sample.length} once-published company URLs (${named.length} named by the S12 sweep, ${sample.length - named.length} from the seed of ${seed.length}): ${res.own.length} own noindex pages, ${res.canon.length} canonical to a larger board of the same employer that the sitemap names${res.canon.length ? " (" + res.canon.slice(0, 3).join(", ") + ")" : ""}, ${res.back.length} back in the sitemap as indexable pages, ${res.homeCopies.length} homepage copies`;
   if (!seed.length) out("FAIL", "C4 this checkout has no scripts/seo-seed/published-company-paths.txt: the carry has no seed to judge against");
   if (res.homeCopies.length || res.other.length) out("FAIL", `C4 ${tally}; homepage copies: ${res.homeCopies.slice(0, 8).join(", ") || "none"}; other: ${res.other.slice(0, 6).join("; ") || "none"} (S12-022)`);
   else out("PASS", `C4 ${tally} (S12-022: each serves a page of its own, never the homepage file)`);
