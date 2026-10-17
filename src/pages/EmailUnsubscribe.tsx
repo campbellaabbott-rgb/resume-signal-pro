@@ -15,6 +15,7 @@ import { Check, Loader2, MailX } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { supabase } from "@/integrations/supabase/client";
 import { forgetConfirmFragment } from "@/lib/confirm-link";
+import { stashedFragment, takeStashed } from "@/lib/auth-fragment";
 import { unsubscribeFromHash, type UnsubscribeTarget } from "@/lib/unsubscribe-link";
 
 type State = "ready" | "working" | "done" | "invalid" | "error" | "missing";
@@ -22,11 +23,11 @@ type State = "ready" | "working" | "done" | "invalid" | "error" | "missing";
 export default function EmailUnsubscribe() {
   const { t } = useTranslation();
   const [target] = useState<UnsubscribeTarget | null>(() =>
-    typeof window === "undefined" ? null : unsubscribeFromHash(window.location.hash));
+    typeof window === "undefined" ? null : unsubscribeFromHash(stashedFragment(window.location.hash)));
   const [state, setState] = useState<State>(target ? "ready" : "missing");
 
   useEffect(() => {
-    if (state === "done" || state === "invalid") forgetConfirmFragment();
+    if (state === "done" || state === "invalid") { forgetConfirmFragment(); takeStashed("fragment"); }
   }, [state]);
 
   const confirm = async () => {

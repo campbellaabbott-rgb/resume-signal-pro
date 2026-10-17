@@ -1,0 +1,129 @@
+{
+  "auth": {
+    "back": "Bumalik sa pag-sign in",
+    "banner": {
+      "dismiss": "Ako ito",
+      "notYou": "Hindi ikaw? Mag-sign out",
+      "signedInAs": "Naka-sign in bilang {{email}}."
+    },
+    "checkEmail": "Tingnan ang iyong email",
+    "checkout": {
+      "signInFirst": "Natapos ang iyong session dito. Kung may Pro plan ka, mag-sign in at kasama ang tool na ito nang walang bayad. Para bilhin ito nang hindi nagsa-sign in, pindutin muli ang button.",
+      "signInFirstTitle": "May Pro ka? Mag-sign in muna"
+    },
+    "code": {
+      "instead": "Sa halip, kumuha ng sign-in code sa email",
+      "invalid": "Hindi gumana ang code na iyan. Suriin ito, o humingi ng bago.",
+      "label": "Code mula sa email",
+      "onItsWay": "Kung makakapag-sign in ang address na ito, hanapin sa iyong email ang isang link (o 6-digit na code). Alinman sa dalawa ang magsa-sign in sa iyo. Kadalasan ay dumarating ito sa loob ng isang minuto.",
+      "placeholder": "123456",
+      "resend": "Humingi ng bagong code",
+      "resendIn": "Puwede kang humingi ng bagong code sa loob ng {{seconds}} s.",
+      "send": "Kumuha ng sign-in code sa email",
+      "stillNothing": "Wala pa rin? Tingnan ang spam folder mo, o mag-email sa",
+      "tooShort": "Ilagay ang buong code mula sa email.",
+      "verify": "Mag-sign in",
+      "wrongAddress": "Maling address?"
+    },
+    "confirm": {
+      "body": "Pindutin ang Magpatuloy para tapusin ang pag-sign in. Isang beses lang gumagana ang link.",
+      "emailChangeBody": "Pindutin ang Magpatuloy para kumpirmahin ang bago mong email address.",
+      "emailChanged": "Kumpirmado na ang pagpapalit ng email mo. Kung nakatanggap din ng link ang isa mo pang address, gamitin din iyon.",
+      "expired": "Expired na o nagamit na ang link na ito. Mag-sign in ulit para makakuha ng bago.",
+      "recoveryBody": "Pindutin ang Magpatuloy para pumili ng bagong password.",
+      "retry": "Subukan muli",
+      "title": "Tapusin ang pag-sign in",
+      "unreachable": "Hindi namin maabot ang sign-in server. Suriin ang iyong koneksyon at subukan muli; valid pa rin ang link.",
+      "working": "Sina-sign in ka…"
+    },
+    "confirmationOnItsWay": "Kung makakapag-sign in ang address na ito, may email ng kumpirmasyon na papunta na. Karaniwan itong dumarating sa loob ng isang minuto.",
+    "continue": "Magpatuloy",
+    "create": {
+      "button": "Gumawa ng bagong account",
+      "offer": "Bago ka rito? Puwede kang gumawa ng account para sa {{email}} gamit ang password na ito.",
+      "refused": "Hindi kami makagawa ng account gamit ang email at password na iyan.",
+      "tooShort": "Kailangan ng bagong account ang password na hindi bababa sa 8 character."
+    },
+    "email": {
+      "invalid": "Maglagay ng wastong email address.",
+      "label": "Email",
+      "placeholder": "ikaw@halimbawa.com",
+      "remembered": "Magpatuloy bilang {{email}}",
+      "useDifferent": "Gumamit ng ibang address"
+    },
+    "footnote": "Itinatago ng account ang iyong mga score, credit at binili, at ang resume lang kung magse-save ka nito.",
+    "forgot": "Nakalimutan ang password?",
+    "genericError": "May nagkamali. Pakisubukan ulit.",
+    "google": {
+      "continue": "Magpatuloy gamit ang Google",
+      "onlyGoogle": "Nagsa-sign in ang account na ito gamit ang Google, kaya wala itong password na mapapalitan dito. Magpatuloy gamit ang Google para mag-sign in."
+    },
+    "guard": {
+      "passwordCleared": "Binura namin ang password na itinakda sa address na ito bago mo napatunayang sa iyo ito. Kung gusto mo, magtakda ng bago sa settings ng iyong account.",
+      "passwordClearedTitle": "Binura ang luma mong password",
+      "signedOut": "Binura namin ang password na itinakda sa address na ito bago mo napatunayang sa iyo ito, at dahil doon na-sign out ang bawat device, pati ito.",
+      "signedOutTitle": "Mag-sign in ulit"
+    },
+    "help": "Hindi makapag-sign in? Mag-email sa",
+    "linkCheck": {
+      "body": "Nagsa-sign in ang link na ito sa account sa ibaba. Hindi ito hiningi ng browser na ito, kaya walang naka-sign in hangga't hindi ka pumapayag.",
+      "cancel": "Hindi ako, kanselahin",
+      "cancelled": "Walang naka-sign in. Kung gusto mong mag-sign in, humingi ng bagong link sa sign-in page.",
+      "continue": "Oo, magpatuloy",
+      "title": "Iyo ba ang account na ito?"
+    },
+    "mismatch": "Hindi ka namin ma-sign in gamit ang email at password na iyan.",
+    "notConfirmed": "Hindi pa kumpirmado ang address na ito. Gamitin ang link sa email ng kumpirmasyon (baka nasa spam ito).",
+    "or": "o",
+    "password": {
+      "hide": "Itago ang password",
+      "label": "Password",
+      "missing": "Maglagay ng password.",
+      "placeholder": "Hindi bababa sa 8 character",
+      "show": "Ipakita ang password"
+    },
+    "privacy": "Privacy",
+    "provider": {
+      "failed": "Hindi natapos ang pag-sign in na iyon. Subukan ulit, o gamitin ang iyong password."
+    },
+    "rateLimited": "Masyadong maraming pagsubok sa maikling oras. Maghintay ng ilang minuto at subukan ulit.",
+    "resendConfirmation": "Kunin ulit sa email ang link ng kumpirmasyon",
+    "reset": {
+      "blocked": "Hindi namin makumpirma ang address na ito ngayon, kaya walang password na naitakda. Subukan ulit pagkalipas ng ilang minuto, o mag-email sa",
+      "checking": "Sinusuri ang iyong account…",
+      "done": "Naitakda na ang bago mong password.",
+      "doneOthers": "Naitakda na ang bago mong password, at na-sign out ang lahat ng iba mo pang device.",
+      "emailSupport": "Mag-email sa support",
+      "expired": "Expired na o nagamit na ang reset link na ito, kaya walang password na naitakda. Humingi ng bago.",
+      "intro": "Ilagay ang iyong email. Kung may account ito, magpapadala kami ng link (o 6-digit na code) na magagamit mo para pumili ng bagong password.",
+      "newLink": "Magpadala ng bagong reset link",
+      "newPassword": "Bagong password",
+      "noEmailSignIn": "Hindi nagsa-sign in ang account na ito gamit ang email at password, kaya walang password na naitakda. Mag-email sa support at tutulungan ka naming mag-sign in.",
+      "onItsWay": "Kung may account para sa address na ito, hanapin sa iyong email ang isang link (o 6-digit na code). Alinman sa dalawa ang magpapahintulot sa iyong pumili ng bagong password. Kadalasan ay dumarating ito sa loob ng isang minuto.",
+      "proven": "Kumpirmado ang address na ito. Pumili ng bagong password.",
+      "refused": "Hindi namin makumpirma ang address na ito gamit ang link o code na iyon, kaya walang password na naitakda. Humingi ng bagong reset link, o mag-email sa support.",
+      "resetIt": "I-reset ito",
+      "retry": "Subukan ulit",
+      "save": "Itakda ang bagong password",
+      "send": "I-email sa akin ang reset link",
+      "signedIn": "Naka-sign in ka. Puwede mong palitan ang password mo sa settings ng iyong account.",
+      "signedOut": "Para sa seguridad mo, na-sign out ang bawat device. Humingi ng bagong code para matapos.",
+      "title": "I-reset ang iyong password",
+      "toAccount": "Pumunta sa iyong account",
+      "tooShort": "Gumamit ng hindi bababa sa 8 character.",
+      "verify": "Magpatuloy",
+      "wrongPassword": "Maling password?"
+    },
+    "return": {
+      "failed": "Hindi natapos ang pag-sign in. Pakisubukan ulit."
+    },
+    "samePassword": "Pumili ng password na hindi mo pa nagamit dito.",
+    "sendFailed": "Hindi namin iyan maipadala ngayon. Subukan ulit pagkalipas ng isang minuto, o mag-email sa {{support}}.",
+    "sessionExpired": "Nag-expire ang session mo. Mag-sign in ulit para ituloy kung saan ka huminto.",
+    "subtitle": "Subaybayan ang mga score ng iyong resume sa paglipas ng panahon, itago ang kasaysayan ng iyong mga scan, at tingnan ang iyong mga credit at binili sa iisang lugar. Libre habambuhay.",
+    "title": "Mag-sign in o gumawa ng libreng account",
+    "usePassword": "Gumamit na lang ng password",
+    "weakPassword": "Masyadong mahina o karaniwan ang password na iyan. Gumamit ng hindi bababa sa 8 character na mahirap hulaan.",
+    "whatWeKeep": "Ano ang itinatago namin"
+  }
+}

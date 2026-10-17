@@ -7,6 +7,7 @@ import { useScrollDepth } from "@/hooks/use-scroll-depth";
 import { useTimeOnPage } from "@/hooks/use-time-on-page";
 import { useFunnelTracking } from "@/hooks/use-funnel-tracking";
 import { takeJdHandoff } from "@/lib/jd-handoff";
+import { stashedSessionIdFor } from "@/lib/auth-fragment";
 import { scannableJobDescription } from "@/lib/job-description-input";
 import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
@@ -893,7 +894,7 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
     
     // Handle scan pack purchase success
     if (searchParams.get("scan_pack_success") === "true") {
-      const sessionId = searchParams.get("session_id");
+      const sessionId = stashedSessionIdFor("/", searchParams.get("session_id")).id;
       if (sessionId) {
         (async () => {
           try {

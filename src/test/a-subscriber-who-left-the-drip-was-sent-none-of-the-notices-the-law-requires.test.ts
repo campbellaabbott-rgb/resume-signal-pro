@@ -28,12 +28,13 @@ import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harnes
 import { buildIsAtLeast } from "./helpers/fn-build";
 
 const SUBSCRIBER = "subscriber@example.com";
-const SERVICE_JWT = `x.${Buffer.from(JSON.stringify({ role: "service_role" })).toString("base64url")}.y`;
+// The service-role key itself: process-email-queue opens to a gateway-verified service_role token, that key, or the cron key (R1).
+const SERVICE_JWT = "service_role_key_for_the_queue_harness_0123456789";
 const ENV: Record<string, string> = {
   STRIPE_WEBHOOK_SECRET: "whsec_harness",
   STRIPE_SECRET_KEY: "sk_test_harness",
   SUPABASE_URL: "https://harness.supabase.co",
-  SUPABASE_SERVICE_ROLE_KEY: "service_harness",
+  SUPABASE_SERVICE_ROLE_KEY: SERVICE_JWT,
   SUPABASE_ANON_KEY: "anon_harness",
   LOVABLE_API_KEY: "lov",
   RESEND_API_KEY: "re_harness",
@@ -131,7 +132,10 @@ async function drain(messages: Array<Record<string, unknown>>) {
     data: a.queue_name === "transactional_emails" ? messages.map((message, i) => ({ msg_id: i + 1, read_ct: 1, message })) : [],
     error: null,
   });
-  const res = await queueRun(new Request("https://harness.supabase.co/functions/v1/process-email-queue", { method: "POST", headers: { authorization: `Bearer ${SERVICE_JWT}` } }));
+  // A caller that names no queue drains sign-in mail only since R1: the drip's queue is named.
+  const res = await queueRun(new Request("https://harness.supabase.co/functions/v1/process-email-queue", {
+    method: "POST", headers: { authorization: `Bearer ${SERVICE_JWT}`, "content-type": "application/json" }, body: JSON.stringify({ queues: ["transactional_emails"] }),
+  }));
   expect(res.status).toBe(200);
   expect(buildIsAtLeast(res.headers.get("x-fn-build"), "process-email-queue", "2026-10-09"), String(res.headers.get("x-fn-build"))).toBe(true);
   return sent.map((p) => p.label);
