@@ -1711,8 +1711,10 @@ serve(async (req) => {
     if (hourCeiling) {
       // RECORDED, NOT ONLY LOGGED (S12-142): the refusal was a console line,
       // so the first sign of a spent hour was the AI balance. The scan's
-      // completed metric carries ceilingRefused (below), which the owner's
-      // alarm reads; owner mail goes through notify-owner, never from here.
+      // completed metric carries ceilingRefused (below, in scan_metrics
+      // metadata) for an absolute alarm to count; that alarm belongs to the
+      // monitors' owner (scan-heartbeat / check-alerts), and owner mail goes
+      // through notify-owner, never from here.
       console.log(`[FREE-KEYWORD-SCAN] FUNCTION CEILING: ${hourCeiling.code} (limit ${hourCeiling.limit}) — serving the rule-based report`);
     }
 
