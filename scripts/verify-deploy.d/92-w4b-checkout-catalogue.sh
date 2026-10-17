@@ -22,7 +22,8 @@
 #     with a negative control;
 #   - what no read here can prove is INFO: the cap (the migration's own
 #     self-check exercises it), the territory refusal of a POST, the buyer
-#     binding, and the owner's Stripe steps.
+#     binding, the refusal of a token minted for a connected app, and the
+#     owner's Stripe steps.
 #
 # READ-ONLY. Preflights run no function logic. A checkout is POSTed only once
 # its preflight shows the round-2 build, whose cut and switched-off answers
@@ -100,5 +101,5 @@ esac
 VD92_NC=$(curl -s -m 30 "$B/rest/v1/checkout_buyers_never_existed?select=*&limit=1" -H "apikey: $K" -H "Authorization: Bearer $K" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{console.log(JSON.parse(s).code||"NOCODE")}catch{console.log("NONJSON")}})')
 [ "$VD92_NC" = "PGRST205" ] && echo "PASS  negative control checkout_buyers_never_existed -> PGRST205" || echo "FAIL  negative control -> $VD92_NC (the 42501 above cannot be read as presence)"
 
-echo "INFO  not provable read-only: the grant cap (10 a day, 60 a month per account; 20261011150000's own self-check inserts ten grants, is refused the eleventh and rolls back, so an applied migration proves it ran), the territory refusal of a POST (it comes after the rate limiter, which counts), a signed-in buyer's client_reference_id and checkout_buyers row, the cancel flag on pro_subscribers, and the 503 when a grant cannot be minted -- each is run in src/test/w4b-*.test.ts"
+echo "INFO  not provable read-only: the grant cap (10 a day, 60 a month per account; 20261011150000's own self-check inserts ten grants, is refused the eleventh and rolls back, so an applied migration proves it ran), the territory refusal of a POST (it comes after the rate limiter, which counts), a signed-in buyer's client_reference_id and checkout_buyers row, the cancel flag on pro_subscribers, the 503 when a grant cannot be minted, and the 401 for a connected app's token (or one for another audience) on the four money functions, which no anon probe can mint -- each is run in src/test/w4b-*.test.ts"
 echo "INFO  owner, in Stripe: (1) expire any open checkout session for a cut product (Premium Package, ATS Defense, Career Snapshot, Graduate Game Plan, Career Path, Keyword Fix, Cover Letter, Interview Coach, scan packs): they live 24 hours and a payment on one still delivers; (2) archive their dashboard Prices (price_1Sgv32HBplUUV1CgAdw6PnV3 Premium, price_1Sgv3LHBplUUV1CgpCF5pDLO ATS Defense, price_1SibLiHBplUUV1CgHmRy7ayi Snapshot, price_1SibRNHBplUUV1CgEj5L8eH1 Game Plan, price_1T8u4NHBplUUV1CggBvfeDT0 Career Path, price_1Sgv2hHBplUUV1Cgjdqw9kHi Keyword Fix, price_1Sgv2tHBplUUV1CgoXHF6GjD Cover Letter, price_1T8u3pHBplUUV1CgN5CDJGEF Interview Coach, price_1Sgv2THBplUUV1CgntHsXlDK scan pack); (3) as a backstop for a buyer no signal placed, a Radar block rule on :card_country: (and :ip_country:) for the EU-27, IS, LI, NO and GB, if the plan allows custom rules; (4) count live Pro subscriptions: any that exist were promised every paid tool and should be emailed the new perk list with a cancel link"
