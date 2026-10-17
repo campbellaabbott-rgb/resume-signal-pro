@@ -10,6 +10,8 @@
  * The traps below are the realistic ones: a referee's phone number, a former
  * employer's website, and a document heading sitting where a name should be.
  */
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { deriveContact, fillGaps } from "../lib/resumeContact";
 
@@ -136,14 +138,17 @@ describe("it fails quietly rather than badly", () => {
 });
 
 describe("what somebody typed themselves always wins", () => {
-  it("fills only the empty fields", () => {
-    const { next, filled } = fillGaps(
+  it("fills only the empty fields, and only with what is sure", () => {
+    const { next, filled, suggested } = fillGaps(
       { full_name: "", email: "typed@example.com", phone: null },
       deriveContact(CV),
     );
     expect(next.email).toBe("typed@example.com");   // untouched
-    expect(next.full_name).toBe("Jane Okonkwo");    // was empty
-    expect(filled).toContain("full_name");
+    expect(next.phone).toBe("+44 7700 900123");      // was empty, and high
+    // The name is never sure, so it is offered, not written (S11-045).
+    expect(next.full_name).toBe("");
+    expect(suggested.full_name).toBe("Jane Okonkwo");
+    expect(filled).not.toContain("full_name");
     expect(filled).not.toContain("email");
   });
 
@@ -166,5 +171,55 @@ describe("what somebody typed themselves always wins", () => {
     // ...while fields they never filled in are still picked up, which is the
     // whole point. "Do not revert my edits" is not "do not help me again".
     expect(filled).toContain("email");
+  });
+});
+
+/**
+ * Sweep S11-045. findName is always `low`, and fillGaps ignored confidence,
+ * so the upload saved whatever heading won into the mandate's full_name and
+ * apply-broker sent it as the candidate's name, first name and last name. A
+ * comma, a pipe or an en dash on the real name line, or column headings that
+ * come first, made a heading win.
+ */
+describe("a CV upload never saves a guessed name", () => {
+  const upload = (text: string) => fillGaps({ full_name: "", email: "", phone: "" }, deriveContact(text));
+
+  it.each([
+    ["a name line with post-nominals", "JANE DOE, RN\nRegistered Nurse\njane@example.com | +44 7700 900123\n"],
+    ["a name line with an en-dash title", "Jane Doe – Senior Nurse\nProfessional Summary\njane@example.com\n"],
+    ["a two-column layout whose headings come first", "Key Skills\nJane Doe\njane@example.com\n"],
+    ["a job title in title case above the name", "Registered Nurse\nJane Doe\njane@example.com\n"],
+  ])("%s leaves full_name empty and offers a suggestion", (_n, text) => {
+    const { next, filled } = upload(text);
+    expect(next.full_name).toBe("");
+    expect(filled).not.toContain("full_name");
+  });
+
+  it.each([
+    ["JANE DOE, RN\nRegistered Nurse\njane@example.com\n", "JANE DOE"],
+    ["Jane Doe – Senior Nurse\nProfessional Summary\njane@example.com\n", "Jane Doe"],
+    ["Key Skills\nJane Doe\njane@example.com\n", "Jane Doe"],
+  ])("what it offers is the name, never the heading: %j", (text, name) => {
+    expect(upload(text).suggested.full_name).toBe(name);
+  });
+
+  it("the upload shows the suggestions for a yes and saves only what fillGaps filled", () => {
+    const panel = readFileSync(resolve(__dirname, "../components/account/ApplyProfilePanel.tsx"), "utf8");
+    expect(panel).toMatch(/const \{ next, filled, suggested: unsure \} = fillGaps\(\{ \.\.\.p, resume_file_url: path \}, derived\);\s*setSuggested\(unsure\);/);
+    expect(panel).toMatch(/const decideSuggestion = useCallback\(async \(k: ContactField, use: boolean\)/);
+  });
+
+  it("a section heading is never offered as a name", () => {
+    for (const heading of ["Professional Summary", "Key Skills", "Work Experience", "Core Competencies"]) {
+      expect(deriveContact(`${heading}\nsomebody@example.com\n`).full_name, heading).toBeUndefined();
+    }
+  });
+});
+
+describe("a LinkedIn profile is read from the header only", () => {
+  it("a referee's profile in the body is not the candidate's", () => {
+    const text = "Jane Okonkwo\njane@example.com\n\n" + "Experience line.\n".repeat(15) +
+      "REFERENCES\nDr Alan Whitfield, linkedin.com/in/alan-whitfield\n";
+    expect(deriveContact(text).linkedin).toBeUndefined();
   });
 });

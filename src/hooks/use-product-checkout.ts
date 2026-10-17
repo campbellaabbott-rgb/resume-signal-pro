@@ -6,10 +6,13 @@ import { useConversionTracking } from '@/hooks/use-conversion-tracking';
 import { useFunnelTracking } from '@/hooks/use-funnel-tracking';
 import { parseEdgeFunctionError } from '@/lib/edge-function-errors';
 import { checkoutContext } from '@/lib/track-transport';
-import { consentWasRequired, purchaseTerms } from '@/lib/purchase-terms';
+import { consentWasRequired, purchaseTerms, purchaseTermsUnused } from '@/lib/purchase-terms';
 import i18n from '@/i18n';
+import { loadAuthStrings } from '@/i18n/auth/load';
+import { MEMBER_MARK_KEY } from '@/lib/auth-fragment';
 import { useCheckoutPrefetch } from '@/hooks/use-checkout-prefetch';
 import { getResumeFromSession } from '@/hooks/use-session-resume';
+import { askForTargetRoles, cleanTargetRoles } from '@/lib/target-roles-request';
 
 /** The résumé (and posting) a purchase is made from: what the buyer is looking at. */
 export interface PurchaseInputs {
@@ -29,6 +32,8 @@ export interface CheckoutOptions {
    * of exactly these; without them it is bound to the résumé the tab restores.
    */
   inputs?: PurchaseInputs;
+  /** ATS Defense: the roles to target, when the caller already asked (S11-074). */
+  targetRoles?: string[];
 }
 
 /**
@@ -64,7 +69,7 @@ export const PRESTORED_RESUME_KEY = 'rb_prestored_resume_session';
  * the buyer leaves for Stripe; the retry reuses them.
  */
 export const CHECKOUT_RETRY_KEY = 'rb_checkout_retry';
-export type CheckoutRetry = { productId: string; sessionId?: string; jobTitle?: string; jobCompany?: string; path: string; at: number };
+export type CheckoutRetry = { productId: string; sessionId?: string; jobTitle?: string; jobCompany?: string; targetRoles?: string[]; path: string; at: number };
 
 export function readCheckoutRetry(productId: string): CheckoutRetry | null {
   try {
@@ -188,6 +193,56 @@ async function storeCopy(inputs: PurchaseInputs): Promise<string | null> {
   }
 }
 
+/**
+ * THE ADDRESS A CHECKOUT IS PREFILLED WITH: THE SIGNED-IN ACCOUNT'S, OR NONE
+ * (register CP-012, Account UX spec 9). The checkout used to send whatever
+ * address this browser had stored (the scan-pack address, the last sign-in),
+ * which on a shared computer is the previous person's: Stripe opened with
+ * their address, and the receipt and the purchase went to it. A stored value
+ * cannot say whether the person now at the keyboard typed it, so a signed-out
+ * checkout sends no address and Stripe asks for one. A Pro member is
+ * recognised by their signed-in account, never by a stored address.
+ */
+export async function checkoutPrefillEmail(): Promise<string | undefined> {
+  try {
+    const { data } = await supabase.auth.getSession();
+    const email = data?.session?.user?.email;
+    return typeof email === 'string' && email.includes('@') ? email : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * A PRO MEMBER WHOSE SESSION ENDED IS ASKED BEFORE STRIPE CHARGES THEM
+ * (register S12-087). A signed-out checkout sends no address (above), so the
+ * server cannot recognise a signed-out Pro member and would charge them for a
+ * tool their plan includes. Without sending an address that might be someone
+ * else's, the page can still ask: when a member signed in on this browser
+ * (AuthContext writes MEMBER_MARK_KEY on every signed-in session, and only a
+ * deliberate sign-out removes it) and no session is held now, the first buy
+ * press in the tab says "sign in first if you have Pro" and starts nothing;
+ * the next press buys as a guest. Once per tab. The session may have ended
+ * in another tab or before this one opened (a refresh token revoked
+ * elsewhere): the mark does not depend on this tab seeing it end (second
+ * recheck of R1). The last address (rb_last_email) is NOT the key: it is
+ * also written for anyone who asks for their report by email, and those
+ * visitors were told their session had ended (lead decision G, third fixer
+ * round).
+ */
+export const PRO_SIGN_IN_ASKED_KEY = 'rb_checkout_signin_asked';
+export function askToSignInFirst(signedIn: boolean): boolean {
+  if (signedIn) return false;
+  try {
+    if (!localStorage.getItem(MEMBER_MARK_KEY)) return false;
+    if (sessionStorage.getItem(PRO_SIGN_IN_ASKED_KEY)) return false;
+    sessionStorage.setItem(PRO_SIGN_IN_ASKED_KEY, '1');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export type ResumeBinding = { sessionId?: string; refused?: boolean };
 
 /**
@@ -232,6 +287,7 @@ export function useProductCheckout() {
 
     const product = PRODUCTS[productId];
     if (!product) {
+      purchaseTermsUnused();
       toast({
         title: "Invalid Product",
         description: "The selected product is not available.",
@@ -240,15 +296,39 @@ export function useProductCheckout() {
       return null;
     }
 
+    const prefillEmail = await checkoutPrefillEmail();
+    if (askToSignInFirst(!!prefillEmail)) {
+      purchaseTermsUnused();
+      // The auth strings load lazily; they are in before the notice is worded.
+      await loadAuthStrings();
+      toast({
+        title: i18n.t("auth.checkout.signInFirstTitle", "Have Pro? Sign in first"),
+        description: i18n.t("auth.checkout.signInFirst", "Your session here ended. If you have a Pro plan, sign in and this tool is included at no charge. To buy it without signing in, press the button again."),
+      });
+      return null;
+    }
+
+    // ATS DEFENSE TARGETS THE ROLES ITS BUYER NAMES (S11-074): asked before
+    // any checkout starts; closing the question starts none.
+    let targetRoles: string[] | undefined = opts.targetRoles ? cleanTargetRoles(opts.targetRoles) : undefined;
+    if (productId === 'atsDefense' && !targetRoles?.length) {
+      const answered = await askForTargetRoles(opts.jobTitle ? [opts.jobTitle] : []);
+      // Closing the question starts no checkout, so the box goes back to its line.
+      if (answered === null) { purchaseTermsUnused(); return null; }
+      targetRoles = answered;
+    }
+
     setIsLoading(true);
     setCurrentProduct(productId);
-    
+
     // Track button click for conversion analytics with section metadata
     trackButtonClick(productId, opts.ctaSection || 'product_checkout');
     
     // Track in funnel
     trackProductClicked(productId, product.name, product.priceUsd);
 
+    // Every way out below that is not the checkout URL gives the box back.
+    let started = false;
     try {
       // The résumé this purchase is delivered from: the one on screen, never
       // another (see bindPurchaseResume).
@@ -265,12 +345,12 @@ export function useProductCheckout() {
       const { data, error } = await supabase.functions.invoke('create-product-checkout', {
         body: {
           productId: productId,
-          // Known email lets the server include the product free for active
-          // Pro subscribers (and prefills Stripe checkout otherwise).
-          email: localStorage.getItem('scanCreditsEmail') || localStorage.getItem('rb_last_email') || undefined,
+          // The signed-in account's address, or none (see checkoutPrefillEmail).
+          email: prefillEmail,
           sessionId: binding.sessionId,
           jobTitle: opts.jobTitle,
           jobCompany: opts.jobCompany,
+          ...(targetRoles?.length ? { targetRoles } : {}),
           // Generation happens server-side from the webhook, which has no
           // access to the browser's i18n state — has to be captured now.
           language: localStorage.getItem('i18nextLng') || 'en',
@@ -319,7 +399,7 @@ export function useProductCheckout() {
         trackCheckoutStarted(productId, product.priceUsd);
         try {
           const retry: CheckoutRetry = {
-            productId, sessionId: binding.sessionId, jobTitle: opts.jobTitle, jobCompany: opts.jobCompany,
+            productId, sessionId: binding.sessionId, jobTitle: opts.jobTitle, jobCompany: opts.jobCompany, targetRoles,
             path: `${window.location.pathname}${window.location.search}`, at: Date.now(),
           };
           sessionStorage.setItem(CHECKOUT_RETRY_KEY, JSON.stringify(retry));
@@ -334,6 +414,7 @@ export function useProductCheckout() {
               title: "Redirecting to Checkout",
               description: "Taking you to Stripe checkout…",
             });
+        started = true;
         window.location.assign(data.url);
         return data.url;
       }
@@ -348,6 +429,7 @@ export function useProductCheckout() {
       });
       return null;
     } finally {
+      if (!started) purchaseTermsUnused();
       setIsLoading(false);
       setCurrentProduct(null);
     }

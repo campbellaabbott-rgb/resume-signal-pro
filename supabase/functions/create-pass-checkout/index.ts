@@ -43,12 +43,18 @@ import {
   PASS_SESSION_HOURS,
 } from "../_shared/pass.ts";
 import { checkoutContextFromRequest, recordCheckoutStart } from "../_shared/checkout-start.ts";
-import { checkoutOrigin, euConsentRefusal, policyMetadata, sessionPolicy } from "../_shared/checkout-policy.ts";
+import { checkoutOrigin, euConsentAnswer, euConsentRefusal, policyMetadata, sessionPolicy } from "../_shared/checkout-policy.ts";
 
 // deploy-stamp: 2026-10-09T13:00Z
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-pass-checkout.2026-09-27.4";
+// The name and the build sit on separate lines, as in agent-pass-status: the
+// pass guard reads a standalone number on any line naming the pass, and an
+// October date carries one. 2026-10-09.62 (wave-3 fix round integration)
+// sorts after every branch's string, wave3/payments-account's 2026-10-09.1
+// included, which a September date could not.
+const FN_NAME = "create-pass-checkout";
+const FN_BUILD = `${FN_NAME}.2026-10-09.62`;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -181,7 +187,7 @@ Deno.serve(async (req) => {
     const body = await req.clone().json().catch(() => ({}));
     const env = (k: string) => Deno.env.get(k);
     const consentMissing = euConsentRefusal(env, "payment", body);
-    if (consentMissing) return json({ error: "Please tick the box above the button to continue.", consentRequired: consentMissing }, 400);
+    if (consentMissing) return json(euConsentAnswer(consentMissing), 400);
     const policy = policyMetadata(body, env);
     // Only our own hosts get the buyer back (S8-060).
     const origin = checkoutOrigin(req.headers.get("origin"), env);

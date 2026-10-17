@@ -101,6 +101,27 @@ describe("a name that is still a tenant code is recognisable as one", () => {
     expect(isCodeShapedName("carvana", "Carvana")).toBe(false);
     expect(isCodeShapedName("ms~wd5~external", employerName("ms~wd5~external", "Ms"))).toBe(false);
   });
+
+  // S11-013 (2026-10-11): a one-word employer named by its code is the common
+  // case. The rule flagged any name equal to the code bar a 49-name
+  // allowlist: 2,821 of 5,841 compound tokens on the live facets (153k open
+  // roles), Intel, Mastercard, Medtronic, Tapestry and Menasha among them, so
+  // their company pages went noindex and their posting pages were retired.
+  it("positive controls: real one-word employers named by their code keep their pages", () => {
+    for (const [token, stored] of [
+      ["intel~wd1~External", "Intel"], ["adient~wd3~External", "Adient"], ["mastercard~wd1~CorporateCareers", "Mastercard"],
+      ["menasha~wd12~MenashaCorp", "Menasha"], ["medtronic~wd1~MedtronicCareers", "Medtronic"], ["tapestry~wd108~Tapestry_Careers", "Tapestry"],
+      ["gartner~wd5~EXT", "Gartner"], ["hitachi~wd1~hitachi", "Hitachi"], ["fielmann~wd3~External", "Fielmann"],
+      // a printed initialism is the employer's own style
+      ["gsk~wd5~GSKCareers", "GSK"], ["3m~wd1~Search", "3M"],
+    ]) expect(isCodeShapedName(token, employerName(token, stored)), `${token} "${stored}"`).toBe(false);
+  });
+
+  it("flags a reviewed code, and a vowelless code the display could not make an initialism", () => {
+    expect(isCodeShapedName("abercrombie~wd108~anf", employerName("abercrombie~wd108~anf", "Abercrombie"))).toBe(true);
+    expect(isCodeShapedName("bb~wd3~BlackBerry", employerName("bb~wd3~BlackBerry", "Bb"))).toBe(true);
+    expect(isCodeShapedName("bcbsnc~wd5~BCBSNC", employerName("bcbsnc~wd5~BCBSNC", "Bcbsnc"))).toBe(true);
+  });
 });
 
 describe("a tenant code the display name uppercased is still a tenant code", () => {

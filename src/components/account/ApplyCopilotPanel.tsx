@@ -89,8 +89,11 @@ export function ApplyCopilotPanel({
   // Prep strongest fit first: if the daily generation limit cuts the batch
   // short, the best-matched jobs are the ones that got prepped, not whichever
   // happened to be saved first. Unknown fit sorts last (treated as -1).
+  // A kit without its cover letter (a limit stopped it, or it was made
+  // before the co-pilot wrote letters) is still owed one (S11-038).
+  const missingLetter = (a: CopilotApp) => !!a.kit && !toKit(a.kit)?.coverLetter;
   const pending = preppable
-    .filter((a) => !a.kit)
+    .filter((a) => !a.kit || missingLetter(a))
     .sort((a, b) => (b.fit_pct ?? -1) - (a.fit_pct ?? -1));
   const prepped = preppable.filter((a) => a.kit);
 
@@ -106,26 +109,47 @@ export function ApplyCopilotPanel({
       i++;
       const resumeText = resumeFor(a);
       if (!resumeText) continue;
+      let stop = false;
       try {
-        const { data, error } = await supabase.functions.invoke("generate-apply-package", {
-          body: { resumeText, jobPostingText: a.job_posting, jobTitle: a.role, jobCompany: a.company },
-        });
-        if (error) {
-          // On a non-2xx the SDK nulls `data` and puts the Response on
-          // error.context — that's the only place the real status lives.
-          const status = (error as { context?: { status?: number } })?.context?.status;
-          if (status === 402) { toast.error(t("accountPage.acNeedsPro", "Batch prep needs Pro. Upgrade to prep applications in bulk.")); break; }
-          if (status === 429) { toast.error(t("accountPage.acDailyLimit", "Daily generation limit reached — the ones prepped so far are saved. Try the rest tomorrow.")); break; }
-          continue; // 422 grounding refusal or transient — skip this one, keep going
+        // The tailored résumé, unless this job already has its kit.
+        let kit = a.kit && typeof a.kit === "object" ? (a.kit as Record<string, unknown>) : null;
+        if (!kit) {
+          const { data, error } = await supabase.functions.invoke("generate-apply-package", {
+            body: { resumeText, jobPostingText: a.job_posting, jobTitle: a.role, jobCompany: a.company },
+          });
+          if (error) {
+            // On a non-2xx the SDK nulls `data` and puts the Response on
+            // error.context — that's the only place the real status lives.
+            const status = (error as { context?: { status?: number } })?.context?.status;
+            if (status === 402) { toast.error(t("accountPage.acNeedsPro", "Batch prep needs Pro. Upgrade to prep applications in bulk.")); break; }
+            if (status === 429) { toast.error(t("accountPage.acDailyLimit", "Daily generation limit reached — the ones prepped so far are saved. Try the rest tomorrow.")); break; }
+            continue; // 422 grounding refusal or transient — skip this one, keep going
+          }
+          if (!(data as { success?: boolean } | null)?.success) continue;
+          kit = data as Record<string, unknown>;
         }
-        if (!(data as { success?: boolean } | null)?.success) continue;
-        // Persist the kit so it survives reloads and never re-charges.
-        await appsTable().update({ kit: data, kit_generated_at: new Date().toISOString() }).eq("id", a.id);
-        onKit(a.id, data);
-        succeeded++;
+        // THE COVER LETTER THE CO-PILOT PROMISES (S11-038). Every kit used to
+        // come without one. It is written by generate-cover-letter, which
+        // runs the figure check and the contact guard and counts the call
+        // through its model spend gate (this account's own allowance).
+        const { data: letterData, error: letterError } = await supabase.functions.invoke("generate-cover-letter", {
+          body: { resumeText, jobDescription: a.job_posting, jobTitle: a.role, jobCompany: a.company, tone: "professional" },
+        });
+        const letter = !letterError ? (letterData as { data?: { coverLetter?: unknown } } | null)?.data?.coverLetter : null;
+        if (letterError && (letterError as { context?: { status?: number } })?.context?.status === 429) {
+          toast.error(t("accountPage.acDailyLimit", "Daily generation limit reached — the ones prepped so far are saved. Try the rest tomorrow."));
+          stop = true;
+        }
+        const full = typeof letter === "string" && letter.trim() ? { ...kit, coverLetter: letter } : kit;
+        // Persist the kit so it survives reloads and never re-charges; one
+        // without its letter is asked for the letter alone next time.
+        await appsTable().update({ kit: full, kit_generated_at: new Date().toISOString() }).eq("id", a.id);
+        onKit(a.id, full);
+        if (full !== kit) succeeded++;
       } catch {
         // network hiccup — leave it pending, next run picks it up
       }
+      if (stop) break;
       await new Promise((r) => setTimeout(r, 900)); // gentle pacing
     }
     setProgress(null);

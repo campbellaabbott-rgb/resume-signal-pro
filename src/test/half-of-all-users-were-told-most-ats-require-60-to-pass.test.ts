@@ -115,4 +115,24 @@ describe("counts are derived, never typed", () => {
       expect(codeOf(read(f)), f).not.toMatch(/\b5\d industries\b|\b1\d languages\b|\b5\d Fields\b/);
     }
   });
+
+  // S11-151: the corrected count had not reached /vs/kickresume, the
+  // homepage's WebApplication JSON-LD, or the Spanish /es/revisar-curriculum.
+  it("the /vs rows, the Spanish tool landing and the SPA JSON-LD print the derived language count", async () => {
+    const { COMPETITORS } = await import("@/data/competitors");
+    const { TOOL_LANDINGS } = await import("@/data/tool-landings");
+    const langRows = Object.values(COMPETITORS).flatMap((c) => c.rows).filter((r) => /language/i.test(r.dim));
+    expect(langRows.length).toBeGreaterThan(0);
+    for (const r of langRows) {
+      expect(r.us).toContain(`${LANGUAGE_COUNT} languages`);
+      expect(r.us).not.toMatch(/\b10 languages\b/);
+    }
+    const es = Object.values(TOOL_LANDINGS).find((l) => l.lang === "es");
+    expect(es?.bullets.join("\n")).toContain(`${LANGUAGE_COUNT} idiomas`);
+    expect(JSON.stringify(TOOL_LANDINGS)).not.toMatch(/\b10 (idiomas|languages)\b/);
+    for (const f of ["src/data/competitors.ts", "src/data/tool-landings.ts", "src/pages/Index.tsx"]) {
+      expect(codeOf(read(f)), f).not.toMatch(/\b\d+ (languages|idiomas|Sprachen|langues|talen|lingue)\b/);
+    }
+    expect(codeOf(read("src/pages/Index.tsx"))).toMatch(/industries, with an interface in \$\{LANGUAGE_COUNT\} languages/);
+  });
 });

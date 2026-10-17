@@ -47,8 +47,8 @@ export default function RoleKeywords() {
   const copy = roleListCopy(role.title, indName);
   const keywords = [...new Set(data.primary)].slice(0, 20);
   const certs = [...new Set(data.certifications)].slice(0, 10);
-  // L1-05: the industry's occupation is cited only when it names this role.
-  const onet = onetForRole(role.title, ONET_EXPECTATIONS[role.industry]);
+  // L1-05, S11-152: the industry's occupation is cited only when src/lib/onet-match.ts names this role with it.
+  const onet = onetForRole(role, ONET_EXPECTATIONS[role.industry]);
   const siblingRoles = rolesForIndustry(role.industry).filter((r) => r.slug !== role.slug);
   const relatedTitles = [...new Set(data.titles)].filter((t) => t.toLowerCase() !== role.title.toLowerCase()).slice(0, 10);
 

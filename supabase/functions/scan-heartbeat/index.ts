@@ -8,6 +8,7 @@ import { keyMatches } from "../_shared/admin-key.ts";
 // literal {salaryFloor: 100000} probe has been landing in the demand log on
 // every heartbeat run since the check shipped. See _shared/search-caller.ts.
 import { searchCallerHeader } from "../_shared/search-caller.ts";
+import { boardTailChecks, dbFailureCheck } from "./board-tail.ts";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -17,7 +18,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-admin-key, x-email-cron',
   'Access-Control-Expose-Headers': 'x-fn-build',
   // BUILD_VERSION below, as the other functions carry it.
-  'x-fn-build': 'scan-heartbeat.2026-10-09.2',
+  'x-fn-build': 'scan-heartbeat.2026-10-09.71',
 };
 
 // Test resume for heartbeat checks
@@ -51,6 +52,10 @@ function heartbeatResume(): string {
 // Thresholds for health determination
 const HEALTHY_RESPONSE_TIME_MS = 30000; // 30s
 const DEGRADED_RESPONSE_TIME_MS = 60000; // 60s
+// Check 6b (S11-028): half or more of an hour's visitor scans on the
+// rule-based fallback fails it; under four scans an hour it is not judged.
+const FALLBACK_RATE_ALARM = 0.5;
+const FALLBACK_RATE_MIN_SCANS = 4;
 const AI_MODEL = 'google/gemini-2.5-flash';
 
 interface HealthCheckResult {
@@ -120,7 +125,7 @@ function unanswered(r: { timedOut?: boolean; failed?: boolean }, fn: string, ms:
  *
  * BUMP ON EVERY DEPLOY of this function.
  */
-const BUILD_VERSION = "2026-10-09.2"; // 10-09.1: a paid order that never arrived mails the owner, naming it, newest first (decided after the delivery read, not before); a cron call refused (401/403) in the last hour fails cron_http_refusals.  10-08.1: answers only its cron, the service role and the owner's key; the e2e scan is uncached; alerts stamp only after a send that worked; vendor drift skips when unevaluated; delivery reads email_logs too
+const BUILD_VERSION = "2026-10-09.7"; // 10-09.7: carries both .6 and .3 (wave-3 fix round integration).  10-09.6: fails job_board_refresh_head (3h), job_board_filter_audit (12h) and job_board_pass_end (a pass-end tail that started and never finished, S11-001) and job_board_db_failures (S11-023).  10-09.3: a partial e2e report, a refused (429) e2e scan and a visitor fallback rate of half or more fail their checks (S11-028).  10-09.1: a paid order that never arrived mails the owner, naming it, newest first (decided after the delivery read, not before); a cron call refused (401/403) in the last hour fails cron_http_refusals.  10-08.1: answers only its cron, the service role and the owner's key; the e2e scan is uncached; alerts stamp only after a send that worked; vendor drift skips when unevaluated; delivery reads email_logs too
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -598,6 +603,17 @@ serve(async (req) => {
         .from('job_board_meta').select('updated_at').eq('k', 'facets').maybeSingle();
       const exploreCacheP = supabase
         .from('job_board_meta').select('updated_at').eq('k', 'explore_cache').maybeSingle();
+      // The three rows the board's pass-end tail writes (S11-001, board-tail.ts).
+      // refresh_head by JSON path: only its two stamps, not the 200-employer facet.
+      const refreshHeadP = supabase
+        .from('job_board_meta').select('refreshedAt:v->>refreshedAt,facetsCarriedAt:v->>facetsCarriedAt').eq('k', 'refresh_head').maybeSingle();
+      const filterAuditP = supabase
+        .from('job_board_meta').select('updated_at').eq('k', 'filter_audit').maybeSingle();
+      const passEndP = supabase
+        .from('job_board_meta').select('v').eq('k', 'pass_end').maybeSingle();
+      // S11-023: boards our own database keeps failing (board-tail.ts dbFailureCheck).
+      const dbStreaksP = supabase
+        .from('job_board_meta').select('dbStreaks:v->dbStreaks').eq('k', 'board_failures').maybeSingle();
 
       const { data: prog, error } = await supabase
         .from('job_board_meta')
@@ -1031,6 +1047,46 @@ serve(async (req) => {
         } catch (e) {
           skip(checkName, e instanceof Error ? e.message : 'unreadable');
         }
+      }
+
+      // The pass-end tail's three ages (S11-001): the served counts, the
+      // filter audit, and a tail that started and never finished.
+      try {
+        const [rh, fa, pe] = await Promise.all([refreshHeadP, filterAuditP, passEndP]);
+        const readErr = rh.error ?? fa.error ?? pe.error;
+        const verdicts = boardTailChecks({
+          now: Date.now(),
+          refreshedAt: rh.error ? null : (rh.data as { refreshedAt?: string } | null)?.refreshedAt,
+          facetsCarriedAt: rh.error ? null : (rh.data as { facetsCarriedAt?: string | null } | null)?.facetsCarriedAt,
+          filterAuditAt: fa.error ? null : (fa.data as { updated_at?: string } | null)?.updated_at,
+          passEnd: pe.error ? null : ((pe.data as { v?: { startedAt?: unknown; doneAt?: unknown } } | null)?.v ?? null),
+        });
+        for (const v of verdicts) {
+          if (v.skipped) { skip(v.name, readErr ? readErr.message : v.reason); continue; }
+          checks.push({ name: v.name, passed: v.passed, responseTimeMs: 0, error: v.error });
+          if (!v.passed) {
+            if (overallStatus === 'healthy') overallStatus = 'degraded';
+            errorMessage = errorMessage ?? v.error ?? null;
+          }
+        }
+      } catch (e) {
+        skip('job_board_pass_end', e instanceof Error ? e.message : 'unreadable pass-end rows');
+      }
+      try {
+        const ds = await dbStreaksP;
+        if (ds.error) skip('job_board_db_failures', ds.error.message);
+        else {
+          const v = dbFailureCheck((ds.data as { dbStreaks?: Record<string, unknown> } | null)?.dbStreaks ?? null);
+          if (!v.skipped) {
+            checks.push({ name: v.name, passed: v.passed, responseTimeMs: 0, error: v.error });
+            if (!v.passed) {
+              if (overallStatus === 'healthy') overallStatus = 'degraded';
+              errorMessage = errorMessage ?? v.error ?? null;
+            }
+          }
+        }
+      } catch (e) {
+        skip('job_board_db_failures', e instanceof Error ? e.message : 'unreadable board_failures');
       }
 
       try {
@@ -1739,9 +1795,12 @@ serve(async (req) => {
       const e2eTime = Date.now() - e2eStart;
 
       if (scanResp.status === 429) {
-        // Alive (the limiter answered coherently) but the report path is
-        // unverified this cycle. Don't page for this.
-        checks.push({ name: 'e2e_scan', passed: true, responseTimeMs: e2eTime, error: 'rate-limited: alive but report unverified (set HEARTBEAT_SECRET)' });
+        // A REFUSAL IS NOT A PASS (S11-028). The limiter answered, so the
+        // function is up, but the report path was not exercised this cycle,
+        // and with HEARTBEAT_SECRET set the heartbeat should never be refused.
+        checks.push({ name: 'e2e_scan', passed: false, responseTimeMs: e2eTime, error: 'rate-limited: the report path was not exercised this cycle (is HEARTBEAT_SECRET set on both functions?)' });
+        if (overallStatus === 'healthy') overallStatus = 'degraded';
+        errorMessage = errorMessage || 'E2E scan: 429, the report path was not verified';
       } else if (!scanResp.ok) {
         const bodyText = (await scanResp.text()).substring(0, 200);
         checks.push({ name: 'e2e_scan', passed: false, responseTimeMs: e2eTime, error: `HTTP ${scanResp.status}: ${bodyText}` });
@@ -1751,17 +1810,30 @@ serve(async (req) => {
         const scanJson = await scanResp.json();
         const fromCache = scanJson?.cachedReport === true;
         const anatomyOk = !fromCache && typeof scanJson.atsScoreEstimate === 'number' && !!scanJson.reportMeta?.reportId;
+        // A PARTIAL REPORT IS NOT A WORKING SCAN (S11-028). free-keyword-scan
+        // sets reportMeta and a numeric score on its rule-based fallback too,
+        // so tool calling could break (a 400 on the schema, unparsed
+        // tool_calls, the 85 s clock) and every visitor get "Partial results"
+        // while this check read green. A thin model reply (completeness under
+        // 70) is partial as well.
+        const partial = scanJson?.partialResults === true;
+        const completeness = typeof scanJson?.reportCompleteness === 'number' ? scanJson.reportCompleteness : null;
+        const thin = completeness !== null && completeness < 70;
+        const e2eOk = anatomyOk && !partial && !thin;
         checks.push({
           name: 'e2e_scan',
-          passed: anatomyOk,
+          passed: e2eOk,
           responseTimeMs: e2eTime,
           error: fromCache
             ? 'served from the 7-day report cache — the scan pipeline was not exercised'
-            : anatomyOk ? undefined : 'Response missing atsScoreEstimate/reportMeta',
+            : !anatomyOk ? 'Response missing atsScoreEstimate/reportMeta'
+            : partial ? `answered with a partial report (${typeof scanJson.partialReason === 'string' ? scanJson.partialReason : 'no reason given'}): the AI analysis did not complete, so visitors may be getting automated-only reports`
+            : thin ? `report completeness ${completeness}% (under 70): the AI analysis left most sections empty`
+            : undefined,
         });
-        if (!anatomyOk) {
-          overallStatus = 'degraded';
-          errorMessage = errorMessage || 'E2E scan: 200 but malformed report';
+        if (!e2eOk) {
+          overallStatus = overallStatus === 'down' ? 'down' : 'degraded';
+          errorMessage = errorMessage || (anatomyOk ? 'E2E scan: 200 but a partial report' : 'E2E scan: 200 but malformed report');
         }
       }
     } catch (e) {
@@ -1773,6 +1845,40 @@ serve(async (req) => {
       });
       overallStatus = 'down';
       errorMessage = errorMessage || `E2E scan: ${e instanceof Error ? e.message : 'Unknown'}`;
+    }
+
+    // Check 6b: HOW MANY VISITORS GOT THE FALLBACK (S11-028). One heartbeat
+    // scan an hour can land on a good minute; the visitors' own scans say
+    // whether the AI analysis is reaching them. free-keyword-scan writes one
+    // detection_telemetry row per visitor scan (never its own probes) with
+    // used_fallback when the rule-based report was served. Nothing read it.
+    try {
+      const since = new Date(Date.now() - 60 * 60_000).toISOString();
+      const [all, fell] = await Promise.all([
+        supabase.from('detection_telemetry').select('id', { count: 'exact', head: true }).gte('created_at', since),
+        supabase.from('detection_telemetry').select('id', { count: 'exact', head: true }).gte('created_at', since).eq('used_fallback', true),
+      ]);
+      const readErr = all.error ?? fell.error;
+      const total = typeof all.count === 'number' ? all.count : null;
+      const fallbacks = typeof fell.count === 'number' ? fell.count : null;
+      if (readErr || total === null || fallbacks === null) {
+        skip('scan_fallback_rate', `detection_telemetry unreadable: ${readErr?.message ?? 'no count returned'}`);
+      } else if (total < FALLBACK_RATE_MIN_SCANS) {
+        skip('scan_fallback_rate', `${total} visitor scan(s) in the last hour: too few to judge (needs ${FALLBACK_RATE_MIN_SCANS})`);
+      } else {
+        const ok = fallbacks / total < FALLBACK_RATE_ALARM;
+        checks.push({
+          name: 'scan_fallback_rate',
+          passed: ok,
+          error: ok ? undefined : `${fallbacks} of ${total} visitor scans in the last hour got the rule-based fallback report (bar: under ${Math.round(FALLBACK_RATE_ALARM * 100)}%): the AI analysis is failing for visitors`,
+        });
+        if (!ok) {
+          if (overallStatus === 'healthy') overallStatus = 'degraded';
+          errorMessage = errorMessage || `Scan fallback rate: ${fallbacks} of ${total} in the last hour`;
+        }
+      }
+    } catch (e) {
+      skip('scan_fallback_rate', `detection_telemetry read failed: ${e instanceof Error ? e.message : 'unknown'}`);
     }
 
     // Calculate total response time and adjust status based on latency

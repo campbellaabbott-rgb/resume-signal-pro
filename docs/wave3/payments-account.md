@@ -269,3 +269,54 @@ Each migration checks itself with a DO block (it RAISEs if the change did not la
 - **Wave-2 README.** The "Not in this deploy" follow-ups this branch closes:
   - "ProductSuccess records pro_ grants as full-price purchases" (23310733);
   - "the one-trial rule does not key on the card fingerprint". This one is documented above as not built, and why.
+
+## S11 round (2026-10-11): branch `w31/payments-account`
+
+Built on `wave3/integration` at 1b7bfe53 from the S11 sweep register (group payments-account) and the owner decisions of 2026-10-11. It ships inside wave 3. Every item was reproduced first; each fix has a behaviour test that fails on the file it replaces (each was run against the old file).
+
+### What changes
+
+| Register | What changes |
+| --- | --- |
+| S11-053 | The confirmation, the trial reminder and the EU/UK withdrawal acknowledgement go straight through Resend (the key and verified domain paid deliveries use) with the notice's idempotency key, and `subscription_notices.sent_at` is written only after a 2xx. The queue is not used for them. A failed send records nothing and the webhook answers 500, so Stripe redelivers. A withdrawal's acknowledgement is written into the ledger (`pending_mail`) before the plan is cancelled; if its first send fails, stripe-webhook sends it on the `customer.subscription.deleted` event the cancel causes. A bounced or complained address gets nothing; a drip unsubscribe does not stop a legal notice. |
+| S11-014 | A failed delivery is retried at 5 min, 15 min, 1 h, 2 h, 4 h, 6 h, then 8 h, within the 24 hours the résumé lives. A 402, 408, 425, 429 or 5xx, a timeout, a network error, a deadlock or the limiter being unavailable adds to `transient_failures` and spends no try (read from the error text the live builds already write, so the live webhook benefits as soon as the migration applies). `max_retries` is 8 counted failures. Open rows bought in the last day keep their place (old budget 3 becomes 8). retry-failed-deliveries mails the owner once when a delivery runs out. |
+| S11-146 | `get_failed_deliveries_for_retry` gains `p_include_generating` (default false). The live sweep's call is handed no 'generating' row, so it cannot hold its five-row batch with rows it skips; the new sweep passes true. 20261009140000 is edited in place (not yet applied anywhere) and its header no longer says the old build spends a retry. |
+| S11-015 | The billing portal opens for a legacy plan with no `metadata.user_id` when a Pro or agent cache row bound to this account names the same Stripe customer (owner decision; no metadata backfill). The agent card shows the portal's refusal instead of doing nothing. |
+| S11-016 | After the Full Analysis renders, the address names it (`?session_id=…&share=…`), so a reload, Back or a restored tab loads the saved copy; the buyer's own reload is not labelled a shared view. With no résumé in the tab, the page asks analyze-resume by the session alone, and analyze-resume answers a redeemed session from its saved copy (a session with nothing delivered still needs the résumé). |
+| S11-017 | `validateTailoredResume` blanks any contact value the source résumé lacks (phone by digits, URL by host and path, email exactly) and any placeholder ("N/A", "Not provided"), and reports them (`removedContact`). generate-apply-package's prompt carries the copy-only contact rule. `contact-guard.ts` moved to `_shared` so both generators share it. |
+| S11-018, S11-054 | The success page no longer streams the Premium Package or the Cover Letter. verify-product-purchase makes them with the non-stream generators and the page renders the saved copy; with nothing bound, the page makes them from its own résumé with the same generators. generate-premium-package now runs the figure check too (an invented figure is a retryable 422, never delivered); generate-cover-letter now runs the contact guard first. verify reports "in progress" for every product the page shows from the saved copy (not the Coach or the Career Path, which make their own), whatever the page asked. Review round (.71): with a readable résumé bound and the server's generation failed, the page makes nothing and says it is coming (the retry sweep makes and mails it); verify's hasResumeData is false when the bound résumé could not be read. The stream functions are no longer called by the page; they stay deployed and gated. |
+| S11-140 | The page asks for five minutes while the server is generating (14 asks a load, inside the verifier's 30 an hour), then says the product is still being made and will be emailed. It never regenerates from the tab while a generation runs. |
+| S11-055 | A saved ATS Defense report renders with the ATS Parse Simulation run on the tab's résumé (and its layout flag). The saved apply-kit objects (webhook, verify, sweep) keep `groundingReport`. |
+| S11-074 | ATS Defense asks for up to three roles before checkout (one dialog, mounted once in App, opened by `purchaseProduct`; closing it starts no checkout). create-product-checkout writes them to the session's `target_roles` metadata or the Pro grant's new `target_roles` column; the webhook, verify, the sweep and the page's fallback all send them to generate-ats-defense. |
+| S11-038 | The Pro co-pilot writes each saved job its cover letter through generate-cover-letter (figure check, contact guard, model spend gate), and a kit made without one is given its letter alone. |
+| S11-138 | A client cannot date a tracker row while its posting is served (trigger), whatever page version writes it; a daily job (pg_cron `tracker-served-postings-undated`, 05:23 UTC, its own two-minute timeout) undates rows whose posting came back. |
+| S11-139 | The tracker cap counts only rows the member added (`user_applications.written_by`, stamped by the trigger; the agent's mirror rows already written are marked), skips the INSERT arm of an upsert to a row that exists, and applies to service_role on `shortlist_candidates`; shortlist-evaluate refuses a full account before any model call. Keep says when the tracker is full. |
+| S11-141 | Each Terms line keeps its own EU/UK box; the checkout sends the box of the line that holds the press, and the box clears as the checkout starts. |
+| S11-142 | The box shows when the build flag is on or the server says its switch is on: create-checkout answers a GET with `{euUkSales}`, asked once per page, and a refusal names its box and carries the wording. The owner publishes the page first and flips `EU_UK_SALES` after; `VITE_EU_UK_SALES` is no longer needed. |
+| S11-143, S11-144 | The builder's "Rescan this version" marks its own export as the draft's source, and "Start Over" sticks until a real import. |
+| S11-145 | A sign-out pressed in one tab writes a short-lived mark the other tabs read, so they do not report an expired session. |
+| Copy | The pass says an application counts only when the agent can send it (the agents group's rule), the co-pilot says it writes a résumé and a letter per job, the agent plan's Morning Queue and review lines are shorter, and ATS Defense says it targets the roles you name. All nine locales. |
+
+### Migrations (stamp range 20261009134000-134900)
+
+| migration | order |
+| --- | --- |
+| `20261009134000_a_legal_notice_is_recorded_as_sent_only_after_resend_accepted_it` | after 130000 and 133000; BEFORE stripe-webhook and withdraw-subscription (both write `sent_at`, `provider_message_id`, `pending_mail`) |
+| `20261009134100_a_paid_delivery_is_retried_through_the_day_and_an_outage_does_not_spend_its_tries` | any time; the live webhook and sweep benefit at once |
+| `20261009134200_a_served_posting_keeps_no_closure_date_and_the_tracker_cap_counts_only_what_its_owner_added` | after 131000; with or before the frontend (schedules one daily cron job) |
+| `20261009134300_a_pro_grant_keeps_the_roles_its_ats_defense_was_bought_for` | before or with create-product-checkout (the function mints the grant without the roles if the column is missing) |
+| `20261009140000_…` (edited) | either side of retry-failed-deliveries: the new opt-in argument defaults to false |
+
+Every new function REVOKEs from PUBLIC, anon and authenticated, every file checks itself and is safe to re-run, and the one cron command sets its own `statement_timeout`. None needs a hold.
+
+### Builds (sequence 61, so no other wave-3 round shares a string)
+
+analyze-resume, api-key-request, create-agent-checkout, create-checkout, create-portal-session, create-product-checkout, create-scan-pack-checkout, create-subscription-checkout, create-test-checkout, generate-apply-package, generate-cover-letter, generate-premium-package, retry-failed-deliveries, stripe-webhook, verify-product-purchase and withdraw-subscription answer `2026-10-09.61`; generate-application-answers and shortlist-evaluate answer `2026-10-10.61`; create-pass-checkout answers `2026-09-27.61` (the pass guard keeps the September date). `node scripts/deploy-ledger.mjs --against origin/wave3/integration`: 0 violations. job-board is untouched (.92).
+
+### Owner steps
+
+- **Resend sender:** the notices are sent from `billing@resumebooster.work`; the `resumebooster.work` domain must stay verified in Resend (it is the domain paid deliveries use). The `notify.resumebooster.work` DNS no longer gates them.
+- **STRIPE_PORTAL_LOGIN_URL (S11-015):** set it to the customer-portal login link from Stripe (Settings > Billing > Customer portal) and open it in a private window to check it.
+- **EU/UK switch (S11-142):** publish the frontend first, then set `EU_UK_SALES=on` (after Stripe Tax). Leave `VITE_EU_UK_SALES` unset.
+
+Verifier: section 74 gains the S11 block (builds, the create-checkout GET, the two new readers, `subscription_notices.sent_at`, and the owner SQL for 134200/134300).

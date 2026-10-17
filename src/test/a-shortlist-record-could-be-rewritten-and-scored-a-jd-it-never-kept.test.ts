@@ -1,7 +1,7 @@
 // @vitest-environment node
 /**
  * A SHORTLIST RECORD COULD BE REWRITTEN, AND SCORED A JD IT NEVER KEPT
- * (sweep S8-041, S8-110; migration 20261009111000).
+ * (sweep S8-041, S8-110; migrations 20261009111000 and 20261009112000).
  *
  * The "immutable" evaluation COMPLIANCE.md sells as LL144/FEHA evidence sat
  * under a table-wide INSERT and UPDATE grant to authenticated with owner-only
@@ -16,6 +16,16 @@
  * writes lands), then the same writes refused with it, shortlist_decide
  * writing the decision and the status together, and jd_version following
  * jd_text.
+ *
+ * THE DEPLOY WINDOW (register S11-056). The file used to revoke client INSERT
+ * in the same migration that added what the new function needs, and the
+ * ledger applies migrations first: the LIVE shortlist-evaluate inserts its
+ * evaluation through the employer's JWT after a paid model call, and the live
+ * page logs a decision and PATCHes the status in two calls, so both failed
+ * with 42501 for the whole window. Now 20261009111000 is additive only (the
+ * new function's column, shortlist_decide, the server's jd_version), and the
+ * lockdown is 20261009112000, held until the new function and page serve.
+ * With 111000 alone, the old function's and the old page's writes still land.
  */
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
@@ -28,6 +38,7 @@ vi.setConfig({ hookTimeout: 120_000, testTimeout: 60_000 });
 const MIG = resolve(__dirname, "../../supabase/migrations");
 const file = (prefix: string) => readFileSync(resolve(MIG, readdirSync(MIG).find((f) => f.startsWith(prefix))!), "utf8");
 const THIS = file("20261009111000_");
+const LOCKDOWN = file("20261009112000_");
 /** Production's Shortlist tables, grants and policies, as 20260704160023 left them. */
 const BASE = sqlCodeOf(file("20260704160023_"))
   .split(/;\s*\n/)
@@ -41,7 +52,8 @@ const B = "00000000-0000-4000-8000-00000000000b";
 const OPEN: PGlite[] = [];
 afterAll(async () => { for (const db of OPEN) await db.close().catch(() => {}); });
 
-async function boot(withMigration: boolean) {
+/** "none": production before wave 3; "additive": 111000 alone (the deploy window); "both": after the held half. */
+async function boot(withMigration: boolean | "additive") {
   const db = new PGlite();
   OPEN.push(db);
   await db.exec(`
@@ -56,6 +68,7 @@ async function boot(withMigration: boolean) {
   `);
   await db.exec(BASE);
   if (withMigration) await db.exec(THIS);
+  if (withMigration === true) await db.exec(LOCKDOWN);
   const role = await db.query<{ id: string }>(`INSERT INTO public.shortlist_roles (owner_id, title, jd_text) VALUES ($1, 'Data Engineer', 'Airflow, dbt and Snowflake for five years.') RETURNING id`, [A]);
   const cand = await db.query<{ id: string }>(
     `INSERT INTO public.shortlist_candidates (role_id, owner_id, score, signals, redacted_text) VALUES ($1, $2, 58, '[]', 'redacted') RETURNING id`,
@@ -93,7 +106,7 @@ describe("without the migration (teeth)", () => {
   });
 });
 
-describe("the decision log (teeth, then with 20261009111000)", () => {
+describe("the decision log (teeth, then with both halves)", () => {
   const forge = `INSERT INTO public.shortlist_decisions (candidate_id, owner_id, actor_email, action, old_value, new_value, created_at)
                  VALUES ($1, $2, 'ceo@employer.test', 'reject', 'pending', 'rejected', '2020-01-02T00:00:00Z')`;
 
@@ -120,7 +133,79 @@ describe("the decision log (teeth, then with 20261009111000)", () => {
   });
 });
 
-describe("with 20261009111000", () => {
+describe("with 20261009111000 alone: the deploy window (S11-056)", () => {
+  it("the LIVE shortlist-evaluate's insert through the employer's JWT still lands", async () => {
+    const { db, roleId } = await boot("additive");
+    const r = await as(db, A, `INSERT INTO public.shortlist_candidates (role_id, owner_id, score, signals, redacted_text) VALUES ($1, $2, 64, '[]', 'redacted') RETURNING id`, [roleId, A]);
+    expect(r.error).toBeNull();
+    expect(r.rows).toHaveLength(1);
+  });
+
+  it("the LIVE page's decision insert and its separate status PATCH still land", async () => {
+    const { db, candId } = await boot("additive");
+    expect((await as(db, A, `INSERT INTO public.shortlist_decisions (candidate_id, owner_id, action, old_value, new_value, reason) VALUES ($1, $2, 'reject', 'pending', 'rejected', 'Not a fit')`, [candId, A])).error).toBeNull();
+    expect((await as(db, A, `UPDATE public.shortlist_candidates SET status = 'rejected' WHERE id = $1`, [candId])).error).toBeNull();
+    expect((await one(db, `SELECT status FROM public.shortlist_candidates WHERE id = $1`, [candId])).status).toBe("rejected");
+  });
+
+  it("the NEW page's shortlist_decide and the NEW function's jd_text_scored already work", async () => {
+    const { db, roleId, candId } = await boot("additive");
+    const r = await as(db, A, `SELECT public.shortlist_decide($1, 'advance', 'Strong Airflow work') AS v`, [candId]);
+    expect(r.error).toBeNull();
+    expect((await one(db, `SELECT status FROM public.shortlist_candidates WHERE id = $1`, [candId])).status).toBe("advanced");
+    await db.exec(`SET ROLE service_role`);
+    await db.query(`INSERT INTO public.shortlist_candidates (role_id, owner_id, score, jd_version, jd_text_scored) VALUES ($1, $2, 71, 1, 'Airflow')`, [roleId, A]);
+    await db.exec(`RESET ROLE`);
+    expect((await one(db, `SELECT count(*)::int AS n FROM public.shortlist_candidates WHERE jd_text_scored IS NOT NULL`)).n).toBe(1);
+  });
+
+  it("the additive half re-runs, and the lockdown refuses to land without it", async () => {
+    const { db } = await boot("additive");
+    await expect(db.exec(THIS)).resolves.toBeDefined();
+    const bare = new PGlite();
+    OPEN.push(bare);
+    await bare.exec(`CREATE ROLE anon NOLOGIN; CREATE ROLE authenticated NOLOGIN; CREATE ROLE service_role NOLOGIN BYPASSRLS;
+      CREATE SCHEMA auth; CREATE TABLE auth.users (id uuid PRIMARY KEY, email text);
+      CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT NULL::uuid $$;`);
+    await bare.exec(BASE);
+    await expect(bare.exec(LOCKDOWN)).rejects.toThrow(/apply 20261009111000 first/);
+  });
+});
+
+// Wave 3 verified on 2026-10-11 and the hold was released: from then on the
+// same condition is a migrationOrder rule, so a message can still never put
+// the lockdown ahead of the function whose insert it would refuse.
+describe("the lockdown waits for the new function and page, held or released (S11-056)", () => {
+  type Ledger = {
+    holdUntilVerified: Array<{ stamp: string; until: string }>;
+    migrationOrder: Record<string, { after?: string; before?: string[]; why?: string }>;
+  };
+  const ledger = JSON.parse(readFileSync(resolve(__dirname, "../../docs/deploy-ledger.json"), "utf8")) as Ledger;
+
+  it("docs/deploy-ledger.json holds 20261009112000, or orders it after shortlist-evaluate .2026-10-10.62, naming shortlist_decide", async () => {
+    const { buildAtLeast } = await import("../../scripts/deploy-ledger.mjs");
+    const hold = ledger.holdUntilVerified.find((h) => h.stamp === "20261009112000");
+    const rule = ledger.migrationOrder["20261009112000"];
+    expect(hold || rule, "20261009112000 is neither held nor ordered").toBeTruthy();
+    if (hold) {
+      expect(hold.until).toMatch(/shortlist-evaluate\.2026-10-\d\d\.\d+/);
+      expect(hold.until).toMatch(/shortlist_decide/);
+      return;
+    }
+    const after = /^fn:shortlist-evaluate@(\d{4}-\d{2}-\d{2}\.\d+)$/.exec(rule!.after ?? "");
+    expect(after, `after "${rule!.after}" does not name shortlist-evaluate`).toBeTruthy();
+    expect(buildAtLeast(`shortlist-evaluate.${after![1]}`, "shortlist-evaluate.2026-10-10.62")).toBe(true);
+    expect(rule!.why).toMatch(/shortlist_decide/);
+  });
+
+  it("the additive half is neither held nor made to wait for the function it must precede", () => {
+    expect(ledger.holdUntilVerified.some((h) => h.stamp === "20261009111000"), "the additive half must not be held").toBe(false);
+    expect(ledger.migrationOrder["20261009111000"]?.after).toBeUndefined();
+    expect(ledger.migrationOrder["20261009111000"]?.before).toContain("fn:shortlist-evaluate");
+  });
+});
+
+describe("with 20261009111000 and 20261009112000", () => {
   it("an owner cannot rewrite an AI column, insert an evaluation, or change status without its decision", async () => {
     const { db, roleId, candId } = await boot(true);
     expect((await as(db, A, `UPDATE public.shortlist_candidates SET score = 99 WHERE id = $1`, [candId])).error).toMatch(/permission denied/);
@@ -178,5 +263,6 @@ describe("with 20261009111000", () => {
     await db.exec(`RESET ROLE`);
     expect((await one(db, `SELECT count(*)::int AS n FROM public.shortlist_candidates WHERE jd_text_scored IS NOT NULL`)).n).toBe(1);
     await expect(db.exec(THIS)).resolves.toBeDefined();
+    await expect(db.exec(LOCKDOWN)).resolves.toBeDefined();
   });
 });

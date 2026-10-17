@@ -1371,7 +1371,7 @@ export { isCollidedToken } from "../src/lib/board-collisions";
     // L1-05: /roles/pilot cited Aircraft Mechanics as the Department of
     // Labor's word on pilots. The industry's occupation is cited only when it
     // names this role (src/lib/onet-match.ts).
-    const onet = D.onetForRole(role.title, D.ONET_EXPECTATIONS[role.industry]);
+    const onet = D.onetForRole(role, D.ONET_EXPECTATIONS[role.industry]);
     const copy = D.roleListCopy(role.title, indName);
     const relatedTitles = uniq(data.titles).filter((t) => t.toLowerCase() !== role.title.toLowerCase()).slice(0, 10);
     const siblings = D.rolesForIndustry(role.industry).filter((r) => r.slug !== role.slug);

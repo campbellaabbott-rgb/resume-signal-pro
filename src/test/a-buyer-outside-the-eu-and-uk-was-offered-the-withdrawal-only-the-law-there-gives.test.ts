@@ -66,10 +66,12 @@ export default class Stripe {
 
 const env: Record<string, string> = {
   SUPABASE_URL: "https://harness.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "service", SUPABASE_ANON_KEY: "anon",
-  STRIPE_SECRET_KEY: "sk_test", STRIPE_WEBHOOK_SECRET: "whsec", EU_UK_SALES: "on",
+  STRIPE_SECRET_KEY: "sk_test", STRIPE_WEBHOOK_SECRET: "whsec", EU_UK_SALES: "on", RESEND_API_KEY: "re_test",
 };
 let db = new FakeDb();
 const queued: Array<Record<string, unknown>> = [];
+/** What Resend was handed: legal notices go directly, never through the queue (S11-053). */
+const mails: Array<{ subject: string; text: string }> = [];
 let withdraw: EdgeHandler;
 let webhook: EdgeHandler;
 
@@ -84,6 +86,13 @@ beforeAll(async () => {
       : { data: { user: null }, error: { message: "bad" } } },
   };
   g.Deno = { env: { get: (k: string) => env[k] }, serve: (h: unknown) => { g.__edgeHandler = h; } };
+  g.fetch = async (input: string | URL | Request, init?: RequestInit) => {
+    if (String(input instanceof Request ? input.url : input) === "https://api.resend.com/emails") {
+      mails.push(JSON.parse(String(init?.body)));
+      return new Response(JSON.stringify({ id: `re_${mails.length}` }), { status: 200 });
+    }
+    return new Response("{}", { status: 200 });
+  };
   g.EdgeRuntime = { waitUntil: (p: Promise<unknown>) => { Promise.resolve(p).catch(() => undefined); } };
   withdraw = await loadEdgeHandler("withdraw-subscription", {
     "https://esm.sh/@supabase/supabase-js@2": "export const createClient = () => globalThis.__terrDb;",
@@ -101,6 +110,7 @@ afterEach(() => {
   Object.assign(world, { customerCountry: null, invoiceCountry: null, subs: [], refunds: [], cancelled: [] });
   db = new FakeDb({ used_stripe_sessions: ["session_id"] });
   queued.length = 0;
+  mails.length = 0;
 });
 
 const proPlan = () => ({
@@ -128,6 +138,7 @@ describe("withdraw-subscription, with the switch on", () => {
     expect(world.refunds).toEqual([]);
     expect(world.cancelled).toEqual([]);
     expect(queued).toEqual([]);
+    expect(mails).toEqual([]);
   });
 
   it("withdraws the same plan billed to a German address", async () => {
@@ -181,15 +192,16 @@ describe("the confirmation mail's 14-day paragraph", () => {
       } } }),
     }));
     expect(res.status).toBe(200);
-    const notice = queued.find((q) => (q.payload as { label?: string }).label === "subscription-confirmation");
-    expect(notice, "no confirmation queued").toBeTruthy();
-    return String((notice!.payload as { text: string }).text);
+    const notice = mails.find((m) => /subscription/i.test(m.subject));
+    expect(notice, "no confirmation sent").toBeTruthy();
+    return String(notice!.text);
   };
 
   it("is in the mail to a buyer billed in Ireland, and not in the mail to one billed in the US", async () => {
     expect(await confirm("IE")).toMatch(/You may withdraw from this contract within 14 days/);
     db = new FakeDb({ used_stripe_sessions: ["session_id"] });
     queued.length = 0;
+    mails.length = 0;
     expect(await confirm("US")).not.toMatch(/withdraw/i);
   });
 });

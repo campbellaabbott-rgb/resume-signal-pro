@@ -8,12 +8,12 @@
  * and an unsubscribe a scanner's prefetch could perform would not be the
  * person's choice (register L10-14).
  */
-export type UnsubscribeList = "search-digest" | "market-pulse" | "scan-report";
+export type UnsubscribeList = "search-digest" | "market-pulse" | "scan-report" | "agent-digest";
 
 export type UnsubscribeTarget = {
   list: UnsubscribeList;
   /** The edge function that unsubscribes this list. */
-  fn: "send-search-digest" | "send-market-pulse" | "send-scan-report";
+  fn: "send-search-digest" | "send-market-pulse" | "send-scan-report" | "send-agent-digest";
   params: Record<string, string>;
 };
 
@@ -37,6 +37,11 @@ export function unsubscribeFromHash(hash: string): UnsubscribeTarget | null {
     }
     case "scan-report":
       return { list: "scan-report", fn: "send-scan-report", params: { token } };
+    // The agent's morning shortlist, keyed by the account (S11-132).
+    case "agent-digest": {
+      const id = p.get("id") ?? "";
+      return UUID.test(id) ? { list: "agent-digest", fn: "send-agent-digest", params: { id, token } } : null;
+    }
     default:
       return null;
   }

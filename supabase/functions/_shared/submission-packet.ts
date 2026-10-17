@@ -184,19 +184,62 @@ const START_DATE =
 // need of / needing) a visa or sponsorship?" asks the opposite (S8-006); a
 // "without" neither reading parses goes to the candidate. A sponsor word in a
 // résumé prompt or with no immigration word beside it ("sponsorship and
-// partnership programs") is not one (S8-044). Rationale: docs/wave3/agents-api.md.
+// partnership programs") is not one (S8-044). The employer's own notice in the
+// label ("Please note we are unable to sponsor visas") is taken out before the
+// label is read, and the question left is what gets answered: read whole, an
+// authorisation question carrying that notice was answered from the sponsorship
+// flag, so a citizen said No and a visa-needer said Yes (S11-012). Sponsorship
+// the candidate has had or has now ("Have you ever been sponsored for an
+// H-1B?") is history the profile does not hold, and goes to the candidate.
+// Rationale: docs/wave3/agents-api.md.
 export const RE_SPONSORSHIP =
   /\bsponsor(ship|ing|ed)?\b|immigration\s+(case|petition|process|filing)|(requir\w*|need\w*)[^?]{0,30}\b(work\s+)?(visa|permit)\b/i;
 export const RE_SPONSOR_INVERTED =
   /without\s+(?:the\s+need\s+(?:for|of)\s+|needing\s+|requiring\s+)?(?:an?\s+|any\s+)?(?:visa\s+|work\s+)?(?:sponsor|visa\b|permit\b)|not\s+require\s+sponsor|no\s+sponsorship\s+(required|needed)|free\s+from\s+(any\s+)?(visa|immigration)/i;
 const SP_CONTEXT = /visa|immigration|permit|authori[sz]|employment|to\s+work|requir|need|without|status|h-?1b|petition|\bsponsor\s+you\b/i;
 const SP_PROSE = /^\s*(?:please\s+)?(?:describe|tell|explain|share|walk|discuss|elaborate|outline|how|why|what\s+(?:experience|is\s+your\s+experience))\b/i;
-export type SponsorshipSense = "asks" | "inverted" | "unread";
+const SP_NOTICE_NEG = /\b(?:unable|cannot|can\s*not|can['’]?t|not|no|never|won['’]?t|don['’]?t|doesn['’]?t|isn['’]?t|aren['’]?t)\b/i;
+const SP_NOTICE_WHO = /\b(?:we|we['’]re|our|company|employer|organi[sz]ation|role|position|job|vacancy|opening|sponsorship)\b/i;
+const SP_ASKS_YOU = /^\s*(?:please\s+)?(?:are|do|does|did|will|would|have|has|had|can|could|is|was|were|should|may|confirm|indicate|select|state|tell|acknowledge)\b|\byou(?:r|rs|rself)?\b/i;
+const SP_HISTORY =
+  /\b(?:have|has)\s+(?:you\s+)?(?:ever\s+|previously\s+|already\s+)?been\s+sponsored\b|\b(?:were|was)\s+you\s+(?:ever\s+|previously\s+)?sponsored\b|\bare\s+you\s+(?:currently\s+|presently\s+|now\s+)?(?:being\s+)?sponsored\b|\b(?:ever|previously|already)\s+(?:been\s+)?sponsored\b|\bsponsored\s+(?:before|previously|in\s+the\s+past)\b|\b(?:current|previous|prior|former|past)\s+employer\s+(?:has\s+|have\s+|had\s+)?sponsor|\b(?:did|has|does)\s+(?:your\s+|an?\s+)?(?:current\s+|previous\s+|prior\s+|former\s+)?employer\s+sponsor|\b(?:currently|presently)\s+(?:hold|have|on)\s+(?:an?\s+)?sponsored\b/i;
+export type SponsorshipSense = "asks" | "inverted" | "unread" | "history";
+// The notice also comes inside the question's own clause ("...the United
+// States as we are unable to sponsor visas?"), so a clause opened by as, since,
+// because or so is split off and read on its own. A condition ("if you require
+// sponsorship") or an instruction ("please do not apply") is the employer
+// talking, never the question, whatever "you" it holds. And an authorisation
+// question whose sponsor words left after that are not the candidate's own
+// need ("will you require sponsorship") is not read as either: it goes to the
+// candidate (review of S11-012).
+const SP_CONDITION = /^\s*(?:and\s+|but\s+)?(?:if|should|in\s+case|where|when)\s+you\b/i;
+const SP_INSTRUCTION = /\b(?:do\s+not|don['’]?t|should\s+not|need\s+not|refrain\s+from)\s+apply|\bwill\s+not\s+be\s+considered\b/i;
+const SP_AUTH_ASKED =
+  /legally\s+(authori[sz]ed|entitled|eligible|permitted)|legally\s+(?:able|allowed)\s+to\s+(?:live\s+and\s+)?work|(authori[sz]ed|eligible|entitled|permitted)\s+to\s+work|work\s+authori[sz]ation|right\s+to\s+work|permission\s+to\s+work/i;
+const SP_OWN_NEED =
+  /\b(?:requir|need)\w*\s+(?:\S+\s+){0,4}?(?:sponsor|(?:work\s+)?visa\b|(?:work\s+)?permit\b)|\bsponsor\w*\s+(?:\S+\s+){0,3}?(?:requir|need)\w*/i;
+/** The label without the employer's sponsorship notice: what is actually asked. */
+export function withoutSponsorNotice(label: string): string {
+  return label
+    .split(/([.?!;:,()[\]]|\s[-–—]\s|\s(?:as|since|because|so)\s)/i)
+    .filter((part) => {
+      const s = part.replace(/\bsponsor\w*\s+(?:you|your\s+\w+)\b/gi, "sponsor");
+      if (/\bsponsor/i.test(s) && (SP_CONDITION.test(s) || SP_INSTRUCTION.test(s))) return false;
+      return !(/\bsponsor/i.test(s) && SP_NOTICE_NEG.test(s) && SP_NOTICE_WHO.test(s)
+        && !SP_ASKS_YOU.test(s) && !RE_SPONSOR_INVERTED.test(part));
+    })
+    .join("")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 export function sponsorshipSense(label: string): SponsorshipSense | null {
-  if (!RE_SPONSORSHIP.test(label) || SP_PROSE.test(label)) return null;
-  if (!SP_CONTEXT.test(label) && label.trim().split(/\s+/).length > 3) return null;
-  if (RE_SPONSOR_INVERTED.test(label)) return "inverted";
-  return /\bwithout\b/i.test(label) ? "unread" : "asks";
+  const asked = withoutSponsorNotice(label);
+  if (!RE_SPONSORSHIP.test(asked) || SP_PROSE.test(asked)) return null;
+  if (!SP_CONTEXT.test(asked) && asked.trim().split(/\s+/).length > 3) return null;
+  if (SP_HISTORY.test(asked)) return "history";
+  if (RE_SPONSOR_INVERTED.test(asked)) return "inverted";
+  if (/\bwithout\b/i.test(asked)) return "unread";
+  return SP_AUTH_ASKED.test(asked) && !SP_OWN_NEED.test(asked) ? "unread" : "asks";
 }
 // ── end of the sponsorship rule ──
 /** The name the sheet's inversion rule had before it moved into the block above. */
@@ -216,18 +259,23 @@ const COVER_LETTER = /cover\s*-?\s*letter|motivation(al)?\s+letter|letter\s+of\s
 // The sheet answered "authorized to work in the U.S.?" Yes for a UK candidate
 // while the worker refused the same box; work-countries.ts is the worker's
 // module, copied byte for byte.
-function standingValue(label: string, s: StandingAnswers, country: string): string | null {
-  const l = label.toLowerCase();
+function standingValue(label: string, s: StandingAnswers, country: string, postingCountry: string | null): string | null {
+  // The employer's "we are unable to sponsor" notice is not the question
+  // (S11-012): what is left once it is out is read, as the worker reads it.
+  const asked = withoutSponsorNotice(label);
+  const l = asked.toLowerCase();
   const yn = (b: boolean | null | undefined) => (b === true ? "Yes" : b === false ? "No" : null);
+  // "This country" is the posting's own, as in the worker (S11-060).
   const covered = (orMeansAny: boolean) =>
-    coverage(label, s.workAuthorizedCountries ?? [], country, { orMeansAny }).kind !== "not-covered";
+    coverage(asked, s.workAuthorizedCountries ?? [], country, { orMeansAny, postingCountry }).kind !== "not-covered";
   const sense = sponsorshipSense(label);
   if (sense) {
     // "Authorized to work ... WITHOUT sponsorship?" asks the opposite question
     // to "Will you require sponsorship?", and answering both with the same
     // boolean told an authorised candidate's review sheet to say No.
     if (s.requiresSponsorship === null || s.requiresSponsorship === undefined) return null;
-    if (sense === "unread" || !covered(false)) return null;
+    // Sponsorship had or held now is history the profile does not state.
+    if (sense === "unread" || sense === "history" || !covered(false)) return null;
     return yn(sense === "inverted" ? !s.requiresSponsorship : s.requiresSponsorship);
   }
   // A sponsor word that is not a sponsorship question ("are you currently
@@ -259,6 +307,12 @@ export function buildPacket(opts: {
    * tell a generated sentence from one the candidate wrote themselves.
    */
   coverNote?: { value: string; tailored: boolean };
+  /**
+   * The posting's own country (job_board_postings.country). "Authorised to
+   * work in this country?" is about it, not about the candidate's (S11-060);
+   * absent, such a question blocks rather than being answered from home.
+   */
+  postingCountry?: string | null;
 }): Packet {
   const { questions, profile, standing, drafted, automationTier } = opts;
   const fields: FilledField[] = [];
@@ -343,7 +397,7 @@ export function buildPacket(opts: {
     }
 
     if (cls === "factual") {
-      const v = standingValue(label, standing, t(profile.country));
+      const v = standingValue(label, standing, t(profile.country), t(opts.postingCountry) || null);
       if (v !== null) fields.push({ key: label, value: v, source: "standing" });
       else if (q.required) {
         blockers.push({

@@ -9,12 +9,13 @@
 # line that needs a migration names it.
 echo "== 71. job-board .92 (wave 3): Workday language, Teamtailor pages, federal feed, stemmed date/pay orders, cold cursor, employer routes and names, fit limits =="
 J '{"action":"status"}' > /tmp/vd_71_status.json
-for VD71_FN in job-board job-fit application-fit; do
+for VD71_FN in job-board job-fit application-fit nl-search; do
   curl -s -m 30 -o /dev/null -D /tmp/vd_71_pf_$VD71_FN.txt -X OPTIONS "$B/functions/v1/$VD71_FN" -H "x-rb-budget: probe" \
     -H "Origin: https://resumebooster.work" -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: content-type"
   VD71_FB=$(tr -d '\r' < /tmp/vd_71_pf_$VD71_FN.txt | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
-  # job-fit and application-fit: .2, the integration's build (job-board and board-data-ingest each stamped .1).
-  case "$VD71_FN" in job-board) VD71_D=2026-09-09; VD71_N=92;; *) VD71_D=2026-10-09; VD71_N=2;; esac
+  # job-fit and application-fit: .3, the S11 round's build (parsers-scan); nl-search: .7, the build
+  # the round merged (jobboard-runtime's S11-026 pay currency with parsers-scan's change).
+  case "$VD71_FN" in job-board) VD71_D=2026-09-09; VD71_N=92;; nl-search) VD71_D=2026-10-09; VD71_N=7;; *) VD71_D=2026-10-09; VD71_N=3;; esac
   if [ -z "$VD71_FB" ]; then echo "FAIL  $VD71_FN preflight carries no x-fn-build (want $VD71_FN.$VD71_D.$VD71_N or later; job-fit and application-fit had no stamp before .92's wave)"
   elif build_ge "$VD71_FN" "$VD71_FB" "$VD71_D" "$VD71_N"; then echo "PASS  $VD71_FN preflight x-fn-build = $VD71_FB ($VD71_FN.$VD71_D.$VD71_N or later)"
   else echo "FAIL  $VD71_FN preflight x-fn-build = $VD71_FB (want $VD71_FN.$VD71_D.$VD71_N or later; over the ~4.5 MB raw-source cap the old bundle keeps serving)"; fi
@@ -98,15 +99,30 @@ for(const sort of ["newest","salary"]){
   if(!cs)info("S8-087 sliceStats.cursorStep "+JSON.stringify(cs)+" (null on a hot slice; re-run during the cold phase)");
   else{const n=Number(st.coldBoards)||0;const step=n?((cs.to-cs.from)%n+n)%n:cs.to-cs.from;
     info("S8-087 cursorStep "+JSON.stringify(cs)+": stepped "+step+" for "+cs.started+" started (on .92 a step above started is dormant skips passed, below it a deferral ahead of later starts; on .91 it always equals started)")}}
-// F1 (server half): employer names (migration 20261009100100).
-for(const [tok,want] of [["ms~wd5~external","Morgan Stanley"],["rmit~wd3~RMIT_Careers","RMIT University"],["cc","Climate Corps"]]){
+// F1 (server half): employer names (migration 20261009100100). Since S11-133 the
+// migration renames only the five bare-token boards (cc); the stored rows of a named tenant
+// are renamed by the name-sync lane of job-board (NAME_SYNC_VERSION 4), last in a
+// pass-end tail, a few dozen boards per pass: INFO until it has reached them.
+for(const [tok,want,lane] of [["ms~wd5~external","Morgan Stanley",true],["rmit~wd3~RMIT_Careers","RMIT University",true],["flextronics~wd1~Careers","Flex Ltd.",true],["cc","Climate Corps",false]]){
   const r=await list({companies:[tok],limit:1});const got=rows(r)[0]&&rows(r)[0].company;
   if(bad(r)||!rows(r).length)info("F1 "+tok+": no open row to read a name from");
+  else if(lane)soft(got===want,"F1 "+tok+" stored as "+JSON.stringify(got)+" (want "+want+" once the name-sync lane v4 has reached the board; S11-133/S11-134)");
   else console.log((got===want?"PASS":"FAIL")+"  F1 "+tok+" stored as "+JSON.stringify(got)+" (want "+want+"; FAIL until 20261009100100 is applied)");
 }
 // S8-062: no anon probe that does not spend a limiter row; the build lines above carry it.
 info("S8-062 job-fit / application-fit: keyed on the platform address hourly, a limiter error is 503; not probed (a fit-batch call spends a check_rate_limit row). Judge by the two x-fn-build lines above.");
 info("S8-030 / S8-031 / S8-084 / S8-085 / S8-086 / S8-089: no anon probe; see the .92 note for the status fields and logs to watch");
+// S11 jobboard-runtime (the .92 additions, docs/job-board-deploy-notes.md).
+{const pe=st.passEnd||null;const s0=pe&&Date.parse(pe.startedAt);const d0=pe&&Date.parse(pe.doneAt);
+  if(!pe)late(false,"S11-001 status.passEnd absent (want {startedAt, doneAt} once a .92 pass has ended: the tail runs after the hop answers)");
+  else if(Number.isFinite(d0)&&d0>=s0)late(true,"S11-001 pass-end tail: started "+pe.startedAt+", done "+pe.doneAt+(pe.ms?" ("+Math.round(pe.ms/1000)+" s)":"")+" (want a doneAt after every startedAt)");
+  else if(Number.isFinite(s0)&&Date.now()-s0<30*60000)info("S11-001 pass-end tail: started "+pe.startedAt+", not finished yet ("+Math.round((Date.now()-s0)/60000)+" min in): a tail in flight proves nothing either way; run this section again after 30 min");
+  else late(false,"S11-001 pass-end tail: started "+pe.startedAt+", done "+(pe.doneAt||"never")+" (want a doneAt after every startedAt; a start with no finish past 30 min is a tail that died)");}
+{const fa=st.filterAudit||{};soft(typeof fa.ageMin==="number"&&fa.ageMin<12*60,"S11-001 filterAudit ageMin "+fa.ageMin+" (want under 720 once a .92 pass has ended: the tail kicks the audit before its slow deletes)");}
+late(Array.isArray(st.dbFailingBoards)&&st.dbFailingBoards.length===0,"S11-023 status.dbFailingBoards "+JSON.stringify(st.dbFailingBoards)+" (want []: a board our database fails to read or store for 3+ visits is named here, never pruned)");
+{const r=await call({action:"list",q:"cashier",limit:60,includeFacets:false});const folded=rows(r).filter((c)=>(c.postingCount||1)>1);
+  if(bad(r)||!folded.length)info("S11-005 q=cashier: no folded card to read");
+  else late(folded.every((c)=>Array.isArray(c.siblings)&&c.siblings.length>0&&c.siblings.every((s)=>s&&s.id&&s.applyUrl)),"S11-005 q=cashier: "+folded.length+" folded card(s), siblings "+folded.slice(0,3).map((c)=>(c.siblings||[]).length+"/"+(c.postingCount-1)).join(", ")+" (want every folded posting carried with its id and apply link, up to 50 a card)");}
 }catch(e){console.log("INFO  section 71 stopped early: "+String(e).slice(0,160))}
 })()'
 # S10-018 (20261009100400): cron.job is not readable with the publishable key, so the

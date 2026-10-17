@@ -69,7 +69,7 @@ decision 2 of 2026-10-08 and the commercial-readiness plan items 8–10.
 
 1. **Publish** the branch through a Lovable session (frontend + bake). Nothing to apply in Supabase; no edge function to deploy.
 2. **Run** `npm run verify:deploy` (it now ends with the IndexNow ping on a clean pass) and section 76: `bash scripts/verify-deploy.sh` or the section alone.
-3. **Keep the sitemap** after each publish for the next verifier run: `curl -s https://resumebooster.work/sitemap.xml > ~/.config/resumebooster/seo/last-sitemap.xml`. Section 76 then checks every posting URL the previous publish named (eight at a time; without the file, every posting URL of the live sitemap).
+3. **Save the live sitemap BEFORE each publish** (step 1), for the verifier run after it: `mkdir -p ~/.config/resumebooster/seo && curl -s https://resumebooster.work/sitemap.xml > ~/.config/resumebooster/seo/last-sitemap.xml`. Section 76 then checks every posting URL the previous publish named (eight at a time). Without the file, or with one saved after the publish (identical to the live sitemap), F2a prints INFO "cannot judge" and only the new sitemap's own posting URLs are checked (S11-154).
 
 ## Owner steps (decisions only)
 

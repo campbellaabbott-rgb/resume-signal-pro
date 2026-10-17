@@ -31,7 +31,8 @@ const PRICE_PER_CREDIT_USD = PRODUCTS.scanPack.priceUsd / (PRODUCTS.scanPack.cre
  * data), so every access is guarded and the absence of storage is simply "no
  * purchases held".
  */
-export const CREDIT_SESSIONS_KEY = 'scanCreditsSessions';
+export { CREDIT_SESSIONS_KEY } from '@/lib/purchase-proofs';
+import { CREDIT_SESSIONS_KEY } from '@/lib/purchase-proofs';
 /** Fired whenever the credits this browser can prove may have changed. */
 export const CREDITS_UPDATED_EVENT = 'scanCreditsUpdated';
 const MAX_KEPT = 10;

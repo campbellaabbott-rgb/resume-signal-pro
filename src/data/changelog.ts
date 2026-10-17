@@ -23,6 +23,18 @@ export interface ChangelogEntry {
 }
 
 export const changelog: ChangelogEntry[] = [
+  { id: "boardCountsCountAgain", date: "2026-10-11", tags: ["fixed"] },
+  { id: "placeSearchesFindTheirJobs", date: "2026-10-11", tags: ["fixed"] },
+  { id: "searchesThatMissedWhatYouMeant", date: "2026-10-11", tags: ["fixed"] },
+  { id: "everyFoldedOpeningOpens", date: "2026-10-11", tags: ["fixed"] },
+  { id: "employersUnderTheirOwnNames", date: "2026-10-11", tags: ["fixed"] },
+  { id: "scoreAgainstTheJobYouMeant", date: "2026-10-11", tags: ["new", "fixed"] },
+  { id: "whatTheScannerMisread", date: "2026-10-11", tags: ["fixed"] },
+  { id: "theFreeReportOffersTwoThings", date: "2026-10-11", tags: ["fixed"] },
+  { id: "fourPromisesNowKept", date: "2026-10-11", tags: ["fixed"] },
+  { id: "claimsWeCouldNotStandBehind", date: "2026-10-11", tags: ["fixed"] },
+  { id: "termsBesideTheBuyButtons", date: "2026-10-11", tags: ["improved", "fixed"] },
+  { id: "whatTheAgentSendsAndWhatAssistantsGet", date: "2026-10-11", tags: ["fixed"] },
   { id: "maineNoLongerMeansMexico", date: "2026-10-11", tags: ["fixed"] },
   { id: "searchWordsReadAsTyped", date: "2026-10-11", tags: ["fixed"] },
   { id: "boardLinksLoadTheirPage", date: "2026-10-11", tags: ["fixed"] },

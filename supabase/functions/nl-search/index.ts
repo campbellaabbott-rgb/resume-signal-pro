@@ -28,7 +28,9 @@ import { modelSpendGate } from "../_shared/model-spend-gate.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "nl-search.2026-10-09.1";
+// 2026-10-09.6 (S11-026): pay figures are read in the currency the user named and converted to the dollars the board compares; one above $2M or in a currency the board cannot rank is dropped and named, never clamped.
+// 2026-10-09.7 (wave-3 fix round integration): carries .6 above and the parsers-scan group's model-spend-gate change (S11-083's proven-caller rule), which that group stamped .2.
+const FN_BUILD = "nl-search.2026-10-09.7";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

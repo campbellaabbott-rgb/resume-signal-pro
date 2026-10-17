@@ -15,15 +15,16 @@ export type Answer = { data: unknown; error: { code?: string; message: string } 
 
 export class ProxyDb {
   queries: Query[] = [];
-  answer: (q: Query) => Answer | undefined = () => undefined;
+  /** A promise answers late (a slow statement); anything else answers on the next microtask, as before. */
+  answer: (q: Query) => Answer | Promise<Answer | undefined> | undefined = () => undefined;
 
   private build(q: Query): unknown {
     const settle = (mode: Query["mode"]) => {
       q.mode = mode;
+      const shape = (a: Answer | undefined) => (a ? { count: null, ...a } : { data: mode === "many" ? [] : null, error: null, count: 0 });
       return Promise.resolve().then(() => {
         const a = this.answer(q);
-        if (a) return { count: null, ...a };
-        return { data: mode === "many" ? [] : null, error: null, count: 0 };
+        return a instanceof Promise ? a.then(shape) : shape(a);
       });
     };
     const proxy: unknown = new Proxy(function () {}, {

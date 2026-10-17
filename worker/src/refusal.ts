@@ -154,7 +154,7 @@ export function classifyRefusal(reason: string, blocked?: BlockedLike[]): Refusa
   // here, "unclassified" would be right about the stage and the wording would
   // still be empty only by luck. Named explicitly so the answer does not depend
   // on which branch of the ladder they happen to miss.
-  if (/no confirmation recognised after submit|the page never settled/i.test(r)) {
+  if (/no confirmation recognised after submit|the page never settled|outcome unknown/i.test(r)) {
     return say("submit-uncertain");
   }
 

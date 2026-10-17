@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261009101000_a_place_filter_reads_its_index_and_a_leading_state_code_is_a_state.sql'));

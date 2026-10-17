@@ -46,6 +46,7 @@ import { MCP_PAGE_HOSTS, andList, type McpHost, type SignInFact } from "@/config
 import { PASS } from "@/config/products";
 import { AgentSetupChecklist } from "@/components/account/AgentSetupChecklist";
 import { PurchaseTerms } from "@/components/PurchaseTerms";
+import { stashedSessionIdFor } from "@/lib/auth-fragment";
 // The remembered host is ONE rule, in src/lib/agent-handoff.ts: the board,
 // /agents and this receipt read and write the same key through the same two
 // functions, so a change to what counts as a page host lands in one place.
@@ -103,7 +104,7 @@ export default function AgentPass() {
   const [params] = useSearchParams();
   // Stripe's ids are cs_… strings; anything else is not sent to the function.
   const sessionId = useMemo(() => {
-    const v = params.get("session_id") ?? "";
+    const v = params.get("session_id") || stashedSessionIdFor("/agents/pass", null).id || "";
     return /^cs_[A-Za-z0-9_]+$/.test(v) ? v : null;
   }, [params]);
 
@@ -247,7 +248,7 @@ export default function AgentPass() {
                       {t("agentPass.applications", "{{left}} of {{passApplications}} applications", { left: pass.applicationsLeft, passApplications })}
                     </p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      {t("agentPass.applicationsBasis", "Each accepted request spends one. A request a gate refuses spends nothing, and a send that never happened gives its application back.")}
+                      {t("agentPass.applicationsBasis", "An application counts only for a job the agent can send it to. A refused request, or a send that never happened, costs nothing.")}
                     </p>
                   </>
                 )}
@@ -264,6 +265,9 @@ export default function AgentPass() {
                     </button>
                     <p className="text-sm text-muted-foreground mt-2">
                       {t("agentPass.cardBody", "{{passHours}} hours with your agent, {{passApplications}} applications, ${{passPrice}}. Never renews.", PASS_COPY)}
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {t("agentPass.cardCharge", "It counts only jobs your agent can submit itself. Anything else is refused and costs nothing.")}
                     </p>
                   </div>
                 )}

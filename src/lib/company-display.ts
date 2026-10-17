@@ -115,13 +115,34 @@ const REAL_TENANT_NAMES = new Set([
 ]);
 
 /**
+ * Tenant codes a reviewer read on the employer's own careers site and found
+ * to be a code, not the name it uses (docs/wave3/seo-content.md, SEO F1, the
+ * 24 on the committed snapshot, plus BCBS). Grows only from such a read. A
+ * code here that gains an override in _shared/employer-names.ts is named by
+ * the override and stops being flagged.
+ */
+const REVIEWED_TENANT_CODES = new Set([
+  "uoflhealth", "rhe", "iff", "agecare", "alliancewd", "jcrew", "nationwidechildrens", "synnex",
+  "oshkoshcorporation", "ironmountain", "r1rcm", "capitalhealth", "blackrock", "erm", "loganhealth",
+  "abercrombie", "fogo", "onelineage", "gohealthuc", "sasllc", "shm", "pfg", "wnc", "snc", "bcbs",
+]);
+
+/**
  * True when the name a page would print for a board is still the vendor's
  * tenant code: a compound token (tenant~dc~site, Workday and Oracle) whose
- * name is just that tenant code in any letter case ("Ms", "Rmit",
- * "Uoflhealth", and "SHM" or "PFG", which companyDisplayName uppercased from
- * "Shm" and "Pfg") and no override names it. Case only: a name with a space
- * or punctuation was written by someone ("Driven Brands" for drivenbrands).
- * A single-segment token is the board name the employer chose on its vendor,
+ * printed name is that tenant code in some letter case, no override names
+ * it, and EITHER a reviewer found the code is not the employer's name
+ * (REVIEWED_TENANT_CODES) OR it cannot be a name at all: a vowelless code the
+ * display left in lower case ("Bb", "Db", "Bcbsnc"). A printed initialism
+ * ("GSK", "3M") is the employer's own style.
+ *
+ * Everything else prints the stored name (S11-013). A one-word employer named
+ * by its code is the common case, not the exception: Intel, Mastercard,
+ * Medtronic, Tapestry and Menasha are all intel~, mastercard~ ... tokens, and
+ * the earlier rule (any name equal to the code, bar a 49-name allowlist)
+ * noindexed their company pages and refused their posting pages. A name with
+ * a space or punctuation was written by someone and never matches. A
+ * single-segment token is the board name the employer chose on its vendor,
  * and is not judged here.
  */
 export function isCodeShapedName(token: string | null | undefined, name: string | null | undefined): boolean {
@@ -131,8 +152,9 @@ export function isCodeShapedName(token: string | null | undefined, name: string 
   // An override is the employer's own words, even when they equal the code ("Maersk").
   if (employerNameOverride(t) !== null) return false;
   const slug = t.split("~")[0].toLowerCase();
-  if (!slug || REAL_TENANT_NAMES.has(slug)) return false;
-  return n.toLowerCase() === slug;
+  if (!slug || REAL_TENANT_NAMES.has(slug) || n.toLowerCase() !== slug) return false;
+  if (REVIEWED_TENANT_CODES.has(slug)) return true;
+  return !/[aeiouy]/.test(slug) && n !== n.toUpperCase();
 }
 
 // Feeds occasionally double-escape HTML ("Bob's Auto &amp; Towing") — the

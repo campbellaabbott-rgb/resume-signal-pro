@@ -39,9 +39,65 @@ ALSO IN .92 (wave 3 integration, 2026-10-10; docs/wave3/README.md):
   **ONE-SHOT, remove in the first build after one full cold rotation of
   .92**. Also iCIMS country, seniority words and year sentences (new rows
   only), clusterKey in every script, and fit capped at 100.
+- S11-020 (wave 3 round 2, fetcher-frontend; NEW uncarried.ts, +1.9 KB raw
+  source): a list whose employer scope is entirely outside the catalogue
+  (`{companies:["amazon"]}`) answers the empty list shape plus
+  `unknownCompanies` before any database read, instead of a bare total 0 the
+  company page printed as "<X> has no open roles" under index,follow. A scope
+  mixing carried and uncarried tokens is served as before. The page renders
+  "We don't carry <X>", noindex, with no not-hiring sentence and no claim
+  offer. Measure: section 80's job-board line (an anon list probe).
 - From wave 3 agents-api: job-board now bundles `_shared/application-questions.ts`
   (+11.0 KB raw source) and `_shared/board-domains.ts` (+0.3 KB). Count both
   against the ~4.5 MB cap, beside board-data-ingest's +11,777 bytes.
+
+S11 JOBBOARD-RUNTIME (the S11 sweep of 2026-10-11, ~/.config/resumebooster/platform-debug-2026-10-11-s11/register.json; branch w31/jobboard-runtime, inside wave 3). job-board stays `2026-09-09.92`. Other builds: scan-heartbeat `2026-10-09.6`, send-search-digest `2026-10-09.6`, nl-search `2026-10-09.6`. Two NEW migrations, 20261009100500 and 20261009100600, both step 1, independent of every bundle; and three wave-3 migrations that are not yet applied were changed in place (100100, 100300, and payments-account's 131000). New job-board modules: name-sync.ts, typed-text.ts (job-board's local graph 47 modules, 3,787,488 bytes on 2026-10-11).
+- S11-001 (urgent). The pass-end hop ran its tail inside the request its parent awaits, and the gateway's 150 s idle timeout killed it on every pass from 2026-10-09 15:51Z: no refresh row, no refresh_head, no hot_tokens, no filter audit, no salary/experience/country kicks. The hop now answers its parent first and runs the tail in the background, in this order: facets, coverage, refresh + refresh_head + hot_tokens, every kick (filter audit, experience, country, posted, salary v10), then the slow work: date hygiene, a freshness sweep that reads, logs and deletes one 200-row chunk at a time and takes no new chunk once the hop is PASS_END_SWEEP_UNTIL_MS (180 s) old, the capacity governor, and the name-sync lane last (NAME_SYNC_UNTIL_MS, 240 s). The tail stamps job_board_meta `pass_end` {startedAt} at its start and {startedAt, doneAt, ms} at its end; status shows it as `passEnd`. scan-heartbeat .6 fails job_board_refresh_head (served counts > 3 h old), job_board_filter_audit (> 12 h) and job_board_pass_end (a start with no finish after 30 min).
+- S11-022. CHAIN_CAP was ceil(120/10)+160+4 = 176, but a hot hop takes min(shed step, floor(1200/250)) = 4 boards (3 at shed level 2), so a pass needs 190 hops (200 shedding) and every chain stopped at cold slice 147. CHAIN_CAP now uses HOT_STEP_FLOOR (3): 204. A test runs the shipped lane-size block at every shed level against it.
+- S11-023. A board whose feed read but whose existing-rows read or new-row upsert failed was counted as a vendor failure: pruned as 'board_dormant' at visit 17 (41.7 h) and re-armed on every recheck. Such boards now reach updateBoardFailures as `answeredTokens` (they clear a vendor streak and leave dormancy), and their run is counted in board_failures `dbStreaks`; from the third visit they are logged as `DB FAILURES`, carried as slice_stats `dbFailed`, listed in status `dbFailingBoards` and failed by scan-heartbeat's job_board_db_failures.
+- S11-024. The detail dead-link lookup and get_application_lifecycle looked closures up by posting_id alone (no index; 7.0 s cold on an unknown id). Both now pass the posting's token and reach job_board_closures_curve_idx. 20261009131000 (payments-account, unapplied) is changed in place: the cl CTE joins the ids by token first.
+- S11-005. collapseClusters kept only the lead row (Pilot "Cashier": 22 postings behind one Bellemont, AZ link, Nanton, AB in its place list). A card now carries up to GROUP_SIBLINGS_MAX (50) folded postings as `siblings` {id, location, applyUrl, postedAt}, and folds on employer + title + COUNTRY (rowClusterKey, also used by every "already on the page" check). Jobs.tsx lists them under the card with their own Apply links, links to the employer's board searched for the title when the card holds more, and counts shown POSTINGS (it printed "Showing 21 of 234" over all 234). send-search-digest asks with groupSimilar off.
+- S11-025. clusterKey stripped every bracketed segment ("Teacher (Mathematics)" = "Teacher (Elementary)"). A bracket now folds only when it holds a requisition number, a work mode or the row's own place (clusterKey's new location argument).
+- S11-021, the apostrophe half. The list action folds q and location to the ASCII apostrophe (a phone's "St. John’s" matched 0 against 101), ingest stores title and location folded, and an apostrophe-only difference on a stored row patches unlogged. The accent half (unaccent, title_tsv and a location index rebuilt over the postings table) is not done: it is a table rewrite the owner schedules.
+- S11-133. 20261009100100 renamed ~80,800 postings, their closures (a LIKE over the whole ledger) and snapshots in one transaction, and its all-postings self-verify could roll it back on one concurrent ingest insert. It now keeps the 179 overrides, the trigger change and the five bare-token repairs, and checks only those. The name-sync lane (NAME_SYNC_VERSION 3 -> 4) renames every board a company_name_overrides row names, a board at a time by the trigger's precedence (read from the table), each board by its own vendor, into postings, closures, snapshots and the closure rollup (token-keyed tables only for unshared tokens), and stamps only a run that finished clean and inside its clock.
+- S11-134. 'Clario' for clarioclinical collided with recruitee:clario. It is now 'Clario (eResearch Technology)' (its postings' hiringOrganization "eResearch Technology Inc"). A test pins every override against every other board's name and found two more from July, renamed by 20261009100600: flextronics 'Flex' -> 'Flex Ltd.' (greenhouse:flex is a rent-payments company) and spectrumhealth 'Spectrum Health' -> 'Corewell Health' (bamboohr:spectrumhealth is an Irish provider; the tenant's site is CorewellHealthCareers, its postings say "Corewell Health Corporate").
+- S11-135. 20261009100300 now rolls the final closure-rollup months of the boards it marks again from the ledger (the nightly job never re-rolls a final month), and the name sync renames rollup rows.
+- 20261009100500 unschedules the pg_cron job 'check-error-spikes-every-15-min' by name: no migration defines it and it ran every 15 minutes beside 20261008128000's 'check-error-spikes'. It raises while a job of that name survives.
+- S11 rollback: job-board, redeploy the previous .92 build (the tail runs inside the request again and dies at 150 s). 20261009100500: none needed (the job had no definition in the repo; re-create it by hand only if the owner knows what it ran). 20261009100600: `UPDATE public.company_name_overrides SET display_name = 'Flex' WHERE slug = 'flextronics'; UPDATE public.company_name_overrides SET display_name = 'Spectrum Health' WHERE slug = 'spectrumhealth';` (the lane would rename them back on a NAME_SYNC_VERSION bump). The name-sync lane: set job_board_meta name_sync_version to {"version": 4} to stop it.
+- S11 measure (read-only, section 71's S11 lines): status.passEnd has a doneAt after its startedAt once a .92 pass ends; status.filterAudit.ageMin under 720; status.dbFailingBoards []; a folded `q=cashier` card carries siblings with ids and apply links; `{companies:["ms~wd5~external"]}` reads "Morgan Stanley" once the lane has reached it (a few dozen boards a pass; log line `name sync v4`). The chain should reach the pass end on its own: status.chainKick.fromHop past 176 during a cold phase, with no 5-7 minute idle before the :x9 cron.
+
+SEARCH GROUP, wave 3 round 1 (S11 register 2026-10-11, items S11-002, S11-003,
+S11-004, S11-009; branch w31/search). job-board stays `2026-09-09.92`;
+public-api goes to `public-api.2026-10-09.6` (its `_shared/location-match.ts`
+copy changed). ONE MIGRATION:
+`20261009101000_a_place_filter_reads_its_index_and_a_leading_state_code_is_a_state.sql`.
+Verifier: NEW scripts/verify-deploy.d/79-wave3-search.sh. Rationale: n480-n482.
+- S11-002. The three search functions build the place as constant arms in
+  plpgsql, each an index condition on location_trgm_idx, instead of a per-row
+  semi-join over the alias list. Live on .91: q=manager in Boise, Knoxville or
+  Leeds 57014 after ~8.1-8.4 s and the unranked fallback at ~10 s.
+- S11-003. A state also matches a code that leads the place ("TX - Houston",
+  "US-TX-Houston", "USA TX Austin", "Austin - TX", "SD, Sioux Falls") on a row
+  in the code's own country, and ",TX" with no space. The same rule in
+  location-match.ts (browse, preferMatchedLocation, /v1). Live on .91:
+  q=pharmacist location=Texas 121 vs location="TX - " 130.
+- S11-004. The SIMPLE route matches short and stop words literally and the
+  rest by english stem, and an english search behind an empty window names
+  the stopword it ignored (droppedTerms). Live on .91: "QA engineers" 2,
+  "UX designers" 2, "HR managers" 4, "IT technicians" 10,000 unrelated.
+- S11-009. search_jobs is on a 2.5 s clock; on a miss the title tier alone
+  answers (new `p_title_only`) under 4 s, ranked, with `relatedUnavailable:
+  true`. Live on .91: manager/GB/hourly 57014 after 8.12 s.
+ORDER: the migration with or before job-board (old job-board never sends
+p_title_only; new job-board sends it only after a missed clock, and against
+the old SQL that call fails into today's fallback). It is not held. It
+re-creates search_jobs (now 24 parameters), count_jobs_capped and
+fuzzy_title_search (now plpgsql), service_role only, and runs each once with a
+term no posting holds to prove the generated SQL parses. ROLLBACK: re-apply
+20261008100200 (it drops every overload of the three first); a job-board
+already serving this build then gets PGRST202 on its title-only retry and
+falls back as before. MEASURE: section 79 (every line INFO until .92 serves
+and the migration is applied).
 
 WAVE 3, JOB-BOARD GROUP (the S8 debug sweep of 2026-10-08, ~/.config/resumebooster/platform-debug-2026-10-08/register.json, fix_group "job-board", plus the server half of the SEO & GEO report's F1). THREE FUNCTIONS: job-board `2026-09-09.92` (index.ts, normalize.ts, read-window.ts, rotation.ts, search-routing.ts, search-alias.ts, NEW request-headers.ts), job-fit `job-fit.2026-10-09.1` and application-fit `application-fit.2026-10-09.1` (both had NO x-fn-build until now). THREE MIGRATIONS (20261009100100, 20261009100200, 20261009100300: filename order is apply order, and the last waits for .92 to serve). One NEW shared module no function imports yet: supabase/functions/_shared/employer-names.ts (for the prerender and the React app). Verifier: NEW scripts/verify-deploy.d/71-wave3-job-board.sh. sources.ts UNCHANGED. Rationale: docs/job-board-index-notes.md n437-n447.
 
@@ -71,7 +127,7 @@ ALREADY FIXED, NOT WORKED: S8-088 by wave 2 (3253823f, L8-16: the floor is set a
 
 1. DEPLOY (a driven Lovable session; deploy.yml deploys nothing). Ask Lovable, after pulling main: deploy the edge functions job-board, job-fit and application-fit. Judge only by `status.version = 2026-09-09.92` and the preflights `x-fn-build: job-board.2026-09-09.92`, `job-fit.2026-10-09.1`, `application-fit.2026-10-09.1` (over the ~4.5 MB raw-source cap the old bundle keeps serving and the deploy still reports success). Bundle source (re-measured 2026-10-10 after the review fixes): the job-board module graph goes 3,720,652 -> 3,739,520 bytes (+18,868; 44 -> 45 modules, same walk as the .91 figure); every .ts under job-board/ and _shared/ 4,125,430 -> 4,160,419 bytes (one walk for both sides; employer-names.ts included though job-board does not import it), ~0.34 MB under the cap. job-fit's graph 308,861 -> 335,190 and application-fit's 303,070 -> 328,890 (both now import _shared/model-spend-gate.ts).
 2. APPLY, in this order:
-   - 20261009100100_an_employer_named_by_its_system_code_gets_the_name_it_uses.sql. Independent of the bundle (the trigger names every later write). Backfills postings, closures and snapshots on the named tokens with row-level UPDATEs; its self-verify reads every posting once.
+   - 20261009100100_an_employer_named_by_its_system_code_gets_the_name_it_uses.sql. Independent of the bundle (the trigger names every later write). Since S11-133 it adds the names, the trigger change and the five bare-token repairs only; the stored rows of the named boards are renamed by job-board's name-sync lane (NAME_SYNC_VERSION 4), and its self-verify reads only what it writes.
    - 20261009100200_federal_jobs_were_credited_to_whichever_agency_sorted_last.sql. Independent of the bundle; restates refresh_job_board_facets (service_role only), get_job_board_facets (unchanged) and get_company_suggest (an EXISTING anon/authenticated SECURITY DEFINER function, grants unchanged; no new client-callable definer). The refresh-board-facets cron rebuilds the facets row within 15 minutes.
    - 20261009100300_a_teamtailor_page_of_a_hundred_wrote_takedowns_nobody_made.sql (stamped after the two above so a runner applying by filename order runs it last; it was 20261009100000 until the 2026-10-10 review). ONLY AFTER job-board answers .92 AND status.sliceStats carries `build` .92 and a `buildSince` (section 71 prints both): the old bundle keeps writing the same false closures past its ceiling, and the file marks only closures written before buildSince + 5 minutes, so .92's own takedowns stay unsuspect. Applied before the stamp exists it marks every closure up to its ceiling (all old-bundle ones; its NOTICE says which bound it used) and must be re-run once the stamp is there. Creates job_board_closure_repairs if absent (RLS on, service_role only).
    Each RAISEs on its own failure and is safe to re-run.
@@ -95,7 +151,7 @@ ALREADY FIXED, NOT WORKED: S8-088 by wave 2 (3253823f, L8-16: the floor is set a
 - S8-087: `sliceStats.cursorStep`: to - from = started plus the dormant skips passed; the cold cursor RATE (advance per hour, never sliceStats.at) within 10% of the .90/.91 baseline. If slower, put the post-loop write back to `baseSliceLen: baseAttempted` (index.ts) and look for deferrals ahead of starts.
 - S8-090: `{q:"bank of america"}` searchRoute EMPLOYER, companyMatched "Bank of America"; `{q:"constructor"}` HTTP 200.
 - S8-022 (after 20261009100200 + 15 min): get_company_suggest('veterans health') answers 'USAJOBS', and every get_company_suggest round trip stays under 2.5s (the Explore employer check fires it per keystroke; a 57014 statement-timeout error means the per-row carried match is back).
-- F1 (after 20261009100100): `{companies:["ms~wd5~external"]}` rows read "Morgan Stanley"; a Googlebot GET of /jobs/company/ms~wd5~external carries it once the SEO group's prerender reads the module and re-bakes.
+- F1 (after 20261009100100 and once the name-sync lane v4 has reached the board, S11-133): `{companies:["ms~wd5~external"]}` rows read "Morgan Stanley"; a Googlebot GET of /jobs/company/ms~wd5~external carries it once the SEO group's prerender reads the module and re-bakes.
 - S8-062: job-fit 429 and 503 counts in the function logs (a 503 is the limiter failing, which used to pass silently).
 - S8-030 / S8-031 / S8-084 / S8-085 / S8-086: no anon probe. Logs: a `timeout` failure reason on a vendor that sent headers; the closure count of a lap-proving board on two successive proofs in one epoch (the second closes nothing it stamped); job_board_exits aged rows for windowed Workday/Oracle/iCIMS boards on visits that are not lap proofs (service role).
 

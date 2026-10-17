@@ -7,6 +7,8 @@
  * sent to a server and never appears in a Referer header, so the token cannot
  * leak into an access log, a CDN log or an analytics hit on the way in.
  */
+import { takeStashed } from "@/lib/auth-fragment";
+
 const TOKEN = "([0-9a-f]{64})";
 
 function fromHash(hash: string, name: string): string | null {
@@ -30,11 +32,16 @@ export function dripTokenFromHash(hash: string): string | null {
   return m ? m[1] : null;
 }
 
-/** Drop the fragment from the address bar once its token has been spent. */
+/**
+ * Drop the fragment from the address bar once its token has been spent, and
+ * the copy the first script in index.html moved into this tab's stash.
+ */
 export function forgetConfirmFragment(): void {
   try {
     window.history.replaceState(null, "", window.location.pathname + window.location.search);
   } catch { /* cosmetic */ }
+  takeStashed("fragment");
+  takeStashed("fragment_path");
 }
 
 /**

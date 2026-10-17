@@ -20,8 +20,30 @@ closes the gap. Policy lives in `docs/deploy-ledger.json`:
 - `holdUntilVerified`: migrations that start scheduled work; they go out in a
   second message only after the first one verifies live.
 - `drizzleBaseline`: the staged-runner record is complete from this stamp on.
+- `migrationOrder`: per migration stamp, `after` is `fn:<name>@<YYYY-MM-DD.N>`
+  (apply once that function answers that build or later) or `frontend`
+  (apply once the frontend is published), and `before` lists `fn:<name>`
+  the migration must precede. The message prints five steps: migrations
+  before the functions, the functions, migrations after the function each
+  waits for, the frontend, migrations after the frontend. A rule that cannot
+  be met (main carries an earlier build, or no such function) stops the
+  message (exit 6). A migration with no entry goes before the functions.
 - `reservations`: the migration-timestamp day and job-board version each
-  workstream may use, so two branches never collide.
+  workstream may use, so two branches never collide, and the order they
+  deploy in (`deployOrder`, §3).
+- `sharedFiles`: the owner of each file that two parallel branches both
+  change (§6; checked by `--overlap`).
+
+`--message` runs `git fetch origin main` and refuses (exit 5) unless HEAD is
+origin/main: Lovable pulls main, and a stale checkout re-lists migrations
+already applied. It also refuses, naming the paths, when any input it reads
+from the working tree (supabase/functions, supabase/migrations,
+drizzle/migrations, docs/deploy-ledger.json, the script itself) differs from
+that commit: an untracked migration would otherwise be listed under main's
+commit. `--draft` prints the same message from any checkout, headed
+as a draft that is not a deploy message. A function whose preflight does not
+answer, twice, is "could not check": the report lists it, the message opens
+with a STOP naming it, section 49 FAILs it, and the script exits 4.
 
 The script exits 2 when a function's own code changed after a stamp that is
 ALREADY LIVE ("MUST BUMP"): such a deploy could not be told apart from what is
@@ -77,14 +99,25 @@ the new main, and the ledger is re-run.
 
 ## 3. Reserved ranges
 
-| workstream | migrations | job-board BUILD_VERSION | other FN_BUILD date |
-|---|---|---|---|
-| wave 2 (merged, PR #24) | 20261008* | 2026-09-09.91 | 2026-10-08 |
-| wave 3 (in progress) | 20261009* | 2026-09-09.92 | 2026-10-09 |
-| ledger repair (this PR) | none | none | 2026-10-10 |
-| connect-and-apply | 20261011* | 2026-09-09.93 | 2026-10-11 |
-| company profiles (branches `profiles/`) | 20261012* | assigned when phase 3 merges, after .92 and .93; phases 0-2 change no job-board | 2026-10-12 |
-| next | 20261013* onwards, one day each | 2026-09-09.94+ | that day |
+The deploy order from 2026-10-11 is the order of the rows after the done ones.
+Each row is a `reservations` key in `docs/deploy-ledger.json`, which carries
+the order as `deployOrder`.
+
+| deploy | workstream (`reservations` key; branches) | migrations | job-board BUILD_VERSION | other FN_BUILD date |
+|---|---|---|---|---|
+| done | wave 2 (`wave2`; PR #24, verified 2026-10-11) | 20261008* | 2026-09-09.91 | 2026-10-08 |
+| done | ledger repair (PR #25) | none | none | 2026-10-10 |
+| 1 | wave 3 (`wave3`; wave3/, the S11 round's w31/, post-wave3/). Deployed 2026-10-11. Its closeout is the post-wave-3 tooling PR, then the three released migrations | 20261009* | 2026-09-09.92 | 2026-10-09 |
+| 2 | company profiles phases 0-2 (`company-profiles`; profiles/) | 20261012* | none: no job-board change | 2026-10-12 |
+| 3 | wave 4 (`wave4`; wave4/, connect-apply/): the S12 sweep fixes, the connect-search-apply build and the profiles MCP and /v1 tools, built and integrated as ONE wave. Until 2026-10-11 this was the connect-and-apply reservation | 20261011* | 2026-09-09.93 | 2026-10-11 |
+| 4 | company profiles phase 3, vendor benefits capture (`company-profiles-phase3`; profiles-p3/) | 20261013* | 2026-09-09.94 | 2026-10-13 |
+| after | next | 20261014* onwards, one day each | 2026-09-09.95+ | that day |
+
+A migration stamp need not sort in deploy order. Wave 4's 20261011* deploys
+after profiles' 20261012*, and the ledger lists whatever the staged runner has
+not recorded, whatever sorts first. Function stamps follow the rule below:
+wave 4 may not stamp 2026-10-11 on a function profiles already stamped
+2026-10-12.
 
 When two branches bump the same function, the integration keeps BOTH changes
 and gives the function a new stamp later than either. Every function whose code
@@ -108,3 +141,38 @@ stamp the function never SENDS counts as no marker (layoff-filings carries a
 BUILD_VERSION that only reaches a JSON body). Any
 workstream that changes such a function adds a marker (`FN_BUILD` in the CORS
 headers, as the other functions do). The ledger lists the ones still missing.
+
+## 6. Parallel branches own their files
+
+Branches that run at the same time change disjoint sets of files, or the
+ledger names who owns each file they share. A file two branches both edit is
+merged by whoever comes second, from memory, and the edits made in the other
+branch are what gets lost. A function two branches both change is the same
+risk one level up, plus a build-stamp collision (§2).
+
+`docs/deploy-ledger.json` `sharedFiles` maps a path to the workstream (a
+`reservations` key) that owns it. A key ending in `/` covers its folder, and
+`fn:<name>` covers a function. The owner's version is the base. The other
+branch rebases onto it after the owner merges and re-applies only its own
+entries. Name an owner only when the overlap cannot be moved to one branch.
+
+    node scripts/deploy-ledger.mjs --overlap <ref> [<ref> ...] [--main <ref>]
+
+For each ref it diffs `merge-base(ref, origin/main)..ref`, so each branch is
+judged by its own changes and not by what main gained since it forked. It
+lists every file changed by more than one ref, and every function changed by
+more than one ref (its own folder, or a `_shared` module it imports at that
+ref). It exits 4 when any of them has no owner in `sharedFiles`, or an owner
+that no reservation names. Pure git: no network, no fetch (run
+`git fetch origin` first).
+
+Run it on every in-flight branch:
+
+- **before launching parallel builders**, on the branches they will start
+  from, and again once each has pushed;
+- **before merging any branch while another is in flight**, on all of them,
+  the one merging included.
+
+An undeclared overlap is settled before the work continues: move the change to
+one branch, or give the file an owner in `sharedFiles` and say in both
+branches' notes what the other must keep.

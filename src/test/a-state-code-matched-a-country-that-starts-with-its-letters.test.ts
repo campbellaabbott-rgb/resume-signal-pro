@@ -171,7 +171,14 @@ describe("the edge applies the same rule", () => {
 
   it("the browse branch binds the boundary and the country for a code, and a plain ILIKE for a name", () => {
     expect(locationBranch("Maine")).toBe('location.ilike."%Maine%"');
-    expect(locationBranch(", ME")).toBe('and(location.ilike."%, ME%",location.match.", ME($|[^A-Za-z])",or(country.is.null,country.in.(US,CA)))');
+    // 20261009101000 (S11-003) keeps this arm as it stood and ORs two more
+    // beside it: ",ME" with no space, and a code that leads the place on a row
+    // placed in the code's own country.
+    expect(locationBranch(", ME")).toBe(
+      'or(and(location.ilike."%, ME%",location.match.", ME($|[^A-Za-z])",or(country.is.null,country.in.(US,CA))),' +
+      'and(location.ilike."%,ME%",location.match.",ME($|[^A-Za-z])",or(country.is.null,country.in.(US,CA))),' +
+      'and(location.match."^ME ?([-,]|$)|- ?ME($|[^A-Za-z])|^USA? ME($|[^A-Za-z])",country.eq.US))',
+    );
   });
 
   it("preferMatchedLocation moves the searched state first (the shipped function)", () => {

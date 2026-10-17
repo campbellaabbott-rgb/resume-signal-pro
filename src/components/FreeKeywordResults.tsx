@@ -625,14 +625,14 @@ export function FreeKeywordResults({
   uploadedJobs = [],
   jobMatchScore,
   jobMatchGrade,
-  matchingSkills = [],
-  missingSkills = [],
-  missingSkillsDetailed = [],
+  matchingSkills: matchingSkillsProp,
+  missingSkills: missingSkillsProp,
+  missingSkillsDetailed: missingSkillsDetailedProp,
   experienceFit,
   titleAlignment,
   jobMatchSummary,
   applicationRecommendation,
-  skillGapActions = [],
+  skillGapActions: skillGapActionsProp,
   competitiveAssessment,
   careerSituation,
   formatRecommendation,
@@ -714,6 +714,12 @@ export function FreeKeywordResults({
   sourceWasFile,
   keywordSource,
 }: FreeKeywordResultsProps) {
+  // A null list from the model is an empty list, not a crash: a default
+  // parameter applies only to undefined (S11-029).
+  const matchingSkills = Array.isArray(matchingSkillsProp) ? matchingSkillsProp : [];
+  const missingSkills = Array.isArray(missingSkillsProp) ? missingSkillsProp : [];
+  const missingSkillsDetailed = Array.isArray(missingSkillsDetailedProp) ? missingSkillsDetailedProp : [];
+  const skillGapActions = Array.isArray(skillGapActionsProp) ? skillGapActionsProp : [];
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
   const { trackButtonClick } = useConversionTracking();
@@ -1010,7 +1016,8 @@ export function FreeKeywordResults({
     ? { current: realWordCount, idealMin: 400, idealMax: 850, verdict: (realWordCount < 400 ? "too_few" : realWordCount > 850 ? "too_many" : "ideal") as "too_few" | "ideal" | "too_many" }
     : null);
   const [correctedExperience, setCorrectedExperience] = useState<string | null>(null);
-  const experienceLevelBase = experienceLevelProp || { level: "mid" as const, yearsEstimate: "3-5 years" };
+  // No invented years (S11-147): an absent estimate is not "3-5 years".
+  const experienceLevelBase = experienceLevelProp || { level: "mid" as const, yearsEstimate: "" };
   const experienceLevel = correctedExperience
     ? { ...experienceLevelBase, level: correctedExperience as typeof experienceLevelBase.level }
     : experienceLevelBase;
@@ -1055,7 +1062,12 @@ export function FreeKeywordResults({
     missingItems: contactInfoProp?.missingItems ?? [],
   };
 
-  const topStrength = topStrengthProp || { title: "Clear Experience", description: "Your work history is well-documented" };
+  // ABSENT IS HIDDEN, NOT INVENTED (register S11-147). A report the model left
+  // thin used to show "Clear Experience", a 2-year average tenure, "steady"
+  // progression and an industry average of 72 under a banner that called
+  // them automated analysis. Each of these tiles now hides when its field is
+  // absent.
+  const topStrength = topStrengthProp ?? null;
   const quantificationScore =
     quantificationScoreProp ||
     computedQuantificationScore ||
@@ -1073,8 +1085,8 @@ export function FreeKeywordResults({
   const topSkipReasons = topSkipReasonsProp || [];
   const powerWords = powerWordsProp || [];
   const weakPhrases = weakPhrasesProp || [];
-  const timelineAnalysis = timelineAnalysisProp || { avgTenure: "2 years", progression: "steady" as const, hasGaps: false, totalYears: computedTotalYears ?? "—" };
-  const industryBenchmark = industryBenchmarkProp || { industryAvg: 72, comparison: "at" as const, percentile: "Top 50%" };
+  const timelineAnalysis = timelineAnalysisProp ?? null;
+  const industryBenchmark = industryBenchmarkProp ?? null;
   const quickWins = quickWinsProp || [];
   const sampleRewrite = sampleRewriteProp;
   // No fallback, deliberately: the old hardcoded default showed every user
@@ -1764,7 +1776,7 @@ export function FreeKeywordResults({
         formatGrade={formatGrade}
         industry={effectiveIndustry}
         experienceLevel={getExperienceLevelLabel(experienceLevel.level)}
-        topStrength={topStrength.title}
+        topStrength={topStrength?.title ?? ""}
         redFlagsCount={redFlags.length}
         quickWins={quickWins}
         improvementPotential={improvementPotential}
@@ -2485,7 +2497,7 @@ export function FreeKeywordResults({
           formatGrade={formatGrade}
           industry={industry}
           experienceLevel={getExperienceLevelLabel(experienceLevel.level)}
-          topStrength={topStrength.title}
+          topStrength={topStrength?.title ?? ""}
           improvementPotential={improvementPotential?.estimatedScoreIncrease}
         />
       </div>
@@ -2545,8 +2557,10 @@ export function FreeKeywordResults({
       )}
 
       {/* Industry Benchmark & Timeline Analysis */}
+      {(industryBenchmark || timelineAnalysis) && (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
         {/* Industry Benchmark */}
+        {industryBenchmark && (
         <div className="rounded-2xl bg-card border border-border p-5">
           <div className="flex items-center gap-2 mb-2">
             <Target className="w-4 h-4 text-primary" />
@@ -2700,7 +2714,10 @@ export function FreeKeywordResults({
           )}
         </div>
 
+        )}
+
         {/* Timeline Analysis */}
+        {timelineAnalysis && (
         <div className="rounded-2xl bg-card border border-border p-5">
           <div className="flex items-center gap-2 mb-4">
             <FileText className="w-4 h-4 text-primary" />
@@ -2777,7 +2794,9 @@ export function FreeKeywordResults({
             )}
           </div>
         </div>
+        )}
       </div>
+      )}
 
       </div> {/* end section-issues */}
 
@@ -4158,12 +4177,14 @@ export function FreeKeywordResults({
             {(["summary", "experience", "skills", "education"] as const).map((sec) => {
               const q = sectionCheck.sectionQuality?.[sec];
               if (!q) return null;
-              const cfg = {
+              // A value outside the four (a translated "sólida") draws as
+              // adequate rather than crashing the report (S11-029).
+              const cfg = ({
                 strong: { color: "text-success", bg: "bg-success/10 border-success/20", dot: "bg-success" },
                 adequate: { color: "text-primary", bg: "bg-primary/10 border-primary/20", dot: "bg-primary" },
                 thin: { color: "text-warning", bg: "bg-warning/10 border-warning/20", dot: "bg-warning" },
                 missing: { color: "text-destructive", bg: "bg-destructive/10 border-destructive/20", dot: "bg-destructive" },
-              }[q];
+              } as Record<string, { color: string; bg: string; dot: string }>)[q] ?? { color: "text-primary", bg: "bg-primary/10 border-primary/20", dot: "bg-primary" };
               return (
                 <div key={sec} className={`flex items-center gap-2 rounded-lg border p-2 ${cfg.bg}`}>
                   <span className={`w-2 h-2 rounded-full shrink-0 ${cfg.dot}`} />

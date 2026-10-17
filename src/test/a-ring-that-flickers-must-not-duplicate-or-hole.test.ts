@@ -54,7 +54,9 @@ describe("counts and disclosures stay self-consistent", () => {
   it("the carried-facets marker rides the SERVED row, not only the fat one", () => {
     // serving reads refresh_head; the marker was only on the fat `refresh` row,
     // so a carried (stale) total served as current left no trace.
-    expect(BOARD).toMatch(/\.\.\.\(facetsCarried \? \{ facetsCarried: true, facetsCarriedAt: v\.refreshedAt \} : \{\}\)/);
+    // facetsCarriedAt is when the carried counts were counted (facet-carry.ts),
+    // not this pass's time: the heartbeat reads it (review of S11-001).
+    expect(BOARD).toMatch(/\.\.\.\(facetsCarried \? \{ facetsCarried: true, facetsCarriedAt: facetsCountedAt \?\? v\.refreshedAt \} : \{\}\)/);
   });
 
   it("the facet rail never counts a text query with a matcher the list does not use (.91, L13-24)", () => {

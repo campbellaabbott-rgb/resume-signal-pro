@@ -2,13 +2,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { resolvePDFJS } from "https://esm.sh/pdfjs-serverless@0.4.1?target=deno";
-import { looksGarbled } from "../_shared/text-validation.ts";
-import { pageTextFromItems } from "./page-text.ts";
+import { isDamagedPdfError, looksGarbled } from "../_shared/text-validation.ts";
+import { detectMultiColumnRisk, dropUnnamedIndicGlyphs, pageTextFromItems, type PdfTextItem } from "./page-text.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
 
 // Provable from outside without an upload: every response, the CORS preflight
 // included, carries this in x-fn-build.
-const FN_BUILD = "parse-pdf.2026-10-05.1";
+const FN_BUILD = "parse-pdf.2026-10-09.1";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -67,34 +67,6 @@ const corsHeaders = {
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB limit
 const RATE_LIMIT = 20; // 20 requests per hour
 const RATE_WINDOW_MINUTES = 60;
-
-type PdfTextItem = { str?: string; transform?: number[] };
-
-// Detects a real, mechanical ATS-parsing risk: multi-column layouts. PDF.js (like
-// most real ATS text extractors) reads text in the order it appears in the file's
-// content stream, not visual reading order. A two-column resume often gets its
-// entire left column extracted, then jumps back up to the top of the page for the
-// right column — which an ATS reading linearly will interleave nonsensically
-// (e.g. a job title from the right column landing in the middle of a left-column
-// bullet). We detect this by watching for the y-coordinate jumping back upward
-// (a new "column" starting) more than once on a page — normal single-column text
-// only ever moves down the page.
-function detectMultiColumnRisk(items: PdfTextItem[]): boolean {
-  let lastY: number | null = null;
-  let upwardJumps = 0;
-  const Y_JUMP_THRESHOLD = 15; // points; ignores normal sub-line jitter
-
-  for (const item of items) {
-    const y = item.transform?.[5];
-    if (typeof y !== "number" || !item.str?.trim()) continue;
-    if (lastY !== null && y - lastY > Y_JUMP_THRESHOLD) {
-      upwardJumps++;
-    }
-    lastY = y;
-  }
-
-  return upwardJumps >= 2;
-}
 
 serve(async (req) => {
   const requestStartTime = Date.now();
@@ -296,12 +268,20 @@ serve(async (req) => {
       const pageText = pageTextFromItems(items);
       fullText += pageText + "\n\n";
 
-      if (!multiColumnDetected && detectMultiColumnRisk(items)) {
-        multiColumnDetected = true;
+      if (!multiColumnDetected) {
+        // The page's own size: the column tests measure in shares of it.
+        const viewport = page.getViewport({ scale: 1 });
+        if (detectMultiColumnRisk(items, { width: viewport.width, height: viewport.height })) {
+          multiColumnDetected = true;
+        }
       }
     }
 
-    const text = fullText.trim();
+    // Glyphs pdf.js could only name as U+0000 in Indic text (register
+    // S11-035) are removed before the corruption test, and the visitor is told
+    // a .docx or pasted text reads them exactly.
+    const unnamed = dropUnnamedIndicGlyphs(fullText.trim());
+    const text = unnamed.text.trim();
 
     // PDF.js only extracts text that's actually embedded in the file. A scanned/
     // image-based PDF (or one with only a couple of selectable characters, e.g.
@@ -354,10 +334,13 @@ serve(async (req) => {
         })()
       );
 
+      // Re-exporting from the same program writes the same fonts, so the
+      // remedy offered reads the text another way.
       return new Response(
         JSON.stringify({
           success: false,
-          error: "We extracted text from this PDF, but it appears corrupted (likely a broken or embedded font). Please try re-exporting the PDF or paste your resume text directly.",
+          code: "garbled_text",
+          error: "We couldn't read the characters in this PDF correctly (its font doesn't map to real letters). Please upload a .docx version or paste your resume text instead.",
         }),
         { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
@@ -372,29 +355,48 @@ serve(async (req) => {
         text,
         pages: doc.numPages,
         multiColumnDetected,
+        ...(unnamed.dropped > 0 ? { notice: "unread_characters", unreadCharacters: unnamed.dropped } : {}),
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error: unknown) {
-    trackPerformance(requestStartTime, 'parse-pdf', false, { error: error instanceof Error ? error.message : 'Unknown' }, clientIp);
+    // A broken file is the FILE's problem, not an outage (register S11-033).
+    // pdf.js names a damaged stream, page tree or cross-reference table
+    // (FormatError, UnknownErrorException, ...); answering those with a 500
+    // made the browser retry the same bytes twice, open the parse circuit,
+    // say "PDF Parser Unavailable" and refuse the visitor's NEXT, valid file
+    // for 30 seconds. They are a 422 that says what is wrong with the file.
+    const damaged = isDamagedPdfError(error);
+    trackPerformance(requestStartTime, 'parse-pdf', false, { error: error instanceof Error ? error.message : 'Unknown', damaged }, clientIp);
     console.error("[PARSE-PDF] Error:", error);
-    
+
     // Log parse failure to database
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    
+
     EdgeRuntime.waitUntil(
       (async () => {
         await supabase.rpc('log_parse_failure', {
           p_file_type: 'pdf',
-          p_error_code: 'parse_error',
+          p_error_code: damaged ? 'damaged_file' : 'parse_error',
           p_error_message: error instanceof Error ? error.message : 'Unknown error',
           p_visitor_id: clientIp
         });
       })()
     );
-    
+
+    if (damaged) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          code: "damaged_file",
+          error: "This file looks damaged or isn't a real PDF. Please export it again, upload a .docx, or paste your resume text instead.",
+        }),
+        { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     return new Response(
       JSON.stringify({
         error: "Failed to parse PDF. Please ensure the file is a valid PDF document.",

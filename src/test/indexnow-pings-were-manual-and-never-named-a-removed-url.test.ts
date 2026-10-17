@@ -39,6 +39,24 @@ describe("a publish tells IndexNow what it changed and what it removed", () => {
     ].sort());
   });
 
+  // S11-155: an "unchecked" stub is a posting the board did not answer for (a
+  // 429, a 5xx, a spent budget). It may be live; pinging it told Bing to drop
+  // a live posting after one refusal.
+  it("never submits a posting the board did not answer for, only real removals", () => {
+    const withUnchecked = {
+      builtAt: "2026-10-09",
+      postings: {
+        ...ledger.postings,
+        "/jobs/posting/workday/a~wd1~x/5": { state: "unchecked", since: "2026-10-09" },
+        "/jobs/posting/workday/a~wd1~x/6": { state: "something-new", since: "2026-10-09" },
+      },
+    };
+    const urls = changedUrls({ sitemapXml: "", ledger: withUnchecked });
+    expect(urls).not.toContain(`${SITE}/jobs/posting/workday/a~wd1~x/5`);
+    expect(urls).not.toContain(`${SITE}/jobs/posting/workday/a~wd1~x/6`);
+    expect(urls.sort()).toEqual([`${SITE}/jobs/posting/workday/a~wd1~x/1`, `${SITE}/jobs/posting/workday/a~wd1~x/4`]);
+  });
+
   it("submits nothing without a ledger to say which day the publish was", () => {
     expect(changedUrls({ sitemapXml: sitemap, ledger: null })).toEqual([]);
   });

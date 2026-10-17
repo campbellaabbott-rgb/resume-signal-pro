@@ -40,7 +40,7 @@
 # apply-worker.yml and are proved by their tests, not here.
 echo "== 73. wave 3 agents-api: builds, SmartRecruiters withheld, the host's own allowance, the agent card's four systems =="
 
-for PAIR in "agent-mcp|2026-10-09|4" "public-api|2026-10-09|2" "apply-agent|2026-10-09|3" "apply-broker|2026-10-09|2" "send-agent-digest|2026-10-09|3" "generate-application-answers|2026-10-10|3"; do
+for PAIR in "agent-mcp|2026-10-09|71" "public-api|2026-10-09|71" "apply-agent|2026-10-09|71" "apply-broker|2026-10-09|24" "send-agent-digest|2026-10-09|24" "generate-application-answers|2026-10-10|62"; do
   W73_FN=${PAIR%%|*}; W73_REST=${PAIR#*|}; W73_D=${W73_REST%%|*}; W73_N=${W73_REST#*|}
   W73_H=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$W73_FN" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
   if [ -z "$W73_H" ]; then echo "FAIL  $W73_FN preflight carries no x-fn-build (not deployed, or the previous bundle is serving)"
@@ -132,7 +132,10 @@ else ok(t.includes(tok+" cannot be served by this server"),"search_jobs companie
 fi
 
 probe v1_withheld_company_tokens '{"p_sources":["smartrecruiters"]}'
-probe agent_packet_pass_funds '{"p_pass_id":null,"p_refunded_at":null}'
+# Typed values, never null: a GET query string cannot carry a SQL NULL, so
+# probe() refuses one (it printed FAIL here on 2026-10-11 without asking).
+# Revoked from anon, the function answers 42501 before reading either value.
+probe agent_packet_pass_funds '{"p_pass_id":"00000000-0000-4000-8000-0000000000aa","p_refunded_at":"2026-10-11T00:00:00Z"}'
 probe agent_adoption_metrics '{"p_days":1}'
 echo "INFO  agent_mandates_resume_in_own_folder (20261009120000) and agent_submissions_owner_status_trg (20261009121000) are triggers: proved in pglite (a-mandate-could-send..., a-refunded-pass-packet...), not probed here"
 

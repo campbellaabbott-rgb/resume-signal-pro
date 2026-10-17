@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261009134000_a_legal_notice_is_recorded_as_sent_only_after_resend_accepted_it.sql'));

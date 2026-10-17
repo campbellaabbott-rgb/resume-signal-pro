@@ -1440,7 +1440,8 @@ interface BoardResponse {
   relatedCapped?: boolean;
   countUnavailable?: boolean;
   /** Employer tokens of the request the board does not carry (sweep S11-020):
-   *  a lander for one of them is "we don't read this board", never a zero. */
+   *  sent only when every employer the request scopes to is outside the
+   *  catalogue, never for an employer whose board is empty today. */
   unknownCompanies?: string[];
   /** A pay-ordered first page with nothing on it, and why: no match states pay,
    *  or the pay read failed. Either way the matches exist, so "nothing matches"
@@ -3780,6 +3781,26 @@ function JobsBoard({ boardId }: { boardId: string }) {
         user_id: session.user.id, name, params, digest_opt_in: true,
       }));
     }
+    // AN ALERT ON A SEARCH ALREADY SAVED TURNS THE ALERT ON (sweep S11-037).
+    // The name is a pure function of the filters and the table is unique on
+    // (user, name), so an alert asked for on a search saved earlier without
+    // one collides here. The person just asked to be emailed: the saved row
+    // gets the digest, at the cadence an alert promises. A plain Save on the
+    // same collision changes nothing.
+    if (err && err.code === "23505" && alert) {
+      let { error: upErr } = await searchesTable()
+        .update({ digest_opt_in: true, digest_cadence: "daily" })
+        .eq("user_id", session.user.id).eq("name", name);
+      if (upErr && /digest_cadence/.test(upErr.message ?? "")) {
+        ({ error: upErr } = await searchesTable()
+          .update({ digest_opt_in: true })
+          .eq("user_id", session.user.id).eq("name", name));
+      }
+      toast(upErr
+        ? { title: t("jobsPage.saveFailed", "Couldn't save — try again.") }
+        : { title: t("jobsPage.searchAlertsOn", "Alerts turned on") });
+      return;
+    }
     if (err && err.code === "23505") {
       toast({ title: t("jobsPage.searchExists", "You already saved this search.") });
       return;
@@ -5972,8 +5993,8 @@ function JobsBoard({ boardId }: { boardId: string }) {
     !company && !landerCompany && !q.trim() && sortMode !== "salary" && !fitRanking;
 
   const groupedJobs = useMemo(() => {
-    const map = new Map<string, { primary: BoardJob; siblings: BoardJob[] }>();
-    const order: Array<{ primary: BoardJob; siblings: BoardJob[] }> = [];
+    const map = new Map<string, { primary: BoardJob; siblings: BoardJob[]; postings: number }>();
+    const order: Array<{ primary: BoardJob; siblings: BoardJob[]; postings: number }> = [];
     // Drop repeated ids BEFORE grouping. Pages are appended, and the corpus
     // shifts under a paginating reader (the cap deletes, ingest inserts), so the
     // same posting can legitimately arrive twice — measured up to 14 repeats per
@@ -5984,14 +6005,37 @@ function JobsBoard({ boardId }: { boardId: string }) {
     for (const j of displayJobs) {
       if (seenIds.has(j.id)) continue;
       seenIds.add(j.id);
-      const key = `${(j.token ?? j.company).toLowerCase()}|${j.title.trim().toLowerCase()}`;
-      const g = map.get(key);
+      // The country rides the key (S11-005): a card never holds two countries' postings.
+      const key = `${(j.token ?? j.company).toLowerCase()}|${j.title.trim().toLowerCase()}|${(j.country ?? "").toUpperCase()}`;
+      let g = map.get(key);
       if (g) {
         g.siblings.push(j);
       } else {
-        const ng = { primary: j, siblings: [] as BoardJob[] };
-        map.set(key, ng);
-        order.push(ng);
+        g = { primary: j, siblings: [] as BoardJob[], postings: 0 };
+        map.set(key, g);
+        order.push(g);
+      }
+      // POSTINGS, NOT CARDS (S11-005): a card the server folded stands for
+      // postingCount requisitions, and "Showing N of M" compares N with a total
+      // of postings. Counted as cards it printed "Showing 21 of 234" over a
+      // page that held all 234.
+      g.postings += Math.max(1, j.postingCount ?? 1);
+      // The server's folded postings, each openable under this card. One the
+      // reader already holds as its own row is not listed twice, nor counted.
+      for (const s of j.siblings ?? []) {
+        if (!s?.id || seenIds.has(s.id)) { if (s?.id) g.postings = Math.max(1, g.postings - 1); continue; }
+        seenIds.add(s.id);
+        g.siblings.push({
+          ...j,
+          id: s.id,
+          location: s.location ?? "",
+          applyUrl: s.applyUrl ?? j.applyUrl,
+          postedAt: s.postedAt ?? null,
+          siblings: undefined,
+          postingCount: undefined,
+          locationCount: undefined,
+          otherLocations: undefined,
+        });
       }
     }
 
@@ -6018,7 +6062,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
     // Strict date order is genuinely relaxed, so the sort label says so rather
     // than claiming "newest first" and quietly meaning something else.
     if (!interleaveEmployers) return order;
-    const byCompany = new Map<string, Array<{ primary: BoardJob; siblings: BoardJob[] }>>();
+    const byCompany = new Map<string, Array<(typeof order)[number]>>();
     for (const g of order) {
       const k = (g.primary.token ?? g.primary.company ?? "").toLowerCase();
       const bucket = byCompany.get(k);
@@ -6041,9 +6085,10 @@ function JobsBoard({ boardId }: { boardId: string }) {
   // What the summary may honestly call "shown". `jobs.length` was the FETCHED
   // page, but the rendered list is narrowed further by the Actively-hiring
   // toggle and by dismissals — turning that toggle on left 6 cards on screen
-  // under a line reading "Showing 60". Counting grouped rows also matches what
-  // a user can actually point at, since collapsed duplicates render as one card.
-  const shownCount = groupedJobs.length;
+  // under a line reading "Showing 60". It counts POSTINGS on screen since
+  // S11-005: a card stands for every requisition folded into it, each now
+  // openable under it, and the totals it is printed against count postings.
+  const shownCount = groupedJobs.reduce((n, g) => n + g.postings, 0);
   /**
    * How many postings this search reaches, across BOTH segments.
    *
@@ -10638,7 +10683,9 @@ function JobsBoard({ boardId }: { boardId: string }) {
               {/* The catalog turns over daily — "nothing today" is not
                   "nothing ever". Saving the search wires it into the existing
                   alert loop, so the dead end becomes the reason to come back. */}
-              {(q || location || category || company) && (
+              {/* Never for an employer we do not carry: no posting of theirs
+                  will ever arrive to be mailed (S11-020). */}
+              {(q || location || category || company) && !landerUncarried && (
                 <div className="mt-4 pt-3 border-t border-border">
                   <p className="text-xs text-muted-foreground mb-2">
                     {t("jobsPage.zeroAlertHint", "New postings land here every day. Get an email when roles matching this search appear:")}
@@ -11481,9 +11528,23 @@ function JobsBoard({ boardId }: { boardId: string }) {
                             })}
                             className="text-[11px] text-primary font-medium hover:underline"
                           >
-                            {expandedGroups.has(job.id)
-                              ? t("jobsPage.hideLocations", "Hide other locations")
-                              : t("jobsPage.moreLocations", "Same role in {{count}} more locations", { count: siblings.length })}
+                            {(() => {
+                              // "Locations" only when every sibling is a different
+                              // place from the card and from each other: the
+                              // server's folded postings are often one store's
+                              // repeats (S11-005), and those are openings.
+                              const places = siblings.map((sib) => (sib.location ?? "").trim().toLowerCase());
+                              const allPlaces = places.every((p) => p && p !== (job.location ?? "").trim().toLowerCase())
+                                && new Set(places).size === places.length;
+                              if (expandedGroups.has(job.id)) {
+                                return allPlaces
+                                  ? t("jobsPage.hideLocations", "Hide other locations")
+                                  : t("jobsPage.hideOpenings", "Hide the other openings");
+                              }
+                              return allPlaces
+                                ? t("jobsPage.moreLocations", "Same role in {{count}} more locations", { count: siblings.length })
+                                : t("jobsPage.moreOpenings", "{{count}} more openings of this role", { count: siblings.length });
+                            })()}
                           </button>
                           {expandedGroups.has(job.id) && (
                             <ul className="mt-1.5 space-y-1 border-l-2 border-border/60 pl-3">
@@ -11507,6 +11568,19 @@ function JobsBoard({ boardId }: { boardId: string }) {
                                   </a>
                                 </li>
                               ))}
+                              {/* The server lists up to GROUP_SIBLINGS_MAX folded
+                                  postings per card; past that, the employer's own
+                                  board, searched for this title, holds them all. */}
+                              {job.token && (job.postingCount ?? 1) - 1 > (job.siblings ?? []).length && (
+                                <li className="text-[12px]">
+                                  <a
+                                    href={companyLanderPath(job.token, `q=${encodeURIComponent(job.title)}`)}
+                                    className="text-primary font-medium hover:underline"
+                                  >
+                                    {t("jobsPage.seeAllOpenings", "See all {{count}} openings of this role", { count: job.postingCount })}
+                                  </a>
+                                </li>
+                              )}
                             </ul>
                           )}
                         </div>

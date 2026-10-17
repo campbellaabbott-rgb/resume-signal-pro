@@ -10,22 +10,36 @@
 --
 -- A 'generating' row is now selected once its generation began fifteen
 -- minutes ago (content_generation_started_at, or created_at when the stamp is
--- missing). Nothing generates for that long: an edge function's wall clock is
--- well under it, so a row that old has no living writer and a retry cannot
--- race one. The ten-minute wait for a fresh payment_received row, the gate on
+-- missing), BUT ONLY FOR A CALLER THAT ASKS FOR IT (p_include_generating).
+-- Nothing generates for that long: an edge function's wall clock is well
+-- under it, so a row that old has no living writer and a retry cannot race
+-- one. The ten-minute wait for a fresh payment_received row, the gate on
 -- next_retry_at (the full analysis and the Freelance Boost rows stay off the
--- queue) and retry_count < max_retries are unchanged. Same signature and
--- return shape, so CREATE OR REPLACE keeps the name; the grants are restated.
+-- queue) and retry_count < max_retries are unchanged.
 --
--- retry-failed-deliveries 2026-10-09.1 treats a stuck 'generating' row as it
--- treats payment_received (generate, save, mail); the older build would
--- leave it as it found it and spend a retry, which is harmless.
+-- WHY AN OPT-IN (sweep S11-146). The live sweep (retry-failed-deliveries
+-- 2026-10-05.1) handles only payment_received, generation_failed and
+-- email_failed, with no else branch: handed a 'generating' row it neither
+-- throws nor spends a retry, so the row stays as it was, and ordered by
+-- created_at it takes the five-row batch first on every run. Retries of real
+-- failures would stall until the new sweep deployed (this header used to say
+-- the old build "would spend a retry, which is harmless"; it spends none).
+-- So the old one-argument function is replaced by one with a second argument
+-- that defaults to false: the live sweep's call ({p_limit}) resolves to it
+-- and is handed no 'generating' row, and retry-failed-deliveries 2026-10-09.61
+-- passes p_include_generating true and treats such a row as it treats
+-- payment_received (generate, save, mail). Apply this file BEFORE that
+-- build: the live sweep's call resolves to the new function either way, but
+-- the new sweep's two-argument call names no function until this file has
+-- run (docs/deploy-ledger.json orders it first).
 --
 -- Safe to re-run.
 
 SET LOCAL statement_timeout = '2min';
 
-CREATE OR REPLACE FUNCTION public.get_failed_deliveries_for_retry(p_limit integer DEFAULT 10)
+DROP FUNCTION IF EXISTS public.get_failed_deliveries_for_retry(integer);
+
+CREATE OR REPLACE FUNCTION public.get_failed_deliveries_for_retry(p_limit integer DEFAULT 10, p_include_generating boolean DEFAULT false)
 RETURNS TABLE (
   id uuid,
   stripe_session_id text,
@@ -57,34 +71,42 @@ BEGIN
     AND (pd.next_retry_at IS NULL OR pd.next_retry_at <= now())
     -- The webhook may still be generating a row it wrote moments ago.
     AND (pd.status <> 'payment_received' OR pd.created_at <= now() - interval '10 minutes')
-    -- A generation nobody finished: no writer lives this long.
+    -- A generation nobody finished: no writer lives this long. Handed only
+    -- to a sweep that asks for it: the live one would hold its batch with it.
     AND (pd.status <> 'generating'
-         OR COALESCE(pd.content_generation_started_at, pd.created_at) <= now() - interval '15 minutes')
+         OR (p_include_generating
+             AND COALESCE(pd.content_generation_started_at, pd.created_at) <= now() - interval '15 minutes'))
   ORDER BY pd.created_at ASC
   LIMIT p_limit;
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.get_failed_deliveries_for_retry(integer) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.get_failed_deliveries_for_retry(integer) TO service_role;
+REVOKE ALL ON FUNCTION public.get_failed_deliveries_for_retry(integer, boolean) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.get_failed_deliveries_for_retry(integer, boolean) TO service_role;
 
-COMMENT ON FUNCTION public.get_failed_deliveries_for_retry(integer) IS
+COMMENT ON FUNCTION public.get_failed_deliveries_for_retry(integer, boolean) IS
   'Deliveries the retry sweep may finish: payment_received after 10 minutes, '
-  'generating after 15 minutes without a finish, generation_failed and '
-  'email_failed at once; never a row whose next_retry_at is in the future '
-  '(infinity keeps the full analysis and Freelance Boost off), never past '
-  'max_retries. service_role only.';
+  'generating after 15 minutes without a finish (only when p_include_generating), '
+  'generation_failed and email_failed at once; never a row whose next_retry_at is '
+  'in the future (infinity keeps the full analysis and Freelance Boost off), never '
+  'past max_retries. service_role only.';
 
 DO $verify$
 DECLARE
   v_def text;
   v_bad text[] := ARRAY[]::text[];
-  v_sig regprocedure := to_regprocedure('public.get_failed_deliveries_for_retry(integer)');
+  v_sig regprocedure := to_regprocedure('public.get_failed_deliveries_for_retry(integer,boolean)');
 BEGIN
   IF v_sig IS NULL THEN
-    RAISE EXCEPTION 'get_failed_deliveries_for_retry(integer) does not exist after this file';
+    RAISE EXCEPTION 'get_failed_deliveries_for_retry(integer, boolean) does not exist after this file';
+  END IF;
+  IF to_regprocedure('public.get_failed_deliveries_for_retry(integer)') IS NOT NULL THEN
+    v_bad := v_bad || 'the one-argument selector still exists beside the new one'::text;
   END IF;
   v_def := pg_get_functiondef(v_sig);
+  IF position('p_include_generating' in v_def) = 0 THEN
+    v_bad := v_bad || 'a generating row is handed to a sweep that did not ask for it'::text;
+  END IF;
   IF position('''generating''' in v_def) = 0 OR position('interval ''15 minutes''' in v_def) = 0 THEN
     v_bad := v_bad || 'the selector does not pick a generating row after fifteen minutes'::text;
   END IF;

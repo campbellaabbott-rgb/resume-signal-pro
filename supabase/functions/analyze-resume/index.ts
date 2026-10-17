@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { callAIWithModelFallback, chainFrom } from "../_shared/ai-fallback.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { getServiceClient } from "../_shared/supabase-client.ts";
+import { scannableJobDescription } from "../_shared/job-description-input.ts";
 import {
   FULL_ANALYSIS_PRODUCT_NAME,
   FULL_ANALYSIS_PRODUCT_TYPE,
@@ -14,7 +15,8 @@ import { REFUNDED_PURCHASE_MESSAGE, sessionWasRefunded } from "../_shared/paymen
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "analyze-resume.2026-10-09.2";
+// 2026-10-09.62 (wave-3 fix round integration): carries both 2026-10-09.3 and the payments-account group's 2026-10-09.61.
+const FN_BUILD = "analyze-resume.2026-10-09.62";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -649,17 +651,26 @@ serve(async (req) => {
   const clientIp = getClientIp(req);
 
   try {
-    const { resumeText, linkedInText, jobDescriptionText, sessionId } = await req.json();
+    const { resumeText, linkedInText, jobDescriptionText: askedJobDescription, sessionId } = await req.json();
+    // A paid analysis is never framed around a link (_shared/job-description-input.ts, S11-032).
+    const jobDescriptionText = scannableJobDescription(askedJobDescription);
 
     // EARLY INPUT VALIDATION (fail fast before payment verification)
-    if (!resumeText || typeof resumeText !== 'string' || resumeText.trim().length === 0) {
+    //
+    // A REDEEMED SESSION IS ANSWERED WITHOUT A RÉSUMÉ (S11-016). The success
+    // page asks by the session alone when its tab no longer holds the
+    // résumé (a reload, Back, a restored tab): the analysis the purchase
+    // already received is handed back below, after the payment and
+    // redemption checks. Without a session there is nothing to answer.
+    const noResume = !resumeText || typeof resumeText !== 'string' || resumeText.trim().length === 0;
+    if (noResume && !sessionId) {
       return new Response(
         JSON.stringify({ error: 'Resume text is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    if (resumeText.length > MAX_RESUME_LENGTH) {
+    if (!noResume && resumeText.length > MAX_RESUME_LENGTH) {
       console.log(`[ANALYZE-RESUME] Resume too long: ${resumeText.length} characters`);
       return new Response(
         JSON.stringify({ error: 'Resume text is too long. Please limit to 50,000 characters.' }),
@@ -678,7 +689,7 @@ serve(async (req) => {
     }
 
     // Validate job description text if provided  
-    const hasJobDescription = jobDescriptionText && typeof jobDescriptionText === 'string' && jobDescriptionText.trim().length > 0;
+    const hasJobDescription = jobDescriptionText.trim().length > 0;
     if (hasJobDescription && jobDescriptionText.length > MAX_JOB_DESCRIPTION_LENGTH) {
       console.log(`[ANALYZE-RESUME] Job description too long: ${jobDescriptionText.length} characters`);
       return new Response(
@@ -859,6 +870,14 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: ERROR_MESSAGES.SESSION_USED }),
         { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    // Asked by the session alone and nothing delivered yet: the résumé is
+    // needed to make it (S11-016).
+    if (noResume) {
+      return new Response(
+        JSON.stringify({ error: 'Resume text is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
     // An undelivered Pro grant: spent nowhere else, not taken back, and the

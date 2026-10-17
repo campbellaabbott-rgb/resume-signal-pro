@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "13.0.5"
   }
   public: {
     Tables: {
@@ -74,6 +74,54 @@ export type Database = {
           test_name?: string
           variant?: string
           visitor_id?: string
+        }
+        Relationships: []
+      }
+      account_mailbox_proofs: {
+        Row: {
+          amr_at: string
+          created_at: string
+          email: string
+          id: number
+          method: string
+          password_cleared: boolean
+          user_id: string
+        }
+        Insert: {
+          amr_at: string
+          created_at?: string
+          email: string
+          id?: never
+          method: string
+          password_cleared?: boolean
+          user_id: string
+        }
+        Update: {
+          amr_at?: string
+          created_at?: string
+          email?: string
+          id?: never
+          method?: string
+          password_cleared?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
+      account_password_clears: {
+        Row: {
+          cleared_at: string
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          cleared_at?: string
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          cleared_at?: string
+          session_id?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -323,6 +371,7 @@ export type Database = {
           daily_count: number
           earliest_start: string
           email: string
+          email_attempted_at: string | null
           email_last_sent_at: string | null
           email_opt_in: boolean
           employer_cooldown_days: number
@@ -374,6 +423,7 @@ export type Database = {
           daily_count?: number
           earliest_start?: string
           email?: string
+          email_attempted_at?: string | null
           email_last_sent_at?: string | null
           email_opt_in?: boolean
           employer_cooldown_days?: number
@@ -425,6 +475,7 @@ export type Database = {
           daily_count?: number
           earliest_start?: string
           email?: string
+          email_attempted_at?: string | null
           email_last_sent_at?: string | null
           email_opt_in?: boolean
           employer_cooldown_days?: number
@@ -751,6 +802,7 @@ export type Database = {
           submitted_at: string | null
           submitted_via: string | null
           title: string
+          uncertain_at: string | null
           updated_at: string
           user_id: string
         }
@@ -786,6 +838,7 @@ export type Database = {
           submitted_at?: string | null
           submitted_via?: string | null
           title?: string
+          uncertain_at?: string | null
           updated_at?: string
           user_id: string
         }
@@ -821,6 +874,7 @@ export type Database = {
           submitted_at?: string | null
           submitted_via?: string | null
           title?: string
+          uncertain_at?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -984,6 +1038,7 @@ export type Database = {
           key_name: string | null
           mailbox: string
           request_net: string | null
+          terms_version: string | null
           token_hash: string
         }
         Insert: {
@@ -997,6 +1052,7 @@ export type Database = {
           key_name?: string | null
           mailbox: string
           request_net?: string | null
+          terms_version?: string | null
           token_hash: string
         }
         Update: {
@@ -1010,6 +1066,7 @@ export type Database = {
           key_name?: string | null
           mailbox?: string
           request_net?: string | null
+          terms_version?: string | null
           token_hash?: string
         }
         Relationships: [
@@ -3365,6 +3422,24 @@ export type Database = {
         }
         Relationships: []
       }
+      lifecycle_reads: {
+        Row: {
+          day: string
+          job_id: string
+          user_id: string
+        }
+        Insert: {
+          day: string
+          job_id: string
+          user_id: string
+        }
+        Update: {
+          day?: string
+          job_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       mail_door_counts: {
         Row: {
           bucket: string
@@ -3716,6 +3791,7 @@ export type Database = {
           product_type: string | null
           resume_session_id: string | null
           revoked_at: string | null
+          target_roles: string | null
           user_id: string | null
         }
         Insert: {
@@ -3732,6 +3808,7 @@ export type Database = {
           product_type?: string | null
           resume_session_id?: string | null
           revoked_at?: string | null
+          target_roles?: string | null
           user_id?: string | null
         }
         Update: {
@@ -3748,6 +3825,7 @@ export type Database = {
           product_type?: string | null
           resume_session_id?: string | null
           revoked_at?: string | null
+          target_roles?: string | null
           user_id?: string | null
         }
         Relationships: []
@@ -3807,6 +3885,7 @@ export type Database = {
           retry_count: number
           status: string
           stripe_session_id: string
+          transient_failures: number
         }
         Insert: {
           ai_model_used?: string | null
@@ -3835,6 +3914,7 @@ export type Database = {
           retry_count?: number
           status?: string
           stripe_session_id: string
+          transient_failures?: number
         }
         Update: {
           ai_model_used?: string | null
@@ -3863,6 +3943,7 @@ export type Database = {
           retry_count?: number
           status?: string
           stripe_session_id?: string
+          transient_failures?: number
         }
         Relationships: []
       }
@@ -4225,6 +4306,7 @@ export type Database = {
           flags: Json | null
           id: string
           interview_questions: Json | null
+          jd_text_scored: string | null
           jd_version: number
           level_read: string | null
           model_version: string | null
@@ -4244,6 +4326,7 @@ export type Database = {
           flags?: Json | null
           id?: string
           interview_questions?: Json | null
+          jd_text_scored?: string | null
           jd_version?: number
           level_read?: string | null
           model_version?: string | null
@@ -4263,6 +4346,7 @@ export type Database = {
           flags?: Json | null
           id?: string
           interview_questions?: Json | null
+          jd_text_scored?: string | null
           jd_version?: number
           level_read?: string | null
           model_version?: string | null
@@ -4443,6 +4527,36 @@ export type Database = {
         }
         Relationships: []
       }
+      subscription_notices: {
+        Row: {
+          email: string
+          kind: string
+          pending_mail: Json | null
+          provider_message_id: string | null
+          queued_at: string
+          sent_at: string | null
+          subscription_id: string
+        }
+        Insert: {
+          email: string
+          kind: string
+          pending_mail?: Json | null
+          provider_message_id?: string | null
+          queued_at?: string
+          sent_at?: string | null
+          subscription_id: string
+        }
+        Update: {
+          email?: string
+          kind?: string
+          pending_mail?: Json | null
+          provider_message_id?: string | null
+          queued_at?: string
+          sent_at?: string | null
+          subscription_id?: string
+        }
+        Relationships: []
+      }
       suppressed_emails: {
         Row: {
           created_at: string
@@ -4547,6 +4661,7 @@ export type Database = {
           status: string
           status_changed_at: string | null
           user_id: string
+          written_by: string | null
         }
         Insert: {
           applied_at?: string
@@ -4573,6 +4688,7 @@ export type Database = {
           status?: string
           status_changed_at?: string | null
           user_id: string
+          written_by?: string | null
         }
         Update: {
           applied_at?: string
@@ -4599,6 +4715,7 @@ export type Database = {
           status?: string
           status_changed_at?: string | null
           user_id?: string
+          written_by?: string | null
         }
         Relationships: [
           {
@@ -4613,6 +4730,7 @@ export type Database = {
       user_job_searches: {
         Row: {
           created_at: string
+          digest_attempted_at: string | null
           digest_cadence: string
           digest_last_sent_at: string | null
           digest_opt_in: boolean
@@ -4625,6 +4743,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          digest_attempted_at?: string | null
           digest_cadence?: string
           digest_last_sent_at?: string | null
           digest_opt_in?: boolean
@@ -4637,6 +4756,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          digest_attempted_at?: string | null
           digest_cadence?: string
           digest_last_sent_at?: string | null
           digest_opt_in?: boolean
@@ -4879,6 +4999,7 @@ export type Database = {
           submitted_at: string | null
           submitted_via: string | null
           title: string
+          uncertain_at: string | null
           updated_at: string
           user_id: string
         }[]
@@ -4901,6 +5022,7 @@ export type Database = {
         Args: { p_limit: number }
         Returns: {
           ad_email: string
+          ad_prev_attempted_at: string
           ad_prev_sent_at: string
           ad_user_id: string
         }[]
@@ -4935,6 +5057,10 @@ export type Database = {
           decided_claimable_at: string
           decided_ok: boolean
         }[]
+      }
+      agent_packet_pass_funds: {
+        Args: { p_pass_id: string; p_refunded_at: string }
+        Returns: boolean
       }
       agent_pass_grant: {
         Args: {
@@ -5142,6 +5268,15 @@ export type Database = {
       }
       api_key_retire_idle: { Args: never; Returns: number }
       apply_posting_corrections: { Args: { p_patches: Json }; Returns: number }
+      auth_changed_since: {
+        Args: { p_since: string; p_user_id: string }
+        Returns: boolean
+      }
+      auth_sign_in_addresses: {
+        Args: { p_at: string; p_user_id: string }
+        Returns: string[]
+      }
+      auth_user_has_password: { Args: { p_user_id: string }; Returns: boolean }
       board_recency_ladder: {
         Args: { p_fresh_days?: number; p_step?: number }
         Returns: Json
@@ -5262,6 +5397,19 @@ export type Database = {
           n: number
         }[]
       }
+      cron_http_refusals: {
+        Args: { p_minutes?: number }
+        Returns: {
+          available: boolean
+          last_refused_at: string
+          last_refused_sample: string
+          last_refused_status: number
+          refused: number
+          responses: number
+          server_errors: number
+          timed_out: number
+        }[]
+      }
       custom_access_token_hook: { Args: { event: Json }; Returns: Json }
       delete_analysis_by_share_id: {
         Args: { p_share_id: string }
@@ -5269,6 +5417,10 @@ export type Database = {
       }
       delete_email: {
         Args: { message_id: number; queue_name: string }
+        Returns: boolean
+      }
+      delivery_error_is_transient: {
+        Args: { p_error: string }
         Returns: boolean
       }
       detect_user_error_spikes: {
@@ -5917,7 +6069,7 @@ export type Database = {
       get_explore_denominators: { Args: never; Returns: Json }
       get_explore_field_grid: { Args: never; Returns: Json }
       get_failed_deliveries_for_retry: {
-        Args: { p_limit?: number }
+        Args: { p_include_generating?: boolean; p_limit?: number }
         Returns: {
           customer_email: string
           id: string
@@ -6713,6 +6865,10 @@ export type Database = {
           cf_reason: string
         }[]
       }
+      market_pulse_confirm_unsent: {
+        Args: { p_email: string; p_token_hash: string }
+        Returns: boolean
+      }
       market_pulse_request_confirm: {
         Args: {
           p_email: string
@@ -6997,6 +7153,7 @@ export type Database = {
           sd_id: string
           sd_name: string
           sd_params: Json
+          sd_prev_attempted_at: string
           sd_prev_sent_at: string
           sd_user_id: string
         }[]
@@ -7029,6 +7186,7 @@ export type Database = {
           p_salary_ceiling?: number
           p_salary_floor?: number
           p_sources?: string[]
+          p_title_only?: boolean
           p_work_mode?: string
         }
         Returns: {
@@ -7086,6 +7244,10 @@ export type Database = {
           title: string
           work_mode: string
         }[]
+      }
+      shortlist_decide: {
+        Args: { p_action: string; p_candidate_id: string; p_reason?: string }
+        Returns: Json
       }
       should_generate_weekly_report: { Args: never; Returns: boolean }
       should_send_alert: {
@@ -7152,6 +7314,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      undate_served_tracker_rows: { Args: never; Returns: number }
       update_delivery_retry: {
         Args: {
           p_error?: string
@@ -7162,6 +7325,10 @@ export type Database = {
         Returns: boolean
       }
       use_scan_credit: { Args: { p_email: string }; Returns: boolean }
+      v1_withheld_company_tokens: {
+        Args: { p_sources: string[] }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never

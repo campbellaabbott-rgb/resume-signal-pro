@@ -82,4 +82,24 @@ describe("L7-14, L7-15: the place a posting names decides its country", () => {
     expect(icimsCountry("FR", "Paris")).toBe("FR");
     expect(icimsCountry(null, "Austin, TX")).toBe("US");
   });
+  // S11-059: the override read the whole location through detectCountry,
+  // which tests country words ahead of spelled-out states, so US towns named
+  // for countries, and US-first multi-site postings, left the US.
+  it("a US town named for a country, or a US-first multi-site posting, stays where the feed puts it", () => {
+    expect(icimsCountry("US", "China Lake, California")).toBe("US");
+    expect(icimsCountry("US", "Peru, Illinois")).toBe("US");
+    expect(icimsCountry("US", "Rome, Georgia")).toBe("US");
+    expect(icimsCountry("US", "Dublin, Georgia")).toBe("US");
+    expect(icimsCountry("US", "New York, New York; Toronto, Canada")).toBe("US");
+    expect(icimsCountry("US", "London, Kentucky")).toBe("US");
+  });
+  it("only a first site in a US state or Canadian province overrides a foreign code; a code that is the feed's own is not a state", () => {
+    expect(icimsCountry("FR", "Austin, TX; Paris, France")).toBe("US");
+    expect(icimsCountry("US", "Toronto, Ontario")).toBe("CA");
+    expect(icimsCountry("CA", "Seattle, Washington")).toBe("US");
+    expect(icimsCountry("IN", "Bangalore, IN")).toBe("IN");
+    expect(icimsCountry("NL", "Amsterdam, NL")).toBe("NL");
+    expect(icimsCountry("GE", "Tbilisi, Georgia")).toBe("GE");
+    expect(icimsCountry("US", "Remote")).toBe("US");
+  });
 });

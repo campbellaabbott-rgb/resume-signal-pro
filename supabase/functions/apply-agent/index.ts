@@ -20,9 +20,10 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { wakeConfig, wakeSender } from "../_shared/wake-sender.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { buildPacket, toDraftedAnswers, type DraftedAnswer, type PacketQuestion, type Profile, type StandingAnswers } from "../_shared/submission-packet.ts";
+import { buildPacket, type DraftedAnswer, type PacketQuestion, type Profile, type StandingAnswers } from "../_shared/submission-packet.ts";
+import { readDraftReply } from "../_shared/draft-reply.ts";
 import { ownResumePath } from "../_shared/resume-path.ts";
-import { decideRelease, type ReleaseRefusal } from "../_shared/apply-release.ts";
+import { decideRelease, refusalToStore, type ReleaseRefusal } from "../_shared/apply-release.ts";
 import { automationFor } from "../_shared/apply-automation.ts";
 import { classifyQuestion, cleanQuestionLabel } from "../_shared/application-questions.ts";
 import { ACCOUNT_SUBSCRIPTION_RPC, accountSubscription, effectiveDailyCap, normalizeEmail, packetIsFunded, rowIsEntitled } from "../_shared/agent-entitlement.ts";
@@ -51,7 +52,15 @@ import { nextRunStamp } from "../_shared/run-stamp.ts";
 // read by the account's user id (agent_subscription_rows), never an address.
 // 2026-10-09.2: the sheet's work questions read their country, so the
 // mandate's listed countries are selected and handed to buildPacket.
-const BUILD_VERSION = "2026-10-09.3";
+// 2026-10-09.24: the sheet reads an authorisation question without the
+// employer's sponsorship notice, refuses sponsorship history (S11-012), and
+// answers "this country" from the posting's own country (S11-060); a failed
+// drafting call leaves the posting for the next run instead of a packet that
+// blames the résumé (S11-040).
+// 2026-10-09.71: a notice inside the question's own clause is not the
+// question, "the country in which you are applying" is the posting's, and a
+// waiting packet stores today's refusal (review of S11-012, S11-060, S11-042).
+const BUILD_VERSION = "2026-10-09.71";
 // Provable from outside with no key: the CORS preflight and every response
 // carry this in x-fn-build.
 const FN_BUILD = `apply-agent.${BUILD_VERSION}`;
@@ -316,6 +325,9 @@ serve(async (req) => {
     // Pass-funded queue rows a gate refused (blocked employer, cooldown) and
     // gave back to the pass. Never a row a packet was prepared from.
     passRowsRefunded: 0,
+    // Postings whose drafting call failed and were left for the next run
+    // (S11-040), never packeted as "nothing in your résumé supports it".
+    draftsFailed: 0,
   };
 
   const { data: mandates } = await client
@@ -549,8 +561,12 @@ serve(async (req) => {
         });
         if (!decision.release) {
           // The reason a candidate reads must be today's, not the first run's.
-          if (decision.code !== w.release_refusal) {
-            await client.from("agent_submissions").update({ release_refusal: decision.code })
+          // A packet waiting for a person keeps its Approve button when only an
+          // unattended rule now refuses it (S11-042), and nothing else is kept:
+          // see refusalToStore.
+          const stored = refusalToStore(w.release_refusal, decision.code);
+          if (stored !== w.release_refusal) {
+            await client.from("agent_submissions").update({ release_refusal: stored })
               .eq("id", w.id).is("released_at", null);
             summary.rereasoned++;
           }
@@ -754,7 +770,7 @@ serve(async (req) => {
           (x) => classifyQuestion(x.label ?? "", x.fieldType) === "draftable",
         );
         if (needsDraft.length && m.resume_text) {
-          const { data: ans } = await client.functions.invoke("generate-application-answers", {
+          const reply = await client.functions.invoke("generate-application-answers", {
             body: {
               resumeText: m.resume_text, jobTitle: q.title, jobCompany: q.company,
               jobDescription: await postingText(),
@@ -766,7 +782,19 @@ serve(async (req) => {
           // threw inside buildPacket for every posting with a draftable
           // question — no packet, a paid model call repeated hourly, and a
           // pass application spent with no row to refund it (register 1.11).
-          drafted = toDraftedAnswers((ans as { answers?: unknown } | null)?.answers);
+          //
+          // A FAILED DRAFT IS NOT AN EMPTY ONE (S11-040). A 429, 402, 502 or
+          // 500 used to read as "no answers", and every required question
+          // became a permanent "nothing in your résumé supports an answer".
+          // The posting is left unprepared instead, and the next run asks
+          // again; nothing is inserted, so nothing is spent or refunded.
+          const read = readDraftReply(reply, needsDraft);
+          if (!read.ok) {
+            summary.draftsFailed++;
+            console.error(`[APPLY-AGENT] ${q.posting_id}: ${read.why}; left for the next run`);
+            continue;
+          }
+          drafted = read.drafted;
         }
 
         // ── the cover note ───────────────────────────────────────────────────
@@ -818,8 +846,16 @@ serve(async (req) => {
           }
         }
 
+        // THE POSTING'S COUNTRY (S11-060). "Authorised to work in this
+        // country?" is about the posting, and the sheet answered it from the
+        // candidate's home country whatever the posting. A failed read leaves
+        // it unknown, and such a question then blocks instead of guessing.
+        const { data: placeRow } = await client.from("job_board_postings")
+          .select("country").eq("id", q.posting_id).maybeSingle();
+        const postingCountry = t((placeRow as { country?: string | null } | null)?.country) || null;
+
         const packet = buildPacket({
-          questions, profile, standing, drafted, automationTier: auto.tier, coverNote,
+          questions, profile, standing, drafted, automationTier: auto.tier, coverNote, postingCountry,
         });
 
         const decision = decideRelease({

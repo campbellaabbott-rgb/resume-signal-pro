@@ -206,7 +206,8 @@ describe("the prompt, the schema and the validator cannot disagree", () => {
   });
 
   it("the schema has one property per filter, plus the two disclosure arrays", () => {
-    expect(Object.keys(TOOL_PARAMETERS.properties)).toEqual([...NL_KEYS, "interpreted", "notMapped"]);
+    // salaryCurrency is the two pay filters' unit, not a filter (S11-026).
+    expect(Object.keys(TOOL_PARAMETERS.properties)).toEqual([...NL_KEYS, "salaryCurrency", "interpreted", "notMapped"]);
     for (const f of NL_FILTERS) {
       const p = (TOOL_PARAMETERS.properties as Record<string, { type: string; description: string }>)[f.key];
       expect(p.type, `${f.key} has no schema type`).toMatch(/^(string|number|boolean)$/);
@@ -350,7 +351,9 @@ describe("a value the validator does not know is dropped and named", () => {
     // rather than silently narrowed to a week.
     expect(validateParse({ maxAgeDays: 14 }).filters).toEqual({ maxAgeDays: 14 });
     expect(validateParse({ maxAgeDays: 90 }).dropped).toEqual(["maxAgeDays"]);
-    expect(validateParse({ salaryFloor: 9_000_000 }).filters).toEqual({ salaryFloor: 2_000_000 });
+    // Refused, not clamped (S11-026): a $2M floor nobody asked for returned an empty board under the reader's own chip.
+    expect(validateParse({ salaryFloor: 9_000_000 }).filters).toEqual({});
+    expect(validateParse({ salaryFloor: 9_000_000 }).dropped).toEqual(["salaryFloor"]);
   });
 
   it("a pay band that closes below its own floor is refused HERE, not by the board", () => {

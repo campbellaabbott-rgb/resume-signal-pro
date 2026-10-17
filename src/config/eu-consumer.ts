@@ -3,8 +3,11 @@
  *
  * Off unless the build sets VITE_EU_UK_SALES to exactly "on", and it stays off
  * until the owner has registered for VAT. The server reads its own switch,
- * EU_UK_SALES (supabase/functions/_shared/checkout-policy.ts); both are turned
- * on together. While off, no buy button shows a box and nothing is sent.
+ * EU_UK_SALES (supabase/functions/_shared/checkout-policy.ts), and the page
+ * asks it (src/lib/purchase-terms.ts euUkBoxShown, S11-142): the box shows
+ * when either says on, so the owner publishes the page first and then flips
+ * the server's secret, and no rebuild is needed. While both are off, no buy
+ * button shows a box and nothing is sent.
  *
  * With it on, a one-time digital product asks the buyer to request delivery
  * now and to acknowledge that the right to withdraw ends with it (Directive

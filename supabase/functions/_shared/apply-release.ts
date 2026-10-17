@@ -79,6 +79,33 @@ export type ReleaseRefusal =
   // exists only in the database renders to a candidate as a raw slug.
   | "cancelled-by-you";
 
+/**
+ * The refusals a PERSON may override with "Approve and send"
+ * (agent_packet_decide, 20261009124100, holds the same list; a test pins
+ * them equal). The moment ones (the candidate's say-so, the on-ramp, the
+ * sender, the day's cap), and the fit floor with an unknown fit: OWNER
+ * DECISION 2026-10-11, the floor guards only unattended sends (S11-042).
+ */
+export const APPROVABLE_REFUSALS: ReadonlySet<ReleaseRefusal> = new Set<ReleaseRefusal>([
+  "review-mode", "held-for-review", "sender-offline", "daily-cap", "fit-below-floor", "fit-unknown",
+]);
+
+/**
+ * The refusal a WAITING packet stores once it is decided again. The reason a
+ * candidate reads is today's: a packet stored "sender-offline" that the sender
+ * is back for but that still has gaps is "not-ready", not "queued for when the
+ * sender is back", and "daily-cap" for a vendor taken off the auto list is not
+ * "goes out tomorrow" (review of S11-042, register 1.09). The one exception is
+ * a packet waiting for a person ("review-mode", "held-for-review") that an
+ * unattended-only rule now refuses ("vendor-not-allowed"): the person's own
+ * approval is what that rule does not govern, so it keeps the code its Approve
+ * button reads. "not-ready" is never masked.
+ */
+export function refusalToStore(previous: string, next: ReleaseRefusal): string {
+  if (next === "vendor-not-allowed" && (previous === "review-mode" || previous === "held-for-review")) return previous;
+  return next;
+}
+
 export function decideRelease(i: ReleaseInput): ReleaseDecision {
   // Order matters only for which reason a candidate sees first; each check is
   // independently sufficient to refuse.

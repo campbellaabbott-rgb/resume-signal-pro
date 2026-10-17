@@ -80,7 +80,7 @@ import {
 import { MCP_URL, runServerTest, describeTest, readSignInFromServer } from "@/lib/mcp-test";
 import { rememberedHostChoice, rememberHostName } from "@/lib/agent-handoff";
 import { postTrackEvent, getVisitorId, checkoutContext } from "@/lib/track-transport";
-import { purchaseTerms } from "@/lib/purchase-terms";
+import { consentWasRequired, purchaseTerms } from "@/lib/purchase-terms";
 import { PurchaseTerms } from "@/components/PurchaseTerms";
 import { SENDABLE_VENDOR_LABELS, SENDABLE_VENDOR_SENTENCE } from "@/config/sendable-vendors";
 import { PASS, SUBSCRIPTIONS } from "@/config/products";
@@ -175,6 +175,10 @@ export function usePassStatus(sessionId?: string | null) {
  */
 export async function startPassCheckout(): Promise<string | null> {
   const { data, error } = await supabase.functions.invoke("create-pass-checkout", { body: { ...checkoutContext(), ...purchaseTerms() } });
+  // A refusal for the EU/UK box is the server saying its switch is on: the
+  // box shows beside the button from now on, whenever this page was loaded
+  // (review of S11-142). The refusal's own sentence is still what is shown.
+  await consentWasRequired(error, data);
   if (error) {
     const ctx = (error as { context?: { json?: () => Promise<unknown> } }).context;
     let message: string | null = null;
@@ -624,6 +628,9 @@ export function PassCard() {
       <h3 className="font-semibold mb-2 flex items-center gap-2"><Ticket className="w-4 h-4 text-primary" /> {t("agentPass.cardTitle", "A pass for your agent")}</h3>
       <p className="text-lg font-medium mb-2">
         {t("agentPass.cardBody", "{{passHours}} hours with your agent, {{passApplications}} applications, ${{passPrice}}. Never renews.", PASS_COPY)}
+      </p>
+      <p className="text-sm text-muted-foreground mb-2">
+        {t("agentPass.cardCharge", "It counts only jobs your agent can submit itself. Anything else is refused and costs nothing.")}
       </p>
       <p className="text-sm text-muted-foreground mb-2">
         {t("agentPass.cardClock", "The clock starts at your agent's first call, not at purchase. An unstarted pass keeps for {{passShelfDays}} days.", PASS_COPY)}

@@ -363,9 +363,17 @@
       "excelCsv": "Excel/CSV",
       "googleSheets": "Google Sheets"
     },
-    "jobUrlPlaceholder": "https://linkedin.com/jobs/... of de vacaturepagina van het bedrijf",
-    "jobUrlTip": "💡 Plak de URL van de vacature van LinkedIn, Indeed, Glassdoor of een andere bedrijfsvacaturepagina",
-    "jobUrlNotesPlaceholder": "Optioneel: voeg extra notities over de functie toe...",
+    "jobUrlPlaceholder": "Plak een vacaturelink, zoals https://jobs.lever.co/…",
+    "jobUrlTip": "💡 Werkt met links naar de vacaturesites van werkgevers (Greenhouse, Lever, Ashby, Workday en meer). Voor LinkedIn, Indeed en andere sites plak je de functiebeschrijving.",
+    "jobUrlFetch": "Functiebeschrijving ophalen",
+    "jobUrlFetching": "Bezig met lezen…",
+    "jobUrlLoadedTitle": "Functiebeschrijving geladen",
+    "jobUrlLoadedDesc": "{{title}}. Controleer hem in het vak en start dan de scan.",
+    "jobUrlUnsupported": "We kunnen vacaturepagina's van deze site niet lezen. Plak in plaats daarvan de functiebeschrijving.",
+    "jobUrlFailed": "We konden die vacaturepagina niet lezen. Plak in plaats daarvan de functiebeschrijving.",
+    "jobUrlLimited": "Er zijn net te veel links gelezen vanaf je verbinding. Plak de functiebeschrijving of probeer het later opnieuw.",
+    "jobUrlPasteInstead": "Tekst plakken",
+    "jobUrlInPasteBox": "Dat is een link, geen functiebeschrijving. We kunnen de vacaturepagina voor je lezen.",
     "otherJobsAvailable_one": "{{count}} andere vacature beschikbaar",
     "otherJobsAvailable_other": "{{count}} andere vacatures beschikbaar",
     "changeSelection": "selectie wijzigen",
@@ -384,7 +392,6 @@
     "gsheetsStep2Anyone": "Iedereen met de link",
     "gsheetsStep3": "Kopieer de URL en plak deze hierboven",
     "jdAdded": "Functiebeschrijving toegevoegd",
-    "jobUrlAdded": "Vacature-URL toegevoegd",
     "linkedinAddHintPrefix": "Voeg LinkedIn toe voor",
     "linkedinAddHintHighlight": "skillgap-analyse & profieltips",
     "scanChips": {
@@ -1080,7 +1087,13 @@
       "tooManyAttempts": "Te veel pogingen",
       "tooManyAttemptsDescription": "Wacht een paar minuten voordat je het opnieuw probeert.",
       "serviceTemporarilyUnavailable": "Service tijdelijk niet beschikbaar",
-      "serviceTemporarilyUnavailableDescription": "Onze betaalservice is tijdelijk niet beschikbaar. Probeer het over een paar minuten opnieuw."
+      "serviceTemporarilyUnavailableDescription": "Onze betaalservice is tijdelijk niet beschikbaar. Probeer het over een paar minuten opnieuw.",
+      "fileDamaged": "Dit bestand kan niet worden gelezen",
+      "fileDamagedDescription": "Het lijkt beschadigd of is geen echte PDF of .docx. Sla het opnieuw op, probeer het andere formaat of plak de tekst van je cv.",
+      "fontUnreadable": "De letters in deze PDF kunnen niet worden gelezen",
+      "fontUnreadableDescription": "Het lettertype verwijst niet naar echte tekens. Upload in plaats daarvan een .docx of plak de tekst van je cv.",
+      "unreadCharacters": "Sommige tekens konden niet worden gelezen",
+      "unreadCharactersDescription": "We hebben {{count}} tekens overgeslagen die deze PDF niet benoemt. Upload voor de nauwkeurigste scan een .docx of plak de tekst van je cv."
     },
     "reportCrash": {
       "title": "Er ging iets mis bij het tonen van je rapport",
@@ -1089,7 +1102,10 @@
     "partialResults": {
       "title": "Gedeeltelijke resultaten:",
       "ruleBased": "onze AI-beoordelaar was even niet bereikbaar, dus dit rapport gebruikt alleen automatische analyse. Scan over een paar minuten opnieuw voor de volledige, door AI gepersonaliseerde versie.",
-      "thin": "de AI-beoordeling liet enkele onderdelen leeg, dus automatische analyse heeft ze aangevuld. Deze versie is niet opgeslagen, dus een nieuwe scan maakt een nieuwe."
+      "thin": "de AI-beoordeling liet enkele onderdelen leeg, dus automatische analyse heeft ze aangevuld. Deze versie is niet opgeslagen, dus een nieuwe scan maakt een nieuwe.",
+      "thinUnfilled": "de AI-beoordeling liet enkele onderdelen leeg, dus die zijn verborgen. Scan over een paar minuten opnieuw voor het volledige rapport.",
+      "fallback": "onze hoofdscanner was niet bereikbaar, dus een eenvoudigere reservescanner heeft dit rapport gemaakt. Het heeft geen „Waarom deze score”, en de score is niet getoetst aan onze op regels gebaseerde score. Scan over een paar minuten opnieuw voor het volledige rapport.",
+      "fallbackHidden": "Onderdelen die de reservescanner leeg liet, zijn verborgen."
     }
   },
   "miniPricingCards": {
@@ -2007,11 +2023,10 @@
       },
       "atsDefense": {
         "howItWorks": [
-          "Onze AI voerde een uitgebreide ATS-compatibiliteitsaudit uit",
-          "We analyseerden je cv tegen 50+ ATS-platforms",
-          "Zoekwoorden geoptimaliseerd voor tot 3 doelfuncties",
-          "Formaat geherstructureerd voor maximale verwerkbaarheid",
-          "LinkedIn-afstemmingstips inbegrepen"
+          "We hebben gecontroleerd hoe sollicitatiesystemen je cv lezen",
+          "We hebben je trefwoorden afgestemd op de functies die je noemde (maximaal 3)",
+          "We hebben secties aangepast zodat ze foutloos worden ingelezen",
+          "We hebben tips toegevoegd om je LinkedIn-profiel erop af te stemmen"
         ],
         "nextSteps": [
           {
@@ -2201,6 +2216,11 @@
         "deliveryTime": "Direct",
         "deliveryMethod": "Op deze pagina"
       }
+    },
+    "stillBeingMade": {
+      "title": "Je {{product}} wordt nog gemaakt",
+      "emailed": "Het duurt langer dan normaal. We mailen het je zodra het klaar is, dus je kunt deze pagina sluiten.",
+      "refresh": "Het duurt langer dan normaal. Vernieuw deze pagina over een paar minuten om het te zien."
     }
   },
   "analysisResults": {
@@ -2698,13 +2718,13 @@
       },
       "scoringAlgorithm": {
         "title": "Scoringalgoritme",
-        "description": "De AI scoort het cv met gewichten voor uw branche, en die score blijft binnen {{band}} punten van een op regels gebaseerde score uit hetzelfde document. Het auditspoor verdeelt het resultaat daarna over de vier onderdelen hieronder."
+        "description": "De AI scoort het cv met gewichten voor uw branche, en die score blijft binnen {{band}} punten van een op regels gebaseerde score uit hetzelfde document. Het auditspoor verdeelt het resultaat daarna over de vier onderdelen hieronder. Is de hoofdscanner niet bereikbaar, dan antwoordt in plaats daarvan een eenvoudigere reserve: dat rapport zegt dat bovenaan en heeft geen auditspoor."
       }
     },
     "atsPlatformsTitle": "ATS-platforms waarop we analyseren",
     "atsPlatformsSubtitle": "De scan beoordeelt hoe elk van deze {{count}} systemen uw cv waarschijnlijk leest. Dit zijn de systemen die hij noemt; hier wordt geen marktaandeel geclaimd.",
     "scoreCalculatedTitle": "Hoe je ATS-score wordt berekend",
-    "scoreCalculatedSubtitle": "De „Waarom deze score” van elk rapport verdeelt de score over deze vier onderdelen, op 100 punten.",
+    "scoreCalculatedSubtitle": "De „Waarom deze score” van elk volledig rapport verdeelt de score over deze vier onderdelen, op 100 punten.",
     "continuousResearchTitle": "Continu onderzoek",
     "continuousResearchSubtitle": "De trefwoordtabellen en regels veranderen naarmate we leren, en elke wijziging staat gedateerd in het openbare wijzigingslogboek.",
     "continuousResearch": {
@@ -2772,7 +2792,7 @@
     "ladderSpecialistDesc": "Voor carrièreswitchers: freelance-, gig- en projectwerk vertaald naar ervaring op recruiterniveau.",
     "allToolsToggle": "Bekijk alle tools ({{count}} meer)",
     "guarantee": "Elke betaalde tool is gedekt: niet blij met het resultaat? We regenereren het gratis — beantwoord gewoon je bon.",
-    "passLine": "Of een eenmalige pas voor je eigen AI-agent: ${{passPrice}} voor {{passHours}} uur en {{passApplications}} sollicitaties. Verlengt nooit.",
+    "passLine": "Of een eenmalige pas voor je eigen AI-agent: ${{passPrice}} voor {{passHours}} uur en {{passApplications}} sollicitaties, die alleen tellen als hij ze kan versturen. Verlengt nooit.",
     "passLink": "Verbind je agent"
   },
   "scanPackPurchase": {
@@ -3632,6 +3652,7 @@
     "saveTip": "Bewaar deze vacature in je sollicitatietracker",
     "saveSearch": "Deze zoekopdracht opslaan",
     "searchExists": "Je hebt deze zoekopdracht al opgeslagen.",
+    "searchAlertsOn": "Meldingen staan aan",
     "searchSaved": "Zoekopdracht opgeslagen",
     "searchSavedDesc": "Je account toont hoeveel nieuwe vacatures er sinds je laatste bezoek zijn.",
     "freshAll": "Elke datum",
@@ -4211,6 +4232,10 @@
     "fieldsAtMax": "Drie vakgebieden tegelijk — meer is zo traag dat een tweede zoekopdracht sneller is.",
     "countriesAtMax": "Vijf landen tegelijk.",
     "sameLocationOpenings": "{{count}} vacatures op deze locatie",
+    "hideOpenings": "Verberg de andere vacatures",
+    "moreOpenings_one": "Nog {{count}} vacature voor deze functie",
+    "moreOpenings_other": "Nog {{count}} vacatures voor deze functie",
+    "seeAllOpenings": "Bekijk alle {{count}} vacatures voor deze functie",
     "a11yLoading": "Vacatures laden…",
     "a11yError": "Vacatures konden niet worden geladen. Probeer het opnieuw.",
     "a11yNoResults": "Geen vacatures voldoen aan deze filters.",
@@ -4516,7 +4541,7 @@
     "acNothingNew": "Niets nieuws om voor te bereiden — de opgeslagen vacatures konden niet worden aangepast (ontbrekende beschrijving of feitencontrole). Voeg de vacaturetekst toe en probeer opnieuw.",
     "acTitle": "Sollicitatie-copiloot",
     "acPreppedCount": "{{done}}/{{total}} voorbereid",
-    "acBlurb": "We passen cv en brief aan op elke opgeslagen vacature — verankerd in je echte cv, niets verzonnen. Jij controleert en solliciteert op de site van het bedrijf.",
+    "acBlurb": "Voor elke opgeslagen vacature schrijven we een aangepast cv en een sollicitatiebrief op basis van je echte cv, zonder iets te verzinnen. Jij controleert ze en solliciteert op de site van de werkgever.",
     "acPrepProgress": "Bezig met {{i}} van {{total}} — {{company}}…",
     "acPrepAll_one": "{{count}} sollicitatie op maat voorbereiden",
     "acPrepAll_other": "{{count}} sollicitaties op maat voorbereiden",
@@ -4775,7 +4800,8 @@
     "anyRole": "Elke functie",
     "searchLimitHit": "Je kunt maximaal 10 actieve zoekopdrachten hebben. Pauzeer er een om een nieuwe toe te voegen.",
     "searchLastRun": "Laatste run: {{scanned}} bekeken, {{picked}} in de wachtrij.",
-    "passFunds": "Je Agent Pass betaalt deze agent: nog {{left}} sollicitaties. Zet de agent hieronder aan, dan kan je gekoppelde AI sollicitaties aanvragen."
+    "passFunds": "Je Agent Pass betaalt deze agent: nog {{left}} sollicitaties. Zet de agent hieronder aan, dan kan je gekoppelde AI sollicitaties aanvragen.",
+    "trackerFull": "Bewaard, maar je tracker is vol (2.000 items). Verwijder oude items om er meer toe te voegen."
   },
   "applyProfile": {
     "authorized": "Mag je werken waar je solliciteert?",
@@ -4835,7 +4861,11 @@
     "coverNotePlaceholder": "bijv. Ik ben data engineer met acht jaar ervaring in het bouwen van pipelines met Python en dbt, en zoek een senior rol waarin ik een platform van begin tot eind kan dragen.",
     "coverNoteCount": "{{n}} van 2000 tekens",
     "coverNoteHintTailored": "Optioneel. Sommige formulieren verzenden niet zonder, en de agent stopt liever dan een leeg veld te versturen. Omdat afstemming aanstaat, past de agent de notitie aan per functie en gebruikt daarbij alleen wat je cv en de vacature daadwerkelijk zeggen — lukt dat niet eerlijk, dan wordt je notitie precies zo verstuurd als je hem hebt geschreven.",
-    "tailorCoverNote": "Deze notitie per functie aanpassen. De agent herschrijft hem aan de hand van de vacature en gebruikt alleen feiten die al in je cv staan: hij kan geen werkgever, opleiding, vaardigheid of getal toevoegen dat er niet in staat, en noemt uit zichzelf nooit je visumstatus, salaris of startdatum. Wat hij niet kan onderbouwen, laat hij weg: dan gaat je notitie ongewijzigd mee."
+    "tailorCoverNote": "Deze notitie per functie aanpassen. De agent herschrijft hem aan de hand van de vacature en gebruikt alleen feiten die al in je cv staan: hij kan geen werkgever, opleiding, vaardigheid of getal toevoegen dat er niet in staat, en noemt uit zichzelf nooit je visumstatus, salaris of startdatum. Wat hij niet kan onderbouwen, laat hij weg: dan gaat je notitie ongewijzigd mee.",
+    "suggestedTitle": "Uit je cv, maar we weten het niet zeker. Controleer het voordat het wordt gebruikt:",
+    "useSuggested": "Gebruiken",
+    "dismissSuggested": "Klopt niet",
+    "uploadedCheck": "Opgeslagen. Controleer hieronder wat we uit je cv hebben gelezen voordat de agent het gebruikt."
   },
   "applyQueue": {
     "title": "Voorbereide sollicitaties",
@@ -4876,7 +4906,11 @@
     "decideAgentOff": "Zet eerst je agent aan — een goedgekeurde sollicitatie wacht daarop.",
     "decideBlockedCompany": "Deze werkgever staat op je nooit-solliciteren-lijst, dus de agent verstuurt er niets naartoe.",
     "decideInFlight": "De verzender is hier nu mee bezig — het is te laat om hem te wijzigen.",
-    "decideFailed": "Dat lukte niet — vernieuw de pagina en probeer het opnieuw."
+    "decideFailed": "Dat lukte niet — vernieuw de pagina en probeer het opnieuw.",
+    "notArrived": "Niet aangekomen",
+    "recordedNotSent": "Genoteerd: deze is niet verstuurd.",
+    "retryNotTransient": "Opnieuw proberen lost niet op waarom deze stopte. Open hem om te zien waarom.",
+    "retryNotFunded": "Uw pas heeft geen sollicitatie meer over om deze opnieuw te versturen."
   },
   "agentPlan": {
     "badge": "Solliciteert voor je",
@@ -4886,8 +4920,8 @@
     "includesPro": "Bevat alles uit Pro (${{proPrice}}/maand)",
     "perkAutoApply": "Solliciteert automatisch voor je op {{names}}",
     "perkOneClick": "Sollicitaties ingevuld en klaar om te versturen op {{names}}",
-    "perkMorningQueue": "Ochtendwachtrij: 's nachts voert de agent je zoekopdracht uit en zet hij een shortlist voor de ochtend in je account",
-    "perkQueue": "Een wachtrij die je eerst kunt nakijken, of onbeheerd laten draaien — jouw keuze, altijd aan te passen",
+    "perkMorningQueue": "Ochtendwachtrij: elke ochtend staat er een shortlist met nieuwe passende vacatures in je account",
+    "perkQueue": "Controleer elke sollicitatie voordat hij weggaat, of laat hem zelf versturen. Altijd aan te passen.",
     "perkCap": "Een daglimiet die jij instelt, en nooit twee keer op dezelfde vacature",
     "perkHonest": "Hij verzint nooit een antwoord. Heeft een vraag jou nodig, dan stopt hij en vraagt het.",
     "cta": "Agent starten",
@@ -4899,7 +4933,8 @@
     "signInFirst": "Je logt eerst in — de agent werkt vanuit je account.",
     "alreadySubscribed": "Je hebt de agent al — we brengen je ernaartoe.",
     "needsPaymentUpdate": "Er staat een betaling open voor je plan. Werk je kaart bij in plaats van een nieuw plan te starten.",
-    "hasPro": "Je hebt Pro, dat bij de agent inbegrepen is. Zeg Pro eerst op via Abonnement beheren en start dan de agent — zo betaal je nooit voor beide."
+    "hasPro": "Je hebt Pro, dat bij de agent inbegrepen is. Zeg Pro eerst op via Abonnement beheren en start dan de agent — zo betaal je nooit voor beide.",
+    "portalFailed": "We konden de facturering niet openen. Probeer het over een minuut opnieuw."
   },
   "proPlan": {
     "trialing": "Je proefperiode loopt: onbeperkte scans en het in één keer voorbereiden van sollicitaties zijn nu ontgrendeld. De betaalde tools zijn inbegrepen vanaf je eerste betaling.",
@@ -4955,13 +4990,13 @@
   },
   "applyRefusal": {
     "sender-offline": "Onze verzender is offline, er is niets verstuurd. Dit staat in de wachtrij en gaat weg zodra hij terug is — u hoeft niets te doen.",
-    "fit-unknown": "We konden deze vacature niet tegen uw cv beoordelen en hebben hem daarom niet onbeheerd verstuurd. U kunt hem zelf versturen.",
+    "fit-unknown": "We konden deze vacature niet tegen uw cv beoordelen, dus de agent heeft hem niet zelf verstuurd. Keur hem goed om hem te versturen.",
     "not-ready": "Deze werkgever vraagt iets dat wij niet voor u invullen. Open de sollicitatie en vul de gaten aan.",
     "review-mode": "Klaar en wacht tot u op versturen drukt — uw agent staat in beoordelingsmodus en verstuurt dus nooit zelf.",
     "vendor-not-allowed": "U heeft onbeheerd solliciteren voor deze vacaturesite niet aangezet.",
     "already-submitted": "Al verstuurd. We versturen dezelfde sollicitatie nooit twee keer.",
     "duplicate": "U had al op deze vacature gesolliciteerd, dus we hebben hem met rust gelaten.",
-    "fit-below-floor": "Onder de matchdrempel die u heeft ingesteld. Verlaag hem als u ook twijfelgevallen wilt versturen.",
+    "fit-below-floor": "Een zwakkere match dan de agent zelf verstuurt. Keur hem goed om hem te versturen.",
     "daily-cap": "De limiet van vandaag is op. Dit gaat morgen weg, of verhoog uw daglimiet.",
     "vendor-needs-human": "Deze site vereist een stap die alleen een mens kan doen — meestal een vinkje dat wij niet namens u zetten."
   },
@@ -4991,7 +5026,8 @@
     "held": "Voorbereid, nog niet verstuurd.",
     "ready": "Klaar — er is niets nodig.",
     "blocked": "Hier is iets van u nodig.",
-    "preparing": "Voorbereiden…"
+    "preparing": "Voorbereiden…",
+    "not-arrived": "U heeft het gecontroleerd: deze is niet aangekomen. De agent verstuurt hem niet opnieuw."
   },
   "agentHero": {
     "badge": "Uw AI-sollicitatieagent",
@@ -5029,7 +5065,7 @@
   },
   "homeAgent": {
     "lead": "Neem je eigen AI-agent mee.",
-    "passLine": "Een pas van ${{passPrice}} geeft hem {{passHours}} uur op volle snelheid om de vacaturebank te onderzoeken en voor jou op {{passApplications}} vacatures te solliciteren. Verlengt nooit; log in om te kopen.",
+    "passLine": "Een pas van ${{passPrice}} geeft je agent {{passHours}} uur om de vacaturebank te doorzoeken en voor jou op {{passApplications}} vacatures te solliciteren. Een vacature telt alleen als de agent de sollicitatie kan versturen. Verlengt nooit; log in om te kopen.",
     "connectCta": "Verbind je agent",
     "passCta": "Pas kopen of openen",
     "connectLine2": "Verbind hem gratis en zonder account — {{freeCallsPerDay}} aanroepen per dag per netwerkadres om het vacaturebord te verkennen (een kantoor of een thuisverbinding telt als één adres; vanuit ChatGPT heeft iedereen zijn eigen {{freeCallsPerDay}}, en vanuit Claude gaat eerst een dagelijkse pot voor die alle Claude-gebruikers delen)."
@@ -5107,7 +5143,7 @@
     "clockShelfExpired": "Je laatste pas verviel ongebruikt op {{date}}.",
     "clockNone": "Nog geen pas op dit account.",
     "applications": "{{left}} van {{passApplications}} sollicitaties",
-    "applicationsBasis": "Elke geaccepteerde aanvraag kost er één. Een aanvraag die een controle weigert kost niets, en een verzending die nooit plaatsvond geeft zijn sollicitatie terug.",
+    "applicationsBasis": "Een sollicitatie telt alleen voor een vacature waar de agent hem kan versturen. Een geweigerde aanvraag, of een verzending die nooit plaatsvond, kost niets.",
     "buyAnother": "Koop een pas",
     "whichAgent": "Welke agent?",
     "handoffTitle": "Geef hem aan je agent",
@@ -5129,7 +5165,8 @@
     "connectorPassGate": "Vanuit {{host}} is de pas pas te gebruiken zodra inloggen aanstaat; gebruik hem vandaag vanuit {{headerHosts}} met je agentsleutel.",
     "repairSecondPass": "Deze betaling heeft geen tweede pass gemaakt: een account heeft steeds één open pass, en de jouwe staat hier ongewijzigd. We zijn op de hoogte en deze betaling wordt terugbetaald — staat hij over een paar dagen niet terug op je kaart, mail dan naar resumeboostersupp@gmail.com.",
     "repairNotYours": "Deze aankoop hoort bij een ander account dan waarmee je bent ingelogd, en de pass staat op dat account. Log in met het account dat heeft betaald om hem te zien.",
-    "repairRefunded": "Deze betaling is terugbetaald, dus er opent geen pas mee."
+    "repairRefunded": "Deze betaling is terugbetaald, dus er opent geen pas mee.",
+    "cardCharge": "Alleen vacatures waar je agent zelf kan solliciteren tellen mee. De rest wordt geweigerd en kost niets."
   },
   "oauthConsent": {
     "title": "Verbind je agent",
@@ -5251,7 +5288,8 @@
     "invalid": "Deze link is niet geldig. Gebruik de afmeldlink in de e-mail zelf.",
     "missing": "Deze pagina heeft de afmeldlink uit een van onze e-mails nodig.",
     "error": "Uitzetten lukte nu niet. Probeer de knop zo meteen opnieuw.",
-    "home": "Terug naar Resume Booster"
+    "home": "Terug naar Resume Booster",
+    "agentDigest": "Stop de e-mails met de ochtendselectie. Je agent blijft draaien en zijn keuzes blijven in je account staan."
   },
   "purchaseTerms": {
     "agree": "Door verder te gaan ga je akkoord met de <terms>Servicevoorwaarden</terms> en het <privacy>Privacybeleid</privacy>.",
@@ -5324,7 +5362,32 @@
     "behavioral": "Gedrag",
     "technical": "Technisch",
     "situational": "Situationeel",
-    "cultureFit": "Culturele fit"
+    "cultureFit": "Culturele fit",
+    "critical": "Kritiek",
+    "fiveMinutes": "5 minuten",
+    "fifteenMinutes": "15 minuten",
+    "thirtyMinutes": "30 minuten"
+  },
+  "atsRoles": {
+    "title": "Op welke functies solliciteer je?",
+    "description": "Noem maximaal {{count}} functietitels. Je ATS Defense-rapport richt zich op elk ervan.",
+    "roleLabel": "Functie {{n}}",
+    "example1": "bijv. Data-analist",
+    "example2": "bijv. Business-analist (optioneel)",
+    "example3": "bijv. Rapportage-analist (optioneel)",
+    "cancel": "Annuleren",
+    "continue": "Verder naar afrekenen"
+  },
+  "productFeatures": {
+    "atsDefense": [
+      "ATS-compatibiliteitscheck (score voor/na)",
+      "Analyse en optimalisatie van ontbrekende trefwoorden",
+      "Opmaak aangepast zodat ATS je cv goed inlezen",
+      "Richt zich op maximaal 3 functies die je vóór het afrekenen noemt",
+      "Tips om je LinkedIn-profiel af te stemmen",
+      "Trefwoordenbank voor je branche",
+      "30 dagen garantie op heroptimalisatie"
+    ]
   },
   "format": {
     "ago": "{{duration}} geleden",

@@ -81,5 +81,13 @@ globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
       headers: { "content-type": "application/json" },
     }));
   }
+  // Every Terms line asks create-checkout once whether the EU/UK switch is on
+  // (S11-142). The same narrow rule: answered "off", the switch's default.
+  if (url && url.includes("/functions/v1/create-checkout") && (init?.method ?? "GET").toUpperCase() === "GET") {
+    return Promise.resolve(new Response(JSON.stringify({ euUkSales: false, withdrawalDays: 14, waiverVersion: "2026-10-09" }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    }));
+  }
   return realFetch(input as RequestInfo, init);
 }) as typeof globalThis.fetch;

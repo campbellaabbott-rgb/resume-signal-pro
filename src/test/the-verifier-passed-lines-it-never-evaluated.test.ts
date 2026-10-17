@@ -26,9 +26,10 @@
  */
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { execFileSync, spawn } from "node:child_process";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 vi.setConfig({ testTimeout: 60_000 });
 
@@ -163,12 +164,30 @@ describe("a refusal probe is a read: it can never commit a write (S8-125)", () =
     expect(calls.filter((c) => /rpc/.test(c))).toEqual([]);
   });
 
+  // EVERY section file, read from the folder. The list was seven names long
+  // and 73-wave3-agents-api.sh, added later, probed agent_packet_pass_funds
+  // with two nulls: the deploy of 2026-10-11 read that line as a FAIL.
   it("no probe call site in the verifier passes a null argument", () => {
-    const files = [SCRIPT, ...["30-email-relays.sh", "35-model-spend-gate.sh", "40-db-exposure.sh", "40-resume-privacy.sh", "45-agents-api.sh", "45-payments.sh", "45-scan-ai.sh"].filter((n) => existsSync(resolve(ROOT, "scripts/verify-deploy.d", n))).map(sectionFile)];
-    const sites = files.flatMap((f) => [...f.matchAll(/(?:^|; )probe ([a-z_]+) '([^']*)'/gm)].map((m) => ({ fn: m[1], args: m[2] })));
-    expect(sites.length, "found no probe call sites: the scan is broken").toBeGreaterThan(30);
-    const nulls = sites.filter((s) => Object.values(JSON.parse(s.args) as Record<string, unknown>).some((v) => v === null)).map((s) => s.fn);
+    const sections = readdirSync(resolve(ROOT, "scripts/verify-deploy.d")).filter((n) => n.endsWith(".sh")).sort();
+    expect(sections, "the scan no longer reads the wave-3 agents section").toContain("73-wave3-agents-api.sh");
+    const files = [{ name: "verify-deploy.sh", src: SCRIPT }, ...sections.map((name) => ({ name, src: sectionFile(name) }))];
+    const sites = files.flatMap(({ name, src }) => [...src.matchAll(/(?:^\s*|; )probe ([a-z_]+) '([^']*)'/gm)].map((m) => ({ at: `${name}: ${m[1]}`, args: m[2] })));
+    expect(sites.length, "found no probe call sites: the scan is broken").toBeGreaterThan(40);
+    expect(sites.map((s) => s.at)).toContain("73-wave3-agents-api.sh: agent_packet_pass_funds");
+    const nulls = sites.filter((s) => Object.values(JSON.parse(s.args) as Record<string, unknown>).some((v) => v === null)).map((s) => s.at);
     expect(nulls, "these probes pass null, so they would refuse to run").toEqual([]);
+  });
+
+  it("section 73 asks agent_packet_pass_funds with typed values, and reads its 42501 as the revoke", () => {
+    const line = sectionFile("73-wave3-agents-api.sh").split("\n").find((l) => /^probe agent_packet_pass_funds /.test(l));
+    expect(line, "section 73 no longer probes agent_packet_pass_funds").toBeTruthy();
+    const { lines, calls } = run(line!, { curl: rpc(401, { code: "42501", message: "permission denied for function agent_packet_pass_funds" }) });
+    expect(has(lines, "PASS", /agent_packet_pass_funds as anon -> 42501/), show(lines)).toBe(true);
+    const sent = calls.filter((c) => /\/rest\/v1\/rpc\/agent_packet_pass_funds\?/.test(c));
+    expect(sent.length, calls.join(" | ")).toBe(1);
+    const qs = new URL(sent[0].split(" ")[1]).searchParams;
+    expect(qs.get("p_pass_id")).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+    expect(Number.isNaN(Date.parse(qs.get("p_refunded_at") ?? ""))).toBe(false);
   });
 });
 
@@ -303,6 +322,32 @@ describe("builds are judged 'this build or later', by number (S8-126, S8-124)", 
     expect(has(off.lines, "FAIL", /catalogSize = /), show(off.lines)).toBe(true);
     const other = run(S1, { J: status({ version: "2026-09-09.1", catalogSize: 5 }) });
     expect(has(other.lines, "INFO", /production serves 2026-09-09\.1 and this checkout is/), show(other.lines)).toBe(true);
+  });
+
+  // The count above came from three folders above the CALLER: a tsx ESM import
+  // gave catalog.ts the working directory as __dirname. CI read
+  // /home/runner/supabase/... (ENOENT); a worktree read the main checkout's
+  // catalogue and agreed by luck. A copy at another depth, under a path with
+  // spaces, run from two working directories, must read its own sources.ts.
+  it("the catalogue reader finds the sources.ts beside its own file, from any working directory and through a path with spaces", () => {
+    const tmp = realpathSync(mkdtempSync(join(tmpdir(), "catalog reader ")));
+    try {
+      const root = join(tmp, "a checkout with spaces", "one level deeper");
+      mkdirSync(join(root, "src/test/helpers"), { recursive: true });
+      mkdirSync(join(root, "supabase/functions/job-board"), { recursive: true });
+      copyFileSync(resolve(ROOT, "src/test/helpers/catalog.ts"), join(root, "src/test/helpers/catalog.ts"));
+      copyFileSync(resolve(ROOT, "supabase/functions/job-board/sources.ts"), join(root, "supabase/functions/job-board/sources.ts"));
+      // The repo's own module type: without it tsx loads the copy as CommonJS, whose __dirname was always right.
+      writeFileSync(join(root, "package.json"), JSON.stringify({ type: JSON.parse(readFileSync(resolve(ROOT, "package.json"), "utf8")).type }));
+      const code = `import(${JSON.stringify(pathToFileURL(join(root, "src/test/helpers/catalog.ts")).href)}).then((m)=>console.log(JSON.stringify([m.SOURCES_PATH, m.CATALOG.length])))`;
+      for (const cwd of [tmp, join(root, "src/test"), ROOT]) {
+        const [path, n] = JSON.parse(execFileSync(resolve(ROOT, "node_modules/.bin/tsx"), ["-e", code], { cwd, encoding: "utf8" }).trim());
+        expect(path, `run from ${cwd}`).toBe(join(root, "supabase/functions/job-board/sources.ts"));
+        expect(n).toBeGreaterThan(20_000);
+      }
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
   });
 
   const preflight = (fnBuild: (fn: string) => string): Route[] => [

@@ -363,9 +363,17 @@
       "excelCsv": "Excel/CSV",
       "googleSheets": "Google Sheets"
     },
-    "jobUrlPlaceholder": "https://linkedin.com/jobs/... ou la page carrière de l'entreprise",
-    "jobUrlTip": "💡 Collez l'URL de l'offre d'emploi depuis LinkedIn, Indeed, Glassdoor ou toute page carrière d'entreprise",
-    "jobUrlNotesPlaceholder": "Facultatif : ajoutez des notes supplémentaires sur le poste...",
+    "jobUrlPlaceholder": "Collez le lien d'une offre, par ex. https://jobs.lever.co/…",
+    "jobUrlTip": "💡 Fonctionne avec les liens vers les sites carrières des employeurs (Greenhouse, Lever, Ashby, Workday et d'autres). Pour LinkedIn, Indeed et les autres sites, collez plutôt la description du poste.",
+    "jobUrlFetch": "Récupérer la description",
+    "jobUrlFetching": "Lecture…",
+    "jobUrlLoadedTitle": "Description du poste chargée",
+    "jobUrlLoadedDesc": "{{title}}. Vérifiez-la dans le champ, puis lancez l'analyse.",
+    "jobUrlUnsupported": "Nous ne pouvons pas lire les offres de ce site. Collez plutôt la description du poste.",
+    "jobUrlFailed": "Nous n'avons pas pu lire cette offre. Collez plutôt la description du poste.",
+    "jobUrlLimited": "Trop de liens ont été lus depuis votre connexion. Collez plutôt la description du poste, ou réessayez plus tard.",
+    "jobUrlPasteInstead": "Coller le texte",
+    "jobUrlInPasteBox": "C'est un lien, pas une description de poste. Nous pouvons lire l'offre pour vous.",
     "otherJobsAvailable_one": "{{count}} autre poste disponible",
     "otherJobsAvailable_other": "{{count}} autres postes disponibles",
     "changeSelection": "changer la sélection",
@@ -384,7 +392,6 @@
     "gsheetsStep2Anyone": "Tous les utilisateurs disposant du lien",
     "gsheetsStep3": "Copiez l'URL et collez-la ci-dessus",
     "jdAdded": "Description de poste ajoutée",
-    "jobUrlAdded": "URL du poste ajoutée",
     "linkedinAddHintPrefix": "Ajoutez LinkedIn pour obtenir",
     "linkedinAddHintHighlight": "une analyse des écarts de compétences et des conseils de profil",
     "scanChips": {
@@ -1086,7 +1093,13 @@
       "tooManyAttempts": "Trop de tentatives",
       "tooManyAttemptsDescription": "Veuillez attendre quelques minutes avant de réessayer.",
       "serviceTemporarilyUnavailable": "Service temporairement indisponible",
-      "serviceTemporarilyUnavailableDescription": "Notre service de paiement est temporairement hors service. Veuillez réessayer dans quelques minutes."
+      "serviceTemporarilyUnavailableDescription": "Notre service de paiement est temporairement hors service. Veuillez réessayer dans quelques minutes.",
+      "fileDamaged": "Impossible de lire ce fichier",
+      "fileDamagedDescription": "Il semble endommagé ou n'est pas un vrai PDF ou .docx. Enregistrez-le à nouveau, essayez l'autre format ou collez le texte de votre CV.",
+      "fontUnreadable": "Impossible de lire les lettres de ce PDF",
+      "fontUnreadableDescription": "Sa police ne correspond pas à de vrais caractères. Téléversez plutôt un .docx ou collez le texte de votre CV.",
+      "unreadCharacters": "Certains caractères n'ont pas pu être lus",
+      "unreadCharactersDescription": "Nous avons ignoré {{count}} caractères que ce PDF ne nomme pas. Pour l'analyse la plus précise, téléversez un .docx ou collez le texte de votre CV."
     },
     "reportCrash": {
       "title": "Un problème est survenu lors de l'affichage de votre rapport",
@@ -1095,7 +1108,10 @@
     "partialResults": {
       "title": "Résultats partiels :",
       "ruleBased": "notre relecteur IA a été brièvement indisponible, ce rapport repose donc uniquement sur l'analyse automatique. Relancez l'analyse dans quelques minutes pour la version complète personnalisée par l'IA.",
-      "thin": "la relecture IA a laissé certaines sections vides, l'analyse automatique les a donc complétées. Cette version n'a pas été enregistrée : une nouvelle analyse en produit une nouvelle."
+      "thin": "la relecture IA a laissé certaines sections vides, l'analyse automatique les a donc complétées. Cette version n'a pas été enregistrée : une nouvelle analyse en produit une nouvelle.",
+      "thinUnfilled": "la relecture IA a laissé certaines sections vides, elles sont donc masquées. Relancez l'analyse dans quelques minutes pour obtenir le rapport complet.",
+      "fallback": "notre analyseur principal était indisponible, un analyseur de secours plus simple a donc rédigé ce rapport. Il n'a pas de « Pourquoi ce score », et son score n'est pas comparé à notre score fondé sur des règles. Relancez l'analyse dans quelques minutes pour le rapport complet.",
+      "fallbackHidden": "Les sections laissées vides par l'analyseur de secours sont masquées."
     }
   },
   "miniPricingCards": {
@@ -2017,11 +2033,10 @@
       },
       "atsDefense": {
         "howItWorks": [
-          "Notre IA a effectué un audit complet de compatibilité ATS",
-          "Nous avons analysé votre CV par rapport à plus de 50 plateformes ATS",
-          "Mots-clés optimisés pour jusqu'à 3 postes cibles",
-          "Format restructuré pour une analyse maximale",
-          "Conseils d'alignement LinkedIn inclus"
+          "Nous avons vérifié comment les logiciels de recrutement lisent votre CV",
+          "Nous avons aligné vos mots-clés sur les postes que vous avez indiqués (jusqu'à 3)",
+          "Nous avons remanié des sections pour qu'elles soient lues sans erreur",
+          "Nous avons ajouté des conseils pour aligner votre profil LinkedIn"
         ],
         "nextSteps": [
           {
@@ -2211,6 +2226,11 @@
         "deliveryTime": "Instantané",
         "deliveryMethod": "Sur cette page"
       }
+    },
+    "stillBeingMade": {
+      "title": "Votre {{product}} est encore en préparation",
+      "emailed": "Cela prend plus de temps que d'habitude. Nous vous l'enverrons par e-mail dès qu'il sera prêt : vous pouvez fermer cette page.",
+      "refresh": "Cela prend plus de temps que d'habitude. Actualisez cette page dans quelques minutes pour le voir."
     },
     "creditsAdded_many": "{{count}} crédits ajoutés !"
   },
@@ -2711,13 +2731,13 @@
       },
       "scoringAlgorithm": {
         "title": "Algorithme de notation",
-        "description": "L'IA note le CV avec des pondérations propres à votre secteur, et son score reste à moins de {{band}} points d'un score fondé sur des règles calculé à partir du même document. La piste d'audit répartit ensuite le résultat entre les quatre parties ci-dessous."
+        "description": "L'IA note le CV avec des pondérations propres à votre secteur, et son score reste à moins de {{band}} points d'un score fondé sur des règles calculé à partir du même document. La piste d'audit répartit ensuite le résultat entre les quatre parties ci-dessous. Si l'analyseur principal est indisponible, un analyseur de secours plus simple répond à sa place : son rapport le signale en haut et n'a pas de piste d'audit."
       }
     },
     "atsPlatformsTitle": "Plateformes ATS face auxquelles nous analysons",
     "atsPlatformsSubtitle": "L'analyse évalue la façon dont chacun de ces {{count}} systèmes lira probablement votre CV. Ce sont les systèmes qu'elle nomme ; rien ici ne revendique une part du marché de l'emploi.",
     "scoreCalculatedTitle": "Comment votre score ATS est calculé",
-    "scoreCalculatedSubtitle": "Le « Pourquoi ce score » de chaque rapport répartit le score entre ces quatre parties, sur 100 points.",
+    "scoreCalculatedSubtitle": "Le « Pourquoi ce score » de chaque rapport complet répartit le score entre ces quatre parties, sur 100 points.",
     "continuousResearchTitle": "Recherche continue",
     "continuousResearchSubtitle": "Les tables de mots-clés et les règles évoluent à mesure que nous apprenons, et chaque changement est daté dans le journal public des modifications.",
     "continuousResearch": {
@@ -2785,7 +2805,7 @@
     "ladderSpecialistDesc": "Pour les reconversions : le travail freelance et les missions traduits en expérience de niveau recruteur.",
     "allToolsToggle": "Voir tous les outils ({{count}} de plus)",
     "guarantee": "Chaque outil payant est couvert : pas satisfait du résultat ? Nous le régénérons gratuitement — répondez simplement à votre reçu.",
-    "passLine": "Ou un pass unique pour votre propre agent IA : {{passPrice}} $ pour {{passHours}} heures et {{passApplications}} candidatures. Sans reconduction.",
+    "passLine": "Ou un pass unique pour votre propre agent IA : {{passPrice}} $ pour {{passHours}} heures et {{passApplications}} candidatures, comptées seulement s'il peut les envoyer. Sans reconduction.",
     "passLink": "Connectez votre agent"
   },
   "scanPackPurchase": {
@@ -3655,6 +3675,7 @@
     "saveTip": "Enregistrer cette offre dans votre suivi de candidatures",
     "saveSearch": "Enregistrer cette recherche",
     "searchExists": "Vous avez déjà enregistré cette recherche.",
+    "searchAlertsOn": "Alertes activées",
     "searchSaved": "Recherche enregistrée",
     "searchSavedDesc": "Votre compte affiche le nombre de nouvelles offres depuis votre dernier passage.",
     "freshAll": "Toutes dates",
@@ -4234,6 +4255,10 @@
     "fieldsAtMax": "Trois domaines à la fois — au-delà, c'est assez lent pour qu'une seconde recherche soit préférable.",
     "countriesAtMax": "Cinq pays à la fois.",
     "sameLocationOpenings": "{{count}} postes à cet endroit",
+    "hideOpenings": "Masquer les autres postes",
+    "moreOpenings_one": "{{count}} autre poste ouvert pour ce métier",
+    "moreOpenings_other": "{{count}} autres postes ouverts pour ce métier",
+    "seeAllOpenings": "Voir les {{count}} postes ouverts pour ce métier",
     "a11yLoading": "Chargement des offres…",
     "a11yError": "Impossible de charger les offres. Réessayez.",
     "a11yNoResults": "Aucune offre ne correspond à ces filtres.",
@@ -4543,7 +4568,7 @@
     "acNothingNew": "Rien de nouveau à préparer — les offres enregistrées n'ont pas pu être adaptées (description manquante ou contrôle d'ancrage). Ajoutez l'offre et réessayez.",
     "acTitle": "Copilote de candidature",
     "acPreppedCount": "{{done}}/{{total}} préparées",
-    "acBlurb": "Nous adaptons un CV et une lettre à chaque offre enregistrée — ancrés dans votre vrai CV, sans rien inventer. Vous relisez et postulez sur le site de l'entreprise.",
+    "acBlurb": "Pour chaque offre enregistrée, nous rédigeons un CV adapté et une lettre de motivation à partir de votre vrai CV, sans rien inventer. Vous les relisez et postulez sur le site de l'employeur.",
     "acPrepProgress": "Préparation {{i}} sur {{total}} — {{company}}…",
     "acPrepAll_one": "Préparer {{count}} candidature adaptée",
     "acPrepAll_other": "Préparer {{count}} candidatures adaptées",
@@ -4808,7 +4833,8 @@
     "anyRole": "Tout poste",
     "searchLimitHit": "Vous pouvez avoir jusqu'à 10 recherches actives. Mettez-en une en pause pour en ajouter une autre.",
     "searchLastRun": "Dernière exécution : {{scanned}} analysées, {{picked}} en file.",
-    "passFunds": "Votre Agent Pass finance cet agent : il reste {{left}} candidatures. Activez l'agent ci-dessous, et votre IA connectée pourra demander des candidatures."
+    "passFunds": "Votre Agent Pass finance cet agent : il reste {{left}} candidatures. Activez l'agent ci-dessous, et votre IA connectée pourra demander des candidatures.",
+    "trackerFull": "Conservé, mais votre suivi est plein (2 000 entrées). Supprimez d'anciennes entrées pour en ajouter."
   },
   "applyProfile": {
     "authorized": "Êtes-vous autorisé à travailler là où vous postulez ?",
@@ -4868,7 +4894,11 @@
     "coverNotePlaceholder": "ex. Ingénieur data depuis huit ans, je construis des pipelines en Python et dbt et je cherche un poste senior où je pourrais porter une plateforme de bout en bout.",
     "coverNoteCount": "{{n}} sur 2000 caractères",
     "coverNoteHintTailored": "Facultatif. Certains formulaires refusent l'envoi sans elle, et l'agent s'arrête plutôt que d'envoyer un champ vide. La personnalisation étant activée, l'agent l'adapte à chaque poste en n'utilisant que ce que votre CV et l'annonce disent réellement — et s'il ne peut pas le faire honnêtement, votre note est envoyée telle que vous l'avez écrite.",
-    "tailorCoverNote": "Adapter cette note à chaque poste. L'agent la réécrit en fonction de l'annonce en n'utilisant que des faits déjà présents dans votre CV : il ne peut ajouter ni employeur, ni école, ni compétence, ni chiffre absent, et il n'évoque jamais de lui-même votre situation de visa, votre salaire ou votre date de disponibilité. Tout ce qu'il ne peut pas étayer, il l'écarte : votre note part telle quelle."
+    "tailorCoverNote": "Adapter cette note à chaque poste. L'agent la réécrit en fonction de l'annonce en n'utilisant que des faits déjà présents dans votre CV : il ne peut ajouter ni employeur, ni école, ni compétence, ni chiffre absent, et il n'évoque jamais de lui-même votre situation de visa, votre salaire ou votre date de disponibilité. Tout ce qu'il ne peut pas étayer, il l'écarte : votre note part telle quelle.",
+    "suggestedTitle": "Tiré de votre CV, mais nous n'en sommes pas sûrs. Vérifiez avant qu'il soit utilisé :",
+    "useSuggested": "L'utiliser",
+    "dismissSuggested": "Pas correct",
+    "uploadedCheck": "Enregistré. Vérifiez ci-dessous ce que nous avons lu dans votre CV avant que l'agent l'utilise."
   },
   "applyQueue": {
     "title": "Candidatures préparées",
@@ -4909,7 +4939,11 @@
     "decideAgentOff": "Activez d'abord votre agent — une candidature approuvée attend cela.",
     "decideBlockedCompany": "Cet employeur figure sur votre liste « ne jamais postuler », l'agent ne lui enverra donc rien.",
     "decideInFlight": "L'envoi est en train de la traiter — il est trop tard pour la modifier.",
-    "decideFailed": "Impossible pour l'instant — actualisez la page et réessayez."
+    "decideFailed": "Impossible pour l'instant — actualisez la page et réessayez.",
+    "notArrived": "Elle n'est pas arrivée",
+    "recordedNotSent": "C'est noté : celle-ci n'est pas partie.",
+    "retryNotTransient": "Réessayer ne réglera pas ce qui l'a arrêtée. Ouvrez-la pour voir pourquoi.",
+    "retryNotFunded": "Votre pass n'a plus de candidature pour l'envoyer à nouveau."
   },
   "agentPlan": {
     "badge": "Postule à votre place",
@@ -4919,8 +4953,8 @@
     "includesPro": "Comprend tout le contenu de Pro ({{proPrice}} $/mois)",
     "perkAutoApply": "Postule automatiquement pour vous sur {{names}}",
     "perkOneClick": "Candidatures remplies et prêtes à envoyer sur {{names}}",
-    "perkMorningQueue": "File du matin : pendant la nuit, l'agent lance votre recherche et vous laisse une présélection dans votre compte pour le matin",
-    "perkQueue": "Une file que vous pouvez vérifier d'abord, ou laisser tourner seule — à vous de choisir, modifiable à tout moment",
+    "perkMorningQueue": "File du matin : chaque matin, une présélection de nouvelles offres pour vous vous attend dans votre compte",
+    "perkQueue": "Relisez chaque candidature avant son envoi, ou laissez-la partir seule. Modifiable à tout moment.",
     "perkCap": "Une limite quotidienne que vous fixez, et jamais deux candidatures au même poste",
     "perkHonest": "Il n'invente jamais de réponse. Si une question vous revient, il s'arrête et vous demande.",
     "cta": "Lancer l'agent",
@@ -4932,7 +4966,8 @@
     "signInFirst": "Vous vous connecterez d'abord : l'agent fonctionne depuis votre compte.",
     "alreadySubscribed": "Vous avez déjà l'agent — on vous y emmène.",
     "needsPaymentUpdate": "Votre formule a un paiement en attente. Mettez à jour votre carte plutôt que de souscrire une nouvelle formule.",
-    "hasPro": "Vous avez Pro, que l'agent inclut. Résiliez Pro dans Gérer l'abonnement, puis lancez l'agent — vous ne paierez jamais les deux."
+    "hasPro": "Vous avez Pro, que l'agent inclut. Résiliez Pro dans Gérer l'abonnement, puis lancez l'agent — vous ne paierez jamais les deux.",
+    "portalFailed": "Impossible d'ouvrir la facturation. Réessayez dans une minute."
   },
   "proPlan": {
     "trialing": "Votre essai est en cours : les analyses illimitées et la préparation de candidatures par lots sont débloquées dès maintenant. Les outils payants sont inclus à partir de votre premier paiement.",
@@ -4988,13 +5023,13 @@
   },
   "applyRefusal": {
     "sender-offline": "Notre émetteur est hors ligne, rien n'est parti. C'est en file d'attente et partira dès son retour : vous n'avez rien à faire.",
-    "fit-unknown": "Nous n'avons pas pu évaluer cette offre par rapport à votre CV, donc nous ne l'avons pas envoyée sans supervision. Vous pouvez l'envoyer vous-même.",
+    "fit-unknown": "Nous n'avons pas pu évaluer cette offre par rapport à votre CV, donc l'agent ne l'a pas envoyée seul. Approuvez-la pour l'envoyer.",
     "not-ready": "Cet employeur pose une question à laquelle nous ne répondrons pas à votre place. Ouvrez-la et complétez.",
     "review-mode": "Prête et en attente de votre envoi : votre agent est en mode révision, il n'envoie donc jamais seul.",
     "vendor-not-allowed": "Vous n'avez pas activé la candidature sans supervision pour ce site d'emploi.",
     "already-submitted": "Déjà envoyée. Nous n'envoyons jamais deux fois la même candidature.",
     "duplicate": "Vous aviez déjà postulé à cette offre, nous n'y avons pas touché.",
-    "fit-below-floor": "Sous le seuil d'adéquation que vous avez fixé. Abaissez-le si vous voulez aussi les offres limites.",
+    "fit-below-floor": "Une adéquation plus faible que ce que l'agent envoie seul. Approuvez-la pour l'envoyer.",
     "daily-cap": "La limite du jour est atteinte. Cela partira demain, ou augmentez votre plafond quotidien.",
     "vendor-needs-human": "Ce site exige une étape que seule une personne peut faire — souvent une case que nous ne cocherons pas à votre place."
   },
@@ -5024,7 +5059,8 @@
     "held": "Préparée, pas encore envoyée.",
     "ready": "Prête — rien ne vous attend.",
     "blocked": "Quelque chose ici vous attend.",
-    "preparing": "Préparation…"
+    "preparing": "Préparation…",
+    "not-arrived": "Vous avez vérifié : elle n'est pas arrivée. L'agent ne l'enverra pas de nouveau."
   },
   "agentHero": {
     "badge": "Votre agent de candidature IA",
@@ -5062,7 +5098,7 @@
   },
   "homeAgent": {
     "lead": "Amenez votre propre agent IA.",
-    "passLine": "Un pass à {{passPrice}} $ lui donne {{passHours}} heures à pleine vitesse pour étudier les offres et postuler à {{passApplications}} emplois pour vous. Sans reconduction ; connectez-vous pour l'acheter.",
+    "passLine": "Un pass à {{passPrice}} $ donne à votre agent {{passHours}} heures pour explorer les offres et postuler pour vous à {{passApplications}} emplois. Un emploi ne compte que si l'agent peut envoyer la candidature. Sans reconduction ; connectez-vous pour l'acheter.",
     "connectCta": "Connecter votre agent",
     "passCta": "Acheter ou ouvrir votre pass",
     "connectLine2": "Connectez-le gratuitement et sans compte — {{freeCallsPerDay}} appels par jour et par adresse réseau pour explorer la bourse d'emploi (un bureau ou une connexion domestique compte pour une seule adresse ; depuis ChatGPT chaque personne a ses propres {{freeCallsPerDay}}, et depuis Claude un quota quotidien partagé par tous les utilisateurs de Claude passe en premier)."
@@ -5140,7 +5176,7 @@
     "clockShelfExpired": "Votre dernier pass a expiré sans usage le {{date}}.",
     "clockNone": "Aucun pass sur ce compte pour l'instant.",
     "applications": "{{left}} candidatures sur {{passApplications}}",
-    "applicationsBasis": "Chaque demande acceptée en consomme une. Une demande refusée par un garde-fou ne consomme rien, et un envoi qui n'a jamais eu lieu restitue sa candidature.",
+    "applicationsBasis": "Une candidature ne compte que pour une offre où l'agent peut l'envoyer. Une demande refusée, ou un envoi qui n'a jamais eu lieu, ne coûte rien.",
     "buyAnother": "Acheter un pass",
     "whichAgent": "Quel agent ?",
     "handoffTitle": "Confiez-le à votre agent",
@@ -5162,7 +5198,8 @@
     "connectorPassGate": "Depuis {{host}}, le pass ne pourra être utilisé qu'une fois la connexion activée ; aujourd'hui, utilisez-le depuis {{headerHosts}} avec votre clé d'agent.",
     "repairSecondPass": "Ce paiement n'a pas créé de second pass : un compte détient un seul pass ouvert à la fois, et le vôtre est affiché ici, inchangé. Nous avons été prévenus et ce paiement sera remboursé — s'il n'est pas revenu sur votre carte d'ici quelques jours, écrivez à resumeboostersupp@gmail.com.",
     "repairNotYours": "Cet achat appartient à un autre compte que celui avec lequel vous êtes connecté, et son pass se trouve sur ce compte. Connectez-vous au compte qui a payé pour le voir.",
-    "repairRefunded": "Ce paiement a été remboursé : il n'ouvre donc aucun pass."
+    "repairRefunded": "Ce paiement a été remboursé : il n'ouvre donc aucun pass.",
+    "cardCharge": "Seules comptent les offres où votre agent peut envoyer la candidature lui-même. Le reste est refusé et ne coûte rien."
   },
   "oauthConsent": {
     "title": "Connectez votre agent",
@@ -5284,7 +5321,8 @@
     "invalid": "Ce lien n'est pas valide. Utilisez le lien de désabonnement de l'e-mail lui-même.",
     "missing": "Cette page a besoin du lien de désabonnement de l'un de nos e-mails.",
     "error": "Impossible de vous désabonner pour le moment. Réessayez le bouton dans un instant.",
-    "home": "Retour à Resume Booster"
+    "home": "Retour à Resume Booster",
+    "agentDigest": "Arrêter les e-mails de la sélection du matin. Votre agent continue de tourner et ses choix restent dans votre compte."
   },
   "purchaseTerms": {
     "agree": "En continuant, vous acceptez les <terms>Conditions d'utilisation</terms> et la <privacy>Politique de confidentialité</privacy>.",
@@ -5357,7 +5395,32 @@
     "behavioral": "Comportementale",
     "technical": "Technique",
     "situational": "Situationnelle",
-    "cultureFit": "Adéquation culturelle"
+    "cultureFit": "Adéquation culturelle",
+    "critical": "Critique",
+    "fiveMinutes": "5 minutes",
+    "fifteenMinutes": "15 minutes",
+    "thirtyMinutes": "30 minutes"
+  },
+  "atsRoles": {
+    "title": "À quels postes postulez-vous ?",
+    "description": "Indiquez jusqu'à {{count}} intitulés de poste. Votre rapport ATS Defense cible chacun d'eux.",
+    "roleLabel": "Poste {{n}}",
+    "example1": "ex. : Analyste de données",
+    "example2": "ex. : Analyste métier (facultatif)",
+    "example3": "ex. : Analyste reporting (facultatif)",
+    "cancel": "Annuler",
+    "continue": "Continuer vers le paiement"
+  },
+  "productFeatures": {
+    "atsDefense": [
+      "Audit de compatibilité ATS (score avant/après)",
+      "Analyse et optimisation des mots-clés manquants",
+      "Restructuration du format pour la lecture par les ATS",
+      "Cible jusqu'à 3 postes que vous indiquez avant le paiement",
+      "Conseils pour aligner votre profil LinkedIn",
+      "Banque de mots-clés de votre secteur",
+      "Garantie de réoptimisation pendant 30 jours"
+    ]
   },
   "format": {
     "ago": "il y a {{duration}}",

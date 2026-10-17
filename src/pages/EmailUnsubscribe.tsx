@@ -15,6 +15,7 @@ import { Check, Loader2, MailX } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
 import { supabase } from "@/integrations/supabase/client";
 import { forgetConfirmFragment } from "@/lib/confirm-link";
+import { stashedFragment, takeStashed } from "@/lib/auth-fragment";
 import { unsubscribeFromHash, type UnsubscribeTarget } from "@/lib/unsubscribe-link";
 
 type State = "ready" | "working" | "done" | "invalid" | "error" | "missing";
@@ -22,11 +23,11 @@ type State = "ready" | "working" | "done" | "invalid" | "error" | "missing";
 export default function EmailUnsubscribe() {
   const { t } = useTranslation();
   const [target] = useState<UnsubscribeTarget | null>(() =>
-    typeof window === "undefined" ? null : unsubscribeFromHash(window.location.hash));
+    typeof window === "undefined" ? null : unsubscribeFromHash(stashedFragment(window.location.hash)));
   const [state, setState] = useState<State>(target ? "ready" : "missing");
 
   useEffect(() => {
-    if (state === "done" || state === "invalid") forgetConfirmFragment();
+    if (state === "done" || state === "invalid") { forgetConfirmFragment(); takeStashed("fragment"); }
   }, [state]);
 
   const confirm = async () => {
@@ -49,7 +50,9 @@ export default function EmailUnsubscribe() {
     ? t("emailUnsubscribe.searchDigest", "Stop the digest emails for this saved search. Your other saved searches are not affected.")
     : target?.list === "market-pulse"
       ? t("emailUnsubscribe.marketPulse", "Stop the monthly market pulse emails to this address.")
-      : t("emailUnsubscribe.scanReport", "Stop all emails from Resume Booster to this address, including any fix-plan emails still to come.");
+      : target?.list === "agent-digest"
+        ? t("emailUnsubscribe.agentDigest", "Stop the morning shortlist emails. Your agent keeps running, and its picks stay in your account.")
+        : t("emailUnsubscribe.scanReport", "Stop all emails from Resume Booster to this address, including any fix-plan emails still to come.");
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">

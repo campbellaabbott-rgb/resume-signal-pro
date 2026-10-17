@@ -29,7 +29,10 @@ import { ownResumePath } from "../_shared/resume-path.ts";
 // the key the claim uses; a transient refusal's retry waits (10, then 30
 // minutes); an empty claim says when the next cancel window ends, so a
 // started worker waits for it instead of leaving.
-const BUILD_VERSION = "2026-10-09.2";
+// 2026-10-09.24: the claimed packet carries the posting's own country, so the
+// worker answers "authorised to work in this country?" about the posting, and
+// refuses it when the country is not known (S11-060).
+const BUILD_VERSION = "2026-10-09.24";
 // Provable from outside with no secret: the preflight and every response carry it.
 const FN_BUILD = `apply-broker.${BUILD_VERSION}`;
 const LEASE_MINUTES = 10;
@@ -324,6 +327,14 @@ serve(async (req) => {
         const full = str(mandate.full_name).trim();
         const parts = full.split(/\s+/).filter(Boolean);
 
+        // The posting's own country (S11-060): "authorised to work in this
+        // country?" is about it. A failed read sends null, and the worker
+        // refuses such a question rather than answering from home.
+        const place = await client.from("job_board_postings")
+          .select("country").eq("id", row.posting_id).maybeSingle()
+          .then((r: { data: unknown }) => r.data, () => null);
+        const postingCountry = str((place as { country?: unknown } | null)?.country).trim() || null;
+
         return json({
           packet: {
             id: row.id,
@@ -339,6 +350,7 @@ serve(async (req) => {
             // so the worker reports a transient failure as final instead of
             // leaving a packet "ready" that nothing will ever claim again.
             attempts: Number(row.attempts ?? 0),
+            posting_country: postingCountry,
           },
           answers: {
             fullName: full,

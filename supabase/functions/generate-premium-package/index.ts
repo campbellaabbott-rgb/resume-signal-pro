@@ -6,11 +6,13 @@ import { clipField, clipText, modelSpendGate } from "../_shared/model-spend-gate
 import { checkInputLimits, MAX_JOB_DESCRIPTION_LENGTH } from "../_shared/input-limits.ts";
 import { looksLikeBrokenJson, UnusableModelOutput } from "../_shared/ai-fallback.ts";
 import { autoFixContent, validateContent } from "./auto-fix.ts";
-import { stripInventedContact } from "./contact-guard.ts";
+import { stripInventedContact } from "../_shared/contact-guard.ts";
+import { validateProseClaims } from "../_shared/resume-grounding.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "generate-premium-package.2026-10-09.3";
+// 2026-10-09.62 (wave-3 fix round integration): carries both 2026-10-09.4 and the payments-account group's 2026-10-09.61.
+const FN_BUILD = "generate-premium-package.2026-10-09.62";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -583,6 +585,29 @@ Write a cover letter that sounds like it was written by this specific person - c
     if (letterContactGuard.removed.length > 0) {
       coverLetterResult.coverLetter = letterContactGuard.text;
       logStep("Contact-integrity guard (letter) removed invented items", { removed: letterContactGuard.removed });
+    }
+
+    // THE FIGURE CHECK, AS THE COVER LETTER RUNS IT (S11-018). The package
+    // ran only the contact guard: a rewrite could add "$250,000" or "10,000
+    // users" the candidate never claimed and ship it. Every impact figure in
+    // the résumé must come from the résumé; the letter may also cite the
+    // posting's own numbers. A draft that fails is refused (retryable), never
+    // delivered: the deliverers record the failure and try again.
+    const figureContext = [jobDescription, jobTitle, jobCompany].filter(Boolean).join("\n");
+    const figureIssues = [
+      ...validateProseClaims(resumeText, resumeResult.rewrittenResume || ''),
+      ...validateProseClaims(resumeText, coverLetterResult.coverLetter || '', figureContext),
+    ];
+    if (figureIssues.length > 0) {
+      logStep("Premium package rejected by the figure check", { issues: figureIssues.slice(0, 5) });
+      return new Response(
+        JSON.stringify({
+          error: "The draft cited figures that are not on your resume, so we refused to deliver it. Try again — regeneration is free.",
+          retryable: true,
+          groundingIssues: figureIssues.slice(0, 5),
+        }),
+        { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Validate after auto-fix to see remaining issues

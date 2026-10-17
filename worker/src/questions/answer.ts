@@ -20,8 +20,15 @@ import type { Resolution } from "./match.js";
 const FILL_TIMEOUT = 10_000;
 
 /** Attribute selector for a field name. Quoted, so Rails-style
- *  `application_form[application][first_name]` needs no escaping. */
-const byName = (name: string) => `[name="${name.replace(/"/g, '\\"')}"]`;
+ *  `application_form[application][first_name]` needs no escaping.
+ *
+ *  THE CONTROLS THE ENUMERATOR READ, and no others (S11-047). Rails and
+ *  Pinpoint render a hidden `name=X value=0` just before a checkbox of the same
+ *  name, so an unticked box still posts a value. The enumerator skips hidden
+ *  inputs; a locator that did not took the hidden one as `first()` ("checkbox
+ *  not visible", so every Pinpoint posting with a consent box blocked) and
+ *  shifted every radio index by one. */
+const byName = (name: string) => `[name="${name.replace(/"/g, '\\"')}"]:not([type="hidden"])`;
 
 export type AnswerResult =
   | { ok: true; how: string }
@@ -57,8 +64,10 @@ export async function applyResolution(
       // JS widget over a hidden input — otherwise reports success while the
       // employer receives a blank. Trimmed compare because some fields reformat.
       const got = await el.inputValue().catch(() => "");
+      // The reason never quotes what the field kept: it is the candidate's
+      // own value, half-taken, and reasons reach logs (S11-046).
       if (got.trim() !== r.value.trim()) {
-        return { ok: false, why: `field kept "${got.slice(0, 40)}" instead of the answer` };
+        return { ok: false, why: "the field did not keep the answer as typed" };
       }
       return { ok: true, how: `filled ${q.name}` };
     }
@@ -76,6 +85,22 @@ export async function applyResolution(
     if (idx < 0) return { ok: false, why: `"${r.option}" is not among this control's options` };
     const one = group.nth(idx);
     if (!(await one.isVisible().catch(() => false))) return { ok: false, why: "option not visible" };
+    // The control is read before it is ticked: its own option text, worked out
+    // as the enumerator works it out (its label, else its value), must be the
+    // answer. An option the enumerator skipped (no label, no value) shifts the
+    // index, and a ticked neighbour would go out while the log said "chose".
+    // No named helpers inside: see enumerate-dom.ts on tsx's keep-names.
+    const says = await one.evaluate((e: Element) => {
+      const el = e as HTMLInputElement;
+      const esc = window.CSS && CSS.escape ? CSS.escape(el.id) : el.id;
+      const byFor = el.id ? document.querySelector('label[for="' + esc + '"]') : null;
+      const wrap = byFor ? null : el.closest("label");
+      const label = ((byFor ?? wrap)?.textContent ?? "").replace(/\s+/g, " ").trim();
+      return label || (el.value || "").replace(/\s+/g, " ").trim();
+    }).catch(() => null);
+    if (says !== r.option) {
+      return { ok: false, why: "the control in that option's place reads as a different option" };
+    }
     await one.check({ timeout: FILL_TIMEOUT });
     if (!(await one.isChecked().catch(() => false))) {
       return { ok: false, why: `option "${r.option}" did not take` };

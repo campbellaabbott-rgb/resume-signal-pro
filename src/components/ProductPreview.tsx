@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { PRODUCTS, ProductId } from "@/config/products";
+import { productFeatures } from "@/lib/product-features";
 import { isPreviewable } from "@/config/product-previews";
 import { useProductPreview } from "@/hooks/use-product-preview";
 import { useProductCheckout } from "@/hooks/use-product-checkout";
@@ -99,7 +100,7 @@ export function ProductPreview({
   }
 
   const isDiff = preview!.kind === "diff" && preview!.before;
-  const features = product.features.slice(0, 4);
+  const features = productFeatures(t, productId, product.features).slice(0, 4);
 
   return (
     <div

@@ -105,6 +105,48 @@ export function euConsentRefusal(env: Env | undefined, mode: "payment" | "subscr
   return null;
 }
 
+/** The statutory withdrawal period the box names, in days (src/config/eu-consumer.ts WITHDRAWAL_DAYS). */
+export const EU_WITHDRAWAL_DAYS = 14;
+
+/**
+ * THE BOX'S OWN WORDS (S11-142). The English wording of the two boxes,
+ * exactly as src/i18n/locales/en.json purchaseTerms.waiver and
+ * purchaseTerms.serviceStart say it (a test holds them equal).
+ */
+export const EU_CONSENT_WORDING: Readonly<Record<string, string>> = {
+  withdrawal_waiver_required: `I want my purchase delivered now, and I understand that I lose my ${EU_WITHDRAWAL_DAYS}-day right to withdraw once it has been delivered.`,
+  service_start_consent_required: `I ask for the service to start now. If I withdraw within ${EU_WITHDRAWAL_DAYS} days, I pay for the days already used.`,
+};
+
+/**
+ * THE REFUSAL EVERY CHECKOUT ANSWERS WITHOUT THE BOX (S11-142), status 400.
+ * It names which box and carries its wording, so a page that was not showing
+ * the box (the switch was flipped after it loaded) can show it beside the
+ * button at once and the buyer can tick it and press again.
+ */
+export function euConsentAnswer(code: string): {
+  error: string; consentRequired: string; consentBox: "withdrawalWaiver" | "serviceStartConsent"; consentText: string; withdrawalDays: number;
+} {
+  return {
+    error: "Please tick the box above the button to continue.",
+    consentRequired: code,
+    consentBox: code === "service_start_consent_required" ? "serviceStartConsent" : "withdrawalWaiver",
+    consentText: EU_CONSENT_WORDING[code] ?? "",
+    withdrawalDays: EU_WITHDRAWAL_DAYS,
+  };
+}
+
+/**
+ * WHAT A PAGE MAY ASK BEFORE ANY PRESS (S11-142): whether the switch is on.
+ * create-checkout answers it to a GET. The box ships in the page dormant and
+ * appears when the server says the switch is on, so the owner publishes the
+ * page first and flips EU_UK_SALES after: no buyer is refused for a box the
+ * page does not show. Nothing here names a buyer.
+ */
+export function euSalesPolicy(env?: Env): { euUkSales: boolean; withdrawalDays: number; waiverVersion: string } {
+  return { euUkSales: euUkSalesOn(env), withdrawalDays: EU_WITHDRAWAL_DAYS, waiverVersion: WITHDRAWAL_WAIVER_VERSION };
+}
+
 type Params = Record<string, unknown>;
 
 /**

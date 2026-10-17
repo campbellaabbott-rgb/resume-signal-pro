@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261009143000_a_cron_call_its_function_refused_is_counted_not_read_as_success.sql'));

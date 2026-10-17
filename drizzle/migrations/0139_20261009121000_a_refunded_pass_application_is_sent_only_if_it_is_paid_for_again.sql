@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261009121000_a_refunded_pass_application_is_sent_only_if_it_is_paid_for_again.sql'));

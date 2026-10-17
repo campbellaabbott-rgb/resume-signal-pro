@@ -190,7 +190,7 @@ const completedType = () =>
   rpcs.filter(([n, a]) => n === "log_scan_metric" && a.p_status === "completed").map(([, a]) => a.p_scan_type);
 
 describe("a visitor's scan is counted (the control)", () => {
-  it("bumps the counter, mails the owner, writes the logs and the cache, and is typed free", async () => {
+  it("bumps the counter, notes the owner through notify-owner (never a direct mail, S11-019), writes the logs and the cache, and is typed free", async () => {
     const r = await scan({ resumeText: RESUME });
     expect(r.status).toBe(200);
     expect(r.json.cachedReport).toBeUndefined();
@@ -199,7 +199,7 @@ describe("a visitor's scan is counted (the control)", () => {
     expect(f.detectionLog).toBe(1);
     expect(f.telemetry).toBe(1);
     expect(f.cache).toBe(1);
-    expect(f.scanMail).toBe(1);
+    expect(f.scanMail, "the per-scan direct mail is deleted (S11-019): owner notes go through notify-owner").toBe(0);
     expect(f.ownerNote).toBe(1);
     expect(completedType()).toEqual(["free"]);
   });

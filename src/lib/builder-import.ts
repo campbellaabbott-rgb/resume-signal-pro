@@ -63,6 +63,12 @@ export type ImportDecision = "none" | "import" | "ask" | "ask-fixes" | "keep";
  *   ask-fixes  the report's "fixes applied" handoff over a draft: confirm;
  *   ask        a draft, and this tab holds a scan not yet offered: confirm;
  *   keep       the draft came from (or was already offered) this scan.
+ *
+ * An EMPTY draft keeps too when this scan was already imported or offered
+ * (S11-144): "Start Over" clears the draft and marks the tab's scan as
+ * offered, so leaving before typing does not re-import (and re-parse) it on
+ * the next visit. The report's "fixes applied" handoff is a fresh request and
+ * still imports.
  */
 export function importDecision(opts: {
   draft: BuilderResume | null;
@@ -72,7 +78,9 @@ export function importDecision(opts: {
 }): ImportDecision {
   const text = (opts.sessionText ?? "").trim();
   if (text.length < MIN_IMPORT_CHARS) return "none";
-  if (!builderResumeHasContent(opts.draft)) return "import";
+  if (!builderResumeHasContent(opts.draft)) {
+    return !opts.hasFixes && opts.lastOffered === textFingerprint(text) ? "keep" : "import";
+  }
   if (opts.hasFixes) return "ask-fixes";
   return opts.lastOffered === textFingerprint(text) ? "keep" : "ask";
 }

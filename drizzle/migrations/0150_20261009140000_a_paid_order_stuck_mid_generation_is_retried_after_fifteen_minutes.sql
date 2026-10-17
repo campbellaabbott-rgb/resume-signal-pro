@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261009140000_a_paid_order_stuck_mid_generation_is_retried_after_fifteen_minutes.sql'));

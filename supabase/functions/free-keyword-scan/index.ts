@@ -10,6 +10,7 @@ import { groundedIn, normalizeForGrounding } from "./grounding.ts";
 import { getServiceClient } from "../_shared/supabase-client.ts";
 import { attachScanMailSeal } from "../_shared/scan-mail-seal.ts";
 import { clientAddressOr } from "../_shared/client-address.ts";
+import { scannableJobDescription } from "../_shared/job-description-input.ts";
 import {
   parseCreditSessions,
   refundScanCredit,
@@ -23,6 +24,8 @@ import { provenMailbox, type AuthUserLike } from "../_shared/mailbox-proof.ts";
 // re-exports it): the scanner has no reason to load Stripe.
 import { accountProStanding } from "../_shared/pro-standing.ts";
 import { SCAN_MODEL_CHAIN } from "../_shared/scan-models.ts";
+import { FIXED_CHOICES_STAY_ENGLISH, normalizeScanReport } from "../_shared/scan-report-shape.ts";
+import { functionCeiling } from "../_shared/model-spend-gate.ts";
 import { buildScoreAudit, reportIdFor } from "./report-meta.ts";
 import {
   detectCountryFromResume,
@@ -346,6 +349,16 @@ const VERY_SLOW_THRESHOLD = 70000; // 70s - Gemini Pro model takes 40-60s typica
 
 const FUNCTION_NAME = 'free-keyword-scan';
 
+/**
+ * THE FUNCTION-WIDE HOUR (S11-019): model-backed scans the anonymous internet,
+ * and separately proven callers (a board pass, a proven mailbox, a paying
+ * account), may run per hour, and one proven identity's share of the latter.
+ * The per-address day and the request budget bound one address; only this
+ * bounds a rotating pool. Past it the scan is served the rule-based report,
+ * which calls no model.
+ */
+const SCAN_CEILING = { strangersPerHour: 300, provenPerHour: 300, perProvenCallerPerHour: 20 } as const;
+
 
 // Fallback must be a real inbox — admin@resumebooster.com was a dead letter
 // on a domain we don't use (.com; the site is .work).
@@ -449,11 +462,17 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 
 // Provable from outside without a scan: every response, the CORS preflight
 // included, carries this in x-fn-build.
-const FN_BUILD = "free-keyword-scan.2026-10-09.3";
+// 2026-10-09.5 (wave-3 fix round integration): parsers-scan (S11-019's hourly
+// ceiling, S11-083), fetcher-frontend (S11-032, a link is no job description)
+// and seo-ingest-ops (S11-028/150) each stamped .4 on different code.
+// 2026-10-14.1 (R1 integration): _shared/mailbox-proof.ts gained the proof-row
+// readers and maskEmail; provenMailbox, the import here, is unchanged.
+const FN_BUILD = "free-keyword-scan.2026-10-14.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Expose-Headers': 'x-fn-build',
   'x-fn-build': FN_BUILD,
 };
 
@@ -1227,6 +1246,16 @@ async function fetchWithRetry(
 const countryCache = new Map<string, { country: string; timestamp: number }>();
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
+// One ipinfo answer per /24 (an IPv6 /64), S11-019: a pool rotating inside a
+// block is one lookup, not one per address. The country of a block is the
+// country of its addresses for every purpose this lookup serves.
+const ipinfoBlock = (ip: string): string => {
+  const v4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.\d{1,3}$/.exec(ip);
+  if (v4) return `${v4[1]}.${v4[2]}.${v4[3]}.0/24`;
+  const words = ip.toLowerCase().split(':');
+  return words.length > 2 ? `${words.slice(0, 4).join(':')}::/64` : ip;
+};
+
 const getCountryFromHeaders = (req: Request): string | null => {
   // Cloudflare/CDN provides country code in cf-ipcountry header. Sanitized
   // (review-caught 2026-07-25): Cloudflare emits pseudo-codes XX (unknown)
@@ -1246,7 +1275,7 @@ async function getCountryFromIpInfo(ip: string): Promise<string | null> {
   if (!ip || ip === 'unknown') return null;
   
   // Check cache first
-  const cached = countryCache.get(ip);
+  const cached = countryCache.get(ipinfoBlock(ip));
   if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
     return cached.country;
   }
@@ -1272,7 +1301,7 @@ async function getCountryFromIpInfo(ip: string): Promise<string | null> {
     
     // Cache the result
     if (country) {
-      countryCache.set(ip, { country, timestamp: Date.now() });
+      countryCache.set(ipinfoBlock(ip), { country, timestamp: Date.now() });
     }
     
     console.log(`[FREE-KEYWORD-SCAN] ipinfo.io resolved IP ${ip} to country: ${country}`);
@@ -1333,7 +1362,10 @@ serve(async (req) => {
       // this it fell through to the generic 500 handler (found by fuzzing).
       req.json().catch(() => { throw Object.assign(new Error('bad json'), { badJson: true }); })
     ]);
-    const { resumeText, jobDescriptionText, honeypot } = body;
+    const { resumeText, honeypot } = body;
+    // A link is not a posting (_shared/job-description-input.ts, S11-032):
+    // the old Job URL tab sent "[Job URL: ...]" and was scored against it.
+    const jobDescriptionText = scannableJobDescription(body.jobDescriptionText);
     // Target market the candidate is applying TO (ISO-2). Optional; overrides
     // residence-detected country for standards when the user states it.
     const validTargetCountry = (typeof body.targetCountry === 'string' && /^[A-Za-z]{2}$/.test(body.targetCountry))
@@ -1585,7 +1617,10 @@ serve(async (req) => {
     // flattened reports would replay for 7 days.
     // Bumped 2026-10-09: the report id now names the inputs and the score,
     // the score audit sums to the score, and thin model output is partial.
-    const REPORT_ENGINE_VERSION = 'scan-v2026-10-09';
+    // Bumped again in wave 3 (S11-007, S11-029, S11-058): a posting no longer
+    // reads as healthcare from "internal" or "what you'll do", every keyword
+    // gap is in the report, and its fixed choices hold drawable values.
+    const REPORT_ENGINE_VERSION = 'scan-v2026-10-09-s11';
     const reportCacheKey = await (async () => {
       const ctx = (body.userContext ?? {}) as Record<string, unknown>;
       const ctxPart = ['situation', 'targetRole', 'confirmedIndustry', 'confirmedExperience']
@@ -1624,6 +1659,9 @@ serve(async (req) => {
         const { creditUsed: _staleReceipt, creditsRemaining: _staleBalance, ...storedReport } =
           cached.report as Record<string, unknown>;
         const cachedReport: Record<string, unknown> = { ...storedReport, cachedReport: true, cached: true };
+        // A report cached with a translated fixed choice must not replay a
+        // crash (S11-029).
+        normalizeScanReport(cachedReport);
         // Sealed on the way out, so a report cached before the mail seal
         // existed can still be emailed in full (see the seal at the end).
         await attachScanMailSeal(cachedReport, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
@@ -2350,7 +2388,7 @@ This resume must be judged as ${seniorityDetection.level === 'executive' ? 'a C-
     // so it's the freshest instruction the model reads.
     const resumeLanguage = detectResumeLanguage(resumeText);
     const languageHint = resumeLanguage.language !== 'en'
-      ? `\n\n**DETECTED RESUME LANGUAGE: ${resumeLanguage.languageName.toUpperCase()} (MANDATORY).** This resume is written in ${resumeLanguage.languageName}. Your ENTIRE response must be written in ${resumeLanguage.languageName} — every string value (tips, red flags, rewrites, explanations, verdicts). Keep the JSON keys in English exactly as specified. Keyword suggestions must be ${resumeLanguage.languageName} terms actually used in that job market. Do NOT respond in English.`
+      ? `\n\n**DETECTED RESUME LANGUAGE: ${resumeLanguage.languageName.toUpperCase()} (MANDATORY).** This resume is written in ${resumeLanguage.languageName}. Your ENTIRE response must be written in ${resumeLanguage.languageName} — every free-text string value (tips, red flags, rewrites, explanations, verdicts). Keep the JSON keys in English exactly as specified. ${FIXED_CHOICES_STAY_ENGLISH} Keyword suggestions must be ${resumeLanguage.languageName} terms actually used in that job market. Do NOT respond in English.`
       : '';
     if (resumeLanguage.language !== 'en') {
       console.log(`[FREE-KEYWORD-SCAN] Resume language: ${resumeLanguage.language} (${resumeLanguage.confidence}) — ${resumeLanguage.evidence[0] ?? ''}`);
@@ -3102,7 +3140,18 @@ ${resumeText.substring(0, 20000)}
     const MAX_CONCURRENT_AI_SCANS = Number(Deno.env.get('MAX_CONCURRENT_AI_SCANS') ?? '40');
     let scanSlotId: string | null = null;
     let loadShedded = false;
-    try {
+    // THE FUNCTION-WIDE HOUR comes first (S11-019): a scan past it calls no
+    // model and takes no slot. Unlike the slot it fails CLOSED, as every spend
+    // gate does: a ceiling a counting error switches off is no ceiling. Our
+    // own heartbeat is not counted, so the probe never reads a full hour as
+    // an outage.
+    const ceiling = isHeartbeatProbe
+      ? null
+      : await functionCeiling(supabase, req, FUNCTION_NAME, SCAN_CEILING, { boardPass: body.boardPass });
+    if (ceiling) {
+      loadShedded = true;
+      console.log(`[FREE-KEYWORD-SCAN] FUNCTION CEILING: ${ceiling.code} (limit ${ceiling.limit}) — serving the rule-based report`);
+    } else try {
       const { data: slot, error: slotErr } = await supabase.rpc('acquire_scan_slot', { p_max: MAX_CONCURRENT_AI_SCANS, p_ttl_seconds: 180 });
       if (!slotErr && slot === null) loadShedded = true;
       else if (!slotErr && typeof slot === 'string') scanSlotId = slot;
@@ -3467,15 +3516,13 @@ ${resumeText.substring(0, 20000)}
     }));
     keywordsWithWeight.sort((a, b) => b._freq - a._freq);
 
-    // Free tier: show 3 keywords clearly, gate the rest behind blur
-    const FREE_KEYWORD_VISIBLE = 3;
-    const visibleKeywords = keywordsWithWeight.slice(0, FREE_KEYWORD_VISIBLE).map(({ _freq, ...k }) => k);
-    const gatedKeywords = keywordsWithWeight.slice(FREE_KEYWORD_VISIBLE, 9).map(({ _freq, ...k }) => ({
-      keyword: k.keyword,
-      category: k.category || 'industry_standard',
-      gated: true,
-    }));
-    const keywords = visibleKeywords;
+    // EVERY KEYWORD GAP IS IN THE REPORT (S11-058). The first three used to be
+    // returned and the rest put in a second, gated list, which wave 3 stopped
+    // rendering, so half of every report's gaps (often the posting's own
+    // requirements) vanished while the audit said the diagnosis was complete.
+    // The keywords card shows three and collapses the rest behind a button.
+    const KEYWORD_GAPS_MAX = 9;
+    const keywords = keywordsWithWeight.slice(0, KEYWORD_GAPS_MAX).map(({ _freq, ...k }) => k);
 
     const redFlags = (analysis.redFlags || []).slice(0, 3);
 
@@ -3528,53 +3575,11 @@ ${resumeText.substring(0, 20000)}
       })()
     );
 
-    // Send admin notification email for every free scan
-    if (!isOwnProbe) EdgeRuntime.waitUntil(
-      (async () => {
-        try {
-          const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-          if (!RESEND_API_KEY) {
-            console.log("[FREE-KEYWORD-SCAN] No RESEND_API_KEY, skipping admin notification");
-            return;
-          }
-          
-          const atsScore = analysis.atsScoreEstimate || 0;
-          const scoreEmoji = atsScore >= 80 ? '🟢' : atsScore >= 60 ? '🟡' : '🔴';
-          
-          const response = await fetch("https://api.resend.com/emails", {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${RESEND_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              from: "Resume Booster <onboarding@resend.dev>",
-              to: [ADMIN_EMAIL],
-              subject: `🔍 New Free Scan: ${analysis.industry || 'Unknown'} (ATS ${atsScore}) - ${country}`,
-              html: `
-                <h2>New Free Resume Scan</h2>
-                <ul>
-                  <li><strong>Country:</strong> ${country}</li>
-                  <li><strong>Industry:</strong> ${analysis.industry || 'Unknown'}</li>
-                  <li><strong>ATS Score:</strong> ${atsScore}/100</li>
-                  <li><strong>Experience Level:</strong> ${analysis.experienceLevel?.level || 'Unknown'}</li>
-                  <li><strong>IP Address:</strong> ${clientIp}</li>
-                  <li><strong>Time:</strong> ${new Date().toISOString()}</li>
-                </ul>
-              `,
-            }),
-          });
-          
-          if (!response.ok) {
-            console.error("[FREE-KEYWORD-SCAN] Admin notification failed:", await response.text());
-          } else {
-            console.log("[FREE-KEYWORD-SCAN] Admin notification sent");
-          }
-        } catch (err) {
-          console.error("[FREE-KEYWORD-SCAN] Admin notification error:", err);
-        }
-      })()
-    );
+    // NO PER-SCAN MAIL FROM HERE (S11-019). This used to mail the owner
+    // directly through Resend on every scan, load-shed and rule-based ones
+    // included, beside the notify-owner call below: a per-scan send any
+    // address pool could multiply against the quota paid deliveries share.
+    // Owner notes go through notify-owner, the counted door, only.
 
     // ── SCHEMA VALIDATION LAYER ─────────────────────────────────────────────
     // AI output goes almost straight into the response; one malformed field
@@ -3912,9 +3917,6 @@ ${resumeText.substring(0, 20000)}
       presentHighFrequency: compGap.presentHighFrequency,
       gapScore: compGap.gapScore,
     };
-
-    // Gated keywords — shown blurred in free tier (improvement #8)
-    responseData.gatedKeywords = gatedKeywords;
 
     // Detection quality score — drives UI confidence warning (improvement #7)
     responseData.detectionQualityScore = detectionQualityScore;
@@ -4551,14 +4553,19 @@ ${resumeText.substring(0, 20000)}
       }
     }
 
-    // Log successful completion metric
+    // Log the completion. A partial report (the rule-based fallback, or a thin
+    // model reply) is not a valid AI output: it was logged outputValid true,
+    // so the metrics could not tell a scan the model wrote from one it did
+    // not (S11-028). The reason rides along.
     logScanMetric(metricCtx, 'completed', {
-      outputValid: true,
+      outputValid: !partialReport,
       responseScore: analysis.atsScoreEstimate,
-      metadata: { 
-        industry: analysis.industry, 
+      metadata: {
+        industry: analysis.industry,
         experienceLevel: analysis.experienceLevel?.level,
-        formatGrade: analysis.formatGrade
+        formatGrade: analysis.formatGrade,
+        partialReason: partialReport ? (responseData.partialReason ?? null) : null,
+        usedFallback: usedRuleBasedFallback,
       }
     });
     
@@ -4586,6 +4593,10 @@ ${resumeText.substring(0, 20000)}
       );
     }
     
+    // Every fixed choice and list the page draws holds a value it can draw,
+    // before the report is cached or sealed (S11-029).
+    normalizeScanReport(responseData);
+
     // Cache the finished report for identical rescans (full AI reports only —
     // fallback/partial reports would freeze a degraded experience for 7 days).
     if (!isOwnProbe && !usedRuleBasedFallback && !responseData.partialResults) {

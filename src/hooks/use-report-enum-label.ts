@@ -7,6 +7,11 @@ import { REPORT_ENUM_KEY } from "@/lib/career-report-shape";
 const TOOL_ENUM_KEY: Record<string, string> = {
   Easy: "easy", Hard: "hard", Lead: "lead", Director: "director", VP: "vp",
   Behavioral: "behavioral", Technical: "technical", Situational: "situational", "Culture Fit": "cultureFit",
+  // The Snapshot's fix time and the Keyword Fix importance are fixed choices
+  // too, kept in English by the same instruction, so they need the page's
+  // translation (register S11-149).
+  "5 minutes": "fiveMinutes", "15 minutes": "fifteenMinutes", "30 minutes": "thirtyMinutes",
+  critical: "critical", high: "high", medium: "medium",
 };
 
 /**

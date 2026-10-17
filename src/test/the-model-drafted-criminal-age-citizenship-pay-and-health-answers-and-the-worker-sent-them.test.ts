@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   ABOUT_WORK_DONE,
@@ -204,5 +206,161 @@ describe("the model's reply is read for what it says, not for what it left out",
     );
     expect(answers.map((a) => a.question)).toEqual(["Why do you want to work here?"]);
     expect(skipped).toEqual([{ question: "Are you a U.S. citizen?", class: "factual" }]);
+  });
+});
+
+/**
+ * Sweeps S11-012 and S11-060, in the same corpus. Both runtimes are fed the
+ * same label and must give the ANSWER written here, not merely agree.
+ *
+ * S11-012: an authorisation question carrying the employer's notice ("Please
+ * note we are unable to sponsor visas") was read as a sponsorship question and
+ * answered from requiresSponsorship, so a citizen said No and a visa-needer
+ * said Yes. Sponsorship had or held now is history the profile does not state.
+ *
+ * S11-060: "this country" / "where this role is based" is the POSTING's
+ * country; it was answered from the home-country boolean whatever the posting.
+ */
+type Person = { country: string; workAuthorized: boolean; requiresSponsorship: boolean };
+const US_CITIZEN: Person = { country: "United States", workAuthorized: true, requiresSponsorship: false };
+const US_NEEDS_VISA: Person = { country: "United States", workAuthorized: false, requiresSponsorship: true };
+const UK_CITIZEN: Person = { country: "United Kingdom", workAuthorized: true, requiresSponsorship: false };
+const DE_CITIZEN: Person = { country: "Germany", workAuthorized: true, requiresSponsorship: false };
+
+const yesNo = (label: string): DomQuestion => ({ name: "q", type: "radio", required: true, label, options: ["Yes", "No"] });
+function bothRuntimes(label: string, who: Person, postingCountry: string | null = null) {
+  const r = matchQuestion(yesNo(label), { ...FULL, ...who, workAuthorizedCountries: [], postingCountry });
+  const p = buildPacket({
+    questions: [{ label, required: true, fieldType: "radio" }],
+    profile: { fullName: "Alex Doe", country: who.country },
+    standing: { workAuthorized: who.workAuthorized, requiresSponsorship: who.requiresSponsorship },
+    drafted: [],
+    automationTier: "auto",
+    postingCountry,
+  });
+  return {
+    worker: r && r.kind === "choose" ? r.option : r?.kind,
+    sheet: p.fields.find((f) => f.key === label)?.value,
+  };
+}
+
+describe("S11-012: the employer's sponsorship notice is not the question", () => {
+  const WITH_NOTICE: Array<[string, Person, string]> = [
+    ["Are you legally authorized to work in the United States? Please note we are unable to sponsor visas.", US_CITIZEN, "Yes"],
+    ["Are you legally authorized to work in the United States? Please note we are unable to sponsor visas.", US_NEEDS_VISA, "No"],
+    ["Are you legally authorised to work in the UK? We are unable to offer visa sponsorship for this role.", UK_CITIZEN, "Yes"],
+    ["Are you eligible to work in Germany? Unfortunately, we cannot provide visa sponsorship.", DE_CITIZEN, "Yes"],
+    ["Are you authorized to work in the US, as we are unable to sponsor visas?", US_CITIZEN, "Yes"],
+    ["Are you authorized to work in the US, as we are unable to sponsor visas?", US_NEEDS_VISA, "No"],
+    ["Visa sponsorship is not available for this position. Are you legally authorized to work in the United States?", US_CITIZEN, "Yes"],
+    ["Are you legally authorized to work in the U.S.? (We do not sponsor work visas.)", US_NEEDS_VISA, "No"],
+    // The notice in the question's own clause, or with a condition that tells
+    // a visa-needer not to apply (review of S11-012): read as a sponsorship
+    // question, a citizen said No and a visa-needer Yes.
+    ["Are you legally authorized to work in the United States? We are unable to sponsor at this time, if you require sponsorship please do not apply.", US_CITIZEN, "Yes"],
+    ["Are you legally authorized to work in the United States? We are unable to sponsor at this time, if you require sponsorship please do not apply.", US_NEEDS_VISA, "No"],
+    ["Are you legally authorized to work in the United States as we are unable to sponsor visas?", US_CITIZEN, "Yes"],
+    ["Are you legally authorized to work in the United States as we are unable to sponsor visas?", US_NEEDS_VISA, "No"],
+    ["Are you legally authorized to work in the United States since we do not offer sponsorship?", US_CITIZEN, "Yes"],
+    ["Are you legally authorized to work in the United States since we do not offer sponsorship?", US_NEEDS_VISA, "No"],
+    ["Are you authorized to work in the US? If you require sponsorship, please do not apply.", US_NEEDS_VISA, "No"],
+    // An authorisation question that also asks the candidate's own need is
+    // still answered from that need.
+    ["Are you authorized to work in the US, and will you now or in the future require sponsorship?", US_NEEDS_VISA, "Yes"],
+    ["Are you authorized to work in the US, or will you require H-1B sponsorship?", US_NEEDS_VISA, "Yes"],
+    // A sponsorship question with the same notice is still a sponsorship question.
+    ["Will you now or in the future require visa sponsorship? Please note we are unable to sponsor.", US_CITIZEN, "No"],
+    ["Will you now or in the future require visa sponsorship? Please note we are unable to sponsor.", US_NEEDS_VISA, "Yes"],
+    // The plain questions, unchanged.
+    ["Are you legally authorized to work in the United States?", US_CITIZEN, "Yes"],
+    ["Do you require visa sponsorship to work in the US?", US_NEEDS_VISA, "Yes"],
+    ["Are you able to work in the US without requiring visa sponsorship?", US_NEEDS_VISA, "No"],
+  ];
+  it.each(WITH_NOTICE)("%s (%j) -> %s in both runtimes", (label, who, want) => {
+    expect(bothRuntimes(label, who)).toEqual({ worker: want, sheet: want });
+  });
+
+  it("an authorisation question whose sponsor words are not the candidate's own need goes to the candidate", () => {
+    const label = "Are you authorized to work in the US, and do you understand that we do not sponsor?";
+    for (const who of [US_CITIZEN, US_NEEDS_VISA]) {
+      expect(bothRuntimes(label, who)).toEqual({ worker: "unanswerable", sheet: undefined });
+    }
+  });
+
+  it("the notice does not stand in for the question's own country", () => {
+    const label = "Are you legally authorised to work in the UK? We are unable to offer visa sponsorship for this role.";
+    expect(bothRuntimes(label, US_CITIZEN)).toEqual({ worker: "unanswerable", sheet: undefined });
+  });
+
+  it.each([
+    "Have you ever been sponsored for an H-1B visa?",
+    "Are you currently being sponsored for a work visa by your employer?",
+    "Has a previous employer sponsored your work visa?",
+    "Have you previously been sponsored for employment visa status?",
+  ])("sponsorship history goes to the candidate in both runtimes: %s", (label) => {
+    for (const who of [US_CITIZEN, US_NEEDS_VISA]) {
+      expect(bothRuntimes(label, who)).toEqual({ worker: "unanswerable", sheet: undefined });
+    }
+  });
+});
+
+describe("S11-060: 'this country' is the posting's country", () => {
+  const DEICTIC = [
+    "Are you authorized to work in the country in which this job is located?",
+    "Do you have the right to work in this country?",
+    "Are you legally authorized to work where this role is based?",
+  ];
+  it.each(DEICTIC)("a UK candidate on a US posting is not answered from home: %s", (label) => {
+    expect(bothRuntimes(label, UK_CITIZEN, "US")).toEqual({ worker: "unanswerable", sheet: undefined });
+  });
+  it.each(DEICTIC)("a UK candidate on a UK posting says Yes: %s", (label) => {
+    expect(bothRuntimes(label, UK_CITIZEN, "GB")).toEqual({ worker: "Yes", sheet: "Yes" });
+  });
+  it.each(DEICTIC)("an unknown posting country is refused: %s", (label) => {
+    expect(bothRuntimes(label, UK_CITIZEN, null)).toEqual({ worker: "unanswerable", sheet: undefined });
+  });
+
+  // Review of S11-060: the common "the country you are applying in" forms
+  // were read as no country, and a UK candidate told a US employer Yes.
+  const APPLYING = [
+    "Are you legally authorized to work in the country in which you are applying?",
+    "Are you legally authorized to work in the country for which you are applying?",
+    "Are you legally authorized to work in the country you are applying to?",
+    "Do you have the right to work in the country where you are applying?",
+    "Are you legally authorized to work in the location you are applying for?",
+    "Are you legally authorized to work in the country of employment?",
+    "Are you legally authorized to work in this location?",
+  ];
+  it.each(APPLYING)("a UK candidate on a US posting is not answered from home: %s", (label) => {
+    expect(bothRuntimes(label, UK_CITIZEN, "US")).toEqual({ worker: "unanswerable", sheet: undefined });
+  });
+  it.each(APPLYING)("a UK candidate on a UK posting says Yes: %s", (label) => {
+    expect(bothRuntimes(label, UK_CITIZEN, "GB")).toEqual({ worker: "Yes", sheet: "Yes" });
+  });
+  it("a sponsorship question about the country applied in reads the posting's country", () => {
+    const label = "Will you require visa sponsorship to work in the country in which you are applying?";
+    expect(bothRuntimes(label, UK_CITIZEN, "US")).toEqual({ worker: "unanswerable", sheet: undefined });
+    expect(bothRuntimes(label, UK_CITIZEN, "GB")).toEqual({ worker: "No", sheet: "No" });
+  });
+  it("the country the candidate lives in is still the candidate's own", () => {
+    const label = "Are you legally authorized to work in the country where you currently reside?";
+    expect(bothRuntimes(label, UK_CITIZEN, "US")).toEqual({ worker: "Yes", sheet: "Yes" });
+  });
+
+  it("a sponsorship question about the role's country reads it too", () => {
+    const label = "Will you require visa sponsorship to work in the country where this role is based?";
+    expect(bothRuntimes(label, UK_CITIZEN, "US")).toEqual({ worker: "unanswerable", sheet: undefined });
+    expect(bothRuntimes(label, UK_CITIZEN, "United Kingdom")).toEqual({ worker: "No", sheet: "No" });
+  });
+
+  it("the posting's country reaches both runtimes from the board row", () => {
+    const read = (p: string) => readFileSync(join(process.cwd(), p), "utf8");
+    const agent = read("supabase/functions/apply-agent/index.ts");
+    expect(agent).toMatch(/from\("job_board_postings"\)\s*\.select\("country"\)\.eq\("id", q\.posting_id\)/);
+    expect(agent).toMatch(/buildPacket\(\{[^}]*postingCountry,?\s*\}\)/);
+    const broker = read("supabase/functions/apply-broker/index.ts");
+    expect(broker).toMatch(/from\("job_board_postings"\)\s*\.select\("country"\)\.eq\("id", row\.posting_id\)/);
+    expect(broker).toMatch(/posting_country: postingCountry,/);
+    expect(read("worker/src/index.ts")).toMatch(/postingCountry: claimed\.packet\?\.posting_country \?\? null,/);
   });
 });

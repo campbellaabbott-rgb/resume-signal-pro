@@ -1,0 +1,1 @@
+SELECT public._mig_exec((SELECT sql FROM public._mig_stage WHERE name = '20261009132000_an_api_key_request_keeps_the_terms_it_was_shown.sql'));

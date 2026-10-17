@@ -363,9 +363,17 @@
       "excelCsv": "Excel/CSV",
       "googleSheets": "Google Sheets"
     },
-    "jobUrlPlaceholder": "https://linkedin.com/jobs/... o la página de empleo de la empresa",
-    "jobUrlTip": "💡 Pega la URL de la oferta de empleo de LinkedIn, Indeed, Glassdoor o cualquier página de empleo de la empresa",
-    "jobUrlNotesPlaceholder": "Opcional: añade notas adicionales sobre el puesto...",
+    "jobUrlPlaceholder": "Pega un enlace a la oferta, como https://jobs.lever.co/…",
+    "jobUrlTip": "💡 Funciona con enlaces a los portales de empleo de las empresas (Greenhouse, Lever, Ashby, Workday y más). Para LinkedIn, Indeed y otros sitios, pega la descripción del puesto.",
+    "jobUrlFetch": "Obtener la descripción",
+    "jobUrlFetching": "Leyendo…",
+    "jobUrlLoadedTitle": "Descripción del puesto cargada",
+    "jobUrlLoadedDesc": "{{title}}. Revísala en el cuadro y luego escanea.",
+    "jobUrlUnsupported": "No podemos leer ofertas de este sitio. Pega la descripción del puesto.",
+    "jobUrlFailed": "No pudimos leer esa oferta. Pega la descripción del puesto.",
+    "jobUrlLimited": "Se han leído demasiados enlaces desde tu conexión. Pega la descripción del puesto o inténtalo más tarde.",
+    "jobUrlPasteInstead": "Pegar el texto",
+    "jobUrlInPasteBox": "Eso es un enlace, no una descripción del puesto. Podemos leer la oferta por ti.",
     "otherJobsAvailable_one": "{{count}} otro puesto disponible",
     "otherJobsAvailable_other": "{{count}} otros puestos disponibles",
     "changeSelection": "cambiar selección",
@@ -384,7 +392,6 @@
     "gsheetsStep2Anyone": "Cualquiera con el enlace",
     "gsheetsStep3": "Copia la URL y pégala arriba",
     "jdAdded": "Descripción del puesto añadida",
-    "jobUrlAdded": "URL del puesto añadida",
     "linkedinAddHintPrefix": "Añade LinkedIn para obtener",
     "linkedinAddHintHighlight": "análisis de brechas de habilidades y consejos de perfil",
     "scanChips": {
@@ -1086,7 +1093,13 @@
       "tooManyAttempts": "Demasiados intentos",
       "tooManyAttemptsDescription": "Espera unos minutos antes de volver a intentarlo.",
       "serviceTemporarilyUnavailable": "Servicio temporalmente no disponible",
-      "serviceTemporarilyUnavailableDescription": "Nuestro servicio de pago está temporalmente caído. Por favor, inténtalo de nuevo en unos minutos."
+      "serviceTemporarilyUnavailableDescription": "Nuestro servicio de pago está temporalmente caído. Por favor, inténtalo de nuevo en unos minutos.",
+      "fileDamaged": "No se puede leer este archivo",
+      "fileDamagedDescription": "Parece dañado o no es un PDF o .docx real. Guárdalo de nuevo, prueba el otro formato o pega el texto de tu currículum.",
+      "fontUnreadable": "No se pueden leer las letras de este PDF",
+      "fontUnreadableDescription": "Su fuente no corresponde a caracteres reales. Sube un .docx o pega el texto de tu currículum.",
+      "unreadCharacters": "Algunos caracteres no se pudieron leer",
+      "unreadCharactersDescription": "Omitimos {{count}} caracteres que este PDF no identifica. Para el análisis más preciso, sube un .docx o pega el texto de tu currículum."
     },
     "reportCrash": {
       "title": "Algo salió mal al mostrar tu informe",
@@ -1095,7 +1108,10 @@
     "partialResults": {
       "title": "Resultados parciales:",
       "ruleBased": "nuestro revisor de IA no estuvo disponible por un momento, así que este informe usa solo análisis automático. Vuelve a escanear en unos minutos para obtener la versión completa personalizada con IA.",
-      "thin": "la revisión de IA dejó algunas secciones vacías, así que el análisis automático las completó. Esta versión no se guardó, así que un nuevo escaneo genera una nueva."
+      "thin": "la revisión de IA dejó algunas secciones vacías, así que el análisis automático las completó. Esta versión no se guardó, así que un nuevo escaneo genera una nueva.",
+      "thinUnfilled": "la revisión de IA dejó algunas secciones vacías, así que se ocultan. Vuelve a escanear en unos minutos para obtener el informe completo.",
+      "fallback": "nuestro escáner principal no estaba disponible, así que un escáner de respaldo más sencillo hizo este informe. No incluye «Por qué esta puntuación» y su puntuación no se contrasta con nuestra puntuación basada en reglas. Vuelve a escanear en unos minutos para obtener el informe completo.",
+      "fallbackHidden": "Las secciones que el escáner de respaldo dejó vacías están ocultas."
     }
   },
   "miniPricingCards": {
@@ -2017,11 +2033,10 @@
       },
       "atsDefense": {
         "howItWorks": [
-          "Nuestra IA realizó una auditoría integral de compatibilidad con ATS",
-          "Analizamos tu currículum frente a más de 50 plataformas ATS",
-          "Palabras clave optimizadas para hasta 3 puestos objetivo",
-          "Formato reestructurado para máxima capacidad de análisis",
-          "Incluye consejos de alineación de LinkedIn"
+          "Comprobamos cómo leen tu currículum los sistemas de seguimiento de candidatos",
+          "Ajustamos tus palabras clave a los puestos que indicaste (hasta 3)",
+          "Reorganizamos secciones para que se lean sin errores",
+          "Añadimos consejos para alinear tu perfil de LinkedIn"
         ],
         "nextSteps": [
           {
@@ -2211,6 +2226,11 @@
         "deliveryTime": "Instantáneo",
         "deliveryMethod": "En esta página"
       }
+    },
+    "stillBeingMade": {
+      "title": "Tu {{product}} todavía se está preparando",
+      "emailed": "Está tardando más de lo habitual. Te lo enviaremos por correo en cuanto esté listo, así que puedes cerrar esta página.",
+      "refresh": "Está tardando más de lo habitual. Recarga esta página en unos minutos para verlo."
     },
     "creditsAdded_many": "¡{{count}} créditos añadidos!"
   },
@@ -2711,13 +2731,13 @@
       },
       "scoringAlgorithm": {
         "title": "Algoritmo de puntuación",
-        "description": "La IA puntúa el currículum con pesos para tu sector, y su puntuación se mantiene a menos de {{band}} puntos de una puntuación basada en reglas calculada del mismo documento. El registro de auditoría divide luego el resultado en las cuatro partes de abajo."
+        "description": "La IA puntúa el currículum con pesos para tu sector, y su puntuación se mantiene a menos de {{band}} puntos de una puntuación basada en reglas calculada del mismo documento. El registro de auditoría divide luego el resultado en las cuatro partes de abajo. Si el escáner principal no está disponible, responde en su lugar un respaldo más sencillo: su informe lo indica arriba y no tiene registro de auditoría."
       }
     },
     "atsPlatformsTitle": "Plataformas ATS contra las que analizamos",
     "atsPlatformsSubtitle": "El escaneo valora cómo es probable que cada uno de estos {{count}} sistemas lea tu currículum. Son los sistemas que nombra; aquí no se afirma ninguna cuota del mercado laboral.",
     "scoreCalculatedTitle": "Cómo se calcula tu puntuación ATS",
-    "scoreCalculatedSubtitle": "El apartado «Por qué esta puntuación» de cada informe divide la puntuación en estas cuatro partes, sobre 100 puntos.",
+    "scoreCalculatedSubtitle": "El apartado «Por qué esta puntuación» de cada informe completo divide la puntuación en estas cuatro partes, sobre 100 puntos.",
     "continuousResearchTitle": "Investigación continua",
     "continuousResearchSubtitle": "Las tablas de palabras clave y las reglas cambian a medida que aprendemos, y cada cambio queda fechado en el registro público de cambios.",
     "continuousResearch": {
@@ -2785,7 +2805,7 @@
     "ladderSpecialistDesc": "Para quienes cambian de carrera: trabajo freelance y por proyectos traducido a experiencia de nivel profesional.",
     "allToolsToggle": "Ver todas las herramientas ({{count}} más)",
     "guarantee": "Cada herramienta de pago está cubierta: ¿no te convence el resultado? Lo regeneramos gratis — solo responde a tu recibo.",
-    "passLine": "O un pase único para tu propio agente de IA: ${{passPrice}} por {{passHours}} horas y {{passApplications}} candidaturas. Nunca se renueva.",
+    "passLine": "O un pase único para tu propio agente de IA: ${{passPrice}} por {{passHours}} horas y {{passApplications}} candidaturas, que solo cuentan si puede enviarlas. Nunca se renueva.",
     "passLink": "Conecta tu agente"
   },
   "scanPackPurchase": {
@@ -3655,6 +3675,7 @@
     "saveTip": "Guarda esta oferta en tu seguimiento de candidaturas",
     "saveSearch": "Guardar esta búsqueda",
     "searchExists": "Ya guardaste esta búsqueda.",
+    "searchAlertsOn": "Alertas activadas",
     "searchSaved": "Búsqueda guardada",
     "searchSavedDesc": "Tu cuenta muestra cuántas ofertas nuevas coinciden desde tu última visita.",
     "freshAll": "Cualquier fecha",
@@ -4235,6 +4256,10 @@
     "fieldsAtMax": "Tres áreas a la vez: más resulta tan lento que sale peor que hacer otra búsqueda.",
     "countriesAtMax": "Cinco países a la vez.",
     "sameLocationOpenings": "{{count}} vacantes en esta ubicación",
+    "hideOpenings": "Ocultar las demás vacantes",
+    "moreOpenings_one": "{{count}} vacante más de este puesto",
+    "moreOpenings_other": "{{count}} vacantes más de este puesto",
+    "seeAllOpenings": "Ver las {{count}} vacantes de este puesto",
     "a11yLoading": "Cargando ofertas…",
     "a11yError": "No se pudieron cargar las ofertas. Inténtalo de nuevo.",
     "a11yNoResults": "Ninguna oferta coincide con estos filtros.",
@@ -4543,7 +4568,7 @@
     "acNothingNew": "Nada nuevo que preparar — las vacantes guardadas no pudieron adaptarse (falta descripción o verificación). Añade la oferta e inténtalo de nuevo.",
     "acTitle": "Copiloto de postulación",
     "acPreppedCount": "{{done}}/{{total}} preparadas",
-    "acBlurb": "Adaptamos un currículum y una carta a cada vacante guardada — con base en tu currículum real, sin datos inventados. Tú revisas y postulas en el sitio de la empresa.",
+    "acBlurb": "Para cada empleo guardado, escribimos un currículum adaptado y una carta de presentación a partir de tu currículum real, sin inventar nada. Tú los revisas y postulas en el sitio de la empresa.",
     "acPrepProgress": "Preparando {{i}} de {{total}} — {{company}}…",
     "acPrepAll_one": "Preparar {{count}} postulación adaptada",
     "acPrepAll_other": "Preparar {{count}} postulaciones adaptadas",
@@ -4808,7 +4833,8 @@
     "anyRole": "Cualquier puesto",
     "searchLimitHit": "Puedes tener hasta 10 búsquedas activas. Pausa una para añadir otra.",
     "searchLastRun": "Última ejecución: {{scanned}} revisadas, {{picked}} en cola.",
-    "passFunds": "Tu Agent Pass financia este agente: quedan {{left}} solicitudes. Activa el agente abajo y tu IA conectada podrá pedir solicitudes."
+    "passFunds": "Tu Agent Pass financia este agente: quedan {{left}} solicitudes. Activa el agente abajo y tu IA conectada podrá pedir solicitudes.",
+    "trackerFull": "Guardado, pero tu seguimiento está lleno (2000 entradas). Elimina entradas antiguas para añadir más."
   },
   "applyProfile": {
     "authorized": "¿Tienes autorización para trabajar donde te postulas?",
@@ -4868,7 +4894,11 @@
     "coverNotePlaceholder": "p. ej. Soy ingeniero de datos con ocho años construyendo pipelines en Python y dbt, y busco un puesto sénior donde pueda responsabilizarme de una plataforma de principio a fin.",
     "coverNoteCount": "{{n}} de 2000 caracteres",
     "coverNoteHintTailored": "Opcional. Algunos formularios no se envían sin ella, y el agente se detiene en lugar de enviar un campo vacío. Como la personalización está activada, el agente la adapta a cada puesto usando solo lo que dicen realmente tu currículum y la oferta; y si no puede hacerlo con honestidad, tu nota se envía tal como la escribiste.",
-    "tailorCoverNote": "Adaptar esta nota a cada puesto. El agente la reescribe según la oferta usando solo datos que ya están en tu currículum: no puede añadir una empresa, un centro de estudios, una habilidad ni una cifra que no figure, y nunca menciona por iniciativa propia tu situación de visado, tu salario ni tu fecha de incorporación. Lo que no pueda fundamentar, lo descarta: se envía tu nota tal cual."
+    "tailorCoverNote": "Adaptar esta nota a cada puesto. El agente la reescribe según la oferta usando solo datos que ya están en tu currículum: no puede añadir una empresa, un centro de estudios, una habilidad ni una cifra que no figure, y nunca menciona por iniciativa propia tu situación de visado, tu salario ni tu fecha de incorporación. Lo que no pueda fundamentar, lo descarta: se envía tu nota tal cual.",
+    "suggestedTitle": "De tu currículum, pero no estamos seguros. Revísalo antes de que se use:",
+    "useSuggested": "Usarlo",
+    "dismissSuggested": "No es correcto",
+    "uploadedCheck": "Guardado. Revisa abajo lo que leímos de tu currículum antes de que el agente lo use."
   },
   "applyQueue": {
     "title": "Candidaturas preparadas",
@@ -4909,7 +4939,11 @@
     "decideAgentOff": "Primero activa tu agente: una solicitud aprobada espera a que lo hagas.",
     "decideBlockedCompany": "Esta empresa está en tu lista de no postular nunca, así que el agente no le enviará nada.",
     "decideInFlight": "El envío la tiene ahora mismo: ya es tarde para cambiarla.",
-    "decideFailed": "No se pudo hacer: actualiza la página e inténtalo de nuevo."
+    "decideFailed": "No se pudo hacer: actualiza la página e inténtalo de nuevo.",
+    "notArrived": "No llegó",
+    "recordedNotSent": "Anotado: esta no salió.",
+    "retryNotTransient": "Reintentar no arregla por qué se detuvo. Ábrela para ver el motivo.",
+    "retryNotFunded": "A tu pase no le queda ninguna candidatura para enviarla otra vez."
   },
   "agentPlan": {
     "badge": "Se postula por ti",
@@ -4919,8 +4953,8 @@
     "includesPro": "Incluye todo lo de Pro (${{proPrice}}/mes)",
     "perkAutoApply": "Se postula automáticamente por ti en {{names}}",
     "perkOneClick": "Solicitudes rellenadas y listas para enviar en {{names}}",
-    "perkMorningQueue": "Cola matinal: durante la noche, el agente ejecuta tu búsqueda y te deja una lista corta en tu cuenta para la mañana",
-    "perkQueue": "Una cola que puedes revisar primero, o dejar que funcione sola: tú decides y puedes cambiarlo cuando quieras",
+    "perkMorningQueue": "Cola matinal: cada mañana te espera en tu cuenta una lista corta de empleos nuevos que encajan contigo",
+    "perkQueue": "Revisa cada candidatura antes de que salga o deja que se envíe sola. Puedes cambiarlo cuando quieras.",
     "perkCap": "Un límite diario que tú fijas, y nunca se postula dos veces al mismo puesto",
     "perkHonest": "Nunca inventa una respuesta. Si una pregunta te necesita, se detiene y te consulta.",
     "cta": "Activar el agente",
@@ -4932,7 +4966,8 @@
     "signInFirst": "Primero iniciarás sesión: el agente funciona desde tu cuenta.",
     "alreadySubscribed": "Ya tienes el agente; te llevamos a él.",
     "needsPaymentUpdate": "Tu plan tiene un pago pendiente. Actualiza tu tarjeta en lugar de empezar un plan nuevo.",
-    "hasPro": "Tienes Pro, que el agente incluye. Cancela Pro en Gestionar suscripción y luego activa el agente, para que nunca pagues los dos."
+    "hasPro": "Tienes Pro, que el agente incluye. Cancela Pro en Gestionar suscripción y luego activa el agente, para que nunca pagues los dos.",
+    "portalFailed": "No pudimos abrir la facturación. Inténtalo de nuevo en un minuto."
   },
   "proPlan": {
     "trialing": "Tu prueba está activa: los escaneos ilimitados y la preparación de solicitudes en lote ya están desbloqueados. Las herramientas de pago se incluyen a partir de tu primer pago.",
@@ -4988,13 +5023,13 @@
   },
   "applyRefusal": {
     "sender-offline": "Nuestro emisor está desconectado, así que no se envió nada. Está en cola y saldrá en cuanto vuelva: no tienes que hacer nada.",
-    "fit-unknown": "No pudimos evaluar esta oferta con tu currículum, así que no la enviamos sin supervisión. Puedes enviarla tú.",
+    "fit-unknown": "No pudimos evaluar esta oferta con tu currículum, así que el agente no la envió por su cuenta. Apruébala para enviarla.",
     "not-ready": "Esta empresa pregunta algo que no responderemos por ti. Ábrela y completa lo que falta.",
     "review-mode": "Lista y esperando a que pulses enviar: tu agente está en modo revisión, así que nunca envía solo.",
     "vendor-not-allowed": "No has activado el envío sin supervisión para este portal de empleo.",
     "already-submitted": "Ya enviada. Nunca enviamos la misma candidatura dos veces.",
     "duplicate": "Ya te habías inscrito en esta oferta, así que no hicimos nada.",
-    "fit-below-floor": "Por debajo del umbral de encaje que fijaste. Bájalo si quieres que también se envíen las dudosas.",
+    "fit-below-floor": "Encaja menos de lo que el agente envía por su cuenta. Apruébala para enviarla.",
     "daily-cap": "El límite de hoy está agotado. Saldrá mañana, o sube tu límite diario.",
     "vendor-needs-human": "Este portal exige un paso que solo puede dar una persona: normalmente una casilla que no marcaremos por ti."
   },
@@ -5024,7 +5059,8 @@
     "held": "Preparada, aún sin enviar.",
     "ready": "Lista: no necesita nada de ti.",
     "blocked": "Aquí hace falta algo tuyo.",
-    "preparing": "Preparando…"
+    "preparing": "Preparando…",
+    "not-arrived": "Lo comprobaste y no llegó. El agente no volverá a enviarla."
   },
   "agentHero": {
     "badge": "Tu agente de solicitudes con IA",
@@ -5062,7 +5098,7 @@
   },
   "homeAgent": {
     "lead": "Trae tu propio agente de IA.",
-    "passLine": "Un pase de ${{passPrice}} le da {{passHours}} horas a toda velocidad para investigar la bolsa y presentar {{passApplications}} candidaturas por ti. Nunca se renueva; inicia sesión para comprarlo.",
+    "passLine": "Un pase de ${{passPrice}} le da a tu agente {{passHours}} horas para buscar en la bolsa y postularse por ti a {{passApplications}} empleos. Un empleo solo cuenta si el agente puede enviar la candidatura. Nunca se renueva; inicia sesión para comprarlo.",
     "connectCta": "Conecta tu agente",
     "passCta": "Comprar o abrir tu pase",
     "connectLine2": "Conéctalo gratis y sin cuenta: {{freeCallsPerDay}} llamadas al día por dirección de red para explorar la bolsa (una oficina o una conexión doméstica cuentan como una sola dirección; desde ChatGPT cada persona tiene sus propias {{freeCallsPerDay}}, y desde Claude primero se usa un cupo diario que comparten todos los usuarios de Claude)."
@@ -5140,7 +5176,7 @@
     "clockShelfExpired": "Tu último pase caducó sin usar el {{date}}.",
     "clockNone": "Todavía no hay ningún pase en esta cuenta.",
     "applications": "{{left}} de {{passApplications}} candidaturas",
-    "applicationsBasis": "Cada solicitud aceptada gasta una. Una solicitud rechazada por un filtro no gasta nada, y un envío que nunca ocurrió devuelve su candidatura.",
+    "applicationsBasis": "Una candidatura solo cuenta para un empleo al que el agente puede enviarla. Una solicitud rechazada, o un envío que nunca ocurrió, no cuesta nada.",
     "buyAnother": "Comprar un pase",
     "whichAgent": "¿Qué agente?",
     "handoffTitle": "Entrégaselo a tu agente",
@@ -5162,7 +5198,8 @@
     "connectorPassGate": "Desde {{host}} el pase solo podrá usarse cuando el inicio de sesión esté activado; hoy, úsalo desde {{headerHosts}} con tu clave de agente.",
     "repairSecondPass": "Este pago no creó un segundo pase: una cuenta tiene un solo pase abierto a la vez, y el tuyo se muestra aquí sin cambios. Ya nos han avisado y este pago se reembolsará; si no vuelve a tu tarjeta en unos días, escribe a resumeboostersupp@gmail.com.",
     "repairNotYours": "Esta compra pertenece a una cuenta distinta de aquella con la que has iniciado sesión, y su pase está en esa cuenta. Inicia sesión con la cuenta que pagó para verlo.",
-    "repairRefunded": "Este pago fue reembolsado, así que no abre ningún pase."
+    "repairRefunded": "Este pago fue reembolsado, así que no abre ningún pase.",
+    "cardCharge": "Solo cuentan las ofertas en las que tu agente puede enviar la candidatura él mismo. Lo demás se rechaza y no cuesta nada."
   },
   "oauthConsent": {
     "title": "Conecta tu agente",
@@ -5284,7 +5321,8 @@
     "invalid": "Este enlace no es válido. Usa el enlace para darse de baja del propio correo.",
     "missing": "Esta página necesita el enlace para darse de baja de uno de nuestros correos.",
     "error": "No se pudo completar ahora. Vuelve a pulsar el botón en un momento.",
-    "home": "Volver a Resume Booster"
+    "home": "Volver a Resume Booster",
+    "agentDigest": "Dejar de recibir los correos de la lista de la mañana. Tu agente sigue funcionando y sus selecciones siguen en tu cuenta."
   },
   "purchaseTerms": {
     "agree": "Al continuar, aceptas los <terms>Términos del servicio</terms> y la <privacy>Política de privacidad</privacy>.",
@@ -5357,7 +5395,32 @@
     "behavioral": "Conductual",
     "technical": "Técnica",
     "situational": "Situacional",
-    "cultureFit": "Encaje cultural"
+    "cultureFit": "Encaje cultural",
+    "critical": "Crítica",
+    "fiveMinutes": "5 minutos",
+    "fifteenMinutes": "15 minutos",
+    "thirtyMinutes": "30 minutos"
+  },
+  "atsRoles": {
+    "title": "¿A qué puestos te postulas?",
+    "description": "Indica hasta {{count}} puestos. Tu informe ATS Defense se adapta a cada uno.",
+    "roleLabel": "Puesto {{n}}",
+    "example1": "p. ej., Analista de datos",
+    "example2": "p. ej., Analista de negocio (opcional)",
+    "example3": "p. ej., Analista de informes (opcional)",
+    "cancel": "Cancelar",
+    "continue": "Continuar al pago"
+  },
+  "productFeatures": {
+    "atsDefense": [
+      "Auditoría de compatibilidad ATS (puntuación antes/después)",
+      "Análisis y optimización de las palabras clave que faltan",
+      "Reestructuración del formato para que los ATS lo lean bien",
+      "Se adapta a hasta 3 puestos que indicas antes del pago",
+      "Consejos para alinear tu perfil de LinkedIn",
+      "Banco de palabras clave de tu sector",
+      "Garantía de reoptimización de 30 días"
+    ]
   },
   "format": {
     "ago": "hace {{duration}}",

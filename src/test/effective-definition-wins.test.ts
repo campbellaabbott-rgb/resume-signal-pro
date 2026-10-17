@@ -72,9 +72,11 @@ describe("agent_claim_submission — the last gate before an employer", () => {
     // Counting in-flight here would make the packet being claimed count against
     // itself: nothing would ever be claimable, and a total outage would present
     // as an empty queue.
+    // A send pressed and not confirmed is a submission too (S11-044,
+    // 20261009124000): it is counted by its uncertain_at, never by a release.
     const i = code.indexOf("auto_apply_daily_cap");
     const clause = code.slice(Math.max(0, i - 600), i);
-    expect(clause).toMatch(/d\.submitted_at >= date_trunc\('day', now\(\)\)/);
+    expect(clause).toMatch(/coalesce\(d\.submitted_at, d\.uncertain_at\) >= date_trunc\('day', now\(\)\)/);
     expect(clause).not.toMatch(/d\.released_at/);
   });
 

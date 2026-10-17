@@ -88,6 +88,9 @@ export interface BoardJob {
   postingCount?: number;
   /** A few of the other locations this role is open in (server-capped). */
   otherLocations?: string[];
+  /** The folded postings themselves, each openable (S11-005; server-capped at
+   *  GROUP_SIBLINGS_MAX). Before, the fold kept only the lead row's link. */
+  siblings?: Array<{ id: string; location?: string | null; applyUrl?: string | null; postedAt?: string | null }>;
   /** Tier-2 ranked search only: ts_headline fragment showing where a description-matched result matched ([[term]] delimiters). */
   snippet?: string;
   /** True on rows the trigram tier APPENDED to a thin exact-match page — the

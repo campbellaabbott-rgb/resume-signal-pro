@@ -6,6 +6,7 @@ import { useProductCheckout } from "@/hooks/use-product-checkout";
 import { cn } from "@/lib/utils";
 import { useCurrency } from "@/hooks/use-currency";
 import { useTranslation } from "react-i18next";
+import { productFeatures } from "@/lib/product-features";
 import { PurchaseTerms } from "@/components/PurchaseTerms";
 
 interface TieredPricingSectionProps {
@@ -100,7 +101,7 @@ export function TieredPricingSection({ onFullAnalysisCheckout, sessionId }: Tier
 
               {/* Features (first 3) */}
               <ul className="space-y-1.5 mb-4 flex-1">
-                {product.features.slice(0, 3).map((feature, i) => (
+                {productFeatures(t, key, product.features).slice(0, 3).map((feature, i) => (
                   <li key={i} className="flex items-start gap-2 text-xs">
                     <Check className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
                     <span className="text-muted-foreground">{feature}</span>

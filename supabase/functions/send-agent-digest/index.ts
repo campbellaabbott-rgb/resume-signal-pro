@@ -53,10 +53,13 @@ import { isScheduledCaller } from "../_shared/email-cron.ts";
 import { sameSecret } from "../_shared/service-caller.ts";
 import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 import { sellerFooterHtml } from "../_shared/seller-footer.ts";
+import { oneClickHeaders, oneClickUrl, redirectToConfirm, unsubscribeParams, unsubscribePageUrl } from "../_shared/unsubscribe-link.ts";
 
 // Provable from outside without sending anything: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "send-agent-digest.2026-10-09.3";
+// 2026-10-09.24: the unsubscribe is the confirm page and an RFC 8058
+// one-click POST; a GET changes nothing (S11-132).
+const FN_BUILD = "send-agent-digest.2026-10-09.24";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -124,18 +127,30 @@ Deno.serve(async (req) => {
   const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", serviceKey);
   const url = new URL(req.url);
 
-  // ── Unsubscribe (GET from the email) — flips email_opt_in off ──
+  // ── Unsubscribe — turns email_opt_in off (_shared/unsubscribe-link.ts) ──
+  // A GET (the link in every shortlist already sent, and every mail scanner
+  // that follows it) changes nothing and opens the confirm page; only a POST
+  // -- the page's button, or the mail client's RFC 8058 one-click --
+  // unsubscribes (S11-132). It used to flip the flag on the GET, so a
+  // corporate inbox's link prefetch silently ended a subscriber's mail.
   if (req.method === "GET" && url.searchParams.get("action") === "unsubscribe") {
-    const id = url.searchParams.get("id") ?? "";
-    const token = url.searchParams.get("token") ?? "";
-    if (!id || !sameSecret(token, await hmacToken(id))) {
-      return new Response("Invalid unsubscribe link.", { status: 400, headers: { "Content-Type": "text/plain" } });
+    return redirectToConfirm("agent-digest", { id: url.searchParams.get("id") ?? "", token: url.searchParams.get("token") ?? "" });
+  }
+  if (req.method === "POST") {
+    const un = await unsubscribeParams(req, url);
+    if (un) {
+      const id = un.id ?? "";
+      const token = un.token ?? "";
+      if (!/^[0-9a-f-]{36}$/i.test(id) || !sameSecret(token, await hmacToken(id))) {
+        return json({ error: "invalid unsubscribe link" }, 400);
+      }
+      const { error: unErr } = await supabase.from("agent_mandates").update({ email_opt_in: false }).eq("user_id", id);
+      if (unErr) {
+        console.error("[AGENT-DIGEST] unsubscribe failed:", unErr.message);
+        return json({ error: "could not unsubscribe right now" }, 503);
+      }
+      return json({ unsubscribed: true });
     }
-    await supabase.from("agent_mandates").update({ email_opt_in: false }).eq("user_id", id);
-    return new Response(
-      "You're unsubscribed from the morning shortlist. Your Apply Agent keeps running — the picks are still waiting in your account.",
-      { status: 200, headers: { "Content-Type": "text/plain" } },
-    );
   }
 
   try {
@@ -255,7 +270,11 @@ Deno.serve(async (req) => {
       if (rows.length === 0) { skipped++; continue; }
 
       const token = await hmacToken(m.user_id);
-      const unsubUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-agent-digest?action=unsubscribe&id=${encodeURIComponent(m.user_id)}&token=${token}`;
+      // The link opens the confirm page on our own domain; the headers give
+      // the mail client a one-click POST (S11-132).
+      const unsubParams = { id: m.user_id, token };
+      const unsubUrl = unsubscribePageUrl("agent-digest", unsubParams);
+      const unsubHeaders = oneClickHeaders(oneClickUrl(Deno.env.get("SUPABASE_URL") ?? "", "send-agent-digest", unsubParams));
       const queueUrl = `${SITE_URL}/account?utm_source=email&utm_medium=agent_digest#agent`;
 
       const itemsHtml = rows.map((r) => {
@@ -305,6 +324,7 @@ Deno.serve(async (req) => {
           reply_to: CUSTOMER_REPLY_TO,
           subject: n === 1 ? "1 role worth your morning" : `${n} roles worth your morning`,
           html,
+          headers: unsubHeaders,
         });
         if (sendErr) throw new Error(String((sendErr as { message?: string }).message ?? "send refused"));
         // The claim's stamp is the new cursor.

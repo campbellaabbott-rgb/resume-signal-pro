@@ -169,7 +169,8 @@ async function scan(body: Record<string, unknown>, country = "US") {
   for (let i = 0; i < 3; i++) await Promise.allSettled(pending);
   return { status: res.status, json };
 }
-const daySlots = () => rpcs.filter(([n, a]) => n === "check_rate_limit" && a.p_function === "free-keyword-scan").length;
+// The day's slot is the 1440-minute bucket; the function-wide hour (S11-019) is its own 60-minute one.
+const daySlots = () => rpcs.filter(([n, a]) => n === "check_rate_limit" && a.p_function === "free-keyword-scan" && a.p_window_minutes === 1440).length;
 
 describe("a rescan of the same file", () => {
   it("is served from the cache without spending a day's slot, and says it is a replay", async () => {

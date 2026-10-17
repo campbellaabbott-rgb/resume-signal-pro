@@ -20,6 +20,7 @@ import en from "../i18n/locales/en.json";
 
 const h = vi.hoisted(() => ({
   listener: null as null | ((event: string, s: unknown) => void),
+  listeners: [] as Array<(event: string, s: unknown) => void>,
   signUp: vi.fn(async () => ({ error: null })),
   signInWithOtp: vi.fn(async () => ({ error: null })),
   resend: vi.fn(async () => ({ error: null })),
@@ -29,7 +30,7 @@ const h = vi.hoisted(() => ({
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     auth: {
-      onAuthStateChange: (cb: (event: string, s: unknown) => void) => { h.listener = cb; return { data: { subscription: { unsubscribe() {} } } }; },
+      onAuthStateChange: (cb: (event: string, s: unknown) => void) => { h.listener = cb; h.listeners.push(cb); return { data: { subscription: { unsubscribe() {} } } }; },
       getSession: async () => ({ data: { session: null } }),
       signUp: h.signUp,
       signInWithOtp: h.signInWithOtp,
@@ -55,7 +56,7 @@ function Probe() {
   return <div><span data-testid="expired">{String(sessionExpired)}</span><button onClick={() => void signOut()}>out</button></div>;
 }
 
-beforeEach(() => { h.listener = null; localStorage.clear(); vi.clearAllMocks(); });
+beforeEach(() => { h.listener = null; h.listeners = []; localStorage.clear(); vi.clearAllMocks(); });
 afterEach(cleanup);
 
 describe("an expired session is told apart from the user signing out (L3-20)", () => {
@@ -74,7 +75,41 @@ describe("an expired session is told apart from the user signing out (L3-20)", (
   });
 });
 
+/**
+ * S11-145: auth-js broadcasts SIGNED_OUT to every open tab. Two providers
+ * stand for two tabs of one browser (one localStorage); the sign-out pressed
+ * in the first reaches the second as the broadcast SIGNED_OUT.
+ */
+function TabProbe({ id }: { id: string }) {
+  const { sessionExpired, signOut } = useAuth();
+  return <div><span data-testid={`expired-${id}`}>{String(sessionExpired)}</span><button onClick={() => void signOut()}>{`out-${id}`}</button></div>;
+}
+
+describe("a sign-out pressed in one tab is not an expiry in the others (S11-145)", () => {
+  it("the other tab, told SIGNED_OUT by the broadcast, says nothing about an expired session", async () => {
+    render(<><AuthProvider><TabProbe id="a" /></AuthProvider><AuthProvider><TabProbe id="b" /></AuthProvider></>);
+    const [tabA, tabB] = h.listeners;
+    act(() => { tabA("SIGNED_IN", SESSION); tabB("SIGNED_IN", SESSION); });
+    h.signOut.mockImplementationOnce(async () => { tabA("SIGNED_OUT", null); return { error: null }; });
+    await act(async () => { fireEvent.click(screen.getByText("out-a")); });
+    act(() => tabB("SIGNED_OUT", null)); // the broadcast
+    expect(screen.getByTestId("expired-a").textContent).toBe("false");
+    expect(screen.getByTestId("expired-b").textContent, "the sibling tab called a deliberate sign-out an expiry").toBe("false");
+  });
+
+  it("a session that vanishes long after any sign-out is still an expiry", async () => {
+    localStorage.setItem("rb_signed_out_at", String(Date.now() - 5 * 60_000));
+    render(<AuthProvider><Probe /></AuthProvider>);
+    act(() => h.listener!("SIGNED_IN", SESSION));
+    act(() => h.listener!("SIGNED_OUT", null));
+    await waitFor(() => expect(screen.getByTestId("expired").textContent).toBe("true"));
+  });
+});
+
 describe("the sign-up page", () => {
+  // R1 made this one Continue screen (src/pages/Auth.tsx): a new address
+  // becomes an account, an existing one goes on to sign in, and there is no
+  // emailed sign-in link any more. The Terms rule is unchanged.
   const mount = (at = "/auth?next=%2Fagent%3Fwelcome%3D1") =>
     render(<MemoryRouter initialEntries={[at]}><AuthProvider><Auth /></AuthProvider></MemoryRouter>);
 
@@ -83,28 +118,32 @@ describe("the sign-up page", () => {
     expect(screen.getByText((_, el) => el?.tagName === "P" && el.textContent === en.purchaseTerms.agree.replace(/<\/?(terms|privacy)>/g, ""))).toBeTruthy();
     fireEvent.change(screen.getByPlaceholderText("you@example.com"), { target: { value: "new@example.com" } });
     fireEvent.change(screen.getByPlaceholderText("At least 8 characters"), { target: { value: "longenough1" } });
-    await act(async () => { fireEvent.click(screen.getByRole("button", { name: /Create free account/ })); });
+    // Continue signs in first (R1 fix S12-058/S12-088); a new account is the explicit second step.
+    h.signInWithPassword.mockResolvedValueOnce({ error: { message: "Invalid login credentials" } });
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: /^Continue$/ })); });
+    await act(async () => { fireEvent.click(await screen.findByRole("button", { name: "Create a new account" })); });
     const opts = (h.signUp.mock.calls[0] as unknown as [{ options: { data: Record<string, string>; emailRedirectTo: string } }])[0].options;
     expect(opts.data.terms_version).toBe(TERMS_VERSION);
     expect(Number.isNaN(Date.parse(opts.data.terms_accepted_at))).toBe(false);
   });
 
-  it("a sign-in link that creates the account records the Terms too", async () => {
+  it("no emailed sign-in link remains to create an account without the Terms (the emailed code records them: r1-signin-flags-on)", async () => {
     mount();
-    fireEvent.change(screen.getByPlaceholderText("you@example.com"), { target: { value: "new@example.com" } });
-    await act(async () => { fireEvent.click(screen.getByRole("button", { name: /sign-in link/ })); });
-    const opts = (h.signInWithOtp.mock.calls[0] as unknown as [{ options: { data: Record<string, string> } }])[0].options;
-    expect(opts.data.terms_version).toBe(TERMS_VERSION);
-  });
-
-  it("Resend confirmation sends the link back to the page the sign-up was headed to", async () => {
-    mount();
-    fireEvent.click(screen.getByRole("button", { name: /Already have an account/ }));
+    expect(screen.queryByRole("button", { name: /sign-in link/ })).toBeNull();
     fireEvent.change(screen.getByPlaceholderText("you@example.com"), { target: { value: "new@example.com" } });
     fireEvent.change(screen.getByPlaceholderText("At least 8 characters"), { target: { value: "longenough1" } });
-    await act(async () => { fireEvent.click(screen.getByRole("button", { name: /^Sign in$/ })); });
-    await act(async () => { fireEvent.click(await screen.findByRole("button", { name: /Resend confirmation email/ })); });
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: /^Continue$/ })); });
+    expect(h.signInWithOtp).not.toHaveBeenCalled();
+  });
+
+  it("Resend confirmation sends the link to the confirm step, carrying the page the sign-up was headed to", async () => {
+    h.signUp.mockResolvedValueOnce({ error: { message: "User already registered" } } as never);
+    mount();
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), { target: { value: "new@example.com" } });
+    fireEvent.change(screen.getByPlaceholderText("At least 8 characters"), { target: { value: "longenough1" } });
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: /^Continue$/ })); });
+    await act(async () => { fireEvent.click(await screen.findByRole("button", { name: /Email the confirmation link again/ })); });
     const arg = (h.resend.mock.calls[0] as unknown as [{ options?: { emailRedirectTo?: string } }])[0];
-    expect(arg.options?.emailRedirectTo).toBe(`${window.location.origin}/agent?welcome=1`);
+    expect(arg.options?.emailRedirectTo).toBe(`${window.location.origin}/auth?mode=confirm&next=%2Fagent%3Fwelcome%3D1`);
   });
 });

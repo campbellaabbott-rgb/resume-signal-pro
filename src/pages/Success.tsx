@@ -51,6 +51,7 @@ import { useFunnelTracking } from "@/hooks/use-funnel-tracking";
 import { usePersonalization } from "@/hooks/use-personalization";
 import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
 import { PRODUCTS } from "@/config/products";
+import { stashValueFor, stashedSessionIdFor, stashedValueFor } from "@/lib/auth-fragment";
 
 const Success = () => {
   const { t } = useTranslation();
@@ -88,8 +89,17 @@ const Success = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const sessionId = searchParams.get("session_id");
-  const shareIdParam = searchParams.get("share");
+  // The Stripe session id: the first script in index.html moves it out of the
+  // address before any analytics can record it (src/lib/auth-fragment.ts).
+  // Read once, so clearing this browser's data mid-page does not unmount the purchase.
+  const [stashedSession] = useState(() => stashedSessionIdFor("/success", null).id);
+  const urlSessionId = searchParams.get("session_id");
+  const sessionId = urlSessionId || stashedSession;
+  const sessionIdStashed = !urlSessionId && !!stashedSession;
+  // The share id reads AND deletes this analysis, so the first script keeps it
+  // out of the address too (this tab's stash holds it for a reload).
+  const [stashedShare] = useState(() => stashedValueFor("share", "/success", null).value);
+  const shareIdParam = searchParams.get("share") || stashedShare;
 
   // Simulate progress steps during loading. The timers are CLEARED when the
   // effect re-runs or the page unmounts (platform sweep L12-06): left pending
@@ -109,6 +119,45 @@ const Success = () => {
   useEffect(() => {
     cleanupExpiredResumeData();
   }, []);
+
+  /**
+   * THE ANALYSIS STAYS ON A RELOAD (S11-016). Once it is shown, the address
+   * names it (?share=), beside the session, so a reload, Back or a restored
+   * tab loads the saved copy. The page deleted its temporary keys after the
+   * analysis and kept only session_id, so every reload said "we need your
+   * résumé again" for the product the buyer had just paid for.
+   */
+  const rememberShareInUrl = (newShareId: unknown) => {
+    if (typeof newShareId !== "string" || !newShareId || !sessionId) return;
+    // The share id reads and deletes the analysis, so it goes into this tab's
+    // stash, not the address, wherever the stash can be written.
+    if (stashValueFor("share", "/success", newShareId)) return;
+    // A session id the first script stashed stays out of the address: the
+    // tab's stash still holds it for a reload.
+    navigate(sessionIdStashed
+      ? `/success?share=${encodeURIComponent(newShareId)}`
+      : `/success?session_id=${encodeURIComponent(sessionId)}&share=${encodeURIComponent(newShareId)}`, { replace: true });
+  };
+
+  /**
+   * The analysis this purchase already received, asked of analyze-resume by
+   * the session alone (it answers a redeemed session from its saved copy).
+   * True when one was shown.
+   */
+  const showDeliveredAnalysis = async (stripeSessionId: string): Promise<boolean> => {
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke("analyze-resume", { body: { resumeText: "", sessionId: stripeSessionId } });
+      if (fnError || !data || data.error || !data.alreadyDelivered) return false;
+      const { shareId: savedShareId, emailSent: _emailSent, alreadyDelivered: _delivered, ...analysisResult } = data;
+      setAnalysisData(analysisResult);
+      setShareId(savedShareId);
+      setNeedsResume(false);
+      rememberShareInUrl(savedShareId);
+      return true;
+    } catch {
+      return false;
+    }
+  };
 
   useEffect(() => {
     const runAnalysis = async (resumeText: string, linkedInText?: string, jobDescriptionText?: string, stripeSessionId?: string) => {
@@ -135,6 +184,7 @@ const Success = () => {
         setAnalysisData(analysisResult);
         setShareId(newShareId);
         setEmailSent(wasEmailSent || false);
+        rememberShareInUrl(newShareId);
 
         // Save personalization profile for future content generation
         updateFromAnalysis(analysisResult, resumeText, linkedInText, jobDescriptionText, stripeSessionId);
@@ -219,7 +269,13 @@ const Success = () => {
         getResumeData("tempSessionId");
 
       if (!tempSessionId) {
-        // No server-side temp session - show recovery UI
+        // No résumé in this tab: an analysis this purchase already received
+        // is shown, never a request to regenerate it (S11-016); only a
+        // purchase with none asks for the résumé.
+        if (await showDeliveredAnalysis(sessionId)) {
+          setIsLoading(false);
+          return;
+        }
         setNeedsResume(true);
         setIsLoading(false);
         return;
@@ -239,7 +295,11 @@ const Success = () => {
         }
 
         if (!tempData || tempData.length === 0 || !(tempData[0] as any).resume_text) {
-          // Data expired or not found
+          // Data expired or not found: the delivered analysis first (S11-016).
+          if (await showDeliveredAnalysis(sessionId)) {
+            setIsLoading(false);
+            return;
+          }
           setNeedsResume(true);
           setIsLoading(false);
           return;
@@ -433,7 +493,9 @@ const Success = () => {
     });
   };
 
-  const isSharedView = !!shareIdParam;
+  // A link someone shared names only the analysis; the buyer's own page,
+  // reloaded, names the purchase beside it and is still the buyer's view.
+  const isSharedView = !!shareIdParam && !sessionId;
 
   return (
     <div className="min-h-screen bg-background">
@@ -539,6 +601,7 @@ const Success = () => {
                           const { shareId: newShareId, ...analysisResult } = data;
                           setAnalysisData(analysisResult);
                           setShareId(newShareId);
+                          rememberShareInUrl(newShareId);
 
                           toast({
                             title: "Analysis ready",

@@ -129,12 +129,19 @@ BEGIN
   cl AS (
     -- A takedown is a closure the collector trusted: never superseded, never
     -- stamped suspect (a feed that went dark at once).
+    -- BY THE BOARD FIRST (S11-024). The ledger (~5M rows, ~10k more a day)
+    -- has no posting_id index, so `posting_id IN (...)` read all of it on
+    -- every Account load, inside this function's 10 s. A posting id is
+    -- source:token:native, so its token reaches job_board_closures_curve_idx
+    -- (company_token, closed_at DESC) and the posting id filters that board.
     SELECT DISTINCT ON (c.posting_id)
       c.posting_id, c.closed_at, c.posted_at, c.first_seen, c.company_token, c.title,
       c.absence_basis
-    FROM public.job_board_closures c
-    WHERE c.posting_id IN (SELECT ids.jid FROM ids)
-      AND NOT COALESCE(c.superseded, false)
+    FROM ids
+    JOIN public.job_board_closures c
+      ON c.company_token = split_part(ids.jid, ':', 2)
+     AND c.posting_id = ids.jid
+    WHERE NOT COALESCE(c.superseded, false)
       AND NOT COALESCE(c.suspect, false)
     ORDER BY c.posting_id, c.closed_at DESC
   ),

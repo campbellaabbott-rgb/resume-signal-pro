@@ -5,10 +5,14 @@
 # Read-only: GETs of public pages, the sitemap, the ledger, llms files and a
 # static image. Nothing is sent or written. Pre-deploy the new claims FAIL by
 # design; nothing here may crash.
-# Optional: keep the previous publish's sitemap at
-#   ~/.config/resumebooster/seo/last-sitemap.xml
-# and the F2a line checks every posting URL it named, eight at a time;
-# without it the line checks every posting URL of the live sitemap.
+# F2a judges the URLs the PREVIOUS publish named, so save the live sitemap
+# BEFORE each publish:
+#   curl -s https://resumebooster.work/sitemap.xml > ~/.config/resumebooster/seo/last-sitemap.xml
+# and the F2a line checks every posting URL it named, eight at a time. Without
+# that file (or with one saved after the publish, identical to the live
+# sitemap) F2a prints INFO "cannot judge" and only the live sitemap's own
+# posting URLs are checked (S11-154: a sitemap the new bake wrote cannot show
+# what became of the old one's URLs).
 echo "== 76. wave 3 seo-content: names, published URLs, company pages, data pages, claims =="
 
 REPO_ROOT76="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -76,19 +80,37 @@ const textOf = (h) => h.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>
   // ---- the sitemap, the ledger, F2a/F2b/F2c, S3 ----
   const sm = await get("/sitemap.xml");
   const locs = [...sm.body.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1].trim());
-  const lastmods = new Set([...sm.body.matchAll(/<lastmod>([^<]+)<\/lastmod>/g)].map((m) => m[1].trim()));
-  if (lastmods.size > 1) out("PASS", `the sitemap carries ${lastmods.size} distinct lastmod dates over ${locs.length} URLs (S3: was one publish date on all)`);
-  else out("FAIL", `the sitemap carries ${lastmods.size} distinct lastmod date(s) over ${locs.length} URLs (S3)`);
+  const urlRows = [...sm.body.matchAll(/<url>([\s\S]*?)<\/url>/g)].map((m) => ({ loc: ((m[1].match(/<loc>([^<]+)<\/loc>/) || [])[1] || "").trim(), lastmod: ((m[1].match(/<lastmod>([^<]+)<\/lastmod>/) || [])[1] || "").trim() })).filter((u) => u.loc);
   const led = await get("/prerender-ledger.json");
   let ledger = null; try { ledger = JSON.parse(led.body); } catch {}
-  if (led.status === 200 && ledger && typeof ledger.builtAt === "string") {
+  const ledgerOk = led.status === 200 && ledger && typeof ledger.builtAt === "string";
+  if (ledgerOk) {
     const st = {}; for (const e of Object.values(ledger.postings || {})) st[e.state] = (st[e.state] || 0) + 1;
     out("PASS", `/prerender-ledger.json is served (built ${ledger.builtAt}): posting URLs by state ${JSON.stringify(st)}, ${Object.keys(ledger.pages || {}).length} pages`);
   } else out("FAIL", `/prerender-ledger.json answered ${led.status} with no ledger (F2a: the next publish has no record of this one)`);
-  let prevPostings = [];
-  try { prevPostings = [...fs.readFileSync(LAST_SITEMAP, "utf8").matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1].trim()).filter((u) => u.includes("/jobs/posting/")); } catch {}
-  const basis = prevPostings.length ? "the previous publish\x27s sitemap" : "the live sitemap";
-  const sample = prevPostings.length ? prevPostings : locs.filter((u) => u.includes("/jobs/posting/"));
+  // S3: lastmod by content, judged on the pages the ledger dates, never on
+  // /guides/ (each guide states its own date, so guides alone made "more than
+  // one distinct date" true on any sitemap; S11-154).
+  const pathOf = (u) => { let p = u.startsWith(SITE) ? u.slice(SITE.length) || "/" : u; try { p = decodeURI(p); } catch {} return p; };
+  const pages = (ledgerOk && ledger.pages && typeof ledger.pages === "object") ? ledger.pages : {};
+  const dated = urlRows.filter((u) => !pathOf(u.loc).startsWith("/guides/") && pages[pathOf(u.loc)] && typeof pages[pathOf(u.loc)].lastmod === "string");
+  const offLedger = dated.filter((u) => u.lastmod !== pages[pathOf(u.loc)].lastmod);
+  const s3dates = new Set(dated.map((u) => u.lastmod));
+  if (!ledgerOk) out("INFO", "S3 not judged: no ledger to read page dates from");
+  else if (!dated.length) out("INFO", `S3 not judged: none of the sitemap\x27s ${urlRows.length} non-guide URLs is a page the ledger dates`);
+  else if (offLedger.length) out("FAIL", `${offLedger.length} of ${dated.length} sitemap URLs carry a lastmod that is not their ledger date, e.g. ${offLedger.slice(0, 3).map((u) => `${pathOf(u.loc)} ${u.lastmod} vs ${pages[pathOf(u.loc)].lastmod}`).join("; ")} (S3)`);
+  else if (s3dates.size > 1) out("PASS", `${dated.length} non-guide sitemap URLs carry ${s3dates.size} distinct lastmod dates, each its page\x27s ledger date (S3: was one publish date on all)`);
+  else out("INFO", `S3 not judged: all ${dated.length} non-guide pages the ledger dates carry ${[...s3dates][0]}${[...s3dates][0] === ledger.builtAt ? ", this bake\x27s date (a first bake with a ledger, or every page changed)" : ""}; a later bake that carries unchanged pages forward can show lastmod by content`);
+  // F2a: what became of the URLs the PREVIOUS publish named. The live sitemap
+  // is the new bake\x27s own, so it cannot answer that (S11-154).
+  let prevRaw = "";
+  try { prevRaw = fs.readFileSync(LAST_SITEMAP, "utf8"); } catch {}
+  const prevPostings = [...prevRaw.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1].trim()).filter((u) => u.includes("/jobs/posting/"));
+  const prevIsLive = prevRaw && md5(prevRaw) === md5(sm.body);
+  const judgePrev = prevPostings.length > 0 && !prevIsLive;
+  if (!judgePrev) out("INFO", `F2a cannot judge the previous publish\x27s posting URLs: ${!prevRaw ? `no saved sitemap at ${LAST_SITEMAP}` : prevIsLive ? "the saved sitemap is this publish\x27s own (saved after it)" : "the saved sitemap names no posting URL"}. Save the live sitemap there BEFORE each publish: curl -s ${SITE}/sitemap.xml > ${LAST_SITEMAP}`);
+  const basis = judgePrev ? "the previous publish\x27s sitemap" : "the live sitemap\x27s own";
+  const sample = judgePrev ? prevPostings : locs.filter((u) => u.includes("/jobs/posting/"));
   let homeCopies = 0, stubs = 0, live = 0, failed = 0;
   for (let i = 0; i < sample.length; i += 8) {
     await Promise.all(sample.slice(i, i + 8).map(async (u) => {
@@ -99,9 +121,10 @@ const textOf = (h) => h.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>
       else live++;
     }));
   }
-  if (!sample.length) out("INFO", "no posting URL to check (the sitemap names none)");
-  else if (homeCopies === 0 && failed === 0) out("PASS", `${sample.length} posting URLs from ${basis}: ${live} live pages, ${stubs} noindex "no longer listed" pages, 0 homepage copies (F2a)`);
-  else out("FAIL", `${sample.length} posting URLs from ${basis}: ${homeCopies} homepage copies, ${failed} non-200 (${live} live, ${stubs} noindex) (F2a: was 364 of 371)`);
+  const claim = judgePrev ? "F2a" : "the new bake\x27s URLs; F2a itself not judged";
+  if (!sample.length) out("INFO", `no posting URL to check (${basis} sitemap names none)`);
+  else if (homeCopies === 0 && failed === 0) out("PASS", `${sample.length} posting URLs from ${basis}: ${live} live pages, ${stubs} noindex "no longer listed" pages, 0 homepage copies (${claim})`);
+  else out("FAIL", `${sample.length} posting URLs from ${basis}: ${homeCopies} homepage copies, ${failed} non-200 (${live} live, ${stubs} noindex) (${claim}; F2a was 364 of 371)`);
   // F2b / F2c: the company links on a few posting pages
   const postPages = locs.filter((u) => u.includes("/jobs/posting/")).slice(0, 8);
   const hrefs = new Set();
@@ -115,28 +138,67 @@ const textOf = (h) => h.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>
   if (!hrefs.size) out("INFO", `the ${postPages.length} sampled posting pages link no company page (they link /jobs?company= where no page is written)`);
   else if (dead + copies + dottedBare === 0) out("PASS", `${Math.min(hrefs.size, 25)} company links on ${postPages.length} posting pages: every one a real page, no slashless dotted href (F2b, F2c)`);
   else out("FAIL", `company links on posting pages: ${copies} homepage copies, ${dead} non-200, ${dottedBare} dotted hrefs without the slash (F2b/F2c)`);
-  // F1 on posting markup: hiringOrganization is not the tenant code in any
-  // letter case ("SHM" as much as "Ms"), read against the same allowlist and
-  // override table the bake uses (src/lib/company-display.ts,
-  // supabase/functions/_shared/employer-names.ts).
+  // F1 on posting markup, judged POSITIVELY (S11-153): a posting page on a
+  // token the override table names (ms~wd5~external is Morgan Stanley, rmit~
+  // RMIT University) must carry exactly that name as hiringOrganization. The
+  // sample is chosen to include such pages; the old line skipped every
+  // override token, so a regression to "Ms" could never fail it. Then the
+  // negative half: no page names a reviewed tenant code, or a vowelless code
+  // the display left in lower case ("Bb"), as its employer. Both read the
+  // tables the bake uses (supabase/functions/_shared/employer-names.ts,
+  // src/lib/company-display.ts).
   const srcOf = (rel) => { try { return fs.readFileSync(`${REPO_ROOT}/${rel}`, "utf8"); } catch { return ""; } };
-  const realNames = new Set([...((srcOf("src/lib/company-display.ts").match(/REAL_TENANT_NAMES = new Set\(\[([\s\S]*?)\]\)/) || [])[1] || "").matchAll(/"([^"]+)"/g)].map((m) => m[1]));
-  const overrideKeys = new Set([...((srcOf("supabase/functions/_shared/employer-names.ts").match(/EMPLOYER_NAME_OVERRIDES[^=]*= new Map\(\[([\s\S]*?)\n\]\);/) || [])[1] || "").matchAll(/\["([^"]+)",/g)].map((m) => m[1]));
-  if (!realNames.size || !overrideKeys.size) out("INFO", `the F1 line read ${realNames.size} allowlisted names and ${overrideKeys.size} overrides from the repo at ${REPO_ROOT}`);
-  let codeNamed = 0, orgs = 0;
-  for (const u of postPages) {
+  const overrides = new Map([...((srcOf("supabase/functions/_shared/employer-names.ts").match(/EMPLOYER_NAME_OVERRIDES[^=]*= new Map\(\[([\s\S]*?)\n\]\);/) || [])[1] || "").matchAll(/\["([^"]+)", "([^"]*)"\]/g)].map((m) => [m[1], m[2]]));
+  const reviewedCodes = new Set([...((srcOf("src/lib/company-display.ts").match(/REVIEWED_TENANT_CODES = new Set\(\[([\s\S]*?)\]\)/) || [])[1] || "").matchAll(/"([^"]+)"/g)].map((m) => m[1]));
+  // employerNameOverride(): the exact full token first, then a Workday tenant slug.
+  const overrideOf = (tok) => (tok.includes("~") && overrides.has(tok)) ? overrides.get(tok) : (tok.includes("~wd") && overrides.has(tok.split("~")[0].toLowerCase())) ? overrides.get(tok.split("~")[0].toLowerCase()) : null;
+  const tokOf = (u) => { let t = (u.match(/\/jobs\/posting\/[^/]+\/([^/]+)\//) || [])[1] || ""; try { t = decodeURIComponent(t); } catch {} return t; };
+  if (!overrides.size || !reviewedCodes.size) out("INFO", `the F1 lines read ${overrides.size} overrides and ${reviewedCodes.size} reviewed codes from the repo at ${REPO_ROOT}`);
+  const allPostings = locs.filter((u) => u.includes("/jobs/posting/"));
+  const overridePages = allPostings.filter((u) => overrideOf(tokOf(u)) !== null).slice(0, 8);
+  let named = 0, misnamed = [];
+  for (const u of overridePages) {
     const r = await get(u, 20000);
     const jp = lds(r.body).find((j) => j["@type"] === "JobPosting");
-    const tok = (u.match(/\/jobs\/posting\/[^/]+\/([^/]+)\//) || [])[1] || "";
+    if (!jp) continue; // a "no longer listed" stub carries no JobPosting
+    const want = overrideOf(tokOf(u));
+    const got = String((jp.hiringOrganization || {}).name || "").trim();
+    if (got.toLowerCase() === want.trim().toLowerCase()) named++;
+    else misnamed.push(`${tokOf(u)} "${got}" (want "${want}")`);
+  }
+  if (misnamed.length) out("FAIL", `${misnamed.length} of ${named + misnamed.length} posting pages on override tokens do not name the override as hiringOrganization: ${misnamed.slice(0, 4).join("; ")} (F1)`);
+  else if (named) out("PASS", `${named} posting pages on override tokens name the employer by its override as hiringOrganization (F1)`);
+  else out("INFO", `F1 not judged positively: ${overridePages.length ? `the ${overridePages.length} posting pages on override tokens carry no JobPosting` : "the sitemap names no posting page on a token the override table covers"}`);
+  let codeNamed = [], orgs = 0;
+  for (const u of [...new Set([...postPages, ...overridePages])]) {
+    const r = await get(u, 20000);
+    const jp = lds(r.body).find((j) => j["@type"] === "JobPosting");
+    const tok = tokOf(u);
     if (!jp || !tok.includes("~")) continue;
     orgs++;
     const slug = tok.split("~")[0].toLowerCase();
-    if (realNames.has(slug) || overrideKeys.has(tok) || (tok.includes("~wd") && overrideKeys.has(slug))) continue;
-    if (jp.hiringOrganization && String(jp.hiringOrganization.name).trim().toLowerCase() === slug) codeNamed++;
+    const got = String((jp.hiringOrganization || {}).name || "").trim();
+    if (overrideOf(tok) === null && got.toLowerCase() === slug && (reviewedCodes.has(slug) || (!/[aeiouy]/.test(slug) && got !== got.toUpperCase()))) codeNamed.push(`${tok} "${got}"`);
   }
   if (!orgs) out("INFO", "no sampled posting page is on a compound (Workday/Oracle) token, so the tenant-code check had nothing to read");
-  else if (codeNamed === 0) out("PASS", `${orgs} sampled Workday/Oracle posting pages: no hiringOrganization is the tenant code in any case (F1)`);
-  else out("FAIL", `${codeNamed} of ${orgs} sampled Workday/Oracle posting pages name the tenant code as hiringOrganization (F1)`);
+  else if (!codeNamed.length) out("PASS", `${orgs} sampled Workday/Oracle posting pages: none names a reviewed tenant code or an unreadable code as hiringOrganization (F1)`);
+  else out("FAIL", `${codeNamed.length} of ${orgs} sampled Workday/Oracle posting pages name a tenant code as hiringOrganization: ${codeNamed.slice(0, 4).join("; ")} (F1)`);
+  // S11-013 positive controls: real one-word employers whose name IS their
+  // tenant code keep indexable company pages. A noindex page that still lists
+  // three or more openings of its own was not noindexed for being thin.
+  const controls = [["intel~wd1~External", "Intel"], ["mastercard~wd1~CorporateCareers", "Mastercard"], ["medtronic~wd1~MedtronicCareers", "Medtronic"], ["menasha~wd12~MenashaCorp", "Menasha"], ["adient~wd3~External", "Adient"]];
+  const ctl = { ok: [], bad: [], thin: [] };
+  for (const [t, n] of controls) {
+    const r = await get(`/jobs/company/${t}`, 20000);
+    if (r.status !== 200 || isHomeCopy(r.body)) continue;
+    const own = (r.body.match(/href="\/jobs\/posting\//g) || []).length + (r.body.match(/href="\/jobs\?job=/g) || []).length;
+    if (!/noindex/.test(robotsOf(r.body))) ctl.ok.push(n);
+    else if (own >= 3) ctl.bad.push(`${n} (${own} openings listed)`);
+    else ctl.thin.push(n);
+  }
+  if (ctl.bad.length) out("FAIL", `real employers named by their tenant code have noindex company pages: ${ctl.bad.join(", ")} (S11-013)`);
+  else if (ctl.ok.length) out("PASS", `real employers named by their tenant code keep indexable company pages: ${ctl.ok.join(", ")}${ctl.thin.length ? `; noindex with under three openings listed (not judged): ${ctl.thin.join(", ")}` : ""} (S11-013)`);
+  else out("INFO", `S11-013 controls not judged: no company page is written for ${controls.map(([, n]) => n).join(", ")}${ctl.thin.length ? ` (noindex with under three openings: ${ctl.thin.join(", ")})` : ""}`);
 
   // ---- S2: the Ghost Job Index ----
   const g = await get("/ghost-job-index");
@@ -177,6 +239,22 @@ const textOf = (h) => h.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>
   if (/every employer with open roles/.test(lf.body)) out("FAIL", "/llms-full.txt still says /companies lists every employer with open roles (L4-11)");
   else if (/\/companies — the [\d,]+ employers this site gives a page/.test(lf.body)) out("PASS", "/llms-full.txt says /companies lists the employers with a page of their own, counted (L4-11)");
   else out("FAIL", "/llms-full.txt has no counted /companies line (L4-11)");
+
+  // ---- S11-151: the language count everywhere it was typed ----
+  const vs = await get("/vs/kickresume");
+  const es = await get("/es/revisar-curriculum");
+  const typed = [[vs, "/vs/kickresume", /\b10 languages\b/], [es, "/es/revisar-curriculum", /\b10 idiomas\b/]].filter(([r, , re]) => r.status === 200 && re.test(textOf(r.body))).map(([, p]) => p);
+  if (vs.status !== 200 && es.status !== 200) out("INFO", `/vs/kickresume and /es/revisar-curriculum answered ${vs.status} and ${es.status}: the language count not judged there`);
+  else if (typed.length) out("FAIL", `still says 10 languages over the eight the interface ships: ${typed.join(", ")} (S11-151)`);
+  else out("PASS", "/vs/kickresume and /es/revisar-curriculum print the derived interface language count, not 10 (S11-151)");
+  const mainJs = (home.body.match(/\/assets\/index-[^"]*\.js/) || [])[0];
+  const mainB = mainJs ? (await get(mainJs)).body : "";
+  const idxJs = (mainB.match(/\.\/Index-[A-Za-z0-9_-]*\.js/) || [])[0];
+  const idxB = idxJs ? (await get(`/assets/${idxJs.slice(2)}`)).body : "";
+  if (!idxB) out("INFO", "the homepage SPA chunk could not be found, so its WebApplication JSON-LD was not judged");
+  else if (/industries and 10 languages/.test(idxB)) out("FAIL", "the homepage SPA\x27s WebApplication JSON-LD still says 10 languages (S11-151)");
+  else if (/with an interface in/.test(idxB)) out("PASS", "the homepage SPA\x27s WebApplication JSON-LD prints the derived interface language count (S11-151)");
+  else out("INFO", "the homepage SPA chunk carries neither the old nor the new WebApplication description");
 
   // ---- L1-05: a role page calls the lists its field\x27s ----
   const rp = await get("/roles/pilot");

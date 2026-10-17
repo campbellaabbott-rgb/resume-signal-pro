@@ -20,6 +20,12 @@
  *   - a signed-in account, confirmed by auth.getUser -- never by reading the
  *     token's claims, and never for an anonymous sign-in, which costs nothing
  *     to mint; the publishable key (role anon) is not even looked up;
+ *   - and, since register S11-083 (owner decision 2026-10-11), only an
+ *     account that has proven something: a mailbox provenMailbox() accepts
+ *     (here a Google sign-in for the address Google verified) or a paying
+ *     account. A plain password account is a stranger: sign-ups auto-confirm,
+ *     so about ten throwaway accounts on ten addresses spent the proven
+ *     ceiling and locked every signed-in person out for the hour;
  *   - an identity's own allowance is the address allowance's size, and the
  *     proven ceiling is the anonymous one's size.
  */
@@ -48,17 +54,26 @@ afterEach(() => {
 const b64url = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64url");
 const jwt = (claims: Record<string, unknown>) => `${b64url({ alg: "HS256", typ: "JWT" })}.${b64url(claims)}.c2lnbmF0dXJl`;
 const USER_TOKEN = jwt({ role: "authenticated", sub: USER_ID });
+const GOOGLE_TOKEN = jwt({ role: "authenticated", sub: USER_ID, amr: [{ method: "oauth", timestamp: 1760000000 }] });
 const ANON_USER_TOKEN = jwt({ role: "authenticated", sub: USER_ID, is_anonymous: true });
 const ANON_KEY = jwt({ role: "anon", iss: "supabase" });
+const EMAIL = "jane@example.com";
+const GOOGLE_USER = { id: USER_ID, email: EMAIL, identities: [{ provider: "google", identity_data: { email: EMAIL, email_verified: true } }] };
+const PASSWORD_USER = { id: USER_ID, email: EMAIL, identities: [{ provider: "email", identity_data: { email: EMAIL } }] };
 
 type Verdict = { data: unknown; error: unknown };
-function fakeDb(answer: (a: Record<string, unknown>) => Verdict, users: Record<string, { id: string; is_anonymous?: boolean }> = {}) {
+type FakeUser = { id: string; is_anonymous?: boolean; email?: string; identities?: unknown[] };
+function fakeDb(answer: (a: Record<string, unknown>) => Verdict, users: Record<string, FakeUser> = {}, plans: Record<string, unknown[]> = {}) {
   const calls: Array<Record<string, unknown>> = [];
   const lookups: string[] = [];
   return {
     calls,
     lookups,
-    rpc: async (_fn: string, a: Record<string, unknown>) => { calls.push(a); return answer(a); },
+    rpc: async (fn: string, a: Record<string, unknown>) => {
+      if (fn === "pro_entitlement_rows") return { data: plans[String(a.p_user_id)] ?? [], error: null };
+      calls.push(a);
+      return answer(a);
+    },
     from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }) }),
     auth: {
       getUser: async (token: string) => {
@@ -125,12 +140,34 @@ describe("a proven caller spends its own allowance and the proven ceiling", () =
     expect((await r!.json()).code).toBe("rate_limited_global");
   });
 
-  it("a signed-in account, confirmed by auth.getUser, gets past a spent anonymous ceiling", async () => {
-    const db = fakeDb(spentAnonymous, { [USER_TOKEN]: { id: USER_ID } });
-    expect(await modelSpendGate(db, req({ authorization: `Bearer ${USER_TOKEN}` }), "fn-a", LIMITS, CORS)).toBeNull();
-    expect(db.lookups).toEqual([USER_TOKEN]);
+  it("a Google sign-in for the address Google verified, confirmed by auth.getUser, gets past a spent anonymous ceiling", async () => {
+    const db = fakeDb(spentAnonymous, { [GOOGLE_TOKEN]: GOOGLE_USER });
+    expect(await modelSpendGate(db, req({ authorization: `Bearer ${GOOGLE_TOKEN}` }), "fn-a", LIMITS, CORS)).toBeNull();
+    expect(db.lookups).toEqual([GOOGLE_TOKEN]);
     expect(db.calls.map((c) => c.p_ip)).toEqual(["203.0.113.9", `user:${USER_ID}`, PROVEN_BUCKET]);
     expect(`user:${USER_ID}`.length).toBeLessThanOrEqual(45);
+  });
+
+  it("a paying account gets past a spent anonymous ceiling; a trial or a lapsed plan does not", async () => {
+    const live = new Date(Date.now() + 20 * 86400_000).toISOString();
+    const paying = fakeDb(spentAnonymous, { [USER_TOKEN]: PASSWORD_USER }, { [USER_ID]: [{ tier: "pro", status: "active", current_period_end: live }] });
+    expect(await modelSpendGate(paying, req({ authorization: `Bearer ${USER_TOKEN}` }), "fn-a", LIMITS, CORS)).toBeNull();
+    expect(paying.calls.map((c) => c.p_ip)).toEqual(["203.0.113.9", `user:${USER_ID}`, PROVEN_BUCKET]);
+    for (const row of [{ tier: "pro", status: "trialing", current_period_end: live }, { tier: "pro", status: "canceled", current_period_end: live }]) {
+      const db = fakeDb(spentAnonymous, { [USER_TOKEN]: PASSWORD_USER }, { [USER_ID]: [row] });
+      const r = await modelSpendGate(db, req({ authorization: `Bearer ${USER_TOKEN}` }), "fn-a", LIMITS, CORS);
+      expect((await r!.json()).code, row.status).toBe("rate_limited_global");
+    }
+  });
+
+  it("a plain password account, confirmed by auth.getUser but proving no mailbox and paying nothing, is a stranger (S11-083)", async () => {
+    const db = fakeDb(spentAnonymous, { [USER_TOKEN]: PASSWORD_USER });
+    const r = await modelSpendGate(db, req({ authorization: `Bearer ${USER_TOKEN}` }), "fn-a", LIMITS, CORS);
+    expect((await r!.json()).code).toBe("rate_limited_global");
+    expect(db.calls.map((c) => c.p_ip)).toEqual(["203.0.113.9", GLOBAL_BUCKET]);
+    // A Google identity on the account is not enough when this session signed in with a password.
+    const mixed = fakeDb(spentAnonymous, { [USER_TOKEN]: GOOGLE_USER });
+    expect((await (await modelSpendGate(mixed, req({ authorization: `Bearer ${USER_TOKEN}` }), "fn-a", LIMITS, CORS))!.json()).code).toBe("rate_limited_global");
   });
 
   it("a token that only CLAIMS to be signed in (auth.getUser refuses it) is anonymous", async () => {
@@ -155,16 +192,16 @@ describe("a proven caller spends its own allowance and the proven ceiling", () =
   });
 
   it("an identity past its own allowance is refused as its own limit, not as the world's", async () => {
-    const db = fakeDb((a) => ({ data: !String(a.p_ip).startsWith("user:"), error: null }), { [USER_TOKEN]: { id: USER_ID } });
-    const r = await modelSpendGate(db, req({ authorization: `Bearer ${USER_TOKEN}` }), "fn-a", LIMITS, CORS);
+    const db = fakeDb((a) => ({ data: !String(a.p_ip).startsWith("user:"), error: null }), { [GOOGLE_TOKEN]: GOOGLE_USER });
+    const r = await modelSpendGate(db, req({ authorization: `Bearer ${GOOGLE_TOKEN}` }), "fn-a", LIMITS, CORS);
     expect(r?.status).toBe(429);
     expect((await r!.json()).code).toBe("rate_limited_function");
     expect(db.calls.map((c) => c.p_ip)).not.toContain(PROVEN_BUCKET);
   });
 
   it("the proven ceiling is a ceiling too: the worst an hour costs stays bounded", async () => {
-    const db = fakeDb((a) => ({ data: a.p_ip !== PROVEN_BUCKET, error: null }), { [USER_TOKEN]: { id: USER_ID } });
-    const r = await modelSpendGate(db, req({ authorization: `Bearer ${USER_TOKEN}` }), "fn-a", LIMITS, CORS);
+    const db = fakeDb((a) => ({ data: a.p_ip !== PROVEN_BUCKET, error: null }), { [GOOGLE_TOKEN]: GOOGLE_USER });
+    const r = await modelSpendGate(db, req({ authorization: `Bearer ${GOOGLE_TOKEN}` }), "fn-a", LIMITS, CORS);
     expect(await r!.json()).toMatchObject({ code: "rate_limited_global", limit: 200 });
   });
 
