@@ -75,6 +75,14 @@ if (!(globalThis as { IntersectionObserver?: unknown }).IntersectionObserver) {
   };
 }
 
+// The report is a lazy chunk of the homepage. Under a loaded full suite its
+// compile was paid inside the fifteen-second wait below and read as a
+// missing report (twenty seconds, "Unable to find report-next-steps"), while
+// the same case takes two seconds quiet. Importing the chunk here pays that
+// compile in the import phase, so the wait measures the render, which is
+// what this test is about (src/test/helpers/mount-budget.ts: make it fast,
+// never widen the budget).
+import "@/components/FreeKeywordResults";
 import Index from "@/pages/Index";
 import { saveResumeToSession } from "@/hooks/use-session-resume";
 import { PRODUCTS, SUBSCRIPTIONS } from "@/config/products";
