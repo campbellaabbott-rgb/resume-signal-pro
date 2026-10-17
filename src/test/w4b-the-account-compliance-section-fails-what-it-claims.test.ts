@@ -153,6 +153,9 @@ describe("section 92 account-compliance fails each regression", () => {
     expect(has(lines, "FAIL", /loads no ConsentBanner chunk/), show(lines)).toBe(true);
     ({ lines } = run(routes({ account: { match: "Account-Cd34\\.js$", body: src("src/components/account/OrdersList.tsx") } })));
     expect(has(lines, "FAIL", /Account-Cd34\.js lacks the connected-AIs card/), show(lines)).toBe(true);
+    // the account home without the orders list's Report a problem
+    ({ lines } = run(routes({ account: { match: "Account-Cd34\\.js$", body: [src("src/pages/Account.tsx"), src("src/components/account/ConnectedAIsCard.tsx")].join("\n") } })));
+    expect(has(lines, "FAIL", /Account-Cd34\.js lacks the connected-AIs card, account-settings, account-order or Report a problem/), show(lines)).toBe(true);
     ({ lines } = run(routes({ privacy: { match: "Privacy-Ef56\\.js$", body: "Resend Supabase" } })));
     expect(has(lines, "FAIL", /does not name Mailgun and ipinfo/), show(lines)).toBe(true);
     ({ lines } = run(routes({ shortlist: { match: "Shortlist-Gh78\\.js$", body: `from("shortlist_demographics")` } })));

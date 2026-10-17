@@ -22,7 +22,8 @@
 #     not run it (a GET probe: PostgREST runs it read-only);
 #   - the published frontend carries this round: the consent banner chunk and
 #     the analytics consent key (our analytics wait for a yes, S12-011), the
-#     account chunk with the connected-AIs card and account-settings, the
+#     account chunk with the connected-AIs card, account-settings and each
+#     order's Report a problem, the
 #     Privacy chunk naming Mailgun and ipinfo among the processors (S12-049),
 #     and a Shortlist chunk that asks for the uploader's attestation and reads
 #     no demographics table (D14);
@@ -97,8 +98,8 @@ else
 
   VD92AC_AC=$(vd92ac_chunk Account)
   if [ -z "$VD92AC_AC" ]; then echo "FAIL  the live entry names no Account chunk: the account home cannot be judged"
-  elif grep -q 'account-settings' /tmp/vd_92ac_Account.js && grep -q 'accountConnected.title' /tmp/vd_92ac_Account.js && grep -q 'account-order' /tmp/vd_92ac_Account.js; then echo "PASS  $VD92AC_AC carries the connected-AIs card, account-settings and account-order (the account home of this round)"
-  else echo "FAIL  $VD92AC_AC lacks the connected-AIs card, account-settings or account-order: the account home of this round is not published"; fi
+  elif grep -q 'account-settings' /tmp/vd_92ac_Account.js && grep -q 'accountConnected.title' /tmp/vd_92ac_Account.js && grep -q 'account-order' /tmp/vd_92ac_Account.js && grep -q 'orders.reportProblem' /tmp/vd_92ac_Account.js; then echo "PASS  $VD92AC_AC carries the connected-AIs card, account-settings, account-order and each order's Report a problem (the account home of this round)"
+  else echo "FAIL  $VD92AC_AC lacks the connected-AIs card, account-settings, account-order or Report a problem: the account home of this round is not published"; fi
 
   VD92AC_PR=$(vd92ac_chunk Privacy)
   if [ -z "$VD92AC_PR" ]; then echo "FAIL  the live entry names no Privacy chunk"
