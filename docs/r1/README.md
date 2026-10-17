@@ -224,8 +224,21 @@ job name; it is neither, so:
   `net._http_response` records no URL and no caller, so the command reads
   the answers back by their body: a refusal naming the drain **with cronKey
   true** in the last two minutes fails the run (only our posts offer the
-  key), and so does the gateway's own 401 (`"code":401`: a bearer it does not
-  accept, the same vault bearer every cron sends). A refusal of another
+  key), and so does the gateway's own 401: a bearer it does not accept, the
+  same vault bearer every cron sends. The gateway's 401 is known by the body
+  the live gateway sends, a **string** code starting `UNAUTHORIZED_`
+  (read-only GETs of process-email-queue, 2026-10-17: no header gives
+  `{"code":"UNAUTHORIZED_NO_AUTH_HEADER","message":"Missing authorization header"}`,
+  a bearer that is not a JWT gives `UNAUTHORIZED_INVALID_JWT_FORMAT`, a
+  mis-signed token `UNAUTHORIZED_LEGACY_JWT`). The command counts
+  `r.status_code = 401 AND r.content::text LIKE '%"code":"UNAUTHORIZED_%'`.
+  That counts only posts to process-email-queue: it is the one function the
+  database posts to behind the gateway's JWT check (every other cron target
+  is `verify_jwt = false` in config.toml, or, for apply-agent, agent-runner
+  and agent-mcp, answers a header-less GET with its own 405 live), and
+  `net._http_response` holds only this database's own posts. An earlier
+  draft matched a numeric code the gateway never sends, so a refused bearer
+  read as a success on every run (second recheck). A refusal of another
   caller's post never stops ours.
 - **One message, one send, though two drains run.** `read_email_batch` is
   `pgmq.read` (FOR UPDATE SKIP LOCKED, each message hidden 30 s), so the
@@ -233,11 +246,15 @@ job name; it is neither, so:
   after a crash between send and delete is skipped and deleted when its
   'sent' row exists; and both providers are handed the payload's idempotency
   key. The queue test runs two handler calls against a pgmq-like stand-in.
-- Section 94 judges OUR job's last run and failures, reports a
+- Section 94 judges OUR job's last run and failures (a refused vault bearer
+  makes the run RAISE, so it reads as a failed run and a FAIL), reports a
   `process-email-queue` job as Lovable's (never as ours), and PASSes only
-  the gateway's 401 to a post with no JWT (a 403 naming the drain means
-  verify_jwt is off and the role claim is unverified: a FAIL that says what
-  to deploy); the publishable key must be refused 403 with cronKey false.
+  the gateway's 401 to a post with no JWT **whose body carries the
+  `UNAUTHORIZED_` code the drain reads back** (a 401 in any other shape
+  FAILs: the drain would then miss a refused bearer; a 403 naming the drain
+  means verify_jwt is off and the role claim is unverified: a FAIL that says
+  what to deploy); the publishable key must be refused 403 with cronKey
+  false.
 - Three wave 2/3 queue tests name the queues they drain.
 
 **Accepted deviation: delivery stamps.** resend-webhook stamps `delivered` and
@@ -428,10 +445,11 @@ and the owner steps, or have the guard skip an account's own first sign-up
   except the vault bearer they created; a bearer the gateway refuses shows
   up as our job's failed run (it reads the gateway's 401 back), and a
   dispatcher that names no queue now drains sign-in mail only.
-- The exact body of the gateway's 401 (`{"code":401,...}`): the drain's
-  read-back of it is best effort, keyed on that shape. The owner's live code
-  test (one sign-in mail arriving) is the proof that the drain works end to
-  end; `get_cron_health` shows the runs.
+- The gateway's 401 body is now KNOWN (read live 2026-10-17, quoted above)
+  and section 94 re-reads it on every run, failing if its shape moves. What
+  stays unproven until live is only the end-to-end send: the owner's live
+  code test (one sign-in mail arriving) is that proof; `get_cron_health`
+  shows the runs.
 - Which key Lovable's email_change payload carries the user id under
   (`user_id`, `user.id` or `id` are read); the hook logs the payload's key
   set, and a payload with none and no `old_email` sends the link and no

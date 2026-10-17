@@ -17,7 +17,10 @@
 # its last run as well as its failures: its command fails a run itself when
 # the vault holds no bearer or no cron key, when the drain refused one of its
 # own posts, or when the gateway answered one with its own 401 (lead decision
-# B, third fixer round).
+# B, third fixer round). The command knows the gateway's 401 by its body, a
+# string code starting UNAUTHORIZED_ (the live body, 2026-10-17); the
+# no-JWT probe below FAILs a 401 in any other shape, because the command
+# would then read a refused bearer as a success (second recheck of R1).
 echo "== 94. R1 mail: the sending DNS, the hook/queue/webhook builds, the drain job, the anon refusals =="
 
 vd94_dns() { curl -s -m 20 "https://dns.google/resolve?name=$1&type=$2" -H 'accept: application/dns-json'; }
@@ -97,8 +100,10 @@ if [ "$VD94_PEQ" = 1 ]; then
   # checked the signature first. A 403 naming the drain = verify_jwt is off:
   # that claim is then anyone's to write.
   C94=$(curl -s -m 30 -o /tmp/vd_94_peq.json -w '%{http_code}' -X POST "$B/functions/v1/process-email-queue" -H "Content-Type: application/json" -d '{}')
-  if [ "$C94" = "401" ]; then
-    echo "PASS  process-email-queue: the gateway refuses a post with no JWT (401, verify_jwt on): a service_role claim reaches the function only with a signature the platform checked"
+  if [ "$C94" = "401" ] && grep -q '"code":"UNAUTHORIZED_' /tmp/vd_94_peq.json; then
+    echo "PASS  process-email-queue: the gateway refuses a post with no JWT (401, verify_jwt on): a service_role claim reaches the function only with a signature the platform checked, and its body carries the UNAUTHORIZED_ code rb-auth-mail-drain reads back: $(head -c 120 /tmp/vd_94_peq.json)"
+  elif [ "$C94" = "401" ]; then
+    echo "FAIL  process-email-queue answered a post with no JWT with a 401 without the gateway's UNAUTHORIZED_ code: $(head -c 160 /tmp/vd_94_peq.json). rb-auth-mail-drain (20261014100000) knows the gateway's refusal by that code, so a refused vault bearer would read as a successful run: match its read-back to this body"
   elif [ "$C94" = "403" ] && grep -q '"refusedBy":"process-email-queue"' /tmp/vd_94_peq.json; then
     echo "FAIL  process-email-queue: a post with no JWT reached the function (403 from its own check): verify_jwt is OFF, so the role claim it reads is unverified. Deploy supabase/config.toml's [functions.process-email-queue] verify_jwt = true"
   else

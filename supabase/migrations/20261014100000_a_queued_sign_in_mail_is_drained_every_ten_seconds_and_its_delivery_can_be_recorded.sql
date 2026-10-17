@@ -54,10 +54,26 @@
 --      from the drain in the last two minutes that says a cron key was
 --      offered (its body names refusedBy process-email-queue AND cronKey
 --      true; only our posts offer one) fails the run instead of posting
---      again, and so does the gateway's own 401 (its body names code 401: a
---      bearer it does not accept, which is the same vault bearer every cron
---      sends). A refusal of another caller's post (Lovable's dispatcher, a
---      stray publishable-key post) carries no cron key and never stops ours.
+--      again, and so does the gateway's own 401: a bearer it does not
+--      accept, which is the same vault bearer every cron sends. The gateway
+--      is recognised by the body the LIVE gateway sends, a STRING code that
+--      starts UNAUTHORIZED_ (read-only GETs of process-email-queue on
+--      2026-10-17: no header gives
+--      {"code":"UNAUTHORIZED_NO_AUTH_HEADER","message":"Missing authorization header"};
+--      a bearer that is not a JWT gives UNAUTHORIZED_INVALID_JWT_FORMAT; a
+--      mis-signed token gives UNAUTHORIZED_LEGACY_JWT). An earlier draft
+--      matched a numeric code the gateway never sends, so a refused bearer
+--      read as a success on every run. Counting every such 401 counts only
+--      posts to process-email-queue: it is the one function the database
+--      posts to that runs behind the gateway's JWT check (every other cron
+--      target is verify_jwt = false in supabase/config.toml, or, for
+--      apply-agent, agent-runner and agent-mcp, which config.toml does not
+--      list, answers a GET with no header with its own 405 live, 2026-10-17),
+--      and net._http_response holds only this database's own pg_net posts.
+--      A function's own refusal carries no UNAUTHORIZED_ code. A refusal of
+--      another caller's post (Lovable's dispatcher, a stray publishable-key
+--      post) carries no cron key and never stops ours; the gateway refusing
+--      Lovable's dispatcher refuses the same vault bearer ours sends.
 --   4. Self-check: the column and index exist, the CHECK names all ten
 --      statuses and is the only check on status, no queue wrapper is open,
 --      the job 'rb-auth-mail-drain' exists with this file's marker, its
@@ -74,7 +90,9 @@
 -- fallback. Section 94 also proves the gateway still asks for a JWT (a POST
 -- with none is refused 401 by the gateway, not by the function), because the
 -- role claim the function reads is the platform's word only while the
--- gateway checks signatures.
+-- gateway checks signatures, and that the gateway's 401 still carries the
+-- UNAUTHORIZED_ code this command reads back (a 401 in any other shape
+-- FAILs section 94: this command would then miss a refused bearer).
 
 -- ── 0. No drain while a queue wrapper is open to clients ────────────────────
 DO $$
@@ -228,7 +246,7 @@ BEGIN
       EXECUTE $q$SELECT count(*)::int FROM net._http_response r
                   WHERE r.created > now() - interval '2 minutes'
                     AND r.status_code = 401
-                    AND r.content::text LIKE '%"code":401%'$q$ INTO v_gateway;
+                    AND r.content::text LIKE '%"code":"UNAUTHORIZED_%'$q$ INTO v_gateway;
     END IF;
   EXCEPTION WHEN OTHERS THEN
     v_refused := 0;
@@ -329,7 +347,8 @@ BEGIN
     IF position('net._http_response' IN v_cmd) = 0
        OR position('"refusedBy":"process-email-queue"' IN v_cmd) = 0
        OR position('"cronKey":true' IN v_cmd) = 0
-       OR position('"code":401' IN v_cmd) = 0 THEN
+       OR position('r.status_code = 401' IN v_cmd) = 0
+       OR position('"code":"UNAUTHORIZED_' IN v_cmd) = 0 THEN
       RAISE EXCEPTION 'self-check: the rb-auth-mail-drain command no longer reads its own refusals and the gateway''s 401 back, so a refused post would read as a success';
     END IF;
     -- Lovable's job is never ours. An earlier draft of this file scheduled a job under that name; it was never applied anywhere.

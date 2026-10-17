@@ -19,6 +19,11 @@
  *     refused 401 BY THE GATEWAY; a 403 naming the drain means verify_jwt is
  *     off and the role claim the function reads is unverified, a FAIL that
  *     says what to deploy;
+ *   - proves the gateway's 401 still carries the body the drain's read-back
+ *     matches (a string code starting UNAUTHORIZED_): a 401 in any other
+ *     shape FAILs, because the drain would then read a refused bearer as a
+ *     success on every run (the second recheck of R1 found the read-back
+ *     matching a numeric code the gateway never sends);
  *   - the publishable key is refused by the function's own check, 403 naming
  *     the drain with cronKey false.
  */
@@ -93,7 +98,9 @@ const has = (lines: string[], status: "PASS" | "FAIL" | "INFO", re: RegExp) => l
 const show = (lines: string[]) => `\n${lines.join("\n")}`;
 
 const job = (o: Record<string, unknown> = {}) => [{ ch_jobname: "rb-auth-mail-drain", ch_schedule: "10 seconds", ch_active: true, ch_runs: 360, ch_failed: 0, ch_last_status: "succeeded", ...o }];
-const GATEWAY_401 = { status: 401, body: JSON.stringify({ code: 401, message: "Missing authorization header" }) };
+/** The live gateway's answer to a post with no Authorization header (read-only GET, 2026-10-17 18:16 UTC). */
+const GATEWAY_401 = { status: 401, body: '{"code":"UNAUTHORIZED_NO_AUTH_HEADER","message":"Missing authorization header"}' };
+const MIGRATION = readFileSync(resolve(ROOT, "supabase/migrations/20261014100000_a_queued_sign_in_mail_is_drained_every_ten_seconds_and_its_delivery_can_be_recorded.sql"), "utf8");
 const REFUSED_HERE = { status: 403, body: JSON.stringify({ error: "Forbidden", refusedBy: "process-email-queue", cronKey: false }) };
 
 describe("our drain job", () => {
@@ -126,6 +133,25 @@ describe("the gateway's answer to a post with no JWT (ours and Lovable's both po
   it("FAILs a 403 naming the drain: verify_jwt is off, so the role claim the function trusts is unverified", () => {
     const { lines } = run({ cron: job(), noJwt: REFUSED_HERE });
     expect(has(lines, "FAIL", /a post with no JWT reached the function \(403 from its own check\): verify_jwt is OFF/), show(lines)).toBe(true);
+  });
+
+  it("FAILs a 401 that does not carry the gateway's UNAUTHORIZED_ code: the drain's read-back would read a refused bearer as a success", () => {
+    for (const body of [JSON.stringify({ code: 401, message: "Invalid JWT" }), JSON.stringify({ error: "Unauthorized" })]) {
+      const { lines } = run({ cron: job(), noJwt: { status: 401, body } });
+      expect(has(lines, "FAIL", /401 without the gateway's UNAUTHORIZED_ code/), show(lines)).toBe(true);
+      expect(lines.some((l) => /^PASS .*the gateway refuses a post with no JWT/.test(l)), show(lines)).toBe(false);
+    }
+  });
+
+  it("the code section 94 reads is the one the drain's read-back matches", () => {
+    expect(MIGRATION).toContain(`r.content::text LIKE '%"code":"UNAUTHORIZED_%'`);
+    expect(SECTION).toContain(`grep -q '"code":"UNAUTHORIZED_' /tmp/vd_94_peq.json`);
+  });
+
+  it("a refused vault bearer reads as a FAILED drain run (the drain raises), never as a quiet success", () => {
+    const { lines } = run({ cron: job({ ch_failed: 6, ch_last_status: "failed" }), noJwt: GATEWAY_401 });
+    expect(has(lines, "FAIL", /rb-auth-mail-drain cron: .*failed 6, last run failed/), show(lines)).toBe(true);
+    expect(MIGRATION).toMatch(/RAISE EXCEPTION 'rb-auth-mail-drain \(%\): the gateway answered % post\(s\) with its own 401/);
   });
 
   it("FAILs any other answer", () => {

@@ -30,6 +30,11 @@
  *     the last two minutes (only our posts offer one), or when the gateway
  *     answered a post with its own 401 (a bearer it does not accept); a
  *     refusal of another caller's post never stops ours;
+ *   - the gateway's 401 is recognised by the body the LIVE gateway sends: a
+ *     STRING code that starts UNAUTHORIZED_ (fixtures below, each with the
+ *     date it was read). An earlier draft matched a numeric code, a body the
+ *     gateway never sends, so a refused bearer read as a success on every
+ *     run while this file's tests passed on a body pinned by hand;
  *   - provider_message_id and its index exist, the status CHECK accepts
  *     delivered and delayed, keeps any value a drifted constraint allowed, and
  *     stays the only check on status; the file is safe to run twice.
@@ -46,6 +51,20 @@ const FILE = "20261014100000";
 const JOB = "rb-auth-mail-drain";
 const CRON_KEY = "k".repeat(64);
 const BEARER = "svc.jwt.from-the-vault";
+/**
+ * The gateway's own 401 bodies, exactly as the live gateway sends them for
+ * https://bwhdazbotpblihdxcmho.supabase.co/functions/v1/process-email-queue
+ * (verify_jwt on). Read-only GETs:
+ *   - no Authorization header, 2026-10-17 18:16 UTC (R1 fixer round 4; the
+ *     response also carried sb-error-code: UNAUTHORIZED_NO_AUTH_HEADER);
+ *   - a bearer that is not a JWT, and a mis-signed HS256 token, 2026-10-17
+ *     (the second recheck of R1).
+ */
+const GATEWAY_401_BODIES = [
+  '{"code":"UNAUTHORIZED_NO_AUTH_HEADER","message":"Missing authorization header"}',
+  '{"code":"UNAUTHORIZED_INVALID_JWT_FORMAT","message":"Invalid JWT"}',
+  '{"code":"UNAUTHORIZED_LEGACY_JWT","message":"Invalid JWT"}',
+] as const;
 const STAND_INS = `
   CREATE TABLE public.email_send_state (id int PRIMARY KEY DEFAULT 1, retry_after_until timestamptz);
   INSERT INTO public.email_send_state (id) VALUES (1);
@@ -207,23 +226,31 @@ describe("the command posts only when sign-in mail is waiting", () => {
     expect(await calls(pg)).toHaveLength(1);
   });
 
-  it("the gateway's own 401 in the last two minutes (a bearer it does not accept) fails the run and posts nothing", async () => {
+  it.each(GATEWAY_401_BODIES)("the gateway's own 401 in the last two minutes, in the body the live gateway sends (%s), fails the run and posts nothing", async (body) => {
     const { pg, tick } = await ready();
     await pg.exec("INSERT INTO pgmq.q_auth_emails (message) VALUES ('{}')");
-    await pg.exec(`INSERT INTO net._http_response (status_code, content, created) VALUES (401, '{"code":401,"message":"Invalid JWT"}', now() - interval '30 seconds')`);
+    await pg.query("INSERT INTO net._http_response (status_code, content, created) VALUES (401, $1, now() - interval '30 seconds')", [body]);
     await expect(tick()).rejects.toThrow(/the gateway answered 1 post\(s\) with its own 401 in the last two minutes: the vault bearer \(email_queue_service_role_key\) no longer opens it/);
     expect(await calls(pg)).toEqual([]);
   });
 
-  it("an older refusal, or another function's own 401, does not stop the post", async () => {
+  it("an older refusal, or a function's own 401 (no UNAUTHORIZED_ code), does not stop the post", async () => {
     const { pg, tick } = await ready();
     await pg.exec("INSERT INTO pgmq.q_auth_emails (message) VALUES ('{}')");
-    await pg.exec(`INSERT INTO net._http_response (status_code, content, created) VALUES
+    await pg.query(`INSERT INTO net._http_response (status_code, content, created) VALUES
       (403, '{"error":"Forbidden","refusedBy":"process-email-queue","cronKey":true}', now() - interval '3 minutes'),
-      (401, '{"code":401,"message":"Invalid JWT"}', now() - interval '3 minutes'),
-      (401, '{"error":"Sign in first.","reason":"not_signed_in"}', now() - interval '10 seconds')`);
+      (401, $1, now() - interval '3 minutes'),
+      (401, '{"error":"Sign in first.","reason":"not_signed_in"}', now() - interval '10 seconds'),
+      (401, '{"error":"Unauthorized"}', now() - interval '10 seconds')`, [GATEWAY_401_BODIES[2]]);
     await tick();
     expect(await calls(pg)).toHaveLength(1);
+  });
+
+  it("the read-back names the gateway's string code, never a numeric one the gateway does not send (comments stripped)", () => {
+    const code = sqlCodeOf(migration(FILE));
+    expect(code).toContain("r.status_code = 401");
+    expect(code).toContain(`r.content::text LIKE '%"code":"UNAUTHORIZED_%'`);
+    expect(code).not.toMatch(/"code":\s*401/);
   });
 });
 
