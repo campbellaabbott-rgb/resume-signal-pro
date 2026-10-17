@@ -45,7 +45,12 @@ import { targetRolesOf } from "../_shared/target-roles.ts";
 
 // Provable from outside without a purchase or a signature: every response,
 // the 405 a GET receives included, carries this in x-fn-build.
-const FN_BUILD = "stripe-webhook.2026-10-09.61";
+// 2026-10-11.25 (wave 4 round 2, account-compliance): no change of its own;
+// _shared/subscription-notice.ts, which it bundles, now renders a legal notice
+// once and resends exactly that body (S12-102). payments-delivery stamps this
+// function 2026-10-11.22 for its own changes; the merged code is neither, and
+// the integration gives it a later string.
+const FN_BUILD = "stripe-webhook.2026-10-11.25";
 const BUILD_HEADER = { "x-fn-build": FN_BUILD };
 
 // Declare EdgeRuntime for background tasks

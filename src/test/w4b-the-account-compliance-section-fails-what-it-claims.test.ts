@@ -75,7 +75,7 @@ const show = (lines: string[]) => `\n${lines.join("\n")}`;
 
 const FN = (fn: string) => `^OPTIONS https://p\\.supabase\\.co/functions/v1/${fn}$`;
 const MARKETING = ["send-agent-digest", "send-market-pulse", "send-scan-report"];
-const ROUND_11 = [...MARKETING, "send-search-digest", "shortlist-evaluate"];
+const ROUND_11 = [...MARKETING, "send-search-digest", "shortlist-evaluate", "stripe-webhook", "withdraw-subscription"];
 const ROUND_14 = ["delete-account", "get-account-data", "account-order", "account-settings"];
 const ENTRY = `import"./x.js";const a=()=>import("./ConsentBanner-Ab12.js");const b=()=>import("./Account-Cd34.js");const c=()=>import("./Privacy-Ef56.js");const d=()=>import("./Shortlist-Gh78.js");\n${src("src/lib/consent.ts")}`;
 
@@ -132,10 +132,13 @@ describe("section 92 account-compliance fails each regression", () => {
       "send-scan-report": { match: FN("send-scan-report"), headers: { "x-fn-build": "send-scan-report.2026-10-09.24", "x-marketing-mail": "on" } },
       "delete-account": { match: FN("delete-account"), headers: { "x-fn-build": "delete-account.2026-10-14.1" } },
       "account-settings": null,
+      "stripe-webhook": { match: FN("stripe-webhook"), status: 405, headers: { "x-fn-build": "stripe-webhook.2026-10-11.22" } },
     }));
     expect(has(lines, "FAIL", /send-scan-report preflight x-fn-build = send-scan-report\.2026-10-09\.24 \(want/), show(lines)).toBe(true);
     expect(has(lines, "FAIL", /delete-account preflight x-fn-build = delete-account\.2026-10-14\.1 \(want/), show(lines)).toBe(true);
     expect(has(lines, "FAIL", /account-settings preflight x-fn-build = none/), show(lines)).toBe(true);
+    // payments-delivery's own stripe-webhook build, without this round's notice
+    expect(has(lines, "FAIL", /stripe-webhook preflight x-fn-build = stripe-webhook\.2026-10-11\.22 \(want/), show(lines)).toBe(true);
   });
 
   it("the eraser not applied, or open to anon", () => {

@@ -6,7 +6,9 @@
 #
 # THE CLAIMS, one line each below:
 #   - send-agent-digest, send-market-pulse, send-scan-report, send-search-digest
-#     and shortlist-evaluate serve 2026-10-11.25 or later; delete-account,
+#     and shortlist-evaluate serve 2026-10-11.25 or later, and so do
+#     stripe-webhook and withdraw-subscription, which bundle the legal notice
+#     that is now rendered once and resent with that body (S12-102); delete-account,
 #     get-account-data and the new account-order and account-settings serve
 #     2026-10-14.25 or later (they import _shared/mailbox-proof.ts, which R1
 #     stamped 2026-10-14.1 and deploys first);
@@ -40,7 +42,7 @@ vd92ac_hdr() { # $1 headers, $2 name -> that header's value
   printf '%s\n' "$1" | grep -i "^$2:" | head -1 | sed -E 's/^[^:]+: *//'
 }
 
-for VD92AC_FN in send-agent-digest send-market-pulse send-scan-report send-search-digest shortlist-evaluate; do
+for VD92AC_FN in send-agent-digest send-market-pulse send-scan-report send-search-digest shortlist-evaluate stripe-webhook withdraw-subscription; do
   VD92AC_H=$(vd92ac_head "$VD92AC_FN")
   VD92AC_BUILD=$(vd92ac_hdr "$VD92AC_H" x-fn-build)
   if build_ge "$VD92AC_FN" "$VD92AC_BUILD" "2026-10-11" "25"; then
