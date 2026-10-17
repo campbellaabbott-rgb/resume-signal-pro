@@ -65,8 +65,15 @@ function board(tok: string, bucket: string, opts: { prior: number; cohortFills: 
     INSERT INTO public.job_board_closures (posting_id, source, company_token, category, posted_at, first_seen, closed_at, batch_live_before, absence_basis)
     SELECT '${tok}:${tag}:'||g, 'greenhouse', '${tok}', 'engineering', ${posted}, ${posted}, ${closed}, 5000, 'full_read'
     FROM generate_series(1, ${n}) g;`);
-  // Takedowns before the cohort (they sit outside both functions' 90-day arms).
-  if (opts.prior > 0) close("prior", opts.prior, `((${COHORT_FROM}) - 20)::timestamp AT TIME ZONE 'UTC'`, `((${COHORT_FROM}) - 10)::timestamp AT TIME ZONE 'UTC'`);
+  // Takedowns before the cohort, ten days after their posting, inside the
+  // admission window [cohort_from - 90, cohort_from) and outside both
+  // functions' 90-day arms on every date. Placed at cohort_from - 20 alone
+  // they were inside the arm only while cohort_from sat on its 2026-08-07
+  // floor and now() - 90 days had not passed 2026-07-18: the 14-day figures
+  // below held until 2026-10-16 and then moved by the fifteen prior rows.
+  if (opts.prior > 0) close("prior", opts.prior,
+    `LEAST(((${COHORT_FROM}) - 20)::timestamp AT TIME ZONE 'UTC', now() - interval '100 days')`,
+    `LEAST(((${COHORT_FROM}) - 10)::timestamp AT TIME ZONE 'UTC', now() - interval '90 days')`);
   // The day-30 cohort: 40 roles posted 40 days ago; some taken down on day 10, the rest aged out at the cap.
   if (opts.cohortFills > 0) close("c30", opts.cohortFills, `now() - interval '40 days'`, `now() - interval '30 days'`);
   s.push(`
@@ -132,12 +139,13 @@ describe("day-30 admission", () => {
 describe("the 14-day pool", () => {
   it("holds only boards read in full with a floor, and says how many", () => {
     expect(num(newRow.admitted_boards_14)).toBe(3);
-    // The three full-read boards hold 315 dated roles (prior takedowns at day
-    // 10, the cohort, the young roles); 37 come down on day 5 and 45 on day 10
-    // with nothing censored before then, so R(14) = 82/315. LAPP's 109 roles
-    // are not in the pool; the old pool took them and its 9 takedowns.
-    expect(num(newRow.fill_rate_14)).toBeCloseTo(82 / 315, 3);
-    expect(num(oldRow.fill_rate_14), "the old pool: 91 of 424").toBeCloseTo(91 / 424, 3);
+    // The three full-read boards hold 300 dated roles in the 90-day arm (the
+    // cohort and the young roles; the prior takedowns are posted before it);
+    // 37 come down on day 5 and 30 on day 10 with nothing censored before
+    // then, so R(14) = 67/300. LAPP's 100 roles are not in the pool; the old
+    // pool took them, none down, and printed 67 of 400.
+    expect(num(newRow.fill_rate_14)).toBeCloseTo(67 / 300, 3);
+    expect(num(oldRow.fill_rate_14), "the old pool: 67 of 400").toBeCloseTo(67 / 400, 3);
   });
 
   it("the interval holds its share", () => {
