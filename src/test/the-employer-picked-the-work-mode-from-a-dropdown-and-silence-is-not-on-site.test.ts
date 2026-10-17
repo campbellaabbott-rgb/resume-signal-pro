@@ -431,14 +431,20 @@ describe("the jump from 2.1% to about 45% stated in one vendor is disclosed, not
     // Every interpolation of the work-mode label. The three filter-option
     // builders interpolate their loop variable and are labelling a CONTROL, not
     // a posting — a control has no provenance to state.
-    const all = [...JOBS.matchAll(/t\(`jobsPage\.workMode\.\$\{([^}]*)\}/g)];
+    // Pass B (2026-10-12): the card and the pane are the listing vocabulary's
+    // (JobCard, PostingFacts), so the surfaces that print a posting's own work
+    // mode are read across the board and those two files.
+    const CARD = readFileSync(resolve(HERE, "../components/jobs/listing/JobCard.tsx"), "utf8");
+    const FACTS = readFileSync(resolve(HERE, "../components/jobs/listing/PostingFacts.tsx"), "utf8");
+    const SURFACES = `${JOBS}\n${CARD}\n${FACTS}`;
+    const all = [...SURFACES.matchAll(/t\(`jobsPage\.workMode\.\$\{([^}]*)\}/g)];
     const own = all.filter((m) => m[1].trim() !== "m");
     expect(all.length - own.length, "the filter-option builders moved — re-read this exclusion").toBeGreaterThanOrEqual(2);
     expect(own.length, "a surface that prints a posting's own work mode has disappeared").toBeGreaterThanOrEqual(3);
     for (const m of own) {
       const at = m.index!;
       expect(
-        JOBS.slice(Math.max(0, at - 900), at),
+        SURFACES.slice(Math.max(0, at - 900), at),
         `the surface rendering jobsPage.workMode.\${${m[1].trim()}} carries no provenance line`,
       ).toContain(PROVENANCE);
     }

@@ -487,8 +487,15 @@ describe("the re-check chip shows real re-verification, not insert time", () => 
   const fn = readFileSync(resolve(root, "supabase/functions/job-board/index.ts"), "utf8")
     + readFileSync(resolve(root, "supabase/functions/job-board/clusters.ts"), "utf8");
 
+  // Pass B (2026-10-12): the pane's stamp is the listing vocabulary's LiveStatus,
+  // fed the served row (servedOf), and the card's is JobCard's feed-read line.
+  const live = readFileSync(resolve(root, "src/components/jobs/listing/LiveStatus.tsx"), "utf8");
+  const card = readFileSync(resolve(root, "src/components/jobs/listing/JobCard.tsx"), "utf8");
+
   it("the chip renders recheckedAt, never lastSeen", () => {
-    expect(jobs).toMatch(/detailJob\.recheckedAt &&/);
+    expect(jobs).toMatch(/served=\{servedOf\(detailJob\)\}/);
+    expect(live).toMatch(/const ago = agoText\(served\.recheckedAt, lng, now\);/);
+    expect(live).not.toMatch(/lastSeen|firstSeen/);
     expect(jobs).not.toMatch(/\{detailJob\.lastSeen &&/);
     expect(jobs).not.toMatch(/agoLabel\(detailJob\.lastSeen/);
   });
@@ -2035,22 +2042,29 @@ describe("fill-speed reports the window it actually observed", () => {
 describe("the verification receipt is visible before the click", () => {
   const jobs = readFileSync(resolve(root, "src/pages/Jobs.tsx"), "utf8");
 
+  // Pass B (2026-10-12): the card is the listing vocabulary's JobCard; the
+  // board hands it the served stamp (servedOf) and the card prints the feed read.
+  const card = readFileSync(resolve(root, "src/components/jobs/listing/JobCard.tsx"), "utf8");
+
   it("renders on the card, not only in the detail panel", () => {
-    expect(jobs).toMatch(/job\.recheckedAt && !job\.missingSince/);
-    expect(jobs).toMatch(/jobsPage\.verifiedAgo/);
+    expect(jobs).toMatch(/recheckedAt: servedOf\(job\)\.recheckedAt/);
+    expect(card).toMatch(/const read = job\.missingSince \? null : agoText\(job\.recheckedAt, lng, now\);/);
+    expect(card).toMatch(/listing\.card\.feedRead/);
   });
 
   it("renders nothing when there is no stamp", () => {
     // A missing stamp must never be dressed up as a weaker one — the same rule
     // that replaced lastSeen (insert-time) with recheckedAt (feed-read time).
-    const blk = jobs.slice(jobs.indexOf("{job.recheckedAt && !job.missingSince"));
-    expect(blk.slice(0, 700)).not.toMatch(/lastSeen|firstSeen|postedAt/);
+    const at = card.indexOf("const read = job.missingSince ? null : agoText(job.recheckedAt");
+    expect(at, "the card's stamp moved -- re-anchor").toBeGreaterThan(-1);
+    expect(card.slice(at, at + 700)).not.toMatch(/lastSeen|firstSeen|postedAt/);
   });
 
   it("every locale can render it", () => {
     for (const l of ["en", "en-GB", "es", "fr", "de", "pt", "nl", "hi", "tl"]) {
-      const j = JSON.parse(readFileSync(resolve(root, `src/i18n/locales/${l}.json`), "utf8"));
-      expect(j.jobsPage.verifiedAgo, `${l} missing verifiedAgo`).toContain("{{ago}}");
+      const j = JSON.parse(readFileSync(resolve(root, `src/i18n/shards/listing/${l}.json`), "utf8"));
+      expect(j.listing.card.feedRead, `${l} missing listing.card.feedRead`).toContain("{{ago}}");
+      expect(j.listing.status.read, `${l} missing listing.status.read`).toContain("{{ago}}");
     }
   });
 });

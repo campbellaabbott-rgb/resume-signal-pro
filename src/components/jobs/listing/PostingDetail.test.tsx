@@ -10,6 +10,10 @@ import i18n from "@/i18n";
 import enListing from "@/i18n/shards/listing/en.json";
 import { PostingDetail } from "./PostingDetail";
 import type { ListingJob } from "@/lib/listing/types";
+import { date as fmtDate } from "@/lib/format";
+// Dates as the site's one formatter prints them for English readers (src/lib/format.ts: day, month, year), so the guard keeps its "reader's language" claim without pinning one calendar style.
+const D = (day: string) => fmtDate(day, { lng: "en" });
+
 
 const NOW = new Date("2026-10-12T12:00:00Z");
 const JOB: ListingJob = {
@@ -52,7 +56,7 @@ describe("where the posting stands at its source", () => {
   });
   it("gone, with the day WE first found it missing -- never worded as the employer's takedown date", () => {
     mount({ served: { missingSince: "2026-10-10T08:00:00Z" } });
-    expect(document.querySelector("[data-live-status='gone']")?.textContent).toBe("No longer listed by the employer · first missing from its feed Oct 10, 2026");
+    expect(document.querySelector("[data-live-status='gone']")?.textContent).toBe(`No longer listed by the employer · first missing from its feed ${D("2026-10-10")}`);
     expect(document.body.textContent).not.toMatch(/taken down/);
     expect(document.body.textContent).not.toMatch(/feed read/);
   });
@@ -98,7 +102,7 @@ describe("the facts", () => {
     expect(facts.indexOf("from the employer's feed")).toBeLessThan(facts.indexOf("our estimate"));
     expect(facts).toContain("Remote");
     expect(facts).toContain("Contract");
-    expect(facts).toContain("Oct 9, 2026, as the employer's system states it");
+    expect(facts).toContain(`${D("2026-10-09")}, as the employer's system states it`);
     expect(document.querySelector("[data-fact='system']")?.textContent).toBe("Apply link opens on Greenhouse");
   });
   it("an hourly rate's estimate names the 2,080-hour rule in visible words", () => {

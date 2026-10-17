@@ -166,8 +166,9 @@ describe("a finding buried in its own method", () => {
     expect(text).toContain("×2080");
     expect(text).toContain("×260");
     expect(text).toContain("part-time and casual rates are left un-annualized");
-    // And the posting's own pay is still marked as the employer's statement.
-    expect(text).toContain("as stated in the posting");
+    // And the posting's own pay is still marked as the employer's (the pane's
+    // Pay row names its basis under the figure since pass B).
+    expect(text).toContain("from the employer's feed");
   });
 
   it("behaviour: the sample size is grouped like every other figure in the block", async () => {
@@ -234,7 +235,7 @@ describe("a finding buried in its own method", () => {
     mount(job({ salary: null, salaryMinAnnual: null, salaryMaxAnnual: null, salaryPeriod: null, salaryCurrency: null }));
     await waitFor(() => expect(panelText()).toContain("Backend Engineer"), SLOW);
     await waitFor(() => expect(rpc.mock.calls.some((c) => c[0] === "get_salary_benchmarks")).toBe(true), SLOW);
-    expect(panelText()).not.toContain("as stated in the posting");
+    expect(panelText()).not.toContain("from the employer's feed");
     expect(panelText()).not.toContain("median floor");
   });
 

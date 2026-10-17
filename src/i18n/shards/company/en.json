@@ -24,7 +24,6 @@
     "agency": {
       "banner": "This is a staffing agency's board. Roles here are usually for its clients."
     },
-    "ago": "{{duration}} ago",
     "boardReadAgo": "board read {{ago}}",
     "breadcrumbCompanies": "Companies",
     "breadcrumbJobs": "Jobs",
@@ -65,7 +64,8 @@
       "payValue": "{{k}} of {{n}}",
       "systemLabel": "Hiring system",
       "workMode": "{{remote}} remote · {{hybrid}} hybrid · {{onsite}} on-site · {{unstated}} not stated",
-      "workModeLabel": "Work mode"
+      "workModeLabel": "Work mode",
+      "headcountLabel": "Headcount"
     },
     "factsLabel": "About this board",
     "h1Generic": "Roles on the “{{label}}” board",
@@ -103,7 +103,7 @@
       "asOf": "Figures as of {{when}}.",
       "countsWithheld": "We do not print how many roles came down and stayed down.",
       "growthGrew": "A rise of {{pct}}% in rows served: {{a}} on {{d1}}, {{b}} on {{d2}}.",
-      "growthLabel": "Rows served on our daily read, counted differently from open roles.",
+      "growthLabel": "Rows served on this board in our own daily snapshot, counted differently from open roles.",
       "growthNone": "Not a rise of {{minRate}}% or more: {{a}} on {{d1}}, {{b}} on {{d2}}.",
       "growthUnread": "No posting rate for this board yet.",
       "leadCloses_one": "We watched {{n}} of its roles come off the board and stay off in the last {{days}} days.",

@@ -19,7 +19,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { SERVED_WINDOW_DAYS, type LanderModel } from "@/lib/company/lander-model";
-import { ago as fmtAgo } from "@/lib/company/format";
+import { ago as fmtAgo } from "@/lib/format";
 import { SimilarCompaniesView, type SimilarRow } from "@/components/jobs/SimilarCompanies";
 
 export function CompanyEmptyState({ model, token, boardReadAt, similar = [], onWatch, underHeader = false }: {

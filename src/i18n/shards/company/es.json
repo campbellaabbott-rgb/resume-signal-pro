@@ -25,7 +25,6 @@
     "agency": {
       "banner": "Este es el portal de una agencia de empleo. Las vacantes de aquí suelen ser para sus clientes."
     },
-    "ago": "hace {{duration}}",
     "boardReadAgo": "portal leído {{ago}}",
     "breadcrumbCompanies": "Empresas",
     "breadcrumbJobs": "Empleos",
@@ -71,7 +70,8 @@
       "payValue": "{{k}} de {{n}}",
       "systemLabel": "Sistema de contratación",
       "workMode": "{{remote}} en remoto · {{hybrid}} híbridas · {{onsite}} presenciales · {{unstated}} sin indicar",
-      "workModeLabel": "Modalidad"
+      "workModeLabel": "Modalidad",
+      "headcountLabel": "Plantilla"
     },
     "factsLabel": "Sobre este portal",
     "h1Generic": "Vacantes en el portal «{{label}}»",
@@ -111,7 +111,7 @@
       "asOf": "Cifras a fecha de {{when}}.",
       "countsWithheld": "No mostramos cuántas vacantes se retiraron y siguieron retiradas.",
       "growthGrew": "Un aumento del {{pct}} % en las filas publicadas: {{a}} el {{d1}}, {{b}} el {{d2}}.",
-      "growthLabel": "Filas publicadas en nuestra lectura diaria, contadas de otra forma que las vacantes abiertas.",
+      "growthLabel": "Filas que este tablón publicó en nuestra propia instantánea diaria, contadas de otra forma que las vacantes abiertas.",
       "growthNone": "No es un aumento del {{minRate}} % o más: {{a}} el {{d1}}, {{b}} el {{d2}}.",
       "growthUnread": "Todavía no hay ritmo de publicación para este portal.",
       "leadCloses_one": "Vimos cómo {{n}} de sus vacantes salía del portal y no volvía en los últimos {{days}} días.",

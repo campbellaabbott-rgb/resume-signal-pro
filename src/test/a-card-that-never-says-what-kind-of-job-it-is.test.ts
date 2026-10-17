@@ -20,11 +20,15 @@ import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { isEmploymentType } from "../pages/Jobs";
+import { statedEmploymentType } from "@/lib/listing/types";
 
 const ROOT = resolve(__dirname, "../..");
 const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
 const read = (p: string) => readFileSync(resolve(ROOT, p), "utf8");
 const JOBS = strip(read("src/pages/Jobs.tsx"));
+// Pass B (2026-10-12): the board's card and pane are the listing vocabulary's.
+const CARD = strip(read("src/components/jobs/listing/JobCard.tsx"));
+const FACTS = strip(read("src/components/jobs/listing/PostingFacts.tsx"));
 // The BoardJob row type moved to a shared module (design pass A); Jobs.tsx imports it.
 const BOARD_JOB = strip(read("src/lib/board-job.ts"));
 const BOARD = strip(read("supabase/functions/job-board/index.ts"));
@@ -50,12 +54,23 @@ describe("a card that never says what kind of job it is", () => {
   });
 
   it("the card and the detail panel both render it, both through the predicate", () => {
-    expect(JOBS, "the card").toMatch(/\{isEmploymentType\(job\.employmentType\) && \(/);
-    expect(JOBS, "the detail panel").toMatch(/\{isEmploymentType\(detailJob\.employmentType\) && \(/);
-    // The label comes from the keys the filter chips already use — one posting
-    // must not be named two different ways by the chip and by the card.
-    expect(JOBS).toMatch(/t\(`jobsPage\.employmentType\.\$\{job\.employmentType\}`/);
-    expect(JOBS).toMatch(/t\(`jobsPage\.employmentType\.\$\{detailJob\.employmentType\}`/);
+    // The card (JobCard) and the pane's facts (PostingFacts) read the type
+    // through statedEmploymentType, the same five values isEmploymentType
+    // admits, and label it with the keys the filter chips use, so one posting
+    // is never named two ways by the chip and by the card.
+    const check = (card: string, facts: string) => {
+      for (const [name, src] of [["the card", card], ["the detail panel", facts]] as const) {
+        expect(src, name).toMatch(/const type = statedEmploymentType\(job\.employmentType\);/);
+        expect(src, name).toMatch(/t\(`jobsPage\.employmentType\.\$\{type\}`, EMPLOYMENT_TYPE_FALLBACK\[type\]\)/);
+        expect(src, `${name} labels the raw column`).not.toMatch(/jobsPage\.employmentType\.\$\{job\.employmentType\}/);
+      }
+    };
+    check(CARD, FACTS);
+    expect(() => check(CARD.replace("const type = statedEmploymentType(job.employmentType);", "const type = job.employmentType;"), FACTS), "TEETH: a card labelling the raw value passes").toThrow();
+    for (const t of TYPES) expect(statedEmploymentType(t), t).toBe(t);
+    for (const v of [null, undefined, "", "FULL_TIME", "Full-time", "freelance"]) expect(statedEmploymentType(v), String(v)).toBeNull();
+    expect(JOBS, "the board mounts the card").toMatch(/<JobCard\b/);
+    expect(JOBS, "the board mounts the pane").toMatch(/<PostingDetail\b/);
     // No render may key off the raw value without the predicate in front of it.
     for (const m of JOBS.matchAll(/t\(`jobsPage\.employmentType\.\$\{(\w+)\.employmentType\}`/g)) {
       expect(JOBS, `${m[1]}.employmentType labelled without the closed-list guard`)

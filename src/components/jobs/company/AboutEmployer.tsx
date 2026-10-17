@@ -29,7 +29,7 @@ import type { LcaRow } from "@/components/jobs/LcaFiledWagesLine";
 import type { LayoffFiling } from "@/components/jobs/LayoffFilingLine";
 import { SimilarCompaniesView, type SimilarRow } from "@/components/jobs/SimilarCompanies";
 import type { LanderModel } from "@/lib/company/lander-model";
-import { count as fmtCount } from "@/lib/company/format";
+import { count as fmtCount } from "@/lib/format";
 import { tPlural } from "@/lib/company/plural";
 import { HiringRecordCard, hiringRecordRenders, type HiringRecordInput } from "./HiringRecordCard";
 import { PaySummary, payFacts, type PayStated } from "./PaySummary";

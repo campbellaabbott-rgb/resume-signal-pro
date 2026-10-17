@@ -107,10 +107,12 @@ describe("the matches panel acts on the CV and only on real data", () => {
     expect(panelCode).toMatch(/d\.countCapped === true/);
   });
 
-  it("links to the board with the parameter Jobs actually reads", () => {
-    expect(panelCode).toMatch(/agentOnly=1/);
-    expect(JOBS, "Jobs.tsx no longer reads agentOnly — the panel's link silently drops its filter")
-      .toMatch(/get\("agentOnly"\)/);
+  it("links to the board with the query it ran, which Jobs actually reads", () => {
+    // The board's agent-only filter is retired with the apply agent
+    // (2026-10-12); the query is the part of the link the board reads.
+    expect(panelCode).toMatch(/to=\{`\/jobs\?q=\$\{encodeURIComponent\(q\)\}/);
+    expect(JOBS, "Jobs.tsx no longer reads q — the panel's link silently drops its search")
+      .toMatch(/get\("q"\)/);
   });
 
   it("mounts only after a scan, fed by the scan's own extraction", () => {

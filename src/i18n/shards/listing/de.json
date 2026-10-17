@@ -1,9 +1,5 @@
 {
   "listing": {
-    "ago": {
-      "now": "gerade eben",
-      "since": "vor {{duration}}"
-    },
     "period": {
       "hour": "/Std.",
       "day": "/Tag",
@@ -87,7 +83,8 @@
       "continuesOnSitePlain": "Die Anzeige geht auf der Website des Arbeitgebers weiter",
       "collapsed_one": "Wir haben {{count}} Absatz weggelassen, der einen anderen Wort für Wort wiederholte.",
       "collapsed_other": "Wir haben {{count}} Absätze weggelassen, die andere Wort für Wort wiederholten.",
-      "cutShort": "Unsere Kopie endet möglicherweise vor dem Ende der Anzeige."
+      "cutShort": "Unsere Kopie endet möglicherweise vor dem Ende der Anzeige.",
+      "failed": "Diese Beschreibung ließ sich gerade nicht laden."
     },
     "detail": {
       "back": "Zurück zu {{name}}",

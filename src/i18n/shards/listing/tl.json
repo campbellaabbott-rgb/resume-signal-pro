@@ -1,9 +1,5 @@
 {
   "listing": {
-    "ago": {
-      "now": "ngayon lang",
-      "since": "{{duration}} na ang nakalipas"
-    },
     "period": {
       "hour": "/oras",
       "day": "/araw",
@@ -87,7 +83,8 @@
       "continuesOnSitePlain": "Nagpapatuloy ang posting sa site ng employer",
       "collapsed_one": "Inalis namin ang {{count}} talata na eksaktong umuulit sa isa pa.",
       "collapsed_other": "Inalis namin ang {{count}} talata na eksaktong umuulit sa iba.",
-      "cutShort": "Maaaring huminto ang aming kopya bago matapos ang buong posting."
+      "cutShort": "Maaaring huminto ang aming kopya bago matapos ang buong posting.",
+      "failed": "Hindi namin ma-load ang paglalarawang ito ngayon."
     },
     "detail": {
       "back": "Bumalik sa {{name}}",

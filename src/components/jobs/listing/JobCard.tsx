@@ -124,7 +124,7 @@ export function JobCard({
   const mode = statedWorkMode(job);
   const type = statedEmploymentType(job.employmentType);
   const system = systemLabel(listingSource(job));
-  const read = job.missingSince ? null : agoText(t, job.recheckedAt, lng, now);
+  const read = job.missingSince ? null : agoText(job.recheckedAt, lng, now);
   const age = cardAgeText(t, job, now);
   const compact = ctx.density === "compact";
   const chips = [
@@ -293,6 +293,10 @@ export function JobCard({
                   {tier === "strong" ? t("jobsPage.matchStrong", "Strong match") : tier === "possible" ? t("jobsPage.matchPossible", "Possible match") : t("jobsPage.matchStretch", "Stretch")}
                 </span>
               )}
+              {/* Deliberately NOT a tier: outlined and dashed rather than filled
+                  and bold, so it cannot be mistaken for the muted "Stretch" band
+                  that sits in the same slot for a genuinely low score. A null
+                  from the scorer is no measurement, never a low one. */}
               {!tier && fit?.kind === "unscored" && (
                 <span className="rounded-md border border-dashed border-border px-2 py-0.5 text-muted-foreground" title={t("jobsPage.notScoredTip", "We hold no stored description for this posting, so there was nothing to compare your resume against. This is not a low score — it is no score.")}>
                   {t("jobsPage.notScoredChip", "Not scored")}

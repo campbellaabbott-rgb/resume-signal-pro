@@ -25,7 +25,6 @@
     "agency": {
       "banner": "Este é o portal de uma agência de recrutamento. As vagas aqui são normalmente para os clientes dela."
     },
-    "ago": "há {{duration}}",
     "boardReadAgo": "portal lido {{ago}}",
     "breadcrumbCompanies": "Empresas",
     "breadcrumbJobs": "Vagas",
@@ -71,7 +70,8 @@
       "payValue": "{{k}} de {{n}}",
       "systemLabel": "Sistema de recrutamento",
       "workMode": "{{remote}} remotas · {{hybrid}} híbridas · {{onsite}} presenciais · {{unstated}} sem indicação",
-      "workModeLabel": "Modalidade"
+      "workModeLabel": "Modalidade",
+      "headcountLabel": "Funcionários"
     },
     "factsLabel": "Sobre este portal",
     "h1Generic": "Vagas no portal «{{label}}»",
@@ -111,7 +111,7 @@
       "asOf": "Valores a {{when}}.",
       "countsWithheld": "Não mostramos quantas vagas foram retiradas e assim ficaram.",
       "growthGrew": "Uma subida de {{pct}}% nas linhas publicadas: {{a}} a {{d1}}, {{b}} a {{d2}}.",
-      "growthLabel": "Linhas publicadas na nossa leitura diária, contadas de forma diferente das vagas abertas.",
+      "growthLabel": "Linhas que este quadro publicou no nosso próprio instantâneo diário, contadas de forma diferente das vagas abertas.",
       "growthNone": "Não é uma subida de {{minRate}}% ou mais: {{a}} a {{d1}}, {{b}} a {{d2}}.",
       "growthUnread": "Ainda não há ritmo de publicação para este portal.",
       "leadCloses_one": "Vimos {{n}} das suas vagas sair do portal e não voltar nos últimos {{days}} dias.",

@@ -23,6 +23,8 @@ import { resolve } from "node:path";
  *     claim about a named company for the rest of the session.
  */
 const UI = readFileSync(resolve(__dirname, "../pages/Jobs.tsx"), "utf8");
+// Pass B (2026-10-12): the pane's description is the listing vocabulary's PostingDescription.
+const DESC = readFileSync(resolve(__dirname, "../components/jobs/listing/PostingDescription.tsx"), "utf8");
 
 describe("a failure costs the visitor as little as possible", () => {
   it("does not call an ordinary possessive a hostile query", () => {
@@ -73,8 +75,14 @@ describe("a failure costs the visitor as little as possible", () => {
   });
 
   it("shows a fetch failure as a failure, not as an employer's silence", () => {
-    expect(UI).toMatch(/\) : detailFailed \? \(/);
-    expect(UI).toMatch(/jobsPage\.descFailed/);
+    // The board hands the failure to the description as a retry, and the
+    // description prints the failure sentence only when a retry exists: a
+    // description that does not exist says only that the text is on the site.
+    expect(UI).toMatch(/onRetry: detailFailed \? \(\) => \{ void openDetail\(detailJob\); \} : undefined/);
+    expect(DESC).toMatch(/description\.onRetry\s*\?\s*t\("listing\.description\.failed"/);
+    expect(DESC).toMatch(/listing\.description\.unavailable/);
+    // TEETH: a description that prints the failure sentence for every missing text fails here.
+    expect(DESC.replace(/description\.onRetry\s*\?\s*t\("listing\.description\.failed"/, 't("listing.description.failed"')).not.toMatch(/description\.onRetry\s*\?\s*t\("listing\.description\.failed"/);
     // And it resets per open, so a retry can succeed.
     expect(UI).toMatch(/setDetailFailed\(false\);/);
   });

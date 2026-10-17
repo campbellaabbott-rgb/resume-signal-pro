@@ -1,9 +1,5 @@
 {
   "listing": {
-    "ago": {
-      "now": "ahora mismo",
-      "since": "hace {{duration}}"
-    },
     "period": {
       "hour": "/h",
       "day": "/día",
@@ -89,7 +85,8 @@
       "collapsed_one": "Omitimos {{count}} párrafo que repetía otro palabra por palabra.",
       "collapsed_many": "Omitimos {{count}} párrafos que repetían otros palabra por palabra.",
       "collapsed_other": "Omitimos {{count}} párrafos que repetían otros palabra por palabra.",
-      "cutShort": "Puede que nuestra copia no llegue al final de la oferta."
+      "cutShort": "Puede que nuestra copia no llegue al final de la oferta.",
+      "failed": "No pudimos cargar esta descripción ahora mismo."
     },
     "detail": {
       "back": "Volver a {{name}}",

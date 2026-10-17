@@ -270,32 +270,38 @@ describe("the external monitor watches from outside the blast radius", () => {
   });
 });
 
-describe("undated postings state their observation window, honestly", () => {
-  const jobs = readFileSync(resolve(__dirname, "../pages/Jobs.tsx"), "utf8");
-  const code = jobs.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+describe("undated postings state no age at all, honestly", () => {
+  // Pass B (2026-10-12): the board's card and pane are the listing
+  // vocabulary's, whose rule is the employer's date or nothing
+  // (src/lib/listing/age.ts). The first-seen line this block used to pin was
+  // our discovery date dressed as an age (the 2.8-day-median incident); it is
+  // gone from every surface, and no surface may bring it back.
+  const read = (p: string) => readFileSync(resolve(__dirname, "../..", p), "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  const card = read("src/components/jobs/listing/JobCard.tsx");
+  const facts = read("src/components/jobs/listing/PostingFacts.tsx");
+  const text = read("src/components/jobs/listing/listing-text.ts");
+  const age = read("src/lib/listing/age.ts");
+  const board = read("src/pages/Jobs.tsx");
 
-  it("renders first-seen ONLY where no employer date exists", () => {
-    // The label is the positive form for the ~89k undated postings — it must
-    // never appear beside a company-stated date, where it would read as a
-    // second, competing age.
-    const sites = [...code.matchAll(/d(?:aysAgo\((?:detailJob|job)\.postedAt\))? === null && daysAgo\((?:job|detailJob)\.lastSeen \?\? null\) !== null/g)];
-    expect(sites.length, "expected the guard on both render sites (list card + detail panel)").toBeGreaterThanOrEqual(2);
+  it("no listing surface reads first_seen or lastSeen, and the board no longer keys a first-seen line", () => {
+    for (const [name, src] of [["JobCard", card], ["PostingFacts", facts], ["listing-text", text], ["age", age]] as const) {
+      expect(src, `${name} reads our discovery date`).not.toMatch(/firstSeen|first_seen|lastSeen/);
+    }
+    expect(board).not.toMatch(/jobsPage\.firstSeen(Today|DaysAgo|Provenance)/);
+    expect(board, "the board mounts the listing card").toMatch(/<JobCard\b/);
+  });
+
+  it("an undated row is the undated kind: no age on the card, and the facts say the system states none", () => {
+    expect(age).toMatch(/if \(!validIso\(job\.postedAt\)\) return \{ kind: "undated" \};/);
+    // The card draws its age span only from the employer's date.
+    expect(card).toMatch(/age \? <span key="g" data-card-age="">\{age\}<\/span> : null/);
+    expect(text).toMatch(/if \(age\.kind === "undated"\) return t\("listing\.facts\.postedUndated", "The employer's system states no posting date"\);/);
   });
 
   it("is never styled as freshness", () => {
-    // Discovery time must not borrow the posted badge's fresh-green styling —
-    // that substitution is the 2.8-day-median incident in CSS form. Both
-    // firstSeen spans must be muted and carry no success color.
-    const at = [...code.matchAll(/firstSeenToday/g)].map((m) => m.index ?? 0);
-    expect(at.length).toBeGreaterThanOrEqual(2);
-    for (const i of at) {
-      const span = code.slice(Math.max(0, i - 500), i);
-      expect(span, "a firstSeen span carries freshness styling").not.toContain("text-success");
-    }
-  });
-
-  it("carries its provenance tooltip", () => {
-    expect(code).toMatch(/jobsPage\.firstSeenProvenance/);
+    const i = card.indexOf('data-card-age=""');
+    expect(i).toBeGreaterThan(-1);
+    expect(card.slice(Math.max(0, i - 400), i), "the age span carries freshness styling").not.toContain("text-success");
   });
 });
 

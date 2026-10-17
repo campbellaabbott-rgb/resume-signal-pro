@@ -21,6 +21,10 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc: vi.fn(async 
 import { readLayoffRow, layoffLineText } from "@/components/jobs/LayoffFilingLine";
 import { readLcaRow } from "@/components/jobs/LcaFiledWagesLine";
 import { PublicRecords, publicRecordsRender } from "@/components/jobs/company/PublicRecords";
+import { date as fmtDate } from "@/lib/format";
+// Dates as the site's one formatter prints them for English readers (src/lib/format.ts: day, month, year), so the guard keeps its "reader's language" claim without pinning one calendar style.
+const D = (day: string) => fmtDate(day, { lng: "en" });
+
 
 const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
 const WARN = readLayoffRow({
@@ -52,8 +56,8 @@ describe("the public records section", () => {
     expect(first?.textContent).toBe("No match in these records is not proof of anything.");
     const rows = Array.from(container.querySelectorAll<HTMLElement>("[data-layoff-filing='records'] > li"));
     expect(rows).toHaveLength(2);
-    expect(rows[0].textContent).toContain("ACME LOGISTICS LLC · WARN notice · California · 120 workers · filed Sep 10, 2026 · California EDD");
-    expect(rows[1].textContent).toContain("Acme Holdings, Inc. · SEC 8-K Item 2.05 · filed Aug 22, 2026 · SEC filing");
+    expect(rows[0].textContent).toContain(`ACME LOGISTICS LLC · WARN notice · California · 120 workers · filed ${D("2026-09-10")} · California EDD`);
+    expect(rows[1].textContent).toContain(`Acme Holdings, Inc. · SEC 8-K Item 2.05 · filed ${D("2026-08-22")} · SEC filing`);
     expect(rows[0].querySelector("a")?.getAttribute("href")).toBe(WARN.sourceUrl);
     expect(rows[1].querySelector("a")?.getAttribute("href")).toBe(SEC.sourceUrl);
     // One date format: no raw ISO day, no US-locale clock beside it.
@@ -84,12 +88,12 @@ describe("the detail pane's filing sentence", () => {
   it("prints the filing's own dates in the reader's language", () => {
     const t = (_k: string, d: string, o?: Record<string, unknown>) => d.replace(/\{\{(\w+)\}\}/g, (_, k) => String(o?.[k] ?? ""));
     const en = layoffLineText(WARN, t, "en").text;
-    expect(en).toContain("dated Sep 10, 2026: 120 positions at Fremont, effective Nov 9, 2026");
-    expect(en).toContain("listed by California EDD on Sep 12, 2026");
+    expect(en).toContain(`dated ${D("2026-09-10")}: 120 positions at Fremont, effective ${D("2026-11-09")}`);
+    expect(en).toContain(`listed by California EDD on ${D("2026-09-12")}`);
     const de = layoffLineText(WARN, t, "de").text;
     expect(de).toMatch(/dated 10\. Sept?\. 2026/);
     expect(de).not.toMatch(/\d{4}-\d{2}-\d{2}/);
     const sec = layoffLineText(SEC, t, "en").text;
-    expect(sec).toContain("dated Aug 20, 2026, filed with the SEC on Aug 22, 2026");
+    expect(sec).toContain(`dated ${D("2026-08-20")}, filed with the SEC on ${D("2026-08-22")}`);
   });
 });

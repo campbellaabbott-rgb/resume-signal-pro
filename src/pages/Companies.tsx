@@ -24,7 +24,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { SEO } from "@/components/seo/SEO";
-import { ago as fmtAgo, count as fmtCount } from "@/lib/company/format";
+import { ago as fmtAgo, count as fmtCount } from "@/lib/format";
 import { tPlural } from "@/lib/company/plural";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";

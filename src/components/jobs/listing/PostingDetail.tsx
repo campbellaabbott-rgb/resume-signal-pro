@@ -17,6 +17,7 @@ import type { MouseEvent, ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { listingEmployer } from "@/lib/listing/employer";
+import { count as fmtCount } from "@/lib/format";
 import type { ListingJob, OpenRolesValue } from "@/lib/listing/types";
 import { LiveStatus, type ListingServed } from "./LiveStatus";
 import { PostingActions } from "./PostingActions";
@@ -83,7 +84,9 @@ export interface PostingDetailProps {
 
 export function OpenRolesLinkLine({ link }: { link: OpenRolesLink }) {
   const { t, i18n } = useTranslation();
-  const n = link.count.value.toLocaleString(i18n.language || "en");
+  // The page's figure, grouped by the one formatter the header and the
+  // results line use, so the three print the same digits.
+  const n = fmtCount(link.count.value, { lng: i18n.language || "en" });
   const text = link.count.floor
     ? t("listing.detail.openRolesFloor", { defaultValue: "See all {{n}}+ open roles at {{name}}", n, name: link.name })
     : t("listing.detail.openRoles", {

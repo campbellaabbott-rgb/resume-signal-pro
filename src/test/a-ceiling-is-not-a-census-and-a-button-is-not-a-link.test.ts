@@ -150,12 +150,18 @@ describe("every job on the board has an address", () => {
     expect(JOBS_CODE).toMatch(/new URLSearchParams\(window\.location\.search\)\.get\("job"\)/);
   });
 
+  // Pass B (2026-10-12): the board's card is the listing vocabulary's JobCard.
+  // The board hands it the posting's address and its open handler; the card
+  // renders the title as the one link to that address.
+  const CARD_CODE = strip(readFileSync(resolve(root, "src/components/jobs/listing/JobCard.tsx"), "utf8"));
+  const BOARD_CARD = JOBS_CODE.slice(JOBS_CODE.indexOf("<JobCard"), JOBS_CODE.indexOf("/>", JOBS_CODE.indexOf("liProps={{", JOBS_CODE.indexOf("<JobCard"))));
+
   it("the card title is an anchor to that href, not a bare button", () => {
-    const card = JOBS_CODE.slice(JOBS_CODE.indexOf("data-job-id={job.id}"));
-    expect(card).toMatch(/<Link\s+to=\{jobDetailHref\(job\.id\)\}/);
-    // The old control must be gone, or the card grows a second tab stop and the
-    // page goes back to 540 focus stops.
-    expect(card).not.toMatch(/<button\s+type="button"\s+onClick=\{\(e\) => \{ e\.stopPropagation\(\); void openDetail\(job\); \}\}/);
+    expect(BOARD_CARD, "the board hands the card its posting address").toMatch(/href=\{jobDetailHref\(job\.id\)\}/);
+    expect(BOARD_CARD, "and its open handler").toMatch(/onOpen=\{\(\) => \{ void openDetail\(job\); \}\}/);
+    expect(CARD_CODE).toMatch(/<Link\s+to=\{href\}\s+onClick=\{open\}/);
+    // No second control opens the posting, or the card grows a second tab stop.
+    expect(CARD_CODE).not.toMatch(/<button[^>]*onClick=\{\(e\) => \{[^}]*onOpen\(/);
   });
 
   it("a plain left click still opens the panel; a modified one belongs to the browser", () => {
@@ -173,10 +179,18 @@ describe("every job on the board has an address", () => {
   it("the handler defers to the browser BEFORE it preventDefaults", () => {
     // Order is the whole fix: a preventDefault above the guard turns the anchor
     // back into a counterfeit link that cannot be opened in a new tab.
-    const card = JOBS_CODE.slice(JOBS_CODE.indexOf("to={jobDetailHref(job.id)}"));
-    const handler = card.slice(0, card.indexOf("title={job.title}"));
-    expect(handler.indexOf("opensInNewContext(e)")).toBeGreaterThan(-1);
-    expect(handler.indexOf("opensInNewContext(e)")).toBeLessThan(handler.indexOf("e.preventDefault()"));
-    expect(handler).toMatch(/void openDetail\(job\)/);
+    const ordered = (src: string) => {
+      const at = src.indexOf("const open = (e: MouseEvent<HTMLAnchorElement>) => {");
+      expect(at, "the card's open handler moved: RE-ANCHOR this guard").toBeGreaterThan(-1);
+      const handler = src.slice(at, src.indexOf("};", at));
+      expect(handler.indexOf("opensInNewContext(e)")).toBeGreaterThan(-1);
+      expect(handler.indexOf("opensInNewContext(e)")).toBeLessThan(handler.indexOf("e.preventDefault()"));
+      expect(handler).toMatch(/onOpen\(job,/);
+    };
+    ordered(CARD_CODE);
+    // TEETH: the guard catches a preventDefault moved above the browser's check.
+    const swapped = CARD_CODE.replace("if (!onOpen || opensInNewContext(e)) return;\n    e.preventDefault();", "e.preventDefault();\n    if (!onOpen || opensInNewContext(e)) return;");
+    expect(swapped, "the teeth mutation did not apply").not.toBe(CARD_CODE);
+    expect(() => ordered(swapped)).toThrow();
   });
 });

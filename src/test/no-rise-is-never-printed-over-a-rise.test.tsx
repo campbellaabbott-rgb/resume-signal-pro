@@ -13,6 +13,10 @@ import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/react";
 import { HiringRecordCard, type HiringRecordInput } from "@/components/jobs/company/HiringRecordCard";
 import { COMPANY_SHARD_LOCALES, companyShard } from "./helpers/company-shard";
+import { date as fmtDate } from "@/lib/format";
+// Dates as the site's one formatter prints them for English readers (src/lib/format.ts: day, month, year), so the guard keeps its "reader's language" claim without pinning one calendar style.
+const D = (day: string) => fmtDate(day, { lng: "en" });
+
 
 const BARS = { growthMinRatePct: 25, growthWindowDays: 7, closedWindowDays: 90, shareDays: 14, supportDays: 30 };
 const rec = (verdict: "grew" | "no-growth", base: number, latest: number, rate: number): HiringRecordInput => ({
@@ -28,22 +32,22 @@ describe("the growth line under the bar", () => {
   it("names the bar it did not reach and both counts, and says what it counts", () => {
     const { container } = render(<HiringRecordCard input={rec("no-growth", 69, 72, 0.0435)} />);
     const line = growthLine(container);
-    expect(line).toContain("Not a rise of 25% or more: 69 on Oct 4, 2026, 72 on Oct 11, 2026.");
-    expect(line).toContain("Rows served on our daily read, counted differently from open roles.");
+    expect(line).toContain(`Not a rise of 25% or more: 69 on ${D("2026-10-04")}, 72 on ${D("2026-10-11")}.`);
+    expect(line).toContain("Rows served on this board in our own daily snapshot, counted differently from open roles.");
     expect(container.textContent).not.toMatch(/\bno rise\b/i);
   });
 
   it("a fall under the bar is printed the same way, never as shrinking", () => {
     const { container } = render(<HiringRecordCard input={rec("no-growth", 263, 211, -0.198)} />);
-    expect(growthLine(container)).toContain("Not a rise of 25% or more: 263 on Oct 4, 2026, 211 on Oct 11, 2026.");
+    expect(growthLine(container)).toContain(`Not a rise of 25% or more: 263 on ${D("2026-10-04")}, 211 on ${D("2026-10-11")}.`);
     expect(container.textContent).not.toMatch(/shrink|fell|decline/i);
   });
 
   it("over the bar it is 'A rise of N%', with the same label", () => {
     const { container } = render(<HiringRecordCard input={rec("grew", 100, 130, 0.3)} />);
-    expect(growthLine(container)).toContain("A rise of 30% in rows served: 100 on Oct 4, 2026, 130 on Oct 11, 2026.");
+    expect(growthLine(container)).toContain(`A rise of 30% in rows served: 100 on ${D("2026-10-04")}, 130 on ${D("2026-10-11")}.`);
     expect(growthLine(container)).toContain("counted differently from open roles");
-    expect(container.querySelector("[data-record-lead]")?.textContent).toBe("Its board served 30% more roles on Oct 11, 2026 than on Oct 4, 2026.");
+    expect(container.querySelector("[data-record-lead]")?.textContent).toBe(`Its board served 30% more roles on ${D("2026-10-11")} than on ${D("2026-10-04")}.`);
   });
 });
 

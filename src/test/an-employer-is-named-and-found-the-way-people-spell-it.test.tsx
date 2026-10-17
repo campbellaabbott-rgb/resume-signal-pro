@@ -94,7 +94,14 @@ describe("an employer is named, and found, the way people spell it", () => {
       </MemoryRouter>,
     );
     await waitFor(() => expect(document.body.textContent).toContain("Analyst 1"), SLOW);
-    await waitFor(() => expect(chipTexts()).toContain("Deloitte×"), SLOW);
+    // Pass B (2026-10-12): on its own page the company is the scope, not a
+    // removable chip (FilterBar's company variant), so the name is read off the
+    // header and the keyword box that names the scope.
+    await waitFor(() => expect(document.querySelector("h1")?.textContent).toBe("Deloitte"), SLOW);
+    const box = document.querySelector('[data-filter-bar="company"] form[role="search"] input') as HTMLInputElement | null;
+    expect(box?.getAttribute("placeholder"), "the scope names the board token").toContain("Deloitte");
+    expect(box?.getAttribute("placeholder")).not.toContain("Deloitte6");
+    expect(chipTexts(), "the page's own company became a removable chip").not.toContain("Deloitte×");
     expect(chipTexts(), "the chip printed the raw board token").not.toContain("Deloitte6×");
   });
 

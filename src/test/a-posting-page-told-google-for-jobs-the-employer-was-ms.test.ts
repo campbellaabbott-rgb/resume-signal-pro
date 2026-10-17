@@ -190,23 +190,41 @@ describe("the React company page names the employer and its possessive the way t
   // "Domino's's" in the head description, the subtitle and the hiring answer.
   const dir = resolve(__dirname, "../i18n/locales");
   const jobs = codeOf(readFileSync(resolve(__dirname, "../pages/Jobs.tsx"), "utf8"));
-  const LANDER_KEYS = ["companySeoDescription", "companySubtitle", "companyYesHiring", "companyYesHiringCapped"];
+  // Pass B (2026-10-12): the lander is the company vocabulary's (CompanyHeader),
+  // whose possessive sentences live in the company shard; the head description
+  // stays in the main locale, read by Jobs.tsx for the SEO tag.
+  const LANDER_KEYS = ["companySeoDescription"];
+  const shardDir = resolve(__dirname, "../i18n/shards/company");
+  const SHARD_KEYS = ["subtitle", "zero.older_other", "zero.empty", "zero.unread"];
+  const leaf = (o: unknown, path: string): unknown => path.split(".").reduce<unknown>((x, k) => (x && typeof x === "object" ? (x as Record<string, unknown>)[k] : undefined), o);
 
   it("no locale builds an English possessive by appending 's to the name", () => {
     for (const file of readdirSync(dir).filter((f) => f.endsWith(".json"))) {
       const page = JSON.parse(readFileSync(resolve(dir, file), "utf8")).jobsPage;
       for (const k of LANDER_KEYS) expect(page[k], `${file} ${k}`).not.toMatch(/\{\{company\}\}['’]s/);
+      const shard = JSON.parse(readFileSync(resolve(shardDir, file), "utf8")).companyProfile;
+      for (const k of SHARD_KEYS) {
+        const v = leaf(shard, k);
+        expect(typeof v, `${file} companyProfile.${k}`).toBe("string");
+        expect(String(v), `${file} companyProfile.${k}`).not.toMatch(/\{\{company\}\}['’]s/);
+      }
     }
   });
 
   it("rendered for Domino's, the English strings never say Domino's's", async () => {
     const en = JSON.parse(readFileSync(resolve(dir, "en.json"), "utf8"));
+    const shard = JSON.parse(readFileSync(resolve(shardDir, "en.json"), "utf8"));
     const i18n = i18next.createInstance();
-    await i18n.init({ lng: "en", resources: { en: { translation: en } }, interpolation: { escapeValue: false } });
-    const vars = { company: "Domino's", companyPossessive: possessive("Domino's"), count: 12, n: "10,000", roleWord: "roles" };
+    await i18n.init({ lng: "en", resources: { en: { translation: { ...en, ...shard } } }, interpolation: { escapeValue: false } });
+    const vars = { company: "Domino's", companyPossessive: possessive("Domino's"), count: 12, n: "10,000", total: "31", days: 30, date: "12 Oct 2026", ago: "5 hr ago" };
     for (const k of LANDER_KEYS) {
       const out = i18n.t(`jobsPage.${k}`, vars);
       expect(out, k).toContain("Domino's own");
+      expect(out, k).not.toMatch(/Domino's's|\{\{/);
+    }
+    for (const k of SHARD_KEYS) {
+      const out = i18n.t(`companyProfile.${k}`, vars);
+      expect(out, k).toMatch(/Domino's (own|board|job board|whole board)/);
       expect(out, k).not.toMatch(/Domino's's|\{\{/);
     }
   });
@@ -225,6 +243,10 @@ describe("the React company page names the employer and its possessive the way t
         at = jobs.indexOf(`t("jobsPage.${k}"`, end);
       }
     }
+    // The header builds its possessive from the model's name once, through the same helper.
+    const header = codeOf(readFileSync(resolve(__dirname, "../components/jobs/company/CompanyHeader.tsx"), "utf8"));
+    expect(header).toMatch(/const companyPossessive = own \? possessive\(name!\) : "";/);
+    expect(header).not.toMatch(/\$\{name\}'s|name \+ "'s"/);
     expect(jobs).toMatch(/return boardName\(landerCompany, jobs\.find/);
   });
 });

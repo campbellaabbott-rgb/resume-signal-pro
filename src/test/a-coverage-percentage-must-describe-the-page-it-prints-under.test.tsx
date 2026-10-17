@@ -307,7 +307,7 @@ const servedCoverage = (): Record<string, number> | null =>
 
 const BASE: BoardFilterState = {
   q: "", location: "", remoteOnly: false, workMode: "", category: "", inclUncat: false,
-  agentOnly: false, country: "", experience: "", companyTokens: [], salaryFloor: 0,
+  country: "", experience: "", companyTokens: [], salaryFloor: 0,
   salaryCeiling: 0, payBasis: "", statedPayOnly: false, includeUnstatedPay: false,
   maxYears: 0, department: "", vendor: "", employmentType: "", hideAgencies: false,
   freshness: "",
@@ -416,7 +416,7 @@ describe("2. the gate is derived from the request body, so a filter added later 
     const NARROWING: Array<[Partial<BoardFilterState>, CoverageFamily]> = [
       [{ q: "nurse" }, "pay"], [{ location: "Berlin" }, "pay"], [{ category: "healthcare" }, "pay"],
       [{ country: "SE" }, "pay"], [{ vendor: "greenhouse" }, "workMode"], [{ experience: "senior" }, "country"],
-      [{ agentOnly: true }, "experience"], [{ hideAgencies: true }, "department"], [{ freshness: "7" }, "maxYears"],
+      [{ hideAgencies: true }, "department"], [{ freshness: "7" }, "maxYears"],
       [{ companyTokens: ["acme"] }, "employmentType"], [{ maxYears: 3 }, "vendor"], [{ workMode: "remote" }, "pay"],
       [{ statedPayOnly: true }, "workMode"], [{ department: "Nursing" }, "employmentType"],
     ];

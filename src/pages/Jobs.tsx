@@ -45,7 +45,6 @@ import { companyLanderPath } from "@/lib/public-href";
 import { bakedCompanyPrimary } from "@/lib/prerendered-head";
 import type { BoardJob, FillCurve } from "@/lib/board-job";
 import { foldName } from "../../supabase/functions/job-board/search-routing";
-import { useAgentReach, reachPct } from "@/hooks/use-agent-reach";
 import { useTranslation } from "react-i18next";
 import { Activity, AlertTriangle, ArrowLeftRight, Bell, Bookmark, BookmarkCheck, Bot, Briefcase, ChevronDown, Clock, Compass, Copy, ExternalLink, FileText, Flag, Link2, Loader2, MapPin, MessageSquare, RefreshCw, Search, ShieldCheck, SlidersHorizontal, Sparkles, Target, Upload, Info} from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
@@ -55,17 +54,29 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ApplicationAnswers, REAL_QUESTION_PREFIXES } from "@/components/apply/ApplicationAnswers";
-import { useProSubscription } from "@/hooks/use-pro-subscription";
-import { SUBSCRIPTIONS } from "@/config/products";
 import { CompanyClaim } from "@/components/jobs/CompanyClaim";
 import { CompanyIntelPanel } from "@/components/jobs/CompanyIntelPanel";
 import { CompanyPerks } from "@/components/jobs/CompanyPerks";
 import { PublicCompanyCard } from "@/components/jobs/PublicCompanyCard";
 import { EmployerContext } from "@/components/jobs/EmployerContext";
-import { HIRING_RECORD_GATE_COPY, LAP_BUCKET, feedReadStatable, hiringRecordGate, type HiringRecordRefusal } from "@/lib/hiring-record-gate";
+import { HIRING_RECORD_GATE_COPY, LAP_BUCKET, LAP_MODE_BUCKETS, feedReadStatable, hiringRecordGate, type HiringRecordRefusal } from "@/lib/hiring-record-gate";
 import { datedHeadcount } from "@/lib/headcount";
 import { SavedSearchPills } from "@/components/jobs/SavedSearchPills";
-import { LayoffFilingChip, LayoffFilingLine, LayoffFilingsOnRecord, useEmployerLayoffFilings, useEmployerLayoffFilingsAll } from "@/components/jobs/LayoffFilingLine";
+import { LayoffFilingChip, LayoffFilingLine, layoffHidesForCountry, useEmployerLayoffFilings, useEmployerLayoffFilingsAll } from "@/components/jobs/LayoffFilingLine";
+import { CompanyLanderAccordion, CompanyLanderEmpty, CompanyLanderHeader, CompanyLanderRail, CompanyResultsLine, CompanySimilarAfterFirstPage, useCompanyProfile } from "@/components/jobs/company/CompanyLander";
+import type { HiringRecordInput } from "@/components/jobs/company/HiringRecordCard";
+import { buildLanderModel, isUsajobsBoard, type OpenRolesValue as LanderOpenRoles } from "@/lib/company/lander-model";
+import { bakedLanderName, cachedLanderName, rememberLanderName } from "@/lib/display-name";
+import { JobCard } from "@/components/jobs/listing/JobCard";
+import { PostingDetail } from "@/components/jobs/listing/PostingDetail";
+import { PostingSheet } from "@/components/jobs/listing/PostingSheet";
+import type { ListingServed } from "@/components/jobs/listing/LiveStatus";
+import type { PostingMenuActions } from "@/components/jobs/listing/PostingMenu";
+import { FilterBar, type FilterBarValue } from "@/components/jobs/FilterBar";
+import { HowApplyingWorks } from "@/components/jobs/HowApplyingWorks";
+import { applySystem, cleanApplyUrl } from "@/lib/listing/apply-url";
+import { listingEmployer } from "@/lib/listing/employer";
+import { displayLocation as listingDisplayLocation } from "@/lib/listing/location";
 import { LcaFiledWagesLine } from "@/components/jobs/LcaFiledWagesLine";
 import { EmployerLcaFiledWagesLine } from "@/components/jobs/LcaFiledWagesLine";
 import { OntarioEsaDisclosures } from "@/components/jobs/OntarioEsaDisclosures";
@@ -1150,7 +1161,6 @@ export type BoardFilterState = {
   workMode: string;
   category: string;
   inclUncat: boolean;
-  agentOnly: boolean;
   country: string;
   /** Comma-joined bands, exactly as the URL carries them. */
   experience: string;
@@ -1183,7 +1193,7 @@ export type BoardFilterState = {
 
 export function boardFilterBody(s: BoardFilterState): Record<string, unknown> {
   const {
-    q, location, remoteOnly, workMode, category, inclUncat, agentOnly, country,
+    q, location, remoteOnly, workMode, category, inclUncat, country,
     experience, companyTokens, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay,
     maxYears, department, vendor, freshness, employmentType, hideAgencies,
   } = s;
@@ -1200,9 +1210,6 @@ export function boardFilterBody(s: BoardFilterState): Record<string, unknown> {
     employmentType: employmentType || undefined,
     category: category || undefined,
     includeUncategorised: category && inclUncat ? true : undefined,
-    // Literal true only, at every send site: a truthy STRING here narrows the
-    // board to ~5% and the server takes `=== true`.
-    sendableOnly: agentOnly ? true : undefined,
     country: country || undefined,
     experience: experience || undefined,
     companies: companyTokens.length ? companyTokens : undefined,
@@ -1432,6 +1439,9 @@ interface BoardResponse {
   relatedTotal?: number;
   relatedCapped?: boolean;
   countUnavailable?: boolean;
+  /** Employer tokens of the request the board does not carry (sweep S11-020):
+   *  a lander for one of them is "we don't read this board", never a zero. */
+  unknownCompanies?: string[];
   /** A pay-ordered first page with nothing on it, and why: no match states pay,
    *  or the pay read failed. Either way the matches exist, so "nothing matches"
    *  would be false. */
@@ -1706,6 +1716,14 @@ const CATEGORY_IDS = [
 ] as const;
 
 const PAGE = 60;
+
+/** The model useCompanyProfile is handed off a company page: its token is null, so no reader is asked. */
+const NO_LANDER_MODEL = buildLanderModel({
+  token: "", storedName: null, bakedName: null, cachedName: null, listTotal: null, listFloor: false,
+  feedTotal: null, feedFloor: false, feedAsOf: null, boardReadAt: null, source: null, agency: false,
+  collision: null, isUsajobs: false, loading: true, error: false, budgetRefusal: false,
+  gated: { verdict: "unknown", withheld: null }, verdict: "unknown", growth: "unknown", layoffRows: 0, visitorFilters: [],
+});
 
 // Fallback company display name from a token, used only until the real name loads
 // (e.g. "public-storage" → "Public Storage").
@@ -2172,40 +2190,13 @@ export function isLocationCodeToken(token: string, opensString: boolean): boolea
 export function displayLocation(
   location: string | null | undefined,
 ): { text: string | null; raw: string | null; reduced: boolean } {
-  const raw = String(location ?? "").replace(/\s+/g, " ").trim();
-  if (!raw) return { text: null, raw: null, reduced: false };
-  let seenToken = false;
-  let dropped = false;
-  const segments: string[] = [];
-  for (const segment of raw.split(LOCATION_SEGMENT_SPLIT)) {
-    const parts: string[] = [];
-    // Commas are STRUCTURE in a location line ("Austin, TX, USA"), so they are
-    // preserved around what survives and taken away with what does not — a
-    // stranded comma is the same defect as a stranded separator on the card.
-    for (const part of segment.split(",")) {
-      const kept: string[] = [];
-      for (const token of part.trim().split(" ")) {
-        if (!token) continue;
-        const opens = !seenToken;
-        seenToken = true;
-        if (isLocationCodeToken(token, opens)) { dropped = true; continue; }
-        kept.push(token);
-      }
-      if (kept.length > 0) parts.push(kept.join(" "));
-    }
-    if (parts.length > 0) segments.push(parts.join(", "));
-  }
-  let text = segments.join(" · ");
-  const acronym = /^([A-Z]{2})\s+(.+)$/.exec(text);
-  if (acronym && !KNOWN_PLACE_ABBREVIATIONS.has(acronym[1].toLowerCase())) {
-    const rest = acronym[2].split(/[\s,·]+/).filter((w) => /\p{L}{2}/u.test(w));
-    if (rest.length >= 2) { text = acronym[2]; dropped = true; }
-  }
-  // A line with no word left in it is an internal code and nothing else. The
-  // caller then has the row's own country column and nothing else to say — a
-  // mangled fragment of a requisition number is worse than silence.
-  if (!/\p{L}{2}/u.test(text)) return { text: null, raw, reduced: true };
-  return { text, raw, reduced: dropped };
+  // ONE HELPER FOR EVERY SURFACE (pass B, 2026-10-12). The card and the
+  // facts read the listing module's displayLocation; the compare tray and the
+  // folded siblings read it through this name, so no two places on the page
+  // can disagree about what a location line says. The listing copy splits
+  // only outside brackets (audit JL13) and gives the same answer on every
+  // string the board guard pins (locations-split-outside-parentheses-only).
+  return listingDisplayLocation(location);
 }
 
 /**
@@ -2276,6 +2267,25 @@ const LD_EMPLOYMENT_TYPE: Record<EmploymentTypeKey, string> = {
  * sendable} on a copy, agent_deeplink_job {host, id} on the link — and the
  * behavioural guard reads the JSON that reaches the transport.
  */
+/**
+ * The hand-off itself, shared by the pane's full control and the card's ⋯
+ * menu item ("Open in Claude or ChatGPT", which copies for the remembered
+ * host and asks nothing): one tracked event, one copied prompt, one toast.
+ */
+export function handOffJobToAgent(
+  job: HandoffJob,
+  host: string,
+  track: (variant: string, metadata?: Record<string, unknown>) => void,
+  t: (key: string, fallback: string) => string,
+): void {
+  track("agent_handoff_job", { host, id: job.id, sendable: job.sendable });
+  void copyText(agentPrompt(job)).then((ok) => toast({
+    title: ok
+      ? t("jobsPage.agentPromptCopied", "Prompt copied — paste it to your agent. It names this posting and our MCP server.")
+      : t("jobsPage.agentPromptFailed", "Couldn't copy the prompt"),
+  }));
+}
+
 function JobAgentHandoff({ job, compact, track }: {
   job: HandoffJob;
   compact?: boolean;
@@ -2285,14 +2295,7 @@ function JobAgentHandoff({ job, compact, track }: {
   const [host, setHost] = useState<string>(() => rememberedHostName());
   const prompt = agentPrompt(job);
   const deep = agentDeepLink(host, prompt);
-  const copy = () => {
-    track("agent_handoff_job", { host, id: job.id, sendable: job.sendable });
-    void copyText(prompt).then((ok) => toast({
-      title: ok
-        ? t("jobsPage.agentPromptCopied", "Prompt copied — paste it to your agent. It names this posting and our MCP server.")
-        : t("jobsPage.agentPromptFailed", "Couldn't copy the prompt"),
-    }));
-  };
+  const copy = () => handOffJobToAgent(job, host, track, (k, d) => t(k, d));
   const button = (
     <button
       type="button"
@@ -2407,15 +2410,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
   // the SQL cannot import, and the cross-runtime guard parses it — but a machine
   // date read wrong inside localised prose in eight of nine languages.
   const fxSince = useMemo(() => vintageLabel(SALARY_FX_PINNED_SINCE, i18n.language), [i18n.language]);
-  // How far the agent actually reaches, from the DEPLOYED bundle rather than a
-  // literal in this one. Shared with AgentReachNote so the two cannot disagree.
-  const agentReach = useAgentReach();
   const navigate = useNavigate();
-  // Pro state for the board's honest upgrade moments (milestone toasts etc.).
-  // `pro.active` false-while-loading errs toward showing free users the
-  // pitch, never toward pitching a paying user.
-  const { pro: proSub } = useProSubscription();
-  const isPro = proSub.active;
   // Deep-linkable filters: /jobs?q=nurse&category=healthcare&remote=1&company=oscar
   const initial = new URLSearchParams(window.location.search);
   const [q, setQ] = useState(initial.get("q") ?? "");
@@ -2529,13 +2524,10 @@ function JobsBoard({ boardId }: { boardId: string }) {
   // board. Off by default, and never set on a /jobs/field/:slug lander: a page
   // titled "Engineering jobs" must not list postings whose field is unknown.
   const [inclUncat, setInclUncat] = useState(initial.get("inclUncat") === "1");
-  // ONLY JOBS THE AGENT CAN APPLY TO — the filter form of the Sparkles badge.
-  // 31,552 of 588,607 postings (5.4%, 2026-08-07) across the four drivable
-  // vendors. A FILTER, deliberately not a sort: ranking by sendability is the
-  // .order("category") timeout with a different column. Off by default; the
-  // server derives the vendor list from the same SENDABLE_VENDORS mirror the
-  // badge reads, so the chip and the filter cannot disagree.
-  const [agentOnly, setAgentOnly] = useState(initial.get("agentOnly") === "1");
+  // THE AGENT FILTER IS RETIRED WITH THE SERVER-SIDE APPLY AGENT (owner,
+  // 2026-10-11): applying happens through people's own AIs, so no filter on
+  // this board narrows to the forms that agent could drive. An old ?agentOnly=1 link
+  // is read as nothing and dropped from the address on the next write.
   // Lander identity tracks the LIVE filter, not the route param. The URL-sync
   // effect rewrites the address with history.replaceState, which React Router
   // does not observe — so useParams keeps returning the lander token forever.
@@ -2892,12 +2884,8 @@ function JobsBoard({ boardId }: { boardId: string }) {
       setMaxYears(typeof f.maxYears === "number" ? f.maxYears : 0);
       setDepartment(typeof f.department === "string" ? f.department : "");
       setVendor(typeof f.vendor === "string" ? f.vendor : "");
-      // employmentType is READ now (the parser emits it); agentOnly is not
-      // emitted — a paid capability gate is not a description of a job — so it
-      // still resets, or a toggle left on from before keeps constraining the
-      // interpreted search with nothing in the chips saying so.
+      // employmentType is READ now (the parser emits it).
       setEmploymentType(typeof f.employmentType === "string" ? f.employmentType : "");
-      setAgentOnly(false);
       // The agency opt-out is READ now — "no agencies" is a thing people say,
       // and the parser emits it. Absent from the parse it still switches OFF:
       // a stale "hide staffing agencies" quietly excluding disclosed inventory
@@ -3035,7 +3023,15 @@ function JobsBoard({ boardId }: { boardId: string }) {
   const fitAutoChecked = useRef(false);
   // null = not checked yet; false = definitively no resume (drives the
   // "For you" upsell banner); true = a resume exists somewhere.
-  const [resumeAvailable, setResumeAvailable] = useState<boolean | null>(null);
+  // A RÉSUMÉ DROPPED THIS SESSION IS KNOWN AT FIRST PAINT. The rest of the
+  // answer (a signed-in account's pinned résumé) arrives from resolveFitResume
+  // below; until it does the desktop drop strip holds its place invisibly, so
+  // its arrival never pushes the filter rows and the first card down after
+  // they have painted (measured on /jobs at 1280 on 2026-10-17: that one 46px
+  // insertion at ~1.3s was 0.27 of the page's 0.32 layout shift).
+  const [resumeAvailable, setResumeAvailable] = useState<boolean | null>(() => {
+    try { return (sessionStorage.getItem("rb_board_resume") ?? "").trim().length >= 100 ? true : null; } catch { return null; }
+  });
   // The resume available for ranking: this tab's scan first, else the
   // signed-in user's latest saved version (fetched lazily on toggle).
   const fitResume = useRef<string | null>(null);
@@ -3219,7 +3215,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
     return () => { alive = false; };
   }, []);
   const [data, setData] = useState<BoardResponse | null>(null);
-  // The filter body the on-screen reply was asked for (see landerHiringAnswer:
+  // The filter body the on-screen reply was asked for (see landerReplyCurrent:
   // a sentence about a reply must not speak for a question asked since).
   const [dataFilterSig, setDataFilterSig] = useState<string | null>(null);
   const [jobs, setJobs] = useState<BoardJob[]>([]);
@@ -3247,26 +3243,6 @@ function JobsBoard({ boardId }: { boardId: string }) {
    *  with the other fit state and referenced both before their declarations.
    *  The pre-commit typecheck caught it (TS2448) where a local `tsc --noEmit`
    *  run had just passed — worth remembering that the hook is the real gate. */
-  /**
-   * How many of the RENDERED postings the apply agent can actually submit to.
-   *
-   * The agent is the $99/mo product and the board is the biggest surface on the
-   * site, and the word "agent" appeared exactly twice on /jobs: once as an
-   * unlabelled filter checkbox, once inside a job title. "$99", "Morning Queue"
-   * and "free trial" appeared zero times, and on mobile the word appeared not
-   * at all because the filter row collapses behind a button.
-   *
-   * Counted from THIS page rather than quoting a board-wide figure, and using
-   * the same isSendableVendor predicate as the per-card Sparkles badge — so the
-   * number a visitor reads is the number of badges they can count on screen. A
-   * board-wide "37,000 postings" would be true and unverifiable; this is true
-   * and checkable, which is the difference the rest of this product trades on.
-   */
-  const agentReadyOnPage = useMemo(
-    () => jobs.reduce((n, j) => n + (isSendableVendor(j.id) ? 1 : 0), 0),
-    [jobs],
-  );
-
   const scoredCount = useMemo(
     () => jobs.reduce((n, j) => n + (typeof fits[j.id] === "number" ? 1 : 0), 0),
     [jobs, fits],
@@ -3343,6 +3319,21 @@ function JobsBoard({ boardId }: { boardId: string }) {
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
   }, []);
+  // lg and up: an opened posting renders in the split-pane column; below lg,
+  // in the full-screen sheet. A listener for the same reason as above.
+  const [isDesktop, setIsDesktop] = useState<boolean>(() =>
+    typeof window !== "undefined" && window.innerWidth > 0 && typeof window.matchMedia === "function"
+      ? window.matchMedia("(min-width: 1024px)").matches
+      : false,
+  );
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const onChange = () => setIsDesktop(window.innerWidth > 0 ? mq.matches : false);
+    onChange();
+    mq.addEventListener?.("change", onChange);
+    return () => mq.removeEventListener?.("change", onChange);
+  }, []);
   // Anonymous first-visit welcome: three one-tap entries into the board's
   // distinctive muscle. Dissolves permanently once used or dismissed.
   const [showWelcome, setShowWelcome] = useState<boolean>(() => {
@@ -3354,6 +3345,12 @@ function JobsBoard({ boardId }: { boardId: string }) {
   };
   // Company-page fill curve (lifecycle-derived; only fetched on a company page).
   const [hiringCurve, setHiringCurve] = useState<FillCurve | null>(null);
+  // When the curve answered: get_company_fill_curve computes on every call, so
+  // its board-level count is "counted" at that moment. Null until it answers.
+  const [curveAnsweredAt, setCurveAnsweredAt] = useState<string | null>(null);
+  // When the served list last answered, the date of the list's figure when
+  // the board's read stamp is missing (lander-model listAnsweredAt).
+  const [listAnsweredAt, setListAnsweredAt] = useState<string | null>(null);
   // The company page's growth row (get_company_growth, one token), beside the
   // curve: the health panel prints the rate with its window and both dates.
   const [landerGrowth, setLanderGrowth] = useState<GrowthRow | null>(null);
@@ -3438,10 +3435,10 @@ function JobsBoard({ boardId }: { boardId: string }) {
     // box sits disabled. Gate it to the checkbox's checked={inclUncat &&
     // sortMode!=="salary"} so the body agrees with what the visitor can see.
     inclUncat: inclUncat && sortMode !== "salary",
-    agentOnly, country,
+    country,
     experience, companyTokens, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay,
     maxYears, department, vendor, freshness, employmentType, hideAgencies,
-  }), [q, location, remoteOnly, workMode, category, inclUncat, sortMode, agentOnly, country,
+  }), [q, location, remoteOnly, workMode, category, inclUncat, sortMode, country,
     experience, companyTokens, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay,
     maxYears, department, vendor, freshness, employmentType, hideAgencies]);
   /**
@@ -3637,21 +3634,10 @@ function JobsBoard({ boardId }: { boardId: string }) {
       }
       return;
     }
-    // Milestone moments: save #1 and save #12 are different situations — by
-    // the 5th/12th save the user is assembling a PIPELINE, which is exactly
-    // the workload batch prep and the Morning Queue exist for. The claims are
-    // factual (the trial is real, offered once per customer, its length read
-    // from the checkout's own constant; the agent never auto-submits) and Pro
-    // users never see the pitch. Counts land on 5 and 12 once each.
-    const savedCount = savedIds.size + 1;
-    if (!isPro && (savedCount === 5 || savedCount === 12)) {
-      toast({
-        title: t("jobsPage.savedMilestone", "That's {{n}} jobs in your pipeline", { n: savedCount }),
-        description: t("jobsPage.savedMilestoneDesc", "The Apply Agent can prep tailored answers for all of them in one batch — a {{trialDays}}-day free trial for first-time subscribers. In review mode, the default, nothing is sent until you approve it.", { trialDays: SUBSCRIPTIONS.agent.trialDays }),
-      });
-    } else {
-      toast({ title: t("jobsPage.jobSaved", "Saved to your application tracker") });
-    }
+    // One plain confirmation on every save. The 5th/12th-save toast sold the
+    // retired Apply Agent's trial; applying now happens through people's own
+    // AIs, so a save says only where the posting went.
+    toast({ title: t("jobsPage.jobSaved", "Saved to your application tracker") });
     try {
       const { data: res } = await invokeBoard<{ description?: string }>({ action: "detail", id: job.id });
       const description = (res as { description?: string })?.description;
@@ -3725,7 +3711,6 @@ function JobsBoard({ boardId }: { boardId: string }) {
       q: q || undefined,
       category: category || undefined,
       includeUncategorised: category && inclUncat ? true : undefined,
-      sendableOnly: agentOnly ? true : undefined,
       experience: experience || undefined,
       location: location || undefined,
       // ONE definition of Remote — see the note at the other call site. Sending
@@ -3827,7 +3812,6 @@ function JobsBoard({ boardId }: { boardId: string }) {
         unsavedFilters.length
           ? t("jobsPage.savedWithoutFilters", "These are applied on the board but not in the email yet, so the alert leaves them out: {{filters}}.", { filters: unsavedFilters.join(", ") })
           : "",
-        t("jobsPage.queueBridge", "Want ready-to-review picks every morning instead? The Apply Agent runs your search nightly — Morning Queue, in your account."),
       ].filter(Boolean).join(" "),
     });
   };
@@ -4196,7 +4180,6 @@ function JobsBoard({ boardId }: { boardId: string }) {
     // server drops includeUncategorised under a salary sort, so a written
     // ?inclUncat=1 there would reopen a filter the board refuses.
     if (category && inclUncat && sortMode !== "salary") p.set("inclUncat", "1");
-    if (agentOnly) p.set("agentOnly", "1");
     // READ ON MOUNT, NEVER WRITTEN — the same defect the comment below records
     // for freshness and sort, on a third control. Explore links to
     // /jobs?activelyHiring=1 under the words "employers with a proven fill
@@ -4292,28 +4275,28 @@ function JobsBoard({ boardId }: { boardId: string }) {
     const landerQs = landerKeep.toString();
     // !workMode belongs in both gates: without it, picking Hybrid on a lander
     // kept the bare lander URL and reload/share silently dropped the filter.
-    // agentOnly and inclUncat are filters too, and the lander form carries no
+    // inclUncat is a filter too, and the lander form carries no
     // query string — dropping into it with either one on silently discards it
     // from a shared or reloaded link while the chip still shows on screen.
     // EVERY filter belongs in both gates. The lander form carries no query
     // string, so dropping into it with one of these on discards it from a
     // shared or reloaded link while the chip on screen still says it applies —
-    // measured for workMode, agentOnly and inclUncat before, and true by
+    // measured for workMode and inclUncat before, and true by
     // construction for each filter added since. activelyHiringOnly joined the
     // write side (above) but skipped both gates, so a lander with only
     // "Actively hiring" on rewrote the bare lander URL and a reload or shared
     // link served every employer again under the chip.
     const extraFilters = !!(salaryCeiling || payBasis || statedPayOnly || includeUnstatedPay || maxYears || department || vendor || employmentType || hideAgencies);
-    if (landerCompany && company === landerCompany && !q && !location && !remoteOnly && !workMode && !category && !experience && !salaryFloor && !country && !freshness && !agentOnly && !activelyHiringOnly && !extraFilters && !discoveredView && !sortParam) {
+    if (landerCompany && company === landerCompany && !q && !location && !remoteOnly && !workMode && !category && !experience && !salaryFloor && !country && !freshness && !activelyHiringOnly && !extraFilters && !discoveredView && !sortParam) {
       writeBoardEntry("replace", boardId, companyLanderPath(landerCompany, landerQs));
       return;
     }
-    if (landerCategory && category === landerCategory && !q && !location && !remoteOnly && !workMode && !company && !experience && !salaryFloor && !country && !freshness && !agentOnly && !activelyHiringOnly && !inclUncat && !extraFilters && !discoveredView && !sortParam) {
+    if (landerCategory && category === landerCategory && !q && !location && !remoteOnly && !workMode && !company && !experience && !salaryFloor && !country && !freshness && !activelyHiringOnly && !inclUncat && !extraFilters && !discoveredView && !sortParam) {
       writeBoardEntry("replace", boardId, `/jobs/field/${landerCategory}${landerQs ? `?${landerQs}` : ""}`);
       return;
     }
     writeBoardEntry("replace", boardId, qs ? `/jobs?${qs}` : "/jobs");
-  }, [q, location, remoteOnly, workMode, company, category, inclUncat, agentOnly, activelyHiringOnly, experience, country, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay, maxYears, department, vendor, employmentType, hideAgencies, freshness, sortMode, searchNewestFirst, urlSyncTick, landerCategory, landerCompany, boardId]);
+  }, [q, location, remoteOnly, workMode, company, category, inclUncat, activelyHiringOnly, experience, country, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay, maxYears, department, vendor, employmentType, hideAgencies, freshness, sortMode, searchNewestFirst, urlSyncTick, landerCategory, landerCompany, boardId]);
 
   // THE PER-SOURCE INVENTORY FOR THE VENDOR DROPDOWN, read once on mount from
   // the same stored facet row /explore's tiles come from (src/lib/board-facets).
@@ -5021,7 +5004,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
     }
     toast({
       title: t("jobsPage.watchSaved", "Watching {{company}}", { company: landerCompanyName }),
-      description: `${t("jobsPage.watchSavedDescAlert", "We'll email you when they post new roles (daily at most — unsubscribe any time), and your account shows the new-since-last-look count.")} ${t("jobsPage.queueBridge", "Want ready-to-review picks every morning instead? The Apply Agent runs your search nightly — Morning Queue, in your account.")}`,
+      description: t("jobsPage.watchSavedDescAlert", "We'll email you when they post new roles (daily at most — unsubscribe any time), and your account shows the new-since-last-look count."),
     });
   };
 
@@ -6153,6 +6136,11 @@ function JobsBoard({ boardId }: { boardId: string }) {
   useEffect(() => {
     if (loading || refreshing || detailJob || groupedJobs.length === 0) return;
     if (!window.matchMedia("(min-width: 1024px)").matches) return;
+    // A COMPANY PAGE KEEPS ITS RAIL. There only an explicit open or a ?job=
+    // deep link opens a posting: the auto-selected one rewrote the address,
+    // the canonical and the page's structured data to the first posting (24
+    // of 24 landers at 1280, 2026-10-11) and hid the employer's profile.
+    if (landerCompany) return;
     // Never steal a pending deep link. Gating on deepLinkTried was NOT enough
     // (measured in production after the first fix): effects run in declaration
     // order, so the deep-link effect above flips that flag synchronously before
@@ -6295,6 +6283,152 @@ function JobsBoard({ boardId }: { boardId: string }) {
       ?? prettyToken(landerCompany));
   }, [landerCompany, jobs, data]);
 
+  // ── THE COMPANY PAGE, DECIDED ONCE ─────────────────────────────────────────
+  // buildLanderModel (src/lib/company/lander-model.ts) picks the variant
+  // (standard, a board name two hiring systems share, the USAJOBS hub, a
+  // staffing agency's board, a board with nothing dated in our window), the
+  // ONE open-roles figure every surface prints with the basis of its date,
+  // the name from data (never from the token) and the blocks each variant may
+  // show. The regions under src/components/jobs/company/ render from it, so the
+  // header's answer line, the results line, the rail and the pane's "see all"
+  // link cannot print three different counts.
+  const landerStoredName = useMemo(() => {
+    if (!landerCompany) return null;
+    const raw = jobs.find((j) => j.token === landerCompany)?.company
+      ?? data?.companies?.find((c) => c.token === landerCompany)?.name;
+    return raw ? boardName(landerCompany, raw) : null;
+  }, [landerCompany, jobs, data]);
+  // This board's own last read (the newest feed-read stamp on its rows), never
+  // the board-wide median.
+  const landerBoardReadAt = useMemo(() => {
+    if (!landerCompany) return null;
+    let best: string | null = null;
+    for (const j of jobs) {
+      if (j.token !== landerCompany || !j.recheckedAt) continue;
+      if (!best || Date.parse(j.recheckedAt) > Date.parse(best)) best = j.recheckedAt;
+    }
+    return best;
+  }, [jobs, landerCompany]);
+  // The hiring system of the board's rows, when they all share one.
+  const landerSource = useMemo(() => {
+    if (!landerCompany) return null;
+    const seen = new Set(jobs.filter((j) => j.token === landerCompany).map((j) => j.source ?? "").filter(Boolean));
+    return seen.size === 1 ? [...seen][0] : null;
+  }, [jobs, landerCompany]);
+  // The filters the VISITOR set: everything narrowing the list but the page's
+  // own company scope, plus the browser-side hiring filter.
+  const landerVisitorFilters = useMemo(() => !landerCompany ? [] : [
+    ...activeBoardFilterKeys(filterState).filter((k) => k !== "companies"),
+    // The keyword is the visitor's question too (activeBoardFilterKeys leaves
+    // it out for the chips row): a search typed on a lander is never the
+    // employer's zero and never the employer's figure (is-x-hiring guard).
+    ...(String(filterState.q ?? "").trim() ? ["q"] : []),
+    ...(activelyHiringOnly ? ["activelyHiring"] : []),
+  ], [landerCompany, filterState, activelyHiringOnly]);
+  useEffect(() => { if (data) setListAnsweredAt(new Date().toISOString()); }, [data]);
+  /** "IS {COMPANY} HIRING?" IS ANSWERED ONLY FROM THE LANDER'S OWN QUESTION.
+   *
+   *  The figure under the company H1 is the indexed answer to the query this
+   *  page ranks for, so it may speak only from a SUCCESSFUL reply to the
+   *  request now on screen. It used to read whatever list was on screen: a
+   *  failed or refused first read left `data` null and printed "no open roles"
+   *  beside the error panel, and a search typed on a 412-role lander printed
+   *  the search's count as the employer's. The model (lander-model.ts) holds
+   *  the last unfiltered figure while anything narrows the list, and a reply
+   *  that answers an older request than the one on screen is treated as still
+   *  loading, so the header never prints a search's count or a stale zero. */
+  const currentFilterSig = useMemo(() => JSON.stringify(boardFilterBody(filterState)), [filterState]);
+  const landerReplyCurrent = !!data && !refreshing && dataFilterSig === currentFilterSig;
+  /** WE DO NOT CARRY THIS EMPLOYER (sweep S11-020). The board names a token
+   *  outside its catalogue (unknownCompanies) instead of answering an empty
+   *  list, and the page says so: noindex, no "no roles" sentence and no claim
+   *  offer. A zero for a token we never read is no answer about the employer,
+   *  and it used to be printed as one on an indexable page. The model's
+   *  "uncarried" variant renders it; an older board build that sends no list
+   *  leaves it unknown, which is never "uncarried". */
+  const landerUncarried = !!landerCompany && !error && landerReplyCurrent
+    && Array.isArray(data?.unknownCompanies) && data!.unknownCompanies!.includes(landerCompany);
+  // THE PAGE'S ONE READING OF ITS GROWTH ROW, with the unread case named
+  // beside it: an unknown is our gap and travels with its reason.
+  const landerGrowthVerdict = growthVerdict(landerGrowth);
+  const landerGrowthWhy = landerGrowthVerdict === "unknown" ? growthWhy(growthUnknownReason(landerGrowth)) : null;
+  const lastUnfilteredRoles = useRef<{ token: string; value: LanderOpenRoles } | null>(null);
+  const landerModel = useMemo(() => {
+    if (!landerCompany) return null;
+    const growthV = landerGrowthVerdict;
+    const undated = hiringCurve?.undated_open;
+    return buildLanderModel({
+      token: landerCompany,
+      storedName: landerStoredName,
+      bakedName: bakedLanderName(landerCompany),
+      cachedName: cachedLanderName(landerCompany),
+      listTotal: data && typeof data.total === "number" ? data.total : null,
+      listFloor: !!data?.countCapped,
+      feedTotal: hiringCurve ? hiringCurve.open_roles : null,
+      feedFloor: !!hiringCurve && (landerFeedTotal ?? 0) > hiringCurve.open_roles,
+      feedAsOf: curveAnsweredAt,
+      boardReadAt: landerBoardReadAt,
+      source: landerSource,
+      agency: jobs.some((j) => j.token === landerCompany && j.agency === true),
+      collision: landerCollision,
+      isUsajobs: isUsajobsBoard(landerCompany, landerSource),
+      loading: loading || !landerReplyCurrent,
+      error: !!error,
+      budgetRefusal: !!budgetRefusal,
+      carried: landerUncarried ? false : landerReplyCurrent && Array.isArray(data?.unknownCompanies) ? true : null,
+      gated: gatedHiringRecord(hiringCurve),
+      verdict: activelyHiringVerdict(landerRecord, growthV),
+      growth: growthV,
+      layoffRows: landerLayoffFilings.length,
+      visitorFilters: landerVisitorFilters,
+      lastUnfiltered: lastUnfilteredRoles.current?.token === landerCompany ? lastUnfilteredRoles.current.value : null,
+      relatedTotal: typeof data?.relatedTotal === "number" ? data.relatedTotal : null,
+      listAnsweredAt,
+      boardTotal: curveAnsweredAt === null ? undefined : hiringCurve
+        ? { total: hiringCurve.feed_total, readAt: hiringCurve.feed_read_at, state: hiringCurve.feed_state, capped: hiringCurve.feed_capped }
+        : null,
+      undatedOpen: undated === null || undated === undefined || undated === "" ? null : Number(undated),
+    });
+  }, [landerCompany, landerStoredName, data, hiringCurve, landerFeedTotal, curveAnsweredAt, landerBoardReadAt, landerSource, jobs,
+    landerCollision, loading, error, budgetRefusal, landerRecord, landerGrowthVerdict, landerLayoffFilings, landerVisitorFilters, listAnsweredAt,
+    landerReplyCurrent, landerUncarried]);
+  const onCompanyPage = !!landerCompany && !!landerModel;
+  // The last unfiltered figure stands in while a visitor filter narrows the
+  // list, so a filter never blanks the header; the resolved name is
+  // remembered for the next visit's first paint.
+  useEffect(() => {
+    if (!landerCompany || !landerModel) return;
+    if (!landerModel.visitorFiltered && landerModel.openRoles) lastUnfilteredRoles.current = { token: landerCompany, value: landerModel.openRoles };
+    if (landerModel.name.from === "stored" && landerModel.name.name) rememberLanderName(landerCompany, landerModel.name.name);
+  }, [landerCompany, landerModel]);
+  // The employer readers, once per token, none on a board name two hiring
+  // systems share (useCompanyProfile gates each on the model's sections).
+  const landerProfile = useCompanyProfile(landerCompany ?? null, landerModel ?? NO_LANDER_MODEL);
+  // The hiring record, assembled from the gated reading the page already
+  // holds; the card re-derives no bar.
+  const landerRecordInput: HiringRecordInput | null = landerCompany && !landerCollision && hiringCurve ? {
+    curve: hiringCurve,
+    gated: gatedHiringRecord(hiringCurve),
+    actively: activelyHiringVerdict(landerRecord, landerGrowthVerdict),
+    admitted: admittedBy(landerRecord, landerGrowthVerdict),
+    relistCaution: relistCaution(hiringCurve),
+    growth: {
+      verdict: landerGrowthVerdict,
+      // The row as get_company_growth answered it; the card prints its two
+      // dates and two counts and re-derives no bar.
+      row: landerGrowth,
+      why: landerGrowthWhy,
+    },
+    bars: {
+      growthMinRatePct: Math.round(GROWTH_MIN_RATE * 100),
+      growthWindowDays: GROWTH_WINDOW_DAYS,
+      closedWindowDays: ACTIVELY_HIRING_WINDOW_DAYS,
+      shareDays: URGENT_FILL_MAX_DAYS,
+      supportDays: FILL_SUPPORT_MAX_DAYS,
+    },
+    computedAt: curveAnsweredAt,
+  } : null;
+
   // Company-page fill curve: one lifecycle-derived lookup per company page.
   //
   // TWO CALLS, ON PURPOSE, AND ONLY HERE. The curve carries everything the
@@ -6305,6 +6439,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
   // still asked for that one field, for one token, on the company page alone.
   useEffect(() => {
     // A token two hiring systems carry has no one employer's record to read.
+    setCurveAnsweredAt(null);
     if (!landerCompany || landerCollision) { setHiringCurve(null); setLanderFeedTotal(null); setLanderGrowth(null); return; }
     let cancelled = false;
     (async () => {
@@ -6317,7 +6452,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
           rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
         }).rpc("get_company_fill_curve", { p_tokens: [landerCompany] });
         const row = error || !Array.isArray(rows) ? undefined : (rows[0] as FillCurve | undefined);
-        if (!cancelled) setHiringCurve(row ? normaliseCurve(row) : null);
+        if (!cancelled) { setHiringCurve(row ? normaliseCurve(row) : null); if (!error) setCurveAnsweredAt(new Date().toISOString()); }
       } catch {
         if (!cancelled) setHiringCurve(null); // non-fatal — the panel just hides
       }
@@ -6568,32 +6703,6 @@ function JobsBoard({ boardId }: { boardId: string }) {
     return cats[0];
   }, [category, activeFilterCount, q, location]);
 
-  /** "IS {COMPANY} HIRING?" IS ANSWERED ONLY FROM THE LANDER'S OWN QUESTION.
-   *
-   *  The sentence under the company H1 is the indexed answer to the query this
-   *  page ranks for, so it may speak only from a SUCCESSFUL reply to the
-   *  UNNARROWED company request. It used to read whatever list was on screen:
-   *  a failed or refused first read left `data` null, `?? 0` made that a zero,
-   *  and the page printed "Not right now — Acme has no open roles" beside the
-   *  error panel; typing "astronaut" on a 412-role lander printed the same
-   *  sentence over the empty search, and a partial match printed "Yes — 3".
-   *
-   *  So: no error, a reply that exists and was asked for the filters now on
-   *  screen, and nothing narrowing it but the company itself (no query, no
-   *  location, no other filter, not the browser-side "actively hiring" cut).
-   *  Anything else leaves the question unanswered — never answered wrongly. */
-  const currentFilterSig = useMemo(() => JSON.stringify(boardFilterBody(filterState)), [filterState]);
-  const landerHiringAnswer = useMemo((): "yes" | "no" | null => {
-    if (!landerCompany || activelyHiringOnly || error || loading || !data) return null;
-    if (!Object.keys(boardFilterBody(filterState)).every((k) => k === "companies")) return null;
-    if (dataFilterSig !== currentFilterSig) return null;
-    // A WITHDRAWN COUNT IS NOT A ZERO (total:null + countUnavailable).
-    if (data.countUnavailable === true) return null;
-    // Both segments decide emptiness: a company page whose rows match only in
-    // descriptions has total 0 and a full page.
-    if ((data.total ?? 0) + (data.relatedTotal ?? 0) > 0) return "yes";
-    return refreshing ? null : "no";
-  }, [landerCompany, activelyHiringOnly, error, loading, data, filterState, dataFilterSig, currentFilterSig, refreshing]);
   // Whether the reply on screen answers the request now on screen — the
   // search order claim reads `data` and may speak only for that reply.
   const orderClaimCurrent = !loading && !refreshing && !!data && dataFilterSig === currentFilterSig;
@@ -6733,14 +6842,10 @@ function JobsBoard({ boardId }: { boardId: string }) {
     // THREE FILTERS USED TO NARROW THE BOARD WITH NO CHIP AND NO WAY OUT.
     //
     // "Clear all" is literally `activeFilters.forEach((f) => f.clear())`, so
-    // this array IS the definition of what a filter is. agentOnly, inclUncat and
+    // this array IS the definition of what a filter is. inclUncat and
     // activelyHiringOnly were never in it: they survived Clear all, they were
     // missing from activeFilterCount (the number on the mobile Filters button),
-    // and nothing on screen said they were on. agentOnly is the most aggressive
-    // filter the board has — it hides ~95% of postings, keeping only the ~5% on
-    // vendors the apply agent can drive — and a visitor could leave it switched
-    // on believing they had cleared everything.
-    if (agentOnly) f.push({ key: "agentOnly", label: t("jobsPage.chipAgentOnly", "Agent can apply"), clear: () => setAgentOnly(false) });
+    // and nothing on screen said they were on.
     if (activelyHiringOnly) f.push({ key: "activelyHiring", label: t("jobsPage.chipHiring2", "Actively hiring"), clear: () => setActivelyHiringOnly(false) });
     // A WIDENING toggle, so it gets a chip for visibility and for Clear all, but
     // it only means anything alongside a category. Gated on the sort, matching
@@ -6748,7 +6853,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
     // claiming it is active would name a filter the board is not applying.
     if (category && inclUncat && sortMode !== "salary") f.push({ key: "inclUncat", label: t("jobsPage.chipInclUncat", "+ unsorted"), clear: () => setInclUncat(false) });
     return f;
-  }, [q, location, category, experience, maxYears, company, companyTokens, country, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay, hideAgencies, department, vendor, remoteOnly, workMode, employmentType, freshness, companies, agentOnly, activelyHiringOnly, inclUncat, sortMode, landerCompany, landerCompanyName, t]);
+  }, [q, location, category, experience, maxYears, company, companyTokens, country, salaryFloor, salaryCeiling, payBasis, statedPayOnly, includeUnstatedPay, hideAgencies, department, vendor, remoteOnly, workMode, employmentType, freshness, companies, activelyHiringOnly, inclUncat, sortMode, landerCompany, landerCompanyName, t]);
   // S1: search suggestions — recent searches (local), matching companies
   // (served facet), matching category pages, and a curated common-role list.
   // Everything suggested is real and clickable; nothing invented.
@@ -6886,8 +6991,18 @@ function JobsBoard({ boardId }: { boardId: string }) {
    * sentence, and rendering the promise over a permanent spinner is what
    * happens when they do.
    */
+  // THE PAGE'S OWN COMPANY IS ITS SCOPE, NOT A FILTER TO DROP. On a company
+  // page the company chip is in activeFilters (it is the page), so the end of
+  // Allegis's 30 roles offered "Remove Allegis Global Solutions — 1,042,809
+  // openings", the whole board's count on a 394px button that scrolled a
+  // 375px phone sideways (measured 2026-10-17). The relaxations, the end
+  // card's "narrow" reading and the burst all read this list instead.
+  const relaxableFilters = useMemo(
+    () => (onCompanyPage ? activeFilters.filter((c) => c.key !== "company") : activeFilters),
+    [onCompanyPage, activeFilters],
+  );
   const endTarget = listExhausted && jobs.length > 0 && jobs.length <= PAGE
-    && !endCountUnknown && !activelyHiringOnly && activeFilters.length > 0
+    && !endCountUnknown && !activelyHiringOnly && relaxableFilters.length > 0
     // NEVER WHEN THE ORDER IS WHAT ENDED THE LIST. endOrderWindowed pages get
     // the sortWindow card, which names the order and offers the order — so a
     // widener burst here would spend two board calls to build buttons nothing
@@ -6941,7 +7056,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
       salaryCeiling: { salaryCeiling: 0 }, payBasis: { payBasis: "" },
       statedPay: { statedPayOnly: false }, maxYears: { maxYears: 0 },
       department: { department: "" }, vendor: { vendor: "" },
-      agentOnly: { agentOnly: false }, inclUncat: { inclUncat: false },
+      inclUncat: { inclUncat: false },
       inclUnstatedPay: { includeUnstatedPay: false },
       noAgencies: { hideAgencies: false },
       // activelyHiring has NO board predicate — the chip filters the rows
@@ -6975,7 +7090,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
       // remoteOnly resets alongside, exactly as the mode chip's clear() does.
       RELAX[`mode:${m}`] = { workMode: withoutMode(filterState.workMode, m), remoteOnly: false };
     }
-    const candidates = activeFilters.slice(0, zeroTarget ? 4 : 2);
+    const candidates = relaxableFilters.slice(0, zeroTarget ? 4 : 2);
     let cancelled = false;
     (async () => {
       const probed = await Promise.all(candidates.map(async (c) => {
@@ -7128,7 +7243,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
     : shownCount === 0 ? "hidden"
     : endCountUnknown ? "unknown"
     : endOrderWindowed ? "sortWindow"
-    : activeFilters.length > 0 && jobs.length <= PAGE ? "narrow"
+    : relaxableFilters.length > 0 && jobs.length <= PAGE ? "narrow"
     : "broad";
 
   // Disclosure-aware filtering: some filters can only match postings whose
@@ -7360,118 +7475,167 @@ function JobsBoard({ boardId }: { boardId: string }) {
     return { median: b.median, currency: b.currency, n: b.n, pct };
   }, [detailJob, detailDesc, benchmarks]);
 
-  // Detail content rendered by BOTH containers — the overlay drawer below
-  // lg and the inline split-pane column on lg+. Only one is visible at a
-  // time (responsive classes), so duplicate mounting is harmless.
-  // The panel reads the place through the SAME helper the card does, so the
-  // two surfaces can never disagree about what a posting's location is — and
-  // the panel, unlike the card, has the room to print the employer's raw
-  // string in full rather than parking it on a tooltip.
-  const detailLoc = displayLocation(detailJob?.location);
-  const detailInner = detailJob ? (
-    <>
-            {/* Below lg the header sticks (the bottom bar owns actions there);
-                on lg+ it scrolls and the actions row sticks instead — two
-                bars both pinned to top-0 painted over each other (live-walk
-                a11y finding: the actions bar covered the title mid-scroll). */}
-            <div className="sticky lg:static top-0 z-20 bg-background/95 backdrop-blur border-b border-border px-5 py-3 flex items-start gap-3">
-              <div className="flex-1 min-w-0">
-                <h2 className="text-lg font-bold leading-snug">{detailJob.title}</h2>
-                <p className="text-sm text-muted-foreground">
-                  {/* Underlined at rest: in this sentence colour alone marked it (axe link-in-text-block, 1.08:1). */}
-                  <Link to={companyLanderPath(detailJob.token)} className="text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary" onClick={(e) => leavePanelFor(e, companyLanderPath(detailJob.token))}>
-                    {detailJob.company}
-                  </Link>
-                  {detailLoc.text ? <> · {detailLoc.text}</> : null}
-                  {/* The card names the team; the panel — the surface someone
-                      actually reads before applying — did not. Employer-stated
-                      column, so absent means absent and nothing renders. */}
-                  {detailJob.department ? <> · {detailJob.department}</> : null}
-                </p>
-              </div>
-              {/* 40px tap target with a visible resting state — the bare 20px
-                  glyph was effectively invisible on phones (a11y finding). */}
-              <button
-                type="button"
-                aria-label={t("jobsPage.detailClose", "Close")}
-                className="shrink-0 inline-flex items-center justify-center w-10 h-10 -mr-2 -mt-1 rounded-lg text-foreground/70 hover:text-foreground hover:bg-muted text-xl leading-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                onClick={() => closeDetail()}
-              >
-                ✕
-              </button>
-            </div>
-            <div className="px-5 py-4 space-y-4">
-              {/* ── THE PROVENANCE STRIP ────────────────────────────────────
-                  Where this posting came from and when we last looked. Two
-                  sentences and a share control, kept apart from the facts of
-                  the JOB below — a reader deciding whether to believe the page
-                  and a reader deciding whether to apply are asking different
-                  questions, and the old panel answered both out of one
-                  undifferentiated run of eleven 11px chips. */}
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
-                {/* IT NAMES THE HIRING SYSTEM NOW. `source` is on every row and
-                    reached no reader: the panel could say "Verified direct from
-                    Acme" but not the one detail that makes the claim checkable
-                    — the system Acme's recruiters actually post into. A source
-                    we hold no label for falls back to the un-named sentence
-                    rather than printing a raw column value. */}
-                <span className="inline-flex items-center gap-1 text-success">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  {sourceLabel(detailJob.source)
-                    ? t("jobsPage.trustBadgeAts", "Direct from {{company}} on {{ats}}", { company: companyDisplayName(detailJob.company), ats: sourceLabel(detailJob.source) })
-                    : t("jobsPage.trustBadge", "Verified direct from {{company}}", { company: companyDisplayName(detailJob.company) })}
-                </span>
-                {/* recheckedAt comes from job_board_verifications.verified_at —
-                    when we last fetched THIS BOARD's feed. It replaces lastSeen,
-                    which is written at INSERT only and never rewritten, so the
-                    old chip was showing discovery time under a tooltip claiming
-                    re-verification. Absent => render nothing rather than
-                    substitute a weaker value. */}
-                {detailJob.recheckedAt && feedReadStatable(detailJob.token ? curveByToken[detailJob.token] : undefined) && (
-                  <span
-                    className="text-muted-foreground"
-                    title={t("jobsPage.recheckedTip", "When we last re-read this company's own feed")}
-                  >
-                    {t("jobsPage.rechecked", "feed re-read {{ago}}", { ago: agoLabel(detailJob.recheckedAt, t) })}
-                  </span>
-                )}
+  // ── ONE POSTING, READ: THE LISTING VOCABULARY'S PostingDetail ────────────
+  // The lg+ pane, the phone sheet's body and a company page's opened job are
+  // one component (src/components/jobs/listing/PostingDetail.tsx). What the
+  // board computes from its own state reaches it as slots: the gated closure
+  // record and the decision summary, the inline fit, the employer's filings,
+  // the Ontario panel, the hand-off to the reader's own AI, how applying works
+  // here, the field's pay benchmark and similar openings. The blocks below are
+  // the old pane's own, moved, so each keeps the gate it was built on.
+  const curveOf = useCallback((token: string | null | undefined): FillCurve | undefined =>
+    !token ? undefined : curveByToken[token] ?? (token === landerCompany ? hiringCurve ?? undefined : undefined),
+  [curveByToken, landerCompany, hiringCurve]);
+  // THE STAMP DATES THE BOARD'S FEED READ, AND PRINTS ONLY ON A BOARD WE READ
+  // IN FULL (Track 1, A3). A board read in laps says so instead of a stamp
+  // that would claim the read covered every posting on it.
+  const servedOf = useCallback((job: BoardJob): ListingServed => {
+    const curve = curveOf(job.token);
+    return {
+      missingSince: job.missingSince ?? null,
+      recheckedAt: feedReadStatable(curve) ? job.recheckedAt ?? null : null,
+      partialRead: !!curve && LAP_MODE_BUCKETS.includes(String(curve.observability_bucket ?? "")),
+    };
+  }, [curveOf]);
+  // The posting's link, copied for a person (the old pane's Share control).
+  const copyPostingLink = useCallback((job: BoardJob) => {
+    const url = `${window.location.origin}/jobs?job=${encodeURIComponent(job.id)}`;
+    void copyText(url).then((ok) => toast({ title: ok
+      ? t("jobsPage.shareCopied", "Link copied — anyone can open this posting")
+      : t("jobsPage.shareFailed", "Couldn't copy the link") }));
+  }, [t]);
+  // Everything about a posting that is housekeeping, in its ⋯ menu.
+  const postingMenu = (job: BoardJob): PostingMenuActions => ({
+    onReport: (_j, reason) => { void reportJob(job, reason); },
+    reported: reportedIds.has(job.id),
+    onHide: () => dismissJob(job),
+    onCompare: () => toggleCompare(job.id),
+    compared: compareIds.includes(job.id),
+    onCopyLink: () => copyPostingLink(job),
+    aiHandoff: () => handOffJobToAgent({ id: job.id, sendable: isSendableVendor(job.id) }, rememberedHostName(), trackBoard, t),
+  });
+  // The board's Apply re-checks the posting (verifyJob) on the click, so the
+  // pane, the sheet and the card's siblings may say so; the posting page's
+  // Apply runs no check and never passes it.
+  const applyFrom = (job: BoardJob) => { trackApply(job); void promoteApplied(job); void verifyJob(job); };
+  const howApplyingFor = (job: Pick<BoardJob, "applyUrl">) => {
+    const sys = applySystem(cleanApplyUrl(job.applyUrl));
+    return sys?.named ? <HowApplyingWorks systemKey={sys.source} systemLabel={sys.label} rechecksOnApply headingLevel={3} /> : null;
+  };
+
+  const renderDetail = (inSheet: boolean) => detailJob ? (() => {
+    const onLander = !!landerCompany && detailJob.token === landerCompany;
+    const surface = inSheet ? "sheet" as const : onLander ? "company" as const : "board" as const;
+    // "See all N open roles at X": on a company page the page's ONE figure,
+    // printed the way the header prints it; on the board the servable count
+    // of the employer's group (the company facet's `open`, never the
+    // unfiltered count), from 2 roles up, scoped to the same group it counts.
+    const entry = detailJob.token
+      ? companies.find((c) => c.token === detailJob.token || (Array.isArray(c.tokens) && c.tokens.includes(detailJob.token!)))
+      : undefined;
+    const cnt = entry?.open;
+    const scope = entry ? scopeTokensOf(entry) : (detailJob.token ? [detailJob.token] : []);
+    const openRolesLink = onLander
+      ? (landerModel?.openRoles && landerModel.name.name
+        ? { count: landerModel.openRoles, href: companyLanderPath(landerCompany!), name: landerModel.name.name, onClick: (e: React.MouseEvent<HTMLAnchorElement>) => { e.preventDefault(); closeDetail(); } }
+        : null)
+      : typeof cnt === "number" && cnt >= 2 && detailJob.token
+        ? {
+            count: { value: cnt, floor: false, asOf: null },
+            href: companyLanderPath(detailJob.token),
+            name: listingEmployer(detailJob),
+            onClick: (e: React.MouseEvent<HTMLAnchorElement>) => { e.preventDefault(); setCompany(scope.join(",")); closeDetail(); window.scrollTo({ top: 0, behavior: "smooth" }); },
+          }
+        : null;
+    return (
+      <PostingDetail
+        job={detailJob}
+        surface={surface}
+        description={{
+          text: detailDesc,
+          state: detailLoading ? "loading" : detailDesc ? "loaded" : "unavailable",
+          onRetry: detailFailed ? () => { void openDetail(detailJob); } : undefined,
+        }}
+        served={servedOf(detailJob)}
+        slots={{
+          layoffLine: <LayoffFilingLine row={layoffFilingOf(detailJob.token)} country={detailJob.country} />,
+          // NEVER ON A BOARD NAME TWO HIRING SYSTEMS SHARE: the filings are
+          // matched to the token, and the token is two employers.
+          lcaLine: !isCollidedToken(detailJob.token) && (
+            <LcaFiledWagesLine companyToken={detailJob.token ?? ""} companyName={companyDisplayName(detailJob.company)} socCode={null} worksiteState={null} />
+          ),
+          // Ontario postings only: the reader returns no row for anything
+          // outside CA-ON, so the page holds no opinion about which are in scope.
+          ontario: (
+            <OntarioEsaDisclosures postingId={detailJob.id} postingUrl={detailJob.applyUrl} />
+          ),
+          applicationAnswers: REAL_QUESTION_PREFIXES.some((p) => detailJob.id.startsWith(p)) ? (
+            <Button size="sm" variant="outline" className="gap-1.5" disabled={preparingId === detailJob.id} onClick={() => prepareApplication(detailJob)}>
+              {preparingId === detailJob.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MessageSquare className="w-3.5 h-3.5" />}
+              {t("jobsPage.prepAnswers", "Prep answers")}
+            </Button>
+          ) : undefined,
+          agentHandoff: <JobAgentHandoff job={{ id: detailJob.id, sendable: isSendableVendor(detailJob.id) }} track={trackBoard} />,
+          howApplying: howApplyingFor(detailJob),
+          fit: (
+            <>
+              {typeof fits[detailJob.id] !== "number" && resumeAvailable && !fitRanking && (
                 <button
                   type="button"
-                  onClick={() => {
-                    const url = `${window.location.origin}/jobs?job=${encodeURIComponent(detailJob.id)}`;
-                    const done = (ok: boolean) => toast({ title: ok
-                      ? t("jobsPage.shareCopied", "Link copied — anyone can open this posting")
-                      : t("jobsPage.shareFailed", "Couldn't copy the link") });
-                    try {
-                      if (navigator.clipboard?.writeText) {
-                        navigator.clipboard.writeText(url).then(() => done(true), () => done(false));
-                      } else {
-                        // Clipboard API unavailable (e.g. embedded preview) — legacy path.
-                        const ta = document.createElement("textarea");
-                        ta.value = url; ta.style.position = "fixed"; ta.style.opacity = "0";
-                        document.body.appendChild(ta); ta.select();
-                        const ok = document.execCommand("copy");
-                        ta.remove(); done(ok);
-                      }
-                    } catch { done(false); }
-                  }}
-                  className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
-                  title={t("jobsPage.shareTip", "Copy a direct link to this posting")}
+                  onClick={toggleFitRanking}
+                  className="w-full rounded-xl border border-primary/40 bg-primary/5 hover:bg-primary/10 transition-colors p-3 text-sm text-left flex items-center gap-2"
                 >
-                  <Link2 className="w-3.5 h-3.5" />
-                  {t("jobsPage.share", "Share")}
+                  <Target className="w-4 h-4 text-primary shrink-0" />
+                  <span className="text-foreground font-medium">
+                    {t("jobsPage.detailFitCta", "Show my fit score for this role — uses your saved resume")}
+                  </span>
                 </button>
-                {/* The same posting, handed to the person's own agent — see
-                    JobAgentHandoff. Beside Share because both are "take this
-                    posting somewhere": one to a person, one to an agent. */}
-                <JobAgentHandoff job={{ id: detailJob.id, sendable: isSendableVendor(detailJob.id) }} track={trackBoard} />
-                {/* THE PANEL'S CLOSURE-RECORD LINE, IN THREE STATES.
-                    "Actively hiring" was never what the bar measures, and its
-                    ABSENCE was the worse half: on a windowed tenant — a feed too
-                    big to read in one visit, so no closure of theirs was ever
-                    observable — this rendered nothing, and nothing beside a
-                    green badge on the next employer reads as "not hiring".
-                    Both halves are named now. */}
+              )}
+              {fitRanking && fits[detailJob.id] === undefined && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {t("jobsPage.detailFitLoading", "Scoring this posting against your resume…")}
+                </div>
+              )}
+              {/* AN HONEST NULL IS NOT A LOW SCORE, and it used to render as
+                  nothing at all. job-fit answers `fits[id] = null` for a
+                  posting it holds no stored description for; that panel was
+                  indistinguishable from one whose posting genuinely scored 4%,
+                  and the reader had no way to tell "we could not measure this"
+                  from "your résumé is a poor match". Only one of those is about
+                  them. */}
+              {fitRanking && fits[detailJob.id] === null && (
+                <div className="rounded-xl border border-dashed border-border bg-muted/20 p-3 text-sm">
+                  <p className="font-semibold mb-1">
+                    {t("jobsPage.detailNotScored", "Not scored — we hold no description for this posting")}
+                  </p>
+                  <p className="text-[12px] text-muted-foreground">
+                    {t("jobsPage.detailNotScoredBody", "The scorer had nothing to compare your resume against, so there is no percentage here. That is the absence of a measurement, not a weak one.")}
+                  </p>
+                </div>
+              )}
+              {typeof fits[detailJob.id] === "number" && (
+                <div className="rounded-xl border border-border bg-card p-3 text-sm">
+                  <p className="font-semibold mb-1">
+                    {t("jobsPage.detailFit", "Your keyword fit: {{pct}}%", { pct: fits[detailJob.id] })}
+                  </p>
+                  {(hits[detailJob.id]?.length ?? 0) > 0 && (
+                    <p className="text-[12px] text-muted-foreground">
+                      {t("jobsPage.matchedKeywords", "You already have:")} {hits[detailJob.id]!.slice(0, 6).join(", ")}
+                    </p>
+                  )}
+                  {(misses[detailJob.id]?.length ?? 0) > 0 && (
+                    <p className="text-[12px] text-muted-foreground">
+                      {t("jobsPage.missingKeywords", "Missing from your resume:")} {misses[detailJob.id]!.slice(0, 6).join(", ")}
+                    </p>
+                  )}
+                </div>
+              )}
+            </>
+          ),
+          decision: (
+            <>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs empty:hidden" data-detail-record="">
                 {(() => {
                   // NO ROW IS NOT A VERDICT — the same rule the card slot has
                   // always had, now applied here too. get_company_fill_curve
@@ -7534,502 +7698,6 @@ function JobsBoard({ boardId }: { boardId: string }) {
                   return null;
                 })()}
               </div>
-              {/* The filing, as a filing, on its own line under the row
-                  above -- after the closure-record line, never inside it. */}
-              <LayoffFilingLine row={layoffFilingOf(detailJob.token)} country={detailJob.country} />
-
-              {/* WHAT THIS EMPLOYER FILED, beside what this posting says —
-                  never merged into it. Both slots below sit under the
-                  provenance strip and above the facts of the JOB, for the same
-                  reason the filing line does: they are statements about the
-                  employer's record, from a named government file, and a reader
-                  must never read one as a fact about this role's pay.
-
-                  NEITHER IS CONDITIONAL HERE, and that is the safe direction.
-                  Each reader answers for the id or token it is handed and each
-                  component renders nothing at all — no skeleton, no "no data"
-                  row — until a row arrives that clears its own bars. Gating
-                  them on a guess the page could make (a country code, a region
-                  string) would put the decision in the surface that has the
-                  least evidence, which is how an absence starts reading as a
-                  finding. */}
-              {/* NO SOC CODE EXISTS ON A POSTING TODAY — nothing the board
-                  stores carries one, and inventing a title-to-occupation
-                  mapping here would make the surface state an occupation the
-                  data never said. Handed null, the reader answers the
-                  employer's largest cell and the copy names which occupation
-                  that is. The board holds no worksite subdivision either, so
-                  the state stays unasked rather than guessed out of the
-                  free-text location. */}
-              {/* NEVER ON A BOARD NAME TWO HIRING SYSTEMS SHARE: the filings
-                  are matched to the token, and the token is two employers. */}
-              {!isCollidedToken(detailJob.token) && (
-                <LcaFiledWagesLine
-                  companyToken={detailJob.token ?? ""}
-                  companyName={companyDisplayName(detailJob.company)}
-                  socCode={null}
-                  worksiteState={null}
-                />
-              )}
-
-              {/* Ontario postings only. The reader returns no row for anything
-                  outside the stored CA-ON subdivision code, for a posting the
-                  employer's feed has dropped, or for either of the two
-                  O. Reg. 476/24 exclusions — so this needs no condition on the
-                  page, and the page holds no opinion about which postings are
-                  in scope. postingUrl is supplied here rather than returned by
-                  the reader: an anon-callable RPC that handed back apply URLs
-                  would let the corpus be walked out from under the board. */}
-              <OntarioEsaDisclosures postingId={detailJob.id} postingUrl={detailJob.applyUrl} />
-
-              {/* ── AT A GLANCE: A LABELLED FACT LIST, NOT A CHIP CLOUD ─────
-                  The card is SKIMMED and the panel is READ, and they were
-                  built the same way: an unlabelled run of pills where the
-                  reader had to work out from the word itself whether "Remote"
-                  was the work mode, "Contract" the employment type and "senior"
-                  our bucket or the employer's word.
-
-                  A <dl> makes the house rule structural instead of editorial.
-                  A fact the employer did not state has no row — no label, no
-                  dash, no "—", no "Not specified". The absence of a row is the
-                  absence of a STATEMENT, and it cannot be misread as an
-                  absence of the fact. That distinction is the whole reason this
-                  board does not print "Salary: not disclosed" like every
-                  aggregator does.
-
-                  Every number names its basis in its own row rather than in a
-                  footnote that may or may not still be next to it. */}
-              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-[13px]">
-                {detailJob.salary && (
-                  <>
-                    <dt className="text-[11px] text-muted-foreground pt-0.5">{t("jobsPage.factPay", "Pay")}</dt>
-                    <dd className="min-w-0">
-                      <span className="font-semibold text-foreground" title={detailJob.salary}>
-                        {displaySalary(detailJob.salary)}
-                        {/* The currency the employer stated, when the symbol
-                            alone does not say which dollar this is. Declared in
-                            the row type since the structured-pay columns landed
-                            and read by nothing until now. */}
-                        {statedCurrencyCode(detailJob.salary, detailJob.salaryCurrency) && (
-                          <span className="font-normal text-muted-foreground">
-                            {" "}({statedCurrencyCode(detailJob.salary, detailJob.salaryCurrency)})
-                          </span>
-                        )}
-                        {annualizedPayRange(detailJob) && (
-                          <span className="text-muted-foreground font-normal">
-                            {" · "}
-                            {t("jobsPage.salaryAnnualized", "≈{{range}}/year as stated", { range: annualizedPayRange(detailJob) })}
-                          </span>
-                        )}
-                      </span>
-                      <span className="block text-[11px] text-muted-foreground">
-                        {/* THE BASIS, STATED RATHER THAN INFERRED.
-                            salary_period was a filter input and an
-                            annualization gate and never once a sentence, so a
-                            panel could show "≈66k/year" with the period it was
-                            computed from nowhere on the page. Suppressed when
-                            the employer's own pay text already says it. */}
-                        {payBasisToName(detailJob.salary, detailJob.salaryPeriod) && (
-                          <>
-                            {t(`jobsPage.payBasis.${payBasisToName(detailJob.salary, detailJob.salaryPeriod)}`, PAY_BASIS_FALLBACK[payBasisToName(detailJob.salary, detailJob.salaryPeriod)!])}
-                            {" · "}
-                          </>
-                        )}
-                        {t("jobsPage.salaryVerbatim", "as stated in the posting")}
-                      </span>
-                      {/* THE ANNUALIZATION NAMES ITS OWN ARITHMETIC, in the
-                          panel, in full. On the card the same sentence is the
-                          tooltip — one key, so the two surfaces cannot explain
-                          the same figure two different ways. */}
-                      {annualizedPayRange(detailJob) && (
-                        <p className="text-[11px] text-muted-foreground mt-0.5">
-                          {t("jobsPage.annualizedBasisTip", "Our arithmetic, not the employer's: an hourly rate × 2,080 hours (40 hours a week, 52 weeks), a daily rate × 260 days, a monthly rate × 12. The figure to its left is what the posting actually says.")}
-                        </p>
-                      )}
-                      {/* ── THE FINDING FIRST, THE METHOD UNDERNEATH ────────
-                          This comparison is the one thing on the page no
-                          competitor holds — what a field's advertised pay floor
-                          actually is, computed live from postings that state
-                          pay — and it used to arrive as the LAST CLAUSE of a
-                          methodology paragraph:
-
-                            "Field median floor: $114,000 (USD, from 17668
-                             postings that state pay) · hourly, daily and
-                             monthly rates annualized (hourly x2080, daily
-                             x260); part-time and casual rates are left
-                             un-annualized · 19% below the median floor"
-
-                          A reader had to cross fifty words of arithmetic to
-                          reach the one sentence that was about THEIR posting.
-                          The order is inverted and nothing else about it is:
-                          the finding leads, the benchmark and its sample size
-                          sit directly under it in plain sight, and the
-                          annualization caveat is one click down in a real
-                          disclosure element — present on every device and in
-                          the accessibility tree, which a title tooltip is not.
-
-                          NOT ONE CAVEAT WAS DROPPED. The sample size, the
-                          currency, "postings that state pay", the x2080/x260
-                          arithmetic and the un-annualized part-time exception
-                          are all still here, in the same words, under the same
-                          keys. The n>=30 floor and the same-currency gate still
-                          live upstream in detailSalaryContext, which returns
-                          null rather than a thin or a converted comparison.
-
-                          THE LEVEL CASE IS A FINDING TOO. pct === 0 used to
-                          render the methodology and no finding at all — the one
-                          arrangement in which the paragraph was pure basis. The
-                          percentage is rounded, so "about level" is what it can
-                          honestly say, and it now says it. */}
-                      {detailSalaryContext && (
-                        <div className="mt-1">
-                          <p className={`text-[12px] font-semibold ${detailSalaryContext.pct > 0 ? "text-success" : detailSalaryContext.pct < 0 ? "text-warning" : "text-foreground"}`}>
-                            {detailSalaryContext.pct > 0
-                              ? t("jobsPage.salaryAbove", "{{pct}}% above the median floor", { pct: detailSalaryContext.pct })
-                              : detailSalaryContext.pct < 0
-                                ? t("jobsPage.salaryBelow", "{{pct}}% below the median floor", { pct: Math.abs(detailSalaryContext.pct) })
-                                : t("jobsPage.salaryLevel", "About level with the median floor")}
-                          </p>
-                          <p className="text-[11px] text-muted-foreground">
-                            {t("jobsPage.salaryContext", "Field median floor: {{sym}}{{median}} ({{currency}}, from {{n}} postings that state pay)", {
-                              sym: { USD: "$", EUR: "€", GBP: "£" }[detailSalaryContext.currency] ?? "",
-                              median: Math.round(detailSalaryContext.median).toLocaleString(),
-                              currency: detailSalaryContext.currency,
-                              // GROUPED. This was the only figure in the block
-                              // printed raw, so the sentence read "from 17668
-                              // postings" beside a median written "$114,000".
-                              n: detailSalaryContext.n.toLocaleString(),
-                            })}
-                          </p>
-                          {/* The median blends hourly/daily/monthly rates
-                              annualized — without saying so the number reads as
-                              a pure annual-salary median. Same key, same words,
-                              one fold down. */}
-                          <details className="text-[11px] text-muted-foreground">
-                            <summary className="cursor-pointer hover:text-foreground focus-visible:outline-none focus-visible:underline">
-                              {t("jobsPage.salaryContextBasisSummary", "How this median is measured")}
-                            </summary>
-                            <p className="mt-0.5">
-                              {t("jobsPage.salaryContextBasis", "hourly, daily and monthly rates annualized (hourly ×2080, daily ×260); part-time and casual rates are left un-annualized")}
-                            </p>
-                          </details>
-                        </div>
-                      )}
-                    </dd>
-                  </>
-                )}
-                {(detailJob.workMode || (detailJob.remote ? "remote" : null)) && (
-                  <>
-                    {/* WHERE THE MODE CAME FROM, in the employer's name — the
-                        same provenance line the job type carries just below,
-                        and for a stronger reason. One vendor's rows are moving
-                        from 2.1% stated to roughly half stated in a single
-                        build because that vendor's employers pick the mode from
-                        a dropdown we had never read, and a board that starts
-                        printing "On-site" on thousands of postings looks from
-                        outside exactly like the on-site default this board
-                        refuses to have. So the line says whose statement it is,
-                        and says what silence means. */}
-                    <dt
-                      className="text-[11px] text-muted-foreground pt-0.5"
-                      title={t("jobsPage.workModeProvenance", "Work mode as the employer states it — the option they chose in their own hiring system, or their own words on the posting: its title, its location or its department. Where those disagree, or where none of them states a mode, the posting shows none: silence is never read as on-site.")}
-                    >
-                      {t("jobsPage.factWorkMode", "Work mode")}
-                    </dt>
-                    <dd className="text-foreground min-w-0">
-                      {t(`jobsPage.workMode.${detailJob.workMode ?? "remote"}`, detailJob.workMode ?? "remote")}
-                    </dd>
-                  </>
-                )}
-                {/* Same rule on the panel where the decision is made — the card
-                    is skimmed, this is read. Employer-stated or no row. */}
-                {isEmploymentType(detailJob.employmentType) && (
-                  <>
-                    <dt
-                      className="text-[11px] text-muted-foreground pt-0.5"
-                      title={t("jobsPage.employmentTypeProvenance", "Employment type as the employer states it on its own careers feed. Postings whose feed states no type show no tag — never a guess.")}
-                    >
-                      {t("jobsPage.factEmploymentType", "Job type")}
-                    </dt>
-                    <dd className="text-foreground min-w-0">
-                      {t(`jobsPage.employmentType.${detailJob.employmentType}`, EMPLOYMENT_TYPE_FALLBACK[detailJob.employmentType])}
-                    </dd>
-                  </>
-                )}
-                {/* THE EMPLOYER'S OWN NUMBER AND OUR BUCKET, IN ONE ROW AND
-                    NAMED AS THE TWO DIFFERENT THINGS THEY ARE. The band is
-                    ours, derived from the posting; the years are what the
-                    employer wrote and the thing that decides whether someone
-                    can apply at all. They sat as two identical outlined pills
-                    with nothing to say which was which.
-                    `> 0` because zero is not a stated requirement — the years
-                    filter refuses it for the same reason (1..20), and "0+ yrs"
-                    would be a chip that says nothing. */}
-                {((detailJob.experienceBand && detailJob.experienceBand !== "unspecified")
-                  || (typeof detailJob.minYears === "number" && detailJob.minYears > 0)) && (
-                  <>
-                    <dt className="text-[11px] text-muted-foreground pt-0.5">{t("jobsPage.factExperience", "Experience")}</dt>
-                    <dd className="text-foreground min-w-0">
-                      {detailJob.experienceBand && detailJob.experienceBand !== "unspecified" && (
-                        <span title={t("jobsPage.experienceProvenance", "Our seniority bucket for this posting, read from its title and requirements — not a label the employer chose.")}>
-                          {t(`jobsPage.experience.${detailJob.experienceBand}`, detailJob.experienceBand)}
-                        </span>
-                      )}
-                      {typeof detailJob.minYears === "number" && detailJob.minYears > 0 && (
-                        <span className="text-muted-foreground" title={t("jobsPage.minYearsProvenance", "The minimum years the posting itself asks for, in the employer's own words.")}>
-                          {detailJob.experienceBand && detailJob.experienceBand !== "unspecified" ? " · " : ""}
-                          {t("jobsPage.minYears", "{{n}}+ yrs", { n: detailJob.minYears })}
-                        </span>
-                      )}
-                    </dd>
-                  </>
-                )}
-                {/* NOTHING IS HIDDEN BY TIDYING IT. The header line above shows
-                    the location with requisition and site codes removed; this
-                    row exists so the employer's untouched string is still on
-                    the page, in full, wherever the two differ. It renders on
-                    `reduced` alone — a location we did not change gets no row,
-                    because repeating an identical string is noise rather than
-                    disclosure. */}
-                {detailLoc.reduced && detailLoc.raw && (
-                  <>
-                    <dt className="text-[11px] text-muted-foreground pt-0.5">{t("jobsPage.factLocationRaw", "Location, verbatim")}</dt>
-                    <dd className="text-foreground min-w-0">
-                      {detailLoc.raw}
-                      <span className="block text-[11px] text-muted-foreground">
-                        {t("jobsPage.locationTidiedNote", "Exactly as the employer's system wrote it. The line at the top of this panel is the same text with requisition and site codes removed — nothing was added to it.")}
-                      </span>
-                    </dd>
-                  </>
-                )}
-                {/* THE COUNTRY, out of the JSON-LD and onto the page. It is on
-                    72% of rows, it decided what the country filter and the
-                    structured data said, and a human reader could not see it
-                    anywhere. Extracted rather than employer-stated, so the
-                    label says where it came from. */}
-                {countryLabelOrNull(detailJob.country) && (
-                  <>
-                    <dt className="text-[11px] text-muted-foreground pt-0.5">{t("jobsPage.factCountry", "Country")}</dt>
-                    <dd
-                      className="text-foreground min-w-0"
-                      title={t("jobsPage.countryProvenance", "Read from the employer's own feed — its country field where it publishes one, otherwise its location text. Postings we cannot place show no country rather than a guess.")}
-                    >
-                      {countryLabelOrNull(detailJob.country)}
-                    </dd>
-                  </>
-                )}
-                {/* THE CATEGORY, WHICH WAS A THREE-PIXEL COLOUR AND NOTHING
-                    ELSE. Every card carries a coloured left edge keyed to this
-                    value and no surface has ever said what the colour means.
-                    Named here, marked as OUR classification rather than the
-                    employer's (the employer's own team label is `department`,
-                    beside the company above), and made the control that acts on
-                    it — the reader's most likely next question is "more like
-                    this one". */}
-                {isBoardCategory(detailJob.category ?? undefined) && (
-                  <>
-                    <dt className="text-[11px] text-muted-foreground pt-0.5">{t("jobsPage.factField", "Field")}</dt>
-                    <dd className="min-w-0">
-                      <button
-                        type="button"
-                        className="inline-flex items-center gap-1.5 text-primary hover:underline text-left"
-                        title={t("jobsPage.categoryProvenance", "Our classification of this posting, read from its title — not a label the employer chose. The employer's own team name, where its feed states one, is beside the company at the top.")}
-                        onClick={() => { setCategory(String(detailJob.category)); closeDetail(); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-                      >
-                        <span aria-hidden="true" className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: accentFor(detailJob.category) }} />
-                        {t(`jobsPage.categories.${detailJob.category}`, String(detailJob.category))}
-                      </button>
-                    </dd>
-                  </>
-                )}
-                {(daysAgo(detailJob.postedAt) !== null || daysAgo(detailJob.lastSeen ?? null) !== null) && (
-                  <>
-                    <dt className="text-[11px] text-muted-foreground pt-0.5">{t("jobsPage.factPosted", "Posted")}</dt>
-                    <dd className="text-foreground min-w-0">
-                      {daysAgo(detailJob.postedAt) !== null && (
-                        <span title={t("jobsPage.postedProvenance", "Posting age from the date the company states on its own careers feed — undated postings show no age, never a guess")}>
-                          {daysAgo(detailJob.postedAt) === 0
-                            ? t("jobsPage.postedToday", "today")
-                            : t("jobsPage.postedDaysAgo", "{{count}}d ago", { count: daysAgo(detailJob.postedAt) })}
-                          <span className="text-[11px] text-muted-foreground"> · {t("jobsPage.companyStated", "company-stated")}</span>
-                        </span>
-                      )}
-                      {/* Same positive form as the list card: an undated posting
-                          states its observation window instead of nothing. Muted,
-                          never fresh-styled — discovery is not freshness. */}
-                      {daysAgo(detailJob.postedAt) === null && daysAgo(detailJob.lastSeen ?? null) !== null && (
-                        <span
-                          className="text-muted-foreground"
-                          title={t("jobsPage.firstSeenProvenance", "This employer states no posting date, so no age is shown. This is when the posting first appeared on our board — it caps how old the posting can be, but it is our discovery date, not the employer's.")}
-                        >
-                          {daysAgo(detailJob.lastSeen ?? null) === 0
-                            ? t("jobsPage.firstSeenToday", "first seen today")
-                            : t("jobsPage.firstSeenDaysAgo", "first seen {{count}}d ago", { count: daysAgo(detailJob.lastSeen ?? null) })}
-                        </span>
-                      )}
-                    </dd>
-                  </>
-                )}
-                {/* CAN THIS ONE BE SENT FOR YOU? A row rather than a chip,
-                    because it is a fact about the FORM this employer uses and
-                    it belongs beside the other facts about the posting. Absent
-                    on most rows — four vendors have an adapter — and the
-                    absence is the honest signal.
-
-                    It describes the form, not a promise: an adapter exists and
-                    the vendor has no bot wall. Whether a given application
-                    completes still depends on the employer's own screening
-                    questions and on having the agent. */}
-                {isSendableVendor(detailJob.id) && (
-                  <>
-                    <dt className="text-[11px] text-muted-foreground pt-0.5">{t("jobsPage.factApplying", "Applying")}</dt>
-                    <dd>
-                      <Link
-                        to="/agent"
-                        className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
-                        title={t("jobsPage.agentAppliesTip2", "This employer's application form is one our apply agent can fill and submit on its own — no CAPTCHA and no account needed. It still hands the application back to you if the employer asks something we can't answer from your profile. Needs the Agent plan or a live pass.")}
-                      >
-                        <Sparkles className="w-3.5 h-3.5" />
-                        {t("jobsPage.agentAppliesChip", "Agent can apply")}
-                      </Link>
-                      {/* THE OTHER WAY TO HOLD THE SAME ENTITLEMENT. The chip
-                          reaches the monthly plan; a person who already runs
-                          an agent reaches the pass and the MCP server here,
-                          and the prompt above names request_application for
-                          this one card because it is the card the agent can
-                          finish. */}
-                      <Link to="/agents" className="ml-2 text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-2">
-                        {t("jobsPage.bringYourOwnAgent", "or bring your own agent")}
-                      </Link>
-                    </dd>
-                  </>
-                )}
-                {/* AGENCY DISCLOSURE (2026-08-31 charter): carried and
-                    DISCLOSED. The card badges it; the panel — where the
-                    decision is actually made — said nothing at all until now.
-                    Renders only on true: ranked-path rows omit the field
-                    rather than claim false, and no row is the right render for
-                    "not stated". */}
-                {detailJob.agency === true && (
-                  <>
-                    <dt className="text-[11px] text-muted-foreground pt-0.5">{t("jobsPage.factEmployer", "Employer")}</dt>
-                    <dd>
-                      <Badge
-                        variant="outline"
-                        className="text-[10px]"
-                        title={t("jobsPage.agencyBadgeTip", "This employer is a staffing or recruiting agency — the role may be filled on behalf of a client. Use “Hide staffing agencies” in the filters to exclude these.")}
-                      >
-                        {t("jobsPage.agencyBadge", "Staffing agency")}
-                      </Badge>
-                    </dd>
-                  </>
-                )}
-              </dl>
-              {/* Sticky on the lg+ pane only. Below lg this row scrolls with
-                  the content: it and the sticky title header were both pinned
-                  to top-0 and painted over each other (live-walk a11y
-                  finding) — and the pinned bottom bar keeps Apply/Save in
-                  thumb reach there anyway. */}
-              {/* THE INBOUND ACTION COMES FIRST AND IS THE FILLED ONE.
-                  This pane used to lead with "Apply on company site" as the
-                  primary while "Check my fit — free scan" sat second in outline
-                  — so at the moment of highest intent, the loudest thing on
-                  screen sent the visitor OFF the site for good. The board's
-                  whole argument is "check your fit before you spend an
-                  application"; the buttons argued the opposite.
-                  Apply is still right here, one tap away, just not shouting. */}
-              <div className="flex flex-wrap gap-2 lg:sticky top-0 z-10 bg-card/95 backdrop-blur-sm py-2 -mt-2">
-                <Button size="sm" className="gap-1.5" disabled={fitFetching === detailJob.id} onClick={() => checkFit(detailJob)}>
-                  {fitFetching === detailJob.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Target className="w-3.5 h-3.5" />}
-                  {t("jobsPage.checkFit", "Check my fit — free scan")}
-                </Button>
-                <Button size="sm" variant="outline" className="gap-1.5" asChild>
-                  <a
-                    href={detailJob.applyUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={() => { trackApply(detailJob); void promoteApplied(detailJob); void verifyJob(detailJob); }}
-                  >
-                    {t("jobsPage.applyShort", "Apply on company site")}
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                </Button>
-                {REAL_QUESTION_PREFIXES.some((p) => detailJob.id.startsWith(p)) && (
-                  <Button size="sm" variant="outline" className="gap-1.5" disabled={preparingId === detailJob.id} onClick={() => prepareApplication(detailJob)}>
-                    {preparingId === detailJob.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MessageSquare className="w-3.5 h-3.5" />}
-                    {t("jobsPage.prepAnswers", "Prep answers")}
-                  </Button>
-                )}
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="px-2"
-                  aria-pressed={savedIds.has(detailJob.id)}
-                  aria-label={savedIds.has(detailJob.id) ? t("jobsPage.savedBadge", "Saved") : t("jobsPage.saveJob", "Save")}
-                  title={savedIds.has(detailJob.id)
-                    ? t("jobsPage.savedTip", "In your application tracker — click to open it")
-                    : t("jobsPage.saveTip", "Save this posting to your application tracker")}
-                  onClick={() => saveJob(detailJob)}
-                >
-                  {savedIds.has(detailJob.id) ? <BookmarkCheck className="w-4 h-4 text-primary" /> : <Bookmark className="w-4 h-4" />}
-                </Button>
-                {/* Desktop-only close: this row is the part that stays pinned
-                    on lg+, so without it the pane's only ✕ (in the header)
-                    scrolls out of reach and the pane can't be dismissed. */}
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="hidden lg:inline-flex px-2 ml-auto"
-                  aria-label={t("jobsPage.detailClose", "Close")}
-                  onClick={() => closeDetail()}
-                >
-                  <span aria-hidden="true" className="text-base leading-none">✕</span>
-                </Button>
-              </div>
-              {/* Company drill-down: every posting viewed is a jumping-off
-                  point.
-
-                  THE OLD COMMENT HERE SAID "the count comes from the same live
-                  facet the company filter uses" — and it did, but the FILTER
-                  applies both serving predicates and the FACET COUNT applied
-                  neither, so this line promised roles the destination would not
-                  show (PwC: 3,254 promised, 2,119 served). It now reads the
-                  servable `open` count, and renders nothing at all when the
-                  server sent none. Shown from 2 roles (1 = just this posting). */}
-              {(() => {
-                // MATCHED ON THE GROUP, NOT ON THE PRIMARY TOKEN. The facet row
-                // for a multi-board employer carries the largest sub-board's
-                // token, so a posting from one of the others found nothing here
-                // — and where it DID match, `open` was the sum over every board
-                // while the click below scoped to one. Both halves now use the
-                // whole group, so the number and the destination agree.
-                const entry = detailJob.token
-                  ? companies.find((c) => c.token === detailJob.token || (Array.isArray(c.tokens) && c.tokens.includes(detailJob.token!)))
-                  : undefined;
-                const cnt = entry?.open;
-                const scope = entry ? scopeTokensOf(entry) : (detailJob.token ? [detailJob.token] : []);
-                return typeof cnt === "number" && cnt >= 2 ? (
-                  <button
-                    type="button"
-                    className="text-[12px] text-primary hover:underline text-left"
-                    onClick={() => { setCompany(scope.join(",")); closeDetail(); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-                  >
-                    {t("jobsPage.moreAtCompany", "{{n}} more open roles at {{company}} — see them all", { n: cnt - 1, company: detailJob.company })}
-                  </button>
-                ) : null;
-              })()}
-              {/* Decision synthesis — "should I apply?" from data we OWN: fit
-                  score, the company's stated posting age, its record of taking
-                  roles down, and its re-listing churn. Every clause renders
-                  only when its data exists.
-
-                  THE SPEED CLAUSE NO LONGER QUOTES A MIDPOINT. It used to say
-                  "typically fills within ~N days" from a median that could only
-                  ever land near 15, on any employer, in any field. It now says
-                  what share of this employer's roles come down inside the
-                  horizon, and it renders only when the RPC says the record can
-                  carry that claim (`sufficient`) and enough of the record
-                  carries the employer's own posting date. */}
               {(() => {
                 const hh = detailJob.token ? curveByToken[detailJob.token] : undefined;
                 const f = fits[detailJob.id];
@@ -8046,7 +7714,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                       ? t("jobsPage.verdictFitPossible", "possible fit — check the gaps below")
                       : t("jobsPage.verdictFitStretch", "a stretch for your current résumé"));
                 }
-                if (typeof age === "number" && age <= 3) clauses.push(t("jobsPage.verdictFresh", "posted {{d}}d ago — early applicants get read", { d: age }));
+                if (typeof age === "number" && age <= 3) clauses.push(t("jobsPage.verdictFresh", "posted {{d}}d ago, by the employer's own date", { d: age }));
                 // WHAT THE COUNT NOW MEANS, IN THE WORDS THE COUNT SUPPORTS.
                 // This read "genuinely fills roles" while closed_90d carried a
                 // seven-day tenure floor — a board cycling roles every three
@@ -8147,29 +7815,6 @@ function JobsBoard({ boardId }: { boardId: string }) {
                   </div>
                 );
               })()}
-              {/* HOW LONG THIS ONE HAS BEEN UP, AGAINST WHAT ACTUALLY HAPPENS
-                  TO POSTINGS LIKE IT. The board computes both benchmarks and
-                  rendered neither beside a posting: the field's curve lived
-                  only on category landers, and the employer's own record was
-                  already batch-fetched and used for a badge. No competitor
-                  holds either, because neither can be read off a job board —
-                  only off a log of what employers DID after posting.
-
-                  BOTH BENCHMARKS CHANGED SHAPE ON 2026-09-06. They were
-                  percentiles of days-to-close, computed over a sample that
-                  could only contain roles lasting 7 to 30 days, so the
-                  comparison was against the middle of the field rather than the
-                  field. Each line now states a SHARE at a fixed horizon,
-                  estimated over every role including the ones that aged out and
-                  the ones still open.
-
-                  THE AGE IS THE COMPANY'S OWN DATE OR THERE IS NO BLOCK. This
-                  whole section is gated on daysAgo(postedAt), so an undated
-                  posting gets silence rather than a comparison built on
-                  first_seen — which is our discovery time and has never been a
-                  posting age here (the 2.8-day-median incident, twice
-                  reintroduced). Each line then names its own basis, because the
-                  two benchmarks do not share one. */}
               {(() => {
                 const age = daysAgo(detailJob.postedAt);
                 if (age === null) return null;
@@ -8273,129 +7918,56 @@ function JobsBoard({ boardId }: { boardId: string }) {
                   </div>
                 );
               })()}
-              {/* About this employer: the sourced company facts (headcount,
-                  SEC financials, declared H-1B wages) at the decision point —
-                  previously lander-only. On small screens it renders after the
-                  description instead, so the JD leads. */}
-              {!isSmallScreen && (
-                <EmployerContext companyToken={detailJob.token} source={postingSource(detailJob)} companyName={detailJob.company} postingTitle={detailJob.title} />
-              )}
-              {/* Inline fit: never leave the posting to learn your score. With
-                  a resume on file but ranking off, one click scores in place;
-                  while scores load, say so; without a resume the actions row's
-                  "Check my fit" owns the scan handoff. */}
-              {typeof fits[detailJob.id] !== "number" && resumeAvailable && !fitRanking && (
-                <button
-                  type="button"
-                  onClick={toggleFitRanking}
-                  className="w-full rounded-xl border border-primary/40 bg-primary/5 hover:bg-primary/10 transition-colors p-3 text-sm text-left flex items-center gap-2"
-                >
-                  <Target className="w-4 h-4 text-primary shrink-0" />
-                  <span className="text-foreground font-medium">
-                    {t("jobsPage.detailFitCta", "Show my fit score for this role — uses your saved resume")}
-                  </span>
-                </button>
-              )}
-              {fitRanking && fits[detailJob.id] === undefined && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  {t("jobsPage.detailFitLoading", "Scoring this posting against your resume…")}
-                </div>
-              )}
-              {/* AN HONEST NULL IS NOT A LOW SCORE, and it used to render as
-                  nothing at all. job-fit answers `fits[id] = null` for a
-                  posting it holds no stored description for; that panel was
-                  indistinguishable from one whose posting genuinely scored 4%,
-                  and the reader had no way to tell "we could not measure this"
-                  from "your résumé is a poor match". Only one of those is about
-                  them. */}
-              {fitRanking && fits[detailJob.id] === null && (
-                <div className="rounded-xl border border-dashed border-border bg-muted/20 p-3 text-sm">
-                  <p className="font-semibold mb-1">
-                    {t("jobsPage.detailNotScored", "Not scored — we hold no description for this posting")}
+            </>
+          ),
+          // THE FINDING FIRST, THE METHOD UNDERNEATH: the comparison with the
+          // field's advertised pay floor leads, the benchmark and its sample sit
+          // under it, and the annualization caveat is one click down in a real
+          // disclosure. NOT ONE CAVEAT WAS DROPPED: the sample size, the
+          // currency, "postings that state pay", the x2080/x260 arithmetic and
+          // the part-time exception are all here, under the same keys; the
+          // n>=30 floor and the same-currency gate stay in detailSalaryContext.
+          payContext: detailSalaryContext ? (
+            <>
+              {detailSalaryContext && (
+                <div className="mt-1">
+                  <p className={`text-[12px] font-semibold ${detailSalaryContext.pct > 0 ? "text-success" : detailSalaryContext.pct < 0 ? "text-warning" : "text-foreground"}`}>
+                    {detailSalaryContext.pct > 0
+                      ? t("jobsPage.salaryAbove", "{{pct}}% above the median floor", { pct: detailSalaryContext.pct })
+                      : detailSalaryContext.pct < 0
+                        ? t("jobsPage.salaryBelow", "{{pct}}% below the median floor", { pct: Math.abs(detailSalaryContext.pct) })
+                        : t("jobsPage.salaryLevel", "About level with the median floor")}
                   </p>
-                  <p className="text-[12px] text-muted-foreground">
-                    {t("jobsPage.detailNotScoredBody", "The scorer had nothing to compare your resume against, so there is no percentage here. That is the absence of a measurement, not a weak one.")}
+                  <p className="text-[11px] text-muted-foreground">
+                    {t("jobsPage.salaryContext", "Field median floor: {{sym}}{{median}} ({{currency}}, from {{n}} postings that state pay)", {
+                      sym: { USD: "$", EUR: "€", GBP: "£" }[detailSalaryContext.currency] ?? "",
+                      median: Math.round(detailSalaryContext.median).toLocaleString(),
+                      currency: detailSalaryContext.currency,
+                      // GROUPED. This was the only figure in the block
+                      // printed raw, so the sentence read "from 17668
+                      // postings" beside a median written "$114,000".
+                      n: detailSalaryContext.n.toLocaleString(),
+                    })}
                   </p>
-                </div>
-              )}
-              {typeof fits[detailJob.id] === "number" && (
-                <div className="rounded-xl border border-border bg-card p-3 text-sm">
-                  <p className="font-semibold mb-1">
-                    {t("jobsPage.detailFit", "Your keyword fit: {{pct}}%", { pct: fits[detailJob.id] })}
-                  </p>
-                  {(hits[detailJob.id]?.length ?? 0) > 0 && (
-                    <p className="text-[12px] text-muted-foreground">
-                      {t("jobsPage.matchedKeywords", "You already have:")} {hits[detailJob.id]!.slice(0, 6).join(", ")}
+                  {/* The median blends hourly/daily/monthly rates
+                      annualized — without saying so the number reads as
+                      a pure annual-salary median. Same key, same words,
+                      one fold down. */}
+                  <details className="text-[11px] text-muted-foreground">
+                    <summary className="cursor-pointer hover:text-foreground focus-visible:outline-none focus-visible:underline">
+                      {t("jobsPage.salaryContextBasisSummary", "How this median is measured")}
+                    </summary>
+                    <p className="mt-0.5">
+                      {t("jobsPage.salaryContextBasis", "hourly, daily and monthly rates annualized (hourly ×2080, daily ×260); part-time and casual rates are left un-annualized")}
                     </p>
-                  )}
-                  {(misses[detailJob.id]?.length ?? 0) > 0 && (
-                    <p className="text-[12px] text-muted-foreground">
-                      {t("jobsPage.missingKeywords", "Missing from your resume:")} {misses[detailJob.id]!.slice(0, 6).join(", ")}
-                    </p>
-                  )}
+                  </details>
                 </div>
               )}
-              {detailLoading ? (
-                <div className="py-8 text-center text-muted-foreground">
-                  <Loader2 className="w-5 h-5 animate-spin mx-auto" />
-                </div>
-              ) : detailFailed ? (
-                /* A FETCH FAILURE, not an employer who wrote nothing. The
-                   difference matters: the old code rendered the second message
-                   for both, so a transient error became a false statement
-                   about a named company — and it was cached, so reopening the
-                   job repeated it. A retry is offered because it usually
-                   works. */
-                <div className="py-6 text-center">
-                  <p className="text-sm text-muted-foreground mb-3">
-                    {t("jobsPage.descFailed", "We couldn't load this description just now.")}
-                  </p>
-                  <Button variant="outline" size="sm" onClick={() => detailJob && void openDetail(detailJob)}>
-                    {t("jobsPage.retry", "Try again")}
-                  </Button>
-                </div>
-              ) : detailDesc ? (
-                <div>
-                  {descHasHighlights && (
-                    <p className="text-[11px] text-muted-foreground mb-2">
-                      <mark className="bg-success/20 text-success rounded px-1">{t("jobsPage.hlHave", "in your resume")}</mark>{" · "}
-                      <mark className="bg-warning/20 text-warning rounded px-1">{t("jobsPage.hlMissing", "missing from it")}</mark>
-                    </p>
-                  )}
-                  {descContent?.sections ? (
-                    <div className="max-w-[72ch] space-y-1">
-                      {descContent.sections.map((sec, i) => sec.title ? (
-                        <details key={i} open={!isSmallScreen && i <= 2} className="group rounded-lg border border-border/60"
-                          onToggle={(e) => { if ((e.target as HTMLDetailsElement).open) trackBoard("jd_section_open", { title: sec.title?.slice(0, 40) }); }}>
-                          <summary className="cursor-pointer select-none px-3 py-2 text-sm font-semibold text-foreground list-none flex items-center justify-between focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary rounded-lg">
-                            {sec.title}
-                            <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-open:rotate-180 motion-reduce:transition-none" />
-                          </summary>
-                          <div className="px-3 pb-3 text-sm text-muted-foreground whitespace-pre-line leading-7">{sec.node}</div>
-                        </details>
-                      ) : (
-                        <div key={i} className="text-sm text-muted-foreground whitespace-pre-line leading-7">{sec.node}</div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-sm text-muted-foreground whitespace-pre-line leading-7 max-w-[72ch]">{descContent?.plain}</div>
-                  )}
-                  {isSmallScreen && (
-                    <div className="mt-3">
-                      <EmployerContext companyToken={detailJob.token} source={postingSource(detailJob)} companyName={detailJob.company} postingTitle={detailJob.title} />
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground italic">
-                  {t("jobsPage.detailNoDesc", "This company's feed doesn't publish the full description — the complete posting is on their own site via Apply.")}
-                </p>
-              )}
-              {/* Similar roles: title-similarity from the ranked search across
-                  the WHOLE board (excluding this company); while that loads —
-                  or when it finds nothing — fall back to same-category rows
-                  from the loaded page, which is what this list always was. */}
+            </>
+          ) : undefined,
+          employerContext: <EmployerContext companyToken={detailJob.token} source={postingSource(detailJob)} companyName={detailJob.company} postingTitle={detailJob.title} />,
+          similar: (
+            <>
               {(() => {
                 const fallback = jobs.filter((j) => j.category === detailJob.category && j.id !== detailJob.id).slice(0, 4);
                 const list = similarJobs.length > 0 ? similarJobs : fallback;
@@ -8415,9 +7987,69 @@ function JobsBoard({ boardId }: { boardId: string }) {
                   </div>
                 ) : null;
               })()}
-            </div>
-    </>
-  ) : null;
+            </>
+          ),
+        }}
+        openRolesLink={openRolesLink}
+        back={onLander && landerModel?.name.name ? { label: t("listing.detail.back", "Back to {{name}}", { name: landerModel.name.name }), onBack: () => closeDetail() } : undefined}
+        onApply={() => applyFrom(detailJob)}
+        onCheckFit={() => { void checkFit(detailJob); }}
+        checkFitBusy={fitFetching === detailJob.id}
+        onClose={() => closeDetail()}
+        menu={postingMenu(detailJob)}
+        saved={savedIds.has(detailJob.id)}
+        onToggleSave={() => { void saveJob(detailJob); }}
+        highlight={{ have: hits[detailJob.id] ?? [], missing: misses[detailJob.id] ?? [] }}
+        sectionsOpen={isSmallScreen ? 0 : 3}
+        onSectionOpen={(title) => trackBoard("jd_section_open", { title: title.slice(0, 40) })}
+        onCategory={(c) => { setCategory(String(c)); closeDetail(); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+        onEmployerClick={(e, href) => leavePanelFor(e, href)}
+      />
+    );
+  })() : null;
+  const detailInner = renderDetail(false);
+  // What the company page's rail and phone accordion print.
+  const landerAbout = onCompanyPage && landerModel ? {
+    model: landerModel,
+    token: landerCompany!,
+    profile: landerProfile,
+    record: landerRecordInput,
+    layoffRows: landerLayoffFilings,
+    payStated: null,
+    howApplying: howApplyingFor({ applyUrl: jobs.find((j) => j.token === landerCompany)?.applyUrl ?? "" }),
+  } : null;
+  // The filter row's patches, applied to the page's own state.
+  const applyFilterPatch = (p: Partial<FilterBarValue>) => {
+    if ("q" in p) setQ(p.q ?? "");
+    if ("location" in p) setLocation(p.location ?? "");
+    if ("workMode" in p) setWorkMode(p.workMode ?? "");
+    if ("employmentType" in p) setEmploymentType(p.employmentType ?? "");
+    if ("freshness" in p) setFreshness(p.freshness ?? "");
+    if ("category" in p) setCategory(p.category ?? "");
+    if ("experience" in p) setExperience(p.experience ?? "");
+    if ("statedPayOnly" in p) setStatedPayOnly(!!p.statedPayOnly);
+    if ("vendor" in p) setVendor(p.vendor ?? "");
+    if ("country" in p) setCountry(p.country ?? "");
+    if ("hideAgencies" in p) setHideAgencies(!!p.hideAgencies);
+  };
+  const filterBarOptions = {
+    fields: CATEGORY_IDS.map((c) => ({ value: c, label: t(`jobsPage.categories.${c}`, c) })),
+    seniority: EXPERIENCE_IDS.map((e) => ({ value: e, label: t(`jobsPage.experience.${e}`, e) })),
+    systems: VENDOR_OPTIONS,
+    countries: (countryFacet.length ? countryFacet.map((c) => c.country) : fallbackCountries).map((c) => ({ value: c, label: countryLabel(c) })),
+  };
+  const sortOptions = [
+    ...(q.trim() ? [{ value: "relevance", label: t("jobsPage.sortRelevance", "Relevance") }] : []),
+    { value: "newest", label: t("jobsPage.sortNewest", "Newest first") },
+    { value: "salary", label: t("jobsPage.sortSalary", "Highest stated salary") },
+    ...(!q.trim() ? [{ value: "discovered", label: t("jobsPage.sortDiscovered2", "Newest, undated by our date") }] : []),
+  ];
+  const applySort = (v: string) => {
+    if (v === "salary") { setSortMode("salary"); return; }
+    if (v === "discovered") { setSortMode("discovered"); setSearchNewestFirst(false); return; }
+    setSortMode("newest");
+    if (q.trim()) setSearchNewestFirst(v === "newest");
+  };
 
   // THE RESUME DROP, RENDERED IN TWO PLACES FROM ONE DEFINITION.
   //
@@ -8431,6 +8063,8 @@ function JobsBoard({ boardId }: { boardId: string }) {
   // is how the two copies drift.
   const resumeDropPanel = (display: string) => (
               <div
+                data-resume-drop={resumeAvailable === null ? "pending" : "offered"}
+                aria-hidden={resumeAvailable === null ? true : undefined}
                 onDragOver={(e) => { e.preventDefault(); setResumeDragOver(true); }}
                 onDragLeave={() => setResumeDragOver(false)}
                 onDrop={(e) => {
@@ -8478,16 +8112,21 @@ function JobsBoard({ boardId }: { boardId: string }) {
       <SEO
         title={landerCategory
           ? t("jobsPage.landerSeoTitle", "Live {{category}} Jobs — From Official Company Job Boards", { category: t(`jobsPage.categories.${landerCategory}`, landerCategory) })
+          : landerUncarried
+          ? t("companyProfile.uncarried.title", "We don't read a board called “{{token}}” yet", { token: landerCompany })
           : landerCompany
-          ? t("jobsPage.companySeoTitle", "{{company}} Jobs — Live From Its Own Hiring System", { company: landerCompanyName })
+          ? t("jobsPage.companySeoTitle", "{{company}} jobs: open roles from their own hiring system", { company: landerCompanyName })
           : t("jobsPage.seoTitle", "Live Jobs From Companies' Own Boards — Check Your Fit Before You Apply")}
-        description={landerCategory
-          ? t("jobsPage.landerSeoDescription", "Live {{category}} openings pulled straight from companies' own official job boards — no aggregators, no reposts, re-verified all day. Check your resume's fit free, then apply on the company's own site.", { category: t(`jobsPage.categories.${landerCategory}`, landerCategory) })
+        description={landerUncarried
+          ? t("companyProfile.uncarried.body", "Search the live board for this employer, or browse the companies we read.")
+          : landerCategory
+          ? t("jobsPage.landerSeoDescription", "Live {{category}} openings read from employers' own hiring systems and re-read through the day. Check your resume's fit free, then apply on the employer's own site.", { category: t(`jobsPage.categories.${landerCategory}`, landerCategory) })
           : landerCompany
-          ? t("jobsPage.companySeoDescription", "Browse the roles on {{companyPossessive}} own job board that are dated in the last 30 days, read straight from its hiring system. Check your resume's fit against any role free, then apply on {{companyPossessive}} own site.", { company: landerCompanyName, companyPossessive: possessive(landerCompanyName ?? "") })
-          : t("jobsPage.seoDescription", "Real openings pulled straight from thousands of companies' own official job boards — no aggregators, no reposts, re-verified all day and checked live when you apply. See how your resume fits any posting free, then apply on the company's own site.")}
+          ? t("jobsPage.companySeoDescription", "Browse {{companyPossessive}} open roles dated in the last 30 days, read from {{companyPossessive}} own hiring system. Check your resume's fit against any role free, then apply on {{companyPossessive}} own site.", { company: landerCompanyName, companyPossessive: possessive(landerCompanyName ?? "") })
+          : t("jobsPage.seoDescription", "Live openings read straight from thousands of employers' own hiring systems and re-read through the day. See how your resume fits any posting free, then apply on the employer's own site.")}
         path={landerCompany ? companyLanderPath(landerCompany) : landerCategory ? `/jobs/field/${landerCategory}` : "/jobs"}
         canonicalPath={landerCompany && bakedPrimary ? companyLanderPath(bakedPrimary) : undefined}
+        noIndex={landerUncarried}
       />
       <Header />
       {/* The site-wide skip link is the first focusable element in the
@@ -8540,58 +8179,29 @@ function JobsBoard({ boardId }: { boardId: string }) {
               trust badges, everything else folded — the first posting must be
               visible without scrolling (the old four-paragraph hero measured a
               76% bounce; mobile showed zero jobs for 2.5 screens). */}
+          {onCompanyPage && landerModel ? (
+            <CompanyLanderHeader
+              model={landerModel}
+              token={landerCompany!}
+              labelOf={sourceLabel}
+              source={landerSource}
+              profile={landerProfile}
+              employerChipTip={hiringCurve ? hiringBadgeTip(landerRecord, landerGrowthVerdict, hiringCurve, landerGrowth) : undefined}
+              boardReadAt={landerBoardReadAt}
+              onWatch={() => { void watchCompany(); }}
+              onShowOnly={(s) => setVendor(s)}
+              boardsInPanel
+            />
+          ) : (
+          <>
           <div className="flex items-center gap-2 mb-1">
             <Briefcase className="w-5 h-5 text-primary" />
-            <h1 className="text-2xl md:text-3xl font-bold">{landerCompany
-              ? t("jobsPage.companyH1", "Open roles at {{company}}", { company: landerCompanyName })
-              : landerCategory
+            <h1 className="text-2xl md:text-3xl font-bold">{landerCategory
               ? t("jobsPage.landerH1", "Live {{category}} jobs", { category: t(`jobsPage.categories.${landerCategory}`, landerCategory) })
               : t("jobsPage.h1", "Live job board")}</h1>
           </div>
-          {/* Direct answer to "is {company} hiring?" — the exact high-intent query
-              this page targets. Three honesty rules (live-walk finding, rank 5):
-              a capped count renders "10,000+", never as an exact figure; zero
-              open roles gets a plain honest "No … right now" instead of the
-              question hanging unanswered; and counts are locale-formatted. */}
-          {landerHiringAnswer === "yes" && data && (
-            <p className="text-sm font-semibold text-success mb-1">
-              {data.countCapped
-                // Past the count cap the true figure is HIGHER — "10,000+" is
-                // the honest rendering; the exact-looking bare number was not.
-                ? t("jobsPage.companyYesHiringCapped", "Yes — {{n}}+ roles dated in the last 30 days, straight from {{companyPossessive}} own job board.", {
-                    n: data.total.toLocaleString(),
-                    company: landerCompanyName,
-                    companyPossessive: possessive(landerCompanyName ?? ""),
-                  })
-                : t("jobsPage.companyYesHiring", "Yes — {{count}} {{roleWord}} dated in the last 30 days, straight from {{companyPossessive}} own job board.", {
-                    count: data.total,
-                    roleWord: data.total === 1 ? "role" : "roles",
-                    company: landerCompanyName,
-                    companyPossessive: possessive(landerCompanyName ?? ""),
-                  })}
-            </p>
-          )}
-          {/* THE SHIP-BLOCKER. `total` is the EXACT segment now, so a company page
-                whose query matches only in descriptions has total 0 and a full
-                page of that company's roles. Measured: /jobs/company/bayada with
-                q="benefits" is 0 title matches and 1,314 description matches —
-                this branch would have printed "BAYADA has no open roles on their
-                job board at the moment" directly above 1,314 BAYADA roles, on an
-                indexed page. Both segments decide whether the board is empty. */}
-            {/* A WITHDRAWN COUNT IS NOT A ZERO. When the server cannot count a
-                filtered set honestly it sends total:null with countUnavailable,
-                and `?? 0` turned "we do not know" into the definitive negative
-                below — telling a visitor an employer is not hiring on exactly
-                the page that ranks for "is X hiring?". Unknown must leave the
-                question unanswered rather than answer it wrongly. */}
-            {landerHiringAnswer === "no" && (
-            <p className="text-sm font-semibold text-muted-foreground mb-1">
-              {t("jobsPage.companyNotHiring", "We show roles dated in the last 30 days, and the {{company}} job board has none right now. Watch the company below and we'll email you when new roles appear.", { company: landerCompanyName })}
-            </p>
-          )}
           <p className="text-sm text-muted-foreground mb-2">
-            {landerCompany
-              ? t("jobsPage.companySubtitle", "Every {{company}} role here comes straight from {{companyPossessive}} own hiring system, and we show the ones dated in the last 30 days.", { company: landerCompanyName, companyPossessive: possessive(landerCompanyName ?? "") })
+            {
               // A category lander's headline count must be THAT category's —
               // the board-wide 574k under an "Engineering jobs" H1 claimed
               // 574k engineering openings (scope-integrity finding).
@@ -8642,7 +8252,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
               // "can't be sorted into a field" the whole time; this line now
               // agrees with it. NEW KEY, because the meaning changed and a
               // locale VALUE beats an inline default.
-              : countCategory === "other" && (data?.categories?.other ?? 0) > 0
+              countCategory === "other" && (data?.categories?.other ?? 0) > 0
               ? t("jobsPage.uncatCountLine2", "{{total}} live openings we could not sort into a field — ordinary roles our own field rules do not recognise, every one straight from the company's own hiring system.", {
                   total: (data?.categories?.other ?? 0).toLocaleString(),
                 })
@@ -8678,7 +8288,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                 : t("jobsPage.countLineNoFeeds", "{{total}} live openings — every one straight from the company's own hiring system.", {
                     total: data.totalAllCompanies.toLocaleString(),
                   }))
-              : t("jobsPage.subtitleShort", "Every job straight from the company's own careers system — verified, fresh, re-checked when you apply.")}
+              : t("jobsPage.subtitleShort", "Every job straight from the employer's own hiring system, dated in the last 30 days.")}
             {/* Live activity strip: the board IS alive — say so with measured
                 numbers only (each clause renders only when its data exists). */}
             {/* sm+ only: at 375px this line is three rows (60px) of the fold,
@@ -8707,6 +8317,8 @@ function JobsBoard({ boardId }: { boardId: string }) {
               </span>
             )}
           </p>
+          </>
+          )}
           {/* Lander intel: sourced headcount/band, weekly net-new, salary
               median, top fields — each clause renders only when its data
               exists. Then claim-your-profile (identity, never data editing). */}
@@ -8750,58 +8362,33 @@ function JobsBoard({ boardId }: { boardId: string }) {
               </span>
             </p>
           )}
-          {/* A token two hiring systems carry: the split and each board's open
-              roles, and none of the employer-level blocks below (intel,
-              perks, SEC figures, wage filings, the claim, Hiring Health with
-              its filings, similar employers), which would describe two
-              companies as one. */}
-          {landerCompany && landerCollision && (
-            <BoardCollisionNotice companyToken={landerCompany} boards={landerCollision} labelOf={sourceLabel} />
-          )}
-          {landerCompany && !landerCollision && <CompanyIntelPanel companyToken={landerCompany} />}
-          {/* Perks this employer's own open postings state, per country, as
-              checks whose basis opens on tap, hover or focus. Renders nothing
-              until a perk passes its audit (company profiles phase 2), and
-              nothing on a token two hiring systems carry, whose postings may
-              be two employers' (plan section 2). */}
-          {landerCompany && !landerCollision && <CompanyPerks companyToken={landerCompany} />}
-          {/* SEC-sourced financial context for US-listed employers. */}
-          {landerCompany && !landerCollision && <PublicCompanyCard companyToken={landerCompany} />}
-          {/* WHAT THIS EMPLOYER FILED WITH THE US DEPARTMENT OF LABOR, from
-              the working reader (get_employer_lca_wages). It replaces a card
-              that called a function no migration defines and so never
-              rendered. The quarter, the file and its published date come from
-              the row, the cell's occupation is named, and an employer with no
-              row renders nothing: a missing filing is never "does not
-              sponsor". No posting is in view here, so the employer variant
-              says the largest cell is an example of what was filed, matched
-              to no role. A token two hiring systems carry shows no filing:
-              the row would be one company's filings over two boards. */}
-          {landerCompany && !landerCollision && (
-            <EmployerLcaFiledWagesLine companyToken={landerCompany} companyName={landerCompanyName ?? landerCompany} className="mb-3" />
-          )}
-          {landerCompany && !landerCollision && (
-            <CompanyClaim companyToken={landerCompany} companyName={landerCompanyName ?? landerCompany} />
-          )}
-          {/* Single row on phones (scrolls; mask hints overflow) — wrapped to
-              two rows this band cost 24px of the 812px mobile fold. */}
-          <div className="flex flex-nowrap sm:flex-wrap overflow-x-auto sm:overflow-visible [mask-image:linear-gradient(to_right,black_92%,transparent)] sm:[mask-image:none] items-center gap-x-3 gap-y-1 mb-3 text-[11px] text-muted-foreground whitespace-nowrap sm:whitespace-normal">
-            <span className="inline-flex items-center gap-1 shrink-0">
+          {/* THE TRUST CHIPS FOLD INTO "HOW THIS BOARD WORKS" ON A PHONE. One
+              nowrap row of them pushed the document past 320px in French,
+              Portuguese and Tagalog (the design build's reflow check), and
+              wrapped it cost 24px of the 812px fold. From sm up they sit in
+              one wrapping row; on a phone the toggle alone opens the same
+              facts. A company page says where its roles come from in its own
+              header. */}
+          {!onCompanyPage && (
+          <>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-3 text-[11px] text-muted-foreground" data-board-trust="">
+            <span className="hidden sm:inline-flex items-center gap-1 min-w-0">
               <ShieldCheck className="w-3.5 h-3.5 text-success shrink-0" />
               {t("jobsPage.badgeOfficial", "Official feeds only")}
             </span>
-            <span className="inline-flex items-center gap-1" title={t("jobsPage.guaranteeFreshTip", "Any role whose posting date passes 30 days is automatically dropped from the board — the ghost/pipeline postings other boards leave up for months never appear here.")}>
+            <span className="hidden sm:inline-flex items-center gap-1 min-w-0" title={t("jobsPage.guaranteeFreshTip", "Any role whose posting date passes 30 days is automatically dropped from the board — the ghost/pipeline postings other boards leave up for months never appear here.")}>
               <Clock className="w-3.5 h-3.5 text-success shrink-0" />
               {t("jobsPage.badgeFresh", "30-day freshness cap")}
             </span>
-            <span className="inline-flex items-center gap-1">
+            <span className="hidden sm:inline-flex items-center gap-1 min-w-0">
               <RefreshCw className="w-3.5 h-3.5 text-success shrink-0" />
-              {t("jobsPage.badgeLive", "Re-checked when you apply")}
+              {t("jobsPage.badgeLive", "Re-checked when you apply, where the system allows it")}
             </span>
             <button
               type="button"
               onClick={() => setAboutOpen((v) => !v)}
-              className="inline-flex items-center gap-0.5 text-primary hover:underline"
+              aria-expanded={aboutOpen}
+              className="inline-flex min-h-6 items-center gap-0.5 text-primary hover:underline"
             >
               {t("jobsPage.aboutToggle", "How this board works")}
               <ChevronDown className={`w-3 h-3 transition-transform ${aboutOpen ? "rotate-180" : ""}`} />
@@ -8810,7 +8397,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
           {aboutOpen && (
             <div className="rounded-xl border border-border bg-card p-4 mb-4 text-[13px] text-muted-foreground space-y-2">
               <p>
-                {t("jobsPage.subtitle", "Every job here comes straight from the company's own careers system — no aggregators, no reposts, no dead links — and each is re-checked live the moment you apply.")}
+                {t("jobsPage.subtitle", "Every job here comes straight from the company's own careers system — no aggregators, no dead links, and nothing re-listed by us. When a company itself relists a role, the posting says so. Where the employer's system allows it, we re-check a posting when you apply.")}
               </p>
               <p>{t("jobsPage.guaranteeFresh", "Posted in the last 30 days — stale postings auto-dropped")}. {t("jobsPage.guaranteeFreshTip", "Any role whose posting date passes 30 days is automatically dropped from the board — the ghost/pipeline postings other boards leave up for months never appear here.")}</p>
               <p>
@@ -8830,205 +8417,13 @@ function JobsBoard({ boardId }: { boardId: string }) {
             </div>
           )}
 
-          {/* Company-page Hiring-Health: the lifecycle signal aggregators can't
-              build — open roles now + what this company actually does with the
-              roles it posts. Honest + staged: the "actively hiring" label needs
-              real takedowns PLUS live openings — a dead board is not hiring —
-              and with nothing closed yet we say we're still gathering, never
-              "doesn't hire".
-
-              THE SPEED LINE IS A SHARE NOW, NOT A MIDPOINT, and it renders only
-              when the RPC says the record can carry it. What it replaced —
-              "typically within ~N days" — was drawn from a window that could not
-              contain the answer, and it read within a day and a half of the same
-              number for every employer and every field on the board. */}
-          {landerCompany && !landerCollision && hiringCurve && (hiringCurve.open_roles > 0 || (hiringCurve.filled_roles_90d ?? 0) + (hiringCurve.relisted_roles_90d ?? 0) > 0) && (
-            <div className="rounded-xl border border-border bg-card p-4 mb-6 max-w-xl">
-              <div className="flex items-center gap-2 mb-2">
-                <Activity className="w-4 h-4 text-primary shrink-0" />
-                <h2 className="text-sm font-semibold text-foreground">{t("jobsPage.hhTitle", "Hiring Health")}</h2>
-                {/* The employer-page pill, on the same three-state reading as
-                    every other surface. The open-roles condition stays: a
-                    closure record with a dead board behind it is not a reason to
-                    say anything encouraging. */}
-                {/* THE PILL READS THE GATED RECORD (landerRecord): counts the
-                    gate withholds cannot carry "Actively hiring", and the
-                    growth half still can. */}
-                {hiringCurve.open_roles > 0 && activelyHiringVerdict(landerRecord, growthVerdict(landerGrowth)) === "positive" && (
-                  <span
-                    className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-success/10 text-success"
-                    title={hiringBadgeTip(landerRecord, growthVerdict(landerGrowth), hiringCurve, landerGrowth)}
-                  >
-                    {t("jobsPage.hiringBadge2", "Actively hiring")}
-                  </span>
-                )}
-                {landerRecord === "unknown" && !landerRecordWithheld && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-                    {t("jobsPage.noRecordBadge", "No closure record")}
-                  </span>
-                )}
-                {/* A record we hold and will not print is not "no closure
-                    record": the badge says it is withheld, and the line below
-                    says why. */}
-                {landerRecordWithheld && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-                    {t("jobsPage.hhGate.withheldBadge", HIRING_RECORD_GATE_COPY.withheldBadge)}
-                  </span>
-                )}
-                {landerRecord !== "unknown" && growthVerdict(landerGrowth) === "unknown" && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-                    {t("jobsPage.growthUnreadBadge", "Posting rate unread")}
-                  </span>
-                )}
-              </div>
-              <ul className="space-y-1 text-[13px] text-muted-foreground">
-                {/* THE RATE, WITH ITS WINDOW AND BOTH OF OUR DATES. Three
-                    states and no fourth. A rise is roles opened net of roles
-                    that came down on this board; a fall is never rendered as
-                    shrinking, because our own de-duplication lowers a served
-                    count without the employer doing anything; and a gate that
-                    refused is named as our gap. */}
-                {landerGrowth && growthVerdict(landerGrowth) === "grew" && (
-                  <li>
-                    {t("jobsPage.hhGrowthGrew", "{{latest}} roles served on this board on {{latestDay}} against {{baseline}} on {{baselineDay}} — {{pct}}% more over {{gdays}} days, counted from our own daily observation on days we read the board in full. More roles served is roles opened net of roles that came down: one board, not a headcount.", { ...growthFigures(landerGrowth), gdays: GROWTH_WINDOW_DAYS })}
-                  </li>
-                )}
-                {landerGrowth && growthVerdict(landerGrowth) === "no-growth" && (
-                  <li>
-                    {t("jobsPage.hhGrowthNone", "No rise in roles served on this board between {{baselineDay}} ({{baseline}}) and {{latestDay}} ({{latest}}), counted from our own daily observation. A lower count can be our own de-duplication and is not a claim that they are shrinking.", growthFigures(landerGrowth))}
-                  </li>
-                )}
-                {growthVerdict(landerGrowth) === "unknown" && (
-                  <li className="italic text-muted-foreground/80">
-                    {t("jobsPage.hhGrowthUnread", "No posting rate for this board yet: {{reason}}. A gap in our record, not a sign they are not hiring.", { reason: growthWhy(growthUnknownReason(landerGrowth)) })}
-                  </li>
-                )}
-                {hiringCurve.open_roles > 0 && (
-                  <li>
-                    {/* The employer's own advertised total exceeding our stored
-                        rows means the fetch was windowed and our count is a
-                        floor, so say "N+" rather than claim false precision. */}
-                    <span className="text-foreground font-semibold">{hiringCurve.open_roles}{(landerFeedTotal ?? 0) > hiringCurve.open_roles ? "+" : ""}</span>{" "}
-                    {t("jobsPage.hhOpen", "roles on its board dated in the last 30 days")}
-                  </li>
-                )}
-                {/* ROLES, NOT EVENTS (20261008110000): a role that came down
-                    twice, or is serving again, is not "taken down for good". */}
-                {landerCountsWhy ? (
-                  <li className="italic text-muted-foreground/80" data-hh-gate={landerGate.counts90.reason}>{landerCountsWhy}</li>
-                ) : (hiringCurve.filled_roles_90d ?? 0) > 0 ? (
-                  <li>
-                    {t("jobsPage.hhFilledPre", "Filled")}{" "}
-                    <span className="text-foreground font-semibold">{hiringCurve.filled_roles_90d}</span>{" "}
-                    {hiringCurve.tracking_days > 0
-                      ? t("jobsPage.hhTakenDownPost", "roles in {{d}}d of tracking — taken down for good, not re-listed", { d: hiringCurve.tracking_days })
-                      : t("jobsPage.hhTakenDownPostUntracked", "roles since we began tracking — taken down for good, not re-listed")}
-                  </li>
-                ) : (
-                  /* WHAT ZERO FILLS ACTUALLY MEANS, AND IT IS TWO DIFFERENT
-                     THINGS. This said "we just started tracking this company's
-                     role closures" for both of them. On an employer whose
-                     re-lists we HAVE logged that is false — we have been
-                     watching, and what we watched was roles going back up. On a
-                     windowed tenant it is false the other way: we did not just
-                     start, we cannot finish, because a board bigger than one
-                     visit produces no observable closure until a full lap is
-                     assembled. Neither reading is "hiring-health fills in as
-                     roles close", and on the employer with 34,000 open roles
-                     that sentence had been true-sounding and wrong for months. */
-                  <li className="italic text-muted-foreground/80">
-                    {landerRecord === "unknown" && !landerRecordWithheld
-                      ? t("jobsPage.hhNoClosureRecord", "We hold no closure record for this employer: not one of their postings has been observed coming off the board. On a board bigger than one visit can read, no closure is observable to us until we complete a provable full pass and then watch a role go after it; on a board we do read in full, it means nothing came down while we watched. We cannot tell those apart from here, so this is a gap on our side and not a sign they are not hiring.")
-                      : t("jobsPage.hhRelistsOnly", "Every posting of theirs we have watched leave came back re-listed, so we have no clean take-down to count — at least {{n}} re-listings logged, and that count is a floor because we log one return per title per day.", { n: hiringCurve.relisted_roles_90d ?? 0 })}
-                  </li>
-                )}
-                {/* Every qualifying filing in the window, after the growth,
-                    open-roles and filled lines and never in the header beside
-                    the pill: "Also on record:", each with its own link. */}
-                <LayoffFilingsOnRecord rows={landerLayoffFilings} />
-                {/* THE PACE LINE. Three states and no fourth: a share with its
-                    interval; a bound where the record never reaches half inside
-                    the days we can see; or, below the bar, no claim at all and
-                    the reason for it. The bar is the shared gate's: the page's
-                    canStateFillRate terms plus the lap term, so a board we
-                    confirm only by re-reading it in full prints neither the
-                    share nor the median (its takedowns are certified late). */}
-                {landerGate.share14.ok ? (
-                  <li>
-                    {/* dated_n, not n_at_risk_14 — the cohort the durations
-                        were computed over, not the roles that had not yet done
-                        anything by day 14. See employerOutlivedCurveBounded.
-                        Where the re-post test files fills as re-posts, the
-                        gate's ceiling is every takedown and has no fill interval. */}
-                    {landerGate.ceilingBasis === "fills"
-                      ? t("jobsPage.hhFillRateDated", "Up to {{pct}}% of its roles come down for good within {{d}} days ({{lo}}–{{hi}}% either way), measured over the {{n}} roles that carry the company's own posting date.", {
-                          pct: asPct(hiringCurve.fill_rate_14),
-                          d: URGENT_FILL_MAX_DAYS,
-                          lo: asPct(hiringCurve.fill_rate_14_lo),
-                          hi: asPct(hiringCurve.fill_rate_14_hi),
-                          n: hiringCurve.dated_n.toLocaleString(),
-                        })
-                      : t("jobsPage.hhTakedownRateDated", "Up to {{pct}}% of its roles came down within {{d}} days, counting every takedown, measured over the {{n}} roles that carry the company's own posting date.", {
-                          pct: asPct(landerGate.ceiling14 ?? 0),
-                          d: URGENT_FILL_MAX_DAYS,
-                          n: hiringCurve.dated_n.toLocaleString(),
-                        })}
-                    {!landerGate.median.ok ? null : hiringCurve.median_censored ? (landerGate.neverHalf.ok ? (
-                      <> {t("jobsPage.hhMedianCensored", "We did not see half of them come down inside {{d}} days, so there is no typical figure to give.", { d: FILL_SUPPORT_MAX_DAYS })}</>
-                    ) : null) : (
-                      <> {t("jobsPage.hhMedian", "Half of these roles are filled by day {{d}}.", { d: Math.round(hiringCurve.median_days_to_fill ?? 0) })}</>
-                    )}
-                    {coverageBand(hiringCurve.dated_coverage) === "qualified" && (
-                      <> {t("jobsPage.fillCoverageQualifier", "Across the {{pct}}% of these roles that carry a posting date from the company itself.", { pct: asPct(hiringCurve.dated_coverage) })}</>
-                    )}
-                  </li>
-                ) : (
-                  <li className="italic text-muted-foreground/80" data-hh-gate={landerGate.share14.reason}>
-                    {landerGate.share14.reason === "lap"
-                      ? t("jobsPage.hhGate.lap", HIRING_RECORD_GATE_COPY.lap)
-                      : landerGate.share14.reason === "unproven read"
-                      ? t("jobsPage.hhGate.unprovenRead", HIRING_RECORD_GATE_COPY.unprovenRead)
-                      : landerGate.share14.reason === "interval"
-                      ? t("jobsPage.hhGate.interval", HIRING_RECORD_GATE_COPY.interval)
-                      : landerGate.share14.reason === "coverage"
-                        ? t("jobsPage.hhGate.coverage", HIRING_RECORD_GATE_COPY.coverage, { pct: asPct(hiringCurve.dated_coverage) })
-                        : landerGate.share14.reason === "tracking" && hiringCurve.tracking_days > 0
-                          ? t("jobsPage.hhGate.paceTracking", HIRING_RECORD_GATE_COPY.paceTracking, { d: hiringCurve.tracking_days, min: FILL_RATE_MIN_TRACKING_DAYS })
-                          : hiringCurve.tracking_days > 0
-                            ? t("jobsPage.hhPaceThin", "Not enough of this company's roles have finished yet to say how fast it moves — {{d}}d of tracking so far.", { d: hiringCurve.tracking_days })
-                            : t("jobsPage.hhPaceThinUntracked", "Not enough of this company's roles have finished yet to say how fast it moves.")}
-                  </li>
-                )}
-                {/* The caution prints both ninety-day counts, so it speaks only
-                    where the gate lets them; a withheld record already says why. */}
-                {landerGate.counts90.ok && relistCaution(hiringCurve) && (
-                  <li className="text-warning/90">
-                    {/* The card's and the drawer's rule (relistCaution), with
-                        the card tooltip's words: roles back against roles down. */}
-                    {t("jobsPage.repostTipRoles", "In the last {{days}} days, {{n}} roles we watched come down here came back under the same posting or had another posting with the same title live when they came down; {{f}} came down and have not come back.", { days: ACTIVELY_HIRING_WINDOW_DAYS, n: hiringCurve.relisted_roles_90d ?? 0, f: hiringCurve.filled_roles_90d ?? 0 })}
-                  </li>
-                )}
-              </ul>
-              <p className="text-xs text-subtle-foreground mt-2">
-                {t("jobsPage.hhFootnoteCurve", "Computed from the full lifecycle of this company's official postings — when they open and when they come down — not a one-time snapshot. Roles still up, and roles that passed our 30-day cap, are counted as unfinished rather than left out.")}
-              </p>
-            </div>
+          </>
           )}
 
-          {/* Watch-company: one click on any company page — a saved search under
-              the hood, so account new-since counts and the digest just work. */}
-          {landerCompany && (
-            <div className="flex flex-wrap items-center gap-2 mb-6 -mt-2">
-              <Button size="sm" variant="outline" className="gap-1.5" onClick={watchCompany}>
-                <BookmarkCheck className="w-3.5 h-3.5" />
-                {t("jobsPage.watchCta", "Watch {{company}}", { company: landerCompanyName })}
-              </Button>
-              <span className="text-[11px] text-muted-foreground">
-                {t("jobsPage.watchNote", "Your account will count their new postings since your last look.")}
-              </span>
-            </div>
-          )}
-
+          {/* THE BOARD'S OWN FILTER AREA. A company page has the company variant
+              of the filter row in its list column instead. */}
+          {!onCompanyPage && (
+          <>
           {/* Natural-language search: describe the search in plain words; an
               LLM maps it to the board's real filters and shows how it read it. */}
           <div className="mb-2">
@@ -9204,26 +8599,6 @@ function JobsBoard({ boardId }: { boardId: string }) {
                 chosen, because with "All fields" they are already included.
                 The live count comes from the same facets that fill the select,
                 so the number is measured rather than asserted. */}
-            {/* THE FILTER FORM OF THE SPARKLES BADGE. Same icon, same phrase,
-                same SENDABLE_VENDORS mirror server-side — the chip on a card
-                and this toggle must never disagree about what "agent can
-                apply" means. Always visible (unlike the unsorted opt-in it
-                sits beside, which only means something once a field is
-                chosen), because sendability is a property of the employer's
-                form, not of any other filter. */}
-            <label
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border bg-background text-sm whitespace-nowrap text-muted-foreground cursor-pointer"
-              title={t("jobsPage.agentOnlyTip", "Show only postings whose application form our apply agent can fill and submit for you. The Sparkles badge on a job card means the same thing — this filters the whole board to those.")}
-            >
-              <input
-                type="checkbox"
-                checked={agentOnly}
-                onChange={(e) => setAgentOnly(e.target.checked)}
-                className="accent-[hsl(var(--primary))]"
-              />
-              <Sparkles className="w-3.5 h-3.5" />
-              {t("jobsPage.agentOnly", "Agent can apply")}
-            </label>
             {/* `category` is comma-joined once a selection is multi-value, so
                 the old `!== "other"` test passes for "design,other" — the
                 control would render, be tickable, and be silently discarded by
@@ -10357,7 +9732,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                   : (
                     <>
                       {t("jobsPage.savedViewEmptyPage", "None of your {{n}} saved postings are among the results loaded here — this narrows the page, not the whole board.", { n: savedIds.size })}{" "}
-                      <Link to="/account" className="text-primary hover:underline">
+                      <Link to="/account" className="link">
                         {t("jobsPage.savedViewOpenTracker", "Open your tracker")}
                       </Link>
                     </>
@@ -10419,7 +9794,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
               || (!signalPending && (growthFailed || hiringPartition.setAside.length > 0 || (jobs.length > 0 && hiringPartition.shown.length === 0)))) && (
               <span className="text-[11px] text-muted-foreground">
                 {healthFailed ? (
-                  t("jobsPage.activelyHiringUnavailable", "We could not read hiring-pace data just now, so this filter has nothing to match on — that is our side, not the market's. Turn it off to see all verified roles.")
+                  t("jobsPage.activelyHiringUnavailable", "We could not read hiring-pace data just now, so this filter has nothing to match on — that is our side, not the market's. Turn it off to see all roles.")
                 ) : signalPending ? (
                   /* Both reads are waited for here (signalPending is the
                      union), so the sentence names both: once the closure
@@ -10506,7 +9881,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                         AND IT IS INSIDE THE !healthPending BRANCH, which is the
                         other half of the same rule: this sentence may only be
                         said about a read that finished. */}
-                    {jobs.length > 0 && hiringPartition.shown.length === 0 && t("jobsPage.takedownEmpty", "No employer among the openings loaded here has a closure record that clears the bar. Turn this off to see all verified roles.")}
+                    {jobs.length > 0 && hiringPartition.shown.length === 0 && t("jobsPage.takedownEmpty", "No employer among the openings loaded here has a closure record that clears the bar. Turn this off to see all roles.")}
                   </>
                 )}
               </span>
@@ -10561,6 +9936,9 @@ function JobsBoard({ boardId }: { boardId: string }) {
               </button>
             ))}
           </div>
+
+          </>
+          )}
 
           {/* Adaptive landing: a zero-intent first visit gets orientation, not a
               560k-row newest-first firehose. Every path out of this block IS an
@@ -10625,11 +10003,24 @@ function JobsBoard({ boardId }: { boardId: string }) {
               the same server parsers as the scanner) and the board re-ranks
               itself instantly; the full scan stays one link away. Shown only to
               visitors we KNOW have no résumé yet. */}
-          {resumeAvailable === false && !fitRanking && resumeDropPanel("hidden lg:flex")}
+          {resumeAvailable !== true && !fitRanking && resumeDropPanel(resumeAvailable === null ? "hidden lg:flex invisible" : "hidden lg:flex")}
 
           {/* Split-pane on lg+: list column left, detail column right. */}
-          <div className="lg:grid lg:grid-cols-[minmax(0,46%)_minmax(0,54%)] lg:gap-6 lg:items-start">
+          <div className={`lg:grid ${onCompanyPage && !detailJob ? "lg:grid-cols-[minmax(0,1fr)_380px]" : "lg:grid-cols-[minmax(0,46%)_minmax(0,54%)]"} lg:gap-6 lg:items-start`}>
           <div className="min-w-0">
+          {/* THE COMPANY VARIANT OF THE FILTER ROW (src/components/jobs/FilterBar.tsx):
+              the page's own company is its scope, never a removable filter. */}
+          {onCompanyPage && landerModel && landerModel.variant !== "zero" && (
+            <FilterBar
+              variant="company"
+              className="mb-3"
+              value={{ q, location, workMode, employmentType, freshness, category, experience, statedPayOnly, vendor, country, hideAgencies, companyTokens }}
+              onChange={applyFilterPatch}
+              options={filterBarOptions}
+              company={landerModel.name.name ? { name: landerModel.name.name, generic: landerModel.name.generic, openRoles: landerModel.openRoles } : undefined}
+              sort={isSmallScreen ? undefined : { value: shownSortControl, options: sortOptions, onChange: applySort }}
+            />
+          )}
           {/* WHY THIS SITS ABOVE THE RESULTS/EMPTY SPLIT, NOT INSIDE IT.
 
               Every one of these used to live in the results branch of
@@ -11206,6 +10597,8 @@ function JobsBoard({ boardId }: { boardId: string }) {
                 )}
               </div>
             </div>
+          ) : jobs.length === 0 && onCompanyPage && landerModel?.variant === "zero" ? (
+            <CompanyLanderEmpty model={landerModel} token={landerCompany!} profile={landerProfile} boardReadAt={landerBoardReadAt} />
           ) : jobs.length === 0 ? (
             /* Server-zero: an actionable exit, never a dead end. Each button is
                a measured single relaxation with its real result count. */
@@ -11223,11 +10616,11 @@ function JobsBoard({ boardId }: { boardId: string }) {
               <p className="text-sm text-muted-foreground mb-3">
                 {data?.semanticDegraded
                   ? t("jobsPage.zeroBodyDegraded", "That second pass looks for jobs that mean the same thing as what you typed, and it timed out this time. Try again in a moment, or loosen a filter:")
-                  : t("jobsPage.zeroBody", "We only list postings verified from companies' own systems — nothing gets padded in. Loosening one filter helps:")}
+                  : t("jobsPage.zeroBody", "We only list postings read from employers' own hiring systems — nothing gets padded in. Loosening one filter helps:")}
               </p>
               <div className="flex flex-wrap justify-center gap-2">
                 {(widenHelp ?? []).map((s) => (
-                  <Button key={s.key} size="sm" variant="outline" onClick={s.clear}>
+                  <Button key={s.key} size="sm" variant="outline" className="h-auto max-w-full whitespace-normal" onClick={s.clear}>
                     {t("jobsPage.zeroRemove", "Remove {{label}} — {{n}} openings", { label: s.label, n: `${s.count.toLocaleString()}${s.capped ? "+" : ""}` })}
                   </Button>
                 ))}
@@ -11315,7 +10708,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                             ? t("jobsPage.skillUnlockPossible", "is missing from {{n}} of these postings — including {{p}} where you're already a possible match.", { n: skillUnlock.n, p: skillUnlock.possible })
                             : t("jobsPage.skillUnlockPlain", "is missing from {{n}} of these postings.", { n: skillUnlock.n })}
                         </span>{" "}
-                        <Link to="/#upload" className="text-primary hover:underline">
+                        <Link to="/#upload" className="link">
                           {t("jobsPage.skillUnlockCta", "Have it? Add it to your resume honestly →")}
                         </Link>
                       </p>
@@ -11330,6 +10723,30 @@ function JobsBoard({ boardId }: { boardId: string }) {
                   only in descriptions. Every branch of the summary below sums
                   them; the split is disclosed on its own line rather than
                   crammed into four separate strings. */}
+              {onCompanyPage && landerModel ? (
+                <div className="mb-3 space-y-1">
+                  <CompanyResultsLine
+                    model={landerModel}
+                    shown={shownCount}
+                    matching={activelyHiringOnly || data?.countUnavailable ? null : { value: pageTotalCount, floor: !!(data?.countCapped || data?.relatedCapped) }}
+                    boardReadAt={landerBoardReadAt}
+                  />
+                  {(refreshing || dismissedIds.size > 0 || hiddenByViews.n > 0) && (
+                    <p className="text-xs text-muted-foreground">
+                      {refreshing && <span className="text-primary">{t("jobsPage.updating", "updating…")}</span>}
+                      {dismissedIds.size > 0 && (
+                        <span>
+                          {refreshing ? " · " : ""}
+                          {t("jobsPage.hiddenCount", "{{count}} hidden", { count: dismissedIds.size })}{" "}
+                          <button type="button" className="text-primary hover:underline" onClick={restoreDismissed}>
+                            {t("jobsPage.restoreHidden", "restore")}
+                          </button>
+                        </span>
+                      )}
+                    </p>
+                  )}
+                </div>
+              ) : (
               <p className="text-xs text-muted-foreground mb-3" aria-live="polite">
                 {/* WHEN THERE ARE TWO SEGMENTS, THE SEGMENTED LINE IS THE
                     HEADLINE — it does not sit beside one.
@@ -11376,17 +10793,6 @@ function JobsBoard({ boardId }: { boardId: string }) {
                           shown: shownCount, ceiling: data.totalBeforeExclusions.toLocaleString(),
                         })
                       : t("jobsPage.resultsSummaryNoTotal", "Showing {{shown}} matching openings", { shown: shownCount }))
-                  : landerCompany
-                  ? t("jobsPage.companyResultsSummary", "Showing {{shown}} of {{total}} roles at {{company}} dated in the last 30 days", {
-                      shown: shownCount,
-                      // The two branches below already do both of these; this one
-                      // did neither, so a company lander printed a bare capped
-                      // count and an unseparated five-digit number.
-                      total: data?.countCapped || data?.relatedCapped
-                        ? `${pageTotalCount.toLocaleString()}+`
-                        : pageTotalCount.toLocaleString(),
-                      company: landerCompanyName,
-                    })
                   // "across N companies" only when nothing narrows the list:
                   // companiesCount is BOARD-WIDE (measured: a category filter
                   // matching 1,429 companies still reported 22,944), and the
@@ -11445,48 +10851,6 @@ function JobsBoard({ boardId }: { boardId: string }) {
                         {term}
                       </button>
                     ))}
-                  </span>
-                )}
-                {/* THE REVENUE PRODUCT, ON THE SURFACE THAT CARRIES THE TRAFFIC.
-                    Placed here rather than in the hero deliberately: a visitor
-                    reading the results line is looking at real roles, which is
-                    the moment "something could apply to these for me" means
-                    anything. In the hero it would be an ad before they had seen
-                    a job.
-
-                    EVERY NUMBER IS COUNTED, NOT CLAIMED. agentReadyOnPage uses
-                    the same predicate as the Sparkles badge on the cards below,
-                    so a sceptic can count the badges and get the same figure.
-                    It renders only when there is at least one — a pitch saying
-                    "0 of these" is worse than silence, and quoting a board-wide
-                    total here would be true but uncheckable.
-
-                    The 6.3% is stated rather than hidden. The agent covers four
-                    hiring systems, not the whole board, and a visitor who finds
-                    that out AFTER paying is a refund and a bad review. */}
-                {/* sm+ only: at 375px the pitch was 130px between the count
-                    line and the first job; the cards' own badges still carry it. */}
-                {agentReadyOnPage > 0 && !agentOnly && (
-                  <span className="hidden sm:block text-[12px] text-muted-foreground mt-1">
-                    <Sparkles className="inline w-3 h-3 text-primary -mt-0.5" aria-hidden />{" "}
-                    {t("jobsPage.agentPitchCounted", "The apply agent can fill and submit {{n}} of these for you — it reads your CV, writes each application separately, and answers the employer's own screening questions.", { n: agentReadyOnPage })}{" "}
-                    <Link to="/agent" className="text-primary underline underline-offset-2">
-                      {t("jobsPage.agentPitchCta", "See how it works — {{trialDays}} days free for first-time subscribers, then ${{agentPrice}}/mo", { trialDays: SUBSCRIPTIONS.agent.trialDays, agentPrice: SUBSCRIPTIONS.agent.priceUsd })}
-                    </Link>
-                    <span className="block text-xs text-subtle-foreground mt-0.5">
-                      {/* BOTH NUMBERS WERE WRONG, IN ALL NINE LOCALES. This said
-                          "four hiring systems — about 6% of the board" while
-                          SENDABLE_VENDORS held FIVE and the live figure was 8.2%.
-                          A count of something that grows cannot be a literal, and
-                          the old key is deleted from the locale files rather than
-                          edited, because a locale value overrides an inline
-                          default — nine translated copies of "four" would have
-                          gone on rendering. Interpolated as digits so a vendor
-                          landing never costs nine translations again. */}
-                      {agentReach
-                        ? t("jobsPage.agentPitchScopeLive", "It applies on {{n}} hiring systems — about {{pct}}% of the board — and never on sites that gate applications behind a CAPTCHA. Everywhere else it prepares the application and you send it.", { n: agentReach.vendors, pct: Math.round(reachPct(agentReach)) })
-                        : t("jobsPage.agentPitchScopePlain", "It applies on the hiring systems that allow it, and never on sites that gate applications behind a CAPTCHA. Everywhere else it prepares the application and you send it.")}
-                    </span>
                   </span>
                 )}
                 {/* refreshedAt is the last FULL-ROTATION stamp, not "when this
@@ -11558,6 +10922,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                   </span>
                 )}
               </p>
+              )}
               {/* NL-search interpretation: show exactly how the plain-language
                   query was read (chips = applied filters) and disclose anything
                   we couldn't map — never silently drop a concept. */}
@@ -11811,7 +11176,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                 // already on screen above, in the hero and the badge row.
                 <div className="hidden lg:flex rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 mb-3 flex-wrap items-center gap-2">
                   <p className="text-[13px] text-foreground basis-full sm:basis-auto sm:flex-1">
-                    {t("jobsPage.welcomeLine", "Every posting here is verified live from the company's own system. Start where this board is strongest:")}
+                    {t("jobsPage.welcomeLine", "Every posting here is read from the employer's own hiring system. Start where this board is strongest:")}
                   </p>
                   <button type="button" onClick={() => { trackBoard("welcome_posted_today"); dismissWelcome(); setFreshness("1"); }}
                     className="text-xs px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary">
@@ -11867,29 +11232,11 @@ function JobsBoard({ boardId }: { boardId: string }) {
                     (job as { matchScope?: string }).matchScope === "description" &&
                     (prevJob as { matchScope?: string } | null)?.matchScope === "title";
                   const d = daysAgo(job.postedAt);
-                  // ── THE THREE FACTS THE CARD NOW STATES ────────────────────
-                  // Each is null/false on the rows that do not carry it, and a
-                  // null renders NOTHING — never a dash, never a zero, never a
-                  // guessed default. That is why they are computed here rather
-                  // than inline: one place to read what this card can honestly
-                  // claim before deciding what to draw.
-                  const ats = sourceLabel(job.source);
-                  // THE PLACE THE CARD CAN HONESTLY NAME. Requisition and site
-                  // codes out, the employer's own words otherwise, and `null`
-                  // for a line that was only ever an internal code — see
-                  // displayLocation. The raw string rides along on `raw` and is
-                  // hung on the title attribute below, so nothing is hidden.
-                  const cardLoc = displayLocation(job.location);
-                  // Read against WHAT THE CARD SHOWS, not the raw column: a
-                  // location reduced to nothing leaves the country as the only
-                  // place fact there is, and countryToName already states it
-                  // rather than swallowing it when the text is empty.
-                  const cardCountry = countryToName(cardLoc.text, job.country);
-                  // Computed ONCE per card, not once per JSX reference. Read
-                  // inline they ran two or three times each, sixty cards to a
-                  // page, on every render of the list.
-                  const payBasis = payBasisToName(job.salary, job.salaryPeriod);
-                  const payCurrency = statedCurrencyCode(job.salary, job.salaryCurrency);
+                  // THE FACTS THE CARD STATES (place, country, hiring system,
+                  // pay basis and currency) are read inside JobCard from the
+                  // listing modules (src/lib/listing/location.ts, apply-url.ts,
+                  // pay.ts), once per card: a null there renders NOTHING,
+                  // never a dash, a zero or a guessed default.
                   // The field's lifecycle curve, and whether THIS posting has
                   // been up longer than the roles in its field usually last.
                   // Gated on the employer's own posted date inside
@@ -11913,6 +11260,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                   // fall out of `tier`, so an unscorable card rendered exactly
                   // like a 4% one — no chip, no difference, nothing to read.
                   const unscorable = fitRanking && fits[job.id] === null;
+                  const layoffRow = layoffFilingOf(job.token);
                   return (
                     <Fragment key={job.id}>
                     {crossesSeam && (
@@ -11923,6 +11271,9 @@ function JobsBoard({ boardId }: { boardId: string }) {
                         </span>
                         <span className="flex-1 h-px bg-border" />
                       </li>
+                    )}
+                    {onCompanyPage && landerAbout && gi === 3 && (
+                      <li className="lg:hidden"><CompanyLanderAccordion {...landerAbout} /></li>
                     )}
                     {gi === mobileDropAt && resumeAvailable === false && !fitRanking && (
                       <li className="lg:hidden">{resumeDropPanel("flex")}</li>
@@ -11936,442 +11287,36 @@ function JobsBoard({ boardId }: { boardId: string }) {
                         <span className="flex-1 h-px bg-border" />
                       </li>
                     )}
-                    <li
-                      data-job-id={job.id}
-                      onMouseEnter={() => prefetchDesc(job)}
-                      onTouchStart={onCardTouchStart(job)}
-                      onTouchMove={onCardTouchMove}
-                      onTouchEnd={onCardTouchEnd(job)}
-                      style={{ borderLeft: `3px solid ${accentFor(job.category)}` }}
-                      className={`animate-in fade-in slide-in-from-bottom-1 duration-200 rounded-2xl border bg-card ${density === "compact" ? "px-4 py-2" : "p-4"} cursor-pointer transition-all duration-150 hover:-translate-y-px hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                        detailJob?.id === job.id ? "border-primary/60 bg-primary/5" : "border-border hover:border-primary/40"
-                      }`}
-                      onClick={(e) => {
-                        // The whole card opens the detail panel — except clicks
-                        // on its own controls (apply/save/fit/report/etc.).
-                        if ((e.target as HTMLElement).closest("button, a, select, input, label")) return;
-                        void openDetail(job);
+                    {/* THE LISTING VOCABULARY'S CARD (src/components/jobs/listing/JobCard.tsx):
+                        four rows, at most two chips, "Check fit" a quiet link,
+                        Apply in the pane, and the housekeeping (report, hide,
+                        compare, open in Claude or ChatGPT, copy link) in one ⋯
+                        menu. The board fills the employer slot, the layoff chip,
+                        the field note and the siblings expander; a company page
+                        passes none of the employer's chips (it prints the record
+                        once, in its header). */}
+                    <JobCard
+                      job={{ ...job, recheckedAt: servedOf(job).recheckedAt }}
+                      ctx={{
+                        surface: onCompanyPage ? "company" : "board",
+                        density,
+                        hideEmployer: onCompanyPage && job.token === landerCompany,
+                        selected: detailJob?.id === job.id,
                       }}
-                    >
-                      {/* ── THE CARD, IN THREE TIERS ────────────────────────
-                          Rebuilt 2026-09-04. What stood here was one flat run
-                          of up to fourteen 11px chips in two columns — nine of
-                          them in the left column with `mt-1 ml-2`, five more in
-                          the right — every one the same weight, the same size
-                          and the same grey. A card that shows nine chips shows
-                          nothing: there was no first thing to read.
-
-                          There are now exactly three tiers, and each answers a
-                          different question:
-
-                            1. WHAT IS THIS?    title, employer, place
-                            2. WHY CARE?        pay with its basis, work mode,
-                                                employment type, seniority, how
-                                                long it has been open
-                            3. WHY BELIEVE IT?  the hiring system we read it
-                                                from, when we last re-read it,
-                                                what this employer actually does
-                                                after posting, and whether the
-                                                application can be sent for you
-
-                          Tier 3 is the differentiator and it is deliberately
-                          the quietest: it is evidence, and evidence that
-                          shouts reads as marketing.
-
-                          The right rail now carries ONLY facts about the
-                          READER — their fit, whether they applied, whether
-                          they saved it. Everything that is a fact about the
-                          POSTING moved into the tiers, where it can be ordered
-                          against the other facts about the posting. */}
-                      <div className="flex flex-wrap items-start gap-3">
-                        <div
-                          aria-hidden="true"
-                          className="w-9 h-9 rounded-lg shrink-0 hidden sm:flex items-center justify-center text-sm font-bold select-none"
-                          style={{ backgroundColor: `hsl(${avatarHue(job.token || job.company)} 42% 22%)`, color: `hsl(${avatarHue(job.token || job.company)} 85% 76%)` }}
-                        >
-                          {(job.company || "?").charAt(0).toUpperCase()}
-                        </div>
-                        <div className="flex-1 min-w-[220px]">
-                          {/* The title IS the open-details control: a real
-                              control screen readers can find (the li's Enter
-                              handler was invisible to them), clamped to two
-                              lines so multi-segment ATS titles can't wall the
-                              list (full text in the tooltip).
-
-                              IT IS NOW AN ANCHOR, because as a <button> it gave
-                              the page NO CRAWLABLE PATH TO A JOB: measured on
-                              the hydrated board, all 60 a[href^="/jobs/"] were
-                              /jobs/company/<token> links and zero pointed at a
-                              posting. Every posting is in the sitemap as
-                              /jobs?job=<id>, and the only in-page route to it
-                              was a JS click handler — a crawler (and anyone
-                              cmd-clicking, middle-clicking, or copying a link)
-                              got nothing.
-
-                              The interaction is unchanged for the mouse: a
-                              plain left click is preventDefault-ed and the
-                              detail panel opens exactly as before, including
-                              its history push. Modified clicks are left to the
-                              browser so "open in new tab" genuinely opens the
-                              posting. Still ONE tab stop per card — this
-                              replaces the button, it does not join it.
-
-                              A STEP LARGER THAN THE REST OF THE CARD. It was
-                              set at the same size as the employer line and the
-                              chips beneath it, so nothing on the card read
-                              first. */}
-                          <Link
-                            to={jobDetailHref(job.id)}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (opensInNewContext(e)) return; // the browser's job, not ours
-                              e.preventDefault();
-                              void openDetail(job);
-                            }}
-                            title={job.title}
-                            className={`block text-left text-[15px] font-semibold leading-snug line-clamp-2 focus-visible:outline-none focus-visible:underline ${viewedIds.has(job.id) && detailJob?.id !== job.id ? "text-muted-foreground" : "text-foreground"}`}
-                          >
-                            {job.title}
-                          </Link>
-                          <p className="text-[13px] text-muted-foreground mt-0.5">
-                            {job.token
-                              ? <Link to={companyLanderPath(job.token)} className="inline-flex min-h-6 items-center hover:text-primary hover:underline">{job.company}</Link>
-                              : job.company}
-                            {/* The tidied place, with the employer's own string
-                                one hover away whenever the two differ. A span
-                                rather than bare text precisely so the title has
-                                somewhere to live. */}
-                            {cardLoc.text && (
-                              <span title={cardLoc.raw !== cardLoc.text ? cardLoc.raw ?? undefined : undefined}>
-                                {` · ${cardLoc.text}`}
-                              </span>
-                            )}
-                            {/* THE COUNTRY, FINALLY SAID OUT LOUD. It is on
-                                72% of rows and reached the JSON-LD and the
-                                filter picker and no reader. "Cambridge" is two
-                                countries and "London" is three; countryToName
-                                stays silent whenever the location text already
-                                answers, so this adds a word only where the
-                                word was missing. */}
-                            {cardCountry ? ` · ${cardCountry}` : ""}
-                            {job.department ? ` · ${job.department}` : ""}
-                          </p>
-                          {/* Same role, several locations. The siblings are real
-                              postings we folded for readability, so say how many
-                              and name a few — never imply the others vanished. */}
-                          {/* Same-place repeats are OPENINGS, not places. */}
-                          {(job.locationCount ?? 1) === 1 && (job.postingCount ?? 1) > 1 && (
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              {t("jobsPage.sameLocationOpenings", "{{count}} openings at this location", { count: job.postingCount })}
-                            </p>
-                          )}
-                          {(job.locationCount ?? 1) > 1 && (
-                            <p
-                              className="text-xs text-muted-foreground mt-0.5"
-                              title={(job.otherLocations ?? []).join(" · ")}
-                            >
-                              {t("jobsPage.alsoInLocations", "Also hiring in {{count}} more locations", { // resolves via _one/_other
-
-                                count: (job.locationCount ?? 1) - 1,
-                              })}
-                              {(job.otherLocations ?? []).length > 0 && `: ${(job.otherLocations ?? []).slice(0, 3).join(", ")}`}
-                            </p>
-                          )}
-
-                          {/* ── TIER 2 · WHY SHOULD I CARE? ─────────────────
-                              One line, one rhythm, dot-separated: pay leads
-                              because it is the fact people sort on, then the
-                              three things that decide whether the role is even
-                              possible (mode, type, seniority), then how long it
-                              has been open.
-
-                              Every item here was previously a bordered pill or
-                              a Badge scattered across two columns. They are
-                              plain text now on purpose — five outlined pills in
-                              a row read as five buttons, and none of these is
-                              clickable. The ONE exception is the agency
-                              disclosure, which keeps its outline precisely
-                              because it is a different KIND of statement and
-                              must not blend into the run of facts.
-
-                              A field the employer did not state contributes
-                              nothing to this line — no dash, no "Not stated",
-                              no separator left stranded (the separators belong
-                              to the items, so an absent item takes its own
-                              divider with it). */}
-                          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 mt-1.5 text-[12px] text-muted-foreground">
-                            {job.salary && (
-                              <span className="text-success font-semibold" title={job.salary}>
-                                {displaySalary(job.salary)}
-                                {/* THE CURRENCY, when "$" alone does not say
-                                    which one. Held in a column the client type
-                                    declared and nothing read. */}
-                                {payCurrency && (
-                                  <span className="font-normal text-muted-foreground">
-                                    {" "}({payCurrency})
-                                  </span>
-                                )}
-                                {/* EVERY NUMBER NAMES ITS BASIS. salary_period
-                                    was read as a gate and never as a statement,
-                                    so "≈66k/year" sat beside a rate whose
-                                    period appeared nowhere on the card.
-                                    Suppressed when the employer's own pay text
-                                    already says it — see payBasisToName. */}
-                                {payBasis && (
-                                  <span className="font-normal text-muted-foreground">
-                                    {" · "}
-                                    {t(`jobsPage.payBasis.${payBasis}`, PAY_BASIS_FALLBACK[payBasis])}
-                                  </span>
-                                )}
-                                {/* An hourly or monthly rate cannot be compared
-                                    with the annual figure on the next card, and
-                                    until now only the detail panel said so — a
-                                    fact the reader needed while SKIMMING, shown
-                                    only after they had already decided to click.
-                                    Same key, same wording, one helper. */}
-                                {annualizedPayRange(job) && (
-                                  <span
-                                    className="text-muted-foreground font-normal"
-                                    title={t("jobsPage.annualizedBasisTip", "Our arithmetic, not the employer's: an hourly rate × 2,080 hours (40 hours a week, 52 weeks), a daily rate × 260 days, a monthly rate × 12. The figure to its left is what the posting actually says.")}
-                                  >
-                                    {" · "}
-                                    {t("jobsPage.salaryAnnualized", "≈{{range}}/year as stated", { range: annualizedPayRange(job) })}
-                                  </span>
-                                )}
-                              </span>
-                            )}
-                            {(job.workMode || (job.remote ? "remote" : null)) && (
-                              <span
-                                className="text-foreground"
-                                title={t("jobsPage.workModeProvenance", "Work mode as the employer states it — the option they chose in their own hiring system, or their own words on the posting: its title, its location or its department. Where those disagree, or where none of them states a mode, the posting shows none: silence is never read as on-site.")}
-                              >
-                                {t(`jobsPage.workMode.${job.workMode ?? "remote"}`, job.workMode ?? "remote")}
-                              </span>
-                            )}
-                            {/* EMPLOYMENT TYPE — the fact every competing board
-                                prints on every card and this one only let you
-                                FILTER by. The server has emitted it since the
-                                filter shipped; nothing declared or rendered it,
-                                so a searcher could ask for internships and then
-                                read a page of results that never said which
-                                postings were one.
-                                Employer-stated or nothing, the workMode rule
-                                directly above: no badge is the correct render
-                                for a posting whose feed states no type, and the
-                                same locale keys the filter chips use label it,
-                                so the chip and the card can never name one
-                                posting two different ways. */}
-                            {isEmploymentType(job.employmentType) && (
-                              <span
-                                className="text-foreground"
-                                title={t("jobsPage.employmentTypeProvenance", "Employment type as the employer states it on its own careers feed. Postings whose feed states no type show no tag — never a guess.")}
-                              >
-                                {t(`jobsPage.employmentType.${job.employmentType}`, EMPLOYMENT_TYPE_FALLBACK[job.employmentType])}
-                              </span>
-                            )}
-                            {/* Experience level: the cited minimum years when the posting
-                                states one (the precise fact), else the band's range. */}
-                            {job.experienceBand && (
-                              <span>
-                                {typeof job.minYears === "number"
-                                  ? t("jobsPage.minYears", "{{n}}+ yrs", { n: job.minYears })
-                                  : t(`jobsPage.experience.${job.experienceBand}`, job.experienceBand)}
-                              </span>
-                            )}
-                            {d !== null && (
-                              <span
-                                className={d <= 2 ? "text-success font-medium" : ""}
-                                title={t("jobsPage.postedProvenance", "Posting age from the date the company states on its own careers feed — undated postings show no age, never a guess")}
-                              >
-                                {d === 0 ? t("jobsPage.postedToday", "today") : t("jobsPage.postedDaysAgo", "{{count}}d ago", { count: d })}
-                              </span>
-                            )}
-                            {/* THE POSITIVE FORM FOR UNDATED POSTINGS. ~89k
-                                postings (14.6%) carry no employer-stated date,
-                                and until now their card said nothing — honest,
-                                but silence where a true sentence exists. lastSeen
-                                is INSERT-time (semantically first_seen), so
-                                "first seen Xd ago" states our observation window:
-                                it CAPS how old the posting can be without
-                                claiming to know its age. Deliberately never
-                                styled as fresh (no success color at d<=2 like the
-                                posted badge above) — discovery time must never
-                                read as freshness, which is the exact substitution
-                                behind the 2.8-day-median incident. */}
-                            {d === null && daysAgo(job.lastSeen ?? null) !== null && (
-                              <span
-                                title={t("jobsPage.firstSeenProvenance", "This employer states no posting date, so no age is shown. This is when the posting first appeared on our board — it caps how old the posting can be, but it is our discovery date, not the employer's.")}
-                              >
-                                {daysAgo(job.lastSeen ?? null) === 0
-                                  ? t("jobsPage.firstSeenToday", "first seen today")
-                                  : t("jobsPage.firstSeenDaysAgo", "first seen {{count}}d ago", { count: daysAgo(job.lastSeen ?? null) })}
-                              </span>
-                            )}
-                            {/* AGENCY DISCLOSURE (2026-08-31 charter): agencies
-                                are carried, so the reader is told which cards
-                                are one — a stated fact beside the work mode,
-                                never a warning color. Renders only on true;
-                                ranked-path rows omit the field rather than
-                                claim false, and no badge is the right render
-                                for "not stated".
-
-                                THE ONE OUTLINED THING IN THIS ROW, and that is
-                                the point: it is a disclosure, not another
-                                attribute, and it must not dissolve into the run
-                                of dot-separated facts around it. */}
-                            {job.agency === true && (
-                              <Badge
-                                variant="outline"
-                                className="text-[10px]"
-                                title={t("jobsPage.agencyBadgeTip", "This employer is a staffing or recruiting agency — the role may be filled on behalf of a client. Use “Hide staffing agencies” in the filters to exclude these.")}
-                              >
-                                {t("jobsPage.agencyBadge", "Staffing agency")}
-                              </Badge>
-                            )}
-                          </div>
-
-                          {/* Niche searches match inside descriptions — without showing
-                              WHERE, a title that lacks the search term reads as a broken
-                              result. The server sends a ts_headline fragment with [[ ]]
-                              around matched words; split client-side, no HTML injected. */}
-                          {job.snippet && (
-                            <p className="text-xs text-muted-foreground mt-1 italic line-clamp-2">
-                              {t("jobsPage.matchedInDesc", "In the description:")}{" "}
-                              …{job.snippet.split(/\[\[|\]\]/).map((part, i) =>
-                                i % 2 === 1 ? <mark key={i} className="bg-primary/20 text-foreground rounded px-0.5 not-italic">{part}</mark> : part)}…
-                            </p>
-                          )}
-                          {/* WHY THIS ROW IS IN THE LIST AT ALL — three
-                              different hedges about the MATCH, not about the
-                              job, kept together and kept apart from the facts
-                              above. */}
-                          {(job.closeMatch || (job as { semanticMatch?: boolean }).semanticMatch || (job as { matchScope?: string }).matchScope === "description") && (
-                            <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                              {/* Appended by the trigram tier onto a thin exact
-                                  page — labeled so it is never mistaken for an
-                                  exact match (the disclosure line above the list
-                                  explains why it's here). */}
-                              {job.closeMatch && (
-                                <span className="inline-flex items-center text-[11px] text-warning border border-warning/40 rounded-full px-2 py-0.5">
-                                  {t("jobsPage.closeMatchChip", "close match")}
-                                </span>
-                              )}
-                              {/* A DIFFERENT CLAIM FROM "close match", and it has to
-                                  read as one. A close match says the searcher may
-                                  have misspelled something; this says nothing else
-                                  matched and these are about the same THING. The
-                                  vector tier always returns something — it has no
-                                  notion of "nothing is close" — so a row it supplied
-                                  must never sit unlabelled among keyword hits.
-                                  Suppressed when the close-match chip is already
-                                  there: two hedges on one card say less than one. */}
-                              {(job as { semanticMatch?: boolean }).semanticMatch && !job.closeMatch && (
-                                <span className="inline-flex items-center text-[11px] text-muted-foreground border border-border rounded-full px-2 py-0.5">
-                                  {t("jobsPage.semanticMatchChip", "related by meaning")}
-                                </span>
-                              )}
-                              {/* WHY THIS ROW IS HERE. A description-only match is a
-                                  real answer — a skill lives in the description by
-                                  definition — but it is not the same claim as a title
-                                  match, and an unlabelled mix is how "manager" ended
-                                  up returning Data Steward. Suppressed when the row
-                                  already carries the close-match chip: two hedges on
-                                  one card say less than one. */}
-                              {(job as { matchScope?: string }).matchScope === "description" && !(job as { closeMatch?: boolean }).closeMatch && (
-                                <span className="inline-flex items-center rounded-md bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
-                                  {t("jobsPage.descriptionMatchChip", "in description")}
-                                </span>
-                              )}
-                            </div>
-                          )}
-
-                          {/* ── TIER 3 · WHY BELIEVE IT? ────────────────────
-                              The quiet line, and the one no competitor can
-                              copy. Every clause is evidence rather than a
-                              claim: the system the posting was read out of,
-                              the minute we last re-read that system, what this
-                              employer has actually DONE after posting, and
-                              whether the application is one the agent can
-                              finish.
-
-                              Deliberately 11px and muted. A trust badge that
-                              shouts is indistinguishable from an ad; a trust
-                              badge that reads like a footnote is
-                              indistinguishable from a receipt. */}
-                          {/* SURVIVES COMPACT DENSITY, deliberately. Compact
-                              already drops the action row and the fit
-                              keywords; dropping the evidence too would leave
-                              the power-scanning view indistinguishable from an
-                              aggregator's, which is the one thing this board
-                              cannot afford to look like. */}
-                          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-1.5 text-[11px] text-muted-foreground">
-                            {/* Trust moat: every posting is pulled straight from the
-                                company's own ATS feed (Greenhouse/Lever/Ashby/…),
-                                never an aggregator or a scrape. Always true, so it's
-                                always shown.
-
-                                IT NOW NAMES THE SYSTEM. "Verified direct from
-                                Acme" asked the reader to take our word for it;
-                                "Verified direct from Acme on Greenhouse" is a
-                                claim they can go and check in ten seconds, and
-                                the `source` column that answers it has been on
-                                every row since the board shipped. A source we
-                                hold no label for falls back to the un-named
-                                sentence rather than printing a column value. */}
-                            <span
-                              className="inline-flex items-center gap-1 font-medium text-success"
-                              title={ats
-                                ? t("jobsPage.trustBadgeAtsTip", "This posting was read straight out of {{company}}'s own {{ats}} job feed — the same system their recruiters post into. Not an aggregator, not a scraped copy. Re-checked when you apply, where the employer's system allows it.", { company: companyDisplayName(job.company), ats })
-                                : t("jobsPage.trustBadgeTip", "Pulled directly from this company's official applicant-tracking feed — not an aggregator or a scraped copy. Re-checked when you apply, where the employer's system allows it.")}
-                            >
-                              <ShieldCheck className="w-3 h-3 text-success shrink-0" />
-                              {ats
-                                ? t("jobsPage.trustBadgeAts", "Direct from {{company}} on {{ats}}", { company: companyDisplayName(job.company), ats })
-                                : t("jobsPage.trustBadge", "Verified direct from {{company}}", { company: companyDisplayName(job.company) })}
-                            </span>
-                            {/* The receipt. The whole product rests on "every posting
-                                is real and still open", and until now the only place
-                                a user could see evidence of that was inside the
-                                detail panel — after they had already decided to
-                                click. recheckedAt is job_board_verifications
-                                .verified_at, the moment we last re-read THIS
-                                company's own feed, and it is already in the list
-                                payload (attachRecheckedAt), so this costs no extra
-                                query. Absent => render nothing; a missing stamp must
-                                never be dressed up as a weaker one. */}
-                            {job.recheckedAt && !job.missingSince && feedReadStatable(job.token ? curveByToken[job.token] : undefined) && (
-                              <span
-                                className="whitespace-nowrap"
-                                title={t("jobsPage.recheckedTip", "When we last re-read this company's own feed")}
-                              >
-                                {t("jobsPage.verifiedAgo", "feed read {{ago}}", { ago: agoLabel(job.recheckedAt, t) })}
-                              </span>
-                            )}
-                            {/* ── ONE SLOT FOR WHAT THIS EMPLOYER ACTUALLY DOES ──
-                                Three chips used to render side by side here —
-                                "Actively hiring", "Typically fills in ~Nd" and
-                                "Relists roles often (N×)" — and on a company
-                                that qualified for all three the card carried
-                                three overlapping statements about the same
-                                closure log.
-
-                                One slot now, and THE CAUTION TAKES IT. A card
-                                that prints praise while a warning about the
-                                same employer is also true is not compressing,
-                                it is editing. So the repost flag wins whenever
-                                it fires; only in its absence does the slot
-                                speak well of the employer.
-
-                                ACTIVELY_HIRING_MIN_CLOSED and
-                                URGENT_FILL_MAX_DAYS are the same numbers, read
-                                in the same order they were read before. The
-                                caution is relistCaution, the one the detail
-                                pane and the compare drawer print (the card's
-                                own three-event rule is gone, S8-092), and the
-                                praise branch asks the verdict, so the card,
-                                the pane and the drawer can never disagree
-                                about an employer. */}
-                            {job.token && (() => {
+                      href={jobDetailHref(job.id)}
+                      fit={fit === null ? { kind: "unscored" } : typeof fit === "number" ? { kind: "score", pct: fit } : null}
+                      fitKeywords={fitRanking ? { have: strengths, missing: gaps } : undefined}
+                      saved={savedIds.has(job.id)}
+                      applied={appliedIds.has(job.id)}
+                      viewed={viewedIds.has(job.id)}
+                      slots={{
+                        // ONE SLOT FOR WHAT THIS EMPLOYER ACTUALLY DOES, and the
+                        // caution takes it: a card that prints praise while a
+                        // warning about the same employer is also true is
+                        // editing, not compressing. Only in its absence does
+                        // the slot speak well of the employer, and an
+                        // unreadable record takes the slot as the third state.
+                        employerChip: (job.token && (() => {
                               const hh = curveByToken[job.token];
                               // NO ROW YET IS NOT A VERDICT. The batch is in
                               // flight (measured 7-16s) or this token fell past
@@ -12496,28 +11441,11 @@ function JobsBoard({ boardId }: { boardId: string }) {
                                 );
                               }
                               return null;
-                            })()}
-                            {/* The employer's newest qualifying layoff filing,
-                                AFTER the slot so its three states keep their
-                                position, and beside it rather than in it. */}
-                            <LayoffFilingChip row={layoffFilingOf(job.token)} country={job.country} />
-                            {/* HOW LONG THIS ONE HAS BEEN UP, AGAINST WHAT
-                                ACTUALLY HAPPENS TO POSTINGS LIKE IT — and now
-                                on the surface where people triage, not only in
-                                the panel they reach after deciding to click.
-
-                                This is the sentence a job board cannot write.
-                                It is not built from what employers SAY, it is
-                                built from a log of what they DID after saying
-                                it, and the RPC behind it carries its own
-                                honesty floor — so a thin field is silent rather
-                                than approximate.
-
-                                outstaysFieldHorizon takes the COMPANY'S OWN
-                                date and nothing else. An undated posting gets
-                                no comparison rather than one built on our
-                                discovery time. */}
-                            {cardOutstays && cardField && (
+                            })()) || undefined,
+                        layoffChip: layoffRow && !layoffHidesForCountry(layoffRow, job.country)
+                          ? <LayoffFilingChip row={layoffRow} country={job.country} />
+                          : undefined,
+                        fieldChip: (cardOutstays && cardField && (
                               <span
                                 className="inline-flex items-center gap-1 text-warning"
                                 /* The count is dropped, not relabelled: it was
@@ -12532,250 +11460,8 @@ function JobsBoard({ boardId }: { boardId: string }) {
                                 <Clock className="w-3 h-3 shrink-0" />
                                 {t("jobsPage.pastFieldHorizon", "Up longer than most {{field}} roles last", { field: t(`jobsPage.categories.${job.category}`, job.category ?? "") })}
                               </span>
-                            )}
-                            {/* THE AGENT CAN FINISH THIS ONE. Until now this fact
-                                existed only inside the morning queue — visible
-                                after the agent had already picked a posting, and
-                                invisible on the page where people decide what to
-                                save. Four vendors have an adapter and they are
-                                5.3% of the board, so this chip is absent on most
-                                rows, and its absence is the honest signal.
-
-                                It describes the FORM, not the service: an
-                                adapter exists and the vendor has no bot wall.
-                                Whether a given application actually completes
-                                still depends on the employer's own screening
-                                questions — 7 of 8 measured forms, not 8 — and on
-                                having the agent. The tooltip says so rather than
-                                letting a green chip imply a promise. */}
-                            {isSendableVendor(job.id) && (
-                              <Link
-                                to="/agent"
-                                onClick={(e) => e.stopPropagation()}
-                                className="inline-flex items-center gap-1 font-medium text-primary hover:underline whitespace-nowrap"
-                                title={t("jobsPage.agentAppliesTip2", "This employer's application form is one our apply agent can fill and submit on its own — no CAPTCHA and no account needed. It still hands the application back to you if the employer asks something we can't answer from your profile. Needs the Agent plan or a live pass.")}
-                              >
-                                <Sparkles className="w-3 h-3 shrink-0" />
-                                {t("jobsPage.agentAppliesChip", "Agent can apply")}
-                              </Link>
-                            )}
-                            {/* The card's copy of the hand-off: one click, the
-                                remembered host, no chooser — the panel has the
-                                full control. */}
-                            <JobAgentHandoff compact job={{ id: job.id, sendable: isSendableVendor(job.id) }} track={trackBoard} />
-                          </div>
-                          {/* Explainable fit, in ONE line rather than two
-                              paragraphs. The strengths and the gaps were
-                              separate blocks, so a fit-ranked card grew two
-                              extra rows of prose exactly when the reader is
-                              scanning fastest. Same facts, same order, one
-                              line — and it folds away entirely in compact
-                              density, where the tier pill already carries the
-                              verdict. */}
-                          {(strengths.length > 0 || gaps.length > 0) && (
-                            <p className={`text-[11px] text-muted-foreground mt-1 leading-snug ${density === "compact" ? "hidden" : ""}`}>
-                              {strengths.length > 0 && (
-                                <>
-                                  <span className="text-success font-medium">{t("jobsPage.youHave", "You already have:")}</span>{" "}
-                                  {strengths.join(", ")}
-                                </>
-                              )}
-                              {strengths.length > 0 && gaps.length > 0 && " · "}
-                              {gaps.length > 0 && (
-                                <>
-                                  <span className="text-primary font-medium">{t("jobsPage.addToCompete", "Add to compete:")}</span>{" "}
-                                  {gaps.join(", ")}
-                                </>
-                              )}
-                            </p>
-                          )}
-                        </div>
-                        {/* ── THE RIGHT RAIL IS ABOUT THE READER ─────────────
-                            It used to hold ten things: the fit pill, the
-                            not-scored pill, work mode, employment type, the
-                            agency badge, applied, saved, the posting age, the
-                            first-seen fallback and the re-check stamp. Seven of
-                            those are facts about the POSTING and belong in the
-                            tiers on the left, where they can be ordered against
-                            the other facts about the posting.
-
-                            What is left is what is true of this reader and
-                            nobody else: how their résumé scored, whether they
-                            already applied, whether they saved it. Usually
-                            none of them, which is the point — an empty rail is
-                            a card with one column and a clean right edge. */}
-                        <div className="flex items-center gap-2">
-                          {tier && (
-                            <span
-                              className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${tier === "strong" ? "bg-success/10 text-success" : tier === "possible" ? "bg-warning/10 text-warning" : "bg-muted text-muted-foreground"}`}
-                              title={t("jobsPage.matchCoverage", "{{pct}}% of this posting's recognized keywords are already in your resume", { pct: fit })}
-                            >
-                              {tier === "strong"
-                                ? t("jobsPage.matchStrong", "Strong match")
-                                : tier === "possible"
-                                ? t("jobsPage.matchPossible", "Possible match")
-                                : t("jobsPage.matchStretch", "Stretch")}
-                            </span>
-                          )}
-                          {/* Deliberately NOT a tier: outlined and dashed
-                              rather than filled and bold, so it cannot be
-                              mistaken for the muted "Stretch" pill that sits in
-                              the same slot for a genuinely low score. */}
-                          {!tier && unscorable && (
-                            <span
-                              className="text-[11px] px-2 py-0.5 rounded-full border border-dashed border-border text-muted-foreground"
-                              title={t("jobsPage.notScoredTip", "We hold no stored description for this posting, so there was nothing to compare your resume against. This is not a low score — it is no score.")}
-                            >
-                              {t("jobsPage.notScoredChip", "Not scored")}
-                            </span>
-                          )}
-                          {appliedIds.has(job.id) && (
-                            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-success shrink-0">
-                              ✓ {t("jobsPage.appliedBadge", "Applied")}
-                            </span>
-                          )}
-                          {savedIds.has(job.id) && (
-                            <Link to="/account" onClick={(e) => e.stopPropagation()}
-                              className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
-                              title={t("jobsPage.savedTip", "In your application tracker — click to open it")}>
-                              <BookmarkCheck className="w-3 h-3" />
-                              {t("jobsPage.savedBadge", "Saved")}
-                            </Link>
-                          )}
-                        </div>
-                      </div>
-                      {/* ── TWO DECISIONS, THEN THE UTILITIES ───────────────
-                          The card used to fill BOTH "Check my fit — free scan"
-                          and "Apply ⧉" in primary blue, side by side, competing
-                          for the same click — while the detail panel filled the
-                          fit scan and outlined Apply. One board, two opposite
-                          answers to "what should I do first?", decided by which
-                          surface the reader happened to be looking at.
-
-                          ONE HIERARCHY NOW, AND IT IS THE PANEL'S: the fit scan
-                          is filled, Apply is outlined, on the card, in the pane
-                          and in the phone's thumb bar. The argument is the
-                          board's own — a free scan that tells you whether the
-                          application is worth spending is the thing this
-                          product has and an aggregator does not, and Apply
-                          leaves the site for good. Apply has not moved, has not
-                          shrunk and has not lost its label; it has stopped
-                          shouting over the cheaper, reversible action.
-
-                          The four icon controls — save, report, hide, compare —
-                          are none of them a decision about THIS job; they are
-                          housekeeping about the list. They now sit in one
-                          right-aligned cluster after the two real actions, so a
-                          scanning reader meets the decisions first and the
-                          utilities read as a group rather than as four more
-                          things competing with them. All four already carried
-                          accessible names and keep them; the compare toggle
-                          additionally stops rendering a filled primary button
-                          when it is on — a third blue thing on a card that just
-                          had its second one removed — and stops being a bare
-                          "⇄" glyph nobody can decode. */}
-                      <div className={`flex flex-wrap items-center gap-2 mt-3 ${density === "compact" ? "hidden" : ""}`}>
-                        <Button size="sm" className="gap-1.5" disabled={fitFetching === job.id} onClick={() => checkFit(job)}>
-                          {fitFetching === job.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Target className="w-3.5 h-3.5" />}
-                          {t("jobsPage.checkFit", "Check my fit — free scan")}
-                        </Button>
-                        <Button size="sm" variant="outline" className="gap-1.5" asChild>
-                          <a
-                            href={job.applyUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title={t("jobsPage.apply", "Apply on {{company}}'s site", { company: job.company })}
-                            onClick={() => { trackApply(job); void promoteApplied(job); void verifyJob(job); }}
-                          >
-                            {t("jobsPage.applyBtn", "Apply")}
-                            <ExternalLink className="w-3.5 h-3.5" />
-                          </a>
-                        </Button>
-                        {REAL_QUESTION_PREFIXES.some((p) => job.id.startsWith(p)) && (
-                          <Button size="sm" variant="outline" className="gap-1.5" disabled={preparingId === job.id} onClick={() => prepareApplication(job)}>
-                            {preparingId === job.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MessageSquare className="w-3.5 h-3.5" />}
-                            {t("jobsPage.prepAnswers", "Prep answers")}
-                          </Button>
-                        )}
-                        {/* ml-auto, and flex-wrap on the cluster itself so the
-                            report pills have somewhere to go on a 375px card
-                            instead of pushing the row wider than the card. */}
-                        <span className="ml-auto flex flex-wrap items-center justify-end gap-1 min-w-0">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="gap-1.5 px-2"
-                          aria-pressed={savedIds.has(job.id)}
-                          aria-label={savedIds.has(job.id) ? t("jobsPage.savedBadge", "Saved") : t("jobsPage.saveJob", "Save")}
-                          title={savedIds.has(job.id)
-                            ? t("jobsPage.savedTip", "In your application tracker — click to open it")
-                            : t("jobsPage.saveTip", "Save this posting to your application tracker")}
-                          onClick={() => saveJob(job)}
-                        >
-                          {savedIds.has(job.id)
-                            ? <BookmarkCheck className="w-4 h-4 text-primary" />
-                            : <Bookmark className="w-4 h-4" />}
-                        </Button>
-                        {reportedIds.has(job.id) ? (
-                          <span className="text-[11px] text-muted-foreground">{t("jobsPage.reportedBadge", "Reported — thanks")}</span>
-                        ) : reportingId === job.id ? (
-                          <span className="inline-flex flex-wrap items-center gap-1.5 text-[11px]">
-                            <button type="button" className="px-2 py-1 rounded-full border border-border text-muted-foreground hover:text-foreground" onClick={() => reportJob(job, "gone")}>
-                              {t("jobsPage.reportGone", "Posting is gone")}
-                            </button>
-                            <button type="button" className="px-2 py-1 rounded-full border border-border text-muted-foreground hover:text-foreground" onClick={() => reportJob(job, "misleading")}>
-                              {t("jobsPage.reportMisleading", "Looks misleading")}
-                            </button>
-                            <button type="button" className="px-2 py-1 rounded-full border border-border text-muted-foreground hover:text-foreground" onClick={() => reportJob(job, "other")}>
-                              {t("jobsPage.reportOther", "Something else")}
-                            </button>
-                            <button type="button" className="px-1.5 py-1 text-muted-foreground hover:text-foreground" aria-label={t("jobsPage.reportCancel", "Cancel")} onClick={() => setReportingId(null)}>
-                              ✕
-                            </button>
-                          </span>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="px-2 text-muted-foreground"
-                            aria-label={t("jobsPage.reportCta", "Report this posting")}
-                            title={t("jobsPage.reportTip", "Something wrong with this posting? A 'gone' report re-checks it against the company's own board immediately.")}
-                            onClick={() => setReportingId(job.id)}
-                          >
-                            <Flag className="w-3.5 h-3.5" />
-                          </Button>
-                        )}
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="px-2 text-muted-foreground"
-                          aria-label={t("jobsPage.dismissCta", "Hide this posting")}
-                          title={t("jobsPage.dismissTip", "Hide this posting on this device. Restore all hidden postings any time.")}
-                          onClick={() => dismissJob(job)}
-                        >
-                          ✕
-                        </Button>
-                        {/* Compare tray toggle: pick up to 3, see them side by
-                            side. A real icon and a pressed state rather than a
-                            filled primary button — "selected" is a state of a
-                            utility, not a third call to action. */}
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className={`px-2 ${compareIds.includes(job.id) ? "text-primary bg-primary/10" : "text-muted-foreground"}`}
-                          aria-pressed={compareIds.includes(job.id)}
-                          aria-label={t("jobsPage.compareTip", "Add to compare (up to 3)")}
-                          title={t("jobsPage.compareTip", "Add to compare (up to 3)")}
-                          onClick={(e) => { e.stopPropagation(); toggleCompare(job.id); }}
-                        >
-                          <ArrowLeftRight className="w-3.5 h-3.5" />
-                        </Button>
-                        </span>
-                      </div>
-                      {/* Near-identical siblings: the same role at other locations,
-                          collapsed under this card — each still a real, applyable
-                          posting from the company's own feed. */}
-                      {siblings.length > 0 && (
+                            )) || undefined,
+                        siblings: (siblings.length > 0 && (
                         <div className="mt-2">
                           <button
                             type="button"
@@ -12815,12 +11501,30 @@ function JobsBoard({ boardId }: { boardId: string }) {
                             </ul>
                           )}
                         </div>
-                      )}
-                    </li>
+                      )) || undefined,
+                      }}
+                      onOpen={() => { void openDetail(job); }}
+                      onToggleSave={() => { void saveJob(job); }}
+                      onCheckFit={() => { void checkFit(job); }}
+                      checkFitBusy={fitFetching === job.id}
+                      menu={postingMenu(job)}
+                      liProps={{
+                        onMouseEnter: () => prefetchDesc(job),
+                        onTouchStart: onCardTouchStart(job),
+                        onTouchMove: onCardTouchMove,
+                        onTouchEnd: onCardTouchEnd(job),
+                      }}
+                    />
                     </Fragment>
                   );
                 })}
+                {onCompanyPage && landerAbout && groupedJobs.length > 0 && groupedJobs.length <= 3 && (
+                  <li className="lg:hidden"><CompanyLanderAccordion {...landerAbout} /></li>
+                )}
               </ul>
+              {onCompanyPage && landerModel && (
+                <div className="lg:hidden mt-4"><CompanySimilarAfterFirstPage model={landerModel} profile={landerProfile} /></div>
+              )}
               {/* THE SERVER'S hasMore IS AUTHORITATIVE IN BOTH DIRECTIONS. This
                   gate used hasMore only as a fallback when total was missing,
                   and trusted the count comparison otherwise — but a terminal
@@ -13046,7 +11750,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                           already has. */}
                       <div className="flex flex-wrap justify-center gap-2">
                         {(widenHelp ?? []).map((s) => (
-                          <Button key={s.key} size="sm" variant="outline" onClick={s.clear}>
+                          <Button key={s.key} size="sm" variant="outline" className="h-auto max-w-full whitespace-normal" onClick={s.clear}>
                             {t("jobsPage.zeroRemove", "Remove {{label}} — {{n}} openings", { label: s.label, n: `${s.count.toLocaleString()}${s.capped ? "+" : ""}` })}
                           </Button>
                         ))}
@@ -13107,7 +11811,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                       ? t("jobsPage.endScope", "That's everything matching these filters in the company feeds we track, as of our last read of each one — the rotation runs continuously, and how far behind it is right now is a measurement rather than a promise:")
                       : t("jobsPage.endScopeServed", "That's what we served for this search from the company feeds we track, as of our last read of each one — not necessarily every posting that matches. The rotation runs continuously, and how far behind it is right now is a measurement rather than a promise:")}
                     {" "}
-                    <Link to="/ghost-job-index" className="text-primary hover:underline">
+                    <Link to="/ghost-job-index" className="link">
                       {t("jobsPage.endScopeFreshness", "see the live re-check ages")}
                     </Link>
                   </p>
@@ -13168,6 +11872,19 @@ function JobsBoard({ boardId }: { boardId: string }) {
           {/* Pinned below the fixed site header (64px) PLUS the sticky search
               row (~58px) — top-24 sat underneath the search bar and clipped
               the panel's title once the page scrolled. */}
+          {onCompanyPage && landerAbout && !detailJob ? (
+            // A COMPANY PAGE'S RAIL: about this employer (or, on a board name two
+            // hiring systems share, the boards). Not sticky: it is taller than
+            // the screen. An opened posting takes its place.
+            <div className="hidden lg:block min-w-0 space-y-3">
+              <CompanyLanderRail
+                {...landerAbout}
+                profile={landerModel!.variant === "zero" ? { ...landerProfile, similar: [] } : landerProfile}
+                labelOf={sourceLabel}
+                onShowOnly={(s) => setVendor(s)}
+              />
+            </div>
+          ) : (
           <div className="hidden lg:block sticky top-[132px] max-h-[calc(100vh-9rem)] overflow-y-auto rounded-2xl border border-border bg-card min-w-0">
             {detailJob ? detailInner : (
               <div className="p-10 text-center text-sm text-muted-foreground">
@@ -13175,6 +11892,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
               </div>
             )}
           </div>
+          )}
           </div>
 
           <p className="text-[11px] text-muted-foreground mt-10">
@@ -13193,81 +11911,25 @@ function JobsBoard({ boardId }: { boardId: string }) {
         </div>
       </main>
 
-      {/* Detail panel, overlay mode (below lg): slide-over drawer. On lg+ the
-          same content renders inline in the split-pane column instead. */}
-      {detailJob && (
-        <div className="lg:hidden">
-          <div className="fixed inset-0 z-40 bg-black/50 animate-in fade-in duration-150" onClick={() => closeDetail()} />
-          <aside
-            ref={overlayRef}
-            tabIndex={-1}
-            role="dialog"
-            aria-modal="true"
-            aria-label={detailJob.title}
-            className="fixed right-0 top-0 bottom-0 z-50 w-full sm:w-[560px] sm:max-w-[92vw] bg-background border-l border-border overflow-y-auto animate-in slide-in-from-right duration-200 focus:outline-none"
-            onTouchStart={(e) => { swipeStartY.current = e.currentTarget.scrollTop === 0 ? e.touches[0].clientY : null; }}
-            onTouchMove={(e) => {
-              // Swipe-down-to-close, only from the very top of the sheet so it
-              // never fights with scrolling the description.
-              if (swipeStartY.current === null) return;
-              if (e.touches[0].clientY - swipeStartY.current > 90) {
-                swipeStartY.current = null;
-                closeDetail();
-              }
-            }}
-          >
-            {detailInner}
-            {/* Thumb-reach action bar, pinned while the description scrolls
-                (mobile overlay only — the desktop pane keeps its actions at the
-                top, where the cursor already is).
-
-                IT OBEYS THE SAME HIERARCHY AS THE CARD AND THE PANE. This bar
-                filled Apply while the actions row four inches above it filled
-                the fit scan, so the drawer disagreed with ITSELF about which
-                action came first — and the pinned one, the one always on
-                screen, was the one that sends the reader off the site. The fit
-                scan leads here too; Apply keeps its own button, its icon and
-                its full name in the title, and only gives up the fill. */}
-            {/* WRAPPING, because three controls do not fit one 375px row.
-                Measured at 375: the bar has 343px of usable width and the fit
-                button alone wants ~205 of it, so a nowrap row would have had
-                to shrink the primary until its own label overflowed it.
-                `basis-full` puts the primary on its own full-width line on a
-                phone and `sm:basis-auto` collapses all three back onto one row
-                in the 560px sheet, where they genuinely fit. */}
-            <div className="sticky bottom-0 bg-background/95 backdrop-blur border-t border-border px-4 py-3 flex flex-wrap gap-2">
-              <Button className="flex-1 basis-full sm:basis-auto gap-1.5" disabled={fitFetching === detailJob.id} onClick={() => checkFit(detailJob)}>
-                {fitFetching === detailJob.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Target className="w-3.5 h-3.5" />}
-                {t("jobsPage.checkFit", "Check my fit — free scan")}
-              </Button>
-              <Button variant="outline" className="flex-1 sm:flex-none gap-1.5" asChild>
-                <a
-                  href={detailJob.applyUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title={t("jobsPage.applyShort", "Apply on company site")}
-                  onClick={() => { trackApply(detailJob); void promoteApplied(detailJob); void verifyJob(detailJob); }}
-                >
-                  {t("jobsPage.applyBtn", "Apply")}
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
-              </Button>
-              <Button
-                variant="ghost"
-                className="px-3 shrink-0"
-                aria-pressed={savedIds.has(detailJob.id)}
-                aria-label={savedIds.has(detailJob.id) ? t("jobsPage.savedBadge", "Saved") : t("jobsPage.saveJob", "Save")}
-                title={savedIds.has(detailJob.id)
-                  ? t("jobsPage.savedTip", "In your application tracker — click to open it")
-                  : t("jobsPage.saveTip", "Save this posting to your application tracker")}
-                onClick={() => saveJob(detailJob)}
-              >
-                {savedIds.has(detailJob.id) ? <BookmarkCheck className="w-4 h-4 text-primary" /> : <Bookmark className="w-4 h-4" />}
-              </Button>
-            </div>
-          </aside>
-        </div>
-      )}
+      {/* THE POSTING ON A PHONE: the listing vocabulary's PostingSheet, a
+          Radix dialog (focus moves in and is trapped, Escape and Close both
+          close it, the page behind is inert and its scroll locked, focus goes
+          back to the card) at z-50 above the site header, with Apply always in
+          reach in its footer. On lg+ the same posting renders in the
+          split-pane column instead, so the sheet opens only below lg. */}
+      <PostingSheet
+        job={detailJob}
+        open={!!detailJob && !isDesktop}
+        onClose={() => closeDetail()}
+        onApply={detailJob ? () => applyFrom(detailJob) : undefined}
+        onCheckFit={detailJob ? () => { void checkFit(detailJob); } : undefined}
+        checkFitBusy={!!detailJob && fitFetching === detailJob.id}
+        onToggleSave={detailJob ? () => { void saveJob(detailJob); } : undefined}
+        saved={!!detailJob && savedIds.has(detailJob.id)}
+        returnFocusTo={lastFocusRef.current}
+      >
+        {!isDesktop ? renderDetail(true) : null}
+      </PostingSheet>
 
       {/* Apply-agent: draft grounded answers to a Greenhouse posting's real
           questions. Human reviews/edits, then applies on the company's own site. */}

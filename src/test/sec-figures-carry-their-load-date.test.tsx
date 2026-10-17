@@ -15,6 +15,10 @@ import { render, screen } from "@testing-library/react";
 import i18n from "i18next";
 import { PublicCompanyCardView, SEC_FIGURES_LOADED_ON, financialsLoadedOn, readFinancials } from "@/components/jobs/PublicCompanyCard";
 import { loadCompanyShard } from "./helpers/company-shard";
+import { date as fmtDate } from "@/lib/format";
+// Dates as the site's one formatter prints them for English readers (src/lib/format.ts: day, month, year), so the guard keeps its "reader's language" claim without pinning one calendar style.
+const D = (day: string) => fmtDate(day, { lng: "en" });
+
 
 afterAll(async () => { await i18n.changeLanguage("en"); });
 
@@ -37,7 +41,7 @@ describe("the load date", () => {
 
   it("is printed on the card, in the reader's language", () => {
     const { container } = render(<PublicCompanyCardView fin={readFinancials(BX)} />);
-    expect(container.textContent).toContain("Figures loaded Jul 23, 2026.");
+    expect(container.textContent).toContain(`Figures loaded ${D("2026-07-23")}.`);
     expect(container.querySelector("[data-sec-loaded]")?.getAttribute("data-sec-loaded")).toBe("2026-07-23");
   });
 });

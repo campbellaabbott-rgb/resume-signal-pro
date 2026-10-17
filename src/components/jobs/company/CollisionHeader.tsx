@@ -19,7 +19,7 @@ import { useTranslation } from "react-i18next";
 import type { CollidedBoard } from "@/lib/board-collisions";
 import { useCompanyIntel } from "@/components/jobs/CompanyIntelPanel";
 import { openBySource } from "@/components/jobs/BoardCollisionNotice";
-import { ago as fmtAgo, count as fmtCount } from "@/lib/company/format";
+import { ago as fmtAgo, count as fmtCount } from "@/lib/format";
 import { tPlural } from "@/lib/company/plural";
 import { CompanyBreadcrumb, HeaderActions } from "./CompanyHeader";
 import { cn } from "@/lib/utils";

@@ -313,7 +313,7 @@ describe("a posting age with nothing to measure it against", () => {
     mount([row({ postedAt: null })]);
     // The panel is genuinely open (this string exists nowhere else on the page)
     // and both lookups have answered, so "absent" is a refusal.
-    await waitFor(() => expect(panelText()).toContain("Apply on company site"), SLOW);
+    await waitFor(() => expect(panelText()).toContain("Check my fit, free"), SLOW);
     await waitFor(() => expect(rpc.mock.calls.some((c) => c[0] === "get_company_fill_curve")).toBe(true), SLOW);
     const text = panelText();
     expect(text, "an age was invented from something the employer did not state")

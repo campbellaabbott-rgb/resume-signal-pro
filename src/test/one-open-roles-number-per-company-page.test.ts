@@ -24,6 +24,10 @@ import i18n from "i18next";
 import { buildLanderModel, chooseOpenRoles, LIST_COUNT_CAP, type LanderInput } from "@/lib/company/lander-model";
 import { openRolesLine, CompanyHeader } from "@/components/jobs/company/CompanyHeader";
 import { CompanyResultsLine } from "@/components/jobs/company/CompanyLander";
+import { date as fmtDate } from "@/lib/format";
+// Dates as the site's one formatter prints them for English readers (src/lib/format.ts: day, month, year), so the guard keeps its "reader's language" claim without pinning one calendar style.
+const D = (day: string) => fmtDate(day, { lng: "en" });
+
 
 const minsAgo = (m: number) => new Date(Date.now() - m * 60_000).toISOString();
 const input = (o: Partial<LanderInput> = {}): LanderInput => ({
@@ -75,7 +79,7 @@ describe("the figure is chosen once", () => {
 describe("every surface prints the same object the same way", () => {
   it("formats the count in the reader's language, with '+' only on a floor, and names its date basis", () => {
     expect(openRolesLine(t, { value: 967, floor: false, asOf: minsAgo(46), basis: "read" }, "en")).toBe("967 roles dated in the last 30 days · read 46 min ago");
-    expect(openRolesLine(t, { value: 21_067, floor: true, asOf: minsAgo(212), basis: "counted" }, "en")).toBe("21,067+ roles dated in the last 30 days · counted 3 hr 32 min ago");
+    expect(openRolesLine(t, { value: 21_067, floor: true, asOf: minsAgo(212), basis: "counted" }, "en")).toBe("21,067+ roles dated in the last 30 days · counted 3 hr, 32 min ago");
     expect(openRolesLine(t, { value: 10_000, floor: true, asOf: minsAgo(5), basis: "read", capped: true }, "en")).toBe("10,000+ roles dated in the last 30 days · we count up to 10,000 · read 5 min ago");
     expect(openRolesLine(t, { value: 1, floor: false, asOf: null }, "en"), "a count with no date is not printed").toBeNull();
     expect(openRolesLine(t, null, "en")).toBeNull();
@@ -96,7 +100,7 @@ describe("every surface prints the same object the same way", () => {
     cleanup();
     const dated = buildLanderModel(input({ boardReadAt: null, listAnsweredAt: answered }));
     render(createElement(MemoryRouter, null, createElement(CompanyHeader, { model: dated, token: "acme", system: null, boardReadAt: null, onWatch: () => {} })));
-    expect(document.querySelector("[data-company-answer]")?.textContent).toBe("967 roles dated in the last 30 days · counted 0 min ago");
+    expect(document.querySelector("[data-company-answer]")?.textContent).toBe("967 roles dated in the last 30 days · counted just now");
   });
 
   it("the answer line and the results line render one model's figure identically", () => {
@@ -128,7 +132,7 @@ describe("every figure in the header names its date", () => {
     })));
     const pay = document.querySelector("[data-fact='pay']")?.textContent ?? "";
     const mode = document.querySelector("[data-fact='workMode']")?.textContent ?? "";
-    expect(pay).toBe("Pay stated on212 of 1,653 · read Oct 1, 2026");
+    expect(pay).toBe(`Pay stated on212 of 1,653 · read ${D("2026-10-01")}`);
     expect(mode).toBe("Work mode10 remote · 20 hybrid · 30 on-site · 787 not stated · read 46 min ago");
   });
 

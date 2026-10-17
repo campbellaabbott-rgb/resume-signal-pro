@@ -24,7 +24,6 @@
     "agency": {
       "banner": "Board ito ng isang staffing agency. Karaniwang para sa mga kliyente nito ang mga role dito."
     },
-    "ago": "{{duration}} ang nakalipas",
     "boardReadAgo": "nabasa ang board {{ago}}",
     "breadcrumbCompanies": "Mga kumpanya",
     "breadcrumbJobs": "Mga trabaho",
@@ -65,7 +64,8 @@
       "payValue": "{{k}} sa {{n}}",
       "systemLabel": "Hiring system",
       "workMode": "{{remote}} remote · {{hybrid}} hybrid · {{onsite}} on-site · {{unstated}} hindi nakasaad",
-      "workModeLabel": "Paraan ng trabaho"
+      "workModeLabel": "Paraan ng trabaho",
+      "headcountLabel": "Bilang ng empleyado"
     },
     "factsLabel": "Tungkol sa board na ito",
     "h1Generic": "Mga role sa board na “{{label}}”",
@@ -103,7 +103,7 @@
       "asOf": "Mga numero hanggang {{when}}.",
       "countsWithheld": "Hindi namin ipinapakita kung ilang role ang inalis at nanatiling alis.",
       "growthGrew": "Pagtaas na {{pct}}% sa mga hilerang inihain: {{a}} noong {{d1}}, {{b}} noong {{d2}}.",
-      "growthLabel": "Mga hilerang inihain sa araw-araw naming pagbasa, iba ang bilang sa mga bukas na role.",
+      "growthLabel": "Mga hilerang inihain ng board na ito sa sarili naming araw-araw na snapshot, iba ang bilang sa mga bukas na role.",
       "growthNone": "Hindi pagtaas na {{minRate}}% o higit pa: {{a}} noong {{d1}}, {{b}} noong {{d2}}.",
       "growthUnread": "Wala pang bilis ng pag-post para sa board na ito.",
       "leadCloses_one": "Nakita naming inalis sa board at nanatiling alis ang {{n}} sa mga role nito sa nakalipas na {{days}} araw.",

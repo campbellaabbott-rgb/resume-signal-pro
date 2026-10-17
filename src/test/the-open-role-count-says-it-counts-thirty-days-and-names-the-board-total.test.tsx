@@ -112,7 +112,7 @@ describe("a page with nothing in the window says what the board holds", () => {
   it("older roles listed: none of them is dated in the window, with the board's total and read date", () => {
     const m = bass({ total: 31, readAt: hoursAgo(5), state: "empty", capped: false });
     expect(m.zeroReading).toBe("older");
-    expect(zeroAnswer(t, m, "en")).toMatch(/^None of the 31 roles on BASS ABA Therapy's board is dated in the last 30 days \(read [A-Z][a-z]{2} \d{1,2}(, \d{4})?\)\. We show roles dated in the last 30 days\.$/);
+    expect(zeroAnswer(t, m, "en")).toMatch(/^None of the 31 roles on BASS ABA Therapy's board is dated in the last 30 days \(read \d{1,2} [A-Z][a-z]{2,4}\.? \d{4}\)\. We show roles dated in the last 30 days\.$/);
   });
 
   it("an empty board, a board we have not read in full recently, and an answer not yet in", () => {
@@ -134,21 +134,27 @@ describe("a page with nothing in the window says what the board holds", () => {
   });
 });
 
-describe("the legacy lander's sentences", () => {
+describe("the lander's sentences (pass B: the company shard and the listing shard)", () => {
   const en = JSON.parse(readFileSync(resolve(__dirname, "../i18n/locales/en.json"), "utf8")) as { jobsPage: Record<string, string> };
+  const company = (JSON.parse(readFileSync(resolve(__dirname, "../i18n/shards/company/en.json"), "utf8")) as { companyProfile: Record<string, unknown> }).companyProfile;
+  const listing = (JSON.parse(readFileSync(resolve(__dirname, "../i18n/shards/listing/en.json"), "utf8")) as { listing: Record<string, unknown> }).listing;
+  const leaf = (o: unknown, path: string): string => String(path.split(".").reduce<unknown>((x, k) => (x && typeof x === "object" ? (x as Record<string, unknown>)[k] : undefined), o));
+  const strings = (o: unknown, prefix = ""): Array<[string, string]> => Object.entries((o ?? {}) as Record<string, unknown>).flatMap(([k, v]) => (v && typeof v === "object" ? strings(v, `${prefix}${k}.`) : [[`${prefix}${k}`, String(v)] as [string, string]]));
   it("the zero answer states the window and asserts no empty board", () => {
-    expect(en.jobsPage.companyNotHiring).toBe("We show roles dated in the last 30 days, and the {{company}} job board has none right now. Watch the company below and we'll email you when new roles appear.");
-    expect(en.jobsPage.companyYesHiring).toMatch(/dated in the last 30 days/);
-    expect(en.jobsPage.companyYesHiringCapped).toMatch(/dated in the last 30 days/);
-    expect(en.jobsPage.hhOpen).toMatch(/dated in the last 30 days/);
-    expect(en.jobsPage.companyResultsSummary).toMatch(/dated in the last 30 days/);
-    for (const k of ["companyYesHiring", "companyYesHiringCapped", "companySeoTitle", "companySeoDescription", "companySubtitle", "hhOpen", "openRolesTip", "orientTitle", "zeroTitle"]) {
+    expect(leaf(company, "zero.answer")).toBe("No roles dated in the last {{days}} days");
+    expect(leaf(company, "zero.basis")).toBe("We show roles dated in the last {{days}} days.");
+    expect(leaf(company, "zero.older_other")).toMatch(/is dated in the last \{\{days\}\} days \(read \{\{date\}\}\)/);
+    expect(leaf(company, "openRoles_other")).toMatch(/dated in the last \{\{days\}\} days/);
+    expect(leaf(company, "subtitle")).toBe("Live jobs straight from {{companyPossessive}} own hiring system.");
+    for (const k of ["companySeoTitle", "companySeoDescription", "openRolesTip", "orientTitle", "zeroTitle"]) {
       expect(en.jobsPage[k], k).not.toMatch(/verified|re-verified/i);
     }
+    for (const [k, v] of strings(company)) expect(v, `companyProfile.${k}`).not.toMatch(/verified/i);
   });
   it("the posting stamp is a feed read, not a check of the posting, and the apply re-check is conditional", () => {
-    expect(en.jobsPage.verifiedAgo).toBe("feed read {{ago}}");
-    expect(en.jobsPage.trustBadgeTip).toMatch(/Re-checked when you apply, where the employer's system allows it\.$/);
-    expect(en.jobsPage.trustBadgeAtsTip).toMatch(/Re-checked when you apply, where the employer's system allows it\.$/);
+    expect(leaf(listing, "status.read")).toBe("Employer's feed read {{ago}}");
+    expect(leaf(listing, "status.readTip")).toMatch(/It is not a check of this one posting\.$/);
+    expect(leaf(listing, "card.feedRead")).toBe("{{system}} · feed read {{ago}}");
+    expect(en.jobsPage.badgeLive).toMatch(/where the system allows it$/);
   });
 });

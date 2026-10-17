@@ -13,7 +13,7 @@ import { useTranslation } from "react-i18next";
 import { getEmployerCtx, matchDeclaredRole, type EmployerCtx } from "@/lib/employer-context";
 import { postTrackEvent, getVisitorId } from "@/lib/track-transport";
 import { datedHeadcount } from "@/lib/headcount";
-import { formatListingDate } from "@/lib/listing/age";
+import { date as fmtDate } from "@/lib/format";
 
 /**
  * Money in the reader's own notation ("$14.5B", "14,5 Mrd. $"), compact from
@@ -95,7 +95,7 @@ export function EmployerContext({ companyToken, source, companyName, postingTitl
             basis: ctx.employeeBasis === "yc_self_reported"
               ? t("jobsPage.intel.basisYc", "YC profile")
               : t("jobsPage.intel.basisPr", "public records"),
-          })}{" · "}{t("jobsPage.intel.asOf", "as of {{date}}", { date: formatListingDate(head.asOf, lng) })}
+          })}{" · "}{t("jobsPage.intel.asOf", "as of {{date}}", { date: fmtDate(head.asOf.slice(0, 10), { lng }) })}
         </p>
       )}
       {ctx.ticker && ctx.revenue != null && (

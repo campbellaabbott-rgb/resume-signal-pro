@@ -1,9 +1,5 @@
 {
   "listing": {
-    "ago": {
-      "now": "agora mesmo",
-      "since": "há {{duration}}"
-    },
     "period": {
       "hour": "/h",
       "day": "/dia",
@@ -89,7 +85,8 @@
       "collapsed_one": "Omitimos {{count}} parágrafo que repetia outro palavra por palavra.",
       "collapsed_many": "Omitimos {{count}} parágrafos que repetiam outros palavra por palavra.",
       "collapsed_other": "Omitimos {{count}} parágrafos que repetiam outros palavra por palavra.",
-      "cutShort": "A nossa cópia pode parar antes do fim da vaga."
+      "cutShort": "A nossa cópia pode parar antes do fim da vaga.",
+      "failed": "Não conseguimos carregar esta descrição agora."
     },
     "detail": {
       "back": "Voltar para {{name}}",

@@ -48,16 +48,19 @@ describe("subscription prices match the checkout functions", () => {
     expect(SUBSCRIPTIONS.agent.trialDays).toBe(centsFrom("supabase/functions/_shared/agent.ts", "AGENT_TRIAL_DAYS"));
   });
 
-  it("no locale types a trial length into the board's two trial sentences", () => {
+  it("the board's two trial sentences are gone with the agent they sold, in every locale", () => {
+    // The apply pivot (2026-10-11) retired the Agent plan; pass B (2026-10-12)
+    // removed the board's pitch and its save toast, so the board names no
+    // trial and no price at all.
     const localeDir = resolve(root, "src/i18n/locales");
     for (const file of readdirSync(localeDir).filter((f) => f.endsWith(".json"))) {
       const jobs = JSON.parse(readFileSync(resolve(localeDir, file), "utf8")).jobsPage;
       for (const key of ["agentPitchCta", "savedMilestoneDesc"]) {
-        const v = String(jobs[key]);
-        expect(v.split("{{trialDays}}").length - 1, `${file} jobsPage.${key}`).toBe(1);
-        expect(v, `${file} jobsPage.${key} types a number`).not.toMatch(/\d/);
+        expect(jobs[key], `${file} jobsPage.${key} came back`).toBeUndefined();
       }
     }
+    const board = readFileSync(resolve(root, "src/pages/Jobs.tsx"), "utf8");
+    expect(board).not.toMatch(/SUBSCRIPTIONS\.agent|trialDays/);
   });
 
   // The paywall that starts the checkout, and the banner after it, promised

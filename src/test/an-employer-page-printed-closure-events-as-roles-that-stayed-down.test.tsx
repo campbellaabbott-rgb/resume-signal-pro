@@ -103,17 +103,20 @@ describe("an employer page printed closure events as roles that stayed down", ()
 
   it("the Hiring Health card prints the roles that stayed down, never the event count", async () => {
     mount("/jobs/company/jnj", CURVE);
-    await waitFor(() => expect(text()).toContain("Hiring Health"), SLOW);
-    await waitFor(() => expect(text()).toMatch(/Filled\s*1799\s*roles in 33d of tracking/), SLOW);
+    // Pass B (2026-10-12): the company vocabulary's HiringRecordCard ("Hiring record").
+    await waitFor(() => expect(text()).toContain("Hiring record"), SLOW);
+    await waitFor(() => expect(text()).toMatch(/1,799 roles taken down \(not relisted\) in 33 days of tracking/), SLOW);
+    expect(text()).toContain("We watched 1,799 of its roles come off the board and stay off in the last 90 days.");
     expect(text(), "the closure-event count is printed as roles").not.toMatch(/\b2499\b/);
   });
 
   it("a row from a deploy without the role columns is our gap: no count, and the record reads as unknown", async () => {
     mount("/jobs/company/jnj", OLD_ROW);
-    await waitFor(() => expect(text()).toContain("Hiring Health"), SLOW);
-    await waitFor(() => expect(text()).toContain("No closure record"), SLOW);
+    await waitFor(() => expect(text()).toContain("Hiring record"), SLOW);
+    await waitFor(() => expect(text()).toContain("No reliable hiring signal yet"), SLOW);
     expect(text()).not.toMatch(/\b2499\b/);
-    expect(text()).not.toMatch(/Filled\s*\d/);
+    expect(text()).not.toMatch(/\d roles taken down \(not relisted\)/);
+    expect(text()).not.toMatch(/come off the board and stay off/);
   });
 
   it("the verdict beside a posting quotes the roles that stayed down", async () => {

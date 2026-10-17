@@ -176,34 +176,25 @@ describe("REGRESSION: the opt-in's own rows are not violations", () => {
   });
 });
 
-describe("the UI round trip", () => {
-  it("seeds from the URL and writes back to it", () => {
-    expect(jobs).toMatch(/useState\(initial\.get\("agentOnly"\) === "1"\)/);
-    expect(jobs).toMatch(/if \(agentOnly\) p\.set\("agentOnly", "1"\)/);
+describe("the board's side of the filter is retired with the apply agent", () => {
+  // The server keeps the predicate and its fence (above and below): a search
+  // saved with it still narrows in the nightly digest. The board stopped
+  // offering it when the owner retired the server-side apply agent
+  // (2026-10-11; pass B, 2026-10-12): applying happens through people's own
+  // AIs, so no board filter narrows to the forms that agent could drive.
+  const code = jobs.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
+
+  it("the board neither reads nor writes the parameter", () => {
+    expect(code).not.toMatch(/initial\.get\("agentOnly"\)/);
+    expect(code).not.toMatch(/p\.set\("agentOnly"/);
   });
 
-  it("sends only a literal true, at every send site", () => {
-    // Counts SITES, and there are three since the filter-aware category counts
-    // shipped (list, count-probe, facet counts). The property being protected
-    // is not the number — it is that no site can send a truthy STRING, which
-    // would silently narrow the board to ~6% for anyone with ?sendableOnly=1
-    // in a shared URL. So: every occurrence of the key uses the literal form,
-    // and none uses a bare pass-through.
-    const literal = (jobs.match(/sendableOnly: agentOnly \? true : undefined/g) ?? []).length;
-    const total = (jobs.match(/sendableOnly:/g) ?? []).length;
-    expect(literal, "a sendableOnly send site is not using the literal-true form").toBe(total);
-    expect(total, "guard would be vacuous with no send sites").toBeGreaterThanOrEqual(2);
+  it("and sends no sendableOnly at any site", () => {
+    expect((code.match(/sendableOnly:/g) ?? []).length).toBe(0);
   });
 
-  it("refetches when toggled — a filter absent from the deps does nothing", () => {
-    expect((jobs.match(/category, inclUncat, agentOnly,/g) ?? []).length).toBeGreaterThanOrEqual(2);
-  });
-
-  it("does not hardcode a share of the board in the copy", () => {
-    // Three code comments once said 2% and 3.4% while reality was 5.3%. The
-    // badge tip stays number-free; the count on screen IS the live number.
-    const tip = jobs.slice(jobs.indexOf("agentOnlyTip"), jobs.indexOf("agentOnlyTip") + 400);
-    expect(tip).not.toMatch(/\d+%/);
+  it("and no control, chip or tooltip offers it", () => {
+    expect(code).not.toMatch(/agentOnlyTip|chipAgentOnly|setAgentOnly|\bagentOnly\b/);
   });
 });
 

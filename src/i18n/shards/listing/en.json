@@ -1,9 +1,5 @@
 {
   "listing": {
-    "ago": {
-      "now": "just now",
-      "since": "{{duration}} ago"
-    },
     "period": {
       "hour": "/hr",
       "day": "/day",
@@ -87,7 +83,8 @@
       "continuesOnSitePlain": "The posting continues on the employer's site",
       "collapsed_one": "We left out {{count}} paragraph that repeated another word for word.",
       "collapsed_other": "We left out {{count}} paragraphs that repeated others word for word.",
-      "cutShort": "Our copy may stop short of the full posting."
+      "cutShort": "Our copy may stop short of the full posting.",
+      "failed": "We couldn't load this description just now."
     },
     "detail": {
       "back": "Back to {{name}}",

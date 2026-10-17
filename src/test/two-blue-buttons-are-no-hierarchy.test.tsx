@@ -67,6 +67,7 @@ function stubTable() {
 }
 
 import Jobs from "../pages/Jobs";
+import { choosePostingMenuItem, openPostingMenu } from "./helpers/posting-menu";
 
 // THE WAITING BUDGET, and why it is not a number chosen here: helpers/mount-
 // budget.ts. SLOW was 4000 under vitest's default 5000 ms per-test budget,
@@ -94,7 +95,7 @@ function mount(path = "/jobs", width = 1280) {
   window.history.replaceState({}, "", path);
   Object.defineProperty(window, "innerWidth", { configurable: true, writable: true, value: width });
   window.matchMedia = ((query: string) => ({
-    matches: /max-width:\s*640px/.test(query) ? width <= 640 : false,
+    matches: /max-width:\s*640px/.test(query) ? width <= 640 : /min-width:\s*1024px/.test(query) ? width >= 1024 : false,
     media: query, onchange: null,
     addListener: () => {}, removeListener: () => {},
     addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false,
@@ -131,6 +132,8 @@ function mount(path = "/jobs", width = 1280) {
 
 const card = () => document.querySelector('[data-job-id="j1"]') as HTMLElement;
 const drawer = () => screen.getAllByRole("dialog")[0] as HTMLElement;
+// The desktop pane (the posting rendered beside the list, not in a dialog).
+const detail = () => document.querySelector("[data-posting-detail]") as HTMLElement;
 // Every control in a container that a reader would read as "the loud one".
 const filledIn = (root: HTMLElement) =>
   Array.from(root.querySelectorAll("button, a"))
@@ -144,110 +147,108 @@ describe("two blue buttons are no hierarchy", () => {
     invoke.mockReset(); rpc.mockReset();
   });
 
-  it("behaviour: the card offers exactly ONE loud action, and it is the free scan", async () => {
+  // PASS B (2026-10-12): the board's card is the listing vocabulary's JobCard
+  // and a posting opens in PostingDetail (the pane, or the phone sheet with its
+  // thumb bar). The audit's rule is kept — one loud action per surface, never
+  // two filled blues — with the design group's choice of the loud one: Apply on
+  // the employer's own site is the one filled control on a posting, the free
+  // fit check is the quiet secondary, and the card itself carries no loud
+  // action at all (Apply left it for the pane; "Check fit" is an underlined
+  // link; the housekeeping is in one ⋯ menu).
+  const applyLinks = (root: HTMLElement) => Array.from(root.querySelectorAll<HTMLAnchorElement>("[data-apply-link]"));
+
+  it("behaviour: the card offers no loud action; the fit check is a quiet link and Apply is not on it", async () => {
     mount();
     await waitFor(() => expect(card()).not.toBeNull(), SLOW);
-    const fit = within(card()).getByText("Check my fit — free scan").closest("button")!;
-    const apply = within(card()).getByText("Apply").closest("a")!;
-    expect(isFilled(fit), "the differentiator is the quiet one").toBe(true);
-    expect(isFilled(apply), "two filled blues competing for one click").toBe(false);
-    expect(isOutline(apply), "Apply must still be a real button, not a link in prose").toBe(true);
-    // Apply did not lose anything but the fill.
-    expect(apply.getAttribute("href")).toBe("https://acme.example/apply");
-    expect(apply.getAttribute("target")).toBe("_blank");
-    expect(apply.getAttribute("title")).toContain("Acme");
-    // ONE. Not two, and not zero.
-    expect(filledIn(card())).toEqual(["Check my fit — free scan"]);
+    expect(filledIn(card()), "a loud action on the card").toEqual([]);
+    const fit = within(card()).getByRole("button", { name: "Check fit: Backend Engineer" });
+    expect(isFilled(fit), "the fit check is the quiet one").toBe(false);
+    expect(fit.className).toContain("underline");
+    expect(applyLinks(card()), "Apply belongs to the pane and the sheet, not the card").toHaveLength(0);
   });
 
-  it("behaviour: the detail panel says the same thing the card does", async () => {
+  it("behaviour: the posting's actions row has exactly one loud action, and it is Apply", async () => {
     mount("/jobs?job=j1");
-    await waitFor(() => expect(drawer().textContent).toContain("Backend Engineer"), SLOW);
-    // The panel renders its actions row AND, on a phone, a pinned thumb bar.
-    // Both are inside this drawer, so "every one of them" is the claim.
-    const fits = within(drawer()).getAllByText("Check my fit — free scan").map((n) => n.closest("button")!);
-    expect(fits.length).toBeGreaterThan(0);
-    for (const f of fits) expect(isFilled(f), "a fit control that is not the primary").toBe(true);
-    const applies = Array.from(drawer().querySelectorAll("a"))
-      .filter((a) => /Apply/.test(a.textContent ?? ""));
-    expect(applies.length).toBeGreaterThan(0);
-    for (const a of applies) {
-      expect(isFilled(a), "the panel put Apply back in primary blue").toBe(false);
-      expect(isOutline(a)).toBe(true);
+    await waitFor(() => expect(detail()?.textContent).toContain("Backend Engineer"), SLOW);
+    const row = detail().querySelector('[data-posting-actions="full"]') as HTMLElement;
+    expect(row, "the actions row disappeared").not.toBeNull();
+    const apply = row.querySelector("[data-apply-link]") as HTMLAnchorElement;
+    expect(isFilled(apply), "Apply is the one filled control").toBe(true);
+    expect(apply.getAttribute("href")).toBe("https://acme.example/apply");
+    expect(apply.getAttribute("target")).toBe("_blank");
+    expect(apply.textContent).toContain("Acme");
+    const fit = within(row).getByRole("button", { name: /Check my fit, free/ });
+    expect(isFilled(fit), "two filled blues competing for one click").toBe(false);
+    expect(filledIn(row)).toHaveLength(1);
+    // Every loud control anywhere in the posting is an Apply link (the row's,
+    // and on a phone the thumb bar's): the same decision, never a second one.
+    for (const el of Array.from(detail().querySelectorAll("button, a")).filter(isFilled)) {
+      expect(el.hasAttribute("data-apply-link"), `a second loud action: ${(el.textContent ?? "").trim()}`).toBe(true);
     }
-    // The one hierarchy, stated as an equality between the two surfaces.
-    expect(new Set(filledIn(drawer()))).toEqual(new Set(["Check my fit — free scan"]));
   });
 
   it("behaviour: on a 375px phone the pinned thumb bar obeys the same hierarchy", async () => {
     // The thumb bar is the control that is ALWAYS on screen while the JD
-    // scrolls, so it is the one that decides what a phone reader does. It used
-    // to fill Apply while the row above it filled the scan.
+    // scrolls, so it is the one that decides what a phone reader does.
     mount("/jobs?job=j1", 375);
     await waitFor(() => expect(drawer().textContent).toContain("Backend Engineer"), SLOW);
     const bar = drawer().querySelector(".sticky.bottom-0") as HTMLElement;
     expect(bar, "the thumb bar disappeared").not.toBeNull();
-    const barFit = within(bar).getByText("Check my fit — free scan").closest("button")!;
-    const barApply = within(bar).getByText("Apply").closest("a")!;
-    expect(isFilled(barFit)).toBe(true);
-    expect(isFilled(barApply)).toBe(false);
-    // Apply keeps its full name where the label had to shorten to fit.
-    expect(barApply.getAttribute("title")).toBe("Apply on company site");
+    const barApply = bar.querySelector("[data-apply-link]") as HTMLAnchorElement;
+    expect(isFilled(barApply)).toBe(true);
+    expect(barApply.textContent).toContain("Apply on employer site");
     expect(barApply.getAttribute("href")).toBe("https://acme.example/apply");
+    const barFit = within(bar).getByRole("button", { name: /Check my fit, free/ });
+    expect(isFilled(barFit)).toBe(false);
+    expect(filledIn(bar)).toHaveLength(1);
     // And Save is still in thumb reach.
-    expect(within(bar).getByLabelText("Save")).toBeTruthy();
+    expect(within(bar).getByLabelText("Save Backend Engineer")).toBeTruthy();
   });
 
-  it("behaviour: all four icon controls have accessible names — on the phone card too", async () => {
+  it("behaviour: every icon control has an accessible name — on the phone card too", async () => {
     // TRUE BEFORE THIS FIX AND STILL TRUE AFTER IT. Asserted so a later tidy of
     // the cluster cannot quietly turn one of them back into a bare glyph.
     for (const width of [1280, 375]) {
       const view = mount("/jobs", width);
       await waitFor(() => expect(card()).not.toBeNull(), SLOW);
       const c = within(card());
-      expect(c.getByLabelText("Save")).toBeTruthy();
-      expect(c.getByLabelText("Report this posting")).toBeTruthy();
-      expect(c.getByLabelText("Hide this posting")).toBeTruthy();
-      expect(c.getByLabelText("Add to compare (up to 3)")).toBeTruthy();
-      // A mouse reader gets the same explanation a screen-reader user does.
-      for (const label of ["Save", "Report this posting", "Hide this posting", "Add to compare (up to 3)"]) {
-        expect(c.getByLabelText(label).getAttribute("title"), label).toBeTruthy();
-      }
+      expect(c.getByLabelText("Save Backend Engineer").getAttribute("title"), "Save").toBeTruthy();
+      expect(c.getByRole("button", { name: "More actions for Backend Engineer" })).toBeTruthy();
+      const menu = await openPostingMenu(card());
+      expect(within(menu).getByRole("menuitem", { name: /Posting is gone/ }), "the Report group's first reason").toBeTruthy();
+      expect(within(menu).getByRole("menuitem", { name: /Hide this posting/ })).toBeTruthy();
+      expect(within(menu).getByRole("menuitemcheckbox", { name: /^Compare/ })).toBeTruthy();
+      fireEvent.keyDown(menu, { key: "Escape" });
       view.unmount();
     }
   });
 
-  it("behaviour: the utility cluster comes after the two decisions, never between them", async () => {
-    mount();
-    await waitFor(() => expect(card()).not.toBeNull(), SLOW);
-    const order = Array.from(card().querySelectorAll("button, a"))
+  it("behaviour: the decisions come before the utilities, never between them", async () => {
+    mount("/jobs?job=j1");
+    await waitFor(() => expect(detail()?.textContent).toContain("Backend Engineer"), SLOW);
+    const row = detail().querySelector('[data-posting-actions="full"]') as HTMLElement;
+    const order = Array.from(row.querySelectorAll("button, a"))
       .map((el) => (el.getAttribute("aria-label") || el.textContent || "").trim());
-    const at = (s: string) => order.findIndex((x) => x === s);
-    expect(at("Check my fit — free scan")).toBeGreaterThanOrEqual(0);
-    expect(at("Check my fit — free scan")).toBeLessThan(at("Apply"));
-    for (const util of ["Save", "Report this posting", "Hide this posting", "Add to compare (up to 3)"]) {
-      expect(at("Apply"), `${util} sits among the decisions`).toBeLessThan(at(util));
-    }
+    const at = (re: RegExp) => order.findIndex((x) => re.test(x));
+    expect(at(/^Apply on/), "Apply opens the row").toBe(0);
+    expect(at(/^Apply on/)).toBeLessThan(at(/Check my fit, free/));
+    expect(at(/Check my fit, free/), "Save sits among the decisions").toBeLessThan(at(/^Save Backend Engineer$/));
   });
 
-  it("behaviour: a selected compare toggle is a pressed utility, not a third call to action", async () => {
+  it("behaviour: a selected compare toggle is a checked menu item, not a third call to action", async () => {
     mount();
     await waitFor(() => expect(card()).not.toBeNull(), SLOW);
-    const cmp = within(card()).getByLabelText("Add to compare (up to 3)");
-    expect(cmp.getAttribute("aria-pressed")).toBe("false");
-    fireEvent.click(cmp);
-    await waitFor(() => expect(cmp.getAttribute("aria-pressed")).toBe("true"), SLOW);
-    // ON, and still not the loudest thing on the card.
-    expect(isFilled(cmp)).toBe(false);
-    expect(cmp.className, "the old selected state was a filled primary button")
-      .not.toContain("text-primary-foreground");
-    expect(filledIn(card()), "selecting a utility added a second loud action")
-      .toEqual(["Check my fit — free scan"]);
+    await choosePostingMenuItem(card(), /^Compare/, "menuitemcheckbox");
+    const menu = await openPostingMenu(card());
+    await waitFor(() => expect(within(menu).getByRole("menuitemcheckbox", { name: /^Compare/ }).getAttribute("aria-checked")).toBe("true"), SLOW);
+    fireEvent.keyDown(menu, { key: "Escape" });
+    // ON, and still nothing loud on the card.
+    expect(filledIn(card()), "selecting a utility added a loud action").toEqual([]);
   });
 
   it("behaviour: saving a posting reports its own pressed state", async () => {
     mount();
     await waitFor(() => expect(card()).not.toBeNull(), SLOW);
-    expect(within(card()).getByLabelText("Save").getAttribute("aria-pressed")).toBe("false");
+    expect(within(card()).getByLabelText("Save Backend Engineer").getAttribute("aria-pressed")).toBe("false");
   });
 });

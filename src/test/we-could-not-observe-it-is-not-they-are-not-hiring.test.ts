@@ -325,9 +325,22 @@ describe("we could not observe it is not they are not hiring", () => {
     expect(slotStart, "the one-slot chain moved -- RE-ANCHOR this guard, do not delete it").toBeGreaterThan(-1);
     expect(slotEnd, "the slot's third-state chip is missing").toBeGreaterThan(slotStart);
     expect(slotEnd - slotStart, "the slot chain is no longer one surface").toBeLessThan(10_000);
+    // PASS B (2026-10-12): the company page hands its gated reading to the
+    // company vocabulary's HiringRecordCard (landerRecordInput), which prints
+    // the unknown state itself (leadUnknown, the gate's reason), so the sites
+    // inside that object literal are answered there. Pinned, not assumed.
+    const inputStart = JOBS.indexOf("const landerRecordInput: HiringRecordInput | null =");
+    const inputEnd = JOBS.indexOf("} : null;", inputStart);
+    expect(inputStart, "the lander's record input moved -- RE-ANCHOR this guard, do not delete it").toBeGreaterThan(-1);
+    expect(inputEnd).toBeGreaterThan(inputStart);
+    expect(JOBS, "the record input never reaches the card").toMatch(/record: landerRecordInput,/);
+    const RECORD_CARD = strip(read("src/components/jobs/company/HiringRecordCard.tsx"));
+    expect(RECORD_CARD, "the card does not answer for unknown").toMatch(/companyProfile\.record\.leadUnknown/);
+    expect(RECORD_CARD, "the growth half answers for unknown too").toMatch(/data-growth="unknown"/);
     const unhandled: number[] = [];
     for (const i of sites) {
       if (i > slotStart && i < slotEnd) continue;
+      if (i > inputStart && i < inputEnd) continue;
       const near = JOBS.slice(Math.max(0, i - WINDOW), i + WINDOW);
       if (!/=== "unknown"|=== "unreadable"|"unknown" &&/.test(near)) unhandled.push(lineOf(JOBS, i));
     }

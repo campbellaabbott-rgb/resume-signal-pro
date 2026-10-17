@@ -105,7 +105,7 @@ EN74=""
 MAIN74=$(curl -s -m 30 "$SITE/" | grep -o '/assets/index-[^"]*\.js' | head -1)
 for CH in $(curl -s -m 30 "$SITE$MAIN74" | grep -o '"\./en-[A-Za-z0-9_-]*\.js"' | tr -d '"' | sed 's|^\./||' | sort -u); do
   BODY74=$(curl -s -m 30 "$SITE/assets/$CH")
-  printf '%s' "$BODY74" | grep -q "agentPitchCta" || continue
+  printf '%s' "$BODY74" | grep -q "sourceNote" || continue
   EN74=$BODY74; break
 done
 if [ -z "$EN74" ]; then

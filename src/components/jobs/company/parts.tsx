@@ -1,52 +1,26 @@
-// SMALL PIECES THE COMPANY PAGE IS BUILT FROM.
+// SMALL PIECES THE COMPANY PAGE IS BUILT FROM, ON THE DESIGN SYSTEM'S PRIMITIVES.
 //
-// The design system group ships the shared primitives (Chip, Surface,
-// Disclosure) in src/components/ui in parallel with this group. These are
-// the company page's own minimal equivalents, written in the same token
-// vocabulary (bg-card, text-subtle-foreground, bg-signal-tint, text-meta,
-// border-border-strong), so the page renders before those land and the
-// wiring pass can swap each one for its primitive without a visual change.
+// G3 shipped these as stand-ins before the design system's primitives
+// landed. Pass B (2026-10-12) swapped them: the status chips are the shared
+// Chip (src/components/ui/chip.tsx) at their call sites, and a profile
+// section is the shared Surface with its heading. Two pieces stay here:
 //
-// Two behaviours every piece here keeps:
-//   - a disclosure opens on click, Enter or Space and on nothing else, never
-//     on focus or hover, and its trigger is a real button with aria-expanded
-//     and aria-controls naming its panel;
-//   - a status is never colour alone: every chip that carries a meaning
-//     carries an icon or a word that says it.
+//   - WhyDisclosure keeps its own panel. The shared Disclosure is a Radix
+//     Collapsible, which renders nothing inside a closed panel, and a "Why?"
+//     reason must stay in the document while folded (hidden, not absent) so a
+//     crawler and a screen reader's browse mode can still reach the gate's
+//     own words. Its trigger keeps the Disclosure contract: a real button
+//     with aria-expanded and aria-controls, opened on click, Enter or Space
+//     and never on focus or hover.
+//   - ValueBar has no primitive: a labelled bar with its value printed beside
+//     it, never in a tooltip alone.
+//
+// A status is never colour alone: every chip that carries a meaning carries
+// an icon or a word that says it.
 import { useId, useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
+import { Surface } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-
-export type ChipTone = "neutral" | "outline" | "live" | "signal" | "caution" | "danger" | "agency";
-
-const TONE: Record<ChipTone, string> = {
-  neutral: "bg-muted text-foreground",
-  outline: "border border-border-strong text-muted-foreground",
-  live: "bg-success-tint text-success",
-  signal: "bg-signal-tint text-signal",
-  caution: "bg-warning-tint text-warning",
-  danger: "bg-destructive-tint text-destructive",
-  agency: "border border-border-strong bg-card text-foreground",
-};
-
-export function CompanyChip({ tone = "neutral", icon, children, className, title, ...rest }: {
-  tone?: ChipTone;
-  icon?: ReactNode;
-  children: ReactNode;
-  className?: string;
-  title?: string;
-} & Record<`data-${string}`, string | undefined>) {
-  return (
-    <span
-      title={title}
-      className={cn("inline-flex min-h-6 max-w-full items-center gap-1 rounded-sm px-2 text-xs font-medium [&_svg]:size-3.5 [&_svg]:shrink-0", TONE[tone], className)}
-      {...rest}
-    >
-      {icon ? <span aria-hidden="true" className="inline-flex">{icon}</span> : null}
-      <span className="min-w-0">{children}</span>
-    </span>
-  );
-}
 
 /**
  * A section of the employer profile: a surface with a heading (h2 on the page
@@ -64,12 +38,14 @@ export function ProfileSection({ title, titleId, children, className, headingLev
   const auto = useId();
   const id = titleId ?? `${auto}-title`;
   const H = headingLevel === 3 ? "h3" : "h2";
-  return (
-    <section aria-labelledby={id} className={cn(!bare && "rounded-lg border border-border bg-card p-4", className)} {...rest}>
+  const body = (
+    <>
       <H id={id} className="text-base font-semibold text-foreground">{title}</H>
       <div className="mt-2 space-y-2 text-sm text-muted-foreground">{children}</div>
-    </section>
+    </>
   );
+  if (bare) return <section aria-labelledby={id} className={className} {...rest}>{body}</section>;
+  return <Surface as="section" aria-labelledby={id} className={cn("p-4", className)} {...rest}>{body}</Surface>;
 }
 
 /**

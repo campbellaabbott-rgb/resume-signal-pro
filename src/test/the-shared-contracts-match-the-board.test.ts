@@ -13,6 +13,10 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type * as Page from "@/pages/Jobs";
 import type * as C from "@/components/jobs/contracts";
+import type { ReactNode } from "react";
+import type { ListingJob, OpenRolesValue as ListingOpenRoles } from "@/lib/listing/types";
+import type { OpenRolesValue as LanderOpenRoles } from "@/lib/company/lander-model";
+import type { PostingMenuActions as MenuActions } from "@/components/jobs/listing/PostingMenu";
 
 type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false;
 const assertType = <T extends true>(_: T) => _;
@@ -25,6 +29,20 @@ assertType<Equal<C.GatedHiringRecord, Page.GatedHiringRecord>>(true);
 type GrowthKeys = Exclude<keyof C.GrowthReading, "verdict">;
 type GrowthFieldsMatch = { [K in GrowthKeys]: Equal<C.GrowthReading[K], Page.GrowthRow[K]> }[GrowthKeys];
 assertType<GrowthFieldsMatch>(true);
+
+// PASS B (2026-10-12): the listing and company contracts are the wired
+// components' own types. One open-roles figure has one shape: the listing
+// library's is the contract's, and the lander model's adds only the basis of
+// its date and the cap flag, so it stays assignable to the contract.
+type Assignable<A, B> = [A] extends [B] ? true : false;
+assertType<Equal<ListingOpenRoles, C.OpenRolesValue>>(true);
+assertType<Assignable<LanderOpenRoles, C.OpenRolesValue>>(true);
+// The menu hands the job back, every handler optional.
+assertType<Equal<Parameters<NonNullable<C.PostingMenuActions["onHide"]>>[0], ListingJob>>(true);
+assertType<Equal<C.PostingMenuActions, MenuActions>>(true);
+// The pane's fit is a slot, and the card's fit is the scorer's answer.
+assertType<Assignable<{ fit: ReactNode }, Pick<C.PostingDetailSlots, "fit">>>(true);
+assertType<Equal<NonNullable<C.JobCardProps["fit"]>, C.FitValue>>(true);
 
 const ROOT = resolve(__dirname, "../..");
 

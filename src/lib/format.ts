@@ -45,36 +45,50 @@ function toDate(iso: string | number | Date | null | undefined): Date | null {
 /**
  * "1,653"; with `floor`, "10,000+" (a count we stop at, not a census).
  * A non-finite value prints as an empty string, never as "NaN".
+ *
+ * `compact` prints a large plain figure the short way ("62K"), and `digits`
+ * fixes its fraction digits: a range whose two ends would round to one
+ * figure asks for one more digit ("61.8K–62.3K", the listing pay estimate).
  */
-export function count(n: number | null | undefined, opts: Lng & { floor?: boolean } = {}): string {
+export function count(n: number | null | undefined, opts: Lng & { floor?: boolean; compact?: boolean; digits?: number } = {}): string {
   if (n === null || n === undefined || !Number.isFinite(n)) return "";
-  const s = new Intl.NumberFormat(numberLocale(lang(opts)), { maximumFractionDigits: 0 }).format(Math.round(n));
+  const s = opts.compact
+    ? new Intl.NumberFormat(numberLocale(lang(opts)), {
+        notation: "compact",
+        minimumFractionDigits: opts.digits ?? 0,
+        maximumFractionDigits: opts.digits ?? 1,
+      }).format(n)
+    : new Intl.NumberFormat(numberLocale(lang(opts)), { maximumFractionDigits: 0 }).format(Math.round(n));
   return opts.floor ? `${s}+` : s;
 }
 
 /**
  * Money in the currency the figure was stated in. Compact for headline
  * figures ("$14.5B", German "14,5 Mrd. $"); otherwise whole units, or cents
- * when the figure carries them ($29.92 stays $29.92).
+ * when the figure carries them ($29.92 stays $29.92). `digits` fixes the
+ * fraction digits instead (our own rounded estimates: "$62K", or "$61.8K"
+ * where two ends of a range would otherwise print one figure).
  */
 export function money(
   n: number | null | undefined,
   currency: string = "USD",
-  opts: Lng & { compact?: boolean } = {},
+  opts: Lng & { compact?: boolean; digits?: number } = {},
 ): string {
   if (n === null || n === undefined || !Number.isFinite(n)) return "";
   const cur = /^[A-Z]{3}$/.test(String(currency ?? "").toUpperCase()) ? String(currency).toUpperCase() : "USD";
   const hasCents = !opts.compact && Math.round(n * 100) % 100 !== 0;
+  const min = opts.digits ?? (hasCents ? 2 : 0);
+  const max = opts.digits ?? (opts.compact ? 1 : hasCents ? 2 : 0);
   try {
     return new Intl.NumberFormat(numberLocale(lang(opts)), {
       style: "currency",
       currency: cur,
       notation: opts.compact ? "compact" : "standard",
-      minimumFractionDigits: hasCents ? 2 : 0,
-      maximumFractionDigits: opts.compact ? 1 : hasCents ? 2 : 0,
+      minimumFractionDigits: min,
+      maximumFractionDigits: max,
     }).format(n);
   } catch {
-    return `${cur} ${count(n, opts)}`;
+    return `${cur} ${count(n, { lng: opts.lng })}`;
   }
 }
 

@@ -108,6 +108,10 @@ const ROOT = resolve(__dirname, "../..");
 const RAW = readFileSync(resolve(ROOT, "src/pages/Jobs.tsx"), "utf8");
 const JOBS = RAW.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
 const SLOW = { timeout: 4000 } as const;
+// Pass B (2026-10-12): the board's card, pane and phone sheet are the listing
+// vocabulary's (src/components/jobs/listing/), mounted by Jobs.tsx.
+const CARD_RAW = readFileSync(resolve(ROOT, "src/components/jobs/listing/JobCard.tsx"), "utf8");
+const FACTS_RAW = readFileSync(resolve(ROOT, "src/components/jobs/listing/PostingFacts.tsx"), "utf8");
 
 const DAY = 86_400_000;
 const ago = (d: number) => new Date(Date.now() - d * DAY).toISOString();
@@ -299,16 +303,17 @@ describe("a card that shows nine chips shows nothing", () => {
   it("behaviour: the trust claim finally names the hiring system, and falls back when it cannot", async () => {
     mount();
     await waitFor(() => expect(text()).toContain("Staff Engineer"), SLOW);
-    // The differentiator, made checkable: a reader can go and look at Acme's
-    // Greenhouse board in ten seconds. "Verified direct from Acme" could not
-    // be checked at all.
-    expect(text()).toContain("Direct from Acme on Greenhouse");
-    expect(text()).toContain("Direct from Beta on Lever");
-    expect(text()).toContain("Direct from Gamma on Workday");
-    // A source we hold no vendor label for keeps the un-named sentence rather
-    // than printing "brandnewats" at the reader.
-    expect(text()).toContain("Verified direct from Delta");
+    // The differentiator, made checkable: each card names the hiring system
+    // it was read from ("Greenhouse · feed read just now"), and the feed-read
+    // stamp only on a board we read in full (Acme's). A source we hold no
+    // vendor label for names nothing rather than printing "brandnewats".
+    const cardFor = (title: string) => cards().find((c) => (c.textContent ?? "").includes(title))?.textContent ?? "";
+    await waitFor(() => expect(cardFor("Staff Engineer")).toContain("Greenhouse · feed read"), SLOW);
+    expect(cardFor("Warehouse Associate")).toContain("Lever");
+    expect(cardFor("Quiet Role")).toContain("Workday");
+    expect(cardFor("Warehouse Associate"), "a board with no read stamp prints none").not.toContain("feed read");
     expect(text(), "a raw column value reached the page").not.toContain("brandnewats");
+    expect(text(), "the unverifiable claim is gone").not.toMatch(/Verified direct from/);
   });
 
   it("behaviour: the pay basis and the currency are stated — and only where the employer has not stated them", async () => {
@@ -329,8 +334,9 @@ describe("a card that shows nine chips shows nothing", () => {
   it("behaviour: the country is added where the place name is ambiguous, and nowhere else", async () => {
     mount();
     await waitFor(() => expect(text()).toContain("Staff Engineer"), SLOW);
-    // "Cambridge" is two countries and the card now says which.
-    expect(text()).toContain("Cambridge · United Kingdom");
+    // "Cambridge" is two countries and the card now says which (the card
+    // separates its place facts with a dot of its own).
+    expect(list()).toMatch(/Cambridge·United Kingdom/);
     // "Austin, TX, USA" and "Berlin, Germany" have already answered.
     expect(hits("United States"), "the location line already said USA").toBe(0);
     expect(hits("Germany"), "the location line already said Germany").toBe(1);
@@ -459,16 +465,15 @@ describe("a card that shows nine chips shows nothing", () => {
     const toggle = document.querySelector('[aria-pressed][title="Switch list density"]') as HTMLElement | null;
     expect(toggle, "the density toggle must survive the redesign").not.toBeNull();
     expect(toggle!.getAttribute("aria-pressed")).toBe("false");
-    // The action row is present and shown in the roomy view.
-    const actions = () => cards()[0].querySelector<HTMLElement>(".mt-3");
-    expect(actions()?.textContent).toContain("Check my fit");
-    expect(actions()?.className, "the roomy view shows the actions").not.toContain("hidden");
+    // The card carries no action row now (Apply lives in the pane, beside
+    // the facts it should be read with); compact density makes the rows
+    // genuinely denser and keeps the evidence line.
+    expect(cards()[0].className, "the roomy view pads the card").toContain("p-4");
     fireEvent.click(toggle!);
     await waitFor(() => expect(toggle!.getAttribute("aria-pressed")).toBe("true"), SLOW);
-    // Rows are genuinely denser: the per-card action row folds away.
-    expect(actions()?.className, "compact must still fold the actions away").toContain("hidden");
+    expect(cards()[0].className, "compact rows are denser").toContain("py-2.5");
     // The differentiator is not a luxury of the roomy view.
-    expect(list()).toContain("Direct from Acme on Greenhouse");
+    await waitFor(() => expect(list()).toContain("Greenhouse · feed read"), SLOW);
   });
 
   it("behaviour: the detail panel answers in labelled rows, and omits the rows it cannot fill", async () => {
@@ -480,9 +485,9 @@ describe("a card that shows nine chips shows nothing", () => {
     for (const label of ["Pay", "Work mode", "Job type", "Experience", "Country", "Field", "Posted"]) {
       expect(panel(), `the panel must label ${label}`).toContain(label);
     }
-    // The panel states the annualization's arithmetic in full rather than in a
-    // tooltip the reader may never open.
-    expect(panel()).toContain("as stated in the posting");
+    // The pay row names its basis under the employer's figure, in visible
+    // words rather than in a tooltip the reader may never open.
+    expect(panel()).toContain("from the employer's feed");
     // A fact the employer did not state has NO ROW — not a dash, not "—", not
     // "Not specified". The absence of a row is the absence of a STATEMENT.
     expect(panel()).not.toContain("Not specified");
@@ -560,10 +565,13 @@ describe("a card that shows nine chips shows nothing", () => {
   });
 
   it("the reason the tiers exist is written down where the next tidy-up will read it", () => {
-    // PROSE, so RAW.
-    expect(RAW).toMatch(/THE CARD, IN THREE TIERS/);
+    // PROSE, so RAW. The card's rows and the pane's labelled list live in
+    // the listing components now; the one-slot rule stays with the board,
+    // which fills that slot.
+    expect(CARD_RAW).toMatch(/Four rows, each answering one question/);
+    expect(CARD_RAW).toMatch(/At most two chips/);
     expect(RAW).toMatch(/ONE SLOT FOR WHAT THIS EMPLOYER ACTUALLY DOES/);
-    expect(RAW).toMatch(/THE RIGHT RAIL IS ABOUT THE READER/);
-    expect(RAW).toMatch(/AT A GLANCE: A LABELLED FACT LIST, NOT A CHIP CLOUD/);
+    expect(FACTS_RAW).toMatch(/THE POSTING'S FACTS, AS A LABELLED LIST/);
+    expect(FACTS_RAW).toMatch(/A fact the employer did not state has no row/);
   });
 });

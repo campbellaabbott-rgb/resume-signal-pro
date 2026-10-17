@@ -63,8 +63,9 @@ describe("a separator inside brackets is not a separator", () => {
     expect(d.text).toBe("San Jose (Building - North) · Hybrid");
     expect(d.text).not.toMatch(/\(Building$|^North\)/);
   });
-  it("Jobs.tsx's copy is the defect this fixes", () => {
-    expect(boardDisplayLocation("San Jose (Building - North) - Hybrid").text, "re-read this guard if the board's copy was fixed too").toBe("San Jose (Building · North) · Hybrid");
+  it("Jobs.tsx's copy IS this function now (pass B, 2026-10-12): the board's name delegates, so the tray and the siblings get the fix too", () => {
+    expect(boardDisplayLocation("San Jose (Building - North) - Hybrid").text).toBe("San Jose (Building - North) · Hybrid");
+    expect(boardDisplayLocation("San Jose (Building - North) - Hybrid")).toEqual(displayLocation("San Jose (Building - North) - Hybrid"));
   });
 });
 

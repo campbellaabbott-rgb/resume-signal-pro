@@ -43,11 +43,11 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { CompanyClaim } from "@/components/jobs/CompanyClaim";
 import { possessive } from "@/lib/company-display";
-import { ago as fmtAgo, count as fmtCount, date as fmtDate } from "@/lib/company/format";
+import { ago as fmtAgo, count as fmtCount, date as fmtDate } from "@/lib/format";
 import { tPlural } from "@/lib/company/plural";
 import { SERVED_WINDOW_DAYS, type LanderModel, type OpenRolesValue } from "@/lib/company/lander-model";
 import { AgencyBanner } from "./AgencyBanner";
-import { CompanyChip } from "./parts";
+import { Chip } from "@/components/ui/chip";
 
 /** A measured work-mode split; "not stated" is counted, never folded into a mode. */
 export interface WorkModeSplit { remote: number; hybrid: number; onsite: number; unstated: number }
@@ -235,11 +235,16 @@ export interface CompanyHeaderProps {
   employerChipTip?: string;
   /** This board's own last read. */
   boardReadAt: string | null;
+  /**
+   * The employer's headcount, only with the day it was true (datedHeadcount,
+   * owner decision D11): no row carries that date today, so none prints.
+   */
+  headcount?: { n: number; asOf: string; basis: "yc_self_reported" | "public_records" | string | null } | null;
   onWatch: () => void;
   onCopyLink?: () => void;
 }
 
-export function CompanyHeader({ model, token, system, countries = [], workMode, payStated, workModeAsOf, employerChipTip, boardReadAt, onWatch, onCopyLink }: CompanyHeaderProps) {
+export function CompanyHeader({ model, token, system, countries = [], workMode, payStated, workModeAsOf, employerChipTip, boardReadAt, headcount, onWatch, onCopyLink }: CompanyHeaderProps) {
   const { t, i18n } = useTranslation();
   const lang = i18n.language || "en";
   const [claimOpen, setClaimOpen] = useState(false);
@@ -274,9 +279,9 @@ export function CompanyHeader({ model, token, system, countries = [], workMode, 
     ? <AgencyBanner />
     : model.sections.employerChip
       ? (
-        <CompanyChip tone="signal" icon={<Activity />} title={employerChipTip} data-employer-chip="">
+        <Chip variant="signal" icon={<Activity />} title={employerChipTip} data-employer-chip="">
           {t("jobsPage.hiringBadge2", "Actively hiring")}
-        </CompanyChip>
+        </Chip>
       )
       : null;
 
@@ -301,6 +306,16 @@ export function CompanyHeader({ model, token, system, countries = [], workMode, 
     })} · ${workModeRead}`]);
   }
   const payRead = payStated?.asOf ? fmtDate(payStated.asOf, { lng: lang }) : "";
+  if (headcount && model.sections.perks && headcount.n > 0 && /^\d{4}-\d{2}-\d{2}$/.test(headcount.asOf)) {
+    const band = headcount.n >= 1000 ? t("jobsPage.intel.bandEnterprise", "enterprise")
+      : headcount.n >= 100 ? t("jobsPage.intel.bandMid", "mid-market")
+      : t("jobsPage.intel.bandSmall", "startup-size");
+    facts.push(["headcount", t("companyProfile.facts.headcountLabel", "Headcount"), `${t("jobsPage.intel.employees", "≈{{n}} employees ({{basis}}) · {{band}}", {
+      n: fmtCount(headcount.n, { lng: lang }),
+      basis: headcount.basis === "yc_self_reported" ? t("jobsPage.intel.basisYc", "YC profile") : t("jobsPage.intel.basisPr", "public records"),
+      band,
+    })} · ${t("jobsPage.intel.asOf", "as of {{date}}", { date: fmtDate(headcount.asOf, { lng: lang }) })}`]);
+  }
   if (payStated && payStated.n > 0 && payRead) {
     facts.push(["pay", t("companyProfile.facts.payLabel", "Pay stated on"), `${t("companyProfile.facts.payValue", "{{k}} of {{n}}", { k: fmtCount(payStated.k, { lng: lang }), n: fmtCount(payStated.n, { lng: lang }) })} · ${t("companyProfile.pay.read", "read {{date}}", { date: payRead })}`]);
   }

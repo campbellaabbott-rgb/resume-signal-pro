@@ -17,6 +17,7 @@
 // the accordion mounted together make one request each) and asks none of
 // them on a board name two hiring systems share.
 import { type ReactNode } from "react";
+import { datedHeadcount } from "@/lib/headcount";
 import { useTranslation } from "react-i18next";
 import { useCompanyIntel } from "@/components/jobs/CompanyIntelPanel";
 import { useEmployerPerks } from "@/components/jobs/CompanyPerks";
@@ -25,7 +26,7 @@ import { useLcaFiledWages } from "@/components/jobs/LcaFiledWagesLine";
 import { SimilarCompaniesView, useSimilarCompanies } from "@/components/jobs/SimilarCompanies";
 import type { LayoffFiling } from "@/components/jobs/LayoffFilingLine";
 import { SERVED_WINDOW_DAYS, type LanderModel, type OpenRolesValue } from "@/lib/company/lander-model";
-import { ago as fmtAgo, count as fmtCount } from "@/lib/company/format";
+import { ago as fmtAgo, count as fmtCount } from "@/lib/format";
 import { tPlural } from "@/lib/company/plural";
 import { CompanyHeader, openRolesBasis, type WorkModeSplit } from "./CompanyHeader";
 import { CollisionBoardsPanel, CollisionHeader } from "./CollisionHeader";
@@ -91,6 +92,11 @@ export function CompanyLanderHeader(p: CompanyLanderHeaderProps) {
       payStated={p.payStated}
       employerChipTip={p.employerChipTip}
       boardReadAt={p.boardReadAt}
+      headcount={(() => {
+        const intel = p.profile?.intel.intel;
+        const head = datedHeadcount(intel);
+        return head ? { ...head, basis: intel?.employee_basis ?? null } : null;
+      })()}
       onWatch={p.onWatch}
       onCopyLink={p.onCopyLink}
     />

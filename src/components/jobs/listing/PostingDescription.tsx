@@ -105,7 +105,12 @@ export function PostingDescription({ description, employer, applyUrl, highlight,
   if (!prepared) {
     return (
       <div className="rounded-lg border border-border bg-muted p-4 text-sm" data-description="unavailable">
-        <p className="text-foreground">{t("listing.description.unavailable", "We couldn't load the full description here.")}</p>
+        {/* A read that FAILED says so, with a retry: it is our failure, never the
+            employer's silence. A description that does not exist says only
+            that the full text is on the employer's site. */}
+        <p className="text-foreground">{description.onRetry
+          ? t("listing.description.failed", "We couldn't load this description just now.")
+          : t("listing.description.unavailable", "We couldn't load the full description here.")}</p>
         <p className="mt-1"><SiteLink href={href} employer={employer} kind="read" /></p>
         {description.onRetry && (
           <Button variant="secondary" size="sm" className="mt-3" onClick={description.onRetry}>

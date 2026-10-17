@@ -11,7 +11,8 @@
  */
 import { describe, expect, it } from "vitest";
 import i18n from "@/i18n";
-import { formatListingDate, listingAge } from "@/lib/listing/age";
+import { listingAge } from "@/lib/listing/age";
+import { date as fmtDate } from "@/lib/format";
 import { cardAgeText, postedFactText } from "@/components/jobs/listing/listing-text";
 import { postingDatePosted } from "@/components/jobs/posting-page";
 
@@ -32,7 +33,7 @@ describe("a date after today is today", () => {
   it("the card says 'posted today' and the facts print today's date", () => {
     const job = { id: "workday:acme~wd3~AU:R1", source: "workday", postedAt: "2026-10-13" };
     expect(cardAgeText(t, job, NOW)).toBe("posted today");
-    expect(postedFactText(t, job, "en", NOW)).toBe(`${formatListingDate("2026-10-12", "en")}, as the employer's system states it`);
+    expect(postedFactText(t, job, "en", NOW)).toBe(`${fmtDate("2026-10-12", { lng: "en" })}, as the employer's system states it`);
     expect(postedFactText(t, job, "en", NOW)).not.toMatch(/\b13\b/);
   });
 
@@ -51,8 +52,14 @@ describe("a date after today is today", () => {
   });
 
   it("prints the day as a calendar day in the reader's language, never shifted by a time zone", () => {
-    expect(formatListingDate("2026-10-12T23:59:00-08:00", "en")).toBe("Oct 12, 2026");
-    expect(formatListingDate("2026-10-12", "en-GB")).toBe("12 Oct 2026");
-    expect(formatListingDate("2026-10-12", "de")).toMatch(/12\. Okt\. 2026/);
+    // Since pass B the facts print through the site's one formatter
+    // (src/lib/format.ts), which reads every English page day, month, year.
+    // The employer's own day, written with a western offset late in the day,
+    // stays that day: it is a calendar day, read in no time zone.
+    const late = { id: "greenhouse:acme:1", source: "greenhouse", postedAt: "2026-10-11T23:59:00-08:00" };
+    expect(postedFactText(t, late, "en", NOW)).toBe("11 Oct 2026, as the employer's system states it");
+    expect(fmtDate("2026-10-12", { lng: "en" })).toBe("12 Oct 2026");
+    expect(fmtDate("2026-10-12", { lng: "en-GB" })).toBe("12 Oct 2026");
+    expect(fmtDate("2026-10-12", { lng: "de" })).toMatch(/12\. Okt\. 2026/);
   });
 });

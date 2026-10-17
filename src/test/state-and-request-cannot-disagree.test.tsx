@@ -59,6 +59,7 @@ function stubTable() {
 
 import Jobs from "../pages/Jobs";
 import { MultiSelectFilter } from "../components/board/MultiSelectFilter";
+import { choosePostingMenuItem } from "./helpers/posting-menu";
 
 // A CASE THAT CHAINS SEVERAL WAITS NEEDS A BUDGET LARGER THAN THEIR SUM. Every
 // wait below is bounded (SLOW, 4 s), but vitest's default per-test budget is
@@ -160,7 +161,9 @@ const chips = () => Array.from(document.querySelectorAll("button"))
 const search = () => new URLSearchParams(window.location.search);
 const desktopHiring = () => Array.from(document.querySelectorAll("button"))
   .find((b) => b.className.includes("lg:inline-flex") && (b.textContent ?? "").trim() === "Actively hiring");
-const compareOn = (card: HTMLElement) => card.querySelector<HTMLElement>('[aria-label="Add to compare (up to 3)"]');
+// Pass B (2026-10-12): Compare is an item of the card's ⋯ menu (the listing
+// vocabulary's PostingMenu), chosen the way a keyboard chooses it.
+const compareOn = (card: HTMLElement) => choosePostingMenuItem(card, /^Compare/, "menuitemcheckbox");
 
 describe("state and request cannot disagree", () => {
   beforeEach(() => {
@@ -287,15 +290,15 @@ describe("state and request cannot disagree", () => {
   it("D5 behaviour: the compare tray counts rows that are on the page, and Escape closes the sheet first", async () => {
     mount();
     await waitFor(() => expect(text()).toContain("Quiet Role"), SLOW);
-    fireEvent.click(compareOn(cardFor("Quiet Role")!)!);
-    fireEvent.click(compareOn(cardFor("Staff Engineer")!)!);
+    await compareOn(cardFor("Quiet Role")!);
+    await compareOn(cardFor("Staff Engineer")!);
     await waitFor(() => expect(text()).toContain("Comparing 2 of 3"), SLOW);
     // Narrow to stated pay: Gamma leaves the list.
     fireEvent.click(screen.getByLabelText("States pay"));
     await waitFor(() => expect(cardFor("Quiet Role")).toBeUndefined(), SLOW);
     await waitFor(() => expect(text(), "the tray counts a row that is no longer on the page").toContain("Comparing 1 of 3"), SLOW);
     expect(text()).not.toContain("Comparing 2 of 3");
-    fireEvent.click(compareOn(cardFor("Warehouse Associate")!)!);
+    await compareOn(cardFor("Warehouse Associate")!);
     await waitFor(() => expect(text()).toContain("Comparing 2 of 3"), SLOW);
     fireEvent.click(screen.getByRole("button", { name: "Compare" }));
     await waitFor(() => expect(text()).toContain("Side by side"), SLOW);

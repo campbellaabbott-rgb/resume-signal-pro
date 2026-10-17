@@ -1,4 +1,4 @@
-import { Bot, ClipboardList, Globe, RefreshCw, ShieldCheck, ShieldAlert } from "lucide-react";
+import { ClipboardList, Globe, RefreshCw, ShieldCheck, ShieldAlert } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -15,6 +15,12 @@ import { count, date } from "@/lib/format";
  * `rechecksOnApply` is set only by a caller whose Apply handler really
  * re-checks the posting (the board's does: verifyJob on the click); without
  * it the sentence is not printed.
+ *
+ * NOTHING HERE SAYS WE SEND AN APPLICATION. The server-side apply agent is
+ * retired (owner, 2026-10-11): people apply on the employer's own site, with
+ * their own AI's help where they want it, so the block names the system, what
+ * its forms showed in our sample, the screening questions we read and the
+ * re-check, and no line about an agent of ours.
  */
 export interface HowApplyingWorksProps {
   systemKey: string | null;
@@ -46,11 +52,6 @@ export function HowApplyingWorks({ systemKey, systemLabel, rechecksOnApply = fal
         text: t("howApply.captchaAuto", { system, ...sample, defaultValue: "In our check of {{pages}} apply pages ({{date}}), {{system}} forms showed no human-verification step in that sample." }),
       });
     }
-  }
-  if (m.agent === "submits") {
-    lines.push({ key: "agent", icon: <Bot />, text: t("howApply.agentSubmits", "The Apply Agent can submit applications here.") });
-  } else if (m.agent === "prepares") {
-    lines.push({ key: "agent", icon: <Bot />, text: t("howApply.agentPrepares", "The Apply Agent prepares your answers here; you send them.") });
   }
   if (m.readsScreeningQuestions) {
     lines.push({ key: "questions", icon: <ClipboardList />, text: t("howApply.questions", "We read this posting's own screening questions.") });

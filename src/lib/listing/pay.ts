@@ -18,6 +18,7 @@
  *     currency is a stated ISO code — "$" alone is four currencies.
  */
 import { displaySalary } from "@/lib/salary-display";
+import { count, money } from "@/lib/format";
 import type { ListingJob } from "./types";
 
 export const PAY_BASIS_KEYS = ["hour", "day", "week", "month", "year"] as const;
@@ -82,17 +83,13 @@ const finitePositive = (n: unknown): n is number => typeof n === "number" && Num
  * only from 10,000 up; below that the whole number, grouped.
  */
 export function formatAmount(n: number, lng: string, currency: string | null, fractionDigits = 0): string {
+  // Through the site's one formatter (src/lib/format.ts): the reader's
+  // grouping and symbol, compact only from 10,000 up, whole units below it.
   const compact = Math.abs(n) >= 10_000;
-  const opts: Intl.NumberFormatOptions = {
-    notation: compact ? "compact" : "standard",
-    maximumFractionDigits: compact ? fractionDigits : 0,
-    minimumFractionDigits: compact ? fractionDigits : 0,
-  };
-  try {
-    return new Intl.NumberFormat(lng || "en", currency ? { ...opts, style: "currency", currency } : opts).format(n);
-  } catch {
-    return new Intl.NumberFormat(lng || "en", opts).format(n);
-  }
+  const digits = compact ? fractionDigits : 0;
+  return currency
+    ? money(n, currency, { lng: lng || "en", compact, digits })
+    : count(n, { lng: lng || "en", compact, digits });
 }
 
 /** "62K–79K" with both ends kept: one decimal is added when rounding would print one number twice. */

@@ -15,11 +15,15 @@
  *      published-claims.test.ts through helpers/locale-strings.ts);
  *   5. the runtime really merges them: a shard key resolves through i18next.
  *
- * Before the listing and company groups land there may be no shard on disk;
- * the rules are then proven on fixture shards below, and design pass B adds
- * the assertion that both shards exist, so deleting one cannot pass.
+ * Before the listing and company groups landed there could be no shard on
+ * disk, so the rules are also proven on fixture shards below. Design pass B
+ * (2026-10-12) wired both groups into the board and added the assertion that
+ * both shards exist in all nine languages and are read by the components
+ * that mount on it, so deleting one, or a language of one, cannot pass.
  */
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import i18n, { enTranslation } from "@/i18n";
 import { deepMerge, leafKeys, mergeShards, parseShardPath, shardProblems, shardsFor, SHARD_ROOT_KEYS, type Bundle } from "@/i18n/merge-shards";
 import { LOCALE_FILES, readMainLocale, readShards, shardNames, stringLeaves } from "./helpers/locale-strings";
@@ -43,6 +47,23 @@ function pluralGaps(bundle: Bundle, lng: string): string[] {
 
 describe("the shards on disk", () => {
   const names = shardNames();
+
+  it("both shards exist, in all nine languages, and the board's components read them", () => {
+    // Pass B mounts the listing components (card, pane, sheet) and the
+    // company lander on the board: each reads its own group's keys, so a
+    // missing shard would print English defaults, or raw keys, to every reader.
+    expect([...names].sort(), "a shard directory is missing").toEqual(expect.arrayContaining(["company", "listing"]));
+    for (const name of ["listing", "company"]) {
+      const langs = LOCALE_FILES.filter((f) => readShards(f).some((x) => x.name === name));
+      expect(langs, `shard ${name} is missing languages`).toEqual([...LOCALE_FILES]);
+    }
+    const read = (p: string) => readFileSync(resolve(__dirname, "../..", p), "utf8");
+    expect(read("src/components/jobs/listing/JobCard.tsx")).toMatch(/t\("listing\./);
+    expect(read("src/components/jobs/company/CompanyHeader.tsx")).toMatch(/t\("companyProfile\./);
+    const board = read("src/pages/Jobs.tsx");
+    expect(board, "the board no longer mounts the listing card").toMatch(/<JobCard\b/);
+    expect(board, "the board no longer mounts the company lander").toMatch(/<CompanyLanderHeader\b/);
+  });
 
   it("every shard directory is a registered group", () => {
     for (const n of names) expect(Object.keys(SHARD_ROOT_KEYS), `unregistered shard directory ${n}`).toContain(n);

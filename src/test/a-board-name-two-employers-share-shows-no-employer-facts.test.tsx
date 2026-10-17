@@ -161,9 +161,13 @@ describe("the lander of a shared token", () => {
     invoke.mockReset(); rpc.mockReset();
   });
 
-  it("positive control: an ordinary employer's page renders intel, SEC figures and Hiring Health from the same mocks", async () => {
+  // Pass B (2026-10-12): the company page is G3's CompanyLander. The employer
+  // facts live in its About rail and phone accordion (the intel's pay median,
+  // the SEC card, the hiring record), and the record card is titled "Hiring
+  // record"; a shared token's page is the collision variant.
+  it("positive control: an ordinary employer's page renders intel, SEC figures and the hiring record from the same mocks", async () => {
     mount("jnj", [job("workday", "jnj", "Johnson & Johnson", 1)]);
-    await waitFor(() => expect(text()).toContain("Hiring Health"), SLOW);
+    await waitFor(() => expect(text()).toContain("Hiring record"), SLOW);
     await waitFor(() => expect(text()).toContain("123,456"), SLOW);
     expect(text()).not.toContain("hiring systems carry a board with this name");
     await waitFor(() => expect(askedAbout("jnj")).toContain("get_company_financials"), SLOW);
@@ -176,10 +180,12 @@ describe("the lander of a shared token", () => {
   it("names each board with its hiring system and open roles, and prints no employer-level fact", async () => {
     mount("clear", [job("greenhouse", "clear", "CLEAR - Corporate", 1), job("bamboohr", "clear", "Clear", 2)]);
     await waitFor(() => expect(text()).toContain("2 hiring systems carry a board with this name"), SLOW);
-    expect(text()).toContain("Clear on BambooHR");
-    expect(text()).toContain("CLEAR - Corporate on Greenhouse");
-    await waitFor(() => expect(text()).toContain("open roles now: 3"), SLOW);
-    expect(text()).toContain("open roles now: 2");
+    const board = (source: string) => document.querySelector<HTMLElement>(`[data-collision-board="${source}"]`)?.textContent ?? "";
+    await waitFor(() => expect(board("bamboohr")).toContain("BambooHR board"), SLOW);
+    expect(board("greenhouse")).toContain("Greenhouse board");
+    expect(board("greenhouse")).toContain("CLEAR - Corporate");
+    await waitFor(() => expect(board("bamboohr")).toContain("3 open roles now"), SLOW);
+    expect(board("greenhouse")).toContain("2 open roles now");
     // The roles themselves are still listed.
     await waitFor(() => expect(text()).toContain("Platform Engineer 1"), SLOW);
     expect(text()).toContain("Platform Engineer 2");
@@ -187,7 +193,7 @@ describe("the lander of a shared token", () => {
     const t = text();
     expect(t, "the intel strip's salary median").not.toContain("123,456");
     expect(t, "the intel strip's headcount").not.toContain("4,321");
-    expect(t, "the Hiring Health card").not.toContain("Hiring Health");
+    expect(t, "the hiring record card").not.toContain("Hiring record");
     expect(t, "the SEC card").not.toContain("CLRX");
     expect(t, "the similar employers list").not.toContain("Peer Co");
     expect(t, "the filings on record").not.toContain("Clear Secure");
@@ -214,7 +220,10 @@ describe("the cards and the detail pane of a shared token", () => {
     mount("jnj", [job("workday", "jnj", "Johnson & Johnson", 1)]);
     await waitFor(() => expect(text()).toContain("Platform Engineer 1"), SLOW);
     await waitFor(() => expect(batchAsked("get_company_fill_curve", "jnj")).toBe(true), SLOW);
-    await waitFor(() => expect(firstCard().textContent).toContain("Actively hiring"), SLOW);
+    // A company page prints the employer's record ONCE, in its header (CP26):
+    // the chip sits there, and the page's own cards carry none.
+    await waitFor(() => expect(document.querySelector("[data-employer-chip]")?.textContent).toContain("Actively hiring"), SLOW);
+    expect(firstCard().textContent).not.toContain("Actively hiring");
     await openDetail();
     await waitFor(() => expect(text()).toContain("Filed H-1B wages"), SLOW);
     expect(text()).toContain("we watched 9 of its roles come off the board and stay off");
@@ -246,7 +255,12 @@ describe("the browser's employer cache", () => {
     rpc.mockImplementation(async () => ({ data: INTEL }));
     expect(await getEmployerCtx("clear", "greenhouse")).toEqual({});
     expect(rpc).not.toHaveBeenCalled();
-    await getEmployerCtx("jnj", "workday");
+    // The cache is a module-level map keyed by board, and the detail pane
+    // the blocks above opened on jnj already filled "jnj|workday" through
+    // the pane's EmployerContext. The ordinary token here is one no block in
+    // this file has opened, so the reader is really asked.
+    expect(isCollidedToken("abbvie")).toBe(false);
+    await getEmployerCtx("abbvie", "workday");
     expect(rpc).toHaveBeenCalled();
   });
 });

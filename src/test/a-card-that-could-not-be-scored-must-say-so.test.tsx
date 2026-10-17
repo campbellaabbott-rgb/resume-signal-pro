@@ -177,7 +177,9 @@ describe("a card that could not be scored must say so", () => {
     // PROSE, so RAW source. Without it the next tidy-up folds `unscorable` back
     // into `tier` and the chip becomes a fourth band.
     expect(RAW).toMatch(/AN HONEST NULL IS NOT A LOW SCORE/);
-    expect(RAW).toMatch(/Deliberately NOT a tier/);
+    // The card is the listing vocabulary's JobCard since pass B (2026-10-12);
+    // its "Not scored" chip carries the reason beside it.
+    expect(readFileSync(resolve(ROOT, "src/components/jobs/listing/JobCard.tsx"), "utf8")).toMatch(/Deliberately NOT a tier/);
   });
 
   it("every new string is translated in all nine locales", () => {

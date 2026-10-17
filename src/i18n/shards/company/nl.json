@@ -24,7 +24,6 @@
     "agency": {
       "banner": "Dit is het vacaturebord van een uitzend- of detacheringsbureau. De vacatures hier zijn meestal voor zijn klanten."
     },
-    "ago": "{{duration}} geleden",
     "boardReadAgo": "vacaturebord gelezen {{ago}}",
     "breadcrumbCompanies": "Bedrijven",
     "breadcrumbJobs": "Vacatures",
@@ -65,7 +64,8 @@
       "payValue": "{{k}} van {{n}}",
       "systemLabel": "Wervingssysteem",
       "workMode": "{{remote}} op afstand · {{hybrid}} hybride · {{onsite}} op locatie · {{unstated}} niet vermeld",
-      "workModeLabel": "Werkvorm"
+      "workModeLabel": "Werkvorm",
+      "headcountLabel": "Personeel"
     },
     "factsLabel": "Over dit vacaturebord",
     "h1Generic": "Vacatures op het vacaturebord ‘{{label}}’",
@@ -103,7 +103,7 @@
       "asOf": "Cijfers per {{when}}.",
       "countsWithheld": "We tonen niet hoeveel vacatures zijn verwijderd en verwijderd bleven.",
       "growthGrew": "Een stijging van {{pct}}% in aangeboden regels: {{a}} op {{d1}}, {{b}} op {{d2}}.",
-      "growthLabel": "Regels aangeboden bij onze dagelijkse lezing, anders geteld dan open vacatures.",
+      "growthLabel": "Regels die dit bord aanbood in onze eigen dagelijkse momentopname, anders geteld dan open vacatures.",
       "growthNone": "Geen stijging van {{minRate}}% of meer: {{a}} op {{d1}}, {{b}} op {{d2}}.",
       "growthUnread": "Nog geen plaatsingstempo voor dit vacaturebord.",
       "leadCloses_one": "We zagen {{n}} van zijn vacatures de afgelopen {{days}} dagen van het bord gaan en weg blijven.",

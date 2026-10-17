@@ -22,7 +22,7 @@ import { Landmark, TrendingUp, TrendingDown, ExternalLink } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { inflight } from "@/lib/company/inflight";
-import { date as fmtDate, money as fmtMoney } from "@/lib/company/format";
+import { date as fmtDate, money as fmtMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /** The day company_financials was measured as loaded (plan 2026-10-11, D11): the basis when a row carries none. */

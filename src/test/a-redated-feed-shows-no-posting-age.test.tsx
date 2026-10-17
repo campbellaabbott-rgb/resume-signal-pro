@@ -18,6 +18,10 @@ import { JobCard } from "@/components/jobs/listing/JobCard";
 import { PostingFacts } from "@/components/jobs/listing/PostingFacts";
 import { REDATING_SOURCES, isRedatingSource, listingAge } from "@/lib/listing/age";
 import type { ListingJob } from "@/lib/listing/types";
+import { date as fmtDate } from "@/lib/format";
+// Dates as the site's one formatter prints them for English readers (src/lib/format.ts: day, month, year), so the guard keeps its "reader's language" claim without pinning one calendar style.
+const D = (day: string) => fmtDate(day, { lng: "en" });
+
 
 const NOW = new Date("2026-10-12T12:00:00Z");
 const row = (source: string): ListingJob => ({
@@ -51,7 +55,7 @@ for (const source of ["breezy", "paylocity", "ukg"]) {
     it("the facts print the feed date and the hedge naming the system", () => {
       facts(row(source));
       const posted = document.querySelector("[data-fact='posted']")?.textContent ?? "";
-      expect(posted).toMatch(/^Feed date Oct 9, 2026; .+ can move this date when a posting is edited, so it may be older$/);
+      expect(posted).toMatch(new RegExp(`^Feed date ${D("2026-10-09")}; .+ can move this date when a posting is edited, so it may be older$`));
       expect(posted).toMatch(source === "ukg" ? /UKG Pro Recruiting/ : source === "breezy" ? /Breezy/ : /Paylocity/);
     });
   });
@@ -63,7 +67,7 @@ describe("positive control: a system that does not move its date", () => {
     expect(screen.getByText("posted 3 days ago")).toBeTruthy();
     cleanup();
     facts(row("greenhouse"));
-    expect(document.querySelector("[data-fact='posted']")?.textContent).toBe("Oct 9, 2026, as the employer's system states it");
+    expect(document.querySelector("[data-fact='posted']")?.textContent).toBe(`${D("2026-10-09")}, as the employer's system states it`);
   });
   it("an undated row says its system states no date, and prints no first-seen", () => {
     facts({ ...row("greenhouse"), postedAt: null });

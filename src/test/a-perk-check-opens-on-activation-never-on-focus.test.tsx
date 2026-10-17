@@ -21,6 +21,10 @@ vi.mock("@/integrations/supabase/client", () => ({ supabase: { rpc: vi.fn(async 
 
 import { CompanyPerksView } from "@/components/jobs/CompanyPerks";
 import { PERK_CHECK_MIN_SHARE, perkMark, readEmployerPerks } from "@/lib/employer-perks";
+import { date as fmtDate } from "@/lib/format";
+// Dates as the site's one formatter prints them for English readers (src/lib/format.ts: day, month, year), so the guard keeps its "reader's language" claim without pinning one calendar style.
+const D = (day: string) => fmtDate(day, { lng: "en" });
+
 
 const AS_OF = "2026-10-12T12:00:00Z";
 const row = (o: Record<string, unknown>) => ({
@@ -114,7 +118,7 @@ describe("activation opens it; focus never does", () => {
     expect(preview).toBeTruthy();
     expect(preview).toHaveAttribute("aria-hidden", "true");
     expect(preview.className).toMatch(/\babsolute\b/);
-    expect(preview.textContent).toContain("Stated in at least 212 of 240 open United States postings we could read, read Oct 12, 2026.");
+    expect(preview.textContent).toContain(`Stated in at least 212 of 240 open United States postings we could read, read ${D("2026-10-12")}.`);
     expect(preview.textContent).toContain("Comprehensive medical, dental and vision insurance");
     expect(preview.querySelector("a")).toBeNull();
     expect(health).toHaveAttribute("aria-expanded", "false");

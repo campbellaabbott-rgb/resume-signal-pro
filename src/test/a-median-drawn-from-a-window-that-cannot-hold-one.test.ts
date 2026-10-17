@@ -799,7 +799,12 @@ describe("a median drawn from a window that cannot hold one — a statistic and 
       const window = jobs.slice(Math.max(0, m.index! - 300), m.index! + 120);
       expect(window, "the risk set is a gate input, never a printed sample").not.toMatch(/\bt\(\s*"/);
     }
-    expect(jobs, "the employer sentence names the dated cohort").toMatch(/n:\s*hiringCurve\.dated_n/);
+    // The employer page's sentence is G3's HiringRecordCard since pass B
+    // (2026-10-12): its share and its takedown ceiling both name dated_n, and
+    // it never prints the risk set either.
+    const card = stripTs(read("src/components/jobs/company/HiringRecordCard.tsx"));
+    expect((card.match(/n:\s*fmtCount\(num\(c\.dated_n\)/g) ?? []).length, "the employer sentence names the dated cohort").toBe(2);
+    expect(card, "the risk set is a gate input, never a printed sample").not.toMatch(/n_at_risk_14/);
   });
 
   it("the curve RPC publishes the coverage gap rather than conditioning on it silently", () => {

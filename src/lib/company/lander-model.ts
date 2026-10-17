@@ -44,6 +44,15 @@ export const USAJOBS_RESULT_CAP = 10_000;
 /** The source key of the federal feed. */
 export const USAJOBS_SOURCE = "usajobs";
 
+/**
+ * The federal listing site, by its token or by the hiring system of the
+ * board's rows. The page asks this rather than naming the feed itself, so
+ * the variant is decided in one place (the hub, never an employer).
+ */
+export function isUsajobsBoard(token: string | null | undefined, source: string | null | undefined): boolean {
+  return token === USAJOBS_SOURCE || source === USAJOBS_SOURCE;
+}
+
 export type LanderVariant = "standard" | "collision" | "usajobs" | "agency" | "zero" | "uncarried";
 
 /** One open-roles figure per page. `floor` means the true figure is higher ("10,000+"). */

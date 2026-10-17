@@ -15,7 +15,7 @@
 import { useTranslation } from "react-i18next";
 import type { CompanyIntel } from "@/components/jobs/CompanyIntelPanel";
 import type { OpenRolesValue } from "@/lib/company/lander-model";
-import { count as fmtCount, date as fmtDate } from "@/lib/company/format";
+import { count as fmtCount, date as fmtDate } from "@/lib/format";
 import { ProfileSection, ValueBar } from "./parts";
 
 /** The plan's bar: at least this many fields, and a place stated on at least this share of open roles. */

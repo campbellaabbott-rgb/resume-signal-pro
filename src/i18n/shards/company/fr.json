@@ -25,7 +25,6 @@
     "agency": {
       "banner": "Ce site carrières est celui d'une agence de recrutement. Les postes proposés ici sont généralement pour ses clients."
     },
-    "ago": "il y a {{duration}}",
     "boardReadAgo": "site lu {{ago}}",
     "breadcrumbCompanies": "Entreprises",
     "breadcrumbJobs": "Offres",
@@ -71,7 +70,8 @@
       "payValue": "{{k}} sur {{n}}",
       "systemLabel": "Système de recrutement",
       "workMode": "{{remote}} en télétravail · {{hybrid}} en hybride · {{onsite}} sur site · {{unstated}} non précisés",
-      "workModeLabel": "Mode de travail"
+      "workModeLabel": "Mode de travail",
+      "headcountLabel": "Effectif"
     },
     "factsLabel": "À propos de ce site carrières",
     "h1Generic": "Postes sur le site « {{label}} »",
@@ -111,7 +111,7 @@
       "asOf": "Chiffres au {{when}}.",
       "countsWithheld": "Nous n'affichons pas combien de postes ont été retirés et le sont restés.",
       "growthGrew": "Une hausse de {{pct}} % des lignes diffusées : {{a}} le {{d1}}, {{b}} le {{d2}}.",
-      "growthLabel": "Lignes diffusées lors de notre lecture quotidienne, comptées autrement que les postes ouverts.",
+      "growthLabel": "Lignes diffusées par ce tableau dans notre propre instantané quotidien, comptées autrement que les postes ouverts.",
       "growthNone": "Pas une hausse de {{minRate}} % ou plus : {{a}} le {{d1}}, {{b}} le {{d2}}.",
       "growthUnread": "Pas encore de rythme de publication pour ce site.",
       "leadCloses_one": "Nous avons vu {{n}} de ses postes quitter le site et ne pas revenir au cours des {{days}} derniers jours.",

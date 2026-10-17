@@ -2,16 +2,16 @@
  * THE PROP CONTRACTS BETWEEN THE BOARD PAGE AND ITS COMPONENTS.
  *
  * Types only. The job card, the detail pane, the phone sheet and the company
- * page's parts are built against these, and src/pages/Jobs.tsx wires them in
- * one region at a time. A component that needs a field this file lacks adds an
- * extension type in its own module and names it in its wiring table; this
- * file is edited by the design-system group only.
+ * page's parts were built against these, and src/pages/Jobs.tsx wires them
+ * (pass B, 2026-10-12). Since the wiring, the listing and company-page
+ * contracts are the components' own prop types, re-exported below; the
+ * board types re-declared here stay declared here. This file is edited by
+ * the design-system group only.
  *
  * Nothing here imports from src/pages/Jobs.tsx (that would be circular). The
  * few board types re-declared below are held equal to Jobs.tsx's own by
  * src/test/the-shared-contracts-match-the-board.test.ts.
  */
-import type { ReactNode } from "react";
 import type { BoardJob, FillCurve } from "@/lib/board-job";
 import type { HiringRecordRefusal } from "@/lib/hiring-record-gate";
 
@@ -56,120 +56,37 @@ export interface OpenRolesValue {
   asOf: string | null;
 }
 
-export type CardSurface = "board" | "company" | "posting";
+// ── THE LISTING COMPONENTS, AS WIRED (pass B, 2026-10-12) ───────────────────
+//
+// G2 built the card, the pane, the phone sheet and the menu against the
+// contracts this file first declared, and extended them where the board
+// needed more. Pass B wired them into the board, so the contract IS the
+// components' own prop types now, re-exported here rather than declared a
+// second time: one declaration cannot drift from the other. What changed
+// from the first draft:
+//   - the menu's handlers take the job back ((job, ...)), are each optional
+//     (an item renders only when its handler is supplied) and carry the
+//     reader's state (reported, compared);
+//   - the card takes the crawlable href, the fit as {kind} (a score, or the
+//     scorer's honest "unscored"), and two more slots (fieldChip, siblings);
+//   - the pane's fit is a slot (slots.fit), with new slots for how applying
+//     works, the decision summary, the pay benchmark and similar openings;
+//     the served stamp defaults to the row's own and carries partialRead;
+//   - the description says whether a failed read can be retried (onRetry).
+export type { CardContext, JobCardFit as FitValue, JobCardProps, JobCardSlots } from "./listing/JobCard";
+export type { PostingMenuActions, ReportReason } from "./listing/PostingMenu";
+export type { OpenRolesLink, PostingDetailProps, PostingDetailSlots, PostingSurface } from "./listing/PostingDetail";
+export type { ListingDescription as PostingDescription } from "./listing/PostingDescription";
+export type { ListingServed as PostingServed } from "./listing/LiveStatus";
+export type { PostingSheetProps } from "./listing/PostingSheet";
 
-export interface CardContext {
-  surface: CardSurface;
-  density: "compact" | "comfortable";
-  /** On a company page every card is the same employer: no name, no monogram. */
-  hideEmployer: boolean;
-  selected: boolean;
-}
-
-/** A fit score: a number, null when the posting could not be scored, undefined when not asked. */
-export type FitValue = number | null | undefined;
-
-export interface PostingMenuActions {
-  onReport: () => void;
-  onHide: () => void;
-  onCompare?: () => void;
-  onCopyLink: () => void;
-  /** "Open in Claude or ChatGPT": absent where no hand-off applies. */
-  aiHandoff?: () => void;
-}
-
-export interface JobCardProps {
-  job: BoardJob;
-  ctx: CardContext;
-  fit?: FitValue;
-  saved: boolean;
-  /** Employer-level chips, filled by the board on /jobs only, never on a company page (CP26). */
-  slots?: { employerChip?: ReactNode; layoffChip?: ReactNode };
-  onOpen: (job: BoardJob, how: "click" | "keyboard") => void;
-  onToggleSave: (job: BoardJob) => void;
-  onCheckFit: (job: BoardJob) => void;
-  menu: PostingMenuActions;
-}
-
-export type PostingSurface = "board" | "company" | "sheet" | "page";
-
-export interface PostingDescription {
-  text: string;
-  state: "loaded" | "loading" | "unavailable";
-  /** True when the stored text reached STORED_DESC_CAP and continues on the employer's site. */
-  capped: boolean;
-}
-
-export interface PostingServed {
-  /** Set once the employer's system stopped listing the posting. */
-  missingSince: string | null;
-  /** When the board's feed was last read (job_board_verifications), never first_seen. */
-  recheckedAt: string | null;
-  /** We could read only part of this board on the last pass. */
-  partialRead: boolean;
-}
-
-export interface PostingDetailProps {
-  job: BoardJob;
-  surface: PostingSurface;
-  description: PostingDescription;
-  served: PostingServed;
-  fit?: FitValue;
-  slots: {
-    employerContext?: ReactNode;
-    layoffLine?: ReactNode;
-    lcaLine?: ReactNode;
-    ontario?: ReactNode;
-    applicationAnswers?: ReactNode;
-    agentHandoff?: ReactNode;
-  };
-  openRolesLink?: { count: OpenRolesValue; href: string; name: string };
-  back?: { label: string; onBack: () => void };
-  onApply: (job: BoardJob) => void;
-  onCheckFit: (job: BoardJob) => void;
-  onClose?: () => void;
-  menu: PostingMenuActions;
-}
-
-/** A layoff filing row as the company page receives it (LayoffFilingLine's LayoffFiling). */
-export type LayoffRowLike = Record<string, unknown>;
-
-export interface LanderInput {
-  token: string;
-  storedName: string | null;
-  bakedName: string | null;
-  cachedName: string | null;
-  /** The list response's total and whether it is a capped floor. */
-  listTotal: number | null;
-  listFloor: boolean;
-  /** The board-level open count (fill-curve open_roles) and its basis. */
-  feedTotal: number | null;
-  feedFloor: boolean;
-  feedAsOf: string | null;
-  /** This board's own last read, never a board-wide median. */
-  boardReadAt: string | null;
-  source: string | null;
-  agency: boolean;
-  collision: boolean;
-  isUsajobs: boolean;
-  loading: boolean;
-  error: boolean;
-  /** The daily-allowance refusal sentence, when the board budget refused the read. */
-  budgetRefusal: string | null;
-  gated: GatedHiringRecord;
-  verdict: HiringRecordVerdict;
-  growth: GrowthReading | null;
-  layoffRows: LayoffRowLike[];
-  /** Filters the VISITOR set (activeBoardFilterKeys minus the company scope). */
-  visitorFilters: string[];
-}
-
-export interface LanderSlots {
-  perks?: ReactNode;
-  publicRecords?: ReactNode;
-  similar?: ReactNode;
-  /** Collision pages: show only one hiring system's roles. */
-  onShowOnly: (source: string) => void;
-  onWatch: () => void;
-  onClaim?: () => void;
-}
+// ── THE COMPANY PAGE, AS WIRED ─────────────────────────────────────────────
+//
+// The lander's input and model are G3's (src/lib/company/lander-model.ts),
+// which pass B mounts: the collision arrives as the catalogue's boards (not a
+// flag), growth and the closure verdict as their gated readings, layoff
+// filings as a count, and the extensions it names (carried, lastUnfiltered,
+// relatedTotal, listAnsweredAt, boardTotal, undatedOpen). Re-exported so the
+// page and its parts read one declaration. Its OpenRolesValue is this file's,
+// plus the basis of its date and the cap flag.
+export type { LanderInput, LanderModel, LanderVariant, LanderSections } from "@/lib/company/lander-model";

@@ -1,9 +1,5 @@
 {
   "listing": {
-    "ago": {
-      "now": "zojuist",
-      "since": "{{duration}} geleden"
-    },
     "period": {
       "hour": "/uur",
       "day": "/dag",
@@ -87,7 +83,8 @@
       "continuesOnSitePlain": "De vacature gaat verder op de site van de werkgever",
       "collapsed_one": "We lieten {{count}} alinea weg die een andere woord voor woord herhaalde.",
       "collapsed_other": "We lieten {{count}} alinea's weg die andere woord voor woord herhaalden.",
-      "cutShort": "Onze kopie stopt mogelijk voor het einde van de vacature."
+      "cutShort": "Onze kopie stopt mogelijk voor het einde van de vacature.",
+      "failed": "We konden deze beschrijving nu even niet laden."
     },
     "detail": {
       "back": "Terug naar {{name}}",

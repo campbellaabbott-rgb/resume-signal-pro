@@ -34,10 +34,11 @@ import {
   type HiringRecordGateCopyKey,
   type HiringRecordRow,
 } from "@/lib/hiring-record-gate";
-import { count as fmtCount, date as fmtDate, dateTime as fmtDateTime } from "@/lib/company/format";
+import { count as fmtCount, date as fmtDate, dateTime as fmtDateTime } from "@/lib/format";
 import { tPlural } from "@/lib/company/plural";
 import type { ActivelyHiringInput, GatedRecordInput, GrowthVerdictInput } from "@/lib/company/lander-model";
-import { CompanyChip, ProfileSection, WhyDisclosure } from "./parts";
+import { Chip } from "@/components/ui/chip";
+import { ProfileSection, WhyDisclosure } from "./parts";
 
 /** One row of get_company_fill_curve, as much of it as the card prints. */
 export interface RecordCurve extends HiringRecordRow {
@@ -254,12 +255,12 @@ export function HiringRecordCard({ input, floorOnly = false, headingLevel = 2 }:
   const growth = input.growth.verdict === "grew" && growthFigures ? (
     <li data-record="growth">
       {t("companyProfile.record.growthGrew", "A rise of {{pct}}% in rows served: {{a}} on {{d1}}, {{b}} on {{d2}}.", { ...growthFigures, pct: pct(g!.rate) })}
-      <span className="block text-xs text-subtle-foreground">{t("companyProfile.record.growthLabel", "Rows served on our daily read, counted differently from open roles.")}</span>
+      <span className="block text-xs text-subtle-foreground">{t("companyProfile.record.growthLabel", "Rows served on this board in our own daily snapshot, counted differently from open roles.")}</span>
     </li>
   ) : input.growth.verdict === "no-growth" && growthFigures ? (
     <li data-record="growth">
       {t("companyProfile.record.growthNone", "Not a rise of {{minRate}}% or more: {{a}} on {{d1}}, {{b}} on {{d2}}.", { ...growthFigures, minRate: input.bars.growthMinRatePct })}
-      <span className="block text-xs text-subtle-foreground">{t("companyProfile.record.growthLabel", "Rows served on our daily read, counted differently from open roles.")}</span>
+      <span className="block text-xs text-subtle-foreground">{t("companyProfile.record.growthLabel", "Rows served on this board in our own daily snapshot, counted differently from open roles.")}</span>
     </li>
   ) : (
     <li>
@@ -277,9 +278,9 @@ export function HiringRecordCard({ input, floorOnly = false, headingLevel = 2 }:
         <span className="inline-flex flex-wrap items-center gap-2">
           {title}
           {input.gated.withheld && (
-            <CompanyChip tone="neutral" icon={<Info />} data-hh-withheld={input.gated.withheld}>
+            <Chip variant="neutral" icon={<Info />} data-hh-withheld={input.gated.withheld}>
               {t("jobsPage.hhGate.withheldBadge", HIRING_RECORD_GATE_COPY.withheldBadge)}
-            </CompanyChip>
+            </Chip>
           )}
         </span>
       }

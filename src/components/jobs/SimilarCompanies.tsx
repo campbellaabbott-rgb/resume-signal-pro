@@ -22,7 +22,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { datedHeadcount } from "@/lib/headcount";
 import { inflight } from "@/lib/company/inflight";
-import { count as fmtCount, date as fmtDate } from "@/lib/company/format";
+import { count as fmtCount, date as fmtDate } from "@/lib/format";
 import { tPlural } from "@/lib/company/plural";
 import { cn } from "@/lib/utils";
 

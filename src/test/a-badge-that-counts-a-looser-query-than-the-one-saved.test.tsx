@@ -159,7 +159,7 @@ describe("a badge that counts a looser query than the one saved", () => {
     // mechanically, so a twenty-second filter is covered the day it is added.
     const ALL_ON: BoardFilterState = {
       q: "nurse", location: "London", remoteOnly: true, workMode: "remote,hybrid",
-      category: "healthcare", inclUncat: true, agentOnly: true, country: "GB",
+      category: "healthcare", inclUncat: true, country: "GB",
       experience: "senior", companyTokens: ["workday~cvshealth"], salaryFloor: 60_000,
       salaryCeiling: 120_000, payBasis: "salaried", statedPayOnly: true,
       includeUnstatedPay: true, maxYears: 5, department: "nursing",
@@ -183,9 +183,16 @@ describe("a badge that counts a looser query than the one saved", () => {
     for (const k of boardKeys) {
       expect(savedKeys.has(k), `the board can filter by \`${k}\` and a saved search cannot carry it`).toBe(true);
     }
+    // ONE KEY A SAVED SEARCH MAY CARRY THAT THE BOARD NO LONGER SENDS: the
+    // agent filter left the board with the retired apply agent (2026-10-12),
+    // and a search saved with it keeps its stored narrowing rather than widening
+    // silently. Nothing else may be one-sided.
+    const RETIRED_FROM_BOARD = new Set(["sendableOnly"]);
     for (const k of savedKeys) {
+      if (RETIRED_FROM_BOARD.has(k)) continue;
       expect(boardKeys.has(k), `a saved search carries \`${k}\` that the board's own body never sends`).toBe(true);
     }
+    for (const k of RETIRED_FROM_BOARD) expect(boardKeys.has(k), `${k} is retired from the board and must not come back`).toBe(false);
   });
 
   it("a search saved with the standalone Remote toggle still probes remote-only", async () => {

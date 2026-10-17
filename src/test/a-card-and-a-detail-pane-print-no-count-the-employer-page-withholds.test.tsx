@@ -76,8 +76,14 @@ const jobOf = (token: string) => ({
   department: null, agency: false, postedAt: ago(2), lastSeen: ago(2), recheckedAt: ago(0), applyUrl: "https://x/1", remote: false,
 });
 
-function mount(token: string, row: Record<string, unknown>) {
-  window.history.replaceState({}, "", `/jobs/company/${token}`);
+// Pass B (2026-10-12): the employer's job cards carry its record on the BOARD
+// (/jobs); on its own company page every card is that employer, so the page
+// prints the record once, in G3's HiringRecordCard, and its cards carry none
+// (CP26). The card and pane cases mount the board; the employer-page case
+// mounts the lander.
+function mount(token: string, row: Record<string, unknown>, where: "board" | "lander" = "board") {
+  const path = where === "board" ? "/jobs" : `/jobs/company/${token}`;
+  window.history.replaceState({}, "", path);
   const job = jobOf(token);
   rpc.mockImplementation(async (fn: string) => {
     if (fn === "get_company_fill_curve") return { data: [row], error: null };
@@ -96,8 +102,11 @@ function mount(token: string, row: Record<string, unknown>) {
     return { data: {} };
   });
   return render(
-    <MemoryRouter initialEntries={[`/jobs/company/${token}`]}>
-      <Routes><Route path="/jobs/company/:companyToken" element={<Jobs />} /></Routes>
+    <MemoryRouter initialEntries={[path]}>
+      <Routes>
+        <Route path="/jobs" element={<Jobs />} />
+        <Route path="/jobs/company/:companyToken" element={<Jobs />} />
+      </Routes>
     </MemoryRouter>,
   );
 }
@@ -128,7 +137,6 @@ describe("a card and a detail pane print no count the employer page withholds", 
   ] as const) {
     it(`${name}: the card is badged withheld with the gate's reason, and neither it nor the detail pane prints the count`, async () => {
       mount(token, row);
-      await waitFor(() => expect(text()).toContain("Hiring Health"), SLOW);
       await waitFor(() => expect(card()?.textContent ?? "").toContain("Closure record withheld"), SLOW);
       const chip = Array.from(card()!.querySelectorAll<HTMLElement>("[title]")).find((e) => (e.textContent ?? "").includes("Closure record withheld"))!;
       expect(chip.getAttribute("title")).toMatch(why);
@@ -140,6 +148,14 @@ describe("a card and a detail pane print no count the employer page withholds", 
       expect(titles().filter((s) => STAY_OFF.test(s))).toEqual([]);
       expect(text(), "the detail pane said we hold no record").not.toMatch(/we hold no closure record for this employer/);
       expect(text()).toMatch(why);
+    });
+
+    it(`${name}: the employer page's hiring record is badged withheld, prints no count, and its own cards carry no record`, async () => {
+      mount(token, row, "lander");
+      await waitFor(() => expect(document.querySelector("[data-hiring-record] [data-hh-withheld]")?.textContent).toContain("Closure record withheld"), SLOW);
+      expect(text(), "the employer page printed the withheld count").not.toMatch(STAY_OFF);
+      expect(titles().filter((s) => STAY_OFF.test(s))).toEqual([]);
+      expect(card()!.textContent, "a card on the employer's own page carries the record the header already prints").not.toMatch(/Closure record withheld|Actively hiring|No closure record/);
     });
   }
 

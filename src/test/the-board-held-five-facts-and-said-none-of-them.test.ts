@@ -63,6 +63,9 @@ const RAW = read("src/pages/Jobs.tsx");
 // Code literals against comment-stripped source; a comment's prose against RAW.
 const JOBS = RAW.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
 // The BoardJob row type moved to a shared module (design pass A); Jobs.tsx imports it.
+const CARD = read("src/components/jobs/listing/JobCard.tsx").replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
+const FACTS = read("src/components/jobs/listing/PostingFacts.tsx").replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
+const PAY = read("src/lib/listing/pay.ts").replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
 const BOARD_JOB = read("src/lib/board-job.ts").replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
 const BOARD = read("supabase/functions/job-board/index.ts")
   .replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
@@ -211,17 +214,21 @@ describe("the board held five facts and said none of them", () => {
   });
 
   it("both surfaces render each fact, and both fall back rather than guess", () => {
-    // The card and the panel each read the ATS name through the same helper,
-    // and each keep the un-named sentence for a source we cannot label.
-    expect((JOBS.match(/jobsPage\.trustBadgeAts"/g) ?? []).length, "card + panel").toBe(2);
-    expect((JOBS.match(/jobsPage\.trustBadge"/g) ?? []).length, "the un-named fallback survives on both").toBe(2);
-    expect(JOBS, "the card").toMatch(/const ats = sourceLabel\(job\.source\);/);
-    expect(JOBS, "the panel").toMatch(/sourceLabel\(detailJob\.source\)/);
-    // Pay basis and currency reach both surfaces.
-    expect(JOBS).toMatch(/payBasisToName\(job\.salary, job\.salaryPeriod\)/);
-    expect(JOBS).toMatch(/payBasisToName\(detailJob\.salary, detailJob\.salaryPeriod\)/);
-    expect(JOBS).toMatch(/statedCurrencyCode\(job\.salary, job\.salaryCurrency\)/);
-    expect(JOBS).toMatch(/statedCurrencyCode\(detailJob\.salary, detailJob\.salaryCurrency\)/);
+    // Pass B (2026-10-12): the card and the pane are the listing vocabulary's
+    // (JobCard, PostingFacts). Each reads the hiring system, the pay basis and
+    // currency, the place and the country through the listing modules, and
+    // each keeps the un-named fallback for a source we cannot label.
+    expect(JOBS, "the board mounts the card").toMatch(/<JobCard\b/);
+    expect(JOBS, "the board mounts the pane").toMatch(/<PostingDetail\b/);
+    expect(CARD, "the card").toMatch(/const system = systemLabel\(listingSource\(job\)\);/);
+    expect(CARD, "the card's un-named fallback survives").toMatch(/listing\.card\.feedReadNoSystem/);
+    expect(FACTS, "the panel").toMatch(/const system = applySystem\(cleanApplyUrl\(job\.applyUrl\)\);/);
+    expect(FACTS, "the panel prints no system row for a source it cannot label").toMatch(/\{system && \(/);
+    // Pay basis and currency reach both surfaces through one reader.
+    expect(CARD).toMatch(/const pay = listingPay\(job, lng\);/);
+    expect(FACTS).toMatch(/const pay = listingPay\(job, lng\);/);
+    expect(PAY).toMatch(/basis: payBasisToName\(raw, job\.salaryPeriod\),/);
+    expect(PAY).toMatch(/currencyCode: statedCurrencyCode\(raw, job\.salaryCurrency\),/);
     // Country: suppressed form on the skimmed card, labelled row in the panel.
     // The card's argument is the DISPLAYED place, not the raw column — see
     // a-requisition-number-is-not-a-place: a location that is nothing but an
@@ -229,16 +236,14 @@ describe("the board held five facts and said none of them", () => {
     // place fact there is. countryToName already states it when the text is
     // empty; feeding it the raw column would let a country name buried inside
     // a requisition string suppress the one word left to say.
-    expect(JOBS).toMatch(/const cardCountry = countryToName\(cardLoc\.text, job\.country\);/);
-    expect(JOBS).toMatch(/countryLabelOrNull\(detailJob\.country\)/);
-    // The category finally has a NAME beside its colour, and the same helper
-    // paints both the stripe and the dot so they cannot drift apart.
-    expect(JOBS).toMatch(/jobsPage\.factField/);
-    expect(JOBS).toMatch(/accentFor\(detailJob\.category\)/);
+    expect(CARD).toMatch(/const country = countryToName\(loc\.text, job\.country, lng\);/);
+    expect(FACTS).toMatch(/countryLabelOrNull\(job\.country, lng\)/);
+    // The category has a NAME beside its colour.
+    expect(FACTS).toMatch(/jobsPage\.factField/);
+    expect(FACTS).toMatch(/jobsPage\.categoryProvenance/);
     // Every one of them sits behind its own existence test — there is no
     // `?? "—"`, no `?? 0` and no "Not specified" anywhere in the fact list.
-    expect(JOBS, "an absent fact must not become a printed absence")
-      .not.toMatch(/factPay[\s\S]{0,4000}(Not specified|Not stated|not disclosed)/);
+    expect(FACTS, "an absent fact must not become a printed absence").not.toMatch(/Not specified|Not stated|not disclosed|\?\? "—"|\?\? 0\b/);
   });
 
   it("the reason each of these is allowed to stay silent is written down", () => {
@@ -258,16 +263,19 @@ describe("the board held five facts and said none of them", () => {
     // key -> the placeholders that MUST survive translation. A locale that
     // drops {{ats}} renders a trust claim with a hole in it.
     const REQUIRED: Record<string, readonly string[]> = {
-      trustBadgeAts: ["{{company}}", "{{ats}}"],
-      trustBadgeAtsTip: ["{{company}}", "{{ats}}"],
       annualizedBasisTip: [],
       pastFieldWindow: ["{{field}}"],
       pastFieldWindowTip: ["{{n}}", "{{field}}", "{{window}}", "{{p75}}", "{{age}}"],
       factPay: [], factWorkMode: [], factEmploymentType: [], factExperience: [],
-      factCountry: [], factField: [], factPosted: [], factApplying: [], factEmployer: [],
-      experienceProvenance: [], minYearsProvenance: [],
+      factCountry: [], factField: [], factPosted: [], factEmployer: [],
       countryProvenance: [], categoryProvenance: [],
     };
+    // The strings pass B moved to the listing shard, with the holes they must keep.
+    const LISTING_REQUIRED: Record<string, readonly string[]> = {
+      "card.feedRead": ["{{system}}", "{{ago}}"], "card.feedReadTip": [], "facts.system": [], "facts.systemValue": ["{{system}}"],
+      "facts.bandNote": [], "facts.minYearsNote": [], "facts.ourEstimate": ["{{amount}}", "{{period}}", "{{rule}}"], "facts.department": [],
+    };
+    const leaf = (o: unknown, path: string): unknown => path.split(".").reduce<unknown>((x, k) => (x && typeof x === "object" ? (x as Record<string, unknown>)[k] : undefined), o);
     for (const f of files) {
       const jp = (JSON.parse(readFileSync(resolve(dir, f), "utf8")) as {
         jobsPage?: Record<string, unknown>;
@@ -286,6 +294,13 @@ describe("the board held five facts and said none of them", () => {
       const basis = jp.payBasis as Record<string, unknown> | undefined;
       for (const p of ["hour", "day", "week", "month", "year"]) {
         expect(typeof basis?.[p], `${f}: jobsPage.payBasis.${p}`).toBe("string");
+      }
+      const listing = (JSON.parse(read(`src/i18n/shards/listing/${f}`)) as { listing: unknown }).listing;
+      for (const [k, holes] of Object.entries(LISTING_REQUIRED)) {
+        const v = leaf(listing, k);
+        expect(typeof v, `${f}: listing.${k}`).toBe("string");
+        expect(String(v).length, `${f}: listing.${k} is empty`).toBeGreaterThan(0);
+        for (const h of holes) expect(String(v), `${f}: listing.${k} lost ${h}`).toContain(h);
       }
     }
   });

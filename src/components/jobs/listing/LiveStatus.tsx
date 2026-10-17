@@ -25,7 +25,7 @@
  */
 import { AlertTriangle, Clock, XCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { formatListingDate } from "@/lib/listing/age";
+import { date as fmtDate } from "@/lib/format";
 import { agoText } from "./listing-text";
 
 export interface ListingServed {
@@ -46,7 +46,7 @@ export function LiveStatus({ served, now }: { served: ListingServed; now?: Date 
         <XCircle className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
         <span>
           {Number.isFinite(Date.parse(served.missingSince))
-            ? t("listing.status.gone", { defaultValue: "No longer listed by the employer · first missing from its feed {{date}}", date: formatListingDate(served.missingSince, lng) })
+            ? t("listing.status.gone", { defaultValue: "No longer listed by the employer · first missing from its feed {{date}}", date: fmtDate(served.missingSince.slice(0, 10), { lng }) })
             : t("listing.status.goneUndated", "No longer listed by the employer")}
         </span>
       </p>
@@ -63,7 +63,7 @@ export function LiveStatus({ served, now }: { served: ListingServed; now?: Date 
       </p>
     );
   }
-  const ago = agoText(t, served.recheckedAt, lng, now);
+  const ago = agoText(served.recheckedAt, lng, now);
   if (!ago) return null;
   return (
     <p data-live-status="read" className={`${CHIP} border-border text-muted-foreground`}>

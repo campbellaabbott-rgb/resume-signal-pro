@@ -11,7 +11,7 @@
 import { Landmark } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { USAJOBS_RESULT_CAP, type LanderModel } from "@/lib/company/lander-model";
-import { count as fmtCount } from "@/lib/company/format";
+import { count as fmtCount } from "@/lib/format";
 import { CompanyBreadcrumb, HeaderActions, openRolesLine } from "./CompanyHeader";
 
 export function UsajobsHubHeader({ model, onWatch, onCopyLink }: {

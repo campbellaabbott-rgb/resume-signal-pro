@@ -305,14 +305,12 @@ describe("every control in the picture sends what it names", () => {
     expect("includeUncategorised" in body1, "the unsorted opt-in is off by default").toBe(false);
   });
 
-  it("C4 'Agent can apply' sends sendableOnly as the literal true, and nothing when off", async () => {
+  it("C4 the retired 'Agent can apply' control is gone, and the board never sends sendableOnly", async () => {
+    // The server-side apply agent is retired (owner, 2026-10-11), and with it
+    // the board's filter for the forms that agent could drive.
     mount(); await settled();
+    expect(screen.queryByLabelText("Agent can apply")).toBeNull();
     expect("sendableOnly" in lastBody()).toBe(false);
-    const box = screen.getByLabelText("Agent can apply") as HTMLInputElement;
-    fireEvent.click(box);
-    await waitFor(() => expect(lastBody().sendableOnly).toBe(true), SLOW);
-    fireEvent.click(box);
-    await waitFor(() => expect("sendableOnly" in lastBody()).toBe(false), SLOW);
   });
 
   it("C5 'Any experience' sends experience as a comma list of bands", async () => {

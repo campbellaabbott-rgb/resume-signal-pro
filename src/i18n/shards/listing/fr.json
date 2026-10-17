@@ -1,9 +1,5 @@
 {
   "listing": {
-    "ago": {
-      "now": "à l'instant",
-      "since": "il y a {{duration}}"
-    },
     "period": {
       "hour": "/h",
       "day": "/jour",
@@ -89,7 +85,8 @@
       "collapsed_one": "Nous avons omis {{count}} paragraphe qui en répétait un autre mot pour mot.",
       "collapsed_many": "Nous avons omis {{count}} paragraphes qui en répétaient d'autres mot pour mot.",
       "collapsed_other": "Nous avons omis {{count}} paragraphes qui en répétaient d'autres mot pour mot.",
-      "cutShort": "Notre copie s'arrête peut-être avant la fin de l'offre."
+      "cutShort": "Notre copie s'arrête peut-être avant la fin de l'offre.",
+      "failed": "Impossible de charger cette description pour le moment."
     },
     "detail": {
       "back": "Retour à {{name}}",

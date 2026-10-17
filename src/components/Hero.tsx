@@ -234,7 +234,7 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
               string would have kept rendering the stale figure. */}
           <span>{boardTotals
             ? t('hero.browseJobsLive', 'Browse {{n}}+ verified jobs', { n: roundedFloor(boardTotals.jobs).toLocaleString() })
-            : t('hero.browseJobsPlain', 'Browse the verified job board')}</span>
+            : t('hero.browseJobsPlain', 'Browse the live job board')}</span>
         </Link>
         <button
           onClick={handleFreeScanClick}
@@ -377,7 +377,7 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
                 </span>{" "}
                 {boardTotals
                 ? t('hero.headline.feedbackLive', '— {{n}}+ verified openings, matched to your resume', { n: roundedFloor(boardTotals.jobs).toLocaleString() })
-                : t('hero.headline.feedbackPlain', '— every opening verified, matched to your resume')}
+                : t('hero.headline.feedbackPlain', '— live openings, matched to your resume')}
               </h1>
               <p className="text-sm sm:text-base text-muted-foreground max-w-xl mx-auto">
                 {t('hero.socialFirst.subheading', { days: REPORT_CACHE_DAYS })}
@@ -513,7 +513,7 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
               </span>{" "}
               {boardTotals
                 ? t('hero.headline.feedbackLive', '— {{n}}+ verified openings, matched to your resume', { n: roundedFloor(boardTotals.jobs).toLocaleString() })
-                : t('hero.headline.feedbackPlain', '— every opening verified, matched to your resume')}
+                : t('hero.headline.feedbackPlain', '— live openings, matched to your resume')}
             </h1>
             
             {/* Description - shorter for ultra-compact */}

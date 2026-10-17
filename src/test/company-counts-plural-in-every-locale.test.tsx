@@ -22,6 +22,7 @@ import i18n from "i18next";
 import { render } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { COMPANY_SHARD_LOCALES, companyShard, loadCompanyShard } from "./helpers/company-shard";
+import { readMainLocale } from "./helpers/locale-strings";
 import { openRolesLine, CompanyHeader } from "@/components/jobs/company/CompanyHeader";
 import { buildLanderModel, type LanderInput } from "@/lib/company/lander-model";
 
@@ -158,8 +159,12 @@ describe("the answer line in three languages", () => {
     verdict: "unknown", growth: "unknown", layoffRows: 0, visitorFilters: [], ...o,
   });
 
+  // The "ago" sentence is the main locale's format.ago (src/lib/format.ts), which
+  // the browser loads with the language; the test loads it the same way.
+  const loadMain = () => { for (const l of ["de", "hi", "es"]) i18n.addResourceBundle(l, "translation", readMainLocale(`${l}.json`), true, true); };
   it("German, Hindi and Spanish print their own word for roles, the grouped figure, and no English", async () => {
     loadCompanyShard();
+    loadMain();
     // Every figure carries its date now (an undated count prints no line), so
     // the count word is read off the head of the line, before " · ".
     const at = minsAgo(46);
@@ -180,6 +185,7 @@ describe("the answer line in three languages", () => {
 
   it("the rendered header in German carries no English count word", async () => {
     loadCompanyShard();
+    loadMain();
     await i18n.changeLanguage("de");
     const { container } = render(<MemoryRouter><CompanyHeader model={buildLanderModel(input())} token="clera" system="Ashby" boardReadAt={minsAgo(46)} onWatch={() => {}} /></MemoryRouter>);
     const answer = container.querySelector("[data-company-answer]")?.textContent ?? "";

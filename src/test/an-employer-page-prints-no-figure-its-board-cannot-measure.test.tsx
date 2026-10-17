@@ -117,18 +117,20 @@ function mount(token: string, answers: { curve: Record<string, unknown>; lca?: u
   );
 }
 const text = () => document.body.textContent ?? "";
-/** The Hiring Health card alone: the board's own toolbar also carries the words "Actively hiring". */
-const cardText = () => {
-  const h = Array.from(document.querySelectorAll("h2")).find((x) => x.textContent === "Hiring Health");
-  return h?.closest(".rounded-xl")?.textContent ?? "";
-};
+/**
+ * The employer page's record card alone. Since pass B (2026-10-12) it is G3's
+ * HiringRecordCard ("Hiring record", in the About rail and the phone
+ * accordion), and the "Actively hiring" chip sits once, in the header.
+ */
+const cardText = () => document.querySelector("[data-hiring-record]")?.textContent ?? "";
+const chipText = () => document.querySelector("[data-employer-chip]")?.textContent ?? "";
 const gateLine = (reason: string) => document.querySelector(`[data-hh-gate="${reason}"]`);
 
 /** Every way the card has to state a fourteen-day share, a median or a thirty-day share. */
-const SHARE_14 = /come down for good within \d+ days/;
-const MEDIAN = /Half of these roles are filled by day|did not see half of them come down inside/;
+const SHARE_14 = /come down for good within \d+ days|came down within \d+ days/;
+const MEDIAN = /Half of these roles (?:are filled|were taken down) by day|did not see half of them come down inside/;
 const SHARE_30 = /still (?:up|advertised|open) at day 30|within 30 days|by day 30/i;
-const COUNT_90 = /Filled\s*[\d,]+\s*roles/;
+const COUNT_90 = /Filled\s*[\d,]+\s*roles|[\d,]+ roles? taken down \(not relisted\)/;
 
 describe("an employer page prints no figure its board cannot measure", () => {
   beforeEach(() => {
@@ -139,7 +141,7 @@ describe("an employer page prints no figure its board cannot measure", () => {
   for (const [name, row] of Object.entries(LAP)) {
     it(`${name}: a lap board prints no fourteen-day share, no median and no thirty-day share, and says why`, async () => {
       mount(String(row.company_token), { curve: row });
-      await waitFor(() => expect(text()).toContain("Hiring Health"), SLOW);
+      await waitFor(() => expect(text()).toContain("Hiring record"), SLOW);
       await waitFor(() => expect(gateLine("lap")).not.toBeNull(), SLOW);
       expect(gateLine("lap")!.textContent).toContain("We confirm a takedown on this board only by re-reading the whole board");
       expect(gateLine("lap")!.textContent).toContain("not a fact about the employer");
@@ -152,6 +154,7 @@ describe("an employer page prints no figure its board cannot measure", () => {
       expect(cardText(), "a withheld record is not 'no closure record'").not.toContain("No closure record");
       expect(cardText()).toContain("Closure record withheld");
       expect(cardText(), "withheld counts cannot carry the pill").not.toContain("Actively hiring");
+      expect(chipText(), "nor can the header").not.toContain("Actively hiring");
     });
   }
 
@@ -171,7 +174,7 @@ describe("an employer page prints no figure its board cannot measure", () => {
 
   it("Eurofins: 1,293 taken down and none back prints no 'not re-listed' count, and no share or median either", async () => {
     mount("Eurofins", { curve: EUROFINS });
-    await waitFor(() => expect(text()).toContain("Hiring Health"), SLOW);
+    await waitFor(() => expect(text()).toContain("Hiring record"), SLOW);
     await waitFor(() => expect(gateLine("relist detection unproven")).not.toBeNull(), SLOW);
     expect(text()).not.toMatch(/taken down for good, not re-listed/);
     expect(text()).not.toMatch(COUNT_90);
@@ -183,11 +186,11 @@ describe("an employer page prints no figure its board cannot measure", () => {
 
   it("positive control: a board read in full and watched 40 days keeps its share, its median and its count", async () => {
     mount("acme", { curve: FULL });
-    await waitFor(() => expect(text()).toContain("Hiring Health"), SLOW);
+    await waitFor(() => expect(text()).toContain("Hiring record"), SLOW);
     await waitFor(() => expect(text()).toMatch(/Up to 22% of its roles come down for good within 14 days/), SLOW);
-    expect(text()).toContain("Half of these roles are filled by day 12.");
-    expect(text()).toMatch(/Filled\s*60\s*roles in 40d of tracking/);
-    expect(cardText()).toContain("Actively hiring");
+    expect(text()).toContain("Half of these roles were taken down by day 12.");
+    expect(text()).toMatch(/60 roles taken down \(not relisted\) in 40 days of tracking/);
+    expect(chipText()).toContain("Actively hiring");
     expect(cardText()).not.toContain("Closure record withheld");
     expect(document.querySelector("[data-hh-gate]"), "nothing was refused on this record").toBeNull();
   });
@@ -214,7 +217,7 @@ describe("the H-1B line on an employer page is the working reader, read from its
 
   it("an employer with no filing row prints nothing, and never says it does not sponsor", async () => {
     mount("acme", { curve: FULL, lca: NULL_LCA });
-    await waitFor(() => expect(text()).toContain("Hiring Health"), SLOW);
+    await waitFor(() => expect(text()).toContain("Hiring record"), SLOW);
     await waitFor(() => expect(rpc.mock.calls.some(([fn]) => fn === "get_employer_lca_wages")).toBe(true), SLOW);
     expect(text()).not.toContain("Filed H-1B wages");
     expect(text()).not.toMatch(/sponsor/i);
@@ -231,13 +234,18 @@ describe("a headcount prints with the day it was true, or not at all", () => {
 
   it("an undated count, which is every count today, is not printed", async () => {
     mount("acme", { curve: FULL, intel: INTEL });
-    await waitFor(() => expect(text()).toMatch(/hires mostly in/), SLOW);
+    // The intel has been asked and answered (one field is under the mix's
+    // two-field floor, so the sync is the reader's answer, not the mix).
+    await waitFor(() => expect(rpc.mock.calls.some(([fn]) => fn === "get_company_intel")).toBe(true), SLOW);
+    await waitFor(() => expect(text()).toContain("Hiring system"), SLOW);
+    await new Promise((r) => setTimeout(r, 300));
     expect(text()).not.toMatch(/779,000|employees \(/);
     expect(text()).not.toMatch(/enterprise/);
   });
 
   it("positive control: a count with its date prints with the date", async () => {
     mount("acme", { curve: FULL, intel: { ...INTEL, employees_as_of: "2026-07-23" } });
-    await waitFor(() => expect(text()).toContain("≈779,000 employees (public records) · enterprise · as of 2026-07-23"), SLOW);
+    // The company header's facts row, with the day localized like every date.
+    await waitFor(() => expect(text()).toContain("≈779,000 employees (public records) · enterprise · as of 23 Jul 2026"), SLOW);
   });
 });

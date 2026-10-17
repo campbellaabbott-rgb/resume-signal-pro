@@ -489,11 +489,16 @@ describe("no filter survives an interpreted search unmentioned", () => {
     for (const [k, page] of [
       ["includeUncategorised", "setInclUncat(false)"],
       ["includeUnstatedPay", "setIncludeUnstatedPay(false)"],
-      ["sendableOnly", "setAgentOnly(false)"],
     ] as Array<[string, string]>) {
       expect(NL_DECLINED[k], `${k} is no longer declined`).toBeTruthy();
       expect(NL_BLOCK, `${k} is declined by the parser and left standing by the page`).toContain(page);
       expect(NL_BLOCK, `${k} is declined by the parser and the page reads it anyway`).not.toContain(`f.${k}`);
     }
+    // sendableOnly is still declined by the parser; the board's agent-only
+    // toggle is retired with the apply agent (2026-10-12), so the page holds
+    // no such state and never reads it off a parse.
+    expect(NL_DECLINED.sendableOnly, "sendableOnly is no longer declined").toBeTruthy();
+    expect(NL_BLOCK).not.toContain("f.sendableOnly");
+    expect(NL_BLOCK, "the retired agent toggle came back").not.toMatch(/setAgentOnly/);
   });
 });

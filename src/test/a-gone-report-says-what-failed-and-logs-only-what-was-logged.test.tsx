@@ -13,6 +13,7 @@
 // The positive control is the genuine page-capped answer, which keeps its
 // feed sentence because there it is true.
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { choosePostingMenuItem } from "./helpers/posting-menu";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
@@ -73,8 +74,8 @@ async function reportGone() {
   window.history.replaceState({}, "", "/jobs");
   render(<MemoryRouter><Jobs /><Toaster /></MemoryRouter>);
   await waitFor(() => expect(document.body.textContent).toContain("Staff Nurse"), SLOW);
-  fireEvent.click(screen.getAllByRole("button", { name: "Report this posting" })[0]);
-  await act(async () => { fireEvent.click(screen.getAllByRole("button", { name: "Posting is gone" })[0]); });
+  // The card's Report lives in its ⋯ menu since pass B (2026-10-12).
+  await act(async () => { await choosePostingMenuItem(document.querySelector<HTMLElement>("[data-job-id]")!, "Posting is gone"); });
 }
 const text = () => document.body.textContent ?? "";
 

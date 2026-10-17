@@ -24,20 +24,25 @@ import { SENDABLE_VENDOR_KEYS } from "@/config/sendable-vendors";
 const lines = () => [...document.querySelectorAll("[data-line]")].map((l) => l.getAttribute("data-line"));
 
 describe("the facts, per hiring system", () => {
-  it("a CAPTCHA vendor: 'usually showed a human-verification step', the agent prepares, questions read", () => {
+  // Pass B (2026-10-12): the server-side apply agent is retired (owner,
+  // 2026-10-11), so the block prints NO agent line on any system. The mechanics
+  // still measure what a vendor's form allowed; the component no longer says it.
+  it("a CAPTCHA vendor: 'usually showed a human-verification step', questions read, and no agent line", () => {
     expect(applyMechanics("greenhouse")).toEqual({ systemKey: "greenhouse", tier: "click", captcha: "usually", agent: "prepares", readsScreeningQuestions: true });
     render(<HowApplyingWorks systemKey="greenhouse" systemLabel="Greenhouse" />);
     expect(screen.getByRole("heading", { name: "How applying works here" })).toBeTruthy();
     expect(screen.getByText("Applications go through Greenhouse.")).toBeTruthy();
     expect(screen.getByText(/In our check of 674 apply pages \(30 Jul 2026\), Greenhouse forms usually showed a human-verification step\./)).toBeTruthy();
-    expect(lines()).toEqual(["through", "captcha", "agent", "questions"]);
+    expect(lines()).toEqual(["through", "captcha", "questions"]);
+    expect(document.body.textContent).not.toMatch(/Apply Agent|submits? applications/i);
   });
 
-  it("a clean, well-sampled vendor the agent sends on", () => {
+  it("a clean, well-sampled vendor: the sample is stated, and still no agent line", () => {
     expect(applyMechanics("breezy")).toMatchObject({ captcha: "none-in-sample", agent: "submits", readsScreeningQuestions: true });
     render(<HowApplyingWorks systemKey="breezy" systemLabel="Breezy" rechecksOnApply />);
     expect(screen.getByText(/Breezy forms showed no human-verification step in that sample/)).toBeTruthy();
-    expect(screen.getByText("The Apply Agent can submit applications here.")).toBeTruthy();
+    expect(screen.queryByText(/Apply Agent/)).toBeNull();
+    expect(lines()).not.toContain("agent");
     expect(screen.getByText("We re-check the posting is still live when you press Apply.")).toBeTruthy();
   });
 

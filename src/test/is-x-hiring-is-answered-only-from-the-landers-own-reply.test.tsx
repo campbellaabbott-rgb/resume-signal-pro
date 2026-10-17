@@ -89,6 +89,11 @@ const mount = (url = "/jobs/company/acme") => {
   );
 };
 const text = () => document.body.textContent ?? "";
+// Pass B (2026-10-12): the lander is the company vocabulary's; its one answer is
+// the header's figure line, and a board with nothing in the window is the zero
+// variant ("No roles at {{name}} dated in the last 30 days").
+const answer = () => document.querySelector("[data-company-answer]")?.textContent ?? "";
+const ZERO = /No roles (?:at Acme|on this board) dated in the last 30 days/;
 const settle = (ms: number) => act(async () => { await new Promise((r) => setTimeout(r, ms)); });
 const listReads = () => invoke.mock.calls
   .filter(([fn, o]) => fn === "job-board" && (o as { body?: Body })?.body?.action === "list"
@@ -105,14 +110,15 @@ describe("is X hiring? is answered only from the lander's own reply", () => {
   it("positive control: an unnarrowed successful reply answers yes, with its number", async () => {
     mock(() => page(6, 412));
     mount();
-    await waitFor(() => expect(text()).toMatch(/Yes — 412 roles dated in the last 30 days/), SLOW);
-    expect(text()).not.toMatch(/job board has none right now/);
+    await waitFor(() => expect(answer()).toMatch(/^412 roles dated in the last 30 days/), SLOW);
+    expect(text()).not.toMatch(ZERO);
   });
 
   it("positive control: a successful zero still answers no", async () => {
     mock(() => page(0, 0));
     mount();
-    await waitFor(() => expect(text()).toMatch(/the Acme job board has none right now/i), SLOW);
+    await waitFor(() => expect(text()).toMatch(ZERO), SLOW);
+    expect(answer(), "a zero page prints no figure").not.toMatch(/\d/);
   });
 
   it("a list read that failed twice answers nothing, beside the error", async () => {
@@ -122,8 +128,8 @@ describe("is X hiring? is answered only from the lander's own reply", () => {
     await waitFor(() => expect(listReads().length).toBeGreaterThanOrEqual(2), SLOW);
     await waitFor(() => expect(text()).toMatch(/couldn.t load|Try again/i), SLOW);
     await settle(50);
-    expect(text(), "a failed read was published as 'not hiring'").not.toMatch(/job board has none right now/);
-    expect(text()).not.toMatch(/Yes — /);
+    expect(text(), "a failed read was published as 'not hiring'").not.toMatch(ZERO);
+    expect(answer()).toBe("");
   });
 
   it("a refused read answers nothing, beside the notice", async () => {
@@ -131,28 +137,29 @@ describe("is X hiring? is answered only from the lander's own reply", () => {
     mount();
     await waitFor(() => expect(document.querySelector("[data-board-budget-notice]")).toBeTruthy(), SLOW);
     await settle(50);
-    expect(text(), "a refusal was published as 'not hiring'").not.toMatch(/job board has none right now/);
-    expect(text()).not.toMatch(/Yes — /);
+    expect(text(), "a refusal was published as 'not hiring'").not.toMatch(ZERO);
+    expect(answer()).toBe("");
   });
 
   it("a search inside the lander is not the employer's answer, empty or partial", async () => {
     mock((b) => (b.q === "astronaut" ? page(0, 0) : b.q === "nurse" ? page(3, 3) : page(6, 412)));
     mount();
-    await waitFor(() => expect(text()).toMatch(/Yes — 412 roles dated/), SLOW);
-    const box = document.getElementById("board-search") as HTMLInputElement;
-    expect(box, "the search box lost its id — re-anchor").toBeTruthy();
+    await waitFor(() => expect(answer()).toMatch(/^412 roles dated/), SLOW);
+    // The company variant of the filter row (FilterBar) carries the keyword box.
+    const box = document.querySelector('[data-filter-bar="company"] form[role="search"] input') as HTMLInputElement;
+    expect(box, "the lander's keyword box moved — re-anchor").toBeTruthy();
 
     fireEvent.change(box, { target: { value: "astronaut" } });
     await waitFor(() => expect(listReads().some(([, o]) => (o as { body: Body }).body.q === "astronaut")).toBe(true), SLOW);
     await waitFor(() => expect(text()).not.toMatch(/Registered Nurse 5/), SLOW);
     await settle(50);
-    expect(text(), "an empty in-company search printed 'not hiring'").not.toMatch(/job board has none right now/);
-    expect(text()).not.toMatch(/Yes — /);
+    expect(text(), "an empty in-company search printed 'not hiring'").not.toMatch(ZERO);
+    expect(answer(), "an empty search became the employer's figure").not.toMatch(/^0 roles/);
 
     fireEvent.change(box, { target: { value: "nurse" } });
     await waitFor(() => expect(text()).toMatch(/Registered Nurse 2/), SLOW);
     await settle(50);
-    expect(text(), "a partial in-company match printed as the employer's total").not.toMatch(/Yes — 3 roles/);
+    expect(answer(), "a partial in-company match printed as the employer's total").not.toMatch(/^3 roles/);
   });
 
   it("a page whose rows match only in descriptions is not an empty employer", async () => {
@@ -160,7 +167,7 @@ describe("is X hiring? is answered only from the lander's own reply", () => {
     mount();
     await waitFor(() => expect(text()).toMatch(/Registered Nurse 5/), SLOW);
     await settle(50);
-    expect(text()).not.toMatch(/job board has none right now/);
+    expect(text()).not.toMatch(ZERO);
   });
 
   it("a withdrawn count answers nothing", async () => {
@@ -168,7 +175,7 @@ describe("is X hiring? is answered only from the lander's own reply", () => {
     mount();
     await waitFor(() => expect(text()).toMatch(/Registered Nurse 5/), SLOW);
     await settle(50);
-    expect(text()).not.toMatch(/job board has none right now/);
+    expect(text()).not.toMatch(ZERO);
     expect(text()).not.toMatch(/Yes — /);
   });
 });

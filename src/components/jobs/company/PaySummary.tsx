@@ -10,7 +10,7 @@
 // the reader's language, and the line carries the time it was read.
 import { useTranslation } from "react-i18next";
 import type { CompanyIntel } from "@/components/jobs/CompanyIntelPanel";
-import { count as fmtCount, date as fmtDate, money as fmtMoney } from "@/lib/company/format";
+import { count as fmtCount, date as fmtDate, money as fmtMoney } from "@/lib/format";
 import { tPlural } from "@/lib/company/plural";
 import { ProfileSection } from "./parts";
 
@@ -53,7 +53,7 @@ export function PaySummary({ facts, headingLevel = 2 }: { facts: PayFacts | null
       {facts.floor && (
         <p className="text-foreground" data-pay-floor="">
           {tPlural(t, "companyProfile.pay.floor", facts.floor.m, {
-            amount: fmtMoney(facts.floor.amount, facts.floor.currency, { lng: lang }),
+            amount: fmtMoney(Math.round(facts.floor.amount), facts.floor.currency, { lng: lang }),
             m: fmtCount(facts.floor.m, { lng: lang }),
             currency: facts.floor.currency,
           },

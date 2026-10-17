@@ -24,7 +24,6 @@
     "agency": {
       "banner": "Dies ist das Jobboard einer Personalvermittlung. Die Stellen hier sind meist für deren Kunden."
     },
-    "ago": "vor {{duration}}",
     "boardReadAgo": "Jobboard gelesen {{ago}}",
     "breadcrumbCompanies": "Unternehmen",
     "breadcrumbJobs": "Jobs",
@@ -65,7 +64,8 @@
       "payValue": "{{k}} von {{n}}",
       "systemLabel": "Bewerbungssystem",
       "workMode": "{{remote}} remote · {{hybrid}} hybrid · {{onsite}} vor Ort · {{unstated}} ohne Angabe",
-      "workModeLabel": "Arbeitsmodell"
+      "workModeLabel": "Arbeitsmodell",
+      "headcountLabel": "Mitarbeitende"
     },
     "factsLabel": "Über dieses Jobboard",
     "h1Generic": "Stellen auf dem Jobboard „{{label}}“",
@@ -103,7 +103,7 @@
       "asOf": "Zahlen mit Stand {{when}}.",
       "countsWithheld": "Wir zeigen nicht, wie viele Stellen entfernt wurden und entfernt blieben.",
       "growthGrew": "Ein Anstieg um {{pct}} % bei den ausgelieferten Einträgen: {{a}} am {{d1}}, {{b}} am {{d2}}.",
-      "growthLabel": "Einträge, die bei unserem täglichen Lesen ausgeliefert wurden – anders gezählt als offene Stellen.",
+      "growthLabel": "Einträge, die dieses Board in unserem eigenen täglichen Snapshot ausgeliefert hat – anders gezählt als offene Stellen.",
       "growthNone": "Kein Anstieg um {{minRate}} % oder mehr: {{a}} am {{d1}}, {{b}} am {{d2}}.",
       "growthUnread": "Für dieses Jobboard gibt es noch keine Veröffentlichungsrate.",
       "leadCloses_one": "Wir haben gesehen, wie {{n}} seiner Stellen in den letzten {{days}} Tagen vom Jobboard genommen wurde und entfernt blieb.",

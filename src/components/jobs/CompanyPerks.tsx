@@ -54,7 +54,7 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { inflight } from "@/lib/company/inflight";
-import { date as fmtDate, count as fmtCount } from "@/lib/company/format";
+import { date as fmtDate, count as fmtCount } from "@/lib/format";
 import {
   PERK_CHECK_MIN_SHARE,
   PERK_ROW_THRESHOLDS,

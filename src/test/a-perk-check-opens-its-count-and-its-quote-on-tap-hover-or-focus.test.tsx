@@ -50,6 +50,10 @@ vi.mock("@/integrations/supabase/client", () => ({
 import { CompanyPerks, CompanyPerksView } from "@/components/jobs/CompanyPerks";
 import { readEmployerPerks } from "@/lib/employer-perks";
 import { codeOf } from "./helpers/strip-comments";
+import { date as fmtDate } from "@/lib/format";
+// Dates as the site's one formatter prints them for English readers (src/lib/format.ts: day, month, year), so the guard keeps its "reader's language" claim without pinning one calendar style.
+const D = (day: string) => fmtDate(day, { lng: "en" });
+
 
 const ROOT = resolve(__dirname, "../..");
 
@@ -102,14 +106,14 @@ describe("published keys show checks, and each opens its basis", () => {
     await user.hover(check);
     // The hover preview: the count and the line, over the list, no link, and the disclosure still closed.
     const preview = check.closest("li")!.querySelector<HTMLElement>("[data-perk-preview]")!;
-    expect(preview.textContent).toContain("Stated in at least 212 of 240 open United States postings we could read, read Oct 12, 2026.");
+    expect(preview.textContent).toContain(`Stated in at least 212 of 240 open United States postings we could read, read ${D("2026-10-12")}.`);
     expect(preview.textContent).toContain("“Comprehensive medical, dental and vision insurance for you and your family”");
     expect(check).toHaveAttribute("aria-expanded", "false");
     expect(panel).not.toBeVisible();
     await user.click(check);
     expect(panel).toBeVisible();
     expect(check).toHaveAttribute("aria-expanded", "true");
-    expect(within(panel).getByText(/^Stated in at least 212 of 240 open United States postings we could read, read Oct 12, 2026\.$/)).toBeInTheDocument();
+    expect(within(panel).getByText(new RegExp(`^Stated in at least 212 of 240 open United States postings we could read, read ${D("2026-10-12")}\\.$`))).toBeInTheDocument();
     expect(within(panel).getByText("“Comprehensive medical, dental and vision insurance for you and your family”")).toBeInTheDocument();
     expect(within(panel).getByRole("link", { name: "See the posting this line comes from" })).toHaveAttribute("href", "/jobs/posting/greenhouse/acme/4012345");
     await user.unhover(check);

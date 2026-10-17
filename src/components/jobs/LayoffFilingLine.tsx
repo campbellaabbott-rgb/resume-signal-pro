@@ -50,7 +50,7 @@ import { companyLanderPath } from "@/lib/public-href";
 import { useTranslation } from "react-i18next";
 import { ExternalLink, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { date as fmtDate, dateTime as fmtDateTime } from "@/lib/company/format";
+import { date as fmtDate, dateTime as fmtDateTime } from "@/lib/format";
 import { STATE_ALIASES } from "../../../supabase/functions/_shared/location-terms";
 import {
   LAYOFF_MATCHED_VIA,

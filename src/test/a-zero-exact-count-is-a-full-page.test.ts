@@ -50,6 +50,8 @@ const FN = readFileSync(resolve(ROOT, "supabase/functions/job-board/index.ts"), 
 const JOBS = readFileSync(resolve(ROOT, "src/pages/Jobs.tsx"), "utf8");
 // The BoardJob row type moved out of Jobs.tsx (design pass A) so components can share it.
 const BOARD_JOB = readFileSync(resolve(ROOT, "src/lib/board-job.ts"), "utf8");
+// Pass B (2026-10-12): the board's card is the listing vocabulary's JobCard, which prints the match-scope chip.
+const CARD = readFileSync(resolve(ROOT, "src/components/jobs/listing/JobCard.tsx"), "utf8");
 
 describe("a zero exact count is not an empty page", () => {
   it("the rescue gate counts ROWS, not the headline", () => {
@@ -136,10 +138,13 @@ describe("a zero exact count is not an empty page", () => {
   it("a description-only row says so, once", () => {
     expect(BOARD_JOB).toMatch(/matchScope\?: "title" \| "description";/);
     expect(JOBS, "Jobs.tsx reads its row type from the shared module").toMatch(/import type \{ BoardJob, FillCurve \} from "@\/lib\/board-job";/);
-    expect(JOBS).toMatch(/jobsPage\.descriptionMatchChip/);
+    expect(CARD).toMatch(/jobsPage\.descriptionMatchChip/);
+    expect(JOBS, "the board mounts the card that prints the chip").toMatch(/<JobCard\b/);
     // Not on a row that already carries the close-match hedge — two hedges on
     // one card say less than one.
-    expect(JOBS).toMatch(/matchScope === "description" && !\(job as \{ closeMatch\?: boolean \}\)\.closeMatch/);
+    expect(CARD).toMatch(/job\.matchScope === "description" && !job\.closeMatch/);
+    // TEETH: a card that hedges twice, or never, fails here.
+    expect(CARD.replace('job.matchScope === "description" && !job.closeMatch', 'job.matchScope === "description"')).not.toMatch(/job\.matchScope === "description" && !job\.closeMatch/);
   });
 
   it("the segmented line IS the headline, and never sits beside one", () => {

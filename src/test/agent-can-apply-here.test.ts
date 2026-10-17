@@ -46,33 +46,20 @@ describe("both surfaces ask the shared predicate", () => {
   });
 });
 
-describe("the claim is about the form, not about the outcome", () => {
-  // agentAppliesTip2: the key was re-minted when its last sentence changed
-  // meaning — "Needs the Apply Agent subscription" went false the day the
-  // pass shipped (a live pass holds the same entitlement for its hours), and
-  // a locale value beats an inline default, so the old key came out of all
-  // nine files rather than being edited in place.
-  const tip = jobs.match(/jobsPage\.agentAppliesTip2", "([^"]+)"/)?.[1] ?? "";
-
-  it("has a tooltip at all", () => {
-    expect(tip.length).toBeGreaterThan(40);
-  });
-
-  it("says the application can still come back to the candidate", () => {
-    // 7 of 8, not 8 of 8. A chip that reads as a guarantee is a promise the
-    // employer's own screening questions get to break.
-    expect(tip).toMatch(/hands the application back to you/i);
-  });
-
-  it("says it needs the plan or a live pass, rather than implying it is free — and never that the plan is the only way", () => {
-    expect(tip).toMatch(/Agent plan or a live pass/i);
-    expect(tip).not.toMatch(/Apply Agent subscription|only way/i);
-  });
-
-  it("never promises the application will be sent", () => {
-    for (const overclaim of [/we will apply/i, /applies automatically/i, /guarantee/i, /one click and/i]) {
-      expect(tip, `tooltip must not promise: ${overclaim}`).not.toMatch(overclaim);
+describe("the board no longer claims an agent of ours can apply", () => {
+  // The server-side apply agent is retired (the apply pivot, 2026-10-11).
+  // The board's "Agent can apply" chip, its filter and their tooltips went
+  // with it in pass B (2026-10-12): the predicate now only tells the hand-off
+  // to the reader's own AI which form it will meet.
+  it("renders no agent-can-apply chip, filter or tooltip", () => {
+    for (const key of ["agentAppliesChip", "agentAppliesTip2", "agentOnlyTip", "chipAgentOnly", "factApplying"]) {
+      expect(jobs, `jobsPage.${key} is back on the board`).not.toContain(`jobsPage.${key}`);
     }
+    expect(jobs).not.toMatch(/to="\/agent"/);
+  });
+
+  it("still asks the predicate only to describe the posting to the reader's own AI", () => {
+    expect(jobs).toMatch(/sendable: isSendableVendor\((job|detailJob)\.id\)/);
   });
 });
 
