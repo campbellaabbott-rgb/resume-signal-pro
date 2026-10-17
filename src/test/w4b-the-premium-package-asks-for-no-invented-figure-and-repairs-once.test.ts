@@ -16,8 +16,12 @@
  *     figure the résumé does not state) and no longer asks it to infer one;
  *   - a draft that adds a figure is sent back ONCE with the issue listed, and
  *     the repaired draft is delivered;
- *   - a draft that still adds a figure after its repair is refused, and the
- *     model is not asked a third time.
+ *   - a résumé draft that still adds a figure after its repair has each such
+ *     line put back to the résumé's own (the plan's last resort, as corrected
+ *     2026-10-12) and is delivered, and the model is not asked a third time;
+ *   - a letter that still adds a figure after its repair is refused;
+ *   - a skills line may name the posting's own number ("ISO 27001"), and
+ *     "$120K" is the résumé's "$120,000", so neither needs a repair.
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
@@ -30,7 +34,7 @@ const RESUME = [
   "- Built 40 Airflow pipelines moving 2TB a day",
   "- Cut warehouse spend by $120,000 a year",
 ].join("\n");
-const POSTING = "Globex is hiring a data engineer to scale pipelines for 3 million customers.";
+const POSTING = "Globex is hiring a data engineer to scale pipelines for 3 million customers. ISO 27001 experience is a plus.";
 const INVENTED = "Jane Doe\nSenior Data Engineer, Acme Corp\n- Built 40 Airflow pipelines serving 10,000 users\n- Cut warehouse spend by $250,000 a year";
 const HONEST = "Jane Doe\nSenior Data Engineer, Acme Corp\n- Built 40 Airflow pipelines moving 2TB a day\n- Cut warehouse spend by $120,000 a year";
 
@@ -41,9 +45,13 @@ const db = new FakeDb({ used_stripe_sessions: ["session_id"] });
 let resumeRequests: Msg[][];
 /** What the résumé model answers, by call number (first draft, repair). */
 let resumeAnswers: string[];
+/** Every letter request the gateway received, and what the letter model answers, by call number. */
+let letterRequests: Msg[][];
+let letterAnswers: string[];
 
 const resume = (rewrittenResume: string) => ({ rewrittenResume, professionalSummary: "", keyChanges: [], addedKeywords: [], atsScore: { before: 50, after: 80, improvement: "" }, highlights: [] });
-const LETTER = { coverLetter: "Dear Globex team, I built 40 Airflow pipelines.", openingLine: "", keySkillsHighlighted: [], suggestedSubjectLine: "" };
+const letter = (coverLetter: string) => ({ coverLetter, openingLine: "", keySkillsHighlighted: [], suggestedSubjectLine: "" });
+const HONEST_LETTER = "Dear Globex team, I built 40 Airflow pipelines.";
 
 beforeAll(async () => {
   const g = globalThis as Record<string, unknown>;
@@ -58,7 +66,9 @@ beforeAll(async () => {
       const system = String(messages[0]?.content ?? "");
       const isLetter = /cover letter/i.test(system) && !/resume writer|rewrite/i.test(system.slice(0, 200));
       if (isLetter) {
-        return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(LETTER) } }] }), { status: 200 });
+        letterRequests.push(messages);
+        const answer = letterAnswers[Math.min(letterRequests.length - 1, letterAnswers.length - 1)];
+        return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(letter(answer)) } }] }), { status: 200 });
       }
       resumeRequests.push(messages);
       const answer = resumeAnswers[Math.min(resumeRequests.length - 1, resumeAnswers.length - 1)];
@@ -78,6 +88,8 @@ beforeEach(() => {
   db.rpcs = { check_rate_limit: () => ({ data: true, error: null }) };
   resumeRequests = [];
   resumeAnswers = [HONEST];
+  letterRequests = [];
+  letterAnswers = [HONEST_LETTER];
 });
 
 const post = () => premium(new Request("https://harness.supabase.co/functions/v1/generate-premium-package", {
@@ -112,15 +124,66 @@ describe("a rewrite that adds a figure the candidate never claimed", () => {
     expect(repair[3].content).toMatch(/250,000|10,000/);
   });
 
-  it("is refused when the repair still adds a figure, and the model is not asked a third time", async () => {
+  it("has each invented line put back to the résumé's own when the repair still adds a figure, is delivered, and the model is not asked a third time", async () => {
     resumeAnswers = [INVENTED, INVENTED];
+    const res = await post();
+    const body = await res.json() as { data?: { resume?: { rewrittenResume?: string } }; groundingIssues?: string[] };
+    expect(res.status, "a package whose lines could go back to the résumé's own was refused").toBe(200);
+    const text = body.data?.resume?.rewrittenResume ?? "";
+    expect(text).toContain("- Built 40 Airflow pipelines moving 2TB a day");
+    expect(text).toContain("- Cut warehouse spend by $120,000 a year");
+    expect(text).not.toMatch(/250,000|10,000/);
+    expect(text).toContain("Senior Data Engineer, Acme Corp");
+    expect(resumeRequests.length).toBe(2);
+  });
+
+  it("leaves out an invented line the résumé has nothing like, and keeps the rest", async () => {
+    const extra = HONEST + "\n- Mentored 25 junior analysts across three offices";
+    resumeAnswers = [extra, extra];
+    const res = await post();
+    const body = await res.json() as { data?: { resume?: { rewrittenResume?: string } } };
+    expect(res.status).toBe(200);
+    const text = body.data?.resume?.rewrittenResume ?? "";
+    expect(text).not.toMatch(/Mentored 25/);
+    expect(text).toContain("- Cut warehouse spend by $120,000 a year");
+  });
+});
+
+describe("a letter that adds a figure the candidate never claimed", () => {
+  it("is sent back once, and refused when its repair still adds the figure", async () => {
+    letterAnswers = ["Dear Globex team, I built 40 Airflow pipelines and saved $900,000."];
     const res = await post();
     const body = await res.json() as { data?: unknown; groundingIssues?: string[]; retryable?: boolean };
     expect(res.status).toBe(422);
     expect(body.data).toBeUndefined();
     expect(body.retryable).toBe(true);
-    expect(body.groundingIssues?.join(" ")).toMatch(/250,000|10,000/);
+    expect(body.groundingIssues?.join(" ")).toMatch(/900,000/);
+    expect(letterRequests.length, "the letter was not repaired exactly once").toBe(2);
+  });
+});
+
+describe("figures the candidate did claim, written another way or quoting the posting", () => {
+  it("delivers a skills line naming the posting's own number without a repair", async () => {
+    resumeAnswers = [HONEST + "\n\nSKILLS\nPython\nAirflow, ISO 27001"];
+    const res = await post();
+    const body = await res.json() as { data?: { resume?: { rewrittenResume?: string } } };
+    expect(res.status).toBe(200);
+    expect(body.data?.resume?.rewrittenResume).toContain("ISO 27001");
+    expect(resumeRequests.length, "a skills line quoting the posting was sent back for repair").toBe(1);
+  });
+
+  it("still sends back a bullet that lifts the posting's number as an achievement", async () => {
+    resumeAnswers = [HONEST + "\n- Led the ISO 27001 certification audit", HONEST];
+    const res = await post();
+    expect(res.status).toBe(200);
     expect(resumeRequests.length).toBe(2);
+  });
+
+  it("reads $120K as the résumé's $120,000", async () => {
+    resumeAnswers = [HONEST.replace("$120,000", "$120K")];
+    const res = await post();
+    expect(res.status).toBe(200);
+    expect(resumeRequests.length, "$120K was refused as an invented figure").toBe(1);
   });
 
   it("is delivered first time, with no repair call, when its figures are the candidate's own", async () => {

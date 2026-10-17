@@ -179,6 +179,22 @@ const canonNum = (s: string) => {
   return t.replace(/(^|[^\d.])(\d{1,3}(?:\.\d{3})+)$/, (_m, pre: string, n: string) => pre + n.replace(/\./g, ""));
 };
 
+/**
+ * The same figure written with a magnitude suffix and in full: "120K" is
+ * 120000 and "$1.2M" is $1200000 (critical path CP-018). canonNum kept the
+ * suffix, so a draft that wrote "$120,000" for a résumé's "$120K" (or the
+ * reverse) was refused as an invented figure. Returns the canonical forms a
+ * figure also stands for, with and without its currency sign; empty when it
+ * carries no suffix.
+ */
+const MAGNITUDE: Record<string, number> = { k: 1e3, m: 1e6, b: 1e9 };
+const expandedForms = (canon: string): string[] => {
+  const m = canon.match(/^(\D*?)(\d+(?:\.\d+)?)([kmb])$/);
+  if (!m) return [];
+  const full = String(Math.round(Number(m[2]) * MAGNITUDE[m[3]]));
+  return m[1] ? [m[1] + full, full] : [full];
+};
+
 const numClaims = (text: string): string[] =>
   [...(text.matchAll(NUM_CLAIM))].map((m) => m[0]).filter((raw) => {
     const grouped = GROUPED.test(raw.trim());
@@ -195,6 +211,8 @@ const numClaims = (text: string): string[] =>
  */
 export function unsupportedNumericClaims(sourceResume: string, text: string): string[] {
   const sourceNums = new Set(numClaims(sourceResume).map(canonNum));
+  // A suffixed figure in the source also stands for itself written in full.
+  for (const canon of [...sourceNums]) for (const form of expandedForms(canon)) sourceNums.add(form);
   // Also index every raw digit-run in the source, so "32%" in the output is
   // supported by "32 percent" or "increased by 32" in the source.
   for (const m of sourceResume.matchAll(/\d[\d,.]*/g)) sourceNums.add(canonNum(m[0]));
@@ -203,6 +221,7 @@ export function unsupportedNumericClaims(sourceResume: string, text: string): st
     const canon = canonNum(claim);
     const digits = canon.replace(/[^0-9.]/g, "").replace(/\.+$/, "");
     if (sourceNums.has(canon) || sourceNums.has(digits)) continue;
+    if (expandedForms(canon).some((form) => sourceNums.has(form))) continue;
     // "2 500" may be a small count and a figure ("2 500-seat venues" without
     // the hyphen): it passes when its tail is the source's, as it did before.
     const sp = claim.trim().match(SPACE_GROUPED);
@@ -231,6 +250,116 @@ export function validateProseClaims(sourceResume: string, text: string, supporti
       : `Figure "${n}" does not appear in the source resume`);
   }
   return issues;
+}
+
+// ── A whole rewritten résumé as plain text (the Premium Package) ────────────
+//
+// CRITICAL PATH CP-018. The package's rewrite is one block of text with a
+// skills section the prompt asks to fill with the posting's keywords, so a
+// skills line could carry the posting's own numbers ("ISO 27001", "SOC 2")
+// and be refused as an invented figure. Bullets stay résumé-only: a posting
+// figure in a bullet would be a lifted achievement. And a rewrite that still
+// invents a figure after its one repair is no longer refused outright: each
+// line that carries one is put back to the résumé's own line (or left out
+// when the résumé has no line like it), because a past buyer is owed a
+// package made of their own facts, not a refusal.
+
+/** A short line that may be a heading, its name captured without markup or a closing colon. */
+const HEADING_LINE = /^\s*(#{1,6}\s*)?(\*\*|__)?\s*([\p{L}][\p{L} &/'’-]{1,48}?)\s*(?:\*\*|__)?\s*(:)?\s*(?:\*\*|__)?\s*$/u;
+const SKILLS_NAME = /^(?:(?:core|key|technical|professional|relevant|additional|ats)\s+)?(?:skills?|competenc(?:y|ies)|keywords|technologies|tools(?:\s*(?:&|and)\s*technologies)?|technical proficiencies|areas of expertise|expertise|skills?\s*(?:&|and)\s*[\p{L} ]+)$/iu;
+const SECTION_NAME = /^(?:(?:professional|work|career|employment|relevant|selected|key|academic|other)\s+)?(?:summary|profile|objective|experience|employment(?:\s+history)?|work history|history|education|projects?|certifications?|certificates?|licen[cs]es?(?:\s*(?:&|and)\s*certifications?)?|awards?|honou?rs|publications|languages|volunteer(?:ing)?|interests|references|achievements|accomplishments|training|courses|contact|personal details|highlights|leadership|activities|affiliations|memberships)$/iu;
+/** "Skills: Python, SQL, ISO 27001" — a skills heading and its list on one line. */
+const INLINE_SKILLS = /^\s*(?:[-*•]\s*)?(?:\*\*|__)?\s*(?:(?:core|key|technical|professional|relevant|additional|ats)\s+)?(?:skills?|competencies|keywords|technologies|tools|technical proficiencies|areas of expertise)\s*(?:\*\*|__)?\s*:/iu;
+
+/**
+ * For each line of `text`, whether it belongs to a skills section: a line
+ * under a skills heading up to the next heading, or a one-line "Skills: …".
+ * A heading is a known section name, or any short line marked up as one (a
+ * markdown #, bold, or a closing colon), so a one-per-line skills list
+ * ("Python", "Kubernetes") stays inside its section.
+ */
+export function skillsLineMask(text: string): boolean[] {
+  const lines = String(text ?? "").split("\n");
+  const mask: boolean[] = [];
+  let inSkills = false;
+  for (const line of lines) {
+    const h = line.match(HEADING_LINE);
+    const name = h?.[3]?.trim() ?? "";
+    const isSkills = !!h && SKILLS_NAME.test(name);
+    const isHeading = !!h && (isSkills || SECTION_NAME.test(name) || !!h[1] || !!h[2] || !!h[4]);
+    if (isHeading) {
+      inSkills = isSkills;
+      mask.push(false);
+      continue;
+    }
+    mask.push(inSkills || INLINE_SKILLS.test(line));
+  }
+  return mask;
+}
+
+/**
+ * The figures a rewritten résumé states that the candidate never claimed: a
+ * skills line may also cite the posting's own numbers, every other line only
+ * the résumé's.
+ */
+export function rewrittenResumeFigureIssues(sourceResume: string, rewritten: string, posting = ""): string[] {
+  const lines = String(rewritten ?? "").split("\n");
+  const mask = skillsLineMask(rewritten);
+  const body = lines.filter((_, i) => !mask[i]).join("\n");
+  const skills = lines.filter((_, i) => mask[i]).join("\n");
+  return [
+    ...validateProseClaims(sourceResume, body),
+    ...(skills ? validateProseClaims(sourceResume, skills, posting) : []),
+  ];
+}
+
+const BULLET_PREFIX = /^(\s*(?:[-*•▪◦·–]|\d{1,2}[.)])?\s*)/;
+const lineWords = (line: string) => new Set((line.toLowerCase().match(/\p{L}{3,}/gu) ?? []));
+
+/**
+ * The last resort after a repair: every line that still states a figure the
+ * candidate never claimed is replaced by the résumé line most like it (its
+ * words, by Dice overlap of at least 0.35, each résumé line used once), with
+ * the draft's own bullet mark; a line the résumé has nothing like is left out.
+ * Lines that pass are kept exactly as drafted.
+ */
+export function restoreUnsupportedLines(
+  sourceResume: string,
+  rewritten: string,
+  posting = "",
+): { text: string; restored: Array<{ from: string; to: string }>; dropped: string[] } {
+  const sourceLines = String(sourceResume ?? "").split("\n").map((l) => l.trim()).filter(Boolean);
+  const sourceWords = sourceLines.map(lineWords);
+  const used = new Set<number>();
+  const lines = String(rewritten ?? "").split("\n");
+  const mask = skillsLineMask(rewritten);
+  const restored: Array<{ from: string; to: string }> = [];
+  const dropped: string[] = [];
+  const out: string[] = [];
+  lines.forEach((line, i) => {
+    const issues = unsupportedNumericClaims(mask[i] && posting ? `${sourceResume}\n${posting}` : sourceResume, line);
+    if (issues.length === 0) { out.push(line); return; }
+    const words = lineWords(line);
+    let best = -1;
+    let bestScore = 0;
+    sourceWords.forEach((sw, j) => {
+      if (used.has(j) || sw.size === 0 || words.size === 0) return;
+      let shared = 0;
+      for (const w of words) if (sw.has(w)) shared++;
+      const score = (2 * shared) / (words.size + sw.size);
+      if (score > bestScore) { bestScore = score; best = j; }
+    });
+    if (best >= 0 && bestScore >= 0.35) {
+      used.add(best);
+      const mark = (line.match(BULLET_PREFIX)?.[1] ?? "");
+      const to = mark + sourceLines[best].replace(BULLET_PREFIX, "");
+      restored.push({ from: line.trim(), to: to.trim() });
+      out.push(to);
+    } else {
+      dropped.push(line.trim());
+    }
+  });
+  return { text: out.join("\n"), restored, dropped };
 }
 
 export function validateTailoredResume(sourceResume: string, resume: TailoredResumeShape): GroundingReport {

@@ -7,8 +7,10 @@
  * "$250,000" or "10,000 users" the candidate never claimed, and a letter a
  * stranger's phone and LinkedIn in its sign-off. The success page now shows
  * only what these two generators make (the streamed copies are gone from
- * it), so each runs both: an invented figure is refused (retryable, never
- * delivered), an invented contact item is removed.
+ * it), so each runs both: an invented figure is never delivered (a letter
+ * is refused, retryable; a package's résumé lines go back to the résumé's
+ * own after one repair, critical path CP-018), an invented contact item is
+ * removed.
  *
  * Run against the shipped handlers, with the model's answer faked.
  */
@@ -71,14 +73,25 @@ const post = (h: EdgeHandler, body: Record<string, unknown>) => h(new Request("h
 const resume = (rewrittenResume: string) => ({ rewrittenResume, professionalSummary: "", keyChanges: [], addedKeywords: [], atsScore: { before: 50, after: 80, improvement: "" }, highlights: [] });
 
 describe("the premium package", () => {
-  it("refuses a rewrite that adds a figure the candidate never claimed", async () => {
+  it("never delivers a rewrite's figure the candidate never claimed: the line goes back to the résumé's own", async () => {
     resumeAnswer = resume("Jane Doe\nSenior Data Engineer, Acme Corp\n- Built 40 Airflow pipelines serving 10,000 users\n- Cut warehouse spend by $250,000 a year");
     letterAnswer = { coverLetter: "Dear Globex team, I built 40 Airflow pipelines.", openingLine: "", keySkillsHighlighted: [], suggestedSubjectLine: "" };
+    const res = await post(premium, { resumeText: RESUME, jobDescription: POSTING, jobTitle: "Data Engineer", jobCompany: "Globex", sessionId: "cs_live_writer" });
+    const body = await res.json() as { data?: { resume?: { rewrittenResume?: string } } };
+    const text = body.data?.resume?.rewrittenResume ?? "";
+    expect(res.status).toBe(200);
+    expect(text, "an invented figure was delivered in a paid package").not.toMatch(/250,000|10,000/);
+    expect(text).toContain("$120,000");
+  });
+
+  it("refuses a letter that adds a figure the candidate never claimed", async () => {
+    resumeAnswer = resume("Jane Doe\nSenior Data Engineer, Acme Corp\n- Built 40 Airflow pipelines moving 2TB a day");
+    letterAnswer = { coverLetter: "Dear Globex team, I built 40 Airflow pipelines serving 10,000 users.", openingLine: "", keySkillsHighlighted: [], suggestedSubjectLine: "" };
     const res = await post(premium, { resumeText: RESUME, jobDescription: POSTING, jobTitle: "Data Engineer", jobCompany: "Globex", sessionId: "cs_live_writer" });
     const body = await res.json() as { error?: string; groundingIssues?: string[]; data?: unknown };
     expect(res.status, "an invented figure was delivered in a paid package").toBe(422);
     expect(body.data).toBeUndefined();
-    expect(body.groundingIssues?.join(" ")).toMatch(/250,000|10,000/);
+    expect(body.groundingIssues?.join(" ")).toMatch(/10,000/);
   });
 
   it("delivers a rewrite whose figures are the candidate's own, and a letter citing the posting's", async () => {

@@ -7,7 +7,7 @@ import { checkInputLimits, MAX_JOB_DESCRIPTION_LENGTH } from "../_shared/input-l
 import { looksLikeBrokenJson, UnusableModelOutput } from "../_shared/ai-fallback.ts";
 import { autoFixContent, validateContent } from "./auto-fix.ts";
 import { stripInventedContact } from "../_shared/contact-guard.ts";
-import { validateProseClaims } from "../_shared/resume-grounding.ts";
+import { restoreUnsupportedLines, rewrittenResumeFigureIssues, validateProseClaims } from "../_shared/resume-grounding.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -596,10 +596,13 @@ Write a cover letter that sounds like it was written by this specific person - c
     // ran only the contact guard: a rewrite could add "$250,000" or "10,000
     // users" the candidate never claimed and ship it. Every impact figure in
     // the résumé must come from the résumé; the letter may also cite the
-    // posting's own numbers. A draft that fails is refused (retryable), never
-    // delivered: the deliverers record the failure and try again.
+    // posting's own numbers. A draft that fails is repaired once, then its
+    // résumé lines fall back to the résumé's own (below); a letter that still
+    // fails is refused (retryable), never delivered.
     const figureContext = [jobDescription, jobTitle, jobCompany].filter(Boolean).join("\n");
-    const checkResumeFigures = () => validateProseClaims(resumeText, resumeResult.rewrittenResume || '');
+    // The rewrite's skills section may cite the posting's own numbers ("ISO
+    // 27001"); its bullets only the résumé's (CP-018).
+    const checkResumeFigures = () => rewrittenResumeFigureIssues(resumeText, String(resumeResult.rewrittenResume || ''), figureContext);
     const checkLetterFigures = () => validateProseClaims(resumeText, coverLetterResult.coverLetter || '', figureContext);
     let resumeFigureIssues = checkResumeFigures();
     let letterFigureIssues = checkLetterFigures();
@@ -609,8 +612,7 @@ Write a cover letter that sounds like it was written by this specific person - c
     // refusal counted against the purchase's day, and the prompt itself asked
     // the model to "infer" figures: the package almost never delivered, and
     // the delivery row was spent after its retries. Each part that fails is
-    // sent back once with its issues and the rule; a part that still fails is
-    // refused as before, never delivered.
+    // sent back once with its issues and the rule.
     const repairPart = async (
       label: string,
       system: string,
@@ -663,6 +665,21 @@ Write a cover letter that sounds like it was written by this specific person - c
         coverLetterResult = repaired;
         letterFigureIssues = checkLetterFigures();
       }
+    }
+    // THE LAST RESORT (CP-018, as corrected 2026-10-12): a rewrite that still
+    // states a figure the candidate never claimed after its repair has each
+    // such line put back to the résumé's own line, or left out when the
+    // résumé has nothing like it, and is delivered. Only the letter, which has
+    // no original line to fall back on, can still be refused.
+    if (resumeFigureIssues.length > 0) {
+      const restored = restoreUnsupportedLines(resumeText, String(resumeResult.rewrittenResume || ''), figureContext);
+      resumeResult = { ...resumeResult, rewrittenResume: restored.text };
+      resumeFigureIssues = checkResumeFigures();
+      logStep("Resume lines put back to the résumé's own after the repair", {
+        restored: restored.restored.length,
+        dropped: restored.dropped.length,
+        remaining: resumeFigureIssues.length,
+      });
     }
     const figureIssues = [...resumeFigureIssues, ...letterFigureIssues];
     if (figureIssues.length > 0) {
