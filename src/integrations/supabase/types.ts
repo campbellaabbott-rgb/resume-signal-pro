@@ -77,6 +77,54 @@ export type Database = {
         }
         Relationships: []
       }
+      account_mailbox_proofs: {
+        Row: {
+          amr_at: string
+          created_at: string
+          email: string
+          id: number
+          method: string
+          password_cleared: boolean
+          user_id: string
+        }
+        Insert: {
+          amr_at: string
+          created_at?: string
+          email: string
+          id?: never
+          method: string
+          password_cleared?: boolean
+          user_id: string
+        }
+        Update: {
+          amr_at?: string
+          created_at?: string
+          email?: string
+          id?: never
+          method?: string
+          password_cleared?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
+      account_password_clears: {
+        Row: {
+          cleared_at: string
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          cleared_at?: string
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          cleared_at?: string
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       affiliate_clicks: {
         Row: {
           affiliate_id: string
@@ -5217,6 +5265,15 @@ export type Database = {
       }
       api_key_retire_idle: { Args: never; Returns: number }
       apply_posting_corrections: { Args: { p_patches: Json }; Returns: number }
+      auth_changed_since: {
+        Args: { p_since: string; p_user_id: string }
+        Returns: boolean
+      }
+      auth_sign_in_addresses: {
+        Args: { p_at: string; p_user_id: string }
+        Returns: string[]
+      }
+      auth_user_has_password: { Args: { p_user_id: string }; Returns: boolean }
       board_recency_ladder: {
         Args: { p_fresh_days?: number; p_step?: number }
         Returns: Json
