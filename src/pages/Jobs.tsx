@@ -2666,6 +2666,14 @@ function JobsBoard({ boardId }: { boardId: string }) {
     return [...new Set(parts)].slice(0, 5).join(",");
   });
   const [countryFacet, setCountryFacet] = useState<Array<{ country: string; n: number }>>([]);
+  // THE PICKER'S PLACE IN THE ROW IS HELD FROM FIRST PAINT. The country picker
+  // used to mount only once get_country_facet or the list reply had named a
+  // country, ~1.2s after paint at 1280, where it wrapped the controls row
+  // onto a third line and pushed every filter row and the first card down by
+  // 46px: 0.27 of /jobs's 0.32 layout shift, the same in ten runs on
+  // 2026-10-17. Until the facet has answered once the picker is mounted with
+  // an empty list; a board with no country anywhere still loses it afterwards.
+  const [countryFacetSettled, setCountryFacetSettled] = useState(false);
 
   // FILTER-AWARE CATEGORY COUNTS.
   //
@@ -2759,6 +2767,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
       let rows: Array<{ country: string; n: number }> = [];
       try { rows = read((await call()).data); } catch { /* the retry below covers it */ }
       if (cancelled) return;
+      setCountryFacetSettled(true);
       // ONE DELAYED RETRY, AND ONLY ON FAILURE. It used to run unconditionally,
       // so every mount paid a second 3s-delayed RPC after a call that had
       // already succeeded. Live-walk finding (rank 3): on deep-link entries the
@@ -3026,9 +3035,9 @@ function JobsBoard({ boardId }: { boardId: string }) {
   // A RÉSUMÉ DROPPED THIS SESSION IS KNOWN AT FIRST PAINT. The rest of the
   // answer (a signed-in account's pinned résumé) arrives from resolveFitResume
   // below; until it does the desktop drop strip holds its place invisibly, so
-  // its arrival never pushes the filter rows and the first card down after
-  // they have painted (measured on /jobs at 1280 on 2026-10-17: that one 46px
-  // insertion at ~1.3s was 0.27 of the page's 0.32 layout shift).
+  // its arrival never pushes the list down after it has painted (on a company
+  // page at 1280 the strip's late arrival was a 0.017 shift of the page's
+  // 0.092 on 2026-10-17; the lander now measures 0.061).
   const [resumeAvailable, setResumeAvailable] = useState<boolean | null>(() => {
     try { return (sessionStorage.getItem("rb_board_resume") ?? "").trim().length >= 100 ? true : null; } catch { return null; }
   });
@@ -8707,7 +8716,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                 every filter, because membership is still right; the NUMBERS
                 are dropped the moment anything other than the country
                 selection is narrowing the board. */}
-            {(countryFacet.length > 0 || fallbackCountries.length > 0) && (
+            {(countryFacet.length > 0 || fallbackCountries.length > 0 || !countryFacetSettled) && (
               <MultiSelectFilter
                 value={country}
                 onChange={setCountry}

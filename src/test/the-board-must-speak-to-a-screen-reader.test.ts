@@ -87,7 +87,9 @@ describe("a phone shows a job before it shows a conversion surface", () => {
   });
 
   it("the desktop copy is hidden on mobile and the mobile copy on desktop", () => {
-    expect(SRC).toMatch(/resumeDropPanel\("hidden lg:flex"\)/);
+    // Pass B: while the board does not yet know whether a résumé exists, the
+    // desktop strip holds its place invisibly (same box, same breakpoints).
+    expect(SRC).toMatch(/resumeDropPanel\((?:resumeAvailable === null \? "hidden lg:flex invisible" : )?"hidden lg:flex"\)/);
     expect(SRC).toMatch(/<li className="lg:hidden">\{resumeDropPanel\("flex"\)\}<\/li>/);
   });
 

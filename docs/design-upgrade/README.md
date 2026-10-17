@@ -142,6 +142,9 @@ fixes" below). The integration needed two fixes of its own:
 
 ### Built, but dormant until G1 pass B wires `src/pages/Jobs.tsx`
 
+Pass B is done on branch `pd/wire` (see "Pass B" below); this section and
+the next describe the state at the design branch's own head.
+
 - **G3's lander** (`src/components/jobs/company/CompanyLander.tsx` and its
   regions: header, collision, USAJOBS hub, agency banner, About rail and
   phone accordion, hiring record, pay, hiring mix, public records, empty
@@ -151,8 +154,7 @@ fixes" below). The integration needed two fixes of its own:
   only on a standard page with open roles above zero). A figure with no date
   prints no line; pass B passes `listAnsweredAt` so the list's figure is
   dated even when the board's read stamp is missing.
-  Jobs.tsx still mounts the legacy lander, so `/jobs/company/:token` looks as
-  before apart from the tokens and header.
+  At this head Jobs.tsx still mounts the legacy lander; pass B replaces it.
 - **G2's card, pane and phone sheet** on the board (`JobCard`,
   `PostingDetail`, `PostingSheet`). The board still renders its own.
 - **G1's FilterBar and FilterSheet** (one filter row, Filters (n), work mode
@@ -178,7 +180,124 @@ fixes" below). The integration needed two fixes of its own:
 - Add the shard guard's "both shards exist" assertion (its header names
   pass B for it), now that both are on disk.
 
-## Review fixes (2026-10-12, on top of `3ebdcbb2`)
+## Pass B (branch `pd/wire`, 2026-10-12 to 2026-10-17)
+
+Built on `pd/accuracy` (Track 1) with `pd/bake` merged in. What is now true
+on `src/pages/Jobs.tsx`:
+
+- G3's lander in every variant (standard, collision, USAJOBS hub, agency,
+  zero, uncarried), decided by `src/lib/company/lander-model.ts`; G2's
+  `JobCard`, `PostingDetail` and `PostingSheet`; G1's `FilterBar` (with its
+  `FilterSheet`) as the company page's filter row. The stand-ins are gone
+  (`src/lib/company/format.ts` deleted for `src/lib/format.ts`; `parts.tsx`
+  keeps only `WhyDisclosure` and `ValueBar` on the shared `Surface` and
+  `Chip`; `listingEmployer`'s body is `displayEmployer`; age and pay read
+  `format.ts`), the props match `contracts.ts`, `rechecksOnApply` is true
+  only where Apply calls `verifyJob` (pane, card, drawer; the posting page
+  keeps it off), and the shard guard asserts both shards exist and are read.
+- The legacy answer and its `{{roleWord}}` are gone: one open-roles figure
+  from the model, "{{n}} roles dated in the last 30 days" through i18next
+  plurals in nine locales, printed identically in the answer line, the card
+  and the detail link. A company page never auto-opens a posting at desktop
+  width (the address, the canonical and the structured data stay what the
+  page loaded with). The growth line is labelled as rows served on our own
+  daily snapshot. The USAJOBS hub, the collision page and the phone layout
+  (header, answer, three cards, then the closed "About this employer"
+  accordion) are as the before-audit asked.
+- The apply-agent pitch is gone with its keys and guards (wave 4's README
+  list); a guard (`pd-wire-no-seeker-copy-on-the-board-says-we-submit-applications`)
+  collects every string the board and its components can print and fails
+  on "we submit", a retired product or price, or a fourth AI host. The bake
+  builder's twelve locale requests are applied in nine locales; 57
+  superseded main-locale keys are deleted (no reader outside tests and
+  locales; the bake reads none).
+- S12-023 (posting pages fit a 375px phone) and S12-184 (no duplicate key
+  in `docs/deploy-ledger.json`; the board keeps the S11-020 gate and the
+  intel blocks whichever side of a merge wins), each with a test that fails
+  on the code before it.
+- Verify section 87 (`scripts/verify-deploy.d/87-profiles-design-pass-b.sh`)
+  walks the served chunk graph from the entry through the Jobs chunk and
+  its imports and judges the lander, card, pane and filter row, the absence
+  of the legacy answer and the pitch, and the English chunks' title form.
+  On production today every line FAILs, each naming what it found; on this
+  branch's build all six PASS.
+
+### Measured (vite build of this branch's tree from a `git archive` export, served by `vite preview`, headless Playwright chromium, live read-only data, 2026-10-17)
+
+| Claim | Result |
+|---|---|
+| Phone fold budget, 375x812, 27 sample company pages (20 standard incl. Workday, Greenhouse, Oracle and SmartRecruiters boards; `clear` collision; `usajobs` hub; `10kbi` zero; AllegisGlobalSolutions, 1sp-agency) | First card top 392px on 23 standard pages, 434 (NorthwesternMedicine), 472 (USAJOBS hub): all under 520. Header, the answer, then 3 cards, then the closed accordion (`aria-expanded=false`) on every page with roles. The zero page lists no card and says "We have not read this whole board recently." **The collision page is at 594**: its header carries the two boards and their "Show only" buttons where a standard page has one answer line (an owner decision below). The answer wraps to two lines at 375 on every standard page ("{{n}} roles dated in the last 30 days · read N ago"); the budget is met with 128px to spare, so the stamp was left on the line |
+| 375px overflow | `document.scrollWidth` 375 on all 27 pages. Before the fix below, AllegisGlobalSolutions scrolled to 385: the end-of-list card offered "Remove Allegis Global Solutions — 1,042,809 openings" on a 394px button |
+| Auto-select on a lander at 1280 (anduril, dominos, stripe) | URL, canonical and structured data unchanged after 6s with 60 cards rendered, no pane, the About rail present. Positive control `/jobs`: the top card opens, the URL and canonical change to `?job=`, a JobPosting JSON-LD tag appears |
+| Layout shift at 1280, median of 5 runs, 10s each | `/jobs` **0.049** (the design head's after-audit: 0.046; before the country-picker fix below this build measured 0.32 in ten runs); Anduril lander **0.061** (0.154 on the design head: the legacy Hiring Health card is gone; one of five runs measured 0.27, a 0.22 shift at 1.0s not seen in the other nine runs of this page); 2020 Companies lander **0.076** (0.163) |
+| axe-core 4.10.2 (WCAG 2.0/2.1/2.2 A+AA) in dark at 1280: `/jobs`, dominos, clear, usajobs, `/companies`, two Paylocity posting pages | **0 violations on every page.** Before the link fix below, clear had one (`link-in-text-block`, serious, the end-of-results sentence's Ghost Job Index link) |
+| S12-023: three live posting pages at 375 | `scrollWidth` 375 (the sweep measured 404); the header's Start at x=311; "Apply on {employer}'s site" wraps at 309px, "Check my fit, free" 177px, no control nowrap |
+| 320px, fr/pt/tl (and en), dominos and stripe | `scrollWidth` 320, header `scrollWidth` 288, no element past the edge |
+| Page errors | none; one 404 on every lander: `rpc/get_employer_perks`, which does not exist until profiles deploys (as the deploy procedure says) |
+
+Four things the measurement found, fixed on this branch, each with a test
+that fails on the board before it
+(`pd-wire-the-board-holds-the-resume-slot-and-never-offers-its-own-company-as-a-filter`,
+`a-link-in-a-sentence-is-underlined-at-rest-on-the-money-path`):
+
+1. The end of a company's own list read the company as a narrowing filter:
+   "End of results — 30 openings shown for these filters" with a button to
+   remove the company that carried the whole board's count. The page's
+   company is never a relaxation (`relaxableFilters`): the end card reads
+   the board's end as broad, no count is sent with the company taken off,
+   and the relaxation buttons that remain wrap their label.
+2. The country picker mounted only once `get_country_facet` or the list
+   reply had named a country, ~1.2s in, and wrapped the controls row onto a
+   third line: 46px under every filter row and the first card, 0.27 of
+   `/jobs`'s 0.32 layout shift, identical in ten runs (found by diffing the
+   DOM across the shift window; the résumé strip was the first suspect and
+   was not it on `/jobs`). The picker is in the row from first paint with an
+   empty list until the facet has answered once; `/jobs` measures 0.049.
+3. On a company page the desktop résumé drop strip arrived at ~1.3s, once
+   `resolveFitResume` had answered, and moved the list (a 0.017 entry of
+   the Anduril lander's 0.092). A résumé dropped this session is now known
+   at first paint, and until the rest of the answer arrives the strip holds
+   its place invisibly (same box, same height); the lander measures 0.061.
+4. Three links inside sentences were marked by colour alone (axe
+   `link-in-text-block` on the clear page's "see the live re-check ages",
+   plus "Open your tracker" and the skill-unlock call to action); each now
+   wears the design system's `.link`.
+
+**Bundle** (`dist/assets`, gzip -9, this head): entry 284.3 kB (the design
+head: 279.3), CSS 19.2 kB (18.9), Jobs chunk 106.4 kB (94.6: it now imports
+the lander, the card, the pane and the filter row, and sheds the legacy
+lander and pitch), JobPosting chunk 4.3 kB (14.7: `PostingDetail` is its own
+shared chunk, 25.2 kB, imported by both JobPosting and Jobs), all JS 253
+files, 3,110 kB. The bake wrote 3403 static html pages.
+
+**Checks:** `npm run typecheck` clean (pre-commit); every touched test file
+(71 files, 1,546 tests) and the new pd-wire files pass under
+`--maxWorkers=2`; the pre-push gate runs the full suite.
+
+**Screenshots and raw data:** the session scratchpad's
+`keep/design-upgrade/pass-b-audit/` (`shots/` round 1 on the first build,
+`shots-final/` on the fixed builds; `measure.round1.json`, `measure.round2.json`,
+`measure.json` for the last fold and layout-shift pass).
+
+### Pass B decisions for the owner
+
+1. **The collision page's fold.** At 375 the clear page's first card is at
+   594px (budget 520). The 74px are the two board rows with their "Show
+   only this board's roles" buttons, which are that page's one navigation.
+   Options: accept the collision variant's budget as "boards list, then
+   cards"; or shorten the rows (one line per board, the button as a link).
+   Nothing was changed.
+2. **Sections 62 and 77 after this deploy** (decisions 1 and 2 above,
+   confirmed on this build): `jobPostingPage.noPayFound` and
+   `listing.actions.checkFit` are in `PostingDetail-*.js` (imported by the
+   JobPosting chunk), not in `JobPosting-*.js`; `jobPostingPage.scoreCta` is
+   nowhere. Section 62's `noPayFound` line and section 77's `scoreCta` line
+   should read the JobPosting chunk's imports, the way section 87 walks the
+   graph. Both files belong to main.
+3. **`agentHero.sub`** in the main locale still says "a live board of
+   verified openings" and "submit where employers allow it"; it is read by
+   `src/pages/Agent*.tsx` (wave 4's file), not by the board or the bake.
+
 
 Each finding was reproduced first (live data from the read-only job-board
 API, a headless preview of `3ebdcbb2`, or a harness mounting the dormant
@@ -338,7 +457,9 @@ The earlier set (the 2026-10-11 design audit, and the first branch shots in
    collision token also still answers "Yes — 34 verified open roles right
    now, straight from Clear's own job board" (seen live on /jobs/company/clear
    in the after-audit, unchanged from 3ebdcbb2): G3's CollisionHeader
-   replaces it when pass B mounts the new lander, which is the fix.
+   replaces it when pass B mounts the new lander, which is the fix. (Pass B
+   did: the clear page now reads "Open roles on boards named “clear”" with
+   no employer sentence; measured 2026-10-17.)
 5. **Two gate failures after any local `npm run build` (the bake's, not this
    branch's).** With `dist/` and the bake's generated files present, the
    pre-push suite fails three tests that a clean checkout skips or passes:

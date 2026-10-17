@@ -1,14 +1,17 @@
 /**
  * TWO THINGS THE PASS B MEASUREMENT FOUND ON THE BUILT BOARD (2026-10-17).
  *
- * 1. THE RÉSUMÉ DROP STRIP PUSHED THE BOARD DOWN AFTER IT HAD PAINTED. On
- *    /jobs at 1280 the strip ("Drop your résumé here…", 46px) arrived at
- *    ~1.3s, once resolveFitResume had answered "no résumé", and moved every
- *    filter row and the first card: 0.27 of the page's 0.32 layout shift,
- *    the same in five runs. The board now knows a résumé dropped this
- *    session at first paint, and until the rest of the answer arrives the
- *    strip holds its place invisibly (visibility, not display: the same box,
- *    the same height, no shift when it turns visible).
+ * 1. TWO THINGS ARRIVED AFTER FIRST PAINT AND PUSHED THE BOARD DOWN. On
+ *    /jobs at 1280 the country picker mounted only once get_country_facet
+ *    or the list reply had named a country, ~1.2s in, and wrapped the
+ *    controls row onto a third line: 46px under every filter row and the
+ *    first card, 0.27 of the page's 0.32 layout shift, the same in ten runs.
+ *    On a company page the résumé drop strip ("Drop your résumé here…")
+ *    arrived at ~1.3s once resolveFitResume had answered. Now the picker is
+ *    in the row from first paint (an empty list until the facet answers
+ *    once), the board knows a résumé dropped this session at first paint,
+ *    and until the rest of that answer arrives the strip holds its place
+ *    invisibly (visibility, not display: the same box, the same height).
  *
  * 2. THE END OF A COMPANY'S LIST OFFERED TO REMOVE THE COMPANY. Allegis's 30
  *    roles ended in "End of results — 30 openings shown for these filters"
@@ -120,6 +123,16 @@ const slot = () => document.querySelector<HTMLElement>("[data-resume-drop]");
 beforeEach(() => {
   try { sessionStorage.clear(); localStorage.clear(); } catch { /* blocked */ }
   invoke.mockReset(); rpc.mockReset();
+});
+
+describe("the country picker is in the controls row from the first paint", () => {
+  const picker = () => document.querySelector<HTMLElement>('button[aria-label="All countries"]');
+  it("is in the document before any reply, and still there once the board has answered", async () => {
+    mount("/jobs", [job("acme", "Acme", 1), job("acme", "Acme", 2)]);
+    expect(picker(), "the country picker is not in the row at first paint").not.toBeNull();
+    await waitFor(() => expect(text()).toContain("Platform Engineer 2"), SLOW);
+    expect(picker()).not.toBeNull();
+  });
 });
 
 describe("the desktop résumé strip holds its place from the first paint", () => {
