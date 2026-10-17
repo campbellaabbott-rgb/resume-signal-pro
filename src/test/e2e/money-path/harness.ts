@@ -112,7 +112,9 @@ const PAYMENT_STAND_INS = `
     generation_success boolean, generation_error text, email_success boolean, email_error text,
     ai_response_valid boolean, ai_parse_error text, generation_duration_ms integer, ai_model_used text, metadata jsonb,
     retry_count integer NOT NULL DEFAULT 0, max_retries integer NOT NULL DEFAULT 8, next_retry_at timestamptz,
-    last_retry_error text, transient_failures integer NOT NULL DEFAULT 0);
+    last_retry_error text, transient_failures integer NOT NULL DEFAULT 0,
+    -- 20261011144000's lease, as the live database holds it: the live update_delivery_retry names these columns.
+    lease_token uuid, lease_until timestamptz);
   CREATE TABLE public.scan_credit_session_grants (
     session_hash text PRIMARY KEY, email text NOT NULL, product_type text NOT NULL DEFAULT '',
     credits_bought integer NOT NULL, credits_used integer NOT NULL DEFAULT 0, claimed_by uuid,
@@ -186,6 +188,7 @@ export const ROUND_MIGRATIONS = [
   "20261011140000_a_closed_paid_order_stays_closed.sql",
   "20261011143000_a_paid_order_made_but_never_mailed_is_mailed_from_its_copy.sql",
   "20261011143500_a_paid_order_whose_mail_never_left_counts_as_stuck.sql",
+  "20261011144000_a_generation_in_progress_is_leased_and_a_stale_maker_is_refused.sql",
 ];
 
 const TABLES_TO_CLEAR = [
@@ -245,12 +248,20 @@ export type MoneyPath = {
   modelCalls: () => number;
   /** Which of our functions were called, in order (the router's log). */
   routed: string[];
-  /** Post a Stripe event, signed as Stripe signs it, and wait for the background work. */
-  event: (type: string, object: Record<string, unknown>) => Promise<{ status: number; json: unknown }>;
-  /** Call a function as the browser does (no service key), and wait for its background work. */
-  call: (fn: string, body: unknown, headers?: Record<string, string>) => Promise<{ status: number; json: Record<string, unknown> }>;
-  /** One run of the retry sweep, as its cron posts it. */
-  sweep: () => Promise<Record<string, unknown>>;
+  /** Post a Stripe event, signed as Stripe signs it, and wait for the background work (settle: false leaves it running, for a race). */
+  event: (type: string, object: Record<string, unknown>, opts?: { settle?: boolean }) => Promise<{ status: number; json: unknown }>;
+  /** Wait for every background task the handlers started (what event and call do on their own). */
+  settle: () => Promise<void>;
+  /**
+   * A stand-in for a function OFF the path, answered by the test (a generator
+   * of a product no longer sold, say): the router sends calls to it instead of
+   * throwing. Cleared by reset.
+   */
+  standIn: (fn: string, handler: EdgeHandler) => void;
+  /** Call a function as the browser does (no service key), and wait for its background work (settle: false leaves earlier background work running). */
+  call: (fn: string, body: unknown, headers?: Record<string, string>, opts?: { settle?: boolean }) => Promise<{ status: number; json: Record<string, unknown> }>;
+  /** One run of the retry sweep, as its cron posts it (settle: false leaves earlier background work running). */
+  sweep: (opts?: { settle?: boolean }) => Promise<Record<string, unknown>>;
   /** The order's delivery row. */
   order: (sessionId: string) => Promise<Record<string, unknown> | undefined>;
   /** Time passes for an order: its next try is due now. */
@@ -325,6 +336,7 @@ export async function moneyPath(opts: { roundMigrations?: boolean } = {}): Promi
   };
 
   for (const fn of MONEY_PATH_FUNCTIONS) handlers.set(fn, await loadEdgeHandler(fn, STUBS));
+  const standIns = new Set<string>();
 
   const settle = async () => {
     for (let i = 0; i < 50 && pending.length; i++) {
@@ -338,28 +350,30 @@ export async function moneyPath(opts: { roundMigrations?: boolean } = {}): Promi
   const path: MoneyPath = {
     db, client, stripe, mails, refused, refuse, routed,
     modelCalls: () => models,
-    event: async (type, object) => {
+    settle,
+    standIn: (fn, handler) => { standIns.add(fn); handlers.set(fn, handler); },
+    event: async (type, object, opts = {}) => {
       const body = JSON.stringify({ id: `evt_${Math.random().toString(36).slice(2)}`, type, livemode: true, data: { object } });
       const res = await handlers.get("stripe-webhook")!(new Request(`${SUPABASE_URL}/functions/v1/stripe-webhook`, {
         method: "POST", headers: { "content-type": "application/json", "stripe-signature": signStripePayload(body, WEBHOOK_SECRET) }, body,
       }));
-      await settle();
+      if (opts.settle !== false) await settle();
       return { status: res.status, json: await json(res) };
     },
-    call: async (fn, body, headers = {}) => {
+    call: async (fn, body, headers = {}, opts = {}) => {
       const res = await handlers.get(fn)!(new Request(`${SUPABASE_URL}/functions/v1/${fn}`, {
         method: "POST",
         headers: { "content-type": "application/json", "cf-connecting-ip": "203.0.113.77", apikey: ENV.SUPABASE_ANON_KEY, authorization: `Bearer ${ENV.SUPABASE_ANON_KEY}`, ...headers },
         body: JSON.stringify(body),
       }));
-      await settle();
+      if (opts.settle !== false) await settle();
       return { status: res.status, json: await json(res) };
     },
-    sweep: async () => {
+    sweep: async (opts = {}) => {
       const res = await handlers.get("retry-failed-deliveries")!(new Request(`${SUPABASE_URL}/functions/v1/retry-failed-deliveries`, {
         method: "POST", headers: { "content-type": "application/json", "cf-connecting-ip": "10.0.0.1" }, body: "{}",
       }));
-      await settle();
+      if (opts.settle !== false) await settle();
       return json(res);
     },
     // next_retry_at read as text too: pglite hands 'infinity' back as an Invalid Date.
@@ -372,6 +386,8 @@ export async function moneyPath(opts: { roundMigrations?: boolean } = {}): Promi
       "SELECT COALESCE(sum(stuck), 0) AS n FROM public.product_delivery_health(24)")).rows[0]?.n ?? 0),
     reset: async () => {
       await settle();
+      for (const fn of standIns) handlers.delete(fn);
+      standIns.clear();
       await db.exec(`TRUNCATE ${TABLES_TO_CLEAR.map((t) => `public.${t}`).join(", ")} CASCADE`);
       for (const k of Object.keys(stripe) as Array<keyof StripeWorld>) stripe[k] = {};
       mails.length = 0;

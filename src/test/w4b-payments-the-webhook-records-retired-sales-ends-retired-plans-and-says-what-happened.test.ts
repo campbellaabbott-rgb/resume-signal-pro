@@ -26,7 +26,7 @@
  *   CP-033   the owner's test-mode rehearsal had no way in.
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+import { FakeDb, loadEdgeHandler, type EdgeHandler, fakeLeaseRpcs } from "./helpers/edge-harness";
 import { STRIPE_WEBHOOKS_REAL_SHAPE, signStripePayload } from "./helpers/stripe-signature";
 
 vi.setConfig({ testTimeout: 30_000, hookTimeout: 120_000 });
@@ -126,6 +126,8 @@ beforeAll(async () => {
 beforeEach(() => {
   db = new FakeDb({ used_stripe_sessions: ["session_id"] });
   db.rpcs = {
+    // The lease a maker takes before it generates (20261011144000).
+    ...fakeLeaseRpcs(db),
     log_webhook_event: () => ({ data: null, error: null }),
     mail_door_take: (a) => {
       const rows = db.rows("mail_door_counts");

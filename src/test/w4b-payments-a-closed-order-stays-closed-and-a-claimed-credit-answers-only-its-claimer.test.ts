@@ -47,7 +47,9 @@ const DELIVERIES = `
     email_sent_at timestamptz, status text NOT NULL DEFAULT 'payment_received', generation_success boolean, generation_error text,
     email_success boolean, email_error text, ai_response_valid boolean, ai_parse_error text, generation_duration_ms integer,
     metadata jsonb, retry_count integer NOT NULL DEFAULT 0, max_retries integer NOT NULL DEFAULT 8,
-    next_retry_at timestamptz, last_retry_error text, transient_failures integer NOT NULL DEFAULT 0
+    next_retry_at timestamptz, last_retry_error text, transient_failures integer NOT NULL DEFAULT 0,
+    -- 20261011144000's lease, as the live database holds it: the live update_delivery_retry names these columns.
+    lease_token uuid, lease_until timestamptz
   );
 `;
 

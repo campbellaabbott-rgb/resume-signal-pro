@@ -34,7 +34,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+import { FakeDb, loadEdgeHandler, type EdgeHandler, fakeLeaseRpcs } from "./helpers/edge-harness";
 // The Apply Assistant is retired (wave 4): its dormant delivery path, which these
 // cases prove, runs with its switch on; the retired behaviour ships and is held by
 // w4b-payments-the-webhook-records-retired-sales-ends-retired-plans-and-says-what-happened.
@@ -115,6 +115,8 @@ beforeEach(() => {
   spent = false;
   sessionDaySpent = false;
   db.rpcs = {
+    // The lease a maker takes before it generates (20261011144000).
+    ...fakeLeaseRpcs(db),
     check_rate_limit: (a) => {
       rateCalls.push(a as RateArgs);
       const p = String((a as RateArgs).p_ip);

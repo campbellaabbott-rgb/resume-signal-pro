@@ -55,6 +55,12 @@ import { sendMail } from "../_shared/send-mail.ts";
 const FN_BUILD = "stripe-webhook.2026-10-11.22";
 const BUILD_HEADER = { "x-fn-build": FN_BUILD };
 
+// HOW LONG A MAKER HOLDS AN ORDER (20261011144000, CP-019). The lease
+// outlives any edge isolate, so a 'generating' row whose lease has expired
+// is one nobody is still making; the retry sweep reclaims it with a new
+// token, and this maker's finish is then refused instead of mailing twice.
+const LEASE_MINUTES = 10;
+
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
 
@@ -1052,15 +1058,34 @@ async function triggerProductDelivery(
   // written first; the generation, the saved copy and the mail finish in the
   // background. A finish that dies leaves the row 'generating', which the
   // retry sweep picks up after 15 minutes (20261009140000).
-  await supabase.from('product_deliveries')
-    .update({ status: 'generating', content_generation_started_at: new Date().toISOString() })
-    .eq('id', deliveryRecord.data?.id);
+  //
+  // THE LEASE (20261011144000, CP-019 / CP-C items 1-2). The 'generating'
+  // stamp is a lease with a token: the success page's verifier, which can
+  // reach the same order while this runs, is told "in progress" by it instead
+  // of making a second copy, and the sweep reclaims the row only once the
+  // lease has expired. The finish below carries the token, so a maker that
+  // outlived its lease mails nobody. NULL means another maker took the order
+  // between the row's insert and here (the page was quicker): it is theirs.
+  const { data: leaseToken, error: leaseError } = await supabase.rpc('take_delivery_lease', {
+    p_stripe_session_id: sessionId, p_seen_status: 'payment_received', p_minutes: LEASE_MINUTES,
+    p_product_type: productType || 'unknown', p_email: customerEmail,
+  });
+  if (leaseError) {
+    // The row stays payment_received; the sweep takes it after ten minutes.
+    logStep("The delivery lease could not be taken; the sweep makes it", { error: leaseError.message });
+    return { success: false, error: `take_delivery_lease: ${leaseError.message}` };
+  }
+  if (!leaseToken) {
+    logStep("Another maker holds this order (the success page took it first); not made twice", { sessionId });
+    return { success: true, productType, deferred: 'leased_elsewhere' };
+  }
 
   EdgeRuntime.waitUntil(
     generateAndDeliver({
       supabase, supabaseUrl, sessionId, productType, productName, customerEmail,
       deliveryId: deliveryRecord.data?.id, resumeText: resume_text, jobDescriptionText: job_description_text,
       jobTitle, jobCompany, language, targetRoles: targetRolesOf(session.metadata?.target_roles),
+      leaseToken: String(leaseToken),
     }).then(
       (r) => logStep("Background delivery finished", r),
       (e) => logStep("Background delivery threw; the sweeper retries the row", { error: String(e).slice(0, 300) }),
@@ -1085,6 +1110,8 @@ interface GenerationJob {
   language: string;
   /** The ATS Defense roles named at checkout (S11-074). */
   targetRoles: string[];
+  /** The order's lease token (take_delivery_lease): the finish and every failure record carry it. */
+  leaseToken: string;
 }
 
 /** The generation, the saved copy and the delivery mail: run after Stripe has its answer. */
@@ -1236,17 +1263,29 @@ async function generateAndDeliver(job: GenerationJob) {
         p_id: deliveryRecord.data?.id,
         p_status: 'generation_failed',
         p_error: `save_purchased_content: ${saveError.message}`.slice(0, 500),
-        p_increment_retry: true
+        p_increment_retry: true,
+        p_lease_token: job.leaseToken,
       })));
       return { success: false, error: 'content not saved' };
     }
-    await supabase.from('product_deliveries').update({
-      status: 'content_generated',
-      generation_success: true,
-      content_generation_completed_at: new Date().toISOString(),
-      generation_duration_ms: generationDuration,
-      ai_model_used: aiModelUsed
-    }).eq('id', deliveryRecord.data?.id);
+    // THE FINISH CARRIES THE LEASE (20261011144000). Refused when the row is
+    // no longer this maker's: the sweep reclaimed it after the lease expired
+    // (and mails its own copy), or a refund closed it. The copy saved above
+    // stays for recovery; nothing is mailed from here, so the buyer is never
+    // mailed twice and a closed order is never reopened.
+    const { data: finished, error: finishError } = await supabase.rpc('finish_delivery_generation', {
+      p_stripe_session_id: sessionId,
+      p_lease_token: job.leaseToken,
+      p_status: 'content_generated',
+      p_duration_ms: generationDuration,
+      p_model: aiModelUsed,
+    });
+    if (finishError || finished !== true) {
+      logStep("The order moved while this made it (another maker finished first, or it closed): the copy is saved, nothing is mailed from here", {
+        sessionId, error: finishError?.message ?? null,
+      });
+      return { success: false, error: finishError ? `finish_delivery_generation: ${finishError.message}` : 'stale maker: the order was finished by another maker' };
+    }
 
     // Send email (background). A send that fails is RECORDED as email_failed
     // with a retry scheduled, so retry-failed-deliveries resends it from the
@@ -1286,7 +1325,8 @@ async function generateAndDeliver(job: GenerationJob) {
             p_id: deliveryRecord.data?.id,
             p_status: 'email_failed',
             p_error: failure,
-            p_increment_retry: true
+            p_increment_retry: true,
+            p_lease_token: job.leaseToken,
           });
         }
       })());
@@ -1300,7 +1340,10 @@ async function generateAndDeliver(job: GenerationJob) {
           p_id: deliveryRecord.data?.id,
           p_status: 'generation_failed',
           p_error: generationError,
-          p_increment_retry: true
+          p_increment_retry: true,
+          // Refused when the sweep reclaimed the row meanwhile: its try is
+          // the one that counts, not this maker's late failure.
+          p_lease_token: job.leaseToken,
         })
       )
     );

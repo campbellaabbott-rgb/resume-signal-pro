@@ -10,6 +10,13 @@ import { purchaseLinkFor } from "../_shared/purchase-links.ts";
 // preflight included, carries this in x-fn-build.
 const FN_BUILD = "retry-failed-deliveries.2026-10-11.22";
 
+// HOW LONG THIS SWEEP HOLDS AN ORDER IT MAKES (20261011144000, CP-019). The
+// row is leased before the generator is called: a maker that lost its lease
+// (the webhook whose isolate outlived the fifteen-minute wait) is refused
+// when it finishes, so an order is never made and mailed twice; and a row
+// another maker holds is left to it.
+const LEASE_MINUTES = 10;
+
 // THE PRODUCTS MADE ON THEIR OWN PAGE. Nothing here makes them; what this
 // sweep does for them is resend the purchase-link mail when the webhook's
 // first send was refused (S12-104): the link is the buyer's only way back.
@@ -96,7 +103,7 @@ function remedyFor(productType: string, sessionId: string): string {
 async function recordFailedTry(
   supabase: Db,
   delivery: DeliveryRow,
-  args: { p_id: string; p_status: string; p_error: string; p_increment_retry: boolean },
+  args: { p_id: string; p_status: string; p_error: string; p_increment_retry: boolean; p_lease_token?: string | null },
 ): Promise<void> {
   await supabase.rpc('update_delivery_retry', args);
   try {
@@ -289,9 +296,13 @@ serve(async (req) => {
         id: delivery.id, 
         productType: delivery.product_type,
         status: delivery.status,
-        retryCount: delivery.retry_count 
+        retryCount: delivery.retry_count
       });
 
+      // The lease this sweep holds on the row while it makes it (null until
+      // taken, and for the paths that make nothing: a saved copy, credits,
+      // a resent link).
+      let leaseToken: string | null = null;
       try {
         const metadata = delivery.metadata as Record<string, unknown> || {};
         const resumeSessionId = metadata.resume_session_id as string;
@@ -455,6 +466,25 @@ serve(async (req) => {
             continue;
           }
 
+          // THE LEASE, before anything is paid for (20261011144000). A row
+          // whose lease is live belongs to another maker (the webhook still
+          // making it, or the success page): it is left to them. A row whose
+          // lease expired, or that was never leased, is this sweep's now, and
+          // the finish below carries the token. A saved copy needs no lease:
+          // nothing is made, and the mail write names the status it saw.
+          if (!savedCopy) {
+            const { data: token, error: leaseError } = await supabase.rpc('take_delivery_lease', {
+              p_stripe_session_id: delivery.stripe_session_id, p_seen_status: delivery.status, p_minutes: LEASE_MINUTES,
+            });
+            if (leaseError) throw new Error(`take_delivery_lease unavailable: ${String(leaseError.message ?? leaseError).slice(0, 200)}`);
+            if (!token) {
+              logStep("Another maker holds this order; left to it", { id: delivery.id, status: delivery.status });
+              results.push({ id: delivery.id, status: delivery.status, success: false, error: 'leased elsewhere: another maker holds this order' });
+              continue;
+            }
+            leaseToken = String(token);
+          }
+
           let generatedContent: unknown = savedCopy;
 
           if (savedCopy) {
@@ -582,15 +612,30 @@ serve(async (req) => {
             if (saveError) throw new Error(`save_purchased_content: ${saveError.message}`);
           }
 
-          // Update delivery status
-          await supabase
-            .from('product_deliveries')
-            .update({
-              status: 'content_generated',
-              generation_success: true,
-              content_generation_completed_at: new Date().toISOString()
-            })
-            .eq('id', delivery.id);
+          // Update delivery status. A made order's finish carries the lease:
+          // refused when the row is no longer this sweep's (another maker
+          // finished it first, or a refund closed it), in which case the copy
+          // stays saved and nothing is mailed from here (20261011144000).
+          if (leaseToken) {
+            const { data: finished, error: finishError } = await supabase.rpc('finish_delivery_generation', {
+              p_stripe_session_id: delivery.stripe_session_id, p_lease_token: leaseToken, p_status: 'content_generated',
+            });
+            if (finishError) throw new Error(`finish_delivery_generation: ${String(finishError.message ?? finishError).slice(0, 200)}`);
+            if (finished !== true) {
+              logStep("The order moved while this sweep made it (another maker finished first, or it closed): the copy is saved, nothing is mailed", { id: delivery.id });
+              results.push({ id: delivery.id, status: delivery.status, success: false, error: 'the order was finished by another maker; not mailed from here' });
+              continue;
+            }
+          } else {
+            await supabase
+              .from('product_deliveries')
+              .update({
+                status: 'content_generated',
+                generation_success: true,
+                content_generation_completed_at: new Date().toISOString()
+              })
+              .eq('id', delivery.id);
+          }
 
           logStep("Content generation retry successful", { id: delivery.id });
 
@@ -745,7 +790,10 @@ serve(async (req) => {
           p_id: delivery.id,
           p_status: failedStatus,
           p_error: errorMessage,
-          p_increment_retry: true
+          p_increment_retry: true,
+          // The lease this sweep held, if it took one: a failure on a row
+          // another maker holds by now is refused (20261011144000).
+          p_lease_token: leaseToken,
         });
 
         results.push({ 

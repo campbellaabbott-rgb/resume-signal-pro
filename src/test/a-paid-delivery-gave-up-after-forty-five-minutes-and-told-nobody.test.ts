@@ -25,7 +25,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
 import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+import { FakeDb, loadEdgeHandler, type EdgeHandler, fakeLeaseRpcs } from "./helpers/edge-harness";
 import { sqlCodeOf } from "./helpers/strip-comments";
 
 vi.setConfig({ testTimeout: 60_000, hookTimeout: 180_000 });
@@ -51,6 +51,11 @@ const TABLE = `
     email_sent_at timestamptz,
     status text NOT NULL DEFAULT 'payment_received',
     generation_error text,
+    generation_success boolean,
+    ai_response_valid boolean,
+    ai_parse_error text,
+    generation_duration_ms integer,
+    ai_model_used text,
     metadata jsonb
   );`;
 
@@ -173,6 +178,8 @@ describe("the sweep asks for stuck generations and tells the owner when a delive
       customer_email: "buyer@example.com", retry_count: 7, max_retries: 8, metadata: { resume_session_id: RESUME_ID },
     });
     db.rpcs = {
+    // The lease a maker takes before it generates (20261011144000).
+    ...fakeLeaseRpcs(db),
       check_rate_limit: () => ({ data: true, error: null }),
       get_failed_deliveries_for_retry: (a) => { selectorArgs = a; return { data: db.rows("product_deliveries").filter((r) => r.status === "generation_failed" && Number(r.retry_count) < Number(r.max_retries)), error: null }; },
       get_temp_resume: () => ({ data: [{ resume_text: "A".repeat(400), job_description_text: "Senior engineer posting" }], error: null }),

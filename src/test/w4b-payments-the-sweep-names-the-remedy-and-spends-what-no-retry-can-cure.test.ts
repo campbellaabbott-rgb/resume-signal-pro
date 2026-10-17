@@ -29,7 +29,7 @@
  * The shipped handlers, with Stripe, the database and every network call faked.
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+import { FakeDb, loadEdgeHandler, type EdgeHandler, fakeLeaseRpcs } from "./helpers/edge-harness";
 
 vi.setConfig({ testTimeout: 30_000, hookTimeout: 120_000 });
 
@@ -115,6 +115,8 @@ beforeEach(() => {
   world.keys = [];
   delete env.STRIPE_TEST_SECRET_KEY;
   db.rpcs = {
+    // The lease a maker takes before it generates (20261011144000).
+    ...fakeLeaseRpcs(db),
     check_rate_limit: () => ({ data: true, error: null }),
     get_failed_deliveries_for_retry: (a) => {
       limitAsked = a.p_limit;

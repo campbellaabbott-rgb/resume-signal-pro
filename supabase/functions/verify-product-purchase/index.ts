@@ -83,6 +83,11 @@ const SCAN_CREDIT_PRODUCT_TYPES = ['scan_pack', 'scan_credits', 'career_bundle']
 // every case of buildGenerationRequest below.
 /** How long a delivery marked generating counts as being made by someone else. */
 const GENERATION_IN_PROGRESS_MS = 5 * 60 * 1000;
+// HOW LONG THIS PAGE HOLDS AN ORDER IT MAKES (20261011144000, CP-019). The
+// lease is what tells the webhook, the sweep and a second tab apart: a row
+// whose lease is live is answered inProgress, an expired one is reclaimed,
+// and the finish carries the token so a maker that lost the row mails nobody.
+const LEASE_MINUTES = 10;
 
 const GENERATED_PRODUCT_TYPES = [
   'apply_assistant', 'basic_keyword_fix', 'cover_letter', 'premium_package', 'graduate_gameplan',
@@ -487,8 +492,22 @@ serve(async (req) => {
     // reason, for the sweeper to finish: it re-credits what the row says was
     // bought, or regenerates the product and mails it.
     let undelivered: string | null = null;
+    // The lease this page holds on the order while it makes it
+    // (20261011144000; taken below, before the generator is called), and how
+    // it is given back after a failure recorded through log_delivery_step,
+    // which knows nothing of leases: by its token, so a row another maker
+    // took meanwhile is left alone.
+    let leaseToken: string | null = null;
+    const releaseLease = async () => {
+      if (!leaseToken) return;
+      const token = leaseToken;
+      leaseToken = null;
+      const { error } = await supabase.rpc('release_delivery_lease', { p_stripe_session_id: sessionId, p_lease_token: token });
+      if (error) logStep("The lease could not be given back; it expires on its own", { error: error.message });
+    };
     const recordUndelivered = async (reason: string) => {
       undelivered = reason.slice(0, 500);
+      await releaseLease();
       if (!isFirstUse) return;
       await supabase.rpc('log_delivery_step', {
         p_stripe_session_id: sessionId,
@@ -516,6 +535,8 @@ serve(async (req) => {
     // homepage scan of job Y, showed a kit for Y), and asked for the saved
     // copy only for the keyword fix. It is answered now whenever it exists.
     let inProgress = false;
+    // The row's status as this call read it: what the lease is taken against.
+    let seenStatus: string | null = null;
     // Set when the bound résumé could not be read: the sweep cannot make it either.
     let resumeUnreadable = false;
     // An Apply Assistant bought with no job posting (S12-054): nothing can
@@ -553,27 +574,82 @@ serve(async (req) => {
       try {
         const { data: row } = await supabase
           .from('product_deliveries')
-          .select('status, content_generation_started_at')
+          .select('status, content_generation_started_at, lease_until')
           .eq('stripe_session_id', sessionId)
           .maybeSingle();
-        const started = Date.parse(String((row as { content_generation_started_at?: string } | null)?.content_generation_started_at ?? ''));
-        inProgress = (row as { status?: string } | null)?.status === 'generating'
-          && Number.isFinite(started) && Date.now() - started < GENERATION_IN_PROGRESS_MS;
+        const r = row as { status?: string; content_generation_started_at?: string; lease_until?: string | null } | null;
+        seenStatus = typeof r?.status === 'string' ? r.status : null;
+        const started = Date.parse(String(r?.content_generation_started_at ?? ''));
+        const leaseUntil = Date.parse(String(r?.lease_until ?? ''));
+        // A live lease is another maker's (20261011144000); a row leased by
+        // an older build carries no lease, and is judged by its start stamp.
+        inProgress = r?.status === 'generating'
+          && (Number.isFinite(leaseUntil)
+            ? leaseUntil > Date.now()
+            : Number.isFinite(started) && Date.now() - started < GENERATION_IN_PROGRESS_MS);
         if (inProgress) logStep("Generation in progress elsewhere; not generating twice", { sessionId });
       } catch (e) {
         logStep("Delivery status unreadable; generating here", { error: String(e) });
       }
     }
 
+    // THE LEASE (20261011144000, CP-019). Before this page makes a product it
+    // keeps a copy of, it takes the order: the webhook, the sweep and a second
+    // tab are told "in progress" while the lease is live, and a lease that
+    // expired (a maker that died) is reclaimed. NULL means another maker took
+    // it between the read above and now: it is theirs, and the page waits.
+    // The two products made afresh on every visit are not leased (a second
+    // tab would be held for ten minutes for nothing).
+    if (generateContent && resumeSessionId && !generatedContent && !inProgress && SAVED_COPY_PRODUCT_TYPES.includes(productType ?? '')) {
+      const { data: token, error: leaseError } = await supabase.rpc('take_delivery_lease', {
+        p_stripe_session_id: sessionId, p_seen_status: seenStatus ?? 'payment_received', p_minutes: LEASE_MINUTES,
+        p_product_type: productType ?? 'unknown', p_email: customerEmail,
+      });
+      if (leaseError) {
+        logStep("The delivery lease could not be taken; generating without it", { error: leaseError.message });
+      } else if (!token) {
+        inProgress = true;
+        logStep("Another maker took this order first; not generating twice", { sessionId });
+      } else {
+        leaseToken = String(token);
+      }
+    }
+    // How this page records that it made the order: with the lease it holds
+    // (finish_delivery_generation, status 'generated'), refused when another
+    // maker finished first, in which case that maker mails its copy and this
+    // page mails nothing; without a lease, the step writer as before.
+    const recordMade = async (durationMs: number): Promise<boolean> => {
+      if (!leaseToken) {
+        await supabase.rpc('log_delivery_step', {
+          p_stripe_session_id: sessionId, p_step: 'generation_completed', p_success: true, p_duration_ms: durationMs,
+        });
+        return true;
+      }
+      const { data: finished, error: finishError } = await supabase.rpc('finish_delivery_generation', {
+        p_stripe_session_id: sessionId, p_lease_token: leaseToken, p_status: 'generated', p_duration_ms: durationMs,
+      });
+      if (finishError) {
+        logStep("The finish could not be recorded; the sweep mails the saved copy once the lease expires", { error: finishError.message });
+        return false;
+      }
+      if (finished !== true) {
+        logStep("Another maker finished this order first; it mails its copy, this page mails nothing", { sessionId });
+        return false;
+      }
+      return true;
+    };
+
     if (generateContent && resumeSessionId && !generatedContent && !inProgress) {
       logStep("Content generation requested", { productType, resumeSessionId });
 
-      // Log generation started
-      await supabase.rpc('log_delivery_step', {
-        p_stripe_session_id: sessionId,
-        p_step: 'generation_started'
-      });
-      
+      // Log generation started (the lease above already did, when one was taken)
+      if (!leaseToken) {
+        await supabase.rpc('log_delivery_step', {
+          p_stripe_session_id: sessionId,
+          p_step: 'generation_started'
+        });
+      }
+
       const generationStartTime = Date.now();
       
       // Get stored resume data
@@ -613,6 +689,7 @@ serve(async (req) => {
           await supabase.from('product_deliveries').update({ next_retry_at: new Date().toISOString() })
             .eq('stripe_session_id', sessionId).eq('status', 'generation_failed');
           undelivered = 'job_posting_required';
+          await releaseLease();
         } else if (productType === 'apply_assistant' && resume_text && job_description_text) {
           logStep("Calling generate-apply-package + generate-cover-letter");
           const [packageResponse, coverLetterResponse] = await Promise.all([
@@ -659,14 +736,7 @@ serve(async (req) => {
               p_generated_content: generatedContent
             });
             logStep("Content saved for recovery");
-            generatedHere = true;
-
-            await supabase.rpc('log_delivery_step', {
-              p_stripe_session_id: sessionId,
-              p_step: 'generation_completed',
-              p_success: true,
-              p_duration_ms: applyGenDuration
-            });
+            generatedHere = await recordMade(applyGenDuration);
           } else {
             const errorText = await packageResponse.text();
             logStep("Apply package generation failed", { status: packageResponse.status, error: errorText });
@@ -679,6 +749,7 @@ serve(async (req) => {
               p_error: errorText.substring(0, 500),
               p_duration_ms: applyGenDuration
             });
+            await releaseLease();
           }
         } else {
           const request = resume_text
@@ -714,17 +785,21 @@ serve(async (req) => {
                 p_product_name: productName,
                 p_generated_content: generatedContent
               });
-              if (saveError) logStep("Content could NOT be saved for recovery", { error: saveError.message });
-              else logStep("Content saved for recovery");
-              generatedHere = !saveError;
-
-              await supabase.rpc('log_delivery_step', {
-                p_stripe_session_id: sessionId,
-                p_step: 'generation_completed',
-                p_success: !saveError,
-                p_error: saveError ? `save_purchased_content: ${saveError.message}`.slice(0, 500) : null,
-                p_duration_ms: genDuration
-              });
+              if (saveError) {
+                logStep("Content could NOT be saved for recovery", { error: saveError.message });
+                generatedHere = false;
+                await supabase.rpc('log_delivery_step', {
+                  p_stripe_session_id: sessionId,
+                  p_step: 'generation_completed',
+                  p_success: false,
+                  p_error: `save_purchased_content: ${saveError.message}`.slice(0, 500),
+                  p_duration_ms: genDuration
+                });
+                await releaseLease();
+              } else {
+                logStep("Content saved for recovery");
+                generatedHere = await recordMade(genDuration);
+              }
             } else {
               const errorText = genResponse.ok ? `${request.endpoint} answered 200 with no content` : await genResponse.text();
               logStep(`${request.endpoint} generation failed`, { status: genResponse.status, error: errorText });
@@ -737,6 +812,7 @@ serve(async (req) => {
                 p_error: errorText.substring(0, 500),
                 p_duration_ms: genDuration
               });
+              await releaseLease();
             }
           } else {
             logStep("No matching content generator", { productType, hasResumeText: !!resume_text });
