@@ -1,0 +1,126 @@
+{
+  "auth": {
+    "back": "Voltar para o login",
+    "banner": {
+      "dismiss": "Sou eu",
+      "notYou": "Não é você? Sair",
+      "signedInAs": "Conectado como {{email}}."
+    },
+    "checkEmail": "Confira seu e-mail",
+    "checkout": {
+      "signInFirst": "A sua sessão aqui terminou. Se tem um plano Pro, inicie sessão e esta ferramenta está incluída sem custo. Para comprar sem iniciar sessão, prima o botão novamente.",
+      "signInFirstTitle": "Tem Pro? Inicie sessão primeiro"
+    },
+    "code": {
+      "instead": "Prefiro receber um código de acesso por e-mail",
+      "invalid": "Esse código não funcionou. Confira ou peça um novo.",
+      "label": "Código do e-mail",
+      "onItsWay": "Se este endereço puder iniciar sessão, procure no seu e-mail um link (ou um código de 6 dígitos). Qualquer um deles inicia a sessão. Costuma chegar em menos de um minuto.",
+      "placeholder": "123456",
+      "resend": "Pedir um novo código",
+      "resendIn": "Você poderá pedir um novo código em {{seconds}} s.",
+      "send": "Receber um código de acesso por e-mail",
+      "stillNothing": "Ainda nada? Confira a pasta de spam ou escreva para",
+      "tooShort": "Digite o código completo do e-mail.",
+      "verify": "Entrar",
+      "wrongAddress": "Endereço errado?"
+    },
+    "confirm": {
+      "body": "Toque em Continuar para concluir o login. O link funciona uma única vez.",
+      "emailChangeBody": "Toque em Continuar para confirmar seu novo endereço de e-mail.",
+      "emailChanged": "A alteração do e-mail foi confirmada. Se o seu outro endereço também recebeu um link, use-o também.",
+      "expired": "Este link expirou ou já foi usado. Entre novamente para receber um novo.",
+      "recoveryBody": "Toque em Continuar para escolher uma nova senha.",
+      "retry": "Tentar novamente",
+      "title": "Concluir o login",
+      "unreachable": "Não conseguimos contactar o servidor de início de sessão. Verifique a sua ligação e tente novamente; o link continua válido.",
+      "working": "Entrando…"
+    },
+    "confirmationOnItsWay": "Se este endereço puder entrar, um e-mail de confirmação está a caminho. Ele costuma chegar em menos de um minuto.",
+    "continue": "Continuar",
+    "create": {
+      "button": "Criar uma conta nova",
+      "offer": "É novo por aqui? Você pode criar uma conta para {{email}} com esta senha.",
+      "refused": "Não conseguimos criar uma conta com esse e-mail e essa senha.",
+      "tooShort": "Uma conta nova precisa de uma senha com pelo menos 8 caracteres."
+    },
+    "email": {
+      "invalid": "Digite um endereço de e-mail válido.",
+      "label": "E-mail",
+      "placeholder": "voce@exemplo.com",
+      "remembered": "Continuar como {{email}}",
+      "useDifferent": "Usar outro endereço"
+    },
+    "footnote": "Uma conta guarda suas pontuações, créditos e compras, e um currículo só se você salvar um.",
+    "forgot": "Esqueceu a senha?",
+    "genericError": "Algo deu errado. Tente novamente.",
+    "google": {
+      "continue": "Continuar com o Google"
+    },
+    "guard": {
+      "passwordCleared": "Apagamos uma senha definida para este endereço antes de você provar que ele é seu. Se quiser, crie uma nova nas configurações da sua conta.",
+      "passwordClearedTitle": "Sua senha antiga foi apagada",
+      "signedOut": "Apagamos uma senha definida para este endereço antes de você provar que ele é seu, e isso desconectou todos os dispositivos, inclusive este.",
+      "signedOutTitle": "Faça login novamente"
+    },
+    "help": "Não consegue entrar? Escreva para",
+    "linkCheck": {
+      "body": "Este link entra na conta abaixo. Este navegador não pediu esse link, então nada é conectado até você confirmar.",
+      "cancel": "Não sou eu, cancelar",
+      "cancelled": "Nada foi conectado. Se você queria entrar, peça um novo link na página de login.",
+      "continue": "Sim, continuar",
+      "title": "Esta é a sua conta?"
+    },
+    "mismatch": "Não conseguimos fazer seu login com esse e-mail e essa senha.",
+    "notConfirmed": "Este endereço ainda não foi confirmado. Use o link do e-mail de confirmação (ele pode estar no spam).",
+    "or": "ou",
+    "password": {
+      "hide": "Ocultar senha",
+      "label": "Senha",
+      "missing": "Digite uma senha.",
+      "placeholder": "Pelo menos 8 caracteres",
+      "show": "Mostrar senha"
+    },
+    "privacy": "Privacidade",
+    "provider": {
+      "failed": "Esse login não foi concluído. Tente novamente ou use sua senha."
+    },
+    "rateLimited": "Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente novamente.",
+    "resendConfirmation": "Receber o link de confirmação de novo",
+    "reset": {
+      "blocked": "Não conseguimos confirmar este endereço agora, então nenhuma senha foi definida. Tente novamente em alguns minutos ou escreva para",
+      "checking": "Verificando sua conta…",
+      "done": "Sua nova senha foi definida.",
+      "doneOthers": "Sua nova senha foi definida, e todos os outros dispositivos foram desconectados.",
+      "emailSupport": "Escrever ao suporte",
+      "intro": "Introduza o seu e-mail. Se tiver uma conta, enviaremos um link (ou um código de 6 dígitos) com o qual pode escolher uma nova palavra-passe.",
+      "newLink": "Enviar um novo link de reposição",
+      "newPassword": "Nova senha",
+      "onItsWay": "Se existir uma conta para este endereço, procure no seu e-mail um link (ou um código de 6 dígitos). Qualquer um deles permite escolher uma nova palavra-passe. Costuma chegar em menos de um minuto.",
+      "proven": "Este endereço está confirmado. Escolha uma nova senha.",
+      "refused": "Não conseguimos confirmar este endereço com esse link ou código, por isso nenhuma palavra-passe foi definida. Peça um novo link de reposição ou escreva ao suporte.",
+      "resetIt": "Redefina",
+      "retry": "Tentar novamente",
+      "save": "Definir nova senha",
+      "send": "Enviar-me um link de reposição",
+      "signedIn": "Você já entrou. Pode alterar sua senha nas configurações da sua conta.",
+      "signedOut": "Para sua segurança, todos os dispositivos foram desconectados. Peça um código novo para terminar.",
+      "title": "Redefinir sua senha",
+      "toAccount": "Ir para sua conta",
+      "tooShort": "Use pelo menos 8 caracteres.",
+      "verify": "Continuar",
+      "wrongPassword": "Senha errada?"
+    },
+    "return": {
+      "failed": "O login não foi concluído. Tente novamente."
+    },
+    "samePassword": "Escolha uma senha que você ainda não usou aqui.",
+    "sendFailed": "Não conseguimos enviar agora. Tente de novo em um minuto ou escreva para {{support}}.",
+    "sessionExpired": "Sua sessão expirou. Entre novamente para continuar de onde parou.",
+    "subtitle": "Acompanhe as pontuações do seu currículo ao longo do tempo, guarde seu histórico de análises e veja seus créditos e compras em um só lugar. Grátis para sempre.",
+    "title": "Entre ou crie sua conta grátis",
+    "usePassword": "Usar uma senha",
+    "weakPassword": "Essa senha é fraca ou comum demais. Use pelo menos 8 caracteres difíceis de adivinhar.",
+    "whatWeKeep": "O que guardamos"
+  }
+}

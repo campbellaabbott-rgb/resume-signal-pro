@@ -1,0 +1,126 @@
+{
+  "auth": {
+    "back": "Volver a iniciar sesión",
+    "banner": {
+      "dismiss": "Soy yo",
+      "notYou": "¿No eres tú? Cerrar sesión",
+      "signedInAs": "Sesión iniciada como {{email}}."
+    },
+    "checkEmail": "Revisa tu correo",
+    "checkout": {
+      "signInFirst": "Tu sesión aquí terminó. Si tienes un plan Pro, inicia sesión y esta herramienta está incluida sin coste. Para comprarla sin iniciar sesión, pulsa el botón de nuevo.",
+      "signInFirstTitle": "¿Tienes Pro? Inicia sesión primero"
+    },
+    "code": {
+      "instead": "Prefiero recibir un código de inicio de sesión por correo",
+      "invalid": "Ese código no ha funcionado. Revísalo o pide uno nuevo.",
+      "label": "Código del correo",
+      "onItsWay": "Si esta dirección puede iniciar sesión, busca en tu correo un enlace (o un código de 6 dígitos). Cualquiera de los dos te permite entrar. Suele llegar en menos de un minuto.",
+      "placeholder": "123456",
+      "resend": "Pedir un código nuevo",
+      "resendIn": "Podrás pedir un código nuevo en {{seconds}} s.",
+      "send": "Recibir un código de inicio de sesión por correo",
+      "stillNothing": "¿Sigue sin llegar? Revisa la carpeta de spam o escribe a",
+      "tooShort": "Escribe el código completo del correo.",
+      "verify": "Iniciar sesión",
+      "wrongAddress": "¿Dirección equivocada?"
+    },
+    "confirm": {
+      "body": "Pulsa Continuar para terminar de iniciar sesión. El enlace solo funciona una vez.",
+      "emailChangeBody": "Pulsa Continuar para confirmar tu nueva dirección de correo.",
+      "emailChanged": "El cambio de correo está confirmado. Si tu otra dirección también recibió un enlace, úsalo también.",
+      "expired": "Este enlace ha caducado o ya se usó. Vuelve a iniciar sesión para obtener uno nuevo.",
+      "recoveryBody": "Pulsa Continuar para elegir una contraseña nueva.",
+      "retry": "Intentar de nuevo",
+      "title": "Termina de iniciar sesión",
+      "unreachable": "No pudimos conectar con el servidor de inicio de sesión. Comprueba tu conexión e inténtalo de nuevo; el enlace sigue siendo válido.",
+      "working": "Iniciando sesión…"
+    },
+    "confirmationOnItsWay": "Si esta dirección puede iniciar sesión, un correo de confirmación va en camino. Suele llegar en menos de un minuto.",
+    "continue": "Continuar",
+    "create": {
+      "button": "Crear una cuenta nueva",
+      "offer": "¿Eres nuevo? Puedes crear una cuenta para {{email}} con esta contraseña.",
+      "refused": "No pudimos crear una cuenta con ese correo y esa contraseña.",
+      "tooShort": "Una cuenta nueva necesita una contraseña de al menos 8 caracteres."
+    },
+    "email": {
+      "invalid": "Escribe una dirección de correo válida.",
+      "label": "Correo electrónico",
+      "placeholder": "tu@ejemplo.com",
+      "remembered": "Continuar como {{email}}",
+      "useDifferent": "Usar otra dirección"
+    },
+    "footnote": "Una cuenta guarda tus puntuaciones, créditos y compras, y un currículum solo si guardas uno.",
+    "forgot": "¿Olvidaste tu contraseña?",
+    "genericError": "Algo salió mal. Inténtalo de nuevo.",
+    "google": {
+      "continue": "Continuar con Google"
+    },
+    "guard": {
+      "passwordCleared": "Borramos una contraseña que se había puesto a esta dirección antes de que demostraras que es tuya. Si quieres, crea una nueva en los ajustes de tu cuenta.",
+      "passwordClearedTitle": "Tu contraseña anterior se ha borrado",
+      "signedOut": "Borramos una contraseña que se había puesto a esta dirección antes de que demostraras que es tuya, y eso cerró la sesión en todos los dispositivos, también en este.",
+      "signedOutTitle": "Vuelve a iniciar sesión"
+    },
+    "help": "¿No puedes iniciar sesión? Escribe a",
+    "linkCheck": {
+      "body": "Este enlace inicia sesión en la cuenta de abajo. Este navegador no lo pidió, así que no se inicia ninguna sesión hasta que lo confirmes.",
+      "cancel": "No soy yo, cancelar",
+      "cancelled": "No se inició ninguna sesión. Si querías iniciar sesión, pide un enlace nuevo en la página de inicio de sesión.",
+      "continue": "Sí, continuar",
+      "title": "¿Es esta tu cuenta?"
+    },
+    "mismatch": "No pudimos iniciar tu sesión con ese correo y esa contraseña.",
+    "notConfirmed": "Esta dirección aún no está confirmada. Usa el enlace del correo de confirmación (puede estar en spam).",
+    "or": "o",
+    "password": {
+      "hide": "Ocultar contraseña",
+      "label": "Contraseña",
+      "missing": "Escribe una contraseña.",
+      "placeholder": "Al menos 8 caracteres",
+      "show": "Mostrar contraseña"
+    },
+    "privacy": "Privacidad",
+    "provider": {
+      "failed": "Ese inicio de sesión no se completó. Inténtalo de nuevo o usa tu contraseña."
+    },
+    "rateLimited": "Demasiados intentos en poco tiempo. Espera unos minutos y vuelve a intentarlo.",
+    "resendConfirmation": "Volver a recibir el enlace de confirmación por correo",
+    "reset": {
+      "blocked": "No pudimos confirmar esta dirección ahora mismo, así que no se ha puesto ninguna contraseña. Vuelve a intentarlo en unos minutos o escribe a",
+      "checking": "Comprobando tu cuenta…",
+      "done": "Tu nueva contraseña está lista.",
+      "doneOthers": "Tu nueva contraseña está lista y se cerró la sesión en todos los demás dispositivos.",
+      "emailSupport": "Escribir al soporte",
+      "intro": "Escribe tu correo. Si tiene una cuenta, te enviaremos un enlace (o un código de 6 dígitos) con el que podrás elegir una nueva contraseña.",
+      "newLink": "Enviar un nuevo enlace de restablecimiento",
+      "newPassword": "Nueva contraseña",
+      "onItsWay": "Si existe una cuenta para esta dirección, busca en tu correo un enlace (o un código de 6 dígitos). Cualquiera de los dos te permite elegir una nueva contraseña. Suele llegar en menos de un minuto.",
+      "proven": "Esta dirección está confirmada. Elige una contraseña nueva.",
+      "refused": "No pudimos confirmar esta dirección con ese enlace o código, así que no se estableció ninguna contraseña. Pide un nuevo enlace de restablecimiento o escribe al soporte.",
+      "resetIt": "Restablécela",
+      "retry": "Intentar de nuevo",
+      "save": "Guardar la nueva contraseña",
+      "send": "Enviarme un enlace de restablecimiento",
+      "signedIn": "Ya has iniciado sesión. Puedes cambiar la contraseña en los ajustes de tu cuenta.",
+      "signedOut": "Por tu seguridad se cerró la sesión en todos los dispositivos. Pide un código nuevo para terminar.",
+      "title": "Restablece tu contraseña",
+      "toAccount": "Ir a tu cuenta",
+      "tooShort": "Usa al menos 8 caracteres.",
+      "verify": "Continuar",
+      "wrongPassword": "¿Contraseña incorrecta?"
+    },
+    "return": {
+      "failed": "El inicio de sesión no se completó. Inténtalo de nuevo."
+    },
+    "samePassword": "Elige una contraseña que no hayas usado aquí antes.",
+    "sendFailed": "No pudimos enviarlo ahora mismo. Inténtalo de nuevo en un minuto o escribe a {{support}}.",
+    "sessionExpired": "Tu sesión ha caducado. Vuelve a iniciar sesión para seguir donde lo dejaste.",
+    "subtitle": "Sigue la evolución de las puntuaciones de tu currículum, guarda tu historial de análisis y consulta tus créditos y compras en un solo lugar. Gratis para siempre.",
+    "title": "Inicia sesión o crea tu cuenta gratuita",
+    "usePassword": "Usar una contraseña",
+    "weakPassword": "Esa contraseña es demasiado débil o común. Usa al menos 8 caracteres difíciles de adivinar.",
+    "whatWeKeep": "Qué guardamos"
+  }
+}

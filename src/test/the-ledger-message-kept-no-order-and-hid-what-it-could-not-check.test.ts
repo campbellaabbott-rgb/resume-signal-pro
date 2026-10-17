@@ -152,9 +152,11 @@ describe("S11-049: a migration sits in the step its constraint names", () => {
     const g = p.pre.find((m) => m.file.startsWith("20261009144000"));
     expect(g?.note).toMatch(/before send-search-digest and send-agent-digest/);
     expect(p.pre.find((m) => m.file.startsWith("20261009130000"))?.note).toMatch(/before stripe-webhook/);
-    // every rule names a stamp that exists, so none is silently inert
+    // every rule names a stamp that exists, so none is silently inert (any
+    // wave's: wave 4 added rules for its own 20261011* migrations)
+    const all = readdirSync(resolve(ROOT, "supabase/migrations")).filter((f) => /^\d{14}_/.test(f));
     const stamps = Object.keys(POLICY.migrationOrder).filter((k) => !k.startsWith("_"));
-    for (const s of stamps) expect(wave3.some((f) => f.startsWith(s)), `${s} names no migration file`).toBe(true);
+    for (const s of stamps) expect(all.some((f) => f.startsWith(s)), `${s} names no migration file`).toBe(true);
   });
 });
 

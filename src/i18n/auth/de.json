@@ -1,0 +1,126 @@
+{
+  "auth": {
+    "back": "Zurück zur Anmeldung",
+    "banner": {
+      "dismiss": "Das bin ich",
+      "notYou": "Nicht Sie? Abmelden",
+      "signedInAs": "Angemeldet als {{email}}."
+    },
+    "checkEmail": "Sehen Sie in Ihr Postfach",
+    "checkout": {
+      "signInFirst": "Ihre Sitzung hier ist beendet. Wenn Sie einen Pro-Plan haben, melden Sie sich an – dann ist dieses Tool ohne Aufpreis enthalten. Um es ohne Anmeldung zu kaufen, drücken Sie die Schaltfläche erneut.",
+      "signInFirstTitle": "Pro-Mitglied? Melden Sie sich zuerst an"
+    },
+    "code": {
+      "instead": "Stattdessen einen Anmeldecode per E-Mail erhalten",
+      "invalid": "Dieser Code hat nicht funktioniert. Prüfen Sie ihn oder fordern Sie einen neuen an.",
+      "label": "Code aus der E-Mail",
+      "onItsWay": "Wenn sich diese Adresse anmelden kann, sehen Sie in Ihrem Postfach nach einem Link (oder einem 6-stelligen Code). Beides meldet Sie an. Er kommt meist innerhalb einer Minute an.",
+      "placeholder": "123456",
+      "resend": "Neuen Code anfordern",
+      "resendIn": "Einen neuen Code können Sie in {{seconds}} s anfordern.",
+      "send": "Anmeldecode per E-Mail erhalten",
+      "stillNothing": "Immer noch nichts? Sehen Sie im Spam-Ordner nach oder schreiben Sie an",
+      "tooShort": "Geben Sie den vollständigen Code aus der E-Mail ein.",
+      "verify": "Anmelden",
+      "wrongAddress": "Falsche Adresse?"
+    },
+    "confirm": {
+      "body": "Drücken Sie auf „Weiter“, um die Anmeldung abzuschließen. Der Link funktioniert nur einmal.",
+      "emailChangeBody": "Drücken Sie auf „Weiter“, um Ihre neue E-Mail-Adresse zu bestätigen.",
+      "emailChanged": "Ihre E-Mail-Änderung ist bestätigt. Falls auch Ihre andere Adresse einen Link erhalten hat, verwenden Sie diesen ebenfalls.",
+      "expired": "Dieser Link ist abgelaufen oder wurde bereits verwendet. Melden Sie sich erneut an, um einen neuen zu erhalten.",
+      "recoveryBody": "Drücken Sie auf „Weiter“, um ein neues Passwort zu wählen.",
+      "retry": "Erneut versuchen",
+      "title": "Anmeldung abschließen",
+      "unreachable": "Wir konnten den Anmeldeserver nicht erreichen. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut; der Link ist weiterhin gültig.",
+      "working": "Sie werden angemeldet…"
+    },
+    "confirmationOnItsWay": "Wenn sich diese Adresse anmelden kann, ist eine Bestätigungs-E-Mail unterwegs. Sie kommt meist innerhalb einer Minute an.",
+    "continue": "Weiter",
+    "create": {
+      "button": "Neues Konto anlegen",
+      "offer": "Neu hier? Sie können mit diesem Passwort ein Konto für {{email}} anlegen.",
+      "refused": "Mit dieser E-Mail-Adresse und diesem Passwort konnten wir kein Konto anlegen.",
+      "tooShort": "Ein neues Konto braucht ein Passwort mit mindestens 8 Zeichen."
+    },
+    "email": {
+      "invalid": "Geben Sie eine gültige E-Mail-Adresse ein.",
+      "label": "E-Mail",
+      "placeholder": "sie@beispiel.de",
+      "remembered": "Weiter als {{email}}",
+      "useDifferent": "Andere Adresse verwenden"
+    },
+    "footnote": "Ein Konto speichert Ihre Bewertungen, Guthaben und Käufe – und einen Lebenslauf nur, wenn Sie einen speichern.",
+    "forgot": "Passwort vergessen?",
+    "genericError": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
+    "google": {
+      "continue": "Weiter mit Google"
+    },
+    "guard": {
+      "passwordCleared": "Wir haben ein Passwort gelöscht, das für diese Adresse festgelegt wurde, bevor Sie nachgewiesen haben, dass sie Ihnen gehört. Wenn Sie möchten, legen Sie in Ihren Kontoeinstellungen ein neues fest.",
+      "passwordClearedTitle": "Ihr altes Passwort wurde gelöscht",
+      "signedOut": "Wir haben ein Passwort gelöscht, das für diese Adresse festgelegt wurde, bevor Sie nachgewiesen haben, dass sie Ihnen gehört. Dadurch wurden alle Geräte abgemeldet, auch dieses.",
+      "signedOutTitle": "Bitte melden Sie sich erneut an"
+    },
+    "help": "Sie können sich nicht anmelden? Schreiben Sie an",
+    "linkCheck": {
+      "body": "Dieser Link meldet Sie bei dem unten genannten Konto an. Dieser Browser hat ihn nicht angefordert, deshalb wird niemand angemeldet, bevor Sie zustimmen.",
+      "cancel": "Nicht ich, abbrechen",
+      "cancelled": "Es wurde niemand angemeldet. Wenn Sie sich anmelden wollten, fordern Sie auf der Anmeldeseite einen neuen Link an.",
+      "continue": "Ja, weiter",
+      "title": "Ist das Ihr Konto?"
+    },
+    "mismatch": "Mit dieser E-Mail-Adresse und diesem Passwort konnten wir Sie nicht anmelden.",
+    "notConfirmed": "Diese Adresse ist noch nicht bestätigt. Verwenden Sie den Link in der Bestätigungs-E-Mail (eventuell im Spam-Ordner).",
+    "or": "oder",
+    "password": {
+      "hide": "Passwort verbergen",
+      "label": "Passwort",
+      "missing": "Geben Sie ein Passwort ein.",
+      "placeholder": "Mindestens 8 Zeichen",
+      "show": "Passwort anzeigen"
+    },
+    "privacy": "Datenschutz",
+    "provider": {
+      "failed": "Diese Anmeldung wurde nicht abgeschlossen. Versuchen Sie es erneut oder verwenden Sie Ihr Passwort."
+    },
+    "rateLimited": "Zu viele Versuche in kurzer Zeit. Bitte warten Sie ein paar Minuten und versuchen Sie es dann erneut.",
+    "resendConfirmation": "Bestätigungslink erneut per E-Mail anfordern",
+    "reset": {
+      "blocked": "Wir konnten diese Adresse gerade nicht bestätigen, daher wurde kein Passwort festgelegt. Versuchen Sie es in ein paar Minuten erneut oder schreiben Sie an",
+      "checking": "Ihr Konto wird geprüft…",
+      "done": "Ihr neues Passwort ist festgelegt.",
+      "doneOthers": "Ihr neues Passwort ist festgelegt, und alle anderen Geräte wurden abgemeldet.",
+      "emailSupport": "Support per E-Mail kontaktieren",
+      "intro": "Geben Sie Ihre E-Mail-Adresse ein. Wenn es dazu ein Konto gibt, erhalten Sie per E-Mail einen Link (oder einen 6-stelligen Code), mit dem Sie ein neues Passwort wählen können.",
+      "newLink": "Neuen Link zum Zurücksetzen senden",
+      "newPassword": "Neues Passwort",
+      "onItsWay": "Wenn es für diese Adresse ein Konto gibt, sehen Sie in Ihrem Postfach nach einem Link (oder einem 6-stelligen Code). Mit beidem können Sie ein neues Passwort wählen. Er kommt meist innerhalb einer Minute an.",
+      "proven": "Diese Adresse ist bestätigt. Wählen Sie ein neues Passwort.",
+      "refused": "Wir konnten diese Adresse mit diesem Link oder Code nicht bestätigen, daher wurde kein Passwort festgelegt. Fordern Sie einen neuen Link zum Zurücksetzen an oder schreiben Sie dem Support.",
+      "resetIt": "Zurücksetzen",
+      "retry": "Erneut versuchen",
+      "save": "Neues Passwort festlegen",
+      "send": "Link zum Zurücksetzen per E-Mail erhalten",
+      "signedIn": "Sie sind angemeldet. Ihr Passwort können Sie in Ihren Kontoeinstellungen ändern.",
+      "signedOut": "Zu Ihrer Sicherheit wurden alle Geräte abgemeldet. Fordern Sie einen neuen Code an, um fortzufahren.",
+      "title": "Passwort zurücksetzen",
+      "toAccount": "Zu Ihrem Konto",
+      "tooShort": "Verwenden Sie mindestens 8 Zeichen.",
+      "verify": "Weiter",
+      "wrongPassword": "Falsches Passwort?"
+    },
+    "return": {
+      "failed": "Die Anmeldung wurde nicht abgeschlossen. Bitte versuchen Sie es erneut."
+    },
+    "samePassword": "Wählen Sie ein Passwort, das Sie hier noch nicht verwendet haben.",
+    "sendFailed": "Das konnten wir gerade nicht senden. Versuchen Sie es in einer Minute erneut, oder schreiben Sie an {{support}}.",
+    "sessionExpired": "Ihre Sitzung ist abgelaufen. Melden Sie sich wieder an, um dort weiterzumachen, wo Sie aufgehört haben.",
+    "subtitle": "Verfolgen Sie Ihre Lebenslauf-Bewertungen über die Zeit, behalten Sie Ihren Scan-Verlauf und sehen Sie Guthaben und Käufe an einem Ort. Für immer kostenlos.",
+    "title": "Anmelden oder kostenloses Konto erstellen",
+    "usePassword": "Stattdessen ein Passwort verwenden",
+    "weakPassword": "Dieses Passwort ist zu schwach oder zu verbreitet. Verwenden Sie mindestens 8 schwer zu erratende Zeichen.",
+    "whatWeKeep": "Was wir speichern"
+  }
+}

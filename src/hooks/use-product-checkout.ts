@@ -8,6 +8,8 @@ import { parseEdgeFunctionError } from '@/lib/edge-function-errors';
 import { checkoutContext } from '@/lib/track-transport';
 import { consentWasRequired, purchaseTerms, purchaseTermsUnused } from '@/lib/purchase-terms';
 import i18n from '@/i18n';
+import { loadAuthStrings } from '@/i18n/auth/load';
+import { SESSION_ENDED_MARK_KEY } from '@/lib/auth-fragment';
 import { useCheckoutPrefetch } from '@/hooks/use-checkout-prefetch';
 import { getResumeFromSession } from '@/hooks/use-session-resume';
 import { askForTargetRoles, cleanTargetRoles } from '@/lib/target-roles-request';
@@ -191,6 +193,53 @@ async function storeCopy(inputs: PurchaseInputs): Promise<string | null> {
   }
 }
 
+/**
+ * THE ADDRESS A CHECKOUT IS PREFILLED WITH: THE SIGNED-IN ACCOUNT'S, OR NONE
+ * (register CP-012, Account UX spec 9). The checkout used to send whatever
+ * address this browser had stored (the scan-pack address, the last sign-in),
+ * which on a shared computer is the previous person's: Stripe opened with
+ * their address, and the receipt and the purchase went to it. A stored value
+ * cannot say whether the person now at the keyboard typed it, so a signed-out
+ * checkout sends no address and Stripe asks for one. A Pro member is
+ * recognised by their signed-in account, never by a stored address.
+ */
+export async function checkoutPrefillEmail(): Promise<string | undefined> {
+  try {
+    const { data } = await supabase.auth.getSession();
+    const email = data?.session?.user?.email;
+    return typeof email === 'string' && email.includes('@') ? email : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * A PRO MEMBER WHOSE SESSION ENDED IS ASKED BEFORE STRIPE CHARGES THEM
+ * (register S12-087). A signed-out checkout sends no address (above), so the
+ * server cannot recognise a signed-out Pro member and would charge them for a
+ * tool their plan includes. Without sending an address that might be someone
+ * else's, the page can still ask: when this browser held a SIGNED-IN session
+ * that ended without a deliberate sign-out (AuthContext writes
+ * SESSION_ENDED_MARK_KEY on that event alone, and clears it on the next
+ * sign-in and on a sign-out), the first buy press in the tab says "sign in
+ * first if you have Pro" and starts nothing; the next press buys as a guest.
+ * Once per tab. The last address (rb_last_email) is NOT the key: it is also
+ * written for anyone who asks for their report by email, and those visitors
+ * were told their session had ended (lead decision G, third fixer round).
+ */
+export const PRO_SIGN_IN_ASKED_KEY = 'rb_checkout_signin_asked';
+export function askToSignInFirst(signedIn: boolean): boolean {
+  if (signedIn) return false;
+  try {
+    if (!localStorage.getItem(SESSION_ENDED_MARK_KEY)) return false;
+    if (sessionStorage.getItem(PRO_SIGN_IN_ASKED_KEY)) return false;
+    sessionStorage.setItem(PRO_SIGN_IN_ASKED_KEY, '1');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export type ResumeBinding = { sessionId?: string; refused?: boolean };
 
 /**
@@ -244,6 +293,18 @@ export function useProductCheckout() {
       return null;
     }
 
+    const prefillEmail = await checkoutPrefillEmail();
+    if (askToSignInFirst(!!prefillEmail)) {
+      purchaseTermsUnused();
+      // The auth strings load lazily; they are in before the notice is worded.
+      await loadAuthStrings();
+      toast({
+        title: i18n.t("auth.checkout.signInFirstTitle", "Have Pro? Sign in first"),
+        description: i18n.t("auth.checkout.signInFirst", "Your session here ended. If you have a Pro plan, sign in and this tool is included at no charge. To buy it without signing in, press the button again."),
+      });
+      return null;
+    }
+
     // ATS DEFENSE TARGETS THE ROLES ITS BUYER NAMES (S11-074): asked before
     // any checkout starts; closing the question starts none.
     let targetRoles: string[] | undefined = opts.targetRoles ? cleanTargetRoles(opts.targetRoles) : undefined;
@@ -281,9 +342,8 @@ export function useProductCheckout() {
       const { data, error } = await supabase.functions.invoke('create-product-checkout', {
         body: {
           productId: productId,
-          // Known email lets the server include the product free for active
-          // Pro subscribers (and prefills Stripe checkout otherwise).
-          email: localStorage.getItem('scanCreditsEmail') || localStorage.getItem('rb_last_email') || undefined,
+          // The signed-in account's address, or none (see checkoutPrefillEmail).
+          email: prefillEmail,
           sessionId: binding.sessionId,
           jobTitle: opts.jobTitle,
           jobCompany: opts.jobCompany,
