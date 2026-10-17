@@ -5,9 +5,12 @@
 # THE CLAIMS, one line each below:
 #   - stripe-webhook, retry-failed-deliveries, send-product-email,
 #     reconcile-stripe and the new mail-watch serve 2026-10-11.22 or later;
-#     verify-product-purchase and scan-credits serve 2026-10-14.22 or later
-#     (R1 stamped both 2026-10-14.1 and deploys first; this round keeps R1's
-#     day with a higher sequence);
+#     verify-product-purchase, scan-credits, free-keyword-scan and
+#     get-account-data serve 2026-10-14.22 or later (R1 stamped all four
+#     2026-10-14.1 and deploys first; this round keeps R1's day with a higher
+#     sequence; the last two bundle the changed _shared/scan-credits.ts, and an
+#     older free-keyword-scan refuses every claimed pack once 20261011141000
+#     is applied);
 #   - mail-watch refuses the publishable key with its own 401 (the platform
 #     lets that JWT through; the function's cron-key check answers);
 #   - 20261011141000 applied: scan_credit_redeem takes the caller's user id and
@@ -37,7 +40,7 @@ for VD92_FN in stripe-webhook retry-failed-deliveries send-product-email reconci
   elif build_ge "$VD92_FN" "$VD92_H" "2026-10-11" "22"; then echo "PASS  $VD92_FN preflight x-fn-build = $VD92_H ($VD92_FN.2026-10-11.22 or later)"; VD92_LIVE="$VD92_LIVE$VD92_FN "
   else echo "FAIL  $VD92_FN preflight x-fn-build = $VD92_H (want $VD92_FN.2026-10-11.22 or later: the delivery engine before the 2026-10-12 cuts is serving)"; fi
 done
-for VD92_FN in verify-product-purchase scan-credits; do
+for VD92_FN in verify-product-purchase scan-credits free-keyword-scan get-account-data; do
   VD92_H=$(vd92_build "$VD92_FN")
   if [ -z "$VD92_H" ]; then echo "FAIL  $VD92_FN preflight carries no x-fn-build"
   elif build_ge "$VD92_FN" "$VD92_H" "2026-10-14" "22"; then echo "PASS  $VD92_FN preflight x-fn-build = $VD92_H ($VD92_FN.2026-10-14.22 or later: R1's day, this round's sequence)"
