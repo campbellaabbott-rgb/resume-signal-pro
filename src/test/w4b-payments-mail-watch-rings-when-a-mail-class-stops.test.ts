@@ -4,12 +4,14 @@
  * CP-021, CP-052, CP-003).
  *
  * Nothing alarmed when mail stopped leaving. The new mail-watch function runs
- * every 15 minutes (20261011142000) and checks seven rules; each says ok,
+ * every 15 minutes (20261011142000) and checks nine rules; each says ok,
  * alarm or unknown, an alarm mails the owner once per rule per six hours, and
- * healthchecks.io is pinged every run (its /fail on an alarm). Run here as it
- * ships, against Postgres (pglite) with the live mail_door_take, Resend and
- * DNS-over-HTTPS faked, and the two cron readers fed from fixtures (pglite has
- * no pg_cron and no pg_net).
+ * healthchecks.io is pinged every run (its /fail on an alarm). R7's canaries
+ * go out through R1's shared sender (its log row is what the next run judges)
+ * and through auth's sign-in code for the canary account. Run here as it
+ * ships, against Postgres (pglite) with the live mail_door_take, Resend, the
+ * auth client and DNS-over-HTTPS faked, and the two cron readers fed from
+ * fixtures (pglite has no pg_cron and no pg_net).
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
@@ -21,18 +23,24 @@ vi.setConfig({ testTimeout: 30_000, hookTimeout: 180_000 });
 
 const SERVICE = "service_mail_watch_key_0123456789abcdef0123456789";
 const CRON_KEY = "cron-key-0123456789abcdef0123456789abcdef";
+const CANARY = "canary@example.com";
 const env: Record<string, string> = {
-  SUPABASE_URL: "https://harness.supabase.co", SUPABASE_SERVICE_ROLE_KEY: SERVICE, RESEND_API_KEY: "re_harness",
-  ADMIN_EMAIL: "owner@example.com", OWNER_NOTIFY_EMAIL: "owner@example.com", HC_PING_URL: "https://hc-ping.com/abc-123",
+  SUPABASE_URL: "https://harness.supabase.co", SUPABASE_SERVICE_ROLE_KEY: SERVICE, SUPABASE_ANON_KEY: "anon_harness", RESEND_API_KEY: "re_harness",
+  ADMIN_EMAIL: "owner@example.com", OWNER_NOTIFY_EMAIL: "owner@example.com", HC_PING_URL: "https://hc-ping.com/abc-123", CANARY_EMAIL: CANARY,
 };
 
 let db: PGlite;
 let client: PgSupabase;
 let watch: EdgeHandler;
 const ownerMails: Array<{ from: string; to: string[]; subject: string }> = [];
+/** Everything Resend was asked to send, less the canary itself. */
+const alerts = () => ownerMails.filter((m) => !/mail canary/i.test(m.subject));
+const canaryMails = () => ownerMails.filter((m) => /mail canary/i.test(m.subject));
 const pings: string[] = [];
 let ownerStatus = 200;
 let dns: Record<string, string[] | null> = {};
+const otpRequests: string[] = [];
+let otpAnswer: { error: { message: string } | null } = { error: null };
 
 const GOOD_DNS = {
   "send.resumebooster.work": ['"v=spf1 include:amazonses.com ~all"'],
@@ -54,6 +62,7 @@ beforeAll(async () => {
     CREATE TABLE public.job_board_meta (k text PRIMARY KEY, v jsonb, updated_at timestamptz);
     CREATE TABLE public.mail_door_counts (door text NOT NULL, bucket text NOT NULL, window_start timestamptz NOT NULL DEFAULT now(),
       hits integer NOT NULL DEFAULT 1, PRIMARY KEY (door, bucket));
+    CREATE TABLE public.suppressed_emails (email text PRIMARY KEY, reason text, created_at timestamptz NOT NULL DEFAULT now());
     CREATE TABLE public.cron_fixture (jobname text, active boolean, last_start timestamptz);
     CREATE TABLE public.http_fixture (server_errors int, timed_out int);
     CREATE FUNCTION public.email_cron_key_matches(p_key text) RETURNS boolean LANGUAGE sql AS $$ SELECT p_key = '${CRON_KEY}' $$;
@@ -66,6 +75,13 @@ beforeAll(async () => {
   `);
   await db.exec(`CREATE OR REPLACE ${liveDefinitionOf("mail_door_take").body}\n$$;`);
   client = new PgSupabase(db);
+  // The same stub answers createClient for the service role and the anon key; the anon client's auth is the sign-in canary's door.
+  (client as unknown as Record<string, unknown>).auth = {
+    signInWithOtp: async (p: { email: string; options?: { shouldCreateUser?: boolean } }) => {
+      otpRequests.push(`${p.email}:${p.options?.shouldCreateUser === false ? "existing" : "any"}`);
+      return otpAnswer;
+    },
+  };
   const g = globalThis as Record<string, unknown>;
   g.Deno = { env: { get: (k: string) => env[k] }, serve: (h: unknown) => { g.__edgeHandler = h; } };
   g.__mailWatchClient = client;
@@ -92,12 +108,15 @@ beforeAll(async () => {
 afterAll(async () => { await db?.close(); });
 
 beforeEach(async () => {
-  await db.exec("TRUNCATE public.email_send_log, public.email_logs, public.product_deliveries, public.job_board_meta, public.mail_door_counts, public.cron_fixture, public.http_fixture");
+  await db.exec("TRUNCATE public.email_send_log, public.email_logs, public.product_deliveries, public.job_board_meta, public.mail_door_counts, public.cron_fixture, public.http_fixture, public.suppressed_emails");
   await db.exec("INSERT INTO public.cron_fixture VALUES ('scan-heartbeat-sentinel', true, now() - interval '5 minutes')");
   ownerMails.length = 0;
   pings.length = 0;
   ownerStatus = 200;
   dns = { ...GOOD_DNS };
+  otpRequests.length = 0;
+  otpAnswer = { error: null };
+  env.CANARY_EMAIL = CANARY;
 });
 
 const run = async (headers: Record<string, string> = { "x-email-cron": CRON_KEY }) => {
@@ -123,8 +142,8 @@ describe("a quiet, healthy day", () => {
     await db.exec("INSERT INTO public.email_logs (email_type, recipient, status) VALUES ('product_full_analysis', 'buyer@example.com', 'sent')");
     await db.exec("INSERT INTO public.product_deliveries (stripe_session_id, product_type, status) VALUES ('cs_live_x', 'full_analysis', 'payment_received')");
     const r = await run();
-    expect(r.json.rules.map((x) => [x.id, x.state])).toEqual([["R1", "ok"], ["R2", "ok"], ["R3", "ok"], ["R5", "ok"], ["R6", "ok"], ["R8", "ok"], ["R9", "ok"]]);
-    expect(ownerMails).toEqual([]);
+    expect(r.json.rules.map((x) => [x.id, x.state])).toEqual([["R1", "ok"], ["R2", "ok"], ["R3", "ok"], ["R4", "ok"], ["R5", "ok"], ["R6", "ok"], ["R7", "ok"], ["R8", "ok"], ["R9", "ok"]]);
+    expect(alerts()).toEqual([]);
     expect(pings).toEqual(["https://hc-ping.com/abc-123"]);
     const stamp = (await db.query<{ v: Record<string, unknown> }>("SELECT v FROM public.job_board_meta WHERE k = 'mail_watch_run'")).rows[0].v;
     expect(stamp).toMatchObject({ alarms: 0, build: r.build });
@@ -139,7 +158,7 @@ describe("each rule rings for what it watches", () => {
     expect(stateOf(first, "R1")).toBe("alarm");
     expect(first.json.alerted).toContain("R1");
     expect(ownerMails.filter((m) => /Mail watch R1/.test(m.subject))).toHaveLength(1);
-    expect(ownerMails[0].from).toContain("@resumebooster.work");
+    expect(alerts()[0].from).toContain("@resumebooster.work");
     expect(pings.at(-1)).toBe("https://hc-ping.com/abc-123/fail");
     await run();
     expect(ownerMails.filter((m) => /Mail watch R1/.test(m.subject)), "the owner was mailed every 15 minutes").toHaveLength(1);
@@ -153,6 +172,13 @@ describe("each rule rings for what it watches", () => {
   it("R2 counts no subscription and no retired sale as an order owed a mail", async () => {
     await db.exec("INSERT INTO public.product_deliveries (stripe_session_id, product_type, generation_error) VALUES ('cs_live_p', 'pro_subscription', null), ('cs_live_r', 'apply_assistant', 'undeliverable_retired: x')");
     expect(stateOf(await run(), "R2")).toBe("ok");
+  });
+
+  it("R4: a message the sign-in drain gave up on rings", async () => {
+    await db.exec("INSERT INTO public.email_send_log (message_id, template_name, recipient_email, status, error_message) VALUES ('m9', 'auth_emails', 'x@example.com', 'dlq', 'gave up after 5 tries')");
+    const r = await run();
+    expect(stateOf(r, "R4")).toBe("alarm");
+    expect(r.json.rules.find((x) => x.id === "R4")?.detail).toMatch(/auth_emails/);
   });
 
   it("R3: a send pending for over two minutes with nothing after it rings; one that was settled does not", async () => {
@@ -175,6 +201,69 @@ describe("each rule rings for what it watches", () => {
     expect(drift.json.rules.find((x) => x.id === "R6")?.detail).toMatch(/amazonses/);
     dns["send.resumebooster.work"] = null;
     expect(stateOf(await run(), "R6")).toBe("unknown");
+  });
+
+  it("R7: the first run sends the canary and asks for the sign-in code; a run minutes later finds both and is ok; a day later it sends again", async () => {
+    const first = await run();
+    expect(stateOf(first, "R7")).toBe("ok");
+    expect(canaryMails().map((m) => [m.from, m.to])).toEqual([["Resume Booster Alerts <alerts@resumebooster.work>", [CANARY]]]);
+    expect(otpRequests).toEqual([`${CANARY}:existing`]);
+    const logged = (await db.query<{ template_name: string; recipient_email: string; status: string }>(
+      "SELECT template_name, recipient_email, status FROM public.email_send_log")).rows;
+    expect(logged).toEqual([{ template_name: "canary-transactional", recipient_email: CANARY, status: "sent" }]);
+    const stamp = (await db.query<{ v: Record<string, unknown> }>("SELECT v FROM public.job_board_meta WHERE k = 'mail_watch_canary'")).rows[0].v;
+    expect(JSON.stringify(stamp), "the canary stamp carries an address").not.toMatch(/@/);
+
+    const second = await run();
+    expect(stateOf(second, "R7")).toBe("ok");
+    expect(canaryMails(), "the canary was sent again within the day").toHaveLength(1);
+    expect(otpRequests, "the sign-in code was asked for again within the day").toHaveLength(1);
+
+    await db.exec("UPDATE public.job_board_meta SET v = jsonb_build_object('mail_sent_at', (now() - interval '25 hours')::text, 'auth_requested_at', (now() - interval '25 hours')::text) WHERE k = 'mail_watch_canary'");
+    await db.exec("INSERT INTO public.email_send_log (message_id, template_name, recipient_email, status, created_at) VALUES ('a1', 'auth_emails', $$" + CANARY + "$$, 'sent', now() - interval '24 hours')");
+    const third = await run();
+    expect(stateOf(third, "R7")).toBe("ok");
+    expect(canaryMails()).toHaveLength(2);
+    expect(otpRequests).toHaveLength(2);
+  });
+
+  it("R7: a sign-in code whose mail never left in ten minutes rings; one that was logged sent does not", async () => {
+    await run();
+    await db.exec("UPDATE public.job_board_meta SET v = jsonb_build_object('mail_sent_at', (now() - interval '11 minutes')::text, 'auth_requested_at', (now() - interval '11 minutes')::text) WHERE k = 'mail_watch_canary'");
+    const late = await run();
+    expect(stateOf(late, "R7")).toBe("alarm");
+    expect(late.json.rules.find((x) => x.id === "R7")?.detail).toMatch(/sign-in canary requested 11 minutes ago has no sent mail/);
+    expect(otpRequests, "the code was asked for again instead of judged").toHaveLength(1);
+    await db.exec("INSERT INTO public.email_send_log (message_id, template_name, recipient_email, status, created_at) VALUES ('a2', 'auth_emails', $$" + CANARY + "$$, 'sent', now() - interval '9 minutes')");
+    expect(stateOf(await run(), "R7")).toBe("ok");
+  });
+
+  it("R7: a canary Resend refused rings, and a canary whose log row reads failed rings on the next run", async () => {
+    ownerStatus = 503;
+    const refused = await run();
+    expect(stateOf(refused, "R7")).toBe("alarm");
+    expect(refused.json.rules.find((x) => x.id === "R7")?.detail).toMatch(/transactional canary was refused/);
+    ownerStatus = 200;
+    await db.exec("TRUNCATE public.job_board_meta, public.email_send_log");
+    await run();
+    await db.exec("UPDATE public.email_send_log SET status = 'failed' WHERE template_name = 'canary-transactional'");
+    const next = await run();
+    expect(stateOf(next, "R7")).toBe("alarm");
+    expect(next.json.rules.find((x) => x.id === "R7")?.detail).toMatch(/transactional canary is failed/);
+  });
+
+  it("R7: without CANARY_EMAIL nothing is sent and the rule is unknown; a sign-in code that could not be requested is unknown, never ok", async () => {
+    delete env.CANARY_EMAIL;
+    const none = await run();
+    expect(stateOf(none, "R7")).toBe("unknown");
+    expect(canaryMails()).toEqual([]);
+    expect(otpRequests).toEqual([]);
+    env.CANARY_EMAIL = CANARY;
+    otpAnswer = { error: { message: "Signups not allowed for otp" } };
+    const noAccount = await run();
+    expect(stateOf(noAccount, "R7")).toBe("unknown");
+    expect(noAccount.json.rules.find((x) => x.id === "R7")?.detail).toMatch(/canary account must exist/);
+    expect(noAccount.json.alerted).not.toContain("R7");
   });
 
   it("R8: an order delivered an hour ago whose mail never left rings", async () => {
@@ -224,11 +313,13 @@ describe("its schedule (20261011142000)", () => {
 
 describe("the owner's mail", () => {
   it("an alarm both senders refused gives its door back, so the next run mails it", async () => {
+    // Only R2 rings here: with no CANARY_EMAIL the refused Resend does not also ring R7.
+    delete env.CANARY_EMAIL;
     ownerStatus = 503;
     await db.exec("INSERT INTO public.product_deliveries (stripe_session_id, product_type) VALUES ('cs_live_a', 'full_analysis')");
     const r = await run();
     expect(r.json.alerted).toEqual([]);
-    expect(ownerMails.map((m) => m.from)).toEqual(["Resume Booster Alerts <alerts@resumebooster.work>", "Resume Booster Alerts <onboarding@resend.dev>"]);
+    expect(alerts().map((m) => m.from)).toEqual(["Resume Booster Alerts <alerts@resumebooster.work>", "Resume Booster Alerts <onboarding@resend.dev>"]);
     expect((await db.query("SELECT 1 FROM public.mail_door_counts WHERE door = 'owner-alert:mail-watch'")).rows).toHaveLength(0);
     ownerStatus = 200;
     expect((await run()).json.alerted).toEqual(["R2"]);

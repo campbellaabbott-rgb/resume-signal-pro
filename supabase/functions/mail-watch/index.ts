@@ -14,9 +14,16 @@
 //       hours that should be mailed, and not one purchase mail sent;
 //   R3  mail stuck: an email_send_log row 'pending' for over 2 minutes with no
 //       later row for the same message;
+//   R4  the queue gave up: a message the sign-in drain dead-lettered (its
+//       'dlq' row in email_send_log) in the last 24 hours;
 //   R5  bounces and complaints: 3 or more in 24 hours, at least 5% of sends;
 //   R6  DNS drift, read over DNS-over-HTTPS: the 'send' SPF names Amazon SES,
 //       Resend's DKIM key is published, DMARC is published;
+//   R7  the daily canaries, when CANARY_EMAIL is set: once a day a
+//       transactional mail leaves through the shared sender (its log row must
+//       read sent), and a sign-in code is requested for the canary account
+//       (its queued mail must be logged sent within 10 minutes; auth mail goes
+//       through Lovable and Mailgun, so 'sent' is the row, not a delivery);
 //   R8  a delivered order whose mail never left, 30 minutes on (products
 //       mailed with their content; the ones made on their own page are mailed
 //       a link and are R2's);
@@ -30,12 +37,13 @@
 // the door is given back when no sender accepted it. When HC_PING_URL is set
 // (healthchecks.io, outside Supabase and Resend), every run pings it, and a
 // run with an alarm pings its /fail. The run is stamped in job_board_meta
-// (mail_watch_run, counts and states only: that table has an anon reader).
-//
-// R4 (a dead-letter queue growing) and R7 (daily canaries) are not built
-// here: R4 needs a pgmq reader the queue owner writes, R7 sends real mail.
+// (mail_watch_run, counts and states only: that table has an anon reader);
+// the canaries keep their own stamp there (mail_watch_canary, timestamps and
+// a sanitised error only).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isScheduledCaller } from "../_shared/email-cron.ts";
+// R1's transport: one way out for a mail, with its email_send_log row.
+import { sendMail } from "../_shared/send-mail.ts";
 
 // Provable from outside: every response, the preflight included, carries this.
 const FN_BUILD = "mail-watch.2026-10-11.22";
@@ -120,6 +128,15 @@ async function mailStuck(db: Db): Promise<Rule> {
     : { id: "R3", state: "ok", detail: "every pending message was settled" };
 }
 
+/** R4: a message the sign-in drain gave up on (process-email-queue's 'dlq' row) in 24 hours. */
+async function deadLettered(db: Db): Promise<Rule> {
+  const r = await rows(db.from("email_send_log").select("template_name").eq("status", "dlq").gte("created_at", iso(24 * HOUR)).limit(500));
+  if (!r) return { id: "R4", state: "unknown", detail: "the send log could not be read" };
+  if (r.length === 0) return { id: "R4", state: "ok", detail: "nothing dead-lettered in 24 hours" };
+  const kinds = [...new Set(r.map((x) => String(x.template_name ?? "mail")))];
+  return { id: "R4", state: "alarm", detail: `${r.length} message(s) the queue gave up on in 24 hours: ${kinds.join(", ")}` };
+}
+
 /** R5: bounces and complaints in 24 hours. */
 async function bounces(db: Db): Promise<Rule> {
   const r = await rows(db.from("email_send_log").select("status").gte("created_at", iso(24 * HOUR)).in("status", ["sent", "bounced", "complained"]).limit(10000));
@@ -158,6 +175,102 @@ async function dnsDrift(fetchImpl: typeof fetch): Promise<Rule> {
   if (!dkim.some((t) => /\bp=/.test(t))) wrong.push("Resend's DKIM key is not published");
   if (!dmarc.some((t) => t.startsWith("v=DMARC1"))) wrong.push("no DMARC record");
   return wrong.length ? { id: "R6", state: "alarm", detail: wrong.join("; ") } : { id: "R6", state: "ok", detail: "SPF, DKIM and DMARC published" };
+}
+
+const CANARY_KIND = "canary-transactional";
+const CANARY_FROM = "Resume Booster Alerts <alerts@resumebooster.work>";
+const EMAIL_RE = /^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/;
+/** Nothing with an address in it reaches the stamp or the owner's mail subject. */
+const noAddress = (s: string) => s.replace(/[^\s@<>"]+@[^\s@<>"]+/g, "(address)");
+type CanaryStamp = { mail_sent_at?: string; auth_requested_at?: string; auth_error?: string | null };
+type AuthClient = {
+  auth: { signInWithOtp: (p: { email: string; options?: { shouldCreateUser?: boolean } }) => Promise<{ error: { message?: string } | null }> };
+};
+
+/**
+ * R7: the daily canaries. Once a day a transactional mail leaves for
+ * CANARY_EMAIL through the shared sender, and a sign-in code is requested for
+ * that address (the account must exist: shouldCreateUser false). The next
+ * runs judge them by their log rows: the canary's own row must read sent (or
+ * delivered), and the sign-in's queued mail must be logged sent within ten
+ * minutes of the request. Without CANARY_EMAIL nothing is sent and the rule
+ * is unknown; a request that could not be made (no account, no anon key) is
+ * unknown too, never ok and never an alarm: only a mail that should have left
+ * and did not rings.
+ */
+async function canaries(db: Db, fetchImpl: typeof fetch, anon: AuthClient | null): Promise<Rule> {
+  const to = (Deno.env.get("CANARY_EMAIL") ?? "").trim().toLowerCase();
+  if (!EMAIL_RE.test(to)) return { id: "R7", state: "unknown", detail: "CANARY_EMAIL is not set: no canary is sent (owner step)" };
+  const stampRows = await rows(db.from("job_board_meta").select("v").eq("k", "mail_watch_canary").limit(1));
+  if (!stampRows) return { id: "R7", state: "unknown", detail: "the canary stamp could not be read" };
+  const stamp = (stampRows[0]?.v ?? {}) as CanaryStamp;
+  const next: CanaryStamp = { ...stamp };
+  const wrong: string[] = [];
+  const unsure: string[] = [];
+  const fine: string[] = [];
+  const now = Date.now();
+  const at = new Date(now).toISOString();
+
+  // The transactional canary.
+  const mailAt = Date.parse(String(stamp.mail_sent_at ?? ""));
+  if (!Number.isFinite(mailAt) || now - mailAt > 24 * HOUR) {
+    const sent = await sendMail({
+      cls: "transactional", kind: CANARY_KIND, to, from: CANARY_FROM,
+      subject: "Resume Booster mail canary",
+      html: `<p>The daily canary: a transactional mail that proves the paid mail path still leaves. Sent ${at}.</p>`,
+      idempotencyKey: `canary:${at.slice(0, 10)}`, metadata: { canary: true },
+    }, { admin: db, fetchImpl });
+    next.mail_sent_at = at;
+    if (sent.ok) fine.push("transactional canary sent now");
+    else wrong.push(`the transactional canary was refused: ${noAddress(String(sent.error ?? sent.status))}`);
+  } else {
+    const log = await rows(db.from("email_send_log").select("status, created_at").eq("template_name", CANARY_KIND)
+      .gte("created_at", new Date(mailAt - 60_000).toISOString()).order("created_at", { ascending: false }).limit(5));
+    if (!log) unsure.push("the canary's log row could not be read");
+    else if (!log[0]) wrong.push("the transactional canary sent today left no log row");
+    else {
+      const status = String(log[0].status ?? "");
+      if (status === "sent" || status === "delivered") fine.push(`transactional canary ${status}`);
+      else wrong.push(`the transactional canary is ${status}`);
+    }
+  }
+
+  // The sign-in canary.
+  if (!anon) unsure.push("no anon key: the sign-in canary cannot be requested");
+  else {
+    const authAt = Date.parse(String(stamp.auth_requested_at ?? ""));
+    if (!Number.isFinite(authAt) || now - authAt > 24 * HOUR) {
+      let err: string | null = null;
+      try {
+        const { error } = await anon.auth.signInWithOtp({ email: to, options: { shouldCreateUser: false } });
+        err = error ? String(error.message ?? "refused") : null;
+      } catch (e) {
+        err = e instanceof Error ? e.message : String(e);
+      }
+      next.auth_requested_at = at;
+      next.auth_error = err ? noAddress(err).slice(0, 120) : null;
+      if (err) unsure.push(`the sign-in canary could not be requested: ${next.auth_error} (the canary account must exist)`);
+      else fine.push("sign-in canary requested now");
+    } else if (stamp.auth_error) {
+      unsure.push(`the sign-in canary could not be requested: ${stamp.auth_error} (the canary account must exist)`);
+    } else if (now - authAt > 10 * 60_000) {
+      const log = await rows(db.from("email_send_log").select("status").eq("recipient_email", to).neq("template_name", CANARY_KIND)
+        .gte("created_at", new Date(authAt - 60_000).toISOString()).in("status", ["sent", "delivered"]).limit(5));
+      if (!log) unsure.push("the sign-in canary's log rows could not be read");
+      else if (log.length === 0) wrong.push(`the sign-in canary requested ${Math.round((now - authAt) / 60_000)} minutes ago has no sent mail`);
+      else fine.push("sign-in canary mailed");
+    } else fine.push("sign-in canary requested under 10 minutes ago");
+  }
+
+  try {
+    await db.from("job_board_meta").upsert({ k: "mail_watch_canary", v: next, updated_at: at }, { onConflict: "k" });
+  } catch {
+    unsure.push("the canary stamp could not be written");
+  }
+
+  if (wrong.length) return { id: "R7", state: "alarm", detail: wrong.join("; ") };
+  if (unsure.length) return { id: "R7", state: "unknown", detail: [...unsure, ...fine].join("; ") };
+  return { id: "R7", state: "ok", detail: fine.join("; ") };
 }
 
 /** R8: an order delivered 30 minutes to a day ago, mailed with its content, whose mail never left. */
@@ -254,7 +367,15 @@ Deno.serve(async (req) => {
   if (!(await isScheduledCaller(req.headers, db, serviceKey))) return json({ error: "Unauthorized" }, 401);
 
   const fetchImpl: typeof fetch = (input, init) => fetch(input, init);
-  const rules = await Promise.all([classFailing(db), ordersWithNoMail(db), mailStuck(db), bounces(db), dnsDrift(fetchImpl), deliveredUnmailed(db), deadMan(db)]);
+  // The sign-in canary is requested as a visitor would: with the publishable key.
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+  const anon = anonKey
+    ? createClient(Deno.env.get("SUPABASE_URL") ?? "", anonKey, { auth: { persistSession: false, autoRefreshToken: false } }) as unknown as AuthClient
+    : null;
+  const rules = await Promise.all([
+    classFailing(db), ordersWithNoMail(db), mailStuck(db), deadLettered(db), bounces(db), dnsDrift(fetchImpl),
+    canaries(db, fetchImpl, anon), deliveredUnmailed(db), deadMan(db),
+  ]);
   const alarms = rules.filter((r) => r.state === "alarm");
   const alerted: string[] = [];
   for (const rule of alarms) if (await alarmOwner(db, rule, fetchImpl)) alerted.push(rule.id);
