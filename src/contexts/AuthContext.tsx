@@ -248,15 +248,23 @@ function tr(key: string, fallback: string): string {
  * address (the pending marker); otherwise "Is this your account?" asks first,
  * BEFORE any session exists here. A stashed error (an expired link, a
  * cancelled provider) is handed to the sign-in page, or explained where the
- * link landed, once.
+ * link landed, once. `email` on a failed or error outcome is the address the
+ * pending marker named when the outcome arrived (the marker is spent by it),
+ * so the reset page can offer a new link for it.
+ *
+ * unreachable: the auth server could not be asked about the tokens (a
+ * network failure, a timeout, a 5xx). The tokens and the marker are KEPT and
+ * the page offers Try again (retryStashedSession): a still-valid session is
+ * never thrown away by a blip (second recheck of R1).
  */
 export type StashState =
   | { kind: "none" }
   | { kind: "adopting"; next: string | null; type: string | null }
   | { kind: "adopted"; next: string | null; type: string | null }
   | { kind: "interstitial"; email: string; type: string | null }
-  | { kind: "failed"; type: string | null }
-  | { kind: "error"; code: string | null; description: string | null };
+  | { kind: "unreachable"; next: string | null; type: string | null }
+  | { kind: "failed"; type: string | null; email?: string | null }
+  | { kind: "error"; code: string | null; description: string | null; email?: string | null };
 
 const STASH_MAX_AGE_MS = 60 * 60 * 1000;
 
@@ -274,7 +282,7 @@ function initialStashState(): StashState {
   }
   const code = peekStashed("error_code") ?? peekStashed("error");
   const description = peekStashed("error_description");
-  if (code || description) return { kind: "error", code, description };
+  if (code || description) return { kind: "error", code, description, email: readPendingSignIn()?.email ?? null };
   return { kind: "none" };
 }
 
@@ -308,6 +316,8 @@ interface AuthContextValue {
   stashState: StashState;
   /** The sign-in page showed the stash's error or failure: it is not shown again. */
   clearStashOutcome: () => void;
+  /** The auth server could not be asked about the stashed tokens: ask again (they were kept). */
+  retryStashedSession: () => void;
   /** The "Is this your account?" prompt's Continue. */
   acceptStashedSession: () => Promise<void>;
   /** The prompt's "Not me": nothing was signed in, and the link's session is ended. */
@@ -330,6 +340,7 @@ const AuthContext = createContext<AuthContextValue>({
   adoptSession: async () => false,
   stashState: { kind: "none" },
   clearStashOutcome: () => {},
+  retryStashedSession: () => {},
   acceptStashedSession: async () => {},
   rejectStashedSession: () => {},
 });
@@ -526,20 +537,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [setBanner]);
 
   // A session the first script found in the URL: resolved first, then adopted
-  // only when this browser started a sign-in for that same address.
+  // only when this browser started a sign-in for that same address. The
+  // tokens stay in the stash until the auth server gives a definite answer:
+  // one it could not give (unreachable, a 5xx, a timeout) keeps them and the
+  // marker, and the page offers Try again (second recheck of R1).
   const adoptStarted = useRef(false);
   useEffect(() => {
     if (stashState.kind !== "adopting" || adoptStarted.current) return;
     adoptStarted.current = true;
     const access = peekStashed("access_token");
     const refresh = peekStashed("refresh_token");
-    const { type } = stashState;
-    discardStashedSession();
-    if (!access || !refresh) { setStashState({ kind: "failed", type }); return; }
+    const { type, next: stashNext } = stashState;
+    if (!access || !refresh) { discardStashedSession(); setStashState({ kind: "failed", type, email: readPendingSignIn()?.email ?? null }); return; }
     void (async () => {
       const r = await resolveTokens(access, refresh);
+      if ("error" in r && r.transient) { setStashState({ kind: "unreachable", next: stashNext, type }); return; }
+      discardStashedSession();
       // A return the auth server refused spends the marker that waited for it.
-      if ("error" in r) { clearPendingSignIn(); setStashState({ kind: "failed", type }); return; }
+      if ("error" in r) {
+        const email = readPendingSignIn()?.email ?? null;
+        clearPendingSignIn();
+        setStashState({ kind: "failed", type, email });
+        return;
+      }
       const pending = readPendingSignIn();
       if (!pendingMatches(pending, r.email)) {
         resolved.current = r;
@@ -585,6 +605,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clearStashOutcome = useCallback(() => {
     setStashState((s) => (s.kind === "error" || s.kind === "failed" ? { kind: "none" } : s));
   }, []);
+
+  const retryStashedSession = useCallback(() => {
+    if (stashState.kind !== "unreachable") return;
+    adoptStarted.current = false;
+    setStashState({ kind: "adopting", next: stashState.next, type: stashState.type });
+  }, [stashState]);
 
   const signUp = async (email: string, password: string, next?: string) => {
     const { data, error } = await supabase.auth.signUp({
@@ -659,7 +685,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider value={{
       session, user: session?.user ?? null, loading, signUp, signIn, signInWithGoogle, signOut, signOutEverywhere,
       sessionExpired, guardResult, ensureGuard, setResetUnderway, adoptSession, stashState, clearStashOutcome,
-      acceptStashedSession, rejectStashedSession,
+      retryStashedSession, acceptStashedSession, rejectStashedSession,
     }}>
       {children}
       {stashState.kind === "interstitial" && (

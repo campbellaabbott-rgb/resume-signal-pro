@@ -23,6 +23,15 @@
  * RECOVERY_LIVE is false) and for a confirmation link of type recovery (only
  * while RECOVERY_LIVE is true). ForgotPasswordLink renders nothing while the
  * switch is off.
+ *
+ * THE LINK FROM LOVABLE'S DEFAULT MAIL (second recheck of R1). Until our own
+ * sender is verified, the reset link is the auth server's /verify, which
+ * comes back here with the session in the fragment, or with #error=... when
+ * the link expired or a mail scanner already opened it. The provider resolves
+ * what the first script stashed: an error or a refused pair is shown here as
+ * an expired link, with "Send a new reset link" for the address this browser
+ * asked for; a pair the auth server could not be asked about is kept, and
+ * Try again asks once more.
  */
 import { useEffect, useId, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -31,9 +40,10 @@ import type { Session } from "@supabase/supabase-js";
 import { CheckCircle2, Eye, EyeOff, Lock, Mail, ShieldCheck, Loader2 } from "lucide-react";
 import { mailLanguageParam, useAuth, type GuardResult } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { AUTH_SUPPORT_EMAIL, MIN_PASSWORD_LENGTH, RECOVERY_LIVE } from "@/config/auth-providers";
+import { AUTH_SUPPORT_EMAIL, GOOGLE_SIGN_IN_LIVE, MIN_PASSWORD_LENGTH, RECOVERY_LIVE } from "@/config/auth-providers";
 import { DEFAULT_AFTER_AUTH, clearPendingSignIn, setPendingSignIn } from "@/lib/auth-fragment";
 import { CodeEntry } from "@/components/auth/CodeEntry";
+import { GoogleOnlyAccount } from "@/components/auth/ProviderButtons";
 import { Card, EMAIL_RE, Working, explainAuthError, explainSendError, eyeBtn, inputCls, primaryBtn, quietBtn, type Msg } from "@/components/auth/shared";
 
 /** The "Forgot password?" link under the password field; nothing while recovery is off. */
@@ -66,18 +76,24 @@ export function WrongPasswordLink({ next }: { next: string }) {
 
 /**
  * blocked: the guard could not answer (503, no network): Try again may pass.
- * refused: the guard answered 409 for a reason no retry of THIS session can
- * pass (the account changed since the sign-in, no email identity, a token
- * for another address): the only ways on are a fresh link, or support (lead
- * decision F, third fixer round). audit_unconfirmed is neither: the guard
- * then clears nothing, ever, so the reset goes on.
+ * refused: the guard's answer is one no retry of THIS session can pass: a
+ * 409 (the account changed since the sign-in, a token for another address)
+ * or a 200 that says "not proven" (stale_session, not_a_mailbox_sign_in):
+ * the only ways on are a fresh link, or support (lead decision F, third fixer
+ * round; second recheck). audit_unconfirmed is neither: the guard then clears
+ * nothing, ever, so the reset goes on.
+ * google: the guard's 409 no_email_identity: the account signs in with
+ * Google and has no password to change; a fresh link would be refused the
+ * same way every time, so the way on is the Google button, or support.
+ * expired: the emailed link failed (expired, already opened, refused): a new
+ * link for the address this browser asked for.
  */
-type Step = "request" | "code" | "checking" | "password" | "done" | "blocked" | "refused" | "signedIn";
+type Step = "request" | "code" | "checking" | "password" | "done" | "blocked" | "refused" | "google" | "expired" | "signedIn";
 
 export function ResetFlow({ next, initialSession }: { next: string; initialSession: Session | null }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { session, loading, stashState, ensureGuard, setResetUnderway } = useAuth();
+  const { session, loading, stashState, ensureGuard, setResetUnderway, clearStashOutcome, retryStashedSession, signInWithGoogle } = useAuth();
   const id = useId();
   const emailId = `${id}-email`, passwordId = `${id}-password`, errorId = `${id}-error`;
   const [step, setStep] = useState<Step>(initialSession ? "checking" : "request");
@@ -100,6 +116,22 @@ export function ResetFlow({ next, initialSession }: { next: string; initialSessi
     setResetUnderway(true);
     return () => setResetUnderway(false);
   }, [setResetUnderway]);
+
+  // The emailed link failed: the auth server's /verify came back with
+  // #error=... (expired, or already opened by a mail scanner), or refused the
+  // tokens it carried. Said once, with a new link for the address this
+  // browser asked for.
+  useEffect(() => {
+    if (stashState.kind !== "error" && stashState.kind !== "failed") return;
+    const addr = stashState.email;
+    if (addr) setEmail((cur) => (cur.trim() ? cur : addr));
+    setRecoverySession(null);
+    setError(null);
+    setNotice(null);
+    setStep("expired");
+    clearStashOutcome();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stashState, clearStashOutcome]);
 
   // A recovery session that came from the emailed link (adopted from the
   // stash, or accepted at the "Is this your account?" prompt). Any other
@@ -129,9 +161,16 @@ export function ResetFlow({ next, initialSession }: { next: string; initialSessi
     // setting it as this session ends every other session anyway. Blocking
     // here would lock out exactly the accounts recovery exists for.
     if (r.state === "failed" && r.status === 409 && r.reason === "audit_unconfirmed") return "password";
+    // No email sign-in on the account (it was made with Google): every reset
+    // link is refused the same way, so the way in is Google.
+    if (r.state === "failed" && r.status === 409 && r.reason === "no_email_identity") return "google";
     // Any other 409 is a refusal of THIS session that no retry can pass: a
     // fresh link mints a session whose sign-in is newer than the change.
     if (r.state === "failed" && r.status === 409) return "refused";
+    // A 200 that says "not proven" (a session too old to act on, a sign-in
+    // that proves no mailbox) is this session's final answer: Try again
+    // would ask about the same session, so a fresh link is the way on.
+    if (r.state === "done") return "refused";
     return "blocked";
   };
 
@@ -213,6 +252,17 @@ export function ResetFlow({ next, initialSession }: { next: string; initialSessi
     }
   };
 
+  const google = async () => {
+    setError(null);
+    setBusy(true);
+    try {
+      const { error: err } = await signInWithGoogle(next);
+      if (err) setError((t) => t("auth.return.failed", "Sign-in didn't finish. Please try again."));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const retryGuard = async () => {
     if (!recoverySession) { setStep("request"); return; }
     setStep("checking");
@@ -225,12 +275,32 @@ export function ResetFlow({ next, initialSession }: { next: string; initialSessi
 
   if (step === "checking") return <Working text={t("auth.reset.checking", "Checking your account…")} />;
   if (stashState.kind === "adopting" && !recoverySession) return <Working text={t("auth.confirm.working", "Signing you in…")} />;
+  const unreachable = stashState.kind === "unreachable" && !recoverySession;
 
   return (
     <Card>
       <h1 className="text-xl font-bold text-foreground mb-3">{t("auth.reset.title", "Reset your password")}</h1>
 
-      {step === "request" && (
+      {unreachable && (
+        <div className="mb-4">
+          <p role="alert" className="text-sm text-destructive mb-4">{t("auth.confirm.unreachable", "We couldn't reach the sign-in server. Check your connection and try again; the link is still valid.")}</p>
+          <button type="button" className={primaryBtn} onClick={retryStashedSession}>{t("auth.confirm.retry", "Try again")}</button>
+        </div>
+      )}
+
+      {step === "expired" && (
+        <div>
+          <p role="alert" className="text-sm text-foreground mb-4">
+            {t("auth.reset.expired", "This reset link has expired or was already used, so no password was set. Ask for a new one.")}
+          </p>
+          <button type="button" className={primaryBtn} onClick={() => { setError(null); setNotice(null); setStep("request"); }}>{t("auth.reset.newLink", "Send a new reset link")}</button>
+          <div className="mt-3 flex flex-col items-center gap-1 text-xs">
+            <a className={`${quietBtn} inline-flex items-center`} href={`mailto:${AUTH_SUPPORT_EMAIL}`}>{t("auth.reset.emailSupport", "Email support")}</a>
+          </div>
+        </div>
+      )}
+
+      {step === "request" && !unreachable && (
         <form onSubmit={request} noValidate>
           <p className="text-xs text-muted-foreground mb-4">{t("auth.reset.intro", "Enter your email. If it has an account, we'll email a link (or a 6-digit code) you can use to choose a new password.")}</p>
           {notice && <p role="status" className="text-xs text-foreground mb-3">{notice(t)}</p>}
@@ -321,6 +391,22 @@ export function ResetFlow({ next, initialSession }: { next: string; initialSessi
         </div>
       )}
 
+      {step === "google" && (
+        <div>
+          {GOOGLE_SIGN_IN_LIVE ? (
+            <GoogleOnlyAccount onGoogle={() => void google()} busy={busy} />
+          ) : (
+            <p role="alert" className="text-sm text-foreground mb-4">
+              {t("auth.reset.noEmailSignIn", "This account doesn't sign in with an email and password, so no password was set. Email support and we'll help you sign in.")}
+            </p>
+          )}
+          {error && <p id={errorId} role="status" className="text-xs text-destructive mt-3">{error(t)}</p>}
+          <div className="mt-3 flex flex-col items-center gap-1 text-xs">
+            <a className={`${quietBtn} inline-flex items-center`} href={`mailto:${AUTH_SUPPORT_EMAIL}`}>{t("auth.reset.emailSupport", "Email support")}</a>
+          </div>
+        </div>
+      )}
+
       {step === "signedIn" && (
         <p className="text-sm text-foreground mb-2">
           {t("auth.reset.signedIn", "You're signed in. You can change your password in your account settings.")}{" "}
@@ -328,7 +414,7 @@ export function ResetFlow({ next, initialSession }: { next: string; initialSessi
         </p>
       )}
 
-      {(step === "request" || step === "code" || step === "blocked" || step === "refused") && (
+      {(step === "request" || step === "code" || step === "blocked" || step === "refused" || step === "google" || step === "expired") && (
         <div className="mt-3 text-center">
           <Link to={backHref} className={`${quietBtn} inline-flex items-center`}>{t("auth.back", "Back to sign in")}</Link>
         </div>

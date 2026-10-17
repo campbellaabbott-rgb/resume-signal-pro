@@ -18,21 +18,48 @@ export function ProviderButtons({ onGoogle, busy = false }: Props) {
   if (!GOOGLE_SIGN_IN_LIVE) return null;
   return (
     <div className="mb-4">
-      <button
-        type="button"
-        onClick={onGoogle}
-        disabled={busy}
-        className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-border bg-background px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 disabled:opacity-60"
-      >
-        {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <GoogleMark />}
-        {t("auth.google.continue", "Continue with Google")}
-      </button>
+      <GoogleButton onGoogle={onGoogle} busy={busy} />
       <div className="my-4 flex items-center gap-3 text-xs text-muted-foreground" aria-hidden="true">
         <span className="h-px flex-1 bg-border" />
         {t("auth.or", "or")}
         <span className="h-px flex-1 bg-border" />
       </div>
     </div>
+  );
+}
+
+/**
+ * A RESET FOR AN ACCOUNT THAT SIGNS IN WITH GOOGLE (second recheck of R1).
+ * The account guard refuses a reset's proof with no_email_identity when the
+ * account has no email sign-in: there is no password to change, and every
+ * new reset link is refused the same way, so the way in is Google. Nothing
+ * while the switch is off (the reset page then offers support alone).
+ */
+export function GoogleOnlyAccount({ onGoogle, busy = false }: Props) {
+  const { t } = useTranslation();
+  if (!GOOGLE_SIGN_IN_LIVE) return null;
+  return (
+    <div>
+      <p role="alert" className="text-sm text-foreground mb-4">
+        {t("auth.google.onlyGoogle", "This account signs in with Google, so it has no password to change here. Continue with Google to sign in.")}
+      </p>
+      <GoogleButton onGoogle={onGoogle} busy={busy} />
+    </div>
+  );
+}
+
+function GoogleButton({ onGoogle, busy }: { onGoogle: () => void; busy: boolean }) {
+  const { t } = useTranslation();
+  return (
+    <button
+      type="button"
+      onClick={onGoogle}
+      disabled={busy}
+      className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-border bg-background px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 disabled:opacity-60"
+    >
+      {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <GoogleMark />}
+      {t("auth.google.continue", "Continue with Google")}
+    </button>
   );
 }
 

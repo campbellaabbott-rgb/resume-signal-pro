@@ -22,8 +22,13 @@ JWT check (B); the reset and code copy promise "a link (or a 6-digit code)"
 short-lived and never silent (E); a refused reset has a way out (F); the
 checkout's "Have Pro?" question keys on a session that ended, worded through
 i18n (G); and the email-change notice reads the current address from the user
-record (H). r1/flags is folded in: Google sign-in and password recovery ship
-in the FIRST publish (see "Switches" and "Deploy order").
+record (H). A fourth round (r1-fix4) applied the second recheck: the drain
+knows the gateway's refusal by the body the live gateway sends; a reset link
+from Lovable's default mail that failed, or could not be checked, is
+explained on the reset page; a Google-only account's reset says so; the
+checkout question keys on a member having signed in on this browser; and
+deno.lock is main's again. r1/flags is folded in: Google sign-in and password
+recovery ship in the FIRST publish (see "Switches" and "Deploy order").
 
 | branch | what it owns |
 |---|---|
@@ -62,10 +67,25 @@ in the FIRST publish (see "Switches" and "Deploy order").
   code)", and either one works: until notify.resumebooster.work is verified
   the mail comes from Lovable's default sender, whose template carries only a
   link; ours prints the code above the link (lead decision C).
-- A reset the guard refuses for a reason no retry can pass (the account
-  changed since the sign-in, no email identity) says so and offers "Send a
-  new reset link" and "Email support", with the way back; only a guard that
-  could not answer (503) offers Try again (F).
+- A reset the guard refuses for a reason no retry can pass (a 409 such as
+  the account changed since the sign-in, or a 200 that says "not proven":
+  stale_session, not_a_mailbox_sign_in) says so and offers "Send a new reset
+  link" and "Email support", with the way back; only a guard that could not
+  answer (503) offers Try again (F; second recheck).
+- A reset for an account that signs in with Google (the guard's 409
+  no_email_identity) says "This account signs in with Google, so it has no
+  password to change here", with the Google button and support, and no reset
+  link (each would be refused the same way). The notice lives in
+  ProviderButtons behind GOOGLE_SIGN_IN_LIVE; with the switch off the page
+  offers support alone.
+- A reset link from Lovable's default mail goes through the auth server's
+  /verify, which comes back to `/auth?mode=reset` with the session in the
+  fragment, or with `#error=...` when the link expired or a mail scanner
+  already opened it (a GET spends that link). The reset page shows a stashed
+  error, or a token pair the auth server refused, as "This reset link has
+  expired or was already used", with "Send a new reset link" for the address
+  this browser asked for (taken from the pending marker before the outcome
+  spends it), once.
 
 **A confirmation link during an outage (D)**
 
@@ -73,6 +93,11 @@ in the FIRST publish (see "Switches" and "Deploy order").
   cannot be reached (a network failure, a timeout, a 5xx), the page says so
   and offers Try again in the same tab; the link is spent only by a success
   or a definite refusal (expired, already used).
+- The same holds for a token pair in the fragment (Lovable's default link):
+  AuthContext drops the stashed tokens and the marker only after the auth
+  server gives a definite answer; when it could not be asked, they are kept,
+  `/auth` (the reset page or the Continue screen) says the server could not
+  be reached, and Try again asks once more (second recheck).
 
 **Links in mail and sessions in URLs (login-CSRF protection)**
 
@@ -156,14 +181,18 @@ in the FIRST publish (see "Switches" and "Deploy order").
 
 - A success link shows the buyer's address masked (`j***@gmail.com`) unless
   the signed-in caller has proven that mailbox.
-- A signed-out checkout sends no address. When this browser held a SIGNED-IN
-  session that ended without a deliberate sign-out (AuthContext writes
-  `rb_session_ended_at` on that event alone, and clears it on the next
-  sign-in and on a sign-out), the first buy press in the tab says "Have Pro?
-  Sign in first" and starts nothing; the next press buys as a guest
-  (S12-087). The last address is not the key: EmailReportCapture writes it
-  for anyone who asks for their report, and those visitors were being told
-  their session had ended (G).
+- A signed-out checkout sends no address. When a member signed in on this
+  browser (AuthContext writes `rb_member_signed_in_at` on every event that
+  carries a session; only a deliberate sign-out or an account deletion
+  removes it, with the other personal keys) and no session is held now, the
+  first buy press in the tab says "Have Pro? Sign in first" and starts
+  nothing; the next press buys as a guest (S12-087). The session may have
+  ended in another tab, or before this one opened: a refresh token revoked
+  elsewhere fails auth-js's load-time refresh, whose SIGNED_OUT is a tab's
+  first event, and the round-3 mark (written only when a session vanished in
+  an open tab) missed exactly that member (second recheck). The last address
+  is not the key: EmailReportCapture writes it for anyone who asks for their
+  report, and those visitors were being told their session had ended (G).
 
 **Auth mail**
 

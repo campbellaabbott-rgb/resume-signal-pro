@@ -55,7 +55,8 @@
     "forgot": "Passwort vergessen?",
     "genericError": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
     "google": {
-      "continue": "Weiter mit Google"
+      "continue": "Weiter mit Google",
+      "onlyGoogle": "Dieses Konto meldet sich mit Google an und hat daher hier kein Passwort zum Ändern. Melden Sie sich über Google an."
     },
     "guard": {
       "passwordCleared": "Wir haben ein Passwort gelöscht, das für diese Adresse festgelegt wurde, bevor Sie nachgewiesen haben, dass sie Ihnen gehört. Wenn Sie möchten, legen Sie in Ihren Kontoeinstellungen ein neues fest.",
@@ -93,9 +94,11 @@
       "done": "Ihr neues Passwort ist festgelegt.",
       "doneOthers": "Ihr neues Passwort ist festgelegt, und alle anderen Geräte wurden abgemeldet.",
       "emailSupport": "Support per E-Mail kontaktieren",
+      "expired": "Dieser Link zum Zurücksetzen ist abgelaufen oder wurde bereits verwendet, daher wurde kein Passwort festgelegt. Fordern Sie einen neuen an.",
       "intro": "Geben Sie Ihre E-Mail-Adresse ein. Wenn es dazu ein Konto gibt, erhalten Sie per E-Mail einen Link (oder einen 6-stelligen Code), mit dem Sie ein neues Passwort wählen können.",
       "newLink": "Neuen Link zum Zurücksetzen senden",
       "newPassword": "Neues Passwort",
+      "noEmailSignIn": "Dieses Konto meldet sich nicht mit E-Mail und Passwort an, daher wurde kein Passwort festgelegt. Schreiben Sie dem Support, wir helfen Ihnen bei der Anmeldung.",
       "onItsWay": "Wenn es für diese Adresse ein Konto gibt, sehen Sie in Ihrem Postfach nach einem Link (oder einem 6-stelligen Code). Mit beidem können Sie ein neues Passwort wählen. Er kommt meist innerhalb einer Minute an.",
       "proven": "Diese Adresse ist bestätigt. Wählen Sie ein neues Passwort.",
       "refused": "Wir konnten diese Adresse mit diesem Link oder Code nicht bestätigen, daher wurde kein Passwort festgelegt. Fordern Sie einen neuen Link zum Zurücksetzen an oder schreiben Sie dem Support.",

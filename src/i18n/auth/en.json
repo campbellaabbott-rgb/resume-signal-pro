@@ -55,7 +55,8 @@
     "forgot": "Forgot password?",
     "genericError": "Something went wrong. Please try again.",
     "google": {
-      "continue": "Continue with Google"
+      "continue": "Continue with Google",
+      "onlyGoogle": "This account signs in with Google, so it has no password to change here. Continue with Google to sign in."
     },
     "guard": {
       "passwordCleared": "We cleared a password set on this address before you proved you own it. Set a new one in your account settings if you want one.",
@@ -93,9 +94,11 @@
       "done": "Your new password is set.",
       "doneOthers": "Your new password is set, and every other device was signed out.",
       "emailSupport": "Email support",
+      "expired": "This reset link has expired or was already used, so no password was set. Ask for a new one.",
       "intro": "Enter your email. If it has an account, we'll email a link (or a 6-digit code) you can use to choose a new password.",
       "newLink": "Send a new reset link",
       "newPassword": "New password",
+      "noEmailSignIn": "This account doesn't sign in with an email and password, so no password was set. Email support and we'll help you sign in.",
       "onItsWay": "If an account exists for this address, check your email for a link (or a 6-digit code). Either one lets you choose a new password. It usually arrives within a minute.",
       "proven": "This address is confirmed. Choose a new password.",
       "refused": "We couldn't confirm this address with that link or code, so no password was set. Ask for a new reset link, or email support.",

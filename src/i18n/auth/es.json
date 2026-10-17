@@ -55,7 +55,8 @@
     "forgot": "¿Olvidaste tu contraseña?",
     "genericError": "Algo salió mal. Inténtalo de nuevo.",
     "google": {
-      "continue": "Continuar con Google"
+      "continue": "Continuar con Google",
+      "onlyGoogle": "Esta cuenta inicia sesión con Google, así que aquí no tiene contraseña que cambiar. Continúa con Google para iniciar sesión."
     },
     "guard": {
       "passwordCleared": "Borramos una contraseña que se había puesto a esta dirección antes de que demostraras que es tuya. Si quieres, crea una nueva en los ajustes de tu cuenta.",
@@ -93,9 +94,11 @@
       "done": "Tu nueva contraseña está lista.",
       "doneOthers": "Tu nueva contraseña está lista y se cerró la sesión en todos los demás dispositivos.",
       "emailSupport": "Escribir al soporte",
+      "expired": "Este enlace de restablecimiento ha caducado o ya se usó, así que no se estableció ninguna contraseña. Pide uno nuevo.",
       "intro": "Escribe tu correo. Si tiene una cuenta, te enviaremos un enlace (o un código de 6 dígitos) con el que podrás elegir una nueva contraseña.",
       "newLink": "Enviar un nuevo enlace de restablecimiento",
       "newPassword": "Nueva contraseña",
+      "noEmailSignIn": "Esta cuenta no inicia sesión con correo y contraseña, así que no se estableció ninguna contraseña. Escribe al soporte y te ayudaremos a iniciar sesión.",
       "onItsWay": "Si existe una cuenta para esta dirección, busca en tu correo un enlace (o un código de 6 dígitos). Cualquiera de los dos te permite elegir una nueva contraseña. Suele llegar en menos de un minuto.",
       "proven": "Esta dirección está confirmada. Elige una contraseña nueva.",
       "refused": "No pudimos confirmar esta dirección con ese enlace o código, así que no se estableció ninguna contraseña. Pide un nuevo enlace de restablecimiento o escribe al soporte.",

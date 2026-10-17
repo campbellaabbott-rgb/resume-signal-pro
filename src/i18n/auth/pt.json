@@ -55,7 +55,8 @@
     "forgot": "Esqueceu a senha?",
     "genericError": "Algo deu errado. Tente novamente.",
     "google": {
-      "continue": "Continuar com o Google"
+      "continue": "Continuar com o Google",
+      "onlyGoogle": "Esta conta entra com o Google, por isso não tem aqui uma palavra-passe para alterar. Continue com o Google para entrar."
     },
     "guard": {
       "passwordCleared": "Apagamos uma senha definida para este endereço antes de você provar que ele é seu. Se quiser, crie uma nova nas configurações da sua conta.",
@@ -93,9 +94,11 @@
       "done": "Sua nova senha foi definida.",
       "doneOthers": "Sua nova senha foi definida, e todos os outros dispositivos foram desconectados.",
       "emailSupport": "Escrever ao suporte",
+      "expired": "Este link de reposição expirou ou já foi usado, por isso nenhuma palavra-passe foi definida. Peça um novo.",
       "intro": "Introduza o seu e-mail. Se tiver uma conta, enviaremos um link (ou um código de 6 dígitos) com o qual pode escolher uma nova palavra-passe.",
       "newLink": "Enviar um novo link de reposição",
       "newPassword": "Nova senha",
+      "noEmailSignIn": "Esta conta não entra com e-mail e palavra-passe, por isso nenhuma palavra-passe foi definida. Escreva ao suporte e ajudamos a entrar.",
       "onItsWay": "Se existir uma conta para este endereço, procure no seu e-mail um link (ou um código de 6 dígitos). Qualquer um deles permite escolher uma nova palavra-passe. Costuma chegar em menos de um minuto.",
       "proven": "Este endereço está confirmado. Escolha uma nova senha.",
       "refused": "Não conseguimos confirmar este endereço com esse link ou código, por isso nenhuma palavra-passe foi definida. Peça um novo link de reposição ou escreva ao suporte.",

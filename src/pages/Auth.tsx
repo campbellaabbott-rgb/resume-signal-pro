@@ -140,7 +140,7 @@ function SupportLine() {
 function ContinueView({ next, mode }: { next: string; mode: AuthMode }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { session, loading, signUp, signIn, signInWithGoogle, sessionExpired, stashState, clearStashOutcome } = useAuth();
+  const { session, loading, signUp, signIn, signInWithGoogle, sessionExpired, stashState, clearStashOutcome, retryStashedSession } = useAuth();
   const id = useId();
   const emailId = `${id}-email`, passwordId = `${id}-password`, errorId = `${id}-error`;
 
@@ -185,6 +185,17 @@ function ContinueView({ next, mode }: { next: string; mode: AuthMode }) {
   }, [stashState.kind, mode, clearStashOutcome]);
 
   if (stashState.kind === "adopting") return <Working text={t("auth.confirm.working", "Signing you in…")} />;
+  // The link's tokens could not be checked (the auth server unreachable): they
+  // are kept, and Try again asks once more (second recheck of R1).
+  if (stashState.kind === "unreachable") {
+    return (
+      <Card>
+        <h1 className="text-xl font-bold text-foreground mb-2">{t("auth.confirm.title", "Finish signing in")}</h1>
+        <p role="alert" className="text-sm text-destructive mb-4">{t("auth.confirm.unreachable", "We couldn't reach the sign-in server. Check your connection and try again; the link is still valid.")}</p>
+        <button type="button" onClick={retryStashedSession} className={primaryBtn}>{t("auth.confirm.retry", "Try again")}</button>
+      </Card>
+    );
+  }
 
   const address = () => (useRemembered ? remembered : email).trim();
   const clear = () => { setError(null); setNotice(null); setShowResend(false); setWrongPassword(false); };

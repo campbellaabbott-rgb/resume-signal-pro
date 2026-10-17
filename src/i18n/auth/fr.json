@@ -55,7 +55,8 @@
     "forgot": "Mot de passe oublié ?",
     "genericError": "Une erreur s'est produite. Veuillez réessayer.",
     "google": {
-      "continue": "Continuer avec Google"
+      "continue": "Continuer avec Google",
+      "onlyGoogle": "Ce compte se connecte avec Google, il n'a donc pas de mot de passe à modifier ici. Continuez avec Google pour vous connecter."
     },
     "guard": {
       "passwordCleared": "Nous avons supprimé un mot de passe défini pour cette adresse avant que vous ne prouviez qu'elle vous appartient. Si vous le souhaitez, définissez-en un nouveau dans les paramètres de votre compte.",
@@ -93,9 +94,11 @@
       "done": "Votre nouveau mot de passe est enregistré.",
       "doneOthers": "Votre nouveau mot de passe est enregistré, et tous vos autres appareils ont été déconnectés.",
       "emailSupport": "Écrire au support",
+      "expired": "Ce lien de réinitialisation a expiré ou a déjà été utilisé, aucun mot de passe n'a donc été défini. Demandez-en un nouveau.",
       "intro": "Saisissez votre e-mail. S'il correspond à un compte, nous vous enverrons un lien (ou un code à 6 chiffres) pour choisir un nouveau mot de passe.",
       "newLink": "Envoyer un nouveau lien de réinitialisation",
       "newPassword": "Nouveau mot de passe",
+      "noEmailSignIn": "Ce compte ne se connecte pas avec une adresse e-mail et un mot de passe, aucun mot de passe n'a donc été défini. Écrivez au support et nous vous aiderons à vous connecter.",
       "onItsWay": "Si un compte existe pour cette adresse, cherchez dans vos e-mails un lien (ou un code à 6 chiffres). L'un comme l'autre vous permet de choisir un nouveau mot de passe. Il arrive généralement en moins d'une minute.",
       "proven": "Cette adresse est confirmée. Choisissez un nouveau mot de passe.",
       "refused": "Nous n'avons pas pu confirmer cette adresse avec ce lien ou ce code, aucun mot de passe n'a donc été défini. Demandez un nouveau lien de réinitialisation ou écrivez au support.",

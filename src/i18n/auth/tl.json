@@ -55,7 +55,8 @@
     "forgot": "Nakalimutan ang password?",
     "genericError": "May nagkamali. Pakisubukan ulit.",
     "google": {
-      "continue": "Magpatuloy gamit ang Google"
+      "continue": "Magpatuloy gamit ang Google",
+      "onlyGoogle": "Nagsa-sign in ang account na ito gamit ang Google, kaya wala itong password na mapapalitan dito. Magpatuloy gamit ang Google para mag-sign in."
     },
     "guard": {
       "passwordCleared": "Binura namin ang password na itinakda sa address na ito bago mo napatunayang sa iyo ito. Kung gusto mo, magtakda ng bago sa settings ng iyong account.",
@@ -93,9 +94,11 @@
       "done": "Naitakda na ang bago mong password.",
       "doneOthers": "Naitakda na ang bago mong password, at na-sign out ang lahat ng iba mo pang device.",
       "emailSupport": "Mag-email sa support",
+      "expired": "Expired na o nagamit na ang reset link na ito, kaya walang password na naitakda. Humingi ng bago.",
       "intro": "Ilagay ang iyong email. Kung may account ito, magpapadala kami ng link (o 6-digit na code) na magagamit mo para pumili ng bagong password.",
       "newLink": "Magpadala ng bagong reset link",
       "newPassword": "Bagong password",
+      "noEmailSignIn": "Hindi nagsa-sign in ang account na ito gamit ang email at password, kaya walang password na naitakda. Mag-email sa support at tutulungan ka naming mag-sign in.",
       "onItsWay": "Kung may account para sa address na ito, hanapin sa iyong email ang isang link (o 6-digit na code). Alinman sa dalawa ang magpapahintulot sa iyong pumili ng bagong password. Kadalasan ay dumarating ito sa loob ng isang minuto.",
       "proven": "Kumpirmado ang address na ito. Pumili ng bagong password.",
       "refused": "Hindi namin makumpirma ang address na ito gamit ang link o code na iyon, kaya walang password na naitakda. Humingi ng bagong reset link, o mag-email sa support.",
