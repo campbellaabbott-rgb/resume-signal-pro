@@ -172,14 +172,18 @@ export const PENDING_KEY = "rb_auth_pending";
 export const PENDING_TTL_MS = PENDING_SIGN_IN_TTL_MS;
 
 /**
- * A SESSION THAT ENDED WITHOUT A SIGN-OUT (S12-087; lead decision G, third
- * fixer round). AuthContext writes it only when a signed-in session vanishes
- * and nobody pressed sign-out, and clears it on the next sign-in and on a
- * deliberate sign-out. use-product-checkout keys its one "Have Pro? Sign in
- * first" question on it. Defined here, not in the context module, because a
- * hook must read it even where a test mocks the context away.
+ * A MEMBER SIGNED IN ON THIS BROWSER (S12-087; second recheck of R1).
+ * AuthContext writes it on every auth event that carries a session, and only
+ * a deliberate sign-out (or an account deletion) removes it, with the other
+ * personal keys. use-product-checkout asks its one "Have Pro? Sign in first"
+ * question when this mark is here and no session is: that covers a session
+ * that ended in another tab, or before this tab opened (a refresh token
+ * revoked elsewhere fails auth-js's load-time refresh, whose SIGNED_OUT is
+ * then the first event a tab hears). EmailReportCapture never writes it: a
+ * report requester has no account. Defined here, not in the context module,
+ * because a hook must read it even where a test mocks the context away.
  */
-export const SESSION_ENDED_MARK_KEY = "rb_session_ended_at";
+export const MEMBER_MARK_KEY = "rb_member_signed_in_at";
 
 /**
  * `email` is the address the person typed when they asked for the link (a

@@ -8,14 +8,24 @@
  * for a tool their plan includes. The page now asks once per tab, and still
  * sends no address; the next press buys as a guest.
  *
- * WHOM IT ASKS. Only a browser that held a SIGNED-IN session that ended
- * without a deliberate sign-out: AuthContext writes a mark (rb_session_ended_at)
- * on that event alone, and clears it on the next sign-in and on a deliberate
- * sign-out. The last address (rb_last_email) is NOT the key: EmailReportCapture
- * writes it for anyone who asks for their report by email, and those visitors
- * were told their session ended when they never had one, and their first buy
- * press on every product started nothing. The notice's words go through
- * i18n (auth.checkout.*), loaded before the toast is raised.
+ * WHOM IT ASKS. A browser a member signed in on, that holds no session now:
+ * AuthContext writes a member mark (rb_member_signed_in_at) on every event
+ * that carries a session, and only a deliberate sign-out (or an account
+ * deletion) removes it, with the other personal keys. The question is asked
+ * only while there is no session. The last address (rb_last_email) is NOT the
+ * key: EmailReportCapture writes it for anyone who asks for their report by
+ * email, and those visitors were told their session ended when they never had
+ * one. The notice's words go through i18n (auth.checkout.*), loaded before the
+ * toast is raised.
+ *
+ * ROUND 4 (second recheck). The mark used to be written only when a session
+ * vanished in an open tab after an event that carried it. A member coming
+ * back after their session ended elsewhere (a refresh token revoked by the
+ * guard's sign-out of every device, a password change on another device)
+ * produces a different sequence: auth-js runs initialize() in its
+ * constructor, the refresh fails, and SIGNED_OUT is the first event this tab
+ * hears. No mark was written, and the first buy press went straight to Stripe
+ * for a tool their plan includes, where refunds are never given.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, render, renderHook } from "@testing-library/react";
@@ -37,7 +47,10 @@ vi.mock("@/integrations/lovable", () => ({ lovable: { auth: { signInWithOAuth: a
 vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast: h.toast, dismiss() {}, toasts: [] }), toast: h.toast }));
 
 import { useProductCheckout, askToSignInFirst } from "@/hooks/use-product-checkout";
-import { AuthProvider, PERSONAL_LOCAL_KEYS, SESSION_ENDED_MARK_KEY, useAuth } from "@/contexts/AuthContext";
+import { AuthProvider, MEMBER_MARK_KEY, PERSONAL_LOCAL_KEYS, useAuth } from "@/contexts/AuthContext";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { codeOf } from "./helpers/strip-comments";
 
 beforeEach(() => {
   localStorage.clear();
@@ -60,9 +73,9 @@ const sessionFor = (email: string, sid: string) => ({
 });
 const emit = (event: string, s: unknown) => act(() => { h.session = s; for (const cb of h.listeners) cb(event, s); });
 
-describe("a buy press after a session ended here", () => {
+describe("a buy press in a browser a member signed in on, with no session now", () => {
   it("asks to sign in first and starts nothing, sending no address; the next press buys as a guest", async () => {
-    localStorage.setItem(SESSION_ENDED_MARK_KEY, String(Date.now()));
+    localStorage.setItem(MEMBER_MARK_KEY, String(Date.now()));
     const { result } = renderHook(() => useProductCheckout());
     await act(async () => { await result.current.purchaseProduct("coverLetter"); });
     expect(checkoutCalls(), "a signed-out Pro member was sent to Stripe without a word").toHaveLength(0);
@@ -83,14 +96,14 @@ describe("a buy press after a session ended here", () => {
     expect(h.toast.mock.calls.some((c) => /Sign in first/.test(JSON.stringify(c[0])))).toBe(false);
   });
 
-  it("does not ask a browser with no ended session (a deliberate sign-out leaves no mark)", async () => {
+  it("does not ask a browser no member signed in on (a deliberate sign-out leaves no mark)", async () => {
     const { result } = renderHook(() => useProductCheckout());
     await act(async () => { await result.current.purchaseProduct("coverLetter"); });
     expect(checkoutCalls()).toHaveLength(1);
   });
 
   it("does not ask a signed-in member: their account decides", async () => {
-    localStorage.setItem(SESSION_ENDED_MARK_KEY, String(Date.now()));
+    localStorage.setItem(MEMBER_MARK_KEY, String(Date.now()));
     h.session = { access_token: "t", user: { email: "member@example.com" } };
     const { result } = renderHook(() => useProductCheckout());
     await act(async () => { await result.current.purchaseProduct("coverLetter"); });
@@ -101,41 +114,67 @@ describe("a buy press after a session ended here", () => {
   it("askToSignInFirst reads the mark and nothing else", () => {
     localStorage.setItem("rb_last_email", "reader@example.com");
     expect(askToSignInFirst(false)).toBe(false);
-    localStorage.setItem(SESSION_ENDED_MARK_KEY, String(Date.now()));
+    localStorage.setItem(MEMBER_MARK_KEY, String(Date.now()));
     expect(askToSignInFirst(false)).toBe(true);
     expect(askToSignInFirst(false), "asked twice in one tab").toBe(false);
   });
 });
 
-describe("the mark: written only by a session that ended without a sign-out", () => {
+describe("the member mark: written by a signed-in session, removed only by a deliberate sign-out", () => {
   function Probe() {
     const { signOut } = useAuth();
     return <button type="button" onClick={() => void signOut()}>out</button>;
   }
 
-  it("a signed-in session that vanishes writes the mark; the next sign-in clears it", () => {
+  it("a signed-in session writes the mark, an expiry keeps it, and the next sign-in keeps it", () => {
     render(<AuthProvider><Probe /></AuthProvider>);
+    expect(localStorage.getItem(MEMBER_MARK_KEY)).toBeNull();
     emit("SIGNED_IN", sessionFor("member@example.com", "sid-1"));
-    expect(localStorage.getItem(SESSION_ENDED_MARK_KEY)).toBeNull();
+    expect(localStorage.getItem(MEMBER_MARK_KEY), "a signed-in member left no mark").not.toBeNull();
     emit("SIGNED_OUT", null);
-    expect(localStorage.getItem(SESSION_ENDED_MARK_KEY), "an expired session left no mark").not.toBeNull();
+    expect(localStorage.getItem(MEMBER_MARK_KEY), "an expired session took the mark").not.toBeNull();
+    expect(askToSignInFirst(false)).toBe(true);
     emit("SIGNED_IN", sessionFor("member@example.com", "sid-2"));
-    expect(localStorage.getItem(SESSION_ENDED_MARK_KEY), "a sign-in kept the ended mark").toBeNull();
+    expect(localStorage.getItem(MEMBER_MARK_KEY)).not.toBeNull();
   });
 
-  it("a deliberate sign-out writes no mark and removes one that was there", async () => {
-    localStorage.setItem(SESSION_ENDED_MARK_KEY, String(Date.now() - 5_000));
+  it("a session already held when the page opens (INITIAL_SESSION) writes the mark", () => {
+    render(<AuthProvider><Probe /></AuthProvider>);
+    emit("INITIAL_SESSION", sessionFor("member@example.com", "sid-0"));
+    expect(localStorage.getItem(MEMBER_MARK_KEY)).not.toBeNull();
+  });
+
+  it("a returning member whose refresh token was revoked elsewhere (the first event is the load-time SIGNED_OUT) is still asked", async () => {
+    localStorage.setItem(MEMBER_MARK_KEY, String(Date.now() - 3 * 24 * 3600_000));
+    render(<AuthProvider><Probe /></AuthProvider>);
+    emit("SIGNED_OUT", null);
+    expect(localStorage.getItem(MEMBER_MARK_KEY), "the failed load-time refresh took the mark").not.toBeNull();
+    const { result } = renderHook(() => useProductCheckout());
+    await act(async () => { await result.current.purchaseProduct("coverLetter"); });
+    expect(checkoutCalls(), "a member whose session ended elsewhere was sent to Stripe without a word").toHaveLength(0);
+    expect(h.toast.mock.calls.some((c) => /Have Pro\? Sign in first/.test(JSON.stringify(c[0])))).toBe(true);
+  });
+
+  it("a deliberate sign-out removes the mark (it is a personal key), and the next buy press is not asked", async () => {
+    localStorage.setItem(MEMBER_MARK_KEY, String(Date.now() - 5_000));
     render(<AuthProvider><Probe /></AuthProvider>);
     emit("SIGNED_IN", sessionFor("member@example.com", "sid-3"));
     await act(async () => { (document.querySelector("button") as HTMLButtonElement).click(); });
     emit("SIGNED_OUT", null);
-    expect(localStorage.getItem(SESSION_ENDED_MARK_KEY)).toBeNull();
-    expect(PERSONAL_LOCAL_KEYS).toContain(SESSION_ENDED_MARK_KEY);
+    expect(localStorage.getItem(MEMBER_MARK_KEY)).toBeNull();
+    expect(PERSONAL_LOCAL_KEYS).toContain(MEMBER_MARK_KEY);
+    expect(askToSignInFirst(false)).toBe(false);
   });
 
   it("a visitor who never signed in gets no mark from a SIGNED_OUT the client fires on load", () => {
     render(<AuthProvider><Probe /></AuthProvider>);
     emit("SIGNED_OUT", null);
-    expect(localStorage.getItem(SESSION_ENDED_MARK_KEY)).toBeNull();
+    expect(localStorage.getItem(MEMBER_MARK_KEY)).toBeNull();
+  });
+
+  it("only AuthContext writes the mark: EmailReportCapture (any report requester) never does", () => {
+    const capture = codeOf(readFileSync(resolve(__dirname, "../components/EmailReportCapture.tsx"), "utf8"));
+    expect(capture).not.toMatch(/MEMBER_MARK_KEY|rb_member_signed_in_at/);
+    expect(capture, "positive control: the file is the one that writes rb_last_email").toMatch(/rb_last_email/);
   });
 });

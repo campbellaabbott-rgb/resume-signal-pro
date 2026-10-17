@@ -14,7 +14,7 @@ import { CREDIT_SESSIONS_KEY, FREELANCE_PURCHASE_KEY } from "@/lib/purchase-proo
 import { resolveTokens, revoke, type Probed } from "@/lib/auth-probe";
 import {
   DEFAULT_AFTER_AUTH,
-  SESSION_ENDED_MARK_KEY,
+  MEMBER_MARK_KEY,
   clearPendingSignIn,
   clearStash,
   discardStashedSession,
@@ -30,17 +30,19 @@ import { LinkSignInBanner } from "@/components/auth/LinkSignInBanner";
 import { loadAuthStrings } from "@/i18n/auth/load";
 
 /**
- * A SESSION THAT ENDED WITHOUT A SIGN-OUT, FOR THE CHECKOUT'S ONE QUESTION
- * (S12-087; lead decision G, third fixer round). Written only when a
- * signed-in session vanishes and nobody pressed sign-out (an expiry, a
- * revocation), cleared by the next sign-in and by a deliberate sign-out. The
- * checkout keys its "Have Pro? Sign in first" question on this mark alone:
- * the last address (rb_last_email) is also written by EmailReportCapture for
- * anyone who asks for their report, and keying on it told visitors with no
- * account that their session had ended. The key lives in auth-fragment.ts so
- * the checkout hook reads it even where a test mocks this module away.
+ * A MEMBER SIGNED IN ON THIS BROWSER, FOR THE CHECKOUT'S ONE QUESTION
+ * (S12-087; second recheck of R1). Written on every auth event that carries
+ * a session, removed only by a deliberate sign-out or an account deletion
+ * (it is a personal key below). The checkout asks "Have Pro? Sign in first"
+ * when this mark is here and no session is. It used to be written only when
+ * a session vanished in an open tab, so a member whose refresh token was
+ * revoked elsewhere (the load-time refresh fails and SIGNED_OUT is the first
+ * event this tab hears) was never asked. The last address (rb_last_email) is
+ * not the key: EmailReportCapture writes it for anyone who asks for their
+ * report. The key lives in auth-fragment.ts so the checkout hook reads it
+ * even where a test mocks this module away.
  */
-export { SESSION_ENDED_MARK_KEY };
+export { MEMBER_MARK_KEY };
 
 /**
  * WHAT A NEW ACCOUNT AGREED TO (commercial-readiness plan item 12). The sign-up
@@ -104,7 +106,7 @@ export const PERSONAL_LOCAL_KEYS: readonly string[] = [
   "rb_last_email",      // AuthContext, EmailReportCapture: the last address used here
   "scanCreditsEmail",   // use-scan-credits, use-pro-subscription: an address typed at a checkout
   "rb_guard_seen",      // this module: the account guard's last answer
-  SESSION_ENDED_MARK_KEY, // this module: a session that ended without a sign-out (use-product-checkout asks once on it)
+  MEMBER_MARK_KEY,      // this module: a member signed in on this browser (use-product-checkout asks once on it)
   CREDIT_SESSIONS_KEY,  // use-scan-credits: the Stripe session ids of credit purchases made here
   FREELANCE_PURCHASE_KEY, // FreelanceBoost: that this browser bought one
 ];
@@ -439,11 +441,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // cannot tell the two apart (platform sweep L3-20: this never fired);
       // the sign-out button sets userSignedOut first, and only that is quiet,
       // in this tab and (through its shared mark) in every other one.
-      if (hadSession && !s && !userSignedOut.current && !signOutWasDeliberate()) {
-        setSessionExpired(true);
-        // The one event the checkout's "Have Pro? Sign in first" question keys on.
-        mark(SESSION_ENDED_MARK_KEY);
-      }
+      if (hadSession && !s && !userSignedOut.current && !signOutWasDeliberate()) setSessionExpired(true);
       // Another tab's deliberate sign-out: this tab's own copies go too (S12-181).
       if (hadSession && !s && !userSignedOut.current && markedWithin(SIGN_OUT_MARK_KEY, Date.now())) clearThisTabsPersonalData();
       if (!s) {
@@ -455,7 +453,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         hadSession = true;
         setSessionExpired(false);
         try { if (s.user?.email) localStorage.setItem("rb_last_email", s.user.email); } catch { /* storage blocked */ }
-        try { localStorage.removeItem(SESSION_ENDED_MARK_KEY); } catch { /* storage blocked */ }
+        // A member signed in on this browser: the checkout's "Have Pro? Sign
+        // in first" question keys on this, whenever and wherever the session
+        // later ends. Only a deliberate sign-out removes it.
+        mark(MEMBER_MARK_KEY);
         const key = guardKey(s);
         if (key !== currentKey.current) { currentKey.current = key; setGuardResult(readGuardCache(key ?? "") ?? GUARD_IDLE); }
         // Outside the callback: auth-js holds its lock while it notifies, and
