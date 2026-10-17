@@ -14,6 +14,7 @@ import { CREDIT_SESSIONS_KEY, FREELANCE_PURCHASE_KEY } from "@/lib/purchase-proo
 import { resolveTokens, revoke, type Probed } from "@/lib/auth-probe";
 import {
   DEFAULT_AFTER_AUTH,
+  SESSION_ENDED_MARK_KEY,
   clearPendingSignIn,
   clearStash,
   discardStashedSession,
@@ -26,6 +27,20 @@ import {
 } from "@/lib/auth-fragment";
 import { SignedInAsInterstitial } from "@/components/auth/SignedInAsInterstitial";
 import { LinkSignInBanner } from "@/components/auth/LinkSignInBanner";
+import { loadAuthStrings } from "@/i18n/auth/load";
+
+/**
+ * A SESSION THAT ENDED WITHOUT A SIGN-OUT, FOR THE CHECKOUT'S ONE QUESTION
+ * (S12-087; lead decision G, third fixer round). Written only when a
+ * signed-in session vanishes and nobody pressed sign-out (an expiry, a
+ * revocation), cleared by the next sign-in and by a deliberate sign-out. The
+ * checkout keys its "Have Pro? Sign in first" question on this mark alone:
+ * the last address (rb_last_email) is also written by EmailReportCapture for
+ * anyone who asks for their report, and keying on it told visitors with no
+ * account that their session had ended. The key lives in auth-fragment.ts so
+ * the checkout hook reads it even where a test mocks this module away.
+ */
+export { SESSION_ENDED_MARK_KEY };
 
 /**
  * WHAT A NEW ACCOUNT AGREED TO (commercial-readiness plan item 12). The sign-up
@@ -89,6 +104,7 @@ export const PERSONAL_LOCAL_KEYS: readonly string[] = [
   "rb_last_email",      // AuthContext, EmailReportCapture: the last address used here
   "scanCreditsEmail",   // use-scan-credits, use-pro-subscription: an address typed at a checkout
   "rb_guard_seen",      // this module: the account guard's last answer
+  SESSION_ENDED_MARK_KEY, // this module: a session that ended without a sign-out (use-product-checkout asks once on it)
   CREDIT_SESSIONS_KEY,  // use-scan-credits: the Stripe session ids of credit purchases made here
   FREELANCE_PURCHASE_KEY, // FreelanceBoost: that this browser bought one
 ];
@@ -241,8 +257,6 @@ export type StashState =
   | { kind: "error"; code: string | null; description: string | null };
 
 const STASH_MAX_AGE_MS = 60 * 60 * 1000;
-/** The link types a banner follows when the marker could not name the address (a provider press). */
-const LINK_TYPES = new Set(["magiclink", "signup", "recovery", "invite", "email_change", "email"]);
 
 function initialStashState(): StashState {
   if (typeof window === "undefined") return { kind: "none" };
@@ -385,18 +399,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // that mounted meanwhile still silences the notice (live recovery
       // sessions carry amr "otp", so the token cannot say it is a reset).
       const quiet = resetUnderway.current;
+      // These notices show wherever the sign-in landed, which may be a page
+      // that never loads the auth strings: they are loaded first (lead
+      // decision G), and the answer itself is not held back for them.
       if (r.signedOut) {
         if (!quiet) {
-          toast({
-            title: tr("auth.guard.signedOutTitle", "Please sign in again"),
-            description: tr("auth.guard.signedOut", "We cleared a password set on this address before you proved you own it, and that signed out every device, this one too."),
+          void loadAuthStrings().then(() => {
+            toast({
+              title: tr("auth.guard.signedOutTitle", "Please sign in again"),
+              description: tr("auth.guard.signedOut", "We cleared a password set on this address before you proved you own it, and that signed out every device, this one too."),
+            });
           });
         }
         if (currentKey.current === key) leaveEndedSession();
       } else if (r.passwordCleared && !quiet) {
-        toast({
-          title: tr("auth.guard.passwordClearedTitle", "Your old password was cleared"),
-          description: tr("auth.guard.passwordCleared", "We cleared a password set on this address before you proved you own it. Set a new one in your account settings if you want one."),
+        void loadAuthStrings().then(() => {
+          toast({
+            title: tr("auth.guard.passwordClearedTitle", "Your old password was cleared"),
+            description: tr("auth.guard.passwordCleared", "We cleared a password set on this address before you proved you own it. Set a new one in your account settings if you want one."),
+          });
         });
       }
       return r;
@@ -418,7 +439,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // cannot tell the two apart (platform sweep L3-20: this never fired);
       // the sign-out button sets userSignedOut first, and only that is quiet,
       // in this tab and (through its shared mark) in every other one.
-      if (hadSession && !s && !userSignedOut.current && !signOutWasDeliberate()) setSessionExpired(true);
+      if (hadSession && !s && !userSignedOut.current && !signOutWasDeliberate()) {
+        setSessionExpired(true);
+        // The one event the checkout's "Have Pro? Sign in first" question keys on.
+        mark(SESSION_ENDED_MARK_KEY);
+      }
       // Another tab's deliberate sign-out: this tab's own copies go too (S12-181).
       if (hadSession && !s && !userSignedOut.current && markedWithin(SIGN_OUT_MARK_KEY, Date.now())) clearThisTabsPersonalData();
       if (!s) {
@@ -430,6 +455,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         hadSession = true;
         setSessionExpired(false);
         try { if (s.user?.email) localStorage.setItem("rb_last_email", s.user.email); } catch { /* storage blocked */ }
+        try { localStorage.removeItem(SESSION_ENDED_MARK_KEY); } catch { /* storage blocked */ }
         const key = guardKey(s);
         if (key !== currentKey.current) { currentKey.current = key; setGuardResult(readGuardCache(key ?? "") ?? GUARD_IDLE); }
         // Outside the callback: auth-js holds its lock while it notifies, and
@@ -467,10 +493,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // the sign-in page is explained where it landed, once (S12-182).
   useEffect(() => {
     if (stashState.kind === "error" || (stashState.kind === "none" && peekStashed("access_token"))) discardStashedSession();
+    // A return that failed (a cancelled or refused provider sign-in) spends
+    // the marker that was waiting for it (lead decision E).
+    if (stashState.kind === "error") clearPendingSignIn();
     if (stashState.kind === "error" && window.location.pathname.replace(/\/+$/, "") !== "/auth") {
-      toast({
-        title: tr("auth.return.failed", "Sign-in didn't finish. Please try again."),
-        description: tr("auth.confirm.expired", "This link has expired or was already used. Sign in again to get a new one."),
+      // The auth strings load lazily and this notice shows on pages that
+      // never load them: they are in before it is worded.
+      void loadAuthStrings().then(() => {
+        toast({
+          title: tr("auth.return.failed", "Sign-in didn't finish. Please try again."),
+          description: tr("auth.confirm.expired", "This link has expired or was already used. Sign in again to get a new one."),
+        });
       });
       setStashState({ kind: "none" });
     }
@@ -504,7 +537,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!access || !refresh) { setStashState({ kind: "failed", type }); return; }
     void (async () => {
       const r = await resolveTokens(access, refresh);
-      if ("error" in r) { setStashState({ kind: "failed", type }); return; }
+      // A return the auth server refused spends the marker that waited for it.
+      if ("error" in r) { clearPendingSignIn(); setStashState({ kind: "failed", type }); return; }
       const pending = readPendingSignIn();
       if (!pendingMatches(pending, r.email)) {
         resolved.current = r;
@@ -512,9 +546,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       clearPendingSignIn();
-      // A link that arrived while a provider sign-in was pending: the marker
-      // could not name the address, so the address is shown until dismissed.
-      const banner = !pending?.email && !!type && LINK_TYPES.has(type);
+      // A session adopted under a marker that could not name the address (a
+      // provider press) ALWAYS shows the address until dismissed, whatever
+      // the link type says or does not say: a crafted token pair carries no
+      // type at all (lead decision E).
+      const banner = !pending?.email;
       const ok = await adoptSession(r, { recovery: type === "recovery", banner });
       setStashState(ok ? { kind: "adopted", next: pending?.next ?? null, type } : { kind: "failed", type });
     })();
@@ -540,6 +576,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void revoke(resolved.current?.session);
     resolved.current = null;
     discardStashedSession();
+    // "Not me": whatever sign-in this browser had pending is not this one, and is over.
+    clearPendingSignIn();
     setStashState({ kind: "none" });
   }, []);
 
@@ -567,8 +605,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = async (next?: string) => {
     // The return is accepted without a question only because this browser
-    // started it: the marker first, then the broker.
-    setPendingSignIn(next);
+    // started it: the marker first, then the broker. A provider marker lives
+    // ten minutes, is spent by any return, and what it adopts carries the
+    // "Signed in as" banner (lead decision E).
+    setPendingSignIn(next, undefined, null, { provider: true });
     const result = await lovable.auth.signInWithOAuth("google", {
       redirect_uri: `${window.location.origin}/auth?mode=return`,
     });

@@ -74,7 +74,7 @@
     },
     "20261014100000": {
       "after": "fn:process-email-queue@2026-10-14.1",
-      "why": "R1 mail: it schedules the 10-second 'process-email-queue' drain, whose posts carry x-email-cron. Only process-email-queue 2026-10-14.1 accepts that header and falls back to Resend when Lovable refuses; an older build drains with the service-role bearer but without the fallback (verify section 94 shows the build)"
+      "why": "R1 mail: it schedules OUR 10-second drain job, rb-auth-mail-drain, whose posts carry the vault bearer (email_queue_service_role_key, which Lovable's email setup created) AND x-email-cron. It never schedules, alters or unschedules a job named process-email-queue (Lovable's own mail path, with its trigger, dispatcher and vault key, stays untouched: lead decision B of the third fixer round). Only process-email-queue 2026-10-14.1 accepts the cron key, flags its refusals with cronKey so the job counts only its own, drains sign-in mail only for a caller that names no queue, and falls back to Resend when Lovable refuses; an older build drains both queues with the bearer alone and without the fallback (verify section 94 shows the build, our job's last run, and the gateway's 401 to a post with no JWT)"
     },
     "20261014110000": {
       "before": ["fn:auth-signed-in", "fn:verify-product-purchase"],

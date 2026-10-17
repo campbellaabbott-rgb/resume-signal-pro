@@ -10,21 +10,32 @@ import { sendMail } from "../_shared/send-mail.ts";
  * item 3; owner decision D1: auth mail keeps Lovable's queue, with a Resend
  * fallback when Lovable refuses).
  *
- *   - Callers: the service-role key itself (compared in constant time with
- *     SUPABASE_SERVICE_ROLE_KEY), OR the vault email cron key in x-email-cron
- *     (email_cron_key_matches, the key the other email crons send). verify_jwt
- *     is FALSE for this function (supabase/config.toml), so this check is the
- *     door: the drain's cron posts no JWT at all and so cannot be refused
- *     unheard by the gateway for a missing or stale vault bearer (review of
- *     R1, decision 5; S12-179). A token's own claims prove nothing here: only
- *     the exact key or the cron key opens it. Every refusal names this
- *     function in its body (refusedBy), which the cron command reads back
- *     from pg_net and turns into a failed run.
- *   - The cron names the queues it drains in its body ({"queues":
- *     ["auth_emails"]}): R1 drains sign-in mail only. The fix-plan drip in
- *     transactional_emails waits for CP-G (its text part, marketing purpose,
- *     seller footer and the apex sender) and is left exactly where it is. A
- *     caller that names no queue drains both, as before.
+ *   - Callers, behind the gateway's own JWT check (verify_jwt stays TRUE for
+ *     this function: Lovable's email setup made, outside our migrations, a
+ *     trigger and a job that drain this queue with the vault's
+ *     email_queue_service_role_key as their bearer, and that path must keep
+ *     working; lead decision B of the third fixer round, 2026-10-12): a JWT
+ *     whose role claim is service_role (the gateway verified its signature
+ *     before this code ran, so the claim is the platform's word), the
+ *     service-role key itself (compared in constant time), OR the vault email
+ *     cron key in x-email-cron (email_cron_key_matches, the key every other
+ *     email cron sends). Our own drain job (rb-auth-mail-drain, 20261014100000)
+ *     posts the vault bearer AND the cron key. Every refusal names this
+ *     function in its body (refusedBy) and says whether a cron key was offered
+ *     (cronKey), so the cron command can read back ITS OWN refusals from
+ *     pg_net and fail its run, and never counts another caller's.
+ *   - A caller that names no queue drains sign-in mail only: Lovable's
+ *     dispatcher names none, and R1 drains sign-in mail only. The fix-plan
+ *     drip in transactional_emails waits for CP-G (its text part, marketing
+ *     purpose, seller footer and the apex sender) and is drained only by a
+ *     caller that names that queue.
+ *   - ONE MESSAGE, ONE SEND, THOUGH TWO DRAINS RUN. read_email_batch is
+ *     pgmq.read: FOR UPDATE SKIP LOCKED, and each message read is hidden for
+ *     30 seconds (vt), so a second drain started meanwhile reads nothing of
+ *     the first's batch. A message back in view after that (a crash between
+ *     the send and the delete) is skipped and deleted when its 'sent' log row
+ *     exists. And every send hands the provider the payload's idempotency
+ *     key, so even a re-send is one mail.
  *   - Every message goes to Lovable first. An auth_emails message Lovable
  *     refuses as a sender (401 or 403), or one that has failed transiently
  *     three times, is sent through Resend (sendMail: From
@@ -67,15 +78,53 @@ const AUTH_FALLBACK_TIMEOUT_MS = 8_000
 /** What every refusal answers: the drain's cron command finds it in pg_net's answers (20261014100000). */
 export const REFUSED_BODY = { error: 'Forbidden', refusedBy: 'process-email-queue' }
 
+/** True when the request offered a cron key at all (right or wrong): our own drain always does. */
+export function offeredCronKey(h: Headers): boolean {
+  return (h.get('x-email-cron') ?? '').length > 0
+}
+
+/** The refusal, saying whether a cron key was offered, so the cron counts only its own. */
+export function refusal(h: Headers): typeof REFUSED_BODY & { cronKey: boolean } {
+  return { ...REFUSED_BODY, cronKey: offeredCronKey(h) }
+}
+
+/**
+ * The role claim of the bearer the GATEWAY let through. Read without checking
+ * the signature, which is right ONLY because this function runs with
+ * verify_jwt = true (supabase/config.toml carries no false entry for it, and
+ * the R1 ledger test pins that): the platform refused every unsigned or
+ * mis-signed token before this code ran. A function behind verify_jwt = false
+ * must never trust this.
+ */
+export function gatewayVerifiedRole(h: Headers): string | null {
+  const a = (h.get('authorization') ?? '').trim()
+  const m = /^bearer\s+(.+)$/i.exec(a)
+  const part = m?.[1]?.trim().split('.')[1]
+  if (!part) return null
+  try {
+    const b64 = part.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(part.length / 4) * 4, '=')
+    const claims = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))))
+    return typeof claims?.role === 'string' ? claims.role : null
+  } catch {
+    return null
+  }
+}
+
+/** The door behind the gateway: a verified service_role token, the key itself, or the cron key. */
+export async function callerMayDrain(h: Headers, admin: Parameters<typeof isScheduledCaller>[1], serviceKey: string): Promise<boolean> {
+  if (gatewayVerifiedRole(h) === 'service_role') return true
+  return await isScheduledCaller(h, admin, serviceKey)
+}
+
 /** The queues this function drains, auth mail first. */
 const QUEUES = ['auth_emails', 'transactional_emails']
 
-/** The queues a run drains: the ones its body names (the cron names auth_emails only), else every one. */
+/** The queues a run drains: the ones its body names, else sign-in mail only (R1; the drip waits for CP-G). */
 export function queuesToDrain(body: unknown): string[] {
   const named = (body as { queues?: unknown } | null)?.queues
-  if (!Array.isArray(named)) return QUEUES
+  if (!Array.isArray(named)) return [QUEUES[0]]
   const pick = QUEUES.filter((q) => named.includes(q))
-  return pick.length ? pick : QUEUES
+  return pick.length ? pick : [QUEUES[0]]
 }
 
 /**
@@ -239,16 +288,17 @@ Deno.serve(async (req) => {
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-  // THE DOOR (verify_jwt is false for this function): the service-role key
-  // itself, or the scheduler's cron key (x-email-cron, checked by
-  // email_cron_key_matches). The publishable key is every visitor's, and a
-  // token's claims are not checked by anyone here, so neither opens it.
-  if (!(await isScheduledCaller(req.headers, supabase, supabaseServiceKey))) {
-    return reply(REFUSED_BODY, 403)
+  // THE SECOND DOOR (the gateway's JWT check is the first): a service_role
+  // token the gateway verified, the service-role key itself, or the
+  // scheduler's cron key (x-email-cron, checked by email_cron_key_matches).
+  // The publishable key is every visitor's and opens nothing. The refusal
+  // says whether a cron key was offered: only our own drain offers one.
+  if (!(await callerMayDrain(req.headers, supabase, supabaseServiceKey))) {
+    return reply(refusal(req.headers), 403)
   }
 
   let requested: unknown = null
-  try { requested = await req.json() } catch { /* no body: every queue */ }
+  try { requested = await req.json() } catch { /* no body: sign-in mail only */ }
   const queues = queuesToDrain(requested)
 
   // 1. Check rate-limit cooldown and read queue config

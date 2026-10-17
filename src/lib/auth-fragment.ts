@@ -34,7 +34,7 @@
  *
  * src/test/r1-signin-stash.test.ts runs the script from index.html itself.
  */
-import { PENDING_SIGN_IN_TTL_MS } from "@/config/auth-providers";
+import { PENDING_SIGN_IN_TTL_MS, PROVIDER_PENDING_TTL_MS } from "@/config/auth-providers";
 
 export const STASH_KEY = "rb_url_stash";
 
@@ -172,28 +172,52 @@ export const PENDING_KEY = "rb_auth_pending";
 export const PENDING_TTL_MS = PENDING_SIGN_IN_TTL_MS;
 
 /**
+ * A SESSION THAT ENDED WITHOUT A SIGN-OUT (S12-087; lead decision G, third
+ * fixer round). AuthContext writes it only when a signed-in session vanishes
+ * and nobody pressed sign-out, and clears it on the next sign-in and on a
+ * deliberate sign-out. use-product-checkout keys its one "Have Pro? Sign in
+ * first" question on it. Defined here, not in the context module, because a
+ * hook must read it even where a test mocks the context away.
+ */
+export const SESSION_ENDED_MARK_KEY = "rb_session_ended_at";
+
+/**
  * `email` is the address the person typed when they asked for the link (a
  * code, a reset, a confirmation), lower-cased; null for a provider sign-in,
  * whose address is not known until it returns. A link that signs in to any
- * other address is not the one this browser asked for.
+ * other address is not the one this browser asked for. `provider` marks a
+ * Google press: that marker lives PROVIDER_PENDING_TTL_MS (ten minutes), is
+ * cleared by a failed or cancelled return and by /auth mounting without a
+ * return, and what it adopts always carries the "Signed in as" banner (lead
+ * decision E, third fixer round). A marker that names no address and is not
+ * a provider's is read as a provider's: it can vouch for nobody in particular.
  */
-export type PendingSignIn = { at: number; next: string; email: string | null };
+export type PendingSignIn = { at: number; next: string; email: string | null; provider: boolean };
 
-export function setPendingSignIn(next: string | null | undefined, now: number = Date.now(), email?: string | null): void {
+export function setPendingSignIn(next: string | null | undefined, now: number = Date.now(), email?: string | null, opts?: { provider?: boolean }): void {
   const addr = typeof email === "string" && email.includes("@") ? email.trim().toLowerCase() : null;
-  try { localStorage.setItem(PENDING_KEY, JSON.stringify({ at: now, next: safeNextPath(next), ...(addr ? { email: addr } : {}) })); } catch { /* storage blocked: links ask first */ }
+  try {
+    localStorage.setItem(PENDING_KEY, JSON.stringify({ at: now, next: safeNextPath(next), ...(addr ? { email: addr } : {}), ...(opts?.provider ? { provider: true } : {}) }));
+  } catch { /* storage blocked: links ask first */ }
 }
 
 export function readPendingSignIn(now: number = Date.now()): PendingSignIn | null {
   try {
-    const raw = JSON.parse(localStorage.getItem(PENDING_KEY) ?? "null") as { at?: unknown; next?: unknown; email?: unknown } | null;
+    const raw = JSON.parse(localStorage.getItem(PENDING_KEY) ?? "null") as { at?: unknown; next?: unknown; email?: unknown; provider?: unknown } | null;
     if (!raw || typeof raw.at !== "number" || !Number.isFinite(raw.at)) return null;
-    if (raw.at > now + 60_000 || now - raw.at > PENDING_TTL_MS) return null;
     const email = typeof raw.email === "string" && raw.email.includes("@") ? raw.email.trim().toLowerCase() : null;
-    return { at: raw.at, next: safeNextPath(typeof raw.next === "string" ? raw.next : null), email };
+    const provider = raw.provider === true || !email;
+    if (raw.at > now + 60_000 || now - raw.at > (provider ? PROVIDER_PENDING_TTL_MS : PENDING_TTL_MS)) return null;
+    return { at: raw.at, next: safeNextPath(typeof raw.next === "string" ? raw.next : null), email, provider };
   } catch {
     return null;
   }
+}
+
+/** Forget a marker that names no address (a provider press that never returned). One naming an address is kept. */
+export function clearAddresslessPendingSignIn(now: number = Date.now()): void {
+  const p = readPendingSignIn(now);
+  if (p && !p.email) clearPendingSignIn();
 }
 
 /**

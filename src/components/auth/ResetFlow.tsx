@@ -64,7 +64,15 @@ export function WrongPasswordLink({ next }: { next: string }) {
   );
 }
 
-type Step = "request" | "code" | "checking" | "password" | "done" | "blocked" | "signedIn";
+/**
+ * blocked: the guard could not answer (503, no network): Try again may pass.
+ * refused: the guard answered 409 for a reason no retry of THIS session can
+ * pass (the account changed since the sign-in, no email identity, a token
+ * for another address): the only ways on are a fresh link, or support (lead
+ * decision F, third fixer round). audit_unconfirmed is neither: the guard
+ * then clears nothing, ever, so the reset goes on.
+ */
+type Step = "request" | "code" | "checking" | "password" | "done" | "blocked" | "refused" | "signedIn";
 
 export function ResetFlow({ next, initialSession }: { next: string; initialSession: Session | null }) {
   const { t } = useTranslation();
@@ -121,7 +129,21 @@ export function ResetFlow({ next, initialSession }: { next: string; initialSessi
     // setting it as this session ends every other session anyway. Blocking
     // here would lock out exactly the accounts recovery exists for.
     if (r.state === "failed" && r.status === 409 && r.reason === "audit_unconfirmed") return "password";
+    // Any other 409 is a refusal of THIS session that no retry can pass: a
+    // fresh link mints a session whose sign-in is newer than the change.
+    if (r.state === "failed" && r.status === 409) return "refused";
     return "blocked";
+  };
+
+  /** From a refusal to a fresh link: the request step, with the address the refused session named. */
+  const askAgain = () => {
+    const addr = recoverySession?.user?.email;
+    if (addr && !email.trim()) setEmail(addr);
+    setRecoverySession(null);
+    setEnded(true);
+    setError(null);
+    setNotice(null);
+    setStep("request");
   };
 
   useEffect(() => {
@@ -210,7 +232,7 @@ export function ResetFlow({ next, initialSession }: { next: string; initialSessi
 
       {step === "request" && (
         <form onSubmit={request} noValidate>
-          <p className="text-xs text-muted-foreground mb-4">{t("auth.reset.intro", "Enter your email. If it has an account, we'll email a code you can use to choose a new password.")}</p>
+          <p className="text-xs text-muted-foreground mb-4">{t("auth.reset.intro", "Enter your email. If it has an account, we'll email a link (or a 6-digit code) you can use to choose a new password.")}</p>
           {notice && <p role="status" className="text-xs text-foreground mb-3">{notice(t)}</p>}
           <label htmlFor={emailId} className="block text-xs font-medium text-foreground mb-1">{t("auth.email.label", "Email")}</label>
           <div className="relative mb-3">
@@ -221,7 +243,7 @@ export function ResetFlow({ next, initialSession }: { next: string; initialSessi
           {error && <p id={errorId} role="alert" className="text-xs text-destructive mb-3">{error(t)}</p>}
           <button type="submit" disabled={busy} className={primaryBtn}>
             {busy && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
-            {t("auth.reset.send", "Email me a reset code")}
+            {t("auth.reset.send", "Email me a reset link")}
           </button>
         </form>
       )}
@@ -281,6 +303,21 @@ export function ResetFlow({ next, initialSession }: { next: string; initialSessi
             <a className="underline" href={`mailto:${AUTH_SUPPORT_EMAIL}`}>{AUTH_SUPPORT_EMAIL}</a>
           </p>
           <button type="button" className={primaryBtn} onClick={() => void retryGuard()}>{t("auth.reset.retry", "Try again")}</button>
+          <div className="mt-3 flex flex-col items-center gap-1 text-xs">
+            <a className={`${quietBtn} inline-flex items-center`} href={`mailto:${AUTH_SUPPORT_EMAIL}`}>{t("auth.reset.emailSupport", "Email support")}</a>
+          </div>
+        </div>
+      )}
+
+      {step === "refused" && (
+        <div>
+          <p role="alert" className="text-sm text-foreground mb-4">
+            {t("auth.reset.refused", "We couldn't confirm this address with that link or code, so no password was set. Ask for a new reset link, or email support.")}
+          </p>
+          <button type="button" className={primaryBtn} onClick={askAgain}>{t("auth.reset.newLink", "Send a new reset link")}</button>
+          <div className="mt-3 flex flex-col items-center gap-1 text-xs">
+            <a className={`${quietBtn} inline-flex items-center`} href={`mailto:${AUTH_SUPPORT_EMAIL}`}>{t("auth.reset.emailSupport", "Email support")}</a>
+          </div>
         </div>
       )}
 
@@ -291,7 +328,7 @@ export function ResetFlow({ next, initialSession }: { next: string; initialSessi
         </p>
       )}
 
-      {(step === "request" || step === "code") && (
+      {(step === "request" || step === "code" || step === "blocked" || step === "refused") && (
         <div className="mt-3 text-center">
           <Link to={backHref} className={`${quietBtn} inline-flex items-center`}>{t("auth.back", "Back to sign in")}</Link>
         </div>

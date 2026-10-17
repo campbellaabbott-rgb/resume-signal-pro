@@ -170,7 +170,7 @@ describe("the emailed code", () => {
     expect(opts.options.shouldCreateUser).toBe(true);
     expect(opts.options.data.terms_version).toBe(TERMS_VERSION);
     expect(opts.options.emailRedirectTo).toBe(`${window.location.origin}/auth?mode=confirm&next=%2Fjobs`);
-    expect(await screen.findByText("If this address can sign in, a code is on its way. It usually arrives within a minute.")).toBeInTheDocument();
+    expect(await screen.findByText("If this address can sign in, check your email for a link (or a 6-digit code). Either one signs you in. It usually arrives within a minute.")).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/\bsent\b/i);
     const field = screen.getByLabelText("Code from the email");
     expect(field).toHaveAttribute("inputmode", "numeric");
@@ -197,9 +197,9 @@ describe("password recovery: the guard is awaited before the new password", () =
     mount("/auth?mode=reset");
     expect(await screen.findByRole("heading", { name: "Reset your password" })).toBeInTheDocument();
     typeIn(/^Email$/, "member@example.com");
-    await press("Email me a reset code");
+    await press("Email me a reset link");
     expect(h.resetPasswordForEmail).toHaveBeenCalledWith("member@example.com", { redirectTo: `${window.location.origin}/auth?mode=reset` });
-    expect(await screen.findByText(/If an account exists for this address, a reset code is on its way/)).toBeInTheDocument();
+    expect(await screen.findByText(/If an account exists for this address, check your email for a link \(or a 6-digit code\)/)).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Code from the email"), { target: { value: "654321" } });
     await press("Continue");
     expect(h.verifyOtp).toHaveBeenCalledWith({ email: "member@example.com", token: "654321", type: "recovery" });
@@ -244,10 +244,11 @@ describe("password recovery: the guard is awaited before the new password", () =
     expect(h.updateUser).toHaveBeenCalledWith({ password: "a-new-long-password" });
   });
 
-  it("a guard that refuses sets no password", async () => {
+  it("a guard that refuses sets no password, and offers a new link rather than a retry that cannot pass (lead decision F)", async () => {
     h.invoke.mockResolvedValue({ data: null, error: { message: "refused", context: { status: 409, clone: () => ({ json: async () => ({ error: "conflict", reason: "email_changed_after_proof" }) }) } } });
     await reachChecking();
-    expect(await screen.findByText(/We couldn't confirm this address just now, so no password was set/, {}, SLOW)).toBeInTheDocument();
+    expect(await screen.findByText(/We couldn't confirm this address with that link or code, so no password was set/, {}, SLOW)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Send a new reset link" })).toBeInTheDocument();
     expect(screen.queryByLabelText("New password")).toBeNull();
     expect(h.updateUser).not.toHaveBeenCalled();
   });
@@ -272,7 +273,7 @@ describe("'on its way' only once the auth server took the request (review major;
     mount("/auth?mode=reset");
     await screen.findByRole("heading", { name: "Reset your password" });
     typeIn(/^Email$/, "member@example.com");
-    await press("Email me a reset code");
+    await press("Email me a reset link");
     expect(await screen.findByRole("alert")).toHaveTextContent("We couldn't send that just now. Try again in a minute, or email resumeboostersupp@gmail.com.");
     expect(screen.queryByLabelText("Code from the email"), "the code screen promised a mail the auth server refused").toBeNull();
     expect(document.body.textContent).not.toMatch(/on its way/);
@@ -284,7 +285,7 @@ describe("'on its way' only once the auth server took the request (review major;
     mount("/auth?mode=reset");
     await screen.findByRole("heading", { name: "Reset your password" });
     typeIn(/^Email$/, "member@example.com");
-    await press("Email me a reset code");
+    await press("Email me a reset link");
     expect(await screen.findByRole("alert")).toHaveTextContent(/We couldn't send that just now/);
     expect(screen.queryByLabelText("Code from the email")).toBeNull();
   });
@@ -303,7 +304,7 @@ describe("'on its way' only once the auth server took the request (review major;
     mount("/auth?mode=reset");
     await screen.findByRole("heading", { name: "Reset your password" });
     typeIn(/^Email$/, "member@example.com");
-    await press("Email me a reset code");
+    await press("Email me a reset link");
     expect(await screen.findByRole("alert")).toHaveTextContent(/Too many attempts/);
   });
 });
@@ -331,7 +332,7 @@ describe("the reset's other ways out", () => {
     mount("/auth?mode=reset");
     await screen.findByRole("heading", { name: "Reset your password" });
     typeIn(/^Email$/, "member@example.com");
-    await press("Email me a reset code");
+    await press("Email me a reset link");
     fireEvent.change(await screen.findByLabelText("Code from the email"), { target: { value: "654321" } });
     await press("Continue");
     expect(await screen.findByText("For your security every device was signed out. Ask for a new code to finish.", {}, SLOW)).toBeInTheDocument();

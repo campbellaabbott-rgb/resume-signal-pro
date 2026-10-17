@@ -177,11 +177,13 @@ describe("the checkout prefill", () => {
   it("signed out: no address, even one another person left in this browser", async () => {
     localStorage.setItem("scanCreditsEmail", "previous.buyer@example.com");
     localStorage.setItem("rb_last_email", "previous.member@example.com");
+    // A signed-in session ended here without a sign-out (the mark AuthContext writes on that alone).
+    localStorage.setItem("rb_session_ended_at", String(Date.now()));
     expect(await checkoutPrefillEmail()).toBeUndefined();
     h.invoke.mockResolvedValue({ data: null, error: null });
     const { result } = renderHook(() => useProductCheckout());
-    // A session ended here (the last address is kept only then): the first press
-    // asks a Pro member to sign in first and starts nothing (S12-087); the next buys.
+    // A session ended here: the first press asks a Pro member to sign in first
+    // and starts nothing (S12-087); the next buys.
     await act(async () => { await result.current.purchaseProduct("coverLetter"); });
     expect(h.invoke.mock.calls.some((c) => c[0] === "create-product-checkout")).toBe(false);
     await act(async () => { await result.current.purchaseProduct("coverLetter"); });

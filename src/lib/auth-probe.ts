@@ -26,7 +26,27 @@
 import { createClient, type EmailOtpType, type Session, type SupabaseClient } from "@supabase/supabase-js";
 
 export type Probed = { session: Session; email: string };
-export type ProbeResult = Probed | { error: string };
+/**
+ * `transient`: the auth server could not be reached or did not answer (a
+ * network failure, a timeout, a 5xx, a 408/429), so the same credential may
+ * well succeed on a second try and must NOT be spent. A definite answer (an
+ * expired, used or malformed token: a 4xx with its reason) is not transient.
+ */
+export type ProbeFailure = { error: string; transient: boolean };
+export type ProbeResult = Probed | ProbeFailure;
+
+/** Whether an auth-js error is one the next try may pass (lead decision D, third fixer round). */
+export function transientAuthFailure(e: unknown): boolean {
+  const status = typeof (e as { status?: unknown })?.status === "number" ? (e as { status: number }).status : null;
+  if (status !== null) return status === 0 || status >= 500 || status === 408 || status === 429;
+  const m = String((e as { message?: unknown })?.message ?? e ?? "");
+  return /fetch|network|timeout|timed out|load failed|aborted|ECONN|socket/i.test(m);
+}
+
+const failure = (e: unknown, fallback: string): ProbeFailure => ({
+  error: (e instanceof Error ? e.message : typeof (e as { message?: unknown })?.message === "string" ? String((e as { message: string }).message) : String(e ?? "")) || fallback,
+  transient: transientAuthFailure(e),
+});
 
 let seq = 0;
 
@@ -53,7 +73,7 @@ function throwaway(): SupabaseClient {
 
 function probed(session: Session | null | undefined): ProbeResult {
   const email = session?.user?.email;
-  if (!session?.access_token || !session.refresh_token || typeof email !== "string" || !email.includes("@")) return { error: "no_session" };
+  if (!session?.access_token || !session.refresh_token || typeof email !== "string" || !email.includes("@")) return { error: "no_session", transient: false };
   return { session, email: email.trim().toLowerCase() };
 }
 
@@ -61,23 +81,27 @@ function probed(session: Session | null | undefined): ProbeResult {
 export async function resolveTokens(accessToken: string, refreshToken: string): Promise<ProbeResult> {
   try {
     const { data, error } = await throwaway().auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
-    if (error) return { error: error.message || "refused" };
+    if (error) return failure(error, "refused");
     return probed(data?.session);
   } catch (e) {
-    return { error: e instanceof Error ? e.message : String(e) };
+    return failure(e, "refused");
   }
 }
 
-/** Spend a token_hash link, keeping its session out of the site's client. */
+/**
+ * Spend a token_hash link, keeping its session out of the site's client. A
+ * transient failure leaves the link unspent (the caller keeps the hash and
+ * offers Try again); only a definite refusal spends it.
+ */
 export async function verifyLink(tokenHash: string, type: EmailOtpType): Promise<ProbeResult | { verified: true; session: null }> {
   try {
     const { data, error } = await throwaway().auth.verifyOtp({ token_hash: tokenHash, type });
-    if (error) return { error: error.message || "refused" };
+    if (error) return failure(error, "refused");
     // An address-change link's first half confirms without a session.
     if (!data?.session) return { verified: true, session: null };
     return probed(data.session);
   } catch (e) {
-    return { error: e instanceof Error ? e.message : String(e) };
+    return failure(e, "refused");
   }
 }
 

@@ -9,13 +9,14 @@
  * renders it at render time.
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import i18next from "i18next";
 import { initReactI18next } from "react-i18next";
 import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
 
-const h = vi.hoisted(() => ({ listeners: [] as Array<(event: string, s: unknown) => void> }));
+const h = vi.hoisted(() => ({ listeners: [] as Array<(event: string, s: unknown) => void>, toast: vi.fn() }));
+vi.mock("@/hooks/use-toast", () => ({ toast: (...a: unknown[]) => h.toast(...a), useToast: () => ({ toast: h.toast }) }));
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     auth: {
@@ -48,6 +49,26 @@ const session = {
   refresh_token: "rt",
   user: { id: "u1", email: "me@example.com" },
 };
+
+describe("a notice raised outside /auth on a German page (lead decision G, third fixer round)", () => {
+  it("a link's error that landed on another page is explained in German: the strings are loaded before the notice is raised", async () => {
+    sessionStorage.setItem("rb_url_stash", JSON.stringify({ error: "access_denied", error_code: "otp_expired", error_description: "expired", _at: Date.now(), _path: "/jobs" }));
+    window.history.replaceState(null, "", "/jobs");
+    render(
+      <MemoryRouter initialEntries={["/jobs"]}>
+        <AuthProvider>
+          <Routes><Route path="/auth" element={<Auth />} /><Route path="*" element={<div />} /></Routes>
+        </AuthProvider>
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(h.toast).toHaveBeenCalledTimes(1), SLOW);
+    const notice = h.toast.mock.calls[0][0] as { title: string; description: string };
+    expect(notice.title).toBe("Die Anmeldung wurde nicht abgeschlossen. Bitte versuchen Sie es erneut.");
+    expect(notice.description).toMatch(/^Dieser Link ist abgelaufen/);
+    window.history.replaceState(null, "", "/");
+    sessionStorage.clear();
+  });
+});
 
 describe("the expired-session notice on a German page", () => {
   it("is German once the German strings arrive, though it was set before they did", async () => {

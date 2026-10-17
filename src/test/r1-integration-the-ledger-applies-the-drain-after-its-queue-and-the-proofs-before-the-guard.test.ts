@@ -92,7 +92,7 @@ describe("R1's two migrations sit where they work", () => {
     expect(buildIsAtLeast(L.buildOf("process-email-queue", queue), "process-email-queue", m![1], Number(m![2]))).toBe(true);
     expect(codeOf(queue)).toMatch(/'x-fn-build': FN_BUILD/);
     expect(codeOf(queue)).toMatch(/import \{ isScheduledCaller \} from "\.\.\/_shared\/email-cron\.ts"/);
-    expect(codeOf(queue)).toMatch(/!\(await isScheduledCaller\(req\.headers, supabase, supabaseServiceKey\)\)/);
+    expect(codeOf(queue)).toMatch(/!\(await callerMayDrain\(req\.headers, supabase, supabaseServiceKey\)\)/);
     expect(codeOf(readFileSync(join(FN_DIR, "_shared/email-cron.ts"), "utf8"))).toContain('h.get("x-email-cron")');
     const sql = readFileSync(join(MIG, R1_MIGRATIONS.find((f) => f.startsWith("20261014100000"))!), "utf8");
     expect(sql).toMatch(/APPLY ORDER: after process-email-queue\.2026-10-14\.1 serves/);
@@ -164,12 +164,15 @@ describe("the two shared files R1 declared are R1's where it says, and the code 
     const toml = readFileSync(resolve(ROOT, "supabase/config.toml"), "utf8");
     expect(toml).toMatch(/\n {2}\[functions\.resend-webhook\]\n {4}verify_jwt = false\n/);
     expect(toml).not.toMatch(/\[functions\.auth-signed-in\]/);
-    // The drain's cron posts no JWT (review of R1, decision 5): the gateway lets
-    // it through and the function's own check is the door.
-    expect(toml).toMatch(/\[functions\.process-email-queue\]\n {4}verify_jwt = false/);
+    // The gateway's JWT check stays ON for the drain (lead decision B, third
+    // fixer round): Lovable's own dispatcher posts the vault bearer through it,
+    // and the function reads the role claim only because the gateway verified
+    // the signature first. A false entry here would make that claim worthless.
+    expect(toml).toMatch(/\[functions\.process-email-queue\]\n {4}verify_jwt = true/);
     const queue = codeOf(readFileSync(join(FN_DIR, "process-email-queue/index.ts"), "utf8"));
-    expect(queue).toMatch(/if \(!\(await isScheduledCaller\(req\.headers, supabase, supabaseServiceKey\)\)\) \{\n\s*return reply\(REFUSED_BODY, 403\)/);
-    expect(queue, "a token's claims would open a door no gateway guards").not.toMatch(/role\s*!==?\s*['"]service_role['"]/);
+    expect(queue).toMatch(/if \(!\(await callerMayDrain\(req\.headers, supabase, supabaseServiceKey\)\)\) \{\n\s*return reply\(refusal\(req\.headers\), 403\)/);
+    expect(queue).toMatch(/if \(gatewayVerifiedRole\(h\) === 'service_role'\) return true/);
+    expect(queue).toMatch(/return await isScheduledCaller\(h, admin, serviceKey\)/);
     expect(codeOf(readFileSync(join(FN_DIR, "_shared/email-cron.ts"), "utf8"))).toMatch(/if \(isServiceRoleCaller\(h, serviceKey\)\) return true;/);
     const hook = codeOf(readFileSync(join(FN_DIR, "resend-webhook/index.ts"), "utf8"));
     expect(hook).toMatch(/svix-signature/i);

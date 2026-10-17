@@ -90,6 +90,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   queued.length = 0;
+  delete (db as unknown as { auth?: unknown }).auth;
   db.tables = {}; db.writes = [];
   db.rpcs = { enqueue_email: (a) => { queued.push(a.payload as Record<string, unknown>); return { data: 1, error: null }; } };
 });
@@ -234,9 +235,51 @@ describe("email_change: the link only to payload.data.email, a notice with no li
     expect(hrefs(notice)).toEqual([]);
   });
 
-  it("with only one address in the payload there is no one else to tell: one mail", async () => {
+  it("with only one address in the payload and no user id there is no one else to tell: one mail", async () => {
     await hook({ action_type: "email_change", email: "solo@example.com", url: verifyUrl("email_change"), token: "112233" });
     expect(queued.map((q) => q.label)).toEqual(["email_change"]);
+  });
+
+  // LEAD DECISION H (third fixer round): Account.tsx already offers "Change
+  // email" (m9 is live). When Lovable's payload names only the new address
+  // (data.email is the new address, no old_email), the account's CURRENT
+  // address is read from the user record by the payload's user id with the
+  // service role, and gets the no-link notice in full.
+  it("data.email is the new address and the payload carries no old_email: the current address is read by the payload's user id and gets the notice in full", async () => {
+    const looked: string[] = [];
+    (db as unknown as { auth: unknown }).auth = { admin: { getUserById: async (id: string) => { looked.push(id); return { data: { user: { id, email: "current@example.com", new_email: "new@example.org" } }, error: null }; } } };
+    const res = await hook({ action_type: "email_change", email: "new@example.org", new_email: "new@example.org", user_id: "u-77", url: verifyUrl("email_change"), token: "778899" }, { run_id: "run-ec3" });
+    expect(res.status).toBe(200);
+    expect(looked).toEqual(["u-77"]);
+    expect(queued.map((q) => [q.to, q.label, q.idempotency_key])).toEqual([["new@example.org", "email_change", "auth:run-ec3"], ["current@example.com", "email_change_notice", "auth:run-ec3:notice"]]);
+    const [link, notice] = queued.map((q) => String(q.html));
+    expect(hrefs(notice)).toEqual([]);
+    expect(notice).not.toContain("778899");
+    expect(notice, "the current address is told in full where the change goes").toContain("new@example.org");
+    expect(notice).toContain("current@example.com");
+    expect(link, "the new address must not learn the current one in full").not.toContain("current@example.com");
+    expect(link).toContain("c***@example.com");
+  });
+
+  it("the user id may ride as user.id or id; a lookup that fails queues the link and no notice, without failing the hook", async () => {
+    const looked: string[] = [];
+    (db as unknown as { auth: unknown }).auth = { admin: { getUserById: async (id: string) => { looked.push(id); return { data: { user: { id, email: "current@example.com" } }, error: null }; } } };
+    await hook({ action_type: "email_change", email: "new@example.org", user: { id: "u-78" }, url: verifyUrl("email_change"), token: "112233" });
+    expect(looked).toEqual(["u-78"]);
+    expect(queued.map((q) => q.to)).toEqual(["new@example.org", "current@example.com"]);
+    queued.length = 0;
+    (db as unknown as { auth: unknown }).auth = { admin: { getUserById: async () => { throw new Error("admin api down"); } } };
+    const res = await hook({ action_type: "email_change", email: "new@example.org", id: "u-79", url: verifyUrl("email_change"), token: "112233" });
+    expect(res.status).toBe(200);
+    expect(queued.map((q) => q.label)).toEqual(["email_change"]);
+  });
+
+  it("with old_email in the payload the user record is not read", async () => {
+    let looked = 0;
+    (db as unknown as { auth: unknown }).auth = { admin: { getUserById: async () => { looked++; return { data: { user: null }, error: null }; } } };
+    await hook({ action_type: "email_change", email: "new@example.org", old_email: "old@example.com", user_id: "u-80", url: verifyUrl("email_change"), token: "135791" });
+    expect(looked).toBe(0);
+    expect(queued.map((q) => q.to)).toEqual(["new@example.org", "old@example.com"]);
   });
 
   it("a notice that fails to queue does not fail the link that queued", async () => {

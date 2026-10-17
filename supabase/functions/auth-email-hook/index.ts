@@ -308,7 +308,44 @@ function subjectFor(emailType: string, lng: AuthMailLanguage): string {
   return bySubject[emailType] || EMAIL_SUBJECTS[emailType] || 'Notification'
 }
 
-function mailsFor(emailType: string, data: Record<string, unknown>, run_id: string): QueuedMail[] {
+/**
+ * The account's id, wherever Lovable's payload carries it (user_id, user.id,
+ * id, or on the payload itself). A UUID only; anything else is no id.
+ */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+export function userIdOf(data: Record<string, unknown>, payload: Record<string, unknown> = {}): string | null {
+  const user = (data.user ?? payload.user) as { id?: unknown } | null | undefined
+  const candidates: unknown[] = [data.user_id, user?.id, data.id, payload.user_id]
+  for (const c of candidates) if (typeof c === 'string' && (UUID.test(c) || /^[A-Za-z0-9_-]{4,64}$/.test(c))) return c
+  return null
+}
+
+/**
+ * THE ACCOUNT'S CURRENT ADDRESS, WHEN THE PAYLOAD DOES NOT SAY (lead decision
+ * H, third fixer round; m9 is live: Account.tsx offers "Change email"). An
+ * email_change payload whose data.email is the NEW address and that carries
+ * no old_email left the current address with neither a link nor a notice.
+ * It is read from the user record by the payload's user id with the service
+ * role; a lookup that fails (no id, no record, the admin API down) is logged
+ * and the hook goes on, as a notice is never required.
+ */
+async function currentAddressOf(admin: { auth?: { admin?: { getUserById?: (id: string) => Promise<{ data?: { user?: { email?: unknown } | null } | null; error?: unknown }> } } }, userId: string | null, run_id: string): Promise<string | null> {
+  if (!userId) return null
+  try {
+    const r = await admin.auth?.admin?.getUserById?.(userId)
+    const addr = norm(r?.data?.user?.email)
+    if (!addr || r?.error) {
+      console.warn('email_change: the current address could not be read from the user record', { run_id, hasError: !!r?.error })
+      return null
+    }
+    return addr
+  } catch (e) {
+    console.warn('email_change: reading the user record threw', { run_id, error: String(e).slice(0, 200) })
+    return null
+  }
+}
+
+function mailsFor(emailType: string, data: Record<string, unknown>, run_id: string, current: string | null = null): QueuedMail[] {
   const token = codeOf(data.token)
   const minutes = expiryMinutes()
   const confirmationUrl = confirmLinkFor(data, emailType)
@@ -338,9 +375,10 @@ function mailsFor(emailType: string, data: Record<string, unknown>, run_id: stri
   if (emailType !== 'email_change') return [base]
 
   // Which address is the account's current one. A payload may name both, or
-  // only the one that is not data.email.
+  // only the one that is not data.email; when it names neither old address,
+  // the one read from the user record (currentAddressOf) stands in.
   const newAddr = norm(data.new_email) || null
-  const oldAddr = norm(data.old_email) || (newAddr && linkTo !== newAddr ? linkTo : null)
+  const oldAddr = norm(data.old_email) || (newAddr && linkTo !== newAddr ? linkTo : null) || (current && current !== linkTo ? current : null)
   const otherAddr = [oldAddr, newAddr].find((a) => a && a !== linkTo) ?? null
   // In full only to the current address, or to the address itself.
   const shown = (addr: string | null, recipient: string): string =>
@@ -473,8 +511,16 @@ async function handleWebhook(req: Request): Promise<Response> {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   )
 
+  // An address change that names only the new address: the current one is
+  // read from the user record so it still gets its no-link notice (m9).
+  let current: string | null = null
+  if (emailType === 'email_change' && !norm(data.old_email)) {
+    const newAddr = norm(data.new_email) || null
+    if (!newAddr || norm(data.email) === newAddr) current = await currentAddressOf(supabase as never, userIdOf(data, payload as Record<string, unknown>), run_id)
+  }
+
   let queuedCount = 0
-  for (const mail of mailsFor(emailType, data, run_id)) {
+  for (const mail of mailsFor(emailType, data, run_id, current)) {
     // Render React Email to HTML and plain text
     const html = await renderAsync(React.createElement(mail.template, mail.props))
     const text = await renderAsync(React.createElement(mail.template, mail.props), {

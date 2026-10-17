@@ -23,45 +23,58 @@
 --      outside its terminal set as stuck after two hours, so resend-webhook
 --      stamps delivered and delayed on the sent row's metadata rather than
 --      writing rows in those states (see that function's header).
---   3. Schedules the cron job 'process-email-queue' every 10 seconds, ONLY IF
---      cron.job has no job by that name. A job Lovable made is left exactly as
---      it is, and so is the trigger and the vault key Lovable's setup keeps
---      outside our migrations; a job this file made on an earlier run with an
---      older command is re-scheduled with this one. The job's command posts
---      only while pgmq.metrics shows a sign-in mail in auth_emails that is
---      visible now, and not during a provider cooldown
+--   3. Schedules OUR OWN cron job, 'rb-auth-mail-drain', every 10 seconds.
+--      LOVABLE'S MAIL PATH IS NEVER TOUCHED (lead decision B of the third
+--      fixer round, 2026-10-12): Lovable's email setup made, outside our
+--      migrations, a trigger and a job that drain the queue under its own
+--      name ('process-email-queue'), a dispatcher (email_queue_dispatch) and
+--      the vault secret email_queue_service_role_key, none of which we can
+--      see from here. This file never schedules, alters or unschedules a job
+--      named 'process-email-queue'; it only reads that name to report it. A
+--      job this file made on an earlier run with an older command is
+--      re-scheduled with this one (found by this file's own marker).
+--      The job's command posts only while pgmq.metrics shows a sign-in mail
+--      in auth_emails that is visible now, and not during a provider cooldown
 --      (email_send_state.retry_after_until). R1 drains sign-in mail only: the
 --      post names {"queues":["auth_emails"]}, and the fix-plan drip in
 --      transactional_emails waits for CP-G (its text part, marketing purpose,
 --      seller footer and apex sender) where it is.
---      THE POST CARRIES NO JWT AND CANNOT BE REFUSED UNHEARD (review of R1,
---      decision 5; S12-179). It sends only the vault email cron key as
---      x-email-cron (email_cron_key, created by 20261004100000), and
---      process-email-queue runs with verify_jwt = false (supabase/config.toml)
---      and checks that key itself, so no gateway bearer (the vault's
---      email_queue_service_role_key, which no migration creates) is needed.
+--      THE POST CARRIES THE VAULT BEARER AND THE CRON KEY. process-email-queue
+--      runs behind the gateway's JWT check (verify_jwt = true, as Lovable's own
+--      dispatcher needs), so the post sends the vault's
+--      email_queue_service_role_key as its bearer, and the vault email cron
+--      key as x-email-cron (email_cron_key, created by 20261004100000), which
+--      the function's own check also accepts. A run whose vault holds no
+--      bearer, or no cron key, FAILS LOUDLY (RAISE) instead of posting a
+--      request the gateway would refuse unheard: get_cron_health and verify
+--      section 94 then show the failed run.
 --      net.http_post only queues the request and every run reads 'succeeded'
---      whatever the answer, so the command reads the answers back: a refusal
---      from the drain in the last two minutes (its body names refusedBy
---      process-email-queue) fails the run instead of posting again, and so
---      does a missing cron key. Verify section 94 reads the job's last run
---      status and its failures, and proves the gateway no longer asks for a
---      JWT (a POST with none is refused by the function's own check).
+--      whatever the answer, so the command reads the answers back from
+--      net._http_response, which records no URL and no caller: a refusal
+--      from the drain in the last two minutes that says a cron key was
+--      offered (its body names refusedBy process-email-queue AND cronKey
+--      true; only our posts offer one) fails the run instead of posting
+--      again, and so does the gateway's own 401 (its body names code 401: a
+--      bearer it does not accept, which is the same vault bearer every cron
+--      sends). A refusal of another caller's post (Lovable's dispatcher, a
+--      stray publishable-key post) carries no cron key and never stops ours.
 --   4. Self-check: the column and index exist, the CHECK names all ten
---      statuses and is the only check on status, no queue wrapper is open, and
---      the job exists; if it is this file's, its command still posts to the
---      function with the cron key behind the pgmq.metrics test, reads the
---      drain's refusals back, and sends no bearer.
+--      statuses and is the only check on status, no queue wrapper is open,
+--      the job 'rb-auth-mail-drain' exists with this file's marker, its
+--      command still posts to the function with the vault bearer and the
+--      cron key behind the pgmq.metrics test and reads the drain's own
+--      refusals back, and no job named 'process-email-queue' carries a marker
+--      of ours (this file never wrote one; an earlier draft of this file did
+--      under that name but was never applied anywhere).
 --
 -- Safe to run twice. Creates no table and no function.
 --
--- APPLY ORDER: after process-email-queue.2026-10-14.1 serves with
--- verify_jwt = false (verify-deploy section 94). The job's posts carry only
--- x-email-cron, which an older build ignores, and an older build's gateway
--- (verify_jwt = true) refuses them for want of a JWT in words that do not
--- name the drain, which this command cannot tell from any other 401. So it
--- is applied only once section 94 shows both the build and the gateway's
--- answer to a post with no JWT.
+-- APPLY ORDER: after process-email-queue.2026-10-14.1 serves (verify-deploy
+-- section 94): an older build ignores x-email-cron and has no Resend
+-- fallback. Section 94 also proves the gateway still asks for a JWT (a POST
+-- with none is refused 401 by the gateway, not by the function), because the
+-- role claim the function reads is the platform's word only while the
+-- gateway checks signatures.
 
 -- ── 0. No drain while a queue wrapper is open to clients ────────────────────
 DO $$
@@ -146,29 +159,36 @@ BEGIN
   );
 END $$;
 
--- ── 3. The drain, only where no job of that name exists ─────────────────────
+-- ── 3. Our own drain job, beside whatever Lovable runs ──────────────────────
 DO $$
 DECLARE
   v_cmd text;
   v_existing text;
+  v_lovable text;
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'cron') THEN
     RAISE NOTICE 'r1 mail: pg_cron is not installed here; no drain job scheduled';
     RETURN;
   END IF;
-  v_existing := (SELECT j.command FROM cron.job j WHERE j.jobname = 'process-email-queue' LIMIT 1);
-  IF v_existing IS NOT NULL AND position('r1-mail-drain 20261014100000' IN v_existing) = 0 THEN
-    RAISE NOTICE 'r1 mail: a process-email-queue job already exists that this file did not write (Lovable''s); left exactly as it is';
-    RETURN;
+  -- Read only, never written: Lovable's own job, if its setup made one.
+  v_lovable := (SELECT j.command FROM cron.job j WHERE j.jobname = 'process-email-queue' LIMIT 1);
+  IF v_lovable IS NOT NULL THEN
+    RAISE NOTICE 'r1 mail: a job named process-email-queue exists (Lovable''s); left exactly as it is, our drain runs beside it';
+  END IF;
+  v_existing := (SELECT j.command FROM cron.job j WHERE j.jobname = 'rb-auth-mail-drain' LIMIT 1);
+  IF v_existing IS NOT NULL AND position('rb-auth-mail-drain 20261014100000' IN v_existing) = 0 THEN
+    RAISE EXCEPTION 'r1 mail: a job named rb-auth-mail-drain exists that this file did not write; it is not replaced';
   END IF;
   v_cmd := $cmd$
 DO $drain$
 DECLARE
-  v_marker constant text := 'r1-mail-drain 20261014100000 refusedBy';
+  v_marker constant text := 'rb-auth-mail-drain 20261014100000 refusedBy';
   v_n bigint;
   v_visible boolean;
+  v_bearer text;
   v_cron_key text;
   v_refused integer := 0;
+  v_gateway integer := 0;
 BEGIN
   IF EXISTS (SELECT 1 FROM public.email_send_state s WHERE s.retry_after_until > now()) THEN
     RETURN;
@@ -190,26 +210,39 @@ BEGIN
   IF NOT COALESCE(v_visible, true) THEN
     RETURN;
   END IF;
+  SELECT s.decrypted_secret INTO v_bearer FROM vault.decrypted_secrets s WHERE s.name = 'email_queue_service_role_key' LIMIT 1;
+  IF v_bearer IS NULL THEN
+    RAISE EXCEPTION 'rb-auth-mail-drain (%): sign-in mail is waiting and the vault holds no email_queue_service_role_key (Lovable''s email setup creates it; without it the gateway refuses the post unheard)', v_marker;
+  END IF;
   SELECT s.decrypted_secret INTO v_cron_key FROM vault.decrypted_secrets s WHERE s.name = 'email_cron_key' LIMIT 1;
   IF v_cron_key IS NULL THEN
-    RAISE EXCEPTION 'process-email-queue (%): sign-in mail is waiting and the vault holds no email_cron_key (20261004100000 creates it)', v_marker;
+    RAISE EXCEPTION 'rb-auth-mail-drain (%): sign-in mail is waiting and the vault holds no email_cron_key (20261004100000 creates it)', v_marker;
   END IF;
   BEGIN
     IF to_regclass('net._http_response') IS NOT NULL THEN
       EXECUTE $q$SELECT count(*)::int FROM net._http_response r
                   WHERE r.created > now() - interval '2 minutes'
                     AND r.status_code IN (401, 403)
-                    AND r.content::text LIKE '%"refusedBy":"process-email-queue"%'$q$ INTO v_refused;
+                    AND r.content::text LIKE '%"refusedBy":"process-email-queue"%'
+                    AND r.content::text LIKE '%"cronKey":true%'$q$ INTO v_refused;
+      EXECUTE $q$SELECT count(*)::int FROM net._http_response r
+                  WHERE r.created > now() - interval '2 minutes'
+                    AND r.status_code = 401
+                    AND r.content::text LIKE '%"code":401%'$q$ INTO v_gateway;
     END IF;
   EXCEPTION WHEN OTHERS THEN
     v_refused := 0;
+    v_gateway := 0;
   END;
   IF COALESCE(v_refused, 0) > 0 THEN
-    RAISE EXCEPTION 'process-email-queue (%): the drain refused % post(s) in the last two minutes; the cron key it was sent no longer opens it', v_marker, v_refused;
+    RAISE EXCEPTION 'rb-auth-mail-drain (%): the drain refused % post(s) that offered the cron key in the last two minutes; the cron key it was sent no longer opens it', v_marker, v_refused;
+  END IF;
+  IF COALESCE(v_gateway, 0) > 0 THEN
+    RAISE EXCEPTION 'rb-auth-mail-drain (%): the gateway answered % post(s) with its own 401 in the last two minutes: the vault bearer (email_queue_service_role_key) no longer opens it', v_marker, v_gateway;
   END IF;
   PERFORM net.http_post(
     url := 'https://bwhdazbotpblihdxcmho.supabase.co/functions/v1/process-email-queue',
-    headers := jsonb_build_object('Content-Type', 'application/json', 'x-email-cron', v_cron_key),
+    headers := jsonb_build_object('Content-Type', 'application/json', 'Authorization', 'Bearer ' || v_bearer, 'x-email-cron', v_cron_key),
     body := jsonb_build_object('source', 'cron', 'queues', jsonb_build_array('auth_emails'))
   );
 END
@@ -217,14 +250,14 @@ $drain$;
 $cmd$;
   IF v_existing IS NOT NULL THEN
     IF v_existing = v_cmd THEN
-      RAISE NOTICE 'r1 mail: this file''s process-email-queue job is already in place';
+      RAISE NOTICE 'r1 mail: this file''s rb-auth-mail-drain job is already in place';
       RETURN;
     END IF;
-    PERFORM cron.unschedule('process-email-queue');
-    RAISE NOTICE 'r1 mail: replacing this file''s earlier process-email-queue command';
+    PERFORM cron.unschedule('rb-auth-mail-drain');
+    RAISE NOTICE 'r1 mail: replacing this file''s earlier rb-auth-mail-drain command';
   END IF;
-  PERFORM cron.schedule('process-email-queue', '10 seconds', v_cmd);
-  RAISE NOTICE 'r1 mail: scheduled process-email-queue every 10 seconds';
+  PERFORM cron.schedule('rb-auth-mail-drain', '10 seconds', v_cmd);
+  RAISE NOTICE 'r1 mail: scheduled rb-auth-mail-drain every 10 seconds';
 END $$;
 
 -- ── 4. Self-check ───────────────────────────────────────────────────────────
@@ -275,28 +308,37 @@ BEGIN
   END IF;
 
   IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'cron') THEN
-    SELECT j.command, j.schedule INTO v_cmd, v_sched FROM cron.job j WHERE j.jobname = 'process-email-queue';
+    SELECT j.command, j.schedule INTO v_cmd, v_sched FROM cron.job j WHERE j.jobname = 'rb-auth-mail-drain';
     IF v_cmd IS NULL THEN
-      RAISE EXCEPTION 'self-check: no process-email-queue job exists after this file ran';
+      RAISE EXCEPTION 'self-check: no rb-auth-mail-drain job exists after this file ran';
     END IF;
-    IF position('r1-mail-drain 20261014100000' IN v_cmd) > 0 THEN
-      IF v_sched <> '10 seconds' THEN
-        RAISE EXCEPTION 'self-check: this file''s process-email-queue job runs on %, not every 10 seconds', v_sched;
-      END IF;
-      IF position('/functions/v1/process-email-queue' IN v_cmd) = 0
-         OR position('x-email-cron' IN v_cmd) = 0
-         OR position('email_cron_key' IN v_cmd) = 0
-         OR position('pgmq.metrics' IN v_cmd) = 0 THEN
-        RAISE EXCEPTION 'self-check: the process-email-queue command no longer posts to the function with the cron key behind the pgmq.metrics test: %', left(v_cmd, 300);
-      END IF;
-      IF position('net._http_response' IN v_cmd) = 0 OR position('"refusedBy":"process-email-queue"' IN v_cmd) = 0 THEN
-        RAISE EXCEPTION 'self-check: the process-email-queue command no longer reads the drain''s refusals back, so a refused post would read as a success';
-      END IF;
-      IF position('Authorization' IN v_cmd) > 0 OR position('email_queue_service_role_key' IN v_cmd) > 0 THEN
-        RAISE EXCEPTION 'self-check: the process-email-queue command sends a bearer the gateway could refuse unheard';
-      END IF;
-    ELSE
-      RAISE NOTICE 'self-check: process-email-queue is a job this file did not write (Lovable''s); left as it is';
+    IF position('rb-auth-mail-drain 20261014100000' IN v_cmd) = 0 THEN
+      RAISE EXCEPTION 'self-check: the rb-auth-mail-drain job does not carry this file''s marker';
+    END IF;
+    IF v_sched <> '10 seconds' THEN
+      RAISE EXCEPTION 'self-check: the rb-auth-mail-drain job runs on %, not every 10 seconds', v_sched;
+    END IF;
+    IF position('/functions/v1/process-email-queue' IN v_cmd) = 0
+       OR position('Authorization' IN v_cmd) = 0
+       OR position('email_queue_service_role_key' IN v_cmd) = 0
+       OR position('x-email-cron' IN v_cmd) = 0
+       OR position('email_cron_key' IN v_cmd) = 0
+       OR position('pgmq.metrics' IN v_cmd) = 0 THEN
+      RAISE EXCEPTION 'self-check: the rb-auth-mail-drain command no longer posts to the function with the vault bearer and the cron key behind the pgmq.metrics test: %', left(v_cmd, 300);
+    END IF;
+    IF position('net._http_response' IN v_cmd) = 0
+       OR position('"refusedBy":"process-email-queue"' IN v_cmd) = 0
+       OR position('"cronKey":true' IN v_cmd) = 0
+       OR position('"code":401' IN v_cmd) = 0 THEN
+      RAISE EXCEPTION 'self-check: the rb-auth-mail-drain command no longer reads its own refusals and the gateway''s 401 back, so a refused post would read as a success';
+    END IF;
+    -- Lovable's job is never ours. An earlier draft of this file scheduled a job under that name; it was never applied anywhere.
+    IF EXISTS (
+      SELECT 1 FROM cron.job j
+       WHERE j.jobname = 'process-email-queue'
+         AND (position('r1-mail-drain 20261014100000' IN j.command) > 0 OR position('rb-auth-mail-drain 20261014100000' IN j.command) > 0)
+    ) THEN
+      RAISE EXCEPTION 'self-check: a job named process-email-queue carries a marker of ours; this file never writes that name (unschedule it by hand, then re-run)';
     END IF;
   END IF;
 END $$;

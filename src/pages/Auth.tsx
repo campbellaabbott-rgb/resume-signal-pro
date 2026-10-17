@@ -48,6 +48,7 @@ import { useAuthStrings } from "@/i18n/auth/load";
 import { revoke, verifyLink, type Probed } from "@/lib/auth-probe";
 import {
   DEFAULT_AFTER_AUTH,
+  clearAddresslessPendingSignIn,
   clearPendingSignIn,
   maskEmail,
   peekStashed,
@@ -82,6 +83,14 @@ export default function Auth() {
   const [params] = useSearchParams();
   const next = safeNextPath(params.get("next"));
   const mode = parseAuthMode(params.get("mode"));
+  // A provider marker (Google pressed, no address known) is spent by its
+  // return. The sign-in page opening any other way (Back from Google, a new
+  // visit) means that return is not coming: the marker is forgotten, so no
+  // later token pair rides it (lead decision E). A marker naming a typed
+  // address stays: its link may still arrive from the mail.
+  useEffect(() => {
+    if (mode !== "return" && !peekStashed("access_token")) clearAddresslessPendingSignIn();
+  }, [mode]);
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header />
@@ -443,7 +452,7 @@ function ConfirmView({ next, onRecovery }: { next: string; onRecovery: (s: Sessi
   // Read once: the stash's copy (the first script moved it there), else the address's.
   const [tokenHash] = useState(() => peekStashed("token_hash") ?? params.get("token_hash"));
   const [type] = useState(() => otpType(peekStashed("type") ?? params.get("type")));
-  const [phase, setPhase] = useState<"ready" | "working" | "failed" | "emailChanged" | "ask" | "cancelled">("ready");
+  const [phase, setPhase] = useState<"ready" | "working" | "failed" | "unreachable" | "emailChanged" | "ask" | "cancelled">("ready");
   const [askEmail, setAskEmail] = useState("");
   const held = useRef<{ probed: Probed; target: string } | null>(null);
 
@@ -457,13 +466,23 @@ function ConfirmView({ next, onRecovery }: { next: string; onRecovery: (s: Sessi
     navigate(target, { replace: true });
   };
 
+  // THE LINK IS SPENT ONLY BY AN ANSWER (lead decision D). The hash stays in
+  // the stash until the auth server answers: a transient failure (unreachable,
+  // a 5xx, a timeout) keeps it and offers Try again in this tab, and only a
+  // definite refusal (expired, already used) or a success takes it.
+  const spend = () => { takeStashed("token_hash"); takeStashed("type"); };
   const press = async () => {
-    if (!tokenHash || !type) { setPhase("failed"); return; }
+    if (!tokenHash || !type) { spend(); setPhase("failed"); return; }
     setPhase("working");
-    takeStashed("token_hash");
-    takeStashed("type");
     const r = await verifyLink(tokenHash, type);
-    if ("error" in r) { clearPendingSignIn(); setPhase("failed"); return; }
+    if ("error" in r) {
+      if (r.transient) { setPhase("unreachable"); return; }
+      spend();
+      clearPendingSignIn();
+      setPhase("failed");
+      return;
+    }
+    spend();
     if ("verified" in r) { setPhase("emailChanged"); return; }
     const pending = readPendingSignIn();
     if (pendingMatches(pending, r.email)) {
@@ -501,6 +520,11 @@ function ConfirmView({ next, onRecovery }: { next: string; onRecovery: (s: Sessi
         <>
           <p role="alert" className="text-sm text-destructive mb-4">{t("auth.confirm.expired", "This link has expired or was already used. Sign in again to get a new one.")}</p>
           <Link to="/auth" className={primaryBtn}>{t("auth.back", "Back to sign in")}</Link>
+        </>
+      ) : phase === "unreachable" ? (
+        <>
+          <p role="alert" className="text-sm text-destructive mb-4">{t("auth.confirm.unreachable", "We couldn't reach the sign-in server. Check your connection and try again; the link is still valid.")}</p>
+          <button type="button" onClick={() => void press()} className={primaryBtn}>{t("auth.confirm.retry", "Try again")}</button>
         </>
       ) : phase === "cancelled" ? (
         <>

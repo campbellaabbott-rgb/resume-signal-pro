@@ -11,13 +11,22 @@
  *
  * WHAT HOLDS NOW, by running the shipped handler with Lovable, Resend (fetch)
  * and the database faked:
- *   - verify_jwt is false for this function (review of R1, decision 5), so its
- *     own check is the door: no key, the publishable key, a wrong cron key and
- *     a forged service-role JWT are each refused (403, the body naming the
- *     function, which the drain's cron reads back) before the queue is read;
- *     the vault cron key alone, with NO bearer, runs the drain, and so does
- *     the service-role key itself; the cron's {"queues":["auth_emails"]}
- *     drains sign-in mail only;
+ *   - the gateway verifies every JWT first (verify_jwt = true, as before R1:
+ *     Lovable's own dispatcher posts the vault bearer and must keep working,
+ *     lead decision B of the third fixer round), and the function's own check
+ *     is the second door: a JWT whose role claim is service_role (the gateway
+ *     checked its signature), the service-role key itself, or the vault cron
+ *     key in x-email-cron. No key, the publishable key and a wrong cron key
+ *     are each refused 403 before the queue is read, the body naming the
+ *     function AND whether a cron key was offered (cronKey), which is how the
+ *     drain's cron tells its own refusals from another caller's;
+ *   - a caller that names no queue drains sign-in mail only (R1): Lovable's
+ *     dispatcher names none, and the fix-plan drip waits for CP-G; a caller
+ *     that names transactional_emails gets it;
+ *   - one message is sent once though two drains run: pgmq's visibility
+ *     timeout hides a claimed message from the second drain, a message the
+ *     first drain already sent is skipped and deleted when it comes back into
+ *     view, and both providers are handed the same idempotency key;
  *   - a Lovable 403 on an auth mail ends in ONE Resend send, from
  *     account@resumebooster.work, with the payload's idempotency key and the
  *     reply address, and in no dead-letter; the send's 'sent' row carries
@@ -56,16 +65,17 @@ const env: Record<string, string> = {
   LOVABLE_API_KEY: "lov", RESEND_API_KEY: "re_test_key", CUSTOMER_REPLY_TO: "help@example.net",
 };
 let handler: EdgeHandler;
+const g = globalThis as Record<string, unknown>;
+const defaultSend = async (p: Record<string, unknown>) => {
+  lovable.push(p);
+  const v = verdict(p);
+  if (v) throw Object.assign(new Error(`HTTP ${v.status}: ${v.message}`), { status: v.status });
+  return { success: true };
+};
 
 beforeAll(async () => {
-  const g = globalThis as Record<string, unknown>;
   g.__fakeSupabase = db;
-  g.__peqSend = async (p: Record<string, unknown>) => {
-    lovable.push(p);
-    const v = verdict(p);
-    if (v) throw Object.assign(new Error(`HTTP ${v.status}: ${v.message}`), { status: v.status });
-    return { success: true };
-  };
+  g.__peqSend = defaultSend;
   g.Deno = { env: { get: (k: string) => env[k] }, serve: (h: unknown) => { g.__edgeHandler = h; } };
   g.fetch = async (input: string | URL | Request, init?: RequestInit) => {
     const url = String(input instanceof Request ? input.url : input);
@@ -80,6 +90,7 @@ beforeAll(async () => {
 }, 60_000);
 
 afterEach(() => {
+  g.__peqSend = defaultSend;
   lovable.length = 0; resend.length = 0; dlq.length = 0; deleted.length = 0; reads.length = 0;
   db.tables = {}; db.writes = []; db.rpcs = {}; db.faults = [];
   verdict = () => undefined;
@@ -107,46 +118,48 @@ const run = (headers: Record<string, string> = { authorization: `Bearer ${SERVIC
   handler(new Request("https://harness.supabase.co/functions/v1/process-email-queue", { method: "POST", headers, ...(body === undefined ? {} : { body: JSON.stringify(body) }) }));
 const rowsFor = (id: string) => db.rows("email_send_log").filter((r) => r.message_id === id).map((r) => r.status);
 
-describe("who may run the drain (verify_jwt false: this check is the door)", () => {
-  const refusedHere = async (res: Response) => {
+describe("who may run the drain (behind the gateway's JWT check, this check is the second door)", () => {
+  const refusedHere = async (res: Response, cronKey: boolean) => {
     expect(res.status).toBe(403);
-    expect(await res.json(), "the refusal must name the drain, or its cron cannot read it back").toEqual({ error: "Forbidden", refusedBy: "process-email-queue" });
+    expect(await res.json(), "the refusal must name the drain and say whether a cron key was offered, or its cron cannot tell its own refusals from another caller's")
+      .toEqual({ error: "Forbidden", refusedBy: "process-email-queue", cronKey });
   };
 
-  it("no key at all is refused by the function itself, before the queue is read", async () => {
+  it("no key at all is refused by the function itself, before the queue is read (live, the gateway's 401 comes first)", async () => {
     install();
-    await refusedHere(await run({}));
+    await refusedHere(await run({}), false);
     expect(reads).toEqual([]);
   });
 
   it("the publishable key alone is refused before the queue is read", async () => {
     install();
     queues = { auth_emails: [authMsg(1)] };
-    await refusedHere(await run({ authorization: `Bearer ${ANON_JWT}` }));
+    await refusedHere(await run({ authorization: `Bearer ${ANON_JWT}` }), false);
     expect(reads, "the queue was read for a caller who holds only the publishable key").toEqual([]);
     expect(lovable).toEqual([]);
   });
 
-  it("a forged service-role token proves nothing: no gateway checked its signature", async () => {
+  it("a JWT whose role claim is service_role runs the drain: the gateway verified its signature, so Lovable's dispatcher's vault bearer need not be byte-for-byte the function's own key", async () => {
     install();
     queues = { auth_emails: [authMsg(3)] };
-    await refusedHere(await run({ authorization: `Bearer ${FORGED_SERVICE_JWT}` }));
+    const res = await run({ authorization: `Bearer ${FORGED_SERVICE_JWT}` });
+    expect(res.status).toBe(200);
+    expect(lovable.map((p) => p.message_id)).toEqual(["m-3"]);
+  });
+
+  it("a wrong cron key is refused, and the refusal says a cron key was offered", async () => {
+    install();
+    await refusedHere(await run({ "x-email-cron": "w".repeat(64) }), true);
     expect(reads).toEqual([]);
   });
 
-  it("a wrong cron key is refused", async () => {
+  it("the vault cron key opens it, and a caller that names no queue drains sign-in mail only (Lovable's dispatcher names none)", async () => {
     install();
-    await refusedHere(await run({ "x-email-cron": "w".repeat(64) }));
-    expect(reads).toEqual([]);
-  });
-
-  it("the vault cron key alone, with no bearer at all, runs the drain (review major: the cron's post never reached the queue)", async () => {
-    install();
-    queues = { auth_emails: [authMsg(2)] };
+    queues = { auth_emails: [authMsg(2)], transactional_emails: [authMsg(6, { label: "fix-plan-drip" })] };
     const res = await run({ "x-email-cron": CRON_KEY });
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ processed: 1 });
-    expect(reads).toEqual(["auth_emails", "transactional_emails"]);
+    expect(reads, "the fix-plan drip was drained by a caller that named no queue").toEqual(["auth_emails"]);
     expect(lovable.map((p) => p.message_id)).toEqual(["m-2"]);
   });
 
@@ -159,9 +172,81 @@ describe("who may run the drain (verify_jwt false: this check is the door)", () 
     expect(lovable.map((p) => p.message_id)).toEqual(["m-4"]);
   });
 
+  it("a caller that names transactional_emails gets it (CP-G will)", async () => {
+    install();
+    queues = { auth_emails: [authMsg(7)], transactional_emails: [authMsg(8, { label: "fix-plan-drip" })] };
+    await run({ authorization: `Bearer ${SERVICE_KEY}`, "content-type": "application/json" }, { queues: ["transactional_emails"] });
+    expect(reads).toEqual(["transactional_emails"]);
+    expect(lovable.map((p) => p.message_id)).toEqual(["m-8"]);
+  });
+
   it("the service-role key itself still runs it", async () => {
     install();
     expect((await run()).status).toBe(200);
+  });
+});
+
+describe("one message is sent once though two drains run (Lovable's dispatcher beside our cron)", () => {
+  /**
+   * pgmq.read (read_email_batch) hands a message to one reader and hides it
+   * for `vt` seconds (FOR UPDATE SKIP LOCKED, vt = now() + vt). This stand-in
+   * keeps that rule: a message whose vt is in the future is not read.
+   */
+  function pgmqLike(initial: Array<{ msg_id: number; message: Record<string, unknown> }>) {
+    const store = initial.map((m) => ({ ...m, read_ct: 0, vt: 0 }));
+    db.rpcs.read_email_batch = (a) => {
+      reads.push(String(a.queue_name));
+      if (a.queue_name !== "auth_emails") return { data: [], error: null };
+      const now = Date.now();
+      const out = store.filter((m) => m.vt <= now).slice(0, Number(a.batch_size));
+      for (const m of out) { m.vt = now + Number(a.vt) * 1000; m.read_ct++; }
+      return { data: out.map(({ msg_id, read_ct, message }) => ({ msg_id, read_ct, message })), error: null };
+    };
+    db.rpcs.delete_email = (a) => { const i = store.findIndex((m) => m.msg_id === Number(a.message_id)); if (i >= 0) store.splice(i, 1); deleted.push(Number(a.message_id)); return { data: i >= 0, error: null }; };
+    return store;
+  }
+
+  it("a second drain started while the first holds the claim reads nothing; the claim is a 30-second visibility timeout", async () => {
+    install();
+    pgmqLike([authMsg(50)]);
+    let release!: () => void;
+    const gate = new Promise<void>((r) => { release = r; });
+    g.__peqSend = async (p: Record<string, unknown>) => { lovable.push(p); await gate; return { success: true }; };
+    const first = run({ "x-email-cron": CRON_KEY });
+    await new Promise((r) => setTimeout(r, 20));
+    const second = await run({ authorization: `Bearer ${SERVICE_KEY}` });
+    expect(await second.json(), "the second drain found the message the first was sending").toEqual({ processed: 0 });
+    release();
+    expect(await (await first).json()).toEqual({ processed: 1 });
+    expect(lovable.map((p) => p.message_id)).toEqual(["m-50"]);
+    expect(reads.filter((q) => q === "auth_emails")).toHaveLength(2);
+  });
+
+  it("a message back in view after its claim lapsed, which the first drain already sent, is skipped and deleted, not sent again", async () => {
+    install();
+    const store = pgmqLike([authMsg(51)]);
+    expect(await (await run({ "x-email-cron": CRON_KEY })).json()).toEqual({ processed: 1 });
+    // The first drain sent it but its delete was lost (a crash after the send): the claim lapses.
+    store.push({ msg_id: 51, message: authMsg(51).message, read_ct: 1, vt: 0 });
+    expect(await (await run({ authorization: `Bearer ${SERVICE_KEY}` })).json()).toEqual({ processed: 0 });
+    expect(lovable.map((p) => p.message_id), "the same message was handed to the provider twice").toEqual(["m-51"]);
+    expect(deleted).toEqual([51, 51]);
+  });
+
+  it("every send hands the provider the payload's idempotency key, so even a re-send is one mail", async () => {
+    install();
+    pgmqLike([authMsg(52)]);
+    await run({ "x-email-cron": CRON_KEY });
+    expect(lovable[0].idempotency_key).toBe("auth:run-52");
+    expect(lovable[0].message_id).toBe("m-52");
+  });
+
+  it("the batch read claims each message for 30 seconds", async () => {
+    install();
+    const vts: number[] = [];
+    db.rpcs.read_email_batch = (a) => { vts.push(Number(a.vt)); return { data: [], error: null }; };
+    await run({ "x-email-cron": CRON_KEY });
+    expect(vts).toEqual([30]);
   });
 });
 
@@ -274,12 +359,14 @@ describe("a transient Resend failure waits for the next tick (review major: one 
   });
 });
 
-describe("transactional mail keeps today's behaviour", () => {
+describe("transactional mail keeps today's behaviour (for a caller that names that queue)", () => {
+  const drip = () => run({ authorization: `Bearer ${SERVICE_KEY}`, "content-type": "application/json" }, { queues: ["transactional_emails"] });
+
   it("a 403 on a drip mail dead-letters it and never calls Resend", async () => {
     install();
     queues = { transactional_emails: [{ ...authMsg(20, { label: "fix-plan-drip", sender_domain: "notify.resumebooster.work" }) }] };
     verdict = () => ({ status: 403, message: "sender domain not verified" });
-    expect(await (await run()).json()).toEqual({ processed: 0, forbidden: 1 });
+    expect(await (await drip()).json()).toEqual({ processed: 0, forbidden: 1 });
     expect(resend).toEqual([]);
     expect(dlq.map((d) => d.message_id)).toEqual([20]);
   });
@@ -288,7 +375,7 @@ describe("transactional mail keeps today's behaviour", () => {
     install();
     queues = { transactional_emails: [authMsg(21, { label: "fix-plan-drip" })] };
     verdict = () => ({ status: 401, message: "unauthorized" });
-    expect(await (await run()).json()).toEqual({ processed: 0 });
+    expect(await (await drip()).json()).toEqual({ processed: 0 });
     expect(resend).toEqual([]);
     expect(dlq).toEqual([]);
     expect(rowsFor("m-21")).toEqual(["failed"]);

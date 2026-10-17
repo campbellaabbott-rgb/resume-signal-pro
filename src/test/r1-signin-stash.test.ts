@@ -238,10 +238,13 @@ describe("the readers the pages use", () => {
 });
 
 describe("the pending-sign-in marker and the helpers beside it", () => {
-  it("holds a safe next for an hour, and only a same-origin path", () => {
-    setPendingSignIn("/jobs?q=nurse", 1_000_000);
-    expect(readPendingSignIn(1_000_000 + 59 * 60_000)).toEqual({ at: 1_000_000, next: "/jobs?q=nurse", email: null });
+  it("holds a safe next: an hour for a typed address, ten minutes for a marker that names none (a provider press), and only a same-origin path", () => {
+    setPendingSignIn("/jobs?q=nurse", 1_000_000, "me@example.com");
+    expect(readPendingSignIn(1_000_000 + 59 * 60_000)).toEqual({ at: 1_000_000, next: "/jobs?q=nurse", email: "me@example.com", provider: false });
     expect(readPendingSignIn(1_000_000 + 61 * 60_000)).toBeNull();
+    setPendingSignIn("/jobs?q=nurse", 1_000_000);
+    expect(readPendingSignIn(1_000_000 + 9 * 60_000)).toEqual({ at: 1_000_000, next: "/jobs?q=nurse", email: null, provider: true });
+    expect(readPendingSignIn(1_000_000 + 11 * 60_000), "a marker that can vouch for nobody in particular outlived ten minutes").toBeNull();
     for (const bad of ["//evil.example", "/\\evil.example", "https://evil.example/x", "javascript:alert(1)", "/a b"]) {
       setPendingSignIn(bad, 5);
       expect(readPendingSignIn(5)?.next, bad).toBe("/account");
@@ -256,7 +259,7 @@ describe("the pending-sign-in marker and the helpers beside it", () => {
   it("a marker that names the address asked for matches only that address", () => {
     setPendingSignIn("/jobs", 2_000, "Jane@Example.com");
     const p = readPendingSignIn(2_000);
-    expect(p).toEqual({ at: 2_000, next: "/jobs", email: "jane@example.com" });
+    expect(p).toEqual({ at: 2_000, next: "/jobs", email: "jane@example.com", provider: false });
     expect(pendingMatches(p, "jane@example.com")).toBe(true);
     expect(pendingMatches(p, "attacker@evil.example"), "a link for another address rode the marker").toBe(false);
     setPendingSignIn("/jobs", 3_000);

@@ -48,8 +48,17 @@ export const AUTH_SUPPORT_EMAIL = "resumeboostersupp@gmail.com";
 /** Seconds before "Resend" is offered for an emailed code. */
 export const RESEND_AFTER_SECONDS = 60;
 
-/** How long a sign-in this browser started stays valid for a returning link or provider. */
+/** How long a sign-in this browser started for a TYPED address stays valid for a returning link (a mail may wait). */
 export const PENDING_SIGN_IN_TTL_MS = 60 * 60 * 1000;
+
+/**
+ * How long a PROVIDER sign-in (Google) this browser started stays valid for
+ * its return. A provider marker cannot name the address, so any token pair
+ * that arrives under it is adopted with only the "Signed in as" banner to
+ * question it; a Google round trip takes seconds, not an hour (lead decision
+ * E, third fixer round).
+ */
+export const PROVIDER_PENDING_TTL_MS = 10 * 60 * 1000;
 
 /** The shortest password a new or reset password may be (the auth server's own minimum is the owner's setting). */
 export const MIN_PASSWORD_LENGTH = 8;

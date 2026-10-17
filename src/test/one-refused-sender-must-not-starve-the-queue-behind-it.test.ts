@@ -30,7 +30,7 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
 import { bootEmailOpsDb, migration, rows } from "./helpers/email-ops-db";
 
-// The service-role key itself: process-email-queue runs with verify_jwt = false (R1) and opens only to that key or the cron key.
+// The service-role key itself: process-email-queue opens to a gateway-verified service_role token, that key, or the cron key (R1).
 const SERVICE_JWT = "service_role_key_for_the_queue_harness_0123456789";
 const db = new FakeDb();
 const attempts: Array<Record<string, unknown>> = [];
@@ -75,7 +75,10 @@ const msg = (id: number, extra: Record<string, unknown> = {}) => ({
   msg_id: id, read_ct: 1,
   message: { message_id: `m-${id}`, to: `u${id}@example.com`, from: "Resume Booster <noreply@notify.resumebooster.work>", sender_domain: "notify.resumebooster.work", subject: "s", html: "h", label: "magiclink", queued_at: new Date().toISOString(), ...extra },
 });
-const run = () => handler(new Request("https://harness.supabase.co/functions/v1/process-email-queue", { method: "POST", headers: { authorization: `Bearer ${SERVICE_JWT}` } }));
+// A caller that names no queue drains sign-in mail only since R1: both queues are named here.
+const run = () => handler(new Request("https://harness.supabase.co/functions/v1/process-email-queue", {
+  method: "POST", headers: { authorization: `Bearer ${SERVICE_JWT}`, "content-type": "application/json" }, body: JSON.stringify({ queues: ["auth_emails", "transactional_emails"] }),
+}));
 const statuses = () => db.rows("email_send_log").map((r) => [r.message_id, r.status]);
 
 describe("L10-01: a 403 dead-letters that message and the run goes on", () => {

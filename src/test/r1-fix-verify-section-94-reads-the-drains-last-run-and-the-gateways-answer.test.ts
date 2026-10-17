@@ -2,19 +2,25 @@
 //
 // Node, not jsdom: this file runs verify section 94 in bash, with a stub curl.
 /**
- * R1 FIX (review major, decision 5; S12-179): VERIFY SECTION 94 READS THE
- * DRAIN'S LAST RUN AND THE GATEWAY'S ANSWER, NOT ONLY THAT A JOB EXISTS.
+ * R1 FIX (review major, decision 5; S12-179; lead decision B of the third
+ * fixer round): VERIFY SECTION 94 READS OUR DRAIN'S LAST RUN AND THE GATEWAY'S
+ * ANSWER, NOT ONLY THAT A JOB EXISTS.
  *
  * net.http_post only queues a request, so every run of the drain read
  * 'succeeded' even while each of its posts was refused, and section 94 printed
- * PASS on runs > 0 and failed = 0. The drain now posts no JWT (the function
- * runs with verify_jwt = false and checks the cron key itself) and fails its
- * own run when the drain refused a post. Section 94 here:
- *   - FAILs when no job exists, when a run failed, and when the LAST run did
- *     not succeed;
- *   - proves the gateway no longer asks for a JWT: a post with none must be
- *     refused 403 by the function's own check, naming the drain; a gateway 401
- *     is a FAIL that says what to deploy.
+ * PASS on runs > 0 and failed = 0. Our drain is now its own job,
+ * rb-auth-mail-drain (a job named process-email-queue is Lovable's and is only
+ * reported), it posts the vault bearer and the cron key through the gateway's
+ * JWT check, and fails its own run when a post of its own was refused.
+ * Section 94 here:
+ *   - FAILs when our job is missing, when a run failed, and when the LAST run
+ *     did not succeed; a Lovable job of the other name is INFO, never judged;
+ *   - proves the gateway still asks for a JWT: a post with none must be
+ *     refused 401 BY THE GATEWAY; a 403 naming the drain means verify_jwt is
+ *     off and the role claim the function reads is unverified, a FAIL that
+ *     says what to deploy;
+ *   - the publishable key is refused by the function's own check, 403 naming
+ *     the drain with cronKey false.
  */
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -32,7 +38,7 @@ const SECTION = readFileSync(resolve(ROOT, "scripts/verify-deploy.d/94-r1-mail.s
 const dirs: string[] = [];
 afterAll(() => { for (const d of dirs) { try { rmSync(d, { recursive: true, force: true }); } catch { /* best effort */ } } });
 
-type Cfg = { cron: unknown; noJwt: { status: number; body: string } };
+type Cfg = { cron: unknown; noJwt: { status: number; body: string }; anonKey?: { status: number; body: string } };
 const CURL = `#!/usr/bin/env node
 const fs=require("fs");const a=process.argv.slice(2);
 let url="",method="GET",out=null,w=null,dump=false;const hs=[];
@@ -55,7 +61,7 @@ else if(url.includes("get_cron_health"))body=JSON.stringify(cfg.cron);
 else if(url.includes("/rest/v1/rpc/"))body=JSON.stringify({code:"42501"});
 else if(url.includes("resend-webhook")){status=401;body="{}";}
 else if(url.includes("process-email-queue")){
-  if(hs.some((h)=>/^authorization:/i.test(h))){status=403;body=JSON.stringify({error:"Forbidden",refusedBy:"process-email-queue"});}
+  if(hs.some((h)=>/^authorization:/i.test(h))){const k=cfg.anonKey||{status:403,body:JSON.stringify({error:"Forbidden",refusedBy:"process-email-queue",cronKey:false})};status=k.status;body=k.body;}
   else{status=cfg.noJwt.status;body=cfg.noJwt.body;}
 }
 if(dump)process.stdout.write(head);
@@ -86,40 +92,56 @@ function run(cfg: Cfg) {
 const has = (lines: string[], status: "PASS" | "FAIL" | "INFO", re: RegExp) => lines.some((l) => l.startsWith(`${status}  `) && re.test(l));
 const show = (lines: string[]) => `\n${lines.join("\n")}`;
 
-const job = (o: Record<string, unknown> = {}) => [{ ch_jobname: "process-email-queue", ch_schedule: "10 seconds", ch_active: true, ch_runs: 360, ch_failed: 0, ch_last_status: "succeeded", ...o }];
-const REFUSED_HERE = { status: 403, body: JSON.stringify({ error: "Forbidden", refusedBy: "process-email-queue" }) };
+const job = (o: Record<string, unknown> = {}) => [{ ch_jobname: "rb-auth-mail-drain", ch_schedule: "10 seconds", ch_active: true, ch_runs: 360, ch_failed: 0, ch_last_status: "succeeded", ...o }];
+const GATEWAY_401 = { status: 401, body: JSON.stringify({ code: 401, message: "Missing authorization header" }) };
+const REFUSED_HERE = { status: 403, body: JSON.stringify({ error: "Forbidden", refusedBy: "process-email-queue", cronKey: false }) };
 
-describe("the drain job", () => {
+describe("our drain job", () => {
   it("PASSes a job whose last run succeeded with no failures (positive control)", () => {
-    const { lines } = run({ cron: job(), noJwt: REFUSED_HERE });
-    expect(has(lines, "PASS", /process-email-queue cron: .*last run succeeded/), show(lines)).toBe(true);
+    const { lines } = run({ cron: job(), noJwt: GATEWAY_401 });
+    expect(has(lines, "PASS", /rb-auth-mail-drain cron: .*last run succeeded/), show(lines)).toBe(true);
   });
 
   it("FAILs a job whose last run failed, though every earlier run succeeded", () => {
-    const { lines } = run({ cron: job({ ch_failed: 0, ch_last_status: "failed" }), noJwt: REFUSED_HERE });
-    expect(has(lines, "FAIL", /process-email-queue cron: .*last run failed/), show(lines)).toBe(true);
+    const { lines } = run({ cron: job({ ch_failed: 0, ch_last_status: "failed" }), noJwt: GATEWAY_401 });
+    expect(has(lines, "FAIL", /rb-auth-mail-drain cron: .*last run failed/), show(lines)).toBe(true);
   });
 
-  it("FAILs failed runs, and no job at all", () => {
-    expect(has(run({ cron: job({ ch_failed: 3 }), noJwt: REFUSED_HERE }).lines, "FAIL", /process-email-queue cron/)).toBe(true);
-    expect(has(run({ cron: [], noJwt: REFUSED_HERE }).lines, "FAIL", /no process-email-queue cron job/)).toBe(true);
+  it("FAILs failed runs, and no job of ours at all, even when Lovable's own job runs", () => {
+    expect(has(run({ cron: job({ ch_failed: 3 }), noJwt: GATEWAY_401 }).lines, "FAIL", /rb-auth-mail-drain cron/)).toBe(true);
+    const lovableOnly = run({ cron: [{ ch_jobname: "process-email-queue", ch_schedule: "5 seconds", ch_active: true, ch_runs: 700, ch_failed: 0, ch_last_status: "succeeded" }], noJwt: GATEWAY_401 }).lines;
+    expect(has(lovableOnly, "FAIL", /no rb-auth-mail-drain cron job/), show(lovableOnly)).toBe(true);
+    expect(has(lovableOnly, "INFO", /Lovable's own process-email-queue job: .*left as it is/), show(lovableOnly)).toBe(true);
+    expect(lovableOnly.some((l) => /^PASS .*process-email-queue cron/.test(l)), "Lovable's job was judged as ours").toBe(false);
   });
 });
 
-describe("the gateway's answer to a post with no JWT (the cron sends none)", () => {
-  it("PASSes the function's own 403 naming the drain, and sends that post with no Authorization header", () => {
-    const { lines, calls } = run({ cron: job(), noJwt: REFUSED_HERE });
-    expect(has(lines, "PASS", /a post with no JWT reaches the function \(verify_jwt off\)/), show(lines)).toBe(true);
+describe("the gateway's answer to a post with no JWT (ours and Lovable's both post the vault bearer)", () => {
+  it("PASSes the gateway's 401, and sends that post with no Authorization header", () => {
+    const { lines, calls } = run({ cron: job(), noJwt: GATEWAY_401 });
+    expect(has(lines, "PASS", /the gateway refuses a post with no JWT \(401, verify_jwt on\)/), show(lines)).toBe(true);
     expect(calls).toMatch(/POST https:\/\/p\.supabase\.co\/functions\/v1\/process-email-queue auth=false/);
   });
 
-  it("FAILs a gateway 401: verify_jwt is still on and every cron post would be refused unheard", () => {
-    const { lines } = run({ cron: job(), noJwt: { status: 401, body: JSON.stringify({ code: 401, message: "Missing authorization header" }) } });
-    expect(has(lines, "FAIL", /the gateway refused a post with no JWT \(401\): verify_jwt is still on/), show(lines)).toBe(true);
+  it("FAILs a 403 naming the drain: verify_jwt is off, so the role claim the function trusts is unverified", () => {
+    const { lines } = run({ cron: job(), noJwt: REFUSED_HERE });
+    expect(has(lines, "FAIL", /a post with no JWT reached the function \(403 from its own check\): verify_jwt is OFF/), show(lines)).toBe(true);
   });
 
-  it("FAILs a 403 that does not name the drain (someone else's refusal)", () => {
-    const { lines } = run({ cron: job(), noJwt: { status: 403, body: "{}" } });
-    expect(has(lines, "FAIL", /answered a post with no JWT with HTTP 403/), show(lines)).toBe(true);
+  it("FAILs any other answer", () => {
+    const { lines } = run({ cron: job(), noJwt: { status: 200, body: JSON.stringify({ processed: 0 }) } });
+    expect(has(lines, "FAIL", /answered a post with no JWT with HTTP 200/), show(lines)).toBe(true);
+  });
+});
+
+describe("the publishable key", () => {
+  it("PASSes a 403 naming the drain with cronKey false", () => {
+    const { lines } = run({ cron: job(), noJwt: GATEWAY_401 });
+    expect(has(lines, "PASS", /refuses the publishable key without the cron key \(403 naming the drain, cronKey false/), show(lines)).toBe(true);
+  });
+
+  it("FAILs a refusal that does not say whether a cron key was offered (the old build's body): the cron could not tell its own refusals apart", () => {
+    const { lines } = run({ cron: job(), noJwt: GATEWAY_401, anonKey: { status: 403, body: JSON.stringify({ error: "Forbidden", refusedBy: "process-email-queue" }) } });
+    expect(has(lines, "FAIL", /answered the publishable key with HTTP 403/), show(lines)).toBe(true);
   });
 });

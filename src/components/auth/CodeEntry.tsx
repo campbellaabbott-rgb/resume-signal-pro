@@ -69,9 +69,14 @@ export function CodeEntry({ purpose, busy = false, error = null, onSubmit, onRes
   };
 
   const shownError = localError ?? error;
+  // The mail may carry a link, a code, or both: until notify.resumebooster.work
+  // is verified it comes from Lovable's default sender, whose template prints
+  // only a link; ours prints the code above the link. So the copy promises
+  // "a link (or a 6-digit code)" and either one works here: the code in this
+  // field, the link through the confirm page (lead decision C).
   const onItsWay = purpose === "recovery"
-    ? t("auth.reset.onItsWay", "If an account exists for this address, a reset code is on its way. It usually arrives within a minute.")
-    : t("auth.code.onItsWay", "If this address can sign in, a code is on its way. It usually arrives within a minute.");
+    ? t("auth.reset.onItsWay", "If an account exists for this address, check your email for a link (or a 6-digit code). Either one lets you choose a new password. It usually arrives within a minute.")
+    : t("auth.code.onItsWay", "If this address can sign in, check your email for a link (or a 6-digit code). Either one signs you in. It usually arrives within a minute.");
 
   return (
     <form onSubmit={submit} noValidate>

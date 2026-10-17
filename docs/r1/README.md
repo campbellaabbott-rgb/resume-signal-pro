@@ -12,10 +12,18 @@ It is built from main (e372e512) and has its own reservation in
 - deployOrder 1.5 (after the wave 3 closeout, before company profiles)
 
 Three builders worked on it in parallel, r1/integration merged their branches,
-and a fixer round (r1-fix2, pushed to r1/integration) applied the review's
-confirmed findings and the 14 items of the independent S12 sweep. r1/flags is
-folded in: Google sign-in and password recovery ship in the FIRST publish (see
-"Switches" and "Deploy order").
+a fixer round (r1-fix2) applied the review's confirmed findings and the 14
+items of the independent S12 sweep, and a third round (r1-fix3, lead decisions
+A-H of 2026-10-12) applied the recheck: section 96 now FAILs on a missing
+migration behind a serving build and section 95 gates on the guard being
+READY (A); the drain is our own job beside Lovable's, behind the gateway's
+JWT check (B); the reset and code copy promise "a link (or a 6-digit code)"
+(C); a confirmation link survives an outage (D); the Google marker is spent,
+short-lived and never silent (E); a refused reset has a way out (F); the
+checkout's "Have Pro?" question keys on a session that ended, worded through
+i18n (G); and the email-change notice reads the current address from the user
+record (H). r1/flags is folded in: Google sign-in and password recovery ship
+in the FIRST publish (see "Switches" and "Deploy order").
 
 | branch | what it owns |
 |---|---|
@@ -46,7 +54,25 @@ folded in: Google sign-in and password recovery ship in the FIRST publish (see
 - Modes go through `/auth?mode=continue|reset|confirm|return`. No route was
   added and App.tsx is unchanged.
 - Notices are written in the reader's language even when they were set before
-  the lazily loaded language arrived.
+  the lazily loaded language arrived; the notices raised outside `/auth` (a
+  link's error on another page, the guard's "password cleared", the
+  checkout's "Have Pro? Sign in first") load the auth strings before they are
+  worded.
+- The reset and code screens say "check your email for a link (or a 6-digit
+  code)", and either one works: until notify.resumebooster.work is verified
+  the mail comes from Lovable's default sender, whose template carries only a
+  link; ours prints the code above the link (lead decision C).
+- A reset the guard refuses for a reason no retry can pass (the account
+  changed since the sign-in, no email identity) says so and offers "Send a
+  new reset link" and "Email support", with the way back; only a guard that
+  could not answer (503) offers Try again (F).
+
+**A confirmation link during an outage (D)**
+
+- The link's hash stays in the stash until the auth server answers. When it
+  cannot be reached (a network failure, a timeout, a 5xx), the page says so
+  and offers Try again in the same tab; the link is spent only by a success
+  or a definite refusal (expired, already used).
 
 **Links in mail and sessions in URLs (login-CSRF protection)**
 
@@ -68,8 +94,12 @@ folded in: Google sign-in and password recovery ship in the FIRST publish (see
 - "Not me" signs nothing in, ends that session on the auth server, and touches
   nothing of the visitor's (their builder draft, scans and reports stay).
 - A link adopted under a marker that could not name the address (a provider
-  press) shows a "Signed in as <address>. Not you? Sign out" banner; its
-  sign-out ends that session on this device only and keeps the visitor's work.
+  press) ALWAYS shows a "Signed in as <address>. Not you? Sign out" banner,
+  whatever link type the URL carried or did not carry; its sign-out ends that
+  session on this device only and keeps the visitor's work. A provider marker
+  lives ten minutes (a typed-address marker an hour), and is spent by a
+  failed or cancelled return, by "Not me", and by `/auth` opening any other
+  way (Back from Google), so no later crafted token pair rides it (E).
 - A link's error is shown once: on /auth inline, elsewhere as a notice, never
   again on a later visit.
 
@@ -126,10 +156,14 @@ folded in: Google sign-in and password recovery ship in the FIRST publish (see
 
 - A success link shows the buyer's address masked (`j***@gmail.com`) unless
   the signed-in caller has proven that mailbox.
-- A signed-out checkout sends no address. When this browser held a session
-  that ended without a deliberate sign-out, the first buy press in the tab
-  says "Have Pro? Sign in first" and starts nothing; the next press buys as a
-  guest (S12-087).
+- A signed-out checkout sends no address. When this browser held a SIGNED-IN
+  session that ended without a deliberate sign-out (AuthContext writes
+  `rb_session_ended_at` on that event alone, and clears it on the next
+  sign-in and on a sign-out), the first buy press in the tab says "Have Pro?
+  Sign in first" and starts nothing; the next press buys as a guest
+  (S12-087). The last address is not the key: EmailReportCapture writes it
+  for anyone who asks for their report, and those visitors were being told
+  their session had ended (G).
 
 **Auth mail**
 
@@ -139,8 +173,14 @@ folded in: Google sign-in and password recovery ship in the FIRST publish (see
   redirect (`&lng=de`) and the hook reads it back (en, en-GB, de, es, fr, hi,
   nl, pt, tl).
 - An email change links only to the address GoTrue issued the token for; the
-  other address gets a notice with no link.
-- A queued sign-in mail is drained every 10 seconds (see "The drain").
+  other address gets a notice with no link. When the payload names only the
+  new address (no `old_email`), the account's current address is read from
+  the user record by the payload's user id (`user_id`, `user.id` or `id`)
+  with the service role, so it still gets its notice; a lookup that fails is
+  logged and the link still goes out (H; m9 is live: Account.tsx already
+  offers "Change email").
+- A queued sign-in mail is drained every 10 seconds by our own job (see "The
+  drain").
 - A mail Lovable refuses (401/403, or 3 transient failures) goes out through
   Resend from `account@resumebooster.work`. A permanent Resend refusal
   dead-letters it naming both refusals; a Resend 429, 5xx or timeout leaves it
@@ -148,30 +188,57 @@ folded in: Google sign-in and password recovery ship in the FIRST publish (see
 - resend-webhook records bounces and complaints, and suppresses those
   addresses.
 
-## The drain (decision 5)
+## The drain (lead decision B, third fixer round)
 
-- process-email-queue runs with **`verify_jwt = false`** (one
-  `supabase/config.toml` line, a declared critical-path share) and checks its
-  own caller: the service-role key itself (constant-time) or the vault cron key
-  in `x-email-cron`. A token's claims open nothing. Every refusal answers
-  `{"error":"Forbidden","refusedBy":"process-email-queue"}`.
-- The cron job (20261014100000) posts only the cron key, with **no bearer**,
-  so no missing or stale vault bearer (`email_queue_service_role_key`, which
-  no migration creates) can have the gateway refuse it unheard. This was the
-  option that cannot silently 401.
-- `net.http_post` reads every run as succeeded whatever the answer, so the
-  command reads pg_net's answers back: a refusal naming the drain in the last
-  two minutes fails the run instead of posting again, and so does a missing
-  cron key. Section 94 FAILs on no job, on failed runs, and on a last run that
-  did not succeed, and proves the gateway lets a post with no JWT through to
-  the function's own 403.
-- The cron names `{"queues":["auth_emails"]}`: **R1 drains sign-in mail
-  only.** The fix-plan drip in transactional_emails stays where it is until
-  CP-G gives it its text part, marketing purpose, seller footer and the apex
-  sender (review minor: the drain would have restarted it through Lovable,
-  labelled transactional, from the domain sign-in mail depends on).
-- Three wave 2/3 queue tests now post with the real service-role key, since a
-  forged `role: service_role` claim no longer opens the drain.
+**Lovable's own mail path is never touched.** Its email setup made, outside
+our migrations, a trigger and a job that drain the queue under the name
+`process-email-queue`, a dispatcher (`email_queue_dispatch()`, listed in the
+live types) and the vault secret `email_queue_service_role_key`. The second
+fixer round had assumed it was the only caller and the only writer of that
+job name; it is neither, so:
+
+- process-email-queue is back behind the gateway's JWT check
+  (**`verify_jwt = true`**, as before R1; the config.toml line R1 had flipped
+  is restored). Lovable's dispatcher posts the vault bearer through that
+  check and must keep working.
+- The function's own check is the second door: a JWT whose role claim is
+  `service_role` (the gateway verified its signature, so the claim is the
+  platform's word and the bearer need not be byte-for-byte the function's
+  own key), the service-role key itself, or the vault cron key in
+  `x-email-cron`. Every refusal answers
+  `{"error":"Forbidden","refusedBy":"process-email-queue","cronKey":<bool>}`,
+  the flag saying whether a cron key was offered: only our posts offer one.
+- A caller that names no queue drains **sign-in mail only** (Lovable's
+  dispatcher names none). The fix-plan drip in transactional_emails stays
+  where it is until CP-G gives it its text part, marketing purpose, seller
+  footer and the apex sender; a caller that names that queue gets it.
+- Our cron job is **`rb-auth-mail-drain`** (20261014100000): it never
+  schedules, alters or unschedules a job named `process-email-queue` (the
+  file only reads that name to report it, and its self-check fails if a job
+  of that name carries a marker of ours). It posts the vault bearer
+  (`email_queue_service_role_key`) AND the cron key (`email_cron_key`), names
+  `{"queues":["auth_emails"]}`, and RAISEs, posting nothing, when either
+  vault secret is missing: a failed run, visible in `get_cron_health` and
+  section 94, instead of a post the gateway refuses unheard.
+- `net.http_post` reads every run as succeeded whatever the answer, and
+  `net._http_response` records no URL and no caller, so the command reads
+  the answers back by their body: a refusal naming the drain **with cronKey
+  true** in the last two minutes fails the run (only our posts offer the
+  key), and so does the gateway's own 401 (`"code":401`: a bearer it does not
+  accept, the same vault bearer every cron sends). A refusal of another
+  caller's post never stops ours.
+- **One message, one send, though two drains run.** `read_email_batch` is
+  `pgmq.read` (FOR UPDATE SKIP LOCKED, each message hidden 30 s), so the
+  second drain reads nothing of the first's batch; a message back in view
+  after a crash between send and delete is skipped and deleted when its
+  'sent' row exists; and both providers are handed the payload's idempotency
+  key. The queue test runs two handler calls against a pgmq-like stand-in.
+- Section 94 judges OUR job's last run and failures, reports a
+  `process-email-queue` job as Lovable's (never as ours), and PASSes only
+  the gateway's 401 to a post with no JWT (a 403 naming the drain means
+  verify_jwt is off and the role claim is unverified: a FAIL that says what
+  to deploy); the publishable key must be refused 403 with cronKey false.
+- Three wave 2/3 queue tests name the queues they drain.
 
 **Accepted deviation: delivery stamps.** resend-webhook stamps `delivered` and
 `delayed` on the sent row's metadata instead of writing rows in those states.
@@ -212,27 +279,39 @@ rule's text names the frontend gate:
      Their behaviour is unchanged; each imports `_shared/mailbox-proof.ts`,
      which R1 changed (added exports only), and a build string may not name
      two versions of a function's code.
-3. **Run `bash scripts/verify-deploy.sh` and read section 96. It must PASS**
-   (auth-signed-in and verify-product-purchase answering 2026-10-14.1, the CORS
-   origin, the refusals, the readers and tables closed) **before the frontend
-   is published.** The first publish turns on Google and recovery, and both
-   prove a mailbox only the guard acts on.
+3. **Run `bash scripts/verify-deploy.sh` and read section 96. It must PASS IN
+   FULL** (auth-signed-in and verify-product-purchase answering 2026-10-14.1,
+   the CORS origin, the refusals, AND the three readers and two tables
+   refused for permission, 42501) **before the frontend is published.** Once
+   auth-signed-in serves its R1 build, a reader that does not exist
+   (PGRST202) or a table that does not exist (PGRST205, 42P01) is a FAIL,
+   never an INFO: Lovable's staged runner has edited failing migrations
+   before, and "functions deployed, migration missing" leaves every guard
+   call at 503 and the reset without its password form (lead decision A).
+   The first publish turns on Google and recovery, and both prove a mailbox
+   only the guard acts on.
 4. **Migration 20261014100000** (mail drain), once section 94 shows
    process-email-queue answering 2026-10-14.1 AND its post-with-no-JWT line
-   PASSes (the gateway lets the cron's JWT-less post through). An older build
-   or a gateway still asking for a JWT would refuse the drain's posts in words
-   that do not name it.
+   PASSes (the gateway's 401: verify_jwt is on, so the role claim the
+   function reads is the platform's word). Before applying it, read
+   Lovable's own mail path once (Owner steps: `email_queue_dispatch()` and
+   the queue triggers); the file never touches it.
 5. **Publish the frontend.** Section 95 then FAILs any live sign-in page that
-   offers Google or "Forgot password?" while auth-signed-in does not serve its
-   R1 build, so a publish ahead of step 3 is caught.
+   offers Google or "Forgot password?" while the account guard is not READY
+   (the R1 build of auth-signed-in over migration 20261014110000, read as
+   anon the way section 96 reads it), so a publish ahead of step 3, or over a
+   migration the staged runner dropped, is caught.
 6. **Run `bash scripts/verify-deploy.sh` again** and read 94, 95 and 96.
-   - 94: the three mail builds, DNS, the drain job (last run succeeded, no
-     failures), the gateway's answer, the refusals.
+   - 94: the three mail builds, DNS, OUR drain job rb-auth-mail-drain (last
+     run succeeded, no failures; a process-email-queue job is reported as
+     Lovable's), the gateway's 401 to a post with no JWT, the publishable
+     key's 403 with cronKey false.
    - 95: the deployed bundle's flags (`google=on recovery=on code=off
-     apple=off`), the controls against the guard's build, the stash script
-     first in `<head>`, and no magic-link copy.
+     apple=off`), the controls against the guard being ready, the stash
+     script first in `<head>`, and no magic-link copy.
    - 96: the auth-signed-in and verify-product-purchase builds, the CORS
-     origin, 401 without a session, the readers and tables closed.
+     origin, 401 without a session, the readers and tables closed (42501,
+     each table read selecting a real column).
 
    The probes are read-only. The POSTs (two to auth-signed-in, two to
    process-email-queue, one to resend-webhook) are refused before anything is
@@ -273,8 +352,19 @@ Before the deploy:
 - **Lovable Emails.** More > Cloud > Emails > Manage domains >
   notify.resumebooster.work > Verify domain. Until it reads Verified, auth
   mail comes from Lovable's default sender (in English: the language and the
-  `next` ride only our template's link). The confirm page handles both kinds
-  of link.
+  `next` ride only our template's link), and GoTrue's default templates
+  carry ONLY a link, no code. The pages say "a link (or a 6-digit code)" and
+  take either; the confirm page handles both kinds of link.
+- **Lovable's own mail path, read once before 20261014100000 is applied**
+  (More > Cloud > SQL editor, read-only):
+  `select pg_get_functiondef('public.email_queue_dispatch()'::regprocedure);`
+  and `select tgname, tgrelid::regclass, pg_get_triggerdef(oid) from
+  pg_trigger where tgrelid in ('pgmq.q_auth_emails'::regclass,
+  'pgmq.q_transactional_emails'::regclass);`. Our drain never schedules,
+  alters or unschedules Lovable's `process-email-queue` job, and it posts the
+  vault bearer that dispatcher uses; tell us if the dispatcher posts
+  something other than `email_queue_service_role_key` as its bearer, or names
+  queues, so section 94's reading of it can be checked.
 - **Auth settings** (More > Cloud > Users > Auth settings).
   - Site URL: `https://resumebooster.work`.
   - Redirect URLs: `https://resumebooster.work/**` and
@@ -332,13 +422,20 @@ and the owner steps, or have the guard skip an account's own first sign-up
 - Whether Lovable's Google broker keeps the path and query of `redirect_uri`.
   If it drops them, the return lands on `/`, where the session is still
   resolved and adopted under the marker.
-- Whether Lovable honours `verify_jwt = false` for process-email-queue (it
-  does for resend-webhook and the other false entries; section 94's
-  post-with-no-JWT line proves it).
-- Whether Lovable's out-of-migration queue trigger posts to
-  process-email-queue, and with which key: a service-role JWT that is not
-  byte-for-byte `SUPABASE_SERVICE_ROLE_KEY` is now refused (no gateway checks
-  its signature). Our cron does not depend on it.
+- What Lovable's dispatcher (`email_queue_dispatch()`) and queue triggers
+  post, and with which bearer (the owner step above reads them). Our drain
+  runs beside them under its own name and depends on nothing of theirs
+  except the vault bearer they created; a bearer the gateway refuses shows
+  up as our job's failed run (it reads the gateway's 401 back), and a
+  dispatcher that names no queue now drains sign-in mail only.
+- The exact body of the gateway's 401 (`{"code":401,...}`): the drain's
+  read-back of it is best effort, keyed on that shape. The owner's live code
+  test (one sign-in mail arriving) is the proof that the drain works end to
+  end; `get_cron_health` shows the runs.
+- Which key Lovable's email_change payload carries the user id under
+  (`user_id`, `user.id` or `id` are read); the hook logs the payload's key
+  set, and a payload with none and no `old_email` sends the link and no
+  notice.
 
 **Gaps and open decisions**
 
@@ -346,9 +443,6 @@ and the owner steps, or have the guard skip an account's own first sign-up
   in (D8, open): the page asks once, it sends no address.
 - `use-pro-subscription` still falls back to a stored address for a
   signed-out visitor's Pro status (pre-existing, CP-H; changing it widens D8).
-- The email-change notice can miss the account's current address when
-  Lovable's payload carries no `old_email` (no UI changes an email yet; fix
-  before one ships).
 - A password set in Account after a guard call that failed before any
   rotation can still be cleared by the re-ask (review minor; the reset awaits
   the guard, Account.tsx is not R1's).
