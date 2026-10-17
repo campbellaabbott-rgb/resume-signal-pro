@@ -21,7 +21,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+import { FakeDb, loadEdgeHandler, type EdgeHandler, fakeLeaseRpcs } from "./helpers/edge-harness";
 
 vi.setConfig({ testTimeout: 30_000, hookTimeout: 120_000 });
 
@@ -80,6 +80,8 @@ beforeEach(() => {
   generatorStatus = 200;
   generatorGate = Promise.resolve();
   db.rpcs = {
+    // The lease a maker takes before it generates (20261011144000).
+    ...fakeLeaseRpcs(db),
     log_webhook_event: () => ({ data: null, error: null }),
     get_temp_resume: () => ({ data: [{ resume_text: "A".repeat(400), job_description_text: "Senior engineer posting" }], error: null }),
     save_purchased_content: (a) => { db.rows("purchased_content").push({ stripe_session_id: a.p_stripe_session_id, generated_content: a.p_generated_content }); return { data: "pc", error: null }; },
