@@ -317,8 +317,9 @@ rule's text names the frontend gate:
    tables and the three auth readers it creates, and verify-product-purchase
    reads the proof table.
 2. **Functions**: auth-email-hook, process-email-queue (with `verify_jwt =
-   false` from `supabase/config.toml`), resend-webhook, auth-signed-in,
-   verify-product-purchase. Each is built 2026-10-14.1 and sends it in
+   true` from `supabase/config.toml`: behind the gateway's JWT check, as
+   Lovable's dispatcher needs; the function's own `callerMayDrain` is the
+   second door), resend-webhook, auth-signed-in, verify-product-purchase. Each is built 2026-10-14.1 and sends it in
    `x-fn-build`.
    - The ledger also lists create-portal-session, delete-account,
      free-keyword-scan, get-account-data and scan-credits at 2026-10-14.1.
@@ -339,7 +340,8 @@ rule's text names the frontend gate:
 4. **Migration 20261014100000** (mail drain), once section 94 shows
    process-email-queue answering 2026-10-14.1 AND its post-with-no-JWT line
    PASSes (the gateway's 401: verify_jwt is on, so the role claim the
-   function reads is the platform's word). Before applying it, read
+   function reads is the platform's word; and its body carries the
+   `UNAUTHORIZED_` code the drain reads back). Before applying it, read
    Lovable's own mail path once (Owner steps: `email_queue_dispatch()` and
    the queue triggers); the file never touches it.
 5. **Publish the frontend.** Section 95 then FAILs any live sign-in page that
@@ -350,8 +352,8 @@ rule's text names the frontend gate:
 6. **Run `bash scripts/verify-deploy.sh` again** and read 94, 95 and 96.
    - 94: the three mail builds, DNS, OUR drain job rb-auth-mail-drain (last
      run succeeded, no failures; a process-email-queue job is reported as
-     Lovable's), the gateway's 401 to a post with no JWT, the publishable
-     key's 403 with cronKey false.
+     Lovable's), the gateway's 401 to a post with no JWT in the body the
+     drain reads back, the publishable key's 403 with cronKey false.
    - 95: the deployed bundle's flags (`google=on recovery=on code=off
      apple=off`), the controls against the guard being ready, the stash
      script first in `<head>`, and no magic-link copy.
@@ -487,7 +489,15 @@ and the owner steps, or have the guard skip an account's own first sign-up
 **Gaps and open decisions**
 
 - A signed-out Pro subscriber is recognised before checkout only by signing
-  in (D8, open): the page asks once, it sends no address.
+  in (D8, open): the page asks once, it sends no address. The question goes
+  to any browser a member signed in on, Pro or not (without a session the
+  page cannot tell which), so a free member answers it with one more press;
+  a session turned away with "Not you?" also leaves the mark (asking a
+  non-member once costs a press, not asking a member costs a charge that is
+  never refunded).
+- A token pair the auth server could not be asked about, on a page other
+  than `/auth` (a link whose redirect lands elsewhere), is kept in the stash
+  with no message there; the next load of the page asks again.
 - `use-pro-subscription` still falls back to a stored address for a
   signed-out visitor's Pro status (pre-existing, CP-H; changing it widens D8).
 - A password set in Account after a guard call that failed before any
