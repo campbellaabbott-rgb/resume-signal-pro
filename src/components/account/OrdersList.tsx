@@ -8,13 +8,17 @@
  * A one-off opens with the same link its purchase mail carries
  * (_shared/purchase-links.ts, one definition for both). Receipt asks
  * account-order for the Stripe receipt of an order this account owns; Email
- * it again sends a saved copy to the order's own address, three a day.
+ * it again sends a saved copy to the order's own address, three a day. Report
+ * a problem opens a mail to support naming the product, the date and the
+ * order's last eight characters: never the whole session id, which opens the
+ * purchase for whoever holds it.
  */
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { purchaseLinkFor } from "../../../supabase/functions/_shared/purchase-links";
+import { AUTH_SUPPORT_EMAIL } from "@/config/auth-providers";
 
 export type AccountOrder = {
   id: string;
@@ -46,6 +50,18 @@ export function orderPath(o: Pick<AccountOrder, "productType" | "sessionId">): s
   } catch {
     return null;
   }
+}
+
+/**
+ * A mail to support about one order. It names the product, the date and a
+ * reference of the order's last eight characters, enough for support to find
+ * it, and never the whole session id.
+ */
+export function reportProblemHref(o: Pick<AccountOrder, "id" | "sessionId" | "product" | "date">, subject: string): string {
+  const ref = String(o.sessionId ?? o.id).slice(-8);
+  const day = Number.isFinite(Date.parse(o.date)) ? new Date(o.date).toISOString().slice(0, 10) : "";
+  const line = [subject, o.product, day, ref].filter(Boolean).join(" · ");
+  return `mailto:${AUTH_SUPPORT_EMAIL}?subject=${encodeURIComponent(line)}`;
 }
 
 function money(cents: number | null, currency: string | null): string | null {
@@ -114,6 +130,11 @@ export function OrdersList({ orders }: { orders: AccountOrder[] }) {
                 <button type="button" disabled={busy !== null} onClick={() => void act(o, "receipt")} className="text-primary hover:underline disabled:opacity-50">
                   {t("orders.receipt", "Receipt")}
                 </button>
+              )}
+              {o.status !== "included" && (
+                <a href={reportProblemHref(o, t("orders.reportSubject", "A problem with my order"))} className="text-muted-foreground hover:text-foreground hover:underline" data-report-problem>
+                  {t("orders.reportProblem", "Report a problem")}
+                </a>
               )}
             </div>
           </li>

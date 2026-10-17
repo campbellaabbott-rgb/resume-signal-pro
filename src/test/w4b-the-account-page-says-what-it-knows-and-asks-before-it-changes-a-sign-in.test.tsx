@@ -91,6 +91,24 @@ describe("S12-002: the purchases card names no control that is not there", () =>
     expect(document.querySelector('[data-order="grant:g1"] [data-status]')!.textContent).toBe("Included with Pro");
   });
 
+  it("each bought order offers Report a problem: a mail to support naming the product, the day and the last eight characters, never the whole session id", () => {
+    page(<CreditsAndPurchases fetching={false} email="m@example.com" account={{
+      credits: 0, purchases: [], passes: [], mailboxProven: true,
+      orders: [
+        { id: "cs_live_a1b2c3d4e5f6g7h8", sessionId: "cs_live_a1b2c3d4e5f6g7h8", product: "Full Resume Analysis", productType: "full_analysis", date: "2026-10-01T10:00:00Z", status: "failed", amountCents: 500, currency: "usd" },
+        { id: "grant:g1", sessionId: null, product: "Full Resume Analysis", productType: "full_analysis", date: "2026-10-03T10:00:00Z", status: "included", amountCents: 0, currency: null },
+      ],
+    }} />);
+    const link = document.querySelector('[data-order="cs_live_a1b2c3d4e5f6g7h8"] [data-report-problem]') as HTMLAnchorElement;
+    expect(link.textContent).toBe("Report a problem");
+    const href = link.getAttribute("href")!;
+    expect(href.startsWith("mailto:")).toBe(true);
+    const subject = decodeURIComponent(href.split("subject=")[1]);
+    expect(subject).toBe("A problem with my order · Full Resume Analysis · 2026-10-01 · e5f6g7h8");
+    expect(href).not.toContain("cs_live_a1b2c3d4e5f6g7h8");
+    expect(document.querySelector('[data-order="grant:g1"] [data-report-problem]')).toBeNull();
+  });
+
   it("scan packs are not sold here any more", () => {
     page(<CreditsAndPurchases fetching={false} email="m@example.com" account={{ credits: 0, purchases: [], passes: [], orders: [], mailboxProven: true }} />);
     expect(screen.queryByRole("button", { name: /get more credits/i })).toBeNull();
