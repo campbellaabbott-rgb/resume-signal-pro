@@ -1149,6 +1149,13 @@
       "when": 1792266964458,
       "tag": "0163_a_mailbox_is_proven_by_the_code_it_received_and_an_older_password_does_not_survive_it",
       "breakpoints": true
+    },
+    {
+      "idx": 164,
+      "version": "7",
+      "when": 1792266980927,
+      "tag": "0164_the_disk_is_forty_gb_as_lovable_reads_it",
+      "breakpoints": true
     }
   ]
 }
