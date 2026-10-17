@@ -229,4 +229,15 @@ describe("the account tracker does not offer the agent on a saved row", () => {
     expect(page).toMatch(/\{user && APPLY_AGENT_ON && <div className="mt-6" id="apply-profile">/);
     expect(page).toMatch(/from "\.\.\/\.\.\/supabase\/functions\/_shared\/apply-agent-switch"/);
   });
+
+  it("no link into the retired agent: Open the apply agent and the seeded agent search show only while it is switched on", () => {
+    expect(APPLY_AGENT_ON).toBe(false);
+    const page = read("src/pages/Account.tsx").replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
+    // every link to the agent's page sits behind the switch: these two, and
+    // the saved row's agent-can-apply link held by the test above
+    const links = [...page.matchAll(/to=\{?[`"]\/agent[?`"]/g)];
+    expect(links.length).toBe(3);
+    expect(page).toMatch(/\{user && APPLY_AGENT_ON && \(\s*<Link\s+to="\/agent"/);
+    expect(page).toMatch(/return APPLY_AGENT_ON && savedRoles\.length >= 2 \? \(\s*<Link\s+to=\{`\/agent\?seedTitles=/);
+  });
 });

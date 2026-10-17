@@ -1100,8 +1100,9 @@ export default function Account() {
         <div id="agent" className="scroll-mt-28" />
         {/* The agent now has its own page. This stays — deep links and the
             account nav both point at #agent — but the full surface, and the
-            only mobile-shaped one, is /agent. */}
-        {user && (
+            only mobile-shaped one, is /agent. While the agent is switched off
+            (retired 2026-10-11) the page offers no way into it. */}
+        {user && APPLY_AGENT_ON && (
           <Link
             to="/agent"
             className="mb-4 flex items-center justify-between rounded-xl border border-border bg-muted/30 p-4 transition-colors hover:bg-muted/60"
@@ -1373,7 +1374,7 @@ export default function Account() {
                 applications.filter((a) => a.status === "saved" && a.role?.trim())
                   .map((a) => toMandateField([a.role as string])).filter(Boolean),
               )].slice(0, 4);
-              return savedRoles.length >= 2 ? (
+              return APPLY_AGENT_ON && savedRoles.length >= 2 ? (
                 <Link
                   to={`/agent?seedTitles=${encodeURIComponent(savedRoles.join("|"))}`}
                   className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline mb-3"
