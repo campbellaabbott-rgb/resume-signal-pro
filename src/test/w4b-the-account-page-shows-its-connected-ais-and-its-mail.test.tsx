@@ -37,6 +37,7 @@ vi.mock("@/integrations/supabase/client", () => ({
 
 import { AccountSettingsCards } from "@/components/account/ConnectedAIsCard";
 import { AccountNav } from "@/components/account/AccountNav";
+import { MAILBOX_PROOF_LIVE } from "@/components/account/CreditsAndPurchases";
 
 const KEY = { id: "11111111-1111-4111-8111-111111111111", prefix: "rb_live_ab12cd34", name: "Connected agent", createdAt: "2026-10-10T09:00:00Z", lastUsedAt: null };
 let state: Settings;
@@ -85,6 +86,17 @@ describe("Email preferences", () => {
     mount();
     await waitFor(() => expect(document.querySelector("[data-mail-unproven]")).not.toBeNull());
     expect(document.querySelector("[data-pulse]")).toBeNull();
+  });
+
+  it("the unproven note names no sign-in that is switched off (no code, no Google while their switches are off)", async () => {
+    state = { ...state, mail: null, mailboxProven: false };
+    mount();
+    await waitFor(() => expect(document.querySelector("[data-mail-unproven]")).not.toBeNull());
+    const note = document.querySelector("[data-mail-unproven]")!.textContent ?? "";
+    expect(MAILBOX_PROOF_LIVE).toBe(false);
+    expect(note).not.toMatch(/\bcode\b|google|apple/i);
+    expect(note).toMatch(/once this page can check that the address is yours/);
+    expect(note).toMatch(/unsubscribe link/);
   });
 });
 

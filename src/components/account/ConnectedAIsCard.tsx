@@ -23,6 +23,7 @@ import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { Bot, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { MAILBOX_PROOF_LIVE } from "@/components/account/CreditsAndPurchases";
 
 export type Connector = { id: string; prefix: string; name: string; createdAt: string; lastUsedAt: string | null };
 export type PulseRow = { industry: string | null; state: "subscribed" | "awaiting_confirmation" | "off" };
@@ -97,7 +98,11 @@ export function EmailPreferencesCard({ mail, mailboxProven, busy, onPulseOff }: 
       </div>
       {!mailboxProven ? (
         <p className="text-xs text-muted-foreground" data-mail-unproven>
-          {t("accountMail.unproven", "Sign in with an emailed code once to see the mailing lists under your address here. Every mail we send also carries its own unsubscribe link.")}
+          {/* Names only a sign-in that is live (S12-002's lesson): while no
+              proving option shows on /auth, it says so instead. */}
+          {MAILBOX_PROOF_LIVE
+            ? t("accountMail.unprovenLive", "Sign out, then sign back in with an option on the sign-in page that emails you or that your provider verifies, to see the mailing lists under your address here. Every mail we send also carries its own unsubscribe link.")
+            : t("accountMail.unprovenNotYet", "The mailing lists under your address show here once this page can check that the address is yours. Until then, every mail we send carries its own unsubscribe link.")}
         </p>
       ) : (
         <>
