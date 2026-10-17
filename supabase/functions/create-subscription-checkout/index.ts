@@ -39,7 +39,7 @@ import { checkoutContextOf, recordCheckoutStart } from "../_shared/checkout-star
 import { checkoutLanguageOf, checkoutOrigin, euConsentAnswer, euConsentRefusal, policyMetadata, renewalTerms, sessionPolicy } from "../_shared/checkout-policy.ts";
 import { ipinfoLookup, territoryAnswer, territoryRefusal } from "../_shared/sales-territory.ts";
 import { reusableCustomer } from "../_shared/customer-ownership.ts";
-import { recordCheckoutBuyer } from "../_shared/checkout-buyer.ts";
+import { recordCheckoutBuyer, refusedCallerBody, websiteTokenRefusal } from "../_shared/checkout-buyer.ts";
 import { PRO_FIRST_MONTH_COMMISSION_CENTS, PRO_FIRST_MONTH_MARKER } from "../_shared/affiliate-commission.ts";
 
 // Provable from outside without a purchase: every response, the CORS
@@ -49,7 +49,9 @@ import { PRO_FIRST_MONTH_COMMISSION_CENTS, PRO_FIRST_MONTH_MARKER } from "../_sh
 // existing Stripe customer is reused only when this account provably owns it
 // (S12-099); Pro's Stripe description says what Pro is since the product line
 // (no cut product named); a referral earns the flat first-month commission;
-// the account is written to checkout_buyers; the billing address is collected.
+// the account is written to checkout_buyers; the billing address is collected;
+// a connected app's token, or one issued for another audience, is refused
+// with a 401 (critical-path CP-D).
 const FN_BUILD = "create-subscription-checkout.2026-10-11.23";
 
 /** What Stripe's page and receipts say Pro is: the Pro card's lines (src/config/pro-perks.ts), in one sentence. */
@@ -86,6 +88,10 @@ serve(async (req) => {
     });
     if (allowed === false) return json({ error: "Too many requests. Please try again later." }, 429);
 
+    // A connected app's token (or one issued for another audience) is not
+    // the person on the website, and a plan it bought would be theirs.
+    const notWebsite = websiteTokenRefusal(req.headers);
+    if (notWebsite) return json(refusedCallerBody(notWebsite), 401);
     const buyer = await signedInUser(supabase.auth, req.headers, Deno.env.get("SUPABASE_ANON_KEY") ?? "");
     const email = buyer?.email ?? null;
     if (!buyer?.id || !email) {

@@ -10,6 +10,7 @@ import { checkoutOrigin, euConsentAnswer, euConsentRefusal, euSalesPolicy, polic
 import { ipinfoLookup, territoryAnswer, territoryPolicy, territoryRefusal } from "../_shared/sales-territory.ts";
 import {
   buyerMetadata, buyerSessionFields, CALLER_UNAVAILABLE_BODY, checkoutCaller, fairUseAnswer, grantCapOf, recordCheckoutBuyer,
+  refusedCallerBody,
 } from "../_shared/checkout-buyer.ts";
 import { planPaid, UNPAID_PLAN_NOTE } from "../_shared/consumable-paid.ts";
 
@@ -20,7 +21,8 @@ import { planPaid, UNPAID_PLAN_NOTE } from "../_shared/consumable-paid.ts";
 // so (territoryRefused); an auth server that cannot answer is a 503, never a
 // paid session for a Pro member; a Pro grant over the cap is a fair-use 429;
 // a signed-in buyer's account rides the session and checkout_buyers; the
-// billing address is always collected.
+// billing address is always collected; a connected app's token, or one
+// issued for another audience, is refused with a 401 (critical-path CP-D).
 const FN_BUILD = "create-checkout.2026-10-11.23";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -442,6 +444,12 @@ serve(async (req) => {
     if (caller.kind === "unavailable") {
       logStep("The auth server could not answer; not starting a checkout", { reason: caller.reason });
       return new Response(JSON.stringify(CALLER_UNAVAILABLE_BODY), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    // A connected app's token (or one issued for another audience) is not
+    // the person on the website: it neither buys nor mints their analysis.
+    if (caller.kind === "refused") {
+      logStep("Refused: the token is not a website session", { reason: caller.reason });
+      return new Response(JSON.stringify(refusedCallerBody(caller)), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     // A signed-in buyer's verified address, for Stripe's receipt.
     const receiptEmail: string | null = caller.kind === "signed_in" ? caller.email : null;

@@ -18,9 +18,6 @@
 #     (retired, cut, the product, a sentence naming the 90 days a past buyer
 #     keeps, and no Stripe url), and create-scan-pack-checkout and
 #     create-test-checkout answer 410 too;
-#   - scrape-linkedin, the paid Firecrawl scraper behind the cut LinkedIn
-#     insights card, serves 2026-10-11.23 or later and answers 410 (retired,
-#     no fetch): the owner may then revoke FIRECRAWL_API_KEY;
 #   - 20261011150000 applied: checkout_buyers exists and refuses anon by name,
 #     with a negative control;
 #   - what no read here can prove is INFO: the cap (the migration's own
@@ -41,7 +38,7 @@ vd92_build() { # $1 fn -> the x-fn-build its preflight answers
 VD92_LIVE=" "
 for VD92_PAIR in "create-checkout|2026-10-11|23" "create-product-checkout|2026-10-11|23" "create-subscription-checkout|2026-10-11|23" \
   "create-scan-pack-checkout|2026-10-11|23" "create-test-checkout|2026-10-11|23" "check-subscription|2026-10-11|23" \
-  "create-portal-session|2026-10-14|23" "scrape-linkedin|2026-10-11|23"; do
+  "create-portal-session|2026-10-14|23"; do
   VD92_FN=${VD92_PAIR%%|*}; VD92_REST=${VD92_PAIR#*|}; VD92_DAY=${VD92_REST%%|*}; VD92_N=${VD92_REST#*|}
   VD92_H=$(vd92_build "$VD92_FN")
   if [ -z "$VD92_H" ]; then echo "FAIL  $VD92_FN preflight carries no x-fn-build (the function is not deployed, or its preflight does not answer)"
@@ -90,8 +87,6 @@ done
 vd92_cut create-product-checkout '{"productId":"coverLetter","language":"de"}' cover_letter "en" "nicht mehr verkauft"
 vd92_cut create-scan-pack-checkout '{"creditAmount":10}' scan_pack "en" "no longer sold"
 vd92_cut create-test-checkout '{"productId":"x","productName":"x","priceUsd":1}' "" "en" ""
-# The scraper behind the cut LinkedIn insights card: 410 before any limiter or Firecrawl.
-vd92_cut scrape-linkedin '{"url":"https://www.linkedin.com/in/example"}' "" "en" "no longer offered"
 
 # checkout_buyers exists and refuses anon by name: a refusal, not rows, and
 # not a 404 -- with a control table that never existed.
@@ -106,4 +101,4 @@ VD92_NC=$(curl -s -m 30 "$B/rest/v1/checkout_buyers_never_existed?select=*&limit
 [ "$VD92_NC" = "PGRST205" ] && echo "PASS  negative control checkout_buyers_never_existed -> PGRST205" || echo "FAIL  negative control -> $VD92_NC (the 42501 above cannot be read as presence)"
 
 echo "INFO  not provable read-only: the grant cap (10 a day, 60 a month per account; 20261011150000's own self-check inserts ten grants, is refused the eleventh and rolls back, so an applied migration proves it ran), the territory refusal of a POST (it comes after the rate limiter, which counts), a signed-in buyer's client_reference_id and checkout_buyers row, the cancel flag on pro_subscribers, and the 503 when a grant cannot be minted -- each is run in src/test/w4b-*.test.ts"
-echo "INFO  owner, in Stripe: (1) expire any open checkout session for a cut product (Premium Package, ATS Defense, Career Snapshot, Graduate Game Plan, Career Path, Keyword Fix, Cover Letter, Interview Coach, scan packs): they live 24 hours and a payment on one still delivers; (2) archive their dashboard Prices (price_1Sgv32HBplUUV1CgAdw6PnV3 Premium, price_1Sgv3LHBplUUV1CgpCF5pDLO ATS Defense, price_1SibLiHBplUUV1CgHmRy7ayi Snapshot, price_1SibRNHBplUUV1CgEj5L8eH1 Game Plan, price_1T8u4NHBplUUV1CggBvfeDT0 Career Path, price_1Sgv2hHBplUUV1Cgjdqw9kHi Keyword Fix, price_1Sgv2tHBplUUV1CgoXHF6GjD Cover Letter, price_1T8u3pHBplUUV1CgN5CDJGEF Interview Coach, price_1Sgv2THBplUUV1CgntHsXlDK scan pack); (3) as a backstop for a buyer no signal placed, a Radar block rule on :card_country: (and :ip_country:) for the EU-27, IS, LI, NO and GB, if the plan allows custom rules; (4) count live Pro subscriptions: any that exist were promised every paid tool and should be emailed the new perk list with a cancel link; (5) once scrape-linkedin PASSes above, revoke FIRECRAWL_API_KEY (Lovable: More > Cloud > Secrets) and the Firecrawl account's key: the LinkedIn import was its only user"
+echo "INFO  owner, in Stripe: (1) expire any open checkout session for a cut product (Premium Package, ATS Defense, Career Snapshot, Graduate Game Plan, Career Path, Keyword Fix, Cover Letter, Interview Coach, scan packs): they live 24 hours and a payment on one still delivers; (2) archive their dashboard Prices (price_1Sgv32HBplUUV1CgAdw6PnV3 Premium, price_1Sgv3LHBplUUV1CgpCF5pDLO ATS Defense, price_1SibLiHBplUUV1CgHmRy7ayi Snapshot, price_1SibRNHBplUUV1CgEj5L8eH1 Game Plan, price_1T8u4NHBplUUV1CggBvfeDT0 Career Path, price_1Sgv2hHBplUUV1Cgjdqw9kHi Keyword Fix, price_1Sgv2tHBplUUV1CgoXHF6GjD Cover Letter, price_1T8u3pHBplUUV1CgN5CDJGEF Interview Coach, price_1Sgv2THBplUUV1CgntHsXlDK scan pack); (3) as a backstop for a buyer no signal placed, a Radar block rule on :card_country: (and :ip_country:) for the EU-27, IS, LI, NO and GB, if the plan allows custom rules; (4) count live Pro subscriptions: any that exist were promised every paid tool and should be emailed the new perk list with a cancel link"

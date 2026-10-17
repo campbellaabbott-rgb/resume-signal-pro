@@ -12,6 +12,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { checkProByEmail } from "../_shared/pro.ts";
 import { provenMailbox } from "../_shared/mailbox-proof.ts";
 import { checkoutOrigin } from "../_shared/checkout-policy.ts";
+import { refusedCallerBody, websiteTokenRefusal } from "../_shared/checkout-buyer.ts";
 
 // Provable from outside without an account: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -22,7 +23,9 @@ import { checkoutOrigin } from "../_shared/checkout-policy.ts";
 // returns to /account?portal=return, so the Pro card asks Stripe again and a
 // plan cancelled there reads "Ends", not "Renews" (S12-076); a plan bound to
 // this account is found by the account when the address on it has changed
-// (S12-053, the portal half).
+// (S12-053, the portal half); a connected app's token, or one issued for
+// another audience, is refused with a 401 and never opens the billing
+// portal (critical-path CP-D, S9-001).
 const FN_BUILD = "create-portal-session.2026-10-14.23";
 
 const corsHeaders = {
@@ -89,6 +92,15 @@ serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Sign in required" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    // A connected app's token (or one issued for another audience) is not
+    // the person on the website: the portal shows their card and can cancel.
+    const notWebsite = websiteTokenRefusal(req.headers);
+    if (notWebsite) {
+      return new Response(JSON.stringify(refusedCallerBody(notWebsite)), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

@@ -19,7 +19,18 @@
 // charge: pro_grants_cap refuses the 11th grant in a day and the 61st in 30
 // days with SQLSTATE P0001 and a message starting "pro_grant_cap:".
 //
+// A TOKEN MINTED FOR SOMETHING ELSE IS NOT A BUYER (critical-path CP-D and
+// S9-001). Once the OAuth server signs tokens for the AI connectors, the auth
+// server will accept those too: a connector's token carries a client_id
+// claim, and it must never buy, mint a member's grant or open the billing
+// portal as the person. websiteTokenRefusal reads the claims the way
+// _shared/website-session.ts does (R1) and refuses a signed-in token that
+// carries client_id or names another audience, before the auth server is
+// asked. The publishable key and anything that is not a signed-in user's
+// token are judged exactly as before.
+//
 // Pure apart from the clients it is handed: importable by Deno and vitest.
+import { jwtClaims, websiteClaimsRefusal } from "./website-session.ts";
 
 type AuthLike = {
   getUser: (jwt: string) => Promise<{
@@ -31,7 +42,31 @@ type AuthLike = {
 export type CheckoutCaller =
   | { kind: "anonymous" }
   | { kind: "signed_in"; id: string; email: string }
-  | { kind: "unavailable"; reason: string };
+  | { kind: "unavailable"; reason: string }
+  | { kind: "refused"; reason: string; error: string };
+
+export type WebsiteTokenRefusal = { reason: "connector_token" | "wrong_audience"; error: string };
+
+/** The bearer token of a request, "" for none. */
+function bearerToken(headers: Headers): string {
+  return (headers.get("Authorization") ?? headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+}
+
+/**
+ * Why a signed-in token is not a website session (a connected app's token,
+ * or one issued for another audience), or null: for no token, the
+ * publishable key, a token that is not a signed-in user's, or a website
+ * session. Read from the claims alone; the auth server still judges the rest.
+ */
+export function websiteTokenRefusal(headers: Headers): WebsiteTokenRefusal | null {
+  const claims = jwtClaims(bearerToken(headers));
+  if (!claims || claims.role !== "authenticated") return null;
+  const refusal = websiteClaimsRefusal(claims);
+  if (refusal?.reason === "connector_token" || refusal?.reason === "wrong_audience") {
+    return { reason: refusal.reason, error: refusal.error };
+  }
+  return null;
+}
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -49,8 +84,10 @@ export function authServerFailed(error: unknown): boolean {
  * visitor holds is not a user and costs no round trip.
  */
 export async function checkoutCaller(auth: AuthLike, headers: Headers, publishableKey: string): Promise<CheckoutCaller> {
-  const token = (headers.get("Authorization") ?? headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+  const token = bearerToken(headers);
   if (!token || (publishableKey && token === publishableKey)) return { kind: "anonymous" };
+  const notWebsite = websiteTokenRefusal(headers);
+  if (notWebsite) return { kind: "refused", ...notWebsite };
   try {
     const { data, error } = await auth.getUser(token);
     const user = data?.user;
@@ -70,6 +107,11 @@ export const CALLER_UNAVAILABLE_BODY = {
   error: "We couldn't check your account just now, so nothing was charged. Please try again in a minute.",
   retryable: true,
 } as const;
+
+/** The 401 every checkout answers for a token that is not a website session. */
+export function refusedCallerBody(caller: { reason: string; error: string }): { error: string; reason: string; signInRequired: true } {
+  return { error: caller.error, reason: caller.reason, signInRequired: true };
+}
 
 /** What the session carries about a signed-in buyer (nothing for an anonymous one). */
 export function buyerSessionFields(caller: CheckoutCaller): { client_reference_id?: string } {

@@ -14,6 +14,7 @@ import { cutCheckoutAnswer, isCutProduct } from "../_shared/product-cuts.ts";
 import { ipinfoLookup, territoryAnswer, territoryRefusal } from "../_shared/sales-territory.ts";
 import {
   buyerMetadata, buyerSessionFields, CALLER_UNAVAILABLE_BODY, checkoutCaller, fairUseAnswer, grantCapOf, recordCheckoutBuyer,
+  refusedCallerBody,
 } from "../_shared/checkout-buyer.ts";
 import { planPaid, UNPAID_PLAN_NOTE } from "../_shared/consumable-paid.ts";
 
@@ -31,7 +32,8 @@ import { planPaid, UNPAID_PLAN_NOTE } from "../_shared/consumable-paid.ts";
 // "you hold Pro" lookup by a typed address is gone (owner decision D8); the
 // signed-in buyer's verified address and account ride the session and
 // checkout_buyers; the billing address is always collected; a referral here
-// earns nothing (the affiliate re-base).
+// earns nothing (the affiliate re-base); a connected app's token, or one
+// issued for another audience, is refused with a 401 (critical-path CP-D).
 const FN_BUILD = "create-product-checkout.2026-10-11.23";
 
 const corsHeaders = {
@@ -229,6 +231,12 @@ serve(async (req) => {
     if (caller.kind === "unavailable") {
       console.error("[CREATE-PRODUCT-CHECKOUT] The auth server could not answer; not starting a checkout:", caller.reason);
       return new Response(JSON.stringify(CALLER_UNAVAILABLE_BODY), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 503 });
+    }
+    // A connected app's token (or one issued for another audience) is not
+    // the person on the website: it neither buys nor mints their grant.
+    if (caller.kind === "refused") {
+      console.log(`[CREATE-PRODUCT-CHECKOUT] refused: the token is not a website session (${caller.reason})`);
+      return new Response(JSON.stringify(refusedCallerBody(caller)), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 });
     }
     const proEmail = caller.kind === "signed_in" ? caller.email : null;
     const proUserId = caller.kind === "signed_in" ? caller.id : null;

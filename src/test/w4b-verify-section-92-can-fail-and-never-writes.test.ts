@@ -84,10 +84,8 @@ const builds: Record<string, string> = {
   "create-test-checkout": "create-test-checkout.2026-10-11.23",
   "check-subscription": "check-subscription.2026-10-11.23",
   "create-portal-session": "create-portal-session.2026-10-14.23",
-  "scrape-linkedin": "scrape-linkedin.2026-10-11.23",
 };
 const BUILDS = Object.keys(builds).length;
-const LINKEDIN_OFF = JSON.stringify({ success: false, retired: true, reason: "linkedin_import_cut", error: "LinkedIn profile import is no longer offered. Paste your profile text instead; nothing was charged." });
 const preflights = (over: Record<string, string | null> = {}): Route[] =>
   Object.entries({ ...builds, ...over }).map(([fn, b]) => ({ match: `^OPTIONS https://p\\.supabase\\.co/functions/v1/${fn}$`, headers: b ? { "x-fn-build": b } : {} }));
 const cutAnswer = (id: string, product: string, lang = "en") => JSON.stringify({ retired: true, cut: true, reason: "product_retired", product, language: lang, error: cutSentence(id, lang as "en"), pricing: "https://resumebooster.work/pricing" });
@@ -103,7 +101,6 @@ const good = (): Route[] => [
   ...PRODUCTS.map(([id, type]): Route => ({ match: `^POST https://p\\.supabase\\.co/functions/v1/create-product-checkout .*"${id}"`, status: 410, body: cutAnswer(id, type) })),
   { match: "^POST https://p\\.supabase\\.co/functions/v1/create-scan-pack-checkout", status: 410, body: cutAnswer("scanPack", "scan_pack") },
   { match: "^POST https://p\\.supabase\\.co/functions/v1/create-test-checkout", status: 410, body: JSON.stringify({ retired: true, reason: "test_checkout_off", error: "The development checkout is switched off." }) },
-  { match: "^POST https://p\\.supabase\\.co/functions/v1/scrape-linkedin", status: 410, body: LINKEDIN_OFF },
   { match: "^GET https://p\\.supabase\\.co/rest/v1/checkout_buyers\\?", status: 401, body: JSON.stringify({ code: "42501", message: "permission denied for table checkout_buyers" }) },
   { match: "^GET https://p\\.supabase\\.co/rest/v1/checkout_buyers_never_existed", status: 404, body: JSON.stringify({ code: "PGRST205" }) },
 ];
@@ -115,9 +112,8 @@ describe("section 92", () => {
     const pass = lines.filter((l) => l.startsWith("PASS"));
     expect(pass.filter((l) => /preflight x-fn-build/.test(l))).toHaveLength(BUILDS);
     expect(pass.some((l) => /territoryRefused true/.test(l))).toBe(true);
-    // The cut products, the de sentence, the scan packs, the dev checkout and the LinkedIn scraper.
-    expect(pass.filter((l) => /answers 410/.test(l)).length).toBe(PRODUCTS.length + 4);
-    expect(pass.some((l) => /scrape-linkedin answers 410/.test(l))).toBe(true);
+    // The cut products, the de sentence, the scan packs and the dev checkout.
+    expect(pass.filter((l) => /answers 410/.test(l)).length).toBe(PRODUCTS.length + 3);
     expect(pass.some((l) => /checkout_buyers -> 42501/.test(l))).toBe(true);
     expect(out).not.toContain(KEY);
   });
@@ -147,7 +143,7 @@ describe("section 92", () => {
     const { calls } = run(good());
     const posts = calls.filter((c) => /^curl\tPOST /.test(c));
     expect(posts.length).toBeGreaterThan(0);
-    for (const p of posts) expect(p, p).toMatch(/create-product-checkout|create-scan-pack-checkout|create-test-checkout|scrape-linkedin/);
+    for (const p of posts) expect(p, p).toMatch(/create-product-checkout|create-scan-pack-checkout|create-test-checkout/);
     for (const p of posts.filter((c) => c.includes("create-product-checkout"))) {
       const id = /"productId":"([A-Za-z]+)"/.exec(p)?.[1];
       expect(PRODUCTS.map(([x]) => x), p).toContain(id);
