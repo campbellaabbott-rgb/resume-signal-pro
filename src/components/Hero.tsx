@@ -233,7 +233,7 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
               an inline default and the nine translated copies of the old
               string would have kept rendering the stale figure. */}
           <span>{boardTotals
-            ? t('hero.browseJobsLive', 'Browse {{n}}+ verified jobs', { n: roundedFloor(boardTotals.jobs).toLocaleString() })
+            ? t('hero.browseJobsLive', 'Browse {{n}}+ live jobs', { n: roundedFloor(boardTotals.jobs).toLocaleString() })
             : t('hero.browseJobsPlain', 'Browse the live job board')}</span>
         </Link>
         <button
@@ -376,7 +376,7 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
                   {t('hero.headline.recruiterGrade', "live jobs straight from employers' own hiring systems")}
                 </span>{" "}
                 {boardTotals
-                ? t('hero.headline.feedbackLive', '— {{n}}+ verified openings, matched to your resume', { n: roundedFloor(boardTotals.jobs).toLocaleString() })
+                ? t('hero.headline.feedbackLive', '— {{n}}+ live openings, matched to your resume', { n: roundedFloor(boardTotals.jobs).toLocaleString() })
                 : t('hero.headline.feedbackPlain', '— live openings, matched to your resume')}
               </h1>
               <p className="text-sm sm:text-base text-muted-foreground max-w-xl mx-auto">
@@ -512,7 +512,7 @@ export function Hero({ onFileSelect }: { onFileSelect?: (file: File) => void | P
                 {t('hero.headline.recruiterGrade', "live jobs straight from employers' own hiring systems")}
               </span>{" "}
               {boardTotals
-                ? t('hero.headline.feedbackLive', '— {{n}}+ verified openings, matched to your resume', { n: roundedFloor(boardTotals.jobs).toLocaleString() })
+                ? t('hero.headline.feedbackLive', '— {{n}}+ live openings, matched to your resume', { n: roundedFloor(boardTotals.jobs).toLocaleString() })
                 : t('hero.headline.feedbackPlain', '— live openings, matched to your resume')}
             </h1>
             

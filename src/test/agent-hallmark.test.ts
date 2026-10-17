@@ -187,9 +187,12 @@ describe("the front page states one subject and no frozen totals", () => {
     // plural form resolves and forces a number type. Caught by tsc when the
     // first draft used it.
     const code = stripCode(HERO_C);
-    expect(code).toMatch(/\{\{n\}\}\+ verified jobs/);
+    expect(code).toMatch(/\{\{n\}\}\+ live jobs/);
     expect(code, "a board total is interpolated on the reserved `count` key")
-      .not.toMatch(/\{\{count\}\}\+ verified/);
+      .not.toMatch(/\{\{count\}\}\+ (live|verified)/);
+    // We read employers' feeds; we do not verify each role, so the inline
+    // defaults say "live", as the main locale does.
+    expect(code).not.toMatch(/\{\{n\}\}\+ verified/);
   });
 
   it("rounds a published floor DOWN", () => {

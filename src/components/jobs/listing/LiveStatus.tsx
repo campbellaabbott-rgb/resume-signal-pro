@@ -15,8 +15,11 @@
  *            so no line renders.
  *   partial  the board is bigger than one read reaches (a caution, not a
  *            verdict on the posting). The contract carries the flag
- *            (contracts.ts partialRead); no reader sends it yet, so this
- *            state renders only where a caller passes it.
+ *            (contracts.ts partialRead); the board sets it from the fill
+ *            curve's observability bucket (a lap-read board), and sends a
+ *            read time only for a board the shared gate's feedReadStatable
+ *            passes, so the "read" state's whole-board sentence is said only
+ *            of a board we read in full.
  *   gone     a read of the employer's feed found it missing, with the day we
  *            first found it missing. That is OUR detection date
  *            (missing_since), which on a board read in laps can trail the
