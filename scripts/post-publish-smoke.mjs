@@ -57,7 +57,7 @@ const FUNCTIONS = [
   "free-keyword-scan", "create-product-checkout", "verify-product-purchase",
   "generate-freelance-boost", "import-freelance-profile", "generate-resume-roast",
   "send-scan-report", "check-subscription", "parse-pdf", "parse-docx",
-  "generate-premium-package-stream", "generate-cover-letter", "recover-purchase",
+  "generate-cover-letter", "recover-purchase",
   "generate-product-preview", "scan-heartbeat", "health-check", "job-board",
   "send-search-digest",
 ];
@@ -141,13 +141,20 @@ if (!COMMITTED_ENGINE) {
   if (staleFields.length) record("scan emits current fields", false, `missing keys: ${staleFields.join(", ")} — deployed function predates them`);
 }
 
-// ---- 3. Checkout session creation (no charge — just session validity) ----
+// ---- 3. The cut is enforced: a cut product's checkout refuses (no session) ----
+// The product line of 2026-10-12 stopped selling the Premium Package (and
+// the other cut products). This used to ask for a Premium session and pass
+// on a Stripe url; now a Stripe url here would mean an old bundle is still
+// selling it. A 410 that names the product, with no url, is the pass. The
+// server answers it before the limiter, a grant or Stripe, so nothing is
+// counted or charged (src/test/w4b-the-cut-products-are-sold-nowhere.test.ts).
 try {
-  const r = await post("create-product-checkout", { productId: "premiumPackage", email: "smoke-test-nonpro@example.com" }, 30000);
+  const r = await post("create-product-checkout", { productId: "premiumPackage", language: "en" }, 30000);
   const j = await r.json().catch(() => ({}));
-  record("Stripe checkout session", !!j.url?.includes("checkout.stripe.com"), j.url ? j.url.slice(0, 45) : JSON.stringify(j).slice(0, 120));
+  const refused = r.status === 410 && j.retired === true && j.cut === true && j.product === "premium_package" && !("url" in j);
+  record("cut product checkout refuses (410)", refused, refused ? `410 ${j.product}` : `HTTP ${r.status} ${JSON.stringify(j).slice(0, 120)}`);
 } catch (e) {
-  record("Stripe checkout session", false, String(e));
+  record("cut product checkout refuses (410)", false, String(e));
 }
 
 // ---- 4. Heartbeat sentinel reports on itself ----

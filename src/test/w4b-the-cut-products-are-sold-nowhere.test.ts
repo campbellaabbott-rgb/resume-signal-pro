@@ -21,6 +21,7 @@ import { join, resolve } from "node:path";
 import type { EdgeHandler } from "./helpers/edge-harness";
 import { freshWorld, installDeno, loadCheckouts, post, type W4bWorld } from "./helpers/w4b-checkout-harness";
 import { buildIsAtLeast } from "./helpers/fn-build";
+import { codeOf } from "./helpers/strip-comments";
 import { CUT_PRODUCT_IDS, cutSentence, PAST_BUYER_DAYS } from "../../supabase/functions/_shared/product-cuts";
 import { getAllProducts, HIDDEN_PRODUCT_IDS, oneTimePriceRangeUsd, PRODUCTS, type ProductId } from "@/config/products";
 
@@ -146,5 +147,30 @@ describe("the catalogue hides exactly what the server refuses", () => {
     const reachable = getAllProducts().map((p) => (Object.keys(PRODUCTS) as ProductId[]).find((k) => PRODUCTS[k] === p)).sort();
     expect(reachable).toEqual(["freelanceBoost", "freelanceTransitionPro", "fullAnalysis"]);
     expect(oneTimePriceRangeUsd()).toEqual({ min: PRODUCTS.fullAnalysis.priceUsd, max: PRODUCTS.freelanceTransitionPro.priceUsd });
+  });
+});
+
+describe("the post-publish smoke asks the cut checkout for its refusal, not for a session", () => {
+  // scripts/post-publish-smoke.mjs runs against production after every
+  // publish. It used to ask create-product-checkout for a Premium Package
+  // session and pass on a Stripe url: with the cut, that pass would mean an
+  // old bundle is still selling it. Read with comments stripped, so the
+  // literals below are judged in code only.
+  const smoke = codeOf(readFileSync(resolve(__dirname, "../../scripts/post-publish-smoke.mjs"), "utf8"));
+
+  it("names no generator of a cut product in its preflight list", () => {
+    expect(smoke).not.toMatch(/generate-premium-package-stream/);
+  });
+
+  it("passes on the 410 the server answers for the Premium Package, and on no Stripe url", async () => {
+    const section = smoke.match(/post\("create-product-checkout", \{ productId: "premiumPackage"[^]*?record\([^]*?\);/)?.[0] ?? "";
+    expect(section, "the smoke no longer asks the Premium checkout").not.toBe("");
+    expect(section).toMatch(/r\.status === 410/);
+    expect(section).toMatch(/!\("url" in j\)/);
+    expect(section).not.toMatch(/checkout\.stripe\.com/);
+    // The product name the smoke pins is the one the running server answers.
+    const pinned = section.match(/j\.product === "([a-z_]+)"/)?.[1];
+    const body = await (await post(h["create-product-checkout"], "create-product-checkout", { productId: "premiumPackage", language: "en" })).json();
+    expect(body.product).toBe(pinned);
   });
 });
