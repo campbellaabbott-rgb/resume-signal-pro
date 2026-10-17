@@ -215,6 +215,13 @@ on `src/pages/Jobs.tsx`:
   in `docs/deploy-ledger.json`; the board keeps the S11-020 gate and the
   intel blocks whichever side of a merge wins), each with a test that fails
   on the code before it.
+- The feed-read stamp is said only of a board we read in full: the card and
+  the pane get a read time only where the shared gate's `feedReadStatable`
+  passes, and a lap-read board's pane says "We could read only part of this
+  board" (`partialRead`), never that the read covers the whole board
+  (`pd-wire-the-feed-read-stamp-is-said-only-of-a-board-we-read-in-full`).
+  The Ghost Job Index tile, intro and method term and Hero's inline
+  live-count defaults no longer call the openings "verified".
 - Verify section 87 (`scripts/verify-deploy.d/87-profiles-design-pass-b.sh`)
   walks the served chunk graph from the entry through the Jobs chunk and
   its imports and judges the lander, card, pane and filter row, the absence
