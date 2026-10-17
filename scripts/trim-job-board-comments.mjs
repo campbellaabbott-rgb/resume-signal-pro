@@ -7,14 +7,16 @@
  * reports success and the PREVIOUS bundle keeps serving. This moves every run
  * of `min` or more consecutive full-line // comments out of a file into
  * docs/job-board-index-notes.md, leaving one pointer line where the run was,
- * exactly as the .81 trim did for runs over six lines.
+ * exactly as the .81 trim did for runs over six lines. With --blocks it also
+ * moves every block comment of `min` or more lines that stands on lines of its
+ * own (a JSDoc above a function, a banner above a section).
  *
- *   node scripts/trim-job-board-comments.mjs <file> [--min 3] [--keep <file of first-line texts>] [--dry]
+ *   node scripts/trim-job-board-comments.mjs <file> [--min 3] [--blocks] [--keep <file of first-line texts>] [--dry]
  *
  * Comments are found with the TypeScript parser (a // inside a string, a
  * template or a regex is code, not a comment). A run whose last line is a
  * lint or type directive keeps that line. A run listed in --keep (by its first
- * comment line, trimmed) stays, for the guards that read a reason beside its
+ * comment line, trimmed; a block by a `block:<phrase>` line naming text inside it) stays, for the guards that read a reason beside its
  * code. The file's code is proved unchanged: every comment stripped from both
  * versions, whitespace collapsed, the two must be equal, or nothing is written.
  */
@@ -27,8 +29,10 @@ const file = args.find((a) => !a.startsWith("--") && !args[args.indexOf(a) - 1]?
 const opt = (name, dflt) => { const i = args.indexOf(`--${name}`); return i >= 0 ? args[i + 1] : dflt; };
 const MIN = Number(opt("min", "3"));
 const DRY = args.includes("--dry");
+const BLOCKS = args.includes("--blocks");
 const DOC = resolve(opt("doc", "docs/job-board-index-notes.md"));
 const keep = new Set((opt("keep", "") ? readFileSync(opt("keep"), "utf8").split("\n") : []).map((l) => l.trim()).filter(Boolean));
+const keepPhrases = [...keep].filter((k) => k.startsWith("block:")).map((k) => k.slice("block:".length).trim()).filter(Boolean);
 if (!file) { console.error("usage: trim-job-board-comments.mjs <file> [--min 3] [--keep f] [--dry]"); process.exit(2); }
 
 const src = readFileSync(file, "utf8");
@@ -65,6 +69,22 @@ const fullLine = lines.map((l, i) => {
   return l.trimStart().startsWith("//") && single.has(lineStart[i] + lead);
 });
 const DIRECTIVE = /^\/\/\s*(?:deno-lint-ignore|eslint-|@ts-|prettier-ignore|deno-fmt-ignore|biome-ignore)/;
+// A block that steers a tool stays where it is.
+const BLOCK_DIRECTIVE = /@ts-|eslint|deno-lint|deno-fmt|prettier-ignore|biome-ignore|@jsx|@vitest|@license|@preserve|#__PURE__|@__PURE__/;
+// Lines a block comment fills on its own: [first, last] line index, keyed by first.
+const lineOf = (pos) => { let lo = 0, hi = lineStart.length - 1; while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (lineStart[mid] <= pos) lo = mid; else hi = mid - 1; } return lo; };
+const blockAt = new Map();
+if (BLOCKS) {
+  for (const r of commentRanges(src)) {
+    if (r.kind !== ts.SyntaxKind.MultiLineCommentTrivia) continue;
+    const a = lineOf(r.pos), b = lineOf(r.end - 1);
+    if (src.slice(lineStart[a], r.pos).trim() !== "") continue;
+    if (src.slice(r.end, lineStart[b] + lines[b].length).trim() !== "") continue;
+    const text = src.slice(r.pos, r.end);
+    if (b - a + 1 < MIN || BLOCK_DIRECTIVE.test(text) || /Rationale: docs\//.test(text)) continue;
+    blockAt.set(a, b);
+  }
+}
 const POINTER = /^\/\/\s*Rationale: docs\//;
 
 const docText = readFileSync(DOC, "utf8");
@@ -75,6 +95,25 @@ const out = [];
 const sections = [];
 let moved = 0, kept = 0, saved = 0;
 for (let i = 0; i < lines.length;) {
+  if (blockAt.has(i)) {
+    const j = blockAt.get(i) + 1;
+    const run = lines.slice(i, j);
+    const blockText = run.join("\n");
+    if (keepPhrases.some((k) => blockText.includes(k))) { kept++; out.push(...run); i = j; continue; }
+    const indent = run[0].slice(0, run[0].length - run[0].trimStart().length);
+    const codeLine = (lines.slice(j).find((l) => l.trim() && !l.trim().startsWith("//") && !l.trim().startsWith("/*") && !l.trim().startsWith("*")) ?? "").trim();
+    const slug = `n${String(next++).padStart(3, "0")}-${slugOf(codeLine)}`;
+    const pointer = `${indent}// Rationale: docs/job-board-index-notes.md#${slug}`;
+    out.push(pointer);
+    const body = run
+      .map((l) => l.trim().replace(/^\/\*\*?\s?/, "").replace(/\s*\*\/$/, "").replace(/^\* ?/, "").replace(/^\*$/, ""))
+      .join("\n").replace(/^\n+|\n+$/g, "").replace(/\n{3,}/g, "\n\n").replace(/^## /gm, " ## ");
+    sections.push(`## ${slug}\n\nIn \`${relFile}\`, above: \`${codeLine.slice(0, 140).replace(/`/g, "'")}\`\n\n${body}\n`);
+    saved += run.reduce((n, l) => n + Buffer.byteLength(l, "utf8") + 1, 0) - Buffer.byteLength(pointer, "utf8") - 1;
+    moved++;
+    i = j;
+    continue;
+  }
   if (!fullLine[i]) { out.push(lines[i]); i++; continue; }
   let j = i;
   while (j < lines.length && fullLine[j]) j++;
@@ -93,7 +132,7 @@ for (let i = 0; i < lines.length;) {
   const slug = `n${String(next++).padStart(3, "0")}-${slugOf(codeLine)}`;
   const pointer = `${indent}// Rationale: docs/job-board-index-notes.md#${slug}`;
   out.push(pointer, ...tail);
-  const body = run.map((l) => l.trim().replace(/^\/\/ ?/, "")).join("\n");
+  const body = run.map((l) => l.trim().replace(/^\/\/ ?/, "")).join("\n").replace(/^## /gm, " ## ");
   sections.push(`## ${slug}\n\nIn \`${relFile}\`, above: \`${codeLine.slice(0, 140).replace(/`/g, "'")}\`\n\n${body}\n`);
   saved += run.reduce((n, l) => n + Buffer.byteLength(l, "utf8") + 1, 0) - Buffer.byteLength(pointer, "utf8") - 1;
   moved++;

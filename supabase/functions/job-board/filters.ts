@@ -15,38 +15,10 @@ export const EMPLOYMENT_TYPES = ["full_time", "part_time", "contract", "temporar
 /** "hourly" -> salary_period = 'hour'; "salaried" -> salary_period IN ('year','month'). */
 export const PAY_BASES = ["hourly", "salaried"] as const;
 
-/**
- * The periods a "salaried" request means, as one producer.
- *
- * 'week' IS in the data and is deliberately NOT here. Counted live 2026-08-25:
- * hour 42,280 | year 17,534 | month 632 | week 24 | day 0 — and those 24 weekly
- * rows are the whole of the gap between the servable salary_period total
- * (59,505) and hour+year+month (59,481). They fall outside BOTH bases on
- * purpose: "salaried" absorbing a period nobody measured it against is how it
- * starts meaning "not hourly", which is a different question. The contract
- * says salary_period IN ('year','month'), and 24 rows is not a reason to
- * widen it — it is a reason to say out loud that they are excluded.
- */
+// Rationale: docs/job-board-index-notes.md#n1256-export-const-salaried_periods-year-month
 export const SALARIED_PERIODS = ["year", "month"] as const;
 
-/**
- * Every hiring system the board serves, as VALUES.
- *
- * The authoritative set is `JobSourceKind` in sources.ts — the union the
- * catalogue's 19,701 entries are typed against — but a union is a type and a
- * filter needs a runtime list. Importing JOB_SOURCES itself to derive one
- * (`[...new Set(JOB_SOURCES.map(s => s.source))]`, which index.ts's audit does)
- * would pull a 2MB module into every consumer of this file for eighteen strings,
- * and it would also derive the CATALOGUE's vendors rather than the BOARD's:
- * `oracle` has no catalogue entry today and still has rows in the table.
- *
- * So the list is written out and then PINNED to the union in both directions by
- * the two assertions below. `satisfies` rejects a name that is not a real kind;
- * `_kindsAreCovered` fails to compile, naming the offender, if a kind is ever
- * added to sources.ts and not added here. Two lists that cannot drift are not
- * two lists — this is the same contract src/config/ats-vendors.ts holds against
- * apply-automation.ts, enforced by the typechecker instead of a test.
- */
+// Rationale: docs/job-board-index-notes.md#n1257-export-board_vendors-from-_shared-board
 export { BOARD_VENDORS } from "../_shared/board-domains.ts";
 import { BOARD_VENDORS } from "../_shared/board-domains.ts";
 // Extras are still caught here, where JobSourceKind lives: a vendor in the
@@ -69,187 +41,40 @@ export type AppliedFilters = {
   workMode: string | null;
   /** Comma-joined subset of EMPLOYMENT_TYPES, same list contract as workMode. */
   employmentType: string | null;
-  /**
-   * One or more field slugs, COMMA-JOINED — never an array.
-   *
-   * That is not a shortcut: `categoryParam` has always produced a comma-joined
-   * string (it appends the unsorted bucket that way), and the SQL has always
-   * split it. Measured live against the deployed function: science 7,420 +
-   * education 7,439 = 14,859, and the joined form returns exactly 14,859. The
-   * union was there the whole time; the only thing refusing multi-select was
-   * the single-slug check in this file.
-   *
-   * Keeping the type `string | null` also keeps every consumer honest —
-   * isUnfiltered, filterViolations and the contract test all ask "is this set?"
-   * and none of them has to learn a new shape.
-   */
+  // Rationale: docs/job-board-index-notes.md#n1258-category-string-null
   category: string | null;
-  /**
-   * Also return the `other` bucket alongside the chosen category.
-   *
-   * OPT-IN, and it must stay opt-in. `other` held 162,800 of 590,808 postings
-   * on 2026-08-05 — a posting lands there when the classifier cannot read its
-   * field from the title — so a category filter silently costs a searcher a
-   * quarter of the board. But the SEO landers at /jobs/field/:slug run through
-   * this same path, and a page titled "Engineering jobs" must not list postings
-   * whose field is unknown. They never send the flag, so they never widen.
-   */
+  // Rationale: docs/job-board-index-notes.md#n1259-includeuncategorised-boolean
   includeUncategorised: boolean;
-  /**
-   * "Only jobs the agent can apply to." A FILTER, never a sort — the
-   * .order("category") incident is what a ranking version of this becomes.
-   * The vendor list itself lives in _shared/apply-automation.ts
-   * (SENDABLE_VENDORS); this flag only says the caller asked.
-   */
+  // Rationale: docs/job-board-index-notes.md#n1260-sendableonly-boolean
   sendableOnly: boolean;
   experience: string[];
   salaryFloor: number | null;
-  /**
-   * Widen an ACTIVE floor to admit rows with no stated pay.
-   *
-   * WIDENING, not narrowing, and the same shape as includeUncategorised above.
-   * It does nothing on its own: with no salaryFloor set there is no comparison
-   * to relax, and unpriced rows are already included.
-   */
+  // Rationale: docs/job-board-index-notes.md#n1261-includeunstatedpay-boolean
   includeUnstatedPay: boolean;
-  /**
-   * The other end of the pay band, on the SAME column as the floor
-   * (salary_rank_usd, approximate USD). A ceiling below the floor describes an
-   * empty band and is refused into `ignored` rather than served as a page of
-   * nothing — an empty result reads as a statement about the market, and this
-   * one would be a statement about the request.
-   *
-   * Not clamped upward. Clamping a ceiling DOWN narrows the caller's request,
-   * which is the maxAgeDays incident (a silent narrowing that reads as "the
-   * board has nothing older"), so an absurd ceiling is simply honoured — its
-   * only real effect is the NULL exclusion the floor already has.
-   */
+  // Rationale: docs/job-board-index-notes.md#n1262-salaryceiling-number-null
   salaryCeiling: number | null;
-  /**
-   * hourly | salaried. A SCALPEL: salary_period is stated on 10.6% of servable
-   * rows (59,505 of 559,805 — hour 41,542, year 17,312, month 627, measured
-   * 2026-08-25), and a row with no period is EXCLUDED, exactly as workMode
-   * excludes rows with no stated mode. coverageDisclosure publishes the 10.6%
-   * whenever this is set, because a filter that can see a tenth of the board
-   * and does not say so is a filter that lies about the market.
-   */
+  // Rationale: docs/job-board-index-notes.md#n1263-paybasis-string-null
   payBasis: string | null;
-  /**
-   * "Only postings that state pay at all" -> the employer's VERBATIM pay field
-   * carries something, in every runtime that answers this. It bound the
-   * annualised figure until 2026-09-27, which made it ask whether the employer
-   * stated pay AND whether we were willing to multiply that rate into a year —
-   * so a posting whose hourly wage the card was printing counted as silent. The
-   * column it reads now is the same one rowToJob maps to `salary` and the same
-   * one the card renders from; see the predicate's own note in buildQuery
-   * (job-board index.ts) for the measurement and the three candidates refused.
-   *
-   * THE HONEST HALF OF A FACT THE BOARD ALREADY ACTS ON. Anyone who sets
-   * salaryFloor is ALREADY confined to a stated-pay population — a posting with
-   * no stated pay cannot clear any floor — and has never been told. Making it a
-   * filter of its own means the narrowing can be asked for, seen, and taken
-   * off, instead of arriving as a side effect of moving a slider. It is not the
-   * SAME population: the floor compares an annualised figure converted to
-   * approximate dollars, so this flag is a strict superset of what the floor,
-   * the ceiling and the pay order can compare, and the board discloses the gap
-   * per page rather than implying the two sets are one.
-   */
+  // Rationale: docs/job-board-index-notes.md#n1264-hasstatedpay-boolean
   hasStatedPay: boolean;
-  /**
-   * "Does not demand more than n years" -> min_years <= n.
-   *
-   * THE JOB-SEEKER'S QUESTION, not the employer's. Every existing seniority
-   * control expresses what a posting wants; this one expresses what a person
-   * has. min_years is stated on 28.9% of servable rows, and rows that state
-   * nothing are excluded — a posting that never named a requirement cannot be
-   * shown to satisfy one.
-   */
+  // Rationale: docs/job-board-index-notes.md#n1265-maxyears-number-null
   maxYears: number | null;
-  /**
-   * department ILIKE '%s%'. 40.5% coverage.
-   *
-   * Reachable today ONLY by typing into free-text `q`, where buildQuery ORs it
-   * with title and company — so "Legal" as a department request also returns
-   * every Legal Assistant title and every company with Legal in its name, and
-   * nothing tells the caller which of the three matched.
-   */
+  // Rationale: docs/job-board-index-notes.md#n1266-department-string-null
   department: string | null;
-  /**
-   * Hiring systems to restrict to -> source IN (...). Wire name is `vendor`
-   * (string CSV or array); the applied field is plural because it is a list,
-   * the way `companies` and `experience` are.
-   *
-   * 100% coverage: every row carries a source. The only vendor filter the board
-   * had was the sendableOnly boolean, which pins the visitor to 5.4% of the
-   * catalogue with no way to ask for one system.
-   */
+  // Rationale: docs/job-board-index-notes.md#n1267-vendors-string
   vendors: string[];
   companies: string[];
   maxAgeDays: number | null;
   postedAfter: string | null;
-  /**
-   * "New to the board since X": posted_at > X OR first_seen > X. The saved-
-   * search digest's window (send-search-digest is its only sender): a posting
-   * the employer dated three days ago and we first read today is new to the
-   * person who saved the search, and an undated one can never pass postedAfter.
-   * RPC-blind on purpose (no search RPC takes it), so buildQuery binds it. No
-   * per-row self-check: list rows do not carry first_seen.
-   */
+  // Rationale: docs/job-board-index-notes.md#n1268-newsince-string-null
   newSince: string | null;
-  /**
-   * "Hide staffing agencies" -> agency = false. OPT-IN, and a NARROWING only:
-   * the 2026-08-31 charter carries agency boards (disclosed with a badge, the
-   * flag riding the catalog entry), and this is the reader's way to decline
-   * them. agency is NOT NULL DEFAULT false, so the predicate has 100%
-   * coverage — unlike workMode there is no "not stated" population for the
-   * filter to silently discard, and no coverage disclosure is owed.
-   *
-   * Deliberately NOT in RPC_BOUND_FILTERS yet: no search RPC takes a
-   * parameter for it, so the blind-set gate routes any request carrying it
-   * through buildQuery — which binds it — instead of letting an RPC answer
-   * with rows it never filtered. That trades ranking for honesty on exactly
-   * the requests that opt in, which is the five-filters lesson applied in
-   * the safe direction; binding it in SQL later deletes the trade.
-   */
+  // Rationale: docs/job-board-index-notes.md#n1269-excludeagencies-boolean
   excludeAgencies: boolean;
-  /**
-   * "Only postings we can actually score."
-   *
-   * A posting with no stored description cannot be fit-scored — computeFit has
-   * nothing to read — so in résumé mode it is not a weaker result, it is a row
-   * that can only ever say "no score". The newest rows are exactly those rows:
-   * a description arrives on a later detail hop, so the recency-ordered default
-   * browse is the least scoreable page on the board. MEASURED 2026-09-04: the
-   * newest 20 rows were 5% scoreable while role-query pages ran 85-95%, which
-   * is why a real visitor with a scanned résumé saw "not ranked — no posting on
-   * this page could be scored yet" on the one view named after personalisation.
-   *
-   * Deliberately NOT in RPC_BOUND_FILTERS: no search RPC takes a parameter for
-   * it, so the blind-set gate routes any request carrying it through buildQuery
-   * — which binds it — rather than letting an RPC answer with rows it never
-   * filtered. Same trade as excludeAgencies, made in the same safe direction,
-   * and the caller that needs it (the no-query résumé browse) has no relevance
-   * ranking to lose. It has no per-row self-check either — see the note where
-   * the others live: the list route does not carry `description`, so there is
-   * nothing to check against.
-   */
+  // Rationale: docs/job-board-index-notes.md#n1270-hasdescription-boolean
   hasDescription: boolean;
 };
 
-/**
- * The filters the search/count RPCs can bind, by AppliedFilters key.
- *
- * WHY THIS EXISTS AS DATA. search_jobs, search_jobs_semantic and
- * count_jobs_capped each take one p_ parameter per filter, and a filter with no
- * parameter is not refused by them — it is IGNORED. That is the defect this
- * whole file exists to prevent, arriving through the SQL instead of the TS:
- * measured 2026-07-25, the ranked path without p_work_mode returned 30 rows
- * that ALL had work_mode NULL under a request for remote-only.
- *
- * Listed as the BOUND set rather than the blind one so it is mechanical in the
- * direction that matters: a filter added to AppliedFilters and not to the SQL
- * shows up in `rpcBlindFilters` on the day it exists, with no edit here.
- */
+// Rationale: docs/job-board-index-notes.md#n1271-const-rpc_bound_filters-new-set-keyof-ap
 const RPC_BOUND_FILTERS = new Set<keyof AppliedFilters>([
   "q",
   "location",
@@ -278,36 +103,8 @@ const RPC_BOUND_FILTERS = new Set<keyof AppliedFilters>([
   "vendors",
 ]);
 
-/**
- * Which ACTIVE filters no RPC can bind, i.e. which ones a route that serves RPC
- * rows directly would drop on the floor.
- *
- * buildQuery binds all of them, so every route that fetches through buildQuery
- * — recency, the facet counts, the head-term ring, the id re-fetch the semantic
- * and routed tiers use — is already correct. The ranked `search_jobs` exit
- * serves its RPC rows as they come back, and count_jobs_capped answers with its
- * own parameter list, so both need this gate: non-empty means fall through to
- * the buildQuery path (exactly as the multi-country deploy guard in
- * cappedCount already does) rather than serve an unfiltered answer.
- *
- * Delete a key from the blind set by adding its p_ parameter to the SQL and its
- * name to RPC_BOUND_FILTERS above — in that order.
- */
-/**
- * The two pay toggles as an RPC body FRAGMENT, spread into the call.
- *
- * ONE PRODUCER, FIVE CALL SITES. search_jobs is called three times, plus
- * count_jobs_capped and the rescue tier's parameter set — this file's header
- * records what happens to a filter list maintained by hand in more than one
- * place, and `filtersActive` was rewritten for exactly that reason.
- *
- * Keys ABSENT when the toggle is off, never null. 20260826041500 DROPs the old
- * signatures, so during the window where a new bundle meets old SQL (or the
- * reverse) a call carrying an unknown key matches no function and PostgREST
- * 404s the whole search. Omitting the keys keeps every ordinary query working
- * against either version; only a query that actually uses a toggle depends on
- * the migration. Same trick as sendableSourcesParam above it.
- */
+// Rationale: docs/job-board-index-notes.md#n1272-export-function-payparams-a-appliedfilte
+// Rationale: docs/job-board-index-notes.md#n1273-export-function-payparams-a-appliedfilte
 export function payParams(a: AppliedFilters): Record<string, unknown> {
   return {
     // Rationale: docs/job-board-index-notes.md#n1056-a-hasstatedpay-p_pay_stated-true
@@ -329,14 +126,7 @@ export function rpcBlindFilters(a: AppliedFilters): string[] {
 export type NormalizedFilters = {
   applied: AppliedFilters;
   ignored: string[];
-  /**
-   * The caller asked for a window wider than the serving window and it was cut
-   * to 30 days. Deliberately NOT a field of AppliedFilters: board-filter-
-   * contract counts every field there as a filter, and isUnfiltered() treats any
-   * truthy value as one — so putting it inside would have made a clamped
-   * request look filtered and re-routed it. It is a NOTICE about a filter, not
-   * a filter, and the type now says so.
-   */
+  // Rationale: docs/job-board-index-notes.md#n1274-maxageclamped-boolean
   maxAgeClamped: boolean;
 };
 
@@ -355,19 +145,7 @@ export const COMPANY_TOKEN_SHAPE = /^[A-Za-z0-9~_.:-]{1,128}$/;
 /** An ISO-8601 date, or date and time with an optional Z or +hh:mm / +hhmm zone. Group 1 is the zone. */
 export const POSTED_AFTER_SHAPE = /^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?(Z|[+-]\d{2}:?\d{2})?)?$/;
 
-/**
- * postedAfter AS ONE INSTANT BOTH READERS AGREE ON (.88). It used to accept
- * any string Date.parse could read and bind that string raw, while the
- * filter-integrity sensor checked rows against Date.parse of it. The two do
- * not always read the same instant: '2026-10-04 12:00 GMT-12' is 10-05T00:00Z
- * to V8 and 10-04T00:00Z to Postgres (they read a POSIX offset with opposite
- * signs), so the database served a day of rows the sensor then flagged, and
- * any anonymous caller could write a filter-integrity incident on demand. Now
- * only an ISO shape is accepted, a time with no zone is UTC (how both runtimes
- * read it in production, said here so a machine's zone cannot change it), and
- * what is bound is `toISOString()` of the instant the sensor checks against.
- * null for anything else, which the caller names in ignoredFilters.
- */
+// Rationale: docs/job-board-index-notes.md#n1275-export-function-canonicalinstant-raw-unk
 export function canonicalInstant(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
   const t = raw.trim();
@@ -378,19 +156,7 @@ export function canonicalInstant(raw: unknown): string | null {
   return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
 }
 
-/**
- * A pay figure typed into the search box, as a salary FLOOR.
- *
- * MEASURED: q="100k engineer" returned ZERO jobs with total null. The money
- * token is not a title word, so it ANDs against every title and matches
- * nothing — the same failure as "jobs near me", except the intent maps onto a
- * filter the board already has.
- *
- * Recognises 100k, 100K, $100k, 120,000, $120,000 and "100k+". Anything under
- * $1,000 is ignored: a bare "10" is a version number far more often than a
- * salary, and guessing wrong hides the entire board behind a filter nobody
- * asked for.
- */
+// Rationale: docs/job-board-index-notes.md#n1276-export-const-iso_alpha2-readonlyset-stri
 /** ISO 3166-1 alpha-2, the 249 assigned codes, plus XK (Kosovo, in common use). */
 export const ISO_ALPHA2: ReadonlySet<string> = new Set(
   ("AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ " +
@@ -663,28 +429,10 @@ export function normalizeFilters(
 }
 
 // Rationale: docs/job-board-index-notes.md#n1085-block
-/**
- * Toggles that only ever ADMIT rows. They are not narrowings, so they must not
- * make an otherwise-bare request look filtered. The same set serveList's rescue
- * gate calls NON_NARROWING — exported so the two answers cannot drift.
- */
+// Rationale: docs/job-board-index-notes.md#n1277-export-const-widening_filters-readonlyse
 export const WIDENING_FILTERS: ReadonlySet<string> = new Set(["includeUncategorised", "includeUnstatedPay"]);
 
-/**
- * A WIDENING FLAG IS NOT A FILTER, and counting one as a filter made the bare
- * board count itself. includeUnstatedPay is the one widening flag that can be
- * true ALONE (the checkbox only renders under a pay floor, but the state
- * survives clearing the floor and round-trips through the URL as
- * inclUnstatedPay=1). With it set and nothing else, buildQuery binds no
- * predicate at all — the rows are byte-identical to the bare board — but
- * isUnfiltered returned false, so the commonest request on the site stopped
- * reading its maintained total and ran a capped count instead, publishing
- * "10,000 (capped)" beside a totalAllCompanies of 601,760.
- *
- * Mechanical over EVERY field is still the rule (a hand-maintained list is what
- * published 587,793 over a filtered page); the exemption is one named set, not
- * a per-field opinion.
- */
+// Rationale: docs/job-board-index-notes.md#n1278-export-const-isunfiltered-a-appliedfilte
 export const isUnfiltered = (a: AppliedFilters): boolean =>
   !Object.entries(a as Record<string, unknown>).some(([k, v]) =>
     WIDENING_FILTERS.has(k)
@@ -699,27 +447,8 @@ export const isUnfiltered = (a: AppliedFilters): boolean =>
 export type FilterViolation = { field: string; want: string; got: string };
 
 // Rationale: docs/job-board-index-notes.md#n1086-block
-/**
- * S12-020: "TODAY" IS A CALENDAR DAY. maxAgeDays was a rolling 24 hours per
- * day, and most vendors state a date with no time (stored 00:00Z), so a US
- * visitor choosing Today at 8pm EDT (00:00Z) lost every posting dated that
- * same day: countOnly 2,879 -> 1,200 across midnight UTC. The window now
- * starts at the earlier of the rolling bound and the start of the viewer's own
- * calendar day N-1 days back, read as the date a date-only stamp names.
- * `tzOffset` is the viewer's Date#getTimezoneOffset() in minutes (positive
- * west of UTC); without one the latest date line's (UTC-12, 720) is used, so
- * no visitor anywhere loses a posting dated their today. Never narrower than
- * the rolling window; at most a day wider.
- */
-/**
- * S12-124: THE TWO TEXT FILTERS ARE TEXT, AND A FILTER THAT VANISHES IS NAMED.
- * location ["Austin","Dallas"] was coerced to the string "Austin,Dallas" and
- * matched nothing; a q or location of nothing but stripped characters ("%%")
- * dropped silently; and a NUL in any string reached Postgres as 22P05 and
- * answered 500. Before any other reader sees the body: NULs go from every
- * top-level string, a q or location that is not a string is dropped and named
- * in ignoredFilters, and so is one with nothing left to search for.
- */
+// Rationale: docs/job-board-index-notes.md#n1279-export-function-textfieldshape-body-reco
+// Rationale: docs/job-board-index-notes.md#n1280-export-function-textfieldshape-body-reco
 export function textFieldShape(body: Record<string, unknown>, locationTermsOf: (raw: unknown) => { terms: string[] }): { body: Record<string, unknown>; ignored: string[] } {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(body)) out[k] = typeof v === "string" ? v.replace(/\u0000/g, "") : v;
@@ -876,63 +605,15 @@ export function filterViolations(
   return out;
 }
 
-/**
- * The value `p_category` carries into search_jobs / count_jobs_capped.
- *
- * The RPCs split this on commas (`= ANY(string_to_array($N, ','))`, migration
- * 20260806020000), so one value with no comma produces exactly the query it
- * always did and two values widen to the uncategorised bucket.
- *
- * A COMMA CANNOT ARRIVE FROM A CALLER. `category` is validated against
- * JOB_CATEGORIES above and anything else is rejected, so this only ever joins a
- * known slug to the literal "other". It matters because the RPC now treats a
- * comma as a separator: if arbitrary text could reach here, a caller could
- * widen their own query to categories they never asked for — the same class of
- * hazard as a comma surviving into the mandate's PostgREST or().
- */
+// Rationale: docs/job-board-index-notes.md#n1281-export-function-categoryparam-a-pick-app
 export function categoryParam(a: Pick<AppliedFilters, "category" | "includeUncategorised">): string | null {
   if (!a.category) return null;
   return a.includeUncategorised ? `${a.category},other` : a.category;
 }
 
-/**
- * The agent-ready filter as an RPC body FRAGMENT, spread into the call.
- *
- * A fragment rather than a value, because the key must be ABSENT when the
- * toggle is off — not null. During the deploy window where the new bundle runs
- * against the old SQL, a call that includes `p_sources` (even null) matches no
- * function signature and PostgREST 404s the whole search. Omitting the key
- * keeps every non-toggle query working against either SQL version; only the
- * toggle itself needs the migration, which is the smallest possible blast
- * radius. Same trick as the MorningQueuePanel two-select fallback.
- *
- * The list is a COPY of SENDABLE_VENDORS ([...spread]) because PostgREST
- * serialises the body and a readonly array is fine — but the copy makes it a
- * plain string[], which is what the RPC's text[] expects from supabase-js.
- */
-/**
- * The rescue tier's twin of sendableSourcesParam, and it exists so that the
- * vendor list still has exactly ONE producer per call shape.
- *
- * The trigram rescue spells its array parameter differently from the two ranked
- * RPCs. That is not a style choice — a guard counts the ranked spelling and
- * expects one declaration per ranked function, and a third copy fails it. The
- * right response to that is a second named producer, not a second inline spread
- * of the shared constant: the fifth copy of a vendor list is the one that goes
- * stale when adapter five lands.
- */
-/**
- * ONE source list from TWO toggles. buildQuery applies vendors and sendableOnly
- * as two .in("source", ...) calls, which PostgREST ANDs — the intersection. The
- * RPCs have one p_sources parameter, so the merge happens here, and the
- * semantics must be identical or the ranked path and the browse path answer the
- * same request differently.
- *
- * An EMPTY intersection (a vendor filter naming only non-sendable systems, plus
- * sendable-only) must match NOTHING — that is what two ANDed .in() calls
- * produce. NULL here would mean "no filter" and quietly widen the search, so it
- * returns an impossible sentinel value instead: no source is named "".
- */
+// Rationale: docs/job-board-index-notes.md#n1282-function-mergedsourcelist-a-pick-applied
+// Rationale: docs/job-board-index-notes.md#n1283-function-mergedsourcelist-a-pick-applied
+// Rationale: docs/job-board-index-notes.md#n1284-function-mergedsourcelist-a-pick-applied
 function mergedSourceList(a: Pick<AppliedFilters, "sendableOnly"> & Partial<Pick<AppliedFilters, "vendors">>): string[] | null {
   const v = a.vendors?.length ? a.vendors : null;
   const send = a.sendableOnly ? [...SENDABLE_VENDORS] : null;
@@ -954,14 +635,7 @@ export function sendableSourcesParam(a: Pick<AppliedFilters, "sendableOnly"> & P
   return list ? { p_sources: list } : {};
 }
 
-/**
- * The four filters that used to be RPC-blind, as a body FRAGMENT. Keys ABSENT
- * when off, never null — same deploy-window contract as payParams above it: an
- * unknown key against old SQL matches no function and 404s the whole call, so
- * ordinary searches must not carry these. A search that USES one of them
- * against old SQL errors and falls through to the recency path, which is
- * exactly where such a search always went.
- */
+// Rationale: docs/job-board-index-notes.md#n1285-export-function-extrafilterparams-a-appl
 export function extraFilterParams(a: AppliedFilters): Record<string, unknown> {
   return {
     ...(a.salaryCeiling !== null ? { p_salary_ceiling: a.salaryCeiling } : {}),
@@ -971,25 +645,7 @@ export function extraFilterParams(a: AppliedFilters): Record<string, unknown> {
   };
 }
 
-/**
- * PAGING ACROSS TWO SUBSETS THAT MUST STAY IN ORDER.
- *
- * When somebody picks a field and opts into the unsorted bucket, the result is
- * conceptually one list: every posting in their chosen category, then every
- * posting in `other`. Asking the database for that with
- * `.in([chosen, "other"]) ORDER BY category, date` was tried and reverted — it
- * stops Postgres using the date index and the whole widened set has to be
- * sorted, which returned HTTP 500 after 17.5s on sales+DE.
- *
- * Two `.eq()` queries are each indexed and fast. This works out which slice of
- * which subset a given page needs, so they can be fetched separately and
- * concatenated.
- *
- * `countA` is the exact size of the FIRST subset, and it has to be exact: an
- * estimate would silently skip or repeat rows at the boundary, which is the
- * kind of paging bug nobody reports because it looks like the board simply not
- * having that job.
- */
+// Rationale: docs/job-board-index-notes.md#n1286-export-type-pagesplit
 export type PageSplit = {
   aOffset: number; aLimit: number;
   bOffset: number; bLimit: number;

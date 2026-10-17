@@ -151,17 +151,7 @@ const BUILD_VERSION = "2026-09-09.93"; // per-version deploy notes: docs/job-boa
 const NAME_SYNC_VERSION = 4;
 // Rationale: docs/job-board-index-notes.md#n484-boards-whose-catalog-display-name-was
 
-/** Boards whose catalog display name was corrected, for the v2 sweep.
- *
- *  Two kinds. Most were the slug title-cased — "Thehartford", "Hdsupply",
- *  "Nyp", "Umd" — which is what a reader saw on the company card. The rest were
- *  worse than cosmetic: several DISTINCT employers shared one parent slug, so
- *  Fabletics, Savage X Fenty and JustFab all rendered as "Justfab", and
- *  get_size_segments (which merges boards by display name) counted them as one
- *  company. Naming them correctly separates them again.
- *
- *  Adding a rename later means editing sources.ts, appending the token here,
- *  and bumping NAME_SYNC_VERSION. */
+// Rationale: docs/job-board-index-notes.md#n1135-const-renamed_tokens-readonly-string
 const RENAMED_TOKENS: readonly string[] = [
   "analogdevices~wd1~External",
   "broadviewfcu~wd1~broadviewfcucareers",
@@ -225,28 +215,7 @@ const STRUCTURED_SWEEP_SOURCES: readonly string[] = ["workday"];
 const STRUCTURED_SWEEP_PER_HOP = 24;
 // Rationale: docs/job-board-index-notes.md#n488-const-hot_slice
 const HOT_SLICE = 10;
-/**
- * THE SLICE HAS A BUDGET IN POSTINGS, BECAUSE NOTHING ELSE BOUNDS THE SLICE.
- *
- * Every shed lever cuts how MANY boards a slice takes; .27 cut how big one
- * VISIT can be. Neither bounds the sum. Measured 2026-09-03 at L0 post-cap: ~5
- * capped giants among the 80 base boards (~10,300 postings) plus the deep lane
- * (then 16,000) in one invocation — and the invocation died on
- * WORKER_RESOURCE_LIMIT inside its fetch loop, exactly as it had on one
- * 20,800-posting board before the cap. A death skips EVERY remaining board in
- * the slice (the cursor already advanced), records nothing, and floors the
- * fleet at L1 via the stale-row rule.
- *
- * The budget stops STARTING fetches once the slice has accumulated this many
- * postings. Boards not started skip this pass — one rotation stale, which is
- * precisely what a death already costs them — but the slice COMPLETES: stats
- * record, the shed reads a live row, and `budgetHit` becomes the first signal
- * that measures the thing actually killing slices. Base runs last since .90
- * (n426): the cursor counts only the base boards started.
- *
- * Counted from r.jobs.length — normalised postings, before the freshness
- * filter — because that is what was held in memory, not what was stored.
- */
+// Rationale: docs/job-board-index-notes.md#n1136-const-slice_posting_budget-_500
 // SET FROM THE MEASUREMENT, SO IT CAN ACTUALLY BIND.
 //
 // This bound was in the right unit from the day it was written and never fired
@@ -526,25 +495,7 @@ const CAPPED_VISIT_VENDORS = new Set(["workday", "oracle", "icims", "smartrecrui
 const COLD_SLICE = 80; // cold boards are small (that's why they're cold); 80/hop at CONCURRENCY=5 is 16 sequential rounds, and SLICE_POSTING_BUDGET stops the loop near 51 boards long before the list is exhausted — the list size is a ceiling, not a plan. Rotation speed comes from concurrency + hops-per-pass, never bigger slices (proven-safe size).
 const BOOTSTRAP_PER_SLICE = 25; // zero-row boards prepended per cold slice after a deploy — +31% slice load, still ~3 rounds under the wall-time margin; a 1,900-board merge drains in ~1.5 passes instead of waiting a full rotation for its FIRST ingest
 // Rationale: docs/job-board-index-notes.md#n013-
-/**
- * A DEEP BOARD IS EXACTLY 2,000 POSTINGS NOW, SO THE LANE IS SIZED IN POSTINGS.
- *
- * Before .27 a deep board was "whatever its page budget allowed", 500 to a few
- * thousand, and 8 per slice was tuned against that (cut from 25 in .21 after
- * it cost 4x rotation speed). .27 capped every visit at MAX_POSTINGS_PER_VISIT
- * and left nextOffset set for every board that hit it — which is CORRECT, the
- * lane is the only thing that resumes a capped board, gate it out and the cap
- * becomes a truncation — but it changed what a deep board is: every one now
- * contributes exactly 2,000. Measured 2026-09-03: the lane went from 3 boards
- * to 16 in ten hours, selected 8 per slice, and 8 x 2,000 = 16,000 postings was
- * 61% of a cold slice's giant volume. Slices died inside the fetch loop on the
- * same WORKER_RESOURCE_LIMIT as before; the per-board cap had redistributed
- * the volume, not bounded the slice.
- *
- * So the count is derived from a VOLUME allowance, and the guard pins the
- * arithmetic so the constant stays tied to what it counts — the rule .21 was
- * paid for: never copy a cap without matching what it measures.
- */
+// Rationale: docs/job-board-index-notes.md#n1137-const-deep_volume_per_slice
 // Rationale: docs/job-board-index-notes.md#n014-deep-volume-per-slice
 const DEEP_VOLUME_PER_SLICE = 500;
 const DEEP_PER_SLICE = 2; // = floor(DEEP_VOLUME_PER_SLICE / MAX_POSTINGS_PER_VISIT); pinned by test
@@ -638,17 +589,7 @@ const lightBoardRefusal = (key: string): string | null => {
   return null;
 };
 
-/**
- * A set that can only ever hold a light-capable vendor's board.
- *
- * Refusing inside `add` covers every writer at once — today's two
- * content-volume enrolments and the byte-budget bound, tomorrow's third one,
- * and the meta reload that replays whatever an older build persisted.
- *
- * A refusal is a no-op plus a log line, never a throw. Light mode is an
- * optimisation; failing a refresh slice over one board would trade a
- * description problem for an ingest outage.
- */
+// Rationale: docs/job-board-index-notes.md#n1138-class-lightcapableonly-extends-set-strin
 class LightCapableOnly extends Set<string> {
   override add(key: string): this {
     const refusal = lightBoardRefusal(key);
@@ -666,23 +607,7 @@ const AUTO_LIGHT_THRESHOLD_CHARS = 2_500_000; // ~2.5MB of raw content HTML
 const AUTO_LIGHT_CAP = 500; // 107 greenhouse boards needed a slot on 2026-10-01, and 50 made every one of them miss; see n019
 const isLight = (s: { source: string; token: string }) => LIGHT_DESC_TOKENS.has(s.token) || DYNAMIC_LIGHT.has(lightKey(s));
 
-/**
- * THE BOARDS backfill-desc CAN ACTUALLY FILL — one predicate, two readers.
- *
- * The maintenance ladder built its own list (JOB_SOURCES filtered by isLight,
- * vendor-agnostic) and counted description-nulls across it, while the filler
- * selected greenhouse light boards only. A null on a non-greenhouse light
- * token was therefore COUNTED by the trigger and UNREACHABLE by the filler:
- * the count could never fall, missingCoverage was permanently true, and the
- * rung's `return` sat directly in front of desc-sweep — the only lane that
- * fills workday, oracle, smartrecruiters, bamboohr, breezy, rippling, adp, ukg
- * and jazzhr. Workday description coverage fell 98% -> 90% (~23,035 workday
- * plus 5,772 oracle live postings served with no text) because the trigger
- * meant to protect descriptions was starving the lane that writes them.
- *
- * Both readers call THIS function. A trigger that measures a population its
- * filler cannot reach is a trigger that can never be satisfied.
- */
+// Rationale: docs/job-board-index-notes.md#n1139-const-desc_backfill_vendor-greenhouse-ba
 const DESC_BACKFILL_VENDOR = "greenhouse"; // backfill-desc hits the GH per-JOB endpoint and only that
 const descBackfillBoards = (): JobSource[] =>
   JOB_SOURCES.filter((s) => s.source === DESC_BACKFILL_VENDOR && isLight(s));
@@ -797,22 +722,7 @@ async function seedBoardStamps(client: SupabaseClient): Promise<void> {
   } catch { /* the stamps seed on the next slice */ }
 }
 
-/**
- * Enrol a token in DYNAMIC_LIGHT and persist it the way the auto-light
- * measurement already does, so the NEXT pass fetches the board light.
- *
- * Extracted so the byte bound can reuse the machinery rather than grow a
- * second, differently-spelled copy of it — the mistake DEEP_PER_SLICE paid
- * for: never copy a cap without matching what it measures. It is now the ONLY
- * writer of DYNAMIC_LIGHT outside the meta reload, and the only writer of the
- * light_desc_dynamic row outside that reload's sweep.
- *
- * Returns whether the board is now light. FALSE means the set refused the
- * vendor (it logs why), and the caller must take the deferral path instead of
- * reporting an enrolment that did not happen — nothing may be persisted, and
- * at the byte bound the board is not read again in the same visit (n081): the
- * read would be byte-for-byte identical to the one that just failed.
- */
+// Rationale: docs/job-board-index-notes.md#n1140-async-function-enroldynamiclight-client
 async function enrolDynamicLight(client: SupabaseClient, board: Pick<JobSource, "source" | "token">, why: string): Promise<boolean> {
   const key = lightKey(board);
   DYNAMIC_LIGHT.add(key);
@@ -1009,67 +919,23 @@ const MAX_REQUEST_BYTES = 2_000_000;
 // text; the worker keys the DEFERRAL on it, and a deferral is not a failure.
 const OVERSIZE_MARKER = "OVERSIZE_BODY";
 
-/**
- * A bound of zero: a body we are never going to read. Cancelling releases the
- * connection instead of leaving it hanging, and allocates nothing — which is
- * strictly better than the `.text()` these call sites used to do purely to
- * drain the socket.
- */
+// Rationale: docs/job-board-index-notes.md#n1141-function-discardbody-src-body-readablest
 function discardBody(src: { body: ReadableStream<Uint8Array> | null } | null | undefined): void {
   try {
     void src?.body?.cancel().catch(() => {});
   } catch { /* already consumed, locked, or no body — nothing to release */ }
 }
 
-/**
- * Release the tail of a page chunk we are not going to read.
- *
- * A chunked fetcher issues its pages concurrently and then reads them one at a
- * time; any walk-ending condition (short page, shape drift, posting cap, a
- * page over the byte budget) leaves the rest unread. Unread is cheap — the
- * counting transform is never pulled, so each holds a chunk plus a transport
- * window — but leaving four connections open per board across a slice is not,
- * and a cancelled body is the same "bound of zero" discardBody gives a 429.
- */
+// Rationale: docs/job-board-index-notes.md#n1142-function-discardrest-rs-array-response-n
 function discardRest(rs: Array<Response | null>, from: number): void {
   for (let k = from; k < rs.length; k++) discardBody(rs[k]);
 }
 
-/**
- * Read ONE page of a chunk, keeping the two failures apart.
- *
- * `over` means the byte bound aborted this page — a WALK-ENDING condition, not
- * a vendor failure, and the caller must be able to see it. The three vendors
- * that wrote `await res.json().catch(() => undefined)` here turned an oversize
- * abort into "payload shape unrecognized", which fetchBoard's classifier reads
- * as a vendor failure: board_state 'error', a consecutive-failure streak, and
- * after DEAD_BOARD_THRESHOLD failures over DEAD_BOARD_MIN_FAILING_MS the
- * dormancy prune DELETES every posting on a live employer and logs a whole-
- * board exit into the closure log. A board being large must never be able to
- * spell itself as a board being dead.
- *
- * `body: undefined` with `over: false` is the old meaning, untouched: a body
- * that is present and unreadable, which each caller's own shape check owns.
- *
- * The bound is re-installed here rather than assumed from the caller. Every
- * caller does route through fetchWithTimeout, and wrapping an already-bounded
- * response costs one transform holding one chunk (verified: the marker
- * propagates intact through both, header path and streamed path alike) — but
- * a helper that reads a body handed to it is exactly where the next unbounded
- * read gets in, and the guard proves the bound at the read, not by tracing an
- * argument through a call graph.
- */
+// Rationale: docs/job-board-index-notes.md#n1143-const-isoversize-e-unknown-string-e
 /** The byte bound refusing a body — declared length or running total. */
 const isOversize = (e: unknown) => String((e as Error)?.message ?? e).includes(OVERSIZE_MARKER);
 
-/**
- * A page refused on its DECLARED Content-Length never reaches the read loop:
- * boundBody throws inside the concurrent fetch, which rejects the whole chunk.
- * So the walk-ending decision has to exist here too, and it is the same one
- * the read loop makes — mid-walk it is a WINDOW (keep the pages that landed,
- * resume next pass), and on the walk's first page it is the board's deferral.
- * `null` already means exactly that to every one of these consume loops.
- */
+// Rationale: docs/job-board-index-notes.md#n1144-function-chunkpagerefusal-e-unknown-isfi
 function chunkPageRefusal(e: unknown, isFirstPage: boolean): null {
   if (!isFirstPage && isOversize(e)) return null;
   throw e;
@@ -1106,31 +972,7 @@ function bodyDeadline(res: Response, ms: number): Response {
   return out;
 }
 
-/**
- * Install the byte bound on a body BEFORE anything reads it.
- *
- * The returned Response behaves exactly like the one handed in — same status,
- * same headers, same `.json()`/`.text()` — except that reading it past `limit`
- * throws instead of allocating. Two layers, because either alone has a hole:
- *
- *  1. Content-Length, when present: refuse before a single byte is
- *     transferred. Present on FAR less than it looks — Deno's fetch strips the
- *     header once it decompresses a response, so every gzip/br vendor arrives
- *     with content-length null (measured: ashby openai `br`, null; greenhouse
- *     gitlab `gzip`, null; lever palantir uncompressed, 5,978,887). This layer
- *     is an optimisation for the uncompressed minority, not the guard.
- *     It is also absent on any chunked response, and a vendor can lie.
- *  2. A counting TransformStream: the running total is checked per chunk and
- *     the stream is errored past the budget. `pipeThrough` propagates that
- *     error backwards and CANCELS the source body, so an aborted read does not
- *     leave the connection hanging.
- *
- * Memory: the transform enqueues each chunk and hands it straight to the
- * consumer under the default TransformStream backpressure (readable HWM 0), so
- * it holds one chunk, never a copy of the body. What the consumer accumulates
- * is bounded by `limit` by construction — that is the whole point, and it is
- * why this can be added to a function that already dies on memory.
- */
+// Rationale: docs/job-board-index-notes.md#n1145-function-boundbody-src-response-request
 function boundBody(src: Response | Request, limit = MAX_RESPONSE_BYTES): Response {
   const declared = Number(src.headers.get("content-length"));
   if (Number.isFinite(declared) && declared > limit) {
@@ -1383,40 +1225,7 @@ async function fetchAdp(s: JobSource): Promise<{ items: unknown[]; raw: unknown;
 }
 
 // Rationale: docs/job-board-index-notes.md#n028-
-/**
- * A SHED LEVER CUTS HOW MANY BOARDS A SLICE TAKES. NOTHING CUT HOW BIG ONE IS.
- *
- * Every paginated fetcher accumulates a whole board into one array before it
- * returns, so per-board memory is O(board), not O(page). That was harmless
- * while the caps were small; the `pages` overrides added 2026-08-31 made 315
- * boards deep-pageable and 77 of them able to pull 2,000+ postings in a single
- * visit — up to 20,800 for an iCIMS giant and 13,000 for an Oracle one.
- *
- * MEASURED 2026-09-02, the failure that produced: slices died INSIDE the fetch
- * loop with WORKER_RESOURCE_LIMIT, advancing the cursor and draining the
- * bootstrap queue optimistically on the way in and never reaching
- * stampSliceWork. The fleet then read its own stats row as stale and floored
- * itself at L1 — where it could not recover, because every shed lever cuts the
- * NUMBER of boards per slice (80->48, concurrency 8->5, hot 10->5) and none of
- * them cuts the SIZE of any one board. Shedding cannot stop a single giant
- * from exhausting an invocation, which is exactly why L1 held for hours while
- * the cold tail fell 3,765 minutes behind its SLA.
- *
- * So a visit is bounded by POSTINGS now, not by pages. 2,000 is Oracle's own
- * long-tolerated default (20 pages x 100), so no board that was already safe
- * changes behaviour — only the overridden giants do, and they RESUME: breaking
- * out without setting `exhausted` leaves nextOffset = startOffset + all.length,
- * which the deep cursor already persists and hands back on the next visit.
- * Coverage is unchanged; it arrives over more visits instead of one that dies.
- *
- * `windowed` stays true for a capped board, which is what keeps the closure
- * prune off a board that is still filling — the Four Seasons rule.
- *
- * Only the fetchers that carry startOffset/nextOffset are capped. UKG, ADP,
- * iCIMS and USAJOBS cannot resume, so a cap there would silently truncate a
- * board rather than defer it; those need offset support before they can be
- * bounded, and iCIMS is the one that most needs it.
- */
+// Rationale: docs/job-board-index-notes.md#n1146-const-max_postings_per_visit
 // MEASURED AT LAST: ~105KB OF HEAP PER POSTING HELD.
 //
 // The .40 breadcrumbs finally caught a slice at the moment it died, and the
@@ -1439,110 +1248,28 @@ async function fetchAdp(s: JobSource): Promise<{ items: unknown[]; raw: unknown;
 // which is the mechanism the deep lane has always used.
 const MAX_POSTINGS_PER_VISIT = 250;
 
-/**
- * PER-BOARD LAP STATE — see the block comment where deepLaps is loaded.
- *
- * One of these per WINDOWED, CURSOR-CARRYING board, carried inside the
- * deep_cursor meta row under `__laps` (a non-token key, which both readers of
- * that row already ignore). Seven small scalars: no per-posting allocation, and
- * the map is bounded by the number of boards still paging, exactly like
- * deepCursors beside it, deleted the moment a board stops being windowed.
- *
- * KEYED BY `source:token`, NOT BY TOKEN. deepCursors beside it is token-keyed
- * and stays that way (re-keying it would reset every cursor in the rotation),
- * but the catalog is not token-unique — 139 tokens carry two or three vendors —
- * and six of the collisions pair a windowed rippling board with a non-windowed
- * greenhouse/workable/pinpoint twin (`nve`, `pdq`, `excel`, `mozn-ai`,
- * `booknook-inc`, `lineleap`). Under a token key the twin's visit takes the
- * `else` branch and DELETES the rippling board's open lap, while leaving its
- * cursor alone: the board then stamps nothing for the rest of the pass, proves
- * nothing at the wrap, and re-opens at epoch 1 — matching stamps left by the
- * aborted lap, so those rows read as served forever and a real takedown on them
- * can never be logged. Silently, while `status.deepCursor.laps.tracking` counts
- * the board as tracked.
- */
+// Rationale: docs/job-board-index-notes.md#n1147-type-lapstate
 type LapState = {
-  /**
-   * Epoch number: which lap stamped a row. Non-zero ONLY for a lap that opened
-   * at offset 0 under this build.
-   *
-   * MONOTONIC IN TIME, never a counter restarting at 1. If the record is ever
-   * lost (a dropped meta write, a key that changed shape, a 45-day prune), a
-   * counter would hand the next lap an epoch that stale rows already carry, and
-   * those rows would read as "served by the current lap" forever — absence
-   * unprovable on exactly the rows most likely to be gone. Seconds since
-   * 2020-09-13 fits `integer` until 2088 and cannot repeat a value, so a lost
-   * record costs one lap and nothing else.
-   */
+  // Rationale: docs/job-board-index-notes.md#n1148-e-number
   e: number;
-  /**
-   * How deep into the feed this lap has reached, in the vendor's own offsets —
-   * a MAXIMUM, never a running sum. Within a lap the cursor only ever advances
-   * by what it served, so the windows are contiguous from 0 and this number is
-   * exactly the covered prefix. A sum would double-count a window re-read after
-   * a lost slice and could certify a lap whose tail was never fetched.
-   */
+  // Rationale: docs/job-board-index-notes.md#n1149-s-number
   s: number;
   /** When the lap opened (ours, not any employer date). */
   t: string;
   /** 1 = an epoch write failed somewhere in this lap, so it can never prove absence. */
   f: 0 | 1;
-  /**
-   * The employer's advertised total AT LAP OPEN, pinned so it cannot move with
-   * the wrap it is supposed to certify. Zero = the vendor stated none, which
-   * can never prove.
-   */
+  // Rationale: docs/job-board-index-notes.md#n1150-t0-number
   t0: number;
   /** When this board last COMPLETED a provable lap. Absent = it never has. */
   w?: string;
-  /**
-   * When this board completed its FIRST provable lap. Absent = never.
-   *
-   * The first proven lap of a big board stamps up to 30 days of accumulated
-   * absence at once — every takedown since 2026-09-06 that the page cap made
-   * unobservable — and the second one closes it. Those closures carry a
-   * `closed_at` of now(), so their durations are inflated by up to a month and
-   * they arrive as a spike that reads like the employer's behaviour changing.
-   * They are logged as `absence_basis = 'lap_backfill'` so a duration statistic
-   * can exclude them by name instead of silently absorbing them.
-   */
+  // Rationale: docs/job-board-index-notes.md#n1151-w0-string
   w0?: string;
 };
 
-/**
- * THE ADVERTISED TOTAL MAY NOT BE ITS OWN DENOMINATOR.
- *
- * A wrap is derived from feedTotal (`advanced >= feedTotal` in every paginated
- * fetcher), so testing coverage against the SAME visit's feedTotal is a test
- * that always passes: numerator and denominator move together and any
- * understatement certifies itself. This bounds how far the total may fall
- * DURING a lap before the lap forfeits its power to prove — the total is
- * pinned at lap open (LapState.t0) and a collapse below this share of it means
- * we walked a feed that is no longer the feed we started walking. A genuine
- * mass takedown fails this once and proves on the very next lap, which opens
- * against the new total.
- *
- * Not 1.0: a live board loses postings while we walk it, so the feed
- * legitimately ends a little short of the total advertised at open. Not lower
- * than this either — at 0.5 a board serving half its feed would be allowed to
- * declare the other half closed.
- */
+// Rationale: docs/job-board-index-notes.md#n1152-const-lap_coverage_min
 const LAP_COVERAGE_MIN = 0.9;
 
-/**
- * How far short of the feed's advertised end a lap may stop and still claim it
- * read the whole thing, in the vendor's own offsets.
- *
- * `LapState.s` is an OFFSET, not a sum of rows, so a shortfall here is
- * literally territory that was never requested — not churn. A 10% ratio on a
- * 16,027-posting board is 1,600 unfetched offsets, and a single short page
- * (any transient hiccup: Workday treats <20 items as the last page) inside
- * that band would certify a lap whose whole tail was never asked for, then
- * convert that tail into logged takedowns. So the tolerance is ABSOLUTE and
- * small, and only ever narrower than the ratio: shortfall <= min(this, (1 -
- * LAP_COVERAGE_MIN) * total), which leaves small boards their proportional
- * slack and gives big ones a bound that does not grow with them.
- */
+// Rationale: docs/job-board-index-notes.md#n1153-const-lap_tail_slack
 const LAP_TAIL_SLACK = 100;
 
 /** fit-batch bounds — see the action. 20 ids survives the shared worker pool; 60 did not. */
@@ -1747,12 +1474,7 @@ async function fetchIcims(s: JobSource, startOffset: number, pageSize: number): 
   return { items: all, windowed: !exhausted || startOffset > 0, feedTotal, nextOffset, feedEnded: exhausted, endOffset: advancedIc };
 }
 
-/**
- * fetchIcims at the largest page size whose first page fits the byte bound:
- * a first page over it is retried at the next size down before the board is
- * deferred (n414). Any other failure fails the board at once. The size that
- * fitted is remembered per isolate, so the next visit starts there.
- */
+// Rationale: docs/job-board-index-notes.md#n1154-async-function-fetchicimssized-s-jobsour
 async function fetchIcimsSized(s: JobSource, startOffset: number): Promise<Awaited<ReturnType<typeof fetchIcims>> & { pageSize: number }> {
   let hint = ICIMS_PAGE_SIZES.indexOf(ICIMS_SIZE_HINT.get(s.token) ?? ICIMS_PAGE_SIZES[0]);
   if (hint < 0) hint = 0;
@@ -1768,14 +1490,7 @@ async function fetchIcimsSized(s: JobSource, startOffset: number): Promise<Await
   }
 }
 
-/**
- * The deepest result USAJOBS serves to one query: 10,000, whatever
- * SearchResultCountAll says (recorded by third-party guides and our own
- * 2026-09-15 notes; the official reference states no cap and was not tested
- * here, the API needs the key). A cursor is never sent past it: the walk wraps
- * there without claiming an end, and an empty page short of it is judged by
- * emptyFirstPage, so a lower real cap costs a lap restart, never the board.
- */
+// Rationale: docs/job-board-index-notes.md#n1155-const-usajobs_result_cap-_000
 const USAJOBS_RESULT_CAP = 10_000;
 
 // Rationale: docs/job-board-index-notes.md#n520-async-function-fetchusajobs-s-jobsource
@@ -2092,11 +1807,7 @@ const COUNTRY_VERSION = 1; // v1: deterministic country from location text (name
 // Rationale: docs/job-board-index-notes.md#n044-the-completion-stamp-expires-without-this-th
 
 // Rationale: docs/job-board-index-notes.md#n045-
-/**
- * The sweep's cadence rule now lives in _shared/posted-backfill.ts so it can be
- * tested against the real function rather than a copy of it. `undatedBacklog`
- * stays here because it does IO; the counting itself is the shared pure helper.
- */
+// Rationale: docs/job-board-index-notes.md#n1156-async-function-undatedbacklog-client-sup
 // Rationale: docs/job-board-index-notes.md#n529-async-function-undatedbacklog-client-sup
 // deno-lint-ignore no-explicit-any
 async function undatedBacklog(client: SupabaseClient<any, any, any>): Promise<number | null> {
@@ -2112,14 +1823,7 @@ const BACKFILL_HOP_PAUSE_MS = 3_000;
 // Rationale: docs/job-board-index-notes.md#n530-const-velocity_hot_slots
 const VELOCITY_HOT_SLOTS = 40;
 const VELOCITY_WINDOW_DAYS = 7;
-/**
- * THE SMALLEST STEP THE HOT PHASE EVER TAKES (S11-022). The cap below was
- * sized for 10-board hot hops, but a hot hop takes min(shed step, the posting
- * budget's floor(1200/250) = 4) boards: 4 at L0 and L1, 3 at L2. So a pass
- * needed 30 hot hops (40 shedding at L2) plus 160 cold ones against a cap of
- * 176, and every chain stopped at cold slice 147 and idled until cron. The
- * floor takes L2's 3 under the same budget bound runRefresh applies.
- */
+// Rationale: docs/job-board-index-notes.md#n1157-const-hot_step_floor-math-min-math-max
 const HOT_STEP_FLOOR = Math.min(3, Math.max(1, Math.floor(HOT_POSTING_BUDGET / MAX_POSTINGS_PER_VISIT)));
 const CHAIN_CAP = Math.ceil(HOT_SIZE / HOT_STEP_FLOOR) + COLD_SLICES_PER_PASS + 4; // pass length at the slowest hot step + stall headroom
 
@@ -2183,38 +1887,7 @@ function tenureDays(
   return { days: null, basis: null };
 }
 
-/**
- * The country-column rule, generalised for the lifecycle tables.
- *
- * These writes are the only record their events ever get — a closure, an exit,
- * a field change — and every one of them now names columns that ship in a
- * migration this function can be deployed AHEAD of. A PostgREST insert naming
- * one absent column fails the WHOLE statement, so an un-tolerated new field
- * would not degrade the row, it would delete the event.
- *
- * So: if the error names one of the columns we declared optional, strip those
- * and insert again, and say so in the logs — a deploy window should be
- * visible, not silently narrower data forever.
- *
- * IT KEEPS STRIPPING. PostgREST reports ONE missing column per PGRST204
- * response ("Could not find the 'origin_basis' column of 'job_board_exits'"),
- * and this pass added fourteen optional columns to the exit ledger and eleven
- * to the closure log. A single strip-and-retry therefore only survives a
- * schema that is short exactly one of them: the second missing column came
- * back as an error nobody could act on, the call site console.warn'd it as
- * non-fatal, and the whole 200-row chunk of closures or exits — the one asset
- * that cannot be backfilled — was dropped instead of degraded. So it loops,
- * accumulating the named columns, bounded by the size of the optional set.
- *
- * Memory: the strip allocates one extra copy of a chunk that is already capped
- * at 200 rows, only on the error path, and it is released with the chunk.
- *
- * Takes the error the insert ALREADY returned (so the call site keeps its own
- * plain `client.from(table).insert(...)` spelling, which several guards read
- * and which is the shape everyone recognises) plus a thunk that rebuilds the
- * rows. The thunk runs only on the failure path, so the happy path allocates
- * nothing extra. Returns whichever error survives — the caller still checks it.
- */
+// Rationale: docs/job-board-index-notes.md#n1158-async-function-settleinserterror
 async function settleInsertError(
   client: SupabaseClient,
   table: string,
@@ -2248,18 +1921,7 @@ async function settleInsertError(
   return err ?? null;
 }
 
-/**
- * Every optional column the exit ledger gained in the .62 pass.
- *
- * posted_at LEADS THE LIST and is not an afterthought: the two branches that
- * merged here added their columns independently, and the retry that protected
- * posted_at named only posted_at while the retry that protected the rest named
- * only the rest. Either one alone leaves a deploy window in which the FIRST
- * missing column the database names is one the retry does not strip, the
- * whole 200-row statement fails, the call site logs it as non-fatal, and the
- * ledger goes silently empty — the exact failure both retries were written to
- * prevent, reintroduced by the merge. One list, every new column, one path.
- */
+// Rationale: docs/job-board-index-notes.md#n1159-const-exit_optional_cols
 const EXIT_OPTIONAL_COLS = [
   "posted_at",
   "origin_basis", "title", "company", "department", "country", "region_code",
@@ -2267,12 +1929,7 @@ const EXIT_OPTIONAL_COLS = [
   "salary_min_annual", "salary_max_annual", "salary_period", "salary_currency",
 ] as const;
 
-/**
- * Same, for the closure log — including the feed-dark batch stamps, which
- * arrived on the other branch behind a retry of their own. They are folded in
- * here for the same reason posted_at is folded into the exit list above: two
- * narrow retries cover strictly less than one wide one.
- */
+// Rationale: docs/job-board-index-notes.md#n1160-const-closure_optional_cols
 const CLOSURE_OPTIONAL_COLS = [
   "suspect", "batch_removed", "batch_live_before", "absence_basis",
   "department", "country", "region_code", "work_mode", "employment_type",
@@ -2280,20 +1937,7 @@ const CLOSURE_OPTIONAL_COLS = [
   "salary_min_annual", "salary_max_annual", "salary_period", "salary_currency",
 ] as const;
 
-/**
- * THE COLUMNS THAT MAKE A LIFECYCLE ROW CUTTABLE.
- *
- * job_board_closures and job_board_exits both recorded WHICH role ended and
- * WHEN, and nothing about what kind of role it was. That is not a reporting
- * gap — the posting row is hard-deleted at closure, so the moment the event is
- * logged is the last moment pay, team, geography and level exist anywhere.
- * No fill rate, churn rate or ghost rate for any elapsed period can EVER be
- * cut by them retroactively.
- *
- * The collector already SELECTs the posting before deleting it, so this is one
- * wider row read on a query that was going to run anyway: no extra round trip,
- * no new array, nothing retained per posting.
- */
+// Rationale: docs/job-board-index-notes.md#n1161-function-lifecyclefacets-r-record-string
 function lifecycleFacets(r: Record<string, unknown>): Record<string, unknown> {
   return {
     department: r.department ?? null,
@@ -2310,23 +1954,7 @@ function lifecycleFacets(r: Record<string, unknown>): Record<string, unknown> {
   };
 }
 
-/**
- * VENDORS WHOSE feedTotal IS OURS, NOT THE EMPLOYER'S.
- *
- * job_board_board_state.feed_total is documented as "the employer's own
- * advertised count, verbatim from their feed, unmodified — the only figure
- * here we did not derive", and the whole reason to keep a per-day history of
- * it is that it is ground truth nobody derived. Two fetchers hand back a
- * number that does not meet that bar: Rippling's is pageCount * 20 (an upper
- * bound from the page count, so a 3-role tenant reports 20 and crossing a page
- * boundary reads as the employer doubling their hiring), and JazzHR's is the
- * length of the list we just fetched (which would make the coverage ratio a
- * constant 1.0 by construction). For these the honest value is NULL — the
- * documented "the vendor did not state one" — not a derived stand-in.
- *
- * The live verification stamp keeps whatever it always kept; this rule applies
- * to the append-only history, where a number is permanent.
- */
+// Rationale: docs/job-board-index-notes.md#n1162-const-derived_feed_total_sources-new-set
 const DERIVED_FEED_TOTAL_SOURCES = new Set(["rippling", "jazzhr", "teamtailor"]);
 
 /** The widened posting select both delete paths now read before pruning. */
@@ -2335,77 +1963,9 @@ const LIFECYCLE_SELECT =
   "department, country, region_code, work_mode, employment_type, experience_band, min_years, " +
   "salary_min_annual, salary_max_annual, salary_period, salary_currency";
 
-/**
- * WHICH US STATE OR CANADIAN PROVINCE, kept instead of thrown away.
- *
- * normalize.ts already runs state/province patterns on every row — but only to
- * decide `country`, after which the state itself is discarded. Pay-disclosure
- * law is STATE-level (CO, CA, NY, WA, IL...), so without this the board can
- * only ever score compliance per country, and the jurisdiction is recoverable
- * only while the posting row is still live.
- *
- * THE PARSER IS normalize.ts's `detectRegion`, IMPORTED, NOT COPIED. This file
- * briefly carried its own copy of the patterns, and the copy got the two hard
- * cases wrong in the one direction that matters for a column whose whole
- * purpose is naming a legal jurisdiction: ", CA" is California in a US string
- * and Canada in a Canadian one, so "Toronto, ON, CA" (which detectCountry
- * resolves to US on exactly that token) was stored as US-CA, and a bare
- * leading code filed "DE - Berlin" as Delaware. detectRegion refuses both —
- * it suppresses a US "CA" match when the same string also names a Canadian
- * province, and it reads a bare leading code only from a deliberately short
- * list, last. It also carries REGION_MAP_VERSION, so a stored region_code
- * stays interpretable against the rules that produced it, and it is the
- * version the tests exercise. One column, one implementation.
- *
- * Stored ISO 3166-2 style ("US-CO", "CA-ON") so the value names its own
- * country and can never be read as a bare ambiguous two-letter code.
- *
- * Memory: pure string work returning a ≤5-char string that is stamped onto a
- * row the ingest was already building. Nothing retained per posting.
- */
+// Rationale: docs/job-board-index-notes.md#n1163-const-search_callers-new-set-web-api
 
-/**
- * WHO ASKED. Until now, nothing in job_board_search_events could tell a
- * candidate apart from our own monitoring.
- *
- * logSearch fires unconditionally, and action:'list' is called by far more
- * than the website: the filter audit's self-calls (~31 a day), scan-heartbeat's
- * probe battery (including a literal {salaryFloor:100000} query that is not a
- * person wanting a six-figure job), send-search-digest, agent-mcp, and every
- * paying /v1 customer, because public-api proxies straight through to this
- * action. There was no bot flag, no visitor id, no UA, no source column — so
- * every "candidates search for X" number is contaminated in a way no filter can
- * retroactively separate. This is a WRITE-side fix; nothing can recover the
- * attribution of a row already written without it.
- *
- * THE ORDER, most trustworthy first:
- *  1. An explicit caller the request declares — body.caller or an x-rsp-caller
- *     header — checked against the enum. Internal callers say who they are;
- *     this is how public-api ('api'), agent-mcp ('mcp') and send-search-digest
- *     ('digest') attribute themselves with a one-line change on their side.
- *  2. A service-role bearer token: only our own infrastructure holds it. That
- *     is scan-heartbeat's battery and this function's own filter audit —
- *     'maintenance', and the largest single contaminant.
- *  3. A browser-shaped request (an Origin, or a Referer): 'web'.
- *  4. Otherwise NULL — meaning "this resolver did not attribute it". The column
- *     default takes over from there and the row lands as 'web', which is the
- *     schema's documented and deliberately CONSERVATIVE choice: mislabelling
- *     real demand as maintenance would delete the very signal the column exists
- *     to protect, while the reverse only dilutes it. A stored NULL means
- *     something else entirely — "written before this column existed" — so this
- *     function never writes one, it omits the key.
- *
- * TWO HEADER SPELLINGS ARE READ ON PURPOSE. The column comment
- * (20260906216000) documents `x-rb-caller`; _shared/search-caller.ts sends
- * `x-rsp-caller` AND `x-rb-caller` while the two are reconciled. Reading both
- * costs nothing and means the reconciliation cannot silently strand a whole
- * caller class as unattributed — and unattributed days cannot be recovered.
- *
- * IT IS A SELF-DECLARED HINT, NOT AN AUTHENTICATED IDENTITY. The anon key is
- * public and any client can send any header, so this answers "who says they
- * are calling". That is exactly enough to stop our own monitoring being
- * invisible, and nothing is authorised on the strength of it.
- */
+// Rationale: docs/job-board-index-notes.md#n1164-const-search_callers-new-set-web-api
 const SEARCH_CALLERS = new Set(["web", "api", "mcp", "digest", "maintenance"]);
 function resolveCaller(req: Request, body: Record<string, unknown>): string | null {
   const declared = String(
@@ -2436,13 +1996,7 @@ async function insertExits(
 }
 
 // Rationale: docs/job-board-index-notes.md#n049-logwholeboardexit
-/**
- * Log every posting of one board (or of one token, when `source` is null) to
- * the exit ledger before the caller deletes them. `complete` is true only when
- * every page was read and every insert landed; a caller deletes ONLY then
- * (n416). A board whose exit log broke on page 1 used to be deleted whole with
- * zero exit rows.
- */
+// Rationale: docs/job-board-index-notes.md#n1165-async-function-logwholeboardexit
 async function logWholeBoardExit(
   client: SupabaseClient,
   token: string,
@@ -2510,12 +2064,7 @@ async function logWholeBoardExit(
   return { logged, complete, loggedIds };
 }
 
-/**
- * Log a whole board to the exit ledger, then delete what was logged: the whole
- * board (scoped to its vendor when `source` is given, so a token's twin on
- * another vendor keeps its rows) when every row was logged, otherwise exactly
- * the logged ids. Deleted always implies ledgered (n416).
- */
+// Rationale: docs/job-board-index-notes.md#n1166-async-function-prunewholeboard
 async function pruneWholeBoard(
   client: SupabaseClient,
   token: string,
@@ -2538,13 +2087,7 @@ async function pruneWholeBoard(
   return { logged, complete };
 }
 
-/**
- * One chunk (at most 200 ids) of a board's confirmed-vanished postings: read
- * each row, write its ledger row (an exit for a row the freshness cap aged
- * out, a closure for one the employer took down), then delete exactly the rows
- * whose ledger write landed. Rows whose read or insert failed stay (stamped,
- * hidden) and are retried next visit (n416). Returns the ids it deleted.
- */
+// Rationale: docs/job-board-index-notes.md#n1167-async-function-closevanishedchunk
 async function closeVanishedChunk(
   client: SupabaseClient,
   s: { source: string; token: string },
@@ -2694,13 +2237,7 @@ async function closeVanishedChunk(
   return doomed;
 }
 
-/**
- * A posting that left by any path but the freshness cap (a closure, a board
- * prune) loses its aged-out tombstone: only a re-admitted row holds one, and
- * left in place it refused the same id's next listing on an unchanged date for
- * up to 180 days (S8-085). Never at re-admission (the Workday betterDate loop,
- * n412). Best-effort: a tombstone left behind costs one refusal.
- */
+// Rationale: docs/job-board-index-notes.md#n1168-function-droptombstones-client-supabasec
 function dropTombstones(client: SupabaseClient, ids: readonly string[]): void {
   for (let i = 0; i < ids.length; i += 200) {
     waitUntil(Promise.resolve(client.from("job_board_aged_out").delete().in("id", ids.slice(i, i + 200))).then(({ error }) => {
@@ -2711,13 +2248,7 @@ function dropTombstones(client: SupabaseClient, ids: readonly string[]): void {
 
 // Rationale: docs/job-board-index-notes.md#n539-const-fresh_prune_max-_000
 const FRESH_PRUNE_MAX = 15_000;
-/**
- * The freshness sweep's clock (S11-001), counted from the start of its own
- * pass-end hop (.93): no new chunk is taken after this. The hop does its work
- * inside its request, so this stays well inside the gateway's 150 s idle
- * timeout with one chunk in flight; a sweep the clock stopped runs again in
- * a new hop (pass-end.ts PASS_END_SWEEP_HOPS).
- */
+// Rationale: docs/job-board-index-notes.md#n1169-const-pass_end_sweep_until_ms-_000
 const PASS_END_SWEEP_UNTIL_MS = 90_000;
 /** The name-sync lane takes no new board after this, from its own hop's start (S11-133); a board not reached waits a pass. */
 const NAME_SYNC_UNTIL_MS = 90_000;
@@ -2733,23 +2264,12 @@ function chainKey(): Promise<string> {
   return chainKeyPromise;
 }
 
-/**
- * ONE STATUS ANSWER PER ISOLATE PER HALF MINUTE for a caller without a
- * credential (.88). status is uncounted -- every homepage view and every
- * monitor calls it -- and gathers ~40 reads, three RPCs and a cache write, so
- * a loop of it was that much database work per request. Our servers and
- * maintenance read fresh. The version is this bundle's own constant, so a
- * memo never outlives the bundle that wrote it.
- */
+// Rationale: docs/job-board-index-notes.md#n1170-const-status_memo_ms-_000
 const STATUS_MEMO_MS = 30_000;
 let statusMemo: { at: number; text: string } | null = null;
 /** host_sweep without a maintenance credential: one sweep per this gap, arrival to arrival (the cron's is 60 minutes). */
 const HOST_SWEEP_ANON_GAP_MS = 50 * 60_000;
-/**
- * company-suggest's employer list, per isolate, for a minute (.88). The action
- * is an autocomplete -- a call per keystroke -- and each call read the whole
- * 1.3-1.6MB refresh row for two of its keys. The facet changes once a pass.
- */
+// Rationale: docs/job-board-index-notes.md#n1171-const-suggest_memo_ms-_000
 const SUGGEST_MEMO_MS = 60_000;
 let suggestMemo: { at: number; facet: unknown; open: unknown; merged?: ReturnType<typeof mergeCompanyFacet> } | null = null;
 /** company-suggest's employers, one row per employer with its open count; the list resolves names from the same rows. */
@@ -2786,12 +2306,7 @@ async function suggestEmployers(client: SupabaseClient): Promise<ReturnType<type
   return merged;
 }
 
-/**
- * S12-014: the router's employer keys, the alias table plus keys read from
- * the live employer list (search-routing.ts withLiveBrands), per isolate for
- * SUGGEST_MEMO_MS. A list read slower than ROUTE_ALIAS_DEADLINE_MS, or one
- * that fails, routes on the table alone and is asked again next call.
- */
+// Rationale: docs/job-board-index-notes.md#n1172-const-route_alias_deadline_ms
 const ROUTE_ALIAS_DEADLINE_MS = 800;
 /** Words no live employer key may claim: role abbreviations, places, filler, and the job acronyms people type. */
 const LIVE_KEY_REFUSE: ReadonlySet<string> = new Set([
@@ -2821,14 +2336,7 @@ async function isMaintenance(req: Request, body: Record<string, unknown>): Promi
   return (await exemptKind(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "")) === "service";
 }
 
-/**
- * ONE RUN AT A TIME for work any caller can start once its cache goes stale
- * (.88): the moment a cache expires is the moment every waiting caller would
- * start its own copy. Takes meta row `key` only if its stamp is older than
- * holdMs (a conditional update, so two callers cannot both win), or inserts it
- * when absent (the unique key settles that race). Fails OPEN on a read error:
- * the run happens, as it did before this existed.
- */
+// Rationale: docs/job-board-index-notes.md#n1173-async-function-claimrun-client-supabasec
 async function claimRun(client: SupabaseClient, key: string, holdMs: number): Promise<boolean> {
   const now = new Date().toISOString();
   const { data, error } = await client.from("job_board_meta").update({ v: { at: now }, updated_at: now })
@@ -2863,33 +2371,7 @@ async function isIngestPaused(client: SupabaseClient): Promise<boolean> {
   return false;
 }
 
-/**
- * A CHAIN WHOSE LIVENESS IS NOT IN STATUS IS A CHAIN WHOSE DEATH IS A RESEARCH
- * PROJECT — this file's own words, about its OTHER chains.
- *
- * Every maintenance track here got a liveness stamp and MAINTENANCE_STALL_MS
- * detection after two of them stalled invisibly overnight and could only be
- * diagnosed by inference from posting counts. The refresh chain — the one
- * carrying the freshness SLA — got neither, and it showed: deciding whether
- * cold slices were chaining at all took an hour of cursor sampling, and the
- * first answer was wrong.
- *
- * THREE WAYS A HOP DIED SILENTLY, all now recorded:
- *
- *  1. `.catch(() => {})` swallowed everything, and because it was applied
- *     BEFORE waitUntil received the promise, waitUntil's own console.warn
- *     could never fire either. A DNS failure, a TLS error or an abort from
- *     isolate teardown produced zero log lines in either isolate.
- *  2. `r.ok` was never checked. A 500, or a chainKey rejection, is not a
- *     rejected fetch promise — it is a perfectly ordinary Response.
- *  3. WORST, because it looks healthiest: a 200 that DECLINED. The child can
- *     answer "skipped — a slice ran moments ago" or "ingest paused" and the
- *     chain simply stops, with a success status and no error anywhere.
- *
- * One writer, one key: `chain_kick`. The parent stamps what happened to its own
- * kick, so the row can never diverge the way a meta row written from two sites
- * does (this schema lost a whole lane to that once).
- */
+// Rationale: docs/job-board-index-notes.md#n1174-function-chainnextslice-hop-number-clien
 function chainNextSlice(hop: number, client?: SupabaseClient, nextBoards?: number) {
   const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/job-board`;
   const stamp = async (v: Record<string, unknown>) => {
@@ -2953,44 +2435,7 @@ function chainNextSlice(hop: number, client?: SupabaseClient, nextBoards?: numbe
 // stamp remains the load-bearing freshness measurement.
 const SLICE_STATS_WRITE_MS = 5_000;
 
-/**
- * LIVENESS AND TIMING ARE TWO FACTS, AND ONE ROW WAS ANSWERING FOR BOTH.
- *
- * `shedSignal` asks the slice_stats row two different questions: "is the
- * rotation alive" (row age) and "what does a slice cost" (the EMA). Only
- * recordSliceStats wrote it, and that runs at the TERMINAL return — after
- * chainNextSlice, after maybeKickMaintenance, after the pass-end facets and
- * dormancy work. So a slice that fetched every board it was given, upserted
- * every posting, and then died in the tail answered "no" to BOTH questions.
- *
- * MEASURED 2026-09-02 across a 37-minute window on .24, then again on .25:
- * 12 slices STARTED (cold cursor +576, exactly 12 x the L1 take of 48) and
- * ZERO recorded. Yet the fetching plainly worked — a 41.2h full cold cycle
- * predicts a ~20h median and the measured p50 was 22.6h. The work was landing;
- * only the report of it was lost.
- *
- * The consequence was a throttle aimed at the wrong half. A stale row floors
- * the fleet at L1, which cuts FETCH capacity (cold slice 80 -> 48, concurrency
- * 8 -> 5) in response to a TAIL that is dying — and cutting the fetch cannot
- * repair the tail, which is why L1 held for over two hours without recovering
- * while freshness climbed at 1.18x wall clock.
- *
- * THIS IS THE FIX THE BOARD-VERIFICATION STAMPS ALREADY GOT. That stamp moved
- * to per-board and immediate for this exact reason — "heavy hot hops can die
- * post-processing (WORKER_RESOURCE_LIMIT) before hop-end code runs", the
- * 397-stale-boards incident. The slice's own pulse was still at hop end.
- *
- * So the fetch phase stamps its own completion here, the moment the last board
- * is in, and the EMA stays at the terminal return where it still measures the
- * whole slice INCLUDING the tail — the property its own guard pins. Both
- * writers touch one row, so `updated_at` now means "a slice finished
- * FETCHING", which is the honest liveness question. Total distress — dying
- * mid-fetch — still touches nothing, still goes stale, still sheds.
- *
- * `works` counts fetch phases and `slices` counts whole slices, so the GAP
- * between them is the tail-death rate: a number that was previously
- * unobservable and is the thing actually worth alarming on.
- */
+// Rationale: docs/job-board-index-notes.md#n1175-async-function-stampslicework-client-sup
 async function stampSliceWork(client: SupabaseClient, inHotPhase: boolean, sliceWallStart: number): Promise<void> {
   const workMs = Date.now() - sliceWallStart;
   const phase = inHotPhase ? "hot" : "cold";
@@ -3028,33 +2473,7 @@ function firstSliceOf(pv: { build?: unknown; buildSince?: unknown }, sliceWallSt
   return { build: BUILD_VERSION, buildSince: since };
 }
 
-/**
- * THE SHED SIGNAL WAS WRITTEN ON A PATH THE RUNTIME IS ALLOWED TO DROP.
- *
- * This row is not instrumentation. `shedSignal` READS it, and a row untouched
- * for 30 minutes returns `stale`, which floors the entire fleet at L1: cold
- * slice 80 -> 48, concurrency 8 -> 5, deep 8 -> 4, bootstrap 25 -> 10, hot
- * 10 -> 5. It is a control input wearing a statistic's clothes — and it was
- * being written inside waitUntil, i.e. deliberately after the response, where
- * the isolate can be reclaimed before the write lands.
- *
- * MEASURED LIVE 2026-09-02 on .24. The row sat at 11:47:35Z for over two hours
- * while the fleet ran pinned at L1 the whole time — `drained: 10` and a cold
- * cursor advancing by exactly 48 are that level's fingerprints — with
- * freshness p50 at 1312 min against a 480 bound. Every write that DID land in
- * that window was an early awaited one (the optimistic cursor, the bootstrap
- * drain); the one deferred write did not. A throttle that cannot be lifted
- * because the evidence for lifting it is the thing being dropped.
- *
- * WHAT IS NOT CHANGED. A slice that dies before reaching these terminal
- * returns still records nothing, so a genuinely dying rotation still goes
- * stale and still sheds. That survivor-bias protection was always right; what
- * was wrong was letting a COMPLETED slice fail to say so.
- *
- * The race is bounded, not removed: the rotation must never wedge on its own
- * bookkeeping, so a write that cannot finish inside the budget is abandoned
- * exactly as the old catch abandoned it — one slice of EMA, never a hop.
- */
+// Rationale: docs/job-board-index-notes.md#n1176-let-slicebudgetnote-fetched-number-skipp
 // Rationale: docs/job-board-index-notes.md#n546-let-slicebudgetnote-fetched-number-skipp
 let sliceBudgetNote: { fetched: number; skipped: number; hit: boolean; lastUpsertError: string | null; heapStopped: boolean; wallStopped: boolean; sizeStopped: boolean; boardBudget: number } | null = null;
 // This slice's light re-reads (n081), added to the row's running totals by the recorder.
@@ -3077,14 +2496,7 @@ async function breadcrumb(client: SupabaseClient, mark: string, extra?: Record<s
   })().catch(() => { /* never break the thing it measures */ });
   await Promise.race([write, new Promise<void>((r) => setTimeout(r, 600))]);
 }
-/**
- * THE PASS-END TAIL'S OWN RECEIPT (S11-001). slice_trace keeps only the latest
- * mark, and the next chain overwrites it within minutes, so "the tail started
- * and never finished" left no trace once a new pass began. This row is
- * written when the tail starts ({startedAt}) and again when it ends
- * ({startedAt, doneAt}); scan-heartbeat fails job_board_pass_end when a
- * start has had no finish for half an hour. Bounded like breadcrumb.
- */
+// Rationale: docs/job-board-index-notes.md#n1177-async-function-stamppassend-client-supab
 async function stampPassEnd(client: SupabaseClient, v: Record<string, unknown>): Promise<void> {
   const write = (async () => {
     const { error } = await client.from("job_board_meta").upsert(
@@ -3150,21 +2562,7 @@ async function recordSliceStats(client: SupabaseClient, sliceWallStart: number, 
   await Promise.race([write, new Promise<void>((res) => setTimeout(res, SLICE_STATS_WRITE_MS))]);
 }
 
-/**
- * The optimistic cursor advance as a compare-and-set. A forced hop (the
- * chain's own, carrying a chainKey) writes unconditionally, as it always
- * did. A non-forced hop 0 — cron, watchdog, manual — takes the row only if
- * its updated_at is still the one the slice lock read: an UPDATE filtered
- * on that stamp, or an INSERT when the lock saw no row (a second INSERT
- * fails on the key). Zero rows means another kick was admitted in the gap.
- *
- * NEVER STALLS THE ROTATION. If the conditional write matches nothing while
- * a re-read shows the stamp unchanged — the timestamp did not round-trip
- * through the filter — this degrades to the unconditional write the code
- * had before, with a warning, rather than declining every hop 0 forever.
- * The failure mode of this function is therefore the old behaviour, never
- * a dark rotation.
- */
+// Rationale: docs/job-board-index-notes.md#n1178-async-function-admitslice
 async function admitSlice(
   client: SupabaseClient,
   next: RefreshProgress,
@@ -3848,17 +3246,7 @@ async function runRefresh(client: SupabaseClient, force = false, chainHop = 0, b
           delete deepLaps[lapKey];
           deepCursorsDirty = true;
         }
-        /**
-         * A LAP WITH A HOLE IN ITS INSTRUMENTATION PROVES NOTHING.
-         *
-         * The epoch write is best-effort like every other write on this path,
-         * and a failed chunk leaves rows that WERE served carrying the previous
-         * epoch — indistinguishable, at the wrap, from rows nobody served. That
-         * would turn a transient database error into logged employer takedowns,
-         * which is precisely the failure this whole mechanism exists to
-         * prevent. So any failure disarms the lap for its whole remaining
-         * length; the board simply re-laps and proves absence one pass later.
-         */
+        // Rationale: docs/job-board-index-notes.md#n1179-const-faillap
         const failLap = () => {
           const rec = deepLaps[lapKey];
           if (rec && rec.f !== 1) { rec.f = 1; deepCursorsDirty = true; }
@@ -5938,54 +5326,7 @@ const MAINTENANCE_ANY_GAP_MS = 10 * 60_000; // floor between any two kicks
 // Rationale: docs/job-board-index-notes.md#n168-maintenance-stall-ms
 const MAINTENANCE_STALL_MS = 12 * 60_000;
 
-/**
- * THE DEAD-CHAIN WATCHDOG. Decision in chain-watchdog.ts (pure, tested); this
- * is the I/O half: one read of five meta rows, and — on "rekick" only, from a
- * status call only — one conditional stamp and one plain, NON-forced
- * {action:"refresh"}, the body pg_cron sends. Non-forced means runRefresh's
- * SLICE_LOCK_MS check still guards it, so a live chain that merely looked
- * quiet answers "skipped" and no second chain starts.
- *
- * THE PULSE IS THE FRESHEST OF FOUR STAMPS, not slice_stats.workAt alone:
- * refresh_progress.updated_at (hop start and end), slice_trace.updated_at
- * (every board fetched and stored), slice_stats.workAt (loop end) and
- * slice_stats.at (hop end). The first cut read only workAt and would have
- * called a live hot slice dead: hot slices run 341s and workAt is silent for
- * the whole loop, while the window at the live cold EMA is ~4 min. A live
- * loop now pulses per board, so its longest silence is one board's
- * FETCH_TIMEOUT_MS and the cold-EMA window holds in both phases.
- *
- * THE chain_kick ROW IS ONE HOP BEHIND (chain-watchdog.ts header): 'continued'
- * is the grandparent's verdict on the parent, stamped while the child runs,
- * and if the child then dies with its parent the row stays 'continued'
- * forever. So 'continued' proves the chain alive only while nothing has
- * pulsed since it was stamped; a later pulse supersedes it and the window
- * rule decides. Judge this watchdog, after deploy, on deaths of EITHER shape.
- *
- * FALLS THROUGH, and takes its own stamp (`chain_watchdog`, floor SLICE_LOCK_MS)
- * rather than the exclusive ladder's `maintenance_kick` and its ten-minute
- * floor — the desc-sweep rule: a kick that consumed the ladder's stamp would
- * starve the tracks behind it, and a ten-minute floor here would recreate the
- * wait 20260909219000 exists to remove. The stamp is a CONDITIONAL write
- * (update where the row is older than the lock, else insert): the decision's
- * throttle is read-then-write across two round trips, and two status calls a
- * few hundred milliseconds apart both passed it. Only the call whose write
- * lands sends the kick; the other reads "throttled".
- *
- * NEVER on an unsuperseded 'continued', and never inside 2 x coldEmaMs +
- * SLICE_LOCK_MS of the freshest pulse — both decided in decideRekick and
- * pinned by its test; this function sends nothing on any other verdict.
- *
- * NEVER FROM INSIDE A HOP. maybeKickMaintenance calls this with inHop, from a
- * hop that is itself the chain's pulse — at pass end it runs AFTER a tail
- * (facets, orphan prune, freshness sweep) that can outlast the window, and a
- * kick from there would start a second chain beside the one evaluating. The
- * in-hop path observes, logs a would-have-fired as the measurement of how
- * often a tail exceeds the window, and returns "in_hop". The status action is
- * the path monitors hit while nothing else runs; a dead chain is observed
- * there, and that is where the re-kick actually shortens dark time. Returns
- * the verdict so status can publish the decision it just made.
- */
+// Rationale: docs/job-board-index-notes.md#n1180-async-function-mayberekickdeadchain-clie
 async function maybeRekickDeadChain(client: SupabaseClient, opts: { inHop?: boolean } = {}): Promise<Record<string, unknown> | null> {
   try {
     const { data: rows } = await client.from("job_board_meta").select("k, v, updated_at").in("k", ["slice_stats", "chain_kick", "chain_watchdog", "slice_trace", "refresh_progress"]);
@@ -6181,16 +5522,7 @@ async function maybeKickMaintenance(client: SupabaseClient): Promise<void> {
   }
 }
 
-/** Resolve to `{ data: null }` if a query outruns its deadline. Used for the
- *  optional analytics on the status action: a stat that is slow to compute is
- *  worth omitting, never worth delaying the deploy answer for.
- *
- *  TWO THINGS A CALLER MUST KNOW. (1) A REJECTED promise also resolves to
- *  `{ data: null }` — indistinguishable from a timeout here; a caller that
- *  publishes the reason maps rejections to an error object BEFORE handing
- *  the promise in (the stale lane does). (2) This is a race, not a cancel:
- *  the losing query keeps running and its response is abandoned unread. A
- *  caller on a hot path attaches its own abort at the deadline. */
+// Rationale: docs/job-board-index-notes.md#n1181-function-withdeadline-t-p-promiselike-t
 function withDeadline<T>(p: PromiseLike<T>, ms: number): Promise<T | { data: null }> {
   return Promise.race([
     Promise.resolve(p).then((r) => r, () => ({ data: null } as { data: null })),
@@ -6378,22 +5710,7 @@ async function checkLive(src: JobSource, externalId: string, applyUrl?: string |
   }
 }
 
-/**
- * BOTH HALVES OF THE PAYLOAD, BECAUSE THROWING ONE AWAY HERE IS PERMANENT.
- *
- * This used to destructure `{ text }` and drop the pay — and every writer that can
- * fill a Paylocity or Breezy description is gated on `description IS NULL`, so the
- * row this lane persists never re-enters the desc sweep, the only other lane wired
- * to the vendor's pay. The SALARY_PARSE_VERSION re-sweep cannot recover it either:
- * that lane re-reads stored salary TEXT and this row's salary is null. So a posting
- * that any reader opened before the sweep reached it lost its vendor-stated figure
- * for good, on exactly the rows with the most demand, and the prose miner finds pay
- * on 0 of them. Measured backlog 2026-09-27 (anon key, countOnly): paylocity 43,042
- * rows / 40,464 described = 2,578 null; breezy 14,580 / 14,068 = 512 null.
- *
- * Two lanes reading the SAME downloaded bytes must produce the same answer, which
- * is the argument for one reader returning both halves, one level up.
- */
+// Rationale: docs/job-board-index-notes.md#n1182-async-function-getdescription-src-jobsou
 async function getDescription(src: JobSource, id: string, externalId: string, applyUrl?: string | null): Promise<{ text: string | null; pay: string | null }> {
   const hit = detailCache.get(id);
   if (hit && Date.now() - hit.at < DETAIL_TTL_MS) return { text: hit.text, pay: hit.pay };
@@ -6405,13 +5722,7 @@ async function getDescription(src: JobSource, id: string, externalId: string, ap
   return { text, pay };
 }
 
-/**
- * Descriptions carried in a board's LIST payload, keyed by our posting id.
- *
- * Used by BOTH the ingest path (which stores them on insert) and the board-level
- * lane of desc-sweep (which fills rows inserted before the extraction existed),
- * so the two can never disagree about how a vendor's payload is read.
- */
+// Rationale: docs/job-board-index-notes.md#n1183-function-listpayloaddescriptions-s-jobso
 function listPayloadDescriptions(s: JobSource, raw: unknown): Map<string, string> {
   const out = new Map<string, string>();
   if (s.source === "workable") {
@@ -6465,16 +5776,7 @@ async function readBoardForDetail(src: JobSource): Promise<Awaited<ReturnType<ty
   return r;
 }
 
-/**
- * One posting's description straight from the vendor. Shared by the on-demand
- * `detail` read and the backfill sweep so the two can never drift apart.
- *
- * Every vendor is matched EXPLICITLY and anything unrecognised returns null.
- * The previous shape ended in a bare `else` that assumed the Ashby payload, so
- * workday/breezy/rippling silently parsed the wrong structure and always
- * returned null — which is why ~313k Workday postings had no description on the
- * detail panel, not just in storage.
- */
+// Rationale: docs/job-board-index-notes.md#n1184-async-function-fetchvendordetail
 async function fetchVendorDetail(
   src: JobSource,
   id: string,
@@ -6488,30 +5790,7 @@ async function fetchVendorDetail(
   location: string | null;
   /** Sites the requisition lists BESIDES `location`. 0 means the place is the whole answer. */
   additionalSites: number;
-  /**
-   * THE EMPLOYER'S OWN PAY, OFF THE SAME BYTES AS THE DESCRIPTION.
-   *
-   * Paylocity and Breezy server-render a schema.org JobPosting node on the
-   * posting page this function already downloads and already parses for the
-   * description, and the pay half of that node was read by nothing. Rates, each
-   * with its own denominator and never merged: PAYLOCITY 90 of 240 pages (37.5%)
-   * and 46 of 150 on an independent draw (30.7%); BREEZY 33 of 60 (55.0%) and 33
-   * of 80 (41.3%), where 29 of the 33 are ONE tenant's duplicate subcontractor
-   * postings, so the Breezy figure describes an employer and not a vendor — and
-   * that tenant's WEEK label is refused by this reader anyway. The repo's own
-   * prose miner finds pay on 0 of those 240 rows, so none of it is cannibalised
-   * by what we already do.
-   *
-   * Already formatted and already REFUSED where the vendor's period label
-   * contradicts its own magnitude — ldBaseSalaryText owns those rules. null
-   * means "no publishable figure", which includes "the vendor stated one we
-   * will not stand behind", and callers must treat the two identically.
-   *
-   * NOT FREE FOR THE ROWS THAT ALREADY HAVE A DESCRIPTION. Every caller of this
-   * function that writes salary is gated on description being null, so a row is
-   * fetched once, when it is new, and this field accrues forward with the
-   * rotation instead of back-filling the rows already described.
-   */
+  // Rationale: docs/job-board-index-notes.md#n1185-pay-string-null
   pay: string | null;
 }> {
   let text: string | null = null;
@@ -6696,40 +5975,7 @@ async function fetchVendorDetail(
   return { text, postedAt, workMode, country, location, additionalSites, pay };
 }
 
-/**
- * THE PLACE PATCH BOTH DETAIL SWEEPS WRITE — one rule, in one function, so the
- * two lanes cannot drift apart. Three columns and three different rules:
- *
- *   country      REPLACES. It is the employer's own structured field and what
- *                it replaces is our text inference over a location string —
- *                the same precedence work_mode already takes. workdayDetailPlace
- *                has already refused it where the payload contradicts itself or
- *                where another site of the same requisition is in another
- *                country.
- *   location     FILLS ONLY a stored string that names nowhere ("52 Locations",
- *                empty). Writing the vendor's display location over a real one
- *                would narrow a multi-site posting to one site the employer did
- *                not single out.
- *   region_code  MOVES WITH THE PAIR, and is REFUSED where the pair cannot
- *                support it.
- *
- * WHY REGION_CODE IS THE ONE THAT GETS REFUSED. On a multi-site requisition
- * the vendor hands us one display location out of N, and a subdivision derived
- * from it is a claim about one site written into a longitudinal series that
- * outlives the posting. Measured on the review walk of 2026-09-23: of 68
- * unplaced rows this fill would touch, 60 are multi-site; 23 of them would
- * have gained a region_code and 12 of those 23 — 52% — are contradicted by
- * another site the SAME requisition lists. The worst live case is a RELX
- * requisition stored as "52 Locations" which became location "Ohio", country
- * US, region US-OH while its own additionalLocations name fifty-one other
- * states. So when the location we are deriving from is the vendor's
- * one-of-N string, the subdivision is written as NULL: null is recoverable and
- * a wrong subdivision in a series is not. Where the stored location is kept —
- * a real place the seeker can already read — the site count says nothing about
- * it and the region is re-derived as usual, because a derived column that does
- * not move with what it is derived from is the drift this same rule exists to
- * stop.
- */
+// Rationale: docs/job-board-index-notes.md#n1186-function-placewrite
 function placeWrite(
   row: { location: string | null; country: string | null },
   vendorCountry: string | null,
@@ -6750,11 +5996,7 @@ function placeWrite(
   return patch;
 }
 
-/**
- * A vendor date string accepted ONLY if it parses to a sane absolute date
- * inside the window we serve. Anything ambiguous is dropped rather than
- * guessed — a wrong posting date is worse than no posting date.
- */
+// Rationale: docs/job-board-index-notes.md#n1187-function-isodateonly-v-unknown-string-nu
 function isoDateOnly(v: unknown): string | null {
   if (typeof v !== "string" || !v.trim()) return null;
   const t = Date.parse(v.length <= 10 ? `${v}T00:00:00Z` : v);
@@ -6768,33 +6010,7 @@ function isoDateOnly(v: unknown): string | null {
 
 // Rationale: docs/job-board-index-notes.md#n185-
 
-/**
- * Words a person types around a job title that are not part of any job title.
- *
- * MEASURED 2026-08-20 on the live board:
- *   "electrician"                979 results, top hit a real electrician role
- *   "electrician jobs near me"    44 results, top hit "Maintenance II-ARP"
- *
- * A 95% collapse AND a wrong top result, from words that carry no information
- * about the role. Two things combine to cause it. The terms are ANDed, so each
- * extra word can only ever shrink the set — and they are matched as
- * SUBSTRINGS, so `%me%` matches "Maintenance", "Management", "Commercial".
- * Filler does not merely narrow the results, it actively poisons them with
- * whatever happens to contain those letters.
- *
- * This is the single most common way a real person phrases a job search, so
- * the board was at its worst exactly when someone typed naturally.
- *
- * WHAT IS NOT HERE, deliberately: "remote", "senior", "junior", "lead",
- * "part", "time", "contract", "intern". Every one appears in real job titles,
- * and dropping them would silently widen a search the person meant to narrow —
- * the mirror of the bug being fixed. Only words that cannot be part of a title
- * qualify.
- *
- * Dropped terms are REPORTED to the caller, never silently swallowed: the
- * board tells the visitor which words it ignored, the same way it names a
- * filter it could not honour.
- */
+// Rationale: docs/job-board-index-notes.md#n1188-const-query_filler-new-set
 const QUERY_FILLER = new Set([
   // the search itself
   "job", "jobs", "career", "careers", "vacancy", "vacancies", "opening",
@@ -6807,120 +6023,10 @@ const QUERY_FILLER = new Set([
 ]);
 
 
-/**
- * Metro shorthand, and why a plain substring search cannot serve it.
- *
- * MEASURED on the live board 2026-08-20, typing what people actually type:
- *   "NYC"     356 hits — misses all 10,000 "New York" postings
- *   "SF"    1,427 hits — top result "Innisfil, Ontario"  (Inni-SF-il)
- *   "LA"   10,000 hits — top result "Plain City, Ohio"   (P-LA-in)
- *   "Philly"   13 hits — top result "Philly - Ontario, CA"
- *
- * Two different failures wearing one coat. The long forms are simply missing:
- * nothing connects "NYC" to "New York". The short forms are worse than
- * missing — a two-letter substring matches inside ordinary words, so "LA"
- * returns ten thousand rows of Ohio. Same root cause as the query-filler bug:
- * ILIKE %x% has no idea what a word is.
- *
- * So each alias declares whether its RAW form is safe to keep searching:
- *   keepRaw true  — the token is distinctive ("NYC", "Philly" appear in real
- *                   location strings and match little else), so search BOTH
- *                   and the visitor gets the union.
- *   keepRaw false — the token is two or three letters that occur inside
- *                   common words ("LA", "SF"), so searching it at all is
- *                   noise. The canonical name REPLACES it.
- *
- * Encoded per-alias rather than by a length rule, because the property is
- * about the specific letters, not their count: "DC" is two letters and is
- * perfectly safe, since it is how the location is actually written.
- */
-/**
- * US states and Canadian provinces — and why the abbreviation needs a comma.
- *
- * MEASURED 2026-08-20, and both directions were broken:
- *   "Texas"       7,788 rows   misses the 16,234 written "TX"
- *   "California" 10,106 rows   misses most of the state
- *   "CA"        113,223 rows   of which ~70% are NOT California — it matches
- *                              "CAnada", "3 LoCAtions", "TransCAnada"
- *
- * A bare two-letter code cannot be substring-matched. Many are ordinary
- * English: %IN% matches 129,229 rows, %OR% matches 109,393. Anchoring on the
- * comma that precedes a state in real location strings fixes it exactly —
- * %, IN% is 14,071 and %, OR% is 3,265, and "CAN - Quebec" no longer matches
- * ", CA".
- *
- * So every state maps to BOTH forms: the spelled-out name and ", ST". Typing
- * either reaches the union, which is the whole point — the data uses both
- * ("Dallas, Texas" and "Austin, TX" are the same state to a job seeker).
- *
- * keepRaw is false everywhere here: the spelled-out name is already in the
- * list, and the bare code is precisely the poison being removed.
- */
-/**
- * Split a query into title terms, dropping filler.
- *
- * FALLS BACK TO THE ORIGINAL when filler is all there was ("jobs near me"):
- * an empty term list would return the entire board, which reads as the search
- * box being broken. Better to run the poor query the person typed than to
- * silently ignore them.
- */
-/**
- * INTENT PHRASES THAT ARE FILTERS, NOT SEARCH TEXT.
- *
- * "work from home" is the most common consumer phrasing for remote work, and it
- * MEASURED at 287 results against 43,929 postings flagged remote — 0.7% of the
- * inventory — because it was matched as literal title text. The remote filter
- * already exists, is already indexed, and is already bound by every path. The
- * phrase simply never reached it.
- *
- * Each entry rewrites a phrase into a predicate the board ALREADY SERVES. This
- * adds no scan, no column and no index: it routes an intent to a filter that
- * was there the whole time. That is also the limit of the idea — nothing is
- * added here that cannot be expressed with an existing filter.
- *
- * WORDS AS WELL AS PHRASES, and the reversal is MEASURED. This block used to
- * exclude the bare word "remote" on the theory that a searcher might mean a job
- * title ("Remote Support Technician") and that lifting it would "discard the
- * 70% of the board with no work_mode recorded". Both halves were wrong. The
- * 70% figure describes work_mode being NULL, but the lift patches a WORK-MODE
- * EQUALITY, and the ambiguity it feared is a rounding error. Counted live on
- * 2026-08-27 over the servable board (open, inside the freshness window):
- *
- *   title contains        total   of which NOT that work_mode   ambiguous
- *   remote                6,119                           168        2.7%
- *   hybrid                2,093                            41        2.0%
- *   onsite                1,790                            69        3.9%
- *   on-site                 416                            15        3.6%
- *
- * Meanwhile the AND-against-title that the exclusion preserved was discarding
- * far more than it protected. Exact title-tier counts, same day, the word left
- * in the query versus the word lifted to the filter:
- *
- *   "remote python"          3   ->  "python"        + remote    200
- *   "remote data analyst"    8   ->  "data analyst"  + remote    197
- *   "remote nurse"         162   ->  "nurse"         + remote    415
- *   "remote accountant"    238   ->  "accountant"    + remote    242
- *
- * Never fewer, and up to 66x more. The SPREAD is the argument: the literal
- * match only looks respectable for job families that habitually spell "Remote"
- * in the title, and collapses for the ones that do not — so the searcher could
- * not tell from the result count whether they had seen the market or 1.5% of
- * it. The 2-4% residue above is the price and it is worth paying.
- *
- * WHAT MAKES THAT HONEST IS THE DISCLOSURE, NOT THE ODDS. Every lift is named
- * in `intentFilters` and rendered on the page ("Read "remote" as a filter and
- * applied it, rather than searching for those words"), so a searcher who did
- * mean the title text can see what happened and say otherwise. A silent lift
- * would still be the wrong trade at 2.7%.
- *
- * workMode, NEVER THE remote BOOLEAN, for every one of these. filters.ts
- * computes `remote: body.remote === true && !workMode`, so the mode is the
- * field that wins, and it is also strictly wider: work_mode='remote' is 43,773
- * rows where remote=true is 40,325, and remote=true with work_mode NULL is
- * ZERO. Binding the boolean threw away 3,504 postings the board itself calls
- * remote. Two spellings of "remote" on two routes is the drift that makes
- * counts disagree, so there is one.
- */
+// Rationale: docs/job-board-index-notes.md#n1189-const-intent_filters-array-re-regexp-lab
+// Rationale: docs/job-board-index-notes.md#n1190-const-intent_filters-array-re-regexp-lab
+// Rationale: docs/job-board-index-notes.md#n1191-const-intent_filters-array-re-regexp-lab
+// Rationale: docs/job-board-index-notes.md#n1192-const-intent_filters-array-re-regexp-lab
 const INTENT_FILTERS: Array<{ re: RegExp; label: string; patch: Record<string, unknown> }> = [
   // Rationale: docs/job-board-index-notes.md#n186-re-new-regexp-negated-remote-source-i-la
   { re: new RegExp(NEGATED_REMOTE_SOURCE, "i"), label: "not remote", patch: {} },
@@ -6952,21 +6058,7 @@ const INTENT_FILTERS: Array<{ re: RegExp; label: string; patch: Record<string, u
   { re: /\bposted today\b/i, label: "posted today", patch: { maxAgeDays: 1 } },
 ];
 
-/**
- * Which request fields ALSO speak for a lifted patch key.
- *
- * `remote` and `workMode` are the same question asked two ways, and workMode is
- * the one that WINS — filters.ts computes `remote: body.remote === true &&
- * !workMode`. Checking only the patch's own key let the lift fire anyway:
- * q="work from home nurse" with workMode=onsite stripped the phrase from the
- * query AND had its remote:true discarded downstream, returning 2,205 rows
- * identical to q="nurse"+onsite while the payload claimed it had applied
- * "work from home". The phrase was deleted from the search and its filter
- * thrown away, and the response asserted the opposite of both.
- *
- * maxAgeDays and postedAfter are likewise one question — a caller who sent a
- * watermark has already said how fresh they want it.
- */
+// Rationale: docs/job-board-index-notes.md#n1193-const-intent_conflicts-record-string-str
 const INTENT_CONFLICTS: Record<string, string[]> = {
   remote: ["remote", "workMode"],
   workMode: ["remote", "workMode"],
@@ -6975,18 +6067,7 @@ const INTENT_CONFLICTS: Record<string, string[]> = {
   employmentType: ["employmentType"],
 };
 
-/**
- * Lift any intent phrases out of the query and into filters.
- *
- * Returns the patch to apply, the phrases recognised (for disclosure), and the
- * query with those phrases REMOVED — leaving them in would re-impose the
- * literal-text match the rewrite exists to escape, so "work from home nurse"
- * searches for "nurse" among remote roles rather than for the whole string.
- *
- * A CALLER'S OWN FILTER ALWAYS WINS. Someone who set remote=false and typed
- * "work from home" has contradicted themselves, and the explicit control is the
- * one they can see and change.
- */
+// Rationale: docs/job-board-index-notes.md#n1194-function-liftintentfilters
 function liftIntentFilters(
   rawQ: unknown,
   body: Record<string, unknown>,
@@ -7025,24 +6106,7 @@ function liftIntentFilters(
   return { patch, labels, residualQ: residual };
 }
 
-/**
- * Make a term safe to embed in a PostgREST or() filter.
- *
- * or() is parsed as a comma-separated list of dotted expressions, so a comma or
- * a parenthesis inside a value ends the branch early and the rest is read as
- * another filter — silently, producing a query nobody wrote. A location or()
- * already shipped that bug here by splitting on ", TX".
- *
- * BALANCED "…" PAIRS PASS THROUGH. They are websearch_to_tsquery's phrase
- * syntax — the one thing the search tip promises — and every caller of this
- * function binds a plain wfts() filter, never an or() branch, so PostgREST
- * reads the value verbatim and a quote cannot close anything early. Only an
- * ODD quote count is stripped, and then all of them: measured in pglite,
- * websearch_to_tsquery('simple', '"registered nurse') does NOT error — it
- * quietly reads a phrase running to the end of the query, which is a
- * different search from the one typed. (The old note here, that a half-open
- * phrase is a parse error, was wrong: it is a silent one.)
- */
+// Rationale: docs/job-board-index-notes.md#n1195-function-ftssafe-t-string-string
 function ftsSafe(t: string): string {
   if (((t.match(/"/g) ?? []).length & 1) === 1) t = t.replace(/"/g, " ");
   // Rationale: docs/job-board-index-notes.md#n189-t-t-replace-s-s-g
@@ -7050,29 +6114,7 @@ function ftsSafe(t: string): string {
   return t.replace(/[(),.'\\:]/g, " ").replace(/\s+/g, " ").trim();
 }
 
-/**
- * The websearch query for the simple-config tiers, with the possessive variant.
- *
- * A possessive employer is stored as TWO tokens: to_tsvector('simple',
- * "Domino's") is 'domino':1 's':2, because the parser splits on the apostrophe.
- * Someone typing the apostrophe is fine — ftsSafe turns it into a space and the
- * phrase matches. Someone typing "dominos" produces the single token 'dominos',
- * which matches neither, and gets nothing.
- *
- * MEASURED against the company index:
- *   dominos              -> 0 rows
- *   Domino's / domino s  -> 2,002 rows
- *   dominos or domino s  -> 2,002 rows, 0.22s
- * That is Domino's, McDonald's, Macy's, Kohl's, Lowe's — a whole retail class
- * failing on one apostrophe nobody types into a search box.
- *
- * The variant is free on ordinary words: "engineers or engineer s" returns the
- * same 622 rows as "engineers", because the phrase 'engineer' <-> 's' matches
- * almost nothing that the plain token does not.
- *
- * Only single tokens are rewritten. A multi-word query containing an apostrophe
- * has already been split into the matching shape by ftsSafe.
- */
+// Rationale: docs/job-board-index-notes.md#n1196-function-ftsquery-raw-string-string
 function ftsQuery(raw: string): string {
   const safe = ftsSafe(raw);
   // Length floor keeps it off short plurals where the split half is noise.
@@ -7083,11 +6125,7 @@ function ftsQuery(raw: string): string {
   return safe;
 }
 
-/**
- * The date and pay orders' title match for a RANKED-route query: english
- * stems, so "teachers" finds "Teacher". title_tsv (indexed) narrows; the title
- * alone decides, so the "title matches" caption stays true (n445).
- */
+// Rationale: docs/job-board-index-notes.md#n1197-function-titlestemmed-t-extends-textsear
 // deno-lint-ignore no-explicit-any
 function titleStemmed<T extends { textSearch: (...a: any[]) => T }>(qb: T, q: string): T {
   return qb.textSearch("title_tsv", q, { type: "websearch", config: "english" })
@@ -7104,26 +6142,7 @@ function titleFilters<T extends { textSearch: (...a: any[]) => T; or: (f: string
     : b.textSearch(f.column, f.query, { type: "websearch", config: f.config }), qb);
 }
 
-/**
- * A balanced "…" pair is ONE term: its words, in order, joined by single
- * spaces. Everything outside the pairs tokenises exactly as before, and a
- * stray unpaired quote is stripped by sanitizeTerm as it always was.
- *
- * WHY HERE AND NOT IN sanitizeTerm. The tip under the search box has promised
- * '"quotes" match exact phrases' since 2026-07-18, and since 2026-08-20 the
- * quote has been in sanitizeTerm's strip class — rightly, because a typed
- * quote inside a quoted or() value closes it early (a-state-is-not-a-substring
- * pins that). So the promise was false for six weeks: search_jobs received
- * `product designer` and websearch_to_tsquery read it as product AND designer.
- * Tokenising the pairs BEFORE the per-token sanitiser keeps both facts true:
- * the phrase survives as a multi-word term, and no quote ever reaches an ILIKE.
- *
- * Every ILIKE consumer of `terms` — the browse or(), count_jobs_capped, the
- * close-match title check — gets the phrase unquoted, and a contiguous
- * substring match on "registered nurse" already IS an adjacency match. The
- * tsquery consumers take phraseText(), which puts the quotes back so the
- * parser emits 'regist' <-> 'nurs'. A single quoted word is just a word.
- */
+// Rationale: docs/job-board-index-notes.md#n1198-function-queryterms-raw-unknown-terms-st
 function queryTerms(raw: unknown): { terms: string[]; dropped: string[]; liftedSalary: boolean } {
   const all = (String(raw ?? "").toLowerCase().match(/"[^"]*"|\S+/g) ?? [])
     .map((t) => t.length >= 2 && t.startsWith('"') && t.endsWith('"')
@@ -7145,12 +6164,7 @@ function queryTerms(raw: unknown): { terms: string[]; dropped: string[]; liftedS
   return { terms: kept, dropped: all.filter((t, i) => QUERY_FILLER.has(t) && !isOr(t, i)), liftedSalary: money !== null };
 }
 
-/**
- * Words that qualify a place in a location string but name none on their own,
- * so a trailing one is never tried as the location-split's place (L8-09):
- * "united" matches every "United States/Kingdom" row. Not a gazetteer (n358):
- * a closed list of qualifiers, every real place name still passes.
- */
+// Rationale: docs/job-board-index-notes.md#n1199-const-place_qualifiers-readonlyset-strin
 const PLACE_QUALIFIERS: ReadonlySet<string> = new Set([
   "united", "states", "state", "kingdom", "county", "remote", "republic", "city", "north", "south",
   "east", "west", "new", "greater", "central", "area", "region", "metro", "district", "province",
@@ -7166,29 +6180,12 @@ function orGroups(terms: readonly string[]): string[][] {
   return groups.filter((g) => g.length > 0);
 }
 
-/**
- * The query as the tsquery parser must see it: each multi-word term back in
- * its quotes, so websearch_to_tsquery reads it as a phrase ('regist' <->
- * 'nurs' & 'chicago', verified in pglite against the live search_jobs body).
- * Single-word terms are untouched, so an unquoted query round-trips
- * byte-for-byte and nothing about it changes.
- */
+// Rationale: docs/job-board-index-notes.md#n1200-function-phrasetext-terms-readonly-strin
 function phraseText(terms: readonly string[]): string {
   return terms.map((t) => (/\s/.test(t) ? `"${t}"` : t)).join(" ");
 }
 
-/**
- * Everything the board changed about what was asked, said out loud.
- *
- * SHARED BECAUSE IT KEPT NOT BEING. These three disclosures lived inline at the
- * recency return only, so a visitor who BROWSED was told what had been dropped,
- * expanded or lifted and a visitor who SEARCHED was told nothing — measured:
- * q="100k engineer" narrowed 10,000 results to 4,944 with no salaryFromQuery in
- * the payload, and q="engineer jobs near me" dropped three words with no
- * droppedTerms. That is the FIFTH fix in two days to land on one of the four
- * query paths and silently miss the rest. A single helper spread at every list
- * return is the only version of this that stays true.
- */
+// Rationale: docs/job-board-index-notes.md#n1201-function-within2edits-a-string-b-string
 // Rationale: docs/job-board-index-notes.md#n191-bounded-levenshtein-true-when-edit-distance
 /** Bounded Levenshtein: true when edit distance <= 2. Early-exits on length
  *  gap; the full matrix on two short words is ~100 cells, nothing more. */
@@ -7221,10 +6218,7 @@ function droppedTermsOf(body: Record<string, unknown>, englishDropped: readonly 
   return [...new Set([...queryTerms(body.q).dropped, ...englishDropped])];
 }
 
-/**
- * Spread AFTER searchDisclosures at an exit that serves an english tsquery's
- * rows: "it technicians" searched as "technicians" says it ignored "it".
- */
+// Rationale: docs/job-board-index-notes.md#n1202-function-englishdropdisclosure-body-reco
 function englishDropDisclosure(body: Record<string, unknown>, englishDropped: readonly string[]): Record<string, unknown> {
   return englishDropped.length ? { droppedTerms: droppedTermsOf(body, englishDropped) } : {};
 }
@@ -7267,103 +6261,31 @@ function searchDisclosures(
   return out;
 }
 
-/**
- * The board turned words the visitor typed into filters. It has to say so, for
- * the same reason it names a dropped word or an expanded location: someone who
- * meant "work from home" as a job title needs to see that it became a filter,
- * and be able to take it off.
- */
+// Rationale: docs/job-board-index-notes.md#n1203-function-intentdisclosure-r-labels-strin
 function intentDisclosure(r: { labels: string[] } | null): Record<string, unknown> {
   return r && r.labels.length ? { intentFilters: r.labels } : {};
 }
 
-/** Terms the searcher asked NOT to see, named on the response so the page can
- *  say what it removed — a filter the visitor cannot see is one they cannot
- *  undo, which is the same rule intentFilters follows. */
+// Rationale: docs/job-board-index-notes.md#n1204-function-exclusiondisclosure-excluded-re
 function exclusionDisclosure(excluded: readonly string[]): Record<string, unknown> {
   return excluded.length ? { excludedTerms: [...excluded] } : {};
 }
 
-/**
- * NO COUNT SURVIVES AN EXCLUSION, because none of them ever saw one.
- *
- * splitExclusions strips "-travel" / "not manager" from q BEFORE any SQL, and
- * the excluded titles are pruned per page in attachRecheckedAt AFTER every
- * tier has computed its total, its floor and its related count. So every
- * number those tiers publish counts rows the pages will then hide —
- * "engineer -senior" advertised every Senior Engineer it would never show,
- * and each page quietly ran short of its own header. Until the predicate
- * reaches SQL, the honest total under an exclusion is "we don't know":
- * countUnavailable already has a rendering contract ("Showing N matching
- * openings"), and the excludedTerms chip says why.
- *
- * Spread AFTER the exit's own total/countUnavailable/totalAtLeast fields so it
- * wins; `undefined` values serialize to absent keys. Every list exit that
- * spreads exclusionDisclosure must spread this too — the battery greps for the
- * pairing.
- */
+// Rationale: docs/job-board-index-notes.md#n1205-function-exclusioncountscaveat-excluded
 function exclusionCountsCaveat(excluded: readonly string[]): Record<string, unknown> {
   return excluded.length
     ? { total: null, countUnavailable: true, totalAtLeast: undefined, relatedTotal: undefined }
     : {};
 }
 
-/**
- * THE ONE FIGURE AN EXCLUSION LEAVES STANDING, under a name that cannot lie.
- *
- * MEASURED 2026-08-31 (battery): q="engineer not manager" served a full page
- * with no number anywhere on it — the caveat above rightly withdrew `total`,
- * but the positive query's count had been COMPUTED and was then thrown away.
- * Removing rows can only shrink a set, so that count is a true CEILING of the
- * post-exclusion matches; what it must never be is the total, which is exactly
- * the field the caveat withdraws. Named for what it counts, the client can say
- * "of up to N before exclusions" instead of saying nothing.
- *
- * Spread AFTER exclusionCountsCaveat at the exits that have an honest ceiling
- * to offer — it adds a labelled bound beside the withdrawal, never in place of
- * it. Exits whose figure is a window size or an already-disproven count pass
- * null and publish nothing, same rule as everywhere else in this file: a
- * number we cannot stand behind is a number we do not print.
- */
+// Rationale: docs/job-board-index-notes.md#n1206-function-exclusionceiling-excluded-reado
 function exclusionCeiling(excluded: readonly string[], ceiling: number | null): Record<string, unknown> {
   return excluded.length && typeof ceiling === "number" && Number.isFinite(ceiling) && ceiling >= 0
     ? { totalBeforeExclusions: ceiling }
     : {};
 }
 
-/**
- * Coverage for filters whose column the refresh pass does NOT count.
- *
- * FRACTIONS, NOT PERCENTAGES. The cached figures are frac() = n/open rounded to
- * three decimals, and Jobs.tsx renders them with Math.round(x * 100). A 10.6
- * written here would reach the screen as "pay basis stated on 1,060% of
- * postings" — the unit is the whole contract, so these are 0.106, never 10.6.
- *
- * MEASURED 2026-08-25 against the 559,805 rows the board can serve (open,
- * inside the freshness window — the same population the cached figures use):
- *
- *   salary_period      59,505  10.6%   hour 41,542 | year 17,312 | month 627
- *   salary_min_annual 112,524  20.1%
- *   min_years         162,032  28.9%
- *   department        226,631  40.5%
- *   source            559,805  100%
- *
- * hasStatedPay NO LONGER COUNTS salary_min_annual, so its constant was
- * RE-MEASURED rather than carried over. The filter binds the verbatim pay text
- * now (see the predicate's own note in buildQuery), and the honest fraction for
- * it is the widest of the three pay columns: 206,996 of 732,018 servable rows,
- * 28.3%, from the hourly per-field scan stamped 2026-09-27T01:07:00Z — the same
- * serving population every figure above uses (present on the feed, inside the
- * freshness window). The old 0.201 is left in the table above as the 2026-08-25
- * reading OF A DIFFERENT COLUMN, because a constant that silently changes which
- * column it describes is how a number stays plausible while going wrong.
- *
- * Constants rather than live counts because each one is a full count over a
- * partly-populated column, and the pass that could take them cheaply already
- * takes four and is the pass that once bound its results to the wrong names.
- * The DATE is part of the number: these are a snapshot, and a snapshot with no
- * date is what turns a measurement into a claim.
- */
+// Rationale: docs/job-board-index-notes.md#n1207-const-measured_coverage
 const MEASURED_COVERAGE = {
   payBasis: 0.106,
   // The verbatim pay field, 2026-09-27 — NOT the 0.201 annualised reading above.
@@ -7373,41 +6295,7 @@ const MEASURED_COVERAGE = {
   vendor: 1,
 } as const;
 
-/**
- * How much of the board each ACTIVE filter can even see.
- *
- * Emitted only for filters the caller actually set — coverage for a filter
- * nobody applied is noise. NOTHING is emitted when the cache has no coverage
- * block — not the cached figures and not the measured constants above —
- * because showing an invented fraction would be worse than showing none: a
- * number on screen gets believed, and a page that publishes five pinned
- * constants while four live figures are missing is claiming a measurement it
- * did not take.
- *
- * MEASURED ON 2026-08-27 against 599,316 open postings: salary stated on 12.9%,
- * work mode on 29.9%, experience on 40.4%. A searcher who sets a salary floor is
- * seeing an eighth of the market and currently has no way to know it.
- *
- * AND THAT 29.9% IS ABOUT TO MOVE TOO, for the same reason the pay figure did
- * and with the same remedy: date it rather than quietly carry it. The bundle this
- * paragraph ships in reads UKG's own JobLocationType, which is expected to take
- * roughly 15,000-20,000 of that vendor's 33,617 no-mode rows to a stated one as
- * the rotation laps — around +2 points board-wide against ~734,000 servable rows.
- * MEASURED_COVERAGE does not pin workMode, so no SERVED percentage is affected;
- * these two sentences are prose a reader takes on trust, which is exactly why
- * they name their date. Re-measure the work-mode share from the facet once the
- * fill has lapped, never from a capped list total.
- *
- * THAT 12.9% IS A 2026-08-27 READING AND THE FLOOR'S REACH HAS SINCE MOVED, so
- * do not reuse it: on one scan over 733,190 servable rows at
- * 2026-09-27T02:07:00Z, 173,826 carry a figure a floor can compare (23.71%),
- * 173,868 carry an annualised figure at all (23.72% — the two are 42 rows apart,
- * so the unconvertible-currency slice is now tiny) and 207,108 carry pay text
- * the employer published (28.25%). "An eighth of the market" was true of the
- * older reading and is about a quarter today. The live figures are what this
- * function publishes; these lines are history with dates on them, which is the
- * only form a superseded measurement may survive in.
- */
+// Rationale: docs/job-board-index-notes.md#n1208-function-coveragedisclosure
 function coverageDisclosure(
   applied: {
     salaryFloor?: number | null;
@@ -8926,46 +7814,7 @@ async function handleRequest(req: Request): Promise<Response> {
       return json(r, r.ok ? 200 : 502);
     }
 
-    /* THE FIELD-COUNT READ, WITHOUT THE BROWSE IT WAS PRETENDING TO BE.
-     *
-     * /explore renders eighteen tiles whose numbers must come from the SAME
-     * stored row the destination prints, so it read them the only way one could
-     * be reached: {action:"list", limit:1, includeFacets:false}, taking
-     * `categories` off an otherwise-discarded list reply. Three costs came with
-     * that, and this exit removes all three.
-     *
-     *   1. IT LOGGED A SEARCH NOBODY PERFORMED. An unfiltered, q-less list
-     *      falls to the recency exit, which calls logSearch immediately before
-     *      returning -- inserting a job_board_search_events row with q:"",
-     *      empty filters, offset_n:0, results:1 and a shown-set of the one job
-     *      it served, under the column's 'web' default. /explore is
-     *      prerendered, sitemapped daily at 0.8 and the default landing intent,
-     *      so every view of it appended one synthetic zero-query browse to the
-     *      table whose stated purpose (see the comment at the recency exit) is
-     *      an unbiased browse denominator. The zero-result rate, the
-     *      results-per-search distribution and the shown-set click attribution
-     *      were all skewed by /explore's traffic, with no field in the row that
-     *      could filter it back out.
-     *
-     *   2. IT PAID FOR A PAGE IT THREW AWAY. serveList runs page_query and
-     *      attachRecheckedAt before it can return anything; a {limit:1} list
-     *      call was measured at 30,728ms during the 2026-08-30 saturation
-     *      incident. Eighteen tiles render no numbers until this resolves.
-     *
-     *   3. IT COULD NOT SAY THE COUNTS WERE CARRIED. facetsCarried rides the
-     *      refresh_head row but was in no list response, so when
-     *      refresh_job_board_facets fails the page stamped hours-old integers
-     *      with the current pass time and told the reader they were "counted
-     *      {{time}} in the board's own scan". Measured failure mode: facets
-     *      timed out for 4+ hours on 2026-08-29.
-     *
-     * IT IS THE SAME ROW AND THE SAME RULE, which is the property that must not
-     * be lost. It reads job_board_meta k='refresh_head' -- the row serveList
-     * serves from -- and hands the facet through visibleCategories with
-     * unfiltered=true, exactly as the list exits do. It is NOT rpc(
-     * "get_job_board_facets"): that reads k='facets', a DIFFERENT row, and
-     * would reintroduce the two-scans-for-one-quantity failure this whole pass
-     * removed. */
+    // Rationale: docs/job-board-index-notes.md#n1209-if-action-facets
     if (action === "facets") {
       const { data: fRow } = await client
         .from("job_board_meta").select("v").eq("k", "refresh_head").maybeSingle();
@@ -10346,18 +9195,7 @@ let attachMsAccum = 0;
 async function attachRecheckedAt(
   client: SupabaseClient,
   jobs: Array<Record<string, unknown>>,
-  /**
-   * Terms the searcher asked NOT to see ("engineer not manager", "nurse
-   * -travel"). Applied HERE because this is the one function every path that
-   * returns postings already calls — the ranked tier, the routed tier, fuzzy and
-   * semantic all pass through it, so one filter covers them without any tier
-   * having to know exclusions exist.
-   *
-   * AN EXPLICIT PARAMETER, never a module-scoped request variable like
-   * attachMsAccum above. Two requests can be in flight in one isolate, and a
-   * leaked telemetry counter is a wrong number while a leaked FILTER is one
-   * visitor's exclusions silently applied to another's results.
-   */
+  // Rationale: docs/job-board-index-notes.md#n1210-excluded-readonly-string
   excluded: readonly string[] = [],
 ): Promise<Array<Record<string, unknown>>> {
   const tAttach = Date.now();
@@ -10401,24 +9239,7 @@ async function attachRecheckedAtInner(
   return jobs;
 }
 
-/**
- * Show the location the visitor actually searched for.
- *
- * FOUND while verifying the metro-alias fix: a search for SF returned a card
- * reading "New York, New York, Un…" and looked like a broken filter. It was
- * not — the posting's location field is
- *   "New York, New York, United States; Remote; San Francisco, California, United States"
- * and it genuinely matched. Ungrouped, 19 of 19 rows were correct.
- *
- * That is worse than a real bug in one specific way: the filter works, and the
- * card says it does not. A visitor cannot verify a filter whose evidence
- * contradicts it, and this board asks to be verified.
- *
- * So when a location filter is active and the posting lists several places,
- * the matched one is shown first. Nothing is hidden — the others still travel
- * in the same string after it, and the count of remaining places is exposed so
- * the UI can say "+2 more" without inventing a number.
- */
+// Rationale: docs/job-board-index-notes.md#n1211-function-prefermatchedlocation
 function preferMatchedLocation(
   jobs: Array<Record<string, unknown>>,
   locTerms: string[],
@@ -10589,53 +9410,8 @@ async function serveList(
   const caller = SEARCH_CALLERS.has(rawCaller) ? rawCaller : null;
   // Set only by the list dispatch, after the reader proof: nothing below writes the query.
   const noLog = body.noLog === true;
-  /**
-   * Records this response. FIRE AND FORGET, BUT NOT SILENT.
-   *
-   * Behind waitUntil so a visitor never waits on telemetry and never loses
-   * results to it. The failure is logged rather than swallowed: this repo's
-   * most repeated defect is a telemetry table that records nothing while every
-   * dashboard reads healthy — the checkout funnel captured NOTHING for weeks
-   * because bad-visitorId 400s were caught and dropped on the floor.
-   *
-   * `total` is passed through as null when the board does not know. Coercing
-   * unknown to 0 would silently inflate the zero-result rate, which is the one
-   * number this table exists to produce.
-   */
-  /**
-   * WHAT WAS SHOWN, not only what was clicked.
-   *
-   * Click-through had no denominator: search_clicks records the row a visitor
-   * opened, and nothing recorded the rows they were offered and passed over. So
-   * every employer-level demand number was confounded by our own ranking —
-   * which changed materially several times last month — and there is no way to
-   * tell "nobody wants this company" from "we stopped putting it on page one".
-   *
-   * TWENTY IDS, A BARE JSON ARRAY, IN SERVED ORDER — and "served" means the
-   * array the response actually carries, which every call site therefore
-   * builds BEFORE it logs. The page handed to json() is
-   * preferMatchedLocation(await attachRecheckedAt(..., excludedTerms)): the
-   * first drops every row whose title matched a "-manager" style exclusion and
-   * the second reorders on location match. Logging the pre-filter grouping
-   * would put ids in the impression list that the visitor never saw AND shift
-   * every index out of step with the 1-based rank the click beacon reports —
-   * so the denominator would not join to its own numerator, which is the whole
-   * point of collecting it. The shape is the column's,
-   * not this function's: job_board_search_events.shown is documented as an
-   * array of up to 20 posting ids whose POSITION IS THE ARRAY INDEX — absolute
-   * rank is offset_n + index + 1, and offset_n is already its own column, so no
-   * per-row position is stored. A posting id is source:company_token:externalId,
-   * so the employer of every impression is derivable without a second column,
-   * and a trigger truncates anything longer (and NULLs anything that is not an
-   * array, which is why this returns an array or nothing at all).
-   *
-   * An EMPTY array is a real value — a search that genuinely showed nothing —
-   * and is not the same as null, which means the response predates the column.
-   *
-   * MEMORY: this runs on the SERVING path, not in the board loop, and walks at
-   * most 20 elements of an array the response already built. Bounded, retains
-   * nothing.
-   */
+  // Rationale: docs/job-board-index-notes.md#n1212-const-shown_n
+  // Rationale: docs/job-board-index-notes.md#n1213-const-shown_n
   const SHOWN_N = 20;
   const shownSet = (jobs?: Array<Record<string, unknown>>) =>
     jobs ? jobs.slice(0, SHOWN_N).map((j) => String(j.id ?? "").slice(0, 200)) : null;

@@ -14,11 +14,16 @@
  * origin/profiles/integration) whichever order the rounds deploy in, which
  * puts the next job-board deploy over it.
  *
- * WHAT IT MEASURES. The folder tally above, plus every file another round is
- * known to be adding to _shared that is not on disk yet, at its measured size
- * (PENDING_SHARED below: once the file lands it is counted from disk instead,
- * so a merge never counts it twice). The tally must stay HEADROOM_BYTES under
- * the line, the room the S12 fix asked for.
+ * WHAT IT MEASURES. The folder tally above, plus what other rounds are known
+ * to be adding to _shared and have not merged here: every file at least at its
+ * measured size on that round's branch (PENDING_SHARED below; a new file counts
+ * whole, a grown file counts its growth, and once the branch merges the disk
+ * holds that size and the entry adds nothing, so a merge never counts it
+ * twice). Wave 4's second round runs six builders on one bundle: the five
+ * besides this one add about 109 KB to _shared between them, which with the
+ * profiles round's two files put the round-1 trim over the line at
+ * integration. The tally must stay HEADROOM_BYTES under the line, the room the
+ * S12 fix asked for.
  *
  * TEETH. The folder walk is shown counting a _shared file job-board never
  * imports (a graph walk would miss it, and the deploy does not); the tally is
@@ -43,14 +48,53 @@ const DEPLOY_LINE_BYTES = 4_500_000;
 /** The room the S12-083 fix asked to keep under it. */
 const HEADROOM_BYTES = 50_000;
 /**
- * _shared files another round has written and not merged here yet, with their
- * size on that round's branch (origin/profiles/integration, 2026-10-12). A
- * file on this list that is already on disk is counted from disk.
+ * _shared files another round has written or grown and not merged here yet,
+ * with their size on that round's branch: origin/profiles/integration
+ * (2026-10-12) and the wave 4 round 2 builder branches w4b/agents-api,
+ * w4b/checkout-catalogue, w4b/generators, w4b/payments-delivery and
+ * w4b/account-compliance (2026-10-17). A file counts the bytes its branch
+ * has beyond what the disk holds.
  */
 const PENDING_SHARED: Record<string, number> = {
+  // profiles
   "hiring-record-gate.ts": 11_312,
   "perks-extract.ts": 43_372,
+  // w4b/agents-api
+  "application-form.ts": 17_557,
+  "application-questions.ts": 43_288,
+  "self-apply.ts": 12_714,
+  // w4b/checkout-catalogue
+  "affiliate-commission.ts": 5_276,
+  "checkout-buyer.ts": 8_959,
+  "consumable-paid.ts": 4_180,
+  "customer-ownership.ts": 2_372,
+  "pro-cancel.ts": 4_157,
+  "product-cuts.ts": 10_139,
+  "sales-territory-zones.ts": 1_803,
+  "sales-territory.ts": 8_515,
+  // w4b/generators
+  "model-spend-gate.ts": 27_126,
+  "posting-language.ts": 7_332,
+  "posting-text.ts": 4_837,
+  "resume-grounding.ts": 31_296,
+  "writing-allowance.ts": 9_244,
+  // w4b/payments-delivery
+  "scan-credits.ts": 17_264,
+  // w4b/account-compliance
+  "account-billing.ts": 6_605,
+  "account-proof.ts": 1_632,
+  "marketing-pause.ts": 2_100,
+  "planted-instructions.ts": 3_317,
+  "shortlist-attestation.ts": 935,
+  "subscription-notice.ts": 17_344,
 };
+
+/** What the pending files add: the bytes each has on its branch beyond what the disk holds. */
+function pendingBytes(pending: Record<string, number>, onDisk: (name: string) => number): number {
+  let n = 0;
+  for (const [name, bytes] of Object.entries(pending)) n += Math.max(0, bytes - onDisk(name));
+  return n;
+}
 
 function filesUnder(dir: string): string[] {
   const out: string[] = [];
@@ -66,8 +110,10 @@ function filesUnder(dir: string): string[] {
 function uploadTally(): { files: Map<string, number>; pending: number; total: number } {
   const files = new Map<string, number>();
   for (const f of [...filesUnder(JOB_BOARD), ...filesUnder(SHARED)]) files.set(f, statSync(f).size);
-  let pending = 0;
-  for (const [name, bytes] of Object.entries(PENDING_SHARED)) if (!existsSync(join(SHARED, name))) pending += bytes;
+  const pending = pendingBytes(PENDING_SHARED, (name) => {
+    const p = join(SHARED, name);
+    return existsSync(p) ? statSync(p).size : 0;
+  });
   const onDisk = [...files.values()].reduce((n, b) => n + b, 0);
   return { files, pending, total: onDisk + pending };
 }
@@ -134,6 +180,16 @@ describe("the job-board upload, tallied the deploy's way", () => {
     const counted = files.get(join(JOB_BOARD, "index.ts"));
     expect(counted).toBe(Buffer.byteLength(raw, "utf8"));
     expect(Buffer.byteLength(codeOf(raw), "utf8"), "index.ts has no comments left to count").toBeLessThan(counted! - 50_000);
+  });
+
+  it("TEETH: a pending file counts whole while it is missing, its growth while it is smaller, and nothing once it has landed", () => {
+    const disk: Record<string, number> = { "grown.ts": 1_000, "landed.ts": 5_000 };
+    const sizeOf = (name: string) => disk[name] ?? 0;
+    expect(pendingBytes({ "missing.ts": 700 }, sizeOf)).toBe(700);
+    expect(pendingBytes({ "grown.ts": 1_250 }, sizeOf)).toBe(250);
+    expect(pendingBytes({ "landed.ts": 5_000 }, sizeOf)).toBe(0);
+    expect(pendingBytes({ "missing.ts": 700, "grown.ts": 1_250, "landed.ts": 5_000 }, sizeOf)).toBe(950);
+    expect(pending, "no other round's growth is counted: the pending list is not being read").toBeGreaterThan(100_000);
   });
 
   it("TEETH: the gate refuses a tally one byte over it", () => {
