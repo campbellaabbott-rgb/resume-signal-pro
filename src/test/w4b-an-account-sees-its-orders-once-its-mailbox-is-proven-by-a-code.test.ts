@@ -17,10 +17,15 @@
  *     couldn't be made, refunded, included with Pro), amount and session;
  *   - a one-off bound to the account by checkout_buyers shows with no proof,
  *     and a missing checkout_buyers table reads as none, not as an error;
- *   - a connector's token is refused.
+ *   - a connector's token is refused;
+ *   - THE GUARD AS A BACKSTOP (plan CP-H): a fresh code sign-in whose guard
+ *     call never landed is proven by this read, which records R1's proof row,
+ *     clears a password set before it and says so; a password session, or a
+ *     code sign-in older than 15 minutes, never runs it.
  */
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+import { accountGuardNotices } from "@/lib/account-guard-notice";
 
 const USER_ID = "00000000-0000-4000-8000-0000000a0002";
 const EMAIL = "buyer@example.com";
@@ -28,6 +33,13 @@ const b64 = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64url")
 const jwt = (extra: Record<string, unknown> = {}) =>
   `${b64({ alg: "none" })}.${b64({ sub: USER_ID, role: "authenticated", aud: "authenticated", amr: [{ method: "password", timestamp: 1 }], ...extra })}.sig`;
 const SESSION = jwt();
+const SESSION_ID = "11111111-2222-4333-8444-555555555555";
+/** A session whose newest sign-in is an emailed code, `ageS` seconds ago. */
+const codeJwt = (ageS: number) => jwt({ amr: [{ method: "otp", timestamp: Math.floor(Date.now() / 1000) - ageS }], session_id: SESSION_ID, email: EMAIL });
+const FRESH_CODE = codeJwt(30);
+const STALE_CODE = codeJwt(20 * 60);
+const EMAIL_IDENTITY = [{ provider: "email", identity_data: { email: EMAIL } }];
+const adminCalls: string[] = [];
 
 let handler: EdgeHandler;
 let db: FakeDb;
@@ -40,7 +52,15 @@ beforeAll(async () => {
     from: (t: string) => db.from(t),
     rpc: (n: string, a: Record<string, unknown>) => db.rpc(n, a),
     auth: {
-      getUser: async (token: string) => (token === SESSION ? { data: { user: { id: USER_ID, email: EMAIL, identities: [] } }, error: null } : { data: { user: null }, error: { message: "no" } }),
+      getUser: async (token: string) => (token === SESSION
+        ? { data: { user: { id: USER_ID, email: EMAIL, identities: [] } }, error: null }
+        : token === FRESH_CODE || token === STALE_CODE
+          ? { data: { user: { id: USER_ID, email: EMAIL, identities: EMAIL_IDENTITY } }, error: null }
+          : { data: { user: null }, error: { message: "no" } }),
+      admin: {
+        signOut: async (_jwt: string, scope?: string) => { adminCalls.push(`signOut:${scope}`); return { error: null }; },
+        updateUserById: async () => { adminCalls.push("updateUserById"); return { error: null }; },
+      },
     },
   });
   handler = await loadEdgeHandler("get-account-data", {
@@ -114,6 +134,79 @@ describe("orders the account owns by id", () => {
     db.faults.push({ table: "pro_grants", op: "select", error: { code: "57014", message: "statement timeout" } });
     const r = await ask();
     expect(r.status).toBe(500);
+  });
+});
+
+describe("plan CP-H: the account guard as a backstop", () => {
+  const rotations: string[] = [];
+  beforeEach(() => {
+    adminCalls.length = 0;
+    rotations.length = 0;
+    db.rpcs.auth_sign_in_addresses = () => ({ data: [EMAIL], error: null });
+    db.rpcs.auth_changed_since = () => ({ data: false, error: null });
+    db.rpcs.auth_user_has_password = () => ({ data: false, error: null });
+    vi.stubGlobal("fetch", async (u: string, init?: RequestInit) => {
+      rotations.push(`${init?.method ?? "GET"} ${u}`);
+      return new Response("{}", { status: 200 });
+    });
+  });
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  it("a fresh code sign-in with no proof is proven here: the proof row is written and the address's orders show", async () => {
+    const r = await ask(FRESH_CODE);
+    expect(r.status).toBe(200);
+    expect(r.json.mailboxProven).toBe(true);
+    expect(r.json.passwordCleared).toBeUndefined();
+    expect(db.rows("account_mailbox_proofs")).toEqual([expect.objectContaining({ user_id: USER_ID, email: EMAIL, method: "otp", password_cleared: false })]);
+    expect((r.json.orders as Array<{ id: string }>).map((o) => o.id)).toContain("cs_ready");
+    expect(rotations).toEqual([]);
+  });
+
+  it("a password set before the proof is cleared as the session, other sessions end, and the answer says so", async () => {
+    db.rpcs.auth_user_has_password = () => ({ data: true, error: null });
+    const r = await ask(FRESH_CODE);
+    expect(r.json.mailboxProven).toBe(true);
+    expect(r.json.passwordCleared).toBe(true);
+    expect(r.json.signedOut).toBeUndefined();
+    expect(rotations).toEqual(["PUT https://harness.supabase.co/auth/v1/user"]);
+    expect(adminCalls).toEqual(["signOut:others"]);
+    expect(db.rows("account_password_clears")).toEqual([expect.objectContaining({ session_id: SESSION_ID, user_id: USER_ID })]);
+  });
+
+  it("a code sign-in older than 15 minutes, or a password session, never runs the guard", async () => {
+    let asked = 0;
+    db.rpcs.auth_sign_in_addresses = () => { asked += 1; return { data: [EMAIL], error: null }; };
+    expect((await ask(STALE_CODE)).json.mailboxProven).toBe(false);
+    expect((await ask(SESSION)).json.mailboxProven).toBe(false);
+    expect(asked).toBe(0);
+    expect(db.rows("account_mailbox_proofs")).toEqual([]);
+  });
+
+  it("a guard that cannot read the auth log leaves the address unproven and the read still answers", async () => {
+    db.rpcs.auth_sign_in_addresses = () => ({ data: null, error: { code: "57014", message: "statement timeout" } });
+    const r = await ask(FRESH_CODE);
+    expect(r.status).toBe(200);
+    expect(r.json.mailboxProven).toBe(false);
+    expect(r.json.orders).toEqual([]);
+  });
+});
+
+describe("plan CP-H: the account page says what the backstop did, as the sign-in says it", () => {
+  const t = (_k: string, d: string) => d;
+  it("a cleared password is said once; nothing is said for an ordinary read", () => {
+    expect(accountGuardNotices({ passwordCleared: true }, FRESH_CODE, t)).toEqual([
+      { title: "Your old password was cleared", description: expect.stringMatching(/before you proved you own it/) },
+    ]);
+    expect(accountGuardNotices({ mailboxProven: true } as never, FRESH_CODE, t)).toEqual([]);
+    expect(accountGuardNotices(null, FRESH_CODE, t)).toEqual([]);
+  });
+
+  it("never after a reset (which sets a new password anyway), and every ended session says sign in again", () => {
+    const reset = jwt({ amr: [{ method: "recovery", timestamp: Math.floor(Date.now() / 1000) }] });
+    expect(accountGuardNotices({ passwordCleared: true }, reset, t)).toEqual([]);
+    expect(accountGuardNotices({ passwordCleared: true, signedOut: true }, reset, t)).toEqual([
+      { title: "Every session of this account was ended. Please sign in again." },
+    ]);
   });
 });
 

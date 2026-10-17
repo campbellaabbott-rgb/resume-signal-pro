@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useAuth } from "@/contexts/AuthContext";
+import { accountGuardNotices } from "@/lib/account-guard-notice";
 // Same predicate the board and the nightly runner use — see the note on the
 // import in Jobs.tsx for why this is imported rather than copied.
 import { isSendableVendor } from "../../supabase/functions/_shared/apply-automation";
@@ -174,6 +175,10 @@ interface AccountData {
   orders?: AccountOrder[];
   /** False while this sign-in has not proven the account's mailbox (get-account-data). */
   mailboxProven?: boolean;
+  /** The guard, run by get-account-data as a backstop, cleared a password set before the proof (plan CP-H). */
+  passwordCleared?: boolean;
+  /** ...and ended every session, this one included: sign in again. */
+  signedOut?: boolean;
 }
 
 const toFixPlan = (value: Json | null | undefined): FixItem[] | null => {
@@ -410,6 +415,11 @@ export default function Account() {
       return;
     }
     setAccountFailed(false);
+    // The account guard ran as a backstop in get-account-data (plan CP-H):
+    // what it did is said as the sign-in says it (lib/account-guard-notice).
+    for (const n of accountGuardNotices(acc, session?.access_token, (k, d) => t(k, d))) {
+      toast(n.title, n.description ? { description: n.description } : undefined);
+    }
     setAccount({
       credits: acc.credits,
       purchases: Array.isArray(acc.purchases) ? acc.purchases : [],

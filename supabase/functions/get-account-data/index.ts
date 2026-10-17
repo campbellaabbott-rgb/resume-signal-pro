@@ -29,9 +29,21 @@
 //
 // A WEBSITE SESSION ONLY (plan CP-J): a token minted for a connected app is
 // refused (_shared/website-session.ts).
+//
+// THE ACCOUNT GUARD AS A BACKSTOP (plan CP-H). The site asks auth-signed-in
+// to run R1's guard once per sign-in; when that call failed (a network drop,
+// a 503), a fresh code sign-in left no proof and the account page showed no
+// orders by the address. While the account's address is unproven and the
+// session's newest sign-in is an emailed code, link or provider sign-in made
+// in the last 15 minutes, this read runs the same guard
+// (_shared/mailbox-guard.ts): it records the proof and clears a password set
+// before it exactly as auth-signed-in would, once per session (the guard's
+// per-session claim and the proof row's key keep a concurrent run single),
+// and says passwordCleared so the page can tell the person.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { accountProvenEmail } from "../_shared/account-proof.ts";
+import { FRESH_SESSION_MS, GUARD_METHODS, type GuardAdmin, newestSignIn, runMailboxGuard, sessionPasswordRotator } from "../_shared/mailbox-guard.ts";
 import type { MailboxEnv } from "../_shared/mailbox-proof.ts";
 import { isAuthUserId, scanCreditBalance, type CreditDb } from "../_shared/scan-credits.ts";
 import { requireWebsiteSession } from "../_shared/website-session.ts";
@@ -40,7 +52,8 @@ import { requireWebsiteSession } from "../_shared/website-session.ts";
 // this in x-fn-build. It imports _shared/mailbox-proof.ts, which R1 stamped
 // 2026-10-14.1, so this build sorts after that day.
 // 2026-10-14.25 (wave 4 round 2): the account proof rule, orders with status,
-// amount and link, a website session only.
+// amount and link, a website session only, and the account guard as a
+// backstop for a fresh sign-in the guard never answered.
 const FN_BUILD = "get-account-data.2026-10-14.25";
 
 const corsHeaders = {
@@ -88,6 +101,16 @@ export function orderStatusOf(d: Pick<DeliveryRow, "status" | "generation_error"
   return "preparing";
 }
 
+/**
+ * May the guard act for this session at all? Only when its newest sign-in is
+ * one the guard acts on, made within the guard's own freshness window: a
+ * password session, or one older than 15 minutes, never reaches it.
+ */
+export function guardMayAct(jwt: string, now = Date.now()): boolean {
+  const newest = newestSignIn(jwt);
+  return !!newest && GUARD_METHODS.has(newest.method) && newest.atMs != null && now - newest.atMs <= FRESH_SESSION_MS;
+}
+
 /** A read that found the table missing is no rows; any other failure is an error. */
 const missingTable = (e: unknown) => {
   const code = String((e as { code?: unknown } | null)?.code ?? "");
@@ -112,7 +135,26 @@ Deno.serve(async (req) => {
       supabaseUrl: url,
       anonKey: Deno.env.get("SUPABASE_ANON_KEY") ?? "",
     };
-    const provenEmail = await accountProvenEmail(user, session.jwt, proofEnv);
+    let provenEmail = await accountProvenEmail(user, session.jwt, proofEnv);
+
+    // The guard as a backstop (see the header): a fresh mailbox sign-in the
+    // guard never answered is proven here. Its failure is never this read's.
+    let passwordCleared = false;
+    let signedOut = false;
+    if (!provenEmail && guardMayAct(session.jwt)) {
+      try {
+        const guard = await runMailboxGuard({
+          admin: service as unknown as GuardAdmin,
+          rotateAsSession: sessionPasswordRotator(url, Deno.env.get("SUPABASE_ANON_KEY") ?? ""),
+          log: (step, details) => console.log(`[GET-ACCOUNT-DATA] guard: ${step}`, details ? JSON.stringify(details) : ""),
+        }, session);
+        passwordCleared = guard.body.passwordCleared === true;
+        signedOut = guard.body.signedOut === true;
+        if (guard.body.proven) provenEmail = String(user.email).trim().toLowerCase();
+      } catch (e) {
+        console.warn("[GET-ACCOUNT-DATA] guard backstop threw:", e instanceof Error ? e.message : String(e));
+      }
+    }
 
     // A one-off bought while signed in: its session is bound to this account.
     const boundRes = await service.from("checkout_buyers").select("stripe_session_id").eq("user_id", user.id).limit(100);
@@ -191,7 +233,11 @@ Deno.serve(async (req) => {
       return { date: p.purchased_at, state: ended ? "closed" : p.activated_at ? "live" : "unactivated" };
     });
 
-    return json({ credits: credits ?? 0, purchases, orders: orderList, passes, mailboxProven: !!provenEmail });
+    return json({
+      credits: credits ?? 0, purchases, orders: orderList, passes, mailboxProven: !!provenEmail,
+      ...(passwordCleared ? { passwordCleared: true } : {}),
+      ...(signedOut ? { signedOut: true } : {}),
+    });
   } catch (e) {
     console.error("[GET-ACCOUNT-DATA] Uncaught:", e instanceof Error ? e.message : String(e));
     return json({ error: "Unexpected error" }, 500);
