@@ -18,6 +18,8 @@
  *     pages with one title.
  */
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import {
   countryCodeOfName,
   isPostingLive,
@@ -164,6 +166,12 @@ describe("SEO-035: a location that ends in another country's name is not the row
     expect(postingCountryMismatch({ location: "Lagos, LA, Nigeria", country: "US" })).toBe(true);
     expect(postingCountryMismatch({ location: "Accra, GA, Ghana", country: "US" })).toBe(true);
     expect(ld(row({ location: "Lagos, LA, Nigeria", country: "US", workMode: null }))).toBeNull();
+    // The bake may ask whether the country is the only thing in the way (a carried page then keeps
+    // its page with no markup, D7); the answer is never emitted as markup.
+    expect(postingJsonLd(row({ location: "Lagos, LA, Nigeria", country: "US", workMode: null }), DESC, { site: SITE, now: NOW, ignoreCountryMismatch: true })).toBeTruthy();
+    const bake = readFileSync(resolve(__dirname, "../../scripts/prerender-seo.mjs"), "utf8");
+    expect(bake).toMatch(/if \(!path \|\| \(!ld && !\(mismatchOnly && carried\)\)\) \{/);
+    expect(bake).toMatch(/jsonLd: \[\.\.\.\(ld \? \[ld\] : \[\]\), \{/);
   });
   it("leaves a row whose last segment is its own country, a state, or a US territory alone", () => {
     expect(postingCountryMismatch({ location: "Atlanta, Georgia", country: "US" })).toBe(false);
