@@ -41,10 +41,17 @@
 # an outage ALARM, and its own failure threshold is "no refresh slice in 6
 # hours". A cadence three times finer than the thing it watches was buying
 # precision the alarm never used. ~1,440 runs/month leaves room for CI.
+#
+# AT MINUTES 17 AND 47, NOT :00 AND :30 (S12-069). GitHub's scheduler is
+# busiest on the hour and the half hour and drops scheduled runs under load:
+# on 2026-10-12 it ran 3 of about 40 slots, so an outage at 06:20Z was first
+# probed at 15:47Z. Off-peak minutes are dropped less often, and the step
+# "Tell the outside check" below makes a dropped run visible: a healthchecks.io
+# check outside GitHub that mails when the pings stop.
 name: board-health
 on:
   schedule:
-    - cron: "*/30 * * * *"
+    - cron: "17,47 * * * *"
   workflow_dispatch: {}
 
 permissions:
@@ -129,6 +136,28 @@ jobs:
             echo "failed=" >> "$GITHUB_OUTPUT"
             echo "board OK: total=$TOTAL, lastSliceAgeMin=$SLICE, last slice work ${WORK} min ago"
           fi
+
+      # THE ALARM'S OWN DEAD-MAN (S12-069). Every run pings the healthchecks.io
+      # check in the repository secret BOARD_HEALTH_PING_URL (period 30 min,
+      # grace 60): plain when the board is healthy, /fail when the probe found
+      # it failing or the probe itself broke, and nothing when GitHub skipped
+      # the run, which is what the check mails about. Without the secret it
+      # says so and does nothing, so the monitor still needs no configuration.
+      - name: Tell the outside check this run happened
+        if: always()
+        env:
+          PING_URL: ${{ secrets.BOARD_HEALTH_PING_URL }}
+          FAILED: ${{ steps.probe.outputs.failed }}
+          PROBE_OUTCOME: ${{ steps.probe.outcome }}
+        run: |
+          set -u
+          case "${PING_URL:-}" in
+            https://*) ;;
+            *) echo "::notice title=Board health::BOARD_HEALTH_PING_URL is not set, so nothing outside GitHub notices when this schedule is skipped"; exit 0;;
+          esac
+          URL="${PING_URL%/}"
+          if [ -n "${FAILED:-}" ] || [ "${PROBE_OUTCOME:-}" != "success" ]; then URL="$URL/fail"; fi
+          curl -fsS -m 10 --retry 2 -o /dev/null "$URL" || echo "::warning title=Board health::the outside check did not answer"
 
       - name: Raise or update the alarm
         if: steps.probe.outputs.failed != ''

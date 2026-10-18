@@ -9,6 +9,16 @@
 # Usage: bash scripts/verify-deploy.sh   (from anywhere; it cd's to the repo)
 set -u
 cd "$(dirname "$0")/.."
+# THE TALLY (S12-163). The run is piped through scripts/verify-deploy-tally.mjs,
+# which passes every line on and then says what the run itself proved: a
+# section that printed no verdict or hit a script error is a FAIL, and every
+# PASS is void when the positive control (section 0) did not pass. Exit 1 on
+# any FAIL. VD_INNER marks the inner run, so the pipe is made once.
+if [ -z "${VD_INNER:-}" ]; then
+  set -o pipefail
+  VD_INNER=1 bash scripts/verify-deploy.sh "$@" 2>&1 | node scripts/verify-deploy-tally.mjs
+  exit $?
+fi
 K=$(grep -h '^VITE_SUPABASE_PUBLISHABLE_KEY\|^VITE_SUPABASE_ANON' .env | head -1 | sed -E 's/^[^=]+=//; s/"//g')
 RB=$(grep -h '^RB_API_KEY' .env.local 2>/dev/null | sed -E 's/^[^=]+=//; s/"//g')
 B=https://bwhdazbotpblihdxcmho.supabase.co
@@ -64,6 +74,20 @@ fi
 echo $$ > "$VD_LOCK/pid"
 trap 'rm -rf "$VD_LOCK"' EXIT
 
+echo "== 0. positive control: production answers as itself =="
+# Without this, a run in which every request failed (no network, a gateway
+# answering HTML, a wrong key) still printed dozens of PASS lines, each true
+# of an empty answer (S12-163). The tally voids every PASS when this fails.
+if [ -z "$K" ]; then echo "FAIL  positive control: no publishable key in .env (VITE_SUPABASE_PUBLISHABLE_KEY), so every probe below runs without one"
+else
+J '{"action":"status"}' > /tmp/vd_control.json
+node -e '
+const fs=require("fs");const s=fs.readFileSync("/tmp/vd_control.json","utf8");let j=null;try{j=JSON.parse(s)}catch{}
+const ok=!!j&&typeof j==="object"&&/^\d{4}-\d{2}-\d{2}\.\d+$/.test(String(j.version||""))&&typeof j.catalogSize==="number"&&j.catalogSize>0;
+console.log(ok?"PASS  positive control: job-board status answered JSON as itself (version "+j.version+", "+j.catalogSize+" boards)"
+  :"FAIL  positive control: job-board status did not answer as itself, so no PASS below can be trusted: "+JSON.stringify(s.slice(0,140)));'
+fi
+
 echo "== 1. job-board bundle =="
 J '{"action":"status"}' > /tmp/vd_status.json
 # The catalogue size is the one THIS checkout holds, counted by the same parser
@@ -71,7 +95,10 @@ J '{"action":"status"}' > /tmp/vd_status.json
 VD_REPO_BUILD=$(grep -m1 -oE 'BUILD_VERSION = "[^"]+"' supabase/functions/job-board/index.ts | sed 's/.*"\(.*\)"/\1/')
 VD_REPO_CATALOG=$(npx --no-install tsx -e 'import("./src/test/helpers/catalog.ts").then((m)=>console.log(m.CATALOG.length)).catch(()=>console.log(""))' 2>/dev/null)
 VD_REPO_BUILD="$VD_REPO_BUILD" VD_REPO_CATALOG="$VD_REPO_CATALOG" node -e '
-const j=require("/tmp/vd_status.json");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);
+const fs=require("fs");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);
+// A body that is not JSON (a gateway 502 page) is a FAIL that shows it, never a crash that erases this section (S12-163).
+const raw=fs.readFileSync("/tmp/vd_status.json","utf8");let j=null;try{j=JSON.parse(raw)}catch{}
+if(!j||typeof j!=="object"||Array.isArray(j)){ok(false,"job-board status did not answer JSON: "+JSON.stringify(raw.slice(0,140)));process.exit(0)}
 // THIS BUILD OR LATER, by number: the pattern here read FAIL from .100 on.
 const ge=(v,d,n)=>{const m=/^(\d{4}-\d\d-\d\d)\.(\d+)$/.exec(String(v));return !!m&&(m[1]>d||(m[1]===d&&Number(m[2])>=n))};
 ok(ge(j.version,"2026-09-09",73),"status.version = "+j.version+" (want 2026-09-09.73 or later)");
@@ -87,10 +114,10 @@ const r=j.recategorize||{}; console.log("INFO  recategorize rulesVersion="+r.rul
 const sl=j.staleLane||{}; console.log((sl.windowFull===false?"PASS":"INFO")+"  staleLane.windowFull="+sl.windowFull+" excluded="+sl.excluded);'
 
 echo "== 2. the Remote filter returns no negated titles =="
-J '{"action":"list","q":"non-remote","workMode":"remote","limit":10}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);const bad=(j.jobs||[]).filter(r=>/\b(non[- ]?remote|not remote|no remote)\b/i.test(r.title||""));console.log((bad.length===0?"PASS":"FAIL")+"  negated-remote titles under workMode=remote: "+bad.length)})'
+J '{"action":"list","q":"non-remote","workMode":"remote","limit":10}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j=null;try{j=JSON.parse(s)}catch{}if(!j||!Array.isArray(j.jobs)){console.log("FAIL  the remote list answered no jobs array, so no title could be read: "+JSON.stringify(s.slice(0,140)));return}const bad=j.jobs.filter(r=>/\b(non[- ]?remote|not remote|no remote)\b/i.test(r.title||""));console.log((bad.length===0?"PASS":"FAIL")+"  negated-remote titles under workMode=remote: "+bad.length+" of "+j.jobs.length+" read")})'
 
 echo "== 3. company counts are servable =="
-J '{"action":"list","limit":1,"includeFacets":true}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);const c=(j.companies||[])[0]||{};console.log((("open" in c)&&!("count" in c)?"PASS":"FAIL")+"  facet row carries `open` and no `count`");console.log("INFO  companiesOpenCount="+j.companiesOpenCount+" totalAllCompanies="+j.totalAllCompanies)})'
+J '{"action":"list","limit":1,"includeFacets":true}' | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{let j=null;try{j=JSON.parse(s)}catch{}if(!j||typeof j!=="object"){console.log("FAIL  the facet list did not answer JSON: "+JSON.stringify(s.slice(0,140)));return}const c=(j.companies||[])[0]||{};console.log((("open" in c)&&!("count" in c)?"PASS":"FAIL")+"  facet row carries `open` and no `count`");console.log("INFO  companiesOpenCount="+j.companiesOpenCount+" totalAllCompanies="+j.totalAllCompanies)})'
 
 echo "== 4. S(30): columns present, the 1.0 leak not live (rows from the hourly cache) =="
 # ONE READ SERVES 4, 4a, 4b, 4d AND 4e. Until 2026-09-27 each of those sections
