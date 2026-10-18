@@ -92,7 +92,8 @@ checkout. The live reads the shipped page already makes
   sentence excepted, per WCAG 2.5.8). Summaries, jump links and buttons are
   44px under a coarse pointer.
 - CLS from navigation, with a scroll started before the data answers: 0.009
-  at 375, 0.0006 at 1280.
+  at 375, 0.0006 at 1280; with the count answering 1.5 s late
+  (tools/cls-slow.cjs), 0 at 375 and 0.00007 at 1280.
 - Phone first screen (375x812): H1, the summary, the jump links and Before you
   buy (the region line open). The Free card starts at 708px.
 - Screenshots, compare sheets and the JSON:
