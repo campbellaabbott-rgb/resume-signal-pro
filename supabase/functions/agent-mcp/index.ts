@@ -323,7 +323,10 @@ const SUPPORTED_METHODS = ["initialize", "tools/list", "tools/call", "prompts/li
  *  question (S12-081), lists no hidden Greenhouse field and no unasked GDPR
  *  consent (S12-173), and says null, not "no account, no CAPTCHA", for a
  *  hiring system nobody measured (S12-174). */
-const FN_BUILD = "agent-mcp.2026-10-11.27";
+// 2026-10-11.29 (wave 4 round 2 integration): a place typed after "not",
+// "except", "outside" and the like is never lifted into the location filter,
+// as job-board reads it (S12-172 parity, job-board's handoff).
+const FN_BUILD = "agent-mcp.2026-10-11.29";
 /** Where a free key is minted — the page every refusal in this file points at. */
 const MINT_URL = "https://resumebooster.work/data-api";
 /** Where a pass is bought, signed in — the fix every pass refusal names. */

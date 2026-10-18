@@ -42,6 +42,14 @@ export type QueryReading = {
   note?: string;
 };
 
+/**
+ * A place typed after a negation is the place NOT wanted (S12-172):
+ * "nurse jobs not in Texas" must not search Texas. The same words
+ * job-board/query-place.ts refuses before its own lift, so the board, /v1 and
+ * the connector read one query one way.
+ */
+const NEGATION_BEFORE_PLACE = /(?:^|\s)(?:not|except|excluding|exclude|but|outside|without|minus|other than|anywhere but)$/i;
+
 /** Metro shorthands that are also ordinary words or too short to trust at the end of a query. */
 const METRO_SKIP = new Set(["the city", "la"]);
 /** Filler a person puts after the role: "nurse jobs in Texas" searches "nurse". */
@@ -96,9 +104,10 @@ export function readQuery(raw: string, has: { location?: boolean; country?: bool
     // "in the bay area", "in the UK": the article is not part of the place.
     const place = at[1].replace(/^the\s+/i, "");
     const rest = query.slice(0, at.index).trim();
-    const stated = cityState(place);
-    const location = stated ?? knownLocation(place);
-    const country = location || has.country ? null : countryOf(place);
+    const negated = NEGATION_BEFORE_PLACE.test(rest);
+    const stated = negated ? null : cityState(place);
+    const location = negated ? null : stated ?? knownLocation(place);
+    const country = negated || location || has.country ? null : countryOf(place);
     if (rest && (location || country)) {
       query = rest;
       if (location) out.location = location;
