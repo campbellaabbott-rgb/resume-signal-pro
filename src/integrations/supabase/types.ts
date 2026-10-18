@@ -5682,6 +5682,14 @@ export type Database = {
         Returns: string[]
       }
       auth_user_has_password: { Args: { p_user_id: string }; Returns: boolean }
+      board_multi_site_title_share: {
+        Args: { p_tokens: string[] }
+        Returns: {
+          company_token: string
+          multi_site_n: number
+          multi_site_title_share: number
+        }[]
+      }
       board_recency_ladder: {
         Args: { p_fresh_days?: number; p_step?: number }
         Returns: Json
