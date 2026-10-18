@@ -69,7 +69,10 @@ describe("one plain lead line", () => {
       expect(button).toHaveAttribute("aria-expanded", "true");
       expect(panel).toBeVisible();
     }
-    expect(counts.textContent).toContain("We logged 20,767 roles taken down on this board over 11 days of watching and not one that came back");
+    // A lap board's counts refusal is the lap sentence, which quotes no figure
+    // (GD5): the zero-relist sentence used to print the 20,767 it withholds.
+    expect(counts.textContent).toContain("our re-post test sees only the part read on one visit");
+    expect(counts.textContent).not.toMatch(/20,?767/);
     expect(pace.textContent).toContain("We confirm a takedown on this board only by re-reading the whole board");
   });
 

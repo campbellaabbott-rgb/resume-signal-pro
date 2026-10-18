@@ -242,7 +242,7 @@ export { FREE_KEY_RATE_PER_MIN } from "../src/config/free-key-limits";
 export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPostingLive, jdParagraphs, postingEmployer, postingIdFromPath, postingIdentity, postingJsonLd, postingPageDescription, postingPagePath, postingPageTitle, postingPathParts } from "../src/components/jobs/posting-page";
 export { boardName, employerName, isCodeShapedName, possessive } from "../src/lib/company-display";
 export { isCollidedToken } from "../src/lib/board-collisions";
-export { USAJOBS_RESULT_CAP, isUsajobsBoard } from "../src/lib/company/lander-model";
+export { FEDERAL_LISTING_RESULT_CAP, isFederalListingBoard } from "../src/lib/company/lander-model";
 export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json";
 `));
   const bundle = OUT ? join(OUT, ".prerender-data.mjs") : join(root, "scripts", ".prerender-data.mjs");
@@ -1873,14 +1873,14 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
   // board (the catalogue's flag, scripts/prerender-agency.mjs), or an
   // employer. The hub's and the banner's words are the SPA's own English.
   const AGENCY_TOKENS = readAgencyTokens(root);
-  const landerKindOf = (token) => (D.isUsajobsBoard(token, null) ? "usajobs" : AGENCY_TOKENS.has(token) ? "agency" : "employer");
+  const landerKindOf = (token) => (D.isFederalListingBoard(token, null) ? "usajobs" : AGENCY_TOKENS.has(token) ? "agency" : "employer");
   const KIND_COPY = (() => {
     const cp = (D.EN_COMPANY_SHARD && D.EN_COMPANY_SHARD.companyProfile) || {};
     return {
       ...(cp.usajobs?.h1 ? { usajobsH1: cp.usajobs.h1 } : {}),
       ...(cp.usajobs?.subtitle ? { usajobsSubtitle: cp.usajobs.subtitle } : {}),
       ...(cp.usajobs?.cap ? { usajobsCap: cp.usajobs.cap } : {}),
-      usajobsCapValue: D.USAJOBS_RESULT_CAP,
+      usajobsCapValue: D.FEDERAL_LISTING_RESULT_CAP,
       ...(cp.agency?.banner ? { agencyBanner: cp.agency.banner } : {}),
     };
   })();
@@ -2664,7 +2664,7 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
         });
       }
       const distinct = new Set([...indexable].map((t) => skeletonOf.get(t))).size;
-      console.log(`[prerender-seo] company pages: ${LANDERS.length} (${consolidated} canonicalized to a larger board of the same employer; ${nameShared} canonicalized to a larger, different employer under the same name; ${indexable.size} indexable, ${distinct} distinct once names and numbers are out; noindex: ${thin} with too few openings of their own, ${duplicated} matching another page, ${codeNamed} still named by a tenant code${codeNamed ? `: ${LANDERS.filter((c) => c.primary === c.token && c.unreadable).slice(0, 40).map((c) => c.token).join(", ")}` : ""}, ${nameRefused} new pages refused for a name that cannot be printed; ${nameRepaired} names repaired); duplicates: kept ${dupesKept} of ${dupeGroups.length} groups${dupeBreaker ? " (breaker on: none demoted)" : ""}; labelled: ${LANDERS.filter((c) => landerKindOf(c.token) === "usajobs").length} USAJOBS, ${LANDERS.filter((c) => landerKindOf(c.token) === "agency").length} staffing agency (${AGENCY_TOKENS.size} agency boards in the catalogue); intel read for ${intelOf.size} of ${primaries0.length}; listings read ${openingsReads.size} of ${toRead.length} (${openingsUnread} unread), ${Object.keys(landerOpeningsCache).length} of ${listedTokens.length} carried`);
+      console.log(`[prerender-seo] company pages: ${LANDERS.length} (${consolidated} canonicalized to a larger board of the same employer; ${nameShared} canonicalized to a larger, different employer under the same name; ${indexable.size} indexable, ${distinct} distinct once names and numbers are out; noindex: ${thin} with too few openings of their own, ${duplicated} matching another page, ${codeNamed} still named by a tenant code${codeNamed ? `: ${LANDERS.filter((c) => c.primary === c.token && c.unreadable).slice(0, 40).map((c) => c.token).join(", ")}` : ""}, ${nameRefused} new pages refused for a name that cannot be printed; ${nameRepaired} names repaired); duplicates: kept ${dupesKept} of ${dupeGroups.length} groups${dupeBreaker ? " (breaker on: none demoted)" : ""}; labelled: ${LANDERS.filter((c) => landerKindOf(c.token) === "usajobs").length} federal listing site, ${LANDERS.filter((c) => landerKindOf(c.token) === "agency").length} staffing agency (${AGENCY_TOKENS.size} agency boards in the catalogue); intel read for ${intelOf.size} of ${primaries0.length}; listings read ${openingsReads.size} of ${toRead.length} (${openingsUnread} unread), ${Object.keys(landerOpeningsCache).length} of ${listedTokens.length} carried`);
 
       // ---- Once-published company pages this bake did not choose (SEO-002) ----
       //

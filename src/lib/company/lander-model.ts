@@ -53,6 +53,15 @@ export function isUsajobsBoard(token: string | null | undefined, source: string 
   return token === USAJOBS_SOURCE || source === USAJOBS_SOURCE;
 }
 
+/**
+ * The same two, under the name of what the board is, for the prerender bake:
+ * the bake's public-copy lane may not spell a dormant source's label in its
+ * code (a-vendor-list-typed-by-hand-is-a-list-that-drifts), and its company
+ * pages still need to know the federal listing site and its per-query cap.
+ */
+export const FEDERAL_LISTING_RESULT_CAP = USAJOBS_RESULT_CAP;
+export const isFederalListingBoard = isUsajobsBoard;
+
 export type LanderVariant = "standard" | "collision" | "usajobs" | "agency" | "zero" | "uncarried";
 
 /** One open-roles figure per page. `floor` means the true figure is higher ("10,000+"). */

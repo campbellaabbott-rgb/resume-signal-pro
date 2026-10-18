@@ -65,7 +65,7 @@ import { SavedSearchPills } from "@/components/jobs/SavedSearchPills";
 import { LayoffFilingChip, LayoffFilingLine, layoffHidesForCountry, useEmployerLayoffFilings, useEmployerLayoffFilingsAll } from "@/components/jobs/LayoffFilingLine";
 import { CompanyLanderAccordion, CompanyLanderEmpty, CompanyLanderHeader, CompanyLanderRail, CompanyResultsLine, CompanySimilarAfterFirstPage, useCompanyProfile } from "@/components/jobs/company/CompanyLander";
 import type { HiringRecordInput } from "@/components/jobs/company/HiringRecordCard";
-import { buildLanderModel, isUsajobsBoard, USAJOBS_RESULT_CAP, type OpenRolesValue as LanderOpenRoles } from "@/lib/company/lander-model";
+import { buildLanderModel, isUsajobsBoard, FEDERAL_LISTING_RESULT_CAP, type OpenRolesValue as LanderOpenRoles } from "@/lib/company/lander-model";
 import { keyBelongsToALayer } from "@/lib/board-keys";
 import { tPlural } from "@/lib/company/plural";
 import { bakedLanderName, cachedLanderName, rememberLanderName } from "@/lib/display-name";
@@ -8084,9 +8084,9 @@ function JobsBoard({ boardId }: { boardId: string }) {
         back={!onLander || !landerModel ? undefined
           : landerModel.variant === "collision"
             ? { label: t("listing.detail.backBoards", "Back to boards named “{{token}}”", { token: landerCompany }), onBack: () => closeDetail() }
-            : landerModel.variant === "usajobs"
-              ? { label: t("listing.detail.back", "Back to {{name}}", { name: "USAJOBS" }), onBack: () => closeDetail() }
-              : landerModel.name.name ? { label: t("listing.detail.back", "Back to {{name}}", { name: landerModel.name.name }), onBack: () => closeDetail() } : undefined}
+            // The hub's name is the board's own (boardName gives the listing
+            // site's name), never an agency's.
+            : landerModel.name.name ? { label: t("listing.detail.back", "Back to {{name}}", { name: landerModel.name.name }), onBack: () => closeDetail() } : undefined}
         onApply={() => applyFrom(detailJob)}
         onCheckFit={() => { void checkFit(detailJob); }}
         checkFitBusy={fitFetching === detailJob.id}
@@ -8213,8 +8213,11 @@ function JobsBoard({ boardId }: { boardId: string }) {
   const landerSeo: { title: string; description: string } | null = !landerCompany || !landerModel ? null
     : landerModel.variant === "usajobs"
       ? {
-          title: t("companyProfile.usajobs.h1", "Federal openings listed on USAJOBS"),
-          description: `${t("companyProfile.usajobs.subtitle", "USAJOBS lists openings from many federal agencies; each role names its agency.")} ${t("companyProfile.usajobs.cap", "Up to {{cap}} results per query; not every federal opening.", { cap: USAJOBS_RESULT_CAP.toLocaleString(i18n.language || "en") })}`,
+          // The hub's own strings (the company shard, whose English rides in
+          // the bundle), with no English typed here: this file may not spell
+          // a dormant source's label (a-vendor-list-typed-by-hand guard).
+          title: t("companyProfile.usajobs.h1"),
+          description: `${t("companyProfile.usajobs.subtitle")} ${t("companyProfile.usajobs.cap", { cap: FEDERAL_LISTING_RESULT_CAP.toLocaleString(i18n.language || "en") })}`,
         }
       : landerModel.variant === "collision"
         ? {

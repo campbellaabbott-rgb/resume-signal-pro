@@ -61,9 +61,9 @@ describe("USAJOBS is baked as the federal listing site it is", () => {
   });
   it("the bake routes the usajobs token to this variant, and every company page through the one kind", () => {
     const bake = readFileSync(resolve(ROOT, "scripts/prerender-seo.mjs"), "utf8");
-    expect(bake).toMatch(/const landerKindOf = \(token\) => \(D\.isUsajobsBoard\(token, null\) \? "usajobs" : AGENCY_TOKENS\.has\(token\) \? "agency" : "employer"\)/);
+    expect(bake).toMatch(/const landerKindOf = \(token\) => \(D\.isFederalListingBoard\(token, null\) \? "usajobs" : AGENCY_TOKENS\.has\(token\) \? "agency" : "employer"\)/);
     expect(bake.match(/kind: landerKindOf\(/g)?.length, "pageOf and the carried once-published page").toBe(2);
-    expect(bake).toMatch(/export \{ USAJOBS_RESULT_CAP, isUsajobsBoard \} from "\.\.\/src\/lib\/company\/lander-model"/);
+    expect(bake).toMatch(/export \{ FEDERAL_LISTING_RESULT_CAP, isFederalListingBoard \} from "\.\.\/src\/lib\/company\/lander-model"/);
   });
 });
 
