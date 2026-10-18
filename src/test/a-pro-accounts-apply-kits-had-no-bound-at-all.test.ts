@@ -28,9 +28,9 @@ const USERS = {
   trial: "11111111-2222-4333-8444-555555555555",
 };
 const TOKENS = {
-  pro: jwt({ role: "authenticated", sub: USERS.pro }),
-  other: jwt({ role: "authenticated", sub: USERS.other }),
-  trial: jwt({ role: "authenticated", sub: USERS.trial }),
+  pro: jwt({ role: "authenticated", aud: "authenticated", sub: USERS.pro }),
+  other: jwt({ role: "authenticated", aud: "authenticated", sub: USERS.other }),
+  trial: jwt({ role: "authenticated", aud: "authenticated", sub: USERS.trial }),
   publishable: jwt({ role: "anon", iss: "supabase" }),
 };
 const USER_OF: Record<string, string> = { [TOKENS.pro]: USERS.pro, [TOKENS.other]: USERS.other, [TOKENS.trial]: USERS.trial };
@@ -43,7 +43,7 @@ let getUserCalls = 0;
 
 const SERVE = "export function serve(h) { globalThis.__edgeHandler = h; }";
 const STRIPE = "export default class Stripe { constructor() { this.checkout = { sessions: { retrieve: async () => { throw new Error('no stripe here'); } } }; } }";
-const SUPABASE = "export function createClient(_u, _k, o) { const h = o?.global?.headers?.Authorization ?? ''; return { auth: { getUser: async () => globalThis.__proGetUser(h) } }; }";
+const SUPABASE = "export function createClient(_u, _k, o) { const h = o?.global?.headers?.Authorization ?? ''; return { auth: { getUser: async (j) => globalThis.__proGetUser(j ? 'Bearer ' + j : h) } }; }";
 const PRO = `export async function accountProStanding(_db, userId) {
   if (userId === '${USERS.trial}') return { pro: true, trialing: true };
   return { pro: userId === '${USERS.pro}' || userId === '${USERS.other}', trialing: false };

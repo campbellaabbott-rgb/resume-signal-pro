@@ -162,7 +162,7 @@ const USERS: Record<string, { id: string; email: string }> = {
 };
 // A real access token is a JWT whose role is authenticated; generate-apply-package
 // reads that claim before it looks an account up (the publishable key never is).
-const accessToken = (sub: string) => `h.${Buffer.from(JSON.stringify({ role: "authenticated", sub })).toString("base64url")}.s`;
+const accessToken = (sub: string) => `h.${Buffer.from(JSON.stringify({ role: "authenticated", aud: "authenticated", sub })).toString("base64url")}.s`;
 USERS[accessToken(TRIALIST)] = USERS["jwt-trialist"];
 USERS[accessToken(SQUATTER)] = USERS["jwt-squatter"];
 /** What pro_entitlement_rows answers per account. */

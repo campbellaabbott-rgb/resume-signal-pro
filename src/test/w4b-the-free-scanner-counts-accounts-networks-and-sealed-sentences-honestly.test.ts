@@ -87,7 +87,13 @@ let pro: boolean;
 let streamDb: FakeDb;
 const spies: Array<ReturnType<typeof vi.spyOn>> = [];
 
-const users: Record<string, { id: string }> = { "signed-in-token": { id: USER } };
+// A website session's shape (wave 4 round 2 fixes: the scanners read the
+// account through websiteSessionOf, CP-J), and a connected app's token for
+// the same person, which the scanners must treat as anonymous.
+const b64 = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64url");
+const SIGNED_IN = `${b64({ alg: "none" })}.${b64({ role: "authenticated", aud: "authenticated", sub: USER })}.sig`;
+const CONNECTOR = `${b64({ alg: "none" })}.${b64({ role: "authenticated", aud: "authenticated", sub: USER, client_id: "claude-connector" })}.sig`;
+const users: Record<string, { id: string }> = { [SIGNED_IN]: { id: USER }, [CONNECTOR]: { id: USER } };
 
 function primaryClient() {
   const rpc = async (name: string, args: Args = {}) => {
@@ -135,11 +141,12 @@ beforeAll(async () => {
   });
   stream = await loadEdgeHandler("free-keyword-scan-stream", {
     "https://esm.sh/@supabase/supabase-js@2":
-      "export function createClient() { const db = globalThis.__streamDb; return { rpc: (n, a) => db.rpc(n, a), from: (t) => db.from(t), auth: { getUser: async (jwt) => ({ data: { user: jwt === 'signed-in-token' ? { id: '4f9a3c2e-1b7d-4e8a-9c0f-2a6b5d4e3f21' } : null }, error: null }) } }; }",
+      "export function createClient() { const db = globalThis.__streamDb; return { rpc: (n, a) => db.rpc(n, a), from: (t) => db.from(t), auth: { getUser: async (jwt) => ({ data: { user: globalThis.__scanUsers[jwt] ?? null }, error: null }) } }; }",
   });
 }, 240_000);
 
 beforeEach(() => {
+  (globalThis as Record<string, unknown>).__scanUsers = users;
   pending = [];
   rateCalls = [];
   metrics = [];
@@ -232,13 +239,21 @@ describe("S12-142: synthetic needs our secret, and a refused hour is recorded", 
 
 describe("S12-143: a free account's day is its own", () => {
   it("the primary counts a signed-in account by its id, not the address", async () => {
-    await scanPrimary(headers("signed-in-token"));
+    await scanPrimary(headers(SIGNED_IN));
     expect(daily().map((a) => [a.p_ip, a.p_max_requests])).toEqual([[`user:${USER}`, 15]]);
   });
 
   it("the backup scanner does the same", async () => {
-    await scanStream(headers("signed-in-token"));
+    await scanStream(headers(SIGNED_IN));
     expect(daily().map((a) => a.p_ip)).toEqual([`user:${USER}`]);
+  });
+
+  it("a connected app's token is no website session: both scanners count it as an anonymous visitor (CP-J)", async () => {
+    await scanPrimary(headers(CONNECTOR));
+    expect(daily().map((a) => [a.p_ip, a.p_max_requests])).toEqual([["198.51.100.77", 7]]);
+    rateCalls = [];
+    await scanStream(headers(CONNECTOR));
+    expect(daily().map((a) => a.p_ip)).toEqual(["198.51.100.77"]);
   });
 });
 
@@ -246,9 +261,9 @@ describe("S12-144: the backup scanner knows a Pro member", () => {
   it("past the day, a Pro account completes; a free one is told its day is spent, without an upgrade pitch for a pack", async () => {
     rate = (a) => ({ data: a.p_window_minutes !== 1440, error: null });
     pro = true;
-    expect((await scanStream(headers("signed-in-token"))).complete?.success).toBe(true);
+    expect((await scanStream(headers(SIGNED_IN))).complete?.success).toBe(true);
     pro = false;
-    const r = await scanStream(headers("signed-in-token"));
+    const r = await scanStream(headers(SIGNED_IN));
     expect(r.error?.code).toBe("daily_scan_limit");
     expect(String(r.error?.error)).not.toMatch(/Scan Pack|Upgrade for unlimited/);
   });

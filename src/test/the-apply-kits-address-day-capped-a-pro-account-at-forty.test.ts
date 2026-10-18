@@ -32,8 +32,8 @@ const STRIPE = "export default class Stripe { constructor() { this.checkout = { 
 // A signed-in session's token: a JWT whose role is authenticated.
 const PRO_USER = "6f1d2c3b-4a5e-4f60-8a7b-9c0d1e2f3a4b";
 const jwt = (claims: Record<string, unknown>) => `h.${Buffer.from(JSON.stringify(claims)).toString("base64url")}.s`;
-const PRO_JWT = jwt({ role: "authenticated", sub: PRO_USER });
-const SUPABASE = `export function createClient(_u, _k, o) { const h = o?.global?.headers?.Authorization ?? ''; return { auth: { getUser: async () => ({ data: { user: h === 'Bearer ${PRO_JWT}' ? { id: '${PRO_USER}' } : null }, error: null }) } }; }`;
+const PRO_JWT = jwt({ role: "authenticated", aud: "authenticated", sub: PRO_USER });
+const SUPABASE = `export function createClient(_u, _k, o) { const h = o?.global?.headers?.Authorization ?? ''; return { auth: { getUser: async (j) => ({ data: { user: (j ? 'Bearer ' + j : h) === 'Bearer ${PRO_JWT}' ? { id: '${PRO_USER}' } : null }, error: null }) } }; }`;
 const PRO = `export async function accountProStanding(_db, userId) { return { pro: userId === '${PRO_USER}' }; }`;
 
 beforeAll(async () => {

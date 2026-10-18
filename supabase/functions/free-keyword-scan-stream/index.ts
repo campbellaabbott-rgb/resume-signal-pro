@@ -15,6 +15,7 @@ import { attachScanMailSeal } from "../_shared/scan-mail-seal.ts";
 import { accountProStanding } from "../_shared/pro-standing.ts";
 import { scrubSealedSentences } from "./seal-safe.ts";
 import { evaluateCountryStandards } from "./country-standards.ts";
+import { websiteSessionOf } from "../_shared/website-session.ts";
 import { computeParseQuality, parseResumeStructure, formatStructureForPrompt } from "./resume-structure.ts";
 import { detectResumeLanguage } from "./resume-language.ts";
 const serve = Deno.serve;
@@ -6509,7 +6510,9 @@ function clampImprovementToScoreGap(report: Record<string, unknown>): void {
 // (S12-066); sealed sentences scrubbed as the primary's are (S12-068).
 // 2026-10-11.29 (wave 4 round 2 integration): the refusal says Pro has no
 // daily cap on scans, the plan's words (owner decision 2026-10-17).
-const FN_BUILD = "free-keyword-scan-stream.2026-10-11.29";
+// 2026-10-11.30 (wave 4 round 2 fixes): the signed-in account is read from a
+// website session only, as the primary does (CP-J / S9-001).
+const FN_BUILD = "free-keyword-scan-stream.2026-10-11.30";
 
 /** The primary's report id formula (free-keyword-scan/report-meta.ts reportIdFor): this report's cache key and its score. */
 async function streamReportId(cacheKey: string, score: unknown): Promise<string> {
@@ -7553,7 +7556,9 @@ serve(async (req) => {
       try {
         const jwt = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '').trim();
         if (jwt && jwt !== (Deno.env.get('SUPABASE_ANON_KEY') ?? '')) {
-          const { data: { user } } = await supabase.auth.getUser(jwt);
+          // A website session only: a refused token (a connector's) is anonymous.
+          const site = await websiteSessionOf(req.headers, { getUser: (j: string) => supabase.auth.getUser(j) });
+          const user = site.ok ? site.session.user : null;
           isAuthedUser = !!user?.id;
           authedUserId = typeof user?.id === 'string' ? user.id : null;
         }

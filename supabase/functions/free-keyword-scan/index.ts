@@ -27,6 +27,7 @@ import { SCAN_MODEL_CHAIN } from "../_shared/scan-models.ts";
 import { FIXED_CHOICES_STAY_ENGLISH, normalizeScanReport } from "../_shared/scan-report-shape.ts";
 import { functionCeiling } from "../_shared/model-spend-gate.ts";
 import { buildScoreAudit, reportIdFor } from "./report-meta.ts";
+import { websiteSessionOf } from "../_shared/website-session.ts";
 import { scrubSealedSentences } from "./seal-safe.ts";
 import {
   detectCountryFromResume,
@@ -489,7 +490,10 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 // 2026-10-14.29 (wave 4 round 2 integration): generators' 2026-10-14.24 and
 // payments-delivery's 2026-10-14.22 in one bundle; a refusal says Pro has no
 // daily cap on scans, the plan's words (owner decision 2026-10-17).
-const FN_BUILD = "free-keyword-scan.2026-10-14.29";
+// 2026-10-14.30 (wave 4 round 2 fixes): the signed-in account is read from a
+// website session only (CP-J / S9-001): a connected app's token is treated as
+// anonymous and spends no account's credits or scans.
+const FN_BUILD = "free-keyword-scan.2026-10-14.30";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -1506,11 +1510,13 @@ serve(async (req) => {
       const jwt = authHeader.replace(/^Bearer\s+/i, '');
       // Anon key requests carry the anon token; a user session carries a longer user JWT
       if (jwt && jwt !== (Deno.env.get('SUPABASE_ANON_KEY') ?? '')) {
-        const { data: { user } } = await supabase.auth.getUser(jwt);
+        // A website session only: a refused token (a connector's) is anonymous.
+        const site = await websiteSessionOf(req.headers, { getUser: (j: string) => supabase.auth.getUser(j) });
+        const user = site.ok ? site.session.user : null;
         isAuthedUser = !!user?.id;
         authedUserId = user?.id ?? null;
-        authedUser = user ?? null;
-        authedJwt = jwt;
+        authedUser = (user ?? null) as AuthUserLike | null;
+        authedJwt = user ? jwt : '';
       }
     } catch { /* anonymous */ }
     // Asked only past the daily limit (it may read the auth settings once).
