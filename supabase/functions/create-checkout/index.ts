@@ -13,6 +13,7 @@ import {
   refusedCallerBody,
 } from "../_shared/checkout-buyer.ts";
 import { planPaid, UNPAID_PLAN_NOTE } from "../_shared/consumable-paid.ts";
+import { purchasesOpen, sellerGate } from "../_shared/seller-gate.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -23,6 +24,11 @@ import { planPaid, UNPAID_PLAN_NOTE } from "../_shared/consumable-paid.ts";
 // a signed-in buyer's account rides the session and checkout_buyers; the
 // billing address is always collected; a connected app's token, or one
 // issued for another audience, is refused with a 401 (critical-path CP-D).
+// Owner decisions 2026-10-17, same build: while the seller's legal name and
+// postal address are unset the analysis is not sold (409
+// seller_identity_missing, seller-gate.ts) and the GET says purchasesOpen; a
+// buyer in India is refused with the EU, the EEA and the UK, in words that
+// name what was checked (sales-territory.ts).
 const FN_BUILD = "create-checkout.2026-10-11.23";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -299,7 +305,8 @@ serve(async (req) => {
   // buy buttons can show the box the moment the owner turns it on.
   if (req.method === "GET") {
     const env = (k: string) => Deno.env.get(k);
-    return new Response(JSON.stringify({ ...euSalesPolicy(env), ...territoryPolicy(env) }), {
+    // purchasesOpen: whether the seller is named, so the analysis is sold at all.
+    return new Response(JSON.stringify({ ...euSalesPolicy(env), ...territoryPolicy(env), purchasesOpen: purchasesOpen() }), {
       headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "public, max-age=60" },
     });
   }
@@ -516,7 +523,16 @@ serve(async (req) => {
       if (standing.trialing) logStep("Trialing plan: the full analysis is bought, not minted, while the trial runs");
     }
 
-    // NO SALE INTO THE EU, THE EEA OR THE UK WHILE THE SWITCH IS OFF
+    // NO SALE WITHOUT A NAMED SELLER (owner decision 2026-10-17, B&P
+    // 17538(d)): after the grant (a member's included analysis charges
+    // nothing), before the territory, the promotion code and Stripe.
+    const closed = sellerGate({ body: requestBody, acceptLanguage: req.headers.get("accept-language") });
+    if (closed) {
+      logStep("Refused: seller_identity_missing");
+      return new Response(JSON.stringify(closed.body), { status: closed.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // NO SALE INTO THE EU, THE EEA, THE UK OR INDIA WHILE THE SWITCH IS OFF
     // (S12-059): a euro or pound price is itself the page saying so, and no
     // such session is minted. After the grant (a member's included analysis
     // is not a sale), before Stripe.

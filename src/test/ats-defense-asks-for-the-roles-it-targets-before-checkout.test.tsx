@@ -9,6 +9,12 @@
  * Mounted for real, with only the backend faked.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+// Freelance Boost, cut on 2026-10-17 (owner decision), stands in unhidden for
+// a product the hook sells: no product is sold through it any more.
+vi.mock("@/config/products", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/config/products")>();
+  return { ...real, isProductHidden: (id: string) => id !== "freelanceBoost" && real.isProductHidden(id as never) };
+});
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";
 import en from "../i18n/locales/en.json";

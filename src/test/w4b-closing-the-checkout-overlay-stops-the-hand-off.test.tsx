@@ -82,6 +82,10 @@ vi.mock("@/components/ResumeUploader", () => ({
 }));
 const toasts: Array<{ title?: string; description?: string }> = [];
 vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast: (t: { title?: string; description?: string }) => { toasts.push(t); } }), toast: () => {} }));
+// Purchases open, as once the owner names the seller: the overlay is what is
+// tested here. The shipped gate (no seller, no purchase) is tested in
+// w4b-no-buy-button-until-the-seller-is-named.test.tsx.
+vi.mock("@/lib/purchases-open", () => ({ purchasesOpen: () => true }));
 
 import Index from "@/pages/Index";
 
@@ -121,7 +125,7 @@ describe("Close on the Full Analysis overlay", () => {
 describe("a refusal written for the buyer", () => {
   it("the territory's 451 is said in its own words, and nothing navigates", async () => {
     await start();
-    const sentence = "We can't sell to buyers in the EU, the EEA or the UK yet: sales there wait until we are registered for VAT. Nothing was charged.";
+    const sentence = "We don't sell to buyers in the EU, the EEA, the UK or India yet: sales there wait until our tax registration there is settled. Your browser's time zone is one of theirs. Nothing was charged.";
     await answer({ data: null, error: { title: "x", description: "x", isRetryable: false }, httpStatus: 451, errorBody: { error: sentence, territoryRefused: true } });
     expect(toasts.some((t) => t.description === sentence)).toBe(true);
     expect(redirects).not.toContain(true);

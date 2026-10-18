@@ -9,14 +9,23 @@
  * drop it), and, only while the EU/UK switch is on, the box the buyer ticked.
  * The server (supabase/functions/_shared/checkout-policy.ts) reads exactly
  * these names.
+ *
+ * AND PRO'S AUTOMATIC-RENEWAL BOX (owner decision 2026-10-17; California's
+ * automatic renewal law as amended by AB 2863): the Pro card's Terms line
+ * carries its own unticked box, separate from the Terms; the press sends
+ * `autoRenewConsent: true` only when the box beside the pressed button was
+ * ticked, and spends it like the EU box. create-subscription-checkout refuses
+ * a plan without it (supabase/functions/_shared/auto-renew-consent.ts).
  */
 import { useSyncExternalStore, type RefObject } from "react";
 import { TERMS_VERSION } from "@/config/terms";
 import { EU_UK_SALES_ON } from "@/config/eu-consumer";
 import { getStoredReferralCode } from "@/hooks/use-affiliate-auth";
 
-export type Consent = { withdrawalWaiver: boolean; serviceStartConsent: boolean };
-const NO_CONSENT: Consent = Object.freeze({ withdrawalWaiver: false, serviceStartConsent: false });
+export type Consent = { withdrawalWaiver: boolean; serviceStartConsent: boolean; autoRenewConsent: boolean };
+const NO_CONSENT: Consent = Object.freeze({ withdrawalWaiver: false, serviceStartConsent: false, autoRenewConsent: false });
+/** Any box on the line ticked. */
+const anyTicked = (x: Consent) => x.withdrawalWaiver || x.serviceStartConsent || x.autoRenewConsent;
 
 const listeners = new Set<() => void>();
 const emit = () => { for (const l of listeners) l(); };
@@ -169,6 +178,8 @@ export type PurchaseTermsBody = {
   referralCode?: string;
   withdrawalWaiver?: boolean;
   serviceStartConsent?: boolean;
+  /** Sent, as true, only when the pressed line's renewal box was ticked. */
+  autoRenewConsent?: boolean;
 };
 
 /**
@@ -189,21 +200,23 @@ export function purchaseTerms(): PurchaseTermsBody {
   } catch {
     /* blocked storage: no referral, still a checkout */
   }
-  // The box is part of the line: only the box beside the pressed button is
+  // The boxes are part of the line: only a box beside the pressed button is
   // consent to this purchase, and it is spent by it. A retry of that purchase
-  // sends what the first press sent.
+  // sends what the first press sent. The EU box is read only while the switch
+  // is on; the renewal box always.
+  let c = (line && lines.get(line)) || NO_CONSENT;
+  if (retrying && line && spent?.line === line && !anyTicked(c)) c = spent.consent;
   if (euUkBoxShown()) {
-    let c = (line && lines.get(line)) || NO_CONSENT;
-    const ticked = (x: Consent) => x.withdrawalWaiver || x.serviceStartConsent;
-    if (retrying && line && spent?.line === line && !ticked(c)) c = spent.consent;
     out.withdrawalWaiver = c.withdrawalWaiver;
     out.serviceStartConsent = c.serviceStartConsent;
-    if (line && ticked(c)) {
-      spent = { line, consent: c };
-      if (ticked(lines.get(line) ?? NO_CONSENT)) {
-        lines.set(line, NO_CONSENT);
-        emit();
-      }
+  }
+  if (c.autoRenewConsent) out.autoRenewConsent = true;
+  const spends = euUkBoxShown() ? anyTicked(c) : c.autoRenewConsent;
+  if (line && spends) {
+    spent = { line, consent: c };
+    if (anyTicked(lines.get(line) ?? NO_CONSENT)) {
+      lines.set(line, NO_CONSENT);
+      emit();
     }
   }
   return out;
@@ -219,7 +232,7 @@ export function purchaseTermsUnused(): void {
   spent = null;
   if (!s || !lines.has(s.line)) return;
   const now = lines.get(s.line)!;
-  if (now.withdrawalWaiver || now.serviceStartConsent) return;
+  if (anyTicked(now)) return;
   lines.set(s.line, s.consent);
   emit();
 }

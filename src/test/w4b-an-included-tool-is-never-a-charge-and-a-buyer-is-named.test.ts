@@ -15,6 +15,11 @@
  *   - a signed-out POST naming an address learned whether it held Pro;
  *   - a signed-in purchase named no account, and Stripe was prefilled with
  *     the body's address rather than the verified one.
+ *
+ * Since 2026-10-17 (owner decision) Freelance Boost and Transition Pro are
+ * cut and not part of Pro, so the Full Analysis (create-checkout) is the one
+ * tool a member's checkout mints, and these run on it; create-product-checkout
+ * sells nothing and mints nothing, member or not.
  */
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { EdgeHandler } from "./helpers/edge-harness";
@@ -48,43 +53,49 @@ const freelance = (bearer?: string, body: Record<string, unknown> = {}) =>
 describe("a Pro member is never sent to pay for an included tool (CP-025)", () => {
   it("a grant that cannot be minted is a 503 and no Stripe url (it used to fall back to Stripe)", async () => {
     world.db.faults.push({ table: "pro_grants", op: "insert", error: { code: "XX000", message: "boom" } });
-    const res = await freelance("jwt-member");
+    const res = await analysis("jwt-member");
     expect(res.status).toBe(503);
     expect((await res.json()).url).toBeUndefined();
     expect(world.stripe.created).toEqual([]);
   });
 
-  it("an auth server that cannot answer is a 503 on both checkouts, not an anonymous sale", async () => {
+  it("an auth server that cannot answer is a 503, not an anonymous sale", async () => {
     world.authDown = true;
-    for (const res of [await freelance("jwt-member"), await analysis("jwt-member")]) {
-      expect(res.status).toBe(503);
-      expect((await res.json()).retryable).toBe(true);
-    }
+    const res = await analysis("jwt-member");
+    expect(res.status).toBe(503);
+    expect((await res.json()).retryable).toBe(true);
     expect(world.stripe.created).toEqual([]);
   });
 
   it("a refused token is still an anonymous buyer (control)", async () => {
-    const res = await freelance("jwt-forged");
+    const res = await analysis("jwt-forged");
     expect(res.status).toBe(200);
     expect(world.stripe.created).toHaveLength(1);
   });
 
   it("the paid member gets the grant, named for the account", async () => {
-    const res = await freelance("jwt-member");
+    const res = await analysis("jwt-member");
     expect((await res.json()).proIncluded).toBe(true);
     expect(world.db.rows("pro_grants")).toHaveLength(1);
-    expect(world.db.rows("pro_grants")[0]).toMatchObject({ user_id: MEMBER.id, product_id: "freelanceBoost" });
+    expect(world.db.rows("pro_grants")[0]).toMatchObject({ user_id: MEMBER.id, product_id: "fullAnalysis" });
+  });
+
+  it("Freelance Boost is not part of Pro and not sold: the member gets the 410, no grant and no Stripe page", async () => {
+    const res = await freelance("jwt-member");
+    expect(res.status).toBe(410);
+    expect(world.db.rows("pro_grants")).toEqual([]);
+    expect(world.stripe.created).toEqual([]);
   });
 });
 
 describe("a grant over the cap is fair use, never a charge (D7, S12-067)", () => {
-  it("the cap's refusal is a 429 that says why, on both checkouts", async () => {
+  it("the cap's refusal is a 429 that says why, for the day and for the month", async () => {
     world.db.faults.push({ table: "pro_grants", op: "insert", error: { code: "P0001", message: "pro_grant_cap: daily" } });
     const a = await analysis("jwt-member");
     expect(a.status).toBe(429);
     expect(await a.json()).toMatchObject({ fairUse: true, reason: "pro_grant_cap", window: "daily" });
     world.db.faults.push({ table: "pro_grants", op: "insert", error: { code: "P0001", message: "pro_grant_cap: monthly" } });
-    const f = await freelance("jwt-member");
+    const f = await analysis("jwt-member");
     expect(f.status).toBe(429);
     expect((await f.json()).window).toBe("monthly");
     expect(world.stripe.created).toEqual([]);
@@ -130,7 +141,7 @@ describe("a converted trial mints nothing until its first real payment (S12-098)
 describe("a signed-out visitor learns nothing about an address (D8)", () => {
   it("a subscriber's address in a signed-out body gets an ordinary checkout, not 'sign in to use your plan'", async () => {
     world.db.rows("pro_subscribers").push({ email: "member@example.com", status: "active", current_period_end: soon() });
-    const res = await freelance(undefined, { email: "member@example.com" });
+    const res = await analysis(undefined, { email: "member@example.com" });
     const body = await res.json();
     expect(body.proRequiresSignIn).toBeUndefined();
     expect(body.url).toMatch(/^https:\/\/checkout\.stripe\.com\//);
@@ -140,14 +151,14 @@ describe("a signed-out visitor learns nothing about an address (D8)", () => {
 
 describe("a signed-in purchase names its account and its verified address (CP-022, CP-012)", () => {
   it("the session carries the account and checkout_buyers records it; the verified address beats the body's", async () => {
-    const res = await freelance("jwt-plain", { email: "someone-else@example.com" });
+    const res = await analysis("jwt-plain", { email: "someone-else@example.com" });
     expect(res.status).toBe(200);
     const s = world.stripe.created[0];
     expect(s.client_reference_id).toBe(PLAIN.id);
     expect((s.metadata as Record<string, string>).user_id).toBe(PLAIN.id);
     expect(s.customer_email).toBe(PLAIN.email);
     expect(world.db.rows("checkout_buyers")).toEqual([
-      expect.objectContaining({ user_id: PLAIN.id, checkout_function: "create-product-checkout", product_type: "freelance_boost" }),
+      expect.objectContaining({ user_id: PLAIN.id, checkout_function: "create-checkout", product_type: "full_analysis" }),
     ]);
   });
 

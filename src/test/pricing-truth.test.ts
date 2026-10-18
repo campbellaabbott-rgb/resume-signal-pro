@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
+import { proStripeDescription as sharedProStripeDescription } from "../../supabase/functions/_shared/pro-perks";
 import { resolve } from "node:path";
 import { PASS, SUBSCRIPTIONS } from "@/config/products";
 import { PRO_PERKS } from "@/config/pro-perks";
@@ -298,6 +299,12 @@ describe("no Pro perk names a price-specific entitlement", () => {
     lines.flatMap((line) => agentOnly.filter((n) => line.toLowerCase().includes(n.toLowerCase())).map((n) => `"${line}" names ${n}`));
   // The description Stripe shows on the page that takes the Pro money.
   const proStripeDescription = (src: string): string => {
+    // Since 2026-10-17 the description is built from the Pro card's own items
+    // (_shared/pro-perks.ts proStripeDescription): run it, once the source is
+    // seen to use exactly it for the product's description.
+    if (/PRO_STRIPE_DESCRIPTION\s*=\s*proStripeDescription\(\)/.test(src) && /description:\s*PRO_STRIPE_DESCRIPTION/.test(src)) {
+      return sharedProStripeDescription();
+    }
     // Inline, or (wave 4 round 2) the PRO_STRIPE_DESCRIPTION constant it reads.
     const m = src.match(/PRO_STRIPE_DESCRIPTION\s*=\s*\n?\s*"([^"]+)"/) ?? src.match(/description:\s*\n?\s*"([^"]+)"/);
     if (!m) throw new Error("create-subscription-checkout no longer describes its product inline -- re-anchor this guard");

@@ -12,8 +12,9 @@
  *   - the catalogue hides it: every cut id is in HIDDEN_PRODUCT_IDS (so every
  *     surface that reads the list drops it), the two lists are equal, and
  *     the price range the structured data quotes is what is still sold;
- *   - what is still sold still sells: Freelance Boost reaches the purchase
- *     path (the control).
+ *   - what is still sold still sells: the Full Analysis reaches the purchase
+ *     path (the control). Since 2026-10-17 Freelance Boost and Transition Pro
+ *     are cut too (owner decision), so create-product-checkout sells nothing.
  */
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -30,7 +31,7 @@ let world: W4bWorld;
 
 beforeAll(async () => {
   installDeno();
-  h = await loadCheckouts(["create-product-checkout", "create-scan-pack-checkout", "create-test-checkout"]);
+  h = await loadCheckouts(["create-product-checkout", "create-scan-pack-checkout", "create-test-checkout", "create-checkout"]);
 }, 240_000);
 beforeEach(() => { world = freshWorld(); });
 
@@ -61,8 +62,20 @@ describe("create-product-checkout refuses every cut product before anything is c
     expect(fr.language).toBe("fr");
   });
 
-  it("control: Freelance Boost, still sold, reaches the purchase path and Stripe", async () => {
-    const res = await post(h["create-product-checkout"], "create-product-checkout", { productId: "freelanceBoost" });
+  it("Freelance Boost and Transition Pro are cut too (2026-10-17): 410, in the buyer's language, nothing charged", async () => {
+    for (const [id, type] of [["freelanceBoost", "freelance_boost"], ["freelanceTransitionPro", "freelance_transition_pro"]]) {
+      const res = await post(h["create-product-checkout"], "create-product-checkout", { productId: id, language: "es" });
+      expect(res.status, id).toBe(410);
+      const body = await res.json();
+      expect(body).toMatchObject({ retired: true, cut: true, product: type, language: "es" });
+      expect(body.error).toBe(cutSentence(id, "es"));
+      expect(body.error).toMatch(/ya no se vende/);
+    }
+    expect(world.stripe.created).toEqual([]);
+  });
+
+  it("control: the Full Analysis, still sold, reaches the purchase path and Stripe", async () => {
+    const res = await post(h["create-checkout"], "create-checkout", { currency: "usd" });
     expect(res.status).toBe(200);
     expect((await res.json()).url).toMatch(/^https:\/\/checkout\.stripe\.com\//);
     expect(world.stripe.created).toHaveLength(1);
@@ -104,10 +117,10 @@ describe("the catalogue hides exactly what the server refuses", () => {
     for (const id of CUT_PRODUCT_IDS) expect(Object.keys(PRODUCTS), id).toContain(id);
   });
 
-  it("what a buyer can reach is the Full Analysis and the two Freelance tiers, and the quoted range is theirs", () => {
+  it("what a buyer can reach is the Full Analysis alone, and the quoted range is its price", () => {
     const reachable = getAllProducts().map((p) => (Object.keys(PRODUCTS) as ProductId[]).find((k) => PRODUCTS[k] === p)).sort();
-    expect(reachable).toEqual(["freelanceBoost", "freelanceTransitionPro", "fullAnalysis"]);
-    expect(oneTimePriceRangeUsd()).toEqual({ min: PRODUCTS.fullAnalysis.priceUsd, max: PRODUCTS.freelanceTransitionPro.priceUsd });
+    expect(reachable).toEqual(["fullAnalysis"]);
+    expect(oneTimePriceRangeUsd()).toEqual({ min: PRODUCTS.fullAnalysis.priceUsd, max: PRODUCTS.fullAnalysis.priceUsd });
   });
 });
 

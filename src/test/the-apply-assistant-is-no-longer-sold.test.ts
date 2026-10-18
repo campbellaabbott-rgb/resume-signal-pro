@@ -16,6 +16,7 @@
  */
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+import { SELLER_NAMED_STUB } from "./helpers/w4b-seller-named";
 import { APPLY_AGENT_SWITCH_ON, APPLY_ASSISTANT_SWITCH_ON } from "./helpers/apply-agent-switch-on";
 import { APPLY_ASSISTANT_ON_SALE } from "../../supabase/functions/_shared/apply-agent-switch";
 import { buildIsAtLeast } from "./helpers/fn-build";
@@ -60,6 +61,9 @@ const STUBS: Record<string, string> = {
   "https://esm.sh/stripe@18.5.0": STRIPE,
   "https://esm.sh/@supabase/supabase-js@2.39.3": CLIENT,
   "https://esm.sh/@supabase/supabase-js@2.45.0": CLIENT,
+  // A seller named (owner decision 2026-10-17): the shipped, empty identity
+  // answers 409 before the purchase path the controls below reach.
+  ...SELLER_NAMED_STUB,
 };
 
 let shipped: EdgeHandler;
@@ -103,8 +107,10 @@ describe("a purchase of the Apply Assistant is refused before anything is counte
     expect(touched).toEqual([]);
   });
 
-  it("control: every other product still reaches the purchase path (the limiter is asked)", async () => {
-    const res = await buy(shipped, { productId: "freelanceBoost", email: "buyer@example.com" });
+  // Every product this function sold is now cut or retired (Freelance Boost
+  // on 2026-10-17), so an id that is neither stands in for one still sold.
+  it("control: an id that is neither retired nor cut still reaches the purchase path (the limiter is asked)", async () => {
+    const res = await buy(shipped, { productId: "fullAnalysis", email: "buyer@example.com" });
     expect(res.status).not.toBe(410);
     expect(touched).toContain("rpc:check_rate_limit");
   });

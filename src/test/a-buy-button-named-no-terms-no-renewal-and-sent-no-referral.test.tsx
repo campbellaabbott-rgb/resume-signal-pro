@@ -43,6 +43,9 @@ vi.mock("@/integrations/supabase/client", () => ({
 const user = { email: "member@example.com" };
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user, session: { access_token: "jwt" } }) }));
 vi.mock("@/hooks/useAgentSender", () => ({ useAgentSender: () => ({ online: false }) }));
+// Purchases open, as once the owner names the seller (owner decision
+// 2026-10-17): the Pro card's button is what this file tests.
+vi.mock("@/lib/purchases-open", () => ({ purchasesOpen: () => true }));
 
 import { AgentSubscriptionCard } from "@/components/AgentSubscriptionCard";
 import { ProSubscriptionCard } from "@/components/ProSubscriptionCard";
@@ -103,6 +106,7 @@ describe("the line above a buy button, and what the button's call carries", () =
     try {
       invoke.mockImplementation(async (fn: string) => ({ data: fn === "check-subscription" ? { active: false } : { url: "" }, error: null }));
       render(<MemoryRouter><AgentSubscriptionCard /><ProSubscriptionCard /></MemoryRouter>);
+      fireEvent.click(document.querySelector("[data-auto-renew-box] input")!); // Pro's own renewal box (2026-10-17): Go Pro waits for it.
       fireEvent.click(screen.getByRole("button", { name: new RegExp(en.agentPlan.cta) }));
       // Go Pro is disabled until the subscription check answers (S12-166).
       await clickWhenEnabled(() => screen.getByRole("button", { name: /Go Pro/ }));
@@ -127,6 +131,7 @@ describe("the line above a buy button, and what the button's call carries", () =
     render(<MemoryRouter><ProSubscriptionCard /></MemoryRouter>);
     const button = await screen.findByRole("button", { name: /Go Pro/ });
     expect(button.hasAttribute("disabled"), "the window this guards: Go Pro disabled while the check is out").toBe(true);
+    fireEvent.click(document.querySelector("[data-auto-renew-box] input")!); // Pro's own renewal box (2026-10-17): Go Pro waits for it too.
     setTimeout(() => answer({ data: { active: false }, error: null }), 150);
     await clickWhenEnabled(() => screen.getByRole("button", { name: /Go Pro/ }));
     await waitFor(() => expect(invoke).toHaveBeenCalledWith("create-subscription-checkout", expect.anything()));

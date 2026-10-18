@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
 import { PRODUCTS, SUBSCRIPTIONS } from "@/config/products";
+import { PRO_SUMMARY } from "@/config/pro-perks";
 import {
   Accordion,
   AccordionContent,
@@ -32,9 +33,10 @@ const faqKeys = [
  *     generating it takes up to a few minutes, and the emailed private link
  *     keeps it 90 days.
  *   - subscription: Pro was "unlimited scans and every tool", and every tool
- *     a one-time payment; since the product line (2026-10-12) Pro is
- *     everything in a free account plus the writing tools, and the one-time
- *     tools are the Full Analysis and the Freelance tiers.
+ *     a one-time payment; since the owner's decision of 2026-10-17 Pro is
+ *     the writing tools, the Full Analysis included and no daily cap on
+ *     scans (read from src/config/pro-perks.ts, the one list), and the one
+ *     one-time tool is the Full Analysis.
  */
 export const FAQ_REWORDED: Readonly<Record<string, { question: [string, string]; answer: [string, string] }>> = {
   howLong: {
@@ -43,7 +45,7 @@ export const FAQ_REWORDED: Readonly<Record<string, { question: [string, string];
   },
   subscription: {
     question: ["faq.questions.subscriptionLine.question", "Is this a subscription?"],
-    answer: ["faq.questions.subscriptionLine.answer", "Both options exist, and you choose. The $5 Full Analysis and the Freelance Boost tiers are one-time payments that never renew. Separately, there is one optional monthly plan: Pro at ${{proPrice}}/month, which is everything in a free account plus the writing tools. It renews every month until you cancel. The resume scan, the job board and connecting your own AI stay free either way. Nothing else upgrades you automatically."],
+    answer: ["faq.questions.subscriptionLineFa.answer", "Both options exist, and you choose. The ${{price}} Full Analysis is a one-time payment that never renews. Separately, there is one optional monthly plan, Pro at ${{proPrice}}/month: {{proSummary}}. It renews every month until you cancel. The resume scan, the job board and connecting your own AI stay free either way. Nothing else upgrades you automatically."],
   },
 };
 
@@ -64,7 +66,11 @@ export function FAQ() {
     // the one plan on sale since the apply pivot retired the agent's.
     const moved = FAQ_REWORDED[key];
     let answer = moved
-      ? t(moved.answer[0], moved.answer[1], { proPrice: SUBSCRIPTIONS.pro.priceUsd })
+      ? t(moved.answer[0], moved.answer[1], {
+        proPrice: SUBSCRIPTIONS.pro.priceUsd,
+        price: fullAnalysisPrice,
+        proSummary: t(PRO_SUMMARY.key, PRO_SUMMARY.text),
+      })
       : t(`faq.questions.${key}.answer`, {
         proPrice: SUBSCRIPTIONS.pro.priceUsd,
       });

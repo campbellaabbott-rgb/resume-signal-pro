@@ -15,6 +15,10 @@
  *          unlocks (the decision-free half of that item).
  *   L3-15  backing out of Stripe was answered "We couldn't process your
  *          payment", and Try Again went home whatever was being bought.
+ *   10-17  Freelance Boost and Transition Pro are no longer sold (owner
+ *          decision 2026-10-17): the page says so to a visitor, is not
+ *          indexed and offers no buy button, while a past buyer's link still
+ *          generates what was bought.
  *
  * Mounted for real, with only the backend and the auth state faked.
  */
@@ -53,7 +57,11 @@ vi.mock("@/hooks/use-product-checkout", async (orig) => ({
 }));
 vi.mock("@/components/Header", () => ({ Header: () => null }));
 vi.mock("@/components/Footer", () => ({ Footer: () => null }));
-vi.mock("@/components/seo/SEO", () => ({ SEO: () => null }));
+const seo: Array<Record<string, unknown>> = [];
+vi.mock("@/components/seo/SEO", () => ({ SEO: (p: Record<string, unknown>) => { seo.push(p); return null; } }));
+// Purchases open, as once the owner names the seller (owner decision
+// 2026-10-17): the Pro card's button is what is tested here.
+vi.mock("@/lib/purchases-open", () => ({ purchasesOpen: () => true }));
 vi.mock("@/components/ProductPreview", () => ({ ProductPreview: () => null }));
 
 import { AgentSubscriptionCard } from "@/components/AgentSubscriptionCard";
@@ -159,6 +167,8 @@ describe("the Pro card", () => {
   it("subscribes a signed-in visitor with their account address", () => {
     user = { email: "owner@example.com" };
     at("/pricing", <ProSubscriptionCard />);
+    // Pro's own renewal box first (owner decision 2026-10-17).
+    fireEvent.click(document.querySelector("[data-auto-renew-box] input")!);
     fireEvent.click(screen.getByRole("button", { name: /go pro/i }));
     expect(subscribe).toHaveBeenCalledWith("owner@example.com");
   });
@@ -196,9 +206,23 @@ describe("a buyer back from Stripe with a paid Freelance Boost (L3-16)", () => {
     expect(invoke.mock.calls.filter(([f]) => f === "generate-freelance-boost"), "generated with no intake").toHaveLength(0);
   });
 
-  it("without a purchase, still sells", () => {
+  it("without a purchase, it says it is no longer sold, is not indexed, and offers no buy button or intake (2026-10-17)", () => {
+    seo.length = 0;
     at("/freelance-boost", <FreelanceBoost />);
-    expect(screen.getByRole("button", { name: /boost my experience/i })).toBeInTheDocument();
+    const note = document.querySelector("[data-no-longer-sold]");
+    expect(note?.textContent).toMatch(/Freelance Boost and Transition Pro are no longer sold, and they are not part of Pro/);
+    expect(note?.textContent).toMatch(/keeps working for 90 days/);
+    expect(seo.at(-1)).toMatchObject({ noIndex: true });
+    expect(screen.queryByRole("button", { name: /boost my experience/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /full transition kit/i })).toBeNull();
+    expect(screen.queryByText(/import from your profile/i), "the intake is for a purchase only").toBeNull();
+    expect(document.body.textContent).not.toMatch(/\$29|\$59/);
+  });
+
+  it("control: a past buyer's link opens the intake and says nothing is sold to them again", async () => {
+    at("/freelance-boost?session_id=cs_test_paid_boost", <FreelanceBoost />);
+    expect(await screen.findByText(/import from your profile/i, {}, SLOW)).toBeInTheDocument();
+    expect(document.querySelector("[data-no-longer-sold]")).toBeNull();
   });
 });
 

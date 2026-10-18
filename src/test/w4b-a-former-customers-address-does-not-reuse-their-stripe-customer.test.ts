@@ -39,7 +39,8 @@ beforeEach(() => {
   world.stripe.subs.cus_former = [{ id: "sub_old", status: "canceled", items: { data: [{ price: { unit_amount: 4500 } }] } }];
 });
 
-const buy = () => post(h["create-subscription-checkout"], "create-subscription-checkout", { language: "en" }, { bearer: "jwt-squatter" });
+// autoRenewConsent: the buyer ticked Pro's own renewal box (owner decision 2026-10-17).
+const buy = () => post(h["create-subscription-checkout"], "create-subscription-checkout", { language: "en", autoRenewConsent: true }, { bearer: "jwt-squatter" });
 
 describe("the address's Stripe customer is reused only by the account that owns it", () => {
   it("a sign-up that proved nothing gets a NEW customer (Stripe makes one from the address)", async () => {
@@ -74,13 +75,13 @@ describe("Pro's Stripe page says what Pro is, and a referral earns the first-mon
     await buy();
     const description = String((world.stripe.created[0].line_items as Array<{ price_data: { product_data: { description: string } } }>)[0].price_data.product_data.description);
     expect(description).toMatch(/^Everything in a free account, plus the writing tools/);
-    for (const cut of [/premium package/i, /keyword fix/i, /career simulator/i, /interview coach/i, /every new tool/i, /every resume booster tool/i]) {
+    for (const cut of [/premium package/i, /keyword fix/i, /career simulator/i, /interview coach/i, /every new tool/i, /every resume booster tool/i, /freelance/i, /transition pro/i, /unlimited/i]) {
       expect(description, String(cut)).not.toMatch(cut);
     }
   });
 
   it("the session is stamped with the Pro first-month commission rule and checkout_buyers names the account", async () => {
-    await post(h["create-subscription-checkout"], "create-subscription-checkout", { referralCode: "abc123" }, { bearer: "jwt-squatter" });
+    await post(h["create-subscription-checkout"], "create-subscription-checkout", { referralCode: "abc123", autoRenewConsent: true }, { bearer: "jwt-squatter" });
     expect(world.stripe.created[0].metadata).toMatchObject({ referral_code: "abc123", referral_commission: "pro_first_month", referral_commission_cents: "1000" });
     expect(world.db.rows("checkout_buyers")[0]).toMatchObject({ user_id: SQUATTER.id, checkout_function: "create-subscription-checkout" });
   });

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Crown, Check, Loader2, Sparkles, Settings2, CreditCard, Archive } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -7,10 +8,12 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProSubscription } from "@/hooks/use-pro-subscription";
 import { SUBSCRIPTIONS } from "@/config/products";
-import { PRO_PERK_ITEMS } from "@/config/pro-perks";
+import { PRO_PERK_ITEMS, PRO_SUMMARY } from "@/config/pro-perks";
 import { isOwingStatus } from "@/config/subscription-status";
 import { PurchaseTerms } from "@/components/PurchaseTerms";
 import { RegionNotice, useRegionRefused } from "@/components/checkout/RegionNotice";
+import { PurchasesOpenSoon } from "@/components/checkout/PurchasesOpenSoon";
+import { purchasesOpen } from "@/lib/purchases-open";
 
 // What the plan includes lives in src/config/pro-perks.ts, where the pricing
 // guards read it without mounting this card.
@@ -33,8 +36,16 @@ export const PRO_SUPPORT_EMAIL = "resumeboostersupp@gmail.com";
  * - THE RETIRED AGENT PLAN IS NOT SHOWN AS PRO (S12-168): an account whose
  *   standing rests on it sees that it is retired and how to cancel, never
  *   "$45/month ... Renews" or a prompt to pay for it.
- * - A buyer in the EU, the EEA or the UK sees why it is not sold there yet
- *   instead of a button the checkout would refuse (S12-059).
+ * - A buyer in the EU, the EEA, the UK or India sees why it is not sold
+ *   there yet instead of a button the checkout would refuse (S12-059).
+ * - WHAT PRO IS comes from one list (src/config/pro-perks.ts, owner decision
+ *   2026-10-17), which the server's Stripe description reads too.
+ * - NO BUY BUTTON WITHOUT A NAMED SELLER (owner decision 2026-10-17): until
+ *   src/config/seller.ts carries the legal name and postal address, the card
+ *   says purchases open soon instead of "Go Pro".
+ * - A SEPARATE, UNTICKED RENEWAL BOX (California's automatic renewal law as
+ *   amended by AB 2863): a signed-in buyer's "Go Pro" stays disabled until it
+ *   is ticked, and the server refuses a plan without it.
  */
 export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) {
   const { pro, subscribe, manage, actionLoading, justSubscribed, notConfirmedYet } = useProSubscription();
@@ -43,6 +54,8 @@ export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) 
   const navigate = useNavigate();
   const location = useLocation();
   const regionRefused = useRegionRefused();
+  const open = purchasesOpen();
+  const [renewTicked, setRenewTicked] = useState(false);
   const price = SUBSCRIPTIONS.pro.priceUsd;
   const owing = isOwingStatus(pro.status);
   const retiredPlan = pro.planTier === "agent";
@@ -83,7 +96,7 @@ export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) 
         <div>
           <h3 className="font-bold text-xl">{t("proPlan.title", "Resume Booster Pro")}</h3>
           <p className="text-sm text-muted-foreground">
-            {t("proPlan.cardDescription", "Everything in a free account, plus the writing tools for the jobs you apply to.")}
+            {t(PRO_SUMMARY.key, PRO_SUMMARY.text)}
           </p>
         </div>
       </div>
@@ -140,7 +153,7 @@ export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) 
             {/* A trial unlocks the plan's ongoing features and mints no paid
                 one-off tool (the one rule, _shared/pro-standing.ts). */}
             {pro.trialing
-              ? t("proPlan.trialing", "Your trial is on: unlimited scans and batch application prep are unlocked now. The paid tools are included from your first payment.")
+              ? t("proPlan.trialingNoCap", "Your trial is on: scans have no daily cap now. The $5 Full Analysis is included from your first payment.")
               : t("proPlan.activeMember", "You're a Pro member: the writing tools are unlocked.")}
             {periodEnd && (
               <span className="text-muted-foreground font-normal" data-testid={pro.cancelAtPeriodEnd ? "pro-ends" : "pro-renews"}>
@@ -161,6 +174,15 @@ export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) 
         </div>
       ) : regionRefused ? (
         <RegionNotice />
+      ) : !open ? (
+        <div className="space-y-3">
+          {pro.linkPending && (
+            <p className="text-sm text-muted-foreground">
+              {t("proPlan.linkPendingUnlinked", "This address has a plan that isn't linked to this account yet. Email {{support}} from that address and we will link it.", { support: PRO_SUPPORT_EMAIL })}
+            </p>
+          )}
+          <PurchasesOpenSoon />
+        </div>
       ) : (
         <div className="space-y-3">
           {pro.linkPending && (
@@ -168,11 +190,11 @@ export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) 
               {t("proPlan.linkPendingUnlinked", "This address has a plan that isn't linked to this account yet. Email {{support}} from that address and we will link it.", { support: PRO_SUPPORT_EMAIL })}
             </p>
           )}
-          <PurchaseTerms kind="subscription" plan="pro" className="text-center" />
+          <PurchaseTerms kind="subscription" plan="pro" className="text-center" onAutoRenewChange={setRenewTicked} />
           <Button
             className="w-full gap-2 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/30"
             onClick={goPro}
-            disabled={actionLoading || (Boolean(user) && pro.loading) || (justSubscribed && !pro.active)}
+            disabled={actionLoading || (Boolean(user) && pro.loading) || (justSubscribed && !pro.active) || (Boolean(user) && !renewTicked)}
           >
             {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Crown className="w-4 h-4" />}
             {t("proPlan.goPro", "Go Pro — ${{price}}/month", { price })}

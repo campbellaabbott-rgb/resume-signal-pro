@@ -1,8 +1,8 @@
 /**
- * IS THIS BROWSER IN THE VAT TERRITORY? (S12-059, wave 4 round 2)
+ * IS THIS BROWSER WHERE WE DO NOT SELL YET? (S12-059, wave 4 round 2)
  *
  * While the EU/UK switch is off, every checkout that still sells refuses a
- * buyer in the EU, the EEA or the UK (supabase/functions/_shared/
+ * buyer in the EU, the EEA, the UK or India (supabase/functions/_shared/
  * sales-territory.ts). The page reads the same zone list, so a buyer there
  * is told before pressing, instead of after, and every checkout body carries
  * the browser's time zone, which the server may use to ADD a refusal (never

@@ -11,6 +11,11 @@
  * refusal's own sentence is the toast, under a title for its kind; a product
  * the catalogue hides is refused before any network call; and every checkout
  * body carries the browser's time zone.
+ *
+ * Since 2026-10-17 no product is sold through this hook (Freelance Boost and
+ * Transition Pro were cut too), so Freelance Boost stands in, unhidden here,
+ * for a product a page still offers; and the seller gate's 409 is shown in
+ * its own words too.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, renderHook } from "@testing-library/react";
@@ -29,6 +34,11 @@ vi.mock("@/hooks/use-conversion-tracking", () => ({ useConversionTracking: () =>
 vi.mock("@/hooks/use-funnel-tracking", () => ({ useFunnelTracking: () => ({ trackProductClicked: vi.fn(), trackCheckoutStarted: vi.fn() }) }));
 vi.mock("@/hooks/use-checkout-prefetch", () => ({ useCheckoutPrefetch: () => ({ prefetch: vi.fn(), prefetchProps: {} }) }));
 vi.mock("@/lib/checkout-territory", () => ({ territoryHint: () => ({ timeZone: "America/Chicago" }), inSalesTerritory: () => false, buyerTimeZone: () => "America/Chicago" }));
+
+vi.mock("@/config/products", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/config/products")>();
+  return { ...real, isProductHidden: (id: string) => id !== "freelanceBoost" && real.isProductHidden(id as never) };
+});
 
 import { useProductCheckout } from "@/hooks/use-product-checkout";
 import { cutSentence } from "../../supabase/functions/_shared/product-cuts";
@@ -53,11 +63,23 @@ describe("a checkout's refusal is shown in its own words", () => {
   });
 
   it("the territory's 451", async () => {
-    const sentence = "We can't sell to buyers in the EU, the EEA or the UK yet: sales there wait until we are registered for VAT. Nothing was charged.";
-    h.invoke.mockResolvedValue(refusedWith(451, { territoryRefused: true, reason: "vat_territory", error: sentence }));
+    const { territorySentence } = await import("../../supabase/functions/_shared/sales-territory");
+    const sentence = territorySentence("time_zone", "en");
+    h.invoke.mockResolvedValue(refusedWith(451, { territoryRefused: true, reason: "tax_territory", signal: "time_zone", error: sentence }));
     const { result } = renderHook(() => useProductCheckout());
     await act(async () => { await result.current.purchaseProduct("freelanceBoost"); });
     expect(h.toasts.at(-1)).toMatchObject({ title: "Not yet sold where you are", description: sentence });
+  });
+
+  it("the seller gate's 409: its sentence under 'Purchases open soon', never 'Something went wrong'", async () => {
+    const { sellerGate } = await import("../../supabase/functions/_shared/seller-gate");
+    const answer = sellerGate({ body: { language: "de" } }, { legalName: "", postalAddress: "" })!;
+    h.invoke.mockResolvedValue(refusedWith(answer.status, answer.body));
+    const { result } = renderHook(() => useProductCheckout());
+    await act(async () => { await result.current.purchaseProduct("freelanceBoost"); });
+    expect(h.toasts.at(-1)).toMatchObject({ title: "Purchases open soon", description: answer.body.message });
+    expect(answer.body.message).toMatch(/Käufe/);
+    expect(h.toasts.some((t) => /something went wrong/i.test(String(t.title) + String(t.description)))).toBe(false);
   });
 
   it("the fair-use 429", async () => {

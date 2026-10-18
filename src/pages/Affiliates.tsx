@@ -217,7 +217,7 @@ export default function Affiliates() {
                 {t('affiliates.proCommission.detail', 'Pro is $45 a month. When someone who came through your link pays for their first month of Pro, you earn {{amount}}.', rate)}
               </p>
               <p className="text-sm text-muted-foreground mt-1">
-                {t('affiliates.proCommission.excluded', 'Other purchases (the Full Resume Analysis and the Freelance Boost tiers) earn no commission. Commissions you have already earned are paid as before.')}
+                {t('affiliates.proCommission.excludedFa', 'Other purchases (the Full Resume Analysis) earn no commission. Commissions you have already earned are paid as before.')}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 30-day cookie • Paid monthly
@@ -302,7 +302,7 @@ export default function Affiliates() {
             <div>
               <p className="font-semibold">{t('affiliates.commission.bannerTitle', 'Your commission')}</p>
               <p className="text-sm text-muted-foreground">{t('affiliates.proCommission.banner', '{{amount}} per referred first paid month of Pro', rate)}</p>
-              <p className="text-xs text-muted-foreground">{t('affiliates.proCommission.excluded', 'Other purchases (the Full Resume Analysis and the Freelance Boost tiers) earn no commission. Commissions you have already earned are paid as before.')}</p>
+              <p className="text-xs text-muted-foreground">{t('affiliates.proCommission.excludedFa', 'Other purchases (the Full Resume Analysis) earn no commission. Commissions you have already earned are paid as before.')}</p>
             </div>
           </div>
           <Badge variant="secondary" className="text-primary border-primary/30">

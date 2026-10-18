@@ -17,6 +17,8 @@ import {
   refusedCallerBody,
 } from "../_shared/checkout-buyer.ts";
 import { planPaid, UNPAID_PLAN_NOTE } from "../_shared/consumable-paid.ts";
+import { sellerGate } from "../_shared/seller-gate.ts";
+import { proIncludes } from "../_shared/pro-perks.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -34,6 +36,11 @@ import { planPaid, UNPAID_PLAN_NOTE } from "../_shared/consumable-paid.ts";
 // checkout_buyers; the billing address is always collected; a referral here
 // earns nothing (the affiliate re-base); a connected app's token, or one
 // issued for another audience, is refused with a 401 (critical-path CP-D).
+// Owner decisions 2026-10-17, same build: Freelance Boost and Transition Pro
+// are cut too (410), so nothing here is sold; a member mints only what Pro
+// includes (pro-perks.ts), which is nothing this function sells; and while
+// the seller's legal name and postal address are unset every purchase is a
+// 409 seller_identity_missing (seller-gate.ts), before the limiter or Stripe.
 const FN_BUILD = "create-product-checkout.2026-10-11.23";
 
 const corsHeaders = {
@@ -161,6 +168,13 @@ serve(async (req) => {
     console.log(`[CREATE-PRODUCT-CHECKOUT] refused: ${String(askedId)} is no longer sold`);
     return new Response(JSON.stringify(answer.body), { status: answer.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
+  // NO SALE WITHOUT A NAMED SELLER (owner decision 2026-10-17, B&P 17538(d)):
+  // before the limiter, a grant or Stripe.
+  const closed = sellerGate({ body: asked, acceptLanguage: req.headers.get("accept-language") });
+  if (closed) {
+    console.log("[CREATE-PRODUCT-CHECKOUT] refused: seller_identity_missing");
+    return new Response(JSON.stringify(closed.body), { status: closed.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
 
   // The platform's word for the caller's address, never the first forwarded
   // hop, which the caller writes itself and could rotate per request.
@@ -278,7 +292,9 @@ serve(async (req) => {
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: paid === "unpaid" ? 409 : 503 },
         );
       }
-      if (standing.consumables) {
+      // ONLY WHAT PRO INCLUDES (owner decision 2026-10-17): the Full Analysis,
+      // which create-checkout mints. Nothing this function sells is included.
+      if (standing.consumables && proIncludes(productId)) {
         const grantFields = {
           // The account the redeemer re-checks (20261008130000).
           user_id: proUserId,

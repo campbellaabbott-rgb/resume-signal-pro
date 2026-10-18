@@ -63,6 +63,7 @@ import { FloatingUploadButton, FloatingSeeReportButton } from "@/components/Floa
 import { CheckoutOverlay, type CheckoutStep } from "@/components/CheckoutOverlay";
 import { FreeReportSignupNudge } from "@/components/FreeReportSignupNudge";
 import { checkoutRefusalOfBody } from "@/lib/checkout-refusal";
+import { purchasesOpen } from "@/lib/purchases-open";
 import { territoryHint } from "@/lib/checkout-territory";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/hooks/use-currency";
@@ -1794,6 +1795,17 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
     // one: by the time the body is built, a tap on the overlay (or anywhere
     // else) during the awaits below would be (review of the integration).
     const terms = purchaseTerms();
+    // NO PURCHASE WITHOUT A NAMED SELLER (owner decision 2026-10-17, B&P
+    // 17538(d)): until src/config/seller.ts carries the legal name and postal
+    // address, nothing is stored, counted or sent to the checkout, which
+    // would refuse with 409 seller_identity_missing anyway.
+    if (!purchasesOpen()) {
+      toast({
+        title: t('checkoutGate.purchasesOpenSoonTitle', 'Purchases open soon'),
+        description: t('checkoutGate.purchasesOpenSoon', 'Purchases open soon. Searching jobs, the free scan and a free account work now.'),
+      });
+      return;
+    }
     const contentToAnalyze = text || resumeText;
     const linkedInContent = linkedIn || linkedInText;
     const jobDescriptionContent = jobDescription || jobDescriptionText;

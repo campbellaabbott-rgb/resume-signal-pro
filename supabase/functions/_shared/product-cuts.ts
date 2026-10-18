@@ -1,8 +1,9 @@
-// THE PRODUCTS WE STOPPED SELLING, AND WHAT A BUYER IS TOLD (owner decision
-// 2026-10-12, the product line).
+// THE PRODUCTS WE STOPPED SELLING, AND WHAT A BUYER IS TOLD (owner decisions
+// 2026-10-12, the product line, and 2026-10-17).
 //
-// The one-off catalogue was cut to the $5 Full Analysis, Freelance Boost and
-// Transition Pro. Everything below is no longer sold: create-product-checkout
+// The one-off catalogue was cut to the $5 Full Analysis (create-checkout). On
+// 2026-10-17 Freelance Boost and Transition Pro were removed too, and they are
+// not part of Pro. Everything below is no longer sold: create-product-checkout
 // (and create-scan-pack-checkout for the scan packs) answers a purchase of one
 // with this module's refusal, BEFORE the rate limiter, a Pro grant or Stripe,
 // so nothing is counted, granted or charged. Past buyers keep what they
@@ -45,6 +46,8 @@ export const CUT_PRODUCTS: Readonly<Record<string, Cut>> = Object.freeze({
   interviewCoach: { productType: "interview_coach", name: "Interview Coach", tail: "writing" },
   careerPathSimulator: { productType: "career_path_simulator", name: "Career Path Simulator", tail: "reports" },
   scanPack: { productType: "scan_pack", name: "Scan Packs", tail: "scans" },
+  freelanceBoost: { productType: "freelance_boost", name: "Freelance Boost", tail: "writing" },
+  freelanceTransitionPro: { productType: "freelance_transition_pro", name: "Freelance Boost Transition Pro", tail: "writing" },
 });
 
 export const CUT_PRODUCT_IDS: readonly string[] = Object.freeze(Object.keys(CUT_PRODUCTS));
@@ -66,7 +69,7 @@ const EN: Lines = {
   pastBuyers: `If you bought it before, your link keeps working for ${PAST_BUYER_DAYS} days.`,
   writing: "Tailored résumés, cover letters and interview prep now come with a free account and with Pro.",
   reports: "The $5 Full Analysis is still on sale, and tailored résumés, cover letters and interview prep come with a free account and with Pro.",
-  scans: "A free account scans more each day, and Pro scans without a daily limit.",
+  scans: "A free account scans more each day, and Pro has no daily cap on scans.",
 };
 
 /** Each language's lines. en-GB is en, as everywhere on the site. */

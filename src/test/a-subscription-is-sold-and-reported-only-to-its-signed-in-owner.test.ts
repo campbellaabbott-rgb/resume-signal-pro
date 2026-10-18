@@ -28,6 +28,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
 import { APPLY_AGENT_SWITCH_ON } from "./helpers/apply-agent-switch-on";
+import { SELLER_NAMED_STUB } from "./helpers/w4b-seller-named";
 import { buildIsAtLeast } from "./helpers/fn-build";
 
 vi.setConfig({ testTimeout: 30_000, hookTimeout: 120_000 });
@@ -101,7 +102,9 @@ beforeAll(async () => {
   for (const fn of ["check-subscription", "create-subscription-checkout", "create-agent-checkout", "create-product-checkout"]) {
     // The agent plan is retired; its dormant purchase code is what this
     // proves, so the switch is stubbed on (only create-agent-checkout reads it).
-    handlers[fn] = await loadEdgeHandler(fn, { ...STUBS, ...APPLY_AGENT_SWITCH_ON });
+    // A seller named (owner decision 2026-10-17): with the shipped, empty
+    // identity Pro's checkout answers 409 before what this file proves.
+    handlers[fn] = await loadEdgeHandler(fn, { ...STUBS, ...APPLY_AGENT_SWITCH_ON, ...SELLER_NAMED_STUB });
   }
 }, 120_000);
 
@@ -139,6 +142,8 @@ beforeEach(() => {
   };
 });
 
+// Pro's page sends the buyer's tick on its own renewal box (owner decision
+// 2026-10-17); without it the checkout answers 400 before what this file proves.
 const post = (fn: string, body: Record<string, unknown>, bearer?: string) =>
   handlers[fn](new Request(`https://harness.supabase.co/functions/v1/${fn}`, {
     method: "POST",
@@ -147,7 +152,7 @@ const post = (fn: string, body: Record<string, unknown>, bearer?: string) =>
       "cf-connecting-ip": "198.51.100.7",
       authorization: `Bearer ${bearer ?? env.SUPABASE_ANON_KEY}`,
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify(fn === "create-subscription-checkout" ? { autoRenewConsent: true, ...body } : body),
   }));
 
 describe("check-subscription answers only about the caller", () => {
@@ -275,35 +280,29 @@ describe("check-subscription remembers 'not subscribed' for a signed-in caller (
 
 // Owner decision D8 (2026-10-12): the signed-out "sign in to use your plan"
 // answer, which revealed whether an address held Pro, is gone; a signed-out
-// caller learns nothing about any address. Freelance Boost, still sold, is the
-// product (the cover letter was cut).
-describe("create-product-checkout tells a signed-out caller nothing about an address (D8)", () => {
+// caller learns nothing about any address. Since 2026-10-17 Freelance Boost
+// is cut too, so create-product-checkout answers every product with the same
+// 410 before it reads an address at all (the Full Analysis's own D8 test is in
+// w4b-an-included-tool-is-never-a-charge-and-a-buyer-is-named.test.ts).
+describe("create-product-checkout tells a caller nothing about an address (D8)", () => {
   const buy = async (email: string, bearer?: string) =>
     (await post("create-product-checkout", { productId: "freelanceBoost", email }, bearer)).json();
 
-  it("a comped or $99 agent account looks like any stranger to a signed-out caller", async () => {
+  it("a comped agent account, a Pro subscriber and a stranger get the same answer: the product is no longer sold", async () => {
     db.rows("agent_subscribers").push({ email: "comped@example.com", status: "active", current_period_end: null, stripe_customer_id: null });
-    const comped = await buy("comped@example.com");
-    const stranger = await buy("nobody@example.com");
-    expect(comped.proRequiresSignIn, "the agent table answered a stranger").toBeUndefined();
-    expect(Object.keys(comped).sort()).toEqual(Object.keys(stranger).sort());
-    expect(comped.url).toBe("https://checkout.stripe.com/c/cs_test_new");
-  });
-
-  it("a Pro subscriber's address looks like any stranger's too: an ordinary checkout, no sign-in hint", async () => {
     db.rows("pro_subscribers").push({ email: "pro@example.com", status: "active", current_period_end: null });
-    const pro = await buy("pro@example.com");
-    const stranger = await buy("nobody@example.com");
-    expect(pro.proRequiresSignIn).toBeUndefined();
-    expect(Object.keys(pro).sort()).toEqual(Object.keys(stranger).sort());
+    const [comped, pro, stranger] = [await buy("comped@example.com"), await buy("pro@example.com"), await buy("nobody@example.com")];
+    expect(comped).toEqual(stranger);
+    expect(pro).toEqual(stranger);
+    expect(stranger).toMatchObject({ retired: true, cut: true, product: "freelance_boost" });
     expect(db.rows("pro_grants")).toEqual([]);
   });
 
-  it("signed in, the agent plan's owner gets the included tool without Stripe", async () => {
+  it("signed in, the agent plan's owner is not minted Freelance Boost either: it is not part of Pro", async () => {
     db.rows("agent_subscribers").push({ email: "owner@example.com", status: "active", current_period_end: null, stripe_customer_id: null, user_id: OWNER_ID });
     const body = await buy("someone-else@example.com", "jwt-owner");
-    expect(body.proIncluded).toBe(true);
-    expect(db.rows("pro_grants")[0]).toMatchObject({ email: "owner@example.com", product_id: "freelanceBoost" });
+    expect(body.proIncluded).toBeUndefined();
+    expect(db.rows("pro_grants")).toEqual([]);
     expect(stripe.calls).not.toContain("sessions.create");
   });
 });

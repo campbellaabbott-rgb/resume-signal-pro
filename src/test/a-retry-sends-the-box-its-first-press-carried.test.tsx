@@ -12,6 +12,12 @@
  * tick.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
+// Freelance Boost, cut on 2026-10-17 (owner decision), stands in unhidden for
+// a product the hook sells: no product is sold through it any more.
+vi.mock("@/config/products", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/config/products")>();
+  return { ...real, isProductHidden: (id: string) => id !== "freelanceBoost" && real.isProductHidden(id as never) };
+});
 import { act, cleanup, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
 
 const eu = vi.hoisted(() => ({ on: true }));

@@ -247,6 +247,11 @@ export const HIDDEN_PRODUCT_IDS: ProductId[] = [
   "interviewCoach",
   "careerPathSimulator",
   "scanPack",
+  // REMOVED by the owner's decision of 2026-10-17, like the cuts above, and
+  // not part of Pro: no longer sold (410), their page says so and is not
+  // indexed, and a past buyer's link keeps working.
+  "freelanceBoost",
+  "freelanceTransitionPro",
 ];
 
 export function isProductHidden(id: ProductId): boolean {

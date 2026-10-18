@@ -1,8 +1,20 @@
 // deploy-stamp: 2026-10-09T18:00Z
-// Creates a Stripe Checkout session for Resume Booster Pro — $45/month,
-// everything in a free account plus the writing tools (the product line of
-// 2026-10-12). Uses inline recurring price_data so no Price object needs to
-// exist in the Stripe dashboard.
+// Creates a Stripe Checkout session for Resume Booster Pro — $45/month: the
+// writing tools, the $5 Full Analysis included and no daily cap on scans
+// (owner decision 2026-10-17; the list is _shared/pro-perks.ts, which the
+// pages read too). Uses inline recurring price_data so no Price object needs
+// to exist in the Stripe dashboard.
+//
+// NOT SOLD WITHOUT A NAMED SELLER (owner decision 2026-10-17, B&P 17538(d)):
+// while the seller's legal name and postal address are unset this answers
+// 409 seller_identity_missing (_shared/seller-gate.ts) before anything else.
+//
+// RENEWS ONLY WITH THE BUYER'S OWN TICK (owner decision 2026-10-17;
+// California's automatic renewal law as amended by AB 2863): a body without
+// autoRenewConsent is a 400 before Stripe is asked anything, and the consent
+// is recorded (wording version, Terms version, time) in
+// pro_auto_renew_consents and on the session and the subscription
+// (_shared/auto-renew-consent.ts).
 //
 // SIGNED-IN CALLERS ONLY, for their own address (2026-10-04 completeness
 // review). It used to take any address from the body and answer
@@ -41,6 +53,9 @@ import { ipinfoLookup, territoryAnswer, territoryRefusal, withBillingAddress } f
 import { reusableCustomer } from "../_shared/customer-ownership.ts";
 import { recordCheckoutBuyer, refusedCallerBody, websiteTokenRefusal } from "../_shared/checkout-buyer.ts";
 import { PRO_FIRST_MONTH_MARKER, withReferralCommission } from "../_shared/affiliate-commission.ts";
+import { sellerGate } from "../_shared/seller-gate.ts";
+import { autoRenewConsentOf, autoRenewMetadata, autoRenewRefusal, recordAutoRenewConsent } from "../_shared/auto-renew-consent.ts";
+import { proStripeDescription } from "../_shared/pro-perks.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -52,11 +67,14 @@ import { PRO_FIRST_MONTH_MARKER, withReferralCommission } from "../_shared/affil
 // the account is written to checkout_buyers; the billing address is collected;
 // a connected app's token, or one issued for another audience, is refused
 // with a 401 (critical-path CP-D).
+// Owner decisions 2026-10-17, same build: the seller gate (409), the
+// automatic-renewal box (400 without it, recorded with it), a buyer in India
+// refused with the EU, the EEA and the UK, and Pro's description read from
+// the one list the pages read.
 const FN_BUILD = "create-subscription-checkout.2026-10-11.23";
 
-/** What Stripe's page and receipts say Pro is: the Pro card's lines (src/config/pro-perks.ts), in one sentence. */
-export const PRO_STRIPE_DESCRIPTION =
-  "Everything in a free account, plus the writing tools: a tailored résumé, cover letter and interview prep for your jobs (up to 5 sets a day and 60 a month), batch application prep, the $5 Full Analysis, Freelance Boost and Transition Pro included, and unlimited scans.";
+/** What Stripe's page and receipts say Pro is: the Pro card's own items (_shared/pro-perks.ts), as sentences. */
+export const PRO_STRIPE_DESCRIPTION = proStripeDescription();
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -92,27 +110,38 @@ serve(async (req) => {
     // the person on the website, and a plan it bought would be theirs.
     const notWebsite = websiteTokenRefusal(req.headers);
     if (notWebsite) return json(refusedCallerBody(notWebsite), 401);
+    const body = await req.json().catch(() => ({}));
+    // NO SALE WITHOUT A NAMED SELLER, said before asking anyone to sign in.
+    const closed = sellerGate({ body, acceptLanguage: req.headers.get("accept-language") });
+    if (closed) return json(closed.body, closed.status);
     const buyer = await signedInUser(supabase.auth, req.headers, Deno.env.get("SUPABASE_ANON_KEY") ?? "");
     const email = buyer?.email ?? null;
     if (!buyer?.id || !email) {
       return json({ error: "Sign in to subscribe, so the plan is attached to your account.", signInRequired: true }, 401);
     }
-    const body = await req.json().catch(() => ({}));
     const env = (k: string) => Deno.env.get(k);
     // The EU/UK switch, off by default: with it on, the buyer must have asked
     // for the service to start inside the withdrawal period.
     const consentMissing = euConsentRefusal(env, "subscription", body);
     if (consentMissing) return json(euConsentAnswer(consentMissing), 400);
 
-    // NO SALE INTO THE EU, THE EEA OR THE UK WHILE THE SWITCH IS OFF (S12-059).
+    // NO SALE INTO THE EU, THE EEA, THE UK OR INDIA WHILE THE SWITCH IS OFF (S12-059).
     const territory = await territoryRefusal({
       env, headers: req.headers, body, address: clientAddressOr(req.headers), lookup: ipinfoLookup(env),
     });
     if (territory) {
       const answer = territoryAnswer(territory, { body, acceptLanguage: req.headers.get("accept-language") });
-      console.log(`[CREATE-SUBSCRIPTION-CHECKOUT] refused: the buyer is in the VAT territory (${territory.signal})`);
+      console.log(`[CREATE-SUBSCRIPTION-CHECKOUT] refused: the buyer is where we do not sell yet (${territory.signal})`);
       return json(answer.body, answer.status);
     }
+
+    // THE BUYER'S OWN TICK ON THE AUTOMATIC-RENEWAL BOX, before Stripe.
+    if (!autoRenewConsentOf(body)) {
+      const answer = autoRenewRefusal({ body, acceptLanguage: req.headers.get("accept-language") });
+      console.log("[CREATE-SUBSCRIPTION-CHECKOUT] refused: auto_renew_consent_required");
+      return json(answer.body, answer.status);
+    }
+    const consentedAt = new Date().toISOString();
 
     // An account granted the agent by hand already has Pro (the agent includes it).
     if (await manualAgentGrant(supabase, email)) return json({ alreadySubscribed: true, tier: "agent" });
@@ -142,9 +171,11 @@ serve(async (req) => {
     // to bind pro_subscribers.user_id, on every later refresh.
     // The service-start request (EU/UK switch) rides on the plan too: a
     // withdrawal reads it there to know whether the days provided may be kept.
+    // The renewal consent rides on the plan too, for its whole life.
     const subscriptionBuyer = {
       user_id: buyer.id,
       ...(policy.service_start_consent ? { service_start_consent: policy.service_start_consent } : {}),
+      ...autoRenewMetadata(consentedAt),
     };
     const session = await stripe.checkout.sessions.create({
       ...(reuseCustomerId ? { customer: reuseCustomerId } : { customer_email: email }),
@@ -171,7 +202,7 @@ serve(async (req) => {
       // before the webhook has refreshed the cache (S8-055).
       success_url: `${origin}/account?pro=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/pricing?pro=cancelled`,
-      metadata: { product_type: "pro_subscription", customer_email: email, user_id: buyer.id, ...policy },
+      metadata: { product_type: "pro_subscription", customer_email: email, user_id: buyer.id, ...policy, ...autoRenewMetadata(consentedAt) },
       // Renewal terms beside Stripe's pay button, tax only with the EU/UK switch on.
       // In the buyer's site language, with Stripe's page in the same one.
       // The billing address on every session (S12-059, withBillingAddress).
@@ -180,6 +211,21 @@ serve(async (req) => {
         renewal: renewalTerms(PRO_PRICE_CENTS, null, checkoutLanguageOf(body)), language: checkoutLanguageOf(body),
       })),
     });
+
+    // THE CONSENT ON OUR SIDE, before the browser has the url. A plan sold
+    // without its consent on file is worse than a retry: the session is
+    // expired and the buyer asked to press again.
+    const consentKept = await recordAutoRenewConsent(supabase, {
+      stripeSessionId: session.id, userId: buyer.id, termsVersion: policy.terms_version || null, priceCents: PRO_PRICE_CENTS, consentedAt,
+    });
+    if (consentKept !== "recorded") {
+      try {
+        await stripe.checkout.sessions.expire(session.id);
+      } catch (expireErr) {
+        console.error("[CREATE-SUBSCRIPTION-CHECKOUT] Could not expire the session whose consent was not recorded:", expireErr instanceof Error ? expireErr.message : expireErr);
+      }
+      return json({ error: "We couldn't start checkout just now, so nothing was charged. Please press again in a minute.", retryable: true }, 503);
+    }
 
     // The start is on record before the browser has the url, so no
     // navigation can race it; keyed on the session id, so a second checkout
@@ -193,7 +239,7 @@ serve(async (req) => {
       currency: session.currency,
       mode: session.mode,
       context: checkoutContextOf(body),
-      metadata: { planCents: PRO_PRICE_CENTS, termsVersion: policy.terms_version || null, referral: !!policy.referral_code, serviceStartConsent: policy.service_start_consent ?? null },
+      metadata: { planCents: PRO_PRICE_CENTS, termsVersion: policy.terms_version || null, referral: !!policy.referral_code, serviceStartConsent: policy.service_start_consent ?? null, autoRenewConsentAt: consentedAt },
     });
     // The account behind the session, before the browser has the url (CP-022).
     await recordCheckoutBuyer(supabase, {

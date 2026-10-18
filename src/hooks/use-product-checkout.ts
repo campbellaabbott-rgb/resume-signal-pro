@@ -254,6 +254,9 @@ export function refusalTitle(kind: CheckoutRefusal['kind']): string {
     case 'territory': return i18n.t('checkoutRefusal.territoryTitle', 'Not yet sold where you are');
     case 'fair_use': return i18n.t('checkoutRefusal.fairUseTitle', "You've reached Pro's fair-use limit");
     case 'plan_unpaid': return i18n.t('checkoutRefusal.planUnpaidTitle', 'Your plan is not paid yet');
+    // Owner decisions 2026-10-17: no sale without a named seller; Pro's own renewal box.
+    case 'seller_missing': return i18n.t('checkoutGate.purchasesOpenSoonTitle', 'Purchases open soon');
+    case 'auto_renew': return i18n.t('checkoutRefusal.autoRenewTitle', 'Please tick the renewal box');
   }
 }
 
@@ -384,7 +387,8 @@ export function useProductCheckout() {
           // The referral, the Terms line's version, the EU/UK box.
           ...terms,
           // The browser's time zone: the server may refuse a buyer in the
-          // EU, the EEA or the UK on it while those sales are off (S12-059).
+          // EU, the EEA, the UK or India on it while those sales are off
+          // (S12-059).
           ...territoryHint(),
         }
       });
