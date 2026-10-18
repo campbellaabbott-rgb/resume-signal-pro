@@ -168,6 +168,7 @@ Screenshots and data: `keep/home-pricing-design/build/home/` (`shots/`,
 | Overflow at 320, 360, 375, every `<details>` open | none in en, en-GB, de, es, fr, hi, nl, pt, tl (`checks.i18n.json`) |
 | Targets under 24px, text under 12px | none |
 | Copy sweep on the rendered page | only "Freelance" (today's Footer) |
+| Home chunk (`lazy(HomePage)`'s own code, English strings included; every other module external), gzip -9 | 15.7 kB (63.3 kB raw), built from an archive export of 37310bdb in the scratch directory; each other language's strings 3.8 to 5.0 kB, loaded with the page. Predicted first load of "/": design entry 279.3 + CSS 18.9 + home 15.7 + shared listing chunk 13.5 = 327.4 kB, under the 340 kB cap; confirm on the switch-over build |
 | Live rows (data=live) | Bass Pro (lap_proven) printed no feed-read time; four full_read boards did (the curve the page received was logged) |
 
 ## Tests (`npx vitest run --maxWorkers=2 src/test/hp-home-*`)
@@ -273,4 +274,4 @@ Order: after the pd/wire train and wave 4 are merged and verified (decision
 10. **Preview files**: keep `preview-home.html` and `src/preview/**` as a dev
     tool, or delete them; neither is built.
 11. **Bundle**: measure the first load of "/" on the switch-over build against
-    the 340 kB gz cap (spec 8); the measured home chunk is below.
+    the 340 kB gz cap (spec 8); the home chunk measured 15.7 kB gz (above).
