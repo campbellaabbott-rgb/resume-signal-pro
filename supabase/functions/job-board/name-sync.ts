@@ -44,3 +44,18 @@ export function overrideTable(rows: ReadonlyArray<{ slug?: unknown; display_name
   }
   return out;
 }
+
+/**
+ * S12-015, S12-084: WHERE THE LANE RESUMES. name_sync_progress holds the last
+ * token a hop finished (`after`, in sorted order) and the tokens whose rename
+ * failed (`retry`). A hop of the same NAME_SYNC_VERSION takes the retries
+ * first, then every token after `after`; any other version starts over.
+ */
+export type NameSyncProgress = { version: number; after: string; retry: string[]; at?: string };
+export function nameSyncQueue(tokens: readonly string[], prior: NameSyncProgress | null | undefined, version: number): { tokens: string[]; retry: Set<string>; resumeAfter: string } {
+  const sorted = [...new Set(tokens)].sort();
+  if (!prior || prior.version !== version || typeof prior.after !== "string") return { tokens: sorted, retry: new Set(), resumeAfter: "" };
+  const have = new Set(sorted);
+  const retry = new Set((Array.isArray(prior.retry) ? prior.retry : []).filter((t) => typeof t === "string" && have.has(t) && t <= prior.after));
+  return { tokens: [...[...retry].sort(), ...sorted.filter((t) => t > prior.after)], retry, resumeAfter: prior.after };
+}

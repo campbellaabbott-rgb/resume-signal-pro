@@ -88,11 +88,40 @@ export const ENGLISH_STOPWORDS: ReadonlySet<string> = new Set([
 /** R3's token test: a stopword, or three letters or digits or fewer. */
 export const isLiteralToken = (t: string): boolean => ENGLISH_STOPWORDS.has(t) || foldName(t).length <= 3;
 
+/**
+ * S12-018: WORDS THE ENGLISH STEMMER MERGES WITH A DIFFERENT JOB. "accountant"
+ * stems to "account", "mechanic" to "mechan" (= "mechanical"), "operator" to
+ * "oper" (= "operations"). The stemmed tiers matched both, so filtered pages
+ * and totals filled with the other job: accountant + Denver served 160 of 180
+ * rows without the word (Account Executive), GB mechanic 148 of 169
+ * (Mechanical Engineer), US generator 120 of 180 ("Demand Generation"),
+ * organizer 167, animator 148, installer 70, administrator 48 ("Administrative
+ * Assistant"), university 32 ("Universal Banker"), live 2026-10-12. Such a word
+ * takes the SIMPLE route and is matched unstemmed on the title in its singular
+ * and plural, so the list and its count read the same predicate.
+ */
+export const STEM_COLLISIONS: Readonly<Record<string, readonly string[]>> = (() => {
+  const pairs: string[][] = [
+    ["accountant", "accountants"], ["mechanic", "mechanics"], ["operator", "operators"],
+    ["administrator", "administrators"], ["generator", "generators"], ["organizer", "organizers"],
+    ["organiser", "organisers"], ["animator", "animators"], ["installer", "installers"],
+    ["university", "universities"], ["police"],
+  ];
+  const out: Record<string, readonly string[]> = {};
+  for (const forms of pairs) for (const f of forms) out[f] = forms;
+  return out;
+})();
+export const isStemCollision = (t: string): boolean => Object.prototype.hasOwnProperty.call(STEM_COLLISIONS, String(t ?? "").toLowerCase());
+
 /** The query's tokens the english tsquery discards ("it" in "it technicians"). */
 export const stopwordTokens = (q: string): string[] =>
   [...new Set(String(q ?? "").toLowerCase().split(/\s+/).filter((t) => t !== "or" && ENGLISH_STOPWORDS.has(t)))];
 
-export type TitleFilter = { column: "title" | "title_tsv"; query: string; config: "simple" | "english" };
+export type TitleFilter = {
+  column: "title" | "title_tsv"; query: string; config: "simple" | "english";
+  /** S12-014: a literal token that names an employer matches its title OR that employer's boards. */
+  orCompanyTokens?: string[];
+};
 
 /**
  * The SIMPLE route's title match, token by token (S11-004, n481). Each short
@@ -106,21 +135,33 @@ export type TitleFilter = { column: "title" | "title_tsv"; query: string; config
 export function simpleRouteFilters(
   safeQ: string,
   aliases: Readonly<Record<string, readonly string[]>>,
+  employers?: Readonly<Record<string, { tokens: string[]; name: string }>>,
 ): { filters: TitleFilter[]; expansions: string[] } | null {
   const q = String(safeQ ?? "").trim();
   if (!q || q.includes('"')) return null;
   const tokens = q.toLowerCase().split(/\s+/).filter(Boolean);
   if (tokens.some((t) => t === "or" || t.startsWith("-"))) return null;
-  const literal = tokens.filter(isLiteralToken);
-  const stem = tokens.filter((t) => !isLiteralToken(t));
-  if (literal.length === 0 || stem.length === 0) return null;
+  const literalToken = (t: string) => isLiteralToken(t) || isStemCollision(t);
+  const literal = tokens.filter(literalToken);
+  const stem = tokens.filter((t) => !literalToken(t));
+  // A stemmer collision is matched unstemmed even alone (S12-018).
+  if (literal.length === 0 || (stem.length === 0 && !literal.some(isStemCollision))) return null;
   const expansions: string[] = [];
   const alts = (t: string) => (Object.prototype.hasOwnProperty.call(aliases, t) ? aliases[t] : []).slice(0, 2);
   const either = (t: string) => {
     for (const p of alts(t)) if (!expansions.includes(p)) expansions.push(p);
-    return [t, ...alts(t)].join(" or ");
+    // Its other number is the same word, not an alias phrase, and is not disclosed as one.
+    const forms = isStemCollision(t) ? STEM_COLLISIONS[t].filter((f) => f !== t) : [];
+    return [t, ...forms, ...alts(t)].join(" or ");
   };
-  const filters: TitleFilter[] = literal.map((t) => ({ column: "title", query: either(t), config: "simple" }));
+  // S12-014: "cvs pharmacist" matched "cvs" in titles only (1 row, against 1,453
+  // CVS Health pharmacists): a literal token that is an employer's key also
+  // matches that employer's boards.
+  const boardsOf = (t: string) => (employers && Object.prototype.hasOwnProperty.call(employers, foldName(t)) ? employers[foldName(t)].tokens : []);
+  const filters: TitleFilter[] = literal.map((t) => {
+    const tokens = boardsOf(t);
+    return { column: "title", query: either(t), config: "simple", ...(tokens.length ? { orCompanyTokens: tokens } : {}) };
+  });
   const plain = stem.filter((t) => alts(t).length === 0);
   const english = [...(plain.length ? [plain.join(" ")] : []), ...stem.filter((t) => alts(t).length > 0).map(either)];
   for (const e of english) {
@@ -205,6 +246,70 @@ export function fillerFoldedAliases(aliases: Aliases, filler: ReadonlySet<string
   return out;
 }
 
+/**
+ * S12-014: EMPLOYER KEYS FROM THE BOARD'S OWN EMPLOYER LIST. The alias table
+ * was generated once (2026-08-21, employers with 250+ postings, keyed on the
+ * folded display name), so "cvs" found 21 titles against 15,828 CVS Health
+ * postings, and "UPS", "3M" and "P&G", whose names arrived later by override,
+ * fell to the title-only SIMPLE route. These keys are read from the live
+ * employer list (company-suggest's), for an employer with at least
+ * BRAND_MIN_OPEN open postings:
+ *   - its whole folded name, when that name has two words or more, four
+ *     characters or fewer, or a digit or ampersand ("UPS", "3M", "P&G",
+ *     "The Home Depot");
+ *   - its name without a leading "The" and a trailing corporate word
+ *     ("CVS Health" gives "cvs"; "The Kroger Co." gives nothing: one word of
+ *     six letters is too likely a word someone searches for as a job), under
+ *     the same shape rule.
+ * Never a key the table already holds (the table wins), never one two
+ * different employers would share, never a word in `refuse` (the occupation
+ * guard, stopwords, role abbreviations, places).
+ */
+export const BRAND_MIN_OPEN = 100;
+const CORPORATE_TAIL = /\s+(?:health|healthcare|health\s+system|co\.?|company|companies|inc\.?|incorporated|corp\.?|corporation|group|holdings?|llc|ltd\.?|limited|plc|stores?|international|industries|brands|enterprises)$/i;
+const keyShapeOk = (name: string, key: string): boolean =>
+  key.length >= 2 && (name.trim().split(/\s+/).length >= 2 || key.length <= 4 || /[0-9&]/.test(name));
+export function brandKeysOf(name: string): string[] {
+  const out = new Set<string>();
+  const full = foldName(name);
+  if (keyShapeOk(name, full)) out.add(full);
+  let core = name.trim().replace(/^the\s+/i, "");
+  for (let i = 0; i < 3 && CORPORATE_TAIL.test(core); i++) core = core.replace(CORPORATE_TAIL, "").trim();
+  const brand = foldName(core);
+  if (core && brand !== full && keyShapeOk(core, brand)) out.add(brand);
+  return [...out];
+}
+const liveAliasMemo = new WeakMap<object, Map<object, Aliases>>();
+export function withLiveBrands(
+  base: Aliases,
+  employers: ReadonlyArray<{ name?: string; token?: string; tokens?: string[]; open?: number; count?: number }>,
+  refuse: ReadonlySet<string>,
+): Aliases {
+  const byBase = liveAliasMemo.get(base) ?? new Map<object, Aliases>();
+  const hit = byBase.get(employers);
+  if (hit) return hit;
+  const live = new Map<string, { tokens: string[]; name: string }>();
+  const shared = new Set<string>();
+  for (const e of employers) {
+    const name = String(e.name ?? "").trim();
+    const size = typeof e.open === "number" ? e.open : Number(e.count ?? 0);
+    const tokens = Array.isArray(e.tokens) && e.tokens.length ? e.tokens : e.token ? [e.token] : [];
+    if (!name || size < BRAND_MIN_OPEN || tokens.length === 0) continue;
+    for (const k of brandKeysOf(name)) {
+      if (own(base, k) || refuse.has(k) || OCCUPATION_GUARD.has(k) || ENGLISH_STOPWORDS.has(k)) continue;
+      const prev = live.get(k);
+      if (prev && prev.name !== name) shared.add(k);
+      else live.set(k, { tokens, name });
+    }
+  }
+  for (const k of shared) live.delete(k);
+  const out: Record<string, { tokens: string[]; name: string }> = { ...base };
+  for (const [k, v] of live) out[k] = v;
+  byBase.set(employers, out);
+  liveAliasMemo.set(base, byBase);
+  return out;
+}
+
 export function pickRoute(
   rawQ: string,
   aliases: Aliases,
@@ -220,7 +325,9 @@ export function pickRoute(
   // match ("medical assistant" -> a company called Medical) hijacked 7.8% of
   // real job titles when it was tried, measured by replaying the board's own
   // titles as queries.
-  if (alnum.length >= 3 && !OCCUPATION_GUARD.has(alnum)) {
+  // Two characters only when the typed name carries a digit or an ampersand
+  // ("3M", "P&G", S12-014): "hr" and "it" never reach here.
+  if ((alnum.length >= 3 || (alnum.length === 2 && /[0-9&]/.test(raw))) && !OCCUPATION_GUARD.has(alnum)) {
     // Own keys only: aliases["constructor"] was Object's constructor, and the route threw (n447).
     const hit = own(aliases, alnum) ? aliases[alnum] : filler ? fillerFoldedAliases(aliases, filler).get(alnum) : undefined;
     if (hit && hit.tokens.length > 0) {
@@ -258,6 +365,10 @@ export function pickRoute(
   // (q="it manager" -> 92,919 rows for "manager").
   if (tokens.some(isLiteralToken)) {
     return { route: "SIMPLE", reason: "query contains a token the english index discards" };
+  }
+  // R3b — a word the english stemmer merges with a different job (S12-018).
+  if (tokens.some(isStemCollision)) {
+    return { route: "SIMPLE", reason: "query contains a word the english stemmer merges with another (accountant/account)" };
   }
 
   // R4 — everything else keeps the path it has always had. GENERIC was proposed
@@ -568,38 +679,70 @@ const EXCLUSION_STOPWORDS: ReadonlySet<string> = new Set([
   "for", "the", "a", "an", "of", "in", "at", "to", "on",
 ]);
 
+/**
+ * S12-017: A PHRASE IS ONE EXCLUSION. -"team lead" was split on its spaces into
+ * the token -"team (excluded) and lead" (kept), so it returned team leads; and
+ * "nurse not night shift" excluded "night" and REQUIRED "shift", returning
+ * night shifts. A quoted phrase is one token, negated whole by a leading "-"
+ * or a "not"; and "not" before more than one word negates those words as one
+ * phrase to the end of the query (or the next operator), never the first word
+ * alone. "not requiring night shifts" drops the verb. A stopword after "not"
+ * still vetoes the operator ("director not for profit").
+ */
+const NOT_VERBS = /^(?:requiring|requires|require|involving|involves|including|includes|with|doing)$/i;
+const cleanTerm = (e: string): string =>
+  e.split(/\s+/).map((w) => w.replace(/[^a-z0-9+#.]/gi, "").toLowerCase()).filter(Boolean).join(" ");
+
 export function splitExclusions(raw: string): { positive: string; excluded: string[] } {
   const text = String(raw ?? "").trim();
   if (!text) return { positive: text, excluded: [] };
 
-  const words = text.split(/\s+/);
+  // Tokens: a quoted phrase (with any leading "-") is one; an unclosed quote
+  // stays an ordinary word.
+  const words = text.match(/-?"[^"]*"|\S+/g) ?? [];
+  const quoted = (w: string) => /^-?".*"$/.test(w);
   const positive: string[] = [];
   const excluded: string[] = [];
-  let pendingNot: string | null = null;
-  for (const w of words) {
-    if (pendingNot !== null) {
-      // "not" marks exactly this one token — never the whole remainder — and
-      // a stopword-grade token vetoes the operator reading entirely.
-      if (EXCLUSION_STOPWORDS.has(w.toLowerCase())) positive.push(pendingNot, w);
-      else excluded.push(w.toLowerCase());
-      pendingNot = null;
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i];
+    if (/^not$/i.test(w) && i + 1 < words.length) {
+      const next = words[i + 1];
+      if (EXCLUSION_STOPWORDS.has(next.toLowerCase())) { positive.push(w, next); i++; continue; }
+      if (quoted(next) && !next.startsWith("-")) { excluded.push(next.slice(1, -1)); i++; continue; }
+      // The words after "not", up to the next operator, are one phrase.
+      let j = i + 1;
+      const phrase: string[] = [];
+      while (j < words.length && !/^not$/i.test(words[j]) && !words[j].startsWith("-") && !quoted(words[j])) phrase.push(words[j++]);
+      while (phrase.length > 1 && NOT_VERBS.test(phrase[0])) phrase.shift();
+      if (phrase.length) { excluded.push(phrase.join(" ")); i = j - 1; continue; }
+      positive.push(w);
       continue;
     }
-    if (/^not$/i.test(w)) { pendingNot = w; continue; }
-    if (w.length > 1 && w.startsWith("-")) { excluded.push(w.slice(1).toLowerCase()); continue; }
+    if (w.length > 1 && w.startsWith("-")) {
+      excluded.push(quoted(w) ? w.slice(2, -1) : w.slice(1));
+      continue;
+    }
     positive.push(w);
   }
-  const cleanExcluded = [...new Set(excluded.map((e) => e.replace(/[^a-z0-9+#.]/gi, "").toLowerCase()).filter((e) => e.length >= 2))];
+  const cleanExcluded = [...new Set(excluded.map(cleanTerm).filter((e) => e.replace(/ /g, "").length >= 2))];
   // Nothing left to search means the exclusion has eaten the query. Run what
   // they typed instead of returning the entire board.
   if (!positive.length || !cleanExcluded.length) return { positive: text, excluded: [] };
   return { positive: positive.join(" "), excluded: cleanExcluded };
 }
 
-/** Does a title contain any excluded term? Word-ish match, so "manager" does
+const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+/** One excluded word as a pattern: its plural or singular too ("shifts" strikes "Night Shift"). */
+const wordForm = (w: string): string => {
+  if (!/[a-z]$/i.test(w) || w.length <= 3) return esc(w);
+  const base = /[^s]s$/i.test(w) ? w.slice(0, -1) : w;
+  return `${esc(base)}(?:s|es)?`;
+};
+
+/** Does a title contain any excluded term or phrase? Word-ish match, so "manager" does
  *  not strike out "management-adjacent" by coincidence of substring. */
 export function titleExcluded(title: string, excluded: readonly string[]): boolean {
   if (!excluded.length) return false;
   const t = String(title ?? "").toLowerCase();
-  return excluded.some((e) => new RegExp(`(^|[^a-z0-9])${e.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z0-9]|$)`, "i").test(t));
+  return excluded.some((e) => new RegExp(`(^|[^a-z0-9])${e.split(" ").map(wordForm).join("[^a-z0-9]+")}([^a-z0-9]|$)`, "i").test(t));
 }

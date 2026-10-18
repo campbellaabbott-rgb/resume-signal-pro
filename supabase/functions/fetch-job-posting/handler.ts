@@ -17,7 +17,7 @@
  */
 import { parseJobUrl } from "./hosts.ts";
 import { FETCH_DEADLINE_MS, type Refusal, type SafeFetchDeps, safeFetch } from "./net-guard.ts";
-import { apiPlanFor, jobPostingFromHtml, type Posting, vendorPageText } from "./extract.ts";
+import { apiPlanFor, jobPostingFromHtml, type Posting, unreadableShape, vendorPageText } from "./extract.ts";
 import { meterFetch, type Rpc } from "./budget.ts";
 
 export const CORS: Record<string, string> = {
@@ -70,6 +70,18 @@ export async function readPosting(url: URL, vendor: string, deps: ReadDeps): Pro
   if (fromLd) return { ok: true, posting: fromLd, vendor, source: "json_ld", url: url.toString() };
   const fromPage = vendorPageText(html, vendor);
   if (fromPage) return { ok: true, posting: fromPage, vendor, source: "vendor_page", url: url.toString() };
+  // S12-038: a link that redirected (Workable's /j/{code} to /{account}/j/{code})
+  // may name an API plan its first form could not; the hop was fenced already.
+  if (!plan && page.url && page.url !== url.toString()) {
+    let landed: URL | null = null;
+    try { landed = new URL(page.url); } catch { landed = null; }
+    const second = landed ? apiPlanFor(landed, vendor) : null;
+    if (second) {
+      const r = await safeFetch(second.url, chain(), "application/json");
+      const p = r.ok === true ? second.read(r.body) : null;
+      if (p) return { ok: true, posting: p, vendor, source: "vendor_api", url: url.toString() };
+    }
+  }
   return { ok: false, reason: "no_description" };
 }
 
@@ -87,6 +99,12 @@ export async function handleFetchJobPosting(req: Request, deps: HandlerDeps): Pr
   if (target.ok === false) {
     console.log(`[FETCH-JOB-POSTING] refused before fetching: ${target.reason}`);
     return reply({ ok: false, reason: target.reason });
+  }
+  // S12-028: a link no plan can read is answered before the meters, so a
+  // person is not charged a fetch for a shape that can never succeed.
+  if (unreadableShape(target.url, target.vendor)) {
+    console.log(`[FETCH-JOB-POSTING] ${target.vendor}: no_description (unreadable link shape, not metered)`);
+    return reply({ ok: false, reason: "no_description", vendor: target.vendor });
   }
   const meter = await meterFetch(req.headers, deps.rpc, deps.serviceKey);
   if (meter.ok === false) {

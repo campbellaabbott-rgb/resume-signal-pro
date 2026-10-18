@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  foldName, pickRoute, scoreTitle, splitExclusions, wordCount,
+  foldName, pickRoute, scoreTitle, splitExclusions, titleExcluded, wordCount,
   OCCUPATION_GUARD,
 } from "../../supabase/functions/job-board/search-routing";
 import { EMPLOYER_ALIASES } from "../../supabase/functions/job-board/employer-aliases";
@@ -88,10 +88,15 @@ describe("'not' marks one token, and never a stopword", () => {
     expect(splitExclusions("engineer not manager")).toEqual({ positive: "engineer", excluded: ["manager"] });
   });
 
-  it("claims exactly one token — the words after it stay positive", () => {
+  it("claims the words after it as ONE phrase, never each word (S12-017)", () => {
     // The old remainder rule excluded "er" too, striking every ER nurse title
-    // the query was refining toward.
-    expect(splitExclusions("nurse not travel er")).toEqual({ positive: "nurse er", excluded: ["travel"] });
+    // the query was refining toward. The one-token rule that replaced it
+    // excluded "night" and REQUIRED "shift" for "nurse not night shift". The
+    // words after "not" are now one phrase: an ER nurse title is not struck,
+    // only one that carries "travel er" together.
+    expect(splitExclusions("nurse not travel er")).toEqual({ positive: "nurse", excluded: ["travel er"] });
+    expect(titleExcluded("ER Nurse", ["travel er"])).toBe(false);
+    expect(titleExcluded("Travel ER Nurse", ["travel er"])).toBe(true);
   });
 
   it("keeps the refuse-to-eat-the-query guards standing", () => {

@@ -29,9 +29,10 @@ Deno.test("S11-034: a Strict Open XML document is read", async () => {
   assertEquals(lines(body), [RESUME_LINES.name, RESUME_LINES.email, RESUME_LINES.heading, RESUME_LINES.role, RESUME_LINES.bullet]);
 });
 
-Deno.test("S11-034: a text box in mc:AlternateContent with no mc:Fallback does not throw", async () => {
+Deno.test("S11-034, S12-128: a text box in mc:AlternateContent with no mc:Fallback is read, its email included", async () => {
   const { body } = await read(await textBoxNoFallbackDocx(Zip));
-  for (const l of [RESUME_LINES.name, RESUME_LINES.heading, RESUME_LINES.role, RESUME_LINES.bullet]) assert(body.includes(l), l);
+  for (const l of [RESUME_LINES.name, RESUME_LINES.email, RESUME_LINES.heading, RESUME_LINES.role, RESUME_LINES.bullet]) assert(body.includes(l), l);
+  assertEquals(lines(body), [RESUME_LINES.name, RESUME_LINES.email, RESUME_LINES.heading, RESUME_LINES.role, RESUME_LINES.bullet]);
 });
 
 Deno.test("the ordinary document still reads one line per paragraph", async () => {

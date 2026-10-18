@@ -39,6 +39,8 @@ const run = (applied: Record<string, unknown>, rpc: { n: number; capped: boolean
     body: {},
     client: { rpc: async (name: string) => { calls.push(name); return { data: [rpc], error: null }; } },
     freshCutoffIso: "2026-09-08T00:00:00Z",
+    // S12-020: the age window is bound as one instant (null: no window asked).
+    postedAfterBound: null,
     rankedLocationParam: () => null,
     categoryParam: () => null,
     sendableSourcesParam: () => ({}),

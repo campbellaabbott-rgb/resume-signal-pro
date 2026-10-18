@@ -1,12 +1,8 @@
-// Pure normalization + filtering for the job board. No Deno APIs — this
-// module is unit-tested by vitest against REAL payload fixtures captured
-// from each ATS's public API (src/test/job-board.test.ts).
+// Rationale: docs/job-board-index-notes.md#n958-import-type-jobsourcekind-from-sources-t
 
 import type { JobSourceKind } from "./sources.ts";
 import { categorize, type JobCategory } from "./categories.ts";
-// The vendor pay formatters below hand their sentence to the shared parser and
-// publish nothing it reads back differently — so the per-period magnitude
-// windows have exactly one definition, in the module that owns them.
+// Rationale: docs/job-board-index-notes.md#n959-import-load_dependent_periods-parsesalar
 import { LOAD_DEPENDENT_PERIODS, parseSalaryStructured } from "../_shared/salary-extract.ts";
 
 export interface JobPosting {
@@ -35,49 +31,15 @@ export interface JobPosting {
   country?: string | null;
   /** The company's own posting/application page — where Apply goes. */
   applyUrl: string;
-  /** Employment type from the vendor's STRUCTURED field only — never inferred
-      from text. Same trinary-or-nothing contract as workMode: a value only
-      when the feed states one, null otherwise, and the UI shows nothing on
-      null. Nine vendors carried it in the list payloads the ingest already
-      fetches when measured live 2026-08-28; adp joined 2026-08-31 (its
-      client-authored work-level labels, pre-cleaned of pay-basis words before
-      the shared mapper); the rest stay null. */
+  // Rationale: docs/job-board-index-notes.md#n1214-employmenttype-employmenttype-null
   employmentType?: EmploymentType | null;
-  /**
-   * The vendor's employment-type WORDS, carried beside the normalised enum
-   * because the part-time guard reads words and the enum cannot serve it.
-   *
-   * detectPartTime suppresses the full-time-load annualisation of an hourly,
-   * daily or weekly rate, and its vocabulary is written for the phrasing a
-   * posting uses: "part-time", "part time", "full-or-part-time". The enum above
-   * spells that state `part_time`, and an underscore matches none of those
-   * forms — verified against the live parser, `part-time` suppresses the
-   * annualisation and `part_time` does not. Handing the enum to the salary
-   * context would therefore be a guard that reads as wired and does nothing.
-   *
-   * Set only where a vendor states the schedule in the same payload as a pay
-   * figure, which today is Personio alone: 33 of 97 measured gains are
-   * part-time or full-or-part-time and 21 are hourly, so without this the
-   * board would annualise a part-time wage at 2,080 hours. Never written to a
-   * column — the enum is the stored field; this is context for the parser.
-   */
+  // Rationale: docs/job-board-index-notes.md#n1215-employmenttypetext-string-null
   employmentTypeText?: string | null;
 }
 
 export type EmploymentType = "full_time" | "part_time" | "contract" | "temporary" | "internship";
 
-/**
- * One mapper for nine vendors' vocabularies. STRUCTURED FIELDS ONLY — the
- * input is a vendor enum/label ("FullTime", "Full-time", "permanent",
- * "fixed_term", "Intern"), never posting prose, so a miss returns null rather
- * than guessing. Vocabulary measured live per vendor before each entry:
- * ashby FullTime/PartTime/Intern/Contract/Temporary; lever commitment
- * "Full-time"/"Part-time"/"Internship"/"Contract"/"Permanent"; workable
- * "Full-time" style; smartrecruiters typeOfEmployment id "permanent"/
- * "contract"/... with a display label; recruitee employment_type_code
- * fulltime/parttime/internship/temporary; personio <schedule> full-or-part-time
- * variants; pinpoint/icims free-ish labels already threaded for salary logic.
- */
+// Rationale: docs/job-board-index-notes.md#n1216-export-function-normalizeemploymenttype
 export function normalizeEmploymentType(raw: unknown): EmploymentType | null {
   const v = String(raw ?? "").trim().toLowerCase().replace(/[\s_-]+/g, "");
   if (!v) return null;
@@ -89,9 +51,7 @@ export function normalizeEmploymentType(raw: unknown): EmploymentType | null {
   return null;
 }
 
-// Feeds are official vendor APIs, but a posting URL still passes through us
-// into an <a href> — http gets upgraded to https (One Medical ships http://
-// apply URLs), anything that isn't http(s) becomes "" and the posting drops.
+// Rationale: docs/job-board-index-notes.md#n960-const-safeurl-u-unknown-string
 const safeUrl = (u: unknown): string => {
   if (typeof u !== "string") return "";
   if (/^https:\/\//i.test(u)) return u;
@@ -99,55 +59,22 @@ const safeUrl = (u: unknown): string => {
   return "";
 };
 
-// Oldest posted_at we'll trust from a feed. Beyond this it's almost certainly
-// bad data (some feeds return epoch-ish or decade-old timestamps — e.g. a
-// Palantir role dated 2009) or an evergreen pipeline req that shouldn't wear a
-// stale date. Kept here so ingestion and any date-hygiene share one bound.
-// Garbage-date floor: only dates before this are feed junk (epoch zeros,
-// mis-parsed typos, the live 2009 Palantir date — Lever didn't exist yet).
-// A REAL old date — a 3.5-year-old evergreen Lever req — must SURVIVE
-// sanitization so the freshness cap can drop the posting. The previous
-// ~3-year "absurdly old → null" rule laundered exactly those evergreens into
-// undated-KEPT postings (live incident: a 1,295-day-old req served on a board
-// that promises nothing older than 30 days; 42% of Lever rows were undated
-// this way). 2010 predates every ATS we ingest, so anything earlier cannot be
-// a real posting date.
+// Rationale: docs/job-board-index-notes.md#n961-export-const-posted_at_garbage_floor_ms
 export const POSTED_AT_GARBAGE_FLOOR_MS = Date.parse("2010-01-01T00:00:00Z");
 
-// A posted_at is trustworthy only if it parses and sits in a sane window: not
-// in the future (small clock-skew grace) and not pre-2000 junk. Garbage dates
-// collapse to null — so effective_posted falls back to first-seen for sorting
-// and the card shows no date instead of "posted 6000 days ago". Real-but-old
-// dates pass through untouched: the ingestion freshness cap is what drops
-// those postings, and nulling them would keep the posting alive undated.
+// Rationale: docs/job-board-index-notes.md#n962-export-function-sanepostedat-iso-string
 export function sanePostedAt(iso: string | null | undefined, now: number = Date.now()): string | null {
   if (!iso || typeof iso !== "string") return null;
   const t = Date.parse(iso);
   if (!Number.isFinite(t)) return null;
   if (t > now + 2 * 86_400_000) return null;      // future beyond clock-skew grace
-  // Inside the grace window, CLAMP to now rather than storing a future date.
-  // The grace exists because vendors emit date-only values that parse as UTC
-  // midnight from boards several hours ahead (AU/Asia Workday) — that is skew,
-  // and the honest reading of skew is "posted now", not "posted tomorrow".
-  // Storing the future value had two visible consequences: default sort is
-  // effective_posted DESC so all 23 such rows occupied the entire top of the
-  // board, and daysAgo() in Jobs.tsx returns null for a negative age, so those
-  // cards rendered with no posted-age label at all. Measured 2026-07-28: 19
-  // Workday rows stamped 2026-07-29T00:00:00Z plus 4 Personio rows 1-57 min
-  // ahead. Nothing is invented here — a posting cannot have been posted later
-  // than the moment we read it.
+  // Rationale: docs/job-board-index-notes.md#n963-if-t-now-return-new-date
   if (t > now) return new Date(now).toISOString();
   if (t < POSTED_AT_GARBAGE_FLOOR_MS) return null; // epoch-zero / typo junk
   return iso;
 }
 
-// Closure "superseded" detection compares a vanished posting's title against
-// the board's still-live titles — but companies decorate reposts with req-id
-// noise ("Behavior Technician (R-48213)", "Nurse - #10422"), so exact-string
-// matching under-detects relisting churn and inflates fill-rate stats. Strip
-// only id-shaped noise: bracketed segments containing digits and trailing
-// req/id numbers. NEVER strip words (a Senior Engineer closing while Engineer
-// stays live is not automatically a repost).
+// Rationale: docs/job-board-index-notes.md#n964-export-function-normalizeclosetitle-titl
 export function normalizeCloseTitle(title: string): string {
   return title
     .toLowerCase()
@@ -157,48 +84,29 @@ export function normalizeCloseTitle(title: string): string {
     .trim();
 }
 
-// Convert a feed's raw date value (epoch number, ISO/date string, whatever the
-// vendor sends) to an ISO string — WITHOUT throwing. `new Date(x).toISOString()`
-// raises a RangeError on an invalid date, and a normalizer that throws fails its
-// ENTIRE board upstream (fetchBoard swallows it → the board silently stops
-// ingesting, the same class as a fetch timeout). A non-empty garbage date string
-// is exactly the input that trips this. Bad or absent values collapse to null;
-// window-sanity (future/too-old) stays a separate concern for sanePostedAt.
+// Rationale: docs/job-board-index-notes.md#n965-export-function-safeiso-value-unknown-st
 export function safeIso(value: unknown): string | null {
   if (value === null || value === undefined || value === "") return null;
   const d = new Date(value as string | number);
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
-// Freshness-cap decision: a posting is dropped on age ONLY when it carries a
-// trustworthy date older than the cutoff. A null (undated or garbage-dated,
-// per sanePostedAt) posting is never dropped on age — we can't prove it's old,
-// and the vast majority of feeds do date their postings anyway.
+// Rationale: docs/job-board-index-notes.md#n966-export-function-isdatedbefore-sanitizedp
 export function isDatedBefore(sanitizedPostedAt: string | null, cutoffMs: number): boolean {
   return sanitizedPostedAt !== null && Date.parse(sanitizedPostedAt) < cutoffMs;
 }
 
-// Greenhouse escapes the HTML it returns (&lt;p&gt;…) — and entities INSIDE
-// that HTML arrive double-escaped (&amp;nbsp;), so unescape must run twice:
-// once to recover the markup, once to recover the text's own entities.
-// Two passes are a no-op on plain text.
+// Rationale: docs/job-board-index-notes.md#n967-const-unescapeentities-s-string
 const unescapeEntities = (s: string) =>
   s
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
-    // Numeric entities — audit 2026-07-25: workday descriptions shipped raw
-    // &#160;/&#8217; to users because only the named set was decoded. NUL and
-    // out-of-range code points become spaces (a NUL here would make the row
-    // grep-invisible and break downstream matching).
+    // Rationale: docs/job-board-index-notes.md#n968-replace-x-a-f-gi-_
     .replace(/&#x([0-9a-f]+);/gi, (_, h) => { const c = parseInt(h, 16); return c > 0 && c < 0x110000 ? String.fromCodePoint(c) : " "; })
     .replace(/&#(\d+);/g, (_, d) => { const c = parseInt(d, 10); return c > 0 && c < 0x110000 ? String.fromCodePoint(c) : " "; })
     .replace(/&nbsp;/g, " ")
-    // Named entities — audit 2026-08-24: greenhouse's pay-transparency
-    // footer ships "&mdash;" and the numeric-only decoder left it literal in
-    // stored text, where it both rendered as garbage to readers AND broke
-    // salary mining (the range separator never matched: 17/200 sampled rows
-    // carried an entity-encoded pay block, all unparseable).
+    // Rationale: docs/job-board-index-notes.md#n969-replace-mdash-gi-u2014
     .replace(/&mdash;/gi, "\u2014")
     .replace(/&ndash;/gi, "\u2013")
     .replace(/&(rsquo|apos);/gi, "'")
@@ -221,38 +129,7 @@ export function htmlToText(html: string): string {
     .trim();
 }
 
-// THE MISSING NEGATION ARM (measured live 2026-09-09 against deployed .67).
-//
-// In "NON-REMOTE" the hyphen is a word boundary, so the bare \bremote\b below
-// matched and the board stored the exact inverse of what the employer wrote.
-// Two live rows returned under workMode=remote:
-//   "Application Analyst II-Full Time- Days - Cupid/Radiant- NON-REMOTE" (workday)
-//   "RN (PRN - Not Remote)"                                             (icims)
-// This is the SECOND time this board has shipped that inversion — see
-// migration 20260817210000 and the index.ts remoteType classifier, whose rule
-// is "a classifier built from substrings must answer the NEGATIONS before the
-// POSITIVES". That rule lived in one classifier; this one never got it.
-//
-// The repair is to REMOVE the negated phrase from the string before the
-// positive ladder runs, rather than to return a mode from the negation.
-// Removal, not an early return, is what keeps the rest of the string readable:
-//   "On-site (not remote)"  -> "On-site ()"   -> onsite
-//   "Hybrid, non-remote"    -> "Hybrid, "     -> hybrid
-//   "Analyst - NON-REMOTE"  -> "Analyst - "   -> null
-// The bare case is NULL and not "onsite" on purpose: we know it is not remote,
-// we do NOT know whether it is hybrid or onsite, and this file's rule is that
-// null means the posting doesn't say and the board shows nothing rather than a
-// guess. (index.ts's classifier reads a vendor's structured remoteType ENUM,
-// where "Non-Remote Posting" IS Workday's own onsite label, so it may answer
-// onsite there. Free text in a title states less, so it resolves to less.)
-//
-// COVERAGE, stated honestly. The English arms are backed by observed strings
-// (the two titles above, plus "Non-Remote Posting"/"Not Remote"/"No Remote"
-// from the 2026-08-17 incident). The DE/FR/ES/PT/NL arms are the standard
-// negations of the tokens P_REMOTE already carries; they are NOT backed by
-// observed feed strings, so they are written narrowly (adjacent negator +
-// token only) and no language is covered beyond the five P_REMOTE already
-// names. Nothing here invents a token P_REMOTE does not match.
+// Rationale: docs/job-board-index-notes.md#n970-const-p_negated_remote-new-regexp
 const P_NEGATED_REMOTE = new RegExp(
   [
     // EN — "non-remote", "non remote", "nonremote", "not remote", "no remote"
@@ -260,32 +137,9 @@ const P_NEGATED_REMOTE = new RegExp(
     // EN — "not a remote role", "not fully remote", "not eligible for remote"
     "\\bnot\\s+(?:a\\s+|an\\s+|fully\\s+)?remote\\b",
     "\\bnot\\s+(?:eligible|available|open|considered)\\s+(?:for|to)\\s+remote\\b",
-    // EN — a FIELD-VALUE negation: "Remote: No", "Remote — None", "Remote(No)".
-    //
-    // THE NEGATOR MUST END THE SEGMENT, and that lookahead is the whole point
-    // of this arm's shape. Written without it — `remote\s*[:=–—-]\s*(?:no|
-    // none|not)\b` — a hyphen or dash is read as a field separator, but in a
-    // job TITLE those characters separate SEGMENTS, so the arm fired on the
-    // extremely common genuinely-remote shapes and deleted the only remote
-    // token in them:
-    //   "Registered Nurse - Remote - No Weekends"          -> null (was remote)
-    //   "Data Entry Clerk - Remote - No Experience Required"-> null
-    //   "Data Analyst — Remote — No sponsorship"           -> null
-    //   "Remote: No Cold Calling Sales Rep"                -> null
-    // That is the mirror image of the incident this file exists to fix: a
-    // remote role deleted from the Remote filter instead of a non-remote role
-    // added to it, and the repair migration would have rewritten those rows
-    // irreversibly. "no experience" in particular is part of this board's own
-    // vocabulary — index.ts's INTENT_FILTERS carries a rule for it.
-    // Requiring end-of-string or a delimiter after the negator keeps the real
-    // field-value form and refuses the segment form. "not" is dropped here
-    // entirely: it is already carried by the \bnot\s+…remote\b arms above, and
-    // the "Remote - Not Available" shape is the trailing-negator arm below.
+    // Rationale: docs/job-board-index-notes.md#n971-bremote-s-s-no-none-s
     "\\bremote\\s*[:=(–—-]\\s*(?:no|none)\\s*(?=$|[).|,;·/])",
-    // EN — a TRAILING negator: "Work from home not available", "Remote Not
-    // Available", "Remote - unavailable". Adjacency is required (the negator
-    // follows the token directly), so "Remote Support Engineer - not available
-    // for sponsorship" is untouched and stays remote.
+    // Rationale: docs/job-board-index-notes.md#n972-b-remote-wfh-work-s-from
     "\\b(?:remote|wfh|work\\s+from\\s+home|home\\s?office)\\s*[:=–—-]?\\s*(?:not\\s+(?:available|offered|permitted|an\\s+option)|unavailable)\\b",
     // EN — the other tokens P_REMOTE carries
     "\\b(?:non|not|no)[-\\s]?(?:wfh|work\\s+from\\s+home|home\\s?office)\\b",
@@ -307,27 +161,15 @@ const P_NEGATED_REMOTE = new RegExp(
   "gi",
 );
 
-/**
- * The negated-remote phrase set as a SOURCE STRING, so index.ts's read-side
- * INTENT_FILTERS can build its own non-global RegExp from the one definition
- * instead of spelling the phrases a second time. There is one "negated remote"
- * in this codebase and this is it: the writer (detectWorkMode), the reader
- * (the query-intent lift) and the repair migration all quote it.
- */
+// Rationale: docs/job-board-index-notes.md#n1217-export-const-negated_remote_source-p_neg
 export const NEGATED_REMOTE_SOURCE = P_NEGATED_REMOTE.source;
 
-/** Remove every negated-remote phrase, so the positive ladder never sees the
- *  remote token that a negation owns. Exported for the vendor label path and
- *  for the guards. */
+// Rationale: docs/job-board-index-notes.md#n1218-export-function-stripnegatedremote-s-str
 export function stripNegatedRemote(s: string): string {
   return s.replace(P_NEGATED_REMOTE, " ");
 }
 
-// Trinary work-mode detection from explicit title/location text (clear words
-// only; descriptions are never inferred from). Negations are stripped FIRST.
-// Hybrid then outranks remote ("Hybrid remote" is hybrid); onsite needs the
-// explicit phrase. null = the posting doesn't say, and the board shows nothing
-// rather than a guess. Multilingual: the board carries DE/FR/ES/NL/PT postings.
+// Rationale: docs/job-board-index-notes.md#n973-const-p_hybrid-bhybrid-b-bhybride-b
 const P_HYBRID = /\bhybrid\b|\bhybride\b|\bh[íi]brido?\b/i;
 const P_REMOTE = /\bremote\b|\bwork from home\b|\bwfh\b|\bt[ée]l[ée]travail\b|\bhome\s?office\b|\bremoto\b|\bthuiswerken\b|\bteletrabajo\b/i;
 const P_ONSITE = /\bon-?site\b|\bin-?office\b|\bvor ort\b|\bpresencial\b|\bsur site\b/i;
@@ -341,20 +183,7 @@ export function detectWorkMode(...parts: Array<string | null | undefined>): "rem
   return null;
 }
 
-/**
- * THE ONE reader of a vendor's own workplace/location-type LABEL.
- *
- * Vendor arms used to re-implement this with `label.includes("remote")`
- * ladders of their own, which reproduced both defects at once: no negation
- * (iCIMS location_type "Non-Remote" read as remote) and remote tested BEFORE
- * hybrid, inverting the deliberate order above ("Hybrid Remote" is hybrid).
- * Every vendor arm now calls this or detectWorkMode; nothing re-implements.
- *
- * Order: the vendor's exact enum wins (ORA_REMOTE, ON_SITE, …), then the same
- * text detector every other field gets, then the one word that is a clear
- * statement in a workplace-type FIELD but a guess in a job title — "office".
- * ("Office Manager" must not become onsite; location_type "Office" must.)
- */
+// Rationale: docs/job-board-index-notes.md#n1219-export-function-statedworkmode-label-str
 export function statedWorkMode(label: string | null | undefined): "remote" | "hybrid" | "onsite" | null {
   if (typeof label !== "string" || !label.trim()) return null;
   const enumMode = vendorWorkMode(label);
@@ -364,27 +193,7 @@ export function statedWorkMode(label: string | null | undefined): "remote" | "hy
   return /\boffice\b/i.test(stripNegatedRemote(label)) ? "onsite" : null;
 }
 
-/**
- * THE ONE way a vendor arm combines its own workplace LABEL with free text.
- *
- * `statedWorkMode(label) ?? detectWorkMode(...)` looked right and was not: for
- * a label that NEGATES remote ("Non-Remote", iCIMS's own location_type value)
- * statedWorkMode answers null, null is indistinguishable from "the vendor said
- * nothing", and the `??` then handed the decision to the title — so a vendor
- * explicitly stating not-remote was overridden by the word "remote" in the
- * title. Measured on the real functions before this change:
- *   normalizeIcims(location_type "Non-Remote", title "Remote Patient
- *     Monitoring RN")                      -> workMode "remote", remote true
- *   normalizeLever(workplaceType "Non-Remote", text "Remote Support Engineer")
- *                                          -> workMode "remote", remote true
- * "Remote Patient Monitoring" is a real iCIMS-heavy clinical title family, and
- * iCIMS is the vendor whose location_type genuinely carries "Non-Remote".
- *
- * The rule: free text may NARROW a negated label (a title saying hybrid or
- * onsite tells us which of the two it is), but it can never ANSWER "remote"
- * over the employer's own negation. It resolves to null instead — this file's
- * documented value for "we know what it is not, not what it is".
- */
+// Rationale: docs/job-board-index-notes.md#n1220-export-function-workmodefrom
 export function workModeFrom(
   label: string | null | undefined,
   ...parts: Array<string | null | undefined>
@@ -398,66 +207,9 @@ export function workModeFrom(
   return detected;
 }
 
-/**
- * IN AMERICAN CORPORATE ENGLISH THE HEAD OFFICE IS CALLED THE "HOME OFFICE",
- * AND THIS BOARD READ THAT BUILDING NAME AS A WORK-FROM-HOME POLICY.
- *
- * P_REMOTE above carries the token because in German ("Homeoffice") and in
- * plenty of English postings it genuinely states the policy — recruitee's own
- * remote boolean confirms the German reading on 51 of 51 live offers, so the
- * token is NOT coming out of the shared detector. What is wrong is feeding it
- * a vendor field that holds a SITE name.
- *
- * MEASURED on Paylocity 2026-09-27, a census and not a sample: all 15 tenants
- * in the stratum, all 39 stored rows re-fetched from the tenants' own public
- * board payloads. The vendor's structured IsRemote is FALSE on 39 of 39, and
- * 36 of the 39 carry a real City/State in the SAME payload that ingest threw
- * away because LocationName won unconditionally. Real values: "Home Office",
- * "1000-Home Office" (a cost-centre code), "HOME OFFICE DEPARTMENTS",
- * "Property Management, Inc. Home Office",
- * "Home Office-Harold Grinspoon Foundation". Those are buildings and cost
- * centres. "Lube Technician" and "Grading Foreman" were published as remote.
- *
- * WHAT THIS DOES AND DELIBERATELY DOES NOT DO. It answers ONE question — is
- * this string a non-geographic site label? — and it answers yes on exactly
- * three residues and no others: nothing left at all, a bare 3-or-more-digit
- * cost-centre number, or a residue containing an organisation / department
- * word. THE THIRD ARM IS NOT ANCHORED, AND THAT IS THE MEASURED CHOICE, not an
- * oversight: two of the census's own labels are "Property Management, Inc.
- * Home Office" and "Home Office-Harold Grinspoon Foundation", whose residues
- * are a COMPANY NAME with an entity word inside it. A rule requiring the
- * residue to be nothing but entity words would answer NO on both and leave
- * three of the 39 measured rows publishing a building as a policy. So an
- * entity word qualifies the residue wherever in it the word sits — including
- * when a place is also left ("Bozeman, MT - Home Office Inc" IS a site label
- * here, and the guard pins that as a decision rather than a side effect).
- *
- * A residue that names ONLY a place answers NO, and that is the line that
- * matters: an adversarial re-check of this audit REFUTED the wider gate the
- * first proposal wanted, because a city beside the token is not evidence of a
- * building — Ashby's own workplaceType says "Remote" on "Home Office
- * (Belfast)" and on "Palo Alto Home Office". A rule that read those as site
- * labels would delete an employer's own statement.
- *
- * Nothing here decides a work mode. The caller's only use of a yes is to stop
- * quoting a building name as if it were a policy; what it writes instead is
- * whatever the employer stated elsewhere, or NULL. Every direction of error
- * this rule can make therefore removes a claim; none of them states one.
- *
- * THE SEPARATOR IS MANDATORY HERE, and that is not a transcription slip of
- * P_REMOTE's optional one. In the same census the one-word spelling is the
- * GERMAN WORD and nothing else — all 99 of those rows belong to one vendor,
- * whose own remote boolean confirms them on 51 of 51 — while every spaced row
- * belongs to everything else. A rule that read the one-word spelling as a
- * building name would take a statement away from the postings that genuinely
- * make it, so it does not read it at all.
- */
+// Rationale: docs/job-board-index-notes.md#n1221-export-const-home_office_token_source-bh
 export const HOME_OFFICE_TOKEN_SOURCE = "\\bhome\\s+office\\b";
-/** The residue words that mean "an organisation or a department is named here,
- *  so this is not a place". Kept to the five entity words plus department,
- *  because every word added here widens what stops counting as an employer
- *  statement — and deliberately UNANCHORED, for the reason the docblock above
- *  gives: the census's own labels put the entity word inside a company name. */
+// Rationale: docs/job-board-index-notes.md#n1222-export-const-site_label_word_source-b-in
 export const SITE_LABEL_WORD_SOURCE = "\\b(?:inc|llc|corp|foundation|gmbh|departments?)\\b";
 /** A cost-centre number. Three digits minimum: a one- or two-digit residue is
  *  as likely to be a street number or a floor. */
@@ -468,74 +220,28 @@ const P_HOME_OFFICE_ALL = new RegExp(HOME_OFFICE_TOKEN_SOURCE, "gi");
 const P_SITE_LABEL_WORD = new RegExp(SITE_LABEL_WORD_SOURCE, "i");
 const P_SITE_LABEL_NUMBER = new RegExp(SITE_LABEL_NUMBER_SOURCE);
 
-/** What is left of a vendor location field once the head-office token is
- *  removed and punctuation is collapsed, or null when the field never carried
- *  the token at all. Exported so the guard can print it. */
+// Rationale: docs/job-board-index-notes.md#n1223-export-function-homeofficeresidue-locati
 export function homeOfficeResidue(locationName: string | null | undefined): string | null {
   const s = String(locationName ?? "");
   if (!P_HOME_OFFICE_ANY.test(s)) return null;
   return s.replace(P_HOME_OFFICE_ALL, " ").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 }
 
-/** True only for a head-office SITE LABEL: the token and nothing else, the
- *  token and a bare cost-centre number, or a residue that names an
- *  organisation or a department anywhere in it. A residue that names only a
- *  place is not a site label. */
+// Rationale: docs/job-board-index-notes.md#n1224-export-function-ishomeofficesitelabel-lo
 export function isHomeOfficeSiteLabel(locationName: string | null | undefined): boolean {
   const residue = homeOfficeResidue(locationName);
   if (residue === null) return false;
   return residue === "" || P_SITE_LABEL_NUMBER.test(residue) || P_SITE_LABEL_WORD.test(residue);
 }
 
-/**
- * THE HEAD-OFFICE TOKEN REMOVED FROM A STRING THAT IS NOT THE POSTING'S OWN
- * WORDS ABOUT THE ROLE, so a building or an organisational unit can never be
- * read as a work-from-home policy. Returns null when nothing is left, which is
- * what detectWorkMode already treats as "this string says nothing".
- *
- * WHICH STRINGS, AND WHY NOT THE TITLE. A vendor's LOCATION LABEL, a
- * DEPARTMENT and a job CATEGORY name a building or a unit of the org chart. A
- * TITLE is the posting's own description of the role, where the phrase is a
- * genuine statement ("Berater Home Office" is a German remote posting, pinned
- * by its own older guard), so the title is never masked.
- *
- * MEASURED, on a census of every UKG board in JOB_SOURCES — 1,291 boards, page
- * 0 of each, 33,497 rows, 2026-09-27. 179 rows carry the token in a vendor
- * location label, and where those employers also answered their own
- * work-mode dropdown they said Hybrid on 32, On-site on 40 and Remote on only
- * 19: the label is not a remote statement on 72 of the 91 rows that settle it.
- * Feeding those labels to the detector UNMASKED would publish remote on 130 of
- * them — the same fabrication the Paylocity half of this build removes, moved
- * one vendor over. 7 more rows carry the token in the job CATEGORY ("HOME
- * OFFICE", "CM Home Office"); on 5 of them the employer's dropdown says
- * On-site, so the category reading was deleting the employer's own answer.
- *
- * Paylocity's HiringDepartment is masked for the same reason and is latent
- * rather than live: 0 of 3,646 rows across 30 boards sampled every tenth token
- * carry the token there (2026-09-27), and 0 of the 39 census rows do. It is
- * masked anyway because the repair migration's evidence string is the same
- * pair of columns, and the two runtimes have to read them the same way.
- */
+// Rationale: docs/job-board-index-notes.md#n1225-export-function-withouthomeofficetoken-s
 export function withoutHomeOfficeToken(s: string | null | undefined): string | null {
   if (typeof s !== "string" || !s.trim()) return null;
   const left = s.replace(P_HOME_OFFICE_ALL, " ").replace(/\s+/g, " ").trim();
   return left === "" ? null : left;
 }
 
-// A Map, not an object literal — the third instance of this hazard in this
-// codebase (see NAME_FIXES in company-display.ts and CATEGORY_ACCENT in
-// category-accent.ts). `VENDOR_MODE[v]` reaches Object.prototype, so a vendor
-// sending WorkplaceTypeCode "constructor" or "toString" would return a
-// FUNCTION, and `?? null` does not catch it because a function is not nullish.
-// Record<string,...> describes inherited keys as valid values, so TypeScript
-// cannot see it.
-//
-// The ORA_* codes are Oracle Recruiting Cloud's own vocabulary. Measured
-// 2026-07-29: where a vendor STATES a work mode we disagreed 72.3% of the time
-// (598 of 915 stored NULL, 64 stored wrong) — and Oracle was a large share of
-// that, because `ORA_REMOTE`.toLowerCase() is `ora_remote`, which matched
-// nothing here and fell through to null. 14,678 oracle postings, ~33% of which
-// carry a stated code.
+// Rationale: docs/job-board-index-notes.md#n974-const-vendor_mode-new-map-string-remote
 const VENDOR_MODE = new Map<string, "remote" | "hybrid" | "onsite">([
   ["remote", "remote"], ["hybrid", "hybrid"], ["onsite", "onsite"], ["on_site", "onsite"],
   // Oracle Recruiting Cloud
@@ -552,20 +258,10 @@ export function vendorWorkMode(v: string | null | undefined): "remote" | "hybrid
   return VENDOR_MODE.get(v.toLowerCase().replace(/[\s-]+/g, "_")) ?? null;
 }
 
-// Country from free-text location — deterministic and CONSERVATIVE: an explicit
-// country name, a comma-prefixed US state / Canadian province code, or a full
-// state/province name. No city geocoding, no guessing: a location we can't
-// place stays NULL and is simply excluded from the country filter (disclosed),
-// because "London" could be Ontario and "Georgia" could be Tbilisi.
+// Rationale: docs/job-board-index-notes.md#n975-const-country_patterns-readonlyarray-rea
 const COUNTRY_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
   [/\b(?:united states|u\.?s\.?a\.?|estados unidos)\b/i, "US"],
-  // "wales" is guarded against NEW SOUTH WALES, which is in Australia. The GB
-  // pattern sits at index 1 and the AU pattern at index 7, so on "Sydney, New
-  // South Wales, Australia" the word Wales won the race and the row shipped as
-  // United Kingdom. Measured live 2026-08-25: 25 of 25 rows returned for
-  // location="New South Wales" carried country GB. Plain "South Wales" IS
-  // Welsh, so only the "new south" prefix is excluded — same shape as the
-  // (?<!new ) guard on Mexico below.
+  // Rationale: docs/job-board-index-notes.md#n976-b-united-kingdom-england-scotland-new
   [/\b(?:united kingdom|england|scotland|(?<!new south )wales|northern ireland)\b|\bUK\b/i, "GB"],
   [/\b(?:germany|deutschland)\b/i, "DE"],
   [/\bcanada\b/i, "CA"],
@@ -575,10 +271,7 @@ const COUNTRY_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
   [/\b(?:australia|new south wales)\b/i, "AU"],
   [/\b(?:poland|polska)\b/i, "PL"],
   [/\b(?:spain|españa)\b/i, "ES"],
-  // (?<!new ): "Albuquerque, New Mexico" is a US state, not the country —
-  // measured 2026-08-24: 251 of 599 servable "new mexico" locations carried
-  // country=MX, including rows with an explicit "US," prefix, poisoning the
-  // country filter in both directions. "Mexico City"/"México" still match.
+  // Rationale: docs/job-board-index-notes.md#n977-b-new-mexico-m-xico-b
   [/\b(?<!new )(?:mexico|méxico)\b/i, "MX"],
   [/\b(?:brazil|brasil)\b/i, "BR"],
   [/\bphilippines\b/i, "PH"],
@@ -599,34 +292,7 @@ const COUNTRY_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
   [/\bhungary\b/i, "HU"],
   [/\b(?:finland|suomi)\b/i, "FI"],
   [/\bgreece\b/i, "GR"],
-  // AN ORGANISATION'S NAME IS NOT A PLACE, and this pattern was the proof.
-  // Many feeds put a FACILITY name in the location column rather than a town —
-  // "Beth Israel Deaconess Medical Center" is a Boston hospital, and a bare
-  // word-boundary test filed it, and every other site in that health system,
-  // under Israel. Measured live 2026-09-23 by walking the country=IL bucket
-  // (stated total 725, 682 rows walked): 100 rows = 14.7% of the bucket are
-  // the Boston-area system, every one of them Workday, every one of them one
-  // employer token. The seeker asking for jobs in Israel was handed a per-diem
-  // CT technologist in Massachusetts.
-  //
-  // Same shape as the (?<!new south )wales and (?<!new )mexico guards above:
-  // a narrow, named exception rather than a loosened pattern. "Beth Israel,
-  // Tel Aviv, Israel" still resolves — the comma-prefixed occurrence is not
-  // preceded by the qualifier and matches on its own.
-  //
-  // IT IS NOT THE ONLY MEMBER OF ITS CLASS, and the first version of this note
-  // said it was ("the word genuinely is the country everywhere else"). It is
-  // not: the same ordering — COUNTRY_PATTERNS ahead of the comma-prefixed
-  // state code — files US towns named after countries abroad. Walked live with
-  // the anon key on 2026-09-23: the PE bucket (667 rows read) holds "Peru, IN"
-  // twice and "Peru, IL" once, the TR bucket (504 rows) holds "Turkey, TX"
-  // twice. Those five rows are handled by a second, equally narrow guard in
-  // detectCountry rather than here, because the guard has to read the state
-  // code CASE-SENSITIVELY and these patterns are case-insensitive.
-  //
-  // These rows do not merely lose a wrong answer: they gain the right one. The
-  // same 14 rows fetched live from the vendor's own CXS detail return US on
-  // 14/14, which is the country the Workday place reader below now writes.
+  // Rationale: docs/job-board-index-notes.md#n978-b-beth-s-israel-b-i
   [/\b(?<!beth\s)israel\b/i, "IL"],
   [/\b(?:united arab emirates|uae|dubai|abu dhabi)\b/i, "AE"],
   [/\bsaudi arabia\b/i, "SA"],
@@ -643,11 +309,7 @@ const COUNTRY_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
   [/\b(?:turkey|türkiye)\b/i, "TR"],
   [/\bukraine\b/i, "UA"],
   [/\bcosta rica\b/i, "CR"],
-  // THIRTEEN COUNTRIES WHOSE OWN NAME DID NOT RESOLVE TO THEM.
-  // Found by sampling 5,000 postings that carry location text and no parsed
-  // country: 38 of them name a country outright and were still filed as
-  // unplaceable — "China", "Pakistan", "Ecuador". Roughly 1,280 postings
-  // board-wide. Not inference and not a guess; the text says where it is.
+  // Rationale: docs/job-board-index-notes.md#n979-bchina-b-i-cn
   [/\bchina\b/i, "CN"],
   [/\bpakistan\b/i, "PK"],
   [/\btaiwan\b/i, "TW"],
@@ -668,29 +330,7 @@ const COUNTRY_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
 const P_US_STATE_CODE = /,\s*(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|DC)(?![A-Za-z])/;
 const P_CA_PROV_CODE = /,\s*(ON|QC|BC|AB|MB|SK|NS|NB|PE|NL|YT|NT|NU)(?![A-Za-z])/;
 
-/**
- * A US TOWN NAMED AFTER A COUNTRY, FILED ABROAD BY PATTERN ORDER.
- *
- * detectCountry runs COUNTRY_PATTERNS before any state-code check, so a bare
- * country word beats the trailing comma-prefixed code that detectRegion's own
- * docblock calls the most certain form. Walked live with the anon key
- * 2026-09-23: "Peru, IN" x2 and "Peru, IL" in the PE bucket (667 rows read),
- * "Turkey, TX" x2 in the TR bucket (504 rows). Five rows, two employers'
- * worth of towns in Indiana, Illinois and Texas, all filed in South America
- * and Anatolia.
- *
- * REORDERING THE WHOLE TABLE WAS REFUTED BY THE SAME WALK, which is why this
- * is a named list and not a rule. The CN bucket holds "Shanghai, SD, China"
- * and "Weihai City, SD" — SD there is SHANDONG, not South Dakota, and running
- * the comma-prefixed state code ahead of the country words would move both of
- * those to the United States. A trailing two-letter code is only unambiguous
- * once you already know the country is the US, which is the thing being
- * decided. So: the two words measured to collide, and nothing speculative.
- *
- * The code must be UPPERCASE, the convention P_US_STATE_CODE already relies
- * on, so the case check is done in code — a case-insensitive pattern would
- * refuse "Lima, Peru, in the south".
- */
+// Rationale: docs/job-board-index-notes.md#n1226-export-const-us_state_codes-readonlyset
 /** The same fifty-one codes P_US_STATE_CODE carries, read off it so there is one list. */
 export const US_STATE_CODES: ReadonlySet<string> = new Set(
   (P_US_STATE_CODE.source.match(/\(([A-Z|]+)\)/)?.[1] ?? "").split("|").filter(Boolean),
@@ -700,54 +340,14 @@ function countryWordNamesAUsTown(s: string): boolean {
   const m = P_COUNTRY_WORD_US_TOWN.exec(s);
   return !!m && m[2] === m[2].toUpperCase() && US_STATE_CODES.has(m[2]);
 }
-// SOME FEEDS PUT THE STATE FIRST: "AR Hot Springs", "NC - Raleigh". The
-// comma-prefixed pattern above cannot see those, and they are the largest
-// recoverable class in the unplaced set — 146 of 5,000 sampled, roughly 4,900
-// postings board-wide.
-//
-// THE CODE LIST IS DELIBERATELY SHORTER THAN FIFTY. A leading two-letter token
-// is far weaker evidence than a trailing one: "OR Tambo" is an airport in
-// Johannesburg, "IN" and "ME" and "OK" and "HI" are English words, "DE" and
-// "LA" and "MA" open place names in other languages. Only codes that are not
-// words in English or common romance/germanic prefixes are listed, so a miss
-// here leaves a posting unplaced — which is the board's stated behaviour — and
-// never places it wrongly. GA is absent for the same reason it is absent from
-// the state-NAME pattern: Georgia is also a country.
+// Rationale: docs/job-board-index-notes.md#n980-const-p_us_state_code_leading
 const P_US_STATE_CODE_LEADING =
   /^(AK|AR|AZ|CT|FL|IA|KS|KY|MN|NC|ND|NH|NJ|NM|NV|NY|RI|SD|TN|TX|UT|VT|WI|WV|WY|IL|MO)\s*[-–—]?\s+[A-Za-z]/;
 
-// THE STATE-FIRST FORM WRITTEN WITH ITS PUNCTUATION (register S11-027).
-//
-// "SD, Aberdeen", "MN, Alexandria", "WV, Ghent", "OH, Lima", "VA - Richmond":
-// the short list above wants whitespace after the code and leaves out VA, MA,
-// CA, PA, GA and OH, so these reached the bare-city table and were filed in
-// Britain, Egypt, Belgium and Peru (Sanford alone: 23 rows served as GB, 2 as
-// EG), and about 1.8k such rows carried no region_code, which the WARN filing
-// gate requires. An upper-case code followed by a comma or a dash is not an
-// English word in that position, so all fifty-one count here, and the US-
-// prefixed structured form ("US-TX-Houston") too. Four readings still win over
-// it:
-//   - a Canadian province after the code, as its code or its name ("CA - ON,
-//     Ottawa", "CA, Ontario, London");
-//   - the leading code's own country's city in ANY later segment, split on the
-//     dash as well as the comma ("IN, Chennai", "CA - Toronto - Office", "DE -
-//     HQ - Berlin");
-//   - a string that names a country in words ("SD, Jinan, China");
-//   - for a code that is also a country the board carries in volume (below),
-//     no place we can read after it at all. "CA - BROSSARD BUILDING (PQBRO)",
-//     "IN, Bangalore Kar" and "DE - KOELN (COLOGNE) CENTER (DEKOL)" are
-//     Canada, India and Germany; read as states they were filed US-CA, US-IN
-//     and US-DE, and the ingest rewrote the stored CA/IN/DE with them.
-// A city the table files in a THIRD country stays evidence for the state:
-// that is the US town named after a city abroad ("SD, Aberdeen", "MN,
-// Alexandria", "PA, Ghent") this rule exists for.
+// Rationale: docs/job-board-index-notes.md#n981-const-p_us_state_code_leading_punct-new
 const P_US_STATE_CODE_LEADING_PUNCT = new RegExp(`^(${[...US_STATE_CODES].join("|")})\\s*[,\\-–—]\\s*(?=[A-Za-z])`);
 const P_US_PREFIXED_STATE = new RegExp(`^(?:US|USA)\\s*[-–—,]\\s*(${[...US_STATE_CODES].join("|")})\\s*(?:[-–—,]|$)`);
-// The state codes that are also ISO countries with real board volume. Read
-// live 2026-10-11 (job-board list, countOnly, by country): CA, DE and IN at
-// the 10,000 cap, ID 1,835, CO 1,797, AR 1,139, IL 982, MA 402, TN 168, PA
-// 142, MO 124, MT 56, KY 45, AZ 38, AL 21. The other collisions served under
-// 20 each (GA 3, MN 6, SD 6, VA 0), so a leading code there stays the state.
+// Rationale: docs/job-board-index-notes.md#n982-const-state_codes_that_are_countries_we_
 const STATE_CODES_THAT_ARE_COUNTRIES_WE_CARRY: ReadonlySet<string> = new Set([
   "AL", "AR", "AZ", "CA", "CO", "DE", "ID", "IL", "IN", "KY", "MA", "MO", "MT", "PA", "TN",
 ]);
@@ -772,6 +372,17 @@ function leadingPunctuatedState(s: string): string | null {
   return code;
 }
 
+/** Australian state codes a trailing two-letter code can carry (the others are three letters). */
+const AU_STATE_CODES: ReadonlySet<string> = new Set(["WA", "SA", "NT"]);
+
+/** "IL - Tel Aviv", "IN, Chennai": a leading code followed by a city the table files in the country that code names. */
+function leadingCodeItsOwnCountry(s: string): string | null {
+  const m = P_US_STATE_CODE_LEADING_PUNCT.exec(s);
+  if (!m) return null;
+  const places = s.slice(m[0].length).split(/[-–—,;·|/]/).map((x) => cityCountry(x.trim())).filter((c) => c !== null);
+  return places.includes(m[1]) ? m[1] : null;
+}
+
 /** The state a location's leading form states outright: "US-TX-Houston" or "SD, Aberdeen". */
 function leadingStatedState(s: string): string | null {
   return P_US_PREFIXED_STATE.exec(s)?.[1] ?? leadingPunctuatedState(s);
@@ -779,38 +390,8 @@ function leadingStatedState(s: string): string | null {
 const P_US_STATE_NAME = /\b(?:alabama|alaska|arizona|arkansas|california|colorado|connecticut|delaware|florida|hawaii|idaho|illinois|indiana|iowa|kansas|kentucky|louisiana|maine|maryland|massachusetts|michigan|minnesota|mississippi|missouri|montana|nebraska|nevada|new hampshire|new jersey|new mexico|new york|north carolina|north dakota|ohio|oklahoma|oregon|pennsylvania|rhode island|south carolina|south dakota|tennessee|texas|utah|vermont|virginia|washington|west virginia|wisconsin|wyoming)\b/i;
 const P_CA_PROV_NAME = /\b(?:ontario|quebec|british columbia|alberta|manitoba|saskatchewan|nova scotia|new brunswick|newfoundland)\b/i;
 
-// City→country fallback for locations with no country/state qualifier at all
-// ("Kuala Lumpur", "Pune, Maharashtra", bare "London"). Runs LAST, after every
-// country pattern and US-state/CA-province check — which is what makes the
-// ambiguous names safe: North American feeds essentially always qualify their
-// cities ("Melbourne, FL", "London, ON", "Dublin, OH"), so those resolve via
-// state/province BEFORE this table is consulted, and a bare segment is the
-// non-NA reading. Matching is exact-SEGMENT equality (split on commas etc.),
-// never substring — "Santiago de Compostela" does not match "santiago".
-// Bump COUNTRY_MAP_VERSION when this table changes; the backfill-country
-// sweep re-runs stored null-country rows against the current table.
-// 6: the country word may no longer be read out of an organisation name — see
-// the guarded pattern in COUNTRY_PATTERNS.
-// 7: nor out of a US town named after a country ("Peru, IN", "Turkey, TX") —
-// see countryWordNamesAUsTown.
-//
-// AND THE BUMP ALONE DOES NOT REPAIR THE ROWS IT INVALIDATES. The backfill
-// sweep selects `country IS NULL`: it fills gaps and has never corrected a
-// stored wrong answer, so the rows already holding the organisation-name
-// reading keep it however often this constant moves. What repairs them is the
-// vendor's own structured country, written by the Workday place reader below
-// through the detail sweeps — measured agreeing with 136 of 136 rows we had
-// already placed correctly, and disagreeing only where we were wrong.
-// 8 (2026-10-09, L7-14): a trailing ", XX" naming the city table's own
-// country wins ("Bangalore, IN", "Berlin, DE", "Toronto, ON, CA"), and an
-// upper-case trailing US state code beats a country word earlier in the
-// string ("Mexico, MO", "Lake Wales, FL", "... Albany, NY"); "tunis" added.
-// 9 (S11-027): a leading state code followed by a comma or a dash, any of the
-// fifty-one, and the "US-XX-" form, are the US ahead of the bare-city table
-// ("SD, Aberdeen" was GB, "OH, Lima" PE). Stored rows are re-derived as each
-// board is read again (the ingest recomputes country and region_code from the
-// location on every read); the backfill sweep re-runs the null-country rows.
-export const COUNTRY_MAP_VERSION = 9;
+// Rationale: docs/job-board-index-notes.md#n983-export-const-country_map_version
+export const COUNTRY_MAP_VERSION = 10;
 const CITY_COUNTRY = new Map<string, string>([
   ["aarhus", "DK"],
   ["aberdeen", "GB"],
@@ -1154,12 +735,7 @@ export function detectCountry(location: string | null | undefined): string | nul
   return countryOf(location, true);
 }
 
-/**
- * The country a location STATES, with no bare-city guess (register S11-027).
- * The vendor's own alpha-2 code is refused when the display location
- * contradicts it; a city-table reading of "Aberdeen" or "Alexandria" is a
- * guess, not a contradiction, so it must never veto the employer's code.
- */
+// Rationale: docs/job-board-index-notes.md#n1227-export-function-statedcountry-location-s
 export function statedCountry(location: string | null | undefined): string | null {
   return countryOf(location, false);
 }
@@ -1170,16 +746,16 @@ function countryOf(location: string | null | undefined, guessFromCity: boolean):
   // The two measured US towns whose names are countries — see the docblock on
   // countryWordNamesAUsTown for why this is a named pair and not a reordering.
   if (countryWordNamesAUsTown(s)) return "US";
-  // THE LAST TWO LETTERS FIRST (L7-14). A trailing ", XX" collides between a
-  // US state and an ISO country: "Bangalore, IN", "Berlin, DE", "Jakarta, ID",
-  // "Bogota, CO" were filed US, and "Toronto, ON, CA" too. When the leading
-  // segment is a city the table places in XX, XX is that country. Otherwise an
-  // upper-case state code at the very end is the US, ahead of a country word
-  // earlier in the string: "Mexico, MO" was MX, "Lake Wales, FL" GB.
+  // Rationale: docs/job-board-index-notes.md#n984-if-s-wa-sa-nt-s
+  if (/,\s*(?:WA|SA|NT)(?:\s+\d{4})?\s*$/.test(s) && cityCountry(s.split(",")[0]) === "AU") return "AU";
   const tail = P_TRAILING_CODE.exec(s);
   if (tail) {
     const city = cityCountry(s.split(",")[0]);
     if (city !== null && city === tail[1]) return city;
+    // Rationale: docs/job-board-index-notes.md#n985-const-segs-s-split-map-x
+    const segs = s.split(",").map((x) => x.trim());
+    if (tail[1] === "CA" && segs.length >= 3 && (P_CA_PROV_SEGMENT.test(segs[segs.length - 2]) || P_CA_PROV_NAME.test(segs[segs.length - 2]))) return "CA";
+    if (city === "AU" && AU_STATE_CODES.has(tail[1])) return "AU";
     if (US_STATE_CODES.has(tail[1])) {
       // ...unless the string names that same country in words: "India, IN".
       for (const [re, code] of COUNTRY_PATTERNS) if (code === tail[1] && re.test(s)) return code;
@@ -1189,6 +765,9 @@ function countryOf(location: string | null | undefined, guessFromCity: boolean):
   // The state-first form with its punctuation (S11-027), ahead of the country
   // words only because it already refuses a string that names a country.
   if (leadingStatedState(s) !== null) return "US";
+  // Rationale: docs/job-board-index-notes.md#n986-const-refused-leadingcodeitsowncountry-s
+  const refused = leadingCodeItsOwnCountry(s);
+  if (refused !== null) return refused;
   for (const [re, code] of COUNTRY_PATTERNS) if (re.test(s)) return code;
   if (P_US_STATE_CODE.test(s) || P_US_STATE_NAME.test(s) || P_US_STATE_CODE_LEADING.test(s)) return "US";
   if (P_CA_PROV_CODE.test(s) || P_CA_PROV_NAME.test(s)) return "CA";
@@ -1196,59 +775,13 @@ function countryOf(location: string | null | undefined, guessFromCity: boolean):
   return guessFromCity ? cityCountry(s) : null;
 }
 
-// ── THE SUBDIVISION WE ALREADY PARSED AND THREW AWAY ────────────────────────
-//
-// detectCountry above runs P_US_STATE_CODE, P_US_STATE_NAME,
-// P_US_STATE_CODE_LEADING, P_CA_PROV_CODE and P_CA_PROV_NAME on every posting
-// the ingest touches — and then answers "US" or "CA" and DISCARDS which state
-// or province it just identified. The work is done; only the result is
-// dropped.
-//
-// WHY THAT MATTERS MORE THAN IT SOUNDS. Pay-disclosure law is state-level, not
-// national: Colorado, California, New York, Washington, Illinois, Hawaii,
-// Maryland, Minnesota, New Jersey and Vermont each require a salary range on a
-// posting; most states require nothing. With only a country column, "does this
-// employer disclose pay where it is required to?" cannot be asked at all — the
-// board can score a company at country granularity and no finer. The same is
-// true of every geographic cut of the fill, churn and ghost numbers.
-//
-// AND IT IS ONLY RECOVERABLE WHILE THE ROW IS LIVE. The parse runs on the
-// location string in the feed payload; once a posting closes, its row is
-// deleted and the string goes with it. A subdivision not stamped today is not
-// stamped ever.
-//
-// The country behaviour above is untouched, byte for byte: this is a second,
-// additive read of the same string.
+// Rationale: docs/job-board-index-notes.md#n987-bump-when-the-vocabularies-or-the
 
-/** Bump when the vocabularies or the resolution order below change, exactly as
- *  COUNTRY_MAP_VERSION does for the country table — a stored region_code is
- *  only interpretable against the version of the rules that produced it. */
-// 2: the spelled-out-state-name branch refuses a string that names two or more
-// different states instead of taking the leftmost one.
-//
-// AND THE BUMP ALONE REPAIRS NOTHING — the same sentence COUNTRY_MAP_VERSION
-// now carries, said here too because a reader comparing the two constants
-// would otherwise reasonably infer that this one behaves like the country
-// backfill. It does not: there is no region_backfill meta key, no cursor and
-// no sweep that re-derives region_code on a version change. A stored region is
-// corrected only when a place write happens to touch that row (the detail
-// sweeps re-derive it with the pair they write), or by a region re-derive
-// sweep if one is ever built. Cost of leaving them, from the review walk of
-// 2026-09-23 (6,144 live rows A/B-tested against both rules): 1,033 reach the
-// spelled-out-name branch and 17 of those — 1.65% — change under version 2.
-// 3 (S11-027): the "US-XX-City" form and the punctuated state-first form
-// ("SD, Sioux Falls") name their state; a leading code and a spelled-out state
-// that disagree name none. The list read's put("region_code", ...) in the
-// ingest writes a re-derived non-null region over a stored one on the board's
-// next visit, which is how the ~1.8k "ST, City" rows with no region get one.
+// Rationale: docs/job-board-index-notes.md#n1228-export-const-region_map_version
+// Rationale: docs/job-board-index-notes.md#n988-export-const-region_map_version
 export const REGION_MAP_VERSION = 3;
 
-// The SAME 49 names P_US_STATE_NAME carries, as a map so the match can be
-// turned into a code. Georgia is absent here for the reason it is absent
-// there: it is also a country, and a name match would place an Atlanta-less
-// "Georgia" in the United States. A miss leaves the posting's region null,
-// which is the board's stated behaviour for anything it cannot place; it never
-// places one wrongly.
+// Rationale: docs/job-board-index-notes.md#n989-const-us_state_name_to_code-record-strin
 const US_STATE_NAME_TO_CODE: Record<string, string> = {
   alabama: "AL", alaska: "AK", arizona: "AZ", arkansas: "AR", california: "CA",
   colorado: "CO", connecticut: "CT", delaware: "DE", florida: "FL", hawaii: "HI",
@@ -1269,43 +802,13 @@ const CA_PROV_NAME_TO_CODE: Record<string, string> = {
   "new brunswick": "NB", newfoundland: "NL",
 };
 
-/** Longest name first so "west virginia" cannot be shadowed by "virginia" and
- *  "british columbia" cannot be shadowed by a shorter neighbour, whatever the
- *  object literal's order happens to be. Built once at module load. */
+// Rationale: docs/job-board-index-notes.md#n1229-const-namepattern-names-string
 const namePattern = (names: string[]) =>
   new RegExp(`\\b(${[...names].sort((a, b) => b.length - a.length).join("|")})\\b`, "i");
 const P_US_STATE_NAME_CAP = namePattern(Object.keys(US_STATE_NAME_TO_CODE));
 const P_CA_PROV_NAME_CAP = namePattern(Object.keys(CA_PROV_NAME_TO_CODE));
 
-/**
- * The US state or Canadian province as an ISO 3166-2 subdivision code —
- * "US-TX", "CA-ON" — or null when the string does not name one.
- *
- * TAKES THE ALREADY-RESOLVED COUNTRY, and only ever answers inside it. A
- * region is a claim about where a job is, and the country is the stronger,
- * already-adjudicated half of that claim; re-deriving it here would be a
- * second implementation free to disagree with the first. Any country but US or
- * CA returns null — the parse simply has no vocabulary for it.
- *
- * WHY THE CODE CARRIES ITS COUNTRY PREFIX. A bare "CA" is California to the US
- * table and Canada to the country table, and "NL" is Newfoundland here and the
- * Netherlands there. Storing "US-CA" makes the stored value unambiguous
- * without a join, which is the whole point of writing it down.
- *
- * RESOLUTION ORDER, strongest evidence first, mirroring what the patterns' own
- * comments say about their reliability:
- *   1. the comma-prefixed code — "Austin, TX" — the most certain form;
- *   2. the spelled-out name — "Austin, Texas";
- *   3. the LEADING bare code — "TX Austin" — deliberately the weakest and
- *      last, from a deliberately short code list.
- *
- * THE ONE COLLISION IT REFUSES TO GUESS AT. ", CA" is California in a US
- * string and Canada in a Canadian one, and detectCountry resolves "Toronto,
- * ON, CA" to US via exactly that token. When a US-branch match lands on CA and
- * the same string also names a Canadian province, this returns null rather
- * than filing a Toronto posting in California. Null is recoverable; a wrong
- * subdivision, written into a longitudinal series, is not.
- */
+// Rationale: docs/job-board-index-notes.md#n1230-export-function-detectregion
 export function detectRegion(
   location: string | null | undefined,
   country: string | null | undefined,
@@ -1331,43 +834,7 @@ export function detectRegion(
     if (code[1] === "CA" && (P_CA_PROV_CODE.test(s) || P_CA_PROV_NAME_CAP.test(s))) return null;
     return `US-${code[1]}`;
   }
-  // A STATE NAME ONLY DENOTES A STATE WHEN THE STRING NAMES ONE STATE.
-  //
-  // This was `P_US_STATE_NAME_CAP.exec(s)` — a leftmost-wins search over the
-  // whole string, which answers with whichever state name appears EARLIEST
-  // rather than whichever one the posting is in. Two measured failures, both
-  // from live location strings (4,500 Workday rows + 4,500 board rows walked
-  // 2026-09-23, 1,253 of which reach this branch):
-  //
-  //   "Kansas City, Missouri"            -> US-KS. The state name is inside
-  //                                        the CITY's name; the state is the
-  //                                        segment after it. Same for
-  //                                        "Kansas, Oklahoma", a town in OK.
-  //   "Chicago, Illinois; New York, New
-  //    York; Philadelphia, Pennsylvania" -> US-IL. A multi-site requisition
-  //                                        filed at whichever site the
-  //                                        employer happened to list first.
-  //
-  // The second class is the one worth being careful about: picking the last
-  // name instead of the first would be just as arbitrary, and a subdivision is
-  // written into a longitudinal series that outlives the posting. So neither
-  // is chosen. When the string names two or more DIFFERENT states it does not
-  // denote one state, and this returns null — the same answer it already gives
-  // for the ", CA" collision directly above, for the same stated reason.
-  //
-  // COST, MEASURED: 14 of 1,253 rows reaching this branch = 1.12%, and every
-  // one of the 14 is currently either flatly wrong or a multi-site string
-  // claiming a precision it does not have. Nothing correct is lost. The
-  // dash-delimited Workday form ("San Antonio-Texas-United States of America")
-  // names one state and is untouched, as is the repeated-name form ("New York,
-  // New York"), which names one state twice.
-  //
-  // The comma-prefixed CODE branch above is deliberately not changed: a code
-  // is unambiguous and trailing, and "Kansas City, MO" already resolves to MO
-  // through it. The province branch is not changed either — of 180 rows that
-  // reached it, zero named two different provinces.
-  // The structured "US-TX-Houston" form states its state outright (S11-027):
-  // ahead of the names, so "US-DC-Washington" is not read as Washington State.
+  // Rationale: docs/job-board-index-notes.md#n990-const-prefixed-p_us_prefixed_state-exec
   const prefixed = P_US_PREFIXED_STATE.exec(s);
   if (prefixed?.[1]) return `US-${prefixed[1]}`;
   const named = new Set<string>();
@@ -1386,95 +853,20 @@ export function detectRegion(
   return null;
 }
 
-/**
- * Country and subdivision from one location string, in one call.
- *
- * The ingest resolves country as `j.country ?? detectCountry(j.location)` —
- * the feed's structural field when it has one, the parse otherwise — so the
- * `stated` argument exists to let a caller hand in the vendor's own country
- * and still get a region parsed out of the free text beneath it.
- */
-// ── THE PLACE THE EMPLOYER STATED AND WE THREW AWAY ─────────────────────────
-//
-// Workday's LIST payload gives us `locationsText`, which on a multi-site
-// requisition is the literal string "2 Locations" — a count, not a place. The
-// board stores it verbatim and files the row with no country at all.
-//
-// The vendor's own CXS job-detail response, which the description and
-// structured sweeps ALREADY download for every one of these postings and
-// already read remoteType and startDate out of, carries the answer outright:
-// a display location string and an ISO 3166-1 alpha-2 country code, both
-// employer-stated, neither inferred. Reading them costs zero extra requests.
-//
-// MEASURED LIVE 2026-09-23, 367 unplaced Workday postings fetched from CXS:
-//   367/367 (100%) carry jobPostingInfo.jobRequisitionLocation.country.alpha2Code
-//   0/367   (0%)   carry ...jobRequisitionLocation.country.country.alpha2Code
-// The second path is the one the proposal specified. Coded as written it would
-// have returned undefined on every posting while every local check stayed
-// green — which is why the shape below is pinned by a guard that walks real
-// captured payloads rather than by a comment.
-//
-// 369 of 370 attempted fetches returned HTTP 200 (one 403, one 404).
+// Rationale: docs/job-board-index-notes.md#n1231-export-function-isplacelesslocation-v-st
+// Rationale: docs/job-board-index-notes.md#n991-block
 
-/**
- * The literal multi-site placeholders Workday puts in `locationsText` where a
- * place should be: "2 Locations", "3 sites". A count of places is not a place,
- * and a row carrying one names nowhere to a reader.
- *
- * EVERY WORD HERE WAS OBSERVED; THE FIRST VERSION'S WERE HALF GUESSED. It read
- * `locations|sites|standorte|lieux|ubicaciones` under a measurement that
- * covered only the English half — and the real French form is `emplacements`,
- * which was not in the list, so those rows were never filled. The vocabulary
- * below is the complete set of `<number> <word>` location strings seen on a
- * 15,000-row cursor walk of live Workday rows with the anon key, 2026-09-23:
- *
- *   locations 381 · sites 10 · emplacements 2 · standorte 1 · locaties 1
- *
- * plus 535 rows with an empty location string, and three strings of the same
- * SHAPE that are real places and must not match — "3 Kedzie" twice and one
- * "N DMC" — which is why the word list is closed rather than `\d+\s+\w+`.
- * `lieux` and `ubicaciones` appeared nowhere in the walk and are gone.
- *
- * THE COUNTS ARE THE VOCABULARY'S BASIS, NOT A BOARD-WIDE RATE. The walk is
- * id-ordered and a tenant's postings cluster in id order, so a sample's share
- * moves with where it starts: this walk puts "N locations" at 2.54% of Workday
- * rows and empty at 3.57%, while a 3,841-row sample of the same corpus the
- * same day put them at 10.1% and 7.4%. Either says the shape is common;
- * neither is a rate to publish.
- */
+// Rationale: docs/job-board-index-notes.md#n1232-export-function-isplacelesslocation-v-st
 export function isPlacelessLocation(v: string | null | undefined): boolean {
   const s = String(v ?? "").trim();
   if (!s) return true;
   return /^\d+\s+(?:locations?|sites?|emplacements?|standorte|locaties)$/i.test(s);
 }
 
-/**
- * Vendors whose LIST payload states no work mode: their normalizers read one
- * from the list's location and title text only (detectWorkMode), while the
- * detail sweeps read the vendor's structured field (n419).
- */
+// Rationale: docs/job-board-index-notes.md#n1233-export-const-list_mode_unstated-readonly
 export const LIST_MODE_UNSTATED: ReadonlySet<string> = new Set(["workday", "jazzhr"]);
 
-/**
- * Whether the refresh may write the list's work mode over the stored one (n419).
- *
- * On a list-silent vendor two readers write the column: the list (text only)
- * and the detail sweeps (the structured field, and only into an empty
- * column). The refresh used to let the list overwrite every rotation, undoing
- * the sweep and logging each undo as an employer edit; .89 first froze any
- * stored mode, which also froze a mode the list itself had guessed after the
- * employer changed the text it was guessed from ("Remote - US" to "Austin,
- * TX" kept the row under the remote filter for good). The rule:
- *  - an empty stored mode is the list's to fill;
- *  - list text unchanged (a placeholder over a stored place counts as the
- *    same location): the list has nothing new, whichever reader wrote the
- *    stored mode;
- *  - the employer changed the text: a stored mode the OLD text reads as came
- *    from the list (or agrees with it) and is re-read from the new text, even
- *    to null, after which the structured sweep (WHERE work_mode IS NULL)
- *    re-reads the detail; a stored mode the old text does not explain came
- *    from the detail page and stays.
- */
+// Rationale: docs/job-board-index-notes.md#n1234-export-function-listmayrewritemode
 export function listMayRewriteMode(
   source: string,
   prev: { work_mode?: string | null; location?: string | null; title?: string | null },
@@ -1555,11 +947,7 @@ export function workdayDetailPlace(payload: unknown): WorkdayDetailPlace {
   // The two readings of the SAME claim: the country the payload names beside
   // the display location, and the country the display location itself names.
   const fromDescriptor = typeof descRaw === "string" ? detectCountry(descRaw) : null;
-  // What the display location STATES, never a bare-city guess (S11-027): the
-  // city table read "SD, Aberdeen" as Britain and nulled the vendor's own US.
-  // A location that leads with the vendor's own code ("CA - Brossard" beside
-  // alpha-2 CA) names that country first, not a state: only what follows the
-  // code can contradict it.
+  // Rationale: docs/job-board-index-notes.md#n992-const-lead-location-p_us_state_code_lead
   const lead = location ? P_US_STATE_CODE_LEADING_PUNCT.exec(location) : null;
   const fromLocation = !location
     ? null
@@ -1575,13 +963,7 @@ export function workdayDetailPlace(payload: unknown): WorkdayDetailPlace {
     country = code ?? fromDescriptor ?? fromLocation;
   }
   const addl = Array.isArray(info.additionalLocations) ? info.additionalLocations : [];
-  // A FURTHER SITE IN ANOTHER COUNTRY MAKES THE COUNTRY A CLAIM ABOUT ONE
-  // SITE, NOT ABOUT THE POSTING. Measured on the review walk of 2026-09-23: of
-  // 68 unplaced rows a detail sweep would fill, four gained a country that
-  // another site of the same requisition contradicts — a resmed requisition
-  // written US with a Canadian site, a lonza one written MX with US, BE, IN
-  // and FR sites, a maersk one written PE with a Chilean site, a lego one
-  // written DK with a London site.
+  // Rationale: docs/job-board-index-notes.md#n993-if-country
   if (country) {
     for (const a of addl) {
       const other = typeof a === "string" ? detectCountry(a) : null;
@@ -1609,29 +991,13 @@ interface GreenhouseJob {
   departments?: Array<{ name?: string }>;
 }
 
-// A PLACE NAME IS NOT A LATITUDE. Some Greenhouse employers append the
-// geocode to the location string, and the board rendered it verbatim:
-// "Waipahu, HI 96797 | 21.396369637 | -158.01142287". Measured 2026-08-24:
-// 398 of 1,000 sampled pipe-bearing locations carry this suffix, every one of
-// them Greenhouse.
-//
-// The pattern is narrow ON PURPOSE. A pipe in a location is usually REAL —
-// "Latin & South America | Remote", "3 Locations   |   PT-Orlando" — so only
-// a trailing run of decimal numbers is removed, never the separator itself.
+// Rationale: docs/job-board-index-notes.md#n994-const-coord_suffix-s-s-d-d
 const COORD_SUFFIX = /\s*\|\s*-?\d{1,3}\.\d{3,}(?:\s*\|\s*-?\d{1,3}\.\d{3,})?\s*$/;
 export function stripCoordinateSuffix(location: string): string {
   return location.replace(COORD_SUFFIX, "").trim();
 }
 
-// Greenhouse and Lever both run separate EU infrastructure with its own API
-// and hosted-page hosts, and a tenant lives on exactly one side — the US host
-// answers 404 for an EU tenant, verified live 2026-08-31 (asobostudio). EU
-// boards carry a compound-token prefix (same pattern as workday's
-// tenant~dc~site); everything downstream — posting ids, the catalog, the
-// closure log — keeps the FULL prefixed token as the board's identity, and
-// only these two helpers ever strip it, at the moment a hostname is derived.
-// They live here rather than in index.ts so the fetch paths, the tests, and
-// the census tooling's live probes all derive hosts from the same functions.
+// Rationale: docs/job-board-index-notes.md#n995-export-function-greenhouseapi-token-stri
 export function greenhouseApi(token: string): { host: string; token: string } {
   return token.startsWith("eu~")
     ? { host: "boards.eu.greenhouse.io", token: token.slice(3) }
@@ -1645,20 +1011,7 @@ export function leverApi(token: string): { host: string; token: string } {
 }
 
 export function normalizeGreenhouse(raw: { jobs?: GreenhouseJob[] }, company: string, token: string): JobPosting[] {
-  // AN APPLY LINK SHARED BY FIVE TITLES IS A BOARD INDEX, NOT A JOB.
-  //
-  // absolute_url is employer-configured, and some employers point every
-  // posting at their careers landing page. Measured 2026-08-23: 270 URLs on
-  // the board were shared by >=5 distinct titles, carrying 11,202 postings —
-  // BAYADA alone hung 1,601 postings (944 titles) off jobs.bayada.com/en/jobs.
-  // The button looks fine and lands the reader on a search page.
-  //
-  // The per-job page is reconstructible from data already in hand:
-  // job-boards.greenhouse.io/{token}/jobs/{id}, verified HTTP 200 against a
-  // live posting. The whole board arrives in one payload, so counting distinct
-  // titles per URL is free. Five is the audit's measured threshold — a real
-  // per-job URL is never legitimately shared by five different titles, while
-  // two or three can be one reposted role.
+  // Rationale: docs/job-board-index-notes.md#n996-const-titlesperurl-new-map-string-set
   const titlesPerUrl = new Map<string, Set<string>>();
   for (const j of raw.jobs ?? []) {
     const u = j.absolute_url ?? "";
@@ -1666,9 +1019,7 @@ export function normalizeGreenhouse(raw: { jobs?: GreenhouseJob[] }, company: st
     if (!titlesPerUrl.has(u)) titlesPerUrl.set(u, new Set());
     titlesPerUrl.get(u)!.add(j.title ?? "");
   }
-  // The reconstructed per-job page must sit on the SAME side of the Atlantic
-  // as the board: an EU tenant's pages are only served by the EU hosted-pages
-  // host, and the path wants the bare tenant slug, not the routing prefix.
+  // Rationale: docs/job-board-index-notes.md#n997-const-euboard-token-startswith-eu
   const euBoard = token.startsWith("eu~");
   const pageHost = euBoard ? "job-boards.eu.greenhouse.io" : "job-boards.greenhouse.io";
   const pageToken = euBoard ? token.slice(3) : token;
@@ -1686,9 +1037,7 @@ export function normalizeGreenhouse(raw: { jobs?: GreenhouseJob[] }, company: st
       workMode,
       remote: workMode === "remote",
       department: j.departments?.[0]?.name ?? null,
-      // first_published only — updated_at re-stamps on any edit, so using it
-      // as a posting date silently biases every age stat young. Undated is
-      // honest; mis-dated is not.
+      // Rationale: docs/job-board-index-notes.md#n998-postedat-j-first_published-null
       postedAt: j.first_published ?? null,
       category: categorize(j.title ?? "", j.departments?.[0]?.name),
       salary: null,
@@ -1713,9 +1062,7 @@ interface LeverJob {
 }
 
 const CURRENCY_SYMBOL: Record<string, string> = { USD: "$", EUR: "€", GBP: "£", CAD: "CA$", AUD: "A$" };
-// EXACT FIGURES (L7-05). This rounded every end to the nearest thousand
-// ("£4k–4k" for £3,700 a month, "$1k–1k" for $1,200-$1,300), and the annual
-// columns were parsed from that text: azul stored 48,000 against a true 44,400.
+// Rationale: docs/job-board-index-notes.md#n999-const-fmtamount-n-number-n-tolocalestrin
 const fmtAmount = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 2 });
 
 /** A vendor's pay-interval word to the board's period, or null when it names none. */
@@ -1749,67 +1096,7 @@ export function leverSalary(r?: { min?: number; max?: number; currency?: string;
   return `${sym}${range}${interval ? interval.toLowerCase() : ""}`;
 }
 
-// ── a vendor's own structured pay → the board's salary TEXT ─────────────────
-//
-// TWO VENDORS PUBLISH A PAY FIGURE WE NEVER READ, AND THIS IS THE ONE PLACE
-// EITHER BECOMES A STRING. Personio's XML feed carries a compensation block on
-// 13.9% of feed positions (444 of 3,198 over a 200-token random sample);
-// Paylocity's and Breezy's posting pages carry a schema.org MonetaryAmount on
-// rows that today show nothing at these rates, each with its own denominator
-// because they are not one number: PAYLOCITY 90 of 240 pages (37.5%) on the
-// first capture and 46 of 150 (30.7%) on an independent second draw, across many
-// tenants; BREEZY 33 of 60 (55.0%) then 33 of 80 (41.3%), and 29 of those 33 are
-// ONE tenant's duplicate subcontractor postings — the very tenant whose WEEK
-// label this reader now refuses. So Breezy's rate is a fact about one employer
-// and must never be quoted as a vendor coverage figure. Measured 2026-09-26/27.
-//
-// FOUR RULES, AND EVERY ONE OF THEM IS A REFUSAL.
-//
-// 1. THE EMPLOYER'S DIGITS, UNCHANGED. Two decimals always, group separators,
-//    and an explicit period word. NOT leverSalary: its fmtAmount rounds to "k"
-//    above 1,000, so a stated €3,500–€4,000 per month comes out "€4k–4k/month"
-//    and parses to an annual floor of 48,000 where the employer said 42,000 —
-//    €6,000 of a raise nobody offered. Lever's annual USD ranges happen to
-//    survive that rounding, which is why it went unnoticed; Personio's monthly
-//    figures sit exactly in the band it destroys.
-//
-// 2. NO ARITHMETIC HERE. The annualisation, the part-time suppression, the
-//    per-period magnitude windows and the currency rules all live in
-//    parseSalaryStructured and stay there. This function's only job is to hand
-//    that parser a sentence in its own vocabulary. Which means the parser is
-//    also the arbiter of whether the pair is publishable at all: see rule 4.
-//
-// 3. A SINGLE FIGURE IS A SINGLE BOUND. A node's lone `value`, and a pair whose
-//    ends are equal (live: Breezy's Oil Changers team member, 16 to 16 per
-//    hour), are one bound. Printing "16.00 – 16.00" would dress one number as a
-//    range. A pair whose max is BELOW its min is two readings that disagree and
-//    is refused outright rather than resolved to either end.
-//
-// 4. THE TEXT MUST READ BACK AS WHAT WENT IN, or nothing is written. The
-//    formatted sentence is parsed before it is returned and refused unless the
-//    parser recovers the same floor, the same ceiling, the same period, and a
-//    non-null annual figure. That single check does three jobs at once: it is
-//    the label/magnitude contradiction gate (the parser's own per-period
-//    windows, so there is one source of truth for the thresholds and no copy of
-//    them here); it is the proof that no rounding changed the employer's number
-//    (a third decimal place cannot survive a two-decimal render, so it is
-//    refused instead of published rounded); and it means a future edit to this
-//    formatter cannot quietly emit a sentence the parser reads differently.
-//
-//    Refusing at TEXT level rather than letting the annual columns go null is
-//    deliberate and measured: the annual columns are not the only reader of this
-//    string. The card prints the text, and the stated-pay predicate tests the
-//    text column — so a row whose annual was honestly refused still displays
-//    "€1,100.00 – 1,300.00 per year" and still counts as an employer who
-//    disclosed pay. Eight of 444 measured Personio blocks (1.8%) are labelled
-//    that wrongly, and 3 of 170 measured page nodes (1.8%) are too.
-//
-// KNOWN AND ACCEPTED LOSS: the parser's monthly ceiling is 90,000 for a
-// non-parity currency, which is below a normal monthly wage in several
-// high-nominal currencies, so a genuine IDR 47,000,000 per month (live,
-// bauhauserde) is refused here. Silence costs a reader a figure; a published
-// figure we cannot stand behind costs them the decision. See the salary-extract
-// lane for widening that ceiling per currency.
+// Rationale: docs/job-board-index-notes.md#n1000-export-type-statedpayperiod-hour-day-wee
 
 export type StatedPayPeriod = "hour" | "day" | "week" | "month" | "year";
 
@@ -1825,27 +1112,7 @@ const STATED_PAY_PERIOD_WORD: Record<StatedPayPeriod, string> = {
 /** Two decimals, always: never three, which the parser reads as a thousands group. */
 const fmtStatedPay = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-/**
- * One vendor-stated pair → one sentence the shared parser can read, or null.
- *
- * The currency marker is the vendor's three-letter code when it gave one (the
- * same shape pinpointSalary already publishes, and the form the parser resolves
- * most exactly — an ISO code beats every symbol and is never country-dependent,
- * where a bare "$" on a Canadian row resolves to CAD against a vendor field
- * that said USD). Failing a code, the vendor's own symbol, which keeps the
- * figure honest on screen even where the parser can label no currency. Failing
- * both, NOTHING IS WRITTEN — never a currency inferred from the office or the
- * country, and never a bare number either.
- *
- * A bare number used to be the outcome of falling off the end of the code test:
- * a node stating `"currency": "US Dollar"` or `"$"` published "20.00 – 22.00 per
- * hour", a figure whose unit of account the reader cannot know, on a card that
- * prints it beside a company name. The annual columns did stay out of the pay
- * filters (salary_rank_usd is NULL without a currency), but salary_min_annual
- * was still written, so the row counted in the pay-coverage denominators that
- * read that column, and the stated-pay predicate tests the TEXT. An unreadable
- * currency is treated exactly as an unreadable period: silence.
- */
+// Rationale: docs/job-board-index-notes.md#n1235-function-statedpaytext
 function statedPayText(
   period: StatedPayPeriod,
   min: number | null,
@@ -1869,9 +1136,7 @@ function statedPayText(
   return text;
 }
 
-/** A positive figure from a vendor string or number, or null. Locale-ambiguous
- *  groupings ("3.500,00") are refused rather than guessed at: reading one wrong
- *  is a 1,000x error and no measured feed writes them. */
+// Rationale: docs/job-board-index-notes.md#n1236-const-statedpayfigure-v-unknown-number-n
 const statedPayFigure = (v: unknown): number | null => {
   if (typeof v === "number") return Number.isFinite(v) && v > 0 ? v : null;
   const s = String(v ?? "").trim();
@@ -1888,14 +1153,7 @@ const PERSONIO_PAY_PERIOD: Record<string, StatedPayPeriod> = {
   yearly: "year",
 };
 
-/**
- * Personio's own compensation block → the board's salary text.
- *
- * Verified live 2026-09-27 on the five tenants named in the audit: the block is
- * min, max, currencySymbol, currencyCode and a period word, inside the XML
- * normalizePersonio is already handed. A lone upper bound is a ceiling and not
- * this job's pay, so it is refused — only a floor can be published as one.
- */
+// Rationale: docs/job-board-index-notes.md#n1237-export-function-personiosalary-si
 export function personioSalary(si: {
   min?: string | number | null;
   max?: string | number | null;
@@ -1911,38 +1169,7 @@ export function personioSalary(si: {
   return statedPayText(period, min, statedPayFigure(si.max), si.currencyCode ?? null, si.currencySymbol ?? null);
 }
 
-/**
- * Do two pay strings name the SAME money?
- *
- * Asked at the one place where a change to the pay TEXT is about to be recorded
- * as an employer editing their posting. The first time a vendor arm starts
- * reading a structured compensation field, every row the description miner had
- * already covered in prose gets a differently-shaped string for the identical
- * figures — measured on Personio 2026-09-27, 16 of 16 such rows, e.g. a mined
- * "€63,000–€95,000" against the vendor's own 63,000 to 95,000 per year. Those
- * are not sixteen employers changing their pay.
- *
- * FLOOR, CEILING, CURRENCY — AND A PERIOD ONLY ONE SIDE STATES.
- *
- * The exemption the first draft made was "the period does not count", and that
- * was wrong in the one direction that matters: a period is the largest multiplier
- * in this whole lane. "$15,000.00 per week" and "$15,000 per year" have the same
- * floor, the same ceiling and the same currency, and they are 780,000 against
- * 15,000 — an employer restating the period IS the employer moving the number,
- * and the caller writes the new text either way, so an unlogged period change is
- * a 52x pay edit that leaves no trace in the one log here that cannot be
- * re-derived.
- *
- * What the exemption is actually for is narrower and is testable: OUR reading
- * gaining an answer the prose never gave. The measured case is period NULL on one
- * side — a mined "€63,000–€95,000" parses to no period at all, against the
- * vendor's own "per year" — and there the vendor has not contradicted anything,
- * it has filled a blank. So the period is excused when one side states none, and
- * compared whenever both do.
- *
- * Identical strings return false: there is nothing to decide, and the caller
- * asks only about strings that already differ.
- */
+// Rationale: docs/job-board-index-notes.md#n1238-export-function-statesthesamemoney-a-str
 export function statesTheSameMoney(a: string | null, b: string | null, country?: string | null): boolean {
   if (!a || !b || a === b) return false;
   const x = parseSalaryStructured(a, country ?? null, null);
@@ -1952,35 +1179,7 @@ export function statesTheSameMoney(a: string | null, b: string | null, country?:
   return samePeriod && x.min === y.min && x.max === y.max && x.currency === y.currency;
 }
 
-/**
- * MUST THE STORED-TEXT RE-SWEEP LEAVE THIS ROW'S ANNUAL ALONE?
- *
- * The re-sweep (`backfill-salary`) re-parses every row holding salary text
- * whenever SALARY_PARSE_VERSION moves, and it reads the row, not the vendor
- * payload. For most of the board that is the same context the ingest parse had:
- * the part-time signal lives in the title or the description, and the sweep
- * passes both. For one vendor it is NOT: Personio states the schedule in the
- * same payload as the pay, and the word that fires the guard reaches the ingest
- * parse through `employmentTypeText`, which is never stored in a column. The
- * board's own enum is stored — and the sweep passes it, so `part_time` fires the
- * widened guard — but the vendor's third state, full-or-part-time, is normalised
- * to `full_time` because the role CAN be full-time. For those rows the sweep sees
- * a full-time enum over an hourly wage and computes the 2,080-hour annual the
- * ingest parse deliberately refused. That is the 2026-08-25 $44/hour incident,
- * restored by a version bump rather than by a code change, which is why it needs
- * a rule and not a comment.
- *
- * THE RULE IS NARROW ON PURPOSE. It refuses only the promotion of a NULL annual
- * to a number, only on a load-dependent period (where annualising is an
- * assumption about how much someone works rather than arithmetic on a figure the
- * employer stated), and only for the sources whose schedule words no column
- * carries. A row whose stored annual is WRONG is still corrected, which is what
- * the sweep is for; a monthly or yearly Personio figure is untouched; every other
- * vendor is untouched. What it costs is that a future parser improvement reaches
- * these rows at ingest and on a pay-text correction rather than through the
- * sweep — silence until the row is re-read, instead of a figure we cannot stand
- * behind.
- */
+// Rationale: docs/job-board-index-notes.md#n1239-export-const-schedule_words_not_stored-r
 export const SCHEDULE_WORDS_NOT_STORED: ReadonlySet<string> = new Set(["personio"]);
 
 export function sweepRefusesAnnual(
@@ -2002,61 +1201,7 @@ const LD_PAY_PERIOD: Record<string, StatedPayPeriod> = {
   YEAR: "year",
 };
 
-/**
- * THE BAND A FIGURE MUST SIT IN TO BE PUBLISHABLE AT THIS LABEL, per period,
- * `[lo, hi)`. `null` means NO MEASURED BAND EXISTS AND THE LABEL IS REFUSED.
- *
- * EXHAUSTIVE OVER StatedPayPeriod ON PURPOSE. The first draft hand-wrote two
- * refusals — hour >= 200 and year < 20,000 — beside a label map that admitted
- * five periods, so DAY, WEEK and MONTH reached the formatter with nothing but the
- * shared parser's own windows (day 40–5,000; week 200–20,000; month 800–35,000),
- * and those windows are exactly the bands a figure of a DIFFERENT period lands
- * in. The two bounds that existed were the two the captured fixtures happened to
- * contain. Because this table is typed over every period, a label cannot be
- * admitted again without someone deciding its band, and the decision is data, not
- * a branch someone forgot to add.
- *
- * WHAT IS MEASURED, and it is only two labels. Of 170 live pay nodes across 390
- * captured Paylocity and Breezy pages (2026-09-26/27): 121 HOUR, 38 YEAR, 5 WEEK,
- * 0 DAY, 0 MONTH in the primary capture, with a later Breezy sweep adding DAY
- * from one further employer. So:
- *
- *   hour — refused at or above 200. This costs real rows: 3 of 124 measured
- *   hourly nodes are a telemedicine physician at 100–200 per hour, which is
- *   plausible and is thrown away. 200 is where the parser stops being able to
- *   tell an hourly rate from a weekly or daily one on magnitude alone, and an
- *   employer who mislabels the period is exactly the employer whose figure we
- *   cannot check. The floor is the parser's own (7) and is not restated here.
- *
- *   year — refused below 20,000, because an annual label under it is an hourly
- *   rate mislabelled. Purcell Tire states 24 to 28 and calls it annual; Valley
- *   Behavioral states 45.31 to 56.64 and calls it annual (45.31 x 2080 = 94,245,
- *   the figure its own posting text prints); Lindt Sprüngli Canada states 16.95
- *   and calls it annual. Three of 41 measured annual-labelled nodes, 7.3%.
- *   Without this the board publishes a wage understated 2,080-fold.
- *   THE COST OF THIS ONE IS A NON-US SILENCE AND IT IS UNMEASURED. The argument
- *   for 20,000 is a US full-time-minimum argument, and it is applied with no
- *   regard to currency on a lane that also covers Breezy's non-US tenants (159
- *   GB rows live, 2026-09-27). A genuine employer-stated EUR 14,000 or GBP 15,000
- *   full-time year is refused here — a real loss, in the direction of silence
- *   rather than a false figure, accepted because the alternative is publishing an
- *   hourly rate as a salary and no measurement separates the two. Not gated on
- *   PARITY_CURRENCIES, because the currencies this loses rows in ARE parity
- *   currencies; a parity gate would move the loss, not remove it.
- *
- *   day, week, month — REFUSED, with the specific reason that every WEEK node
- *   measured is a subcontractor crew's weekly volume rather than one person's
- *   wage: 5 of 5 are home-genius-exteriors, `{unitText: "WEEK", value: 5000}`,
- *   title "James Hardie Siding Subcontractor Crews Wanted", employmentType
- *   CONTRACTOR, and a description that states no figure at all ("Competitive pay
- *   rates and prompt payment"). Published, that node became "USD 5,000.00 per
- *   week" and 260,000 in salary_min_annual — the column salary_rank_usd is
- *   generated from, so the row entered the pay floor, the pay ceiling and the
- *   highest-pay sort at $260k on a figure no employer stated as a salary. The
- *   parser's week window [200, 20,000] cannot refuse it and detectPartTime has no
- *   contractor vocabulary. Constructed through the same path, MONTH 30,000 gives
- *   360,000 and DAY 5,000 gives 1,300,000, each passing every other gate.
- */
+// Rationale: docs/job-board-index-notes.md#n1240-const-ld_period_band-record-statedpayper
 const LD_PERIOD_BAND: Record<StatedPayPeriod, { lo: number; hi: number } | null> = {
   // lo 0 defers to the parser's own hourly floor rather than restating it.
   hour: { lo: 0, hi: 200 },
@@ -2066,19 +1211,7 @@ const LD_PERIOD_BAND: Record<StatedPayPeriod, { lo: number; hi: number } | null>
   year: { lo: 20_000, hi: Number.POSITIVE_INFINITY },
 };
 
-/**
- * A posting page's schema.org MonetaryAmount → the board's salary text.
- *
- * THE PERIOD LABEL HERE IS EMPLOYER-TYPED AND MEASURABLY WRONG, which is what
- * separates this reader from Personio's. So the label alone never decides: the
- * figure must also sit inside the band LD_PERIOD_BAND states for that label, and
- * a label with no measured band publishes nothing. See that table for every
- * bound, its evidence and its cost — they are stated once, there, so this
- * function cannot grow a threshold of its own.
- *
- * Everything else — the hourly floor, the currency rules, the annualisation —
- * comes from the shared parser through statedPayText and is not restated here.
- */
+// Rationale: docs/job-board-index-notes.md#n1241-export-function-ldbasesalarytext-pay
 export function ldBaseSalaryText(pay: {
   currency: string | null;
   min: number | null;
@@ -2088,9 +1221,7 @@ export function ldBaseSalaryText(pay: {
 } | null | undefined): string | null {
   if (!pay) return null;
   const period = LD_PAY_PERIOD[String(pay.unitText ?? "").trim().toUpperCase()];
-  // No period label, no publishable figure: the vendor states the unit on every
-  // one of the 170 measured nodes that carry a figure, so this is a refusal of
-  // an unmeasured shape rather than a branch with a cost.
+  // Rationale: docs/job-board-index-notes.md#n1001-if-period-return-null
   if (!period) return null;
   const band = LD_PERIOD_BAND[period];
   if (!band) return null;
@@ -2148,9 +1279,7 @@ export function normalizeAshby(raw: { jobs?: AshbyJob[] }, company: string, toke
     .filter((j) => j.isListed !== false)
     .map((j) => {
       const location = j.location ?? "";
-      // isRemote is Ashby's own boolean, so it outranks free text — but not a
-      // workplaceType that NEGATES remote, which workModeFrom already refuses
-      // to let text override. A vendor contradicting itself resolves to null.
+      // Rationale: docs/job-board-index-notes.md#n1002-const-workmode-statedworkmode-j-workplac
       const workMode = statedWorkMode(j.workplaceType)
         ?? (j.isRemote === true && stripNegatedRemote(String(j.workplaceType ?? "")) === String(j.workplaceType ?? "")
               ? "remote" as const
@@ -2192,10 +1321,7 @@ export function normalizeSmartRecruiters(raw: { content?: SmartRecruitersPosting
         p.location?.fullLocation ||
         [p.location?.city, p.location?.region, p.location?.country?.toUpperCase()].filter(Boolean).join(", ");
       const department = p.function?.label ?? p.department?.label ?? null;
-      // HYBRID BEFORE REMOTE. SmartRecruiters sets both flags on a hybrid
-      // posting that also allows remote days; remote-first read those as fully
-      // remote, inverting detectWorkMode's own documented order ("Hybrid
-      // remote" is hybrid). Same correction applied to recruitee and rippling.
+      // Rationale: docs/job-board-index-notes.md#n1003-const-workmode-p-location-hybrid-true
       const workMode = p.location?.hybrid === true ? "hybrid" as const
         : p.location?.remote === true ? "remote" as const
         : detectWorkMode(location, p.name);
@@ -2298,10 +1424,7 @@ export function normalizeBambooHR(raw: { result?: BambooJob[] }, company: string
     .filter((j) => j.applyUrl !== "");
 }
 
-// ── Rung-3 vendors ──────────────────────────────────────────────────────────
-// Two of these feeds are XML (Personio's official feed, Teamtailor's RSS), so a
-// pair of tiny CDATA-aware helpers stands in for a parser dependency. They only
-// need to handle the well-formed, machine-generated feeds these vendors emit.
+// Rationale: docs/job-board-index-notes.md#n1004-all-tag-tag-block-contents-in
 
 /** All <tag>…</tag> block contents in document order. */
 export function xmlBlocks(xml: string, tag: string): string[] {
@@ -2343,10 +1466,7 @@ export function normalizeRecruitee(raw: { offers?: RecruiteeOffer[] }, company: 
     .map((o) => {
       const location = o.location || [o.city, o.country].filter(Boolean).join(", ");
       const sal = o.salary;
-      // THE PERIOD IS salary.period (L7-04). This read salary.type, which the
-      // API does not send, so "EUR 1350 - 1575" lost its month: a monthly
-      // figure under 20k got no annual value and one of 20k+ was read as
-      // annual at a twelfth (nts CZK 35,000/month stored 35,000 a year).
+      // Rationale: docs/job-board-index-notes.md#n1005-const-salperiod-sal-vendorpayperiod-sal
       const salPeriod = sal ? vendorPayPeriod(sal.period ?? sal.type) : null;
       const salMin = sal ? statedPayFigure(sal.min) : null;
       const salMax = sal ? statedPayFigure(sal.max) : null;
@@ -2375,14 +1495,7 @@ export function normalizeRecruitee(raw: { offers?: RecruiteeOffer[] }, company: 
         postedAt: safeIso(o.published_at ?? o.created_at),
         category: categorize(o.title ?? "", o.department),
         salary,
-        // THE CANONICAL HOST, NOT THE EMPLOYER'S VANITY DOMAIN. careers_url is
-        // a hostname the employer once configured and can abandon — measured
-        // 2026-08-23: 47 vanity hosts NXDOMAIN and 11 more fail TLS, stranding
-        // 233 servable postings behind an Apply button that cannot load (one
-        // was not even a valid hostname: careers.ferillis, no TLD). The
-        // canonical {token}.recruitee.com/o/{slug} — which sat here as the
-        // FALLBACK — answered HTTP 200 for all 233 of them. The vendor
-        // guarantees the canonical; the vanity host is cosmetics that rots.
+        // Rationale: docs/job-board-index-notes.md#n1006-employmenttype-normalizeemploymenttype-o
         employmentType: normalizeEmploymentType(o.employment_type_code),
         applyUrl: safeUrl(o.slug ? `https://${token}.recruitee.com/o/${o.slug}` : (o.careers_url ?? "")),
       };
@@ -2403,16 +1516,7 @@ export function normalizePersonio(xml: string, company: string, token: string, h
       // <schedule> is an enum (full-time | part-time | …), NOT a description —
       // the "never infer from prose" rule is intact.
       const workMode = detectWorkMode(office, title, schedule);
-      // THE FEED HAS ALWAYS CARRIED COMPENSATION AND THIS LINE SAID IT DID NOT.
-      // Until now the field below read `null` under a comment asserting the feed
-      // states no pay, and a repo-wide search for the element's name returned
-      // nothing — so the claim was both false and load-bearing: Personio was the
-      // board's least transparent vendor at 0.62% stated pay while the employer's
-      // own minimum, maximum, currency and period sat unread in a string this
-      // function was already handed. Verified live 2026-09-27 on five tenants,
-      // and the element is present on 13.9% of feed positions across a
-      // 200-token random sample (444 of 3,198). Zero extra requests, zero extra
-      // bytes. Every refusal that keeps this honest lives in personioSalary.
+      // Rationale: docs/job-board-index-notes.md#n1007-const-pay-xmlblocks-block-salaryinformat
       const pay = xmlBlocks(block, "salaryInformation")[0];
       return {
         id: `personio:${token}:${id}`,
@@ -2438,9 +1542,7 @@ export function normalizePersonio(xml: string, company: string, token: string, h
         // <schedule> is full-time | part-time | full-or-part-time; the mapper
         // reads full-or-part-time as full_time (the role CAN be full-time).
         employmentType: normalizeEmploymentType(schedule),
-        // The same words, unmapped, so the part-time guard can read them when
-        // the pay above is an hourly rate. See the field's own docblock for why
-        // the enum one line up cannot do this job.
+        // Rationale: docs/job-board-index-notes.md#n1008-employmenttypetext-schedule-null
         employmentTypeText: schedule || null,
         applyUrl: id ? safeUrl(`https://${token}.${host}/job/${id}`) : "",
       };
@@ -2484,21 +1586,7 @@ export function normalizeBreezy(raw: BreezyPosition[], company: string, token: s
     .filter((j) => j.applyUrl !== "" && j.title !== "" && j.id !== `breezy:${token}:`);
 }
 
-// ── iCIMS ───────────────────────────────────────────────────────────────────
-// iCIMS hosts each employer's modern career site on the employer's OWN domain
-// (careers.company.com), and that site's frontend calls a public JSON endpoint:
-//   GET https://{careersite-domain}/api/jobs?page={n}&limit=100
-// No auth, no cookies, no JS. Each item nests its fields under `data`.
-//
-// Richest feed of any vendor we ingest: real posted_date (ISO), structured
-// city/state/country, employment_type, AND stated salary min/max — the only
-// source besides description-mined text that gives us pay directly.
-//
-// Discovery is two-hop (2026-07-26 census): CDX/CT enumeration finds the
-// classic careers-{tenant}.icims.com portal, whose /jobs/search?ss=1&in_iframe=1
-// returns a tiny JS redirect naming the modern domain, which is what we store
-// as the token. Token = the career-site host itself (dots and all), so the
-// fetcher needs no separate mapping.
+// Rationale: docs/job-board-index-notes.md#n1009-export-interface-icimsjobdata
 export interface IcimsJobData {
   req_id?: string | number | null;
   title?: string | null;
@@ -2524,9 +1612,7 @@ export interface IcimsJobData {
 }
 export interface IcimsJobItem { data?: IcimsJobData | null }
 
-/** iCIMS stated pay → the board's freeform salary string. Zeros mean "the
- *  feed carries the field but this posting states nothing" — never rendered
- *  as "$0", the same honesty rule the salary miner follows. */
+// Rationale: docs/job-board-index-notes.md#n1242-function-icimssalary-d-icimsjobdata-stri
 function icimsSalary(d: IcimsJobData): string | null {
   const num = (v: unknown): number | null => {
     const n = typeof v === "string" ? Number(v.replace(/[^0-9.]/g, "")) : typeof v === "number" ? v : NaN;
@@ -2541,19 +1627,7 @@ function icimsSalary(d: IcimsJobData): string | null {
   return null;
 }
 
-/**
- * iCIMS' own ISO-2 stands, unless the posting's FIRST site (the text before
- * any ";") names a US state or a Canadian province and the code is another
- * country: Smoothie King's stores at "KCMO, MO" arrived as FR (L7-15).
- *
- * Not the whole location through detectCountry (S11-059): that tests country
- * words ahead of spelled-out states, so "China Lake, California" read CN,
- * "Peru, Illinois" PE, "Rome, Georgia" IT, "Dublin, Georgia" IE, and a
- * multi-site "New York, New York; Toronto, Canada" CA, each over the feed's
- * correct US. A two-letter code that is also the feed's own code ("Bangalore,
- * IN", "Amsterdam, NL") is the feed's country, not a state or province.
- * Without a feed code, the text decides as everywhere else.
- */
+// Rationale: docs/job-board-index-notes.md#n1243-export-function-icimscountry-feedcode-un
 export function icimsCountry(feedCode: unknown, location: string | null | undefined): string | null {
   const code = /^[A-Za-z]{2}$/.test(String(feedCode ?? "")) ? String(feedCode).toUpperCase() : null;
   if (code === null) return detectCountry(location);
@@ -2576,16 +1650,7 @@ export function normalizeIcims(raw: IcimsJobItem[], company: string, token: stri
       const dept = typeof d.department === "string" && d.department.trim() ? d.department.trim() : null;
       const cat = Array.isArray(d.category) ? d.category.filter(Boolean).map((c) => String(c).trim()).join(", ")
         : typeof d.category === "string" ? d.category.trim() : "";
-      // location_type is the vendor's own structured field; text detection only
-      // fills in when the feed doesn't state one (never guessed from prose).
-      //
-      // This arm used to read location_type with its own substring ladder,
-      // which reproduced BOTH defects of the shared detector's old shape: no
-      // negation ("Non-Remote" .includes("remote") -> remote, which is how
-      // "RN (PRN - Not Remote)" reached the Remote filter) and remote tested
-      // BEFORE hybrid, so location_type "Hybrid Remote" read as remote while
-      // the identical text in a title read as hybrid. statedWorkMode is the
-      // one reader now; "office" survives as an onsite word there.
+      // Rationale: docs/job-board-index-notes.md#n1010-const-workmode-workmodefrom-d-location_t
       const workMode = workModeFrom(d.location_type, location, d.title, cat);
       return {
         id: `icims:${token}:${externalId}`,
@@ -2600,17 +1665,9 @@ export function normalizeIcims(raw: IcimsJobItem[], company: string, token: stri
         postedAt: safeIso(d.posted_date ?? d.create_date),
         category: categorize(String(d.title ?? ""), dept ?? cat),
         salary: icimsSalary(d),
-        // country_code is the FEED's own ISO-2 — better than location-text
-        // detection, same treatment Rippling gets.
-        // ...UNLESS the location text says plainly somewhere else (L7-15): the
-        // Smoothie King tenant's stores at "KCMO, MO" and "Indian Land, SC"
-        // carried country_code FR.
+        // Rationale: docs/job-board-index-notes.md#n1011-country-icimscountry-d-country_code-loca
         country: icimsCountry(d.country_code, location),
-        // The feed's apply_url ends in /login — an email-collection wall with
-        // NO job content (verified live 2026-07-26: 9/9 sampled). The sibling
-        // /job path renders the actual posting; never send a seeker to a
-        // data-capture page before they can even read the role.
-        // Already modeled for the salary refusal logic; now a filterable field.
+        // Rationale: docs/job-board-index-notes.md#n1012-employmenttype-normalizeemploymenttype-d
         employmentType: normalizeEmploymentType(d.employment_type),
         applyUrl: safeUrl(String(d.apply_url ?? (externalId ? `https://${token}/jobs/${externalId}/job` : "")).replace(/\/login$/, "/job")),
       };
@@ -2618,15 +1675,7 @@ export function normalizeIcims(raw: IcimsJobItem[], company: string, token: stri
     .filter((j) => j.applyUrl !== "" && j.title !== "" && !j.id.endsWith(":"));
 }
 
-// ── Rippling ATS ────────────────────────────────────────────────────────────
-// Rippling publishes no documented list API; the public board page embeds the
-// job list as first-party structured JSON (Next.js __NEXT_DATA__, react-query
-// dehydratedState). That's still the vendor's own data channel — user decision
-// 2026-07-16 to include it — but it's an implementation detail that can move,
-// so the vendor canary watches it and the breaker quarantines on drift.
-// List items carry NO posted date and NO description (undated postings stay
-// honest-undated; boards are light by nature), but DO carry structured
-// country codes — better than location-text detection.
+// Rationale: docs/job-board-index-notes.md#n1013-export-interface-ripplingjobitem
 export interface RipplingJobItem {
   id?: string | number;
   name?: string;
@@ -2641,9 +1690,7 @@ export interface RipplingJobItem {
   }> | null;
 }
 
-/** Pull the job-posts page out of a Rippling board page's __NEXT_DATA__.
- *  Returns null when the payload shape isn't recognizable (drift signal —
- *  distinct from a legitimately empty items array). */
+// Rationale: docs/job-board-index-notes.md#n1244-export-function-extractripplingjobposts
 export function extractRipplingJobPosts(html: string): { items: RipplingJobItem[]; totalPages: number } | null {
   const m = html.match(/__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
   if (!m) return null;
@@ -2653,26 +1700,7 @@ export function extractRipplingJobPosts(html: string): { items: RipplingJobItem[
     };
     const dehydrated = data.props?.pageProps?.dehydratedState;
     const queries = dehydrated?.queries ?? [];
-    // A BOARD WITH NO OPEN ROLES IS NOT A BROKEN PARSER.
-    //
-    // Rippling renders a perfectly healthy page for an employer that is not
-    // hiring: dehydratedState is present and `queries` is an EMPTY ARRAY,
-    // because there was nothing to prefetch. The old code could not tell that
-    // from shape drift and returned null for both, so the caller threw
-    // "rippling payload shape unrecognized" and the board was published to the
-    // operator as a vendor failure.
-    //
-    // Measured 2026-08-25 over 198 of 1,051 rippling boards: 2 hit this (1%),
-    // matching the 6 standing failures in the live failure list. Both
-    // whistler-platinum-jobs and elevationcapital return 157KB of valid page
-    // with dehydratedState present, queries [], zero occurrences of
-    // "job-posts", and the words "No open" in the rendered text. Neither is
-    // broken; neither is hiring.
-    //
-    // The drift signal is KEPT and made sharper: queries present but carrying
-    // no job-posts key still returns null, because that is what a real shape
-    // change looks like. Only the empty array is read as an honest zero — the
-    // same distinction the personio empty-feed fix drew earlier.
+    // Rationale: docs/job-board-index-notes.md#n1014-if-dehydrated-queries-length-return-item
     if (dehydrated && queries.length === 0) return { items: [], totalPages: 1 };
     const q = queries.find((x) => Array.isArray(x.queryKey) && x.queryKey[2] === "job-posts");
     if (!q?.state?.data || !Array.isArray(q.state.data.items)) return null;
@@ -2689,15 +1717,7 @@ export function normalizeRippling(items: RipplingJobItem[], company: string, tok
       const first = locs[0] ?? {};
       const location = [first.name, locs.length > 1 ? `+${locs.length - 1} more` : ""].filter(Boolean).join(" ");
       const cc = typeof first.countryCode === "string" && /^[A-Z]{2}$/.test(first.countryCode) ? first.countryCode : null;
-      // Per-location workplaceType read through the shared label reader, so a
-      // negated or unexpected spelling cannot invert here either. HYBRID is
-      // asked first: a posting with one hybrid site and one remote site is
-      // hybrid, matching detectWorkMode's own order.
-      // `.some(m => m === …)` and not `.includes("…")`: these are already
-      // CLASSIFIED modes, but a substring call on a work-mode word inside a
-      // vendor arm is the exact shape of the defect, and the guard that keeps
-      // a seventh ladder out bans it outright rather than trying to tell the
-      // two apart by eye.
+      // Rationale: docs/job-board-index-notes.md#n1015-const-sitemodes-locs-map-l-statedworkmod
       const siteModes = locs.map((l) => statedWorkMode(l.workplaceType));
       const workMode = siteModes.some((m) => m === "hybrid") ? "hybrid" as const
         : siteModes.some((m) => m === "remote") ? "remote" as const
@@ -2725,19 +1745,7 @@ export function normalizeRippling(items: RipplingJobItem[], company: string, tok
     .filter((j) => j.applyUrl !== "" && j.title !== "" && j.id !== `rippling:${token}:`);
 }
 
-// ── Paylocity ─────────────────────────────────────────────────────────────
-// Paylocity publishes no documented list API; the public board page at
-// recruiting.paylocity.com/recruiting/jobs/All/{token} embeds the FULL job
-// list as first-party JSON in a page-global pageData assignment. A
-// Rippling-class source — the vendor's own data channel, but an
-// implementation detail that can move, so the extractor's null is a drift
-// signal and never an empty board. Live-captured shape 2026-08-30 across
-// three boards (24 + 21 + 17 postings): items carry JobId, JobTitle,
-// LocationName, a real PublishedDate (ISO with offset), HiringDepartment,
-// a structured IsRemote boolean, and a JobLocation whose Country is a
-// "USA"-style word, not ISO-2. IndeedRemoteType also rides along but its
-// enum is unmeasured (2 on every observed row, remote or not) — only
-// IsRemote is trusted, per the trinary-or-nothing work-mode contract.
+// Rationale: docs/job-board-index-notes.md#n1016-export-interface-paylocityjobitem
 export interface PaylocityJobItem {
   JobId?: string | number;
   JobTitle?: string;
@@ -2754,14 +1762,7 @@ export interface PaylocityJobItem {
   } | null;
 }
 
-/** Pull the embedded job list out of a Paylocity board page.
- *  Returns null when the payload isn't recognizable (drift — the caller must
- *  treat the board as FAILED, not empty). A parsed payload whose Jobs array
- *  is empty is an employer not hiring: an honest zero, same distinction the
- *  personio and rippling fixes drew. Jobs ABSENT or non-array stays null,
- *  because that is what a real shape change looks like — a detail page
- *  carries the same page-global assignment with entirely different keys, and
- *  reading it as an empty board would zero a live employer. */
+// Rationale: docs/job-board-index-notes.md#n1245-export-function-extractpaylocitypagedata
 export function extractPaylocityPageData(html: string): { items: PaylocityJobItem[]; moduleTitle: string | null } | null {
   const m = html.match(/window\.pageData\s*=\s*(\{[\s\S]*?\})\s*;?\s*<\/script>/);
   if (!m) return null;
@@ -2781,29 +1782,11 @@ export function extractPaylocityPageData(html: string): { items: PaylocityJobIte
 
 export function normalizePaylocity(items: PaylocityJobItem[], company: string, token: string): JobPosting[] {
   return (Array.isArray(items) ? items : [])
-    // The public payload can embed internal-only postings; their Details page
-    // sits behind a login wall, and verify-all already refuses to count them —
-    // ingest and verify must agree on what a posting is.
+    // Rationale: docs/job-board-index-notes.md#n1017-filter-j-j-isinternal-true
     .filter((j) => j.IsInternal !== true)
     .map((j) => {
       const loc = j.JobLocation ?? {};
-      // LocationName used to win unconditionally over the payload's own
-      // City/State. On this vendor it is frequently the employer's BUILDING or
-      // cost centre rather than a place — see isHomeOfficeSiteLabel for the
-      // 39-of-39 census — so a site label yields to the structured fields the
-      // same payload already carries. Zero extra requests: City and State
-      // arrive in the list payload fetchPaylocity downloads.
-      //
-      // THE SUBSTITUTION IS UNCONDITIONAL ON IsRemote, AND THAT IS A DECISION.
-      // A vendor-stated-remote row whose LocationName is a site label loses the
-      // label and is displayed at the City/State from the SAME payload — the
-      // employer's own structured place, not an inference of ours — while its
-      // mode stays remote from the flag. A cost-centre code ("1000-Home
-      // Office") is worth less to a reader than the city the employer typed
-      // beside it, and every other remote posting on this board already prints
-      // whatever place its vendor states. Live count of rows this affects: 0
-      // (IsRemote is false on 39 of 39 census rows), so it is a decided
-      // behaviour with no shipping footprint, and the guard asserts it.
+      // Rationale: docs/job-board-index-notes.md#n1018-const-sitename-string-j-locationname-tri
       const siteName = String(j.LocationName ?? "").trim();
       const cityState = [loc.City, loc.State].filter(Boolean).join(", ").trim();
       const siteLabel = isHomeOfficeSiteLabel(siteName);
@@ -2811,23 +1794,7 @@ export function normalizePaylocity(items: PaylocityJobItem[], company: string, t
       const title = String(j.JobTitle ?? "").trim();
       const dept = typeof j.HiringDepartment === "string" && j.HiringDepartment.trim() ? j.HiringDepartment.trim() : null;
       const externalId = String(j.JobId ?? "").trim();
-      // IsRemote is the vendor's structured field; text detection only fills
-      // in when the feed doesn't state one (never guessed from prose). A site
-      // label is never handed to the detector even when it has to stay as the
-      // displayed location (no City/State in the payload): the name of a
-      // building is not a statement about working from home. IsRemote false is
-      // silence, not onsite — the SmartRecruiters false/false precedent — so
-      // what these rows resolve to is whatever the TITLE states, or NULL.
-      //
-      // AND THE DEPARTMENT IS MASKED TOO, or the fix has a hole exactly the
-      // shape of the defect. An employer whose site labels read "HOME OFFICE
-      // DEPARTMENTS" names departments the same way, and the department string
-      // reached the detector untouched — so the building came back in through
-      // the other door while the location yielded correctly. A department is a
-      // unit of the org chart, never a policy; the TITLE is left alone because
-      // there the phrase is the posting's own words. The repair migration's
-      // evidence string masks the same column for the same reason, so the two
-      // runtimes cannot disagree about these rows.
+      // Rationale: docs/job-board-index-notes.md#n1019-const-modelocation-sitelabel-citystate-l
       const modeLocation = siteLabel ? cityState : location;
       const workMode = j.IsRemote === true
         ? "remote" as const
@@ -2847,14 +1814,9 @@ export function normalizePaylocity(items: PaylocityJobItem[], company: string, t
         // anything older, so no pre-filtering here.
         postedAt: safeIso(j.PublishedDate),
         category: categorize(title, dept),
-        // The list payload's Description is a ~110-char teaser, not the JD —
-        // storing it would hand salary mining and the fit scan a stub that
-        // looks like a document. Null is honest; the detail page carries the
-        // full text if a sweep ever wants it.
+        // Rationale: docs/job-board-index-notes.md#n1020-salary-null
         salary: null,
-        // Country arrives structurally but as a word ("USA"), not ISO-2 — map
-        // the stated value, and fall back to text detection over the whole
-        // location for anything unrecognized.
+        // Rationale: docs/job-board-index-notes.md#n1021-country-usa-us-u-s-a
         country: /^(?:usa|us|u\.s\.a?\.?|united states(?: of america)?)$/i.test(rawCountry)
           ? "US"
           : /^[A-Za-z]{2}$/.test(rawCountry)
@@ -2867,24 +1829,7 @@ export function normalizePaylocity(items: PaylocityJobItem[], company: string, t
     .filter((j) => j.applyUrl !== "" && j.title !== "" && !j.id.endsWith(":"));
 }
 
-// ── ADP Workforce Now ─────────────────────────────────────────────────────
-// The career-center SPA at workforcenow.adp.com is a JS shell, but the JSON it
-// renders from is a public unauthenticated endpoint on the same host
-// (…/careercenter/public/events/staffing/v1/job-requisitions) — the page's own
-// data channel, confirmed by watching the live page's network calls
-// 2026-08-31. First-party but undocumented, so the canary/breaker discipline
-// applies, same as rippling and paylocity.
-//
-// Live-measured shape, 2026-08-31, 100 requisitions across four real boards
-// (7 + 13 + 82 + 19): every row carries the requisition id the detail
-// endpoint takes, a title and a real posting timestamp; a numeric share id
-// arrives in the string custom fields on 79/79 external rows and is the value
-// the SPA itself appends to a posting's share link; the employer's own salary
-// display string sits beside it on 65/79; department strings existed but were EMPTY on
-// all 100 (organizationalUnits: empty on all 100 as well), so department ships
-// only when a row actually states one. NOWHERE in any payload — list, detail,
-// branding config, page shell — does the employer's NAME appear; the catalog
-// entry is the only thing that names the board, exactly the oracle situation.
+// Rationale: docs/job-board-index-notes.md#n1022-export-interface-adpnamecodedfield
 export interface AdpNameCodedField {
   nameCode?: { codeValue?: string };
   stringValue?: string;
@@ -2917,25 +1862,13 @@ export interface AdpJobRequisition {
 const adpField = (fields: AdpNameCodedField[] | undefined, code: string): AdpNameCodedField | undefined =>
   (Array.isArray(fields) ? fields : []).find((f) => f?.nameCode?.codeValue === code);
 
-/**
- * A board token is the career-center URL's cid GUID — plus the ccId when the
- * employer runs a non-default career center, because ccId SELECTS the board:
- * measured live 2026-08-31, one cid answered 19 postings on its default center
- * and 1 on its second (ccId 9200080780705_2). Compound form cid~ccId, same
- * separator contract as workday/oracle; a bare cid means the default center.
- */
+// Rationale: docs/job-board-index-notes.md#n1246-export-function-adpboardparams-token-str
 export function adpBoardParams(token: string): { cid: string; ccId: string } {
   const [cid, ccId] = String(token).split("~");
   return { cid: cid ?? "", ccId: ccId || "19000101_000001" };
 }
 
-// The vendor's own salary display string ("22.50 To 26.40 (USD) Hourly",
-// "70000.00 To 85000.00 (USD) Annually") — reshaped into the board's idiom
-// when it parses, passed through verbatim when the employer typed something
-// else. This is the string the SPA itself gates display on, so using it never
-// surfaces a range the employer chose not to render; payGradeRange also rides
-// the payload but exists on rows whose display string is absent, and mining it
-// would publish figures the career site does not show.
+// Rationale: docs/job-board-index-notes.md#n1023-const-adp_salary_freq-record-string-stri
 const ADP_SALARY_FREQ: Record<string, string> = { hourly: "per hour", annually: "per year", monthly: "per month", weekly: "per week" };
 function adpSalary(raw: unknown): string | null {
   const s = String(raw ?? "").trim();
@@ -2945,27 +1878,14 @@ function adpSalary(raw: unknown): string | null {
   const num = (x: string) => {
     const n = Number(x.replace(/,/g, ""));
     if (!Number.isFinite(n)) return x;
-    // Whole figures group ("70,000"); fractional ones keep their cents
-    // ("22.50"), because an hourly rate with the cents lopped off reads as a
-    // different number.
+    // Rationale: docs/job-board-index-notes.md#n1024-return-number-isinteger-n-n-tolocalestri
     return Number.isInteger(n) ? n.toLocaleString("en-US") : n.toFixed(2);
   };
   const freq = ADP_SALARY_FREQ[m[4].toLowerCase()] ?? m[4].toLowerCase();
   return `${m[3].toUpperCase()} ${num(m[1])}–${num(m[2])} ${freq}`;
 }
 
-// Country never arrives as a structured field — measured 2026-08-31, zero of
-// 67 requisition locations carried a country code on the address — so it is
-// read from the tail of the location display string, which on every
-// country-bearing sample ends with a two-letter code (usually preceded by a
-// two-letter region). Two traps live here: the two-letter word people write
-// for Britain that is NOT its ISO code (normalizePaylocity paid for that one
-// already), and the tail of a countryless city-plus-state string being a US
-// state that IS some other country's ISO code — California/Canada is only the
-// loudest of a dozen such collisions. A state-shaped tail is read as a country
-// only when it follows another two-letter code (the measured three-segment
-// shape); otherwise the string falls to detectCountry, whose state patterns
-// read it as US.
+// Rationale: docs/job-board-index-notes.md#n1025-const-us_state_tail-al-ak-az-ar
 const US_STATE_TAIL = /^(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|DC)$/;
 function adpCountry(locationText: string): string | null {
   const segs = locationText.split(",").map((x) => x.trim()).filter(Boolean);
@@ -2981,10 +1901,7 @@ export function normalizeAdp(items: AdpJobRequisition[], company: string, token:
   const { cid, ccId } = adpBoardParams(token);
   const boardUrl = `https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=${cid}&ccId=${ccId}&lang=en_US`;
   return (Array.isArray(items) ? items : [])
-    // The public payload marks internal-only postings with an indicator; their
-    // apply flow sits behind the employee login. Same line paylocity drew:
-    // ingest and verify must agree on what a posting is, and neither counts
-    // these.
+    // Rationale: docs/job-board-index-notes.md#n1026-filter-j-adpfield-j-customfieldgroup-ind
     .filter((j) => adpField(j.customFieldGroup?.indicatorFields, "InternalPostingFlag")?.indicatorValue !== true)
     .map((j) => {
       const title = String(j.requisitionTitle ?? "").trim();
@@ -2995,16 +1912,9 @@ export function normalizeAdp(items: AdpJobRequisition[], company: string, token:
         [first.address?.cityName, first.address?.countrySubdivisionLevel1?.codeValue].filter(Boolean).join(", ").trim();
       const location = [firstText, locs.length > 1 ? `+${locs.length - 1} more` : ""].filter(Boolean).join(" ");
       const dept = String(adpField(j.customFieldGroup?.stringFields, "HomeDepartment")?.stringValue ?? "").trim() || null;
-      // The numeric share id the SPA's own URL builder appends to the
-      // career-center link — confirmed against the app bundle and against
-      // Google-indexed posting URLs. Distinct from the API's requisition id,
-      // which the posting id and the detail sweep use. A row without one still
-      // links to the board page, where the posting is one click away.
+      // Rationale: docs/job-board-index-notes.md#n1027-const-shareid-string-adpfield-j-customfi
       const shareId = String(adpField(j.customFieldGroup?.stringFields, "ExternalJobID")?.stringValue ?? "").trim();
-      // workLevelCode is client-authored ("Part-Time Hourly", "Full Time
-      // Employee", "Temporary/seasonal" — all measured live); pay-basis and
-      // filler words are stripped so the shared mapper sees the employment
-      // kind, and anything it still doesn't recognize stays null.
+      // Rationale: docs/job-board-index-notes.md#n1028-const-employmenttype-normalizeemployment
       const employmentType = normalizeEmploymentType(
         String(j.workLevelCode?.shortName ?? "").toLowerCase().split("/")[0].replace(/\b(hourly|salaried|salary|employee)\b/g, " ").trim(),
       );
@@ -3034,19 +1944,7 @@ export function normalizeAdp(items: AdpJobRequisition[], company: string, token:
     .filter((j) => j.title !== "" && !j.id.endsWith(":"));
 }
 
-// ── UKG Pro Recruiting ────────────────────────────────────────────────────
-//
-// The candidate portal's own list endpoint, unauthenticated. Verified live
-// 2026-09-01 against Sub-Zero Group: POST .../JobBoardView/LoadSearchResults
-// answers { opportunities[], totalCount, locations } with real ISO PostedDate
-// values (the sampled board's newest was that morning).
-//
-// TOKEN IS COMPOUND — `pod~TENANT~boardGuid` — because none of the three parts
-// is derivable from the others. UKG runs several recruiting pods and a tenant
-// lives on exactly one of them (recruiting vs recruiting2), and the board GUID
-// is not guessable: a fabricated one answers 404, which is how this shape was
-// confirmed rather than assumed. The census reads all three from the crawled
-// URL, so nothing has to be resolved later.
+// Rationale: docs/job-board-index-notes.md#n1029-export-interface-ukgopportunity
 export interface UkgOpportunity {
   Id?: string;
   Title?: string;
@@ -3055,18 +1953,10 @@ export interface UkgOpportunity {
   JobCategoryName?: string;
   FullTime?: boolean;
   BriefDescription?: string;
-  // THE EMPLOYER'S OWN DROPDOWN, on every row of the list this lane already
-  // POSTs. Declared as a number because that is what the payload carries; see
-  // ukgLocationTypeMode below for the vocabulary and why nothing else is read.
+  // Rationale: docs/job-board-index-notes.md#n1030-joblocationtype-number-null
   JobLocationType?: number | null;
   Locations?: Array<{
-    // THE EMPLOYER'S OWN LABEL FOR THIS SITE, and the second half of it. Both
-    // are present on every location node of every captured row (41,588 nodes,
-    // 33,497 rows, 1,291 boards, 2026-09-27) and either one can be the only
-    // place the employer's own "Remote - Indianapolis, IN" appears: the name is
-    // non-empty on 22,713 nodes, the description on 31,935, and 174 rows state
-    // a mode in the description with the name blank. Reading one and not the
-    // other is how the contradiction gate below went blind.
+    // Rationale: docs/job-board-index-notes.md#n1031-localizedname-string-null
     LocalizedName?: string | null;
     LocalizedDescription?: string | null;
     Address?: {
@@ -3077,53 +1967,14 @@ export interface UkgOpportunity {
   }> | null;
 }
 
-/**
- * UKG's JobLocationType — the work mode the employer picked in their own
- * recruiting system — mapped through the ONE shared reader of a vendor label.
- *
- * THE VOCABULARY IS THE VENDOR'S, NOT A GUESS. Read from UKG's own
- * localization resource 2026-09-27 (GET /Content/locales/en-US/translation.json
- * on the recruiting host): the three JobLocationType labels are Hybrid, On-site
- * and Remote in that numeric order, and the vendor's own "not specified" facet
- * value is -1. Note the first one is HYBRID, so guessing this enum from the
- * usual boolean shape would have been wrong in the most damaging direction.
- * All three labels are ALREADY in VENDOR_MODE, so this adds no second mapping
- * table and no second work-mode ladder: it hands the vendor's own word to
- * statedWorkMode, exactly as every other vendor arm does.
- *
- * NO DEFAULT BRANCH, BY CONSTRUCTION. The vendor's own renderer draws nothing
- * at all for a value that is null, below the first label or above the last
- * (site.min.js, the detail view model), so every other integer — its own -1
- * sentinel included — is SILENCE, not a state. A non-integer, a numeric string
- * and an absent key are silence too. Silence returns null and the caller falls
- * back to the posting's own words; it is never read as on-site, which is the
- * fabrication the trinary-or-nothing rule exists to prevent.
- *
- * A Map keyed by number, not an object literal: `LOOKUP[v]` on an object reaches
- * Object.prototype, and this file has already been burned by that three times
- * (see the note above VENDOR_MODE).
- */
+// Rationale: docs/job-board-index-notes.md#n1247-const-ukg_location_type-new-map-number-s
 const UKG_LOCATION_TYPE = new Map<number, string>([[0, "Hybrid"], [1, "On-site"], [2, "Remote"]]);
 export function ukgLocationTypeMode(raw: unknown): "remote" | "hybrid" | "onsite" | null {
   if (typeof raw !== "number" || !Number.isInteger(raw)) return null;
   return statedWorkMode(UKG_LOCATION_TYPE.get(raw) ?? null);
 }
 
-/**
- * AN INTEGER THIS BOARD DOES NOT MAP IS SILENT TO THE READER AND MUST NOT BE
- * SILENT TO US. The no-default-branch rule above is correct and cheap, but a
- * vendor that adds a value 4 ("Flexible", say) would have it dropped forever
- * with no signal, on the vendor whose enum this build has just made
- * load-bearing for roughly 20,000 rows. The Workday classifier logs an
- * unclassified remoteType for exactly this reason and this is that line, one
- * vendor over.
- *
- * -1 IS EXCLUDED BY NAME. It is the vendor's own "not specified" facet value —
- * documented silence, not a surprise — and logging it would be a third of the
- * log. Nothing is logged today: the captured census holds only 0, 1, 2 and
- * null (2,409 / 16,148 / 1,237 / 13,703 over 33,497 rows), and the vendor's
- * live localization resource still defines exactly three labels.
- */
+// Rationale: docs/job-board-index-notes.md#n1248-function-logunmappedukglocationtype-raw
 function logUnmappedUkgLocationType(raw: unknown): void {
   if (typeof raw === "number" && Number.isInteger(raw) && raw !== -1 && ukgLocationTypeMode(raw) === null) {
     console.log(`[JOB-BOARD] unmapped UKG JobLocationType: ${String(raw).slice(0, 40)}`);
@@ -3140,11 +1991,7 @@ export function ukgBoardParams(token: string): { pod: string; tenant: string; bo
   return { pod, tenant, board };
 }
 
-/**
- * Country arrives as ISO-3166 ALPHA-3 ("USA"), and the column is alpha-2.
- * Passing it through would store a code no filter matches — the same shape as
- * the paylocity "USA" trap, one letter longer.
- */
+// Rationale: docs/job-board-index-notes.md#n1249-const-ukg_alpha3-record-string-string
 const UKG_ALPHA3: Record<string, string> = {
   USA: "US", CAN: "CA", GBR: "GB", IRL: "IE", AUS: "AU", NZL: "NZ", IND: "IN",
   DEU: "DE", FRA: "FR", ESP: "ES", ITA: "IT", NLD: "NL", BEL: "BE", CHE: "CH",
@@ -3167,61 +2014,22 @@ export function normalizeUkg(items: UkgOpportunity[], company: string, token: st
       const raw3 = String(addr.Country?.Code ?? "").trim().toUpperCase();
       const country = UKG_ALPHA3[raw3]
         ?? (/^[A-Z]{2}$/.test(raw3) ? raw3 : detectCountry([location, city, state, String(addr.Country?.Name ?? "")].filter(Boolean).join(", ")));
-      // THE EMPLOYER CHOSE THIS FROM A DROPDOWN AND WE WERE DROPPING IT. Every
-      // row of this list carries JobLocationType — present on 33,497 of 33,497
-      // rows in a CENSUS of every UKG board in JOB_SOURCES (1,291 boards, page 0
-      // of each, 2026-09-27), 59.1% of them carrying a value (1 -> 16,148,
-      // null -> 13,703, 0 -> 2,409, 2 -> 1,237, and no other integer at all).
-      // That is a VENDOR-side share of the rows this lane reads first, not the
-      // share of our own servable inventory; the note in index.ts states the
-      // like-with-like reach as a range. The comment that used to sit under
-      // `workMode` said this list "states no remote flag of its own": false.
+      // Rationale: docs/job-board-index-notes.md#n1032-const-enummode-ukglocationtypemode-j-job
       const enumMode = ukgLocationTypeMode(j.JobLocationType);
       logUnmappedUkgLocationType(j.JobLocationType);
-      // THE EMPLOYER'S OWN LABELS FOR EVERY SITE ON THE REQUISITION, which the
-      // line above `location` throws away. `location` is the first site's
-      // City/State and only falls back to a label when that address is empty,
-      // so on any row the vendor placed properly the employer's own
-      // "Remote - Indianapolis, IN" was DELETED BEFORE the contradiction check
-      // below ever saw it — and the check then compared the dropdown against a
-      // string the remote statement had been removed from and published the
-      // enum's On-site. MEASURED on the census: 26 rows were served On-site
-      // while a vendor label on the same requisition carried an explicit remote
-      // word, and both rows the audit's verifier named as the evidence for
-      // having this gate at all ("Remote - Indianapolis, IN" and "Remote - Los
-      // Angeles, CA", dropdown On-site) were among them. With the labels read,
-      // that count is 0.
+      // Rationale: docs/job-board-index-notes.md#n1033-const-vendorlabels-j-locations
       const vendorLabels = (j.Locations ?? [])
         .flatMap((L) => [L?.LocalizedName, L?.LocalizedDescription])
         .filter((s): s is string => typeof s === "string" && s.trim() !== "")
         .join(" · ");
-      // THE HEAD-OFFICE TOKEN COMES OUT OF ALL THREE VENDOR STRINGS FIRST, and
-      // the title keeps it — see withoutHomeOfficeToken for the census. Adding
-      // the labels unmasked would have printed remote on 130 rows whose label
-      // names a building, which is the fabrication the other half of this same
-      // bundle removes from Paylocity.
+      // Rationale: docs/job-board-index-notes.md#n1034-const-textmode-detectworkmode
       const textMode = detectWorkMode(
         withoutHomeOfficeToken(location),
         title,
         withoutHomeOfficeToken(dept),
         withoutHomeOfficeToken(vendorLabels),
       );
-      // REFUSE ON CONTRADICTION — the workdayDetailPlace rule, one field over.
-      // MEASURED on the census above: both sides speak on 902 rows and agree on
-      // 762 of them (84.5%). The 140 disagreements include 37 where the dropdown
-      // says On-site while the employer's own label says Remote and 9 where it
-      // says On-site against their own Hybrid — taking the dropdown
-      // unconditionally would print In-office on a posting whose own location
-      // string says Remote, the fabrication this board refuses. So a
-      // contradiction resolves to null, the documented value for "we know the
-      // two statements differ, not which is true". The refusal is SYMMETRIC: 42
-      // of the 140 are a Hybrid dropdown under a label reading Remote and 39 the
-      // reverse, and both write nothing.
-      //
-      // AND `?? textMode`, NEVER THE BARE ENUM: the dropdown is blank on 501 of
-      // the 1,403 rows whose own words state a mode (35.7%), so returning
-      // enumMode alone would go dark on them. An existing row is shielded by the
-      // refresh path's stated-only write, but a NEW arrival is not.
+      // Rationale: docs/job-board-index-notes.md#n1035-const-workmode-enummode-textmode-enummod
       const workMode = enumMode && textMode && enumMode !== textMode ? null : (enumMode ?? textMode);
       return {
         id: `ukg:${token}:${externalId}`,
@@ -3235,10 +2043,7 @@ export function normalizeUkg(items: UkgOpportunity[], company: string, token: st
         department: dept,
         postedAt: safeIso(j.PostedDate),
         category: categorize(title, dept),
-        // BriefDescription is a summary the list ships for free; the full JD
-        // and the structured pay live on the detail page, which the
-        // description sweep reads. Storing the summary here would leave the
-        // sweep nothing to fill, so it is deliberately not stored.
+        // Rationale: docs/job-board-index-notes.md#n1036-salary-null
         salary: null,
         country,
         employmentType: j.FullTime === true ? ("full_time" as const) : null,
@@ -3250,12 +2055,7 @@ export function normalizeUkg(items: UkgOpportunity[], company: string, token: st
     .filter((j) => j.applyUrl !== "" && j.title !== "" && !j.id.endsWith(":"));
 }
 
-// ── Pinpoint ──────────────────────────────────────────────────────────────
-// Documented public first-party JSON: https://{token}.pinpointhq.com/postings.json
-// → { data: [...] }. Structured compensation (min/max/currency/frequency,
-// gated by compensation_visible) and a workplace_type enum; NO posted date —
-// undated is honest, like BambooHR. Live-captured shape 2026-07-17
-// (agencyanalytics).
+// Rationale: docs/job-board-index-notes.md#n1037-export-interface-pinpointposting
 export interface PinpointPosting {
   id?: string | number;
   title?: string;
@@ -3280,9 +2080,7 @@ function pinpointSalary(j: PinpointPosting): string | null {
   const cur = typeof j.compensation_currency === "string" && /^[A-Z]{3}$/.test(j.compensation_currency) ? j.compensation_currency : "";
   const rawFreq = String(j.compensation_frequency ?? "");
   const freq = PINPOINT_FREQ[rawFreq] ?? (rawFreq ? `per ${rawFreq}` : "");
-  // A small figure with NO stated frequency ("31.25") is almost certainly an
-  // hourly rate we can't prove — displaying it bare would be ambiguous and
-  // the salary parser could mis-annualize it. When in doubt, leave it out.
+  // Rationale: docs/job-board-index-notes.md#n1038-if-freq-min-_000-return-null
   if (!freq && min < 1_000) return null;
   const range = Number.isFinite(max) && max > min ? `${min.toLocaleString("en-US")}–${max.toLocaleString("en-US")}` : min.toLocaleString("en-US");
   return [cur, range, freq].filter(Boolean).join(" ") || null;
@@ -3354,30 +2152,7 @@ export interface WorkdayListItem {
 
 /** Relative Workday age → days, or null when unparseable. "Posted Today"=0,
  *  "Posted Yesterday"=1, "Posted N Days Ago"=N, "Posted 30+ Days Ago"=31. */
-// THE 30-DAY CAP WAS ENFORCED IN ENGLISH ONLY.
-//
-// Every branch of this parser used to require the literal word "posted", and
-// Workday localises postedOn per tenant. So a Spanish tenant saying
-// "Publicado hace más de 30 días" — the employer stating, in its own feed,
-// that the job is past our cap — parsed as null, which means undated, which
-// means kept and served with no age under a badge reading "30-day freshness
-// cap".
-//
-// Measured 2026-08-24: 23,944 servable Workday rows carry no date across 203
-// boards. Probing the top 90 of those boards (21,206 rows, 88.6%) split them
-// cleanly: 60 boards (13,910 rows) genuinely have the field disabled and are
-// honestly undated, while 30 boards (7,296 rows) state an age we were
-// throwing away. A full census of one of them, barcelo~wd3 (502 rows, 100%
-// undated, 100% servable), found 416 of 522 feed items reading "Publicado
-// hace más de 30 días" — 79.7%. Pooled across 22 localized boards, 33.1% of
-// sampled items state an age past 30 days.
-//
-// So the parser stops looking for an English verb and looks for what every
-// locale actually carries: a NUMBER, a DAY WORD, and optionally a
-// MORE-THAN marker. Anything without a day word returns null — one tenant
-// (tutorperini~wd12) puts a location in this field, "Menlo Park, CA", and a
-// parser that guessed at bare digits would date postings from street
-// numbers.
+// Rationale: docs/job-board-index-notes.md#n1039-const-wd_today-b-today-hoy-aujourd
 const WD_TODAY = /\b(today|hoy|aujourd'?hui|heute|vandaag|hoje|oggi|i dag|idag|今天|本日)\b|ausgeschrieben heute/i;
 const WD_YESTERDAY = /\b(yesterday|ayer|hier|gestern|gisteren|ontem|ieri|i går|igår|昨天)\b/i;
 // Day nouns across the locales Workday serves. Chinese/Japanese carry no word
@@ -3408,22 +2183,7 @@ export function normalizeWorkday(items: WorkdayListItem[], company: string, toke
   // token = tenant~dc~site
   const [tenant, dc, site] = token.split("~");
   if (!tenant || !dc || !site) return [];
-  // ONE CLOCK READING FOR THE WHOLE FETCH, and it is not a micro-optimisation.
-  //
-  // Workday states an age in days, so every row reading "Posted 3 Days Ago"
-  // is the SAME stated date. Calling Date.now() inside the map gave each of
-  // them a timestamp a few milliseconds apart, which invented an ordering the
-  // vendor never expressed — and that ordering silently disabled the
-  // employer-spread weave downstream, which may only permute rows sharing an
-  // effective_posted (crossing that boundary would claim a recency the row
-  // does not have). With every tie group reduced to one row, the weave had
-  // nothing to interleave and a page could fill with one employer: measured
-  // 2026-08-24, runs of 12-14 consecutive rows from cigna and centene under a
-  // caption promising "spread across employers so one company can't fill the
-  // page".
-  //
-  // Sharing one reading restores the tie groups, which is also simply true:
-  // these rows are equally recent to the precision the employer published.
+  // Rationale: docs/job-board-index-notes.md#n1040-const-fetchedat-date-now
   const fetchedAt = Date.now();
   const base = `https://${tenant}.${dc}.myworkdayjobs.com/en-US/${site}`;
   return (Array.isArray(items) ? items : [])
@@ -3436,9 +2196,7 @@ export function normalizeWorkday(items: WorkdayListItem[], company: string, toke
       // display text but it won't resolve to a country (honest).
       const days = workdayPostedDays(j.postedOn);
       const stale = days !== null && days > 30; // Workday says it's past our cap
-      // The live inversion of 2026-09-09 came through here: the title
-      // "Application Analyst II-Full Time- Days - Cupid/Radiant- NON-REMOTE"
-      // has a word boundary at the hyphen, so the old bare \bremote\b matched.
+      // Rationale: docs/job-board-index-notes.md#n1041-const-workmode-detectworkmode-loc-string
       const workMode = detectWorkMode(loc, String(j.title ?? ""));
       return {
         id: `workday:${token}:${reqId}`,
@@ -3450,23 +2208,7 @@ export function normalizeWorkday(items: WorkdayListItem[], company: string, toke
         workMode,
         remote: workMode === "remote",
         department: null,
-        // Workday's list states a relative age ("Posted 3 Days Ago") — that IS
-        // the company's stated date, at day precision. Convert to absolute
-        // (fetch time − N days, ±1d) so these postings carry provenance and
-        // participate in date filters and the stated-date medians. "30+ Days
-        // Ago" is unbounded — never dated, dropped via _stale.
-        // DATED EVEN WHEN PAST THE CAP, and that is the point. A row dropped
-        // for being stale used to be stripped inside this normalizer, so the
-        // ingest diff never saw it — an ALREADY-STORED posting simply vanished
-        // from the feed, which the absence machinery reads as the employer
-        // taking it down, and (its posted_at being null) logs to the closure
-        // log as a real takedown. The employer took nothing down; we aged it
-        // out. Carrying the date lets the shared ingest freshness filter claim
-        // it as an age-out instead, which is both true and already handled.
-        //
-        // For a "30+ days" bucket the exact date is unknowable, so this is a
-        // LOWER BOUND (31 days), never a precise claim — and the row is
-        // dropped on that basis, so no reader ever sees the figure.
+        // Rationale: docs/job-board-index-notes.md#n1042-postedat-days-null-new-date-fetchedat
         postedAt: days !== null ? new Date(fetchedAt - days * 86_400_000).toISOString() : null,
         category: categorize(String(j.title ?? ""), null),
         salary: null,
@@ -3475,29 +2217,12 @@ export function normalizeWorkday(items: WorkdayListItem[], company: string, toke
         _stale: stale, // consumed + stripped by the fetcher's freshness filter
       } as JobPosting & { _stale?: boolean };
     })
-    // _stale is no longer filtered here: the shared ingest path applies the
-    // freshness cap to every vendor uniformly (isDatedBefore -> agedOutIds),
-    // and routing Workday through it is what keeps an aged-out posting out of
-    // the closure log. The flag stays on the object for callers that want it.
+    // Rationale: docs/job-board-index-notes.md#n1043-filter-j-j-applyurl-j-title
     .filter((j) => j.applyUrl !== "" && j.title !== "" && j.id !== `workday:${token}:`)
     .map(({ _stale: _drop, ...j }) => j as JobPosting);
 }
 
-// ── Oracle Recruiting Cloud (Oracle Fusion HCM) ───────────────────────────
-// Large enterprises that run Oracle Fusion HCM publish their careers site off a
-// first-party public REST API — the same data the tenant serves its own
-// applicants, no auth, no scraping:
-//   GET /hcmRestApi/resources/latest/recruitingCEJobRequisitions
-//       ?onlyData=true&expand=requisitionList&finder=findReqs;siteNumber=CX_1,limit=N,offset=M
-// Token is a compound `tenant~region~site` (the three pieces the host and
-// finder need); the host is {tenant}.fa.{region}.oraclecloud.com.
-//
-// Census note (2026-07-24): identity is NOT in this feed — the tenant is an
-// opaque 4-letter code and only ~41% of tenants name themselves anywhere. So
-// ORC boards are added ONLY as hand-verified sources.ts entries whose display
-// name was confirmed against that tenant's own postings; there is no automatic
-// discovery path. One tenant (eubt.fa.us6) serves 78k system-generated template
-// requisitions — never add a tenant without reading its titles first.
+// Rationale: docs/job-board-index-notes.md#n1044-export-interface-oraclereq
 export interface OracleReq {
   Id?: number | string;
   Title?: string;
@@ -3549,33 +2274,7 @@ export function normalizeOracle(items: OracleReq[], company: string, token: stri
     .filter((j) => j.applyUrl !== "" && j.title !== "" && j.id !== `oracle:${token}:`);
 }
 
-/** Teamtailor career-site RSS ({token}.teamtailor.com/jobs.rss).
- *
- *  THE COMMENT THAT USED TO BE HERE SAID THE FEED IS "title/link/pubDate only —
- *  location isn't structured". That was wrong, and it cost every Teamtailor
- *  posting its place in three filters.
- *
- *  The feed's own root element declares xmlns:tt="https://teamtailor.com/locations".
- *  Measured on capiosverigeab, 100 items, 2026-08-25:
- *
- *    tt:city        100/100 populated   (Stockholm 22, Göteborg 10, ...)
- *    tt:country     100/100             (Sweden)
- *    tt:department   98/100             (Sjuksköterska 35, Läkare 21, ...)
- *    remoteStatus   100/100             (none 80, hybrid 13, onsite 5, temporary 1)
- *
- *  and the board was storing location "" for 10,858 of 10,858 servable
- *  Teamtailor rows — the entire vendor, invisible to the location filter, and
- *  to the country filter downstream of it, and to department.
- *
- *  remoteStatus is read CONSERVATIVELY. Teamtailor's vocabulary maps "hybrid"
- *  and "fully" cleanly, but "none" is 80% of this sample and means "no remote
- *  status" as readily as it means onsite — and "onsite" exists separately in
- *  the same feed, which is the tell. Claiming onsite for 80% of a vendor on
- *  that inference is exactly the kind of invented field this board does not
- *  publish, so "none" and "temporary" fall through to title detection and stay
- *  null when the title says nothing.
- *
- *  External id = the numeric slug prefix. */
+// Rationale: docs/job-board-index-notes.md#n1250-export-function-normalizeteamtailor-rss
 export function normalizeTeamtailor(rss: string, company: string, token: string): JobPosting[] {
   return xmlBlocks(rss, "item")
     .map((item) => {
@@ -3583,17 +2282,11 @@ export function normalizeTeamtailor(rss: string, company: string, token: string)
       const link = xmlValue(item, "link") ?? "";
       const idMatch = link.match(/\/jobs\/(\d+)/);
       const externalId = idMatch ? idMatch[1] : "";
-      // City first, then country — the same "Place, Country" shape every other
-      // vendor produces, so detectCountry() downstream resolves it with no
-      // vendor-specific branch. Either half alone is still worth storing.
+      // Rationale: docs/job-board-index-notes.md#n1045-const-city-xmlvalue-item-tt-city
       const city = xmlValue(item, "tt:city");
       const country = xmlValue(item, "tt:country");
       const location = [city, country].filter(Boolean).join(", ");
-      // Teamtailor's own vocabulary, matched WHOLE (never by substring), so
-      // there is no negation surface here: "fully" is its word for remote and
-      // means nothing to the shared reader. "none"/"temporary" stay null — see
-      // the sample note above. Anything outside the vocabulary falls through
-      // to the one shared label reader rather than a second ladder.
+      // Rationale: docs/job-board-index-notes.md#n1046-const-status-xmlvalue-item-remotestatus
       const status = (xmlValue(item, "remoteStatus") ?? "").toLowerCase().trim();
       const statedMode = status === "hybrid" ? "hybrid" as const
         : status === "fully" ? "remote" as const
@@ -3658,23 +2351,7 @@ export function sortJobs(jobs: JobPosting[]): JobPosting[] {
   });
 }
 
-/** USAJOBS — the U.S. federal government's official job API.
- *
- *  A SINGLE-SOURCE VENDOR, unlike every other adapter here: one national feed
- *  rather than per-employer tenants, so `token` is the fixed string "usajobs"
- *  and the hiring agency travels in each posting's own fields. That makes the
- *  displayed company the AGENCY (Veterans Affairs, Forest Service), not
- *  "USAJOBS" — a visitor is applying to the agency, and the board's employer
- *  facet would otherwise show one 15,000-job blob called "USAJOBS".
- *
- *  Provenance is the cleanest on the board: PublicationStartDate is the
- *  government's own stated publication date, and ApplyURI points at the
- *  official posting. Salary is structured and honest (federal ranges are
- *  published by law), so it is read rather than left null.
- *
- *  NOT AGENT-SENDABLE: federal applications run through USAJOBS accounts and
- *  agency assessments. The board must never badge these as agent-ready.
- */
+// Rationale: docs/job-board-index-notes.md#n1251-interface-usajobsremuneration-minimumran
 interface UsajobsRemuneration { MinimumRange?: unknown; MaximumRange?: unknown; RateIntervalCode?: unknown; Description?: unknown }
 /** UserArea.Details: where the API puts the summary, the duties and the telework fields (S8-023). */
 interface UsajobsDetails { JobSummary?: unknown; MajorDuties?: unknown; TeleworkEligible?: unknown; RemoteIndicator?: unknown }
@@ -3724,9 +2401,7 @@ export function normalizeUsajobs(items: UsajobsItem[], _company: string, token: 
       const agency = String(d.OrganizationName ?? d.DepartmentName ?? "").trim();
       const first = Array.isArray(d.PositionLocation) && d.PositionLocation.length ? d.PositionLocation[0] : null;
       const loc = first ? String(first.LocationName ?? "").trim() : String(d.PositionLocationDisplay ?? "").trim();
-      // Federal remote/telework is stated structurally (under UserArea.Details;
-      // the top level carries neither), and text detection only fills the gap.
-      // Both stated false is a stated on-site post.
+      // Rationale: docs/job-board-index-notes.md#n1047-const-remotesaid-statedbool-det-remotein
       const remoteSaid = statedBool(det.RemoteIndicator ?? d.RemoteIndicator);
       const teleworkSaid = statedBool(det.TeleworkEligible ?? d.TeleworkEligible);
       const stated = remoteSaid === true ? "remote" as const
@@ -3746,9 +2421,7 @@ export function normalizeUsajobs(items: UsajobsItem[], _company: string, token: 
       const salary = min > 0 && max > 0 && code !== "WC"
         ? `${money(min)} - ${money(max)}${per ? ` ${per}` : ""}`
         : null;
-      // The country the posting names (CountryCode carries a country NAME,
-      // "Germany"), else the place; a post that states neither, or names a US
-      // territory (its own CountryCode), is US (S8-083).
+      // Rationale: docs/job-board-index-notes.md#n1048-const-cc-string-first-countrycode-trim
       const cc = String(first?.CountryCode ?? "").trim();
       const country = (cc ? detectCountry(cc) : null) ?? detectCountry(loc) ?? (!cc || /united states/i.test(cc) || USAJOBS_US_TERRITORY.test(cc) ? "US" : null);
       return {
@@ -3773,38 +2446,9 @@ export function normalizeUsajobs(items: UsajobsItem[], _company: string, token: 
     .filter((j) => j.applyUrl !== "" && j.title !== "" && !j.id.endsWith(":"));
 }
 
-// ── Oracle sub-sites: one requisition, one stored row ─────────────────────
-// An Oracle tenant publishes the SAME requisition on several "career sites"
-// (CX_1, CX_3, CX_1001 ...): a French mirror, an audience view (Veterans,
-// Apprenticeship), a brand or region partition. Each site is its own catalog
-// token and the posting id is `oracle:<token>:<reqId>`, so before 2026-09-09
-// every mirror stored its own copy — measured live that day: Clean Harbors
-// EN/FR 703 = 703 with 200/200 sampled ids identical, Cummins' seven audience
-// views of one ~710-req tenant, Hearst's three 148-row mirrors. Board-wide
-// estimate from a 9-tenant/32-token sample: ~23k duplicate servable rows
-// (defensible range 12k-52k), every one inflating an employer's open count.
-//
-// THE RULE IS PER (tenant, reqId), NEVER PER SITE NAME. The same sample
-// refuted every name-based shortcut: "French" sites were exact mirrors at
-// Clean Harbors and Tremco and DISJOINT at Chartwell and Penske (their own
-// reqIds); eexs' "All" site was NOT a superset of its "All Community" site
-// (19 of 78 reqs unique to the latter); Coherent's 17 country sites overlap
-// 0/61. So the identity is the requisition id within the tenant, sites are
-// RANKED, and a requisition is stored once, under the best-ranked site that
-// lists it. A requisition listed on no better-ranked site survives under
-// whichever site carries it, so a sub-site-only req is never lost.
-//
-// The helpers here are pure so vitest can prove the property without Deno:
-// the fetcher (index.ts) supplies the catalog ranks and the rows the database
-// currently holds; the plan says what to drop, what to shed, what to keep.
+// Rationale: docs/job-board-index-notes.md#n1049-block
 
-/**
- * A tenant whose code carries a dev/test/stage/uat suffix is a vendor
- * sandbox, not an employer's board. Tested on the TENANT segment only, so
- * `fa-exrr-dev2-saasfaprod1~ocs~CX_1` (suffix followed by `-saasfaprod1`, not
- * `~`) is caught and a non-Oracle token such as `real-dev-inc` is not: the
- * pattern requires the Oracle `tenant~region~site` shape first.
- */
+// Rationale: docs/job-board-index-notes.md#n1252-export-const-oracle_dev_tenant_re-dev-te
 export const ORACLE_DEV_TENANT_RE = /^[^~]*-(dev|test|stage|uat)\d*(?:-|$)/i;
 
 /** `tenant` of an Oracle `tenant~region~site` token; null for any other shape. */
@@ -3842,18 +2486,7 @@ export function oracleReqIdOfId(id: string): string | null {
   return parts[2];
 }
 
-/**
- * Rank every Oracle site of every multi-site tenant. Lower wins. The
- * canonical site (an explicit override from sources.ts, else the tenant's
- * first-listed site) is rank 0; the others follow in catalog order from 1.
- * Single-site tenants are omitted: with no sibling there is nothing to
- * dedupe and the fetcher skips them at zero cost.
- *
- * Catalog order rather than served size, because size is not known at module
- * load and a rule that flips with a count would move a tenant's rows between
- * sites on every visit. Where size argues against catalog order the override
- * map says so by name (Cummins: "All Functions" over "Technicians").
- */
+// Rationale: docs/job-board-index-notes.md#n1253-export-function-rankoraclesites
 export function rankOracleSites(
   entries: ReadonlyArray<{ source: string; token: string }>,
   canonical: Readonly<Record<string, string>>,
@@ -3883,13 +2516,7 @@ export interface OracleHolderRow {
   token: string;
   /** Catalog rank of the holder's site, or null when its token is not ranked (untracked, single-site, unknown). */
   rank: number | null;
-  /**
-   * True when the holder's row carries missing_since: its site stopped serving
-   * the requisition and the row is on its way through the absence path. A
-   * stamped holder does not OWN the requisition -- a live copy on any ranked
-   * site outranks it -- or a sub-site's live copy would be shed in favour of a
-   * copy about to close as a takedown the employer never made.
-   */
+  // Rationale: docs/job-board-index-notes.md#n1254-missing-boolean
   missing?: boolean;
 }
 
@@ -3902,33 +2529,7 @@ export interface OracleSubsitePlan {
   shedSiblingIds: string[];
 }
 
-/**
- * Decide one visit of one Oracle site against what the database holds.
- *
- *   fetched   reqIds the site served this visit (after the freshness cap)
- *   stored    reqId -> id of the rows this site already holds
- *   holders   reqKey -> every row of any site holding that requisition
- *   fullRead  the feed was read to its end (not windowed); only a full read
- *             may conclude that a stored requisition is no longer served here
- *
- * For each requisition the best-ranked LIVE holder owns it. A holder whose
- * row is stamped missing_since is not live: it is the copy the absence path
- * is about to close, and a live copy anywhere outranks it. If a live sibling
- * ranked above this site holds it, this site drops it (and sheds its own
- * stale copy, if any). If this site serves it and is the best live holder,
- * lower-ranked live siblings' copies are shed, and so is every stamped
- * sibling copy whatever its rank -- left alone, that copy would close as a
- * takedown while the requisition is still open here. If this site STORES a
- * requisition a full read no longer served, and a live sibling holds it, this
- * site's copy is shed rather than stamped: the employer moved the listing,
- * they did not take it down. Holders with no rank are left alone -- they
- * belong to the orphan prune, which logs them under the same reason.
- *
- * Idempotent and safe under a partial read: a decision is only ever taken
- * about a requisition the visit actually fetched or this site actually
- * stores, a windowed visit concludes nothing from a requisition it did not
- * see, and running the same plan twice returns an empty plan the second time.
- */
+// Rationale: docs/job-board-index-notes.md#n1255-export-function-planoraclesubsitevisit-a
 export function planOracleSubsiteVisit(args: {
   token: string;
   rank: number;
@@ -3966,11 +2567,7 @@ export function planOracleSubsiteVisit(args: {
       continue;
     }
     if (!fetchedSet.has(reqId)) {
-      // Stored here, not served here this visit. On a FULL read that is the
-      // employer no longer listing it on this site; if a live sibling still
-      // lists it the requisition is open and this copy is shed as our action
-      // instead of walking into the absence path as a closure. On a windowed
-      // read nothing can be concluded, and the ordinary grace logic applies.
+      // Rationale: docs/job-board-index-notes.md#n1050-const-mine-stored-get-reqid
       const mine = stored.get(reqId);
       if (fullRead && anyLiveSibling && mine) plan.shedMineIds.push(mine);
       continue;

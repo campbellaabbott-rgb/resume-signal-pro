@@ -30,6 +30,29 @@ export function bandFromYears(minYears: number): ExperienceBand {
   return "expert";
 }
 
+// S12-126: a figure that is not a requirement. "Graduate of an MA school or
+// 5+ years of experience" offers the years as one way in, not a floor (a Humana
+// medical assistant was filed mid); "5 years preferred", "a plus", "nice to
+// have" and a "Preferred Qualifications" heading above the line are wishes.
+// "2 or 3 years" stays a requirement: the "or" follows a number.
+const WISH = /\b(?:preferred|preferably|a plus|nice[- ]to[- ]have|desired|desirable|ideally|is an asset|an advantage)\b/;
+const WISH_HEADING = /\b(?:preferred|desired|nice[- ]to[- ]have|bonus|additional)\s+(?:qualifications|skills|experience|requirements)\b/g;
+const NEED_HEADING = /\b(?:required|minimum|basic|essential)\s+(?:qualifications|skills|experience|requirements)\b|\brequirements\s*:/g;
+const lastIndexOf = (re: RegExp, s: string): number => {
+  let at = -1;
+  re.lastIndex = 0;
+  for (let m = re.exec(s); m !== null; m = re.exec(s)) at = m.index;
+  return at;
+};
+function notBinding(t: string, at: number, end: number, before: string): boolean {
+  if (/\bor\s+(?:an?\s+)?(?:equivalent\s+(?:of\s+)?)?(?:at\s+least\s+|minimum\s+(?:of\s+)?)?$/.test(before) && !/\d\s*or\s+$/.test(before)) return true;
+  const s0 = Math.max(t.lastIndexOf(".", at), t.lastIndexOf(";", at), t.lastIndexOf(",", at), t.lastIndexOf("\n", at), t.lastIndexOf("!", at), t.lastIndexOf("?", at)) + 1;
+  const cut = t.slice(end).search(/[.;,!?\n]/);
+  if (WISH.test(t.slice(s0, cut < 0 ? t.length : end + cut))) return true;
+  const head = t.slice(Math.max(0, at - 3000), at);
+  return lastIndexOf(WISH_HEADING, head) > lastIndexOf(NEED_HEADING, head);
+}
+
 // Pull the binding minimum-years requirement from posting text. Only counts year
 // figures tied to an experience/work context (so "founded 10 years ago" or
 // "401k after 1 year" don't register), and takes the MAX of the stated lower
@@ -46,9 +69,10 @@ export function parseMinYears(text: string): number | null {
   // never another "<n> years", so "2 years Python, 8 years leadership
   // experience" binds only the 8. "to work" ("able to work weekends") is an
   // availability, not experience.
-  const forward = /(?<!\d)(\d{1,2})\s*\+?\s*(?:-\s*\d{1,2}\s*)?years?\b((?:(?!\d{1,2}\s*\+?\s*(?:-\s*\d{1,2}\s*)?years?\b)[^.?!\n]){0,30}?)(?:experience|exp\b|(?<!\bto\s)work|professional|industry|hands-on)/g;
+  // S12-126: "<n> or more years" is the same floor as "<n>+ years".
+  const forward = /(?<!\d)(\d{1,2})\s*\+?\s*(?:or\s+more\s+)?(?:-\s*\d{1,2}\s*)?years?\b((?:(?!\d{1,2}\s*\+?\s*(?:-\s*\d{1,2}\s*)?years?\b)[^.?!\n]){0,30}?)(?:experience|exp\b|(?<!\bto\s)work|professional|industry|hands-on)/g;
   // "(experience|minimum|at least|requires)[ :of] <n> year(s)"
-  const backward = /(?:experience|minimum|at least|requires?|require)\s*(?:of|:|is)?\s*(?<!\d)(\d{1,2})\s*\+?\s*years?/g;
+  const backward = /(?:experience|minimum|at least|requires?|require)\s*(?:of|:|is)?\s*(?<!\d)(\d{1,2})\s*\+?\s*(?:or\s+more\s+)?years?/g;
   for (const re of [forward, backward]) {
     let m: RegExpExecArray | null;
     while ((m = re.exec(t)) !== null) {
@@ -58,6 +82,7 @@ export function parseMinYears(text: string): number | null {
       const before = t.slice(Math.max(0, at - 24), at);
       const gap = m[2] ?? "";
       const after = t.slice(end, end + 16);
+      if (notBinding(t, at, end, before)) continue;
       // A MINIMUM AGE IS NOT EXPERIENCE (L8-15): "18 years or older and able
       // to work", "at least 18 years of age".
       if (/\b(?:of\s+age|old|older)\b/.test(gap) || /^\s*(?:of\s+age|old\b|or\s+older)/.test(after) || /\b(?:age|aged)\s*(?:of\s*)?$/.test(before)) continue;
@@ -96,8 +121,19 @@ const STAFF_TECH = "software|data|machine learning|ml|ai|product|security|applic
 const STAFF_RUNG = new RegExp(`\\bstaff\\s+(?:(?:${STAFF_TECH})\\s+)*(?:engineer|scientist|developer|designer|architect|analyst|researcher|swe|sre)\\b|\\bstaff\\s+(?:(?:${STAFF_TECH})\\s+)+manager\\b`);
 const LEAD_NOT_A_RUNG = /\b(?:shift|team|crew|store|line|floor|cashier|sales|retail|warehouse|production|area|key|front end|front desk|kitchen|cook|bar|server)\s+lead\b|\blead\s+(?:cashier|teller|associate|server|cook|host|clerk|driver|custodian|housekeeper|caregiver|cleaner|picker|packer|sales associate)\b/;
 const FIRM_PARTNER = /\b(?:managing|equity|senior|founding|general|named)\s+partner\b|\bpartner\s*,\s*(?:law|legal|litigation|corporate|tax|audit|advisory|consulting)\b/;
+// S12-036: "senior" naming who is served, not the rung. "Housekeeper - Senior
+// Living", "Senior Living Cook", "Nurse Aide | Senior Care", "Cook - Senior
+// Community Services" were filed senior (55 of 60 live "senior living" rows on
+// 2026-10-12 were entry and hourly jobs). A UK "Senior Carer" or "Senior Care
+// Assistant/Worker" and a "Senior Community Manager" stay rungs: "senior care"
+// before a role noun, and "senior community/services" at the start of a title,
+// are the job's rank.
+const CLIENTELE = /\bsenior\s+(?:living|cent(?:er|re)s?|housing|citizens?|residences?|apartments?|day\s+(?:program|services))\b|\bsenior\s+care\b(?!\s*(?:-\s*)?(?:assistant|worker|manager|supervisor|lead|practitioner|officer|coordinator|carer|support worker))|\bsenior\s+(?:communit(?:y|ies)|services)\b/g;
+const withoutClientele = (t: string): string =>
+  t.replace(CLIENTELE, (m, at: number) => (/^senior\s+(?:communit|services)/.test(m) && at === 0 ? m : " "));
+
 export function bandFromTitle(title: string): ExperienceBand | null {
-  const t = title.toLowerCase();
+  const t = withoutClientele(title.toLowerCase());
   if (/\b(chief|ceo|cfo|coo|cto|ciso|cmo|cro|c-level|vp|svp|evp|vice president|head of|director|managing director)\b/.test(t) || FIRM_PARTNER.test(t)) return "expert";
   if (/\b(senior|sr\.?|principal|architect|distinguished)\b/.test(t) || STAFF_RUNG.test(t)) return "senior";
   if (/\blead\b/.test(t) && !LEAD_NOT_A_RUNG.test(t)) return "senior";

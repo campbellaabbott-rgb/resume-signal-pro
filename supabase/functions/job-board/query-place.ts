@@ -75,6 +75,9 @@ export function knownPlace(place: string): { location: string } | { country: str
   return null;
 }
 
+/** A head ending on a word that negates or excepts what follows it. */
+const NEGATION_BEFORE_PLACE = /(?:^|\s)(?:not|except|excluding|exclude|but|outside|without|minus|other than|anywhere but)$/i;
+
 /** The last "in / near / around", then the place to the end (a leading "the" dropped). */
 const TRAILING_PLACE = /^(.*\S)\s+(in|near|around)\s+(?:the\s+)?([\p{L}][\p{L} .'’,-]*?)[\s.!?]*$/iu;
 
@@ -86,6 +89,10 @@ const TRAILING_PLACE = /^(.*\S)\s+(in|near|around)\s+(?:the\s+)?([\p{L}][\p{L} .
 export function liftTrailingPlace(q: string, filler: ReadonlySet<string>): PlaceLift | null {
   const m = TRAILING_PLACE.exec(q.trim());
   if (!m) return null;
+  // S12-172: a place after a negation is the place NOT wanted. "nurse jobs not
+  // in Texas" was searched as location Texas; the board has no place
+  // exclusion, so the words stay words.
+  if (NEGATION_BEFORE_PLACE.test(m[1])) return null;
   const place = m[3].replace(/’/g, "'").replace(/\s+/g, " ").trim();
   if (!place || place.split(" ").length > 4) return null;
   const patch = knownPlace(place);

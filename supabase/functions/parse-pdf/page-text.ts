@@ -39,6 +39,21 @@ const endOf = (it: PdfTextItem): number | null => {
 /** How close (as a share of the line height) the next item must start to continue the same word. */
 export const TOUCH_SHARE = 0.15;
 
+/**
+ * LETTER-SPACED TEXT IS ONE WORD A LETTER APART (S12-027). A heading styled
+ * with letter-spacing (CSS tracking, every Chrome-printed résumé template that
+ * spaces its section titles) reaches pdf.js with a gap after every glyph, and
+ * pdf.js writes the gap as a space: "W O R K" " " "E X P E R I E N C E". The
+ * scanner's section reader saw one section and filed Experience, Education and
+ * Skills as empty. Within one item, a run of three or more single letters each
+ * followed by one space is the word they spell; a wider gap stays a word gap.
+ */
+const TRACKED_RUN = /^(?:\p{L}\p{M}* ){2,}\p{L}\p{M}*$/u;
+export function untrack(str: string): string {
+  if (!str.includes(" ")) return str;
+  return str.split(/( {2,})/).map((part) => (TRACKED_RUN.test(part) ? part.replace(/ /g, "") : part)).join("");
+}
+
 export function pageTextFromItems(items: PdfTextItem[]): string {
   let out = "";
   let prevY: number | null = null;
@@ -46,7 +61,7 @@ export function pageTextFromItems(items: PdfTextItem[]): string {
   let prevEnd: number | null = null;
   let pendingSeparator = "";
   for (const it of items) {
-    const str = it.str ?? "";
+    const str = untrack(it.str ?? "");
     const y = yOf(it);
     if (pendingSeparator) {
       let separator = pendingSeparator;

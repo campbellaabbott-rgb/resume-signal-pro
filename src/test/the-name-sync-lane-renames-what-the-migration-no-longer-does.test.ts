@@ -18,7 +18,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import ts from "typescript";
 import { PgSupabase } from "./helpers/pglite-supabase";
-import { nameSyncTarget, overrideFor, overrideTable } from "../../supabase/functions/job-board/name-sync";
+import { nameSyncQueue, nameSyncTarget, overrideFor, overrideTable } from "../../supabase/functions/job-board/name-sync";
 
 vi.setConfig({ hookTimeout: 120_000, testTimeout: 60_000 });
 
@@ -135,6 +135,7 @@ const deps = (over: Record<string, unknown> = {}) => ({
   overrideFor,
   nameSyncTarget,
   overrideTable,
+  nameSyncQueue,
   ...over,
 });
 

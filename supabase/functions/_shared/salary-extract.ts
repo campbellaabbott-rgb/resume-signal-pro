@@ -694,40 +694,99 @@ export function parseSalaryStructured(
 const decodeLegacyEntities = (s: string) =>
   s.replace(/&mdash;/gi, "\u2014").replace(/&ndash;/gi, "\u2013").replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&");
 
+// S12-019: THE FIRST MONEY RANGE IS NOT THE PAY. The miner took the first range
+// in the text and judged it on 40 characters around it, so an Airbus £24.5k
+// placement was listed at £350K-£800K (a figure about the work, a sentence
+// earlier) and 6 of 12 "$500k+ manager" rows were portfolios, fleets and
+// P&Ls. Every range is now a candidate; one whose SENTENCE names a business
+// figure is not pay unless a pay word stands right before it; and a candidate
+// whose sentence names pay is preferred to one that does not.
+const BUSINESS_FIGURE = /\b(?:portfolio|aum|assets?\s+under|fleet|p\s?&\s?l|profit|turnover|spend(?:ing)?|contracts?\s+(?:value|worth|valued)|valued?\s+at|worth|deals?|pipeline|projects?\s+(?:of|worth|valued|ranging|totall?ing)|capex|opex|costs?|savings|investments?|loans?|mortgages?|book\s+of\s+business|accounts?\s+(?:of|worth|valued|ranging)|annual\s+sales|sales\s+of|volume|inventory|transactions?|premiums?|claims|financing|acquisitions?|equity|million|billion|customers?\s+(?:spending|with))\b/i;
+const PAY_WORD = /\b(?:salary|salaries|pay|compensation|wages?|base\s+(?:pay|salary|rate|compensation)|hourly\s+rate|rate\s+of\s+pay|earn(?:ings)?|remuneration|ote|starting\s+(?:at|pay|salary|rate|wage)|per\s+(?:hour|year|annum)|hourly)\b/i;
+/** The sentence around [at, end), as bounds: a full stop counts only before a space or the end, never inside "$45.50". */
+function sentenceAround(hay: string, at: number, end: number): [number, number] {
+  const head = hay.slice(0, at);
+  const s0 = Math.max(head.search(/[!?](?=[^!?]*$)/), ...[...head.matchAll(/\.(?=\s)/g)].map((m) => m.index ?? -1)) + 1;
+  const cut = hay.slice(end).search(/[!?]|\.(?=\s|$)/);
+  return [s0, cut < 0 ? hay.length : end + cut];
+}
+/**
+ * A candidate figure at [at, end) reads as this job's pay by its own words.
+ * The NOT_PAY window (40 characters before, 20 after) stops at the figure's
+ * own sentence: "...annual revenue accounts. Pay range: $60,000" is pay.
+ */
+function candidateIsPay(hay: string, at: number, end: number): { pay: boolean; labelled: boolean } {
+  const [s0, s1] = sentenceAround(hay, at, end);
+  if (NOT_PAY.test(hay.slice(Math.max(s0, at - 40), Math.min(s1, end + 20)))) return { pay: false, labelled: false };
+  const sentence = hay.slice(s0, s1);
+  const labelled = PAY_WORD.test(sentence);
+  const before = hay.slice(Math.max(s0, at - 40), at);
+  const labelAdjacent = PAY_WORD.test(before) && !BUSINESS_FIGURE.test(before);
+  if (BUSINESS_FIGURE.test(sentence) && !labelAdjacent) return { pay: false, labelled };
+  return { pay: true, labelled };
+}
+const haystackOf = (text: string) => decodeLegacyEntities(text.slice(0, 12_000)).replace(/\s+/g, " ");
+
 export function extractSalary(text: string | null | undefined): string | null {
   if (!text) return null;
-  const hay = decodeLegacyEntities(text.slice(0, 12_000)).replace(/\s+/g, " ");
+  const hay = haystackOf(text);
 
-  const range = hay.match(RANGE_RE);
-  if (range && range.index !== undefined) {
-    const ctx = hay.slice(Math.max(0, range.index - 40), range.index + range[0].length + 20);
-    if (!NOT_PAY.test(ctx)) {
+  const ranges = [...hay.matchAll(new RegExp(RANGE_RE.source, "gi"))];
+  if (ranges.length) {
+    let first: string | null = null;
+    for (const range of ranges) {
+      const at = range.index ?? 0;
+      const verdict = candidateIsPay(hay, at, at + range[0].length);
+      if (!verdict.pay) continue;
       const lo = parseMoney(range[1]);
       const hi = parseMoney(range[2]);
       const firstPeriod = RANGE_FIRST_PERIOD.exec(range[0])?.[1] ?? "";
       const hourly = /hour|hr|hourly/i.test(`${range[3] ?? ""} ${firstPeriod}`) ||
         (lo !== null && hi !== null && lo < 1_000 && hi < 1_000 && !/[kK]\s*$/.test(range[1] + range[2]));
-      if (lo !== null && hi !== null && plausible(lo, hi, hourly)) {
-        return range[0].replace(/\s+/g, " ").trim().slice(0, 200);
-      }
+      if (lo === null || hi === null || !plausible(lo, hi, hourly)) continue;
+      const out = range[0].replace(/\s+/g, " ").trim().slice(0, 200);
+      if (verdict.labelled) return out;
+      first ??= out;
     }
-    // A money range matched but failed the pay guards (bonus context, absurd
-    // spread, wage-floor). The text is ambiguous — do NOT let the single-figure
-    // fallback cherry-pick one end of a rejected range. Conservative null.
-    return null;
+    if (first !== null) return first;
+    // Every money range failed the pay guards (bonus context, a business
+    // figure, absurd spread, wage-floor). Do NOT let the single-figure
+    // fallback cherry-pick one end of a rejected range -- only a figure that
+    // stands apart from every range, in a sentence that names pay, is read.
+    const single = [...hay.matchAll(new RegExp(SINGLE_RE.source, "gi"))]
+      .find((m) => !ranges.some((r) => (m.index ?? 0) < (r.index ?? 0) + r[0].length && (m.index ?? 0) + m[0].length > (r.index ?? 0)));
+    if (!single) return null;
+    return singleIfPay(hay, single, true);
   }
 
   // Single figure only when explicitly tied to a pay period ("$95,000 per year").
-  const single = hay.match(SINGLE_RE);
-  if (single && single.index !== undefined) {
-    const ctx = hay.slice(Math.max(0, single.index - 40), single.index + single[0].length + 20);
-    if (!NOT_PAY.test(ctx)) {
-      const v = parseMoney(single[1]);
-      const hourly = /hour|hr|hourly/i.test(single[2]);
-      if (v !== null && plausible(v, v, hourly)) {
-        return single[0].replace(/\s+/g, " ").trim().slice(0, 200);
-      }
-    }
+  for (const single of hay.matchAll(new RegExp(SINGLE_RE.source, "gi"))) {
+    const out = singleIfPay(hay, single, false);
+    if (out) return out;
   }
   return null;
+}
+
+function singleIfPay(hay: string, single: RegExpMatchArray, mustBeLabelled: boolean): string | null {
+  const at = single.index ?? 0;
+  const verdict = candidateIsPay(hay, at, at + single[0].length);
+  if (!verdict.pay || (mustBeLabelled && !verdict.labelled)) return null;
+  const v = parseMoney(single[1]);
+  const hourly = /hour|hr|hourly/i.test(single[2]);
+  return v !== null && plausible(v, v, hourly) ? single[0].replace(/\s+/g, " ").trim().slice(0, 200) : null;
+}
+
+/**
+ * S12-019, for the salary re-sweep: the stored text was mined from this
+ * description (it is there, verbatim) and the current rules refuse it as pay.
+ * A vendor's own salary field that the description also quotes in a pay
+ * sentence is not refused, so the sweep re-mines only the miner's mistakes.
+ */
+export function minedSalaryRefused(description: string | null | undefined, stored: string | null | undefined): boolean {
+  if (!description || !stored) return false;
+  const hay = haystackOf(description);
+  const needle = stored.replace(/\s+/g, " ").trim();
+  const at = needle ? hay.indexOf(needle) : -1;
+  if (at < 0) return false;
+  return !candidateIsPay(hay, at, at + needle.length).pay;
 }
