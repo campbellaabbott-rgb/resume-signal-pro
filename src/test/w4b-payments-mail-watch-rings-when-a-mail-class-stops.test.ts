@@ -64,14 +64,14 @@ beforeAll(async () => {
       hits integer NOT NULL DEFAULT 1, PRIMARY KEY (door, bucket));
     CREATE TABLE public.suppressed_emails (email text PRIMARY KEY, reason text, created_at timestamptz NOT NULL DEFAULT now());
     CREATE TABLE public.cron_fixture (jobname text, active boolean, last_start timestamptz);
-    CREATE TABLE public.http_fixture (server_errors int, timed_out int);
+    CREATE TABLE public.http_fixture (server_errors int, timed_out int, refused int NOT NULL DEFAULT 0);
     CREATE FUNCTION public.email_cron_key_matches(p_key text) RETURNS boolean LANGUAGE sql AS $$ SELECT p_key = '${CRON_KEY}' $$;
     CREATE FUNCTION public.get_cron_health(p_hours integer DEFAULT 24)
       RETURNS TABLE (ch_jobname text, ch_active boolean, ch_last_start timestamptz) LANGUAGE sql AS
       $$ SELECT jobname, active, last_start FROM public.cron_fixture $$;
-    CREATE FUNCTION public.cron_http_refusals(p_minutes integer DEFAULT 60)
-      RETURNS TABLE (available boolean, server_errors integer, timed_out integer) LANGUAGE sql AS
-      $$ SELECT true, coalesce(sum(server_errors), 0)::int, coalesce(sum(timed_out), 0)::int FROM public.http_fixture $$;
+    CREATE FUNCTION public.cron_http_answers(p_minutes integer DEFAULT 60, p_error_minutes integer DEFAULT 180)
+      RETURNS TABLE (available boolean, refused integer, server_errors integer, timed_out integer) LANGUAGE sql AS
+      $$ SELECT true, coalesce(sum(refused), 0)::int, coalesce(sum(server_errors), 0)::int, coalesce(sum(timed_out), 0)::int FROM public.http_fixture $$;
   `);
   await db.exec(`CREATE OR REPLACE ${liveDefinitionOf("mail_door_take").body}\n$$;`);
   client = new PgSupabase(db);
@@ -272,14 +272,29 @@ describe("each rule rings for what it watches", () => {
     expect(stateOf(await run(), "R8")).toBe("alarm");
   });
 
-  it("R9: a heartbeat cron that stopped, or crons answered 5xx, ring", async () => {
+  it("R9: a heartbeat cron that stopped, crons answered 5xx three times, or a refused cron call, ring", async () => {
     await db.exec("UPDATE public.cron_fixture SET last_start = now() - interval '2 hours'");
     expect(stateOf(await run(), "R9")).toBe("alarm");
     await db.exec("UPDATE public.cron_fixture SET last_start = now()");
-    await db.exec("INSERT INTO public.http_fixture VALUES (2, 1)");
+    await db.exec("INSERT INTO public.http_fixture VALUES (3, 0)");
     const r = await run();
     expect(stateOf(r, "R9")).toBe("alarm");
-    expect(r.json.rules.find((x) => x.id === "R9")?.detail).toMatch(/3 cron call/);
+    expect(r.json.rules.find((x) => x.id === "R9")?.detail).toMatch(/3 cron call\(s\) answered 5xx/);
+    await db.exec("TRUNCATE public.http_fixture");
+    await db.exec("INSERT INTO public.http_fixture VALUES (0, 0, 1)");
+    expect(stateOf(await run(), "R9")).toBe("alarm");
+  });
+
+  it("R9: timeouts are reported, never judged, because every cron call longer than pg_net's 5 s default reads timed out", async () => {
+    // ops-email-tests' finding: no cron sets timeout_milliseconds, so most
+    // runs see timeouts; counting them with the 5xx rang R9 on most runs.
+    await db.exec("INSERT INTO public.http_fixture VALUES (2, 1)");
+    let r = await run();
+    expect(stateOf(r, "R9")).toBe("ok");
+    await db.exec("INSERT INTO public.http_fixture VALUES (0, 40)");
+    r = await run();
+    expect(stateOf(r, "R9")).toBe("ok");
+    expect(r.json.rules.find((x) => x.id === "R9")?.detail).toMatch(/41 call\(s\) outlived pg_net's 5-second wait, which is not judged/);
   });
 });
 

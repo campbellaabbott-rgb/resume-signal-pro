@@ -28,8 +28,12 @@
 //       mailed with their content; the ones made on their own page are mailed
 //       a link and are R2's);
 //   R9  the dead-man pair and the cron answers: the heartbeat's own cron has
-//       run in the last 40 minutes, and the crons' HTTP calls did not answer
-//       5xx or time out 3 or more times in the last hour.
+//       run in the last 40 minutes, no cron call was refused (401/403) in the
+//       last hour, and fewer than 3 answered 5xx in the last 3 hours, read
+//       with cron_http_answers (20261011200000), the rule scan-heartbeat
+//       uses. A timeout is reported, never judged: no cron sets pg_net's
+//       timeout, so every call to a function that runs past its 5-second
+//       default reads timed_out.
 //
 // Each rule says ok, alarm or unknown (a read that failed is unknown, never
 // ok and never an alarm). An alarm mails the owner once per rule per six
@@ -46,7 +50,9 @@ import { isScheduledCaller } from "../_shared/email-cron.ts";
 import { sendMail } from "../_shared/send-mail.ts";
 
 // Provable from outside: every response, the preflight included, carries this.
-const FN_BUILD = "mail-watch.2026-10-11.22";
+// 2026-10-11.29 (wave 4 round 2 integration): R9 judges refusals and 5xx
+// answers only, as scan-heartbeat does; timeouts are reported, not judged.
+const FN_BUILD = "mail-watch.2026-10-11.29";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -285,12 +291,12 @@ async function deliveredUnmailed(db: Db): Promise<Rule> {
     : { id: "R8", state: "ok", detail: `${r.length} order(s) delivered in the window; every one mailed` };
 }
 
-/** R9: the heartbeat's own cron has run, and the crons' calls are not answered 5xx or timing out. */
+/** R9: the heartbeat's own cron has run, and the crons' calls are neither refused nor answered 5xx again and again. */
 async function deadMan(db: Db): Promise<Rule> {
   let health: Array<Record<string, unknown>> | null = null;
   let http: Array<Record<string, unknown>> | null = null;
   try { health = await rows(db.rpc("get_cron_health", { p_hours: 2 })); } catch { health = null; }
-  try { http = await rows(db.rpc("cron_http_refusals", { p_minutes: 60 })); } catch { http = null; }
+  try { http = await rows(db.rpc("cron_http_answers", { p_minutes: 60, p_error_minutes: 180 })); } catch { http = null; }
   if (!health && !http) return { id: "R9", state: "unknown", detail: "neither cron reader answered" };
   const wrong: string[] = [];
   if (health) {
@@ -301,11 +307,18 @@ async function deadMan(db: Db): Promise<Rule> {
     else if (!Number.isFinite(last) || Date.now() - last > 40 * 60_000) wrong.push("the heartbeat's cron has not run in 40 minutes");
   }
   const h = http?.[0];
+  let timeouts = "";
   if (h && h.available === true) {
-    const bad = Number(h.server_errors ?? 0) + Number(h.timed_out ?? 0);
-    if (bad >= 3) wrong.push(`${bad} cron call(s) answered 5xx or timed out in the last hour`);
+    const refused = Number(h.refused ?? 0);
+    const errors = Number(h.server_errors ?? 0);
+    const timedOut = Number(h.timed_out ?? 0);
+    if (refused > 0) wrong.push(`${refused} cron call(s) refused (401/403) in the last hour`);
+    if (errors >= 3) wrong.push(`${errors} cron call(s) answered 5xx in the last 3 hours`);
+    if (timedOut > 0) timeouts = ` (${timedOut} call(s) outlived pg_net's 5-second wait, which is not judged)`;
   }
-  return wrong.length ? { id: "R9", state: "alarm", detail: wrong.join("; ") } : { id: "R9", state: "ok", detail: "the heartbeat runs and the crons are answered" };
+  return wrong.length
+    ? { id: "R9", state: "alarm", detail: wrong.join("; ") + timeouts }
+    : { id: "R9", state: "ok", detail: "the heartbeat runs and the crons are answered" + timeouts };
 }
 
 const OWNER_ALERT_SENDERS = ["Resume Booster Alerts <alerts@resumebooster.work>", "Resume Booster Alerts <onboarding@resend.dev>"];
