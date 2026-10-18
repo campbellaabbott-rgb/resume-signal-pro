@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
 import { PRODUCTS, SUBSCRIPTIONS } from "@/config/products";
 import { PRO_SUMMARY } from "@/config/pro-perks";
+import { TRADING_NAME } from "@/config/seller";
 import {
   Accordion,
   AccordionContent,
@@ -37,8 +38,16 @@ const faqKeys = [
  *     the writing tools, the Full Analysis included and no daily cap on
  *     scans (read from src/config/pro-perks.ts, the one list), and the one
  *     one-time tool is the Full Analysis.
+ *   - whatDoIGet's question and vsChatGPT (integration, account-compliance's
+ *     handoff, plan CP-G and S12-049): en-GB named the trader "CV Booster",
+ *     a name no receipt carries, so these insert TRADING_NAME
+ *     (src/config/seller.ts), which is never translated; and vsChatGPT
+ *     promised "LinkedIn analysis" (no longer offered) and that a résumé is
+ *     "never used for training", which the AI providers' terms were never
+ *     checked to support. It now says what we do: we train no model on it.
+ * Either half may move on its own; the other keeps its key.
  */
-export const FAQ_REWORDED: Readonly<Record<string, { question: [string, string]; answer: [string, string] }>> = {
+export const FAQ_REWORDED: Readonly<Record<string, { question?: [string, string]; answer?: [string, string] }>> = {
   howLong: {
     question: ["faq.questions.howLongBound.question", "How long does the analysis take?"],
     answer: ["faq.questions.howLongBound.answer", "Usually a minute or two after payment, and a few minutes at most. It opens on the page Stripe returns you to, and the private link we email you keeps it for 90 days."],
@@ -46,6 +55,13 @@ export const FAQ_REWORDED: Readonly<Record<string, { question: [string, string];
   subscription: {
     question: ["faq.questions.subscriptionLine.question", "Is this a subscription?"],
     answer: ["faq.questions.subscriptionLineFa.answer", "Both options exist, and you choose. The ${{price}} Full Analysis is a one-time payment that never renews. Separately, there is one optional monthly plan, Pro at ${{proPrice}}/month: {{proSummary}}. It renews every month until you cancel. The resume scan, the job board and connecting your own AI stay free either way. Nothing else upgrades you automatically."],
+  },
+  whatDoIGet: {
+    question: ["faq.questions.whatDoIGetNamed.question", "What do I get with {{name}}?"],
+  },
+  vsChatGPT: {
+    question: ["faq.questions.vsChatGPTTrue.question", "Why is this better than ChatGPT or résumé templates?"],
+    answer: ["faq.questions.vsChatGPTTrue.answer", "{{name}} scores your résumé the way applicant tracking systems read it, with a 5-category weighted score, 14 industry-specific templates and recruiter-calibrated feedback. Unlike ChatGPT, you get the same structured report every time, with no prompt to write. Unlike templates, you get rewrites of your own bullets and alignment with the job description. We do not train AI models on your résumé, and the free scan deletes it within 7 days."],
   },
 };
 
@@ -56,20 +72,21 @@ export function FAQ() {
   // Replace $25 with local currency in answers (using actual product price)
   const fullAnalysisPrice = PRODUCTS.fullAnalysis.priceUsd;
   const questionOf = (key: string) => {
-    const moved = FAQ_REWORDED[key];
-    return moved ? t(moved.question[0], moved.question[1]) : t(`faq.questions.${key}.question`);
+    const moved = FAQ_REWORDED[key]?.question;
+    return moved ? t(moved[0], moved[1], { name: TRADING_NAME }) : t(`faq.questions.${key}.question`);
   };
   const getLocalizedAnswer = (key: string) => {
     // Subscription prices are interpolated rather than written into the copy:
     // the "is this a subscription?" answer used to deny that any recurring
     // charge existed while Pro and the Morning Queue were both on sale. Pro is
     // the one plan on sale since the apply pivot retired the agent's.
-    const moved = FAQ_REWORDED[key];
+    const moved = FAQ_REWORDED[key]?.answer;
     let answer = moved
-      ? t(moved.answer[0], moved.answer[1], {
+      ? t(moved[0], moved[1], {
         proPrice: SUBSCRIPTIONS.pro.priceUsd,
         price: fullAnalysisPrice,
         proSummary: t(PRO_SUMMARY.key, PRO_SUMMARY.text),
+        name: TRADING_NAME,
       })
       : t(`faq.questions.${key}.answer`, {
         proPrice: SUBSCRIPTIONS.pro.priceUsd,
@@ -95,7 +112,7 @@ export function FAQ() {
             {t('faq.title')}
           </h2>
           <p className="text-muted-foreground text-center mb-12">
-            {t('faq.subtitle')}
+            {t('faq.subtitleNamed', 'Everything you need to know about {{name}}', { name: TRADING_NAME })}
           </p>
           
           <Accordion type="single" collapsible className="w-full">
