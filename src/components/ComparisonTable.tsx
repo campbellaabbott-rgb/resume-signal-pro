@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Check, X, Minus } from "lucide-react";
 import { useCurrency } from "@/hooks/use-currency";
 import { PRODUCTS } from "@/config/products";
+import { TRADING_NAME } from "@/config/seller";
 
 type FeatureStatus = "yes" | "no" | "partial";
 
@@ -63,7 +64,7 @@ export function ComparisonTable() {
       <div className="container">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-4">
-            {t("comparison.title")}
+            {t("comparison.titleNamed", "Why {{name}}?", { name: TRADING_NAME })}
           </h2>
           <p className="text-muted-foreground text-center mb-12">
             {t("comparison.subtitle")}
@@ -79,7 +80,7 @@ export function ComparisonTable() {
                   </th>
                   <th className="p-4 text-center">
                     <div className="flex flex-col items-center gap-1">
-                      <span className="font-bold text-primary">Resume Booster</span>
+                      <span className="font-bold text-primary">{TRADING_NAME}</span>
                       <span className="text-xs text-muted-foreground">
                         ${PRODUCTS.fullAnalysis.priceUsd} {isLocalCurrency && <span className="text-primary/70">≈ {formatPrice(PRODUCTS.fullAnalysis.priceUsd)}</span>}
                       </span>
@@ -132,7 +133,7 @@ export function ComparisonTable() {
                 <div className="grid grid-cols-3 gap-2 text-center text-sm">
                   <div className="flex flex-col items-center gap-1">
                     <StatusIcon status={feature.resumeBooster} />
-                    <span className="text-xs text-primary font-medium">Resume Booster</span>
+                    <span className="text-xs text-primary font-medium">{TRADING_NAME}</span>
                   </div>
                   <div className="flex flex-col items-center gap-1">
                     <StatusIcon status={feature.chatgpt} />
