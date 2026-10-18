@@ -8,6 +8,7 @@ import { checkInputLimits } from "../_shared/input-limits.ts";
 import { clipField, modelSpendGate } from "../_shared/model-spend-gate.ts";
 import { assertPaidSession } from "../_shared/paid-session.ts";
 import { isServiceRoleCaller } from "../_shared/service-caller.ts";
+import { clientAddressOr } from "../_shared/client-address.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { checkoutSessionSettled } from "../_shared/pass-settlement.ts";
 import { sessionWasRefunded } from "../_shared/payment-revocation.ts";
@@ -18,7 +19,11 @@ import { sessionWasRefunded } from "../_shared/payment-revocation.ts";
 // retired (owner decision 2026-10-12): the free tier answers 410; a past
 // buyer's page, which has no stored copy, keeps regenerating for 90 days
 // after the purchase (read from Stripe once the 30-day claim row is gone).
-const FN_BUILD = "generate-career-path.2026-10-11.24";
+// 2026-10-11.30 (wave 4 round 2 fixes): a stranger's made-up session id never
+// spends the Stripe account's shared read limit: a well-formed id only, a
+// per-address and a function-wide bucket before Stripe is asked, and a
+// session Stripe refused is not asked about again for ten minutes.
+const FN_BUILD = "generate-career-path.2026-10-11.30";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -35,14 +40,56 @@ const retired = (message: string) =>
     status: 410, headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
+/** A Checkout session id as Stripe mints them; anything else is never sent to Stripe. */
+export const STRIPE_SESSION_ID = /^cs_(live|test)_[A-Za-z0-9]{20,200}$/;
+
+/** Stripe reads this path may make: per address and for the whole function, each an hour. */
+export const PAST_BUYER_STRIPE_LIMITS = { perAddress: 10, globalPerHour: 200 };
+
+/** Sessions Stripe already said are not a past purchase, per isolate, for ten minutes. */
+const notPastBuyer = new Map<string, number>();
+const NOT_PAST_BUYER_MS = 10 * 60_000;
+
+type RateDb = Parameters<typeof sessionWasRefunded>[0] & {
+  rpc: (fn: string, args: Record<string, unknown>) => PromiseLike<{ data: unknown; error: unknown }>;
+};
+
+/** Both buckets must answer yes; an unanswered bucket is a no (Stripe is never asked blind). */
+async function stripeReadAllowed(db: RateDb, req: Request): Promise<boolean> {
+  const take = async (ip: string, max: number) => {
+    try {
+      const { data, error } = await db.rpc("check_rate_limit", { p_function: "generate-career-path:stripe", p_ip: ip, p_max_requests: max, p_window_minutes: 60 });
+      return !error && data !== false;
+    } catch {
+      return false;
+    }
+  };
+  return await take(clientAddressOr(req.headers), PAST_BUYER_STRIPE_LIMITS.perAddress)
+    && await take("all", PAST_BUYER_STRIPE_LIMITS.globalPerHour);
+}
+
 /**
  * A past buyer whose claim row (kept 30 days) is gone: the Stripe session
  * itself, paid, for this product, inside PAST_BUYER_DAYS, and not refunded.
+ * Counted before Stripe is asked, because every call spends the account's
+ * shared read limit, which the checkouts and the webhook also need.
  */
-async function pastBuyerFromStripe(db: Parameters<typeof sessionWasRefunded>[0], sessionId: unknown): Promise<boolean> {
-  if (typeof sessionId !== "string" || !sessionId.startsWith("cs_") || sessionId.length > 255) return false;
+async function pastBuyerFromStripe(db: RateDb, req: Request, sessionId: unknown): Promise<boolean> {
+  if (typeof sessionId !== "string" || !STRIPE_SESSION_ID.test(sessionId)) return false;
+  const refusedAt = notPastBuyer.get(sessionId);
+  if (refusedAt && Date.now() - refusedAt < NOT_PAST_BUYER_MS) return false;
   const key = Deno.env.get("STRIPE_SECRET_KEY");
   if (!key) return false;
+  if (!(await stripeReadAllowed(db, req))) return false;
+  const answer = await pastBuyerAnswer(db, key, sessionId);
+  if (!answer) {
+    if (notPastBuyer.size > 5000) notPastBuyer.clear();
+    notPastBuyer.set(sessionId, Date.now());
+  }
+  return answer;
+}
+
+async function pastBuyerAnswer(db: RateDb, key: string, sessionId: string): Promise<boolean> {
   try {
     const stripe = new Stripe(key, { apiVersion: "2025-12-15.clover" });
     const s = await stripe.checkout.sessions.retrieve(sessionId);
@@ -98,7 +145,7 @@ serve(async (req) => {
     }
     if (premium && !service) {
       const paidError = await assertPaidSession(supabase, sessionId, CAREER_PATH_PRODUCTS);
-      if (paidError && !(await pastBuyerFromStripe(supabase, sessionId))) {
+      if (paidError && !(await pastBuyerFromStripe(supabase as unknown as RateDb, req, sessionId))) {
         return new Response(
           JSON.stringify({ error: paidError, retryable: true }),
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
