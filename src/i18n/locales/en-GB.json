@@ -4429,7 +4429,8 @@
     "layoffMore": "+{{more}} more on the employer page",
     "hhAlsoOnRecord": "Also on record:",
     "verdictTakedownCeiling": "takes up to {{pct}}% of its roles down within {{d}} days, counting every takedown",
-    "hhTakedownRateDated": "Up to {{pct}}% of its roles came down within {{d}} days, counting every takedown, measured over the {{n}} roles that carry the company's own posting date."
+    "hhTakedownRateDated": "Up to {{pct}}% of its roles came down within {{d}} days, counting every takedown, measured over the {{n}} roles that carry the company's own posting date.",
+    "hhFootnoteCurveListing": "Computed from the full lifecycle of the postings this site lists — when they open and when they come down — not a one-time snapshot. Roles still up, and roles that passed our 30-day cap, are counted as unfinished rather than left out."
   },
   "accountPage": {
     "statusSaveFailed": "Couldn't save that status — please try again.",

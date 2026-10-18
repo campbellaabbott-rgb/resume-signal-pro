@@ -164,11 +164,13 @@ function paceWhy(t: TFunction, c: RecordCurve, reason: string | null): string {
     : t("jobsPage.hhPaceThinUntracked", "Not enough of this company's roles have finished yet to say how fast it moves.");
 }
 
-export function HiringRecordCard({ input, floorOnly = false, headingLevel = 2 }: {
+export function HiringRecordCard({ input, floorOnly = false, headingLevel = 2, listingSite = false }: {
   input: HiringRecordInput | null;
   /** USAJOBS: only the tracking-floor reason prints. */
   floorOnly?: boolean;
   headingLevel?: 2 | 3;
+  /** The USAJOBS hub: its postings are a listing site's, not one company's. */
+  listingSite?: boolean;
 }) {
   const { t, i18n } = useTranslation();
   if (!input || !hiringRecordRenders(input)) return null;
@@ -308,7 +310,9 @@ export function HiringRecordCard({ input, floorOnly = false, headingLevel = 2 }:
         </ul>
       )}
       <p className="text-xs text-subtle-foreground">
-        {t("jobsPage.hhFootnoteCurve", "Computed from the full lifecycle of this company's official postings — when they open and when they come down — not a one-time snapshot. Roles still up, and roles that passed our 30-day cap, are counted as unfinished rather than left out.")}
+        {listingSite
+          ? t("jobsPage.hhFootnoteCurveListing", "Computed from the full lifecycle of the postings this site lists — when they open and when they come down — not a one-time snapshot. Roles still up, and roles that passed our 30-day cap, are counted as unfinished rather than left out.")
+          : t("jobsPage.hhFootnoteCurve", "Computed from the full lifecycle of this company's official postings — when they open and when they come down — not a one-time snapshot. Roles still up, and roles that passed our 30-day cap, are counted as unfinished rather than left out.")}
         {input.computedAt ? <> {t("companyProfile.record.asOf", "Figures as of {{when}}.", { when: fmtDateTime(input.computedAt, { lng: lang }) })}</> : null}
       </p>
     </ProfileSection>

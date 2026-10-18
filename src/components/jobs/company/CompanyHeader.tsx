@@ -263,8 +263,16 @@ export function CompanyHeader({ model, token, system, countries = [], workMode, 
   const { name, generic } = model.name;
   const zero = model.variant === "zero";
 
+  // A name that has not arrived once the list answered never will (a zero
+  // page has no rows to name it from): the heading names the board by its
+  // address instead of pulsing a loading bar, and announcing "Loading the
+  // employer's name", forever (2026-10-18 review, /jobs/company/10kbi).
   const h1 = !name
-    ? <NameSkeleton />
+    ? (model.nameSettled
+        ? (system
+            ? t("companyProfile.h1GenericSystem", "Roles on the “{{label}}” board ({{system}})", { label: token, system })
+            : t("companyProfile.h1Generic", "Roles on the “{{label}}” board", { label: token }))
+        : <NameSkeleton />)
     : generic
       ? (system
           ? t("companyProfile.h1GenericSystem", "Roles on the “{{label}}” board ({{system}})", { label: name, system })

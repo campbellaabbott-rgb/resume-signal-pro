@@ -4457,7 +4457,8 @@
     "sourcesDownAtLeast_many": "al menos {{count}} fuentes de empresas no responden ahora mismo",
     "moreLocations_many": "Mismo puesto en {{count}} ubicaciones más",
     "verdictTakedownCeiling": "retira hasta el {{pct}} % de sus puestos en {{d}} días, contando cada retirada",
-    "hhTakedownRateDated": "Hasta el {{pct}} % de sus puestos se retiró en {{d}} días, contando cada retirada, medido sobre los {{n}} puestos con fecha de publicación de la propia empresa."
+    "hhTakedownRateDated": "Hasta el {{pct}} % de sus puestos se retiró en {{d}} días, contando cada retirada, medido sobre los {{n}} puestos con fecha de publicación de la propia empresa.",
+    "hhFootnoteCurveListing": "Calculado a partir del ciclo de vida completo de las publicaciones que lista este sitio — cuándo se abren y cuándo se retiran — no de una foto puntual. Las vacantes aún publicadas, y las que superaron nuestro límite de 30 días, cuentan como sin terminar en lugar de quedar fuera."
   },
   "accountPage": {
     "statusSaveFailed": "No se pudo guardar ese estado; inténtalo de nuevo.",

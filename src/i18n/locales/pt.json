@@ -4457,7 +4457,8 @@
     "sourcesDownAtLeast_many": "pelo menos {{count}} feeds de empresas estão fora do ar agora",
     "moreLocations_many": "A mesma vaga em mais {{count}} localizações",
     "verdictTakedownCeiling": "retira até {{pct}}% das suas vagas em {{d}} dias, contando cada retirada",
-    "hhTakedownRateDated": "Até {{pct}}% das suas vagas saíram em {{d}} dias, contando cada retirada, medido sobre as {{n}} vagas com data de publicação da própria empresa."
+    "hhTakedownRateDated": "Até {{pct}}% das suas vagas saíram em {{d}} dias, contando cada retirada, medido sobre as {{n}} vagas com data de publicação da própria empresa.",
+    "hhFootnoteCurveListing": "Calculado a partir do ciclo de vida completo das publicações que este site lista — quando abrem e quando saem — não de um instantâneo. As vagas ainda publicadas, e as que passaram o nosso limite de 30 dias, contam como inacabadas em vez de ficarem de fora."
   },
   "accountPage": {
     "statusSaveFailed": "Não foi possível salvar esse status — tente novamente.",

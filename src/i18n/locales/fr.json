@@ -4457,7 +4457,8 @@
     "sourcesDownAtLeast_many": "au moins {{count}} flux d'entreprises sont injoignables pour le moment",
     "moreLocations_many": "Même poste dans {{count}} autres lieux",
     "verdictTakedownCeiling": "retire jusqu'à {{pct}} % de ses postes en {{d}} jours, en comptant chaque retrait",
-    "hhTakedownRateDated": "Jusqu'à {{pct}} % de ses postes ont disparu en {{d}} jours, en comptant chaque retrait, mesuré sur les {{n}} postes qui portent une date de publication de l'entreprise elle-même."
+    "hhTakedownRateDated": "Jusqu'à {{pct}} % de ses postes ont disparu en {{d}} jours, en comptant chaque retrait, mesuré sur les {{n}} postes qui portent une date de publication de l'entreprise elle-même.",
+    "hhFootnoteCurveListing": "Calculé à partir du cycle de vie complet des annonces que ce site publie — quand elles paraissent et quand elles disparaissent — et non d'un instantané. Les postes encore en ligne, et ceux ayant dépassé notre plafond de 30 jours, comptent comme inachevés au lieu d'être écartés."
   },
   "accountPage": {
     "statusSaveFailed": "Impossible d'enregistrer ce statut — réessayez.",

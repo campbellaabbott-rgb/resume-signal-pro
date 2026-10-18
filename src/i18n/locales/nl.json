@@ -4429,7 +4429,8 @@
     "layoffMore": "+{{more}} meer op de werkgeverspagina",
     "hhAlsoOnRecord": "Ook vastgelegd:",
     "verdictTakedownCeiling": "haalt tot {{pct}}% van zijn functies binnen {{d}} dagen offline, elke verwijdering meegeteld",
-    "hhTakedownRateDated": "Tot {{pct}}% van zijn functies verdween binnen {{d}} dagen, elke verwijdering meegeteld, gemeten over de {{n}} functies met een plaatsingsdatum van het bedrijf zelf."
+    "hhTakedownRateDated": "Tot {{pct}}% van zijn functies verdween binnen {{d}} dagen, elke verwijdering meegeteld, gemeten over de {{n}} functies met een plaatsingsdatum van het bedrijf zelf.",
+    "hhFootnoteCurveListing": "Berekend uit de volledige levenscyclus van de vacatures die deze site toont — wanneer ze openen en wanneer ze verdwijnen — niet uit een momentopname. Functies die nog online staan, en functies voorbij onze 30-dagengrens, tellen als onafgerond in plaats van weg te vallen."
   },
   "accountPage": {
     "statusSaveFailed": "Kon die status niet opslaan — probeer het opnieuw.",

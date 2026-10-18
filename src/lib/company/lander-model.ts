@@ -219,6 +219,12 @@ export interface LanderModel {
   undatedOpen: number | null;
   /** On the zero page only: what may be said about the board. */
   zeroReading: ZeroReading | null;
+  /**
+   * The list has answered (or failed), so a name that is still null will not
+   * arrive from it: the header stops showing a loading bar and names the
+   * board instead (a zero page has no rows to name it from).
+   */
+  nameSettled: boolean;
 }
 
 /** A board total is printed only when its read is no older than this. */
@@ -409,5 +415,6 @@ export function buildLanderModel(input: LanderInput): LanderModel {
     boardTotal: employerBoard ? boardTotalFact(input.boardTotal, input.now ?? Date.now()) : null,
     undatedOpen: employerBoard ? undated : null,
     zeroReading: variant === "zero" ? zeroReadingOf(input) : null,
+    nameSettled: !input.loading && (input.error || input.budgetRefusal || finite(input.listTotal)),
   };
 }

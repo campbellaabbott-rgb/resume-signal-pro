@@ -111,7 +111,7 @@ function Sections({ p, plan, level }: { p: AboutEmployerProps; plan: Plan; level
   return (
     <>
       {plan.perks && <CompanyPerksView answer={p.profile.perks} headingLevel={level} />}
-      {plan.record && <HiringRecordCard input={p.record} floorOnly={s.hiringRecordFloorOnly} headingLevel={level} />}
+      {plan.record && <HiringRecordCard input={p.record} floorOnly={s.hiringRecordFloorOnly} headingLevel={level} listingSite={p.model.variant === "usajobs"} />}
       {plan.pay && <PaySummary facts={plan.pay} headingLevel={level} />}
       {plan.mix && <HiringMix facts={plan.mix} asListings={s.mixAsListings} headingLevel={level} />}
       {plan.howApplying && <div data-how-applying="">{p.howApplying}</div>}

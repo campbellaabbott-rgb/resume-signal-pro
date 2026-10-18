@@ -65,8 +65,9 @@ import { SavedSearchPills } from "@/components/jobs/SavedSearchPills";
 import { LayoffFilingChip, LayoffFilingLine, layoffHidesForCountry, useEmployerLayoffFilings, useEmployerLayoffFilingsAll } from "@/components/jobs/LayoffFilingLine";
 import { CompanyLanderAccordion, CompanyLanderEmpty, CompanyLanderHeader, CompanyLanderRail, CompanyResultsLine, CompanySimilarAfterFirstPage, useCompanyProfile } from "@/components/jobs/company/CompanyLander";
 import type { HiringRecordInput } from "@/components/jobs/company/HiringRecordCard";
-import { buildLanderModel, isUsajobsBoard, type OpenRolesValue as LanderOpenRoles } from "@/lib/company/lander-model";
+import { buildLanderModel, isUsajobsBoard, USAJOBS_RESULT_CAP, type OpenRolesValue as LanderOpenRoles } from "@/lib/company/lander-model";
 import { keyBelongsToALayer } from "@/lib/board-keys";
+import { tPlural } from "@/lib/company/plural";
 import { bakedLanderName, cachedLanderName, rememberLanderName } from "@/lib/display-name";
 import { JobCard } from "@/components/jobs/listing/JobCard";
 import { PostingDetail } from "@/components/jobs/listing/PostingDetail";
@@ -8193,6 +8194,35 @@ function JobsBoard({ boardId }: { boardId: string }) {
               </div>
   );
 
+  // THE COMPANY PAGE'S TITLE AND DESCRIPTION, BY VARIANT, FROM THE MODEL'S
+  // NAME. They said "{company} jobs: open roles from their own hiring
+  // system" on every token: of USAJOBS (a listing site, not an employer), of
+  // a board name two employers share (naming the first row's employer on a
+  // page that names none), and of a nameless zero page from the raw token
+  // (2026-10-18 review). Each now matches the page's own heading.
+  const landerSeo: { title: string; description: string } | null = !landerCompany || !landerModel ? null
+    : landerModel.variant === "usajobs"
+      ? {
+          title: t("companyProfile.usajobs.h1", "Federal openings listed on USAJOBS"),
+          description: `${t("companyProfile.usajobs.subtitle", "USAJOBS lists openings from many federal agencies; each role names its agency.")} ${t("companyProfile.usajobs.cap", "Up to {{cap}} results per query; not every federal opening.", { cap: USAJOBS_RESULT_CAP.toLocaleString(i18n.language || "en") })}`,
+        }
+      : landerModel.variant === "collision"
+        ? {
+            title: t("companyProfile.collision.h1", "Open roles on boards named “{{token}}”", { token: landerCompany }),
+            description: tPlural(t, "companyProfile.collision.lead", landerModel.boards.length, { n: landerModel.boards.length },
+              "{{n}} hiring system carries a board with this name. Nothing we hold says whether they are one employer, so this page shows no employer facts.",
+              "{{n}} hiring systems carry a board with this name. Nothing we hold says whether they are one employer, so this page shows no employer facts."),
+          }
+        : !landerModel.name.name || landerModel.name.generic
+          ? {
+              title: t("companyProfile.h1Generic", "Roles on the “{{label}}” board", { label: landerModel.name.name ?? landerCompany }),
+              description: t("companyProfile.subtitleGeneric", "Live jobs straight from this board's own hiring system."),
+            }
+          : {
+              title: t("jobsPage.companySeoTitle", "{{company}} jobs: open roles from their own hiring system", { company: landerModel.name.name }),
+              description: t("jobsPage.companySeoDescription", "Browse {{companyPossessive}} open roles dated in the last 30 days, read from {{companyPossessive}} own hiring system. Check your resume's fit against any role free, then apply on {{companyPossessive}} own site.", { company: landerModel.name.name, companyPossessive: possessive(landerModel.name.name) }),
+            };
+
   return (
     <div className="min-h-screen bg-background">
       <SEO
@@ -8200,15 +8230,15 @@ function JobsBoard({ boardId }: { boardId: string }) {
           ? t("jobsPage.landerSeoTitle", "Live {{category}} Jobs — From Official Company Job Boards", { category: t(`jobsPage.categories.${landerCategory}`, landerCategory) })
           : landerUncarried
           ? t("companyProfile.uncarried.title", "We don't read a board called “{{token}}” yet", { token: landerCompany })
-          : landerCompany
-          ? t("jobsPage.companySeoTitle", "{{company}} jobs: open roles from their own hiring system", { company: landerCompanyName })
+          : landerCompany && landerSeo
+          ? landerSeo.title
           : t("jobsPage.seoTitle", "Live Jobs From Companies' Own Boards — Check Your Fit Before You Apply")}
         description={landerUncarried
           ? t("companyProfile.uncarried.body", "Search the live board for this employer, or browse the companies we read.")
           : landerCategory
           ? t("jobsPage.landerSeoDescription", "Live {{category}} openings read from employers' own hiring systems and re-read through the day. Check your resume's fit free, then apply on the employer's own site.", { category: t(`jobsPage.categories.${landerCategory}`, landerCategory) })
-          : landerCompany
-          ? t("jobsPage.companySeoDescription", "Browse {{companyPossessive}} open roles dated in the last 30 days, read from {{companyPossessive}} own hiring system. Check your resume's fit against any role free, then apply on {{companyPossessive}} own site.", { company: landerCompanyName, companyPossessive: possessive(landerCompanyName ?? "") })
+          : landerCompany && landerSeo
+          ? landerSeo.description
           : t("jobsPage.seoDescription", "Live openings read straight from thousands of employers' own hiring systems and re-read through the day. See how your resume fits any posting free, then apply on the employer's own site.")}
         path={landerCompany ? companyLanderPath(landerCompany) : landerCategory ? `/jobs/field/${landerCategory}` : "/jobs"}
         canonicalPath={landerCompany && bakedPrimary ? companyLanderPath(bakedPrimary) : undefined}
