@@ -118,6 +118,15 @@ describe("S12-032: a hold is checked by machine", () => {
     const guard = readFileSync(resolve(ROOT, "supabase/migrations", readdirSync(resolve(ROOT, "supabase/migrations")).find((f) => f.startsWith("20261009112000_"))!), "utf8");
     expect(guard).toMatch(/CREATE TRIGGER shortlist_candidates_guard/);
   });
+
+  it("COMPLIANCE.md says the guard is applied only with the staged-runner stub that proves it, on the day the stub landed", () => {
+    const doc = readFileSync(resolve(ROOT, "COMPLIANCE.md"), "utf8");
+    const row = doc.split("\n").find((l) => l.includes("shortlist_candidates_guard")) ?? "";
+    const stub = readdirSync(resolve(ROOT, "drizzle/migrations")).find((f) => /^\d{4}_20261009112000_/.test(f));
+    expect(stub, "no staged-runner stub records 20261009112000 as applied").toBeTruthy();
+    // Lovable wrote that stub on 2026-10-12 (commit 7bdb529a); the S12 sweep that morning still read the guard as not live.
+    expect(row).toMatch(/20261009112000, applied 2026-10-12\)/);
+  });
 });
 
 describe("S12-161: a declared rollback is a deploy", () => {
