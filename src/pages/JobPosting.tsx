@@ -43,7 +43,8 @@
 
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
-import { companyLanderPath } from "@/lib/public-href";
+import { useCompanyBoardHref } from "@/lib/seo/lander-manifest";
+import { VERIFY_ON_VIEW_AFTER_HOURS } from "@/lib/seo/source-copy";
 import { useTranslation } from "react-i18next";
 import { ChevronRight, Loader2 } from "lucide-react";
 import { canHandOff, writeJdHandoff } from "@/lib/jd-handoff";
@@ -143,6 +144,9 @@ function clearJobMarkup(): void {
 
 export default function JobPosting() {
   const { t } = useTranslation();
+  // SEO-010: an employer link goes to its written company page, or to the
+  // live board filtered to the board when the bake wrote none.
+  const companyHref = useCompanyBoardHref();
   const navigate = useNavigate();
   const params = useParams<{ source?: string; token?: string; key?: string; id?: string }>();
 
@@ -353,7 +357,7 @@ export default function JobPosting() {
                 <>
                   <li aria-hidden="true"><ChevronRight className="h-3.5 w-3.5" /></li>
                   <li className="min-w-0">
-                    <Link to={companyLanderPath(shown.token)} className="break-words text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary">
+                    <Link to={companyHref(shown.token)} className="break-words text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary">
                       {company}
                     </Link>
                   </li>
@@ -432,8 +436,8 @@ export default function JobPosting() {
                 />
               </div>
 
-              {/* NOT PRINTED OVER A STAFFING AGENCY. The sentence is
-                  categorical — "never an aggregator, never a repost" — and the
+              {/* NOT PRINTED OVER A STAFFING AGENCY. The sentence says the
+                  posting was read from the employer's own hiring system, and the
                   board itself distinguishes agencies: `agency` is NOT NULL on
                   every row, rides the list payload, and has a documented
                   opt-out filter and a badge. On an agency row the claim is
@@ -443,16 +447,20 @@ export default function JobPosting() {
                   further and gives an agency row no static page at all. */}
               {/* Nor over a USAJOBS row: the federal feed is a listing site
                   every agency posts to, not one employer's own system
-                  (usajobs-is-a-listing-site-not-an-employer.test.tsx), so
-                  "never an aggregator" is not ours to say there either. */}
+                  (usajobs-is-a-listing-site-not-an-employer.test.tsx), so the
+                  employer's-own-system sentence is not ours to say there either.
+                  The re-check clause is conditional (R6): the live board asks the
+                  employer's system again only for a posting whose feed read is
+                  older than VERIFY_ON_VIEW_AFTER_HOURS. */}
               {shown.agency !== true && shown.source !== "usajobs" && (
                 <p className="mt-6 text-xs text-muted-foreground">
                   {t("jobPostingPage.sourceNote", {
                     defaultValue:
-                      "Pulled straight from {{companyPossessive}} own hiring system — never an aggregator, never a repost. A dated posting is served for at most {{days}} days from the date the employer states, and the board re-checks a posting when you open it.",
+                      "Read from {{companyPossessive}} own hiring system, never copied from another job board. A dated posting is served for at most {{days}} days from the date the employer states. On the live board, opening a posting whose feed we last read more than {{hours}} hours ago asks the employer's system again.",
                     company: company || t("jobPostingPage.theEmployer", "the employer"),
                     companyPossessive: companyPossessive || t("jobPostingPage.theEmployerPossessive", "the employer's"),
                     days: BOARD_FRESH_WINDOW_DAYS,
+                    hours: VERIFY_ON_VIEW_AFTER_HOURS,
                   })}
                 </p>
               )}

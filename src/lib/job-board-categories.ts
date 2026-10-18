@@ -28,28 +28,32 @@ export const isBoardCategory = (x: string | undefined): x is BoardCategorySlug =
   !!x && (BOARD_CATEGORY_SLUGS as readonly string[]).includes(x);
 
 // Scanner industries → board categories, where the mapping is safe.
+//
+// KEYED BY THE SCANNER'S OWN SLUGS (S13-132). Seven keys named industries the
+// scanner never detects (a human-resources, customer-service, nursing … slug
+// that INDUSTRY_KEYWORDS does not have), so they could never fire, and the
+// real HR, customer-success, administrative and creative industry pages
+// rendered without the link to their board field. Every key is now an
+// INDUSTRY_KEYWORDS slug (held by seo-react-industry-pages-link-their-field).
 export const INDUSTRY_TO_CATEGORY: Record<string, BoardCategorySlug> = {
   technology: "engineering",
-  software_engineering: "engineering",
   machine_learning: "data_ai",
   data_science: "data_ai",
   data_engineering: "data_ai",
-  design: "design",
+  creative: "design",
   product_management: "product",
   marketing: "marketing",
   sales: "sales",
-  customer_service: "customer",
+  customer_success: "customer",
   finance: "finance",
-  accounting: "finance",
   legal: "legal",
-  human_resources: "people_hr",
+  hr: "people_hr",
   healthcare: "healthcare",
-  nursing: "healthcare",
   education: "education",
   hospitality: "hospitality_retail",
   retail: "hospitality_retail",
   cybersecurity: "security",
   logistics: "operations",
-  supply_chain: "operations",
   manufacturing: "operations",
+  administrative: "admin",
 };

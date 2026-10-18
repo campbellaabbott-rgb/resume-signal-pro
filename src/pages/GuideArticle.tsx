@@ -7,6 +7,7 @@ import { useMemo } from "react";
 import { useParams, Link, Navigate } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { SEO } from "@/components/seo/SEO";
+import { PageJsonLd } from "@/components/seo/PageJsonLd";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { GUIDES, guideGrounding } from "@/data/guides";
@@ -57,9 +58,7 @@ export default function GuideArticle() {
   return (
     <div className="min-h-screen bg-background">
       <SEO title={g.title} description={g.description} path={`/guides/${g.slug}`} />
-      {jsonLd?.map((b, i) => (
-        <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: b }} />
-      ))}
+      <PageJsonLd blocks={jsonLd ?? []} />
       <Header />
       <main className="pt-20 pb-20">
         <article className="container max-w-3xl">

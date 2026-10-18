@@ -17,7 +17,7 @@
  *     from X's own hiring system" subtitle (honesty review of 3ebdcbb2: the
  *     zero header read "No open roles right now · … · Actively hiring").
  */
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 
@@ -27,6 +27,11 @@ import { buildLanderModel, type LanderInput } from "@/lib/company/lander-model";
 import { CompanyEmptyState } from "@/components/jobs/company/CompanyEmptyState";
 import { CompanyLanderHeader } from "@/components/jobs/company/CompanyLander";
 import type { SimilarRow } from "@/components/jobs/SimilarCompanies";
+import { setLanderManifestForTests } from "@/lib/seo/lander-manifest";
+
+// Every board has a written page here (SEO-010): this file holds the way out, not
+// which boards the bake wrote.
+beforeEach(() => { setLanderManifestForTests("*"); });
 
 const minsAgo = (m: number) => new Date(Date.now() - m * 60_000).toISOString();
 const input = (o: Partial<LanderInput> = {}): LanderInput => ({

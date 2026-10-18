@@ -26,6 +26,14 @@ export interface MixFacts {
   fields: Array<{ category: string; n: number }>;
   countries: Array<{ country: string; n: number }>;
   asOf: string | null;
+  /**
+   * The reader's counts cover more roles than this page serves (S13-116):
+   * get_company_intel pools every career site an employer runs on one
+   * hiring system (a multi-site Workday tenant), so the PwC campus page (353
+   * roles) printed India 1,172. `atLeast` is the smallest total the pooled
+   * counts prove; `page` is this page's own figure.
+   */
+  pooled?: { atLeast: number; page: number };
 }
 
 export function mixFacts(intel: CompanyIntel | null | undefined, openRoles: OpenRolesValue | null, readAt: string | null): MixFacts | null {
@@ -33,9 +41,23 @@ export function mixFacts(intel: CompanyIntel | null | undefined, openRoles: Open
   const fields = intel.categories.filter((c) => c.n > 0);
   if (fields.length < MIX_MIN_FIELDS) return null;
   const placed = intel.countries.reduce((s, c) => s + (c.n > 0 ? c.n : 0), 0);
-  const exact = openRoles && !openRoles.floor && openRoles.value > 0 ? openRoles.value : null;
-  if (!exact || placed < exact * MIX_MIN_PLACE_SHARE) return null;
-  return { fields, countries: intel.countries.filter((c) => c.n > 0), asOf: readAt };
+  const inFields = fields.reduce((s, c) => s + c.n, 0);
+  // Against a floor ("10,000+") neither the share nor the pooling can be judged.
+  const page = openRoles && !openRoles.floor && openRoles.value > 0 ? openRoles.value : null;
+  if (!page) return null;
+  const countries = intel.countries.filter((c) => c.n > 0);
+  // POOLED: either list alone already holds more roles than this page serves,
+  // so the counts are the employer's whole hiring system, not this page's.
+  // They print under that label, and placement is judged against the pooled
+  // total the lists prove (never against this page's figure, which the
+  // pooled sum always cleared).
+  const atLeast = Math.max(placed, inFields);
+  if (atLeast > page) {
+    if (placed < atLeast * MIX_MIN_PLACE_SHARE) return null;
+    return { fields, countries, asOf: readAt, pooled: { atLeast, page } };
+  }
+  if (placed < page * MIX_MIN_PLACE_SHARE) return null;
+  return { fields, countries, asOf: readAt };
 }
 
 function countryName(code: string, lang: string): string {
@@ -52,7 +74,11 @@ export function HiringMix({ facts, asListings = false, headingLevel = 2 }: { fac
   const roles = (n: number) => fmtCount(n, { lng: lang });
   return (
     <ProfileSection
-      title={asListings ? t("companyProfile.mix.titleListings", "Roles listed mostly in") : t("companyProfile.mix.title", "Hiring mix")}
+      title={asListings
+        ? t("companyProfile.mix.titleListings", "Roles listed mostly in")
+        : facts.pooled
+          ? t("companyProfile.mix.titlePooled", "Hiring mix across the employer's hiring system")
+          : t("companyProfile.mix.title", "Hiring mix")}
       headingLevel={headingLevel}
       data-company-mix=""
     >
@@ -79,8 +105,12 @@ export function HiringMix({ facts, asListings = false, headingLevel = 2 }: { fac
           {facts.countries.map((c) => <tr key={c.country}><th scope="row">{countryName(c.country, lang)}</th><td>{roles(c.n)}</td></tr>)}
         </tbody>
       </table>
-      <p className="text-xs text-subtle-foreground">
-        {facts.asOf
+      <p className="text-xs text-subtle-foreground" data-company-mix-basis={facts.pooled ? "pooled" : "page"}>
+        {facts.pooled
+          ? facts.asOf
+            ? t("companyProfile.mix.basisPooled", "These counts cover every career site this employer runs on the same hiring system (at least {{n}} open roles), not only the {{m}} on this page. Read on {{date}}; roles in no field we recognize are left out.", { n: roles(facts.pooled.atLeast), m: roles(facts.pooled.page), date: fmtDate(facts.asOf, { lng: lang }) })
+            : t("companyProfile.mix.basisPooledUndated", "These counts cover every career site this employer runs on the same hiring system (at least {{n}} open roles), not only the {{m}} on this page. Roles in no field we recognize are left out.", { n: roles(facts.pooled.atLeast), m: roles(facts.pooled.page) })
+          : facts.asOf
           ? t("companyProfile.mix.basis", "The largest groups among the open roles we read on {{date}}; roles in no field we recognize are left out.", { date: fmtDate(facts.asOf, { lng: lang }) })
           : t("companyProfile.mix.basisUndated", "The largest groups among the open roles we read; roles in no field we recognize are left out.")}
       </p>

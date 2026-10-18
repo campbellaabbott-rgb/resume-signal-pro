@@ -1700,7 +1700,11 @@
       "subtitleIndustry": "We konden geen functietitel uit dit cv lezen, dus dit zijn actuele vacatures in jouw vakgebied — gescoord tegen je cv, maar niet ermee gevonden. Zoek zelf op de vacaturebank om ze te verfijnen.",
       "loading": "Live vacatures worden gerangschikt tegen je cv…",
       "apply": "Solliciteer",
-      "seeAll": "Bekijk alle matches op de vacaturebank — zoekopdrachten opslaan, sollicitaties volgen"
+      "seeAll": "Bekijk alle matches op de vacaturebank — zoekopdrachten opslaan, sollicitaties volgen",
+      "openBoardFallbackLive": "Open de live vacaturebank — {{n}}+ vacatures nu online, gerangschikt op je cv",
+      "openBoardFallbackPlain": "Open de live vacaturebank — live vacatures, gerangschikt op je cv",
+      "openBoardNoteLive": "{{n}}+ vacatures nu online · zoekopdrachten bewaren, bedrijven volgen, sollicitaties bijhouden",
+      "openBoardNotePlain": "Live vacatures · zoekopdrachten bewaren, bedrijven volgen, sollicitaties bijhouden"
     },
     "nextSteps": {
       "eyebrow": "Volgende stappen",
@@ -3557,10 +3561,10 @@
     "replaceWithLatestScan": "Je hebt een concept van een eerder cv. Vervangen door het cv uit je nieuwste scan?"
   },
   "jobsPage": {
-    "seoTitle": "Live vacatures rechtstreeks van de bedrijven zelf — check je match voordat je solliciteert",
-    "seoDescription": "Actuele vacatures, rechtstreeks gelezen uit de eigen wervingssystemen van duizenden werkgevers en de hele dag door opnieuw gelezen. Zie gratis hoe je cv bij elke vacature past en solliciteer op de site van de werkgever.",
+    "seoTitle": "Live vacaturebank — Vacatures rechtstreeks van de carrièrepagina's van bedrijven",
+    "seoDescription": "Bekijk {{phrase}}, elk gelezen uit het wervingssysteem dat hem publiceerde, nooit gekopieerd van een andere vacaturebank. Geen gedateerde vacature ouder dan 30 dagen.",
     "h1": "Live vacaturebank",
-    "subtitle": "Elke vacature hier komt rechtstreeks uit het eigen wervingssysteem van het bedrijf — geen aggregators, geen dode links en niets dat wij opnieuw plaatsen. Als een bedrijf zelf een functie opnieuw plaatst, staat dat in de vacature vermeld. Waar het systeem van de werkgever het toelaat, controleren we een vacature opnieuw wanneer je solliciteert.",
+    "subtitle": "Elke vacature hier wordt gelezen uit het wervingssysteem dat hem publiceerde — dat van de werkgever zelf, dat van een uitzendbureau (als zodanig gemarkeerd) of de vacaturesite van de federale overheid —, nooit gekopieerd van een andere vacaturebank en nooit door ons opnieuw geplaatst. Als een werkgever zelf een functie opnieuw plaatst, staat dat in de vacature vermeld. Waar het systeem van de werkgever het toelaat, controleren we een vacature opnieuw wanneer je solliciteert.",
     "honestyNote": "Daarna doen we wat andere borden overslaan: check gratis je cv tegen elke vacature en zie precies wat je moet toevoegen — zodat je voorbereid solliciteert, niet op goed geluk.",
     "searchPlaceholder": "Functie of trefwoord — bijv. product designer",
     "locationPlaceholder": "Locatie",
@@ -3609,7 +3613,7 @@
     "fitLoadedDesc": "{{title}} bij {{company}} — upload of plak je cv en de scan checkt de match met precies deze vacature.",
     "allFields": "Alle vakgebieden",
     "companySeoTitle": "Vacatures bij {{company}}: open functies uit het eigen wervingssysteem",
-    "companySeoDescription": "Bekijk de open functies van {{company}} die in de afgelopen 30 dagen gedateerd zijn, gelezen uit het eigen wervingssysteem van {{company}}. Check gratis hoe je cv bij elke functie past en solliciteer op de site van {{company}}.",
+    "companySeoDescription": "Open functies bij {{company}}, gelezen uit het eigen wervingssysteem van {{company}}. Check gratis hoe je cv past voordat je solliciteert.",
     "openRoles": "{{count}} openstaande functies",
     "openRolesTip": "Dit bedrijf heeft nu {{count}} functies gedateerd in de afgelopen 30 dagen op zijn eigen site.",
     "fitSummaryStrong": "Je past sterk bij {{count}} van deze vacatures",
@@ -3664,8 +3668,7 @@
     "fitBadge": "match {{pct}}%",
     "fitNeedsResumeTitle": "Scan eerst je cv",
     "fitNeedsResume": "Doe de gratis scan (of bewaar een versie in je account) en de bank sorteert elke vacature op jouw match.",
-    "landerSeoTitle": "Live {{category}}-vacatures — Van de officiële vacaturebanken van bedrijven",
-    "landerSeoDescription": "Live {{category}}-vacatures, gelezen uit de eigen wervingssystemen van werkgevers en de hele dag door opnieuw gelezen. Check gratis de match van je cv en solliciteer op de site van de werkgever.",
+    "landerSeoTitle": "{{category}}-vacatures — Live vacatures van de vacaturebanken van bedrijven",
     "landerH1": "Live {{category}}-vacatures",
     "addToCompete": "Toevoegen om mee te dingen:",
     "matchStrong": "Sterke match",
@@ -3831,7 +3834,7 @@
     "signalReading": "We lezen onze sluitingsgeschiedenis en de vacaturetempo's voor deze werkgevers nog. Een onafgeronde lezing is geen lege lezing, dus niets op het scherm is nu al een bevinding over wie dan ook.",
     "takedownEmpty": "Geen enkele werkgever bij de hier geladen vacatures heeft een vastgelegde sluitingsgeschiedenis die de drempel haalt. Zet dit uit om alle vacatures te zien.",
     "verdictNoRecord": "we hebben voor deze werkgever geen enkele sluiting vastgelegd, dus we kunnen het geen van beide kanten op zeggen — dat kan een bord zijn dat groter is dan één bezoek kan lezen, waar voor ons geen sluiting waarneembaar is, of een werkgever die niets offline haalde terwijl wij keken",
-    "verdictRecordWithheld": "we hebben voor deze werkgever sluitingen vastgelegd en tonen ze niet: {{why}}",
+    "verdictRecordWithheld": "we hebben voor deze werkgever sluitingen vastgelegd: {{why}}",
     "hhNoClosureRecord": "We hebben voor deze werkgever geen enkele sluiting vastgelegd: van geen van hun vacatures hebben we gezien dat die van het bord ging. Op een bord dat groter is dan één bezoek kan lezen is voor ons geen sluiting waarneembaar totdat we een aantoonbare volledige ronde hebben afgerond en daarna een functie zien verdwijnen; op een bord dat we wél volledig lezen betekent het dat er niets offline ging terwijl wij keken. Vanaf hier kunnen we die twee niet uit elkaar houden, dus dit is een gat aan onze kant en geen teken dat ze niet werven.",
     "hhRelistsOnly": "Elke vacature van hen die we hebben zien verdwijnen kwam opnieuw geplaatst terug, dus we hebben geen schone verwijdering om te tellen — {{n}} herplaatsingen vastgelegd, wat een ondergrens is.",
     "compareTip": "Toevoegen aan vergelijking (max 3)",
@@ -4431,7 +4434,28 @@
     "verdictTakedownCeiling": "haalt tot {{pct}}% van zijn functies binnen {{d}} dagen offline, elke verwijdering meegeteld",
     "hhTakedownRateDated": "Tot {{pct}}% van zijn functies verdween binnen {{d}} dagen, elke verwijdering meegeteld, gemeten over de {{n}} functies met een plaatsingsdatum van het bedrijf zelf.",
     "hhFootnoteCurveListing": "Berekend uit de volledige levenscyclus van de vacatures die deze site toont — wanneer ze openen en wanneer ze verdwijnen — niet uit een momentopname. Functies die nog online staan, en functies voorbij onze 30-dagengrens, tellen als onafgerond in plaats van weg te vallen.",
-    "employerOutlivedEveryTakedown": "Dat is langer dan deze werkgever een vacature meestal online laat staan: {{gone}}% van zijn vacatures is binnen {{d}} dagen van het bord, elke verwijdering meegeteld."
+    "employerOutlivedEveryTakedown": "Dat is langer dan deze werkgever een vacature meestal online laat staan: {{gone}}% van zijn vacatures is binnen {{d}} dagen van het bord, elke verwijdering meegeteld.",
+    "companySeoTitleCount": "Vacatures bij {{company}}: {{n}} open functies uit het eigen wervingssysteem",
+    "companySeoTitleCountShort": "Vacatures bij {{company}}: {{n}} open functies",
+    "companySeoTitleShort": "Vacatures bij {{company}}",
+    "companySeoDescriptionCount": "{{n}} open functies bij {{company}}, gelezen uit het eigen wervingssysteem van {{company}}. Check gratis hoe je cv past voordat je solliciteert.",
+    "agencySeoTitleCount": "Vacatures bij {{company}}: {{n}} functies van een uitzendbureau",
+    "agencySeoTitleCountShort": "Vacatures bij {{company}}: {{n}} functies",
+    "agencySeoTitle": "Vacatures bij {{company}}: functies van een uitzendbureau",
+    "agencySeoDescriptionCount": "{{n}} functies van {{company}}, een uitzendbureau: meestal voor zijn klanten. Check gratis hoe je cv past voordat je solliciteert.",
+    "agencySeoDescription": "Functies van {{company}}, een uitzendbureau: meestal voor zijn klanten. Check gratis hoe je cv past voordat je solliciteert.",
+    "usajobsSeoTitleCount": "{{h1}}: {{n}} functies",
+    "landerSeoTitleCount": "{{category}}-vacatures — {{n}} live vacatures",
+    "landerSeoDescriptionLead": "Live {{category}}-vacatures",
+    "landerSeoDescriptionLeadCount": "{{exact}} live {{category}}-vacatures, {{countsDay}}",
+    "landerSeoDescriptionBoards": ", uit {{boards}} vacaturebanken van bedrijven",
+    "landerSeoDescriptionTail": ", elk gelezen uit het wervingssysteem dat hem publiceerde.",
+    "seoTitleCount": "Live vacaturebank — {{n}} vacatures rechtstreeks van de carrièrepagina's van bedrijven",
+    "seoPhrase": "live vacatures van de eigen vacaturebanken van bedrijven",
+    "seoPhraseCount": "{{n}} live vacatures",
+    "seoPhraseCountBoards": "{{n}} live vacatures op {{boards}} vacaturebanken van bedrijven",
+    "usajobsSeoDescriptionCount": "{{n}} federale vacatures op USAJOBS, elk met de eigen dienst. {{cap}} Check gratis hoe je cv past.",
+    "usajobsSeoDescription": "Federale vacatures op USAJOBS, elk met de eigen dienst. {{cap}} Check gratis hoe je cv past."
   },
   "accountPage": {
     "statusSaveFailed": "Kon die status niet opslaan — probeer het opnieuw.",
@@ -5196,7 +5220,7 @@
   "agentConnect": {
     "rateLine": "Een gratis sleutel is begrensd op {{ratePerMin}} verzoeken per minuut en {{dailyQuota}} aanroepen per dag; een actieve pas verhoogt beide voor de duur van zijn uren.",
     "attachTitle": "Prompts en bronnen die je host kan tonen",
-    "attachLead": "Naast de tools registreert de server kant-en-klare prompts en enkele leesbare documenten. Hosts die ze tonen (het bijvoegmenu van claude.ai, de slash-lijst van Claude Code, het paneel van Cursor) laten ze zien onder de naam van de server; tonen kost geen aanroep en vereist geen sleutel.",
+    "attachLead": "Naast de tools registreert de server kant-en-klare prompts en enkele leesbare documenten. Hosts die ze tonen (het bijvoegmenu van claude.ai, de slash-lijst van Claude Code) laten ze zien onder de naam van de server; tonen kost geen aanroep en vereist geen sleutel.",
     "promptsHeading": "Prompts",
     "resourcesHeading": "Bronnen",
     "resourceKeyed": "vereist een sleutel of aanmelding",
@@ -5251,7 +5275,7 @@
     "scoreCta": "Mijn cv beoordelen voor deze vacature (gratis)",
     "scoreNote": "Opent de gratis scanner met de beschrijving van deze vacature al ingevuld.",
     "descHeading": "De eigen omschrijving van de werkgever",
-    "sourceNote": "Rechtstreeks uit het eigen wervingssysteem van {{company}} — nooit een aggregator, nooit een herplaatsing. Een gedateerde vacature wordt hoogstens {{days}} dagen getoond vanaf de datum die de werkgever vermeldt, en het bord controleert een vacature opnieuw wanneer je hem opent.",
+    "sourceNote": "Gelezen uit het eigen wervingssysteem van {{company}}, nooit gekopieerd van een andere vacaturebank. Een gedateerde vacature wordt hoogstens {{days}} dagen getoond vanaf de datum die de werkgever vermeldt. Op het live bord vraagt het openen van een vacature waarvan we de feed meer dan {{hours}} uur geleden voor het laatst lazen het systeem van de werkgever opnieuw.",
     "theEmployer": "de werkgever",
     "theEmployerPossessive": "van de werkgever"
   },
@@ -5444,6 +5468,43 @@
     "hiringSystem": "Wervingssysteem",
     "country": "Land",
     "agencies": "Uitzend- en wervingsbureaus",
-    "agenciesHiddenChip": "Zonder bureaus"
+    "agenciesHiddenChip": "Zonder bureaus",
+    "collisionKeywordPlaceholder_one": "Zoek in {{n}} functie op borden met de naam ‘{{token}}’",
+    "collisionKeywordPlaceholder_other": "Zoek in {{n}} functies op borden met de naam ‘{{token}}’",
+    "collisionKeywordPlaceholderNoCount": "Zoek functies op borden met de naam ‘{{token}}’",
+    "usajobsKeywordPlaceholder_one": "Zoek in {{n}} federale vacature op USAJOBS",
+    "usajobsKeywordPlaceholder_other": "Zoek in {{n}} federale vacatures op USAJOBS",
+    "usajobsKeywordPlaceholderNoCount": "Zoek federale vacatures op USAJOBS"
+  },
+  "boardSource": {
+    "notCopied": "gelezen uit het wervingssysteem dat hem publiceerde, nooit gekopieerd van een andere vacaturebank",
+    "tailNoOld": "elke vacature gelezen uit het wervingssysteem dat hem publiceerde, nooit gekopieerd van een andere vacaturebank, en geen gedateerde vacature ouder dan 30 dagen",
+    "sentence": "Elke vacature wordt gelezen uit het wervingssysteem dat hem publiceerde — dat van de werkgever zelf, dat van een uitzendbureau (als zodanig gemarkeerd) of de vacaturesite van de federale overheid —, nooit gekopieerd van een andere vacaturebank."
+  },
+  "entryLevelIndex": {
+    "leadersHeading": "Waar een starter nu de beste kans heeft — gerangschikt op aandeel",
+    "totalCaption": "live instapvacatures op dit moment"
+  },
+  "aboutPage": {
+    "metaTitle": "Over Resume Booster — Zo werkt de live vacaturebank",
+    "metaDescription": "Een gratis cv-scanner en een live vacaturebank, gelezen uit de eigen wervingssystemen van werkgevers: hoe het werkt, hoe we tellen en hoe je ons bereikt.",
+    "h1": "Over Resume Booster",
+    "lead": "Resume Booster is twee dingen: een gratis cv-scanner en een vacaturebank met live vacatures rechtstreeks uit de eigen wervingssystemen van werkgevers. Je kunt checken hoe je cv bij een vacature past voordat je solliciteert, en dan solliciteren op de site van de werkgever.",
+    "boardTitle": "Wat de vacaturebank is",
+    "boardBody": "De vacaturebank leest vacatures uit de wervingssystemen die ze publiceren: dat van de werkgever zelf, dat van een uitzendbureau (als zodanig gemarkeerd) of de vacaturesite van de federale overheid. Niets wordt gekopieerd van een andere vacaturebank. Een vacature blijft staan zolang de datum binnen de laatste {{days}} dagen valt en het systeem dat hem publiceerde hem nog vermeldt.",
+    "countsTitle": "Hoe we tellen",
+    "countsBody": "Elk getal op deze site noemt de dag of de leesbeurt waar het vandaan komt. Een open functie is een vacature waarvan de datum binnen de laatste {{days}} dagen valt: de datum van de werkgever zelf of, bij een vacature zonder datum, de dag waarop we hem het laatst in de feed zagen. Getallen bewegen mee als functies openen en sluiten; een pagina die op een dag is gemaakt, noemt het getal van die dag.",
+    "readMore": "Meer lezen:",
+    "ghostLink": "hoe vers onze leesbeurten zijn (Ghost Job Index)",
+    "methodologyLink": "hoe de cv-score werkt",
+    "notTitle": "Niet te verwarren met",
+    "notBody": "Resume Booster op resumebooster.work is een ander product dan resumebooster.io, ResumeBoostAI en andere sites met een vergelijkbare naam, en heeft er geen enkele band mee.",
+    "aiTitle": "Gebruik het vanuit je AI-app",
+    "aiBody": "Claude, ChatGPT en Claude Code kunnen de vacaturebank doorzoeken via onze connector.",
+    "aiLink": "Verbind je AI-app",
+    "contactTitle": "Contact",
+    "contactBody": "Voor vragen over je gegevens en privacyverzoeken staat in het privacybeleid hoe je ons bereikt.",
+    "privacyLink": "Privacybeleid",
+    "seller": "Verkoper: {{name}}, {{address}}"
   }
 }

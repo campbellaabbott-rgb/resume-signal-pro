@@ -37,6 +37,8 @@ export interface CvTemplateStrings {
   photoNorms: Record<"expected" | "common" | "optional" | "discouraged" | "never", string>;
   faqPhoto: string; // {name}
   faqLength: string; // {name}
+  /** The heading over the visible questions (SEO-032). */
+  faqHeading: string;
   ctaTitle: string;
   ctaText: string; // {name}
   ctaButton: string;
@@ -81,9 +83,10 @@ export const EN_TEMPLATE: CvTemplateStrings = {
   },
   faqPhoto: "Should a CV in {name} include a photo?",
   faqLength: "How long should a CV be in {name}?",
+  faqHeading: "Common questions",
   ctaTitle: "Check your resume against these standards",
   ctaText:
-    "The free scan evaluates your resume against {name}'s norms automatically — photo expectations, personal-data conventions, length, and the keywords your industry expects.",
+    "The free scan evaluates your resume against the norms in {name} automatically — photo expectations, personal-data conventions, length, and the keywords your industry expects.",
   ctaButton: "Scan my resume free",
   sourceNote:
     "Source: the country-standards engine of this site's resume scanner. When the engine's data improves, this page updates with it.",
@@ -111,6 +114,7 @@ const ES_T: CvTemplateStrings = {
   },
   faqPhoto: "¿Debe llevar foto un CV en {name}?",
   faqLength: "¿Cuánto debe medir un CV en {name}?",
+  faqHeading: "Preguntas frecuentes",
   ctaTitle: "Comprueba tu currículum contra estas normas",
   ctaText:
     "El escaneo gratuito evalúa tu currículum según las normas de {name} automáticamente — expectativas de foto, datos personales, extensión y las palabras clave de tu sector.",
@@ -141,6 +145,7 @@ const FR_T: CvTemplateStrings = {
   },
   faqPhoto: "Faut-il une photo sur un CV en {name} ?",
   faqLength: "Quelle longueur pour un CV en {name} ?",
+  faqHeading: "Questions fréquentes",
   ctaTitle: "Vérifiez votre CV contre ces normes",
   ctaText:
     "Le scan gratuit évalue votre CV selon les normes de {name} automatiquement — photo, données personnelles, longueur et les mots-clés de votre secteur.",
@@ -171,6 +176,7 @@ const DE_T: CvTemplateStrings = {
   },
   faqPhoto: "Braucht ein Lebenslauf in {name} ein Foto?",
   faqLength: "Wie lang sollte ein Lebenslauf in {name} sein?",
+  faqHeading: "Häufige Fragen",
   ctaTitle: "Prüfen Sie Ihren Lebenslauf gegen diese Standards",
   ctaText:
     "Der kostenlose Scan bewertet Ihren Lebenslauf automatisch nach den Normen von {name} — Foto-Erwartungen, persönliche Daten, Länge und die Keywords Ihrer Branche.",
@@ -201,6 +207,7 @@ const PT_T: CvTemplateStrings = {
   },
   faqPhoto: "Um currículo em {name} deve ter foto?",
   faqLength: "Qual o tamanho ideal de um currículo em {name}?",
+  faqHeading: "Perguntas frequentes",
   ctaTitle: "Verifique seu currículo contra esses padrões",
   ctaText:
     "O escaneamento gratuito avalia seu currículo pelas normas de {name} automaticamente — expectativas de foto, dados pessoais, extensão e as palavras-chave do seu setor.",
@@ -231,6 +238,7 @@ const NL_T: CvTemplateStrings = {
   },
   faqPhoto: "Moet een cv in {name} een foto hebben?",
   faqLength: "Hoe lang moet een cv in {name} zijn?",
+  faqHeading: "Veelgestelde vragen",
   ctaTitle: "Toets je cv aan deze normen",
   ctaText:
     "De gratis scan beoordeelt je cv automatisch volgens de normen van {name} — fotoverwachtingen, persoonsgegevens, lengte en de trefwoorden van jouw sector.",
@@ -397,6 +405,49 @@ export const CV_LOCALES: Record<string, CvLocaleConfig> = {
 /** Fill {placeholders} in a template string. */
 export function fill(template: string, vars: Record<string, string>): string {
   return template.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? `{${k}}`);
+}
+
+/**
+ * A COUNTRY NAME AS ITS LANGUAGE SAYS IT AFTER A PREPOSITION (SEO-032, SEO-034).
+ *
+ * The templates put the bare name after "in", "en", "em", "von", so the
+ * pages asked "Should a CV in United States include a photo?" and
+ * "Lebenslauf in Schweiz". The names that take an article (or a contracted
+ * preposition) in that language get it; every other name is untouched.
+ */
+const EN_THE = new Set(["United States", "United Kingdom", "Netherlands", "United Arab Emirates", "Philippines"]);
+const reEsc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+export function countryPhraseFix(locale: string | undefined, text: string, name: string): string {
+  const lng = locale ?? "en";
+  const n = reEsc(name);
+  if (lng === "en" && EN_THE.has(name)) return text.replace(new RegExp(`\\b(in|targets|for|of|to) (${n})\\b`, "g"), "$1 the $2");
+  if (lng === "de" && name === "Schweiz") return text.replace(/\bin Schweiz\b/g, "in der Schweiz").replace(/\bvon Schweiz\b/g, "der Schweiz");
+  if (lng === "pt" && name === "Brasil") return text.replace(/\bem Brasil\b/g, "no Brasil").replace(/\bde Brasil\b/g, "do Brasil");
+  return text;
+}
+
+/** fill(), then the country phrase made grammatical for the page's language. */
+export function cvFill(locale: string | undefined, template: string, vars: Record<string, string>): string {
+  return countryPhraseFix(locale, fill(template, vars), vars.name ?? "");
+}
+
+/**
+ * THE TWO QUESTIONS A COUNTRY PAGE ANSWERS, FOR THE MARKUP AND THE PAGE ALIKE
+ * (SEO-032). The FAQPage block asked "Should a CV in … include a photo?" and
+ * "How long should a CV be in …?" on 73 pages that never showed either
+ * question. Both renderers now print these as visible questions with their
+ * answers, and the markup is built from the same array.
+ */
+export function cvStandardsFaqs(
+  locale: string | undefined,
+  t: CvTemplateStrings,
+  facts: { name: string; docTerm: string; photo: keyof CvTemplateStrings["photoNorms"]; photoNote: string; lengthNote: string },
+): Array<{ q: string; a: string }> {
+  const vars = { name: facts.name, docTerm: facts.docTerm };
+  return [
+    { q: cvFill(locale, t.faqPhoto, vars), a: `${t.photoNorms[facts.photo]}. ${facts.photoNote}` },
+    { q: cvFill(locale, t.faqLength, vars), a: facts.lengthNote },
+  ];
 }
 
 /** ISO code for an English country slug, or null. */

@@ -42,6 +42,7 @@ import { BOARD_BUDGET_ERROR, boardBudgetRefusal, httpStatusOf, markBoardBudgetRe
 import { BoardBudgetNotice } from "@/components/jobs/BoardBudgetNotice";
 import { Link, useLocation, useNavigate, useNavigationType, useParams } from "react-router-dom";
 import { companyLanderPath } from "@/lib/public-href";
+import { useCompanyBoardHref } from "@/lib/seo/lander-manifest";
 import { bakedCompanyPrimary } from "@/lib/prerendered-head";
 import type { BoardJob, FillCurve } from "@/lib/board-job";
 import { foldName } from "../../supabase/functions/job-board/search-routing";
@@ -63,9 +64,12 @@ import { HIRING_RECORD_GATE_COPY, LAP_BUCKET, LAP_MODE_BUCKETS, feedReadStatable
 import { datedHeadcount } from "@/lib/headcount";
 import { SavedSearchPills } from "@/components/jobs/SavedSearchPills";
 import { LayoffFilingChip, LayoffFilingLine, layoffHidesForCountry, useEmployerLayoffFilings, useEmployerLayoffFilingsAll } from "@/components/jobs/LayoffFilingLine";
-import { CompanyLanderAccordion, CompanyLanderEmpty, CompanyLanderHeader, CompanyLanderRail, CompanyResultsLine, CompanySimilarAfterFirstPage, useCompanyProfile } from "@/components/jobs/company/CompanyLander";
+import { CompanyLanderAccordion, CompanyLanderEmpty, CompanyLanderHeader, CompanyLanderRail, CompanyResultsLine, CompanySimilarAfterFirstPage, useCompanyProfile, useRailSettled } from "@/components/jobs/company/CompanyLander";
 import type { HiringRecordInput } from "@/components/jobs/company/HiringRecordCard";
 import { buildLanderModel, isUsajobsBoard, FEDERAL_LISTING_RESULT_CAP, type OpenRolesValue as LanderOpenRoles } from "@/lib/company/lander-model";
+import { companyBoardHead, fieldBoardHead, jobsBoardHead, type HeadT } from "@/lib/seo/board-heads";
+import { count as fmtCount } from "@/lib/format";
+import { VERIFY_ON_VIEW_AFTER_HOURS } from "@/lib/seo/source-copy";
 import { keyBelongsToALayer } from "@/lib/board-keys";
 import { tPlural } from "@/lib/company/plural";
 import { bakedLanderName, cachedLanderName, rememberLanderName } from "@/lib/display-name";
@@ -2407,6 +2411,9 @@ export default function Jobs() {
 
 function JobsBoard({ boardId }: { boardId: string }) {
   const { t, i18n } = useTranslation();
+  // SEO-010: an employer link goes to its written company page, or to the
+  // live board filtered to the board when the bake wrote none.
+  const companyHref = useCompanyBoardHref();
   const navType = useNavigationType();
   // The FX vintage as a reader sees it, once per language rather than five times
   // per render. The constant itself stays ISO — it is the page's half of a mirror
@@ -3360,6 +3367,8 @@ function JobsBoard({ boardId }: { boardId: string }) {
   // When the curve answered: get_company_fill_curve computes on every call, so
   // its board-level count is "counted" at that moment. Null until it answers.
   const [curveAnsweredAt, setCurveAnsweredAt] = useState<string | null>(null);
+  // Whether the record reader has answered (or failed): the company rail waits for it (R9).
+  const [curveSettled, setCurveSettled] = useState(false);
   // When the served list last answered, the date of the list's figure when
   // the board's read stamp is missing (lander-model listAnsweredAt).
   const [listAnsweredAt, setListAnsweredAt] = useState<string | null>(null);
@@ -4479,6 +4488,8 @@ function JobsBoard({ boardId }: { boardId: string }) {
   // the currently loaded list.
   const [detailJob, setDetailJob] = useState<BoardJob | null>(null);
   const [detailDesc, setDetailDesc] = useState<string | null>(null);
+  /** The posting the wide-screen auto-select opened, which never takes over the head. */
+  const autoSelectedId = useRef<string | null>(null);
   // Google for Jobs: schema.org JobPosting JSON-LD for the OPEN posting.
   // Client-rendered structured data is officially supported (Google indexes
   // after JS execution), and posting deep links are now in a sitemap, so a
@@ -4502,6 +4513,13 @@ function JobsBoard({ boardId }: { boardId: string }) {
   useEffect(() => {
     const TAG_ID = "job-posting-ld";
     document.getElementById(TAG_ID)?.remove();
+    // AN AUTO-SELECTED POSTING IS NOT THE PAGE (SEO). On a wide screen the
+    // first card opens by itself; it rewrote /jobs's and a field page's
+    // canonical to that posting's ?job= link and gave the board a JobPosting
+    // block, so a crawler rendering at desktop width read /jobs as a duplicate
+    // of one job (the company page stopped auto-selecting for the same reason).
+    // Only a posting the reader or the address chose takes over the head.
+    if (detailJob && autoSelectedId.current === detailJob.id) return;
 
     // CANONICAL: the prerendered /jobs page ships canonical=/jobs, which told
     // Google every ?job=<id> deep link — all ~70k sitemap URLs — was the same
@@ -4660,7 +4678,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
     // verify; the field is absent whenever the lookup failed or the posting is
     // already flagged missing, and firing there would hit the vendor on every
     // panel open for every visitor.
-    if (job.recheckedAt && Date.now() - Date.parse(job.recheckedAt) > 6 * 3600_000) {
+    if (job.recheckedAt && Date.now() - Date.parse(job.recheckedAt) > VERIFY_ON_VIEW_AFTER_HOURS * 3600_000) {
       invokeBoard({ action: "verify", ids: [job.id] }).catch(() => {});
     }
     // Hover-prefetch cache first: a warmed description opens the panel with
@@ -6215,6 +6233,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
     // Never re-summon a panel the user closed — the ✕/Escape/Back used to be
     // instantly undone here, so the pane could not be closed at all on desktop.
     if (userClosed.current) return;
+    autoSelectedId.current = groupedJobs[0].primary.id;
     void openDetail(groupedJobs[0].primary, "replace");
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, refreshing, detailJob, groupedJobs]);
@@ -6484,6 +6503,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
   // The employer readers, once per token, none on a board name two hiring
   // systems share (useCompanyProfile gates each on the model's sections).
   const landerProfile = useCompanyProfile(landerCompany ?? null, landerModel ?? NO_LANDER_MODEL);
+  const landerRailShown = useRailSettled(!landerProfile.intel.loading && curveSettled, landerCompany ?? "");
   // The hiring record, assembled from the gated reading the page already
   // holds; the card re-derives no bar.
   const landerRecordInput: HiringRecordInput | null = landerCompany && !landerCollision && hiringCurve ? {
@@ -6520,7 +6540,8 @@ function JobsBoard({ boardId }: { boardId: string }) {
   useEffect(() => {
     // A token two hiring systems carry has no one employer's record to read.
     setCurveAnsweredAt(null);
-    if (!landerCompany || landerCollision) { setHiringCurve(null); setLanderFeedTotal(null); setLanderGrowth(null); return; }
+    setCurveSettled(false);
+    if (!landerCompany || landerCollision) { setHiringCurve(null); setLanderFeedTotal(null); setLanderGrowth(null); setCurveSettled(true); return; }
     let cancelled = false;
     (async () => {
       try {
@@ -6532,9 +6553,9 @@ function JobsBoard({ boardId }: { boardId: string }) {
           rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
         }).rpc("get_company_fill_curve", { p_tokens: [landerCompany] });
         const row = error || !Array.isArray(rows) ? undefined : (rows[0] as FillCurve | undefined);
-        if (!cancelled) { setHiringCurve(row ? normaliseCurve(row) : null); if (!error) setCurveAnsweredAt(new Date().toISOString()); }
+        if (!cancelled) { setHiringCurve(row ? normaliseCurve(row) : null); if (!error) setCurveAnsweredAt(new Date().toISOString()); setCurveSettled(true); }
       } catch {
-        if (!cancelled) setHiringCurve(null); // non-fatal — the panel just hides
+        if (!cancelled) { setHiringCurve(null); setCurveSettled(true); } // non-fatal — the panel just hides
       }
     })();
     (async () => {
@@ -6606,6 +6627,9 @@ function JobsBoard({ boardId }: { boardId: string }) {
   // opens a posting gets the data, and the ref is what stops that from being a
   // request per open.
   const fillCurveAsked = useRef(false);
+  // Whether the field table's read has finished, either way: a field page holds
+  // the field line's place until it has (SEO-022).
+  const [fillCurveRead, setFillCurveRead] = useState(false);
   useEffect(() => {
     // Lazy on purpose: a board with no rows on screen never pays for the call.
     //
@@ -6680,6 +6704,8 @@ function JobsBoard({ boardId }: { boardId: string }) {
         // for the same reason as above: a transient failure must not become the
         // session's answer.
         fillCurveAsked.current = false;
+      } finally {
+        setFillCurveRead(true);
       }
     })();
   }, [landerCategory, detailJob, jobs.length]);
@@ -6688,6 +6714,8 @@ function JobsBoard({ boardId }: { boardId: string }) {
     () => (landerCategory ? fillCurveByCategory?.[landerCategory] ?? null : null),
     [landerCategory, fillCurveByCategory],
   );
+  // The field line's place is held until the table has been read, or a ceiling has passed.
+  const fieldLineSettled = useRailSettled(fillCurveRead, landerCategory ?? "");
 
   const companies = useMemo(
     // The zero filter now asks the SERVABLE question — an employer with 4,000
@@ -7622,7 +7650,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
       : typeof cnt === "number" && cnt >= 2 && detailJob.token
         ? {
             count: { value: cnt, floor: false, asOf: null },
-            href: companyLanderPath(detailJob.token),
+            href: companyHref(detailJob.token),
             name: listingEmployer(detailJob),
             onClick: (e: React.MouseEvent<HTMLAnchorElement>) => { e.preventDefault(); setCompany(scope.join(",")); closeDetail(); window.scrollTo({ top: 0, behavior: "smooth" }); },
           }
@@ -7814,7 +7842,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                 const reading = gatedHiringRecord(hh);
                 const verdict = reading.verdict;
                 if (verdict === "closes") clauses.push(t("jobsPage.verdictTakedownsObserved", "we watched {{n}} of its roles come off the board and stay off", { n: fills }));
-                if (hh && reading.withheld !== null) clauses.push(t("jobsPage.verdictRecordWithheld", "we hold a closure record for this employer and do not print it: {{why}}", { why: withheldWhy(hh) }));
+                if (hh && reading.withheld !== null) clauses.push(t("jobsPage.verdictRecordWithheld", "we hold a closure record for this employer: {{why}}", { why: withheldWhy(hh) }));
                 // THE THIRD STATE, SAID OUT LOUD IN THE PLACE PEOPLE DECIDE.
                 // This block answers "should I apply?", and on a windowed
                 // employer it used to answer it while silently omitting that we
@@ -8210,15 +8238,31 @@ function JobsBoard({ boardId }: { boardId: string }) {
   // a board name two employers share (naming the first row's employer on a
   // page that names none), and of a nameless zero page from the raw token
   // (2026-10-18 review). Each now matches the page's own heading.
+  //
+  // ONE BUILDER WITH THE BAKE (SEO-007, R3): the employer, agency and federal
+  // listing heads come from src/lib/seo/board-heads.ts, whose English is the
+  // bake's own, and an agency's board says "roles listed by a staffing
+  // agency" as its baked page does. On a load of the baked file the baked
+  // title and description are kept (SEO preferBakedHead below).
+  const headT: HeadT = (key, defaultValue, vars) => t(key, { defaultValue, ...(vars ?? {}) });
+  // One role reads as the count-free sentence ("1 open roles" is not English).
+  const headCount = landerModel?.openRoles && landerModel.openRoles.value > 1
+    ? fmtCount(landerModel.openRoles.value, { lng: i18n.language || "en", floor: landerModel.openRoles.floor })
+    : null;
   const landerSeo: { title: string; description: string } | null = !landerCompany || !landerModel ? null
     : landerModel.variant === "usajobs"
-      ? {
+      ? companyBoardHead({
+          kind: "usajobs",
           // The hub's own strings (the company shard, whose English rides in
           // the bundle), with no English typed here: this file may not spell
           // a dormant source's label (a-vendor-list-typed-by-hand guard).
-          title: t("companyProfile.usajobs.h1"),
-          description: `${t("companyProfile.usajobs.subtitle")} ${t("companyProfile.usajobs.cap", { cap: FEDERAL_LISTING_RESULT_CAP.toLocaleString(i18n.language || "en") })}`,
-        }
+          name: t("companyProfile.usajobs.h1"),
+          possessive: "",
+          n: headCount,
+          t: headT,
+          usajobsH1: t("companyProfile.usajobs.h1"),
+          capLine: t("companyProfile.usajobs.cap", { cap: FEDERAL_LISTING_RESULT_CAP.toLocaleString(i18n.language || "en") }),
+        })
       : landerModel.variant === "collision"
         ? {
             title: t("companyProfile.collision.h1", "Open roles on boards named “{{token}}”", { token: landerCompany }),
@@ -8231,31 +8275,37 @@ function JobsBoard({ boardId }: { boardId: string }) {
               title: t("companyProfile.h1Generic", "Roles on the “{{label}}” board", { label: landerModel.name.name ?? landerCompany }),
               description: t("companyProfile.subtitleGeneric", "Live jobs straight from this board's own hiring system."),
             }
-          : {
-              title: t("jobsPage.companySeoTitle", "{{company}} jobs: open roles from their own hiring system", { company: landerModel.name.name }),
-              description: t("jobsPage.companySeoDescription", "Browse {{companyPossessive}} open roles dated in the last 30 days, read from {{companyPossessive}} own hiring system. Check your resume's fit against any role free, then apply on {{companyPossessive}} own site.", { company: landerModel.name.name, companyPossessive: possessive(landerModel.name.name) }),
-            };
+          : companyBoardHead({
+              kind: landerModel.variant === "agency" ? "agency" : "employer",
+              name: landerModel.name.name,
+              possessive: possessive(landerModel.name.name),
+              n: headCount,
+              t: headT,
+            });
+  const fieldHead = landerCategory ? fieldBoardHead({ label: t(`jobsPage.categories.${landerCategory}`, landerCategory), t: headT }) : null;
+  const boardHead = jobsBoardHead({ t: headT });
 
   return (
     <div className="min-h-screen bg-background">
       <SEO
-        title={landerCategory
-          ? t("jobsPage.landerSeoTitle", "Live {{category}} Jobs — From Official Company Job Boards", { category: t(`jobsPage.categories.${landerCategory}`, landerCategory) })
+        title={fieldHead
+          ? fieldHead.title
           : landerUncarried
           ? t("companyProfile.uncarried.title", "We don't read a board called “{{token}}” yet", { token: landerCompany })
           : landerCompany && landerSeo
           ? landerSeo.title
-          : t("jobsPage.seoTitle", "Live Jobs From Companies' Own Boards — Check Your Fit Before You Apply")}
+          : boardHead.title}
         description={landerUncarried
           ? t("companyProfile.uncarried.body", "Search the live board for this employer, or browse the companies we read.")
-          : landerCategory
-          ? t("jobsPage.landerSeoDescription", "Live {{category}} openings read from employers' own hiring systems and re-read through the day. Check your resume's fit free, then apply on the employer's own site.", { category: t(`jobsPage.categories.${landerCategory}`, landerCategory) })
+          : fieldHead
+          ? fieldHead.description
           : landerCompany && landerSeo
           ? landerSeo.description
-          : t("jobsPage.seoDescription", "Live openings read straight from thousands of employers' own hiring systems and re-read through the day. See how your resume fits any posting free, then apply on the employer's own site.")}
+          : boardHead.description}
         path={landerCompany ? companyLanderPath(landerCompany) : landerCategory ? `/jobs/field/${landerCategory}` : "/jobs"}
         canonicalPath={landerCompany && bakedPrimary ? companyLanderPath(bakedPrimary) : undefined}
         noIndex={landerUncarried}
+        preferBakedHead={!landerUncarried}
       />
       <Header />
       {/* The site-wide skip link is the first focusable element in the
@@ -8329,7 +8379,15 @@ function JobsBoard({ boardId }: { boardId: string }) {
               ? t("jobsPage.landerH1", "Live {{category}} jobs", { category: t(`jobsPage.categories.${landerCategory}`, landerCategory) })
               : t("jobsPage.h1", "Live job board")}</h1>
           </div>
-          <p className="text-sm text-muted-foreground mb-2">
+          {/* THE COUNT LINE KEEPS ITS SPACE WHILE THE COUNTS LOAD (SEO-022).
+              It painted one line (the count-free sentence), then the activity
+              strip arrived as a second line and "posted today" wrapped to a
+              third, moving everything below twice (lab CLS on /jobs). The
+              paragraph now reserves the lines its final text takes — three
+              on a phone (no strip there), two from sm up, where "posted
+              today" sits on the first line — and the text swaps in place.
+              No count is shown before the board answers. */}
+          <p className="text-sm text-muted-foreground mb-2 min-h-[3lh] sm:min-h-[2lh]" data-board-count-line="">
             {
               // A category lander's headline count must be THAT category's —
               // the board-wide 574k under an "Engineering jobs" H1 claimed
@@ -8418,6 +8476,14 @@ function JobsBoard({ boardId }: { boardId: string }) {
                     total: data.totalAllCompanies.toLocaleString(),
                   }))
               : t("jobsPage.subtitleShort", "Every job straight from the employer's own hiring system, dated in the last 30 days.")}
+            {/* "Posted today" rides the count line (it wrapped to a line of
+                its own under the strip), and the strip below it is its own line. */}
+            {!landerCompany && newToday !== null && (
+              <span className="inline-flex items-center gap-1.5 ml-2 text-success whitespace-nowrap" data-board-new-today="">
+                <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full bg-success animate-pulse motion-reduce:animate-none" />
+                {t("jobsPage.newTodayLine", "{{n}} posted today.", { n: `${newToday.toLocaleString()}${newTodayCapped ? "+" : ""}` })}
+              </span>
+            )}
             {/* Live activity strip: the board IS alive — say so with measured
                 numbers only (each clause renders only when its data exists). */}
             {/* sm+ only: at 375px this line is three rows (60px) of the fold,
@@ -8439,12 +8505,6 @@ function JobsBoard({ boardId }: { boardId: string }) {
                 {recheckP50Min !== null && t("jobsPage.recheckLine", "median feed re-checked {{m}} min ago", { m: recheckP50Min })}
               </span>
             )}
-            {!landerCompany && newToday !== null && (
-              <span className="inline-flex items-center gap-1.5 ml-2 text-success whitespace-nowrap">
-                <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full bg-success animate-pulse motion-reduce:animate-none" />
-                {t("jobsPage.newTodayLine", "{{n}} posted today.", { n: `${newToday.toLocaleString()}${newTodayCapped ? "+" : ""}` })}
-              </span>
-            )}
           </p>
           </>
           )}
@@ -8455,7 +8515,13 @@ function JobsBoard({ boardId }: { boardId: string }) {
               horizon, with its sample, its window and its interval. Renders
               only when the RPC says the record can carry the claim and enough
               of it carries employer-stated posting dates. */}
-          {landerCategory && canStateFillRate(fieldCurve, fieldCurve?.window_days) && (
+          {/* THE FIELD LINE'S PLACE IS HELD WHILE THE FIELD TABLE LOADS (SEO-022):
+              it arrived as a 128px block on a phone (56px at 1280) above the
+              filters and moved the page (field page lab CLS 0.13 at 375). */}
+          {landerCategory && !fieldLineSettled && (
+            <p aria-hidden="true" data-field-line-reserve="" className="mb-2 min-h-[128px] sm:min-h-[92px] lg:min-h-[56px]" />
+          )}
+          {landerCategory && fieldLineSettled && canStateFillRate(fieldCurve, fieldCurve?.window_days) && (
             <p className="inline-flex flex-wrap items-center gap-1.5 text-[12px] text-muted-foreground mb-2">
               <Clock className="w-3.5 h-3.5 text-primary shrink-0" />
               <span>
@@ -8526,7 +8592,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
           {aboutOpen && (
             <div className="rounded-xl border border-border bg-card p-4 mb-4 text-[13px] text-muted-foreground space-y-2">
               <p>
-                {t("jobsPage.subtitle", "Every job here comes straight from the company's own careers system — no aggregators, no dead links, and nothing re-listed by us. When a company itself relists a role, the posting says so. Where the employer's system allows it, we re-check a posting when you apply.")}
+                {t("jobsPage.subtitle", "Every job here is read from the hiring system that published it — an employer's own, a staffing agency's (labeled as one) or the federal government's listing site — never copied from another job board, and nothing is re-listed by us. When an employer itself re-lists a role, the posting says so. Where the employer's system allows it, we re-check a posting when you apply.")}
               </p>
               <p>{t("jobsPage.guaranteeFresh", "Posted in the last 30 days — stale postings auto-dropped")}. {t("jobsPage.guaranteeFreshTip", "Any role whose posting date passes 30 days is automatically dropped from the board — the ghost/pipeline postings other boards leave up for months never appear here.")}</p>
               <p>
@@ -10146,7 +10212,9 @@ function JobsBoard({ boardId }: { boardId: string }) {
               value={{ q, location, workMode, employmentType, freshness, category, experience, statedPayOnly, vendor, country, hideAgencies, companyTokens }}
               onChange={applyFilterPatch}
               options={filterBarOptions}
-              company={landerModel.name.name ? { name: landerModel.name.name, generic: landerModel.name.generic, openRoles: landerModel.openRoles } : undefined}
+              company={landerModel.variant === "collision" || landerModel.variant === "usajobs" || landerModel.name.name
+                ? { name: landerModel.name.name, generic: landerModel.name.generic, openRoles: landerModel.openRoles, kind: landerModel.variant === "collision" ? "collision" : landerModel.variant === "usajobs" ? "usajobs" : "employer", token: landerCompany ?? undefined }
+                : undefined}
               sort={isSmallScreen ? undefined : { value: shownSortControl, options: sortOptions, onChange: applySort }}
             />
           )}
@@ -10726,7 +10794,10 @@ function JobsBoard({ boardId }: { boardId: string }) {
                 )}
               </div>
             </div>
-          ) : jobs.length === 0 && onCompanyPage && landerModel?.variant === "zero" ? (
+          ) : jobs.length === 0 && onCompanyPage && (landerModel?.variant === "zero" || landerModel?.variant === "uncarried") ? (
+            // An address we do not read gets the company page's own way out
+            // (search, the directory, and the carried boards it probably
+            // meant, S12-129), never the filter copy of the board's zero.
             <CompanyLanderEmpty model={landerModel} token={landerCompany!} profile={landerProfile} boardReadAt={landerBoardReadAt} />
           ) : jobs.length === 0 ? (
             /* Server-zero: an actionable exit, never a dead end. Each button is
@@ -11649,7 +11720,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                               {job.token && (job.postingCount ?? 1) - 1 > (job.siblings ?? []).length && (
                                 <li className="text-xs">
                                   <a
-                                    href={companyLanderPath(job.token, `q=${encodeURIComponent(job.title)}`)}
+                                    href={companyHref(job.token, `q=${encodeURIComponent(job.title)}`)}
                                     className="text-primary font-medium hover:underline"
                                   >
                                     {t("jobsPage.seeAllOpenings", "See all {{count}} openings of this role", { count: job.postingCount })}
@@ -12034,7 +12105,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
             // A COMPANY PAGE'S RAIL: about this employer (or, on a board name two
             // hiring systems share, the boards). Not sticky: it is taller than
             // the screen. An opened posting takes its place.
-            <div className="hidden lg:block min-w-0 space-y-3">
+            <div className={`hidden lg:block min-w-0 space-y-3${landerRailShown ? "" : " invisible"}`} data-company-rail={landerRailShown ? "shown" : "settling"}>
               <CompanyLanderRail
                 {...landerAbout}
                 profile={landerModel!.variant === "zero" ? { ...landerProfile, similar: [] } : landerProfile}
@@ -12357,7 +12428,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                       {/* A record the gate withholds: held, not printed, and
                           said with the gate's reason rather than as "no record". */}
                       {hh && withheldReason(hh) !== null && (
-                        <li className="text-muted-foreground" data-hh-withheld={withheldReason(hh) ?? undefined}>{t("jobsPage.verdictRecordWithheld", "we hold a closure record for this employer and do not print it: {{why}}", { why: withheldWhy(hh) })}</li>
+                        <li className="text-muted-foreground" data-hh-withheld={withheldReason(hh) ?? undefined}>{t("jobsPage.verdictRecordWithheld", "we hold a closure record for this employer: {{why}}", { why: withheldWhy(hh) })}</li>
                       )}
                       {/* `hh &&`, not `!healthPending`: a row is the evidence
                           that we asked about this employer and got an answer.

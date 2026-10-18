@@ -251,22 +251,19 @@ describe("the React company page names the employer and its possessive the way t
   });
 
   it("every call of a key that needs the possessive passes it, and the name is the board's own", () => {
+    // SEO-007: the company head is built once, for React and the bake, in
+    // src/lib/seo/board-heads.ts. It calls the possessive keys with the
+    // possessive it is handed, and the page hands it the model's own name
+    // through possessive() (the board's own name: stored through boardName,
+    // baked or cached), the name the header prints.
+    const heads = codeOf(readFileSync(resolve(__dirname, "../lib/seo/board-heads.ts"), "utf8"));
+    expect(heads).toMatch(/const v = \{ company, companyPossessive, n \};/);
     for (const k of LANDER_KEYS) {
-      let at = jobs.indexOf(`t("jobsPage.${k}"`);
-      expect(at, k).toBeGreaterThan(-1);
-      while (at > -1) {
-        let depth = 0, end = at;
-        for (let i = jobs.indexOf("(", at); i < jobs.length; i++) {
-          if (jobs[i] === "(") depth++;
-          else if (jobs[i] === ")" && --depth === 0) { end = i; break; }
-        }
-        // The SEO description names the employer from the page's model (the
-        // board's own name: stored through boardName, baked or cached), the
-        // name the header prints (2026-10-18: titles by variant).
-        expect(jobs.slice(at, end), k).toMatch(/companyPossessive: possessive\((?:landerCompanyName|landerModel\.name\.name)/);
-        at = jobs.indexOf(`t("jobsPage.${k}"`, end);
-      }
+      const calls = [...heads.matchAll(new RegExp(`t\\("jobsPage\\.${k}(?:Count)?", "([^"]*)", v\\)`, "g"))];
+      expect(calls.length, k).toBe(2);
+      for (const m of calls) expect(m[1], k).toContain("{{companyPossessive}}");
     }
+    expect(jobs).toMatch(/companyBoardHead\(\{\s*kind: landerModel\.variant === "agency" \? "agency" : "employer",\s*name: landerModel\.name\.name,\s*possessive: possessive\(landerModel\.name\.name\),/);
     // The header builds its possessive from the model's name once, through the same helper.
     const header = codeOf(readFileSync(resolve(__dirname, "../components/jobs/company/CompanyHeader.tsx"), "utf8"));
     expect(header).toMatch(/const companyPossessive = own \? possessive\(name!\) : "";/);

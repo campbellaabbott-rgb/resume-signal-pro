@@ -1700,7 +1700,11 @@
       "subtitleIndustry": "Wir konnten aus diesem Lebenslauf keine Berufsbezeichnung lesen. Dies sind daher aktuelle Stellen aus Ihrem Bereich — gegen Ihren Lebenslauf bewertet, aber nicht über ihn gefunden. Suchen Sie auf der Jobbörse selbst, um sie einzugrenzen.",
       "loading": "Live-Stellen werden gegen Ihren Lebenslauf gerankt…",
       "apply": "Bewerben",
-      "seeAll": "Alle Treffer auf der Jobbörse ansehen — Suchen speichern, Bewerbungen verfolgen"
+      "seeAll": "Alle Treffer auf der Jobbörse ansehen — Suchen speichern, Bewerbungen verfolgen",
+      "openBoardFallbackLive": "Öffne die Live-Jobbörse — {{n}}+ Stellen jetzt online, nach deinem Lebenslauf sortiert",
+      "openBoardFallbackPlain": "Öffne die Live-Jobbörse — aktuelle Stellen, nach deinem Lebenslauf sortiert",
+      "openBoardNoteLive": "{{n}}+ Stellen jetzt online · Suchen speichern, Unternehmen beobachten, Bewerbungen verfolgen",
+      "openBoardNotePlain": "Aktuelle Stellen · Suchen speichern, Unternehmen beobachten, Bewerbungen verfolgen"
     },
     "nextSteps": {
       "eyebrow": "Nächste Schritte",
@@ -3557,10 +3561,10 @@
     "replaceWithLatestScan": "Du hast einen Entwurf aus einem früheren Lebenslauf. Durch den Lebenslauf aus deinem neuesten Scan ersetzen?"
   },
   "jobsPage": {
-    "seoTitle": "Live-Jobs direkt von den Karriereseiten der Unternehmen — prüfe deine Passung vor der Bewerbung",
-    "seoDescription": "Aktuelle Stellen, direkt aus den eigenen Bewerbersystemen tausender Arbeitgeber gelesen und über den Tag hinweg erneut gelesen. Sieh kostenlos, wie dein Lebenslauf zu jeder Stelle passt, und bewirb dich auf der Website des Arbeitgebers.",
+    "seoTitle": "Live-Jobbörse — Stellen direkt von den Karriereseiten der Unternehmen",
+    "seoDescription": "Durchsuche {{phrase}}, jede aus dem Bewerbersystem gelesen, das sie veröffentlicht hat, nie von einer anderen Jobbörse kopiert. Keine datierte Anzeige älter als 30 Tage.",
     "h1": "Live-Jobbörse",
-    "subtitle": "Jeder Job hier kommt direkt aus dem eigenen Bewerbersystem des Unternehmens — keine Aggregatoren, keine toten Links und nichts, was wir erneut veröffentlichen. Wenn ein Unternehmen selbst eine Stelle erneut ausschreibt, steht das in der Anzeige. Wo das System des Arbeitgebers es erlaubt, prüfen wir eine Anzeige erneut, wenn du dich bewirbst.",
+    "subtitle": "Jeder Job hier wird aus dem Bewerbersystem gelesen, das ihn veröffentlicht hat — dem eigenen des Arbeitgebers, dem einer Personalagentur (als solche gekennzeichnet) oder der Stellenbörse der US-Bundesregierung —, nie von einer anderen Jobbörse kopiert und nie von uns erneut veröffentlicht. Wenn ein Arbeitgeber selbst eine Stelle erneut ausschreibt, steht das in der Anzeige. Wo das System des Arbeitgebers es erlaubt, prüfen wir eine Anzeige erneut, wenn du dich bewirbst.",
     "honestyNote": "Dann tun wir, was andere Börsen auslassen: Prüfe kostenlos deinen Lebenslauf gegen jede Stelle und sieh genau, was zu ergänzen ist — damit du vorbereitet bewirbst, nicht auf gut Glück.",
     "searchPlaceholder": "Titel oder Stichwort — z. B. Product Designer",
     "locationPlaceholder": "Ort",
@@ -3609,7 +3613,7 @@
     "fitLoadedDesc": "{{title}} bei {{company}} — laden Sie Ihren Lebenslauf hoch oder fügen Sie ihn ein, und der Scan prüft die Passung zu genau dieser Stelle.",
     "allFields": "Alle Bereiche",
     "companySeoTitle": "Jobs bei {{company}}: offene Stellen aus dem eigenen Bewerbersystem",
-    "companySeoDescription": "Durchsuche die offenen Stellen von {{company}} mit Datum in den letzten 30 Tagen, gelesen aus dem eigenen Bewerbersystem von {{company}}. Prüfe kostenlos, wie dein Lebenslauf zu jeder Stelle passt, und bewirb dich auf der Website von {{company}}.",
+    "companySeoDescription": "Offene Stellen bei {{company}}, gelesen aus dem eigenen Bewerbersystem von {{company}}. Prüfe kostenlos, wie dein Lebenslauf passt, bevor du dich bewirbst.",
     "openRoles": "{{count}} offene Stellen",
     "openRolesTip": "Dieses Unternehmen hat gerade {{count}} Stellen mit Datum in den letzten 30 Tagen auf seinem eigenen Board.",
     "fitSummaryStrong": "Du passt sehr gut zu {{count}} dieser Stellen",
@@ -3664,8 +3668,7 @@
     "fitBadge": "Passung {{pct}} %",
     "fitNeedsResumeTitle": "Zuerst Lebenslauf scannen",
     "fitNeedsResume": "Führen Sie den Gratis-Scan aus (oder speichern Sie eine Version im Konto), dann sortiert die Börse jede Stelle nach Ihrer Passung.",
-    "landerSeoTitle": "Live {{category}}-Jobs — Von den offiziellen Jobbörsen der Unternehmen",
-    "landerSeoDescription": "Aktuelle {{category}}-Stellen, gelesen aus den eigenen Bewerbersystemen der Arbeitgeber und über den Tag hinweg erneut gelesen. Prüfe kostenlos die Passung deines Lebenslaufs und bewirb dich auf der Website des Arbeitgebers.",
+    "landerSeoTitle": "{{category}}-Jobs — Aktuelle Stellen von den Jobbörsen der Unternehmen",
     "landerH1": "Live {{category}}-Jobs",
     "addToCompete": "Zum Mithalten ergänzen:",
     "matchStrong": "Starke Übereinstimmung",
@@ -3831,7 +3834,7 @@
     "signalReading": "Wir lesen unsere Schließungsbilanz und die Ausschreibungsraten für diese Arbeitgeber noch. Eine unfertige Lesung ist keine leere, deshalb ist noch nichts auf dem Bildschirm ein Befund über irgendjemanden.",
     "takedownEmpty": "Kein Arbeitgeber unter den hier geladenen Stellen hat eine erfasste Schließungsbilanz, die die Schwelle erreicht. Schalte den Filter aus, um alle Stellen zu sehen.",
     "verdictNoRecord": "für diesen Arbeitgeber haben wir keine Schließung erfasst, wir können es also in keine Richtung sagen — das kann ein Board sein, das größer ist, als ein Besuch lesen kann, wo für uns keine Schließung beobachtbar ist, oder ein Arbeitgeber, bei dem nichts heruntergenommen wurde, während wir zusahen",
-    "verdictRecordWithheld": "für diesen Arbeitgeber haben wir Schließungen erfasst, zeigen sie aber nicht an: {{why}}",
+    "verdictRecordWithheld": "für diesen Arbeitgeber haben wir Schließungen erfasst: {{why}}",
     "hhNoClosureRecord": "Für diesen Arbeitgeber haben wir keine Schließung erfasst: Von keiner seiner Anzeigen haben wir beobachtet, dass sie vom Board verschwand. Auf einem Board, das größer ist, als ein Besuch lesen kann, ist für uns keine Schließung beobachtbar, bis wir einen nachweisbaren vollständigen Durchlauf abgeschlossen und danach eine Stelle verschwinden sehen haben; auf einem Board, das wir vollständig lesen, heißt es, dass nichts heruntergenommen wurde, während wir zusahen. Von hier aus können wir das nicht unterscheiden, es ist also eine Lücke auf unserer Seite und kein Zeichen dafür, dass sie nicht einstellen.",
     "hhRelistsOnly": "Jede ihrer Anzeigen, die wir haben verschwinden sehen, kam neu ausgeschrieben zurück, wir haben also keine saubere Herunternahme zu zählen — {{n}} Neuausschreibungen erfasst, was eine Untergrenze ist.",
     "compareTip": "Zum Vergleich (max. 3)",
@@ -4431,7 +4434,28 @@
     "verdictTakedownCeiling": "nimmt bis zu {{pct}} % seiner Stellen innerhalb von {{d}} Tagen herunter, jede Entfernung mitgezählt",
     "hhTakedownRateDated": "Bis zu {{pct}} % seiner Stellen verschwanden innerhalb von {{d}} Tagen, jede Entfernung mitgezählt, gemessen an den {{n}} Stellen mit einem Veröffentlichungsdatum des Unternehmens selbst.",
     "hhFootnoteCurveListing": "Berechnet aus dem gesamten Lebenszyklus der Anzeigen, die diese Website listet — wann sie erscheinen und wann sie verschwinden — nicht aus einer Momentaufnahme. Noch offene Stellen und Stellen jenseits unserer 30-Tage-Grenze zählen als unabgeschlossen statt herauszufallen.",
-    "employerOutlivedEveryTakedown": "Das ist länger, als dieser Arbeitgeber eine Stelle üblicherweise online lässt: {{gone}} % seiner Stellen sind innerhalb von {{d}} Tagen vom Jobboard verschwunden, jede Entfernung mitgezählt."
+    "employerOutlivedEveryTakedown": "Das ist länger, als dieser Arbeitgeber eine Stelle üblicherweise online lässt: {{gone}} % seiner Stellen sind innerhalb von {{d}} Tagen vom Jobboard verschwunden, jede Entfernung mitgezählt.",
+    "companySeoTitleCount": "Jobs bei {{company}}: {{n}} offene Stellen aus dem eigenen Bewerbersystem",
+    "companySeoTitleCountShort": "Jobs bei {{company}}: {{n}} offene Stellen",
+    "companySeoTitleShort": "Jobs bei {{company}}",
+    "companySeoDescriptionCount": "{{n}} offene Stellen bei {{company}}, gelesen aus dem eigenen Bewerbersystem von {{company}}. Prüfe kostenlos, wie dein Lebenslauf passt, bevor du dich bewirbst.",
+    "agencySeoTitleCount": "Jobs bei {{company}}: {{n}} Stellen einer Personalagentur",
+    "agencySeoTitleCountShort": "Jobs bei {{company}}: {{n}} Stellen",
+    "agencySeoTitle": "Jobs bei {{company}}: Stellen einer Personalagentur",
+    "agencySeoDescriptionCount": "{{n}} Stellen von {{company}}, einer Personalagentur: meist für deren Kunden. Prüfe kostenlos, wie dein Lebenslauf passt, bevor du dich bewirbst.",
+    "agencySeoDescription": "Stellen von {{company}}, einer Personalagentur: meist für deren Kunden. Prüfe kostenlos, wie dein Lebenslauf passt, bevor du dich bewirbst.",
+    "usajobsSeoTitleCount": "{{h1}}: {{n}} Stellen",
+    "landerSeoTitleCount": "{{category}}-Jobs — {{n}} aktuelle Stellen",
+    "landerSeoDescriptionLead": "Aktuelle {{category}}-Stellen",
+    "landerSeoDescriptionLeadCount": "{{exact}} aktuelle {{category}}-Stellen, {{countsDay}}",
+    "landerSeoDescriptionBoards": ", aus {{boards}} Jobbörsen von Unternehmen",
+    "landerSeoDescriptionTail": ", jede aus dem Bewerbersystem gelesen, das sie veröffentlicht hat.",
+    "seoTitleCount": "Live-Jobbörse — {{n}} Stellen direkt von den Karriereseiten der Unternehmen",
+    "seoPhrase": "aktuelle Stellen von den eigenen Jobbörsen der Unternehmen",
+    "seoPhraseCount": "{{n}} aktuelle Stellen",
+    "seoPhraseCountBoards": "{{n}} aktuelle Stellen auf {{boards}} Jobbörsen von Unternehmen",
+    "usajobsSeoDescriptionCount": "{{n}} Bundesstellen auf USAJOBS, jede mit ihrer Behörde. {{cap}} Prüfe kostenlos, wie dein Lebenslauf passt.",
+    "usajobsSeoDescription": "Bundesstellen auf USAJOBS, jede mit ihrer Behörde. {{cap}} Prüfe kostenlos, wie dein Lebenslauf passt."
   },
   "accountPage": {
     "statusSaveFailed": "Status konnte nicht gespeichert werden — bitte erneut versuchen.",
@@ -5196,7 +5220,7 @@
   "agentConnect": {
     "rateLine": "Ein kostenloser Schlüssel ist auf {{ratePerMin}} Anfragen pro Minute und {{dailyQuota}} Aufrufe pro Tag begrenzt; ein laufender Pass hebt beides für seine Stunden an.",
     "attachTitle": "Prompts und Ressourcen, die dein Host auflisten kann",
-    "attachLead": "Neben den Tools registriert der Server fertige Prompts und einige lesbare Dokumente. Hosts, die sie auflisten (das Anhängen-Menü von claude.ai, die Slash-Liste von Claude Code, das Panel von Cursor), zeigen sie unter dem Namen des Servers; das Auflisten kostet keinen Aufruf und braucht keinen Schlüssel.",
+    "attachLead": "Neben den Tools registriert der Server fertige Prompts und einige lesbare Dokumente. Hosts, die sie auflisten (das Anhängen-Menü von claude.ai, die Slash-Liste von Claude Code), zeigen sie unter dem Namen des Servers; das Auflisten kostet keinen Aufruf und braucht keinen Schlüssel.",
     "promptsHeading": "Prompts",
     "resourcesHeading": "Ressourcen",
     "resourceKeyed": "braucht einen Schlüssel oder eine Anmeldung",
@@ -5251,7 +5275,7 @@
     "scoreCta": "Meinen Lebenslauf mit dieser Stelle abgleichen (kostenlos)",
     "scoreNote": "Öffnet den kostenlosen Scanner mit der bereits eingefügten Beschreibung dieser Stelle.",
     "descHeading": "Die Beschreibung des Arbeitgebers",
-    "sourceNote": "Direkt aus dem eigenen Bewerbersystem von {{company}} — nie ein Aggregator, nie eine Zweitveröffentlichung. Eine datierte Anzeige wird höchstens {{days}} Tage ab dem vom Arbeitgeber angegebenen Datum ausgespielt, und das Board prüft eine Anzeige erneut, wenn du sie öffnest.",
+    "sourceNote": "Aus dem eigenen Bewerbersystem von {{company}} gelesen, nie von einer anderen Jobbörse kopiert. Eine datierte Anzeige wird höchstens {{days}} Tage ab dem vom Arbeitgeber angegebenen Datum ausgespielt. Auf dem Live-Board fragt das Öffnen einer Anzeige, deren Feed wir zuletzt vor mehr als {{hours}} Stunden gelesen haben, das System des Arbeitgebers erneut ab.",
     "theEmployer": "dem Arbeitgeber",
     "theEmployerPossessive": "des Arbeitgebers"
   },
@@ -5444,6 +5468,43 @@
     "hiringSystem": "Bewerbungssystem",
     "country": "Land",
     "agencies": "Personaldienstleister",
-    "agenciesHiddenChip": "Ohne Personaldienstleister"
+    "agenciesHiddenChip": "Ohne Personaldienstleister",
+    "collisionKeywordPlaceholder_one": "{{n}} Stelle auf Boards namens „{{token}}“ durchsuchen",
+    "collisionKeywordPlaceholder_other": "{{n}} Stellen auf Boards namens „{{token}}“ durchsuchen",
+    "collisionKeywordPlaceholderNoCount": "Stellen auf Boards namens „{{token}}“ durchsuchen",
+    "usajobsKeywordPlaceholder_one": "{{n}} Bundesstelle auf USAJOBS durchsuchen",
+    "usajobsKeywordPlaceholder_other": "{{n}} Bundesstellen auf USAJOBS durchsuchen",
+    "usajobsKeywordPlaceholderNoCount": "Bundesstellen auf USAJOBS durchsuchen"
+  },
+  "boardSource": {
+    "notCopied": "aus dem Bewerbersystem gelesen, das sie veröffentlicht hat, nie von einer anderen Jobbörse kopiert",
+    "tailNoOld": "jede Anzeige aus dem Bewerbersystem gelesen, das sie veröffentlicht hat, nie von einer anderen Jobbörse kopiert, und keine datierte Anzeige älter als 30 Tage",
+    "sentence": "Jede Anzeige wird aus dem Bewerbersystem gelesen, das sie veröffentlicht hat — dem eigenen des Arbeitgebers, dem einer Personalagentur (als solche gekennzeichnet) oder der Stellenbörse der US-Bundesregierung —, nie von einer anderen Jobbörse kopiert."
+  },
+  "entryLevelIndex": {
+    "leadersHeading": "Wo Einsteiger gerade die besten Chancen haben — nach Anteil sortiert",
+    "totalCaption": "aktuelle Einstiegsstellen gerade jetzt"
+  },
+  "aboutPage": {
+    "metaTitle": "Über Resume Booster — So funktioniert die Live-Jobbörse",
+    "metaDescription": "Ein kostenloser Lebenslauf-Scanner und eine Live-Jobbörse aus den eigenen Bewerbersystemen der Arbeitgeber: wie sie funktioniert, wie gezählt wird, wie du uns erreichst.",
+    "h1": "Über Resume Booster",
+    "lead": "Resume Booster ist zweierlei: ein kostenloser Lebenslauf-Scanner und eine Jobbörse mit aktuellen Stellen direkt aus den eigenen Bewerbersystemen der Arbeitgeber. Du kannst prüfen, wie dein Lebenslauf zu einer Anzeige passt, bevor du dich bewirbst, und dich dann auf der Website des Arbeitgebers bewerben.",
+    "boardTitle": "Was die Jobbörse ist",
+    "boardBody": "Die Jobbörse liest Anzeigen aus den Bewerbersystemen, die sie veröffentlichen: dem eigenen des Arbeitgebers, dem einer Personalagentur (als solche gekennzeichnet) oder der Stellenbörse der US-Bundesregierung. Nichts wird von einer anderen Jobbörse kopiert. Eine Anzeige bleibt, solange ihr Datum in den letzten {{days}} Tagen liegt und das System, das sie veröffentlicht hat, sie noch führt.",
+    "countsTitle": "Wie gezählt wird",
+    "countsBody": "Jede Zahl auf dieser Website nennt den Tag oder den Lesevorgang, aus dem sie stammt. Eine offene Stelle ist eine Anzeige, deren Datum in den letzten {{days}} Tagen liegt: das eigene Datum des Arbeitgebers oder, bei einer Anzeige ohne Datum, der Tag, an dem wir sie zuletzt in seinem Feed gesehen haben. Zahlen ändern sich, wenn Stellen öffnen und schließen; eine an einem Tag erstellte Seite nennt die Zahl dieses Tages.",
+    "readMore": "Mehr dazu:",
+    "ghostLink": "wie aktuell unsere Lesevorgänge sind (Ghost Job Index)",
+    "methodologyLink": "wie der Lebenslauf-Score funktioniert",
+    "notTitle": "Nicht zu verwechseln mit",
+    "notBody": "Resume Booster unter resumebooster.work ist ein eigenes Produkt, getrennt von resumebooster.io, ResumeBoostAI und anderen ähnlich benannten Websites, und steht in keiner Verbindung zu ihnen.",
+    "aiTitle": "Nutze es aus deiner KI-App",
+    "aiBody": "Claude, ChatGPT und Claude Code können die Jobbörse über unseren Connector durchsuchen.",
+    "aiLink": "Verbinde deine KI-App",
+    "contactTitle": "Kontakt",
+    "contactBody": "Für Fragen zu deinen Daten und Datenschutzanfragen steht in der Datenschutzerklärung, wie du uns erreichst.",
+    "privacyLink": "Datenschutzerklärung",
+    "seller": "Verkäufer: {{name}}, {{address}}"
   }
 }

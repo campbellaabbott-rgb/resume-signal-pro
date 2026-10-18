@@ -1700,7 +1700,11 @@
       "subtitleIndustry": "Hindi namin nabasa ang job title sa resume na ito, kaya ito ang kasalukuyang mga opening sa larangan mo — na-score laban sa resume mo, pero hindi ito ang hinanap. Maghanap ka mismo sa job board para paliitin ang mga ito.",
       "loading": "Nira-rank ang mga live na opening laban sa resume mo…",
       "apply": "Mag-apply",
-      "seeAll": "Tingnan ang lahat ng tugma sa job board — mag-save ng paghahanap, subaybayan ang aplikasyon"
+      "seeAll": "Tingnan ang lahat ng tugma sa job board — mag-save ng paghahanap, subaybayan ang aplikasyon",
+      "openBoardFallbackLive": "Buksan ang live na job board — {{n}}+ bakanteng live ngayon, nakaayos ayon sa iyong resume",
+      "openBoardFallbackPlain": "Buksan ang live na job board — mga live na bakante, nakaayos ayon sa iyong resume",
+      "openBoardNoteLive": "{{n}}+ bakanteng live ngayon · mag-save ng search, bantayan ang mga kumpanya, subaybayan ang mga application",
+      "openBoardNotePlain": "Mga live na bakante · mag-save ng search, bantayan ang mga kumpanya, subaybayan ang mga application"
     },
     "nextSteps": {
       "eyebrow": "Susunod na hakbang",
@@ -3557,10 +3561,10 @@
     "replaceWithLatestScan": "May draft ka mula sa naunang resume. Palitan ito ng resume mula sa pinakabago mong scan?"
   },
   "jobsPage": {
-    "seoTitle": "Live na trabaho mismo mula sa mga kumpanya — suriin ang iyong fit bago mag-apply",
-    "seoDescription": "Mga live na bakante na binasa mismo mula sa sariling hiring system ng libu-libong employer at muling binabasa buong araw. Tingnan nang libre kung paano tugma ang iyong resume sa anumang posting, tapos mag-apply sa sariling site ng employer.",
+    "seoTitle": "Live na Job Board — Mga bakante mismo mula sa career pages ng mga kumpanya",
+    "seoDescription": "Tingnan ang {{phrase}}, bawat isa binasa mula sa hiring system na naglathala nito, hindi kailanman kinopya mula sa ibang job board. Walang may-petsang posting na lampas 30 araw.",
     "h1": "Live na job board",
-    "subtitle": "Bawat trabaho rito ay galing mismo sa sariling hiring system ng kumpanya — walang aggregator, walang patay na link, at wala kaming muling pino-post. Kapag ang kumpanya mismo ang muling nag-post ng isang role, sinasabi ito sa listing. Kung pinapayagan ng system ng employer, muli naming sinusuri ang posting kapag nag-apply ka.",
+    "subtitle": "Bawat trabaho rito ay binabasa mula sa hiring system na naglathala nito — sa sarili ng employer, sa isang staffing agency (na may label na ganoon), o sa listing site ng pederal na gobyerno — hindi kailanman kinokopya mula sa ibang job board, at wala kaming muling pino-post. Kapag ang employer mismo ang muling nag-post ng isang role, sinasabi ito sa posting. Kung pinapayagan ng system ng employer, muli naming sinusuri ang posting kapag nag-apply ka.",
     "honestyNote": "Pagkatapos, ginagawa namin ang nilalaktawan ng ibang board: libreng suriin ang iyong resume laban sa anumang posting at tingnan kung ano nga ba ang idadagdag — para mag-apply kang handa, hindi basta-basta.",
     "searchPlaceholder": "Titulo o keyword — hal. product designer",
     "locationPlaceholder": "Lokasyon",
@@ -3609,7 +3613,7 @@
     "fitLoadedDesc": "{{title}} sa {{company}} — i-upload o i-paste ang resume mo at iche-check ng scan ang fit sa posting na ito.",
     "allFields": "Lahat ng larangan",
     "companySeoTitle": "Mga trabaho sa {{company}}: mga bukas na posisyon mula sa sarili nitong hiring system",
-    "companySeoDescription": "Tingnan ang mga bukas na posisyon ng {{company}} na may petsa sa nakaraang 30 araw, binasa mula sa sarili nitong hiring system. Libreng suriin kung paano tugma ang iyong resume sa anumang posisyon, tapos mag-apply sa site ng {{company}}.",
+    "companySeoDescription": "Mga bukas na posisyon sa {{company}}, binasa mula sa sarili nitong hiring system. Libreng suriin ang fit ng iyong resume bago mag-apply.",
     "openRoles": "{{count}} bukas na posisyon",
     "openRolesTip": "May {{count}} posisyong may petsa sa nakaraang 30 araw ang kumpanyang ito sa sarili nitong board ngayon.",
     "fitSummaryStrong": "Malakas ang tugma mo sa {{count}} sa mga trabahong ito",
@@ -3664,8 +3668,7 @@
     "fitBadge": "fit {{pct}}%",
     "fitNeedsResumeTitle": "I-scan muna ang resume mo",
     "fitNeedsResume": "Patakbuhin ang libreng scan (o mag-save ng bersyon sa account mo) at irar-rank ng board ang bawat posting ayon sa fit mo.",
-    "landerSeoTitle": "Live na {{category}} Jobs — Mula sa opisyal na job boards ng mga kumpanya",
-    "landerSeoDescription": "Live na {{category}} na bakante na binasa mula sa sariling hiring system ng mga employer at muling binabasa buong araw. Libreng suriin ang fit ng iyong resume, tapos mag-apply sa sariling site ng employer.",
+    "landerSeoTitle": "{{category}} Jobs — Mga live na bakante mula sa job boards ng mga kumpanya",
     "landerH1": "Live na {{category}} jobs",
     "addToCompete": "Idagdag para makipagsabayan:",
     "matchStrong": "Malakas na tugma",
@@ -3831,7 +3834,7 @@
     "signalReading": "Binabasa pa namin ang aming talang pagsara at ang mga rate ng pag-post para sa mga employer na ito. Ang hindi pa tapos na pagbasa ay hindi katumbas ng walang laman, kaya wala pa sa nasa screen ang natuklasan tungkol kaninuman.",
     "takedownEmpty": "Walang employer sa mga bakanteng naka-load dito ang may talang pagsara na umaabot sa pamantayan. I-off ito para makita ang lahat ng role.",
     "verdictNoRecord": "wala kaming talang pagsara para sa employer na ito, kaya hindi namin masasabi ni isa man sa dalawa — maaaring board iyon na mas malaki kaysa sa kayang basahin sa isang pagbisita, kung saan walang pagsara na naoobserbahan namin, o employer na walang inalis habang nagmamasid kami",
-    "verdictRecordWithheld": "may talang pagsara kami para sa employer na ito pero hindi namin ito ipinapakita: {{why}}",
+    "verdictRecordWithheld": "may talang pagsara kami para sa employer na ito: {{why}}",
     "hhNoClosureRecord": "Wala kaming talang pagsara para sa employer na ito: wala ni isa sa kanilang posting ang nakita naming naalis sa board. Sa board na mas malaki kaysa sa kayang basahin sa isang pagbisita, walang pagsara na naoobserbahan namin hangga't hindi namin natatapos ang isang napatunayang buong ikot at pagkatapos ay nakita naming may posisyong umalis; sa board na buong nababasa namin, ibig sabihin ay walang inalis habang nagmamasid kami. Hindi namin matukoy mula rito kung alin, kaya puwang ito sa aming panig at hindi tanda na hindi sila kumukuha ng tao.",
     "hhRelistsOnly": "Lahat ng posting nila na nakita naming umalis ay bumalik na muling nai-post, kaya wala kaming malinis na pag-aalis na mabibilang — {{n}} muling paglilista ang naitala, na isang pinakamababang bilang.",
     "compareTip": "Idagdag sa paghahambing (hanggang 3)",
@@ -4431,7 +4434,28 @@
     "verdictTakedownCeiling": "nag-aalis ng hanggang {{pct}}% ng mga posisyon nito sa loob ng {{d}} araw, binibilang ang bawat pag-alis",
     "hhTakedownRateDated": "Hanggang {{pct}}% ng mga posisyon nito ang naalis sa loob ng {{d}} araw, binibilang ang bawat pag-alis, sinukat sa {{n}} posisyong may sariling petsa ng pag-post ng kumpanya.",
     "hhFootnoteCurveListing": "Kinalkula mula sa buong lifecycle ng mga posting na inililista ng site na ito — kung kailan bumubukas at kung kailan naaalis — hindi mula sa isang snapshot. Ang mga posisyong nakapaskil pa, at ang mga lumagpas sa aming 30-araw na hangganan, ay binibilang na hindi pa tapos sa halip na iwanan.",
-    "employerOutlivedEveryTakedown": "Mas matagal iyan kaysa karaniwang pagpapaskil ng employer na ito ng isang role: {{gone}}% ng mga role nito ay naaalis sa board sa loob ng {{d}} araw, binibilang ang bawat pag-alis."
+    "employerOutlivedEveryTakedown": "Mas matagal iyan kaysa karaniwang pagpapaskil ng employer na ito ng isang role: {{gone}}% ng mga role nito ay naaalis sa board sa loob ng {{d}} araw, binibilang ang bawat pag-alis.",
+    "companySeoTitleCount": "Mga trabaho sa {{company}}: {{n}} bukas na posisyon mula sa sarili nitong hiring system",
+    "companySeoTitleCountShort": "Mga trabaho sa {{company}}: {{n}} bukas na posisyon",
+    "companySeoTitleShort": "Mga trabaho sa {{company}}",
+    "companySeoDescriptionCount": "{{n}} bukas na posisyon sa {{company}}, binasa mula sa sarili nitong hiring system. Libreng suriin ang fit ng iyong resume bago mag-apply.",
+    "agencySeoTitleCount": "Mga trabaho sa {{company}}: {{n}} posisyong inilista ng isang staffing agency",
+    "agencySeoTitleCountShort": "Mga trabaho sa {{company}}: {{n}} posisyon",
+    "agencySeoTitle": "Mga trabaho sa {{company}}: mga posisyong inilista ng isang staffing agency",
+    "agencySeoDescriptionCount": "{{n}} posisyong inilista ng {{company}}, isang staffing agency: kadalasan para sa mga kliyente nito. Libreng suriin ang fit ng iyong resume bago mag-apply.",
+    "agencySeoDescription": "Mga posisyong inilista ng {{company}}, isang staffing agency: kadalasan para sa mga kliyente nito. Libreng suriin ang fit ng iyong resume bago mag-apply.",
+    "usajobsSeoTitleCount": "{{h1}}: {{n}} posisyon",
+    "landerSeoTitleCount": "{{category}} Jobs — {{n}} live na bakante",
+    "landerSeoDescriptionLead": "Mga live na {{category}} na bakante",
+    "landerSeoDescriptionLeadCount": "{{exact}} live na {{category}} na bakante, {{countsDay}}",
+    "landerSeoDescriptionBoards": ", mula sa {{boards}} job board ng mga kumpanya",
+    "landerSeoDescriptionTail": ", bawat isa binasa mula sa hiring system na naglathala nito.",
+    "seoTitleCount": "Live na Job Board — {{n}} bakante mismo mula sa career pages ng mga kumpanya",
+    "seoPhrase": "mga live na bakante mula sa sariling job board ng mga kumpanya",
+    "seoPhraseCount": "{{n}} live na bakante",
+    "seoPhraseCountBoards": "{{n}} live na bakante sa {{boards}} job board ng mga kumpanya",
+    "usajobsSeoDescriptionCount": "{{n}} pederal na bakanteng nakalista sa USAJOBS, bawat isa may pangalan ng ahensya. {{cap}} Libreng suriin ang fit ng iyong resume.",
+    "usajobsSeoDescription": "Mga pederal na bakanteng nakalista sa USAJOBS, bawat isa may pangalan ng ahensya. {{cap}} Libreng suriin ang fit ng iyong resume."
   },
   "accountPage": {
     "statusSaveFailed": "Hindi na-save ang status na iyon — pakisubukan muli.",
@@ -5196,7 +5220,7 @@
   "agentConnect": {
     "rateLine": "Ang libreng key ay limitado sa {{ratePerMin}} request bawat minuto at {{dailyQuota}} tawag bawat araw; itinataas ng aktibong pass ang dalawa sa loob ng mga oras nito.",
     "attachTitle": "Mga prompt at resource na maaaring ilista ng iyong host",
-    "attachLead": "Bukod sa mga tool, nagrerehistro ang server ng mga handa nang prompt at ilang nababasang dokumento. Ang mga host na naglilista ng mga ito (ang attach menu ng claude.ai, ang slash list ng Claude Code, ang panel ng Cursor) ay nagpapakita ng mga ito sa ilalim ng pangalan ng server; walang gastos na tawag ang paglilista at hindi nangangailangan ng key.",
+    "attachLead": "Bukod sa mga tool, nagrerehistro ang server ng mga handa nang prompt at ilang nababasang dokumento. Ang mga host na naglilista ng mga ito (ang attach menu ng claude.ai, ang slash list ng Claude Code) ay nagpapakita ng mga ito sa ilalim ng pangalan ng server; walang gastos na tawag ang paglilista at hindi nangangailangan ng key.",
     "promptsHeading": "Mga prompt",
     "resourcesHeading": "Mga resource",
     "resourceKeyed": "kailangan ng key o sign-in",
@@ -5251,7 +5275,7 @@
     "scoreCta": "I-score ang aking résumé para sa trabahong ito (libre)",
     "scoreNote": "Binubuksan ang libreng scanner na nakapuno na ang paglalarawan ng posting na ito.",
     "descHeading": "Ang sariling paglalarawan ng employer",
-    "sourceNote": "Diretso mula sa sariling hiring system ng {{company}} — hindi kailanman aggregator, hindi kailanman repost. Ang posting na may petsa ay ipinapakita nang hanggang {{days}} araw mula sa petsang sinabi ng employer, at muling sinusuri ito ng board kapag binuksan mo.",
+    "sourceNote": "Binasa mula sa sariling hiring system ng {{company}}, hindi kailanman kinopya mula sa ibang job board. Ang posting na may petsa ay ipinapakita nang hanggang {{days}} araw mula sa petsang sinabi ng employer. Sa live na board, kapag binuksan mo ang posting na ang feed ay huli naming binasa nang higit {{hours}} oras na ang nakalipas, muling tinatanong ang system ng employer.",
     "theEmployer": "ang employer",
     "theEmployerPossessive": "ng employer"
   },
@@ -5444,6 +5468,43 @@
     "hiringSystem": "Hiring system",
     "country": "Bansa",
     "agencies": "Mga staffing agency",
-    "agenciesHiddenChip": "Walang staffing agency"
+    "agenciesHiddenChip": "Walang staffing agency",
+    "collisionKeywordPlaceholder_one": "Maghanap sa {{n}} trabaho sa mga board na may pangalang “{{token}}”",
+    "collisionKeywordPlaceholder_other": "Maghanap sa {{n}} trabaho sa mga board na may pangalang “{{token}}”",
+    "collisionKeywordPlaceholderNoCount": "Maghanap ng trabaho sa mga board na may pangalang “{{token}}”",
+    "usajobsKeywordPlaceholder_one": "Maghanap sa {{n}} pederal na bakanteng nakalista sa USAJOBS",
+    "usajobsKeywordPlaceholder_other": "Maghanap sa {{n}} pederal na bakanteng nakalista sa USAJOBS",
+    "usajobsKeywordPlaceholderNoCount": "Maghanap ng pederal na bakanteng nakalista sa USAJOBS"
+  },
+  "boardSource": {
+    "notCopied": "binasa mula sa hiring system na naglathala nito, hindi kailanman kinopya mula sa ibang job board",
+    "tailNoOld": "bawat posting binasa mula sa hiring system na naglathala nito, hindi kailanman kinopya mula sa ibang job board, at walang may-petsang posting na lampas 30 araw",
+    "sentence": "Bawat posting ay binabasa mula sa hiring system na naglathala nito — sa sarili ng employer, sa isang staffing agency (na may label na ganoon), o sa listing site ng pederal na gobyerno — hindi kailanman kinokopya mula sa ibang job board."
+  },
+  "entryLevelIndex": {
+    "leadersHeading": "Kung saan pinakamalaki ang tsansa ng baguhan ngayon — nakaayos ayon sa bahagi",
+    "totalCaption": "mga live na entry-level na bakante ngayon"
+  },
+  "aboutPage": {
+    "metaTitle": "Tungkol sa Resume Booster — Paano gumagana ang live na job board",
+    "metaDescription": "Libreng resume scanner at live na job board na binasa mismo mula sa hiring system ng mga employer: paano ito gumagana, paano binibilang, at paano kami makakausap.",
+    "h1": "Tungkol sa Resume Booster",
+    "lead": "Dalawang bagay ang Resume Booster: isang libreng resume scanner, at isang job board ng mga live na trabaho mismo mula sa sariling hiring system ng mga employer. Maaari mong suriin kung paano tumutugma ang iyong resume sa isang posting bago mag-apply, tapos mag-apply sa sariling site ng employer.",
+    "boardTitle": "Ano ang job board",
+    "boardBody": "Binabasa ng board ang mga posting mula sa mga hiring system na naglalathala nito: sa sarili ng employer, sa isang staffing agency (na may label na ganoon), o sa listing site ng pederal na gobyerno. Walang kinokopya mula sa ibang job board. Nananatili ang posting sa board habang nasa loob ng huling {{days}} araw ang petsa nito at nakalista pa ito sa system na naglathala nito.",
+    "countsTitle": "Paano binibilang",
+    "countsBody": "Bawat bilang sa site na ito ay nagsasabi kung anong araw o anong pagbasa ito nanggaling. Ang bukas na role ay posting na ang petsa ay nasa loob ng huling {{days}} araw: ang sariling petsa ng employer, o, para sa posting na walang petsa, ang araw na huli namin itong nakita sa feed ng employer. Gumagalaw ang mga bilang habang nagbubukas at nagsasara ang mga role, kaya ang page na ginawa sa isang araw ay nagsasabi ng bilang ng araw na iyon.",
+    "readMore": "Magbasa pa:",
+    "ghostLink": "gaano kasariwa ang aming mga pagbasa (Ghost Job Index)",
+    "methodologyLink": "paano gumagana ang resume score",
+    "notTitle": "Huwag ipagkamali sa",
+    "notBody": "Ang Resume Booster sa resumebooster.work ay hiwalay na produkto mula sa resumebooster.io, ResumeBoostAI at iba pang site na may katulad na pangalan, at walang kaugnayan sa kanila.",
+    "aiTitle": "Gamitin ito mula sa iyong AI app",
+    "aiBody": "Kayang hanapin ng Claude, ChatGPT at Claude Code ang board sa pamamagitan ng aming connector.",
+    "aiLink": "Ikonekta ang iyong AI app",
+    "contactTitle": "Makipag-ugnayan",
+    "contactBody": "Para sa mga tanong tungkol sa iyong data at mga kahilingan sa privacy, nakasaad sa privacy policy kung paano kami makakausap.",
+    "privacyLink": "Privacy policy",
+    "seller": "Nagbebenta: {{name}}, {{address}}"
   }
 }

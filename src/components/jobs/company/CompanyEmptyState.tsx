@@ -14,13 +14,61 @@
 //
 // Neither ever uses filter copy: the company scope is not a filter the
 // visitor set.
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { SERVED_WINDOW_DAYS, type LanderModel } from "@/lib/company/lander-model";
 import { ago as fmtAgo } from "@/lib/format";
 import { SimilarCompaniesView, type SimilarRow } from "@/components/jobs/SimilarCompanies";
+import { invokeJobBoard } from "@/lib/invoke-job-board";
+import { boardBudgetRefusal } from "@/lib/board-budget";
+import { useCompanyBoardHref } from "@/lib/seo/lander-manifest";
+
+/** Folded for a name match: lower case, no accents, letters and digits only ("Domino's" -> "dominos"). */
+const fold = (s: string) => s.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
+
+/**
+ * The carried boards an uncarried address probably meant (S12-129): the
+ * board's own name suggester asked with the address's words, keeping only
+ * names that begin with them ("intel" -> Intel, not "Artificial
+ * Intelligence Lab"). At most three, never the address's own token.
+ */
+export function didYouMeanRows(token: string, rows: Array<{ token?: unknown; name?: unknown }>): Array<{ token: string; name: string }> {
+  const want = fold(token.replace(/[-_~.]+/g, " "));
+  if (want.length < 2) return [];
+  const out: Array<{ token: string; name: string }> = [];
+  for (const r of rows) {
+    if (typeof r.token !== "string" || typeof r.name !== "string" || !r.token || !r.name.trim()) continue;
+    if (r.token === token || !fold(r.name).startsWith(want)) continue;
+    if (out.some((o) => o.token === r.token)) continue;
+    out.push({ token: r.token, name: r.name.trim() });
+    if (out.length === 3) break;
+  }
+  return out;
+}
+
+function useDidYouMean(token: string, enabled: boolean): Array<{ token: string; name: string }> {
+  const [rows, setRows] = useState<Array<{ token: string; name: string }>>([]);
+  useEffect(() => {
+    setRows([]);
+    if (!enabled || boardBudgetRefusal()) return;
+    const q = token.replace(/[-_~.]+/g, " ").trim().slice(0, 80);
+    if (q.length < 2) return;
+    let cancelled = false;
+    // Asked inside a promise, so a reader that throws as it is called is a
+    // failed suggestion, never a broken page.
+    Promise.resolve()
+      .then(() => invokeJobBoard({ body: { action: "company-suggest", q } }))
+      .then((res) => {
+        const list = (res?.data as { companies?: Array<{ token?: unknown; name?: unknown }> } | null)?.companies;
+        if (!cancelled && Array.isArray(list)) setRows(didYouMeanRows(token, list));
+      })
+      .catch(() => { /* the search box below still answers */ });
+    return () => { cancelled = true; };
+  }, [token, enabled]);
+  return rows;
+}
 
 export function CompanyEmptyState({ model, token, boardReadAt, similar = [], onWatch, underHeader = false }: {
   model: LanderModel;
@@ -36,6 +84,8 @@ export function CompanyEmptyState({ model, token, boardReadAt, similar = [], onW
   const lang = i18n.language || "en";
   const navigate = useNavigate();
   const [q, setQ] = useState("");
+  const companyHref = useCompanyBoardHref();
+  const suggestions = useDidYouMean(token, model.variant === "uncarried");
 
   if (model.variant === "uncarried") {
     const submit = (e: FormEvent) => {
@@ -51,6 +101,20 @@ export function CompanyEmptyState({ model, token, boardReadAt, similar = [], onW
         <p className="text-sm text-muted-foreground">
           {t("companyProfile.uncarried.body", "Search the live board for this employer, or browse the companies we read.")}
         </p>
+        {suggestions.length > 0 && (
+          <div data-company-did-you-mean="">
+            <p className="text-sm font-medium text-foreground">{t("companyProfile.uncarried.didYouMean", "Did you mean one of these boards?")}</p>
+            <ul className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+              {suggestions.map((s) => (
+                <li key={s.token}>
+                  <Link to={companyHref(s.token)} className="text-sm text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary">
+                    {s.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         <form role="search" onSubmit={submit} className="flex flex-wrap gap-2">
           <label htmlFor="company-empty-search" className="sr-only">{t("companyProfile.uncarried.searchLabel", "Search jobs")}</label>
           <input

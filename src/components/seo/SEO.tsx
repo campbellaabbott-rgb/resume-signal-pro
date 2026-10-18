@@ -2,6 +2,8 @@ import { useEffect } from "react";
 import { Helmet } from "react-helmet-async";
 import { publicPath } from "@/lib/public-href";
 import { supersedePrerenderedTags } from "@/lib/prerendered-head";
+import { bakedHeadFor, supersedeBakedTitleAndShareTags } from "./baked-head";
+import { supersedeBakedJsonLd } from "./PageJsonLd";
 
 const SITE = "https://resumebooster.work";
 
@@ -18,6 +20,16 @@ interface SEOProps {
    * canonical the bake wrote — so the rendered head keeps ONE canonical.
    */
   canonicalPath?: string;
+  /**
+   * Keep the title and description the bake wrote for this address, when the
+   * document was loaded from a baked file for exactly this path (SEO-007). The
+   * company, field and /jobs pages pass it: their baked head carries the
+   * build's count, and React's own words (the same template, read through
+   * src/lib/seo/board-heads.ts) are used only where there is no baked head —
+   * an SPA navigation, or a build whose bake did not run. A noindex head never
+   * keeps the baked one.
+   */
+  preferBakedHead?: boolean;
 }
 
 // Per-route head metadata: title, description, canonical, og:* and twitter:* tags.
@@ -27,24 +39,31 @@ interface SEOProps {
 // takes the trailing slash this host needs), and the baked canonical and
 // description are removed once React has written its own — otherwise React 19
 // leaves both beside each other (see prerendered-head.ts).
-export function SEO({ title, description, path, image, noIndex, canonicalPath }: SEOProps) {
+export function SEO({ title, description, path, image, noIndex, canonicalPath, preferBakedHead }: SEOProps) {
   const url = `${SITE}${publicPath(canonicalPath ?? path)}`;
   const ogImage = image ?? `${SITE}/og-image.png`;
-  useEffect(() => { supersedePrerenderedTags(); }, [url, description]);
+  const baked = preferBakedHead && !noIndex ? bakedHeadFor(path) : null;
+  const shownTitle = baked?.title || title;
+  const shownDescription = baked?.description || description;
+  useEffect(() => {
+    supersedePrerenderedTags();
+    supersedeBakedTitleAndShareTags();
+    supersedeBakedJsonLd();
+  }, [url, shownDescription, shownTitle]);
   return (
     <Helmet>
-      <title>{title}</title>
-      <meta name="description" content={description} />
+      <title>{shownTitle}</title>
+      <meta name="description" content={shownDescription} />
       {noIndex && <meta name="robots" content="noindex,nofollow" />}
       <link rel="canonical" href={url} />
 
-      <meta property="og:title" content={title} />
-      <meta property="og:description" content={description} />
+      <meta property="og:title" content={shownTitle} />
+      <meta property="og:description" content={shownDescription} />
       <meta property="og:url" content={url} />
       <meta property="og:image" content={ogImage} />
 
-      <meta name="twitter:title" content={title} />
-      <meta name="twitter:description" content={description} />
+      <meta name="twitter:title" content={shownTitle} />
+      <meta name="twitter:description" content={shownDescription} />
       <meta name="twitter:url" content={url} />
       <meta name="twitter:image" content={ogImage} />
     </Helmet>

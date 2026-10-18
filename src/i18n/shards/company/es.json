@@ -85,7 +85,10 @@
       "roles": "Vacantes abiertas",
       "tableCaption": "Vacantes abiertas por campo y por país",
       "title": "Distribución de vacantes",
-      "titleListings": "Vacantes publicadas sobre todo en"
+      "titleListings": "Vacantes publicadas sobre todo en",
+      "titlePooled": "Reparto de contratación en todo el sistema del empleador",
+      "basisPooled": "Estas cifras abarcan todos los portales de empleo que este empleador tiene en el mismo sistema (al menos {{n}} vacantes), no solo las {{m}} de esta página. Leídas el {{date}}; se omiten los puestos de campos que no reconocemos.",
+      "basisPooledUndated": "Estas cifras abarcan todos los portales de empleo que este empleador tiene en el mismo sistema (al menos {{n}} vacantes), no solo las {{m}} de esta página. Se omiten los puestos de campos que no reconocemos."
     },
     "nameLoading": "Cargando el nombre del empleador",
     "openRoles_one": "{{n}} vacante con fecha en los últimos {{days}} días",
@@ -172,7 +175,8 @@
       "searchLabel": "Buscar empleos",
       "searchPlaceholder": "Empleador o puesto",
       "searchTitle": "Busca a este empleador en el portal en vivo",
-      "title": "Todavía no leemos un portal llamado «{{token}}»"
+      "title": "Todavía no leemos un portal llamado «{{token}}»",
+      "didYouMean": "¿Querías decir uno de estos portales?"
     },
     "usajobs": {
       "cap": "Hasta {{cap}} resultados por consulta; no todas las vacantes federales.",

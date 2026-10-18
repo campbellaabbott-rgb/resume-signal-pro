@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { companyLanderPath } from "@/lib/public-href";
+import { useCompanyBoardHref } from "@/lib/seo/lander-manifest";
 import { Building2, Landmark, FileText, TrendingUp, TrendingDown, ArrowRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { getEmployerCtx, matchDeclaredRole, type EmployerCtx } from "@/lib/employer-context";
@@ -41,6 +41,9 @@ export function EmployerContext({ companyToken, source, companyName, postingTitl
   companyName: string; postingTitle: string;
 }) {
   const { t, i18n } = useTranslation();
+  // SEO-010: an employer link goes to its written company page, or to the
+  // live board filtered to the board when the bake wrote none.
+  const companyHref = useCompanyBoardHref();
   const lng = i18n.language || "en";
   const [ctx, setCtx] = useState<EmployerCtx | null>(null);
   const [loading, setLoading] = useState(false);
@@ -133,7 +136,7 @@ export function EmployerContext({ companyToken, source, companyName, postingTitl
         </p>
       )}
       <Link
-        to={companyLanderPath(companyToken)}
+        to={companyHref(companyToken)}
         className="inline-flex items-center gap-1 text-xs text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary rounded"
       >
         {t("jobsPage.employerCtx.companyPage", "Full {{company}} hiring profile", { company: companyName })}

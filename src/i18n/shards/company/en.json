@@ -79,7 +79,10 @@
       "roles": "Open roles",
       "tableCaption": "Open roles by field and by country",
       "title": "Hiring mix",
-      "titleListings": "Roles listed mostly in"
+      "titleListings": "Roles listed mostly in",
+      "titlePooled": "Hiring mix across the employer's hiring system",
+      "basisPooled": "These counts cover every career site this employer runs on the same hiring system (at least {{n}} open roles), not only the {{m}} on this page. Read on {{date}}; roles in no field we recognize are left out.",
+      "basisPooledUndated": "These counts cover every career site this employer runs on the same hiring system (at least {{n}} open roles), not only the {{m}} on this page. Roles in no field we recognize are left out."
     },
     "nameLoading": "Loading the employer's name",
     "openRoles_one": "{{n}} role dated in the last {{days}} days",
@@ -157,7 +160,8 @@
       "searchLabel": "Search jobs",
       "searchPlaceholder": "Employer or job title",
       "searchTitle": "Look for this employer on the live board",
-      "title": "We don't read a board called “{{token}}” yet"
+      "title": "We don't read a board called “{{token}}” yet",
+      "didYouMean": "Did you mean one of these boards?"
     },
     "usajobs": {
       "cap": "Up to {{cap}} results per query; not every federal opening.",

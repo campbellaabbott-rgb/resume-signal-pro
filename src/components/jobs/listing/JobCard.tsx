@@ -29,7 +29,7 @@ import { Link } from "react-router-dom";
 import { Bookmark, BookmarkCheck } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { decodeListingText, listingTitle } from "@/lib/listing/text";
-import { companyLanderPath } from "@/lib/public-href";
+import { useCompanyBoardHref } from "@/lib/seo/lander-manifest";
 import { listingSource } from "@/lib/listing/age";
 import { systemLabel } from "@/lib/listing/apply-url";
 import { listingEmployer } from "@/lib/listing/employer";
@@ -114,6 +114,9 @@ export function JobCard({
   menu, liProps, now,
 }: JobCardProps) {
   const { t, i18n } = useTranslation();
+  // SEO-010: an employer link goes to its written company page, or to the
+  // live board filtered to the board when the bake wrote none.
+  const companyHref = useCompanyBoardHref();
   const lng = i18n.language || "en";
   const title = listingTitle(job.title);
   const employer = listingEmployer(job);
@@ -207,7 +210,7 @@ export function JobCard({
             items={[
               !ctx.hideEmployer && employer
                 ? job.token
-                  ? <Link key="e" to={companyLanderPath(job.token)} onClick={(e) => e.stopPropagation()} className="text-foreground hover:underline">{employer}</Link>
+                  ? <Link key="e" to={companyHref(job.token)} onClick={(e) => e.stopPropagation()} className="text-foreground hover:underline">{employer}</Link>
                   : <span key="e" className="text-foreground">{employer}</span>
                 : null,
               loc.text ? <span key="l" title={loc.raw !== loc.text ? loc.raw ?? undefined : undefined}>{loc.text}</span> : null,
