@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { postTrackEvent } from '@/lib/track-transport';
+import { analyticsSessionGet, analyticsSessionSet } from '@/lib/analytics-session-store';
 
 // Cohort dimensions for segmentation
 export const TRAFFIC_SOURCES = ['organic','paid','social','referral','direct','email'] as const;
@@ -37,14 +38,11 @@ export interface CohortData {
 
 // Get or create cohort ID for this session
 const getCohortSessionId = (): string => {
-  const key = 'cohort_session_id';
-  let sessionId = sessionStorage.getItem(key);
-  
+  let sessionId = analyticsSessionGet('cohort_session_id');
   if (!sessionId) {
     sessionId = `cohort_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    sessionStorage.setItem(key, sessionId);
+    analyticsSessionSet('cohort_session_id', sessionId);
   }
-  
   return sessionId;
 };
 
@@ -257,12 +255,12 @@ const buildCohortData = (): CohortData => {
 
 // Store cohort data in session
 const storeCohortData = (cohortData: CohortData) => {
-  sessionStorage.setItem('cohort_data', JSON.stringify(cohortData));
+  analyticsSessionSet('cohort_data', JSON.stringify(cohortData));
 };
 
 // Get stored cohort data
 const getStoredCohortData = (): CohortData | null => {
-  const stored = sessionStorage.getItem('cohort_data');
+  const stored = analyticsSessionGet('cohort_data');
   if (!stored) return null;
   try {
     return JSON.parse(stored);
@@ -319,11 +317,11 @@ export const initCohortTracking = () => {
   if (typeof window === 'undefined') return;
   
   // Only initialize once per session
-  if (sessionStorage.getItem('cohort_initialized')) return;
-  
+  if (analyticsSessionGet('cohort_initialized')) return;
+
   const cohortData = buildCohortData();
   storeCohortData(cohortData);
-  sessionStorage.setItem('cohort_initialized', 'true');
+  analyticsSessionSet('cohort_initialized', 'true');
   
   // Track session start with cohort data
   trackCohortEvent('session_start', {

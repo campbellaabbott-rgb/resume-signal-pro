@@ -22,6 +22,7 @@
 // pathname, never a query string or a hash — see prepareTrackBody).
 
 import { analyticsAllowed, setAnalyticsConsent } from "./consent";
+import { forgetAnalyticsSession } from "./analytics-session-store";
 
 const SUPA_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPA_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
@@ -359,6 +360,8 @@ export function getVisitorId(): string {
  * every stored A/B assignment. Never throws.
  */
 export function forgetVisitorIds(): void {
+  // The funnel and cohort hooks' tab state too (src/lib/analytics-session-store.ts).
+  forgetAnalyticsSession();
   try {
     localStorage.removeItem(VISITOR_ID_KEY);
     for (const k of LEGACY_VISITOR_ID_KEYS) localStorage.removeItem(k);

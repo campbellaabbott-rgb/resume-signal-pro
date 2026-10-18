@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { postTrackEvent } from '@/lib/track-transport';
 import { getCohortData, initCohortTracking } from './use-cohort-tracking';
+import { analyticsSessionGet, analyticsSessionSet } from '@/lib/analytics-session-store';
 // Funnel stages in order
 export const FUNNEL_STAGES = [
   'landing_view',
@@ -16,16 +17,14 @@ export const FUNNEL_STAGES = [
 
 export type FunnelStage = typeof FUNNEL_STAGES[number];
 
-// Get or create session ID for funnel tracking
+// Get or create session ID for funnel tracking: in this page's memory until
+// the visitor allows analytics (src/lib/analytics-session-store.ts).
 const getSessionId = (): string => {
-  const key = 'funnel_session_id';
-  let sessionId = sessionStorage.getItem(key);
-  
+  let sessionId = analyticsSessionGet('funnel_session_id');
   if (!sessionId) {
     sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    sessionStorage.setItem(key, sessionId);
+    analyticsSessionSet('funnel_session_id', sessionId);
   }
-  
   return sessionId;
 };
 
@@ -62,7 +61,7 @@ const saveFunnelProgress = (stages: FunnelStage[]) => {
 
 // Calculate time since landing
 const getTimeSinceLanding = (): number => {
-  const landingTime = sessionStorage.getItem('funnel_landing_time');
+  const landingTime = analyticsSessionGet('funnel_landing_time');
   if (!landingTime) return 0;
   return Math.round((Date.now() - parseInt(landingTime)) / 1000);
 };
@@ -142,13 +141,13 @@ export const initFunnelTracking = () => {
   if (typeof window === 'undefined') return;
   
   // Only initialize once per session
-  if (sessionStorage.getItem('funnel_initialized')) return;
-  
+  if (analyticsSessionGet('funnel_initialized')) return;
+
   // Initialize cohort tracking first
   initCohortTracking();
-  
-  sessionStorage.setItem('funnel_initialized', 'true');
-  sessionStorage.setItem('funnel_landing_time', Date.now().toString());
+
+  analyticsSessionSet('funnel_initialized', 'true');
+  analyticsSessionSet('funnel_landing_time', Date.now().toString());
   
   const cohortData = getCohortData();
   
