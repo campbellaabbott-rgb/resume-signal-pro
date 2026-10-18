@@ -14,9 +14,10 @@
  *   - the pricing loader waited for the main locale with no deadline, so a
  *     main locale that never loads would leave the page blank for good.
  *
- * Both pages now gate only their FIRST render on the reader's strings and
- * keep what they show mounted from then on; the footer is never gated; and
- * each loader stops waiting for the main locale after its deadline. Each
+ * Both pages now gate only their FIRST render on the reader's strings (the
+ * footer waits with the page, so nothing drawn early is pushed down) and keep
+ * what they show mounted from then on, footer included; and each loader stops
+ * waiting for the main locale after its deadline. Each
  * test uses a language no other test touches: the loaders remember what
  * they merged.
  */
@@ -100,8 +101,10 @@ describe("the first render waits for the reader's language", () => {
     await act(async () => { void i18n.changeLanguage("de"); });
     const { container } = mount("home");
     const h1s = watchH1(container);
-    expect(container.querySelector("footer"), "the footer is never gated").not.toBeNull();
+    expect(container.querySelector("header"), "the header renders at once").not.toBeNull();
+    expect(container.querySelector("footer"), "the footer waits with the page, so it is not pushed down when the page lands").toBeNull();
     await waitFor(() => expect(container.querySelector("main h1")?.textContent).toBe(homeH1("de")), SLOW);
+    expect(container.querySelector("footer"), "the footer lands with the page").not.toBeNull();
     h1s.stop();
     expect(h1s.seen, "an English headline was shown before the German one").not.toContain(EN_H1);
   });

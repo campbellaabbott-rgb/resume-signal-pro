@@ -13,9 +13,10 @@
  * The Pro account check runs only once Pro is on sale (ProBuyConnected).
  *
  * Only the FIRST render waits for the reader's strings (no English frame
- * swapping into German). A later language change keeps the page and the
- * footer mounted, so the reader's focus and scroll position survive it
- * (useStickyReady); the footer is never gated.
+ * swapping into German), and the footer waits with it, so nothing drawn early
+ * is pushed down when the page lands. A later language change keeps the page
+ * and the footer mounted, so the reader's focus and scroll position survive
+ * it (useStickyReady).
  */
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -64,7 +65,7 @@ export default function PricingPage({ gateInput, preview, onPreviewPress }: Pric
           <PricingView postings={{ openTotal: counts.openTotal, asOf: counts.asOf }} gates={gates} preview={preview} onPreviewPress={onPreviewPress} />
         ) : null}
       </main>
-      <Footer />
+      {shown ? <Footer /> : null}
     </div>
   );
 }

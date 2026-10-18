@@ -31,9 +31,11 @@ import { HomeFaq } from "@/components/home/HomeFaq";
  *
  * THE FIRST RENDER WAITS FOR THE READER'S STRINGS. A German reader would
  * otherwise see the English page swap into German (CLS 0.18 at 375 px,
- * measured); <main> is held empty at full height until the strings land, and
- * the header and footer render at once. Only the first render waits: a later
- * language change keeps the page mounted (useStickyReady).
+ * measured); <main> is held empty at full height and the footer waits with
+ * it (a footer drawn under an empty main is pushed down when the page lands:
+ * CLS 0.6 after an early scroll, measured), while the header renders at once.
+ * Only the first render waits: a later language change keeps the page and the
+ * footer mounted (useStickyReady).
  *
  * No scroll-depth or time-on-page events: the visitor budget's journey
  * (a-budget-that-charged-the-office-for-one-visitors-loop.test.ts) counts
@@ -81,7 +83,7 @@ export default function HomePage({ loadRowsForAutomation = false, gates }: HomeP
       ) : (
         <main id="main-content" aria-busy="true" className="min-h-screen pt-14 lg:pt-16" />
       )}
-      <Footer />
+      {shown ? <Footer /> : null}
     </div>
   );
 }

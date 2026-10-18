@@ -140,6 +140,18 @@ describe("a translated chip label wraps instead of being cut off", () => {
   });
 });
 
+describe("a long compound word in a headline breaks instead of widening the page", () => {
+  // Measured under WCAG 1.4.12 text spacing at 320 px: the German headline's
+  // "Bewerbungssystemen" pushed the page 7 px sideways.
+  it("both pages' H1 may break and hyphenate a word", () => {
+    for (const rel of ["../components/home/HomeSearchHero.tsx", "../components/pricing/PricingHead.tsx"]) {
+      const h1 = readFileSync(resolve(__dirname, rel), "utf8").match(/<h1\b[^>]*className="([^"]*)"/)?.[1] ?? "";
+      expect(h1, rel).toMatch(/\bbreak-words\b/);
+      expect(h1, rel).toMatch(/\bhyphens-auto\b/);
+    }
+  });
+});
+
 describe("the pricing title and description follow the gates", () => {
   const TEST_SELLER = { legalName: "TEST SELLER", postalAddress: "TEST ADDRESS, NOWHERE" };
   it("nothing on sale: no price in the title or the description", () => {

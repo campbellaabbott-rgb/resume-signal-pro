@@ -18,7 +18,7 @@ export function PricingHead({ alertsStatable }: { alertsStatable: boolean }) {
   ];
   return (
     <>
-      <h1 id="pricing-h1" className="text-3xl font-semibold tracking-tight md:text-4xl">
+      <h1 id="pricing-h1" className="break-words text-3xl font-semibold tracking-tight hyphens-auto md:text-4xl">
         {t("pricingPlans.head.h1")}
       </h1>
       <p className="mt-2 max-w-[62ch] text-base text-muted-foreground md:text-lg" data-testid="pricing-sub">
