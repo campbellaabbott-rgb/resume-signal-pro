@@ -41,6 +41,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type { PGlite } from "@electric-sql/pglite";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+import { SELLER_SET_STUB } from "./helpers/seller-set";
 import { bootMailDoorDb, rows } from "./helpers/mail-door-db";
 import { attachScanMailSeal, sealScanMail, scanMailSealValid } from "../../supabase/functions/_shared/scan-mail-seal";
 import { mailSafeText } from "../../supabase/functions/_shared/mail-text";
@@ -127,6 +128,7 @@ beforeAll(async () => {
   g.__fakeSupabase = db;
   g.Deno = { env: { get: (k: string) => env[k] }, serve: (h: unknown) => { g.__edgeHandler = h; } };
   handler = await loadEdgeHandler("send-scan-report", {
+    ...SELLER_SET_STUB,
     "https://esm.sh/@supabase/supabase-js@2": "export const createClient = () => globalThis.__fakeSupabase;",
     "https://esm.sh/resend@2.0.0":
       "export class Resend { constructor() { this.emails = { send: async (m) => { globalThis.__reportSent.push(m); return { data: { id: 'em' }, error: null }; } }; } }",

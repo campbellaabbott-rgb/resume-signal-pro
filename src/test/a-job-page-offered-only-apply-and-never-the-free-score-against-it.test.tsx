@@ -17,6 +17,7 @@
  * short for the scanner to accept offers no button that would do nothing.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { allowAnalytics } from "./helpers/analytics-consent";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { clearBoardBudgetRefusal } from "@/lib/board-budget";
@@ -65,7 +66,7 @@ function hookFetch() {
       .map(([, init]) => JSON.parse(String((init as RequestInit).body)) as { testName: string; variant: string; metadata?: { page?: string } });
 }
 
-beforeEach(() => { invoke.mockReset(); clearBoardBudgetRefusal(); sessionStorage.clear(); });
+beforeEach(() => { invoke.mockReset(); clearBoardBudgetRefusal(); sessionStorage.clear(); allowAnalytics(); });
 afterEach(() => { cleanup(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); clearBoardBudgetRefusal(); });
 
 describe("a job page offers the free score against its own posting", () => {

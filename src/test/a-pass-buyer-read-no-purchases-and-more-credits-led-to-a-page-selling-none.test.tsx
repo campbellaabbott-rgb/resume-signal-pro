@@ -12,7 +12,7 @@
  * a-pass-buyer-was-told-no-purchases-and-the-export-left-out-the-agent.test.ts.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import en from "../i18n/locales/en.json";
 
@@ -50,25 +50,12 @@ describe("the account's purchases", () => {
   });
 });
 
+// Scan packs are no longer sold (owner decision 2026-10-12): the card that
+// opened the pack checkout here offers none now. Credits already bought stay.
 describe("getting more credits", () => {
-  // SCAN PACKS ARE NO LONGER SOLD (the product line, 2026-10-12; wave 4
-  // round 2, checkout-catalogue). The card's button still opens the pack
-  // dialog here, and the dialog now says packs are retired and that credits
-  // already bought stay spendable: no price, no amount, no receipt address,
-  // nothing to buy. The account round (CP-H) owns this card and drops the
-  // button itself; until then the dialog it opens must sell nothing.
-  it("opens a dialog that says scan packs are no longer sold, and sells none", () => {
+  it("offers no scan pack, since packs are no longer sold", () => {
     mount({ credits: 3, purchases: [], passes: [], mailboxProven: true });
-    const cta = screen.getByRole("button", { name: en.accountPage.getMoreCredits });
-    expect(cta.closest("a")).toBeNull();
-    fireEvent.click(cta);
-    const dialog = screen.getByRole("dialog");
-    expect(dialog.querySelector("[data-scan-packs-retired]")).toBeTruthy();
-    expect(screen.getByText("Scan packs are no longer sold")).toBeTruthy();
-    expect(screen.getByText(/Credits you already bought still work/)).toBeTruthy();
-    expect(screen.queryByText(en.scanPackPurchase.topUpCredits)).toBeNull();
-    expect(screen.queryByDisplayValue("member@example.com")).toBeNull();
-    expect(dialog.textContent).not.toMatch(/\$\s?\d/);
-    expect(screen.queryByRole("button", { name: /buy/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: en.accountPage.getMoreCredits })).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 });

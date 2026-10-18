@@ -291,9 +291,11 @@ describe("the get-account-data handler", () => {
   it("a password sign-up as a buyer's address sees none of that address's credits or purchases", async () => {
     const r = await account(JWT.squatter);
     expect(r.status).toBe(200);
-    expect(r.json).toEqual({ credits: 0, purchases: [], passes: [], mailboxProven: false });
-    // The one read it makes is the mailbox switch row, never a purchase.
-    expect(purchaseReads.filter(([t]) => t === "purchased_content")).toEqual([]);
+    expect(r.json).toMatchObject({ credits: 0, purchases: [], passes: [], mailboxProven: false });
+    // Orders by the account's own id only (its Pro grants), never the address's.
+    expect((r.json.orders as Array<{ id: string }>).every((o) => o.id.startsWith("grant:"))).toBe(true);
+    // No purchase is read by the address.
+    expect(purchaseReads.filter(([t]) => t === "purchased_content" || t === "product_deliveries")).toEqual([]);
     expect(balanceArgs[0]).toMatchObject({ p_email: null, p_user_id: SQUATTER });
   });
 
@@ -307,7 +309,8 @@ describe("the get-account-data handler", () => {
     expect(r.json.credits).toBe(7);
     expect(r.json.mailboxProven).toBe(true);
     expect(r.json.purchases).toEqual([{ product: "Premium Resume Package", date: "2026-09-30T10:00:00Z" }]);
-    expect(purchaseReads.filter(([t]) => t !== "agent_passes")).toEqual([["purchased_content", "owner@example.com"]]);
+    // By the address only for the proven owner: its deliveries and saved copies.
+    expect(purchaseReads.filter(([t]) => t === "purchased_content" || t === "product_deliveries").sort()).toEqual([["product_deliveries", "owner@example.com"], ["purchased_content", "owner@example.com"]]);
     expect(buildIsAtLeast(r.build, "get-account-data", "2026-10-08"), `build ${r.build}`).toBe(true);
   });
 

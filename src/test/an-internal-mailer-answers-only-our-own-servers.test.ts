@@ -174,7 +174,9 @@ describe("every caller of an internal mailer is one of our servers, carrying the
   it("finds the server callers it exists to watch (an empty census passes vacuously)", () => {
     const callers = HAYSTACK.filter(([f, src]) => f.includes("/supabase/functions/") && /fetch\(`\$\{[^}]+\}\/functions\/v1\/send-(product|analysis|affiliate-commission)-email`/.test(src));
     const names = [...new Set(callers.map(([f]) => f.split("/supabase/functions/")[1].split("/")[0]))].sort();
-    expect(names).toEqual(["analyze-resume", "retry-failed-deliveries", "stripe-webhook", "verify-product-purchase"]);
+    // account-order (wave 4 round 2): "Email it again" mails an order's saved
+    // copy to that order's own address, for the account that owns it.
+    expect(names).toEqual(["account-order", "analyze-resume", "retry-failed-deliveries", "stripe-webhook", "verify-product-purchase"]);
   });
 
   for (const fn of INTERNAL) {

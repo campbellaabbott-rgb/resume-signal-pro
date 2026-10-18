@@ -1,4 +1,5 @@
 import { useEffect, useCallback, useMemo, useRef } from 'react';
+import { analyticsAllowed } from "@/lib/consent";
 import { queueABEvent } from '@/hooks/use-shared-data';
 
 // =============================================================================
@@ -64,19 +65,32 @@ type VariantOf<T extends TestName> = typeof AB_TESTS[T]['variants'][number];
 // views a different visitor from the funnel, the scroll milestones and the
 // product clicks of the same browser.
 
-// Get stored variant or assign new one
+/** Assignments made before consent: this page's memory only (S12-011). */
+const pageVariants: Record<string, string> = {};
+
+// Get stored variant or assign new one. Stored only once the visitor allowed
+// analytics (src/lib/consent.ts); before that, held for the page.
 const getVariant = <T extends TestName>(testName: T): VariantOf<T> => {
   const key = `ab_${testName}`;
-  const stored = localStorage.getItem(key);
   const variants = AB_TESTS[testName].variants as readonly string[];
-  
+  if (!analyticsAllowed()) {
+    if (!pageVariants[key] || !variants.includes(pageVariants[key])) {
+      pageVariants[key] = variants[Math.floor(Math.random() * variants.length)];
+    }
+    return pageVariants[key] as VariantOf<T>;
+  }
+  let stored: string | null = null;
+  try { stored = localStorage.getItem(key); } catch { /* blocked */ }
+
   if (stored && variants.includes(stored)) {
     return stored as VariantOf<T>;
   }
-  
+
   // Randomly assign variant
-  const variant = variants[Math.floor(Math.random() * variants.length)];
-  localStorage.setItem(key, variant);
+  const variant = pageVariants[key] && variants.includes(pageVariants[key])
+    ? pageVariants[key]
+    : variants[Math.floor(Math.random() * variants.length)];
+  try { localStorage.setItem(key, variant); } catch { /* blocked */ }
 
   return variant as VariantOf<T>;
 };

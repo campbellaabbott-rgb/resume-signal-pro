@@ -222,6 +222,17 @@ describe("/fix-plan/confirm: the sequence starts only on the person's click", ()
     }
   });
 
+  // S12-010: while marketing mail waits for the seller's name and address the
+  // server starts nothing; the page says so, and asks for no second press.
+  it("a paused sequence is said plainly, with no retry", async () => {
+    window.history.replaceState(null, "", `/fix-plan/confirm#d=${SIGNED}`);
+    invoke.mockResolvedValue({ data: null, error: httpError(503, { success: false, queued: false, reason: "paused_no_seller_identity", retry: false, error: "paused" }) });
+    page(<FixPlanConfirm />);
+    fireEvent.click(await screen.findByRole("button", { name: /yes, start the emails/i }));
+    await waitFor(() => expect(screen.getByText(/fix-plan emails are paused for now/)).toBeInTheDocument());
+    expect(screen.queryByText(/Try the button again|will not restart/)).toBeNull();
+  });
+
   it("without a plan there is nothing to press", () => {
     page(<FixPlanConfirm />);
     expect(screen.getByText(/needs the button from your report email/)).toBeInTheDocument();

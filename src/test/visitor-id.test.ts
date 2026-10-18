@@ -5,6 +5,7 @@
 // sent `v_<epoch>_<rand>`; both were rejected and job_board had recorded
 // literally zero events. These tests pin the contract.
 import { describe, it, expect, beforeEach, vi } from "vitest";
+import { allowAnalytics } from "./helpers/analytics-consent";
 import { getVisitorId } from "../lib/track-transport";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -18,6 +19,7 @@ describe("getVisitorId", () => {
     // a throwing stub that has no clear().
     vi.unstubAllGlobals();
     localStorage.clear();
+    allowAnalytics();
   });
 
   it("mints a UUID the analytics endpoint will accept", () => {
@@ -58,6 +60,7 @@ describe("getVisitorId", () => {
   it("every id it can produce clears the server's length guard", () => {
     for (let i = 0; i < 50; i++) {
       localStorage.clear();
+    allowAnalytics();
       expect(serverAccepts(getVisitorId())).toBe(true);
     }
   });

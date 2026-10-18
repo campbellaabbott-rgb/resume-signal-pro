@@ -25,6 +25,7 @@
  */
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+import { SELLER_SET_STUB } from "./helpers/seller-set";
 import { signDripLink } from "../../supabase/functions/_shared/scan-drip-link";
 
 const SERVICE = "service_role_key_for_the_harness_0123456789abcdef";
@@ -43,6 +44,7 @@ beforeAll(async () => {
   g.__fakeSupabase = db;
   g.Deno = { env: { get: (k: string) => env[k] }, serve: (h: unknown) => { g.__edgeHandler = h; } };
   handler = await loadEdgeHandler("send-scan-report", {
+    ...SELLER_SET_STUB,
     "https://esm.sh/@supabase/supabase-js@2": "export const createClient = () => globalThis.__fakeSupabase;",
     "https://esm.sh/resend@2.0.0": "export class Resend { constructor() { this.emails = { send: async () => ({ data: { id: 'em' }, error: null }) }; } }",
   });

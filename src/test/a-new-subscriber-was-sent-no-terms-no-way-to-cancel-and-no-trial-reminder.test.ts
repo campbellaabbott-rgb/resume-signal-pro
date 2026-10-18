@@ -186,11 +186,13 @@ describe("the confirmation a new subscriber is owed", () => {
     expect(mails[0].text).toContain(`You are charged $${SUBSCRIPTIONS.pro.priceUsd}.00 every month. The subscription renews automatically until you cancel.`);
   });
 
-  it("a send Resend refuses records nothing and asks Stripe to redeliver; the redelivery sends it", async () => {
+  it("a send Resend refuses records nothing as sent and asks Stripe to redeliver; the redelivery sends it", async () => {
     world.subs.sub_pro = sub("sub_pro", SUBSCRIPTIONS.pro.priceUsd * 100);
     resend.status = 500;
     expect(await deliver("checkout.session.completed", completed("sub_pro"))).toBe(500);
-    expect(db.rows("subscription_notices")).toHaveLength(0);
+    // S12-102: the row holds the body the redelivery will send, and no sent_at.
+    expect(db.rows("subscription_notices").filter((r) => r.sent_at)).toHaveLength(0);
+    expect(db.rows("subscription_notices")[0]?.pending_mail).toBeTruthy();
     resend.status = 200;
     expect(await deliver("checkout.session.completed", completed("sub_pro"))).toBe(200);
     expect(mails).toHaveLength(1);
@@ -284,7 +286,8 @@ describe("a legal notice is sent directly and recorded only after Resend accepte
 
   it("a send whose record failed is retried with the same key and the same mail, so Resend answers it once", async () => {
     world.subs.sub_pro = sub("sub_pro", SUBSCRIPTIONS.pro.priceUsd * 100);
-    db.faults.push({ table: "subscription_notices", op: "insert", error: { message: "connection reset" } });
+    // The body is stored before the send (S12-102); the record that fails is the stamp after it.
+    db.faults.push({ table: "subscription_notices", op: "update", error: { message: "connection reset" } });
     expect(await deliver("checkout.session.completed", completed("sub_pro"))).toBe(500);
     expect(await deliver("checkout.session.completed", completed("sub_pro"))).toBe(200);
     expect(resend.keys).toEqual(["sub-notice:sub_pro:confirmation", "sub-notice:sub_pro:confirmation"]);

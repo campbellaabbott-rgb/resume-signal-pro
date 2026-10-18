@@ -21,6 +21,8 @@
 // could be joined to any other), and WHAT a page field may contain (a
 // pathname, never a query string or a hash — see prepareTrackBody).
 
+import { analyticsAllowed, setAnalyticsConsent } from "./consent";
+
 const SUPA_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPA_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
 
@@ -181,9 +183,12 @@ async function acknowledged(r: Response): Promise<boolean> {
   }
 }
 
-/** Fire-and-forget POST to the track-ab-event edge function. Never throws. */
+/**
+ * Fire-and-forget POST to the track-ab-event edge function. Never throws.
+ * Nothing leaves before the visitor allowed analytics (S12-011, ./consent).
+ */
 export function postTrackEvent(body: unknown): void {
-  if (isTrackingDisabled()) return;
+  if (isTrackingDisabled() || !analyticsAllowed()) return;
   try {
     const prepared = prepareTrackBody(body);
     const key = eventKeyOf(prepared);
@@ -307,8 +312,18 @@ const mint = (): string =>
  */
 let unpersistedId: string | null = null;
 
-/** Stable per-browser id, always a valid UUID. Never throws. */
+/**
+ * Stable per-browser id, always a valid UUID. Never throws.
+ *
+ * ONLY AFTER CONSENT IS IT STORED, OR EVEN READ (S12-011). Before the visitor
+ * allows analytics this answers a per-page id held in memory and touches no
+ * storage, so a checkout's own record still has an id and nothing persists.
+ */
 export function getVisitorId(): string {
+  if (!analyticsAllowed()) {
+    if (!unpersistedId) unpersistedId = mint();
+    return unpersistedId;
+  }
   let chosen: string | null = null;
   try {
     const canonical = localStorage.getItem(VISITOR_ID_KEY);
@@ -335,4 +350,31 @@ export function getVisitorId(): string {
     unpersistedId = chosen;
   }
   return chosen;
+}
+
+// ── The visitor's choice (S12-011) ──────────────────────────────────────────
+
+/**
+ * Remove every visitor id this browser holds, the legacy keys included, and
+ * every stored A/B assignment. Never throws.
+ */
+export function forgetVisitorIds(): void {
+  try {
+    localStorage.removeItem(VISITOR_ID_KEY);
+    for (const k of LEGACY_VISITOR_ID_KEYS) localStorage.removeItem(k);
+    const ab: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith("ab_")) ab.push(k);
+    }
+    for (const k of ab) localStorage.removeItem(k);
+  } catch {
+    /* nothing stored, or nothing we can reach */
+  }
+}
+
+/** The banner's two buttons: record the choice, and on a no forget what was stored. */
+export function chooseAnalytics(v: "granted" | "denied"): void {
+  setAnalyticsConsent(v);
+  if (v === "denied") forgetVisitorIds();
 }

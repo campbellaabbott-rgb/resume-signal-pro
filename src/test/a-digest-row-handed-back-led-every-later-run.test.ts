@@ -40,6 +40,7 @@ import { resolve } from "node:path";
 import { bootMailDoorDb, MAIL_DOOR_FILE } from "./helpers/mail-door-db";
 import { PgSupabase } from "./helpers/pglite-supabase";
 import { loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+import { SELLER_SET_STUB } from "./helpers/seller-set";
 
 const MIG_DIR = resolve(__dirname, "../../supabase/migrations");
 const MAIL_DOOR_STAMP = MAIL_DOOR_FILE.replace(/^.*\/(\d{14})_.*$/, "$1");
@@ -103,7 +104,7 @@ beforeAll(async () => {
     "https://esm.sh/resend@2.0.0": "export class Resend { constructor() { this.emails = { send: async (m) => { globalThis.__claimSent.push(m); return { data: { id: 'em' }, error: null }; } }; } }",
   };
   search = await loadEdgeHandler("send-search-digest", stubs);
-  agent = await loadEdgeHandler("send-agent-digest", stubs);
+  agent = await loadEdgeHandler("send-agent-digest", { ...stubs, ...SELLER_SET_STUB });
   Date.now = () => realNow() + offset;
 }, 120_000);
 

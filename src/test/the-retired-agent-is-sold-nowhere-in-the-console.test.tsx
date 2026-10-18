@@ -104,6 +104,20 @@ describe("the Morning Queue panel, as a customer with no plan sees it", () => {
   });
 });
 
+// S12-171: a subscriber the agent-access read still calls active was offered
+// "Activate mandate" and the search form for an agent that is switched off;
+// the mandate it made kept the sender health check alarming every six hours.
+describe("the Morning Queue panel offers no mandate while the agent is off", () => {
+  it("an active plan sees no search form and no button that activates a mandate", async () => {
+    access.value = { active: true, tier: "agent", status: "active", pass: { state: "none", usable: false } };
+    render(<MemoryRouter><MorningQueuePanel userId="u-5" email="sub@example.com" defaultResume={RESUME} /></MemoryRouter>);
+    await screen.findByText(/our own apply agent is switched off/);
+    await act(async () => { await new Promise((r) => setTimeout(r, 20)); });
+    expect(screen.queryByRole("button", { name: /Activate mandate|Start the agent with these/ })).toBeNull();
+    expect(screen.queryByText(/Picks per morning/)).toBeNull();
+  });
+});
+
 describe("the application kit sells nothing to a member without Pro", () => {
   it("renders nothing without Pro, and the Pro kit button with it", () => {
     const off = render(<MemoryRouter><ApplyKitPanel jobPosting={POSTING} resumeText={RESUME} proActive={false} /></MemoryRouter>);
@@ -214,5 +228,16 @@ describe("the account tracker does not offer the agent on a saved row", () => {
     expect(page).toMatch(/\{APPLY_AGENT_ON && a\.status === "saved" && a\.job_id && isSendableVendor\(a\.job_id\) && \(/);
     expect(page).toMatch(/\{user && APPLY_AGENT_ON && <div className="mt-6" id="apply-profile">/);
     expect(page).toMatch(/from "\.\.\/\.\.\/supabase\/functions\/_shared\/apply-agent-switch"/);
+  });
+
+  it("no link into the retired agent: Open the apply agent and the seeded agent search show only while it is switched on", () => {
+    expect(APPLY_AGENT_ON).toBe(false);
+    const page = read("src/pages/Account.tsx").replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
+    // every link to the agent's page sits behind the switch: these two, and
+    // the saved row's agent-can-apply link held by the test above
+    const links = [...page.matchAll(/to=\{?[`"]\/agent[?`"]/g)];
+    expect(links.length).toBe(3);
+    expect(page).toMatch(/\{user && APPLY_AGENT_ON && \(\s*<Link\s+to="\/agent"/);
+    expect(page).toMatch(/return APPLY_AGENT_ON && savedRoles\.length >= 2 \? \(\s*<Link\s+to=\{`\/agent\?seedTitles=/);
   });
 });

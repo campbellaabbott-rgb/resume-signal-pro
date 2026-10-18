@@ -25,6 +25,7 @@
  * asserted is the request that leaves the browser.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { allowAnalytics } from "./helpers/analytics-consent";
 import { liveDefinitionOf } from "./helpers/live-sql";
 
 type Transport = typeof import("../lib/track-transport");
@@ -55,7 +56,7 @@ const sentVariants = (spy: ReturnType<typeof vi.fn>) =>
 const ev = (variant: string, eventType = "view", testName = "job_board") => ({ testName, variant, eventType, metadata: { title: variant } });
 
 describe("a given (test, variant, type) leaves the browser once per tab session", () => {
-  beforeEach(() => { localStorage.clear(); sessionStorage.clear(); });
+  beforeEach(() => { localStorage.clear(); sessionStorage.clear(); allowAnalytics(); });
   afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
   it("the same identity posted forty times is one request; a second variant is a second", async () => {

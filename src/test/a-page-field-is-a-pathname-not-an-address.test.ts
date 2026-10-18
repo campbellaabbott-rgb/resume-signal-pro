@@ -25,6 +25,7 @@
  * and what is asserted is the JSON that leaves the browser.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { allowAnalytics } from "./helpers/analytics-consent";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { codeOf } from "./helpers/strip-comments";
@@ -51,7 +52,7 @@ const sent = (spy: ReturnType<typeof vi.fn>): Body[] =>
 describe("the chokepoint cuts every page field to a pathname", () => {
   // sessionStorage too: the transport now sends a given (test, variant, type)
   // once per tab session, and these cases re-send the same identities.
-  beforeEach(() => { localStorage.clear(); sessionStorage.clear(); });
+  beforeEach(() => { localStorage.clear(); sessionStorage.clear(); allowAnalytics(); });
   afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
   it("the page runs where the transport serialises (the setup itself must work)", () => {

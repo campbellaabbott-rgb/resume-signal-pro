@@ -134,7 +134,9 @@ describe("it is shown to the person who needs it", () => {
 
   it("sits inside the form a new subscriber already sees", () => {
     // The form renders on (editing || !mandate), so somebody who has never set
-    // one up meets the upload without pressing anything first.
-    expect(code).toMatch(/\{\(editing \|\| !mandate\) \? \(/);
+    // one up meets the upload without pressing anything first. While the agent
+    // is switched off (retired 2026-10-11, S12-171) the whole form is gone, the
+    // upload with it.
+    expect(code).toMatch(/\{!APPLY_AGENT_ON \? null : \(editing \|\| !mandate\) \? \(/);
   });
 });

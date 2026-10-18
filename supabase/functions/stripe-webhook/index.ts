@@ -52,7 +52,14 @@ import { sendMail } from "../_shared/send-mail.ts";
 
 // Provable from outside without a purchase or a signature: every response,
 // the 405 a GET receives included, carries this in x-fn-build.
-const FN_BUILD = "stripe-webhook.2026-10-11.22";
+// 2026-10-11.25 (wave 4 round 2, account-compliance): no change of its own;
+// _shared/subscription-notice.ts, which it bundles, now renders a legal notice
+// once and resends exactly that body (S12-102). payments-delivery stamps this
+// function 2026-10-11.22 for its own changes; the merged code is neither, and
+// the integration gives it a later string.
+// 2026-10-11.29 (wave 4 round 2 integration): payments-delivery's code
+// (2026-10-11.22) with account-compliance's bundled notice change (.25).
+const FN_BUILD = "stripe-webhook.2026-10-11.29";
 const BUILD_HEADER = { "x-fn-build": FN_BUILD };
 
 // HOW LONG A MAKER HOLDS AN ORDER (20261011144000, CP-019). The lease

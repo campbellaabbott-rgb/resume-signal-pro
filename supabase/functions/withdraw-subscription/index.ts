@@ -38,7 +38,10 @@ import { sendLegalNotice, WITHDRAWAL_CANCEL_COMMENT, withdrawalMail } from "../_
 import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 import { buyerCountryOf, inWithdrawalTerritory, serviceStartRequested, withdrawalRefundCents, withinWithdrawalPeriod } from "../_shared/withdrawal.ts";
 
-const FN_BUILD = "withdraw-subscription.2026-10-09.61";
+// 2026-10-11.25 (wave 4 round 2, account-compliance): no change of its own;
+// _shared/subscription-notice.ts, which it bundles, now renders a legal notice
+// once and resends exactly that body (S12-102).
+const FN_BUILD = "withdraw-subscription.2026-10-11.25";
 const PRO_PRODUCT_NAME = "Resume Booster Pro";
 
 const corsHeaders = {

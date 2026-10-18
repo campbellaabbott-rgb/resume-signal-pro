@@ -37,7 +37,9 @@ import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
 // 2026-10-09.24: _shared/unsubscribe-link.ts gained the agent-digest list it
 // imports beside (S11-132).
 // 2026-10-09.25 (wave-3 fix round integration): carries both of the above.
-const FN_BUILD = "send-search-digest.2026-10-09.25";
+// 2026-10-11.25 (S12-115): a failed description read in strong-match mode
+// gives the claim back instead of advancing the window.
+const FN_BUILD = "send-search-digest.2026-10-11.25";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -380,8 +382,16 @@ Deno.serve(async (req) => {
         const ids = cand.map((j) => j.id).filter(Boolean);
         const descById = new Map<string, string>();
         if (ids.length > 0) {
-          const { data: descRows } = await supabase.from("job_board_postings").select("id, description").in("id", ids);
-          for (const r of descRows ?? []) descById.set(r.id as string, ((r.description as string | null) ?? ""));
+          // A READ THAT FAILED IS NOT "NOTHING CLEARED THE BAR" (S12-115). A
+          // timed-out description read left every candidate without a
+          // description, none passed, and the claim's advanced stamp deleted
+          // the window's matches for good. It now gives the claim back.
+          const { data: descRows, error: descErr } = await supabase.from("job_board_postings").select("id, description").in("id", ids);
+          if (descErr || !Array.isArray(descRows)) {
+            console.error(`[SEARCH-DIGEST] description read failed for search ${s.id}; claim given back:`, String((descErr as { message?: string } | null)?.message ?? "no rows answer").slice(0, 160));
+            await giveBack(s); skipped++; continue;
+          }
+          for (const r of descRows) descById.set(r.id as string, ((r.description as string | null) ?? ""));
         }
         const passing = cand
           .map((j) => {

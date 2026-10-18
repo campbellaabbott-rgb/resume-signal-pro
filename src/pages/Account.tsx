@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { useAuth } from "@/contexts/AuthContext";
+import { accountGuardNotices } from "@/lib/account-guard-notice";
 // Same predicate the board and the nightly runner use — see the note on the
 // import in Jobs.tsx for why this is imported rather than copied.
 import { isSendableVendor } from "../../supabase/functions/_shared/apply-automation";
@@ -46,6 +47,11 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { ProSubscriptionCard } from "@/components/ProSubscriptionCard";
 import { CreditsAndPurchases, type AccountPass } from "@/components/account/CreditsAndPurchases";
+import type { AccountOrder } from "@/components/account/OrdersList";
+import { SecurityCard } from "@/components/account/SecurityCard";
+import { DataPrivacyCard } from "@/components/account/DataPrivacyCard";
+import { AccountSettingsCards } from "@/components/account/ConnectedAIsCard";
+import { importLocalHistory } from "@/lib/account-history-import";
 import { WithdrawalPanel } from "@/components/account/WithdrawalPanel";
 import { collectAccountExport, type ExportClient } from "@/lib/account-export";
 import { deleteRefusalKeys, type DeleteRefusal } from "@/lib/account-delete";
@@ -165,8 +171,14 @@ interface AccountData {
   purchases: Array<{ product: string; date: string }>;
   /** The account's Agent Passes, which are never purchased_content rows (L6-12). */
   passes: AccountPass[];
+  /** Each order with its status, amount and session (get-account-data, plan CP-022). */
+  orders?: AccountOrder[];
   /** False while this sign-in has not proven the account's mailbox (get-account-data). */
   mailboxProven?: boolean;
+  /** The guard, run by get-account-data as a backstop, cleared a password set before the proof (plan CP-H). */
+  passwordCleared?: boolean;
+  /** ...and ended every session, this one included: sign in again. */
+  signedOut?: boolean;
 }
 
 const toFixPlan = (value: Json | null | undefined): FixItem[] | null => {
@@ -212,6 +224,8 @@ export default function Account() {
   const navigate = useNavigate();
   const [scans, setScans] = useState<UserScan[]>([]);
   const [account, setAccount] = useState<AccountData | null>(null);
+  // S12-155: a failed get-account-data read is said, never shown as "0 credits".
+  const [accountFailed, setAccountFailed] = useState(false);
   const [applications, setApplications] = useState<Application[]>([]);
   // Employer lifecycle facts (fills vs re-listing churn) for tracked rows —
   // most actionable exactly where you're waiting to hear back. Token comes
@@ -373,7 +387,7 @@ export default function Account() {
         body: { jobPosting: fitPosting, resumeText: version.resume_text },
       });
       if (error || !data?.success) {
-        toast.error("Fit check failed — the feature may still be deploying. Try again shortly.");
+        toast.error(t("accountPage.fitCheckFailed", "Fit check failed. Try again shortly."));
         return;
       }
       const { pct, missing } = data.data as { pct: number | null; missing: string[] };
@@ -385,20 +399,42 @@ export default function Account() {
       setFitLoading(false);
     }
   };
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     // Back here after signing in, query intact (/agent?welcome=1 after Stripe; L3-20).
     if (!loading && !session) navigate(`/auth?next=${encodeURIComponent(window.location.pathname + window.location.search)}`, { replace: true });
   }, [loading, session, navigate]);
 
+  /** get-account-data's answer, or the failure it was (S12-155): never a silent zero. */
+  const applyAccount = (res: unknown) => {
+    const r = res as { data?: Partial<AccountData> & { error?: string } | null; error?: unknown };
+    const acc = r?.data;
+    if (r?.error || !acc || typeof acc !== "object" || typeof acc.credits !== "number") {
+      setAccount(null);
+      setAccountFailed(true);
+      return;
+    }
+    setAccountFailed(false);
+    // The account guard ran as a backstop in get-account-data (plan CP-H):
+    // what it did is said as the sign-in says it (lib/account-guard-notice).
+    for (const n of accountGuardNotices(acc, session?.access_token, (k, d) => t(k, d))) {
+      toast(n.title, n.description ? { description: n.description } : undefined);
+    }
+    setAccount({
+      credits: acc.credits,
+      purchases: Array.isArray(acc.purchases) ? acc.purchases : [],
+      passes: Array.isArray(acc.passes) ? acc.passes : [],
+      orders: Array.isArray(acc.orders) ? acc.orders : undefined,
+      mailboxProven: acc.mailboxProven !== false,
+    });
+  };
+
   const loadAll = useCallback(async () => {
     if (!session) return;
     setFetching(true);
     const [scansRes, accountRes, appsRes, profileRes] = await Promise.all([
       supabase.from("user_scans").select("*").order("created_at", { ascending: false }).limit(50),
-      supabase.functions.invoke("get-account-data").catch(() => ({ data: null })),
+      supabase.functions.invoke("get-account-data").catch(() => ({ data: null, error: true })),
       supabase.from("user_applications").select("*").order("created_at", { ascending: false }).limit(100),
       // matching_* columns postdate the generated DB types — untyped access,
       // same pattern as other fresh columns until Lovable regenerates types.ts.
@@ -407,39 +443,10 @@ export default function Account() {
     ]);
     let cloudScans = scansRes.data?.map(mapScanRow) ?? [];
 
-    // One-time import: local scan history from before the account existed.
-    // Runs when the cloud is empty and localStorage has entries; marks itself
-    // done so it never duplicates.
-    try {
-      const importedFlag = localStorage.getItem("scan_history_imported");
-      const rawLocal = localStorage.getItem("rb_scan_history");
-      if (!importedFlag && cloudScans.length === 0 && rawLocal) {
-        const parsed = JSON.parse(rawLocal);
-        const entries: Array<{ atsScore?: number; industry?: string | null; timestamp?: number | string }> =
-          Array.isArray(parsed?.entries) ? parsed.entries : [];
-        const rows = entries
-          .filter(e => typeof e.atsScore === "number")
-          .slice(0, 25)
-          .map(e => ({
-            user_id: session.user.id,
-            ats_score: e.atsScore as number,
-            industry: e.industry ?? null,
-            created_at: e.timestamp ? new Date(e.timestamp).toISOString() : new Date().toISOString(),
-          }));
-        if (rows.length > 0) {
-          const { error } = await supabase.from("user_scans").insert(rows);
-          if (!error) {
-            localStorage.setItem("scan_history_imported", "1");
-            const refreshed = await supabase.from("user_scans").select("*").order("created_at", { ascending: false }).limit(50);
-            cloudScans = refreshed.data?.map(mapScanRow) ?? cloudScans;
-          }
-        } else {
-          localStorage.setItem("scan_history_imported", "1");
-        }
-      }
-    } catch (e) {
-      console.warn("[Account] history import skipped:", e);
-    }
+    // Local scan history from before the account existed (S12-025): once per
+    // ACCOUNT, not per browser, carrying each scan's fix checklist, and only
+    // the scans the account does not already hold (lib/account-history-import).
+    cloudScans = await importLocalHistory(supabase as unknown as Parameters<typeof importLocalHistory>[0], session.user.id, cloudScans, mapScanRow);
 
     setScans(cloudScans);
     const apps = (appsRes.data as unknown as Application[] | null) ?? [];
@@ -447,13 +454,7 @@ export default function Account() {
     const prof = profileRes.data as { target_score?: number; matching_scan_id?: string | null; matching_resume_text?: string | null } | null;
     setTargetScore(prof?.target_score ?? null);
     setMatching({ scanId: prof?.matching_scan_id ?? null, text: prof?.matching_resume_text ?? null });
-    const acc = (accountRes as { data?: { credits?: number; purchases?: AccountData["purchases"]; passes?: AccountData["passes"]; mailboxProven?: boolean } }).data;
-    setAccount({
-      credits: acc?.credits ?? 0,
-      purchases: acc?.purchases ?? [],
-      passes: Array.isArray(acc?.passes) ? acc!.passes : [],
-      mailboxProven: acc?.mailboxProven !== false,
-    });
+    applyAccount(accountRes);
     setFetching(false);
     void checkPostingFreshness(apps);
   }, [session]);
@@ -547,6 +548,14 @@ export default function Account() {
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
+  // Try again after a failed read of credits and orders (S12-155).
+  const reloadAccount = async () => {
+    setFetching(true);
+    const res = await supabase.functions.invoke("get-account-data").catch(() => ({ data: null, error: true }));
+    applyAccount(res);
+    setFetching(false);
+  };
+
   const saveTarget = async (value: number) => {
     if (!session) return;
     setTargetScore(value);
@@ -610,27 +619,8 @@ export default function Account() {
     await supabase.from("user_applications").delete().eq("id", id);
   };
 
-  const [newPassword, setNewPassword] = useState("");
-  const [newEmail, setNewEmail] = useState("");
-  const [settingsMsg, setSettingsMsg] = useState<string | null>(null);
   const [labelEditing, setLabelEditing] = useState<string | null>(null);
   const [labelDraft, setLabelDraft] = useState("");
-
-  const changePassword = async () => {
-    if (newPassword.length < 8) { setSettingsMsg(t("accountPage.pwTooShort", "Password must be at least 8 characters.")); return; }
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
-    setSettingsMsg(error ? error.message : t("accountPage.pwUpdated", "Password updated ✓"));
-    if (!error) setNewPassword("");
-  };
-
-  const changeEmail = async () => {
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(newEmail.trim())) { setSettingsMsg(t("accountPage.emailInvalid", "Enter a valid new email address.")); return; }
-    const { error } = await supabase.auth.updateUser({ email: newEmail.trim() });
-    setSettingsMsg(error
-      ? error.message
-      : t("accountPage.emailChangeRequested", "Email change requested — check BOTH inboxes for confirmation links. Note: credits and purchases stay linked to your old email."));
-    if (!error) setNewEmail("");
-  };
 
   const exportData = async () => {
     // "All my data" must mean all of it: every table the account can read by
@@ -662,25 +652,20 @@ export default function Account() {
     await supabase.from("user_scans").update({ label }).eq("id", scanId);
   };
 
-  const deleteAccount = async () => {
-    setDeleting(true);
+  /** The delete; answers the refusal's message keys, or null when the account is gone (lib/account-delete). */
+  const deleteAccount = async (): Promise<string[] | null> => {
     const { data, error } = await supabase.functions.invoke("delete-account").catch(() => ({ data: null, error: true }));
     if (!error && (data as { success?: boolean })?.success) {
       await signOut();
       navigate("/");
-      return;
+      return null;
     }
-    // The function refuses when a plan could not be read or cancelled or the
-    // CV could not be removed (L6-30, L3-13), and says what had already
-    // changed: the message follows its answer (lib/account-delete).
     let refusal: DeleteRefusal = null;
     try {
       const ctx = (error as { context?: { clone?: () => { json: () => Promise<unknown> } } } | null)?.context;
       refusal = ((await ctx?.clone?.().json()) as DeleteRefusal) ?? null;
     } catch { /* body unreadable */ }
-    setDeleting(false);
-    setConfirmDelete(false);
-    alert(deleteRefusalKeys(refusal).map((k) => t(k)).join(" "));
+    return deleteRefusalKeys(refusal);
   };
 
   if (loading || !session) {
@@ -835,7 +820,7 @@ export default function Account() {
             <p className="text-[11px] text-muted-foreground mt-0.5">🏆 {t("accountPage.statBest", "Best score")}</p>
           </div>
           <div className={`rounded-2xl border p-4 text-center ${(account?.credits ?? 0) > 0 ? "border-warning/25 bg-warning/5" : "border-border bg-card"}`}>
-            <p className="text-3xl font-bold text-foreground">{fetching ? "…" : account?.credits ?? 0}</p>
+            <p className="text-3xl font-bold text-foreground">{fetching ? "…" : accountFailed ? "—" : account?.credits ?? 0}</p>
             <p className="text-[11px] text-muted-foreground mt-0.5">🪙 {t("accountPage.statCredits", "Scan credits")}</p>
           </div>
         </div>
@@ -856,12 +841,12 @@ export default function Account() {
                   if (Number.isFinite(v) && v >= 1 && v <= 100) saveTarget(v);
                 }}
                 className="w-16 px-2 py-1 rounded-lg bg-background border border-border text-sm text-foreground text-center focus:outline-none focus:ring-2 focus:ring-primary/40"
-                aria-label="Target ATS score"
+                aria-label={t("accountPage.targetAria", "Target ATS score")}
               />
             </div>
           </div>
           {goalHit ? (
-            <p className="text-sm text-success font-semibold">🎉 Goal hit — your latest scan beat your target. Raise the bar?</p>
+            <p className="text-sm text-success font-semibold">🎉 {t("accountPage.goalHit", "Goal hit: your latest scan beat your target. Raise the bar?")}</p>
           ) : (
             <>
               {latest ? (
@@ -870,11 +855,11 @@ export default function Account() {
                     <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${goalProgress}%` }} />
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {latest.ats_score} of {goal} — {Math.max(0, goal - latest.ats_score)} points to go.
+                    {t("accountPage.goalProgress", "{{score}} of {{goal}}: {{left}} points to go.", { score: latest.ats_score, goal, left: Math.max(0, goal - latest.ats_score) })}
                   </p>
                 </>
               ) : (
-                <p className="text-xs text-muted-foreground">Your first scan starts the progress bar toward {goal}.</p>
+                <p className="text-xs text-muted-foreground">{t("accountPage.goalFirst", "Your first scan starts the progress bar toward {{goal}}.", { goal })}</p>
               )}
             </>
           )}
@@ -887,10 +872,10 @@ export default function Account() {
               <ListChecks className="w-4 h-4 text-primary" />
               <h2 className="font-semibold text-foreground text-sm">{t("accountPage.fixChecklist", "Your fix checklist")}</h2>
               <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
-                {doneFixes}/{latestFixPlan.fix_plan.length} done
+                {t("accountPage.fixDoneCount", "{{done}}/{{total}} done", { done: doneFixes, total: latestFixPlan.fix_plan.length })}
               </span>
             </div>
-            <p className="text-xs text-muted-foreground mb-3">From your scan on {new Date(latestFixPlan.created_at).toLocaleDateString()}. Check items off as you fix them, then rescan to see the lift.</p>
+            <p className="text-xs text-muted-foreground mb-3">{t("accountPage.fixFrom", "From your scan on {{date}}. Check items off as you fix them, then rescan to see the lift.", { date: new Date(latestFixPlan.created_at).toLocaleDateString() })}</p>
             <div className="space-y-1.5">
               {(latestFixPlan.fix_plan ?? []).map((f, i) => (
                 <label key={i} className="flex items-start gap-2.5 p-2.5 rounded-lg border border-border/50 cursor-pointer hover:bg-muted/20 transition-colors">
@@ -906,7 +891,7 @@ export default function Account() {
             </div>
             {doneFixes === latestFixPlan.fix_plan.length && (
               <Link to="/#upload" className="mt-3 inline-block px-4 py-2 rounded-lg bg-success text-success-foreground text-xs font-semibold hover:bg-success/90 transition-colors">
-                All done — rescan to see your new score →
+                {t("accountPage.fixAllDone", "All done: rescan to see your new score →")}
               </Link>
             )}
           </div>
@@ -917,22 +902,22 @@ export default function Account() {
           <div className="flex items-center gap-2 mb-3">
             <TrendingUp className="w-4 h-4 text-primary" />
             <h2 className="font-semibold text-foreground text-sm">{t("accountPage.scoreHistory", "Score history")}</h2>
-            <span className="ml-auto text-xs text-muted-foreground">{scans.length} scan{scans.length !== 1 ? "s" : ""}</span>
+            <span className="ml-auto text-xs text-muted-foreground">{scans.length === 1 ? t("accountPage.scanCountOne", "1 scan") : t("accountPage.scanCountMany", "{{count}} scans", { count: scans.length })}</span>
           </div>
           {scans.length === 0 ? (
             <div className="text-center py-8">
               <ScanSearch className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground mb-3">No scans saved yet — run a free scan while signed in and it lands here automatically.</p>
+              <p className="text-sm text-muted-foreground mb-3">{t("accountPage.noScans", "No scans saved yet. Run a free scan while signed in and it lands here automatically.")}</p>
               <Link to="/#upload" className="inline-block px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">
-                Scan my resume
+                {t("accountPage.scanCta", "Scan my resume")}
               </Link>
             </div>
           ) : (
             <>
               {points.length >= 2 && (
-                <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-28 mb-3" role="img" aria-label="ATS score over time">
+                <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-28 mb-3" role="img" aria-label={t("accountPage.historyAria", "ATS score over time")}>
                   <line x1={10} y1={goalY} x2={W - 10} y2={goalY} className="stroke-success/40" strokeWidth={1} strokeDasharray="4 4" />
-                  <text x={W - 12} y={goalY - 4} textAnchor="end" className="fill-current text-[9px] text-success/70">goal {goal}</text>
+                  <text x={W - 12} y={goalY - 4} textAnchor="end" className="fill-current text-[9px] text-success/70">{t("accountPage.goalMark", "goal {{goal}}", { goal })}</text>
                   <polyline points={points.map(p => `${p.x},${p.y}`).join(" ")} className="fill-none stroke-primary" strokeWidth={2} />
                   {points.map((p, i) => (
                     <circle key={i} cx={p.x} cy={p.y} r={3} className={p.score >= 70 ? "fill-success" : p.score >= 50 ? "fill-warning" : "fill-destructive"} />
@@ -941,7 +926,7 @@ export default function Account() {
               )}
               {scans.length >= 2 && (
                 <p className="text-[11px] text-muted-foreground mb-2 flex items-center gap-1">
-                  <GitCompare className="w-3 h-3" /> Select two scans to compare them.
+                  <GitCompare className="w-3 h-3" /> {t("accountPage.compareHint", "Select two scans to compare them.")}
                 </p>
               )}
               <div className="space-y-1.5 max-h-56 overflow-y-auto">
@@ -966,14 +951,14 @@ export default function Account() {
                           onKeyDown={(e) => { if (e.key === "Enter") saveLabel(s.id); if (e.key === "Escape") setLabelEditing(null); }}
                           onClick={(e) => e.preventDefault()}
                           maxLength={60}
-                          placeholder="Name this version…"
+                          placeholder={t("accountPage.namePlaceholder", "Name this version…")}
                           className="w-full bg-background border border-border rounded px-1.5 py-0.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
                         />
                       ) : (
                         <button
                           onClick={(e) => { e.preventDefault(); setLabelEditing(s.id); setLabelDraft(s.label ?? ""); }}
                           className="text-left hover:text-foreground transition-colors"
-                          title="Click to name this version"
+                          title={t("accountPage.nameTitle", "Click to name this version")}
                         >
                           {s.label
                             ? <span className="text-foreground font-medium">{s.label}</span>
@@ -987,27 +972,27 @@ export default function Account() {
                         onClick={(e) => {
                           e.preventDefault();
                           navigator.clipboard?.writeText(s.resume_text!).then(
-                            () => toast.success("Copied — the exact document you saved with this version."),
+                            () => toast.success(t("accountPage.copiedVersion", "Copied: the exact document you saved with this version.")),
                             () => { /* clipboard unavailable */ },
                           );
                         }}
                         className="text-[11px] text-primary shrink-0 hover:underline"
-                        title="You saved the document with this version — copy its text"
+                        title={t("accountPage.copyTitle", "You saved the document with this version: copy its text")}
                       >
-                        📄 copy
+                        📄 {t("accountPage.copy", "copy")}
                       </button>
                     )}
                     {s.resume_text && (
                       <button
                         onClick={(e) => {
                           e.preventDefault();
-                          if (matching.scanId === s.id) void saveMatching({ scanId: null, text: null }, "Back to your latest scan.");
-                          else void saveMatching({ scanId: s.id, text: null }, "Pinned — the board, alerts, and apply agent now match against this résumé.");
+                          if (matching.scanId === s.id) void saveMatching({ scanId: null, text: null }, t("accountPage.matchingReset", "Back to your latest scan."));
+                          else void saveMatching({ scanId: s.id, text: null }, t("accountPage.matchingPinned", "Pinned: the board and your alerts now match against this résumé."));
                         }}
                         className={`text-[11px] shrink-0 hover:underline ${matching.scanId === s.id ? "text-success font-semibold" : "text-muted-foreground"}`}
-                        title={matching.scanId === s.id ? "This résumé is used for all matching — click to reset to latest scan" : "Use this résumé for job matching, alerts, and the apply agent"}
+                        title={matching.scanId === s.id ? t("accountPage.matchingOnTitle", "This résumé is used for all matching: click to go back to your latest scan") : t("accountPage.matchingOffTitle", "Use this résumé for job matching and alerts")}
                       >
-                        {matching.scanId === s.id ? "✓ matching" : "pin for matching"}
+                        {matching.scanId === s.id ? t("accountPage.matchingOn", "✓ matching") : t("accountPage.matchingOff", "pin for matching")}
                       </button>
                     )}
                     <span className="text-[11px] text-muted-foreground shrink-0">{new Date(s.created_at).toLocaleDateString()}</span>
@@ -1019,9 +1004,9 @@ export default function Account() {
               {compareScans.length === 2 && (() => {
                 const [a, b] = compareScans;
                 const rows = [
-                  { label: "ATS score", a: a.ats_score, b: b.ats_score },
-                  { label: "Projected score", a: a.projected_score ?? "—", b: b.projected_score ?? "—" },
-                  { label: "Red flags", a: a.red_flag_count ?? "—", b: b.red_flag_count ?? "—", invert: true },
+                  { label: t("accountPage.compareAts", "ATS score"), a: a.ats_score, b: b.ats_score },
+                  { label: t("accountPage.compareProjected", "Projected score"), a: a.projected_score ?? "—", b: b.projected_score ?? "—" },
+                  { label: t("accountPage.compareRedFlags", "Red flags"), a: a.red_flag_count ?? "—", b: b.red_flag_count ?? "—", invert: true },
                 ];
                 return (
                   <div className="mt-3 rounded-xl border border-primary/25 bg-primary/5 p-4">
@@ -1069,24 +1054,24 @@ export default function Account() {
             <h2 className="font-semibold text-foreground text-sm">{t("accountPage.matchingResume", "Matching résumé")}</h2>
             <span className="text-xs text-muted-foreground truncate">
               {matching.text
-                ? `Pasted résumé (${matching.text.length.toLocaleString()} chars)`
+                ? t("accountPage.matchingPasted", "Pasted résumé ({{n}} characters)", { n: matching.text.length.toLocaleString() })
                 : matching.scanId
-                ? (() => { const s = scans.find((x) => x.id === matching.scanId); return s ? `Pinned: ${s.label ?? (s.industry ?? "scan").replace(/_/g, " ")} · ${new Date(s.created_at).toLocaleDateString()}` : "Pinned scan (no longer in your history)"; })()
-                : "Latest scan (default)"}
+                ? (() => { const s = scans.find((x) => x.id === matching.scanId); return s ? t("accountPage.matchingPinned", "Pinned: {{name}} · {{date}}", { name: s.label ?? (s.industry ?? t("accountPage.matchingScan", "scan")).replace(/_/g, " "), date: new Date(s.created_at).toLocaleDateString() }) : t("accountPage.matchingPinnedGone", "Pinned scan (no longer in your history)"); })()
+                : t("accountPage.matchingLatest", "Latest scan (default)")}
             </span>
             <div className="ml-auto flex items-center gap-2">
               {(matching.scanId || matching.text) && (
-                <button onClick={() => void saveMatching({ scanId: null, text: null }, "Back to your latest scan.")} className="text-[11px] text-muted-foreground hover:text-foreground underline">
-                  Reset to latest scan
+                <button onClick={() => void saveMatching({ scanId: null, text: null }, t("accountPage.matchingReset", "Back to your latest scan."))} className="text-[11px] text-muted-foreground hover:text-foreground underline">
+                  {t("accountPage.matchingResetButton", "Reset to latest scan")}
                 </button>
               )}
               <button onClick={() => setPasteOpen((v) => !v)} className="text-[11px] text-primary hover:underline">
-                {pasteOpen ? "Close" : "Paste a résumé"}
+                {pasteOpen ? t("accountPage.matchingClose", "Close") : t("accountPage.matchingPaste", "Paste a résumé")}
               </button>
             </div>
           </div>
           <p className="text-[11px] text-muted-foreground mt-1">
-            The job board's fit ranking, your email match alerts, and the apply agent's drafts are all grounded in this document. Pin a scan below, or paste the exact résumé you're sending out.
+            {t("accountPage.matchingNote", "The job board's fit ranking and your email match alerts are both grounded in this document. Pin a scan below, or paste the exact résumé you're sending out.")}
           </p>
           {pasteOpen && (
             <div className="mt-3">
@@ -1094,19 +1079,19 @@ export default function Account() {
                 value={pasteDraft}
                 onChange={(e) => setPasteDraft(e.target.value)}
                 rows={6}
-                placeholder="Paste your résumé text here (plain text)…"
+                placeholder={t("accountPage.matchingPastePlaceholder", "Paste your résumé text here (plain text)…")}
                 className="w-full rounded-lg border border-border bg-background p-2.5 text-[12px] focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
               <button
                 onClick={() => {
-                  if (pasteDraft.trim().length < 100) { toast.error("That's too short to match against — paste the full résumé."); return; }
-                  void saveMatching({ scanId: null, text: pasteDraft.trim() }, "Saved — matching now uses this résumé.");
+                  if (pasteDraft.trim().length < 100) { toast.error(t("accountPage.matchingTooShort", "That's too short to match against. Paste the full résumé.")); return; }
+                  void saveMatching({ scanId: null, text: pasteDraft.trim() }, t("accountPage.matchingSaved", "Saved. Matching now uses this résumé."));
                   setPasteOpen(false);
                   setPasteDraft("");
                 }}
                 className="mt-2 text-xs font-semibold text-primary-foreground bg-primary rounded-lg px-3 py-1.5 hover:bg-primary/90"
               >
-                Use this résumé for matching
+                {t("accountPage.matchingUse", "Use this résumé for matching")}
               </button>
             </div>
           )}
@@ -1115,8 +1100,9 @@ export default function Account() {
         <div id="agent" className="scroll-mt-28" />
         {/* The agent now has its own page. This stays — deep links and the
             account nav both point at #agent — but the full surface, and the
-            only mobile-shaped one, is /agent. */}
-        {user && (
+            only mobile-shaped one, is /agent. While the agent is switched off
+            (retired 2026-10-11) the page offers no way into it. */}
+        {user && APPLY_AGENT_ON && (
           <Link
             to="/agent"
             className="mb-4 flex items-center justify-between rounded-xl border border-border bg-muted/30 p-4 transition-colors hover:bg-muted/60"
@@ -1299,21 +1285,21 @@ export default function Account() {
               disabled={!newApp.company.trim()}
               className="shrink-0 inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
-              <Plus className="w-4 h-4" /> Add
+              <Plus className="w-4 h-4" /> {t("accountPage.trackerAdd", "Add")}
             </button>
           </div>
           {scans.length > 0 && (
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-[11px] text-muted-foreground shrink-0">Resume version sent:</span>
+              <span className="text-[11px] text-muted-foreground shrink-0">{t("accountPage.versionSent", "Resume version sent:")}</span>
               <select
                 value={newAppScanId}
                 onChange={(e) => setNewAppScanId(e.target.value)}
                 className="flex-1 min-w-0 px-2 py-1.5 rounded-lg bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-                aria-label="Resume version used for this application"
+                aria-label={t("accountPage.versionSentLabel", "Resume version used for this application")}
               >
-                <option value="latest">Latest scan ({scans[0].ats_score}{scans[0].label ? ` · ${scans[0].label}` : ""})</option>
+                <option value="latest">{t("accountPage.versionLatest", "Latest scan ({{score}}{{label}})", { score: scans[0].ats_score, label: scans[0].label ? ` · ${scans[0].label}` : "" })}</option>
                 {scans.map((s) => (
-                  <option key={s.id} value={s.id}>{versionName(s)} — score {s.ats_score}</option>
+                  <option key={s.id} value={s.id}>{t("accountPage.versionOption", "{{name}}, score {{score}}", { name: versionName(s), score: s.ats_score })}</option>
                 ))}
               </select>
             </div>
@@ -1324,14 +1310,14 @@ export default function Account() {
                 <TrendingUp className="w-4 h-4 text-primary" /> {t("accountPage.appIntelTitle", "Application intelligence")}
               </h3>
               <p className="text-[11px] text-muted-foreground mt-0.5">
-                Interview/offer rate by the fit you applied with, across your {appIntel.applied} tracked applications.
+                {t("accountPage.appIntelBody", "Interview and offer rate by the fit you applied with, across your {{n}} tracked applications.", { n: appIntel.applied })}
               </p>
               <ul className="mt-2 space-y-1">
-                {appIntel.shown.map((t) => {
-                  const { n, adv } = appIntel.tiers[t];
-                  const label = t === "strong" ? "Strong match (20%+)" : t === "possible" ? "Possible match (10–20%)" : "Stretch (<10%)";
+                {appIntel.shown.map((tier) => {
+                  const { n, adv } = appIntel.tiers[tier];
+                  const label = tier === "strong" ? t("accountPage.tierStrong", "Strong match (20%+)") : tier === "possible" ? t("accountPage.tierPossible", "Possible match (10–20%)") : t("accountPage.tierStretch", "Stretch (<10%)");
                   return (
-                    <li key={t} className="flex items-center justify-between text-[12px]">
+                    <li key={tier} className="flex items-center justify-between text-[12px]">
                       <span className="text-muted-foreground">{label}</span>
                       <span className="text-foreground font-semibold">{Math.round((100 * adv) / n)}% <span className="text-muted-foreground font-normal">({adv}/{n})</span></span>
                     </li>
@@ -1341,7 +1327,7 @@ export default function Account() {
               {appIntel.tiers.strong.n >= 3 && appIntel.tiers.stretch.n >= 3 &&
                 (appIntel.tiers.strong.adv / appIntel.tiers.strong.n) > (appIntel.tiers.stretch.adv / appIntel.tiers.stretch.n) && (
                 <p className="text-[11px] text-primary font-medium mt-2">
-                  Your higher-fit applications convert to interviews more often — spend your energy where you actually match.
+                  {t("accountPage.appIntelAdvice", "Your higher-fit applications convert to interviews more often. Spend your energy where you actually match.")}
                 </p>
               )}
             </div>
@@ -1349,10 +1335,10 @@ export default function Account() {
           {skillGap && (
             <div className="rounded-xl border border-border bg-muted/30 p-3 mb-3">
               <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                <Target className="w-4 h-4 text-primary" /> Your skill gaps, from your own applications
+                <Target className="w-4 h-4 text-primary" /> {t("accountPage.skillGapTitle", "Your skill gaps, from your own applications")}
               </h3>
               <p className="text-[11px] text-muted-foreground mt-0.5">
-                The keywords most often missing across the {skillGap.withFit} postings you checked your fit against:
+                {t("accountPage.skillGapBody", "The keywords most often missing across the {{n}} postings you checked your fit against:", { n: skillGap.withFit })}
               </p>
               <ul className="mt-1.5 flex flex-wrap gap-1.5">
                 {skillGap.top.map(([k, n]) => (
@@ -1362,7 +1348,7 @@ export default function Account() {
                 ))}
               </ul>
               <p className="text-[11px] text-muted-foreground mt-2">
-                If you genuinely have these, put them on your résumé — <Link to="/#upload" className="text-primary hover:underline">rescan to see the difference</Link>. If not, they're your clearest learning targets.
+                {t("accountPage.skillGapHave", "If you genuinely have these, put them on your résumé:")} <Link to="/#upload" className="text-primary hover:underline">{t("accountPage.skillGapRescan", "rescan to see the difference")}</Link>. {t("accountPage.skillGapLearn", "If not, they're your clearest learning targets.")}
               </p>
             </div>
           )}
@@ -1388,7 +1374,7 @@ export default function Account() {
                 applications.filter((a) => a.status === "saved" && a.role?.trim())
                   .map((a) => toMandateField([a.role as string])).filter(Boolean),
               )].slice(0, 4);
-              return savedRoles.length >= 2 ? (
+              return APPLY_AGENT_ON && savedRoles.length >= 2 ? (
                 <Link
                   to={`/agent?seedTitles=${encodeURIComponent(savedRoles.join("|"))}`}
                   className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline mb-3"
@@ -1700,7 +1686,7 @@ export default function Account() {
                       href={a.apply_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      aria-label="Open the job posting"
+                      aria-label={t("accountPage.openPosting", "Open the job posting")}
                       className="text-muted-foreground hover:text-primary shrink-0"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
@@ -1724,7 +1710,7 @@ export default function Account() {
                   >
                     {APP_STATUSES.map(st => <option key={st} value={st}>{t(`accountPage.status.${st}`, st)}</option>)}
                   </select>
-                  <button onClick={() => deleteApplication(a.id)} aria-label="Delete application" className="text-muted-foreground/50 hover:text-destructive transition-colors">
+                  <button onClick={() => deleteApplication(a.id)} aria-label={t("accountPage.deleteApplication", "Delete application")} className="text-muted-foreground/50 hover:text-destructive transition-colors">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                   </div>
@@ -1738,13 +1724,13 @@ export default function Account() {
                   {fitOpenId === a.id && version?.resume_text && (
                     <div className="mt-2 pt-2 border-t border-border/50">
                       <p className="text-[11px] text-muted-foreground mb-1.5">
-                        Paste the job posting — we check which recognized keywords the version you sent actually covers. Deterministic, no AI.
+                        {t("accountPage.fitIntro", "Paste the job posting: we check which recognized keywords the version you sent actually covers. Deterministic, no AI.")}
                       </p>
                       <textarea
                         value={fitPosting}
                         onChange={(e) => setFitPosting(e.target.value)}
                         rows={3}
-                        placeholder="Paste the job posting here…"
+                        placeholder={t("accountPage.fitPlaceholder", "Paste the job posting here…")}
                         className="w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs text-foreground mb-1.5"
                       />
                       <button
@@ -1752,11 +1738,11 @@ export default function Account() {
                         disabled={fitLoading || fitPosting.trim().length < 100}
                         className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold disabled:opacity-50"
                       >
-                        {fitLoading ? "Checking…" : "Check fit"}
+                        {fitLoading ? t("accountPage.fitChecking", "Checking…") : t("accountPage.fitCheck", "Check fit")}
                       </button>
                       {a.fit_pct != null && (a.fit_missing?.length ?? 0) > 0 && (
                         <div className="mt-2">
-                          <p className="text-[11px] text-muted-foreground mb-1">Missing from the version you sent:</p>
+                          <p className="text-[11px] text-muted-foreground mb-1">{t("accountPage.fitMissing", "Missing from the version you sent:")}</p>
                           <div className="flex flex-wrap gap-1">
                             {(a.fit_missing ?? []).slice(0, 12).map(k => (
                               <span key={k} className="px-2 py-0.5 rounded-full border border-warning/40 text-warning text-[11px]">{k}</span>
@@ -1797,14 +1783,14 @@ export default function Account() {
                   {rows.map((r) => (
                     <div key={r.scan.id} className="flex items-center gap-2 text-xs">
                       <span className="text-foreground font-medium flex-1 truncate">{versionName(r.scan)}</span>
-                      <span className="text-muted-foreground shrink-0">{r.sent} sent</span>
+                      <span className="text-muted-foreground shrink-0">{t("accountPage.versionSentCount", "{{n}} sent", { n: r.sent })}</span>
                       <span className={`shrink-0 font-semibold ${r.interviews > 0 ? "text-success" : "text-muted-foreground"}`}>
-                        {r.interviews} interview{r.interviews !== 1 ? "s" : ""}{r.offers > 0 ? ` · ${r.offers} offer${r.offers !== 1 ? "s" : ""}` : ""}
+                        {t("accountPage.versionInterviews", { count: r.interviews, defaultValue: r.interviews === 1 ? "{{count}} interview" : "{{count}} interviews" })}{r.offers > 0 ? ` · ${t("accountPage.versionOffers", { count: r.offers, defaultValue: r.offers === 1 ? "{{count}} offer" : "{{count}} offers" })}` : ""}
                       </span>
                     </div>
                   ))}
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-2">Update application statuses above — this table learns which version of your resume actually lands interviews.</p>
+                <p className="text-[11px] text-muted-foreground mt-2">{t("accountPage.whichResumeNote", "Update application statuses above: this table learns which version of your resume actually lands interviews.")}</p>
               </div>
             );
           })()}
@@ -1831,118 +1817,50 @@ export default function Account() {
             if (rows.length < 2) return null;
             return (
               <div className="mt-4 rounded-xl border border-border bg-card/60 p-4">
-                <p className="text-xs font-semibold text-foreground mb-2">Your interview rate by score band</p>
+                <p className="text-xs font-semibold text-foreground mb-2">{t("accountPage.bandTitle", "Your interview rate by score band")}</p>
                 <div className="space-y-1.5">
                   {rows.map(r => (
                     <div key={r.label} className="flex items-center gap-2 text-xs">
-                      <span className="text-foreground font-medium w-20 shrink-0">Score {r.label}</span>
+                      <span className="text-foreground font-medium w-20 shrink-0">{t("accountPage.bandScore", "Score {{band}}", { band: r.label === "under 50" ? t("accountPage.bandUnder50", "under 50") : r.label })}</span>
                       <div className="flex-1 h-1.5 rounded-full bg-border overflow-hidden">
                         <div className="h-full bg-success" style={{ width: `${Math.round((r.wins / r.sent) * 100)}%` }} />
                       </div>
-                      <span className="text-muted-foreground shrink-0">{r.wins}/{r.sent} interviews</span>
+                      <span className="text-muted-foreground shrink-0">{t("accountPage.bandWins", "{{wins}}/{{sent}} interviews", { wins: r.wins, sent: r.sent })}</span>
                     </div>
                   ))}
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-2">Measured from your own applications — small samples, so read direction, not decimals.</p>
+                <p className="text-[11px] text-muted-foreground mt-2">{t("accountPage.bandNote", "Measured from your own applications. Small samples, so read direction, not decimals.")}</p>
               </div>
             );
           })()}
         </div>
 
-        {/* Pro subscription */}
-        <div className="mb-6">
+        {/* Pro subscription: the plan, its next charge and Manage or cancel (#plan) */}
+        <div className="mb-6 scroll-mt-28" id="plan">
           <ProSubscriptionCard compact />
         </div>
         {/* EU/UK 14-day withdrawal: renders nothing while the switch is off. */}
         <WithdrawalPanel />
 
         {/* Credits + purchases (L3-22, L6-12) */}
-        <CreditsAndPurchases fetching={fetching} account={account} email={user?.email ?? ""} />
+        <CreditsAndPurchases fetching={fetching} account={account} email={user?.email ?? ""} failed={accountFailed} onRetry={() => void reloadAccount()} />
 
         {/* Cross-link: the employer-side product */}
         <div className="rounded-2xl border border-border bg-gradient-to-r from-primary/5 to-transparent p-5 mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-3">
           <div className="flex-1">
-            <p className="text-sm font-semibold text-foreground mb-0.5">Hiring? Screen candidates with Shortlist <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-semibold uppercase align-middle ml-1">Beta</span></p>
-            <p className="text-xs text-muted-foreground">Paste a job description and a stack of resumes — get a ranked, explainable shortlist with a built-in compliance audit trail. Free during beta.</p>
+            <p className="text-sm font-semibold text-foreground mb-0.5">{t("accountPage.shortlistTitle", "Hiring? Screen candidates with Shortlist")} <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-semibold uppercase align-middle ml-1">{t("accountPage.shortlistBeta", "Beta")}</span></p>
+            <p className="text-xs text-muted-foreground">{t("accountPage.shortlistBody", "Paste a job description and the resumes you are allowed to have scored: get a ranked, explainable shortlist with an audit trail. Free during beta.")}</p>
           </div>
           <Link to="/shortlist" className="shrink-0 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors">
-            Open Shortlist →
+            {t("accountPage.shortlistOpen", "Open Shortlist →")}
           </Link>
         </div>
 
-        {/* Settings: password / email / export */}
-        <div className="rounded-2xl border border-border bg-card p-5 mb-6">
-          <h2 className="font-semibold text-foreground text-sm mb-3">⚙️ {t("accountPage.settings", "Account settings")}</h2>
-          <div className="grid sm:grid-cols-2 gap-4 mb-3">
-            <div>
-              <label className="block text-xs text-muted-foreground mb-1">Change password</label>
-              <div className="flex gap-2">
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="New password (8+ chars)"
-                  className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-                />
-                <button onClick={changePassword} disabled={!newPassword} className="shrink-0 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors">Update</button>
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs text-muted-foreground mb-1">Change email</label>
-              <div className="flex gap-2">
-                <input
-                  type="email"
-                  value={newEmail}
-                  onChange={(e) => setNewEmail(e.target.value)}
-                  placeholder="new@email.com"
-                  className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-                />
-                <button onClick={changeEmail} disabled={!newEmail} className="shrink-0 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors">Update</button>
-              </div>
-            </div>
-          </div>
-          {settingsMsg && <p className={`text-xs mb-3 ${/✓/.test(settingsMsg) ? "text-success" : "text-muted-foreground"}`}>{settingsMsg}</p>}
-          <button onClick={exportData} className="text-xs text-primary hover:underline">
-            ⬇️ Download all my data (JSON)
-          </button>
-        </div>
-
-        {/* Danger zone */}
-        <div className="rounded-2xl border border-destructive/20 bg-destructive/[0.03] p-5">
-          <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle className="w-4 h-4 text-destructive" />
-            <h2 className="font-semibold text-foreground text-sm">{t("accountPage.deleteAccount", "Delete account")}</h2>
-          </div>
-          <p className="text-xs text-muted-foreground mb-3">
-            {t("accountPage.deleteAccountBody")}
-          </p>
-          {!confirmDelete ? (
-            <button
-              onClick={() => setConfirmDelete(true)}
-              className="px-3.5 py-2 rounded-lg border border-destructive/30 text-destructive text-xs font-semibold hover:bg-destructive/10 transition-colors"
-            >
-              Delete my account
-            </button>
-          ) : (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={deleteAccount}
-                disabled={deleting}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-destructive text-white text-xs font-semibold hover:bg-destructive/90 disabled:opacity-60 transition-colors"
-              >
-                {deleting && <Loader2 className="w-3 h-3 animate-spin" />}
-                Yes, permanently delete everything
-              </button>
-              <button
-                onClick={() => setConfirmDelete(false)}
-                disabled={deleting}
-                className="px-3.5 py-2 rounded-lg border border-border text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          )}
-        </div>
+        {/* Sign-in and security, then the data card: export and delete (S12-060, S12-137, D9) */}
+        <SecurityCard />
+        {/* Connected AIs and the mail this account gets (plan CP-H, D12) */}
+        <AccountSettingsCards />
+        <DataPrivacyCard onExport={exportData} onDelete={deleteAccount} />
       </main>
       <Footer />
     </div>

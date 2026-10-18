@@ -19,6 +19,7 @@
  */
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+import { SELLER_SET_STUB } from "./helpers/seller-set";
 import { unsubscribeFromHash } from "../lib/unsubscribe-link";
 
 const SERVICE = "service_role_key_for_the_harness_0123456789abcdef";
@@ -40,9 +41,9 @@ beforeAll(async () => {
     "https://esm.sh/resend@2.0.0":
       "export class Resend { constructor() { this.emails = { send: async (m) => { globalThis.__unSent.push(m); return { data: { id: 'em' }, error: null }; } }; } }",
   };
-  pulse = await loadEdgeHandler("send-market-pulse", stubs);
-  report = await loadEdgeHandler("send-scan-report", stubs);
-  agentDigest = await loadEdgeHandler("send-agent-digest", stubs);
+  pulse = await loadEdgeHandler("send-market-pulse", { ...stubs, ...SELLER_SET_STUB });
+  report = await loadEdgeHandler("send-scan-report", { ...stubs, ...SELLER_SET_STUB });
+  agentDigest = await loadEdgeHandler("send-agent-digest", { ...stubs, ...SELLER_SET_STUB });
 }, 120_000);
 
 afterEach(() => { sent.length = 0; db.tables = {}; db.writes = []; db.rpcs = {}; });

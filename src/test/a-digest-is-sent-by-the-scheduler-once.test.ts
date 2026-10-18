@@ -27,6 +27,7 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { PGlite } from "@electric-sql/pglite";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+import { SELLER_SET_STUB } from "./helpers/seller-set";
 import { MAIL_DOOR_VERIFY, bootMailDoorDb, rows } from "./helpers/mail-door-db";
 
 /** The claim as a run meets it: its rows once, then nothing (a run claims until it is handed none). */
@@ -146,7 +147,7 @@ beforeAll(async () => {
       "export class Resend { constructor() { this.emails = { send: async (m) => { globalThis.__digestSent.push(m); const t = Array.isArray(m.to) ? m.to[0] : m.to; return globalThis.__digestFail.has(t) ? { data: null, error: { message: 'bounced' } } : { data: { id: 'em' }, error: null }; } }; } }",
   };
   search = await loadEdgeHandler("send-search-digest", stubs);
-  agent = await loadEdgeHandler("send-agent-digest", stubs);
+  agent = await loadEdgeHandler("send-agent-digest", { ...stubs, ...SELLER_SET_STUB });
 }, 60_000);
 
 afterEach(() => {

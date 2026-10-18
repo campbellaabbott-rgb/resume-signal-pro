@@ -1,6 +1,7 @@
 // Sticky section navigation for the account HQ — the page grew into a deep
-// stack of tools, and findability is the upgrade: four stable jump points,
-// always visible, matching the section ids in Account.tsx.
+// stack of tools, and findability is the upgrade: stable jump points, always
+// visible, matching the section ids in Account.tsx (the account home's own
+// sections, plan CP-H: orders, plan, security, connected AIs, your data).
 
 import { useTranslation } from "react-i18next";
 
@@ -11,6 +12,11 @@ export function AccountNav() {
     ["#pipeline", t("accountPage.navPipeline", "Pipeline")],
     ["#searches", t("accountPage.navSearches", "Searches")],
     ["#resume-tools", t("accountPage.navResume", "Résumé")],
+    ["#orders", t("accountPage.navOrders", "Orders")],
+    ["#plan", t("accountPage.navPlan", "Plan")],
+    ["#security", t("accountPage.navSecurity", "Security")],
+    ["#connected", t("accountPage.navConnected", "Connected AIs")],
+    ["#privacy", t("accountPage.navPrivacy", "Your data")],
   ];
   return (
     <nav

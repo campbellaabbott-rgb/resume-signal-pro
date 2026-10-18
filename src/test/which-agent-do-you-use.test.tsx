@@ -46,6 +46,7 @@
 // @vitest-environment jsdom
 // @vitest-environment-options { "url": "https://resumebooster.work/agents" }
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { allowAnalytics } from "./helpers/analytics-consent";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
@@ -615,7 +616,7 @@ function hookFetch(state: SignInState) {
 const mount = () => render(<HelmetProvider><MemoryRouter initialEntries={["/agents"]}><AgentConnect /></MemoryRouter></HelmetProvider>);
 
 describe("G9: the switchboard's clicks, judged by the request body", () => {
-  beforeEach(() => { try { localStorage.clear(); } catch { /* blocked */ } window.history.replaceState(null, "", "/agents"); });
+  beforeEach(() => { try { localStorage.clear(); } catch { /* blocked */ } allowAnalytics(); window.history.replaceState(null, "", "/agents"); });
   afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
   it("opens with the question, the owner's three tiles, the GitHub line under them, the prose fallback, no panel, and nothing above the fold names the jargon", () => {

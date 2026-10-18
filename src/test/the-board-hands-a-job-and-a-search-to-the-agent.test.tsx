@@ -43,6 +43,7 @@
 // @vitest-environment jsdom
 // @vitest-environment-options { "url": "https://resumebooster.work/jobs" }
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { allowAnalytics } from "./helpers/analytics-consent";
 import { render, screen, waitFor, fireEvent, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { readFileSync, readdirSync } from "node:fs";
@@ -325,6 +326,7 @@ describe("2. the hand-offs on /jobs, judged by the request body", () => {
   // The production hostname: isTrackingDisabled() reads window.location.
   beforeEach(() => {
     try { localStorage.clear(); sessionStorage.clear(); } catch { /* blocked */ }
+    allowAnalytics();
     invoke.mockReset(); rpc.mockReset(); toastSpy.mockReset();
     // jsdom lets the URL be replaced within the same origin only; the file
     // runs under the environment option below so the origin IS production.

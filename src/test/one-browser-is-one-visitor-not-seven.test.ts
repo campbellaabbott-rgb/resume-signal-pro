@@ -40,6 +40,7 @@
  * the chokepoint's exports, then compared.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { allowAnalytics } from "./helpers/analytics-consent";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { codeOf } from "./helpers/strip-comments";
@@ -64,6 +65,7 @@ describe("a browser keeps the visitor id it already carries", () => {
   beforeEach(() => {
     vi.unstubAllGlobals();
     localStorage.clear();
+    allowAnalytics();
   });
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -75,7 +77,8 @@ describe("a browser keeps the visitor id it already carries", () => {
     localStorage.setItem("ab_visitor_id", ab);
     expect(t.getVisitorId()).toBe(ab);
     expect(localStorage.getItem(t.VISITOR_ID_KEY)).toBe(ab);
-    expect(localStorage.length, "exactly one key was added").toBe(2);
+    // The visitor's analytics choice (S12-011), the A/B key, and the one key added.
+    expect(localStorage.length, "exactly one key was added").toBe(3);
   });
 
   it("with every legacy key present the priority order decides, once, and nothing else is rewritten", async () => {
@@ -112,7 +115,7 @@ describe("a browser keeps the visitor id it already carries", () => {
     // legacy id (reviewed 2026-09-27).
     const t = await freshTransport();
     const legacy = "5a5a5a5a-6b6b-4c7c-8d8d-9e9e9e9e9e9e";
-    const store: Record<string, string> = { ab_visitor_id: legacy };
+    const store: Record<string, string> = { ab_visitor_id: legacy, rb_analytics_consent: "granted" };
     vi.stubGlobal("localStorage", {
       getItem(k: string) { return store[k] ?? null; },
       setItem() { throw new Error("QuotaExceededError"); },
@@ -158,6 +161,7 @@ describe("a browser keeps the visitor id it already carries", () => {
     const whileBlocked = t.getVisitorId();
     vi.unstubAllGlobals();
     localStorage.clear();
+    allowAnalytics();
     expect(t.getVisitorId()).toBe(whileBlocked);
     expect(localStorage.getItem(t.VISITOR_ID_KEY)).toBe(whileBlocked);
   });

@@ -45,4 +45,4 @@ export function sellerIdentity(s: SellerIdentity = SELLER): SellerIdentity | nul
  * date in the same commit that changes the page's words.
  */
 export const TERMS_LAST_UPDATED: string = TERMS_VERSION;
-export const PRIVACY_LAST_UPDATED = "2026-10-04";
+export const PRIVACY_LAST_UPDATED = "2026-10-12";

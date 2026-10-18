@@ -32,11 +32,10 @@ beforeAll(async () => {
     "https://esm.sh/resend@2.0.0": "export class Resend { constructor() { this.emails = { send: async () => ({ data: { id: 'em' }, error: null }) }; } }",
   };
   shipped = await loadEdgeHandler("send-scan-report", stubs);
-  // The shared module with a seller set: the real line builder, applied to it.
-  const line = sellerFooterHtml(SET);
+  // The identity module with a seller set; the real line builder reads it.
   withSeller = await loadEdgeHandler("send-scan-report", {
     ...stubs,
-    "_shared/seller.ts": `export const SELLER = ${JSON.stringify(SET)}; export const sellerFooterHtml = () => ${JSON.stringify(line)};`,
+    "_shared/seller-identity.ts": `export const SELLER_IDENTITY = ${JSON.stringify(SET)};`,
   });
 }, 120_000);
 
@@ -55,11 +54,14 @@ const press = async (handler: EdgeHandler) => {
 };
 
 describe("the fix-plan drip's footer", () => {
-  it("as shipped, with no seller set, carries no sender line", async () => {
+  // S12-010 (owner decision 2026-10-12): with no seller set, the sequence,
+  // which is marketing, does not start at all rather than go out unsigned.
+  it("as shipped, with no seller set, queues nothing", async () => {
     install();
-    expect(await (await press(shipped)).json()).toEqual({ success: true, queued: true });
-    expect(enqueued).toHaveLength(4);
-    for (const e of enqueued) expect(e.payload.html).not.toMatch(/Example|·\s*\d/);
+    const res = await press(shipped);
+    expect(res.status).toBe(503);
+    expect(await res.json()).toMatchObject({ queued: false, reason: "paused_no_seller_identity" });
+    expect(enqueued).toHaveLength(0);
   });
 
   it("with the seller set, every mail ends with the name and postal address, escaped", async () => {

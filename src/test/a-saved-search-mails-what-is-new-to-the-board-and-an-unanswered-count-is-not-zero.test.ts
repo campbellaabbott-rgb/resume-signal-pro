@@ -132,6 +132,28 @@ describe("L10-03: a count the board could not give is not zero", () => {
     expect(stamp()).toBe(PREV);
   });
 
+  // S12-115: the description read that strong mode scores from timed out, so
+  // no candidate had a description and none "passed"; the advanced stamp then
+  // deleted the window's matches. A failed read now gives the claim back.
+  it("strong mode: a description read that failed is not 'nothing cleared the bar'", async () => {
+    install({ sd_fit_threshold: 30 });
+    db.rows("user_profiles").push({ user_id: "abcd-user", matching_resume_text: "registered nurse acute ward ".repeat(10), matching_scan_id: null });
+    db.rows("job_board_postings").push({ id: "j1", description: "registered nurse acute ward ".repeat(20) });
+    db.faults.push({ table: "job_board_postings", op: "select", error: { code: "57014", message: "canceling statement due to statement timeout" } });
+    board = echoing(1, [job("j1", "2026-10-07T00:00:00Z")]);
+    expect(await (await run()).json()).toMatchObject({ sent: 0, skipped: 1 });
+    expect(sent).toEqual([]);
+    expect(stamp(), "the window's matches were deleted by the advanced stamp").toBe(PREV);
+  });
+
+  it("strong mode: the same window, read, mails the match (the read is what decides)", async () => {
+    install({ sd_fit_threshold: 30 });
+    db.rows("user_profiles").push({ user_id: "abcd-user", matching_resume_text: "registered nurse acute ward ".repeat(10), matching_scan_id: null });
+    db.rows("job_board_postings").push({ id: "j1", description: "registered nurse acute ward ".repeat(20) });
+    board = echoing(1, [job("j1", "2026-10-07T00:00:00Z")]);
+    expect(await (await run()).json()).toMatchObject({ sent: 1 });
+  });
+
   it("a real zero still advances the window, as before", async () => {
     install();
     board = echoing(0, []);

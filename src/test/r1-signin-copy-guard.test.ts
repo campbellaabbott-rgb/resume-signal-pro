@@ -68,7 +68,6 @@ const METHODS: Record<string, Method> = {
 
 /** Off-method strings in files R1 does not own, with the round that owns the fix. */
 const KNOWN: { method: string; where: string; text: string; owner: string }[] = [
-  { method: "google", where: "src/components/account/CreditsAndPurchases.tsx", text: "sign in with Google using it", owner: "CP-H (Account purchases)" },
   { method: "google", where: "src/i18n/locales/en.json#proPlan.linkPending", text: "Sign in with Google using that address", owner: "CP-H (company profiles owns the locale files)" },
   { method: "google", where: "src/i18n/locales/en-GB.json#proPlan.linkPending", text: "Sign in with Google using that address", owner: "CP-H (company profiles owns the locale files)" },
 ];
