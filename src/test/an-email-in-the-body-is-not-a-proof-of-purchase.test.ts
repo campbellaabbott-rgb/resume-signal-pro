@@ -36,11 +36,15 @@ describe("an email in the body is not a proof of purchase", () => {
     expect(CONFIG).toMatch(/\[functions\.create-product-checkout\]\s*\n\s*verify_jwt = false/);
   });
 
+  // Wave 4 round 2: the token is read through _shared/checkout-buyer.ts
+  // checkoutCaller, which also tells an auth server that could not answer
+  // from a refused token (CP-025); its behaviour is run in
+  // w4b-an-included-tool-is-never-a-charge-and-a-buyer-is-named.
   it("derives the grant identity from the bearer token, not the request body", () => {
     expect(FN_CODE, "must validate the bearer token with the auth server").toMatch(
-      /supabase\.auth\.getUser\(bearer\)/);
-    expect(FN_CODE, "the anon key is not a session — it must not be treated as one").toMatch(
-      /bearer !== \(Deno\.env\.get\("SUPABASE_ANON_KEY"\) \?\? ""\)/);
+      /checkoutCaller\(supabase\.auth, req\.headers, Deno\.env\.get\("SUPABASE_ANON_KEY"\) \?\? ""\)/);
+    expect(FN_CODE, "the verified address comes from the caller, never the body").toMatch(
+      /const proEmail = caller\.kind === "signed_in" \? caller\.email : null;/);
     expect(FN_CODE, "the grant branch must be gated on the verified email").toMatch(
       /if \(proEmail\) \{/);
   });
@@ -62,7 +66,7 @@ describe("an email in the body is not a proof of purchase", () => {
   it("a bad token is an anonymous request, never a fallback to the body email", () => {
     // The failure mode that would quietly restore the bug: catch the auth error
     // and carry on with whatever the caller typed.
-    const authBlock = FN_CODE.slice(FN_CODE.indexOf("let proEmail"), FN_CODE.indexOf("if (proEmail) {"));
+    const authBlock = FN_CODE.slice(FN_CODE.indexOf("const caller = await checkoutCaller"), FN_CODE.indexOf("if (proEmail) {"));
     expect(authBlock.length).toBeGreaterThan(100);
     expect(
       /proEmail = normalizedEmail|proEmail = email|proEmail \?\?= /.test(authBlock),
@@ -70,14 +74,13 @@ describe("an email in the body is not a proof of purchase", () => {
     ).toBe(false);
   });
 
-  it("does not charge a signed-out Pro subscriber for what they already own", () => {
-    expect(FN_CODE).toMatch(/proRequiresSignIn: true/);
-    // And that branch must mint nothing — no grant insert may live inside it.
-    const signedOut = FN_CODE.slice(FN_CODE.indexOf("} else if (normalizedEmail) {"), FN_CODE.indexOf("// Create Stripe session"));
-    expect(signedOut.length, "signed-out branch not found").toBeGreaterThan(100);
-    expect(signedOut, "the signed-out branch must never insert a grant").not.toContain("pro_grants");
-    // The page has to act on it, or the button silently does nothing.
-    expect(HOOK, "the client must handle proRequiresSignIn").toMatch(/data\?\.proRequiresSignIn/);
-    expect(HOOK).toMatch(/Sign in to use your Pro subscription/);
+  // Owner decision D8 (2026-10-12): the signed-out branch that told anyone
+  // whether a typed address held Pro is gone. The page sends no address for a
+  // signed-out buyer (checkoutPrefillEmail), and a subscriber signs in first.
+  it("tells a signed-out caller nothing about an address (D8)", () => {
+    expect(FN_CODE).not.toMatch(/proRequiresSignIn/);
+    expect(FN_CODE).not.toMatch(/addressProStanding/);
+    expect(FN_CODE).not.toMatch(/\} else if \(normalizedEmail\) \{/);
+    expect(HOOK, "the page sends the signed-in account's address or none").toMatch(/email: await checkoutPrefillEmail\(\)/);
   });
 });

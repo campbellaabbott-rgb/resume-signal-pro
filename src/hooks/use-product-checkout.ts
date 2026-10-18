@@ -1,7 +1,9 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { PRODUCTS, ProductId } from '@/config/products';
+import { PRODUCTS, ProductId, isProductHidden } from '@/config/products';
+import { checkoutRefusalOf, type CheckoutRefusal } from '@/lib/checkout-refusal';
+import { territoryHint } from '@/lib/checkout-territory';
 import { useConversionTracking } from '@/hooks/use-conversion-tracking';
 import { useFunnelTracking } from '@/hooks/use-funnel-tracking';
 import { parseEdgeFunctionError } from '@/lib/edge-function-errors';
@@ -213,6 +215,16 @@ export async function checkoutPrefillEmail(): Promise<string | undefined> {
 
 export type ResumeBinding = { sessionId?: string; refused?: boolean };
 
+/** The title a checkout refusal is shown under, by kind (the server writes the sentence). */
+export function refusalTitle(kind: CheckoutRefusal['kind']): string {
+  switch (kind) {
+    case 'retired': return i18n.t('checkoutRefusal.retiredTitle', 'No longer sold');
+    case 'territory': return i18n.t('checkoutRefusal.territoryTitle', 'Not yet sold where you are');
+    case 'fair_use': return i18n.t('checkoutRefusal.fairUseTitle', "You've reached Pro's fair-use limit");
+    case 'plan_unpaid': return i18n.t('checkoutRefusal.planUnpaidTitle', 'Your plan is not paid yet');
+  }
+}
+
 /**
  * Which stored résumé a purchase is delivered from. The caller's own id wins.
  * Otherwise: the résumé and posting on screen (the caller's inputs, else the
@@ -260,6 +272,18 @@ export function useProductCheckout() {
         title: "Invalid Product",
         description: "The selected product is not available.",
         variant: "destructive"
+      });
+      return null;
+    }
+    // A PRODUCT NO LONGER SOLD (the apply pivot, the product line's cut) is
+    // refused here too, before a question, a résumé store or a network call:
+    // a page cached before the cut can still show its button, and the server
+    // would only answer 410 after the buyer had answered a dialog.
+    if (isProductHidden(productId)) {
+      purchaseTermsUnused();
+      toast({
+        title: refusalTitle('retired'),
+        description: i18n.t('checkoutRefusal.retiredBody', 'This product is no longer sold, and nothing was charged. If you bought it before, your link keeps working for 90 days.'),
       });
       return null;
     }
@@ -315,11 +339,26 @@ export function useProductCheckout() {
           ...checkoutContext(),
           // The referral, the Terms line's version, the EU/UK box.
           ...terms,
+          // The browser's time zone: the server may refuse a buyer in the
+          // EU, the EEA or the UK on it while those sales are off (S12-059).
+          ...territoryHint(),
         }
       });
 
       if (await consentWasRequired(error, data)) {
         toast({ title: i18n.t("purchaseTerms.consentNeeded"), variant: "destructive" });
+        return null;
+      }
+      // A REFUSAL WRITTEN FOR THE BUYER (S12-170): the retired or cut
+      // product's 410, the territory's 451, the fair-use 429. Its sentence is
+      // shown whole; the generic parser would print "Something went wrong".
+      const refusal = error ? await checkoutRefusalOf(error) : null;
+      if (refusal) {
+        toast({
+          title: refusalTitle(refusal.kind),
+          description: refusal.message,
+          variant: refusal.kind === 'retired' ? undefined : "destructive",
+        });
         return null;
       }
       if (error) {

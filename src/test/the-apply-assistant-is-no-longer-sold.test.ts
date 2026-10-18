@@ -104,7 +104,7 @@ describe("a purchase of the Apply Assistant is refused before anything is counte
   });
 
   it("control: every other product still reaches the purchase path (the limiter is asked)", async () => {
-    const res = await buy(shipped, { productId: "coverLetter", email: "buyer@example.com" });
+    const res = await buy(shipped, { productId: "freelanceBoost", email: "buyer@example.com" });
     expect(res.status).not.toBe(410);
     expect(touched).toContain("rpc:check_rate_limit");
   });

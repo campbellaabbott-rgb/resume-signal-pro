@@ -5,7 +5,14 @@ import { checkoutOrigin } from "../_shared/checkout-policy.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-test-checkout.2026-10-09.61";
+// 2026-10-11.23 (wave 4 round 2, checkout-catalogue; critical-path CP-033):
+// switched off. It is unauthenticated (verify_jwt false), minted a Stripe
+// test session for any caller, returned to the public dev page and rehearsed
+// none of the real checkout path. A POST answers 410 before Stripe.
+const FN_BUILD = "create-test-checkout.2026-10-11.23";
+
+/** The dev checkout's switch: off. Typed `boolean` so the dormant path still type-checks. */
+const TEST_CHECKOUT_ON: boolean = false;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -24,6 +31,13 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  if (!TEST_CHECKOUT_ON) {
+    return new Response(
+      JSON.stringify({ retired: true, reason: "test_checkout_off", error: "The development checkout is switched off." }),
+      { status: 410, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   }
 
   try {

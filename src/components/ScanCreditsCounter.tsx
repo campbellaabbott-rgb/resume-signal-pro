@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Coins, ChevronDown, Plus, LogIn } from "lucide-react";
+import { Coins, ChevronDown, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -9,8 +9,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useScanCredits, CREDITS_UPDATED_EVENT, legacyCreditsEmail } from "@/hooks/use-scan-credits";
-import { ScanPackPurchase } from "@/components/ScanPackPurchase";
-import { useCurrency } from "@/hooks/use-currency";
 import { supabase } from "@/integrations/supabase/client";
 
 /**
@@ -25,22 +23,18 @@ import { supabase } from "@/integrations/supabase/client";
  * shown it). A buyer from before browsers kept purchases has only the address
  * they typed here; nothing proves it, so they are told how to get their
  * credits added rather than that they have none.
+ *
+ * SCAN PACKS ARE NO LONGER SOLD (the product line, 2026-10-12): the balance
+ * and the ways to reach it stay for buyers from before (their credits stay
+ * spendable), and nothing here offers to buy more. create-scan-pack-checkout
+ * answers 410.
  */
 const SUPPORT_EMAIL = "resumeboostersupp@gmail.com";
 
 export function ScanCreditsCounter() {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
-  const [showPurchase, setShowPurchase] = useState(false);
-  const { credits, email, signedIn, known, refreshCredits, pricePerCredit } = useScanCredits();
-  const { formatPrice, isLocalCurrency } = useCurrency();
-
-  const formatLocalPrice = (usd: number) => {
-    if (isLocalCurrency) {
-      return `$${usd.toFixed(2)} (${formatPrice(usd)})`;
-    }
-    return `$${usd.toFixed(2)}`;
-  };
+  const { credits, email, signedIn, known, refreshCredits } = useScanCredits();
 
   // Read on mount, after a purchase or a scan that spent a credit (the event),
   // and when the visitor signs in or out (the account's pool joins or leaves).
@@ -97,21 +91,6 @@ export function ScanCreditsCounter() {
               <p className="text-sm text-muted-foreground">{t("scanCredits.creditsRemaining")}</p>
             </div>
 
-            <p className="text-xs text-muted-foreground text-center">
-              {t("scanCredits.neverExpire")} • {t("scanCredits.perCredit", { price: formatLocalPrice(pricePerCredit) })}
-            </p>
-
-            <Button
-              onClick={() => {
-                setShowPurchase(true);
-                setIsOpen(false);
-              }}
-              size="sm"
-              className="w-full gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              {t("scanCredits.topUpCredits")}
-            </Button>
 
             {!signedIn && (
               <p className="text-xs text-muted-foreground text-center">
@@ -123,16 +102,12 @@ export function ScanCreditsCounter() {
             )}
           </div>
 
-          <ScanPackPurchase
-            open={showPurchase}
-            onOpenChange={setShowPurchase}
-          />
         </PopoverContent>
       </Popover>
     );
   }
 
-  // No proven balance: explain where credits show up, and offer sign-in and purchase
+  // No proven balance: explain where credits show up, and offer sign-in
   const legacyEmail = legacyCreditsEmail();
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -171,30 +146,7 @@ export function ScanCreditsCounter() {
               </Button>
             </div>
           )}
-
-          <div className="pt-2 border-t border-border space-y-2">
-            <p className="text-xs text-muted-foreground">
-              {t("scanCredits.freeTier")}
-            </p>
-            <Button
-              onClick={() => {
-                setShowPurchase(true);
-                setIsOpen(false);
-              }}
-              variant="outline"
-              size="sm"
-              className="w-full gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              {t("scanCredits.buyCredits", { price: formatLocalPrice(pricePerCredit) })}
-            </Button>
-          </div>
         </div>
-
-        <ScanPackPurchase
-          open={showPurchase}
-          onOpenChange={setShowPurchase}
-        />
       </PopoverContent>
     </Popover>
   );

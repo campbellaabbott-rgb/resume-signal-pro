@@ -28,10 +28,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, cleanup, renderHook, act } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
-import { readdirSync } from "node:fs";
-import { AFFILIATE_COMMISSION_CENTS, COMMISSIONED_CHECKOUTS, COMMISSIONED_PRODUCT_TYPES, REFERRAL_CHECKOUTS, SMALL_TOOL_PRODUCT_TYPES } from "@/config/affiliate-commission";
 
 const toast = { success: vi.fn(), error: vi.fn(), info: vi.fn() };
 vi.mock("sonner", () => ({ toast: { success: (...a: unknown[]) => toast.success(...a), error: (...a: unknown[]) => toast.error(...a), info: (...a: unknown[]) => toast.info(...a) } }));
@@ -46,67 +42,18 @@ vi.mock("@/components/dashboard/LegacyUserHealthTable", () => ({ LegacyUserHealt
 vi.mock("@/components/dashboard/ErrorDiagnostics", () => ({ ErrorDiagnostics: () => null }));
 vi.mock("@/components/dashboard/ErrorStatsCards", () => ({ ErrorStatsCards: () => null }));
 
-import Affiliates from "../pages/Affiliates";
 import { PayoutRequest } from "@/components/affiliate/PayoutRequest";
 import { useAffiliateUpdates } from "@/hooks/use-affiliate-realtime";
 import ErrorDashboard from "../pages/ErrorDashboard";
 
-const ROOT = resolve(__dirname, "../..");
-const code = (p: string) => readFileSync(resolve(ROOT, p), "utf8").replace(/\/\*[\s\S]*?\*\//g, " ").replace(/^\s*\/\/.*$/gm, " ");
 
 beforeEach(() => { toast.success.mockReset(); toast.error.mockReset(); toast.info.mockReset(); channel.mockReset(); invoke.mockClear(); localStorage.clear(); });
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 
-describe("the promise is the payout", () => {
-  for (const file of ["supabase/functions/stripe-webhook/index.ts", "supabase/functions/verify-product-purchase/index.ts"]) {
-    it(`${file} pays exactly the amounts and the small-tool list the page quotes`, () => {
-      const src = code(file);
-      const list = /const (?:lowCommission|lowCommissionProducts) = \[([^\]]*)\];/.exec(src);
-      expect(list, "the server's small-tool list moved; re-check the copy").toBeTruthy();
-      expect([...list![1].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]).sort()).toEqual([...SMALL_TOOL_PRODUCT_TYPES].sort());
-      const amounts = /\.includes\(productType \|\| ''\) \? (\d+) : (\d+);/.exec(src);
-      expect(amounts).toBeTruthy();
-      expect([Number(amounts![1]), Number(amounts![2])]).toEqual([AFFILIATE_COMMISSION_CENTS.smallTool, AFFILIATE_COMMISSION_CENTS.other]);
-    });
-  }
-
-  it("the sign-up card quotes the flat amounts and no percentage", () => {
-    render(<MemoryRouter><Affiliates /></MemoryRouter>);
-    expect(screen.getByText("$5 per tool sale ($1 on smaller tools)")).toBeTruthy();
-    expect(document.body.textContent, "the page promised a percentage the server does not pay").not.toMatch(/20%/);
-  });
-});
-
-describe("only a sale whose checkout carries the referral code earns, and the copy says which", () => {
-  const FN = resolve(ROOT, "supabase/functions");
-  it("every live checkout carries the referral code, and only the ones the copy credits pay on it", () => {
-    // Wave 3: the code rides every checkout through the shared policy
-    // (_shared/checkout-policy.ts); the behaviour is run in
-    // a-checkout-sent-the-buyer-back-to-any-origin-asked-for-no-receipt-and-dropped-the-referral.
-    const minters = readdirSync(FN).filter((d) => /^create-.*checkout$/.test(d) && d !== "create-test-checkout");
-    const src = (d: string) => { try { return code(`supabase/functions/${d}/index.ts`); } catch { return ""; } };
-    const carrying = minters.filter((d) => /\bpolicyMetadata\(/.test(src(d))).sort();
-    expect(carrying, "a checkout started or stopped carrying the referral code; re-check the copy").toEqual([...REFERRAL_CHECKOUTS].sort());
-    const paying = minters.filter((d) => /\bpolicyMetadata\([^)]*commissioned:\s*true/.test(src(d))).sort();
-    expect(paying, "a checkout started or stopped paying on referrals; re-check the copy").toEqual([...COMMISSIONED_CHECKOUTS].sort());
-  });
-
-  it("the products the copy credits are that checkout's catalogue, each at the rate the server pays it", () => {
-    const src = code("supabase/functions/create-product-checkout/index.ts");
-    const sold = [...src.matchAll(/productType:\s*"([a-z_]+)"/g)].map((m) => m[1]).sort();
-    expect(sold).toEqual([...COMMISSIONED_PRODUCT_TYPES.other, ...COMMISSIONED_PRODUCT_TYPES.smallTool].sort());
-    for (const t of COMMISSIONED_PRODUCT_TYPES.smallTool) expect(SMALL_TOOL_PRODUCT_TYPES as readonly string[], t).toContain(t);
-    for (const t of COMMISSIONED_PRODUCT_TYPES.other) expect(SMALL_TOOL_PRODUCT_TYPES as readonly string[], t).not.toContain(t);
-  });
-
-  it("the page names the products that earn the higher rate and the ones that earn nothing, and promises nothing for every sale", () => {
-    render(<MemoryRouter><Affiliates /></MemoryRouter>);
-    const text = document.body.textContent ?? "";
-    expect(text, "the page promised a commission on every referred sale").not.toMatch(/(each|every) sale you refer/i);
-    for (const name of ["Premium Resume Package", "ATS Defense", "Career Snapshot", "Graduate Game Plan", "Freelance Boost"]) expect(text).toContain(name);
-    expect(screen.getByText("The Full Resume Analysis, scan credit top-ups, Pro, Morning Queue and the Agent Pass earn no commission.")).toBeTruthy();
-  });
-});
+// The commission rule and the copy that quotes it moved to
+// w4b-an-affiliate-earns-a-flat-amount-on-a-first-paid-pro-month.test.ts with the
+// affiliate re-base (owner decision 2026-10-12): one flat amount on a referred
+// customer's first paid Pro month.
 
 describe("Request Payout", () => {
   const button = () => screen.getByRole("button", { name: /Request Payout/ });

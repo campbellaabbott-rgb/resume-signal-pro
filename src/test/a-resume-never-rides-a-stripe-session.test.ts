@@ -133,10 +133,12 @@ describe("create-checkout sends Stripe no résumé text", () => {
   });
 
   it("the body the page sends now carries no résumé, and the checkout still works", async () => {
-    const res = await checkout({ currency: "eur", hasLinkedIn: true, tempSessionId: "8a6f7d3e-1b2c-4d5e-9f00-112233445566" });
+    // CAD, not EUR: while the EU/UK switch is off a euro price is refused
+    // (w4b-a-buyer-in-the-vat-territory-is-refused-until-vat).
+    const res = await checkout({ currency: "cad", hasLinkedIn: true, tempSessionId: "8a6f7d3e-1b2c-4d5e-9f00-112233445566" });
     expect(res.status).toBe(200);
     expect((await res.json()).url).toBe("https://checkout.stripe.test/x");
-    expect(stripeCalls.at(-1)!.params.metadata).toMatchObject({ originalCurrency: "eur", product_type: "full_analysis" });
+    expect(stripeCalls.at(-1)!.params.metadata).toMatchObject({ originalCurrency: "cad", product_type: "full_analysis" });
   });
 
   it("answers its build on the preflight, so the deploy is provable without minting a session", async () => {
@@ -245,13 +247,15 @@ describe("create-product-checkout keeps the résumé reference on our side", () 
     return { status: res.status, json: await res.json().catch(() => ({})) as Record<string, unknown> };
   }
 
-  it("a cover letter bought with a résumé: Stripe gets no reference to it, and the reference is kept against the session id", async () => {
-    const r = await buy({ productId: "coverLetter", sessionId: TEMP_ID, jobTitle: "Analyst", language: "en" });
+  // The cover letter was cut on 2026-10-12; Freelance Boost, still sold, binds a
+  // résumé reference the same way.
+  it("a product bought with a résumé: Stripe gets no reference to it, and the reference is kept against the session id", async () => {
+    const r = await buy({ productId: "freelanceBoost", sessionId: TEMP_ID, jobTitle: "Analyst", language: "en" });
     expect(r.status).toBe(200);
     expect(created).toHaveLength(1);
     expect(JSON.stringify(created[0]), "the temporary-store id went to Stripe").not.toContain(TEMP_ID);
     expect(created[0].metadata).not.toHaveProperty("session_id");
-    expect(created[0].metadata.product_type).toBe("cover_letter");
+    expect(created[0].metadata.product_type).toBe("freelance_boost");
     expect(db.rows(CHECKOUT_RESUME_TABLE)).toEqual([
       expect.objectContaining({ stripe_session_id: "cs_test_product_1", resume_session_id: TEMP_ID }),
     ]);
@@ -260,7 +264,7 @@ describe("create-product-checkout keeps the résumé reference on our side", () 
 
   it("if the reference cannot be kept, the session is expired and the buyer asked to retry -- nobody pays for a delivery that cannot find its résumé", async () => {
     db.faults.push({ table: CHECKOUT_RESUME_TABLE, op: "insert", error: { code: "57014", message: "canceling statement due to statement timeout" } });
-    const r = await buy({ productId: "coverLetter", sessionId: TEMP_ID });
+    const r = await buy({ productId: "freelanceBoost", sessionId: TEMP_ID });
     expect(r.status).toBe(503);
     expect(r.json.url).toBeUndefined();
     expect(expired).toEqual(["cs_test_product_1"]);
@@ -268,7 +272,7 @@ describe("create-product-checkout keeps the résumé reference on our side", () 
 
   it("a résumé that is already gone (the foreign key finds nothing) checks out as before", async () => {
     db.faults.push({ table: CHECKOUT_RESUME_TABLE, op: "insert", error: { code: "23503", message: "violates foreign key constraint" } });
-    const r = await buy({ productId: "coverLetter", sessionId: TEMP_ID });
+    const r = await buy({ productId: "freelanceBoost", sessionId: TEMP_ID });
     expect(r.status).toBe(200);
     expect(r.json.url).toBe("https://checkout.stripe.test/p");
     expect(expired).toEqual([]);
@@ -276,7 +280,7 @@ describe("create-product-checkout keeps the résumé reference on our side", () 
 
   it("a product bought with no résumé, or with something that is not a temporary-store id, keeps nothing and still checks out", async () => {
     for (const sessionId of [undefined, "", "not-a-uuid", "'; drop table x; --"]) {
-      const r = await buy({ productId: "scanPack", ...(sessionId === undefined ? {} : { sessionId }) });
+      const r = await buy({ productId: "freelanceTransitionPro", ...(sessionId === undefined ? {} : { sessionId }) });
       expect(r.status, String(sessionId)).toBe(200);
     }
     expect(db.rows(CHECKOUT_RESUME_TABLE)).toEqual([]);

@@ -12,7 +12,7 @@
  * checkout faked.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { MOUNT_TEST_BUDGET } from "./helpers/mount-budget";
 
@@ -38,7 +38,7 @@ vi.mock("@/components/seo/SEO", () => ({ SEO: () => null }));
 vi.mock("@/components/ProductPreview", () => ({ ProductPreview: () => null }));
 
 import Pricing from "../pages/Pricing";
-import { PRODUCTS, SUBSCRIPTIONS, PASS } from "@/config/products";
+import { PRODUCTS, SUBSCRIPTIONS, PASS, getAllProducts } from "@/config/products";
 import { PRO_PERKS } from "@/config/pro-perks";
 
 vi.setConfig(MOUNT_TEST_BUDGET);
@@ -70,11 +70,12 @@ describe("/pricing after the apply pivot", () => {
     expect(line.querySelector("a")!.getAttribute("href")).toBe("/agents");
   });
 
-  it("does not offer the Apply Assistant, even with the whole catalogue opened", () => {
+  // The collapsed catalogue is gone with the product line's cut (2026-10-12):
+  // w4b-the-pricing-page-sells-what-is-sold.test.tsx runs the page against
+  // every hidden product.
+  it("does not offer the Apply Assistant, and the ladder still offers the Full Analysis", () => {
     mount();
-    fireEvent.click(screen.getByRole("button", { name: /see every tool/i }));
     expect(screen.queryByText(PRODUCTS.applyAssistant.name)).toBeNull();
-    // The rest of the catalogue still opens: the toggle is not a dead control.
     expect(screen.getByText(PRODUCTS.fullAnalysis.name)).toBeInTheDocument();
   });
 
@@ -84,9 +85,7 @@ describe("/pricing after the apply pivot", () => {
     expect(data.description).not.toMatch(/pass|two optional subscriptions/i);
     const retired = [SUBSCRIPTIONS.agent.priceUsd, PASS.priceUsd, PRODUCTS.applyAssistant.priceUsd];
     const offered: number[] = [
-      ...(Object.keys(PRODUCTS) as Array<keyof typeof PRODUCTS>)
-        .filter((k) => k !== "applyAssistant" && k !== "basicKeywordFix")
-        .map((k): number => PRODUCTS[k].priceUsd),
+      ...getAllProducts().map((p): number => p.priceUsd),
       SUBSCRIPTIONS.pro.priceUsd,
     ];
     expect(Number(data.offers.highPrice)).toBe(Math.max(...offered));

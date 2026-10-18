@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAffiliateAuth } from '@/hooks/use-affiliate-auth';
 import { AFFILIATE_POLL_MS, useAffiliateUpdates } from '@/hooks/use-affiliate-realtime';
-import { AFFILIATE_COMMISSION_CENTS, formatUsd } from '@/config/affiliate-commission';
+import { AFFILIATE_PRO_FIRST_MONTH_CENTS, formatUsd } from '@/config/affiliate-commission';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,8 +54,11 @@ interface ClickData {
 
 export default function Affiliates() {
   const { t } = useTranslation();
-  // What the server pays (register L13-63): flat amounts, never a percentage.
-  const rate = { other: formatUsd(AFFILIATE_COMMISSION_CENTS.other), small: formatUsd(AFFILIATE_COMMISSION_CENTS.smallTool) };
+  // What the server pays (register L13-63; the affiliate re-base of
+  // 2026-10-12): one flat amount on a referred customer's first paid Pro
+  // month, never a percentage. The keys are new (affiliates.proCommission.*)
+  // because the old values promised the cut catalogue.
+  const rate = { amount: formatUsd(AFFILIATE_PRO_FIRST_MONTH_CENTS) };
   const { 
     session, 
     isLoading, 
@@ -202,19 +205,19 @@ export default function Affiliates() {
             <CardDescription>
               {isLoginMode 
                 ? 'Sign in to access your affiliate dashboard' 
-                : t('affiliates.commission.tagline', 'Earn a commission on the tools your referrals buy.')}
+                : t('affiliates.proCommission.tagline', 'Earn a flat {{amount}} when someone you refer pays for their first month of Pro.', rate)}
             </CardDescription>
             {/* Commission disclosure */}
             <div className="mt-4 p-4 rounded-lg bg-primary/10 border border-primary/20">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <TrendingUp className="h-5 w-5 text-primary" />
-                <span className="font-bold text-lg text-primary">{t('affiliates.commission.headline', '{{other}} per tool sale ({{small}} on smaller tools)', rate)}</span>
+                <span className="font-bold text-lg text-primary">{t('affiliates.proCommission.headline', '{{amount}} for each referred first paid month of Pro', rate)}</span>
               </div>
               <p className="text-sm text-muted-foreground">
-                {t('affiliates.commission.detail', 'Earn {{other}} when someone you refer buys the Premium Resume Package, ATS Defense, Career Snapshot, Graduate Game Plan or Freelance Boost, or {{small}} for one of the smaller tools: keyword fix, cover letter, scan pack, interview coach, career path simulator or apply assistant.', rate)}
+                {t('affiliates.proCommission.detail', 'Pro is $45 a month. When someone who came through your link pays for their first month of Pro, you earn {{amount}}.', rate)}
               </p>
               <p className="text-sm text-muted-foreground mt-1">
-                {t('affiliates.commission.excluded', 'The Full Resume Analysis, scan credit top-ups, Pro, Morning Queue and the Agent Pass earn no commission.')}
+                {t('affiliates.proCommission.excluded', 'Other purchases (the Full Resume Analysis and the Freelance Boost tiers) earn no commission. Commissions you have already earned are paid as before.')}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 30-day cookie • Paid monthly
@@ -298,8 +301,8 @@ export default function Affiliates() {
             </div>
             <div>
               <p className="font-semibold">{t('affiliates.commission.bannerTitle', 'Your commission')}</p>
-              <p className="text-sm text-muted-foreground">{t('affiliates.commission.banner', '{{other}} per referred tool sale, {{small}} on smaller tools', rate)}</p>
-              <p className="text-xs text-muted-foreground">{t('affiliates.commission.excluded', 'The Full Resume Analysis, scan credit top-ups, Pro, Morning Queue and the Agent Pass earn no commission.')}</p>
+              <p className="text-sm text-muted-foreground">{t('affiliates.proCommission.banner', '{{amount}} per referred first paid month of Pro', rate)}</p>
+              <p className="text-xs text-muted-foreground">{t('affiliates.proCommission.excluded', 'Other purchases (the Full Resume Analysis and the Freelance Boost tiers) earn no commission. Commissions you have already earned are paid as before.')}</p>
             </div>
           </div>
           <Badge variant="secondary" className="text-primary border-primary/30">
@@ -314,7 +317,7 @@ export default function Affiliates() {
               <div>
                 <h3 className="font-semibold mb-1">Your Referral Link</h3>
                 <p className="text-sm text-muted-foreground mb-2">
-                  {t('affiliates.commission.linkHint', 'Share this link to earn {{other}} on each tool sale it brings ({{small}} on smaller tools), with a 30-day attribution window', rate)}
+                  {t('affiliates.proCommission.linkHint', 'Share this link to earn {{amount}} on each referred first paid month of Pro, with a 30-day attribution window', rate)}
                 </p>
                 <code className="text-xs bg-background px-2 py-1 rounded border break-all">
                   {getReferralLink()}
@@ -706,7 +709,7 @@ export default function Affiliates() {
               <div>
                 <p className="font-medium">Track Conversions</p>
                 <p className="text-sm text-muted-foreground">
-                  {t('affiliates.commission.howItWorks', 'When someone clicks your link and buys one of the tools within 30 days, you earn {{other}}, or {{small}} for a smaller tool. The Full Resume Analysis, scan credit top-ups and subscriptions earn nothing.', rate)}
+                  {t('affiliates.proCommission.howItWorks', 'When someone clicks your link and pays for their first month of Pro within 30 days, you earn {{amount}}. Other purchases earn nothing.', rate)}
                 </p>
               </div>
             </div>

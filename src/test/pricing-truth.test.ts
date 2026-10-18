@@ -298,7 +298,8 @@ describe("no Pro perk names a price-specific entitlement", () => {
     lines.flatMap((line) => agentOnly.filter((n) => line.toLowerCase().includes(n.toLowerCase())).map((n) => `"${line}" names ${n}`));
   // The description Stripe shows on the page that takes the Pro money.
   const proStripeDescription = (src: string): string => {
-    const m = src.match(/description:\s*\n?\s*"([^"]+)"/);
+    // Inline, or (wave 4 round 2) the PRO_STRIPE_DESCRIPTION constant it reads.
+    const m = src.match(/PRO_STRIPE_DESCRIPTION\s*=\s*\n?\s*"([^"]+)"/) ?? src.match(/description:\s*\n?\s*"([^"]+)"/);
     if (!m) throw new Error("create-subscription-checkout no longer describes its product inline -- re-anchor this guard");
     return m[1];
   };

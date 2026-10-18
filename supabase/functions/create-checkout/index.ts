@@ -7,10 +7,23 @@ import { clientAddressOr } from "../_shared/client-address.ts";
 import { accountProStanding } from "../_shared/pro.ts";
 import { FULL_ANALYSIS_PRODUCT_NAME, FULL_ANALYSIS_PRODUCT_TYPE } from "../_shared/full-analysis.ts";
 import { checkoutOrigin, euConsentAnswer, euConsentRefusal, euSalesPolicy, policyMetadata, sessionPolicy } from "../_shared/checkout-policy.ts";
+import { ipinfoLookup, territoryAnswer, territoryPolicy, territoryRefusal, withBillingAddress } from "../_shared/sales-territory.ts";
+import {
+  buyerMetadata, buyerSessionFields, CALLER_UNAVAILABLE_BODY, checkoutCaller, fairUseAnswer, grantCapOf, recordCheckoutBuyer,
+  refusedCallerBody,
+} from "../_shared/checkout-buyer.ts";
+import { planPaid, UNPAID_PLAN_NOTE } from "../_shared/consumable-paid.ts";
 
 // Provable from outside without a purchase: every response, the CORS
 // preflight included, carries this in x-fn-build.
-const FN_BUILD = "create-checkout.2026-10-09.61";
+// 2026-10-11.23 (wave 4 round 2, checkout-catalogue): a buyer in the EU, the
+// EEA or the UK is refused while the EU/UK switch is off, and the GET says
+// so (territoryRefused); an auth server that cannot answer is a 503, never a
+// paid session for a Pro member; a Pro grant over the cap is a fair-use 429;
+// a signed-in buyer's account rides the session and checkout_buyers; the
+// billing address is always collected; a connected app's token, or one
+// issued for another audience, is refused with a 401 (critical-path CP-D).
+const FN_BUILD = "create-checkout.2026-10-11.23";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -285,7 +298,8 @@ serve(async (req) => {
   // the switch and nothing else, before any limiter or Stripe call, so the
   // buy buttons can show the box the moment the owner turns it on.
   if (req.method === "GET") {
-    return new Response(JSON.stringify(euSalesPolicy((k: string) => Deno.env.get(k))), {
+    const env = (k: string) => Deno.env.get(k);
+    return new Response(JSON.stringify({ ...euSalesPolicy(env), ...territoryPolicy(env) }), {
       headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "public, max-age=60" },
     });
   }
@@ -422,62 +436,97 @@ serve(async (req) => {
     // exactly as create-product-checkout mints one, and the success page
     // redeems it through analyze-resume like a paid session. A trial, or no
     // plan, buys at the price below.
-    const bearer = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+    //
+    // THREE ANSWERS (checkout-buyer.ts, CP-025): a token the auth server
+    // refused is an anonymous buyer; an auth server that could not answer is
+    // a 503, because a Pro member must never be sent to pay for this.
+    const caller = await checkoutCaller(supabase.auth, req.headers, Deno.env.get("SUPABASE_ANON_KEY") ?? "");
+    if (caller.kind === "unavailable") {
+      logStep("The auth server could not answer; not starting a checkout", { reason: caller.reason });
+      return new Response(JSON.stringify(CALLER_UNAVAILABLE_BODY), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    // A connected app's token (or one issued for another audience) is not
+    // the person on the website: it neither buys nor mints their analysis.
+    if (caller.kind === "refused") {
+      logStep("Refused: the token is not a website session", { reason: caller.reason });
+      return new Response(JSON.stringify(refusedCallerBody(caller)), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     // A signed-in buyer's verified address, for Stripe's receipt.
-    let receiptEmail: string | null = null;
-    if (bearer && bearer !== (Deno.env.get("SUPABASE_ANON_KEY") ?? "")) {
-      let member: { id: string; email: string } | null = null;
-      try {
-        const { data: authData } = await supabase.auth.getUser(bearer);
-        const u = authData?.user;
-        if (u?.id && typeof u.email === "string" && u.email.includes("@")) member = { id: u.id, email: u.email.trim().toLowerCase() };
-      } catch (authErr) {
-        // A token the auth server refuses is an anonymous buyer, nothing more.
-        logStep("Token check failed; continuing as an anonymous checkout", { error: String(authErr).slice(0, 120) });
+    const receiptEmail: string | null = caller.kind === "signed_in" ? caller.email : null;
+    if (caller.kind === "signed_in") {
+      const member = { id: caller.id, email: caller.email };
+      const standing = await accountProStanding(supabase, member.id);
+      if (!standing.known) {
+        // Charging a member for a tool their plan includes is worse than a retry.
+        return new Response(
+          JSON.stringify({ error: "We couldn't check your plan just now. Please try again in a minute." }),
+          { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
-      if (member) {
-        receiptEmail = member.email;
-        const standing = await accountProStanding(supabase, member.id);
-        if (!standing.known) {
-          // Charging a member for a tool their plan includes is worse than a retry.
-          return new Response(
-            JSON.stringify({ error: "We couldn't check your plan just now. Please try again in a minute." }),
-            { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-        if (standing.consumables) {
-          const tempSessionId = typeof requestBody?.tempSessionId === "string" && UUID_RE.test(requestBody.tempSessionId)
-            ? requestBody.tempSessionId : null;
-          const { data: grant, error: grantError } = await supabase
-            .from("pro_grants")
-            .insert({
-              email: member.email,
-              user_id: member.id,
-              product_id: "fullAnalysis",
-              product_type: FULL_ANALYSIS_PRODUCT_TYPE,
-              product_name: FULL_ANALYSIS_PRODUCT_NAME,
-              resume_session_id: tempSessionId,
-            })
-            .select("id")
-            .single();
-          if (!grantError && grant?.id) {
-            logStep("Pro grant issued for the full analysis", { grant: grant.id });
-            trackPerformance(requestStartTime, 'create-checkout', true, { proIncluded: true }, clientIp);
-            return new Response(JSON.stringify({
-              url: `${origin}/success?session_id=pro_${grant.id}`,
-              sessionId: `pro_${grant.id}`,
-              proIncluded: true,
-            }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 });
-          }
-          // Never a charge for an included tool: a failed mint is a retry.
-          logStep("Pro grant insert failed", { error: grantError?.message ?? "no id returned" });
-          return new Response(
-            JSON.stringify({ error: "We couldn't unlock your included analysis just now. Please try again in a minute." }),
-            { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-        if (standing.trialing) logStep("Trialing plan: the full analysis is bought, not minted, while the trial runs");
+      // A TRIAL'S FIRST REAL PAYMENT FIRST (S12-098): the hour between a
+      // trial's end and its first charge reads "active" in the cache.
+      const paid = standing.consumables ? await planPaid(stripe, supabase, member.id) : "paid";
+      if (paid !== "paid") {
+        logStep("No grant: the plan's payment is not confirmed", { paid });
+        return new Response(
+          JSON.stringify(paid === "unpaid"
+            ? { error: UNPAID_PLAN_NOTE, planUnpaid: true }
+            : { error: "We couldn't check your plan just now. Please try again in a minute." }),
+          { status: paid === "unpaid" ? 409 : 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
+      if (standing.consumables) {
+        const tempSessionId = typeof requestBody?.tempSessionId === "string" && UUID_RE.test(requestBody.tempSessionId)
+          ? requestBody.tempSessionId : null;
+        const { data: grant, error: grantError } = await supabase
+          .from("pro_grants")
+          .insert({
+            email: member.email,
+            user_id: member.id,
+            product_id: "fullAnalysis",
+            product_type: FULL_ANALYSIS_PRODUCT_TYPE,
+            product_name: FULL_ANALYSIS_PRODUCT_NAME,
+            resume_session_id: tempSessionId,
+          })
+          .select("id")
+          .single();
+        if (!grantError && grant?.id) {
+          logStep("Pro grant issued for the full analysis", { grant: grant.id });
+          trackPerformance(requestStartTime, 'create-checkout', true, { proIncluded: true }, clientIp);
+          return new Response(JSON.stringify({
+            url: `${origin}/success?session_id=pro_${grant.id}`,
+            sessionId: `pro_${grant.id}`,
+            proIncluded: true,
+          }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 });
+        }
+        // OVER THE CAP (owner decision D7): fair use, never a charge.
+        const cap = grantCapOf(grantError);
+        if (cap) {
+          const answer = fairUseAnswer(cap);
+          logStep("Pro grant refused by the cap", { cap });
+          return new Response(JSON.stringify(answer.body), { status: answer.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        // Never a charge for an included tool: a failed mint is a retry.
+        logStep("Pro grant insert failed", { error: grantError?.message ?? "no id returned" });
+        return new Response(
+          JSON.stringify({ error: "We couldn't unlock your included analysis just now. Please try again in a minute." }),
+          { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (standing.trialing) logStep("Trialing plan: the full analysis is bought, not minted, while the trial runs");
+    }
+
+    // NO SALE INTO THE EU, THE EEA OR THE UK WHILE THE SWITCH IS OFF
+    // (S12-059): a euro or pound price is itself the page saying so, and no
+    // such session is minted. After the grant (a member's included analysis
+    // is not a sale), before Stripe.
+    const territory = await territoryRefusal({
+      env, headers: req.headers, body: requestBody, currency: requestedCurrency ?? null, address: clientIp, lookup: ipinfoLookup(env),
+    });
+    if (territory) {
+      const answer = territoryAnswer(territory, { body: requestBody, acceptLanguage: req.headers.get("accept-language") });
+      logStep("Refused: the buyer is in the VAT territory", { signal: territory.signal });
+      return new Response(JSON.stringify(answer.body), { status: answer.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // The EU/UK switch (off by default): a paid report delivered at once
@@ -563,12 +612,16 @@ serve(async (req) => {
         originalCurrency: currency,
         baseAmountUSD: BASE_PRICE_USD.toString(),
         product_type: 'full_analysis',
+        ...buyerMetadata(caller),
         ...policy,
       },
+      // THE ACCOUNT THAT BOUGHT IT (CP-022) and its verified address (CP-012).
+      ...buyerSessionFields(caller),
+      ...(receiptEmail ? { customer_email: receiptEmail } : {}),
       // Additional reliability settings
       expires_at: Math.floor(Date.now() / 1000) + 30 * 60, // Session expires in 30 minutes
-      // A signed-in buyer's receipt; tax only with the EU/UK switch on.
-      ...(sessionPolicy({ mode: "payment", env, receiptEmail }) as Partial<Stripe.Checkout.SessionCreateParams>),
+      // A signed-in buyer's receipt; the billing address; tax only with the EU/UK switch on.
+      ...(withBillingAddress(sessionPolicy({ mode: "payment", env, receiptEmail })) as Partial<Stripe.Checkout.SessionCreateParams>),
     };
 
     if (promotionCodeId) {
@@ -593,6 +646,8 @@ serve(async (req) => {
       context: checkoutContextOf(requestBody),
       metadata: { promo: !!promotionCodeId, requestedCurrency: requestedCurrency ?? null, termsVersion: policy.terms_version || null, referral: !!policy.referral_code, withdrawalWaiver: policy.withdrawal_waiver ?? null },
     });
+    // The account behind the session, before the browser has the url.
+    await recordCheckoutBuyer(supabase, { stripeSessionId: session.id, caller, checkoutFunction: "create-checkout", productType: "full_analysis" });
 
     trackPerformance(requestStartTime, 'create-checkout', true, { currency, amount }, clientIp);
     logStep("Checkout session created", { sessionId: session.id, currency, amount });

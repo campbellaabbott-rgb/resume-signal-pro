@@ -124,7 +124,10 @@ describe("a product checkout (use-product-checkout)", () => {
     return (
       <div>
         <PurchaseTerms kind="payment" />
-        <button type="button" onClick={() => { void purchaseProduct("coverLetter", { inputs: { resumeText: RESUME, jobDescription: null } }); }}>unlock</button>
+        {/* Freelance Boost: the products made from the résumé (which stored a
+            copy first) were all cut on 2026-10-12; the press still awaits the
+            session read before the call, and a tap there must not replace it. */}
+        <button type="button" onClick={() => { void purchaseProduct("freelanceBoost", { inputs: { resumeText: RESUME, jobDescription: null } }); }}>unlock</button>
       </div>
     );
   }
@@ -135,8 +138,7 @@ describe("a product checkout (use-product-checkout)", () => {
     render(<MemoryRouter><Card /></MemoryRouter>);
     await pressThenTapElsewhere(screen.getByRole("button", { name: "unlock" }));
     await waitFor(() => expect(body(), "create-product-checkout was never called").toBeTruthy());
-    expect(body()!.sessionId, "the checkout did not wait for the store").toBe(STORED);
-    expect(body(), "the tap during the store replaced the press").toMatchObject({ termsVersion: TERMS_VERSION });
+    expect(body(), "the tap during the awaits replaced the press").toMatchObject({ termsVersion: TERMS_VERSION, productId: "freelanceBoost" });
   });
 
   it("with the EU/UK switch on, the box ticked beside the button reaches the checkout", async () => {

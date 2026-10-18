@@ -3,7 +3,7 @@ import { Crown, FileText, Package, ArrowRight, Sparkles, ShieldCheck } from "luc
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { PRODUCTS, ProductId } from "@/config/products";
+import { PRODUCTS, ProductId, isProductHidden } from "@/config/products";
 import { useCurrency } from "@/hooks/use-currency";
 
 const featuredProductKeys: { key: ProductId; highlight?: boolean }[] = [
@@ -21,6 +21,11 @@ const productIcons: Record<string, React.ElementType> = {
 export function MiniPricingCards() {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
+  // ONLY WHAT IS STILL SOLD (the product line, 2026-10-12): the three
+  // featured products were all cut, so with the hidden ones removed this
+  // renders nothing rather than linking to products the checkout refuses.
+  const featured = featuredProductKeys.filter(({ key }) => !isProductHidden(key));
+  if (featured.length === 0) return null;
 
   return (
     <section className="py-16 border-t border-border/50">
@@ -39,7 +44,7 @@ export function MiniPricingCards() {
         </div>
 
         <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto">
-          {featuredProductKeys.map(({ key, highlight }) => {
+          {featured.map(({ key, highlight }) => {
             const product = PRODUCTS[key];
             const Icon = productIcons[key] || Sparkles;
             const badge = 'badge' in product ? product.badge : undefined;

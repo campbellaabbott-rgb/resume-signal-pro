@@ -110,9 +110,11 @@ export const PRODUCTS = {
   atsDefense: {
     id: 'ats_defense',
     name: 'ATS Defense Complete',
-    description: 'Full ATS optimization with multi-role targeting & 30-day guarantee',
+    description: 'Full ATS optimization with multi-role targeting',
     priceUsd: 15,
     priceId: 'price_1Sgv3LHBplUUV1CgpCF5pDLO',
+    // S12-008: a promise with no terms and no mechanism, beside Terms that
+    // say every sale is final, is gone from the list and the description.
     features: [
       'ATS compatibility audit (before/after score)',
       'Keyword gap analysis & optimization',
@@ -120,7 +122,6 @@ export const PRODUCTS = {
       'Targets up to 3 roles you name before checkout',
       'LinkedIn profile alignment tips',
       'Industry keyword bank',
-      '30-day re-optimize guarantee'
     ],
     badge: 'Most Comprehensive'
   },
@@ -172,7 +173,7 @@ export const PRODUCTS = {
       'Export to PDF or Word',
       'You review and submit — nothing is auto-submitted on your behalf'
     ],
-    badge: 'Human-Reviewed',
+    // S12-008: no badge. It said a person reviewed the output; nobody did.
     tagline: 'We do the prep work. You stay in control of every submission.'
   },
   freelanceBoost: {
@@ -226,16 +227,26 @@ export function getProduct(id: ProductId) {
 // Ask Lovable's agent: select product_type, count(*) from purchases group by 1
 // (or the product_purchases table) and hide the zeros.
 export const HIDDEN_PRODUCT_IDS: ProductId[] = [
-  // Reachable from nowhere in the UI, worst margin in the catalog (Stripe's
-  // flat fee is 13% of $3), and zero recorded sales — first real use of the
-  // pruning mechanism. Existing links/grants keep working.
-  "basicKeywordFix",
   // RETIRED by the apply pivot (owner decision 2026-10-11). Its checkout
   // answers 410 (create-product-checkout, _shared/apply-agent-retired.ts);
-  // a buyer from before is honoured or refunded by the owner, and its success
-  // page keeps delivering what was bought. Hidden here, it leaves every
-  // pricing, showcase and recommendation surface that reads this list.
+  // its success page keeps delivering what was bought.
   "applyAssistant",
+  // CUT by the product line (owner decision 2026-10-12): no longer sold.
+  // create-product-checkout (create-scan-pack-checkout for the scan packs)
+  // answers each with 410 and the sentence in _shared/product-cuts.ts, whose
+  // CUT_PRODUCTS lists exactly these ids (a test holds the two equal). Past
+  // buyers keep what they bought for 90 days: success pages, saved copies and
+  // the recovery link do not read this list. Hidden here, each one leaves
+  // every pricing, showcase and recommendation surface that reads it.
+  "basicKeywordFix",
+  "coverLetter",
+  "premiumPackage",
+  "atsDefense",
+  "careerSnapshot",
+  "graduateGamePlan",
+  "interviewCoach",
+  "careerPathSimulator",
+  "scanPack",
 ];
 
 export function isProductHidden(id: ProductId): boolean {
@@ -258,22 +269,24 @@ export function oneTimePriceRangeUsd(): { min: number; max: number } {
   return { min: Math.min(...prices), max: Math.max(...prices) };
 }
 
-// Get $5 add-on products (Resume Roast is free with scanner)
+// The $5 add-ons still on sale. Interview Coach and Career Path were cut as
+// one-offs (2026-10-12), so this is empty until something is added; every
+// surface that reads it renders nothing for an empty list.
 export function getAddOnProducts() {
-  return [
-    PRODUCTS.interviewCoach,
-    PRODUCTS.careerPathSimulator,
-  ];
+  return ([
+    "interviewCoach",
+    "careerPathSimulator",
+  ] as ProductId[]).filter((id) => !isProductHidden(id)).map((id) => PRODUCTS[id]);
 }
 
-// Get premium products (higher tier)
+// The higher-tier one-offs still on sale (all cut on 2026-10-12: empty).
 export function getPremiumProducts() {
-  return [
-    PRODUCTS.graduateGamePlan,
-    PRODUCTS.atsDefense,
-    PRODUCTS.careerSnapshot,
-    PRODUCTS.applyAssistant,
-  ];
+  return ([
+    "graduateGamePlan",
+    "atsDefense",
+    "careerSnapshot",
+    "applyAssistant",
+  ] as ProductId[]).filter((id) => !isProductHidden(id)).map((id) => PRODUCTS[id]);
 }
 
 // The recurring plans. These MUST mirror the checkout functions, which are the

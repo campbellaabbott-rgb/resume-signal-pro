@@ -23,7 +23,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
 import { analyzeResumeHarness, RESUME, type Harness } from "./helpers/analyze-resume-harness";
 import { isProductHidden, PRODUCTS, type ProductId } from "@/config/products";
-import { PRO_PERKS } from "@/config/pro-perks";
+import { PRO_INCLUDED_PRODUCT_IDS, PRO_PERKS } from "@/config/pro-perks";
 
 vi.setConfig({ testTimeout: 60_000, hookTimeout: 180_000 });
 
@@ -107,11 +107,12 @@ const buy = async (productId: ProductId, bearer: string) => {
 const onSale = (Object.keys(PRODUCTS) as ProductId[]).filter((id) => !isProductHidden(id));
 
 describe("the checkout of every paid tool hands a Pro member the tool, not a bill", () => {
-  it("PRECONDITION: a Pro perk says every paid tool is included", () => {
-    // If this line ever leaves the card, the claim below is no longer made
-    // and this file can be narrowed on purpose.
-    expect(PRO_PERKS.some((p) => /every paid tool included/i.test(p))).toBe(true);
-    expect(onSale.length).toBeGreaterThan(3);
+  // The product line of 2026-10-12: the card no longer says "every paid tool"
+  // (the catalogue was cut); one perk line names the one-off products Pro
+  // includes, and they are exactly the ones still on sale.
+  it("PRECONDITION: a Pro perk names the one-off products Pro includes, and they are what is on sale", () => {
+    expect(PRO_PERKS.some((p) => /Full Analysis, Freelance Boost and Transition Pro included/.test(p))).toBe(true);
+    expect([...onSale].sort()).toEqual([...PRO_INCLUDED_PRODUCT_IDS].sort());
   });
 
   it.each(onSale)("%s", async (productId) => {

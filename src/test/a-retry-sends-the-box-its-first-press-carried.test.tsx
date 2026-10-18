@@ -77,13 +77,16 @@ describe("the Full Analysis retry", () => {
 });
 
 describe("a product checkout that starts nothing gives the box back", () => {
-  it("closing the ATS Defense roles question leaves the box ticked, and the next press sends it", async () => {
+  // ATS Defense (and its roles question) was cut on 2026-10-12: a press on a
+  // product no longer sold starts nothing at all, and gives the box back the
+  // same way the closed roles question did.
+  it("a press on a product no longer sold starts nothing, leaves the box ticked, and the next press sends it", async () => {
     render(<Page />);
     const { result } = renderHook(() => useProductCheckout());
     fireEvent.click(box());
     fireEvent.click(screen.getByRole("button", { name: "buy" }));
     await act(async () => { await result.current.purchaseProduct("atsDefense"); });
-    expect(askForTargetRoles).toHaveBeenCalled();
+    expect(askForTargetRoles).not.toHaveBeenCalled();
     expect(invoke).not.toHaveBeenCalled();
     await waitFor(() => expect(box().checked, "closing the roles question lost the tick").toBe(true));
     fireEvent.click(screen.getByRole("button", { name: "buy" }));
@@ -91,13 +94,12 @@ describe("a product checkout that starts nothing gives the box back", () => {
   });
 
   it("a checkout call that fails leaves the box ticked too", async () => {
-    askForTargetRoles.mockResolvedValueOnce(["Data Analyst"]);
     invoke.mockResolvedValueOnce({ data: null, error: new Error("offline") } as never);
     render(<Page />);
     const { result } = renderHook(() => useProductCheckout());
     fireEvent.click(box());
     fireEvent.click(screen.getByRole("button", { name: "buy" }));
-    await act(async () => { await result.current.purchaseProduct("atsDefense"); });
+    await act(async () => { await result.current.purchaseProduct("freelanceBoost"); });
     expect(invoke).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(box().checked).toBe(true));
   });

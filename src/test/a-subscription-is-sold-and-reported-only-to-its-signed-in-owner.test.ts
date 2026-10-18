@@ -273,9 +273,13 @@ describe("check-subscription remembers 'not subscribed' for a signed-in caller (
   });
 });
 
-describe("create-product-checkout tells a signed-out caller no more than it did before the wave (2026-10-05 review)", () => {
+// Owner decision D8 (2026-10-12): the signed-out "sign in to use your plan"
+// answer, which revealed whether an address held Pro, is gone; a signed-out
+// caller learns nothing about any address. Freelance Boost, still sold, is the
+// product (the cover letter was cut).
+describe("create-product-checkout tells a signed-out caller nothing about an address (D8)", () => {
   const buy = async (email: string, bearer?: string) =>
-    (await post("create-product-checkout", { productId: "coverLetter", email }, bearer)).json();
+    (await post("create-product-checkout", { productId: "freelanceBoost", email }, bearer)).json();
 
   it("a comped or $99 agent account looks like any stranger to a signed-out caller", async () => {
     db.rows("agent_subscribers").push({ email: "comped@example.com", status: "active", current_period_end: null, stripe_customer_id: null });
@@ -286,17 +290,20 @@ describe("create-product-checkout tells a signed-out caller no more than it did 
     expect(comped.url).toBe("https://checkout.stripe.com/c/cs_test_new");
   });
 
-  it("the Pro answer it already gave is kept until the owner decides (a signed-out subscriber is not charged)", async () => {
+  it("a Pro subscriber's address looks like any stranger's too: an ordinary checkout, no sign-in hint", async () => {
     db.rows("pro_subscribers").push({ email: "pro@example.com", status: "active", current_period_end: null });
-    expect(await buy("pro@example.com")).toEqual({ proRequiresSignIn: true });
-    expect(stripe.calls).not.toContain("sessions.create");
+    const pro = await buy("pro@example.com");
+    const stranger = await buy("nobody@example.com");
+    expect(pro.proRequiresSignIn).toBeUndefined();
+    expect(Object.keys(pro).sort()).toEqual(Object.keys(stranger).sort());
+    expect(db.rows("pro_grants")).toEqual([]);
   });
 
   it("signed in, the agent plan's owner gets the included tool without Stripe", async () => {
     db.rows("agent_subscribers").push({ email: "owner@example.com", status: "active", current_period_end: null, stripe_customer_id: null, user_id: OWNER_ID });
     const body = await buy("someone-else@example.com", "jwt-owner");
     expect(body.proIncluded).toBe(true);
-    expect(db.rows("pro_grants")[0]).toMatchObject({ email: "owner@example.com", product_id: "coverLetter" });
+    expect(db.rows("pro_grants")[0]).toMatchObject({ email: "owner@example.com", product_id: "freelanceBoost" });
     expect(stripe.calls).not.toContain("sessions.create");
   });
 });
@@ -330,9 +337,12 @@ describe("the subscription checkouts sell only to a signed-in account, and never
       expect(stripe.calls).toEqual([]);
     });
 
-    it(`${fn}: a new plan is billed to the customer the address already has`, async () => {
+    // S12-099 (wave 4 round 2): only a customer this account provably owns is
+    // reused (create-subscription-checkout); a bound cache row is that proof.
+    it(`${fn}: a new plan is billed to the customer the address already has, when the account owns it`, async () => {
       stripe.customers["owner@example.com"] = [{ id: "cus_owner" }];
       stripe.subs.cus_owner = [sub("canceled", PRO)];
+      db.rows("pro_subscribers").push({ email: "owner@example.com", user_id: OWNER_ID, stripe_customer_id: "cus_owner", status: "canceled" });
       const body = await (await post(fn, {}, "jwt-owner")).json();
       expect(body.url).toBe("https://checkout.stripe.com/c/cs_test_new");
       expect(stripe.created[0]).toMatchObject({ customer: "cus_owner", mode: "subscription" });

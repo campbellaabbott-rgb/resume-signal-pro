@@ -1,9 +1,7 @@
-import { Link } from "react-router-dom";
-import { ArrowRight, CheckCircle2, Zap, X, Check, Flame, MessageSquare, TrendingUp } from "lucide-react";
+import { ArrowRight, CheckCircle2, Zap, X, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
 import { PRODUCTS } from "@/config/products";
-import { cn } from "@/lib/utils";
 
 interface FinalCTAProps {
   onGetStarted: () => void;
@@ -13,11 +11,6 @@ interface FinalCTAProps {
 export function FinalCTA({ onGetStarted, isLoading }: FinalCTAProps) {
   const { t } = useTranslation();
   const { formatPrice, isLocalCurrency } = useCurrency();
-  const addOnNames = {
-    resumeRoast: t('finalCtaExtra.addOnNames.resumeRoast'),
-    interviewCoach: t('finalCtaExtra.addOnNames.interviewCoach'),
-    careerPath: t('finalCtaExtra.addOnNames.careerPath'),
-  };
 
   // Winners declared - using control variants
   const getCtaText = () => t('finalCta.ctaButton');
@@ -36,12 +29,6 @@ export function FinalCTA({ onGetStarted, isLoading }: FinalCTAProps) {
     { featureKey: "finalCta.comparison.jobKeywords", free: false, paid: true },
     { featureKey: "finalCta.comparison.industryTemplates", free: false, paid: true },
     { featureKey: "finalCta.comparison.fullReport", free: false, paid: true },
-  ];
-
-  const addOns = [
-    { name: addOnNames.resumeRoast, icon: Flame, price: 'FREE' },
-    { name: addOnNames.interviewCoach, icon: MessageSquare, price: 5 },
-    { name: addOnNames.careerPath, icon: TrendingUp, price: 5 },
   ];
 
   return (
@@ -99,39 +86,9 @@ export function FinalCTA({ onGetStarted, isLoading }: FinalCTAProps) {
             </div>
           </div>
 
-          {/* Add-Ons Showcase */}
-          <div className="bg-card/60 border border-border/50 rounded-2xl p-6 mb-10 backdrop-blur-sm">
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <span className="text-sm font-semibold text-foreground">{t('finalCtaExtra.powerUpAddOns')}</span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-success/20 text-success font-medium">{t('finalCtaExtra.resumeRoastFree')}</span>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              {addOns.map(({ name, icon: Icon, price }) => (
-                <div key={name} className="flex flex-col items-center gap-2 p-3 rounded-xl bg-muted/30">
-                  <div className={cn(
-                    "w-10 h-10 rounded-lg flex items-center justify-center",
-                    price === 'FREE' ? "bg-success/10" : "bg-primary/10"
-                  )}>
-                    <Icon className={cn("w-5 h-5", price === 'FREE' ? "text-success" : "text-primary")} />
-                  </div>
-                  <span className="text-xs font-medium text-foreground">{name}</span>
-                  <span className={cn(
-                    "text-xs font-bold",
-                    price === 'FREE' ? "text-success" : "text-primary"
-                  )}>
-                    {price === 'FREE' ? 'FREE' : `$${price}`}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <Link 
-              to="/pricing" 
-              onClick={() => window.scrollTo(0, 0)}
-              className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-4"
-            >
-              {t('finalCtaExtra.viewAllProducts')} <ArrowRight className="w-3 h-3" />
-            </Link>
-          </div>
+          {/* The add-ons that sat here (Resume Roast, Interview Coach and Career
+          Path at $5) were cut on 2026-10-12 (the product line): nothing below
+          offers them. */}
           
           {/* Price + CTA */}
           <div className="inline-flex flex-col items-center p-8 rounded-2xl bg-primary/10 border border-primary/30">

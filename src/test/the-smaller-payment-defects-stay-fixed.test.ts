@@ -101,6 +101,13 @@ beforeAll(async () => {
   for (const fn of ["reconcile-stripe", "create-scan-pack-checkout", "create-checkout", "parse-resume-structured"]) {
     handlers[fn] = await loadEdgeHandler(fn, STUBS);
   }
+  // Scan packs are no longer sold (2026-10-12): the shipped checkout answers
+  // 410. The pack's own bounds are still the dormant path's, so it is run with
+  // its switch stubbed on, as the dormant apply agent's tests run theirs.
+  handlers["create-scan-pack-checkout:on-sale"] = await loadEdgeHandler("create-scan-pack-checkout", {
+    ...STUBS,
+    "_shared/product-cuts.ts": "export const SCAN_PACKS_ON_SALE = true; export function cutCheckoutAnswer() { throw new Error('the switch is on'); }",
+  });
 }, 120_000);
 
 beforeEach(() => {
@@ -118,7 +125,7 @@ beforeEach(() => {
 });
 
 const call = (fn: string, body: unknown, headers: Record<string, string> = {}) =>
-  handlers[fn](new Request(`https://harness.supabase.co/functions/v1/${fn}`, {
+  handlers[fn](new Request(`https://harness.supabase.co/functions/v1/${fn.split(":")[0]}`, {
     method: "POST",
     headers: { "content-type": "application/json", "cf-connecting-ip": "198.51.100.40", ...headers },
     body: JSON.stringify(body),
@@ -162,14 +169,14 @@ describe("reconcile-stripe answers its cron, our servers and the owner, and nobo
 
 describe("the smallest credit pack is one Stripe will charge (L6-11)", () => {
   it("two credits are a clear 400 naming the minimum, with no Stripe call", async () => {
-    const res = await call("create-scan-pack-checkout", { email: "b@example.com", creditAmount: 2 });
+    const res = await call("create-scan-pack-checkout:on-sale", { email: "b@example.com", creditAmount: 2 });
     expect(res.status).toBe(400);
     expect((await res.json()).minCredits).toBe(3);
     expect(stripeCalls.filter((c) => c.op === "sessions.create")).toEqual([]);
   });
 
   it("three credits go to Stripe as a 60-cent session", async () => {
-    const res = await call("create-scan-pack-checkout", { email: "b@example.com", creditAmount: 3 });
+    const res = await call("create-scan-pack-checkout:on-sale", { email: "b@example.com", creditAmount: 3 });
     expect(res.status).toBe(200);
     const params = stripeCalls.find((c) => c.op === "sessions.create")?.args[0] as { line_items: Array<{ quantity: number; price_data: { unit_amount: number } }> };
     expect(params.line_items[0].quantity * params.line_items[0].price_data.unit_amount).toBeGreaterThanOrEqual(50);

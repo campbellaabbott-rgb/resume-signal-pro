@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Check, Sparkles, FileText, Crown, Package, Loader2, Briefcase, Building2, Info, X } from 'lucide-react';
-import { PRODUCTS, ProductId } from '@/config/products';
+import { PRODUCTS, ProductId, isProductHidden } from '@/config/products';
 import { useProductCheckout } from '@/hooks/use-product-checkout';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -81,7 +81,8 @@ export function ProductSelectionModal({
     }
   };
 
-  // Products to show (excluding scan pack which has its own flow)
+  // Products to show (excluding scan pack which has its own flow), and only
+  // what is still sold (the product line's cut, 2026-10-12).
   const displayProducts = [
     { key: 'basicKeywordFix' as ProductId, product: PRODUCTS.basicKeywordFix },
     { key: 'fullAnalysis' as ProductId, product: PRODUCTS.fullAnalysis },
@@ -89,7 +90,7 @@ export function ProductSelectionModal({
     { key: 'coverLetter' as ProductId, product: PRODUCTS.coverLetter },
     { key: 'careerSnapshot' as ProductId, product: PRODUCTS.careerSnapshot },
     { key: 'graduateGamePlan' as ProductId, product: PRODUCTS.graduateGamePlan },
-  ];
+  ].filter(({ key }) => !isProductHidden(key));
 
   const getSelectedProductName = () => {
     if (!selectedProduct) return t('productSelectionModal.selectPackage');

@@ -19,6 +19,7 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, renderHook, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import en from "../i18n/locales/en.json";
 
 vi.mock("@/integrations/supabase/client", () => ({
@@ -69,39 +70,60 @@ describe("backing out of Stripe (S8-014)", () => {
   });
 });
 
-describe("the scan-credit offer when the free scans run out (S8-119)", () => {
-  it("is a dialog whose stepper and amount are labelled, and Escape closes it", () => {
+// Scan packs are no longer sold (the product line, 2026-10-12): the offer
+// points to a free account and to Pro instead of selling credits. It stays a
+// dialog with the server's reset time.
+const upsell = (props: { onClose: () => void; resetHours: number | null; signedIn?: boolean }) =>
+  render(<MemoryRouter><RateLimitUpsell {...props} /></MemoryRouter>);
+
+describe("the offer when the free scans run out (S8-119)", () => {
+  it("is a dialog, sells no credits, and Escape closes it", () => {
     const onClose = vi.fn();
-    render(<RateLimitUpsell onClose={onClose} resetHours={7} />);
+    upsell({ onClose, resetHours: 7 });
     expect(screen.getByRole("dialog")).toBeTruthy();
-    expect(screen.getByRole("button", { name: en.rateLimitUpsell.fewerCredits })).toBeTruthy();
-    expect(screen.getByRole("button", { name: en.rateLimitUpsell.moreCredits })).toBeTruthy();
-    expect(screen.getByLabelText(en.rateLimitUpsell.howManyCredits)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: en.rateLimitUpsell.fewerCredits })).toBeNull();
+    expect(screen.queryByLabelText(en.rateLimitUpsell.howManyCredits)).toBeNull();
+    expect(document.querySelector("[data-offer='free-account']")).toBeTruthy();
+    expect(document.querySelector("[data-offer='pro']")).toBeTruthy();
     fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
     expect(onClose).toHaveBeenCalled();
   });
 
+  it("a signed-in visitor is not offered the free account they have", () => {
+    upsell({ onClose: () => {}, resetHours: null, signedIn: true });
+    expect(document.querySelector("[data-offer='free-account']")).toBeNull();
+    expect(document.querySelector("[data-offer='pro']")).toBeTruthy();
+  });
+
   it("prints the server's reset time, not hours to local midnight", () => {
     vi.useFakeTimers({ now: new Date(2026, 9, 9, 22, 0, 0) });
-    render(<RateLimitUpsell onClose={() => {}} resetHours={17} />);
+    upsell({ onClose: () => {}, resetHours: 17 });
     const text = document.body.textContent ?? "";
     expect(text).toContain(en.rateLimitUpsell.hour_other.replace("{{count}}", "17"));
     expect(text, "two hours to local midnight is not the server's window").not.toContain(en.rateLimitUpsell.hour_other.replace("{{count}}", "2"));
   });
 
   it("prints no reset time at all when the server's answer named none", () => {
-    render(<RateLimitUpsell onClose={() => {}} resetHours={null} />);
+    upsell({ onClose: () => {}, resetHours: null });
     expect(document.body.textContent).not.toContain(en.rateLimitUpsell.resetIn);
   });
 });
 
 describe("what the credit dialogs say credits follow (S8-058)", () => {
   it("the browser and the signed-in account, with the email for the receipt", () => {
-    render(<RateLimitUpsell onClose={() => {}} resetHours={null} />);
-    expect(screen.getByText(en.rateLimitUpsell.creditsLinkedToEmail)).toBeTruthy();
+    // Neither dialog sells credits any more (scan packs were cut on
+    // 2026-10-12), so neither says where bought credits go: the scan-limit
+    // offer points to a free account and Pro, and the pack dialog says packs
+    // are no longer sold and that credits already bought still work. The
+    // locale values the old dialogs read are still held to the true wording,
+    // so a revival cannot bring "tied to your email" back with them.
+    upsell({ onClose: () => {}, resetHours: null });
+    expect(screen.queryByText(en.rateLimitUpsell.creditsLinkedToEmail)).toBeNull();
     cleanup();
     render(<ScanPackPurchase />);
-    expect(screen.getByText(en.scanPackPurchase.creditsTiedToEmail)).toBeTruthy();
+    expect(document.querySelector("[data-scan-packs-retired]")).toBeTruthy();
+    expect(screen.queryByText(en.scanPackPurchase.creditsTiedToEmail)).toBeNull();
+    expect(document.body.textContent).toMatch(/already bought still work/);
     for (const said of [en.rateLimitUpsell.creditsLinkedToEmail, en.scanPackPurchase.creditsTiedToEmail]) {
       expect(said).toMatch(/this browser/);
       expect(said).toMatch(/receipt/);

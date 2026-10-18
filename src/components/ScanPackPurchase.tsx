@@ -14,6 +14,7 @@ import { clampScanCredits, MAX_SCAN_CREDITS, MIN_SCAN_CREDITS } from "@/config/s
 import { useConversionTracking } from "@/hooks/use-conversion-tracking";
 import { useCurrency } from "@/hooks/use-currency";
 import { PurchaseTerms } from "@/components/PurchaseTerms";
+import { isProductHidden } from "@/config/products";
 
 export interface ScanPackPurchaseProps {
   onClose?: () => void;
@@ -57,7 +58,28 @@ export function ScanPackPurchase({ onClose, className, open, onOpenChange, defau
   const isValidEmail = email.includes('@') && email.includes('.');
   const totalPrice = creditAmount * pricePerCredit;
 
-  const content = (
+  // SCAN PACKS ARE NO LONGER SOLD (the product line, 2026-10-12): their
+  // checkout answers 410, so wherever this dialog is still mounted it says so
+  // instead of showing a form that cannot sell. Credits already bought stay
+  // spendable.
+  const content = isProductHidden("scanPack") ? (
+    <div className={`bg-card border border-border rounded-2xl p-6 ${className || ''}`} data-scan-packs-retired>
+      <div className="flex items-center gap-3 mb-3">
+        <div className="p-2 rounded-full bg-primary/10">
+          <Coins className="w-5 h-5 text-primary" />
+        </div>
+        <h3 className="font-semibold text-lg">{t('scanPackPurchase.retiredTitle', 'Scan packs are no longer sold')}</h3>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        {t('scanPackPurchase.retiredBody', 'Credits you already bought still work. A free account scans more each day, and Pro scans without a daily limit.')}
+      </p>
+      {onClose && !onOpenChange && (
+        <Button variant="ghost" onClick={onClose} className="w-full mt-4">
+          {t('scanPackPurchase.maybeLater')}
+        </Button>
+      )}
+    </div>
+  ) : (
     <div className={`bg-card border border-border rounded-2xl p-6 ${className || ''}`}>
       <div className="flex items-center gap-3 mb-4">
         <div className="p-2 rounded-full bg-primary/10">

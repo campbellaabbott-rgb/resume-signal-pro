@@ -12,12 +12,21 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { checkProByEmail } from "../_shared/pro.ts";
 import { provenMailbox } from "../_shared/mailbox-proof.ts";
 import { checkoutOrigin } from "../_shared/checkout-policy.ts";
+import { refusedCallerBody, websiteTokenRefusal } from "../_shared/checkout-buyer.ts";
 
 // Provable from outside without an account: every response, the CORS
 // preflight included, carries this in x-fn-build.
 // 2026-10-14.1 (R1 integration): _shared/mailbox-proof.ts gained the proof-row
 // readers and maskEmail; provenMailbox, the one import here, is unchanged.
-const FN_BUILD = "create-portal-session.2026-10-14.1";
+// 2026-10-14.23 (wave 4 round 2, checkout-catalogue; R1 stamped this function
+// on a later day, so it keeps that day with a higher sequence): the portal
+// returns to /account?portal=return, so the Pro card asks Stripe again and a
+// plan cancelled there reads "Ends", not "Renews" (S12-076); a plan bound to
+// this account is found by the account when the address on it has changed
+// (S12-053, the portal half); a connected app's token, or one issued for
+// another audience, is refused with a 401 and never opens the billing
+// portal (critical-path CP-D, S9-001).
+const FN_BUILD = "create-portal-session.2026-10-14.23";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -45,6 +54,27 @@ async function rowBindsCustomer(
   return false;
 }
 
+/** The Stripe customer a Pro or agent cache row bound to this account names, newest first; null for none. */
+async function boundCustomerOf(
+  // deno-lint-ignore no-explicit-any
+  db: { from: (t: string) => any },
+  userId: string,
+): Promise<string | null> {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) return null;
+  for (const table of ["pro_subscribers", "agent_subscribers"]) {
+    try {
+      const { data, error } = await db.from(table).select("stripe_customer_id, updated_at")
+        .eq("user_id", userId).order("updated_at", { ascending: false }).limit(10);
+      const rows = !error && Array.isArray(data) ? data as Array<{ stripe_customer_id?: unknown }> : [];
+      const id = rows.map((r) => r.stripe_customer_id).find((c) => typeof c === "string" && c.startsWith("cus_"));
+      if (typeof id === "string") return id;
+    } catch (_) {
+      // An unread table names no customer.
+    }
+  }
+  return null;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -66,6 +96,15 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    // A connected app's token (or one issued for another audience) is not
+    // the person on the website: the portal shows their card and can cancel.
+    const notWebsite = websiteTokenRefusal(req.headers);
+    if (notWebsite) {
+      return new Response(JSON.stringify(refusedCallerBody(notWebsite)), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     const jwt = authHeader.replace("Bearer ", "");
     const { data } = await supabase.auth.getUser(jwt);
     const email = data?.user?.email?.toLowerCase();
@@ -77,6 +116,18 @@ serve(async (req) => {
     }
 
     const status = await checkProByEmail(stripe, supabase, email);
+    // THE ACCOUNT'S OWN PLAN, WHEN ITS ADDRESS CHANGED (S12-053). Stripe is
+    // searched by the account's CURRENT address, so after an address change a
+    // subscriber's plan was not found and the portal answered 404 while the
+    // plan kept charging. A cache row bound to this account names its
+    // customer; that binding is the same proof the check below accepts.
+    if (!status.stripeCustomerId) {
+      const boundCustomer = await boundCustomerOf(supabase, data?.user?.id ?? "");
+      if (boundCustomer) {
+        status.stripeCustomerId = boundCustomer;
+        status.boundUserId = data?.user?.id ?? null;
+      }
+    }
     if (!status.stripeCustomerId) {
       return new Response(JSON.stringify({ error: "No subscription found for this account" }), {
         status: 404,
@@ -124,7 +175,9 @@ serve(async (req) => {
     const origin = checkoutOrigin(req.headers.get("origin"), (k) => Deno.env.get(k));
     const portal = await stripe.billingPortal.sessions.create({
       customer: status.stripeCustomerId,
-      return_url: `${origin}/account`,
+      // The marker tells the Pro card to ask Stripe again (check-subscription
+      // fresh), so a cancel made in the portal shows at once (S12-076).
+      return_url: `${origin}/account?portal=return`,
     });
 
     return new Response(JSON.stringify({ url: portal.url }), {

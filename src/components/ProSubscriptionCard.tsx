@@ -1,4 +1,4 @@
-import { Crown, Check, Loader2, Sparkles, Settings2, CreditCard } from "lucide-react";
+import { Crown, Check, Loader2, Sparkles, Settings2, CreditCard, Archive } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -7,25 +7,34 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProSubscription } from "@/hooks/use-pro-subscription";
 import { SUBSCRIPTIONS } from "@/config/products";
-import { PRO_PERKS } from "@/config/pro-perks";
+import { PRO_PERK_ITEMS } from "@/config/pro-perks";
 import { isOwingStatus } from "@/config/subscription-status";
 import { PurchaseTerms } from "@/components/PurchaseTerms";
+import { RegionNotice, useRegionRefused } from "@/components/checkout/RegionNotice";
 
 // What the plan includes lives in src/config/pro-perks.ts, where the pricing
 // guards read it without mounting this card.
 
+/** Where a subscriber writes when their plan is not linked to this account. */
+export const PRO_SUPPORT_EMAIL = "resumeboostersupp@gmail.com";
+
 /**
- * Resume Booster Pro card — the monthly all-access plan. Shown on /pricing and
- * /account.
+ * Resume Booster Pro card — the monthly plan. Shown on /pricing and /account.
  *
  * - A signed-out visitor is sent to sign in first and brought back: the
- *   checkout sells only to a signed-in account (2026-10-04 completeness
- *   review: it used to answer, for any address in the request, whether that
- *   address subscribed), and the plan lives on the account anyway.
+ *   checkout sells only to a signed-in account, and the plan lives on the
+ *   account anyway.
  * - A plan that owes money (past_due and friends) shows "Update payment
- *   method", which opens the billing portal. It used to show "Go Pro", and the
- *   checkout then sold a second subscription that billed beside the first once
- *   Stripe's retry succeeded (platform sweep L6-06).
+ *   method", which opens the billing portal, never a second subscription
+ *   (platform sweep L6-06).
+ * - EVERY WORD IS TRANSLATABLE (S12-044): each string is t(key, English
+ *   default); the perks carry their own keys (pro-perks.ts).
+ * - A PLAN CANCELLED IN THE PORTAL SAYS "Ends <date>" (S12-076), not "Renews".
+ * - THE RETIRED AGENT PLAN IS NOT SHOWN AS PRO (S12-168): an account whose
+ *   standing rests on it sees that it is retired and how to cancel, never
+ *   "$45/month ... Renews" or a prompt to pay for it.
+ * - A buyer in the EU, the EEA or the UK sees why it is not sold there yet
+ *   instead of a button the checkout would refuse (S12-059).
  */
 export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) {
   const { pro, subscribe, manage, actionLoading, justSubscribed, notConfirmedYet } = useProSubscription();
@@ -33,8 +42,11 @@ export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) 
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const regionRefused = useRegionRefused();
   const price = SUBSCRIPTIONS.pro.priceUsd;
   const owing = isOwingStatus(pro.status);
+  const retiredPlan = pro.planTier === "agent";
+  const periodEnd = pro.currentPeriodEnd ? new Date(pro.currentPeriodEnd).toLocaleDateString() : null;
 
   const goPro = () => {
     if (!user) {
@@ -44,16 +56,24 @@ export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) 
     void subscribe(user.email ?? undefined);
   };
 
+  const manageButton = (label: string, Icon: typeof Settings2, variant: "outline" | "default" = "outline") => (
+    <Button variant={variant} className="w-full gap-2" onClick={manage} disabled={actionLoading}>
+      {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Icon className="w-4 h-4" />}
+      {label}
+    </Button>
+  );
+
   return (
     <div
       className={cn(
         "relative flex flex-col rounded-2xl border-2 border-primary bg-card ring-2 ring-primary/20 shadow-xl",
         compact ? "p-5" : "p-6 md:p-8",
       )}
+      data-pro-card
     >
       <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground shadow-lg">
         <Sparkles className="w-3 h-3 mr-1" />
-        All-access
+        {t("proPlan.badge", "Writing tools")}
       </Badge>
 
       <div className="flex items-start gap-4 mb-4">
@@ -61,24 +81,24 @@ export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) 
           <Crown className="w-6 h-6 text-primary" />
         </div>
         <div>
-          <h3 className="font-bold text-xl">Resume Booster Pro</h3>
+          <h3 className="font-bold text-xl">{t("proPlan.title", "Resume Booster Pro")}</h3>
           <p className="text-sm text-muted-foreground">
-            Your whole job search in one workspace — plus every tool we make, now and future, included.
+            {t("proPlan.cardDescription", "Everything in a free account, plus the writing tools for the jobs you apply to.")}
           </p>
         </div>
       </div>
 
       <div className="mb-4 flex items-baseline gap-2">
         <span className="text-4xl font-bold">${price}</span>
-        <span className="text-muted-foreground">/month</span>
+        <span className="text-muted-foreground">{t("proPlan.perMonth", "/month")}</span>
       </div>
 
       {!compact && (
         <ul className="space-y-2 mb-6 flex-1">
-          {PRO_PERKS.map((perk) => (
-            <li key={perk} className="flex items-start gap-2 text-sm">
+          {PRO_PERK_ITEMS.map((perk) => (
+            <li key={perk.key} className="flex items-start gap-2 text-sm">
               <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
-              <span>{perk}</span>
+              <span>{t(perk.key, perk.text)}</span>
             </li>
           ))}
         </ul>
@@ -98,42 +118,54 @@ export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) 
           {t("proPlan.notConfirmedYet")}
         </p>
       )}
-      {pro.active ? (
+      {retiredPlan ? (
+        <div className="space-y-3" data-retired-plan>
+          <p className="flex items-start gap-2 text-sm font-medium">
+            <Archive className="w-4 h-4 mt-0.5 shrink-0" aria-hidden />
+            {t("proPlan.retiredPlanTitle", "Your plan is the Apply Agent plan, which we no longer sell.")}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {owing
+              ? t("proPlan.retiredPlanOwing", "Its last payment didn't go through. You don't need a card for a plan we no longer sell: cancel it in billing and the retries stop.")
+              : pro.cancelAtPeriodEnd && periodEnd
+                ? t("proPlan.retiredPlanEnds", "It ends on {{date}} and will not renew. Pro's tools stay on until then.", { date: periodEnd })
+                : t("proPlan.retiredPlanLive", "While it runs, Pro's tools stay on. The agent itself is switched off; you can cancel the plan any time in billing.")}
+          </p>
+          {manageButton(t("proPlan.manageRetired", "Manage or cancel in billing"), Settings2)}
+        </div>
+      ) : pro.active ? (
         <div className="space-y-3">
-          <div className="flex items-center gap-2 text-sm font-medium text-success">
+          <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-success">
             <Check className="w-4 h-4" />
             {/* A trial unlocks the plan's ongoing features and mints no paid
-                one-off tool (the one rule, _shared/pro-standing.ts), so it
-                is never told "every tool". */}
+                one-off tool (the one rule, _shared/pro-standing.ts). */}
             {pro.trialing
               ? t("proPlan.trialing", "Your trial is on: unlimited scans and batch application prep are unlocked now. The paid tools are included from your first payment.")
-              : "You're a Pro member — every tool is unlocked."}
-            {pro.currentPeriodEnd && (
-              <span className="text-muted-foreground font-normal">
-                Renews {new Date(pro.currentPeriodEnd).toLocaleDateString()}
+              : t("proPlan.activeMember", "You're a Pro member: the writing tools are unlocked.")}
+            {periodEnd && (
+              <span className="text-muted-foreground font-normal" data-testid={pro.cancelAtPeriodEnd ? "pro-ends" : "pro-renews"}>
+                {pro.cancelAtPeriodEnd
+                  ? t("proPlan.endsOn", "Ends {{date}}: cancelled, it will not renew", { date: periodEnd })
+                  : t("proPlan.renewsOn", "Renews {{date}}", { date: periodEnd })}
               </span>
             )}
           </div>
-          <Button variant="outline" className="w-full gap-2" onClick={manage} disabled={actionLoading}>
-            {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Settings2 className="w-4 h-4" />}
-            Manage subscription
-          </Button>
+          {manageButton(t("proPlan.manage", "Manage subscription"), Settings2)}
         </div>
       ) : owing ? (
         <div className="space-y-3">
           <p className="text-sm font-medium text-destructive">
-            Your last payment didn't go through. Update your card to keep your plan — no new subscription needed.
+            {t("proPlan.owing", "Your last payment didn't go through. Update your card to keep your plan — no new subscription needed.")}
           </p>
-          <Button className="w-full gap-2" onClick={manage} disabled={actionLoading}>
-            {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
-            Update payment method
-          </Button>
+          {manageButton(t("proPlan.updatePayment", "Update payment method"), CreditCard, "default")}
         </div>
+      ) : regionRefused ? (
+        <RegionNotice />
       ) : (
         <div className="space-y-3">
           {pro.linkPending && (
             <p className="text-sm text-muted-foreground">
-              {t("proPlan.linkPending", "This address has a plan that isn't linked to this account yet. Sign in with Google using that address to use it here.")}
+              {t("proPlan.linkPendingUnlinked", "This address has a plan that isn't linked to this account yet. Email {{support}} from that address and we will link it.", { support: PRO_SUPPORT_EMAIL })}
             </p>
           )}
           <PurchaseTerms kind="subscription" plan="pro" className="text-center" />
@@ -143,12 +175,12 @@ export function ProSubscriptionCard({ compact = false }: { compact?: boolean }) 
             disabled={actionLoading || (Boolean(user) && pro.loading) || (justSubscribed && !pro.active)}
           >
             {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Crown className="w-4 h-4" />}
-            Go Pro — ${price}/month
+            {t("proPlan.goPro", "Go Pro — ${{price}}/month", { price })}
           </Button>
           <p className="text-xs text-muted-foreground text-center">
             {user
-              ? "Secure checkout via Stripe. Cancel anytime — no lock-in."
-              : "You'll sign in first, so the plan is on your account. Secure checkout via Stripe; cancel anytime."}
+              ? t("proPlan.secureSignedIn", "Secure checkout via Stripe. Cancel anytime — no lock-in.")
+              : t("proPlan.secureSignedOut", "You'll sign in first, so the plan is on your account. Secure checkout via Stripe; cancel anytime.")}
           </p>
         </div>
       )}

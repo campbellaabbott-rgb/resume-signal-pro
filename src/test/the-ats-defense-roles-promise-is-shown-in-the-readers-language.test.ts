@@ -21,20 +21,30 @@ const ATS = PRODUCTS.atsDefense.features;
 
 afterAll(async () => { await i18n.changeLanguage("en"); });
 
+// S12-008 (wave 4 round 2): ATS Defense's seventh bullet promised a guarantee
+// with no terms and no mechanism, and it is gone from the configured list
+// (src/config/products.ts). The locale files still carry seven bullets until
+// the translator drops the removed one (an existing locale value is never
+// edited by a builder), so every locale's list no longer matches and
+// productFeatures shows the configured six: the removed promise is shown in
+// no language. ATS Defense itself is no longer sold (2026-10-12); its bullets
+// show only to a past buyer.
 describe("ATS Defense's bullets in nine locales", () => {
-  it("English is the configured list, word for word", () => {
-    expect(bundle("en").productFeatures.atsDefense).toEqual([...ATS]);
+  it("the configured list is the locale's first six bullets, without the removed seventh", () => {
+    const en = bundle("en").productFeatures.atsDefense as string[];
+    expect(ATS).toHaveLength(6);
+    expect(en.slice(0, 6)).toEqual([...ATS]);
   });
 
-  it.each(LOCALES)("%s carries every bullet, and the reader sees them", async (l) => {
-    const want = bundle(l).productFeatures.atsDefense as string[];
-    expect(want).toHaveLength(ATS.length);
+  it.each(LOCALES)("%s shows no removed bullet: a list of the wrong length falls back to the configured one", async (l) => {
+    const stale = bundle(l).productFeatures.atsDefense as string[];
     i18n.addResourceBundle(l, "translation", bundle(l), true, true);
     await i18n.changeLanguage(l);
-    expect(productFeatures(i18n.t, "atsDefense", ATS)).toEqual(want);
-    // The roles bullet names its limit in every language.
-    expect(want[3]).toMatch(/3/);
-    if (!l.startsWith("en")) expect(want[3]).not.toBe(ATS[3]);
+    const shown = productFeatures(i18n.t, "atsDefense", ATS);
+    expect(shown).toEqual([...ATS]);
+    if (stale.length === 7) expect(shown).not.toContain(stale[6]);
+    // The roles bullet still names its limit.
+    expect(shown[3]).toMatch(/3/);
   });
 
   it("a product the locale files do not carry keeps its configured bullets", async () => {
@@ -49,7 +59,9 @@ describe("ATS Defense's bullets in nine locales", () => {
   });
 
   it("every surface that lists a product's bullets reads them through productFeatures", () => {
-    for (const f of ["pages/Pricing.tsx", "components/ProductPreview.tsx", "pages/ProductSuccess.tsx", "components/TieredPricingSection.tsx", "components/AddOnsShowcase.tsx", "components/ProductSelectionModal.tsx"]) {
+    // /pricing lists no product's bullets since the cut (its catalogue grid is gone).
+    expect(readFileSync(resolve(__dirname, "..", "pages/Pricing.tsx"), "utf8")).not.toMatch(/product\.features\.(map|slice)\(/);
+    for (const f of ["components/ProductPreview.tsx", "pages/ProductSuccess.tsx", "components/TieredPricingSection.tsx", "components/AddOnsShowcase.tsx", "components/ProductSelectionModal.tsx"]) {
       const src = readFileSync(resolve(__dirname, "..", f), "utf8");
       expect(src, f).toMatch(/productFeatures\(t, /);
       expect(src, f).not.toMatch(/product\.features\.(map|slice)\(/);

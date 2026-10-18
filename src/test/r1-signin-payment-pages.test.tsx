@@ -167,7 +167,7 @@ describe("the checkout prefill", () => {
     expect(await checkoutPrefillEmail()).toBeUndefined();
     h.invoke.mockResolvedValue({ data: null, error: null });
     const { result } = renderHook(() => useProductCheckout());
-    await act(async () => { await result.current.purchaseProduct("coverLetter"); });
+    await act(async () => { await result.current.purchaseProduct("freelanceBoost"); });
     const call = h.invoke.mock.calls.find((c) => c[0] === "create-product-checkout");
     expect(call, "the checkout was never asked for").toBeTruthy();
     expect((call![1] as { body: Record<string, unknown> }).body.email).toBeUndefined();
@@ -178,7 +178,7 @@ describe("the checkout prefill", () => {
     h.session = { access_token: "t", user: { id: "u1", email: "member@example.com" } };
     h.invoke.mockResolvedValue({ data: null, error: null });
     const { result } = renderHook(() => useProductCheckout());
-    await act(async () => { await result.current.purchaseProduct("coverLetter"); });
+    await act(async () => { await result.current.purchaseProduct("freelanceBoost"); });
     const call = h.invoke.mock.calls.find((c) => c[0] === "create-product-checkout");
     expect((call![1] as { body: Record<string, unknown> }).body.email).toBe("member@example.com");
   });

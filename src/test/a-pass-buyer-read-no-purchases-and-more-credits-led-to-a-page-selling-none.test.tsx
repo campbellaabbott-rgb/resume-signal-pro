@@ -51,13 +51,24 @@ describe("the account's purchases", () => {
 });
 
 describe("getting more credits", () => {
-  it("opens the credit pack here, with the account's address as the receipt address", () => {
-    mount({ credits: 0, purchases: [], passes: [], mailboxProven: true });
+  // SCAN PACKS ARE NO LONGER SOLD (the product line, 2026-10-12; wave 4
+  // round 2, checkout-catalogue). The card's button still opens the pack
+  // dialog here, and the dialog now says packs are retired and that credits
+  // already bought stay spendable: no price, no amount, no receipt address,
+  // nothing to buy. The account round (CP-H) owns this card and drops the
+  // button itself; until then the dialog it opens must sell nothing.
+  it("opens a dialog that says scan packs are no longer sold, and sells none", () => {
+    mount({ credits: 3, purchases: [], passes: [], mailboxProven: true });
     const cta = screen.getByRole("button", { name: en.accountPage.getMoreCredits });
     expect(cta.closest("a")).toBeNull();
     fireEvent.click(cta);
-    expect(screen.getByRole("dialog")).toBeTruthy();
-    expect(screen.getByText(en.scanPackPurchase.topUpCredits)).toBeTruthy();
-    expect(screen.getByDisplayValue("member@example.com")).toBeTruthy();
+    const dialog = screen.getByRole("dialog");
+    expect(dialog.querySelector("[data-scan-packs-retired]")).toBeTruthy();
+    expect(screen.getByText("Scan packs are no longer sold")).toBeTruthy();
+    expect(screen.getByText(/Credits you already bought still work/)).toBeTruthy();
+    expect(screen.queryByText(en.scanPackPurchase.topUpCredits)).toBeNull();
+    expect(screen.queryByDisplayValue("member@example.com")).toBeNull();
+    expect(dialog.textContent).not.toMatch(/\$\s?\d/);
+    expect(screen.queryByRole("button", { name: /buy/i })).toBeNull();
   });
 });

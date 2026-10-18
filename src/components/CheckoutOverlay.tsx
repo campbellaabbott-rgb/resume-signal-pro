@@ -2,7 +2,9 @@ import { Loader2, Check, Wifi, CreditCard, ExternalLink, RefreshCw, Copy, Extern
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useEffect, useRef, useState } from "react";
+import { Dialog, DialogDescription, DialogOverlay, DialogPortal, DialogTitle } from "@/components/ui/dialog";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { useEffect, useState } from "react";
 
 export type CheckoutStep = 'verifying' | 'connecting' | 'redirecting';
 
@@ -37,13 +39,16 @@ export function CheckoutOverlay({
   // A WAY OUT OF THE LOADING SCREEN (S8-014). It had a Close button only in
   // its error branch, so a stalled hand-off, or a page the back button
   // restored mid-redirect, was a full-screen dead end. After a few seconds
-  // the loading screen offers Close too, and it is a modal dialog that takes
-  // focus, so a keyboard user is not left behind it.
+  // the loading screen offers Close too.
+  //
+  // A RADIX DIALOG (S12-139): it was a div with role="dialog", so focus could
+  // Tab out behind it, Escape did nothing and a failed checkout was never
+  // announced. Radix traps focus inside, Escape closes it (when the page gave
+  // a way to close: Close aborts the hand-off, so nothing navigates after),
+  // and the failure is a role="alert" region a screen reader reads out.
   const [offerClose, setOfferClose] = useState(false);
-  const panel = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!isVisible) { setOfferClose(false); return; }
-    panel.current?.focus();
     const timer = setTimeout(() => setOfferClose(true), CLOSE_OFFERED_AFTER_MS);
     return () => clearTimeout(timer);
   }, [isVisible]);
@@ -79,28 +84,34 @@ export function CheckoutOverlay({
   const showFallbackOptions = checkoutUrl && error;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-sm"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="checkout-overlay-title"
-    >
-      <div ref={panel} tabIndex={-1} className="text-center space-y-6 p-8 max-w-md outline-none">
+    <Dialog open onOpenChange={(open) => { if (!open && onClose) onClose(); }}>
+      <DialogPortal>
+        <DialogOverlay className="bg-background/95 backdrop-blur-sm" />
+        <DialogPrimitive.Content
+          aria-modal="true"
+          // A press outside is not a way out of a payment hand-off; Escape and Close are.
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => { if (!onClose) e.preventDefault(); }}
+          className="fixed inset-0 z-50 flex items-center justify-center outline-none"
+          data-checkout-overlay
+        >
+      <div className="text-center space-y-6 p-8 max-w-md outline-none">
         {error ? (
           <>
             <div className="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
-              <span className="text-destructive text-2xl">!</span>
+              <span className="text-destructive text-2xl" aria-hidden>!</span>
             </div>
-            <div className="space-y-2">
-              <h3 id="checkout-overlay-title" className="text-xl font-semibold text-foreground">
+            <div className="space-y-2" role="alert">
+              <DialogTitle id="checkout-overlay-title" className="text-xl font-semibold text-foreground leading-normal tracking-normal">
                 {showFallbackOptions ? t('checkoutOverlay.redirectBlocked') : t('checkoutOverlay.connectionIssue')}
-              </h3>
-              <p className="text-muted-foreground">
+              </DialogTitle>
+              <DialogDescription className="text-base text-muted-foreground">
                 {showFallbackOptions
                   ? t('checkoutOverlay.redirectBlockedMessage')
                   : error
                 }
-              </p>
+              </DialogDescription>
             </div>
 
             {/* Fallback options when we have the URL */}
@@ -139,13 +150,13 @@ export function CheckoutOverlay({
         ) : (
           <>
             <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
-            <div className="space-y-2">
-              <h3 id="checkout-overlay-title" className="text-xl font-semibold text-foreground">
+            <div className="space-y-2" role="status">
+              <DialogTitle id="checkout-overlay-title" className="text-xl font-semibold text-foreground leading-normal tracking-normal">
                 {t('checkoutOverlay.preparingCheckout')}
-              </h3>
-              <p className="text-muted-foreground text-sm">
+              </DialogTitle>
+              <DialogDescription className="text-muted-foreground text-sm">
                 {t('checkoutOverlay.redirectingToStripe')}
-              </p>
+              </DialogDescription>
             </div>
 
             {/* Progress steps */}
@@ -215,6 +226,8 @@ export function CheckoutOverlay({
           </>
         )}
       </div>
-    </div>
+        </DialogPrimitive.Content>
+      </DialogPortal>
+    </Dialog>
   );
 }

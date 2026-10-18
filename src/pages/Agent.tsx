@@ -101,10 +101,48 @@ export default function Agent() {
     setParams(p, { replace: true });
   };
 
+  // A SIGNED-OUT VISITOR IS TOLD WHAT HAPPENED, NOT SENT TO A SIGN-UP FORM
+  // (S12-024). The agent's products are retired and the agent is off, so a
+  // visit from an old link, a search result or the board used to land on a
+  // bare "Create your free account" for a product nobody can buy. While the
+  // agent is off, a signed-out visitor sees the retirement notice and the
+  // free path (connecting their own AI) instead. Only with the agent back on
+  // does the console send them to sign in, query intact (L3-20).
   useEffect(() => {
-    // Back here after signing in, query intact (/agent?welcome=1 after Stripe; L3-20).
+    if (!APPLY_AGENT_ON && !AGENT_PRODUCTS_ON_SALE) return;
     if (!loading && !session) navigate(`/auth?next=${encodeURIComponent(window.location.pathname + window.location.search)}`, { replace: true });
   }, [loading, session, navigate]);
+
+  if (!loading && !session && !APPLY_AGENT_ON && !AGENT_PRODUCTS_ON_SALE) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="mx-auto max-w-3xl px-4 py-16" data-agent-retired-public>
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+            {t("agentPage.retiredPublicTitle", "The Apply Agent is retired")}
+          </h1>
+          <p className="mt-3 text-muted-foreground">
+            {t("agentPage.retiredPublicLead", "Resume Booster no longer applies for anyone. You can still search live jobs and apply yourself, with Claude or ChatGPT helping you, on the employer's own site.")}
+          </p>
+          {/* Not AgentRetiredNotice: its past-buyer line promises a refund,
+              and the owner's decision is that sales are final. */}
+          <div className="mt-6 rounded-xl border border-border bg-muted/40 p-4 text-[13px] text-muted-foreground">
+            <p>{t("agentPage.retiredPublicBody", "We no longer sell the Agent plan, the Agent Pass or the Apply Assistant, and our own apply agent is switched off: nothing is submitted for you.")}</p>
+            <Link to="/agents" className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline">
+              {t("agentPage.retiredPublicCta", "Connect Claude or ChatGPT for free")}
+            </Link>
+          </div>
+          <p className="mt-6 text-sm text-muted-foreground">
+            {t("agentPage.retiredPublicSignIn", "Had the plan? Sign in to see your account.")}{" "}
+            <Link to={`/auth?next=${encodeURIComponent("/agent")}`} className="text-primary hover:underline">
+              {t("agentPage.retiredPublicSignInLink", "Sign in")}
+            </Link>
+          </p>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   if (loading || !session || !user) {
     return (
