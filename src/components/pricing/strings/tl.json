@@ -171,8 +171,8 @@
       "packageA": "Ang pagsusulat para sa isang trabaho: isang iniangkop na resume, cover letter at interview prep. Pinapayagan ng Pro ang {{perDay}} sa bawat isa bawat araw at {{perMonth}} sa bawat isa bawat buwan, binibilang sa mga araw sa UTC. Pinapayagan ng libreng account ang {{freePerDay}} sa bawat isa bawat araw.",
       "cancelQ": "Paano ko kakanselahin ang Pro?",
       "cancelA": "Online mula sa iyong account, sa parehong paraan ng pag-sign up mo, kahit kailan. Pinipigilan ng pagkansela ang susunod na renewal, at naka-on ang Pro hanggang sa katapusan ng buwang binayaran mo.",
-      "applyQ": "Kayo ba ang mag-a-apply sa mga trabaho para sa akin?",
-      "applyA": "Hindi, sa anumang plano. Gumagawa ang Pro ng mga draft para sa mga trabahong pipiliin mo; ikaw ang nagsusuri ng mga draft at nag-a-apply sa site ng employer, mano-mano o sa tulong ng Claude, ChatGPT o Claude Code.",
+      "applyQ": "Paano ako mag-a-apply?",
+      "applyA": "Sa site ng employer, mano-mano o sa tulong ng Claude, ChatGPT o Claude Code. Gumagawa ang Pro ng mga draft para sa mga trabahong pipiliin mo, at sinusuri mo ang bawat draft bago mo ito ipadala.",
       "interviewsQ": "Makakakuha ba ako ng interview kung magbabayad ako?",
       "interviewsA": "Hindi namin iyon maipapangako, at hindi namin tinatantya ang tsansa ng sinuman. Pinapaganda ng mga tool ang ipinapadala mo; ang mga employer ang nagpapasya."
     }

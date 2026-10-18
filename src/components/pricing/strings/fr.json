@@ -171,8 +171,8 @@
       "packageA": "La rédaction pour une offre : un CV adapté, une lettre de motivation et une préparation d'entretien. Pro permet {{perDay}} de chaque par jour et {{perMonth}} de chaque par mois, comptés en jours UTC. Un compte gratuit permet {{freePerDay}} de chaque par jour.",
       "cancelQ": "Comment résilier Pro ?",
       "cancelA": "En ligne depuis votre compte, de la même façon que vous vous êtes abonné, à tout moment. La résiliation arrête le prochain renouvellement, et Pro reste actif jusqu'à la fin du mois payé.",
-      "applyQ": "Postulez-vous à des offres pour moi ?",
-      "applyA": "Non, quelle que soit la formule. Pro rédige des brouillons pour les offres que vous choisissez ; vous relisez les brouillons et postulez sur le site de l'employeur, à la main ou avec l'aide de Claude, ChatGPT ou Claude Code.",
+      "applyQ": "Comment postuler ?",
+      "applyA": "Sur le site de l'employeur, à la main ou avec l'aide de Claude, ChatGPT ou Claude Code. Pro rédige des brouillons pour les offres que vous choisissez, et vous relisez chaque brouillon avant de l'envoyer.",
       "interviewsQ": "Payer me donnera-t-il des entretiens ?",
       "interviewsA": "Nous ne pouvons pas le promettre, et nous n'estimons les chances de personne. Les outils améliorent ce que vous envoyez ; les employeurs décident."
     }

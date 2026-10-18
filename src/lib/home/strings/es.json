@@ -37,7 +37,7 @@
       "total_many": "{{formatted}} ofertas abiertas en total",
       "total_other": "{{formatted}} ofertas abiertas en total",
       "seeAll": "Ver todas las ofertas",
-      "applyNote": "Te postulas en el sitio del propio empleador. Nunca enviamos una candidatura."
+      "applyNote": "Te postulas en el sitio del propio empleador."
     },
     "rail": {
       "title": "El tablón hoy",
@@ -103,8 +103,6 @@
       "title": "Busca en el tablón desde Claude o ChatGPT",
       "lede": "Conecta Resume Booster a Claude o ChatGPT, o añádelo a Claude Code. Pide puestos con tus palabras, lee una oferta completa y redacta tu candidatura con ayuda de tu IA. Gratis por nuestra parte, sin cuenta, dentro de un cupo diario compartido. En ChatGPT, tu plan debe permitir conectores personalizados.",
       "neverTitle": "Lo que nunca hacemos",
-      "never1Lead": "Enviar una candidatura.",
-      "never1": "Tú pulsas enviar, en el sitio del empleador.",
       "never2Lead": "Decirte tus posibilidades.",
       "never2": "Nadie puede, y no adivinamos.",
       "never3Lead": "Pedirte el currículum.",
@@ -163,8 +161,8 @@
       "sourcesQ": "¿De dónde vienen estos empleos?",
       "sourcesA": "De los propios sistemas de selección de los empleadores: {{names}} y {{more}} más, además de USAJOBS para puestos federales de EE. UU. Leemos la bolsa de empleo de cada empleador, listamos lo que publica y retiramos una oferta cuando una lectura posterior ya no la encuentra. Los tablones de agencias de empleo están señalados.",
       "sourcesAPlain": "De los propios sistemas de selección de los empleadores, además de USAJOBS para puestos federales de EE. UU. Leemos la bolsa de empleo de cada empleador, listamos lo que publica y retiramos una oferta cuando una lectura posterior ya no la encuentra. Los tablones de agencias de empleo están señalados.",
-      "applyQ": "¿Se postulan a empleos por mí?",
-      "applyA": "No. Te postulas en el sitio del propio empleador, a mano o con ayuda de Claude, ChatGPT o Claude Code. Nunca enviamos una candidatura.",
+      "applyQ": "¿Cómo me postulo?",
+      "applyA": "En el sitio del propio empleador, a mano o con ayuda de Claude, ChatGPT o Claude Code.",
       "currentQ": "¿Qué tan actual es una oferta?",
       "currentA": "Cada oferta muestra la fecha de publicación del empleador cuando su sistema indica una y no la cambia. En los tablones que leemos completos, también muestra cuándo leímos por última vez todo el tablón («feed leído»). Los tablones más grandes se leen por partes en varias pasadas, así que sus ofertas no muestran esa hora. Un puesto puede cerrarse entre lecturas; la página del empleador tiene la última palabra.",
       "fitQ": "¿Me dirán qué empleos conseguiré?",

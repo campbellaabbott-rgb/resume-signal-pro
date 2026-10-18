@@ -171,8 +171,8 @@
       "packageA": "Die Schreibarbeit für eine Stelle: ein angepasster Lebenslauf, ein Anschreiben und eine Interviewvorbereitung. Pro erlaubt {{perDay}} von jedem am Tag und {{perMonth}} von jedem im Monat, gezählt in UTC-Tagen. Ein kostenloses Konto erlaubt {{freePerDay}} von jedem am Tag.",
       "cancelQ": "Wie kündige ich Pro?",
       "cancelA": "Online in Ihrem Konto, so wie Sie abgeschlossen haben, jederzeit. Die Kündigung stoppt die nächste Verlängerung, und Pro bleibt bis zum Ende des bezahlten Monats aktiv.",
-      "applyQ": "Bewerben Sie sich für mich?",
-      "applyA": "Nein, in keinem Plan. Pro schreibt Entwürfe für die Stellen, die Sie wählen; Sie prüfen die Entwürfe und bewerben sich auf der Website des Arbeitgebers, von Hand oder mit Hilfe von Claude, ChatGPT oder Claude Code.",
+      "applyQ": "Wie bewerbe ich mich?",
+      "applyA": "Auf der Website des Arbeitgebers, von Hand oder mit Hilfe von Claude, ChatGPT oder Claude Code. Pro schreibt Entwürfe für die Stellen, die Sie wählen, und Sie prüfen jeden Entwurf, bevor Sie ihn senden.",
       "interviewsQ": "Bekomme ich durch Bezahlen Vorstellungsgespräche?",
       "interviewsA": "Das können wir nicht versprechen, und wir schätzen niemandes Chancen. Die Werkzeuge verbessern, was Sie senden; die Arbeitgeber entscheiden."
     }

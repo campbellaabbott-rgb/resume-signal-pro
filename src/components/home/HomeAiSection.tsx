@@ -15,6 +15,14 @@ import { andList, utcStamp } from "@/lib/home/stamps";
  * The illustration is drawn from a real row on the day the mockup was made
  * and says so; it prints that row's date, never an age that would go stale.
  */
+/**
+ * The "What we never do" items. The list has no item about submitting an
+ * application: the server-side apply agent was still live on 2026-10-18
+ * (agent_sender_public_status true), so the page may not promise it. Wave 4
+ * adds that item back, with its test, once the retirement is live.
+ */
+const NEVER_ITEMS = [2, 3] as const;
+
 const ILLUSTRATION_DAY = "2026-10-17";
 const ILLUSTRATION_POSTED_DAY = "2026-10-16";
 
@@ -36,7 +44,7 @@ export function HomeAiSection({ counts, openTotal, asOf }: { counts: Record<stri
           <div className="mt-[18px] rounded-lg border border-border-strong px-4 py-3.5">
             <h3 className="text-sm font-semibold">{t("home.ai.neverTitle")}</h3>
             <ul className="mt-2 grid gap-2">
-              {[1, 2, 3].map((n) => (
+              {NEVER_ITEMS.map((n) => (
                 <li key={n} className="flex items-start gap-2.5 text-sm text-muted-foreground">
                   <XCircle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
                   <span>

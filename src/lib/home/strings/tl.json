@@ -35,7 +35,7 @@
       "total_one": "{{formatted}} bukas na posting sa kabuuan",
       "total_other": "{{formatted}} bukas na posting sa kabuuan",
       "seeAll": "Tingnan ang lahat ng posting",
-      "applyNote": "Sa sariling site ng employer ka nag-a-apply. Hindi kami kailanman nagsusumite ng aplikasyon."
+      "applyNote": "Sa sariling site ng employer ka nag-a-apply."
     },
     "rail": {
       "title": "Ang board ngayon",
@@ -100,8 +100,6 @@
       "title": "Maghanap sa board mula sa Claude o ChatGPT",
       "lede": "Ikonekta ang Resume Booster sa Claude o ChatGPT, o idagdag ito sa Claude Code. Magtanong ng mga trabaho sa simpleng salita, basahin nang buo ang isang posting, at isulat ang aplikasyon mo sa tulong ng iyong AI. Libre sa panig namin, walang account, sa loob ng pinaghahatiang pang-araw-araw na limit. Sa ChatGPT, dapat pinapayagan ng plan mo ang mga custom connector.",
       "neverTitle": "Ang hindi namin kailanman ginagawa",
-      "never1Lead": "Magsumite ng aplikasyon.",
-      "never1": "Ikaw mismo ang pipindot ng submit, sa site ng employer.",
       "never2Lead": "Sabihin ang tsansa mo.",
       "never2": "Walang makakagawa niyan, at hindi kami nanghuhula.",
       "never3Lead": "Hingin ang résumé mo.",
@@ -159,8 +157,8 @@
       "sourcesQ": "Saan nanggagaling ang mga trabahong ito?",
       "sourcesA": "Mula sa sariling hiring system ng mga employer: {{names}} at {{more}} pa, kasama ang USAJOBS para sa mga federal na trabaho sa US. Binabasa namin ang board ng bawat employer, inililista ang inihahain nito, at inaalis ang posting kapag hindi na ito nakita ng mas huling pagbasa. May label ang mga board ng staffing agency.",
       "sourcesAPlain": "Mula sa sariling hiring system ng mga employer, kasama ang USAJOBS para sa mga federal na trabaho sa US. Binabasa namin ang board ng bawat employer, inililista ang inihahain nito, at inaalis ang posting kapag hindi na ito nakita ng mas huling pagbasa. May label ang mga board ng staffing agency.",
-      "applyQ": "Kayo ba ang mag-a-apply para sa akin?",
-      "applyA": "Hindi. Sa sariling site ng employer ka mag-a-apply, mag-isa o sa tulong ng Claude, ChatGPT o Claude Code. Hindi kami kailanman nagsusumite ng aplikasyon.",
+      "applyQ": "Paano ako mag-a-apply?",
+      "applyA": "Sa sariling site ng employer, mag-isa o sa tulong ng Claude, ChatGPT o Claude Code.",
       "currentQ": "Gaano kasariwa ang isang posting?",
       "currentA": "Ipinapakita ng bawat posting ang petsa ng pag-post ng employer kapag may sinasabi ang system nito at hindi ito binabago. Sa mga board na binabasa namin nang buo, ipinapakita rin kung kailan namin huling nabasa ang buong board (\"nabasa ang feed\"). Ang pinakamalalaking board ay binabasa nang paisa-isang bahagi sa ilang ikot, kaya walang ganitong oras ang mga posting nila. Maaaring magsara ang isang trabaho sa pagitan ng mga pagbasa; ang pahina ng employer ang huling salita.",
       "fitQ": "Sasabihin ba ninyo kung anong trabaho ang makukuha ko?",

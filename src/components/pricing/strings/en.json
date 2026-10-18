@@ -171,8 +171,8 @@
       "packageA": "One job's set of writing: a tailored résumé, a cover letter and interview prep. Pro allows {{perDay}} of each a day and {{perMonth}} of each a month, counted in UTC days. A free account allows {{freePerDay}} of each a day.",
       "cancelQ": "How do I cancel Pro?",
       "cancelA": "Cancel online from your account, the same way you signed up, any time. Cancelling stops the next renewal, and Pro stays on to the end of the month you paid for.",
-      "applyQ": "Do you apply to jobs for me?",
-      "applyA": "No, on any plan. Pro drafts for the jobs you pick; you review the drafts and apply on the employer's site, by hand or with help from Claude, ChatGPT or Claude Code.",
+      "applyQ": "How do I apply?",
+      "applyA": "On the employer's site, by hand or with help from Claude, ChatGPT or Claude Code. Pro drafts for the jobs you pick, and you review every draft before you send it.",
       "interviewsQ": "Will paying get me interviews?",
       "interviewsA": "We can't promise that, and we don't estimate anyone's chances. The tools improve what you send; employers decide."
     }

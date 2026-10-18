@@ -171,8 +171,8 @@
       "packageA": "Het schrijfwerk voor één vacature: een aangepast cv, een motivatiebrief en gespreksvoorbereiding. Pro staat {{perDay}} van elk per dag en {{perMonth}} van elk per maand toe, geteld in UTC-dagen. Een gratis account staat {{freePerDay}} van elk per dag toe.",
       "cancelQ": "Hoe zeg ik Pro op?",
       "cancelA": "Online via je account, op dezelfde manier als je het afsloot, wanneer je wilt. Opzeggen stopt de volgende verlenging, en Pro blijft actief tot het einde van de maand die je hebt betaald.",
-      "applyQ": "Solliciteren jullie voor mij?",
-      "applyA": "Nee, bij geen enkel abonnement. Pro schrijft concepten voor de vacatures die je kiest; jij controleert de concepten en solliciteert op de site van de werkgever, met de hand of met hulp van Claude, ChatGPT of Claude Code.",
+      "applyQ": "Hoe solliciteer ik?",
+      "applyA": "Op de site van de werkgever, met de hand of met hulp van Claude, ChatGPT of Claude Code. Pro schrijft concepten voor de vacatures die je kiest, en jij controleert elk concept voordat je het verstuurt.",
       "interviewsQ": "Krijg ik door te betalen sollicitatiegesprekken?",
       "interviewsA": "Dat kunnen we niet beloven, en we schatten niemands kansen in. De hulpmiddelen verbeteren wat je verstuurt; werkgevers beslissen."
     }

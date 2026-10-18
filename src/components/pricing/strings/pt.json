@@ -171,8 +171,8 @@
       "packageA": "A escrita para uma vaga: um currículo adaptado, uma carta de apresentação e preparação para entrevista. O Pro permite {{perDay}} de cada por dia e {{perMonth}} de cada por mês, contados em dias UTC. Uma conta grátis permite {{freePerDay}} de cada por dia.",
       "cancelQ": "Como cancelo o Pro?",
       "cancelA": "On-line pela sua conta, do mesmo jeito que assinou, quando quiser. Cancelar interrompe a próxima renovação, e o Pro continua ativo até o fim do mês que você pagou.",
-      "applyQ": "Vocês se candidatam às vagas por mim?",
-      "applyA": "Não, em nenhum plano. O Pro escreve rascunhos para as vagas que você escolhe; você revisa os rascunhos e se candidata no site do empregador, à mão ou com a ajuda do Claude, do ChatGPT ou do Claude Code.",
+      "applyQ": "Como me candidato?",
+      "applyA": "No site do empregador, à mão ou com a ajuda do Claude, do ChatGPT ou do Claude Code. O Pro escreve rascunhos para as vagas que você escolhe, e você revisa cada rascunho antes de enviá-lo.",
       "interviewsQ": "Pagar vai me garantir entrevistas?",
       "interviewsA": "Não podemos prometer isso, e não estimamos as chances de ninguém. As ferramentas melhoram o que você envia; quem decide são os empregadores."
     }

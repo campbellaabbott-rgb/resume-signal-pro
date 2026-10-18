@@ -171,8 +171,8 @@
       "packageA": "La redacción para una oferta: un currículum adaptado, una carta de presentación y preparación de entrevista. Pro permite {{perDay}} de cada al día y {{perMonth}} de cada al mes, contados en días UTC. Una cuenta gratuita permite {{freePerDay}} de cada al día.",
       "cancelQ": "¿Cómo cancelo Pro?",
       "cancelA": "En línea desde tu cuenta, igual que te suscribiste, cuando quieras. Cancelar detiene la próxima renovación, y Pro sigue activo hasta el final del mes que pagaste.",
-      "applyQ": "¿Se postulan a empleos por mí?",
-      "applyA": "No, en ningún plan. Pro redacta borradores para las ofertas que eliges; tú revisas los borradores y postulas en el sitio del empleador, a mano o con ayuda de Claude, ChatGPT o Claude Code.",
+      "applyQ": "¿Cómo me postulo?",
+      "applyA": "En el sitio del empleador, a mano o con ayuda de Claude, ChatGPT o Claude Code. Pro redacta borradores para las ofertas que eliges, y tú revisas cada borrador antes de enviarlo.",
       "interviewsQ": "¿Pagar me conseguirá entrevistas?",
       "interviewsA": "No podemos prometerlo, y no estimamos las posibilidades de nadie. Las herramientas mejoran lo que envías; deciden los empleadores."
     }

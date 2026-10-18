@@ -35,7 +35,7 @@
       "total_one": "{{formatted}} open vacature in totaal",
       "total_other": "{{formatted}} open vacatures in totaal",
       "seeAll": "Alle vacatures bekijken",
-      "applyNote": "Je solliciteert op de eigen site van de werkgever. Wij dienen nooit een sollicitatie in."
+      "applyNote": "Je solliciteert op de eigen site van de werkgever."
     },
     "rail": {
       "title": "Het bord vandaag",
@@ -100,8 +100,6 @@
       "title": "Zoek op het bord vanuit Claude of ChatGPT",
       "lede": "Koppel Resume Booster aan Claude of ChatGPT, of voeg het toe aan Claude Code. Vraag in gewone woorden naar functies, lees een vacature volledig en stel je sollicitatie op met hulp van je AI. Gratis van onze kant, zonder account, binnen een gedeelde daglimiet. In ChatGPT moet je abonnement eigen connectors toestaan.",
       "neverTitle": "Wat we nooit doen",
-      "never1Lead": "Een sollicitatie indienen.",
-      "never1": "Je klikt zelf op verzenden, op de site van de werkgever.",
       "never2Lead": "Je je kansen vertellen.",
       "never2": "Niemand kan dat, en wij gokken niet.",
       "never3Lead": "Om je cv vragen.",
@@ -159,8 +157,8 @@
       "sourcesQ": "Waar komen deze vacatures vandaan?",
       "sourcesA": "Uit de eigen wervingssystemen van werkgevers: {{names}} en nog {{more}}, plus USAJOBS voor federale functies in de VS. We lezen de vacaturesite van elke werkgever, tonen wat die aanbiedt en halen een vacature weg als een latere lezing haar niet meer vindt. Borden van uitzend- en wervingsbureaus zijn gemarkeerd.",
       "sourcesAPlain": "Uit de eigen wervingssystemen van werkgevers, plus USAJOBS voor federale functies in de VS. We lezen de vacaturesite van elke werkgever, tonen wat die aanbiedt en halen een vacature weg als een latere lezing haar niet meer vindt. Borden van uitzend- en wervingsbureaus zijn gemarkeerd.",
-      "applyQ": "Solliciteren jullie voor mij?",
-      "applyA": "Nee. Je solliciteert op de eigen site van de werkgever, zelf of met hulp van Claude, ChatGPT of Claude Code. Wij dienen nooit een sollicitatie in.",
+      "applyQ": "Hoe solliciteer ik?",
+      "applyA": "Op de eigen site van de werkgever, zelf of met hulp van Claude, ChatGPT of Claude Code.",
       "currentQ": "Hoe actueel is een vacature?",
       "currentA": "Elke vacature toont de plaatsingsdatum van de werkgever als zijn systeem er een opgeeft en die niet verschuift. Bij borden die we volledig lezen, toont ze ook wanneer we het hele bord het laatst lazen (\"feed gelezen\"). De grootste borden lezen we in delen over meerdere rondes, dus hun vacatures tonen die tijd niet. Een functie kan tussen twee lezingen sluiten; de pagina van de werkgever heeft het laatste woord.",
       "fitQ": "Vertellen jullie welke banen ik krijg?",

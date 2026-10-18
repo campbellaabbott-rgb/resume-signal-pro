@@ -37,7 +37,7 @@
       "total_many": "{{formatted}} vagas abertas no total",
       "total_other": "{{formatted}} vagas abertas no total",
       "seeAll": "Ver todas as vagas",
-      "applyNote": "Você se candidata no site do próprio empregador. Nunca enviamos uma candidatura."
+      "applyNote": "Você se candidata no site do próprio empregador."
     },
     "rail": {
       "title": "O quadro hoje",
@@ -103,8 +103,6 @@
       "title": "Busque no quadro pelo Claude ou pelo ChatGPT",
       "lede": "Conecte o Resume Booster ao Claude ou ao ChatGPT, ou adicione-o ao Claude Code. Peça vagas com suas palavras, leia uma vaga completa e redija sua candidatura com a ajuda da sua IA. Grátis da nossa parte, sem conta, dentro de uma cota diária compartilhada. No ChatGPT, seu plano precisa permitir conectores personalizados.",
       "neverTitle": "O que nunca fazemos",
-      "never1Lead": "Enviar uma candidatura.",
-      "never1": "Você mesmo clica em enviar, no site do empregador.",
       "never2Lead": "Dizer suas chances.",
       "never2": "Ninguém consegue, e não chutamos.",
       "never3Lead": "Pedir seu currículo.",
@@ -163,8 +161,8 @@
       "sourcesQ": "De onde vêm essas vagas?",
       "sourcesA": "Dos próprios sistemas de recrutamento dos empregadores: {{names}} e mais {{more}}, além do USAJOBS para cargos federais dos EUA. Lemos o site de vagas de cada empregador, listamos o que ele publica e retiramos uma vaga quando uma leitura posterior não a encontra mais. Quadros de agências de recrutamento são sinalizados.",
       "sourcesAPlain": "Dos próprios sistemas de recrutamento dos empregadores, além do USAJOBS para cargos federais dos EUA. Lemos o site de vagas de cada empregador, listamos o que ele publica e retiramos uma vaga quando uma leitura posterior não a encontra mais. Quadros de agências de recrutamento são sinalizados.",
-      "applyQ": "Vocês se candidatam às vagas por mim?",
-      "applyA": "Não. Você se candidata no site do próprio empregador, sozinho ou com a ajuda do Claude, do ChatGPT ou do Claude Code. Nunca enviamos uma candidatura.",
+      "applyQ": "Como me candidato?",
+      "applyA": "No site do próprio empregador, sozinho ou com a ajuda do Claude, do ChatGPT ou do Claude Code.",
       "currentQ": "Quão atual é uma vaga?",
       "currentA": "Cada vaga mostra a data de publicação do empregador quando o sistema dele informa uma e não a altera. Nos quadros que lemos por inteiro, ela também mostra quando lemos todo o quadro pela última vez (\"feed lido\"). Os maiores quadros são lidos por partes em várias passadas, então suas vagas não mostram esse horário. Uma vaga pode fechar entre leituras; a página do empregador é a palavra final.",
       "fitQ": "Vocês vão me dizer quais vagas eu vou conseguir?",

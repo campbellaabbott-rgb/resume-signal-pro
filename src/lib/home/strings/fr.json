@@ -37,7 +37,7 @@
       "total_many": "{{formatted}} offres ouvertes au total",
       "total_other": "{{formatted}} offres ouvertes au total",
       "seeAll": "Voir toutes les offres",
-      "applyNote": "Vous postulez sur le site de l'employeur. Nous ne soumettons jamais de candidature."
+      "applyNote": "Vous postulez sur le site de l'employeur."
     },
     "rail": {
       "title": "Le tableau aujourd'hui",
@@ -103,8 +103,6 @@
       "title": "Cherchez dans le tableau depuis Claude ou ChatGPT",
       "lede": "Connectez Resume Booster à Claude ou ChatGPT, ou ajoutez-le à Claude Code. Demandez des postes avec vos mots, lisez une offre en entier et rédigez votre candidature avec l'aide de votre IA. Gratuit de notre côté, sans compte, dans une limite quotidienne partagée. Dans ChatGPT, votre abonnement doit autoriser les connecteurs personnalisés.",
       "neverTitle": "Ce que nous ne faisons jamais",
-      "never1Lead": "Soumettre une candidature.",
-      "never1": "C'est vous qui cliquez sur Envoyer, sur le site de l'employeur.",
       "never2Lead": "Vous dire vos chances.",
       "never2": "Personne ne le peut, et nous ne devinons pas.",
       "never3Lead": "Demander votre CV.",
@@ -163,8 +161,8 @@
       "sourcesQ": "D'où viennent ces offres ?",
       "sourcesA": "Des propres systèmes de recrutement des employeurs : {{names}} et {{more}} autres, plus USAJOBS pour les postes fédéraux américains. Nous lisons le site carrières de chaque employeur, listons ce qu'il publie et retirons une offre quand une lecture suivante ne la trouve plus. Les tableaux des agences de recrutement sont signalés.",
       "sourcesAPlain": "Des propres systèmes de recrutement des employeurs, plus USAJOBS pour les postes fédéraux américains. Nous lisons le site carrières de chaque employeur, listons ce qu'il publie et retirons une offre quand une lecture suivante ne la trouve plus. Les tableaux des agences de recrutement sont signalés.",
-      "applyQ": "Postulez-vous à ma place ?",
-      "applyA": "Non. Vous postulez sur le site de l'employeur, vous-même ou avec l'aide de Claude, ChatGPT ou Claude Code. Nous ne soumettons jamais de candidature.",
+      "applyQ": "Comment postuler ?",
+      "applyA": "Sur le site de l'employeur, vous-même ou avec l'aide de Claude, ChatGPT ou Claude Code.",
       "currentQ": "Une offre est-elle à jour ?",
       "currentA": "Chaque offre affiche la date de publication de l'employeur quand son système en indique une et ne la modifie pas. Pour les tableaux que nous lisons en entier, elle affiche aussi quand nous avons lu tout le tableau pour la dernière fois (« flux lu »). Les plus grands tableaux sont lus par parties sur plusieurs passages, leurs offres n'affichent donc pas cette heure. Un poste peut fermer entre deux lectures ; la page de l'employeur fait foi.",
       "fitQ": "Allez-vous me dire quels postes j'obtiendrai ?",
