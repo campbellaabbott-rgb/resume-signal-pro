@@ -1184,6 +1184,13 @@
       "when": 1792321068777,
       "tag": "0168_20261012110000_a_perk_is_counted_from_the_employers_own_postings_and_shown_only_once_audited",
       "breakpoints": true
+    },
+    {
+      "idx": 169,
+      "version": "7",
+      "when": 1792321089384,
+      "tag": "0169_20261012110100_the_census_lists_the_perk_reader_with_its_caller",
+      "breakpoints": true
     }
   ]
 }
