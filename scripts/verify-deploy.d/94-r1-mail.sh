@@ -21,6 +21,8 @@
 # string code starting UNAUTHORIZED_ (the live body, 2026-10-17); the
 # no-JWT probe below FAILs a 401 in any other shape, because the command
 # would then read a refused bearer as a success (second recheck of R1).
+# process-email-queue must serve 2026-10-14.2 (the S13-017 hotfix: a Lovable
+# throttle or hang never stops sign-in mail), read from its preflight.
 echo "== 94. R1 mail: the sending DNS, the hook/queue/webhook builds, the drain job, the anon refusals =="
 
 vd94_dns() { curl -s -m 20 "https://dns.google/resolve?name=$1&type=$2" -H 'accept: application/dns-json'; }
@@ -58,9 +60,20 @@ for FN94 in auth-email-hook process-email-queue resend-webhook; do
   H94=$(curl -s -m 30 -D - -o /dev/null -X OPTIONS "$B/functions/v1/$FN94" -H "apikey: $K" -H "Authorization: Bearer $K" | tr -d '\r' | grep -i '^x-fn-build:' | head -1 | sed -E 's/^[^:]+: *//')
   if [ -z "$H94" ]; then echo "FAIL  $FN94 preflight carries no x-fn-build (want $FN94.2026-10-14.1 or later; a new function answers 404 until it is deployed)"
   elif build_ge "$FN94" "$H94" 2026-10-14 1; then echo "PASS  $FN94 x-fn-build = $H94 (2026-10-14.1 or later)"
-    [ "$FN94" = process-email-queue ] && VD94_PEQ=1; [ "$FN94" = resend-webhook ] && VD94_RW=1
+    [ "$FN94" = process-email-queue ] && VD94_PEQ=1 && VD94_PEQ_BUILD=$H94; [ "$FN94" = resend-webhook ] && VD94_RW=1
   else echo "FAIL  $FN94 x-fn-build = $H94 (want $FN94.2026-10-14.1 or later)"; fi
 done
+# The S13-017 hotfix (2026-10-14.2): a Lovable 429 on sign-in mail goes through
+# Resend and sets no cooldown, a cooldown in force never holds the auth queue,
+# and a hung Lovable send fails after its deadline. rb-auth-mail-drain posts
+# through a cooldown since the same hotfix, so it waits for this build.
+if [ "$VD94_PEQ" = 1 ]; then
+  if build_ge process-email-queue "$VD94_PEQ_BUILD" 2026-10-14 2; then
+    echo "PASS  process-email-queue x-fn-build = $VD94_PEQ_BUILD: a Lovable 429 or a hung send on sign-in mail goes out through Resend, and no cooldown holds the auth queue (S13-017, 2026-10-14.2 or later)"
+  else
+    echo "FAIL  process-email-queue x-fn-build = $VD94_PEQ_BUILD: a Lovable 429 still stops sign-in mail and sets an hour's cooldown, so reset mail expires unsent (S13-017). Deploy process-email-queue.2026-10-14.2 before migration 20261014100000"
+  fi
+fi
 
 # Our drain job (20261014100000 schedules rb-auth-mail-drain; a job named
 # process-email-queue is Lovable's and is reported, never judged as ours).

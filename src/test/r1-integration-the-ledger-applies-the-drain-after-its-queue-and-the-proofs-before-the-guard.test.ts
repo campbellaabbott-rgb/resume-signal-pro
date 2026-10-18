@@ -95,7 +95,7 @@ describe("R1's two migrations sit where they work", () => {
     expect(codeOf(queue)).toMatch(/!\(await callerMayDrain\(req\.headers, supabase, supabaseServiceKey\)\)/);
     expect(codeOf(readFileSync(join(FN_DIR, "_shared/email-cron.ts"), "utf8"))).toContain('h.get("x-email-cron")');
     const sql = readFileSync(join(MIG, R1_MIGRATIONS.find((f) => f.startsWith("20261014100000"))!), "utf8");
-    expect(sql).toMatch(/APPLY ORDER: after process-email-queue\.2026-10-14\.1 serves/);
+    expect(sql, "the drain's header names another build than the rule it waits for").toContain(`APPLY ORDER: after process-email-queue.${m![1]}.${m![2]} serves`);
     expect(codeOf(sql)).toMatch(/x-email-cron/);
   });
 

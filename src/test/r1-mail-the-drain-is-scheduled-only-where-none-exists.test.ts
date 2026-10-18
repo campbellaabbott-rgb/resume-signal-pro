@@ -22,9 +22,11 @@
  *     reports an open wrapper, or, without that reader, while a named wrapper
  *     is executable by anon;
  *   - the command posts only while a sign-in mail is visible in auth_emails
- *     (R1 drains sign-in mail only; the drip waits for CP-G), never during a
- *     provider cooldown, with the vault bearer (email_queue_service_role_key)
- *     AND the cron key (x-email-cron), naming {"queues":["auth_emails"]};
+ *     (R1 drains sign-in mail only; the drip waits for CP-G), with the vault
+ *     bearer (email_queue_service_role_key) AND the cron key (x-email-cron),
+ *     naming {"queues":["auth_emails"]}; a provider cooldown does not hold it
+ *     (S13-017: the cooldown is the transactional queue's alone, and one 429
+ *     with Retry-After 3600 had held every reset mail past its code);
  *   - a run fails loudly, posting nothing, when the vault holds no bearer or
  *     no cron key, when the drain refused a post THAT OFFERED THE CRON KEY in
  *     the last two minutes (only our posts offer one), or when the gateway
@@ -187,11 +189,20 @@ describe("the command posts only when sign-in mail is waiting", () => {
     expect(await calls(pg)).toEqual([]);
   });
 
-  it("during a provider cooldown: no post", async () => {
+  it("a provider cooldown does not hold sign-in mail: one post (S13-017; the cooldown is the transactional queue's alone)", async () => {
     const { pg, tick } = await ready();
-    await pg.exec("INSERT INTO pgmq.q_auth_emails (message) VALUES ('{}'); UPDATE public.email_send_state SET retry_after_until = now() + interval '1 minute'");
+    await pg.exec("INSERT INTO pgmq.q_auth_emails (message) VALUES ('{}'); UPDATE public.email_send_state SET retry_after_until = now() + interval '60 minutes'");
     await tick();
-    expect(await calls(pg)).toEqual([]);
+    const c = await calls(pg);
+    expect(c, "a Lovable cooldown held every reset mail past its 15-minute code").toHaveLength(1);
+    expect(c[0].body).toEqual({ source: "cron", queues: ["auth_emails"] });
+  });
+
+  it("a command that reads the cooldown again fails the file's self-check", async () => {
+    const pg = await boot();
+    const edited = migration(FILE).replace("BEGIN\n  v_n := 0;", "BEGIN\n  IF EXISTS (SELECT 1 FROM public.email_send_state s WHERE s.retry_after_until > now()) THEN RETURN; END IF;\n  v_n := 0;");
+    expect(edited).not.toBe(migration(FILE));
+    await expect(pg.exec(edited)).rejects.toThrow(/reads the provider cooldown; sign-in mail must not wait it out/);
   });
 
   it("no vault bearer: the run fails loudly naming email_queue_service_role_key, and posts nothing the gateway would refuse unheard", async () => {

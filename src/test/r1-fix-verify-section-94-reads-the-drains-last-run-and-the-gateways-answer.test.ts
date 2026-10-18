@@ -43,7 +43,7 @@ const SECTION = readFileSync(resolve(ROOT, "scripts/verify-deploy.d/94-r1-mail.s
 const dirs: string[] = [];
 afterAll(() => { for (const d of dirs) { try { rmSync(d, { recursive: true, force: true }); } catch { /* best effort */ } } });
 
-type Cfg = { cron: unknown; noJwt: { status: number; body: string }; anonKey?: { status: number; body: string } };
+type Cfg = { cron: unknown; noJwt: { status: number; body: string }; anonKey?: { status: number; body: string }; builds?: Record<string, string> };
 const CURL = `#!/usr/bin/env node
 const fs=require("fs");const a=process.argv.slice(2);
 let url="",method="GET",out=null,w=null,dump=false;const hs=[];
@@ -61,7 +61,7 @@ if(url.includes("dns.google")){
   else if(/_dmarc/.test(url))body=ans("v=DMARC1; p=none");
   else if(/notify\\./.test(url))body=ans("ns1.lovable.cloud.");
   else body=ans("lovable_verify=abc");
-}else if(method==="OPTIONS"){const fn=url.split("/functions/v1/")[1];head="HTTP/2 200\\r\\nx-fn-build: "+fn+".2026-10-14.1\\r\\n\\r\\n";}
+}else if(method==="OPTIONS"){const fn=url.split("/functions/v1/")[1];head="HTTP/2 200\\r\\nx-fn-build: "+fn+"."+((cfg.builds||{})[fn]||"2026-10-14.1")+"\\r\\n\\r\\n";}
 else if(url.includes("get_cron_health"))body=JSON.stringify(cfg.cron);
 else if(url.includes("/rest/v1/rpc/"))body=JSON.stringify({code:"42501"});
 else if(url.includes("resend-webhook")){status=401;body="{}";}
@@ -169,5 +169,18 @@ describe("the publishable key", () => {
   it("FAILs a refusal that does not say whether a cron key was offered (the old build's body): the cron could not tell its own refusals apart", () => {
     const { lines } = run({ cron: job(), noJwt: GATEWAY_401, anonKey: { status: 403, body: JSON.stringify({ error: "Forbidden", refusedBy: "process-email-queue" }) } });
     expect(has(lines, "FAIL", /answered the publishable key with HTTP 403/), show(lines)).toBe(true);
+  });
+});
+
+describe("the S13-017 hotfix build (a Lovable throttle or hang never stops sign-in mail)", () => {
+  it("PASSes process-email-queue 2026-10-14.2 or later, and FAILs the 2026-10-14.1 build a 429 stops, naming the build to deploy before the drain migration", () => {
+    const fixed = run({ cron: job(), noJwt: GATEWAY_401, builds: { "process-email-queue": "2026-10-14.2" } }).lines;
+    expect(has(fixed, "PASS", /process-email-queue x-fn-build = process-email-queue\.2026-10-14\.2: a Lovable 429 or a hung send on sign-in mail goes out through Resend/), show(fixed)).toBe(true);
+    expect(fixed.some((l) => /^FAIL .*S13-017/.test(l)), show(fixed)).toBe(false);
+    const later = run({ cron: job(), noJwt: GATEWAY_401, builds: { "process-email-queue": "2026-10-20.1" } }).lines;
+    expect(has(later, "PASS", /S13-017, 2026-10-14\.2 or later/), show(later)).toBe(true);
+    const old = run({ cron: job(), noJwt: GATEWAY_401, builds: { "process-email-queue": "2026-10-14.1" } }).lines;
+    expect(has(old, "FAIL", /process-email-queue x-fn-build = process-email-queue\.2026-10-14\.1: a Lovable 429 still stops sign-in mail .*Deploy process-email-queue\.2026-10-14\.2 before migration 20261014100000/), show(old)).toBe(true);
+    expect(has(old, "PASS", /process-email-queue x-fn-build = process-email-queue\.2026-10-14\.1 \(2026-10-14\.1 or later\)/), "the R1 line no longer reads the .1 build as R1's").toBe(true);
   });
 });

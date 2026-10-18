@@ -1,4 +1,4 @@
-// deploy-stamp: 2026-10-14T10:00Z
+// deploy-stamp: 2026-10-17T23:00Z
 import { sendLovableEmail } from 'npm:@lovable.dev/email-js'
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { CUSTOMER_REPLY_TO } from "../_shared/customer-mail.ts";
@@ -48,7 +48,25 @@ import { sendMail } from "../_shared/send-mail.ts";
  *     next tick, until the code inside it expires. A sign-in mail is bounded
  *     by that expiry (its TTL, 15 minutes), not by the retry count, and is
  *     never sent late by either provider.
- *   - transactional_emails keeps its behaviour exactly.
+ *   - A LOVABLE THROTTLE OR HANG NEVER STOPS SIGN-IN MAIL (S13-017, hotfix
+ *     2026-10-14.2). A Lovable 429 on an auth mail sends that mail through
+ *     Resend at once (Lovable did not take it, so it cannot arrive twice),
+ *     and every later auth mail of the run goes straight to Resend. It sets
+ *     NO cooldown: email_send_state.retry_after_until is the transactional
+ *     queue's alone, and a cooldown in force never stops the auth queue
+ *     (rb-auth-mail-drain posts through it too). Before this, one 429 with
+ *     Retry-After 3600 stopped the run, set an hour's cooldown that the
+ *     cron honoured, and every reset mail queued meanwhile expired into the
+ *     dead-letter queue with no Resend try and no alert. Every Lovable send
+ *     has a deadline (LOVABLE_SEND_TIMEOUT_MS, 10 s): email-js calls fetch
+ *     with no signal, so a hung API held the run until the platform killed
+ *     it, before any row was written. A send past its deadline may still
+ *     land, so it is a transient failure (a 'failed' row, counted toward
+ *     AUTH_FALLBACK_AFTER_FAILURES), and the run's later auth mail, which
+ *     Lovable never saw, goes straight to Resend.
+ *   - transactional_emails keeps its behaviour (a 429 there still stops the
+ *     run and sets the cooldown), except that a hung send now fails after
+ *     its deadline as any transient failure does.
  *
  * LOVABLE CAN REGENERATE THIS FILE (its "set up emails" step replaced it on
  * 2026-10-12). The guard
@@ -58,7 +76,7 @@ import { sendMail } from "../_shared/send-mail.ts";
 
 // Provable from outside without a key: every response, the preflight
 // included, carries this in x-fn-build.
-const FN_BUILD = 'process-email-queue.2026-10-14.1'
+const FN_BUILD = 'process-email-queue.2026-10-14.2'
 const BUILD_HEADERS = { 'x-fn-build': FN_BUILD, 'Access-Control-Expose-Headers': 'x-fn-build' }
 const reply = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...BUILD_HEADERS } })
@@ -74,6 +92,45 @@ export const AUTH_FALLBACK_FROM = 'Resume Booster <account@resumebooster.work>'
 /** Transient Lovable failures an auth mail takes before Resend is tried. */
 export const AUTH_FALLBACK_AFTER_FAILURES = 3
 const AUTH_FALLBACK_TIMEOUT_MS = 8_000
+/** How long a Lovable send may take (LOVABLE_SEND_TIMEOUT_MS overrides it, within 50 ms and 30 s). */
+export const LOVABLE_SEND_TIMEOUT_MS = 10_000
+
+/** The deadline for one Lovable send. */
+export function lovableSendTimeoutMs(raw: string | undefined): number {
+  const n = Number(raw)
+  return Number.isFinite(n) && n > 0 ? Math.min(30_000, Math.max(50, Math.floor(n))) : LOVABLE_SEND_TIMEOUT_MS
+}
+
+/**
+ * A LOVABLE SEND WITH A DEADLINE. email-js's sendLovableEmail calls fetch with
+ * no AbortSignal, so a hung API would hold this run until the platform ended
+ * the invocation, before any row recorded the try. Past the deadline this
+ * throws an error with status 0 (no HTTP status: never read as a 429, 401 or
+ * 403) and timedOut true. The request itself cannot be cancelled and may
+ * still land, which is why a timeout counts as a transient failure, never as
+ * a refusal.
+ */
+async function sendLovableWithin(
+  payload: Parameters<typeof sendLovableEmail>[0],
+  options: Parameters<typeof sendLovableEmail>[1],
+  ms: number,
+): Promise<unknown> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      sendLovableEmail(payload, options),
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(Object.assign(new Error(`Lovable did not answer within ${ms} ms`), { status: 0, timedOut: true })), ms)
+      }),
+    ])
+  } finally {
+    if (timer !== undefined) clearTimeout(timer)
+  }
+}
+
+function isTimedOut(error: unknown): boolean {
+  return !!error && typeof error === 'object' && (error as { timedOut?: unknown }).timedOut === true
+}
 
 /** What every refusal answers: the drain's cron command finds it in pg_net's answers (20261014100000). */
 export const REFUSED_BODY = { error: 'Forbidden', refusedBy: 'process-email-queue' }
@@ -301,15 +358,20 @@ Deno.serve(async (req) => {
   try { requested = await req.json() } catch { /* no body: sign-in mail only */ }
   const queues = queuesToDrain(requested)
 
-  // 1. Check rate-limit cooldown and read queue config
+  // 1. Check rate-limit cooldown and read queue config. The cooldown is the
+  // transactional queue's alone (S13-017): sign-in mail is drained through
+  // it, and a Lovable 429 on sign-in mail goes to Resend, never into it.
   const { data: state } = await supabase
     .from('email_send_state')
     .select('retry_after_until, batch_size, send_delay_ms, auth_email_ttl_minutes, transactional_email_ttl_minutes')
     .single()
 
-  if (state?.retry_after_until && new Date(state.retry_after_until) > new Date()) {
+  const cooling = !!state?.retry_after_until && new Date(state.retry_after_until) > new Date()
+  if (cooling && !queues.includes('auth_emails')) {
     return reply({ skipped: true, reason: 'rate_limited' })
   }
+  const cooled: string[] = []
+  const sendTimeoutMs = lovableSendTimeoutMs(Deno.env.get('LOVABLE_SEND_TIMEOUT_MS'))
 
   const batchSize = state?.batch_size ?? DEFAULT_BATCH_SIZE
   const sendDelayMs = state?.send_delay_ms ?? DEFAULT_SEND_DELAY_MS
@@ -322,9 +384,55 @@ Deno.serve(async (req) => {
   let forbidden = 0
   let viaResend = 0
   let resendFailed = 0
+  let rateLimited = 0
+  // Why Lovable is not asked again in this run (S13-017): it answered 429, or
+  // a send passed its deadline. The run's later auth mail goes to Resend.
+  let lovableOut: string | null = null
+
+  /**
+   * ONE AUTH MAIL THROUGH RESEND (D1). Sent: off the queue. Not sent: a mail
+   * Lovable refused as a sender (`senderRefusal`) whose Resend refusal is
+   * permanent dead-letters, naming both refusals; anything else (a throttle,
+   * a transient Resend failure) stays on the queue (vt 30 s) for the next
+   * tick, until the code inside it expires.
+   */
+  const throughResend = async (
+    queue: string,
+    msg: { msg_id: number; message: Record<string, unknown> },
+    why: string,
+    senderRefusal: unknown,
+    lovableMsg: string,
+  ) => {
+    const payload = msg.message
+    const fb = await sendAuthThroughResend(supabase, payload, why)
+    if (fb.ok) {
+      viaResend++
+      totalProcessed++
+      const { error: delError } = await supabase.rpc('delete_email', { queue_name: queue, message_id: msg.msg_id })
+      if (delError) {
+        console.error('Failed to delete a message Resend sent', { queue, msg_id: msg.msg_id, error: delError })
+      }
+      return
+    }
+    if (fb.status !== 0 || fb.error !== 'not_configured') resendFailed++
+    const permanent = resendRefusalIsPermanent(fb)
+    console.error('Resend fallback did not send the auth mail', { msg_id: msg.msg_id, status: fb.status, error: fb.error, permanent })
+    if (senderRefusal && permanent) {
+      forbidden++
+      await moveToDlq(
+        supabase, queue, msg,
+        `${isForbidden(senderRefusal) ? 403 : 401} from the provider for sender ${String(payload.sender_domain ?? payload.from ?? 'unknown')}: ${lovableMsg}; Resend fallback: ${fb.error ?? 'refused'}`.slice(0, 1000),
+      )
+    }
+  }
 
   // 2. Process auth_emails first (priority), then transactional_emails (unless the caller named only auth mail)
   for (const queue of queues) {
+    // A provider cooldown holds the transactional queue only (S13-017).
+    if (cooling && queue !== 'auth_emails') {
+      cooled.push(queue)
+      continue
+    }
     const { data: messages, error: readError } = await supabase.rpc('read_email_batch', {
       queue_name: queue,
       batch_size: batchSize,
@@ -463,8 +571,17 @@ Deno.serve(async (req) => {
         }
       }
 
+      // LOVABLE IS OUT FOR THE REST OF THIS RUN (S13-017): it answered 429,
+      // or a send passed its deadline. This auth mail was never handed to
+      // it, so Resend cannot make it arrive twice.
+      if (queue === 'auth_emails' && lovableOut) {
+        await throughResend(queue, msg, `Lovable not asked: ${lovableOut} earlier in this run`, null, '')
+        if (i < messages.length - 1) await new Promise((r) => setTimeout(r, sendDelayMs))
+        continue
+      }
+
       try {
-        await sendLovableEmail(
+        await sendLovableWithin(
           {
             run_id: payload.run_id,
             to: payload.to,
@@ -484,7 +601,8 @@ Deno.serve(async (req) => {
           // sendUrl is optional — when LOVABLE_SEND_URL is not set, the library
           // falls back to the default Lovable API endpoint (https://api.lovable.dev).
           // Set LOVABLE_SEND_URL as a Supabase secret to override (e.g. for local dev).
-          { apiKey, sendUrl: Deno.env.get('LOVABLE_SEND_URL') }
+          { apiKey, sendUrl: Deno.env.get('LOVABLE_SEND_URL') },
+          sendTimeoutMs,
         )
 
         // Log success
@@ -527,6 +645,18 @@ Deno.serve(async (req) => {
           })
           if (rlLogError) console.error('Failed to record the provider throttle', { queue, msg_id: msg.msg_id, error: rlLogError })
 
+          // A SIGN-IN MAIL LOVABLE THROTTLED GOES THROUGH RESEND NOW (S13-017).
+          // Lovable did not take it, so it cannot arrive twice. No cooldown is
+          // set: one would hold every reset mail queued behind it past its
+          // 15-minute code, into the dead-letter queue.
+          if (queue === 'auth_emails') {
+            rateLimited++
+            lovableOut = `Lovable answered 429 (Retry-After ${getRetryAfterSeconds(error)} s)`
+            await throughResend(queue, msg, `Lovable rate-limited the send (429): ${errorMsg}`, null, errorMsg)
+            if (i < messages.length - 1) await new Promise((r) => setTimeout(r, sendDelayMs))
+            continue
+          }
+
           const retryAfterSecs = getRetryAfterSeconds(error)
           await supabase
             .from('email_send_state')
@@ -548,6 +678,9 @@ Deno.serve(async (req) => {
         // dead-letters (naming both refusals) only if Resend's refusal is
         // permanent; a transient one (429, 5xx, a timeout) waits for the next
         // tick, until its TTL. A transient Lovable failure always waits.
+        // A send past its deadline is transient (it may still land), and
+        // Lovable is not asked again in this run (S13-017).
+        if (queue === 'auth_emails' && isTimedOut(error)) lovableOut = `Lovable did not answer within ${sendTimeoutMs} ms`
         const refused = isSenderRefusal(error)
         if (queue === 'auth_emails' && (refused || failedAttempts + 1 >= AUTH_FALLBACK_AFTER_FAILURES)) {
           const why = refused
@@ -563,28 +696,9 @@ Deno.serve(async (req) => {
           if (payload?.message_id && typeof payload.message_id === 'string') {
             failedAttemptsByMessageId.set(payload.message_id, failedAttempts + 1)
           }
-          const fb = await sendAuthThroughResend(supabase, payload, why)
-          if (fb.ok) {
-            viaResend++
-            totalProcessed++
-            const { error: delError } = await supabase.rpc('delete_email', { queue_name: queue, message_id: msg.msg_id })
-            if (delError) {
-              console.error('Failed to delete a message Resend sent', { queue, msg_id: msg.msg_id, error: delError })
-            }
-          } else {
-            if (fb.status !== 0 || fb.error !== 'not_configured') resendFailed++
-            const permanent = resendRefusalIsPermanent(fb)
-            console.error('Resend fallback did not send the auth mail', { msg_id: msg.msg_id, status: fb.status, error: fb.error, permanent })
-            // A transient Resend failure leaves the mail on the queue (vt 30 s)
-            // for the next tick; only a refusal that will still stand ends it.
-            if (refused && permanent) {
-              forbidden++
-              await moveToDlq(
-                supabase, queue, msg,
-                `${isForbidden(error) ? 403 : 401} from the provider for sender ${String(payload.sender_domain ?? payload.from ?? 'unknown')}: ${errorMsg}; Resend fallback: ${fb.error ?? 'refused'}`.slice(0, 1000),
-              )
-            }
-          }
+          // A transient Resend failure leaves the mail on the queue (vt 30 s)
+          // for the next tick; only a refusal that will still stand ends it.
+          await throughResend(queue, msg, why, refused ? error : null, errorMsg)
           if (i < messages.length - 1) await new Promise((r) => setTimeout(r, sendDelayMs))
           continue
         }
@@ -636,5 +750,7 @@ Deno.serve(async (req) => {
     ...(forbidden ? { forbidden } : {}),
     ...(viaResend ? { viaResend } : {}),
     ...(resendFailed ? { resendFailed } : {}),
+    ...(rateLimited ? { rateLimited } : {}),
+    ...(cooled.length ? { cooledQueues: cooled } : {}),
   })
 })

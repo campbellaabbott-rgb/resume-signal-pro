@@ -34,11 +34,16 @@
 --      job this file made on an earlier run with an older command is
 --      re-scheduled with this one (found by this file's own marker).
 --      The job's command posts only while pgmq.metrics shows a sign-in mail
---      in auth_emails that is visible now, and not during a provider cooldown
---      (email_send_state.retry_after_until). R1 drains sign-in mail only: the
---      post names {"queues":["auth_emails"]}, and the fix-plan drip in
---      transactional_emails waits for CP-G (its text part, marketing purpose,
---      seller footer and apex sender) where it is.
+--      in auth_emails that is visible now. A provider cooldown does NOT hold
+--      it (S13-017, edited in place before this file was applied anywhere):
+--      the cooldown is the transactional queue's alone, and since
+--      process-email-queue 2026-10-14.2 a Lovable 429 on sign-in mail goes
+--      through Resend and sets none. An earlier draft returned during a
+--      cooldown, so one 429 with Retry-After 3600 held every reset mail past
+--      its 15-minute code into the dead-letter queue. R1 drains sign-in mail
+--      only: the post names {"queues":["auth_emails"]}, and the fix-plan drip
+--      in transactional_emails waits for CP-G (its text part, marketing
+--      purpose, seller footer and apex sender) where it is.
 --      THE POST CARRIES THE VAULT BEARER AND THE CRON KEY. process-email-queue
 --      runs behind the gateway's JWT check (verify_jwt = true, as Lovable's own
 --      dispatcher needs), so the post sends the vault's
@@ -79,15 +84,17 @@
 --      the job 'rb-auth-mail-drain' exists with this file's marker, its
 --      command still posts to the function with the vault bearer and the
 --      cron key behind the pgmq.metrics test and reads the drain's own
---      refusals back, and no job named 'process-email-queue' carries a marker
---      of ours (this file never wrote one; an earlier draft of this file did
---      under that name but was never applied anywhere).
+--      refusals back, its command reads no provider cooldown, and no job
+--      named 'process-email-queue' carries a marker of ours (this file never
+--      wrote one; an earlier draft of this file did under that name but was
+--      never applied anywhere).
 --
 -- Safe to run twice. Creates no table and no function.
 --
--- APPLY ORDER: after process-email-queue.2026-10-14.1 serves (verify-deploy
+-- APPLY ORDER: after process-email-queue.2026-10-14.2 serves (verify-deploy
 -- section 94): an older build ignores x-email-cron and has no Resend
--- fallback. Section 94 also proves the gateway still asks for a JWT (a POST
+-- fallback, and the 2026-10-14.1 build stops sign-in mail during a provider
+-- cooldown, which this command no longer waits out. Section 94 also proves the gateway still asks for a JWT (a POST
 -- with none is refused 401 by the gateway, not by the function), because the
 -- role claim the function reads is the platform's word only while the
 -- gateway checks signatures, and that the gateway's 401 still carries the
@@ -208,9 +215,6 @@ DECLARE
   v_refused integer := 0;
   v_gateway integer := 0;
 BEGIN
-  IF EXISTS (SELECT 1 FROM public.email_send_state s WHERE s.retry_after_until > now()) THEN
-    RETURN;
-  END IF;
   v_n := 0;
   BEGIN
     SELECT m.queue_length INTO v_n FROM pgmq.metrics('auth_emails') m;
@@ -350,6 +354,9 @@ BEGIN
        OR position('r.status_code = 401' IN v_cmd) = 0
        OR position('"code":"UNAUTHORIZED_' IN v_cmd) = 0 THEN
       RAISE EXCEPTION 'self-check: the rb-auth-mail-drain command no longer reads its own refusals and the gateway''s 401 back, so a refused post would read as a success';
+    END IF;
+    IF position('email_send_state' IN v_cmd) > 0 THEN
+      RAISE EXCEPTION 'self-check: the rb-auth-mail-drain command reads the provider cooldown; sign-in mail must not wait it out (S13-017)';
     END IF;
     -- Lovable's job is never ours. An earlier draft of this file scheduled a job under that name; it was never applied anywhere.
     IF EXISTS (
