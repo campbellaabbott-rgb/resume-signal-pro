@@ -66,13 +66,16 @@ const textOf = (h) => h.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>
   if (dom.status === 200 && !isHomeCopy(dom.body)) {
     if (/Domino(?:\x27|&#39;)s(?:\x27|&#39;)s/.test(dom.body)) out("FAIL", "/jobs/company/dominos still says Domino\x27s\x27s");
     else out("PASS", "/jobs/company/dominos never doubles the possessive");
-    // S1 / L4-12: its own openings, linked to posting pages or to the posting
-    // on the live board. A ?country= or ?category= link is this same page to
-    // a crawler, so it is not counted.
+    // S1 / L4-12: its own openings, listed. SEO-005 (2026-10-18): a row links
+    // only to a posting page the bake wrote and is otherwise text, so the
+    // openings are counted as the rows of the list, and a /jobs?job= link (the
+    // /jobs file under a canonical of /jobs) is a FAIL of its own.
     const pagesN = (dom.body.match(/href="\/jobs\/posting\//g) || []).length;
     const jobsN = (dom.body.match(/href="\/jobs\?job=/g) || []).length;
-    if (pagesN + jobsN >= 10) out("PASS", `/jobs/company/dominos lists ${pagesN + jobsN} of its own openings (${pagesN} posting pages, ${jobsN} board postings) (S1)`);
-    else out("FAIL", `/jobs/company/dominos links ${pagesN + jobsN} openings of its own (${pagesN} posting pages, ${jobsN} board postings); the bar is 10 (S1)`);
+    const listedN = Math.max(pagesN, ((dom.body.split(/<h2>Openings at /)[1] || "").split("</ul>")[0].match(/<li>/g) || []).length);
+    if (jobsN) out("FAIL", `/jobs/company/dominos links ${jobsN} /jobs?job= address(es), each the /jobs file to a crawler (SEO-005)`);
+    else if (listedN >= 10) out("PASS", `/jobs/company/dominos lists ${listedN} of its own openings (${pagesN} linked to posting pages, the rest as text), no /jobs?job= link (S1, SEO-005)`);
+    else out("FAIL", `/jobs/company/dominos lists ${listedN} openings of its own (${pagesN} linked to posting pages); the bar is 10 (S1)`);
     if (/THE COUNT\x27S BASIS/.test(dom.body)) out("FAIL", "/jobs/company/dominos still prints the THE COUNT\x27S BASIS annotation (L4-12)");
     else out("PASS", "the company page states its count basis as prose (L4-12)");
   } else out("INFO", `/jobs/company/dominos answered ${dom.status}; F1/S1 judged on other pages only`);
@@ -191,7 +194,7 @@ const textOf = (h) => h.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>
   for (const [t, n] of controls) {
     const r = await get(`/jobs/company/${t}`, 20000);
     if (r.status !== 200 || isHomeCopy(r.body)) continue;
-    const own = (r.body.match(/href="\/jobs\/posting\//g) || []).length + (r.body.match(/href="\/jobs\?job=/g) || []).length;
+    const own = Math.max((r.body.match(/href="\/jobs\/posting\//g) || []).length, ((r.body.split(/<h2>Openings at /)[1] || "").split("</ul>")[0].match(/<li>/g) || []).length);
     if (!/noindex/.test(robotsOf(r.body))) ctl.ok.push(n);
     else if (own >= 3) ctl.bad.push(`${n} (${own} openings listed)`);
     else ctl.thin.push(n);
