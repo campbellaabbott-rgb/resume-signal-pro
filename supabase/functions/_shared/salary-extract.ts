@@ -698,10 +698,16 @@ const decodeLegacyEntities = (s: string) =>
 // in the text and judged it on 40 characters around it, so an Airbus £24.5k
 // placement was listed at £350K-£800K (a figure about the work, a sentence
 // earlier) and 6 of 12 "$500k+ manager" rows were portfolios, fleets and
-// P&Ls. Every range is now a candidate; one whose SENTENCE names a business
-// figure is not pay unless a pay word stands right before it; and a candidate
-// whose sentence names pay is preferred to one that does not.
-const BUSINESS_FIGURE = /\b(?:portfolio|aum|assets?\s+under|fleet|p\s?&\s?l|profit|turnover|spend(?:ing)?|contracts?\s+(?:value|worth|valued)|valued?\s+at|worth|deals?|pipeline|projects?\s+(?:of|worth|valued|ranging|totall?ing)|capex|opex|costs?|savings|investments?|loans?|mortgages?|book\s+of\s+business|accounts?\s+(?:of|worth|valued|ranging)|annual\s+sales|sales\s+of|volume|inventory|transactions?|premiums?|claims|financing|acquisitions?|equity|million|billion|customers?\s+(?:spending|with))\b/i;
+// P&Ls. Every range is now a candidate; one with a business figure NEXT TO
+// IT (in its own clause, within 40 characters before or 30 after) is not pay
+// unless a pay label stands between the two; and a candidate whose sentence
+// names pay is preferred to one that does not. Words a retail, warehouse,
+// insurance or lending posting uses for the work itself (inventory,
+// transactions, claims, loans, costs, volume) are not business figures: they
+// took stated pay off those postings.
+const BUSINESS_FIGURE = /\b(?:portfolio|aum|assets?\s+under|fleet|p\s?&\s?l|profit|turnover|spend(?:ing)?|contracts?\s+(?:value|worth|valued)|valued?\s+at|worth|deals?|pipeline|projects?\s+(?:of|worth|valued|ranging|totall?ing)|capex|opex|investments?\s+of|book\s+of\s+business|accounts?\s+(?:of|worth|valued|ranging)|annual\s+sales|sales\s+of|premiums?\s+of|financing\s+of|acquisitions?\s+of|million|billion)\b/gi;
+/** A clause ends at a comma (not inside a number), a semicolon, a colon, a bracket, a line or a block tag. */
+const CLAUSE_END = /,(?!\d)|[;:()\n]/g;
 const PAY_WORD = /\b(?:salary|salaries|pay|compensation|wages?|base\s+(?:pay|salary|rate|compensation)|hourly\s+rate|rate\s+of\s+pay|earn(?:ings)?|remuneration|ote|starting\s+(?:at|pay|salary|rate|wage)|per\s+(?:hour|year|annum)|hourly)\b/i;
 /** The sentence around [at, end), as bounds: a full stop counts only before a space or the end, never inside "$45.50". */
 function sentenceAround(hay: string, at: number, end: number): [number, number] {
@@ -710,33 +716,50 @@ function sentenceAround(hay: string, at: number, end: number): [number, number] 
   const cut = hay.slice(end).search(/[!?]|\.(?=\s|$)/);
   return [s0, cut < 0 ? hay.length : end + cut];
 }
+/** The clause around [at, end) inside [s0, s1), as bounds. */
+function clauseAround(lined: string, at: number, end: number, s0: number, s1: number): [number, number] {
+  const head = [...lined.slice(s0, at).matchAll(CLAUSE_END)].at(-1);
+  const tail = [...lined.slice(end, s1).matchAll(CLAUSE_END)][0];
+  return [head ? s0 + (head.index ?? 0) + 1 : s0, tail ? end + (tail.index ?? 0) : s1];
+}
 /**
  * A candidate figure at [at, end) reads as this job's pay by its own words.
  * The NOT_PAY window (40 characters before, 20 after) stops at the figure's
- * own sentence: "...annual revenue accounts. Pay range: $60,000" is pay.
+ * own sentence: "...annual revenue accounts. Pay range: $60,000" is pay. A
+ * business figure counts only next to the figure, in its own clause (lines
+ * and block tags end one), and a pay label nearer the figure than the
+ * business word wins: "Claims Adjuster salary $55,000" is pay.
  */
-function candidateIsPay(hay: string, at: number, end: number): { pay: boolean; labelled: boolean } {
+function candidateIsPay(hay: string, at: number, end: number, lined = hay): { pay: boolean; labelled: boolean } {
   const [s0, s1] = sentenceAround(hay, at, end);
   if (NOT_PAY.test(hay.slice(Math.max(s0, at - 40), Math.min(s1, end + 20)))) return { pay: false, labelled: false };
-  const sentence = hay.slice(s0, s1);
-  const labelled = PAY_WORD.test(sentence);
-  const before = hay.slice(Math.max(s0, at - 40), at);
-  const labelAdjacent = PAY_WORD.test(before) && !BUSINESS_FIGURE.test(before);
-  if (BUSINESS_FIGURE.test(sentence) && !labelAdjacent) return { pay: false, labelled };
-  return { pay: true, labelled };
+  const labelled = PAY_WORD.test(hay.slice(s0, s1));
+  const [c0, c1] = clauseAround(lined, at, end, s0, s1);
+  const before = hay.slice(Math.max(c0, at - 40), at);
+  const after = hay.slice(end, Math.min(c1, end + 30));
+  const lastBusiness = [...before.matchAll(BUSINESS_FIGURE)].at(-1);
+  const businessAfter = [...after.matchAll(BUSINESS_FIGURE)].length > 0;
+  if (!lastBusiness && !businessAfter) return { pay: true, labelled };
+  const labelNearer = PAY_WORD.test(before.slice(lastBusiness ? (lastBusiness.index ?? 0) + lastBusiness[0].length : 0));
+  return { pay: labelNearer, labelled };
 }
-const haystackOf = (text: string) => decodeLegacyEntities(text.slice(0, 12_000)).replace(/\s+/g, " ");
+const BLOCK_TAG = /<\/?(?:li|p|div|h[1-6]|tr|td|th|ul|ol|br|section|table|tbody|thead|dt|dd)\b[^>]*>/gi;
+/** The text with lines and block tags kept as "\n" (clause ends), every other run of space one space. */
+const linedOf = (text: string) => decodeLegacyEntities(text.slice(0, 12_000)).replace(BLOCK_TAG, "\n").replace(/[^\S\n]+/g, " ").replace(/ ?\n[\s]*/g, "\n");
+/** The same text on one line, the same length, so an index in one is an index in the other. */
+const haystackOf = (lined: string) => lined.replace(/\n/g, " ");
 
 export function extractSalary(text: string | null | undefined): string | null {
   if (!text) return null;
-  const hay = haystackOf(text);
+  const lined = linedOf(text);
+  const hay = haystackOf(lined);
 
   const ranges = [...hay.matchAll(new RegExp(RANGE_RE.source, "gi"))];
   if (ranges.length) {
     let first: string | null = null;
     for (const range of ranges) {
       const at = range.index ?? 0;
-      const verdict = candidateIsPay(hay, at, at + range[0].length);
+      const verdict = candidateIsPay(hay, at, at + range[0].length, lined);
       if (!verdict.pay) continue;
       const lo = parseMoney(range[1]);
       const hi = parseMoney(range[2]);
@@ -756,20 +779,20 @@ export function extractSalary(text: string | null | undefined): string | null {
     const single = [...hay.matchAll(new RegExp(SINGLE_RE.source, "gi"))]
       .find((m) => !ranges.some((r) => (m.index ?? 0) < (r.index ?? 0) + r[0].length && (m.index ?? 0) + m[0].length > (r.index ?? 0)));
     if (!single) return null;
-    return singleIfPay(hay, single, true);
+    return singleIfPay(hay, lined, single, true);
   }
 
   // Single figure only when explicitly tied to a pay period ("$95,000 per year").
   for (const single of hay.matchAll(new RegExp(SINGLE_RE.source, "gi"))) {
-    const out = singleIfPay(hay, single, false);
+    const out = singleIfPay(hay, lined, single, false);
     if (out) return out;
   }
   return null;
 }
 
-function singleIfPay(hay: string, single: RegExpMatchArray, mustBeLabelled: boolean): string | null {
+function singleIfPay(hay: string, lined: string, single: RegExpMatchArray, mustBeLabelled: boolean): string | null {
   const at = single.index ?? 0;
-  const verdict = candidateIsPay(hay, at, at + single[0].length);
+  const verdict = candidateIsPay(hay, at, at + single[0].length, lined);
   if (!verdict.pay || (mustBeLabelled && !verdict.labelled)) return null;
   const v = parseMoney(single[1]);
   const hourly = /hour|hr|hourly/i.test(single[2]);
@@ -784,9 +807,10 @@ function singleIfPay(hay: string, single: RegExpMatchArray, mustBeLabelled: bool
  */
 export function minedSalaryRefused(description: string | null | undefined, stored: string | null | undefined): boolean {
   if (!description || !stored) return false;
-  const hay = haystackOf(description);
+  const lined = linedOf(description);
+  const hay = haystackOf(lined);
   const needle = stored.replace(/\s+/g, " ").trim();
   const at = needle ? hay.indexOf(needle) : -1;
   if (at < 0) return false;
-  return !candidateIsPay(hay, at, at + needle.length).pay;
+  return !candidateIsPay(hay, at, at + needle.length, lined).pay;
 }
