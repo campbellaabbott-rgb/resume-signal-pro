@@ -163,7 +163,7 @@ describe("an uncounted industry is not an empty one", () => {
     // The rail: a chip is removed only on a count that came back as 0, and
     // prints a number only when it has one.
     expect(JOBS).toMatch(/railCount\(c\) !== 0/);
-    expect(JOBS).toMatch(/typeof n === "number" && <span className="opacity-70">\{fmtFacet\(n\)\}<\/span>/);
+    expect(JOBS).toMatch(/typeof n === "number" && <span className="text-subtle-foreground">\{fmtFacet\(n\)\}<\/span>/);
     // The exact shape of the defect, in either control.
     expect(JOBS, "a missing facet count is being read as zero again")
       .not.toMatch(/\(railCounts\[c\] \?\? 0\) > 0/);

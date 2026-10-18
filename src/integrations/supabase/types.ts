@@ -1461,18 +1461,21 @@ export type Database = {
       }
       company_profiles: {
         Row: {
+          as_of: string | null
           company_token: string
           employee_basis: string
           employee_count: number
           yc_batch: string | null
         }
         Insert: {
+          as_of?: string | null
           company_token: string
           employee_basis: string
           employee_count: number
           yc_batch?: string | null
         }
         Update: {
+          as_of?: string | null
           company_token?: string
           employee_basis?: string
           employee_count?: number
@@ -5706,6 +5709,10 @@ export type Database = {
           taken_down_30: number
           top_board_share_30: number
           window_days: number
+          admitted_boards_14: number
+          admitted_boards_30: number
+          still_open_30_k1: number
+          still_open_30_k3: number
         }[]
       }
       get_category_fill_speed: {
@@ -5799,6 +5806,14 @@ export type Database = {
           tracking_days: number
           undated_n: number
           watched_from: string
+          multi_site_title_share: number
+          multi_site_n: number
+          feed_total: number
+          feed_read_at: string
+          feed_state: string
+          feed_capped: boolean
+          late_sighted_30: number
+          undated_open: number
         }[]
       }
       get_company_financials: { Args: { p_token: string }; Returns: Json }

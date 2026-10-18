@@ -76,16 +76,14 @@ describe("a number on a page is a promise", () => {
     expect(c, "no second board call just to print a number").not.toMatch(/useBoardTotals\(/);
   });
 
-  it("the agent's vendor count is interpolated, never spelled out", () => {
+  it("the retired agent's reach sentence is gone from the board, so no vendor count can be stated there", () => {
     // It said "four hiring systems — about 6% of the board" while
-    // SENDABLE_VENDORS held FIVE and the live figure was 8.2%. Both numbers
-    // wrong, in all nine locales, on the page that sells the feature.
+    // SENDABLE_VENDORS held FIVE and the live figure was 8.2%. The sentence
+    // sold the server-side apply agent, which the owner retired on 2026-10-11:
+    // people apply on the employer's own site, with their own AI's help. The
+    // board now prints no reach figure for it at all.
     const c = code(read("src/pages/Jobs.tsx"));
-    expect(c).toMatch(/agentPitchScopeLive[\s\S]{0,240}\{\{n\}\} hiring systems/);
-    expect(c).toMatch(/n: agentReach\.vendors/);
-    expect(c).toMatch(/pct: Math\.round\(reachPct\(agentReach\)\)/);
-    expect(c, "and a variant with no numbers when the status read fails")
-      .toMatch(/agentPitchScopePlain/);
+    expect(c, "the agent reach sentence is back on the board").not.toMatch(/agentPitchScope|useAgentReach|reachPct/);
   });
 
   it("the prerendered head publishes the SERVABLE count, not the tracked one", () => {
@@ -130,8 +128,9 @@ describe("a number on a page is a promise", () => {
       const j = JSON.parse(read(`src/i18n/locales/${loc}.json`)) as
         { jobsPage?: Record<string, string> };
       expect(j.jobsPage?.agentPitchScope, `${loc} still carries the old sentence`).toBeUndefined();
-      expect(j.jobsPage?.agentPitchScopeLive, `${loc} is missing the new one`).toBeTruthy();
-      expect(j.jobsPage!.agentPitchScopeLive, `${loc} must interpolate the count`).toContain("{{n}}");
+      // Both successors left with the retired agent (2026-10-12).
+      expect(j.jobsPage?.agentPitchScopeLive, `${loc} still carries the retired reach sentence`).toBeUndefined();
+      expect(j.jobsPage?.agentPitchScopePlain, `${loc} still carries the retired reach sentence`).toBeUndefined();
     }
   });
 });

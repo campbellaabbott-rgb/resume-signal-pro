@@ -68,7 +68,7 @@ export function LiveScanStats() {
           <h2 className="text-2xl md:text-3xl font-bold mb-2">How real resumes actually score</h2>
           <p className="text-sm text-muted-foreground max-w-xl mx-auto">
             Live from our scan corpus as of {insights.as_of} — the same numbers our{" "}
-            <Link to="/research/ats-score-benchmarks" className="text-primary hover:underline">
+            <Link to="/research/ats-score-benchmarks" className="link">
               public benchmark study
             </Link>{" "}
             publishes. Aggregates only; no individual resume data.
@@ -108,7 +108,7 @@ export function LiveScanStats() {
         <p className="text-xs text-muted-foreground text-center max-w-xl mx-auto">
           One honest caveat: people scan resumes when they suspect a problem, so this sample likely
           skews below the population of all working professionals.{" "}
-          <Link to="/research/ats-score-benchmarks" className="text-primary hover:underline">
+          <Link to="/research/ats-score-benchmarks" className="link">
             See the full study
           </Link>{" "}
           for per-industry and experience-level breakdowns.

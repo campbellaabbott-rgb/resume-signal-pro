@@ -45,31 +45,31 @@ export function StickyBottomCTA({ isLoading }: StickyBottomCTAProps) {
   if (!isVisible) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 animate-slide-up safe-bottom">
-      <div className="bg-gradient-to-r from-primary/95 via-primary to-primary/95 backdrop-blur-lg border-t border-primary/30 shadow-2xl shadow-primary/20">
+    <div className="fixed bottom-0 left-0 right-0 z-sticky animate-fade-in safe-bottom">
+      <div className="bg-card border-t border-border-strong shadow-overlay">
         <div className="container py-3 sm:py-4">
           <div className="flex items-center justify-between gap-3 sm:gap-4">
             {/* Left: Value prop */}
             <div className="hidden sm:flex items-center gap-3">
-              <div className="p-2 rounded-full bg-white/10">
-                <Sparkles className="w-5 h-5 text-white" />
+              <div className="p-2 rounded-md bg-muted">
+                <Sparkles aria-hidden="true" className="w-5 h-5 text-muted-foreground" />
               </div>
-              <div className="text-white">
+              <div className="text-foreground">
                 <p className="font-semibold text-sm md:text-base">
                   {t('freeResults.nextSteps.fullAnalysisName')} · ${PRODUCTS.fullAnalysis.priceUsd}
-                  {isLocalCurrency && <span className="text-white/80 text-xs ml-1">({formatPrice(PRODUCTS.fullAnalysis.priceUsd)})</span>}
+                  {isLocalCurrency && <span className="text-muted-foreground text-xs ml-1">({formatPrice(PRODUCTS.fullAnalysis.priceUsd)})</span>}
                 </p>
-                <p className="text-xs md:text-sm text-white/80">{t('stickyCta.features')}</p>
+                <p className="text-xs md:text-sm text-muted-foreground">{t('stickyCta.features')}</p>
               </div>
             </div>
             
             {/* Mobile: Compact */}
-            <div className="sm:hidden text-white flex-1">
+            <div className="sm:hidden text-foreground flex-1">
               <p className="font-semibold text-sm">
                 {t('freeResults.nextSteps.fullAnalysisName')} · ${PRODUCTS.fullAnalysis.priceUsd}
-                {isLocalCurrency && <span className="text-white/70 text-xs ml-1">({formatPrice(PRODUCTS.fullAnalysis.priceUsd)})</span>}
+                {isLocalCurrency && <span className="text-muted-foreground text-xs ml-1">({formatPrice(PRODUCTS.fullAnalysis.priceUsd)})</span>}
               </p>
-              <p className="text-xs text-white/70">{t('stickyCta.featuresMobile')}</p>
+              <p className="text-xs text-muted-foreground">{t('stickyCta.featuresMobile')}</p>
             </div>
             
             {/* Right: CTA */}
@@ -78,18 +78,18 @@ export function StickyBottomCTA({ isLoading }: StickyBottomCTAProps) {
               <button
                 onClick={handleGetStarted}
                 disabled={isLoading}
-                className="inline-flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-full bg-white text-primary font-semibold hover:bg-white/90 active:scale-[0.98] transition-all shadow-lg disabled:opacity-50 min-h-[44px] touch-manipulation"
+                className="inline-flex h-10 items-center gap-2 px-4 sm:px-5 rounded-md bg-primary text-primary-foreground font-semibold hover:bg-primary-hover transition-colors disabled:opacity-60 coarse:h-11 touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 <span className="text-sm sm:text-base">{getCtaText()}</span>
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight aria-hidden="true" className="w-4 h-4" />
               </button>
               
               <button
                 onClick={() => { setIsDismissed(true); setIsVisible(false); }}
-                className="p-2.5 text-white/60 hover:text-white hover:bg-white/10 rounded-full transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center touch-manipulation"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors coarse:h-11 coarse:w-11 touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label={t('common.dismiss')}
               >
-                <X className="w-5 h-5" />
+                <X aria-hidden="true" className="w-5 h-5" />
               </button>
             </div>
           </div>

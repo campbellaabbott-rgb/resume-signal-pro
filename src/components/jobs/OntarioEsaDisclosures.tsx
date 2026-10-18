@@ -281,19 +281,19 @@ export function OntarioEsaDisclosures({ postingId, postingUrl, className }: Prop
     : tt("ontarioEsa.payBasisDescription", "from the posting's description");
 
   return (
-    <section className={`rounded-xl border border-border bg-card p-4 max-w-xl ${className ?? ""}`} data-esa-panel="ontario">
-      <h3 className="flex items-center gap-1.5 mb-1 text-[12px] font-medium text-primary">
+    <section className={`rounded-lg border border-border bg-card p-4 max-w-xl ${className ?? ""}`} data-esa-panel="ontario">
+      <h3 className="flex items-center gap-1.5 mb-1 text-sm font-semibold text-foreground">
         <Scale className="w-3.5 h-3.5 shrink-0" />
         {tt("ontarioEsa.title", "What this posting states under Ontario law")}
       </h3>
 
-      <p className="text-[11px] text-muted-foreground mb-2.5">
+      <p className="text-xs text-muted-foreground mb-2.5">
         {tt("ontarioEsa.basis", "Read from this posting's own text, as we last held it on {{readAt}}. Ontario postings only, by the subdivision code {{regionCode}} the posting carries.", {
           readAt, regionCode: ONTARIO_ESA.regionCode,
         })}
       </p>
 
-      <ul className="space-y-1.5 text-[12px] text-muted-foreground">
+      <ul className="space-y-1.5 text-xs text-muted-foreground">
         <Clause tag="pay" label={tt("ontarioEsa.payLabel", "Expected compensation, s. 8.2(1):")}>
           {row.payEvidence
             ? tt("ontarioEsa.payStated", "the posting states, {{basis}}: \u201c{{evidence}}\u201d", { basis: payBasisLabel, evidence: row.payEvidence })
@@ -319,29 +319,29 @@ export function OntarioEsaDisclosures({ postingId, postingUrl, className }: Prop
         )}
       </ul>
 
-      <p className="text-[11px] text-muted-foreground mt-2.5">
+      <p className="text-xs text-muted-foreground mt-2.5">
         {tt("ontarioEsa.notAFinding", "This is the posting's own wording and nothing more. Part III.1 does not reach an employer with fewer than {{minEmployees}} employees, and we hold no headcount for any employer here, so nothing above is a finding about any employer.", {
           minEmployees: ONTARIO_ESA.minEmployees,
         })}
       </p>
 
-      <p className="text-[10px] text-muted-foreground mt-1.5">
+      <p className="text-xs text-muted-foreground mt-1.5">
         {tt("ontarioEsa.exclusions", "Left out here: postings whose stated top-of-range pay is above {{ceiling}} a year, which O. Reg. 476/24 exempts; postings that state pay in another currency, because that ceiling is a Canadian-dollar figure and cannot judge one; and postings the employer's feed flags as remote, because we hold no work location for those.", { ceiling })}
       </p>
 
-      <p className="text-[10px] text-muted-foreground mt-1.5 flex flex-wrap gap-x-2 gap-y-1">
-        <a href={ONTARIO_ESA_LINKS.statute} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline" data-esa-link="statute">
+      <p className="text-xs text-muted-foreground mt-1.5 flex flex-wrap gap-x-2 gap-y-1">
+        <a href={ONTARIO_ESA_LINKS.statute} target="_blank" rel="noopener noreferrer" className="text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary" data-esa-link="statute">
           {tt("ontarioEsa.statuteLink", "Employment Standards Act, 2000, Part III.1 ↗")}
         </a>
-        <a href={ONTARIO_ESA_LINKS.regulation} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline" data-esa-link="regulation">
+        <a href={ONTARIO_ESA_LINKS.regulation} target="_blank" rel="noopener noreferrer" className="text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary" data-esa-link="regulation">
           {tt("ontarioEsa.regLink", "O. Reg. 476/24 ↗")}
         </a>
-        <a href={postingUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline" data-esa-link="posting">
+        <a href={postingUrl} target="_blank" rel="noopener noreferrer" className="text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary" data-esa-link="posting">
           {tt("ontarioEsa.postingLink", "This posting on the employer's site ↗")}
         </a>
       </p>
 
-      <p className="text-[10px] text-muted-foreground mt-1.5">
+      <p className="text-xs text-muted-foreground mt-1.5">
         {tt("ontarioEsa.sourceLine", "Section numbers and wording of the law are from Ontario's e-Laws. © King's Printer for Ontario, 2024. This is not an official version of the legislation.")}
       </p>
     </section>

@@ -69,14 +69,15 @@ describe("the agent opens the page", () => {
       .not.toMatch(/<ApplyAgentShowcase/);
   });
 
-  it("speaks with measured inventory or with none", () => {
-    // The line renders only when BOTH numbers arrived; no fallback figures.
+  it("speaks with measured inventory or with none, and claims no submissions", () => {
     // Each stat renders only when its own payload arrived.
     expect(heroCode).toMatch(/\{totals && \(/);
-    expect(heroCode).toMatch(/\{sendable !== null && \(/);
-    // Payload gating: a number must be > 0 to be trusted — a zero from a
-    // half-written status payload must read as absence, not "0 openings".
-    expect(heroCode).toMatch(/typeof n === "number" && n > 0/);
+    // The apply pivot (2026-10-18 review, wave 4's hero taken whole): no
+    // sendable count, no status read for one, and no sentence that says the
+    // agent applies or submits for the visitor.
+    expect(heroCode).not.toMatch(/sendable/i);
+    expect(heroCode).not.toMatch(/action: "status"/);
+    expect(heroCode).not.toMatch(/applies for you|submit for you|submits where/i);
     // And no literal inventory anywhere: five-or-more-digit numbers in the
     // hero are claims only a payload may make.
     expect(heroCode.replace(/\d{1,2}\b/g, "")).not.toMatch(/\b\d{3,}(?:,\d{3})*\b/);
@@ -107,10 +108,12 @@ describe("the matches panel acts on the CV and only on real data", () => {
     expect(panelCode).toMatch(/d\.countCapped === true/);
   });
 
-  it("links to the board with the parameter Jobs actually reads", () => {
-    expect(panelCode).toMatch(/agentOnly=1/);
-    expect(JOBS, "Jobs.tsx no longer reads agentOnly — the panel's link silently drops its filter")
-      .toMatch(/get\("agentOnly"\)/);
+  it("links to the board with the query it ran, which Jobs actually reads", () => {
+    // The board's agent-only filter is retired with the apply agent
+    // (2026-10-12); the query is the part of the link the board reads.
+    expect(panelCode).toMatch(/to=\{`\/jobs\?q=\$\{encodeURIComponent\(q\)\}/);
+    expect(JOBS, "Jobs.tsx no longer reads q — the panel's link silently drops its search")
+      .toMatch(/get\("q"\)/);
   });
 
   it("mounts only after a scan, fed by the scan's own extraction", () => {
@@ -185,9 +188,12 @@ describe("the front page states one subject and no frozen totals", () => {
     // plural form resolves and forces a number type. Caught by tsc when the
     // first draft used it.
     const code = stripCode(HERO_C);
-    expect(code).toMatch(/\{\{n\}\}\+ verified jobs/);
+    expect(code).toMatch(/\{\{n\}\}\+ live jobs/);
     expect(code, "a board total is interpolated on the reserved `count` key")
-      .not.toMatch(/\{\{count\}\}\+ verified/);
+      .not.toMatch(/\{\{count\}\}\+ (live|verified)/);
+    // We read employers' feeds; we do not verify each role, so the inline
+    // defaults say "live", as the main locale does.
+    expect(code).not.toMatch(/\{\{n\}\}\+ verified/);
   });
 
   it("rounds a published floor DOWN", () => {

@@ -28,7 +28,7 @@ const JOBS = strip(readFileSync(resolve(ROOT, "src/pages/Jobs.tsx"), "utf8"));
 
 const ALL_ON: BoardFilterState = {
   q: "nurse", location: "London", remoteOnly: false, workMode: "remote",
-  category: "healthcare", inclUncat: true, agentOnly: true, country: "GB",
+  category: "healthcare", inclUncat: true, country: "GB",
   experience: "senior", companyTokens: ["workday~cvshealth"], salaryFloor: 60_000,
   salaryCeiling: 120_000, payBasis: "salaried", statedPayOnly: true,
   includeUnstatedPay: true, maxYears: 5, department: "nursing",
