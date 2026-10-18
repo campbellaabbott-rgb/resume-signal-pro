@@ -426,7 +426,7 @@
       },
       "subscription": {
         "question": "Est-ce un abonnement ?",
-        "answer": "Les deux options existent, à vous de choisir. Chaque rapport et outil correspond à un paiement unique qui ne se renouvelle jamais. Séparément, deux formules mensuelles facultatives sont proposées : Pro à ${{proPrice}}/mois pour des analyses illimitées et tous les outils, et Morning Queue à ${{agentPrice}}/mois, où l'agent de candidature prépare une présélection pour vous pendant la nuit. L'analyse de CV et la bourse à l'emploi restent gratuites dans les deux cas. Les deux formules se renouvellent chaque mois jusqu'à ce que vous les résiliiez, et l'essai gratuit de Morning Queue pour les nouveaux abonnés devient la formule payante à son terme, sauf si vous le résiliez avant. Rien d'autre ne vous fait passer à une formule payante automatiquement."
+        "answer": "Les deux options existent, à vous de choisir. Chaque rapport et outil correspond à un paiement unique qui ne se renouvelle jamais. Séparément, Pro à ${{proPrice}}/mois est une formule mensuelle facultative avec des analyses illimitées et tous les outils, et la page Tarifs liste chaque formule mensuelle en vente avec son prix et tout essai gratuit. Une formule mensuelle se renouvelle chaque mois jusqu'à ce que vous la résiliiez, et un essai gratuit devient la formule payante à son terme, sauf si vous le résiliez avant. L'analyse de CV, la bourse à l'emploi et la connexion de votre propre IA restent gratuites dans tous les cas. Rien d'autre ne vous fait passer à une formule payante automatiquement."
       },
       "share": {
         "question": "Puis-je partager mon analyse ?",
@@ -438,7 +438,7 @@
       },
       "dataStorage": {
         "question": "Stockez-vous mes données de CV ?",
-        "answer": "Brièvement, et avec une échéance. Quand vous téléversez ou collez un CV, son texte est conservé 24 heures pour qu'un paiement puisse l'utiliser, puis supprimé. Votre rapport gratuit, qui cite des lignes de votre CV, est conservé 7 jours pour qu'une nouvelle analyse du même fichier avec la même offre obtienne le même rapport, puis supprimé. Une analyse payante reste derrière son lien privé pendant 90 jours, sauf si vous la supprimez avant. Nous ne gardons un CV plus longtemps que si vous le demandez : une version enregistrée dans votre compte, le CV choisi pour la correspondance d'offres, ou le CV confié à l'agent de candidature, qui l'envoie aux employeurs auxquels il postule pour vous. Nous ne le vendons jamais. Notre page Confiance liste chaque copie et son délai."
+        "answer": "Brièvement, et avec une échéance. Quand vous téléversez ou collez un CV, son texte est conservé 24 heures pour qu'un paiement puisse l'utiliser, puis supprimé. Votre rapport gratuit, qui cite des lignes de votre CV, est conservé 7 jours pour qu'une nouvelle analyse du même fichier avec la même offre obtienne le même rapport, puis supprimé. Une analyse payante reste derrière son lien privé pendant 90 jours, sauf si vous la supprimez avant. Nous ne gardons un CV plus longtemps que si vous le demandez : une version enregistrée dans votre compte, le CV choisi pour la correspondance d'offres, ou le CV confié à l'agent de candidature. Nous ne le vendons jamais. Notre page Confiance liste chaque copie et son délai."
       },
       "vsChatGPT": {
         "question": "Pourquoi est-ce mieux que ChatGPT ?",
@@ -446,7 +446,7 @@
       },
       "bringYourAgent": {
         "question": "Mon propre agent IA peut-il s'en servir ?",
-        "answer": "Oui. Lire le tableau ne demande aucune clé pour un premier appel, et une clé gratuite ouvre tous les outils de lecture. Pour que votre agent demande des candidatures, un pass à {{passPrice}} $ lui donne {{passHours}} heures et {{passApplications}} candidatures, à partir de son premier appel et sans jamais se renouveler ; le plan Agent fait la même chose chaque mois et se renouvelle. Chaque offre et chaque recherche du tableau a une commande qui copie une consigne pour votre agent, et la configuration de chaque hôte est sur /agents."
+        "answer": "Oui, gratuitement. Connectez Resume Booster à Claude, ChatGPT ou Claude Code, et votre IA peut chercher sur le tableau, lire les offres en entier et vous aider à postuler sur le site de l'employeur ; lire le tableau ne demande ni clé ni compte. Votre IA rédige, vous décidez : nous n'envoyons jamais de candidature à votre place. Chaque offre et chaque recherche du tableau a une commande qui copie une consigne pour votre IA, et la configuration de chaque application est sur /agents."
       }
     },
     "stillHaveQuestions": "Encore des questions ?"
@@ -2598,7 +2598,7 @@
       },
       "neverSold": {
         "title": "Jamais vendu",
-        "description": "Nous ne vendons jamais votre CV et ne le montrons à aucun recruteur. Il ne nous quitte que vers le fournisseur d'IA qui rédige votre rapport, le prestataire d'e-mail qui livre le rapport que vous vous envoyez et l'analyse payante que nous vous envoyons et, si vous activez l'agent de candidature, les employeurs auxquels il postule pour vous. Stripe gère le paiement et ne reçoit aucun texte de CV."
+        "description": "Nous ne vendons jamais votre CV et ne le montrons à aucun recruteur. Il ne nous quitte que vers le fournisseur d'IA qui rédige votre rapport et le prestataire d'e-mail qui livre le rapport que vous vous envoyez et l'analyse payante que nous vous envoyons. Stripe gère le paiement et ne reçoit aucun texte de CV."
       },
       "transparent": {
         "title": "Traitement transparent",
@@ -2672,7 +2672,7 @@
         "agent": {
           "what": "Le CV confié à l'agent de candidature : le fichier et son texte",
           "where": "Un stockage privé que seuls vous et l'agent pouvez lire",
-          "howLong": "Tant que vous utilisez l'agent, qui l'envoie aux employeurs auxquels il postule pour vous. Supprimer votre compte efface le texte ; écrivez à {{email}} pour faire effacer le fichier."
+          "howLong": "Un CV que vous lui avez confié est conservé jusqu'à ce que vous supprimiez votre compte ou demandiez son effacement : supprimer votre compte efface le texte ; écrivez à {{email}} pour faire effacer le fichier."
         },
         "payment": {
           "what": "Votre paiement",
@@ -5086,24 +5086,22 @@
     "ctaBrowse": "Tout parcourir"
   },
   "homeHero": {
-    "badge": "Site d'offres en direct + agent IA",
     "headlinePre": "Des offres en direct, tirées des systèmes de recrutement des employeurs.",
-    "headlineHighlight": "L'agent postule pour vous.",
-    "sub": "Des offres lues dans les systèmes de recrutement des entreprises elles-mêmes et revérifiées toute la journée. Déposez votre CV : l'agent les classe toutes, rédige chaque candidature honnêtement et la soumet là où l'employeur le permet.",
     "statOpenings": "offres actives",
     "statCompanies": "entreprises",
-    "statSendable": "que l'agent peut soumettre pour vous",
     "ctaPrimary": "Déposez votre CV — gratuit",
     "ctaSecondary": "Parcourir les offres",
     "reassure": "Analyse gratuite · sans carte, sans inscription",
     "exploreCta": "Explorer par domaine",
-    "statCompanyBoards": "sites carrières d'entreprises qui recrutent"
+    "statCompanyBoards": "sites carrières d'entreprises qui recrutent",
+    "badge2": "Offres en direct + votre propre IA",
+    "headlineHighlight2": "Postulez vous-même, avec l'aide de votre propre IA.",
+    "sub2": "Des offres lues dans les propres systèmes de recrutement des entreprises et revérifiées toute la journée. Analysez votre CV gratuitement, cherchez sur le tableau ici ou depuis Claude ou ChatGPT, et postulez vous-même, avec l'aide de votre IA si vous le souhaitez. Nous n'envoyons jamais rien à votre place."
   },
   "homeAgent": {
     "lead": "Amenez votre propre agent IA.",
-    "passLine": "Un pass à {{passPrice}} $ donne à votre agent {{passHours}} heures pour explorer les offres et postuler pour vous à {{passApplications}} emplois. Un emploi ne compte que si l'agent peut envoyer la candidature. Sans reconduction ; connectez-vous pour l'acheter.",
+    "passLine": "Votre IA rédige, vous décidez : Resume Booster n'envoie jamais de candidature à votre place.",
     "connectCta": "Connecter votre agent",
-    "passCta": "Acheter ou ouvrir votre pass",
     "connectLine2": "Connectez-le gratuitement et sans compte — {{freeCallsPerDay}} appels par jour et par adresse réseau pour explorer la bourse d'emploi (un bureau ou une connexion domestique compte pour une seule adresse ; depuis ChatGPT chaque personne a ses propres {{freeCallsPerDay}}, et depuis Claude un quota quotidien partagé par tous les utilisateurs de Claude passe en premier)."
   },
   "ghostIndex": {
@@ -5137,7 +5135,7 @@
     "layoffCadenceNightly": "chaque nuit",
     "layoffReasonUnread": "la lecture n'a pas répondu lors de cette visite",
     "stillUp30Row3": "{{pct}}% des postes datés en {{field}} publiés entre {{cohortFrom}} et {{cohortTo}} étaient encore affichés en atteignant notre plafond de 30 jours (n={{n}}, ±{{hw}} points) ; au plus {{r}}% avaient été retirés définitivement et au moins {{x}}% republiés. Compté uniquement sur les sites que nous lisons jusqu'au bout et dont nous avons vu des postes retirés dans les 90 jours avant le début de cette cohorte.",
-    "stillUp30Boards": "Regroupé sur {{n}} employeurs dont nous lisons les sites en entier.",
+    "stillUp30Boards": "Regroupé sur {{n}} sites carrières d'entreprises que nous lisons en entier.",
     "stillUp30Pool": "Cela représente {{gateShare}}% des postes datés de ce domaine ayant atteint le plafond.",
     "stillUp30TopBoard": "{{topBoardShare}}% de la base de ce calcul provient du site d'une seule entreprise.",
     "stillUp30ReasonUnread2": "aucun poste daté de ce domaine n'a atteint notre plafond de 30 jours dans cette cohorte, sur aucun site — il n'y a ici aucun échantillon à mesurer, et non un échantillon au mauvais résultat",
@@ -5453,7 +5451,7 @@
     "captchaClick": "Lors de notre contrôle de {{pages}} pages de candidature ({{date}}), les formulaires {{system}} affichaient le plus souvent une étape de vérification humaine.",
     "captchaAuto": "Lors de notre contrôle de {{pages}} pages de candidature ({{date}}), les formulaires {{system}} n'affichaient aucune étape de vérification humaine dans cet échantillon.",
     "questions": "Nous lisons les questions de présélection propres à cette offre.",
-    "recheck": "Nous revérifions que l'offre est toujours en ligne lorsque vous appuyez sur Postuler."
+    "recheck": "Lorsque le système de l'employeur le permet, nous revérifions que l'offre est toujours en ligne lorsque vous appuyez sur Postuler."
   },
   "filterBar": {
     "keywordLabel": "Rechercher des offres par intitulé ou mot-clé",

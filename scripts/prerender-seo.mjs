@@ -36,6 +36,7 @@ import {
 } from "./prerender-pages.mjs";
 import { bakeEmployerName, repairEmployerName } from "./prerender-names.mjs";
 import { RETIRED_PRODUCT_IDS, APPLY_YOURSELF_LINE, retiredClaimsIn, crawlerText } from "./prerender-retired.mjs";
+import { readAgencyTokens } from "./prerender-agency.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 // A BAKE CAN BE POINTED AWAY FROM THE CHECKOUT. PRERENDER_OUT names a
@@ -121,7 +122,10 @@ export const composeHtml = (
   // Route-true share URLs: the template hardcodes the homepage, so every
   // page's og:url/twitter:url contradicted its own canonical and shares
   // canonicalized to "/" (audit 2026-07-25).
-  const pageUrl = path === "/" ? `${SITE}/` : `${SITE}${path}`;
+  // Through publicHref, as the canonical is: a dotted company path
+  // (/jobs/company/careers.ulta.com) resolves only with its trailing slash,
+  // and without it og:url pointed at a 9-byte 404 (SEO-030).
+  const pageUrl = path === "/" ? `${SITE}/` : `${SITE}${typeof publicHref === "function" ? publicHref(path) : path}`;
   html = setContent(html, '<meta property="og:url" content="', pageUrl);
   html = setContent(html, '<meta name="twitter:url" content="', pageUrl);
   if (lang) html = putVerbatim(html, /<html lang="[^"]*"/, `<html lang="${lang}"`);
@@ -238,6 +242,8 @@ export { FREE_KEY_RATE_PER_MIN } from "../src/config/free-key-limits";
 export { BOARD_FRESH_WINDOW_DAYS, POSTING_LD_TAG_ID, POSTING_PATH_PREFIX, isPostingLive, jdParagraphs, postingEmployer, postingIdFromPath, postingIdentity, postingJsonLd, postingPageDescription, postingPagePath, postingPageTitle, postingPathParts } from "../src/components/jobs/posting-page";
 export { boardName, employerName, isCodeShapedName, possessive } from "../src/lib/company-display";
 export { isCollidedToken } from "../src/lib/board-collisions";
+export { USAJOBS_RESULT_CAP, isUsajobsBoard } from "../src/lib/company/lander-model";
+export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json";
 `));
   const bundle = OUT ? join(OUT, ".prerender-data.mjs") : join(root, "scripts", ".prerender-data.mjs");
   execSync(`npx esbuild "${entry}" --bundle --format=esm --outfile="${bundle}" --log-level=error`, { cwd: root, stdio: "inherit" });
@@ -1666,6 +1672,10 @@ export { isCollidedToken } from "../src/lib/board-collisions";
   // THE DAY THE HEADLINE COUNTS WERE TAKEN, printed beside them: a live read
   // is this build's day; a snapshot-fed build is the day its snapshot was
   // written, or no day at all when the snapshot carries none.
+  // The short form, for a description: "counted 2026-10-18".
+  const COUNTS_DAY = facetsSource === "snapshot"
+    ? (facetsSavedAt ? `counted ${facetsSavedAt}` : "counted by the last build that could reach the board")
+    : `counted ${TODAY}`;
   const COUNTS_BASIS = facetsSource === "snapshot"
     ? (facetsSavedAt ? `counted ${facetsSavedAt}, by the last build that could reach the board` : "counted by the last build that could reach the board")
     : `counted ${TODAY}, when this page was built`;
@@ -1680,7 +1690,7 @@ export { isCollidedToken } from "../src/lib/board-collisions";
       : "Resume Booster — Live Jobs Straight From Employers",
     // KEEP THIS UNDER 160 CHARACTERS. The previous one ran to 279 and the
     // clamp below cut it mid-sentence with nothing saying so.
-    description: "Live jobs straight from employers' own hiring systems, re-checked all day. Search free, here or from your own AI, and apply on the employer's site.",
+    description: "Live jobs straight from employers' own hiring systems, re-read through the day. Search free, here or from your own AI, and apply on the employer's site.",
     jsonLd: [
       {
         "@context": "https://schema.org",
@@ -1706,7 +1716,7 @@ export { isCollidedToken } from "../src/lib/board-collisions";
     ],
     content: `
       <h1 class="text-3xl font-bold mb-3">Live jobs, straight from employers' own hiring systems.</h1>
-      <p class="text-muted-foreground mb-6">${BOARD_TOTAL ? `${plusClaim(BOARD_TOTAL, 50000)} open roles` : "Open roles"}${BOARD_COMPANIES ? ` from ${plusClaim(BOARD_COMPANIES, 1000)} company job boards with roles open now` : ""}${BOARD_TRACKED ? ` — ${plusClaim(BOARD_TRACKED, 50000)} roles tracked in all, including the ones we have watched close` : ""}${BOARD_TOTAL || BOARD_COMPANIES ? ` (${esc(COUNTS_BASIS)})` : ""}, every one read from the employer's own hiring system and re-checked all day, with no dated posting older than 30 days. Where a company publishes no date we keep the posting and show no age rather than guess one. <a href="/jobs" class="text-primary">Browse the live board →</a></p>
+      <p class="text-muted-foreground mb-6">${BOARD_TOTAL ? `${plusClaim(BOARD_TOTAL, 50000)} open roles` : "Open roles"}${BOARD_COMPANIES ? ` from ${plusClaim(BOARD_COMPANIES, 1000)} company job boards with roles open now` : ""}${BOARD_TRACKED ? ` — ${plusClaim(BOARD_TRACKED, 50000)} roles tracked in all, including the ones we have watched close` : ""}${BOARD_TOTAL || BOARD_COMPANIES ? ` (${esc(COUNTS_BASIS)})` : ""}, every one read from the employer's own hiring system and re-read through the day, with no dated posting older than 30 days. Where a company publishes no date we keep the posting and show no age rather than guess one. <a href="/jobs" class="text-primary">Browse the live board →</a></p>
       <section class="mt-8 mb-8">
         <h2 class="text-xl font-bold mb-3">Search and apply through your own AI</h2>
         <p class="text-sm text-muted-foreground">${esc(APPLY_YOURSELF_LINE)}</p>
@@ -1858,6 +1868,22 @@ export { isCollidedToken } from "../src/lib/board-collisions";
     D, openOf: openRolesOf, nameOf: (c) => bakeEmployerName(c.token, c.name, NAME_PARTS).name,
   });
   const NAME_GATE = new Map(LANDERS.map((c) => [c.token, bakeEmployerName(c.token, c.stored, NAME_PARTS)]));
+  // WHAT EACH BOARD IS, as the live page says it (prerender-pages.mjs
+  // companyLanderPage `kind`): the USAJOBS listing site, a staffing agency's
+  // board (the catalogue's flag, scripts/prerender-agency.mjs), or an
+  // employer. The hub's and the banner's words are the SPA's own English.
+  const AGENCY_TOKENS = readAgencyTokens(root);
+  const landerKindOf = (token) => (D.isUsajobsBoard(token, null) ? "usajobs" : AGENCY_TOKENS.has(token) ? "agency" : "employer");
+  const KIND_COPY = (() => {
+    const cp = (D.EN_COMPANY_SHARD && D.EN_COMPANY_SHARD.companyProfile) || {};
+    return {
+      ...(cp.usajobs?.h1 ? { usajobsH1: cp.usajobs.h1 } : {}),
+      ...(cp.usajobs?.subtitle ? { usajobsSubtitle: cp.usajobs.subtitle } : {}),
+      ...(cp.usajobs?.cap ? { usajobsCap: cp.usajobs.cap } : {}),
+      usajobsCapValue: D.USAJOBS_RESULT_CAP,
+      ...(cp.agency?.banner ? { agencyBanner: cp.agency.banner } : {}),
+    };
+  })();
   // WHAT IS INDEXABLE ON THE LIVE SITE TODAY: the company pages the live
   // sitemap lists (the committed one when the live one could not be read),
   // and any the previous ledger recorded as live. D7 protects exactly these.
@@ -2411,11 +2437,13 @@ export { isCollidedToken } from "../src/lib/board-collisions";
         // And the old fallback substituted a hardcoded "3,000+" for a
         // measurement on exactly the builds that could not take one; the clause
         // now drops out instead, like every other number on this page.
-        description: `Browse ${countPhrase}${boardCompanies ? `, pulled from ${fmt(boardCompanies)} company job boards with roles open now` : ", pulled from companies' own official job boards"} and re-checked continuously. Check your resume's fit free before you apply.`,
+        // EVERY NUMBER NAMES ITS DATE BASIS, and no "re-checked continuously"
+        // (Track 1 A3 point 5, GD6): the count is the day this page was built.
+        description: `${n ? `${fmt(n)} live ${label} openings, ${COUNTS_DAY}` : `Live ${label} openings`}${boardCompanies ? `, from ${fmt(boardCompanies)} company job boards` : ""}, each read from the employer's own hiring system.`,
         content: `
           <h1>Live ${label} jobs</h1>
-          <p>${countPhrase[0].toUpperCase()}${countPhrase.slice(1)}${boardTotal && boardCompanies ? ` — part of ${fmt(boardTotal)} live postings across ${fmt(boardCompanies)} company job boards with open roles` : boardTotal ? ` — part of ${fmt(boardTotal)} live postings` : ""}, pulled directly from the official job boards companies publish on ${D.SERVING_SOURCE_LIST}. No aggregators, no reposts: every opening belongs to the company that published it, and applying happens on the company's own site.</p>
-          <p>The largest boards are re-checked most often and the rotation runs continuously — how far behind it is right now is a measurement rather than a promise: the live median and 95th-percentile re-check ages are published on the <a href="/ghost-job-index">Ghost Job Index</a> — so postings a company takes down disappear on the next pass. Counts on this page were measured when it was last built; the board's own count refreshes periodically through the day.</p>
+          <p>${countPhrase[0].toUpperCase()}${countPhrase.slice(1)}${boardTotal && boardCompanies ? ` — part of ${fmt(boardTotal)} live postings across ${fmt(boardCompanies)} company job boards with open roles` : boardTotal ? ` — part of ${fmt(boardTotal)} live postings` : ""}, pulled directly from the official job boards companies publish on ${D.SERVING_SOURCE_LIST}, ${esc(COUNTS_BASIS)}. No aggregators: each opening is read from the hiring system of the company that published it, and applying happens on that company's own site.</p>
+          <p>The largest boards are re-checked most often and the rotation runs continuously — how far behind it is right now is a measurement rather than a promise: the live median and 95th-percentile re-check ages are published on the <a href="/ghost-job-index">Ghost Job Index</a> — so postings a company takes down disappear on the next pass. The counts on this page were ${esc(COUNTS_BASIS)}; the board's own count refreshes periodically through the day.</p>
           <p><a href="/jobs/field/${slug}">Browse ${label} openings on the live board</a> — filter by keyword, location, remote, and company; save searches with a free account; and check any posting against your resume with the <a href="/">free resume scan</a> before you spend an application on it.</p>
           <p>Other fields: ${siblings} — or see <a href="/jobs">the full job board</a>.</p>
         `,
@@ -2423,7 +2451,7 @@ export { isCollidedToken } from "../src/lib/board-collisions";
           "@context": "https://schema.org",
           "@type": "CollectionPage",
           name: `Live ${label} jobs`,
-          description: `Live ${label} openings from companies' official job boards, re-checked throughout the day.`,
+          description: `Live ${label} openings read from companies' own hiring systems.`,
           url: `${SITE}/jobs/field/${slug}`,
           isPartOf: { "@type": "WebSite", name: "Resume Booster", url: SITE },
         }, {
@@ -2540,7 +2568,7 @@ export { isCollidedToken } from "../src/lib/board-collisions";
         return companyLanderPage({
           token: c.token, name: c.name, primaryToken: info.primary.token, robots, canonicalTo, openN, countedOn: COUNTED_ON, facts: info.facts,
           openings: info.openings, openingsAt: info.at, sources: D.SERVING_SOURCE_LIST, boardCompanies,
-          site: SITE, esc, possessive, fmt: (n) => fmt(n), href: landerPath,
+          site: SITE, esc, possessive, fmt: (n) => fmt(n), href: landerPath, kind: landerKindOf(c.token), copy: KIND_COPY,
         });
       };
       // The facts and openings of each EMPLOYER (every board of it this bake
@@ -2636,7 +2664,7 @@ export { isCollidedToken } from "../src/lib/board-collisions";
         });
       }
       const distinct = new Set([...indexable].map((t) => skeletonOf.get(t))).size;
-      console.log(`[prerender-seo] company pages: ${LANDERS.length} (${consolidated} canonicalized to a larger board of the same employer; ${nameShared} canonicalized to a larger, different employer under the same name; ${indexable.size} indexable, ${distinct} distinct once names and numbers are out; noindex: ${thin} with too few openings of their own, ${duplicated} matching another page, ${codeNamed} still named by a tenant code${codeNamed ? `: ${LANDERS.filter((c) => c.primary === c.token && c.unreadable).slice(0, 40).map((c) => c.token).join(", ")}` : ""}, ${nameRefused} new pages refused for a name that cannot be printed; ${nameRepaired} names repaired); duplicates: kept ${dupesKept} of ${dupeGroups.length} groups${dupeBreaker ? " (breaker on: none demoted)" : ""}; intel read for ${intelOf.size} of ${primaries0.length}; listings read ${openingsReads.size} of ${toRead.length} (${openingsUnread} unread), ${Object.keys(landerOpeningsCache).length} of ${listedTokens.length} carried`);
+      console.log(`[prerender-seo] company pages: ${LANDERS.length} (${consolidated} canonicalized to a larger board of the same employer; ${nameShared} canonicalized to a larger, different employer under the same name; ${indexable.size} indexable, ${distinct} distinct once names and numbers are out; noindex: ${thin} with too few openings of their own, ${duplicated} matching another page, ${codeNamed} still named by a tenant code${codeNamed ? `: ${LANDERS.filter((c) => c.primary === c.token && c.unreadable).slice(0, 40).map((c) => c.token).join(", ")}` : ""}, ${nameRefused} new pages refused for a name that cannot be printed; ${nameRepaired} names repaired); duplicates: kept ${dupesKept} of ${dupeGroups.length} groups${dupeBreaker ? " (breaker on: none demoted)" : ""}; labelled: ${LANDERS.filter((c) => landerKindOf(c.token) === "usajobs").length} USAJOBS, ${LANDERS.filter((c) => landerKindOf(c.token) === "agency").length} staffing agency (${AGENCY_TOKENS.size} agency boards in the catalogue); intel read for ${intelOf.size} of ${primaries0.length}; listings read ${openingsReads.size} of ${toRead.length} (${openingsUnread} unread), ${Object.keys(landerOpeningsCache).length} of ${listedTokens.length} carried`);
 
       // ---- Once-published company pages this bake did not choose (SEO-002) ----
       //
@@ -2678,7 +2706,7 @@ export { isCollidedToken } from "../src/lib/board-collisions";
             ? companyLanderPage({
               token, name, primaryToken: token, robots: "noindex, follow", openN: typeof openN === "number" ? openN : null, countedOn: COUNTED_ON, facts: null,
               openings: listed.openings, openingsAt: listed.at, sources: D.SERVING_SOURCE_LIST, boardCompanies,
-              site: SITE, esc, possessive, fmt: (n) => fmt(n), href: landerPath,
+              site: SITE, esc, possessive, fmt: (n) => fmt(n), href: landerPath, kind: landerKindOf(token), copy: KIND_COPY,
             })
             : companyStubPage({ path, token, name, esc });
           write(page);
@@ -2697,7 +2725,11 @@ export { isCollidedToken } from "../src/lib/board-collisions";
         try {
           writeFileSync(resolve(process.env.PRERENDER_NAME_GATE_REPORT), JSON.stringify({
             builtAt: TODAY, facetsSource, indexableToday: INDEXABLE_TODAY.size, entries: nameGateDryRun,
-            repaired: LANDERS.filter((c) => NAME_GATE.get(c.token)?.repaired).map((c) => ({ path: `/jobs/company/${c.token}`, shown: NAME_GATE.get(c.token).shown, printed: c.name, indexableToday: wasIndexable(c.token) })),
+            // A repair that leaves one word ("Austin External" -> "Austin",
+            // "Mayo Career Site US" -> "Mayo") can read as a place or another
+            // employer: flagged for the owner, who adds a company_name_overrides
+            // row where it does.
+            repaired: LANDERS.filter((c) => NAME_GATE.get(c.token)?.repaired).map((c) => ({ path: `/jobs/company/${c.token}`, shown: NAME_GATE.get(c.token).shown, printed: c.name, indexableToday: wasIndexable(c.token), singleWord: !/\s/.test(String(c.name).trim()) })),
             refusedNew: LANDERS.filter((c) => c.primary === c.token && !c.unreadable && NAME_GATE.get(c.token)?.reason && !wasIndexable(c.token)).map((c) => ({ path: `/jobs/company/${c.token}`, name: c.name, reason: NAME_GATE.get(c.token).reason })),
           }, null, 1));
         } catch (e) { console.warn(`[prerender-seo] name gate report not written: ${e?.message || e}`); }
@@ -2737,7 +2769,7 @@ export { isCollidedToken } from "../src/lib/board-collisions";
         write({
           path: "/companies",
           title: `${fmt(primaries.length)} Companies Hiring Now, From Their Own Hiring Systems`,
-          description: `The ${fmt(primaries.length)} employers on the board with a page of their own, each pulled straight from its own official career system and re-checked continuously.`,
+          description: `The ${fmt(primaries.length)} employers on the board with a page of their own, each read from its own hiring system${COUNTED_ON ? `, open roles counted ${COUNTED_ON}` : ""}.`,
           content: `
             <h1 class="text-2xl font-bold mb-3">Companies hiring on the board</h1>
             <p class="text-muted-foreground mb-6">The ${fmt(primaries.length)} employers with a page of their own, listed A–Z; the board itself carries far more (${boardCompanies ? `${fmt(boardCompanies)} company job boards with roles open now` : "every one is searchable"} on <a href="/jobs" class="text-primary underline">the live board</a>). Every posting comes from the company's own hiring system. Where a count is shown it means postings the employer has not taken down whose date falls inside the last 30 days (the employer's own date, or for a posting with no date, the day we last saw it): the same rule the linked page serves, measured when this index was last built${COUNTED_ON ? `, ${esc(COUNTED_ON)}` : ""}.</p>
@@ -2777,7 +2809,7 @@ export { isCollidedToken } from "../src/lib/board-collisions";
         description: `Browse ${jobsPhrase} — straight from official company job boards. No aggregators; no dated posting older than 30 days.`,
         content: `
           <h1>Live job board</h1>
-          <p>${jobsPhrase[0].toUpperCase()}${jobsPhrase.slice(1)}, pulled directly from the official job boards companies publish on ${D.SERVING_SOURCE_LIST}. No aggregators, no reposts — every opening belongs to the company that published it, applying happens on the company's own site, and no dated posting older than 30 days stays on the board. Where a company states no date at all we can't judge the posting old, so we keep it and show no age rather than guess one. Counts were measured when this page was last built; the board's own count refreshes periodically through the day.</p>
+          <p>${jobsPhrase[0].toUpperCase()}${jobsPhrase.slice(1)}, pulled directly from the official job boards companies publish on ${D.SERVING_SOURCE_LIST}. No aggregators: each opening is read from the hiring system of the company that published it, applying happens on that company's own site, and no dated posting older than 30 days stays on the board. Where a company states no date at all we can't judge the posting old, so we keep it and show no age rather than guess one. The counts were ${esc(COUNTS_BASIS)}; the board's own count refreshes periodically through the day.</p>
           <p>Browse by field: ${CATEGORY_LANDERS.map(([s, l]) => `<a href="/jobs/field/${s}">${l} jobs</a>`).join(" · ")}.</p>
           <p>Check any posting against your resume with the <a href="/">free resume scan</a> before you spend an application on it, and save searches with a free account.</p>
           <p>Bring your own AI agent: every posting and every search on this board has a control that copies a prompt naming the posting's id, or the search's arguments, and our MCP server's URL — <a href="/agents">connect your agent</a>. A <code>/jobs?job=&lt;id&gt;</code> link's id is the argument the server's detail tools take.</p>
@@ -2787,7 +2819,7 @@ export { isCollidedToken } from "../src/lib/board-collisions";
           "@context": "https://schema.org",
           "@type": "CollectionPage",
           name: "Live job board",
-          description: `Live openings from companies' official job boards (${D.SERVING_SOURCE_LIST}), re-checked throughout the day — no aggregators, no dated posting older than 30 days.`,
+          description: `Live openings read from companies' own hiring systems (${D.SERVING_SOURCE_LIST}) — no aggregators, no dated posting older than 30 days.`,
           url: `${SITE}/jobs`,
           isPartOf: { "@type": "WebSite", name: "Resume Booster", url: SITE },
         }],
@@ -3053,25 +3085,31 @@ export { isCollidedToken } from "../src/lib/board-collisions";
     });
 
     // ---- /agent ----
-    // THE ADDRESS STAYS; WHAT IT SAYS IS THE RETIREMENT. /agent was the Apply
+    // THE ADDRESS STAYS; IT SAYS HOW TO APPLY NOW. /agent was the Apply
     // Agent's sales page (its price, its trial, the hiring systems it
-    // submitted on). Owner decision 2026-10-11 (the apply pivot): the
-    // server-side agent and the plan and pass sold with it are retired, and
-    // applying happens through the person's own AI. The page keeps its URL,
-    // its index and its sitemap entry, so a search engine re-reads it and an
-    // old link lands on the truth, not on the homepage copy. It names no
-    // price and no product, and the only path it offers is applying yourself.
+    // submitted on). Owner decision 2026-10-11 (the apply pivot): applying
+    // happens through the person's own AI. The page keeps its URL, its index
+    // and its sitemap entry, names no price and no product, and offers one
+    // path: applying yourself.
+    //
+    // NO "RETIRED" AND NO "WE STOPPED SELLING" YET (2026-10-18 review). This
+    // publish (deployOrder 2) goes out before wave 4 (deployOrder 3), whose
+    // frontend removes the plan's and the pass's sale paths (Pricing's agent
+    // card, the pass page, AgentConnect's pass card) and whose checkouts
+    // refuse them. Until then those pages still sell both, so a crawler page
+    // saying they are retired and no longer sold would be false beside them.
+    // Wave 4 restores the retirement sentences when its deploy lands
+    // (docs/design-upgrade/README.md, deploy procedure step 3).
     write({
       path: "/agent",
-      title: "The Apply Agent is retired: apply with your own AI",
-      description: "Resume Booster no longer runs an agent that applies to jobs on your behalf. Search the board from your own AI and apply on the employer's own site.",
-      jsonLd: [breadcrumbLd([{ name: "Home", path: "/" }, { name: "Apply Agent (retired)", path: "/agent" }])],
+      title: "Apply with your own AI: Claude, ChatGPT or Claude Code",
+      description: "Search the board from your own AI and apply yourself on the employer's own site: you check every answer and you press submit.",
+      jsonLd: [breadcrumbLd([{ name: "Home", path: "/" }, { name: "Apply with your own AI", path: "/agent" }])],
       content: `
-        ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Apply Agent (retired)" }])}
-        <h1 class="text-3xl font-bold mb-3">The Apply Agent is retired</h1>
-        <p class="text-muted-foreground mb-8">Resume Booster no longer runs an agent that prepares or sends applications, and no longer sells the plans and passes that came with it. If you bought one of them, write to <a href="mailto:${D.PRIVACY_EMAIL}">${D.PRIVACY_EMAIL}</a> from the address you paid with. Your account keeps what it had: your saved jobs and the application tracker stay where they were.</p>
-        <section class="mb-8"><h2 class="text-xl font-bold mb-3">How to apply now: with your own AI</h2>
-          <p class="text-sm text-muted-foreground mb-3">${esc(APPLY_YOURSELF_LINE)}</p>
+        ${breadcrumbNav([{ name: "Home", href: "/" }, { name: "Apply with your own AI" }])}
+        <h1 class="text-3xl font-bold mb-3">Apply with your own AI</h1>
+        <p class="text-muted-foreground mb-8">${esc(APPLY_YOURSELF_LINE)}</p>
+        <section class="mb-8"><h2 class="text-xl font-bold mb-3">How to connect it</h2>
           <p class="text-sm text-muted-foreground">Connecting your AI to the board is free and needs no account. The steps for Claude, ChatGPT and Claude Code are on <a href="/agents" class="text-primary">${esc(FOOTER_AGENTS_LABEL)}</a>; the board itself is at <a href="/jobs" class="text-primary">/jobs</a>.</p>
         </section>
         ${cta("Check your resume first", "See how your resume reads to an applicant-tracking system before you apply anywhere: free, no signup.", "Scan my resume free")}`,
@@ -3757,7 +3795,7 @@ export { isCollidedToken } from "../src/lib/board-collisions";
       { path: "/builder", changefreq: "monthly", priority: "0.8" },
       { path: "/methodology", changefreq: "monthly", priority: "0.7" },
       { path: "/trust", changefreq: "monthly", priority: "0.6" },
-      { path: "/agent", changefreq: "monthly", priority: "0.5" }, // the retired Apply Agent's address: it says what changed (the apply pivot, 2026-10-11)
+      { path: "/agent", changefreq: "monthly", priority: "0.5" }, // the Apply Agent's old address: it says how to apply with your own AI (the apply pivot, 2026-10-11)
       { path: "/agents", changefreq: "weekly", priority: "0.7" }, // the MCP page — fallback-only and sitemap-absent until 2026-09-15
       { path: "/affiliates", changefreq: "monthly", priority: "0.6" },
       // /shortlist deliberately absent: it is an auth wall with no public

@@ -615,9 +615,13 @@ describe("3. the pass sentences this lane added interpolate in every locale", ()
       expect(get(d, "jobsPage.agentAppliesTip2"), `${f} still carries the retired agentAppliesTip2`).toBeUndefined();
     });
   }
-  it("en's placeholders are the pass mirror's names, and the /agent line and the FAQ are wired to it", () => {
+  it("en's placeholders are the pass mirror's names where a pass is still named, and the FAQ names none since the apply pivot", () => {
     expect(placeholders(get(EN, "agentPage.connectInstead")!)).toEqual(["passHours", "passPrice"]);
-    expect(placeholders(get(EN, "faq.questions.bringYourAgent.answer")!)).toEqual(["passApplications", "passHours", "passPrice"]);
+    // The FAQ's own-AI answer sells nothing since the apply pivot (wave 4's
+    // sentence, taken by design/integration on 2026-10-18): no pass
+    // placeholder, no price, and it says we never submit.
+    expect(placeholders(get(EN, "faq.questions.bringYourAgent.answer")!)).toEqual([]);
+    expect(get(EN, "faq.questions.bringYourAgent.answer")!).toMatch(/never submit an application/);
     const agent = strip(read("src/pages/Agent.tsx"));
     expect(agent).toMatch(/agentPage\.connectInstead[\s\S]{0,300}\{ passHours: PASS\.sessionHours, passPrice: PASS\.priceUsd \}/);
     expect(agent).toMatch(/to="\/agents"/);

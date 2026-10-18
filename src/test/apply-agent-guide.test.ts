@@ -10,13 +10,15 @@
  * copy least likely to be re-read and the most likely to be the first thing a
  * stranger believes. So every factual claim in the guide is pinned here.
  *
- * SINCE THE APPLY PIVOT (owner decision 2026-10-11) the server-side agent and
- * the plan and pass sold with it are retired, and the guide at this address
- * says so. The old pins on review mode, the held releases and the nightly
- * defaults are replaced by the claims the page now makes: the agent is
- * retired, no sentence says we submit or send for anyone, the person submits
- * on the employer's site, and the hosts it names are only Claude, ChatGPT and
- * Claude Code. It describes nothing of the connector beyond searching and
+ * SINCE THE APPLY PIVOT (owner decision 2026-10-11) applying happens through
+ * the person's own AI, and the guide at this address says how. The old pins
+ * on review mode, the held releases and the nightly defaults are replaced by
+ * the claims the page now makes: no sentence says we submit or send for
+ * anyone, the person submits on the employer's site, and the hosts it names
+ * are only Claude, ChatGPT and Claude Code. It does not yet say the agent is
+ * retired or that its plan and pass are no longer sold (2026-10-18 review):
+ * this publish goes out before wave 4 removes their sale paths, and the
+ * sentences return with wave 4. It describes nothing of the connector beyond searching and
  * reading, and no instruction the server gives a model: those change with the
  * connector, and wave 4's guide states them once its server ships them.
  */
@@ -54,11 +56,18 @@ describe("the guide exists and is wired like every other one", () => {
   });
 });
 
-describe("what the guide says is the retirement, and only that", () => {
-  it("says the agent is retired, in its title, its heading and its short answer", () => {
-    expect(guide.title).toMatch(/retired/i);
-    expect(guide.h1).toMatch(/retired/i);
-    expect(guide.tldr).toMatch(/does not prepare or send applications any more/);
+describe("what the guide says is how to apply now, and only that", () => {
+  it("says how to apply with your own AI, in its title, its heading and its short answer", () => {
+    expect(guide.title).toMatch(/apply with your own AI/i);
+    expect(guide.h1).toMatch(/apply with your own AI/i);
+    expect(guide.tldr).toMatch(/you apply on the employer's own site/);
+  });
+
+  it("holds the retirement sentences until wave 4's sale-path removal is live", () => {
+    // The plan and the pass are still sold on /pricing and /agents/pass until
+    // wave 4 deploys; a guide saying they are retired or no longer sold would
+    // be false beside them for that window.
+    expect(prose).not.toMatch(/\bretired\b|stopped selling|no longer sell/i);
   });
 
   it("no sentence says we, or an agent of ours, submit or send an application", () => {
@@ -98,9 +107,6 @@ describe("what the guide says is the retirement, and only that", () => {
     expect(prose).not.toMatch(/Resume Booster tells your AI|application form, question by question|default-deny/);
   });
 
-  it("tells a past buyer where to write", () => {
-    expect(prose).toMatch(/resumeboostersupp@gmail\.com/);
-  });
 
   it("the guides index no longer sells the agent either", () => {
     for (const s of [GUIDES_INDEX_TITLE, GUIDES_INDEX_DESCRIPTION, GUIDES_INTRO]) {

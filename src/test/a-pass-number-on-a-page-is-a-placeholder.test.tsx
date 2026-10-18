@@ -529,7 +529,6 @@ function spelledPassNumbers(code: string): string[] {
 
 describe("the agent offer on the homepage", () => {
   const INDEX_RAW = read("src/pages/Index.tsx");
-  const allowed = new Set([PASS.priceUsd, PASS.sessionHours, PASS.applications, MCP_ANON_CAPS.perAddressPerDay].map(String));
   const digitRuns = (s: string) => s.match(/\d+/g) ?? [];
 
   beforeEach(() => {
@@ -540,76 +539,59 @@ describe("the agent offer on the homepage", () => {
     auth.session = null; auth.loading = false;
   });
 
-  it("mounts the whole homepage and renders the strip inside the hero band, every number from a mirror", () => {
+  // THE STRIP SELLS NO PASS (2026-10-18 review). React replaces the baked
+  // #root, so every visitor and Googlebot read the strip and the hero, and they
+  // still sold the pass and said the agent applies for you while this
+  // publish's bake, guide and llms files said neither. The strip now says the
+  // one thing on offer: connect your own AI, free, and apply yourself.
+  it("mounts the whole homepage and renders the strip inside the hero band, with no price and no pass", () => {
     mount(<Index />, "/");
     const hero = document.querySelector('section[aria-labelledby="home-hero-heading"]');
     expect(hero, "the fused hero is on the page").not.toBeNull();
     const el = hero!.querySelector("[data-agent-offer]");
     expect(el, "the strip is INSIDE the hero band, not a second hero").not.toBeNull();
     const text = el!.textContent ?? "";
-    expect(text).toContain(`$${PASS.priceUsd}`);
-    expect(text).toContain(`${PASS.sessionHours} hours`);
-    expect(text).toContain(`${PASS.applications} jobs`);
     expect(text).toContain(`${MCP_ANON_CAPS.perAddressPerDay} calls a day`);
-    const stray = digitRuns(text).filter((n) => !allowed.has(n));
-    expect(stray, "a digit the mirrors did not supply").toEqual([]);
-    // The strip is one strip: it lives under the hero's single h1 and adds
-    // no heading and no second primary-weight button of its own.
+    const stray = digitRuns(text).filter((n) => n !== String(MCP_ANON_CAPS.perAddressPerDay));
+    expect(stray, "a digit the allowance mirror did not supply").toEqual([]);
+    expect(text).not.toMatch(/\$|\bpass\b/i);
+    expect(text).toMatch(/never submits an application for you/);
     expect(el!.querySelector("h1, h2, h3")).toBeNull();
     expect(el!.querySelector("button")).toBeNull();
     expect(document.querySelectorAll("h1").length).toBe(1);
+    // The hero itself claims no submissions either.
+    expect(hero!.textContent ?? "").not.toMatch(/applies for you|can submit for you|submits where|AI apply agent/i);
   });
 
-  it("names sign-in as the condition for the pass, never for connecting, and links to /agents for everyone", () => {
-    mount(<AgentOfferStrip />, "/");
-    const el = document.querySelector("[data-agent-offer]")!;
-    const [connect, pass] = Array.from(el.querySelectorAll("p")).map((p) => p.textContent ?? "");
-    expect(connect).toMatch(/no account/i);
-    expect(connect).not.toMatch(/sign in/i);
-    expect(pass).toMatch(/sign in/i);
-    expect(pass).toMatch(/never renews/i);
-    expect(screen.getByRole("link", { name: /connect your agent/i }).getAttribute("href")).toBe("/agents");
-    expect(screen.queryByRole("link", { name: /pass/i }), "no pass-page link while signed out").toBeNull();
-  });
+  for (const signedIn of [false, true]) {
+    it(`${signedIn ? "signed in" : "signed out"}: links /agents, offers no pass page, and calls no checkout`, () => {
+      auth.session = signedIn ? { user: USER } : null;
+      mount(<AgentOfferStrip />, "/");
+      expect(screen.getByRole("link", { name: /connect your agent/i }).getAttribute("href")).toBe("/agents");
+      expect(screen.queryByRole("link", { name: /pass/i }), "a link to the pass page").toBeNull();
+      expect(calls("create-pass-checkout").length).toBe(0);
+      expect(calls("agent-pass-status").length, "the homepage never asks the status endpoint").toBe(0);
+    });
+  }
 
-  it("signed in, adds one link to the pass page and no checkout call", () => {
-    auth.session = { user: USER };
-    mount(<AgentOfferStrip />, "/");
-    expect(screen.getByRole("link", { name: /pass/i }).getAttribute("href")).toBe("/agents/pass");
-    expect(screen.getByRole("link", { name: /connect your agent/i }).getAttribute("href")).toBe("/agents");
-    expect(calls("create-pass-checkout").length).toBe(0);
-    expect(calls("agent-pass-status").length, "the homepage never asks the status endpoint").toBe(0);
-  });
-
-  it("Index.tsx renders the strip from the mirrors and spells none of the pass numbers beside pass/hour/application", () => {
+  it("Index.tsx reads no pass mirror, fills the allowance from its mirror, and spells none of the pass numbers beside pass/hour/application", () => {
     const code = strip(INDEX_RAW);
-    expect(code).toMatch(/from "@\/config\/products"/);
+    expect(code).not.toMatch(/\bPASS\b/);
+    expect(code).not.toMatch(/\{\{pass\w*\}\}/);
     expect(code).toMatch(/from "@\/config\/mcp-tools"/);
-    expect(code).toMatch(/passPrice: PASS\.priceUsd/);
-    expect(code).toMatch(/passHours: PASS\.sessionHours/);
-    expect(code).toMatch(/passApplications: PASS\.applications/);
     expect(code).toMatch(/freeCallsPerDay: MCP_ANON_CAPS\.perAddressPerDay/);
+    expect(code).toContain("{{freeCallsPerDay}}");
     expect(code).toMatch(/<HomeHero agentOffer=\{<AgentOfferStrip \/>\} \/>/);
-    // Not vacuous: the placeholders are there to be replaced.
-    for (const p of ["{{passPrice}}", "{{passHours}}", "{{passApplications}}", "{{freeCallsPerDay}}"]) expect(code).toContain(p);
     expect(spelledPassNumbers(INDEX_RAW)).toEqual([]);
   });
 
-  it("teeth: a copy of Index.tsx with the price, the hours or the applications spelled fails", () => {
-    const priced = INDEX_RAW.replace("${{passPrice}}", `$${PASS.priceUsd}`);
-    expect(priced).not.toBe(INDEX_RAW);
-    expect(spelledPassNumbers(priced).length).toBeGreaterThan(0);
-    const houred = INDEX_RAW.replace("{{passHours}} hours", `${PASS.sessionHours} hours`);
-    expect(houred).not.toBe(INDEX_RAW);
-    expect(spelledPassNumbers(houred).length).toBeGreaterThan(0);
-    const applied = INDEX_RAW.replace("apply to {{passApplications}} jobs", `apply to ${PASS.applications} jobs — that is ${PASS.applications} applications`);
-    expect(applied).not.toBe(INDEX_RAW);
-    expect(spelledPassNumbers(applied).length).toBeGreaterThan(0);
-    // And a spelling inside a comment alone does NOT fail it — the rule is
-    // about what renders, and a comment is where the reasoning lives.
-    const commented = INDEX_RAW.replace("export function AgentOfferStrip()", `/* the pass costs $${PASS.priceUsd} */\nexport function AgentOfferStrip()`);
-    expect(commented).not.toBe(INDEX_RAW);
-    expect(spelledPassNumbers(commented)).toEqual([]);
+  it("teeth: a copy of Index.tsx with the price, the hours or the applications spelled fails, and a comment does not", () => {
+    const at = "export function AgentOfferStrip(";
+    expect(INDEX_RAW).toContain(at);
+    for (const line of [`const X = "a $${PASS.priceUsd} pass";`, `const X = "${PASS.sessionHours} hours";`, `const X = "${PASS.applications} applications";`]) {
+      expect(spelledPassNumbers(INDEX_RAW.replace(at, `${line}\n${at}`)).length, line).toBeGreaterThan(0);
+    }
+    expect(spelledPassNumbers(INDEX_RAW.replace(at, `/* the pass cost $${PASS.priceUsd} */\n${at}`))).toEqual([]);
   });
 
   describe("and the crawler copy for / says the same, from the same mirrors", () => {

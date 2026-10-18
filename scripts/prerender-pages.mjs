@@ -295,9 +295,13 @@ export function duplicateSkeletonGroups(items) {
 export function resolveDuplicateGroups({ groups, wasIndexable = () => false, openOf = () => 0, nameKeyOf, failsGate = () => false }) {
   const out = new Map();
   for (const g of groups) {
+    // D7 FIRST: a member indexable on the live site today keeps its index
+    // whether or not the name gate would refuse it (the caller lists it on the
+    // dry run instead). Filtering by the gate first noindexed such a member,
+    // and a group whose every member failed the gate went noindex in full.
+    const already = g.filter((k) => wasIndexable(k));
     const eligible = g.filter((k) => !failsGate(k));
-    if (!eligible.length) { for (const k of g) out.set(k, { role: "noindex" }); continue; }
-    const already = eligible.filter((k) => wasIndexable(k));
+    if (!already.length && !eligible.length) { for (const k of g) out.set(k, { role: "noindex" }); continue; }
     const keepers = already.length
       ? already
       : [eligible.reduce((best, k) => ((openOf(k) ?? 0) > (openOf(best) ?? 0) ? k : best), eligible[0])];
@@ -532,7 +536,8 @@ export const bakeLanders = (companyFacet, { D, openOf, max, min, nameOf = null }
  * carries everything the page must state, under its employer's own name (F1),
  * from the employer itself (a staffing agency's row is not: the page says the
  * posting came from the employer's own system and names the row's company as
- * the hiring organisation), with a place, and still live. The description
+ * the hiring organisation; nor is a row the USAJOBS listing site carries),
+ * with a place, and still live. The description
  * gate needs the detail read and is applied after it.
  */
 export const postingRowEligible = (j, D) => !!(j
@@ -542,6 +547,10 @@ export const postingRowEligible = (j, D) => !!(j
   && typeof j.company === "string" && j.company.trim()
   && !D.isCodeShapedName(j.token ?? D.postingPathParts(j.id)?.token ?? null, D.postingEmployer(j))
   && j.agency !== true
+  // USAJOBS is a listing site, not an employer: a page of its own would say
+  // "Apply on <agency>'s own site" and "never an aggregator" of a row the
+  // federal listing site carries.
+  && j.source !== "usajobs" && (j.token ?? D.postingPathParts(j.id)?.token ?? null) !== "usajobs"
   && j.country
   && (j.workMode === "remote" || j.location)
   && D.isPostingLive(j));
@@ -606,6 +615,9 @@ export function contentFingerprint(text, { blindCounts = false } = {}) {
 
 /** Page families whose numbers are counts measured at the build, not what the page says. */
 export const COUNT_BEARING = (path) => path === "/" || path === "/jobs" || path === "/companies" || path === "/explore" || path === "/agents"
+  // The four data pages print measured counts too (SEO-025's remainder: two
+  // bakes 15 minutes apart re-dated all four on counts alone).
+  || path === "/ghost-job-index" || path === "/entry-level-index" || path === "/hiring-trends" || path === "/pay-transparency"
   || String(path).startsWith("/jobs/company/") || String(path).startsWith("/jobs/field/");
 
 /** The ledger's fingerprint version: 2 is count-blind on COUNT_BEARING pages. */
@@ -795,25 +807,55 @@ export const llmsTxtCompaniesCount = (text, count) => String(text).replace(
  * basis is printed as prose: it was a capitalised code annotation, "THE
  * COUNT'S BASIS: ... so the number below it is the number this page states",
  * in the visible body of ~490 pages (L4-12).
+ *
+ * `kind` IS WHAT THE BOARD IS, AS THE LIVE PAGE SAYS IT (2026-10-18 review):
+ *   - "employer" (the default): one employer's own hiring system;
+ *   - "usajobs": the federal listing site, never an employer. The SPA's hub
+ *     says "Federal openings listed on USAJOBS ... each role names its
+ *     agency" and states the per-query cap; the bake said "Open roles at
+ *     USAJOBS", "pulled straight from USAJOBS' own hiring system", "The fields
+ *     USAJOBS is hiring in" and named USAJOBS as an Organization;
+ *   - "agency": a staffing agency's board. It says so in the SPA's own
+ *     sentence (AgencyBanner), its fields are where roles are listed, not
+ *     where the agency "is hiring", and no Organization is named the employer.
+ * `copy` carries the SPA's own English for the hub and the banner (the
+ * company string shard), so the two runtimes say the same words.
  */
-export function companyLanderPage({ token, name, primaryToken, robots = null, canonicalTo = null, openN, countedOn = null, facts, openings = [], openingsAt = null, sources, boardCompanies, site, esc, possessive, fmt, href: hrefOf }) {
+export const LANDER_KIND_COPY = {
+  usajobsH1: "Federal openings listed on USAJOBS",
+  usajobsSubtitle: "USAJOBS lists openings from many US federal agencies; each role names its agency.",
+  usajobsCap: "Up to {{cap}} results per query; not every federal opening.",
+  usajobsCapValue: 10000,
+  agencyBanner: "This is a staffing agency's board. Roles here are usually for its clients.",
+};
+
+export function companyLanderPage({ token, name, primaryToken, robots = null, canonicalTo = null, openN, countedOn = null, facts, openings = [], openingsAt = null, sources, boardCompanies, site, esc, possessive, fmt, href: hrefOf, kind = "employer", copy = LANDER_KIND_COPY }) {
+  const C = { ...LANDER_KIND_COPY, ...(copy ?? {}) };
   const nm = name;
   const isPrimary = primaryToken === token;
   const hasN = typeof openN === "number";
   const href = hrefOf(token);
   const poss = possessive(nm);
   const pages = openings.filter((p) => String(p.href).startsWith("/jobs/posting/"));
+  const counted = countedOn ? `, counted ${esc(countedOn)}` : "";
+  const usajobs = kind === "usajobs";
+  const agency = kind === "agency";
+  const capLine = String(C.usajobsCap).replace(/\{\{\s*cap\s*\}\}/g, fmt(C.usajobsCapValue));
+  // Who the roles belong to, in the headings and the links: an employer's
+  // own; the listing site's agencies'; an agency's clients'.
+  const where = usajobs ? "Where these federal openings are" : agency ? `Where ${esc(poss)} listed roles are` : `Where ${esc(poss)} open roles are`;
+  const fieldsHead = usajobs ? "The fields these federal openings are in" : agency ? `The fields ${esc(poss)} roles are listed in` : `The fields ${esc(nm)} is hiring in`;
   const factsHtml = [
     facts?.countries?.length
-      ? `<h2>Where ${esc(poss)} open roles are</h2>
+      ? `<h2>${where}</h2>
             <p>The countries holding the most of its roles on this board: ${facts.countries.map((x) => `<a href="${href}?country=${encodeURIComponent(x.code)}">${esc(x.name)}</a>`).join(", ")}.</p>`
       : "",
     facts?.fields?.length
-      ? `<h2>The fields ${esc(nm)} is hiring in</h2>
+      ? `<h2>${fieldsHead}</h2>
             <p>The fields holding the most of its roles on this board: ${facts.fields.map((x) => `<a href="${href}?category=${encodeURIComponent(x.slug)}">${esc(x.label)}</a>`).join(", ")}. Fields are our own sorting of each posting's title, never a label the employer applied.</p>`
       : "",
     openings.length
-      ? `<h2>Openings at ${esc(nm)}</h2>
+      ? `<h2>${usajobs ? "Openings listed on USAJOBS" : agency ? `Roles listed by ${esc(nm)}` : `Openings at ${esc(nm)}`}</h2>
             <p>${openingsAt ? `From ${esc(poss)} listing on this board, read ${esc(openingsAt)}, newest first` : `${esc(poss)} openings with a page of their own on this site`}; the live board re-checks a posting when you open it.</p>
             <ul>${openings.map((p) => `<li><a href="${esc(p.href)}">${esc(p.title)}</a>${p.place ? ` — ${esc(p.place)}` : ""}</li>`).join("")}</ul>`
       : "",
@@ -823,36 +865,59 @@ export function companyLanderPage({ token, name, primaryToken, robots = null, ca
   // employer's own feed, it does not verify each role (owner, 2026-10-12).
   // The count's basis (what an open role is, and the day it was counted) is
   // the first sentence of the body.
-  const title = (() => {
-    if (!hasN) return `${nm} jobs: open roles from their own hiring system`.length <= 68 ? `${nm} jobs: open roles from their own hiring system` : `${nm} jobs`;
-    const full = `${nm} jobs: ${fmt(openN)} open roles from their own hiring system`;
-    if (full.length <= 68) return full;
-    const short = `${nm} jobs: ${fmt(openN)} open roles`;
-    return short.length <= 68 ? short : `${nm} jobs`;
-  })();
-  const counted = countedOn ? `, counted ${esc(countedOn)}` : "";
+  const fit = (...options) => options.find((o) => o.length <= 68) ?? options[options.length - 1];
+  const title = usajobs
+    ? (hasN ? fit(`${C.usajobsH1}: ${fmt(openN)} roles`, C.usajobsH1) : C.usajobsH1)
+    : agency
+      ? (hasN ? fit(`${nm} jobs: ${fmt(openN)} roles listed by a staffing agency`, `${nm} jobs: ${fmt(openN)} roles`, `${nm} jobs`) : fit(`${nm} jobs: roles listed by a staffing agency`, `${nm} jobs`))
+      : (hasN
+        ? fit(`${nm} jobs: ${fmt(openN)} open roles from their own hiring system`, `${nm} jobs: ${fmt(openN)} open roles`, `${nm} jobs`)
+        : fit(`${nm} jobs: open roles from their own hiring system`, `${nm} jobs`));
+  const description = usajobs
+    ? `${hasN ? `${fmt(openN)} federal openings` : "Federal openings"} listed on USAJOBS, each naming its agency. ${capLine} Check your resume's fit free.`
+    : agency
+      ? `${hasN ? `${fmt(openN)} roles` : "Roles"} listed by ${nm}, a staffing agency: roles are usually for its clients. Check your resume's fit free before you apply.`
+      : hasN
+        ? `${fmt(openN)} open roles at ${nm}, read from ${poss} own hiring system. Check your resume's fit free before you apply.`
+        : `Open roles at ${nm}, read from ${poss} own hiring system. Check your resume's fit free before you apply.`;
+  const windowRule = (who) => ` An open role here is a posting ${who} whose date falls inside the last 30 days: ${usajobs ? "the agency's own date, or for a posting with no date, the day we last saw it in the feed" : "the employer's own date, or for a posting with no date, the day we last saw it in their feed"}. That is the same rule the live board page applies. The count was measured when this page was built and moves as roles open and close.`;
+  const noCount = ` This build could not read a count it can stand behind for ${esc(nm)}, so it states none rather than a figure the live board would contradict.`;
+  const lead = usajobs
+    ? `<h1>${esc(C.usajobsH1)}</h1>
+            <p>${esc(C.usajobsSubtitle)} ${hasN ? `${fmt(openN)} openings listed${counted}.` : ""} ${esc(capLine)} Applying happens on USAJOBS.${hasN ? windowRule("that is still listed") : noCount}</p>`
+    : agency
+      ? `<h1>Roles listed by ${esc(nm)}</h1>
+            <p>${esc(C.agencyBanner)}</p>
+            <p>${hasN ? `${fmt(openN)} roles on ${esc(poss)} board${counted}` : `Roles on ${esc(poss)} board`}, read from its own hiring system (one of ${sources}). Applying happens on ${esc(poss)} site.${hasN ? windowRule(`${esc(nm)} has not taken down`) : noCount}</p>`
+      : `<h1>Open roles at ${esc(nm)}</h1>
+            <p>${hasN ? `${fmt(openN)} open ${esc(nm)} roles${counted}` : `Open ${esc(nm)} roles`}, pulled straight from ${esc(poss)} own hiring system (one of ${sources}). Applying happens on ${esc(poss)} own site.${hasN ? windowRule(`${esc(nm)} has not taken down`) : noCount}</p>`;
+  const browse = usajobs ? "Browse every federal opening listed on USAJOBS on the live board" : agency ? `Browse every role ${esc(nm)} lists on the live board` : `Browse all ${esc(nm)} openings on the live board`;
+  const pageName = usajobs ? C.usajobsH1 : agency ? `Roles listed by ${nm}` : `Open roles at ${nm}`;
   return {
     path: `/jobs/company/${token}`,
     canonical: canonicalTo ? `/jobs/company/${canonicalTo}` : isPrimary ? null : `/jobs/company/${primaryToken}`,
     robots: canonicalTo ? null : isPrimary ? robots : null,
     title,
-    description: hasN
-      ? `${fmt(openN)} open roles at ${nm}, read from ${poss} own hiring system. Check your resume's fit free before you apply.`
-      : `Open roles at ${nm}, read from ${poss} own hiring system. Check your resume's fit free before you apply.`,
+    description,
     content: `
-            <h1>Open roles at ${esc(nm)}</h1>
-            <p>${hasN ? `${fmt(openN)} open ${esc(nm)} roles${counted}` : `Open ${esc(nm)} roles`}, pulled straight from ${esc(poss)} own hiring system (one of ${sources}). Applying happens on ${esc(poss)} own site.${hasN ? ` An open role here is a posting ${esc(nm)} has not taken down whose date falls inside the last 30 days: the employer's own date, or for a posting with no date, the day we last saw it in their feed. That is the same rule the live board page applies. The count was measured when this page was built and moves as roles open and close.` : ` This build could not read a count it can stand behind for ${esc(nm)}, so it states none rather than a figure the live board would contradict.`}</p>
+            ${lead}
             ${factsHtml}
-            <p><a href="${href}">Browse all ${esc(nm)} openings on the live board</a> — filter by role, location, experience, and remote, and check any posting against your resume with the <a href="/">free resume scan</a> before you spend an application on it.</p>
+            <p><a href="${href}">${browse}</a> — filter by role, location, experience, and remote, and check any posting against your resume with the <a href="/">free resume scan</a> before you spend an application on it.</p>
             <p>See <a href="/jobs">the full job board</a>${boardCompanies ? ` for openings across ${fmt(boardCompanies)} company job boards with roles open${countedOn ? ` (counted ${esc(countedOn)})` : " when this page was built"}` : ""}.</p>
           `,
     jsonLd: [{
       "@context": "https://schema.org",
       "@type": "CollectionPage",
-      name: `Open roles at ${nm}`,
-      description: `Open ${nm} roles from ${poss} official job board, re-checked throughout the day.`,
+      name: pageName,
+      description: usajobs
+        ? `Federal openings listed on USAJOBS, each naming its agency.`
+        : agency
+          ? `Roles listed by ${nm}, a staffing agency: roles are usually for its clients.`
+          : `Open ${nm} roles read from ${poss} own hiring system.`,
       url: `${site}${href}`,
-      about: { "@type": "Organization", name: nm },
+      // An Organization is named only as an employer hiring for itself: not
+      // for the federal listing site, not for an agency's clients' roles.
+      ...(usajobs || agency ? {} : { about: { "@type": "Organization", name: nm } }),
       isPartOf: { "@type": "WebSite", name: "Resume Booster", url: site },
       // Only the openings that are pages of their own: a board link is the board.
       ...(pages.length ? { mainEntity: { "@type": "ItemList", itemListElement: pages.map((p, i) => ({ "@type": "ListItem", position: i + 1, url: `${site}${p.href}`, name: p.title })) } } : {}),
@@ -861,7 +926,7 @@ export function companyLanderPage({ token, name, primaryToken, robots = null, ca
       "@type": "BreadcrumbList",
       itemListElement: [
         { "@type": "ListItem", position: 1, name: "Job board", item: `${site}/jobs` },
-        { "@type": "ListItem", position: 2, name: `${nm} jobs`, item: `${site}${href}` },
+        { "@type": "ListItem", position: 2, name: usajobs ? "USAJOBS listings" : `${nm} jobs`, item: `${site}${href}` },
       ],
     }],
   };

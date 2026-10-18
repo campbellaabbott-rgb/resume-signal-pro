@@ -550,9 +550,13 @@ describe("the fallback ladder cannot be emptied by a silent facet", () => {
   });
 
   it("the field lander's denominator names boards and drops out when unmeasured", () => {
-    const desc = c.slice(c.indexOf("description: `Browse ${countPhrase}"), c.indexOf("description: `Browse ${countPhrase}") + 320);
+    const at = c.indexOf("description: `${n ? `${fmt(n)} live ${label} openings");
+    expect(at, "the field lander's description").toBeGreaterThan(-1);
+    const desc = c.slice(at, at + 320);
     expect(desc, "a count of boards may not be printed as companies").not.toMatch(/companies' official job boards/);
-    expect(desc).toMatch(/company job boards with roles open now/);
+    expect(desc).toMatch(/company job boards/);
+    // Every number names its date basis (the bake's own "counted <day>").
+    expect(desc).toMatch(/\$\{COUNTS_DAY\}/);
     expect(desc, "an unsourced constant may not stand in for a measurement").not.toMatch(/3,000\+/);
   });
 });

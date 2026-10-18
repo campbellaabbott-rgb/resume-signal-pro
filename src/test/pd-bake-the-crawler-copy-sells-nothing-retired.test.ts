@@ -182,11 +182,34 @@ describe("what the crawler reads instead: search and apply through your own AI",
     expect(crawlerText(html)).toMatch(/from ChatGPT each person has their own|within a free daily allowance/);
   });
 
-  it("/agent is the retirement page: no price in its title, indexable, linking /agents", () => {
+  it("/agent says how to apply with your own AI: no price, indexable, linking /agents, and no 'retired' until wave 4 removes the sale paths", () => {
     const html = page("/agent");
-    expect(/<title>([^<]*)<\/title>/.exec(html)?.[1]).toBe("The Apply Agent is retired: apply with your own AI");
+    expect(/<title>([^<]*)<\/title>/.exec(html)?.[1]).toBe("Apply with your own AI: Claude, ChatGPT or Claude Code");
     expect(html).not.toMatch(/<meta name="robots" content="noindex/);
     expect(html).toMatch(/<a href="\/agents"/);
+    // This publish goes out before wave 4, whose frontend stops selling the
+    // plan and the pass: until then "retired" or "no longer sells" would be
+    // false beside the pages that still sell them (2026-10-18 review).
+    expect(crawlerText(html)).not.toMatch(/\bretired\b|no longer sells?|stopped selling/i);
+  });
+
+  it("/trust says nothing applies to employers for you (the bake's own check used to miss this wording)", () => {
+    const t = crawlerText(page("/trust"));
+    expect(t).not.toMatch(/applies to for you|if you turn on the apply agent|sends it to the employers/i);
+    expect(retiredClaimsIn(t)).toEqual([]);
+    // Positive control: the widened check catches the wording /trust carried.
+    expect(retiredClaimsIn("and, if you turn on the apply agent, the employers it applies to for you.").length).toBeGreaterThan(0);
+  });
+
+  it("a staffing agency's board is baked as one: the SPA's disclosure, roles listed in, no employer Organization (/jobs/company/surge)", () => {
+    const html = page("/jobs/company/surge");
+    const t = crawlerText(html);
+    expect(t).toContain("This is a staffing agency's board. Roles here are usually for its clients.");
+    expect(t).not.toMatch(/is hiring in|pulled straight from Surge Staffing's own hiring system/);
+    expect(/<title>([^<]*)<\/title>/.exec(html)?.[1] ?? "").not.toMatch(/own hiring system/);
+    const pageLd = jsonLdBlocks(html).find((b) => (b as { "@type"?: string })["@type"] === "CollectionPage") as Record<string, unknown> | undefined;
+    expect(pageLd, "the company page's CollectionPage block").toBeTruthy();
+    expect(pageLd!.about, "an agency's board names no Organization as the employer").toBeUndefined();
   });
 
   it("the footer of every baked page links /agents, never the retired /agent", () => {

@@ -260,7 +260,10 @@ describe("the React company page names the employer and its possessive the way t
           if (jobs[i] === "(") depth++;
           else if (jobs[i] === ")" && --depth === 0) { end = i; break; }
         }
-        expect(jobs.slice(at, end), k).toMatch(/companyPossessive: possessive\(landerCompanyName/);
+        // The SEO description names the employer from the page's model (the
+        // board's own name: stored through boardName, baked or cached), the
+        // name the header prints (2026-10-18: titles by variant).
+        expect(jobs.slice(at, end), k).toMatch(/companyPossessive: possessive\((?:landerCompanyName|landerModel\.name\.name)/);
         at = jobs.indexOf(`t("jobsPage.${k}"`, end);
       }
     }

@@ -11,10 +11,13 @@
 #       monthly plan, the pass, the Apply Assistant, the Premium package, an
 #       agent that applies or submits for you, and the two absolutes the owner
 #       ruled out. Read on /, /pricing, /agent, /agents, /guides and every
-#       guide the sitemap names, /llms.txt, /llms-full.txt and three company
-#       pages, prose and JSON-LD both, by this checkout's list
-#       (scripts/prerender-retired.mjs, the list the bake checks its own
-#       output against).
+#       guide the sitemap names, /trust, /privacy, /terms, /llms.txt,
+#       /llms-full.txt and three company pages, prose and JSON-LD both, by
+#       this checkout's list (scripts/prerender-retired.mjs, the list the bake
+#       checks its own output against). A company title is one of the bake's
+#       forms (the full "X jobs: N open roles from their own hiring system",
+#       the shorter ones the 68-character budget gives, the agency and
+#       USAJOBS forms), never "verified".
 #   C2  No Offer on / or /pricing carries a retired price or a retired
 #       product's name, and the homepage carries no Service block.
 #   C3  The pages that talk about applying say the one true line: search from
@@ -26,6 +29,17 @@
 #       index, canonical "/"). A named URL that is back in the sitemap is
 #       judged as an indexable page of its own.
 #   C5  The served ledger carries the companies map the carry reads.
+#   C6  /jobs/company/usajobs is the federal listing site's page (the hub's
+#       H1, no "own hiring system", no "is hiring in"), and a staffing
+#       agency's board (/jobs/company/surge) carries the SPA's disclosure.
+#   C7  THE PAGE REACT RENDERS. React replaces the baked #root, so every
+#       visitor and Googlebot (which runs scripts) read the SPA's strings, not
+#       the bake's: the served entry, the English locale chunks and the Index
+#       chunk carry none of the retired sentences the home hero, its strip,
+#       the FAQ and /trust used to render ("The agent applies for you",
+#       "submits where employers allow", the pass line, the Morning Queue,
+#       "the employers it applies to for you", "re-verified all day"). C3
+#       read only the pre-script H1 and passed on the bake alone.
 #
 # Read-only: GETs of public pages, the sitemap, the ledger and llms files.
 # Nothing is sent or written. Before the deploy C1-C5 FAIL by design.
@@ -71,7 +85,7 @@ import("node:fs").then(async (fs) => {
   const threeCompanies = companies.length >= 3 ? [companies[0], companies[Math.floor(companies.length / 2)], companies[companies.length - 1]] : companies;
 
   // ---- C1: the retired claims, page by page ----
-  const pages = ["/", "/pricing", "/agent", "/agents", "/guides", ...guides, ...threeCompanies];
+  const pages = ["/", "/pricing", "/agent", "/agents", "/guides", ...guides, "/trust", "/privacy", "/terms", ...threeCompanies];
   const docs = new Map();
   for (let i = 0; i < pages.length; i += 6) {
     await Promise.all(pages.slice(i, i + 6).map(async (p) => { docs.set(p, p === "/" ? home : await get(urlOf(p))); }));
@@ -92,17 +106,22 @@ import("node:fs").then(async (fs) => {
     for (const [claim, m] of R.retiredClaimsIn(d.body)) offenders.push(`${f}: ${claim} ("${m.slice(0, 60)}")`);
     read++;
   }
-  const scope = `${read} documents: /, /pricing, /agent, /agents, /guides, ${guides.length} guides, ${threeCompanies.length} company pages (${threeCompanies.join(", ")}), /llms.txt, /llms-full.txt`;
+  const scope = `${read} documents: /, /pricing, /agent, /agents, /guides, ${guides.length} guides, /trust, /privacy, /terms, ${threeCompanies.length} company pages (${threeCompanies.join(", ")}), /llms.txt, /llms-full.txt`;
   if (!guides.length) out("FAIL", "the sitemap names no /guides/ page: the guides were not read");
   if (threeCompanies.length < 3) out("FAIL", `the sitemap names ${companies.length} company pages: three were to be read`);
   if (offenders.length) out("FAIL", `C1 ${offenders.length} retired claim(s) or unreadable pages: ${offenders.slice(0, 12).join("; ")}${offenders.length > 12 ? "; ..." : ""}`);
   else out("PASS", `C1 no retired claim (the plan\x27s $99, the $29 pass, the $7 Apply Assistant, the Premium package, an agent that applies for you, verified openings, zero ghost) in ${scope}`);
-  // Company titles: the count is open roles from their own hiring system.
+  // Company titles: one of the forms the bake writes. The 68-character budget gives
+  // about one page in five the short form ("Albertsons Companies jobs: 6,239
+  // open roles", "National Federation of Independent Business (NFIB) jobs"),
+  // so requiring the full form failed a correct deploy whenever the sample
+  // hit one. The real test is the basis and no "verified".
+  const TITLE_OK = / jobs(?:: [\d,]+ (?:open roles(?: from their own hiring system)?|roles(?: listed by a staffing agency)?)|: (?:open roles from their own hiring system|roles listed by a staffing agency))?$|^Federal openings listed on USAJOBS(?:: [\d,]+ roles)?$/;
   const titles = threeCompanies.map((p) => [p, titleOf((docs.get(p) || {}).body || "")]);
-  const badTitles = titles.filter(([, t]) => !/ jobs: [\d,]+ open roles from their own hiring system$/.test(t));
+  const badTitles = titles.filter(([, t]) => !TITLE_OK.test(t) || /verified/i.test(t));
   if (!titles.length) out("INFO", "C1 no company page to read a title from");
-  else if (badTitles.length) out("FAIL", `C1 company titles not in the "X jobs: N open roles from their own hiring system" form: ${badTitles.map(([p, t]) => `${p} "${t}"`).join("; ")}`);
-  else out("PASS", `C1 company titles name open roles from the employer\x27s own hiring system: ${titles.map(([p, t]) => `"${t}"`).join("; ")}`);
+  else if (badTitles.length) out("FAIL", `C1 company titles not in one of the bake\x27s forms, or saying "verified": ${badTitles.map(([p, t]) => `${p} "${t}"`).join("; ")}`);
+  else out("PASS", `C1 company titles name open roles in the bake\x27s forms, none "verified": ${titles.map(([p, t]) => `"${t}"`).join("; ")}`);
 
   // ---- C2: Offers on the selling pages ----
   const offerBad = [];
@@ -163,6 +182,42 @@ import("node:fs").then(async (fs) => {
   if (!seed.length) out("FAIL", "C4 this checkout has no scripts/seo-seed/published-company-paths.txt: the carry has no seed to judge against");
   if (res.homeCopies.length || res.other.length) out("FAIL", `C4 ${tally}; homepage copies: ${res.homeCopies.slice(0, 8).join(", ") || "none"}; other: ${res.other.slice(0, 6).join("; ") || "none"} (S12-022)`);
   else out("PASS", `C4 ${tally} (S12-022: each serves a page of its own, never the homepage file)`);
+
+  // ---- C6: USAJOBS and an agency board are baked as what they are ----
+  {
+    const u = await get("/jobs/company/usajobs");
+    const ut = R.crawlerText(u.body);
+    if (u.status !== 200 || isHomeCopy(u.body)) out("FAIL", `C6 /jobs/company/usajobs answered ${u.status}${isHomeCopy(u.body) ? " with the homepage file" : ""}`);
+    else if (!/Federal openings listed on USAJOBS/.test(ut) || /own hiring system|is hiring in/.test(`${ut} ${titleOf(u.body)}`)) out("FAIL", `C6 /jobs/company/usajobs is baked as an employer: title "${titleOf(u.body)}"${/is hiring in/.test(ut) ? ", \"is hiring in\"" : ""}${/own hiring system/.test(ut) ? ", \"own hiring system\"" : ""}`);
+    else out("PASS", `C6 /jobs/company/usajobs is the federal listing site\x27s page ("${titleOf(u.body)}"), with no own-hiring-system or is-hiring-in wording`);
+    const a = await get("/jobs/company/surge");
+    const at = R.crawlerText(a.body);
+    if (a.status !== 200 || isHomeCopy(a.body)) out("INFO", `C6 /jobs/company/surge answered ${a.status}${isHomeCopy(a.body) ? " with the homepage file" : ""}: no agency page to judge`);
+    else if (!/This is a staffing agency\x27s board/.test(at) || /is hiring in/.test(at)) out("FAIL", `C6 /jobs/company/surge (a staffing agency, agency: true in the catalogue) carries no agency disclosure, or says "is hiring in"`);
+    else out("PASS", "C6 /jobs/company/surge says it is a staffing agency\x27s board whose roles are usually for its clients");
+  }
+
+  // ---- C7: the strings React renders ----
+  {
+    const RETIRED_SPA = [
+      "The agent applies for you", "submits where employers allow", "Live job board + AI apply agent", "the agent can submit for you",
+      "pass gives your agent", "Buy or open your pass", "where the apply agent prepares a shortlist", "To have your agent request applications",
+      "the employers it applies to for you", "if you turn on the apply agent", "re-verified all day",
+    ];
+    const main = (home.body.match(/\/assets\/index-[^"]*\.js/) || [])[0];
+    if (!main) out("FAIL", "C7 the served / names no /assets/index-*.js entry: the React strings were not read");
+    else {
+      const mainJs = (await get(main, 60000)).body;
+      const chunks = [...new Set([...mainJs.matchAll(/"\.\/((?:en(?:-GB)?|Index)-[A-Za-z0-9_-]+\.js)"/g)].map((m) => m[1]))].slice(0, 12);
+      let bundle = mainJs;
+      for (const c of chunks) bundle += "\n" + (await get(`/assets/${c}`, 60000)).body;
+      const found = RETIRED_SPA.filter((x) => bundle.includes(x));
+      const hasIndex = chunks.some((c) => c.startsWith("Index-"));
+      if (!bundle.includes("Live jobs, straight from employers")) out("FAIL", `C7 the entry and its ${chunks.length} English/Index chunks do not carry the home hero\x27s headline: the English strings were not found`);
+      else if (found.length) out("FAIL", `C7 the React bundle still renders ${found.length} retired sentence(s): ${found.map((x) => `"${x}"`).join(", ")}`);
+      else out("PASS", `C7 the React entry and ${chunks.length} English/Index chunk(s)${hasIndex ? "" : " (no Index chunk found: the entry carries it)"} render none of the ${RETIRED_SPA.length} retired home, FAQ and trust sentences`);
+    }
+  }
 
   // ---- C5: the ledger carries the companies map ----
   const led = await get("/prerender-ledger.json", 60000);

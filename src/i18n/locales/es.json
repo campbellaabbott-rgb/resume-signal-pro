@@ -426,7 +426,7 @@
       },
       "subscription": {
         "question": "¿Es una suscripción?",
-        "answer": "Existen ambas opciones y tú eliges. Cada informe y herramienta es un pago único que nunca se renueva. Por separado, hay dos planes mensuales opcionales disponibles: Pro por ${{proPrice}}/mes, que incluye análisis ilimitados y todas las herramientas, y Morning Queue por ${{agentPrice}}/mes, donde el agente de postulación prepara una preselección para ti durante la noche. El análisis de currículum y el portal de empleo siguen siendo gratuitos en ambos casos. Ambos planes se renuevan cada mes hasta que los canceles, y la prueba gratuita de Morning Queue para nuevos suscriptores pasa al plan de pago cuando termina, salvo que la canceles antes. Nada más te actualiza de forma automática."
+        "answer": "Existen ambas opciones y tú eliges. Cada informe y herramienta es un pago único que nunca se renueva. Por separado, Pro por ${{proPrice}}/mes es un plan mensual opcional con análisis ilimitados y todas las herramientas, y la página de precios muestra cada plan mensual a la venta con su precio y cualquier prueba gratuita. Un plan mensual se renueva cada mes hasta que lo canceles, y una prueba gratuita pasa al plan de pago cuando termina, salvo que la canceles antes. El análisis de currículum, el portal de empleo y conectar tu propia IA siguen siendo gratuitos en cualquier caso. Nada más te actualiza de forma automática."
       },
       "share": {
         "question": "¿Puedo compartir mi análisis con otros?",
@@ -438,7 +438,7 @@
       },
       "dataStorage": {
         "question": "¿Almacenan los datos de mi currículum?",
-        "answer": "Solo por poco tiempo y con fecha de caducidad. Cuando subes o pegas un currículum, su texto se guarda 24 horas para que un pago pueda usarlo, y luego se borra. Tu informe gratuito, que cita líneas de tu currículum, se guarda 7 días para que un nuevo escaneo del mismo archivo con la misma oferta reciba el mismo informe, y luego se borra. Un análisis de pago permanece tras su enlace privado 90 días, salvo que lo borres antes. Solo guardamos un currículum más tiempo cuando tú lo pides: una versión que guardas en tu cuenta, el currículum que eliges para las coincidencias de empleo o el CV que das al agente de candidaturas, que lo envía a las empresas a las que se postula por ti. Nunca lo vendemos. Nuestra página de confianza enumera cada copia y su plazo."
+        "answer": "Solo por poco tiempo y con fecha de caducidad. Cuando subes o pegas un currículum, su texto se guarda 24 horas para que un pago pueda usarlo, y luego se borra. Tu informe gratuito, que cita líneas de tu currículum, se guarda 7 días para que un nuevo escaneo del mismo archivo con la misma oferta reciba el mismo informe, y luego se borra. Un análisis de pago permanece tras su enlace privado 90 días, salvo que lo borres antes. Solo guardamos un currículum más tiempo cuando tú lo pides: una versión que guardas en tu cuenta, el currículum que eliges para las coincidencias de empleo o el CV que das al agente de candidaturas. Nunca lo vendemos. Nuestra página de confianza enumera cada copia y su plazo."
       },
       "vsChatGPT": {
         "question": "¿Por qué es mejor que ChatGPT o plantillas de currículum?",
@@ -446,7 +446,7 @@
       },
       "bringYourAgent": {
         "question": "¿Puede usarlo mi propio agente de IA?",
-        "answer": "Sí. Leer la bolsa de empleo no requiere ninguna clave en una primera llamada, y una clave gratuita abre todas las herramientas de lectura. Para que tu agente solicite postulaciones, un pase de ${{passPrice}} le da {{passHours}} horas y {{passApplications}} postulaciones, desde su primera llamada y sin renovarse nunca; el plan Agent hace lo mismo cada mes y se renueva. Cada oferta y cada búsqueda de la bolsa tiene un control que copia una instrucción para tu agente, y la configuración de cada host está en /agents."
+        "answer": "Sí, gratis. Conecta Resume Booster a Claude, ChatGPT o Claude Code, y tu IA podrá buscar en la bolsa de empleo, leer las ofertas completas y ayudarte a postularte en el sitio del empleador; leer la bolsa no requiere clave ni cuenta. Tu IA redacta y tú decides: nunca enviamos una solicitud por ti. Cada oferta y cada búsqueda de la bolsa tiene un control que copia una instrucción para tu IA, y la configuración de cada aplicación está en /agents."
       }
     },
     "stillHaveQuestions": "¿Aún tienes preguntas?"
@@ -2598,7 +2598,7 @@
       },
       "neverSold": {
         "title": "Nunca se vende",
-        "description": "Nunca vendemos tu currículum ni se lo mostramos a reclutadores. Solo sale de aquí hacia el proveedor de IA que redacta tu informe, el proveedor de correo que entrega el informe que te envíes y el análisis de pago que te enviamos y, si activas el agente de candidaturas, las empresas a las que se postula por ti. Stripe gestiona el pago y no recibe ningún texto de tu currículum."
+        "description": "Nunca vendemos tu currículum ni se lo mostramos a reclutadores. Solo sale de aquí hacia el proveedor de IA que redacta tu informe y el proveedor de correo que entrega el informe que te envíes y el análisis de pago que te enviamos. Stripe gestiona el pago y no recibe ningún texto de tu currículum."
       },
       "transparent": {
         "title": "Procesamiento transparente",
@@ -2672,7 +2672,7 @@
         "agent": {
           "what": "El CV que das al agente de candidaturas: el archivo y su texto",
           "where": "Almacenamiento privado que solo tú y el agente pueden leer",
-          "howLong": "Mientras uses el agente, que lo envía a las empresas a las que se postula por ti. Eliminar tu cuenta borra el texto; escribe a {{email}} para que borremos el archivo."
+          "howLong": "Un CV que le diste se conserva hasta que elimines tu cuenta o pidas que lo borremos: eliminar tu cuenta borra el texto; escribe a {{email}} para que borremos el archivo."
         },
         "payment": {
           "what": "Tu pago",
@@ -5086,24 +5086,22 @@
     "ctaBrowse": "Ver todas"
   },
   "homeHero": {
-    "badge": "Tablón en vivo + agente de IA",
     "headlinePre": "Ofertas en vivo, directas de los sistemas de contratación de cada empresa.",
-    "headlineHighlight": "El agente se postula por ti.",
-    "sub": "Vacantes leídas de los propios sistemas de contratación de las empresas y revisadas todo el día. Sube tu CV y el agente las clasifica todas, escribe cada solicitud con honestidad y la envía donde el empleador lo permite.",
     "statOpenings": "vacantes activas",
     "statCompanies": "empresas",
-    "statSendable": "puede enviarlas el agente por ti",
     "ctaPrimary": "Sube tu CV — gratis",
     "ctaSecondary": "Explorar el tablón",
     "reassure": "Análisis gratis · sin tarjeta, sin registro",
     "exploreCta": "Explorar por campo",
-    "statCompanyBoards": "portales de empleo de empresas con vacantes"
+    "statCompanyBoards": "portales de empleo de empresas con vacantes",
+    "badge2": "Bolsa de empleo en vivo + tu propia IA",
+    "headlineHighlight2": "Postúlate por tu cuenta, con la ayuda de tu propia IA.",
+    "sub2": "Ofertas leídas de los propios sistemas de contratación de las empresas y revisadas durante todo el día. Analiza tu CV gratis, busca en la bolsa aquí o desde Claude o ChatGPT, y postúlate por tu cuenta, con la ayuda de tu IA si quieres. Nunca enviamos nada por ti."
   },
   "homeAgent": {
     "lead": "Trae tu propio agente de IA.",
-    "passLine": "Un pase de ${{passPrice}} le da a tu agente {{passHours}} horas para buscar en la bolsa y postularse por ti a {{passApplications}} empleos. Un empleo solo cuenta si el agente puede enviar la candidatura. Nunca se renueva; inicia sesión para comprarlo.",
+    "passLine": "Tu IA redacta y tú decides: Resume Booster nunca envía una solicitud por ti.",
     "connectCta": "Conecta tu agente",
-    "passCta": "Comprar o abrir tu pase",
     "connectLine2": "Conéctalo gratis y sin cuenta: {{freeCallsPerDay}} llamadas al día por dirección de red para explorar la bolsa (una oficina o una conexión doméstica cuentan como una sola dirección; desde ChatGPT cada persona tiene sus propias {{freeCallsPerDay}}, y desde Claude primero se usa un cupo diario que comparten todos los usuarios de Claude)."
   },
   "ghostIndex": {
@@ -5137,7 +5135,7 @@
     "layoffCadenceNightly": "cada noche",
     "layoffReasonUnread": "la lectura no respondió en esta visita",
     "stillUp30Row3": "El {{pct}}% de las vacantes con fecha de {{field}} publicadas entre {{cohortFrom}} y {{cohortTo}} seguían anunciadas al llegar a nuestro tope de 30 días (n={{n}}, ±{{hw}} puntos); como máximo el {{r}}% se había retirado definitivamente y al menos el {{x}}% se volvió a publicar. Contado solo en portales que leemos hasta el final y en los que vimos retiradas en los 90 días anteriores al inicio de esta cohorte.",
-    "stillUp30Boards": "Agregado sobre {{n}} empleadores cuyos portales leemos completos.",
+    "stillUp30Boards": "Agregado sobre {{n}} portales de empleo de empresas que leemos completos.",
     "stillUp30Pool": "Eso es el {{gateShare}}% de las vacantes con fecha de este campo que llegaron al tope.",
     "stillUp30TopBoard": "El {{topBoardShare}}% de aquello sobre lo que se calculó es el portal de una sola empresa.",
     "stillUp30ReasonUnread2": "ninguna vacante con fecha de este campo llegó a nuestro tope de 30 días en esta cohorte, en ningún portal — aquí no hay muestra que medir, no es una muestra con mal resultado",
@@ -5453,7 +5451,7 @@
     "captchaClick": "En nuestra revisión de {{pages}} páginas de solicitud ({{date}}), los formularios de {{system}} solían mostrar un paso de verificación humana.",
     "captchaAuto": "En nuestra revisión de {{pages}} páginas de solicitud ({{date}}), los formularios de {{system}} no mostraron ningún paso de verificación humana en esa muestra.",
     "questions": "Leemos las propias preguntas de selección de esta oferta.",
-    "recheck": "Volvemos a comprobar que la oferta sigue publicada cuando pulsas Solicitar."
+    "recheck": "Donde el sistema del empleador lo permite, volvemos a comprobar que la oferta sigue publicada cuando pulsas Solicitar."
   },
   "filterBar": {
     "keywordLabel": "Buscar empleos por puesto o palabra clave",

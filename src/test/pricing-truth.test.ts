@@ -104,13 +104,23 @@ describe("the subscription FAQ tells the truth in every language", () => {
       const answer: string = JSON.parse(readFileSync(resolve(localeDir, file), "utf8"))
         .faq.questions.subscription.answer;
 
-      // Naming both plans is what makes the answer honest. Because the prices
-      // are interpolated rather than typed into the copy, a translator cannot
-      // drop a plan without dropping its placeholder, and cannot state a stale
-      // price at all.
-      it("names both recurring plans via interpolation", () => {
+      // The answer used to deny that any recurring charge existed while two
+      // plans were on sale. It names Pro by its interpolated price, sells no
+      // plan of the retired agent's (the apply pivot, 2026-10-11), and denies
+      // no plan either: until wave 4 removes the Agent plan's sale path it is
+      // still on the Pricing page, so the answer sends the reader there for
+      // every monthly plan on sale and says how a free trial ends.
+      it("names Pro via interpolation, sells no retired plan, and points to the Pricing page for every plan on sale", () => {
         expect(answer.split("{{proPrice}}").length - 1).toBe(1);
-        expect(answer.split("{{agentPrice}}").length - 1).toBe(1);
+        expect(answer.split("{{agentPrice}}").length - 1).toBe(0);
+        const pricingPage: Record<string, RegExp> = {
+          "en.json": /Pricing page lists every monthly plan on sale/, "en-GB.json": /Pricing page lists every monthly plan on sale/,
+          "de.json": /Preisseite listet jeden angebotenen Monatsplan/, "es.json": /página de precios muestra cada plan mensual a la venta/,
+          "fr.json": /page Tarifs liste chaque formule mensuelle en vente/, "hi.json": /प्राइसिंग पेज बिक्री पर मौजूद हर मासिक प्लान/,
+          "nl.json": /prijspagina toont elk maandabonnement dat te koop is/, "pt.json": /página de preços lista cada plano mensal à venda/,
+          "tl.json": /Pricing page ang bawat monthly plan na ibinebenta/,
+        };
+        expect(answer).toMatch(pricingPage[file]);
       });
 
       it("does not hardcode a price that could go stale", () => {

@@ -44,10 +44,19 @@ export const RETIRED_CLAIMS = [
   ["the $29 Agent Pass", /\$\s?29(?!\d|[,.]\d)[^.<]{0,60}\bpass\b|\bpass\b[^.<]{0,60}\$\s?29(?!\d|[,.]\d)/i],
   ["the $7 Apply Assistant", /\$\s?7\b[^.<\d]{0,80}Apply Assistant|Apply Assistant[^.<]{0,80}\$\s?7\b/i],
   ["the Premium Resume Package", /\bPremium (?:Resume )?Package\b/i],
-  ["an agent that applies for you", /\bapplies for you\b|\bapply for you\b|\bsubmits? (?:applications? )?(?:for|on behalf of) you\b|\bsubmits end[- ]to[- ]end\b|\bsubmit applications for you\b/i],
+  // Also "the employers it applies to for you" and "sends it to the
+  // employers": /trust described the agent that way for months while this
+  // check, which matched only "applies for you", reported every page clean
+  // (2026-10-18 review).
+  ["an agent that applies for you", /\bapplies for you\b|\bapply for you\b|\bsubmits? (?:applications? )?(?:for|on behalf of) you\b|\bsubmits end[- ]to[- ]end\b|\bsubmit applications for you\b|\bappl(?:y|ies) to\b[^.<]{0,40}\bfor you\b|\bsends it to the employers\b/i],
   ["auto mode", /\bauto mode\b/i],
   ["the Agent plan's trial", /\bdays free for first-time subscribers\b/i],
   ["'verified openings'", /\bverified (?:open roles|openings|open positions|jobs)\b/i],
+  // We read employers' feeds through the day; we do not verify each role
+  // ("re-verified through the day" sat in llms.txt while this list matched
+  // only "verified openings"). A tool's "so a shortlist is re-verified" is the
+  // reader's own check, not a claim about the board, and stays.
+  ["'re-verified'", /\bre-?verified (?:through|all|throughout|every|continuously|within)\b|\bcontinuously re-?verified\b|\b(?:postings?|openings?|jobs?|roles?|feeds?|boards?) (?:are |is |get |were )?re-?verified\b/i],
   ["'zero ghost'", /\bzero ghost\b/i],
 ];
 

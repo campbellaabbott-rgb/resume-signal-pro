@@ -37,9 +37,12 @@ out.push("");
 out.push("## 2. Names repaired (printed differently, index unchanged)");
 out.push("");
 if (r.repaired.length) {
-  out.push(row(["Page", "Stored name", "Printed name", "Indexable today"]));
-  out.push(row(["---", "---", "---", "---"]));
-  for (const e of r.repaired) out.push(row([`\`${e.path}\``, e.shown, e.printed, e.indexableToday ? "yes" : "no"]));
+  // A repair that leaves a single word can read as a place or another
+  // employer ("Austin External" -> "Austin"): those are marked for a
+  // company_name_overrides row ("Austin Industries", "Mayo Clinic").
+  out.push(row(["Page", "Stored name", "Printed name", "Indexable today", "One word: check it names the employer"]));
+  out.push(row(["---", "---", "---", "---", "---"]));
+  for (const e of r.repaired) out.push(row([`\`${e.path}\``, e.shown, e.printed, e.indexableToday ? "yes" : "no", e.singleWord ? "yes (add an override if it reads as a place or another employer)" : ""]));
 } else out.push("None.");
 out.push("");
 out.push("## 3. New pages refused (never indexable before this bake)");

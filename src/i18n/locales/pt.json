@@ -427,7 +427,7 @@
       },
       "subscription": {
         "question": "Isto é uma subscrição?",
-        "answer": "As duas opções existem, e você escolhe. Cada relatório e ferramenta é um pagamento único que nunca se renova. Separadamente, há dois planos mensais opcionais: o Pro por ${{proPrice}}/mês, com verificações ilimitadas e todas as ferramentas, e a Fila da Manhã por ${{agentPrice}}/mês, em que o agente de candidatura prepara uma lista de vagas selecionadas para você durante a noite. A verificação de currículo e o quadro de vagas continuam gratuitos de qualquer forma. Os dois planos são renovados todo mês até você cancelar, e o teste gratuito da Fila da Manhã para novos assinantes vira o plano pago quando termina, a menos que você cancele antes. Fora isso, nada faz upgrade da sua conta automaticamente."
+        "answer": "As duas opções existem, e você escolhe. Cada relatório e ferramenta é um pagamento único que nunca se renova. Separadamente, o Pro por ${{proPrice}}/mês é um plano mensal opcional, com verificações ilimitadas e todas as ferramentas, e a página de preços lista cada plano mensal à venda com o seu preço e qualquer teste gratuito. Um plano mensal é renovado todo mês até você cancelar, e um teste gratuito vira o plano pago quando termina, a menos que você cancele antes. A verificação de currículo, o quadro de vagas e conectar a sua própria IA continuam gratuitos de qualquer forma. Fora isso, nada faz upgrade da sua conta automaticamente."
       },
       "share": {
         "question": "Posso partilhar a minha análise com outros?",
@@ -439,7 +439,7 @@
       },
       "dataStorage": {
         "question": "Armazenam os dados do meu currículo?",
-        "answer": "Apenas por pouco tempo, e com prazo. Quando carrega ou cola um currículo, o texto é guardado durante 24 horas para que um pagamento o possa usar, e depois apagado. O seu relatório gratuito, que cita linhas do seu currículo, é guardado durante 7 dias para que uma nova análise do mesmo ficheiro com a mesma vaga receba o mesmo relatório, e depois apagado. Uma análise paga fica atrás da sua ligação privada durante 90 dias, a menos que a apague antes. Só guardamos um currículo durante mais tempo quando nos pede: uma versão que guarda na sua conta, o currículo que define para a correspondência de vagas ou o CV que entrega ao agente de candidaturas, que o envia aos empregadores a que se candidata por si. Nunca o vendemos. A nossa página de Confiança lista cada cópia e o respetivo prazo."
+        "answer": "Apenas por pouco tempo, e com prazo. Quando carrega ou cola um currículo, o texto é guardado durante 24 horas para que um pagamento o possa usar, e depois apagado. O seu relatório gratuito, que cita linhas do seu currículo, é guardado durante 7 dias para que uma nova análise do mesmo ficheiro com a mesma vaga receba o mesmo relatório, e depois apagado. Uma análise paga fica atrás da sua ligação privada durante 90 dias, a menos que a apague antes. Só guardamos um currículo durante mais tempo quando nos pede: uma versão que guarda na sua conta, o currículo que define para a correspondência de vagas ou o CV que entrega ao agente de candidaturas. Nunca o vendemos. A nossa página de Confiança lista cada cópia e o respetivo prazo."
       },
       "vsChatGPT": {
         "question": "Porque é isto melhor que o ChatGPT ou modelos de currículo?",
@@ -447,7 +447,7 @@
       },
       "bringYourAgent": {
         "question": "O meu próprio agente de IA pode usar isto?",
-        "answer": "Sim. Ler o quadro de vagas não exige nenhuma chave numa primeira chamada, e uma chave gratuita abre todas as ferramentas de leitura. Para que o seu agente solicite candidaturas, um passe de ${{passPrice}} dá a ele {{passHours}} horas e {{passApplications}} candidaturas, a partir da primeira chamada e sem nunca renovar; o plano Agent faz o mesmo mensalmente e renova. Cada vaga e cada busca no quadro tem um controle que copia um prompt para o seu agente, e a configuração de cada host está em /agents."
+        "answer": "Sim, de graça. Conecte o Resume Booster ao Claude, ao ChatGPT ou ao Claude Code, e a sua IA pode buscar no quadro, ler as vagas por completo e ajudar você a se candidatar no site do empregador; ler o quadro não exige chave nem conta. A sua IA faz o rascunho e você decide: nunca enviamos uma candidatura por você. Cada vaga e cada busca no quadro tem um controle que copia um prompt para a sua IA, e a configuração de cada app está em /agents."
       }
     }
   },
@@ -2598,7 +2598,7 @@
       },
       "neverSold": {
         "title": "Nunca vendido",
-        "description": "Nunca vendemos o seu currículo nem o mostramos a recrutadores. Só sai daqui para o fornecedor de IA que escreve o seu relatório, o fornecedor de e-mail que entrega o relatório que enviar para si e a análise paga que lhe enviamos e, se ativar o agente de candidaturas, os empregadores a que se candidata por si. A Stripe trata do pagamento e não recebe qualquer texto do currículo."
+        "description": "Nunca vendemos o seu currículo nem o mostramos a recrutadores. Só sai daqui para o fornecedor de IA que escreve o seu relatório e o fornecedor de e-mail que entrega o relatório que enviar para si e a análise paga que lhe enviamos. A Stripe trata do pagamento e não recebe qualquer texto do currículo."
       },
       "transparent": {
         "title": "Processamento transparente",
@@ -2672,7 +2672,7 @@
         "agent": {
           "what": "O CV que entrega ao agente de candidaturas: o ficheiro e o seu texto",
           "where": "Armazenamento privado que só você e o agente podem ler",
-          "howLong": "Enquanto usar o agente, que o envia aos empregadores a que se candidata por si. Eliminar a conta apaga o texto; envie um e-mail para {{email}} para apagar o ficheiro."
+          "howLong": "Um CV que lhe entregou fica guardado até eliminar a conta ou pedir que o apaguemos: eliminar a conta apaga o texto; envie um e-mail para {{email}} para apagar o ficheiro."
         },
         "payment": {
           "what": "O seu pagamento",
@@ -5086,24 +5086,22 @@
     "ctaBrowse": "Ver todas"
   },
   "homeHero": {
-    "badge": "Mural ao vivo + agente de IA",
     "headlinePre": "Vagas ao vivo, direto dos sistemas de contratação dos empregadores.",
-    "headlineHighlight": "O agente candidata-se por si.",
-    "sub": "Vagas lidas dos próprios sistemas de recrutamento das empresas e reverificadas o dia todo. Carregue o seu CV: o agente classifica todas, escreve cada candidatura com honestidade e submete onde o empregador permite.",
     "statOpenings": "vagas ativas",
     "statCompanies": "empresas",
-    "statSendable": "o agente pode submeter por si",
     "ctaPrimary": "Carregue o seu CV — grátis",
     "ctaSecondary": "Explorar o mural",
     "reassure": "Análise grátis · sem cartão, sem registo",
     "exploreCta": "Explorar por área",
-    "statCompanyBoards": "portais de emprego de empresas a contratar"
+    "statCompanyBoards": "portais de emprego de empresas a contratar",
+    "badge2": "Quadro de vagas ao vivo + a sua própria IA",
+    "headlineHighlight2": "Candidate-se por conta própria, com a ajuda da sua IA.",
+    "sub2": "Vagas lidas dos próprios sistemas de contratação das empresas e reverificadas o dia todo. Analise o seu currículo de graça, busque no quadro aqui ou pelo Claude ou ChatGPT e candidate-se por conta própria, com a ajuda da sua IA se quiser. Nunca enviamos nada por você."
   },
   "homeAgent": {
     "lead": "Traga o seu próprio agente de IA.",
-    "passLine": "Um passe de {{passPrice}} $ dá ao seu agente {{passHours}} horas para pesquisar o quadro e candidatar-se por si a {{passApplications}} vagas. Uma vaga só conta quando o agente pode enviar a candidatura. Nunca renova; inicie sessão para comprar.",
+    "passLine": "A sua IA faz o rascunho e você decide: o Resume Booster nunca envia uma candidatura por você.",
     "connectCta": "Ligar o seu agente",
-    "passCta": "Comprar ou abrir o seu passe",
     "connectLine2": "Conecte-o grátis e sem conta — {{freeCallsPerDay}} chamadas por dia por endereço de rede para explorar o quadro de vagas (um escritório ou uma conexão doméstica conta como um só endereço; pelo ChatGPT cada pessoa tem as suas próprias {{freeCallsPerDay}}, e pelo Claude vem primeiro uma cota diária que todos os usuários do Claude compartilham)."
   },
   "ghostIndex": {
@@ -5137,7 +5135,7 @@
     "layoffCadenceNightly": "todas as noites",
     "layoffReasonUnread": "a leitura não respondeu nesta visita",
     "stillUp30Row3": "{{pct}}% das vagas datadas de {{field}} publicadas entre {{cohortFrom}} e {{cohortTo}} ainda estavam anunciadas ao alcançar o nosso limite de 30 dias (n={{n}}, ±{{hw}} pontos); no máximo {{r}}% tinham sido retiradas definitivamente e pelo menos {{x}}% republicadas. Contado apenas em portais que lemos até ao fim e nos quais vimos vagas serem retiradas nos 90 dias antes do início desta coorte.",
-    "stillUp30Boards": "Agregado sobre {{n}} empregadores cujos portais lemos por completo.",
+    "stillUp30Boards": "Agregado sobre {{n}} portais de emprego de empresas que lemos por completo.",
     "stillUp30Pool": "Isso corresponde a {{gateShare}}% das vagas datadas desta área que chegaram ao limite.",
     "stillUp30TopBoard": "{{topBoardShare}}% da base deste cálculo é o portal de uma única empresa.",
     "stillUp30ReasonUnread2": "nenhuma vaga datada desta área alcançou o nosso limite de 30 dias nesta coorte, em nenhum portal — não há aqui amostra para medir, e não uma amostra com mau resultado",
@@ -5453,7 +5451,7 @@
     "captchaClick": "Na nossa verificação de {{pages}} páginas de candidatura ({{date}}), os formulários do {{system}} costumavam mostrar uma etapa de verificação humana.",
     "captchaAuto": "Na nossa verificação de {{pages}} páginas de candidatura ({{date}}), os formulários do {{system}} não mostraram nenhuma etapa de verificação humana nessa amostra.",
     "questions": "Lemos as próprias perguntas de triagem desta vaga.",
-    "recheck": "Verificamos de novo se a vaga ainda está no ar quando você clica em Candidatar-se."
+    "recheck": "Onde o sistema do empregador permite, verificamos de novo se a vaga ainda está no ar quando você clica em Candidatar-se."
   },
   "filterBar": {
     "keywordLabel": "Buscar vagas por cargo ou palavra-chave",

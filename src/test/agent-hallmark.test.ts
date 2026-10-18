@@ -69,14 +69,15 @@ describe("the agent opens the page", () => {
       .not.toMatch(/<ApplyAgentShowcase/);
   });
 
-  it("speaks with measured inventory or with none", () => {
-    // The line renders only when BOTH numbers arrived; no fallback figures.
+  it("speaks with measured inventory or with none, and claims no submissions", () => {
     // Each stat renders only when its own payload arrived.
     expect(heroCode).toMatch(/\{totals && \(/);
-    expect(heroCode).toMatch(/\{sendable !== null && \(/);
-    // Payload gating: a number must be > 0 to be trusted — a zero from a
-    // half-written status payload must read as absence, not "0 openings".
-    expect(heroCode).toMatch(/typeof n === "number" && n > 0/);
+    // The apply pivot (2026-10-18 review, wave 4's hero taken whole): no
+    // sendable count, no status read for one, and no sentence that says the
+    // agent applies or submits for the visitor.
+    expect(heroCode).not.toMatch(/sendable/i);
+    expect(heroCode).not.toMatch(/action: "status"/);
+    expect(heroCode).not.toMatch(/applies for you|submit for you|submits where/i);
     // And no literal inventory anywhere: five-or-more-digit numbers in the
     // hero are claims only a payload may make.
     expect(heroCode.replace(/\d{1,2}\b/g, "")).not.toMatch(/\b\d{3,}(?:,\d{3})*\b/);

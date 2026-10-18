@@ -425,7 +425,7 @@
       },
       "subscription": {
         "question": "Is this a subscription?",
-        "answer": "Both options exist, and you choose. Every report and tool is a one-time payment that never renews. Separately, two optional monthly plans are available: Pro at ${{proPrice}}/month for unlimited scans and every tool, and the Morning Queue at ${{agentPrice}}/month, where the apply agent prepares a shortlist for you overnight. The resume scan and the job board stay free either way. Both plans renew every month until you cancel, and the Morning Queue's free trial for first-time subscribers turns into the paid plan when it ends unless you cancel before then. Nothing else upgrades you automatically."
+        "answer": "Both options exist, and you choose. Every report and tool is a one-time payment that never renews. Separately, Pro at ${{proPrice}}/month is an optional monthly plan with unlimited scans and every tool, and the Pricing page lists every monthly plan on sale with its price and any free trial. Monthly plans renew every month until you cancel, and a free trial turns into the paid plan when it ends unless you cancel before then. The resume scan, the job board and connecting your own AI stay free either way. Nothing else upgrades you automatically."
       },
       "share": {
         "question": "Can I share my analysis with others?",
@@ -437,7 +437,7 @@
       },
       "dataStorage": {
         "question": "Do you store my resume data?",
-        "answer": "Only briefly, and on a clock. When you upload or paste a resume, its text is held for 24 hours so a checkout can use it, then deleted. Your free report, which quotes lines from your resume, is kept for 7 days so a rescan of the same file against the same posting gets the same report, then deleted. A paid analysis stays behind its private link for 90 days unless you delete it sooner. We keep a resume longer only when you ask us to: a version you save to your account, the resume you set for job matching, or the CV you give the apply agent, which sends it to the employers it applies to for you. We never sell it. Our Trust page lists every copy and its clock."
+        "answer": "Only briefly, and on a clock. When you upload or paste a resume, its text is held for 24 hours so a checkout can use it, then deleted. Your free report, which quotes lines from your resume, is kept for 7 days so a rescan of the same file against the same posting gets the same report, then deleted. A paid analysis stays behind its private link for 90 days unless you delete it sooner. We keep a resume longer only when you ask us to: a version you save to your account, the resume you set for job matching, or the CV you give the apply agent. We never sell it. Our Trust page lists every copy and its clock."
       },
       "vsChatGPT": {
         "question": "Why is this better than ChatGPT or resume templates?",
@@ -445,7 +445,7 @@
       },
       "bringYourAgent": {
         "question": "Can my own AI agent use this?",
-        "answer": "Yes. Reading the board needs no key at all for a first call, and a free key opens every read tool. To have your agent request applications, a ${{passPrice}} pass gives it {{passHours}} hours and {{passApplications}} applications, starting at its first call and never renewing; the Agent plan does the same monthly and renews. Every posting and every search on the board has a control that copies a prompt for your agent, and the setup for each host is at /agents."
+        "answer": "Yes, for free. Connect Resume Booster to Claude, ChatGPT or Claude Code, and your AI can search the board, read postings in full and help you apply on the employer's own site; reading the board needs no key and no account. Your AI drafts and you decide: we never submit an application for you. Every posting and every search on the board has a control that copies a prompt for your AI, and the setup for each app is at /agents."
       }
     },
     "stillHaveQuestions": "Still have questions?"
@@ -2585,7 +2585,7 @@
       },
       "neverSold": {
         "title": "Never Sold",
-        "description": "We never sell your resume or show it to recruiters. It leaves us only for the AI provider that writes your report, the email provider that delivers any report you send yourself and the paid analysis we email you, and, if you turn on the apply agent, the employers it applies to for you. Stripe handles payment and receives no resume text."
+        "description": "We never sell your resume or show it to recruiters. It leaves us only for the AI provider that writes your report, and the email provider that delivers any report you send yourself and the paid analysis we email you. Stripe handles payment and receives no resume text."
       },
       "transparent": {
         "title": "Transparent Processing",
@@ -2659,7 +2659,7 @@
         "agent": {
           "what": "The CV you give the apply agent: the file and its text",
           "where": "Private storage that only you and the agent can read",
-          "howLong": "While you use the agent, which sends it to the employers it applies to for you. Deleting your account erases the text; email {{email}} to have the file erased."
+          "howLong": "A CV given to it is kept until you delete your account or ask for erasure: deleting your account erases the text; email {{email}} to have the file erased."
         },
         "payment": {
           "what": "Your payment",
@@ -5052,24 +5052,22 @@
     "ctaBrowse": "Browse all of them"
   },
   "homeHero": {
-    "badge": "Live job board + AI apply agent",
     "headlinePre": "Live jobs, straight from employers' own hiring systems.",
-    "headlineHighlight": "The agent applies for you.",
-    "sub": "Openings read from companies' own hiring systems and re-checked all day. Upload your CV and the agent ranks every one against it, writes each application honestly, and submits where employers allow.",
     "statOpenings": "live openings",
     "statCompanies": "companies",
-    "statSendable": "the agent can submit for you",
     "ctaPrimary": "Upload your CV — free",
     "ctaSecondary": "Browse the board",
     "reassure": "Free scan · no card, no signup",
     "exploreCta": "Explore by field",
-    "statCompanyBoards": "company job boards hiring"
+    "statCompanyBoards": "company job boards hiring",
+    "badge2": "Live job board + your own AI",
+    "headlineHighlight2": "Apply yourself, with your own AI's help.",
+    "sub2": "Openings read from companies' own hiring systems and re-checked all day. Scan your CV for free, search the board here or from Claude or ChatGPT, and apply yourself, with your AI's help if you like. We never submit anything for you."
   },
   "homeAgent": {
     "lead": "Bring your own AI agent.",
-    "passLine": "A ${{passPrice}} pass gives your agent {{passHours}} hours to search the board and apply to {{passApplications}} jobs for you. A job counts only when the agent can send the application. Never renews; sign in to buy.",
+    "passLine": "Your AI drafts and you decide: Resume Booster never submits an application for you.",
     "connectCta": "Connect your agent",
-    "passCta": "Buy or open your pass",
     "connectLine2": "Connect it free with no account — {{freeCallsPerDay}} calls a day per network address to look around the board (an office or a home connection counts as one address; from ChatGPT each person has their own {{freeCallsPerDay}}, and from Claude a daily pool every Claude user shares comes first)."
   },
   "ghostIndex": {
@@ -5103,7 +5101,7 @@
     "layoffCadenceNightly": "nightly",
     "layoffReasonUnread": "the reading did not answer on this visit",
     "stillUp30Row3": "{{pct}}% of dated {{field}} roles posted {{cohortFrom}} to {{cohortTo}} were still advertised when they reached our 30-day cap (n={{n}}, ±{{hw}} points); at most {{r}}% had been taken down for good and at least {{x}}% re-listed. Counted only on boards we read to the end that showed us takedowns in the 90 days before this cohort began.",
-    "stillUp30Boards": "Pooled over {{n}} employers whose boards we read in full.",
+    "stillUp30Boards": "Pooled over {{n}} company job boards we read in full.",
     "stillUp30Pool": "That is {{gateShare}}% of the dated roles of this field that reached the cap at all.",
     "stillUp30TopBoard": "{{topBoardShare}}% of what it was counted on is one company's board.",
     "stillUp30ReasonUnread2": "no dated role of this field reached our 30-day cap in this cohort at all, on any board — there is no sample here to measure, not a sample that came out badly",
@@ -5419,7 +5417,7 @@
     "captchaClick": "In our check of {{pages}} apply pages ({{date}}), {{system}} forms usually showed a human-verification step.",
     "captchaAuto": "In our check of {{pages}} apply pages ({{date}}), {{system}} forms showed no human-verification step in that sample.",
     "questions": "We read this posting's own screening questions.",
-    "recheck": "We re-check the posting is still live when you press Apply."
+    "recheck": "Where the employer's system allows it, we re-check the posting is still live when you press Apply."
   },
   "filterBar": {
     "keywordLabel": "Search jobs by title or keyword",

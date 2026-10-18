@@ -51,7 +51,7 @@ import { type JobEntry } from "@/components/JobSelector";
 import { HowItWorks } from "@/components/HowItWorks";
 import { HomeHero } from "@/components/HomeHero";
 import { Bot, ArrowRight } from "lucide-react";
-import { PASS, PRODUCTS } from "@/config/products";
+import { PRODUCTS } from "@/config/products";
 import { MCP_ANON_CAPS } from "@/config/mcp-tools";
 import { AgentMatchesPanel } from "@/components/AgentMatchesPanel";
 import { MiniPricingCards } from "@/components/MiniPricingCards";
@@ -397,32 +397,26 @@ interface FreeKeywordResult {
 const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024; // Matches parse-pdf/parse-docx's server-side limit
 
 /**
- * THE AGENT OFFER ON THE FRONT PAGE. Two sentences inside the hero band, where
- * the agent half of the fused hero already speaks: anyone can point their own
- * AI agent at the board for free with no account (the unkeyed tier), and a
- * one-off pass buys that agent a fixed session to research at full speed and
- * apply to a fixed number of jobs. Every number here is interpolated from the
- * mirrors — the pass from PASS (src/config/products.ts, pinned to the Deno
- * source by pricing-truth.test.ts) and the free daily allowance from
- * MCP_ANON_CAPS (pinned to the server by a-first-call-with-no-key…) — and the
- * copy never types a digit, in any locale; src/test/a-pass-number-on-a-page-
- * is-a-placeholder.test.tsx renders this strip and reads this file to prove
- * both. Sign-in is the condition for the PASS (applications are keyed to an
- * account), never for connecting, and the sentences say so in that order.
- * The strip is exported so the guard can mount it on its own as well as
- * inside the page; the copy object is not (a non-component export breaks fast
- * refresh, and the guard reads these bindings from source, not by import).
+ * THE CONNECT-YOUR-AI STRIP ON THE FRONT PAGE, inside the hero band. Since
+ * the apply pivot (owner decision 2026-10-11) it sells nothing: anyone can
+ * point their own AI at the board for free with no account (the unkeyed
+ * tier), and applying happens on the employer's own site. The free daily
+ * allowance is interpolated from MCP_ANON_CAPS (pinned to the server by
+ * a-first-call-with-no-key…) and the copy never types a digit, in any
+ * locale; src/test/a-pass-number-on-a-page-is-a-placeholder.test.tsx renders
+ * this strip and reads this file to prove it. The strip is exported so the
+ * guard can mount it on its own as well as inside the page; the copy object
+ * is not (a non-component export breaks fast refresh, and the guard reads
+ * these bindings from source, not by import). Its third line and the
+ * signed-in link sold the retired products until 2026-10-18; wave 4's
+ * rewrite of this strip (connect-your-AI copy, Add to Claude) replaces it.
  */
 const AGENT_OFFER_COPY = {
-  passPrice: PASS.priceUsd,
-  passHours: PASS.sessionHours,
-  passApplications: PASS.applications,
   freeCallsPerDay: MCP_ANON_CAPS.perAddressPerDay,
 } as const;
 
 export function AgentOfferStrip() {
   const { t } = useTranslation();
-  const { session } = useAuth();
   return (
     <div
       data-agent-offer
@@ -435,17 +429,12 @@ export function AgentOfferStrip() {
           {t("homeAgent.connectLine2", "Connect it free with no account — {{freeCallsPerDay}} calls a day per network address to look around the board (an office or a home connection counts as one address; from ChatGPT each person has their own {{freeCallsPerDay}}, and from Claude a daily pool every Claude user shares comes first).", AGENT_OFFER_COPY)}
         </p>
         <p className="mt-1">
-          {t("homeAgent.passLine", "A ${{passPrice}} pass gives your agent {{passHours}} hours to search the board and apply to {{passApplications}} jobs for you. A job counts only when the agent can send the application. Never renews; sign in to buy.", AGENT_OFFER_COPY)}
+          {t("homeAgent.passLine", "Your AI drafts and you decide: Resume Booster never submits an application for you.")}
         </p>
         <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[13px] font-medium">
           <Link to="/agents" className="inline-flex items-center gap-1 text-primary hover:underline">
             {t("homeAgent.connectCta", "Connect your agent")} <ArrowRight className="w-3.5 h-3.5" aria-hidden />
           </Link>
-          {session && (
-            <Link to="/agents/pass" className="inline-flex items-center gap-1 text-primary hover:underline">
-              {t("homeAgent.passCta", "Buy or open your pass")} <ArrowRight className="w-3.5 h-3.5" aria-hidden />
-            </Link>
-          )}
         </p>
       </div>
     </div>
@@ -473,10 +462,10 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
     ? `Resume Booster — ${roundedFloor(homeTotals.jobs).toLocaleString()}+ Live Jobs Straight From Employers`
     : "Resume Booster — Live Jobs Straight From Employers";
   const homeDescription = homeTotals
-    ? `Live jobs straight from employers' own hiring systems: ${roundedFloor(homeTotals.jobs).toLocaleString()}+ openings, re-verified all day${
+    ? `Live jobs straight from employers' own hiring systems: ${roundedFloor(homeTotals.jobs).toLocaleString()}+ openings, re-read through the day${
         homeTotals.tracked ? `, and ${roundedFloor(homeTotals.tracked).toLocaleString()}+ roles tracked including ones we have watched close` : ""
       }. Scan your resume free and see your match score on every posting.`
-    : "Live jobs straight from employers' own hiring systems, re-verified all day. Scan your resume free and see your match score on every posting.";
+    : "Live jobs straight from employers' own hiring systems, re-read through the day. Scan your resume free and see your match score on every posting.";
 
   // Spanish landing routes flip the whole app chrome to Spanish — the visitor
   // searched in Spanish; showing an English page under a Spanish URL would be

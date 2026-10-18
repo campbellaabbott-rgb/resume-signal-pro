@@ -88,8 +88,9 @@ describe("the agent copy says review is the default and auto is a switch", () =>
     const at = bake.indexOf('path: "/agent",');
     const block = bake.slice(at, bake.indexOf("write({", at + 10));
     expect(block).not.toMatch(/submits real applications/);
-    // The agent is retired (the apply pivot, 2026-10-11): /agent now says so and offers no mode at all.
-    expect(block).toMatch(/The Apply Agent is retired/);
+    // The apply pivot (2026-10-11): /agent says how to apply with your own AI
+    // and offers no mode at all (its "retired" wording waits for wave 4).
+    expect(block).toMatch(/Apply with your own AI/);
     expect(block).not.toMatch(/review mode|auto mode/i);
   });
 });

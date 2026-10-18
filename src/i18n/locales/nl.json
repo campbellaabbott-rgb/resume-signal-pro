@@ -425,7 +425,7 @@
       },
       "subscription": {
         "question": "Is dit een abonnement?",
-        "answer": "Beide opties bestaan, en jij kiest. Elk rapport en elke tool is een eenmalige betaling die nooit wordt verlengd. Daarnaast zijn er twee optionele maandabonnementen: Pro voor ${{proPrice}}/maand voor onbeperkte scans en alle tools, en de Ochtendwachtrij voor ${{agentPrice}}/maand, waarbij de sollicitatie-agent 's nachts een shortlist voor je klaarzet. De cv-scan en de vacaturebank blijven in beide gevallen gratis. Beide abonnementen worden elke maand verlengd tot je opzegt, en de gratis proefperiode van de Ochtendwachtrij voor nieuwe abonnees gaat aan het einde over in het betaalde abonnement, tenzij je vóór die tijd opzegt. Verder word je nooit automatisch geüpgraded."
+        "answer": "Beide opties bestaan, en jij kiest. Elk rapport en elke tool is een eenmalige betaling die nooit wordt verlengd. Daarnaast is Pro voor ${{proPrice}}/maand een optioneel maandabonnement met onbeperkte scans en alle tools, en de prijspagina toont elk maandabonnement dat te koop is met de prijs en een eventuele gratis proefperiode. Een maandabonnement wordt elke maand verlengd tot je opzegt, en een gratis proefperiode gaat aan het einde over in het betaalde abonnement, tenzij je vóór die tijd opzegt. De cv-scan, de vacaturebank en het koppelen van je eigen AI blijven hoe dan ook gratis. Verder word je nooit automatisch geüpgraded."
       },
       "share": {
         "question": "Kan ik mijn analyse delen?",
@@ -437,7 +437,7 @@
       },
       "dataStorage": {
         "question": "Slaan jullie mijn CV-gegevens op?",
-        "answer": "Alleen kort, en met een vervaldatum. Als je een cv uploadt of plakt, wordt de tekst 24 uur bewaard zodat een betaling hem kan gebruiken, en daarna verwijderd. Je gratis rapport, dat regels uit je cv citeert, wordt 7 dagen bewaard zodat een nieuwe scan van hetzelfde bestand met dezelfde vacature hetzelfde rapport krijgt, en daarna verwijderd. Een betaalde analyse blijft 90 dagen achter de privélink, tenzij je hem eerder verwijdert. Langer bewaren we een cv alleen als jij daarom vraagt: een versie die je in je account opslaat, het cv dat je instelt voor vacaturematching, of het cv dat je aan de sollicitatieagent geeft, die het naar de werkgevers stuurt waar hij namens jou solliciteert. We verkopen het nooit. Onze Vertrouwen-pagina somt elke kopie en de termijn ervan op."
+        "answer": "Alleen kort, en met een vervaldatum. Als je een cv uploadt of plakt, wordt de tekst 24 uur bewaard zodat een betaling hem kan gebruiken, en daarna verwijderd. Je gratis rapport, dat regels uit je cv citeert, wordt 7 dagen bewaard zodat een nieuwe scan van hetzelfde bestand met dezelfde vacature hetzelfde rapport krijgt, en daarna verwijderd. Een betaalde analyse blijft 90 dagen achter de privélink, tenzij je hem eerder verwijdert. Langer bewaren we een cv alleen als jij daarom vraagt: een versie die je in je account opslaat, het cv dat je instelt voor vacaturematching, of het cv dat je aan de sollicitatieagent geeft. We verkopen het nooit. Onze Vertrouwen-pagina somt elke kopie en de termijn ervan op."
       },
       "vsChatGPT": {
         "question": "Waarom is dit beter dan ChatGPT?",
@@ -445,7 +445,7 @@
       },
       "bringYourAgent": {
         "question": "Kan mijn eigen AI-agent dit gebruiken?",
-        "answer": "Ja. Het vacaturebord lezen vereist bij een eerste aanroep helemaal geen sleutel, en een gratis sleutel opent elke leestool. Om je agent sollicitaties te laten aanvragen geeft een pas van ${{passPrice}} hem {{passHours}} uur en {{passApplications}} sollicitaties, vanaf zijn eerste aanroep en zonder ooit te verlengen; het Agent-abonnement doet hetzelfde maandelijks en verlengt wel. Elke vacature en elke zoekopdracht op het bord heeft een knop die een prompt voor je agent kopieert, en de instelling per host staat op /agents."
+        "answer": "Ja, gratis. Koppel Resume Booster aan Claude, ChatGPT of Claude Code, en je AI kan het bord doorzoeken, vacatures volledig lezen en je helpen solliciteren op de site van de werkgever; voor het lezen van het bord heb je geen sleutel en geen account nodig. Je AI schrijft een concept en jij beslist: we versturen nooit een sollicitatie namens jou. Elke vacature en elke zoekopdracht op het bord heeft een knop die een prompt voor je AI kopieert, en de instelling per app staat op /agents."
       }
     },
     "stillHaveQuestions": "Nog vragen?"
@@ -2585,7 +2585,7 @@
       },
       "neverSold": {
         "title": "Nooit verkocht",
-        "description": "We verkopen je cv nooit en laten het aan geen enkele recruiter zien. Het verlaat ons alleen richting de AI-aanbieder die je rapport schrijft, de e-mailprovider die een rapport aflevert dat je naar jezelf stuurt en de betaalde analyse die we je mailen en, als je de sollicitatieagent aanzet, de werkgevers waar hij namens jou solliciteert. Stripe verwerkt de betaling en ontvangt geen cv-tekst."
+        "description": "We verkopen je cv nooit en laten het aan geen enkele recruiter zien. Het verlaat ons alleen richting de AI-aanbieder die je rapport schrijft en de e-mailprovider die een rapport aflevert dat je naar jezelf stuurt en de betaalde analyse die we je mailen. Stripe verwerkt de betaling en ontvangt geen cv-tekst."
       },
       "transparent": {
         "title": "Transparante verwerking",
@@ -2659,7 +2659,7 @@
         "agent": {
           "what": "Het cv dat je aan de sollicitatieagent geeft: het bestand en de tekst",
           "where": "Privéopslag die alleen jij en de agent kunnen lezen",
-          "howLong": "Zolang je de agent gebruikt; die stuurt het naar de werkgevers waar hij namens jou solliciteert. Je account verwijderen wist de tekst; mail {{email}} om het bestand te laten wissen."
+          "howLong": "Een cv dat je hem gaf, bewaren we tot je je account verwijdert of om wissing vraagt: je account verwijderen wist de tekst; mail {{email}} om het bestand te laten wissen."
         },
         "payment": {
           "what": "Je betaling",
@@ -5052,24 +5052,22 @@
     "ctaBrowse": "Bekijk ze allemaal"
   },
   "homeHero": {
-    "badge": "Live vacaturebord + AI-sollicitatieagent",
     "headlinePre": "Live vacatures, rechtstreeks uit de wervingssystemen van werkgevers.",
-    "headlineHighlight": "De agent solliciteert voor u.",
-    "sub": "Vacatures gelezen uit de eigen wervingssystemen van bedrijven en de hele dag opnieuw gecontroleerd. Upload uw cv: de agent rangschikt ze allemaal, schrijft elke sollicitatie eerlijk en dient in waar de werkgever het toestaat.",
     "statOpenings": "actuele vacatures",
     "statCompanies": "bedrijven",
-    "statSendable": "kan de agent voor u indienen",
     "ctaPrimary": "Upload uw cv — gratis",
     "ctaSecondary": "Bekijk het bord",
     "reassure": "Gratis scan · geen kaart, geen registratie",
     "exploreCta": "Verkennen op vakgebied",
-    "statCompanyBoards": "vacaturesites van bedrijven met openstaande vacatures"
+    "statCompanyBoards": "vacaturesites van bedrijven met openstaande vacatures",
+    "badge2": "Live vacaturebord + je eigen AI",
+    "headlineHighlight2": "Solliciteer zelf, met hulp van je eigen AI.",
+    "sub2": "Vacatures rechtstreeks uit de eigen wervingssystemen van bedrijven, de hele dag opnieuw gecontroleerd. Scan je cv gratis, zoek op het bord hier of vanuit Claude of ChatGPT, en solliciteer zelf, als je wilt met hulp van je AI. We versturen nooit iets namens jou."
   },
   "homeAgent": {
     "lead": "Neem je eigen AI-agent mee.",
-    "passLine": "Een pas van ${{passPrice}} geeft je agent {{passHours}} uur om de vacaturebank te doorzoeken en voor jou op {{passApplications}} vacatures te solliciteren. Een vacature telt alleen als de agent de sollicitatie kan versturen. Verlengt nooit; log in om te kopen.",
+    "passLine": "Je AI schrijft een concept en jij beslist: Resume Booster verstuurt nooit een sollicitatie namens jou.",
     "connectCta": "Verbind je agent",
-    "passCta": "Pas kopen of openen",
     "connectLine2": "Verbind hem gratis en zonder account — {{freeCallsPerDay}} aanroepen per dag per netwerkadres om het vacaturebord te verkennen (een kantoor of een thuisverbinding telt als één adres; vanuit ChatGPT heeft iedereen zijn eigen {{freeCallsPerDay}}, en vanuit Claude gaat eerst een dagelijkse pot voor die alle Claude-gebruikers delen)."
   },
   "ghostIndex": {
@@ -5103,7 +5101,7 @@
     "layoffCadenceNightly": "elke nacht",
     "layoffReasonUnread": "de meting gaf bij dit bezoek geen antwoord",
     "stillUp30Row3": "{{pct}}% van de gedateerde {{field}}-vacatures die tussen {{cohortFrom}} en {{cohortTo}} zijn geplaatst, stond nog online toen ze onze 30-dagengrens bereikten (n={{n}}, ±{{hw}} punten); ten hoogste {{r}}% was definitief verwijderd en ten minste {{x}}% opnieuw geplaatst. Alleen geteld op vacaturesites die we helemaal uitlezen en waarop we in de 90 dagen vóór het begin van deze cohort verwijderingen zagen.",
-    "stillUp30Boards": "Samengevoegd over {{n}} werkgevers van wie we de vacaturesites volledig lezen.",
+    "stillUp30Boards": "Samengevoegd over {{n}} vacaturesites van bedrijven die we volledig lezen.",
     "stillUp30Pool": "Dat is {{gateShare}}% van de gedateerde vacatures van dit vakgebied die de grens überhaupt bereikten.",
     "stillUp30TopBoard": "{{topBoardShare}}% van de basis van dit cijfer is de vacaturesite van één bedrijf.",
     "stillUp30ReasonUnread2": "geen enkele gedateerde vacature van dit vakgebied bereikte in deze cohort onze 30-dagengrens, op geen enkele site — er is hier geen steekproef om te meten, en niet een steekproef met een slechte uitkomst",
@@ -5419,7 +5417,7 @@
     "captchaClick": "Bij onze controle van {{pages}} sollicitatiepagina's ({{date}}) toonden {{system}}-formulieren meestal een stap waarmee je bevestigt dat je een mens bent.",
     "captchaAuto": "Bij onze controle van {{pages}} sollicitatiepagina's ({{date}}) toonden {{system}}-formulieren in die steekproef geen stap waarmee je bevestigt dat je een mens bent.",
     "questions": "We lezen de eigen screeningsvragen van deze vacature.",
-    "recheck": "We controleren opnieuw of de vacature nog online staat wanneer je op Solliciteren drukt."
+    "recheck": "Waar het systeem van de werkgever het toelaat, controleren we opnieuw of de vacature nog online staat wanneer je op Solliciteren drukt."
   },
   "filterBar": {
     "keywordLabel": "Vacatures zoeken op functie of trefwoord",

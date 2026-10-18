@@ -43,7 +43,9 @@ describe("the facts, per hiring system", () => {
     expect(screen.getByText(/Breezy forms showed no human-verification step in that sample/)).toBeTruthy();
     expect(screen.queryByText(/Apply Agent/)).toBeNull();
     expect(lines()).not.toContain("agent");
-    expect(screen.getByText("We re-check the posting is still live when you press Apply.")).toBeTruthy();
+    // Only where the employer's system allows it (GD6/A3): a page-capped feed
+    // and Workday answer the re-check as undecidable.
+    expect(screen.getByText("Where the employer's system allows it, we re-check the posting is still live when you press Apply.")).toBeTruthy();
   });
 
   it("Workday's clean result is not stated: the measurement calls it a non-measurement", () => {

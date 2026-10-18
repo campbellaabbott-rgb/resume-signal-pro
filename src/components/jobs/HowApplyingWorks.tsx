@@ -57,7 +57,7 @@ export function HowApplyingWorks({ systemKey, systemLabel, rechecksOnApply = fal
     lines.push({ key: "questions", icon: <ClipboardList />, text: t("howApply.questions", "We read this posting's own screening questions.") });
   }
   if (rechecksOnApply) {
-    lines.push({ key: "recheck", icon: <RefreshCw />, text: t("howApply.recheck", "We re-check the posting is still live when you press Apply.") });
+    lines.push({ key: "recheck", icon: <RefreshCw />, text: t("howApply.recheck", "Where the employer's system allows it, we re-check the posting is still live when you press Apply.") });
   }
   if (!lines.length) return null;
 

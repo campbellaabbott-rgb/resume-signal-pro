@@ -543,38 +543,41 @@ export const GUIDES: Record<string, Guide> = {
       { label: "Why resumes get rejected", href: "/guides/why-resumes-get-rejected" },
     ],
   },
-  // THE GUIDE TO A THING THAT USED TO ACT ON YOUR BEHALF, AND NO LONGER DOES.
+  // THE GUIDE AT THE APPLY AGENT'S OLD ADDRESS: HOW TO APPLY NOW.
   //
-  // Owner decision 2026-10-11 (the apply pivot): the server-side Apply Agent
-  // and the plan and pass sold with it are retired, and applying happens
-  // through the person's own AI. This page keeps its address, because the
-  // sitemap and the app link to it, and now says what is true: Resume Booster
-  // prepares and sends nothing, and the one apply path is the person applying
-  // on the employer's own site, with their AI's help if they want it.
+  // Owner decision 2026-10-11 (the apply pivot): applying happens through the
+  // person's own AI. This page keeps its address, because the sitemap and the
+  // app link to it, and says what is true: the one apply path is the person
+  // applying on the employer's own site, with their AI's help if they want it.
+  //
+  // NO "RETIRED" AND NO "WE STOPPED SELLING" YET (2026-10-18 review): this
+  // publish goes out before wave 4, whose frontend removes the plan's and the
+  // pass's sale paths; until then those pages still sell both, so the guide
+  // does not say they are retired or no longer sold. Wave 4 restores those
+  // sentences when its deploy lands (docs/design-upgrade/README.md).
   //
   // It describes no feature of the connector beyond searching and reading,
   // and no instruction the server gives a model: those belong to the
   // connector's own page and change with it. src/test/apply-agent-guide.test.ts
-  // pins the retirement, the absence of any sentence saying we submit for
-  // anyone, and the three hosts it may name.
+  // pins the apply-yourself path, the absence of any sentence saying we
+  // submit for anyone or that the plan and pass are no longer sold, and the
+  // three hosts it may name.
   "how-the-apply-agent-works": {
     slug: "how-the-apply-agent-works",
-    title: "The Apply Agent Is Retired: Apply With Your Own AI",
-    h1: "The Apply Agent is retired",
+    title: "How to Apply With Your Own AI: Claude, ChatGPT or Claude Code",
+    h1: "How to apply with your own AI",
     description:
-      "Resume Booster no longer runs an agent that applies to jobs on your behalf. Here is how to search the board from your own AI and apply yourself on the employer's site.",
+      "Search the board from your own AI and apply yourself on the employer's own site: how it works, who answers each question, and who presses submit.",
     tldr:
-      "We retired our Apply Agent and stopped selling the plan and the pass that came with it: Resume Booster does not prepare or send applications any more. To apply, connect Claude, ChatGPT or Claude Code at resumebooster.work/agents. Your AI can search the board and read each posting in full; you apply on the employer's own site, check every answer and press submit yourself.",
-    updated: "2026-10-12",
+      "To apply, connect Claude, ChatGPT or Claude Code at resumebooster.work/agents. Your AI can search the board and read each posting in full; you apply on the employer's own site, check every answer and press submit yourself.",
+    updated: "2026-10-18",
     minutes: 4,
-    grounding: "Describes what changed, and how applying works now",
+    grounding: "Describes how applying works here",
     sections: [
       {
-        h2: "What changed",
+        h2: "How applying works here",
         paras: [
-          "Our Apply Agent was a service that prepared applications overnight and could send some of them. It is retired, and it prepares and sends nothing. We also stopped selling the plan and the pass built around it.",
-          "If you bought one of them, write to resumeboostersupp@gmail.com from the address you paid with.",
-          "Your account keeps what it had. The application tracker, your saved jobs and anything the agent prepared before stay where they were, and none of it will be sent.",
+          "You apply on the employer's own site, yourself, with your own AI's help if you want it. The board finds the postings and your AI can read each one in full; every posting's apply link opens the employer's own hiring system.",
         ],
       },
       {
@@ -619,12 +622,8 @@ export const GUIDES: Record<string, Guide> = {
     ],
     faqs: [
       {
-        q: "Does Resume Booster still apply to jobs for me?",
-        a: "No. The Apply Agent is retired and Resume Booster does not send applications. You apply yourself, with your own AI's help if you want it.",
-      },
-      {
-        q: "I paid for the agent's plan or pass. What happens now?",
-        a: "Write to resumeboostersupp@gmail.com from the address you paid with.",
+        q: "Does Resume Booster apply to jobs for me?",
+        a: "No. You apply yourself on the employer's own site, with your own AI's help if you want it.",
       },
       {
         q: "Which AI can I use?",
