@@ -99,7 +99,17 @@ const files = (rows: Row[], bundle: string, over: Record<string, unknown> = {}):
     "vd_81_ext.json": JSON.stringify(over.ext ?? BEFORE_READ.ext),
     "vd_81_lock.json": JSON.stringify(over.lock ?? BEFORE_READ.lock),
     "vd_81_readers.json": JSON.stringify(over.readers ?? BEFORE_READ.readers),
+    "vd_81_similar.json": JSON.stringify(over.similar ?? SIMILAR_BEFORE),
   };
+};
+// get_similar_companies as it answered on 2026-10-18 (reduced), and after 20261012136000.
+const SIMILAR_BEFORE = {
+  "cvshealth~wd1~CVS_Health_Careers": { status: 200, body: [{ company: "Veterans Health Administration", company_token: "usajobs", category: "healthcare", open_roles: 3061 }] },
+  Eurofins: { status: 200, body: [{ company: "Veterans Health Administration", company_token: "usajobs", category: "science", open_roles: 412 }] },
+};
+const SIMILAR_AFTER = {
+  "cvshealth~wd1~CVS_Health_Careers": { status: 200, body: [{ company: "HCA Healthcare", company_token: "hcahealthcare~wd1~HCA", category: "healthcare", open_roles: 2100 }] },
+  Eurofins: { status: 200, body: [] },
 };
 const LOCKED = Object.fromEntries([["showcase_excluded", "company_token"], ["company_profiles", "company_token"], ["company_financials", "slug"], ["company_name_overrides", "slug"]]
   .map(([t, col]) => [t, { col, status: 401, body: `{"code":"42501","details":null,"hint":null,"message":"permission denied for table ${t}"}` }]));
@@ -129,10 +139,14 @@ describe("before the deploy (production, 2026-10-12): every Track 1 and lock cla
     }
     expect(lines.filter((l) => /^PASS +81g/.test(l))).toHaveLength(3);
   });
+  it("81h: the similar-employers list names USAJOBS after an agency", () => {
+    expect(line(lines, "FAIL", /81h cvshealth~wd1~CVS_Health_Careers: the list names the USAJOBS board as "Veterans Health Administration"/), show(lines)).toBe(true);
+    expect(line(lines, "FAIL", /81h Eurofins: the list names the USAJOBS board/), show(lines)).toBe(true);
+  });
 });
 
 describe("after the deploy: every claim passes", () => {
-  const lines = run(files(afterRows, NEW_BUNDLE, { lock: LOCKED }));
+  const lines = run(files(afterRows, NEW_BUNDLE, { lock: LOCKED, similar: SIMILAR_AFTER }));
   it("no line fails", () => {
     expect(lines.filter((l) => l.startsWith("FAIL")), show(lines)).toEqual([]);
   });
@@ -148,6 +162,7 @@ describe("after the deploy: every claim passes", () => {
     expect(line(lines, "PASS", /81d Databricks: no "never half"/), show(lines)).toBe(true);
     expect(line(lines, "PASS", /81e all \d+ rows publish their 14-day share inside its own interval/), show(lines)).toBe(true);
     expect(lines.filter((l) => /^PASS +81f .*refused \(HTTP 401, 42501\)/.test(l))).toHaveLength(4);
+    expect(lines.filter((l) => /^PASS +81h .*none of them the USAJOBS board/.test(l))).toHaveLength(2);
   });
 });
 

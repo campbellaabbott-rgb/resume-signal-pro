@@ -25,6 +25,9 @@
 #   81e no live 14-day share sits outside its own interval.
 #   81f an anon REST read of each locked table is refused (42501), selecting a
 #       real column; 81g the three company-page readers still answer as anon.
+#   81h get_similar_companies (20261012136000) lists no USAJOBS row, under any
+#       name, for CVS Health and Eurofins, whose lists led with it on
+#       2026-10-18 as "Veterans Health Administration".
 #
 # HOW IT IS JUDGED. Live rows are judged by this checkout's gate and lander
 # model (src/lib/hiring-record-gate.ts and src/lib/company/lander-model.ts,
@@ -94,6 +97,13 @@ const TOKENS = ["egud~us2~CX_1", "ejwl~us2~CX", "eluq~us2~CX_1", "hcbt~em2~CX_10
     readers[fn] = { status: r.status, body: r.body.slice(0, 300) };
   }
   fs.writeFileSync("/tmp/vd_81_readers.json", JSON.stringify(readers));
+  // The similar-employers list for two boards whose lists led with USAJOBS.
+  const similar = {};
+  for (const t of ["cvshealth~wd1~CVS_Health_Careers", "Eurofins"]) {
+    const r = await get(`${B}/rest/v1/rpc/get_similar_companies?p_token=${encodeURIComponent(t)}&p_limit=20`, H);
+    similar[t] = { status: r.status, body: json(r.body) };
+  }
+  fs.writeFileSync("/tmp/vd_81_similar.json", JSON.stringify(similar));
 })();
 '
 # This checkout's gate and lander model, applied to the live rows.
@@ -250,5 +260,17 @@ for (const fn of ["get_company_intel", "get_company_financials", "get_similar_co
   else if (code === "42501") out("FAIL", `81g ${fn} refuses anon (42501): the lock took the company page\x27s reader away`);
   else if (code === "PGRST202") out("INFO", `81g ${fn} -> PGRST202 (argument names differ or the reader is not deployed)`);
   else out("FAIL", `81g ${fn} answered HTTP ${a.status} (${String(a.body).slice(0, 120)})`);
+}
+
+// ---- 81h: the similar-employers list names no federal listing site ----
+{
+  const similar = read("/tmp/vd_81_similar.json", null);
+  if (!similar) out("FAIL", "81h get_similar_companies: not probed");
+  else for (const [t, a] of Object.entries(similar)) {
+    if (!a || a.status !== 200 || !Array.isArray(a.body)) { out("FAIL", `81h ${t}: HTTP ${a && a.status} (${JSON.stringify(a && a.body).slice(0, 120)})`); continue; }
+    const fed = a.body.filter((r) => r && r.company_token === "usajobs");
+    if (fed.length) out("FAIL", `81h ${t}: the list names the USAJOBS board as "${fed.map((r) => r.company).join(", ")}" (20261012136000 is not applied)`);
+    else out("PASS", `81h ${t}: ${a.body.length} similar employer(s), none of them the USAJOBS board`);
+  }
 }
 '
