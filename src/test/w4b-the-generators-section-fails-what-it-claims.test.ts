@@ -170,6 +170,21 @@ describe("section 92, generators", () => {
     expect(has(lines, "FAIL", /free-keyword-scan preflight x-fn-build = free-keyword-scan\.2026-10-11\.24/), show(lines)).toBe(true);
   });
 
+  it("a generator serving its own round's build without the integration's classifier or credit change is a FAIL", () => {
+    // generate-application-answers and generate-apply-package also bundle
+    // agents-api's classifier, and free-keyword-scan payments-delivery's
+    // claimed-credit rule: the integration stamped each .29, so .24 names a
+    // bundle without them.
+    const { lines } = run(goodRoutes({}, {
+      "generate-apply-package": "generate-apply-package.2026-10-11.24",
+      "generate-application-answers": "generate-application-answers.2026-10-11.24",
+      "free-keyword-scan": "free-keyword-scan.2026-10-14.24",
+    }));
+    expect(has(lines, "FAIL", /generate-apply-package preflight x-fn-build = generate-apply-package\.2026-10-11\.24 \(want generate-apply-package\.2026-10-11\.29/), show(lines)).toBe(true);
+    expect(has(lines, "FAIL", /generate-application-answers preflight x-fn-build = generate-application-answers\.2026-10-11\.24/), show(lines)).toBe(true);
+    expect(has(lines, "FAIL", /free-keyword-scan preflight x-fn-build = free-keyword-scan\.2026-10-14\.24 \(want free-keyword-scan\.2026-10-14\.29/), show(lines)).toBe(true);
+  });
+
   it("a scraper that still answers is a FAIL", () => {
     const { lines } = run(goodRoutes({ "scrape-linkedin": post("scrape-linkedin", { status: 429, body: JSON.stringify({ success: false, error: "Rate limit exceeded." }) }) }));
     expect(has(lines, "FAIL", /scrape-linkedin is not retired: HTTP 429/), show(lines)).toBe(true);

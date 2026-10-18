@@ -5,8 +5,10 @@
 #
 # THE CLAIMS, one line each below:
 #   - the writing tools and every function whose code moved serve the round's
-#     build (2026-10-11.24 or later; free-keyword-scan 2026-10-14.24 or later,
-#     because R1 stamped it 2026-10-14.1). The model spend gate every free
+#     build (2026-10-11.24 or later; generate-application-answers and
+#     generate-apply-package 2026-10-11.29 or later, the integration build
+#     that adds agents-api's classifier; free-keyword-scan 2026-10-14.29 or
+#     later, because R1 stamped it 2026-10-14.1). The model spend gate every free
 #     generator imports now counts a proven account by its own name (S12-146),
 #     so their bundles moved too;
 #   - signed out, the tailored résumé, the cover letter and the interview-prep
@@ -46,15 +48,25 @@ vd92g_say() { # $1 fn, $2 header, $3 verdict (ok|old), $4 floor, $5 what the bui
 }
 
 # The writing tools, the two retirements, the freelance walk and the backup scanner.
-for VD92G_FN in generate-cover-letter generate-tailored-resume generate-interview-coach generate-application-answers generate-apply-package generate-freelance-boost generate-career-path scrape-linkedin free-keyword-scan-stream; do
+for VD92G_FN in generate-cover-letter generate-tailored-resume generate-interview-coach generate-freelance-boost generate-career-path scrape-linkedin free-keyword-scan-stream; do
   VD92G_H=$(vd92g_build "$VD92G_FN"); VD92G_V=old
   if [ -n "$VD92G_H" ] && build_ge "$VD92G_FN" "$VD92G_H" "2026-10-11" "24"; then VD92G_V=ok; fi
   vd92g_say "$VD92G_FN" "$VD92G_H" "$VD92G_V" "2026-10-11.24" "this round's generators"
 done
-# R1 stamped the primary scanner 2026-10-14.1, so this round's build carries R1's day.
+# The integration build: these two also bundle agents-api's question
+# classifier (_shared/application-questions.ts, S12-081), so .24 alone names
+# a bundle without it.
+for VD92G_FN in generate-application-answers generate-apply-package; do
+  VD92G_H=$(vd92g_build "$VD92G_FN"); VD92G_V=old
+  if [ -n "$VD92G_H" ] && build_ge "$VD92G_FN" "$VD92G_H" "2026-10-11" "29"; then VD92G_V=ok; fi
+  vd92g_say "$VD92G_FN" "$VD92G_H" "$VD92G_V" "2026-10-11.29" "this round's generators with the agents-api question classifier"
+done
+# R1 stamped the primary scanner 2026-10-14.1, so this round's build carries
+# R1's day; .29 is the integration build that also carries payments-delivery's
+# claimed-credit change (_shared/scan-credits.ts).
 VD92G_H=$(vd92g_build free-keyword-scan); VD92G_V=old
-if [ -n "$VD92G_H" ] && build_ge free-keyword-scan "$VD92G_H" "2026-10-14" "24"; then VD92G_V=ok; fi
-vd92g_say free-keyword-scan "$VD92G_H" "$VD92G_V" "2026-10-14.24" "the network share, sealed-sentence scrub and per-account day"
+if [ -n "$VD92G_H" ] && build_ge free-keyword-scan "$VD92G_H" "2026-10-14" "29"; then VD92G_V=ok; fi
+vd92g_say free-keyword-scan "$VD92G_H" "$VD92G_V" "2026-10-14.29" "the network share, sealed-sentence scrub, per-account day and the claimed-credit rule"
 # Every other importer of the model spend gate: their bundles carry the gate that counts a proven account by name (S12-146).
 for VD92G_FN in analyze-linkedin-profile application-fit generate-ats-defense generate-career-snapshot generate-cover-letter-stream generate-elevator-pitch generate-graduate-gameplan generate-keyword-fix generate-premium-package generate-premium-package-stream generate-product-preview generate-recruiter-view generate-resume-roast generate-summary import-freelance-profile job-fit nl-search parse-resume-structured shortlist-evaluate test-ai-fallback; do
   VD92G_H=$(vd92g_build "$VD92G_FN"); VD92G_V=old
