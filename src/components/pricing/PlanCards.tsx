@@ -30,6 +30,7 @@ import {
 import { visibleProPerks } from "./pro-perks-mirror";
 import type { SaleGates } from "./sale-gates";
 import { RichText } from "./RichText";
+import { LINK_TARGET_44 } from "@/lib/home/targets";
 
 export interface OpenPostings {
   openTotal: number | null;
@@ -103,7 +104,7 @@ export function FreeCard({ postings, alertsStatable }: { postings: OpenPostings;
       </ul>
 
       <div className="mt-5">
-        <Button asChild size="lg" wrap className="w-full min-h-11 justify-center text-center">
+        <Button asChild size="lg" wrap className={`w-full ${LINK_TARGET_44} justify-center text-center`}>
           <Link to="/auth?next=%2Fjobs">{t("pricingPlans.free.cta")}</Link>
         </Button>
       </div>

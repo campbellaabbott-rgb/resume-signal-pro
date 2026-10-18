@@ -65,7 +65,7 @@ export function HomePlanStrip({ gates }: { gates: SaleGates }) {
           <li className="flex items-start gap-2"><DollarSign aria-hidden="true" className="mt-px h-3.5 w-3.5 shrink-0" /><span>{t("home.plans.termUsd")}</span></li>
         </ul>
         <div className="mt-5">
-          <Link to="/pricing" className="link inline-flex min-h-6 items-center">{t("home.plans.more")}</Link>
+          <Link to="/pricing" className="link inline-flex items-center">{t("home.plans.more")}</Link>
         </div>
       </div>
     </section>

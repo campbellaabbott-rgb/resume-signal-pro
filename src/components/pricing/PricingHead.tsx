@@ -30,7 +30,7 @@ export function PricingHead({ alertsStatable }: { alertsStatable: boolean }) {
             <li key={j.href}>
               <a
                 href={j.href}
-                className="inline-flex min-h-9 max-w-full flex-wrap items-baseline gap-x-1.5 rounded-md border border-border-strong bg-card px-3 py-2 text-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background coarse:min-h-11"
+                className="inline-flex !min-h-9 max-w-full flex-wrap items-baseline gap-x-1.5 rounded-md border border-border-strong bg-card px-3 py-2 text-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background coarse:!min-h-11"
               >
                 <span className="font-semibold text-foreground">{j.name}</span>
                 <span className="text-muted-foreground">{j.price}</span>

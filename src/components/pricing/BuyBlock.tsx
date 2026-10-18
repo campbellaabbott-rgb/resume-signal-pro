@@ -38,6 +38,7 @@ import { useProSubscription } from "@/hooks/use-pro-subscription";
 import { isOwingStatus } from "@/config/subscription-status";
 import { money } from "@/lib/format";
 import { FULL_ANALYSIS_PRICE_USD, PRO_PRICE_USD } from "./plan-facts";
+import { LINK_TARGET_44 } from "@/lib/home/targets";
 import { GATE_TEXT_KEY, type FullAnalysisClosedBy, type ProClosedBy, type SaleGates } from "./sale-gates";
 
 /** Furniture only the preview page passes: a label above each button and a stand-in for the seller line. */
@@ -46,7 +47,8 @@ export interface PreviewFurniture {
   sellerNote: ReactNode;
 }
 
-const BUY_BUTTON = "w-full min-h-11 justify-center text-center";
+/** Buttons and the Full Analysis link share it; a link needs the important floor (src/lib/home/targets.ts). */
+const BUY_BUTTON = `w-full ${LINK_TARGET_44} justify-center text-center`;
 
 export function GateNote({ closedBy }: { closedBy: FullAnalysisClosedBy | ProClosedBy }) {
   const { t } = useTranslation();

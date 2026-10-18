@@ -18,7 +18,7 @@ import { count } from "@/lib/format";
 import { listOf } from "./format-utc";
 import { BUILDER_PRICE_USD, BUILDER_PROPOSED_PER_DAY, FREE_KEY_DAILY_QUOTA, WITHHELD_SOURCES, WITHHELD_SOURCE_NAMES } from "./plan-facts";
 
-const LINK = "inline-flex min-h-6 items-center text-sm font-medium text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+const LINK = "inline-flex items-center text-sm font-medium text-primary underline decoration-primary/50 underline-offset-2 hover:decoration-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
 export function BuilderAndLicence() {
   const { t, i18n } = useTranslation();

@@ -58,7 +58,7 @@ export function HomeSources({ counts, openTotal, asOf }: { counts: Record<string
           <h2 id="home-sources" className="text-[clamp(1.25rem,5vw,1.875rem)] font-semibold leading-tight md:text-3xl">{t("home.sources.title")}</h2>
           <p className="mt-2.5 max-w-[62ch] text-muted-foreground">{t("home.sources.lede", { freshDays: BOARD_FRESH_WINDOW_DAYS })}</p>
           <div className="mt-5">
-            <Link to="/methodology" className="link inline-flex min-h-6 items-center">{t("home.sources.method")}</Link>
+            <Link to="/methodology" className="link inline-flex items-center">{t("home.sources.method")}</Link>
           </div>
         </div>
         {table && stamp && (

@@ -42,7 +42,7 @@ export function HomeScanSection() {
           <div className="mt-5 flex flex-wrap items-center gap-2.5">
             <Link
               to="/resume-checker#upload"
-              className="inline-flex min-h-10 items-center justify-center rounded-md border border-border-strong bg-card px-4 py-2 text-center text-sm font-medium text-foreground transition-colors duration-fast hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background coarse:min-h-11"
+              className="inline-flex !min-h-10 items-center justify-center rounded-md border border-border-strong bg-card px-4 py-2 text-center text-sm font-medium text-foreground transition-colors duration-fast hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background coarse:!min-h-11"
             >
               {t("home.scan.cta")}
             </Link>

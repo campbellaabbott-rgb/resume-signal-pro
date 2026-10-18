@@ -28,7 +28,7 @@ export function HomeAccountStrip({ alertsStatable }: { alertsStatable: boolean }
         </div>
         <Link
           to="/auth?next=%2Fjobs"
-          className="inline-flex min-h-10 w-full shrink-0 items-center justify-center rounded-md border border-border-strong bg-card px-4 py-2 text-center text-sm font-medium text-foreground transition-colors duration-fast hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background coarse:min-h-11 sm:w-auto"
+          className="inline-flex !min-h-10 w-full shrink-0 items-center justify-center rounded-md border border-border-strong bg-card px-4 py-2 text-center text-sm font-medium text-foreground transition-colors duration-fast hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background coarse:!min-h-11 sm:w-auto"
         >
           {t("home.account.cta")}
         </Link>

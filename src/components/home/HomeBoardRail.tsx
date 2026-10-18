@@ -32,7 +32,7 @@ export function HomeBoardRail({ freshness }: { freshness: BoardFreshness | null 
         <li key={slug}>
           <Link
             to={fieldPath(slug)}
-            className="inline-flex min-h-8 items-center rounded-md border border-border-strong px-2.5 py-1 text-meta text-foreground transition-colors duration-fast hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background coarse:min-h-11"
+            className="inline-flex !min-h-8 items-center rounded-md border border-border-strong px-2.5 py-1 text-meta text-foreground transition-colors duration-fast hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background coarse:!min-h-11"
           >
             {t(`jobsPage.categories.${slug}`)}
           </Link>
@@ -41,7 +41,7 @@ export function HomeBoardRail({ freshness }: { freshness: BoardFreshness | null 
       <li>
         <Link
           to={ALL_FIELDS_PATH}
-          className="inline-flex min-h-8 items-center rounded-md border border-border-strong px-2.5 py-1 text-meta text-foreground transition-colors duration-fast hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background coarse:min-h-11"
+          className="inline-flex !min-h-8 items-center rounded-md border border-border-strong px-2.5 py-1 text-meta text-foreground transition-colors duration-fast hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background coarse:!min-h-11"
         >
           {t("home.rail.allFields")}
         </Link>

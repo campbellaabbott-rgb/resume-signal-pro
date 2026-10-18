@@ -27,7 +27,7 @@ const ILLUSTRATION_DAY = "2026-10-17";
 const ILLUSTRATION_POSTED_DAY = "2026-10-16";
 
 const buttonClass =
-  "inline-flex min-h-10 items-center justify-center rounded-md border border-border-strong bg-card px-4 py-2 text-center text-sm font-medium text-foreground transition-colors duration-fast hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background coarse:min-h-11";
+  "inline-flex !min-h-10 items-center justify-center rounded-md border border-border-strong bg-card px-4 py-2 text-center text-sm font-medium text-foreground transition-colors duration-fast hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background coarse:!min-h-11";
 
 export function HomeAiSection({ counts, openTotal, asOf }: { counts: Record<string, number>; openTotal: number | null; asOf: Date | null }) {
   const { t, i18n } = useTranslation();
@@ -57,7 +57,7 @@ export function HomeAiSection({ counts, openTotal, asOf }: { counts: Record<stri
           <div className="mt-5 flex flex-wrap items-center gap-2.5">
             <Link to="/agents#claude" className={buttonClass}>{t("home.ai.claude")}</Link>
             <Link to="/agents#chatgpt" className={buttonClass}>{t("home.ai.chatgpt")}</Link>
-            <Link to="/agents#claude-code" className="link inline-flex min-h-6 items-center text-sm">{t("home.ai.claudeCode")}</Link>
+            <Link to="/agents#claude-code" className="link inline-flex items-center text-sm">{t("home.ai.claudeCode")}</Link>
           </div>
           {/* Reserved: two lines on a phone, so the line landing moves nothing. */}
           <p className="mt-3 min-h-[3.375rem] text-meta text-muted-foreground sm:min-h-[2.25rem]" data-home-reach="">
