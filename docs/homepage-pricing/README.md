@@ -6,7 +6,7 @@ final board-first mockups in `keep/home-pricing-design/final/`. "/" becomes
 the job search with live postings, the free résumé scanner moves to
 `/resume-checker`, and `/pricing` leads with what is free.
 
-**Nothing live changes until the switch-over.** This round adds new files
+**Nothing live changes until the switch-over.** This work adds new files
 only. App.tsx, Index.tsx, Pricing.tsx, products.ts, the locales,
 merge-shards.ts, the Header, the Footer, PurchaseTerms.tsx and the bake keep
 their current owners (wave 4, the profiles/design train, hp/honesty). The two
@@ -17,10 +17,13 @@ existing file needs is in [the switch-over plan](#the-switch-over-plan).
 |---|---|---|
 | `hp/home` | 7a30bc23 | the homepage (Appendix A) |
 | `hp/pricing` | 50de7209 | the pricing page (Appendix B) |
-| `hp/integration` | this branch | both, merged onto `origin/design/integration` (dee9743d), plus the cross-page fixes below |
+| `hp/integration` | this branch | both, the integration (70e4e525) and the fix round of 2026-10-18 below, merged onto `origin/design/integration` 74439737 |
 
-`git diff --name-only origin/design/integration...hp/integration` lists 79
-paths, every one of them added (status A). No existing file is modified.
+`origin/design/integration` is merged into main (PR #36, 57815de9), so the
+PR (#38, base `design/integration`) now reads against a branch main
+already holds. `git diff --name-status origin/design/integration...hp/integration`
+lists 90 paths, every one of them added (status A). No existing file is
+modified.
 
 ## What was built
 
@@ -31,13 +34,14 @@ systems", a real `GET /jobs` search form (`q`, `location`; "Remote" becomes
 `get_board_vendor_counts` with "counted {date}, {time} UTC"). Then up to five
 live postings in the board's own `JobCard` (no Save, no Check fit, no menu;
 employer-dated within 7 days; never Paylocity, Breezy or UKG; the feed-read
-stamp only where `feedReadStatable` passes), the board rail (boards, p50/p95
-from `get_freshness_stats` with its time; no 24-hour flow figure), field
-links from the category list, the free-account strip, the scan section with
-one sample report, "use it from your AI" (Claude, ChatGPT, Claude Code), the
-sources table, the plan strip (no buy control) and the FAQ. "Search jobs" is
-the only filled button. At most four data calls; nothing reads
-`get_board_flow`.
+stamp only where `feedReadStatable` passes, and never on a board name two
+hiring systems share), the board rail (job boards we read with a live
+posting, p50/p95 from `get_freshness_stats` with its day and time; no
+24-hour flow figure), field links from the category list, the free-account
+strip, the scan section with one sample report, "use it from your AI"
+(Claude, ChatGPT, Claude Code), the sources table, the plan strip (no buy
+control) and the FAQ. "Search jobs" is the only filled button. At most four
+data calls; nothing reads `get_board_flow`.
 
 **Pricing page** (`src/pages/pricing/PricingPage.tsx`): H1 and a summary that
 leads with what is free; "Before you buy" above the cards (all sales final;
@@ -49,64 +53,86 @@ cards, the limits table and a seven-question FAQ. "Create a free account" is
 the only filled button. Buy buttons render only when `src/config/seller.ts`
 carries the seller's legal name and postal address; until then each paid card
 says "Not on sale yet. Purchases open soon, once the seller's name and
-address are published on this page." Pro carries a separate, unchecked,
-required renewal box (AB 2863). Pro is the writing tools (5 of each a day, 60
-a month) plus the included Full Analysis (shown only once G2 passes) and "No
-daily cap on scans"; Freelance Boost, Transition Pro and every other cut
-product appear nowhere.
+address are published on this page." Pro carries one unchecked, required
+renewal box in wave 4's words (AB 2863; a stand-in until wave 4's
+PurchaseTerms box arrives, switch-over step 8). Pro is the writing tools (5
+of each a day, 60 a month) plus the included Full Analysis (shown only once
+G2 passes) and "No daily cap on scans"; Freelance Boost, Transition Pro and
+every other cut product appear nowhere in the pages' own content. The title
+and description name only the prices on sale.
 
 **Shared**: both pages read the count through the same hook
-(`useBoardVendorCounts`), so one `as_of` serves both. FAQ answers, the sources
-table, the sample report, "Before you buy" and the comparison sit in native
-`<details>` elements, so their text stays in the DOM (for Google's phone
-render and a reader's Find) while closed; the Disclosure primitive is not
-used or edited.
+(`useBoardVendorCounts`), so one `as_of` serves both, and both read one sale
+switch and one alerts answer (G6). FAQ answers, the sources table, the sample
+report, "Before you buy" and the comparison sit in native `<details>`
+elements, so their text stays in the DOM (for Google's phone render and a
+reader's Find) while closed; the Disclosure primitive is not used or edited.
+Both pages wait for the reader's strings before their first render (header
+at once, page and footer together), and keep page, footer and focus mounted
+through a later language change.
 
 ## What the integration changed
 
 The two builders worked on separate branches with separate gate modules,
 facts mirrors and strings. Reading the two pages side by side found five
 places where they disagreed; each is fixed and held by
-`src/test/hp-integration-one-voice.test.ts` (34 tests):
+`src/test/hp-integration-one-voice.test.ts`:
 
-1. **One switch for both pages.** Each page had its own stand-in for G2 and
-   G2b (`SALE_SWITCHES` in `src/lib/home/sale-gates.ts`;
-   `FULL_ANALYSIS_DELIVERY_WATCHED` and `PRO_SUBSCRIPTION_WATCHED` in
-   `src/components/pricing/sale-gates.ts`). Flipping one would have put the
-   Full Analysis on sale on one page and not the other. The pricing stand-ins
-   now read the homepage's switches. The test walks every combination of
-   seller (none or a fake TEST SELLER) and both switches and checks that the
-   pages agree on what is on sale, why it is closed, and whether Pro says it
-   includes the Full Analysis.
-2. **The homepage's seller-gate sentence.** It said the seller's name and
-   address would be "published on this page", which is false on the
-   homepage, and did not say purchases open soon. It now reads "Not on sale
-   yet. Purchases open soon, once the seller's name and address are published
-   on the pricing page." in all nine languages.
-3. **One name for the $5 report.** The German and Tagalog homepage strings
-   left it as "Full Analysis"; the pricing page and the site's own catalogue
-   (`tieredPricing.products.fullAnalysis.name`, the uploader's buy button) say
-   "Vollanalyse" and "Buong Pagsusuri". The homepage now uses those.
-4. **One final-sale sentence and one delivery sentence per language.** They
-   differed in de, es, fr and pt (for example "Todas las ventas son finales"
-   against "definitivas") and in de, fr, hi and tl. Each language now has
-   one wording, used by both pages.
-5. **Wording one page's guard bans.** The pricing strings guard bans the
-   French stem of "verified" (house rule); the homepage's French used it twice
-   ("Nous vérifions", "Vérifiez chaque chiffre"). Both now use "contrôler".
-   The pricing FAQ's Spanish "¿Postuláis…?" (a vosotros form the site never
-   uses) is now "¿Se postulan…?".
+1. **One switch for both pages.** The pricing stand-ins for G2 and G2b read
+   the homepage's `SALE_SWITCHES`; the test walks seller by both switches.
+2. **The homepage's seller-gate sentence** says purchases open soon, once the
+   seller's name and address are published on the pricing page.
+3. **One name for the $5 report** in every language ("Vollanalyse",
+   "Buong Pagsusuri").
+4. **One final-sale sentence and one delivery sentence per language.**
+5. **Wording one page's guard bans**: no French stem of "verified"; the
+   Spanish FAQ uses "¿Se postulan…?", never a vosotros form.
 
-Each test was shown to fail on a mutation (the stand-in set to true, the
-German name reverted, the French stem restored, the Spanish sentence
-reverted) and the files were restored.
+## What the fix round changed (2026-10-18)
+
+Three review lenses (honesty; design, accessibility and i18n; data and plan)
+read `hp/integration` 70e4e525. Every confirmed finding is fixed here, each
+with a test that was run red first. The branch also took the moved PR base
+twice (`design/integration` d823aae4, then 74439737).
+
+| Finding | Fix | Held by |
+|---|---|---|
+| Blocker: both pages said "We never submit an application" (board note, never-list, homepage FAQ) and the pricing FAQ answered "No, on any plan", while `agent_sender_public_status` answered true | the board note ends at "You apply on the employer's own site"; the never-list keeps its other two items; both FAQs ask "How do I apply?" and answer without "No"; all nine languages | `hp-fix-never-submit` (strings in nine languages, and the four sections rendered) |
+| Blocker: the shared Footer's "Freelance Boost" (and the Header's filled Start) render on both pages | a gate that goes live the moment App.tsx imports either page: then the whole rendered page names no cut product, the header has no filled button and main has one; before that it holds the pages' own content | `hp-fix-switch-over-gate`; `HP_ASSUME_ROUTED=1` runs it early (fails today on the Footer) |
+| Pricing printed "alerts" in four places whatever G6 said | `resolveSaleGates` carries the homepage's `alertsStatable`; no-alerts forms of `head.sub`, `free.saved`, `limits.rowSaved`, `faq.regionA` in nine languages | `hp-integration-one-voice` (seller by digest), `hp-fix-alerts-one-answer` (both pages rendered per case) |
+| Two renewal boxes after wave 4 merges; hp's box recorded a version the server never reads | hp's box is a stand-in: wave 4's exact sentence (translated), `data-auto-renew-box`, no version or record of its own; step 8 deletes it when wave 4's PurchaseTerms box lands | `hp-fix-renewal-box` (exactly one box; red with a second box, checked) |
+| 44 px under a finger never applied to links (`a[href]` beats a single-class `min-h-*`) | important floors on link-buttons and chips (`!min-h-10 coarse:!min-h-11`, chips `!min-h-8 coarse:!min-h-11`, `LINK_TARGET_44`) | `hp-fix-coarse-targets`; measured below under a real coarse pointer |
+| Homepage first rendered in English, then swapped (CLS 0.18 in de/es/fr) | the first render waits for the reader's strings; the footer waits with it | `hp-fix-language-swap`; CLS measured below |
+| Pricing unmounted its content and footer on a language change (focus to body) | only the first render waits (`useStickyReady`); the pricing loader stops waiting for the main locale after 6 s | `hp-fix-language-swap` (focus stays in the footer) |
+| Fill-curve call and stamp on board names two systems share | `curveTokens` drops `isCollidedToken`; such rows get no stamp | `hp-home-rows` |
+| README: G3, G4, the agent's retirement, hp/honesty and hp/scanner missing from WHEN; steps 4, 6, 8, 10, 11, 12 and C1/C4/C6 stale against wave 4 and the bake | rewritten below against the branches as of 2026-10-18 | this document |
+
+Cheap minors also fixed (all in `hp-fix-minors`): the scan lede says
+"within 90 seconds" in nine languages; the rail names its day and says "job
+boards we read, with a live posting"; the homepage FAQ names all three exits;
+no "Min.." in German or Tagalog; the AI illustration prints
+`displayLocation("US - Cambridge Kendall SQ - MA")`; translated chip labels
+wrap (`WRAP_CHIP`); the pricing title and description follow the gates
+(`pricingMetaKeys`) and name the EEA; the Builder price is `money()`'s and
+en-GB says "licence"; the list call has an 8 s deadline and a curve that
+misses its 2.5 s wait is aborted; the G2 rule also hides wave 4's
+`proPlan.perks.fullAnalysisIncluded`; both H1s break a long compound word
+(the German headline widened the page by 7 px under WCAG 1.4.12 text
+spacing).
+
+Not changed here, with the reason: the phone list packs four rows where the
+spec says three (the builder's measured box; recorded in Appendix A item 2);
+the field chips print the long category names (no short label key exists;
+the switch-over string move may add one); German "du" on the homepage and
+"Sie" on pricing, and Hindi's two spellings of one CTA (hp/i18n's single
+pass); the translated try chips run English queries (Appendix A item 8).
 
 ## How to preview
 
 ```
-npx vite --port 5193            # in this worktree; Ctrl-C when done
-open http://localhost:5193/preview-home.html
-open http://localhost:5193/preview-pricing.html
+npx vite --port 5197            # in this worktree; Ctrl-C when done
+open http://localhost:5197/preview-home.html
+open http://localhost:5197/preview-pricing.html
 ```
 
 | Page | Query | Shows |
@@ -124,125 +150,150 @@ The previews are standalone pages Vite's dev server serves directly; nothing
 in the app imports `src/preview/**`, and `vite build` builds `index.html`
 only, so neither preview ships.
 
-## What was measured (integration run, 2026-10-18)
+## What was measured (fix round, 2026-10-18)
 
 One Vite dev server, one headless Chromium (Playwright from
-`worker/node_modules`), closed when done. Fixture data unless marked live.
-Script and data: `keep/home-pricing-design/build/integration/{tools,data,shots}`;
-side-by-sides with the final mockups: `keep/home-pricing-design/build/compare/`.
+`worker/node_modules`), closed when done, on this branch's head. Fixture
+data. Scripts, JSON and shots: `keep/home-pricing-design/build/final/`
+(`tools/measure.cjs`, `tools/probe.cjs`, `tools/probe-spacing.cjs`;
+`data/checks.json`, `data/probe.after.json`; `shots/`).
 
 | Check | Homepage | Pricing |
 |---|---|---|
-| 375x812 first screen | search box 282-326 px; first posting card 710-816 px, its title 727-751 px: both on the first screen. Live data (`data=live`): the same positions, five live rows, count "1,022,573 open postings · counted 18 Oct 2026, 06:07 UTC" | H1 80-116 px, "Before you buy" 388-688 px with the region line open (457-642 px); the Free card starts at 708 px |
-| 1280x800 first screen | search box 244-288 px; first posting title 522-546 px | H1, summary, "Before you buy" (258-432 px); cards from 456 px |
-| Filled buttons | one: "Search jobs" (375 and 1280) | one: "Create a free account" (gated and preview-open, 375 and 1280) |
-| axe 4.12.1, WCAG 2.0/2.1/2.2 A and AA | 0 violations at 375 and 1280, fixture and live | 0 violations at 375 and 1280, gated and preview-open |
-| axe "needs review" | `aria-valid-attr-value` on today's Header (Radix `aria-controls`), not these pages | the same Header item, and `th-has-data-cells` on the limits table's full-width group rows (`scope="rowgroup"`) |
-| CLS, navigation plus a scroll started before the data answers | 0.0004 at 375, 0.00004 at 1280; with the list answering after 2.5 s (`rows=slow`): 0.0004 and 0.0002 | 0 at 375, 0.00007 at 1280, gated and open |
-| Horizontal overflow, every `<details>` open | none in any of the 9 languages at 320, 360 and 375 px (27 runs) | none in any of the 9 languages at 320, 360 and 375 px, gated and open (54 runs) |
-| Pointer targets under 24 px (inline links in a sentence excepted) | none | none; the renewal checkbox is 20 px, but its `<label>` is the target (275x44 at 375 under a coarse pointer, 337x40 at 1280) and a click on the label's text ticks the box |
+| 375x812 first screen | search box 282-326 px; first posting card from 710 px, its title 727-751 px | H1 80-116 px, summary, jump links and "Before you buy"; Free card from 684 px |
+| 1280x800 first screen | search box 244-288 px; first posting title 522-546 px | H1, summary, "Before you buy"; cards from 456 px |
+| Filled buttons in main | one: "Search jobs" (375 and 1280) | one: "Create a free account" (gated and preview-open, 375 and 1280) |
+| axe 4.12.1, WCAG 2.0/2.1/2.2 A and AA | 0 violations at 375 and 1280 | 0 violations at 375 and 1280, gated and preview-open |
+| axe "needs review" | `aria-valid-attr-value` on today's Header (Radix `aria-controls`) | the same Header item; `th-has-data-cells` on the limits table's group rows |
+| Targets under a coarse pointer (CDP touch emulation, `pointer: coarse` true), 375 px | 25 buttons, link-buttons, chips and summaries: none under 44 px | 14 gated, 17 open: none under 44 px (the renewal label included) |
+| CLS, cold load in the browser's locale, scroll before the data answers (three runs per case: `measure.cjs` once, `probe.cjs` twice) | en 0.0004-0.0005 (list answering after 2.5 s: 0.0005); de 0.0002; es 0.0006-0.0008; fr 0.0008-0.0015; de at 1280 0.0001-0.0012 (was 0.18 in de, es and fr) | en 0-0.0001; de 0-0.00003; es 0-0.007; fr 0.00003-0.0008; de at 1280 0.001-0.015 (the plan cards settling when the count lands) |
+| Horizontal overflow, every `<details>` open | none: nine languages at 320, plus de/fr/es/pt at 360 and 375 | the same (34 runs across both pages) |
+| WCAG 1.4.12 text spacing, German, 320 px | no overflow (was 7 px: the H1's "Bewerbungssystemen"); no chip clipped | no overflow |
 
-Measured by the builders and not re-run here: the home chunk is 15.7 kB gzip
-(built from an archive export), so the predicted first load of "/" is
-279.3 + 18.9 + 15.7 + 13.5 = 327.4 kB against the 340 kB cap. There is no
-production build of the real routes yet and no LCP figure; both are lab gates
-at +1 day (below).
+Screenshots: `shots/home.{375,1280}.{first-screen,full}.png`,
+`shots/pricing-gated.*`, `shots/pricing-open.*`, and
+`shots/i18n.{home,pricing-gated}.{de,fr,es,pt}.320.full.png`.
 
-**Side-by-sides** (`build/compare/compare.*.png`, mockup left, build right):
-home 375 and 1280 first screens (fixture and live) and full pages; pricing
-375 and 1280 first screens and full pages. The build matches the mockups'
-structure. Where it differs, it follows the corrected spec, which the mockups
-predate: no "new · gone" flow figure, no Save buttons, no Paylocity row or
-"posted 7 days ago" on a re-dating system, no `/jobs/field/retail` or
-`/hospitality` links (Hospitality & Retail instead), the longer board note
-naming the full-read rule, the EU/EEA/UK/India line naming what checkout
-checks, and Pro's card read from the perk list. The Header and Footer are
-today's (Start and credits; the Footer still lists Freelance Boost) until
-hp/honesty ships the quiet Header and the Footer fix.
+Measured by the builders and not re-run here: the home chunk was 15.7 kB
+gzip. The fix round adds `src/lib/board-collisions.ts` (139 rows, about 2 kB
+gzip) and the small gate modules to the home chunk, and the switch-over adds
+the pricing strings to the eager English bundle (3.7 kB gzip), so the
+predicted first load of "/" is about 331 kB against the 340 kB cap. No
+production build of the real routes and no LCP figure yet: lab gates at +1
+day (step 15).
 
-## Gate
+## Gate (fix round)
 
-- Frontend typecheck (`tsc -p tsconfig.app.json --noEmit`): passed after
-  both merges and after the integration commit.
-- The hp tests, targeted (`npx vitest run --maxWorkers=2 src/test/hp-*`): 10
-  files, 170 tests, all passing (home 65, pricing 71, integration 34).
-- The guards changed on `design/integration` since the builders branched
-  (27 files) plus the src-wide guards (published-claims, design-no-raw-palette,
-  the 24px-target guard, every-shard-string, the visitor budget, the two
-  seller guards): 34 files, 1,048 tests, all passing.
-- The full suite runs once, in the pre-push hook, when this branch is pushed.
+- Frontend typecheck (`tsc -p tsconfig.app.json --noEmit`): passed at every
+  commit (the pre-commit hook).
+- The hp tests, targeted (`npx vitest run --maxWorkers=2 src/test/hp-*`):
+  17 files, all passing.
+- The full suite: once, when no other suite was running (see the PR body
+  for the count).
 
 ## Open problems
 
-1. **Strings are not in `src/i18n/shards/` yet.** Both builders kept them
-   beside their pages (`src/lib/home/strings/`,
-   `src/components/pricing/strings/`) with interim loaders, because a shard
-   directory whose root key is not in `SHARD_ROOT_KEYS` (merge-shards.ts, an
-   existing file) fails the shard guard and blocks the pre-push suite.
-   Switch-over step 2 moves them.
-2. **Pro's perks disagree with wave 4.** `origin/w4b/checkout-catalogue`'s
-   `PRO_PERK_ITEMS` still lists Freelance Boost and Transition Pro,
-   "Unlimited scans" and batch application prep, and
-   `create-subscription-checkout` sends that list as the Stripe description;
-   `origin/wave4/integration`'s `PRO_PERKS` still says "Unlimited scans" and
-   "Every paid tool included … and all future tools". Wave 4 trims it before
-   the switch-over (step 6); `hp-pricing-mirrors.test.ts` fails the day the
-   export exists and still disagrees.
-3. **Renewal consent is client-only.** The box gates the press, but
-   `create-subscription-checkout` does not yet refuse without it or record
-   the terms version and time (G7, wave 4's).
+1. **Strings are not in `src/i18n/shards/` yet** (switch-over step 2): an
+   unregistered shard directory fails the shard guard, and `SHARD_ROOT_KEYS`
+   is in an existing file.
+2. **Pro's list: wave 4's is trimmed but worded differently.**
+   `origin/w4b/checkout-catalogue` (2c4aec7b) already ships the owner's
+   definition in `supabase/functions/_shared/pro-perks.ts` (re-exported by
+   `src/config/pro-perks.ts`, and the Stripe description is built from it):
+   no Freelance, no Transition, no "unlimited",
+   `PRO_INCLUDED_PRODUCT_IDS = ["fullAnalysis"]`. Its keys are
+   `proPlan.perks.*` (translated in `wave4/integration`'s locales), its text
+   is literal ("up to 5 sets a day and 60 a month", "The $5 Full Analysis
+   included", "Cancel anytime from your account"), and it says "sets" where
+   the owner's decision and this page say "packages". Step 6 adopts wave 4's
+   list; the noun is the one thing to agree first.
+3. **Renewal consent: wave 4 ships the server side** (G7).
+   `create-subscription-checkout` refuses a body without
+   `autoRenewConsent: true` (400 `auto_renew_consent_required`), which
+   `purchaseTerms()` sends only when PurchaseTerms' own box was ticked, and
+   records `AUTO_RENEW_CONSENT_VERSION` "2026-10-17" with the time. On this
+   base PurchaseTerms has no box, so the Pro block's box is a stand-in in
+   wave 4's words that sends nothing; step 8 deletes it. Wave 4's box
+   renders its English default in every language (`purchaseTerms.autoRenewConsent`
+   has no locale entries on either wave-4 branch): wave 4 to translate it,
+   for example from this page's `pricingPlans.pro.consent`.
 4. **The Full Analysis text is not written from a watched delivery (P18).**
-   The pricing card's bullets ("A PDF, and a private link kept 90 days") and
-   the homepage's `home.plans.faBody` describe a delivery nobody has watched.
-   Both cards are gated, so nothing is sold on them, but the text must be
+   Both cards are gated; the bullets and `home.plans.faBody` must be
    rewritten from the G2 purchase before G2 opens.
-5. **German register.** The homepage addresses the reader as "du" (31 forms,
-   matching most of the board's strings); the pricing page as "Sie" (61 forms,
-   no "du"). Other shared sentences also differ in wording between the pages
-   (the bracket sentence in de, es, hi, nl, pt, tl; the unit words; "Create a
-   free account" in nl). None of the eight translations has been reviewed by
-   a native speaker. This is hp/i18n's: pick one register and one wording per
-   sentence, in one pass over both string sets.
-6. **Chrome owned by others.** Today's Header (no `variant="quiet"`, Start and
-   credits) and Footer (Freelance Boost) render on both pages until hp/honesty
-   ships its changes; axe's one Header "needs review" item comes with it.
-7. **No production build, no LCP.** The 340 kB first-load cap and the LCP
-   targets (375 throttled 1.2 s or less, 1280 2.5 s or less) are unmeasured
-   until the switch-over build.
-8. **No scroll-depth or time-on-page events on the new "/".** Adding
-   `useScrollDepth("home")` and `useTimeOnPage("home")` pushed the visitor
-   budget guard to 69 events per journey against its ceiling of 60 (step 13).
-9. **Links that mean the scanner.** 16 places link to `/#upload` (Header,
-   Jobs.tsx, JobPosting, Account, SetupChecklist, ProductPreview, Pricing);
-   the router redirect keeps them working, at the cost of a hop. About 40
-   `to="/"` / `navigate("/")` links in 23 files were written when "/" was the
-   scanner; most are logo or "home" links, but a scan call to action among
-   them would now land on the board (step 11 audits them).
-10. **The fixture shows a raw Workday tenant name.** The recorded capture's
-    first homepage row is "Shhotelsandresorts" (the board's own employer name
-    for that token). The homepage prints the board's name as is; a bad name
-    on the first row of "/" is more visible than on the board.
+5. **German register and other per-language wording**: "du" on the
+   homepage, "Sie" on pricing; Hindi spells one CTA two ways; no native
+   review yet. hp/i18n's single pass.
+6. **Chrome owned by others.** Today's Header (Start, credits) and Footer
+   (Freelance Boost) render on both pages; the switch-over gate refuses to
+   route either page until hp/honesty's changes land (step 9).
+7. **The apply agent is live.** The pages no longer promise never to submit;
+   wave 4 restores the sentence, with its own test, once its retirement is
+   live (WHEN, W3).
+8. **No production build, no LCP** until the switch-over build (step 15).
+9. **No scroll-depth or time-on-page events on the new "/"**: adding them
+   took the visitor-budget journey to 69 events against 60 (step 13).
+10. **Links that mean the scanner**: 16 `/#upload` links, `ResumeBuilder.tsx`'s
+    `/?rescan=1#upload`, and Header's Start on "/" (step 11).
+11. **The fixture's first row shows a raw Workday tenant name**
+    ("Shhotelsandresorts"); the homepage prints the board's names as they
+    are.
+12. **The phone list packs four rows** where the spec says three, and the
+    field chips print long category names (above, "Not changed here").
 
 ## The switch-over plan
 
-Do this once the profiles/design train (`origin/pd/wire`: profiles 0-2,
-design/integration, pd/bake, pd/accuracy, pass B) and wave 4
-(`wave4/integration` and every `w4b/*` branch) are merged to main and
-verified, together with hp/honesty (sales-gate.ts, the quiet Header, the
-Footer without Freelance Boost, PurchaseTerms, H0) and hp/scanner (Index
-delete-only, the ResumeUploader gate), in ledger order (owner decision 8).
-Run `node scripts/deploy-ledger.mjs --overlap` before merging. The
-reservation is `home-pricing`: branches `hp/`, no migration, no job-board
-change, verify section 98, and free-keyword-scan's `fnBuildDate` (H0 only).
+Line numbers are as of `origin/design/integration` 74439737, wave 4 as of
+`origin/wave4/integration` 518afef1 and `origin/w4b/checkout-catalogue`
+db74b6c8; wave 4 edits App.tsx, Pricing.tsx and the Header, so find each line
+by its text. Run `node scripts/deploy-ledger.mjs --overlap` before merging.
+The reservation is `home-pricing`: branches `hp/`, no migration, no
+job-board change, verify section 98, and free-keyword-scan's `fnBuildDate`
+(H0 only).
 
-Line numbers are as of `origin/design/integration` dee9743d; wave 4 edits
-App.tsx and Pricing.tsx, so find each line by its text.
+### WHEN: every one of these, in ledger order (owner decision 8)
+
+- **W1. The profiles/design train is merged and verified.**
+  `design/integration` is on main (PR #36). `origin/pd/wire` (73aecb4a),
+  `pd/bake` and `pd/accuracy` merge and verify per the ledger.
+- **W2. Wave 4 is merged and verified**: `wave4/integration` and every
+  `w4b/*` branch (account-compliance, agents-api, base, checkout-catalogue,
+  generators, job-board, ops-email-tests, payments-delivery).
+- **W3. The apply agent is retired.** `agent_sender_public_status` answers
+  false (it answered true on 2026-10-18), or wave 4's retirement sentence is
+  served on /trust. Verify claim C10.
+- **W4. hp/honesty and hp/scanner exist on origin and are merged.** Neither
+  does today (`git ls-remote --heads origin 'hp/*'` lists hp/home,
+  hp/pricing, hp/integration). hp/honesty owns the Footer edit (step 9), the
+  quiet Header, `src/config/sales-gate.ts`, PurchaseTerms' final-sale and
+  region lines and H0; hp/scanner owns Index (delete-only) and the
+  ResumeUploader gate.
+- **W5. G3: the IP lookup is real, or its clause goes.** Both pages say
+  checkout turns buyers away from "a lookup of the IP address". Without
+  `IPINFO_API_KEY`, `_shared/sales-territory.ts` `ipinfoLookup()` returns null
+  and "a lookup that cannot answer refuses nobody". The owner confirms the
+  key is set and the Stripe Radar rule (card country and IP country in the
+  EU-27, IS, LI, NO, GB and IN) is in place, or accepts their absence in
+  writing; in that case the IP clause first comes out of
+  `home.plans.termTerritory`, `pricingPlans.before.regionBody`,
+  `faq.regionA` and `faq.regionANoAlerts` in all nine languages, leaving
+  the currency and time-zone checks.
+- **W6. G4: R1 is a verified deploy.** Its `verifiedDeploys` entry is on main
+  (ea8acb5e, PR #37: 950 PASS; section 94 passes except the owner's SPF
+  record and the Resend webhook secret). Re-read sections 94-96 before the
+  publish.
+- **W7. The gate passes early**: on the merged tree, before App.tsx is
+  edited, `HP_ASSUME_ROUTED=1 npx vitest run src/test/hp-fix-switch-over-gate.test.tsx`
+  is green (no cut product anywhere on either page, no filled button in the
+  header). After step 1 the same test runs live in every suite.
+
+G1, G2, G2b and G6 are not preconditions: the pages show their closed states
+until each opens. G7's server side is wave 4's and ships with W2.
 
 ### 1. Routes (src/App.tsx)
 
 - Line 4: `import { BrowserRouter, Routes, Route } from "react-router-dom";`
   becomes `import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";`
-- After line 24 (`const Index = lazy(() => import("./pages/Index"));`) add:
+- After `const Index = lazy(() => import("./pages/Index"));` add:
   ```tsx
   const HomePage = lazy(() => import("./pages/home/HomePage"));
   // "/#upload" was the scanner's address; the scanner lives at /resume-checker.
@@ -255,104 +306,181 @@ App.tsx and Pricing.tsx, so find each line by its text.
     return <HomePage />;
   }
   ```
-- Line 110: `<Route path="/" element={<Index />} />` becomes
-  `<Route path="/" element={<HomeRoute />} />`. Line 192
-  (`/resume-checker` → `<Index landing={TOOL_LANDINGS["resume-checker"]} />`)
-  and the other tool landings stay.
-- Line 47: `const Pricing = lazy(() => import("./pages/Pricing"));` becomes
-  `const Pricing = lazy(() => import("./pages/pricing/PricingPage"));`. The
-  `/pricing` route element (line 155) stays `<Pricing />`.
-- Add `src/test/hp-routes.test.tsx`: "/" renders the homepage's H1; "/#upload"
-  and "/?x=1#upload" land on `/resume-checker` with the search and hash kept,
-  without importing `pages/home/HomePage`; "/pricing" renders
-  `pricing-h1`; "/resume-checker" still renders the scanner.
+- `<Route path="/" element={<Index />} />` becomes
+  `<Route path="/" element={<HomeRoute />} />`. The `/resume-checker`
+  route (`<Index landing={TOOL_LANDINGS["resume-checker"]} />`) and the
+  other tool landings stay.
+- `const Pricing = lazy(() => import("./pages/Pricing"));` becomes
+  `const Pricing = lazy(() => import("./pages/pricing/PricingPage"));`.
+- From this commit `hp-fix-switch-over-gate` is live (it reads App.tsx).
+- Add `src/test/hp-routes.test.tsx`: "/" renders the homepage's H1;
+  "/#upload" and "/?x=1#upload" land on `/resume-checker` with search and
+  hash kept, without importing `pages/home/HomePage`; "/pricing" renders
+  `pricing-h1`; "/resume-checker" still renders the scanner; the Header's
+  Start on "/" lands on `/resume-checker#upload` (step 11).
 
-### 2. Strings become shards
+### 2. Strings become shards, and the first-render gate reads the main locale
 
 - `git mv src/lib/home/strings src/i18n/shards/home` and
   `git mv src/components/pricing/strings src/i18n/shards/pricing`.
 - `src/i18n/merge-shards.ts`, `SHARD_ROOT_KEYS`: add `home: "home",` and
-  `pricing: "pricingPlans",` (the pricing root key is `pricingPlans`, not
-  `pricing`).
-- Delete `src/lib/home/strings.ts`. In `src/pages/home/HomePage.tsx` delete
-  line 10 (`import { useHomeStrings } from "@/lib/home/strings";`) and line
-  45 (`useHomeStrings();`).
-- Delete `src/components/pricing/use-pricing-strings.ts`. In
-  `src/components/pricing/PricingView.tsx` delete line 17
-  (`import "./use-pricing-strings";`). In `src/pages/pricing/PricingPage.tsx`
-  delete line 27 and line 37 (`const ready = usePricingStrings();`) and
-  render the three `ready ? … : …` branches (lines 49, 55, 59) as their
-  ready forms.
-- Tests: in `src/test/hp-home-strings.test.ts` set `DIR` to
-  `resolve(__dirname, "../i18n/shards/home")`; delete the "home strings
-  loader" describe block in `src/test/hp-home-search-and-strings.test.tsx`;
-  in `src/test/hp-pricing-strings.test.ts` point `STRINGS` at
-  `src/i18n/shards/pricing` and delete its "interim loader" block; in
-  `src/test/hp-integration-one-voice.test.ts` replace `../lib/home/strings/`
-  with `../i18n/shards/home/` and `../components/pricing/strings/` with
-  `../i18n/shards/pricing/`. In
-  `src/test/every-shard-string-is-loaded-translated-and-scanned.test.ts`
-  ("both shards exist") add `"home"` and `"pricing"` to the expected names.
+  `pricing: "pricingPlans",`.
+- Registering the shards does not remove the English first frame by itself:
+  before a German main locale lands, `t()` falls back to English. So the
+  first-render gate moves to the main locale (which now carries the shards).
+  Create `src/lib/home/use-locale-ready.ts`:
+  ```ts
+  import { useEffect, useState } from "react";
+  import { useTranslation } from "react-i18next";
+  /** How long to wait for a main locale that may never load. */
+  export const MAIN_WAIT_MS = 6000;
+  /** True once the reader's main locale (and with it every shard) has landed, or after MAIN_WAIT_MS. */
+  export function useLocaleReady(): boolean {
+    const { i18n } = useTranslation();
+    const lng = i18n.language || "en";
+    const has = () => lng === "en" || i18n.hasResourceBundle(lng, "translation");
+    const [late, setLate] = useState<string | null>(null);
+    useEffect(() => {
+      if (has()) return;
+      const timer = setTimeout(() => setLate(lng), MAIN_WAIT_MS);
+      const onAdded = (l: string) => { if (l === lng) setLate(lng); };
+      i18n.store.on("added", onAdded);
+      return () => { clearTimeout(timer); i18n.store.off("added", onAdded); };
+    }, [lng, i18n]);
+    return has() || late === lng;
+  }
+  ```
+  In `src/pages/home/HomePage.tsx` replace
+  `import { useHomeStrings } from "@/lib/home/strings";` with
+  `import { useLocaleReady } from "@/lib/home/use-locale-ready";` and
+  `const shown = useStickyReady(useHomeStrings());` with
+  `const shown = useStickyReady(useLocaleReady());`. In
+  `src/pages/pricing/PricingPage.tsx` the same for
+  `usePricingStrings` (import line and `const shown = useStickyReady(usePricingStrings());`).
+  Delete `src/lib/home/strings.ts` and `src/components/pricing/use-pricing-strings.ts`,
+  and in `src/components/pricing/PricingView.tsx` delete
+  `import "./use-pricing-strings";`.
+- Tests: every hp test that reads a string file switches its path:
+  `../lib/home/strings/` becomes `../i18n/shards/home/` and
+  `../components/pricing/strings/` becomes `../i18n/shards/pricing/` in
+  `hp-home-strings`, `hp-pricing-strings`, `hp-integration-one-voice`,
+  `hp-fix-never-submit`, `hp-fix-alerts-one-answer`, `hp-fix-minors`,
+  `hp-fix-language-swap` and `hp-pricing-decisions` (its `en` import);
+  `hp-fix-renewal-box` imports `@/i18n/shards/pricing/en.json`. Delete the
+  "home strings loader" block in `hp-home-search-and-strings.test.tsx`, the
+  "interim loader" block in `hp-pricing-strings.test.ts`, and the "pricing
+  loader has a deadline" block in `hp-fix-language-swap.test.tsx` (its
+  first-render and language-change blocks stay and now exercise
+  `useLocaleReady`). Remove the `import "@/lib/home/strings";` and
+  `import "@/components/pricing/use-pricing-strings";` lines from
+  `hp-fix-never-submit`, `hp-fix-alerts-one-answer` and `hp-fix-minors`.
+  In `every-shard-string-is-loaded-translated-and-scanned.test.ts` ("both
+  shards exist") add `"home"` and `"pricing"` to the expected names.
 
 ### 3. Strings crawlers must see
 
 The bake reads the main locale (`EN_LOCALE`), so a shard key never reaches it.
 Move these keys out of each language's shard file into the same language's
-main file, `src/i18n/locales/<lng>.json`, in all nine languages. It must be a
-move, not a copy: a key in both fails the shard guard's collision rule, and
-the main files must keep identical key sets.
+main file, `src/i18n/locales/<lng>.json`, in all nine languages. A move, not a
+copy: a key in both fails the shard guard's collision rule.
 
 - Homepage (`home.*`): `seo.*`; `hero.title`, `sub`, `qLabel`,
   `qPlaceholder`, `locationLabel`, `locationPlaceholder`, `submit`,
   `tryLabel`, `try.*`, `count_*`, `counted`, `scanLead`, `scanLink`;
   `board.title`, `note`, `total_*`, `seeAll`, `applyNote`; `rail.title`,
   `boards_*`, `readBasis`, `fieldsTitle`, `allFields`; `account.*`; `scan.*`;
-  `sample.*`; `ai.title`, `lede`, `neverTitle`, `never*`, `claude`, `chatgpt`,
-  `claudeCode`, `reach`; `sources.*`; `plans.*`; `faq.*`. They stay in the
-  shard: `hero.formLabel`, `hero.remoteWord`, `board.loading`, `ai.figure*`.
-- Pricing (`pricingPlans.*`): `meta.*`, `head.*`, `before.*`,
-  `buy.finalSale`, `buy.region`, `buy.gateSeller`, `buy.gateFaDelivery`,
-  `buy.gateProWatched`, `free.*`, `fa.name`, `fa.unit`, `fa.what`,
-  `fa.b1`-`fa.b5`, `fa.how`, `pro.name`, `pro.unit`, `pro.what`, `pro.step*`,
-  `pro.perks.*`, `pro.review`, `pro.statusTitle`, `pro.statusBody`, `adds.*`,
-  `b2b.*`, `limits.*`, `faq.*`. They stay in the shard: `fa.cta`, `fa.fine`,
-  `pro.consent`, `pro.consentError`, `pro.cta`, `pro.fine`,
-  `pro.memberActive`, `pro.manage`, `pro.owing`, `pro.updatePayment` (none
-  renders while the gates are closed).
+  `sample.*`; `ai.title`, `lede`, `neverTitle`, `never2Lead`, `never2`,
+  `never3Lead`, `never3`, `claude`, `chatgpt`, `claudeCode`, `reach`;
+  `sources.*`; `plans.*`; `faq.*`. They stay in the shard: `hero.formLabel`,
+  `hero.remoteWord`, `board.loading`, `ai.figure*`.
+- Pricing (`pricingPlans.*`): `meta.*` (all six: `title`, `titleNoPro`,
+  `description`, `descriptionFa`, `descriptionPro`, `descriptionClosed`),
+  `head.*`, `before.*`, `buy.finalSale`, `buy.region`, `buy.gateSeller`,
+  `buy.gateFaDelivery`, `buy.gateProWatched`, `free.*`, `fa.name`, `fa.unit`,
+  `fa.what`, `fa.b1`-`fa.b5`, `fa.how`, `pro.name`, `pro.unit`, `pro.what`,
+  `pro.step*`, `pro.perks.*`, `pro.review`, `pro.statusTitle`,
+  `pro.statusBody`, `adds.*`, `b2b.*`, `limits.*`, `faq.*`. They stay in the
+  shard: `fa.cta`, `fa.fine`, `pro.consent`, `pro.consentError`, `pro.cta`,
+  `pro.fine`, `pro.memberActive`, `pro.manage`, `pro.owing`,
+  `pro.updatePayment` (none renders while the gates are closed).
 - Lighter alternative, with a precedent: the bake already reads one shard
   directly (`export { default as EN_COMPANY_SHARD } from
-  "../src/i18n/shards/company/en.json";` in its data entry). Adding
-  `EN_HOME_SHARD` and `EN_PRICING_SHARD` the same way would need no string
-  move. Whoever owns the bake picks one; the steps below assume the move.
+  "../src/i18n/shards/company/en.json";`, line 246). Adding
+  `EN_HOME_SHARD` and `EN_PRICING_SHARD` the same way needs no string move.
+  Whoever owns the bake picks one; the steps below assume the move.
 
-### 4. Retire the old pages
+### 4. Retire the old pages, and the tests that read them
 
-- `src/pages/Index.tsx` (hp/scanner, delete-only): with "/" routed away,
-  every Index route carries a `landing`, so the `!landing && !freeKeywordResult`
-  block that renders `<HomeHero agentOffer={<AgentOfferStrip />} />` (line
-  2081 onward), `AgentOfferStrip` (line 418), `homeTotals`, `homeTitle` and
-  `homeDescription` (lines 457-466) and their fallbacks in the SEO props
-  (lines 2052-2054), and the then-unused imports (`HomeHero`,
-  `useBoardTotals`/`roundedFloor` if nothing else reads them) are deleted. The
-  `#upload` hash handling (lines 747-766) stays: the scanner is still reached
-  at `/resume-checker#upload`.
+- `src/pages/Index.tsx` (hp/scanner, delete-only): every Index route then
+  carries a `landing`, so the `!landing && !freeKeywordResult` block that
+  renders `<HomeHero agentOffer={<AgentOfferStrip />} />`, `AgentOfferStrip`,
+  `homeTotals`, `homeTitle`, `homeDescription` and their SEO fallbacks, and
+  the then-unused imports go. The `#upload` hash handling stays.
 - Delete `src/components/HomeHero.tsx`, and in the tests that read it:
   `agent-hallmark.test.ts` (HERO, the `<HomeHero` checks; the h1-exclusivity
   check becomes "Hero owns the h1 on every Index route"),
-  `a-pass-number-on-a-page-is-a-placeholder.test.tsx` line 584,
   `pd-fix-section-83-reads-what-react-renders-and-every-title-form.test.ts`
   line 62, `a-company-count-that-names-both-of-its-numbers.test.ts` line 318
   and `the-headline-promised-zero-ghost-jobs-the-data-cannot-prove.test.ts`
   line 83: point each at `src/components/home/HomeSearchHero.tsx` where the
-  rule still applies to the homepage's hero, otherwise drop the line.
+  rule still applies, otherwise drop the line.
+- `src/test/a-pass-number-on-a-page-is-a-placeholder.test.tsx`
+  (design/integration):
+  - line 291 `import Index, { AgentOfferStrip } from "../pages/Index";`
+    becomes `import Index from "../pages/Index";`;
+  - the describe "the agent offer on the homepage" (it mounts `<Index />` at
+    "/" and `<AgentOfferStrip />`, line 573, and holds the d823aae4 refusal)
+    is deleted: its never-submit refusal now lives in `hp-fix-never-submit`
+    over the new pages, and the allowance digits are the AI section's
+    (`home.ai.reach`, interpolated);
+  - line 588's `<HomeHero agentOffer=…>` expectation is deleted;
+  - lines 593-599 ("teeth"): the anchor `export function AgentOfferStrip(`
+    becomes `export default Index;` (line 2601), so the spelled-pass-number
+    teeth keep reading Index;
+  - lines 643-660: the slices of the bake's `path: "/",` block keep
+    `not.toContain("AGENT_OFFER.pass")` and `spelledPassNumbers(home) === []`,
+    and drop the three `toContain` lines (`${esc(AGENT_OFFER.connect)}`,
+    `${esc(APPLY_YOURSELF_LINE)}`, `<a href="/agents"`): the new "/" block
+    prints the AI section, whose links are `/agents#claude`,
+    `/agents#chatgpt` and `/agents#claude-code`. Assert those three instead.
+    The llms-full assertion (line 649) and the /agents block's
+    `APPLY_YOURSELF_LINE` (line 171) stay.
 - Delete `src/pages/Pricing.tsx` and its now-unread `pricingPage.*` keys in
-  all nine main locales. That orphans `src/components/AddOnsShowcase.tsx` and
-  `src/components/AgentSubscriptionCard.tsx` (and its five tests) unless wave
-  4 has already removed them with the agent plan. Re-point the three guards
-  that list `src/pages/Pricing.tsx`: `design-no-raw-palette.test.ts` (line
-  112), `the-ats-defense-roles-promise-is-shown-in-the-readers-language.test.ts`
-  (line 52) and `a-link-in-a-sentence-is-underlined-at-rest-on-the-money-path.test.ts`
-  (line 19) read `src/components/pricing/*.tsx` instead.
+  all nine main locales. That orphans `src/components/AddOnsShowcase.tsx`
+  and `src/components/AgentSubscriptionCard.tsx` (and its five tests) unless
+  wave 4 has already removed them. Then:
+  - `design-no-raw-palette.test.ts` line 112 (`"src/pages/Pricing.tsx": 0,`),
+    `the-ats-defense-roles-promise-is-shown-in-the-readers-language.test.ts`
+    line 52 (design) / line 63 (wave 4) and
+    `a-link-in-a-sentence-is-underlined-at-rest-on-the-money-path.test.ts`
+    line 19: read `src/components/pricing/*.tsx` instead of
+    `src/pages/Pricing.tsx`.
+  - `pricing-truth.test.ts` (line numbers: design 174-205, wave 4 164-195):
+    drop `["pricingPage", "noSubscriptions"]` from `KEYS`; replace
+    `["pricingPage", "metaDescription"]` with
+    `["pricingPlans", "meta", "description"]`; the test
+    "pricingPage.metaDescription interpolates prices instead of stating
+    them" becomes "pricingPlans.meta descriptions interpolate prices": each
+    of `description`, `descriptionFa`, `descriptionPro` carries its
+    `{{faPrice}}`/`{{proPrice}}` exactly once and no typed money
+    (`/[$£€₹]\s?\d/`), and `descriptionClosed` carries neither.
+  - `a-pass-number-on-a-page-is-a-placeholder.test.tsx` line 60 (design; 70 and 102 on wave 4)
+    (the `pricingPage.pass*` scan) and `a-buy-button-quoted-25-dollars-for-a-5-dollar-product.test.ts`
+    line 53 (`"pricingPage.heroBadgeLine"`, wave 4): drop the
+    `pricingPage` namespace from both.
+  - wave 4's `pricing-offers-pro-and-no-retired-product.test.tsx` (line 40)
+    and `w4b-the-pricing-page-sells-what-is-sold.test.tsx` (line 54) import
+    `../pages/Pricing`: re-point both to `../pages/pricing/PricingPage`.
+    Keep their "no cut or retired product", "no buy button while no seller
+    is named" (both cards say purchases open soon; with TEST SELLER and the
+    switches the buttons return), "structured data quotes no retired price"
+    and "starts no checkout on load" cases; drop the cases about the old
+    page's ladder and Agent plan card (the new page has neither), which
+    `hp-pricing-decisions` tests 1, 3 and 12 cover. In
+    `w4b-the-pricing-page-sells-what-is-sold.test.tsx` line 132 and
+    `w4b-pro-is-the-writing-tools-the-full-analysis-and-no-daily-scan-cap.test.ts`
+    line 117 (107 on checkout-catalogue), replace `"src/pages/Pricing.tsx"`
+    with `"src/components/pricing/PlanCards.tsx"`.
 - Delete `preview-home.html`, `preview-pricing.html`, `src/preview/home.tsx`,
   `src/preview/pricing.tsx`, `src/preview/pricing-network.ts` and
   `src/preview/preview-data.ts` with its fixture, or keep the home preview as
@@ -365,118 +493,206 @@ the main files must keep identical key sets.
   import { FULL_ANALYSIS_ON_SALE, PRO_ON_SALE, DIGEST_MAIL_CLASS } from "@/config/sales-gate";
   export const SALE_SWITCHES = { fullAnalysisOnSale: FULL_ANALYSIS_ON_SALE, proOnSale: PRO_ON_SALE, digestMailClass: DIGEST_MAIL_CLASS } as const;
   ```
-  (use hp/honesty's actual export name for the digest ruling, G6). The pricing
-  page's stand-ins already read `SALE_SWITCHES`, so both pages follow; the
-  pricing README's alternative (re-export from sales-gate directly in
-  `src/components/pricing/sale-gates.ts`) is equivalent.
+  (use hp/honesty's actual export name for the digest ruling, G6). Both
+  pages read `SALE_SWITCHES`, so both follow, alerts included
+  (`resolveSaleGates` takes `alertsStatable` from `saleGates`).
 - `hp-home-gates.test.ts`'s first case then reads the real switches, and
   `hp-pricing-mirrors.test.ts` ("the sale gates' stand-ins …") compares them
   with `sales-gate.ts`.
 
-### 6. Pro's perks pinned to wave 4
+### 6. Pro's perks are wave 4's list
 
-- Wave 4 trims `src/config/pro-perks.ts` `PRO_PERK_ITEMS` to the owner's
-  definition before it merges: "Everything in a free account"; the writing
-  tools at 5 of each a day and 60 of each a month (a package is one of each);
-  the $5 Full Analysis included; "No daily cap on scans"; cancel online.
-  `includedOneOffs` (Freelance Boost, Transition Pro) and batch prep go;
-  `PRO_INCLUDED_PRODUCT_IDS` becomes `["fullAnalysis"]`; the
-  `create-subscription-checkout` description is built from the same list.
-- `src/components/pricing/pro-perks-mirror.ts`: `PRO_PERK_ITEMS` and `ProPerk`
-  become `export { PRO_PERK_ITEMS, type ProPerk } from "@/config/pro-perks";`;
-  `PRO_PERK_REQUIRES` and `visibleProPerks` stay, keyed by wave 4's key for
-  the included-Full-Analysis line.
+- Agree the noun first: the owner's decision and this page say "packages"
+  ("5 packages a day, 60 a month"; `pro.stepProAmount`, the FAQ's "What is a
+  package?"); wave 4's `proPlan.perks.writingTools` says "up to 5 sets a day
+  and 60 a month", and that text is also the Stripe description
+  (`proStripeDescription`). Wave 4's rule is that a changed line gets a new
+  key. Either wave 4 adds `proPlan.perks.writingToolsPackages` ("… up to 5
+  packages a day and 60 a month") in nine languages and points
+  `PRO_PERK_ITEMS` at it, or this page's three "package" strings change to
+  "set". One noun on the page, the FAQ and Stripe.
+- `src/components/pricing/pro-perks-mirror.ts`: delete the local
+  `ProPerk` interface and `PRO_PERK_ITEMS` literal, and write
+  `export { PRO_PERK_ITEMS, type ProPerk } from "@/config/pro-perks";`.
+  `INCLUDED_FULL_ANALYSIS_KEYS`, `PRO_PERK_REQUIRES` and `visibleProPerks`
+  stay: they already key the G2 rule on both `pricingPlans.pro.perks.includedFullAnalysis`
+  and wave 4's `proPlan.perks.fullAnalysisIncluded` (held by `hp-fix-minors`),
+  so the included Full Analysis keeps hiding while G2 is closed. The card
+  renders `t(p.key, { defaultValue: p.text })`, which reads wave 4's
+  translated `proPlan.perks.*`.
+- Delete `pricingPlans.pro.perks.*` from the pricing strings (nine files).
 - `src/test/hp-pricing-mirrors.test.ts`, "Pro's card says what wave 4's
-  PRO_PERK_ITEMS says": drop the early return and assert instead that
-  `PRO_PERK_ITEMS` is wave 4's export (identity), that its English texts have
-  no "unlimited", "all-access", "now and future", Freelance or Transition,
-  that one line reads "No daily cap on scans", that the writing line carries
-  `{{perDay}}`/`{{perMonth}}` filled with `WRITING_ALLOWANCE` (5, 60), and
-  that exactly one item is gated on `fullAnalysisOnSale`. Add the same
-  assertions over the Stripe description `create-subscription-checkout`
-  builds, so the page and the checkout cannot disagree again (P6).
+  PRO_PERK_ITEMS says": drop the early return and the placeholder
+  expectations; assert that `PRO_PERK_ITEMS` is wave 4's export (identity),
+  that its English texts have no "unlimited", "all-access", "now and
+  future", Freelance or Transition, that one line reads "No daily cap on
+  scans", that exactly one item is gated on `fullAnalysisOnSale`, and that
+  `proStripeDescription()` equals the page's English list joined the same
+  way (P6). In `hp-pricing-decisions` test 2, the "every mirror key is a
+  shard key" case reads the main locale instead.
+- `hp-integration-one-voice`'s Pro check matches
+  `INCLUDED_FULL_ANALYSIS_KEYS.includes(p.key)` instead of
+  `p.key.endsWith("includedFullAnalysis")`.
 
 ### 7. Mirrors become imports
 
 - `src/lib/home/board-figures.ts` `HOME_WITHHELD_SOURCES` and
   `src/components/pricing/plan-facts.ts` `WITHHELD_SOURCES`: import
-  `MCP_WITHHELD_SOURCES` from `@/config/mcp-withheld` once wave 4 moves it out
-  of mcp-tools.ts (P13); never import mcp-tools on "/".
+  `MCP_WITHHELD_SOURCES` from `@/config/mcp-withheld` once wave 4 moves it
+  out of mcp-tools.ts (P13); never import mcp-tools on "/".
 - `src/lib/home/facts.ts` and `plan-facts.ts`: the scan allowance from
   `src/config/scan-allowance.ts`, the writing allowance from wave 4's
-  `WRITING_ALLOWANCE`, the Builder price and proposal from
-  `@/config/builder-plan` and `BUILDER_PROPOSED` where they exist. The
-  mirror tests (and `hp-integration-one-voice`) keep pinning both pages to
-  one set of facts.
-- Once wave 4's `dataApiPage.builder*` keys are in the main locales, delete
-  `pricingPlans.b2b.builderName`, `builderPrice`, `builderBody`,
-  `builderNotYet` and `builderCta` from the pricing strings (BuilderAndLicence
-  already prefers wave 4's keys).
+  `src/config/writing-allowance.ts` `WRITING_ALLOWANCE`, the Builder price
+  and proposal from `@/config/builder-plan` and `BUILDER_PROPOSED`. The
+  mirror tests and `hp-integration-one-voice` keep pinning both pages to one
+  set of facts.
+- Builder strings: `BuilderAndLicence` prefers wave 4's
+  `dataApiPage.builderName`, `builderBody`, `builderNotYet` and `builderCta`
+  once they are in the main locales; delete those four from
+  `pricingPlans.b2b`. The price stays this page's key until wave 4's
+  `dataApiPage.builderPrice` drops its typed "$" (today `"${{price}} a month,
+  planned"` in all nine languages, which reads "$49" beside money()'s "45 $"
+  in German) and takes `{{price}}` = `money(49, "USD", { lng })`; ask wave 4
+  for that and for "licence" in en-GB `dataApiPage.builderBody`.
+  `hp-pricing-mirrors` already compares the two with exactly those two
+  differences normalised.
 
-### 8. Renewal consent on the server (G7, wave 4)
+### 8. Renewal consent: delete the stand-in, keep the behaviour
 
-`create-subscription-checkout` refuses without `renewalConsent: true` and
-records `renewalConsentVersion` (`"2026-10-17"`) and the time;
-`useProSubscription().subscribe(email, consent)` sends the record. In
-`src/components/pricing/BuyBlock.tsx` `ProBuyConnected`, `onGoPro={() => …}`
-becomes `onGoPro={(consent) => …}` and calls
-`subscribe(user.email ?? undefined, consent)`. If hp/honesty puts the
-final-sale line, the region line and the G7 box into `PurchaseTerms.tsx`,
-delete `SaleTermsLine` and the renewal box from `BuyBlock.tsx`
-(`hp-pricing-decisions` test 4 fails on a duplicate final-sale line).
+Wave 4's contract (w4b/checkout-catalogue db74b6c8):
+`PurchaseTerms kind="subscription" plan="pro"` renders its own required box
+(`[data-auto-renew-box]`, "I agree that Pro renews automatically every month
+at {{price}} until I cancel, and that I can cancel any time from my
+account."), reports it through `onAutoRenewChange`, and `purchaseTerms()`
+sends `autoRenewConsent: true` from the line containing the pressed button;
+`subscribe(emailOverride)` takes no consent argument. When this merges,
+`hp-fix-renewal-box` finds two boxes. In `src/components/pricing/BuyBlock.tsx`
+`ProBuyBlock`:
 
-### 9. Chrome
+- delete the stand-in `<div … data-renewal-consent="">` block (its label,
+  checkbox and the `pricingPlans.pro.consent` text);
+- keep `agreed`, `missing` and the press logic, fed by wave 4's box:
+  ```tsx
+  const block = useRef<HTMLDivElement>(null);
+  const onAutoRenewChange = useCallback((ticked: boolean) => { setAgreed(ticked); if (ticked) setMissing(false); }, []);
+  const press = () => {
+    if (!agreed) {
+      setMissing(true);
+      block.current?.querySelector<HTMLInputElement>("[data-auto-renew-box] input")?.focus();
+      return;
+    }
+    onGoPro();
+  };
+  ```
+  with `ref={block}` on the `data-buy-block="pro"` div, the error
+  paragraph (`pricingPlans.pro.consentError`, `role="alert"`) kept under
+  PurchaseTerms, and
+  `<PurchaseTerms kind="subscription" plan="pro" onAutoRenewChange={onAutoRenewChange} className="mt-1 text-subtle-foreground" />`
+  moved above Go Pro (the box must sit above the button);
+- `ProBuyConnected` keeps `void subscribe(user.email ?? undefined)`: the
+  consent travels in `purchaseTerms()`.
+- `hp-fix-renewal-box` stays as written (exactly one box, wave 4's
+  sentence); `hp-pricing-decisions` test 6 reads the box through
+  `[data-auto-renew-box] input` instead of `label[for]`. Delete
+  `pricingPlans.pro.consent` from the pricing strings.
+- If hp/honesty puts the final-sale and region lines into PurchaseTerms,
+  delete `SaleTermsLine` from `BuyBlock.tsx` (`hp-pricing-decisions` test 4
+  fails on a duplicate final-sale line). Wave 4's PurchaseTerms also shows
+  its own `RegionNotice` to a browser in the territory, beside this block's
+  region line: one of the two goes, by hp/honesty's choice.
 
-`src/pages/home/HomePage.tsx` line 57 and `src/pages/pricing/PricingPage.tsx`
-line 53: `<Header />` becomes `<Header variant="quiet" />` once hp/honesty
-ships the variant (Sign in moves into the Menu sheet when the row does not
-fit, never at a fixed 360 px). The Footer drops Freelance Boost in
-hp/honesty.
+### 9. Chrome (hp/honesty, a precondition: W4)
+
+- `src/components/Footer.tsx` line 30: delete
+  `{ to: "/freelance-boost", key: "footer.links.freelanceBoost", fallback: "Freelance Boost" },`
+  and the `footer.links.freelanceBoost` key in the nine main locales
+  (wave4/integration's Footer carries the same link at line 51 as a literal
+  `<Link to="/freelance-boost" …>Freelance Boost</Link>`: whichever Footer
+  survives the merge loses it).
+- `src/pages/home/HomePage.tsx` and `src/pages/pricing/PricingPage.tsx`:
+  `<Header />` becomes `<Header variant="quiet" />` once hp/honesty ships
+  the variant (Sign in moves into the Menu sheet when the row does not fit,
+  never at a fixed 360 px; no filled button).
+- `hp-fix-switch-over-gate` refuses step 1 until both hold.
+- For design: the comment at `src/index.css` line 272 says "a utility like min-h-6 wins
+  over this base layer"; for links it does not (`a[href]` is 0,1,1). Correct
+  the comment, or lower the rule to `:where(a[href])`.
 
 ### 10. The bake (scripts/prerender-seo.mjs)
 
 - The data entry (line 214 onward) adds
   `export { pricingJsonLd } from "../src/components/pricing/pricing-jsonld";`,
+  `export { pricingMetaKeys } from "../src/components/pricing/pricing-meta";`,
   `export { resolveSaleGates } from "../src/components/pricing/sale-gates";`,
   `export { saleGates, homePlanRows } from "../src/lib/home/sale-gates";` and
   `export { HOME_FIELD_SLUGS, fieldPath } from "../src/lib/home/fields";`.
-- The `path: "/"` block (line 1682): title and description from
+- **The count crawlers read is D1's.** Today the bake's `BOARD_TOTAL` comes
+  from `get_job_board_facets` (line 344), else the list's
+  `totalAllCompanies` (line 407), else a committed snapshot, and prints as a
+  0.93-floored "950,000+" with `COUNTS_BASIS` ("counted {TODAY}, when this
+  page was built", line 1679). The "/" and "/pricing" blocks instead read
+  `rpc/get_board_vendor_counts` (anon, read-only) and print the exact
+  `openTotal` with "counted {date}, {time} UTC" from its `as_of`, or no
+  figure at all when the call fails. Never `BOARD_TOTAL` on these two pages.
+- The `path: "/"` block (line 1684): title and description from
   `home.seo.*`; the body prints the H1 and sub, the `GET /jobs` form
-  (`q`, `location`), the count line with the bake's `COUNTS_BASIS`, the board
-  note, field links from `HOME_FIELD_SLUGS` through the same slugs as
-  `CATEGORY_LANDERS` (line 1124; `hospitality_retail`, never `retail` or
-  `hospitality`), the scan, AI, sources and plan text with no offer while G1,
-  G2 or G2b is closed, and the FAQ inside open `<details>`. No flow figure.
-  JSON-LD offers follow spec 6: the Full Analysis only when
+  (`q`, `location`), the count line above, the board note, field links from
+  `HOME_FIELD_SLUGS` through the same slugs as `CATEGORY_LANDERS` (line
+  1124; `hospitality_retail`, never `retail` or `hospitality`), the scan, AI
+  (with the three `/agents#…` links), sources and plan text with no offer
+  while G1, G2 or G2b is closed, and the FAQ inside open `<details>`. No
+  flow figure; no never-submit sentence while W3 is open. JSON-LD offers:
+  the Full Analysis only when
   `homePlanRows(saleGates()).fullAnalysis.state === "onSale"`, Pro only when
   `.pro` is non-null. `checkRetired` already covers "/" (line 1296).
-- The `path: "/pricing"` block (line 3452): title and description from
-  `pricingPlans.meta.*`; the body prints the gated page from the main-locale
-  strings of step 3 (Before you buy, the three cards with their gate
-  sentences, the comparison and FAQ inside open `<details>`, the limits
-  table); JSON-LD is `pricingJsonLd(resolveSaleGates())` beside the
-  breadcrumb, replacing the AggregateOffer built from every paid product
-  (which would advertise prices that are not on sale).
+- The `path: "/pricing"` block (line 3453): title and description from
+  `pricingMetaKeys(resolveSaleGates())` (closed today: `meta.titleNoPro`,
+  `meta.descriptionClosed`); the body prints the gated page from the
+  main-locale strings of step 3 (Before you buy, the three cards with their
+  gate sentences, the comparison and FAQ inside open `<details>`, the limits
+  table), with the no-alerts sentences while `alertsStatable` is false;
+  JSON-LD is `pricingJsonLd(resolveSaleGates())` beside the breadcrumb.
+- `preloadFor` (line 1088): add the HomePage chunk for path "/" and the
+  PricingPage chunk for "/pricing" (`chunkFor("HomePage")`,
+  `chunkFor("PricingPage")`), as the Jobs chunk is for "/jobs": the LCP
+  gate depends on it.
 
 ### 11. Links that meant the scanner
 
-Change the 16 `/#upload` links to `/resume-checker#upload` (Header.tsx line
-70, ProductPreview.tsx 52, account/SetupChecklist.tsx 35, JobPosting.tsx 316,
-Account.tsx 815/907/925/1360, Jobs.tsx 5059/5084/5497/7015/8201/10842; the two
-in Pricing.tsx go with the file), so no visitor takes the redirect hop. Then
-read each `to="/"`, `href="/"` and `navigate("/")` in `src/pages` and
-`src/components` (about 40 in 23 files): a logo or "home" link stays; a scan
-call to action becomes `/resume-checker`.
+- `src/components/Header.tsx` `scrollToUpload` (design lines 61-74;
+  wave4/integration lines 40-58): replace
+  ```ts
+  if (location.pathname !== "/") {
+    navigate("/#upload");
+    return;
+  }
+  window.scrollTo({ top: window.innerHeight, behavior: "smooth" });
+  ```
+  with `navigate("/resume-checker#upload");`. On the new "/" there is no
+  `#upload`, and the old branch would scroll one screen down the board
+  instead of opening the scanner. `hp-routes` holds it (step 1).
+- `src/pages/ResumeBuilder.tsx` line 327
+  `window.location.href = "/?rescan=1#upload";` becomes
+  `"/resume-checker?rescan=1#upload"`, and
+  `the-builder-opened-an-old-draft-for-a-new-scan-and-one-rewrite-replaced-several-bullets.test.tsx`
+  line 153 expects `["/resume-checker?rescan=1#upload"]`.
+- The 16 `/#upload` links become `/resume-checker#upload` (ProductPreview.tsx
+  52, account/SetupChecklist.tsx 35, JobPosting.tsx 316, Account.tsx
+  815/907/925/1360, Jobs.tsx 5059/5084/5497/7015/8201/10842; the Header's is
+  above; the two in Pricing.tsx go with the file). Then read each
+  `to="/"`, `href="/"` and `navigate("/")` in `src/pages` and
+  `src/components` (about 40 in 23 files): a logo or "home" link stays; a
+  scan call to action becomes `/resume-checker`.
 
 ### 12. free-keyword-scan stamp (H0)
 
 hp/honesty's H0 removes the free report's 21 probability references and the
 Scan Pack offer; its only server part is a re-stamp of free-keyword-scan
-after both `w4b/generators` and `w4b/payments-delivery` have stamped it:
-`supabase/functions/free-keyword-scan/index.ts` line 470,
-`const FN_BUILD = "free-keyword-scan.2026-10-14.1";`, becomes
-`"free-keyword-scan.<switch-over day>.1"`, which reads later than
-2026-10-14.22.
+after every wave-4 stamp. Today: `w4b/payments-delivery` .2026-10-14.22,
+`w4b/generators` .2026-10-14.24, `wave4/integration` .2026-10-14.29
+(`supabase/functions/free-keyword-scan/index.ts`, `const FN_BUILD`). H0's
+stamp is `"free-keyword-scan.<switch-over day>.1"`, a day later than all of
+them.
 
 ### 13. Analytics
 
@@ -489,57 +705,70 @@ re-derive `VISITOR_BUDGET_PER_HOUR` in
 
 ### 14. Verify section 98 (`scripts/verify-deploy.d/98-home-pricing.sh`)
 
-A frontend and prerender deploy; read-only GETs with the Googlebot UA, in the
-shape of section 83. Claims (every one FAILs before the deploy by design):
+A frontend and prerender deploy; read-only GETs with the Googlebot UA, one
+headless run for the rendered claims, in the shape of section 83. Every
+claim FAILs before the deploy by design.
 
-- C1 "/" serves the owner's H1 "Live jobs, straight from employers' own
-  hiring systems", a `<form action="/jobs" method="get">` with `name="q"`
-  and `name="location"`, and a count line that names its date basis.
+- C1 "/" serves the owner's H1, a `<form action="/jobs" method="get">` with
+  `name="q"` and `name="location"`, and a count line whose figure and stamp
+  equal `get_board_vendor_counts`' `openTotal` and `as_of` (exact figure,
+  "counted {date}, {time} UTC"), read by the section itself; no "950,000+"
+  style floor.
 - C2 "/" carries no "new · " flow pairing and no word "verified".
-- C3 every `/jobs/field/` link on "/" is one of the category list's slugs
-  (read from this checkout); none is `/jobs/field/retail` or
-  `/jobs/field/hospitality`.
+- C3 every `/jobs/field/` link on "/" is one of the category list's slugs;
+  none is `/jobs/field/retail` or `/jobs/field/hospitality`.
 - C4 "/pricing" serves "All sales are final", names the EU, the EEA, the UK
   and India, and names the currency, time zone and IP checks, without
-  "billing address"; it names neither Freelance Boost nor Transition Pro and
-  prints no "unlimited".
+  "billing address".
 - C5 while `sellerIdentity(SELLER)` is null in this checkout: no Offer for
-  the Full Analysis or Pro in the JSON-LD of "/" or "/pricing", and no buy
-  control in the baked HTML.
-- C6 the free-keyword-scan preflight's `x-fn-build` is later than
-  2026-10-14.22: `build_ge free-keyword-scan "$H98" 2026-10-14 23`.
+  the Full Analysis or Pro in the JSON-LD of "/" or "/pricing", no buy
+  control in the baked HTML, and the /pricing description names no price.
+- C6 the free-keyword-scan preflight's `x-fn-build` is H0's own stamp:
+  `build_ge free-keyword-scan "$H98" <switch-over day> 1`.
 - C7 the page React renders: the served entry and the English chunks carry
-  the homepage H1 and do not carry the retired homepage hero's strings.
-- C8 "/#upload" in a browser lands on `/resume-checker#upload` (one headless
-  run, read-only), and "/resume-checker" still serves the scanner.
+  the homepage H1 and not the retired homepage hero's strings.
+- C8 "/#upload" in a browser lands on `/resume-checker#upload`, and
+  "/resume-checker" still serves the scanner.
+- C9 (headless, the rendered DOM of "/" and "/pricing", footer and header
+  included): no "Freelance Boost", "Transition Pro", "Premium", "Scan Pack"
+  or "unlimited" anywhere on either page, and exactly one filled button
+  across header and main.
+- C10 the apply agent is retired: `rpc/agent_sender_public_status` answers
+  false, or /trust serves wave 4's retirement sentence; while neither holds,
+  "/" and "/pricing" carry no "never submit".
+- G3 (W5) and G4 (W6) are owner and ledger preconditions; the section
+  prints them as notes, not claims.
 
 ### 15. Before and after
 
 - **Baseline (the day before):** run
-  `keep/home-pricing-design/build/integration/tools/measure.cjs` against the
-  live "/" and "/pricing" (point `PAGES` at production), plus a Googlebot
-  curl of both, and save the numbers: live LCP is 1.12 s at 375 per the spec.
+  `keep/home-pricing-design/build/final/tools/measure.cjs` against the live
+  "/" and "/pricing" (point `PAGES` at production), plus a Googlebot curl of
+  both, and save the numbers: live LCP is 1.12 s at 375 per the spec.
 - **Lab gates at +1 day, on production:** LCP at 375 throttled 1.2 s or
   less, at 1280 2.5 s or less; CLS 0.02 or less with a scroll started before
-  the list answers; axe 0 violations; no horizontal overflow at 320, 360 and
-  375 px in the nine languages with every `<details>` open; the search box
-  and first posting on the 375x812 first screen; first-load JS of "/" 340 kB
-  gzip or less on the build; at most four Supabase data calls on "/"
-  (vendor counts, freshness, list, fill curve) plus analytics; mcp-tools, the
-  Index chunk, ResumeUploader and use-product-checkout not loaded on "/".
-  Any gate failing is a fix before anything else ships.
-- **Funnel at +7 and +28 days**, deduplicated by visitor (the funnel fixed on
-  2026-10-01), against the 28 days before: sessions landing on "/"
-  (`landing_view`, `landingPage` "/"), the share that reach the board
-  (`job_board` events) and a posting page (`job_page` `posting_view`),
-  employer apply clicks (`job_board` `apply_click`), uploads site-wide and
-  from `/resume-checker` (`upload_started`, `upload_completed`), accounts
-  created, `/pricing` views, and `checkout_started` (zero while the gates are
-  closed). Report referred traffic (referral, social, organic) apart from
-  direct: the 30-day funnel of 2026-10-01 was 131,336 direct against 22
-  referral and 15 social, so the direct line says little about people.
-- **Rollback triggers:** the board's anonymous-budget refusals rise (the list
-  call cannot starve upload or checkout; they have their own counters);
+  the list answers, in English AND in a cold German and Spanish load at 375
+  (browser locale, as `tools/probe.cjs` does); axe 0 violations; 44 px
+  targets under a coarse pointer (CDP touch emulation); no horizontal
+  overflow at 320, 360 and 375 px in the nine languages with every
+  `<details>` open, and none under text spacing in German at 320; the
+  search box and first posting on the 375x812 first screen; first-load JS of
+  "/" 340 kB gzip or less on the build (predicted about 331 kB); at most four
+  Supabase data calls on "/" (vendor counts, freshness, list, fill curve)
+  plus analytics; mcp-tools, the Index chunk, ResumeUploader and
+  use-product-checkout not loaded on "/". Any gate failing is a fix before
+  anything else ships.
+- **Funnel at +7 and +28 days**, deduplicated by visitor, against the 28
+  days before: sessions landing on "/" (`landing_view`, `landingPage` "/"),
+  the share that reach the board (`job_board`) and a posting page
+  (`job_page` `posting_view`), employer apply clicks (`job_board`
+  `apply_click`), uploads site-wide and from `/resume-checker`
+  (`upload_started`, `upload_completed`), accounts created, `/pricing`
+  views, and `checkout_started` (zero while the gates are closed). Report
+  referred traffic (referral, social, organic) apart from direct: the 30-day
+  funnel of 2026-10-01 was 131,336 direct against 22 referral and 15
+  social.
+- **Rollback triggers:** the board's anonymous-budget refusals rise;
   uploads site-wide fall by half or more at +7 with no recovery at +28;
   errors on "/" rise in the error dashboard.
 
@@ -547,9 +776,10 @@ shape of section 83. Claims (every one FAILs before the deploy by design):
 
 The builder's own record, kept for detail. Where it and the sections above
 differ, the sections above are current: the switch-over plan replaces the
-builder's, the integration changed the shared sentences listed under "What
-the integration changed", and the integration run's numbers supersede the
-builder's.
+builder's, the integration and the fix round changed the sentences listed
+under "What the integration changed" and "What the fix round changed" (no
+never-submit sentence, the rail's wording and day, the three exits, "within"
+for the scan time), and the fix round's numbers supersede the builder's.
 
 ### Files
 
