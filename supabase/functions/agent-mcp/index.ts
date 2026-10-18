@@ -326,7 +326,12 @@ const SUPPORTED_METHODS = ["initialize", "tools/list", "tools/call", "prompts/li
 // 2026-10-11.29 (wave 4 round 2 integration): a place typed after "not",
 // "except", "outside" and the like is never lifted into the location filter,
 // as job-board reads it (S12-172 parity, job-board's handoff).
-const FN_BUILD = "agent-mcp.2026-10-11.29";
+// 2026-10-11.30 (wave 4 round 2 fixes): apply_myself keeps a factual clause
+// inside a work-done or motivation question with the person (start date, pay,
+// references, gaps, where they live, covenants); fit_resume's description
+// names the rule its gate applies (a confirmed key or a proven account), not
+// "any key".
+const FN_BUILD = "agent-mcp.2026-10-11.30";
 /** Where a free key is minted — the page every refusal in this file points at. */
 const MINT_URL = "https://resumebooster.work/data-api";
 /** Where a pass is bought, signed in — the fix every pass refusal names. */
@@ -1489,7 +1494,7 @@ const TOOLS = [
     title: "Score a CV against open jobs",
     description:
       "Score a CV against open jobs: reads the occupation out of resumeText (or uses `query`), searches the board for it and scores up to 20 results 0-100 with the matched and missing terms. " +
-      `Free on any key: ${FIT_FREE_PER_DAY} scorings a day; an account with a paid plan gets ${FIT_FULL_PER_DAY.toLocaleString("en-US")}. ` +
+      `Free on a confirmed key (one from ${MINT_URL}) or on an account that has proven its mailbox: ${FIT_FREE_PER_DAY} scorings a day; an account with a paid plan gets ${FIT_FULL_PER_DAY.toLocaleString("en-US")}. ` +
       "This connector keeps no copy of the CV it scores; send it here only, never to the search tools. A null fit means the posting has no stored text to score. " + KEYED_TOOL_SENTENCE,
     annotations: READS_THE_BOARD,
     inputSchema: {

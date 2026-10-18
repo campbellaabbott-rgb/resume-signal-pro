@@ -43,8 +43,11 @@
  * corpus by src/test/a-question-about-your-history-is-never-drafted-from-a-cv.
  */
 import {
+  FACTUAL,
   OWN_STATUS,
   PERSONAL_HISTORY,
+  PERSON_ASKS,
+  PERSON_FACT_NOUNS,
   PROTECTED_FACTUAL,
   asksAboutWorkDone,
   classifyQuestion,
@@ -153,14 +156,20 @@ export function laterSentencesArePlain(label: string): boolean {
 export function hintIsPlain(hint: string | undefined): boolean {
   const h = cleanQuestionLabel(hint ?? "");
   if (!h) return true;
-  if (LEAVING.test(h) || PROTECTED_FACTUAL.test(h) || PERSONAL_HISTORY.test(h)) return false;
+  if (LEAVING.test(h) || PROTECTED_FACTUAL.test(h) || PERSONAL_HISTORY.test(h) || PERSON_ASKS.test(h) || PERSON_FACT_NOUNS.test(h)) return false;
   return h.split(SENTENCES).every((s) =>
     classifyQuestion(s, "textarea") === "draftable" && topicOf(s) === "other" && !OWN_STATUS.test(s));
 }
 
-/** True when the label is one of the motivation questions and asks nothing of the person's status. */
+/**
+ * True when the label is one of the motivation questions and asks nothing of
+ * the person's status, and no fact either: "Why do you want to work here, and
+ * how soon you could start" carries a second, factual ask (review of wave 4
+ * round 2).
+ */
 export function isMotivationQuestion(label: string): boolean {
   if (!MOTIVATION.test(label) || PROTECTED_FACTUAL.test(label) || PERSONAL_HISTORY.test(label) || LEAVING.test(label)) return false;
+  if (FACTUAL.test(label) || PERSON_ASKS.test(label) || PERSON_FACT_NOUNS.test(label)) return false;
   if (!laterSentencesArePlain(label)) return false;
   return !OWN_STATUS.test(label.replace(MOTIVATION_OPENING, " "));
 }

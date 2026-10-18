@@ -370,7 +370,11 @@ const LIST_FILTERS = [
 // each label, refuses a protected status inside a compound work-done
 // question and lists no hidden Greenhouse field or unasked GDPR consent
 // (S12-081, S12-082, S12-173).
-const FN_BUILD = "public-api.2026-10-11.27";
+// 2026-10-11.30 (wave 4 round 2 fixes): the application route keeps a factual
+// clause inside a work-done or motivation question with the person (when they
+// could start, pay, references, gaps, where they live, covenants), as
+// ANSWERED_BY_MEANS already says, and a hint asking for pay is not plain.
+const FN_BUILD = "public-api.2026-10-11.30";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",

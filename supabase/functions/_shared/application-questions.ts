@@ -254,6 +254,21 @@ export const PROTECTED_DEMOGRAPHIC = /(lgbt\w*|transgender|\btrans\s+(?:man|woma
 export const RESUME_PROMPT = /^\s*(?:please\s+)?(?:describe|tell\s+(?:us|me)\s+about|explain|share|walk\s+(?:us|me)\s+through|discuss|elaborate\s+on|outline|give\s+(?:us\s+)?an?\s+example|what\s+(?:is|was)\s+your\s+experience|what\s+experience|how\s+many\s+years\s+(?:of\s+)?experience|how\s+much\s+experience)\b/i;
 export const ABOUT_WORK_DONE = /\b(?:experience[ds]?|worked|working\s+(?:with|on|in)|handl(?:ed|ing)|process(?:ed|ing)|car(?:ed|ing)\s+for|administer(?:ed|ing)|background\s+in|familiar(?:ity)?\s+with|knowledge\s+of)\b/i;
 export const OWN_STATUS = /\b(?:have|has)\s+you\s+(?:ever\s+)?been\b|\bare\s+you\b|\byou\s+(?:have|are|were)\s+(?:ever\s+)?(?:been\s+)?(?:convicted|arrested|charged|pregnant|vaccinated)\b|\byour\s+(?:own\s+)?(?:age|citizenship|immigration\s+status|visa(?:\s+status)?|criminal|convictions?|medical|health|disabilit\w*|pregnan\w*|vaccination\s+status)\b|\bany\s+(?:criminal|convictions?|arrests?|pending\s+charges?|medical|health|disabilit\w*)|\b(?:convictions?|arrests?|criminal\s+(?:record|history|charges?)|(?:medical|health)\s+conditions?|disabilit\w*)\s+(?:that\s+)?you\b|\bconfirm\s+(?:that\s+)?you\b|\bwhether\s+you\b|\b(?:do|will|would)\s+you\s+(?:need|require|hold|submit)\b|\byour\s+(?:own\s+|current\s+|expected\s+|desired\s+)?(?:hourly\s+|day\s+|daily\s+)?(?:rate|wages?|pay|salary|remuneration)\b/i;
+/**
+ * A clause or sentence that asks the person for a fact no CV holds, in the
+ * words FACTUAL's whole-label patterns miss (review of wave 4 round 2): when
+ * they could start, what they expect or were paid, their references, any
+ * gaps, where they live. Always the person's, wherever it sits. Mirrored in
+ * worker/src/questions/protected.ts.
+ */
+export const PERSON_ASKS = /\b(?:your|two|three|four|\d)\s+(?:professional\s+)?references?\b|\breferences?\s+(?:we|that\s+we|i)\s+(?:can|could|may)\s+(?:contact|call|reach)\b|\bany\s+(?:employment\s+)?gaps?\b|\bwhere\s+you\s+(?:currently\s+)?(?:live|reside|are\s+(?:based|located))\b|\b(?:how\s+soon|when)\s+(?:you\s+)?(?:could|can|would|will)\s+(?:you\s+)?(?:start|begin|join|be\s+available)\b|\bpay\s+you\s+(?:expect|want|need|would\s+(?:accept|expect|want))\b|\bexpect(?:ed)?\s+to\s+(?:earn|make|be\s+paid)\b|\b(?:need|want|expect|like)\s+to\s+be\s+paid\b|\bwhat\s+you\s+(?:were|are|get|got)\s+paid\b/i;
+/**
+ * Legal and employment facts that are the person's in a clause of their own
+ * ("... and any restrictive covenants") but may be the work's object
+ * ("experience drafting restrictive covenants"), so they follow the clause
+ * rule PROTECTED_FACTUAL follows. Mirrored in worker/src/questions/protected.ts.
+ */
+export const PERSON_FACT_NOUNS = /\brestrictive\s+covenants?\b|\bnon-?(?:solicit\w*|compete\w*)\b|\bconflicts?\s+of\s+interest\b/i;
 /** A later sentence is its own question; a dotted initialism or "e.g." ends none. */
 export const SENTENCE_BREAK = /[?!;]\s+|(?<=[a-z]{3})\.\s+(?=[A-Z])/;
 /** Where one clause of a sentence ends and the next begins: a comma, or a joining word. */
@@ -289,12 +304,19 @@ export const PERSON_STATE = /\b(?:status(?:es)?|expectations?|requirements?|requ
  * with no object ("your experience and ...") every protected later clause is
  * a second ask. A protected status named before the work words ("your current
  * visa status and experience") is not the work's object either.
+ *
+ * The review of wave 4 round 2 found the clause loop read only protected
+ * statuses: "Describe your experience in sales and how soon you could start",
+ * "... and the pay you expect", "... and two references we can contact",
+ * "... and any restrictive covenants" were drafted. A later clause is now
+ * also read against FACTUAL, PERSON_ASKS (always the person's) and
+ * PERSON_FACT_NOUNS (the clause rule).
  */
 export function asksAboutWorkDone(label: string): boolean {
   if (!RESUME_PROMPT.test(label) || !ABOUT_WORK_DONE.test(label) || OWN_STATUS.test(label)) return false;
   const [first, ...later] = label.split(SENTENCE_BREAK);
   // "Tell us about your experience. Green card holder?" is two questions.
-  if (later.some((s) => PROTECTED_FACTUAL.test(s) || PERSONAL_HISTORY.test(s) || FACTUAL.test(s))) return false;
+  if (later.some((s) => PROTECTED_FACTUAL.test(s) || PERSONAL_HISTORY.test(s) || FACTUAL.test(s) || PERSON_ASKS.test(s) || PERSON_FACT_NOUNS.test(s))) return false;
   const work = ABOUT_WORK_DONE.exec(first);
   if (!work) return false;
   // History named before the work words is not the work's object, nor is a protected status.
@@ -306,8 +328,9 @@ export function asksAboutWorkDone(label: string): boolean {
   const tookObject = /[\p{L}\p{N}]/u.test(parts[0] ?? "");
   for (let i = 2; i < parts.length; i += 2) {
     const clause = parts[i];
-    if (PERSONAL_HISTORY.test(clause)) return false;
-    if (PROTECTED_FACTUAL.test(clause) && (!tookObject || SECOND_ASK.test(clause) || PERSON_STATE.test(clause))) return false;
+    if (PERSONAL_HISTORY.test(clause) || PERSON_ASKS.test(clause)) return false;
+    const factual = PROTECTED_FACTUAL.test(clause) || FACTUAL.test(clause) || PERSON_FACT_NOUNS.test(clause);
+    if (factual && (!tookObject || SECOND_ASK.test(clause) || PERSON_STATE.test(clause))) return false;
   }
   return true;
 }

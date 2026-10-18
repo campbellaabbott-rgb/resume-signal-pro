@@ -77,7 +77,10 @@ import { APPLY_AGENT_ON } from "../_shared/apply-agent-switch.ts";
 // status in a later clause of a work-done prompt goes to the person, and the
 // protected list learns visa, rate, accommodation and immunisation asks), so
 // a build string never names two versions of the bundle.
-const BUILD_VERSION = "2026-10-11.27";
+// 2026-10-11.30 (wave 4 round 2 fixes): the same switched-off code, carrying
+// the classifier that keeps a factual clause (start date, pay, references,
+// gaps, covenants) inside a work-done prompt the person's.
+const BUILD_VERSION = "2026-10-11.30";
 // Provable from outside with no key: the CORS preflight and every response
 // carry this in x-fn-build.
 const FN_BUILD = `apply-agent.${BUILD_VERSION}`;

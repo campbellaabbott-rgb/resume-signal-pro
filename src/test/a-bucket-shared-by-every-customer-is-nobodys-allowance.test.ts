@@ -140,7 +140,9 @@ describe("a bucket shared by every customer is nobody's allowance", () => {
     // The upgrade pointer to a plan nobody can buy is gone (economics, D2 §7).
     expect(MCP_RAW).not.toMatch(/Upgrade the key at /);
     const tool = between(MCP, 'name: "fit_resume"', 'name: "board_stats"');
-    expect(tool).toMatch(/Free on any key: \$\{FIT_FREE_PER_DAY\} scorings a day/);
+    // Wave 4 round 2 fixes: the description names the gate's rule, not "any key".
+    expect(tool).toMatch(/Free on a confirmed key \(one from \$\{MINT_URL\}\) or on an account that has proven its mailbox: \$\{FIT_FREE_PER_DAY\} scorings a day/);
+    expect(tool).not.toMatch(/Free on any key/);
     expect(tool).not.toMatch(/PAID|Agent (?:Pass|plan)/);
     // The instructions name fit_resume only through the registry, and only
     // to the full edition, beside the free key that opens it.
