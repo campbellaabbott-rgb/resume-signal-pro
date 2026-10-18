@@ -22,14 +22,15 @@
 #     not run it (a GET probe: PostgREST runs it read-only);
 #   - the published frontend carries this round: the consent banner chunk and
 #     the analytics consent key (our analytics wait for a yes, S12-011), the
-#     account chunk with the connected-AIs card, account-settings and each
-#     order's Report a problem, the
+#     account chunk with the connected-AIs card, account-settings, each
+#     order's Report a problem and the Security card's line saying how and
+#     when the address was proven, the
 #     Privacy chunk naming Mailgun and ipinfo among the processors (S12-049),
 #     and a Shortlist chunk that asks for the uploader's attestation and reads
 #     no demographics table (D14);
 #   - what no read here can prove is INFO: 20261011171000's revoked writes
-#     (the owner's read below), and the host's own analytics script (owner
-#     decision D5).
+#     and 20261011172000's archived fix-plan mail (the owner's reads below),
+#     and the host's own analytics script (owner decision D5).
 #
 # READ-ONLY. OPTIONS preflights run no function logic; the RPC probe is a GET,
 # which PostgREST runs in a read-only transaction; the rest are GETs of public
@@ -98,8 +99,8 @@ else
 
   VD92AC_AC=$(vd92ac_chunk Account)
   if [ -z "$VD92AC_AC" ]; then echo "FAIL  the live entry names no Account chunk: the account home cannot be judged"
-  elif grep -q 'account-settings' /tmp/vd_92ac_Account.js && grep -q 'accountConnected.title' /tmp/vd_92ac_Account.js && grep -q 'account-order' /tmp/vd_92ac_Account.js && grep -q 'orders.reportProblem' /tmp/vd_92ac_Account.js; then echo "PASS  $VD92AC_AC carries the connected-AIs card, account-settings, account-order and each order's Report a problem (the account home of this round)"
-  else echo "FAIL  $VD92AC_AC lacks the connected-AIs card, account-settings, account-order or Report a problem: the account home of this round is not published"; fi
+  elif grep -q 'account-settings' /tmp/vd_92ac_Account.js && grep -q 'accountConnected.title' /tmp/vd_92ac_Account.js && grep -q 'account-order' /tmp/vd_92ac_Account.js && grep -q 'orders.reportProblem' /tmp/vd_92ac_Account.js && grep -q 'accountSettings.provenOn' /tmp/vd_92ac_Account.js; then echo "PASS  $VD92AC_AC carries the connected-AIs card, account-settings, account-order, each order's Report a problem and the line saying how and when the address was proven (the account home of this round)"
+  else echo "FAIL  $VD92AC_AC lacks the connected-AIs card, account-settings, account-order, Report a problem or the proof line: the account home of this round is not published"; fi
 
   VD92AC_PR=$(vd92ac_chunk Privacy)
   if [ -z "$VD92AC_PR" ]; then echo "FAIL  the live entry names no Privacy chunk"
@@ -114,4 +115,5 @@ else
 fi
 
 echo "INFO  20261011171000 (no client role may write shortlist_demographics) is proven by the owner's read: select has_table_privilege('authenticated', 'public.shortlist_demographics', 'INSERT') (false); erasing the rows already recorded is the owner's choice: DELETE FROM public.shortlist_demographics"
+echo "INFO  20261011172000 (fix-plan mail queued before the marketing pause is archived, never sent) is proven by the owner's read: select count(*) from pgmq.q_transactional_emails where message->>'label' = 'fix-plan-drip' (0; the archived ones are in pgmq.a_transactional_emails)"
 echo "INFO  the host's own analytics script is not gated by our banner: turning it off is owner decision D5 (check that /~flock.js is gone from the page source of /auth)"
