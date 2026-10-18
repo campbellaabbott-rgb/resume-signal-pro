@@ -98,7 +98,7 @@ describe("the static head", () => {
 });
 
 const DIST = resolve(ROOT, "dist");
-const BUILT = ["index.html", "jobs/index.html", "pricing/index.html"].map((p) => resolve(DIST, p));
+const BUILT = ["dist/index.html", "dist/jobs/index.html", "dist/pricing/index.html"].map((p) => resolve(ROOT, p));
 describe.skipIf(skipWithoutDist(BUILT.every((p) => existsSync(p))))("the built pages", () => {
   it.each(BUILT.map((p) => [p.slice(DIST.length + 1)] as const))("%s carries the same non-blocking font head", (rel) => {
     expect(fontProblems(readFileSync(resolve(DIST, rel), "utf8"))).toEqual([]);

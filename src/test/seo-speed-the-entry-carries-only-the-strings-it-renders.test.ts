@@ -115,7 +115,7 @@ describe("the modules the build writes", () => {
 
 // ---- the built app ----
 const DIST = resolve(ROOT, "dist");
-const INDEX = resolve(DIST, "index.html");
+const INDEX = resolve(ROOT, "dist/index.html");
 const hasDist = existsSync(INDEX) && existsSync(resolve(DIST, "assets"));
 
 /** The entry script the built index.html loads, and every chunk it imports statically. */
@@ -182,7 +182,7 @@ describe.skipIf(skipWithoutDist(hasDist))("the built app's entry", () => {
   });
 });
 
-const METHODOLOGY = resolve(DIST, "methodology/index.html");
+const METHODOLOGY = resolve(ROOT, "dist/methodology/index.html");
 describe.skipIf(skipWithoutDist(existsSync(METHODOLOGY)))("the bake", () => {
   it("still reads a namespace the entry no longer carries, from the one en.json", () => {
     const html = readFileSync(METHODOLOGY, "utf8");
