@@ -78,6 +78,9 @@ beforeEach(() => {
     { stripe_session_id: "cs_making", customer_email: EMAIL, product_name: "Full Resume Analysis", product_type: "full_analysis", status: "generating", amount_cents: 500, created_at: "2026-10-04T10:00:00Z" },
     { stripe_session_id: "cs_bound", customer_email: "typed.at.checkout@example.com", product_name: "Full Resume Analysis", product_type: "full_analysis", status: "delivered", amount_cents: 500, created_at: "2026-10-05T10:00:00Z" },
   );
+  // The checkout's record of the currency the buyer paid in (the price is
+  // shown only with it).
+  db.rows("checkout_starts").push({ stripe_session_id: "cs_ready", currency: "usd" });
 });
 
 const ask = async (token = SESSION) => {
@@ -89,7 +92,7 @@ describe("S12-002: a proof recorded once keeps counting", () => {
   it("a password session with no proof sees no order by the address, and says why", async () => {
     const r = await ask();
     expect(r.status).toBe(200);
-    expect(r.build).toBe("get-account-data.2026-10-14.29");
+    expect(r.build).toBe("get-account-data.2026-10-14.30");
     expect(r.json.mailboxProven).toBe(false);
     expect(r.json.orders).toEqual([]);
     expect(r.json.credits).toBe(0);

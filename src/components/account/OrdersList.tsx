@@ -64,12 +64,24 @@ export function reportProblemHref(o: Pick<AccountOrder, "id" | "sessionId" | "pr
   return `mailto:${AUTH_SUPPORT_EMAIL}?subject=${encodeURIComponent(line)}`;
 }
 
-function money(cents: number | null, currency: string | null): string | null {
-  if (typeof cents !== "number" || cents <= 0 || !currency) return null;
+/**
+ * Stripe's amounts are in the currency's smallest unit, and Stripe's own list
+ * says which currencies have none (yen, won) or three decimals. Intl's digits
+ * differ from Stripe's for a few (HUF, ISK), so Stripe's list decides.
+ */
+const ZERO_DECIMAL = new Set(["bif", "clp", "djf", "gnf", "jpy", "kmf", "krw", "mga", "pyg", "rwf", "ugx", "vnd", "vuv", "xaf", "xof", "xpf"]);
+const THREE_DECIMAL = new Set(["bhd", "jod", "kwd", "omr", "tnd"]);
+
+/** An order's price in the currency it was paid in, or nothing when either is unknown. */
+export function money(cents: number | null, currency: string | null, locale?: string): string | null {
+  if (typeof cents !== "number" || cents <= 0 || !currency || !/^[a-z]{3}$/i.test(currency)) return null;
+  const code = currency.toLowerCase();
+  const digits = ZERO_DECIMAL.has(code) ? 0 : THREE_DECIMAL.has(code) ? 3 : 2;
+  const amount = cents / 10 ** digits;
   try {
-    return new Intl.NumberFormat(undefined, { style: "currency", currency: currency.toUpperCase() }).format(cents / 100);
+    return new Intl.NumberFormat(locale, { style: "currency", currency: code.toUpperCase(), minimumFractionDigits: digits, maximumFractionDigits: digits }).format(amount);
   } catch {
-    return `${(cents / 100).toFixed(2)} ${currency.toUpperCase()}`;
+    return `${amount.toFixed(digits)} ${code.toUpperCase()}`;
   }
 }
 

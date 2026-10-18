@@ -65,7 +65,10 @@ import { requireWebsiteSession } from "../_shared/website-session.ts";
 // 2026-10-14.29 (wave 4 round 2 integration): carries account-compliance's
 // 2026-10-14.25 and payments-delivery's 2026-10-14.22 (_shared/scan-credits.ts
 // lists a claimed purchase only for the account that claimed it).
-const FN_BUILD = "get-account-data.2026-10-14.29";
+// 2026-10-14.30 (wave 4 round 2 fixes): a plan is not an order (Pro and the
+// agent plan leave the orders list), and an order's price carries the currency
+// the buyer paid in, or no price.
+const FN_BUILD = "get-account-data.2026-10-14.30";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -94,8 +97,20 @@ export type AccountOrder = {
 type DeliveryRow = {
   stripe_session_id: string; product_name?: string | null; product_type?: string | null; status?: string | null;
   amount_cents?: number | null; created_at: string; payment_completed_at?: string | null;
-  generation_error?: string | null; last_retry_error?: string | null;
+  generation_error?: string | null; last_retry_error?: string | null; metadata?: Record<string, unknown> | null;
 };
+
+/**
+ * Subscriptions are plans, not orders: their delivery row is the entitlement,
+ * with no receipt on the session, no saved copy and no page to open. The plan
+ * card shows them.
+ */
+export const PLAN_PRODUCT_TYPES: ReadonlySet<string> = new Set(["pro_subscription", "apply_agent"]);
+
+/** A three-letter currency code, lower case, or null. */
+export function currencyCodeOf(v: unknown): string | null {
+  return typeof v === "string" && /^[a-z]{3}$/i.test(v.trim()) ? v.trim().toLowerCase() : null;
+}
 type ContentRow = { stripe_session_id?: string | null; product_name?: string | null; product_type?: string | null; created_at: string };
 type GrantRow = { id: string; product_name?: string | null; product_type?: string | null; created_at: string; revoked_at?: string | null };
 
@@ -221,7 +236,7 @@ Deno.serve(async (req) => {
     const boundSessions = ((boundRes.data ?? []) as Array<{ stripe_session_id?: unknown }>)
       .map((r) => r.stripe_session_id).filter((v): v is string => typeof v === "string" && !!v);
 
-    const DELIVERY_COLS = "stripe_session_id, product_name, product_type, status, amount_cents, created_at, payment_completed_at, generation_error, last_retry_error";
+    const DELIVERY_COLS = "stripe_session_id, product_name, product_type, status, amount_cents, created_at, payment_completed_at, generation_error, last_retry_error, metadata";
     const none = Promise.resolve({ data: [] as unknown[], error: null });
     const [credits, deliveriesByAddress, deliveriesBound, contentByAddress, contentBound, grantsRes, passesRes] = await Promise.all([
       scanCreditBalance(service as unknown as CreditDb, { provenEmail, userId: user.id, sessionHashes: [] }),
@@ -248,10 +263,27 @@ Deno.serve(async (req) => {
       if (c.stripe_session_id) contentBySession.set(c.stripe_session_id, c);
       else orphanContent.push(c);
     }
+    const allDeliveries = [...((deliveriesByAddress.data ?? []) as DeliveryRow[]), ...((deliveriesBound.data ?? []) as DeliveryRow[])];
+    const planSessions = new Set(allDeliveries.filter((d) => PLAN_PRODUCT_TYPES.has(String(d.product_type ?? ""))).map((d) => d.stripe_session_id));
+    const deliveries = allDeliveries.filter((d) => !planSessions.has(d.stripe_session_id));
+    // The amount is Stripe's amount_total in the buyer's currency: the
+    // checkout's own record of it decides, then the delivery row's; with
+    // neither, no price is shown rather than a guessed one.
+    const currencyBySession = new Map<string, string>();
+    const priced = [...new Set(deliveries.filter((d) => typeof d.amount_cents === "number" && d.stripe_session_id).map((d) => d.stripe_session_id))];
+    if (priced.length) {
+      const starts = await service.from("checkout_starts").select("stripe_session_id, currency").in("stripe_session_id", priced.slice(0, 150));
+      for (const r of ((starts.error ? [] : starts.data) ?? []) as Array<{ stripe_session_id?: unknown; currency?: unknown }>) {
+        const code = currencyCodeOf(r.currency);
+        if (code && typeof r.stripe_session_id === "string") currencyBySession.set(r.stripe_session_id, code);
+      }
+    }
     const orders = new Map<string, AccountOrder>();
-    for (const d of [...((deliveriesByAddress.data ?? []) as DeliveryRow[]), ...((deliveriesBound.data ?? []) as DeliveryRow[])]) {
+    for (const d of deliveries) {
       if (!d.stripe_session_id || orders.has(d.stripe_session_id)) continue;
       const c = contentBySession.get(d.stripe_session_id);
+      const amount = typeof d.amount_cents === "number" ? d.amount_cents : null;
+      const currency = amount === null ? null : currencyBySession.get(d.stripe_session_id) ?? currencyCodeOf(d.metadata?.currency);
       orders.set(d.stripe_session_id, {
         id: d.stripe_session_id,
         sessionId: d.stripe_session_id,
@@ -259,12 +291,12 @@ Deno.serve(async (req) => {
         productType: d.product_type ?? c?.product_type ?? null,
         date: d.payment_completed_at ?? d.created_at,
         status: orderStatusOf(d, !!c),
-        amountCents: typeof d.amount_cents === "number" ? d.amount_cents : null,
-        currency: typeof d.amount_cents === "number" ? "usd" : null,
+        amountCents: currency ? amount : null,
+        currency,
       });
     }
     for (const [sid, c] of contentBySession) {
-      if (orders.has(sid)) continue;
+      if (orders.has(sid) || planSessions.has(sid) || PLAN_PRODUCT_TYPES.has(String(c.product_type ?? ""))) continue;
       orders.set(sid, { id: sid, sessionId: sid, product: c.product_name ?? c.product_type ?? "Purchase", productType: c.product_type ?? null, date: c.created_at, status: "ready", amountCents: null, currency: null });
     }
     for (const g of (grantsRes.data ?? []) as GrantRow[]) {
