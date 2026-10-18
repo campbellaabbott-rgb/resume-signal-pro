@@ -61,6 +61,14 @@ vi.mock("@/integrations/supabase/client", () => {
   };
 });
 vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast: vi.fn(), dismiss() {}, toasts: [] }), toast: vi.fn() }));
+// Purchases open, as once the owner names the seller (owner decision
+// 2026-10-17); and Freelance Boost, cut that day, stands in unhidden for a
+// product this hook sells: the Terms each press carries is what is tested.
+vi.mock("@/lib/purchases-open", () => ({ purchasesOpen: () => true }));
+vi.mock("@/config/products", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/config/products")>();
+  return { ...real, isProductHidden: (id: string) => id !== "freelanceBoost" && real.isProductHidden(id as never) };
+});
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({ session: null, user: null, loading: false }),
   safeNextPath: (s: string) => s,

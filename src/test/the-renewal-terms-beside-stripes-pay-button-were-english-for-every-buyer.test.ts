@@ -23,6 +23,7 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+import { SELLER_NAMED_STUB } from "./helpers/w4b-seller-named";
 import { APPLY_AGENT_SWITCH_ON } from "./helpers/apply-agent-switch-on";
 import { buildIsAtLeast } from "./helpers/fn-build";
 import { CHECKOUT_LANGUAGES, renewalTerms } from "../../supabase/functions/_shared/checkout-policy";
@@ -70,7 +71,9 @@ beforeAll(async () => {
     "https://esm.sh/stripe@18.5.0": STRIPE_STUB,
     "https://esm.sh/@supabase/supabase-js@2.39.3": "export function createClient(...a) { return globalThis.__langClient(...a); }",
   };
-  handlers.pro = await loadEdgeHandler("create-subscription-checkout", stubs);
+  // A seller named (owner decision 2026-10-17): the shipped, empty identity
+  // answers 409 before the session whose terms this file reads.
+  handlers.pro = await loadEdgeHandler("create-subscription-checkout", { ...stubs, ...SELLER_NAMED_STUB });
   // The plan is retired; its dormant purchase code is what this proves.
   handlers.agent = await loadEdgeHandler("create-agent-checkout", { ...stubs, ...APPLY_AGENT_SWITCH_ON });
 }, 240_000);
@@ -88,7 +91,8 @@ async function subscribe(which: "pro" | "agent", body: Record<string, unknown>) 
   const res = await handlers[which](new Request(`https://harness.supabase.co/functions/v1/${fn}`, {
     method: "POST",
     headers: { "content-type": "application/json", authorization: "Bearer jwt-buyer", origin: "https://resumebooster.work", "cf-connecting-ip": "198.51.100.41" },
-    body: JSON.stringify(body),
+    // Pro's page sends the buyer's tick on its own renewal box (owner decision 2026-10-17).
+    body: JSON.stringify(which === "pro" ? { autoRenewConsent: true, ...body } : body),
   }));
   expect(res.status).toBe(200);
   expect(buildIsAtLeast(res.headers.get("x-fn-build"), fn, "2026-10-09", 2), String(res.headers.get("x-fn-build"))).toBe(true);

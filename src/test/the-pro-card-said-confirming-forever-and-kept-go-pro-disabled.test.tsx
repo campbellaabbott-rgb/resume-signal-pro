@@ -15,7 +15,10 @@
  * not confirm yet and what to do, and Go Pro can be pressed again.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+// Purchases open, as once the owner names the seller (owner decision 2026-10-17):
+// what this file tests sits behind the buy button that gate hides.
+vi.mock("@/lib/purchases-open", () => ({ purchasesOpen: () => true }));
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { MOUNT_TEST_BUDGET } from "./helpers/mount-budget";
 import en from "../i18n/locales/en.json";
@@ -49,6 +52,9 @@ describe("a buyer back from Stripe whose plan never reads live", () => {
     for (let i = 0; i < PRO_CONFIRM_TRIES + 2; i++) await act(async () => { await vi.advanceTimersByTimeAsync(PRO_CONFIRM_INTERVAL_MS); });
     await waitFor(() => expect(screen.getByText(en.proPlan.notConfirmedYet)).toBeTruthy());
     expect(screen.queryByText(en.proPlan.confirming), "the card still says it is confirming").toBeNull();
+    // Pro's own renewal box is asked for again (owner decision 2026-10-17);
+    // once ticked, nothing else holds the button.
+    fireEvent.click(document.querySelector("[data-auto-renew-box] input")!);
     expect(screen.getByRole("button", { name: /Go Pro/ }).hasAttribute("disabled"), "Go Pro stayed disabled for good").toBe(false);
     expect(invoke.mock.calls.filter(([fn]) => fn === "check-subscription").length).toBe(PRO_CONFIRM_TRIES);
   });

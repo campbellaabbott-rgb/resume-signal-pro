@@ -24,6 +24,7 @@ import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harnes
 import { analyzeResumeHarness, RESUME, type Harness } from "./helpers/analyze-resume-harness";
 import { isProductHidden, PRODUCTS, type ProductId } from "@/config/products";
 import { PRO_INCLUDED_PRODUCT_IDS, PRO_PERKS } from "@/config/pro-perks";
+import { SELLER_NAMED_STUB } from "./helpers/w4b-seller-named";
 
 vi.setConfig({ testTimeout: 60_000, hookTimeout: 180_000 });
 
@@ -71,6 +72,9 @@ beforeAll(async () => {
     "https://esm.sh/stripe@18.5.0": STRIPE_STUB,
     "https://esm.sh/@supabase/supabase-js@2.39.3": "export function createClient() { return globalThis.__perkClient; }",
     "_shared/supabase-client.ts": CLIENT,
+    // A seller named: the stranger's purchase below reaches Stripe, not the
+    // 409 the checkouts answer while the shipped identity is empty.
+    ...SELLER_NAMED_STUB,
   };
   handlers["create-checkout"] = await loadEdgeHandler("create-checkout", stubs);
   handlers["create-product-checkout"] = await loadEdgeHandler("create-product-checkout", stubs);
@@ -108,10 +112,13 @@ const onSale = (Object.keys(PRODUCTS) as ProductId[]).filter((id) => !isProductH
 
 describe("the checkout of every paid tool hands a Pro member the tool, not a bill", () => {
   // The product line of 2026-10-12: the card no longer says "every paid tool"
-  // (the catalogue was cut); one perk line names the one-off products Pro
-  // includes, and they are exactly the ones still on sale.
-  it("PRECONDITION: a Pro perk names the one-off products Pro includes, and they are what is on sale", () => {
-    expect(PRO_PERKS.some((p) => /Full Analysis, Freelance Boost and Transition Pro included/.test(p))).toBe(true);
+  // (the catalogue was cut); one perk line names the one-off product Pro
+  // includes, and since 2026-10-17 (owner decision) it is the only one still
+  // on sale: the Full Analysis.
+  it("PRECONDITION: a Pro perk names the one-off product Pro includes, and it is what is on sale", () => {
+    expect(PRO_PERKS).toContain("The $5 Full Analysis included");
+    expect(PRO_PERKS.some((p) => /Freelance|Transition Pro/.test(p))).toBe(false);
+    expect([...PRO_INCLUDED_PRODUCT_IDS]).toEqual(["fullAnalysis"]);
     expect([...onSale].sort()).toEqual([...PRO_INCLUDED_PRODUCT_IDS].sort());
   });
 

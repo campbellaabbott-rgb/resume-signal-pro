@@ -126,7 +126,8 @@ describe("the affiliate page promises what the server pays", () => {
     const text = document.body.textContent ?? "";
     expect(text).toContain("$10 for each referred first paid month of Pro");
     expect(text).toMatch(/Commissions you have already earned are paid as before/);
-    for (const cut of ["Premium Resume Package", "ATS Defense", "Career Snapshot", "Graduate Game Plan", "scan pack", "interview coach", "$5 per tool sale", "smaller tools"]) {
+    // Freelance Boost and Transition Pro: cut on 2026-10-17 (owner decision).
+    for (const cut of ["Premium Resume Package", "ATS Defense", "Career Snapshot", "Graduate Game Plan", "scan pack", "interview coach", "$5 per tool sale", "smaller tools", "Freelance Boost", "Transition Pro"]) {
       expect(text, cut).not.toContain(cut);
     }
     expect(text).not.toMatch(/20%/);

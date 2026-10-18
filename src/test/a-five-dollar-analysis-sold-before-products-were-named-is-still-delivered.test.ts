@@ -30,6 +30,7 @@
  *     never unpaid.
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { autoRenewMetadata } from "../../supabase/functions/_shared/auto-renew-consent";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { codeOf } from "./helpers/strip-comments";
@@ -257,6 +258,9 @@ function entriesOf(obj: string): Array<[string, string]> {
     // The signed-in buyer's account (wave 4 round 2, _shared/checkout-buyer.ts
     // buyerMetadata): user_id, and nothing else.
     if (p === "...buyerMetadata(caller)") return [["user_id", "caller.id"]];
+    // Pro's renewal consent (owner decision 2026-10-17,
+    // _shared/auto-renew-consent.ts autoRenewMetadata): its version and time.
+    if (p === "...autoRenewMetadata(consentedAt)") return Object.keys(autoRenewMetadata("t")).map((k): [string, string] => [k, `autoRenewMetadata.${k}`]);
     const m = /^([A-Za-z_]\w*)\s*(?::\s*([\s\S]*))?$/.exec(p);
     if (!m) throw new Error(`unreadable metadata entry: ${p}`);
     return [[m[1], (m[2] ?? m[1]).trim()]];

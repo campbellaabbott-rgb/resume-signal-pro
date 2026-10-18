@@ -72,10 +72,13 @@ describe("the next visitor to /freelance-boost on a browser someone bought on", 
     expect(localStorage.getItem(PURCHASE_KEY)).not.toContain(PREVIOUS);
   });
 
-  it("a week on, the mark has lapsed and the page sells again", async () => {
+  // Freelance Boost is no longer sold (owner decision 2026-10-17): once the
+  // mark has lapsed the page sells nothing again, it says it is not sold.
+  it("a week on, the mark has lapsed: the page says it is no longer sold, and sells nothing", async () => {
     localStorage.setItem(PURCHASE_KEY, JSON.stringify({ at: Date.now() - PURCHASE_MEMORY_MS - 1000 }));
     open();
-    expect(await screen.findByRole("button", { name: /Boost my experience/ }, SLOW)).toBeTruthy();
+    await vi.waitFor(() => expect(document.querySelector("[data-no-longer-sold]")).not.toBeNull(), SLOW);
+    expect(screen.queryByRole("button", { name: /Boost my experience/ })).toBeNull();
     expect(screen.queryByText(en.freelanceBoost.openYourLink)).toBeNull();
   });
 });

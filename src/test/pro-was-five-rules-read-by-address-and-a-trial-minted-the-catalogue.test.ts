@@ -26,6 +26,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
+import { SELLER_NAMED_STUB } from "./helpers/w4b-seller-named";
 import { agentDb } from "./helpers/agent-db";
 import { buildIsAtLeast } from "./helpers/fn-build";
 import {
@@ -207,7 +208,12 @@ const STUBS: Record<string, string> = {
   "https://esm.sh/stripe@18.5.0": STRIPE_STUB,
   "https://esm.sh/@supabase/supabase-js@2.39.3": CLIENT,
   "https://esm.sh/@supabase/supabase-js@2": CLIENT,
-  "_shared/supabase-client.ts": "export const getServiceClient = () => globalThis.__proClient;",
+  // A proxy: create-checkout builds its client at module load, before a test
+  // has made its world.
+  "_shared/supabase-client.ts": "export const getServiceClient = () => new Proxy({}, { get: (_t, p) => globalThis.__proClient[p] });",
+  // A seller named (owner decision 2026-10-17): the shipped, empty identity
+  // answers 409 before the purchase paths this file proves.
+  ...SELLER_NAMED_STUB,
   "_shared/ai-fallback.ts":
     "export const chainFrom = (m) => [m]; export const callAIWithModelFallback = async () => { globalThis.__proAiCalls++; return { response: new Response('{}', { status: 500 }), modelUsed: 'fake' }; };",
 };
@@ -221,7 +227,7 @@ beforeAll(async () => {
   const g = globalThis as Record<string, unknown>;
   g.Deno = { env: { get: (k: string) => env[k] } };
   g.EdgeRuntime = { waitUntil: () => undefined };
-  for (const fn of ["create-product-checkout", "check-subscription", "verify-product-purchase", "generate-apply-package", "create-subscription-checkout"]) {
+  for (const fn of ["create-product-checkout", "create-checkout", "check-subscription", "verify-product-purchase", "generate-apply-package", "create-subscription-checkout"]) {
     handlers[fn] = await loadEdgeHandler(fn, STUBS);
   }
 }, 180_000);
@@ -262,39 +268,48 @@ const post = (fn: string, body: Record<string, unknown>, bearer?: string) =>
     body: JSON.stringify(body),
   }));
 
-// The products the line still sells (2026-10-12): the cover letter and the
-// scan pack were cut, so the two Freelance tiers stand in for them.
-describe("create-product-checkout mints a grant only for an account whose plan may mint", () => {
+// The one-off the line still sells (owner decision 2026-10-17): the Full
+// Analysis, which create-checkout mints for a member. The Freelance tiers that
+// stood in here were cut, and create-product-checkout sells nothing now.
+const analysis = (bearer: string) => post("create-checkout", { currency: "usd", tempSessionId: "00000000-0000-4000-8000-0000000000aa" }, bearer);
+describe("the Full Analysis is minted only for an account whose plan may mint", () => {
   it("a password sign-up as a subscriber's address is sent to Stripe, whatever the address's cache row says", async () => {
     db.rows("pro_subscribers").push({ email: "subscriber@example.com", status: "active", current_period_end: soon() });
-    const body = await (await post("create-product-checkout", { productId: "freelanceBoost" }, "jwt-squatter")).json();
+    const body = await (await analysis("jwt-squatter")).json();
     expect(body.proIncluded).toBeUndefined();
     expect(db.rows("pro_grants")).toEqual([]);
     expect(stripe.created).toHaveLength(1);
   });
 
   it("a trialing plan mints no free one-off product", async () => {
-    for (const productId of ["freelanceBoost", "freelanceTransitionPro"]) {
-      const body = await (await post("create-product-checkout", { productId }, "jwt-trialist")).json();
-      expect(body.proIncluded, productId).toBeUndefined();
-    }
+    const body = await (await analysis("jwt-trialist")).json();
+    expect(body.proIncluded).toBeUndefined();
     expect(db.rows("pro_grants")).toEqual([]);
-    expect(stripe.created).toHaveLength(2);
+    expect(stripe.created).toHaveLength(1);
   });
 
   it("a paid plan, or a comped agent plan, gets the grant, which names the account", async () => {
     for (const [jwt, uid] of [["jwt-owner", OWNER], ["jwt-comped", COMPED]] as const) {
-      const body = await (await post("create-product-checkout", { productId: "freelanceBoost" }, jwt)).json();
+      const body = await (await analysis(jwt)).json();
       expect(body.proIncluded, jwt).toBe(true);
-      expect(db.rows("pro_grants").at(-1)).toMatchObject({ user_id: uid, product_id: "freelanceBoost" });
+      expect(db.rows("pro_grants").at(-1)).toMatchObject({ user_id: uid, product_id: "fullAnalysis" });
     }
     expect(stripe.created).toEqual([]);
   });
 
   it("a plan that cannot be read is a 503, never a charge for an included tool", async () => {
     db.rpcs.pro_entitlement_rows = () => ({ data: null, error: { message: "boom" } });
-    const res = await post("create-product-checkout", { productId: "freelanceBoost" }, "jwt-owner");
+    const res = await analysis("jwt-owner");
     expect(res.status).toBe(503);
+    expect(stripe.created).toEqual([]);
+  });
+
+  it("create-product-checkout mints nothing, for anyone: every product there is cut", async () => {
+    for (const jwt of ["jwt-owner", "jwt-comped", "jwt-squatter"]) {
+      const res = await post("create-product-checkout", { productId: "freelanceBoost" }, jwt);
+      expect(res.status, jwt).toBe(410);
+    }
+    expect(db.rows("pro_grants")).toEqual([]);
     expect(stripe.created).toEqual([]);
   });
 });
@@ -364,7 +379,7 @@ describe("check-subscription answers what the account's plan unlocks", () => {
 
 describe("a Pro plan bought from now on is bound to the account that bought it", () => {
   it("create-subscription-checkout stamps the buyer's user id on the subscription", async () => {
-    const body = await (await post("create-subscription-checkout", {}, "jwt-squatter")).json();
+    const body = await (await post("create-subscription-checkout", { autoRenewConsent: true }, "jwt-squatter")).json();
     expect(body.url).toBeTruthy();
     expect(stripe.created[0]).toMatchObject({ client_reference_id: SQUATTER, subscription_data: { metadata: { user_id: SQUATTER } } });
   });

@@ -66,8 +66,10 @@ const nothingHappened = () => {
   expect(asked, "the auth server was asked to vouch for it").toEqual([]);
 };
 
+// create-product-checkout sells nothing since 2026-10-17 (every row is cut or
+// retired), so every token is answered by the 410 before it is read: judged
+// on its own below.
 const CALLS: Array<[string, Record<string, unknown>]> = [
-  ["create-product-checkout", { productId: "freelanceBoost" }],
   ["create-checkout", { currency: "usd" }],
   ["create-subscription-checkout", {}],
   ["create-portal-session", {}],
@@ -91,14 +93,18 @@ describe("a token issued to a connected app is refused by every money function",
   }
 });
 
-describe("the same member's website session still works (the controls)", () => {
-  it("create-product-checkout mints the member's included Freelance Boost", async () => {
-    const body = await (await post(h["create-product-checkout"], "create-product-checkout", { productId: "freelanceBoost" }, { bearer: WEBSITE })).json();
-    expect(body.proIncluded).toBe(true);
-    expect(world.db.rows("pro_grants")).toHaveLength(1);
-    expect(asked).toEqual([WEBSITE]);
-  });
+describe("create-product-checkout sells nothing to anyone (owner decision 2026-10-17)", () => {
+  for (const [name, bearer] of [["a connector's token", CONNECTOR], ["the member's website session", WEBSITE]] as const) {
+    it(`${name} asking for Freelance Boost gets the 410: no grant (it is not part of Pro), no token read, no Stripe`, async () => {
+      const res = await post(h["create-product-checkout"], "create-product-checkout", { productId: "freelanceBoost" }, { bearer });
+      expect(res.status).toBe(410);
+      expect(await res.json()).toMatchObject({ retired: true, cut: true, product: "freelance_boost" });
+      nothingHappened();
+    });
+  }
+});
 
+describe("the same member's website session still works (the controls)", () => {
   it("create-checkout mints the member's included Full Analysis", async () => {
     const body = await (await post(h["create-checkout"], "create-checkout", { currency: "usd" }, { bearer: WEBSITE })).json();
     expect(body.proIncluded).toBe(true);

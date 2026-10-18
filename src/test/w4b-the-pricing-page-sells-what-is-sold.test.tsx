@@ -12,6 +12,10 @@
  *            sale is final.
  *   cut      The Premium Package led the ladder as "Best Value", and the
  *            collapsed catalogue sold every product the line cut.
+ *   10-17    Freelance Boost and Transition Pro are cut too (owner decision
+ *            2026-10-17), and the Full Analysis and Pro show a buy button
+ *            only once a seller is named; until then the page says purchases
+ *            open soon (B&P 17538(d)).
  *
  * Mounted for real, plus a guard over the catalogue and the product cards
  * (the claim literals live only in this file).
@@ -42,12 +46,16 @@ vi.mock("@/components/Header", () => ({ Header: () => null }));
 vi.mock("@/components/Footer", () => ({ Footer: () => null }));
 vi.mock("@/components/seo/SEO", () => ({ SEO: () => null }));
 vi.mock("@/components/ProductPreview", () => ({ ProductPreview: () => null }));
+// Whether a seller is named: open for the tests of what is sold, closed (as
+// shipped) for the gate's own.
+const gate = vi.hoisted(() => ({ open: true }));
+vi.mock("@/lib/purchases-open", () => ({ purchasesOpen: () => gate.open }));
 
 import Pricing from "../pages/Pricing";
 import { HIDDEN_PRODUCT_IDS, PRODUCTS } from "@/config/products";
 
 vi.setConfig(MOUNT_TEST_BUDGET);
-afterEach(cleanup);
+afterEach(() => { cleanup(); gate.open = true; });
 
 const mount = () => render(<MemoryRouter initialEntries={["/pricing"]}><Pricing /></MemoryRouter>);
 const ROOT = resolve(__dirname, "../..");
@@ -60,10 +68,34 @@ describe("/pricing offers only what is still sold", () => {
     expect(text).not.toMatch(/Best Value|Premium Packages|See every tool/);
   });
 
-  it("the ladder is the free scan, the $5 Full Analysis and Freelance Boost", () => {
+  it("the ladder is the free scan and the $5 Full Analysis; Freelance Boost is gone (2026-10-17)", () => {
     mount();
     expect(document.querySelector("[data-ladder='fullAnalysis']")?.textContent).toContain(`$${PRODUCTS.fullAnalysis.priceUsd}`);
-    expect(screen.getByText(PRODUCTS.freelanceBoost.name)).toBeInTheDocument();
+    const text = document.body.textContent ?? "";
+    expect(text).not.toContain(PRODUCTS.freelanceBoost.name);
+    expect(text).not.toMatch(/Transition Pro/);
+    expect(document.querySelector("a[href='/freelance-boost']")).toBeNull();
+  });
+});
+
+describe("no buy button while no seller is named (owner decision 2026-10-17)", () => {
+  it("the Full Analysis card and the Pro card say purchases open soon, and offer no button to buy", () => {
+    gate.open = false;
+    mount();
+    const card = document.querySelector("[data-ladder='fullAnalysis']")!;
+    expect(card.querySelector("[data-purchases-open-soon]")).not.toBeNull();
+    expect(screen.queryByRole("link", { name: /Get Full Resume Analysis/ })).toBeNull();
+    const pro = document.querySelector("[data-pro-card]")!;
+    expect(pro.querySelector("[data-purchases-open-soon]")).not.toBeNull();
+    expect([...pro.querySelectorAll("button")].some((b) => /Go Pro/.test(b.textContent ?? ""))).toBe(false);
+    expect(document.querySelector("[data-testid='purchase-terms']"), "no Terms line above a button that is not there").toBeNull();
+  });
+
+  it("control: once a seller is named, both buttons are back", () => {
+    mount();
+    expect(screen.getByRole("link", { name: /Get Full Resume Analysis/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Go Pro/ })).toBeInTheDocument();
+    expect(document.querySelector("[data-purchases-open-soon]")).toBeNull();
   });
 });
 
@@ -71,7 +103,6 @@ describe("each product is named whole (S12-045)", () => {
   it("the buttons say the product's full name, never its first word alone", () => {
     mount();
     expect(screen.getByRole("link", { name: /Get Full Resume Analysis/ })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Get Freelance Boost/ })).toBeInTheDocument();
     for (const stub of [/^Get Full$/, /^Get Freelance$/, /^Get ATS$/, /^Get Cover$/]) {
       expect(screen.queryAllByRole("button").concat(screen.queryAllByRole("link")).some((b) => stub.test((b.textContent ?? "").trim())), String(stub)).toBe(false);
     }

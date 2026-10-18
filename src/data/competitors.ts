@@ -28,9 +28,14 @@ const US_FREE = "Full diagnostic report — score with audit trail, bullets grad
 const US_HONESTY = "Score shown with its modeling band, a point-by-point audit trail, and a report ID that a rescan of the same file within 7 days returns again; every quoted line verified against your actual resume.";
 // L4-08: the range is the catalogue's own (it said "$3–29" while /pricing
 // ran $2 to $59). Relative import: the bake bundles this with esbuild.
+// Since 2026-10-17 the catalogue sells one one-off (the Full Analysis), so a
+// range of one price is said as that price, and Pro is the writing tools,
+// not "all access".
 const RANGE = oneTimePriceRangeUsd();
-export const US_PRICE_RANGE = `$${RANGE.min}–${RANGE.max}`;
-const US_PRICING = `Free scan; paid tools ${US_PRICE_RANGE} one-time; optional all-access subscription.`;
+export const US_PRICE_RANGE = RANGE.min === RANGE.max ? `$${RANGE.min}` : `$${RANGE.min}–${RANGE.max}`;
+/** What we charge, in one clause. */
+export const US_PAID_CLAUSE = `paid tools are ${US_PRICE_RANGE} one-time, with an optional monthly plan (Pro) for the writing tools`;
+const US_PRICING = `Free scan; ${US_PAID_CLAUSE}.`;
 
 export const COMPETITORS: Record<string, Competitor> = {
   chatgpt: {
@@ -39,7 +44,7 @@ export const COMPETITORS: Record<string, Competitor> = {
     intro:
       "ChatGPT and Claude are what we're most often compared to — fairly, because they're genuinely excellent at resume advice. The honest difference is category: they are conversationalists, this is an instrument. Ask a chatbot to rate your resume five times and you'll get five different answers; an instrument returns the same report for the same file and posting (within the 7 days a report is kept) and tells you where that reading sits among real ones.",
     pricingNote:
-      "ChatGPT and Claude both have generous free tiers, with paid plans around $20/month (as of mid-2026). Resume Booster's diagnostic scan is free with no sign-up; paid tools are " + US_PRICE_RANGE + " one-time with an optional all-access subscription.",
+      "ChatGPT and Claude both have generous free tiers, with paid plans around $20/month (as of mid-2026). Resume Booster's diagnostic scan is free with no sign-up; " + US_PAID_CLAUSE + ".",
     rows: [
       { dim: "Reproducible score", us: US_HONESTY, them: "Ask five times, get five different numbers — chat output isn't calibrated or repeatable, and there is no fixed score to track between edits.", usWins: true },
       { dim: "Real benchmarks", us: "Your score is placed against a live corpus of real scans — published medians and quartiles per industry, with sample sizes.", them: "No corpus. A chatbot can estimate what a 'good' resume looks like, but it cannot place yours in a real distribution.", usWins: true },

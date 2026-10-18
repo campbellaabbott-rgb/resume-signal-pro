@@ -10,9 +10,14 @@
  *     buttons said neither.
  *   - While the EU/UK switch is on (off by default), the box the server
  *     requires before a checkout.
- *   - While it is off, to a browser whose time zone is in the EU, the EEA or
- *     the UK: that sales there wait for the VAT registration (S12-059), so
- *     the buyer reads it beside every buy button before pressing, not after.
+ *   - While it is off, to a browser whose time zone is in the EU, the EEA,
+ *     the UK or India: that sales there wait for the tax registration
+ *     (S12-059), so the buyer reads it beside every buy button before
+ *     pressing, not after.
+ *   - For Pro, a separate, unticked box agreeing to the automatic renewal
+ *     (owner decision 2026-10-17; California's automatic renewal law as
+ *     amended by AB 2863). The server refuses a plan without it, and the card
+ *     keeps its button disabled until it is ticked (onAutoRenewChange).
  *
  * Every number is interpolated from src/config (products, eu-consumer).
  */
@@ -34,6 +39,8 @@ type Props = {
   /** For a plan: which, so its renewal terms are named. */
   plan?: "pro" | "agent";
   className?: string;
+  /** Told whenever Pro's renewal box changes, so the card can keep its button disabled until it is ticked. */
+  onAutoRenewChange?: (ticked: boolean) => void;
 };
 
 /** Renders a translated sentence whose <terms>…</terms> and <privacy>…</privacy> spans become links. */
@@ -58,7 +65,7 @@ function AgreeLine({ text }: { text: string }) {
   return <>{parts}</>;
 }
 
-export function PurchaseTerms({ kind, plan, className }: Props) {
+export function PurchaseTerms({ kind, plan, className, onAutoRenewChange }: Props) {
   const { t } = useTranslation();
   // While this line is on screen, a press on a button in its block sends the
   // Terms version; it must sit in the same element as the buttons it covers.
@@ -66,6 +73,8 @@ export function PurchaseTerms({ kind, plan, className }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const consent = usePurchaseConsent(ref);
   useEffect(() => termsLineMounted(ref.current), []);
+  const renewalBox = kind === "subscription" && plan === "pro";
+  useEffect(() => { onAutoRenewChange?.(consent.autoRenewConsent); }, [consent.autoRenewConsent, onAutoRenewChange]);
   // The box shows when the server's switch is on, not only the build's (S11-142).
   const boxShown = useEuUkBoxShown();
   useEffect(() => { if (kind !== "signup") askServerForEuUkSwitch(); }, [kind]);
@@ -80,6 +89,21 @@ export function PurchaseTerms({ kind, plan, className }: Props) {
       {regionRefused && <RegionNotice className="text-left" />}
       {plan === "pro" && (
         <p>{t("purchaseTerms.renewal", { price: proPrice })}</p>
+      )}
+      {renewalBox && (
+        <label className="flex items-start gap-2 text-left" data-auto-renew-box>
+          <input
+            type="checkbox"
+            className="mt-0.5"
+            required
+            aria-required="true"
+            checked={consent.autoRenewConsent}
+            onChange={(e) => setPurchaseConsent(ref.current, { autoRenewConsent: e.target.checked })}
+          />
+          <span>
+            {t("purchaseTerms.autoRenewConsent", "I agree that Pro renews automatically every month at {{price}} until I cancel, and that I can cancel any time from my account.", { price: proPrice })}
+          </span>
+        </label>
       )}
       {plan === "agent" && (
         <p>{t("purchaseTerms.agentTrial", { days: SUBSCRIPTIONS.agent.trialDays, price: agentPrice })}</p>

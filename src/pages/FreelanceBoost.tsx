@@ -3,6 +3,12 @@
 // locally) → checkout → return with session_id → generate → results.
 // Intake questions and formulas come from the launch-kit playbook; the
 // structure decision happens server-side, deterministically.
+//
+// NO LONGER SOLD (owner decision 2026-10-17): Freelance Boost and Transition
+// Pro were removed like the other cut products, and they are not part of
+// Pro. The page says so, is not indexed, and offers no buy button; a past
+// buyer's link (session_id) still opens the intake and generates what was
+// bought, and a browser that bought here still sees how to open it.
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -15,11 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { useProductCheckout } from "@/hooks/use-product-checkout";
 import { useToast } from "@/hooks/use-toast";
-import { ProductPreview } from "@/components/ProductPreview";
-import { getResumeFromSession } from "@/hooks/use-session-resume";
-import { PurchaseTerms } from "@/components/PurchaseTerms";
 
 interface ProjectIntake {
   clientType: string; problem: string; deliverable: string; toolsSkills: string;
@@ -103,11 +105,7 @@ const draftIsComplete = (d: Partial<IntakeDraft> | null): d is IntakeDraft =>
 export default function FreelanceBoost() {
   const { t } = useTranslation();
   const [params] = useSearchParams();
-  const { purchaseProduct, isLoading: checkoutLoading } = useProductCheckout();
   const { toast } = useToast();
-  // A preview lights up only if the visitor scanned a resume earlier this
-  // session; the intake flow itself needs no resume, so this stays hidden then.
-  const [sessionResume] = useState(() => getResumeFromSession());
 
   const [saved] = useState(readDraft);
   const [projects, setProjects] = useState<ProjectIntake[]>(() =>
@@ -138,17 +136,12 @@ export default function FreelanceBoost() {
   // purchase. This browser bought one before, without the link → no buy
   // buttons, and the link from the email to see it.
   const urlSession = params.get("session_id");
-  const [boughtHere, setBoughtHere] = useState(readBoughtHere);
+  const [boughtHere] = useState(readBoughtHere);
   const sessionId = urlSession;
   useEffect(() => {
     if (!urlSession) return;
     try { localStorage.setItem(PURCHASE_KEY, JSON.stringify({ at: Date.now() })); } catch { /* storage blocked: the link still works */ }
   }, [urlSession]);
-  const startNewPurchase = () => {
-    try { localStorage.removeItem(PURCHASE_KEY); } catch { /* nothing kept */ }
-    setBoughtHere(false);
-    setResult(null);
-  };
   const generate = async (d: IntakeDraft) => {
     if (!sessionId) return;
     setGenerating(true);
@@ -262,14 +255,6 @@ export default function FreelanceBoost() {
 
   const intakeComplete = targetRole.trim().length > 1 && projects.some(p => p.deliverable.trim() && p.clientType.trim());
 
-  const startCheckout = async (tier: "freelanceBoost" | "freelanceTransitionPro" = "freelanceBoost") => {
-    if (!intakeComplete) {
-      toast({ title: "Almost there", description: "Add your target role and at least one project (who it was for + what you delivered).", variant: "destructive" });
-      return;
-    }
-    await purchaseProduct(tier as never, { ctaSection: "freelance_boost_page" });
-  };
-
   const copySection = () => {
     if (!result) return;
     const text = [
@@ -292,7 +277,12 @@ export default function FreelanceBoost() {
 
   return (
     <div className="min-h-screen bg-background">
-      <SEO title="Freelance Boost — Turn Projects Into Resume Experience" description="Turn freelance projects, gig work, and side hustles into recruiter-grade resume experience. Built for career changers who've already done the work." path="/freelance-boost" />
+      <SEO
+        title={t("freelanceBoost.noLongerSoldTitle", "Freelance Boost is no longer sold")}
+        description={t("freelanceBoost.noLongerSoldMeta", "Freelance Boost and Transition Pro are no longer sold. If you bought one, the link in your purchase email keeps working.")}
+        path="/freelance-boost"
+        noIndex
+      />
       <Header />
       <main className="pt-20 pb-20">
         <div className="container max-w-3xl">
@@ -307,6 +297,17 @@ export default function FreelanceBoost() {
               engagements framed as the portfolio they are, never as job-hopping.
             </p>
           </div>
+
+          {/* NO LONGER SOLD: said to everyone who arrives without a purchase link. */}
+          {!sessionId && (
+            <div role="note" data-no-longer-sold className="rounded-2xl border border-border bg-muted/40 p-5 mb-8 text-center">
+              <p className="font-semibold text-foreground mb-1">{t("freelanceBoost.noLongerSoldTitle", "Freelance Boost is no longer sold")}</p>
+              <p className="text-sm text-muted-foreground max-w-xl mx-auto">
+                {t("freelanceBoost.noLongerSoldBody", "Freelance Boost and Transition Pro are no longer sold, and they are not part of Pro. If you bought one, open the link in your purchase email: it keeps working for 90 days. A free account now writes a tailored résumé, cover letter and interview prep for a job each day.")}
+              </p>
+              <Link to="/pricing" className="inline-block mt-3 text-sm text-primary hover:underline">{t("freelanceBoost.seePricing", "See what is on sale")}</Link>
+            </div>
+          )}
 
           {/* Results */}
           {generating && (
@@ -391,8 +392,8 @@ export default function FreelanceBoost() {
             </div>
           )}
 
-          {/* Intake */}
-          {!result && !generating && (
+          {/* Intake: only for a purchase (its link, or the browser that bought it). */}
+          {!result && !generating && (sessionId || boughtHere) && (
             <>
               {/* Profile import — paste-your-own-data, deliberately not a fake
                   "Connect Upwork" integration (no platform offers profile APIs) */}
@@ -546,48 +547,8 @@ export default function FreelanceBoost() {
                 <div className="rounded-2xl border-2 border-primary bg-card p-6 text-center">
                   <p className="font-semibold text-foreground mb-1">{t("freelanceBoost.boughtHereTitle")}</p>
                   <p className="text-xs text-muted-foreground max-w-md mx-auto">{t("freelanceBoost.openYourLink")}</p>
-                  <button type="button" onClick={startNewPurchase} className="block mx-auto mt-3 text-[11px] text-muted-foreground underline">
-                    {t("freelanceBoost.startNewPurchase")}
-                  </button>
                 </div>
-              ) : (
-              <div className="rounded-2xl border-2 border-primary bg-card p-6 text-center">
-                <p className="font-semibold text-foreground mb-1">3. Get your experience section — one-time, no subscription</p>
-                <p className="text-xs text-muted-foreground mb-4 max-w-md mx-auto">
-                  Recruiter-grade bullets in your target field's vocabulary, the right structure for your situation,
-                  honest date handling, and keyword coverage against your posting.
-                </p>
-                <PurchaseTerms kind="payment" className="mb-3" />
-                <div className="grid sm:grid-cols-2 gap-3 max-w-lg mx-auto text-left">
-                  <div className="rounded-xl border border-border p-4 flex flex-col">
-                    <p className="text-sm font-semibold text-foreground">Boost</p>
-                    <p className="text-xs text-muted-foreground mb-3 flex-1">The complete experience section: translated bullets, structure, dates, keyword coverage.</p>
-                    <Button onClick={() => startCheckout("freelanceBoost")} disabled={checkoutLoading} size="sm" className="gap-1.5 w-full">
-                      {checkoutLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                      Boost my experience — $29
-                    </Button>
-                  </div>
-                  <div className="rounded-xl border border-primary/50 bg-primary/5 p-4 flex flex-col">
-                    <p className="text-sm font-semibold text-foreground">Transition Pro</p>
-                    <p className="text-xs text-muted-foreground mb-3 flex-1">Everything in Boost, plus a complete transition cover letter and a LinkedIn About section — all grounded in your real projects.</p>
-                    <Button onClick={() => startCheckout("freelanceTransitionPro")} disabled={checkoutLoading} size="sm" variant="outline" className="gap-1.5 w-full border-primary/50">
-                      {checkoutLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                      Full transition kit — $59
-                    </Button>
-                  </div>
-                </div>
-                <ProductPreview
-                  productId="freelanceTransitionPro"
-                  resumeText={sessionResume.resumeText}
-                  jobDescription={sessionResume.jobDescriptionText ?? undefined}
-                  className="mt-4 max-w-lg mx-auto text-left"
-                />
-                <p className="text-[11px] text-muted-foreground mt-3">
-                  Your answers stay on this device until you purchase. We never invent clients, payments, or metrics —
-                  honest framing is the whole product. Not happy with the output? We'll regenerate it free.
-                </p>
-              </div>
-              )}
+              ) : null}
             </>
           )}
         </div>

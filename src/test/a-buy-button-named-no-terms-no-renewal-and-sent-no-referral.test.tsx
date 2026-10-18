@@ -42,6 +42,9 @@ vi.mock("@/integrations/supabase/client", () => ({
 const user = { email: "member@example.com" };
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user, session: { access_token: "jwt" } }) }));
 vi.mock("@/hooks/useAgentSender", () => ({ useAgentSender: () => ({ online: false }) }));
+// Purchases open, as once the owner names the seller (owner decision
+// 2026-10-17): the Pro card's button is what this file tests.
+vi.mock("@/lib/purchases-open", () => ({ purchasesOpen: () => true }));
 
 import { AgentSubscriptionCard } from "@/components/AgentSubscriptionCard";
 import { ProSubscriptionCard } from "@/components/ProSubscriptionCard";
@@ -103,7 +106,10 @@ describe("the line above a buy button, and what the button's call carries", () =
       invoke.mockImplementation(async (fn: string) => ({ data: fn === "check-subscription" ? { active: false } : { url: "" }, error: null }));
       render(<MemoryRouter><AgentSubscriptionCard /><ProSubscriptionCard /></MemoryRouter>);
       fireEvent.click(screen.getByRole("button", { name: new RegExp(en.agentPlan.cta) }));
-      fireEvent.click(await screen.findByRole("button", { name: /Go Pro/ }));
+      const goPro = await screen.findByRole("button", { name: /Go Pro/ });
+      // Pro's own renewal box first (owner decision 2026-10-17): the button waits for it.
+      fireEvent.click(document.querySelector("[data-auto-renew-box] input")!);
+      fireEvent.click(goPro);
       await waitFor(() => expect(invoke).toHaveBeenCalledWith("create-subscription-checkout", expect.anything()));
       const bodyOf = (fn: string) => invoke.mock.calls.find(([f]) => f === fn)![1].body;
       expect(bodyOf("create-agent-checkout").language).toBe("de");

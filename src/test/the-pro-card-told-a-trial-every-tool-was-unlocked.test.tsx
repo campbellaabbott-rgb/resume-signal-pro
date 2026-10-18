@@ -45,10 +45,15 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("the Pro card says what the plan unlocks", () => {
+  // Owner decision 2026-10-17: the line says what a trial has now (no daily
+  // cap on scans) and what waits for the first payment (the Full Analysis),
+  // and never "unlimited"; a new key, because a locale value is never edited.
   it("a trial is told what is on now, and that the paid tools come with the first payment", () => {
     mount();
     expect(screen.queryByText(/every tool is unlocked/i)).toBeNull();
-    expect(screen.getByText(en.proPlan.trialing)).toBeTruthy();
+    expect(screen.getByText(/Your trial is on: scans have no daily cap now\. The \$5 Full Analysis is included from your first payment\./)).toBeTruthy();
+    expect(screen.queryByText(en.proPlan.trialing), "the old line said unlimited").toBeNull();
+    expect(document.body.textContent).not.toMatch(/unlimited/i);
   });
 
   // The product line (2026-10-12): Pro is the writing tools, so a paid plan

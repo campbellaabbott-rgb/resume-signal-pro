@@ -7,6 +7,7 @@
  * create-portal-session.
  */
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./edge-harness";
+import { SELLER_NAMED_STUB } from "./w4b-seller-named";
 
 export const W4B_ENV: Record<string, string | undefined> = {
   SUPABASE_URL: "https://harness.supabase.co",
@@ -49,7 +50,7 @@ export default class Stripe {
     this.checkout = { sessions: {
       create: async (p) => { touch("sessions.create"); w().created.push(p); return { id: "cs_test_w4b" + String(w().created.length).padStart(4, "0"), url: "https://checkout.stripe.com/c/cs_test_w4b", amount_total: 500, currency: p.line_items?.[0]?.price_data?.currency ?? "usd", mode: p.mode }; },
       retrieve: async (id) => { const s = w().sessions[id]; if (!s) throw new Error("No such checkout.session"); return s; },
-      expire: async () => ({}),
+      expire: async (id) => { touch("sessions.expire:" + id); return {}; },
     } };
     this.billingPortal = { sessions: { create: async (p) => { touch("portal.create"); w().portals.push(p); return { url: "https://billing.stripe.com/p/session/x" }; } } };
   }
@@ -130,9 +131,16 @@ export function installDeno(env: Record<string, string | undefined> = W4B_ENV): 
   g.EdgeRuntime = { waitUntil: () => undefined };
 }
 
-export async function loadCheckouts(fns: string[]): Promise<Record<string, EdgeHandler>> {
+/**
+ * The handlers, by default with a seller named (w4b-seller-named.ts), so a
+ * test of what a checkout does once it sells is not answered by the seller
+ * gate. `{ seller: "as-shipped" }` loads them with the shipped, empty
+ * identity, for the tests of the gate itself.
+ */
+export async function loadCheckouts(fns: string[], opts: { seller?: "named" | "as-shipped" } = {}): Promise<Record<string, EdgeHandler>> {
+  const stubs = opts.seller === "as-shipped" ? W4B_STUBS : { ...W4B_STUBS, ...SELLER_NAMED_STUB };
   const out: Record<string, EdgeHandler> = {};
-  for (const fn of fns) out[fn] = await loadEdgeHandler(fn, W4B_STUBS);
+  for (const fn of fns) out[fn] = await loadEdgeHandler(fn, stubs);
   return out;
 }
 

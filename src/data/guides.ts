@@ -306,7 +306,6 @@ export const GUIDES: Record<string, Guide> = {
     related: [
       { label: "Scan your resume with a career-change lens — free", href: "/" },
       { label: "How to choose resume keywords", href: "/guides/resume-keywords-guide" },
-      { label: "Freelance Boost: project-based career tools", href: "/freelance-boost" },
     ],
   },
 

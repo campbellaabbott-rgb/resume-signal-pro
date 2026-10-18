@@ -11,6 +11,12 @@
  *   - nothing deployed prints FAIL for the builds and asks no checkout;
  *   - a cut product that still sells, a GET with no territory flag, and a
  *     readable checkout_buyers each print FAIL;
+ *   - (owner decisions 2026-10-17) Freelance Boost and Transition Pro are
+ *     asked for their 410; a GET with no purchasesOpen, a published Pricing
+ *     page without the purchases-open-soon line, the renewal box or India,
+ *     a Freelance Boost page that still sells, and a missing or readable
+ *     pro_auto_renew_consents each print FAIL; purchasesOpen false is a PASS
+ *     with the owner's step beside it, never a FAIL;
  *   - the only POSTs are to the cut and switched-off checkouts (answered
  *     before any limiter); create-checkout is only ever sent a GET or an
  *     OPTIONS, and the publishable key is never printed.
@@ -93,16 +99,29 @@ const PRODUCTS: Array<[string, string]> = [
   ["basicKeywordFix", "basic_keyword_fix"], ["coverLetter", "cover_letter"], ["premiumPackage", "premium_package"], ["atsDefense", "ats_defense"],
   ["careerSnapshot", "career_snapshot"], ["graduateGamePlan", "graduate_gameplan"], ["interviewCoach", "interview_coach"],
   ["careerPathSimulator", "career_path_simulator"], ["scanPack", "scan_pack"],
+  ["freelanceBoost", "freelance_boost"], ["freelanceTransitionPro", "freelance_transition_pro"],
+];
+const PRICING_CHUNK = `import{a as x}from"./PurchaseTerms-AAAA1111.js";const k=["checkoutGate.purchasesOpenSoon","proPlan.perks.noDailyScanCap"];`;
+const TERMS_CHUNK = `const z=["purchaseTerms.autoRenewConsent","Asia/Kolkata","Asia/Calcutta"];`;
+const FB_CHUNK = `const t=["freelanceBoost.noLongerSoldTitle"];`;
+const site = (over: { pricing?: string; terms?: string; fb?: string } = {}): Route[] => [
+  { match: "^GET https://site\\.test/$", body: `<html><script type="module" src="/assets/index-ENTRY0001.js"></script></html>` },
+  { match: "^GET https://site\\.test/assets/index-ENTRY0001\\.js$", body: `const r={a:()=>import("./Pricing-PRIC0001.js"),b:()=>import("./FreelanceBoost-FBST0001.js")};` },
+  { match: "^GET https://site\\.test/assets/Pricing-PRIC0001\\.js$", body: over.pricing ?? PRICING_CHUNK },
+  { match: "^GET https://site\\.test/assets/PurchaseTerms-AAAA1111\\.js$", body: over.terms ?? TERMS_CHUNK },
+  { match: "^GET https://site\\.test/assets/FreelanceBoost-FBST0001\\.js$", body: over.fb ?? FB_CHUNK },
 ];
 const good = (): Route[] => [
   ...preflights(),
-  { match: "^GET https://p\\.supabase\\.co/functions/v1/create-checkout$", body: JSON.stringify({ euUkSales: false, withdrawalDays: 14, waiverVersion: "2026-10-09", territoryRefused: true }) },
+  { match: "^GET https://p\\.supabase\\.co/functions/v1/create-checkout$", body: JSON.stringify({ euUkSales: false, withdrawalDays: 14, waiverVersion: "2026-10-09", territoryRefused: true, purchasesOpen: false }) },
   { match: "^POST https://p\\.supabase\\.co/functions/v1/create-product-checkout .*\"coverLetter\",\"language\":\"de\"", status: 410, body: cutAnswer("coverLetter", "cover_letter", "de") },
   ...PRODUCTS.map(([id, type]): Route => ({ match: `^POST https://p\\.supabase\\.co/functions/v1/create-product-checkout .*"${id}"`, status: 410, body: cutAnswer(id, type) })),
   { match: "^POST https://p\\.supabase\\.co/functions/v1/create-scan-pack-checkout", status: 410, body: cutAnswer("scanPack", "scan_pack") },
   { match: "^POST https://p\\.supabase\\.co/functions/v1/create-test-checkout", status: 410, body: JSON.stringify({ retired: true, reason: "test_checkout_off", error: "The development checkout is switched off." }) },
   { match: "^GET https://p\\.supabase\\.co/rest/v1/checkout_buyers\\?", status: 401, body: JSON.stringify({ code: "42501", message: "permission denied for table checkout_buyers" }) },
   { match: "^GET https://p\\.supabase\\.co/rest/v1/checkout_buyers_never_existed", status: 404, body: JSON.stringify({ code: "PGRST205" }) },
+  { match: "^GET https://p\\.supabase\\.co/rest/v1/pro_auto_renew_consents\\?", status: 401, body: JSON.stringify({ code: "42501", message: "permission denied for table pro_auto_renew_consents" }) },
+  ...site(),
 ];
 
 describe("section 92", () => {
@@ -115,7 +134,37 @@ describe("section 92", () => {
     // The cut products, the de sentence, the scan packs and the dev checkout.
     expect(pass.filter((l) => /answers 410/.test(l)).length).toBe(PRODUCTS.length + 3);
     expect(pass.some((l) => /checkout_buyers -> 42501/.test(l))).toBe(true);
+    expect(pass.some((l) => /pro_auto_renew_consents -> 42501/.test(l))).toBe(true);
+    // Closed purchases are the gate working: a PASS, and the owner's step.
+    expect(pass.some((l) => /purchasesOpen false/.test(l))).toBe(true);
+    expect(lines.some((l) => /^INFO  owner: purchases stay closed/.test(l))).toBe(true);
+    expect(pass.some((l) => /published Pricing page .* purchases open soon/.test(l))).toBe(true);
+    expect(pass.some((l) => /published Freelance Boost page .* no longer sold/.test(l))).toBe(true);
+    for (const [id] of PRODUCTS.filter(([x]) => x.startsWith("freelance"))) {
+      expect(pass.some((l) => l.includes(`answers 410 for ${PRODUCTS.find(([x]) => x === id)![1]}`)), id).toBe(true);
+    }
     expect(out).not.toContain(KEY);
+  });
+
+  it("the 2026-10-17 claims each FAIL when the deploy does not carry them", () => {
+    const base = good().filter((r) => !/create-checkout\$|site\\\.test|pro_auto_renew_consents/.test(r.match));
+    const { lines } = run([
+      { match: "^GET https://p\\.supabase\\.co/functions/v1/create-checkout$", body: JSON.stringify({ euUkSales: false, territoryRefused: true }) },
+      { match: "^GET https://p\\.supabase\\.co/rest/v1/pro_auto_renew_consents\\?", status: 404, body: JSON.stringify({ code: "PGRST205" }) },
+      ...site({ terms: `const z=["Europe/Berlin"];`, fb: `const t=["Boost my experience — $29"];` }),
+      ...base,
+    ]);
+    const fails = lines.filter((l) => l.startsWith("FAIL"));
+    expect(fails.some((l) => /no purchasesOpen/.test(l))).toBe(true);
+    expect(fails.some((l) => /pro_auto_renew_consents does not exist/.test(l))).toBe(true);
+    expect(fails.some((l) => /Pricing page .* lacks: the renewal box; India in the refused time zones;/.test(l))).toBe(true);
+    expect(fails.some((l) => /Freelance Boost page .* still sells/.test(l))).toBe(true);
+  });
+
+  it("the old perk naming the cut products on the published page FAILs", () => {
+    const base = good().filter((r) => !/site\\\.test/.test(r.match));
+    const { lines } = run([...site({ pricing: PRICING_CHUNK + `const o="proPlan.perks.includedOneOffs";` }), ...base]);
+    expect(lines.filter((l) => l.startsWith("FAIL")).some((l) => /old Pro perk/.test(l))).toBe(true);
   });
 
   it("nothing deployed: the builds FAIL, and no checkout is asked to sell", () => {

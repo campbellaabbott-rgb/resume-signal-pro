@@ -33,6 +33,7 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
 import { APPLY_AGENT_SWITCH_ON } from "./helpers/apply-agent-switch-on";
+import { SELLER_NAMED_STUB } from "./helpers/w4b-seller-named";
 import { TERMS_VERSION } from "@/config/terms";
 import { TERMS_VERSION as SERVER_TERMS_VERSION } from "../../supabase/functions/_shared/checkout-policy";
 import { SUBSCRIPTIONS } from "@/config/products";
@@ -92,10 +93,12 @@ beforeAll(async () => {
   g.__polState = state;
   g.__polClient = client;
   const stripe = { "https://esm.sh/stripe@18.5.0": STRIPE_STUB };
-  handlers["create-checkout"] = await loadEdgeHandler("create-checkout", { ...SERVE, ...stripe, "_shared/supabase-client.ts": "export const getServiceClient = () => globalThis.__polClient();" });
-  handlers["create-product-checkout"] = await loadEdgeHandler("create-product-checkout", { ...SERVE, ...stripe, "https://esm.sh/@supabase/supabase-js@2.39.3": CLIENT });
+  // A seller named (owner decision 2026-10-17): with the shipped, empty
+  // identity these checkouts answer 409 before the policy this file tests.
+  handlers["create-checkout"] = await loadEdgeHandler("create-checkout", { ...SERVE, ...stripe, "_shared/supabase-client.ts": "export const getServiceClient = () => globalThis.__polClient();", ...SELLER_NAMED_STUB });
+  handlers["create-product-checkout"] = await loadEdgeHandler("create-product-checkout", { ...SERVE, ...stripe, "https://esm.sh/@supabase/supabase-js@2.39.3": CLIENT, ...SELLER_NAMED_STUB });
   handlers["create-scan-pack-checkout"] = await loadEdgeHandler("create-scan-pack-checkout", { ...SERVE, ...stripe, "https://esm.sh/@supabase/supabase-js@2": CLIENT });
-  handlers["create-subscription-checkout"] = await loadEdgeHandler("create-subscription-checkout", { ...SERVE, ...stripe, "https://esm.sh/@supabase/supabase-js@2.39.3": CLIENT });
+  handlers["create-subscription-checkout"] = await loadEdgeHandler("create-subscription-checkout", { ...SERVE, ...stripe, "https://esm.sh/@supabase/supabase-js@2.39.3": CLIENT, ...SELLER_NAMED_STUB });
   // The two retired agent checkouts, with their dormant purchase code switched on.
   handlers["create-agent-checkout"] = await loadEdgeHandler("create-agent-checkout", { ...SERVE, ...stripe, "https://esm.sh/@supabase/supabase-js@2.39.3": CLIENT, ...APPLY_AGENT_SWITCH_ON });
   handlers["create-pass-checkout"] = await loadEdgeHandler("create-pass-checkout", { ...stripe, "https://esm.sh/@supabase/supabase-js@2.45.0": CLIENT, ...APPLY_AGENT_SWITCH_ON });
@@ -121,14 +124,15 @@ afterEach(() => { state.created.length = 0; });
 
 /** What each minter is sent by its page, signed in where it requires it. */
 // The product line of 2026-10-12: the scan packs and the cut one-offs answer
-// 410 (w4b-the-cut-products-are-sold-nowhere), so the product checkout is run
-// with Freelance Boost, still sold; and the affiliate re-base pays only on
-// Pro's first paid month, so the referral marker is the rule each checkout
-// sells under ("pro_first_month" on Pro, "none" everywhere else).
+// 410 (w4b-the-cut-products-are-sold-nowhere), and since 2026-10-17 so do
+// Freelance Boost and Transition Pro, so create-product-checkout mints no live
+// session and is not a case here; the affiliate re-base pays only on Pro's
+// first paid month, so the referral marker is the rule each checkout sells
+// under ("pro_first_month" on Pro, "none" everywhere else). Pro's body carries
+// the buyer's tick on its own renewal box (owner decision 2026-10-17).
 const CASES: Array<{ fn: string; body: Record<string, unknown>; signedIn: boolean; mode: "payment" | "subscription"; commission: string; receipt: string | null }> = [
   { fn: "create-checkout", body: { currency: "usd" }, signedIn: false, mode: "payment", commission: "none", receipt: null },
-  { fn: "create-product-checkout", body: { email: "Typed@Example.com", productId: "freelanceBoost" }, signedIn: false, mode: "payment", commission: "none", receipt: "typed@example.com" },
-  { fn: "create-subscription-checkout", body: {}, signedIn: true, mode: "subscription", commission: "pro_first_month", receipt: null },
+  { fn: "create-subscription-checkout", body: { autoRenewConsent: true }, signedIn: true, mode: "subscription", commission: "pro_first_month", receipt: null },
   { fn: "create-agent-checkout", body: {}, signedIn: true, mode: "subscription", commission: "none", receipt: null },
   { fn: "create-pass-checkout", body: {}, signedIn: true, mode: "payment", commission: "none", receipt: BUYER.email },
 ];
@@ -266,9 +270,10 @@ describe("an ATS Defense checkout carries the roles its buyer named (S11-074)", 
     expect(state.created).toEqual([]);
   });
 
-  it("another product carries none", async () => {
+  it("no other product reaches Stripe either (Freelance Boost was cut on 2026-10-17), so no roles do", async () => {
     const r = await call({ ...ats, body: { email: "typed@example.com", productId: "freelanceBoost" } }, { targetRoles: ["Data Analyst"] });
-    expect(r.session?.metadata?.target_roles ?? "", "a product that targets no roles carried some").toBe("");
+    expect(r.status).toBe(410);
+    expect(state.created).toEqual([]);
   });
 });
 

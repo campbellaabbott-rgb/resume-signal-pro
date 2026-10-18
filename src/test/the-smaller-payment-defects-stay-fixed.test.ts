@@ -20,6 +20,7 @@
  *                      six calls, then answered a non-retryable 500.
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { SELLER_NAMED_STUB } from "./helpers/w4b-seller-named";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { FakeDb, loadEdgeHandler, type EdgeHandler } from "./helpers/edge-harness";
@@ -98,7 +99,9 @@ beforeAll(async () => {
     return new Response("{}", { status: 200 });
   };
   for (const fn of ["reconcile-stripe", "create-scan-pack-checkout", "create-checkout", "parse-resume-structured"]) {
-    handlers[fn] = await loadEdgeHandler(fn, STUBS);
+    // A seller named for create-checkout (owner decision 2026-10-17): the
+    // shipped, empty identity answers 409 before the session tested here.
+    handlers[fn] = await loadEdgeHandler(fn, fn === "create-checkout" ? { ...STUBS, ...SELLER_NAMED_STUB } : STUBS);
   }
   // Scan packs are no longer sold (2026-10-12): the shipped checkout answers
   // 410. The pack's own bounds are still the dormant path's, so it is run with

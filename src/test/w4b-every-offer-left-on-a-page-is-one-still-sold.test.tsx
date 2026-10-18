@@ -100,13 +100,15 @@ describe("the free report's sign-up link lands on the account page (S12-025)", (
   });
 });
 
-describe("the Terms line above a buy button says when sales here wait for VAT (S12-059)", () => {
+describe("the Terms line above a buy button says when sales here wait for the tax registration (S12-059)", () => {
   it("a browser in the territory reads it above a payment and a plan, never above a sign-up", () => {
     territory = true;
     inRouter(<><PurchaseTerms kind="payment" /><PurchaseTerms kind="subscription" plan="pro" /><PurchaseTerms kind="signup" /></>);
     const notices = document.querySelectorAll("[data-region-notice]");
     expect(notices).toHaveLength(2);
-    expect(notices[0].textContent).toMatch(/Not yet sold in the EU, the EEA or the UK: sales there wait until we are registered for VAT/);
+    // It names what the page checked (the browser's time zone) and India (owner decision 2026-10-17).
+    expect(notices[0].textContent).toMatch(/Your browser's time zone is in the EU, the EEA, the UK or India, where we don't sell yet/);
+    expect(notices[0].textContent).not.toMatch(/billing/i);
     const terms = [...document.querySelectorAll("[data-testid='purchase-terms']")];
     expect(terms[2].querySelector("[data-region-notice]")).toBeNull();
   });

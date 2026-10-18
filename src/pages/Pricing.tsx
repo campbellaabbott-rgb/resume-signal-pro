@@ -12,27 +12,25 @@ import { useScrollDepth } from "@/hooks/use-scroll-depth";
 import { useTimeOnPage } from "@/hooks/use-time-on-page";
 import { ProSubscriptionCard } from "@/components/ProSubscriptionCard";
 import { AtsCoverage } from '@/components/AtsCoverage';
-import { ProductPreview } from "@/components/ProductPreview";
-import { getResumeFromSession } from "@/hooks/use-session-resume";
-import { useState } from "react";
 import { PurchaseTerms } from "@/components/PurchaseTerms";
+import { PurchasesOpenSoon } from "@/components/checkout/PurchasesOpenSoon";
+import { purchasesOpen } from "@/lib/purchases-open";
 
-// THE PRODUCT LINE OF 2026-10-12 (owner decisions). The page sells what is
-// still for sale: free search and scans, the $5 Full Analysis (the only
-// one-off most buyers need), the Freelance Boost tiers, and Pro. The cut
-// products (src/config/products.ts HIDDEN_PRODUCT_IDS: the Premium Package,
-// ATS Defense, Career Snapshot, Graduate Game Plan, Career Path, Keyword Fix,
-// Cover Letter and Interview Coach as one-offs, Scan Packs) are offered
-// nowhere: the "Premium" ladder card and the collapsed catalogue that listed
-// them are gone, and their checkouts answer 410. The apply pivot's retired
-// Apply Assistant, Agent plan and Agent Pass were already gone.
+// THE PRODUCT LINE (owner decisions 2026-10-12 and 2026-10-17). The page
+// sells what is still for sale: free search and scans, the $5 Full Analysis
+// (the only one-off), and Pro. The cut products (src/config/products.ts
+// HIDDEN_PRODUCT_IDS: the Premium Package, ATS Defense, Career Snapshot,
+// Graduate Game Plan, Career Path, Keyword Fix, Cover Letter and Interview
+// Coach as one-offs, Scan Packs, and since 2026-10-17 Freelance Boost and
+// Transition Pro) are offered nowhere, and their checkouts answer 410. The
+// apply pivot's retired Apply Assistant, Agent plan and Agent Pass were
+// already gone. While src/config/seller.ts names no seller, the Full Analysis
+// card says purchases open soon instead of offering a button (B&P 17538(d)).
 const offeredHere = (id: ProductId) => !isProductHidden(id);
 
 export default function Pricing() {
   const { t } = useTranslation();
-  // If the visitor scanned a resume this session, the Freelance preview can
-  // show itself with their real content. Read once.
-  const [sessionResume] = useState(() => getResumeFromSession());
+  const open = purchasesOpen();
 
   // Track scroll depth for drop-off analysis
   useScrollDepth('pricing');
@@ -63,7 +61,7 @@ export default function Pricing() {
       {/* Prices come from the catalog, not the copy. */}
       <SEO
         title={t('pricingPage.metaTitle')}
-        description={t('pricingPage.metaDescriptionLine', 'Free job search and résumé scan. One-time tools from ${{lowPrice}} to ${{highPrice}} that never renew, or Pro at ${{proPrice}} a month for the writing tools.', metaPrices)}
+        description={t('pricingPage.metaDescriptionFa', 'Free job search and résumé scan. A ${{lowPrice}} Full Analysis paid once, or Pro at ${{proPrice}} a month for the writing tools.', metaPrices)}
         path="/pricing"
       />
       {/* SoftwareApplication + AggregateOffer — eligible for price rich results
@@ -128,8 +126,8 @@ export default function Pricing() {
             <h2 className="text-2xl md:text-3xl font-bold mb-1">{t('pricingPage.ladderTitle')}</h2>
             <p className="text-muted-foreground">{t('pricingPage.ladderSubtitleLine', 'Most people need exactly one of these.')}</p>
           </div>
-          <PurchaseTerms kind="payment" className="mb-4 text-center" />
-          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto mb-14">
+          {open && <PurchaseTerms kind="payment" className="mb-4 text-center" />}
+          <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto mb-14">
             <div className="flex flex-col p-6 rounded-2xl border-2 border-success/50 bg-card">
               <h3 className="font-bold text-lg mb-1">{t('pricingPage.ladderFreeTitle')}</h3>
               <p className="text-3xl font-bold text-success mb-2">$0</p>
@@ -143,19 +141,16 @@ export default function Pricing() {
               <h3 className="font-bold text-lg mb-1">{PRODUCTS.fullAnalysis.name}</h3>
               <p className="text-3xl font-bold mb-2">${PRODUCTS.fullAnalysis.priceUsd}</p>
               <p className="text-sm text-muted-foreground mb-4 flex-1">{t('pricingPage.ladderAnalysisDesc', 'Every keyword gap and ATS issue in your résumé, scored against the job you paste, with the fix for each. No account needed; included in Pro.')}</p>
-              <Button asChild className="w-full gap-2">
-                <a href="/#upload">{t('pricingPage.buyProduct', 'Get {{name}}', { name: PRODUCTS.fullAnalysis.name })}<ArrowRight className="w-4 h-4" /></a>
-              </Button>
-              <p className="text-xs text-muted-foreground text-center mt-2">{t('pricingPage.requiresUpload')}</p>
-            </div>
-            <div className="flex flex-col p-6 rounded-2xl border-2 border-border bg-card hover:border-primary/50 transition-all">
-              <h3 className="font-bold text-lg mb-1">{PRODUCTS.freelanceBoost.name}</h3>
-              <p className="text-3xl font-bold mb-2">${PRODUCTS.freelanceBoost.priceUsd}</p>
-              <p className="text-sm text-muted-foreground mb-4 flex-1">{t('pricingPage.ladderSpecialistDesc')}</p>
-              <Button asChild variant="outline" className="w-full gap-2">
-                <Link to="/freelance-boost">{t('pricingPage.buyProduct', 'Get {{name}}', { name: PRODUCTS.freelanceBoost.name })}<ArrowRight className="w-4 h-4" /></Link>
-              </Button>
-              <ProductPreview productId="freelanceBoost" resumeText={sessionResume.resumeText} jobDescription={sessionResume.jobDescriptionText ?? undefined} className="mt-3" />
+              {open ? (
+                <>
+                  <Button asChild className="w-full gap-2">
+                    <a href="/#upload">{t('pricingPage.buyProduct', 'Get {{name}}', { name: PRODUCTS.fullAnalysis.name })}<ArrowRight className="w-4 h-4" /></a>
+                  </Button>
+                  <p className="text-xs text-muted-foreground text-center mt-2">{t('pricingPage.requiresUpload')}</p>
+                </>
+              ) : (
+                <PurchasesOpenSoon />
+              )}
             </div>
           </div>
 
@@ -190,7 +185,7 @@ export default function Pricing() {
           <div className="max-w-2xl mx-auto text-center">
             <h2 className="text-2xl font-bold mb-4">{t('pricingPage.questions')}</h2>
             <p className="text-muted-foreground mb-6">
-              {t('pricingPage.oneTimeAndProLine', 'One-time tools (the $5 Full Analysis, Freelance Boost and Transition Pro) are paid once and never renew; Pro is a monthly plan you can cancel any time.')}{' '}{t('pricingPage.freeScanLeadIn', 'Not sure yet? Run the')}{' '}
+              {t('pricingPage.oneTimeAndProLineFa', 'The ${{price}} Full Analysis is paid once and never renews; Pro is a monthly plan you can cancel any time.', { price: PRODUCTS.fullAnalysis.priceUsd })}{' '}{t('pricingPage.freeScanLeadIn', 'Not sure yet? Run the')}{' '}
               <Link to="/" className="text-primary hover:underline">{t('pricingPage.freeScanLink')}</Link> {t('pricingPage.seeScoreFirst')}
             </p>
             <Button variant="outline" asChild>

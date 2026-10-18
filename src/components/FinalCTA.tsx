@@ -2,6 +2,8 @@ import { ArrowRight, CheckCircle2, Zap, X, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "@/hooks/use-currency";
 import { PRODUCTS } from "@/config/products";
+import { purchasesOpen } from "@/lib/purchases-open";
+import { PurchasesOpenSoon } from "@/components/checkout/PurchasesOpenSoon";
 
 interface FinalCTAProps {
   onGetStarted: () => void;
@@ -90,7 +92,22 @@ export function FinalCTA({ onGetStarted, isLoading }: FinalCTAProps) {
           Path at $5) were cut on 2026-10-12 (the product line): nothing below
           offers them. */}
           
-          {/* Price + CTA */}
+          {/* Price + CTA. While no seller is named (owner decision
+              2026-10-17) the analysis is not priced here as something to buy:
+              the box says purchases open soon and offers the free scan. */}
+          {!purchasesOpen() ? (
+            <div className="inline-flex flex-col items-center gap-4 p-8 rounded-2xl bg-primary/10 border border-primary/30" data-final-cta-closed>
+              <PurchasesOpenSoon />
+              <button
+                onClick={handleGetStarted}
+                disabled={isLoading}
+                className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-primary text-primary-foreground font-semibold text-lg hover:bg-primary/90 transition-all shadow-lg shadow-primary/25 disabled:opacity-50 min-h-[44px] touch-manipulation"
+              >
+                {t('finalCta.freeScanCta', 'Scan my résumé free')}
+                <ArrowRight className="w-5 h-5" />
+              </button>
+            </div>
+          ) : (
           <div className="inline-flex flex-col items-center p-8 rounded-2xl bg-primary/10 border border-primary/30">
             <div className="flex items-baseline gap-2 mb-2">
               <span className="text-5xl md:text-6xl font-bold text-foreground">${PRODUCTS.fullAnalysis.priceUsd}</span>
@@ -116,6 +133,7 @@ export function FinalCTA({ onGetStarted, isLoading }: FinalCTAProps) {
               {t('finalCta.roi', { price: `$${PRODUCTS.fullAnalysis.priceUsd}` })}
             </p>
           </div>
+          )}
         </div>
       </div>
     </section>

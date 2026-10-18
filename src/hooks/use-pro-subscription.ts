@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import i18n from "@/i18n";
 import { checkoutContext } from "@/lib/track-transport";
-import { consentWasRequired, purchaseTerms } from "@/lib/purchase-terms";
+import { consentWasRequired, purchaseTerms, purchaseTermsUnused } from "@/lib/purchase-terms";
 import { checkoutRefusalOf } from "@/lib/checkout-refusal";
 import { territoryHint } from "@/lib/checkout-territory";
 
@@ -56,7 +56,7 @@ export function backFromPortal(): boolean {
 }
 
 /**
- * Resume Booster Pro ($45/month, all tools included).
+ * Resume Booster Pro ($45/month: the writing tools, the Full Analysis included, no daily cap on scans).
  * - proStatus: live check against the check-subscription function, using the
  *   signed-in session when available, otherwise the browser-remembered
  *   purchase email.
@@ -162,12 +162,16 @@ export function useProSubscription() {
           body: { email, language: i18n.language, ...checkoutContext(), ...purchaseTerms(), ...territoryHint() },
         });
         if (await consentWasRequired(error, data)) {
+          purchaseTermsUnused();
           toast({ title: i18n.t("purchaseTerms.consentNeeded"), variant: "destructive" });
           return false;
         }
-        // The territory's 451 (S12-059) carries a sentence for the buyer.
+        // A refusal written for the buyer: the territory's 451 (S12-059), the
+        // seller gate's 409 and the renewal box's 400 (owner decisions
+        // 2026-10-17). Nothing started, so the ticked box goes back.
         const refusal = error ? await checkoutRefusalOf(error) : null;
         if (refusal) {
+          purchaseTermsUnused();
           toast({ title: i18n.t("proPlan.checkoutRefusedTitle", "Couldn't start checkout"), description: refusal.message, variant: "destructive" });
           return false;
         }
@@ -184,6 +188,7 @@ export function useProSubscription() {
         }
         throw new Error(data?.error || "No checkout URL returned");
       } catch (e) {
+        purchaseTermsUnused();
         const raw = e instanceof Error ? e.message : "";
         toast({
           title: i18n.t("proPlan.checkoutRefusedTitle", "Couldn't start checkout"),

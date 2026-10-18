@@ -13,6 +13,12 @@
  *     never with an address another person left in this browser.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+// Freelance Boost, cut on 2026-10-17 (owner decision), stands in unhidden for
+// a product the hook sells: no product is sold through it any more.
+vi.mock("@/config/products", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/config/products")>();
+  return { ...real, isProductHidden: (id: string) => id !== "freelanceBoost" && real.isProductHidden(id as never) };
+});
 import { act, cleanup, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
 import { BrowserRouter, MemoryRouter } from "react-router-dom";
 import { MOUNT_TEST_BUDGET, SLOW } from "./helpers/mount-budget";

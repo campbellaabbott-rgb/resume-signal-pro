@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { PRO_SUMMARY } from "@/config/pro-perks";
 import { useConversionTracking } from "@/hooks/use-conversion-tracking";
 
 interface RateLimitUpselProps {
@@ -24,7 +25,8 @@ interface RateLimitUpselProps {
  * SCAN PACKS ARE NO LONGER SOLD (the product line, 2026-10-12): this dialog
  * sold a pack of credits, and create-scan-pack-checkout now answers 410. It
  * points to what is still offered instead: a free account (more scans a day)
- * for a signed-out visitor, and Pro (scans without a daily limit).
+ * for a signed-out visitor, and Pro, summarised from the one list of what
+ * Pro is (src/config/pro-perks.ts, owner decision 2026-10-17).
  */
 export function RateLimitUpsell({ onClose, resetHours = null, signedIn = false }: RateLimitUpselProps) {
   const { t } = useTranslation();
@@ -72,7 +74,7 @@ export function RateLimitUpsell({ onClose, resetHours = null, signedIn = false }
 
           <div className="rounded-xl border border-primary/30 bg-primary/5 p-4" data-offer="pro">
             <p className="flex items-center gap-2 font-semibold"><Crown className="w-4 h-4 text-primary" />{t('rateLimitUpsell.proTitle', 'Pro')}</p>
-            <p className="mt-1 text-sm text-muted-foreground">{t('rateLimitUpsell.proBody', 'Pro scans without a daily limit, plus the writing tools for the jobs you apply to.')}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{t(PRO_SUMMARY.key, PRO_SUMMARY.text)}</p>
             <Button asChild variant="outline" className="mt-3 w-full">
               <Link to="/pricing" onClick={() => trackButtonClick('pro', 'rate_limit_upsell')}>
                 {t('rateLimitUpsell.proCta', 'See Pro')}

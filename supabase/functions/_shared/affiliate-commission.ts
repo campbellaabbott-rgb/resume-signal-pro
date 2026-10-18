@@ -2,7 +2,8 @@
 // 2026-10-12, the product line: the affiliate programme is re-based).
 //
 // The one-off catalogue the old flat rates paid on ($1 on the smaller tools,
-// $5 on the rest) was cut to the Full Analysis and the two Freelance tiers.
+// $5 on the rest) was cut to the Full Analysis (the two Freelance tiers went
+// too, on 2026-10-17).
 // An affiliate now earns ONE flat amount: PRO_FIRST_MONTH_COMMISSION_CENTS
 // on a referred customer's first paid Pro month, which is the Pro checkout
 // itself (Pro sells no trial, so the session that completes is the first

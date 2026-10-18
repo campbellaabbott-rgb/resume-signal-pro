@@ -39,8 +39,10 @@ describe("the FAQ", () => {
   it("says what is one-time and what Pro is, and still that nothing else upgrades you", () => {
     const answer = answerTo(/Is this a subscription/);
     expect(answer).not.toMatch(/every tool/i);
-    expect(answer).toMatch(/\$5 Full Analysis and the Freelance Boost tiers are one-time payments/);
-    expect(answer).toMatch(/everything in a free account plus the writing tools/);
+    // Owner decision 2026-10-17: one one-off, and Pro read from the one list.
+    expect(answer).toMatch(/\$5 Full Analysis is a one-time payment/);
+    expect(answer).not.toMatch(/Freelance|Transition Pro|unlimited/i);
+    expect(answer).toMatch(/Everything in a free account, plus the writing tools, the \$5 Full Analysis included and no daily cap on scans/);
     expect(answer).toMatch(/\$45\/month/);
     expect(answer).toMatch(/Nothing else upgrades you automatically/);
   });
