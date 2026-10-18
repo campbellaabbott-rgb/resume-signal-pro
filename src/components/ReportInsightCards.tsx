@@ -483,7 +483,7 @@ export function FreelanceGuidanceCard({
 
       {/* No product card here (S12-039): the free report offers exactly two
           upgrades, the Full Analysis and Pro (owner decision 2026-10-08).
-          Freelance Boost is still sold on its own page. */}
+          Freelance Boost is no longer sold (owner decision 2026-10-17). */}
     </div>
   );
 }

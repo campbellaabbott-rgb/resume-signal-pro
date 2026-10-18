@@ -3,6 +3,8 @@ import { Check, X, Minus } from "lucide-react";
 import { useCurrency } from "@/hooks/use-currency";
 import { PRODUCTS } from "@/config/products";
 import { TRADING_NAME } from "@/config/seller";
+import { purchasesOpen } from "@/lib/purchases-open";
+import { PurchasesOpenSoon } from "@/components/checkout/PurchasesOpenSoon";
 
 type FeatureStatus = "yes" | "no" | "partial";
 
@@ -148,14 +150,29 @@ export function ComparisonTable() {
             ))}
           </div>
 
-          {/* CTA */}
+          {/* CTA. The priced call to action shows only once the seller's
+              legal name and postal address are on the site (owner decision
+              2026-10-17, B&P 17538(d)); until then it offers the free scan
+              and says purchases open soon, as the closing call to action does. */}
           <div className="mt-8 text-center">
-            <button
-              onClick={() => document.getElementById("upload")?.scrollIntoView({ behavior: "smooth" })}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-all duration-300 hover:scale-105"
-            >
-              {t("comparison.ctaText")} — ${PRODUCTS.fullAnalysis.priceUsd} {isLocalCurrency && <span className="opacity-80">≈ {formatPrice(PRODUCTS.fullAnalysis.priceUsd)}</span>}
-            </button>
+            {purchasesOpen() ? (
+              <button
+                onClick={() => document.getElementById("upload")?.scrollIntoView({ behavior: "smooth" })}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-all duration-300 hover:scale-105"
+              >
+                {t("comparison.ctaText")} — ${PRODUCTS.fullAnalysis.priceUsd} {isLocalCurrency && <span className="opacity-80">≈ {formatPrice(PRODUCTS.fullAnalysis.priceUsd)}</span>}
+              </button>
+            ) : (
+              <div className="inline-flex flex-col items-center gap-3" data-comparison-closed>
+                <PurchasesOpenSoon />
+                <button
+                  onClick={() => document.getElementById("upload")?.scrollIntoView({ behavior: "smooth" })}
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-all duration-300 hover:scale-105"
+                >
+                  {t("finalCta.freeScanCta", "Scan my résumé free")}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

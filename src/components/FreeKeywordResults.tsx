@@ -17,7 +17,6 @@ import { SaveResumeVersion } from "./SaveResumeVersion";
 import { PersonalizedInsights } from "./PersonalizedInsights";
 import { InterviewCoach } from "./InterviewCoach";
 import { useAuth } from "@/contexts/AuthContext";
-import { WRITING_ALLOWANCE } from "@/config/writing-allowance";
 import { JobKeywordMatcher } from "./JobKeywordMatcher";
 import { ATSParseSimulator } from "./ATSParseSimulator";
 import { PeerBenchmark } from "./PeerBenchmark";
@@ -26,6 +25,9 @@ import { IndustryKeywordSuggestions } from "./IndustryKeywordSuggestions";
 import { RoleKeywordSuggestions } from "./RoleKeywordSuggestions";
 import { analyzeKeywordPresence } from "@/config/industry-keywords";
 import { PurchaseTerms } from "./PurchaseTerms";
+import { purchasesOpen } from "@/lib/purchases-open";
+import { PurchasesOpenSoon } from "@/components/checkout/PurchasesOpenSoon";
+import { PRO_SUMMARY } from "@/config/pro-perks";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -830,6 +832,9 @@ export function FreeKeywordResults({
   const getFinalCtaText = () => t('freeScan.cta.button');
 
   // Track which CTA converts, then trigger checkout
+  // Whether the report may offer a purchase: only once the seller is named.
+  const canBuy = purchasesOpen();
+
   const handleUpgradeClick = (source: string) => {
     trackButtonClick('fullAnalysis', source);
     trackContentDepthConversion({ source });
@@ -1527,14 +1532,13 @@ export function FreeKeywordResults({
       {platformProfileDetected && (
         <div className="rounded-2xl border border-primary/40 bg-primary/5 p-4 mb-6">
           <p className="text-sm font-semibold text-foreground mb-0.5">This looks like a freelance platform profile, not a resume</p>
-          <p className="text-xs text-muted-foreground mb-3">
+          {/* Freelance Boost is no longer sold (owner decision 2026-10-17),
+              so the note names no product and links to none. */}
+          <p className="text-xs text-muted-foreground">
             We detected {(platformProfileDetected.signals ?? []).slice(0, 3).join(", ")} — the markers of a profile export.
             The score below treats this as a resume, which understates you: recruiters need your projects translated
-            into employer language, not platform stats. That's exactly what Freelance Boost does.
+            into employer language, not platform stats.
           </p>
-          <Link to="/freelance-boost" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors">
-            Turn this profile into resume experience →
-          </Link>
         </div>
       )}
 
@@ -4571,7 +4575,12 @@ export function FreeKeywordResults({
         <h3 className="font-semibold text-foreground mb-1">{t('freeResults.nextSteps.title')}</h3>
         <p className="text-xs text-muted-foreground mb-4">{t('freeResults.nextSteps.body')}</p>
         <div className="space-y-2.5">
-          <PurchaseTerms kind="payment" />
+          {/* The Full Analysis button shows only once the seller's legal name
+              and postal address are on the site (owner decision 2026-10-17,
+              B&P 17538(d)); until then, purchases open soon. */}
+          {!canBuy && <PurchasesOpenSoon />}
+          {canBuy && <PurchaseTerms kind="payment" />}
+          {canBuy && (
           <button
             data-offer="fullAnalysis"
             onClick={() => handleUpgradeClick('next_steps_full_analysis')}
@@ -4587,6 +4596,7 @@ export function FreeKeywordResults({
             </span>
             <span className="text-sm font-semibold text-primary shrink-0 ml-3">{priceDisplay}</span>
           </button>
+          )}
           <Link
             data-offer="pro"
             to="/pricing"
@@ -4595,8 +4605,9 @@ export function FreeKeywordResults({
           >
             <span>
               <span className="block text-sm font-medium text-foreground">{t('freeResults.nextSteps.proName')}</span>
-              {/* Pro's line (owner decision 2026-10-12), its daily figure the server's own. */}
-              <span className="block text-xs text-muted-foreground">{t('freeResults.nextSteps.proDescWriting', 'Everything in a free account, plus the writing tools: a tailored résumé, cover letter and interview prep for up to {{perDay}} jobs a day. Cancel anytime from your account.', { perDay: WRITING_ALLOWANCE.proPackagesPerDay })}</span>
+              {/* Pro's line is the one summary every page reads (owner
+                  decision 2026-10-17: src/config/pro-perks.ts). */}
+              <span className="block text-xs text-muted-foreground">{t(PRO_SUMMARY.key, PRO_SUMMARY.text)}</span>
             </span>
             <span className="text-sm font-semibold text-primary shrink-0 ml-3">{t('freeResults.nextSteps.proPrice', { price: SUBSCRIPTIONS.pro.priceUsd })}</span>
           </Link>

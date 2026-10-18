@@ -487,7 +487,8 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 // quote the résumé or carry a number to dial (S12-068); the spend gate it
 // imports counts a proven account by name (S12-146).
 // 2026-10-14.29 (wave 4 round 2 integration): generators' 2026-10-14.24 and
-// payments-delivery's 2026-10-14.22 in one bundle.
+// payments-delivery's 2026-10-14.22 in one bundle; a refusal says Pro has no
+// daily cap on scans, the plan's words (owner decision 2026-10-17).
 const FN_BUILD = "free-keyword-scan.2026-10-14.29";
 
 const corsHeaders = {
@@ -507,7 +508,7 @@ const BLOCKED_COUNTRIES = new Set(['RU', 'NG', 'PK']);
 
 const ERROR_MESSAGES = {
   INTERNAL: 'An error occurred. Please try again.',
-  RATE_LIMITED: 'Daily scan limit reached. Upgrade for unlimited access!',
+  RATE_LIMITED: 'Daily scan limit reached. Pro has no daily cap on scans.',
   SERVICE_UNAVAILABLE: 'Service temporarily unavailable.',
   GEO_BLOCKED: 'Service not available in your region.',
 };
@@ -1750,8 +1751,8 @@ serve(async (req) => {
       // purchased credits, or to scan without limit as a Pro subscriber.
       //
       // 1. Pro, held by the signed-in ACCOUNT: the one rule
-      //    (_shared/pro-standing.ts) over both caches, by user id. Unlimited
-      //    scans are an ongoing feature of the plan, so a trial counts. A
+      //    (_shared/pro-standing.ts) over both caches, by user id. No daily
+      //    cap on scans is an ongoing feature of the plan, so a trial counts. A
       //    password sign-up as a subscriber's address holds no plan: the plan
       //    belongs to the account that bought it (20261008130000).
       if (authedUserId) {
@@ -1817,7 +1818,7 @@ serve(async (req) => {
           // Scan Packs are no longer sold (owner decision 2026-10-12), so the
           // refusal offers only what exists: a free account, Pro, or the reset.
           error: (isAuthedUser
-            ? `You've used all ${dailyScanLimit} free scans for today. Your limit resets in ~${hoursUntilReset} hour${hoursUntilReset !== 1 ? 's' : ''}; Pro includes unlimited scans.`
+            ? `You've used all ${dailyScanLimit} free scans for today. Your limit resets in ~${hoursUntilReset} hour${hoursUntilReset !== 1 ? 's' : ''}; Pro has no daily cap on scans.`
             : `You've used all ${dailyScanLimit} free scans for today. Create a free account for ${SIGNED_IN_SCANS_PER_DAY}/day, or come back in ~${hoursUntilReset} hour${hoursUntilReset !== 1 ? 's' : ''}.`) + unprovenNote,
           rateLimited: true,
           mailboxUnproven: isAuthedUser && !provenEmail,

@@ -96,11 +96,21 @@ describe("every page that lists Pro reads the list", () => {
     ["src/components/ProSubscriptionCard.tsx", /PRO_PERK_ITEMS\.map/],
     ["src/components/FAQ.tsx", /PRO_SUMMARY\.key, PRO_SUMMARY\.text/],
     ["src/components/RateLimitUpsell.tsx", /PRO_SUMMARY\.key, PRO_SUMMARY\.text/],
+    // The free report's Pro row (integration, 2026-10-18).
+    ["src/components/FreeKeywordResults.tsx", /PRO_SUMMARY\.key, PRO_SUMMARY\.text/],
   ];
   it.each(PAGES)("%s reads it", (file, reads) => {
     const src = code(file);
     expect(src).toMatch(/from "@\/config\/pro-perks"/);
     expect(src).toMatch(reads);
+  });
+
+  it("neither scanner's daily refusal promises Pro unlimited scans: it says no daily cap", () => {
+    for (const file of ["supabase/functions/free-keyword-scan/index.ts", "supabase/functions/free-keyword-scan-stream/index.ts"]) {
+      const src = code(file);
+      expect(src, file).not.toMatch(/unlimited (scans|access)/i);
+      expect(src, file).toMatch(/Pro has no daily cap on scans/);
+    }
   });
 
   it("no page that sells Pro types its own perk words", () => {

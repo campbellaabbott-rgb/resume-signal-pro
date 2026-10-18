@@ -12,8 +12,15 @@
  *   - S12-009: the Full Analysis was sold as "applies the fixes from this
  *     report", but analyze-resume never receives this report: it is its own,
  *     deeper read of the résumé. The offer now says so.
- *   - Pro's line is the owner's: everything in a free account, plus the
- *     writing tools, with the server's own daily figure.
+ *   - Pro's line is the one summary every page reads (owner decision
+ *     2026-10-17, src/config/pro-perks.ts): everything in a free account,
+ *     plus the writing tools, the $5 Full Analysis included and no daily cap
+ *     on scans.
+ *   - The Full Analysis button shows only once the seller's legal name and
+ *     postal address are on the site (owner decision 2026-10-17, B&P
+ *     17538(d)); until then the report says purchases open soon.
+ *   - Freelance Boost is no longer sold, so the platform-profile note names
+ *     it nowhere and links to no page that sells it.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, render } from "@testing-library/react";
@@ -43,6 +50,12 @@ vi.mock("@/integrations/supabase/client", () => {
 });
 
 const auth = vi.hoisted(() => ({ user: null as null | { id: string; email: string } }));
+// The seller, as shipped (empty) or named by a test.
+const seller = vi.hoisted(() => ({ legalName: "", postalAddress: "" }));
+vi.mock("@/config/seller", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/config/seller")>();
+  return { ...real, SELLER: seller, sellerIdentity: (x = seller) => real.sellerIdentity(x) };
+});
 vi.mock("@/contexts/AuthContext", async (orig) => {
   const real = await orig<typeof import("@/contexts/AuthContext")>();
   return { ...real, useAuth: () => ({ ...real.useAuth(), user: auth.user }) };
@@ -57,13 +70,14 @@ if (!(globalThis as { IntersectionObserver?: unknown }).IntersectionObserver) {
 
 import { FreeKeywordResults } from "@/components/FreeKeywordResults";
 import { supabase } from "@/integrations/supabase/client";
-import { WRITING_ALLOWANCE } from "@/config/writing-allowance";
+import { PRO_SUMMARY } from "@/config/pro-perks";
 
-afterEach(() => { cleanup(); auth.user = null; });
+afterEach(() => { cleanup(); auth.user = null; seller.legalName = ""; seller.postalAddress = ""; });
+const nameSeller = () => { seller.legalName = "Example Seller LLC"; seller.postalAddress = "1 Example Street, Springfield"; };
 
 const tailor = vi.fn();
 
-async function mount() {
+async function mount(extra: Record<string, unknown> = {}) {
   const utils = render(
     <MemoryRouter>
       <FreeKeywordResults
@@ -84,6 +98,7 @@ async function mount() {
         jobMatchGrade={"C" as never}
         matchingSkills={["Airflow"]}
         missingSkills={["dbt"]}
+        {...extra}
       />
     </MemoryRouter>,
   );
@@ -146,17 +161,46 @@ describe("the tailored résumé is counted by account", () => {
 
 describe("the two offers say what they are", () => {
   it("the Full Analysis is its own analysis, never 'the fixes from this report'", async () => {
+    nameSeller();
     const { getByTestId } = await mount();
     const full = getByTestId("report-next-steps").querySelector('[data-offer="fullAnalysis"]')!;
     expect(full.textContent).toMatch(/separate, deeper analysis of your résumé/);
     expect(full.textContent).not.toMatch(/fixes from this report/i);
   });
 
-  it("Pro is everything in a free account plus the writing tools, at the server's daily figure", async () => {
+  it("Pro's line is the one summary every page reads", async () => {
     const { getByTestId } = await mount();
     const pro = getByTestId("report-next-steps").querySelector('[data-offer="pro"]')!;
+    expect(pro.textContent).toContain(PRO_SUMMARY.text);
     expect(pro.textContent).toContain("Everything in a free account, plus the writing tools");
-    expect(pro.textContent).toContain(`up to ${WRITING_ALLOWANCE.proPackagesPerDay} jobs a day`);
-    expect(pro.textContent).not.toMatch(/every paid tool/i);
+    expect(pro.textContent).not.toMatch(/every paid tool|unlimited/i);
+  });
+});
+
+describe("no buy button until the seller is named", () => {
+  it("with no seller named, the report offers no Full Analysis button and says purchases open soon", async () => {
+    const { getByTestId } = await mount();
+    const steps = getByTestId("report-next-steps");
+    expect(steps.querySelector('[data-offer="fullAnalysis"]')).toBeNull();
+    expect(steps.querySelector("[data-purchases-open-soon]")).not.toBeNull();
+    // Pro's row stays: it opens /pricing, which gates its own button.
+    expect(steps.querySelector('[data-offer="pro"]')).not.toBeNull();
+  });
+
+  it("control: with a seller named, the button is back and the line is gone", async () => {
+    nameSeller();
+    const { getByTestId } = await mount();
+    const steps = getByTestId("report-next-steps");
+    expect(steps.querySelector('[data-offer="fullAnalysis"]')).not.toBeNull();
+    expect(steps.querySelector("[data-purchases-open-soon]")).toBeNull();
+  });
+});
+
+describe("a platform profile is told what it is, and sold nothing", () => {
+  it("the note names no Freelance Boost and links to no page selling it", async () => {
+    const { container } = await mount({ platformProfileDetected: { signals: ["Upwork", "Job Success Score", "hourly rate"] } });
+    expect(container.textContent).toMatch(/freelance platform profile, not a resume/);
+    expect(container.textContent).not.toMatch(/Freelance Boost/);
+    expect(container.querySelector('a[href="/freelance-boost"]')).toBeNull();
   });
 });

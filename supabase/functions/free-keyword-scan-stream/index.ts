@@ -6507,7 +6507,9 @@ function clampImprovementToScoreGap(report: Record<string, unknown>): void {
 // a Pro account is not refused at the daily limit (S12-143, S12-144); the
 // primary's smaller hour with a per-network share, read before the day's slot
 // (S12-066); sealed sentences scrubbed as the primary's are (S12-068).
-const FN_BUILD = "free-keyword-scan-stream.2026-10-11.24";
+// 2026-10-11.29 (wave 4 round 2 integration): the refusal says Pro has no
+// daily cap on scans, the plan's words (owner decision 2026-10-17).
+const FN_BUILD = "free-keyword-scan-stream.2026-10-11.29";
 
 /** The primary's report id formula (free-keyword-scan/report-meta.ts reportIdFor): this report's cache key and its score. */
 async function streamReportId(cacheKey: string, score: unknown): Promise<string> {
@@ -7729,7 +7731,7 @@ serve(async (req) => {
       if (!allowed && !proPastTheDay) {
         send('error', {
           error: isAuthedUser
-            ? `You've used all ${dailyScanLimit} free scans for today. Your limit resets within 24 hours; Pro includes unlimited scans.`
+            ? `You've used all ${dailyScanLimit} free scans for today. Your limit resets within 24 hours; Pro has no daily cap on scans.`
             : `You've used all ${dailyScanLimit} free scans for today. Create a free account for ${SIGNED_IN_SCANS_PER_DAY}/day, or come back within 24 hours.`,
           rateLimited: true,
           code: 'daily_scan_limit',

@@ -19,6 +19,9 @@
  *     and the next press buys with the text on screen.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+// Purchases open, as once the owner names the seller (owner decision 2026-10-17):
+// what this file tests sits behind the buy button that gate hides.
+vi.mock("@/lib/purchases-open", () => ({ purchasesOpen: () => true }));
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
