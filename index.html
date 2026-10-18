@@ -80,12 +80,23 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
     <link rel="manifest" href="/manifest.webmanifest" />
 
-    <!-- Preconnect for Performance -->
+    <!-- Preconnect for Performance: only to hosts every page uses. -->
     <link rel="preconnect" href="https://bwhdazbotpblihdxcmho.supabase.co" crossorigin />
     <link rel="dns-prefetch" href="https://bwhdazbotpblihdxcmho.supabase.co" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="preconnect" href="https://js.stripe.com" />
+
+    <!-- FONTS NEVER BLOCK THE FIRST PAINT (SEO-020). The font stylesheet is
+         requested here, at the same moment as the app's own CSS, rather than
+         from inside it, where it was a second blocking request the browser
+         could only discover after the first had arrived. It applies once
+         loaded (the media swap), and font-display swap paints text at once
+         in the metric-matched Inter Fallback (src/index.css), so the change
+         of face moves no line. The noscript twin applies it without script.
+         Self-hosting the same faces would also drop the font hosts' two
+         connections; that needs the woff2 files in public/fonts. -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=swap" media="print" onload="this.media='all'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=swap" /></noscript>
 
     <!-- Open Graph / Facebook (sitewide fallback for non-JS social crawlers) -->
     <meta property="og:type" content="website" />
