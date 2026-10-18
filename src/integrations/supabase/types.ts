@@ -5450,6 +5450,11 @@ export type Database = {
         }[]
       }
       email_queue_dispatch: { Args: never; Returns: undefined }
+      employer_key: {
+        Args: { p_source: string; p_token: string }
+        Returns: string
+      }
+      employer_segment: { Args: { p_token: string }; Returns: string }
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number

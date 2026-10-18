@@ -1156,6 +1156,13 @@
       "when": 1792266980927,
       "tag": "0164_the_disk_is_forty_gb_as_lovable_reads_it",
       "breakpoints": true
+    },
+    {
+      "idx": 165,
+      "version": "7",
+      "when": 1792320785668,
+      "tag": "0165_an_employer_is_named_by_its_hiring_system_and_its_board",
+      "breakpoints": true
     }
   ]
 }
