@@ -122,7 +122,9 @@ describe("create-checkout sends Stripe no résumé text", () => {
     expect(stripeCalls).toHaveLength(1);
     const params = stripeCalls[0].params;
     // Nothing a person wrote: not the key, and not a byte of the text anywhere in the request to Stripe.
-    expect(Object.keys(params.metadata).sort()).toEqual(["baseAmountUSD", "originalCurrency", "product_type"]);
+    // (language is the page's, allow-listed to the site's languages: S12-114.)
+    expect(Object.keys(params.metadata).sort()).toEqual(["baseAmountUSD", "language", "originalCurrency", "product_type"]);
+    expect(params.metadata.language).toBe("en");
     const sent = JSON.stringify(params);
     for (const fragment of ["Jordan Probe-Candidate", "jordan.probe@example.com", "555 0100", "Harness Lane", "EXPERIENCE"]) {
       expect(sent, `Stripe was sent "${fragment}"`).not.toContain(fragment);
