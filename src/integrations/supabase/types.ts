@@ -1413,6 +1413,7 @@ export type Database = {
           cik: number
           currency: string
           exchange: string
+          matched_source: string | null
           sec_name: string
           series: Json
           slug: string
@@ -1423,6 +1424,7 @@ export type Database = {
           cik: number
           currency?: string
           exchange?: string
+          matched_source?: string | null
           sec_name?: string
           series?: Json
           slug: string
@@ -1433,6 +1435,7 @@ export type Database = {
           cik?: number
           currency?: string
           exchange?: string
+          matched_source?: string | null
           sec_name?: string
           series?: Json
           slug?: string
