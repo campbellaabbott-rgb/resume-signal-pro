@@ -28,6 +28,8 @@ import { groundAnswers, ANSWER_CAP, ANSWER_CHUNK, chunked } from "./answers.ts";
 import { postingLanguageInstruction } from "../_shared/posting-language.ts";
 import { resolveLanguageName } from "../_shared/language-instruction.ts";
 import { fencePosting, postingText, POSTING_DATA_RULE } from "../_shared/posting-text.ts";
+import { isServiceRoleCaller } from "../_shared/service-caller.ts";
+import { signInRequired } from "../_shared/writing-allowance.ts";
 
 // Provable from outside without a model call: every response, the CORS
 // preflight included, carries this in x-fn-build.
@@ -55,7 +57,12 @@ import { fencePosting, postingText, POSTING_DATA_RULE } from "../_shared/posting
 // 2026-10-11.29 (wave 4 round 2 integration): generators' 2026-10-11.24 with
 // agents-api's _shared/application-questions.ts (a status inside a work
 // question, or asked by a hint, stays the person's: S12-081, S12-082).
-const FN_BUILD = "generate-application-answers.2026-10-11.29";
+// 2026-10-11.30 (wave 4 round 2 fixes): the cover-note mode writes a letter,
+// so it takes the writing tools' account gate: only our own servers (the
+// switched-off apply agent) may ask; a browser is answered 401
+// sign_in_required before anything is spent. The classifier it imports
+// keeps a factual clause inside a work or motivation question the person's.
+const FN_BUILD = "generate-application-answers.2026-10-11.30";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -110,6 +117,11 @@ serve(async (req) => {
     // touching the check. Returning an already-validated note (or null) makes
     // that impossible by construction.
     if (mode === "cover-note") {
+      // A cover letter is a writing tool, and the writing tools are gated by
+      // account on the server (signed out: none). Its only caller was the
+      // server-side apply agent, with the service-role key; the apply page
+      // asks for screening answers only.
+      if (!isServiceRoleCaller(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "")) return signInRequired(corsHeaders);
       // Refuse BEFORE spending anything. In a language the gate cannot check,
       // every draft would be rejected (German) or waved through unchecked
       // (Devanagari) — so two model calls per posting would buy a guaranteed
