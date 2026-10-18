@@ -248,6 +248,9 @@ describe("a filing is printed as a filing, with its source link -- or not at all
     const a = line.querySelector<HTMLAnchorElement>('a[data-layoff-source="state_warn"]');
     expect(a?.getAttribute("href")).toBe(WARN_ACME.lf_source_url);
     expect(a?.textContent).toBe("California EDD ↗");
+    // A link inside a sentence is underlined at rest (the design system's
+    // .link): colour alone failed axe's link-in-text-block at 1.08:1.
+    expect(a?.className.split(/\s+/)).toContain("link");
     // No verdict, no adjective, no absence.
     expect(s).not.toMatch(/\b(ghost|fake|real|quality|legit|live|now)\b/i);
     // The SEC shape, through the pure renderer: percentage, both dates, the

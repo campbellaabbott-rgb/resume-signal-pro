@@ -4458,7 +4458,8 @@
     "moreLocations_many": "Mismo puesto en {{count}} ubicaciones más",
     "verdictTakedownCeiling": "retira hasta el {{pct}} % de sus puestos en {{d}} días, contando cada retirada",
     "hhTakedownRateDated": "Hasta el {{pct}} % de sus puestos se retiró en {{d}} días, contando cada retirada, medido sobre los {{n}} puestos con fecha de publicación de la propia empresa.",
-    "hhFootnoteCurveListing": "Calculado a partir del ciclo de vida completo de las publicaciones que lista este sitio — cuándo se abren y cuándo se retiran — no de una foto puntual. Las vacantes aún publicadas, y las que superaron nuestro límite de 30 días, cuentan como sin terminar en lugar de quedar fuera."
+    "hhFootnoteCurveListing": "Calculado a partir del ciclo de vida completo de las publicaciones que lista este sitio — cuándo se abren y cuándo se retiran — no de una foto puntual. Las vacantes aún publicadas, y las que superaron nuestro límite de 30 días, cuentan como sin terminar en lugar de quedar fuera.",
+    "employerOutlivedEveryTakedown": "Es más de lo que este empleador suele mantener una vacante publicada: el {{gone}} % de sus vacantes sale del portal en {{d}} días, contando cada retirada."
   },
   "accountPage": {
     "statusSaveFailed": "No se pudo guardar ese estado; inténtalo de nuevo.",

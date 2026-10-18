@@ -7981,14 +7981,24 @@ function JobsBoard({ boardId }: { boardId: string }) {
                             as a sentence. dated_n is the cohort the durations
                             were actually computed from, and it is never smaller
                             than the fills it covers. */}
-                        {t("jobsPage.employerOutlivedCurveBounded", "That is longer than this employer usually leaves a role up: {{gone}}% of its roles are off the board within {{d}} days — up to {{fillPct}}% taken down for good ({{lo}}–{{hi}}%), at least {{relistPct}}% re-listed.", {
-                          gone: asPct(1 - employer!.still_open_14),
-                          d: URGENT_FILL_MAX_DAYS,
-                          fillPct: asPct(employer!.fill_rate_14),
-                          lo: asPct(employer!.fill_rate_14_lo),
-                          hi: asPct(employer!.fill_rate_14_hi),
-                          relistPct: asPct(employer!.relist_rate_14),
-                        })}{" "}
+                        {/* A FILL SHARE ONLY WHERE THE RE-POST TEST FILES FILLS AS
+                            FILLS (the gate's ceilingBasis "fills", the rule
+                            fillShareStatable reads; paceStatable already held). Where it reads other sites, the only
+                            figure left is every takedown, with no re-listed
+                            share: the clause list above already says so. */}
+                        {hiringRecordGate(employer!).ceilingBasis === "fills"
+                          ? t("jobsPage.employerOutlivedCurveBounded", "That is longer than this employer usually leaves a role up: {{gone}}% of its roles are off the board within {{d}} days — up to {{fillPct}}% taken down for good ({{lo}}–{{hi}}%), at least {{relistPct}}% re-listed.", {
+                            gone: asPct(1 - employer!.still_open_14),
+                            d: URGENT_FILL_MAX_DAYS,
+                            fillPct: asPct(employer!.fill_rate_14),
+                            lo: asPct(employer!.fill_rate_14_lo),
+                            hi: asPct(employer!.fill_rate_14_hi),
+                            relistPct: asPct(employer!.relist_rate_14),
+                          })
+                          : t("jobsPage.employerOutlivedEveryTakedown", "That is longer than this employer usually leaves a role up: {{gone}}% of its roles are off the board within {{d}} days, counting every takedown.", {
+                            gone: asPct(1 - employer!.still_open_14),
+                            d: URGENT_FILL_MAX_DAYS,
+                          })}{" "}
                         {t("jobsPage.employerOutlivedCurveBasisDated", "Measured over the {{n}} of its roles that carry the company's own posting date, across {{tracking}} days of tracking.", { n: employer!.dated_n.toLocaleString(), tracking: employer!.tracking_days })}
                         {employerQualified && (
                           <> {t("jobsPage.fillCoverageQualifier", "Across the {{pct}}% of these roles that carry a posting date from the company itself.", { pct: asPct(employer!.dated_coverage) })}</>

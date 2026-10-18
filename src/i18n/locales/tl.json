@@ -4430,7 +4430,8 @@
     "hhAlsoOnRecord": "Nakatala rin:",
     "verdictTakedownCeiling": "nag-aalis ng hanggang {{pct}}% ng mga posisyon nito sa loob ng {{d}} araw, binibilang ang bawat pag-alis",
     "hhTakedownRateDated": "Hanggang {{pct}}% ng mga posisyon nito ang naalis sa loob ng {{d}} araw, binibilang ang bawat pag-alis, sinukat sa {{n}} posisyong may sariling petsa ng pag-post ng kumpanya.",
-    "hhFootnoteCurveListing": "Kinalkula mula sa buong lifecycle ng mga posting na inililista ng site na ito — kung kailan bumubukas at kung kailan naaalis — hindi mula sa isang snapshot. Ang mga posisyong nakapaskil pa, at ang mga lumagpas sa aming 30-araw na hangganan, ay binibilang na hindi pa tapos sa halip na iwanan."
+    "hhFootnoteCurveListing": "Kinalkula mula sa buong lifecycle ng mga posting na inililista ng site na ito — kung kailan bumubukas at kung kailan naaalis — hindi mula sa isang snapshot. Ang mga posisyong nakapaskil pa, at ang mga lumagpas sa aming 30-araw na hangganan, ay binibilang na hindi pa tapos sa halip na iwanan.",
+    "employerOutlivedEveryTakedown": "Mas matagal iyan kaysa karaniwang pagpapaskil ng employer na ito ng isang role: {{gone}}% ng mga role nito ay naaalis sa board sa loob ng {{d}} araw, binibilang ang bawat pag-alis."
   },
   "accountPage": {
     "statusSaveFailed": "Hindi na-save ang status na iyon — pakisubukan muli.",

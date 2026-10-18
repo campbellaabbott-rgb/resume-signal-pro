@@ -307,6 +307,18 @@ describe("a posting age with nothing to measure it against", () => {
     expect(p).toContain("63 days of tracking");
   });
 
+  it("behaviour: where the re-post test reads other sites, the outlived line states every takedown and no fill or re-listed share", async () => {
+    // Centria-shaped: one title live at many sites, far more "came back" than
+    // went down. The gate's ceiling is every takedown, not a fill share.
+    mount([row()], { company: [curve({ multi_site_title_share: 0.97, filled_roles_90d: 43, relisted_roles_90d: 2967 })] });
+    await waitFor(() => expect(panelText()).toContain(EMPLOYER_LINE), SLOW);
+    const p = line(EMPLOYER_LINE);
+    expect(p, "the share off the board within the horizon").toContain("60%");
+    expect(p).toContain("counting every takedown");
+    expect(p, "a fill share the gate says is not a ceiling").not.toMatch(/taken down for good/);
+    expect(p, "a re-listed share on a board whose re-post test files new locations as re-posts").not.toMatch(/re-listed/);
+  });
+
   it("behaviour: an undated posting gets NO comparison, however much we know about its field", async () => {
     // first_seen is our discovery time and has never been a posting age here.
     // The stats are fully present; the age is not, so the block does not render.
@@ -537,6 +549,7 @@ describe("a posting age with nothing to measure it against", () => {
       "fieldCurveCompareBounded",
       "fieldCurveBasis",
       "employerOutlivedCurveBounded",
+      "employerOutlivedEveryTakedown",
       "employerOutlivedCurveBasisDated",
       "fieldMedianCensored",
       "fillCoverageQualifier",

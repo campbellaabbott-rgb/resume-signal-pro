@@ -4430,7 +4430,8 @@
     "hhAlsoOnRecord": "Ebenfalls aktenkundig:",
     "verdictTakedownCeiling": "nimmt bis zu {{pct}} % seiner Stellen innerhalb von {{d}} Tagen herunter, jede Entfernung mitgezählt",
     "hhTakedownRateDated": "Bis zu {{pct}} % seiner Stellen verschwanden innerhalb von {{d}} Tagen, jede Entfernung mitgezählt, gemessen an den {{n}} Stellen mit einem Veröffentlichungsdatum des Unternehmens selbst.",
-    "hhFootnoteCurveListing": "Berechnet aus dem gesamten Lebenszyklus der Anzeigen, die diese Website listet — wann sie erscheinen und wann sie verschwinden — nicht aus einer Momentaufnahme. Noch offene Stellen und Stellen jenseits unserer 30-Tage-Grenze zählen als unabgeschlossen statt herauszufallen."
+    "hhFootnoteCurveListing": "Berechnet aus dem gesamten Lebenszyklus der Anzeigen, die diese Website listet — wann sie erscheinen und wann sie verschwinden — nicht aus einer Momentaufnahme. Noch offene Stellen und Stellen jenseits unserer 30-Tage-Grenze zählen als unabgeschlossen statt herauszufallen.",
+    "employerOutlivedEveryTakedown": "Das ist länger, als dieser Arbeitgeber eine Stelle üblicherweise online lässt: {{gone}} % seiner Stellen sind innerhalb von {{d}} Tagen vom Jobboard verschwunden, jede Entfernung mitgezählt."
   },
   "accountPage": {
     "statusSaveFailed": "Status konnte nicht gespeichert werden — bitte erneut versuchen.",

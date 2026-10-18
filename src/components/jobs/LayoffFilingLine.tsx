@@ -395,7 +395,7 @@ function withSourceLink(text: string, row: LayoffFiling, linkLabel: string): Rea
         href={row.sourceUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-primary hover:underline"
+        className="link"
         onClick={stop}
         data-layoff-source={row.source}
       >
@@ -419,7 +419,7 @@ function FilingSentence({ row, t }: { row: LayoffFiling; t: T }) {
       {row.moreN > 0 && (
         <>
           {" · "}
-          <Link to={companyLanderPath(row.companyToken)} className="text-primary hover:underline" onClick={stop}>
+          <Link to={companyLanderPath(row.companyToken)} className="link" onClick={stop}>
             {t("jobsPage.layoffMore", "+{{more}} more on the employer page", { more: fmtCount(row.moreN) })}
           </Link>
         </>
