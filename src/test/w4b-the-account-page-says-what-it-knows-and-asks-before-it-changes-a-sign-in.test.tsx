@@ -51,7 +51,7 @@ vi.mock("@/contexts/AuthContext", () => ({
 import { CreditsAndPurchases, MAILBOX_PROOF_LIVE } from "@/components/account/CreditsAndPurchases";
 import { SecurityCard } from "@/components/account/SecurityCard";
 import { DataPrivacyCard } from "@/components/account/DataPrivacyCard";
-import { importFlagKey, importLocalHistory, LOCAL_HISTORY_KEY } from "@/lib/account-history-import";
+import { importFlagKey, importLocalScans, localScansToOffer, LOCAL_HISTORY_KEY } from "@/lib/account-history-import";
 
 let autoconfirm = true;
 beforeEach(() => {
@@ -203,7 +203,7 @@ describe("D9 / S12-137: the delete card says what goes and what stays, in t() st
   });
 });
 
-describe("S12-025: the scans run before signing up come in with their checklist, once per account", () => {
+describe("S12-025: the scans run before signing up come in with their checklist, when the person adds them", () => {
   type Row = Record<string, unknown>;
   const fakeDb = (rows: Row[]) => {
     const inserted: Row[][] = [];
@@ -230,7 +230,11 @@ describe("S12-025: the scans run before signing up come in with their checklist,
     localStorage.setItem("scan_history_imported", "1"); // another person's import on this browser
     const held = [{ created_at: "2026-10-02T10:00:00.000Z", ats_score: 70 }];
     const { db, inserted } = fakeDb([...held]);
-    const out = await importLocalHistory(db, "u-2", held, (r: never) => r);
+    // Offered, not taken: the round 2 review made the import an explicit ask.
+    const offered = localScansToOffer("u-2", held);
+    expect(offered.map((e) => e.id)).toEqual(["1"]);
+    expect(inserted).toEqual([]);
+    const out = (await importLocalScans(db, "u-2", offered, (r: never) => r))!;
     expect(inserted).toHaveLength(1);
     expect(inserted[0]).toEqual([expect.objectContaining({
       user_id: "u-2", ats_score: 61, red_flag_count: 3, label: "Charge Nurse @ Acme Health",
@@ -238,8 +242,6 @@ describe("S12-025: the scans run before signing up come in with their checklist,
     })]);
     expect(out).toHaveLength(2);
     expect(localStorage.getItem(importFlagKey("u-2"))).toBe("1");
-    const again = fakeDb([]);
-    await importLocalHistory(again.db, "u-2", [], (r: never) => r);
-    expect(again.inserted).toEqual([]);
+    expect(localScansToOffer("u-2", []), "once added, this account is not asked again").toEqual([]);
   });
 });

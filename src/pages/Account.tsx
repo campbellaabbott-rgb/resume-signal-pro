@@ -51,7 +51,9 @@ import type { AccountOrder } from "@/components/account/OrdersList";
 import { SecurityCard, type MailboxProofSummary } from "@/components/account/SecurityCard";
 import { DataPrivacyCard } from "@/components/account/DataPrivacyCard";
 import { AccountSettingsCards } from "@/components/account/ConnectedAIsCard";
-import { importLocalHistory } from "@/lib/account-history-import";
+import { lastScanResumeToOffer, localScansToOffer } from "@/lib/account-history-import";
+import { LocalHistoryOffer } from "@/components/account/LocalHistoryOffer";
+import type { ScanHistoryEntry } from "@/hooks/use-scan-history";
 import { WithdrawalPanel } from "@/components/account/WithdrawalPanel";
 import { collectAccountExport, type ExportClient } from "@/lib/account-export";
 import { deleteRefusalKeys, type DeleteRefusal } from "@/lib/account-delete";
@@ -225,6 +227,8 @@ export default function Account() {
   const { pro } = useProSubscription();
   const navigate = useNavigate();
   const [scans, setScans] = useState<UserScan[]>([]);
+  // What this browser holds, offered and never taken silently (S12-025).
+  const [localOffer, setLocalOffer] = useState<{ scans: ScanHistoryEntry[]; resume: string | null } | null>(null);
   const [account, setAccount] = useState<AccountData | null>(null);
   // S12-155: a failed get-account-data read is said, never shown as "0 credits".
   const [accountFailed, setAccountFailed] = useState(false);
@@ -444,12 +448,14 @@ export default function Account() {
       (supabase as unknown as { from: (t: string) => any }).from("user_profiles")
         .select("target_score, matching_scan_id, matching_resume_text").eq("user_id", session.user.id).maybeSingle(),
     ]);
-    let cloudScans = scansRes.data?.map(mapScanRow) ?? [];
+    const cloudScans = scansRes.data?.map(mapScanRow) ?? [];
 
-    // Local scan history from before the account existed (S12-025): once per
-    // ACCOUNT, not per browser, carrying each scan's fix checklist, and only
-    // the scans the account does not already hold (lib/account-history-import).
-    cloudScans = await importLocalHistory(supabase as unknown as Parameters<typeof importLocalHistory>[0], session.user.id, cloudScans, mapScanRow);
+    // Local scan history from before the account existed, and the résumé this
+    // tab scanned last (S12-025): offered on the page, added or saved only
+    // when the person says so (lib/account-history-import).
+    const offeredScans = localScansToOffer(session.user.id, cloudScans);
+    const offeredResume = lastScanResumeToOffer(session.user.id);
+    setLocalOffer(offeredScans.length || offeredResume ? { scans: offeredScans, resume: offeredResume } : null);
 
     setScans(cloudScans);
     const apps = (appsRes.data as unknown as Application[] | null) ?? [];
@@ -776,6 +782,16 @@ export default function Account() {
             gaps={skillGap.top}
             withFit={skillGap.withFit}
             resumeText={matchingResume ?? scans[0]?.resume_text ?? null}
+          />
+        )}
+        {user && localOffer && (
+          <LocalHistoryOffer
+            db={supabase as unknown as { from: (t: string) => any }}
+            userId={user.id}
+            offeredScans={localOffer.scans}
+            offeredResume={localOffer.resume}
+            mapRow={mapScanRow}
+            onScans={setScans}
           />
         )}
         <SetupChecklist hasScan={scans.length > 0} hasApplication={applications.length > 0} />

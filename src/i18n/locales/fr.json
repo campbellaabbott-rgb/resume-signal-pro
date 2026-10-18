@@ -4769,7 +4769,19 @@
     "versionSent": "Version du CV envoyée :",
     "versionSentCount": "{{n}} envoyées",
     "versionSentLabel": "Version du CV utilisée pour cette candidature",
-    "whichResumeNote": "Mettez à jour le statut de vos candidatures ci-dessus : ce tableau apprend quelle version de votre CV décroche vraiment des entretiens."
+    "whichResumeNote": "Mettez à jour le statut de vos candidatures ci-dessus : ce tableau apprend quelle version de votre CV décroche vraiment des entretiens.",
+    "localScansOfferTitle": "Analyses trouvées dans ce navigateur : {{count}}",
+    "localScansOfferBody": "Elles ont été faites dans ce navigateur avant votre connexion. Ajoutez-les à votre compte seulement si elles sont à vous.",
+    "localScansAdd": "Les ajouter à mon compte",
+    "localScansNotMine": "Pas les miennes",
+    "lastResumeOfferTitle": "Enregistrer le CV de votre dernière analyse ?",
+    "lastResumeOfferBody": "Cet onglet contient encore le CV que vous venez d'analyser. Enregistrez-le dans votre compte pour adapter vos candidatures et évaluer les offres. Rien n'est enregistré sans votre choix.",
+    "lastResumeSave": "L'enregistrer",
+    "lastResumeNo": "Non merci",
+    "lastResumeSaved": "Enregistré dans votre compte comme version de CV.",
+    "lastResumeLabel": "Dernière analyse, {{day}}",
+    "lastResumeLabelScored": "Dernière analyse, {{day}} : {{score}} points",
+    "localOfferFailed": "Cela n'a pas fonctionné. Réessayez dans une minute."
   },
   "applyAgent": {
     "badge": "Votre agent IA de candidature",
@@ -5736,7 +5748,12 @@
   "saveResume": {
     "boardFit": "Enregistrez ce CV et le tableau d'offres note chaque offre que vous consultez par rapport à lui",
     "boardFitWithCount": "Enregistrez ce CV et le tableau d'offres note chaque offre que vous consultez par rapport à lui — plus de {{n}} offres actives à parcourir",
-    "versionExplainer": "Conservé dans votre compte jusqu'à ce que vous le supprimiez — c'est le seul cas où nous gardons le contenu d'un CV, et uniquement parce que vous l'avez demandé. Il alimente les scores d'adéquation des offres que vous consultez sur le tableau d'offres, les scores automatiques de vos candidatures suivies et la vue qui montre quelle version décroche des entretiens."
+    "versionExplainer": "Conservé dans votre compte jusqu'à ce que vous le supprimiez — c'est le seul cas où nous gardons le contenu d'un CV, et uniquement parce que vous l'avez demandé. Il alimente les scores d'adéquation des offres que vous consultez sur le tableau d'offres, les scores automatiques de vos candidatures suivies et la vue qui montre quelle version décroche des entretiens.",
+    "signedOutTitle": "Faites travailler cette analyse pour vous",
+    "signedOutSearches": "Enregistrez des recherches (« santé en télétravail ») et voyez combien de nouvelles offres correspondent depuis votre dernière visite",
+    "signedOutTracker": "Mettez des offres de côté et votre suivi de candidatures se remplit seul, scores d'adéquation compris",
+    "signedOutKeeps": "Après la connexion, la page de votre compte propose d'enregistrer ce CV",
+    "signedOutCta": "Créer un compte gratuit"
   },
   "writingRefusal": {
     "daily": "Vous avez utilisé votre quota de rédaction du jour. Vous pourrez en créer d'autres après {{when}} ; ce que vous avez déjà créé est enregistré.",

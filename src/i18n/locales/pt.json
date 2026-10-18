@@ -4769,7 +4769,19 @@
     "versionSent": "Versão do currículo enviada:",
     "versionSentCount": "{{n}} enviadas",
     "versionSentLabel": "Versão do currículo usada nesta candidatura",
-    "whichResumeNote": "Atualize acima o estado das suas candidaturas: esta tabela aprende que versão do seu currículo consegue de facto entrevistas."
+    "whichResumeNote": "Atualize acima o estado das suas candidaturas: esta tabela aprende que versão do seu currículo consegue de facto entrevistas.",
+    "localScansOfferTitle": "Análises encontradas neste navegador: {{count}}",
+    "localScansOfferBody": "Foram feitas neste navegador antes de iniciar sessão. Adicione-as à sua conta só se forem suas.",
+    "localScansAdd": "Adicioná-las à minha conta",
+    "localScansNotMine": "Não são minhas",
+    "lastResumeOfferTitle": "Guardar o currículo da sua última análise?",
+    "lastResumeOfferBody": "Este separador ainda tem o currículo que acabou de analisar. Guarde-o na sua conta para adaptar candidaturas e pontuar vagas com ele. Nada é guardado sem a sua escolha.",
+    "lastResumeSave": "Guardar",
+    "lastResumeNo": "Não, obrigado",
+    "lastResumeSaved": "Guardado na sua conta como versão do currículo.",
+    "lastResumeLabel": "Última análise, {{day}}",
+    "lastResumeLabelScored": "Última análise, {{day}}: {{score}} pontos",
+    "localOfferFailed": "Não funcionou. Tente novamente dentro de um minuto."
   },
   "applyAgent": {
     "badge": "Seu agente de IA para candidaturas",
@@ -5736,7 +5748,12 @@
   "saveResume": {
     "boardFit": "Guarde este currículo e o quadro de empregos pontua face a ele cada vaga que vir",
     "boardFitWithCount": "Guarde este currículo e o quadro de empregos pontua face a ele cada vaga que vir — mais de {{n}} vagas ativas para explorar",
-    "versionExplainer": "Guardado na sua conta até o eliminar — é a única vez que guardamos o conteúdo de um currículo, e só porque o pediu. Alimenta as pontuações de compatibilidade das vagas que vê no quadro de empregos, as pontuações automáticas das candidaturas acompanhadas e a vista que mostra que versão consegue entrevistas."
+    "versionExplainer": "Guardado na sua conta até o eliminar — é a única vez que guardamos o conteúdo de um currículo, e só porque o pediu. Alimenta as pontuações de compatibilidade das vagas que vê no quadro de empregos, as pontuações automáticas das candidaturas acompanhadas e a vista que mostra que versão consegue entrevistas.",
+    "signedOutTitle": "Ponha esta análise a trabalhar para si",
+    "signedOutSearches": "Guarde pesquisas (\"saúde remoto\") e veja quantas vagas novas correspondem desde a última visita",
+    "signedOutTracker": "Guarde vagas e o seu acompanhamento de candidaturas preenche-se sozinho, com pontuações de adequação",
+    "signedOutKeeps": "Depois de iniciar sessão, a página da sua conta oferece guardar este currículo",
+    "signedOutCta": "Criar uma conta gratuita"
   },
   "writingRefusal": {
     "daily": "Usou a quota de escrita de hoje. Pode criar mais depois de {{when}}; o que criou até agora está guardado.",

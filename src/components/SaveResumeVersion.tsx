@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { roundedFloor, useBoardTotals } from "@/hooks/use-board-totals";
+import { FREE_REPORT_SIGNUP_NEXT } from "./FreeReportSignupNudge";
 
 export function SaveResumeVersion({
   resumeText,
@@ -35,20 +36,23 @@ export function SaveResumeVersion({
   const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
   if (!user) {
-    // The post-scan account hook: concrete features, at peak conviction.
+    // The post-scan account hook: concrete features, at peak conviction. The
+    // sign-up lands on /account, which offers to save the résumé this tab
+    // scanned (S12-025: it was lost at sign-up).
     return (
-      <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4 mb-6">
-        <p className="text-sm font-semibold text-foreground mb-1.5">Keep this scan working for you</p>
+      <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4 mb-6" data-save-resume-signed-out>
+        <p className="text-sm font-semibold text-foreground mb-1.5">{t("saveResume.signedOutTitle", "Keep this scan working for you")}</p>
         <ul className="text-xs text-muted-foreground space-y-1 mb-3">
           <li>• {boardLine}</li>
-          <li>• Save searches ("remote healthcare") and see how many new postings match since you last looked</li>
-          <li>• Bookmark jobs and your application tracker fills itself — fit scores included</li>
+          <li>• {t("saveResume.signedOutSearches", "Save searches (\"remote healthcare\") and see how many new postings match since you last looked")}</li>
+          <li>• {t("saveResume.signedOutTracker", "Bookmark jobs and your application tracker fills itself — fit scores included")}</li>
+          <li>• {t("saveResume.signedOutKeeps", "After you sign in, your account page offers to save this résumé")}</li>
         </ul>
         <Link
-          to="/auth"
+          to={`/auth?next=${encodeURIComponent(FREE_REPORT_SIGNUP_NEXT)}`}
           className="inline-flex items-center px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors"
         >
-          Create a free account
+          {t("saveResume.signedOutCta", "Create a free account")}
         </Link>
       </div>
     );

@@ -4769,7 +4769,19 @@
     "versionSent": "Versión del currículum enviada:",
     "versionSentCount": "{{n}} enviadas",
     "versionSentLabel": "Versión del currículum usada en esta candidatura",
-    "whichResumeNote": "Actualiza arriba el estado de tus candidaturas: esta tabla aprende qué versión de tu currículum consigue entrevistas de verdad."
+    "whichResumeNote": "Actualiza arriba el estado de tus candidaturas: esta tabla aprende qué versión de tu currículum consigue entrevistas de verdad.",
+    "localScansOfferTitle": "Análisis encontrados en este navegador: {{count}}",
+    "localScansOfferBody": "Se hicieron en este navegador antes de que iniciaras sesión. Añádelos a tu cuenta solo si son tuyos.",
+    "localScansAdd": "Añadirlos a mi cuenta",
+    "localScansNotMine": "No son míos",
+    "lastResumeOfferTitle": "¿Guardar el currículum de tu último análisis?",
+    "lastResumeOfferBody": "Esta pestaña aún tiene el currículum que acabas de analizar. Guárdalo en tu cuenta para adaptar candidaturas y puntuar ofertas con él. No se guarda nada a menos que lo elijas.",
+    "lastResumeSave": "Guardarlo",
+    "lastResumeNo": "No, gracias",
+    "lastResumeSaved": "Guardado en tu cuenta como versión de currículum.",
+    "lastResumeLabel": "Último análisis, {{day}}",
+    "lastResumeLabelScored": "Último análisis, {{day}}: {{score}} puntos",
+    "localOfferFailed": "No ha funcionado. Vuelve a intentarlo en un minuto."
   },
   "applyAgent": {
     "badge": "Tu agente de IA para postular",
@@ -5736,7 +5748,12 @@
   "saveResume": {
     "boardFit": "Guarda este currículum y la bolsa de empleo puntuará con él cada oferta que mires",
     "boardFitWithCount": "Guarda este currículum y la bolsa de empleo puntuará con él cada oferta que mires: más de {{n}} ofertas activas para explorar",
-    "versionExplainer": "Se guarda en tu cuenta hasta que lo elimines: es la única vez que conservamos el contenido de un currículum, y solo porque lo pediste. Permite las puntuaciones de encaje de las ofertas que miras en la bolsa de empleo, las puntuaciones automáticas de las candidaturas registradas y la vista de qué versión consigue entrevistas."
+    "versionExplainer": "Se guarda en tu cuenta hasta que lo elimines: es la única vez que conservamos el contenido de un currículum, y solo porque lo pediste. Permite las puntuaciones de encaje de las ofertas que miras en la bolsa de empleo, las puntuaciones automáticas de las candidaturas registradas y la vista de qué versión consigue entrevistas.",
+    "signedOutTitle": "Haz que este análisis siga trabajando para ti",
+    "signedOutSearches": "Guarda búsquedas (\"sanidad en remoto\") y mira cuántas ofertas nuevas coinciden desde tu última visita",
+    "signedOutTracker": "Guarda ofertas y tu seguimiento de candidaturas se rellena solo, con puntuaciones de encaje",
+    "signedOutKeeps": "Después de iniciar sesión, la página de tu cuenta te ofrece guardar este currículum",
+    "signedOutCta": "Crear una cuenta gratis"
   },
   "writingRefusal": {
     "daily": "Has usado el cupo de redacción de hoy. Podrás crear más después de {{when}}; lo que has creado hasta ahora está guardado.",

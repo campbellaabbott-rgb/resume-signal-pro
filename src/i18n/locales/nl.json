@@ -4769,7 +4769,19 @@
     "versionSent": "Verstuurde cv-versie:",
     "versionSentCount": "{{n}} verstuurd",
     "versionSentLabel": "Cv-versie gebruikt voor deze sollicitatie",
-    "whichResumeNote": "Werk hierboven de status van je sollicitaties bij: deze tabel leert welke versie van je cv echt tot gesprekken leidt."
+    "whichResumeNote": "Werk hierboven de status van je sollicitaties bij: deze tabel leert welke versie van je cv echt tot gesprekken leidt.",
+    "localScansOfferTitle": "Scans gevonden in deze browser: {{count}}",
+    "localScansOfferBody": "Ze zijn in deze browser gedaan voordat je inlogde. Voeg ze alleen aan je account toe als ze van jou zijn.",
+    "localScansAdd": "Aan mijn account toevoegen",
+    "localScansNotMine": "Niet van mij",
+    "lastResumeOfferTitle": "Het cv van je laatste scan opslaan?",
+    "lastResumeOfferBody": "Dit tabblad bevat nog het cv dat je net hebt gescand. Sla het op in je account om sollicitaties af te stemmen en vacatures ertegen te scoren. Er wordt niets opgeslagen tenzij je dat kiest.",
+    "lastResumeSave": "Opslaan",
+    "lastResumeNo": "Nee, bedankt",
+    "lastResumeSaved": "Opgeslagen in je account als cv-versie.",
+    "lastResumeLabel": "Laatste scan, {{day}}",
+    "lastResumeLabelScored": "Laatste scan, {{day}}: score {{score}}",
+    "localOfferFailed": "Dat lukte niet. Probeer het over een minuut opnieuw."
   },
   "applyAgent": {
     "badge": "Je AI-sollicitatieagent",
@@ -5736,7 +5748,12 @@
   "saveResume": {
     "boardFit": "Sla dit cv op en de vacaturebank beoordeelt elke vacature die je bekijkt ten opzichte ervan",
     "boardFitWithCount": "Sla dit cv op en de vacaturebank beoordeelt elke vacature die je bekijkt ten opzichte ervan — meer dan {{n}} actuele vacatures om door te bladeren",
-    "versionExplainer": "Bewaard in je account totdat je het verwijdert — dit is de enige keer dat we cv-inhoud bewaren, en alleen omdat je erom vroeg. Het zorgt voor matchscores bij de vacatures die je in de vacaturebank bekijkt, automatische matchscores bij gevolgde sollicitaties en het overzicht van welke versie tot gesprekken leidt."
+    "versionExplainer": "Bewaard in je account totdat je het verwijdert — dit is de enige keer dat we cv-inhoud bewaren, en alleen omdat je erom vroeg. Het zorgt voor matchscores bij de vacatures die je in de vacaturebank bekijkt, automatische matchscores bij gevolgde sollicitaties en het overzicht van welke versie tot gesprekken leidt.",
+    "signedOutTitle": "Laat deze scan voor je blijven werken",
+    "signedOutSearches": "Sla zoekopdrachten op (\"zorg op afstand\") en zie hoeveel nieuwe vacatures passen sinds je laatste bezoek",
+    "signedOutTracker": "Bewaar vacatures en je sollicitatietracker vult zichzelf, inclusief matchscores",
+    "signedOutKeeps": "Na het inloggen biedt je accountpagina aan dit cv op te slaan",
+    "signedOutCta": "Gratis account aanmaken"
   },
   "writingRefusal": {
     "daily": "Je hebt het schrijftegoed van vandaag gebruikt. Na {{when}} kun je meer maken; wat je tot nu toe hebt gemaakt, is bewaard.",

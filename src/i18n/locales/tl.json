@@ -4769,7 +4769,19 @@
     "versionSent": "Bersyon ng resume na ipinadala:",
     "versionSentCount": "{{n}} naipadala",
     "versionSentLabel": "Bersyon ng resume na ginamit sa application na ito",
-    "whichResumeNote": "I-update ang status ng mga application sa itaas: natututunan ng table na ito kung aling bersyon ng resume mo ang talagang nakakakuha ng interview."
+    "whichResumeNote": "I-update ang status ng mga application sa itaas: natututunan ng table na ito kung aling bersyon ng resume mo ang talagang nakakakuha ng interview.",
+    "localScansOfferTitle": "Mga scan na nakita sa browser na ito: {{count}}",
+    "localScansOfferBody": "Ginawa ang mga ito sa browser na ito bago ka nag-sign in. Idagdag lang ang mga ito sa account mo kung sa iyo talaga.",
+    "localScansAdd": "Idagdag sa account ko",
+    "localScansNotMine": "Hindi sa akin",
+    "lastResumeOfferTitle": "I-save ang resume mula sa huling scan mo?",
+    "lastResumeOfferBody": "Nasa tab na ito pa ang resume na kaka-scan mo. I-save ito sa account mo para iangkop ang mga application at i-score ang mga trabaho laban dito. Walang naiimbak hangga't hindi mo pinipili.",
+    "lastResumeSave": "I-save",
+    "lastResumeNo": "Huwag na, salamat",
+    "lastResumeSaved": "Na-save sa account mo bilang bersyon ng resume.",
+    "lastResumeLabel": "Huling scan, {{day}}",
+    "lastResumeLabelScored": "Huling scan, {{day}}: score {{score}}",
+    "localOfferFailed": "Hindi ito gumana. Subukan ulit pagkalipas ng isang minuto."
   },
   "applyAgent": {
     "badge": "Ang iyong AI apply agent",
@@ -5736,7 +5748,12 @@
   "saveResume": {
     "boardFit": "I-save ang resume na ito at ini-score ng job board ang bawat opening na tinitingnan mo laban dito",
     "boardFitWithCount": "I-save ang resume na ito at ini-score ng job board ang bawat opening na tinitingnan mo laban dito — mahigit {{n}} na live na opening na puwedeng i-browse",
-    "versionExplainer": "Nakatabi sa account mo hanggang burahin mo ito — ito lang ang pagkakataong nagtatabi kami ng laman ng resume, at dahil lang hiniling mo. Pinapagana nito ang mga fit score sa mga opening na bina-browse mo sa job board, ang awtomatikong fit score sa mga tina-track na application, at ang view kung aling bersyon ang nakakakuha ng interview."
+    "versionExplainer": "Nakatabi sa account mo hanggang burahin mo ito — ito lang ang pagkakataong nagtatabi kami ng laman ng resume, at dahil lang hiniling mo. Pinapagana nito ang mga fit score sa mga opening na bina-browse mo sa job board, ang awtomatikong fit score sa mga tina-track na application, at ang view kung aling bersyon ang nakakakuha ng interview.",
+    "signedOutTitle": "Hayaang patuloy na gumana ang scan na ito para sa iyo",
+    "signedOutSearches": "I-save ang mga search (\"remote healthcare\") at tingnan kung ilang bagong posting ang tugma mula noong huli kang tumingin",
+    "signedOutTracker": "I-bookmark ang mga trabaho at kusang mapupuno ang application tracker mo, kasama ang mga fit score",
+    "signedOutKeeps": "Pagkatapos mong mag-sign in, iaalok ng account page mo na i-save ang resume na ito",
+    "signedOutCta": "Gumawa ng libreng account"
   },
   "writingRefusal": {
     "daily": "Nagamit mo na ang writing allowance para ngayong araw. Makakagawa ka pa pagkatapos ng {{when}}; naka-save ang lahat ng nagawa mo na.",

@@ -4769,7 +4769,19 @@
     "versionSent": "Gesendete Lebenslaufversion:",
     "versionSentCount": "{{n}} gesendet",
     "versionSentLabel": "Für diese Bewerbung verwendete Lebenslaufversion",
-    "whichResumeNote": "Aktualisieren Sie oben den Status Ihrer Bewerbungen: Diese Tabelle lernt, welche Version Ihres Lebenslaufs tatsächlich zu Gesprächen führt."
+    "whichResumeNote": "Aktualisieren Sie oben den Status Ihrer Bewerbungen: Diese Tabelle lernt, welche Version Ihres Lebenslaufs tatsächlich zu Gesprächen führt.",
+    "localScansOfferTitle": "In diesem Browser gefundene Scans: {{count}}",
+    "localScansOfferBody": "Sie wurden in diesem Browser ausgeführt, bevor Sie sich angemeldet haben. Fügen Sie sie Ihrem Konto nur hinzu, wenn es Ihre sind.",
+    "localScansAdd": "Zu meinem Konto hinzufügen",
+    "localScansNotMine": "Nicht meine",
+    "lastResumeOfferTitle": "Den Lebenslauf aus Ihrem letzten Scan speichern?",
+    "lastResumeOfferBody": "Dieser Tab enthält noch den Lebenslauf, den Sie gerade gescannt haben. Speichern Sie ihn in Ihrem Konto, um Bewerbungen anzupassen und Stellen daran zu bewerten. Gespeichert wird nur, wenn Sie es wählen.",
+    "lastResumeSave": "Speichern",
+    "lastResumeNo": "Nein, danke",
+    "lastResumeSaved": "Als Lebenslaufversion in Ihrem Konto gespeichert.",
+    "lastResumeLabel": "Letzter Scan, {{day}}",
+    "lastResumeLabelScored": "Letzter Scan, {{day}}: {{score}} Punkte",
+    "localOfferFailed": "Das hat nicht geklappt. Versuchen Sie es in einer Minute erneut."
   },
   "applyAgent": {
     "badge": "Ihr KI-Bewerbungsagent",
@@ -5736,7 +5748,12 @@
   "saveResume": {
     "boardFit": "Speichern Sie diesen Lebenslauf, und die Jobbörse bewertet jede Stelle, die Sie ansehen, im Abgleich damit",
     "boardFitWithCount": "Speichern Sie diesen Lebenslauf, und die Jobbörse bewertet jede Stelle, die Sie ansehen, im Abgleich damit – über {{n}} aktuelle Stellen zum Durchsuchen",
-    "versionExplainer": "In Ihrem Konto gespeichert, bis Sie ihn löschen – nur hier bewahren wir Lebenslaufinhalte auf, und nur, weil Sie es wünschen. Damit funktionieren die Passungswerte für die Stellen, die Sie in der Jobbörse ansehen, automatische Passungswerte für verfolgte Bewerbungen und die Ansicht, welche Version zu Gesprächen führt."
+    "versionExplainer": "In Ihrem Konto gespeichert, bis Sie ihn löschen – nur hier bewahren wir Lebenslaufinhalte auf, und nur, weil Sie es wünschen. Damit funktionieren die Passungswerte für die Stellen, die Sie in der Jobbörse ansehen, automatische Passungswerte für verfolgte Bewerbungen und die Ansicht, welche Version zu Gesprächen führt.",
+    "signedOutTitle": "Lassen Sie diesen Scan für Sie weiterarbeiten",
+    "signedOutSearches": "Suchen speichern (\"Remote Gesundheitswesen\") und sehen, wie viele neue Anzeigen seit Ihrem letzten Besuch passen",
+    "signedOutTracker": "Stellen merken, und Ihr Bewerbungs-Tracker füllt sich selbst, mit Passwerten",
+    "signedOutKeeps": "Nach der Anmeldung bietet Ihre Kontoseite an, diesen Lebenslauf zu speichern",
+    "signedOutCta": "Kostenloses Konto erstellen"
   },
   "writingRefusal": {
     "daily": "Sie haben das heutige Schreibkontingent aufgebraucht. Ab {{when}} können Sie mehr erstellen; was Sie bisher erstellt haben, ist gespeichert.",

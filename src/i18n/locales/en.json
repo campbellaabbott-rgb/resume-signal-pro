@@ -4769,7 +4769,19 @@
     "versionSent": "Resume version sent:",
     "versionSentCount": "{{n}} sent",
     "versionSentLabel": "Resume version used for this application",
-    "whichResumeNote": "Update application statuses above: this table learns which version of your resume actually lands interviews."
+    "whichResumeNote": "Update application statuses above: this table learns which version of your resume actually lands interviews.",
+    "localScansOfferTitle": "Scans found in this browser: {{count}}",
+    "localScansOfferBody": "They were run on this browser before you signed in. Add them to your account only if they are yours.",
+    "localScansAdd": "Add them to my account",
+    "localScansNotMine": "Not mine",
+    "lastResumeOfferTitle": "Save the résumé from your last scan?",
+    "lastResumeOfferBody": "This tab still holds the résumé you just scanned. Save it to your account to tailor applications and score jobs against it. Nothing is stored unless you choose to.",
+    "lastResumeSave": "Save it",
+    "lastResumeNo": "No thanks",
+    "lastResumeSaved": "Saved to your account as a résumé version.",
+    "lastResumeLabel": "Last scan, {{day}}",
+    "lastResumeLabelScored": "Last scan, {{day}}: scored {{score}}",
+    "localOfferFailed": "That didn't work. Try again in a minute."
   },
   "applyAgent": {
     "badge": "Your AI apply agent",
@@ -5736,7 +5748,12 @@
   "saveResume": {
     "boardFit": "Save this résumé and the job board scores each opening you look at against it",
     "boardFitWithCount": "Save this résumé and the job board scores each opening you look at against it — over {{n}} live openings to browse",
-    "versionExplainer": "Stored in your account until you delete it — this is the only time we keep résumé content, and only because you asked. It powers fit scores on the openings you browse on the job board, automatic fit scores on tracked applications, and the which-version-lands-interviews view."
+    "versionExplainer": "Stored in your account until you delete it — this is the only time we keep résumé content, and only because you asked. It powers fit scores on the openings you browse on the job board, automatic fit scores on tracked applications, and the which-version-lands-interviews view.",
+    "signedOutTitle": "Keep this scan working for you",
+    "signedOutSearches": "Save searches (\"remote healthcare\") and see how many new postings match since you last looked",
+    "signedOutTracker": "Bookmark jobs and your application tracker fills itself — fit scores included",
+    "signedOutKeeps": "After you sign in, your account page offers to save this résumé",
+    "signedOutCta": "Create a free account"
   },
   "writingRefusal": {
     "daily": "You've used today's writing allowance. You can make more after {{when}}; what you made so far is saved.",
