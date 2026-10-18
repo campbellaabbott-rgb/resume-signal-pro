@@ -420,9 +420,27 @@
       "bringYourAgent": {
         "question": "Kann mein eigener KI-Agent das nutzen?",
         "answer": "Ja, kostenlos. Verbinde Resume Booster mit Claude, ChatGPT oder Claude Code, und deine KI kann die Jobbörse durchsuchen, Stellenanzeigen vollständig lesen und dir helfen, dich auf der Website des Arbeitgebers zu bewerben; zum Lesen der Jobbörse brauchst du weder Schlüssel noch Konto. Deine KI entwirft, du entscheidest: Wir senden niemals eine Bewerbung für dich ab. Jede Stelle und jede Suche auf der Jobbörse hat ein Bedienelement, das einen Prompt für deine KI kopiert, und die Einrichtung für jede App steht unter /agents."
+      },
+      "howLongBound": {
+        "answer": "Meist ein oder zwei Minuten nach der Zahlung, höchstens ein paar Minuten. Sie öffnet sich auf der Seite, zu der Stripe Sie zurückleitet, und der private Link, den wir Ihnen per E-Mail senden, bewahrt sie 90 Tage auf.",
+        "question": "Wie lange dauert die Analyse?"
+      },
+      "subscriptionLine": {
+        "question": "Ist das ein Abo?"
+      },
+      "subscriptionLineFa": {
+        "answer": "Beide Möglichkeiten gibt es, und Sie entscheiden. Die vollständige Analyse für ${{price}} ist eine einmalige Zahlung, die sich nie verlängert. Daneben gibt es einen optionalen Monatstarif, Pro für ${{proPrice}}/Monat: {{proSummary}}. Er verlängert sich jeden Monat, bis Sie kündigen. Der Lebenslauf-Scan, die Jobbörse und die Verbindung Ihrer eigenen KI bleiben in jedem Fall kostenlos. Sonst stuft Sie nichts automatisch hoch."
+      },
+      "vsChatGPTTrue": {
+        "answer": "{{name}} bewertet Ihren Lebenslauf so, wie Bewerbermanagementsysteme ihn lesen, mit einem gewichteten Wert aus 5 Kategorien, 14 branchenspezifischen Vorlagen und an Recruitern kalibriertem Feedback. Anders als bei ChatGPT erhalten Sie jedes Mal denselben strukturierten Bericht, ohne einen Prompt zu schreiben. Anders als bei Vorlagen erhalten Sie Umformulierungen Ihrer eigenen Stichpunkte und eine Ausrichtung auf die Stellenbeschreibung. Wir trainieren keine KI-Modelle mit Ihrem Lebenslauf, und der kostenlose Scan löscht ihn innerhalb von 7 Tagen.",
+        "question": "Warum ist das besser als ChatGPT oder Lebenslaufvorlagen?"
+      },
+      "whatDoIGetNamed": {
+        "question": "Was bekomme ich mit {{name}}?"
       }
     },
-    "stillHaveQuestions": "Noch Fragen?"
+    "stillHaveQuestions": "Noch Fragen?",
+    "subtitleNamed": "Alles, was Sie über {{name}} wissen müssen"
   },
   "comparison": {
     "title": "Warum Resume Booster?",
@@ -440,7 +458,8 @@
       "noPromptNeeded": "Kein Prompt-Engineering nötig",
       "recruiterCalibrated": "Recruiter-kalibriertes Feedback",
       "privacyFirst": "Daten nie für Training genutzt"
-    }
+    },
+    "titleNamed": "Warum {{name}}?"
   },
   "socialProof": {
     "stats": {
@@ -586,7 +605,10 @@
       "notFound": "Analyse nicht gefunden. Der Link ist ungültig oder abgelaufen.",
       "generic": "Analyse konnte nicht geladen werden.",
       "tryAgain": "Bitte laden Sie Ihren Lebenslauf erneut hoch.",
-      "backHome": "Zurück zur Startseite"
+      "backHome": "Zurück zur Startseite",
+      "analysisNotFound": "Analyse nicht gefunden. Der Link ist möglicherweise ungültig oder abgelaufen.",
+      "analyzeFailed": "Der Lebenslauf konnte nicht analysiert werden",
+      "loadFailed": "Die Analyse konnte nicht geladen werden."
     },
     "toast": {
       "paymentSuccess": "Zahlung erfolgreich!",
@@ -609,7 +631,13 @@
       "dataDeleted": "Daten gelöscht",
       "dataDeletedDesc": "Ihre Lebenslauf-Analyse wurde dauerhaft gelöscht.",
       "deleteFailed": "Löschung fehlgeschlagen",
-      "deleteFailedDesc": "Bitte versuchen Sie es erneut oder kontaktieren Sie den Support."
+      "deleteFailedDesc": "Bitte versuchen Sie es erneut oder kontaktieren Sie den Support.",
+      "analysisFailedRetryDesc": "Bei der Analyse Ihres Lebenslaufs ist ein Problem aufgetreten. Bitte versuchen Sie es erneut.",
+      "analysisReadyEmailed": "Ihre Analyse ist fertig und wurde Ihnen per E-Mail geschickt!",
+      "browserDataCleared": "Browserdaten gelöscht",
+      "browserDataClearedDesc": "Alle lokal gespeicherten Lebenslaufdaten wurden von diesem Gerät entfernt.",
+      "recoveredReady": "Analyse fertig",
+      "recoveredReadyDesc": "Ihre Lebenslaufanalyse steht unten bereit."
     },
     "actions": {
       "share": "Teilen",
@@ -626,7 +654,10 @@
       "deleteConfirm": "Analysedaten löschen",
       "deleteWarning": "Diese Aktion kann nicht rückgängig gemacht werden. Ihre Analyse wird dauerhaft gelöscht.",
       "cancel": "Abbrechen",
-      "deleting": "Wird gelöscht..."
+      "deleting": "Wird gelöscht...",
+      "generatingPdf": "Wird erstellt...",
+      "savePdf": "Als PDF speichern",
+      "savePdfHint": "Ihre Analyse als PDF speichern"
     },
     "sharedView": "Geteilte Analyse anzeigen"
   },
@@ -666,7 +697,8 @@
       "jurisdictionsNv": "16.3 Nevada",
       "contactUs": "17. Kontaktiere uns",
       "mcp": "Resume Booster mit Ihrer eigenen KI nutzen"
-    }
+    },
+    "changeConsent": "Meine Auswahl zur Analyse ändern"
   },
   "terms": {
     "title": "Nutzungsbedingungen",
@@ -730,7 +762,8 @@
     "oneTime": "einmalig",
     "guarantee": "Sofortige Ergebnisse • Einmalige Zahlung",
     "button": "Jetzt Analyse erhalten",
-    "roi": "Ein Vorstellungsgespräch = {{price}} amortisiert"
+    "roi": "Ein Vorstellungsgespräch = {{price}} amortisiert",
+    "freeScanCta": "Meinen Lebenslauf kostenlos scannen"
   },
   "scanProgress": {
     "title": "KI-Analyse läuft",
@@ -960,7 +993,9 @@
       "headsUp": "Hinweis",
       "pdfCharWarning": "Einige Zeichen werden im PDF möglicherweise nicht korrekt angezeigt (eingeschränkte Schriftunterstützung für nicht-lateinische Schriftzeichen).",
       "exportFailed": "Export fehlgeschlagen",
-      "exportFailedDescription": "Das PDF konnte nicht erstellt werden. Bitte versuche es erneut."
+      "exportFailedDescription": "Das PDF konnte nicht erstellt werden. Bitte versuche es erneut.",
+      "printDescription": "Die Schriften des PDFs können die Schrift dieses Leitfadens nicht darstellen. Wählen Sie im Druckdialog „Als PDF speichern“, um ihn zu behalten.",
+      "printTitle": "Im Druckdialog geöffnet"
     }
   },
   "careerPathSimulator": {
@@ -1006,7 +1041,11 @@
       "exportPdfFailedDescription": "Das PDF konnte nicht erstellt werden. Bitte versuche es erneut.",
       "exportDocxFailedDescription": "Das Word-Dokument konnte nicht erstellt werden. Bitte versuche es erneut.",
       "copied": "Kopiert",
-      "copiedDescription": "Anschreiben in die Zwischenablage kopiert."
+      "copiedDescription": "Anschreiben in die Zwischenablage kopiert.",
+      "addNameDescription": "Ihr Lebenslauf braucht oben Ihren Namen, bevor er heruntergeladen werden kann.",
+      "addNameTitle": "Fügen Sie zuerst Ihren Namen hinzu",
+      "savedAsWordDescription": "Die Schriften des PDFs können {{chars}} nicht darstellen, deshalb haben wir eine Word-Datei gespeichert, die jedes Zeichen behält.",
+      "savedAsWordTitle": "Als Word-Datei gespeichert"
     },
     "grounding": {
       "title": "Gegen Ihren Lebenslauf geprüft",
@@ -1068,7 +1107,8 @@
       "fontUnreadable": "Die Buchstaben in diesem PDF lassen sich nicht lesen",
       "fontUnreadableDescription": "Die Schrift ist keinen echten Zeichen zugeordnet. Lade stattdessen eine .docx-Datei hoch oder füge den Text deines Lebenslaufs ein.",
       "unreadCharacters": "Einige Zeichen ließen sich nicht lesen",
-      "unreadCharactersDescription": "Wir haben {{count}} Zeichen ausgelassen, die dieses PDF nicht benennt. Für den genauesten Scan lade eine .docx-Datei hoch oder füge den Text deines Lebenslaufs ein."
+      "unreadCharactersDescription": "Wir haben {{count}} Zeichen ausgelassen, die dieses PDF nicht benennt. Für den genauesten Scan lade eine .docx-Datei hoch oder füge den Text deines Lebenslaufs ein.",
+      "checkoutRefusedTitle": "Der Bezahlvorgang konnte nicht gestartet werden"
     },
     "reportCrash": {
       "title": "Beim Anzeigen Ihres Berichts ist ein Fehler aufgetreten",
@@ -1685,7 +1725,16 @@
       "fullAnalysisDesc": "Wendet die Korrekturen aus diesem Bericht auf die Inhalte Ihres eigenen Lebenslaufs an. Einmalige Zahlung, kein Abo.",
       "proName": "Pro",
       "proDesc": "Monatsplan: unbegrenzte Scans und jedes kostenpflichtige Tool, die vollständige Analyse inklusive. Jederzeit in Ihrem Konto kündbar.",
-      "proPrice": "{{price}} $/Monat"
+      "proPrice": "{{price}} $/Monat",
+      "fullAnalysisDescOwn": "Eine eigene, tiefere Analyse Ihres Lebenslaufs: eine vollständige Aufschlüsselung des Werts, Umformulierungen Punkt für Punkt und ein priorisierter Aktionsplan. Eine Zahlung, kein Abo."
+    },
+    "interviewPrepSignIn": {
+      "body": "Ein kostenloses Konto umfasst pro Tag ein Set zur Gesprächsvorbereitung, einen angepassten Lebenslauf und ein Anschreiben.",
+      "cta": "Anmelden oder kostenloses Konto erstellen",
+      "title": "Melden Sie sich an, um mit Interviewfragen zu diesem Lebenslauf zu üben"
+    },
+    "tailoredSignIn": {
+      "cta": "Melden Sie sich an, um Ihren Lebenslauf an diese Stelle anzupassen (kostenlos: einer pro Tag)"
     }
   },
   "analysisPreviewSample": {
@@ -2196,6 +2245,17 @@
       "title": "Dein {{product}} wird noch erstellt",
       "emailed": "Es dauert länger als sonst. Wir schicken es dir per E-Mail, sobald es fertig ist. Du kannst diese Seite schließen.",
       "refresh": "Es dauert länger als sonst. Lade diese Seite in ein paar Minuten neu, um es zu sehen."
+    },
+    "needsJobPosting": {
+      "body": "Sie wird für eine bestimmte Stellenanzeige erstellt, und diesem Kauf war keine beigefügt, deshalb konnte sie nicht automatisch erstellt werden. Ihnen wird nichts erneut berechnet.",
+      "emailed": "Wir schreiben an die Adresse, mit der Sie bezahlt haben, und bitten darum. Antworten Sie auf diese E-Mail mit der Anzeige (Link oder Text), dann erstellen wir es und senden es Ihnen.",
+      "noEmail": "Schreiben Sie an {{support}} mit der Bestellreferenz dieser Seite und der Stellenanzeige (Link oder Text), dann erstellen wir es und senden es Ihnen.",
+      "title": "Ihr {{product}} braucht die Stellenanzeige"
+    },
+    "orderReference": "Bestellreferenz: {{reference}}",
+    "retiredSale": {
+      "body": "Ihre Zahlung ist erfasst, aber dieses Produkt wurde nicht mehr verkauft, bevor die Zahlung durchging, daher wurde nichts automatisch erstellt. Wir wurden informiert und melden uns unter der Adresse, mit der Sie bezahlt haben.",
+      "title": "{{product}} wird nicht mehr verkauft"
     }
   },
   "analysisResults": {
@@ -2768,7 +2828,15 @@
     "allToolsToggle": "Alle Tools ansehen ({{count}} weitere)",
     "guarantee": "Jedes kostenpflichtige Tool ist abgesichert: nicht zufrieden mit dem Ergebnis? Wir generieren es kostenlos neu — antworten Sie einfach auf Ihre Quittung.",
     "passLine": "Ihr eigenes Claude oder ChatGPT zu verbinden ist kostenlos: Durchsuchen Sie die Jobbörse im Chat und bewerben Sie sich selbst auf der Website des Arbeitgebers, mit Hilfe Ihrer KI. Wir senden niemals eine Bewerbung für Sie ab.",
-    "passLink": "Verbinden Sie Ihre KI"
+    "passLink": "Verbinden Sie Ihre KI",
+    "buyProduct": "{{name}} holen",
+    "freeScanLeadIn": "Noch unsicher? Starten Sie den",
+    "heroBadgeLine": "Kostenlos suchen, 5 $ für eine tiefe Analyse oder Pro für die Schreibwerkzeuge",
+    "ladderAnalysisDesc": "Jede Schlüsselwortlücke und jedes ATS-Problem in Ihrem Lebenslauf, bewertet an der Stelle, die Sie einfügen, mit der Lösung für jedes. Kein Konto nötig; in Pro enthalten.",
+    "ladderSubtitleLine": "Die meisten brauchen genau eines davon.",
+    "metaDescriptionFa": "Kostenlose Jobsuche und Lebenslauf-Scan. Eine vollständige Analyse für ${{lowPrice}}, einmal bezahlt, oder Pro für ${{proPrice}} im Monat für die Schreibwerkzeuge.",
+    "oneTimeAndProLineFa": "Die vollständige Analyse für ${{price}} wird einmal bezahlt und verlängert sich nie; Pro ist ein Monatstarif, den Sie jederzeit kündigen können.",
+    "subtitleLine": "Suchen und scannen Sie kostenlos. Zahlen Sie einmal für eine tiefe Lebenslaufanalyse, oder nehmen Sie Pro für die Schreibwerkzeuge bei den Stellen, auf die Sie sich bewerben."
   },
   "scanPackPurchase": {
     "topUpCredits": "Credits aufladen",
@@ -2786,7 +2854,9 @@
     "buyCreditsFor_one": "{{count}} Credit für {{price}} kaufen",
     "buyCreditsFor_other": "{{count}} Credits für {{price}} kaufen",
     "maybeLater": "Vielleicht später",
-    "dialogTitle": "Scan-Credits kaufen"
+    "dialogTitle": "Scan-Credits kaufen",
+    "retiredBody": "Bereits gekaufte Guthaben funktionieren weiterhin. Ein kostenloses Konto scannt mehr pro Tag, und Pro scannt ohne tägliches Limit.",
+    "retiredTitle": "Scan-Pakete werden nicht mehr verkauft"
   },
   "addOnsShowcase": {
     "powerUpAddOns": "Power-Up-Add-Ons",
@@ -2895,7 +2965,13 @@
     "getCreditsFor_other": "{{count}} Credits für {{price}} erhalten",
     "noThanks": "Nein danke, ich warte, bis meine kostenlosen Scans zurückgesetzt werden",
     "fewerCredits": "Weniger Credits",
-    "moreCredits": "Mehr Credits"
+    "moreCredits": "Mehr Credits",
+    "freeAccountBody": "Ein kostenloses Konto scannt mehr pro Tag und behält Ihren Wert und Ihre Checkliste.",
+    "freeAccountCta": "Kostenloses Konto erstellen",
+    "freeAccountTitle": "Kostenloses Konto erstellen",
+    "proCta": "Pro ansehen",
+    "proTitle": "Pro",
+    "subtitleLimit": "Sie haben die heutigen kostenlosen Scans aufgebraucht."
   },
   "changelogPage": {
     "metaTitle": "Änderungsprotokoll — Resume Booster",
@@ -3527,7 +3603,13 @@
       "certifications": "Zertifikate"
     },
     "replaceWithFixes": "Deinen aktuellen Entwurf im Builder durch den Lebenslauf aus deinem Scan ersetzen, mit den Korrekturen aus dem Bericht?",
-    "replaceWithLatestScan": "Du hast einen Entwurf aus einem früheren Lebenslauf. Durch den Lebenslauf aus deinem neuesten Scan ersetzen?"
+    "replaceWithLatestScan": "Du hast einen Entwurf aus einem früheren Lebenslauf. Durch den Lebenslauf aus deinem neuesten Scan ersetzen?",
+    "toast": {
+      "addNameDescription": "Ihr Lebenslauf braucht oben Ihren Namen, bevor er heruntergeladen werden kann.",
+      "addNameTitle": "Fügen Sie zuerst Ihren Namen hinzu",
+      "savedAsWordDescription": "Die Schriften des PDFs können {{chars}} nicht darstellen, deshalb haben wir eine Word-Datei gespeichert, die jedes Zeichen behält.",
+      "savedAsWordTitle": "Als Word-Datei gespeichert"
+    }
   },
   "jobsPage": {
     "seoTitle": "Live-Jobs direkt von den Karriereseiten der Unternehmen — prüfe deine Passung vor der Bewerbung",
@@ -4592,7 +4674,101 @@
       "notLinked": "Ein Plan unter deiner E-Mail-Adresse ist nicht mit diesem Konto verknüpft. Schreib uns, und wir kümmern uns um den Widerruf.",
       "outsideTerritory": "Der Widerruf innerhalb von {{days}} Tagen gilt für Pläne, die an eine Adresse in der EU, im EWR oder im Vereinigten Königreich abgerechnet werden, und dieser Plan wurde anderswo abgerechnet. Du kannst ihn trotzdem jederzeit kündigen.",
       "failed": "Der Widerruf hat nicht geklappt. Bitte versuche es in einer Minute erneut."
-    }
+    },
+    "appIntelAdvice": "Ihre Bewerbungen mit höherer Passung führen häufiger zu Vorstellungsgesprächen. Setzen Sie Ihre Energie dort ein, wo Sie wirklich passen.",
+    "appIntelBody": "Gesprächs- und Angebotsquote nach der Passung, mit der Sie sich beworben haben, über Ihre {{n}} verfolgten Bewerbungen.",
+    "bandNote": "Gemessen an Ihren eigenen Bewerbungen. Kleine Stichproben: Achten Sie auf die Richtung, nicht auf Nachkommastellen.",
+    "bandScore": "Wert {{band}}",
+    "bandTitle": "Ihre Gesprächsquote nach Wertebereich",
+    "bandUnder50": "unter 50",
+    "bandWins": "{{wins}}/{{sent}} Gespräche",
+    "compareAts": "ATS-Wert",
+    "compareHint": "Wählen Sie zwei Scans aus, um sie zu vergleichen.",
+    "compareProjected": "Erwarteter Wert",
+    "compareRedFlags": "Warnsignale",
+    "copiedVersion": "Kopiert: genau das Dokument, das Sie mit dieser Version gespeichert haben.",
+    "copy": "kopieren",
+    "copyTitle": "Sie haben das Dokument mit dieser Version gespeichert: Text kopieren",
+    "creditsProven": "Guthaben, die mit diesem Konto oder unter seiner E-Mail-Adresse gekauft wurden, zählen hier und verfallen nie.",
+    "creditsUnproven": "Guthaben, die in einem Browser gekauft wurden, in dem Sie angemeldet sind, gehören zu Ihrem Konto und verfallen nie. Guthaben, die unter Ihrer E-Mail-Adresse gekauft wurden, zählen hier, sobald die Adresse bestätigt ist.",
+    "deleteApplication": "Bewerbung löschen",
+    "fitCheck": "Passung prüfen",
+    "fitCheckFailed": "Die Passungsprüfung ist fehlgeschlagen. Versuchen Sie es gleich noch einmal.",
+    "fitChecking": "Wird geprüft…",
+    "fitIntro": "Fügen Sie die Stellenanzeige ein: Wir prüfen, welche erkannten Schlüsselwörter die gesendete Version wirklich abdeckt. Regelbasiert, ohne KI.",
+    "fitMissing": "Fehlt in der gesendeten Version:",
+    "fitPlaceholder": "Stellenanzeige hier einfügen…",
+    "fixAllDone": "Alles erledigt: Neu scannen und den neuen Wert sehen →",
+    "fixDoneCount": "{{done}}/{{total}} erledigt",
+    "fixFrom": "Aus Ihrem Scan vom {{date}}. Haken Sie Punkte ab, sobald Sie sie behoben haben, und scannen Sie dann neu, um die Verbesserung zu sehen.",
+    "goalFirst": "Ihr erster Scan startet den Fortschrittsbalken in Richtung {{goal}}.",
+    "goalHit": "Ziel erreicht: Ihr letzter Scan hat Ihr Ziel übertroffen. Die Latte höher legen?",
+    "goalMark": "Ziel {{goal}}",
+    "goalProgress": "{{score}} von {{goal}}: noch {{left}} Punkte.",
+    "historyAria": "ATS-Wert im Zeitverlauf",
+    "loadFailedBody": "Nichts ist verloren: Das Problem liegt beim Lesen, nicht bei dem, was Ihnen gehört. Versuchen Sie es gleich noch einmal.",
+    "loadFailedTitle": "Ihre Guthaben und Käufe konnten nicht geladen werden",
+    "matchingClose": "Schließen",
+    "matchingLatest": "Letzter Scan (Standard)",
+    "matchingNote": "Die Passungs-Rangfolge der Jobbörse und Ihre E-Mail-Benachrichtigungen beruhen beide auf diesem Dokument. Heften Sie unten einen Scan an oder fügen Sie genau den Lebenslauf ein, den Sie verschicken.",
+    "matchingOff": "für den Abgleich anheften",
+    "matchingOffTitle": "Diesen Lebenslauf für Job-Abgleich und Benachrichtigungen verwenden",
+    "matchingOn": "✓ Abgleich",
+    "matchingOnTitle": "Dieser Lebenslauf wird für jeden Abgleich verwendet: Klicken, um zu Ihrem letzten Scan zurückzukehren",
+    "matchingPaste": "Lebenslauf einfügen",
+    "matchingPastePlaceholder": "Fügen Sie hier den Text Ihres Lebenslaufs ein (reiner Text)…",
+    "matchingPasted": "Eingefügter Lebenslauf ({{n}} Zeichen)",
+    "matchingPinned": "Angeheftet: Die Jobbörse und Ihre Benachrichtigungen gleichen jetzt mit diesem Lebenslauf ab.",
+    "matchingPinnedGone": "Angehefteter Scan (nicht mehr in Ihrem Verlauf)",
+    "matchingPinnedScan": "Angeheftet: {{name}} · {{date}}",
+    "matchingReset": "Zurück zu Ihrem letzten Scan.",
+    "matchingResetButton": "Auf letzten Scan zurücksetzen",
+    "matchingSaved": "Gespeichert. Der Abgleich verwendet jetzt diesen Lebenslauf.",
+    "matchingScan": "Scan",
+    "matchingTooShort": "Das ist zu kurz für einen Abgleich. Fügen Sie den vollständigen Lebenslauf ein.",
+    "matchingUse": "Diesen Lebenslauf für den Abgleich verwenden",
+    "namePlaceholder": "Diese Version benennen…",
+    "nameTitle": "Klicken, um diese Version zu benennen",
+    "navConnected": "Verbundene KIs",
+    "navOrders": "Bestellungen",
+    "navPlan": "Tarif",
+    "navPrivacy": "Ihre Daten",
+    "navSecurity": "Sicherheit",
+    "noScans": "Noch keine Scans gespeichert. Führen Sie angemeldet einen kostenlosen Scan durch, dann landet er automatisch hier.",
+    "openPosting": "Stellenanzeige öffnen",
+    "ordersMoreOnProof": "Käufe unter Ihrer E-Mail-Adresse kommen hinzu, sobald die Adresse bestätigt ist.",
+    "proveLive": "Melden Sie sich ab und mit dieser Adresse wieder an, über eine Option auf der Anmeldeseite, die Ihnen eine E-Mail sendet oder die Ihr Anbieter bestätigt: Beides beweist, dass die Adresse Ihnen gehört.",
+    "proveNotYet": "Bis diese Seite prüfen kann, dass die Adresse Ihnen gehört, öffnen Sie jeden Kauf über den Link in seiner E-Mail oder schreiben Sie von dieser Adresse an {{support}}.",
+    "purchasesUnproven": "Käufe unter Ihrer E-Mail-Adresse erscheinen hier, sobald die Adresse bestätigt ist.",
+    "scanCountMany": "{{count}} Scans",
+    "scanCountOne": "1 Scan",
+    "scanCta": "Meinen Lebenslauf scannen",
+    "shortlistBeta": "Beta",
+    "shortlistBody": "Fügen Sie eine Stellenbeschreibung und die Lebensläufe ein, die Sie bewerten lassen dürfen: Sie erhalten eine nachvollziehbare Rangliste mit Prüfprotokoll. Während der Beta kostenlos.",
+    "shortlistOpen": "Shortlist öffnen →",
+    "shortlistTitle": "Sie stellen ein? Prüfen Sie Bewerbende mit Shortlist",
+    "signedOutEverywhere": "Alle Sitzungen dieses Kontos wurden beendet. Bitte melden Sie sich erneut an.",
+    "skillGapBody": "Die Schlüsselwörter, die in den {{n}} Anzeigen, mit denen Sie Ihre Passung geprüft haben, am häufigsten fehlten:",
+    "skillGapHave": "Wenn Sie diese wirklich beherrschen, nehmen Sie sie in Ihren Lebenslauf auf:",
+    "skillGapLearn": "Wenn nicht, sind das Ihre klarsten Lernziele.",
+    "skillGapRescan": "neu scannen und den Unterschied sehen",
+    "skillGapTitle": "Ihre Kompetenzlücken, aus Ihren eigenen Bewerbungen",
+    "targetAria": "Ziel-ATS-Wert",
+    "tierPossible": "Mögliche Passung (10–20 %)",
+    "tierStretch": "Ambitioniert (<10 %)",
+    "tierStrong": "Starke Passung (20 %+)",
+    "trackerAdd": "Hinzufügen",
+    "tryAgain": "Erneut versuchen",
+    "versionInterviews_one": "{{count}} Gespräch",
+    "versionInterviews_other": "{{count}} Gespräche",
+    "versionLatest": "Letzter Scan ({{score}}{{label}})",
+    "versionOffers_one": "{{count}} Angebot",
+    "versionOffers_other": "{{count}} Angebote",
+    "versionOption": "{{name}}, Wert {{score}}",
+    "versionSent": "Gesendete Lebenslaufversion:",
+    "versionSentCount": "{{n}} gesendet",
+    "versionSentLabel": "Für diese Bewerbung verwendete Lebenslaufversion",
+    "whichResumeNote": "Aktualisieren Sie oben den Status Ihrer Bewerbungen: Diese Tabelle lernt, welche Version Ihres Lebenslaufs tatsächlich zu Gesprächen führt."
   },
   "applyAgent": {
     "badge": "Ihr KI-Bewerbungsagent",
@@ -4915,7 +5091,46 @@
     "linkPending": "Zu dieser Adresse gibt es ein Abo, das noch nicht mit diesem Konto verknüpft ist. Melden Sie sich mit Google unter dieser Adresse an, um es hier zu nutzen.",
     "confirmed": "Danke: Ihr Pro-Abonnement ist bestätigt.",
     "confirming": "Ihr Abonnement wird bei Stripe bestätigt. Das dauert ein paar Sekunden.",
-    "notConfirmedYet": "Wir konnten Ihr Abonnement noch nicht bestätigen. Laden Sie diese Seite in einer Minute neu, oder wenden Sie sich an den Support, falls Ihr Abo nicht erscheint."
+    "notConfirmedYet": "Wir konnten Ihr Abonnement noch nicht bestätigen. Laden Sie diese Seite in einer Minute neu, oder wenden Sie sich an den Support, falls Ihr Abo nicht erscheint.",
+    "activeMember": "Sie sind Pro-Mitglied: Die Schreibwerkzeuge sind freigeschaltet.",
+    "badge": "Schreibwerkzeuge",
+    "checkoutRefusedTitle": "Der Bezahlvorgang konnte nicht gestartet werden",
+    "endsOn": "Endet am {{date}}: gekündigt, verlängert sich nicht",
+    "goPro": "Pro holen — ${{price}}/Monat",
+    "linkPendingUnlinked": "Diese Adresse hat einen Tarif, der noch nicht mit diesem Konto verknüpft ist. Schreiben Sie von dieser Adresse an {{support}}, dann verknüpfen wir ihn.",
+    "manage": "Abonnement verwalten",
+    "manageRetired": "In der Abrechnung verwalten oder kündigen",
+    "owing": "Ihre letzte Zahlung ist nicht durchgegangen. Aktualisieren Sie Ihre Karte, um Ihren Tarif zu behalten – kein neues Abonnement nötig.",
+    "perMonth": "/Monat",
+    "perks": {
+      "cancel": "Jederzeit in Ihrem Konto kündbar",
+      "everythingFree": "Alles aus einem kostenlosen Konto, plus die Schreibwerkzeuge",
+      "fullAnalysisIncluded": "Die vollständige Analyse für 5 $ ist enthalten",
+      "noDailyScanCap": "Keine tägliche Obergrenze für Scans",
+      "writingTools": "Ein angepasster Lebenslauf, ein Anschreiben und eine Gesprächsvorbereitung für Ihre Stellen: bis zu 5 Sets pro Tag und 60 pro Monat"
+    },
+    "renewsOn": "Verlängert sich am {{date}}",
+    "retiredPlanEnds": "Er endet am {{date}} und verlängert sich nicht. Die Pro-Werkzeuge bleiben bis dahin aktiv.",
+    "retiredPlanLive": "Solange er läuft, bleiben die Pro-Werkzeuge aktiv. Der Agent selbst ist abgeschaltet; Sie können den Tarif jederzeit in der Abrechnung kündigen.",
+    "retiredPlanOwing": "Seine letzte Zahlung ist nicht durchgegangen. Für einen Tarif, den wir nicht mehr verkaufen, brauchen Sie keine Karte: Kündigen Sie ihn in der Abrechnung, dann hören die Zahlungsversuche auf.",
+    "retiredPlanTitle": "Ihr Tarif ist der Apply-Agent-Tarif, den wir nicht mehr verkaufen.",
+    "secureSignedIn": "Sicherer Bezahlvorgang über Stripe. Jederzeit kündbar – keine Bindung.",
+    "secureSignedOut": "Sie melden sich zuerst an, damit der Tarif zu Ihrem Konto gehört. Sicherer Bezahlvorgang über Stripe; jederzeit kündbar.",
+    "summaryLine": "Alles aus einem kostenlosen Konto, plus die Schreibwerkzeuge, die vollständige Analyse für 5 $ inklusive und keine tägliche Obergrenze für Scans",
+    "title": "Resume Booster Pro",
+    "toast": {
+      "alreadyMemberBody": "Ihr Tarif ist in diesem Konto bereits aktiv.",
+      "alreadyMemberTitle": "Sie sind bereits Pro-Mitglied",
+      "briefOutage": "Abonnements sind kurz nicht verfügbar – bitte versuchen Sie es in ein paar Minuten erneut.",
+      "emailNeededBody": "Geben Sie Ihre E-Mail-Adresse ein, damit wir das Abonnement Ihrem Konto zuordnen können.",
+      "emailNeededTitle": "E-Mail-Adresse erforderlich",
+      "portalFailedTitle": "Das Abrechnungsportal konnte nicht geöffnet werden",
+      "signInBody": "Melden Sie sich an, um Ihr Abonnement zu verwalten.",
+      "signInTitle": "Anmeldung erforderlich",
+      "tryAgain": "Bitte versuchen Sie es erneut."
+    },
+    "trialingNoCap": "Ihre Testphase läuft: Scans haben jetzt keine tägliche Obergrenze. Die vollständige Analyse für 5 $ ist ab Ihrer ersten Zahlung enthalten.",
+    "updatePayment": "Zahlungsmethode aktualisieren"
   },
   "atsCoverage": {
     "heading": "Gebaut für die Systeme, die Arbeitgeber wirklich nutzen",
@@ -5116,7 +5331,13 @@
     "connectInstead": "Du hast schon einen Agenten? Verbinde ihn stattdessen — {{passHours}} Stunden für {{passPrice}} $, verlängert sich nie; der Agent-Plan schon.",
     "welcomeTitle": "Du hast abonniert.",
     "welcomeTitleTrial": "Du hast abonniert — {{trialDays}} Tage gratis vor der ersten Abbuchung.",
-    "welcomeBody": "Eins fehlt noch: Der Agent braucht deinen Lebenslauf und ein aktives Mandat, bevor er nach etwas suchen kann. Die Checkliste unten dauert etwa eine Minute, und bis sie erledigt ist, läuft nichts."
+    "welcomeBody": "Eins fehlt noch: Der Agent braucht deinen Lebenslauf und ein aktives Mandat, bevor er nach etwas suchen kann. Die Checkliste unten dauert etwa eine Minute, und bis sie erledigt ist, läuft nichts.",
+    "retiredPublicBody": "Wir verkaufen den Agent-Tarif, den Agent Pass und den Apply Assistant nicht mehr, und unser eigener Bewerbungsagent ist abgeschaltet: Es wird nichts für Sie eingereicht.",
+    "retiredPublicCta": "Claude oder ChatGPT kostenlos verbinden",
+    "retiredPublicLead": "Resume Booster bewirbt sich für niemanden mehr. Sie können weiterhin aktuelle Stellen suchen und sich selbst bewerben, mit Hilfe von Claude oder ChatGPT, auf der eigenen Website des Arbeitgebers.",
+    "retiredPublicSignIn": "Hatten Sie den Tarif? Melden Sie sich an, um Ihr Konto zu sehen.",
+    "retiredPublicSignInLink": "Anmelden",
+    "retiredPublicTitle": "Der Apply Agent ist eingestellt"
   },
   "agentConnect": {
     "attachTitle": "Prompts und Ressourcen, die dein Host auflisten kann",
@@ -5221,7 +5442,8 @@
     "missing": "Diese Seite benötigt den Button aus Ihrer Bericht-E-Mail.",
     "error": "Start gerade nicht möglich. Versuchen Sie den Button gleich noch einmal.",
     "errorFinal": "Die Serie konnte nicht vollständig gestartet werden, und ein erneuter Klick startet sie diesen Monat nicht neu.",
-    "home": "Zurück zu Resume Booster"
+    "home": "Zurück zu Resume Booster",
+    "paused": "Die E-Mails zum Korrekturplan sind vorerst pausiert, daher wurde nichts gestartet. Ihre Bericht-E-Mail enthält bereits den ganzen Plan."
   },
   "emailUnsubscribe": {
     "title": "Diese E-Mails abbestellen",
@@ -5242,12 +5464,19 @@
     "agentTrial": "Neue Abonnenten erhalten {{days}} Tage kostenlos, danach {{price}} pro Monat, automatisch verlängert, bis Sie kündigen. Kündigen Sie vor Ende des Testzeitraums, wird nichts berechnet. Wer schon einmal abonniert hatte, zahlt ab dem ersten Tag.",
     "waiver": "Ich möchte, dass mein Kauf sofort geliefert wird, und mir ist bekannt, dass ich mein {{days}}-tägiges Widerrufsrecht mit der Lieferung verliere.",
     "serviceStart": "Ich verlange, dass die Leistung sofort beginnt. Widerrufe ich innerhalb von {{days}} Tagen, zahle ich für die bereits genutzten Tage.",
-    "consentNeeded": "Bitte setzen Sie das Häkchen über der Schaltfläche, um fortzufahren."
+    "consentNeeded": "Bitte setzen Sie das Häkchen über der Schaltfläche, um fortzufahren.",
+    "autoRenewConsent": "Ich stimme zu, dass sich Pro jeden Monat automatisch für {{price}} verlängert, bis ich kündige, und dass ich jederzeit in meinem Konto kündigen kann."
   },
   "freelanceBoost": {
     "startNewPurchase": "Kaufen Sie für eine andere Stelle? Neuen Kauf beginnen.",
     "boughtHereTitle": "3. Ihr Erfahrungsabschnitt – auf diesem Gerät bereits gekauft",
-    "openYourLink": "Öffnen Sie den Link in Ihrer Kauf-E-Mail, um ihn anzusehen oder zu erstellen. Es wird Ihnen nichts erneut berechnet."
+    "openYourLink": "Öffnen Sie den Link in Ihrer Kauf-E-Mail, um ihn anzusehen oder zu erstellen. Es wird Ihnen nichts erneut berechnet.",
+    "noLongerSoldBody": "Freelance Boost und Transition Pro werden nicht mehr verkauft und sind nicht Teil von Pro. Wenn Sie eines davon gekauft haben, öffnen Sie den Link in Ihrer Kauf-E-Mail: Er funktioniert noch 90 Tage. Ein kostenloses Konto schreibt jetzt jeden Tag einen angepassten Lebenslauf, ein Anschreiben und eine Gesprächsvorbereitung für eine Stelle.",
+    "noLongerSoldMeta": "Freelance Boost und Transition Pro werden nicht mehr verkauft. Wenn Sie eines davon gekauft haben, funktioniert der Link in Ihrer Kauf-E-Mail weiterhin.",
+    "noLongerSoldTitle": "Freelance Boost wird nicht mehr verkauft",
+    "regenerate": "Neu erzeugen",
+    "regenerateNeedsAnswers": "Ihre Antworten sind nicht auf diesem Gerät. Füllen Sie das Formular unten aus und klicken Sie auf „Generate my section“ – Ihr Kauf deckt das ab.",
+    "seePricing": "Sehen, was erhältlich ist"
   },
   "seller": {
     "soldBy": "Verkauft von {{name}}, {{address}}.",
@@ -5276,6 +5505,15 @@
       "failed": "Die Auszahlung konnte nicht angefragt werden. Bitte versuchen Sie es erneut.",
       "requestedTitle": "Auszahlung angefragt",
       "requestedBody": "Wir melden uns per E-Mail, um die Zahlung abzustimmen."
+    },
+    "proCommission": {
+      "banner": "{{amount}} pro geworbenem ersten bezahlten Pro-Monat",
+      "detail": "Pro kostet 45 $ im Monat. Wenn jemand, der über Ihren Link kam, seinen ersten Pro-Monat bezahlt, verdienen Sie {{amount}}.",
+      "excludedFa": "Andere Käufe (die vollständige Lebenslaufanalyse) bringen keine Provision. Bereits verdiente Provisionen werden wie bisher ausgezahlt.",
+      "headline": "{{amount}} für jeden geworbenen ersten bezahlten Pro-Monat",
+      "howItWorks": "Wenn jemand auf Ihren Link klickt und innerhalb von 30 Tagen seinen ersten Pro-Monat bezahlt, verdienen Sie {{amount}}. Andere Käufe bringen nichts.",
+      "linkHint": "Teilen Sie diesen Link und verdienen Sie {{amount}} für jeden geworbenen ersten bezahlten Pro-Monat, mit 30 Tagen Zuordnungszeitraum",
+      "tagline": "Verdienen Sie pauschal {{amount}}, wenn jemand, den Sie werben, seinen ersten Pro-Monat bezahlt."
     }
   },
   "careerReportEnum": {
@@ -5340,5 +5578,170 @@
     "builderBody": "Gerankte Suche, Lebenslauf-Passungsbewertung in großem Umfang und 180 Tage Schließungsdaten, zur Anzeige in Ihrem eigenen Produkt mit Quellenangabe. Keine Feeds und kein Weiterverkauf; dafür gibt es die kommerzielle Lizenz. Sagen Sie uns, ob Sie es nutzen würden.",
     "builderNotYet": "Noch nicht im Verkauf: Es wird nichts berechnet, und wir beantworten jede Anfrage per E-Mail.",
     "builderCta": "Builder anfragen"
+  },
+  "accountConnected": {
+    "actionFailed": "Das hat nicht geklappt. Versuchen Sie es in einer Minute noch einmal.",
+    "connect": "Claude oder ChatGPT verbinden",
+    "created": "Verbunden am {{date}}",
+    "lastUsed": "Zuletzt genutzt am {{date}}",
+    "neverUsed": "Noch nicht genutzt",
+    "none": "Mit diesem Konto ist keine KI verbunden.",
+    "note": "Wenn Sie den Zugang widerrufen, erreicht diese KI Ihr Konto sofort nicht mehr. Eine neue Verbindung erzeugt einen neuen Schlüssel.",
+    "readFailed": "Ihre verbundenen KIs und E-Mail-Einstellungen konnten gerade nicht geladen werden.",
+    "retry": "Erneut versuchen",
+    "revoke": "Widerrufen",
+    "revoked": "Widerrufen. Diese KI kann Ihr Konto nicht mehr erreichen.",
+    "title": "Verbundene KIs"
+  },
+  "accountMail": {
+    "others": "Benachrichtigungen für gespeicherte Suchen schalten Sie oben bei jeder gespeicherten Suche ein und aus. Jede andere E-Mail von uns enthält einen eigenen Abmeldelink.",
+    "pulse": "Marktpuls",
+    "pulseNone": "Nicht abonniert",
+    "pulseOff": "Aus",
+    "pulseOn": "An",
+    "pulsePending": "Wartet auf Ihre Bestätigung",
+    "pulseStop": "Marktpuls abbestellen",
+    "pulseStopped": "Der Marktpuls ist abbestellt.",
+    "title": "E-Mail-Einstellungen",
+    "unprovenLive": "Melden Sie sich ab und wieder an, mit einer Option auf der Anmeldeseite, die Ihnen eine E-Mail sendet oder die Ihr Anbieter bestätigt, um hier die Verteiler unter Ihrer Adresse zu sehen. Jede E-Mail von uns enthält außerdem einen eigenen Abmeldelink.",
+    "unprovenNotYet": "Die Verteiler unter Ihrer Adresse erscheinen hier, sobald diese Seite prüfen kann, dass die Adresse Ihnen gehört. Bis dahin enthält jede E-Mail von uns einen eigenen Abmeldelink."
+  },
+  "accountPrivacy": {
+    "cancel": "Abbrechen",
+    "cancelledLabel": "Gekündigt:",
+    "cancelledList": "jedes Abonnement, das dieses Konto bezahlt, sofort, sodass nichts mehr berechnet wird.",
+    "cannotUndo": "Das kann nicht rückgängig gemacht werden.",
+    "deleteConfirm": "Ja, mein Konto löschen",
+    "deleteStart": "Mein Konto löschen",
+    "deletedLabel": "Gelöscht:",
+    "deletedList": "Ihr Konto und Ihre Anmeldung; Ihr Scanverlauf, Ihre Checkliste, Ihr Ziel, gespeicherte Lebenslaufversionen und verfolgte Bewerbungen; gespeicherte Suchen und Benachrichtigungen; jede hochgeladene Lebenslaufdatei; Ihre API- und KI-Verbindungsschlüssel, die dann nicht mehr funktionieren; und, sobald Ihre Adresse bestätigt ist, ihre Einträge in Verteilern.",
+    "export": "Alle meine Daten herunterladen (JSON)",
+    "keptLabel": "Aufbewahrt:",
+    "keptList": "Zahlungsbelege (die Stripe-Referenz, der Betrag, das Datum und die Adresse auf der Quittung), solange das Steuerrecht es verlangt, und ein Sperrvermerk für Ihre Adresse, damit keine bereits geplante E-Mail sie erreicht. Scan-Guthaben, die ohne Konto unter Ihrer Adresse gekauft wurden, bleiben bei dieser Adresse.",
+    "title": "Ihre Daten"
+  },
+  "accountSettings": {
+    "codeFailed": "Wir konnten gerade keinen Bestätigungscode anfordern. Versuchen Sie es in einer Minute noch einmal.",
+    "codeField": "Bestätigungscode aus der E-Mail",
+    "codeOnItsWay": "Wenn Ihre Adresse E-Mails empfangen kann, ist ein Bestätigungscode an {{email}} unterwegs.",
+    "emailConfirmBoth": "Noch hat sich nichts geändert: Wir haben Ihre aktuelle und Ihre neue Adresse um Bestätigung gebeten. Ihre Adresse ändert sich, sobald beide bestätigt sind.",
+    "emailInvalid": "Geben Sie eine gültige neue Adresse ein.",
+    "emailMismatch": "Die beiden Adressen stimmen nicht überein.",
+    "emailNew": "Neue Adresse",
+    "emailNewAgain": "Neue Adresse wiederholen",
+    "emailNotYet": "Zum Ändern Ihrer Anmeldeadresse müssen beide Adressen bestätigen, und das kann diese Seite noch nicht anfordern. Schreiben Sie von Ihrer aktuellen Adresse an {{support}}, dann ändern wir sie für Sie.",
+    "emailNote": "Käufe unter Ihrer aktuellen Adresse bleiben bei dieser Adresse, bis die neue bestätigt und nachgewiesen ist.",
+    "emailPwLabel": "Aktuelles Passwort, um Ihre Adresse zu ändern",
+    "emailTitle": "Anmeldeadresse ändern",
+    "noPassword": "Noch kein Passwort oder vergessen? Schicken Sie mir stattdessen einen Bestätigungscode",
+    "proven": "Ihre Adresse wurde {{how}} bestätigt.",
+    "provenHow": {
+      "code": "durch einen Code, den wir an sie geschickt haben,",
+      "confirmation": "durch die Bestätigung der E-Mail, die wir an sie geschickt haben,",
+      "link": "durch einen Link, den wir an sie geschickt haben,",
+      "provider": "durch eine Google- oder Apple-Anmeldung, die sie bestätigt hat,",
+      "reset": "durch eine E-Mail zum Zurücksetzen des Passworts, die wir an sie geschickt haben,"
+    },
+    "provenOn": "Ihre Adresse wurde am {{date}} {{how}} bestätigt.",
+    "pwChanged": "Passwort geändert.",
+    "pwCurrent": "Aktuelles Passwort",
+    "pwNeedsProof": "Geben Sie Ihr aktuelles Passwort ein oder fordern Sie einen Bestätigungscode an.",
+    "pwNew": "Neues Passwort (mindestens {{n}} Zeichen)",
+    "pwNewLabel": "Neues Passwort",
+    "pwTitle": "Passwort ändern",
+    "pwTooShort": "Ein neues Passwort braucht mindestens {{n}} Zeichen.",
+    "pwWrong": "Das ist nicht Ihr aktuelles Passwort.",
+    "sessions": "Angemeldet als {{email}}",
+    "signOutEverywhere": "Überall abmelden",
+    "signOutHere": "Auf diesem Gerät abmelden",
+    "title": "Anmeldung und Sicherheit",
+    "unproven": "Ihre Adresse ist noch nicht bestätigt, daher erscheinen Käufe, die ohne Anmeldung unter ihr getätigt wurden, nicht auf dieser Seite.",
+    "update": "Aktualisieren"
+  },
+  "applyAnswers": {
+    "addSpecifics": "Ergänzen Sie Details aus Ihrer eigenen Erfahrung – wir erfinden sie nicht.",
+    "allGrounded": "Jede Antwort stützt sich auf Ihren Lebenslauf – nichts ist erfunden.",
+    "copied": "Kopiert",
+    "copiedAll": "Alle Antworten kopiert",
+    "copyAll": "Alle kopieren",
+    "copyAnswer": "Antwort kopieren",
+    "draftButton": "Fragen dieser Bewerbung entwerfen",
+    "failed": "Antworten konnten gerade nicht entworfen werden.",
+    "inferredIntro": "Wahrscheinliche Fragen für diese Stelle (dieses ATS veröffentlicht sein Formular nicht), gestützt auf Ihren Lebenslauf. Prüfen Sie sie, bevor Sie sie einfügen.",
+    "limit": "Sie haben dieses Kontingent vorerst aufgebraucht. Bitte versuchen Sie es später erneut.",
+    "limitHours": "Sie haben das Entwurfslimit vorerst erreicht. Bitte versuchen Sie es in etwa {{hours}} Stunden erneut.",
+    "limitMinutes": "Sie haben das Entwurfslimit vorerst erreicht. Bitte versuchen Sie es in etwa {{minutes}} Minuten erneut.",
+    "limitUntil": "Sie haben dieses Kontingent aufgebraucht. Ab {{when}} können Sie weitere entwerfen.",
+    "modelBusy": "Der KI-Dienst ist ausgelastet. Bitte versuchen Sie es in einer Minute erneut.",
+    "nothingDraftable": "Keine automatisch zu entwerfenden Fragen – den Rest beantworten Sie selbst und ehrlich.",
+    "realIntro": "Die echten Fragen dieser Bewerbung, entworfen aus Ihrem Lebenslauf. Prüfen Sie sie, bevor Sie sie einfügen.",
+    "signIn": "Melden Sie sich an, um Antworten zu entwerfen. Ein kostenloses Konto genügt.",
+    "someNeedInput": "{{gaps}} von {{total}} brauchen Ihre Angaben – wir haben sie markiert, statt etwas zu erfinden.",
+    "unavailable": "Das Entwerfen ist kurz nicht verfügbar. Bitte versuchen Sie es gleich noch einmal.",
+    "undraftedBody": "Wir entwerfen pro Bewerbung nur eine begrenzte Zahl von Fragen, und diese wurden für Sie übrig gelassen.",
+    "undraftedTitle": "Nicht entworfen – beantworten Sie diese selbst",
+    "yoursBody": "Wir raten nicht bei Ihrer Identität, Arbeitserlaubnis, Gehaltsvorstellung oder demografischen Angaben – die ehrliche Antwort darauf gehört allein Ihnen.",
+    "yoursTitle": "Diese beantworten Sie selbst"
+  },
+  "checkoutGate": {
+    "purchasesOpenSoon": "Käufe sind bald möglich. Die Jobsuche, der kostenlose Scan und ein kostenloses Konto funktionieren schon jetzt.",
+    "purchasesOpenSoonTitle": "Käufe bald möglich",
+    "regionNoticeTimeZone": "Die Zeitzone Ihres Browsers liegt in der EU, im EWR, im Vereinigten Königreich oder in Indien, wo wir noch nicht verkaufen: Verkäufe dort warten, bis unsere Steuerregistrierung geklärt ist. Die Jobsuche und der kostenlose Scan funktionieren überall."
+  },
+  "checkoutRefusal": {
+    "autoRenewTitle": "Bitte setzen Sie das Häkchen für die Verlängerung",
+    "fairUseTitle": "Sie haben die Fair-Use-Grenze von Pro erreicht",
+    "planUnpaidTitle": "Ihr Tarif ist noch nicht bezahlt",
+    "retiredBody": "Dieses Produkt wird nicht mehr verkauft, und es wurde nichts berechnet. Wenn Sie es früher gekauft haben, funktioniert Ihr Link noch 90 Tage.",
+    "retiredTitle": "Nicht mehr erhältlich",
+    "territoryTitle": "An Ihrem Standort noch nicht erhältlich"
+  },
+  "consent": {
+    "allow": "Analyse erlauben",
+    "body": "Wenn Sie zustimmen, speichern wir in diesem Browser eine anonyme Besucherkennung und erfassen, welche Seiten und Schritte Sie nutzen, damit wir sehen, was funktioniert. Bis Sie sich entscheiden, wird dafür nichts gespeichert oder gesendet, und die Website funktioniert so oder so gleich.",
+    "deny": "Nein, danke",
+    "host": "Unser Hosting-Anbieter betreibt einen eigenen Seitenaufruf-Zähler, den diese Auswahl nicht steuert.",
+    "label": "Auswahl zur Analyse",
+    "more": "Details",
+    "title": "Dürfen wir zählen, wie diese Website genutzt wird?"
+  },
+  "crashScreen": {
+    "body": "Ein unerwarteter Fehler hat diese Seite angehalten. Neu laden hilft meistens.",
+    "details": "Technische Details",
+    "refresh": "Seite neu laden",
+    "supportLead": "Kommen Sie nicht weiter, oder ist das direkt nach einer Zahlung passiert? Schreiben Sie uns:",
+    "title": "Etwas ist schiefgelaufen"
+  },
+  "freeReportSignup": {
+    "body": "Erstellen Sie ein kostenloses Konto, um Ihren Fortschritt über mehrere Scans zu verfolgen, Ihre Korrektur-Checkliste zu behalten und 15 statt 7 kostenlose Scans pro Tag zu erhalten.",
+    "cta": "Kostenloses Konto erstellen",
+    "title": "Verlieren Sie diesen Wert nicht."
+  },
+  "orders": {
+    "actionFailed": "Das hat nicht geklappt. Versuchen Sie es in einer Minute noch einmal.",
+    "mailAgain": "Erneut per E-Mail senden",
+    "mailedAgain": "Unterwegs an die Adresse, mit der Sie gekauft haben.",
+    "open": "Öffnen",
+    "receipt": "Beleg",
+    "reportProblem": "Problem melden",
+    "reportSubject": "Ein Problem mit meiner Bestellung",
+    "statusFailed": "Konnte nicht erstellt werden",
+    "statusIncluded": "In Pro enthalten",
+    "statusNeedsResume": "Braucht Ihren Lebenslauf",
+    "statusPreparing": "In Vorbereitung",
+    "statusReady": "Fertig",
+    "statusRefunded": "Erstattet"
+  },
+  "saveResume": {
+    "boardFit": "Speichern Sie diesen Lebenslauf, und die Jobbörse bewertet jede Stelle, die Sie ansehen, im Abgleich damit",
+    "boardFitWithCount": "Speichern Sie diesen Lebenslauf, und die Jobbörse bewertet jede Stelle, die Sie ansehen, im Abgleich damit – über {{n}} aktuelle Stellen zum Durchsuchen",
+    "versionExplainer": "In Ihrem Konto gespeichert, bis Sie ihn löschen – nur hier bewahren wir Lebenslaufinhalte auf, und nur, weil Sie es wünschen. Damit funktionieren die Passungswerte für die Stellen, die Sie in der Jobbörse ansehen, automatische Passungswerte für verfolgte Bewerbungen und die Ansicht, welche Version zu Gesprächen führt."
+  },
+  "writingRefusal": {
+    "daily": "Sie haben das heutige Schreibkontingent aufgebraucht. Ab {{when}} können Sie mehr erstellen; was Sie bisher erstellt haben, ist gespeichert.",
+    "dailyNoTime": "Sie haben das heutige Schreibkontingent aufgebraucht. Morgen können Sie mehr erstellen; was Sie bisher erstellt haben, ist gespeichert.",
+    "monthly": "Sie haben das Schreibkontingent dieses Monats aufgebraucht. Ab {{when}} können Sie mehr erstellen.",
+    "monthlyNoTime": "Sie haben das Schreibkontingent dieses Monats aufgebraucht. Nächsten Monat können Sie mehr erstellen.",
+    "signIn": "Melden Sie sich an, um die Schreibwerkzeuge zu nutzen. Ein kostenloses Konto umfasst pro Tag einen angepassten Lebenslauf, ein Anschreiben und ein Set zur Gesprächsvorbereitung."
   }
 }

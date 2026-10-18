@@ -420,9 +420,27 @@
       "bringYourAgent": {
         "question": "Can my own AI agent use this?",
         "answer": "Yes, for free. Connect Resume Booster to Claude, ChatGPT or Claude Code, and your AI can search the board, read postings in full and help you apply on the employer's own site; reading the board needs no key and no account. Your AI drafts and you decide: we never submit an application for you. Every posting and every search on the board has a control that copies a prompt for your AI, and the setup for each app is at /agents."
+      },
+      "howLongBound": {
+        "answer": "Usually a minute or two after payment, and a few minutes at most. It opens on the page Stripe returns you to, and the private link we email you keeps it for 90 days.",
+        "question": "How long does the analysis take?"
+      },
+      "subscriptionLine": {
+        "question": "Is this a subscription?"
+      },
+      "subscriptionLineFa": {
+        "answer": "Both options exist, and you choose. The ${{price}} Full Analysis is a one-time payment that never renews. Separately, there is one optional monthly plan, Pro at ${{proPrice}}/month: {{proSummary}}. It renews every month until you cancel. The CV scan, the job board and connecting your own AI stay free either way. Nothing else upgrades you automatically."
+      },
+      "vsChatGPTTrue": {
+        "answer": "{{name}} scores your CV the way applicant tracking systems read it, with a 5-category weighted score, 14 industry-specific templates and recruiter-calibrated feedback. Unlike ChatGPT, you get the same structured report every time, with no prompt to write. Unlike templates, you get rewrites of your own bullets and alignment with the job description. We do not train AI models on your CV, and the free scan deletes it within 7 days.",
+        "question": "Why is this better than ChatGPT or CV templates?"
+      },
+      "whatDoIGetNamed": {
+        "question": "What do I get with {{name}}?"
       }
     },
-    "stillHaveQuestions": "Still have questions?"
+    "stillHaveQuestions": "Still have questions?",
+    "subtitleNamed": "Everything you need to know about {{name}}"
   },
   "comparison": {
     "title": "Why CV Booster?",
@@ -440,7 +458,8 @@
       "noPromptNeeded": "No Prompt Engineering Required",
       "recruiterCalibrated": "Recruiter-Calibrated Feedback",
       "privacyFirst": "Data Never Used for Training"
-    }
+    },
+    "titleNamed": "Why {{name}}?"
   },
   "socialProof": {
     "stats": {
@@ -586,7 +605,10 @@
       "notFound": "Analysis not found. The link may be invalid or expired.",
       "generic": "Failed to load analysis.",
       "tryAgain": "Please try uploading your CV again.",
-      "backHome": "Back to Home"
+      "backHome": "Back to Home",
+      "analysisNotFound": "Analysis not found. The link may be invalid or expired.",
+      "analyzeFailed": "Failed to analyse CV",
+      "loadFailed": "Failed to load analysis."
     },
     "toast": {
       "paymentSuccess": "Payment successful!",
@@ -609,7 +631,13 @@
       "dataDeleted": "Data deleted",
       "dataDeletedDesc": "Your CV analysis has been permanently deleted.",
       "deleteFailed": "Failed to delete data",
-      "deleteFailedDesc": "Please try again or contact support."
+      "deleteFailedDesc": "Please try again or contact support.",
+      "analysisFailedRetryDesc": "There was an issue analysing your CV. Please try again.",
+      "analysisReadyEmailed": "Your analysis is ready and has been emailed to you!",
+      "browserDataCleared": "Browser data cleared",
+      "browserDataClearedDesc": "All locally stored CV data has been removed from this device.",
+      "recoveredReady": "Analysis ready",
+      "recoveredReadyDesc": "Your CV analysis is ready below."
     },
     "actions": {
       "share": "Share",
@@ -626,7 +654,10 @@
       "deleteConfirm": "Delete Analysis Data",
       "deleteWarning": "This action cannot be undone. This will permanently delete your CV analysis from our servers.",
       "cancel": "Cancel",
-      "deleting": "Deleting..."
+      "deleting": "Deleting...",
+      "generatingPdf": "Generating...",
+      "savePdf": "Save as PDF",
+      "savePdfHint": "Save your analysis as PDF"
     },
     "sharedView": "Viewing shared analysis"
   },
@@ -666,7 +697,8 @@
       "jurisdictionsNv": "16.3 Nevada",
       "contactUs": "17. Contact Us",
       "mcp": "Using Resume Booster from your own AI"
-    }
+    },
+    "changeConsent": "Change my analytics choice"
   },
   "terms": {
     "title": "Terms of Service",
@@ -730,7 +762,8 @@
     "oneTime": "one-time",
     "guarantee": "Instant results • One-time payment",
     "button": "Get My Analysis Now",
-    "roi": "One interview = {{price}} paid for itself"
+    "roi": "One interview = {{price}} paid for itself",
+    "freeScanCta": "Scan my CV free"
   },
   "scanProgress": {
     "title": "AI Analysis in Progress",
@@ -960,7 +993,9 @@
       "headsUp": "Heads up",
       "pdfCharWarning": "Some characters may not display correctly in the PDF (limited font support for non-Latin text).",
       "exportFailed": "Export failed",
-      "exportFailedDescription": "Could not generate the PDF. Please try again."
+      "exportFailedDescription": "Could not generate the PDF. Please try again.",
+      "printDescription": "The PDF's fonts can't draw this guide's script, so choose \"Save as PDF\" in the print dialog to keep it.",
+      "printTitle": "Opened in your print dialog"
     }
   },
   "careerPathSimulator": {
@@ -1006,7 +1041,11 @@
       "exportPdfFailedDescription": "Could not generate the PDF. Please try again.",
       "exportDocxFailedDescription": "Could not generate the Word document. Please try again.",
       "copied": "Copied",
-      "copiedDescription": "Cover letter copied to clipboard."
+      "copiedDescription": "Cover letter copied to clipboard.",
+      "addNameDescription": "Your CV needs your name at the top before it can be downloaded.",
+      "addNameTitle": "Add your name first",
+      "savedAsWordDescription": "The PDF's fonts can't draw {{chars}}, so we saved a Word file, which keeps every character.",
+      "savedAsWordTitle": "Saved as a Word file"
     },
     "grounding": {
       "title": "Fact-checked against your resume",
@@ -1068,7 +1107,8 @@
       "fontUnreadable": "This PDF's letters can't be read",
       "fontUnreadableDescription": "Its font doesn't map to real characters. Upload a .docx or paste your CV text instead.",
       "unreadCharacters": "Some characters couldn't be read",
-      "unreadCharactersDescription": "We skipped {{count}} characters this PDF doesn't name. For the most accurate scan, upload a .docx or paste your CV text."
+      "unreadCharactersDescription": "We skipped {{count}} characters this PDF doesn't name. For the most accurate scan, upload a .docx or paste your CV text.",
+      "checkoutRefusedTitle": "Couldn't start checkout"
     },
     "reportCrash": {
       "title": "Something went wrong displaying your report",
@@ -1685,7 +1725,16 @@
       "fullAnalysisDesc": "Applies the fixes from this report to your own CV content. One payment, no subscription.",
       "proName": "Pro",
       "proDesc": "Monthly plan: unlimited scans and every paid tool, the Full Analysis included. Cancel anytime from your account.",
-      "proPrice": "${{price}}/month"
+      "proPrice": "${{price}}/month",
+      "fullAnalysisDescOwn": "A separate, deeper analysis of your CV: a full score breakdown, bullet-by-bullet rewrites and a prioritised action plan. One payment, no subscription."
+    },
+    "interviewPrepSignIn": {
+      "body": "A free account includes one interview-prep set, one tailored CV and one cover letter a day.",
+      "cta": "Sign in or create a free account",
+      "title": "Sign in to practise with interview questions for this CV"
+    },
+    "tailoredSignIn": {
+      "cta": "Sign in to tailor your CV to this job (free: one a day)"
     }
   },
   "analysisPreviewSample": {
@@ -2196,6 +2245,17 @@
       "title": "Your {{product}} is still being made",
       "emailed": "It's taking longer than usual. We'll email it to you as soon as it's ready, so you can close this page.",
       "refresh": "It's taking longer than usual. Refresh this page in a few minutes to see it."
+    },
+    "needsJobPosting": {
+      "body": "It is made for one job posting, and none was attached to this purchase, so it could not be made automatically. You will not be charged again.",
+      "emailed": "We are emailing the address you paid with to ask for it. Reply to that email with the posting (the link or the text) and we will make it and send it to you.",
+      "noEmail": "Email {{support}} with this page's order reference and the job posting (the link or the text), and we will make it and send it to you.",
+      "title": "Your {{product}} needs the job posting"
+    },
+    "orderReference": "Order reference: {{reference}}",
+    "retiredSale": {
+      "body": "Your payment is recorded, but this product stopped being sold before the payment went through, so nothing was made automatically. We have been told and will contact you at the address you paid with.",
+      "title": "{{product}} is no longer sold"
     }
   },
   "analysisResults": {
@@ -2768,7 +2828,15 @@
     "allToolsToggle": "See every tool ({{count}} more)",
     "guarantee": "Every paid tool is covered: not happy with the output? We'll regenerate it free — just reply to your receipt.",
     "passLine": "Connecting your own Claude or ChatGPT is free: search the board in your chat and apply yourself on the employer's own site, with your AI's help. We never submit an application for you.",
-    "passLink": "Connect your AI"
+    "passLink": "Connect your AI",
+    "buyProduct": "Get {{name}}",
+    "freeScanLeadIn": "Not sure yet? Run the",
+    "heroBadgeLine": "Free to search, $5 for one deep analysis, or Pro for the writing tools",
+    "ladderAnalysisDesc": "Every keyword gap and ATS issue in your CV, scored against the job you paste, with the fix for each. No account needed; included in Pro.",
+    "ladderSubtitleLine": "Most people need exactly one of these.",
+    "metaDescriptionFa": "Free job search and CV scan. A ${{lowPrice}} Full Analysis paid once, or Pro at ${{proPrice}} a month for the writing tools.",
+    "oneTimeAndProLineFa": "The ${{price}} Full Analysis is paid once and never renews; Pro is a monthly plan you can cancel any time.",
+    "subtitleLine": "Search and scan for free. Pay once for one deep CV analysis, or go Pro for the writing tools on the jobs you apply to."
   },
   "scanPackPurchase": {
     "topUpCredits": "Top Up Credits",
@@ -2786,7 +2854,9 @@
     "buyCreditsFor_one": "Buy {{count}} Credit for {{price}}",
     "buyCreditsFor_other": "Buy {{count}} Credits for {{price}}",
     "maybeLater": "Maybe later",
-    "dialogTitle": "Buy Scan Credits"
+    "dialogTitle": "Buy Scan Credits",
+    "retiredBody": "Credits you already bought still work. A free account scans more each day, and Pro scans without a daily limit.",
+    "retiredTitle": "Scan packs are no longer sold"
   },
   "addOnsShowcase": {
     "powerUpAddOns": "Power-Up Add-Ons",
@@ -2895,7 +2965,13 @@
     "getCreditsFor_other": "Get {{count}} Credits for {{price}}",
     "noThanks": "No thanks, I'll wait for my free scans to reset",
     "fewerCredits": "Fewer credits",
-    "moreCredits": "More credits"
+    "moreCredits": "More credits",
+    "freeAccountBody": "A free account scans more each day, and keeps your score and checklist.",
+    "freeAccountCta": "Create a free account",
+    "freeAccountTitle": "Create a free account",
+    "proCta": "See Pro",
+    "proTitle": "Pro",
+    "subtitleLimit": "You've used today's free scans."
   },
   "changelogPage": {
     "metaTitle": "Changelog — Resume Booster",
@@ -3527,7 +3603,13 @@
       "certifications": "Certifications"
     },
     "replaceWithFixes": "Replace your current builder draft with the CV from your scan, with the report's fixes applied?",
-    "replaceWithLatestScan": "You have a builder draft from an earlier CV. Replace it with the CV from your latest scan?"
+    "replaceWithLatestScan": "You have a builder draft from an earlier CV. Replace it with the CV from your latest scan?",
+    "toast": {
+      "addNameDescription": "Your CV needs your name at the top before it can be downloaded.",
+      "addNameTitle": "Add your name first",
+      "savedAsWordDescription": "The PDF's fonts can't draw {{chars}}, so we saved a Word file, which keeps every character.",
+      "savedAsWordTitle": "Saved as a Word file"
+    }
   },
   "jobsPage": {
     "seoTitle": "Live Jobs From Companies' Own Boards — Check Your Fit Before You Apply",
@@ -4592,7 +4674,101 @@
       "notLinked": "A plan on your email address is not linked to this account. Write to us and we will handle the withdrawal.",
       "outsideTerritory": "The {{days}}-day withdrawal applies to plans billed to an address in the EU, the EEA or the UK, and this plan was billed elsewhere. You can still cancel it at any time.",
       "failed": "The withdrawal did not go through. Please try again in a minute."
-    }
+    },
+    "appIntelAdvice": "Your higher-fit applications convert to interviews more often. Spend your energy where you actually match.",
+    "appIntelBody": "Interview and offer rate by the fit you applied with, across your {{n}} tracked applications.",
+    "bandNote": "Measured from your own applications. Small samples, so read direction, not decimals.",
+    "bandScore": "Score {{band}}",
+    "bandTitle": "Your interview rate by score band",
+    "bandUnder50": "under 50",
+    "bandWins": "{{wins}}/{{sent}} interviews",
+    "compareAts": "ATS score",
+    "compareHint": "Select two scans to compare them.",
+    "compareProjected": "Projected score",
+    "compareRedFlags": "Red flags",
+    "copiedVersion": "Copied: the exact document you saved with this version.",
+    "copy": "copy",
+    "copyTitle": "You saved the document with this version: copy its text",
+    "creditsProven": "Credits bought on this account or under its email address count here and never expire.",
+    "creditsUnproven": "Credits bought in a browser where you're signed in follow your account and never expire. Credits bought under your email address count here once the address is proven.",
+    "deleteApplication": "Delete application",
+    "fitCheck": "Check fit",
+    "fitCheckFailed": "Fit check failed. Try again shortly.",
+    "fitChecking": "Checking…",
+    "fitIntro": "Paste the job posting: we check which recognised keywords the version you sent actually covers. Deterministic, no AI.",
+    "fitMissing": "Missing from the version you sent:",
+    "fitPlaceholder": "Paste the job posting here…",
+    "fixAllDone": "All done: rescan to see your new score →",
+    "fixDoneCount": "{{done}}/{{total}} done",
+    "fixFrom": "From your scan on {{date}}. Check items off as you fix them, then rescan to see the lift.",
+    "goalFirst": "Your first scan starts the progress bar toward {{goal}}.",
+    "goalHit": "Goal hit: your latest scan beat your target. Raise the bar?",
+    "goalMark": "goal {{goal}}",
+    "goalProgress": "{{score}} of {{goal}}: {{left}} points to go.",
+    "historyAria": "ATS score over time",
+    "loadFailedBody": "Nothing is lost: this is a problem reading them, not what you own. Try again in a moment.",
+    "loadFailedTitle": "We couldn't load your credits and purchases",
+    "matchingClose": "Close",
+    "matchingLatest": "Latest scan (default)",
+    "matchingNote": "The job board's fit ranking and your email match alerts are both grounded in this document. Pin a scan below, or paste the exact CV you're sending out.",
+    "matchingOff": "pin for matching",
+    "matchingOffTitle": "Use this CV for job matching and alerts",
+    "matchingOn": "✓ matching",
+    "matchingOnTitle": "This CV is used for all matching: click to go back to your latest scan",
+    "matchingPaste": "Paste a CV",
+    "matchingPastePlaceholder": "Paste your CV text here (plain text)…",
+    "matchingPasted": "Pasted CV ({{n}} characters)",
+    "matchingPinned": "Pinned: the board and your alerts now match against this CV.",
+    "matchingPinnedGone": "Pinned scan (no longer in your history)",
+    "matchingPinnedScan": "Pinned: {{name}} · {{date}}",
+    "matchingReset": "Back to your latest scan.",
+    "matchingResetButton": "Reset to latest scan",
+    "matchingSaved": "Saved. Matching now uses this CV.",
+    "matchingScan": "scan",
+    "matchingTooShort": "That's too short to match against. Paste the full CV.",
+    "matchingUse": "Use this CV for matching",
+    "namePlaceholder": "Name this version…",
+    "nameTitle": "Click to name this version",
+    "navConnected": "Connected AIs",
+    "navOrders": "Orders",
+    "navPlan": "Plan",
+    "navPrivacy": "Your data",
+    "navSecurity": "Security",
+    "noScans": "No scans saved yet. Run a free scan while signed in and it lands here automatically.",
+    "openPosting": "Open the job posting",
+    "ordersMoreOnProof": "Purchases made under your email address are added once the address is proven.",
+    "proveLive": "Sign out, then sign back in with that address using an option on the sign-in page that emails you or that your provider verifies: either one proves the address is yours.",
+    "proveNotYet": "Until this page can check that the address is yours, open each purchase from the link in its email, or write to {{support}} from that address.",
+    "purchasesUnproven": "Purchases made under your email address show here once the address is proven.",
+    "scanCountMany": "{{count}} scans",
+    "scanCountOne": "1 scan",
+    "scanCta": "Scan my CV",
+    "shortlistBeta": "Beta",
+    "shortlistBody": "Paste a job description and the CVs you are allowed to have scored: get a ranked, explainable shortlist with an audit trail. Free during beta.",
+    "shortlistOpen": "Open Shortlist →",
+    "shortlistTitle": "Hiring? Screen candidates with Shortlist",
+    "signedOutEverywhere": "Every session of this account was ended. Please sign in again.",
+    "skillGapBody": "The keywords most often missing across the {{n}} postings you checked your fit against:",
+    "skillGapHave": "If you genuinely have these, put them on your CV:",
+    "skillGapLearn": "If not, they're your clearest learning targets.",
+    "skillGapRescan": "rescan to see the difference",
+    "skillGapTitle": "Your skill gaps, from your own applications",
+    "targetAria": "Target ATS score",
+    "tierPossible": "Possible match (10–20%)",
+    "tierStretch": "Stretch (<10%)",
+    "tierStrong": "Strong match (20%+)",
+    "trackerAdd": "Add",
+    "tryAgain": "Try again",
+    "versionInterviews_one": "{{count}} interview",
+    "versionInterviews_other": "{{count}} interviews",
+    "versionLatest": "Latest scan ({{score}}{{label}})",
+    "versionOffers_one": "{{count}} offer",
+    "versionOffers_other": "{{count}} offers",
+    "versionOption": "{{name}}, score {{score}}",
+    "versionSent": "CV version sent:",
+    "versionSentCount": "{{n}} sent",
+    "versionSentLabel": "CV version used for this application",
+    "whichResumeNote": "Update application statuses above: this table learns which version of your CV actually lands interviews."
   },
   "applyAgent": {
     "badge": "Your AI apply agent",
@@ -4915,7 +5091,46 @@
     "linkPending": "This address has a plan that isn't linked to this account yet. Sign in with Google using that address to use it here.",
     "confirmed": "Thank you: your Pro subscription is confirmed.",
     "confirming": "Confirming your subscription with Stripe. This takes a few seconds.",
-    "notConfirmedYet": "We could not confirm your subscription yet. Refresh this page in a minute, or contact support if your plan does not appear."
+    "notConfirmedYet": "We could not confirm your subscription yet. Refresh this page in a minute, or contact support if your plan does not appear.",
+    "activeMember": "You're a Pro member: the writing tools are unlocked.",
+    "badge": "Writing tools",
+    "checkoutRefusedTitle": "Couldn't start checkout",
+    "endsOn": "Ends {{date}}: cancelled, it will not renew",
+    "goPro": "Go Pro — ${{price}}/month",
+    "linkPendingUnlinked": "This address has a plan that isn't linked to this account yet. Email {{support}} from that address and we will link it.",
+    "manage": "Manage subscription",
+    "manageRetired": "Manage or cancel in billing",
+    "owing": "Your last payment didn't go through. Update your card to keep your plan — no new subscription needed.",
+    "perMonth": "/month",
+    "perks": {
+      "cancel": "Cancel anytime from your account",
+      "everythingFree": "Everything in a free account, plus the writing tools",
+      "fullAnalysisIncluded": "The $5 Full Analysis included",
+      "noDailyScanCap": "No daily cap on scans",
+      "writingTools": "A tailored CV, cover letter and interview prep for your jobs: up to 5 sets a day and 60 a month"
+    },
+    "renewsOn": "Renews {{date}}",
+    "retiredPlanEnds": "It ends on {{date}} and will not renew. Pro's tools stay on until then.",
+    "retiredPlanLive": "While it runs, Pro's tools stay on. The agent itself is switched off; you can cancel the plan any time in billing.",
+    "retiredPlanOwing": "Its last payment didn't go through. You don't need a card for a plan we no longer sell: cancel it in billing and the retries stop.",
+    "retiredPlanTitle": "Your plan is the Apply Agent plan, which we no longer sell.",
+    "secureSignedIn": "Secure checkout via Stripe. Cancel anytime — no lock-in.",
+    "secureSignedOut": "You'll sign in first, so the plan is on your account. Secure checkout via Stripe; cancel anytime.",
+    "summaryLine": "Everything in a free account, plus the writing tools, the $5 Full Analysis included and no daily cap on scans",
+    "title": "Resume Booster Pro",
+    "toast": {
+      "alreadyMemberBody": "Your plan is already active on this account.",
+      "alreadyMemberTitle": "You're already a Pro member",
+      "briefOutage": "Subscriptions are briefly unavailable — please try again in a few minutes.",
+      "emailNeededBody": "Enter your email so we can attach the subscription to your account.",
+      "emailNeededTitle": "Email needed",
+      "portalFailedTitle": "Couldn't open billing portal",
+      "signInBody": "Sign in to manage your subscription.",
+      "signInTitle": "Sign in required",
+      "tryAgain": "Please try again."
+    },
+    "trialingNoCap": "Your trial is on: scans have no daily cap now. The $5 Full Analysis is included from your first payment.",
+    "updatePayment": "Update payment method"
   },
   "atsCoverage": {
     "heading": "Built for the systems employers actually use",
@@ -5116,7 +5331,13 @@
     "connectInstead": "Already have an agent? Connect it instead — {{passHours}} hours for ${{passPrice}}, never renews; the Agent plan does.",
     "welcomeTitle": "You're subscribed.",
     "welcomeTitleTrial": "You're subscribed — {{trialDays}} days free before the first charge.",
-    "welcomeBody": "One thing left: the agent needs your CV and an active mandate before it can look for anything. The checklist below takes about a minute, and nothing runs until it is done."
+    "welcomeBody": "One thing left: the agent needs your CV and an active mandate before it can look for anything. The checklist below takes about a minute, and nothing runs until it is done.",
+    "retiredPublicBody": "We no longer sell the Agent plan, the Agent Pass or the Apply Assistant, and our own apply agent is switched off: nothing is submitted for you.",
+    "retiredPublicCta": "Connect Claude or ChatGPT for free",
+    "retiredPublicLead": "Resume Booster no longer applies for anyone. You can still search live jobs and apply yourself, with Claude or ChatGPT helping you, on the employer's own site.",
+    "retiredPublicSignIn": "Had the plan? Sign in to see your account.",
+    "retiredPublicSignInLink": "Sign in",
+    "retiredPublicTitle": "The Apply Agent is retired"
   },
   "agentConnect": {
     "attachTitle": "Prompts and resources your host can list",
@@ -5221,7 +5442,8 @@
     "missing": "This page needs the button from your report email.",
     "error": "Could not start it right now. Try the button again shortly.",
     "errorFinal": "Could not start the whole sequence, and pressing the button again will not restart it this month.",
-    "home": "Back to Resume Booster"
+    "home": "Back to Resume Booster",
+    "paused": "The fix-plan emails are paused for now, so nothing was started. Your report email already holds the whole plan."
   },
   "emailUnsubscribe": {
     "title": "Turn off these emails",
@@ -5242,12 +5464,19 @@
     "agentTrial": "First-time subscribers get {{days}} days free, then {{price}} a month, renewing automatically until you cancel. Cancel before the trial ends and you are not charged. Returning subscribers pay from the first day.",
     "waiver": "I want my purchase delivered now, and I understand that I lose my {{days}}-day right to withdraw once it has been delivered.",
     "serviceStart": "I ask for the service to start now. If I withdraw within {{days}} days, I pay for the days already used.",
-    "consentNeeded": "Please tick the box above the button to continue."
+    "consentNeeded": "Please tick the box above the button to continue.",
+    "autoRenewConsent": "I agree that Pro renews automatically every month at {{price}} until I cancel, and that I can cancel any time from my account."
   },
   "freelanceBoost": {
     "startNewPurchase": "Buying for a different role? Start a new purchase.",
     "boughtHereTitle": "3. Your experience section — already bought on this device",
-    "openYourLink": "To see or generate it, open the link in your purchase email. You won't be charged again."
+    "openYourLink": "To see or generate it, open the link in your purchase email. You won't be charged again.",
+    "noLongerSoldBody": "Freelance Boost and Transition Pro are no longer sold, and they are not part of Pro. If you bought one, open the link in your purchase email: it keeps working for 90 days. A free account now writes a tailored CV, cover letter and interview prep for a job each day.",
+    "noLongerSoldMeta": "Freelance Boost and Transition Pro are no longer sold. If you bought one, the link in your purchase email keeps working.",
+    "noLongerSoldTitle": "Freelance Boost is no longer sold",
+    "regenerate": "Regenerate",
+    "regenerateNeedsAnswers": "Your answers aren't on this device. Fill in the form below and press \"Generate my section\" — your purchase covers it.",
+    "seePricing": "See what is on sale"
   },
   "seller": {
     "soldBy": "Sold by {{name}}, {{address}}.",
@@ -5276,6 +5505,15 @@
       "failed": "Could not request the payout. Please try again.",
       "requestedTitle": "Payout requested",
       "requestedBody": "We will email you to arrange payment."
+    },
+    "proCommission": {
+      "banner": "{{amount}} per referred first paid month of Pro",
+      "detail": "Pro is $45 a month. When someone who came through your link pays for their first month of Pro, you earn {{amount}}.",
+      "excludedFa": "Other purchases (the Full CV Analysis) earn no commission. Commissions you have already earned are paid as before.",
+      "headline": "{{amount}} for each referred first paid month of Pro",
+      "howItWorks": "When someone clicks your link and pays for their first month of Pro within 30 days, you earn {{amount}}. Other purchases earn nothing.",
+      "linkHint": "Share this link to earn {{amount}} on each referred first paid month of Pro, with a 30-day attribution window",
+      "tagline": "Earn a flat {{amount}} when someone you refer pays for their first month of Pro."
     }
   },
   "careerReportEnum": {
@@ -5340,5 +5578,170 @@
     "builderBody": "Ranked search, résumé fit scoring at volume and 180 days of closures, for display inside your own product with attribution. No feeds or resale; those are the commercial license. Tell us if you'd use it.",
     "builderNotYet": "Not on sale yet: nothing is charged, and we reply to every request by email.",
     "builderCta": "Request Builder"
+  },
+  "accountConnected": {
+    "actionFailed": "That didn't work. Try again in a minute.",
+    "connect": "Connect Claude or ChatGPT",
+    "created": "Connected {{date}}",
+    "lastUsed": "Last used {{date}}",
+    "neverUsed": "Not used yet",
+    "none": "No AI is connected to this account.",
+    "note": "Revoking stops that AI from reaching your account at once. Connecting again makes a new key.",
+    "readFailed": "We couldn't load your connected AIs and mail settings just now.",
+    "retry": "Try again",
+    "revoke": "Revoke",
+    "revoked": "Revoked. That AI can no longer reach your account.",
+    "title": "Connected AIs"
+  },
+  "accountMail": {
+    "others": "Saved-search alerts are switched on and off on each saved search above. Every other mail we send carries its own unsubscribe link.",
+    "pulse": "Market pulse",
+    "pulseNone": "Not subscribed",
+    "pulseOff": "Off",
+    "pulseOn": "On",
+    "pulsePending": "Waiting for you to confirm",
+    "pulseStop": "Stop the market pulse",
+    "pulseStopped": "The market pulse is stopped.",
+    "title": "Email preferences",
+    "unprovenLive": "Sign out, then sign back in with an option on the sign-in page that emails you or that your provider verifies, to see the mailing lists under your address here. Every mail we send also carries its own unsubscribe link.",
+    "unprovenNotYet": "The mailing lists under your address show here once this page can check that the address is yours. Until then, every mail we send carries its own unsubscribe link."
+  },
+  "accountPrivacy": {
+    "cancel": "Cancel",
+    "cancelledLabel": "Cancelled:",
+    "cancelledList": "any subscription this account pays for, at once, so nothing more is charged.",
+    "cannotUndo": "This cannot be undone.",
+    "deleteConfirm": "Yes, delete my account",
+    "deleteStart": "Delete my account",
+    "deletedLabel": "Deleted:",
+    "deletedList": "your account and sign-in; your scan history, checklist, goal, saved CV versions and tracked applications; saved searches and alerts; any CV file you uploaded; your API and connected-AI keys, which stop working; and, once your address is proven, its mailing-list entries.",
+    "export": "Download all my data (JSON)",
+    "keptLabel": "Kept:",
+    "keptList": "payment records (the Stripe reference, amount, date and the address on the receipt) for as long as tax law requires, and a do-not-mail note for your address so that no mail already queued reaches it. Scan credits bought under your address without an account stay with that address.",
+    "title": "Your data"
+  },
+  "accountSettings": {
+    "codeFailed": "We couldn't ask for a confirmation code right now. Try again in a minute.",
+    "codeField": "Confirmation code from the email",
+    "codeOnItsWay": "If your address can receive mail, a confirmation code is on its way to {{email}}.",
+    "emailConfirmBoth": "Nothing has changed yet: we've asked both your current and your new address to confirm. Your address changes once both are confirmed.",
+    "emailInvalid": "Enter a valid new address.",
+    "emailMismatch": "The two addresses don't match.",
+    "emailNew": "New address",
+    "emailNewAgain": "New address again",
+    "emailNotYet": "Changing your sign-in address needs both addresses to confirm, which this site can't ask for yet. Write to {{support}} from your current address and we'll change it for you.",
+    "emailNote": "Purchases made under your current address stay with that address until the new one is confirmed and proven.",
+    "emailPwLabel": "Current password, to change your address",
+    "emailTitle": "Change sign-in address",
+    "noPassword": "No password yet, or forgotten it? Email me a confirmation code instead",
+    "proven": "Your address was proven {{how}}.",
+    "provenHow": {
+      "code": "by a code we emailed to it",
+      "confirmation": "by confirming the email we sent to it",
+      "link": "by a link we emailed to it",
+      "provider": "by a Google or Apple sign-in that verified it",
+      "reset": "by a password-reset email we sent to it"
+    },
+    "provenOn": "Your address was proven {{how}} on {{date}}.",
+    "pwChanged": "Password changed.",
+    "pwCurrent": "Current password",
+    "pwNeedsProof": "Enter your current password, or ask for a confirmation code.",
+    "pwNew": "New password ({{n}}+ characters)",
+    "pwNewLabel": "New password",
+    "pwTitle": "Change password",
+    "pwTooShort": "A new password needs at least {{n}} characters.",
+    "pwWrong": "That isn't your current password.",
+    "sessions": "Signed in as {{email}}",
+    "signOutEverywhere": "Sign out everywhere",
+    "signOutHere": "Sign out of this device",
+    "title": "Sign-in and security",
+    "unproven": "Your address isn't proven yet, so purchases made under it without signing in don't show on this page.",
+    "update": "Update"
+  },
+  "applyAnswers": {
+    "addSpecifics": "Add specifics from your own experience — we won't invent them.",
+    "allGrounded": "Every answer is grounded in your CV — nothing invented.",
+    "copied": "Copied",
+    "copiedAll": "All answers copied",
+    "copyAll": "Copy all",
+    "copyAnswer": "Copy answer",
+    "draftButton": "Draft this application's questions",
+    "failed": "Couldn't draft answers right now.",
+    "inferredIntro": "Likely questions for this role (this ATS doesn't publish its form) — grounded in your CV. Review before you paste.",
+    "limit": "You've used this allowance for now. Please try again later.",
+    "limitHours": "You've reached the drafting limit for now. Please try again in about {{hours}} hours.",
+    "limitMinutes": "You've reached the drafting limit for now. Please try again in about {{minutes}} minutes.",
+    "limitUntil": "You've used this allowance. You can draft more after {{when}}.",
+    "modelBusy": "The AI service is busy. Please try again in a minute.",
+    "nothingDraftable": "No auto-draftable questions — the rest are yours to complete honestly.",
+    "realIntro": "This application's real questions, drafted from your CV. Review before you paste.",
+    "signIn": "Sign in to draft answers. A free account is enough.",
+    "someNeedInput": "{{gaps}} of {{total}} need your input — we flagged them instead of inventing anything.",
+    "unavailable": "Drafting is unavailable for a minute. Please try again shortly.",
+    "undraftedBody": "We draft a limited number of questions per application, and these were left for you.",
+    "undraftedTitle": "Not drafted — answer these yourself",
+    "yoursBody": "We don't guess your identity, work authorisation, salary, or demographics — the honest answer to each is yours alone.",
+    "yoursTitle": "You'll answer these yourself"
+  },
+  "checkoutGate": {
+    "purchasesOpenSoon": "Purchases open soon. Searching jobs, the free scan and a free account work now.",
+    "purchasesOpenSoonTitle": "Purchases open soon",
+    "regionNoticeTimeZone": "Your browser's time zone is in the EU, the EEA, the UK or India, where we don't sell yet: sales there wait until our tax registration there is settled. Searching jobs and the free scan work everywhere."
+  },
+  "checkoutRefusal": {
+    "autoRenewTitle": "Please tick the renewal box",
+    "fairUseTitle": "You've reached Pro's fair-use limit",
+    "planUnpaidTitle": "Your plan is not paid yet",
+    "retiredBody": "This product is no longer sold, and nothing was charged. If you bought it before, your link keeps working for 90 days.",
+    "retiredTitle": "No longer sold",
+    "territoryTitle": "Not yet sold where you are"
+  },
+  "consent": {
+    "allow": "Allow analytics",
+    "body": "If you allow it, we keep an anonymous visitor id in this browser and record which pages and steps you use, so we can see what works. Nothing is stored or sent for this until you choose, and the site works the same either way.",
+    "deny": "No thanks",
+    "host": "Our hosting provider runs its own page-visit counter, which this choice does not control.",
+    "label": "Analytics choice",
+    "more": "Details",
+    "title": "May we count how this site is used?"
+  },
+  "crashScreen": {
+    "body": "An unexpected error stopped this page. Refreshing usually fixes it.",
+    "details": "Technical details",
+    "refresh": "Refresh page",
+    "supportLead": "Still stuck, or did this happen right after a payment? Write to us:",
+    "title": "Something went wrong"
+  },
+  "freeReportSignup": {
+    "body": "Create a free account to track your progress across scans, keep your fix checklist, and get 15 free scans a day instead of 7.",
+    "cta": "Create free account",
+    "title": "Don't lose this score."
+  },
+  "orders": {
+    "actionFailed": "That didn't work. Try again in a minute.",
+    "mailAgain": "Email it again",
+    "mailedAgain": "On its way to the address you bought it with.",
+    "open": "Open",
+    "receipt": "Receipt",
+    "reportProblem": "Report a problem",
+    "reportSubject": "A problem with my order",
+    "statusFailed": "Couldn't be made",
+    "statusIncluded": "Included with Pro",
+    "statusNeedsResume": "Needs your CV",
+    "statusPreparing": "Preparing",
+    "statusReady": "Ready",
+    "statusRefunded": "Refunded"
+  },
+  "saveResume": {
+    "boardFit": "Save this CV and the job board scores each opening you look at against it",
+    "boardFitWithCount": "Save this CV and the job board scores each opening you look at against it — over {{n}} live openings to browse",
+    "versionExplainer": "Stored in your account until you delete it — this is the only time we keep CV content, and only because you asked. It powers fit scores on the openings you browse on the job board, automatic fit scores on tracked applications, and the which-version-lands-interviews view."
+  },
+  "writingRefusal": {
+    "daily": "You've used today's writing allowance. You can make more after {{when}}; what you made so far is saved.",
+    "dailyNoTime": "You've used today's writing allowance. You can make more tomorrow; what you made so far is saved.",
+    "monthly": "You've used this month's writing allowance. You can make more after {{when}}.",
+    "monthlyNoTime": "You've used this month's writing allowance. You can make more next month.",
+    "signIn": "Sign in to use the writing tools. A free account includes one tailored CV, one cover letter and one interview-prep set a day."
   }
 }

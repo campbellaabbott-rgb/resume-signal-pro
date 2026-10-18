@@ -420,9 +420,27 @@
       "bringYourAgent": {
         "question": "Magagamit ba ito ng sarili kong AI agent?",
         "answer": "Oo, nang libre. Ikonekta ang Resume Booster sa Claude, ChatGPT o Claude Code, at kaya ng iyong AI na maghanap sa board, basahin nang buo ang mga posting at tulungan kang mag-apply sa sariling site ng employer; hindi kailangan ng key o account para basahin ang board. Gumagawa ng draft ang iyong AI at ikaw ang nagpapasya: hindi kami kailanman nagsusumite ng application para sa iyo. Bawat posting at bawat paghahanap sa board ay may kontrol na kumokopya ng prompt para sa iyong AI, at ang setup para sa bawat app ay nasa /agents."
+      },
+      "howLongBound": {
+        "answer": "Kadalasan isa o dalawang minuto pagkatapos magbayad, at ilang minuto lang sa pinakamatagal. Bubukas ito sa page na pinagbabalikan sa iyo ng Stripe, at itatabi ito nang 90 araw ng pribadong link na ini-email namin sa iyo.",
+        "question": "Gaano katagal ang analysis?"
+      },
+      "subscriptionLine": {
+        "question": "Subscription ba ito?"
+      },
+      "subscriptionLineFa": {
+        "answer": "Parehong mayroon, at ikaw ang pipili. Ang ${{price}} na Full Analysis ay isang beses na bayad na hindi kailanman nagre-renew. Hiwalay doon, may isang opsyonal na buwanang plan, ang Pro sa ${{proPrice}}/buwan: {{proSummary}}. Nagre-renew ito bawat buwan hanggang magkansela ka. Libre pa rin anuman ang piliin mo ang resume scan, ang job board at ang pag-connect ng sarili mong AI. Wala nang iba pang awtomatikong mag-a-upgrade sa iyo."
+      },
+      "vsChatGPTTrue": {
+        "answer": "Ini-score ng {{name}} ang resume mo kung paano ito binabasa ng mga applicant tracking system, gamit ang weighted score sa 5 kategorya, 14 na template ayon sa industriya at feedback na naka-calibrate sa mga recruiter. Hindi tulad ng ChatGPT, pare-pareho ang structured report na makukuha mo bawat beses, nang walang prompt na isusulat. Hindi tulad ng mga template, makakakuha ka ng mga rewrite ng sarili mong mga bullet at pagtutugma sa job description. Hindi kami nagte-train ng anumang AI model gamit ang resume mo, at binubura ito ng libreng scan sa loob ng 7 araw.",
+        "question": "Bakit mas mahusay ito kaysa sa ChatGPT o mga resume template?"
+      },
+      "whatDoIGetNamed": {
+        "question": "Ano ang makukuha ko sa {{name}}?"
       }
     },
-    "stillHaveQuestions": "May iba ka pang tanong?"
+    "stillHaveQuestions": "May iba ka pang tanong?",
+    "subtitleNamed": "Lahat ng kailangan mong malaman tungkol sa {{name}}"
   },
   "comparison": {
     "title": "Bakit Resume Booster?",
@@ -440,7 +458,8 @@
       "noPromptNeeded": "Walang Prompt Engineering Kailangan",
       "recruiterCalibrated": "Recruiter-Calibrated Feedback",
       "privacyFirst": "Data Hindi Ginagamit sa Training"
-    }
+    },
+    "titleNamed": "Bakit {{name}}?"
   },
   "socialProof": {
     "stats": {
@@ -586,7 +605,10 @@
       "notFound": "Hindi nahanap ang pagsusuri. Maaaring invalid o expired na ang link.",
       "generic": "Nabigong ma-load ang pagsusuri.",
       "tryAgain": "Pakisubukan muli na i-upload ang iyong resume.",
-      "backHome": "Bumalik sa Home"
+      "backHome": "Bumalik sa Home",
+      "analysisNotFound": "Hindi nakita ang analysis. Maaaring invalid o expired na ang link.",
+      "analyzeFailed": "Hindi ma-analyze ang resume",
+      "loadFailed": "Hindi ma-load ang analysis."
     },
     "toast": {
       "paymentSuccess": "Matagumpay ang pagbabayad!",
@@ -609,7 +631,13 @@
       "dataDeleted": "Na-delete ang data",
       "dataDeletedDesc": "Ang iyong resume analysis ay permanenteng na-delete na.",
       "deleteFailed": "Hindi na-delete ang data",
-      "deleteFailedDesc": "Pakisubukan muli o i-contact ang support."
+      "deleteFailedDesc": "Pakisubukan muli o i-contact ang support.",
+      "analysisFailedRetryDesc": "Nagkaproblema sa pag-analyze ng resume mo. Pakisubukan ulit.",
+      "analysisReadyEmailed": "Handa na ang analysis mo at na-email na sa iyo!",
+      "browserDataCleared": "Na-clear ang data ng browser",
+      "browserDataClearedDesc": "Inalis na sa device na ito ang lahat ng resume data na naka-store nang lokal.",
+      "recoveredReady": "Handa na ang analysis",
+      "recoveredReadyDesc": "Handa na sa ibaba ang analysis ng resume mo."
     },
     "actions": {
       "share": "I-share",
@@ -626,7 +654,10 @@
       "deleteConfirm": "I-delete ang Analysis Data",
       "deleteWarning": "Hindi na maibabalik ang aksyong ito. Permanenteng ide-delete nito ang iyong resume analysis mula sa aming servers.",
       "cancel": "Kanselahin",
-      "deleting": "Dine-delete..."
+      "deleting": "Dine-delete...",
+      "generatingPdf": "Ginagawa...",
+      "savePdf": "I-save bilang PDF",
+      "savePdfHint": "I-save ang analysis mo bilang PDF"
     },
     "sharedView": "Tinitingnan ang na-share na pagsusuri"
   },
@@ -666,7 +697,8 @@
       "jurisdictionsNv": "16.3 Nevada",
       "contactUs": "17. Makipag-ugnayan sa Amin",
       "mcp": "Paggamit ng Resume Booster mula sa sarili mong AI"
-    }
+    },
+    "changeConsent": "Baguhin ang pagpili ko sa analytics"
   },
   "terms": {
     "title": "Mga Tuntunin ng Serbisyo",
@@ -730,7 +762,8 @@
     "oneTime": "isang beses lang",
     "guarantee": "Instant na resulta • Isang beses na bayad",
     "button": "Kunin ang Aking Analysis Ngayon",
-    "roi": "Isang interview = {{price}} na-recover"
+    "roi": "Isang interview = {{price}} na-recover",
+    "freeScanCta": "I-scan nang libre ang resume ko"
   },
   "scanProgress": {
     "title": "AI Analysis na Ginagawa",
@@ -960,7 +993,9 @@
       "headsUp": "Paalala",
       "pdfCharWarning": "May mga character na posibleng hindi maipakita nang tama sa PDF (limitadong font support para sa non-Latin na teksto).",
       "exportFailed": "Hindi na-export",
-      "exportFailedDescription": "Hindi magawa ang PDF. Pakisubukan ulit."
+      "exportFailedDescription": "Hindi magawa ang PDF. Pakisubukan ulit.",
+      "printDescription": "Hindi kayang iguhit ng mga font ng PDF ang script ng gabay na ito, kaya piliin ang \"Save as PDF\" sa print dialog para maitabi ito.",
+      "printTitle": "Binuksan sa print dialog mo"
     }
   },
   "careerPathSimulator": {
@@ -1006,7 +1041,11 @@
       "exportPdfFailedDescription": "Hindi magawa ang PDF. Pakisubukan ulit.",
       "exportDocxFailedDescription": "Hindi magawa ang Word document. Pakisubukan ulit.",
       "copied": "Na-copy",
-      "copiedDescription": "Na-copy ang cover letter sa clipboard."
+      "copiedDescription": "Na-copy ang cover letter sa clipboard.",
+      "addNameDescription": "Kailangang may pangalan mo sa itaas ng resume mo bago ito ma-download.",
+      "addNameTitle": "Idagdag muna ang pangalan mo",
+      "savedAsWordDescription": "Hindi kayang iguhit ng mga font ng PDF ang {{chars}}, kaya nag-save kami ng Word file, na pinapanatili ang bawat character.",
+      "savedAsWordTitle": "Na-save bilang Word file"
     },
     "grounding": {
       "title": "Na-fact-check laban sa resume mo",
@@ -1068,7 +1107,8 @@
       "fontUnreadable": "Hindi mabasa ang mga titik ng PDF na ito",
       "fontUnreadableDescription": "Hindi tumutugma sa tunay na mga karakter ang font nito. Mag-upload na lang ng .docx o i-paste ang teksto ng iyong resume.",
       "unreadCharacters": "May ilang karakter na hindi nabasa",
-      "unreadCharactersDescription": "Nilaktawan namin ang {{count}} karakter na hindi pinangalanan ng PDF na ito. Para sa pinakatumpak na scan, mag-upload ng .docx o i-paste ang teksto ng iyong resume."
+      "unreadCharactersDescription": "Nilaktawan namin ang {{count}} karakter na hindi pinangalanan ng PDF na ito. Para sa pinakatumpak na scan, mag-upload ng .docx o i-paste ang teksto ng iyong resume.",
+      "checkoutRefusedTitle": "Hindi masimulan ang checkout"
     },
     "reportCrash": {
       "title": "May nagkamali sa pagpapakita ng iyong ulat",
@@ -1685,7 +1725,16 @@
       "fullAnalysisDesc": "Inilalapat ang mga ayos mula sa ulat na ito sa nilalaman ng sarili mong resume. Isang bayad, walang subscription.",
       "proName": "Pro",
       "proDesc": "Buwanang plan: walang limitasyong scan at bawat bayad na tool, kasama ang Full Analysis. Puwedeng i-cancel kahit kailan mula sa iyong account.",
-      "proPrice": "${{price}}/buwan"
+      "proPrice": "${{price}}/buwan",
+      "fullAnalysisDescOwn": "Hiwalay at mas malalim na analysis ng resume mo: buong breakdown ng score, rewrite ng bawat bullet at action plan na naka-prioritize. Isang bayad, walang subscription."
+    },
+    "interviewPrepSignIn": {
+      "body": "Kasama sa libreng account ang isang interview-prep set, isang tailored resume at isang cover letter bawat araw.",
+      "cta": "Mag-sign in o gumawa ng libreng account",
+      "title": "Mag-sign in para mag-practice gamit ang mga tanong sa interview para sa resume na ito"
+    },
+    "tailoredSignIn": {
+      "cta": "Mag-sign in para i-tailor ang resume mo sa trabahong ito (libre: isa bawat araw)"
     }
   },
   "analysisPreviewSample": {
@@ -2196,6 +2245,17 @@
       "title": "Ginagawa pa ang iyong {{product}}",
       "emailed": "Mas matagal ito kaysa karaniwan. Ie-email namin ito sa iyo sa sandaling handa na, kaya puwede mo nang isara ang pahinang ito.",
       "refresh": "Mas matagal ito kaysa karaniwan. I-refresh ang pahinang ito pagkalipas ng ilang minuto para makita ito."
+    },
+    "needsJobPosting": {
+      "body": "Ginagawa ito para sa isang partikular na job posting, at walang nakalakip sa pagbiling ito, kaya hindi ito awtomatikong nagawa. Hindi ka na sisingilin ulit.",
+      "emailed": "Ii-email namin ang address na ginamit mo sa pagbayad para hingin ito. Sagutin ang email na iyon kasama ang posting (ang link o ang text) at gagawin namin ito at ipapadala sa iyo.",
+      "noEmail": "Mag-email sa {{support}} kasama ang order reference ng page na ito at ang job posting (ang link o ang text), at gagawin namin ito at ipapadala sa iyo.",
+      "title": "Kailangan ng {{product}} mo ang job posting"
+    },
+    "orderReference": "Order reference: {{reference}}",
+    "retiredSale": {
+      "body": "Naitala ang bayad mo, pero itinigil na ang pagbebenta ng produktong ito bago pumasok ang bayad, kaya walang awtomatikong nagawa. Naabisuhan na kami at kokontakin ka namin sa address na ginamit mo sa pagbayad.",
+      "title": "Hindi na ibinebenta ang {{product}}"
     }
   },
   "analysisResults": {
@@ -2768,7 +2828,15 @@
     "allToolsToggle": "Tingnan ang lahat ng tool ({{count}} pa)",
     "guarantee": "Sakop ang bawat bayad na tool: hindi masaya sa resulta? Ire-regenerate namin ito nang libre — sumagot lang sa iyong resibo.",
     "passLine": "Libre ang pagkonekta ng sarili mong Claude o ChatGPT: maghanap sa board sa iyong chat at mag-apply nang ikaw mismo sa sariling site ng employer, sa tulong ng iyong AI. Hindi kami kailanman nagsusumite ng application para sa iyo.",
-    "passLink": "Ikonekta ang iyong AI"
+    "passLink": "Ikonekta ang iyong AI",
+    "buyProduct": "Kunin ang {{name}}",
+    "freeScanLeadIn": "Hindi pa sigurado? Subukan ang",
+    "heroBadgeLine": "Libreng maghanap, $5 para sa isang malalim na analysis, o Pro para sa mga writing tool",
+    "ladderAnalysisDesc": "Bawat kulang na keyword at bawat ATS issue sa resume mo, ini-score laban sa trabahong ipe-paste mo, kasama ang ayos para sa bawat isa. Hindi kailangan ng account; kasama sa Pro.",
+    "ladderSubtitleLine": "Karamihan ay eksaktong isa lang dito ang kailangan.",
+    "metaDescriptionFa": "Libreng paghahanap ng trabaho at resume scan. Isang ${{lowPrice}} na Full Analysis na isang beses na babayaran, o Pro sa ${{proPrice}} bawat buwan para sa mga writing tool.",
+    "oneTimeAndProLineFa": "Isang beses lang binabayaran ang ${{price}} na Full Analysis at hindi kailanman nagre-renew; ang Pro ay buwanang plan na puwede mong kanselahin anumang oras.",
+    "subtitleLine": "Maghanap at mag-scan nang libre. Magbayad nang isang beses para sa isang malalim na resume analysis, o mag-Pro para sa mga writing tool sa mga trabahong ina-applyan mo."
   },
   "scanPackPurchase": {
     "topUpCredits": "I-top Up ang Credits",
@@ -2786,7 +2854,9 @@
     "buyCreditsFor_one": "Bilhin ang {{count}} Credit para sa {{price}}",
     "buyCreditsFor_other": "Bilhin ang {{count}} Credits para sa {{price}}",
     "maybeLater": "Sa ibang pagkakataon na lang",
-    "dialogTitle": "Bilhin ang Scan Credits"
+    "dialogTitle": "Bilhin ang Scan Credits",
+    "retiredBody": "Gumagana pa rin ang mga credit na nabili mo na. Mas maraming scan bawat araw ang libreng account, at nag-i-scan ang Pro nang walang daily limit.",
+    "retiredTitle": "Hindi na ibinebenta ang mga scan pack"
   },
   "addOnsShowcase": {
     "powerUpAddOns": "Power-Up Add-Ons",
@@ -2895,7 +2965,13 @@
     "getCreditsFor_other": "Kunin ang {{count}} Credits para sa {{price}}",
     "noThanks": "Salamat na lang, hihintayin ko ang pag-reset ng aking libreng scan",
     "fewerCredits": "Bawasan ang credits",
-    "moreCredits": "Dagdagan ang credits"
+    "moreCredits": "Dagdagan ang credits",
+    "freeAccountBody": "Mas maraming scan bawat araw ang libreng account, at itinatabi nito ang score at checklist mo.",
+    "freeAccountCta": "Gumawa ng libreng account",
+    "freeAccountTitle": "Gumawa ng libreng account",
+    "proCta": "Tingnan ang Pro",
+    "proTitle": "Pro",
+    "subtitleLimit": "Nagamit mo na ang mga libreng scan para ngayong araw."
   },
   "changelogPage": {
     "metaTitle": "Changelog — Resume Booster",
@@ -3527,7 +3603,13 @@
       "certifications": "Mga Sertipikasyon"
     },
     "replaceWithFixes": "Palitan ang kasalukuyang draft mo sa builder ng resume mula sa scan mo, kasama ang mga ayos mula sa report?",
-    "replaceWithLatestScan": "May draft ka mula sa naunang resume. Palitan ito ng resume mula sa pinakabago mong scan?"
+    "replaceWithLatestScan": "May draft ka mula sa naunang resume. Palitan ito ng resume mula sa pinakabago mong scan?",
+    "toast": {
+      "addNameDescription": "Kailangang may pangalan mo sa itaas ng resume mo bago ito ma-download.",
+      "addNameTitle": "Idagdag muna ang pangalan mo",
+      "savedAsWordDescription": "Hindi kayang iguhit ng mga font ng PDF ang {{chars}}, kaya nag-save kami ng Word file, na pinapanatili ang bawat character.",
+      "savedAsWordTitle": "Na-save bilang Word file"
+    }
   },
   "jobsPage": {
     "seoTitle": "Live na trabaho mismo mula sa mga kumpanya — suriin ang iyong fit bago mag-apply",
@@ -4592,7 +4674,101 @@
       "notLinked": "May plan sa email address mo na hindi naka-link sa account na ito. Sumulat sa amin at kami ang bahala sa pag-withdraw.",
       "outsideTerritory": "Ang {{days}}-araw na pag-withdraw ay para sa mga plan na sinisingil sa address sa EU, EEA o UK, at sa ibang lugar sinisingil ang plan na ito. Maaari mo pa rin itong kanselahin anumang oras.",
       "failed": "Hindi natuloy ang pag-withdraw. Pakisubukan ulit pagkalipas ng isang minuto."
-    }
+    },
+    "appIntelAdvice": "Mas madalas humahantong sa interview ang mga application mo na mas mataas ang fit. Ibuhos ang lakas mo kung saan ka talaga tugma.",
+    "appIntelBody": "Rate ng interview at offer ayon sa fit na ginamit mo sa pag-apply, sa {{n}} na tina-track mong application.",
+    "bandNote": "Sinukat mula sa sarili mong mga application. Maliliit ang sample, kaya tingnan ang direksyon, hindi ang decimal.",
+    "bandScore": "Score {{band}}",
+    "bandTitle": "Ang interview rate mo ayon sa score band",
+    "bandUnder50": "mababa sa 50",
+    "bandWins": "{{wins}}/{{sent}} interview",
+    "compareAts": "ATS score",
+    "compareHint": "Pumili ng dalawang scan para ikumpara.",
+    "compareProjected": "Inaasahang score",
+    "compareRedFlags": "Mga red flag",
+    "copiedVersion": "Nakopya: ang eksaktong dokumentong in-save mo kasama ng bersyong ito.",
+    "copy": "kopyahin",
+    "copyTitle": "In-save mo ang dokumento kasama ng bersyong ito: kopyahin ang text nito",
+    "creditsProven": "Ang mga credit na binili gamit ang account na ito o ang email address nito ay binibilang dito at hindi kailanman mag-e-expire.",
+    "creditsUnproven": "Ang mga credit na binili sa browser kung saan ka naka-sign in ay sumusunod sa account mo at hindi kailanman mag-e-expire. Ang mga credit na binili gamit ang email address mo ay bibilangin dito kapag napatunayan na ang address.",
+    "deleteApplication": "Burahin ang application",
+    "fitCheck": "Suriin ang fit",
+    "fitCheckFailed": "Pumalya ang pagsuri ng fit. Subukan ulit maya-maya.",
+    "fitChecking": "Sinusuri…",
+    "fitIntro": "I-paste ang job posting: sinusuri namin kung aling mga kilalang keyword ang talagang sakop ng bersyong ipinadala mo. Deterministic, walang AI.",
+    "fitMissing": "Wala sa bersyong ipinadala mo:",
+    "fitPlaceholder": "I-paste dito ang job posting…",
+    "fixAllDone": "Tapos na lahat: mag-scan ulit para makita ang bagong score mo →",
+    "fixDoneCount": "{{done}}/{{total}} tapos na",
+    "fixFrom": "Mula sa scan mo noong {{date}}. Lagyan ng check ang bawat item habang inaayos mo, saka mag-scan ulit para makita ang pagtaas.",
+    "goalFirst": "Sinisimulan ng una mong scan ang progress bar papunta sa {{goal}}.",
+    "goalHit": "Naabot ang goal: nalampasan ng pinakabago mong scan ang target mo. Taasan pa?",
+    "goalMark": "goal {{goal}}",
+    "goalProgress": "{{score}} sa {{goal}}: {{left}} puntos pa.",
+    "historyAria": "ATS score sa paglipas ng panahon",
+    "loadFailedBody": "Walang nawala: problema ito sa pagbasa sa kanila, hindi sa pag-aari mo. Subukan ulit maya-maya.",
+    "loadFailedTitle": "Hindi namin ma-load ang mga credit at binili mo",
+    "matchingClose": "Isara",
+    "matchingLatest": "Pinakabagong scan (default)",
+    "matchingNote": "Nakabatay sa dokumentong ito ang fit ranking ng job board at ang mga email match alert mo. Mag-pin ng scan sa ibaba, o i-paste ang eksaktong resume na ipinapadala mo.",
+    "matchingOff": "i-pin para sa matching",
+    "matchingOffTitle": "Gamitin ang resume na ito para sa job matching at mga alert",
+    "matchingOn": "✓ matching",
+    "matchingOnTitle": "Ginagamit ang resume na ito sa lahat ng matching: i-click para bumalik sa pinakabago mong scan",
+    "matchingPaste": "Mag-paste ng resume",
+    "matchingPastePlaceholder": "I-paste dito ang text ng resume mo (plain text)…",
+    "matchingPasted": "Na-paste na resume ({{n}} character)",
+    "matchingPinned": "Naka-pin: ang board at ang mga alert mo ay nagma-match na ngayon laban sa resume na ito.",
+    "matchingPinnedGone": "Naka-pin na scan (wala na sa history mo)",
+    "matchingPinnedScan": "Naka-pin: {{name}} · {{date}}",
+    "matchingReset": "Balik sa pinakabago mong scan.",
+    "matchingResetButton": "I-reset sa pinakabagong scan",
+    "matchingSaved": "Na-save. Ginagamit na ng matching ang resume na ito.",
+    "matchingScan": "scan",
+    "matchingTooShort": "Masyadong maikli iyan para i-match. I-paste ang buong resume.",
+    "matchingUse": "Gamitin ang resume na ito para sa matching",
+    "namePlaceholder": "Pangalanan ang bersyong ito…",
+    "nameTitle": "I-click para pangalanan ang bersyong ito",
+    "navConnected": "Mga naka-connect na AI",
+    "navOrders": "Mga order",
+    "navPlan": "Plano",
+    "navPrivacy": "Ang data mo",
+    "navSecurity": "Seguridad",
+    "noScans": "Wala pang naka-save na scan. Magpatakbo ng libreng scan habang naka-sign in at awtomatiko itong mapupunta rito.",
+    "openPosting": "Buksan ang job posting",
+    "ordersMoreOnProof": "Idaragdag ang mga binili gamit ang email address mo kapag napatunayan na ang address.",
+    "proveLive": "Mag-sign out, saka mag-sign in ulit gamit ang address na iyon sa pamamagitan ng opsyon sa sign-in page na nagpapadala sa iyo ng email o na bine-verify ng provider mo: alinman doon ay nagpapatunay na sa iyo ang address.",
+    "proveNotYet": "Hangga't hindi pa masuri ng page na ito na sa iyo ang address, buksan ang bawat binili mula sa link sa email nito, o sumulat sa {{support}} mula sa address na iyon.",
+    "purchasesUnproven": "Lalabas dito ang mga binili gamit ang email address mo kapag napatunayan na ang address.",
+    "scanCountMany": "{{count}} scan",
+    "scanCountOne": "1 scan",
+    "scanCta": "I-scan ang resume ko",
+    "shortlistBeta": "Beta",
+    "shortlistBody": "I-paste ang job description at ang mga resume na pinahihintulutan kang ipa-score: makakuha ng naka-rank at maipapaliwanag na shortlist na may audit trail. Libre habang beta.",
+    "shortlistOpen": "Buksan ang Shortlist →",
+    "shortlistTitle": "Naghahanap ng tauhan? Suriin ang mga kandidato gamit ang Shortlist",
+    "signedOutEverywhere": "Tinapos ang bawat session ng account na ito. Pakisign in ulit.",
+    "skillGapBody": "Ang mga keyword na pinakamadalas nawawala sa {{n}} na posting na pinagsuri mo ng fit:",
+    "skillGapHave": "Kung talagang taglay mo ang mga ito, ilagay sila sa resume mo:",
+    "skillGapLearn": "Kung hindi, ito ang pinakamalinaw mong mga target na pag-aralan.",
+    "skillGapRescan": "mag-scan ulit para makita ang pagkakaiba",
+    "skillGapTitle": "Ang mga skill gap mo, mula sa sarili mong mga application",
+    "targetAria": "Target na ATS score",
+    "tierPossible": "Posibleng match (10–20%)",
+    "tierStretch": "Pang-abot (<10%)",
+    "tierStrong": "Malakas na match (20%+)",
+    "trackerAdd": "Idagdag",
+    "tryAgain": "Subukan ulit",
+    "versionInterviews_one": "{{count}} interview",
+    "versionInterviews_other": "{{count}} interview",
+    "versionLatest": "Pinakabagong scan ({{score}}{{label}})",
+    "versionOffers_one": "{{count}} offer",
+    "versionOffers_other": "{{count}} offer",
+    "versionOption": "{{name}}, score {{score}}",
+    "versionSent": "Bersyon ng resume na ipinadala:",
+    "versionSentCount": "{{n}} naipadala",
+    "versionSentLabel": "Bersyon ng resume na ginamit sa application na ito",
+    "whichResumeNote": "I-update ang status ng mga application sa itaas: natututunan ng table na ito kung aling bersyon ng resume mo ang talagang nakakakuha ng interview."
   },
   "applyAgent": {
     "badge": "Ang iyong AI apply agent",
@@ -4915,7 +5091,46 @@
     "linkPending": "May plan ang address na ito na hindi pa naka-link sa account na ito. Mag-sign in gamit ang Google sa address na iyon para magamit ito rito.",
     "confirmed": "Salamat: kumpirmado na ang iyong Pro subscription.",
     "confirming": "Kinukumpirma ang iyong subscription sa Stripe. Ilang segundo lang ito.",
-    "notConfirmedYet": "Hindi pa namin makumpirma ang iyong subscription. I-refresh ang page na ito makalipas ang isang minuto, o makipag-ugnayan sa support kung hindi lumabas ang iyong plan."
+    "notConfirmedYet": "Hindi pa namin makumpirma ang iyong subscription. I-refresh ang page na ito makalipas ang isang minuto, o makipag-ugnayan sa support kung hindi lumabas ang iyong plan.",
+    "activeMember": "Pro member ka: naka-unlock ang mga writing tool.",
+    "badge": "Mga writing tool",
+    "checkoutRefusedTitle": "Hindi masimulan ang checkout",
+    "endsOn": "Matatapos sa {{date}}: kinansela, hindi na magre-renew",
+    "goPro": "Mag-Pro — ${{price}}/buwan",
+    "linkPendingUnlinked": "May plan ang address na ito na hindi pa naka-link sa account na ito. Mag-email sa {{support}} mula sa address na iyon at ili-link namin ito.",
+    "manage": "Pamahalaan ang subscription",
+    "manageRetired": "Pamahalaan o kanselahin sa billing",
+    "owing": "Hindi pumasok ang huling bayad mo. I-update ang card mo para mapanatili ang plan mo — hindi kailangan ng bagong subscription.",
+    "perMonth": "/buwan",
+    "perks": {
+      "cancel": "Kanselahin anumang oras mula sa account mo",
+      "everythingFree": "Lahat ng nasa libreng account, kasama ang mga writing tool",
+      "fullAnalysisIncluded": "Kasama ang $5 na Full Analysis",
+      "noDailyScanCap": "Walang daily cap sa mga scan",
+      "writingTools": "Tailored resume, cover letter at interview prep para sa mga trabaho mo: hanggang 5 set bawat araw at 60 bawat buwan"
+    },
+    "renewsOn": "Magre-renew sa {{date}}",
+    "retiredPlanEnds": "Matatapos ito sa {{date}} at hindi na magre-renew. Naka-on ang mga tool ng Pro hanggang doon.",
+    "retiredPlanLive": "Habang tumatakbo ito, naka-on ang mga tool ng Pro. Naka-off ang agent mismo; puwede mong kanselahin ang plan anumang oras sa billing.",
+    "retiredPlanOwing": "Hindi pumasok ang huling bayad nito. Hindi mo kailangan ng card para sa plan na hindi na namin ibinebenta: kanselahin ito sa billing at titigil ang mga retry.",
+    "retiredPlanTitle": "Ang plan mo ay ang Apply Agent plan, na hindi na namin ibinebenta.",
+    "secureSignedIn": "Secure na checkout sa Stripe. Kanselahin anumang oras — walang lock-in.",
+    "secureSignedOut": "Magsa-sign in ka muna, para nasa account mo ang plan. Secure na checkout sa Stripe; kanselahin anumang oras.",
+    "summaryLine": "Lahat ng nasa libreng account, kasama ang mga writing tool, ang $5 na Full Analysis at walang daily cap sa mga scan",
+    "title": "Resume Booster Pro",
+    "toast": {
+      "alreadyMemberBody": "Aktibo na ang plan mo sa account na ito.",
+      "alreadyMemberTitle": "Pro member ka na",
+      "briefOutage": "Pansamantalang hindi available ang mga subscription — pakisubukan ulit pagkalipas ng ilang minuto.",
+      "emailNeededBody": "Ilagay ang email mo para maikabit namin ang subscription sa account mo.",
+      "emailNeededTitle": "Kailangan ang email",
+      "portalFailedTitle": "Hindi mabuksan ang billing portal",
+      "signInBody": "Mag-sign in para pamahalaan ang subscription mo.",
+      "signInTitle": "Kailangang mag-sign in",
+      "tryAgain": "Pakisubukan ulit."
+    },
+    "trialingNoCap": "Naka-on ang trial mo: walang daily cap ang mga scan ngayon. Kasama na ang $5 na Full Analysis mula sa una mong bayad.",
+    "updatePayment": "I-update ang paraan ng pagbabayad"
   },
   "atsCoverage": {
     "heading": "Ginawa para sa mga sistemang talagang ginagamit ng mga employer",
@@ -5116,7 +5331,13 @@
     "connectInstead": "May agent ka na? Ikonekta na lang ito — {{passHours}} oras sa halagang ${{passPrice}}, hindi kailanman nagre-renew; ang Agent plan ay nagre-renew.",
     "welcomeTitle": "Naka-subscribe ka na.",
     "welcomeTitleTrial": "Naka-subscribe ka na — {{trialDays}} araw na libre bago ang unang singil.",
-    "welcomeBody": "Isa na lang: kailangan ng agent ang CV mo at isang aktibong mandate bago ito makapaghanap. Mga isang minuto lang ang checklist sa ibaba, at walang tatakbo hangga't hindi ito tapos."
+    "welcomeBody": "Isa na lang: kailangan ng agent ang CV mo at isang aktibong mandate bago ito makapaghanap. Mga isang minuto lang ang checklist sa ibaba, at walang tatakbo hangga't hindi ito tapos.",
+    "retiredPublicBody": "Hindi na namin ibinebenta ang Agent plan, ang Agent Pass o ang Apply Assistant, at naka-off ang sarili naming apply agent: walang isinusumite para sa iyo.",
+    "retiredPublicCta": "I-connect ang Claude o ChatGPT nang libre",
+    "retiredPublicLead": "Hindi na nag-a-apply ang Resume Booster para kaninuman. Puwede ka pa ring maghanap ng mga live na trabaho at mag-apply mismo, sa tulong ng Claude o ChatGPT, sa sariling site ng employer.",
+    "retiredPublicSignIn": "May plan ka dati? Mag-sign in para makita ang account mo.",
+    "retiredPublicSignInLink": "Mag-sign in",
+    "retiredPublicTitle": "Retirado na ang Apply Agent"
   },
   "agentConnect": {
     "attachTitle": "Mga prompt at resource na maaaring ilista ng iyong host",
@@ -5221,7 +5442,8 @@
     "missing": "Kailangan ng page na ito ang button mula sa email ng iyong report.",
     "error": "Hindi masimulan ngayon. Subukan ulit ang button maya-maya.",
     "errorFinal": "Hindi nasimulan ang buong sequence, at hindi ito mauulit ngayong buwan kahit pindutin ulit ang button.",
-    "home": "Bumalik sa Resume Booster"
+    "home": "Bumalik sa Resume Booster",
+    "paused": "Naka-pause muna ang mga email ng fix plan, kaya walang sinimulan. Nasa report email mo na ang buong plan."
   },
   "emailUnsubscribe": {
     "title": "Itigil ang mga email na ito",
@@ -5242,12 +5464,19 @@
     "agentTrial": "Ang mga unang beses na subscriber ay may {{days}} araw na libre, pagkatapos ay {{price}} bawat buwan, awtomatikong nire-renew hanggang kanselahin mo. Kanselahin bago matapos ang trial at hindi ka sisingilin. Ang dating subscriber ay nagbabayad mula sa unang araw.",
     "waiver": "Gusto kong maihatid na ngayon ang binili ko, at nauunawaan kong mawawala ang aking {{days}}-araw na karapatang umatras kapag naihatid na ito.",
     "serviceStart": "Hinihiling kong magsimula na ngayon ang serbisyo. Kung aatras ako sa loob ng {{days}} araw, babayaran ko ang mga araw na nagamit na.",
-    "consentNeeded": "Lagyan ng tsek ang kahon sa itaas ng button para magpatuloy."
+    "consentNeeded": "Lagyan ng tsek ang kahon sa itaas ng button para magpatuloy.",
+    "autoRenewConsent": "Sumasang-ayon ako na awtomatikong magre-renew ang Pro bawat buwan sa halagang {{price}} hanggang magkansela ako, at na puwede akong magkansela anumang oras mula sa account ko."
   },
   "freelanceBoost": {
     "startNewPurchase": "Bibili para sa ibang posisyon? Magsimula ng bagong pagbili.",
     "boughtHereTitle": "3. Ang iyong experience section — nabili na sa device na ito",
-    "openYourLink": "Para makita o mabuo ito, buksan ang link sa iyong purchase email. Hindi ka na sisingilin ulit."
+    "openYourLink": "Para makita o mabuo ito, buksan ang link sa iyong purchase email. Hindi ka na sisingilin ulit.",
+    "noLongerSoldBody": "Hindi na ibinebenta ang Freelance Boost at Transition Pro, at hindi sila bahagi ng Pro. Kung bumili ka ng isa, buksan ang link sa purchase email mo: gagana pa ito nang 90 araw. Ang libreng account ay sumusulat na ngayon ng tailored resume, cover letter at interview prep para sa isang trabaho bawat araw.",
+    "noLongerSoldMeta": "Hindi na ibinebenta ang Freelance Boost at Transition Pro. Kung bumili ka ng isa, gumagana pa rin ang link sa purchase email mo.",
+    "noLongerSoldTitle": "Hindi na ibinebenta ang Freelance Boost",
+    "regenerate": "Gawin ulit",
+    "regenerateNeedsAnswers": "Wala sa device na ito ang mga sagot mo. Punan ang form sa ibaba at pindutin ang \"Generate my section\" — sakop ito ng binili mo.",
+    "seePricing": "Tingnan kung ano ang ibinebenta"
   },
   "seller": {
     "soldBy": "Ibinebenta ng {{name}}, {{address}}.",
@@ -5276,6 +5505,15 @@
       "failed": "Hindi ma-request ang payout. Pakisubukang muli.",
       "requestedTitle": "Na-request ang payout",
       "requestedBody": "Mag-e-email kami para ayusin ang bayad."
+    },
+    "proCommission": {
+      "banner": "{{amount}} bawat unang bayad na buwan ng Pro mula sa ni-refer mo",
+      "detail": "$45 bawat buwan ang Pro. Kapag nagbayad para sa unang buwan ng Pro ang taong dumaan sa link mo, kikita ka ng {{amount}}.",
+      "excludedFa": "Walang commission ang ibang binili (ang Full Resume Analysis). Babayaran gaya ng dati ang mga commission na kinita mo na.",
+      "headline": "{{amount}} para sa bawat unang bayad na buwan ng Pro mula sa ni-refer mo",
+      "howItWorks": "Kapag may nag-click sa link mo at nagbayad para sa unang buwan ng Pro sa loob ng 30 araw, kikita ka ng {{amount}}. Walang kita sa ibang binili.",
+      "linkHint": "Ibahagi ang link na ito para kumita ng {{amount}} sa bawat unang bayad na buwan ng Pro mula sa ni-refer mo, na may 30-araw na attribution window",
+      "tagline": "Kumita ng flat na {{amount}} kapag nagbayad para sa unang buwan ng Pro ang taong ni-refer mo."
     }
   },
   "careerReportEnum": {
@@ -5340,5 +5578,170 @@
     "builderBody": "Naka-rank na paghahanap, resume fit scoring nang maramihan at 180 araw ng mga pagsasara, para ipakita sa loob ng sarili mong produkto nang may attribution. Walang feed o muling pagbebenta; para doon ang commercial license. Sabihin sa amin kung gagamitin mo ito.",
     "builderNotYet": "Hindi pa ibinebenta: walang sinisingil, at sinasagot namin ang bawat request sa email.",
     "builderCta": "Humiling ng Builder"
+  },
+  "accountConnected": {
+    "actionFailed": "Hindi iyon gumana. Subukan ulit pagkalipas ng isang minuto.",
+    "connect": "I-connect ang Claude o ChatGPT",
+    "created": "Na-connect noong {{date}}",
+    "lastUsed": "Huling ginamit noong {{date}}",
+    "neverUsed": "Hindi pa nagagamit",
+    "none": "Walang AI na naka-connect sa account na ito.",
+    "note": "Kapag binawi mo ito, agad nang hindi maaabot ng AI na iyon ang account mo. Kapag nag-connect ka ulit, gagawa ng bagong key.",
+    "readFailed": "Hindi namin ma-load ngayon ang mga naka-connect mong AI at ang mga setting ng email mo.",
+    "retry": "Subukan ulit",
+    "revoke": "Bawiin",
+    "revoked": "Binawi na. Hindi na maaabot ng AI na iyon ang account mo.",
+    "title": "Mga naka-connect na AI"
+  },
+  "accountMail": {
+    "others": "Ang mga alert ng naka-save na search ay ino-on at ino-off sa bawat naka-save na search sa itaas. Bawat iba pang email na ipinapadala namin ay may sariling unsubscribe link.",
+    "pulse": "Market pulse",
+    "pulseNone": "Hindi naka-subscribe",
+    "pulseOff": "Naka-off",
+    "pulseOn": "Naka-on",
+    "pulsePending": "Hinihintay ang kumpirmasyon mo",
+    "pulseStop": "Itigil ang market pulse",
+    "pulseStopped": "Itinigil na ang market pulse.",
+    "title": "Mga kagustuhan sa email",
+    "unprovenLive": "Mag-sign out, saka mag-sign in ulit gamit ang opsyon sa sign-in page na nagpapadala sa iyo ng email o na bine-verify ng provider mo, para makita rito ang mga mailing list sa ilalim ng address mo. May sariling unsubscribe link din ang bawat email na ipinapadala namin.",
+    "unprovenNotYet": "Lalabas dito ang mga mailing list sa ilalim ng address mo kapag kaya nang suriin ng page na ito na sa iyo ang address. Hanggang doon, may sariling unsubscribe link ang bawat email na ipinapadala namin."
+  },
+  "accountPrivacy": {
+    "cancel": "Kanselahin",
+    "cancelledLabel": "Kakanselahin:",
+    "cancelledList": "anumang subscription na binabayaran ng account na ito, agad-agad, para wala nang masingil pa.",
+    "cannotUndo": "Hindi na ito maibabalik.",
+    "deleteConfirm": "Oo, burahin ang account ko",
+    "deleteStart": "Burahin ang account ko",
+    "deletedLabel": "Buburahin:",
+    "deletedList": "ang account at sign-in mo; ang scan history, checklist, goal, mga naka-save na bersyon ng resume at mga tina-track na application mo; mga naka-save na search at alert; anumang CV file na in-upload mo; ang mga API at connected-AI key mo, na hindi na gagana; at, kapag napatunayan na ang address mo, ang mga entry nito sa mga mailing list.",
+    "export": "I-download ang lahat ng data ko (JSON)",
+    "keptLabel": "Itatabi:",
+    "keptList": "mga record ng bayad (ang Stripe reference, halaga, petsa at ang address sa resibo) hangga't hinihingi ng batas sa buwis, at isang do-not-mail na tala para sa address mo para hindi ito maabot ng anumang email na nakapila na. Ang mga scan credit na binili gamit ang address mo nang walang account ay mananatili sa address na iyon.",
+    "title": "Ang data mo"
+  },
+  "accountSettings": {
+    "codeFailed": "Hindi kami makahingi ng confirmation code ngayon. Subukan ulit pagkalipas ng isang minuto.",
+    "codeField": "Confirmation code mula sa email",
+    "codeOnItsWay": "Kung nakakatanggap ng mail ang address mo, may confirmation code na papunta sa {{email}}.",
+    "emailConfirmBoth": "Wala pang nagbabago: hiniling namin sa kasalukuyan at sa bago mong address na kumpirmahin. Magbabago ang address mo kapag nakumpirma na ng dalawa.",
+    "emailInvalid": "Maglagay ng valid na bagong address.",
+    "emailMismatch": "Hindi magkatugma ang dalawang address.",
+    "emailNew": "Bagong address",
+    "emailNewAgain": "Bagong address ulit",
+    "emailNotYet": "Para mapalitan ang sign-in address mo, kailangang kumpirmahin ng parehong address, na hindi pa kayang hingin ng site na ito. Sumulat sa {{support}} mula sa kasalukuyan mong address at kami ang magpapalit nito para sa iyo.",
+    "emailNote": "Mananatili sa kasalukuyan mong address ang mga binili gamit ito hanggang makumpirma at mapatunayan ang bago.",
+    "emailPwLabel": "Kasalukuyang password, para palitan ang address mo",
+    "emailTitle": "Palitan ang sign-in address",
+    "noPassword": "Wala pang password, o nakalimutan mo? I-email na lang sa akin ang confirmation code",
+    "proven": "Napatunayan ang address mo {{how}}.",
+    "provenHow": {
+      "code": "sa pamamagitan ng code na in-email namin dito",
+      "confirmation": "sa pamamagitan ng pagkumpirma sa email na ipinadala namin dito",
+      "link": "sa pamamagitan ng link na in-email namin dito",
+      "provider": "sa pamamagitan ng Google o Apple sign-in na nag-verify dito",
+      "reset": "sa pamamagitan ng password-reset email na ipinadala namin dito"
+    },
+    "provenOn": "Napatunayan ang address mo {{how}} noong {{date}}.",
+    "pwChanged": "Napalitan na ang password.",
+    "pwCurrent": "Kasalukuyang password",
+    "pwNeedsProof": "Ilagay ang kasalukuyan mong password, o humingi ng confirmation code.",
+    "pwNew": "Bagong password ({{n}}+ character)",
+    "pwNewLabel": "Bagong password",
+    "pwTitle": "Palitan ang password",
+    "pwTooShort": "Kailangan ng bagong password na hindi bababa sa {{n}} character.",
+    "pwWrong": "Hindi iyan ang kasalukuyan mong password.",
+    "sessions": "Naka-sign in bilang {{email}}",
+    "signOutEverywhere": "Mag-sign out kahit saan",
+    "signOutHere": "Mag-sign out sa device na ito",
+    "title": "Sign-in at seguridad",
+    "unproven": "Hindi pa napapatunayan ang address mo, kaya hindi lumalabas sa page na ito ang mga binili gamit ito nang hindi naka-sign in.",
+    "update": "I-update"
+  },
+  "applyAnswers": {
+    "addSpecifics": "Magdagdag ng mga detalye mula sa sarili mong karanasan — hindi namin iimbentuhin ang mga iyon.",
+    "allGrounded": "Nakabatay sa resume mo ang bawat sagot — walang inimbento.",
+    "copied": "Nakopya",
+    "copiedAll": "Nakopya ang lahat ng sagot",
+    "copyAll": "Kopyahin lahat",
+    "copyAnswer": "Kopyahin ang sagot",
+    "draftButton": "I-draft ang mga tanong ng application na ito",
+    "failed": "Hindi makapag-draft ng mga sagot ngayon.",
+    "inferredIntro": "Mga malamang na tanong para sa role na ito (hindi inilalathala ng ATS na ito ang form nito) — nakabatay sa resume mo. Suriin bago i-paste.",
+    "limit": "Nagamit mo na ang allowance na ito sa ngayon. Pakisubukan ulit mamaya.",
+    "limitHours": "Naabot mo na ang limit sa pag-draft sa ngayon. Pakisubukan ulit pagkalipas ng mga {{hours}} oras.",
+    "limitMinutes": "Naabot mo na ang limit sa pag-draft sa ngayon. Pakisubukan ulit pagkalipas ng mga {{minutes}} minuto.",
+    "limitUntil": "Nagamit mo na ang allowance na ito. Makakapag-draft ka ulit pagkatapos ng {{when}}.",
+    "modelBusy": "Abala ang AI service. Pakisubukan ulit pagkalipas ng isang minuto.",
+    "nothingDraftable": "Walang tanong na maaaring awtomatikong i-draft — ikaw ang tapat na sasagot sa natitira.",
+    "realIntro": "Ang totoong mga tanong ng application na ito, na-draft mula sa resume mo. Suriin bago i-paste.",
+    "signIn": "Mag-sign in para mag-draft ng mga sagot. Sapat na ang libreng account.",
+    "someNeedInput": "{{gaps}} sa {{total}} ang nangangailangan ng input mo — minarkahan namin ang mga ito sa halip na mag-imbento.",
+    "unavailable": "Hindi available ang pag-draft nang isang minuto. Pakisubukan ulit maya-maya.",
+    "undraftedBody": "Limitado lang ang bilang ng tanong na dina-draft namin sa bawat application, at ang mga ito ay iniwan para sa iyo.",
+    "undraftedTitle": "Hindi na-draft — ikaw ang sumagot sa mga ito",
+    "yoursBody": "Hindi namin hinuhulaan ang pagkakakilanlan mo, ang pahintulot mong magtrabaho, ang suweldo o ang demograpiko mo — ikaw lang ang may tapat na sagot sa bawat isa.",
+    "yoursTitle": "Ikaw ang sasagot sa mga ito"
+  },
+  "checkoutGate": {
+    "purchasesOpenSoon": "Magbubukas na ang pagbili sa lalong madaling panahon. Gumagana na ngayon ang paghahanap ng trabaho, ang libreng scan at ang libreng account.",
+    "purchasesOpenSoonTitle": "Magbubukas na ang pagbili sa lalong madaling panahon",
+    "regionNoticeTimeZone": "Nasa EU, EEA, UK o India ang time zone ng browser mo, kung saan hindi pa kami nagbebenta: naghihintay ang pagbebenta roon hanggang maayos ang tax registration namin doon. Gumagana kahit saan ang paghahanap ng trabaho at ang libreng scan."
+  },
+  "checkoutRefusal": {
+    "autoRenewTitle": "Pakilagyan ng tsek ang renewal box",
+    "fairUseTitle": "Naabot mo na ang fair-use limit ng Pro",
+    "planUnpaidTitle": "Hindi pa bayad ang plan mo",
+    "retiredBody": "Hindi na ibinebenta ang produktong ito, at walang siningil. Kung binili mo ito dati, gagana pa ang link mo nang 90 araw.",
+    "retiredTitle": "Hindi na ibinebenta",
+    "territoryTitle": "Hindi pa ibinebenta kung nasaan ka"
+  },
+  "consent": {
+    "allow": "Payagan ang analytics",
+    "body": "Kung papayagan mo, magtatabi kami ng anonymous na visitor id sa browser na ito at itatala kung aling mga page at hakbang ang ginagamit mo, para makita namin kung ano ang gumagana. Walang itinatabi o ipinapadala para dito hangga't hindi ka pumipili, at pareho ang takbo ng site anuman ang piliin mo.",
+    "deny": "Huwag na, salamat",
+    "host": "May sariling page-visit counter ang hosting provider namin, na hindi kontrolado ng pagpiling ito.",
+    "label": "Pagpili sa analytics",
+    "more": "Mga detalye",
+    "title": "Puwede ba naming bilangin kung paano ginagamit ang site na ito?"
+  },
+  "crashScreen": {
+    "body": "Pinahinto ng isang hindi inaasahang error ang page na ito. Kadalasang naaayos ito sa pag-refresh.",
+    "details": "Mga teknikal na detalye",
+    "refresh": "I-refresh ang page",
+    "supportLead": "Stuck pa rin, o nangyari ito pagkatapos mismo ng bayad? Sumulat sa amin:",
+    "title": "May nangyaring mali"
+  },
+  "freeReportSignup": {
+    "body": "Gumawa ng libreng account para ma-track ang progreso mo sa bawat scan, maitabi ang fix checklist mo, at makakuha ng 15 libreng scan bawat araw sa halip na 7.",
+    "cta": "Gumawa ng libreng account",
+    "title": "Huwag mawala ang score na ito."
+  },
+  "orders": {
+    "actionFailed": "Hindi iyon gumana. Subukan ulit pagkalipas ng isang minuto.",
+    "mailAgain": "I-email ulit",
+    "mailedAgain": "Papunta na sa address na ginamit mo sa pagbili.",
+    "open": "Buksan",
+    "receipt": "Resibo",
+    "reportProblem": "Mag-ulat ng problema",
+    "reportSubject": "May problema sa order ko",
+    "statusFailed": "Hindi nagawa",
+    "statusIncluded": "Kasama sa Pro",
+    "statusNeedsResume": "Kailangan ang resume mo",
+    "statusPreparing": "Inihahanda",
+    "statusReady": "Handa na",
+    "statusRefunded": "Na-refund"
+  },
+  "saveResume": {
+    "boardFit": "I-save ang resume na ito at ini-score ng job board ang bawat opening na tinitingnan mo laban dito",
+    "boardFitWithCount": "I-save ang resume na ito at ini-score ng job board ang bawat opening na tinitingnan mo laban dito — mahigit {{n}} na live na opening na puwedeng i-browse",
+    "versionExplainer": "Nakatabi sa account mo hanggang burahin mo ito — ito lang ang pagkakataong nagtatabi kami ng laman ng resume, at dahil lang hiniling mo. Pinapagana nito ang mga fit score sa mga opening na bina-browse mo sa job board, ang awtomatikong fit score sa mga tina-track na application, at ang view kung aling bersyon ang nakakakuha ng interview."
+  },
+  "writingRefusal": {
+    "daily": "Nagamit mo na ang writing allowance para ngayong araw. Makakagawa ka pa pagkatapos ng {{when}}; naka-save ang lahat ng nagawa mo na.",
+    "dailyNoTime": "Nagamit mo na ang writing allowance para ngayong araw. Makakagawa ka pa bukas; naka-save ang lahat ng nagawa mo na.",
+    "monthly": "Nagamit mo na ang writing allowance para sa buwang ito. Makakagawa ka pa pagkatapos ng {{when}}.",
+    "monthlyNoTime": "Nagamit mo na ang writing allowance para sa buwang ito. Makakagawa ka pa sa susunod na buwan.",
+    "signIn": "Mag-sign in para magamit ang mga writing tool. Kasama sa libreng account ang isang tailored resume, isang cover letter at isang interview-prep set bawat araw."
   }
 }

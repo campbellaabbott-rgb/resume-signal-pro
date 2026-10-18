@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { codeOf } from "./helpers/strip-comments";
-import { oneTimePriceRangeUsd, PRODUCTS } from "@/config/products";
+import { oneTimePriceRangeUsd, PRODUCTS, SUBSCRIPTIONS } from "@/config/products";
 import { COMPETITORS } from "@/data/competitors";
 
 /**
@@ -43,6 +43,16 @@ const NOT_OUR_PRICE: Record<string, string> = {
 // string is still checked against the rows it named.
 const OURS_CHECKED: Record<string, number[]> = {
   "addOnsShowcase.fiveDollarsEach": [PRODUCTS.interviewCoach.priceUsd, PRODUCTS.careerPathSimulator.priceUsd],
+  // Pro's own words (owner decision 2026-10-17): the plan is described as
+  // including "the $5 Full Analysis", in the one list the pages and Stripe's
+  // description both read (supabase/functions/_shared/pro-perks.ts), so the
+  // figure stays typed and is checked here against the product it names.
+  "proPlan.perks.fullAnalysisIncluded": [PRODUCTS.fullAnalysis.priceUsd],
+  "proPlan.summaryLine": [PRODUCTS.fullAnalysis.priceUsd],
+  "proPlan.trialingNoCap": [PRODUCTS.fullAnalysis.priceUsd],
+  "pricingPage.heroBadgeLine": [PRODUCTS.fullAnalysis.priceUsd],
+  // The affiliate page states Pro's monthly price beside the commission.
+  "affiliates.proCommission.detail": [SUBSCRIPTIONS.pro.priceUsd],
 };
 
 function leaves(o: unknown, pre = ""): Array<[string, string]> {

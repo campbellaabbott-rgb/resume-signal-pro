@@ -420,9 +420,27 @@
       "bringYourAgent": {
         "question": "Kan mijn eigen AI-agent dit gebruiken?",
         "answer": "Ja, gratis. Koppel Resume Booster aan Claude, ChatGPT of Claude Code, en je AI kan het bord doorzoeken, vacatures volledig lezen en je helpen solliciteren op de site van de werkgever; voor het lezen van het bord heb je geen sleutel en geen account nodig. Je AI schrijft een concept en jij beslist: we versturen nooit een sollicitatie namens jou. Elke vacature en elke zoekopdracht op het bord heeft een knop die een prompt voor je AI kopieert, en de instelling per app staat op /agents."
+      },
+      "howLongBound": {
+        "answer": "Meestal een minuut of twee na de betaling, en hooguit een paar minuten. Hij opent op de pagina waarnaar Stripe je terugstuurt, en de privélink die we je mailen bewaart hem 90 dagen.",
+        "question": "Hoe lang duurt de analyse?"
+      },
+      "subscriptionLine": {
+        "question": "Is dit een abonnement?"
+      },
+      "subscriptionLineFa": {
+        "answer": "Beide opties bestaan, en jij kiest. De volledige analyse van ${{price}} is een eenmalige betaling die nooit wordt verlengd. Daarnaast is er één optioneel maandabonnement, Pro voor ${{proPrice}}/maand: {{proSummary}}. Het wordt elke maand verlengd totdat je opzegt. De cv-scan, de vacaturebank en het koppelen van je eigen AI blijven in elk geval gratis. Niets anders zet je automatisch over op een hoger abonnement."
+      },
+      "vsChatGPTTrue": {
+        "answer": "{{name}} beoordeelt je cv zoals sollicitatievolgsystemen het lezen, met een gewogen score over 5 categorieën, 14 branchespecifieke sjablonen en op recruiters gekalibreerde feedback. Anders dan bij ChatGPT krijg je elke keer hetzelfde gestructureerde rapport, zonder een prompt te schrijven. Anders dan bij sjablonen krijg je herschrijvingen van je eigen opsommingspunten en afstemming op de functieomschrijving. We trainen geen AI-modellen met je cv, en de gratis scan verwijdert het binnen 7 dagen.",
+        "question": "Waarom is dit beter dan ChatGPT of cv-sjablonen?"
+      },
+      "whatDoIGetNamed": {
+        "question": "Wat krijg ik met {{name}}?"
       }
     },
-    "stillHaveQuestions": "Nog vragen?"
+    "stillHaveQuestions": "Nog vragen?",
+    "subtitleNamed": "Alles wat je moet weten over {{name}}"
   },
   "comparison": {
     "title": "Waarom Resume Booster?",
@@ -440,7 +458,8 @@
       "noPromptNeeded": "Geen prompt engineering nodig",
       "recruiterCalibrated": "Recruiter-gekalibreerde feedback",
       "privacyFirst": "Data nooit gebruikt voor training"
-    }
+    },
+    "titleNamed": "Waarom {{name}}?"
   },
   "socialProof": {
     "stats": {
@@ -586,7 +605,10 @@
       "notFound": "Analyse niet gevonden. De link is ongeldig of verlopen.",
       "generic": "Kon analyse niet laden.",
       "tryAgain": "Upload je CV opnieuw.",
-      "backHome": "Terug naar home"
+      "backHome": "Terug naar home",
+      "analysisNotFound": "Analyse niet gevonden. De link is mogelijk ongeldig of verlopen.",
+      "analyzeFailed": "Het cv kon niet worden geanalyseerd",
+      "loadFailed": "De analyse kon niet worden geladen."
     },
     "toast": {
       "paymentSuccess": "Betaling succesvol!",
@@ -609,7 +631,13 @@
       "dataDeleted": "Gegevens verwijderd",
       "dataDeletedDesc": "Je CV-analyse is permanent verwijderd.",
       "deleteFailed": "Verwijderen mislukt",
-      "deleteFailedDesc": "Probeer opnieuw of neem contact op met support."
+      "deleteFailedDesc": "Probeer opnieuw of neem contact op met support.",
+      "analysisFailedRetryDesc": "Er ging iets mis bij het analyseren van je cv. Probeer het opnieuw.",
+      "analysisReadyEmailed": "Je analyse is klaar en naar je gemaild!",
+      "browserDataCleared": "Browsergegevens gewist",
+      "browserDataClearedDesc": "Alle lokaal opgeslagen cv-gegevens zijn van dit apparaat verwijderd.",
+      "recoveredReady": "Analyse klaar",
+      "recoveredReadyDesc": "Je cv-analyse staat hieronder klaar."
     },
     "actions": {
       "share": "Delen",
@@ -626,7 +654,10 @@
       "deleteConfirm": "Analysegegevens verwijderen",
       "deleteWarning": "Dit kan niet ongedaan worden gemaakt. Je analyse wordt permanent verwijderd.",
       "cancel": "Annuleren",
-      "deleting": "Verwijderen..."
+      "deleting": "Verwijderen...",
+      "generatingPdf": "Bezig met genereren...",
+      "savePdf": "Opslaan als pdf",
+      "savePdfHint": "Sla je analyse op als pdf"
     },
     "sharedView": "Gedeelde analyse bekijken"
   },
@@ -666,7 +697,8 @@
       "jurisdictionsNv": "16.3 Nevada",
       "contactUs": "17. Neem contact met ons op",
       "mcp": "Resume Booster gebruiken vanuit je eigen AI"
-    }
+    },
+    "changeConsent": "Mijn keuze voor analyse wijzigen"
   },
   "terms": {
     "title": "Servicevoorwaarden",
@@ -730,7 +762,8 @@
     "oneTime": "eenmalig",
     "guarantee": "Directe resultaten • Eenmalige betaling",
     "button": "Mijn analyse nu",
-    "roi": "Eén gesprek = {{price}} terugverdiend"
+    "roi": "Eén gesprek = {{price}} terugverdiend",
+    "freeScanCta": "Mijn cv gratis scannen"
   },
   "scanProgress": {
     "title": "AI-analyse bezig",
@@ -960,7 +993,9 @@
       "headsUp": "Let op",
       "pdfCharWarning": "Sommige tekens worden mogelijk niet correct weergegeven in de PDF (beperkte lettertypeondersteuning voor niet-Latijnse tekst).",
       "exportFailed": "Exporteren mislukt",
-      "exportFailedDescription": "De PDF kon niet worden gegenereerd. Probeer het opnieuw."
+      "exportFailedDescription": "De PDF kon niet worden gegenereerd. Probeer het opnieuw.",
+      "printDescription": "De lettertypen van de pdf kunnen het schrift van deze gids niet weergeven, dus kies \"Opslaan als pdf\" in het afdrukvenster om hem te bewaren.",
+      "printTitle": "Geopend in je afdrukvenster"
     }
   },
   "careerPathSimulator": {
@@ -1006,7 +1041,11 @@
       "exportPdfFailedDescription": "De PDF kon niet worden gegenereerd. Probeer het opnieuw.",
       "exportDocxFailedDescription": "Het Word-document kon niet worden gegenereerd. Probeer het opnieuw.",
       "copied": "Gekopieerd",
-      "copiedDescription": "Motivatiebrief gekopieerd naar klembord."
+      "copiedDescription": "Motivatiebrief gekopieerd naar klembord.",
+      "addNameDescription": "Je cv moet bovenaan je naam hebben voordat het kan worden gedownload.",
+      "addNameTitle": "Voeg eerst je naam toe",
+      "savedAsWordDescription": "De lettertypen van de pdf kunnen {{chars}} niet weergeven, dus hebben we een Word-bestand opgeslagen dat elk teken behoudt.",
+      "savedAsWordTitle": "Opgeslagen als Word-bestand"
     },
     "grounding": {
       "title": "Gecheckt tegen je cv",
@@ -1068,7 +1107,8 @@
       "fontUnreadable": "De letters in deze PDF kunnen niet worden gelezen",
       "fontUnreadableDescription": "Het lettertype verwijst niet naar echte tekens. Upload in plaats daarvan een .docx of plak de tekst van je cv.",
       "unreadCharacters": "Sommige tekens konden niet worden gelezen",
-      "unreadCharactersDescription": "We hebben {{count}} tekens overgeslagen die deze PDF niet benoemt. Upload voor de nauwkeurigste scan een .docx of plak de tekst van je cv."
+      "unreadCharactersDescription": "We hebben {{count}} tekens overgeslagen die deze PDF niet benoemt. Upload voor de nauwkeurigste scan een .docx of plak de tekst van je cv.",
+      "checkoutRefusedTitle": "Afrekenen kon niet worden gestart"
     },
     "reportCrash": {
       "title": "Er ging iets mis bij het tonen van je rapport",
@@ -1685,7 +1725,16 @@
       "fullAnalysisDesc": "Past de verbeteringen uit dit rapport toe op de inhoud van je eigen cv. Eenmalige betaling, geen abonnement.",
       "proName": "Pro",
       "proDesc": "Maandabonnement: onbeperkt scannen en elke betaalde tool, de volledige analyse inbegrepen. Altijd opzegbaar vanuit je account.",
-      "proPrice": "$ {{price}}/maand"
+      "proPrice": "$ {{price}}/maand",
+      "fullAnalysisDescOwn": "Een aparte, diepere analyse van je cv: een volledige uitsplitsing van de score, herschrijvingen punt voor punt en een actieplan met prioriteiten. Eén betaling, geen abonnement."
+    },
+    "interviewPrepSignIn": {
+      "body": "Een gratis account bevat per dag één set gespreksvoorbereiding, één aangepast cv en één motivatiebrief.",
+      "cta": "Log in of maak een gratis account aan",
+      "title": "Log in om te oefenen met sollicitatievragen voor dit cv"
+    },
+    "tailoredSignIn": {
+      "cta": "Log in om je cv af te stemmen op deze vacature (gratis: één per dag)"
     }
   },
   "analysisPreviewSample": {
@@ -2196,6 +2245,17 @@
       "title": "Je {{product}} wordt nog gemaakt",
       "emailed": "Het duurt langer dan normaal. We mailen het je zodra het klaar is, dus je kunt deze pagina sluiten.",
       "refresh": "Het duurt langer dan normaal. Vernieuw deze pagina over een paar minuten om het te zien."
+    },
+    "needsJobPosting": {
+      "body": "Het wordt gemaakt voor één vacature, en bij deze aankoop was er geen bijgevoegd, dus kon het niet automatisch worden gemaakt. Er wordt niets opnieuw afgeschreven.",
+      "emailed": "We mailen het adres waarmee je hebt betaald om erom te vragen. Beantwoord die e-mail met de vacature (de link of de tekst), dan maken we het en sturen we het je.",
+      "noEmail": "Mail {{support}} met het bestelnummer van deze pagina en de vacature (de link of de tekst), dan maken we het en sturen we het je.",
+      "title": "Je {{product}} heeft de vacature nodig"
+    },
+    "orderReference": "Bestelnummer: {{reference}}",
+    "retiredSale": {
+      "body": "Je betaling is vastgelegd, maar dit product werd niet meer verkocht voordat de betaling rond was, dus is er niets automatisch gemaakt. Wij zijn op de hoogte gebracht en nemen contact met je op via het adres waarmee je hebt betaald.",
+      "title": "{{product}} wordt niet meer verkocht"
     }
   },
   "analysisResults": {
@@ -2768,7 +2828,15 @@
     "allToolsToggle": "Bekijk alle tools ({{count}} meer)",
     "guarantee": "Elke betaalde tool is gedekt: niet blij met het resultaat? We regenereren het gratis — beantwoord gewoon je bon.",
     "passLine": "Je eigen Claude of ChatGPT koppelen is gratis: doorzoek het bord in je chat en solliciteer zelf op de site van de werkgever, met hulp van je AI. We versturen nooit een sollicitatie namens jou.",
-    "passLink": "Koppel je AI"
+    "passLink": "Koppel je AI",
+    "buyProduct": "{{name}} nemen",
+    "freeScanLeadIn": "Nog niet zeker? Doe de",
+    "heroBadgeLine": "Gratis zoeken, $ 5 voor één diepe analyse, of Pro voor de schrijftools",
+    "ladderAnalysisDesc": "Elk ontbrekend trefwoord en elk ATS-probleem in je cv, beoordeeld tegen de vacature die je plakt, met de oplossing voor elk. Geen account nodig; inbegrepen bij Pro.",
+    "ladderSubtitleLine": "De meeste mensen hebben precies één hiervan nodig.",
+    "metaDescriptionFa": "Gratis vacatures zoeken en cv-scan. Een volledige analyse van ${{lowPrice}}, eenmalig betaald, of Pro voor ${{proPrice}} per maand voor de schrijftools.",
+    "oneTimeAndProLineFa": "De volledige analyse van ${{price}} betaal je één keer en wordt nooit verlengd; Pro is een maandabonnement dat je altijd kunt opzeggen.",
+    "subtitleLine": "Zoek en scan gratis. Betaal één keer voor één diepe cv-analyse, of neem Pro voor de schrijftools bij de vacatures waarop je solliciteert."
   },
   "scanPackPurchase": {
     "topUpCredits": "Credits opwaarderen",
@@ -2786,7 +2854,9 @@
     "buyCreditsFor_one": "Koop {{count}} credit voor {{price}}",
     "buyCreditsFor_other": "Koop {{count}} credits voor {{price}}",
     "maybeLater": "Misschien later",
-    "dialogTitle": "Scan-credits kopen"
+    "dialogTitle": "Scan-credits kopen",
+    "retiredBody": "Tegoed dat je al hebt gekocht, blijft werken. Een gratis account scant meer per dag, en Pro scant zonder daglimiet.",
+    "retiredTitle": "Scanpakketten worden niet meer verkocht"
   },
   "addOnsShowcase": {
     "powerUpAddOns": "Power-up add-ons",
@@ -2895,7 +2965,13 @@
     "getCreditsFor_other": "Krijg {{count}} credits voor {{price}}",
     "noThanks": "Nee, bedankt, ik wacht tot mijn gratis scans worden gereset",
     "fewerCredits": "Minder credits",
-    "moreCredits": "Meer credits"
+    "moreCredits": "Meer credits",
+    "freeAccountBody": "Een gratis account scant meer per dag en bewaart je score en checklist.",
+    "freeAccountCta": "Een gratis account aanmaken",
+    "freeAccountTitle": "Maak een gratis account aan",
+    "proCta": "Bekijk Pro",
+    "proTitle": "Pro",
+    "subtitleLimit": "Je hebt de gratis scans van vandaag gebruikt."
   },
   "changelogPage": {
     "metaTitle": "Wijzigingslogboek — Resume Booster",
@@ -3527,7 +3603,13 @@
       "certifications": "Certificeringen"
     },
     "replaceWithFixes": "Je huidige concept in de builder vervangen door het cv uit je scan, met de verbeteringen uit het rapport toegepast?",
-    "replaceWithLatestScan": "Je hebt een concept van een eerder cv. Vervangen door het cv uit je nieuwste scan?"
+    "replaceWithLatestScan": "Je hebt een concept van een eerder cv. Vervangen door het cv uit je nieuwste scan?",
+    "toast": {
+      "addNameDescription": "Je cv moet bovenaan je naam hebben voordat het kan worden gedownload.",
+      "addNameTitle": "Voeg eerst je naam toe",
+      "savedAsWordDescription": "De lettertypen van de pdf kunnen {{chars}} niet weergeven, dus hebben we een Word-bestand opgeslagen dat elk teken behoudt.",
+      "savedAsWordTitle": "Opgeslagen als Word-bestand"
+    }
   },
   "jobsPage": {
     "seoTitle": "Live vacatures rechtstreeks van de bedrijven zelf — check je match voordat je solliciteert",
@@ -4592,7 +4674,101 @@
       "notLinked": "Een abonnement op je e-mailadres is niet aan dit account gekoppeld. Schrijf ons en we regelen de herroeping.",
       "outsideTerritory": "De herroeping binnen {{days}} dagen geldt voor abonnementen die naar een adres in de EU, de EER of het VK worden gefactureerd, en dit abonnement is elders gefactureerd. Je kunt het altijd nog opzeggen.",
       "failed": "De herroeping is niet gelukt. Probeer het over een minuut opnieuw."
-    }
+    },
+    "appIntelAdvice": "Je sollicitaties met een betere match leiden vaker tot gesprekken. Steek je energie waar je echt past.",
+    "appIntelBody": "Percentage gesprekken en aanbiedingen per match waarmee je solliciteerde, over je {{n}} gevolgde sollicitaties.",
+    "bandNote": "Gemeten aan je eigen sollicitaties. Kleine steekproeven: kijk naar de richting, niet naar de decimalen.",
+    "bandScore": "Score {{band}}",
+    "bandTitle": "Je gesprekspercentage per scoreband",
+    "bandUnder50": "onder 50",
+    "bandWins": "{{wins}}/{{sent}} gesprekken",
+    "compareAts": "ATS-score",
+    "compareHint": "Selecteer twee scans om ze te vergelijken.",
+    "compareProjected": "Verwachte score",
+    "compareRedFlags": "Waarschuwingssignalen",
+    "copiedVersion": "Gekopieerd: precies het document dat je bij deze versie hebt opgeslagen.",
+    "copy": "kopiëren",
+    "copyTitle": "Je hebt het document bij deze versie opgeslagen: kopieer de tekst",
+    "creditsProven": "Tegoed dat met dit account of onder het e-mailadres ervan is gekocht, telt hier mee en verloopt nooit.",
+    "creditsUnproven": "Tegoed dat is gekocht in een browser waarin je bent ingelogd, hoort bij je account en verloopt nooit. Tegoed dat onder je e-mailadres is gekocht, telt hier mee zodra het adres is bevestigd.",
+    "deleteApplication": "Sollicitatie verwijderen",
+    "fitCheck": "Match controleren",
+    "fitCheckFailed": "De matchcontrole is mislukt. Probeer het zo opnieuw.",
+    "fitChecking": "Controleren…",
+    "fitIntro": "Plak de vacature: we controleren welke herkende trefwoorden de verstuurde versie echt dekt. Op regels gebaseerd, zonder AI.",
+    "fitMissing": "Ontbreekt in de verstuurde versie:",
+    "fitPlaceholder": "Plak de vacature hier…",
+    "fixAllDone": "Alles klaar: scan opnieuw om je nieuwe score te zien →",
+    "fixDoneCount": "{{done}}/{{total}} klaar",
+    "fixFrom": "Uit je scan van {{date}}. Vink punten af zodra je ze hebt opgelost en scan dan opnieuw om de verbetering te zien.",
+    "goalFirst": "Je eerste scan start de voortgangsbalk richting {{goal}}.",
+    "goalHit": "Doel gehaald: je laatste scan was beter dan je doel. Lat hoger leggen?",
+    "goalMark": "doel {{goal}}",
+    "goalProgress": "{{score}} van {{goal}}: nog {{left}} punten.",
+    "historyAria": "ATS-score in de loop van de tijd",
+    "loadFailedBody": "Er is niets verloren: het probleem zit in het uitlezen, niet in wat je bezit. Probeer het zo opnieuw.",
+    "loadFailedTitle": "We konden je tegoed en aankopen niet laden",
+    "matchingClose": "Sluiten",
+    "matchingLatest": "Laatste scan (standaard)",
+    "matchingNote": "De matchrangschikking van de vacaturebank en je e-mailmeldingen voor matches zijn allebei gebaseerd op dit document. Zet hieronder een scan vast, of plak precies het cv dat je verstuurt.",
+    "matchingOff": "vastzetten voor matching",
+    "matchingOffTitle": "Dit cv gebruiken voor vacaturematching en meldingen",
+    "matchingOn": "✓ matching",
+    "matchingOnTitle": "Dit cv wordt voor alle matching gebruikt: klik om terug te gaan naar je laatste scan",
+    "matchingPaste": "Een cv plakken",
+    "matchingPastePlaceholder": "Plak hier de tekst van je cv (platte tekst)…",
+    "matchingPasted": "Geplakt cv ({{n}} tekens)",
+    "matchingPinned": "Vastgezet: de vacaturebank en je meldingen matchen nu met dit cv.",
+    "matchingPinnedGone": "Vastgezette scan (niet meer in je geschiedenis)",
+    "matchingPinnedScan": "Vastgezet: {{name}} · {{date}}",
+    "matchingReset": "Terug naar je laatste scan.",
+    "matchingResetButton": "Terug naar laatste scan",
+    "matchingSaved": "Opgeslagen. De matching gebruikt nu dit cv.",
+    "matchingScan": "scan",
+    "matchingTooShort": "Dat is te kort om mee te matchen. Plak het volledige cv.",
+    "matchingUse": "Dit cv gebruiken voor matching",
+    "namePlaceholder": "Geef deze versie een naam…",
+    "nameTitle": "Klik om deze versie een naam te geven",
+    "navConnected": "Gekoppelde AI's",
+    "navOrders": "Bestellingen",
+    "navPlan": "Abonnement",
+    "navPrivacy": "Je gegevens",
+    "navSecurity": "Beveiliging",
+    "noScans": "Nog geen scans opgeslagen. Doe een gratis scan terwijl je bent ingelogd en hij komt hier automatisch terecht.",
+    "openPosting": "Vacature openen",
+    "ordersMoreOnProof": "Aankopen onder je e-mailadres worden toegevoegd zodra het adres is bevestigd.",
+    "proveLive": "Log uit en log met dat adres opnieuw in via een optie op de inlogpagina die je een e-mail stuurt of die je provider verifieert: beide bewijzen dat het adres van jou is.",
+    "proveNotYet": "Totdat deze pagina kan controleren dat het adres van jou is, open je elke aankoop via de link in de bijbehorende e-mail, of schrijf je vanaf dat adres naar {{support}}.",
+    "purchasesUnproven": "Aankopen onder je e-mailadres verschijnen hier zodra het adres is bevestigd.",
+    "scanCountMany": "{{count}} scans",
+    "scanCountOne": "1 scan",
+    "scanCta": "Mijn cv scannen",
+    "shortlistBeta": "Bèta",
+    "shortlistBody": "Plak een functieomschrijving en de cv's die je mag laten beoordelen: krijg een gerangschikte, verklaarbare shortlist met audittrail. Gratis tijdens de bèta.",
+    "shortlistOpen": "Shortlist openen →",
+    "shortlistTitle": "Werf je mensen? Beoordeel kandidaten met Shortlist",
+    "signedOutEverywhere": "Alle sessies van dit account zijn beëindigd. Log opnieuw in.",
+    "skillGapBody": "De trefwoorden die het vaakst ontbraken in de {{n}} vacatures waartegen je je match hebt gecontroleerd:",
+    "skillGapHave": "Als je deze echt beheerst, zet ze dan op je cv:",
+    "skillGapLearn": "Zo niet, dan zijn het je duidelijkste leerdoelen.",
+    "skillGapRescan": "scan opnieuw om het verschil te zien",
+    "skillGapTitle": "Je vaardigheidskloven, uit je eigen sollicitaties",
+    "targetAria": "Doel-ATS-score",
+    "tierPossible": "Mogelijke match (10–20%)",
+    "tierStretch": "Uitdaging (<10%)",
+    "tierStrong": "Sterke match (20%+)",
+    "trackerAdd": "Toevoegen",
+    "tryAgain": "Opnieuw proberen",
+    "versionInterviews_one": "{{count}} gesprek",
+    "versionInterviews_other": "{{count}} gesprekken",
+    "versionLatest": "Laatste scan ({{score}}{{label}})",
+    "versionOffers_one": "{{count}} aanbieding",
+    "versionOffers_other": "{{count}} aanbiedingen",
+    "versionOption": "{{name}}, score {{score}}",
+    "versionSent": "Verstuurde cv-versie:",
+    "versionSentCount": "{{n}} verstuurd",
+    "versionSentLabel": "Cv-versie gebruikt voor deze sollicitatie",
+    "whichResumeNote": "Werk hierboven de status van je sollicitaties bij: deze tabel leert welke versie van je cv echt tot gesprekken leidt."
   },
   "applyAgent": {
     "badge": "Je AI-sollicitatieagent",
@@ -4915,7 +5091,46 @@
     "linkPending": "Dit adres heeft een abonnement dat nog niet aan dit account is gekoppeld. Log in met Google met dat adres om het hier te gebruiken.",
     "confirmed": "Bedankt: je Pro-abonnement is bevestigd.",
     "confirming": "Je abonnement wordt bij Stripe bevestigd. Dit duurt een paar seconden.",
-    "notConfirmedYet": "We konden je abonnement nog niet bevestigen. Vernieuw deze pagina over een minuut, of neem contact op met support als je abonnement niet verschijnt."
+    "notConfirmedYet": "We konden je abonnement nog niet bevestigen. Vernieuw deze pagina over een minuut, of neem contact op met support als je abonnement niet verschijnt.",
+    "activeMember": "Je bent Pro-lid: de schrijftools zijn ontgrendeld.",
+    "badge": "Schrijftools",
+    "checkoutRefusedTitle": "Afrekenen kon niet worden gestart",
+    "endsOn": "Eindigt op {{date}}: opgezegd, wordt niet verlengd",
+    "goPro": "Neem Pro — ${{price}}/maand",
+    "linkPendingUnlinked": "Dit adres heeft een abonnement dat nog niet aan dit account is gekoppeld. Mail {{support}} vanaf dat adres, dan koppelen wij het.",
+    "manage": "Abonnement beheren",
+    "manageRetired": "Beheren of opzeggen bij facturering",
+    "owing": "Je laatste betaling is niet gelukt. Werk je kaart bij om je abonnement te houden — een nieuw abonnement is niet nodig.",
+    "perMonth": "/maand",
+    "perks": {
+      "cancel": "Altijd opzegbaar vanuit je account",
+      "everythingFree": "Alles van een gratis account, plus de schrijftools",
+      "fullAnalysisIncluded": "De volledige analyse van $ 5 inbegrepen",
+      "noDailyScanCap": "Geen daglimiet op scans",
+      "writingTools": "Een aangepast cv, motivatiebrief en gespreksvoorbereiding voor je vacatures: tot 5 sets per dag en 60 per maand"
+    },
+    "renewsOn": "Wordt verlengd op {{date}}",
+    "retiredPlanEnds": "Het eindigt op {{date}} en wordt niet verlengd. De Pro-tools blijven tot dan aan.",
+    "retiredPlanLive": "Zolang het loopt, blijven de Pro-tools aan. De agent zelf staat uit; je kunt het abonnement altijd opzeggen bij facturering.",
+    "retiredPlanOwing": "De laatste betaling is niet gelukt. Voor een abonnement dat we niet meer verkopen heb je geen kaart nodig: zeg het op bij facturering en de nieuwe pogingen stoppen.",
+    "retiredPlanTitle": "Je abonnement is het Apply Agent-abonnement, dat we niet meer verkopen.",
+    "secureSignedIn": "Veilig afrekenen via Stripe. Altijd opzegbaar — geen vastzitten.",
+    "secureSignedOut": "Je logt eerst in, zodat het abonnement op je account staat. Veilig afrekenen via Stripe; altijd opzegbaar.",
+    "summaryLine": "Alles van een gratis account, plus de schrijftools, de volledige analyse van $ 5 inbegrepen en geen daglimiet op scans",
+    "title": "Resume Booster Pro",
+    "toast": {
+      "alreadyMemberBody": "Je abonnement is al actief op dit account.",
+      "alreadyMemberTitle": "Je bent al Pro-lid",
+      "briefOutage": "Abonnementen zijn even niet beschikbaar — probeer het over een paar minuten opnieuw.",
+      "emailNeededBody": "Voer je e-mailadres in, zodat we het abonnement aan je account kunnen koppelen.",
+      "emailNeededTitle": "E-mailadres nodig",
+      "portalFailedTitle": "Factureringsportaal kon niet worden geopend",
+      "signInBody": "Log in om je abonnement te beheren.",
+      "signInTitle": "Inloggen vereist",
+      "tryAgain": "Probeer het opnieuw."
+    },
+    "trialingNoCap": "Je proefperiode loopt: scans hebben nu geen daglimiet. De volledige analyse van $ 5 is inbegrepen vanaf je eerste betaling.",
+    "updatePayment": "Betaalmethode bijwerken"
   },
   "atsCoverage": {
     "heading": "Gebouwd voor de systemen die werkgevers echt gebruiken",
@@ -5116,7 +5331,13 @@
     "connectInstead": "Heb je al een agent? Verbind die dan — {{passHours}} uur voor ${{passPrice}}, verlengt nooit; het Agent-abonnement wel.",
     "welcomeTitle": "Je bent geabonneerd.",
     "welcomeTitleTrial": "Je bent geabonneerd — {{trialDays}} dagen gratis vóór de eerste afschrijving.",
-    "welcomeBody": "Nog één ding: de agent heeft je cv en een actief mandaat nodig voordat hij iets kan zoeken. De checklist hieronder kost ongeveer een minuut, en niets draait tot die af is."
+    "welcomeBody": "Nog één ding: de agent heeft je cv en een actief mandaat nodig voordat hij iets kan zoeken. De checklist hieronder kost ongeveer een minuut, en niets draait tot die af is.",
+    "retiredPublicBody": "We verkopen het Agent-abonnement, de Agent Pass en de Apply Assistant niet meer, en onze eigen sollicitatieagent staat uit: er wordt niets voor je ingediend.",
+    "retiredPublicCta": "Koppel Claude of ChatGPT gratis",
+    "retiredPublicLead": "Resume Booster solliciteert voor niemand meer. Je kunt nog steeds actuele vacatures zoeken en zelf solliciteren, met hulp van Claude of ChatGPT, op de eigen website van de werkgever.",
+    "retiredPublicSignIn": "Had je het abonnement? Log in om je account te zien.",
+    "retiredPublicSignInLink": "Inloggen",
+    "retiredPublicTitle": "De Apply Agent is gestopt"
   },
   "agentConnect": {
     "attachTitle": "Prompts en bronnen die je host kan tonen",
@@ -5221,7 +5442,8 @@
     "missing": "Deze pagina heeft de knop uit je rapportmail nodig.",
     "error": "Starten lukt nu niet. Probeer de knop zo meteen opnieuw.",
     "errorFinal": "De hele reeks kon niet worden gestart, en opnieuw op de knop drukken start hem deze maand niet opnieuw.",
-    "home": "Terug naar Resume Booster"
+    "home": "Terug naar Resume Booster",
+    "paused": "De e-mails van het verbeterplan staan voorlopig op pauze, dus er is niets gestart. De e-mail met je rapport bevat al het hele plan."
   },
   "emailUnsubscribe": {
     "title": "Deze e-mails uitzetten",
@@ -5242,12 +5464,19 @@
     "agentTrial": "Nieuwe abonnees krijgen {{days}} dagen gratis, daarna {{price}} per maand, automatisch verlengd tot je opzegt. Zeg op voordat de proefperiode eindigt en je betaalt niets. Wie eerder abonnee was, betaalt vanaf de eerste dag.",
     "waiver": "Ik wil mijn aankoop nu geleverd krijgen en begrijp dat ik mijn herroepingsrecht van {{days}} dagen verlies zodra die is geleverd.",
     "serviceStart": "Ik vraag om de dienst nu te laten starten. Herroep ik binnen {{days}} dagen, dan betaal ik voor de dagen die al zijn gebruikt.",
-    "consentNeeded": "Vink het vakje boven de knop aan om verder te gaan."
+    "consentNeeded": "Vink het vakje boven de knop aan om verder te gaan.",
+    "autoRenewConsent": "Ik ga ermee akkoord dat Pro elke maand automatisch wordt verlengd voor {{price}} totdat ik opzeg, en dat ik altijd vanuit mijn account kan opzeggen."
   },
   "freelanceBoost": {
     "startNewPurchase": "Koop je voor een andere functie? Begin een nieuwe aankoop.",
     "boughtHereTitle": "3. Je ervaringssectie — al gekocht op dit apparaat",
-    "openYourLink": "Open de link in je aankoopmail om hem te bekijken of te maken. Je betaalt niet opnieuw."
+    "openYourLink": "Open de link in je aankoopmail om hem te bekijken of te maken. Je betaalt niet opnieuw.",
+    "noLongerSoldBody": "Freelance Boost en Transition Pro worden niet meer verkocht en maken geen deel uit van Pro. Als je er een hebt gekocht, open dan de link in je aankoopmail: die blijft nog 90 dagen werken. Een gratis account schrijft nu elke dag een aangepast cv, een motivatiebrief en een gespreksvoorbereiding voor één vacature.",
+    "noLongerSoldMeta": "Freelance Boost en Transition Pro worden niet meer verkocht. Als je er een hebt gekocht, blijft de link in je aankoopmail werken.",
+    "noLongerSoldTitle": "Freelance Boost wordt niet meer verkocht",
+    "regenerate": "Opnieuw genereren",
+    "regenerateNeedsAnswers": "Je antwoorden staan niet op dit apparaat. Vul het formulier hieronder in en druk op \"Generate my section\" — je aankoop dekt dat.",
+    "seePricing": "Bekijk wat er te koop is"
   },
   "seller": {
     "soldBy": "Verkocht door {{name}}, {{address}}.",
@@ -5276,6 +5505,15 @@
       "failed": "De uitbetaling kon niet worden aangevraagd. Probeer het opnieuw.",
       "requestedTitle": "Uitbetaling aangevraagd",
       "requestedBody": "We mailen je om de betaling te regelen."
+    },
+    "proCommission": {
+      "banner": "{{amount}} per doorverwezen eerste betaalde maand Pro",
+      "detail": "Pro kost $ 45 per maand. Als iemand die via jouw link kwam zijn eerste maand Pro betaalt, verdien je {{amount}}.",
+      "excludedFa": "Andere aankopen (de volledige cv-analyse) leveren geen commissie op. Commissies die je al hebt verdiend, worden zoals altijd uitbetaald.",
+      "headline": "{{amount}} voor elke doorverwezen eerste betaalde maand Pro",
+      "howItWorks": "Als iemand op jouw link klikt en binnen 30 dagen zijn eerste maand Pro betaalt, verdien je {{amount}}. Andere aankopen leveren niets op.",
+      "linkHint": "Deel deze link om {{amount}} te verdienen voor elke doorverwezen eerste betaalde maand Pro, met een toeschrijvingsperiode van 30 dagen",
+      "tagline": "Verdien vast {{amount}} als iemand die jij doorverwijst zijn eerste maand Pro betaalt."
     }
   },
   "careerReportEnum": {
@@ -5340,5 +5578,170 @@
     "builderBody": "Gerangschikt zoeken, cv-matchscores op grote schaal en 180 dagen aan sluitingen, om in je eigen product te tonen met bronvermelding. Geen feeds of doorverkoop; daarvoor is de commerciële licentie. Laat ons weten of je het zou gebruiken.",
     "builderNotYet": "Nog niet te koop: er wordt niets in rekening gebracht, en we beantwoorden elk verzoek per e-mail.",
     "builderCta": "Builder aanvragen"
+  },
+  "accountConnected": {
+    "actionFailed": "Dat lukte niet. Probeer het over een minuut opnieuw.",
+    "connect": "Claude of ChatGPT koppelen",
+    "created": "Gekoppeld op {{date}}",
+    "lastUsed": "Laatst gebruikt op {{date}}",
+    "neverUsed": "Nog niet gebruikt",
+    "none": "Er is geen AI aan dit account gekoppeld.",
+    "note": "Intrekken zorgt ervoor dat die AI je account meteen niet meer kan bereiken. Opnieuw koppelen maakt een nieuwe sleutel aan.",
+    "readFailed": "We konden je gekoppelde AI's en e-mailinstellingen nu niet laden.",
+    "retry": "Opnieuw proberen",
+    "revoke": "Intrekken",
+    "revoked": "Ingetrokken. Die AI kan je account niet meer bereiken.",
+    "title": "Gekoppelde AI's"
+  },
+  "accountMail": {
+    "others": "Meldingen voor opgeslagen zoekopdrachten zet je hierboven per opgeslagen zoekopdracht aan of uit. Elke andere e-mail die we sturen bevat een eigen afmeldlink.",
+    "pulse": "Marktpuls",
+    "pulseNone": "Niet geabonneerd",
+    "pulseOff": "Uit",
+    "pulseOn": "Aan",
+    "pulsePending": "Wacht op je bevestiging",
+    "pulseStop": "Stoppen met de marktpuls",
+    "pulseStopped": "De marktpuls is gestopt.",
+    "title": "E-mailvoorkeuren",
+    "unprovenLive": "Log uit en log opnieuw in met een optie op de inlogpagina die je een e-mail stuurt of die je provider verifieert, om hier de mailinglijsten onder je adres te zien. Elke e-mail die we sturen bevat ook een eigen afmeldlink.",
+    "unprovenNotYet": "De mailinglijsten onder je adres verschijnen hier zodra deze pagina kan controleren dat het adres van jou is. Tot die tijd bevat elke e-mail die we sturen een eigen afmeldlink."
+  },
+  "accountPrivacy": {
+    "cancel": "Annuleren",
+    "cancelledLabel": "Opgezegd:",
+    "cancelledList": "elk abonnement dat dit account betaalt, meteen, zodat er niets meer wordt afgeschreven.",
+    "cannotUndo": "Dit kan niet ongedaan worden gemaakt.",
+    "deleteConfirm": "Ja, verwijder mijn account",
+    "deleteStart": "Mijn account verwijderen",
+    "deletedLabel": "Verwijderd:",
+    "deletedList": "je account en je login; je scangeschiedenis, checklist, doel, opgeslagen cv-versies en gevolgde sollicitaties; opgeslagen zoekopdrachten en meldingen; elk cv-bestand dat je hebt geüpload; je API- en AI-koppelingssleutels, die niet meer werken; en, zodra je adres is bevestigd, de inschrijvingen ervan op mailinglijsten.",
+    "export": "Al mijn gegevens downloaden (JSON)",
+    "keptLabel": "Bewaard:",
+    "keptList": "betaalgegevens (de Stripe-referentie, het bedrag, de datum en het adres op het betaalbewijs) zolang de belastingwet dat vereist, en een niet-mailen-notitie voor je adres zodat geen al ingeplande e-mail het bereikt. Scantegoed dat zonder account onder je adres is gekocht, blijft bij dat adres.",
+    "title": "Je gegevens"
+  },
+  "accountSettings": {
+    "codeFailed": "We konden nu geen bevestigingscode aanvragen. Probeer het over een minuut opnieuw.",
+    "codeField": "Bevestigingscode uit de e-mail",
+    "codeOnItsWay": "Als je adres e-mail kan ontvangen, is er een bevestigingscode onderweg naar {{email}}.",
+    "emailConfirmBoth": "Er is nog niets veranderd: we hebben je huidige en je nieuwe adres gevraagd om te bevestigen. Je adres verandert zodra beide hebben bevestigd.",
+    "emailInvalid": "Voer een geldig nieuw adres in.",
+    "emailMismatch": "De twee adressen komen niet overeen.",
+    "emailNew": "Nieuw adres",
+    "emailNewAgain": "Nieuw adres nogmaals",
+    "emailNotYet": "Om je inlogadres te wijzigen moeten beide adressen bevestigen, en dat kan deze site nog niet vragen. Schrijf vanaf je huidige adres naar {{support}}, dan wijzigen wij het voor je.",
+    "emailNote": "Aankopen onder je huidige adres blijven bij dat adres totdat het nieuwe is bevestigd en bewezen.",
+    "emailPwLabel": "Huidig wachtwoord, om je adres te wijzigen",
+    "emailTitle": "Inlogadres wijzigen",
+    "noPassword": "Nog geen wachtwoord, of vergeten? Stuur me in plaats daarvan een bevestigingscode",
+    "proven": "Je adres is bevestigd {{how}}.",
+    "provenHow": {
+      "code": "met een code die we ernaar hebben gemaild",
+      "confirmation": "door de e-mail te bevestigen die we ernaar hebben gestuurd",
+      "link": "met een link die we ernaar hebben gemaild",
+      "provider": "met een Google- of Apple-login die het heeft geverifieerd",
+      "reset": "met een e-mail om je wachtwoord opnieuw in te stellen die we ernaar hebben gestuurd"
+    },
+    "provenOn": "Je adres is op {{date}} bevestigd {{how}}.",
+    "pwChanged": "Wachtwoord gewijzigd.",
+    "pwCurrent": "Huidig wachtwoord",
+    "pwNeedsProof": "Voer je huidige wachtwoord in of vraag een bevestigingscode aan.",
+    "pwNew": "Nieuw wachtwoord (minimaal {{n}} tekens)",
+    "pwNewLabel": "Nieuw wachtwoord",
+    "pwTitle": "Wachtwoord wijzigen",
+    "pwTooShort": "Een nieuw wachtwoord moet minstens {{n}} tekens hebben.",
+    "pwWrong": "Dat is niet je huidige wachtwoord.",
+    "sessions": "Ingelogd als {{email}}",
+    "signOutEverywhere": "Overal uitloggen",
+    "signOutHere": "Uitloggen op dit apparaat",
+    "title": "Inloggen en beveiliging",
+    "unproven": "Je adres is nog niet bevestigd, dus aankopen die zonder inloggen onder dat adres zijn gedaan, verschijnen niet op deze pagina.",
+    "update": "Bijwerken"
+  },
+  "applyAnswers": {
+    "addSpecifics": "Voeg details uit je eigen ervaring toe — wij verzinnen ze niet.",
+    "allGrounded": "Elk antwoord is gebaseerd op je cv — niets is verzonnen.",
+    "copied": "Gekopieerd",
+    "copiedAll": "Alle antwoorden gekopieerd",
+    "copyAll": "Alles kopiëren",
+    "copyAnswer": "Antwoord kopiëren",
+    "draftButton": "De vragen van deze sollicitatie opstellen",
+    "failed": "We konden nu geen antwoorden opstellen.",
+    "inferredIntro": "Waarschijnlijke vragen voor deze functie (dit ATS publiceert zijn formulier niet), gebaseerd op je cv. Controleer ze voordat je ze plakt.",
+    "limit": "Je hebt dit tegoed voorlopig opgebruikt. Probeer het later opnieuw.",
+    "limitHours": "Je hebt de opstellimiet voorlopig bereikt. Probeer het over ongeveer {{hours}} uur opnieuw.",
+    "limitMinutes": "Je hebt de opstellimiet voorlopig bereikt. Probeer het over ongeveer {{minutes}} minuten opnieuw.",
+    "limitUntil": "Je hebt dit tegoed opgebruikt. Na {{when}} kun je meer opstellen.",
+    "modelBusy": "De AI-dienst is druk. Probeer het over een minuut opnieuw.",
+    "nothingDraftable": "Geen vragen die automatisch op te stellen zijn — de rest vul je zelf eerlijk in.",
+    "realIntro": "De echte vragen van deze sollicitatie, opgesteld op basis van je cv. Controleer ze voordat je ze plakt.",
+    "signIn": "Log in om antwoorden op te stellen. Een gratis account is genoeg.",
+    "someNeedInput": "{{gaps}} van {{total}} hebben jouw input nodig — we hebben ze gemarkeerd in plaats van iets te verzinnen.",
+    "unavailable": "Opstellen is even niet beschikbaar. Probeer het zo opnieuw.",
+    "undraftedBody": "We stellen per sollicitatie een beperkt aantal vragen op, en deze zijn voor jou overgebleven.",
+    "undraftedTitle": "Niet opgesteld — beantwoord deze zelf",
+    "yoursBody": "We raden niet naar je identiteit, werkvergunning, salaris of demografische gegevens — het eerlijke antwoord op elk daarvan is alleen aan jou.",
+    "yoursTitle": "Deze beantwoord je zelf"
+  },
+  "checkoutGate": {
+    "purchasesOpenSoon": "Aankopen gaan binnenkort open. Vacatures zoeken, de gratis scan en een gratis account werken nu al.",
+    "purchasesOpenSoonTitle": "Aankopen gaan binnenkort open",
+    "regionNoticeTimeZone": "De tijdzone van je browser ligt in de EU, de EER, het VK of India, waar we nog niet verkopen: verkoop daar wacht tot onze belastingregistratie is geregeld. Vacatures zoeken en de gratis scan werken overal."
+  },
+  "checkoutRefusal": {
+    "autoRenewTitle": "Vink het vakje voor verlenging aan",
+    "fairUseTitle": "Je hebt de fair-use-limiet van Pro bereikt",
+    "planUnpaidTitle": "Je abonnement is nog niet betaald",
+    "retiredBody": "Dit product wordt niet meer verkocht en er is niets afgeschreven. Als je het eerder hebt gekocht, blijft je link nog 90 dagen werken.",
+    "retiredTitle": "Niet meer te koop",
+    "territoryTitle": "Nog niet te koop waar je bent"
+  },
+  "consent": {
+    "allow": "Analyse toestaan",
+    "body": "Als je het toestaat, bewaren we in deze browser een anonieme bezoekers-id en leggen we vast welke pagina's en stappen je gebruikt, zodat we zien wat werkt. Er wordt hiervoor niets opgeslagen of verstuurd totdat je kiest, en de site werkt in beide gevallen hetzelfde.",
+    "deny": "Nee, bedankt",
+    "host": "Onze hostingprovider heeft een eigen teller voor paginabezoeken, die deze keuze niet regelt.",
+    "label": "Keuze voor analyse",
+    "more": "Details",
+    "title": "Mogen we tellen hoe deze site wordt gebruikt?"
+  },
+  "crashScreen": {
+    "body": "Een onverwachte fout heeft deze pagina gestopt. Vernieuwen lost het meestal op.",
+    "details": "Technische details",
+    "refresh": "Pagina vernieuwen",
+    "supportLead": "Kom je er nog steeds niet uit, of gebeurde dit vlak na een betaling? Schrijf ons:",
+    "title": "Er is iets misgegaan"
+  },
+  "freeReportSignup": {
+    "body": "Maak een gratis account aan om je voortgang over meerdere scans te volgen, je verbeterchecklist te bewaren en 15 gratis scans per dag te krijgen in plaats van 7.",
+    "cta": "Gratis account aanmaken",
+    "title": "Verlies deze score niet."
+  },
+  "orders": {
+    "actionFailed": "Dat lukte niet. Probeer het over een minuut opnieuw.",
+    "mailAgain": "Opnieuw mailen",
+    "mailedAgain": "Onderweg naar het adres waarmee je het hebt gekocht.",
+    "open": "Openen",
+    "receipt": "Betaalbewijs",
+    "reportProblem": "Probleem melden",
+    "reportSubject": "Een probleem met mijn bestelling",
+    "statusFailed": "Kon niet worden gemaakt",
+    "statusIncluded": "Inbegrepen bij Pro",
+    "statusNeedsResume": "Je cv is nodig",
+    "statusPreparing": "Wordt voorbereid",
+    "statusReady": "Klaar",
+    "statusRefunded": "Terugbetaald"
+  },
+  "saveResume": {
+    "boardFit": "Sla dit cv op en de vacaturebank beoordeelt elke vacature die je bekijkt ten opzichte ervan",
+    "boardFitWithCount": "Sla dit cv op en de vacaturebank beoordeelt elke vacature die je bekijkt ten opzichte ervan — meer dan {{n}} actuele vacatures om door te bladeren",
+    "versionExplainer": "Bewaard in je account totdat je het verwijdert — dit is de enige keer dat we cv-inhoud bewaren, en alleen omdat je erom vroeg. Het zorgt voor matchscores bij de vacatures die je in de vacaturebank bekijkt, automatische matchscores bij gevolgde sollicitaties en het overzicht van welke versie tot gesprekken leidt."
+  },
+  "writingRefusal": {
+    "daily": "Je hebt het schrijftegoed van vandaag gebruikt. Na {{when}} kun je meer maken; wat je tot nu toe hebt gemaakt, is bewaard.",
+    "dailyNoTime": "Je hebt het schrijftegoed van vandaag gebruikt. Morgen kun je meer maken; wat je tot nu toe hebt gemaakt, is bewaard.",
+    "monthly": "Je hebt het schrijftegoed van deze maand gebruikt. Na {{when}} kun je meer maken.",
+    "monthlyNoTime": "Je hebt het schrijftegoed van deze maand gebruikt. Volgende maand kun je meer maken.",
+    "signIn": "Log in om de schrijftools te gebruiken. Een gratis account bevat per dag één aangepast cv, één motivatiebrief en één set gespreksvoorbereiding."
   }
 }
