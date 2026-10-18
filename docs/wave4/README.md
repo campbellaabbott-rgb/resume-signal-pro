@@ -192,6 +192,9 @@ Each with a behaviour test that fails on the file as reviewed and passes now.
   (`the-old-sections-judge-the-retired-products-as-retired`, and L1-08 in
   `a-verifier-line-that-could-not-fail-now-can`).
 - Section 86's no-log lines say what they check; the owner's SQL is the proof.
+  From agent-mcp 2026-10-11.27 the owner's count on the ChatGPT nonce is 0,
+  in section 86 and in section 92 (a caller that says it is ChatGPT is never
+  logged, S12-085); an agent-mcp between .3 and .26 is still asked for 1.
 - Section 85 names the tests that exist.
 - The ledger exits 7 for a late-stamped migration that would revert a later
   one (naming both files; the message is refused) and 8 when a function's
@@ -503,3 +506,496 @@ After the review fixes, at `83f28eac` (2026-10-12):
   20261011103000, and no late stamp or live-ahead function.
 - Each review fix was proved by restoring the file as reviewed: its new test
   fails there and passes on the fix.
+
+## Second round
+
+The owner asked to "ship fixes for the rest of the bugs". Of the S12 sweep's
+188 defects (2026-10-12, register
+`~/.config/resumebooster/platform-debug-2026-10-12-s12/register.json`), R1
+and the profiles+design round own 38. This round fixes the rest that wave 4
+can own, together with the critical-path plan's rounds R2 to R4 (CP-C, CP-D,
+CP-E, CP-F, CP-G, CP-H, CP-I, CP-J) and the product cuts. It ships third,
+after R1 and after profiles+design.
+
+The owner's decisions of 2026-10-17 replace the earlier ones wherever they
+differ:
+
+1. **Pro ($45 a month)** is the writing tools (5 packages a day, 60 a
+   month), the $5 Full Analysis included, and no daily cap on scans (never
+   "unlimited"). Freelance Boost and Transition Pro are not part of it. One
+   list, `supabase/functions/_shared/pro-perks.ts` (`PRO_PERK_ITEMS`,
+   `PRO_SUMMARY`, `PRO_INCLUDED_PRODUCT_IDS = ['fullAnalysis']`), is read by
+   every page that lists Pro's perks and by the description
+   create-subscription-checkout gives Stripe.
+2. **Freelance Boost and Transition Pro are removed** like the other cut
+   products: off pricing, the free report and Pro; their checkouts answer
+   410; `/freelance-boost` says they are no longer sold and is noindex; a past
+   buyer's link still generates.
+3. **No buy button until the seller is named.** The Full Analysis and Pro
+   buttons render only once `src/config/seller.ts` carries the seller's legal
+   name and postal address (California B&P 17538(d)); until then the pages
+   say purchases open soon, and create-checkout, create-subscription-checkout
+   and create-product-checkout refuse with 409 `seller_identity_missing`.
+   Both stay on sale otherwise.
+4. **India** is refused at checkout with the EU, the EEA and the UK until an
+   accountant rules on GST.
+5. **Pro needs its own unticked, required renewal box** (California ARL as
+   amended by AB 2863); create-subscription-checkout refuses without it and
+   records the wording version, the Terms version and the time.
+6. **The territory refusal names the check that placed the buyer there**
+   (currency, time zone or IP lookup), never "billing address".
+
+Decisions not reopened: no refunds (disputes still revoke entitlements); the
+writing tools gated by account on the server (signed out 401
+`sign_in_required`; free 1 of each a day on Flash; Pro 5 packages a day and
+60 a month on the quality chain; 429 `daily_limit`/`monthly_limit` with
+`resetsAt`); saved searches, alerts and the tracker free; affiliates a flat
+$10 on a referred customer's first paid Pro month; marketing mail paused
+until the seller is named (`paused_no_seller_identity`); our own analytics
+only after consent; the server-side Apply Agent, the $29 pass and the $7 Apply
+Assistant retired; critical-path D8 (no signed-out Pro lookup by a typed
+address), D9 (payment records only are kept) and D14 (no shortlist
+demographics, an uploader's attestation).
+
+### The cuts
+
+Stopped selling now (code deletion waits for the simplify wave): the Premium
+Package, ATS Defense, Career Snapshot, Graduate Game Plan, Career Path (paid
+and free), Keyword Fix, Cover Letter and Interview Coach as one-offs, Scan
+Packs, Freelance Boost, Transition Pro, and the free report extras (Resume
+Roast, Recruiter View, Elevator Pitch, AI Summary, LinkedIn insights and
+scrape-linkedin). Each is hidden everywhere it was offered; its checkout
+answers 410 retired with a sentence in the buyer's language
+(`_shared/product-cuts.ts`); scrape-linkedin answers 410. Past buyers keep
+what they bought for 90 days; Career Path pages keep regenerating for past
+buyers only. Kept: the free tier, the $5 Full Analysis (the only one-off),
+Pro, and the Builder API card. Bugs inside a cut product's generator are
+fixed only where a past buyer still receives them; the rest are marked
+removed-by-cut below.
+
+### What it fixes, by group
+
+The builders' branches, merged `--no-ff` onto `w4b/base` (wave4/integration
+plus r1/integration), then r1/integration again:
+
+| branch | head | stamp N |
+|---|---|---|
+| `w4b/base` | `04fa6a71` | none |
+| `w4b/payments-delivery` | `385ef655` | 22 |
+| `w4b/checkout-catalogue` | `db74b6c8` | 23 |
+| `w4b/generators` | `49c35d81` | 24 |
+| `w4b/account-compliance` | `e544d664` | 25 |
+| `w4b/job-board` | `93babe55` | 26 (job-board stays `2026-09-09.93`) |
+| `w4b/agents-api` | `06e52ab2` | 27 |
+| `w4b/ops-email-tests` | `19747444` | 28 |
+| integration | this branch | 29 |
+
+The first pass merged earlier heads of five builders (17-18 October); the
+second took their final heads. Conflicts, each kept with both intents:
+generators (free-keyword-scan: payments-delivery's credit change and
+generators' scanner changes under one later build; the wave-four section
+test's regex); account-compliance (get-account-data, stripe-webhook and
+shortlist-evaluate under integration builds; the sign-in copy guard drops
+both KNOWN lines the two groups fixed; the pass-buyer test takes
+account-compliance's card; the model-call census keeps both auth headers);
+job-board (the wave-four section test's comment); r1/integration again (the
+ledger's shared-files note, use-pro-subscription's two imports, AgentPass
+stays wave 4's retirement page, the payment-pages prefill test); then
+checkout-catalogue's final head (FreelanceBoost.tsx keeps R1's stashed
+session id and drops the buy flow; the slow-check Go Pro test ticks the new
+renewal box; deno.lock stays the base's) and account-compliance's final head
+(get-account-data keeps the integration build `.2026-10-14.29`).
+
+- **payments-delivery**: S12-054, S12-061, S12-079, S12-100, S12-103,
+  S12-104, S12-114, S12-154 (server half; R1 did the browser half), S12-169;
+  CP-C items 1-4 and 7-10 (CP-019 the delivery lease, CP-021 made-but-unmailed
+  orders, CP-030/CP-031 mail the saved copy, CP-032 a dead end is spent and
+  asked for, CP-029 async payments, CP-027 owner alerts from our domain,
+  CP-033 test mode recognised and left out of health, CP-036); CP-I mail-watch
+  (rules R1-R9, the dead-man pair's mail half) and the money-path E2E
+  (`src/test/e2e/money-path`, run with `npx vitest run -c
+  vitest.e2e.config.ts`); the affiliate amount a checkout names; Success.tsx
+  claims no mail to someone holding a share link.
+- **checkout-catalogue**: S12-008, S12-024, S12-044, S12-045, S12-059,
+  S12-067, S12-070, S12-076, S12-098, S12-099, S12-108, S12-134, S12-139,
+  S12-168, S12-170; CP-022 and CP-012 (a checkout names its buyer, the
+  verified address wins), D7/CP-025 (Pro grants capped, never a Stripe url on
+  a failed grant), D8, S9-001/CP-D (a connected app's token never buys or
+  opens billing), CP-033 in part (create-test-checkout 410); the owner's
+  items 1 to 6 above; the affiliate re-base.
+- **generators**: the account gating of the writing tools; S12-003, S12-006,
+  S12-009, S12-026 (kept tools), S12-029 (kept interview prep), S12-030,
+  S12-039, S12-047, S12-051, S12-055, S12-062, S12-066, S12-068, S12-071,
+  S12-105, S12-107, S12-111, S12-112, S12-136, S12-140, S12-141, S12-142 (code
+  half), S12-143, S12-144, S12-145, S12-146, S12-147, S12-148, S12-152;
+  CP-018 for past Premium buyers; CP-030's generator half; the free report's
+  share of the cuts.
+- **account-compliance**: S12-002, S12-010, S12-011, S12-025 (account half),
+  S12-049, S12-053, S12-060, S12-097, S12-102, S12-115, S12-137, S12-151,
+  S12-153, S12-155, S12-171 (console half); CP-005/CP-047, CP-007/CP-012,
+  CP-016, CP-022/CP-050, CP-038/CP-039/CP-041, CP-048/D9, CP-049, CP-H
+  (connected AIs, email preferences, how and when the address was proven,
+  the writing allowance's refusals), CP-G (the en-GB trader name), CP-J (the
+  account functions take a website session only), D14.
+- **job-board**: S12-013, S12-014 (board, MCP and /v1 routing), S12-015,
+  S12-017, S12-018, S12-019, S12-020, S12-027, S12-028, S12-035, S12-036,
+  S12-037, S12-038, S12-083, S12-084, S12-122, S12-123, S12-124, S12-125 (no
+  change needed, pinned), S12-126, S12-128, S12-172.
+- **agents-api**: S12-040, S12-041, S12-080, S12-081, S12-082, S12-085,
+  S12-121, S12-173, S12-174, S12-175, S12-176.
+- **ops-email-tests**: S12-032, S12-046, S12-065, S12-069, S12-138, S12-157,
+  S12-158, S12-159, S12-160, S12-161, S12-162, S12-163, S12-164, S12-165,
+  S12-166, S12-167; CP-052's heartbeat half.
+- **integration** (the builders' handoffs to each other and to the
+  integrator, applied here because every builder had finished):
+  - no button that prices the Full Analysis until the seller is named: the
+    free report's offer, the uploader's $5 link and fallback button, and the
+    homepage comparison's call to action (owner decision 3);
+  - the free report's platform-profile note sells no Freelance Boost and its
+    Pro row reads `PRO_SUMMARY`; both scanners' daily refusals say Pro has no
+    daily cap on scans instead of promising unlimited scans (owner decisions
+    1 and 2);
+  - mail-watch's R9 reads `cron_http_answers` and judges refusals and
+    repeated 5xx only, so it no longer rings on every run's pg_net timeouts;
+  - the heartbeat reads the apply worker's state only while the agent is
+    switched on (S12-171's second half: no "worker offline" mail every six
+    hours for a retired agent);
+  - a Full Analysis session records the page's language, so its purchase
+    mail is written in it (S12-114 for the one one-off still sold);
+  - agent-mcp refuses a place typed after "not" as job-board does (S12-172
+    parity);
+  - stripe-webhook and verify-product-purchase compute the affiliate
+    commission with one rule, `commissionCentsFor`;
+  - the money path runs create-product-checkout and proves a cut product's
+    checkout takes no money (CP-I scenarios 2 and 6, corrected, as 2c);
+  - the FAQ names the trader through `TRADING_NAME` and its ChatGPT answer
+    promises no LinkedIn analysis and no untested training claim (CP-G,
+    S12-049);
+  - section 92 asks for the integration builds of the functions two groups
+    changed;
+  - the translation pass (349 keys in nine locales) and the job-board trim
+    below.
+
+**Removed by cut** (not fixed, by decision): CP-C item 6 K2 (no product made
+from the résumé is still sold; such an order is spent and the buyer asked);
+CP-024 for Interview Coach and Career Path; CP-C item 5 and CP-018's delivery
+half (only the Premium Package's figure check produced a retryable 422);
+CP-C item 7 K4 / CP-028 (scan packs); CP-I scenarios 2, 6 and 10 as written
+(2c replaces 2 and 6); S12-026's cut part (Resume Roast, Summary, Elevator
+Pitch, Recruiter View); S12-029's cut part (`src/lib/pdf-export.ts` serves
+only Career Snapshot and Graduate Game Plan); CP-020; CP-042; the Freelance
+generators' bugs beyond what a past buyer receives.
+
+**Not built, with the reason**: CP-C item 7 K3 (refunds are never automatic;
+the territory is refused at checkout instead); CP-023 (a résumé copy per
+session needs the delivery side to read and delete it); CP-033's admin test
+mode on the real checkouts (needs the webhook's test secret first); CP-026
+(Stripe's receipt setting, an owner step); CP-040 (no change needed: the
+relay prints sealed sentences only); CP-046 `/billing` (dropped by the plan;
+`STRIPE_PORTAL_LOGIN_URL` is an owner step); a second "address you buy with"
+(R1's proof row is keyed to the account's current address); email
+preferences for the digests and the fix-plan drip (the card shows the market
+pulse and says where the others are switched); S12-014's layoff-mirror part
+(the mirror's matching is strict on purpose); S12-009's other option
+(analyze-resume still does not receive the free report's fixes; the copy was
+reworded instead); leaving test-mode rows out of revenue readers (no revenue
+reader is in wave 4's files).
+
+### Gating and the money rules, as built
+
+- **Purchases** open only when both `src/config/seller.ts` and
+  `supabase/functions/_shared/seller-identity.ts` carry the legal name and
+  postal address (a test holds the two equal). Until then: no Full Analysis
+  or Pro button anywhere, the checkouts answer 409, and `GET create-checkout`
+  reports `purchasesOpen: false`.
+- **Territory**: while `EU_UK_SALES` is off, create-checkout and
+  create-subscription-checkout answer 451 to a buyer placed in the EU-27, the
+  EEA, the UK or India by currency, time zone, the cf-ipcountry header or an
+  ipinfo lookup, and say which.
+- **Pro**: grants capped at 10 a day and 60 a month (trigger in
+  20261011150000); the renewal consent recorded in `pro_auto_renew_consents`
+  (20261011151000) or the session is expired and the answer is 503; a trial
+  writes on the free allowance until its first paid invoice.
+- **Writing tools**: counted per account in `writing_tool_uses`
+  (20261011160000); a failed call gives its use back.
+- **Marketing mail** skips and logs `paused_no_seller_identity`; fix-plan
+  mails queued before the pause are archived (20261011172000). Transactional
+  mail continues.
+
+### New migrations, in order
+
+All in wave 4's range, each safe twice and ending with a self-check, every
+new table revoked from PUBLIC, anon and authenticated, every definer with a
+fixed search_path and service_role only (one stays anon-callable on purpose:
+`get_scan_health_status`, aggregates only, read by ScanMetrics and the smoke
+script with the publishable key). The ledger applies all of them before the
+functions:
+
+1. `20261011140000` a closed paid order stays closed
+2. `20261011141000` a claimed credit purchase is spent only by the account that claimed it (before scan-credits, free-keyword-scan, get-account-data)
+3. `20261011142000` the mail-watch cron, every 15 minutes
+4. `20261011143000` the sweep picks up made-but-unmailed orders (before retry-failed-deliveries)
+5. `20261011143500` product_delivery_health counts unmailed orders as stuck, leaves test mode out
+6. `20261011144000` the delivery lease (before stripe-webhook, verify-product-purchase, retry-failed-deliveries)
+7. `20261011150000` the Pro grant cap, checkout_buyers, cancel_at_period_end (before the checkouts and check-subscription)
+8. `20261011151000` pro_auto_renew_consents (before create-subscription-checkout, or every Pro checkout answers 503)
+9. `20261011160000` writing_tool_uses and its two definers (before the writing tools)
+10. `20261011170000` account_erase_personal_data and account_mailbox_proven (before delete-account, get-account-data)
+11. `20261011171000` shortlist records no candidate sex or race
+12. `20261011172000` fix-plan mails queued before the pause are archived
+13. `20261011200000` cron_http_answers and the visitors-only scan health reader (before scan-heartbeat, mail-watch, check-alerts)
+
+Round 1's six (20261011100000 to 20261011130000) come first, as in "Deploy"
+above; R1's two (20261014100000, 20261014110000) are on main already once
+main is merged. `20261011103000` stays held.
+
+### Functions and their builds
+
+69 functions deploy (`node scripts/deploy-ledger.mjs --draft`; every one
+answers its build in `x-fn-build`). The ones round 2 changed:
+
+- **.2026-10-11.22** retry-failed-deliveries, send-product-email,
+  reconcile-stripe; **.2026-10-14.22** scan-credits.
+- **.2026-10-11.23** create-product-checkout, create-subscription-checkout,
+  create-scan-pack-checkout, create-test-checkout, check-subscription;
+  **.2026-10-14.23** create-portal-session.
+- **.2026-10-11.24** generate-cover-letter, generate-tailored-resume,
+  generate-interview-coach, generate-freelance-boost, generate-premium-package
+  (and -stream), generate-ats-defense, generate-career-path,
+  generate-cover-letter-stream, scrape-linkedin, and the spend gate's
+  importers (analyze-linkedin-profile, application-fit,
+  generate-career-snapshot, generate-elevator-pitch, generate-graduate-gameplan,
+  generate-keyword-fix, generate-product-preview, generate-recruiter-view,
+  generate-resume-roast, generate-summary, import-freelance-profile, job-fit,
+  nl-search, parse-resume-structured, test-ai-fallback).
+- **.2026-10-11.25** send-agent-digest, send-market-pulse, send-scan-report,
+  send-search-digest, withdraw-subscription; **.2026-10-14.25** delete-account,
+  account-order (new), account-settings (new).
+- **.2026-10-11.26** parse-pdf, parse-docx, fetch-job-posting; job-board
+  stays **2026-09-09.93**.
+- **.2026-10-11.27** public-api, apply-agent (switched off; restamped for its
+  bundled classifier).
+- **.2026-10-11.28** check-alerts.
+- **.2026-10-11.29** (the integration build, where two groups' changes or the
+  integration's own meet in one bundle): stripe-webhook, shortlist-evaluate,
+  generate-application-answers, generate-apply-package, create-checkout,
+  free-keyword-scan-stream, mail-watch (new), scan-heartbeat, agent-mcp;
+  **.2026-10-14.29** free-keyword-scan, get-account-data,
+  verify-product-purchase.
+
+`--against origin/main` reports 0 violations. Against each w4b branch the only
+"same build string on different code" lines are job-board `.93` (shared by
+reservation) and R1's three functions (below, under the owner's steps).
+
+The job-board upload, tallied the deploy's way (its folder plus all of
+_shared, comments included) with the profiles round's two _shared files at
+their size on design/integration (72,818 bytes), is 4,434,303 bytes: 65,697
+under the 4.5 MB line. It was 4,466,852 (33,148 under) before the
+integration moved the long comment runs of four more job-board files into
+`docs/job-board-index-notes.md`.
+
+### Verify
+
+One read-only section per group: `scripts/verify-deploy.d/92-w4b-payments-delivery.sh`,
+`92-w4b-checkout-catalogue.sh`, `92-w4b-generators.sh`,
+`92-w4b-account-compliance.sh`, `92-w4b-job-board.sh`,
+`92-w4b-agents-api.sh`, `92-w4b-ops-email-tests.sh`. `verify-deploy.sh` runs
+them with the rest, behind section 0's positive control and the tally that
+fails a section which prints no verdict. Expected FAILs while the seller is
+unnamed: section 92 account-compliance FAILs the three marketing senders on
+purpose, and checkout-catalogue reports `purchasesOpen` false as a PASS plus
+an owner step. From agent-mcp 2026-10-11.27 on, the owner's count on the
+ChatGPT nonce is 0 in both section 86 and section 92.
+
+### Deploy order
+
+1. R1 (deployed 2026-10-17). Record its verified deploy in
+   `docs/deploy-ledger.json` `verifiedDeploys` with `node
+   scripts/deploy-ledger.mjs --record-deploy` from main (the open
+   `ledger/r1-verified` change does this); until it lands, the ledger reports
+   MUST BUMP for auth-email-hook, auth-signed-in and process-email-queue,
+   R1's functions.
+2. Company profiles 0-2 and the design upgrade (PR #36, design/integration).
+3. Then this branch: merge origin/main into it first. Expect conflicts in
+   the nine locale files, `public/llms.txt`, `src/components/AtsCoverage.tsx`,
+   `src/data/guides.ts`, `src/pages/Index.tsx`, `src/pages/Pricing.tsx`,
+   `docs/deploy-ledger.json` and six tests (git merge-tree, 2026-10-18).
+   company-profiles owns them; wave 4 keeps the other side and re-applies its
+   own hunks and its 349 locale keys (adding only). If main has gained the
+   `ledger/r1-verified` change, keep its 20261014100000 in
+   `appliedOutsideDrizzle` and do not restore 20261008125000 or
+   20261008128000 there (they are proved by behaviour now). Re-run the gate,
+   then generate the message at the merge commit on main with `node
+   scripts/deploy-ledger.mjs --message`: migrations, then the functions, then
+   the frontend publish.
+
+### Owner steps
+
+Before purchases can open:
+
+- Put the seller's legal name and postal address in both
+  `src/config/seller.ts` and `supabase/functions/_shared/seller-identity.ts`
+  (never a placeholder), then publish the frontend and redeploy
+  create-checkout, create-subscription-checkout and create-product-checkout.
+  Marketing mail resumes at the same time.
+- Rehearse a Full Analysis purchase in Stripe test mode (set
+  `STRIPE_TEST_SECRET_KEY` and `STRIPE_TEST_WEBHOOK_SECRET` from a test-mode
+  endpoint), then make one live purchase.
+- Get an accountant's ruling on India's GST and register for EU/UK VAT.
+  Turning `EU_UK_SALES` on lifts the EU/EEA/UK refusal; India also needs IN,
+  INR and Asia/Kolkata removed from `_shared/sales-territory-zones.ts`.
+
+In Stripe:
+
+- Cancel every trialing Agent subscription, decide on past_due ones, honour
+  the active ones (S12-079).
+- Expire every open checkout session for the Agent Pass, the Agent plan, the
+  Apply Assistant and every cut product (Premium, ATS Defense, Career
+  Snapshot, Graduate Game Plan, Career Path, Keyword Fix, Cover Letter,
+  Interview Coach, scan packs, Freelance Boost, Transition Pro), and archive
+  the cut products' Prices (IDs in section 92).
+- Subscribe the webhook endpoint to `checkout.session.async_payment_succeeded`
+  and `checkout.session.async_payment_failed`, and say whether delayed
+  payment methods are on (CP-029).
+- Turn on "Successful payments" customer emails (receipts, CP-026).
+- If Radar custom rules are available, block `:card_country:` and
+  `:ip_country:` for the EU-27, IS, LI, NO, GB and IN as a backstop.
+- Count live Pro subscriptions; any that exist were promised every paid tool
+  and Freelance Boost: email them the new perk list with a cancel link.
+- Honour each open Apply Assistant order by hand with generate-apply-package;
+  answer needs_input replies by delivering by hand. No refunds.
+
+Secrets and settings:
+
+- `CANARY_EMAIL` (a mailbox you read, with an account) and `HC_PING_URL` (a
+  healthchecks.io check, 15-minute period) for mail-watch; a second,
+  separate check for the heartbeat in `HC_HEARTBEAT_PING_URL` (10-minute
+  period, 20-minute grace); the GitHub secret `BOARD_HEALTH_PING_URL` (30
+  minutes, 60 grace). Never one check for two senders.
+- Confirm the vault holds `email_cron_key` and
+  `email_queue_service_role_key`, so the mail-watch cron posts.
+- Optional: `MCP_BUCKET_SECRET` (changing it later rotates every keyless
+  bucket); `SYNTHETIC_SCAN_SECRET` (and export it when running the load and
+  smoke scripts).
+- After section 92 shows scrape-linkedin answering 410, delete the
+  `FIRECRAWL_API_KEY` secret.
+- Lovable Cloud auth: switch on Confirm email and Secure email change (and
+  Secure password change and a password-changed notification, if offered).
+  "Change sign-in address" shows only once `mailer_autoconfirm` is false.
+- Turn off Lovable's own analytics (`/~flock.js`), which our consent banner
+  does not gate.
+- Enable Stripe's customer-portal login link and set
+  `STRIPE_PORTAL_LOGIN_URL` (CP-046).
+- Optional and irreversible: `DELETE FROM public.shortlist_demographics`.
+
+After the deploy:
+
+- Run `scripts/verify-deploy.sh`. Then the reads section 92 prints as INFO:
+  `pg_trigger` has `product_delivery_stays_closed` enabled;
+  `product_delivery_health`'s definition contains `email_failed`;
+  `has_table_privilege('authenticated','public.shortlist_demographics','INSERT')`
+  is false; `select count(*) from pgmq.q_transactional_emails where
+  message->>'label'='fix-plan-drip'` is 0; the ChatGPT nonces of sections 86
+  and 92 count 0 in `job_board_search_events` and `job_board_search_misses`.
+- Optional proof: pause `scan-heartbeat-sentinel` for 30 minutes once and
+  confirm the healthchecks.io check mails you.
+- Watch the INFO lines for the experience, salary and country re-derivations
+  (EXPERIENCE_VERSION 2, SALARY_PARSE_VERSION 11, COUNTRY_MAP_VERSION 10).
+- Record the deploy with `--record-deploy` from main once verify passes;
+  release `20261011103000` only when the ledger prints RELEASABLE.
+- Changelog entries in nine locales, each checked live, in the next frontend
+  publish.
+
+### Left for other owners
+
+- **profiles+design** (owns `src/pages/Jobs.tsx`, `Footer.tsx`,
+  `scripts/prerender-*.mjs`, `public/sitemap.xml`, `public/llms*.txt`,
+  `src/index.css`, the locale files):
+  - Jobs.tsx: on 401 `sign_in_required` from generate-tailored-resume,
+    generate-cover-letter or generate-interview-coach, a sign-in prompt that
+    returns to /jobs; on 429 `daily_limit`/`monthly_limit`, the server's
+    message or the reset time from `resetsAt` (ApplicationAnswers.tsx does
+    this already and can be copied).
+  - Footer.tsx: remove the Freelance Boost link; switch `footer.copyright`
+    (en-GB renders "© {{year}} CV Booster") to a new key
+    `footer.copyrightNamed` = "© {{year}} {{name}}. All rights reserved." with
+    `name = TRADING_NAME`.
+  - prerender-seo.mjs: `/freelance-boost` noindex, titled "Freelance Boost is
+    no longer sold", body saying both tiers are no longer sold, not part of
+    Pro, and a past buyer's link works 90 days; drop it from the sitemap
+    list. `/pricing`: the one-time list is the $5 Full Analysis only (fix the
+    "$5–$5" description), the Pro line from `PRO_SUMMARY` (not "Unlimited
+    scans and every paid tool included"), no Apply Agent plan or pass, and
+    "purchases open soon" while `purchasesOpen()` is false. The FAQ JSON-LD
+    should read the reworded keys (`faq.questions.vsChatGPTTrue.*`,
+    `howLongBound`, `subscriptionLineFa`).
+  - `public/sitemap.xml`: remove `/freelance-boost`.
+  - `public/llms.txt` lines 7 and 52: remove Freelance Boost ($29) and
+    "all-access subscription (Pro)"; Pro is the writing tools, the $5 Full
+    Analysis included and no daily cap on scans.
+  - `src/index.css`: self-host the Google Fonts import (S12-011, CP-039).
+  - Optional (S12-020 precision): `src/lib/invoke-job-board.ts` could send
+    `tzOffset: new Date().getTimezoneOffset()` on list and facets calls; left
+    out because a per-zone body would split the board's response cache.
+- **R1** (auth-email-hook, process-email-queue): render GoTrue's
+  `password_changed_notification` as a notice with no link to the account's
+  address, like EmailChangeNoticeEmail (CP-007); optionally refuse purpose
+  "marketing" payloads in process-email-queue while the seller identity is
+  empty, as a second guard behind 20261011172000. And record R1's verified
+  deploy (deploy order, step 1).
+- **ops-email-tests, next round**: scan-heartbeat still counts
+  `content_generated` as delivered and its named-order mail lists neither
+  `email_failed` nor made-but-unmailed orders (CP-021; the verdict is right,
+  because product_delivery_health counts them stuck, and mail-watch R2/R8
+  alarm on them); owner alerts from scan-heartbeat, check-alerts and
+  check-error-spikes still come from `onboarding@resend.dev`/`alerts@resend.dev`
+  and stamp before reading Resend's answer (CP-027); the S12-142 absolute
+  ceiling alarm (count `scan_metrics` rows with `metadata->>'ceilingRefused'`
+  each hour); and no cron migration sets pg_net's `timeout_milliseconds`.
+- **payments-delivery, next round**: CP-023 (a résumé copy per session, read
+  and deleted on delivery or after 48 h); CP-033's admin test mode; the
+  success page's "Save this to your account" card shows only the masked
+  address and asks for a code to the paid-with address (CP-F); revenue
+  readers leave `metadata.livemode = false` rows out.
+- **generators, next round**: InterviewCoach takes `initialData` from
+  recover-purchase and generates only when nothing is saved, for past buyers
+  (CP-024, CP-F half); `_shared/pro-standing.ts`'s comment still says
+  "unlimited scans" (changing it changes many bundles, so it waits for a
+  round that restamps them).
+- **A later job-board round**: the layoff-filings alias table (S12-014's
+  mirror part), regenerated in both byte-identical copies.
+
+The translation pass added every builder's new keys and the integration's
+own (349, all listed in the translation commit). 146 keys called in source
+were already missing from en.json before this round (94 of them in the
+switched-off agent's console, the rest under boardHero, receipt, atsCoverage,
+accountPage and a few others); they render their English defaults and are
+not this round's.
+
+### Checks run on the second round
+
+On the integration branch, 2026-10-18 (load average 7-20 from other workflows):
+
+- `npx tsc --noEmit -p tsconfig.app.json` clean (also on every commit); the
+  worker's `tsc --noEmit` clean.
+- `bash scripts/check-functions.sh`: every edge function typechecks and the
+  Deno tests beside them pass (`deno.lock` restored afterwards).
+- The full vitest suite once, run alone (478 s): 1,077 files passed, 1
+  skipped, 5 failed (9 tests), all left by the second r1/integration merge
+  (the fake database lacked the `.neq` R1's guard now uses; two account tests
+  assumed R1's sign-in switches were off; R1's member-checkout test pressed
+  the cut Cover Letter; the D8 pin read the hook before R1's single prefill
+  read). Fixed, those five files pass (47 tests); the pre-push hook runs the
+  whole suite again on the push.
+- The money-path E2E (`npx vitest run -c vitest.e2e.config.ts`): 4 files, 23
+  tests.
+- `node scripts/deploy-ledger.mjs --against origin/main`: 0 violations;
+  `--draft`: 69 functions and 21 migrations to apply, the held
+  20261011103000, and MUST BUMP only for R1's three functions (deploy order,
+  step 1).
+- `--overlap HEAD origin/design/integration origin/r1/integration`: no
+  undeclared overlap, no shared function.
+- The job-board upload tally with design/integration's _shared files:
+  4,434,303 bytes, 65,697 under the line.
+- Every fix the integration made was proved by restoring the code it changed:
+  its test fails there and passes on the fix.
