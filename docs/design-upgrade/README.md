@@ -1,12 +1,344 @@
-# Design upgrade: pass A and the listing and company groups (branch `design/integration`)
+# Company profiles 0-2 and the design upgrade: one deploy (branch `design/integration`)
 
 Owner goal of 2026-10-11: upgrade the company pages, check every job listing
 on the board, and upgrade the site's design, with bug checks before and after.
 
-This integration merges three branches onto `profiles/integration`
-(`823da0c4`, company profiles phases 0 to 2), built 2026-10-12. It is
+Company profiles phases 0 to 2 and the design upgrade now ship **together**,
+as one integration PR to main (ledger reservation `company-profiles`,
+`deployOrder` 2, after R1 at 1.5). This branch carries:
+
+- company profiles phases 0 to 2 (`profiles/integration`, `823da0c4`; what
+  ships and why is in [its README](../company-profiles/README.md));
+- design pass A with the listing and company groups (the 2026-10-12
+  integration below);
+- the last fix round, 2026-10-12 to 2026-10-17: Track 1 accuracy
+  (`pd/accuracy`), the crawler bake (`pd/bake`) and pass B, which wires the
+  board (`pd/wire`, which contains the other two);
+- origin/main at `5464e502`: R1, the wave-3 closeout, SEO-024 and the
+  disk alarm.
+
+**The procedure below is the only deploy procedure for both.** The company
+profiles README points here.
+
+## Deploy procedure (company profiles 0-2 and the design upgrade together)
+
+The Lovable message is generated, never copied from this file:
+`node scripts/deploy-ledger.mjs --message` at the merge commit on main
+(docs/DEPLOY-LEDGER.md). The tables below are there to check the generated
+message against.
+
+### 0. Before the merge
+
+1. **R1 goes first** (`critical-path`, deployOrder 1.5). On 2026-10-17 the
+   ledger at this branch still lists R1's `20261014100000` as pending, and
+   it lists six R1 functions as MUST BUMP: `auth-email-hook`,
+   `auth-signed-in`, `free-keyword-scan`, `get-account-data`,
+   `process-email-queue` and `scan-credits`. Each still serves its
+   `2026-10-14.1` stamp, but its own folder changed after the stamp (R1's
+   fix rounds, `3a6f9d14` to `77811380`). This holds on origin/main
+   itself, so `--message` on main exits 2 until the R1 owner bumps them or
+   shows that the live code is the repo's. That is settled first. Nothing
+   on this branch touches those functions.
+2. **The owner signs** what is listed under "Owner sign-offs" below. The
+   GD6 copy and the D7 list come before the publish. The rest can follow it.
+3. **One integration PR whose full suite passed** (the pre-push gate runs
+   it again). Main freezes on the merge until step 4 verifies and
+   section 49 shows no gap (docs/DEPLOY-LEDGER.md section 2).
+
+### 1. Migrations, before the functions, in this order
+
+They go through Lovable's staged runner one at a time. Every file checks
+itself (a DO block that RAISEs) and is safe to run twice. If the runner
+reports a failure, **stop**. Do not let it edit the file or stage it under
+another name. Read the RAISE and fix it on a branch. A migration counts as
+applied when sections 80, 81 and 91 show its behaviour, not when the runner
+says so.
+
+| # | Migration | What it does | Notes |
+|---|---|---|---|
+| 1 | `20261012100000_an_employer_is_named_by_its_hiring_system_and_its_board` | `employer_segment`, `employer_key` | service role only |
+| 2 | `20261012101000_a_company_page_reads_facts_only_from_its_own_hiring_system` | intel, similar and financials pool by employer key | after 1. It refuses to replace a live reader whose body it does not recognise, and prints the hash it found |
+| 3 | `20261012102000_a_headcount_says_the_day_it_was_true` | `company_profiles.as_of` | one nullable column |
+| 4 | `20261012110000_a_perk_is_counted_from_the_employers_own_postings_and_shown_only_once_audited` | perk tables, sweep, rollup, audit, `get_employer_perks` | edited in place this round (never applied anywhere; main's drizzle journal has no 20261012 entry). It drops and recreates `employer_perk_sweep_take`, whose return gained `text_hash` |
+| 5 | `20261012110100_the_census_lists_the_perk_reader_with_its_caller` | `client_callable_census()` lists the reader | |
+| 6 | `20261012120000_a_relist_warning_never_reads_another_site` | `board_multi_site_title_share` (service role), `get_repost_index` re-issued | Track 1 A2 |
+| 7 | `20261012121000_a_fill_share_counts_only_roles_the_board_was_watched_for` | `get_company_fill_curve` re-issued: delayed entry, the R(14) interval, the 21/28-day floor, eight appended columns | Track 1 A4. The live frontend ignores the new columns until the publish |
+| 8 | `20261012122000_a_field_admits_a_board_by_what_it_could_see_before_the_cohort` | `get_category_fill_curve` re-issued | Track 1 A5 |
+| 9 | `20261012130000_four_company_tables_are_read_through_their_readers_and_never_by_a_client` | `showcase_excluded`, `company_profiles`, `company_financials` and `company_name_overrides` closed to PUBLIC, anon and authenticated | safe before the publish: neither the live frontend nor this one reads them directly (both use the definer readers), and job-board reads two of them with the service role |
+| 10 | `20261012135000_a_workday_tenant_that_hosts_another_employer_is_read_one_site_at_a_time` | `workday_site_is_own_employer`; `get_company_intel` and `get_similar_companies` rewritten from the catalogue | after 2. It refuses a live body it does not recognise (S12-130) |
+| - | `20261012111000_the_perk_sweep_runs_every_minute_under_a_lease_and_the_rollup_nightly_under_a_budget` | the vault key and the two crons | **HELD** (`holdUntilVerified`) until step 6 |
+
+### 2. Functions
+
+| Function | OPTIONS must answer `x-fn-build` | Note |
+|---|---|---|
+| `employer-profiles` | `employer-profiles.2026-10-12.2` | new; `verify_jwt = false` from its `supabase/config.toml` block (the cron and the owner's admin key carry no JWT) |
+
+No other function changes. The shared hiring-record gate and the perk
+extractor under `supabase/functions/_shared/` are imported only by
+`employer-profiles`. `--against origin/main` finds 0 violations.
+
+### 3. Publish the frontend
+
+Lovable rebuilds the SPA and the prerender bake. The integration's build
+from live data (2026-10-17) wrote 3,388 static pages and a sitemap of
+1,369 URLs (500 posting, 486 company, 383 other). The dist is 126.6 MB in 7,063 files (the base before the carry was 67.0 MB in 3,624; the bake builder measured 100.8 MB in 6,890 on 2026-10-12). Most of the growth is the once-published
+pages the bake now keeps (1,013 company stubs and 713 seeded posting pages),
+so the owner confirms that Lovable publishes a build of this size.
+
+### 4. Verify (read-only)
+
+`bash scripts/verify-deploy.sh`. The sections this deploy answers to:
+
+| Section | File | Judges |
+|---|---|---|
+| 80 | `80-profiles-identity.sh`, `80-company-profiles-perks.sh` | identity and the perk engine (`employer-profiles.2026-10-12.2`, the reader answers anon, the perk tables refuse it) |
+| 91 | `91-profiles-gate-and-fixes.sh` | the hiring-record gate, the LCA line, headcount, llms.txt, V3, V3b, V7, V7b (it reads the lock's 42501 on `company_profiles.as_of` as the lock) |
+| 81 | `81-profiles-design-accuracy.sh` | Track 1 on named pages and the four-table lock |
+| 83 | `83-profiles-design-bake.sh` | the crawler copy sells nothing retired; once-published company URLs keep a page of their own |
+| 87 | `87-profiles-design-pass-b.sh` | the board serves the lander, card, pane and filter row; the agent pitch is gone |
+| 40 | `40-db-exposure.sh` | the census shows nothing unlisted |
+| 49 | `49-deploy-ledger.sh` | no gap |
+| 62, 77 | re-pointed this round | the posting page's pay and fit lines, read in the shared posting chunk the posting page imports |
+
+Before the deploy, sections 81, 83 and 87 fail on production by design
+(81 on every claim except 81d's gate side and 81g). 83 (7 lines) and 87 (6
+lines) pass on the integration's local build, served the way the host
+serves it. On 2026-10-17, 83 still failed on production, and 62 and 77,
+re-pointed, still passed there. Then run the
+after-audit checklist at the end of this file, and record the verified
+deploy in `docs/deploy-ledger.json` `verifiedDeploys`.
+
+### 5. Release the hold (a second, ledger-generated message)
+
+Once section 80 passes, empty the `20261012111000` entry in
+`holdUntilVerified` and send the message the ledger generates. The sweep
+starts within a minute. Then watch `node scripts/perk-audit.mjs status`,
+measure the perk tables' size after the top 2,000 boards, and compare
+job-board's deep-cursor rate over the 2 hours before and after (V6b,
+within 10%).
+
+### 6. Perks: the AI-judge audit and the flags (D2)
+
+For each candidate key (health, dental, vision, life_dis, retire, pto,
+parental, equity, visa_not_offered), run
+`node scripts/perk-audit.mjs draw --perk <key>`. It writes 60 publishable
+rows, and since extractor version 2 up to a quarter of them come from a
+negation stratum, each row labelled. Independent AI judges grade every row
+and the owner spot-checks at least 10. Then
+`node scripts/perk-audit.mjs record --file <file>`: 57 of 60 publishes the
+key for 45 days, and fewer unpublishes it. Re-audit monthly. A key nobody
+re-audits stops showing on day 45 by itself.
+
+### 7. Changelog, then thaw
+
+Entries go in all nine locales for what seekers can see, each claim read
+against production, in the next frontend publish (owner rule). The perks
+entry waits until a key is published and the block is seen live on a
+lander. Main thaws when section 49 shows no gap.
+
+### Owner sign-offs
+
+- **D7, the name gate's dry run.** No page indexable today leaves the index
+  this round. The integration's bake (2026-10-17) lists four pages a
+  stricter rule would drop, each kept: two UKG postings whose employer name
+  is logo text (`recruiting2~AME1104ANBT~…/9e54289b…`,
+  `recruiting~REG1001RWHM~…/238cdd44…`), `/jobs/company/eexs~us2~CX_3001`
+  ("All") and `/jobs/company/icfcjb~ocs~CX_1` ("Aerospace"). The
+  signing table, `docs/company-profiles/name-gate-dry-run.md`, is
+  regenerated from the integration's bake (it had five rows on 2026-10-12;
+  the list moves with the live postings). Sign drop yes or no per row. A `company_name_overrides` row is the better fix for each. Pages
+  leaving the index under rules that existed before this round:
+  `disney~wd5~disneycareerdc` and `hpe~wd5~Jobsathpe` point their
+  canonical at a larger board of the same employer, and
+  `nvent~wd5~nVent` keeps a noindex page of its own instead of the
+  homepage copy.
+- **GD6, the copy changes.** The re-post sentence (it drops "at least" and
+  keeps "came back under the same posting or"), "{{n}} roles dated in the
+  last 30 days", the growth line's label, the USAJOBS hub's wording, "We
+  could read only part of this board", the Ghost Job Index's "open roles
+  right now", the company title "{company} jobs: N open roles from their
+  own hiring system", and the bake's apply-yourself line.
+- **GD1, GD3, GD4, GD5.** The listing-age line is not shipped (GD1). No
+  takedown verdict is shown anywhere (GD3, GD4). The 90-day counts are
+  refused on every lap-read board (GD5(a)).
+- **The collision page's fold** (pass B decision 1): the first card is at
+  594px at 375 (budget 520).
+- **The dist size** (step 3).
+- **IndexNow.** Nothing was submitted. Re-submitting the historical URLs
+  (SEO-012) waits for the owner's go-ahead once the stubs are live.
+- **`employer-profiles` keeps `employer-profiles.2026-10-12.2`**, although
+  `sweep.ts` and the extractor changed this round. It has never been
+  deployed, so .2 is still its first build. Bump it if a .2 build was ever
+  served anywhere.
+- **Left for wave 4 or the product-line owner** (read by files this round
+  may not touch): `agentHero.sub` and `agentHero.inventory` ("verified
+  openings", "submit where employers allow it"), `homeHero.badge` ("AI apply
+  agent"), `pricingPage.allProductsOneTime`, `pricingPage.passLine` and
+  `homeAgent.passLine` (the pass), the Premium Package purchase-flow
+  strings (`freeResults.*`, `productSuccess.*`,
+  `pricingPage.premiumPackages`), and Pricing.tsx's own JSON-LD (the pass
+  and the $99 `highPrice`). None of them is read by the board or the bake.
+  Wave 4 sets `BAKE_STILL_SELLS_THE_PASS` to false once both are merged.
+
+## This round's integration (2026-10-17, branch `pd-int`, pushed as `design/integration`)
+
+| Step | Commit | What |
+|---|---|---|
+| fast-forward | `73aecb4a` | `origin/pd/wire`: pass B on `pd/accuracy` (`da3aa29b`) with `pd/bake` (`0fd722b2`) merged |
+| merge | `c3176e7e` | `origin/main` (`5464e502`) |
+| ledger | `c65b2629` | every file shared with wave 4 has an owner; sections 62 and 77 re-pointed |
+| verifier | `9a484934` | section 83's C4 accepts a canonical to a larger board of the same employer |
+| merge fixes | `2c41a5a6` | the four guards main's merge broke; main's sibling item on the design rules; `moreOpenings_many` |
+
+**Conflicts with main, each resolved by ownership:**
+
+- `docs/deploy-ledger.json`, `docs/DEPLOY-LEDGER.md` (wave3 owns the
+  policy): main's version, with profiles' `20261012111000` hold re-applied
+  and the `company-profiles` reservation naming `design/` and `pd/`. Main
+  already carried the reservation at deployOrder 2. The branch's duplicate
+  copy of it was dropped (the S12-184 guard fails on a repeated key).
+- `public/llms.txt` and two hunks of `scripts/prerender-seo.mjs`
+  (company-profiles owns the bake): this branch's. The import list already
+  carried main's `postingFreshBudget`. Main's side added "a live Agent Pass
+  or the Agent plan" and the apply tools to the MCP lines.
+- `src/pages/Jobs.tsx` (seven hunks): this branch's for the legacy lander
+  (the design lander replaced it and carries its own S11-020 uncarried
+  variant, `landerUncarried` into the model's `carried`). Main's S11-005
+  sibling fold (the postings count, "N more openings of this role", "See
+  all N openings") merged into the JobCard `siblings` slot by itself. The
+  folded `siblings` field moved to `src/lib/board-job.ts`, where the
+  `BoardJob` type now lives. S11-037's alert path merged as it was.
+- The nine locales, merged key by key with a three-way JSON merge: no key
+  changed on both sides. Main's added keys are kept (the URL fetcher, the
+  file-damage toasts, S11-005's `hideOpenings`, `moreOpenings` and
+  `seeAllOpenings`, S11-037's `searchAlertsOn`, `atsRoles`,
+  `productFeatures` and more), except `jobsPage.uncarriedH1`,
+  `uncarriedSeoTitle` and `uncarriedBody`, whose only reader was the
+  legacy lander. The design lander reads `companyProfile.uncarried.*`.
+
+**Shared with wave 4** (`--overlap` exits 0; every file has an owner in
+`sharedFiles`, and no function is shared). company-profiles owns all 24
+files (the ledger itself stays wave3's), because it deploys first. Wave 4 takes this branch's version and
+re-applies only its own hunks:
+
+- `public/llms.txt`, the nine locales and the hand-off test (owned as wave
+  4's own note already said);
+- `src/data/guides.ts` and eight tests: seven that pin the retired
+  products' copy, and main's S11-121 test, whose llms.txt case now reads
+  that a paid key opens the scorer and that no retired product is named
+  (`a-pass-paid-for-forms-the-agent-could-only-prepare`,
+  `a-company-count-that-names-both-of-its-numbers`,
+  `a-pass-number-on-a-page-is-a-placeholder`, `agent-hallmark`,
+  `apply-agent-guide`, `pricing-truth`,
+  `the-page-says-six-and-the-server-says-eleven`, `which-agent-do-you-use`);
+- `src/pages/Pricing.tsx` and `src/components/AtsCoverage.tsx`: classes
+  only, from pass A (two in-sentence links to `.link`, the as-of line to
+  `text-subtle-foreground`);
+- sections 65 and 74: the English-chunk finder keys on `sourceNote`,
+  because `agentPitchCta` is gone.
+- **Locale values this branch EDITED, which wave 4 must take:** 32 en values,
+  the same in every locale: `hero.badge`, `hero.headline.feedbackLive`,
+  `hero.headline.feedbackPlain`, `hero.browseJobsLive`,
+  `hero.browseJobsPlain`, `freeResults.matches.subtitle`,
+  `homeHero.statOpenings`, `accountPage.trackerEmptyCta`,
+  `explore.repostWarn`, and `jobsPage.` `seoDescription`, `subtitle`,
+  `companySeoTitle`, `companySeoDescription`, `openRolesTip`,
+  `landerSeoDescription`, `orientTitle`, `orientTitlePlain`,
+  `verdictFresh`, `verdictChurn`, `takedownEmpty`, `welcomeLine`,
+  `subtitleShort`, `badgeLive`, `zeroTitle`, `zeroBody`,
+  `repostTipTracked`, `verdictChurnFloor`, `verdictSlowFill`,
+  `repostTipFloor`, `repostTipRoles`, `repostChipFloor` and
+  `activelyHiringUnavailable`. It removed 63 superseded keys (the apply-agent
+  pitch among them). None of them is a key wave 4 changed.
+
+**Gate at `2c41a5a6` (and `9a484934` for the full run):**
+
+| Check | Result |
+|---|---|
+| `npm run typecheck` | clean (and at pre-commit on every commit) |
+| `bash scripts/check-functions.sh` | every edge function typechecks and the Deno tests beside them pass; `supabase/functions/deno.lock` restored |
+| Full vitest suite, once, at `9a484934`, with no other suite running | 1,021 files passed, 4 failed, 1 skipped; 13,131 tests passed, 7 failed, 23 skipped (353 s). All 7 came from the merge with main: main's S11-020 page test (2), main's S11-121 llms.txt case (1), the raw-palette ratchet on main's sibling markup (1) and the `_many` plural of main's `moreOpenings` (3). Fixed in `2c41a5a6`, and the 7 files (163 tests) pass. The pre-push gate runs the full suite again on the pushed head |
+| `node scripts/deploy-ledger.mjs --message` | exit 5, REFUSED, by design: the ledger generates the message only from origin/main (Lovable pulls main). `--draft` prints the 10 migrations, the hold, `employer-profiles.2026-10-12.2` and the publish, plus R1's pending `20261014100000`. On main the run would exit 2 for R1's six MUST BUMP functions (step 0) |
+| `node scripts/deploy-ledger.mjs --against origin/main` | exit 0: 1 function's code differs from main (`employer-profiles`), 0 violations |
+| `node scripts/deploy-ledger.mjs --overlap HEAD origin/wave4/integration origin/r1/integration` | exit 0: 25 shared files, all declared (24 owned by company-profiles, the ledger by wave3), no shared function; r1/integration is in main (0 files) |
+
+**Bake** (vite build plus the prerender bake of a `git archive` export, with
+live read-only data, 2026-10-17):
+
+- **Pages:** 3,388 static pages (each written at `x.html` and `x/index.html`, so 6,775 html files). The company carry: 500 company pages (486 indexable, 9 canonical to a larger board of the same employer, 1 to a larger different employer under the same name, 1 with too few openings, 3 still named by a tenant code: `abercrombie~wd108~anf`, `shm~wd5~Summit_CityMD`, `synnex~wd5~tdsynnexcareers`; 9 names repaired, 0 new pages refused), plus 1,015 once-published company paths this bake did not choose (1,013 stubs, 2 noindex). Postings: 500 live (499 carried, 1 new) at a ceiling of 500, 272 gone, 3 retired, 713 seeded.
+- **Sitemap:** 1,369 URLs: 500 posting, 486 company, 383 other (live site the same day: 1,367, i.e. 500, 484, 383).
+- **Size:** 126.6 MB in 7,063 files.
+- **Retired claims, grepped over every baked html, txt, json and xml file:** the Apply Agent's $99 plan 0; "verified openings" or "verified jobs/roles" 0; "we submit", "submits applications for you" or "applies for you" 0. The $29 pass, the Apply Assistant, the Premium package and "zero ghost" appear only in `/changelog`'s dated history (entries that say what was fixed, e.g. 2026-10-11 "Our headline promised 'Zero Ghost Jobs'"), and the pass once in a `robots.txt` comment naming its receipt path. No page offers any of them. The bake's own check: "no written page outside the employers' posting text sells or describes a retired product".
+- **Verifier sections on a local copy served the way the host serves it:** 83 passes 7 of 7 (after the C4 fix), 87 passes 6 of 6, and 62 passes all 13 lines. Against production the same day, 83 fails all 7, and 62 and 77 pass.
+- **The name gate's dry run** (D7): 4 pages indexable today that a stricter rule would drop, each kept (see "Owner sign-offs"). A second fresh build and bake, run to write that report (`PRERENDER_NAME_GATE_REPORT`), found the same four rows and wrote 3,389 pages and a sitemap of 1,368 URLs: the live data moved by a page between the two bakes.
+
+## Track 1 accuracy (branch `pd/accuracy`, `da3aa29b`)
+
+Ghost metric Track 1 (A1-A6), under owner decisions GD1-GD9:
+
+- **A1.** The shared hiring-record gate (`src/lib/hiring-record-gate.ts`,
+  byte-identical with `supabase/functions/_shared/hiring-record-gate.ts`)
+  is a whitelist. The 14-day share, the median and the 30-day share need a
+  `full_read` board with a watch floor. `lap_proven` keeps "lap", and
+  every other bucket refuses as "unproven read". A share outside its own
+  interval refuses as "interval". "Never half" needs a stated 30-day share
+  whose lower bound is above one half. The 90-day counts refuse on every
+  lap-read board (GD5), on an unproven read, on a reply without the
+  multi-site column, and where the re-post test reads other sites.
+- **A2.** The came-back caution asks the gate first and is the neutral
+  sentence in nine locales. `get_repost_index` (20261012120000) leaves out
+  multi-site and non-full-read boards. The Ghost Job Index leaderboard
+  ranks only shares the gate passes.
+- **A3.** Open-role counts say "dated in the last 30 days", split off
+  undated roles and print the board's own total from its newest complete
+  read. The zero page says what that read saw. The feed-read stamp shows
+  only on full-read boards, and the trust tip says "Re-checked when you
+  apply, where the employer's system allows it".
+- **A4/A5.** 20261012121000 and 20261012122000 re-issue the company and
+  category fill curves (delayed entry, the R(14) interval, the floors, the
+  published pool sizes), with pglite tests.
+- **A6.** A battery runs on live `get_company_fill_curve` replies recorded
+  read-only on 2026-10-12 and refuses every named defect.
+- **The four-table lock** (20261012130000), **S12-130** (20261012135000)
+  and **S12-091/186/187/188** (perk extractor version 2, the rollup's chunk
+  budget, English-only lines, the oldest read date and the text hash), each
+  with a test that fails on the code before it. Verify section 81 judges
+  the round on named live pages.
+- **Not done here:** GD1's listing-age line (it waits for its audit), any
+  takedown verdict (GD3, GD4), and `get_company_financials`, which still
+  matches on the tenant segment (a hosted site such as DWS on the `db`
+  tenant could still show the tenant's SEC card).
+
+## The bake (branch `pd/bake`, `0fd722b2`)
+
+- No baked page, JSON-LD block, guide, `llms.txt` or `llms-full.txt` offers
+  the Apply Agent's plan, the pass, the Apply Assistant or the Premium
+  package, or says we submit applications. `/agent` is a retirement page.
+  `/`, `/agent`, `/agents` and `/pricing` carry the apply-yourself line,
+  naming only Claude, ChatGPT and Claude Code. The bake checks its own
+  output (`scripts/prerender-retired.mjs`).
+- Company titles read "{company} jobs: N open roles from their own hiring
+  system", with the count dated in the body.
+- SEO-002: a published company or posting URL the bake no longer chooses
+  keeps a noindex page of its own (its old page, then a stub, then a
+  tombstone under 1 KB), seeded once from the sitemap history. SEO-006
+  repairs names first and refuses only new pages (D7). SEO-025: lastmod
+  ignores count-only changes. SEO-033: the home-only JSON-LD is dropped off
+  home. SEO-036: one member of a duplicate group keeps its index.
+  S12-022: the company URLs that served the homepage get their own pages.
+- Posting pages never pass the stated ceiling, and the claims sweep no longer
+  reads the bake's generated bundle. This closes the design README's old
+  decision 5.
+- Verify section 83 judges all of it as Googlebot.
+
+## Pass A integration (2026-10-12)
+
+This integration merged three branches onto `profiles/integration`
+(`823da0c4`, company profiles phases 0 to 2) on 2026-10-12. Pass A was
 **frontend only**: nothing under `supabase/`, `job-board`, `scripts/`,
-`public/` or the `index.html` head changes.
+`public/` or the `index.html` head changed. (The 2026-10-12 to 10-17
+round added migrations, the bake and verifier sections: see above.)
 
 | Merge | Branch (tip) | Group |
 |---|---|---|
@@ -33,33 +365,6 @@ fixes" below). The integration needed two fixes of its own:
   main-locale parity test (`src/i18n/index.test.ts`) already uses. Three gaps
   planted as a negative control each still fail it: a missing German key, a
   missing German plural group and a missing Spanish `_many`.
-
-## Deploy procedure: read this first
-
-1. **Not before company profiles 0 to 2.** This branch rides on
-   `profiles/integration`, which is not on main yet. Profiles merges first and
-   is deployed and verified ([its README](../company-profiles/README.md): verify
-   sections 80, 91, 40 and 49, then its held migration released). Until it is
-   live the perk reader `get_employer_perks` does not exist, and the lander
-   asks for it and gets a 404 (measured on this build; the perk block renders
-   nothing then, so seekers see no error). Main then thaws
-   (docs/DEPLOY-LEDGER.md section 2).
-2. **Take main first.** Main (`e75945fe`, PR #32, when this was built) is not
-   an ancestor of this branch, and profiles will have merged by then. Merge
-   `origin/main` into `design/integration`, re-run the typecheck and the full
-   suite, and push. A merge conflict here means a group stepped outside
-   its files: give the file to its owner.
-3. **Merge through an integration PR whose full suite passed.** Then main
-   freezes until the deploy below verifies.
-4. **Frontend publish only.** No function, migration or job-board version
-   changes here. Run `node scripts/deploy-ledger.mjs --message` at the merged
-   commit. It must list no function and no migration that this branch added.
-   If it lists any, they belong to another workstream, and that workstream's
-   deploy goes first. The Lovable publish rebuilds the SPA and the prerender
-   bake; the frontend goes live within minutes of the publish.
-5. **Verify** with the after-audit checklist below and
-   `bash scripts/verify-deploy.sh`. One verifier line is expected to fail:
-   see "Decisions" below.
 
 ## What changed
 
@@ -140,7 +445,7 @@ fixes" below). The integration needed two fixes of its own:
   hid them mid-visit); the pane's employer link is underlined; four
   opacity-dimmed texts moved to the measured `subtle-foreground` token.
 
-### Built, but dormant until G1 pass B wires `src/pages/Jobs.tsx`
+### Built in pass A, dormant until pass B wired `src/pages/Jobs.tsx` (done: see "Pass B")
 
 Pass B is done on branch `pd/wire` (see "Pass B" below); this section and
 the next describe the state at the design branch's own head.
@@ -162,7 +467,7 @@ the next describe the state at the design branch's own head.
   the company off its own page and wraps its row; focus stays in the row
   when a chip or "Clear all" is pressed; the hidden submit is no Tab stop).
 
-### Pass B must also
+### Pass B must also (done: see "Pass B")
 
 - Swap G3's stand-ins for G1's modules: `src/lib/company/format.ts` for
   `src/lib/format.ts`, and `src/components/jobs/company/parts.tsx`
@@ -306,6 +611,8 @@ files, 3,110 kB. The bake wrote 3403 static html pages.
    `src/pages/Agent*.tsx` (wave 4's file), not by the board or the bake.
 
 
+## Review fixes (2026-10-12, on top of `3ebdcbb2`)
+
 Each finding was reproduced first (live data from the read-only job-board
 API, a headless preview of `3ebdcbb2`, or a harness mounting the dormant
 components), then fixed with a test, or measured and fixed in part.
@@ -434,7 +741,8 @@ The earlier set (the 2026-10-11 design audit, and the first branch shots in
 
 ## Decisions for the owner
 
-1. **Verify section 77 will fail one line after this deploys.**
+1. **Resolved 2026-10-17: section 77 is re-pointed.** (Kept for the record.)
+   **Verify section 77 will fail one line after this deploys.**
    `scripts/verify-deploy.d/77-wave3-board-data-ingest.sh` (line 60 here)
    wants `jobPostingPage.scoreCta` in the JobPosting chunk. This build's
    JobPosting chunk no longer carries it; it carries
@@ -446,7 +754,10 @@ The earlier set (the 2026-10-11 design audit, and the first branch shots in
    main and wave 4 already carry a newer section 77 (`e9946e47`), so the
    owner of `scripts/verify-deploy.d` should make it on main. The other
    choice is to keep the old label on the posting page.
-2. **Section 62 may fail after pass B.** Lines 56 and 60 want
+2. **Resolved 2026-10-17: section 62 is re-pointed** (pass B did move
+   `noPayFound` into the shared `PostingDetail` chunk; the line now reads the
+   posting chunk and the chunks it imports). (Kept for the record.)
+   **Section 62 may fail after pass B.** Lines 56 and 60 want
    `jobPostingPage.noPayFound` and `jobPostingPage.unlistedMeta` in the
    JobPosting chunk. Both are there in this head's build, after the
    More-roles split. Once Jobs.tsx imports the
@@ -456,7 +767,10 @@ The earlier set (the 2026-10-11 design audit, and the first branch shots in
    (agency, then layoff, then employer record, then the field note, so a
    layoff chip outranks the hiring-record chip); seniority moves from the
    card to the facts; Apply leaves the card for the pane and the sheet.
-4. **Outside this workflow, seen while checking:** the company page title
+4. **Resolved by `pd/bake` and `pd/wire`** (the title is "{company} jobs:
+   N open roles from their own hiring system"; no hero, orientation, zero
+   state or company string says "verified"). (Kept for the record.)
+   **Outside this workflow, seen while checking:** the company page title
    is "{company} Jobs — N Verified Openings" (the bake's
    `scripts/prerender-pages.mjs` and `jobsPage.companySeoTitle` in the main
    locale), and the legacy lander and home say "verified" open roles. These
@@ -467,8 +781,11 @@ The earlier set (the 2026-10-11 design audit, and the first branch shots in
    replaces it when pass B mounts the new lander, which is the fix. (Pass B
    did: the clear page now reads "Open roles on boards named “clear”" with
    no employer sentence; measured 2026-10-17.)
-5. **Two gate failures after any local `npm run build` (the bake's, not this
-   branch's).** With `dist/` and the bake's generated files present, the
+5. **Resolved by `pd/bake`** (posting pages never pass the ceiling; the
+   claims sweep no longer reads `scripts/.prerender-data.mjs`). Still: build
+   only from an export of the tree, never in the worktree. (Kept for the
+   record.) **Two gate failures after any local `npm run build` (the bake's,
+   not this branch's).** With `dist/` and the bake's generated files present, the
    pre-push suite fails three tests that a clean checkout skips or passes:
    - `the-sitemap-never-advertises-a-posting-url-with-no-page.test.ts`: the
      baked sitemap advertised 454 posting URLs against the generator's stated
@@ -483,11 +800,11 @@ The earlier set (the 2026-10-11 design audit, and the first branch shots in
 
 ## After-audit checklist (after the publish)
 
-1. `bash scripts/verify-deploy.sh`: every section passes except the one
-   line in decision 1 (until it is re-pointed). Section 49 shows no gap.
+1. `bash scripts/verify-deploy.sh`: sections 80, 91, 81, 83, 87, 40, 62
+   and 77 pass (step 4 of the deploy procedure). Section 49 shows no gap.
 2. The live entry is this build: the JobPosting chunk named by the live
-   entry contains `listing.actions.checkFit`, and the entry contains
-   `rb_theme`.
+   entry imports the `PostingDetail` chunk, which contains
+   `listing.actions.checkFit`, and the entry contains `rb_theme`.
 3. Theme: `<html data-theme="dark">` on a fresh visit; `?theme=light`
    switches and is remembered across pages; `?theme=dark` forgets it. A
    browser with blocked storage still renders dark.
@@ -505,7 +822,8 @@ The earlier set (the 2026-10-11 design audit, and the first branch shots in
    crawl directive unchanged).
 7. A collision token's page (any name in `src/lib/board-collisions.ts`)
    still shows no employer facts, no perks, no SEC card and no LCA line.
-8. Perks: no block on any lander until a key is published (profiles step 4);
+8. Perks: no block on any lander until a key is published (step 6 of the
+   deploy procedure);
    then a check opens on tap, click, Enter or Space, never on focus.
 9. In German, Spanish, French and Hindi, the posting page and `/companies`
    read translated, with no raw key on screen; a count of a million reads
@@ -518,7 +836,21 @@ The earlier set (the 2026-10-11 design audit, and the first branch shots in
     (44px buttons and selects under touch); text contrast from the measured
     tokens. axe on the after-audit's sample: only the legacy home's 4.
 12. Changelog: entries in all nine locales for what seekers can see (the
-    posting page, the header, the theme), each read against production, in
-    the next frontend publish.
+    company pages, the posting page, the board's card and pane, the header,
+    the theme, and company profiles' phase 0 fixes), each read against
+    production, in the next frontend publish.
 13. Record the verified deploy in `docs/deploy-ledger.json`
-    `verifiedDeploys` (the merged commit, no functions).
+    `verifiedDeploys` (the merged commit, `employer-profiles`
+    `2026-10-12.2`, the ten migrations; then the held one once released).
+14. The company pages (pass B): on a standard lander the header, the answer
+    "{{n}} roles dated in the last 30 days", then three cards, then the
+    closed "About this employer" accordion at 375; nothing auto-opens at
+    1280 (the address, canonical and JSON-LD stay as loaded); a lap-read
+    board's pane says "We could read only part of this board"; a collision
+    page has no single-employer sentence; the USAJOBS hub says federal
+    openings are listed on USAJOBS.
+15. Crawlers: `curl -A Googlebot` `/`, `/pricing`, `/agent`, `/agents`
+    and `/llms-full.txt` show no retired product or price, and a
+    once-published company URL outside the sitemap (for example
+    `/jobs/company/MattelInc`) serves its own noindex page, not the
+    homepage.
