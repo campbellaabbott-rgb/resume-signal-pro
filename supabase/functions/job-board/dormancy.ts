@@ -1,113 +1,29 @@
-// Dormancy skip-list for the cold-tier refresh rotation.
-//
-// The problem it solves: a chronically-dead feed stays in the catalog (COLD_LIST)
-// and, every rotation, burns the full FETCH_TIMEOUT (~20s) before failing — pure
-// wasted wall-clock that slows the whole cold-tail re-verification. The old prune
-// deleted a dead board's POSTINGS at 6 consecutive failures but left its TOKEN in
-// the rotation, so it kept getting fetched (and kept timing out) forever, and the
-// streak reset meant it oscillated at the threshold indefinitely.
-//
-// The fix keeps the rotation cursor untouched (dead boards stay in COLD_LIST, so
-// indexing and sweep coverage are unchanged) and instead skips the wasteful FETCH
-// for dormant boards, rechecking each one only once per recheck window so a feed
-// that comes back rejoins automatically. Pure functions here; all DB I/O stays in
-// index.ts so this is unit-testable.
+// Rationale: docs/job-board-index-notes.md#n1305-export-interface-boardfailurestate
 
 export interface BoardFailureState {
   /** token -> consecutive failure count (pre-dormancy) */
   streaks: Record<string, number>;
   /** token -> epoch ms when the board was put dormant (drives recheck timing) */
   dormant: Record<string, number>;
-  /**
-   * token -> epoch ms of the most recent FAILURE, for boards that are failing
-   * but not yet dormant. Drives the retry lane's backoff.
-   *
-   * Measured 2026-08-26, and this is the whole reason it exists: a board only
-   * gets a verification stamp when its fetch SUCCEEDS, so one failed fetch used
-   * to cost that board a full rotation — 8.2 hours — before anything tried it
-   * again. Two or three consecutive failures put it at 16-25h, which is exactly
-   * where the freshness p95 sat (20.7h) while p50 was healthy at 4.9h. 82.5% of
-   * boards were inside one rotation; the 5% tail was not slow rotation, it was
-   * boards waiting a whole rotation for their second chance.
-   */
+  // Rationale: docs/job-board-index-notes.md#n1306-failedat-record-string-number
   failedAt?: Record<string, number>;
-  /**
-   * token -> epoch ms of the FIRST failure in the current streak.
-   *
-   * THE PRUNE BAR IS A DURATION, NOT AN ATTEMPT COUNT, AND IT HAS TO STAY ONE.
-   *
-   * DEAD_BOARD_THRESHOLD (6) was calibrated when attempts arrived once per
-   * rotation, so "6 consecutive failures" MEANT "dead for about 41 hours" —
-   * that duration is the actual protection between a transient vendor blip and
-   * deleting a company's entire corpus (the prune writes an exit row per
-   * posting, deletes every row for the token, and blacks the board out for 12h;
-   * re-ingest then resets first_seen).
-   *
-   * The retry lane decouples attempts from time: six attempts now fit in 7h45m.
-   * Left alone, that silently cut a 41-hour guard to under eight — a Workday
-   * CDN throttle of the kind already recorded in this codebase would have
-   * pruned boards that were never dead. So the streak still gates the prune,
-   * but a wall-clock floor gates it too, and THAT is the number calibrated
-   * against reality. Adding a faster lane can no longer erode it.
-   */
+  // Rationale: docs/job-board-index-notes.md#n1307-firstfailedat-record-string-number
   firstFailedAt?: Record<string, number>;
   /** board key -> consecutive visits whose rows our database would not read or store (foldDbFailures, S11-023). */
   dbStreaks?: Record<string, number>;
 }
 
-/**
- * THE ONLY WAY A TOKEN-KEYED RECORD IS READ IN THIS MODULE.
- *
- * Every map above is a JSON object keyed by board token, and a token can be
- * any property name of Object.prototype. 'constructor' is one — a real,
- * catalogued ashby board — and until 2026-09-10 `dormant[t]` for it returned
- * Object (a function), `now - since` was NaN, `NaN >= recheckMs` was false,
- * and the board was skipped as "dormant, not due" on every cold slice since
- * the skip-list shipped (2026-07-14). Its stamp aged to 14.6 days, the oldest
- * on the board, with nothing anywhere saying why.
- *
- * An OWN-property read cannot do that: an inherited name is not an own key,
- * so an empty map has no 'constructor'. The persisted shape stays a Record
- * (that is what job_board_meta stores and what index.ts spreads), the reads
- * go through here, and the guard test refuses any bracket read of these maps
- * by a token key that is not hasOwn-guarded. The ES5 spelling, because this
- * module is also type-checked under the app's ES2020 lib by vitest's tsc.
- */
+// Rationale: docs/job-board-index-notes.md#n1308-const-own-rec-record-string-number
 const own = (rec: Record<string, number>, t: string): number | undefined => (Object.prototype.hasOwnProperty.call(rec, t) ? rec[t] : undefined);
 
-/**
- * How long to wait before retrying a board that just failed, by streak.
- *
- * EXPONENTIAL, AND THAT IS THE POINT. A retry is not free: a dead feed burns the
- * full FETCH_TIMEOUT (~20s) before failing, which is the exact cost dormancy was
- * built to stop paying every rotation. A flat retry interval would hand that
- * cost back — every failing board, every few minutes, forever.
- *
- * Backoff makes the first retry cheap and fast (15 min, where transient vendor
- * 500s live) while a board that keeps failing recedes on its own until dormancy
- * takes over at DEAD_BOARD_THRESHOLD:
- *
- *   streak 1 -> 15 min    streak 3 -> 60 min    streak 5 -> 4h
- *   streak 2 -> 30 min    streak 4 -> 2h        streak 6 -> dormant (12h probe)
- */
+// Rationale: docs/job-board-index-notes.md#n1309-export-function-retrybackoffms-streak-nu
 export function retryBackoffMs(streak: number): number {
   const base = 15 * 60_000;
   const capped = Math.min(Math.max(streak, 1), 5);
   return Math.min(base * 2 ** (capped - 1), 4 * 60 * 60_000);
 }
 
-/**
- * Boards that failed recently and are now due for another attempt, most-overdue
- * first, capped.
- *
- * `exclude` is the set of tokens already in this slice — a board about to be
- * fetched anyway must not also take a retry place, which would spend the budget
- * and change nothing.
- *
- * Dormant boards are deliberately NOT here: they have their own, slower probe
- * cadence (DORMANT_RECHECK_MS) and re-admitting them to a 15-minute lane would
- * undo dormancy entirely.
- */
+// Rationale: docs/job-board-index-notes.md#n1310-export-function-selectretries-params
 export function selectRetries(params: {
   streaks: Record<string, number>;
   failedAt: Record<string, number>;
@@ -124,23 +40,12 @@ export function selectRetries(params: {
     const overdueBy = params.now - at - retryBackoffMs(streak);
     if (overdueBy >= 0) due.push({ token, overdueBy });
   }
-  // Most overdue first, so a growing backlog drains oldest-first rather than
-  // letting whichever token Object.entries happens to yield first monopolise
-  // the lane.
+  // Rationale: docs/job-board-index-notes.md#n1311-due-sort-a-b-b-overdueby
   due.sort((a, b) => b.overdueBy - a.overdueBy);
   return due.slice(0, Math.max(params.cap, 0)).map((d) => d.token);
 }
 
-/**
- * Split the fetch-eligible tokens of a cold slice into those to skip (dormant and
- * not yet due for a recovery probe) and those to recheck (dormant but past the
- * recheck window — fetch them once to see if the feed recovered). Tokens with no
- * dormancy record are neither: they fetch normally.
- *
- * Callers pass only tokens that are eligible to skip — demand-injected /
- * user-requested boards are excluded upstream so a board a user just opened is
- * always fetched.
- */
+// Rationale: docs/job-board-index-notes.md#n1312-export-function-classifydormancy
 export function classifyDormancy(
   tokens: readonly string[],
   dormant: Record<string, number>,
@@ -158,27 +63,10 @@ export function classifyDormancy(
   return { skip, recheck };
 }
 
-/**
- * Fold a slice's fetch results into the next board-failure state.
- *
- * - A board that responded (okTokens) is healthy: its streak and any dormancy clear.
- * - A recheck probe that failed stays dormant with a refreshed timer (still dead).
- * - Any other failure increments its streak; at deadThreshold the board is pruned
- *   (returned in `toPrune` for the caller to delete) and put dormant.
- * - Skipped dormant boards are not in okTokens/failedTokens, so they are untouched
- *   and keep waiting for their recheck window.
- *
- * The dormant map is capped (keeping the most recently detected entries, whose
- * recheck timers are still meaningful) so a mass die-off can't bloat the meta row.
- */
+// Rationale: docs/job-board-index-notes.md#n1313-export-function-updateboardfailures-para
 export function updateBoardFailures(params: {
   okTokens: readonly string[];
-  /**
-   * Boards whose FEED answered but whose rows our own database would not read
-   * or store (S11-023). Dormancy measures the vendor, so these clear a streak
-   * and leave dormancy exactly as a stored visit does; their own run is
-   * counted by foldDbFailures. Never a failure.
-   */
+  // Rationale: docs/job-board-index-notes.md#n1314-answeredtokens-readonly-string
   answeredTokens?: readonly string[];
   failedTokens: readonly string[];
   recheckTokens: ReadonlySet<string>;
@@ -187,10 +75,7 @@ export function updateBoardFailures(params: {
   failedAt?: Record<string, number>;
   firstFailedAt?: Record<string, number>;
   deadThreshold: number;
-  /**
-   * Wall-clock floor a board must have been failing for before the prune is
-   * allowed, regardless of how many attempts fit into that window.
-   */
+  // Rationale: docs/job-board-index-notes.md#n1315-minfailureagems-number
   minFailureAgeMs: number;
   dormantCap: number;
   now: number;
@@ -228,9 +113,7 @@ export function updateBoardFailures(params: {
     const streak = (own(streaks, t) ?? 0) + 1;
     streaks[t] = streak;
     failedAt[t] = params.now;
-    // A board carrying no start-of-streak stamp starts its clock NOW. That is
-    // deliberately the conservative direction: state written before this field
-    // existed delays a prune by up to the floor, and never accelerates one.
+    // Rationale: docs/job-board-index-notes.md#n1316-const-firstat-own-firstfailedat-t-params
     const firstAt = own(firstFailedAt, t) ?? params.now;
     firstFailedAt[t] = firstAt;
     const failingFor = params.now - firstAt;
@@ -247,18 +130,13 @@ export function updateBoardFailures(params: {
   if (entries.length > params.dormantCap) {
     dormant = Object.fromEntries(entries.sort((a, b) => b[1] - a[1]).slice(0, params.dormantCap));
   }
-  // failedAt is bounded by the same reasoning as dormant: a mass vendor outage
-  // must not grow this meta row without limit. Newest kept — an old stamp is
-  // the least useful, since its board is either long since retried or has gone
-  // dormant.
+  // Rationale: docs/job-board-index-notes.md#n1317-let-bounded-failedat
   let bounded = failedAt;
   const fEntries = Object.entries(failedAt);
   if (fEntries.length > params.dormantCap) {
     bounded = Object.fromEntries(fEntries.sort((a, b) => b[1] - a[1]).slice(0, params.dormantCap));
   }
-  // firstFailedAt is bounded alongside failedAt and by the same key set: a
-  // start stamp whose last-failure stamp has been evicted has nothing left to
-  // gate, and keeping it would leak rows a mass outage created.
+  // Rationale: docs/job-board-index-notes.md#n1318-const-keep-new-set-object-keys
   const keep = new Set(Object.keys(bounded));
   const boundedFirst = Object.fromEntries(
     Object.entries(firstFailedAt).filter(([k]) => keep.has(k)),
@@ -266,18 +144,7 @@ export function updateBoardFailures(params: {
   return { streaks, dormant, failedAt: bounded, firstFailedAt: boundedFirst, toPrune };
 }
 
-/**
- * Hand boards whose dormant prune did not finish back to the failure lane.
- *
- * pruneWholeBoard keeps every row the exit log did not record, but toPrune
- * fires only on the visit a streak crosses the threshold, and a dormant board
- * is not fetched again until its recheck, whose failure only resets the timer.
- * Left dormant, the unrecorded rows would wait for the freshness sweep and
- * leave as aged-out rather than as the board going dark. So each such board
- * goes back one failure short of the threshold, with the start-of-streak
- * stamp it had before the prune (from `before`): the next failing visit
- * prunes again, and a visit that reads clears it like any other.
- */
+// Rationale: docs/job-board-index-notes.md#n1319-export-function-rearmincompleteprunes
 export function rearmIncompletePrunes(
   state: { streaks: Record<string, number>; dormant: Record<string, number>; failedAt: Record<string, number>; firstFailedAt: Record<string, number> },
   keys: readonly string[],
@@ -299,18 +166,7 @@ export function rearmIncompletePrunes(
   return { streaks, dormant, failedAt, firstFailedAt };
 }
 
-/**
- * ONE BOARD, ONE KEY (n417).
- *
- * The catalog is not token-unique: 139 tokens carry two or three vendors
- * (`lush` is greenhouse and personio, `samsara` greenhouse and pinpoint). Keyed
- * by token, a twin that reads cleared the failing twin's streak every visit, so
- * a dead board on a shared token was never pruned and kept serving under its
- * sibling's stamp; and when both did fail, the prune deleted both vendors'
- * rows. So a shared token's boards are keyed `source:token`. Every other board
- * keeps its bare token, which leaves the persisted state of the other 44,000
- * boards exactly as it was. No catalog token contains a colon.
- */
+// Rationale: docs/job-board-index-notes.md#n1320-export-function-boardkey-source-string-t
 export function boardKey(source: string, token: string, shared: ReadonlySet<string>): string {
   return shared.has(token) ? `${source}:${token}` : token;
 }
@@ -327,13 +183,7 @@ export function keySource(key: string): string | null {
   return at < 0 ? null : key.slice(0, at);
 }
 
-/**
- * Drop entries an older build keyed by a bare SHARED token. Such an entry
- * cannot be told apart per board, nothing will ever clear it (a board that
- * reads now clears its `source:token` key), and the retry lane would chase it
- * forever, so it goes; each board re-earns its streak under its own key. The
- * conservative direction: forgetting a streak delays a prune, never causes one.
- */
+// Rationale: docs/job-board-index-notes.md#n1321-export-function-dropbaresharedkeys-state
 export function dropBareSharedKeys(state: BoardFailureState, shared: ReadonlySet<string>): { state: BoardFailureState; dropped: number } {
   let dropped = 0;
   const clean = (rec: Record<string, number> | undefined): Record<string, number> => {
@@ -355,25 +205,7 @@ export function dropBareSharedKeys(state: BoardFailureState, shared: ReadonlySet
   };
 }
 
-/**
- * OUR OWN DATABASE FAILING IS NOT THE VENDOR FAILING (S11-023).
- *
- * A board whose feed read fine but whose existing-rows read or new-row
- * upsert then failed used to fall out of okKeys and into failedTokens, so a
- * write error that repeats on every visit (a CHECK constraint the normaliser
- * disagrees with: day-rate salary_period, 2026-08-25 to 09-06) walked a live
- * board to DEAD_BOARD_THRESHOLD, pruned its whole corpus as 'board_dormant'
- * into the closure ledger, and each 12-hour recheck, failing on insert again,
- * only re-armed the dormancy. Measured with this module: pruned at visit 17,
- * 41.7 hours in, and dark from then on.
- *
- * So index.ts hands those boards to updateBoardFailures as boards that
- * ANSWERED (the feed did, which is all dormancy measures) and counts them
- * here instead: board key -> consecutive visits our database failed. A visit
- * that stored cleanly clears the count; the status action and scan-heartbeat
- * name every board at DB_FAIL_ALARM_VISITS or more. Bounded like the other
- * maps, the longest runs kept.
- */
+// Rationale: docs/job-board-index-notes.md#n1322-export-const-db_fail_alarm_visits
 export const DB_FAIL_ALARM_VISITS = 3;
 
 export function foldDbFailures(

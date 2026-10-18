@@ -49,16 +49,18 @@ const DEPLOY_LINE_BYTES = 4_500_000;
 const HEADROOM_BYTES = 50_000;
 /**
  * _shared files another round has written or grown and not merged here yet,
- * with their size on that round's branch: origin/profiles/integration
- * (2026-10-12) and the wave 4 round 2 builder branches w4b/agents-api,
- * w4b/checkout-catalogue, w4b/generators, w4b/payments-delivery and
- * w4b/account-compliance (2026-10-17). A file counts the bytes its branch
- * has beyond what the disk holds.
+ * with their size on that round's branch: the profiles round's two files as
+ * origin/design/integration holds them (2026-10-18; they grew from 54,684
+ * bytes on profiles/integration to 72,818 there) and the wave 4 round 2
+ * builder branches w4b/agents-api, w4b/checkout-catalogue, w4b/generators,
+ * w4b/payments-delivery and w4b/account-compliance (2026-10-17), which have
+ * all merged at integration, so their entries now add nothing. A file counts
+ * the bytes its branch has beyond what the disk holds.
  */
 const PENDING_SHARED: Record<string, number> = {
-  // profiles
-  "hiring-record-gate.ts": 11_312,
-  "perks-extract.ts": 43_372,
+  // profiles, as design/integration holds them
+  "hiring-record-gate.ts": 23_563,
+  "perks-extract.ts": 49_255,
   // w4b/agents-api
   "application-form.ts": 17_557,
   "application-questions.ts": 43_288,
@@ -189,7 +191,8 @@ describe("the job-board upload, tallied the deploy's way", () => {
     expect(pendingBytes({ "grown.ts": 1_250 }, sizeOf)).toBe(250);
     expect(pendingBytes({ "landed.ts": 5_000 }, sizeOf)).toBe(0);
     expect(pendingBytes({ "missing.ts": 700, "grown.ts": 1_250, "landed.ts": 5_000 }, sizeOf)).toBe(950);
-    expect(pending, "no other round's growth is counted: the pending list is not being read").toBeGreaterThan(100_000);
+    // The w4b builders merged at integration; the profiles round's two files are what is still pending.
+    expect(pending, "no other round's growth is counted: the pending list is not being read").toBeGreaterThanOrEqual(23_563 + 49_255);
   });
 
   it("TEETH: the gate refuses a tally one byte over it", () => {

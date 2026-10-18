@@ -20295,3 +20295,830 @@ for a row that is not stored as "other") and null when nothing in v10
 fires. It never returns "other" and never writes anything: the result is a
 proposal for the shadow columns, resolved against the employer and embed
 mechanisms by shadow.ts.
+
+## n1292-vendors-whose-description-needs-a-per
+
+In `supabase/functions/job-board/descriptions.ts`, above: `/** Vendors whose description needs a per-posting fetch (the backfill sweep's scope). */`
+
+Where a posting's description text actually comes from, per vendor.
+
+Measured against the live vendor APIs on 2026-07-24, when stored coverage was
+19.8% (113,174 of 570,663). The gap was not patchy — it was binary. Every
+vendor whose LIST payload carries the text sat near 100%; every vendor needing
+a per-posting fetch sat at exactly 0%, because nothing had ever fetched them:
+
+  in the list payload we already fetch  greenhouse 99.9 · ashby 100 · recruitee 100
+                                        teamtailor 99.9 · lever 89.6 · personio 87.1
+                                        + workable and pinpoint (were being
+                                          parsed and then discarded)
+  per-posting detail fetch              workday 0 · smartrecruiters 0 · bamboohr 0
+                                        · oracle 0 · breezy 0
+  no public source                      rippling — board HTML is client-rendered
+                                        and carries no JD; stored null is honest
+
+These helpers are pure so the test suite can exercise the URL derivation and
+HTML parsing without booting the edge function.
+
+## n1293-export-const-detail_desc_sources-workday
+
+In `supabase/functions/job-board/descriptions.ts`, above: `export const DETAIL_DESC_SOURCES = ["workday", "smartrecruiters", "bamboohr", "oracle", "breezy", "rippling", "paylocity", "adp", "ukg", "ja`
+
+rippling joined 2026-08-24: NO_DESC_SOURCES was measured against the LIST
+page only (client-rendered, no JD — still true). The per-posting API the
+posted-date backfill already calls serves description.{company,role} on
+every probed posting; ~7-9k rows, 100% null until now. Appended LAST so it
+queues behind breezy rather than ahead of it.
+paylocity joined 2026-08-30, the day the vendor landed: its list payload
+truncates every description to a ~110-char teaser, and leaving it out of
+all three lists is the exact icims/breezy hole this file's header documents
+(rows null forever, unswept and undecided). Appended LAST so it queues
+behind rippling.
+adp joined 2026-08-31, the day ITS vendor landed, for the plainer version
+of the same measurement: the list payload carries no description field at
+all, and the same public endpoint's per-requisition detail serves the full
+HTML JD (6,928 chars on the sampled posting). Appended LAST so it queues
+behind paylocity.
+ukg joined 2026-09-01 with the vendor: its list ships a BriefDescription
+summary while the detail page carries the full JD (4,794 chars on the
+probed posting) plus structured pay, so the summary is deliberately not
+stored and the sweep fills the real text. Appended LAST, behind paylocity.
+jazzhr joined 2026-09-04 with the vendor: its list is an HTML career page
+carrying no description and no date, and the posting page carries both —
+a JSON-LD JobPosting on 5 of 8 probed boards (5-17k chars of description,
+datePosted) and a #job-description container on all 8. Appended LAST,
+behind ukg, under the same append-last rule.
+
+## n1294-export-const-board_desc_sources-workable
+
+In `supabase/functions/job-board/descriptions.ts`, above: `export const BOARD_DESC_SOURCES = ["workable", "pinpoint", "icims"] as const;`
+
+Vendors whose description rides along in the LIST payload, so ingest stores it
+for free — but ingest is INSERT-ONLY (postings are immutable in practice, so
+unchanged rows are never rewritten). Rows that predate the extraction keep
+their null forever, and they must NOT go in the per-posting sweep: one row
+there would re-fetch the whole board. They get a board-level lane instead —
+one fetch fills every null row on that board.
+
+icims joined 2026-08-24: it ships `data.description` (plus qualifications/
+responsibilities) on every LIST item and the parser in
+listPayloadDescriptions had handled it from the start — but no ingest
+branch and no sweep membership ever CALLED it, so 18,713 servable icims
+rows (100% of the vendor) stored null while the text arrived on every
+fetch. A dead export named LIST_DESC_SOURCES documented the intent and
+was imported nowhere; membership here is what actually runs.
+
+## n1295-export-const-no_desc_sources-as-const
+
+In `supabase/functions/job-board/descriptions.ts`, above: `export const NO_DESC_SOURCES = [] as const;`
+
+Vendors with no public description source. A null here is a measured fact, not
+a hole to be filled later — keep them out of the sweep so it doesn't burn
+requests re-failing on them every pass.
+
+## n1296-export-function-buildembedinput
+
+In `supabase/functions/job-board/descriptions.ts`, above: `export function buildEmbedInput(`
+
+The text a posting is embedded FROM (gte-small, 384-dim, run in the edge
+runtime). The model truncates at 512 tokens and is English-only, so this is
+deliberately title-forward: title and company lead, then location, then the
+OPENING slice of the description — the part that states what the role is.
+Feeding a whole 14KB JD would just push the informative text past the
+truncation point.
+
+Kept pure so tests can pin the shape; the caller records whether a
+description was present (embedded_desc) so the row is re-embedded when one
+lands later.
+
+## n1297-export-function-clusterkey-companykey-st
+
+In `supabase/functions/job-board/descriptions.ts`, above: `export function clusterKey(companyKey: string, title: string, location?: string | null): string {`
+
+Grouping key for "this is the same job, posted again in another location".
+
+Measured on production 2026-07-25: searching `driver` returned ONE posting
+from one employer 13 times in the first 40 rows (six Colorado towns, some
+repeated); `project manager` returned the same Ramboll role 7 times across
+UK/Ireland cities. 30-35% of a results page was a single job. These are not
+duplicate DATA — each row is a genuine, separately-applyable ATS posting with
+its own apply URL — so they must not be deleted. They just shouldn't each
+consume a result slot.
+
+The key is deliberately conservative: same employer AND same normalized
+title. Requisition numbers, location suffixes in parentheses/brackets, and
+punctuation/whitespace noise are stripped so "Nurse (Boston)" and
+"Nurse - Boston #R123" collapse, while "Senior Nurse" stays distinct from
+"Nurse". Titles that differ in any meaningful word are never merged.
+
+## n1298-const-companykey0-companykey-tolowercase
+
+In `supabase/functions/job-board/descriptions.ts`, above: `const companyKey0 = (companyKey || "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();`
+
+The company side is a display NAME since 2026-07-25 (so one employer's
+several feed tokens fold together); normalize it the same way as titles.
+LETTERS AND DIGITS OF EVERY SCRIPT (L13-22): [^a-z0-9] erased every
+Cyrillic and CJK title, so all of Raiffeisen Bank's Ukrainian roles
+("Інкасатор", "Головний економіст") shared one key and one card.
+
+## n1299-replace-g-_m-inner-string-qualifierisnoi
+
+In `supabase/functions/job-board/descriptions.ts`, above: `.replace(/[([{]([^)\]}]*)[)\]}]/g, (_m, inner: string) => (qualifierIsNoise(inner, placeWords) ? " " : ' ${inner} '))`
+
+A BRACKETED SEGMENT IS STRIPPED ONLY WHEN IT IS NOISE (S11-025): a
+requisition number, a work-mode word, or the row's own place. Every
+bracket used to go, whatever it held, so "Teacher (Mathematics)" and
+"Teacher (Elementary)", "(Night Shift)" and "(Day Shift)" folded into
+one card claiming N openings of the first: q=teacher at Pine Ridge
+served 2 cards for 6 distinct roles. Anything else stays in the key,
+brackets dropped.
+
+## n1300-function-qualifierisnoise-inner-string-p
+
+In `supabase/functions/job-board/descriptions.ts`, above: `function qualifierIsNoise(inner: string, placeWords: ReadonlySet<string>): boolean {`
+
+True when a title's bracketed segment carries nothing that tells two roles
+apart: a requisition-like number (three or more digits, or "#" and a digit),
+or words that are all the row's own location or a work mode
+("(Boston)" on a Boston row, "[Remote]", "(Pueblo, CO)"). A bracket naming a
+subject, a level, a shift or a team keeps its words in the key.
+
+## n1301-export-function-workdaycxsurl-applyurl-s
+
+In `supabase/functions/job-board/descriptions.ts`, above: `export function workdayCxsUrl(applyUrl: string): string | null {`
+
+Workday's CXS JSON detail endpoint, derived from the public posting URL we
+already store. Workday's list payload has no description and its ids are bare
+requisition numbers (JR12345), so the apply_url is the only thing that carries
+the site + job path the detail endpoint needs.
+
+  https://acme.wd3.myworkdayjobs.com/en-US/Acme_Careers/job/Boston/Engineer_JR9620
+  → https://acme.wd3.myworkdayjobs.com/wday/cxs/acme/Acme_Careers/job/Boston/Engineer_JR9620
+
+The locale segment (en-US) is optional and must not be mistaken for the site.
+
+## n1302-export-interface-ldbasesalary
+
+In `supabase/functions/job-board/descriptions.ts`, above: `export interface LdBaseSalary {`
+
+The employer's own pay, as the MonetaryAmount that rides beside the
+description in the SAME schema.org node. Every field is the vendor's, read
+and not interpreted: no figure is derived here and no period is guessed.
+
+`point` is the node's single `value`. It is a BOUND, not a range — a posting
+that states one figure states one figure, and rendering it as min==max would
+invent a ceiling the employer did not type.
+
+`unitText` is the employer's own period label and is MEASURABLY WRONG on live
+rows, which is why it is carried through raw for a magnitude cross-check
+rather than trusted. See ldBaseSalaryText in normalize.ts for the refusals.
+
+## n1303-export-function-jobpostingld-html-string
+
+In `supabase/functions/job-board/descriptions.ts`, above: `export function jobPostingLd(html: string): { description: string | null; pay: LdBaseSalary | null } {`
+
+BOTH halves of a page's schema.org JobPosting node: the description we have
+always read, and the pay we downloaded and threw away for over a year.
+
+Breezy renders its posting body client-side — the /json list has no
+description field at all — but it emits this block for Google Jobs. Pages
+carry MORE THAN ONE ld+json script (a WebSite node comes first), so every node
+has to be checked; taking only the first one finds nothing.
+
+WHY ONE READER AND NOT TWO. The description half of this walk is the only
+description source Breezy and Paylocity have, and its predicate is exact:
+the FIRST node whose type is a job posting and whose description is longer
+than a teaser wins. A second function repeating that predicate to fetch the
+pay would be a second copy of it, free to drift — and the pay must come from
+the node the description came from, or the two halves describe different
+requisitions. So the predicate stays in one place and returns both halves;
+the description value returned is the same object property it always was, and
+the existing description cases assert it unchanged.
+
+A node with no MonetaryAmount, or one carrying no positive figure at all,
+yields pay: null. Measured over 356 captured live pages (240 Paylocity + 60
+Breezy + 90 Paylocity, 2026-09-26/27): 186 have a usable description and no
+pay node, and 0 have a pay node that is present but figureless — so the
+common case is "description only" and it must cost the description nothing.
+
+## n1304-const-num-x-unknown-number-null
+
+In `supabase/functions/job-board/descriptions.ts`, above: `const num = (x: unknown): number | null => {`
+
+A figure arrives as a JSON number on every vendor measured (127 of 127 live
+nodes); a numeric string is accepted because the cost of doing so is one
+Number() and the cost of not doing so is a silently unread field. Zero and
+negatives are "the field exists and this posting states nothing" — never
+rendered.
+
+A COMMA IN A NUMBER-STRING IS REFUSED, NEVER STRIPPED. This used to read
+`Number(x.replace(/,/g, ""))`, which decided that every comma is a thousands
+group — the exact decision the comma-decimal fix in _shared/salary-extract.ts
+exists to undo. A vendor emitting `"1,50"` with unitText HOUR would have
+yielded 150, and a EUR 1.50 figure would have been published as a EUR 150.00
+per hour rate that annualises to 312,000. The type is the vendor's to change
+and nothing here would have noticed, so the predicate is the strict one the
+Personio reader already uses: digits, optionally one dot, nothing else. A
+comma-bearing string is a question this reader declines to answer.
+
+## n1305-export-interface-boardfailurestate
+
+In `supabase/functions/job-board/dormancy.ts`, above: `export interface BoardFailureState {`
+
+Dormancy skip-list for the cold-tier refresh rotation.
+
+The problem it solves: a chronically-dead feed stays in the catalog (COLD_LIST)
+and, every rotation, burns the full FETCH_TIMEOUT (~20s) before failing — pure
+wasted wall-clock that slows the whole cold-tail re-verification. The old prune
+deleted a dead board's POSTINGS at 6 consecutive failures but left its TOKEN in
+the rotation, so it kept getting fetched (and kept timing out) forever, and the
+streak reset meant it oscillated at the threshold indefinitely.
+
+The fix keeps the rotation cursor untouched (dead boards stay in COLD_LIST, so
+indexing and sweep coverage are unchanged) and instead skips the wasteful FETCH
+for dormant boards, rechecking each one only once per recheck window so a feed
+that comes back rejoins automatically. Pure functions here; all DB I/O stays in
+index.ts so this is unit-testable.
+
+## n1306-failedat-record-string-number
+
+In `supabase/functions/job-board/dormancy.ts`, above: `failedAt?: Record<string, number>;`
+
+token -> epoch ms of the most recent FAILURE, for boards that are failing
+but not yet dormant. Drives the retry lane's backoff.
+
+Measured 2026-08-26, and this is the whole reason it exists: a board only
+gets a verification stamp when its fetch SUCCEEDS, so one failed fetch used
+to cost that board a full rotation — 8.2 hours — before anything tried it
+again. Two or three consecutive failures put it at 16-25h, which is exactly
+where the freshness p95 sat (20.7h) while p50 was healthy at 4.9h. 82.5% of
+boards were inside one rotation; the 5% tail was not slow rotation, it was
+boards waiting a whole rotation for their second chance.
+
+## n1307-firstfailedat-record-string-number
+
+In `supabase/functions/job-board/dormancy.ts`, above: `firstFailedAt?: Record<string, number>;`
+
+token -> epoch ms of the FIRST failure in the current streak.
+
+THE PRUNE BAR IS A DURATION, NOT AN ATTEMPT COUNT, AND IT HAS TO STAY ONE.
+
+DEAD_BOARD_THRESHOLD (6) was calibrated when attempts arrived once per
+rotation, so "6 consecutive failures" MEANT "dead for about 41 hours" —
+that duration is the actual protection between a transient vendor blip and
+deleting a company's entire corpus (the prune writes an exit row per
+posting, deletes every row for the token, and blacks the board out for 12h;
+re-ingest then resets first_seen).
+
+The retry lane decouples attempts from time: six attempts now fit in 7h45m.
+Left alone, that silently cut a 41-hour guard to under eight — a Workday
+CDN throttle of the kind already recorded in this codebase would have
+pruned boards that were never dead. So the streak still gates the prune,
+but a wall-clock floor gates it too, and THAT is the number calibrated
+against reality. Adding a faster lane can no longer erode it.
+
+## n1308-const-own-rec-record-string-number
+
+In `supabase/functions/job-board/dormancy.ts`, above: `const own = (rec: Record<string, number>, t: string): number | undefined => (Object.prototype.hasOwnProperty.call(rec, t) ? rec[t] : undefin`
+
+THE ONLY WAY A TOKEN-KEYED RECORD IS READ IN THIS MODULE.
+
+Every map above is a JSON object keyed by board token, and a token can be
+any property name of Object.prototype. 'constructor' is one — a real,
+catalogued ashby board — and until 2026-09-10 `dormant[t]` for it returned
+Object (a function), `now - since` was NaN, `NaN >= recheckMs` was false,
+and the board was skipped as "dormant, not due" on every cold slice since
+the skip-list shipped (2026-07-14). Its stamp aged to 14.6 days, the oldest
+on the board, with nothing anywhere saying why.
+
+An OWN-property read cannot do that: an inherited name is not an own key,
+so an empty map has no 'constructor'. The persisted shape stays a Record
+(that is what job_board_meta stores and what index.ts spreads), the reads
+go through here, and the guard test refuses any bracket read of these maps
+by a token key that is not hasOwn-guarded. The ES5 spelling, because this
+module is also type-checked under the app's ES2020 lib by vitest's tsc.
+
+## n1309-export-function-retrybackoffms-streak-nu
+
+In `supabase/functions/job-board/dormancy.ts`, above: `export function retryBackoffMs(streak: number): number {`
+
+How long to wait before retrying a board that just failed, by streak.
+
+EXPONENTIAL, AND THAT IS THE POINT. A retry is not free: a dead feed burns the
+full FETCH_TIMEOUT (~20s) before failing, which is the exact cost dormancy was
+built to stop paying every rotation. A flat retry interval would hand that
+cost back — every failing board, every few minutes, forever.
+
+Backoff makes the first retry cheap and fast (15 min, where transient vendor
+500s live) while a board that keeps failing recedes on its own until dormancy
+takes over at DEAD_BOARD_THRESHOLD:
+
+  streak 1 -> 15 min    streak 3 -> 60 min    streak 5 -> 4h
+  streak 2 -> 30 min    streak 4 -> 2h        streak 6 -> dormant (12h probe)
+
+## n1310-export-function-selectretries-params
+
+In `supabase/functions/job-board/dormancy.ts`, above: `export function selectRetries(params: {`
+
+Boards that failed recently and are now due for another attempt, most-overdue
+first, capped.
+
+`exclude` is the set of tokens already in this slice — a board about to be
+fetched anyway must not also take a retry place, which would spend the budget
+and change nothing.
+
+Dormant boards are deliberately NOT here: they have their own, slower probe
+cadence (DORMANT_RECHECK_MS) and re-admitting them to a 15-minute lane would
+undo dormancy entirely.
+
+## n1311-due-sort-a-b-b-overdueby
+
+In `supabase/functions/job-board/dormancy.ts`, above: `due.sort((a, b) => b.overdueBy - a.overdueBy);`
+
+Most overdue first, so a growing backlog drains oldest-first rather than
+letting whichever token Object.entries happens to yield first monopolise
+the lane.
+
+## n1312-export-function-classifydormancy
+
+In `supabase/functions/job-board/dormancy.ts`, above: `export function classifyDormancy(`
+
+Split the fetch-eligible tokens of a cold slice into those to skip (dormant and
+not yet due for a recovery probe) and those to recheck (dormant but past the
+recheck window — fetch them once to see if the feed recovered). Tokens with no
+dormancy record are neither: they fetch normally.
+
+Callers pass only tokens that are eligible to skip — demand-injected /
+user-requested boards are excluded upstream so a board a user just opened is
+always fetched.
+
+## n1313-export-function-updateboardfailures-para
+
+In `supabase/functions/job-board/dormancy.ts`, above: `export function updateBoardFailures(params: {`
+
+Fold a slice's fetch results into the next board-failure state.
+
+- A board that responded (okTokens) is healthy: its streak and any dormancy clear.
+- A recheck probe that failed stays dormant with a refreshed timer (still dead).
+- Any other failure increments its streak; at deadThreshold the board is pruned
+  (returned in `toPrune` for the caller to delete) and put dormant.
+- Skipped dormant boards are not in okTokens/failedTokens, so they are untouched
+  and keep waiting for their recheck window.
+
+The dormant map is capped (keeping the most recently detected entries, whose
+recheck timers are still meaningful) so a mass die-off can't bloat the meta row.
+
+## n1314-answeredtokens-readonly-string
+
+In `supabase/functions/job-board/dormancy.ts`, above: `answeredTokens?: readonly string[];`
+
+Boards whose FEED answered but whose rows our own database would not read
+or store (S11-023). Dormancy measures the vendor, so these clear a streak
+and leave dormancy exactly as a stored visit does; their own run is
+counted by foldDbFailures. Never a failure.
+
+## n1315-minfailureagems-number
+
+In `supabase/functions/job-board/dormancy.ts`, above: `minFailureAgeMs: number;`
+
+Wall-clock floor a board must have been failing for before the prune is
+allowed, regardless of how many attempts fit into that window.
+
+## n1316-const-firstat-own-firstfailedat-t-params
+
+In `supabase/functions/job-board/dormancy.ts`, above: `const firstAt = own(firstFailedAt, t) ?? params.now;`
+
+A board carrying no start-of-streak stamp starts its clock NOW. That is
+deliberately the conservative direction: state written before this field
+existed delays a prune by up to the floor, and never accelerates one.
+
+## n1317-let-bounded-failedat
+
+In `supabase/functions/job-board/dormancy.ts`, above: `let bounded = failedAt;`
+
+failedAt is bounded by the same reasoning as dormant: a mass vendor outage
+must not grow this meta row without limit. Newest kept — an old stamp is
+the least useful, since its board is either long since retried or has gone
+dormant.
+
+## n1318-const-keep-new-set-object-keys
+
+In `supabase/functions/job-board/dormancy.ts`, above: `const keep = new Set(Object.keys(bounded));`
+
+firstFailedAt is bounded alongside failedAt and by the same key set: a
+start stamp whose last-failure stamp has been evicted has nothing left to
+gate, and keeping it would leak rows a mass outage created.
+
+## n1319-export-function-rearmincompleteprunes
+
+In `supabase/functions/job-board/dormancy.ts`, above: `export function rearmIncompletePrunes(`
+
+Hand boards whose dormant prune did not finish back to the failure lane.
+
+pruneWholeBoard keeps every row the exit log did not record, but toPrune
+fires only on the visit a streak crosses the threshold, and a dormant board
+is not fetched again until its recheck, whose failure only resets the timer.
+Left dormant, the unrecorded rows would wait for the freshness sweep and
+leave as aged-out rather than as the board going dark. So each such board
+goes back one failure short of the threshold, with the start-of-streak
+stamp it had before the prune (from `before`): the next failing visit
+prunes again, and a visit that reads clears it like any other.
+
+## n1320-export-function-boardkey-source-string-t
+
+In `supabase/functions/job-board/dormancy.ts`, above: `export function boardKey(source: string, token: string, shared: ReadonlySet<string>): string {`
+
+ONE BOARD, ONE KEY (n417).
+
+The catalog is not token-unique: 139 tokens carry two or three vendors
+(`lush` is greenhouse and personio, `samsara` greenhouse and pinpoint). Keyed
+by token, a twin that reads cleared the failing twin's streak every visit, so
+a dead board on a shared token was never pruned and kept serving under its
+sibling's stamp; and when both did fail, the prune deleted both vendors'
+rows. So a shared token's boards are keyed `source:token`. Every other board
+keeps its bare token, which leaves the persisted state of the other 44,000
+boards exactly as it was. No catalog token contains a colon.
+
+## n1321-export-function-dropbaresharedkeys-state
+
+In `supabase/functions/job-board/dormancy.ts`, above: `export function dropBareSharedKeys(state: BoardFailureState, shared: ReadonlySet<string>): { state: BoardFailureState; dropped: number } {`
+
+Drop entries an older build keyed by a bare SHARED token. Such an entry
+cannot be told apart per board, nothing will ever clear it (a board that
+reads now clears its `source:token` key), and the retry lane would chase it
+forever, so it goes; each board re-earns its streak under its own key. The
+conservative direction: forgetting a streak delays a prune, never causes one.
+
+## n1322-export-const-db_fail_alarm_visits
+
+In `supabase/functions/job-board/dormancy.ts`, above: `export const DB_FAIL_ALARM_VISITS = 3;`
+
+OUR OWN DATABASE FAILING IS NOT THE VENDOR FAILING (S11-023).
+
+A board whose feed read fine but whose existing-rows read or new-row
+upsert then failed used to fall out of okKeys and into failedTokens, so a
+write error that repeats on every visit (a CHECK constraint the normaliser
+disagrees with: day-rate salary_period, 2026-08-25 to 09-06) walked a live
+board to DEAD_BOARD_THRESHOLD, pruned its whole corpus as 'board_dormant'
+into the closure ledger, and each 12-hour recheck, failing on insert again,
+only re-armed the dormancy. Measured with this module: pruned at visit 17,
+41.7 hours in, and dark from then on.
+
+So index.ts hands those boards to updateBoardFailures as boards that
+ANSWERED (the feed did, which is all dormancy measures) and counts them
+here instead: board key -> consecutive visits our database failed. A visit
+that stored cleanly clears the count; the status action and scan-heartbeat
+name every board at DB_FAIL_ALARM_VISITS or more. Bounded like the other
+maps, the longest runs kept.
+
+## n1323-import-clusterkey-from-descriptions-ts
+
+In `supabase/functions/job-board/clusters.ts`, above: `import { clusterKey } from "./descriptions.ts";`
+
+FOLDING SIBLING POSTINGS INTO ONE CARD — on its own, so a test can walk it.
+
+Extracted from index.ts on 2026-08-23, for the same reason paging.ts was:
+the logic was inline, nothing could import it, and the guards that covered
+it matched source text. That is how the card came to say "Also hiring in 84
+more locations" about a role posted 85 times in ONE city — the fold counted
+sibling ROWS and called them locations, while dutifully deduping the sample
+list it displayed beside the number. Measured 2026-08-23: 2.4% of served
+cards claimed locations that do not exist.
+
+## n1324-export-const-group_overfetch
+
+In `supabase/functions/job-board/clusters.ts`, above: `export const GROUP_OVERFETCH = 3;`
+
+One employer's role, reposted per location, was eating up to 35% of a
+results page (measured 2026-07-25). Collapse those into a single result that
+says how many locations it covers, instead of spending 13 slots on it.
+
+## n1325-export-const-group_siblings_max
+
+In `supabase/functions/job-board/clusters.ts`, above: `export const GROUP_SIBLINGS_MAX = 50;`
+
+How many folded postings a card carries as openable siblings (S11-005).
+The fold used to keep only the lead row: each folded posting bumped a count
+and left a place name, and its id and apply link were dropped, so Pilot's
+22 "Cashier" postings were one Bellemont, AZ link and Cinemark's 198 theatre
+roles one. Fifty covers every live fold measured but the largest, whose
+card also links to the rest.
+
+## n1326-export-function-rowclusterkey-r-record-s
+
+In `supabase/functions/job-board/clusters.ts`, above: `export function rowClusterKey(r: Record<string, unknown>): string {`
+
+The key a row folds on: the employer, the title (clusterKey, with the row's
+own location deciding which bracketed words are noise, S11-025) and the
+COUNTRY. A fold never crosses a border (S11-005): q=cashier folded a Nanton,
+AB posting under Pilot's Bellemont, AZ card. A row with no country folds
+only with rows that have none. Every reader that asks "is this row already
+on the page" asks with this key, so nothing hidden by one is shown by
+another.
+
+## n1327-const-max_consecutive_per_company
+
+In `supabase/functions/job-board/clusters.ts`, above: `const MAX_CONSECUTIVE_PER_COMPANY = 2;`
+
+Fold rows sharing a cluster key into one, carrying a location count.
+
+`rawConsumed` is the number of SOURCE rows this page swallowed, which is what
+the next page must offset by — the displayed row count no longer equals the
+rows read, so paginating by jobs.length would re-show siblings as if they
+were new results. Consumption deliberately continues past the limit for rows
+that join an ALREADY-emitted cluster, and stops at the first row that would
+open a new one, so no row is ever skipped or shown twice.
+
+## n1328-const-max_consecutive_per_company
+
+In `supabase/functions/job-board/clusters.ts`, above: `const MAX_CONSECUTIVE_PER_COMPANY = 2;`
+
+"Newest first" was, on the default board, one refresh batch sorted
+alphabetically by employer.
+
+The serving sort is `effective_posted DESC, id ASC`. effective_posted is
+coalesce(posted_at, first_seen), and first_seen defaults to now() — which is
+transaction-stable, so every row in a 250-row upsert chunk shares one
+timestamp. Ingest runs per board, so a tie group is ONE employer's postings.
+The id tie-break is `source:token:externalId`, which then walks those
+employers in alphabetical order.
+
+Measured 2026-07-29: 13 of the 60 first-page slots (22%) were taken by two
+employers, in runs of 7 and 6. The data underneath is accurate; the page just
+looks like a low-quality board, and page 1 is what every visitor judges us on.
+
+This does not re-sort — reordering by recency would be a lie about data whose
+recency genuinely ties. It caps how many CONSECUTIVE cards one employer may
+hold, deferring the overflow a little further down. Every posting still
+appears, in the same tie group, so pagination stays stable and no card claims
+to be newer than it is.
+
+## n1329-const-tieof-r-record-string-unknown
+
+In `supabase/functions/job-board/clusters.ts`, above: `const tieOf = (r: Record<string, unknown>) => String(r.postedAt ?? r.effective_posted ?? r.firstSeen ?? "");`
+
+The TIE GROUP a row belongs to. Reordering is only honest inside one:
+rows sharing an effective_posted are genuinely equally recent, so their
+relative order carries no information and may be permuted freely. Moving a
+row ACROSS groups would make the page claim a recency it does not have —
+which the previous version did, inverting 22 of 59 adjacent pairs (max
+55.3s) while its own comment promised the opposite.
+
+## n1330-export-function-visiblecategories
+
+In `supabase/functions/job-board/clusters.ts`, above: `export function visibleCategories(`
+
+The categories facet a response may honestly publish.
+
+BOARD-WIDE COUNTS INSIDE A FILTERED VIEW OVERSTATED BY 15.7x TO 45x, which is
+why `categories` is withheld unless the request is unfiltered. That rule is
+right and stays.
+
+But it took a true number away from the one page that needs it most. A
+category lander (/jobs/field/engineering) IS filtered, so it got nothing, and
+the page fell back to the capped `total` — rendering "10,000+" under a Google
+snippet promising "68,347+". The count that won the click did not survive it.
+
+The single ACTIVE category is a different claim from the whole facet: it is
+scoped to exactly what the reader filtered, so it cannot overstate. Publish
+that one entry, and nothing else.
+
+## n1331-const-key-rowclusterkey-r
+
+In `supabase/functions/job-board/clusters.ts`, above: `const key = rowClusterKey(r);`
+
+Keyed on the display NAME, not the feed token: PwC's five sub-boards
+must fold together. Two different employers sharing an identical display
+name AND an identical title is the residual risk, accepted — users could
+not tell those cards apart anyway.
+
+## n1332-hit-postingcount-number-hit-postingcount
+
+In `supabase/functions/job-board/clusters.ts`, above: `hit.postingCount = (Number(hit.postingCount) || 1) + 1;`
+
+TWO COUNTS, BECAUSE THEY ANSWER DIFFERENT QUESTIONS. postingCount is
+how many requisitions folded into this card. locationCount is how many
+DISTINCT places they cover — and it used to be the sibling count
+wearing the location count's name. The sample list below was already
+deduped (the same role genuinely recurs in one town — Pueblo, CO,
+twice), so the code knew locations repeat and counted them anyway:
+measured 2026-08-23, 2.4% of served cards claimed locations that do
+not exist, the largest a single-location role in Kyiv posted 85 times
+and captioned "84 more locations".
+
+## n1333-export-function-mergecompanyfacet-rows-a
+
+In `supabase/functions/job-board/clusters.ts`, above: `export function mergeCompanyFacet(rows: Array<{ token?: string; name?: string; count?: number; open?: number }>): Array<{ token?: string; na`
+
+One employer, several feed tokens (PwC ships five Workday sub-sites; 76 such
+employers in the top 1,500 alone, 43k postings). Serving the facet raw put
+"PwC" in the company dropdown five times, each filtering to a fifth of the
+real roles. Merge by display name: one row, counts summed, every token
+carried so the filter can cover them all. The primary token is the largest
+sub-board's (stable for links).
+
+`open` — the SERVABLE count (migration 20260909214000: both serving
+predicates) — folds the same way `count` does, and it is deliberately
+tri-state. If no row in a group carried one, the merged row carries none
+either: a fold must not turn "we did not measure this" into 0, because 0 is
+a claim that the employer has nothing open. `count` keeps choosing the
+primary token and is NOT the number any reader sees — serveList strips it.
+
+## n1334-const-stem-r-token-split-trim
+
+In `supabase/functions/job-board/clusters.ts`, above: `const stem = (r.token ?? "").split("~")[0].trim().toLowerCase();`
+
+NAME ALONE IS NOT AN IDENTITY. Two unrelated companies can share one:
+measured 2026-08-23, the Greenhouse fintech "Flex" (9 postings) and the
+Workday manufacturer "Flex" (572, token flextronics~wd1~Careers) became
+ONE dropdown entry with zero title overlap — 52 names, 4,575 postings in
+that state. The tenant stem (the token's first ~-segment) is the tell:
+PwC's five sub-sites all stem "pwc" and keep folding; the two Flexes
+stem "flex" vs "flextronics" and stay apart. The failure directions are
+not symmetric — an unmerged pair shows a name twice and each row still
+filters correctly, while a wrong merge hands one company's filter the
+other company's jobs — so ambiguity resolves toward NOT merging.
+
+## n1335-if-nm-out-push-r-continue
+
+In `supabase/functions/job-board/clusters.ts`, above: `if (!nm) { out.push(r); continue; }`
+
+A nameless row has nothing to merge ON — pass it through untouched, as
+the name-only key always did (the compound key is never empty, so the
+old falsy check would silently stop firing here).
+
+## n1336-import-job_categories-from-_shared-board
+
+In `supabase/functions/job-board/embed-classify.ts`, above: `import { JOB_CATEGORIES } from "../_shared/board-domains.ts";`
+
+The embed basis of the Other-bucket classifier: a title-only k-nearest-
+neighbour vote over a FROZEN anchor list, gated so tightly that a row moves
+only when the neighbourhood, the field centroid and the audited target set
+all agree. Pure module — no I/O, no Supabase client, no writes. Unit-tested
+from vitest; the leave-one-out script (scripts/category-anchors-loo.mjs)
+imports the same scorer so the gate that is audited is the gate that ships.
+
+WHAT IT IS NOT. It never writes `category`. It proposes: the caller stores
+category_proposed / category_basis='embed' / category_key=EMBED_ANCHOR_VERSION
+/ category_confidence=share on a stored-'other' row, and only
+promote_category() (migration 20260909225500), reading a hand-written
+promotion list after a written audit, ever moves a row. It also never uses
+the job_board_embeddings vectors: those embed title + company + description
+slice and were never audited; the method below was validated on the TITLE
+ALONE (other-bucket/mechA), and the company name would leak the employer
+into the basis.
+
+WHERE THE GATES LIVE. Every gate constant (EMBED_K, EMBED_MIN_SHARE,
+EMBED_MIN_NN1, EMBED_REQUIRE_CENTROID_AGREE, EMBED_BARRED_TARGETS,
+EMBED_ANCHOR_VERSION, EMBED_LOO_REFERENCE, EMBED_LOO_TOLERANCE) is declared
+ONCE, in shadow.ts, beside its measurement. This file imports them and
+re-exports them; it declares no gate literal of its own, so the number the
+first-claim resolver checks and the number this scorer applies cannot drift
+apart (the "no subscriptions" incident: copy went false when the thing it
+described moved). What this file owns is the ANCHOR SET's identity: its
+count, its content hash, and the embedding recipe it was built under.
+
+HOW THE HOP USES IT (phase 2 wires this; phase 1 ships the module dormant):
+  vec   = await embedText(title)                 // index.ts, gte-small,
+                                                 // mean_pool + normalize
+  rows  = rpc category_knn(vec, EMBED_K)         // 20260909225000, exact
+                                                 // cosine over the anchors
+  c     = centroidTop1(vec, centroids)           // 17 centroids held in
+                                                 // memory from the anchors
+  stamp = readAnchorStamp(job_board_meta.category_anchor_version)
+                                                 // written by
+                                                 // load_category_anchors
+                                                 // (20260909224500)
+  resolveEmbed(rows, c?.field ?? null, stamp)    // proposal or null; THROWS
+                                                 // if the stamp is missing
+                                                 // or its LOO did not pass
+and the loader path, before any scoring: embed every anchor title with the
+same embedText, computeLooStamp(vectors) — which MUST come back passed —
+then load_category_anchors(version, rows, stamp, sha).
+Cost per row: one embed (~100-200 ms of CPU on a warm session; EMBED_PER_HOP=6
+and the 2 s CPU budget in index.ts are the hop's problem, not this file's),
+one exact scan over ~2.3k vectors (~1-2 ms), and this arithmetic (µs).
+
+PROVENANCE. Every figure below is measured in other-bucket/mechA
+(2026-09-10): 2,576-row stratified Other sample (top-25 employers 1,500 /
+tail 1,076); anchors = the 3,060 hand-labelled rows minus the 410 whose
+category was decided by the department, not the title (basis in {title,
+title+dept} leaves 2,650), deduped on (lower(title), field) = 2,272; 200
+rows hand-judged at the loose draw gate (judged.jsonl) plus a 60-row blind
+holdout at the shipping gate (holdout-judged.jsonl); 2,318 title decisions
+in all across the three mechanisms (judgments.json).
+
+## n1337-export-const-embed_anchor_count
+
+In `supabase/functions/job-board/embed-classify.ts`, above: `export const EMBED_ANCHOR_COUNT = 2272;`
+
+The frozen anchor set: scripts/data/category-anchors.json (moved out of the
+function directory 2026-09-15 — the bundler admits only TS there), built by
+scripts/build-category-anchors.mjs from other-bucket/labelled-basis.jsonl
+(3,060 labelled rows, 2,650 title-decided, 2,272 distinct (title, field)).
+EMBED_ANCHORS_SHA256 is sha256(JSON.stringify(anchors)) of that file's
+list. ANY change to the list changes the hash; the frozen-anchors guard
+(src/test) fails until BOTH this pin and EMBED_ANCHOR_VERSION (shadow.ts)
+move together — and a new version carries no audit, so every embed
+promotion listed under the old key matches nothing and the loader
+(20260909224500) de-lists them.
+
+## n1338-one-neighbour-as-category_knn-returns-it
+
+In `supabase/functions/job-board/embed-classify.ts`, above: `/** One neighbour as category_knn returns it: (id, field, title, sim). */`
+
+── What the measurements said, so the imported gates can be read here ─────
+EMBED_K = 15: mechA/classify.mjs K = 15; every audited figure is at this K.
+EMBED_MIN_SHARE = 0.60: mechA/score.mjs on the 200 judged rows — share >=
+  0.5 alone (the draw gate) is 19% wrong (38/200); share >= 0.6 with nn1 >=
+  0.85 is 15% wrong (20/133) BEFORE the centroid and target bars; with both
+  (F2) 5 wrong of 160 = 3.1% on the first-draw F2 subset (88R/4W/8A, n=100)
+  plus the blind holdout (53R/1W/6A, n=60) — 141R/5W/14A, strict 88.1%.
+  Loosening to 0.5 was measured and refused (journal dontDo).
+EMBED_MIN_NN1 = 0.85: the nearest anchor's cosine; the draw was gated here
+  (mechA/draw.mjs) and the holdout's minimum nn1 was 0.8513.
+EMBED_REQUIRE_CENTROID_AGREE = true: 18 of the 38 loose-gate misses had the
+  nearest of the 17 L2-normalised field centroids disagreeing with the vote
+  (mechA/score.mjs, "W rows where centroid disagreed"). The centroid is a
+  veto, never a vote — a row never moves on a centroid alone.
+EMBED_BARRED_TARGETS = {product, design, legal, data_ai}: strict precision
+  at the loose gate on the judged rows (R/(R+W+A)): product 2/15 = 13%,
+  design 1/9 = 11%, legal 1/8 = 12.5%, data_ai 5/14 = 36%. "Manager
+  Programs 3" went to product at share 1.00. Their vocabulary is corporate-
+  generic; the rule basis owns them.
+EMBED_LOO_REFERENCE = 0.862, tolerance 0.02: leave-one-out kNN agreement of
+  the anchor set with its own labels at K — mechA/loo-anchors.jsonl 1,959 /
+  2,272 = 0.8622. A stored anchor set whose in-runtime LOO does not land
+  within the tolerance was embedded differently from the audited one
+  (pooling, normalisation, a different model build) and the F2 audit does
+  not transfer to it — so resolveEmbed refuses to score until it does.
+
+## n1339-export-function-withinlootolerance-agree
+
+In `supabase/functions/job-board/embed-classify.ts`, above: `export function withinLooTolerance(agreement: number): boolean {`
+
+"Within two points" of the reference, inclusive. Compared with a 1e-9
+slack because 0.862 - 0.842 is 0.020000000000000018 in binary floating
+point: an agreement exactly two points off is inside the audited tolerance
+and must not be refused by the representation.
+
+## n1340-export-function-scoreknn-rows-readonly-k
+
+In `supabase/functions/job-board/embed-classify.ts`, above: `export function scoreKnn(rows: readonly KnnRow[], k: number = EMBED_K): KnnScore | null {`
+
+Score the neighbourhood: sort by similarity, keep the K nearest, weight each
+neighbour's vote by its similarity, and rank fields by their share of the
+total weight. Returns null on an empty list. Does NOT gate — see resolveEmbed.
+
+## n1341-export-function-readanchorstamp-value-un
+
+In `supabase/functions/job-board/embed-classify.ts`, above: `export function readAnchorStamp(value: unknown): AnchorStamp | null {`
+
+Parse the job_board_meta.category_anchor_version value defensively. Returns
+null for anything that is not an object with a string version — the caller
+hands that to assertAnchorStamp, which throws the readable reason.
+
+## n1342-export-function-assertanchorstamp-stamp
+
+In `supabase/functions/job-board/embed-classify.ts`, above: `export function assertAnchorStamp(stamp: AnchorStamp | null | undefined): void {`
+
+Refuse to score against an anchor set that is not the audited one. Throws
+AnchorStampError — a hop that runs into this must stop, not degrade: a null
+here would read as "nothing matched" and silently ship an un-audited gate.
+
+## n1343-export-function-resolveembed
+
+In `supabase/functions/job-board/embed-classify.ts`, above: `export function resolveEmbed(`
+
+The F2 gate. A proposal needs, all at once: the K nearest anchors' weighted
+share >= EMBED_MIN_SHARE, the nearest anchor >= EMBED_MIN_NN1, the nearest
+field centroid equal to the vote, and a target outside EMBED_BARRED_TARGETS.
+Anything less is null — the row stays in the bucket. Throws when the stamp
+is not the audited one or fewer than K neighbours were handed over.
+
+## n1344-block
+
+In `supabase/functions/job-board/embed-classify.ts`, above: `/**`
+
+A proposal from resolveEmbed is already the shape shadow.ts's first-claim
+resolver takes (resolveShadowRow({ ..., embed: proposal }) / embedToShadow:
+{field, key, confidence}); shadow.ts re-checks the barred targets, the
+anchor version and the share there, so a loosened scorer still cannot file
+into a barred field or under a stale anchor set.
+
+## n1345-export-function-looagreement
+
+In `supabase/functions/job-board/embed-classify.ts`, above: `export function looAgreement(`
+
+Leave-one-out kNN agreement over an embedded anchor set: each anchor is
+scored against all the others, and it agrees when the vote's top field is
+its own label. This is the number EMBED_LOO_REFERENCE pins; the local script
+and the in-runtime check both compute it here, so they cannot drift apart.
+
+## n1346-export-function-computeloostamp
+
+In `supabase/functions/job-board/embed-classify.ts`, above: `export function computeLooStamp(`
+
+The LOO gate as a stamp: run looAgreement over the embedded anchors and say
+whether the figure reproduces the audited one. The loader stores exactly
+this object; assertAnchorStamp reads it back. `passed` is computed here and
+nowhere else — a caller cannot stamp a set as passing by hand.
