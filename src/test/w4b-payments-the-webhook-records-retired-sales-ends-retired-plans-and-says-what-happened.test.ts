@@ -438,3 +438,51 @@ describe("the owner's test-mode rehearsal has a way in (CP-033)", () => {
     expect(r.status).toBe(400);
   });
 });
+
+// Wave 4 round 2 review (security lens): a test-mode event ran the same
+// handlers against the production tables: a test Pro subscription refreshed
+// pro_subscribers (granting real Pro, or downgrading a live row), and a
+// referred test sale recorded a commission, which is paid.
+describe("a test-mode event changes no live entitlement, balance or notice (round 2 fixes)", () => {
+  const conversions: Array<Record<string, unknown>> = [];
+  beforeEach(() => {
+    conversions.length = 0;
+    db.rpcs.record_affiliate_conversion = (a) => { conversions.push(a); return { data: true, error: null }; };
+    env.STRIPE_TEST_WEBHOOK_SECRET = TEST_SECRET;
+    env.STRIPE_TEST_SECRET_KEY = "sk_test_rehearsal";
+  });
+
+  it("a test-signed subscription update is acknowledged and writes nothing", async () => {
+    world.subs.sub_test_pro = proSub("sub_test_pro", { status: "active" });
+    const r = await deliver("customer.subscription.updated", world.subs.sub_test_pro, { secret: TEST_SECRET, livemode: false });
+    expect(r.status).toBe(200);
+    expect(r.json).toMatchObject({ testMode: true, ignored: "customer.subscription.updated" });
+    expect(db.writes.filter((w) => w.table === "pro_subscribers" || w.table === "agent_subscribers")).toEqual([]);
+  });
+
+  it("a test-signed Pro checkout and a dispute are acknowledged and run nothing", async () => {
+    const pro = await deliver("checkout.session.completed", paidSession("cs_test_pro_rehearsal", { product_type: "pro_subscription", referral_code: "ab12cd34", referral_commission_cents: "1000" }, { mode: "subscription", subscription: "sub_x", livemode: false }), { secret: TEST_SECRET, livemode: false });
+    expect(pro.json).toMatchObject({ ignored: "checkout.session.completed" });
+    const dispute = await deliver("charge.dispute.created", { id: "dp_test", payment_intent: "pi_test", livemode: false }, { secret: TEST_SECRET, livemode: false });
+    expect(dispute.json).toMatchObject({ ignored: "charge.dispute.created" });
+    expect(db.writes.filter((w) => w.table === "pro_subscribers" || w.table === "payment_revocations" || w.table === "used_stripe_sessions")).toEqual([]);
+    expect(conversions).toEqual([]);
+  });
+
+  it("the rehearsed one-off is still handled, and its referral earns nothing", async () => {
+    const id = "cs_test_rehearsal_referred";
+    const r = await deliver("checkout.session.completed", paidSession(id, { product_type: "full_analysis", referral_code: "ab12cd34" }, { amount_total: 500, livemode: false }), { secret: TEST_SECRET, livemode: false });
+    expect(r.status).toBe(200);
+    expect(rowOf(id)).toBeTruthy();
+    expect(conversions).toEqual([]);
+  });
+});
+
+describe("a delivery row records the currency the buyer paid in (round 2 fixes)", () => {
+  it("amount_cents is read with session.currency", async () => {
+    const id = "cs_live_fa_yen";
+    await deliver("checkout.session.completed", paidSession(id, { product_type: "full_analysis" }, { amount_total: 770, currency: "jpy" }));
+    expect(rowOf(id)).toMatchObject({ amount_cents: 770 });
+    expect((rowOf(id)?.metadata as Record<string, unknown>)?.currency).toBe("jpy");
+  });
+});

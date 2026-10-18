@@ -62,7 +62,11 @@ import { commissionCentsFor } from "../_shared/affiliate-commission.ts";
 // 2026-10-11.29 (wave 4 round 2 integration): payments-delivery's code
 // (2026-10-11.22) with account-compliance's bundled notice change (.25), and
 // the affiliate commission read from _shared/affiliate-commission.ts.
-const FN_BUILD = "stripe-webhook.2026-10-11.29";
+// 2026-10-11.30 (wave 4 round 2 fixes): a test-mode event touches no live
+// entitlement, balance or notice: only a completed one-off checkout (the
+// owner's rehearsal) is handled, and with no referral commission; and a
+// delivery row records the currency the buyer paid in.
+const FN_BUILD = "stripe-webhook.2026-10-11.30";
 const BUILD_HEADER = { "x-fn-build": FN_BUILD };
 
 // HOW LONG A MAKER HOLDS AN ORDER (20261011144000, CP-019). The lease
@@ -495,6 +499,18 @@ async function refreshProEntitlement(
  *     what was paid for, not a hard-coded ten (L6-13).
  */
 const ENTITLEMENT_PRODUCT_TYPES = ["pro_subscription", "apply_agent"];
+
+/**
+ * The one test-mode event this function acts on: a completed (or async-paid)
+ * one-off checkout that is not an entitlement, the owner's rehearsal of a
+ * purchase. Everything else a test key can sign is acknowledged and ignored.
+ */
+export function testModeHandles(event: { type: string; data?: { object?: unknown } }): boolean {
+  if (event.type !== "checkout.session.completed" && event.type !== "checkout.session.async_payment_succeeded") return false;
+  const s = (event.data?.object ?? {}) as { mode?: unknown; metadata?: Record<string, unknown> | null };
+  const type = String(s.metadata?.product_type ?? "");
+  return s.mode !== "subscription" && !ENTITLEMENT_PRODUCT_TYPES.includes(type) && type !== PASS_PRODUCT_TYPE;
+}
 const DELIVERED_ELSEWHERE_PRODUCT_TYPES = [FULL_ANALYSIS_PRODUCT_TYPE, "freelance_boost", "freelance_transition_pro"];
 const SCAN_CREDIT_PRODUCT_TYPES = ["scan_pack", "scan_credits", "career_bundle"];
 
@@ -904,6 +920,9 @@ async function triggerProductDelivery(
       // A test-mode purchase (the owner's rehearsal, CP-033) is tagged so
       // revenue and health readers can leave it out.
       ...(session.livemode === false ? { livemode: false } : {}),
+      // amount_cents is in this currency's smallest unit (the account's
+      // orders list prices it with it).
+      ...(typeof session.currency === "string" && session.currency ? { currency: session.currency.toLowerCase() } : {}),
     }
   }).select().single();
 
@@ -1380,8 +1399,9 @@ serve(async (req) => {
     // THE LIVE ENDPOINT'S SECRET, THEN THE TEST ENDPOINT'S (CP-033). The
     // owner's test-mode rehearsal posts to this same function from Stripe's
     // test-mode webhook, signed with STRIPE_TEST_WEBHOOK_SECRET. An event
-    // verified by the test secret must say livemode false, and is handled with
-    // the test-mode client, so a rehearsal never reads or changes live data.
+    // verified by the test secret must say livemode false, and is read with
+    // the test-mode client; but it runs against the production tables, so
+    // only the one-off purchase path is handled (testModeHandles below).
     let event: Stripe.Event | null = null;
     let testMode = false;
     try {
@@ -1407,6 +1427,16 @@ serve(async (req) => {
       });
     }
     const stripe: Stripe = testStripe ?? liveStripe;
+    // A TEST-MODE EVENT CHANGES NO LIVE ENTITLEMENT, BALANCE OR NOTICE: a
+    // subscription, an invoice, a refund or dispute, an agent plan or pass
+    // would write pro_subscribers, the agent cache, payment_revoke or an
+    // affiliate's balance in production. Acknowledged, never acted on.
+    if (testMode && !testModeHandles(event)) {
+      logStep("Test-mode event acknowledged and ignored: only a completed one-off checkout is rehearsed", { type: event.type });
+      return new Response(JSON.stringify({ received: true, testMode: true, ignored: event.type }), {
+        headers: { "Content-Type": "application/json", ...BUILD_HEADER }, status: 200,
+      });
+    }
 
     logStep("Event verified", { type: event.type, id: event.id, testMode });
 
@@ -1605,7 +1635,8 @@ serve(async (req) => {
             
             // Affiliate conversion (background)
             const referralCode = session.metadata?.referral_code;
-            if (referralCode && session.amount_total) {
+            // A test-mode sale earns no affiliate anything (commissions earned are paid).
+            if (referralCode && session.amount_total && !testMode) {
               const productType = session.metadata?.product_type;
               // ONE RULE, IN ONE PLACE (_shared/affiliate-commission.ts,
               // verify-product-purchase reads the same): a referral marked
