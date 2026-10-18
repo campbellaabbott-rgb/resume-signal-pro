@@ -16,7 +16,10 @@
 #     or there are none and unknownCompanies or companiesUnresolved says why
 #     (S12-080);
 #   - a search that only says it is ChatGPT is not logged (S12-085): this
-#     run's nonce, the owner's SQL below, must count 0;
+#     run's nonce, the owner's SQL below, must count 0 -- and a plain keyless
+#     search with its own nonce must count 1, the positive control without
+#     which a 0 cannot tell "ChatGPT is not logged" from "nothing is logged"
+#     (wave 4 round 2 review);
 #   - with RB_API_KEY, a /v1 job object carries last_verified_at and last_seen
 #     holds the same value (S12-121), and an empty page for a company_token
 #     the board has never read names it in disclosures.unknownCompanies
@@ -27,10 +30,10 @@
 # (S12-085), the drafting rule and the hint (S12-081, S12-082), and the
 # Greenhouse hidden fields and consent flags (S12-173).
 #
-# READ-ONLY. tools/list is free and unmetered. TWO keyless lookups are spent
-# (the CVS search and the nonce search: two of this connection's 100 for
-# today), and only once the preflight shows this build. With RB_API_KEY, two
-# GETs of the owner's own key.
+# READ-ONLY. tools/list is free and unmetered. THREE keyless lookups are
+# spent (the CVS search and the two nonce searches: three of this connection's
+# 100 for today), and only once the preflight shows this build. With
+# RB_API_KEY, two GETs of the owner's own key.
 echo "== 92. wave 4 round 2, agents API: employer names, honest counts, no ChatGPT log, last_verified_at =="
 
 VD92_LIVE=0
@@ -62,12 +65,14 @@ ok(/null/.test(t(route.needsEmployerAccount))&&/null/.test(t(route.captchaLikely
 const bytes=Buffer.byteLength(raw);ok(bytes<=25000,"keyless tools/list is "+bytes+" bytes (want 25,000 or less)");'
 
 VD92_NONCE="vdgpt92$(date +%s)"
+VD92_PLAIN="vdmcp92$(date +%s)"
 if [ "$VD92_LIVE" != "1" ]; then
   echo "INFO  the CVS search and the ChatGPT nonce search were not made: agent-mcp is older than 2026-10-11.27, and an older bundle answers them as the sweep found it"
 else
   MC -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"search_jobs","arguments":{"query":"pharmacist","companies":"CVS","limit":10}}}' > /tmp/vd_92_cvs.json
   MC -A "openai-mcp/1.0 (ChatGPT); verify-deploy-92" -d "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"search_jobs\",\"arguments\":{\"query\":\"$VD92_NONCE\",\"limit\":1}}}" > /tmp/vd_92_gpt.json
-  VD92_NONCE="$VD92_NONCE" node -e '
+  MC -d "{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"tools/call\",\"params\":{\"name\":\"search_jobs\",\"arguments\":{\"query\":\"$VD92_PLAIN\",\"limit\":1}}}" > /tmp/vd_92_plain.json
+  VD92_NONCE="$VD92_NONCE" VD92_PLAIN="$VD92_PLAIN" node -e '
 const fs=require("fs");const ok=(c,m)=>console.log((c?"PASS":"FAIL")+"  "+m);const info=(m)=>console.log("INFO  "+m);
 const rd=(f)=>{try{return JSON.parse(fs.readFileSync(f,"utf8"))}catch{return null}};
 const spent=(r,t)=>r.isError&&/allowance is spent|Too many keyless calls/.test(t);
@@ -89,6 +94,12 @@ if(spent(g,gt))info("the ChatGPT nonce search was refused for the allowance: "+g
 else{
   ok(!g.isError,"a search that says it is ChatGPT answers"+(g.isError?": "+gt.slice(0,120):""));
   info("owner, service role, a minute after this run: SELECT count(*) FROM job_board_search_events WHERE q = '\''"+process.env.VD92_NONCE+"'\'' must be 0 (S12-085: a caller that says it is ChatGPT is never logged, from anywhere; 1 means the no-log flag still follows OpenAI'\''s egress list). Section 86 asks the same 0 of its own nonce from this build on.");
+}
+const p=((rd("/tmp/vd_92_plain.json")||{}).result)||{};const pt=String(((p.content||[])[0]||{}).text||"");
+if(spent(p,pt))info("the plain nonce search was refused for the allowance, so the ChatGPT 0 has no control this run: "+pt.slice(0,120));
+else{
+  ok(!p.isError,"a plain keyless search answers"+(p.isError?": "+pt.slice(0,120):""));
+  info("owner, same query, POSITIVE CONTROL: SELECT count(*) FROM job_board_search_events WHERE q = '\''"+process.env.VD92_PLAIN+"'\'' must be 1 (caller mcp, shown empty). The ChatGPT nonce'\''s 0 counts only when this is 1; a 0 here means connector searches are not logged at all, and the 0 above proves nothing.");
 }'
 fi
 

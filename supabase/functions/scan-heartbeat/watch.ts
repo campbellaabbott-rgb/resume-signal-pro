@@ -109,6 +109,21 @@ export function mailWatchCheck(updatedAt: string | null | undefined, now = Date.
     : { passed: false, error: `mail-watch last ran ${age} min ago (it runs every 15): the alarms on mail that stopped, bounced or never left are silent` };
 }
 
+/**
+ * THE FREE SCANNER'S HOUR RAN OUT (S12-142's alarm). free-keyword-scan
+ * serves a rule-based report past its strangers' hour and records the refusal
+ * on the scan's metric (metadata.ceilingRefused); nothing read it, so a day of
+ * visitors getting the thin report was invisible. More than
+ * CEILING_REFUSALS_ALARM refused scans in the last hour fails the check.
+ */
+export const CEILING_REFUSALS_ALARM = 10;
+export function ceilingRefusalCheck(count: number | null | undefined): { passed: boolean; error?: string } | null {
+  if (typeof count !== "number" || !Number.isFinite(count)) return null;
+  return count <= CEILING_REFUSALS_ALARM
+    ? { passed: true }
+    : { passed: false, error: `${count} free scans in the last hour hit the scanner's hourly ceiling and got the rule-based report (alarm above ${CEILING_REFUSALS_ALARM})` };
+}
+
 export async function pingDeadMan(
   url: string | undefined | null,
   status: string,

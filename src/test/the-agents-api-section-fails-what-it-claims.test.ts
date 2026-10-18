@@ -107,6 +107,7 @@ function healthy(over: Record<string, Route | null> = {}): Route[] {
     tools: { match: `^POST ${MCP} ua= .*"method":"tools/list"`, body: realTools },
     cvs: { match: `^POST ${MCP} ua= .*"companies":"CVS"`, body: result(CVS_REFUSED) },
     gpt: { match: `^POST ${MCP} ua=openai-mcp.*"name":"search_jobs"`, body: result({ jobs: [], total: 0 }) },
+    plain: { match: `^POST ${MCP} ua= .*"query":"vdmcp92`, body: result({ jobs: [], total: 0 }) },
     v1u: { match: `^GET ${API}/v1/jobs\\?company_token=zz-never-carried-`, body: JSON.stringify({ data: [], disclosures: { unknownCompanies: ["{{CT}}"] } }) },
     v1: { match: `^GET ${API}/v1/jobs\\?limit=3`, body: JSON.stringify({ data: [ROW, { ...ROW, id: "lever:b:2" }] }) },
   };
@@ -126,6 +127,9 @@ describe("section 92 on a healthy deploy", () => {
     expect(has(lines, "PASS", /keyless tools\/list is \d+ bytes/), show(lines)).toBe(true);
     expect(has(lines, "PASS", /a search scoped to "CVS" with no rows says why/), show(lines)).toBe(true);
     expect(has(lines, "INFO", /job_board_search_events WHERE q = 'vdgpt92\d+' must be 0/), show(lines)).toBe(true);
+    // The positive control (wave 4 round 2 review): a plain search's own nonce must count 1.
+    expect(has(lines, "PASS", /a plain keyless search answers/), show(lines)).toBe(true);
+    expect(has(lines, "INFO", /POSITIVE CONTROL: SELECT count\(\*\) FROM job_board_search_events WHERE q = 'vdmcp92\d+' must be 1/), show(lines)).toBe(true);
     expect(has(lines, "INFO", /RB_API_KEY missing/), show(lines)).toBe(true);
   });
 
