@@ -8,6 +8,7 @@ import { useBoardFreshness } from "@/lib/home/use-board-freshness";
 import { useHomeRows } from "@/lib/home/use-home-rows";
 import { saleGates, type SaleGates } from "@/lib/home/sale-gates";
 import { useHomeStrings } from "@/lib/home/strings";
+import { useStickyReady } from "@/lib/home/use-sticky-ready";
 import { HomeSearchHero } from "@/components/home/HomeSearchHero";
 import { HomeBoardRows } from "@/components/home/HomeBoardRows";
 import { HomeBoardRail } from "@/components/home/HomeBoardRail";
@@ -28,6 +29,12 @@ import { HomeFaq } from "@/components/home/HomeFaq";
  * mcp-tools.ts, the scanner page, the uploader and the checkout hook never
  * load here.
  *
+ * THE FIRST RENDER WAITS FOR THE READER'S STRINGS. A German reader would
+ * otherwise see the English page swap into German (CLS 0.18 at 375 px,
+ * measured); <main> is held empty at full height until the strings land, and
+ * the header and footer render at once. Only the first render waits: a later
+ * language change keeps the page mounted (useStickyReady).
+ *
  * No scroll-depth or time-on-page events: the visitor budget's journey
  * (a-budget-that-charged-the-office-for-one-visitors-loop.test.ts) counts
  * every page that sends them, and the scanner page keeps its own. Whether /
@@ -42,7 +49,7 @@ export interface HomePageProps {
 
 export default function HomePage({ loadRowsForAutomation = false, gates }: HomePageProps) {
   const { t } = useTranslation();
-  useHomeStrings();
+  const shown = useStickyReady(useHomeStrings());
   const { session } = useAuth();
   const counts = useBoardVendorCounts();
   const freshness = useBoardFreshness();
@@ -53,23 +60,27 @@ export default function HomePage({ loadRowsForAutomation = false, gates }: HomeP
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <SEO title={t("home.seo.title")} description={t("home.seo.description")} path="/" />
+      {shown ? <SEO title={t("home.seo.title")} description={t("home.seo.description")} path="/" /> : null}
       <Header />
-      <main id="main-content" className="pt-14 lg:pt-16">
-        <HomeSearchHero openTotal={openTotal} asOf={asOf} />
+      {shown ? (
+        <main id="main-content" className="pt-14 lg:pt-16">
+          <HomeSearchHero openTotal={openTotal} asOf={asOf} />
 
-        <div className="container grid gap-5 pb-11 pt-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-x-8 lg:gap-y-5 lg:pb-16 lg:pt-8">
-          <HomeBoardRows state={rows} openTotal={openTotal} asOf={asOf} />
-          <HomeBoardRail freshness={freshness} />
-          {!session && <HomeAccountStrip alertsStatable={sale.alertsStatable} />}
-        </div>
+          <div className="container grid gap-5 pb-11 pt-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-x-8 lg:gap-y-5 lg:pb-16 lg:pt-8">
+            <HomeBoardRows state={rows} openTotal={openTotal} asOf={asOf} />
+            <HomeBoardRail freshness={freshness} />
+            {!session && <HomeAccountStrip alertsStatable={sale.alertsStatable} />}
+          </div>
 
-        <HomeScanSection />
-        <HomeAiSection counts={counts.counts} openTotal={openTotal} asOf={asOf} />
-        <HomeSources counts={counts.counts} openTotal={openTotal} asOf={asOf} />
-        <HomePlanStrip gates={sale} />
-        <HomeFaq counts={counts.counts} />
-      </main>
+          <HomeScanSection />
+          <HomeAiSection counts={counts.counts} openTotal={openTotal} asOf={asOf} />
+          <HomeSources counts={counts.counts} openTotal={openTotal} asOf={asOf} />
+          <HomePlanStrip gates={sale} />
+          <HomeFaq counts={counts.counts} />
+        </main>
+      ) : (
+        <main id="main-content" aria-busy="true" className="min-h-screen pt-14 lg:pt-16" />
+      )}
       <Footer />
     </div>
   );

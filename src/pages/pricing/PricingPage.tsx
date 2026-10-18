@@ -11,6 +11,11 @@
  * (useBoardVendorCounts: get_board_vendor_counts, the same cached row the
  * front page's platform wall reads). No figure is printed without its time.
  * The Pro account check runs only once Pro is on sale (ProBuyConnected).
+ *
+ * Only the FIRST render waits for the reader's strings (no English frame
+ * swapping into German). A later language change keeps the page and the
+ * footer mounted, so the reader's focus and scroll position survive it
+ * (useStickyReady); the footer is never gated.
  */
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -25,6 +30,7 @@ import { pricingJsonLd } from "@/components/pricing/pricing-jsonld";
 import { PricingView } from "@/components/pricing/PricingView";
 import { resolveSaleGates, type SaleGateInput } from "@/components/pricing/sale-gates";
 import { usePricingStrings } from "@/components/pricing/use-pricing-strings";
+import { useStickyReady } from "@/lib/home/use-sticky-ready";
 
 export interface PricingPageProps {
   /** Tests and the preview only. The route passes nothing: the shipped seller and gates decide. */
@@ -34,7 +40,7 @@ export interface PricingPageProps {
 }
 
 export default function PricingPage({ gateInput, preview, onPreviewPress }: PricingPageProps = {}) {
-  const ready = usePricingStrings();
+  const shown = useStickyReady(usePricingStrings());
   const { t, i18n } = useTranslation();
   const counts = useBoardVendorCounts();
   const gates = useMemo(
@@ -46,17 +52,17 @@ export default function PricingPage({ gateInput, preview, onPreviewPress }: Pric
 
   return (
     <div className="min-h-screen bg-background">
-      {ready ? (
+      {shown ? (
         <SEO title={t("pricingPlans.meta.title", prices)} description={t("pricingPlans.meta.description", prices)} path="/pricing" />
       ) : null}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pricingJsonLd(gates)) }} />
       <Header />
       <main id="main-content" tabIndex={-1} className="min-h-screen pb-8 focus:outline-none">
-        {ready ? (
+        {shown ? (
           <PricingView postings={{ openTotal: counts.openTotal, asOf: counts.asOf }} gates={gates} preview={preview} onPreviewPress={onPreviewPress} />
         ) : null}
       </main>
-      {ready ? <Footer /> : null}
+      <Footer />
     </div>
   );
 }

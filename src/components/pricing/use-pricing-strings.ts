@@ -46,27 +46,38 @@ function fileFor(lng: string): string {
   return lng === "fr-CA" ? "fr" : lng;
 }
 
-function mainLocaleLanded(lng: string): Promise<void> {
+/**
+ * How long to wait for the main locale before merging anyway. A main locale
+ * that failed to load would otherwise leave the page blank for good; after
+ * this the reader gets this page's strings over the English fallback.
+ */
+export const MAIN_WAIT_MS = 6000;
+
+function mainLocaleLanded(lng: string, waitMs: number): Promise<void> {
   if (i18n.hasResourceBundle(lng, "translation")) return Promise.resolve();
   return new Promise((resolve) => {
-    const onAdded = (l: string, ns: string) => {
-      if (l !== lng || ns !== "translation") return;
+    const finish = () => {
       i18n.store.off("added", onAdded);
+      clearTimeout(timer);
       resolve();
     };
+    const onAdded = (l: string, ns: string) => {
+      if (l === lng && ns === "translation") finish();
+    };
+    const timer = setTimeout(finish, waitMs);
     i18n.store.on("added", onAdded);
   });
 }
 
 /** Merge one language's pricing strings. Safe to call repeatedly; never throws. */
-export async function loadPricingStrings(lng: string): Promise<void> {
+export async function loadPricingStrings(lng: string, waitMs: number = MAIN_WAIT_MS): Promise<void> {
   if (!lng || merged.has(lng)) return;
   const want = fileFor(lng);
   const entry = Object.entries(lazyBundles).find(([p]) => p.endsWith(`/${want}.json`));
   if (!entry) return;
   try {
     const bundle = await entry[1]();
-    await mainLocaleLanded(lng);
+    await mainLocaleLanded(lng, waitMs);
     if (!merged.has(lng)) merge(lng, bundle);
   } catch {
     /* the page reads English, the fallback language */

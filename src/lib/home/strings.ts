@@ -83,15 +83,29 @@ export async function loadHomeStrings(lng: string | null | undefined): Promise<v
   }
 }
 
-/** Load the reader's language and re-render once it is in. */
-export function useHomeStrings(): void {
+/** True when a language's homepage strings are in, or it has none to load (English is merged at import). */
+export function homeStringsMerged(lng: string | null | undefined): boolean {
+  const code = lng || "en";
+  return code === "en" || loaded.has(code) || homeStringsFile(code) === null;
+}
+
+/**
+ * Load the reader's language, re-render once it is in, and say whether it
+ * is: HomePage waits for this before its first render, so a reader in
+ * another language never sees an English frame swap into theirs.
+ */
+export function useHomeStrings(): boolean {
   const { i18n: instance } = useTranslation();
-  const lng = instance.language;
-  const [, bump] = useState(0);
+  const lng = instance.language || "en";
+  const [readyFor, setReadyFor] = useState<string | null>(() => (homeStringsMerged(lng) ? lng : null));
   useEffect(() => {
     let live = true;
-    if (!lng || lng === "en" || loaded.has(lng)) return;
-    void loadHomeStrings(lng).then(() => { if (live) bump((n) => n + 1); });
+    if (homeStringsMerged(lng)) {
+      setReadyFor(lng);
+      return;
+    }
+    void loadHomeStrings(lng).then(() => { if (live) setReadyFor(lng); });
     return () => { live = false; };
   }, [lng]);
+  return readyFor === lng || homeStringsMerged(lng);
 }
