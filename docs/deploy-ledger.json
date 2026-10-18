@@ -4,15 +4,28 @@
   "neverApply": [
     "20260928003117"
   ],
-  "appliedOutsideDrizzle": [
-    "20261008125000",
-    "20261008128000"
-  ],
-  "_appliedOutsideDrizzleNote": "Applied, but no staged-runner stub names them. 20261008125000 and 20261008128000 were released 2026-10-11 after wave 2 step 1 verified, and Lovable applied them without writing a stub, so every later message re-listed them. They are live by behaviour (checked 2026-10-11): get_cron_health lists send-search-digest, industry-corrections-digest and check-error-spikes, and check-error-spikes has run 35+ times.",
+  "appliedOutsideDrizzle": [],
+  "_appliedOutsideDrizzleNote": "Applied, but no staged-runner stub names them, and production cannot show it to the ledger. Prefer appliedByBehaviour, which the ledger checks on every run. 20261008125000 and 20261008128000 sat here from 2026-10-11 (released after wave 2 step 1 verified; Lovable applied them without writing a stub) until 2026-10-12 (S12-162), when they moved to appliedByBehaviour.",
+  "appliedByBehaviour": {
+    "_note": "Per migration stamp, what production must show for a migration with no staged-runner stub to count as applied (S12-162): cronJobs, the pg_cron jobs it schedules, each listed active by get_cron_health (anon-readable aggregates; the ledger reads it with a GET). Unreadable or missing, the migration stays pending with the reason, and section 49 FAILs it.",
+    "20261008125000": {
+      "cronJobs": ["send-search-digest", "industry-corrections-digest"],
+      "why": "it schedules the two digests; Lovable applied it 2026-10-11 without a stub"
+    },
+    "20261008128000": {
+      "cronJobs": ["check-error-spikes"],
+      "why": "it schedules the error-spike check; Lovable applied it 2026-10-11 without a stub"
+    }
+  },
+  "rollbacks": {
+    "_note": "A rollback on purpose (S12-161): \"<fn>\": { \"from\": \"<the live build main rolls back>\", \"why\": \"...\" }. A function whose live build is exactly `from` is deployed at main's build by the next message, and section 49 FAILs it until production answers main's. Any other function live ahead of main stays exit 8: a build nobody declared is never rolled back by a pasted message. Remove the entry once section 49 passes it."
+  },
+  "_holdUntilVerifiedNote": "Each hold names releaseWhen (S12-032): the functions and builds the ledger reads from the preflight; when every one is live the hold is RELEASABLE, the message says so instead of 'Do NOT apply yet', and section 49 FAILs until it is released. `until` keeps what only the owner can check. A hold with no releaseWhen the ledger can read stops the message (exit 6).",
   "holdUntilVerified": [
     {
       "stamp": "20261011103000",
-      "until": "wave 4 verified: job-board .93 serving (section 86) and agent-mcp 2026-10-11.2 serving (section 82); it schedules the connector's 30-day search prune"
+      "releaseWhen": ["fn:job-board@2026-09-09.93", "fn:agent-mcp@2026-10-11.3"],
+      "until": "wave 4 verified: job-board .93 serving and section 86 passing, agent-mcp 2026-10-11.3 or later serving and section 82 passing; it schedules the connector's 30-day search prune"
     }
   ],
   "migrationOrder": {

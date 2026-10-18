@@ -18,7 +18,25 @@ closes the gap. Policy lives in `docs/deploy-ledger.json`:
 
 - `neverApply`: superseded migrations (applying them would revert a later one).
 - `holdUntilVerified`: migrations that start scheduled work; they go out in a
-  second message only after the first one verifies live.
+  second message only after the first one verifies live. Each names
+  `releaseWhen`, the `fn:<name>@<YYYY-MM-DD.N>` builds the ledger reads from
+  the preflights, and `until`, what only the owner can check (S12-032: all
+  three of wave 3's holds were met while every message still said "Do NOT
+  apply yet"). When every condition is live the hold is RELEASABLE: the
+  message says so instead of "Do NOT apply", and section 49 FAILs until the
+  owner releases it. A hold with no `releaseWhen` the ledger can read stops
+  the message (exit 6).
+- `appliedByBehaviour`: a migration with no staged-runner stub that
+  production shows applied, per stamp the `cronJobs` it schedules, each
+  listed active by get_cron_health (anon, read with a GET). Unreadable or
+  missing, it stays pending with the reason (S12-162: four of wave 3's
+  eleven FAILs were stub-less migrations that were live). Prefer it to
+  `appliedOutsideDrizzle`, which nothing re-checks.
+- `rollbacks`: a rollback on purpose, `"<fn>": { "from": "<live build>" }`.
+  That function is deployed at main's build by the next message and FAILs
+  section 49 until it answers it; any other function live ahead of main
+  stays exit 8 (S12-161: a revert on main read "live-ahead" and no message
+  could deploy it).
 - `drizzleBaseline`: the staged-runner record is complete from this stamp on.
 - `migrationOrder`: per migration stamp, `after` is `fn:<name>@<YYYY-MM-DD.N>`
   (apply once that function answers that build or later) or `frontend`
@@ -96,12 +114,17 @@ so is a late stamp or a function live ahead of main.
    the ledger) shows no gap.
 3. When it verifies, record it in `docs/deploy-ledger.json` `verifiedDeploys`:
    the commit the message named and every function it deployed, with its
-   build. Lovable deploys a function as main holds it, so code changed after a
+   build. Generate the entry, never type it:
+   `node scripts/deploy-ledger.mjs --record-deploy` prints it from GitHub
+   main, and refuses (exit 5) while any function still answers a build other
+   than main's. Lovable deploys a function as main holds it, so code changed after a
    stamp was written but before that commit is live; from then on the ledger
    asks for a bump only for changes after the recorded deploy (without the
    record, all seven functions fixed during wave 2's integration read MUST
    BUMP the moment their stamps went live). Then release the held migrations
-   (empty their `holdUntilVerified` entries) and send them in a second message.
+   the ledger reads RELEASABLE (empty their `holdUntilVerified` entries, keep
+   the condition as a `migrationOrder` after-rule) and send them in a second
+   message.
 4. Then the next integration may merge.
 
 Branches keep working while main is frozen; they merge when it thaws, against
