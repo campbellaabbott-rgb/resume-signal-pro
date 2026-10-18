@@ -60,7 +60,7 @@ function Amount({ value, unit }: { value: string; unit?: string }) {
 const CARD = "flex min-w-0 flex-col p-5";
 const GROUP = "mt-4 text-xs font-semibold tracking-wide text-subtle-foreground";
 
-export function FreeCard({ postings }: { postings: OpenPostings }) {
+export function FreeCard({ postings, alertsStatable }: { postings: OpenPostings; alertsStatable: boolean }) {
   const { t, i18n } = useTranslation();
   const lng = i18n.language;
   const hasCount = postings.openTotal !== null && postings.openTotal > 0 && !!isoAttr(postings.asOf);
@@ -96,7 +96,7 @@ export function FreeCard({ postings }: { postings: OpenPostings }) {
 
       <h3 className={GROUP}>{t("pricingPlans.free.groupAccount")}</h3>
       <ul className="mt-2 grid flex-1 content-start gap-2">
-        <CheckItem>{t("pricingPlans.free.saved")}</CheckItem>
+        <CheckItem>{t(alertsStatable ? "pricingPlans.free.saved" : "pricingPlans.free.savedNoAlerts")}</CheckItem>
         <CheckItem>{t("pricingPlans.free.savedResume")}</CheckItem>
         <CheckItem>{t("pricingPlans.free.writing", { perDay: WRITING.freePerToolPerDay })}</CheckItem>
         <CheckItem>{t("pricingPlans.free.scansAccount", { n: SIGNED_IN_SCANS_PER_DAY })}</CheckItem>

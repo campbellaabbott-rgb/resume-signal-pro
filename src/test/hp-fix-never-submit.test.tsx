@@ -84,7 +84,7 @@ describe("the rendered sections, in English", () => {
         <HomeBoardRows state={ROWS} openTotal={null} asOf={null} />
         <HomeAiSection counts={{}} openTotal={null} asOf={null} />
         <HomeFaq counts={{}} />
-        <PricingFaq />
+        <PricingFaq alertsStatable={false} />
       </MemoryRouter>,
     );
     const text = (container.textContent ?? "").replace(/\s+/g, " ");

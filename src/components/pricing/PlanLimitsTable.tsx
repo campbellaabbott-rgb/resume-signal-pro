@@ -76,7 +76,7 @@ export function useLimitGroups(gates: SaleGates): { columns: [string, string, st
             cells: [{ text: L("perDay", { n: FREE_SCANS_PER_DAY }) }, { text: L("perDay", { n: SIGNED_IN_SCANS_PER_DAY }) }, { text: L("noScanCap") }],
           },
           { id: "fit", label: L("rowFit"), cells: [{ text: L("fitBrowser"), tone: "ok" }, { text: L("fitSaved"), tone: "ok" }, inc] },
-          { id: "saved", label: L("rowSaved"), cells: [no, inc, inc] },
+          { id: "saved", label: L(gates.alertsStatable ? "rowSaved" : "rowSavedNoAlerts"), cells: [no, inc, inc] },
           {
             id: "writing",
             label: L("rowWriting"),

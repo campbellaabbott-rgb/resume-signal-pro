@@ -11,7 +11,8 @@ import { WRITING } from "./plan-facts";
 
 export const FAQ_IDS = ["refund", "region", "fit", "package", "cancel", "apply", "interviews"] as const;
 
-export function PricingFaq() {
+/** alertsStatable is G6 (sale-gates.ts): the region answer names alerts only once the digest can be sent. */
+export function PricingFaq({ alertsStatable }: { alertsStatable: boolean }) {
   const { t } = useTranslation();
   const vars = { perDay: WRITING.proPackagesPerDay, perMonth: WRITING.proPackagesPerMonth, freePerDay: WRITING.freePerToolPerDay };
   return (
@@ -27,7 +28,9 @@ export function PricingFaq() {
                 <span className="min-w-0">{t(`pricingPlans.faq.${id}Q`)}</span>
                 <ChevronDown aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-base group-open:rotate-180" />
               </summary>
-              <p className="max-w-reading pb-4 text-sm text-muted-foreground md:text-base">{t(`pricingPlans.faq.${id}A`, vars)}</p>
+              <p className="max-w-reading pb-4 text-sm text-muted-foreground md:text-base">
+                {t(id === "region" && !alertsStatable ? "pricingPlans.faq.regionANoAlerts" : `pricingPlans.faq.${id}A`, vars)}
+              </p>
             </details>
           ))}
         </div>

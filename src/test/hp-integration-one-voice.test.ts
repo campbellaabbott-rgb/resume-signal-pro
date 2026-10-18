@@ -78,6 +78,24 @@ describe("one switch decides what both pages sell", () => {
   }
 });
 
+describe("one answer about alerts (G6)", () => {
+  for (const [sellerName, seller] of [["no seller", NO_SELLER], ["TEST SELLER", TEST_SELLER]] as const) {
+    for (const digestMailClass of ["unruled", "marketing", "transactional"] as const) {
+      it(`${sellerName}, digest ${digestMailClass}: the pricing page may name alerts exactly when the homepage may`, () => {
+        const home = saleGates({ seller, digestMailClass });
+        const pricing = resolveSaleGates({ seller, digestMailClass });
+        expect(pricing.alertsStatable).toBe(home.alertsStatable);
+        expect(home.alertsStatable).toBe(digestMailClass === "transactional" || seller === TEST_SELLER);
+      });
+    }
+  }
+
+  it("with the shipped defaults neither page names alerts", () => {
+    expect(saleGates().alertsStatable).toBe(false);
+    expect(resolveSaleGates().alertsStatable).toBe(false);
+  });
+});
+
 describe("one set of facts", () => {
   it("prices", () => {
     expect(homeFacts.HOME_FULL_ANALYSIS_USD).toBe(planFacts.FULL_ANALYSIS_PRICE_USD);

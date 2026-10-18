@@ -39,10 +39,10 @@ export function PricingView({ postings, gates, preview, onPreviewPress }: Pricin
     <>
       <section aria-labelledby="pricing-h1" className="pb-2 pt-20 lg:pt-28">
         <div className="container">
-          <PricingHead />
+          <PricingHead alertsStatable={gates.alertsStatable} />
           <BeforeYouBuy />
           <div className="mt-5 grid gap-3 lg:mt-6 lg:grid-cols-3 lg:gap-4" data-testid="plan-cards">
-            <FreeCard postings={postings} />
+            <FreeCard postings={postings} alertsStatable={gates.alertsStatable} />
             <FullAnalysisCard gates={gates} preview={preview} />
             <ProCard gates={gates} preview={preview} onPreviewPress={onPreviewPress} />
           </div>
@@ -51,7 +51,7 @@ export function PricingView({ postings, gates, preview, onPreviewPress }: Pricin
       <FreeVsFullAnalysis />
       <BuilderAndLicence />
       <PlanLimitsTable gates={gates} />
-      <PricingFaq />
+      <PricingFaq alertsStatable={gates.alertsStatable} />
     </>
   );
 }

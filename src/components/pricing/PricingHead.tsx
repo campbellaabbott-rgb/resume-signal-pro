@@ -7,7 +7,8 @@ import { useTranslation } from "react-i18next";
 import { money } from "@/lib/format";
 import { FULL_ANALYSIS_PRICE_USD, PRO_PRICE_USD } from "./plan-facts";
 
-export function PricingHead() {
+/** alertsStatable is G6 (sale-gates.ts): the summary names alerts only once the digest can be sent. */
+export function PricingHead({ alertsStatable }: { alertsStatable: boolean }) {
   const { t, i18n } = useTranslation();
   const lng = i18n.language;
   const jumps = [
@@ -21,7 +22,7 @@ export function PricingHead() {
         {t("pricingPlans.head.h1")}
       </h1>
       <p className="mt-2 max-w-[62ch] text-base text-muted-foreground md:text-lg" data-testid="pricing-sub">
-        {t("pricingPlans.head.sub")}
+        {t(alertsStatable ? "pricingPlans.head.sub" : "pricingPlans.head.subNoAlerts")}
       </p>
       <nav aria-label={t("pricingPlans.head.jumpLabel")} className="mt-4 lg:hidden">
         <ul className="flex flex-wrap gap-2">

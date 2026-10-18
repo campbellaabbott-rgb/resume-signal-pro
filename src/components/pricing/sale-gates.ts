@@ -21,7 +21,7 @@
  * missing address as the reason when the reason is an unwatched delivery.
  */
 import { SELLER, sellerIdentity, type SellerIdentity } from "@/config/seller";
-import { SALE_SWITCHES } from "@/lib/home/sale-gates";
+import { saleGates as homeSaleGates, SALE_SWITCHES, type DigestMailClass } from "@/lib/home/sale-gates";
 
 /**
  * Stand-in for FULL_ANALYSIS_ON_SALE (src/config/sales-gate.ts, hp/honesty).
@@ -41,6 +41,13 @@ export interface SaleGates {
   fullAnalysis: { onSale: boolean; closedBy: FullAnalysisClosedBy | null };
   pro: { onSale: boolean; closedBy: ProClosedBy | null };
   /**
+   * G6: "alerts" may be printed beside saved searches. This is the
+   * homepage's own answer (src/lib/home/sale-gates.ts), so the two pages can
+   * never disagree: the saved-search digest's mail class is ruled
+   * transactional, or the seller is known.
+   */
+  alertsStatable: boolean;
+  /**
    * True only in src/preview: buttons render with no seller set, so the page
    * can be looked at in its open state. Never true on a route.
    */
@@ -52,17 +59,21 @@ export interface SaleGateInput {
   fullAnalysisDelivered?: boolean;
   proWatched?: boolean;
   previewOpen?: boolean;
+  /** G6, tests only: the route reads the homepage's switch. */
+  digestMailClass?: DigestMailClass;
 }
 
 export function resolveSaleGates(input: SaleGateInput = {}): SaleGates {
   const seller = sellerIdentity(input.seller ?? SELLER);
   const delivered = input.fullAnalysisDelivered ?? FULL_ANALYSIS_DELIVERY_WATCHED;
   const watched = input.proWatched ?? PRO_SUBSCRIPTION_WATCHED;
+  const alertsStatable = homeSaleGates({ seller: input.seller, digestMailClass: input.digestMailClass }).alertsStatable;
   if (input.previewOpen) {
     return {
       seller,
       fullAnalysis: { onSale: true, closedBy: null },
       pro: { onSale: true, closedBy: null },
+      alertsStatable,
       previewOpen: true,
     };
   }
@@ -72,6 +83,7 @@ export function resolveSaleGates(input: SaleGateInput = {}): SaleGates {
     seller,
     fullAnalysis: { onSale: faClosed === null, closedBy: faClosed },
     pro: { onSale: proClosed === null, closedBy: proClosed },
+    alertsStatable,
     previewOpen: false,
   };
 }
