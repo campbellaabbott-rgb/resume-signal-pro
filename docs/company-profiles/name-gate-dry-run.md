@@ -17,17 +17,19 @@ Owner decision D7: no page indexable today drops out without the owner's sign-of
 
 ## 2. Names repaired (printed differently, index unchanged)
 
-| Page | Stored name | Printed name | Indexable today |
-| --- | --- | --- | --- |
-| `/jobs/company/epyc~us2~CX_1` | Clean Harbors External | Clean Harbors | yes |
-| `/jobs/company/fa-espx-saasfaprod1~ocs~CX_1006` | Cummins All Functions | Cummins | yes |
-| `/jobs/company/fa-ewjt-saasfaprod1~ocs~CX_1` | EXL Talent Acquisition Team | EXL | yes |
-| `/jobs/company/fa-euwp-saasfaprod1~ocs~CX_1` | Mayo Career Site US | Mayo | yes |
-| `/jobs/company/recruiting2~BIG1003BIGC~63b1fe5f-a895-49e4-afdc-7059fb08eea2` | Big 5 Sporting Goods Opt 1 | Big 5 Sporting Goods | yes |
-| `/jobs/company/eedu~em3~CX_1003` | WTW External | WTW | yes |
-| `/jobs/company/recruiting2~AUS1003AUIN~611d5a38-76c4-4f66-a55f-2bc012d98024` | Austin External | Austin | yes |
-| `/jobs/company/eqtm~us2~CX_1` | FMOL Health Career Portal | FMOL Health | yes |
-| `/jobs/company/recruiting2~AUS1003AUIN~76c6c58c-a4d3-4a7c-b7a4-8640fc76a703` | Austin External | Austin | no |
+| Page | Stored name | Printed name | Indexable today | One word: check it names the employer |
+| --- | --- | --- | --- | --- |
+| `/jobs/company/epyc~us2~CX_1` | Clean Harbors External | Clean Harbors | yes |  |
+| `/jobs/company/fa-espx-saasfaprod1~ocs~CX_1006` | Cummins All Functions | Cummins | yes | yes (add an override if it reads as a place or another employer) |
+| `/jobs/company/fa-ewjt-saasfaprod1~ocs~CX_1` | EXL Talent Acquisition Team | EXL | yes | yes (add an override if it reads as a place or another employer) |
+| `/jobs/company/fa-euwp-saasfaprod1~ocs~CX_1` | Mayo Career Site US | Mayo | yes | yes (add an override if it reads as a place or another employer) |
+| `/jobs/company/recruiting2~BIG1003BIGC~63b1fe5f-a895-49e4-afdc-7059fb08eea2` | Big 5 Sporting Goods Opt 1 | Big 5 Sporting Goods | yes |  |
+| `/jobs/company/eedu~em3~CX_1003` | WTW External | WTW | yes | yes (add an override if it reads as a place or another employer) |
+| `/jobs/company/recruiting2~AUS1003AUIN~611d5a38-76c4-4f66-a55f-2bc012d98024` | Austin External | Austin | yes | yes (add an override if it reads as a place or another employer) |
+| `/jobs/company/eqtm~us2~CX_1` | FMOL Health Career Portal | FMOL Health | yes |  |
+| `/jobs/company/recruiting2~AUS1003AUIN~76c6c58c-a4d3-4a7c-b7a4-8640fc76a703` | Austin External | Austin | no | yes (add an override if it reads as a place or another employer) |
+
+The last column is new (2026-10-18 review): a repair that leaves one word can read as a place or as a different employer. `Austin` reads as the city (the UKG tenant is Austin Industries: "Austin jobs: 382 open roles from their own hiring system"), and `Mayo` is Mayo Clinic. A `company_name_overrides` row for each ("Austin Industries", "Mayo Clinic") is the fix; `Cummins`, `EXL` and `WTW` are the employers' own short names. The bake's report file now carries `singleWord` per repair and the report script prints this column; the rows above are this bake's, marked by that rule.
 
 ## 3. New pages refused (never indexable before this bake)
 

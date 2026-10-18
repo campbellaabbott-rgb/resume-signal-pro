@@ -14,8 +14,8 @@ integration PR from `design/integration` (reservation `company-profiles`,
 deployOrder 2, after R1). **The one deploy procedure for both is in
 [the design upgrade's README](../design-upgrade/README.md), "Deploy procedure
 (company profiles 0-2 and the design upgrade together)".** It covers the
-migrations in order (these phases' six plus the 2026-10-12 to 10-17
-round's five), the held `20261012111000`, `employer-profiles`, the frontend
+migrations in order (these phases' six plus the 2026-10-12 to 10-18
+rounds' six), the held `20261012111000`, `employer-profiles`, the frontend
 publish, the verify sections, the hold's release, the AI-judge audit and
 the flags, the changelog and the owner's D7 sign-off. This file says what
 phases 0 to 2 ship and why. It does not repeat the procedure. The Lovable
@@ -88,8 +88,8 @@ Moved into the one procedure in
 [the design upgrade's README](../design-upgrade/README.md) on 2026-10-17:
 its migration table lists this phase's six files (`20261012100000`,
 `101000`, `102000`, `110000`, `110100` and the held `111000`) in order with
-the round's five (`20261012120000`, `121000`, `122000`, `130000`,
-`135000`). Its steps 4 to 6 are this file's old "After the deploy": verify
+the rounds' six (`20261012120000`, `121000`, `122000`, `130000`,
+`135000`, `136000`). Its steps 4 to 6 are this file's old "After the deploy": verify
 sections 80, 91, 40 and 49 with the round's 81, 83 and 87; release the hold
 once section 80 passes; run the sweep, the AI-judge audit (D2) and the flags.
 

@@ -14,6 +14,8 @@ as one integration PR to main (ledger reservation `company-profiles`,
 - the last fix round, 2026-10-12 to 2026-10-17: Track 1 accuracy
   (`pd/accuracy`), the crawler bake (`pd/bake`) and pass B, which wires the
   board (`pd/wire`, which contains the other two);
+- the fixer's round of 2026-10-18 (`pd-fix`) on the integration's review:
+  see "The fix round of 2026-10-18" below;
 - origin/main at `5464e502`: R1, the wave-3 closeout, SEO-024 and the
   disk alarm.
 
@@ -64,8 +66,9 @@ says so.
 | 6 | `20261012120000_a_relist_warning_never_reads_another_site` | `board_multi_site_title_share` (service role), `get_repost_index` re-issued | Track 1 A2 |
 | 7 | `20261012121000_a_fill_share_counts_only_roles_the_board_was_watched_for` | `get_company_fill_curve` re-issued: delayed entry, the R(14) interval, the 21/28-day floor, eight appended columns | Track 1 A4. The live frontend ignores the new columns until the publish |
 | 8 | `20261012122000_a_field_admits_a_board_by_what_it_could_see_before_the_cohort` | `get_category_fill_curve` re-issued | Track 1 A5 |
-| 9 | `20261012130000_four_company_tables_are_read_through_their_readers_and_never_by_a_client` | `showcase_excluded`, `company_profiles`, `company_financials` and `company_name_overrides` closed to PUBLIC, anon and authenticated | safe before the publish: neither the live frontend nor this one reads them directly (both use the definer readers), and job-board reads two of them with the service role |
+| 9 | `20261012130000_four_company_tables_are_read_through_their_readers_and_never_by_a_client` | `showcase_excluded`, `company_profiles`, `company_financials` and `company_name_overrides` closed to PUBLIC, anon and authenticated | safe before the publish: neither the live frontend nor this one reads them directly (both use the definer readers), and job-board reads two of them with the service role. Its self-check reads the catalogue only and never switches role, so it applies inside the staged runner's `_mig_exec` definer (PostgreSQL refuses a role switch there, 42501); sections 81f and 81g probe the reads over REST |
 | 10 | `20261012135000_a_workday_tenant_that_hosts_another_employer_is_read_one_site_at_a_time` | `workday_site_is_own_employer`; `get_company_intel` and `get_similar_companies` rewritten from the catalogue | after 2. It refuses a live body it does not recognise (S12-130) |
+| 11 | `20261012136000_a_similar_employer_is_named_by_its_board_and_the_federal_listing_site_is_not_one` | `get_similar_companies` rewritten from the catalogue: no USAJOBS row, no staffing-agency board, no board name two hiring systems share; each board named by its full-token override, else the name most of its rows carry (never `max(company)`) | after 10 (it refuses to run before it). It refuses a live body it does not recognise. Section 81h reads it |
 | - | `20261012111000_the_perk_sweep_runs_every_minute_under_a_lease_and_the_rollup_nightly_under_a_budget` | the vault key and the two crons | **HELD** (`holdUntilVerified`) until step 6 |
 
 ### 2. Functions
@@ -86,6 +89,22 @@ from live data (2026-10-17) wrote 3,388 static pages and a sitemap of
 pages the bake now keeps (1,013 company stubs and 713 seeded posting pages),
 so the owner confirms that Lovable publishes a build of this size.
 
+**The window until wave 4 publishes (deployOrder 3).** This publish takes
+the retired products off every page it owns: the home hero, its strip, the
+FAQ, the Trust page, the bake, the guide and llms.txt. Pages it may not
+touch still sell them until wave 4's frontend lands: Pricing.tsx's Agent
+plan card, its pass line (`pricingPage.passLine`) and its own JSON-LD (the
+pass and the $99 `highPrice`), AgentConnect's pass card, `/agents/pass`, the
+signed-in `/agent` console, and `atsCoverage.*` on `/` and `/pricing`
+("We apply for you", shown only while the agent sender answers online).
+So for that window nothing this publish writes says the agent is retired
+or that its plan and pass are no longer sold: the guide at
+`/guides/how-the-apply-agent-works`, the baked `/agent` and llms.txt say
+how to apply with your own AI and stop there, and the FAQ names Pro and
+sends the reader to the Pricing page for every plan on sale. Wave 4
+restores the retirement sentences when its sale-path removal and its
+checkout refusals are live. Keep the two publishes close together.
+
 ### 4. Verify (read-only)
 
 `bash scripts/verify-deploy.sh`. The sections this deploy answers to:
@@ -94,15 +113,18 @@ so the owner confirms that Lovable publishes a build of this size.
 |---|---|---|
 | 80 | `80-profiles-identity.sh`, `80-company-profiles-perks.sh` | identity and the perk engine (`employer-profiles.2026-10-12.2`, the reader answers anon, the perk tables refuse it) |
 | 91 | `91-profiles-gate-and-fixes.sh` | the hiring-record gate, the LCA line, headcount, llms.txt, V3, V3b, V7, V7b (it reads the lock's 42501 on `company_profiles.as_of` as the lock) |
-| 81 | `81-profiles-design-accuracy.sh` | Track 1 on named pages and the four-table lock |
-| 83 | `83-profiles-design-bake.sh` | the crawler copy sells nothing retired; once-published company URLs keep a page of their own |
+| 81 | `81-profiles-design-accuracy.sh` | Track 1 on named pages, the four-table lock, and (81h) no USAJOBS row in the similar-employers list of CVS Health or Eurofins |
+| 83 | `83-profiles-design-bake.sh` | the crawler copy sells nothing retired (now also /trust, /privacy, /terms, and every company-title form the bake writes); once-published company URLs keep a page of their own; (C6) USAJOBS is baked as the federal listing site and Surge Staffing as an agency; (C7) the strings React renders (the entry, the English and Index chunks) carry none of the retired home, FAQ and trust sentences |
 | 87 | `87-profiles-design-pass-b.sh` | the board serves the lander, card, pane and filter row; the agent pitch is gone |
 | 40 | `40-db-exposure.sh` | the census shows nothing unlisted |
 | 49 | `49-deploy-ledger.sh` | no gap |
 | 62, 77 | re-pointed this round | the posting page's pay and fit lines, read in the shared posting chunk the posting page imports |
 
 Before the deploy, sections 81, 83 and 87 fail on production by design
-(81 on every claim except 81d's gate side and 81g). 83 (7 lines) and 87 (6
+(81 on every claim except 81d's gate side and 81g). On 2026-10-18 the fixer
+ran the new 83 against production: every line FAILs as designed, and C7
+found all eleven retired sentences in the served bundle, which is its
+positive control. 83 (7 lines) and 87 (6
 lines) pass on the integration's local build, served the way the host
 serves it. On 2026-10-17, 83 still failed on production, and 62 and 77,
 re-pointed, still passed there. Then run the
@@ -158,7 +180,18 @@ lander. Main thaws when section 49 shows no gap.
   last 30 days", the growth line's label, the USAJOBS hub's wording, "We
   could read only part of this board", the Ghost Job Index's "open roles
   right now", the company title "{company} jobs: N open roles from their
-  own hiring system", and the bake's apply-yourself line.
+  own hiring system", and the bake's apply-yourself line. Added by the fix
+  round of 2026-10-18: the results line's split ("Showing 10 of 10 roles: 8
+  dated in the last 30 days, 2 with no date"), the lap board's withheld
+  reason (the lap sentence, no count, where the zero-relist sentence quoted
+  23,594), the pane's "counting every takedown" line, the field pool's
+  "company job boards we read in full", the Ghost Job Index's methodology
+  paragraphs (day-30 admission by takedowns in the 90 days before the
+  cohort; the 14-day pool on full-read boards), the USAJOBS hub's and the
+  agency board's baked pages, the collision and USAJOBS page titles, the
+  nameless zero page's heading ('Roles on the "10kbi" board'), and the
+  conditional re-check ("Where the employer's system allows it, we re-check
+  ...").
 - **GD1, GD3, GD4, GD5.** The listing-age line is not shipped (GD1). No
   takedown verdict is shown anywhere (GD3, GD4). The 90-day counts are
   refused on every lap-read board (GD5(a)).
@@ -172,14 +205,97 @@ lander. Main thaws when section 49 shows no gap.
   deployed, so .2 is still its first build. Bump it if a .2 build was ever
   served anywhere.
 - **Left for wave 4 or the product-line owner** (read by files this round
-  may not touch): `agentHero.sub` and `agentHero.inventory` ("verified
-  openings", "submit where employers allow it"), `homeHero.badge` ("AI apply
-  agent"), `pricingPage.allProductsOneTime`, `pricingPage.passLine` and
-  `homeAgent.passLine` (the pass), the Premium Package purchase-flow
-  strings (`freeResults.*`, `productSuccess.*`,
-  `pricingPage.premiumPackages`), and Pricing.tsx's own JSON-LD (the pass
-  and the $99 `highPrice`). None of them is read by the board or the bake.
-  Wave 4 sets `BAKE_STILL_SELLS_THE_PASS` to false once both are merged.
+  may not touch, or rendered by them): `agentHero.badge`, `agentHero.sub`
+  and `agentHero.inventory` ("Your AI apply agent", "verified openings",
+  "submit where employers allow it"), `applyAgent.badge`,
+  `agentPlan.perkAutoApply` ("Applies for you automatically on ..."),
+  `atsCoverage.autoTitle`, `autoBlurb`, `clickTitle`, `clickBlurb`,
+  `stripLegend`, `allTitle` and `allBlurb` ("We apply for you", rendered by
+  AtsCoverage on `/` and `/pricing` while the agent sender is online),
+  `pricingPage.allProductsOneTime` and `pricingPage.passLine` (the pass),
+  the Premium Package purchase-flow strings (`freeResults.*`,
+  `productSuccess.*`, `pricingPage.premiumPackages`), Pricing.tsx's own
+  JSON-LD (the pass and the $99 `highPrice`), and the retirement sentences
+  this branch holds back in the guide, the baked `/agent` and llms.txt (see
+  step 3's window). The home hero, its strip, `homeAgent.passLine`,
+  `faq.questions.bringYourAgent` and the Trust page's agent strings are no
+  longer on this list: the fix round of 2026-10-18 took wave 4's values for
+  them (docs/deploy-ledger.json `_sharedFilesNote`). Wave 4 sets
+  `BAKE_STILL_SELLS_THE_PASS` to false once both are merged.
+
+## The fix round of 2026-10-18 (branch `pd-fix`, pushed as `design/integration`)
+
+The integration's review (honesty, crawler and UX lenses) confirmed 16
+defects and listed 14 minors. Every confirmed one is fixed, each with a test
+that failed on the code before it; 12 minors are fixed and 2 are left with a
+reason.
+
+| Finding | Fix | Test |
+|---|---|---|
+| The four-table lock's self-check switched to anon (`SET LOCAL ROLE`), which PostgreSQL refuses inside the staged runner's `_mig_exec` definer (42501), so the whole lock would roll back | The self-check reads the catalogue only; 81f/81g probe the reads over REST. A guard fails any migration from the drizzle baseline on that switches role | `a-migration-the-staged-runner-executes-never-changes-role.test.ts`; `four-company-tables-...` runs the file through a `_mig_exec` stand-in, twice |
+| USAJOBS baked as an employer ("Open roles at USAJOBS ... own hiring system", "is hiring in", an Organization); SPA titles said "{company} jobs: open roles from their own hiring system" for USAJOBS and collision tokens; a USAJOBS row could get a posting page | `companyLanderPage` takes `kind` ("usajobs": the hub's own words and cap, no Organization); `postingRowEligible` refuses USAJOBS rows; the SPA's title and description follow the model's variant and name; the hub's record footnote speaks of "the postings this site lists" | `pd-bake-an-agency-board-and-usajobs-are-baked-as-what-they-are.test.ts`, `a-company-pages-title-and-heading-match-its-variant.test.tsx` |
+| A lap board's header and results line said "read 6 hr ago" | `landerBoardReadAt` only where `feedReadStatable` passes; otherwise the figure is "counted" | `pd-wire-the-feed-read-stamp-...` (lander cases) |
+| The results line called undated roles dated | One helper (`openRolesSplit`) for the header and the results line ("Showing 10 of 10 roles: 8 dated in the last 30 days, 2 with no date") | `one-open-roles-number-per-company-page.test.ts` |
+| `get_similar_companies` listed USAJOBS as "Veterans Health Administration" (max(company)) under "companies hiring from their own systems" | `20261012136000`: no USAJOBS, agency or shared-name board; names from the full-token override, else the most common name | `a-similar-employer-is-named-by-its-board-and-the-federal-listing-site-is-not-one.test.ts`; verify 81h |
+| Staffing-agency boards baked as plain employers | `kind: "agency"` from the catalogue's flag (`scripts/prerender-agency.mjs`): the SPA's banner, "roles listed in", no Organization | the offline bake test reads `/jobs/company/surge`; the reader is held to the shared catalogue reader |
+| A lap board's withheld reason quoted the 90-day count GD5 hides (Domino's 23,594) | The gate takes the lap sentence before the zero-relist control (same reason string, so 91 V7b still matches) | `a-board-we-have-not-proven-we-read-prints-no-pace`, `an-employer-page-prints-no-figure-...`, `a-card-and-a-detail-pane-...` |
+| React's home hero, strip, FAQ and Trust page still sold the agent and the pass and said it applies for you, against this publish's own bake | Wave 4's HomeHero.tsx and locale values taken where they are the same change; the strip's pass line and link gone; the FAQ and Trust strings rewritten in nine locales; the guide, `/agent` and llms.txt hold "retired" until wave 4 (step 3's window) | `a-pass-number-on-a-page-is-a-placeholder`, `agent-hallmark`, `apply-agent-guide`, `pricing-truth`; verify 83 C7 |
+| The baked `/trust` said the agent "applies to for you", and the retired-claims list missed the wording | Trust strings rewritten; `RETIRED_CLAIMS` widened (and "re-verified"); 83 C1 reads `/trust`, `/privacy`, `/terms` | `pd-bake-the-crawler-copy-...` (the `/trust` case), `pd-fix-section-83-...` |
+| llms.txt said "re-verified through the day" and "re-checked live at the moment of Apply" | Both conditional and re-read; the React head description and the industry pages too | the bake's own check and C1 |
+| On a collision page the pane credited one employer's postings and a pooled count to the other; the USAJOBS hub's cards named no agency | `landerOneEmployer`: only an employer's own page hides the employer; the pane links no pooled count and its back control names the boards (or USAJOBS) | `a-board-name-two-employers-share-shows-no-employer-facts.test.tsx` |
+| Enter on a ⋯ menu item opened and marked applied the pane's posting; one Escape on the phone sheet ran history.back twice; Escape on a menu closed the posting | `src/lib/board-keys.ts`: the window shortcuts skip a keypress a layer took or aimed inside a menu, dialog or listbox | `a-key-pressed-inside-a-layer-belongs-to-that-layer.test.tsx` (Jobs.tsx's own handlers) |
+| The zero page's H1 was a loading bar forever and its title the raw token | `model.nameSettled`: once the list answered, the heading and the title name the board ('Roles on the "10kbi" board') | `a-company-pages-title-and-heading-match-its-variant.test.tsx` |
+
+**Minors fixed:** the conditional re-check in llms.txt and `howApply.recheck`
+(nine locales); the pane's outlived line states a fill share only where the
+re-post test files fills as fills, else every takedown; the Ghost Job Index
+methodology describes the new admission rule and the full-read 14-day pool,
+and the pool sentence counts company job boards; 83's title check accepts
+every form the bake writes (one page in five gets a short one) and still
+refuses "verified"; `resolveDuplicateGroups` keeps a member indexable today
+before the name gate (D7); field pages, `/companies` and `/jobs` date their
+counts and drop "re-checked continuously", "no reposts" and "every opening
+belongs to"; one-word name repairs are flagged on the owner's report
+(`docs/company-profiles/name-gate-dry-run.md`: Austin and Mayo want
+overrides); the four data pages are count-bearing; og:url goes through
+`publicHref`; hiding a posting from its own pane closes the pane; the layoff
+filing's links are underlined at rest.
+
+**Minors left, with the reason:**
+
+- **SEO-003, a remote flag over a stated town (17 Dyson-type posting pages
+  marked TELECOMMUTE).** The interim rule (a town plus a remote flag is a
+  place) reverses a pinned decision
+  (`a-posting-page-states-only-what-the-employer-stated.test.ts`: a remote
+  posting with a stated town keeps TELECOMMUTE and its Place). It needs the
+  SEO owner's call, and the pages are carried from the live set.
+- **Layout shift on some company pages.** The review measured, at 1280 over
+  10 s, Domino's 0.36, AllegisGlobalSolutions 0.39, the zero page 10kbi
+  0.355 and uncarried pages 0.68 at 375 (most other landers improved). The
+  CLS figures quoted earlier in this README (Anduril 0.061, 2020 Companies
+  0.076) are not representative of those pages. Reserving the answer line's
+  and subtitle's height and mounting rail sections in a fixed order with
+  skeletons is layout work across the header and the rail, left for the next
+  pass.
+
+**Gate at `02baadf7`:**
+
+| Check | Result |
+|---|---|
+| `npm run typecheck` | clean (and at pre-commit on every commit) |
+| `bash scripts/check-functions.sh` | every edge function typechecks and the Deno tests beside them pass (the shared hiring-record gate changed, which `employer-profiles` imports); `deno.lock` restored |
+| Full vitest suite, once, at `9f6f3fce` | 1,032 files: 1,027 passed, 4 failed, 1 skipped; 13,217 tests: 13,186 passed, 8 failed, 23 skipped (811 s, with another workflow's suite pushing the load average to 22). Six of the 8 were 5-second timeouts in two pglite files (`four-company-tables-...`, `a-fill-share-counts-only-roles-the-board-was-watched-for`) that pass re-run alone; two were real (`a-vendor-list-typed-by-hand...`: the bake and Jobs.tsx spelled the dormant source's label; `the-hiring-record-leads-with-one-line`: it pinned the lap board's count), fixed in `02baadf7`, and those files pass. The pre-push gate runs the full suite again on the pushed head |
+| Targeted files for each fix | pass (each new test failed on the code before its fix) |
+| `node scripts/deploy-ledger.mjs --message` | exit 5, REFUSED off origin/main by design. Its listing shows 12 pending migrations in order (this round's `20261012136000` after `135000`), the hold, `employer-profiles.2026-10-12.2` to deploy, and R1's six MUST BUMP functions with its pending `20261014100000` (step 0) |
+| `--against origin/main` | exit 0: 1 function's code differs (`employer-profiles`), 0 violations |
+| `--overlap HEAD origin/wave4/integration origin/r1/integration` | exit 0: 27 shared files, all declared (`src/components/HomeHero.tsx` added, owned by company-profiles), no shared function |
+| Section 83 against production, 2026-10-18 | every line FAILs by design; C7 found the eleven retired sentences in the served bundle |
+
+**Still open from the integrator's list:** R1's six MUST BUMP functions and
+its pending `20261014100000` (step 0); `--message` exits 5 off main by
+design; `get_company_financials` still matches on the tenant segment; the
+feed-read stamp after a 'dark' or 'error' state; Account.tsx, `/v1` and
+agent-runner still print a lap board's 14-day share; the dist size.
 
 ## This round's integration (2026-10-17, branch `pd-int`, pushed as `design/integration`)
 
