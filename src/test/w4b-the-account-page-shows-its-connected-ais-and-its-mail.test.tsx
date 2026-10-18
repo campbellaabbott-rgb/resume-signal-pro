@@ -88,14 +88,16 @@ describe("Email preferences", () => {
     expect(document.querySelector("[data-pulse]")).toBeNull();
   });
 
-  it("the unproven note names no sign-in that is switched off (no code, no Google while their switches are off)", async () => {
+  it("the unproven note names no sign-in that is switched off, and follows R1's switches", async () => {
     state = { ...state, mail: null, mailboxProven: false };
     mount();
     await waitFor(() => expect(document.querySelector("[data-mail-unproven]")).not.toBeNull());
     const note = document.querySelector("[data-mail-unproven]")!.textContent ?? "";
-    expect(MAILBOX_PROOF_LIVE).toBe(false);
+    // No code (its switch is off), no Apple (off for good), no provider by name.
     expect(note).not.toMatch(/\bcode\b|google|apple/i);
-    expect(note).toMatch(/once this page can check that the address is yours/);
+    expect(note).toMatch(MAILBOX_PROOF_LIVE
+      ? /sign back in with an option on the sign-in page that emails you or that your provider verifies/
+      : /once this page can check that the address is yours/);
     expect(note).toMatch(/unsubscribe link/);
   });
 });

@@ -73,17 +73,22 @@ const sessionFor = (email: string, sid: string) => ({
 });
 const emit = (event: string, s: unknown) => act(() => { h.session = s; for (const cb of h.listeners) cb(event, s); });
 
+// The tool pressed: the one-off still sold. The Cover Letter this file used
+// was cut on 2026-10-12, and the hook refuses a cut product before it asks
+// anything (wave 4 round 2 integration), so it can no longer reach the question.
+const TOOL = "fullAnalysis" as const;
+
 describe("a buy press in a browser a member signed in on, with no session now", () => {
   it("asks to sign in first and starts nothing, sending no address; the next press buys as a guest", async () => {
     localStorage.setItem(MEMBER_MARK_KEY, String(Date.now()));
     const { result } = renderHook(() => useProductCheckout());
-    await act(async () => { await result.current.purchaseProduct("coverLetter"); });
+    await act(async () => { await result.current.purchaseProduct(TOOL); });
     expect(checkoutCalls(), "a signed-out Pro member was sent to Stripe without a word").toHaveLength(0);
     expect(h.toast.mock.calls[0]?.[0]).toMatchObject({
       title: "Have Pro? Sign in first",
       description: "Your session here ended. If you have a Pro plan, sign in and this tool is included at no charge. To buy it without signing in, press the button again.",
     });
-    await act(async () => { await result.current.purchaseProduct("coverLetter"); });
+    await act(async () => { await result.current.purchaseProduct(TOOL); });
     expect(checkoutCalls()).toHaveLength(1);
     expect((checkoutCalls()[0][1] as { body: { email?: string } }).body.email, "a stored address went with a signed-out checkout").toBeUndefined();
   });
@@ -91,14 +96,14 @@ describe("a buy press in a browser a member signed in on, with no session now", 
   it("does not ask a visitor who only asked for their report by email (rb_last_email is not the key)", async () => {
     localStorage.setItem("rb_last_email", "reader@example.com");
     const { result } = renderHook(() => useProductCheckout());
-    await act(async () => { await result.current.purchaseProduct("coverLetter"); });
+    await act(async () => { await result.current.purchaseProduct(TOOL); });
     expect(checkoutCalls(), "a visitor with no account was told their session ended").toHaveLength(1);
     expect(h.toast.mock.calls.some((c) => /Sign in first/.test(JSON.stringify(c[0])))).toBe(false);
   });
 
   it("does not ask a browser no member signed in on (a deliberate sign-out leaves no mark)", async () => {
     const { result } = renderHook(() => useProductCheckout());
-    await act(async () => { await result.current.purchaseProduct("coverLetter"); });
+    await act(async () => { await result.current.purchaseProduct(TOOL); });
     expect(checkoutCalls()).toHaveLength(1);
   });
 
@@ -106,7 +111,7 @@ describe("a buy press in a browser a member signed in on, with no session now", 
     localStorage.setItem(MEMBER_MARK_KEY, String(Date.now()));
     h.session = { access_token: "t", user: { email: "member@example.com" } };
     const { result } = renderHook(() => useProductCheckout());
-    await act(async () => { await result.current.purchaseProduct("coverLetter"); });
+    await act(async () => { await result.current.purchaseProduct(TOOL); });
     expect(checkoutCalls()).toHaveLength(1);
     expect((checkoutCalls()[0][1] as { body: { email?: string } }).body.email).toBe("member@example.com");
   });
@@ -150,7 +155,7 @@ describe("the member mark: written by a signed-in session, removed only by a del
     emit("SIGNED_OUT", null);
     expect(localStorage.getItem(MEMBER_MARK_KEY), "the failed load-time refresh took the mark").not.toBeNull();
     const { result } = renderHook(() => useProductCheckout());
-    await act(async () => { await result.current.purchaseProduct("coverLetter"); });
+    await act(async () => { await result.current.purchaseProduct(TOOL); });
     expect(checkoutCalls(), "a member whose session ended elsewhere was sent to Stripe without a word").toHaveLength(0);
     expect(h.toast.mock.calls.some((c) => /Have Pro\? Sign in first/.test(JSON.stringify(c[0])))).toBe(true);
   });

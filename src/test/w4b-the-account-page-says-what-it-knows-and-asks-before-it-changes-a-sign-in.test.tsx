@@ -48,7 +48,7 @@ vi.mock("@/contexts/AuthContext", () => ({
   }),
 }));
 
-import { CreditsAndPurchases } from "@/components/account/CreditsAndPurchases";
+import { CreditsAndPurchases, MAILBOX_PROOF_LIVE } from "@/components/account/CreditsAndPurchases";
 import { SecurityCard } from "@/components/account/SecurityCard";
 import { DataPrivacyCard } from "@/components/account/DataPrivacyCard";
 import { importFlagKey, importLocalHistory, LOCAL_HISTORY_KEY } from "@/lib/account-history-import";
@@ -70,7 +70,13 @@ describe("S12-002: the purchases card names no control that is not there", () =>
   it("an unproven account is told how to open its purchases, and never to use Google", () => {
     page(<CreditsAndPurchases fetching={false} email="member@example.com" account={{ credits: 0, purchases: [], passes: [], orders: [], mailboxProven: false }} />);
     expect(document.body.textContent).not.toMatch(/google/i);
-    expect(document.body.textContent).toMatch(/open each purchase from the link in its email/);
+    // R1's switches decide which way the address can be proven: with a proving
+    // sign-in live (Google and recovery since R1's first publish) the card names
+    // the sign-in page's options; with none, it says to open each purchase from
+    // its email. Neither names Google.
+    expect(document.body.textContent).toMatch(MAILBOX_PROOF_LIVE
+      ? /sign back in with that address using an option on the sign-in page that emails you or that your provider verifies/
+      : /open each purchase from the link in its email/);
   });
 
   it("orders show their status, amount and a link that opens the purchase", () => {

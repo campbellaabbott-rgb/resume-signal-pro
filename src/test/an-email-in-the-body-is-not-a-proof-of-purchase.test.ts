@@ -81,6 +81,10 @@ describe("an email in the body is not a proof of purchase", () => {
     expect(FN_CODE).not.toMatch(/proRequiresSignIn/);
     expect(FN_CODE).not.toMatch(/addressProStanding/);
     expect(FN_CODE).not.toMatch(/\} else if \(normalizedEmail\) \{/);
-    expect(HOOK, "the page sends the signed-in account's address or none").toMatch(/email: await checkoutPrefillEmail\(\)/);
+    // R1 reads the prefill once, before its member question, and sends that
+    // (r1-fix-a-pro-member-whose-session-ended-is-asked-before-checkout runs it).
+    expect(HOOK, "the page sends the signed-in account's address or none").toMatch(/const prefillEmail = await checkoutPrefillEmail\(\)/);
+    expect(HOOK).toMatch(/email: prefillEmail,/);
+    expect(HOOK).not.toMatch(/email: (?!prefillEmail\b)[^,\n]*(localStorage|rb_last_email)/);
   });
 });
