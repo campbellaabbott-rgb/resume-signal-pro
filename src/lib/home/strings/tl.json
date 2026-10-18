@@ -39,9 +39,9 @@
     },
     "rail": {
       "title": "Ang board ngayon",
-      "boards_one": "job board na may bukas na posting",
-      "boards_other": "job board na may bukas na posting",
-      "readBasis": "Kalahati ang nabasa sa loob ng {{p50}} bago ang {{time}} UTC; 95% sa loob ng {{p95}}. Sa pinakamalalaking board, ang isang pagbasa ay isang bahagi ng board.",
+      "boards_one": "job board na binabasa namin, na may aktibong posting",
+      "boards_other": "job board na binabasa namin, na may aktibong posting",
+      "readBasis": "Kalahati ang nabasa sa loob ng {{p50}} bago ang {{date}}, {{time}} UTC; 95% sa loob ng {{p95}}. Sa pinakamalalaking board, ang isang pagbasa ay isang bahagi ng board.",
       "fieldsTitle": "Mag-browse ayon sa larangan",
       "allFields": "Lahat ng larangan"
     },
@@ -63,7 +63,7 @@
     },
     "scan": {
       "title": "Ikumpara ang iyong résumé sa isang posting, libre",
-      "lede": "I-upload ang iyong résumé, i-paste ang trabaho kung mayroon ka, at makakuha ng ulat sa loob ng mga {{seconds}} segundo.",
+      "lede": "I-upload ang iyong résumé, i-paste ang trabaho kung mayroon ka, at makakuha ng ulat sa loob ng {{seconds}} segundo.",
       "checkAts": "Paano binabasa ng applicant tracking system ang iyong file",
       "checkTerms": "Ang mga termino ng posting na gamit ng résumé mo, at ang mga kulang",
       "checkBullets": "Ang pinakamahihina mong bullet, isinulat muli",
@@ -155,8 +155,8 @@
     "faq": {
       "title": "Mga tanong",
       "sourcesQ": "Saan nanggagaling ang mga trabahong ito?",
-      "sourcesA": "Mula sa sariling hiring system ng mga employer: {{names}} at {{more}} pa, kasama ang USAJOBS para sa mga federal na trabaho sa US. Binabasa namin ang board ng bawat employer, inililista ang inihahain nito, at inaalis ang posting kapag hindi na ito nakita ng mas huling pagbasa. May label ang mga board ng staffing agency.",
-      "sourcesAPlain": "Mula sa sariling hiring system ng mga employer, kasama ang USAJOBS para sa mga federal na trabaho sa US. Binabasa namin ang board ng bawat employer, inililista ang inihahain nito, at inaalis ang posting kapag hindi na ito nakita ng mas huling pagbasa. May label ang mga board ng staffing agency.",
+      "sourcesA": "Mula sa sariling hiring system ng mga employer: {{names}} at {{more}} pa, kasama ang USAJOBS para sa mga federal na trabaho sa US. Binabasa namin ang board ng bawat employer, inililista ang inihahain nito, at inaalis ang posting kapag hindi na ito nakita ng mas huling pagbasa, kapag lampas {{freshDays}} araw na ang sariling petsa ng employer, o kapag tumigil kami sa pagbasa ng board na iyon. May label ang mga board ng staffing agency.",
+      "sourcesAPlain": "Mula sa sariling hiring system ng mga employer, kasama ang USAJOBS para sa mga federal na trabaho sa US. Binabasa namin ang board ng bawat employer, inililista ang inihahain nito, at inaalis ang posting kapag hindi na ito nakita ng mas huling pagbasa, kapag lampas {{freshDays}} araw na ang sariling petsa ng employer, o kapag tumigil kami sa pagbasa ng board na iyon. May label ang mga board ng staffing agency.",
       "applyQ": "Paano ako mag-a-apply?",
       "applyA": "Sa sariling site ng employer, mag-isa o sa tulong ng Claude, ChatGPT o Claude Code.",
       "currentQ": "Gaano kasariwa ang isang posting?",

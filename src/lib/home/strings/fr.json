@@ -41,10 +41,10 @@
     },
     "rail": {
       "title": "Le tableau aujourd'hui",
-      "boards_one": "site carrières avec une offre ouverte",
-      "boards_many": "sites carrières avec une offre ouverte",
-      "boards_other": "sites carrières avec une offre ouverte",
-      "readBasis": "La moitié a été lue dans les {{p50}} avant {{time}} UTC ; 95 % en moins de {{p95}}. Pour les plus grands tableaux, une lecture couvre une partie du tableau.",
+      "boards_one": "site carrières que nous lisons, avec une offre active",
+      "boards_many": "sites carrières que nous lisons, avec une offre active",
+      "boards_other": "sites carrières que nous lisons, avec une offre active",
+      "readBasis": "La moitié a été lue dans les {{p50}} avant le {{date}}, {{time}} UTC ; 95 % en moins de {{p95}}. Pour les plus grands tableaux, une lecture couvre une partie du tableau.",
       "fieldsTitle": "Parcourir par domaine",
       "allFields": "Tous les domaines"
     },
@@ -66,7 +66,7 @@
     },
     "scan": {
       "title": "Comparez votre CV à une offre, gratuitement",
-      "lede": "Déposez votre CV, collez l'offre si vous en avez une, et recevez un rapport en environ {{seconds}} secondes.",
+      "lede": "Déposez votre CV, collez l'offre si vous en avez une, et recevez un rapport en {{seconds}} secondes maximum.",
       "checkAts": "Comment un logiciel de recrutement lit votre fichier",
       "checkTerms": "Les termes de l'offre que votre CV utilise, et ceux qui lui manquent",
       "checkBullets": "Vos puces les plus faibles, réécrites",
@@ -159,8 +159,8 @@
     "faq": {
       "title": "Questions",
       "sourcesQ": "D'où viennent ces offres ?",
-      "sourcesA": "Des propres systèmes de recrutement des employeurs : {{names}} et {{more}} autres, plus USAJOBS pour les postes fédéraux américains. Nous lisons le site carrières de chaque employeur, listons ce qu'il publie et retirons une offre quand une lecture suivante ne la trouve plus. Les tableaux des agences de recrutement sont signalés.",
-      "sourcesAPlain": "Des propres systèmes de recrutement des employeurs, plus USAJOBS pour les postes fédéraux américains. Nous lisons le site carrières de chaque employeur, listons ce qu'il publie et retirons une offre quand une lecture suivante ne la trouve plus. Les tableaux des agences de recrutement sont signalés.",
+      "sourcesA": "Des propres systèmes de recrutement des employeurs : {{names}} et {{more}} autres, plus USAJOBS pour les postes fédéraux américains. Nous lisons le site carrières de chaque employeur, listons ce qu'il publie et retirons une offre quand une lecture suivante ne la trouve plus, quand la date de l'employeur dépasse {{freshDays}} jours, ou quand nous cessons de lire ce tableau. Les tableaux des agences de recrutement sont signalés.",
+      "sourcesAPlain": "Des propres systèmes de recrutement des employeurs, plus USAJOBS pour les postes fédéraux américains. Nous lisons le site carrières de chaque employeur, listons ce qu'il publie et retirons une offre quand une lecture suivante ne la trouve plus, quand la date de l'employeur dépasse {{freshDays}} jours, ou quand nous cessons de lire ce tableau. Les tableaux des agences de recrutement sont signalés.",
       "applyQ": "Comment postuler ?",
       "applyA": "Sur le site de l'employeur, vous-même ou avec l'aide de Claude, ChatGPT ou Claude Code.",
       "currentQ": "Une offre est-elle à jour ?",

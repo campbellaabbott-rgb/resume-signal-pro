@@ -41,10 +41,10 @@
     },
     "rail": {
       "title": "El tablón hoy",
-      "boards_one": "bolsa de empleo con una oferta abierta",
-      "boards_many": "bolsas de empleo con una oferta abierta",
-      "boards_other": "bolsas de empleo con una oferta abierta",
-      "readBasis": "La mitad se leyó en las {{p50}} antes de las {{time}} UTC; el 95 % en menos de {{p95}}. En los tablones más grandes, una lectura es una parte del tablón.",
+      "boards_one": "bolsa de empleo que leemos, con una oferta activa",
+      "boards_many": "bolsas de empleo que leemos, con una oferta activa",
+      "boards_other": "bolsas de empleo que leemos, con una oferta activa",
+      "readBasis": "La mitad se leyó en las {{p50}} antes del {{date}}, {{time}} UTC; el 95 % en menos de {{p95}}. En los tablones más grandes, una lectura es una parte del tablón.",
       "fieldsTitle": "Explorar por área",
       "allFields": "Todas las áreas"
     },
@@ -66,7 +66,7 @@
     },
     "scan": {
       "title": "Compara tu currículum con una oferta, gratis",
-      "lede": "Sube tu currículum, pega la oferta si tienes una y recibe un informe en unos {{seconds}} segundos.",
+      "lede": "Sube tu currículum, pega la oferta si tienes una y recibe un informe en {{seconds}} segundos como máximo.",
       "checkAts": "Cómo lee tu archivo un sistema de seguimiento de candidatos",
       "checkTerms": "Los términos de la oferta que usa tu currículum, y los que le faltan",
       "checkBullets": "Tus viñetas más débiles, reescritas",
@@ -159,8 +159,8 @@
     "faq": {
       "title": "Preguntas",
       "sourcesQ": "¿De dónde vienen estos empleos?",
-      "sourcesA": "De los propios sistemas de selección de los empleadores: {{names}} y {{more}} más, además de USAJOBS para puestos federales de EE. UU. Leemos la bolsa de empleo de cada empleador, listamos lo que publica y retiramos una oferta cuando una lectura posterior ya no la encuentra. Los tablones de agencias de empleo están señalados.",
-      "sourcesAPlain": "De los propios sistemas de selección de los empleadores, además de USAJOBS para puestos federales de EE. UU. Leemos la bolsa de empleo de cada empleador, listamos lo que publica y retiramos una oferta cuando una lectura posterior ya no la encuentra. Los tablones de agencias de empleo están señalados.",
+      "sourcesA": "De los propios sistemas de selección de los empleadores: {{names}} y {{more}} más, además de USAJOBS para puestos federales de EE. UU. Leemos la bolsa de empleo de cada empleador, listamos lo que publica y retiramos una oferta cuando una lectura posterior ya no la encuentra, cuando la fecha del empleador supera los {{freshDays}} días o cuando dejamos de leer ese tablón. Los tablones de agencias de empleo están señalados.",
+      "sourcesAPlain": "De los propios sistemas de selección de los empleadores, además de USAJOBS para puestos federales de EE. UU. Leemos la bolsa de empleo de cada empleador, listamos lo que publica y retiramos una oferta cuando una lectura posterior ya no la encuentra, cuando la fecha del empleador supera los {{freshDays}} días o cuando dejamos de leer ese tablón. Los tablones de agencias de empleo están señalados.",
       "applyQ": "¿Cómo me postulo?",
       "applyA": "En el sitio del propio empleador, a mano o con ayuda de Claude, ChatGPT o Claude Code.",
       "currentQ": "¿Qué tan actual es una oferta?",

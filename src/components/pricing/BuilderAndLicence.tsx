@@ -6,15 +6,20 @@
  *
  * ONE SET OF BUILDER STRINGS WITH /data-api (spec P21). The card reads wave
  * 4's dataApiPage.builder* keys whenever they exist, and this shard's copies
- * of them (the same words and the same {{price}} contract, copied from
- * wave4/integration) only until they do. The quota line mirrors the API's
- * published proposal (BUILDER_PROPOSED.perDay, owner decision 7, option A).
+ * of them (the same words, copied from wave4/integration) only until they
+ * do. The price is the exception: wave 4's builderPrice types a "$" before a
+ * bare number, which reads "$49" beside money()'s "45 $" on a German page,
+ * so the card prints this shard's key with {{price}} = money() until wave 4's
+ * key drops the "$" too (docs/homepage-pricing/README.md, switch-over step 7).
+ * The quota line mirrors the API's published proposal (BUILDER_PROPOSED.perDay,
+ * owner decision 7, option A).
  */
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { Chip } from "@/components/ui/chip";
 import { Surface } from "@/components/ui/card";
-import { count } from "@/lib/format";
+import { count, money } from "@/lib/format";
+import { WRAP_CHIP } from "@/lib/home/wrap-chip";
 import { listOf } from "./format-utc";
 import { BUILDER_PRICE_USD, BUILDER_PROPOSED_PER_DAY, FREE_KEY_DAILY_QUOTA, WITHHELD_SOURCES, WITHHELD_SOURCE_NAMES } from "./plan-facts";
 
@@ -24,7 +29,7 @@ export function BuilderAndLicence() {
   const { t, i18n } = useTranslation();
   const lng = i18n.language;
   /** wave 4's /data-api key when it exists, this page's copy of it until then. */
-  const builder = (k: "builderName" | "builderPrice" | "builderBody" | "builderNotYet" | "builderCta", vars: Record<string, unknown> = {}) =>
+  const builder = (k: "builderName" | "builderBody" | "builderNotYet" | "builderCta", vars: Record<string, unknown> = {}) =>
     t(`dataApiPage.${k}`, { ...vars, defaultValue: t(`pricingPlans.b2b.${k}`, vars) });
   const names = listOf(
     WITHHELD_SOURCES.map((s) => WITHHELD_SOURCE_NAMES[s] ?? s).sort((a, b) => a.localeCompare(b)),
@@ -40,10 +45,10 @@ export function BuilderAndLicence() {
           <Surface className="min-w-0 px-5 py-4" data-testid="builder-card">
             <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
               <h3 className="text-base font-semibold text-foreground">{builder("builderName")}</h3>
-              <p className="text-base font-semibold text-foreground">{builder("builderPrice", { price: BUILDER_PRICE_USD })}</p>
+              <p className="text-base font-semibold text-foreground">{t("pricingPlans.b2b.builderPrice", { price: money(BUILDER_PRICE_USD, "USD", { lng }) })}</p>
             </div>
             <p className="mt-2">
-              <Chip variant="outline">{t("pricingPlans.b2b.builderChip")}</Chip>
+              <Chip variant="outline" className={WRAP_CHIP}>{t("pricingPlans.b2b.builderChip")}</Chip>
             </p>
             <p className="mt-2 text-sm text-muted-foreground">{builder("builderBody")}</p>
             <p className="mt-2 text-sm text-muted-foreground" data-testid="builder-quota">

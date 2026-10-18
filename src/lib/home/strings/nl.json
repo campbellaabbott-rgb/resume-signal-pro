@@ -39,9 +39,9 @@
     },
     "rail": {
       "title": "Het bord vandaag",
-      "boards_one": "vacaturesite met een open vacature",
-      "boards_other": "vacaturesites met een open vacature",
-      "readBasis": "De helft is gelezen in de {{p50}} vóór {{time}} UTC; 95% binnen {{p95}}. Bij de grootste borden is één lezing een deel van het bord.",
+      "boards_one": "vacaturesite die we lezen, met een actieve vacature",
+      "boards_other": "vacaturesites die we lezen, met een actieve vacature",
+      "readBasis": "De helft is gelezen in de {{p50}} vóór {{date}}, {{time}} UTC; 95% binnen {{p95}}. Bij de grootste borden is één lezing een deel van het bord.",
       "fieldsTitle": "Bladeren per vakgebied",
       "allFields": "Alle vakgebieden"
     },
@@ -63,7 +63,7 @@
     },
     "scan": {
       "title": "Vergelijk je cv gratis met een vacature",
-      "lede": "Upload je cv, plak de vacature als je er een hebt, en krijg binnen ongeveer {{seconds}} seconden een rapport.",
+      "lede": "Upload je cv, plak de vacature als je er een hebt, en krijg binnen {{seconds}} seconden een rapport.",
       "checkAts": "Hoe een sollicitantenvolgsysteem je bestand leest",
       "checkTerms": "Welke termen uit de vacature je cv gebruikt, en welke ontbreken",
       "checkBullets": "Je zwakste opsommingspunten, herschreven",
@@ -155,8 +155,8 @@
     "faq": {
       "title": "Vragen",
       "sourcesQ": "Waar komen deze vacatures vandaan?",
-      "sourcesA": "Uit de eigen wervingssystemen van werkgevers: {{names}} en nog {{more}}, plus USAJOBS voor federale functies in de VS. We lezen de vacaturesite van elke werkgever, tonen wat die aanbiedt en halen een vacature weg als een latere lezing haar niet meer vindt. Borden van uitzend- en wervingsbureaus zijn gemarkeerd.",
-      "sourcesAPlain": "Uit de eigen wervingssystemen van werkgevers, plus USAJOBS voor federale functies in de VS. We lezen de vacaturesite van elke werkgever, tonen wat die aanbiedt en halen een vacature weg als een latere lezing haar niet meer vindt. Borden van uitzend- en wervingsbureaus zijn gemarkeerd.",
+      "sourcesA": "Uit de eigen wervingssystemen van werkgevers: {{names}} en nog {{more}}, plus USAJOBS voor federale functies in de VS. We lezen de vacaturesite van elke werkgever, tonen wat die aanbiedt en halen een vacature weg als een latere lezing haar niet meer vindt, als de eigen datum van de werkgever ouder is dan {{freshDays}} dagen, of als we dat bord niet meer lezen. Borden van uitzend- en wervingsbureaus zijn gemarkeerd.",
+      "sourcesAPlain": "Uit de eigen wervingssystemen van werkgevers, plus USAJOBS voor federale functies in de VS. We lezen de vacaturesite van elke werkgever, tonen wat die aanbiedt en halen een vacature weg als een latere lezing haar niet meer vindt, als de eigen datum van de werkgever ouder is dan {{freshDays}} dagen, of als we dat bord niet meer lezen. Borden van uitzend- en wervingsbureaus zijn gemarkeerd.",
       "applyQ": "Hoe solliciteer ik?",
       "applyA": "Op de eigen site van de werkgever, zelf of met hulp van Claude, ChatGPT of Claude Code.",
       "currentQ": "Hoe actueel is een vacature?",

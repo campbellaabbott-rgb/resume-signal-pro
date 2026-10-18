@@ -2,7 +2,11 @@
   "pricingPlans": {
     "meta": {
       "title": "Preise: kostenlose Jobsuche, Pro {{proPrice}} im Monat | Resume Booster",
-      "description": "Jobs suchen und Lebenslauf scannen: kostenlos. {{faPrice}} einmalig für die Vollanalyse, {{proPrice}} im Monat für Pro. Alle Käufe endgültig; nicht in EU, UK, Indien."
+      "titleNoPro": "Preise: kostenlose Jobsuche und Lebenslauf-Scans | Resume Booster",
+      "description": "Jobs suchen und Lebenslauf scannen: kostenlos. {{faPrice}} einmalig für die Vollanalyse, {{proPrice}} im Monat für Pro. Alle Käufe endgültig; nicht in EU, EWR, UK, Indien.",
+      "descriptionFa": "Jobs suchen und Lebenslauf scannen: kostenlos. {{faPrice}} einmalig für die Vollanalyse. Alle Käufe endgültig; nicht in EU, EWR, UK, Indien.",
+      "descriptionPro": "Jobs suchen und Lebenslauf scannen: kostenlos. {{proPrice}} im Monat für Pro. Alle Käufe endgültig; nicht in EU, EWR, UK, Indien.",
+      "descriptionClosed": "Jobs suchen und Lebenslauf scannen: kostenlos, mit oder ohne Konto. Bezahlte Extras sind noch nicht im Verkauf; der Verkauf startet bald."
     },
     "head": {
       "h1": "Preise",
@@ -113,7 +117,7 @@
     "b2b": {
       "h2": "Für Entwickler und Unternehmen",
       "builderName": "Builder-API (geplant)",
-      "builderPrice": "${{price}} im Monat, geplant",
+      "builderPrice": "{{price}} im Monat, geplant",
       "builderChip": "Geplant · nicht im Verkauf",
       "builderBody": "Gerankte Suche, Lebenslauf-Passungsbewertung in großem Umfang und 180 Tage Schließungsdaten, zur Anzeige in Ihrem eigenen Produkt mit Quellenangabe. Keine Feeds und kein Weiterverkauf; dafür gibt es die kommerzielle Lizenz. Sagen Sie uns, ob Sie es nutzen würden.",
       "builderQuota": "Vorgeschlagen: {{perDay}} Aufrufe am Tag; wird vor dem Start festgelegt.",

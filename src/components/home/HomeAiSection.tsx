@@ -4,6 +4,8 @@ import { XCircle } from "lucide-react";
 import { Chip } from "@/components/ui/chip";
 import { count as fmtCount, date as fmtDate } from "@/lib/format";
 import { aiReach } from "@/lib/home/board-figures";
+import { WRAP_CHIP } from "@/lib/home/wrap-chip";
+import { displayLocation } from "@/lib/listing/location";
 import { andList, utcStamp } from "@/lib/home/stamps";
 
 /**
@@ -25,6 +27,8 @@ const NEVER_ITEMS = [2, 3] as const;
 
 const ILLUSTRATION_DAY = "2026-10-17";
 const ILLUSTRATION_POSTED_DAY = "2026-10-16";
+/** The row's location as the board stored it; printed the way JobCard prints it. */
+const ILLUSTRATION_LOCATION = "US - Cambridge Kendall SQ - MA";
 
 const buttonClass =
   "inline-flex !min-h-10 items-center justify-center rounded-md border border-border-strong bg-card px-4 py-2 text-center text-sm font-medium text-foreground transition-colors duration-fast hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background coarse:!min-h-11";
@@ -77,7 +81,7 @@ export function HomeAiSection({ counts, openTotal, asOf }: { counts: Record<stri
         </div>
         <figure aria-label={t("home.ai.figureLabel")} className="hidden overflow-hidden rounded-lg border border-border bg-card lg:block">
           <figcaption className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2.5 text-xs text-subtle-foreground">
-            <Chip variant="outline">{t("home.ai.figureChip")}</Chip>
+            <Chip variant="outline" className={WRAP_CHIP}>{t("home.ai.figureChip")}</Chip>
             <span>{t("home.ai.figureCaption", { date: fmtDate(ILLUSTRATION_DAY, { lng }) })}</span>
           </figcaption>
           <p className="px-4 py-3.5 text-sm text-muted-foreground">
@@ -87,7 +91,7 @@ export function HomeAiSection({ counts, openTotal, asOf }: { counts: Record<stri
           <div className="grid gap-2 px-4 pb-1 pt-3">
             <div className="border-l-2 border-border-strong pl-2.5 text-meta text-muted-foreground">
               <b className="block text-sm font-medium text-foreground">Senior Director, Oncology Clinical Intelligence &amp; Evidence</b>
-              AstraZeneca · Cambridge, MA · Workday · {t("home.ai.figurePosted", { date: fmtDate(ILLUSTRATION_POSTED_DAY, { lng }) })}
+              AstraZeneca · {displayLocation(ILLUSTRATION_LOCATION).text} · Workday · {t("home.ai.figurePosted", { date: fmtDate(ILLUSTRATION_POSTED_DAY, { lng }) })}
             </div>
           </div>
           <p className="px-4 py-3.5 text-sm">{t("home.ai.figureReply")}</p>

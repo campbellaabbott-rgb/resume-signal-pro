@@ -2,7 +2,11 @@
   "pricingPlans": {
     "meta": {
       "title": "Precios: búsqueda de empleo gratis, Pro {{proPrice}} al mes | Resume Booster",
-      "description": "Busca empleo y analiza tu currículum gratis. {{faPrice}} una vez por un Análisis completo, o {{proPrice}} al mes por Pro. Ventas finales; no en la UE, el RU ni la India."
+      "titleNoPro": "Precios: búsqueda de empleo y análisis de currículum gratis | Resume Booster",
+      "description": "Busca empleo y analiza tu currículum gratis. {{faPrice}} una vez por un Análisis completo, o {{proPrice}} al mes por Pro. Ventas finales; no en la UE, el EEE, el RU ni la India.",
+      "descriptionFa": "Busca empleo y analiza tu currículum gratis. {{faPrice}} una vez por un Análisis completo. Ventas finales; no en la UE, el EEE, el RU ni la India.",
+      "descriptionPro": "Busca empleo y analiza tu currículum gratis. {{proPrice}} al mes por Pro. Ventas finales; no en la UE, el EEE, el RU ni la India.",
+      "descriptionClosed": "Busca empleo y analiza tu currículum gratis, con o sin cuenta. Los extras de pago aún no están a la venta; las compras abrirán pronto."
     },
     "head": {
       "h1": "Precios",
@@ -113,7 +117,7 @@
     "b2b": {
       "h2": "Para desarrolladores y empresas",
       "builderName": "API Builder (prevista)",
-      "builderPrice": "${{price}} al mes, previsto",
+      "builderPrice": "{{price}} al mes, previsto",
       "builderChip": "Previsto · no está a la venta",
       "builderBody": "Búsqueda clasificada, puntuación de ajuste de currículum a gran escala y 180 días de cierres, para mostrar dentro de tu propio producto citando la fuente. Sin feeds ni reventa; eso corresponde a la licencia comercial. Dinos si lo usarías.",
       "builderQuota": "Propuesta: {{perDay}} llamadas al día; se fijará antes del lanzamiento.",

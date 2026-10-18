@@ -9,8 +9,11 @@ import { HomeDetails } from "./HomeDetails";
 /**
  * THE RAIL: "The board today" and the field links.
  *
- * (a) How many job boards carry an open posting, and how recently they were
- *     read, from get_freshness_stats with its computed_at. The basis says
+ * (a) How many job boards we read still list a live posting (the stats
+ *     count every board with a row not yet missing, agency boards and rows
+ *     past the 30-day fence included, so the label says "we read, with a
+ *     live posting", not "open"), and how recently they were read, from
+ *     get_freshness_stats with its computed_at, day and time. The basis says
  *     that the largest boards are read in parts (review P3).
  * (b) The 24-hour "new · gone" flow figure is REMOVED (owner decision D11):
  *     intake is our first sighting, and set beside closures it overstates
@@ -61,7 +64,7 @@ export function HomeBoardRail({ freshness }: { freshness: BoardFreshness | null 
               <p className="text-sm text-muted-foreground">{t("home.rail.boards", { count: freshness.boards })}</p>
               <p className="mt-0.5 text-xs text-subtle-foreground">
                 <time dateTime={stamp.iso}>
-                  {t("home.rail.readBasis", { p50: minutesText(freshness.p50Min, lng), p95: minutesText(freshness.p95Min, lng), time: stamp.time })}
+                  {t("home.rail.readBasis", { p50: minutesText(freshness.p50Min, lng), p95: minutesText(freshness.p95Min, lng), date: stamp.date, time: stamp.time })}
                 </time>
               </p>
             </div>

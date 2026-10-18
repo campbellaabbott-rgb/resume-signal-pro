@@ -57,9 +57,12 @@ export function minutesText(minutes: number, lng?: string): string {
   const parts: { hours?: number; minutes?: number } = hours ? (mins ? { hours, minutes: mins } : { hours }) : { minutes: mins };
   const loc = numberLocale(lang(lng));
   const DF = (Intl as unknown as { DurationFormat?: new (l: string, o: object) => { format: (d: object) => string } }).DurationFormat;
+  // A short unit can end in a period (German "Min.", Tagalog "min."); the
+  // sentences put the duration before their own full stop, so it goes.
+  const bare = (s: string) => s.replace(/\.\s*$/, "");
   if (DF) {
     try {
-      return new DF(loc, { style: "short" }).format(parts);
+      return bare(new DF(loc, { style: "short" }).format(parts));
     } catch {
       /* fall through to the unit parts */
     }
@@ -69,11 +72,11 @@ export function minutesText(minutes: number, lng?: string): string {
   if (parts.minutes) units.push(new Intl.NumberFormat(loc, { style: "unit", unit: "minute", unitDisplay: "short" }).format(parts.minutes));
   try {
     const LF = (Intl as unknown as { ListFormat?: new (l: string, o: object) => { format: (items: string[]) => string } }).ListFormat;
-    if (LF) return new LF(loc, { type: "unit", style: "short" }).format(units);
+    if (LF) return bare(new LF(loc, { type: "unit", style: "short" }).format(units));
   } catch {
     /* plain join below */
   }
-  return units.join(" ");
+  return bare(units.join(" "));
 }
 
 /** "USAJOBS and SmartRecruiters", joined the way the language joins a list. */

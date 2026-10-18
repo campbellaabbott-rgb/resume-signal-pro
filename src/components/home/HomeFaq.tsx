@@ -3,13 +3,15 @@ import { Link } from "react-router-dom";
 import { Trans, useTranslation } from "react-i18next";
 import { namedSystems } from "@/lib/home/board-figures";
 import { HOME_FREE_REPORT_DAYS, HOME_PAID_REPORT_DAYS, HOME_RESUME_TEXT_HOURS } from "@/lib/home/facts";
+import { BOARD_FRESH_WINDOW_DAYS } from "@/components/jobs/posting-page";
 import { HomeDetails } from "./HomeDetails";
 
 /**
  * 4.7 QUESTIONS. Every answer stays in the DOM while its question is closed
  * (native <details>), so Google's phone render and a reader's Find read it.
  * The systems named in the first answer, and how many more there are, come
- * from the same read as every count on the page.
+ * from the same read as every count on the page; it names the same three
+ * ways a posting leaves the board as the sources lede (review P28).
  */
 export function HomeFaq({ counts }: { counts: Record<string, number> }) {
   const { t } = useTranslation();
@@ -21,8 +23,8 @@ export function HomeFaq({ counts }: { counts: Record<string, number> }) {
       key: "sources",
       q: t("home.faq.sourcesQ"),
       a: named && named.more > 0
-        ? t("home.faq.sourcesA", { names: named.names.join(", "), more: named.more })
-        : t("home.faq.sourcesAPlain"),
+        ? t("home.faq.sourcesA", { names: named.names.join(", "), more: named.more, freshDays: BOARD_FRESH_WINDOW_DAYS })
+        : t("home.faq.sourcesAPlain", { freshDays: BOARD_FRESH_WINDOW_DAYS }),
     },
     { key: "apply", q: t("home.faq.applyQ"), a: t("home.faq.applyA") },
     { key: "current", q: t("home.faq.currentQ"), a: t("home.faq.currentA") },

@@ -41,10 +41,10 @@
     },
     "rail": {
       "title": "O quadro hoje",
-      "boards_one": "site de vagas com uma vaga aberta",
-      "boards_many": "sites de vagas com uma vaga aberta",
-      "boards_other": "sites de vagas com uma vaga aberta",
-      "readBasis": "Metade foi lida nas {{p50}} antes das {{time}} UTC; 95% em até {{p95}}. Nos maiores quadros, uma leitura é uma parte do quadro.",
+      "boards_one": "site de vagas que lemos, com uma vaga ativa",
+      "boards_many": "sites de vagas que lemos, com uma vaga ativa",
+      "boards_other": "sites de vagas que lemos, com uma vaga ativa",
+      "readBasis": "Metade foi lida nas {{p50}} antes de {{date}}, {{time}} UTC; 95% em até {{p95}}. Nos maiores quadros, uma leitura é uma parte do quadro.",
       "fieldsTitle": "Navegar por área",
       "allFields": "Todas as áreas"
     },
@@ -66,7 +66,7 @@
     },
     "scan": {
       "title": "Compare seu currículo com uma vaga, grátis",
-      "lede": "Envie seu currículo, cole a vaga se tiver uma e receba um relatório em cerca de {{seconds}} segundos.",
+      "lede": "Envie seu currículo, cole a vaga se tiver uma e receba um relatório em até {{seconds}} segundos.",
       "checkAts": "Como um sistema de rastreamento de candidatos lê seu arquivo",
       "checkTerms": "Os termos da vaga que seu currículo usa, e os que faltam",
       "checkBullets": "Seus tópicos mais fracos, reescritos",
@@ -159,8 +159,8 @@
     "faq": {
       "title": "Perguntas",
       "sourcesQ": "De onde vêm essas vagas?",
-      "sourcesA": "Dos próprios sistemas de recrutamento dos empregadores: {{names}} e mais {{more}}, além do USAJOBS para cargos federais dos EUA. Lemos o site de vagas de cada empregador, listamos o que ele publica e retiramos uma vaga quando uma leitura posterior não a encontra mais. Quadros de agências de recrutamento são sinalizados.",
-      "sourcesAPlain": "Dos próprios sistemas de recrutamento dos empregadores, além do USAJOBS para cargos federais dos EUA. Lemos o site de vagas de cada empregador, listamos o que ele publica e retiramos uma vaga quando uma leitura posterior não a encontra mais. Quadros de agências de recrutamento são sinalizados.",
+      "sourcesA": "Dos próprios sistemas de recrutamento dos empregadores: {{names}} e mais {{more}}, além do USAJOBS para cargos federais dos EUA. Lemos o site de vagas de cada empregador, listamos o que ele publica e retiramos uma vaga quando uma leitura posterior não a encontra mais, quando a data do próprio empregador passa de {{freshDays}} dias ou quando deixamos de ler esse quadro. Quadros de agências de recrutamento são sinalizados.",
+      "sourcesAPlain": "Dos próprios sistemas de recrutamento dos empregadores, além do USAJOBS para cargos federais dos EUA. Lemos o site de vagas de cada empregador, listamos o que ele publica e retiramos uma vaga quando uma leitura posterior não a encontra mais, quando a data do próprio empregador passa de {{freshDays}} dias ou quando deixamos de ler esse quadro. Quadros de agências de recrutamento são sinalizados.",
       "applyQ": "Como me candidato?",
       "applyA": "No site do próprio empregador, sozinho ou com a ajuda do Claude, do ChatGPT ou do Claude Code.",
       "currentQ": "Quão atual é uma vaga?",

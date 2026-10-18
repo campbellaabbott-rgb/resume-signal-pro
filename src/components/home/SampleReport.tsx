@@ -1,6 +1,7 @@
 import { Trans, useTranslation } from "react-i18next";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Chip } from "@/components/ui/chip";
+import { WRAP_CHIP } from "@/lib/home/wrap-chip";
 
 /**
  * WHAT A FREE REPORT SHOWS, on an invented résumé (the chip says so). The
@@ -16,7 +17,7 @@ export function SampleReport() {
     <div role="group" aria-label={t("home.sample.label")} className="overflow-hidden rounded-lg border border-border bg-card">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3.5">
         <h3 className="text-[15px] font-semibold leading-snug">{t("home.sample.title")}</h3>
-        <Chip variant="outline">{t("home.sample.chip")}</Chip>
+        <Chip variant="outline" className={WRAP_CHIP}>{t("home.sample.chip")}</Chip>
       </div>
       <div className="grid gap-4 p-4 [&>*]:min-w-0">
         <p className="flex items-baseline gap-1.5">
@@ -27,22 +28,22 @@ export function SampleReport() {
         <dl className="border-t border-border">
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-border py-2 text-sm">
             <dt className="min-w-0 text-muted-foreground">{t("home.sample.readable")}</dt>
-            <dd><Chip variant="live" icon={<CheckCircle2 />}>{t("home.sample.passes")}</Chip></dd>
+            <dd><Chip variant="live" icon={<CheckCircle2 />} className={WRAP_CHIP}>{t("home.sample.passes")}</Chip></dd>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-border py-2 text-sm">
             <dt className="min-w-0 text-muted-foreground">{t("home.sample.sections")}</dt>
-            <dd><Chip variant="caution" icon={<AlertTriangle />}>{t("home.sample.noSkills")}</Chip></dd>
+            <dd><Chip variant="caution" icon={<AlertTriangle />} className={WRAP_CHIP}>{t("home.sample.noSkills")}</Chip></dd>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-border py-2 text-sm">
             <dt className="min-w-0 text-muted-foreground">{t("home.sample.numbers")}</dt>
-            <dd><Chip variant="caution" icon={<AlertTriangle />}>{t("home.sample.numbersValue", { have: 3, total: 14 })}</Chip></dd>
+            <dd><Chip variant="caution" icon={<AlertTriangle />} className={WRAP_CHIP}>{t("home.sample.numbersValue", { have: 3, total: 14 })}</Chip></dd>
           </div>
         </dl>
         <div>
           <p className="text-meta font-semibold text-muted-foreground">{t("home.sample.missing")}</p>
           <ul className="mt-1.5 flex flex-wrap gap-1.5">
             {["term1", "term2", "term3"].map((k) => (
-              <li key={k}><Chip>{t(`home.sample.${k}`)}</Chip></li>
+              <li key={k}><Chip className={WRAP_CHIP}>{t(`home.sample.${k}`)}</Chip></li>
             ))}
           </ul>
         </div>

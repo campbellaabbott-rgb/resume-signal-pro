@@ -36,17 +36,26 @@ export const PRO_PERK_ITEMS: readonly ProPerk[] = [
 ];
 
 /**
+ * The included Full Analysis line, by this mirror's key and by wave 4's
+ * (supabase/functions/_shared/pro-perks.ts on w4b/checkout-catalogue:
+ * "proPlan.perks.fullAnalysisIncluded"). Keyed on both, the G2 rule keeps
+ * hiding the line the day switch-over step 6 re-exports wave 4's list here;
+ * keyed on this mirror's key alone, it would silently stop.
+ */
+export const INCLUDED_FULL_ANALYSIS_KEYS = ["pricingPlans.pro.perks.includedFullAnalysis", "proPlan.perks.fullAnalysisIncluded"] as const;
+
+/**
  * A perk that may print only while a sale gate is open. The included Full
  * Analysis is hidden until the Full Analysis itself is on sale (gate G2):
  * Pro must never promise a report nobody has yet seen delivered.
  */
-export const PRO_PERK_REQUIRES: Readonly<Record<string, "fullAnalysisOnSale">> = {
-  "pricingPlans.pro.perks.includedFullAnalysis": "fullAnalysisOnSale",
-};
+export const PRO_PERK_REQUIRES: Readonly<Record<string, "fullAnalysisOnSale">> = Object.fromEntries(
+  INCLUDED_FULL_ANALYSIS_KEYS.map((k) => [k, "fullAnalysisOnSale" as const]),
+);
 
-/** The perks to print, given which gates are open. */
-export function visibleProPerks(gates: { fullAnalysisOnSale: boolean }): readonly ProPerk[] {
-  return PRO_PERK_ITEMS.filter((p) => {
+/** The perks to print, given which gates are open (from this list, or from wave 4's once it is re-exported). */
+export function visibleProPerks(gates: { fullAnalysisOnSale: boolean }, items: readonly ProPerk[] = PRO_PERK_ITEMS): readonly ProPerk[] {
+  return items.filter((p) => {
     const need = PRO_PERK_REQUIRES[p.key];
     return !need || gates[need];
   });

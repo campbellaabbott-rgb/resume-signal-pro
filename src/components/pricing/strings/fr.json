@@ -2,7 +2,11 @@
   "pricingPlans": {
     "meta": {
       "title": "Tarifs : recherche d'emploi gratuite, Pro {{proPrice}} par mois | Resume Booster",
-      "description": "Cherchez un emploi et analysez votre CV gratuitement. {{faPrice}} une fois pour l'Analyse complète, ou {{proPrice}} par mois pour Pro. Ventes finales ; hors UE, R.-U. et Inde."
+      "titleNoPro": "Tarifs : recherche d'emploi et analyse de CV gratuites | Resume Booster",
+      "description": "Cherchez un emploi et analysez votre CV gratuitement. {{faPrice}} une fois pour l'Analyse complète, ou {{proPrice}} par mois pour Pro. Ventes finales ; hors UE, EEE, R.-U. et Inde.",
+      "descriptionFa": "Cherchez un emploi et analysez votre CV gratuitement. {{faPrice}} une fois pour l'Analyse complète. Ventes finales ; hors UE, EEE, R.-U. et Inde.",
+      "descriptionPro": "Cherchez un emploi et analysez votre CV gratuitement. {{proPrice}} par mois pour Pro. Ventes finales ; hors UE, EEE, R.-U. et Inde.",
+      "descriptionClosed": "Cherchez un emploi et analysez votre CV gratuitement, avec ou sans compte. Les options payantes ne sont pas encore en vente ; les achats ouvrent bientôt."
     },
     "head": {
       "h1": "Tarifs",
@@ -113,7 +117,7 @@
     "b2b": {
       "h2": "Pour les développeurs et les entreprises",
       "builderName": "API Builder (prévue)",
-      "builderPrice": "${{price}} par mois, prévu",
+      "builderPrice": "{{price}} par mois, prévu",
       "builderChip": "Prévu · pas en vente",
       "builderBody": "Recherche classée, évaluation de l'adéquation des CV à grande échelle et 180 jours de clôtures, à afficher dans votre propre produit avec attribution. Pas de flux ni de revente : cela relève de la licence commerciale. Dites-nous si vous l'utiliseriez.",
       "builderQuota": "Proposition : {{perDay}} appels par jour ; fixé avant le lancement.",

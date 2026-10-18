@@ -39,9 +39,9 @@
     },
     "rail": {
       "title": "Das Board heute",
-      "boards_one": "Jobbörse mit einer offenen Stelle",
-      "boards_other": "Jobbörsen mit einer offenen Stelle",
-      "readBasis": "Die Hälfte wurde in den {{p50}} vor {{time}} UTC gelesen, 95 % innerhalb von {{p95}}. Bei den größten Boards ist ein Lesen ein Teil des Boards.",
+      "boards_one": "Jobbörse, die wir lesen, mit einer aktiven Anzeige",
+      "boards_other": "Jobbörsen, die wir lesen, mit einer aktiven Anzeige",
+      "readBasis": "Die Hälfte wurde in den {{p50}} vor dem {{date}}, {{time}} UTC gelesen, 95 % innerhalb von {{p95}}. Bei den größten Boards ist ein Lesen ein Teil des Boards.",
       "fieldsTitle": "Nach Bereich stöbern",
       "allFields": "Alle Bereiche"
     },
@@ -63,7 +63,7 @@
     },
     "scan": {
       "title": "Prüfe deinen Lebenslauf kostenlos gegen eine Stelle",
-      "lede": "Lade deinen Lebenslauf hoch, füge die Stelle ein, wenn du eine hast, und erhalte in etwa {{seconds}} Sekunden einen Bericht.",
+      "lede": "Lade deinen Lebenslauf hoch, füge die Stelle ein, wenn du eine hast, und erhalte innerhalb von {{seconds}} Sekunden einen Bericht.",
       "checkAts": "Wie ein Bewerbermanagementsystem deine Datei liest",
       "checkTerms": "Welche Begriffe der Stelle dein Lebenslauf enthält und welche fehlen",
       "checkBullets": "Deine schwächsten Stichpunkte, neu geschrieben",
@@ -155,8 +155,8 @@
     "faq": {
       "title": "Fragen",
       "sourcesQ": "Woher kommen diese Jobs?",
-      "sourcesA": "Aus den eigenen Bewerbungssystemen der Arbeitgeber: {{names}} und {{more}} weitere, dazu USAJOBS für Stellen beim US-Bund. Wir lesen die Jobbörse jedes Arbeitgebers, listen, was sie anbietet, und nehmen eine Anzeige heraus, wenn ein späteres Lesen sie nicht mehr findet. Boards von Personalvermittlern sind gekennzeichnet.",
-      "sourcesAPlain": "Aus den eigenen Bewerbungssystemen der Arbeitgeber, dazu USAJOBS für Stellen beim US-Bund. Wir lesen die Jobbörse jedes Arbeitgebers, listen, was sie anbietet, und nehmen eine Anzeige heraus, wenn ein späteres Lesen sie nicht mehr findet. Boards von Personalvermittlern sind gekennzeichnet.",
+      "sourcesA": "Aus den eigenen Bewerbungssystemen der Arbeitgeber: {{names}} und {{more}} weitere, dazu USAJOBS für Stellen beim US-Bund. Wir lesen die Jobbörse jedes Arbeitgebers, listen, was sie anbietet, und nehmen eine Anzeige heraus, wenn ein späteres Lesen sie nicht mehr findet, wenn das eigene Datum des Arbeitgebers älter als {{freshDays}} Tage ist oder wenn wir dieses Board nicht mehr lesen. Boards von Personalvermittlern sind gekennzeichnet.",
+      "sourcesAPlain": "Aus den eigenen Bewerbungssystemen der Arbeitgeber, dazu USAJOBS für Stellen beim US-Bund. Wir lesen die Jobbörse jedes Arbeitgebers, listen, was sie anbietet, und nehmen eine Anzeige heraus, wenn ein späteres Lesen sie nicht mehr findet, wenn das eigene Datum des Arbeitgebers älter als {{freshDays}} Tage ist oder wenn wir dieses Board nicht mehr lesen. Boards von Personalvermittlern sind gekennzeichnet.",
       "applyQ": "Wie bewerbe ich mich?",
       "applyA": "Auf der Website des Arbeitgebers, von Hand oder mit Hilfe von Claude, ChatGPT oder Claude Code.",
       "currentQ": "Wie aktuell ist eine Stellenanzeige?",

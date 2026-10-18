@@ -2,7 +2,11 @@
   "pricingPlans": {
     "meta": {
       "title": "Pricing: free job search, Pro {{proPrice}} a month | Resume Booster",
-      "description": "Search jobs and scan your résumé free. {{faPrice}} once for a Full Analysis, or {{proPrice}} a month for Pro's writing. All sales final; not sold in the EU, UK or India yet."
+      "titleNoPro": "Pricing: free job search and résumé scans | Resume Booster",
+      "description": "Search jobs and scan your résumé free. {{faPrice}} once for a Full Analysis, or {{proPrice}} a month for Pro's writing. All sales final; not sold in the EU, the EEA, the UK or India yet.",
+      "descriptionFa": "Search jobs and scan your résumé free. {{faPrice}} once for a Full Analysis. All sales final; not sold in the EU, the EEA, the UK or India yet.",
+      "descriptionPro": "Search jobs and scan your résumé free. {{proPrice}} a month for Pro's writing. All sales final; not sold in the EU, the EEA, the UK or India yet.",
+      "descriptionClosed": "Search jobs and scan your résumé free, with or without an account. Paid extras are not on sale yet; purchases open soon."
     },
     "head": {
       "h1": "Pricing",
@@ -113,7 +117,7 @@
     "b2b": {
       "h2": "For builders and companies",
       "builderName": "Builder API (planned)",
-      "builderPrice": "${{price}} a month, planned",
+      "builderPrice": "{{price}} a month, planned",
       "builderChip": "Planned · not on sale",
       "builderBody": "Ranked search, résumé fit scoring at volume and 180 days of closures, for display inside your own product with attribution. No feeds or resale; those are the commercial license. Tell us if you'd use it.",
       "builderQuota": "Proposed: {{perDay}} calls a day; set before launch.",

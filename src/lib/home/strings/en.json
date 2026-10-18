@@ -39,9 +39,9 @@
     },
     "rail": {
       "title": "The board today",
-      "boards_one": "job board with an open posting",
-      "boards_other": "job boards with an open posting",
-      "readBasis": "Half had a read in the {{p50}} before {{time}} UTC; 95% within {{p95}}. For the largest boards, a read is one part of the board.",
+      "boards_one": "job board we read, with a live posting",
+      "boards_other": "job boards we read, with a live posting",
+      "readBasis": "Half had a read in the {{p50}} before {{date}}, {{time}} UTC; 95% within {{p95}}. For the largest boards, a read is one part of the board.",
       "fieldsTitle": "Browse by field",
       "allFields": "All fields"
     },
@@ -63,7 +63,7 @@
     },
     "scan": {
       "title": "Check your résumé against a posting, free",
-      "lede": "Upload your résumé, paste the job if you have one, and get a report in about {{seconds}} seconds.",
+      "lede": "Upload your résumé, paste the job if you have one, and get a report within {{seconds}} seconds.",
       "checkAts": "How an applicant tracking system reads your file",
       "checkTerms": "The posting's terms your résumé uses, and the ones it lacks",
       "checkBullets": "Your weakest bullets, rewritten",
@@ -155,8 +155,8 @@
     "faq": {
       "title": "Questions",
       "sourcesQ": "Where do these jobs come from?",
-      "sourcesA": "From employers' own hiring systems: {{names}} and {{more}} more, plus USAJOBS for federal roles. We read each employer's board, list what it serves, and take a posting off when a later read finds it gone. Staffing agencies' boards are labelled.",
-      "sourcesAPlain": "From employers' own hiring systems, plus USAJOBS for federal roles. We read each employer's board, list what it serves, and take a posting off when a later read finds it gone. Staffing agencies' boards are labelled.",
+      "sourcesA": "From employers' own hiring systems: {{names}} and {{more}} more, plus USAJOBS for federal roles. We read each employer's board, list what it serves, and take a posting off when a later read finds it gone, when the employer's own date is more than {{freshDays}} days old, or when we stop reading that board. Staffing agencies' boards are labelled.",
+      "sourcesAPlain": "From employers' own hiring systems, plus USAJOBS for federal roles. We read each employer's board, list what it serves, and take a posting off when a later read finds it gone, when the employer's own date is more than {{freshDays}} days old, or when we stop reading that board. Staffing agencies' boards are labelled.",
       "applyQ": "How do I apply?",
       "applyA": "On the employer's own site, by hand or with help from Claude, ChatGPT or Claude Code.",
       "currentQ": "How current is a posting?",

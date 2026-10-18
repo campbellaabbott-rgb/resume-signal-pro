@@ -120,7 +120,12 @@ describe("mirrors of constants still on other branches (they pin themselves when
       const main = readMainLocale(f) as { dataApiPage?: Record<string, string> };
       if (!main.dataApiPage?.builderName) continue;
       const ours = (JSON.parse(readFileSync(resolve(__dirname, `../components/pricing/strings/${f}`), "utf8")) as { pricingPlans: { b2b: Record<string, string> } }).pricingPlans.b2b;
-      for (const k of ["builderName", "builderPrice", "builderBody", "builderNotYet", "builderCta"]) expect(ours[k], `${f} ${k}`).toBe(main.dataApiPage[k]);
+      for (const k of ["builderName", "builderNotYet", "builderCta"]) expect(ours[k], `${f} ${k}`).toBe(main.dataApiPage[k]);
+      // Two differences are hp's until wave 4 makes the same change to /data-api:
+      // the price is {{price}} = money() (no typed "$"), and en-GB writes "licence".
+      expect(ours.builderPrice, `${f} builderPrice`).toBe(main.dataApiPage.builderPrice.replace("${{price}}", "{{price}}"));
+      const body = f === "en-GB.json" ? main.dataApiPage.builderBody.replace(/\blicense\b/g, "licence") : main.dataApiPage.builderBody;
+      expect(ours.builderBody, `${f} builderBody`).toBe(body);
     }
   });
 });

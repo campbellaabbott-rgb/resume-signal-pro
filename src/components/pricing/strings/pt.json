@@ -2,7 +2,11 @@
   "pricingPlans": {
     "meta": {
       "title": "Preços: busca de vagas grátis, Pro {{proPrice}} por mês | Resume Booster",
-      "description": "Busque vagas e analise seu currículo grátis. {{faPrice}} uma vez pela Análise completa, ou {{proPrice}} por mês pelo Pro. Vendas finais; fora da UE, do Reino Unido e da Índia."
+      "titleNoPro": "Preços: busca de vagas e análise de currículo grátis | Resume Booster",
+      "description": "Busque vagas e analise seu currículo grátis. {{faPrice}} uma vez pela Análise completa, ou {{proPrice}} por mês pelo Pro. Vendas finais; fora da UE, do EEE, do Reino Unido e da Índia.",
+      "descriptionFa": "Busque vagas e analise seu currículo grátis. {{faPrice}} uma vez pela Análise completa. Vendas finais; fora da UE, do EEE, do Reino Unido e da Índia.",
+      "descriptionPro": "Busque vagas e analise seu currículo grátis. {{proPrice}} por mês pelo Pro. Vendas finais; fora da UE, do EEE, do Reino Unido e da Índia.",
+      "descriptionClosed": "Busque vagas e analise seu currículo grátis, com ou sem conta. Os extras pagos ainda não estão à venda; as compras abrem em breve."
     },
     "head": {
       "h1": "Preços",
@@ -113,7 +117,7 @@
     "b2b": {
       "h2": "Para desenvolvedores e empresas",
       "builderName": "API Builder (planejada)",
-      "builderPrice": "${{price}} por mês, planejado",
+      "builderPrice": "{{price}} por mês, planejado",
       "builderChip": "Planejado · não está à venda",
       "builderBody": "Busca ranqueada, pontuação de compatibilidade de currículo em escala e 180 dias de encerramentos, para exibir no seu próprio produto com atribuição. Sem feeds nem revenda; isso é a licença comercial. Diga-nos se você usaria.",
       "builderQuota": "Proposta: {{perDay}} chamadas por dia; definida antes do lançamento.",

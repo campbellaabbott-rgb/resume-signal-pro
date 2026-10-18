@@ -2,7 +2,11 @@
   "pricingPlans": {
     "meta": {
       "title": "Presyo: libreng paghahanap ng trabaho, Pro {{proPrice}} bawat buwan | Resume Booster",
-      "description": "Maghanap ng trabaho at mag-scan ng resume nang libre. {{faPrice}} para sa Buong Pagsusuri, o {{proPrice}} bawat buwan para sa Pro. Final ang benta; wala pa sa EU, UK, India."
+      "titleNoPro": "Presyo: libreng paghahanap ng trabaho at resume scan | Resume Booster",
+      "description": "Maghanap ng trabaho at mag-scan ng resume nang libre. {{faPrice}} para sa Buong Pagsusuri, o {{proPrice}} bawat buwan para sa Pro. Final ang benta; wala pa sa EU, EEA, UK, India.",
+      "descriptionFa": "Maghanap ng trabaho at mag-scan ng resume nang libre. {{faPrice}} para sa Buong Pagsusuri. Final ang benta; wala pa sa EU, EEA, UK, India.",
+      "descriptionPro": "Maghanap ng trabaho at mag-scan ng resume nang libre. {{proPrice}} bawat buwan para sa Pro. Final ang benta; wala pa sa EU, EEA, UK, India.",
+      "descriptionClosed": "Maghanap ng trabaho at mag-scan ng resume nang libre, may account man o wala. Hindi pa mabibili ang mga bayad na extra; magbubukas na ang pagbili sa lalong madaling panahon."
     },
     "head": {
       "h1": "Presyo",
@@ -113,7 +117,7 @@
     "b2b": {
       "h2": "Para sa mga developer at kumpanya",
       "builderName": "Builder API (nakaplano)",
-      "builderPrice": "${{price}} bawat buwan, nakaplano",
+      "builderPrice": "{{price}} bawat buwan, nakaplano",
       "builderChip": "Nakaplano · hindi ibinebenta",
       "builderBody": "Naka-rank na paghahanap, resume fit scoring nang maramihan at 180 araw ng mga pagsasara, para ipakita sa loob ng sarili mong produkto nang may attribution. Walang feed o muling pagbebenta; para doon ang commercial license. Sabihin sa amin kung gagamitin mo ito.",
       "builderQuota": "Iminumungkahi: {{perDay}} tawag bawat araw; itatakda bago ang paglulunsad.",

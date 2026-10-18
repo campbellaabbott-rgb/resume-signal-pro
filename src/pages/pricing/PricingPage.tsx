@@ -27,6 +27,7 @@ import { money } from "@/lib/format";
 import type { PreviewFurniture } from "@/components/pricing/BuyBlock";
 import { FULL_ANALYSIS_PRICE_USD, PRO_PRICE_USD } from "@/components/pricing/plan-facts";
 import { pricingJsonLd } from "@/components/pricing/pricing-jsonld";
+import { pricingMetaKeys } from "@/components/pricing/pricing-meta";
 import { PricingView } from "@/components/pricing/PricingView";
 import { resolveSaleGates, type SaleGateInput } from "@/components/pricing/sale-gates";
 import { usePricingStrings } from "@/components/pricing/use-pricing-strings";
@@ -49,11 +50,12 @@ export default function PricingPage({ gateInput, preview, onPreviewPress }: Pric
   );
   const lng = i18n.language;
   const prices = { faPrice: money(FULL_ANALYSIS_PRICE_USD, "USD", { lng }), proPrice: money(PRO_PRICE_USD, "USD", { lng }) };
+  const meta = pricingMetaKeys(gates);
 
   return (
     <div className="min-h-screen bg-background">
       {shown ? (
-        <SEO title={t("pricingPlans.meta.title", prices)} description={t("pricingPlans.meta.description", prices)} path="/pricing" />
+        <SEO title={t(meta.title, prices)} description={t(meta.description, prices)} path="/pricing" />
       ) : null}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pricingJsonLd(gates)) }} />
       <Header />

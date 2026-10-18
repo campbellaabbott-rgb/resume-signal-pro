@@ -236,7 +236,7 @@ describe("every count names its date basis", () => {
       expect(el!.querySelector("time")?.getAttribute("dateTime"), sel).toBe(AS_OF);
     }
     expect(document.querySelector("[data-home-total]")!.textContent).toBe("1,040,488 open postings in all · counted 17 Oct 2026, 22:45 UTC");
-    expect(document.querySelector("[data-home-freshness]")!.textContent).toMatch(/^32,019job boards with an open postingHalf had a read in the 2 hr, 52 min before 22:45 UTC; 95% within 5 hr, 52 min\. For the largest boards, a read is one part of the board\.$/);
+    expect(document.querySelector("[data-home-freshness]")!.textContent).toMatch(/^32,019job boards we read, with a live postingHalf had a read in the 2 hr, 52 min before 17 Oct 2026, 22:45 UTC; 95% within 5 hr, 52 min\. For the largest boards, a read is one part of the board\.$/);
     expect(document.querySelector("[data-home-reach]")!.textContent).toBe(
       "Your AI searches 947,663 of the 1,040,488 open postings: USAJOBS and SmartRecruiters postings (92,825) stay on this website. Counted 17 Oct 2026, 22:45 UTC.",
     );

@@ -2,7 +2,11 @@
   "pricingPlans": {
     "meta": {
       "title": "Prijzen: gratis vacatures zoeken, Pro {{proPrice}} per maand | Resume Booster",
-      "description": "Zoek vacatures en scan je cv gratis. {{faPrice}} eenmalig voor een Volledige analyse, of {{proPrice}} per maand voor Pro. Verkoop definitief; niet in de EU, VK of India."
+      "titleNoPro": "Prijzen: gratis vacatures zoeken en cv-scans | Resume Booster",
+      "description": "Zoek vacatures en scan je cv gratis. {{faPrice}} eenmalig voor een Volledige analyse, of {{proPrice}} per maand voor Pro. Verkoop definitief; niet in de EU, EER, VK of India.",
+      "descriptionFa": "Zoek vacatures en scan je cv gratis. {{faPrice}} eenmalig voor een Volledige analyse. Verkoop definitief; niet in de EU, EER, VK of India.",
+      "descriptionPro": "Zoek vacatures en scan je cv gratis. {{proPrice}} per maand voor Pro. Verkoop definitief; niet in de EU, EER, VK of India.",
+      "descriptionClosed": "Zoek vacatures en scan je cv gratis, met of zonder account. Betaalde extra's zijn nog niet te koop; de verkoop opent binnenkort."
     },
     "head": {
       "h1": "Prijzen",
@@ -113,7 +117,7 @@
     "b2b": {
       "h2": "Voor ontwikkelaars en bedrijven",
       "builderName": "Builder-API (gepland)",
-      "builderPrice": "${{price}} per maand, gepland",
+      "builderPrice": "{{price}} per maand, gepland",
       "builderChip": "Gepland · niet te koop",
       "builderBody": "Gerangschikt zoeken, cv-matchscores op grote schaal en 180 dagen aan sluitingen, om in je eigen product te tonen met bronvermelding. Geen feeds of doorverkoop; daarvoor is de commerciële licentie. Laat ons weten of je het zou gebruiken.",
       "builderQuota": "Voorstel: {{perDay}} aanroepen per dag; vastgesteld vóór de lancering.",
