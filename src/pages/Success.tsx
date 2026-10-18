@@ -51,7 +51,7 @@ import { useFunnelTracking } from "@/hooks/use-funnel-tracking";
 import { usePersonalization } from "@/hooks/use-personalization";
 import { parseEdgeFunctionError } from "@/lib/edge-function-errors";
 import { PRODUCTS } from "@/config/products";
-import { stashValueFor, stashedSessionIdFor, stashedValueFor } from "@/lib/auth-fragment";
+import { forgetStashedShare, stashShareFor, stashedSessionIdFor, stashedShareFor } from "@/lib/auth-fragment";
 
 const Success = () => {
   const { t } = useTranslation();
@@ -97,8 +97,10 @@ const Success = () => {
   const sessionId = urlSessionId || stashedSession;
   const sessionIdStashed = !urlSessionId && !!stashedSession;
   // The share id reads AND deletes this analysis, so the first script keeps it
-  // out of the address too (this tab's stash holds it for a reload).
-  const [stashedShare] = useState(() => stashedValueFor("share", "/success", null).value);
+  // out of the address too (this tab's stash holds it for a reload). It is
+  // honoured only for the purchase it was made for (S13-002): a second
+  // purchase in this tab takes its own path, never the first one's analysis.
+  const [stashedShare] = useState(() => stashedShareFor("/success", urlSessionId || stashedSession));
   const shareIdParam = searchParams.get("share") || stashedShare;
 
   // Simulate progress steps during loading. The timers are CLEARED when the
@@ -130,8 +132,9 @@ const Success = () => {
   const rememberShareInUrl = (newShareId: unknown) => {
     if (typeof newShareId !== "string" || !newShareId || !sessionId) return;
     // The share id reads and deletes the analysis, so it goes into this tab's
-    // stash, not the address, wherever the stash can be written.
-    if (stashValueFor("share", "/success", newShareId)) return;
+    // stash, not the address, wherever the stash can be written, with the
+    // purchase it belongs to.
+    if (stashShareFor("/success", newShareId, sessionId)) return;
     // A session id the first script stashed stays out of the address: the
     // tab's stash still holds it for a reload.
     navigate(sessionIdStashed
@@ -459,6 +462,8 @@ const Success = () => {
       });
 
       if (deleteError) throw deleteError;
+      // The analysis is gone: this tab no longer names it (S13-002).
+      forgetStashedShare();
 
       toast({
         title: t('success.toast.dataDeleted'),

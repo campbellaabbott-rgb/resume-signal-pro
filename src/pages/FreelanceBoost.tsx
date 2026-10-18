@@ -21,7 +21,7 @@ import { ProductPreview } from "@/components/ProductPreview";
 import { getResumeFromSession } from "@/hooks/use-session-resume";
 import { PurchaseTerms } from "@/components/PurchaseTerms";
 import { FREELANCE_PURCHASE_KEY } from "@/lib/purchase-proofs";
-import { stashedSessionIdFor } from "@/lib/auth-fragment";
+import { forgetStashedSessionFor, stashedSessionIdThisLoad } from "@/lib/auth-fragment";
 
 interface ProjectIntake {
   clientType: string; problem: string; deliverable: string; toolsSkills: string;
@@ -104,7 +104,7 @@ const draftIsComplete = (d: Partial<IntakeDraft> | null): d is IntakeDraft =>
 
 export default function FreelanceBoost() {
   const { t } = useTranslation();
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const { purchaseProduct, isLoading: checkoutLoading } = useProductCheckout();
   const { toast } = useToast();
   // A preview lights up only if the visitor scanned a resume earlier this
@@ -140,8 +140,13 @@ export default function FreelanceBoost() {
   // purchase. This browser bought one before, without the link → no buy
   // buttons, and the link from the email to see it.
   // The first script in index.html moves session_id out of the address
-  // before any analytics records it; this tab's stash keeps it for a reload.
-  const [stashedSession] = useState(() => stashedSessionIdFor("/freelance-boost", null).id);
+  // before any analytics records it. THE STASHED ID IS HONOURED ONLY ON THE
+  // LOAD THAT CAPTURED IT (S13-082): it never expired, so every later visit
+  // to this page in the tab (a reload, the footer link) showed the old
+  // purchase and never the buy buttons, and "Start a new purchase" could not
+  // be reached. A later visit is a new visit: the "bought on this device"
+  // box, whose link from the purchase email shows the purchase again.
+  const [stashedSession, setStashedSession] = useState(() => stashedSessionIdThisLoad("/freelance-boost", null).id);
   const urlSession = params.get("session_id") || stashedSession;
   const [boughtHere, setBoughtHere] = useState(readBoughtHere);
   const sessionId = urlSession;
@@ -149,10 +154,20 @@ export default function FreelanceBoost() {
     if (!urlSession) return;
     try { localStorage.setItem(PURCHASE_KEY, JSON.stringify({ at: Date.now() })); } catch { /* storage blocked: the link still works */ }
   }, [urlSession]);
+  // A new purchase forgets this one everywhere it is kept: the mark, the
+  // stash, and the address (an id left there loads it again).
   const startNewPurchase = () => {
     try { localStorage.removeItem(PURCHASE_KEY); } catch { /* nothing kept */ }
+    forgetStashedSessionFor("/freelance-boost");
+    setStashedSession(null);
+    if (params.has("session_id")) {
+      const rest = new URLSearchParams(params);
+      rest.delete("session_id");
+      setParams(rest, { replace: true });
+    }
     setBoughtHere(false);
     setResult(null);
+    setGenError(null);
   };
   const generate = async (d: IntakeDraft) => {
     if (!sessionId) return;
@@ -393,6 +408,12 @@ export default function FreelanceBoost() {
                 </Button>
                 <Button size="sm" variant="outline" asChild><Link to="/?utm_source=freelance_boost">Scan the result free <ArrowRight className="w-3.5 h-3.5 ml-1" /></Link></Button>
               </div>
+              {sessionId && (
+                // A purchase on screen is no reason never to sell another (S13-082).
+                <button type="button" onClick={startNewPurchase} className="block mt-3 text-[11px] text-muted-foreground underline">
+                  {t("freelanceBoost.startNewPurchase")}
+                </button>
+              )}
             </div>
           )}
 
@@ -544,6 +565,9 @@ export default function FreelanceBoost() {
                   {!intakeComplete && (
                     <p className="text-[11px] text-muted-foreground mt-2">Add your target role and at least one project (who it was for + what you delivered).</p>
                   )}
+                  <button type="button" onClick={startNewPurchase} className="block mx-auto mt-3 text-[11px] text-muted-foreground underline">
+                    {t("freelanceBoost.startNewPurchase")}
+                  </button>
                 </div>
               ) : boughtHere ? (
                 // BOUGHT ON THIS DEVICE, NO LINK: the result loads only from

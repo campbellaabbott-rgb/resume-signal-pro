@@ -24,11 +24,18 @@
  * - session_id on ANY path (every Stripe return: /product-success, /success,
  *   /freelance-boost, /agents/pass, /account?pro=success), with
  *   session_id_path naming where it came from;
- * - share on /success (it reads and deletes that analysis), with share_path;
+ * - share on /success (it reads and deletes that analysis), with share_path
+ *   and share_session, the purchase it belongs to ("" for an address that
+ *   named only the analysis). A /success address names one purchase or one
+ *   analysis, so what it names replaces the pair the stash held for /success
+ *   (S13-002: a second purchase in one tab was shown the first one's
+ *   analysis, and the new one was never generated);
  * - fragment, with fragment_path: the whole fragment on /email/unsubscribe,
  *   /market-pulse/confirm and /fix-plan/confirm, whose pages parse it
  *   themselves, and "#confirm=..." on /data-api (the API key link);
- * - _at and _path: when and where the last capture happened.
+ * - _at and _path: when and where the last capture happened (a page that
+ *   honours a value only on the load that captured it compares _at with the
+ *   document's start: capturedOnThisLoad).
  * Those path-bound values stay in the address when the stash cannot be
  * written, so the page still finds them there.
  *
@@ -121,11 +128,112 @@ export function stashValueFor(key: "session_id" | "share", path: string, value: 
     const s = readStash();
     s[key] = value;
     s[`${key}_path`] = path;
+    // A share written without its purchase belongs to no purchase (stashShareFor names one).
+    if (key === "share") delete s.share_session;
     sessionStorage.setItem(STASH_KEY, JSON.stringify(s));
     return true;
   } catch {
     return false;
   }
+}
+
+// ── the analysis a /success page shows, and the purchase it belongs to ──────
+
+/**
+ * THE STASHED SHARE, ONLY FOR ITS OWN PURCHASE (S13-002). The share id names
+ * an analysis, and share_session the purchase that analysis was made for. A
+ * page whose purchase is another one gets null: its own purchase takes its
+ * own path (the résumé to the analysis, or the copy already delivered), never
+ * the last analysis this tab showed. With no purchase named at all, the share
+ * is a link to that analysis alone (read-only).
+ */
+export function stashedShareFor(path: string, sessionId: string | null | undefined): string | null {
+  const share = stashedValueFor("share", path, null).value;
+  if (!share) return null;
+  if (!sessionId) return share;
+  return peekStashed("share_session") === sessionId ? share : null;
+}
+
+/** Keep a new analysis's share in the stash, with the purchase it belongs to. False when storage is blocked. */
+export function stashShareFor(path: string, share: string, sessionId: string | null | undefined): boolean {
+  try {
+    const s = readStash();
+    s.share = share;
+    s.share_path = path;
+    s.share_session = sessionId ?? "";
+    sessionStorage.setItem(STASH_KEY, JSON.stringify(s));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Forget the stashed share (its analysis was deleted). */
+export function forgetStashedShare(): void {
+  const s = readStash();
+  delete s.share;
+  delete s.share_path;
+  delete s.share_session;
+  writeStash(s);
+}
+
+// ── a value honoured only on the load that captured it ──────────────────────
+
+/**
+ * How far the first script's clock may read behind the document's start (a
+ * browser that coarsens its timers rounds both). A capture this close before
+ * a later load is read as that load's, which is how the page behaved before
+ * this check, never worse.
+ */
+export const SAME_LOAD_SLACK_MS = 2_000;
+
+/** When this document started loading (epoch ms), or null when the browser cannot say. */
+function documentStart(): number | null {
+  try {
+    const p = typeof performance !== "undefined" ? performance : null;
+    if (p && typeof p.timeOrigin === "number" && Number.isFinite(p.timeOrigin) && p.timeOrigin > 0) return p.timeOrigin;
+    const nav = (p as unknown as { timing?: { navigationStart?: unknown } } | null)?.timing?.navigationStart;
+    return typeof nav === "number" && nav > 0 ? nav : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Whether the stash's last capture happened on THIS load of `path`: the first
+ * script stamps _at as it writes, after this document started. A capture from
+ * an earlier load (a reload, a later visit in the same tab) is not. A browser
+ * that cannot say when the document started is given the capture: a fresh
+ * purchase is never refused for want of a clock.
+ */
+export function capturedOnThisLoad(path: string): boolean {
+  const s = readStash();
+  if (s._path !== path) return false;
+  const at = Number(s._at);
+  if (!Number.isFinite(at)) return false;
+  const start = documentStart();
+  return start === null || at >= start - SAME_LOAD_SLACK_MS;
+}
+
+/**
+ * The Stripe session id a payment-return page honours only on the load that
+ * captured it (S13-082): an id still in the address wins; otherwise the
+ * stash's, captured on `path` on this very load. A later visit to the page in
+ * the same tab is a new visit, not the old purchase again.
+ */
+export function stashedSessionIdThisLoad(path: string, urlValue: string | null | undefined): { id: string | null; fromStash: boolean } {
+  const r = stashedSessionIdFor(path, urlValue);
+  if (!r.fromStash) return r;
+  return capturedOnThisLoad(path) ? r : { id: null, fromStash: false };
+}
+
+/** Forget the session id stashed for `path` (the page started a new purchase). */
+export function forgetStashedSessionFor(path: string): void {
+  const s = readStash();
+  if (s.session_id_path !== path) return;
+  delete s.session_id;
+  delete s.session_id_path;
+  writeStash(s);
 }
 
 /**

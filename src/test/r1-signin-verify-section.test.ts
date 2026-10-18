@@ -130,6 +130,30 @@ describe("section 95: the first-script stash", () => {
   });
 });
 
+describe("section 95: the live stash script, run for two purchases on /success (S13-002)", () => {
+  // The script before the hotfix: the same, without the /success pair rule.
+  const BEFORE = STASH.replace(/\n[ \t]*if \(P === "\/success" && \(S\.session_id[^\n]*\n(?:[^\n]*\n){3}[ \t]*\}(?=\n)/, "");
+
+  it("passes on the hotfix script: the second purchase's arrival drops the first one's share", () => {
+    const { lines } = run(site());
+    expect(has(lines, "PASS", /the live stash script, run for two purchases on \/success in one tab, drops the first purchase share when the second arrives \(S13-002\)/), show(lines)).toBe(true);
+    expect(lines.filter((l) => /S13-002/.test(l) && l.startsWith("FAIL")), show(lines)).toEqual([]);
+  });
+
+  it("fails on the script R1 shipped first, which kept the old share beside the new purchase", () => {
+    expect(BEFORE, "the pre-hotfix script could not be rebuilt from index.html").not.toBe(STASH);
+    expect(BEFORE).toContain("rb_url_stash");
+    const routes = site().map((r) => r.match.endsWith(`${esc(SITE)}/$`) ? { ...r, body: page(BEFORE) } : r);
+    const { lines } = run(routes);
+    expect(has(lines, "FAIL", /keeps the first purchase share beside a second purchase on \/success \(S13-002\)/), show(lines)).toBe(true);
+  });
+
+  it("fails when the page's stash script cannot be read", () => {
+    const routes = site().map((r) => r.match.endsWith(`${esc(SITE)}/$`) ? { ...r, status: 500 } : r);
+    expect(has(run(routes).lines, "FAIL", /its \/success rule \(S13-002\) could not be run/)).toBe(true);
+  });
+});
+
 describe("section 95: the Auth chunk and the switches", () => {
   it("the R1 page with every switch off passes, and names the switches", () => {
     const { lines, calls } = run(site());

@@ -11,8 +11,13 @@
          them. Keys are compared decoded (URLSearchParams), in the query and
          the fragment alike. A sign-in's parts leave the address even when the
          stash cannot be written: that sign-in is lost, never adopted unasked.
-         src/lib/auth-fragment.ts reads them back; the keys are listed there,
-         and src/test/r1-signin-stash.test.ts runs this script. */
+         A /success address names ONE purchase or ONE analysis (S13-002): what
+         it names replaces the purchase-and-analysis pair the stash held for
+         /success in the same write, so a second purchase in this tab is never
+         shown the first one's analysis, and a share is stored with the
+         purchase it belongs to. src/lib/auth-fragment.ts reads them back; the
+         keys are listed there, and src/test/r1-signin-stash.test.ts runs this
+         script. */
       (function () {
         try {
           var L = location, P = L.pathname.replace(/\/+$/, "") || "/", K = "rb_url_stash";
@@ -38,6 +43,11 @@
             try { o = JSON.parse(W.getItem(K)); } catch (e) { o = null; }
             o = o && typeof o === "object" ? o : {};
             if (qh || fh) for (k = 0; k < G.length; k++) delete o[G[k]];
+            if (P === "/success" && (S.session_id !== undefined || S.share !== undefined)) {
+              delete o.share; delete o.share_path; delete o.share_session;
+              if (S.session_id === undefined && o.session_id_path === P) { delete o.session_id; delete o.session_id_path; }
+              if (S.share !== undefined) S.share_session = S.session_id !== undefined ? S.session_id : "";
+            }
             for (k in N) o[k] = N[k];
             for (k in S) o[k] = S[k];
             o._at = Date.now(); o._path = P;

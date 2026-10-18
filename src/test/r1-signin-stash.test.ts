@@ -13,8 +13,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
-  STASH_KEY, clearPendingSignIn, discardStashedSession, maskEmail, newestAmr, peekStashed, readPendingSignIn,
-  pendingMatches, safeNextPath, setPendingSignIn, stashValueFor, stashedFragment, stashedSessionIdFor, stashedValueFor, takeStashed,
+  STASH_KEY, clearPendingSignIn, discardStashedSession, forgetStashedSessionFor, forgetStashedShare, maskEmail, newestAmr, peekStashed, readPendingSignIn,
+  pendingMatches, safeNextPath, setPendingSignIn, stashShareFor, stashValueFor, stashedFragment, stashedSessionIdFor, stashedSessionIdThisLoad, stashedShareFor, stashedValueFor, takeStashed,
 } from "@/lib/auth-fragment";
 import { parseParametersFromURL } from "@supabase/auth-js/dist/module/lib/helpers";
 
@@ -196,6 +196,28 @@ describe("one tab's stash across loads", () => {
     expect(stash()?.token_hash, "an older link's token_hash survived a newer sign-in").toBeUndefined();
   });
 
+  it("a new purchase on /success drops the share the tab held, in the same write (S13-002)", () => {
+    load("/success?session_id=cs_live_first");
+    expect(stashShareFor("/success", "share-of-first", "cs_live_first")).toBe(true);
+    expect(load("/success?session_id=cs_live_second")).toBe("/success");
+    expect(stash()).toMatchObject({ session_id: "cs_live_second", session_id_path: "/success" });
+    expect(stash()?.share, "the first purchase's share survived the second purchase's arrival").toBeUndefined();
+    expect(stash()?.share_path).toBeUndefined();
+    expect(stash()?.share_session).toBeUndefined();
+  });
+
+  it("a share link on /success replaces the purchase the tab held for /success, and a share that arrives with its purchase names it", () => {
+    load("/success?session_id=cs_live_held");
+    expect(load("/success?share=link-share")).toBe("/success");
+    expect(stash()).toMatchObject({ share: "link-share", share_path: "/success", share_session: "" });
+    expect(stash()?.session_id, "a share link was read as the tab's old purchase").toBeUndefined();
+    load("/product-success?session_id=cs_test_other&product=scanPack");
+    load("/success?share=link-share-2");
+    expect(stash()?.session_id, "a share link on /success dropped another page's purchase").toBe("cs_test_other");
+    expect(load("/success?session_id=cs_live_pair&share=pair-share")).toBe("/success");
+    expect(stash()).toMatchObject({ session_id: "cs_live_pair", share: "pair-share", share_session: "cs_live_pair" });
+  });
+
   it("blocked storage leaves the address untouched, so the page still finds its parts there", () => {
     const real = Object.getOwnPropertyDescriptor(window, "sessionStorage");
     const blocked = { getItem: () => null, setItem: () => { throw new Error("blocked"); }, removeItem: () => {} };
@@ -228,6 +250,39 @@ describe("the readers the pages use", () => {
     expect(stashedSessionIdFor("/product-success", null)).toEqual({ id: null, fromStash: false });
     expect(stashedSessionIdFor("/success", null)).toEqual({ id: "cs_live_from_success", fromStash: true });
     expect(stashedSessionIdFor("/success", "cs_in_url")).toEqual({ id: "cs_in_url", fromStash: false });
+  });
+
+  it("a session id honoured only on the load that captured it: this document's capture yes, an earlier document's no (S13-082)", () => {
+    const at = (origin: number) => Object.defineProperty(performance, "timeOrigin", { configurable: true, get: () => origin });
+    try {
+      at(Date.now() - 100);
+      load("/freelance-boost?session_id=cs_live_boost_once");
+      expect(stashedSessionIdThisLoad("/freelance-boost", null)).toEqual({ id: "cs_live_boost_once", fromStash: true });
+      expect(stashedSessionIdThisLoad("/freelance-boost", "cs_in_the_address"), "an id still in the address always wins").toEqual({ id: "cs_in_the_address", fromStash: false });
+      at(Date.now() + 60_000);
+      load("/freelance-boost");
+      expect(stashedSessionIdThisLoad("/freelance-boost", null), "a later load read the old purchase back").toEqual({ id: null, fromStash: false });
+      expect(stashedSessionIdFor("/freelance-boost", null).id, "the reload-keeping reader still finds it (the success page needs that)").toBe("cs_live_boost_once");
+      forgetStashedSessionFor("/success");
+      expect(peekStashed("session_id"), "forgetting another page's purchase dropped this one").toBe("cs_live_boost_once");
+      forgetStashedSessionFor("/freelance-boost");
+      expect(peekStashed("session_id")).toBeNull();
+    } finally {
+      delete (performance as unknown as Record<string, unknown>).timeOrigin;
+    }
+  });
+
+  it("a stashed share is honoured only for the purchase it was made for (S13-002)", () => {
+    stashShareFor("/success", "share-a", "cs_live_a");
+    expect(stashedShareFor("/success", "cs_live_a")).toBe("share-a");
+    expect(stashedShareFor("/success", "cs_live_b"), "another purchase was handed this purchase's analysis").toBeNull();
+    expect(stashedShareFor("/success", null), "with no purchase named, the share is a link to that analysis alone").toBe("share-a");
+    expect(stashedShareFor("/jobs", null)).toBeNull();
+    stashValueFor("share", "/success", "share-written-before-the-hotfix");
+    expect(stashedShareFor("/success", "cs_live_a"), "a share whose purchase is not known was handed to a purchase").toBeNull();
+    forgetStashedShare();
+    expect(stashedShareFor("/success", null)).toBeNull();
+    expect(peekStashed("share_session")).toBeNull();
   });
 
   it("a confirm page reads the address's fragment first, else the stash's", () => {
