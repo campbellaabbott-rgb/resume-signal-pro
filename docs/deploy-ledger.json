@@ -114,6 +114,10 @@
       "after": "fn:job-board@2026-09-09.93",
       "why": "wave 4, HELD until wave 4 verifies (holdUntilVerified): it schedules the nightly 30-day prune of the connector's searches (owner decision 2026-10-11), an irreversible delete of raw rows that is the retention the Privacy draft states only beside job-board .93's write side (an mcp search event keeps its words and no shown ids; a ChatGPT search with the reader proof writes nothing). Release it once section 86 passes"
     },
+    "20261011200000": {
+      "before": ["fn:scan-heartbeat"],
+      "why": "w4b ops: scan-heartbeat 2026-10-11.28 reads cron_http_answers, which only this migration creates (without it the cron check is a skip, never a pass); the same file makes get_scan_health_status count visitors' scans only and name a stopped heartbeat, which check-alerts 2026-10-11.28 alarms on. The live heartbeat keeps reading cron_http_refusals, which this file leaves alone"
+    },
     "20261014100000": {
       "after": "fn:process-email-queue@2026-10-14.1",
       "why": "R1 mail: it schedules the 10-second 'process-email-queue' drain, whose posts carry x-email-cron. Only process-email-queue 2026-10-14.1 accepts that header and falls back to Resend when Lovable refuses; an older build drains with the service-role bearer but without the fallback (verify section 94 shows the build)"

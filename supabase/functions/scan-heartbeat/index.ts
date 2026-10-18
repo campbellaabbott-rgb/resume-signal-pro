@@ -9,6 +9,7 @@ import { keyMatches } from "../_shared/admin-key.ts";
 // every heartbeat run since the check shipped. See _shared/search-caller.ts.
 import { searchCallerHeader } from "../_shared/search-caller.ts";
 import { boardTailChecks, dbFailureCheck } from "./board-tail.ts";
+import { cronAnswersCheck, CRON_ERROR_WINDOW_MIN, CRON_REFUSAL_WINDOW_MIN, E2E_ABORT_MS, e2eAbortedText, isAbort, pingDeadMan } from "./watch.ts";
 
 // Declare EdgeRuntime for background tasks
 declare const EdgeRuntime: { waitUntil: (promise: Promise<unknown>) => void };
@@ -18,7 +19,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-admin-key, x-email-cron',
   'Access-Control-Expose-Headers': 'x-fn-build',
   // BUILD_VERSION below, as the other functions carry it.
-  'x-fn-build': 'scan-heartbeat.2026-10-09.71',
+  'x-fn-build': 'scan-heartbeat.2026-10-11.28',
 };
 
 // Test resume for heartbeat checks
@@ -125,7 +126,7 @@ function unanswered(r: { timedOut?: boolean; failed?: boolean }, fn: string, ms:
  *
  * BUMP ON EVERY DEPLOY of this function.
  */
-const BUILD_VERSION = "2026-10-09.7"; // 10-09.7: carries both .6 and .3 (wave-3 fix round integration).  10-09.6: fails job_board_refresh_head (3h), job_board_filter_audit (12h) and job_board_pass_end (a pass-end tail that started and never finished, S11-001) and job_board_db_failures (S11-023).  10-09.3: a partial e2e report, a refused (429) e2e scan and a visitor fallback rate of half or more fail their checks (S11-028).  10-09.1: a paid order that never arrived mails the owner, naming it, newest first (decided after the delivery read, not before); a cron call refused (401/403) in the last hour fails cron_http_refusals.  10-08.1: answers only its cron, the service role and the owner's key; the e2e scan is uncached; alerts stamp only after a send that worked; vendor drift skips when unevaluated; delivery reads email_logs too
+const BUILD_VERSION = "2026-10-11.28"; // 10-11.28: the cron check reads cron_http_answers and fails on repeated 5xx (S12-157); the end-to-end scan waits past the scanner's own clock and an abort on ours is degraded (S12-159); each run pings HC_PING_URL (S12-065).  10-09.7: carries both .6 and .3 (wave-3 fix round integration).  10-09.6: fails job_board_refresh_head (3h), job_board_filter_audit (12h) and job_board_pass_end (a pass-end tail that started and never finished, S11-001) and job_board_db_failures (S11-023).  10-09.3: a partial e2e report, a refused (429) e2e scan and a visitor fallback rate of half or more fail their checks (S11-028).  10-09.1: a paid order that never arrived mails the owner, naming it, newest first (decided after the delivery read, not before); a cron call refused (401/403) in the last hour fails cron_http_refusals.  10-08.1: answers only its cron, the service role and the owner's key; the e2e scan is uncached; alerts stamp only after a send that worked; vendor drift skips when unevaluated; delivery reads email_logs too
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -438,33 +439,28 @@ serve(async (req) => {
       skip('stripe_credentials', `Stripe did not answer (${e instanceof Error ? e.message : 'unreachable'}) — credentials not evaluated`);
     }
 
-    // Check 2c: no cron call was refused in the last hour (S8-051). A cron
-    // run reads 'succeeded' whatever its function answered; a 401/403 is a
-    // key or a gate (a re-key that missed a job), never a blip. 5xx and
-    // timeouts are reported in the check's text, not failed on.
+    // Check 2c: what the crons' calls were answered (S8-051, S12-157). A cron
+    // run reads 'succeeded' whatever its function answered. A 401/403 in the
+    // last hour is a key or a gate; repeated 5xx in the last three hours is a
+    // job failing every run. 404s and timeouts are counted, not failed on
+    // (watch.ts says why).
     try {
-      const { data, error } = await supabase.rpc('cron_http_refusals', { p_minutes: 60 }).maybeSingle();
-      const r = data as { available?: boolean; responses?: number; refused?: number; server_errors?: number; timed_out?: number; last_refused_status?: number | null; last_refused_sample?: string | null } | null;
+      const { data, error } = await supabase.rpc('cron_http_answers', { p_minutes: CRON_REFUSAL_WINDOW_MIN, p_error_minutes: CRON_ERROR_WINDOW_MIN }).maybeSingle();
+      const r = data as Parameters<typeof cronAnswersCheck>[0];
+      const verdict = error ? null : cronAnswersCheck(r);
       if (error || !r) {
-        skip('cron_http_refusals', `reader unavailable (${error?.message?.slice(0, 80) ?? 'no row'}) — cron answers not evaluated`);
-      } else if (!r.available) {
-        skip('cron_http_refusals', 'pg_net keeps no answers here — cron answers not evaluated');
+        skip('cron_http_answers', `reader unavailable (${error?.message?.slice(0, 80) ?? 'no row'}) — cron answers not evaluated`);
+      } else if (!verdict) {
+        skip('cron_http_answers', 'pg_net keeps no answers here — cron answers not evaluated');
       } else {
-        const refused = Number(r.refused ?? 0);
-        checks.push({
-          name: 'cron_http_refusals',
-          passed: refused === 0,
-          responseTimeMs: 0,
-          error: refused === 0 ? undefined
-            : `${refused} of ${Number(r.responses ?? 0)} cron calls in the last hour were refused (latest HTTP ${r.last_refused_status ?? '?'}: ${String(r.last_refused_sample ?? '').slice(0, 120)}); 5xx ${Number(r.server_errors ?? 0)}, timeouts ${Number(r.timed_out ?? 0)}`,
-        });
-        if (refused > 0) {
+        checks.push({ name: 'cron_http_answers', passed: verdict.passed, responseTimeMs: 0, error: verdict.error });
+        if (!verdict.passed) {
           if (overallStatus === 'healthy') overallStatus = 'degraded';
-          errorMessage = errorMessage || `Cron: ${refused} refused calls in the last hour`;
+          errorMessage = errorMessage || `Cron: ${verdict.error!.slice(0, 160)}`;
         }
       }
     } catch (e) {
-      skip('cron_http_refusals', `reader threw (${e instanceof Error ? e.message.slice(0, 80) : 'unknown'}) — cron answers not evaluated`);
+      skip('cron_http_answers', `reader threw (${e instanceof Error ? e.message.slice(0, 80) : 'unknown'}) — cron answers not evaluated`);
     }
 
     // Check 3: Cache system
@@ -1771,7 +1767,8 @@ serve(async (req) => {
       const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
       const heartbeatSecret = Deno.env.get('HEARTBEAT_SECRET');
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 75000);
+      // Past the scanner's own 85 s model clock and its report (S12-159).
+      const timeoutId = setTimeout(() => controller.abort(), E2E_ABORT_MS);
       const scanResp = await fetch(`${supabaseUrl}/functions/v1/free-keyword-scan`, {
         method: 'POST',
         headers: {
@@ -1837,14 +1834,24 @@ serve(async (req) => {
         }
       }
     } catch (e) {
+      // OUR clock ran out, not the scanner: slow, not proven down (S12-159).
+      // Anything else that threw (a refused connection, a body that is not
+      // JSON) is still down.
+      const elapsed = Date.now() - e2eStart;
+      const aborted = isAbort(e);
       checks.push({
         name: 'e2e_scan',
         passed: false,
-        responseTimeMs: Date.now() - e2eStart,
-        error: e instanceof Error ? e.message : 'Unknown error',
+        responseTimeMs: elapsed,
+        error: aborted ? e2eAbortedText(elapsed) : e instanceof Error ? e.message : 'Unknown error',
       });
-      overallStatus = 'down';
-      errorMessage = errorMessage || `E2E scan: ${e instanceof Error ? e.message : 'Unknown'}`;
+      if (aborted) {
+        overallStatus = overallStatus === 'down' ? 'down' : 'degraded';
+        errorMessage = errorMessage || `E2E scan: no answer within ${Math.round(E2E_ABORT_MS / 1000)} s`;
+      } else {
+        overallStatus = 'down';
+        errorMessage = errorMessage || `E2E scan: ${e instanceof Error ? e.message : 'Unknown'}`;
+      }
     }
 
     // Check 6b: HOW MANY VISITORS GOT THE FALLBACK (S11-028). One heartbeat
@@ -1975,6 +1982,10 @@ serve(async (req) => {
     // sentence beside it.
     const fillGaps = await evaluateFillGaps(supabase);
 
+    // The run finished: tell the watcher outside Supabase (S12-065).
+    const deadMan = await pingDeadMan(Deno.env.get('HC_PING_URL'), overallStatus);
+    if (deadMan !== 'sent') console.log(`[HEARTBEAT] dead-man ping ${deadMan}${deadMan === 'unset' ? ' (HC_PING_URL is not an https URL: nothing outside Supabase notices if this cron stops)' : ''}`);
+
     return new Response(
       JSON.stringify({
         status: overallStatus,
@@ -2003,6 +2014,8 @@ serve(async (req) => {
         })),
         // Every standing undelivered row; the list above is the newest 100.
         undeliveredOrdersTotal: undeliveredRead ? undeliveredRead.total : null,
+        // sent | unset | failed: whether healthchecks.io heard this run.
+        deadMan,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
@@ -2023,6 +2036,7 @@ serve(async (req) => {
     });
 
     EdgeRuntime.waitUntil(sendHeartbeatAlert('down', error instanceof Error ? error.message : 'Unknown', checks, totalTime));
+    EdgeRuntime.waitUntil(pingDeadMan(Deno.env.get('HC_PING_URL'), 'down'));
 
     return new Response(
       JSON.stringify({

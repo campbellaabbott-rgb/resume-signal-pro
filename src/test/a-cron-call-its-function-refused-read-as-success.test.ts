@@ -9,9 +9,12 @@
  *
  * WHAT HOLDS NOW: in pglite, cron_http_refusals counts the answers of the
  * window (refusals, 5xx, timeouts, the newest refusal's status and body) and
- * says unavailable without pg_net; the shipped scan-heartbeat fails its
- * cron_http_refusals check (and degrades) on a refusal, passes on none, and
- * records a skip with a reason when the reader is missing.
+ * says unavailable without pg_net; the shipped scan-heartbeat reads its
+ * successor cron_http_answers (20261011200000, S12-157) and fails its
+ * cron_http_answers check (and degrades) on a refusal, passes on none, and
+ * records a skip with a reason when the reader is missing. The 5xx half of
+ * the check is held in w4b-ops-a-cron-that-errors-every-run-and-a-heartbeat-
+ * that-stopped-are-seen.test.ts.
  */
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
@@ -96,7 +99,7 @@ describe("scan-heartbeat reads the cron answers", () => {
     const db = new ProxyDb();
     db.answer = (q: Query): Answer | undefined => {
       if (q.rpc === "check_rate_limit") return { data: true, error: null };
-      if (q.rpc === "cron_http_refusals") return refusals;
+      if (q.rpc === "cron_http_answers") return refusals;
       if (q.table === "job_board_meta") return { data: { updated_at: new Date().toISOString() }, error: null };
       return undefined;
     };
@@ -106,7 +109,7 @@ describe("scan-heartbeat reads the cron answers", () => {
   const run = async () => (await handler(new Request("https://h.supabase.co/functions/v1/scan-heartbeat", {
     method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${SERVICE}` }, body: "{}",
   }))).json();
-  const check = (j: { checks: Array<{ name: string; passed: boolean; error?: string }> }) => j.checks.find((c) => c.name === "cron_http_refusals");
+  const check = (j: { checks: Array<{ name: string; passed: boolean; error?: string }> }) => j.checks.find((c) => c.name === "cron_http_answers");
 
   it("a refused cron call fails the check, names the refusal, and degrades the status", async () => {
     refusals = { data: { available: true, responses: 40, refused: 3, server_errors: 1, timed_out: 0, last_refused_status: 401, last_refused_sample: '{"error":"The batch send is for the scheduler only."}' }, error: null };
@@ -120,14 +123,14 @@ describe("scan-heartbeat reads the cron answers", () => {
   });
 
   it("no refusal passes", async () => {
-    refusals = { data: { available: true, responses: 40, refused: 0, server_errors: 2, timed_out: 1 }, error: null };
+    refusals = { data: { available: true, responses: 40, refused: 0, error_window_responses: 120, server_errors: 2, timed_out: 1, not_found: 0 }, error: null };
     expect(check(await run())?.passed).toBe(true);
   });
 
   it("a missing reader is a skip with a reason, never a pass", async () => {
-    refusals = { data: null, error: { message: "function public.cron_http_refusals(integer) does not exist" } };
+    refusals = { data: null, error: { message: "function public.cron_http_answers(integer, integer) does not exist" } };
     const j = await run();
     expect(check(j)).toBeUndefined();
-    expect(j.skipped.find((s: { name: string }) => s.name === "cron_http_refusals")?.reason).toMatch(/reader unavailable/);
+    expect(j.skipped.find((s: { name: string }) => s.name === "cron_http_answers")?.reason).toMatch(/reader unavailable/);
   });
 });

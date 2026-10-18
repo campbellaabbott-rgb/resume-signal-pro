@@ -27,7 +27,7 @@ import { keyMatches } from "../_shared/admin-key.ts";
 
 // Provable from outside without a key: every response, the preflight
 // included, carries this in x-fn-build.
-const FN_BUILD = "check-alerts.2026-10-08.1";
+const FN_BUILD = "check-alerts.2026-10-11.28";
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -45,6 +45,19 @@ const unauthorized = () =>
 // The window each run reads, in hours: the cron's cadence (every six hours at
 // minute 18, 20261004110000), so consecutive runs cover the clock between them.
 export const LOOKBACK_HOURS = 6;
+/**
+ * THE HEARTBEAT'S DEAD-MAN (S12-065). Everything that alarms on a refused
+ * cron, a rolled Stripe key or a degraded scan runs inside scan-heartbeat,
+ * and nothing watched it: a vault re-key that 401s its cron leaves a quiet
+ * inbox, and quiet reads as healthy. Each run reads the last heartbeat's time
+ * from get_scan_health_status; older than this (three missed runs of its
+ * ten-minute cron), or never, is a critical alert. healthchecks.io
+ * (HC_PING_URL, pinged by every heartbeat run) watches from outside Supabase.
+ */
+export const HEARTBEAT_STALE_MINUTES = 30;
+/** The age a heartbeat that never ran is reported as. */
+const NEVER_RAN_MINUTES = 99_999;
+
 /** The page the alert mail links to: ours, never a default host. */
 const HEALTH_DASHBOARD_URL = "https://resumebooster.work/health-check";
 
@@ -63,6 +76,7 @@ const ALERT_CONFIGS: AlertConfig[] = [
   { name: 'Webhook Failures Spike', metric: 'webhook_failure_rate', threshold: 10, operator: 'gt', severity: 'critical' },
   { name: 'Parse Failures High', metric: 'parse_failure_count', threshold: 5, operator: 'gt', severity: 'warning' },
   { name: 'Health Checks Unavailable', metric: 'unavailable_checks', threshold: 0, operator: 'gt', severity: 'warning' },
+  { name: 'Heartbeat Stopped (minutes since its last run)', metric: 'heartbeat_age_minutes', threshold: HEARTBEAT_STALE_MINUTES, operator: 'gt', severity: 'critical' },
 ];
 
 const logStep = (step: string, details?: Record<string, unknown>) => {
@@ -155,6 +169,19 @@ serve(async (req) => {
 
     const parseData = await health('get_parse_failure_stats');
     if (parseData) metrics.parse_failure_count = parseData.total_failures ?? 0;
+
+    // The dead-man on scan-heartbeat: the age of its last run, never a guess.
+    {
+      const { data, error } = await supabase.rpc('get_scan_health_status');
+      const row = Array.isArray(data) ? data[0] : data;
+      if (error || !row || typeof row !== 'object') {
+        unavailable.push('get_scan_health_status');
+        logStep("Heartbeat age unreadable — the dead-man cannot be evaluated", { error: error?.message?.slice(0, 160) ?? "no row" });
+      } else {
+        const at = Date.parse(String((row as { last_heartbeat_time?: unknown }).last_heartbeat_time ?? ''));
+        metrics.heartbeat_age_minutes = Number.isFinite(at) ? Math.max(0, Math.floor((Date.now() - at) / 60_000)) : NEVER_RAN_MINUTES;
+      }
+    }
 
     if (unavailable.length) {
       logStep("ALERTS BLIND — these checks could not be evaluated", { unavailable });
