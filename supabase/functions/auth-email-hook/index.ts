@@ -12,6 +12,7 @@ import { EmailChangeEmail } from '../_shared/email-templates/email-change.tsx'
 import { EmailChangeNoticeEmail } from '../_shared/email-templates/email-change-notice.tsx'
 import { ReauthenticationEmail } from '../_shared/email-templates/reauthentication.tsx'
 import { DEFAULT_EXPIRY_MINUTES } from '../_shared/email-templates/auth-parts.tsx'
+import { type AuthMailLanguage, authMailLanguage, authStrings } from '../_shared/email-templates/auth-strings.ts'
 
 /**
  * THE AUTH HOOK: LOVABLE'S SIGNED CONTRACT, PLUS THE CODE AND A LINK A SCANNER
@@ -34,7 +35,11 @@ import { DEFAULT_EXPIRY_MINUTES } from '../_shared/email-templates/auth-parts.ts
  *      queue hands to Lovable and, on a fallback, to Resend;
  *   4. email_change: the link goes ONLY to payload.data.email; the other
  *      address gets a notice with no link (and the payload's key set, never
- *      its values, is logged so the fan-out shape can be read from the logs).
+ *      its values, is logged so the fan-out shape can be read from the logs);
+ *   5. the page's own redirect (redirect_to in the link GoTrue built) is read
+ *      back: its safe `next` rides the confirm link, so a link opened on
+ *      another device lands where the sign-in was headed (S12-178), and its
+ *      `lng` picks the language every template is written in (S12-180).
  *
  * LOVABLE CAN REGENERATE THIS FILE (its "set up emails" step does). The guard
  * src/test/r1-mail-the-hook-prints-the-code-and-a-link-a-scanner-cannot-spend.test.ts
@@ -121,7 +126,34 @@ function tokenHashOf(data: Record<string, unknown>): string | null {
   return null
 }
 
-/** The button's target: our confirm page with the hash, or GoTrue's own link when no hash parses. */
+/**
+ * THE PAGE'S OWN REDIRECT, READ BACK FROM THE LINK (S12-178, S12-180). The
+ * sign-in page asks for a link that returns to /auth?mode=confirm&next=...&lng=..
+ * (AuthContext.confirmRedirect), and GoTrue puts that redirect in the link it
+ * builds (redirect_to). The payload carries nothing else of the page's, so
+ * where the person was headed and the language they read are taken from it.
+ */
+export function redirectOf(data: Record<string, unknown>): URL | null {
+  const candidates: unknown[] = [data.redirect_to]
+  if (typeof data.url === 'string') {
+    try { candidates.push(new URL(data.url).searchParams.get('redirect_to')) } catch { /* not a URL */ }
+  }
+  for (const c of candidates) {
+    if (typeof c !== 'string' || !c) continue
+    try { return new URL(c) } catch { /* not a URL */ }
+  }
+  return null
+}
+
+/** The same-origin path rule the sign-in page uses (src/lib/auth-fragment.ts safeNextPath), else null. */
+export function safeNext(raw: string | null | undefined): string | null {
+  if (typeof raw !== 'string') return null
+  const s = raw.trim()
+  if (!s.startsWith('/') || s.startsWith('//') || /[\\\s]/.test(s) || /^\/[^/?#]*:/.test(s)) return null
+  return s === '/account' ? null : s
+}
+
+/** The button's target: our confirm page with the hash (and the page's next), or GoTrue's own link when no hash parses. */
 function confirmLinkFor(data: Record<string, unknown>, actionType: string): string {
   const hash = tokenHashOf(data)
   if (hash && LINK_TYPES.has(actionType)) {
@@ -129,6 +161,9 @@ function confirmLinkFor(data: Record<string, unknown>, actionType: string): stri
     u.searchParams.set('mode', 'confirm')
     u.searchParams.set('token_hash', hash)
     u.searchParams.set('type', actionType)
+    // A link opened on another device still lands where the sign-in was headed.
+    const next = safeNext(redirectOf(data)?.searchParams.get('next'))
+    if (next) u.searchParams.set('next', next)
     return u.toString()
   }
   if (typeof data.url === 'string' && /^https:\/\//i.test(data.url)) return data.url
@@ -263,15 +298,64 @@ interface QueuedMail {
  * payload.data.email, and a no-link notice to whichever of the old and new
  * address is not that one.
  */
-function mailsFor(emailType: string, data: Record<string, unknown>, run_id: string): QueuedMail[] {
+/** Each type's subject in the reader's language (auth-strings.ts). */
+function subjectFor(emailType: string, lng: AuthMailLanguage): string {
+  const s = authStrings(lng)
+  const bySubject: Record<string, string> = {
+    signup: s.signup.subject, invite: s.invite.subject, magiclink: s.magic.subject, recovery: s.recovery.subject,
+    email_change: s.change.subject, reauthentication: s.reauth.subject,
+  }
+  return bySubject[emailType] || EMAIL_SUBJECTS[emailType] || 'Notification'
+}
+
+/**
+ * The account's id, wherever Lovable's payload carries it (user_id, user.id,
+ * id, or on the payload itself). A UUID only; anything else is no id.
+ */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+export function userIdOf(data: Record<string, unknown>, payload: Record<string, unknown> = {}): string | null {
+  const user = (data.user ?? payload.user) as { id?: unknown } | null | undefined
+  const candidates: unknown[] = [data.user_id, user?.id, data.id, payload.user_id]
+  for (const c of candidates) if (typeof c === 'string' && (UUID.test(c) || /^[A-Za-z0-9_-]{4,64}$/.test(c))) return c
+  return null
+}
+
+/**
+ * THE ACCOUNT'S CURRENT ADDRESS, WHEN THE PAYLOAD DOES NOT SAY (lead decision
+ * H, third fixer round; m9 is live: Account.tsx offers "Change email"). An
+ * email_change payload whose data.email is the NEW address and that carries
+ * no old_email left the current address with neither a link nor a notice.
+ * It is read from the user record by the payload's user id with the service
+ * role; a lookup that fails (no id, no record, the admin API down) is logged
+ * and the hook goes on, as a notice is never required.
+ */
+async function currentAddressOf(admin: { auth?: { admin?: { getUserById?: (id: string) => Promise<{ data?: { user?: { email?: unknown } | null } | null; error?: unknown }> } } }, userId: string | null, run_id: string): Promise<string | null> {
+  if (!userId) return null
+  try {
+    const r = await admin.auth?.admin?.getUserById?.(userId)
+    const addr = norm(r?.data?.user?.email)
+    if (!addr || r?.error) {
+      console.warn('email_change: the current address could not be read from the user record', { run_id, hasError: !!r?.error })
+      return null
+    }
+    return addr
+  } catch (e) {
+    console.warn('email_change: reading the user record threw', { run_id, error: String(e).slice(0, 200) })
+    return null
+  }
+}
+
+function mailsFor(emailType: string, data: Record<string, unknown>, run_id: string, current: string | null = null): QueuedMail[] {
   const token = codeOf(data.token)
   const minutes = expiryMinutes()
   const confirmationUrl = confirmLinkFor(data, emailType)
   const linkTo = norm(data.email)
+  // The language the sign-in page named in its redirect (S12-180); English otherwise.
+  const lng = authMailLanguage(redirectOf(data)?.searchParams.get('lng'))
   const base: QueuedMail = {
     to: linkTo,
     label: emailType,
-    subject: EMAIL_SUBJECTS[emailType] || 'Notification',
+    subject: subjectFor(emailType, lng),
     template: EMAIL_TEMPLATES[emailType],
     props: {
       siteName: SITE_NAME,
@@ -283,6 +367,7 @@ function mailsFor(emailType: string, data: Record<string, unknown>, run_id: stri
       email: data.email,
       oldEmail: data.old_email,
       newEmail: data.new_email,
+      lng,
     },
     idempotencyKey: `auth:${run_id}`,
     required: true,
@@ -290,9 +375,10 @@ function mailsFor(emailType: string, data: Record<string, unknown>, run_id: stri
   if (emailType !== 'email_change') return [base]
 
   // Which address is the account's current one. A payload may name both, or
-  // only the one that is not data.email.
+  // only the one that is not data.email; when it names neither old address,
+  // the one read from the user record (currentAddressOf) stands in.
   const newAddr = norm(data.new_email) || null
-  const oldAddr = norm(data.old_email) || (newAddr && linkTo !== newAddr ? linkTo : null)
+  const oldAddr = norm(data.old_email) || (newAddr && linkTo !== newAddr ? linkTo : null) || (current && current !== linkTo ? current : null)
   const otherAddr = [oldAddr, newAddr].find((a) => a && a !== linkTo) ?? null
   // In full only to the current address, or to the address itself.
   const shown = (addr: string | null, recipient: string): string =>
@@ -314,13 +400,14 @@ function mailsFor(emailType: string, data: Record<string, unknown>, run_id: stri
     out.push({
       to: otherAddr,
       label: 'email_change_notice',
-      subject: EMAIL_CHANGE_NOTICE_SUBJECT,
+      subject: authStrings(lng).notice.subject || EMAIL_CHANGE_NOTICE_SUBJECT,
       template: EmailChangeNoticeEmail,
       props: {
         siteName: SITE_NAME,
         oldEmail: shown(oldAddr, otherAddr),
         newEmail: shown(newAddr, otherAddr),
         confirmedAt: shown(linkTo, otherAddr),
+        lng,
       },
       idempotencyKey: `auth:${run_id}:notice`,
       required: false,
@@ -424,8 +511,16 @@ async function handleWebhook(req: Request): Promise<Response> {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   )
 
+  // An address change that names only the new address: the current one is
+  // read from the user record so it still gets its no-link notice (m9).
+  let current: string | null = null
+  if (emailType === 'email_change' && !norm(data.old_email)) {
+    const newAddr = norm(data.new_email) || null
+    if (!newAddr || norm(data.email) === newAddr) current = await currentAddressOf(supabase as never, userIdOf(data, payload as Record<string, unknown>), run_id)
+  }
+
   let queuedCount = 0
-  for (const mail of mailsFor(emailType, data, run_id)) {
+  for (const mail of mailsFor(emailType, data, run_id, current)) {
     // Render React Email to HTML and plain text
     const html = await renderAsync(React.createElement(mail.template, mail.props))
     const text = await renderAsync(React.createElement(mail.template, mail.props), {

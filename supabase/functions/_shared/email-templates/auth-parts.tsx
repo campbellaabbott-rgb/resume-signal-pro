@@ -3,6 +3,7 @@
 import * as React from 'npm:react@18.3.1'
 
 import { Section, Text } from 'npm:@react-email/components@0.0.22'
+import { authStrings } from './auth-strings.ts'
 
 /**
  * THE CODE IS IN THE MAIL, ABOVE THE BUTTON (register CP-010).
@@ -21,20 +22,22 @@ export interface CodeProps {
   /** The one-time code (digits only), or null when the payload carried none. */
   token?: string | null
   expiryMinutes?: number
+  /** The reader's language, from the link the page asked for (auth-strings.ts); English by default. */
+  lng?: string | null
 }
 
-export const CodeBlock = ({ token, expiryMinutes, lead }: CodeProps & { lead: string }) =>
+export const CodeBlock = ({ token, expiryMinutes, lead, lng }: CodeProps & { lead: string }) =>
   token ? (
     <Section>
       <Text style={codeLead}>{lead}</Text>
       <Text style={codeStyle}>{token}</Text>
       <Text style={codeExpiry}>
-        It expires in {expiryMinutes ?? DEFAULT_EXPIRY_MINUTES} minutes.
+        {authStrings(lng).expires(expiryMinutes ?? DEFAULT_EXPIRY_MINUTES)}
       </Text>
     </Section>
   ) : null
 
-export const IGNORE_LINE = "If you didn't ask for this, you can ignore it."
+export const IGNORE_LINE = authStrings('en').ignore
 
 export const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
 export const container = { padding: '20px 25px' }

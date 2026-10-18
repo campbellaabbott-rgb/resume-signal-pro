@@ -90,6 +90,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   queued.length = 0;
+  delete (db as unknown as { auth?: unknown }).auth;
   db.tables = {}; db.writes = [];
   db.rpcs = { enqueue_email: (a) => { queued.push(a.payload as Record<string, unknown>); return { data: 1, error: null }; } };
 });
@@ -157,6 +158,50 @@ describe("each auth mail prints the code above a button that opens our confirm p
   });
 });
 
+describe("the page's own redirect is read back from the link (S12-178, S12-180)", () => {
+  const withRedirect = (type: string, redirect: string) =>
+    `https://bwhdazbotpblihdxcmho.supabase.co/auth/v1/verify?token=${HASH}&type=${type}&redirect_to=${encodeURIComponent(redirect)}`;
+
+  it("the safe next the sign-in page asked for rides the confirm link, so another device lands there too", async () => {
+    await hook({ action_type: "magiclink", email: "a@example.com", url: withRedirect("magiclink", "https://resumebooster.work/auth?mode=confirm&next=%2Fjobs%3Fq%3Dnurse"), token: "121212" });
+    expect(hrefs(String(queued[0].html))).toEqual([`${confirmFor("magiclink")}&next=%2Fjobs%3Fq%3Dnurse`]);
+  });
+
+  it("an off-site or scheme next is dropped, never copied into the mail", async () => {
+    for (const evil of ["//evil.example/x", "https://evil.example", "/\\evil.example", "javascript:alert(1)"]) {
+      queued.length = 0;
+      await hook({ action_type: "magiclink", email: "a@example.com", url: withRedirect("magiclink", `https://resumebooster.work/auth?mode=confirm&next=${encodeURIComponent(evil)}`), token: "131313" });
+      expect(hrefs(String(queued[0].html)), evil).toEqual([confirmFor("magiclink")]);
+    }
+  });
+
+  it("the language the page named writes the mail: subject, words and lang, with the code and link unchanged", async () => {
+    await hook({ action_type: "recovery", email: "a@example.com", url: withRedirect("recovery", "https://resumebooster.work/auth?mode=reset&lng=de"), token: "141414" }, { run_id: "run-de" });
+    const [m] = queued;
+    const html = String(m.html);
+    expect(m.subject).toBe("Passwort zurücksetzen");
+    expect(html).toContain("Er läuft in 15 Minuten ab.");
+    expect(html).toContain("Wenn Sie das nicht angefordert haben, können Sie diese E-Mail ignorieren.");
+    expect(html).not.toContain("It expires in");
+    expect(html).toContain("141414");
+    expect(hrefs(html)).toEqual([confirmFor("recovery")]);
+  });
+
+  it("every language the site speaks has its own words, and an unknown one reads as English", async () => {
+    const seen = new Set<string>();
+    for (const lng of ["en-GB", "de", "es", "fr", "hi", "nl", "pt", "tl", "xx"]) {
+      queued.length = 0;
+      await hook({ action_type: "magiclink", email: "a@example.com", url: withRedirect("magiclink", `https://resumebooster.work/auth?mode=confirm&lng=${lng}`), token: "151515" });
+      seen.add(String(queued[0].subject));
+      expect(String(queued[0].html), lng).toContain("151515");
+    }
+    expect(seen.size, [...seen].join(" | ")).toBe(8);
+    queued.length = 0;
+    await hook({ action_type: "magiclink", email: "a@example.com", url: withRedirect("magiclink", "https://resumebooster.work/auth?mode=confirm&lng=xx"), token: "161616" });
+    expect(queued[0].subject).toBe("Your sign-in code");
+  });
+});
+
 describe("email_change: the link only to payload.data.email, a notice with no link to the other address", () => {
   it("data.email is the current address: its link mail names the new address; the new address gets a linkless notice with the old one masked", async () => {
     const res = await hook({ action_type: "email_change", email: "old@example.com", new_email: "new@example.org", url: verifyUrl("email_change"), token: "246810" }, { run_id: "run-ec" });
@@ -190,9 +235,51 @@ describe("email_change: the link only to payload.data.email, a notice with no li
     expect(hrefs(notice)).toEqual([]);
   });
 
-  it("with only one address in the payload there is no one else to tell: one mail", async () => {
+  it("with only one address in the payload and no user id there is no one else to tell: one mail", async () => {
     await hook({ action_type: "email_change", email: "solo@example.com", url: verifyUrl("email_change"), token: "112233" });
     expect(queued.map((q) => q.label)).toEqual(["email_change"]);
+  });
+
+  // LEAD DECISION H (third fixer round): Account.tsx already offers "Change
+  // email" (m9 is live). When Lovable's payload names only the new address
+  // (data.email is the new address, no old_email), the account's CURRENT
+  // address is read from the user record by the payload's user id with the
+  // service role, and gets the no-link notice in full.
+  it("data.email is the new address and the payload carries no old_email: the current address is read by the payload's user id and gets the notice in full", async () => {
+    const looked: string[] = [];
+    (db as unknown as { auth: unknown }).auth = { admin: { getUserById: async (id: string) => { looked.push(id); return { data: { user: { id, email: "current@example.com", new_email: "new@example.org" } }, error: null }; } } };
+    const res = await hook({ action_type: "email_change", email: "new@example.org", new_email: "new@example.org", user_id: "u-77", url: verifyUrl("email_change"), token: "778899" }, { run_id: "run-ec3" });
+    expect(res.status).toBe(200);
+    expect(looked).toEqual(["u-77"]);
+    expect(queued.map((q) => [q.to, q.label, q.idempotency_key])).toEqual([["new@example.org", "email_change", "auth:run-ec3"], ["current@example.com", "email_change_notice", "auth:run-ec3:notice"]]);
+    const [link, notice] = queued.map((q) => String(q.html));
+    expect(hrefs(notice)).toEqual([]);
+    expect(notice).not.toContain("778899");
+    expect(notice, "the current address is told in full where the change goes").toContain("new@example.org");
+    expect(notice).toContain("current@example.com");
+    expect(link, "the new address must not learn the current one in full").not.toContain("current@example.com");
+    expect(link).toContain("c***@example.com");
+  });
+
+  it("the user id may ride as user.id or id; a lookup that fails queues the link and no notice, without failing the hook", async () => {
+    const looked: string[] = [];
+    (db as unknown as { auth: unknown }).auth = { admin: { getUserById: async (id: string) => { looked.push(id); return { data: { user: { id, email: "current@example.com" } }, error: null }; } } };
+    await hook({ action_type: "email_change", email: "new@example.org", user: { id: "u-78" }, url: verifyUrl("email_change"), token: "112233" });
+    expect(looked).toEqual(["u-78"]);
+    expect(queued.map((q) => q.to)).toEqual(["new@example.org", "current@example.com"]);
+    queued.length = 0;
+    (db as unknown as { auth: unknown }).auth = { admin: { getUserById: async () => { throw new Error("admin api down"); } } };
+    const res = await hook({ action_type: "email_change", email: "new@example.org", id: "u-79", url: verifyUrl("email_change"), token: "112233" });
+    expect(res.status).toBe(200);
+    expect(queued.map((q) => q.label)).toEqual(["email_change"]);
+  });
+
+  it("with old_email in the payload the user record is not read", async () => {
+    let looked = 0;
+    (db as unknown as { auth: unknown }).auth = { admin: { getUserById: async () => { looked++; return { data: { user: null }, error: null }; } } };
+    await hook({ action_type: "email_change", email: "new@example.org", old_email: "old@example.com", user_id: "u-80", url: verifyUrl("email_change"), token: "135791" });
+    expect(looked).toBe(0);
+    expect(queued.map((q) => q.to)).toEqual(["new@example.org", "old@example.com"]);
   });
 
   it("a notice that fails to queue does not fail the link that queued", async () => {

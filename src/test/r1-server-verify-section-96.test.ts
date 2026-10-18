@@ -13,6 +13,11 @@
  *   - a good deploy prints only PASS lines;
  *   - nothing deployed yet prints FAIL for the builds and INFO for what
  *     cannot be judged before they serve;
+ *   - the functions serving over a MISSING migration (Lovable's staged runner
+ *     has edited failing migrations before) prints FAIL for each of the five
+ *     objects: the migration is a precondition of that build (lead decision
+ *     A, third fixer round), and an INFO there let the frontend ship over a
+ *     guard that answered every call 503;
  *   - a table a client can read, a definer a client can call, a refusal that
  *     comes from the old build, or a preflight that does not answer the site's
  *     origin, each prints FAIL;
@@ -118,6 +123,34 @@ describe("verify section 96", () => {
     expect(lines.filter((l) => /^INFO .*PGRST202/.test(l))).toHaveLength(3);
     expect(lines.filter((l) => /^INFO .*not applied/.test(l))).toHaveLength(5);
     expect(lines.some((l) => l.startsWith("PASS")), show(lines)).toBe(false);
+  });
+
+  it("the functions serving over a MISSING migration is a FAIL for each of the five objects, not an INFO (lead decision A: the migration is a precondition of the build)", () => {
+    const { lines, calls } = run([
+      ...GOOD.filter((r) => r.match.includes("functions/v1")),
+      { match: "^GET https://p\\.supabase\\.co/rest/v1/rpc/", status: 404, body: JSON.stringify({ code: "PGRST202", message: "Could not find the function" }) },
+      { match: "^GET https://p\\.supabase\\.co/rest/v1/account_", status: 404, body: JSON.stringify({ code: "PGRST205", message: "Could not find the table" }) },
+    ]);
+    const fails = lines.filter((l) => l.startsWith("FAIL"));
+    for (const fn of ["auth_changed_since", "auth_sign_in_addresses", "auth_user_has_password"]) {
+      expect(fails.some((l) => new RegExp(`^FAIL {2}${fn} -> PGRST202 while auth-signed-in serves its R1 build: 20261014110000 is not applied`).test(l)), fn + show(lines)).toBe(true);
+    }
+    for (const t of ["account_mailbox_proofs", "account_password_clears"]) {
+      expect(fails.some((l) => new RegExp(`^FAIL {2}${t} as anon -> 404 PGRST205 while auth-signed-in serves its R1 build: the table does not exist, 20261014110000 is not applied`).test(l)), t + show(lines)).toBe(true);
+    }
+    expect(fails, show(lines)).toHaveLength(5);
+    expect(lines.filter((l) => /^INFO .*not applied/.test(l)), "a missing object behind a serving build read as INFO").toEqual([]);
+    // Each table read selects a real column, so a closed table answers 42501 and never a missing-column error.
+    expect(calls).toContain("curl\tGET https://p.supabase.co/rest/v1/account_mailbox_proofs?select=user_id&limit=1");
+    expect(calls).toContain("curl\tGET https://p.supabase.co/rest/v1/account_password_clears?select=session_id&limit=1");
+  });
+
+  it("a table that answers 42P01 behind a serving build is the same FAIL", () => {
+    const { lines } = run([
+      ...GOOD.filter((r) => !r.match.includes("rest/v1/account_")),
+      { match: "^GET https://p\\.supabase\\.co/rest/v1/account_", status: 404, body: JSON.stringify({ code: "42P01", message: "relation does not exist" }) },
+    ]);
+    expect(lines.filter((l) => /^FAIL {2}account_(mailbox_proofs|password_clears) as anon -> 404 42P01 while auth-signed-in serves its R1 build/.test(l)), show(lines)).toHaveLength(2);
   });
 
   it("each regression is a FAIL: an old build's refusal, a 200, a readable table, a callable definer, a preflight that refuses the site", () => {

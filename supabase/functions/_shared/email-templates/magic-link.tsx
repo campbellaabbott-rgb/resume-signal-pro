@@ -12,7 +12,8 @@ import {
   Preview,
   Text,
 } from 'npm:@react-email/components@0.0.22'
-import { CodeBlock, IGNORE_LINE, button, container, footer, h1, main, text, type CodeProps } from './auth-parts.tsx'
+import { CodeBlock, button, container, footer, h1, main, text, type CodeProps } from './auth-parts.tsx'
+import { authMailLanguage, authStrings } from './auth-strings.ts'
 
 interface MagicLinkEmailProps extends CodeProps {
   siteName: string
@@ -24,24 +25,26 @@ export const MagicLinkEmail = ({
   confirmationUrl,
   token,
   expiryMinutes,
-}: MagicLinkEmailProps) => (
-  <Html lang="en" dir="ltr">
-    <Head />
-    <Preview>Your sign-in code for {siteName}</Preview>
-    <Body style={main}>
-      <Container style={container}>
-        <Heading style={h1}>Your sign-in code</Heading>
-        <CodeBlock token={token} expiryMinutes={expiryMinutes} lead={`Enter this code on the ${siteName} sign-in page:`} />
-        <Text style={text}>
-          {token ? 'Or continue in your browser:' : `Press the button to sign in to ${siteName}. It expires shortly.`}
-        </Text>
-        <Button style={button} href={confirmationUrl}>
-          Continue
-        </Button>
-        <Text style={footer}>{IGNORE_LINE}</Text>
-      </Container>
-    </Body>
-  </Html>
-)
+  lng,
+}: MagicLinkEmailProps) => {
+  const s = authStrings(lng)
+  return (
+    <Html lang={authMailLanguage(lng)} dir="ltr">
+      <Head />
+      <Preview>{s.magic.preview(siteName)}</Preview>
+      <Body style={main}>
+        <Container style={container}>
+          <Heading style={h1}>{s.magic.heading}</Heading>
+          <CodeBlock token={token} expiryMinutes={expiryMinutes} lng={lng} lead={s.magic.lead(siteName)} />
+          <Text style={text}>{token ? s.magic.orBrowser : s.magic.noToken(siteName)}</Text>
+          <Button style={button} href={confirmationUrl}>
+            {s.magic.button}
+          </Button>
+          <Text style={footer}>{s.ignore}</Text>
+        </Container>
+      </Body>
+    </Html>
+  )
+}
 
 export default MagicLinkEmail

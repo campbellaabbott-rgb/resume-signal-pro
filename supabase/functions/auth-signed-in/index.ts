@@ -32,7 +32,7 @@ import { requireWebsiteSession } from "../_shared/website-session.ts";
 // included, carries this in x-fn-build.
 const FN_BUILD = "auth-signed-in.2026-10-14.1";
 
-/** At most this many calls per account per hour (the site calls once per sign-in). */
+/** At most this many calls per session per hour (the site calls once per sign-in). */
 const CALLS_PER_HOUR = 20;
 
 /** A Lovable preview of a project (the editor's own preview hosts). */
@@ -82,11 +82,15 @@ serve(async (req) => {
 
   const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
 
-  // Per account, not per address: the shared limiter (check_rate_limit).
-  // Only an explicit "no" refuses; a limiter that errored lets the call on.
+  // Per SESSION, not per account (S12-086): a stranger who pre-registered the
+  // address holds sessions of the same account, and a per-account allowance
+  // let them spend it so the owner's own sign-in could never be checked.
+  // The shared limiter (check_rate_limit); only an explicit "no" refuses, and
+  // a limiter that errored lets the call on.
+  const sid = typeof session.claims.session_id === "string" && session.claims.session_id ? session.claims.session_id : null;
   try {
     const { data: allowed, error } = await admin.rpc("check_rate_limit", {
-      p_ip: `user:${session.user.id}`,
+      p_ip: sid ? `session:${sid}` : `user:${session.user.id}`,
       p_function: "auth-signed-in",
       p_max_requests: CALLS_PER_HOUR,
       p_window_minutes: 60,

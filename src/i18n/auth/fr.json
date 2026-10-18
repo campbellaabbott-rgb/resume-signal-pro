@@ -1,12 +1,21 @@
 {
   "auth": {
     "back": "Retour à la connexion",
+    "banner": {
+      "dismiss": "C'est moi",
+      "notYou": "Ce n'est pas vous ? Se déconnecter",
+      "signedInAs": "Connecté en tant que {{email}}."
+    },
     "checkEmail": "Consultez votre boîte mail",
+    "checkout": {
+      "signInFirst": "Votre session ici a pris fin. Si vous avez un forfait Pro, connectez-vous : cet outil est inclus sans frais. Pour l'acheter sans vous connecter, appuyez de nouveau sur le bouton.",
+      "signInFirstTitle": "Vous avez Pro ? Connectez-vous d'abord"
+    },
     "code": {
       "instead": "Recevoir plutôt un code de connexion par e-mail",
       "invalid": "Ce code n'a pas fonctionné. Vérifiez-le ou demandez-en un nouveau.",
       "label": "Code reçu par e-mail",
-      "onItsWay": "Si cette adresse peut se connecter, un code est en route. Il arrive généralement en moins d'une minute.",
+      "onItsWay": "Si cette adresse peut se connecter, cherchez dans vos e-mails un lien (ou un code à 6 chiffres). L'un comme l'autre vous connecte. Il arrive généralement en moins d'une minute.",
       "placeholder": "123456",
       "resend": "Demander un nouveau code",
       "resendIn": "Vous pourrez demander un nouveau code dans {{seconds}} s.",
@@ -22,11 +31,19 @@
       "emailChanged": "Votre changement d'adresse e-mail est confirmé. Si votre autre adresse a aussi reçu un lien, utilisez-le également.",
       "expired": "Ce lien a expiré ou a déjà été utilisé. Reconnectez-vous pour en obtenir un nouveau.",
       "recoveryBody": "Appuyez sur Continuer pour choisir un nouveau mot de passe.",
+      "retry": "Réessayer",
       "title": "Terminer la connexion",
+      "unreachable": "Nous n'avons pas pu joindre le serveur de connexion. Vérifiez votre connexion et réessayez ; le lien est toujours valable.",
       "working": "Connexion en cours…"
     },
     "confirmationOnItsWay": "Si cette adresse peut se connecter, un e-mail de confirmation est en route. Il arrive généralement en moins d'une minute.",
     "continue": "Continuer",
+    "create": {
+      "button": "Créer un nouveau compte",
+      "offer": "Nouveau ici ? Vous pouvez créer un compte pour {{email}} avec ce mot de passe.",
+      "refused": "Impossible de créer un compte avec cette adresse e-mail et ce mot de passe.",
+      "tooShort": "Un nouveau compte demande un mot de passe d'au moins 8 caractères."
+    },
     "email": {
       "invalid": "Saisissez une adresse e-mail valide.",
       "label": "E-mail",
@@ -38,21 +55,24 @@
     "forgot": "Mot de passe oublié ?",
     "genericError": "Une erreur s'est produite. Veuillez réessayer.",
     "google": {
-      "continue": "Continuer avec Google"
+      "continue": "Continuer avec Google",
+      "onlyGoogle": "Ce compte se connecte avec Google, il n'a donc pas de mot de passe à modifier ici. Continuez avec Google pour vous connecter."
     },
     "guard": {
       "passwordCleared": "Nous avons supprimé un mot de passe défini pour cette adresse avant que vous ne prouviez qu'elle vous appartient. Si vous le souhaitez, définissez-en un nouveau dans les paramètres de votre compte.",
-      "passwordClearedTitle": "Votre ancien mot de passe a été supprimé"
+      "passwordClearedTitle": "Votre ancien mot de passe a été supprimé",
+      "signedOut": "Nous avons supprimé un mot de passe défini pour cette adresse avant que vous ne prouviez qu'elle vous appartient, ce qui a déconnecté tous les appareils, celui-ci compris.",
+      "signedOutTitle": "Veuillez vous reconnecter"
     },
     "help": "Impossible de vous connecter ? Écrivez à",
-    "interstitial": {
-      "body": "Cette connexion provient d'un lien que ce navigateur n'a pas demandé. Ne continuez que s'il s'agit de votre compte.",
-      "continue": "Continuer",
-      "notYou": "Ce n'est pas vous ? Se déconnecter",
-      "title": "Vous êtes connecté en tant que {{email}}"
+    "linkCheck": {
+      "body": "Ce lien connecte au compte ci-dessous. Ce navigateur ne l'a pas demandé : personne n'est connecté tant que vous n'avez pas confirmé.",
+      "cancel": "Ce n'est pas moi, annuler",
+      "cancelled": "Personne n'a été connecté. Si vous vouliez vous connecter, demandez un nouveau lien depuis la page de connexion.",
+      "continue": "Oui, continuer",
+      "title": "Est-ce votre compte ?"
     },
     "mismatch": "Impossible de vous connecter avec cette adresse e-mail et ce mot de passe.",
-    "mismatchShort": "Impossible de vous connecter avec cette adresse e-mail et ce mot de passe. Un nouveau compte demande au moins 8 caractères.",
     "notConfirmed": "Cette adresse n'est pas encore confirmée. Utilisez le lien de l'e-mail de confirmation (il est peut-être dans vos spams).",
     "or": "ou",
     "password": {
@@ -73,23 +93,32 @@
       "checking": "Vérification de votre compte…",
       "done": "Votre nouveau mot de passe est enregistré.",
       "doneOthers": "Votre nouveau mot de passe est enregistré, et tous vos autres appareils ont été déconnectés.",
-      "intro": "Saisissez votre adresse e-mail. Si elle a un compte, vous recevrez par e-mail un code pour choisir un nouveau mot de passe.",
+      "emailSupport": "Écrire au support",
+      "expired": "Ce lien de réinitialisation a expiré ou a déjà été utilisé, aucun mot de passe n'a donc été défini. Demandez-en un nouveau.",
+      "intro": "Saisissez votre e-mail. S'il correspond à un compte, nous vous enverrons un lien (ou un code à 6 chiffres) pour choisir un nouveau mot de passe.",
+      "newLink": "Envoyer un nouveau lien de réinitialisation",
       "newPassword": "Nouveau mot de passe",
-      "onItsWay": "Si un compte existe pour cette adresse, un code de réinitialisation est en route. Il arrive généralement en moins d'une minute.",
+      "noEmailSignIn": "Ce compte ne se connecte pas avec une adresse e-mail et un mot de passe, aucun mot de passe n'a donc été défini. Écrivez au support et nous vous aiderons à vous connecter.",
+      "onItsWay": "Si un compte existe pour cette adresse, cherchez dans vos e-mails un lien (ou un code à 6 chiffres). L'un comme l'autre vous permet de choisir un nouveau mot de passe. Il arrive généralement en moins d'une minute.",
       "proven": "Cette adresse est confirmée. Choisissez un nouveau mot de passe.",
+      "refused": "Nous n'avons pas pu confirmer cette adresse avec ce lien ou ce code, aucun mot de passe n'a donc été défini. Demandez un nouveau lien de réinitialisation ou écrivez au support.",
+      "resetIt": "Le réinitialiser",
       "retry": "Réessayer",
       "save": "Enregistrer le nouveau mot de passe",
-      "send": "Recevoir un code de réinitialisation",
+      "send": "M'envoyer un lien de réinitialisation",
       "signedIn": "Vous êtes connecté. Vous pouvez changer votre mot de passe dans les paramètres de votre compte.",
+      "signedOut": "Pour votre sécurité, tous les appareils ont été déconnectés. Demandez un nouveau code pour terminer.",
       "title": "Réinitialiser votre mot de passe",
       "toAccount": "Aller à votre compte",
       "tooShort": "Utilisez au moins 8 caractères.",
-      "verify": "Continuer"
+      "verify": "Continuer",
+      "wrongPassword": "Mot de passe incorrect ?"
     },
     "return": {
       "failed": "La connexion n'a pas abouti. Veuillez réessayer."
     },
     "samePassword": "Choisissez un mot de passe que vous n'avez pas encore utilisé ici.",
+    "sendFailed": "Nous n'avons pas pu l'envoyer pour le moment. Réessayez dans une minute, ou écrivez à {{support}}.",
     "sessionExpired": "Votre session a expiré. Reconnectez-vous pour reprendre là où vous en étiez.",
     "subtitle": "Suivez l'évolution des scores de votre CV, gardez l'historique de vos analyses et retrouvez vos crédits et achats au même endroit. Gratuit pour toujours.",
     "title": "Connectez-vous ou créez votre compte gratuit",

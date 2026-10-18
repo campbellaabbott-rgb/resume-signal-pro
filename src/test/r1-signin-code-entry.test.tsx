@@ -45,7 +45,7 @@ describe("the field", () => {
     vi.useFakeTimers();
     const onResend = vi.fn();
     render(<CodeEntry purpose="recovery" onSubmit={vi.fn()} onResend={onResend} onBack={vi.fn()} />);
-    expect(screen.getByText("If an account exists for this address, a reset code is on its way. It usually arrives within a minute.")).toBeInTheDocument();
+    expect(screen.getByText("If an account exists for this address, check your email for a link (or a 6-digit code). Either one lets you choose a new password. It usually arrives within a minute.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Ask for a new code" })).toBeNull();
     expect(screen.getByText(`You can ask for a new code in ${RESEND_AFTER_SECONDS} s.`)).toBeInTheDocument();
     for (let i = 0; i < RESEND_AFTER_SECONDS; i++) await act(async () => { vi.advanceTimersByTime(1000); });

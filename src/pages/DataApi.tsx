@@ -25,6 +25,7 @@ import { MCP_PAGE_HOSTS, andList } from "@/config/mcp-tools";
 import { servingSourceSummary } from "@/config/ats-vendors";
 import { CLOSURE_RECORD_WINDOW_DAYS, closureCountSpanDays } from "@/lib/hiring-trends-trust";
 import { apiKeyTokenFromHash, errorBodyOf, forgetConfirmFragment } from "@/lib/confirm-link";
+import { stashedFragment } from "@/lib/auth-fragment";
 import { PurchaseTerms } from "@/components/PurchaseTerms";
 import { purchaseTerms } from "@/lib/purchase-terms";
 import { BUILDER_PLAN_ANCHOR, BUILDER_PLAN_MAIL_SUBJECT, BUILDER_PLAN_PRICE_USD } from "@/config/builder-plan";
@@ -101,7 +102,7 @@ function GetAKeyBody({ box }: { box: React.RefObject<HTMLDivElement> }) {
   const [busy, setBusy] = useState(false);
   const [requestedFor, setRequestedFor] = useState<string | null>(null);
   const [confirmToken, setConfirmToken] = useState<string | null>(() =>
-    typeof window === "undefined" ? null : apiKeyTokenFromHash(window.location.hash));
+    typeof window === "undefined" ? null : apiKeyTokenFromHash(stashedFragment(window.location.hash, "/data-api")));
   const [issued, setIssued] = useState<Issued | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);

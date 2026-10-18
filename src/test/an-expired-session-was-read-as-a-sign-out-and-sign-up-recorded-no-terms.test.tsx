@@ -118,7 +118,10 @@ describe("the sign-up page", () => {
     expect(screen.getByText((_, el) => el?.tagName === "P" && el.textContent === en.purchaseTerms.agree.replace(/<\/?(terms|privacy)>/g, ""))).toBeTruthy();
     fireEvent.change(screen.getByPlaceholderText("you@example.com"), { target: { value: "new@example.com" } });
     fireEvent.change(screen.getByPlaceholderText("At least 8 characters"), { target: { value: "longenough1" } });
+    // Continue signs in first (R1 fix S12-058/S12-088); a new account is the explicit second step.
+    h.signInWithPassword.mockResolvedValueOnce({ error: { message: "Invalid login credentials" } });
     await act(async () => { fireEvent.click(screen.getByRole("button", { name: /^Continue$/ })); });
+    await act(async () => { fireEvent.click(await screen.findByRole("button", { name: "Create a new account" })); });
     const opts = (h.signUp.mock.calls[0] as unknown as [{ options: { data: Record<string, string>; emailRedirectTo: string } }])[0].options;
     expect(opts.data.terms_version).toBe(TERMS_VERSION);
     expect(Number.isNaN(Date.parse(opts.data.terms_accepted_at))).toBe(false);

@@ -4,26 +4,27 @@
  * Each switch gates one control on /auth, and nothing else on the site may
  * name a method whose switch is off (src/test/r1-signin-copy-guard.test.ts).
  *
- * - GOOGLE_SIGN_IN_LIVE: Google is enabled on the auth server, but the button
- *   ships off. A separate small publish turns it on once verify section 96
- *   shows auth-signed-in serving, because a Google sign-in is a mailbox proof
- *   and the account guard must be there to act on it.
+ * - GOOGLE_SIGN_IN_LIVE: on in R1's first publish. A Google sign-in is a
+ *   mailbox proof, so the account guard (auth-signed-in) must serve first:
+ *   the deploy order puts migration 20261014110000 and the functions before
+ *   the frontend, verify section 96 must PASS before the frontend is
+ *   published, and section 95 FAILs a live bundle that shows Google while
+ *   auth-signed-in does not serve its R1 build.
  * - APPLE_SIGN_IN_LIVE: off for good (D10: no Apple; D11: no Microsoft).
  * - CODE_SIGN_IN_LIVE: the emailed sign-in code. It becomes the main button
  *   only after the owner's live test and the rate-limit check (D2); until
  *   then the password leads and no code control renders.
- * - RECOVERY_LIVE: "Forgot password?" and /auth?mode=reset. The reset path
- *   needs the account guard serving (the new password is set only after the
- *   guard answered), so it flips in the same follow-up publish as Google.
- *
- * The follow-up publish changes GOOGLE_SIGN_IN_LIVE and RECOVERY_LIVE to true
- * here and nothing else: every string those controls need already ships, in
- * src/i18n/auth/*.json.
+ * - RECOVERY_LIVE: "Forgot password?" and /auth?mode=reset, on in the first
+ *   publish with Google (register S12-057). With the magic link gone, an
+ *   account made by a magic link, or registered by someone else, has no
+ *   password its owner knows: recovery and Google are its only ways in. The
+ *   new password is set only after the guard answered, under the same deploy
+ *   order as Google.
  */
-export const GOOGLE_SIGN_IN_LIVE: boolean = false;
+export const GOOGLE_SIGN_IN_LIVE: boolean = true;
 export const APPLE_SIGN_IN_LIVE: boolean = false;
 export const CODE_SIGN_IN_LIVE: boolean = false;
-export const RECOVERY_LIVE: boolean = false;
+export const RECOVERY_LIVE: boolean = true;
 
 /**
  * The flags as one string the live Auth chunk carries, so verify section 95
@@ -47,8 +48,17 @@ export const AUTH_SUPPORT_EMAIL = "resumeboostersupp@gmail.com";
 /** Seconds before "Resend" is offered for an emailed code. */
 export const RESEND_AFTER_SECONDS = 60;
 
-/** How long a sign-in this browser started stays valid for a returning link or provider. */
+/** How long a sign-in this browser started for a TYPED address stays valid for a returning link (a mail may wait). */
 export const PENDING_SIGN_IN_TTL_MS = 60 * 60 * 1000;
+
+/**
+ * How long a PROVIDER sign-in (Google) this browser started stays valid for
+ * its return. A provider marker cannot name the address, so any token pair
+ * that arrives under it is adopted with only the "Signed in as" banner to
+ * question it; a Google round trip takes seconds, not an hour (lead decision
+ * E, third fixer round).
+ */
+export const PROVIDER_PENDING_TTL_MS = 10 * 60 * 1000;
 
 /** The shortest password a new or reset password may be (the auth server's own minimum is the owner's setting). */
 export const MIN_PASSWORD_LENGTH = 8;

@@ -127,7 +127,7 @@ describe("/product-success", () => {
 
 describe("/success (the full analysis)", () => {
   const RESUME = "Senior software engineer with ten years of shipping. ".repeat(10);
-  it("finds the purchase in the stash, and naming the analysis in the address keeps the session id out of it", async () => {
+  it("finds the purchase in the stash, and names the analysis in the stash too, keeping both ids out of the address (S12-090)", async () => {
     h.rpc.mockImplementation(async (name: string) => {
       if (name === "get_temp_resume") return { data: [{ resume_text: RESUME, linkedin_text: null, job_description_text: null }], error: null };
       return { data: null, error: null };
@@ -140,8 +140,21 @@ describe("/success (the full analysis)", () => {
     window.history.replaceState(null, "", "/success");
     render(<BrowserRouter><Success /></BrowserRouter>);
     expect(await screen.findByTestId("analysis", {}, SLOW)).toBeInTheDocument();
-    await waitFor(() => expect(window.location.search).toContain("share=share_r1_0001"));
+    // The share id reads and deletes the analysis: it is kept for a reload in this tab's stash, never the address.
+    await waitFor(() => expect(JSON.parse(sessionStorage.getItem("rb_url_stash") ?? "{}")).toMatchObject({ share: "share_r1_0001", share_path: "/success" }));
     expect(window.location.search, "the session id went back into the address").not.toContain("session_id");
+    expect(window.location.search, "the share id went into the address").not.toContain("share=");
+  });
+
+  it("a reload finds the analysis by the share id the stash kept", async () => {
+    h.rpc.mockImplementation(async (name: string, args: Record<string, string>) => name === "get_analysis_by_share_id" && args.share_id_param === "share_r1_0002"
+      ? { data: [{ analysis_result: { industry: "Software", experienceLevel: "Senior", atsScore: { overall: 70 } }, share_id: "share_r1_0002" }], error: null }
+      : { data: null, error: null });
+    stash({ share: "share_r1_0002", share_path: "/success" }, "/success");
+    window.history.replaceState(null, "", "/success");
+    render(<BrowserRouter><Success /></BrowserRouter>);
+    expect(await screen.findByTestId("analysis", {}, SLOW)).toBeInTheDocument();
+    expect(h.rpc).toHaveBeenCalledWith("get_analysis_by_share_id", { share_id_param: "share_r1_0002" });
   });
 });
 
@@ -164,9 +177,15 @@ describe("the checkout prefill", () => {
   it("signed out: no address, even one another person left in this browser", async () => {
     localStorage.setItem("scanCreditsEmail", "previous.buyer@example.com");
     localStorage.setItem("rb_last_email", "previous.member@example.com");
+    // A member signed in on this browser before (the mark AuthContext writes on every signed-in session).
+    localStorage.setItem("rb_member_signed_in_at", String(Date.now()));
     expect(await checkoutPrefillEmail()).toBeUndefined();
     h.invoke.mockResolvedValue({ data: null, error: null });
     const { result } = renderHook(() => useProductCheckout());
+    // A member signed in here and no session is held: the first press asks a Pro member to sign in first
+    // and starts nothing (S12-087); the next buys.
+    await act(async () => { await result.current.purchaseProduct("freelanceBoost"); });
+    expect(h.invoke.mock.calls.some((c) => c[0] === "create-product-checkout")).toBe(false);
     await act(async () => { await result.current.purchaseProduct("freelanceBoost"); });
     const call = h.invoke.mock.calls.find((c) => c[0] === "create-product-checkout");
     expect(call, "the checkout was never asked for").toBeTruthy();

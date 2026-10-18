@@ -10,19 +10,44 @@ import { sendMail } from "../_shared/send-mail.ts";
  * item 3; owner decision D1: auth mail keeps Lovable's queue, with a Resend
  * fallback when Lovable refuses).
  *
- *   - Callers: the service-role bearer, as Lovable scaffolds it, OR the vault
- *     email cron key in x-email-cron (email_cron_key_matches, the key the
- *     other email crons send). verify_jwt stays true, so the gateway still
- *     asks every caller for a JWT first.
+ *   - Callers, behind the gateway's own JWT check (verify_jwt stays TRUE for
+ *     this function: Lovable's email setup made, outside our migrations, a
+ *     trigger and a job that drain this queue with the vault's
+ *     email_queue_service_role_key as their bearer, and that path must keep
+ *     working; lead decision B of the third fixer round, 2026-10-12): a JWT
+ *     whose role claim is service_role (the gateway verified its signature
+ *     before this code ran, so the claim is the platform's word), the
+ *     service-role key itself (compared in constant time), OR the vault email
+ *     cron key in x-email-cron (email_cron_key_matches, the key every other
+ *     email cron sends). Our own drain job (rb-auth-mail-drain, 20261014100000)
+ *     posts the vault bearer AND the cron key. Every refusal names this
+ *     function in its body (refusedBy) and says whether a cron key was offered
+ *     (cronKey), so the cron command can read back ITS OWN refusals from
+ *     pg_net and fail its run, and never counts another caller's.
+ *   - A caller that names no queue drains sign-in mail only: Lovable's
+ *     dispatcher names none, and R1 drains sign-in mail only. The fix-plan
+ *     drip in transactional_emails waits for CP-G (its text part, marketing
+ *     purpose, seller footer and the apex sender) and is drained only by a
+ *     caller that names that queue.
+ *   - ONE MESSAGE, ONE SEND, THOUGH TWO DRAINS RUN. read_email_batch is
+ *     pgmq.read: FOR UPDATE SKIP LOCKED, and each message read is hidden for
+ *     30 seconds (vt), so a second drain started meanwhile reads nothing of
+ *     the first's batch. A message back in view after that (a crash between
+ *     the send and the delete) is skipped and deleted when its 'sent' log row
+ *     exists. And every send hands the provider the payload's idempotency
+ *     key, so even a re-send is one mail.
  *   - Every message goes to Lovable first. An auth_emails message Lovable
  *     refuses as a sender (401 or 403), or one that has failed transiently
  *     three times, is sent through Resend (sendMail: From
  *     account@resumebooster.work, reply_to CUSTOMER_REPLY_TO, the payload's
- *     idempotency key) BEFORE anything dead-letters it. Only when Resend also
- *     fails does it go on as before: a refused one to the DLQ, a transient one
- *     back to the queue for its next try. One dead-letter stays as it was: a
- *     sign-in mail that waited past its TTL (15 minutes) unsent is not sent
- *     late by either provider, because the code inside it has expired.
+ *     idempotency key) BEFORE anything dead-letters it. When Resend also
+ *     fails, a PERMANENT Resend refusal (not configured, a bad recipient, a
+ *     4xx other than 408/409/429) dead-letters a sender-refused mail naming
+ *     both refusals; a transient one (429 -- Resend's limit is the whole
+ *     team's -- a 5xx, a timeout, no answer) leaves it on the queue for the
+ *     next tick, until the code inside it expires. A sign-in mail is bounded
+ *     by that expiry (its TTL, 15 minutes), not by the retry count, and is
+ *     never sent late by either provider.
  *   - transactional_emails keeps its behaviour exactly.
  *
  * LOVABLE CAN REGENERATE THIS FILE (its "set up emails" step replaced it on
@@ -49,6 +74,70 @@ export const AUTH_FALLBACK_FROM = 'Resume Booster <account@resumebooster.work>'
 /** Transient Lovable failures an auth mail takes before Resend is tried. */
 export const AUTH_FALLBACK_AFTER_FAILURES = 3
 const AUTH_FALLBACK_TIMEOUT_MS = 8_000
+
+/** What every refusal answers: the drain's cron command finds it in pg_net's answers (20261014100000). */
+export const REFUSED_BODY = { error: 'Forbidden', refusedBy: 'process-email-queue' }
+
+/** True when the request offered a cron key at all (right or wrong): our own drain always does. */
+export function offeredCronKey(h: Headers): boolean {
+  return (h.get('x-email-cron') ?? '').length > 0
+}
+
+/** The refusal, saying whether a cron key was offered, so the cron counts only its own. */
+export function refusal(h: Headers): typeof REFUSED_BODY & { cronKey: boolean } {
+  return { ...REFUSED_BODY, cronKey: offeredCronKey(h) }
+}
+
+/**
+ * The role claim of the bearer the GATEWAY let through. Read without checking
+ * the signature, which is right ONLY because this function runs with
+ * verify_jwt = true (supabase/config.toml carries no false entry for it, and
+ * the R1 ledger test pins that): the platform refused every unsigned or
+ * mis-signed token before this code ran. A function behind verify_jwt = false
+ * must never trust this.
+ */
+export function gatewayVerifiedRole(h: Headers): string | null {
+  const a = (h.get('authorization') ?? '').trim()
+  const m = /^bearer\s+(.+)$/i.exec(a)
+  const part = m?.[1]?.trim().split('.')[1]
+  if (!part) return null
+  try {
+    const b64 = part.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(part.length / 4) * 4, '=')
+    const claims = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))))
+    return typeof claims?.role === 'string' ? claims.role : null
+  } catch {
+    return null
+  }
+}
+
+/** The door behind the gateway: a verified service_role token, the key itself, or the cron key. */
+export async function callerMayDrain(h: Headers, admin: Parameters<typeof isScheduledCaller>[1], serviceKey: string): Promise<boolean> {
+  if (gatewayVerifiedRole(h) === 'service_role') return true
+  return await isScheduledCaller(h, admin, serviceKey)
+}
+
+/** The queues this function drains, auth mail first. */
+const QUEUES = ['auth_emails', 'transactional_emails']
+
+/** The queues a run drains: the ones its body names, else sign-in mail only (R1; the drip waits for CP-G). */
+export function queuesToDrain(body: unknown): string[] {
+  const named = (body as { queues?: unknown } | null)?.queues
+  if (!Array.isArray(named)) return [QUEUES[0]]
+  const pick = QUEUES.filter((q) => named.includes(q))
+  return pick.length ? pick : [QUEUES[0]]
+}
+
+/**
+ * WHETHER RESEND'S REFUSAL WILL STILL STAND AT THE NEXT TICK. Not configured,
+ * a recipient it cannot take, or a 4xx that is not a timeout (408), a conflict
+ * on the idempotency key (409) or the team-wide rate limit (429): permanent.
+ * Anything else (429, a 5xx, a timeout, no answer) passes, so the mail waits
+ * on the queue for its next try instead of being dead-lettered by one hiccup.
+ */
+export function resendRefusalIsPermanent(r: { status: number; error: string | null }): boolean {
+  if (r.error === 'not_configured' || r.error === 'invalid_recipient') return true
+  return r.status >= 400 && r.status < 500 && r.status !== 408 && r.status !== 409 && r.status !== 429
+}
 
 // Check if an error is a rate-limit (429) response.
 // Uses EmailAPIError.status when available (email-js >=0.x with structured errors),
@@ -85,24 +174,6 @@ function getRetryAfterSeconds(error: unknown): number {
     return (error as { retryAfterSeconds: number | null }).retryAfterSeconds ?? 60
   }
   return 60
-}
-
-function parseJwtClaims(token: string): Record<string, unknown> | null {
-  const parts = token.split('.')
-  if (parts.length < 2) {
-    return null
-  }
-
-  try {
-    const payload = parts[1]
-      .replaceAll('-', '+')
-      .replaceAll('_', '/')
-      .padEnd(Math.ceil(parts[1].length / 4) * 4, '=')
-
-    return JSON.parse(atob(payload)) as Record<string, unknown>
-  } catch {
-    return null
-  }
 }
 
 // Move a message to the dead letter queue and log the reason.
@@ -215,22 +286,20 @@ Deno.serve(async (req) => {
     return reply({ error: 'Server configuration error' }, 500)
   }
 
-  const authHeader = req.headers.get('Authorization')
-  if (!authHeader?.startsWith('Bearer ')) {
-    return reply({ error: 'Unauthorized' }, 401)
-  }
-
   const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-  // Defense in depth: verify_jwt=true already requires a valid JWT at the
-  // gateway layer. Past it, only the service role or the scheduler's cron key
-  // (x-email-cron, checked by email_cron_key_matches) may run the drain: the
-  // publishable key alone is every visitor's.
-  const token = authHeader.slice('Bearer '.length).trim()
-  const claims = parseJwtClaims(token)
-  if (claims?.role !== 'service_role' && !(await isScheduledCaller(req.headers, supabase, supabaseServiceKey))) {
-    return reply({ error: 'Forbidden' }, 403)
+  // THE SECOND DOOR (the gateway's JWT check is the first): a service_role
+  // token the gateway verified, the service-role key itself, or the
+  // scheduler's cron key (x-email-cron, checked by email_cron_key_matches).
+  // The publishable key is every visitor's and opens nothing. The refusal
+  // says whether a cron key was offered: only our own drain offers one.
+  if (!(await callerMayDrain(req.headers, supabase, supabaseServiceKey))) {
+    return reply(refusal(req.headers), 403)
   }
+
+  let requested: unknown = null
+  try { requested = await req.json() } catch { /* no body: sign-in mail only */ }
+  const queues = queuesToDrain(requested)
 
   // 1. Check rate-limit cooldown and read queue config
   const { data: state } = await supabase
@@ -254,8 +323,8 @@ Deno.serve(async (req) => {
   let viaResend = 0
   let resendFailed = 0
 
-  // 2. Process auth_emails first (priority), then transactional_emails
-  for (const queue of ['auth_emails', 'transactional_emails']) {
+  // 2. Process auth_emails first (priority), then transactional_emails (unless the caller named only auth mail)
+  for (const queue of queues) {
     const { data: messages, error: readError } = await supabase.rpc('read_email_batch', {
       queue_name: queue,
       batch_size: batchSize,
@@ -335,8 +404,11 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Move to DLQ if max failed send attempts reached.
-      if (failedAttempts >= MAX_RETRIES) {
+      // Move to DLQ if max failed send attempts reached. A sign-in mail whose
+      // age is known is bounded by its TTL instead (the code's expiry): each
+      // try writes two 'failed' rows (Lovable's and Resend's), so the count
+      // would give up after a minute on a mail whose code lasts fifteen.
+      if (failedAttempts >= MAX_RETRIES && !(queue === 'auth_emails' && queuedAt)) {
         await moveToDlq(supabase, queue, msg, `Max retries (${MAX_RETRIES}) exceeded (attempted ${failedAttempts} times)`)
         continue
       }
@@ -472,9 +544,10 @@ Deno.serve(async (req) => {
 
         // AN AUTH MAIL HAS A SECOND WAY OUT (D1). A sender refusal (401/403)
         // or a third transient failure sends it through Resend before any
-        // dead-letter. Resend's own failure leaves the old paths below in
-        // charge: a refusal still dead-letters (naming both refusals), a
-        // transient failure still waits for its next try.
+        // dead-letter. When Resend fails too, a sender-refused mail
+        // dead-letters (naming both refusals) only if Resend's refusal is
+        // permanent; a transient one (429, 5xx, a timeout) waits for the next
+        // tick, until its TTL. A transient Lovable failure always waits.
         const refused = isSenderRefusal(error)
         if (queue === 'auth_emails' && (refused || failedAttempts + 1 >= AUTH_FALLBACK_AFTER_FAILURES)) {
           const why = refused
@@ -500,8 +573,11 @@ Deno.serve(async (req) => {
             }
           } else {
             if (fb.status !== 0 || fb.error !== 'not_configured') resendFailed++
-            console.error('Resend fallback did not send the auth mail', { msg_id: msg.msg_id, status: fb.status, error: fb.error })
-            if (refused) {
+            const permanent = resendRefusalIsPermanent(fb)
+            console.error('Resend fallback did not send the auth mail', { msg_id: msg.msg_id, status: fb.status, error: fb.error, permanent })
+            // A transient Resend failure leaves the mail on the queue (vt 30 s)
+            // for the next tick; only a refusal that will still stand ends it.
+            if (refused && permanent) {
               forbidden++
               await moveToDlq(
                 supabase, queue, msg,

@@ -4,38 +4,51 @@
     <script>
       /* THE FIRST SCRIPT ON EVERY PAGE, AND IT MUST STAY FIRST: inline, classic
          (no src, no module, no defer, no async), so it runs before the host's
-         deferred analytics records the address and before the app reads it.
+         deferred analytics records the address and before the app, or the
+         auth client (which reads the query as well as the fragment), reads it.
          It moves the credentials a URL can carry into this tab's
          sessionStorage (key rb_url_stash) and rewrites the address without
-         them. src/lib/auth-fragment.ts reads them back; the keys are listed
-         there, and src/test/r1-signin-stash.test.ts runs this script. */
+         them. Keys are compared decoded (URLSearchParams), in the query and
+         the fragment alike. A sign-in's parts leave the address even when the
+         stash cannot be written: that sign-in is lost, never adopted unasked.
+         src/lib/auth-fragment.ts reads them back; the keys are listed there,
+         and src/test/r1-signin-stash.test.ts runs this script. */
       (function () {
         try {
-          var L = location, P = L.pathname.replace(/\/+$/, "") || "/", W = sessionStorage, K = "rb_url_stash";
-          var A = "access_token refresh_token expires_at expires_in token_type provider_token provider_refresh_token type error error_code error_description".split(" ");
-          var G = A.concat("token_hash", "code"), Q = ["token_hash", "code"];
-          var N = {}, n = 0, m = 0, h = L.hash.slice(1), g = h, q = new URLSearchParams(L.search), i, k, v, f, o;
-          if (/^\/(email\/unsubscribe|market-pulse\/confirm|fix-plan\/confirm)$/.test(P)) {
-            if (h) { N.fragment = "#" + h; n = 1; g = ""; }
-          } else if (/(^|&)(access_token|refresh_token|provider_token|error\w*)=/.test(h)) {
-            f = new URLSearchParams(h);
-            for (i = 0; i < A.length; i++) { k = A[i]; v = f.get(k); if (v !== null) { N[k] = v; f["delete"](k); n = 1; } }
-            g = f.toString();
+          var L = location, P = L.pathname.replace(/\/+$/, "") || "/", K = "rb_url_stash";
+          var T = "access_token refresh_token provider_token provider_refresh_token token_hash code".split(" ");
+          var E = ["error", "error_code", "error_description"];
+          var G = T.concat("expires_at", "expires_in", "token_type", "type", E), N = {}, S = {}, h = L.hash.slice(1), ok = 0, o, i, k, v, W;
+          var q = new URLSearchParams(L.search), q2 = new URLSearchParams(L.search), f = null, f2 = null;
+          var qh = 0, qs = 0, fh = 0, fs = 0, whole = /^\/(email\/unsubscribe|market-pulse\/confirm|fix-plan\/confirm)$/.test(P);
+          var any = function (p, list) { for (var j = 0; j < list.length; j++) if (p.has(list[j])) return 1; return 0; };
+          var cut = function (p, p2) { var c = 0; for (var j = 0; j < G.length; j++) { var w = p.get(G[j]); if (w !== null) { N[G[j]] = w; p["delete"](G[j]); p2["delete"](G[j]); c = 1; } } return c; };
+          if (whole) { if (h) { S.fragment = "#" + h; S.fragment_path = P; fs = 1; } }
+          else if (h) {
+            f = new URLSearchParams(h); f2 = new URLSearchParams(h);
+            if (any(f, T) || any(f, E)) fh = cut(f, f2);
+            v = f.get("confirm"); if (P === "/data-api" && v !== null) { S.fragment = "#confirm=" + v; S.fragment_path = P; f["delete"]("confirm"); fs = 1; }
           }
-          if (q.has("token_hash") || q.has("code") || P === "/auth" || q.has("error_code") || q.has("error_description")) Q.push("type", "error", "error_code", "error_description");
-          if (P === "/product-success" || P === "/success") Q.push("session_id");
-          for (i = 0; i < Q.length; i++) { k = Q[i]; v = q.get(k); if (v !== null) { N[k] = v; q["delete"](k); m = 1; } }
-          if (!n && !m) return;
-          try { o = JSON.parse(W.getItem(K)); } catch (e) { o = null; }
-          o = o && typeof o === "object" ? o : {};
-          for (i = 0; i < G.length; i++) if (G[i] in N) { for (k = 0; k < G.length; k++) delete o[G[k]]; break; }
-          if (N.session_id) N.session_id_path = P;
-          for (k in N) o[k] = N[k];
-          o._at = Date.now(); o._path = P;
-          W.setItem(K, JSON.stringify(o));
+          if (any(q, T) || any(q, ["error_code", "error_description"]) || (P === "/auth" && any(q, ["type", "error"]))) qh = cut(q, q2);
+          v = q.get("session_id"); if (v !== null) { S.session_id = v; S.session_id_path = P; q["delete"]("session_id"); qs = 1; }
+          v = q.get("share"); if (P === "/success" && v !== null) { S.share = v; S.share_path = P; q["delete"]("share"); qs = 1; }
+          if (!qh && !qs && !fh && !fs) return;
+          try {
+            W = window.sessionStorage;
+            try { o = JSON.parse(W.getItem(K)); } catch (e) { o = null; }
+            o = o && typeof o === "object" ? o : {};
+            if (qh || fh) for (k = 0; k < G.length; k++) delete o[G[k]];
+            for (k in N) o[k] = N[k];
+            for (k in S) o[k] = S[k];
+            o._at = Date.now(); o._path = P;
+            W.setItem(K, JSON.stringify(o));
+            ok = 1;
+          } catch (e) { ok = 0; }
+          if (!ok) { q = q2; f = f2; qs = 0; fs = 0; if (!qh && !fh) return; }
           k = q.toString();
-          history.replaceState(history.state, "", L.pathname + (m ? (k ? "?" + k : "") : L.search) + (g !== h ? (g ? "#" + g : "") : L.hash));
-        } catch (e) { /* storage blocked or no URLSearchParams: the address keeps its parts and pages read them there */ }
+          i = whole ? (ok ? "" : h) : (fh || fs) && f ? f.toString() : h;
+          history.replaceState(history.state, "", L.pathname + (qh || qs ? (k ? "?" + k : "") : L.search) + (i ? "#" + i : ""));
+        } catch (e) { /* no URLSearchParams or no history: the address keeps its parts */ }
       })();
     </script>
     <meta charset="UTF-8" />

@@ -98,6 +98,15 @@ describe("no copy names a sign-in method whose switch is off", () => {
     });
   }
 
+  it("the first publish ships Google and recovery on, the emailed code off, Apple never (S12-057, D2, D10)", () => {
+    // With the magic link gone, an account made by one (or registered by a
+    // stranger) has no password its owner knows: recovery and Google are its
+    // only ways in, so they ship with the first publish, behind the deploy
+    // order that has auth-signed-in serving first (docs/r1/README.md).
+    expect({ google: GOOGLE_SIGN_IN_LIVE, recovery: RECOVERY_LIVE, code: CODE_SIGN_IN_LIVE, apple: APPLE_SIGN_IN_LIVE })
+      .toEqual({ google: true, recovery: true, code: false, apple: false });
+  });
+
   it("the guard reads what it claims to (positive control)", () => {
     expect(SOURCES).toEqual(expect.arrayContaining(["src/pages/Auth.tsx", "src/components/auth/ProviderButtons.tsx", "src/pages/Account.tsx"]));
     expect(METHODS.google.re.test(codeOf(read("src/components/auth/ProviderButtons.tsx")))).toBe(true);
@@ -126,10 +135,13 @@ describe("no auth surface says a mail was sent", () => {
   it.each(["en", "en-GB"])("src/i18n/auth/%s.json", (loc) => {
     expect(Object.values(flat(JSON.parse(read(`src/i18n/auth/${loc}.json`)))).filter((v) => /\bsent\b/i.test(v))).toEqual([]);
   });
-  it("the code and reset copy says 'on its way' only if the address can sign in", () => {
+  it("the code and reset copy promises a link OR a code, only if the address can sign in (the default sender's template carries only a link: lead decision C)", () => {
     const en = flat(JSON.parse(read("src/i18n/auth/en.json")));
-    expect(en["auth.code.onItsWay"]).toMatch(/^If this address can sign in, a code is on its way\./);
-    expect(en["auth.reset.onItsWay"]).toMatch(/^If an account exists for this address, a reset code is on its way\./);
+    expect(en["auth.code.onItsWay"]).toMatch(/^If this address can sign in, check your email for a link \(or a 6-digit code\)\./);
+    expect(en["auth.reset.onItsWay"]).toMatch(/^If an account exists for this address, check your email for a link \(or a 6-digit code\)\./);
+    expect(en["auth.reset.intro"]).toMatch(/a link \(or a 6-digit code\)/);
+    expect(en["auth.reset.send"]).toBe("Email me a reset link");
+    for (const k of ["auth.code.onItsWay", "auth.reset.onItsWay", "auth.reset.intro", "auth.reset.send"]) expect(en[k], k).not.toMatch(/a (reset |sign-in )?code is on its way|reset code/);
   });
 });
 
@@ -154,7 +166,8 @@ describe("the auth strings in nine languages", () => {
   });
 
   it("English is the default each call site passes, and every key a call site names exists", () => {
-    const files = ["src/pages/Auth.tsx", "src/contexts/AuthContext.tsx", ...readdirSync(resolve(ROOT, "src/components/auth")).map((f) => `src/components/auth/${f}`)];
+    // use-product-checkout.ts raises the one auth notice outside /auth (S12-087), through i18n.t with the same defaults.
+    const files = ["src/pages/Auth.tsx", "src/contexts/AuthContext.tsx", "src/hooks/use-product-checkout.ts", ...readdirSync(resolve(ROOT, "src/components/auth")).map((f) => `src/components/auth/${f}`)];
     const used = new Map<string, string>();
     for (const rel of files) {
       for (const m of read(rel).matchAll(/\b(?:t|tr)\(\s*"(auth\.[A-Za-z0-9_.]+)"\s*,\s*"((?:[^"\\]|\\.)*)"/g)) used.set(m[1], JSON.parse(`"${m[2]}"`));

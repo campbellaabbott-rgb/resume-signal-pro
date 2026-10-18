@@ -22,8 +22,11 @@
  *     (PUT /auth/v1/user with the caller's own token), which ends every other
  *     session and keeps this one, and other sessions are then signed out once
  *     more by the admin API. Once per session at most (the
- *     account_password_clears claim), so a password the person sets after
- *     the guard answered is never touched by a later call.
+ *     account_password_clears claim, taken when a rotation runs), so a
+ *     password the person sets after that rotation is never touched by a
+ *     later call of the session. (A call that failed before any rotation took
+ *     no claim, so a re-ask can still rotate a password set in between: the
+ *     site's reset awaits the guard for that reason.)
  *  4. The proof row is written only when, besides that, the token's address
  *     and the email identity match the account's address and the auth log
  *     shows no account change since the sign-in. Otherwise 409, and no proof.
@@ -47,10 +50,22 @@
  * Logout for the user), the caller's own included, so the person who just
  * proved the address would be signed out by the guard. The user's own update
  * (internal/api/user.go) ends every session except the caller's. The admin
- * API is the fallback only when GoTrue refuses the session's own update
- * (reauthentication, a current-password rule, MFA), and only when the proof
- * is written in the same call, so the next sign-in finds the proof and the
- * person is not signed out again.
+ * API is the fallback only when GoTrue REFUSES the session's own update with
+ * a rule only an admin can pass (ADMIN_FALLBACK_CODES: reauthentication, a
+ * current-password rule, MFA), never on a timeout or a 5xx (review of R1:
+ * those answered 200 signedOut, and a timed-out update that had in fact
+ * succeeded was rotated twice). The answer then says signedOut, and the site
+ * asks the person to sign in again. It runs even when the proof is refused
+ * for an account change (S12-086): a stranger who pre-registered the address
+ * and enrolled MFA must not keep the password by failing the session's own
+ * update. When the proof is not refused it is written BEFORE any rotation,
+ * and taken back if the rotation fails, so a rotation never stands without
+ * its proof (whose absence made every later call refuse on the rotation's
+ * own audit entry).
+ *
+ * AN ACCOUNT ALREADY PROVEN AT ANOTHER ADDRESS keeps its password (S12-177):
+ * it belongs to whoever proved it, and only that owner could have changed
+ * its address and set its password.
  *
  * THE AUTH LOG (pinned against supabase/auth v2.197.0,
  * internal/models/audit_log_entry.go and the callers in internal/api):
@@ -79,6 +94,17 @@ import type { WebsiteSession } from "./website-session.ts";
 
 /** Sign-in methods that act: an emailed code or link, or a provider sign-in. */
 export const GUARD_METHODS: ReadonlySet<string> = new Set(["otp", "magiclink", "recovery", "oauth"]);
+/**
+ * The refusals of the session's own password update that only the admin API
+ * can get past: a reauthentication or current-password rule, or an MFA level
+ * the stranger who pre-registered the address may have enrolled (S12-086).
+ * A timeout, a 5xx or anything else is NOT one of them: the admin API ends
+ * every session, the caller's too, so it is used only when GoTrue has said
+ * the session itself may not set the password (review of R1).
+ */
+export const ADMIN_FALLBACK_CODES: ReadonlySet<string> = new Set([
+  "reauthentication_needed", "reauthentication_not_valid", "current_password_required", "insufficient_aal",
+]);
 /** How long after its sign-in a session may still be acted on. */
 export const FRESH_SESSION_MS = 15 * 60 * 1000;
 /** A sign-in stamped this far in the future is a clock we do not trust. */
@@ -262,11 +288,28 @@ async function guardOnce(deps: GuardDeps, session: WebsiteSession): Promise<Guar
   let passwordCleared = false;
   let signedOut = false;
   let hasPassword = false;
+  let proofWritten = false;
   if (vouched) {
     const { data, error } = await admin.rpc("auth_user_has_password", { p_user_id: userId });
     if (error || typeof data !== "boolean") return unavailable("unavailable");
     hasPassword = data;
   }
+  if (hasPassword) {
+    // AN ACCOUNT ALREADY PROVEN AT ANOTHER ADDRESS (S12-177) belongs to
+    // whoever proved it: nobody could pre-register it, its address changed
+    // only through its owner, and its password is the owner's. It is not
+    // cleared; only this address's proof is recorded below.
+    const elsewhere = await provenAtAnotherAddress(admin, userId, email);
+    if (elsewhere === "error") return unavailable("unavailable");
+    if (elsewhere === "present") hasPassword = false;
+  }
+  const proofRow = (cleared: boolean) => ({
+    user_id: userId, email, method: newest.method, amr_at: amrAt.toISOString(), password_cleared: cleared,
+  });
+  const undo = async (withProof: boolean) => {
+    if (withProof) await admin.from("account_mailbox_proofs").delete().eq("user_id", userId).eq("email", email);
+    await admin.from("account_password_clears").delete().eq("session_id", sessionId);
+  };
   if (hasPassword) {
     // Another call may have proven the address meanwhile; then nothing is rotated.
     const again = await mailboxProofState(admin, userId, email);
@@ -276,6 +319,21 @@ async function guardOnce(deps: GuardDeps, session: WebsiteSession): Promise<Guar
     const claimError = (claim as { error?: { code?: string } | null }).error;
     if (claimError && claimError.code !== "23505") return unavailable("unavailable");
     if (!claimError) {
+      // THE PROOF BEFORE THE ROTATION (review of R1). A rotation whose proof
+      // then failed left the session's own password change in the auth log,
+      // and every later call (and a new code within a minute) read it as an
+      // account change and refused: the old password gone and the address
+      // never proven. Now a proof that cannot be written stops the call before
+      // anything is rotated, and a rotation that fails takes its proof back.
+      if (!refusal) {
+        const ins = await admin.from("account_mailbox_proofs").insert(proofRow(true));
+        const insError = (ins as { error?: { code?: string } | null }).error;
+        if (insError && insError.code !== "23505") {
+          await undo(false);
+          return unavailable("proof_not_recorded");
+        }
+        proofWritten = true;
+      }
       const secret = (deps.newSecret ?? newRotationSecret)();
       const rotated = await deps.rotateAsSession(jwt, secret);
       if (rotated.ok) {
@@ -286,39 +344,57 @@ async function guardOnce(deps: GuardDeps, session: WebsiteSession): Promise<Guar
         } catch {
           log("other sessions: the admin sign-out threw; the password update already ended them", { userId });
         }
-      } else if (!refusal) {
+      } else if (rotated.code && ADMIN_FALLBACK_CODES.has(rotated.code)) {
+        // GoTrue said this session may not set the password. The admin API
+        // can, ending every session (this one too: the person signs in again).
+        // Also when the proof is refused for an account change (S12-086): the
+        // log vouched that this sign-in reached the mailbox, so a stranger's
+        // MFA or reauthentication rule must not keep their password alive.
         log("the session's own password update was refused; rotating through the admin API, which ends every session", { userId, status: rotated.status, code: rotated.code });
         const { error } = await admin.auth.admin.updateUserById(userId, { password: secret });
         if (error) {
-          await admin.from("account_password_clears").delete().eq("session_id", sessionId);
+          await undo(proofWritten);
           return unavailable("rotation_failed");
         }
         passwordCleared = true;
         signedOut = true;
       } else {
-        await admin.from("account_password_clears").delete().eq("session_id", sessionId);
+        // A timeout, a 5xx, a refusal no admin rule answers: nothing rotated
+        // (or a rotation we cannot see), so nothing claimed and nothing proven.
+        log("the session's own password update failed; nothing rotated", { userId, status: rotated.status, code: rotated.code ?? null });
+        await undo(proofWritten);
         return unavailable("rotation_failed");
       }
     }
   }
 
   if (refusal) {
-    log("proof refused", { userId, reason: refusal, passwordCleared });
-    return answer(409, { proven: false, passwordCleared, reason: refusal, error: REFUSAL_TEXT[refusal] ?? "The address stays unproven." });
+    log("proof refused", { userId, reason: refusal, passwordCleared, signedOut });
+    return answer(409, {
+      proven: false, passwordCleared, reason: refusal, error: REFUSAL_TEXT[refusal] ?? "The address stays unproven.",
+      ...(signedOut ? { signedOut: true } : {}),
+    });
   }
 
-  const ins = await admin.from("account_mailbox_proofs").insert({
-    user_id: userId,
-    email,
-    method: newest.method,
-    amr_at: amrAt.toISOString(),
-    password_cleared: passwordCleared,
-  });
-  const insError = (ins as { error?: { code?: string } | null }).error;
-  if (insError && insError.code !== "23505") return unavailable("proof_not_recorded", passwordCleared);
+  if (!proofWritten) {
+    const ins = await admin.from("account_mailbox_proofs").insert(proofRow(passwordCleared));
+    const insError = (ins as { error?: { code?: string } | null }).error;
+    if (insError && insError.code !== "23505") return unavailable("proof_not_recorded", passwordCleared);
+  }
   return answer(200, {
     proven: true,
     passwordCleared,
     ...(signedOut ? { signedOut: true, reason: "every_session_ended" } : {}),
   });
+}
+
+/** Whether the account holds a proof for any address but this one. */
+async function provenAtAnotherAddress(admin: GuardAdmin, userId: string, email: string): Promise<"present" | "absent" | "error"> {
+  try {
+    const { data, error } = await admin.from("account_mailbox_proofs").select("id").eq("user_id", userId).neq("email", email).limit(1);
+    if (error || !Array.isArray(data)) return "error";
+    return data.length > 0 ? "present" : "absent";
+  } catch {
+    return "error";
+  }
 }

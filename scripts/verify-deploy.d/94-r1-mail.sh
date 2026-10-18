@@ -5,12 +5,22 @@
 #
 # READ-ONLY. DNS is read over DNS-over-HTTPS (dns.google). Builds are read from
 # OPTIONS preflights. get_cron_health is read with a GET (PostgREST runs it in
-# a read-only transaction). The two POSTs write nothing on the build they are
-# sent to, and are sent only once that build serves: an unsigned event to
+# a read-only transaction). The three POSTs write nothing on the build they
+# are sent to, and are sent only once that build serves: an unsigned event to
 # resend-webhook (refused before any database access: 503 while
-# RESEND_WEBHOOK_SECRET is unset, 401 once it is), and the publishable key to
-# process-email-queue (refused 403 before any database access: the drain
-# answers the service role and the cron key only).
+# RESEND_WEBHOOK_SECRET is unset, 401 once it is), and to process-email-queue
+# one post with no JWT (the GATEWAY refuses it, 401: verify_jwt is on, as
+# Lovable's own dispatcher needs) and one with the publishable key (the
+# function's own check refuses it, 403, before any database access).
+# The drain job is OURS, 'rb-auth-mail-drain' (20261014100000): a job named
+# 'process-email-queue' is Lovable's and is only reported. Ours is judged by
+# its last run as well as its failures: its command fails a run itself when
+# the vault holds no bearer or no cron key, when the drain refused one of its
+# own posts, or when the gateway answered one with its own 401 (lead decision
+# B, third fixer round). The command knows the gateway's 401 by its body, a
+# string code starting UNAUTHORIZED_ (the live body, 2026-10-17); the
+# no-JWT probe below FAILs a 401 in any other shape, because the command
+# would then read a refused bearer as a success (second recheck of R1).
 echo "== 94. R1 mail: the sending DNS, the hook/queue/webhook builds, the drain job, the anon refusals =="
 
 vd94_dns() { curl -s -m 20 "https://dns.google/resolve?name=$1&type=$2" -H 'accept: application/dns-json'; }
@@ -52,15 +62,19 @@ for FN94 in auth-email-hook process-email-queue resend-webhook; do
   else echo "FAIL  $FN94 x-fn-build = $H94 (want $FN94.2026-10-14.1 or later)"; fi
 done
 
-# The drain job (20261014100000 schedules it only where no job of that name exists).
+# Our drain job (20261014100000 schedules rb-auth-mail-drain; a job named
+# process-email-queue is Lovable's and is reported, never judged as ours).
 curl -s -m 60 "$B/rest/v1/rpc/get_cron_health?p_hours=1" -H "apikey: $K" -H "Authorization: Bearer $K" > /tmp/vd_94_cron.json
 node -e '
 const fs=require("fs");let j;try{j=JSON.parse(fs.readFileSync("/tmp/vd_94_cron.json","utf8"))}catch{j=null}
 if(!Array.isArray(j)){console.log("INFO  get_cron_health unreadable: "+JSON.stringify(j).slice(0,140));process.exit(0)}
-const q=j.find((x)=>x.ch_jobname==="process-email-queue");
-if(!q){console.log("FAIL  no process-email-queue cron job: queued sign-in mail is never sent (20261014100000 not applied, or the job was removed)");process.exit(0)}
-const ok=q.ch_active&&Number(q.ch_runs)>0&&Number(q.ch_failed)===0;
-console.log((ok?"PASS":"FAIL")+"  process-email-queue cron: schedule "+JSON.stringify(q.ch_schedule)+", active "+q.ch_active+", runs "+q.ch_runs+"/1h, failed "+q.ch_failed+", last "+q.ch_last_status+" (want active, runs > 0, failed 0; a failed run with mail waiting means the vault holds neither key)");'
+const lov=j.find((x)=>x.ch_jobname==="process-email-queue");
+if(lov)console.log("INFO  Lovable'"'"'s own process-email-queue job: schedule "+JSON.stringify(lov.ch_schedule)+", active "+lov.ch_active+", runs "+lov.ch_runs+"/1h, failed "+lov.ch_failed+", last run "+(lov.ch_last_status||"none")+" (left as it is; ours runs beside it)");
+const q=j.find((x)=>x.ch_jobname==="rb-auth-mail-drain");
+if(!q){console.log("FAIL  no rb-auth-mail-drain cron job: queued sign-in mail is drained only by Lovable'"'"'s own job, if any (20261014100000 not applied, or the job was removed)");process.exit(0)}
+const last=String(q.ch_last_status??"");
+const ok=q.ch_active&&Number(q.ch_runs)>0&&Number(q.ch_failed)===0&&last==="succeeded";
+console.log((ok?"PASS":"FAIL")+"  rb-auth-mail-drain cron: schedule "+JSON.stringify(q.ch_schedule)+", active "+q.ch_active+", runs "+q.ch_runs+"/1h, failed "+q.ch_failed+", last run "+(last||"none")+" (want active, runs > 0, failed 0, last run succeeded; the command fails its own run when the vault holds no email_queue_service_role_key or email_cron_key, when the drain refused one of its own posts, or when the gateway answered one with its own 401, since pg_net alone reads every refused post as a success)");'
 
 # The stuck count: email_delivery_health is service-role only since 20261004110000,
 # so no anonymous reader of it exists. Prove it stays closed; the count itself is
@@ -80,9 +94,27 @@ else
   echo "INFO  resend-webhook is not serving 2026-10-14.1: the unsigned-event probe is not sent"
 fi
 if [ "$VD94_PEQ" = 1 ]; then
+  # No JWT at all: the GATEWAY must refuse it (401). verify_jwt is on for the
+  # drain because Lovable's own dispatcher posts the vault bearer through it,
+  # and the function trusts a service_role claim only because the gateway
+  # checked the signature first. A 403 naming the drain = verify_jwt is off:
+  # that claim is then anyone's to write.
+  C94=$(curl -s -m 30 -o /tmp/vd_94_peq.json -w '%{http_code}' -X POST "$B/functions/v1/process-email-queue" -H "Content-Type: application/json" -d '{}')
+  if [ "$C94" = "401" ] && grep -q '"code":"UNAUTHORIZED_' /tmp/vd_94_peq.json; then
+    echo "PASS  process-email-queue: the gateway refuses a post with no JWT (401, verify_jwt on): a service_role claim reaches the function only with a signature the platform checked, and its body carries the UNAUTHORIZED_ code rb-auth-mail-drain reads back: $(head -c 120 /tmp/vd_94_peq.json)"
+  elif [ "$C94" = "401" ]; then
+    echo "FAIL  process-email-queue answered a post with no JWT with a 401 without the gateway's UNAUTHORIZED_ code: $(head -c 160 /tmp/vd_94_peq.json). rb-auth-mail-drain (20261014100000) knows the gateway's refusal by that code, so a refused vault bearer would read as a successful run: match its read-back to this body"
+  elif [ "$C94" = "403" ] && grep -q '"refusedBy":"process-email-queue"' /tmp/vd_94_peq.json; then
+    echo "FAIL  process-email-queue: a post with no JWT reached the function (403 from its own check): verify_jwt is OFF, so the role claim it reads is unverified. Deploy supabase/config.toml's [functions.process-email-queue] verify_jwt = true"
+  else
+    echo "FAIL  process-email-queue answered a post with no JWT with HTTP $C94: $(head -c 160 /tmp/vd_94_peq.json) (want the gateway's 401)"
+  fi
   C94=$(curl -s -m 30 -o /tmp/vd_94_peq.json -w '%{http_code}' -X POST "$B/functions/v1/process-email-queue" -H "Content-Type: application/json" -H "apikey: $K" -H "Authorization: Bearer $K" -d '{}')
-  [ "$C94" = "403" ] && echo "PASS  process-email-queue refuses the publishable key without the cron key (403, before the queue is read)" \
-    || echo "FAIL  process-email-queue answered the publishable key with HTTP $C94: $(head -c 160 /tmp/vd_94_peq.json) (want 403)"
+  if [ "$C94" = "403" ] && grep -q '"refusedBy":"process-email-queue"' /tmp/vd_94_peq.json && grep -q '"cronKey":false' /tmp/vd_94_peq.json; then
+    echo "PASS  process-email-queue refuses the publishable key without the cron key (403 naming the drain, cronKey false: the drain's cron would not count this refusal as its own)"
+  else
+    echo "FAIL  process-email-queue answered the publishable key with HTTP $C94: $(head -c 160 /tmp/vd_94_peq.json) (want 403 naming process-email-queue with cronKey false)"
+  fi
 else
   echo "INFO  process-email-queue is not serving 2026-10-14.1: the anon refusal probe is not sent"
 fi

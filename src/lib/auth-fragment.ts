@@ -12,21 +12,29 @@
  * the URL reads them here, with the URL as the fallback for a browser where
  * the stash could not be written (the address is then left untouched).
  *
- * The stash is one JSON object. Its keys:
- * - from the fragment: access_token, refresh_token, expires_at, expires_in,
- *   token_type, provider_token, provider_refresh_token, type, error,
- *   error_code, error_description (only when the fragment carries a token or
- *   an error, so a plain #orders is never touched);
- * - from the query: token_hash, code, and with them type and error*;
- * - session_id on /product-success and /success, with session_id_path naming
- *   which of the two it came from;
- * - fragment: the whole fragment on /email/unsubscribe, /market-pulse/confirm
- *   and /fix-plan/confirm, whose pages parse it themselves;
+ * The stash is one JSON object. Its keys (each compared decoded, so an
+ * escaped name such as access%5Ftoken is the same key):
+ * - a sign-in's parts, from the query AND the fragment: access_token,
+ *   refresh_token, provider_token, provider_refresh_token, token_hash and
+ *   code, and with any of them (or an auth error) expires_at, expires_in,
+ *   token_type, type, error, error_code and error_description. A plain
+ *   #orders or ?type=full-time is never touched. These leave the address
+ *   even when the stash cannot be written (the sign-in is lost, not adopted
+ *   by the auth client, which reads both the query and the fragment);
+ * - session_id on ANY path (every Stripe return: /product-success, /success,
+ *   /freelance-boost, /agents/pass, /account?pro=success), with
+ *   session_id_path naming where it came from;
+ * - share on /success (it reads and deletes that analysis), with share_path;
+ * - fragment, with fragment_path: the whole fragment on /email/unsubscribe,
+ *   /market-pulse/confirm and /fix-plan/confirm, whose pages parse it
+ *   themselves, and "#confirm=..." on /data-api (the API key link);
  * - _at and _path: when and where the last capture happened.
+ * Those path-bound values stay in the address when the stash cannot be
+ * written, so the page still finds them there.
  *
  * src/test/r1-signin-stash.test.ts runs the script from index.html itself.
  */
-import { PENDING_SIGN_IN_TTL_MS } from "@/config/auth-providers";
+import { PENDING_SIGN_IN_TTL_MS, PROVIDER_PENDING_TTL_MS } from "@/config/auth-providers";
 
 export const STASH_KEY = "rb_url_stash";
 
@@ -85,21 +93,51 @@ export function discardStashedSession(): void {
 }
 
 /**
- * The Stripe session id a payment-return page uses. One still in the address
- * wins: the first script strips it on every load, so one that is there was
- * written after the load (an in-app navigation) or could not be stashed.
- * Otherwise the stash's, when it was captured on this same path.
+ * A path-bound value a page uses (session_id, share). One still in the
+ * address wins: the first script strips it on every load, so one that is
+ * there was written after the load (an in-app navigation) or could not be
+ * stashed. Otherwise the stash's, when it was captured on this same path.
  */
-export function stashedSessionIdFor(path: "/product-success" | "/success", urlValue: string | null): { id: string | null; fromStash: boolean } {
-  if (urlValue) return { id: urlValue, fromStash: false };
-  const id = peekStashed("session_id");
-  if (id && peekStashed("session_id_path") === path) return { id, fromStash: true };
-  return { id: null, fromStash: false };
+export function stashedValueFor(key: "session_id" | "share", path: string, urlValue: string | null | undefined): { value: string | null; fromStash: boolean } {
+  if (urlValue) return { value: urlValue, fromStash: false };
+  const v = peekStashed(key);
+  if (v && peekStashed(`${key}_path`) === path) return { value: v, fromStash: true };
+  return { value: null, fromStash: false };
 }
 
-/** The fragment a confirm or unsubscribe page parses: the address's when it has one, else the stash's. */
-export function stashedFragment(urlHash: string): string {
-  return urlHash && urlHash !== "#" ? urlHash : (peekStashed("fragment") ?? "");
+/** The Stripe session id a payment-return page uses (see stashedValueFor). */
+export function stashedSessionIdFor(path: string, urlValue: string | null | undefined): { id: string | null; fromStash: boolean } {
+  const r = stashedValueFor("session_id", path, urlValue);
+  return { id: r.value, fromStash: r.fromStash };
+}
+
+/**
+ * Keep a path-bound value in this tab's stash rather than in the address (a
+ * page that learns it after the load, such as the share of a new analysis).
+ * False when storage is blocked: the caller then keeps it in the address.
+ */
+export function stashValueFor(key: "session_id" | "share", path: string, value: string): boolean {
+  try {
+    const s = readStash();
+    s[key] = value;
+    s[`${key}_path`] = path;
+    sessionStorage.setItem(STASH_KEY, JSON.stringify(s));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The fragment a confirm or unsubscribe page parses: the address's when it
+ * has one, else the stash's (captured on `path` when one is named).
+ */
+export function stashedFragment(urlHash: string, path?: string): string {
+  if (urlHash && urlHash !== "#") return urlHash;
+  const f = peekStashed("fragment") ?? "";
+  if (!f || !path) return f;
+  const at = peekStashed("fragment_path");
+  return !at || at === path ? f : "";
 }
 
 // ── where to go after signing in ────────────────────────────────────────────
@@ -133,21 +171,69 @@ export function safeNextPath(raw: string | null | undefined): string {
 export const PENDING_KEY = "rb_auth_pending";
 export const PENDING_TTL_MS = PENDING_SIGN_IN_TTL_MS;
 
-export type PendingSignIn = { at: number; next: string };
+/**
+ * A MEMBER SIGNED IN ON THIS BROWSER (S12-087; second recheck of R1).
+ * AuthContext writes it on every auth event that carries a session, and only
+ * a deliberate sign-out (or an account deletion) removes it, with the other
+ * personal keys. use-product-checkout asks its one "Have Pro? Sign in first"
+ * question when this mark is here and no session is: that covers a session
+ * that ended in another tab, or before this tab opened (a refresh token
+ * revoked elsewhere fails auth-js's load-time refresh, whose SIGNED_OUT is
+ * then the first event a tab hears). EmailReportCapture never writes it: a
+ * report requester has no account. Defined here, not in the context module,
+ * because a hook must read it even where a test mocks the context away.
+ */
+export const MEMBER_MARK_KEY = "rb_member_signed_in_at";
 
-export function setPendingSignIn(next: string | null | undefined, now: number = Date.now()): void {
-  try { localStorage.setItem(PENDING_KEY, JSON.stringify({ at: now, next: safeNextPath(next) })); } catch { /* storage blocked: links ask first */ }
+/**
+ * `email` is the address the person typed when they asked for the link (a
+ * code, a reset, a confirmation), lower-cased; null for a provider sign-in,
+ * whose address is not known until it returns. A link that signs in to any
+ * other address is not the one this browser asked for. `provider` marks a
+ * Google press: that marker lives PROVIDER_PENDING_TTL_MS (ten minutes), is
+ * cleared by a failed or cancelled return and by /auth mounting without a
+ * return, and what it adopts always carries the "Signed in as" banner (lead
+ * decision E, third fixer round). A marker that names no address and is not
+ * a provider's is read as a provider's: it can vouch for nobody in particular.
+ */
+export type PendingSignIn = { at: number; next: string; email: string | null; provider: boolean };
+
+export function setPendingSignIn(next: string | null | undefined, now: number = Date.now(), email?: string | null, opts?: { provider?: boolean }): void {
+  const addr = typeof email === "string" && email.includes("@") ? email.trim().toLowerCase() : null;
+  try {
+    localStorage.setItem(PENDING_KEY, JSON.stringify({ at: now, next: safeNextPath(next), ...(addr ? { email: addr } : {}), ...(opts?.provider ? { provider: true } : {}) }));
+  } catch { /* storage blocked: links ask first */ }
 }
 
 export function readPendingSignIn(now: number = Date.now()): PendingSignIn | null {
   try {
-    const raw = JSON.parse(localStorage.getItem(PENDING_KEY) ?? "null") as { at?: unknown; next?: unknown } | null;
+    const raw = JSON.parse(localStorage.getItem(PENDING_KEY) ?? "null") as { at?: unknown; next?: unknown; email?: unknown; provider?: unknown } | null;
     if (!raw || typeof raw.at !== "number" || !Number.isFinite(raw.at)) return null;
-    if (raw.at > now + 60_000 || now - raw.at > PENDING_TTL_MS) return null;
-    return { at: raw.at, next: safeNextPath(typeof raw.next === "string" ? raw.next : null) };
+    const email = typeof raw.email === "string" && raw.email.includes("@") ? raw.email.trim().toLowerCase() : null;
+    const provider = raw.provider === true || !email;
+    if (raw.at > now + 60_000 || now - raw.at > (provider ? PROVIDER_PENDING_TTL_MS : PENDING_TTL_MS)) return null;
+    return { at: raw.at, next: safeNextPath(typeof raw.next === "string" ? raw.next : null), email, provider };
   } catch {
     return null;
   }
+}
+
+/** Forget a marker that names no address (a provider press that never returned). One naming an address is kept. */
+export function clearAddresslessPendingSignIn(now: number = Date.now()): void {
+  const p = readPendingSignIn(now);
+  if (p && !p.email) clearPendingSignIn();
+}
+
+/**
+ * Whether a link that signs in to `accountEmail` is the sign-in this browser
+ * started: a live marker, and, when the marker names the address the person
+ * asked for, that same address. The account's address must come from the
+ * auth server (src/lib/auth-probe.ts), never from a token's own claims.
+ */
+export function pendingMatches(pending: PendingSignIn | null, accountEmail: string | null | undefined): boolean {
+  if (!pending) return false;
+  if (!pending.email) return true;
+  return String(accountEmail ?? "").trim().toLowerCase() === pending.email;
 }
 
 export function clearPendingSignIn(): void {

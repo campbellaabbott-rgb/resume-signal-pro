@@ -1,14 +1,20 @@
 /**
- * "YOU'RE SIGNED IN AS a***@domain" (login-CSRF protection, Account UX spec 4).
+ * "IS THIS YOUR ACCOUNT?" (login-CSRF protection, Account UX spec 4; review
+ * of R1, decision 3).
  *
- * Shown when a session arrives from a link or a provider return that this
- * browser did not start (no pending-sign-in marker), and after a confirmation
- * link pressed without one. A crafted link could otherwise sign a person into
- * the sender's account, where anything they then upload is the sender's to
- * read. The address is masked: whoever holds the link learns nothing new.
+ * Shown when a link or a provider return that this browser did not start (no
+ * pending-sign-in marker for that address) would sign the visitor in. A
+ * crafted link could otherwise sign a person into the sender's account, where
+ * anything they then upload is the sender's to read. It is asked BEFORE any
+ * session exists here: the link was resolved through a client that keeps
+ * nothing (src/lib/auth-probe.ts), and the address shown is the one the auth
+ * server named for it, in full. Whoever holds the link already holds that
+ * account, so the address tells them nothing new, while a masked one could be
+ * matched by a look-alike address. "Not me" signs nothing in and touches
+ * nothing of the visitor's.
  *
  * Rendered as a modal over whatever page the link opened, by AuthProvider (a
- * stashed session) or by the sign-in page (a confirmation link).
+ * stashed session), or inline in the sign-in card (a confirmation link).
  */
 import { useEffect, useRef, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
@@ -16,15 +22,16 @@ import { Loader2, UserCheck } from "lucide-react";
 import { useAuthStrings } from "@/i18n/auth/load";
 
 type Props = {
-  maskedEmail: string;
+  /** The account's full address, as the auth server named it. */
+  email: string;
   busy?: boolean;
   onContinue: () => void;
-  onSignOut: () => void;
+  onCancel: () => void;
   /** Rendered inline (inside the sign-in card) rather than as a modal over the page. */
   inline?: boolean;
 };
 
-export function SignedInAsInterstitial({ maskedEmail, busy = false, onContinue, onSignOut, inline = false }: Props) {
+export function SignedInAsInterstitial({ email, busy = false, onContinue, onCancel, inline = false }: Props) {
   const { t } = useTranslation();
   useAuthStrings();
   const continueRef = useRef<HTMLButtonElement>(null);
@@ -54,11 +61,12 @@ export function SignedInAsInterstitial({ maskedEmail, busy = false, onContinue, 
         <UserCheck className="h-6 w-6 text-primary" aria-hidden="true" />
       </div>
       <h2 id="rb-signed-in-as-title" className="mb-2 text-lg font-semibold text-foreground">
-        {t("auth.interstitial.title", "You're signed in as {{email}}", { email: maskedEmail || "…" })}
+        {t("auth.linkCheck.title", "Is this your account?")}
       </h2>
-      <p id="rb-signed-in-as-body" className="mb-5 text-sm text-muted-foreground">
-        {t("auth.interstitial.body", "This sign-in came from a link this browser didn't ask for. Continue only if this is your account.")}
+      <p id="rb-signed-in-as-body" className="mb-2 text-sm text-muted-foreground">
+        {t("auth.linkCheck.body", "This link signs in to the account below. This browser didn't ask for it, so nothing is signed in until you say so.")}
       </p>
+      <p className="mb-5 break-all text-sm font-medium text-foreground" data-testid="link-check-email">{email}</p>
       <button
         ref={continueRef}
         type="button"
@@ -67,15 +75,15 @@ export function SignedInAsInterstitial({ maskedEmail, busy = false, onContinue, 
         className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 disabled:opacity-60"
       >
         {busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-        {t("auth.interstitial.continue", "Continue")}
+        {t("auth.linkCheck.continue", "Yes, continue")}
       </button>
       <button
         type="button"
-        onClick={onSignOut}
+        onClick={onCancel}
         disabled={busy}
         className="mt-2 inline-flex min-h-[44px] w-full items-center justify-center rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 disabled:opacity-60"
       >
-        {t("auth.interstitial.notYou", "Not you? Sign out")}
+        {t("auth.linkCheck.cancel", "Not me, cancel")}
       </button>
     </div>
   );
