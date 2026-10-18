@@ -16,6 +16,45 @@ import { normalizeBuilderResume } from "@/types/resume-builder";
 import { toast } from "sonner";
 import { writingRefusalOf, writingRefusalText } from "@/lib/writing-refusal";
 
+type TFn = (key: string, fallback: string, vars?: Record<string, unknown>) => string;
+
+/**
+ * A 429 that is not the writing allowance, worded by the server's code and
+ * Retry-After (wave 4 round 2 review; S12-051 for the co-pilot): the model
+ * spend gate's hour (Retry-After 3600) is not "try tomorrow", and a busy
+ * service is not a spent limit. "Tomorrow" only when nothing says otherwise.
+ */
+export function copilotLimitText(body: Record<string, unknown> | null, retryAfterSeconds: number | null, t: TFn): string {
+  const code = typeof body?.code === "string" ? body.code : typeof body?.error === "string" ? body.error : "";
+  if (code === "rate_limited_global" || code === "rate_limited_network" || code === "model_busy" || code === "limiter_unavailable") {
+    return t("accountPage.acBusy", "The AI service is busy — the ones prepped so far are saved. Try the rest in a few minutes.");
+  }
+  if (retryAfterSeconds && retryAfterSeconds > 0) {
+    const minutes = Math.max(1, Math.round(retryAfterSeconds / 60));
+    return minutes >= 120
+      ? t("accountPage.acLimitHours", "Generation limit reached — the ones prepped so far are saved. Try the rest in about {{hours}} hours.", { hours: Math.round(minutes / 60) })
+      : t("accountPage.acLimitMinutes", "Generation limit reached — the ones prepped so far are saved. Try the rest in about {{minutes}} minutes.", { minutes });
+  }
+  return t("accountPage.acDailyLimit", "Daily generation limit reached — the ones prepped so far are saved. Try the rest tomorrow.");
+}
+
+/** A failed invoke's body and Retry-After (the SDK puts the Response on error.context). */
+async function limitTextOf(error: unknown, t: TFn): Promise<string> {
+  const ctx = (error as { context?: Response } | null)?.context;
+  let body: Record<string, unknown> | null = null;
+  let retryAfter: number | null = null;
+  try {
+    const ra = Number(ctx?.headers?.get?.("retry-after"));
+    retryAfter = Number.isFinite(ra) && ra > 0 ? ra : null;
+    const copy = ctx && typeof ctx.clone === "function" ? ctx.clone() : ctx;
+    const parsed = copy && typeof copy.json === "function" ? await copy.json() : null;
+    body = parsed && typeof parsed === "object" ? parsed as Record<string, unknown> : null;
+  } catch {
+    body = null;
+  }
+  return copilotLimitText(body, retryAfter, t);
+}
+
 export interface CopilotApp {
   id: string;
   company: string;
@@ -127,7 +166,7 @@ export function ApplyCopilotPanel({
             // ended session: said with when it comes back, and the batch stops.
             const refusal = await writingRefusalOf(error);
             if (refusal) { toast.error(writingRefusalText(refusal, (k, d, v) => t(k, d, v), i18n.language)); break; }
-            if (status === 429) { toast.error(t("accountPage.acDailyLimit", "Daily generation limit reached — the ones prepped so far are saved. Try the rest tomorrow.")); break; }
+            if (status === 429) { toast.error(await limitTextOf(error, (k, d, v) => t(k, d, v))); break; }
             continue; // 422 grounding refusal or transient — skip this one, keep going
           }
           if (!(data as { success?: boolean } | null)?.success) continue;
@@ -146,7 +185,7 @@ export function ApplyCopilotPanel({
           toast.error(writingRefusalText(letterRefusal, (k, d, v) => t(k, d, v), i18n.language));
           stop = true;
         } else if (letterError && (letterError as { context?: { status?: number } })?.context?.status === 429) {
-          toast.error(t("accountPage.acDailyLimit", "Daily generation limit reached — the ones prepped so far are saved. Try the rest tomorrow."));
+          toast.error(await limitTextOf(letterError, (k, d, v) => t(k, d, v)));
           stop = true;
         }
         const full = typeof letter === "string" && letter.trim() ? { ...kit, coverLetter: letter } : kit;

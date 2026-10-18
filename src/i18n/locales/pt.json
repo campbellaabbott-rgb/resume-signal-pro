@@ -1726,7 +1726,9 @@
       "proName": "Pro",
       "proDesc": "Plano mensal: análises ilimitadas e todas as ferramentas pagas, incluindo a Análise completa. Cancele quando quiser na sua conta.",
       "proPrice": "${{price}}/mês",
-      "fullAnalysisDescOwn": "Uma análise à parte e mais profunda do seu currículo: uma decomposição completa da pontuação, reescritas tópico a tópico e um plano de ação com prioridades. Um só pagamento, sem subscrição."
+      "fullAnalysisDescOwn": "Uma análise à parte e mais profunda do seu currículo: uma decomposição completa da pontuação, reescritas tópico a tópico e um plano de ação com prioridades. Um só pagamento, sem subscrição.",
+      "fullAnalysisIncluded": "Incluído no seu plano Pro: uma análise separada e mais profunda do seu currículo, com a pontuação completa discriminada, reescritas ponto a ponto e um plano de ação priorizado.",
+      "fullAnalysisIncludedCta": "Executar"
     },
     "interviewPrepSignIn": {
       "body": "Uma conta gratuita inclui por dia um conjunto de preparação para entrevistas, um currículo adaptado e uma carta de apresentação.",
@@ -4781,7 +4783,10 @@
     "lastResumeSaved": "Guardado na sua conta como versão do currículo.",
     "lastResumeLabel": "Última análise, {{day}}",
     "lastResumeLabelScored": "Última análise, {{day}}: {{score}} pontos",
-    "localOfferFailed": "Não funcionou. Tente novamente dentro de um minuto."
+    "localOfferFailed": "Não funcionou. Tente novamente dentro de um minuto.",
+    "acBusy": "O serviço de IA está ocupado; o que já foi preparado está guardado. Tente o resto dentro de alguns minutos.",
+    "acLimitHours": "Limite de geração atingido; o que já foi preparado está guardado. Tente o resto dentro de cerca de {{hours}} horas.",
+    "acLimitMinutes": "Limite de geração atingido; o que já foi preparado está guardado. Tente o resto dentro de cerca de {{minutes}} minutos."
   },
   "applyAgent": {
     "badge": "Seu agente de IA para candidaturas",

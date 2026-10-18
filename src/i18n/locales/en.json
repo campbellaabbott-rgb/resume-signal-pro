@@ -1726,7 +1726,9 @@
       "proName": "Pro",
       "proDesc": "Monthly plan: unlimited scans and every paid tool, the Full Analysis included. Cancel anytime from your account.",
       "proPrice": "${{price}}/month",
-      "fullAnalysisDescOwn": "A separate, deeper analysis of your résumé: a full score breakdown, bullet-by-bullet rewrites and a prioritised action plan. One payment, no subscription."
+      "fullAnalysisDescOwn": "A separate, deeper analysis of your résumé: a full score breakdown, bullet-by-bullet rewrites and a prioritised action plan. One payment, no subscription.",
+      "fullAnalysisIncluded": "Included with your Pro plan: a separate, deeper analysis of your résumé, with a full score breakdown, bullet-by-bullet rewrites and a prioritised action plan.",
+      "fullAnalysisIncludedCta": "Run it"
     },
     "interviewPrepSignIn": {
       "body": "A free account includes one interview-prep set, one tailored résumé and one cover letter a day.",
@@ -4781,7 +4783,10 @@
     "lastResumeSaved": "Saved to your account as a résumé version.",
     "lastResumeLabel": "Last scan, {{day}}",
     "lastResumeLabelScored": "Last scan, {{day}}: scored {{score}}",
-    "localOfferFailed": "That didn't work. Try again in a minute."
+    "localOfferFailed": "That didn't work. Try again in a minute.",
+    "acBusy": "The AI service is busy — the ones prepped so far are saved. Try the rest in a few minutes.",
+    "acLimitHours": "Generation limit reached — the ones prepped so far are saved. Try the rest in about {{hours}} hours.",
+    "acLimitMinutes": "Generation limit reached — the ones prepped so far are saved. Try the rest in about {{minutes}} minutes."
   },
   "applyAgent": {
     "badge": "Your AI apply agent",

@@ -23,6 +23,8 @@
  *     it nowhere and links to no page that sells it.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { act, cleanup, render } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
@@ -193,6 +195,32 @@ describe("no buy button until the seller is named", () => {
     const steps = getByTestId("report-next-steps");
     expect(steps.querySelector('[data-offer="fullAnalysis"]')).not.toBeNull();
     expect(steps.querySelector("[data-purchases-open-soon]")).toBeNull();
+  });
+
+  // Wave 4 round 2 review (money lens): a Pro member's included analysis is
+  // not a sale (create-checkout mints it before its seller gate), but every
+  // surface hid it and the page refused before asking the server.
+  it("a paid Pro member is offered the included analysis, unpriced, while purchases are closed", async () => {
+    const run = vi.fn();
+    const { getByTestId } = await mount({ proIncludesAnalysis: true, onGetFullAnalysis: run });
+    const steps = getByTestId("report-next-steps");
+    expect(steps.querySelector('[data-offer="fullAnalysis"]'), "nothing is priced").toBeNull();
+    const included = steps.querySelector('[data-offer="fullAnalysisIncluded"]') as HTMLButtonElement | null;
+    expect(included).not.toBeNull();
+    expect(included!.textContent).toMatch(/Included with your Pro plan/);
+    expect(included!.textContent).not.toMatch(/\$\d/);
+    expect(steps.querySelector("[data-purchases-open-soon]")).toBeNull();
+    await act(async () => { included!.click(); });
+    expect(run).toHaveBeenCalledTimes(1);
+  });
+
+  it("the page asks the server for an included analysis instead of refusing first", () => {
+    const page = readFileSync(resolve(__dirname, "../pages/Index.tsx"), "utf8");
+    expect(page).toMatch(/const proIncludesAnalysis = proPlan\.active && !proPlan\.trialing;/);
+    expect(page).toMatch(/if \(!purchasesOpen\(\) && !proIncludesAnalysis\) \{/);
+    expect(page).toMatch(/proIncludesAnalysis=\{proIncludesAnalysis\}/);
+    const fn = readFileSync(resolve(__dirname, "../../supabase/functions/create-checkout/index.ts"), "utf8");
+    expect(fn.indexOf('.from("pro_grants")'), "the grant is minted before the seller gate").toBeLessThan(fn.indexOf("const closed = sellerGate("));
   });
 });
 

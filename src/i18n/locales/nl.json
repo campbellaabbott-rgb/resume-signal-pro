@@ -1726,7 +1726,9 @@
       "proName": "Pro",
       "proDesc": "Maandabonnement: onbeperkt scannen en elke betaalde tool, de volledige analyse inbegrepen. Altijd opzegbaar vanuit je account.",
       "proPrice": "$ {{price}}/maand",
-      "fullAnalysisDescOwn": "Een aparte, diepere analyse van je cv: een volledige uitsplitsing van de score, herschrijvingen punt voor punt en een actieplan met prioriteiten. Eén betaling, geen abonnement."
+      "fullAnalysisDescOwn": "Een aparte, diepere analyse van je cv: een volledige uitsplitsing van de score, herschrijvingen punt voor punt en een actieplan met prioriteiten. Eén betaling, geen abonnement.",
+      "fullAnalysisIncluded": "Inbegrepen bij je Pro-abonnement: een aparte, diepere analyse van je cv, met een volledige scoreopbouw, herschrijvingen per bullet en een geprioriteerd actieplan.",
+      "fullAnalysisIncludedCta": "Starten"
     },
     "interviewPrepSignIn": {
       "body": "Een gratis account bevat per dag één set gespreksvoorbereiding, één aangepast cv en één motivatiebrief.",
@@ -4781,7 +4783,10 @@
     "lastResumeSaved": "Opgeslagen in je account als cv-versie.",
     "lastResumeLabel": "Laatste scan, {{day}}",
     "lastResumeLabelScored": "Laatste scan, {{day}}: score {{score}}",
-    "localOfferFailed": "Dat lukte niet. Probeer het over een minuut opnieuw."
+    "localOfferFailed": "Dat lukte niet. Probeer het over een minuut opnieuw.",
+    "acBusy": "De AI-dienst is druk. Wat al is voorbereid, is opgeslagen. Probeer de rest over een paar minuten.",
+    "acLimitHours": "Generatielimiet bereikt. Wat al is voorbereid, is opgeslagen. Probeer de rest over ongeveer {{hours}} uur.",
+    "acLimitMinutes": "Generatielimiet bereikt. Wat al is voorbereid, is opgeslagen. Probeer de rest over ongeveer {{minutes}} minuten."
   },
   "applyAgent": {
     "badge": "Je AI-sollicitatieagent",

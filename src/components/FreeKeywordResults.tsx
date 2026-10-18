@@ -420,6 +420,8 @@ export interface FreeKeywordResultsProps {
   redFlags: RedFlag[];
   keywords: KeywordSuggestion[];
   onGetFullAnalysis: () => void;
+  /** A paid Pro plan includes the Full Analysis: offered (unpriced) even while purchases are closed. */
+  proIncludesAnalysis?: boolean;
   onGetJobAnalysis?: (jobTitle: string, jobCompany: string) => void;
   isLoading?: boolean;
   topSkipReasons?: string[];
@@ -611,6 +613,7 @@ export function FreeKeywordResults({
   redFlags: redFlagsProp,
   keywords,
   onGetFullAnalysis,
+  proIncludesAnalysis = false,
   onGetJobAnalysis,
   isLoading,
   topSkipReasons: topSkipReasonsProp,
@@ -834,6 +837,8 @@ export function FreeKeywordResults({
   // Track which CTA converts, then trigger checkout
   // Whether the report may offer a purchase: only once the seller is named.
   const canBuy = purchasesOpen();
+  // A Pro member's included analysis is not a sale: offered while purchases are closed.
+  const offerIncluded = !canBuy && proIncludesAnalysis;
 
   const handleUpgradeClick = (source: string) => {
     trackButtonClick('fullAnalysis', source);
@@ -4578,7 +4583,21 @@ export function FreeKeywordResults({
           {/* The Full Analysis button shows only once the seller's legal name
               and postal address are on the site (owner decision 2026-10-17,
               B&P 17538(d)); until then, purchases open soon. */}
-          {!canBuy && <PurchasesOpenSoon />}
+          {!canBuy && !offerIncluded && <PurchasesOpenSoon />}
+          {offerIncluded && (
+            <button
+              data-offer="fullAnalysisIncluded"
+              onClick={() => handleUpgradeClick('next_steps_full_analysis_included')}
+              disabled={isLoading}
+              className="w-full flex items-center justify-between rounded-xl border border-border p-3.5 text-left hover:border-primary/50 transition-colors disabled:opacity-60"
+            >
+              <span>
+                <span className="block text-sm font-medium text-foreground">{t('freeResults.nextSteps.fullAnalysisName')}</span>
+                <span className="block text-xs text-muted-foreground">{t('freeResults.nextSteps.fullAnalysisIncluded', 'Included with your Pro plan: a separate, deeper analysis of your résumé, with a full score breakdown, bullet-by-bullet rewrites and a prioritised action plan.')}</span>
+              </span>
+              <span className="text-sm font-semibold text-primary shrink-0 ml-3">{t('freeResults.nextSteps.fullAnalysisIncludedCta', 'Run it')}</span>
+            </button>
+          )}
           {canBuy && <PurchaseTerms kind="payment" />}
           {canBuy && (
           <button

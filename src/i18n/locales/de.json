@@ -1726,7 +1726,9 @@
       "proName": "Pro",
       "proDesc": "Monatsplan: unbegrenzte Scans und jedes kostenpflichtige Tool, die vollständige Analyse inklusive. Jederzeit in Ihrem Konto kündbar.",
       "proPrice": "{{price}} $/Monat",
-      "fullAnalysisDescOwn": "Eine eigene, tiefere Analyse Ihres Lebenslaufs: eine vollständige Aufschlüsselung des Werts, Umformulierungen Punkt für Punkt und ein priorisierter Aktionsplan. Eine Zahlung, kein Abo."
+      "fullAnalysisDescOwn": "Eine eigene, tiefere Analyse Ihres Lebenslaufs: eine vollständige Aufschlüsselung des Werts, Umformulierungen Punkt für Punkt und ein priorisierter Aktionsplan. Eine Zahlung, kein Abo.",
+      "fullAnalysisIncluded": "In Ihrem Pro-Plan enthalten: eine eigene, tiefere Analyse Ihres Lebenslaufs mit vollständiger Punkteaufschlüsselung, Umformulierungen Punkt für Punkt und einem priorisierten Aktionsplan.",
+      "fullAnalysisIncludedCta": "Starten"
     },
     "interviewPrepSignIn": {
       "body": "Ein kostenloses Konto umfasst pro Tag ein Set zur Gesprächsvorbereitung, einen angepassten Lebenslauf und ein Anschreiben.",
@@ -4781,7 +4783,10 @@
     "lastResumeSaved": "Als Lebenslaufversion in Ihrem Konto gespeichert.",
     "lastResumeLabel": "Letzter Scan, {{day}}",
     "lastResumeLabelScored": "Letzter Scan, {{day}}: {{score}} Punkte",
-    "localOfferFailed": "Das hat nicht geklappt. Versuchen Sie es in einer Minute erneut."
+    "localOfferFailed": "Das hat nicht geklappt. Versuchen Sie es in einer Minute erneut.",
+    "acBusy": "Der KI-Dienst ist ausgelastet. Die bisher vorbereiteten sind gespeichert. Versuchen Sie den Rest in ein paar Minuten.",
+    "acLimitHours": "Generierungslimit erreicht. Die bisher vorbereiteten sind gespeichert. Versuchen Sie den Rest in etwa {{hours}} Stunden.",
+    "acLimitMinutes": "Generierungslimit erreicht. Die bisher vorbereiteten sind gespeichert. Versuchen Sie den Rest in etwa {{minutes}} Minuten."
   },
   "applyAgent": {
     "badge": "Ihr KI-Bewerbungsagent",

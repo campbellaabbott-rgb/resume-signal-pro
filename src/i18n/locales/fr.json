@@ -1726,7 +1726,9 @@
       "proName": "Pro",
       "proDesc": "Formule mensuelle : scans illimités et tous les outils payants, Analyse complète comprise. Résiliable à tout moment depuis votre compte.",
       "proPrice": "{{price}} $/mois",
-      "fullAnalysisDescOwn": "Une analyse distincte et plus approfondie de votre CV : une ventilation complète du score, des réécritures point par point et un plan d'action priorisé. Un seul paiement, sans abonnement."
+      "fullAnalysisDescOwn": "Une analyse distincte et plus approfondie de votre CV : une ventilation complète du score, des réécritures point par point et un plan d'action priorisé. Un seul paiement, sans abonnement.",
+      "fullAnalysisIncluded": "Inclus dans votre offre Pro : une analyse distincte et plus poussée de votre CV, avec le détail complet du score, des réécritures point par point et un plan d'action priorisé.",
+      "fullAnalysisIncludedCta": "Lancer"
     },
     "interviewPrepSignIn": {
       "body": "Un compte gratuit comprend chaque jour une série de préparation aux entretiens, un CV adapté et une lettre de motivation.",
@@ -4781,7 +4783,10 @@
     "lastResumeSaved": "Enregistré dans votre compte comme version de CV.",
     "lastResumeLabel": "Dernière analyse, {{day}}",
     "lastResumeLabelScored": "Dernière analyse, {{day}} : {{score}} points",
-    "localOfferFailed": "Cela n'a pas fonctionné. Réessayez dans une minute."
+    "localOfferFailed": "Cela n'a pas fonctionné. Réessayez dans une minute.",
+    "acBusy": "Le service d'IA est occupé ; ce qui a déjà été préparé est enregistré. Réessayez le reste dans quelques minutes.",
+    "acLimitHours": "Limite de génération atteinte ; ce qui a déjà été préparé est enregistré. Réessayez le reste dans environ {{hours}} heures.",
+    "acLimitMinutes": "Limite de génération atteinte ; ce qui a déjà été préparé est enregistré. Réessayez le reste dans environ {{minutes}} minutes."
   },
   "applyAgent": {
     "badge": "Votre agent IA de candidature",

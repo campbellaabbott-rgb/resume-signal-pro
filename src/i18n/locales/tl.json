@@ -1726,7 +1726,9 @@
       "proName": "Pro",
       "proDesc": "Buwanang plan: walang limitasyong scan at bawat bayad na tool, kasama ang Full Analysis. Puwedeng i-cancel kahit kailan mula sa iyong account.",
       "proPrice": "${{price}}/buwan",
-      "fullAnalysisDescOwn": "Hiwalay at mas malalim na analysis ng resume mo: buong breakdown ng score, rewrite ng bawat bullet at action plan na naka-prioritize. Isang bayad, walang subscription."
+      "fullAnalysisDescOwn": "Hiwalay at mas malalim na analysis ng resume mo: buong breakdown ng score, rewrite ng bawat bullet at action plan na naka-prioritize. Isang bayad, walang subscription.",
+      "fullAnalysisIncluded": "Kasama sa Pro plan mo: isang hiwalay at mas malalim na pagsusuri ng resume mo, na may buong breakdown ng score, muling pagsulat bawat bullet at plano ng aksyon ayon sa prayoridad.",
+      "fullAnalysisIncludedCta": "Patakbuhin"
     },
     "interviewPrepSignIn": {
       "body": "Kasama sa libreng account ang isang interview-prep set, isang tailored resume at isang cover letter bawat araw.",
@@ -4781,7 +4783,10 @@
     "lastResumeSaved": "Na-save sa account mo bilang bersyon ng resume.",
     "lastResumeLabel": "Huling scan, {{day}}",
     "lastResumeLabelScored": "Huling scan, {{day}}: score {{score}}",
-    "localOfferFailed": "Hindi ito gumana. Subukan ulit pagkalipas ng isang minuto."
+    "localOfferFailed": "Hindi ito gumana. Subukan ulit pagkalipas ng isang minuto.",
+    "acBusy": "Abala ang AI service — naka-save ang mga naihanda na. Subukan ang natitira pagkalipas ng ilang minuto.",
+    "acLimitHours": "Naabot ang limitasyon sa paggawa — naka-save ang mga naihanda na. Subukan ang natitira pagkalipas ng mga {{hours}} oras.",
+    "acLimitMinutes": "Naabot ang limitasyon sa paggawa — naka-save ang mga naihanda na. Subukan ang natitira pagkalipas ng mga {{minutes}} minuto."
   },
   "applyAgent": {
     "badge": "Ang iyong AI apply agent",

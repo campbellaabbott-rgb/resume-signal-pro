@@ -44,10 +44,10 @@ import { writingRefusalOf } from "@/lib/writing-refusal";
 
 const RESUME = "r".repeat(200);
 const POSTING = "p".repeat(200);
-const refused = (status: number, body: Record<string, unknown>) => ({
+const refused = (status: number, body: Record<string, unknown>, headers: Record<string, string> = {}) => ({
   data: null,
   error: Object.assign(new Error("Edge Function returned a non-2xx status code"), {
-    context: new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } }),
+    context: new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...headers } }),
   }),
 });
 
@@ -106,6 +106,38 @@ describe("the co-pilot's batch", () => {
     await waitFor(() => expect(invoke).toHaveBeenCalledTimes(2));
     await new Promise((r) => setTimeout(r, 1100));
     expect(invoke).toHaveBeenCalledTimes(2);
+  });
+});
+
+// Wave 4 round 2 review (S12-051 for the co-pilot): any 429 that was not the
+// writing allowance said "Daily generation limit reached ... try tomorrow",
+// including the model spend gate's one-hour refusal (Retry-After 3600).
+describe("the co-pilot's batch words an hourly refusal as an hour", () => {
+  const apps = [
+    { id: "1", company: "Acme", role: "Engineer", status: "saved", job_posting: POSTING },
+    { id: "2", company: "Beta", role: "Engineer", status: "saved", job_posting: POSTING },
+  ];
+  const run = async () => {
+    render(<MemoryRouter><ApplyCopilotPanel apps={apps} resumeFor={() => RESUME} proActive onKit={() => {}} onStatus={() => {}} /></MemoryRouter>);
+    fireEvent.click(screen.getByRole("button", { name: /Prep 2 tailored applications/i }));
+    await waitFor(() => expect(toastError).toHaveBeenCalled());
+    return String(toastError.mock.calls[0][0]);
+  };
+
+  it("the kit writer's rate_limited_function with Retry-After 3600 says about 60 minutes, not tomorrow", async () => {
+    invoke.mockResolvedValueOnce(refused(429, { error: "Too many requests", code: "rate_limited_function", limit: 60 }, { "Retry-After": "3600" }));
+    const said = await run();
+    expect(said).toMatch(/about 60 minutes/);
+    expect(said).not.toMatch(/tomorrow/i);
+  });
+
+  it("the cover letter's busy service says busy, not a spent limit", async () => {
+    invoke
+      .mockResolvedValueOnce({ data: { success: true, tailoredResume: { name: "Jo" } }, error: null })
+      .mockResolvedValueOnce(refused(429, { error: "busy", code: "rate_limited_global" }, { "Retry-After": "600" }));
+    const said = await run();
+    expect(said).toMatch(/busy/);
+    expect(said).not.toMatch(/tomorrow|limit reached/i);
   });
 });
 
