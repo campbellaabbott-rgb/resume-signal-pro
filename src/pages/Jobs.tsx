@@ -11572,7 +11572,7 @@ function JobsBoard({ boardId }: { boardId: string }) {
                                   postings per card; past that, the employer's own
                                   board, searched for this title, holds them all. */}
                               {job.token && (job.postingCount ?? 1) - 1 > (job.siblings ?? []).length && (
-                                <li className="text-[12px]">
+                                <li className="text-xs">
                                   <a
                                     href={companyLanderPath(job.token, `q=${encodeURIComponent(job.title)}`)}
                                     className="text-primary font-medium hover:underline"

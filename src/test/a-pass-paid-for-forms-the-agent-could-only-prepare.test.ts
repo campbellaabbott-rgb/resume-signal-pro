@@ -225,10 +225,16 @@ describe("S11-121: every place that says what opens the scorer names the Agent p
     expect(adds).toMatch(/fit_resume needs a paid key, a live Agent Pass or the Agent plan on the key's account/);
   });
 
-  it("llms.txt", async () => {
+  // THE CRAWLER FILE FOLLOWS THE APPLY PIVOT (owner decision 2026-10-11).
+  // The plan and the pass are retired and no longer sold, so llms.txt names
+  // neither as what opens the scorer: it says a paid key does, which stays
+  // true for every key the gate admits. The server-side lines above keep the
+  // live agent-mcp's wording until wave 4 replaces that function.
+  it("llms.txt says what opens the scorer and names no retired product", async () => {
     const { readFileSync } = await import("node:fs");
     const { resolve } = await import("node:path");
     const txt = readFileSync(resolve(__dirname, "../../public/llms.txt"), "utf8");
-    expect(txt).toMatch(/a paid key, a live Agent Pass or the Agent plan on the key's account opens résumé fit scoring/);
+    expect(txt).toMatch(/a paid key opens résumé fit scoring/);
+    expect(txt).not.toMatch(/\bAgent (?:Pass|plan)\b/);
   });
 });

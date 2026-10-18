@@ -4258,6 +4258,7 @@
     "hideOpenings": "Masquer les autres postes",
     "moreOpenings_one": "{{count}} autre poste ouvert pour ce métier",
     "moreOpenings_other": "{{count}} autres postes ouverts pour ce métier",
+    "moreOpenings_many": "{{count}} autres postes ouverts pour ce métier",
     "seeAllOpenings": "Voir les {{count}} postes ouverts pour ce métier",
     "a11yLoading": "Chargement des offres…",
     "a11yError": "Impossible de charger les offres. Réessayez.",

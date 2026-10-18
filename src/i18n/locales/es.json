@@ -4259,6 +4259,7 @@
     "hideOpenings": "Ocultar las demás vacantes",
     "moreOpenings_one": "{{count}} vacante más de este puesto",
     "moreOpenings_other": "{{count}} vacantes más de este puesto",
+    "moreOpenings_many": "{{count}} vacantes más de este puesto",
     "seeAllOpenings": "Ver las {{count}} vacantes de este puesto",
     "a11yLoading": "Cargando ofertas…",
     "a11yError": "No se pudieron cargar las ofertas. Inténtalo de nuevo.",

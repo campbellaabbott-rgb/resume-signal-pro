@@ -4258,6 +4258,7 @@
     "hideOpenings": "Ocultar as outras vagas",
     "moreOpenings_one": "Mais {{count}} vaga desta função",
     "moreOpenings_other": "Mais {{count}} vagas desta função",
+    "moreOpenings_many": "Mais {{count}} vagas desta função",
     "seeAllOpenings": "Ver todas as {{count}} vagas desta função",
     "a11yLoading": "Carregando vagas…",
     "a11yError": "Não foi possível carregar as vagas. Tente novamente.",
