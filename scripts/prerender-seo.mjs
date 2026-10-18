@@ -2496,7 +2496,16 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
       // employers. Its page still lists its openings.
       const intelAsked = primaries0.filter((c) => !D.isCollidedToken(c.token));
       if (supaUrl6 && supaKey6) {
+        // A DEADLINE ON THE WHOLE PHASE (2026-10-18): when get_company_intel
+        // is slow, 500 employers x an 8s timeout ran past the publish build's
+        // time limit and the publish failed. Past the deadline, or after a
+        // run of consecutive failures, the remaining pages state no places or
+        // fields — the same graceful outcome as a single failed read.
+        const intelDeadline = Date.now() + 90_000;
+        let intelFailRun = 0;
+        let intelSkipped = 0;
         for (let i = 0; i < intelAsked.length; i += 6) {
+          if (Date.now() > intelDeadline || intelFailRun >= 18) { intelSkipped = intelAsked.length - i; break; }
           await Promise.all(intelAsked.slice(i, i + 6).map(async (c) => {
             try {
               const r = await fetch(`${supaUrl6}/rest/v1/rpc/get_company_intel`, {
@@ -2506,10 +2515,12 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
                 signal: AbortSignal.timeout(8000),
               });
               const j = r.ok ? await r.json() : null;
-              if (j && typeof j === "object" && !Array.isArray(j)) intelOf.set(c.token, j);
-            } catch { /* that page states no places or fields */ }
+              if (j && typeof j === "object" && !Array.isArray(j)) { intelOf.set(c.token, j); intelFailRun = 0; }
+              else intelFailRun++;
+            } catch { intelFailRun++; /* that page states no places or fields */ }
           }));
         }
+        if (intelSkipped) console.warn(`[prerender-seo] company intel: stopped early (deadline or repeated failures) — ${intelSkipped} of ${intelAsked.length} employer pages state no places or fields this bake`);
       }
       // Each employer's listing: the never-read and oldest first, one board
       // read each from openingsBudget; every answer joins the ledger's cache.
