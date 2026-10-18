@@ -209,7 +209,8 @@ export function jdParagraphs(description: string): string[] {
  * clearly (SEO-034). Every one of 500 baked posting pages was lang="en",
  * including Spanish and German postings. The board carries no language for a
  * posting and no tenant locale, so this reads the employer's own words: each
- * language's commonest function words, counted over the first 400 words. It
+ * language's commonest function words, counted over the whole description
+ * (a bilingual posting with an English intro is judged on all of it). It
  * answers only when one language leads the next by at least two to one with
  * enough hits to mean it; a mixed or short text answers null and the page
  * keeps the site's language rather than a guess.
@@ -224,7 +225,7 @@ const LANG_MARKERS: Record<string, string[]> = {
   it: ["il", "di", "per", "con", "una", "che", "della", "nel", "sono", "gli", "nostro", "nostra"],
 };
 export function postingLanguage(description: string | null | undefined): string | null {
-  const words = decodeJdEntities(String(description ?? "")).toLowerCase().match(/[\p{L}]+/gu)?.slice(0, 400) ?? [];
+  const words = decodeJdEntities(String(description ?? "")).toLowerCase().match(/[\p{L}]+/gu)?.slice(0, 3000) ?? [];
   if (words.length < 40) return null;
   const sets = Object.entries(LANG_MARKERS).map(([lang, ws]) => [lang, new Set(ws)] as const);
   const score = sets.map(([lang, set]) => [lang, words.filter((w) => set.has(w)).length] as const).sort((a, b) => b[1] - a[1]);
@@ -441,6 +442,9 @@ const CA_POSTAL = /^[A-Za-z]\d[A-Za-z]\s?\d[A-Za-z]\d$/;
 const STREETISH =
   /(?:^\d)|\b(?:st|street|ave|avenue|rd|road|blvd|boulevard|dr|drive|ln|lane|way|pkwy|parkway|hwy|highway|suite|ste|floor|fl|unit|rte|route|bldg|building|campus|center|centre|hospital|plaza|tower)\b\.?/i;
 
+/** A facility, not a town ("Shenzhen Office", "Las Vegas Service Center"): never the locality, never a street either. */
+const FACILITY = /\b(?:office|headquarters?|hq|plant|warehouse|factory|depot)\b/i;
+
 /**
  * Words that name no town, whatever column they arrive in. The work-mode words
  * are here because Workday writes them into the location string ("Remote - US",
@@ -554,6 +558,7 @@ function isLocality(segment: string, country = "", employer = ""): boolean {
   // left out and the region and the country stand.
   if (NOT_IN_A_TOWN.test(s)) return false;
   if (/\bonly\b/i.test(s)) return false;
+  if (FACILITY.test(s)) return false;
   if (WORK_MODE_WORD.test(s)) return false;
   if (countryCodeOfName(s)) return false;
   const emp = employer.trim().toLowerCase();
@@ -707,9 +712,14 @@ export function postingPostalAddress(job: PostingRow): Record<string, unknown> |
         }
       }
       if (region || locality) return put(region, locality, null, null);
-      for (let i = parts.length - 1; i >= 0; i--) {
-        const r = remoteLabel(parts[i]);
-        if (r) return put(r.region, r.locality, null, null);
+      // The label is read off the SPACED dashes only, so a hyphenated region
+      // stays whole ("Germany - Rheinland-Pfalz Remote" is Rheinland-Pfalz).
+      const spaced = raw.split(/\s+[-–]\s+/).map((p) => p.trim()).filter(Boolean);
+      for (const list of [spaced, parts]) {
+        for (let i = list.length - 1; i >= 0; i--) {
+          const r = remoteLabel(list[i]);
+          if (r) return put(r.region, r.locality, null, null);
+        }
       }
       return address;
     }
@@ -821,7 +831,10 @@ export const ldEmploymentType = (stated: string | null | undefined): string | un
 export function postingJsonLd(
   job: PostingRow,
   description: string | null | undefined,
-  opts: { site: string; now?: Date } = { site: "" },
+  // `ignoreCountryMismatch` lets the bake ask whether the country is the ONLY
+  // thing in the way (a carried page then keeps its page with no markup, D7);
+  // it is never used to emit markup.
+  opts: { site: string; now?: Date; ignoreCountryMismatch?: boolean } = { site: "" },
 ): Record<string, unknown> | null {
   const now = opts.now ?? new Date();
   const path = postingPagePath(job.id);
@@ -839,7 +852,7 @@ export function postingJsonLd(
   // A row whose location ends in another country's name has a country we
   // cannot stand behind (SEO-035): no markup, and the bake gives the URL no
   // live page.
-  if (postingCountryMismatch(job)) return null;
+  if (!opts.ignoreCountryMismatch && postingCountryMismatch(job)) return null;
   const validThrough = postingValidThrough(job);
   if (!validThrough) return null;
   const employer = postingEmployer(job);

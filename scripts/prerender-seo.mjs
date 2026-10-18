@@ -2486,11 +2486,19 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
         // page. Its URL keeps a noindex page instead and never reaches the
         // sitemap, which is the whole contract. A location that ends in
         // another country's name is one of those (SEO-035).
-        if (!path || !ld) {
-          if (D.postingCountryMismatch(job)) countryMismatch++;
+        // A CARRIED page whose country is the only thing in the way keeps its
+        // page, indexable, with NO job markup (owner decision D7: no page
+        // indexable today loses its index without sign-off), and goes on the
+        // dry-run list as one that would be marked noindex. A new one gets no
+        // page. The markup is withheld either way: a Nigerian job is never
+        // marked up as a Louisiana one.
+        const mismatchOnly = !ld && !!path && D.postingCountryMismatch(job) && !!D.postingJsonLd(job, description, { site: SITE, ignoreCountryMismatch: true });
+        if (mismatchOnly) countryMismatch++;
+        if (!path || (!ld && !(mismatchOnly && carried))) {
           stubs.push({ id: job.id, path, state: "retired", title: job.title, company: job.company });
           continue;
         }
+        if (mismatchOnly) nameGateDryRun.push({ path, kind: "posting", token: job.token ?? null, name: D.postingEmployer(job), shown: job.location ?? null, reason: `the location ends in another country's name than the row's (${job.country})`, would: "be marked noindex (its job markup is already withheld)" });
         if (job.salary) withPay++;
         const paras = D.jdParagraphs(description);
         const nm = D.postingEmployer(job);
@@ -2505,7 +2513,7 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
         const lang = D.postingLanguage(description);
         // THE MARKUP GUARD (SEO-003, SEO-016): what postingJsonLd returned is
         // read back against the rules it is meant to keep.
-        {
+        if (ld) {
           const locality = ld.jobLocation?.address?.addressLocality;
           const wrong = [];
           if (ld.jobLocationType === "TELECOMMUTE" && job.workModeSource !== "vendor" && D.remoteLocationNamesAPlace(job)) wrong.push("TELECOMMUTE on a location that names a place, with no vendor flag");
@@ -2534,7 +2542,7 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
             <p>${companyLinkHtml(job.token, nm)} · <a href="/jobs">Search the live board</a> · <a href="/">Check your resume against this posting free</a></p>
             <p>${esc(ownSentence)}</p>
           `,
-          jsonLd: [ld, {
+          jsonLd: [...(ld ? [ld] : []), {
             "@context": "https://schema.org",
             "@type": "BreadcrumbList",
             itemListElement: [
@@ -2583,7 +2591,7 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
             </ul>
           </section>`;
       }
-      console.log(`[prerender-seo] posting pages: carried ${carriedPaths.length} / live ${postingPaths.length} of a ceiling of ${POSTING_PAGE_CEILING} (${carriedLive} carried, ${freshWritten} new from a pool of ${pool.length}, ${eligible.length} eligible, ${freshNameRefused} new refused for an employer name that cannot be printed) / gone ${stubCount("gone")} / retired ${stubCount("retired")} / seeded ${stubCount("seeded")} (published before the ledger, never re-read; ${seededPostings.added} added this bake) / unchecked ${stubCount("unchecked")} / tombstones ${stubCount("tombstone")}; ${withPay} show employer-stated pay on the page (none in the markup); fresh budget ${freshBudget} (carried live ${carriedLive}, ceiling ${POSTING_PAGE_CEILING}; ${retiredExpiring} expiring within ${POSTING_EXPIRY_NEAR_DAYS} days gave way to the reserve); ${countryMismatch} withheld for a location ending in another country; carry base: live sitemap ${liveSitemap ? "read" : "UNREAD"}, ledger ${ledgerSource}`);
+      console.log(`[prerender-seo] posting pages: carried ${carriedPaths.length} / live ${postingPaths.length} of a ceiling of ${POSTING_PAGE_CEILING} (${carriedLive} carried, ${freshWritten} new from a pool of ${pool.length}, ${eligible.length} eligible, ${freshNameRefused} new refused for an employer name that cannot be printed) / gone ${stubCount("gone")} / retired ${stubCount("retired")} / seeded ${stubCount("seeded")} (published before the ledger, never re-read; ${seededPostings.added} added this bake) / unchecked ${stubCount("unchecked")} / tombstones ${stubCount("tombstone")}; ${withPay} show employer-stated pay on the page (none in the markup); fresh budget ${freshBudget} (carried live ${carriedLive}, ceiling ${POSTING_PAGE_CEILING}; ${retiredExpiring} expiring within ${POSTING_EXPIRY_NEAR_DAYS} days gave way to the reserve); ${countryMismatch} with a location ending in another country (job markup withheld; a carried one keeps its page under D7 and is on the dry run); carry base: live sitemap ${liveSitemap ? "read" : "UNREAD"}, ledger ${ledgerSource}`);
       // A carried page the board did not answer for is the symptom to look at
       // first: it is an "unchecked" noindex page until a later bake reaches it.
       if (stubCount("unchecked")) {
@@ -2997,8 +3005,10 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
       }
       // The field pages' employer lists (SEO-018): every employer with an
       // indexable page, under each field its board carries roles in.
+      // Employers only: not the federal listing site, not an agency, not a
+      // name two hiring systems carry.
       for (const c of LANDERS) {
-        if (!indexable.has(c.token)) continue;
+        if (!indexable.has(c.token) || landerKindOf(c.token) !== "employer" || D.isCollidedToken(c.token)) continue;
         const intel = intelOf.get(c.token);
         for (const r of Array.isArray(intel?.categories) ? intel.categories : []) {
           if (!r || typeof r.category !== "string" || r.category === "other" || typeof r.n !== "number" || r.n <= 0) continue;
@@ -3008,7 +3018,7 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
       }
       for (const list of fieldEmployers.values()) list.sort((a, b) => b.n - a.n || a.name.localeCompare(b.name));
       const distinct = new Set([...indexable].map((t) => skeletonOf.get(t))).size;
-      console.log(`[prerender-seo] company pages: ${LANDERS.length} (${consolidated} canonicalized to a larger board of the same employer; ${nameShared} canonicalized to a larger, different employer under the same name; ${indexable.size} indexable, ${distinct} distinct once names and numbers are out; noindex: ${thin} with too few openings of their own, ${duplicated} matching another page, ${codeNamed} still named by a tenant code${codeNamed ? `: ${LANDERS.filter((c) => c.primary === c.token && c.unreadable).slice(0, 40).map((c) => c.token).join(", ")}` : ""}, ${nameRefused} new pages refused for a name that cannot be printed; ${nameRepaired} names repaired); duplicates: kept ${dupesKept} of ${dupeGroups.length} groups${dupeBreaker ? " (breaker on: none demoted)" : ""}; labelled: ${LANDERS.filter((c) => landerKindOf(c.token) === "usajobs").length} federal listing site, ${LANDERS.filter((c) => landerKindOf(c.token) === "agency").length} staffing agency (${AGENCY_TOKENS.size} agency boards in the catalogue); intel read for ${intelOf.size} of ${primaries0.length}; listings read ${openingsReads.size} of ${toRead.length} (${openingsUnread} unread), ${Object.keys(landerOpeningsCache).length} of ${listedTokens.length} carried`);
+      console.log(`[prerender-seo] company pages: ${LANDERS.length} (${consolidated} canonicalized to a larger board of the same employer; ${nameShared} sharing a name with a larger, different employer (self-canonical, noindex, SEO-037); ${indexable.size} indexable, ${distinct} distinct once names and numbers are out; noindex: ${thin} with too few openings of their own, ${duplicated} matching another page, ${codeNamed} still named by a tenant code${codeNamed ? `: ${LANDERS.filter((c) => c.primary === c.token && c.unreadable).slice(0, 40).map((c) => c.token).join(", ")}` : ""}, ${nameRefused} new pages refused for a name that cannot be printed; ${nameRepaired} names repaired); duplicates: kept ${dupesKept} of ${dupeGroups.length} groups${dupeBreaker ? " (breaker on: none demoted)" : ""}; labelled: ${LANDERS.filter((c) => landerKindOf(c.token) === "usajobs").length} federal listing site, ${LANDERS.filter((c) => landerKindOf(c.token) === "agency").length} staffing agency (${AGENCY_TOKENS.size} agency boards in the catalogue); intel read for ${intelOf.size} of ${primaries0.length}; listings read ${openingsReads.size} of ${toRead.length} (${openingsUnread} unread), ${Object.keys(landerOpeningsCache).length} of ${listedTokens.length} carried`);
 
       // ---- Once-published company pages this bake did not choose (SEO-002) ----
       //
@@ -3615,7 +3625,12 @@ export { default as EN_COMPANY_SHARD } from "../src/i18n/shards/company/en.json"
       write({
         path: "/agents",
         title: "Connect Your Agent — MCP Server for the Live Job Board",
-        description: `Connect Claude, ChatGPT or Claude Code to ${countClause} from employers' own hiring systems. Search free; apply yourself on the employer's site.`,
+        // Inside the snippet budget with its date (OBS-2, SEO-026); spelled
+        // inline, because the guard runs this block alone.
+        description: [
+          `Connect Claude, ChatGPT or Claude Code to ${countClause} from employers' own hiring systems. Search free; apply yourself on the employer's site.`,
+          `Connect Claude, ChatGPT or Claude Code to ${countClause} from employers' own hiring systems, free.`,
+        ].find((d) => d.length <= 160) ?? `Connect Claude, ChatGPT or Claude Code to the live job board, free.`,
         jsonLd: [
           breadcrumbLd([{ name: "Home", path: "/" }, { name: "Connect your agent", path: "/agents" }]),
           // THE MCP SERVER AS SOFTWARE (SEO-011a): /agents carried only a

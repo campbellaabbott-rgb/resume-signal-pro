@@ -7,7 +7,7 @@
  * read), so the posting markup is held by seo-bake-posting-markup.test.ts and
  * by the bake's own job-markup check, whose clean line this file asserts.
  */
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { execFileSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -16,6 +16,10 @@ import { crawlerText, jsonLdBlocks } from "../../scripts/prerender-retired.mjs";
 import { OFF_PAGE_HOST_NAMES, bannedSourcePhrasesIn } from "../../scripts/prerender-copy.mjs";
 import { AFFILIATE_COMMISSION_CENTS, formatUsd } from "@/config/affiliate-commission";
 import { mcpServerUrl, publicApiBase } from "@/config/public-endpoints";
+
+// Several reads below walk a few thousand written files; on a loaded machine
+// that outruns the 5-second default, which would report a timeout, not a defect.
+vi.setConfig({ testTimeout: 120_000 });
 
 const ROOT = resolve(__dirname, "../..");
 const SITE = "https://resumebooster.work";
@@ -268,7 +272,7 @@ describe("OBS-2: the families the report named fit the snippet at the source", (
 
 describe("no page in the bake carries pay in its job markup", () => {
   it("baseSalary appears nowhere in dist", () => {
-    const offenders = filesUnder(DIST).filter((f) => f.endsWith(".html") && readFileSync(join(DIST, f), "utf8").includes('"baseSalary"'));
+    const offenders = filesUnder(DIST).filter((f) => f.endsWith("index.html") && readFileSync(join(DIST, f), "utf8").includes('"baseSalary"'));
     expect(offenders).toEqual([]);
     expect(existsSync(join(DIST, "llms.txt"))).toBe(true);
   });

@@ -108,6 +108,11 @@ describe("SEO-003: a remote label that names a place is that place, never TELECO
       expect(loc === undefined || !countryCodeOfName(loc), `${location} -> ${loc}`).toBe(true);
       expect(loc === undefined || !loc.toLowerCase().includes(String(company ?? "acme").toLowerCase()), `${location} -> ${loc}`).toBe(true);
     }
+    // A hyphenated region stays whole (the bake first gave "Pfalz" and "Württemberg").
+    expect(addr("Germany - Rheinland-Pfalz Remote", "DE")).toEqual({ "@type": "PostalAddress", addressCountry: "DE", addressRegion: "Rheinland-Pfalz" });
+    expect(addr("Germany - Baden-Württemberg Remote", "DE")).toEqual({ "@type": "PostalAddress", addressCountry: "DE", addressRegion: "Baden-Württemberg" });
+    // A facility is not a town.
+    expect(addr("China - Shenzhen Office", "CN").addressLocality).toBeUndefined();
     // What survives is the region and the country.
     expect(addr("Utah | Hybrid", "US")).toEqual({ "@type": "PostalAddress", addressCountry: "US", addressRegion: "UT" });
     expect(addr("Houston (Corporate Office)", "US")).toEqual({ "@type": "PostalAddress", addressCountry: "US" });
@@ -177,6 +182,10 @@ describe("SEO-034: the page says which language the employer wrote in", () => {
   });
   it("answers nothing for a short or mixed text rather than guess", () => {
     expect(postingLanguage("Short text.")).toBeNull();
+    // A bilingual posting (an English half, a French half) is judged on all of it, and is neither.
+    const fr = "Vous rejoindrez une équipe pour les clients et nous offrons des avantages dans un environnement sur mesure avec votre équipe. ".repeat(6);
+    expect(postingLanguage(DESC + fr)).toBeNull();
+    expect(postingLanguage(fr)).toBe("fr");
   });
 });
 
