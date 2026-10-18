@@ -809,22 +809,23 @@ ChatGPT nonce is 0 in both section 86 and section 92.
 
 ### Deploy order
 
-1. R1 (deployed 2026-10-17). Record its verified deploy in
-   `docs/deploy-ledger.json` `verifiedDeploys` with `node
-   scripts/deploy-ledger.mjs --record-deploy` from main (the open
-   `ledger/r1-verified` change does this); until it lands, the ledger reports
-   MUST BUMP for auth-email-hook, auth-signed-in and process-email-queue,
-   R1's functions.
+1. R1 (deployed 2026-10-17). Its verified deploy is recorded on main (PR #37,
+   `verifiedDeploys` 9c991052, with 20261014100000 in
+   `appliedOutsideDrizzle`). This branch does not have it until main is
+   merged, so its ledger still reports MUST BUMP for auth-email-hook,
+   auth-signed-in and process-email-queue, R1's functions; the merge clears
+   it.
 2. Company profiles 0-2 and the design upgrade (PR #36, design/integration).
 3. Then this branch: merge origin/main into it first. Expect conflicts in
    the nine locale files, `public/llms.txt`, `src/components/AtsCoverage.tsx`,
    `src/data/guides.ts`, `src/pages/Index.tsx`, `src/pages/Pricing.tsx`,
    `docs/deploy-ledger.json` and six tests (git merge-tree, 2026-10-18).
    company-profiles owns them; wave 4 keeps the other side and re-applies its
-   own hunks and its 349 locale keys (adding only). If main has gained the
-   `ledger/r1-verified` change, keep its 20261014100000 in
-   `appliedOutsideDrizzle` and do not restore 20261008125000 or
-   20261008128000 there (they are proved by behaviour now). Re-run the gate,
+   own hunks and its 349 locale keys (adding only). Main has the
+   `ledger/r1-verified` change (PR #37): keep its 20261014100000 in
+   `appliedOutsideDrizzle` and its `verifiedDeploys` entry, and do not
+   restore 20261008125000 or 20261008128000 there (this branch proves them
+   by behaviour). Re-run the gate,
    then generate the message at the merge commit on main with `node
    scripts/deploy-ledger.mjs --message`: migrations, then the functions, then
    the frontend publish.
@@ -941,8 +942,8 @@ After the deploy:
   `password_changed_notification` as a notice with no link to the account's
   address, like EmailChangeNoticeEmail (CP-007); optionally refuse purpose
   "marketing" payloads in process-email-queue while the seller identity is
-  empty, as a second guard behind 20261011172000. And record R1's verified
-  deploy (deploy order, step 1).
+  empty, as a second guard behind 20261011172000. (R1's verified deploy is
+  recorded on main already, PR #37.)
 - **ops-email-tests, next round**: scan-heartbeat still counts
   `content_generated` as delivered and its named-order mail lists neither
   `email_failed` nor made-but-unmailed orders (CP-021; the verdict is right,
@@ -991,8 +992,8 @@ On the integration branch, 2026-10-18 (load average 7-20 from other workflows):
   tests.
 - `node scripts/deploy-ledger.mjs --against origin/main`: 0 violations;
   `--draft`: 69 functions and 21 migrations to apply, the held
-  20261011103000, and MUST BUMP only for R1's three functions (deploy order,
-  step 1).
+  20261011103000, and MUST BUMP only for R1's three functions, which main's
+  record of R1's verified deploy (PR #37) clears at the merge.
 - `--overlap HEAD origin/design/integration origin/r1/integration`: no
   undeclared overlap, no shared function.
 - The job-board upload tally with design/integration's _shared files:
