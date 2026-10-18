@@ -1929,6 +1929,8 @@ const Index = ({ landing }: { landing?: import("@/data/tool-landings").ToolLandi
         // The browser's time zone: the server may refuse a buyer in the EU,
         // the EEA or the UK on it while those sales are off (S12-059).
         ...territoryHint(),
+        // The page's language, so the purchase mail is written in it (S12-114).
+        language: i18n.language,
       });
       // Closed while the server was answering: nothing more happens.
       if (cancelled()) return;

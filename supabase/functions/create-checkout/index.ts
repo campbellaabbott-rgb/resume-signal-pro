@@ -29,7 +29,10 @@ import { purchasesOpen, sellerGate } from "../_shared/seller-gate.ts";
 // seller_identity_missing, seller-gate.ts) and the GET says purchasesOpen; a
 // buyer in India is refused with the EU, the EEA and the UK, in words that
 // name what was checked (sales-territory.ts).
-const FN_BUILD = "create-checkout.2026-10-11.23";
+// 2026-10-11.29 (wave 4 round 2 integration): the session records the
+// page's language (allow-listed), so the purchase-link mail and the sweep
+// write to the buyer in it (S12-114, payments-delivery's handoff).
+const FN_BUILD = "create-checkout.2026-10-11.29";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -416,6 +419,14 @@ serve(async (req) => {
     // temporary store, whose id the browser already holds. A body that still
     // carries the text (an old cached bundle) is simply not looked at.
     const { currency: requestedCurrency, promoCode } = requestBody;
+    // THE BUYER'S LANGUAGE (S12-114): the purchase-link mail stripe-webhook
+    // sends and the retry sweep resend read metadata.language, and fell back
+    // to English for every Full Analysis buyer because this session never
+    // carried it. Allow-listed against the site's languages, as
+    // create-product-checkout does, since it flows into Stripe's metadata.
+    const CHECKOUT_LANGUAGES = ['en', 'en-GB', 'es', 'hi', 'tl', 'de', 'fr', 'fr-CA', 'nl', 'pt'];
+    const checkoutLanguage = typeof requestBody?.language === 'string' && CHECKOUT_LANGUAGES.includes(requestBody.language)
+      ? requestBody.language : 'en';
     logStep("Received request", { currency: requestedCurrency });
 
     // Validate currency format if provided
@@ -628,6 +639,7 @@ serve(async (req) => {
         originalCurrency: currency,
         baseAmountUSD: BASE_PRICE_USD.toString(),
         product_type: 'full_analysis',
+        language: checkoutLanguage,
         ...buyerMetadata(caller),
         ...policy,
       },

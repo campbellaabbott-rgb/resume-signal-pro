@@ -111,6 +111,8 @@ describe("the homepage's Full Analysis press", () => {
     await press();
     expect(await screen.findByTestId("checkout-overlay")).toBeTruthy();
     await waitFor(() => expect(checkoutCalls.length).toBe(1));
+    // The page's language rides along, so the purchase mail is written in it (S12-114).
+    expect((checkoutCalls[0] as Array<Record<string, unknown>>)[0].language).toBe("en");
   });
 });
 
