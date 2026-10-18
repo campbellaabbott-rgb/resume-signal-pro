@@ -17,13 +17,18 @@
 #   - a q that is not text, or that is only a NUL, is named in ignoredFilters
 #     and the list is still served (S12-124);
 #   - 'cvs' and 'UPS' take the employer route and their rows are that
-#     employer's (S12-014);
+#     employer's (S12-014). The router never waits for the live employer
+#     list: an isolate's first text search builds it after the response, so
+#     each word is asked up to four times, two seconds apart, and judged on
+#     the first answer that routes (or the last);
 #   - 'accountant' takes the SIMPLE route and its first page is accountants,
 #     not account managers (S12-018);
 #   - 'nurse not night shift' serves no night-shift title, and 'driver
 #     -"box truck"' no box-truck title (S12-017);
-#   - 'nurse jobs not in Texas' does not lift Texas into the location filter
-#     (S12-172);
+#   - 'nurse jobs not in Texas' does not lift Texas into the location filter,
+#     names placeExclusion in ignoredFilters, and its first page is not all
+#     Texas rows (S12-172: the words "not in Texas" left in the text served
+#     only Texas nurses);
 #   - the pay order's first page is full (S12-035);
 #   - the names step of the last pass-end tail says how far it got, and never
 #     reads ok while boards wait (S12-015, S12-084);
@@ -60,8 +65,15 @@ VD92_EX=$(curl -s -m 60 -o /tmp/vd_92_exists.json -w '%{http_code}' -X POST "$B/
 # S12-124, S12-014, S12-018, S12-017, S12-172, S12-035: list reads.
 J '{"action":"list","q":123,"limit":1}' > /tmp/vd_92_qnum.json
 J '{"action":"list","q":"\u0000","limit":1}' > /tmp/vd_92_qnul.json
-J '{"action":"list","q":"cvs","limit":20}' > /tmp/vd_92_cvs.json
-J '{"action":"list","q":"UPS","limit":20}' > /tmp/vd_92_ups.json
+for VD92_W in cvs UPS; do
+  VD92_WF=/tmp/vd_92_$(echo "$VD92_W" | tr 'A-Z' 'a-z').json
+  for VD92_TRY in 1 2 3 4; do
+    J "{\"action\":\"list\",\"q\":\"$VD92_W\",\"limit\":20}" > "$VD92_WF"
+    grep -q '"searchRoute":"EMPLOYER"' "$VD92_WF" && break
+    [ "$VD92_TRY" = "4" ] || sleep 2
+  done
+  echo "INFO  q $VD92_W was asked $VD92_TRY time(s) before it was judged (the live keys are built after an isolate's first text search)"
+done
 J '{"action":"list","q":"accountant","limit":20}' > /tmp/vd_92_acct.json
 J '{"action":"list","q":"nurse not night shift","limit":60}' > /tmp/vd_92_night.json
 J '{"action":"list","q":"driver -\"box truck\"","limit":60}' > /tmp/vd_92_box.json
@@ -115,8 +127,10 @@ for(const [f,word,re] of [["/tmp/vd_92_cvs.json","cvs",/cvs/i],["/tmp/vd_92_ups.
 
 // S12-172
 {const j=rd("/tmp/vd_92_nottx.json");const named=JSON.stringify((j&&j.intentFilters)||[]);
+ const rs=rows(j);const tx=rs.filter((r)=>/texas|,\s*tx\b/i.test(String(r.location||""))||/texas/i.test(String(r.title||"")));
+ const ig=(j&&j.ignoredFilters)||[];
  if(!j)ok(false,"q \"nurse jobs not in Texas\" answered no JSON");
- else ok(!/texas|\btx\b/i.test(named),"q \"nurse jobs not in Texas\" lifts no Texas place (intentFilters "+named.slice(0,120)+"; "+(n(j)??"?")+" rows)");}
+ else ok(!/texas|\btx\b/i.test(named)&&ig.includes("placeExclusion")&&(rs.length===0||tx.length<rs.length),"q \"nurse jobs not in Texas\" lifts no Texas place (intentFilters "+named.slice(0,120)+"), names placeExclusion in ignoredFilters ("+JSON.stringify(ig)+"), and "+tx.length+" of its "+rs.length+" first rows name Texas (want fewer than all)");}
 
 // S12-035
 {const j=rd("/tmp/vd_92_pay.json");const rs=rows(j);

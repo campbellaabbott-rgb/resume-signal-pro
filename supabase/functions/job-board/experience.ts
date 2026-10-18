@@ -34,9 +34,16 @@ export function bandFromYears(minYears: number): ExperienceBand {
 // 5+ years of experience" offers the years as one way in, not a floor (a Humana
 // medical assistant was filed mid); "5 years preferred", "a plus", "nice to
 // have" and a "Preferred Qualifications" heading above the line are wishes.
-// "2 or 3 years" stays a requirement: the "or" follows a number.
+// "2 or 3 years" stays a requirement: the "or" follows a number. The wish
+// word must belong to the years themselves (right after them, or "ideally" /
+// "preferably" right before), never to another item in the same clause:
+// "Bachelor's degree preferred and 5+ years ... required" is a 5-year floor,
+// and "required" or "must" with the figure always binds. An "Additional
+// Qualifications" heading is not a wish list.
 const WISH = /\b(?:preferred|preferably|a plus|nice[- ]to[- ]have|desired|desirable|ideally|is an asset|an advantage)\b/;
-const WISH_HEADING = /\b(?:preferred|desired|nice[- ]to[- ]have|bonus|additional)\s+(?:qualifications|skills|experience|requirements)\b/g;
+const WISH_BEFORE = /\b(?:preferably|ideally)\s+(?:at\s+least\s+|a\s+minimum\s+of\s+)?$/;
+const BINDS = /\b(?:required|must|mandatory)\b/;
+const WISH_HEADING = /\b(?:preferred|desired|nice[- ]to[- ]have|bonus)\s+(?:qualifications|skills|experience|requirements)\b/g;
 const NEED_HEADING = /\b(?:required|minimum|basic|essential)\s+(?:qualifications|skills|experience|requirements)\b|\brequirements\s*:/g;
 const lastIndexOf = (re: RegExp, s: string): number => {
   let at = -1;
@@ -48,7 +55,10 @@ function notBinding(t: string, at: number, end: number, before: string): boolean
   if (/\bor\s+(?:an?\s+)?(?:equivalent\s+(?:of\s+)?)?(?:at\s+least\s+|minimum\s+(?:of\s+)?)?$/.test(before) && !/\d\s*or\s+$/.test(before)) return true;
   const s0 = Math.max(t.lastIndexOf(".", at), t.lastIndexOf(";", at), t.lastIndexOf(",", at), t.lastIndexOf("\n", at), t.lastIndexOf("!", at), t.lastIndexOf("?", at)) + 1;
   const cut = t.slice(end).search(/[.;,!?\n]/);
-  if (WISH.test(t.slice(s0, cut < 0 ? t.length : end + cut))) return true;
+  const tail = t.slice(end, cut < 0 ? t.length : end + cut).slice(0, 40).split(/\b(?:and|with)\b/)[0];
+  const lead = t.slice(Math.max(s0, at - 30), at);
+  if (BINDS.test(tail) || BINDS.test(lead.slice(-16))) return false;
+  if (WISH.test(tail) || WISH_BEFORE.test(lead)) return true;
   const head = t.slice(Math.max(0, at - 3000), at);
   return lastIndexOf(WISH_HEADING, head) > lastIndexOf(NEED_HEADING, head);
 }

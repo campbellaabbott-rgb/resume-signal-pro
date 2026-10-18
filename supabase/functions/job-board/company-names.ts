@@ -27,7 +27,8 @@ export type CompanyScope = {
   /** What the list filters by: the tokens asked for, plus every name resolved. */
   companies: unknown[];
   resolved: Array<{ asked: string; name: string; tokens: string[] }>;
-  unresolved: Array<{ asked: string; candidates: Candidate[] }>;
+  /** ambiguous: two carried employers share the exact name (we carry it, under more than one employer). */
+  unresolved: Array<{ asked: string; candidates: Candidate[]; ambiguous?: true }>;
   /** Names past NAMES_PER_CALL: not looked up, and not in the scope. */
   skipped: string[];
 };
@@ -90,7 +91,7 @@ export function resolveCompanyNames(asked: readonly unknown[], catalogue: Readon
       const near = exact.length > 1
         ? exact
         : employers.filter((_, i) => ix.folded[i].includes(fq)).sort((x, y) => size(y) - size(x));
-      out.unresolved.push({ asked: a, candidates: near.slice(0, 5).map(candidate) });
+      out.unresolved.push({ asked: a, candidates: near.slice(0, 5).map(candidate), ...(exact.length > 1 ? { ambiguous: true as const } : {}) });
       continue;
     }
     const hits = [...exact, ...named];

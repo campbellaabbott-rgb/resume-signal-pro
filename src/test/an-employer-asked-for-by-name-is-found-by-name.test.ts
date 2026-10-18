@@ -43,7 +43,7 @@ describe("names to tokens (company-names.ts)", () => {
   it("two employers sharing a name are never merged: refused, with both as candidates", () => {
     const r = resolveCompanyNames(["Flex"], CATALOGUE, EMPLOYERS);
     expect(r.companies).toEqual([]);
-    expect(r.unresolved).toEqual([{ asked: "Flex", candidates: [{ token: "flex", name: "Flex", open: 9 }, { token: "flextronics~wd1~Careers", name: "Flex", open: 572 }] }]);
+    expect(r.unresolved).toEqual([{ asked: "Flex", candidates: [{ token: "flex", name: "Flex", open: 9 }, { token: "flextronics~wd1~Careers", name: "Flex", open: 572 }], ambiguous: true }]);
   });
 
   it("a name that matches nothing is refused with near names, largest first; never a substring merge", () => {

@@ -73,7 +73,7 @@ import { categorize, CATEGORIZE_VERSION, JOB_CATEGORIES } from "./categories.ts"
 import { computeFit, resumeRoleTerms, scanResume } from "../_shared/fit-score.ts";
 import { METRO_ALIASES, sanitizeTerm, STATE_ALIASES } from "../_shared/location-terms.ts";
 // The board's place terms: _shared's aliases, and "City, ST" as the city in that state (query-place.ts).
-import { liftTrailingPlace, placeTerms as locationTerms, rankedPlaceParam as rankedLocationParam } from "./query-place.ts";
+import { COUNTRY_NAMES, liftTrailingPlace, negatedTrailingPlace, placeTerms as locationTerms, rankedPlaceParam as rankedLocationParam } from "./query-place.ts";
 import { askedByName, resolveCompanyNames, type CompanyScope } from "./company-names.ts";
 import { nextPassEndStep, PASS_END_RETRIES, PASS_END_STEPS, stalledPassEndStep, withStepReceipt, isPassEndStep, type PassEndRow, type PassEndStep, type StepReceipt } from "./pass-end.ts";
 import {
@@ -2306,25 +2306,42 @@ async function suggestEmployers(client: SupabaseClient): Promise<ReturnType<type
   return merged;
 }
 
-// Rationale: docs/job-board-index-notes.md#n1172-const-route_alias_deadline_ms
-const ROUTE_ALIAS_DEADLINE_MS = 800;
-/** Words no live employer key may claim: role abbreviations, places, filler, and the job acronyms people type. */
+/** How long a built live alias set routes searches after its last rebuild; past it, the table alone. */
+const ROUTE_ALIAS_STALE_MS = 30 * 60_000;
+/** Words no live employer key may claim: role abbreviations, places, countries, filler, and the job acronyms people type. */
 const LIVE_KEY_REFUSE: ReadonlySet<string> = new Set([
   ...Object.keys(ROLE_ALIASES), ...Object.keys(STATE_ALIASES), ...Object.keys(METRO_ALIASES).map((k) => foldName(k)),
+  ...Object.keys(COUNTRY_NAMES).map((k) => foldName(k)), "uae", "gb",
   "cna", "lpn", "lvn", "rn", "np", "pa", "cpa", "cdl", "hvac", "emt", "pta", "ota", "slp", "bcba", "rbt", "csr", "sdr",
   "bdr", "qc", "dba", "cfo", "ceo", "cto", "coo", "cmo", "vp", "gm", "crna", "cst", "phd", "mba", "aws", "sap", "erp",
   "crm", "seo", "ehs", "hse", "osha", "dot", "cad", "plc", "rf", "mep", "bim", "cnc", "pmp", "lmsw", "lcsw", "msw",
 ]);
-async function routeAliasesFor(client: SupabaseClient): Promise<typeof EMPLOYER_ALIASES> {
-  try {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const late = new Promise<null>((r) => { timer = setTimeout(() => r(null), ROUTE_ALIAS_DEADLINE_MS); });
-    const merged = await Promise.race([suggestEmployers(client), late]).finally(() => clearTimeout(timer));
-    if (!merged || merged.length === 0) return EMPLOYER_ALIASES;
-    return withLiveBrands(EMPLOYER_ALIASES, merged, LIVE_KEY_REFUSE);
-  } catch {
-    return EMPLOYER_ALIASES;
+let liveRouteAliases: { at: number; aliases: typeof EMPLOYER_ALIASES } | null = null;
+let liveRouteBuilding = false;
+/**
+ * The router's keys, never waited for: the live set this isolate built last
+ * (within ROUTE_ALIAS_STALE_MS), else the table. A set older than the suggest
+ * memo is rebuilt after the response (the employer read costs ~0.9 s).
+ */
+export function routeAliasesFor(client: SupabaseClient): typeof EMPLOYER_ALIASES {
+  const now = Date.now();
+  const built = liveRouteAliases && now - liveRouteAliases.at < ROUTE_ALIAS_STALE_MS ? liveRouteAliases : null;
+  if ((!built || now - built.at >= SUGGEST_MEMO_MS) && !liveRouteBuilding) {
+    liveRouteBuilding = true;
+    waitUntil(suggestEmployers(client).then((merged) => {
+      if (merged.length) liveRouteAliases = { at: Date.now(), aliases: withLiveBrands(EMPLOYER_ALIASES, merged, LIVE_KEY_REFUSE) };
+    }).finally(() => { liveRouteBuilding = false; }));
   }
+  return built ? built.aliases : EMPLOYER_ALIASES;
+}
+
+/** A browse the list pages by its keyset cursor (pageWithInner's seek), so the offset it carries is never read. */
+function cursorPaged(b: Record<string, unknown>): boolean {
+  const c = b.cursor as { ep?: unknown; id?: unknown; k?: unknown } | null | undefined;
+  return !!c && typeof c === "object" && typeof c.ep === "string" && /^\d{4}-\d{2}-\d{2}T[0-9:.+]+$/.test(c.ep)
+    && typeof c.id === "string" && c.id.length > 0 && c.id.length <= 200 && !/[",()\\]/.test(c.id)
+    && (c.k === undefined || c.k === "ep") && b.sort !== "salary" && b.sort !== "newest"
+    && !(b.category && b.includeUncategorised === true) && !String(b.q ?? "").trim();
 }
 
 /** The longest id `exists` reads (S12-123): every posting id is source:token:externalId, well under this. */
@@ -5257,9 +5274,15 @@ async function passEndNames(client: SupabaseClient, sliceWallStart: number): Pro
     // Rationale: docs/job-board-index-notes.md#n165-fixed
     let fixed = 0, failed = 0, already = 0, waiting = 0;
     const failedTokens: string[] = [];
+    // A retry the clock never reached sorts at or before `after`: carried, or it is never visited again.
+    const unreachedRetries: string[] = [];
     let after = queue.resumeAfter;
     for (const tk of queue.tokens) {
-      if (Date.now() >= nameSyncUntil) { waiting += JOB_SOURCES.filter((s) => s.token === tk).length || 1; continue; }
+      if (Date.now() >= nameSyncUntil) {
+        waiting += JOB_SOURCES.filter((s) => s.token === tk).length || 1;
+        if (queue.retry.has(tk)) unreachedRetries.push(tk);
+        continue;
+      }
       let tokenFailed = false;
       // Each board on the token, by its own vendor: a twin never takes the
       // other vendor's name (n417).
@@ -5298,7 +5321,7 @@ async function passEndNames(client: SupabaseClient, sliceWallStart: number): Pro
     const doneAt = new Date().toISOString();
     // Rationale: docs/job-board-index-notes.md#n660-if-waiting-failed
     if (waiting > 0 || failed > 0) {
-      const progress: NameSyncProgress = { version: NAME_SYNC_VERSION, after, retry: failedTokens.slice(0, 200), at: doneAt };
+      const progress: NameSyncProgress = { version: NAME_SYNC_VERSION, after, retry: [...failedTokens, ...unreachedRetries].slice(0, 200), at: doneAt };
       await client.from("job_board_meta").upsert({ k: "name_sync_progress", v: progress, updated_at: doneAt }, { onConflict: "k" });
       const detail = `name sync v${NAME_SYNC_VERSION}: ${fixed} renamed, ${already} already correct, ${failed} failed, ${waiting} waiting (resumes after ${after || "the first board"})`;
       console.log(`[JOB-BOARD] ${detail}`);
@@ -6071,7 +6094,7 @@ const INTENT_CONFLICTS: Record<string, string[]> = {
 function liftIntentFilters(
   rawQ: unknown,
   body: Record<string, unknown>,
-): { patch: Record<string, unknown>; labels: string[]; residualQ: string } | null {
+): { patch: Record<string, unknown>; labels: string[]; residualQ: string; placeExclusion?: true } | null {
   const q = String(rawQ ?? "");
   // noIntent: the caller (the page's undo) asked for every word as search text (L8-06).
   if (!q.trim() || body.noIntent === true) return null;
@@ -6101,9 +6124,12 @@ function liftIntentFilters(
     Object.assign(patch, place.patch);
     labels.push(place.label);
   }
-  if (labels.length === 0) return null;
+  // S12-172: a negated place is dropped from the words and named in ignoredFilters ("placeExclusion").
+  const notPlace = place ? null : negatedTrailingPlace(residual);
+  if (notPlace) residual = notPlace.head;
+  if (labels.length === 0 && !notPlace) return null;
   residual = residual.replace(/\u0001(\d+)\u0001/g, (_m, i) => quoted[Number(i)] ?? "").replace(/\s+/g, " ").trim();
-  return { patch, labels, residualQ: residual };
+  return { patch, labels, residualQ: residual, ...(notPlace ? { placeExclusion: true as const } : {}) };
 }
 
 // Rationale: docs/job-board-index-notes.md#n1195-function-ftssafe-t-string-string
@@ -7848,7 +7874,8 @@ async function handleRequest(req: Request): Promise<Response> {
         // token could be (a space, a quote) is a refused filter value, named as normalizeFilters names it.
         if ((named.unresolved.length || named.skipped.length) && !named.companies.length) {
           const notToken = named.skipped.length > 0 || named.unresolved.some((u) => !COMPANY_TOKEN_SHAPE.test(u.asked));
-          return json({ ...uncarriedListReply(named.unresolved.map((u) => u.asked)), ...companyNameNotes(named), ...(notToken ? { ignoredFilters: ["companies"] } : {}) });
+          // A name two carried employers share is carried: never listed as one the board does not carry.
+          return json({ ...uncarriedListReply(named.unresolved.filter((u) => !u.ambiguous).map((u) => u.asked)), ...companyNameNotes(named), ...(notToken ? { ignoredFilters: ["companies"] } : {}) });
         }
       }
       // An employer scope the catalogue does not carry is named, never read
@@ -7904,8 +7931,9 @@ async function handleRequest(req: Request): Promise<Response> {
       // sent, for anyone without a secret (anon-budget.ts pageCeiling).
       const rowCap = await pageCeiling(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "");
       if (Number(body.limit) > rowCap) body.limit = rowCap;
-      // S12-122: no raw offset past ANON_OFFSET_CEILING without a secret (anon-budget.ts offsetCeiling).
-      if (Number(body.offset) > await offsetCeiling(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "")) {
+      // S12-122: no raw offset past ANON_OFFSET_CEILING without a secret (anon-budget.ts offsetCeiling);
+      // a browse paged by a valid keyset cursor never reads its offset (the page sends both).
+      if (!cursorPaged(body) && Number(body.offset) > await offsetCeiling(req.headers, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "")) {
         return json({
           error: "offset_too_deep",
           maxOffset: ANON_OFFSET_CEILING,
@@ -9393,6 +9421,7 @@ async function serveList(
     ? normalizeFilters(body, JOB_SOURCES.length)
     : preFilters;
   for (const f of textShape.ignored) if (!ignoredFilters.includes(f)) ignoredFilters.push(f);
+  if (intentLift?.placeExclusion && !ignoredFilters.includes("placeExclusion")) ignoredFilters.push("placeExclusion");
   // Rationale: docs/job-board-index-notes.md#n841-const-agecutoff-applied-maxagedays-null
   const ageCutoff = applied.maxAgeDays === null ? null : ageCutoffMs(applied.maxAgeDays, Date.now(), body.tzOffset);
   const ageCutoffIso = ageCutoff === null ? null : new Date(ageCutoff).toISOString();
@@ -9713,7 +9742,7 @@ async function serveList(
   // reach the tsquery parser back inside its quotes, or the tip is a lie.
   const qText = phraseText(qt.terms).slice(0, 200) || (qt.liftedSalary ? "" : String(body.q ?? "").trim().slice(0, 200));
   // The router's employer keys: the table, plus the live employer list's (S12-014).
-  const routeAliases = qText ? await routeAliasesFor(client) : EMPLOYER_ALIASES;
+  const routeAliases = qText ? routeAliasesFor(client) : EMPLOYER_ALIASES;
   /** The SIMPLE route's split title match, with an employer's boards beside its key (S12-014). */
   const simpleSplit = (q: string) => simpleRouteFilters(ftsSafe(q), ROLE_ALIASES, routeAliases);
 

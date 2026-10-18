@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import ts from "typescript";
 import { NEGATED_REMOTE_SOURCE } from "../../supabase/functions/job-board/normalize.ts";
-import { liftTrailingPlace } from "../../supabase/functions/job-board/query-place.ts";
+import { liftTrailingPlace, negatedTrailingPlace } from "../../supabase/functions/job-board/query-place.ts";
 import { sanitizeTerm } from "../../supabase/functions/_shared/location-terms.ts";
 
 /**
@@ -33,7 +33,7 @@ const lift = (() => {
     "return liftIntentFilters;",
   ].join("\n");
   const js = ts.transpileModule(src, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
-  return new Function("NEGATED_REMOTE_SOURCE", "liftTrailingPlace", "sanitizeTerm", js)(NEGATED_REMOTE_SOURCE, liftTrailingPlace, sanitizeTerm) as (q: unknown, body: Record<string, unknown>) => { patch: Record<string, unknown>; labels: string[]; residualQ: string } | null;
+  return new Function("NEGATED_REMOTE_SOURCE", "liftTrailingPlace", "negatedTrailingPlace", "sanitizeTerm", js)(NEGATED_REMOTE_SOURCE, liftTrailingPlace, negatedTrailingPlace, sanitizeTerm) as (q: unknown, body: Record<string, unknown>) => { patch: Record<string, unknown>; labels: string[]; residualQ: string } | null;
 })();
 
 describe("a trade term keeps its first word", () => {

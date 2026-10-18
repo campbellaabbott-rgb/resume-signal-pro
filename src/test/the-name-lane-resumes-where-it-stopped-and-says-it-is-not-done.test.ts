@@ -140,6 +140,20 @@ describe("the name-sync step resumes and reports (S12-015, S12-084)", () => {
     expect(nameSyncQueue(TOKENS.slice(0, 5), w.meta.name_sync_progress as never, 4).tokens, "only the failed board is left").toEqual(["t02"]);
   });
 
+  it("a retry the clock never reached is carried to the next hop, not dropped (wave 4 round 2 review)", async () => {
+    // Two boards still failing from the last hop; the first retry spends the clock.
+    const w = world(TOKENS.slice(0, 5), {
+      costMs: 10_000,
+      failing: new Set(["t01", "t03"]),
+      meta: { name_sync_progress: { version: 4, after: "t04", retry: ["t01", "t03"] } },
+    });
+    const r = await passEndNames(w.deps)(w.deps.client, w.start());
+    expect(r).toMatchObject({ ok: false, stop: "clock" });
+    const prog = w.meta.name_sync_progress as { after: string; retry: string[] };
+    expect(prog.retry.sort(), "t03 sorts before `after`: dropped here, it would never be visited again").toEqual(["t01", "t03"]);
+    expect(nameSyncQueue(TOKENS.slice(0, 5), prog as never, 4).tokens).toEqual(["t01", "t03"]);
+  });
+
   it("a progress row from older rules is not trusted", () => {
     expect(nameSyncQueue(["a", "b", "c"], { version: 3, after: "b", retry: [] }, 4).tokens).toEqual(["a", "b", "c"]);
     expect(nameSyncQueue(["a", "b", "c"], { version: 4, after: "b", retry: ["a", "zz"] }, 4).tokens).toEqual(["a", "c"]);

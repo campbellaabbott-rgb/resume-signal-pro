@@ -18015,6 +18015,15 @@ the live employer list (search-routing.ts withLiveBrands), per isolate for
 SUGGEST_MEMO_MS. A list read slower than ROUTE_ALIAS_DEADLINE_MS, or one
 that fails, routes on the table alone and is asked again next call.
 
+Replaced in the wave 4 round 2 fixes (routeAliasesFor, ROUTE_ALIAS_STALE_MS):
+the employer read costs 0.8-0.9 s on the live function and the 60 s memo
+almost never hit, so awaiting it (even under an 800 ms deadline) added most of
+a second to most text searches and still routed most of them on the table.
+The router now never waits: it routes on the live set this isolate built
+last (for up to 30 minutes) or on the table, and a set older than the
+suggest memo is rebuilt after the response through EdgeRuntime.waitUntil.
+The first text search in a cold isolate routes on the table alone.
+
 ## n1173-async-function-claimrun-client-supabasec
 
 In `supabase/functions/job-board/index.ts`, above: `async function claimRun(client: SupabaseClient, key: string, holdMs: number): Promise<boolean> {`

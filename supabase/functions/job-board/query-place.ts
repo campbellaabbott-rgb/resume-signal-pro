@@ -103,6 +103,22 @@ export function liftTrailingPlace(q: string, filler: ReadonlySet<string>): Place
 }
 
 /**
+ * A known place typed after a negation ("nurse jobs not in Texas"): the board
+ * cannot leave a place out, and left as words the search matched nurse AND
+ * texas, all Texas rows. The head without the negation and the place, which
+ * the caller searches instead and discloses as an exclusion it could not apply.
+ */
+export function negatedTrailingPlace(q: string): { head: string; place: string } | null {
+  const m = TRAILING_PLACE.exec(q.trim());
+  if (!m || !NEGATION_BEFORE_PLACE.test(m[1])) return null;
+  const place = m[3].replace(/’/g, "'").replace(/\s+/g, " ").trim();
+  if (!place || place.split(" ").length > 4 || !knownPlace(place)) return null;
+  let head = m[1];
+  while (NEGATION_BEFORE_PLACE.test(head)) head = head.replace(NEGATION_BEFORE_PLACE, "").trim();
+  return { head, place };
+}
+
+/**
  * The location strings to search, as locationTerms answers, except that
  * "City, ST" / "City, State" searches the city in that state under each
  * spelling the employers use: "Austin, TX", "Austin, Texas", "Austin,TX".

@@ -120,6 +120,10 @@ describe("through the shipped handler", () => {
   it("q=cvs reads CVS Health's boards, and q=cvs pharmacist reads its titles or its boards", async () => {
     facet();
     board.answer((q) => (q.table === "job_board_postings" ? { data: [row("workday:cvshealth~wd1~CVS_Health_Careers:1", "Pharmacist", { company: "CVS Health", company_token: "cvshealth~wd1~CVS_Health_Careers" })], error: null } : undefined));
+    // The router never waits for the employer list (wave 4 round 2 fixes): the
+    // isolate's first text search starts the build, the next one routes on it.
+    await board.post({ action: "list", q: "cvs", limit: 1, groupSimilar: false });
+    await new Promise((r) => setTimeout(r, 50));
     const r = await board.post({ action: "list", q: "cvs", limit: 60, groupSimilar: false });
     expect(r.searchRoute).toBe("EMPLOYER");
     expect(r.companyMatched).toBe("CVS Health");

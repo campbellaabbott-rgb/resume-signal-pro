@@ -21,6 +21,7 @@
  * found two of my guards passing while the code they described had been deleted.
  * These are imported and executed by the tests.
  */
+import { STATE_ALIASES } from "../_shared/location-terms.ts";
 
 /** Fold to letters and digits: "AT&T" -> "att", "Domino's" -> "dominos".
  *
@@ -157,7 +158,7 @@ export function simpleRouteFilters(
   // S12-014: "cvs pharmacist" matched "cvs" in titles only (1 row, against 1,453
   // CVS Health pharmacists): a literal token that is an employer's key also
   // matches that employer's boards.
-  const boardsOf = (t: string) => (employers && Object.prototype.hasOwnProperty.call(employers, foldName(t)) ? employers[foldName(t)].tokens : []);
+  const boardsOf = (t: string) => (employers && foldName(t).length > 2 && !OCCUPATION_GUARD.has(foldName(t)) && Object.prototype.hasOwnProperty.call(employers, foldName(t)) ? employers[foldName(t)].tokens : []);
   const filters: TitleFilter[] = literal.map((t) => {
     const tokens = boardsOf(t);
     return { column: "title", query: either(t), config: "simple", ...(tokens.length ? { orCompanyTokens: tokens } : {}) };
@@ -279,15 +280,15 @@ export function brandKeysOf(name: string): string[] {
   if (core && brand !== full && keyShapeOk(core, brand)) out.add(brand);
   return [...out];
 }
-const liveAliasMemo = new WeakMap<object, Map<object, Aliases>>();
+/** The last set built, only: a memo keyed by every employers list seen kept each ~32k-row list alive. */
+let liveAliasLast: { base: Aliases; employers: object; refuse: ReadonlySet<string>; out: Aliases } | null = null;
 export function withLiveBrands(
   base: Aliases,
   employers: ReadonlyArray<{ name?: string; token?: string; tokens?: string[]; open?: number; count?: number }>,
   refuse: ReadonlySet<string>,
 ): Aliases {
-  const byBase = liveAliasMemo.get(base) ?? new Map<object, Aliases>();
-  const hit = byBase.get(employers);
-  if (hit) return hit;
+  const last = liveAliasLast;
+  if (last && last.base === base && last.employers === employers && last.refuse === refuse) return last.out;
   const live = new Map<string, { tokens: string[]; name: string }>();
   const shared = new Set<string>();
   for (const e of employers) {
@@ -305,8 +306,7 @@ export function withLiveBrands(
   for (const k of shared) live.delete(k);
   const out: Record<string, { tokens: string[]; name: string }> = { ...base };
   for (const [k, v] of live) out[k] = v;
-  byBase.set(employers, out);
-  liveAliasMemo.set(base, byBase);
+  liveAliasLast = { base, employers, refuse, out };
   return out;
 }
 
@@ -690,6 +690,15 @@ const EXCLUSION_STOPWORDS: ReadonlySet<string> = new Set([
  * still vetoes the operator ("director not for profit").
  */
 const NOT_VERBS = /^(?:requiring|requires|require|involving|involves|including|includes|with|doing)$/i;
+/**
+ * Where a "not" phrase ends besides an operator: two words, a place word
+ * ("in Boston", "near Dallas", a state), or a word the intent lift reads
+ * ("remote", "part time"), so "nurse not night shift in Boston" keeps Boston
+ * and "software engineer not senior remote" keeps remote.
+ */
+const NOT_PHRASE_STOP = /^(?:in|near|around|at|for|within|from|jobs?|remote(?:ly)?|hybrid|on-?site|wfh|part(?:-?time)?|full(?:-?time)?|internships?|interns?|temporary|entry(?:-level)?)$/i;
+const isStateWord = (ws: string[], j: number): boolean =>
+  own(STATE_ALIASES, ws[j].toLowerCase()) || (j + 1 < ws.length && own(STATE_ALIASES, `${ws[j]} ${ws[j + 1]}`.toLowerCase()));
 const cleanTerm = (e: string): string =>
   e.split(/\s+/).map((w) => w.replace(/[^a-z0-9+#.]/gi, "").toLowerCase()).filter(Boolean).join(" ");
 
@@ -709,11 +718,14 @@ export function splitExclusions(raw: string): { positive: string; excluded: stri
       const next = words[i + 1];
       if (EXCLUSION_STOPWORDS.has(next.toLowerCase())) { positive.push(w, next); i++; continue; }
       if (quoted(next) && !next.startsWith("-")) { excluded.push(next.slice(1, -1)); i++; continue; }
-      // The words after "not", up to the next operator, are one phrase.
+      // The words after "not" (a leading verb dropped), up to two, are one phrase.
       let j = i + 1;
+      while (j + 1 < words.length && NOT_VERBS.test(words[j])) j++;
       const phrase: string[] = [];
-      while (j < words.length && !/^not$/i.test(words[j]) && !words[j].startsWith("-") && !quoted(words[j])) phrase.push(words[j++]);
-      while (phrase.length > 1 && NOT_VERBS.test(phrase[0])) phrase.shift();
+      while (j < words.length && !/^not$/i.test(words[j]) && !words[j].startsWith("-") && !quoted(words[j])) {
+        if (phrase.length && (phrase.length >= 2 || NOT_PHRASE_STOP.test(words[j]) || isStateWord(words, j))) break;
+        phrase.push(words[j++]);
+      }
       if (phrase.length) { excluded.push(phrase.join(" ")); i = j - 1; continue; }
       positive.push(w);
       continue;
