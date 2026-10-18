@@ -28,7 +28,9 @@ import { refundWriting, takeWriting, type WritingPass } from "../_shared/writing
 // bundle and the repository's are the same code.
 // 2026-10-11.2: the classifier it imports no longer exempts a second ask inside a work-done
 // prompt, and knows when-could-you-start and current earnings (review of 9fe3bc0d).
-const FN_BUILD = "generate-apply-package.2026-10-11.24";
+// 2026-10-11.29 (wave 4 round 2 integration): generators' 2026-10-11.24 with
+// agents-api's _shared/application-questions.ts (S12-081), which it imports.
+const FN_BUILD = "generate-apply-package.2026-10-11.29";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

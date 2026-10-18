@@ -486,7 +486,9 @@ const trackPerformance = (startTime: number, operation: string, success: boolean
 // scans are counted by account, not address (S12-143); sealed sentences never
 // quote the résumé or carry a number to dial (S12-068); the spend gate it
 // imports counts a proven account by name (S12-146).
-const FN_BUILD = "free-keyword-scan.2026-10-14.24";
+// 2026-10-14.29 (wave 4 round 2 integration): generators' 2026-10-14.24 and
+// payments-delivery's 2026-10-14.22 in one bundle.
+const FN_BUILD = "free-keyword-scan.2026-10-14.29";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

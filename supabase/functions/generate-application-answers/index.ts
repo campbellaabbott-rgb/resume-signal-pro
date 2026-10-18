@@ -52,7 +52,10 @@ import { fencePosting, postingText, POSTING_DATA_RULE } from "../_shared/posting
 // posting's language, notes in the reader's (S12-026); the posting fenced as
 // data with hidden text dropped (S12-147); refusals carry a code and a
 // Retry-After the page can word (S12-051).
-const FN_BUILD = "generate-application-answers.2026-10-11.24";
+// 2026-10-11.29 (wave 4 round 2 integration): generators' 2026-10-11.24 with
+// agents-api's _shared/application-questions.ts (a status inside a work
+// question, or asked by a hint, stays the person's: S12-081, S12-082).
+const FN_BUILD = "generate-application-answers.2026-10-11.29";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

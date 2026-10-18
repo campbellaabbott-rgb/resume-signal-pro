@@ -89,7 +89,7 @@ describe("S12-002: a proof recorded once keeps counting", () => {
   it("a password session with no proof sees no order by the address, and says why", async () => {
     const r = await ask();
     expect(r.status).toBe(200);
-    expect(r.build).toBe("get-account-data.2026-10-14.25");
+    expect(r.build).toBe("get-account-data.2026-10-14.29");
     expect(r.json.mailboxProven).toBe(false);
     expect(r.json.orders).toEqual([]);
     expect(r.json.credits).toBe(0);
