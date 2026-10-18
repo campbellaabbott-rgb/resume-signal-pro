@@ -20,7 +20,12 @@
  *     caller, exactly as Jobs.tsx gates it: the row keeps its read time only
  *     where feedReadStatable passes on the employer's fill-curve row, and a
  *     row whose curve has not answered carries no stamp (review P2).
+ *   - NEVER FOR A BOARD NAME TWO HIRING SYSTEMS SHARE. One fill-curve row for
+ *     such a token pools both boards' closures, so Jobs.tsx asks for no curve
+ *     on it (isCollidedToken) and its rows print no feed-read time. The
+ *     homepage asks for none either, and gives those rows no stamp.
  */
+import { isCollidedToken } from "@/lib/board-collisions";
 import { feedReadStatable } from "@/lib/hiring-record-gate";
 import { isRedatingSource, listingAge, listingSource } from "@/lib/listing/age";
 import { listingEmployer } from "@/lib/listing/employer";
@@ -99,15 +104,16 @@ export function selectHomeRows(
   return kept;
 }
 
-/** The distinct board tokens of the kept rows: the one fill-curve call asks for these. */
+/** The distinct board tokens of the kept rows, less any two hiring systems share: the one fill-curve call asks for these. */
 export function curveTokens(rows: readonly ListingJob[]): string[] {
-  return [...new Set(rows.map((r) => (typeof r.token === "string" ? r.token.trim() : "")).filter(Boolean))];
+  return [...new Set(rows.map((r) => (typeof r.token === "string" ? r.token.trim() : "")).filter((t) => t && !isCollidedToken(t)))];
 }
 
 /**
  * Each row with the read time it may print: the board's recheckedAt where the
  * employer's fill-curve row says we read that board in full, else null. A
- * null or failed curve leaves every row without a stamp.
+ * null or failed curve leaves every row without a stamp, and so does a board
+ * name two hiring systems share, whatever its curve row says.
  */
 export function applyFeedReadGate(
   rows: readonly ListingJob[],
@@ -118,7 +124,7 @@ export function applyFeedReadGate(
     if (row && typeof row.company_token === "string") byToken.set(row.company_token, row);
   }
   return rows.map((job) => {
-    const row = typeof job.token === "string" ? byToken.get(job.token) : undefined;
+    const row = typeof job.token === "string" && !isCollidedToken(job.token) ? byToken.get(job.token) : undefined;
     return { ...job, recheckedAt: feedReadStatable(row) ? job.recheckedAt ?? null : null };
   });
 }

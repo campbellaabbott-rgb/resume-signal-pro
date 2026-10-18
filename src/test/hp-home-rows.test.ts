@@ -122,6 +122,17 @@ describe("the feed-read stamp is said only of a board we read in full", () => {
     expect(withoutFeedRead([FULL, LAPS]).every((j) => j.recheckedAt === null)).toBe(true);
   });
 
+  it("never asks about, or stamps, a board name two hiring systems share (Jobs.tsx's isCollidedToken rule)", () => {
+    // "clear" is Clear (BambooHR) and CLEAR - Corporate (Greenhouse): one
+    // fill-curve row would pool both boards' closures, so the board asks for
+    // no curve on it and prints no feed-read time. The homepage does the same.
+    const SHARED = row({ token: "clear", company: "CLEAR - Corporate", title: "Product Designer" });
+    expect(curveTokens([FULL, SHARED])).toEqual(["acme"]);
+    const [full, shared] = applyFeedReadGate([FULL, SHARED], [curve("acme", "full_read"), curve("clear", "full_read")]);
+    expect(full.recheckedAt).toBe(FULL.recheckedAt);
+    expect(shared.recheckedAt, "a stamp built from a curve row that pools two boards").toBeNull();
+  });
+
   it("never mutates the board's rows", () => {
     const before = JSON.stringify(FULL);
     applyFeedReadGate([FULL], [curve("acme", "lap_proven")]);
