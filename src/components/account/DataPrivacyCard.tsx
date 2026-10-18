@@ -48,7 +48,7 @@ export function DataPrivacyCard({ onExport, onDelete }: Props) {
       <ul className="text-xs text-muted-foreground space-y-1 mb-3 list-disc pl-4" data-delete-terms>
         <li>
           <span className="text-foreground font-medium">{t("accountPrivacy.deletedLabel", "Deleted:")}</span>{" "}
-          {t("accountPrivacy.deletedList", "your account and sign-in; your scan history, checklist, goal, saved résumé versions and tracked applications; saved searches and alerts; any CV file you uploaded; your API and connected-AI keys, which stop working; and, once your address is proven, its mailing-list entries.")}
+          {t("accountPrivacy.deletedListDocs", "your account and sign-in; your scan history, checklist, goal, saved résumé versions and tracked applications; saved searches and alerts; any CV file you uploaded; the documents we made for your purchases and Pro inclusions; your API and connected-AI keys, which stop working; and, once your address is proven, its mailing-list entries and the documents made under it.")}
         </li>
         <li>
           <span className="text-foreground font-medium">{t("accountPrivacy.cancelledLabel", "Cancelled:")}</span>{" "}
